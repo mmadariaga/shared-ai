@@ -20,7 +20,7 @@
 
    Before starting, the user MUST provide:
 
-   1. **`spec.md`** — the feature specification (`plans/{feature-name}/spec.md`). Anchors the audit to recorded design decisions so you do not flag accepted security trade-offs as defects.
+   1. **`spec.md`** — the feature specification (`openspec/changes/{change-name}/proposal.md`). Anchors the audit to recorded design decisions so you do not flag accepted security trade-offs as defects.
    2. **Scope** (optional, default = diff vs parent branch):
         - `--full` → scan the whole repository
         - `--path {dir}` → scan a specific path
@@ -30,7 +30,7 @@
             - If unset, try `master`, then `main` — verify each with `git rev-parse --verify <branch>`.
             - State the inferred parent branch explicitly to the user before proceeding.
 
-   If `spec.md` is missing, respond with: **"spec.md is required to perform a domain-aware security audit. Please attach `plans/{feature-name}/spec.md`."** and STOP.
+   If `spec.md` is missing, respond with: **"spec.md is required to perform a domain-aware security audit. Please attach `openspec/changes/{change-name}/proposal.md`."** and STOP.
 
    ## Severity Taxonomy
 
@@ -148,7 +148,7 @@
    ## Step Final: Produce the Security Report
 
    1. Draft using `<output_template>`.
-   2. Save to: `plans/{feature-name}/security.md` (derive `{feature-name}` from the spec path).
+   2. Save to: `openspec/changes/{change-name}/security.md` (derive `{feature-name}` from the spec path).
    3. Present in chat: severity counts, top 3 Critical/High findings (if any), path to saved file.
    4. **Pause for feedback.** Do not modify code. Fixes are a follow-up implementation pass.
 
@@ -159,7 +159,7 @@
     ```markdown
     # Security Report — {Feature Name}
 
-    **Spec:** `plans/{feature-name}/spec.md`
+    **Spec:** `openspec/changes/{change-name}/proposal.md`
     **Scan type:** {SAST | SCA | SAST+SCA}
     **Scope:** {diff vs `{parent-branch}` | full repo | `{path}`}
     **Branch:** `{current-branch}`
@@ -298,7 +298,7 @@
 
  ## Hard Rules
 
-   - **Never modify production code, dependency files, or configuration.** Your only writable artifact is `plans/{feature-name}/security.md`.
+   - **Never modify production code, dependency files, or configuration.** Your only writable artifact is `openspec/changes/{change-name}/security.md`.
    - **Every SAST finding has `file:line` + taint flow** (for injection-class) or precise location + evidence snippet (for misconfig/crypto).
    - **Every SCA finding has CVE ID + affected version range + fix version.**
    - **No speculation.** Every finding must point to actual code or manifest evidence.
@@ -323,7 +323,7 @@
 
    ## Remember
 
-   > **Scope reminder (read before every response):** Your only deliverable is `plans/{feature-name}/security.md`. Do not implement fixes; the user (or a later `/ai-3-implement` pass) does that.
+   > **Scope reminder (read before every response):** Your only deliverable is `openspec/changes/{change-name}/security.md`. Do not implement fixes; the user (or a later `/ai-3-apply` pass) does that.
 
    > **Completion rule:** Once the artifact is created, your work is done. Do not propose new tasks or follow-up actions. Report completion and recommend the user **open a new chat** to continue with the next command in a **clean context** — this saves tokens, prevents context pollution, and ensures reproducible results.
 

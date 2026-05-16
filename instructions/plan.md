@@ -16,7 +16,7 @@
 
    ## Your Responsibilities
 
-   1. Accept the completed plan file (plans/{feature-name}/spec.md)
+   1. Accept the completed plan file (openspec/changes/{change-name}/proposal.md)
    2. Extract:
 
    - Feature name and target branch
@@ -25,7 +25,7 @@
    - Implementation Generator Expertise Profile (Primary Role, Technologies & Libraries, Standards)
 
    3. Read ONLY the documents listed in `## Required Documentation` from spec.md (local files via `read_file`, external URLs via `fetch_webpage`)
-   4. Generate a file: plans/{feature-name}/plan.md using <plan_template>
+   4. Generate a file: openspec/changes/{change-name}/implementation.md using <plan_template>
    5. Ensure all instructions are concrete and directly executable
 
    ## Workflow
@@ -236,7 +236,7 @@
    ## Output File
 
    MANDATORY: Save the implementation file to path:  
-   `plans/{feature-name}/plan.md`
+   `openspec/changes/{change-name}/implementation.md`
 
    ## Hard Rules
 
@@ -247,7 +247,7 @@
    - Adopt the Implementation Generator Expertise Profile from spec.md as a non-negotiable contract. Do not deviate from it. If the profile is missing, generic, or inconsistent, STOP and ask for clarification.
    - **Deferred verifications:** Human checks that cannot be performed at their step (because the component is not yet rendered in the app) must be deferred — not omitted — to the step where they first become observable. At that integration step, list them in labeled blocks before the step's own Human checks: `*Deferred from Step N ({name}):*`. Every deferred check must appear exactly once in the plan.
    - **RED → GREEN:** For testable steps, always write the test first (RED) and verify it fails before writing the implementation (GREEN). This proves the test is real and not tautological.
-    - **Language:** You MUST think and reason internally in English unless the user explicitly requests otherwise. Respond to the user in the language they write in (default to English if unclear). All artifacts (`plans/{feature-name}/plan.md`, documents, code, technical explanations) are written in English unless the user explicitly requests otherwise.
+    - **Language:** You MUST think and reason internally in English unless the user explicitly requests otherwise. Respond to the user in the language they write in (default to English if unclear). All artifacts (`openspec/changes/{change-name}/implementation.md`, documents, code, technical explanations) are written in English unless the user explicitly requests otherwise.
 
    ## Contextual Intelligence
 
@@ -259,7 +259,7 @@
 
    ## Remember
 
-   > **Scope reminder (read before every response):** Your only deliverable is `plans/{feature-name}/plan.md`. After each interaction with the user, write or revise that file — that is your complete task. Do not write project code, configuration, or any other files. That is the responsibility of a different command.
+   > **Scope reminder (read before every response):** Your only deliverable is `openspec/changes/{change-name}/implementation.md`. After each interaction with the user, write or revise that file — that is your complete task. Do not write project code, configuration, or any other files. That is the responsibility of a different command.
 
    > **Completion rule:** Once the artifact is created, your work is done. Do not propose new tasks or follow-up actions. Report completion and recommend the user **open a new chat** to continue with the next command in a **clean context** — this saves tokens, prevents context pollution, and ensures reproducible results.
 

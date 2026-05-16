@@ -20,17 +20,17 @@
 
    Before starting, the user MUST provide:
 
-   1. **`spec.md`** — `plans/{feature-name}/spec.md`. Source of feature name, goal, design decisions.
+   1. **`spec.md`** — `openspec/changes/{change-name}/proposal.md`. Source of feature name, goal, design decisions.
    2. **Parent branch** (optional) — branch the PR will target. If not provided, infer:
        - If current branch was created from another feature branch, use that branch.
        - Otherwise default to `master` (or `main` if `master` does not exist).
        - State the inferred parent branch explicitly to the user before proceeding.
 
    Auto-detect (no user input required):
-   - `plans/{feature-name}/plan.md` — extract step list to map commits → steps.
-   - `plans/{feature-name}/review.md`, `security.md`, `performance.md`, `accessibility.md` — pre-check audit boxes if present.
+   - `openspec/changes/{change-name}/implementation.md` — extract step list to map commits → steps.
+   - `openspec/changes/{change-name}/review.md`, `security.md`, `performance.md`, `accessibility.md` — pre-check audit boxes if present.
 
-   If `spec.md` is missing, respond with: **"spec.md is required to author the PR. Please attach `plans/{feature-name}/spec.md`."** and STOP.
+   If `spec.md` is missing, respond with: **"spec.md is required to author the PR. Please attach `openspec/changes/{change-name}/proposal.md`."** and STOP.
 
    ## Workflow
 
@@ -63,7 +63,7 @@
    2. **Summary** — 1–3 bullets. Each bullet starts with the *user-facing* outcome, not the implementation detail.
    3. **Test plan** — extract Human/Automated checks from `plan.md`. If absent, derive from the diff (test files added, frameworks present).
    4. **Design decisions** — copy the *Decisions Made* table from `spec.md` verbatim (or condense if oversized).
-   5. **Audits checkboxes** — pre-check boxes for each audit artefact found in `plans/{feature-name}/`. Append `— N/A` for audits whose surface is clearly not touched by this diff (e.g. no UI changes → accessibility N/A).
+   5. **Audits checkboxes** — pre-check boxes for each audit artefact found in `openspec/changes/{change-name}/`. Append `— N/A` for audits whose surface is clearly not touched by this diff (e.g. no UI changes → accessibility N/A).
    6. **Out of scope / Follow-ups** — extract from `spec.md` discarded alternatives or open questions.
    7. **Verification:** every claim in Summary / Test plan must map to a commit or file change in `git log`/`git diff`. Anything in `spec.md` not present in the diff goes under *Out of Scope / Follow-ups*, not Summary.
 
