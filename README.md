@@ -3,9 +3,7 @@
 Software development oriented AI commands for a cost-efficient, spec-first, structured workflow:
 **explore (optional) → spec → implement → apply → review → audits → (iterate if needed) → PR → archive**.
 
-Each workflow step produces an artifact in `openspec/changes/{change-name}/` (single source of truth per change). The pipeline wraps [OpenSpec](https://github.com/Fission-AI/OpenSpec) skills with shared-AI's quality layer (caveman mode, RED→GREEN, glossary, model routing).
-
-> **Prerequisite:** install the [OpenSpec CLI](https://github.com/Fission-AI/OpenSpec) globally and run `openspec init` in each project. The openspec-dependent `ai-*` commands halt with a clear error if either is missing.
+Built on [OpenSpec](https://github.com/Fission-AI/OpenSpec): OpenSpec owns the lifecycle and artifact structure, shared-AI owns the quality layer and model routing.
 
 Works great on **opencode** with an opencode-go subscription + any frontier model provider sub (Claude / GPT / Gemini).
 
@@ -15,11 +13,11 @@ Can also run on Claude Code, though it is less cost-effective there due to model
 
 **You stay in control.** The AI is a peer, not a decision-maker. Every phase is a conversation where you validate direction before anything gets written. You don't delegate to the AI — you collaborate with it.
 
-**Knowledge stays in the project.** Each phase produces a written artifact: the spec captures the why, the plan captures the how, the review captures what was found. When you come back months later — or hand it off to someone else — the reasoning is already there.
+**Spec first, always.** No code is written without prior change artifacts: `proposal.md` (what + why), `design.md` (decisions + trade-offs), and `specs/**` (acceptance criteria). The implementation plan is derived from them, and the code follows the plan. This is the difference between AI-assisted development and vibe coding.
 
-**Spec first, always.** No code is written without a prior spec. The spec defines acceptance criteria, design decisions, and technical constraints. The plan is derived from it. This is the difference between AI-assisted development and vibe coding.
+**Knowledge stays in the project.** Each phase writes its own artifact under `openspec/changes/{change-name}/`. When you come back months later — or hand it off to someone else — the reasoning is already there, organized by concern instead of buried in chat history.
 
-**Cost-effective by design.** Each phase runs on the cheapest model that can do the job. Cheap models for commits and PRs, mid-range for planning and review, frontier only where reasoning depth actually matters. Agents think in English regardless of your language, and communication is compressed to the minimum. You get the output — not the filler.
+**Cost-effective by design.** Each phase runs on the cheapest model that can do the job. Cheap models for commits and PRs, mid-range for planning and review, frontier only where reasoning depth actually matters. Agents think in English regardless of your language — English tokenizers produce fewer tokens per unit of meaning, so reasoning is cheaper without losing quality (details in [Token-Efficient Languages](#token-efficient-languages)). Communication is compressed to the minimum. You get the output — not the filler.
 
 **Testing is not optional.** Every implementation step includes a failing test (RED) before the code that makes it pass (GREEN). The agent runs RED first to confirm the assertion is real, then writes GREEN. What can't be covered by unit tests — visual behavior, end-to-end flows — becomes an explicit verification request to you, placed at the earliest point it can be observed. Nothing ships unverified.
 
@@ -27,7 +25,7 @@ Can also run on Claude Code, though it is less cost-effective there due to model
 
 - [Commands](#sequential-pipeline-numbered)
 - [Typical usage](#typical-usage)
-- [Cost effective strategies](#cost-effective-strategies)
+- [Cost-Effective Strategies](#cost-effective-strategies)
 - [Project highlights](#project-highlights)
 - [Installation](#global-installation-multi-project)
 - [Model recommendation](#recommended-models-by-command-and-provider)
@@ -40,7 +38,7 @@ All artifact paths below resolve under `openspec/changes/{change-name}/` (referr
 |---------|-------|--------|---------|
 | `/sai-explore` | optional change name or topic | (no artifact unless captured) | Thinking partner for ideas, problems, requirements. Wraps `opsx:explore`. |
 | `/sai-1-spec` | feature description | `{c}/proposal.md`, `design.md`, `tasks.md`, `specs/**` | Wraps `opsx:propose`. Produces the full OpenSpec change with the shared-AI quality layer (caveman, glossary, research discipline). |
-| `/sai-2-implement` | change name | `{c}/implementation.md` | Reads proposal/design/tasks, generates a granular plan with code, RED→GREEN, STOP & COMMIT markers, ready for cheap-model execution. |
+| `/sai-2-implement` | change name | `{c}/implementation.md` | Reads proposal/design/tasks/specs, generates a granular plan with code, RED→GREEN, STOP & COMMIT markers, ready for cheap-model execution. |
 | `/sai-3-apply` | change name | code | Executes `implementation.md` step by step, checks off boxes, asks for authorization on git ops. |
 | `/sai-4-review` | change name + diff | `{c}/review.md` | Holistic code review (correctness, maintainability, testing, consistency). **Triage router** → recommends follow-up audits if surface changed. |
 | `/sai-5-security` | change name + diff | `{c}/security.md` | SAST + SCA, CWE/CVE mapping, OWASP/PCI/GDPR. file:line + taint flow required. |
@@ -104,37 +102,36 @@ All audits are diff-scoped by default vs parent branch. Support `--full` or `--p
 
 ## Iterate as needed
 
-After review and audits, start a new cycle from the existing artifacts if required. Depending on the complexity of the issues found, choose the appropriate entry point:
+In OpenSpec, a `change` represents a single cohesive set of modifications. When review or audits surface follow-up work, prefer creating a **new change** that references the original, rather than overwriting artifacts of an active or archived change. This preserves the original reasoning, keeps history auditable, and matches the OpenSpec lifecycle (one change → spec → implement → review → audits → PR → archive).
 
-- **Full re-spec** — for major changes, new requirements, or architectural shifts:
+Pick an entry point based on what the findings require:
+
+- **New change (recommended for any finding)** — captures the follow-up as its own auditable unit:
   ```
   /sai-1-spec
-  Based on the specification we just implemented and the enhancements and bugs identified during review, create a new spec.
+  Follow-up to oauth2-auth: harden token storage and address review findings.
 
   @openspec/changes/oauth2-auth/proposal.md
-  @openspec/changes/oauth2-auth/design.md
   @openspec/changes/oauth2-auth/review.md
   @openspec/changes/oauth2-auth/security.md
-  @openspec/changes/oauth2-auth/performance.md
-  @openspec/changes/oauth2-auth/accessibility.md
 
-  # Your observations here: 
-  Implemented architecture doesn't fit client security requirements...
+  # Your observations here:
+  Token storage must move to httpOnly cookies; review flagged XSS exposure...
   ```
+  This creates a sibling change (e.g. `oauth2-auth-hardening`) that goes through the full pipeline. The original `oauth2-auth` stays untouched.
 
-- **Skip spec, re-plan only** — for contained fixes where the original specification is still valid. Keeps the proposal unchanged and generates a fresh implementation plan addressing the review findings:
+- **Amend the active change (only before archive)** — if the original change has not been archived yet and the finding is a direct correction (not new scope), you can re-run a phase on the same change name. This **overwrites** the corresponding artifact, so use it sparingly:
   ```
   /sai-2-implement oauth2-auth
-  Based on the existing change artifacts and the review findings below, regenerate
-  openspec/changes/oauth2-auth/implementation.md (replacing the previous one).
+  Regenerate implementation.md addressing the review findings (replacing the previous one).
 
   @openspec/changes/oauth2-auth/proposal.md
   @openspec/changes/oauth2-auth/review.md
-  @openspec/changes/oauth2-auth/accessibility.md
 
-  # Your observations here: 
-  Plus, I just found that the cancel button does nothing
+  # Your observations here:
+  Cancel button does nothing — fix before archive.
   ```
+  Never amend an archived change. Once archived, follow-ups always go through a new change.
 
 ## Cost-Effective Strategies
 
@@ -151,16 +148,11 @@ Note: caveman mode only compresses the public output tokens, not the thinking, w
 
 All agents think and reason internally in English, regardless of the user's input language. English tokenizers produce fewer tokens per unit of meaning than most other languages [—non-English languages can cost 2–3× more tokens for the same meaning](https://x.com/arankomatsuzaki/status/2049125048792006965). This keeps reasoning efficient while user-facing chat always responds in the user's own language (Spanish, French, German, etc.). All generated artifacts (`proposal.md`, `design.md`, `implementation.md`, `review.md`, code, commit messages, PRs) are written in English.
 
-**(Experimental)** Chinese models are often [even more token-efficient](https://x.com/arankomatsuzaki/status/2049177688402022730) when reasoning in Chinese. For workloads running on Chinese-origin models, you can activate **Chinese thinking** by adding `--tacaño` or `--stingy` to the prompt. When this flag is present, the agent switches its internal reasoning and **artifact generation** to Chinese — only user-facing responses remain in the user's language. 
-> **Use only if you were not planning to review the artifacts anyway.**
-
-We don't keep artifacts in English because continuous translation between Chinese and English when creating artifacts consumes more tokens than it saves. We do keep user-facing responses in the user's language because otherwise this mode would be unusable unless you know Chinese. Besides, internal thinking represents far more tokens than the output, so the savings still apply. 
-
 ### Task-Matched Model Selection
 Each phase uses a model chosen for its specific strengths: reasoning-heavy phases (spec) use frontier models; planning and review use balanced mid-range models; implementation, commit, and PR use fast, cost-efficient models. See the [Recommended models by command](#recommended-models-by-command-and-provider) table below.
 
 ### Explore Sub-Agent
-Research or exploratory tasks are delegated to **sub-agents running cost-effective models** matched to the subtask complexity. By default, sub-agents do not inherit the main session's token window, keeping costs predictable. Each subagent call declares an **output contract** (exact fields, length cap, no raw content) so only distilled signal enters the main context. The main agent never calls WebFetch directly — all external doc lookups go through the cheap explore subagent. Tool-call caps per tier: cheap ≤30, escalated ≤15, fallback ≤10. 
+Research or exploratory tasks are delegated to **sub-agents running cost-effective models** matched to the subtask complexity. By default, sub-agents do not inherit the main session's token window, keeping costs predictable. Each subagent call declares an **output contract** (exact fields, length cap, no raw content) so only distilled signal enters the main context. The main agent never calls WebFetch directly — all external doc lookups go through the cheap explore subagent. Caps: ≤8 research-subagent invocations per audit; in audit mode, ≤15 main-agent reads + ≤30 main-agent `Grep`/`Glob` calls per pass.
 
 >This technique can reduce the cost of `/sai-1-spec` on I/O-intensive tasks, like audits, to a third.
 
@@ -173,7 +165,7 @@ Every command starts with zero inherited context —it reads only the `<TASK>` b
 Every feature starts with a change proposal (`proposal.md` + `design.md` + capability specs under `specs/`) that captures goals, acceptance criteria, technical constraints, and design decisions — produced by `/sai-1-spec` via the OpenSpec `opsx:propose` skill. The implementation plan (`implementation.md`) is derived from those artifacts, and code follows the plan. This is [Spec-Driven Development](https://scrummanager.com/community/spec-driven-development-qu-es-de-dnde-viene-y-por-qu-importa) at the *spec-first* level — the change artifacts drive the current task and live as the source of truth for the pipeline phases that follow (review, security, performance, accessibility). No *vibe coding*: every line of generated code is grounded in an explicit contract.
 
 ### Single Responsibility Per Phase
-Each phase produces exactly one artifact. Only `ai-3-apply` writes code; spec, implement, review, and audits produce only markdown in `openspec/changes/{change-name}/`. No phase oversteps its scope, and every instruction file ends with a "Scope Reminder" block to enforce this.
+Each phase produces exactly one artifact. Only `sai-3-apply` writes code; spec, implement, review, and audits produce only markdown in `openspec/changes/{change-name}/`. No phase oversteps its scope.
 
 ### RED → GREEN
 Each testable step includes a failing test (RED) before the minimal implementation (GREEN). The agent runs RED first, confirms the failure is a valid assertion failure (not a setup error), then writes GREEN and verifies it passes. This proves the test is real and not tautological.
@@ -181,11 +173,11 @@ Each testable step includes a failing test (RED) before the minimal implementati
 ### Ubiquitous Language via GLOSSARY.md
 Domain terms are captured in a living `GLOSSARY.md` at the project root. Spec reads and appends new terms inline (no batching), Plan uses canonical terms for all new identifiers, and Review validates language consistency in the diff. This enforces a DDD-style ubiquitous language across the entire pipeline —every agent and every artifact speaks the same vocabulary.
 
-### Multi-Pass Review (9 categories)
-The review agent runs nine distinct passes across the full diff: Domain Alignment, Correctness & Bugs, Security triage, Performance triage, Maintainability, Testing, Codebase Consistency, Domain Language Consistency, and Documentation & Migrations.
+### Multi-Pass Review (10 categories)
+The review agent runs ten distinct passes across the full diff: Domain Alignment, Correctness & Bugs, Security triage, Performance triage, Accessibility triage, Maintainability, Testing, Consistency with Codebase, Domain Language Consistency, and Documentation & Migrations.
 
 ### No self-review bias
-The review phase (`ai-4-review`) runs on a different model than the one used for planning (`ai-2-implement`). The plan agent proposes the code architecture and design decisions — having the same model later review its own output tends to confirm its own assumptions and miss the same blind spots it had when designing the solution. Using a separate model for review introduces a genuinely independent perspective — different training data, different reasoning patterns, different failure modes — which catches real issues that self-review would not.
+The review phase (`sai-4-review`) runs on a different model than the one used for planning (`sai-2-implement`). The plan agent proposes the code architecture and design decisions — having the same model later review its own output tends to confirm its own assumptions and miss the same blind spots it had when designing the solution. Using a separate model for review introduces a genuinely independent perspective — different training data, different reasoning patterns, different failure modes — which catches real issues that self-review would not.
 
 ### Deferred Verification
 Human checks (browser/UI behavior, visual confirmation) are deferred to the integration step where the behavior is first observable —the plan asks the user to verify parts of the feature as early as possible, not all at the end. Every deferred check appears exactly once, labeled with its origin step.
@@ -199,9 +191,10 @@ Proposes creating an ADR/DDR if all 3 criteria below are met:
 ## Repo structure
 
 ```
-instructions/              ← actual content for each agent (plain markdown, Isolation Mode + TASK)
+instructions/                ← actual content for each agent (plain markdown, Isolation Mode + TASK)
 instructions/spec.propose.md ← spec quality layer prepended to the openspec-propose skill
-instructions/remember.md   ← consolidated reminders appended by wrappers
+instructions/glossary-format.md ← canonical GLOSSARY.md format used by spec/plan/review
+instructions/remember.md     ← consolidated reminders appended by wrappers
 claude/commands/           ← wrappers for Claude Code (model + effort + fetch to instructions/)
 opencode/commands/         ← wrappers for opencode (model + fetch to instructions/)
 ```
@@ -209,6 +202,8 @@ opencode/commands/         ← wrappers for opencode (model + fetch to instructi
 ## Global installation (multi-project)
 
 Commands are designed as **user globals**, not per project. A single copy in the CLI's global directory makes them available in any repo.
+
+> **Prerequisite:** install the [OpenSpec CLI](https://github.com/Fission-AI/OpenSpec) globally and run `openspec init` in each project. The openspec-dependent `ai-*` commands halt with a clear error if either is missing.
 
 ### Opencode
 

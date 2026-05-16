@@ -70,7 +70,6 @@ All agents MUST think and reason internally in English, regardless of the user's
 
 - **User-facing chat:** respond in the language the user writes in (default English if unclear).
 - **Generated artifacts** (`implementation.md`, `review.md`, `security.md`, `performance.md`, `accessibility.md`, commit messages, PR bodies, code, technical explanations): written in English unless the user explicitly requests otherwise.
-- **Chinese thinking mode:** adding `--tacaño` or `--stingy` switches internal reasoning to Chinese.
 
 ### Caveman Communication Mode
 All wrappers fetch `instructions/caveman.md`. Default is **lite**. Flag `--full-caveman` in `$ARGUMENTS` activates full mode.
