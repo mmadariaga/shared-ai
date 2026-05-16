@@ -1,0 +1,10 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "agent": {
+    "explore": {
+      "mode": "subagent",
+      // Put your trusted low-cost model here
+      "model": "opencode-go/deepseek-v4-flash"
+    }
+  }
+}
