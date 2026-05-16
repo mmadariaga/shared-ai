@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(openspec instructions *)",
+      "Bash(openspec status *)",
+      "Read(//home/flmn/.claude/**)",
+      "Read(//home/flmn/.claude/skills/**)",
+      "Bash(openspec --version)",
+      "Bash(openspec --help)",
+      "Bash(openspec init *)"
+    ]
+  }
+}
