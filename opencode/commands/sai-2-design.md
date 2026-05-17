@@ -1,6 +1,6 @@
 ---
 description: Generate design.md and tasks.md for an approved change — gated on specs approval recorded by /sai-1-spec.
-model: opencode/glm-5.1
+model: opencode-go/glm-5.1
 ---
 
 Fetch @~/.config/opencode/instructions/sai/prereqs.md
@@ -22,6 +22,7 @@ Do not create or modify any other files if the user declines.
 
 ## Load behaviors (in order)
 
+Fetch @~/.config/opencode/instructions/sai/explorer.opencode.md
 Fetch @~/.config/opencode/instructions/sai/caveman.md
 Fetch @~/.config/opencode/instructions/sai/glossary-format.md
 

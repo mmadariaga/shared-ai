@@ -13,6 +13,7 @@ Do not create or modify any files if any check fails.
 
 ## Load behaviors (in order)
 
+Fetch @~/.config/opencode/instructions/sai/explorer.opencode.md
 Fetch @~/.config/opencode/instructions/sai/caveman.md
 Fetch @~/.config/opencode/instructions/sai/glossary-format.md
 

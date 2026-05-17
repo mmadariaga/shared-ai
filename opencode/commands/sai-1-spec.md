@@ -1,12 +1,13 @@
 ---
 description: Propose a new change — generates proposal.md and specs/ only. Stops before design. Run /sai-2-design when specs are reviewed and approved.
-model: opencode/glm-5.1
+model: opencode-go/qwen3.6-plus
 ---
 
 Fetch @~/.config/opencode/instructions/sai/prereqs.md
 
 ## Load behaviors (in order)
 
+Fetch @~/.config/opencode/instructions/sai/explorer.opencode.md
 Fetch @~/.config/opencode/instructions/sai/caveman.md
 Fetch @~/.config/opencode/instructions/sai/glossary-format.md
 Fetch @~/.config/opencode/instructions/sai/spec.propose.md
