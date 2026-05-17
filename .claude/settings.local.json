@@ -7,7 +7,16 @@
       "Read(//home/flmn/.claude/skills/**)",
       "Bash(openspec --version)",
       "Bash(openspec --help)",
-      "Bash(openspec init *)"
+      "Bash(openspec init *)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(openspec list *)",
+      "Bash(openspec new *)",
+      "Bash(openspec schema *)",
+      "Bash(openspec schemas *)",
+      "Read(//c/Users/mikel.madariaga/.claude/commands/**)",
+      "Read(//c/Users/mikel.madariaga/.claude/**)",
+      "Bash(dir C:\\\\Projects\\\\mine\\\\shared-ai\\\\openspec *)",
+      "Bash(openspec change *)"
     ]
   }
 }

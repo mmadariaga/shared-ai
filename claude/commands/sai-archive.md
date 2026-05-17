@@ -14,8 +14,8 @@ Do not create or modify any files if either check fails.
 
 ## Load behaviors (in order)
 
-Fetch @~/.claude/instructions/caveman.md
+Fetch @~/.claude/instructions/sai/caveman.md
 
 Then fetch and follow the openspec-archive-change skill at `.claude/skills/openspec-archive-change/SKILL.md` exactly. User input: $ARGUMENTS
 
-Fetch @~/.claude/instructions/remember.md
+Fetch @~/.claude/instructions/sai/remember.md

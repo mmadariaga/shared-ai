@@ -13,8 +13,8 @@ Do not create or modify any files if either check fails.
 
 ## Load behaviors (in order)
 
-Fetch @~/.config/opencode/instructions/caveman.md
+Fetch @~/.config/opencode/instructions/sai/caveman.md
 
 Then fetch and follow the openspec-archive-change skill at `.opencode/skills/openspec-archive-change/SKILL.md` exactly. User input: $ARGUMENTS
 
-Fetch @~/.config/opencode/instructions/remember.md
+Fetch @~/.config/opencode/instructions/sai/remember.md

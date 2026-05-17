@@ -1,9 +1,15 @@
 # Shared-AI
 
 Software development oriented AI commands for a cost-efficient, spec-first, structured workflow:
-**explore (optional) → spec → implement → apply → review → audits → (iterate if needed) → PR → archive**.
 
-Built on [OpenSpec](https://github.com/Fission-AI/OpenSpec): OpenSpec owns the lifecycle and artifact structure, shared-AI owns the quality layer and model routing.
+| Phase | Steps |
+|-------|-------|
+| Idea | explore *(optional)* → spec → validation |
+| Code | design → implement → apply |
+| Quality | review → audits *(security · performance · accessibility, per review findings)* |
+| Ship | PR → archive |
+
+Built on top of [OpenSpec](https://github.com/Fission-AI/OpenSpec): OpenSpec owns the lifecycle and artifact structure, Shared-AI owns the code and quality layers.
 
 Works great on **opencode** with an opencode-go subscription + any frontier model provider sub (Claude / GPT / Gemini).
 
@@ -36,19 +42,20 @@ All artifact paths below resolve under `openspec/changes/{change-name}/` (referr
 
 | Command | Input | Output | Purpose |
 |---------|-------|--------|---------|
-| `/sai-explore` | optional change name or topic | (no artifact unless captured) | Thinking partner for ideas, problems, requirements. Wraps `opsx:explore`. |
-| `/sai-1-spec` | feature description | `{c}/proposal.md`, `design.md`, `tasks.md`, `specs/**` | Wraps `opsx:propose`. Produces the full OpenSpec change with the shared-AI quality layer (caveman, glossary, research discipline). |
-| `/sai-2-implement` | change name | `{c}/implementation.md` | Reads proposal/design/tasks/specs, generates a granular plan with code, RED→GREEN, STOP & COMMIT markers, ready for cheap-model execution. |
-| `/sai-3-apply` | change name | code | Executes `implementation.md` step by step, checks off boxes, asks for authorization on git ops. |
-| `/sai-4-review` | change name + diff | `{c}/review.md` | Holistic code review (correctness, maintainability, testing, consistency). **Triage router** → recommends follow-up audits if surface changed. |
-| `/sai-5-security` | change name + diff | `{c}/security.md` | SAST + SCA, CWE/CVE mapping, OWASP/PCI/GDPR. file:line + taint flow required. |
-| `/sai-6-performance` | change name + diff | `{c}/performance.md` | Audit by tier (backend / frontend / db / queue). Evidence-based, no speculation. |
-| `/sai-7-accessibility` | change name + diff | `{c}/accessibility.md` | Static WCAG 2.2 AA (+ optional axe/Lighthouse with `--runtime`). |
+| `/sai-1-spec` | feature description | `{c}/proposal.md`, `specs/**` | Wraps `opsx:propose` (specs phase only). Stops before design; asks for specs approval and records it in `.openspec.yaml`. |
+| `/sai-2-design` | change name | `{c}/design.md`, `tasks.md` | Gated on specs approval. Generates design decisions, trade-offs, and implementation tasks. |
+| `/sai-3-implement` | change name | `{c}/implementation.md` | Reads proposal/design/tasks/specs, generates a granular plan with code, RED→GREEN, STOP & COMMIT markers, ready for cheap-model execution. |
+| `/sai-4-apply` | change name | code | Executes `implementation.md` step by step, checks off boxes, asks for authorization on git ops. |
+| `/sai-5-review` | change name + diff | `{c}/review.md` | Holistic code review (correctness, maintainability, testing, consistency). **Triage router** → recommends follow-up audits if surface changed. |
+| `/sai-6-security` | change name + diff | `{c}/security.md` | SAST + SCA, CWE/CVE mapping, OWASP/PCI/GDPR. file:line + taint flow required. |
+| `/sai-7-performance` | change name + diff | `{c}/performance.md` | Audit by tier (backend / frontend / db / queue). Evidence-based, no speculation. |
+| `/sai-8-accessibility` | change name + diff | `{c}/accessibility.md` | Static WCAG 2.2 AA (+ optional axe/Lighthouse with `--runtime`). |
 
 ## On-demand commands (unnumbered)
 
 | Command | Purpose |
 |---------|---------|
+| `/sai-explore` | Thinking partner for ideas, problems, requirements. Wraps `opsx:explore`. |
 | `/sai-commit` | Generates a Conventional Commits message from `git diff --cached`. Subject ≤50 chars, body only when the *why* is not obvious. `git commit` with explicit authorization. |
 | `/sai-pr` | Synthesizes PR title + body from proposal/design/implementation/review/security/performance/accessibility + git log. Saves draft to `{c}/pr.md` and opens PR via `gh` with explicit authorization. |
 | `/sai-archive` | Wraps `opsx:archive` — moves a completed change to `openspec/changes/archive/YYYY-MM-DD-{change-name}/`. |
@@ -57,25 +64,29 @@ All artifact paths below resolve under `openspec/changes/{change-name}/` (referr
 
 ```
 /sai-1-spec Add OAuth2 authentication        # creates change "oauth2-auth"
-/sai-2-implement oauth2-auth
-/sai-3-apply oauth2-auth
+                                             # → review specs, confirm approval
+
+/sai-2-design oauth2-auth                    # generates design.md + tasks.md
+
+/sai-3-implement oauth2-auth
+/sai-4-apply oauth2-auth
 
 ############################################################
 # git add ... && /sai-commit
 #
 # OR
 #
-# let /sai-3-apply do the job
+# let /sai-4-apply do the job
 ############################################################
 
-/sai-4-review oauth2-auth
+/sai-5-review oauth2-auth
 
 ############################################################
-# Audits based on /sai-4-review indications:
+# Audits based on /sai-5-review indications:
 ############################################################
-/sai-5-security oauth2-auth
-/sai-6-performance oauth2-auth
-/sai-7-accessibility oauth2-auth
+/sai-6-security oauth2-auth
+/sai-7-performance oauth2-auth
+/sai-8-accessibility oauth2-auth
 
 ############################################################
 # ...iterate as needed...
@@ -90,13 +101,13 @@ All artifact paths below resolve under `openspec/changes/{change-name}/` (referr
 > - **Clean, replicable context** — each phase starts from scratch (Isolation Mode), making it easy to debug and replay steps in isolation.
 > - **Model isolation** — each phase uses the most cost-effective model for its task.
 
-## Triage in `/sai-4-review`
+## Triage in `/sai-5-review`
 
-`/sai-4-review` does not perform deep SAST, profiling, or axe analysis. It detects the touched surface and recommends the specific audit:
+`/sai-5-review` does not perform deep SAST, profiling, or axe analysis. It detects the touched surface and recommends the specific audit:
 
-- **Security surface** (auth, input parsing, dynamic queries, crypto, HTTP boundary, deps, logging) → `/sai-5-security`
-- **Performance surface** (new queries, endpoints, consumers, hot components, deps, loops over unbounded input, caching) → `/sai-6-performance`
-- **Accessibility surface** (`.tsx`/`.jsx`/`.astro`/`.html`/`.vue`/`.svelte`/`.css`) → `/sai-7-accessibility`
+- **Security surface** (auth, input parsing, dynamic queries, crypto, HTTP boundary, deps, logging) → `/sai-6-security`
+- **Performance surface** (new queries, endpoints, consumers, hot components, deps, loops over unbounded input, caching) → `/sai-7-performance`
+- **Accessibility surface** (`.tsx`/`.jsx`/`.astro`/`.html`/`.vue`/`.svelte`/`.css`) → `/sai-8-accessibility`
 
 All audits are diff-scoped by default vs parent branch. Support `--full` or `--path {dir}` to expand scope.
 
@@ -110,28 +121,28 @@ Pick an entry point based on what the findings require:
   ```
   /sai-1-spec
   Follow-up to oauth2-auth: harden token storage and address review findings.
-
-  @openspec/changes/oauth2-auth/proposal.md
-  @openspec/changes/oauth2-auth/review.md
-  @openspec/changes/oauth2-auth/security.md
-
-  # Your observations here:
   Token storage must move to httpOnly cookies; review flagged XSS exposure...
   ```
   This creates a sibling change (e.g. `oauth2-auth-hardening`) that goes through the full pipeline. The original `oauth2-auth` stays untouched.
 
-- **Amend the active change (only before archive)** — if the original change has not been archived yet and the finding is a direct correction (not new scope), you can re-run a phase on the same change name. This **overwrites** the corresponding artifact, so use it sparingly:
+- **Amend the active change (only before archive)** — if the original change has not been archived yet and the finding is a direct correction (not new scope), re-run the appropriate phase on the same change name. `implementation.md` is a transient execution artifact — once `sai-4-apply` runs, the resulting commits capture what was applied, making the artifact redundant:
+
+  | What changed | Phase to re-run |
+  |---|---|
+  | Design decision or task scope | `sai-2-design` (updates `design.md` + `tasks.md`) |
+  | Only the execution approach | `sai-3-implement` (replaces `implementation.md`) |
+  | Isolated bug or one-liner fix | Directly to code, no phase re-run needed |
+
   ```
-  /sai-2-implement oauth2-auth
-  Regenerate implementation.md addressing the review findings (replacing the previous one).
-
-  @openspec/changes/oauth2-auth/proposal.md
-  @openspec/changes/oauth2-auth/review.md
-
-  # Your observations here:
+  /sai-3-implement oauth2-auth
   Cancel button does nothing — fix before archive.
   ```
+
   Never amend an archived change. Once archived, follow-ups always go through a new change.
+
+  > **New scope always → new change.** If the finding requires new services, new dependencies,
+  > or new architectural decisions (e.g. adding a cache layer), treat it as a new change even
+  > if the original is not yet archived.
 
 ## Cost-Effective Strategies
 
@@ -154,7 +165,7 @@ Each phase uses a model chosen for its specific strengths: reasoning-heavy phase
 ### Explore Sub-Agent
 Research or exploratory tasks are delegated to **sub-agents running cost-effective models** matched to the subtask complexity. By default, sub-agents do not inherit the main session's token window, keeping costs predictable. Each subagent call declares an **output contract** (exact fields, length cap, no raw content) so only distilled signal enters the main context. The main agent never calls WebFetch directly — all external doc lookups go through the cheap explore subagent. Caps: ≤8 research-subagent invocations per audit; in audit mode, ≤15 main-agent reads + ≤30 main-agent `Grep`/`Glob` calls per pass.
 
->This technique can reduce the cost of `/sai-1-spec` on I/O-intensive tasks, like audits, to a third.
+>On I/O-heavy spec tasks — codebase-wide searches, deprecated library audits, doc lookups — this technique can cut costs to a third.
 
 ## Project highlights
 
@@ -165,7 +176,7 @@ Every command starts with zero inherited context —it reads only the `<TASK>` b
 Every feature starts with a change proposal (`proposal.md` + `design.md` + capability specs under `specs/`) that captures goals, acceptance criteria, technical constraints, and design decisions — produced by `/sai-1-spec` via the OpenSpec `opsx:propose` skill. The implementation plan (`implementation.md`) is derived from those artifacts, and code follows the plan. This is [Spec-Driven Development](https://scrummanager.com/community/spec-driven-development-qu-es-de-dnde-viene-y-por-qu-importa) at the *spec-first* level — the change artifacts drive the current task and live as the source of truth for the pipeline phases that follow (review, security, performance, accessibility). No *vibe coding*: every line of generated code is grounded in an explicit contract.
 
 ### Single Responsibility Per Phase
-Each phase produces exactly one artifact. Only `sai-3-apply` writes code; spec, implement, review, and audits produce only markdown in `openspec/changes/{change-name}/`. No phase oversteps its scope.
+Each phase produces exactly one artifact. Only `sai-4-apply` writes code; spec, implement, review, and audits produce only markdown in `openspec/changes/{change-name}/`. No phase oversteps its scope.
 
 ### RED → GREEN
 Each testable step includes a failing test (RED) before the minimal implementation (GREEN). The agent runs RED first, confirms the failure is a valid assertion failure (not a setup error), then writes GREEN and verifies it passes. This proves the test is real and not tautological.
@@ -177,7 +188,7 @@ Domain terms are captured in a living `GLOSSARY.md` at the project root. Spec re
 The review agent runs ten distinct passes across the full diff: Domain Alignment, Correctness & Bugs, Security triage, Performance triage, Accessibility triage, Maintainability, Testing, Consistency with Codebase, Domain Language Consistency, and Documentation & Migrations.
 
 ### No self-review bias
-The review phase (`sai-4-review`) runs on a different model than the one used for planning (`sai-2-implement`). The plan agent proposes the code architecture and design decisions — having the same model later review its own output tends to confirm its own assumptions and miss the same blind spots it had when designing the solution. Using a separate model for review introduces a genuinely independent perspective — different training data, different reasoning patterns, different failure modes — which catches real issues that self-review would not.
+The review phase (`sai-5-review`) runs on a different model than the one used for planning (`sai-3-implement`). The plan agent proposes the code architecture and design decisions — having the same model later review its own output tends to confirm its own assumptions and miss the same blind spots it had when designing the solution. Using a separate model for review introduces a genuinely independent perspective — different training data, different reasoning patterns, different failure modes — which catches real issues that self-review would not.
 
 ### Deferred Verification
 Human checks (browser/UI behavior, visual confirmation) are deferred to the integration step where the behavior is first observable —the plan asks the user to verify parts of the feature as early as possible, not all at the end. Every deferred check appears exactly once, labeled with its origin step.
@@ -191,12 +202,13 @@ Proposes creating an ADR/DDR if all 3 criteria below are met:
 ## Repo structure
 
 ```
-instructions/                ← actual content for each agent (plain markdown, Isolation Mode + TASK)
-instructions/spec.propose.md ← spec quality layer prepended to the openspec-propose skill
-instructions/glossary-format.md ← canonical GLOSSARY.md format used by spec/plan/review
-instructions/remember.md     ← consolidated reminders appended by wrappers
-claude/commands/           ← wrappers for Claude Code (model + effort + fetch to instructions/)
-opencode/commands/         ← wrappers for opencode (model + fetch to instructions/)
+instructions/sai/                ← actual content for each agent (plain markdown, Isolation Mode + TASK)
+instructions/sai/spec.propose.md ← spec quality layer prepended to the openspec-propose skill
+instructions/sai/glossary-format.md ← canonical GLOSSARY.md format used by spec/plan/review
+instructions/sai/remember.md     ← consolidated reminders appended by wrappers
+claude/commands/           ← wrappers for Claude Code (model + effort + fetch to instructions/sai/)
+opencode/commands/         ← wrappers for opencode (model + fetch to instructions/sai/)
+openspec/schemas/sai-workflow/  ← custom OpenSpec schema (schema.yaml + 9 templates)
 ```
 
 ## Global installation (multi-project)
@@ -219,11 +231,11 @@ mkdir -p ~/.config/opencode/commands
 cp opencode/commands/*.md ~/.config/opencode/commands/
 
 # Copy instructions
-if [ -d ~/.config/opencode/instructions ]; then
-    echo "Overwriting ~/.config/opencode/instructions/"
+if [ -d ~/.config/opencode/instructions/sai ]; then
+    echo "Overwriting ~/.config/opencode/instructions/sai/"
 fi
-mkdir -p ~/.config/opencode/instructions
-cp instructions/*.md ~/.config/opencode/instructions/
+mkdir -p ~/.config/opencode/instructions/sai
+cp instructions/sai/*.md ~/.config/opencode/instructions/sai/
 
 # Copy opencode.json
 if [ ! -f ~/.config/opencode/opencode.json ] && [ ! -f ~/.config/opencode/opencode.jsonc ]; then
@@ -249,12 +261,12 @@ New-Item -ItemType Directory -Force -Path "$configDir\commands"
 Copy-Item opencode\commands\*.md "$configDir\commands\"
 
 # Copy instructions
-$instructionsDir = "$configDir\instructions"
+$instructionsDir = "$configDir\instructions\sai"
 if (Test-Path $instructionsDir) {
     Write-Host "Overwriting $instructionsDir"
 }
 New-Item -ItemType Directory -Force -Path $instructionsDir | Out-Null
-Copy-Item instructions\*.md $instructionsDir\
+Copy-Item instructions\sai\*.md $instructionsDir\
 
 # Copy opencode.json
 $jsonPath = Join-Path $configDir "opencode.json"
@@ -286,7 +298,7 @@ Per-project commands are still possible via `.opencode/commands/` or `.claude/co
 
 Once installed, modify the models in your commands to adapt them to your subscriptions and personal preferences.
 
-Open `~/.config/opencode/commands/sai-1-spec.md` and set your preferred frontier model based on your subscriptions.
+Open `~/.config/opencode/commands/sai-1-spec.md` and `sai-2-design.md` and set your preferred frontier model based on your subscriptions.
 
 ### Recommended models by command and provider
 
@@ -295,12 +307,13 @@ We set these defaults to models that have worked best for us, you may find bette
 | Command | Opencode | Claude Code |
 |-------|----------|-------------|
 | spec (1) | `opencode/gpt-5.5` <br />\|\| `opencode/claude-opus-4-7`<br />\|\| `opencode/gemini-3.1-pro`<br />\|\| `opencode-go/glm-5.1` | `claude-opus-4-7` High |
-| plan (2) | `opencode-go/kimi-k2.6` | `claude-sonnet-4-6` |
-| implement (3) | `opencode-go/deepseek-v4-flash` | `claude-haiku-4-5` |
-| review (4) | `opencode-go/qwen3.6-plus` | `claude-sonnet-4-6` |
-| security (5) | `opencode-go/qwen3.6-plus` | `claude-opus-4-7` High |
-| performance (6) | `opencode-go/qwen3.6-plus` | `claude-sonnet-4-6` |
-| accessibility (7) | `opencode-go/qwen3.6-plus` | `claude-sonnet-4-6` |
+| design (2) | `opencode/glm-5.1` | `claude-opus-4-7` High |
+| implement (3) | `opencode-go/kimi-k2.6` | `claude-sonnet-4-6` |
+| apply (4) | `opencode-go/deepseek-v4-flash` | `claude-haiku-4-5` |
+| review (5) | `opencode-go/qwen3.6-plus` | `claude-sonnet-4-6` |
+| security (6) | `opencode-go/qwen3.6-plus` | `claude-opus-4-7` High |
+| performance (7) | `opencode-go/qwen3.6-plus` | `claude-sonnet-4-6` |
+| accessibility (8) | `opencode-go/qwen3.6-plus` | `claude-sonnet-4-6` |
 | commit | `opencode-go/deepseek-v4-flash` | `claude-haiku-4-5` |
 | pr | `opencode-go/deepseek-v4-flash` | `claude-haiku-4-5` |
 

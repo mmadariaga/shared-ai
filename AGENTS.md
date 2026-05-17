@@ -6,21 +6,21 @@ A prompt and instruction library for orchestrating a **structured AI-assisted de
 
 It contains no application code. It is prompt infrastructure installed as global commands in Claude Code and opencode.
 
-The `ai-*` commands are **wrappers over OpenSpec skills**. OpenSpec owns the change lifecycle and artifact schema; shared-AI owns the quality layer (caveman, isolation mode, model routing, glossary, cost discipline, RED→GREEN) and adds a granular implementation phase optimized for cheap-model execution.
+The `sai-*` commands are **wrappers over OpenSpec skills**. OpenSpec owns the change lifecycle and artifact schema; shared-AI owns the quality layer (caveman, isolation mode, model routing, glossary, cost discipline, RED→GREEN) and adds a granular implementation phase optimized for cheap-model execution.
 
 ## Main pipeline
 
 ```
-explore (optional) → spec(1) → implement(2) → apply(3) → review(4) → [security(5) | performance(6) | accessibility(7)]
-                                                          ↓
-                                                  commit / pr (on-demand)
-                                                          ↓
-                                                      archive
+explore (optional) → spec(1) → design(2) → implement(3) → apply(4) → review(5) → [security(6) | performance(7) | accessibility(8)]
+                                    ↑                                    ↓
+                             approval gate                       commit / pr (on-demand)
+                          (specs → .openspec.yaml)                       ↓
+                                                                     archive
 ```
 
 Each phase reads from and writes to **`openspec/changes/{change-name}/`** — single source of truth per change. Runs in **Isolation Mode**: every command starts with no inherited context, reading only the artifacts it needs.
 
-`opsx:*` skills (`opsx:explore`, `opsx:propose`, `opsx:apply`, `opsx:archive`) are **internal building blocks** owned by the OpenSpec CLI. Users invoke the `ai-*` wrappers exclusively — they layer shared-AI quality behaviors on top of the skills.
+`opsx:*` skills (`opsx:explore`, `opsx:propose`, `opsx:apply`, `opsx:archive`) are **internal building blocks** owned by the OpenSpec CLI. Users invoke the `sai-*` wrappers exclusively — they layer shared-AI quality behaviors on top of the skills.
 
 ## Prerequisites
 
@@ -34,11 +34,11 @@ The openspec-dependent `ai-*` commands halt with a clear error if either is miss
 
 | Directory | Purpose |
 |-----------|---------|
-| `instructions/` | Phase content (Isolation Mode + TASK block). Fetched by wrappers. |
-| `instructions/spec.propose.md` | Quality layer prepended to the `openspec-propose` skill by `ai-1-spec`. Collaboration style, cost discipline, research guide, scope reminder. |
-| `instructions/remember.md` | Consolidated reminders appended by wrappers. |
-| `claude/commands/` | Wrappers for Claude Code. YAML frontmatter (`description`, `argument-hint`, `model`, `effort`) + fetch to `instructions/` + fetch to project-local skill files. |
-| `opencode/commands/` | Wrappers for opencode. YAML frontmatter (`description`, `model`) + fetch to `instructions/` + fetch to project-local skill files. |
+| `instructions/sai/` | Phase content (Isolation Mode + TASK block). Fetched by wrappers. |
+| `instructions/sai/spec.propose.md` | Quality layer prepended to the `openspec-propose` skill by `ai-1-spec`. Collaboration style, cost discipline, research guide, scope reminder. |
+| `instructions/sai/remember.md` | Consolidated reminders appended by wrappers. |
+| `claude/commands/` | Wrappers for Claude Code. YAML frontmatter (`description`, `argument-hint`, `model`, `effort`) + fetch to `instructions/sai/` + fetch to project-local skill files. |
+| `opencode/commands/` | Wrappers for opencode. YAML frontmatter (`description`, `model`) + fetch to `instructions/sai/` + fetch to project-local skill files. |
 | `opencode/opencode.jsonc` | Sub-agent explore configuration (mode + trusted low-cost model). Required for cost-effective research delegation. |
 
 Wrappers are **thin** — they specify the model, fetch the markdown from `instructions/`, and (for openspec-dependent commands) fetch the relevant skill from the project's `.claude/skills/` or `.opencode/skills/` directory.
@@ -46,16 +46,16 @@ Wrappers are **thin** — they specify the model, fetch the markdown from `instr
 ## Critical conventions
 
 ### Wrappers, never skills
-ai-* commands prepend shared-AI behaviors (caveman, glossary-format, spec.propose) and then `Fetch` the OpenSpec skill content. The skill `SKILL.md` files are **never modified** — the OpenSpec CLI regenerates them on update.
+sai-* commands prepend shared-AI behaviors (caveman, glossary-format, spec.propose) and then `Fetch` the OpenSpec skill content. The skill `SKILL.md` files are **never modified** — the OpenSpec CLI regenerates them on update.
 
 ### Single artifact home
-All ai-* artifacts (`implementation.md`, `review.md`, `security.md`, `performance.md`, `accessibility.md`, `pr.md`) write to `openspec/changes/{change-name}/`. The legacy `plans/` directory is **not used** by the new pipeline.
+All sai-* artifacts (`implementation.md`, `review.md`, `security.md`, `performance.md`, `accessibility.md`, `pr.md`) write to `openspec/changes/{change-name}/`. The legacy `plans/` directory is **not used** by the new pipeline.
 
 ### Prerequisite check
-Openspec-dependent commands (`ai-explore`, `ai-1-spec`, `ai-2-implement`, `ai-3-apply`, `ai-archive`) verify the `openspec` binary and `openspec/` directory before doing anything. `ai-4-review`, `ai-5-security`, `ai-6-performance`, `ai-7-accessibility`, `ai-commit`, `ai-pr` skip the check — they only read artifacts by path.
+Openspec-dependent commands (`sai-explore`, `sai-1-spec`, `sai-2-design`, `sai-3-implement`, `sai-4-apply`, `sai-archive`) verify the `openspec` binary and `openspec/` directory before doing anything. `sai-5-review`, `sai-6-security`, `sai-7-performance`, `sai-8-accessibility`, `sai-commit`, `sai-pr` skip the check — they only read artifacts by path.
 
 ### Isolation Mode
-Every file in `instructions/` starts with:
+Every file in `instructions/sai/` starts with:
 ```
 # Isolation Mode
 - Ignore all previous conversation.
@@ -72,7 +72,7 @@ All agents MUST think and reason internally in English, regardless of the user's
 - **Generated artifacts** (`implementation.md`, `review.md`, `security.md`, `performance.md`, `accessibility.md`, commit messages, PR bodies, code, technical explanations): written in English unless the user explicitly requests otherwise.
 
 ### Caveman Communication Mode
-All wrappers fetch `instructions/caveman.md`. Default is **lite**. Flag `--full-caveman` in `$ARGUMENTS` activates full mode.
+All wrappers fetch `instructions/sai/caveman.md`. Default is **lite**. Flag `--full-caveman` in `$ARGUMENTS` activates full mode.
 
 ### Cost Discipline (research subagents)
 The main agent reasons and synthesizes. Subagents do I/O. Key rules:
@@ -83,18 +83,18 @@ The main agent reasons and synthesizes. Subagents do I/O. Key rules:
 - Tool-call caps per tier: cheap ≤30, escalated ≤15, fallback/general ≤10.
 
 ### GLOSSARY.md
-- `ai-1-spec` reads `GLOSSARY.md`, updates it inline, challenges ambiguous terms.
-- `ai-2-implement` uses canonical glossary terms for identifiers.
-- `ai-4-review` validates language consistency in new code.
+- `sai-1-spec` reads `GLOSSARY.md`, updates it inline, challenges ambiguous terms.
+- `sai-3-implement` uses canonical glossary terms for identifiers.
+- `sai-5-review` validates language consistency in new code.
 - Format: `instructions/glossary-format.md`, pre-loaded at startup by each wrapper.
 
 ### RED → GREEN
-Integrated in `plan.md` (loaded by `ai-2-implement`) and `implement.md` (loaded by `ai-3-apply`):
+Integrated in `plan.md` (loaded by `sai-3-implement`) and `implement.md` (loaded by `sai-4-apply`):
 - `implementation.md` includes a RED block (failing test) before GREEN (minimal implementation).
-- `ai-3-apply` runs RED, verifies failure, writes GREEN, verifies pass.
+- `sai-4-apply` runs RED, verifies failure, writes GREEN, verifies pass.
 
 ### ADR/DDR Proposal Check
-Evaluated by `ai-2-implement` against three criteria:
+Evaluated by `sai-3-implement` against three criteria:
 1. **Hard to reverse**
 2. **Surprising without context**
 3. **Real trade-off**
@@ -102,10 +102,10 @@ Evaluated by `ai-2-implement` against three criteria:
 Only proposes creating an ADR/DDR if the project already has an ADR culture or the user explicitly approves.
 
 ### Triage in review
-`ai-4-review` does not perform SAST/profiling/axe. It detects the touched surface and recommends audits:
-- Security surface → `ai-5-security`
-- Performance surface → `ai-6-performance`
-- Accessibility surface (`.tsx`/`.jsx`/`.astro`/`.html`/`.vue`/`.svelte`/`.css`) → `ai-7-accessibility`
+`sai-5-review` does not perform SAST/profiling/axe. It detects the touched surface and recommends audits:
+- Security surface → `sai-6-security`
+- Performance surface → `sai-7-performance`
+- Accessibility surface (`.tsx`/`.jsx`/`.astro`/`.html`/`.vue`/`.svelte`/`.css`) → `sai-8-accessibility`
 
 ## Installation
 
@@ -122,19 +122,19 @@ Project-local commands (`.claude/commands/` or `.opencode/commands/` at repo roo
 
 ```
 openspec/changes/{change-name}/
-├── proposal.md         # ai-1-spec   (via opsx:propose)
-├── design.md           # ai-1-spec   (via opsx:propose)
-├── tasks.md            # ai-1-spec   (via opsx:propose)
-├── specs/**/*.md       # ai-1-spec   (via opsx:propose)
-├── implementation.md   # ai-2-implement (granular plan; ignored by openspec status)
-├── review.md           # ai-4-review
-├── security.md         # ai-5-security      (if applicable)
-├── performance.md      # ai-6-performance   (if applicable)
-├── accessibility.md    # ai-7-accessibility (if applicable)
-└── pr.md               # ai-pr
+├── proposal.md         # sai-1-spec  (via opsx:propose — specs phase)
+├── specs/**/*.md       # sai-1-spec  (via opsx:propose — specs phase)
+├── design.md           # sai-2-design (via opsx:continue — gated on specs approval)
+├── tasks.md            # sai-2-design (via opsx:continue — gated on specs approval)
+├── implementation.md   # sai-3-implement (granular plan)
+├── review.md           # sai-5-review
+├── security.md         # sai-6-security      (required; N/A justification if not applicable)
+├── performance.md      # sai-7-performance   (required; N/A justification if not applicable)
+├── accessibility.md    # sai-8-accessibility (required; N/A justification if not applicable)
+└── pr.md               # sai-pr
 ```
 
-Once the change is finished, `ai-archive` (wrapping `opsx:archive`) moves the directory to `openspec/changes/archive/YYYY-MM-DD-{change-name}/`.
+Once the change is finished, `sai-archive` (wrapping `opsx:archive`) moves the directory to `openspec/changes/archive/YYYY-MM-DD-{change-name}/`.
 
 ## Migration from the legacy `plans/` pipeline
 
@@ -145,14 +145,17 @@ Existing projects with `plans/{feature-name}/` artifacts are **not migrated auto
 ## How to modify this repo
 
 ### Add / modify an instruction
-1. Edit the file in `instructions/`.
-2. If it changes a per-phase artifact path, update the corresponding wrapper REPLACEMENT block (`ai-2-implement.md`, `ai-3-apply.md`) and the AGENTS.md artifact table above.
+1. Edit the file in `instructions/sai/`.
+2. If it changes a per-phase artifact path, update the corresponding wrapper REPLACEMENT block (`sai-3-implement.md`, `sai-4-apply.md`) and the AGENTS.md artifact table above.
 3. If the recommended model changes, update the wrappers in `claude/commands/` and `opencode/commands/`.
 
 ### Add a new command
-1. Create the instruction in `instructions/{name}.md` with Isolation Mode + TASK block (or, for openspec-backed commands, write a wrapper that fetches a skill).
+1. Create the instruction in `instructions/sai/{name}.md` with Isolation Mode + TASK block (or, for openspec-backed commands, write a wrapper that fetches a skill).
 2. Create wrappers in `claude/commands/sai-{name}.md` and `opencode/commands/sai-{name}.md`.
 3. Update README.md with the phase in the corresponding table.
+
+### Specs approval gate
+`sai-1-spec` stops after generating `proposal.md` and `specs/`. It asks the user to review and confirm approval, then writes `approval.specs.approved_at` + `approval.specs.notes` to `.openspec.yaml`. `sai-2-design` reads this key before proceeding. Bypassing `sai-2-design` (e.g. calling `opsx:continue` directly) skips this check — `opsx:*` commands are internal, document this accordingly.
 
 ### Mirror discipline
 Any change to `claude/commands/` MUST be mirrored to `opencode/commands/` in the same commit (and vice versa). Enforce via PR checklist.
@@ -160,6 +163,6 @@ Any change to `claude/commands/` MUST be mirrored to `opencode/commands/` in the
 ### Format conventions
 - Never use `any` in TypeScript (even though there is no TS here, it applies to code examples in instructions).
 - Generated artifacts are in English unless the user explicitly requests otherwise.
-- Fetch URLs point to `@~/.config/opencode/instructions/...` (opencode) or `@~/.claude/instructions/...` (claude).
+- Fetch URLs point to `@~/.config/opencode/instructions/sai/...` (opencode) or `@~/.claude/instructions/sai/...` (claude).
 - Skill fetches use project-local paths (`.claude/skills/...` or `.opencode/skills/...`).
 - `TODO-ENHANCEMENTS.md` tracks future enhancement ideas (not part of the pipeline).

@@ -1,0 +1,175 @@
+# sai-workflow — custom OpenSpec schema for the shared-AI pipeline
+#
+# Encodes the full 9-artifact graph with dependency edges and apply requirements.
+# Stored here (not in spec-driven) so CLI updates never overwrite it.
+# See design.md D1 for rationale.
+
+name: sai-workflow
+version: 1
+description: shared-AI pipeline — proposal → specs → design → tasks → implementation → review → audits
+
+artifacts:
+  - id: proposal
+    generates: proposal.md
+    description: Change proposal — why this change is needed, what it affects, and which capabilities are in scope
+    template: proposal.md
+    instruction: |
+      Create proposal.md establishing WHY this change is needed.
+
+      Sections:
+      - **Why**: 1-2 sentences. What problem does this solve? Why now?
+      - **What Changes**: Bullet list. Mark breaking changes with **BREAKING**.
+      - **Capabilities**:
+        - **New Capabilities**: capabilities being introduced. Each becomes specs/<name>/spec.md. Use kebab-case.
+        - **Modified Capabilities**: existing capabilities whose requirements are changing. Only include if spec-level behavior changes.
+      - **Impact**: affected code, APIs, dependencies, or systems.
+
+      The Capabilities section is critical — it is the contract between proposal and specs.
+      Research existing specs before filling it in. Keep it concise (1-2 pages).
+    requires: []
+
+  - id: specs
+    generates: "specs/**/*.md"
+    description: Capability delta specs — one per capability listed in the proposal
+    template: specs.md
+    instruction: |
+      Create one spec file per capability in the proposal's Capabilities section.
+      - New capabilities: specs/<capability>/spec.md (kebab-case name from proposal)
+      - Modified capabilities: specs/<existing-name>/spec.md
+
+      Delta operations (## headers):
+      - **ADDED Requirements**: new behavior
+      - **MODIFIED Requirements**: changed behavior — include full updated content
+      - **REMOVED Requirements**: deprecated features — include Reason and Migration
+      - **RENAMED Requirements**: name changes — use FROM:/TO: format
+
+      Format:
+      - Requirement: `### Requirement: <name>` followed by description
+      - Use SHALL/MUST for normative requirements
+      - Scenario: `#### Scenario: <name>` with WHEN/THEN format
+      - CRITICAL: Scenarios MUST use exactly 4 hashtags (####)
+      - Every requirement MUST have at least one scenario
+    requires:
+      - proposal
+
+  - id: design
+    generates: design.md
+    description: Technical design — decisions, trade-offs, endpoint map, ADR/DDR evaluation
+    template: design.md
+    instruction: |
+      Create design.md explaining HOW to implement the change.
+
+      Required sections:
+      - **Context**: background, current state, constraints
+      - **Goals / Non-Goals**: what this design achieves and explicitly excludes
+      - **Decisions**: key technical choices. For each decision, evaluate the three ADR/DDR criteria:
+          1. Hard to reverse — would changing later be costly?
+          2. Surprising without context — would a future reader ask "why did they do it this way"?
+          3. Real trade-off — were genuine alternatives available?
+        If all three apply, document alternatives-considered and the rationale for the chosen approach.
+      - **Risks / Trade-offs**: known limitations; format: [Risk] → Mitigation
+      - **Migration Plan**: deploy steps, rollback strategy (if applicable)
+      - **Open Questions**: outstanding unknowns to resolve
+
+      Reference proposal for motivation, specs for requirements.
+    requires:
+      - proposal
+      - specs
+
+  - id: tasks
+    generates: tasks.md
+    description: Implementation checklist — checkbox tasks parsed by the apply phase
+    template: tasks.md
+    instruction: |
+      Create tasks.md breaking down the implementation work.
+
+      IMPORTANT: The apply phase parses checkbox format. Tasks not using `- [ ]` won't be tracked.
+
+      Guidelines:
+      - Group under ## numbered headings
+      - Each task: `- [ ] X.Y Task description`
+      - Tasks small enough to complete in one session
+      - Order by dependency (what must be done first?)
+
+      Reference specs for what to build, design for how to build it.
+    requires:
+      - specs
+      - design
+
+  - id: implementation
+    generates: implementation.md
+    description: Granular implementation plan — code-level steps with RED→GREEN and STOP & COMMIT markers
+    template: implementation.md
+    instruction: |
+      Create implementation.md — a step-by-step plan ready for cheap-model execution.
+
+      Structure for each step:
+      1. RED block: write the failing test first; confirm it fails with a valid assertion error
+      2. GREEN block: write the minimal implementation to make it pass
+      3. STOP & COMMIT marker: explicit checkpoint after each logical unit
+
+      Pull from: proposal.md (what & why), design.md (decisions), tasks.md (high-level steps), specs/**/*.md (acceptance criteria).
+      Every step must reference its source task from tasks.md.
+    requires:
+      - tasks
+
+  - id: review
+    generates: review.md
+    description: Code review report — correctness, maintainability, testing, surface triage
+    template: review.md
+    instruction: |
+      Create review.md — a structured review of the implementation against the proposal and specs.
+
+      Perform ten review passes: Domain Alignment, Correctness & Bugs, Security triage, Performance triage,
+      Accessibility triage, Maintainability, Testing, Consistency with Codebase, Domain Language Consistency,
+      Documentation & Migrations.
+
+      Classify each finding: Blocker | Major | Minor | Question.
+      Every finding needs a precise file:line location.
+    requires:
+      - implementation
+
+  - id: security
+    generates: security.md
+    description: Security audit — SAST + SCA, CWE/CVE mapping, OWASP compliance
+    template: security.md
+    instruction: |
+      Create security.md — SAST and (if dependency manifests changed) SCA on the diff.
+
+      For each finding: file:line + taint flow (injection-class) or location + evidence (misconfig/crypto).
+      Map to CWE ID only when the mapping is direct and obvious.
+      If the change has no security surface, fill in the Not Applicable section with justification.
+    requires:
+      - implementation
+
+  - id: performance
+    generates: performance.md
+    description: Performance audit — backend / frontend / db / queue tiers, evidence-based
+    template: performance.md
+    instruction: |
+      Create performance.md — performance audit across all tiers touched by the diff.
+
+      Every finding needs: location, measured symptom, evidence, remediation, validation method.
+      No speculation — if a number was not measured, mark it "estimated — verify with X".
+      If the change has no performance surface, fill in the Not Applicable section with justification.
+    requires:
+      - implementation
+
+  - id: accessibility
+    generates: accessibility.md
+    description: Accessibility audit — WCAG 2.2 AA static review, optional runtime axe/Lighthouse
+    template: accessibility.md
+    instruction: |
+      Create accessibility.md — WCAG 2.2 AA audit of UI changes in the diff.
+
+      Every finding needs: file:line, WCAG SC code + name + level, evidence, remediation.
+      If the diff contains no UI files (.tsx/.jsx/.astro/.html/.vue/.svelte/.css), fill in the Not Applicable section.
+    requires:
+      - implementation
+
+apply:
+  requires: [tasks, implementation]
+  tracks: tasks.md
+  instruction: |
+    Read context files, work through pending tasks, mark complete as you go.
+    Pause if you hit blockers or need clarification.

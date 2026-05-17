@@ -8,16 +8,17 @@ model: opencode-go/kimi-k2.6
 Before proceeding, verify:
 1. `openspec` binary is available in PATH. If not, STOP and print: "openspec CLI not found. Install it first: https://github.com/Fission-AI/OpenSpec"
 2. `openspec/` directory exists at project root. If not, STOP and print: "OpenSpec not initialized in this project. Run: openspec init"
-3. `openspec/changes/{change-name}/proposal.md` exists. If not, STOP and print: "Change '{change-name}' not found. Run /ai-1-spec to create it first."
+3. `openspec/changes/{change-name}/proposal.md` exists. If not, STOP and print: "Change '{change-name}' not found. Run /sai-1-spec to create it first."
+4. `openspec/changes/{change-name}/design.md` exists. If not, STOP and print: "design.md not found for '{change-name}'. Run /sai-2-design first."
 
 Do not create or modify any files if any check fails.
 
 ## Load behaviors (in order)
 
-Fetch @~/.config/opencode/instructions/caveman.md
-Fetch @~/.config/opencode/instructions/glossary-format.md
+Fetch @~/.config/opencode/instructions/sai/caveman.md
+Fetch @~/.config/opencode/instructions/sai/glossary-format.md
 
-Also fetch @~/.config/opencode/instructions/plan.md and follow those instructions exactly, with these REPLACEMENTS:
+Also fetch @~/.config/opencode/instructions/sai/plan.md and follow those instructions exactly, with these REPLACEMENTS:
 
 - Input is the change name `$ARGUMENTS`, not a path to `spec.md`.
 - Read these artifacts from `openspec/changes/{change-name}/` (in parallel):
@@ -29,4 +30,4 @@ Also fetch @~/.config/opencode/instructions/plan.md and follow those instruction
 - Write the output to `openspec/changes/{change-name}/implementation.md`. Every reference to `plan.md` or the per-feature artifact directory in the loaded instructions resolves to `openspec/changes/{change-name}/implementation.md` and `openspec/changes/{change-name}/` respectively.
 - Feature name is the change name (kebab-case).
 
-Fetch @~/.config/opencode/instructions/remember.md
+Fetch @~/.config/opencode/instructions/sai/remember.md

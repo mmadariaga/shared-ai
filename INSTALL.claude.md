@@ -34,11 +34,11 @@ mkdir -p ~/.claude/commands
 cp claude/commands/*.md ~/.claude/commands/
 
 # Copy instructions
-if [ -d ~/.claude/instructions ]; then
-    echo "Overwriting ~/.claude/instructions/"
+if [ -d ~/.claude/instructions/sai ]; then
+    echo "Overwriting ~/.claude/instructions/sai/"
 fi
-mkdir -p ~/.claude/instructions
-cp instructions/*.md ~/.claude/instructions/
+mkdir -p ~/.claude/instructions/sai
+cp instructions/sai/*.md ~/.claude/instructions/sai/
 
 echo "Reminder: run 'openspec init --tools claude' in each project to enable the spec/explore/apply/archive commands."
 ```
@@ -49,12 +49,12 @@ New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\.claude\commands"
 Copy-Item claude\commands\*.md "$env:USERPROFILE\.claude\commands\"
 
 # Copy instructions
-$instructionsDir = "$env:USERPROFILE\.claude\instructions"
+$instructionsDir = "$env:USERPROFILE\.claude\instructions\sai"
 if (Test-Path $instructionsDir) {
     Write-Host "Overwriting $instructionsDir"
 }
 New-Item -ItemType Directory -Force -Path $instructionsDir | Out-Null
-Copy-Item instructions\*.md $instructionsDir\
+Copy-Item instructions\sai\*.md $instructionsDir\
 
 Write-Host "Reminder: run 'openspec init --tools claude' in each project to enable the spec/explore/apply/archive commands."
 ```
