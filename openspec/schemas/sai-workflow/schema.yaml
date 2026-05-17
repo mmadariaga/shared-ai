@@ -49,6 +49,9 @@ artifacts:
       - Scenario: `#### Scenario: <name>` with WHEN/THEN format
       - CRITICAL: Scenarios MUST use exactly 4 hashtags (####)
       - Every requirement MUST have at least one scenario
+      - CRITICAL: Do NOT use fenced code blocks (```) inside requirement bodies. The parser
+        treats any line starting with ## as a section boundary even inside fenced blocks,
+        which breaks scenario detection. Use 4-space indented blocks instead.
     requires:
       - proposal
 
