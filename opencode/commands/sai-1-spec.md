@@ -22,3 +22,5 @@ Then fetch and follow the openspec-propose skill at `.opencode/skills/openspec-p
   - `notes`: the user's notes (empty string if none provided)
 
 User input: $ARGUMENTS
+
+Fetch @~/.claude/instructions/sai/remember.md

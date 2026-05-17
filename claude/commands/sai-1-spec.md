@@ -24,3 +24,5 @@ Then fetch and follow the openspec-propose skill at `.claude/skills/openspec-pro
   - `notes`: the user's notes (empty string if none provided)
 
 User input: $ARGUMENTS
+
+Fetch @~/.claude/instructions/sai/remember.md
