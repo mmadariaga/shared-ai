@@ -9,6 +9,7 @@ Fetch @~/.claude/instructions/sai/prereqs.md
 
 ## Load behaviors (in order)
 
+Fetch @~/.claude/instructions/sai/explorer.claude.md
 Fetch @~/.claude/instructions/sai/caveman.md
 Fetch @~/.claude/instructions/sai/glossary-format.md
 Fetch @~/.claude/instructions/sai/spec.propose.md
