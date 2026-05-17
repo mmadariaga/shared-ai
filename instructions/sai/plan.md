@@ -168,7 +168,7 @@
 
    #### Step 1 STOP & COMMIT
 
-   **Agent:** Run all Automated checks above and confirm they pass before stopping.
+   **sai-4-apply:** Run all Automated checks above and confirm they pass before stopping.
 
    **STOP & COMMIT:** Wait for the human to verify all Human checks in the browser, then stage and commit before continuing.
 
@@ -192,7 +192,7 @@
 
    #### Step 2 STOP & COMMIT
 
-   **Agent:** Run all Automated checks above and confirm they pass before stopping.
+   **sai-4-apply:** Run all Automated checks above and confirm they pass before stopping.
 
    **STOP & COMMIT:** Stage and commit after Automated checks pass. No browser verification required at this step.
 
@@ -216,7 +216,7 @@
 
    #### Step N STOP & COMMIT
 
-   **Agent:** Run all Automated checks above and confirm they pass before stopping.
+   **sai-4-apply:** Run all Automated checks above and confirm they pass before stopping.
 
    **STOP & COMMIT:** Wait for the human to verify all Human checks above (including all deferred ones) in the browser, then stage and commit before continuing.
 

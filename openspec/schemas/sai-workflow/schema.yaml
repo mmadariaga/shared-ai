@@ -78,18 +78,26 @@ artifacts:
 
   - id: tasks
     generates: tasks.md
-    description: Implementation checklist — checkbox tasks parsed by the apply phase
+    description: Implementation planning scaffold — narrative steps for human review and sai-3-implement to expand
     template: tasks.md
     instruction: |
-      Create tasks.md breaking down the implementation work.
+      Create tasks.md breaking down the implementation work as a narrative planning scaffold.
 
-      IMPORTANT: The apply phase parses checkbox format. Tasks not using `- [ ]` won't be tracked.
+      IMPORTANT: Do NOT use checkbox markers (- [ ] or - [x]). This file is a planning scaffold,
+      not a progress tracker. Implementation progress is tracked in implementation.md.
 
-      Guidelines:
-      - Group under ## numbered headings
-      - Each task: `- [ ] X.Y Task description`
-      - Tasks small enough to complete in one session
-      - Order by dependency (what must be done first?)
+      Structure — one numbered section per implementation step:
+
+      ## Step N: <title>
+
+      **Files Affected**: <comma-separated list of file paths to be modified or created>
+
+      **What Will Be Done**: <prose description of the work in this step>
+
+      **Testing Strategy**: <how correctness will be verified for this step>
+
+      Order steps by dependency (what must be done first). Steps should be small enough to
+      expand into a single implementation.md step group.
 
       Reference specs for what to build, design for how to build it.
     requires:
@@ -169,7 +177,7 @@ artifacts:
 
 apply:
   requires: [tasks, implementation]
-  tracks: tasks.md
+  tracks: implementation.md
   instruction: |
     Read context files, work through pending tasks, mark complete as you go.
     Pause if you hit blockers or need clarification.

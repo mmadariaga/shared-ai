@@ -28,4 +28,6 @@ Also fetch @~/.config/opencode/instructions/sai/plan.md and follow those instruc
 - Write the output to `openspec/changes/{change-name}/implementation.md`. Every reference to `plan.md` or the per-feature artifact directory in the loaded instructions resolves to `openspec/changes/{change-name}/implementation.md` and `openspec/changes/{change-name}/` respectively.
 - Feature name is the change name (kebab-case).
 
+MANDATORY STOP: Once implementation.md is written, your work is COMPLETE. Do NOT execute any steps, run verification commands, mark any checkboxes, or modify any project file. That is sai-4-apply's job.
+
 Fetch @~/.config/opencode/instructions/sai/remember.md
