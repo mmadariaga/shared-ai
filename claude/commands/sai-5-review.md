@@ -5,6 +5,8 @@ model: claude-sonnet-4-6
 effort: high
 ---
 
+Fetch @~/.claude/instructions/sai/prereqs.md
+
 Fetch @~/.claude/instructions/sai/caveman.md
 Fetch @~/.claude/instructions/sai/glossary-format.md
 

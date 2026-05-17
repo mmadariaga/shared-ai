@@ -4,14 +4,12 @@ argument-hint: "[change-name]"
 model: claude-haiku-4-5
 ---
 
-## Prerequisite check
+Fetch @~/.claude/instructions/sai/prereqs.md
 
-Before proceeding, verify:
-1. `openspec` binary is available in PATH. If not, STOP and print: "openspec CLI not found. Install it first: https://github.com/Fission-AI/OpenSpec"
-2. `openspec/` directory exists at project root. If not, STOP and print: "OpenSpec not initialized in this project. Run: openspec init"
-3. `openspec/changes/{change-name}/implementation.md` exists. If not, STOP and print: "implementation.md not found for '{change-name}'. Run /sai-3-implement first."
+Also verify before proceeding:
+- `openspec/changes/{change-name}/implementation.md` exists. If not, STOP and print: "implementation.md not found for '{change-name}'. Run /sai-3-implement first."
 
-Do not create or modify any files if any check fails.
+Do not create or modify any files if this check fails.
 
 ## Load behaviors (in order)
 

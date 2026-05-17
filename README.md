@@ -43,13 +43,13 @@ All artifact paths below resolve under `openspec/changes/{change-name}/` (referr
 | Command | Input | Output | Purpose |
 |---------|-------|--------|---------|
 | `/sai-1-spec` | feature description | `{c}/proposal.md`, `specs/**` | Wraps `opsx:propose` (specs phase only). Stops before design; asks for specs approval and records it in `.openspec.yaml`. |
-| `/sai-2-design` | change name | `{c}/design.md`, `tasks.md` | Gated on specs approval. Generates design decisions, trade-offs, and implementation tasks. |
-| `/sai-3-implement` | change name | `{c}/implementation.md` | Reads proposal/design/tasks/specs, generates a granular plan with code, RED→GREEN, STOP & COMMIT markers, ready for cheap-model execution. |
-| `/sai-4-apply` | change name | code | Executes `implementation.md` step by step, checks off boxes, asks for authorization on git ops. |
-| `/sai-5-review` | change name + diff | `{c}/review.md` | Holistic code review (correctness, maintainability, testing, consistency). **Triage router** → recommends follow-up audits if surface changed. |
-| `/sai-6-security` | change name + diff | `{c}/security.md` | SAST + SCA, CWE/CVE mapping, OWASP/PCI/GDPR. file:line + taint flow required. |
-| `/sai-7-performance` | change name + diff | `{c}/performance.md` | Audit by tier (backend / frontend / db / queue). Evidence-based, no speculation. |
-| `/sai-8-accessibility` | change name + diff | `{c}/accessibility.md` | Static WCAG 2.2 AA (+ optional axe/Lighthouse with `--runtime`). |
+| `/sai-2-design` | {change-name} | `{c}/design.md`, `tasks.md` | Gated on specs approval. Generates design decisions, trade-offs, and implementation tasks. |
+| `/sai-3-implement` | {change-name} | `{c}/implementation.md` | Reads proposal/design/tasks/specs, generates a granular plan with code, RED→GREEN, STOP & COMMIT markers, ready for cheap-model execution. |
+| `/sai-4-apply` | {change-name} | code | Executes `implementation.md` step by step, checks off boxes, asks for authorization on git ops. |
+| `/sai-5-review` | {change-name} + diff | `{c}/review.md` | Holistic code review (correctness, maintainability, testing, consistency). **Triage router** → recommends follow-up audits if surface changed. |
+| `/sai-6-security` | {change-name} + diff | `{c}/security.md` | SAST + SCA, CWE/CVE mapping, OWASP/PCI/GDPR. file:line + taint flow required. |
+| `/sai-7-performance` | {change-name} + diff | `{c}/performance.md` | Audit by tier (backend / frontend / db / queue). Evidence-based, no speculation. |
+| `/sai-8-accessibility` | {change-name} + diff | `{c}/accessibility.md` | Static WCAG 2.2 AA (+ optional axe/Lighthouse with `--runtime`). |
 
 ## On-demand commands (unnumbered)
 
@@ -206,6 +206,7 @@ instructions/sai/                ← actual content for each agent (plain markdo
 instructions/sai/spec.propose.md ← spec quality layer prepended to the openspec-propose skill
 instructions/sai/glossary-format.md ← canonical GLOSSARY.md format used by spec/plan/review
 instructions/sai/remember.md     ← consolidated reminders appended by wrappers
+instructions/sai/prereqs.md      ← universal prereq check fetched by all openspec-dependent sai-* wrappers
 claude/commands/           ← wrappers for Claude Code (model + effort + fetch to instructions/sai/)
 opencode/commands/         ← wrappers for opencode (model + fetch to instructions/sai/)
 openspec/schemas/sai-workflow/  ← custom OpenSpec schema (schema.yaml + 9 templates)

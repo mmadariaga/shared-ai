@@ -3,13 +3,7 @@ description: Propose a new change — generates proposal.md and specs/ only. Sto
 model: opencode/glm-5.1
 ---
 
-## Prerequisite check
-
-Before proceeding, verify:
-1. `openspec` binary is available in PATH. If not, STOP and print: "openspec CLI not found. Install it first: https://github.com/Fission-AI/OpenSpec"
-2. `openspec/` directory exists at project root. If not, STOP and print: "OpenSpec not initialized in this project. Run: openspec init"
-
-Do not create or modify any files if either check fails.
+Fetch @~/.config/opencode/instructions/sai/prereqs.md
 
 ## Load behaviors (in order)
 

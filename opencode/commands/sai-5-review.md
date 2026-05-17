@@ -3,6 +3,8 @@ description: Structured Code Review Prompt — diffs current branch against pare
 model: opencode-go/qwen3.6-plus
 ---
 
+Fetch @~/.config/opencode/instructions/sai/prereqs.md
+
 Fetch @~/.config/opencode/instructions/sai/caveman.md
 Fetch @~/.config/opencode/instructions/sai/glossary-format.md
 

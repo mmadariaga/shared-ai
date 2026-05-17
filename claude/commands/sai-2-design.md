@@ -5,14 +5,12 @@ model: claude-opus-4-7
 effort: high
 ---
 
-## Prerequisite check
+Fetch @~/.claude/instructions/sai/prereqs.md
 
-Before proceeding, verify:
-1. `openspec` binary is available in PATH. If not, STOP and print: "openspec CLI not found. Install it first: https://github.com/Fission-AI/OpenSpec"
-2. `openspec/` directory exists at project root. If not, STOP and print: "OpenSpec not initialized in this project. Run: openspec init"
-3. `openspec/changes/{change-name}/.openspec.yaml` exists AND contains `approval.specs.approved_at`. If not, STOP and print: "Specs not yet approved for '{change-name}'. Review openspec/changes/{change-name}/specs/ and confirm approval before running /sai-2-design."
+Also verify before proceeding:
+- `openspec/changes/{change-name}/.openspec.yaml` exists AND contains `approval.specs.approved_at`. If not, STOP and print: "Specs not yet approved for '{change-name}'. Review openspec/changes/{change-name}/specs/ and confirm approval before running /sai-2-design."
 
-Do not create or modify any files if any check fails.
+Do not create or modify any files if this check fails.
 
 ## Load behaviors (in order)
 

@@ -37,6 +37,7 @@ The openspec-dependent `ai-*` commands halt with a clear error if either is miss
 | `instructions/sai/` | Phase content (Isolation Mode + TASK block). Fetched by wrappers. |
 | `instructions/sai/spec.propose.md` | Quality layer prepended to the `openspec-propose` skill by `ai-1-spec`. Collaboration style, cost discipline, research guide, scope reminder. |
 | `instructions/sai/remember.md` | Consolidated reminders appended by wrappers. |
+| `instructions/sai/prereqs.md` | Universal prerequisite check fetched first by all openspec-dependent sai-* wrappers. `sai-commit` is the only exception. |
 | `claude/commands/` | Wrappers for Claude Code. YAML frontmatter (`description`, `argument-hint`, `model`, `effort`) + fetch to `instructions/sai/` + fetch to project-local skill files. |
 | `opencode/commands/` | Wrappers for opencode. YAML frontmatter (`description`, `model`) + fetch to `instructions/sai/` + fetch to project-local skill files. |
 | `opencode/opencode.jsonc` | Sub-agent explore configuration (mode + trusted low-cost model). Required for cost-effective research delegation. |
@@ -52,7 +53,7 @@ sai-* commands prepend shared-AI behaviors (caveman, glossary-format, spec.propo
 All sai-* artifacts (`implementation.md`, `review.md`, `security.md`, `performance.md`, `accessibility.md`, `pr.md`) write to `openspec/changes/{change-name}/`. The legacy `plans/` directory is **not used** by the new pipeline.
 
 ### Prerequisite check
-Openspec-dependent commands (`sai-explore`, `sai-1-spec`, `sai-2-design`, `sai-3-implement`, `sai-4-apply`, `sai-archive`) verify the `openspec` binary and `openspec/` directory before doing anything. `sai-5-review`, `sai-6-security`, `sai-7-performance`, `sai-8-accessibility`, `sai-commit`, `sai-pr` skip the check — they only read artifacts by path.
+All openspec-dependent sai-* commands (`sai-explore`, `sai-1-spec`, `sai-2-design`, `sai-3-implement`, `sai-4-apply`, `sai-archive`, `sai-5-review`, `sai-6-security`, `sai-7-performance`, `sai-8-accessibility`, `sai-pr`) perform three checks via `Fetch @~/.claude/instructions/sai/prereqs.md` (Claude) or `Fetch @~/.config/opencode/instructions/sai/prereqs.md` (OpenCode): (1) `openspec` binary in PATH, (2) `openspec/` directory exists, (3) `openspec/config.yaml` declares `schema: sai-workflow`. `sai-commit` is the only exception — it operates on git state only and works in projects without openspec.
 
 ### Isolation Mode
 Every file in `instructions/sai/` starts with:
