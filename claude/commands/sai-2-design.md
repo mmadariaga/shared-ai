@@ -7,10 +7,20 @@ effort: high
 
 Fetch @~/.claude/instructions/sai/prereqs.md
 
-Also verify before proceeding:
-- `openspec/changes/{change-name}/.openspec.yaml` exists AND contains `approval.specs.approved_at`. If not, STOP and print: "Specs not yet approved for '{change-name}'. Review openspec/changes/{change-name}/specs/ and confirm approval before running /sai-2-design."
+## Approval gate
 
-Do not create or modify any files if this check fails.
+Confirm `openspec/changes/$ARGUMENTS/proposal.md` exists AND at least one file matching `openspec/changes/$ARGUMENTS/specs/**/*.md` exists. If either is missing, STOP and print: "Change '$ARGUMENTS' not found or has no specs. Run /sai-1-spec to create it first."
+
+Ask exactly: "Have you reviewed the specs in openspec/changes/$ARGUMENTS/specs/ and are ready to approve them for design? (yes/no, and any notes)"
+
+If the user's response is "no" or any clearly negative answer, STOP without writing any file.
+
+If the user's response is "yes" (with or without notes), write the following fields to `openspec/changes/$ARGUMENTS/.openspec.yaml`, MERGING into the existing file content (preserve any existing top-level keys such as `schema:` and `created:` verbatim — do NOT truncate or rewrite the whole file):
+
+- `approval.specs.approved_at`: current UTC timestamp in ISO 8601 format (e.g. `2026-05-17T14:30:00Z`).
+- `approval.specs.notes`: the user's notes verbatim, or empty string if none provided.
+
+Do not create or modify any other files if the user declines.
 
 ## Load behaviors (in order)
 
