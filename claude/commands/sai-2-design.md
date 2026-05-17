@@ -65,4 +65,18 @@ Order steps by dependency. Steps should be small enough to expand into a single 
 
 Reference specs for what to build, design for how to build it.
 
+After all implementation steps, end the file with these two mandatory sections in order:
+
+1. `## Required Documentation` — list every file read and every external URL consulted during design-phase codebase research:
+   - `### Local files`: one path per line; use line ranges (e.g., `path/to/file.md:10-50`) when only a portion applies; write `None` if empty.
+   - `### External URLs`: one URL per line; write `None` if empty.
+   - Do NOT leave either subsection empty or omit it.
+
+2. `## Implementation Context` — derive all three fields from actual codebase research, not from the change description:
+   - `**Stack**`: primary language/framework + key versions relevant to this change.
+   - `**Conventions**`: 2–5 project-specific, non-obvious bullets observed in the actual codebase (naming, file organization, error handling, testing idioms). Generic best-practices ("follow SOLID", "write clean code") are NOT acceptable.
+   - `**Avoid**`: anti-patterns the implementation agent might default to given the declared stack.
+
+Both sections are mandatory. They must contain real content derived from research, not placeholder text.
+
 Fetch @~/.claude/instructions/sai/remember.md

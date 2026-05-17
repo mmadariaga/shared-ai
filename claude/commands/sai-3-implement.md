@@ -26,7 +26,9 @@ Also fetch @~/.claude/instructions/sai/plan.md and follow those instructions exa
   - `design.md` — how
   - `tasks.md` — implementation steps (high-level)
   - any `specs/**/*.md` — capability deltas
-- Treat the union of those artifacts as the equivalent of `spec.md` (feature name, design decisions, expertise profile, required documentation). If any field that `plan.md` expects from `spec.md` is missing, STOP and ask.
+- STOP condition: if `tasks.md` lacks `## Implementation Context` entirely, STOP and print: "Implementation Context missing from tasks.md for '{change-name}'. Re-run /sai-2-design or add the section manually before /sai-3-implement."
+- Read `## Required Documentation` from `tasks.md` as the equivalent of `spec.md`'s Required Documentation. Read every file and URL listed there; do not perform additional codebase exploration to recover this information.
+- Read `## Implementation Context` (**Stack**, **Conventions**, **Avoid**) from `tasks.md` as the equivalent of `plan.md`'s Expertise Profile. Treat these three fields as the complete Expertise Profile contract. Do NOT require a separate Primary Role / Technologies & Libraries / Standards / Output Quality Bar block. Do NOT STOP on missing Expertise Profile subsections. Do NOT perform codebase exploration to recover stack or convention information.
 - Write the output to `openspec/changes/{change-name}/implementation.md`. Every reference to `plan.md` or the per-feature artifact directory in the loaded instructions resolves to `openspec/changes/{change-name}/implementation.md` and `openspec/changes/{change-name}/` respectively.
 - Feature name is the change name (kebab-case).
 

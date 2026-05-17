@@ -103,6 +103,37 @@ artifacts:
       expand into a single implementation.md step group.
 
       Reference specs for what to build, design for how to build it.
+
+      After all implementation steps, end the file with these two mandatory sections in order:
+
+      ## Required Documentation
+
+      List every file read and every external URL consulted during design-phase codebase research.
+      Prefer specific file paths with line ranges over whole-file references when only a portion applies.
+
+      ### Local files
+      One path per line. Use line ranges (e.g., path/to/file.md:10-50) when only a portion applies.
+      If nothing to list, write: None
+
+      ### External URLs
+      One URL per line. If nothing to list, write: None
+
+      Do NOT leave either subsection empty or omit it. Both subsections are mandatory.
+
+      ## Implementation Context
+
+      Derived from codebase research performed during design. Contains exactly three fields:
+
+      **Stack**: primary language/framework + key versions relevant to this change
+
+      **Conventions**: 2-5 project-specific, non-obvious bullets derived from observed code
+      (naming conventions, file organization, error handling, testing idioms).
+      Generic best-practices such as "follow SOLID principles" or "write clean code" are NOT acceptable.
+
+      **Avoid**: anti-patterns the implementation agent might default to given the declared stack.
+
+      IMPORTANT: Stack, Conventions, and Avoid MUST be derived from the actual codebase.
+      Generic or placeholder content is not acceptable.
     requires:
       - specs
       - design
