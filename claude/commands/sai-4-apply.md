@@ -15,7 +15,7 @@ Do not create or modify any files if this check fails.
 
 Fetch @~/.claude/instructions/sai/caveman.md
 
-Also fetch @~/.claude/instructions/sai/implement.md and follow those instructions exactly, with these REPLACEMENTS:
+Also fetch @~/.claude/instructions/sai/apply.md and follow those instructions exactly, with these REPLACEMENTS:
 
 - Input is the change name `$ARGUMENTS`. The implementation plan lives at `openspec/changes/{change-name}/implementation.md`.
 - Every reference to `plan.md` in the loaded instructions resolves to `openspec/changes/{change-name}/implementation.md`.

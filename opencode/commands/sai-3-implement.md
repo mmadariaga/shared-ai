@@ -17,7 +17,7 @@ Fetch @~/.config/opencode/instructions/sai/explorer.opencode.md
 Fetch @~/.config/opencode/instructions/sai/caveman.md
 Fetch @~/.config/opencode/instructions/sai/glossary-format.md
 
-Also fetch @~/.config/opencode/instructions/sai/plan.md and follow those instructions exactly, with these REPLACEMENTS:
+Also fetch @~/.config/opencode/instructions/sai/implement.md and follow those instructions exactly, with these REPLACEMENTS:
 
 - Input is the change name `$ARGUMENTS`, not a path to `spec.md`.
 - Read these artifacts from `openspec/changes/{change-name}/` (in parallel):

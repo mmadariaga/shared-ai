@@ -19,7 +19,7 @@ Fetch @~/.claude/instructions/sai/explorer.claude.md
 Fetch @~/.claude/instructions/sai/caveman.md
 Fetch @~/.claude/instructions/sai/glossary-format.md
 
-Also fetch @~/.claude/instructions/sai/plan.md and follow those instructions exactly, with these REPLACEMENTS:
+Also fetch @~/.claude/instructions/sai/implement.md and follow those instructions exactly, with these REPLACEMENTS:
 
 - Input is the change name `$ARGUMENTS`, not a path to `spec.md`.
 - Read these artifacts from `openspec/changes/{change-name}/` (in parallel):
