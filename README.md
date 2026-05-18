@@ -305,18 +305,20 @@ Open `~/.config/opencode/commands/sai-1-spec.md` and `sai-2-design.md` and set y
 
 We set these defaults to models that have worked best for us, you may find better alternatives for your specific needs though.
 
-| Command | Opencode | Claude Code |
-|-------|----------|-------------|
-| spec (1) | `opencode/gpt-5.5` <br />\|\| `opencode/claude-opus-4-7`<br />\|\| `opencode/gemini-3.1-pro`<br />\|\| `opencode-go/glm-5.1` | `claude-opus-4-7` High |
-| design (2) | `opencode/glm-5.1` | `claude-opus-4-7` High |
-| implement (3) | `opencode-go/kimi-k2.6` | `claude-sonnet-4-6` |
-| apply (4) | `opencode-go/deepseek-v4-flash` | `claude-haiku-4-5` |
-| review (5) | `opencode-go/qwen3.6-plus` | `claude-sonnet-4-6` |
-| security (6) | `opencode-go/qwen3.6-plus` | `claude-opus-4-7` High |
-| performance (7) | `opencode-go/qwen3.6-plus` | `claude-sonnet-4-6` |
-| accessibility (8) | `opencode-go/qwen3.6-plus` | `claude-sonnet-4-6` |
-| commit | `opencode-go/deepseek-v4-flash` | `claude-haiku-4-5` |
-| pr | `opencode-go/deepseek-v4-flash` | `claude-haiku-4-5` |
+| Command | Opencode | Claude Code | Copilot |
+|-------|----------|-------------|---------|
+| explore | `opencode-go/kimi-k2.6` | `claude-sonnet-4-6` High | `github-copilot/claude-sonnet-4.6` |
+| spec (1) | `opencode-go/kimi-k2.6` | `claude-sonnet-4-7` High | `github-copilot/claude-sonnet-4.6` |
+| design (2) | `opencode/claude-opus-4-7`<br />\|\| `opencode/gpt-5.5` <br />\|\|`opencode/gemini-3.1-pro`<br />\|\| `opencode-go/glm-5.1` | `claude-opus-4-7` High |``github-copilot/claude-sonnet-4.6`` | 
+| implement (3) | `opencode-go/kimi-k2.6` | `claude-sonnet-4-6` | ``github-copilot/claude-sonnet-4.6`` |
+| apply (4) | `opencode-go/deepseek-v4-flash` | `claude-haiku-4-5` | `github-copilot/gpt-5-mini` |
+| review (5) | `opencode-go/qwen3.6-plus` | `claude-sonnet-4-6` | `github-copilot/claude-sonnet-4.6` |
+| security (6) | `opencode-go/qwen3.6-plus` | `claude-opus-4-7` High | `github-copilot/claude-opus-4.6` |
+| performance (7) | `opencode-go/qwen3.6-plus` | `claude-sonnet-4-6` | `github-copilot/claude-sonnet-4.6` |
+| accessibility (8) | `opencode-go/qwen3.6-plus` | `claude-sonnet-4-6` | `github-copilot/claude-sonnet-4.6` |
+| commit | `opencode-go/deepseek-v4-flash` | `claude-haiku-4-5` | `github-copilot/gpt-5-mini` |
+| pr | `opencode-go/deepseek-v4-flash` | `claude-haiku-4-5` | `github-copilot/gpt-5-mini` |
+| archive | `opencode-go/deepseek-v4-flash` | `claude-haiku-4-5` | `github-copilot/gpt-5-mini` |
 
 ### Choosing a model
 
