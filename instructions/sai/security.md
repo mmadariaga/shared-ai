@@ -336,3 +336,5 @@
    ## Run
    **User's security audit request:** $ARGUMENTS
 </TASK>
+
+MANDATORY STOP: Once the security audit is written, STOP and print exactly: "Security audit ready in openspec/changes/{name}/. Review and run /sai-7-performance {name} when ready."

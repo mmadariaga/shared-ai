@@ -339,3 +339,5 @@
    ## Run
    **User's accessibility audit request:** $ARGUMENTS
 </TASK>
+
+MANDATORY STOP: Once the accessibility audit is written, STOP and print exactly: "Accessibility audit ready in openspec/changes/{name}/. Audit chain complete."

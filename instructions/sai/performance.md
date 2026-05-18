@@ -361,3 +361,5 @@
    ## Run
    **User's performance audit request:** $ARGUMENTS
 </TASK>
+
+MANDATORY STOP: Once the performance audit is written, STOP and print exactly: "Performance audit ready in openspec/changes/{name}/. Review and run /sai-8-accessibility {name} when ready."

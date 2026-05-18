@@ -251,3 +251,5 @@
    ## Run
    **User's review request:** $ARGUMENTS
 </TASK>
+
+MANDATORY STOP: Once the review report is written, STOP and print exactly: "Code review ready in openspec/changes/{name}/. Review and run /sai-6-security {name} when ready."

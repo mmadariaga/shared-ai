@@ -80,3 +80,7 @@ After all implementation steps, end the file with these two mandatory sections i
    - `**Avoid**`: anti-patterns the implementation agent might default to given the declared stack.
 
 Both sections are mandatory. They must contain real content derived from research, not placeholder text.
+
+## Completion
+
+MANDATORY STOP: Once `design.md` and `tasks.md` are written, STOP and print exactly: "Design and tasks ready in openspec/changes/{name}/. Review and run /sai-3-implement {name} when ready."
