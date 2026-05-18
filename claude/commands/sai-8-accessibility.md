@@ -7,8 +7,10 @@ effort: high
 
 Fetch @~/.claude/instructions/sai/prereqs.md
 
+## Load behaviors (in order)
+
 Fetch @~/.claude/instructions/sai/caveman.md
 
-Also fetch @~/.claude/instructions/sai/accessibility.md and follow those instructions exactly. First argument is the change name (kebab-case). Resolve all artifact paths under `openspec/changes/{change-name}/` — treat `proposal.md` + `design.md` + `specs/**/*.md` as the equivalent of `spec.md`, and write the report to `openspec/changes/{change-name}/accessibility.md`. $ARGUMENTS
+Fetch @~/.claude/instructions/sai/accessibility.md and follow those instructions exactly. $ARGUMENTS
 
 Fetch @~/.claude/instructions/sai/remember.md

@@ -6,6 +6,12 @@
 
 <TASK>
 
+   ## Input
+
+   The first argument is the change name (kebab-case). Resolve all artifact paths under `openspec/changes/{change-name}/`:
+   - `proposal.md` + `design.md` + `specs/**/*.md` are the equivalent of `spec.md`
+   - Write the report to `openspec/changes/{change-name}/accessibility.md`
+
    ## Communication Mode
 
    Caveman mode active (instructions loaded already). Default: lite. If `--full-caveman` appears in arguments, use full instead.

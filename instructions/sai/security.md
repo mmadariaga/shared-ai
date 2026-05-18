@@ -5,7 +5,13 @@
 - If you are about to use external or prior context, STOP and say: "Potential context pollution detected, stopping, open a new chat".
 
 <TASK>
- 
+
+   ## Input
+
+   The first argument is the change name (kebab-case). Resolve all artifact paths under `openspec/changes/{change-name}/`:
+   - `proposal.md` + `design.md` + `specs/**/*.md` are the equivalent of `spec.md`
+   - Write the report to `openspec/changes/{change-name}/security.md`
+
    ## Communication Mode
 
    Caveman mode active (instructions loaded already). Default: lite. If `--full-caveman` appears in arguments, use full instead.
