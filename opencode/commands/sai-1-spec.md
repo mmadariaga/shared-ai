@@ -20,4 +20,4 @@ Then fetch and follow the openspec-propose skill at `.opencode/skills/openspec-p
 
 User input: $ARGUMENTS
 
-Fetch @~/.claude/instructions/sai/remember.md
+Fetch @~/.config/opencode/instructions/sai/remember.md
