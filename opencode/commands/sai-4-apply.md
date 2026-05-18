@@ -14,10 +14,6 @@ Do not create or modify any files if this check fails.
 
 Fetch @~/.config/opencode/instructions/sai/caveman.md
 
-Also fetch @~/.config/opencode/instructions/sai/apply.md and follow those instructions exactly, with these REPLACEMENTS:
-
-- Input is the change name `$ARGUMENTS`. The implementation plan lives at `openspec/changes/{change-name}/implementation.md`.
-- Every reference to `plan.md` in the loaded instructions resolves to `openspec/changes/{change-name}/implementation.md`.
-- For situational status context, you MAY run `openspec status --change {change-name} --json`. The granular plan in `implementation.md` is the source of truth.
+Fetch @~/.config/opencode/instructions/sai/apply.md and follow those instructions exactly. User input: $ARGUMENTS
 
 Fetch @~/.config/opencode/instructions/sai/remember.md
