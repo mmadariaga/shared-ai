@@ -7,6 +7,7 @@ Fetch @~/.config/opencode/instructions/sai/prereqs.md
 
 ## Load behaviors (in order)
 
+Fetch @~/.config/opencode/instructions/sai/explorer.opencode.md
 Fetch @~/.config/opencode/instructions/sai/caveman.md
 Fetch @~/.config/opencode/instructions/sai/explore.md
 
