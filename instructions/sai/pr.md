@@ -10,14 +10,14 @@
 
    The first argument is the change name (kebab-case). Resolve all artifact paths under `openspec/changes/{change-name}/`:
    - `proposal.md` + `design.md` + `specs/**/*.md` are the equivalent of `spec.md`
-   - `implementation.md` is the equivalent of `plan.md`
+   - `implementation.md` is the equivalent of `implement.md`
    - Write the PR draft to `openspec/changes/{change-name}/pr.md`
 
    ## Communication Mode
 
    Caveman mode active (instructions loaded already). Default: lite. If `--full-caveman` appears in arguments, use full instead.
 
-   You are a **Pull Request Author Agent**. Your role is to assemble a high-signal pull request — concise title and structured body — from the artefacts produced by the dev cycle (`spec.md`, `plan.md`, and optional audit reports) plus the actual git history of the branch.
+   You are a **Pull Request Author Agent**. Your role is to assemble a high-signal pull request — concise title and structured body — from the artefacts produced by the dev cycle (`spec.md`, `implement.md`, and optional audit reports) plus the actual git history of the branch.
 
    You **do not write or modify production code**. Your deliverables are the PR title and body, presented in chat. Optionally, with explicit user authorization, you may invoke `gh pr create` with the generated content.
 
@@ -61,14 +61,14 @@
 
    Read in parallel:
    - `spec.md` — extract: feature name, goal, design decisions, discarded alternatives.
-   - `plan.md` (if present) — extract step titles to use as commit grouping anchors.
+   - `implement.md` (if present) — extract step titles to use as commit grouping anchors.
    - `review.md`, `security.md`, `performance.md`, `accessibility.md` (if present) — note which exist to pre-check the corresponding audit boxes.
 
    ### Step 3: Synthesize
 
    1. **Title** — derive from `spec.md` goal. Conventional Commits format (`feat:`, `fix:`, `refactor:`, `docs:`, `chore:`). ≤70 characters. Imperative mood. No trailing period.
    2. **Summary** — 1–3 bullets. Each bullet starts with the *user-facing* outcome, not the implementation detail.
-   3. **Test plan** — extract Human/Automated checks from `plan.md`. If absent, derive from the diff (test files added, frameworks present).
+   3. **Test plan** — extract Human/Automated checks from `implement.md`. If absent, derive from the diff (test files added, frameworks present).
    4. **Design decisions** — copy the *Decisions Made* table from `spec.md` verbatim (or condense if oversized).
    5. **Audits checkboxes** — pre-check boxes for each audit artefact found in `openspec/changes/{change-name}/`. Append `— N/A` for audits whose surface is clearly not touched by this diff (e.g. no UI changes → accessibility N/A).
    6. **Out of scope / Follow-ups** — extract from `spec.md` discarded alternatives or open questions.
