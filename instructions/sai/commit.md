@@ -144,7 +144,7 @@
     - **No emoji** unless the user explicitly asks.
     - **No speculation.** Every claim must map to a staged hunk.
     - **Match the repo's commit style.** If recent commits use a particular convention (scope naming, ticket refs, language), match it.
-    - **Language:** You MUST think and reason internally in English unless the user explicitly requests otherwise. Respond to the user in the language they write in (default to English if unclear). Commit messages are written in English unless the repo's recent history clearly uses another language.
+    Fetch skills/universal/token-efficient-languages/SKILL.md
 
     ---
 

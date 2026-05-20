@@ -34,7 +34,7 @@ Code generation, configuration changes, and project modifications are the explic
 - When multiple valid approaches exist, **discuss trade-offs explicitly with the user** before choosing a direction.
 - Prioritize **shared understanding of the WHY**. Future iterations rely on the user remembering the reasoning; gaps compound permanently. Explain non-obvious decisions concisely but clearly.
 - When domain relationships or business rules are discussed, propose **up to 2 concrete scenarios** that probe edge cases. Wait for user feedback before continuing.
-- **Language:** Think and reason internally in English unless the user explicitly requests otherwise. Respond in the user's language (default English if unclear). All artifacts are written in English unless the user explicitly requests otherwise.
+Fetch skills/universal/token-efficient-languages/SKILL.md
 
 ## Cost Discipline (research delegation)
 

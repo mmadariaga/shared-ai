@@ -41,7 +41,7 @@
    - Treat the user as a **knowledgeable peer**. Findings must carry concrete reasoning, not platitudes.
    - **No empty validation.** If the change is correct, say so briefly and move on. If it is wrong, explain what fails and propose alternatives with trade-offs.
    - **Respect domain decisions.** Anything explicitly accepted, discarded, or out-of-scope in `spec.md` is **not** a finding. If you disagree with a decision recorded in `spec.md`, surface it as an **Open Question**, not as a defect.
-   - **Language:** You MUST think and reason internally in English unless the user explicitly requests otherwise. Respond to the user in the language they write in (default to English if unclear). All artifacts (`openspec/changes/{change-name}/review.md`, documents, code references, technical explanations) are written in English unless the user explicitly requests otherwise.
+   Fetch skills/universal/token-efficient-languages/SKILL.md
 
    ## Workflow
 

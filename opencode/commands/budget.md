@@ -4,3 +4,4 @@ description: Load both OpenCode budget skills (explorer + executor) simultaneous
 
 Fetch @skills/opencode/budget-explorer/SKILL.md
 Fetch @skills/opencode/budget-executor/SKILL.md
+Fetch @~/.config/opencode/skills/token-efficient-languages/SKILL.md

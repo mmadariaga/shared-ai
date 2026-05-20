@@ -45,6 +45,8 @@ if [ ! -f ~/.claude/skills/caveman/SKILL.md ]; then
     mkdir -p ~/.claude/skills/caveman
     cp skills/universal/caveman/SKILL.md ~/.claude/skills/caveman/SKILL.md
 fi
+mkdir -p ~/.claude/skills/token-efficient-languages
+cp skills/universal/token-efficient-languages/SKILL.md ~/.claude/skills/token-efficient-languages/SKILL.md
 mkdir -p ~/.claude/skills/budget-explorer
 cp skills/claude/budget-explorer/SKILL.md ~/.claude/skills/budget-explorer/SKILL.md
 mkdir -p ~/.claude/skills/budget-executor
@@ -71,6 +73,8 @@ if (-not (Test-Path "$env:USERPROFILE\.claude\skills\caveman\SKILL.md")) {
     New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\.claude\skills\caveman" | Out-Null
     Copy-Item skills\universal\caveman\SKILL.md "$env:USERPROFILE\.claude\skills\caveman\SKILL.md"
 }
+New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\.claude\skills\token-efficient-languages" | Out-Null
+Copy-Item skills\universal\token-efficient-languages\SKILL.md "$env:USERPROFILE\.claude\skills\token-efficient-languages\SKILL.md"
 New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\.claude\skills\budget-explorer" | Out-Null
 Copy-Item skills\claude\budget-explorer\SKILL.md "$env:USERPROFILE\.claude\skills\budget-explorer\SKILL.md"
 New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\.claude\skills\budget-executor" | Out-Null

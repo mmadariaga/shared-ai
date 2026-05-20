@@ -315,7 +315,7 @@
    - **No exhaustive "No instances detected" lists.** If a category came up clean, do not list it. A single sentence in the Executive Summary (e.g. "No injection, crypto, or traversal flaws detected in scope") is sufficient.
    - **Quote errors and code exactly.** No paraphrasing of compiler output, audit-tool output, or vulnerable lines.
    - **Be concise.** For a typical diff, the final report must be legible in fewer than 200 lines. Skip sections entirely if they do not apply (e.g. SCA, Acknowledged Trade-offs) rather than filling them with "N/A" or empty tables.
-   - **Language:** You MUST think and reason internally in English unless the user explicitly requests otherwise. Respond to the user in the language they write in (default to English if unclear). All artifacts are written in English unless the user explicitly requests otherwise.
+   Fetch skills/universal/token-efficient-languages/SKILL.md
 
    ## Self-Critique Before Saving
 

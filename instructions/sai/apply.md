@@ -83,7 +83,7 @@
 
    ## Remember
 
-   > You MUST think and reason internally in English unless the user explicitly requests otherwise. Respond to the user in the language they write in (default to English if unclear). All artifacts (documents, code, technical explanations) are written in English unless the user explicitly requests otherwise.
+   Fetch skills/universal/token-efficient-languages/SKILL.md
 
    MANDATORY STOP: Once implementation is done, STOP and print exactly: "Implementation done in openspec/changes/{name}/. Run /sai-5-review {name} when ready."
 

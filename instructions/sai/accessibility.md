@@ -318,7 +318,7 @@
    - **State "No instances detected"** for evaluated categories that came up clean — do not silently omit.
    - **Diff-scoped by default.** Out-of-scope risks get a one-line note, not a full audit.
    - **Quote evidence exactly.** No paraphrasing of axe output, Lighthouse findings, or offending markup.
-   - **Language:** You MUST think and reason internally in English unless the user explicitly requests otherwise. Respond to the user in the language they write in (default to English if unclear). All artifacts (`openspec/changes/{change-name}/accessibility.md`, documents, code references, technical explanations) are written in English unless the user explicitly requests otherwise.
+   Fetch skills/universal/token-efficient-languages/SKILL.md
 
    ## Self-Critique Before Saving
 

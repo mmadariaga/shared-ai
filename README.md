@@ -248,6 +248,8 @@ if [ ! -f ~/.config/opencode/skills/caveman/SKILL.md ]; then
     mkdir -p ~/.config/opencode/skills/caveman
     cp skills/universal/caveman/SKILL.md ~/.config/opencode/skills/caveman/SKILL.md
 fi
+mkdir -p ~/.config/opencode/skills/token-efficient-languages
+cp skills/universal/token-efficient-languages/SKILL.md ~/.config/opencode/skills/token-efficient-languages/SKILL.md
 mkdir -p ~/.config/opencode/skills/budget-explorer
 cp skills/opencode/budget-explorer/SKILL.md ~/.config/opencode/skills/budget-explorer/SKILL.md
 mkdir -p ~/.config/opencode/skills/budget-executor
@@ -294,6 +296,8 @@ if (-not (Test-Path "$configDir\skills\caveman\SKILL.md")) {
     New-Item -ItemType Directory -Force -Path "$configDir\skills\caveman" | Out-Null
     Copy-Item skills\universal\caveman\SKILL.md "$configDir\skills\caveman\SKILL.md"
 }
+New-Item -ItemType Directory -Force -Path "$configDir\skills\token-efficient-languages" | Out-Null
+Copy-Item skills\universal\token-efficient-languages\SKILL.md "$configDir\skills\token-efficient-languages\SKILL.md"
 New-Item -ItemType Directory -Force -Path "$configDir\skills\budget-explorer" | Out-Null
 Copy-Item skills\opencode\budget-explorer\SKILL.md "$configDir\skills\budget-explorer\SKILL.md"
 New-Item -ItemType Directory -Force -Path "$configDir\skills\budget-executor" | Out-Null

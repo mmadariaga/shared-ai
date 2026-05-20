@@ -4,3 +4,4 @@ description: Load both Claude Code budget skills (explorer + executor) simultane
 
 Fetch @skills/claude/budget-explorer/SKILL.md
 Fetch @skills/claude/budget-executor/SKILL.md
+Fetch @~/.claude/skills/token-efficient-languages/SKILL.md
