@@ -463,7 +463,7 @@ User input: $ARGUMENTS
 
 > **BOM note:** `opencode/commands/sai-archive.md` carries a UTF-8 BOM (`\xEF\xBB\xBF`). The content block below includes the BOM character (﻿) as the first byte — ensure the file is written with it preserved. All other opencode files have no BOM.
 
-- [ ] Overwrite `opencode/commands/sai-1-spec.md` with:
+- [x] Overwrite `opencode/commands/sai-1-spec.md` with:
 
 ```markdown
 ---
@@ -476,7 +476,7 @@ Fetch @commands/sai/sai-1-spec.md
 User input: $ARGUMENTS
 ```
 
-- [ ] Overwrite `opencode/commands/sai-2-design.md` with:
+- [x] Overwrite `opencode/commands/sai-2-design.md` with:
 
 ```markdown
 ---
@@ -487,7 +487,7 @@ model: opencode-go/glm-5.1
 Fetch @commands/sai/sai-2-design.md
 ```
 
-- [ ] Overwrite `opencode/commands/sai-3-implement.md` with:
+- [x] Overwrite `opencode/commands/sai-3-implement.md` with:
 
 ```markdown
 ---
@@ -500,7 +500,7 @@ Fetch @commands/sai/sai-3-implement.md
 User input: $ARGUMENTS
 ```
 
-- [ ] Overwrite `opencode/commands/sai-4-apply.md` with:
+- [x] Overwrite `opencode/commands/sai-4-apply.md` with:
 
 ```markdown
 ---
@@ -513,7 +513,7 @@ Fetch @commands/sai/sai-4-apply.md
 User input: $ARGUMENTS
 ```
 
-- [ ] Overwrite `opencode/commands/sai-5-review.md` with:
+- [x] Overwrite `opencode/commands/sai-5-review.md` with:
 
 ```markdown
 ---
@@ -526,7 +526,7 @@ Fetch @commands/sai/sai-5-review.md
 User input: $ARGUMENTS
 ```
 
-- [ ] Overwrite `opencode/commands/sai-6-security.md` with:
+- [x] Overwrite `opencode/commands/sai-6-security.md` with:
 
 ```markdown
 ---
@@ -539,7 +539,7 @@ Fetch @commands/sai/sai-6-security.md
 User input: $ARGUMENTS
 ```
 
-- [ ] Overwrite `opencode/commands/sai-7-performance.md` with:
+- [x] Overwrite `opencode/commands/sai-7-performance.md` with:
 
 ```markdown
 ---
@@ -552,7 +552,7 @@ Fetch @commands/sai/sai-7-performance.md
 User input: $ARGUMENTS
 ```
 
-- [ ] Overwrite `opencode/commands/sai-8-accessibility.md` with:
+- [x] Overwrite `opencode/commands/sai-8-accessibility.md` with:
 
 ```markdown
 ---
@@ -565,7 +565,7 @@ Fetch @commands/sai/sai-8-accessibility.md
 User input: $ARGUMENTS
 ```
 
-- [ ] Overwrite `opencode/commands/sai-archive.md` — **must preserve the leading UTF-8 BOM byte (`\xEF\xBB\xBF`)**. Write using a method that preserves binary prefix, e.g.:
+- [x] Overwrite `opencode/commands/sai-archive.md` — **must preserve the leading UTF-8 BOM byte (`\xEF\xBB\xBF`)**. Write using a method that preserves binary prefix, e.g.:
 
 ```bash
 printf '\xef\xbb\xbf' > opencode/commands/sai-archive.md
@@ -581,7 +581,7 @@ User input: $ARGUMENTS
 EOF
 ```
 
-- [ ] Overwrite `opencode/commands/sai-commit.md` with:
+- [x] Overwrite `opencode/commands/sai-commit.md` with:
 
 ```markdown
 ---
@@ -594,7 +594,7 @@ Fetch @commands/sai/sai-commit.md
 User input: $ARGUMENTS
 ```
 
-- [ ] Overwrite `opencode/commands/sai-explore.md` with:
+- [x] Overwrite `opencode/commands/sai-explore.md` with:
 
 ```markdown
 ---
@@ -607,7 +607,7 @@ Fetch @commands/sai/sai-explore.md
 User input: $ARGUMENTS
 ```
 
-- [ ] Overwrite `opencode/commands/sai-pr.md` with:
+- [x] Overwrite `opencode/commands/sai-pr.md` with:
 
 ```markdown
 ---
@@ -623,16 +623,16 @@ User input: $ARGUMENTS
 ##### Step 3 Verification Checklist
 
 **Automated (agent runs before stopping):**
-- [ ] `wc -l opencode/commands/sai-*.md | grep -v total | awk '$1 > 10'` — expected: no output (all files ≤10 lines)
-- [ ] `grep -rl '@instructions/' opencode/commands/sai-*.md` — expected: no output
-- [ ] `grep -rl '@skills/' opencode/commands/sai-*.md` — expected: no output
-- [ ] `grep -L '\$ARGUMENTS' opencode/commands/sai-2-design.md` — expected: `opencode/commands/sai-2-design.md`
-- [ ] `xxd opencode/commands/sai-archive.md | head -1 | grep -c 'efbb bf'` — expected: `1` (BOM preserved)
-- [ ] `grep -c 'argument-hint\|effort:' opencode/commands/sai-1-spec.md` — expected: `0` (Claude-only fields absent)
-- [ ] `grep -c 'opencode-go/qwen3.6-plus' opencode/commands/sai-1-spec.md` — expected: `1` (original model preserved)
-- [ ] `grep -c 'opencode-go/glm-5.1' opencode/commands/sai-2-design.md` — expected: `1`
-- [ ] `grep -c 'opencode-go/kimi-k2.6' opencode/commands/sai-3-implement.md` — expected: `1`
-- [ ] `grep -c 'opencode/glm-5.1' opencode/commands/sai-explore.md` — expected: `1`
+- [x] `wc -l opencode/commands/sai-*.md | grep -v total | awk '$1 > 10'` — expected: no output (all files ≤10 lines)
+- [x] `grep -rl '@instructions/' opencode/commands/sai-*.md` — expected: no output
+- [x] `grep -rl '@skills/' opencode/commands/sai-*.md` — expected: no output
+- [x] `grep -L '\$ARGUMENTS' opencode/commands/sai-2-design.md` — expected: `opencode/commands/sai-2-design.md`
+- [x] `xxd opencode/commands/sai-archive.md | head -1 | grep -c 'efbb bf'` — expected: `1` (BOM preserved)
+- [x] `grep -c 'argument-hint\|effort:' opencode/commands/sai-1-spec.md` — expected: `0` (Claude-only fields absent)
+- [x] `grep -c 'opencode-go/qwen3.6-plus' opencode/commands/sai-1-spec.md` — expected: `1` (original model preserved)
+- [x] `grep -c 'opencode-go/glm-5.1' opencode/commands/sai-2-design.md` — expected: `1`
+- [x] `grep -c 'opencode-go/kimi-k2.6' opencode/commands/sai-3-implement.md` — expected: `1`
+- [x] `grep -c 'opencode/glm-5.1' opencode/commands/sai-explore.md` — expected: `1`
 
 *(No Human checks — no UI involved)*
 

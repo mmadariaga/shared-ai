@@ -3,13 +3,6 @@ description: Structured Code Review Prompt — diffs current branch against pare
 model: opencode-go/qwen3.6-plus
 ---
 
-Fetch @instructions/sai/prereqs.md
+Fetch @commands/sai/sai-5-review.md
 
-## Load behaviors (in order)
-
-Fetch @skills/caveman/SKILL.md
-Fetch @instructions/sai/glossary-format.md
-
-Fetch @instructions/sai/review.md and follow those instructions exactly. $ARGUMENTS
-
-Fetch @instructions/sai/remember.md
+User input: $ARGUMENTS

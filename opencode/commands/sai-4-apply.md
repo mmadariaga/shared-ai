@@ -3,17 +3,6 @@ description: Apply the granular implementation plan mechanically — reads opens
 model: opencode-go/deepseek-v4-flash
 ---
 
-Fetch @instructions/sai/prereqs.md
+Fetch @commands/sai/sai-4-apply.md
 
-Also verify before proceeding:
-- `openspec/changes/{change-name}/implementation.md` exists. If not, STOP and print: "implementation.md not found for '{change-name}'. Run /sai-3-implement first."
-
-Do not create or modify any files if this check fails.
-
-## Load behaviors (in order)
-
-Fetch @skills/caveman/SKILL.md
-
-Fetch @instructions/sai/apply.md and follow those instructions exactly. User input: $ARGUMENTS
-
-Fetch @instructions/sai/remember.md
+User input: $ARGUMENTS

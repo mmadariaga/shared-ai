@@ -3,12 +3,6 @@ description: Structured Security Audit Prompt — SAST + SCA on the diff vs pare
 model: opencode-go/qwen3.6-plus
 ---
 
-Fetch @instructions/sai/prereqs.md
+Fetch @commands/sai/sai-6-security.md
 
-## Load behaviors (in order)
-
-Fetch @skills/caveman/SKILL.md
-
-Fetch @instructions/sai/security.md and follow those instructions exactly. $ARGUMENTS
-
-Fetch @instructions/sai/remember.md
+User input: $ARGUMENTS
