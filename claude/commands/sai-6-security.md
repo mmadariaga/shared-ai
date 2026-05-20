@@ -5,12 +5,6 @@ model: claude-opus-4-7
 effort: high
 ---
 
-Fetch @instructions/sai/prereqs.md
+Fetch @commands/sai/sai-6-security.md
 
-## Load behaviors (in order)
-
-Fetch @skills/caveman/SKILL.md
-
-Fetch @instructions/sai/security.md and follow those instructions exactly. $ARGUMENTS
-
-Fetch @instructions/sai/remember.md
+User input: $ARGUMENTS

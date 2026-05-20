@@ -262,7 +262,7 @@ Fetch @instructions/sai/remember.md
 
 *(Non-testable step — file rewrites only)*
 
-- [ ] Overwrite `claude/commands/sai-1-spec.md` with:
+- [x] Overwrite `claude/commands/sai-1-spec.md` with:
 
 ```markdown
 ---
@@ -277,7 +277,7 @@ Fetch @commands/sai/sai-1-spec.md
 User input: $ARGUMENTS
 ```
 
-- [ ] Overwrite `claude/commands/sai-2-design.md` with:
+- [x] Overwrite `claude/commands/sai-2-design.md` with:
 
 ```markdown
 ---
@@ -290,7 +290,7 @@ effort: high
 Fetch @commands/sai/sai-2-design.md
 ```
 
-- [ ] Overwrite `claude/commands/sai-3-implement.md` with:
+- [x] Overwrite `claude/commands/sai-3-implement.md` with:
 
 ```markdown
 ---
@@ -305,7 +305,7 @@ Fetch @commands/sai/sai-3-implement.md
 User input: $ARGUMENTS
 ```
 
-- [ ] Overwrite `claude/commands/sai-4-apply.md` with:
+- [x] Overwrite `claude/commands/sai-4-apply.md` with:
 
 ```markdown
 ---
@@ -319,7 +319,7 @@ Fetch @commands/sai/sai-4-apply.md
 User input: $ARGUMENTS
 ```
 
-- [ ] Overwrite `claude/commands/sai-5-review.md` with:
+- [x] Overwrite `claude/commands/sai-5-review.md` with:
 
 ```markdown
 ---
@@ -334,7 +334,7 @@ Fetch @commands/sai/sai-5-review.md
 User input: $ARGUMENTS
 ```
 
-- [ ] Overwrite `claude/commands/sai-6-security.md` with:
+- [x] Overwrite `claude/commands/sai-6-security.md` with:
 
 ```markdown
 ---
@@ -349,7 +349,7 @@ Fetch @commands/sai/sai-6-security.md
 User input: $ARGUMENTS
 ```
 
-- [ ] Overwrite `claude/commands/sai-7-performance.md` with:
+- [x] Overwrite `claude/commands/sai-7-performance.md` with:
 
 ```markdown
 ---
@@ -364,7 +364,7 @@ Fetch @commands/sai/sai-7-performance.md
 User input: $ARGUMENTS
 ```
 
-- [ ] Overwrite `claude/commands/sai-8-accessibility.md` with:
+- [x] Overwrite `claude/commands/sai-8-accessibility.md` with:
 
 ```markdown
 ---
@@ -379,7 +379,7 @@ Fetch @commands/sai/sai-8-accessibility.md
 User input: $ARGUMENTS
 ```
 
-- [ ] Overwrite `claude/commands/sai-archive.md` with:
+- [x] Overwrite `claude/commands/sai-archive.md` with:
 
 ```markdown
 ---
@@ -393,7 +393,7 @@ Fetch @commands/sai/sai-archive.md
 User input: $ARGUMENTS
 ```
 
-- [ ] Overwrite `claude/commands/sai-commit.md` with:
+- [x] Overwrite `claude/commands/sai-commit.md` with:
 
 ```markdown
 ---
@@ -407,7 +407,7 @@ Fetch @commands/sai/sai-commit.md
 User input: $ARGUMENTS
 ```
 
-- [ ] Overwrite `claude/commands/sai-explore.md` with:
+- [x] Overwrite `claude/commands/sai-explore.md` with:
 
 ```markdown
 ---
@@ -422,7 +422,7 @@ Fetch @commands/sai/sai-explore.md
 User input: $ARGUMENTS
 ```
 
-- [ ] Overwrite `claude/commands/sai-pr.md` with:
+- [x] Overwrite `claude/commands/sai-pr.md` with:
 
 ```markdown
 ---
@@ -439,13 +439,13 @@ User input: $ARGUMENTS
 ##### Step 2 Verification Checklist
 
 **Automated (agent runs before stopping):**
-- [ ] `wc -l claude/commands/sai-*.md | grep -v total | awk '$1 > 10'` — expected: no output (all files ≤10 lines)
-- [ ] `grep -rl '@instructions/' claude/commands/sai-*.md` — expected: no output
-- [ ] `grep -rl '@skills/' claude/commands/sai-*.md` — expected: no output
-- [ ] `grep -L '\$ARGUMENTS' claude/commands/sai-2-design.md` — expected: `claude/commands/sai-2-design.md` (sai-2-design has no $ARGUMENTS)
-- [ ] `grep -c 'User input: \$ARGUMENTS' claude/commands/sai-commit.md` — expected: `1` (standalone line present)
-- [ ] `grep -c 'argument-hint' claude/commands/sai-2-design.md` — expected: `1` (field preserved)
-- [ ] `grep -c 'effort: high' claude/commands/sai-1-spec.md` — expected: `1` (effort field preserved)
+- [x] `wc -l claude/commands/sai-*.md | grep -v total | awk '$1 > 10'` — expected: no output (all files ≤10 lines)
+- [x] `grep -rl '@instructions/' claude/commands/sai-*.md` — expected: no output
+- [x] `grep -rl '@skills/' claude/commands/sai-*.md` — expected: no output
+- [x] `grep -L '\$ARGUMENTS' claude/commands/sai-2-design.md` — expected: `claude/commands/sai-2-design.md` (sai-2-design has no $ARGUMENTS)
+- [x] `grep -c 'User input: \$ARGUMENTS' claude/commands/sai-commit.md` — expected: `1` (standalone line present)
+- [x] `grep -c 'argument-hint' claude/commands/sai-2-design.md` — expected: `1` (field preserved)
+- [x] `grep -c 'effort: high' claude/commands/sai-1-spec.md` — expected: `1` (effort field preserved)
 
 *(No Human checks — no UI involved)*
 

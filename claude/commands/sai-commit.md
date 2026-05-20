@@ -4,8 +4,6 @@ argument-hint: "[optional: --scope X --type Y --no-body --amend]"
 model: claude-haiku-4-5
 ---
 
-Fetch @skills/caveman/SKILL.md
+Fetch @commands/sai/sai-commit.md
 
-Also fetch @instructions/sai/commit.md and follow those instructions exactly. $ARGUMENTS
-
-Also fetch @instructions/sai/remember.md
+User input: $ARGUMENTS
