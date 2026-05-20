@@ -40,11 +40,13 @@ fi
 mkdir -p ~/.claude/instructions/sai
 cp instructions/sai/*.md ~/.claude/instructions/sai/
 
-# Copy skills
-mkdir -p ~/.claude/skills/caveman
-cp skills/caveman/SKILL.md ~/.claude/skills/caveman/SKILL.md
-mkdir -p ~/.claude/skills/budget-explorer-claude
-cp skills/budget-explorer-claude/SKILL.md ~/.claude/skills/budget-explorer-claude/SKILL.md
+# Copy skills (skip if already installed)
+if [ ! -f ~/.claude/skills/caveman/SKILL.md ]; then
+    mkdir -p ~/.claude/skills/caveman
+    cp skills/universal/caveman/SKILL.md ~/.claude/skills/caveman/SKILL.md
+fi
+mkdir -p ~/.claude/skills/budget-explorer
+cp skills/claude/budget-explorer/SKILL.md ~/.claude/skills/budget-explorer/SKILL.md
 
 echo "Reminder: run 'openspec init --tools claude' in each project to enable the spec/explore/apply/archive commands."
 ```
@@ -63,10 +65,12 @@ New-Item -ItemType Directory -Force -Path $instructionsDir | Out-Null
 Copy-Item instructions\sai\*.md $instructionsDir\
 
 # Copy skills
-New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\.claude\skills\caveman" | Out-Null
-Copy-Item skills\caveman\SKILL.md "$env:USERPROFILE\.claude\skills\caveman\SKILL.md"
-New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\.claude\skills\budget-explorer-claude" | Out-Null
-Copy-Item skills\budget-explorer-claude\SKILL.md "$env:USERPROFILE\.claude\skills\budget-explorer-claude\SKILL.md"
+if (-not (Test-Path "$env:USERPROFILE\.claude\skills\caveman\SKILL.md")) {
+    New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\.claude\skills\caveman" | Out-Null
+    Copy-Item skills\universal\caveman\SKILL.md "$env:USERPROFILE\.claude\skills\caveman\SKILL.md"
+}
+New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\.claude\skills\budget-explorer" | Out-Null
+Copy-Item skills\claude\budget-explorer\SKILL.md "$env:USERPROFILE\.claude\skills\budget-explorer\SKILL.md"
 
 Write-Host "Reminder: run 'openspec init --tools claude' in each project to enable the spec/explore/apply/archive commands."
 ```

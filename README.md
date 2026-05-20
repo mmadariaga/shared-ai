@@ -238,6 +238,14 @@ fi
 mkdir -p ~/.config/opencode/instructions/sai
 cp instructions/sai/*.md ~/.config/opencode/instructions/sai/
 
+# Copy skills (skip if already installed)
+if [ ! -f ~/.config/opencode/skills/caveman/SKILL.md ]; then
+    mkdir -p ~/.config/opencode/skills/caveman
+    cp skills/universal/caveman/SKILL.md ~/.config/opencode/skills/caveman/SKILL.md
+fi
+mkdir -p ~/.config/opencode/skills/budget-explorer
+cp skills/opencode/budget-explorer/SKILL.md ~/.config/opencode/skills/budget-explorer/SKILL.md
+
 # Copy opencode.json
 if [ ! -f ~/.config/opencode/opencode.json ] && [ ! -f ~/.config/opencode/opencode.jsonc ]; then
     cp opencode/opencode.jsonc ~/.config/opencode/
@@ -268,6 +276,14 @@ if (Test-Path $instructionsDir) {
 }
 New-Item -ItemType Directory -Force -Path $instructionsDir | Out-Null
 Copy-Item instructions\sai\*.md $instructionsDir\
+
+# Copy skills
+if (-not (Test-Path "$configDir\skills\caveman\SKILL.md")) {
+    New-Item -ItemType Directory -Force -Path "$configDir\skills\caveman" | Out-Null
+    Copy-Item skills\universal\caveman\SKILL.md "$configDir\skills\caveman\SKILL.md"
+}
+New-Item -ItemType Directory -Force -Path "$configDir\skills\budget-explorer" | Out-Null
+Copy-Item skills\opencode\budget-explorer\SKILL.md "$configDir\skills\budget-explorer\SKILL.md"
 
 # Copy opencode.json
 $jsonPath = Join-Path $configDir "opencode.json"

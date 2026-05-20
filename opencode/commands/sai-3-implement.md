@@ -13,7 +13,7 @@ Do not create or modify any files if any check fails.
 
 ## Load behaviors (in order)
 
-Fetch @~/.config/opencode/skills/budget-explorer-opencode/SKILL.md
+Fetch @~/.config/opencode/skills/budget-explorer/SKILL.md
 Fetch @~/.config/opencode/skills/caveman/SKILL.md
 Fetch @~/.config/opencode/instructions/sai/glossary-format.md
 

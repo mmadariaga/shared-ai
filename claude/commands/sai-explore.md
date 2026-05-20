@@ -9,7 +9,7 @@ Fetch @~/.claude/instructions/sai/prereqs.md
 
 ## Load behaviors (in order)
 
-Fetch @~/.claude/skills/budget-explorer-claude/SKILL.md
+Fetch @~/.claude/skills/budget-explorer/SKILL.md
 Fetch @~/.claude/skills/caveman/SKILL.md
 Fetch @~/.claude/instructions/sai/explore.md
 

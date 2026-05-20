@@ -39,9 +39,12 @@ The openspec-dependent `ai-*` commands halt with a clear error if either is miss
 | `instructions/sai/remember.md` | Consolidated reminders appended by wrappers. |
 | `instructions/sai/prereqs.md` | Universal prerequisite check fetched first by all openspec-dependent sai-* wrappers. `sai-commit` is the only exception. |
 | `skills/` | Universal skills installed globally (not project-local). Fetched by wrappers via `~/.claude/skills/` or `~/.config/opencode/skills/`. |
-| `skills/caveman/SKILL.md` | Ultra-compressed communication skill. Fetched by all sai-* wrappers. |
-| `skills/budget-explorer-claude/SKILL.md` | Subagent dispatch rules for Claude Code — model tiers, task classification, tool-call caps, output contracts. Fetched by wrappers that spawn subagents. |
-| `skills/budget-explorer-opencode/SKILL.md` | Subagent dispatch rules for opencode — explore keyword binding, cap rules, output contracts. Model resolved via opencode.jsonc. |
+| `skills/universal/caveman/SKILL.md` | Ultra-compressed communication skill. Fetched by all sai-* wrappers. |
+| `skills/universal/` | Universal skills (no vendor). Fetched by all wrappers. |
+| `skills/claude/` | Claude Code-specific skills (subagent dispatch rules, etc.). Fetched by wrappers that spawn subagents. |
+| `skills/opencode/` | Opencode-specific skills (subagent dispatch rules, etc.). Fetched by wrappers that spawn subagents. |
+| `skills/claude/budget-explorer/SKILL.md` | Subagent dispatch rules for Claude Code — model tiers, task classification, tool-call caps, output contracts. Fetched by wrappers that spawn subagents. |
+| `skills/opencode/budget-explorer/SKILL.md` | Subagent dispatch rules for opencode — explore keyword binding, cap rules, output contracts. Model resolved via opencode.jsonc. |
 | `claude/commands/` | Wrappers for Claude Code. YAML frontmatter (`description`, `argument-hint`, `model`, `effort`) + fetch to `instructions/sai/` + fetch to project-local skill files. |
 | `opencode/commands/` | Wrappers for opencode. YAML frontmatter (`description`, `model`) + fetch to `instructions/sai/` + fetch to project-local skill files. |
 | `opencode/opencode.jsonc` | Sub-agent explore configuration (mode + trusted low-cost model). Required for cost-effective research delegation. |
@@ -77,10 +80,10 @@ All agents MUST think and reason internally in English, regardless of the user's
 - **Generated artifacts** (`implementation.md`, `review.md`, `security.md`, `performance.md`, `accessibility.md`, commit messages, PR bodies, code, technical explanations): written in English unless the user explicitly requests otherwise.
 
 ### Caveman Communication Mode
-All wrappers fetch `skills/caveman/SKILL.md` (installed to `~/.claude/skills/caveman/SKILL.md` / `~/.config/opencode/skills/caveman/SKILL.md`). Default is **lite**. Flag `--full-caveman` in `$ARGUMENTS` activates full mode.
+All wrappers fetch `skills/universal/caveman/SKILL.md` (installed to `~/.claude/skills/caveman/SKILL.md` / `~/.config/opencode/skills/caveman/SKILL.md`). Default is **lite**. Flag `--full-caveman` in `$ARGUMENTS` activates full mode.
 
 ### Cost Discipline (research subagents)
-Wrappers that spawn subagents fetch `skills/budget-explorer-claude/SKILL.md` (Claude) or `skills/budget-explorer-opencode/SKILL.md` (opencode). The main agent reasons and synthesizes. Subagents do I/O. Key rules:
+Wrappers that spawn subagents fetch `skills/claude/budget-explorer/SKILL.md` (Claude) or `skills/opencode/budget-explorer/SKILL.md` (opencode). The main agent reasons and synthesizes. Subagents do I/O. Key rules:
 - Default research subagent is the **cheap** tier (haiku/Explore+haiku/explorer custom agent). Escalated tier only for multi-step synthesis.
 - Every subagent call declares an **output contract** (exact fields, length cap, no raw content).
 - Main agent never calls WebFetch directly.

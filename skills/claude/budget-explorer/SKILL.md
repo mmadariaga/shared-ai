@@ -1,5 +1,5 @@
 ---
-name: budget-explorer-claude
+name: claude-budget-explorer
 description: Binds "cheap research subagent" to concrete Claude Code subagent spawn parameters — model tiers (haiku/sonnet), task classification (lookup/synthesis/audit), tool-call caps, and output contract rules.
 license: MIT
 metadata:
