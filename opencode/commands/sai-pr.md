@@ -3,12 +3,12 @@ description: Pull Request Author — synthesizes title and body from the OpenSpe
 model: opencode-go/deepseek-v4-flash
 ---
 
-Fetch @~/.config/opencode/instructions/sai/prereqs.md
+Fetch @instructions/sai/prereqs.md
 
 ## Load behaviors (in order)
 
-Fetch @~/.config/opencode/skills/caveman/SKILL.md
+Fetch @skills/caveman/SKILL.md
 
-Fetch @~/.config/opencode/instructions/sai/pr.md and follow those instructions exactly. $ARGUMENTS
+Fetch @instructions/sai/pr.md and follow those instructions exactly. $ARGUMENTS
 
-Fetch @~/.config/opencode/instructions/sai/remember.md
+Fetch @instructions/sai/remember.md

@@ -3,12 +3,12 @@ description: Structured Accessibility Audit Prompt — WCAG 2.2 AA static review
 model: opencode-go/qwen3.6-plus
 ---
 
-Fetch @~/.config/opencode/instructions/sai/prereqs.md
+Fetch @instructions/sai/prereqs.md
 
 ## Load behaviors (in order)
 
-Fetch @~/.config/opencode/skills/caveman/SKILL.md
+Fetch @skills/caveman/SKILL.md
 
-Fetch @~/.config/opencode/instructions/sai/accessibility.md and follow those instructions exactly. $ARGUMENTS
+Fetch @instructions/sai/accessibility.md and follow those instructions exactly. $ARGUMENTS
 
-Fetch @~/.config/opencode/instructions/sai/remember.md
+Fetch @instructions/sai/remember.md

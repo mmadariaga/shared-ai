@@ -5,7 +5,7 @@ model: claude-sonnet-4-6
 effort: high
 ---
 
-Fetch @~/.claude/instructions/sai/prereqs.md
+Fetch @instructions/sai/prereqs.md
 
 Also verify before proceeding:
 - `openspec/changes/{change-name}/proposal.md` exists. If not, STOP and print: "Change '{change-name}' not found. Run /sai-1-spec to create it first."
@@ -15,10 +15,10 @@ Do not create or modify any files if any check fails.
 
 ## Load behaviors (in order)
 
-Fetch @~/.claude/skills/budget-explorer/SKILL.md
-Fetch @~/.claude/skills/caveman/SKILL.md
-Fetch @~/.claude/instructions/sai/glossary-format.md
+Fetch @skills/budget-explorer/SKILL.md
+Fetch @skills/caveman/SKILL.md
+Fetch @instructions/sai/glossary-format.md
 
-Fetch @~/.claude/instructions/sai/implement.md and follow those instructions exactly. User input: $ARGUMENTS
+Fetch @instructions/sai/implement.md and follow those instructions exactly. User input: $ARGUMENTS
 
-Fetch @~/.claude/instructions/sai/remember.md
+Fetch @instructions/sai/remember.md

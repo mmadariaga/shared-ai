@@ -3,15 +3,15 @@ description: Propose a new change — generates proposal.md and specs/ only. Sto
 model: opencode-go/qwen3.6-plus
 ---
 
-Fetch @~/.config/opencode/instructions/sai/prereqs.md
+Fetch @instructions/sai/prereqs.md
 
 ## Load behaviors (in order)
 
-Fetch @~/.config/opencode/skills/budget-explorer/SKILL.md
-Fetch @~/.config/opencode/skills/caveman/SKILL.md
-Fetch @~/.config/opencode/instructions/sai/glossary-format.md
-Fetch @~/.config/opencode/instructions/sai/spec.propose.md
+Fetch @skills/budget-explorer/SKILL.md
+Fetch @skills/caveman/SKILL.md
+Fetch @instructions/sai/glossary-format.md
+Fetch @instructions/sai/spec.propose.md
 
-Fetch the openspec-propose skill at `.opencode/skills/openspec-propose/SKILL.md` and follow those instructions exactly. User input: $ARGUMENTS
+Fetch the openspec-propose skill at @skills/openspec-propose/SKILL.md and follow those instructions exactly. User input: $ARGUMENTS
 
-Fetch @~/.config/opencode/instructions/sai/remember.md
+Fetch @instructions/sai/remember.md

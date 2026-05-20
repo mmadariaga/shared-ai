@@ -3,8 +3,8 @@ description: Conventional Commits message author from staged changes — generat
 model: opencode-go/deepseek-v4-flash
 ---
 
-Fetch @~/.config/opencode/skills/caveman/SKILL.md
+Fetch @skills/caveman/SKILL.md
 
-Also fetch @~/.config/opencode/instructions/sai/commit.md and follow those instructions exactly. $ARGUMENTS
+Also fetch @instructions/sai/commit.md and follow those instructions exactly. $ARGUMENTS
 
-Also fetch @~/.config/opencode/instructions/sai/remember.md
+Also fetch @instructions/sai/remember.md

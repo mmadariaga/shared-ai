@@ -5,15 +5,15 @@ model: claude-sonnet-4-6
 effort: high
 ---
 
-Fetch @~/.claude/instructions/sai/prereqs.md
+Fetch @instructions/sai/prereqs.md
 
 ## Load behaviors (in order)
 
-Fetch @~/.claude/skills/budget-explorer/SKILL.md
-Fetch @~/.claude/skills/caveman/SKILL.md
-Fetch @~/.claude/instructions/sai/glossary-format.md
-Fetch @~/.claude/instructions/sai/spec.propose.md
+Fetch @skills/budget-explorer/SKILL.md
+Fetch @skills/caveman/SKILL.md
+Fetch @instructions/sai/glossary-format.md
+Fetch @instructions/sai/spec.propose.md
 
-Fetch the openspec-propose skill at `.claude/skills/openspec-propose/SKILL.md` and follow those instructions exactly. User input: $ARGUMENTS
+Fetch the openspec-propose skill at @skills/openspec-propose/SKILL.md and follow those instructions exactly. User input: $ARGUMENTS
 
-Fetch @~/.claude/instructions/sai/remember.md
+Fetch @instructions/sai/remember.md

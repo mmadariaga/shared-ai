@@ -3,13 +3,13 @@ description: Archive a completed change — wraps opsx:archive skill, adds cavem
 model: opencode-go/deepseek-v4-flash
 ---
 
-Fetch @~/.config/opencode/instructions/sai/prereqs.md
+Fetch @instructions/sai/prereqs.md
 
 ## Load behaviors (in order)
 
-Fetch @~/.config/opencode/skills/caveman/SKILL.md
-Fetch @~/.config/opencode/instructions/sai/archive.md
+Fetch @skills/caveman/SKILL.md
+Fetch @instructions/sai/archive.md
 
 Then fetch and follow the openspec-archive-change skill at .opencode/skills/openspec-archive-change/SKILL.md exactly. User input: $ARGUMENTS
 
-Fetch @~/.config/opencode/instructions/sai/remember.md
+Fetch @instructions/sai/remember.md

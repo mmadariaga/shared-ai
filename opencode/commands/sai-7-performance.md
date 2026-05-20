@@ -3,12 +3,12 @@ description: Structured Performance Audit Prompt — backend / frontend / databa
 model: opencode-go/qwen3.6-plus
 ---
 
-Fetch @~/.config/opencode/instructions/sai/prereqs.md
+Fetch @instructions/sai/prereqs.md
 
 ## Load behaviors (in order)
 
-Fetch @~/.config/opencode/skills/caveman/SKILL.md
+Fetch @skills/caveman/SKILL.md
 
-Fetch @~/.config/opencode/instructions/sai/performance.md and follow those instructions exactly. $ARGUMENTS
+Fetch @instructions/sai/performance.md and follow those instructions exactly. $ARGUMENTS
 
-Fetch @~/.config/opencode/instructions/sai/remember.md
+Fetch @instructions/sai/remember.md

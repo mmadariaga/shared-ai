@@ -5,14 +5,14 @@ model: claude-opus-4-7
 effort: high
 ---
 
-Fetch @~/.claude/instructions/sai/prereqs.md
+Fetch @instructions/sai/prereqs.md
 
 ## Load behaviors (in order)
 
-Fetch @~/.claude/skills/budget-explorer/SKILL.md
-Fetch @~/.claude/skills/caveman/SKILL.md
-Fetch @~/.claude/instructions/sai/glossary-format.md
+Fetch @skills/budget-explorer/SKILL.md
+Fetch @skills/caveman/SKILL.md
+Fetch @instructions/sai/glossary-format.md
 
-Fetch @~/.claude/instructions/sai/design.md and follow those instructions exactly.
+Fetch @instructions/sai/design.md and follow those instructions exactly.
 
-Fetch @~/.claude/instructions/sai/remember.md
+Fetch @instructions/sai/remember.md

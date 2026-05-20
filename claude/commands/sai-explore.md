@@ -5,14 +5,14 @@ model: claude-opus-4-7
 effort: high
 ---
 
-Fetch @~/.claude/instructions/sai/prereqs.md
+Fetch @instructions/sai/prereqs.md
 
 ## Load behaviors (in order)
 
-Fetch @~/.claude/skills/budget-explorer/SKILL.md
-Fetch @~/.claude/skills/caveman/SKILL.md
-Fetch @~/.claude/instructions/sai/explore.md
+Fetch @skills/budget-explorer/SKILL.md
+Fetch @skills/caveman/SKILL.md
+Fetch @instructions/sai/explore.md
 
 Then fetch and follow the openspec-explore skill at `.claude/skills/openspec-explore/SKILL.md` exactly. User input: $ARGUMENTS
 
-Fetch @~/.claude/instructions/sai/remember.md
+Fetch @instructions/sai/remember.md

@@ -4,13 +4,13 @@ argument-hint: "[change-name]"
 model: claude-haiku-4-5
 ---
 
-Fetch @~/.claude/instructions/sai/prereqs.md
+Fetch @instructions/sai/prereqs.md
 
 ## Load behaviors (in order)
 
-Fetch @~/.claude/skills/caveman/SKILL.md
-Fetch @~/.claude/instructions/sai/archive.md
+Fetch @skills/caveman/SKILL.md
+Fetch @instructions/sai/archive.md
 
 Then fetch and follow the openspec-archive-change skill at .claude/skills/openspec-archive-change/SKILL.md exactly. User input: $ARGUMENTS
 
-Fetch @~/.claude/instructions/sai/remember.md
+Fetch @instructions/sai/remember.md

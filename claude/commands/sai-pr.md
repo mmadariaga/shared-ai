@@ -4,12 +4,12 @@ argument-hint: "[change-name] [optional: parent branch]"
 model: claude-haiku-4-5
 ---
 
-Fetch @~/.claude/instructions/sai/prereqs.md
+Fetch @instructions/sai/prereqs.md
 
 ## Load behaviors (in order)
 
-Fetch @~/.claude/skills/caveman/SKILL.md
+Fetch @skills/caveman/SKILL.md
 
-Fetch @~/.claude/instructions/sai/pr.md and follow those instructions exactly. $ARGUMENTS
+Fetch @instructions/sai/pr.md and follow those instructions exactly. $ARGUMENTS
 
-Fetch @~/.claude/instructions/sai/remember.md
+Fetch @instructions/sai/remember.md

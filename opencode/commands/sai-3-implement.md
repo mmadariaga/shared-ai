@@ -3,7 +3,7 @@ description: Granular implementation plan — reads OpenSpec change artifacts (p
 model: opencode-go/kimi-k2.6
 ---
 
-Fetch @~/.config/opencode/instructions/sai/prereqs.md
+Fetch @instructions/sai/prereqs.md
 
 Also verify before proceeding:
 - `openspec/changes/{change-name}/proposal.md` exists. If not, STOP and print: "Change '{change-name}' not found. Run /sai-1-spec to create it first."
@@ -13,10 +13,10 @@ Do not create or modify any files if any check fails.
 
 ## Load behaviors (in order)
 
-Fetch @~/.config/opencode/skills/budget-explorer/SKILL.md
-Fetch @~/.config/opencode/skills/caveman/SKILL.md
-Fetch @~/.config/opencode/instructions/sai/glossary-format.md
+Fetch @skills/budget-explorer/SKILL.md
+Fetch @skills/caveman/SKILL.md
+Fetch @instructions/sai/glossary-format.md
 
-Fetch @~/.config/opencode/instructions/sai/implement.md and follow those instructions exactly. User input: $ARGUMENTS
+Fetch @instructions/sai/implement.md and follow those instructions exactly. User input: $ARGUMENTS
 
-Fetch @~/.config/opencode/instructions/sai/remember.md
+Fetch @instructions/sai/remember.md

@@ -5,12 +5,12 @@ model: claude-opus-4-7
 effort: high
 ---
 
-Fetch @~/.claude/instructions/sai/prereqs.md
+Fetch @instructions/sai/prereqs.md
 
 ## Load behaviors (in order)
 
-Fetch @~/.claude/skills/caveman/SKILL.md
+Fetch @skills/caveman/SKILL.md
 
-Fetch @~/.claude/instructions/sai/security.md and follow those instructions exactly. $ARGUMENTS
+Fetch @instructions/sai/security.md and follow those instructions exactly. $ARGUMENTS
 
-Fetch @~/.claude/instructions/sai/remember.md
+Fetch @instructions/sai/remember.md

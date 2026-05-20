@@ -3,14 +3,14 @@ description: Generate design.md and tasks.md for an approved change — gated on
 model: opencode-go/glm-5.1
 ---
 
-Fetch @~/.config/opencode/instructions/sai/prereqs.md
+Fetch @instructions/sai/prereqs.md
 
 ## Load behaviors (in order)
 
-Fetch @~/.config/opencode/skills/budget-explorer/SKILL.md
-Fetch @~/.config/opencode/skills/caveman/SKILL.md
-Fetch @~/.config/opencode/instructions/sai/glossary-format.md
+Fetch @skills/budget-explorer/SKILL.md
+Fetch @skills/caveman/SKILL.md
+Fetch @instructions/sai/glossary-format.md
 
-Fetch @~/.config/opencode/instructions/sai/design.md and follow those instructions exactly.
+Fetch @instructions/sai/design.md and follow those instructions exactly.
 
-Fetch @~/.config/opencode/instructions/sai/remember.md
+Fetch @instructions/sai/remember.md
