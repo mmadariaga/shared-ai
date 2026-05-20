@@ -167,6 +167,11 @@ Research or exploratory tasks are delegated to **sub-agents running cost-effecti
 
 >On I/O-heavy spec tasks — codebase-wide searches, deprecated library audits, doc lookups — this technique can cut costs to a third.
 
+Available as skills for both Claude Code and OpenCode.
+
+### Executor Sub-Agent
+Verbose CLI commands are delegated to the **executor sub-agents** (running a cheap model) together with instructions on which parts of the output to extract. This keeps the main agent's context free of noise and prevents long-running commands from consuming reasoning capacity in the main thread. Available as skills for both Claude Code and OpenCode.
+
 ## Project highlights
 
 ### Isolation Mode
@@ -245,15 +250,22 @@ if [ ! -f ~/.config/opencode/skills/caveman/SKILL.md ]; then
 fi
 mkdir -p ~/.config/opencode/skills/budget-explorer
 cp skills/opencode/budget-explorer/SKILL.md ~/.config/opencode/skills/budget-explorer/SKILL.md
+mkdir -p ~/.config/opencode/skills/budget-executor
+cp skills/opencode/budget-executor/SKILL.md ~/.config/opencode/skills/budget-executor/SKILL.md
 
 # Copy opencode.json
 if [ ! -f ~/.config/opencode/opencode.json ] && [ ! -f ~/.config/opencode/opencode.jsonc ]; then
     cp opencode/opencode.jsonc ~/.config/opencode/
 else
     echo "~/.config/opencode/opencode.json(c) already exists."
-    echo "Ensure it includes the 'agent.explore' section:"
+    echo "Ensure it includes the 'agent' section:"
     echo '  "agent": {'
     echo '    "explore": {'
+    echo '      "mode": "subagent",'
+    echo '      // Set your trusted low-cost model below'
+    echo '      "model": "opencode-go/deepseek-v4-flash"'
+    echo '    },'
+    echo '    "executor": {'
     echo '      "mode": "subagent",'
     echo '      // Set your trusted low-cost model below'
     echo '      "model": "opencode-go/deepseek-v4-flash"'
@@ -284,6 +296,8 @@ if (-not (Test-Path "$configDir\skills\caveman\SKILL.md")) {
 }
 New-Item -ItemType Directory -Force -Path "$configDir\skills\budget-explorer" | Out-Null
 Copy-Item skills\opencode\budget-explorer\SKILL.md "$configDir\skills\budget-explorer\SKILL.md"
+New-Item -ItemType Directory -Force -Path "$configDir\skills\budget-executor" | Out-Null
+Copy-Item skills\opencode\budget-executor\SKILL.md "$configDir\skills\budget-executor\SKILL.md"
 
 # Copy opencode.json
 $jsonPath = Join-Path $configDir "opencode.json"
@@ -292,9 +306,14 @@ if (-not (Test-Path $jsonPath) -and -not (Test-Path $jsoncPath)) {
     Copy-Item opencode\opencode.jsonc $configDir\
 } else {
     Write-Host "$configDir\opencode.json(c) already exists."
-    Write-Host "Ensure it includes the 'agent.explore' section:"
+    Write-Host "Ensure it includes the 'agent' section:"
     Write-Host '  "agent": {'
     Write-Host '    "explore": {'
+    Write-Host '      "mode": "subagent",'
+    Write-Host '      // Set your trusted low-cost model below'
+    Write-Host '      "model": "opencode-go/deepseek-v4-flash"'
+    Write-Host '    },'
+    Write-Host '    "executor": {'
     Write-Host '      "mode": "subagent",'
     Write-Host '      // Set your trusted low-cost model below'
     Write-Host '      "model": "opencode-go/deepseek-v4-flash"'

@@ -47,6 +47,8 @@ if [ ! -f ~/.claude/skills/caveman/SKILL.md ]; then
 fi
 mkdir -p ~/.claude/skills/budget-explorer
 cp skills/claude/budget-explorer/SKILL.md ~/.claude/skills/budget-explorer/SKILL.md
+mkdir -p ~/.claude/skills/budget-executor
+cp skills/claude/budget-executor/SKILL.md ~/.claude/skills/budget-executor/SKILL.md
 
 echo "Reminder: run 'openspec init --tools claude' in each project to enable the spec/explore/apply/archive commands."
 ```
@@ -71,6 +73,8 @@ if (-not (Test-Path "$env:USERPROFILE\.claude\skills\caveman\SKILL.md")) {
 }
 New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\.claude\skills\budget-explorer" | Out-Null
 Copy-Item skills\claude\budget-explorer\SKILL.md "$env:USERPROFILE\.claude\skills\budget-explorer\SKILL.md"
+New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\.claude\skills\budget-executor" | Out-Null
+Copy-Item skills\claude\budget-executor\SKILL.md "$env:USERPROFILE\.claude\skills\budget-executor\SKILL.md"
 
 Write-Host "Reminder: run 'openspec init --tools claude' in each project to enable the spec/explore/apply/archive commands."
 ```
