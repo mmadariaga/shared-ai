@@ -15,10 +15,15 @@
       "*.p12": "deny",
       "*.jks": "deny",
       "*credentials*": "deny"
-    },
+    }
   },
   "agent": {
     "explore": {
+      "mode": "subagent",
+      // Put your trusted low-cost model here
+      "model": "opencode-go/deepseek-v4-flash"
+    },
+    "executor": {
       "mode": "subagent",
       // Put your trusted low-cost model here
       "model": "opencode-go/deepseek-v4-flash"
