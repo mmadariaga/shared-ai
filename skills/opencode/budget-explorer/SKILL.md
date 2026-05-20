@@ -3,7 +3,7 @@ name: opencode-budget-explorer
 description: Binds "cheap research subagent" to the opencode explore agent keyword. Model resolved via agent.explore.model in the project's opencode.jsonc — not hardcoded here.
 license: MIT
 metadata:
-  author: shared-ai
+  author: Mikel Madariaga
   version: "1.0"
 ---
 

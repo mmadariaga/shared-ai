@@ -1,9 +1,11 @@
 ---
 name: claude-budget-executor
-description: Binds "executor subagent" to concrete Claude Code subagent spawn parameters — subagent_type: General, model: haiku, no tool-call cap. Enforces execute-only, minimal-output, structured-failure-report discipline.
+description: >
+  Binds "executor subagent" to concrete Claude Code subagent spawn parameters — subagent_type: General, model: haiku, no tool-call cap. Enforces execute-only, minimal-output, structured-failure-report discipline.
+  TRIGGER when: "budget executor", "cheap executor", "budget mode", "cheap mode", "low-cost mode", "low cost mode", "economy mode"
 license: MIT
 metadata:
-  author: shared-ai
+  author: Mikel Madariaga
   version: "1.0"
 ---
 

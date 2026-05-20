@@ -3,7 +3,7 @@ name: opencode-budget-executor
 description: Binds "executor subagent" to the OpenCode executor agent keyword. Model resolved via agent.executor.model in the project's opencode.jsonc — not hardcoded here. Enforces execute-only, minimal-output, structured-failure-report discipline.
 license: MIT
 metadata:
-  author: shared-ai
+  author: Mikel Madariaga
   version: "1.0"
 ---
 
