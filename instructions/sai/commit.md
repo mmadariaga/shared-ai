@@ -144,7 +144,7 @@
     - **No emoji** unless the user explicitly asks.
     - **No speculation.** Every claim must map to a staged hunk.
     - **Match the repo's commit style.** If recent commits use a particular convention (scope naming, ticket refs, language), match it.
-    Fetch skills/universal/token-efficient-languages/SKILL.md
+    Fetch skills/token-efficient-languages/SKILL.md
 
     ---
 

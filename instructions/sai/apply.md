@@ -83,7 +83,7 @@
 
    ## Remember
 
-   Fetch skills/universal/token-efficient-languages/SKILL.md
+   Fetch skills/token-efficient-languages/SKILL.md
 
    MANDATORY STOP: Once implementation is done, STOP and print exactly: "Implementation done in openspec/changes/{name}/. Run /sai-5-review {name} when ready."
 

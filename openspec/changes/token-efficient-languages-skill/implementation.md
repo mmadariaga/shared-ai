@@ -452,6 +452,12 @@ New-Item -ItemType Directory -Force -Path "$configDir\skills\budget-explorer" | 
 
 ## Appendix: Plan vs Final Implementation
 
+### Step 6 — Fetch paths used `universal` segment that doesn't exist post-install
+
+**Plan:** All 9 Fetch lines used `skills/universal/token-efficient-languages/SKILL.md`.
+**Final:** Changed to `skills/token-efficient-languages/SKILL.md` (dropped `universal/` segment).
+**Reason:** The skill file lives at `skills/universal/token-efficient-languages/SKILL.md` in the repo, but once installed to `~/.claude/skills/` or `~/.config/opencode/skills/`, the `universal` segment is gone. Fetch must point to the post-install path. Install `cp` lines keep `universal/` since they reference the source location.
+
 ### Step 8 — grep count for token-efficient-languages in README.md
 
 **Plan:** Expected exactly 4 matches (2 in bash block + 2 in PowerShell block).

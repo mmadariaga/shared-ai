@@ -41,7 +41,7 @@
    - Treat the user as a **knowledgeable peer**. Findings must carry concrete reasoning, not platitudes.
    - **No empty validation.** If the change is correct, say so briefly and move on. If it is wrong, explain what fails and propose alternatives with trade-offs.
    - **Respect domain decisions.** Anything explicitly accepted, discarded, or out-of-scope in `spec.md` is **not** a finding. If you disagree with a decision recorded in `spec.md`, surface it as an **Open Question**, not as a defect.
-   Fetch skills/universal/token-efficient-languages/SKILL.md
+   Fetch skills/token-efficient-languages/SKILL.md
 
    ## Workflow
 

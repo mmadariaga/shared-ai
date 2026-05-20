@@ -138,7 +138,7 @@
    - **Faithful to the diff.** Every claim in the body must be backed by a commit or file in `git log {parent}..HEAD` / `git diff {parent}...HEAD`.
    - **Omit empty sections.** Drop Design Decisions and Out of Scope if `spec.md` has nothing to populate them. Leave audit checkboxes unchecked when the audit artefact is absent.
    - **No "Generated with Claude Code" footer or co-author trailers** unless the user explicitly requests them.
-   Fetch skills/universal/token-efficient-languages/SKILL.md
+   Fetch skills/token-efficient-languages/SKILL.md
 
    ## Remember
 

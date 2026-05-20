@@ -340,7 +340,7 @@
    - **Diff-scoped by default.** Out-of-scope risks get a one-line note, not a full audit.
    - **Quote evidence exactly.** No paraphrasing of EXPLAIN output, profiler frames, bundle stats, or log lines.
    - **Acknowledge spec trade-offs** explicitly — do not contradict recorded decisions.
-   Fetch skills/universal/token-efficient-languages/SKILL.md
+   Fetch skills/token-efficient-languages/SKILL.md
 
    ## Self-Critique Before Saving
 
