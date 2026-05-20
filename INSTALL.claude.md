@@ -43,6 +43,8 @@ cp instructions/sai/*.md ~/.claude/instructions/sai/
 # Copy skills
 mkdir -p ~/.claude/skills/caveman
 cp skills/caveman/SKILL.md ~/.claude/skills/caveman/SKILL.md
+mkdir -p ~/.claude/skills/budget-explorer-claude
+cp skills/budget-explorer-claude/SKILL.md ~/.claude/skills/budget-explorer-claude/SKILL.md
 
 echo "Reminder: run 'openspec init --tools claude' in each project to enable the spec/explore/apply/archive commands."
 ```
@@ -63,6 +65,8 @@ Copy-Item instructions\sai\*.md $instructionsDir\
 # Copy skills
 New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\.claude\skills\caveman" | Out-Null
 Copy-Item skills\caveman\SKILL.md "$env:USERPROFILE\.claude\skills\caveman\SKILL.md"
+New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\.claude\skills\budget-explorer-claude" | Out-Null
+Copy-Item skills\budget-explorer-claude\SKILL.md "$env:USERPROFILE\.claude\skills\budget-explorer-claude\SKILL.md"
 
 Write-Host "Reminder: run 'openspec init --tools claude' in each project to enable the spec/explore/apply/archive commands."
 ```

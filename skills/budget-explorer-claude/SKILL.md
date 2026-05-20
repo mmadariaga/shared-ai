@@ -1,4 +1,11 @@
-This file binds the phrase "cheap research subagent" to concrete subagent spawn parameters for the sai Claude Code workflow. The caps and tiering here differ from the non-sai resolver at `~/.claude/instructions/spec.claude.md`: this resolver uses per-task-class caps (lookup ≤10, audit ≤30) and a three-way task classification not present in the older file.
+---
+name: budget-explorer-claude
+description: Binds "cheap research subagent" to concrete Claude Code subagent spawn parameters — model tiers (haiku/sonnet), task classification (lookup/synthesis/audit), tool-call caps, and output contract rules.
+license: MIT
+metadata:
+  author: shared-ai
+  version: "1.0"
+---
 
 ## Subagent binding
 

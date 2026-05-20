@@ -1,4 +1,11 @@
-This file binds the phrase "cheap research subagent" to concrete subagent spawn parameters for the sai OpenCode workflow. The model is resolved via project configuration (`opencode.jsonc`), not hardcoded in this file.
+---
+name: budget-explorer-opencode
+description: Binds "cheap research subagent" to the opencode explore agent keyword. Model resolved via agent.explore.model in the project's opencode.jsonc — not hardcoded here.
+license: MIT
+metadata:
+  author: shared-ai
+  version: "1.0"
+---
 
 ## Subagent binding
 
