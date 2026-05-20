@@ -648,7 +648,7 @@ User input: $ARGUMENTS
 
 *(Non-testable step — documentation edit only)*
 
-- [ ] In `INSTALL.claude.md`, insert two lines after the `cp claude/commands/*.md ~/.claude/commands/` line (line 34) in the **bash block**. The result should be:
+- [x] In `INSTALL.claude.md`, insert two lines after the `cp claude/commands/*.md ~/.claude/commands/` line (line 34) in the **bash block**. The result should be:
 
 ```bash
 mkdir -p ~/.claude/commands
@@ -657,7 +657,7 @@ mkdir -p ~/.claude/commands/sai
 cp commands/sai/*.md ~/.claude/commands/sai/
 ```
 
-- [ ] In the same file, insert two lines after the `Copy-Item claude\commands\*.md "$env:USERPROFILE\.claude\commands\"` line (line 61) in the **PowerShell block**. The result should be:
+- [x] In the same file, insert two lines after the `Copy-Item claude\commands\*.md "$env:USERPROFILE\.claude\commands\"` line (line 61) in the **PowerShell block**. The result should be:
 
 ```powershell
 New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\.claude\commands"
@@ -669,9 +669,9 @@ Copy-Item commands\sai\*.md "$env:USERPROFILE\.claude\commands\sai\"
 ##### Step 4 Verification Checklist
 
 **Automated (agent runs before stopping):**
-- [ ] `grep -c 'commands/sai' INSTALL.claude.md` — expected: `4` (two bash lines + two powershell lines)
-- [ ] `grep -A1 'cp claude/commands/\*\.md' INSTALL.claude.md | grep -c 'commands/sai'` — expected: `1` (bash sai step is adjacent to commands step)
-- [ ] `grep -A1 'Copy-Item claude\\\\commands\\\\' INSTALL.claude.md | grep -c 'commands\\\\sai'` — expected: `1` (PS sai step is adjacent)
+- [x] `grep -c 'commands/sai' INSTALL.claude.md` — expected: `4` (two bash lines + two powershell lines)
+- [x] `grep -A1 'cp claude/commands/\*\.md' INSTALL.claude.md | grep -c 'commands/sai'` — expected: `1` (bash sai step is adjacent to commands step)
+- [x] `grep -A1 'Copy-Item claude\\\\commands\\\\' INSTALL.claude.md | grep -c 'commands\\\\sai'` — expected: `1` (PS sai step is adjacent)
 
 *(No Human checks — no UI involved)*
 

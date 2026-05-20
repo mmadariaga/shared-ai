@@ -32,6 +32,8 @@ If you skip this step, the openspec-dependent `ai-*` commands (`ai-explore`, `ai
 ```bash
 mkdir -p ~/.claude/commands
 cp claude/commands/*.md ~/.claude/commands/
+mkdir -p ~/.claude/commands/sai
+cp commands/sai/*.md ~/.claude/commands/sai/
 
 # Copy instructions
 if [ -d ~/.claude/instructions/sai ]; then
@@ -59,6 +61,8 @@ echo "Reminder: run 'openspec init --tools claude' in each project to enable the
 ```powershell
 New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\.claude\commands"
 Copy-Item claude\commands\*.md "$env:USERPROFILE\.claude\commands\"
+New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\.claude\commands\sai"
+Copy-Item commands\sai\*.md "$env:USERPROFILE\.claude\commands\sai\"
 
 # Copy instructions
 $instructionsDir = "$env:USERPROFILE\.claude\instructions\sai"
