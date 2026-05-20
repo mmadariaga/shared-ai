@@ -1,9 +1,11 @@
 ---
 name: token-efficient-languages
-description: Activates the 3-rule language contract for token efficient reasoning — english reasoning, language efficiency, think in english. Loaded by /token-efficient-languages command or any sai-* skill.
+description: >
+  Activates the 3-rule language contract for token efficient reasoning — english reasoning, language efficiency, think in english. Loaded by token-efficient-languages command or any sai-* skill.
+  TRIGGER when: "budget language", "cheap language", "budget mode", "cheap mode", "low-cost mode", "low cost mode", "economy mode"
 license: MIT
 metadata:
-  author: shared-ai
+  author: Mikel Madariaga
   version: "1.0"
 ---
 

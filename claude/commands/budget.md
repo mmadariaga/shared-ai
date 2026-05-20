@@ -1,7 +1,7 @@
 ---
-description: Load both Claude Code budget skills (explorer + executor) simultaneously. Use when you want to activate cost-discipline subagent rules for the current session.
+description: Load all three Claude Code budget skills (explorer + executor + token-efficient-languages) simultaneously. Use when you want to activate cost-discipline rules for the current session.
 ---
 
 Fetch @skills/claude/budget-explorer/SKILL.md
 Fetch @skills/claude/budget-executor/SKILL.md
-Fetch @~/.claude/skills/token-efficient-languages/SKILL.md
+Fetch @skills/token-efficient-languages/SKILL.md
