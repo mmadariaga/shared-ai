@@ -687,7 +687,7 @@ Copy-Item commands\sai\*.md "$env:USERPROFILE\.claude\commands\sai\"
 
 *(Non-testable step — documentation edit only)*
 
-- [ ] In `README.md`, insert two lines after the `cp opencode/commands/*.md ~/.config/opencode/commands/` line (line 237) in the **OpenCode bash block**. The result should be:
+- [x] In `README.md`, insert two lines after the `cp opencode/commands/*.md ~/.config/opencode/commands/` line (line 237) in the **OpenCode bash block**. The result should be:
 
 ```bash
 mkdir -p ~/.config/opencode/commands
@@ -696,7 +696,7 @@ mkdir -p ~/.config/opencode/commands/sai
 cp commands/sai/*.md ~/.config/opencode/commands/sai/
 ```
 
-- [ ] In `README.md`, insert two lines after the `Copy-Item opencode\commands\*.md "$configDir\commands\"` line (line 284) in the **OpenCode PowerShell block**. The result should be:
+- [x] In `README.md`, insert two lines after the `Copy-Item opencode\commands\*.md "$configDir\commands\"` line (line 284) in the **OpenCode PowerShell block**. The result should be:
 
 ```powershell
 New-Item -ItemType Directory -Force -Path "$configDir\commands"
@@ -708,10 +708,10 @@ Copy-Item commands\sai\*.md "$configDir\commands\sai\"
 ##### Step 5 Verification Checklist
 
 **Automated (agent runs before stopping):**
-- [ ] `grep -c 'commands/sai\|commands\\\\sai' README.md` — expected: `4` (bash mkdir + bash cp + ps mkdir + ps cp)
-- [ ] `grep -A1 'cp opencode/commands/\*\.md' README.md | grep -c 'commands/sai'` — expected: `1` (bash sai step adjacent)
-- [ ] `grep -A1 'Copy-Item opencode\\\\commands\\\\' README.md | grep -c 'commands\\\\sai'` — expected: `1` (PS sai step adjacent)
-- [ ] `grep -c 'commands/sai/\*\.md' README.md` — expected: `2` (source path `commands/sai/*.md`, not `opencode/commands/sai/`)
+- [x] `grep -c 'commands/sai\|commands\\\\sai' README.md` — expected: `4` (bash mkdir + bash cp + ps mkdir + ps cp)
+- [x] `grep -A1 'cp opencode/commands/\*\.md' README.md | grep -c 'commands/sai'` — expected: `1` (bash sai step adjacent)
+- [x] `grep -A1 'Copy-Item opencode\\\\commands\\\\' README.md | grep -c 'commands\\\\sai'` — expected: `1` (PS sai step adjacent)
+- [x] `grep -c 'commands/sai/\*\.md' README.md` — expected: `2` (source path `commands/sai/*.md`, not `opencode/commands/sai/`)
 
 *(No Human checks — no UI involved)*
 

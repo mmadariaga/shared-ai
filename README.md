@@ -235,6 +235,8 @@ Commands are designed as **user globals**, not per project. A single copy in the
 # Copy commands
 mkdir -p ~/.config/opencode/commands
 cp opencode/commands/*.md ~/.config/opencode/commands/
+mkdir -p ~/.config/opencode/commands/sai
+cp commands/sai/*.md ~/.config/opencode/commands/sai/
 
 # Copy instructions
 if [ -d ~/.config/opencode/instructions/sai ]; then
@@ -282,6 +284,8 @@ fi
 $configDir = "$env:USERPROFILE\.config\opencode"
 New-Item -ItemType Directory -Force -Path "$configDir\commands"
 Copy-Item opencode\commands\*.md "$configDir\commands\"
+New-Item -ItemType Directory -Force -Path "$configDir\commands\sai"
+Copy-Item commands\sai\*.md "$configDir\commands\sai\"
 
 # Copy instructions
 $instructionsDir = "$configDir\instructions\sai"
