@@ -8,7 +8,7 @@ Fetch @~/.claude/instructions/sai/prereqs.md
 
 ## Load behaviors (in order)
 
-Fetch @~/.claude/instructions/sai/caveman.md
+Fetch @~/.claude/skills/caveman/SKILL.md
 Fetch @~/.claude/instructions/sai/archive.md
 
 Then fetch and follow the openspec-archive-change skill at .claude/skills/openspec-archive-change/SKILL.md exactly. User input: $ARGUMENTS

@@ -1,4 +1,5 @@
 Remember:
+- **Caveman intensity: lite** by default — override only when user explicitly passes `--full-caveman` or requests a higher level.
 - Agent thinking/reasoning: **English only** unless the user explicitly requests otherwise
 - Artifacts in English unless the user explicitly requests otherwise.
 - Agent responses to user: **Same language as user input by default**

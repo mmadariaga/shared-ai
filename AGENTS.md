@@ -38,6 +38,8 @@ The openspec-dependent `ai-*` commands halt with a clear error if either is miss
 | `instructions/sai/spec.propose.md` | Quality layer prepended to the `openspec-propose` skill by `ai-1-spec`. Collaboration style, cost discipline, research guide, scope reminder. |
 | `instructions/sai/remember.md` | Consolidated reminders appended by wrappers. |
 | `instructions/sai/prereqs.md` | Universal prerequisite check fetched first by all openspec-dependent sai-* wrappers. `sai-commit` is the only exception. |
+| `skills/` | Universal skills installed globally (not project-local). Fetched by wrappers via `~/.claude/skills/` or `~/.config/opencode/skills/`. |
+| `skills/caveman/SKILL.md` | Ultra-compressed communication skill. Fetched by all sai-* wrappers. |
 | `claude/commands/` | Wrappers for Claude Code. YAML frontmatter (`description`, `argument-hint`, `model`, `effort`) + fetch to `instructions/sai/` + fetch to project-local skill files. |
 | `opencode/commands/` | Wrappers for opencode. YAML frontmatter (`description`, `model`) + fetch to `instructions/sai/` + fetch to project-local skill files. |
 | `opencode/opencode.jsonc` | Sub-agent explore configuration (mode + trusted low-cost model). Required for cost-effective research delegation. |
@@ -73,7 +75,7 @@ All agents MUST think and reason internally in English, regardless of the user's
 - **Generated artifacts** (`implementation.md`, `review.md`, `security.md`, `performance.md`, `accessibility.md`, commit messages, PR bodies, code, technical explanations): written in English unless the user explicitly requests otherwise.
 
 ### Caveman Communication Mode
-All wrappers fetch `instructions/sai/caveman.md`. Default is **lite**. Flag `--full-caveman` in `$ARGUMENTS` activates full mode.
+All wrappers fetch `skills/caveman/SKILL.md` (installed to `~/.claude/skills/caveman/SKILL.md` / `~/.config/opencode/skills/caveman/SKILL.md`). Default is **lite**. Flag `--full-caveman` in `$ARGUMENTS` activates full mode.
 
 ### Cost Discipline (research subagents)
 The main agent reasons and synthesizes. Subagents do I/O. Key rules:

@@ -12,7 +12,7 @@ Do not create or modify any files if this check fails.
 
 ## Load behaviors (in order)
 
-Fetch @~/.config/opencode/instructions/sai/caveman.md
+Fetch @~/.config/opencode/skills/caveman/SKILL.md
 
 Fetch @~/.config/opencode/instructions/sai/apply.md and follow those instructions exactly. User input: $ARGUMENTS
 

@@ -13,7 +13,7 @@ Do not create or modify any files if this check fails.
 
 ## Load behaviors (in order)
 
-Fetch @~/.claude/instructions/sai/caveman.md
+Fetch @~/.claude/skills/caveman/SKILL.md
 
 Fetch @~/.claude/instructions/sai/apply.md and follow those instructions exactly. User input: $ARGUMENTS
 

@@ -7,7 +7,7 @@ Fetch @~/.config/opencode/instructions/sai/prereqs.md
 
 ## Load behaviors (in order)
 
-Fetch @~/.config/opencode/instructions/sai/caveman.md
+Fetch @~/.config/opencode/skills/caveman/SKILL.md
 Fetch @~/.config/opencode/instructions/sai/archive.md
 
 Then fetch and follow the openspec-archive-change skill at .opencode/skills/openspec-archive-change/SKILL.md exactly. User input: $ARGUMENTS

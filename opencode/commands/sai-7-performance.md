@@ -7,7 +7,7 @@ Fetch @~/.config/opencode/instructions/sai/prereqs.md
 
 ## Load behaviors (in order)
 
-Fetch @~/.config/opencode/instructions/sai/caveman.md
+Fetch @~/.config/opencode/skills/caveman/SKILL.md
 
 Fetch @~/.config/opencode/instructions/sai/performance.md and follow those instructions exactly. $ARGUMENTS
 

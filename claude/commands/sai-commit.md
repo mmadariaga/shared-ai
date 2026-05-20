@@ -4,7 +4,7 @@ argument-hint: "[optional: --scope X --type Y --no-body --amend]"
 model: claude-haiku-4-5
 ---
 
-Fetch @~/.claude/instructions/sai/caveman.md
+Fetch @~/.claude/skills/caveman/SKILL.md
 
 Also fetch @~/.claude/instructions/sai/commit.md and follow those instructions exactly. $ARGUMENTS
 

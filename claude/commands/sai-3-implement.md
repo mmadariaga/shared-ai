@@ -16,7 +16,7 @@ Do not create or modify any files if any check fails.
 ## Load behaviors (in order)
 
 Fetch @~/.claude/instructions/sai/explorer.claude.md
-Fetch @~/.claude/instructions/sai/caveman.md
+Fetch @~/.claude/skills/caveman/SKILL.md
 Fetch @~/.claude/instructions/sai/glossary-format.md
 
 Fetch @~/.claude/instructions/sai/implement.md and follow those instructions exactly. User input: $ARGUMENTS

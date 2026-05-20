@@ -40,6 +40,10 @@ fi
 mkdir -p ~/.claude/instructions/sai
 cp instructions/sai/*.md ~/.claude/instructions/sai/
 
+# Copy skills
+mkdir -p ~/.claude/skills/caveman
+cp skills/caveman/SKILL.md ~/.claude/skills/caveman/SKILL.md
+
 echo "Reminder: run 'openspec init --tools claude' in each project to enable the spec/explore/apply/archive commands."
 ```
 
@@ -55,6 +59,10 @@ if (Test-Path $instructionsDir) {
 }
 New-Item -ItemType Directory -Force -Path $instructionsDir | Out-Null
 Copy-Item instructions\sai\*.md $instructionsDir\
+
+# Copy skills
+New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\.claude\skills\caveman" | Out-Null
+Copy-Item skills\caveman\SKILL.md "$env:USERPROFILE\.claude\skills\caveman\SKILL.md"
 
 Write-Host "Reminder: run 'openspec init --tools claude' in each project to enable the spec/explore/apply/archive commands."
 ```
