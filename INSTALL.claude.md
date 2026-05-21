@@ -54,7 +54,7 @@ cp skills/claude/budget-explorer/SKILL.md ~/.claude/skills/budget-explorer/SKILL
 mkdir -p ~/.claude/skills/budget-executor
 cp skills/claude/budget-executor/SKILL.md ~/.claude/skills/budget-executor/SKILL.md
 mkdir -p ~/.claude/skills/sai-backfill
-cp .claude/skills/sai-backfill/SKILL.md ~/.claude/skills/sai-backfill/SKILL.md
+cp skills/claude/sai-backfill/SKILL.md ~/.claude/skills/sai-backfill/SKILL.md
 
 echo "Reminder: run 'openspec init --tools claude' in each project to enable the spec/explore/apply/archive commands."
 ```
@@ -86,7 +86,7 @@ Copy-Item skills\claude\budget-explorer\SKILL.md "$env:USERPROFILE\.claude\skill
 New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\.claude\skills\budget-executor" | Out-Null
 Copy-Item skills\claude\budget-executor\SKILL.md "$env:USERPROFILE\.claude\skills\budget-executor\SKILL.md"
 New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\.claude\skills\sai-backfill" | Out-Null
-Copy-Item .claude\skills\sai-backfill\SKILL.md "$env:USERPROFILE\.claude\skills\sai-backfill\SKILL.md"
+Copy-Item skills\claude\sai-backfill\SKILL.md "$env:USERPROFILE\.claude\skills\sai-backfill\SKILL.md"
 
 Write-Host "Reminder: run 'openspec init --tools claude' in each project to enable the spec/explore/apply/archive commands."
 ```
