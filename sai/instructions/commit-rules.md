@@ -1,3 +1,21 @@
+## Commit Type Classification
+
+Pick exactly one Conventional Commits type, in this priority order:
+
+| Type | When |
+|------|------|
+| `feat` | New user-facing capability or new public API surface |
+| `fix` | Bug fix that changes behavior the user could observe |
+| `perf` | Measurable performance improvement, no behavioral change |
+| `refactor` | Code restructured without changing behavior or perf |
+| `docs` | Only docs/README/comments |
+| `test` | Only test files added or modified |
+| `build` | Build system, dependencies, lockfiles, package manager config |
+| `ci` | CI configuration only (`.github/`, `.gitlab-ci.yml`, etc.) |
+| `chore` | Maintenance: tooling config, file moves, formatting-only diffs not covered above |
+| `style` | Whitespace/formatting only — code semantics unchanged |
+| `revert` | Reverts a prior commit (subject: `revert: <reverted subject>`) |
+
 ## Subject Format
 
 **Subject (line 1):**

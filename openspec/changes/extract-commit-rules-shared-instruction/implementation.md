@@ -290,6 +290,182 @@ paragraph.
 
 **STOP & COMMIT:** Stage and commit after Automated checks pass. No browser verification required at this step.
 
+---
+
+#### Step 6: Update `sai/instructions/commit-rules.md` — add type classification
+
+*(Non-testable step — prepend section to existing file)*
+
+- [x] Read `sai/instructions/commit-rules.md` to confirm current content before editing.
+- [x] Insert a new `## Commit Type Classification` section as the first section of the file — immediately before the existing `## Subject Format` heading. Use this exact content:
+
+```markdown
+## Commit Type Classification
+
+Pick exactly one Conventional Commits type, in this priority order:
+
+| Type | When |
+|------|------|
+| `feat` | New user-facing capability or new public API surface |
+| `fix` | Bug fix that changes behavior the user could observe |
+| `perf` | Measurable performance improvement, no behavioral change |
+| `refactor` | Code restructured without changing behavior or perf |
+| `docs` | Only docs/README/comments |
+| `test` | Only test files added or modified |
+| `build` | Build system, dependencies, lockfiles, package manager config |
+| `ci` | CI configuration only (`.github/`, `.gitlab-ci.yml`, etc.) |
+| `chore` | Maintenance: tooling config, file moves, formatting-only diffs not covered above |
+| `style` | Whitespace/formatting only — code semantics unchanged |
+| `revert` | Reverts a prior commit (subject: `revert: <reverted subject>`) |
+
+```
+
+The file must start with `## Commit Type Classification` and `## Subject Format` must follow it.
+
+##### Step 6 Verification Checklist
+
+**Automated (agent runs before stopping):**
+- [x] `grep -c "## Commit Type Classification" sai/instructions/commit-rules.md` — expected: `1`
+- [x] `grep -c "| \`feat\`" sai/instructions/commit-rules.md` — expected: `1` (type table present)
+- [x] `grep -n "## Commit Type Classification\|## Subject Format" sai/instructions/commit-rules.md` — expected: `## Commit Type Classification` line number is lower than `## Subject Format` line number
+
+*(No Human checks — no UI involved)*
+
+#### Step 6 STOP & COMMIT
+
+**sai-4-apply:** Run all Automated checks above and confirm they pass before stopping.
+
+**STOP & COMMIT:** Stage and commit after Automated checks pass. No browser verification required at this step.
+
+---
+
+#### Step 7: Update `sai/instructions/commit.md` — move fetch to top, simplify Steps 2 and 4
+
+*(Non-testable step — four surgical edits)*
+
+- [ ] Read `sai/instructions/commit.md` to confirm current content before editing.
+
+**Edit A — Move fetch to top:** Insert `Fetch @sai/instructions/commit-rules.md` between the first `---` separator (after Communication Mode) and `## Required Inputs`. Apply this exact replacement:
+
+Replace:
+```
+---
+
+## Required Inputs
+```
+With:
+```
+---
+
+Fetch @sai/instructions/commit-rules.md
+
+## Required Inputs
+```
+
+**Edit B — Simplify Step 2:** Replace the type table and its opening sentence with a single reference line, keeping only the mixing-types guidance. Apply this exact replacement:
+
+Replace:
+```
+### Step 2: Classify the Change
+
+Pick exactly one Conventional Commits type, in this priority order:
+
+| Type | When |
+|------|------|
+| `feat` | New user-facing capability or new public API surface |
+| `fix` | Bug fix that changes behavior the user could observe |
+| `perf` | Measurable performance improvement, no behavioral change |
+| `refactor` | Code restructured without changing behavior or perf |
+| `docs` | Only docs/README/comments |
+| `test` | Only test files added or modified |
+| `build` | Build system, dependencies, lockfiles, package manager config |
+| `ci` | CI configuration only (`.github/`, `.gitlab-ci.yml`, etc.) |
+| `chore` | Maintenance: tooling config, file moves, formatting-only diffs not covered above |
+| `style` | Whitespace/formatting only — code semantics unchanged |
+| `revert` | Reverts a prior commit (subject: `revert: <reverted subject>`) |
+
+If the diff genuinely mixes types, prefer the dominant user-visible one and mention the secondary in the body. Suggest splitting only when types are clearly independent (e.g. unrelated `feat` + `fix`).
+```
+With:
+```
+### Step 2: Classify the Change
+
+Pick one type using the classification table in commit-rules.md, in priority order.
+
+If the diff genuinely mixes types, prefer the dominant user-visible one and mention the secondary in the body. Suggest splitting only when types are clearly independent (e.g. unrelated `feat` + `fix`).
+```
+
+**Edit C — Simplify Step 4:** Replace the Subject/Body/Footer format content with a single reference line. Apply this exact replacement:
+
+Replace:
+```
+### Step 4: Compose the Message
+
+**Subject (line 1):**
+- Format: `type(scope): description` or `type: description` (no scope)
+- **≤ 50 characters** (hard limit; breaks GitHub UI past 72)
+- Imperative mood (`add`, not `added`/`adds`)
+- No trailing period
+- No emoji unless the user explicitly asks
+- Lowercase after the colon (unless an identifier or proper noun)
+
+**Body (optional):**
+- Skip when the subject is self-evident or `--no-body` is passed
+- Include when the **why** is non-obvious — context, motivation, trade-offs, hidden constraints
+- **Wrap at 72 characters per line**
+- Blank line between subject and body
+- Focus on *why*, not *what* (the diff already shows what)
+- Reference issue / ticket IDs if discoverable in branch name or recent commits
+- Note breaking changes with `BREAKING CHANGE: <description>` footer
+
+**Footer (optional):**
+- `BREAKING CHANGE: ...` for incompatible API changes (also bump subject to `feat!:`/`fix!:`)
+- `Refs: #123` / `Closes: #123` if the user mentions an issue or it appears in branch name
+- **No `Co-Authored-By` or "Generated with Claude Code" trailers** unless the user explicitly requests them
+```
+With:
+```
+### Step 4: Compose the Message
+
+Apply format rules from commit-rules.md — subject, body, and footer conventions.
+```
+
+**Edit D — Remove trailing fetch:** Delete the trailing `---` separator and `Fetch @sai/instructions/commit-rules.md` at the end of the file. Apply this exact replacement:
+
+Replace:
+```
+5. On `n` → STOP. Tell the user the message is ready to copy from above.
+
+---
+
+Fetch @sai/instructions/commit-rules.md
+```
+With:
+```
+5. On `n` → STOP. Tell the user the message is ready to copy from above.
+```
+
+##### Step 7 Verification Checklist
+
+**Automated (agent runs before stopping):**
+- [ ] `grep -c "Fetch @sai/instructions/commit-rules.md" sai/instructions/commit.md` — expected: `1` (one directive, at top — trailing removed)
+- [ ] `grep -n "Fetch @sai/instructions/commit-rules.md\|## Required Inputs" sai/instructions/commit.md` — expected: fetch line number is lower than `## Required Inputs` line number (fetch is before inputs)
+- [ ] `grep -c "≤ 50 characters\|Wrap at 72 characters\|BREAKING CHANGE" sai/instructions/commit.md` — expected: `0` (Step 4 format content removed)
+- [ ] `grep -c "classification table in commit-rules.md" sai/instructions/commit.md` — expected: `1` (Step 2 reference)
+- [ ] `grep -c "Apply format rules from commit-rules.md" sai/instructions/commit.md` — expected: `1` (Step 4 reference)
+- [ ] `grep -c "### Step 1\|### Step 2\|### Step 3\|### Step 4\|### Step 5\|### Step 6" sai/instructions/commit.md` — expected: `6` (all workflow steps intact)
+- [ ] `tail -3 sai/instructions/commit.md | grep -c "commit-rules"` — expected: `0` (no fetch at end of file)
+
+*(No Human checks — no UI involved)*
+
+#### Step 7 STOP & COMMIT
+
+**sai-4-apply:** Run all Automated checks above and confirm they pass before stopping.
+
+**STOP & COMMIT:** Stage and commit after Automated checks pass. No browser verification required at this step.
+
+---
+
 ## Appendix: Plan vs Final Implementation
 
 This section documents deviations between the original plan and the code that was actually merged.
