@@ -45,3 +45,20 @@ The resolved branch name SHALL be substituted into the `## Prerequisites` sectio
 - **WHEN** `~/.claude/instructions/sai/implement.md` lines 59–68 are read
 - **THEN** the git-authorization gate text is identical to the pre-change version — branch-name substitution logic is NOT added there
 
+## MODIFIED Requirements
+
+### Requirement: Branch selection prompt MUST offer custom backlog-linked name as explicit option
+The branch selection prompt in `sai/instructions/implement.md` SHALL present three options:
+1. `{feature-name}` (derived from the change name)
+2. Custom branch name (free input — e.g., backlog-linked name like `JIRA-123-feature-name`)
+3. Create the selected branch from `main` if it does not already exist
+
+#### Scenario: user selects custom branch name
+- **WHEN** the user runs `/sai-3-implement my-change`
+- **WHEN** the user enters `JIRA-456-add-validation` as a custom branch name
+- **THEN** the Prerequisites section uses `JIRA-456-add-validation` as the branch name
+
+#### Scenario: selected branch does not exist
+- **WHEN** the user selects a branch name that does not exist in the repository
+- **THEN** the agent creates the branch from `main` before proceeding with implementation
+

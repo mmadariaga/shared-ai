@@ -128,7 +128,10 @@ and `## Implementation Context` are the primary source of truth.
 
 ## Prerequisites
 
-- Ensure branch is not master or main. Create `{feature-name}` from `main` before implementing otherwise
+- Ensure branch is not master or main. Ask the user to select the branch to use:
+  1. `{feature-name}` (derived from the change name)
+  2. Custom branch name (free input — e.g., backlog-linked name like `JIRA-123-feature-name`)
+- If the selected branch does not exist, create it from `main` before implementing.
 
 ### Step-by-Step Instructions
 

@@ -151,10 +151,10 @@ Pick an entry point based on what the findings require:
   ```
   # 1. Make the fix manually:
   git add -A
-  git commit -m "fix: correct typo in error message for expired tokens"
+  git commit -m "fix: changed error message for expired tokens"
 
   # 2. Regularize it with backfill:
-  /sai-backfill
+  /sai-backfill name-the-change
 
   # Select the commit from the interactive diff picker.
   # The command runs a structured interview to extract intent,
