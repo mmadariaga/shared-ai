@@ -207,13 +207,15 @@ Proposes creating an ADR/DDR if all 3 criteria below are met:
 ## Repo structure
 
 ```
-instructions/sai/                ← actual content for each agent (plain markdown, Isolation Mode + TASK)
-instructions/sai/spec.propose.md ← spec quality layer prepended to the openspec-propose skill
-instructions/sai/glossary-format.md ← canonical GLOSSARY.md format used by spec/plan/review
-instructions/sai/remember.md     ← consolidated reminders appended by wrappers
-instructions/sai/prereqs.md      ← universal prereq check fetched by all openspec-dependent sai-* wrappers
-claude/commands/           ← wrappers for Claude Code (model + effort + fetch to instructions/sai/)
-opencode/commands/         ← wrappers for opencode (model + fetch to instructions/sai/)
+sai/instructions/                ← actual content for each agent (plain markdown, Isolation Mode + TASK)
+sai/instructions/spec.propose.md ← spec quality layer prepended to the openspec-propose skill
+sai/instructions/glossary-format.md ← canonical GLOSSARY.md format used by spec/plan/review
+sai/instructions/remember.md     ← consolidated reminders appended by wrappers
+sai/instructions/prereqs.md      ← universal prereq check fetched by all openspec-dependent sai-* wrappers
+sai/commands/              ← sai command body files (fetched by wrappers at runtime)
+commands/claude/           ← wrappers for Claude Code (model + effort + fetch to sai/commands/)
+commands/opencode/         ← wrappers for opencode (model + fetch to sai/commands/)
+configs/                   ← config samples (opencode.jsonc)
 openspec/schemas/sai-workflow/  ← custom OpenSpec schema (schema.yaml + 9 templates)
 ```
 
@@ -234,16 +236,16 @@ Commands are designed as **user globals**, not per project. A single copy in the
 ```bash
 # Copy commands
 mkdir -p ~/.config/opencode/commands
-cp opencode/commands/*.md ~/.config/opencode/commands/
-mkdir -p ~/.config/opencode/commands/sai
-cp commands/sai/*.md ~/.config/opencode/commands/sai/
+cp commands/opencode/*.md ~/.config/opencode/commands/
+mkdir -p ~/.config/opencode/sai/commands
+cp sai/commands/*.md ~/.config/opencode/sai/commands/
 
 # Copy instructions
-if [ -d ~/.config/opencode/instructions/sai ]; then
-    echo "Overwriting ~/.config/opencode/instructions/sai/"
+if [ -d ~/.config/opencode/sai/instructions ]; then
+    echo "Overwriting ~/.config/opencode/sai/instructions/"
 fi
-mkdir -p ~/.config/opencode/instructions/sai
-cp instructions/sai/*.md ~/.config/opencode/instructions/sai/
+mkdir -p ~/.config/opencode/sai/instructions
+cp sai/instructions/*.md ~/.config/opencode/sai/instructions/
 
 # Copy skills (skip if already installed)
 if [ ! -f ~/.config/opencode/skills/caveman/SKILL.md ]; then
@@ -259,7 +261,7 @@ cp skills/opencode/budget-executor/SKILL.md ~/.config/opencode/skills/budget-exe
 
 # Copy opencode.json
 if [ ! -f ~/.config/opencode/opencode.json ] && [ ! -f ~/.config/opencode/opencode.jsonc ]; then
-    cp opencode/opencode.jsonc ~/.config/opencode/
+    cp configs/opencode.jsonc ~/.config/opencode/
 else
     echo "~/.config/opencode/opencode.json(c) already exists."
     echo "Ensure it includes the 'agent' section:"
@@ -283,17 +285,17 @@ fi
 # Copy commands
 $configDir = "$env:USERPROFILE\.config\opencode"
 New-Item -ItemType Directory -Force -Path "$configDir\commands"
-Copy-Item opencode\commands\*.md "$configDir\commands\"
-New-Item -ItemType Directory -Force -Path "$configDir\commands\sai"
-Copy-Item commands\sai\*.md "$configDir\commands\sai\"
+Copy-Item commands\opencode\*.md "$configDir\commands\"
+New-Item -ItemType Directory -Force -Path "$configDir\sai\commands"
+Copy-Item sai\commands\*.md "$configDir\sai\commands\"
 
 # Copy instructions
-$instructionsDir = "$configDir\instructions\sai"
+$instructionsDir = "$configDir\sai\instructions"
 if (Test-Path $instructionsDir) {
     Write-Host "Overwriting $instructionsDir"
 }
 New-Item -ItemType Directory -Force -Path $instructionsDir | Out-Null
-Copy-Item instructions\sai\*.md $instructionsDir\
+Copy-Item sai\instructions\*.md $instructionsDir\
 
 # Copy skills
 if (-not (Test-Path "$configDir\skills\caveman\SKILL.md")) {
@@ -311,7 +313,7 @@ Copy-Item skills\opencode\budget-executor\SKILL.md "$configDir\skills\budget-exe
 $jsonPath = Join-Path $configDir "opencode.json"
 $jsoncPath = Join-Path $configDir "opencode.jsonc"
 if (-not (Test-Path $jsonPath) -and -not (Test-Path $jsoncPath)) {
-    Copy-Item opencode\opencode.jsonc $configDir\
+    Copy-Item configs\opencode.jsonc $configDir\
 } else {
     Write-Host "$configDir\opencode.json(c) already exists."
     Write-Host "Ensure it includes the 'agent' section:"

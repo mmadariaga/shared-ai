@@ -31,16 +31,16 @@ If you skip this step, the openspec-dependent `ai-*` commands (`ai-explore`, `ai
 **Linux / macOS:**
 ```bash
 mkdir -p ~/.claude/commands
-cp claude/commands/*.md ~/.claude/commands/
-mkdir -p ~/.claude/commands/sai
-cp commands/sai/*.md ~/.claude/commands/sai/
+cp commands/claude/*.md ~/.claude/commands/
+mkdir -p ~/.claude/sai/commands
+cp sai/commands/*.md ~/.claude/sai/commands/
 
 # Copy instructions
-if [ -d ~/.claude/instructions/sai ]; then
-    echo "Overwriting ~/.claude/instructions/sai/"
+if [ -d ~/.claude/sai/instructions ]; then
+    echo "Overwriting ~/.claude/sai/instructions/"
 fi
-mkdir -p ~/.claude/instructions/sai
-cp instructions/sai/*.md ~/.claude/instructions/sai/
+mkdir -p ~/.claude/sai/instructions
+cp sai/instructions/*.md ~/.claude/sai/instructions/
 
 # Copy skills (skip if already installed)
 if [ ! -f ~/.claude/skills/caveman/SKILL.md ]; then
@@ -60,17 +60,17 @@ echo "Reminder: run 'openspec init --tools claude' in each project to enable the
 **Windows (PowerShell):**
 ```powershell
 New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\.claude\commands"
-Copy-Item claude\commands\*.md "$env:USERPROFILE\.claude\commands\"
-New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\.claude\commands\sai"
-Copy-Item commands\sai\*.md "$env:USERPROFILE\.claude\commands\sai\"
+Copy-Item commands\claude\*.md "$env:USERPROFILE\.claude\commands\"
+New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\.claude\sai\commands"
+Copy-Item sai\commands\*.md "$env:USERPROFILE\.claude\sai\commands\"
 
 # Copy instructions
-$instructionsDir = "$env:USERPROFILE\.claude\instructions\sai"
+$instructionsDir = "$env:USERPROFILE\.claude\sai\instructions"
 if (Test-Path $instructionsDir) {
     Write-Host "Overwriting $instructionsDir"
 }
 New-Item -ItemType Directory -Force -Path $instructionsDir | Out-Null
-Copy-Item instructions\sai\*.md $instructionsDir\
+Copy-Item sai\instructions\*.md $instructionsDir\
 
 # Copy skills
 if (-not (Test-Path "$env:USERPROFILE\.claude\skills\caveman\SKILL.md")) {
