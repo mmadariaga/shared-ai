@@ -4,6 +4,6 @@ argument-hint: "[optional: --scope X --type Y --no-body --amend]"
 model: claude-haiku-4-5
 ---
 
-Fetch @commands/sai/sai-commit.md
+Fetch @sai/commands/sai-commit.md
 
 User input: $ARGUMENTS

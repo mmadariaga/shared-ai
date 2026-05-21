@@ -3,6 +3,6 @@ description: Propose a new change — generates proposal.md and specs/ only. Sto
 model: opencode-go/qwen3.6-plus
 ---
 
-Fetch @commands/sai/sai-1-spec.md
+Fetch @sai/commands/sai-1-spec.md
 
 User input: $ARGUMENTS

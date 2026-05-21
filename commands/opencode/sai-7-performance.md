@@ -3,6 +3,6 @@ description: Structured Performance Audit Prompt — backend / frontend / databa
 model: opencode-go/qwen3.6-plus
 ---
 
-Fetch @commands/sai/sai-7-performance.md
+Fetch @sai/commands/sai-7-performance.md
 
 User input: $ARGUMENTS

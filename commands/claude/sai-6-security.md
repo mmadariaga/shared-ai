@@ -5,6 +5,6 @@ model: claude-opus-4-7
 effort: high
 ---
 
-Fetch @commands/sai/sai-6-security.md
+Fetch @sai/commands/sai-6-security.md
 
 User input: $ARGUMENTS

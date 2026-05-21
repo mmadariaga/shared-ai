@@ -4,6 +4,6 @@ argument-hint: "[change-name]"
 model: claude-haiku-4-5
 ---
 
-Fetch @commands/sai/sai-4-apply.md
+Fetch @sai/commands/sai-4-apply.md
 
 User input: $ARGUMENTS

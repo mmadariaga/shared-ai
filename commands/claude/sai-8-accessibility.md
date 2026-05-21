@@ -5,6 +5,6 @@ model: claude-sonnet-4-6
 effort: high
 ---
 
-Fetch @commands/sai/sai-8-accessibility.md
+Fetch @sai/commands/sai-8-accessibility.md
 
 User input: $ARGUMENTS
