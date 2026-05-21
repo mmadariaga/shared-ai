@@ -31,6 +31,7 @@ Can also run on Claude Code, though it is less cost-effective there due to model
 
 - [Commands](#sequential-pipeline-numbered)
 - [Typical usage](#typical-usage)
+- [Skills](#skills)
 - [Cost-Effective Strategies](#cost-effective-strategies)
 - [Project highlights](#project-highlights)
 - [Installation](#global-installation-multi-project)
@@ -144,6 +145,20 @@ Pick an entry point based on what the findings require:
   > or new architectural decisions (e.g. adding a cache layer), treat it as a new change even
   > if the original is not yet archived.
 
+## Skills
+
+Skills are reusable behavior modules loaded by wrappers and subagents at runtime. They live under `skills/` and are installed globally during setup.
+
+All skills are invoked automatically by `sai-*` commands, but you can also trigger them directly in your own prompts using the phrases listed below — useful when you want cost discipline or compressed output outside the pipeline.
+
+| Skill | Purpose | Trigger |
+|-------|---------|---------|
+| `caveman` | Ultra-compressed communication mode. Cuts ~75% of output tokens while keeping full technical accuracy. Supports intensity levels: `lite`, `full` (default), `ultra`, `wenyan-lite`, `wenyan-full`, `wenyan-ultra`. Auto-resumes after critical warnings. | `"caveman mode"`, `"talk like caveman"`, `"use caveman"`, `"less tokens"`, `"be brief"`, `/caveman`, or any token-efficiency request |
+| `token-efficient-languages` | Enforces a 3-rule language contract: (1) think/reason in English, (2) respond in user's language, (3) write all artifacts in English. English tokenizers produce fewer tokens per unit of meaning. | `"budget language"`, `"cheap language"` |
+| `budget-explorer` | Low-cost agent for research, exploration, and doc-lookup tasks. Model resolved via `agent.explore.model` in `opencode.jsonc` (or `subagent_type: General` + model tiers in Claude Code). Enforces tool-call caps (≤30 per spawn) and output contracts (exact fields, length cap, no raw content). | `"budget explorer"`, `"cheap explorer"` |
+| `budget-executor` | Low-cost agent for running commands, tests, and build checks. Model resolved via `agent.executor.model` in `opencode.jsonc` (or `subagent_type: General`, `model: haiku` in Claude Code). Enforces execute-only discipline: exact commands, no self-correction, minimal output, structured failure reports. No tool-call cap. | `"budget executor"`, `"cheap executor"` |
+| `budget` | Loads all budget skills simultaneously (`budget-explorer` + `budget-executor` + `token-efficient-languages`). Activates full cost-discipline for the session. | `"budget mode"`, `"cheap mode"`, `"low-cost mode"`, `"economy mode"` |
+
 ## Cost-Effective Strategies
 
 Every phase in this pipeline is optimized to minimize token consumption without sacrificing quality.
@@ -223,118 +238,11 @@ openspec/schemas/sai-workflow/  ← custom OpenSpec schema (schema.yaml + 9 temp
 
 Commands are designed as **user globals**, not per project. A single copy in the CLI's global directory makes them available in any repo.
 
-> **Prerequisite:** install the [OpenSpec CLI](https://github.com/Fission-AI/OpenSpec) globally and run `openspec init` in each project. The openspec-dependent `ai-*` commands halt with a clear error if either is missing.
+> **Prerequisite:** install the [OpenSpec CLI](https://github.com/Fission-AI/OpenSpec) globally and run `openspec init` in each project. The openspec-dependent `sai-*` commands halt with a clear error if either is missing.
 
 ### Opencode
 
-| OS | Destination |
-|----|---------|
-| Linux / macOS | `~/.config/opencode/commands/` |
-| Windows | `%USERPROFILE%\.config\opencode\commands\` |
-
-**Linux / macOS:**
-```bash
-# Copy commands
-mkdir -p ~/.config/opencode/commands
-cp commands/opencode/*.md ~/.config/opencode/commands/
-mkdir -p ~/.config/opencode/sai/commands
-cp sai/commands/*.md ~/.config/opencode/sai/commands/
-
-# Copy instructions
-if [ -d ~/.config/opencode/sai/instructions ]; then
-    echo "Overwriting ~/.config/opencode/sai/instructions/"
-fi
-mkdir -p ~/.config/opencode/sai/instructions
-cp sai/instructions/*.md ~/.config/opencode/sai/instructions/
-
-# Copy skills (skip if already installed)
-if [ ! -f ~/.config/opencode/skills/caveman/SKILL.md ]; then
-    mkdir -p ~/.config/opencode/skills/caveman
-    cp skills/universal/caveman/SKILL.md ~/.config/opencode/skills/caveman/SKILL.md
-fi
-mkdir -p ~/.config/opencode/skills/token-efficient-languages
-cp skills/universal/token-efficient-languages/SKILL.md ~/.config/opencode/skills/token-efficient-languages/SKILL.md
-mkdir -p ~/.config/opencode/skills/budget-explorer
-cp skills/opencode/budget-explorer/SKILL.md ~/.config/opencode/skills/budget-explorer/SKILL.md
-mkdir -p ~/.config/opencode/skills/budget-executor
-cp skills/opencode/budget-executor/SKILL.md ~/.config/opencode/skills/budget-executor/SKILL.md
-mkdir -p ~/.config/opencode/skills/budget
-cp skills/universal/budget/SKILL.md ~/.config/opencode/skills/budget/SKILL.md
-
-# Copy opencode.json
-if [ ! -f ~/.config/opencode/opencode.json ] && [ ! -f ~/.config/opencode/opencode.jsonc ]; then
-    cp configs/opencode.jsonc ~/.config/opencode/
-else
-    echo "~/.config/opencode/opencode.json(c) already exists."
-    echo "Ensure it includes the 'agent' section:"
-    echo '  "agent": {'
-    echo '    "explore": {'
-    echo '      "mode": "subagent",'
-    echo '      // Set your trusted low-cost model below'
-    echo '      "model": "opencode-go/deepseek-v4-flash"'
-    echo '    },'
-    echo '    "executor": {'
-    echo '      "mode": "subagent",'
-    echo '      // Set your trusted low-cost model below'
-    echo '      "model": "opencode-go/deepseek-v4-flash"'
-    echo '    }'
-    echo '  }'
-fi
-```
-
-**Windows (PowerShell):**
-```powershell
-# Copy commands
-$configDir = "$env:USERPROFILE\.config\opencode"
-New-Item -ItemType Directory -Force -Path "$configDir\commands"
-Copy-Item commands\opencode\*.md "$configDir\commands\"
-New-Item -ItemType Directory -Force -Path "$configDir\sai\commands"
-Copy-Item sai\commands\*.md "$configDir\sai\commands\"
-
-# Copy instructions
-$instructionsDir = "$configDir\sai\instructions"
-if (Test-Path $instructionsDir) {
-    Write-Host "Overwriting $instructionsDir"
-}
-New-Item -ItemType Directory -Force -Path $instructionsDir | Out-Null
-Copy-Item sai\instructions\*.md $instructionsDir\
-
-# Copy skills
-if (-not (Test-Path "$configDir\skills\caveman\SKILL.md")) {
-    New-Item -ItemType Directory -Force -Path "$configDir\skills\caveman" | Out-Null
-    Copy-Item skills\universal\caveman\SKILL.md "$configDir\skills\caveman\SKILL.md"
-}
-New-Item -ItemType Directory -Force -Path "$configDir\skills\token-efficient-languages" | Out-Null
-Copy-Item skills\universal\token-efficient-languages\SKILL.md "$configDir\skills\token-efficient-languages\SKILL.md"
-New-Item -ItemType Directory -Force -Path "$configDir\skills\budget-explorer" | Out-Null
-Copy-Item skills\opencode\budget-explorer\SKILL.md "$configDir\skills\budget-explorer\SKILL.md"
-New-Item -ItemType Directory -Force -Path "$configDir\skills\budget-executor" | Out-Null
-Copy-Item skills\opencode\budget-executor\SKILL.md "$configDir\skills\budget-executor\SKILL.md"
-New-Item -ItemType Directory -Force -Path "$configDir\skills\budget" | Out-Null
-Copy-Item skills\universal\budget\SKILL.md "$configDir\skills\budget\SKILL.md"
-
-# Copy opencode.json
-$jsonPath = Join-Path $configDir "opencode.json"
-$jsoncPath = Join-Path $configDir "opencode.jsonc"
-if (-not (Test-Path $jsonPath) -and -not (Test-Path $jsoncPath)) {
-    Copy-Item configs\opencode.jsonc $configDir\
-} else {
-    Write-Host "$configDir\opencode.json(c) already exists."
-    Write-Host "Ensure it includes the 'agent' section:"
-    Write-Host '  "agent": {'
-    Write-Host '    "explore": {'
-    Write-Host '      "mode": "subagent",'
-    Write-Host '      // Set your trusted low-cost model below'
-    Write-Host '      "model": "opencode-go/deepseek-v4-flash"'
-    Write-Host '    },'
-    Write-Host '    "executor": {'
-    Write-Host '      "mode": "subagent",'
-    Write-Host '      // Set your trusted low-cost model below'
-    Write-Host '      "model": "opencode-go/deepseek-v4-flash"'
-    Write-Host '    }'
-    Write-Host '  }'
-}
-```
+See [INSTALL.opencode.md](INSTALL.opencode.md) for installation instructions.
 
 ### Claude Code
 
@@ -346,9 +254,7 @@ Per-project commands are still possible via `.opencode/commands/` or `.claude/co
 
 ## Post Install
 
-Once installed, modify the models in your commands to adapt them to your subscriptions and personal preferences.
-
-Open `~/.config/opencode/commands/sai-1-spec.md` and `sai-2-design.md` and set your preferred frontier model based on your subscriptions.
+See [INSTALL.opencode.md](INSTALL.opencode.md) and [INSTALL.claude.md](INSTALL.claude.md) for post-install steps.
 
 ### Recommended models by command and provider
 
@@ -370,11 +276,6 @@ We set these defaults to models that have worked best for us, you may find bette
 | archive | `opencode-go/deepseek-v4-flash` | `claude-haiku-4-5` | `github-copilot/gpt-5-mini` |
 
 ### Choosing a model
-
-To list all models available in your opencode subscriptions, run:
-```bash
-opencode models
-```
 
 This chart may help you identify which models to test. The intelligence axis is highly task-type-dependent — do not rely on it without running your own tests tailored to your project and specific use case.
 

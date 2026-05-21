@@ -2,7 +2,7 @@
 name: budget
 description: >
   Load all three budget skills (explorer + executor + token-efficient-languages) simultaneously. Use when you want to activate cost-discipline rules for the current session.
-  TRIGGER when: "budget mode"
+  TRIGGER when: "budget mode", "cheap mode", "low-cost mode", "economy mode"
 license: MIT
 metadata:
   author: Mikel Madariaga
