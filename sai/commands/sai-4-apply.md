@@ -26,5 +26,5 @@
   ## Run
   **User's request:** $ARGUMENTS
 
-  MANDATORY STOP: Once implementation is done, STOP and print exactly: "Implementation applied. Run /sai-5-review {name} when ready."  
+  MANDATORY STOP: Once implementation is done, STOP and print exactly: "Implementation applied. Run `/sai-5-review {name}` in a new chat when ready."
 </TASK>
