@@ -78,7 +78,7 @@ All artifact paths below resolve under `openspec/changes/{change-name}/` (referr
 #
 # OR
 #
-# let /sai-4-apply do the job
+# let /sai-4-apply do the commits
 ############################################################
 
 /sai-5-review oauth2-auth
