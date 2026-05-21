@@ -7,4 +7,3 @@ effort: high
 
 Fetch @sai/commands/sai-8-accessibility.md and follow those instructions exactly.
 
-User input: $ARGUMENTS

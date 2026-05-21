@@ -4,6 +4,7 @@ description: >
   Binds "executor subagent" to the OpenCode executor agent keyword. Model resolved via agent.executor.model in the project's opencode.jsonc — not hardcoded here. Enforces execute-only, minimal-output, structured-failure-report discipline.
   TRIGGER when: "budget executor", "cheap executor", "budget mode", "cheap mode", "low-cost mode", "low cost mode", "economy mode"
 license: MIT
+compatibility: opencode
 metadata:
   author: Mikel Madariaga
   version: "1.0"

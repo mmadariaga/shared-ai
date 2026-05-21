@@ -6,4 +6,3 @@ model: claude-haiku-4-5
 
 Fetch @sai/commands/sai-archive.md and follow those instructions exactly.
 
-User input: $ARGUMENTS

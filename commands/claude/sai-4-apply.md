@@ -5,5 +5,3 @@ model: claude-haiku-4-5
 ---
 
 Fetch @sai/commands/sai-4-apply.md and follow those instructions exactly.
-
-User input: $ARGUMENTS

@@ -7,4 +7,3 @@ effort: high
 
 Fetch @sai/commands/sai-7-performance.md and follow those instructions exactly.
 
-User input: $ARGUMENTS

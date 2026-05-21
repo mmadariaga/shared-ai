@@ -3,6 +3,5 @@ description: Apply the granular implementation plan mechanically — reads opens
 model: opencode-go/deepseek-v4-flash
 ---
 
+Load `skill` fetch before you continue.
 Fetch @sai/commands/sai-4-apply.md and follow those instructions exactly.
-
-User input: $ARGUMENTS
