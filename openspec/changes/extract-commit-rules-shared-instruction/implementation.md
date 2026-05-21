@@ -235,7 +235,7 @@ headings, or merge sections.
 
 *(Non-testable step — new ADR documentation file)*
 
-- [ ] Create `docs/adr/0006-commit-rules-fetch-placement-in-apply.md` with this exact content:
+- [x] Create `docs/adr/0006-commit-rules-fetch-placement-in-apply.md` with this exact content:
 
 ```markdown
 # ADR 0006: Load commit-rules at Git Operations Section Header in apply.md
@@ -280,7 +280,7 @@ paragraph.
 ##### Step 5 Verification Checklist
 
 **Automated (agent runs before stopping):**
-- [ ] `test -f docs/adr/0006-commit-rules-fetch-placement-in-apply.md` — expected: exit `0` (file exists)
+- [x] `test -f docs/adr/0006-commit-rules-fetch-placement-in-apply.md` — expected: exit `0` (file exists)
 
 *(No Human checks — no UI involved)*
 
