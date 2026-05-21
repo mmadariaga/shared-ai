@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted
+Amended
 
 ## Context
 
@@ -15,14 +15,25 @@ Three path formats were considered:
 
 ## Decision
 
-Use `@commands/sai/<cmd>.md` as the Fetch path in all wrapper files.
+Use `@sai/commands/<cmd>.md` as the Fetch path in all wrapper files.
 
 ## Rationale
 
-Mirrors the project layout (`commands/sai/` at project root) and is consistent with how other shared paths are structured (`instructions/sai/`, `skills/*/`). The `commands/` prefix namespaces command bodies separately from other config root contents.
+The `sai/` root groups all sai-owned payload (command bodies under `sai/commands/`, instructions under `sai/instructions/`) separately from harness wrapper packages (`commands/claude/`, `commands/opencode/`). `@sai/commands/<cmd>.md` mirrors this source layout and aligns with the `sai/commands/` install destination under the harness config root. Consistent with `@sai/instructions/` used by command bodies.
 
 ## Consequences
 
 - Shared body files must be installed to `<config-root>/commands/sai/` — existing users must re-run install steps.
 - Changing this path after installation breaks existing installed wrappers (requires user reinstall).
 - If a harness resolves `@` paths relative to CWD instead of config root, all shared bodies silently fail. No file-level mitigation available; documented as a known runtime dependency.
+
+## Amendment
+
+**Date:** 2026-05-21
+**Change:** `restructure-vendor-paths` refactor
+
+**Original decision:** `@commands/sai/<cmd>.md`
+
+**Original rationale:** Mirrors the project layout (`commands/sai/` at project root) and is consistent with how other shared paths are structured (`instructions/sai/`, `skills/*/`). The `commands/` prefix namespaces command bodies separately from other config root contents.
+
+**Reason for amendment:** The `restructure-vendor-paths` refactor moved `commands/sai/` to `sai/commands/` and changed the install destination from `<config-root>/commands/sai/` to `<config-root>/sai/commands/`. The new `@sai/commands/<cmd>.md` path mirrors the new source layout.
