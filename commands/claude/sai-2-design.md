@@ -6,3 +6,5 @@ effort: high
 ---
 
 Fetch @commands/sai/sai-2-design.md
+
+User input: $ARGUMENTS

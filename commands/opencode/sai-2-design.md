@@ -4,3 +4,5 @@ model: opencode-go/glm-5.1
 ---
 
 Fetch @commands/sai/sai-2-design.md
+
+User input: $ARGUMENTS
