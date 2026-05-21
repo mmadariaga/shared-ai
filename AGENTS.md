@@ -34,10 +34,11 @@ The openspec-dependent `ai-*` commands halt with a clear error if either is miss
 
 | Directory | Purpose |
 |-----------|---------|
-| `instructions/sai/` | Phase content (Isolation Mode + TASK block). Fetched by wrappers. |
-| `instructions/sai/spec.propose.md` | Quality layer prepended to the `openspec-propose` skill by `ai-1-spec`. Collaboration style, cost discipline, research guide, scope reminder. |
-| `instructions/sai/remember.md` | Consolidated reminders appended by wrappers. |
-| `instructions/sai/prereqs.md` | Universal prerequisite check fetched first by all openspec-dependent sai-* wrappers. `sai-commit` is the only exception. |
+| `sai/instructions/` | Phase content (Isolation Mode + TASK block). Fetched by wrappers. |
+| `sai/instructions/spec.propose.md` | Quality layer prepended to the `openspec-propose` skill by `ai-1-spec`. Collaboration style, cost discipline, research guide, scope reminder. |
+| `sai/instructions/remember.md` | Consolidated reminders appended by wrappers. |
+| `sai/instructions/prereqs.md` | Universal prerequisite check fetched first by all openspec-dependent sai-* wrappers. `sai-commit` is the only exception. |
+| `sai/commands/` | Sai command body files fetched by wrappers at runtime. |
 | `skills/` | Universal skills installed globally (not project-local). Fetched by wrappers via `~/.claude/skills/` or `~/.config/opencode/skills/`. |
 | `skills/universal/caveman/SKILL.md` | Ultra-compressed communication skill. Fetched by all sai-* wrappers. |
 | `skills/universal/` | Universal skills (no vendor). Fetched by all wrappers. |
@@ -47,9 +48,9 @@ The openspec-dependent `ai-*` commands halt with a clear error if either is miss
 | `skills/claude/budget-executor/SKILL.md` | Executor subagent rules for Claude Code — subagent_type: General, model: haiku, execute-only discipline. Fetched by wrappers that spawn executor subagents. |
 | `skills/opencode/budget-explorer/SKILL.md` | Subagent dispatch rules for opencode — explore keyword binding, cap rules, output contracts. Model resolved via opencode.jsonc. |
 | `skills/opencode/budget-executor/SKILL.md` | Executor subagent rules for opencode — executor keyword binding, execute-only discipline. Model resolved via opencode.jsonc. |
-| `claude/commands/` | Wrappers for Claude Code. YAML frontmatter (`description`, `argument-hint`, `model`, `effort`) + fetch to `instructions/sai/` + fetch to project-local skill files. |
-| `opencode/commands/` | Wrappers for opencode. YAML frontmatter (`description`, `model`) + fetch to `instructions/sai/` + fetch to project-local skill files. |
-| `opencode/opencode.jsonc` | Sub-agent explore configuration (mode + trusted low-cost model). Required for cost-effective research delegation. |
+| `commands/claude/` | Wrappers for Claude Code. YAML frontmatter (`description`, `argument-hint`, `model`, `effort`) + fetch to `sai/commands/` + fetch to project-local skill files. |
+| `commands/opencode/` | Wrappers for opencode. YAML frontmatter (`description`, `model`) + fetch to `sai/commands/` + fetch to project-local skill files. |
+| `configs/` | Config samples. `opencode.jsonc`: sub-agent explore configuration (mode + trusted low-cost model). Required for cost-effective research delegation. |
 
 Wrappers are **thin** — they specify the model, fetch the markdown from `instructions/`, and (for openspec-dependent commands) fetch the relevant skill from the project's `.claude/skills/` or `.opencode/skills/` directory.
 
@@ -62,10 +63,10 @@ sai-* commands prepend shared-AI behaviors (caveman, glossary-format, spec.propo
 All sai-* artifacts (`implementation.md`, `review.md`, `security.md`, `performance.md`, `accessibility.md`, `pr.md`) write to `openspec/changes/{change-name}/`. The legacy `plans/` directory is **not used** by the new pipeline.
 
 ### Prerequisite check
-All openspec-dependent sai-* commands (`sai-explore`, `sai-1-spec`, `sai-2-design`, `sai-3-implement`, `sai-4-apply`, `sai-archive`, `sai-5-review`, `sai-6-security`, `sai-7-performance`, `sai-8-accessibility`, `sai-pr`) perform three checks via `Fetch @~/.claude/instructions/sai/prereqs.md` (Claude) or `Fetch @~/.config/opencode/instructions/sai/prereqs.md` (OpenCode): (1) `openspec` binary in PATH, (2) `openspec/` directory exists, (3) `openspec/config.yaml` declares `schema: sai-workflow`. `sai-commit` is the only exception — it operates on git state only and works in projects without openspec.
+All openspec-dependent sai-* commands (`sai-explore`, `sai-1-spec`, `sai-2-design`, `sai-3-implement`, `sai-4-apply`, `sai-archive`, `sai-5-review`, `sai-6-security`, `sai-7-performance`, `sai-8-accessibility`, `sai-pr`) perform three checks via `Fetch @~/.claude/sai/instructions/prereqs.md` (Claude) or `Fetch @~/.config/opencode/sai/instructions/prereqs.md` (OpenCode): (1) `openspec` binary in PATH, (2) `openspec/` directory exists, (3) `openspec/config.yaml` declares `schema: sai-workflow`. `sai-commit` is the only exception — it operates on git state only and works in projects without openspec.
 
 ### Isolation Mode
-Every file in `instructions/sai/` starts with:
+Every file in `sai/instructions/` starts with:
 ```
 # Isolation Mode
 - Ignore all previous conversation.
@@ -155,24 +156,24 @@ Existing projects with `plans/{feature-name}/` artifacts are **not migrated auto
 ## How to modify this repo
 
 ### Add / modify an instruction
-1. Edit the file in `instructions/sai/`.
+1. Edit the file in `sai/instructions/`.
 2. If it changes a per-phase artifact path, update the corresponding wrapper REPLACEMENT block (`sai-3-implement.md`, `sai-4-apply.md`) and the AGENTS.md artifact table above.
-3. If the recommended model changes, update the wrappers in `claude/commands/` and `opencode/commands/`.
+3. If the recommended model changes, update the wrappers in `commands/claude/` and `commands/opencode/`.
 
 ### Add a new command
-1. Create the instruction in `instructions/sai/{name}.md` with Isolation Mode + TASK block (or, for openspec-backed commands, write a wrapper that fetches a skill).
-2. Create wrappers in `claude/commands/sai-{name}.md` and `opencode/commands/sai-{name}.md`.
+1. Create the instruction in `sai/instructions/{name}.md` with Isolation Mode + TASK block (or, for openspec-backed commands, write a wrapper that fetches a skill).
+2. Create wrappers in `commands/claude/sai-{name}.md` and `commands/opencode/sai-{name}.md`.
 3. Update README.md with the phase in the corresponding table.
 
 ### Specs approval gate
 `sai-1-spec` stops after generating `proposal.md` and `specs/`. It asks the user to review and confirm approval, then writes `approval.specs.approved_at` + `approval.specs.notes` to `.openspec.yaml`. `sai-2-design` reads this key before proceeding. Bypassing `sai-2-design` (e.g. calling `opsx:continue` directly) skips this check — `opsx:*` commands are internal, document this accordingly.
 
 ### Mirror discipline
-Any change to `claude/commands/` MUST be mirrored to `opencode/commands/` in the same commit (and vice versa). Enforce via PR checklist.
+Any change to `commands/claude/` MUST be mirrored to `commands/opencode/` in the same commit (and vice versa). Enforce via PR checklist.
 
 ### Format conventions
 - Never use `any` in TypeScript (even though there is no TS here, it applies to code examples in instructions).
 - Generated artifacts are in English unless the user explicitly requests otherwise.
-- Fetch URLs point to `@~/.config/opencode/instructions/sai/...` (opencode) or `@~/.claude/instructions/sai/...` (claude).
+- Fetch URLs point to `@~/.config/opencode/sai/instructions/...` (opencode) or `@~/.claude/sai/instructions/...` (claude).
 - Skill fetches use project-local paths (`.claude/skills/...` or `.opencode/skills/...`).
 - `TODO-ENHANCEMENTS.md` tracks future enhancement ideas (not part of the pipeline).
