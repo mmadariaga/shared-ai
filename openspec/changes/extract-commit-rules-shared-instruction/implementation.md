@@ -171,7 +171,7 @@ No other lines in `apply.md` are modified, added, or removed.
 
 *(Non-testable step — new ADR documentation file)*
 
-- [ ] Create `docs/adr/0005-verbatim-extraction-of-commit-rules.md` with this exact content:
+- [x] Create `docs/adr/0005-verbatim-extraction-of-commit-rules.md` with this exact content:
 
 ```markdown
 # ADR 0005: Verbatim Extraction of Commit Rules into commit-rules.md
@@ -219,7 +219,7 @@ headings, or merge sections.
 ##### Step 4 Verification Checklist
 
 **Automated (agent runs before stopping):**
-- [ ] `test -f docs/adr/0005-verbatim-extraction-of-commit-rules.md` — expected: exit `0` (file exists)
+- [x] `test -f docs/adr/0005-verbatim-extraction-of-commit-rules.md` — expected: exit `0` (file exists)
 
 *(No Human checks — no UI involved)*
 
