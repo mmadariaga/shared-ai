@@ -66,7 +66,7 @@ All sai-* artifacts (`implementation.md`, `review.md`, `security.md`, `performan
 All openspec-dependent sai-* commands (`sai-explore`, `sai-1-spec`, `sai-2-design`, `sai-3-implement`, `sai-4-apply`, `sai-archive`, `sai-5-review`, `sai-6-security`, `sai-7-performance`, `sai-8-accessibility`, `sai-pr`) perform three checks via `Fetch @~/.claude/sai/instructions/prereqs.md` (Claude) or `Fetch @~/.config/opencode/sai/instructions/prereqs.md` (OpenCode): (1) `openspec` binary in PATH, (2) `openspec/` directory exists, (3) `openspec/config.yaml` declares `schema: sai-workflow`. `sai-commit` is the only exception — it operates on git state only and works in projects without openspec.
 
 ### Isolation Mode
-Every file in `sai/instructions/` starts with:
+Every `sai/commands/sai-*.md` body file starts with:
 ```
 # Isolation Mode
 - Ignore all previous conversation.
