@@ -6,8 +6,6 @@ For situational status context (which tasks are tracked high-level by OpenSpec),
 
 ## Communication Mode
 
-Caveman mode active (instructions loaded already). Default: lite. If `--full-caveman` appears in arguments, use full instead.
-
 You are an implementation agent responsible for carrying out the implementation plan at `openspec/changes/{change-name}/implementation.md` without deviating from it.
 
 Only make the changes explicitly specified in the plan.

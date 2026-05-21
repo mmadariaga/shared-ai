@@ -1,6 +1,6 @@
 ---
 description: Explore mode wrapper — thinking partner for ideas, problems, and requirements. Wraps opsx:explore skill, adds caveman mode. Optionally pass a change name to explore an existing change.
-model: opencode/glm-5.1
+model: opencode/qwen3.6-plus
 ---
 
 Load `skill` fetch before you continue.

@@ -262,7 +262,7 @@ We set these defaults to models that have worked best for us, you may find bette
 
 | Command | Opencode | Claude Code | Copilot |
 |-------|----------|-------------|---------|
-| explore | `opencode-go/kimi-k2.6` | `claude-sonnet-4-6` High | `github-copilot/claude-sonnet-4.6` |
+| explore | `opencode-go/qwen3.6-plus` | `claude-sonnet-4-6` High | `github-copilot/claude-sonnet-4.6` |
 | spec (1) | `opencode-go/kimi-k2.6` | `claude-sonnet-4-7` High | `github-copilot/claude-sonnet-4.6` |
 | design (2) | `opencode/claude-opus-4-7`<br />\|\| `opencode/gpt-5.5` <br />\|\|`opencode/gemini-3.1-pro`<br />\|\| `opencode-go/glm-5.1` | `claude-opus-4-7` High |``github-copilot/claude-opus-4.6`` | 
 | implement (3) | `opencode-go/kimi-k2.6` | `claude-sonnet-4-6` | ``github-copilot/claude-sonnet-4.6`` |
