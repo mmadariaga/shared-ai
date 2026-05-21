@@ -1,10 +1,10 @@
-Fetch @instructions/sai/prereqs.md
+Fetch @sai/instructions/prereqs.md
 
 ## Load behaviors (in order)
 
 Fetch @skills/caveman/SKILL.md
-Fetch @instructions/sai/glossary-format.md
+Fetch @sai/instructions/glossary-format.md
 
-Fetch @instructions/sai/review.md and follow those instructions exactly.
+Fetch @sai/instructions/review.md and follow those instructions exactly.
 
-Fetch @instructions/sai/remember.md
+Fetch @sai/instructions/remember.md

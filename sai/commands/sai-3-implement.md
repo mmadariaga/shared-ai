@@ -1,4 +1,4 @@
-Fetch @instructions/sai/prereqs.md
+Fetch @sai/instructions/prereqs.md
 
 Also verify before proceeding:
 - `openspec/changes/{change-name}/proposal.md` exists. If not, STOP and print: "Change '{change-name}' not found. Run /sai-1-spec to create it first."
@@ -10,8 +10,8 @@ Do not create or modify any files if any check fails.
 
 Fetch @skills/budget-explorer/SKILL.md
 Fetch @skills/caveman/SKILL.md
-Fetch @instructions/sai/glossary-format.md
+Fetch @sai/instructions/glossary-format.md
 
-Fetch @instructions/sai/implement.md and follow those instructions exactly.
+Fetch @sai/instructions/implement.md and follow those instructions exactly.
 
-Fetch @instructions/sai/remember.md
+Fetch @sai/instructions/remember.md
