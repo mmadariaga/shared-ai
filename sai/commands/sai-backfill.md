@@ -21,5 +21,5 @@
   ## Run
   **User's request:** $ARGUMENTS
 
-  MANDATORY STOP: Once all backfill artifacts are written, your work is COMPLETE. Do NOT run reviews, security audits, or any other command. STOP and print exactly: "Backfill complete in openspec/changes/{name}/. Run /sai-5-review {name} if you want a code review."
+  MANDATORY STOP: Once all backfill artifacts are written, your work is COMPLETE. Do NOT run reviews, security audits, or any other command. STOP and print exactly: "Backfill complete in openspec/changes/{name}/."
 </TASK>

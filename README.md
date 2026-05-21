@@ -60,6 +60,7 @@ All artifact paths below resolve under `openspec/changes/{change-name}/` (referr
 | `/sai-commit` | Generates a Conventional Commits message from `git diff --cached`. Subject ≤50 chars, body only when the *why* is not obvious. `git commit` with explicit authorization. |
 | `/sai-pr` | Synthesizes PR title + body from proposal/design/implementation/review/security/performance/accessibility + git log. Saves draft to `{c}/pr.md` and opens PR via `gh` with explicit authorization. |
 | `/sai-archive` | Wraps `opsx:archive` — moves a completed change to `openspec/changes/archive/YYYY-MM-DD-{change-name}/`. |
+| `/sai-backfill` | Reconstructs `proposal.md` and capability specs for a change already implemented that skipped the SAI workflow. Interactive diff selection, structured interview, conflict detection gate. Writes only artifacts derivable from the diff — no `design.md` or `tasks.md`. |
 
 ## Typical usage
 
@@ -144,6 +145,24 @@ Pick an entry point based on what the findings require:
   > **New scope always → new change.** If the finding requires new services, new dependencies,
   > or new architectural decisions (e.g. adding a cache layer), treat it as a new change even
   > if the original is not yet archived.
+
+- **Backfill a manual change** — when you made a quick fix directly in code without going through the SAI workflow, use `/sai-backfill` to reconstruct the missing artifacts after the fact:
+
+  ```
+  # 1. Make the fix manually:
+  git add -A
+  git commit -m "fix: correct typo in error message for expired tokens"
+
+  # 2. Regularize it with backfill:
+  /sai-backfill
+
+  # Select the commit from the interactive diff picker.
+  # The command runs a structured interview to extract intent,
+  # detects conflicts with existing specs, and writes only
+  # derivable artifacts (proposal.md + specs/**).
+  ```
+
+  Backfill does **not** generate `design.md` or `tasks.md` — those require decisions that cannot be reliably inferred from the diff alone. Use it for small fixes, typo corrections, or config changes where the code change is self-explanatory.
 
 ## Skills
 
