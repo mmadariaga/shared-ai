@@ -54,6 +54,8 @@ No skills are required by default. Load a skill only if the plan invokes it expl
 
 ## Git Operations
 
+Fetch @sai/instructions/commit-rules.md
+
 **CRITICAL:** Do not manage git branches or create commits without explicit user authorization - ask for it.
 The plan's `STOP & COMMIT` markers signal that the step is ready to commit, but they are NOT
 blanket authorization. You still propose the commit message and wait for user approval before

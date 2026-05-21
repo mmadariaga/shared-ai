@@ -136,8 +136,8 @@ Fetch @sai/instructions/commit-rules.md
 
 *(Non-testable step — single-line insertion)*
 
-- [ ] Read `sai/instructions/apply.md` to confirm current content before editing.
-- [ ] Locate the `## Git Operations` heading. Insert `Fetch @sai/instructions/commit-rules.md` as the first line after `## Git Operations`, before the `**CRITICAL:**` paragraph. Add a blank line between the inserted directive and `**CRITICAL:**`.
+- [x] Read `sai/instructions/apply.md` to confirm current content before editing.
+- [x] Locate the `## Git Operations` heading. Insert `Fetch @sai/instructions/commit-rules.md` as the first line after `## Git Operations`, before the `**CRITICAL:**` paragraph. Add a blank line between the inserted directive and `**CRITICAL:**`.
 
 The `## Git Operations` section must begin like this after the edit:
 
@@ -154,8 +154,8 @@ No other lines in `apply.md` are modified, added, or removed.
 ##### Step 3 Verification Checklist
 
 **Automated (agent runs before stopping):**
-- [ ] `grep -c "Fetch @sai/instructions/commit-rules.md" sai/instructions/apply.md` — expected: `1` (exactly one directive)
-- [ ] `grep -n "Fetch @sai/instructions/commit-rules.md\|## Git Operations\|CRITICAL" sai/instructions/apply.md` — expected: `commit-rules` line number appears between `## Git Operations` line number and `CRITICAL` line number (verify by comparing the three line numbers)
+- [x] `grep -c "Fetch @sai/instructions/commit-rules.md" sai/instructions/apply.md` — expected: `1` (exactly one directive)
+- [x] `grep -n "Fetch @sai/instructions/commit-rules.md\|## Git Operations\|CRITICAL" sai/instructions/apply.md` — expected: `commit-rules` line number appears between `## Git Operations` line number and `CRITICAL` line number (verify by comparing the three line numbers)
 
 *(No Human checks — no UI involved)*
 
