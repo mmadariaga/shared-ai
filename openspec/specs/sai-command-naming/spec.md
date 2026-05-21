@@ -15,7 +15,7 @@ All shared AI workflow commands SHALL use the `/sai-` prefix across all supporte
 The repository SHALL NOT contain any `ai-*.md` or `ai-*.prompt.md` command files after the rename.
 
 #### Scenario: Old prefix absent from command dirs
-- **WHEN** `claude/commands/` or `opencode/commands/` is listed
+- **WHEN** `commands/claude/` or `commands/opencode/` is listed
 - **THEN** no file matching `ai-*` is present
 
 ### Requirement: Documentation references /sai-* prefix
@@ -42,17 +42,17 @@ The numbered sai-* commands SHALL use the following mapping, with `sai-2-design`
 Un-numbered commands (sai-commit, sai-pr, sai-archive, sai-explore) retain their names unchanged.
 
 #### Scenario: sai-2-design command exists
-- **WHEN** `claude/commands/` is listed
+- **WHEN** `commands/claude/` is listed
 - **THEN** `sai-2-design.md` is present and `sai-2-implement.md` is absent
 
 #### Scenario: renumbered commands exist with new numbers
-- **WHEN** `claude/commands/` is listed
+- **WHEN** `commands/claude/` is listed
 - **THEN** files `sai-3-implement.md`, `sai-4-apply.md`, `sai-5-review.md`, `sai-6-security.md`, `sai-7-performance.md`, `sai-8-accessibility.md` are present
 
 #### Scenario: old numbered commands absent
-- **WHEN** `claude/commands/` is listed
+- **WHEN** `commands/claude/` is listed
 - **THEN** no files named `sai-2-implement.md`, `sai-3-apply.md`, `sai-4-review.md`, `sai-5-security.md`, `sai-6-performance.md`, `sai-7-accessibility.md` are present
 
 #### Scenario: opencode mirrors the same numbering
-- **WHEN** `opencode/commands/` is listed
-- **THEN** the same set of numbered command files exists as in `claude/commands/`
+- **WHEN** `commands/opencode/` is listed
+- **THEN** the same set of numbered command files exists as in `commands/claude/`

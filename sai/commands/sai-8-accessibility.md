@@ -4,12 +4,24 @@
 - If required information is missing, ask for it.
 - If you are about to use external or prior context, STOP and say: "Potential context pollution detected, stopping, open a new chat".
 
-Fetch @sai/instructions/prereqs.md
+<TASK>
 
-## Load behaviors (in order)
+  ## Prerequisite checks
+  Fetch @sai/instructions/prereqs.md
 
-Fetch @skills/caveman/SKILL.md
+  ## Load behaviors (in order)
+  Fetch @skills/budget/SKILL.md
+  Fetch @skills/caveman/SKILL.md
+  Caveman lite mode active by default. If `--full-caveman` appears in arguments, use full instead.
 
-Fetch @sai/instructions/accessibility.md and follow those instructions exactly.
+  ## Load instructions (in order)
+  Fetch @sai/instructions/accessibility.md and follow those instructions exactly.
+  Fetch @sai/instructions/remember.md
 
-Fetch @sai/instructions/remember.md
+  ## Run
+  **User's accessibility audit request:** $ARGUMENTS
+
+  MANDATORY STOP: Once the accessibility audit is written, STOP and print exactly: "Accessibility audit done in openspec/changes/{name}/."
+</TASK>
+
+

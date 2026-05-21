@@ -1,8 +1,8 @@
 ## MODIFIED Requirements
 
-### Requirement: Claude Code budget.md loads token-efficient-languages
+### Requirement: Claude Code budget.md loads budget aggregator skill
 
-`claude/commands/budget.md` SHALL load `token-efficient-languages` in addition to `budget-explorer` and `budget-executor`.
+`commands/claude/budget.md` SHALL load the universal `budget` aggregator skill, which in turn loads `budget-explorer`, `budget-executor`, and `token-efficient-languages`.
 
 **Before:**
 ```
@@ -12,21 +12,19 @@ Fetch @skills/claude/budget-executor/SKILL.md
 
 **After:**
 ```
-Fetch @skills/claude/budget-explorer/SKILL.md
-Fetch @skills/claude/budget-executor/SKILL.md
-Fetch @~/.claude/skills/token-efficient-languages/SKILL.md
+Fetch @skills/budget/SKILL.md
 ```
 
-The `token-efficient-languages` Fetch SHALL appear after the two existing Fetch lines.
+The `budget` skill is a universal aggregator installed at `~/.claude/skills/budget/SKILL.md` that fetches the three underlying budget skills.
 
 #### Scenario: /budget in Claude Code loads all three skills
 
 - **WHEN** a user runs `/budget` in Claude Code
-- **THEN** budget-explorer, budget-executor, AND token-efficient-languages are all loaded into the session
+- **THEN** budget-explorer, budget-executor, AND token-efficient-languages are all loaded into the session via the aggregator
 
-### Requirement: OpenCode budget.md loads token-efficient-languages
+### Requirement: OpenCode budget.md loads budget aggregator skill
 
-`opencode/commands/budget.md` SHALL load `token-efficient-languages` in addition to `budget-explorer` and `budget-executor`.
+`commands/opencode/budget.md` SHALL load the universal `budget` aggregator skill, which in turn loads `budget-explorer`, `budget-executor`, and `token-efficient-languages`.
 
 **Before:**
 ```
@@ -36,17 +34,15 @@ Fetch @skills/opencode/budget-executor/SKILL.md
 
 **After:**
 ```
-Fetch @skills/opencode/budget-explorer/SKILL.md
-Fetch @skills/opencode/budget-executor/SKILL.md
-Fetch @~/.config/opencode/skills/token-efficient-languages/SKILL.md
+Fetch @skills/budget/SKILL.md
 ```
 
-The `token-efficient-languages` Fetch SHALL appear after the two existing Fetch lines.
+The `budget` skill is a universal aggregator installed at `~/.config/opencode/skills/budget/SKILL.md` that fetches the three underlying budget skills.
 
 #### Scenario: /budget in OpenCode loads all three skills
 
 - **WHEN** a user runs `/budget` in OpenCode
-- **THEN** budget-explorer, budget-executor, AND token-efficient-languages are all loaded into the session
+- **THEN** budget-explorer, budget-executor, AND token-efficient-languages are all loaded into the session via the aggregator
 
 ### Requirement: budget.md description field unchanged
 

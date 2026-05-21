@@ -3,6 +3,6 @@ description: Granular implementation plan — reads OpenSpec change artifacts (p
 model: opencode-go/kimi-k2.6
 ---
 
-Fetch @sai/commands/sai-3-implement.md
+Fetch @sai/commands/sai-3-implement.md and follow those instructions exactly.
 
 User input: $ARGUMENTS

@@ -5,6 +5,6 @@ model: claude-sonnet-4-6
 effort: high
 ---
 
-Fetch @sai/commands/sai-5-review.md
+Fetch @sai/commands/sai-5-review.md and follow those instructions exactly.
 
 User input: $ARGUMENTS

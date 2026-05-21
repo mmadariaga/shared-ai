@@ -3,6 +3,6 @@ description: Explore mode wrapper — thinking partner for ideas, problems, and 
 model: opencode/glm-5.1
 ---
 
-Fetch @sai/commands/sai-explore.md
+Fetch @sai/commands/sai-explore.md and follow those instructions exactly.
 
 User input: $ARGUMENTS

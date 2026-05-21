@@ -3,6 +3,6 @@ description: Generate design.md and tasks.md for an approved change — gated on
 model: opencode-go/glm-5.1
 ---
 
-Fetch @sai/commands/sai-2-design.md
+Fetch @sai/commands/sai-2-design.md and follow those instructions exactly.
 
 User input: $ARGUMENTS

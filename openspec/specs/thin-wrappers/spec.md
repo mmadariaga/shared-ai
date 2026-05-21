@@ -2,7 +2,7 @@
 
 ## What
 
-Rewrite `claude/commands/sai-*.md` (12 files) and `opencode/commands/sai-*.md` (12 files) to thin wrappers. Each wrapper retains its existing frontmatter unchanged and replaces the body with a Fetch of the shared body file, followed by an optional user-arguments line.
+Rewrite `commands/claude/sai-*.md` (12 files) and `commands/opencode/sai-*.md` (12 files) to thin wrappers. Each wrapper retains its existing frontmatter unchanged and replaces the body with a Fetch of the shared body file, followed by an optional user-arguments line.
 
 ## Wrapper Template
 
@@ -13,7 +13,7 @@ Rewrite `claude/commands/sai-*.md` (12 files) and `opencode/commands/sai-*.md` (
 [existing frontmatter unchanged]
 ---
 
-Fetch @commands/sai/<cmd>.md
+Fetch @sai/commands/<cmd>.md
 
 User input: $ARGUMENTS
 ```
@@ -25,7 +25,7 @@ User input: $ARGUMENTS
 [existing frontmatter unchanged]
 ---
 
-Fetch @commands/sai/sai-2-design.md
+Fetch @sai/commands/sai-2-design.md
 ```
 
 ## Frontmatter Preservation Rules
@@ -36,23 +36,23 @@ Fetch @commands/sai/sai-2-design.md
 
 ## File List
 
-**claude/commands/** (12 files):
+**commands/claude/** (12 files):
 sai-1-spec.md, sai-2-design.md, sai-3-implement.md, sai-4-apply.md, sai-5-review.md,
 sai-6-security.md, sai-7-performance.md, sai-8-accessibility.md, sai-archive.md,
 sai-commit.md, sai-explore.md, sai-pr.md
 
-**opencode/commands/** (12 files): same names
+**commands/opencode/** (12 files): same names
 
 ## Acceptance Criteria
 
 - Every wrapper file is ≤10 lines total (frontmatter block + blank line + Fetch line + optional args line).
 - No wrapper contains any instruction body content (no Fetch @instructions/..., no Fetch @skills/...).
 - `$ARGUMENTS` appears only in wrappers that had it before (i.e., 11 of 12; not in sai-2-design.md).
-- The Fetch path format is `@commands/sai/<cmd>.md` where `<cmd>` matches the wrapper filename without extension.
+- The Fetch path format is `@sai/commands/<cmd>.md` where `<cmd>` matches the wrapper filename without extension.
 
 ## Example
 
-**claude/commands/sai-archive.md** (before):
+**commands/claude/sai-archive.md** (before):
 ```markdown
 ---
 description: Archive a completed change — wraps opsx:archive skill, adds caveman mode. Moves openspec/changes/{name}/ into the archive folder once tasks are done.
@@ -72,7 +72,7 @@ Then fetch and follow the openspec-archive-change skill at @skills/openspec-arch
 Fetch @instructions/sai/remember.md
 ```
 
-**claude/commands/sai-archive.md** (after):
+**commands/claude/sai-archive.md** (after):
 ```markdown
 ---
 description: Archive a completed change — wraps opsx:archive skill, adds caveman mode. Moves openspec/changes/{name}/ into the archive folder once tasks are done.

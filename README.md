@@ -258,6 +258,8 @@ mkdir -p ~/.config/opencode/skills/budget-explorer
 cp skills/opencode/budget-explorer/SKILL.md ~/.config/opencode/skills/budget-explorer/SKILL.md
 mkdir -p ~/.config/opencode/skills/budget-executor
 cp skills/opencode/budget-executor/SKILL.md ~/.config/opencode/skills/budget-executor/SKILL.md
+mkdir -p ~/.config/opencode/skills/budget
+cp skills/universal/budget/SKILL.md ~/.config/opencode/skills/budget/SKILL.md
 
 # Copy opencode.json
 if [ ! -f ~/.config/opencode/opencode.json ] && [ ! -f ~/.config/opencode/opencode.jsonc ]; then
@@ -308,6 +310,8 @@ New-Item -ItemType Directory -Force -Path "$configDir\skills\budget-explorer" | 
 Copy-Item skills\opencode\budget-explorer\SKILL.md "$configDir\skills\budget-explorer\SKILL.md"
 New-Item -ItemType Directory -Force -Path "$configDir\skills\budget-executor" | Out-Null
 Copy-Item skills\opencode\budget-executor\SKILL.md "$configDir\skills\budget-executor\SKILL.md"
+New-Item -ItemType Directory -Force -Path "$configDir\skills\budget" | Out-Null
+Copy-Item skills\universal\budget\SKILL.md "$configDir\skills\budget\SKILL.md"
 
 # Copy opencode.json
 $jsonPath = Join-Path $configDir "opencode.json"

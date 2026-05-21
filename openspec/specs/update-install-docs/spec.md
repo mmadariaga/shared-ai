@@ -2,52 +2,52 @@
 
 ## What
 
-Add `commands/sai/` copy steps to `INSTALL.claude.md` and `README.md` so that the new shared body files are installed alongside the harness-specific wrappers.
+Add `sai/commands/` copy steps to `INSTALL.claude.md` and `README.md` so that the new shared body files are installed alongside the harness-specific wrappers.
 
 ## Install Targets
 
 | Harness | Source | Destination |
 |---|---|---|
-| Claude Code | `commands/sai/*.md` | `~/.claude/commands/sai/` |
-| OpenCode | `commands/sai/*.md` | `~/.config/opencode/commands/sai/` |
+| Claude Code | `sai/commands/*.md` | `~/.claude/sai/commands/` |
+| OpenCode | `sai/commands/*.md` | `~/.config/opencode/sai/commands/` |
 
 ## Changes Required
 
 ### INSTALL.claude.md
 
-Add a step that creates `~/.claude/commands/sai/` and copies `commands/sai/*.md` into it. Insert this step near the existing `claude/commands/*.md` copy step, so the install sequence stays logically grouped (all commands together).
+Add a step that creates `~/.claude/sai/commands/` and copies `sai/commands/*.md` into it. Insert this step near the existing `commands/claude/*.md` copy step, so the install sequence stays logically grouped (all commands together).
 
 Bash snippet to add:
 ```bash
-mkdir -p ~/.claude/commands/sai
-cp commands/sai/*.md ~/.claude/commands/sai/
+mkdir -p ~/.claude/sai/commands
+cp sai/commands/*.md ~/.claude/sai/commands/
 ```
 
 ### README.md
 
 The README contains two install sections: bash and PowerShell. Update both.
 
-**Bash section** — add near the `opencode/commands/*.md` copy step:
+**Bash section** — add near the `commands/opencode/*.md` copy step:
 ```bash
-mkdir -p ~/.config/opencode/commands/sai
-cp commands/sai/*.md ~/.config/opencode/commands/sai/
+mkdir -p ~/.config/opencode/sai/commands
+cp sai/commands/*.md ~/.config/opencode/sai/commands/
 ```
 
 **PowerShell section** — add equivalent:
 ```powershell
-New-Item -ItemType Directory -Force -Path "$env:APPDATA\OpenCode\commands\sai"
-Copy-Item -Path "commands\sai\*.md" -Destination "$env:APPDATA\OpenCode\commands\sai\"
+New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\.config\opencode\sai\commands"
+Copy-Item -Path "sai\commands\*.md" -Destination "$env:USERPROFILE\.config\opencode\sai\commands\"
 ```
 
 ## Notes
 
-- `commands/sai/` files are harness-agnostic; the same source directory installs to both harnesses.
-- The Fetch runtime resolves `@commands/sai/<cmd>.md` relative to the harness config root (`~/.claude/` or `~/.config/opencode/`), so the destination must be `commands/sai/` under that root.
-- No changes needed to skill copy steps — only `commands/sai/` is new.
+- `sai/commands/` files are harness-agnostic; the same source directory installs to both harnesses.
+- The Fetch runtime resolves `@sai/commands/<cmd>.md` relative to the harness config root (`~/.claude/` or `~/.config/opencode/`), so the destination must be `sai/commands/` under that root.
+- No changes needed to skill copy steps — only `sai/commands/` is new.
 
 ## Acceptance Criteria
 
-- `INSTALL.claude.md` includes a `commands/sai/` mkdir + cp step.
-- `README.md` bash section includes `commands/sai/` mkdir + cp step.
+- `INSTALL.claude.md` includes a `sai/commands/` mkdir + cp step.
+- `README.md` bash section includes `sai/commands/` mkdir + cp step.
 - `README.md` PowerShell section includes equivalent step.
-- All copy steps reference the same source: `commands/sai/*.md`.
+- All copy steps reference the same source: `sai/commands/*.md`.

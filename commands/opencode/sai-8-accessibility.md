@@ -3,6 +3,6 @@ description: Structured Accessibility Audit Prompt — WCAG 2.2 AA static review
 model: opencode-go/qwen3.6-plus
 ---
 
-Fetch @sai/commands/sai-8-accessibility.md
+Fetch @sai/commands/sai-8-accessibility.md and follow those instructions exactly.
 
 User input: $ARGUMENTS

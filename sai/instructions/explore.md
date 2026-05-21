@@ -1,5 +1,3 @@
-## Context Isolation
-
 You are in explore mode — a read-and-discuss context. These restrictions are in effect for the entire session:
 
 1. **No write commands**: Do NOT invoke `/sai-1-spec`, `/sai-2-design`, or any other write-producing sai-* command within this session. Explore mode is read-only.

@@ -1,18 +1,18 @@
 # Deduplicate sai-2-design Specification
 
 ## Purpose
-Deduplicate shared behavior between Claude Code and opencode wrappers by extracting shared instruction content into `instructions/sai/`, and reinforce artifact-only scope discipline and correct path references.
+Deduplicate shared behavior between Claude Code and opencode wrappers by extracting shared instruction content into `sai/instructions/`, and reinforce artifact-only scope discipline and correct path references.
 
 ## Requirements
 
 ### Requirement: artifact-only-scope
-`instructions/sai/spec.propose.md` SHALL contain an "Artifact-Only Scope" section that explicitly lists:
+`sai/instructions/spec.propose.md` SHALL contain an "Artifact-Only Scope" section that explicitly lists:
 - What the spec command must NEVER create, modify, or delete (project source files, configuration files, infrastructure definitions, build artifacts)
 - What commands it must NEVER run (build, test, lint, deploy, migrate)
 - What files it MAY create or modify (only `openspec/changes/{name}/` artifacts)
 
 #### Scenario: Artifact-Only Scope section present
-- **WHEN** `instructions/sai/spec.propose.md` is read
+- **WHEN** `sai/instructions/spec.propose.md` is read
 - **THEN** it contains an "Artifact-Only Scope" heading with bullet lists for NEVER-touch categories and MAY-modify files
 
 #### Scenario: scope covers file mutations
@@ -25,10 +25,10 @@ Deduplicate shared behavior between Claude Code and opencode wrappers by extract
 - **THEN** it lists at least: build, test, lint, deploy, migrate as commands the spec agent must NEVER run
 
 ### Requirement: design-instruction
-A shared instruction file `instructions/sai/design.md` SHALL exist containing the approval gate and generation instructions for sai-2-design. Both `claude/commands/sai-2-design.md` and `opencode/commands/sai-2-design.md` SHALL be thin wrappers that fetch and follow this shared instruction.
+A shared instruction file `sai/instructions/design.md` SHALL exist containing the approval gate and generation instructions for sai-2-design. Both `commands/claude/sai-2-design.md` and `commands/opencode/sai-2-design.md` SHALL be thin wrappers that fetch and follow this shared instruction.
 
 #### Scenario: shared design.md exists
-- **WHEN** `instructions/sai/design.md` is read
+- **WHEN** `sai/instructions/design.md` is read
 - **THEN** it contains an "Approval gate" section that checks for specs existence and user confirmation
 - **THEN** it contains a "Generation Instructions" section that produces `design.md` and `tasks.md`
 
@@ -39,20 +39,20 @@ A shared instruction file `instructions/sai/design.md` SHALL exist containing th
 - **THEN** on "yes" it writes `approval.specs.approved_at` and `approval.specs.notes` to `.openspec.yaml`
 
 #### Scenario: Claude Code wrapper is thin
-- **WHEN** `claude/commands/sai-2-design.md` is read
+- **WHEN** `commands/claude/sai-2-design.md` is read
 - **THEN** it does NOT contain inline generation instructions — only Fetch statements, with one referencing `design.md`
 
 #### Scenario: opencode wrapper is thin
-- **WHEN** `opencode/commands/sai-2-design.md` is read
+- **WHEN** `commands/opencode/sai-2-design.md` is read
 - **THEN** it does NOT contain inline generation instructions — only Fetch statements, with one referencing `design.md`
 
 ### Requirement: opencode-remember-path-fix
-The opencode `sai-1-spec` wrapper SHALL load `remember.md` from `~/.config/opencode/instructions/sai/remember.md`, not from the `~/.claude/` path.
+The opencode `sai-1-spec` wrapper SHALL load `remember.md` from `~/.config/opencode/sai/instructions/remember.md`, not from the `~/.claude/` path.
 
 #### Scenario: opencode sai-1-spec uses opencode path
-- **WHEN** `opencode/commands/sai-1-spec.md` is read
-- **THEN** the final `Fetch` line references `@~/.config/opencode/instructions/sai/remember.md`
+- **WHEN** `commands/opencode/sai-1-spec.md` is read
+- **THEN** the final `Fetch` line references `@~/.config/opencode/sai/instructions/remember.md`
 
 #### Scenario: no claude path leak in opencode commands
-- **WHEN** any file under `opencode/commands/` is searched
+- **WHEN** any file under `commands/opencode/` is searched
 - **THEN** no file contains the string `~/.claude/`

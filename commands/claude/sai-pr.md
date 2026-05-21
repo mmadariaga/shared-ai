@@ -4,6 +4,6 @@ argument-hint: "[change-name] [optional: parent branch]"
 model: claude-haiku-4-5
 ---
 
-Fetch @sai/commands/sai-pr.md
+Fetch @sai/commands/sai-pr.md and follow those instructions exactly.
 
 User input: $ARGUMENTS

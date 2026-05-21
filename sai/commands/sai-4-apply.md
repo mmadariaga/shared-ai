@@ -4,17 +4,27 @@
 - If required information is missing, ask for it.
 - If you are about to use external or prior context, STOP and say: "Potential context pollution detected, stopping, open a new chat".
 
-Fetch @sai/instructions/prereqs.md
+<TASK>
 
-Also verify before proceeding:
-- `openspec/changes/{change-name}/implementation.md` exists. If not, STOP and print: "implementation.md not found for '{change-name}'. Run /sai-3-implement first."
+  ## Prerequisite checks
+  Fetch @sai/instructions/prereqs.md
 
-Do not create or modify any files if this check fails.
+  Also verify before proceeding:
+  - `openspec/changes/{change-name}/implementation.md` exists. If not, STOP and print: "implementation.md not found for '{change-name}'. Run /sai-3-implement first."
 
-## Load behaviors (in order)
+  Do not create or modify any files if this check fails.
 
-Fetch @skills/caveman/SKILL.md
+  ## Load behaviors (in order)
+  Fetch @skills/budget/SKILL.md
+  Fetch @skills/caveman/SKILL.md
+  Caveman lite mode active by default. If `--full-caveman` appears in arguments, use full instead.
 
-Fetch @sai/instructions/apply.md and follow those instructions exactly.
+  ## Load instructions (in order)
+  Fetch @sai/instructions/apply.md and follow those instructions exactly.
+  Fetch @sai/instructions/remember.md
 
-Fetch @sai/instructions/remember.md
+  ## Run
+  **User's request:** $ARGUMENTS
+
+  MANDATORY STOP: Once implementation is done, STOP and print exactly: "Implementation applied. Run /sai-5-review {name} when ready."  
+</TASK>

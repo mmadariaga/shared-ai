@@ -1,14 +1,14 @@
 ## Requirements
 
 ### Requirement: sai-2-design command exists in both harnesses
-A `sai-2-design` command wrapper SHALL exist at `claude/commands/sai-2-design.md` and `opencode/commands/sai-2-design.md`.
+A `sai-2-design` command wrapper SHALL exist at `commands/claude/sai-2-design.md` and `commands/opencode/sai-2-design.md`.
 
 #### Scenario: Claude Code wrapper present
-- **WHEN** `claude/commands/` is listed
+- **WHEN** `commands/claude/` is listed
 - **THEN** `sai-2-design.md` is present
 
 #### Scenario: opencode wrapper present
-- **WHEN** `opencode/commands/` is listed
+- **WHEN** `commands/opencode/` is listed
 - **THEN** `sai-2-design.md` is present
 
 ### Requirement: sai-2-design generates design.md and tasks.md
@@ -26,12 +26,12 @@ When invoked with a change name, `sai-2-design` SHALL produce `openspec/changes/
 The `sai-2-design` wrapper SHALL declare `model: claude-opus-4-7` and `effort: high` in its frontmatter.
 
 #### Scenario: model declared in Claude Code wrapper
-- **WHEN** `claude/commands/sai-2-design.md` frontmatter is read
+- **WHEN** `commands/claude/sai-2-design.md` frontmatter is read
 - **THEN** `model` is `claude-opus-4-7` and `effort` is `high`
 
 ### Requirement: sai-2-design loads caveman and glossary behaviors
 The `sai-2-design` wrapper SHALL fetch `caveman.md` and `glossary-format.md` before executing the design skill.
 
 #### Scenario: caveman and glossary loaded
-- **WHEN** `claude/commands/sai-2-design.md` is read
-- **THEN** it fetches `~/.claude/instructions/sai/caveman.md` and `~/.claude/instructions/sai/glossary-format.md`
+- **WHEN** `commands/claude/sai-2-design.md` is read
+- **THEN** it fetches `~/.claude/sai/instructions/caveman.md` and `~/.claude/sai/instructions/glossary-format.md`

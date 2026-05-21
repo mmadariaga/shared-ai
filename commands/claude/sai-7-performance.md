@@ -5,6 +5,6 @@ model: claude-sonnet-4-6
 effort: high
 ---
 
-Fetch @sai/commands/sai-7-performance.md
+Fetch @sai/commands/sai-7-performance.md and follow those instructions exactly.
 
 User input: $ARGUMENTS

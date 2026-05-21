@@ -1,10 +1,25 @@
-Fetch @sai/instructions/prereqs.md
+# Isolation Mode
+- Ignore all previous conversation.
+- Use only the data inside <TASK>.
+- If required information is missing, ask for it.
+- If you are about to use external or prior context, STOP and say: "Potential context pollution detected, stopping, open a new chat".
 
-## Load behaviors (in order)
+<TASK>
 
-Fetch @skills/caveman/SKILL.md
-Fetch @sai/instructions/archive.md
+  ## Prerequisite checks
+  Fetch @sai/instructions/prereqs.md
 
-Then fetch and follow the openspec-archive-change skill at @skills/openspec-archive-change/SKILL.md exactly.
+  ## Load behaviors (in order)
+  Fetch @skills/budget/SKILL.md
+  Fetch @skills/caveman/SKILL.md
+  Caveman lite mode active by default. If `--full-caveman` appears in arguments, use full instead.
 
-Fetch @sai/instructions/remember.md
+  ## Load instructions (in order)
+  Fetch @sai/instructions/archive.md
+  Fetch @sai/instructions/remember.md
+
+  Fetch @skills/openspec-archive-change/SKILL.md and follow those instructions exactly.
+
+  ## Run
+  **User's request:** $ARGUMENTS
+</TASK>
