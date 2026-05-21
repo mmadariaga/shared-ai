@@ -124,30 +124,8 @@ Before presenting the message, audit it:
 
 ---
 
-## Hard Rules
-
-- **Never stage or unstage files.** Operate only on what is already staged.
-- **Never run `git commit` without explicit per-invocation authorization.**
-- **Never amend a commit that is already pushed** without explicit warning + secondary confirmation.
-- **Never use `--no-verify`** to skip hooks. If a pre-commit hook fails, surface the failure, do not bypass it.
-- **Never include unstaged content** in the message — describe only `git diff --cached`.
-- **Subject ≤ 50 chars, body wrap 72.** Hard limits.
-- **Imperative mood, no trailing period, lowercase after colon.**
-- **No `Co-Authored-By` / "Generated with Claude Code" trailers** unless the user explicitly asks.
-- **No emoji** unless the user explicitly asks.
-- **No speculation.** Every claim must map to a staged hunk.
-- **Match the repo's commit style.** If recent commits use a particular convention (scope naming, ticket refs, language), match it.
 Fetch skills/token-efficient-languages/SKILL.md
 
 ---
 
-## Self-Critique Before Presenting
-
-Verify:
-1. **Type accuracy** — `feat` only for new capabilities; `fix` only when behavior changed.
-2. **Subject length** — ≤ 50 chars, no period, imperative.
-3. **Body wrap** — 72 chars per line if body present.
-4. **Faithfulness** — every claim backed by `git diff --cached`.
-5. **No anticipated work** in the message.
-6. **Repo convention match** — prefix style, scope naming, language consistent with recent commits.
-7. **Secrets check** — no obvious secret-looking files in staging without warning.
+Fetch @sai/instructions/commit-rules.md

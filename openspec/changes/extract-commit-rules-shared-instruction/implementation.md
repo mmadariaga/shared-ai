@@ -96,10 +96,10 @@ Verify:
 
 *(Non-testable step — surgical deletion and directive insertion)*
 
-- [ ] Read `sai/instructions/commit.md` to confirm current content before editing.
-- [ ] Delete the `## Hard Rules` section: remove from the `## Hard Rules` heading through the last bullet point (`- **Match the repo's commit style.**...`). Do **NOT** delete the `Fetch skills/token-efficient-languages/SKILL.md` line that follows the section — it is a separate directive and must be preserved.
-- [ ] Delete the `## Self-Critique Before Presenting` section: remove from the `## Self-Critique Before Presenting` heading through the last checklist item (`7. **Secrets check**...`). Do **NOT** delete the `---` separator that precedes it.
-- [ ] In the position where `## Self-Critique Before Presenting` was (after the `---` separator), insert `Fetch @sai/instructions/commit-rules.md` as the final line of the file.
+- [x] Read `sai/instructions/commit.md` to confirm current content before editing.
+- [x] Delete the `## Hard Rules` section: remove from the `## Hard Rules` heading through the last bullet point (`- **Match the repo's commit style.**...`). Do **NOT** delete the `Fetch skills/token-efficient-languages/SKILL.md` line that follows the section — it is a separate directive and must be preserved.
+- [x] Delete the `## Self-Critique Before Presenting` section: remove from the `## Self-Critique Before Presenting` heading through the last checklist item (`7. **Secrets check**...`). Do **NOT** delete the `---` separator that precedes it.
+- [x] In the position where `## Self-Critique Before Presenting` was (after the `---` separator), insert `Fetch @sai/instructions/commit-rules.md` as the final line of the file.
 
 The tail of `sai/instructions/commit.md` must look exactly like this after the edit:
 
@@ -116,11 +116,11 @@ Fetch @sai/instructions/commit-rules.md
 ##### Step 2 Verification Checklist
 
 **Automated (agent runs before stopping):**
-- [ ] `grep -c "## Hard Rules" sai/instructions/commit.md` — expected: `0` (heading deleted)
-- [ ] `grep -c "## Self-Critique Before Presenting" sai/instructions/commit.md` — expected: `0` (heading deleted)
-- [ ] `grep -c "Fetch @sai/instructions/commit-rules.md" sai/instructions/commit.md` — expected: `1` (exactly one directive)
-- [ ] `grep -c "### Step 1\|### Step 2\|### Step 3\|### Step 4\|### Step 5\|### Step 6" sai/instructions/commit.md` — expected: `6` (all workflow steps unchanged)
-- [ ] `grep -c "Fetch skills/token-efficient-languages/SKILL.md" sai/instructions/commit.md` — expected: `1` (preserved, not deleted)
+- [x] `grep -c "## Hard Rules" sai/instructions/commit.md` — expected: `0` (heading deleted)
+- [x] `grep -c "## Self-Critique Before Presenting" sai/instructions/commit.md` — expected: `0` (heading deleted)
+- [x] `grep -c "Fetch @sai/instructions/commit-rules.md" sai/instructions/commit.md` — expected: `1` (exactly one directive)
+- [x] `grep -c "### Step 1\|### Step 2\|### Step 3\|### Step 4\|### Step 5\|### Step 6" sai/instructions/commit.md` — expected: `6` (all workflow steps unchanged)
+- [x] `grep -c "Fetch skills/token-efficient-languages/SKILL.md" sai/instructions/commit.md` — expected: `1` (preserved, not deleted)
 
 *(No Human checks — no UI involved)*
 
