@@ -10,6 +10,8 @@ The message must be faithful to what is actually staged: every claim in the subj
 
 ---
 
+Fetch @sai/instructions/commit-rules.md
+
 ## Required Inputs
 
 None. The user only needs to have staged changes via `git add`.
@@ -41,21 +43,7 @@ Stop conditions:
 
 ### Step 2: Classify the Change
 
-Pick exactly one Conventional Commits type, in this priority order:
-
-| Type | When |
-|------|------|
-| `feat` | New user-facing capability or new public API surface |
-| `fix` | Bug fix that changes behavior the user could observe |
-| `perf` | Measurable performance improvement, no behavioral change |
-| `refactor` | Code restructured without changing behavior or perf |
-| `docs` | Only docs/README/comments |
-| `test` | Only test files added or modified |
-| `build` | Build system, dependencies, lockfiles, package manager config |
-| `ci` | CI configuration only (`.github/`, `.gitlab-ci.yml`, etc.) |
-| `chore` | Maintenance: tooling config, file moves, formatting-only diffs not covered above |
-| `style` | Whitespace/formatting only — code semantics unchanged |
-| `revert` | Reverts a prior commit (subject: `revert: <reverted subject>`) |
+Pick one type using the classification table in commit-rules.md, in priority order.
 
 If the diff genuinely mixes types, prefer the dominant user-visible one and mention the secondary in the body. Suggest splitting only when types are clearly independent (e.g. unrelated `feat` + `fix`).
 
@@ -69,27 +57,7 @@ Infer scope from the common path prefix of the staged files:
 
 ### Step 4: Compose the Message
 
-**Subject (line 1):**
-- Format: `type(scope): description` or `type: description` (no scope)
-- **≤ 50 characters** (hard limit; breaks GitHub UI past 72)
-- Imperative mood (`add`, not `added`/`adds`)
-- No trailing period
-- No emoji unless the user explicitly asks
-- Lowercase after the colon (unless an identifier or proper noun)
-
-**Body (optional):**
-- Skip when the subject is self-evident or `--no-body` is passed
-- Include when the **why** is non-obvious — context, motivation, trade-offs, hidden constraints
-- **Wrap at 72 characters per line**
-- Blank line between subject and body
-- Focus on *why*, not *what* (the diff already shows what)
-- Reference issue / ticket IDs if discoverable in branch name or recent commits
-- Note breaking changes with `BREAKING CHANGE: <description>` footer
-
-**Footer (optional):**
-- `BREAKING CHANGE: ...` for incompatible API changes (also bump subject to `feat!:`/`fix!:`)
-- `Refs: #123` / `Closes: #123` if the user mentions an issue or it appears in branch name
-- **No `Co-Authored-By` or "Generated with Claude Code" trailers** unless the user explicitly requests them
+Apply format rules from commit-rules.md — subject, body, and footer conventions.
 
 ### Step 5: Verify Faithfulness
 
@@ -121,11 +89,3 @@ Before presenting the message, audit it:
     ```
     Capture and show the resulting commit SHA + subject.
 5. On `n` → STOP. Tell the user the message is ready to copy from above.
-
----
-
-Fetch skills/token-efficient-languages/SKILL.md
-
----
-
-Fetch @sai/instructions/commit-rules.md
