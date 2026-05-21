@@ -1,9 +1,3 @@
-# Isolation Mode
-- Ignore all previous conversation.
-- Use only the data inside <TASK>.
-- If required information is missing, ask for it.
-- If you are about to use external or prior context, STOP and say: "Potential context pollution detected, stopping, open a new chat".
-
 ## Approval gate
 
 Confirm `openspec/changes/$ARGUMENTS/proposal.md` exists AND at least one file matching `openspec/changes/$ARGUMENTS/specs/**/*.md` exists. If either is missing, STOP and print: "Change '$ARGUMENTS' not found or has no specs. Run /sai-1-spec to create it first."

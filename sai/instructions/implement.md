@@ -1,9 +1,3 @@
-# Isolation Mode
-- Ignore all previous conversation.
-- Use only the data inside <TASK>.
-- If required information is missing, ask for it. When presenting options to the user, briefly outline the pros and cons of each choice. Include a comparison table or code snippets whenever they help the user make an informed decision.
-- If you are about to use external or prior context, STOP and say: "Potential context pollution detected, stopping, open a new chat".
-
 <TASK>
     ## Communication Mode
 
