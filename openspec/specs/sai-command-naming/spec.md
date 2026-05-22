@@ -51,7 +51,7 @@ Un-numbered commands (sai-commit, sai-pr, sai-archive, sai-explore, sai-backfill
 
 #### Scenario: old numbered commands absent
 - **WHEN** `commands/claude/` is listed
-- **THEN** no files named `sai-2-implement.md`, `ssai-4-apply.md`, `sai-4-review.md`, `sai-5-security.md`, `sai-6-performance.md`, `sai-7-accessibility.md` are present
+- **THEN** no files named `sai-2-implement.md`, `sai-4-apply.md`, `sai-4-review.md`, `sai-5-security.md`, `sai-6-performance.md`, `sai-7-accessibility.md` are present
 
 #### Scenario: opencode mirrors the same numbering
 - **WHEN** `commands/opencode/` is listed

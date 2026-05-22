@@ -1,7 +1,7 @@
 ## ADDED Requirements
 
 ### Requirement: Capability specs reflect actual implemented behavior
-The command SHALL create or update `openspec/specs/{capability}/spec.md` entries to describe the behavior that was actually implemented, as evidenced by the diff and the user's interview answers. Specs MUST NOT describe idealized or intended behavior that differs from the diff.
+The command SHALL create or update `openspec/changes/{name}/specs/{capability}/spec.md` entries to describe the behavior that was actually implemented, as evidenced by the diff and the user's interview answers. Specs MUST NOT describe idealized or intended behavior that differs from the diff.
 
 #### Scenario: Spec describes implemented shortcut accurately
 - **WHEN** the diff shows a simplified implementation of a feature
@@ -9,7 +9,7 @@ The command SHALL create or update `openspec/specs/{capability}/spec.md` entries
 
 #### Scenario: New capability spec created for new behavior
 - **WHEN** the diff introduces behavior not covered by any existing spec
-- **THEN** a new `openspec/specs/{capability}/spec.md` is created
+- **THEN** a new `openspec/changes/{name}/specs/{capability}/spec.md` is created
 
 #### Scenario: Existing spec updated for changed behavior
 - **WHEN** the diff changes behavior already described in an existing spec, and the user confirmed the update in the conflict detection step
@@ -25,6 +25,18 @@ All spec files written by `/sai-backfill` SHALL use the standard sai-workflow sp
 #### Scenario: Modified spec uses correct section header
 - **WHEN** an existing spec requirement is changed
 - **THEN** the updated requirement block appears under `## MODIFIED Requirements`
+
+### Requirement: Backfill writes capability specs to the change-scoped path
+
+The `/sai-backfill` command SHALL create or update capability specs at `openspec/changes/{name}/specs/{capability}/spec.md`, not at `openspec/specs/{capability}/spec.md`. This ensures all backfill artifacts live under the single change directory.
+
+#### Scenario: backfill writes to change-scoped path
+- **WHEN** `/sai-backfill` generates capability specs
+- **THEN** files are written to `openspec/changes/{name}/specs/{capability}/spec.md`
+
+#### Scenario: existing spec path reference is updated
+- **WHEN** `sai/instructions/backfill.md` Phase 5c is read
+- **THEN** the path references `openspec/changes/{name}/specs/{capability}/spec.md`
 
 ### Requirement: Specs only written after conflict detection confirmed
 No spec file SHALL be written until the conflict detection step has completed and — if conflicts were found — the user has explicitly confirmed they want to proceed.
