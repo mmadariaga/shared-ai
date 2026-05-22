@@ -5,5 +5,6 @@ model: claude-opus-4-7
 effort: high
 ---
 
+Fetch @skills/fetch/SKILL.md
 Fetch @sai/commands/sai-explore.md and follow those instructions exactly.
 

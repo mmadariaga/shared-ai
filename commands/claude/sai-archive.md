@@ -4,5 +4,6 @@ argument-hint: "[change-name]"
 model: claude-haiku-4-5
 ---
 
+Fetch @skills/fetch/SKILL.md
 Fetch @sai/commands/sai-archive.md and follow those instructions exactly.
 

@@ -5,5 +5,6 @@ model: claude-sonnet-4-6
 effort: high
 ---
 
+Fetch @skills/fetch/SKILL.md
 Fetch @sai/commands/sai-8-accessibility.md and follow those instructions exactly.
 

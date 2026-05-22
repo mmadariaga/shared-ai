@@ -5,4 +5,5 @@ model: claude-sonnet-4-6
 effort: medium
 ---
 
+Fetch @skills/fetch/SKILL.md
 Fetch @sai/commands/sai-backfill.md and follow those instructions exactly.

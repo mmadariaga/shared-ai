@@ -53,6 +53,8 @@ mkdir -p ~/.claude/skills/budget-explorer
 cp skills/claude/budget-explorer/SKILL.md ~/.claude/skills/budget-explorer/SKILL.md
 mkdir -p ~/.claude/skills/budget-executor
 cp skills/claude/budget-executor/SKILL.md ~/.claude/skills/budget-executor/SKILL.md
+mkdir -p ~/.claude/skills/fetch
+cp skills/claude/fetch/SKILL.md ~/.claude/skills/fetch/SKILL.md
 
 echo "Reminder: run 'openspec init --tools claude' in each project to enable the spec/explore/apply/archive commands."
 ```
@@ -83,6 +85,8 @@ New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\.claude\skills\budge
 Copy-Item skills\claude\budget-explorer\SKILL.md "$env:USERPROFILE\.claude\skills\budget-explorer\SKILL.md"
 New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\.claude\skills\budget-executor" | Out-Null
 Copy-Item skills\claude\budget-executor\SKILL.md "$env:USERPROFILE\.claude\skills\budget-executor\SKILL.md"
+New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\.claude\skills\fetch" | Out-Null
+Copy-Item skills\claude\fetch\SKILL.md "$env:USERPROFILE\.claude\skills\fetch\SKILL.md"
 
 Write-Host "Reminder: run 'openspec init --tools claude' in each project to enable the spec/explore/apply/archive commands."
 ```
