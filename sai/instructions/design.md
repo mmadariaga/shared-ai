@@ -2,7 +2,7 @@
 
 Confirm `openspec/changes/$ARGUMENTS/proposal.md` exists AND at least one file matching `openspec/changes/$ARGUMENTS/specs/**/*.md` exists. If either is missing, STOP and print: "Change '$ARGUMENTS' not found or has no specs. Run /sai-1-spec to create it first."
 
-Ask exactly: "Have you reviewed the specs in openspec/changes/$ARGUMENTS/specs/ and are ready to approve them for design? (yes/no, and any notes)"
+Ask exactly: "**Have you reviewed the specs in openspec/changes/$ARGUMENTS/specs/** and are ready to **approve** them for design? (yes/no, and any notes)"
 
 If the user's response is "no" or any clearly negative answer, STOP without writing any file.
 
@@ -74,7 +74,3 @@ After all implementation steps, end the file with these two mandatory sections i
    - `**Avoid**`: anti-patterns the implementation agent might default to given the declared stack.
 
 Both sections are mandatory. They must contain real content derived from research, not placeholder text.
-
-## Completion
-
-MANDATORY STOP: Once `design.md` and `tasks.md` are written, STOP and print exactly: "Design and tasks ready in openspec/changes/{name}/. Review and run /sai-3-implement {name} when ready."

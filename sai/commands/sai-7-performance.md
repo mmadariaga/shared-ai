@@ -21,5 +21,6 @@
   ## Run
   **User's request:** $ARGUMENTS
 
+  ## Completion
   MANDATORY STOP: Once implementation is done, STOP and print exactly: "Performance audit done in openspec/changes/{name}/."  
 </TASK>

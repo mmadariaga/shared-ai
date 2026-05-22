@@ -26,6 +26,12 @@
 <!-- one URL per line -->
 <!-- if nothing to list, write: None -->
 
+## Required Documentation
+
+**Local files**: <!-- List every local file consulted during design-phase codebase research -->
+
+**External URLs**: <!-- List every external URL consulted during design-phase codebase research -->
+
 ## Implementation Context
 
 **Stack**: <!-- primary language/framework + key versions relevant to this change -->

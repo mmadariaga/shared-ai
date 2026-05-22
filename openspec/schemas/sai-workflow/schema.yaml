@@ -23,6 +23,7 @@ artifacts:
         - **New Capabilities**: capabilities being introduced. Each becomes specs/<name>/spec.md. Use kebab-case.
         - **Modified Capabilities**: existing capabilities whose requirements are changing. Only include if spec-level behavior changes.
       - **Impact**: affected code, APIs, dependencies, or systems.
+      - **Proposal Research Documentation**: list of relevant files and URLs consulted during proposal research.
 
       The Capabilities section is critical — it is the contract between proposal and specs.
       Research existing specs before filling it in. Keep it concise (1-2 pages).

@@ -23,5 +23,6 @@
   ## Run
   **User's request:** $ARGUMENTS
 
+  ## Completion
   MANDATORY STOP: Once implementation is done, STOP and print exactly: "Spec proposal done in openspec/changes/{name}/. Run `/sai-2-design {name}` **in a new chat** when ready."
 </TASK>

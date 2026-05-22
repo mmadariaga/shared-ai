@@ -22,5 +22,6 @@
   ## Run
   **User's request:** $ARGUMENTS
 
+  ## Completion
   MANDATORY STOP: Once implementation is done, STOP and print exactly: "Review done in openspec/changes/{name}/."  
 </TASK>

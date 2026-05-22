@@ -19,3 +19,9 @@
 ## Impact
 
 <!-- Affected code, APIs, dependencies, systems -->
+
+## Proposal Research Documentation
+
+**Local files**: <!-- List every local file consulted during spec-phase codebase research -->
+
+**External URLs**: <!-- List every external URL consulted during spec-phase codebase research -->

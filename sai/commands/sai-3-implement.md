@@ -28,5 +28,6 @@
   ## Run
   **User's request:** $ARGUMENTS
 
-   MANDATORY STOP: Once `openspec/changes/{change-name}/implementation.md` is written, your work is COMPLETE. Do NOT execute any steps, run verification commands, mark any checkboxes, or modify any project file. That is sai-4-apply's job. STOP and print exactly: "Implementation plan done in openspec/changes/{name}/. Review and run `/sai-4-apply {name}` **in a new chat** when ready."
+  ## Completion
+  MANDATORY STOP: Once `openspec/changes/{change-name}/implementation.md` is written, your work is COMPLETE. Do NOT execute any steps, run verification commands, mark any checkboxes, or modify any project file. That is sai-4-apply's job. STOP and print exactly: "Implementation plan done in openspec/changes/{name}/. Review and run `/sai-4-apply {name}` **in a new chat** when ready."
 </TASK>

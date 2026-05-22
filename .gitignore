@@ -1,3 +1,5 @@
 .claude/settings.local.json
 
-openspec/changes
+openspec/changes/**
+!openspec/changes/**/
+!openspec/changes/**/proposal.md
