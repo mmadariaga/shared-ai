@@ -14,11 +14,11 @@ Before any other step, check:
 Present the user with exactly this message and do NOT proceed until a valid selection is received:
 
 ```
-Which diff should I analyze?
+**Which diff should I analyze?**
 
-1. A specific commit SHA as the base — I'll compute `<sha>..HEAD`
-2. Currently staged changes — I'll capture the staged diff
-3. Currently unstaged/untracked changes — I'll capture unstaged modifications and untracked files
+1. A **specific commit** SHA as the base — I'll compute `<sha>..HEAD`
+2. Currently **staged changes** — I'll capture the staged diff
+3. Currently **unstaged/untracked changes** — I'll capture unstaged modifications and untracked files
 
 Reply with 1, 2, or 3.
 ```

@@ -29,6 +29,7 @@ No skills are required by default. Load a skill only if the plan invokes it expl
     3. Write the GREEN implementation.
     4. Run the GREEN verification command. If it does NOT pass, fix the implementation until it does.
 - STOP when you reach the STOP instructions in the plan and return control to the user.
+- **Final sweep:** When all steps in the plan are complete, scan the entire `implementation.md` and verify that every checkbox that should be checked is marked `[x]`. Report any unchecked items to the user before declaring the implementation done.
 - **Plan vs Final Implementation appendix (incremental):** Each time you reach a STOP & COMMIT in the plan, append your deviation entries for the just-completed step to a `## Appendix: Plan vs Final Implementation` section at the end of `openspec/changes/{change-name}/implementation.md`. Create the section on the first deviation; on subsequent steps, append new entries below the existing ones. This MUST happen before you commit, so the appendix entry lands in the same commit as the changes it describes. The block format:
 
     ```markdown
@@ -69,6 +70,8 @@ Example workflow:
 1. Implement code changes for the current step
 2. Run all Automated checks; mark `[x]` in the plan
 3. Append the deviation entry (if any) to the plan's appendix
-4. "Ready to commit Step N. May I create commit with message: '...'?" → Wait for approval
-5. If yes → Create commit
-6. If no → "Describe the changes above; execute commit yourself"
+4. If the step has Human Verification checks: present the checklist to the user and wait — do NOT mark them yet
+5. If the user confirms they have reviewed and asks to continue, mark all Human Verification checks `[x]` in the plan
+6. "Ready to commit Step N. May I create commit with message: '...'?" → Wait for approval
+7. If yes → Create commit
+8. If no → "Describe the changes above; execute commit yourself"
