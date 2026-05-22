@@ -15,7 +15,7 @@
   Do not create or modify any files if this check fails.
 
   ## Load behaviors (in order)
-  Fetch @skills/budget/SKILL.md
+  Fetch @skills/budget/SKILL.md and use it
   Fetch @skills/caveman/SKILL.md
   Caveman lite mode active by default. If `--full-caveman` appears in arguments, use full instead.
 

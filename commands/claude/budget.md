@@ -3,4 +3,4 @@ description: Load all three Claude Code budget skills (explorer + executor + tok
 ---
 
 Fetch @skills/fetch/SKILL.md
-Fetch @skills/budget/SKILL.md
+Fetch @skills/budget/SKILL.md and use it

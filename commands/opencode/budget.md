@@ -3,4 +3,4 @@ description: Load all three OpenCode budget skills (explorer + executor + token-
 ---
 
 Load `skill` fetch before you continue.
-Fetch @skills/budget/SKILL.md
+Fetch @skills/budget/SKILL.md and use it

@@ -9,6 +9,7 @@ metadata:
   version: "1.0"
 ---
 
+Load and use the skills below:
   Fetch @skills/budget-explorer/SKILL.md
   Fetch @skills/budget-executor/SKILL.md
   Fetch @skills/token-efficient-languages/SKILL.md
