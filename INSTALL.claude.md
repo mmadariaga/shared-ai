@@ -19,7 +19,7 @@ openspec init --tools claude
 
 Shared-AI **does not bundle the OpenSpec skills**; they come from the OpenSpec CLI and are versioned by it.
 
-If you skip this step, the openspec-dependent `ai-*` commands (`ai-explore`, `ai-1-spec`, `ai-2-implement`, `ai-3-apply`, `ai-archive`) will halt with a clear error message.
+If you skip this step, the openspec-dependent `ai-*` commands (`ai-explore`, `ai-1-spec`, `ai-2-implement`, `sai-4-apply`, `ai-archive`) will halt with a clear error message.
 
 ## Install shared-AI commands
 

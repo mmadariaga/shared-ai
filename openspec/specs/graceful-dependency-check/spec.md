@@ -6,7 +6,7 @@ Defines prerequisite validation performed by openspec-dependent `ai-*` commands 
 ## Requirements
 
 ### Requirement: ai-* commands verify openspec prerequisites before executing
-Commands that depend on the OpenSpec CLI (`ai-explore`, `ai-1-spec`, `ai-2-implement`, `ai-3-apply`, `ai-archive`) SHALL check that (1) the `openspec` binary is available and (2) the project has been initialized (`openspec/` directory exists) before proceeding.
+Commands that depend on the OpenSpec CLI (`ai-explore`, `ai-1-spec`, `ai-2-implement`, `sai-4-apply`, `ai-archive`) SHALL check that (1) the `openspec` binary is available and (2) the project has been initialized (`openspec/` directory exists) before proceeding.
 
 #### Scenario: openspec binary missing
 - **WHEN** user invokes an openspec-dependent ai-* command

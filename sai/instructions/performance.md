@@ -343,9 +343,7 @@ Before writing the report, verify:
 
 ## Remember
 
-> **Scope reminder (read before every response):** Your only deliverable is `openspec/changes/{change-name}/performance.md`. Do not implement fixes; the user (or a later `/ai-3-apply` pass) does that.
+> **Scope reminder (read before every response):** Your only deliverable is `openspec/changes/{change-name}/performance.md`. Do not implement fixes; the user (or a later `/sai-4-apply` pass) does that.
 
 > **Completion rule:** Once the artifact is created, your work is done. Do not propose new tasks or follow-up actions. Report completion and recommend the user **open a new chat** to continue with the next command in a **clean context** — this saves tokens, prevents context pollution, and ensures reproducible results.
 
-## Run
-**User's performance audit request:** $ARGUMENTS

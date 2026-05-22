@@ -19,15 +19,15 @@ When you encounter `"Fetch @<path>"` or `"Also fetch @<path>"` in any instructio
 |---------|-----------|
 | `Fetch @skills/<name>/SKILL.md` | Invoke the `Skill` tool with skill name `<name>` |
 | `Fetch @skills/<name>/SKILL.md and follow those instructions exactly.` | Invoke the `Skill` tool with skill name `<name>`, then follow its instructions |
-| `Fetch @<subpath>` (any other path) | Read `.claude/<subpath>`. If file not found, Read `~/.claude/<subpath>`. If neither exists, stop and report: "File not found: <subpath> (checked .claude/ and ~/.claude/)" |
+| `Fetch @<subpath>` (any other path) | Read `.claude/<subpath>` if exists. If file not found, Read `~/.claude/<subpath>`. If neither exists, stop and report: "File not found: <subpath> (checked .claude/ and ~/.claude/)" |
 
 ### Examples
 
 Instruction text → What you do
 
-- `"Fetch @sai/instructions/prereqs.md"` → Read `.claude/sai/instructions/prereqs.md`; if absent, Read `~/.claude/sai/instructions/prereqs.md`
+- `"Fetch @sai/instructions/prereqs.md"` → Read `.claude/sai/instructions/prereqs.md` if exists; if absent, Read `~/.claude/sai/instructions/prereqs.md`
 - `"Fetch @skills/budget/SKILL.md"` → `Skill("budget")`
-- `"Also fetch @sai/instructions/remember.md"` → Read `.claude/sai/instructions/remember.md`; if absent, Read `~/.claude/sai/instructions/remember.md`
+- `"Also fetch @sai/instructions/remember.md"` → Read `.claude/sai/instructions/remember.md` if exists; if absent, Read `~/.claude/sai/instructions/remember.md`
 - `"Fetch @skills/openspec-explore/SKILL.md and follow those instructions exactly."` → `Skill("openspec-explore")`, then follow its instructions
 
 ### Recursion

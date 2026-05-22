@@ -6,7 +6,7 @@ The shared-AI pipeline (`ai-*` commands) and OpenSpec (`opsx:*` commands) evolve
 
 - `ai-*` commands become wrappers over OpenSpec skills — they add caveman mode, isolation, model routing, and content enrichment on top of opsx behavior
 - `ai-2-plan` renamed to `ai-2-implement` (produces `implementation.md` — granular theoretical plan for cheap-model execution)
-- `ai-3-implement` renamed to `ai-3-apply` (reads `implementation.md`, executes mechanically with cheap model)
+- `ai-3-implement` renamed to `sai-4-apply` (reads `implementation.md`, executes mechanically with cheap model)
 - `ai-0-explore` renamed to `ai-explore` (unnumbered, optional step)
 - `ai-archive` added as new wrapper for `opsx:archive`
 - All artifacts (`review.md`, `security.md`, `performance.md`, `accessibility.md`, `implementation.md`) move from `plans/{name}/` to `openspec/changes/{name}/`

@@ -1,5 +1,5 @@
 ---
-name: opencode-budget-explorer
+name: budget-explorer
 description: >
   Binds "cheap research subagent" to the opencode explore agent keyword. Model resolved via agent.explore.model in the project's opencode.jsonc — not hardcoded here.
   TRIGGER when: "budget explorer", "cheap explorer", "budget mode", "cheap mode", "low-cost mode", "low cost mode", "economy mode"

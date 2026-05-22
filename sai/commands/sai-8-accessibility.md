@@ -22,6 +22,6 @@
   **User's accessibility audit request:** $ARGUMENTS
 
   ## Completion
-  MANDATORY STOP: Once the accessibility audit is written, STOP and print exactly: "Accessibility audit done in openspec/changes/{name}/."
+  MANDATORY STOP: Once all artifacts are written your work is COMPLETE, STOP and print exactly: "Accessibility audit done in openspec/changes/{name}/."
 </TASK>
 

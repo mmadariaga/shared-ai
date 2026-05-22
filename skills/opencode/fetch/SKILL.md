@@ -16,7 +16,7 @@ When you encounter `"Fetch @<path>"` or `"Also fetch @<path>"` in any instructio
 
 | Pattern | Resolution |
 |---------|-----------|
-| `Fetch @<subpath>` | `Read .opencode/<subpath>`. If file not found, `Read ~/.config/opencode/<subpath>` |
+| `Fetch @<subpath>` | `Read .opencode/<subpath>` if exists. If file not found, `Read ~/.config/opencode/<subpath>` |
 | `Fetch @skills/<name>/SKILL.md` | Use the `skill` tool to load skill `<name>` |
 | `Fetch @skills/<name>/SKILL.md and follow those instructions exactly.` | Use the `skill` tool to load skill `<name>`, then follow its instructions |
 
@@ -24,9 +24,9 @@ When you encounter `"Fetch @<path>"` or `"Also fetch @<path>"` in any instructio
 
 Instruction text → What you do
 
-- "Fetch @sai/instructions/prereqs.md" → `Read .opencode/sai/instructions/prereqs.md`, if absent `Read ~/.config/opencode/sai/instructions/prereqs.md`
+- "Fetch @sai/instructions/prereqs.md" → `Read .opencode/sai/instructions/prereqs.md` if exists; if absent, `Read ~/.config/opencode/sai/instructions/prereqs.md`
 - "Fetch @skills/budget/SKILL.md" → `skill("budget")`
-- "Also fetch @sai/instructions/remember.md" → `Read .opencode/sai/instructions/remember.md`, if absent `Read ~/.config/opencode/sai/instructions/remember.md`
+- "Also fetch @sai/instructions/remember.md" → `Read .opencode/sai/instructions/remember.md` if exists; if absent, `Read ~/.config/opencode/sai/instructions/remember.md`
 - "Fetch @skills/openspec-explore/SKILL.md and follow those instructions exactly." → `skill("openspec-explore")`, then follow
 
 ### Recursion

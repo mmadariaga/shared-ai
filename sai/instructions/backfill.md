@@ -131,7 +131,7 @@ Then follow with the standard proposal structure. Derive all content from the di
 
 ### 5c. Create or update capability specs
 
-For each distinct capability evidenced in the diff, create or update `openspec/specs/{capability}/spec.md`.
+For each distinct capability evidenced in the diff, create or update `openspec/changes/{name}/specs/{capability}/spec.md`.
 
 Use the standard sai-workflow delta format:
 - New behavior → `## ADDED Requirements` section

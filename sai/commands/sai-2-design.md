@@ -23,5 +23,5 @@
   **User's request:** $ARGUMENTS
 
   ## Completion
-  MANDATORY STOP: Once implementation is done, STOP and print exactly: "Design done in openspec/changes/{name}/. Run `/sai-3-implement {name}` **in a new chat** when ready."
+  MANDATORY STOP: Once all artifacts are written your work is COMPLETE, STOP and print exactly: "Design done in openspec/changes/{name}/. Run `/sai-3-implement {name}` **in a new chat** when ready."
 </TASK>

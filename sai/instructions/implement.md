@@ -44,15 +44,26 @@ Read the full content of `proposal.md`, `design.md`, `tasks.md`, and all `specs/
 - Extract and internalize the Expertise Profile from `## Implementation Context` in `tasks.md`
 - If `## Implementation Context` is missing entirely, STOP per the STOP condition above.
 
-   ### Step 2: Validate Design Decisions for ADR/DDR
+### Step 1b: Detect Already-Applied Steps (re-run guard)
 
-   Read the `## Decisions` section from `design.md`. For each decision recorded, evaluate whether it meets all three criteria for a persistent record:
-   1. **Hard to reverse** — the cost of changing later is meaningful.
-   2. **Surprising without context** — a future reader would wonder "why did they do it this way?"
-   3. **Real trade-off** — genuine alternatives existed and one was chosen for specific reasons.
-   - If all three are true, ask the user: "This decision qualifies as an ADR/DDR. Do you want me to create `docs/adr/NNNN-slug.md` or `docs/ddr/NNNN-slug.md`?" Only create the file if the user explicitly approves. If the project already maintains ADRs/DDRs, create the file directly without asking.
+If `openspec/changes/{change-name}/implementation.md` already exists:
+1. Read the existing file.
+2. For each `#### Step N:` section, determine whether **all** checkboxes in that section are checked (`- [x]`). A step is **already applied** only if every single checkbox in it is `[x]` — any `- [ ]` means the step is still pending.
+3. Build an **applied-steps set**: the list of step headings that are fully checked.
+4. In the output file (Step 4), for every step in the applied-steps set: emit only the step heading followed by `*(already applied)*` — no code blocks, no checklists, no STOP & COMMIT block.
+5. Steps with at least one unchecked checkbox are left as-is from the existing file.
 
-   ### Step 3: Read Required Documentation (One Time Only)
+If `implementation.md` does not exist, skip this step entirely.
+
+### Step 2: Validate Design Decisions for ADR/DDR
+
+Read the `## Decisions` section from `design.md`. For each decision recorded, evaluate whether it meets all three criteria for a persistent record:
+1. **Hard to reverse** — the cost of changing later is meaningful.
+2. **Surprising without context** — a future reader would wonder "why did they do it this way?"
+3. **Real trade-off** — genuine alternatives existed and one was chosen for specific reasons.
+- If all three are true, ask the user: "This decision qualifies as an ADR/DDR. Do you want me to create `docs/adr/NNNN-slug.md` or `docs/ddr/NNNN-slug.md`?" Only create the file if the user explicitly approves. If the project already maintains ADRs/DDRs, create the file directly without asking.
+
+### Step 3: Read Required Documentation (One Time Only)
 
 MANDATORY: Read every document listed in `## Required Documentation` from `tasks.md`:
 - For local file paths: use the Read tool (with line ranges when specified). When reading multiple local files, read them in parallel.
