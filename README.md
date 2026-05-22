@@ -43,24 +43,24 @@ All artifact paths below resolve under `openspec/changes/{change-name}/` (referr
 
 | Command | Input | Output | Purpose |
 |---------|-------|--------|---------|
-| `/sai-1-spec` | feature description | `{c}/proposal.md`, `specs/**` | Wraps `opsx:propose` (specs phase only). Stops before design; asks for specs approval and records it in `.openspec.yaml`. |
-| `/sai-2-design` | {change-name} | `{c}/design.md`, `tasks.md` | Gated on specs approval. Generates design decisions, trade-offs, and implementation tasks. |
-| `/sai-3-implement` | {change-name} | `{c}/implementation.md` | Reads proposal/design/tasks/specs, generates a granular plan with code, RED→GREEN, STOP & COMMIT markers, ready for cheap-model execution. |
-| `/sai-4-apply` | {change-name} | code | Executes `implementation.md` step by step, checks off boxes, asks for authorization on git ops. |
-| `/sai-5-review` | {change-name} + diff | `{c}/review.md` | Holistic code review (correctness, maintainability, testing, consistency). **Triage router** → recommends follow-up audits if surface changed. |
-| `/sai-6-security` | {change-name} + diff | `{c}/security.md` | SAST + SCA, CWE/CVE mapping, OWASP/PCI/GDPR. file:line + taint flow required. |
-| `/sai-7-performance` | {change-name} + diff | `{c}/performance.md` | Audit by tier (backend / frontend / db / queue). Evidence-based, no speculation. |
-| `/sai-8-accessibility` | {change-name} + diff | `{c}/accessibility.md` | Static WCAG 2.2 AA (+ optional axe/Lighthouse with `--runtime`). |
+| `/sai-1-spec` | feature description | `{c}/proposal.md`, `specs/**` | Describe what you want to build. The AI writes a proposal and acceptance criteria for you to review and approve — nothing else happens until you say yes. |
+| `/sai-2-design` | {change-name} | `{c}/design.md`, `tasks.md` | Turns approved specs into a technical plan: architecture decisions, trade-offs, and a concrete task list. |
+| `/sai-3-implement` | {change-name} | `{c}/implementation.md` | Writes the full coding playbook — every step spelled out, tests before code, commit points marked. Designed so a cheaper/faster model can execute it mechanically. |
+| `/sai-4-apply` | {change-name} | code | Follows the playbook step by step: writes code, runs tests, commits. Asks you before any git operation. |
+| `/sai-5-review` | {change-name} + diff | `{c}/review.md` | Reviews the finished code across 10 dimensions (correctness, maintainability, tests, etc.). Also tells you which specialized audits to run next based on what changed. |
+| `/sai-6-security` | {change-name} + diff | `{c}/security.md` | Finds security vulnerabilities in the diff — points to exact file and line, explains the risk, and maps findings to known standards (OWASP, CVE). |
+| `/sai-7-performance` | {change-name} + diff | `{c}/performance.md` | Flags real performance bottlenecks (slow queries, heavy renders, unbounded loops). Evidence-based — no guesswork. |
+| `/sai-8-accessibility` | {change-name} + diff | `{c}/accessibility.md` | Checks UI code for accessibility issues against WCAG 2.2 AA. Can also run browser-based tools for deeper analysis. |
 
 ## On-demand commands (unnumbered)
 
 | Command | Purpose |
 |---------|---------|
-| `/sai-explore` | Thinking partner for ideas, problems, requirements. Wraps `opsx:explore`. |
-| `/sai-commit` | Generates a Conventional Commits message from `git diff --cached`. Subject ≤50 chars, body only when the *why* is not obvious. `git commit` with explicit authorization. |
-| `/sai-pr` | Synthesizes PR title + body from proposal/design/implementation/review/security/performance/accessibility + git log. Saves draft to `{c}/pr.md` and opens PR via `gh` with explicit authorization. |
-| `/sai-archive` | Wraps `opsx:archive` — moves a completed change to `openspec/changes/archive/YYYY-MM-DD-{change-name}/`. |
-| `/sai-backfill` | Reconstructs `proposal.md` and capability specs for a change already implemented that skipped the SAI workflow. Interactive diff selection, structured interview, conflict detection gate. Writes only artifacts derivable from the diff — no `design.md` or `tasks.md`. |
+| `/sai-explore` | Open-ended thinking session before committing to anything — good for fuzzy requirements, unclear trade-offs, or when you just want to think out loud with the AI. |
+| `/sai-commit` | Reads your staged changes and writes a clean, structured commit message. Runs `git commit` only after you explicitly approve. |
+| `/sai-pr` | Drafts a complete PR description using everything produced during the change (proposal, design, review findings, etc.). Opens the PR on GitHub after you approve. |
+| `/sai-archive` | Moves a completed change to the archive, keeping your active changes folder clean. |
+| `/sai-backfill` | Made a quick fix directly in code without going through the pipeline? This reconstructs the missing documentation after the fact — interviewing you about intent and writing only what can be reliably derived from the diff. |
 
 ## Typical usage
 
