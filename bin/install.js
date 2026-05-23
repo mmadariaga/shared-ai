@@ -147,8 +147,71 @@ function installClaude(destBase) {
     path.join(base, 'skills', 'fetch', 'SKILL.md')
   );
 }
-function installOpencode(destBase) {}
-function copyOpencodeConfig(destBase) {}
+function installOpencode(destBase) {
+  const base = destBase || OPENCODE_BASE;
+
+  listMdFiles(path.join(ROOT, 'commands', 'opencode')).forEach(src => {
+    forceCopy(src, path.join(base, 'commands', path.basename(src)));
+  });
+
+  listMdFiles(path.join(ROOT, 'sai', 'commands')).forEach(src => {
+    forceCopy(src, path.join(base, 'sai', 'commands', path.basename(src)));
+  });
+
+  listMdFiles(path.join(ROOT, 'sai', 'instructions')).forEach(src => {
+    copyWithWarn(src, path.join(base, 'sai', 'instructions', path.basename(src)));
+  });
+
+  copySkipIfExists(
+    path.join(ROOT, 'skills', 'universal', 'caveman', 'SKILL.md'),
+    path.join(base, 'skills', 'caveman', 'SKILL.md')
+  );
+  copySkipIfExists(
+    path.join(ROOT, 'skills', 'universal', 'token-efficient-languages', 'SKILL.md'),
+    path.join(base, 'skills', 'token-efficient-languages', 'SKILL.md')
+  );
+  copySkipIfExists(
+    path.join(ROOT, 'skills', 'opencode', 'budget-explorer', 'SKILL.md'),
+    path.join(base, 'skills', 'budget-explorer', 'SKILL.md')
+  );
+  copySkipIfExists(
+    path.join(ROOT, 'skills', 'opencode', 'budget-executor', 'SKILL.md'),
+    path.join(base, 'skills', 'budget-executor', 'SKILL.md')
+  );
+  copySkipIfExists(
+    path.join(ROOT, 'skills', 'universal', 'budget', 'SKILL.md'),
+    path.join(base, 'skills', 'budget', 'SKILL.md')
+  );
+  copySkipIfExists(
+    path.join(ROOT, 'skills', 'opencode', 'fetch', 'SKILL.md'),
+    path.join(base, 'skills', 'fetch', 'SKILL.md')
+  );
+}
+function copyOpencodeConfig(destBase) {
+  const base = destBase || OPENCODE_BASE;
+  const hasJson = fs.existsSync(path.join(base, 'opencode.json'));
+  const hasJsonc = fs.existsSync(path.join(base, 'opencode.jsonc'));
+
+  if (!hasJson && !hasJsonc) {
+    forceCopy(path.join(ROOT, 'configs', 'opencode.jsonc'), path.join(base, 'opencode.jsonc'));
+    return;
+  }
+
+  console.log('\nOpencode config already exists. Add this "agent" section manually:\n');
+  console.log('  "agent": {');
+  console.log('    "explore": {');
+  console.log('      "mode": "subagent",');
+  console.log('      // Put your trusted low-cost model here');
+  console.log('      "model": "opencode-go/deepseek-v4-flash"');
+  console.log('    },');
+  console.log('    "executor": {');
+  console.log('      "mode": "subagent",');
+  console.log('      // Put your trusted low-cost model here');
+  console.log('      "model": "opencode-go/deepseek-v4-flash"');
+  console.log('    }');
+  console.log('  }');
+  console.log('\nAdjust the model to your preferred low-cost provider.');
+}
 
 module.exports = {
   ensureDir,
