@@ -238,26 +238,14 @@ Proposes creating an ADR/DDR if all 3 criteria below are met:
 2. **Surprising without context** — a future reader would wonder "why did they do it this way?"
 3. **Real trade-off** — genuine alternatives existed and one was chosen for specific reasons.
 
-## Repo structure
-
-```
-sai/instructions/                ← actual content for each agent (plain markdown, Isolation Mode + TASK)
-sai/instructions/spec.propose.md ← spec quality layer prepended to the openspec-propose skill
-sai/instructions/glossary-format.md ← canonical GLOSSARY.md format used by spec/plan/review
-sai/instructions/remember.md     ← consolidated reminders appended by wrappers
-sai/instructions/prereqs.md      ← universal prereq check fetched by all openspec-dependent sai-* wrappers
-sai/commands/              ← sai command body files (fetched by wrappers at runtime)
-commands/claude/           ← wrappers for Claude Code (model + effort + fetch to sai/commands/)
-commands/opencode/         ← wrappers for opencode (model + fetch to sai/commands/)
-configs/                   ← config samples (opencode.jsonc)
-openspec/schemas/sai-workflow/  ← custom OpenSpec schema (schema.yaml + 9 templates)
-```
 
 ## Global installation (multi-project)
 
 Commands are designed as **user globals**, not per project. A single copy in the CLI's global directory makes them available in any repo.
 
-> **Prerequisite:** install the [OpenSpec CLI](https://github.com/Fission-AI/OpenSpec) globally and run `openspec init` in each project. The openspec-dependent `sai-*` commands halt with a clear error if either is missing.
+> **Prerequisites:**
+> 1. Install the [OpenSpec CLI](https://github.com/Fission-AI/OpenSpec) globally and run `openspec init` in each project. The openspec-dependent `sai-*` commands halt with a clear error if either is missing.
+> 2. Copy the `openspec/schemas` folder from this repository into the project root after running `openspec init`.
 
 ### Opencode
 

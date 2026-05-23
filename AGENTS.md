@@ -22,6 +22,22 @@ Each phase reads from and writes to **`openspec/changes/{change-name}/`** — si
 
 `opsx:*` skills (`opsx:explore`, `opsx:propose`, `opsx:apply`, `opsx:archive`) are **internal building blocks** owned by the OpenSpec CLI. Users invoke the `sai-*` wrappers exclusively — they layer shared-AI quality behaviors on top of the skills.
 
+
+## Repo structure
+
+```
+sai/instructions/                ← actual content for each agent (plain markdown, Isolation Mode + TASK)
+sai/instructions/spec.propose.md ← spec quality layer prepended to the openspec-propose skill
+sai/instructions/glossary-format.md ← canonical GLOSSARY.md format used by spec/plan/review
+sai/instructions/remember.md     ← consolidated reminders appended by wrappers
+sai/instructions/prereqs.md      ← universal prereq check fetched by all openspec-dependent sai-* wrappers
+sai/commands/              ← sai command body files (fetched by wrappers at runtime)
+commands/claude/           ← wrappers for Claude Code (model + effort + fetch to sai/commands/)
+commands/opencode/         ← wrappers for opencode (model + fetch to sai/commands/)
+configs/                   ← config samples (opencode.jsonc)
+openspec/schemas/sai-workflow/  ← custom OpenSpec schema (schema.yaml + 9 templates)
+```
+
 ## Prerequisites
 
 The pipeline depends on the OpenSpec CLI:
