@@ -82,3 +82,46 @@ function promptChecklist(items, defaultSelected) {
     render();
   });
 }
+
+function ensureDir(dir) {
+  fs.mkdirSync(dir, { recursive: true });
+}
+
+function forceCopy(src, dest) {
+  ensureDir(path.dirname(dest));
+  fs.copyFileSync(src, dest);
+}
+
+function copyWithWarn(src, dest) {
+  console.log(`Overwriting ${dest}`);
+  forceCopy(src, dest);
+}
+
+function copySkipIfExists(src, dest) {
+  if (fs.existsSync(dest)) {
+    console.log(`Skipping ${dest} (already exists)`);
+    return;
+  }
+  forceCopy(src, dest);
+}
+
+function listMdFiles(dir) {
+  return fs.readdirSync(dir)
+    .filter(f => f.endsWith('.md'))
+    .map(f => path.join(dir, f));
+}
+
+function installClaude(destBase) {}
+function installOpencode(destBase) {}
+function copyOpencodeConfig(destBase) {}
+
+module.exports = {
+  ensureDir,
+  forceCopy,
+  copyWithWarn,
+  copySkipIfExists,
+  listMdFiles,
+  installClaude,
+  installOpencode,
+  copyOpencodeConfig,
+};
