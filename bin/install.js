@@ -206,16 +206,16 @@ function copyOpencodeConfig(destBase) {
     return;
   }
 
-  console.log('\nOpencode config already exists. Add this "agent" section manually:\n');
+  console.log('\nOpencode config already exists. Verify that you have these settings properly configured:\n');
   console.log('  "agent": {');
   console.log('    "explore": {');
   console.log('      "mode": "subagent",');
-  console.log('      // Put your trusted low-cost model here');
+  console.log('      // Your trusted low-cost model below');
   console.log('      "model": "opencode-go/deepseek-v4-flash"');
   console.log('    },');
   console.log('    "executor": {');
   console.log('      "mode": "subagent",');
-  console.log('      // Put your trusted low-cost model here');
+  console.log('      // Your trusted low-cost model below');
   console.log('      "model": "opencode-go/deepseek-v4-flash"');
   console.log('    }');
   console.log('  }');
