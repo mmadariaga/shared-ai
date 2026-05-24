@@ -6,26 +6,26 @@ const path = require('path');
 const os = require('os');
 const fs = require('fs');
 
-const { forceCopy, copyWithWarn, copySkipIfExists, listMdFiles } = require('../bin/install.js');
+const { copy, copyWithWarn, copySkipIfExists, listMdFiles } = require('../bin/install.js');
 
-test('forceCopy overwrites existing file', () => {
+test('copy overwrites existing file', () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-test-'));
   const src = path.join(tmpDir, 'src.txt');
   const dest = path.join(tmpDir, 'dest.txt');
   fs.writeFileSync(src, 'new content');
   fs.writeFileSync(dest, 'old content');
-  forceCopy(src, dest);
+  copy(src, dest);
   assert.equal(fs.readFileSync(dest, 'utf8'), 'new content');
   fs.rmSync(tmpDir, { recursive: true });
 });
 
-test('forceCopy creates missing parent dirs', () => {
+test('copy creates missing parent dirs', () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-test-'));
   const src = path.join(tmpDir, 'src.txt');
   const dest = path.join(tmpDir, 'a', 'b', 'dest.txt');
   fs.writeFileSync(src, 'hello');
-  forceCopy(src, dest);
-  assert.ok(fs.existsSync(dest), 'dest should exist after forceCopy');
+  copy(src, dest);
+  assert.ok(fs.existsSync(dest), 'dest should exist after copy');
   fs.rmSync(tmpDir, { recursive: true });
 });
 

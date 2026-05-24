@@ -87,14 +87,14 @@ function ensureDir(dir) {
   fs.mkdirSync(dir, { recursive: true });
 }
 
-function forceCopy(src, dest) {
+function copy(src, dest) {
   ensureDir(path.dirname(dest));
   fs.copyFileSync(src, dest);
 }
 
 function copyWithWarn(src, dest) {
   console.log(`Overwriting ${dest}`);
-  forceCopy(src, dest);
+  copy(src, dest);
 }
 
 function copySkipIfExists(src, dest) {
@@ -102,7 +102,7 @@ function copySkipIfExists(src, dest) {
     console.log(`Skipping ${dest} (already exists)`);
     return;
   }
-  forceCopy(src, dest);
+  copy(src, dest);
 }
 
 function listMdFiles(dir) {
@@ -115,11 +115,11 @@ function installClaude(destBase) {
   const base = destBase || CLAUDE_BASE;
 
   listMdFiles(path.join(ROOT, 'commands', 'claude')).forEach(src => {
-    forceCopy(src, path.join(base, 'commands', path.basename(src)));
+    copy(src, path.join(base, 'commands', path.basename(src)));
   });
 
   listMdFiles(path.join(ROOT, 'sai', 'commands')).forEach(src => {
-    forceCopy(src, path.join(base, 'sai', 'commands', path.basename(src)));
+    copy(src, path.join(base, 'sai', 'commands', path.basename(src)));
   });
 
   listMdFiles(path.join(ROOT, 'sai', 'instructions')).forEach(src => {
@@ -130,19 +130,19 @@ function installClaude(destBase) {
     path.join(ROOT, 'skills', 'universal', 'caveman', 'SKILL.md'),
     path.join(base, 'skills', 'caveman', 'SKILL.md')
   );
-  copySkipIfExists(
+  copy(
     path.join(ROOT, 'skills', 'universal', 'token-efficient-languages', 'SKILL.md'),
     path.join(base, 'skills', 'token-efficient-languages', 'SKILL.md')
   );
-  copySkipIfExists(
+  copy(
     path.join(ROOT, 'skills', 'claude', 'budget-explorer', 'SKILL.md'),
     path.join(base, 'skills', 'budget-explorer', 'SKILL.md')
   );
-  copySkipIfExists(
+  copy(
     path.join(ROOT, 'skills', 'claude', 'budget-executor', 'SKILL.md'),
     path.join(base, 'skills', 'budget-executor', 'SKILL.md')
   );
-  copySkipIfExists(
+  copy(
     path.join(ROOT, 'skills', 'claude', 'fetch', 'SKILL.md'),
     path.join(base, 'skills', 'fetch', 'SKILL.md')
   );
@@ -151,11 +151,11 @@ function installOpencode(destBase) {
   const base = destBase || OPENCODE_BASE;
 
   listMdFiles(path.join(ROOT, 'commands', 'opencode')).forEach(src => {
-    forceCopy(src, path.join(base, 'commands', path.basename(src)));
+    copy(src, path.join(base, 'commands', path.basename(src)));
   });
 
   listMdFiles(path.join(ROOT, 'sai', 'commands')).forEach(src => {
-    forceCopy(src, path.join(base, 'sai', 'commands', path.basename(src)));
+    copy(src, path.join(base, 'sai', 'commands', path.basename(src)));
   });
 
   listMdFiles(path.join(ROOT, 'sai', 'instructions')).forEach(src => {
@@ -166,23 +166,23 @@ function installOpencode(destBase) {
     path.join(ROOT, 'skills', 'universal', 'caveman', 'SKILL.md'),
     path.join(base, 'skills', 'caveman', 'SKILL.md')
   );
-  copySkipIfExists(
+  copy(
     path.join(ROOT, 'skills', 'universal', 'token-efficient-languages', 'SKILL.md'),
     path.join(base, 'skills', 'token-efficient-languages', 'SKILL.md')
   );
-  copySkipIfExists(
+  copy(
     path.join(ROOT, 'skills', 'opencode', 'budget-explorer', 'SKILL.md'),
     path.join(base, 'skills', 'budget-explorer', 'SKILL.md')
   );
-  copySkipIfExists(
+  copy(
     path.join(ROOT, 'skills', 'opencode', 'budget-executor', 'SKILL.md'),
     path.join(base, 'skills', 'budget-executor', 'SKILL.md')
   );
-  copySkipIfExists(
+  copy(
     path.join(ROOT, 'skills', 'universal', 'budget', 'SKILL.md'),
     path.join(base, 'skills', 'budget', 'SKILL.md')
   );
-  copySkipIfExists(
+  copy(
     path.join(ROOT, 'skills', 'opencode', 'fetch', 'SKILL.md'),
     path.join(base, 'skills', 'fetch', 'SKILL.md')
   );
@@ -193,7 +193,7 @@ function copyOpencodeConfig(destBase) {
   const hasJsonc = fs.existsSync(path.join(base, 'opencode.jsonc'));
 
   if (!hasJson && !hasJsonc) {
-    forceCopy(path.join(ROOT, 'configs', 'opencode.jsonc'), path.join(base, 'opencode.jsonc'));
+    copy(path.join(ROOT, 'configs', 'opencode.jsonc'), path.join(base, 'opencode.jsonc'));
     return;
   }
 
@@ -213,9 +213,41 @@ function copyOpencodeConfig(destBase) {
   console.log('\nAdjust the model to your preferred low-cost provider.');
 }
 
+async function main() {
+  const choices = await promptChecklist(
+    ['Claude Code', 'Opencode'],
+    ['Opencode']
+  );
+
+  if (choices.length === 0) {
+    console.log('Nothing selected. Exiting.');
+    process.exit(0);
+  }
+
+  if (choices.includes('Claude Code')) {
+    installClaude();
+  }
+
+  if (choices.includes('Opencode')) {
+    installOpencode();
+    copyOpencodeConfig();
+  }
+
+  console.log(
+    "\nReminder: run 'openspec init --tools claude' (or --tools opencode) in each project,\nthen copy the openspec/schemas folder from this repo into the project root."
+  );
+}
+
+if (require.main === module) {
+  main().catch(err => {
+    console.error(err);
+    process.exit(1);
+  });
+}
+
 module.exports = {
   ensureDir,
-  forceCopy,
+  copy,
   copyWithWarn,
   copySkipIfExists,
   listMdFiles,
