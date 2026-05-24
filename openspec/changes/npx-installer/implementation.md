@@ -282,7 +282,7 @@ function installOpencode(destBase) {
 
 **A. `openspec/changes/npx-installer/specs/npx-installer/spec.md`**
 
-- [ ] Replace the `### Requirement: copy-rule-commands` section with:
+- [x] Replace the `### Requirement: copy-rule-commands` section with:
 
 ```markdown
 ### Requirement: copy-rule-commands
@@ -303,7 +303,7 @@ or, if the file does not exist:
 - **THEN** the destination is always written and a log line is printed
 ```
 
-- [ ] Replace the `### Requirement: copy-rule-skills` section with:
+- [x] Replace the `### Requirement: copy-rule-skills` section with:
 
 ```markdown
 ### Requirement: copy-rule-skills
@@ -328,7 +328,7 @@ or, if the file does not exist:
 - **THEN** the file is copied, parent directories are created if needed, and the Creating message is printed
 ```
 
-- [ ] In the `### Requirement: claude-file-map` section, replace the table block with (adds `budget` row):
+- [x] In the `### Requirement: claude-file-map` section, replace the table block with (adds `budget` row):
 
 ```markdown
     Source                                             Destination (relative to ~/.claude/)
@@ -343,11 +343,11 @@ or, if the file does not exist:
     skills/universal/budget/SKILL.md              →    skills/budget/SKILL.md
 ```
 
-- [ ] Update the claude-file-map scenario from "eight source paths" to "nine source paths".
+- [x] Update the claude-file-map scenario from "eight source paths" to "nine source paths".
 
 **B. `openspec/changes/npx-installer/tasks.md`**
 
-- [ ] In `## Implementation Context` under `**Conventions**`, replace the line about `budget`:
+- [x] In `## Implementation Context` under `**Conventions**`, replace the line about `budget`:
 
 Replace:
 ```
@@ -362,7 +362,7 @@ With:
 
 **C. `README.md`**
 
-- [ ] Replace the `## Global installation (multi-project)` section (from that heading up to but not including `## Per project installation`) with:
+- [x] Replace the `## Global installation (multi-project)` section (from that heading up to but not including `## Per project installation`) with:
 
 ```markdown
 ## Global installation (multi-project)
@@ -392,13 +392,13 @@ For step-by-step manual installation without npx:
 
 **D. `INSTALL.opencode.md`**
 
-- [ ] Replace the first line (`# Opencode — Installation`) with:
+- [x] Replace the first line (`# Opencode — Installation`) with:
 
 ```markdown
 # Opencode — Manual Installation
 ```
 
-- [ ] Insert the following block immediately after the first line (before `## Prerequisites`):
+- [x] Insert the following block immediately after the first line (before `## Prerequisites`):
 
 ```markdown
 > **Recommended:** Run `npx github:mmadariaga/shared-ai` for automated installation. The steps below are for manual installation only.
@@ -407,13 +407,13 @@ For step-by-step manual installation without npx:
 
 **E. `INSTALL.claude.md`**
 
-- [ ] Replace the first line (`# Claude Code — Installation`) with:
+- [x] Replace the first line (`# Claude Code — Installation`) with:
 
 ```markdown
 # Claude Code — Manual Installation
 ```
 
-- [ ] Insert the following block immediately after the first line (before `## Prerequisites`):
+- [x] Insert the following block immediately after the first line (before `## Prerequisites`):
 
 ```markdown
 > **Recommended:** Run `npx github:mmadariaga/shared-ai` for automated installation. The steps below are for manual installation only.
@@ -423,14 +423,14 @@ For step-by-step manual installation without npx:
 ##### Step 9 Verification Checklist
 
 **Automated (agent runs before stopping):**
-- [ ] `node --test test/install-claude.test.js` — passes (regression check)
-- [ ] `node --test test/install-opencode.test.js` — passes (regression check)
+- [x] `node --test test/install-claude.test.js` — passes (regression check)
+- [x] `node --test test/install-opencode.test.js` — passes (regression check)
 
 **Human (verify before committing):**
-- [ ] Open `README.md`. The `## Global installation` section shows `npx github:mmadariaga/shared-ai` as the primary install method, with INSTALL files linked under `### Manual installation`.
-- [ ] Open `INSTALL.opencode.md`. Title reads `# Opencode — Manual Installation`. npx note appears immediately after the title before `## Prerequisites`.
-- [ ] Open `INSTALL.claude.md`. Title reads `# Claude Code — Manual Installation`. npx note appears immediately after the title.
-- [ ] Open `specs/npx-installer/spec.md`. Vendor commands are skip-if-exists; skills always overwrite. Claude file map includes `budget` row. Scenario says "nine source paths".
+- [x] Open `README.md`. The `## Global installation` section shows `npx github:mmadariaga/shared-ai` as the primary install method, with INSTALL files linked under `### Manual installation`.
+- [x] Open `INSTALL.opencode.md`. Title reads `# Opencode — Manual Installation`. npx note appears immediately after the title before `## Prerequisites`.
+- [x] Open `INSTALL.claude.md`. Title reads `# Claude Code — Manual Installation`. npx note appears immediately after the title.
+- [x] Open `specs/npx-installer/spec.md`. Vendor commands are skip-if-exists; skills always overwrite. Claude file map includes `budget` row. Scenario says "nine source paths".
 
 #### Step 9 STOP & COMMIT
 
@@ -468,3 +468,9 @@ For step-by-step manual installation without npx:
 Intermediate RED tests for `copySkipIfExists` on skills were written and verified as failing, then superseded by the spec change. GREEN replaced them with tests matching final rules.
 
 **Step 9:** Spec corrected for new copy rules and budget addition. README and INSTALL files updated with npx as official install method.
+
+### Step 8 — Stayed on `main` (prerequisite deviation)
+
+**Plan:** Require switching to a branch other than `main`/`master` before implementation.
+
+**Final:** Implementation was applied on `main` at the user's explicit request. All other prerequisites were met (openspec CLI available, implementation.md exists).

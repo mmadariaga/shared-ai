@@ -254,9 +254,12 @@ npm install -g @fission-ai/openspec   # example — check the project README for
 
 # 2. In each project where you want to use shared-AI, initialize OpenSpec
 cd /path/to/your/project
-openspec init --tools opencode
+openspec init
 ```
 
+Shared-AI **does not bundle the OpenSpec skills**; they come from the OpenSpec CLI and are versioned by it.
+
+If you skip this step, the openspec-dependent `ai-*` commands (`ai-explore`, `ai-1-spec`, `ai-2-implement`, `sai-4-apply`, `ai-archive`) will halt with a clear error message.
 
 ### Automatic npx installer (recommended)
 

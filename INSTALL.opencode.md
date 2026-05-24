@@ -23,7 +23,14 @@ Shared-AI **does not bundle the OpenSpec skills**; they come from the OpenSpec C
 
 If you skip this step, the openspec-dependent `sai-*` commands (`sai-explore`, `sai-1-spec`, `sai-2-design`, `sai-3-implement`, `sai-4-apply`, `sai-archive`) will halt with a clear error message.
 
-## Install shared-AI commands
+
+## Automatic Shared-AI instalation
+
+```bash
+npx github:mmadariaga/shared-ai
+```
+
+## Manual Shared-AI instalation
 
 | OS | Destination |
 |----|---------|

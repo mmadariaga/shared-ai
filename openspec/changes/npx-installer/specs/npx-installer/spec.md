@@ -67,11 +67,21 @@ All source file paths MUST be resolved relative to `bin/install.js` using `path.
 ---
 
 ### Requirement: copy-rule-commands
-Command files (`commands/claude/*.md`, `commands/opencode/*.md`, `sai/commands/*.md`) MUST always be overwritten at the destination, creating parent directories if needed.
+Vendor command files (`commands/claude/*.md`, `commands/opencode/*.md`) MUST be skipped if the destination file already exists. No error is raised; the installer prints:
+    Skipping <destination-path> (already exists)
 
-#### Scenario: existing command overwritten
-- **WHEN** a `.md` file already exists at the destination command path
-- **THEN** it is overwritten silently without prompting
+SAI command files (`sai/commands/*.md`) MUST always be overwritten. Before overwriting, the installer MUST print:
+    Overwriting <destination-path>
+or, if the file does not exist:
+    Creating <destination-path>
+
+#### Scenario: existing vendor command skipped
+- **WHEN** a `.md` file already exists at the destination vendor command path
+- **THEN** it is not overwritten and the skip message is printed
+
+#### Scenario: sai command always overwritten
+- **WHEN** `sai/commands/*.md` is copied
+- **THEN** the destination is always written and a log line is printed
 
 ---
 
@@ -86,16 +96,25 @@ Instruction files (`sai/instructions/*.md`) MUST be overwritten at the destinati
 ---
 
 ### Requirement: copy-rule-skills
-Skill files (`skills/**/SKILL.md`) MUST be skipped if `SKILL.md` already exists at the destination. No error is raised; the installer prints:
+`skills/universal/caveman/SKILL.md` MUST be skipped if already installed at the destination (skip-if-exists). No error is raised; the installer prints:
     Skipping <destination-path> (already exists)
 
-#### Scenario: skill already installed
-- **WHEN** `SKILL.md` already exists at the target skill path
+All other skill files (`skills/**/SKILL.md`) MUST always be overwritten at the destination. Before writing, the installer MUST print:
+    Overwriting <destination-path>
+or, if the file does not exist:
+    Creating <destination-path>
+
+#### Scenario: caveman already installed
+- **WHEN** `skills/caveman/SKILL.md` already exists at the destination
 - **THEN** the file is not overwritten and the skip message is printed
+
+#### Scenario: non-caveman skill already installed
+- **WHEN** any other `SKILL.md` already exists at the target skill path
+- **THEN** the file IS overwritten and the Overwriting message is printed
 
 #### Scenario: skill not yet installed
 - **WHEN** no `SKILL.md` exists at the target skill path
-- **THEN** the file is copied and parent directories are created if needed
+- **THEN** the file is copied, parent directories are created if needed, and the Creating message is printed
 
 ---
 
