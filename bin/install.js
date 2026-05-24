@@ -7,7 +7,7 @@ const path = require('path');
 const os = require('os');
 const readline = require('readline');
 
-const ROOT = path.join(__dirname, '..');
+const REPOSITORY_ROOT = path.join(__dirname, '..');
 const CLAUDE_BASE = path.join(os.homedir(), '.claude');
 const OPENCODE_BASE = path.join(os.homedir(), '.config', 'opencode');
 
@@ -93,7 +93,12 @@ function copy(src, dest) {
 }
 
 function copyWithWarn(src, dest) {
-  console.log(`Overwriting ${dest}`);
+  if (fs.existsSync(dest)) {
+    console.log(`Overwriting ${dest}`);
+  } else {
+    console.log(`Creating ${dest}`);
+  }
+
   copy(src, dest);
 }
 
@@ -112,79 +117,83 @@ function listMdFiles(dir) {
 }
 
 function installClaude(destBase) {
-  const base = destBase || CLAUDE_BASE;
+  const targetPath = destBase || CLAUDE_BASE;
 
-  listMdFiles(path.join(ROOT, 'commands', 'claude')).forEach(src => {
-    copy(src, path.join(base, 'commands', path.basename(src)));
+  listMdFiles(path.join(REPOSITORY_ROOT, 'commands', 'claude')).forEach(src => {
+    copy(src, path.join(targetPath, 'commands', path.basename(src)));
   });
 
-  listMdFiles(path.join(ROOT, 'sai', 'commands')).forEach(src => {
-    copy(src, path.join(base, 'sai', 'commands', path.basename(src)));
+  listMdFiles(path.join(REPOSITORY_ROOT, 'sai', 'commands')).forEach(src => {
+    copy(src, path.join(targetPath, 'sai', 'commands', path.basename(src)));
   });
 
-  listMdFiles(path.join(ROOT, 'sai', 'instructions')).forEach(src => {
-    copyWithWarn(src, path.join(base, 'sai', 'instructions', path.basename(src)));
+  listMdFiles(path.join(REPOSITORY_ROOT, 'sai', 'instructions')).forEach(src => {
+    copyWithWarn(src, path.join(targetPath, 'sai', 'instructions', path.basename(src)));
   });
 
   copySkipIfExists(
-    path.join(ROOT, 'skills', 'universal', 'caveman', 'SKILL.md'),
-    path.join(base, 'skills', 'caveman', 'SKILL.md')
+    path.join(REPOSITORY_ROOT, 'skills', 'universal', 'caveman', 'SKILL.md'),
+    path.join(targetPath, 'skills', 'caveman', 'SKILL.md')
   );
-  copy(
-    path.join(ROOT, 'skills', 'universal', 'token-efficient-languages', 'SKILL.md'),
-    path.join(base, 'skills', 'token-efficient-languages', 'SKILL.md')
+  copySkipIfExists(
+    path.join(REPOSITORY_ROOT, 'skills', 'universal', 'token-efficient-languages', 'SKILL.md'),
+    path.join(targetPath, 'skills', 'token-efficient-languages', 'SKILL.md')
   );
-  copy(
-    path.join(ROOT, 'skills', 'claude', 'budget-explorer', 'SKILL.md'),
-    path.join(base, 'skills', 'budget-explorer', 'SKILL.md')
+  copySkipIfExists(
+    path.join(REPOSITORY_ROOT, 'skills', 'claude', 'budget-explorer', 'SKILL.md'),
+    path.join(targetPath, 'skills', 'budget-explorer', 'SKILL.md')
   );
-  copy(
-    path.join(ROOT, 'skills', 'claude', 'budget-executor', 'SKILL.md'),
-    path.join(base, 'skills', 'budget-executor', 'SKILL.md')
+  copySkipIfExists(
+    path.join(REPOSITORY_ROOT, 'skills', 'claude', 'budget-executor', 'SKILL.md'),
+    path.join(targetPath, 'skills', 'budget-executor', 'SKILL.md')
   );
-  copy(
-    path.join(ROOT, 'skills', 'claude', 'fetch', 'SKILL.md'),
-    path.join(base, 'skills', 'fetch', 'SKILL.md')
+  copySkipIfExists(
+    path.join(REPOSITORY_ROOT, 'skills', 'claude', 'fetch', 'SKILL.md'),
+    path.join(targetPath, 'skills', 'fetch', 'SKILL.md')
+  );
+  copySkipIfExists(
+    path.join(REPOSITORY_ROOT, 'skills', 'universal', 'budget', 'SKILL.md'),
+    path.join(targetPath, 'skills', 'budget', 'SKILL.md')
   );
 }
 function installOpencode(destBase) {
-  const base = destBase || OPENCODE_BASE;
+  const targetPath = destBase || OPENCODE_BASE;
 
-  listMdFiles(path.join(ROOT, 'commands', 'opencode')).forEach(src => {
-    copy(src, path.join(base, 'commands', path.basename(src)));
+  listMdFiles(path.join(REPOSITORY_ROOT, 'commands', 'opencode')).forEach(src => {
+    copy(src, path.join(targetPath, 'commands', path.basename(src)));
   });
 
-  listMdFiles(path.join(ROOT, 'sai', 'commands')).forEach(src => {
-    copy(src, path.join(base, 'sai', 'commands', path.basename(src)));
+  listMdFiles(path.join(REPOSITORY_ROOT, 'sai', 'commands')).forEach(src => {
+    copy(src, path.join(targetPath, 'sai', 'commands', path.basename(src)));
   });
 
-  listMdFiles(path.join(ROOT, 'sai', 'instructions')).forEach(src => {
-    copyWithWarn(src, path.join(base, 'sai', 'instructions', path.basename(src)));
+  listMdFiles(path.join(REPOSITORY_ROOT, 'sai', 'instructions')).forEach(src => {
+    copyWithWarn(src, path.join(targetPath, 'sai', 'instructions', path.basename(src)));
   });
 
   copySkipIfExists(
-    path.join(ROOT, 'skills', 'universal', 'caveman', 'SKILL.md'),
-    path.join(base, 'skills', 'caveman', 'SKILL.md')
+    path.join(REPOSITORY_ROOT, 'skills', 'universal', 'caveman', 'SKILL.md'),
+    path.join(targetPath, 'skills', 'caveman', 'SKILL.md')
   );
-  copy(
-    path.join(ROOT, 'skills', 'universal', 'token-efficient-languages', 'SKILL.md'),
-    path.join(base, 'skills', 'token-efficient-languages', 'SKILL.md')
+  copySkipIfExists(
+    path.join(REPOSITORY_ROOT, 'skills', 'universal', 'token-efficient-languages', 'SKILL.md'),
+    path.join(targetPath, 'skills', 'token-efficient-languages', 'SKILL.md')
   );
-  copy(
-    path.join(ROOT, 'skills', 'opencode', 'budget-explorer', 'SKILL.md'),
-    path.join(base, 'skills', 'budget-explorer', 'SKILL.md')
+  copySkipIfExists(
+    path.join(REPOSITORY_ROOT, 'skills', 'opencode', 'budget-explorer', 'SKILL.md'),
+    path.join(targetPath, 'skills', 'budget-explorer', 'SKILL.md')
   );
-  copy(
-    path.join(ROOT, 'skills', 'opencode', 'budget-executor', 'SKILL.md'),
-    path.join(base, 'skills', 'budget-executor', 'SKILL.md')
+  copySkipIfExists(
+    path.join(REPOSITORY_ROOT, 'skills', 'opencode', 'budget-executor', 'SKILL.md'),
+    path.join(targetPath, 'skills', 'budget-executor', 'SKILL.md')
   );
-  copy(
-    path.join(ROOT, 'skills', 'universal', 'budget', 'SKILL.md'),
-    path.join(base, 'skills', 'budget', 'SKILL.md')
+  copySkipIfExists(
+    path.join(REPOSITORY_ROOT, 'skills', 'universal', 'budget', 'SKILL.md'),
+    path.join(targetPath, 'skills', 'budget', 'SKILL.md')
   );
-  copy(
-    path.join(ROOT, 'skills', 'opencode', 'fetch', 'SKILL.md'),
-    path.join(base, 'skills', 'fetch', 'SKILL.md')
+  copySkipIfExists(
+    path.join(REPOSITORY_ROOT, 'skills', 'opencode', 'fetch', 'SKILL.md'),
+    path.join(targetPath, 'skills', 'fetch', 'SKILL.md')
   );
 }
 function copyOpencodeConfig(destBase) {
@@ -193,7 +202,7 @@ function copyOpencodeConfig(destBase) {
   const hasJsonc = fs.existsSync(path.join(base, 'opencode.jsonc'));
 
   if (!hasJson && !hasJsonc) {
-    copy(path.join(ROOT, 'configs', 'opencode.jsonc'), path.join(base, 'opencode.jsonc'));
+    copy(path.join(REPOSITORY_ROOT, 'configs', 'opencode.jsonc'), path.join(base, 'opencode.jsonc'));
     return;
   }
 

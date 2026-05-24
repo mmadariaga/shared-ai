@@ -25,7 +25,7 @@ test('installOpencode copies sai/instructions/*.md with Overwriting warn', () =>
   console.log = (msg) => messages.push(String(msg));
   installOpencode(tmpDir);
   console.log = origLog;
-  assert.ok(messages.some(m => m.startsWith('Overwriting')), 'should print Overwriting for instruction files');
+  assert.ok(messages.some(m => m.startsWith('Overwriting') || m.startsWith('Creating')), 'should print Overwriting or Creating for instruction files');
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });
 
@@ -70,5 +70,21 @@ test('copyOpencodeConfig skips copy and prints instructions when opencode.json e
   copyOpencodeConfig(tmpDir);
   console.log = origLog;
   assert.ok(printed.includes('"agent"'), 'should print manual instructions when opencode.json exists');
+  fs.rmSync(tmpDir, { recursive: true, force: true });
+});
+
+test('installOpencode skips existing non-caveman skill files', () => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-'));
+  const skillNames = ['token-efficient-languages', 'budget-explorer', 'budget-executor', 'budget', 'fetch'];
+  for (const name of skillNames) {
+    const dest = path.join(tmpDir, 'skills', name, 'SKILL.md');
+    fs.mkdirSync(path.dirname(dest), { recursive: true });
+    fs.writeFileSync(dest, 'old content');
+  }
+  installOpencode(tmpDir);
+  for (const name of skillNames) {
+    const dest = path.join(tmpDir, 'skills', name, 'SKILL.md');
+    assert.equal(fs.readFileSync(dest, 'utf8'), 'old content', `skills/${name}/SKILL.md should not be overwritten when already installed`);
+  }
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });

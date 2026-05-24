@@ -34,6 +34,7 @@ test('copyWithWarn prints Overwriting and copies file', () => {
   const src = path.join(tmpDir, 'src.txt');
   const dest = path.join(tmpDir, 'dest.txt');
   fs.writeFileSync(src, 'new content');
+  fs.writeFileSync(dest, 'old content');
   let printed = '';
   const origLog = console.log;
   console.log = (msg) => { printed += String(msg); };
