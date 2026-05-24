@@ -54,6 +54,31 @@ test('installClaude copies six Claude-specific skills', () => {
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });
 
+test('installClaude skips existing vendor command files', () => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-claude-'));
+  const cmdFile = path.join(tmpDir, 'commands', 'sai-1-spec.md');
+  fs.mkdirSync(path.dirname(cmdFile), { recursive: true });
+  fs.writeFileSync(cmdFile, 'old content');
+  installClaude(tmpDir);
+  assert.equal(fs.readFileSync(cmdFile, 'utf8'), 'old content', 'existing vendor command should not be overwritten');
+  fs.rmSync(tmpDir, { recursive: true, force: true });
+});
+
+test('installClaude overwrites existing non-caveman skill files and logs', () => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-claude-'));
+  const skillFile = path.join(tmpDir, 'skills', 'budget-explorer', 'SKILL.md');
+  fs.mkdirSync(path.dirname(skillFile), { recursive: true });
+  fs.writeFileSync(skillFile, 'old content');
+  const messages = [];
+  const origLog = console.log;
+  console.log = (msg) => messages.push(String(msg));
+  installClaude(tmpDir);
+  console.log = origLog;
+  assert.notEqual(fs.readFileSync(skillFile, 'utf8'), 'old content', 'existing non-caveman skill should be overwritten');
+  assert.ok(messages.some(m => m.startsWith('Overwriting')), 'should log Overwriting for existing skill');
+  fs.rmSync(tmpDir, { recursive: true, force: true });
+});
+
 test('installClaude skips existing skill files', () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-claude-'));
   const skillDest = path.join(tmpDir, 'skills', 'caveman', 'SKILL.md');
@@ -64,18 +89,3 @@ test('installClaude skips existing skill files', () => {
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });
 
-test('installClaude skips existing non-caveman skill files', () => {
-  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-claude-'));
-  const skillNames = ['token-efficient-languages', 'budget-explorer', 'budget-executor', 'fetch', 'budget'];
-  for (const name of skillNames) {
-    const dest = path.join(tmpDir, 'skills', name, 'SKILL.md');
-    fs.mkdirSync(path.dirname(dest), { recursive: true });
-    fs.writeFileSync(dest, 'old content');
-  }
-  installClaude(tmpDir);
-  for (const name of skillNames) {
-    const dest = path.join(tmpDir, 'skills', name, 'SKILL.md');
-    assert.equal(fs.readFileSync(dest, 'utf8'), 'old content', `skills/${name}/SKILL.md should not be overwritten when already installed`);
-  }
-  fs.rmSync(tmpDir, { recursive: true, force: true });
-});

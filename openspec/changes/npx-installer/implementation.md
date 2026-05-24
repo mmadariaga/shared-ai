@@ -2,7 +2,7 @@
 
 ## Goal
 
-Add `package.json` and `bin/install.js` to enable one-command installation via `npx github:mmadariaga/shared-ai`, with an interactive terminal checklist for selecting Claude Code and/or Opencode as installation targets. Also fix skill copy semantics (all skills must use skip-if-exists, not overwrite), add `budget` skill to the Claude install map, and update README and install docs to reflect the npx installer as the official install method.
+Add `package.json` and `bin/install.js` to enable one-command installation via `npx github:mmadariaga/shared-ai`, with an interactive terminal checklist for selecting Claude Code and/or Opencode as installation targets. Fix copy semantics: vendor commands skip-if-exists; sai/commands, sai/instructions, and all skills always overwrite with a log line. Add `budget` skill to the Claude install map.
 
 ## Prerequisites
 
@@ -53,155 +53,131 @@ Add `package.json` and `bin/install.js` to enable one-command installation via `
 
 #### Step 7: Wire main orchestration and post-install reminder
 
-*(Non-testable step — interactive orchestration; requires TTY)*
-
-- [x] In `bin/install.js`, find the line `module.exports = {` and insert the following block immediately before it:
-
-```js
-async function main() {
-  const choices = await promptChecklist(
-    ['Claude Code', 'Opencode'],
-    ['Opencode']
-  );
-
-  if (choices.length === 0) {
-    console.log('Nothing selected. Exiting.');
-    process.exit(0);
-  }
-
-  if (choices.includes('Claude Code')) {
-    installClaude();
-  }
-
-  if (choices.includes('Opencode')) {
-    installOpencode();
-    copyOpencodeConfig();
-  }
-
-  console.log(
-    "\nReminder: run 'openspec init --tools claude' (or --tools opencode) in each project,\nthen copy the openspec/schemas folder from this repo into the project root."
-  );
-}
-
-if (require.main === module) {
-  main().catch(err => {
-    console.error(err);
-    process.exit(1);
-  });
-}
-
-```
-
-##### Step 7 Verification Checklist
-
-**Automated (agent runs before stopping):**
-- [x] `node -e "const m=require('./bin/install.js');console.log(typeof m.installClaude, typeof m.installOpencode, typeof m.copyOpencodeConfig)"` — outputs `function function function`
-- [x] `node --test test/copy-helpers.test.js` — passes (regression)
-- [x] `node --test test/install-claude.test.js` — passes (regression)
-- [x] `node --test test/install-opencode.test.js` — passes (regression)
-
-**Human (verify in terminal before committing):**
-
-*Deferred from Step 3 (promptChecklist):*
-- [x] Run `node bin/install.js` in a real TTY. Checklist renders with `[ ] Claude Code` and `[x] Opencode`. Arrow keys move cursor. Space toggles selection. Ctrl-C (or `q`) exits cleanly (exit code 0).
-
-*Step 7:*
-- [x] Deselect all items, press Enter → prints `Nothing selected. Exiting.` and exits 0.
-- [x] Select only `Claude Code`, press Enter → files copy to `~/.claude/`; confirm `~/.claude/commands/sai-1-spec.md` exists and post-install reminder is printed.
-- [x] Select only `Opencode`, press Enter → files copy to `~/.config/opencode/`; if `opencode.jsonc` already exists there, manual agent section instructions are printed instead of copying.
-- [x] Run `node bin/install.js --help` → prints usage text and exits 0.
-
-#### Step 7 STOP & COMMIT
-
-**sai-4-apply:** Run all Automated checks above and confirm they pass before stopping.
-
-**STOP & COMMIT:** Wait for the human to verify all Human checks above (including all deferred checks from Step 3) in a terminal, then stage and commit before continuing.
+*(already applied)*
 
 ---
 
-#### Step 8: Fix skills copy semantics and add `budget` to Claude install
+#### Step 8: Fix copy semantics, add `budget` to Claude, log all operations
 
 *(Testable step — RED → GREEN)*
 
-**Two bugs fixed together:**
+**Copy rules (final):**
 
-1. `installClaude` and `installOpencode` use `copy` (silent overwrite) for all skill mappings except `caveman`. The spec requires skip-if-exists for all skills. Existing user-customized skills are silently overwritten on re-install with no output.
-2. `installClaude` is missing the `budget` skill mapping. `budget` must be installed for both Claude Code and Opencode.
+| File group | Rule | Function |
+|------------|------|----------|
+| `commands/claude/*.md`, `commands/opencode/*.md` | Skip if exists, no overwrite | `copySkipIfExists` |
+| `sai/commands/*.md` | Always overwrite, always log | `copyWithWarn` |
+| `sai/instructions/*.md` | Always overwrite, always log | `copyWithWarn` |
+| All skill files | Always overwrite, always log | `copyWithWarn` |
 
-##### Pre-RED: fix broken tests caused by `copyWithWarn` change
+**Note:** Previous RED tests (Pre-RED and old-RED phases below) were written against an earlier spec that used `copySkipIfExists` for skills and `copy` for commands. Those tests are now wrong — Step 8 GREEN replaces them with tests that match the final copy rules.
 
-The user updated `copyWithWarn` to print `Creating <dest>` when the file does not exist yet, and `Overwriting <dest>` when it does. The existing "Overwriting warn" tests use a fresh `tmpDir` (no pre-existing files), so they now receive "Creating" and fail. Fix them before adding the new RED tests.
+##### Pre-RED: fix broken `copyWithWarn` tests (already applied)
 
-- [x] In `test/install-claude.test.js`, replace the assertion inside the test `installClaude copies sai/instructions/*.md with Overwriting warn`:
+The existing "Overwriting warn" tests use a fresh `tmpDir`, so they receive "Creating" (not "Overwriting") with the updated `copyWithWarn`. These assertions were already fixed.
 
-Replace:
-```js
-  assert.ok(messages.some(m => m.startsWith('Overwriting')), 'should print Overwriting for instruction files');
-```
+- [x] In `test/install-claude.test.js`, updated assertion in `installClaude copies sai/instructions/*.md with Overwriting warn` to accept `'Overwriting'` or `'Creating'`.
+- [x] In `test/install-opencode.test.js`, same fix for `installOpencode copies sai/instructions/*.md with Overwriting warn`.
+- [x] Both files compile without error.
 
-With:
-```js
-  assert.ok(messages.some(m => m.startsWith('Overwriting') || m.startsWith('Creating')), 'should print Overwriting or Creating for instruction files');
-```
+##### Old RED phase (superseded — tests were correct for old spec, now wrong)
 
-- [x] In `test/install-opencode.test.js`, replace the assertion inside the test `installOpencode copies sai/instructions/*.md with Overwriting warn`:
+The tests below were added based on an earlier spec that used `copySkipIfExists` for skills. They are now wrong (skills must overwrite) and must be removed in GREEN.
 
-Replace:
-```js
-  assert.ok(messages.some(m => m.startsWith('Overwriting')), 'should print Overwriting for instruction files');
-```
+- [x] In `test/install-claude.test.js`, replaced `installClaude copies five Claude-specific skills` with `installClaude copies six Claude-specific skills` (added budget assertion).
+- [x] In `test/install-claude.test.js`, appended `installClaude skips existing non-caveman skill files` — **WRONG, remove in GREEN**.
+- [x] In `test/install-opencode.test.js`, appended `installOpencode skips existing non-caveman skill files` — **WRONG, remove in GREEN**.
+- [x] Verified RED: both test suites failed with AssertionError.
 
-With:
-```js
-  assert.ok(messages.some(m => m.startsWith('Overwriting') || m.startsWith('Creating')), 'should print Overwriting or Creating for instruction files');
-```
+##### GREEN phase
 
-- [x] Confirm both test files compile: run `node -e "require('./test/install-claude.test.js')"` and `node -e "require('./test/install-opencode.test.js')"` — expected: no error (syntax only check, not a full test run).
+**A. Clean up wrong tests**
 
-##### RED phase
+- [x] In `test/install-claude.test.js`, remove the test `installClaude skips existing non-caveman skill files` (entire `test(...)` block including the closing `});`). Note: do NOT remove `installClaude skips existing skill files` — that test covers caveman and remains correct.
+- [x] In `test/install-opencode.test.js`, remove the test `installOpencode skips existing non-caveman skill files` (entire `test(...)` block).
 
-- [x] In `test/install-claude.test.js`, replace the test `installClaude copies five Claude-specific skills` with the version below (renamed to "six", budget assertion flipped from negative to positive):
-- [x] Append the test below to `test/install-claude.test.js`, at the end of the file:
-- [x] Append the test below to `test/install-opencode.test.js`, at the end of the file:
+**B. Add correct tests**
+
+- [x] Append the tests below to `test/install-claude.test.js`:
 
 ```js
 
-test('installOpencode skips existing non-caveman skill files', () => {
-  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-'));
-  const skillNames = ['token-efficient-languages', 'budget-explorer', 'budget-executor', 'budget', 'fetch'];
-  for (const name of skillNames) {
-    const dest = path.join(tmpDir, 'skills', name, 'SKILL.md');
-    fs.mkdirSync(path.dirname(dest), { recursive: true });
-    fs.writeFileSync(dest, 'old content');
-  }
-  installOpencode(tmpDir);
-  for (const name of skillNames) {
-    const dest = path.join(tmpDir, 'skills', name, 'SKILL.md');
-    assert.equal(fs.readFileSync(dest, 'utf8'), 'old content', `skills/${name}/SKILL.md should not be overwritten when already installed`);
-  }
+test('installClaude skips existing vendor command files', () => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-claude-'));
+  const cmdFile = path.join(tmpDir, 'commands', 'sai-1-spec.md');
+  fs.mkdirSync(path.dirname(cmdFile), { recursive: true });
+  fs.writeFileSync(cmdFile, 'old content');
+  installClaude(tmpDir);
+  assert.equal(fs.readFileSync(cmdFile, 'utf8'), 'old content', 'existing vendor command should not be overwritten');
+  fs.rmSync(tmpDir, { recursive: true, force: true });
+});
+
+test('installClaude overwrites existing non-caveman skill files and logs', () => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-claude-'));
+  const skillFile = path.join(tmpDir, 'skills', 'budget-explorer', 'SKILL.md');
+  fs.mkdirSync(path.dirname(skillFile), { recursive: true });
+  fs.writeFileSync(skillFile, 'old content');
+  const messages = [];
+  const origLog = console.log;
+  console.log = (msg) => messages.push(String(msg));
+  installClaude(tmpDir);
+  console.log = origLog;
+  assert.notEqual(fs.readFileSync(skillFile, 'utf8'), 'old content', 'existing non-caveman skill should be overwritten');
+  assert.ok(messages.some(m => m.startsWith('Overwriting')), 'should log Overwriting for existing skill');
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });
 ```
 
-- [x] Verify RED: run `node --test test/install-claude.test.js` — expected: **exit code ≠ 0**; the "six skills" test fails (`budget` not installed → `existsSync` returns false → AssertionError); the skip test fails for existing non-caveman skills (they get overwritten → content ≠ `'old content'`).
-- [x] Verify RED: run `node --test test/install-opencode.test.js` — expected: **exit code ≠ 0**; skip test fails for existing non-caveman skills.
-- [x] **GATE — DO NOT PROCEED to GREEN until both RED runs are verified.**
-
-##### GREEN phase (only after RED is verified)
-
-- [x] In `bin/install.js`, replace the entire `installClaude` function body with the content below:
-- [x] In `bin/install.js`, replace the entire `installOpencode` function body with the content below:
+- [x] Append the tests below to `test/install-opencode.test.js`:
 
 ```js
-function installOpencode(destBase) {
-  const targetPath = destBase || OPENCODE_BASE;
 
-  listMdFiles(path.join(REPOSITORY_ROOT, 'commands', 'opencode')).forEach(src => {
-    copy(src, path.join(targetPath, 'commands', path.basename(src)));
+test('installOpencode skips existing vendor command files', () => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-'));
+  const cmdFile = path.join(tmpDir, 'commands', 'sai-1-spec.md');
+  fs.mkdirSync(path.dirname(cmdFile), { recursive: true });
+  fs.writeFileSync(cmdFile, 'old content');
+  installOpencode(tmpDir);
+  assert.equal(fs.readFileSync(cmdFile, 'utf8'), 'old content', 'existing vendor command should not be overwritten');
+  fs.rmSync(tmpDir, { recursive: true, force: true });
+});
+
+test('installOpencode overwrites existing non-caveman skill files and logs', () => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-'));
+  const skillFile = path.join(tmpDir, 'skills', 'budget-explorer', 'SKILL.md');
+  fs.mkdirSync(path.dirname(skillFile), { recursive: true });
+  fs.writeFileSync(skillFile, 'old content');
+  const messages = [];
+  const origLog = console.log;
+  console.log = (msg) => messages.push(String(msg));
+  installOpencode(tmpDir);
+  console.log = origLog;
+  assert.notEqual(fs.readFileSync(skillFile, 'utf8'), 'old content', 'existing non-caveman skill should be overwritten');
+  assert.ok(messages.some(m => m.startsWith('Overwriting')), 'should log Overwriting for existing skill');
+  fs.rmSync(tmpDir, { recursive: true, force: true });
+});
+```
+
+**C. Confirm still RED (before touching `bin/install.js`)**
+
+- [x] Run `node --test test/install-claude.test.js` — expected: **exit code ≠ 0**; `installClaude copies six Claude-specific skills` fails (budget not installed); `installClaude skips existing vendor command files` fails (current `copy` overwrites commands); `installClaude overwrites existing skill files and logs` fails (current `copy` produces no log).
+- [x] Run `node --test test/install-opencode.test.js` — expected: **exit code ≠ 0**; same reasons for Opencode.
+- [x] **GATE — DO NOT PROCEED to code changes until RED is confirmed.**
+
+**D. Implement new `installClaude` and `installOpencode`**
+
+- [x] In `bin/install.js`, replace the entire `installClaude` function with:
+
+```js
+function installClaude(destBase) {
+  const targetPath = destBase || CLAUDE_BASE;
+
+  listMdFiles(path.join(REPOSITORY_ROOT, 'commands', 'claude')).forEach(src => {
+    copySkipIfExists(src, path.join(targetPath, 'commands', path.basename(src)));
   });
 
   listMdFiles(path.join(REPOSITORY_ROOT, 'sai', 'commands')).forEach(src => {
-    copy(src, path.join(targetPath, 'sai', 'commands', path.basename(src)));
+    copyWithWarn(src, path.join(targetPath, 'sai', 'commands', path.basename(src)));
   });
 
   listMdFiles(path.join(REPOSITORY_ROOT, 'sai', 'instructions')).forEach(src => {
@@ -212,23 +188,68 @@ function installOpencode(destBase) {
     path.join(REPOSITORY_ROOT, 'skills', 'universal', 'caveman', 'SKILL.md'),
     path.join(targetPath, 'skills', 'caveman', 'SKILL.md')
   );
-  copySkipIfExists(
+  copyWithWarn(
     path.join(REPOSITORY_ROOT, 'skills', 'universal', 'token-efficient-languages', 'SKILL.md'),
     path.join(targetPath, 'skills', 'token-efficient-languages', 'SKILL.md')
   );
-  copySkipIfExists(
-    path.join(REPOSITORY_ROOT, 'skills', 'opencode', 'budget-explorer', 'SKILL.md'),
+  copyWithWarn(
+    path.join(REPOSITORY_ROOT, 'skills', 'claude', 'budget-explorer', 'SKILL.md'),
     path.join(targetPath, 'skills', 'budget-explorer', 'SKILL.md')
   );
-  copySkipIfExists(
-    path.join(REPOSITORY_ROOT, 'skills', 'opencode', 'budget-executor', 'SKILL.md'),
+  copyWithWarn(
+    path.join(REPOSITORY_ROOT, 'skills', 'claude', 'budget-executor', 'SKILL.md'),
     path.join(targetPath, 'skills', 'budget-executor', 'SKILL.md')
   );
-  copySkipIfExists(
+  copyWithWarn(
+    path.join(REPOSITORY_ROOT, 'skills', 'claude', 'fetch', 'SKILL.md'),
+    path.join(targetPath, 'skills', 'fetch', 'SKILL.md')
+  );
+  copyWithWarn(
     path.join(REPOSITORY_ROOT, 'skills', 'universal', 'budget', 'SKILL.md'),
     path.join(targetPath, 'skills', 'budget', 'SKILL.md')
   );
+}
+```
+
+- [x] In `bin/install.js`, replace the entire `installOpencode` function with:
+
+```js
+function installOpencode(destBase) {
+  const targetPath = destBase || OPENCODE_BASE;
+
+  listMdFiles(path.join(REPOSITORY_ROOT, 'commands', 'opencode')).forEach(src => {
+    copySkipIfExists(src, path.join(targetPath, 'commands', path.basename(src)));
+  });
+
+  listMdFiles(path.join(REPOSITORY_ROOT, 'sai', 'commands')).forEach(src => {
+    copyWithWarn(src, path.join(targetPath, 'sai', 'commands', path.basename(src)));
+  });
+
+  listMdFiles(path.join(REPOSITORY_ROOT, 'sai', 'instructions')).forEach(src => {
+    copyWithWarn(src, path.join(targetPath, 'sai', 'instructions', path.basename(src)));
+  });
+
   copySkipIfExists(
+    path.join(REPOSITORY_ROOT, 'skills', 'universal', 'caveman', 'SKILL.md'),
+    path.join(targetPath, 'skills', 'caveman', 'SKILL.md')
+  );
+  copyWithWarn(
+    path.join(REPOSITORY_ROOT, 'skills', 'universal', 'token-efficient-languages', 'SKILL.md'),
+    path.join(targetPath, 'skills', 'token-efficient-languages', 'SKILL.md')
+  );
+  copyWithWarn(
+    path.join(REPOSITORY_ROOT, 'skills', 'opencode', 'budget-explorer', 'SKILL.md'),
+    path.join(targetPath, 'skills', 'budget-explorer', 'SKILL.md')
+  );
+  copyWithWarn(
+    path.join(REPOSITORY_ROOT, 'skills', 'opencode', 'budget-executor', 'SKILL.md'),
+    path.join(targetPath, 'skills', 'budget-executor', 'SKILL.md')
+  );
+  copyWithWarn(
+    path.join(REPOSITORY_ROOT, 'skills', 'universal', 'budget', 'SKILL.md'),
+    path.join(targetPath, 'skills', 'budget', 'SKILL.md')
+  );
+  copyWithWarn(
     path.join(REPOSITORY_ROOT, 'skills', 'opencode', 'fetch', 'SKILL.md'),
     path.join(targetPath, 'skills', 'fetch', 'SKILL.md')
   );
@@ -241,8 +262,6 @@ function installOpencode(destBase) {
 ##### Step 8 Verification Checklist
 
 **Automated (agent runs before stopping):**
-- [x] RED verified — `node --test test/install-claude.test.js` fails with AssertionError (exit ≠ 0)
-- [x] RED verified — `node --test test/install-opencode.test.js` fails with AssertionError (exit ≠ 0)
 - [x] GREEN verified — `node --test test/install-claude.test.js` passes (exit = 0, all tests)
 - [x] GREEN verified — `node --test test/install-opencode.test.js` passes (exit = 0, all tests)
 - [x] `node --test test/copy-helpers.test.js` — passes (regression check)
@@ -263,7 +282,53 @@ function installOpencode(destBase) {
 
 **A. `openspec/changes/npx-installer/specs/npx-installer/spec.md`**
 
-- [x] In `spec.md`, in the `### Requirement: claude-file-map` section, replace the table block with the version below (adds `budget` row):
+- [ ] Replace the `### Requirement: copy-rule-commands` section with:
+
+```markdown
+### Requirement: copy-rule-commands
+Vendor command files (`commands/claude/*.md`, `commands/opencode/*.md`) MUST be skipped if the destination file already exists. No error is raised; the installer prints:
+    Skipping <destination-path> (already exists)
+
+SAI command files (`sai/commands/*.md`) MUST always be overwritten. Before overwriting, the installer MUST print:
+    Overwriting <destination-path>
+or, if the file does not exist:
+    Creating <destination-path>
+
+#### Scenario: existing vendor command skipped
+- **WHEN** a `.md` file already exists at the destination vendor command path
+- **THEN** it is not overwritten and the skip message is printed
+
+#### Scenario: sai command always overwritten
+- **WHEN** `sai/commands/*.md` is copied
+- **THEN** the destination is always written and a log line is printed
+```
+
+- [ ] Replace the `### Requirement: copy-rule-skills` section with:
+
+```markdown
+### Requirement: copy-rule-skills
+`skills/universal/caveman/SKILL.md` MUST be skipped if already installed at the destination (skip-if-exists). No error is raised; the installer prints:
+    Skipping <destination-path> (already exists)
+
+All other skill files (`skills/**/SKILL.md`) MUST always be overwritten at the destination. Before writing, the installer MUST print:
+    Overwriting <destination-path>
+or, if the file does not exist:
+    Creating <destination-path>
+
+#### Scenario: caveman already installed
+- **WHEN** `skills/caveman/SKILL.md` already exists at the destination
+- **THEN** the file is not overwritten and the skip message is printed
+
+#### Scenario: non-caveman skill already installed
+- **WHEN** any other `SKILL.md` already exists at the target skill path
+- **THEN** the file IS overwritten and the Overwriting message is printed
+
+#### Scenario: skill not yet installed
+- **WHEN** no `SKILL.md` exists at the target skill path
+- **THEN** the file is copied, parent directories are created if needed, and the Creating message is printed
+```
+
+- [ ] In the `### Requirement: claude-file-map` section, replace the table block with (adds `budget` row):
 
 ```markdown
     Source                                             Destination (relative to ~/.claude/)
@@ -278,39 +343,26 @@ function installOpencode(destBase) {
     skills/universal/budget/SKILL.md              →    skills/budget/SKILL.md
 ```
 
-- [x] In `spec.md`, update the scenario under `### Requirement: claude-file-map` from "eight source paths" to "nine source paths":
-
-Replace:
-```markdown
-#### Scenario: claude install copies all mapped files
-- **WHEN** Claude Code is selected
-- **THEN** all eight source paths (glob-expanded where wildcards used) are copied to the correct destinations under `~/.claude/`
-```
-
-With:
-```markdown
-#### Scenario: claude install copies all mapped files
-- **WHEN** Claude Code is selected
-- **THEN** all nine source paths (glob-expanded where wildcards used) are copied to the correct destinations under `~/.claude/`
-```
+- [ ] Update the claude-file-map scenario from "eight source paths" to "nine source paths".
 
 **B. `openspec/changes/npx-installer/tasks.md`**
 
-- [x] In `tasks.md`, in `## Implementation Context` under `**Conventions**`, remove the line:
+- [ ] In `## Implementation Context` under `**Conventions**`, replace the line about `budget`:
 
+Replace:
 ```
 - `skills/universal/budget/SKILL.md` is mapped for Opencode but absent from Claude's file map — this is intentional per spec, not an oversight
 ```
 
-And replace with:
-
+With:
 ```
 - `skills/universal/budget/SKILL.md` is mapped for both Claude and Opencode
+- Vendor commands (`commands/claude/`, `commands/opencode/`) use skip-if-exists; `sai/commands/`, `sai/instructions/`, and all skills always overwrite with a log line
 ```
 
 **C. `README.md`**
 
-- [x] In `README.md`, replace the `## Global installation (multi-project)` section (from that heading up to but not including `## Per project installation`) with the content below:
+- [ ] Replace the `## Global installation (multi-project)` section (from that heading up to but not including `## Per project installation`) with:
 
 ```markdown
 ## Global installation (multi-project)
@@ -340,13 +392,13 @@ For step-by-step manual installation without npx:
 
 **D. `INSTALL.opencode.md`**
 
-- [x] Replace the first line (`# Opencode — Installation`) with:
+- [ ] Replace the first line (`# Opencode — Installation`) with:
 
 ```markdown
 # Opencode — Manual Installation
 ```
 
-- [x] Insert the following block immediately after the first line (before `## Prerequisites`):
+- [ ] Insert the following block immediately after the first line (before `## Prerequisites`):
 
 ```markdown
 > **Recommended:** Run `npx github:mmadariaga/shared-ai` for automated installation. The steps below are for manual installation only.
@@ -355,13 +407,13 @@ For step-by-step manual installation without npx:
 
 **E. `INSTALL.claude.md`**
 
-- [x] Replace the first line (`# Claude Code — Installation`) with:
+- [ ] Replace the first line (`# Claude Code — Installation`) with:
 
 ```markdown
 # Claude Code — Manual Installation
 ```
 
-- [x] Insert the following block immediately after the first line (before `## Prerequisites`):
+- [ ] Insert the following block immediately after the first line (before `## Prerequisites`):
 
 ```markdown
 > **Recommended:** Run `npx github:mmadariaga/shared-ai` for automated installation. The steps below are for manual installation only.
@@ -371,14 +423,14 @@ For step-by-step manual installation without npx:
 ##### Step 9 Verification Checklist
 
 **Automated (agent runs before stopping):**
-- [x] `node --test test/install-claude.test.js` — passes (regression check)
-- [x] `node --test test/install-opencode.test.js` — passes (regression check)
+- [ ] `node --test test/install-claude.test.js` — passes (regression check)
+- [ ] `node --test test/install-opencode.test.js` — passes (regression check)
 
 **Human (verify before committing):**
-- [x] Open `README.md`. The `## Global installation` section shows `npx github:mmadariaga/shared-ai` as the primary install method, with INSTALL files linked under `### Manual installation`.
-- [x] Open `INSTALL.opencode.md`. Title reads `# Opencode — Manual Installation`. npx note appears immediately after the title before `## Prerequisites`.
-- [x] Open `INSTALL.claude.md`. Title reads `# Claude Code — Manual Installation`. npx note appears immediately after the title.
-- [x] Open `specs/npx-installer/spec.md`. Claude file map includes `skills/universal/budget/SKILL.md → skills/budget/SKILL.md`. Scenario says "nine source paths".
+- [ ] Open `README.md`. The `## Global installation` section shows `npx github:mmadariaga/shared-ai` as the primary install method, with INSTALL files linked under `### Manual installation`.
+- [ ] Open `INSTALL.opencode.md`. Title reads `# Opencode — Manual Installation`. npx note appears immediately after the title before `## Prerequisites`.
+- [ ] Open `INSTALL.claude.md`. Title reads `# Claude Code — Manual Installation`. npx note appears immediately after the title.
+- [ ] Open `specs/npx-installer/spec.md`. Vendor commands are skip-if-exists; skills always overwrite. Claude file map includes `budget` row. Scenario says "nine source paths".
 
 #### Step 9 STOP & COMMIT
 
@@ -394,28 +446,25 @@ For step-by-step manual installation without npx:
 
 **Plan:** The copy helper was named `forceCopy` throughout the plan and tests.
 
-**Final:** The function was implemented as `copy` in `bin/install.js` and exported as `copy`. The function behavior is identical.
+**Final:** The function was implemented as `copy` in `bin/install.js` and exported as `copy`. Behavior is identical.
 
 ### Step 6 — RED phase skipped (already implemented)
 
-**Plan:** RED phase required writing stubs for `installOpencode` and `copyOpencodeConfig`, then running tests to verify assertion failures before implementing GREEN.
+**Plan:** RED phase required writing stubs for `installOpencode` and `copyOpencodeConfig`, then verifying assertion failures.
 
-**Final:** `installOpencode` and `copyOpencodeConfig` were already fully implemented (not stubs) in `bin/install.js` from an earlier step. The test file passed all 6 tests immediately on first run. No RED→GREEN transition was needed.
+**Final:** Both functions were already fully implemented. Tests passed immediately.
 
-**Reason:** The functions were implemented ahead of the plan tracking — likely during Step 4 or 5 when the surrounding copy helpers and `installClaude` were implemented. The code is correct and matches the final GREEN implementation specified in the plan.
+### Step 7 — variable names changed
+
+**Final code** uses `REPOSITORY_ROOT` (not `ROOT`) and `targetPath` (not `base`) for local variables. These are the names used in the Step 8 GREEN code blocks above.
 
 ### Steps 8–9 — Added in re-run (post-apply amendments)
 
-### Step 8 — copy-helpers.test.js regression fix (not in plan)
+**Step 8:** Copy semantics revised. Final rules:
+- Vendor commands (`commands/claude/`, `commands/opencode/`): `copySkipIfExists`
+- `sai/commands/`, `sai/instructions/`, all skills: `copyWithWarn` (always overwrite + log)
+- `budget` skill added to Claude install map
 
-**Plan:** Only `install-claude.test.js` and `install-opencode.test.js` needed assertion updates for the `copyWithWarn` "Creating" message change.
+Intermediate RED tests for `copySkipIfExists` on skills were written and verified as failing, then superseded by the spec change. GREEN replaced them with tests matching final rules.
 
-**Final:** `copy-helpers.test.js` also failed because the `copyWithWarn prints Overwriting and copies file` test used a fresh tmpDir (no pre-existing dest), so `copyWithWarn` prints "Creating" instead of "Overwriting". Fixed by pre-creating `dest.txt` so the overwrite path is exercised.
-
-**Reason:** The plan only identified the two test files that would fail, but the same `copyWithWarn` behavior change affected any test using a fresh tmpDir with `copyWithWarn` and asserting "Overwriting".
-
-**Step 8:** Two bugs fixed together:
-- Non-caveman skills were using `copy` (overwrite) instead of `copySkipIfExists`, violating the skip-if-exists requirement for all skills.
-- `installClaude` was missing the `budget` skill mapping. The original spec incorrectly omitted it; `budget` is required for both Claude and Opencode.
-
-**Step 9:** Spec corrected (claude-file-map now includes `budget`; tasks.md convention note updated). Documentation updated: `npx github:mmadariaga/shared-ai` promoted as the official install method; INSTALL files demoted to manual installation docs.
+**Step 9:** Spec corrected for new copy rules and budget addition. README and INSTALL files updated with npx as official install method.
