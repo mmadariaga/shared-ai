@@ -1,4 +1,6 @@
-# Opencode — Installation
+# Opencode — Manual Installation
+
+> **Recommended:** Run `npx github:mmadariaga/shared-ai` for automated installation. The steps below are for manual installation only.
 
 ## Prerequisites
 

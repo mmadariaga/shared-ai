@@ -243,17 +243,35 @@ Proposes creating an ADR/DDR if all 3 criteria below are met:
 
 Commands are designed as **user globals**, not per project. A single copy in the CLI's global directory makes them available in any repo.
 
-> **Prerequisites:**
-> 1. Install the [OpenSpec CLI](https://github.com/Fission-AI/OpenSpec) globally and run `openspec init` in each project. The openspec-dependent `sai-*` commands halt with a clear error if either is missing.
-> 2. Copy the `openspec/schemas` folder from this repository into the project root after running `openspec init`.
 
-### Opencode
+### Prerequisites
 
-See [INSTALL.opencode.md](INSTALL.opencode.md) for installation instructions.
+The pipeline depends on the [OpenSpec](https://github.com/Fission-AI/OpenSpec) CLI for change lifecycle and skill provisioning. Install it once globally, and initialize it inside every project that will use shared-AI:
 
-### Claude Code
+```bash
+# 1. Install OpenSpec CLI (see https://github.com/Fission-AI/OpenSpec for current install instructions)
+npm install -g @fission-ai/openspec   # example — check the project README for the canonical command
 
-See [INSTALL.claude.md](INSTALL.claude.md) for installation instructions.
+# 2. In each project where you want to use shared-AI, initialize OpenSpec
+cd /path/to/your/project
+openspec init --tools opencode
+```
+
+
+### Automatic npx installer (recommended)
+
+```bash
+npx github:mmadariaga/shared-ai
+```
+
+Presents an interactive checklist to select Claude Code and/or Opencode as targets, then copies all files to the correct OS-aware destinations.
+
+### Manual installation (alternative)
+
+For step-by-step manual installation without npx:
+
+- Opencode: see [INSTALL.opencode.md](INSTALL.opencode.md)
+- Claude Code: see [INSTALL.claude.md](INSTALL.claude.md)
 
 ## Per project installation
 
@@ -261,7 +279,9 @@ Per-project commands are still possible via `.opencode/commands/` or `.claude/co
 
 ## Post Install
 
-See [INSTALL.opencode.md](INSTALL.opencode.md) and [INSTALL.claude.md](INSTALL.claude.md) for post-install steps.
+If you use opencode, modify the models for each command to match your preferred providers and personal taste.
+
+See [INSTALL.opencode.md](INSTALL.opencode.md#post-install) for post-install steps.
 
 ### Recommended models by command and provider
 
