@@ -3,6 +3,7 @@ description: Archive a completed change � wraps opsx:archive skill, adds cavem
 argument-hint: "[change-name]"
 model: claude-haiku-4-5
 ---
+## Sai Archive
 
 Fetch @skills/fetch/SKILL.md
 Fetch @sai/commands/sai-archive.md and follow those instructions exactly.

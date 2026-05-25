@@ -3,5 +3,7 @@ description: Post-hoc backfill — reconstructs proposal.md and capability specs
 model: opencode-go/qwen3.6-plus
 ---
 
+## Sai Backfill
+
 Load `skill` fetch before you continue.
 Fetch @sai/commands/sai-backfill.md and follow those instructions exactly.

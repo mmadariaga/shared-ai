@@ -4,6 +4,7 @@ argument-hint: "[change-name] [optional: --full | --path {dir}] [optional: --tie
 model: claude-sonnet-4-6
 effort: high
 ---
+## Sai Performance - 7
 
 Fetch @skills/fetch/SKILL.md
 Fetch @sai/commands/sai-7-performance.md and follow those instructions exactly.

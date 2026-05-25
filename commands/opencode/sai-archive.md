@@ -3,5 +3,7 @@ description: Archive a completed change � wraps opsx:archive skill, adds cavem
 model: opencode-go/deepseek-v4-flash
 ---
 
+## Sai Archive
+
 Load `skill` fetch before you continue.
 Fetch @sai/commands/sai-archive.md and follow those instructions exactly.

@@ -4,6 +4,7 @@ argument-hint: "[change name or feature description]"
 model: claude-sonnet-4-6
 effort: medium
 ---
+## Sai Spec - 1
 
 Fetch @skills/fetch/SKILL.md
 Fetch @sai/commands/sai-1-spec.md and follow those instructions exactly.

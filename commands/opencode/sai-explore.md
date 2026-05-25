@@ -3,5 +3,7 @@ description: Explore mode wrapper — thinking partner for ideas, problems, and 
 model: opencode-go/qwen3.6-plus
 ---
 
+## Sai Explore
+
 Load `skill` fetch before you continue.
 Fetch @sai/commands/sai-explore.md and follow those instructions exactly.

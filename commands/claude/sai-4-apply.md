@@ -3,6 +3,7 @@ description: Apply the granular implementation plan mechanically — reads opens
 argument-hint: "[change-name]"
 model: claude-haiku-4-5
 ---
+## Sai Apply - 4
 
 Fetch @skills/fetch/SKILL.md
 Fetch @sai/commands/sai-4-apply.md and follow those instructions exactly.

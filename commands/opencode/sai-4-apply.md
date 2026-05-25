@@ -4,5 +4,7 @@ model: opencode-go/deepseek-v4-flash
 variant: default
 ---
 
+## Sai Apply - 4
+
 Load `skill` fetch before you continue.
 Fetch @sai/commands/sai-4-apply.md and follow those instructions exactly.

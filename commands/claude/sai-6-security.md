@@ -4,6 +4,7 @@ argument-hint: "[change-name] [optional: --full | --path {dir}] [optional: paren
 model: claude-opus-4-7
 effort: high
 ---
+## Sai Security - 6
 
 Fetch @skills/fetch/SKILL.md
 Fetch @sai/commands/sai-6-security.md and follow those instructions exactly.

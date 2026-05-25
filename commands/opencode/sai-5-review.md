@@ -3,5 +3,7 @@ description: Structured Code Review Prompt — diffs current branch against pare
 model: opencode-go/qwen3.6-plus
 ---
 
+## Sai Review - 5
+
 Load `skill` fetch before you continue.
 Fetch @sai/commands/sai-5-review.md and follow those instructions exactly.

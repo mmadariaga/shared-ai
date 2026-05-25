@@ -4,5 +4,7 @@ model: opencode-go/deepseek-v4-flash
 variant: default
 ---
 
+## Sai Commit
+
 Load `skill` fetch before you continue.
 Fetch @sai/commands/sai-commit.md and follow those instructions exactly.

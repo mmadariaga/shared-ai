@@ -3,6 +3,8 @@ description: Granular implementation plan — reads OpenSpec change artifacts (p
 model: opencode-go/kimi-k2.6
 ---
 
+## Sai Implement - 3
+
 Load `skill` fetch before you continue.
 Fetch @sai/commands/sai-3-implement.md and follow those instructions exactly.
 
