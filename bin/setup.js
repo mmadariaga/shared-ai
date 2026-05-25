@@ -75,8 +75,28 @@ async function ensureSchemaLine(projectPath, rl) {
   fs.writeFileSync(configPath, content, 'utf8');
 }
 
+function copyDir(srcDir, destDir) {
+  let count = 0;
+  fs.mkdirSync(destDir, { recursive: true });
+  const entries = fs.readdirSync(srcDir, { withFileTypes: true });
+  for (const entry of entries) {
+    const srcEntry = path.join(srcDir, entry.name);
+    const destEntry = path.join(destDir, entry.name);
+    if (entry.isDirectory()) {
+      count += copyDir(srcEntry, destEntry);
+    } else {
+      fs.copyFileSync(srcEntry, destEntry);
+      count++;
+    }
+  }
+  return count;
+}
+
 function copySchemaTemplates(projectPath) {
-  // stub — implemented in Step 6
+  const srcPath = path.join(__dirname, '..', 'openspec', 'schemas', 'sai-workflow');
+  const destPath = path.join(projectPath, 'openspec', 'schemas', 'sai-workflow');
+  const count = copyDir(srcPath, destPath);
+  console.log(`Copied ${count} schema file(s) to ${destPath}.`);
 }
 
 async function main() {
