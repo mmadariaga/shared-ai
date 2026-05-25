@@ -46,7 +46,7 @@ Read the full content of `proposal.md`, `design.md`, `tasks.md`, and all `specs/
 
 ### Step 1b: Detect Already-Applied Steps (re-run guard)
 
-> **Subagent:** Run this step in a separate subagent.
+> **Subagent:** Run this step in a separate subagent. Wait for the subagent to finish before continuing with any other task.
 
 If `openspec/changes/{change-name}/implementation.md` already exists:
 1. Read the existing file.
