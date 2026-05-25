@@ -46,6 +46,8 @@ Read the full content of `proposal.md`, `design.md`, `tasks.md`, and all `specs/
 
 ### Step 1b: Detect Already-Applied Steps (re-run guard)
 
+> **Subagent:** Run this step in a separate subagent.
+
 If `openspec/changes/{change-name}/implementation.md` already exists:
 1. Read the existing file.
 2. For each `#### Step N:` section, determine whether **all** checkboxes in that section are checked (`- [x]`). A step is **already applied** only if every single checkbox in it is `[x]` — any `- [ ]` means the step is still pending.
@@ -71,6 +73,8 @@ MANDATORY: Read every document listed in `## Required Documentation` from `tasks
 
 Do NOT load `SKILL.md` indexes or explore documentation trees beyond what is listed.
 Do NOT use subagents for documentation research — read the listed files directly.
+
+**Exception (re-run):** If Step 1b detected an existing `implementation.md` (i.e., the applied-steps set is non-empty), research on elements introduced since the last run is permitted — spawn a subagent scoped to those new elements only.
 
 Once all documents are read, validate findings against the Expertise Profile.
 If a listed document is missing or contradicts the declared stack, STOP and request clarification.
