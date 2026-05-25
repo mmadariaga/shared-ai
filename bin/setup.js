@@ -52,7 +52,27 @@ async function ensureOpenspecDir(projectPath, rl) {
 }
 
 async function ensureSchemaLine(projectPath, rl) {
-  // stub — implemented in Step 5
+  const configPath = path.join(projectPath, 'openspec', 'config.yaml');
+  if (!fs.existsSync(configPath)) {
+    console.error("openspec/config.yaml not found. Run 'openspec init' first.");
+    process.exit(1);
+  }
+  let content = fs.readFileSync(configPath, 'utf8');
+  if (/^schema:\s*sai-workflow\s*$/m.test(content)) {
+    return;
+  }
+  const answer = await prompt(rl, 'Set schema: sai-workflow in openspec/config.yaml? (Y/n) ');
+  if (answer.trim().toLowerCase() === 'n') {
+    rl.close();
+    console.log('Aborted.');
+    process.exit(0);
+  }
+  if (/^schema:.*$/m.test(content)) {
+    content = content.replace(/^schema:.*$/m, 'schema: sai-workflow');
+  } else {
+    content = 'schema: sai-workflow\n' + content;
+  }
+  fs.writeFileSync(configPath, content, 'utf8');
 }
 
 function copySchemaTemplates(projectPath) {
