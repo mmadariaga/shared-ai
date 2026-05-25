@@ -34,7 +34,7 @@ The diff source MUST be selected before any question is asked, before any spec i
 
 ## Phase 2: Interview
 
-Ask the following two questions in this exact order. Do NOT skip, rephrase, or merge them regardless of how self-explanatory the diff appears:
+Ask the following two questions **one at a time, sequentially**. After each question, **wait for the user's full response** before proceeding to the next. Do NOT ask both questions in the same message. Do NOT skip, rephrase, or merge them regardless of how self-explanatory the diff appears:
 
 **Question 1:** "What problem does this solve?"
 
