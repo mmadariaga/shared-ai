@@ -34,7 +34,23 @@ Read `## Implementation Context` (**Stack**, **Conventions**, **Avoid**) from `t
 
 ## Workflow
 
-### Step 1: Parse the Artifacts
+### Step 1: Simplify existing implementation.md
+
+**MANDATORY: Spawn a subagent for this step. Do NOT read `implementation.md` yourself.**
+
+If `openspec/changes/{change-name}/implementation.md` exists, spawn a General subagent with this prompt (fill in `{change-name}`):
+
+1. Read `openspec/changes/{change-name}/implementation.md`.
+2. For each `#### Step N:` section, check whether every checkbox in that section is `[x]`.
+3. If ALL are `[x]`, the step is fully applied. Replace its entire content (code blocks, checklists, STOP & COMMIT marker) with just the heading line followed by `*(already applied)*`.
+4. Steps with any `[ ]` checkbox remain unchanged. Write the simplified file back to the same path.
+5. Report: list of step headings that were collapsed, and list that were left as-is.
+
+Wait for the subagent to finish before continuing.
+
+If `implementation.md` does not exist, skip this step entirely.
+
+### Step 2: Parse the Artifacts
 
 Read the full content of `proposal.md`, `design.md`, `tasks.md`, and all `specs/**/*.md` before applying the workflow steps below.
 
@@ -44,20 +60,7 @@ Read the full content of `proposal.md`, `design.md`, `tasks.md`, and all `specs/
 - Extract and internalize the Expertise Profile from `## Implementation Context` in `tasks.md`
 - If `## Implementation Context` is missing entirely, STOP per the STOP condition above.
 
-### Step 1b: Detect Already-Applied Steps (re-run guard)
-
-> **Subagent:** Run this step in a separate subagent. Wait for the subagent to finish before continuing with any other task.
-
-If `openspec/changes/{change-name}/implementation.md` already exists:
-1. Read the existing file.
-2. For each `#### Step N:` section, determine whether **all** checkboxes in that section are checked (`- [x]`). A step is **already applied** only if every single checkbox in it is `[x]` — any `- [ ]` means the step is still pending.
-3. Build an **applied-steps set**: the list of step headings that are fully checked.
-4. In the output file (Step 4), for every step in the applied-steps set: emit only the step heading followed by `*(already applied)*` — no code blocks, no checklists, no STOP & COMMIT block.
-5. Steps with at least one unchecked checkbox are left as-is from the existing file.
-
-If `implementation.md` does not exist, skip this step entirely.
-
-### Step 2: Validate Design Decisions for ADR/DDR
+### Step 3: Validate Design Decisions for ADR/DDR
 
 Read the `## Decisions` section from `design.md`. For each decision recorded, evaluate whether it meets all three criteria for a persistent record:
 1. **Hard to reverse** — the cost of changing later is meaningful.
@@ -65,7 +68,7 @@ Read the `## Decisions` section from `design.md`. For each decision recorded, ev
 3. **Real trade-off** — genuine alternatives existed and one was chosen for specific reasons.
 - If all three are true, ask the user: "This decision qualifies as an ADR/DDR. Do you want me to create `docs/adr/NNNN-slug.md` or `docs/ddr/NNNN-slug.md`?" Only create the file if the user explicitly approves. If the project already maintains ADRs/DDRs, create the file directly without asking.
 
-### Step 3: Read Required Documentation (One Time Only)
+### Step 4: Read Required Documentation (One Time Only)
 
 MANDATORY: Read every document listed in `## Required Documentation` from `tasks.md`:
 - For local file paths: use the Read tool (with line ranges when specified). When reading multiple local files, read them in parallel.
@@ -74,12 +77,12 @@ MANDATORY: Read every document listed in `## Required Documentation` from `tasks
 Do NOT load `SKILL.md` indexes or explore documentation trees beyond what is listed.
 Do NOT use subagents for documentation research — read the listed files directly.
 
-**Exception (re-run):** If Step 1b detected an existing `implementation.md` (i.e., the applied-steps set is non-empty), research on elements introduced since the last run is permitted — spawn a subagent scoped to those new elements only.
+**Exception (re-run):** If Step 1 detected an existing `implementation.md` (i.e., the applied-steps set is non-empty), research on elements introduced since the last run is permitted — spawn a subagent scoped to those new elements only.
 
 Once all documents are read, validate findings against the Expertise Profile.
 If a listed document is missing or contradicts the declared stack, STOP and request clarification.
 
-### Step 4: Generate Full Implementation
+### Step 5: Generate Full Implementation
 
 - Create one full markdown file using <plan_template>
 - Include:

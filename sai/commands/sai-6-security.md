@@ -22,5 +22,5 @@
   **User's request:** $ARGUMENTS
 
   ## Completion
-  MANDATORY STOP: Once all artifacts are written your work is COMPLETE, STOP and print exactly: "Security audit done in openspec/changes/{name}/."  
+  MANDATORY STOP: Once all artifacts are written your work is COMPLETE, STOP and print exactly: "Security audit done."  
 </TASK>
