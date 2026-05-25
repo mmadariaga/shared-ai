@@ -1,7 +1,7 @@
 ---
 name: fetch
 description: >
-  Resolves Fetch @<path> references in instructions for Claude Code — maps @<subpath> to
+  Resolves Fetch @<path> references in instructions for Claude Code only — NOT compatible with opencode. Maps @<subpath> to
   .claude/<subpath> (project) then ~/.claude/<subpath> (global), and @skills/<name>/SKILL.md
   to the Skill tool. This skill MUST be loaded before any @sai/ fetch directive.
 license: MIT
