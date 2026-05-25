@@ -34,7 +34,21 @@ function checkOpenspecCli() {
 }
 
 async function ensureOpenspecDir(projectPath, rl) {
-  // stub — implemented in Step 4
+  const openspecDir = path.join(projectPath, 'openspec');
+  if (fs.existsSync(openspecDir)) {
+    return;
+  }
+  const answer = await prompt(rl, `openspec/ not found at ${projectPath}. Run 'openspec init'? (Y/n) `);
+  if (answer.trim().toLowerCase() === 'n') {
+    rl.close();
+    console.log('Aborted.');
+    process.exit(0);
+  }
+  const result = spawnSync('openspec', ['init'], { cwd: projectPath, stdio: 'inherit' });
+  if (result.status !== 0) {
+    if (result.stderr) process.stderr.write(result.stderr);
+    process.exit(1);
+  }
 }
 
 async function ensureSchemaLine(projectPath, rl) {
