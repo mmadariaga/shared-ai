@@ -7,7 +7,7 @@ Software development oriented AI commands for a cost-efficient, spec-first, stru
 | Idea | explore *(optional)* → spec → validation |
 | Code | design → implement → apply |
 | Quality | review → audits *(security · performance · accessibility, per review findings)* |
-| Ship | PR → archive |
+| Ship | archive → PR |
 
 Built on top of [OpenSpec](https://github.com/Fission-AI/OpenSpec): OpenSpec owns the lifecycle and artifact structure, Shared-AI owns the code and quality layers.
 
@@ -94,8 +94,8 @@ All artifact paths below resolve under `openspec/changes/{change-name}/` (referr
 # ...iterate as needed...
 ############################################################
 
-/sai-pr oauth2-auth
 /sai-archive oauth2-auth
+/sai-pr oauth2-auth
 ```
 
 > **Important:** open a new chat between commands:
