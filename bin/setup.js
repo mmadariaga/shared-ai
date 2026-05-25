@@ -24,7 +24,13 @@ function resolvePath() {
 }
 
 function checkOpenspecCli() {
-  // stub — implemented in Step 3
+  const cmd = process.platform === 'win32' ? 'where openspec' : 'which openspec';
+  try {
+    execSync(cmd, { stdio: 'pipe' });
+  } catch {
+    console.error('openspec CLI not found. Install it first: https://github.com/Fission-AI/OpenSpec');
+    process.exit(1);
+  }
 }
 
 async function ensureOpenspecDir(projectPath, rl) {
