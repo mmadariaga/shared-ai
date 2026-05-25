@@ -1,42 +1,38 @@
-# Claude Code — Manual Installation
-
-> **Recommended:** Run `npx github:mmadariaga/shared-ai` for automated installation. The steps below are for manual installation only.
+# Claude Code — Installation
 
 ## Prerequisites
 
-The pipeline depends on the [OpenSpec](https://github.com/Fission-AI/OpenSpec) CLI for change lifecycle and skill provisioning. Install it once globally, and initialize it inside every project that will use shared-AI:
+The pipeline depends on the [OpenSpec](https://github.com/Fission-AI/OpenSpec) CLI for change lifecycle and skill provisioning. Install it once globally:
 
 ```bash
-# 1. Install OpenSpec CLI (see https://github.com/Fission-AI/OpenSpec for current install instructions)
+# Install OpenSpec CLI (see https://github.com/Fission-AI/OpenSpec for current install instructions)
 npm install -g @fission-ai/openspec   # example — check the project README for the canonical command
-
-# 2. In each project where you want to use shared-AI, initialize OpenSpec
-cd /path/to/your/project
-openspec init --tools claude
 ```
-
-`openspec init` scaffolds:
-- `openspec/` directory at the project root (where change artifacts live)
-- `.claude/skills/openspec-*/` — the skill files invoked by the `ai-*` wrappers
 
 Shared-AI **does not bundle the OpenSpec skills**; they come from the OpenSpec CLI and are versioned by it.
 
-If you skip this step, the openspec-dependent `ai-*` commands (`ai-explore`, `ai-1-spec`, `ai-2-implement`, `sai-4-apply`, `ai-archive`) will halt with a clear error message.
+If you skip this step, the `sai-*` commands will halt with a clear error message.
 
-## Automatic Shared-AI instalation
+## Automatic installation (recommended)
 
 ```bash
+# 1. Install shared-AI commands globally
 npx github:mmadariaga/shared-ai
+
+# 2. In each project where you want to use shared-AI:
+npx github:mmadariaga/shared-ai setup /path/to/your/project
 ```
 
-## Manual Shared-AI instalation
+Step 1 copies all commands and skills to `~/.claude/`. Step 2 verifies the openspec CLI, runs `openspec init --tools claude` if needed, sets `schema: sai-workflow` in `openspec/config.yaml`, and copies the schema templates into the project.
+
+## Manual installation
 
 | OS | Destination |
 |----|---------|
 | Linux / macOS | `~/.claude/commands/` |
 | Windows | `%USERPROFILE%\.claude\commands\` |
 
-**Linux / macOS:**
+### Linux / macOS
 ```bash
 mkdir -p ~/.claude/commands
 cp commands/claude/*.md ~/.claude/commands/
@@ -65,11 +61,9 @@ mkdir -p ~/.claude/skills/budget
 cp skills/universal/budget/SKILL.md ~/.claude/skills/budget/SKILL.md
 mkdir -p ~/.claude/skills/fetch
 cp skills/claude/fetch/SKILL.md ~/.claude/skills/fetch/SKILL.md
-
-echo "Reminder: run 'openspec init --tools claude' in each project to enable the spec/explore/apply/archive commands."
 ```
 
-**Windows (PowerShell):**
+### Windows (PowerShell)
 ```powershell
 New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\.claude\commands"
 Copy-Item commands\claude\*.md "$env:USERPROFILE\.claude\commands\"
@@ -99,6 +93,19 @@ New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\.claude\skills\budge
 Copy-Item skills\universal\budget\SKILL.md "$env:USERPROFILE\.claude\skills\budget\SKILL.md"
 New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\.claude\skills\fetch" | Out-Null
 Copy-Item skills\claude\fetch\SKILL.md "$env:USERPROFILE\.claude\skills\fetch\SKILL.md"
+```
 
-Write-Host "Reminder: run 'openspec init --tools claude' in each project to enable the spec/explore/apply/archive commands."
+### Post-install
+
+After the files are in place, in each project where you want to use shared-AI:
+
+```bash
+# 1. Initialize OpenSpec for Claude Code
+openspec init --tools claude
+
+# 2. Copy the SAI workflow schema templates into the project
+cp -r openspec/schemas/sai-workflow /path/to/your/project/openspec/schemas/
+
+# 3. Edit openspec/config.yaml in your project and set:
+#    schema: sai-workflow
 ```

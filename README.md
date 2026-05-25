@@ -246,28 +246,32 @@ Commands are designed as **user globals**, not per project. A single copy in the
 
 ### Prerequisites
 
-The pipeline depends on the [OpenSpec](https://github.com/Fission-AI/OpenSpec) CLI for change lifecycle and skill provisioning. Install it once globally, and initialize it inside every project that will use shared-AI:
+The pipeline depends on the [OpenSpec](https://github.com/Fission-AI/OpenSpec) CLI for change lifecycle and skill provisioning. Install it once globally:
 
 ```bash
-# 1. Install OpenSpec CLI (see https://github.com/Fission-AI/OpenSpec for current install instructions)
+# Install OpenSpec CLI (see https://github.com/Fission-AI/OpenSpec for current install instructions)
 npm install -g @fission-ai/openspec   # example — check the project README for the canonical command
-
-# 2. In each project where you want to use shared-AI, initialize OpenSpec
-cd /path/to/your/project
-openspec init
 ```
 
 Shared-AI **does not bundle the OpenSpec skills**; they come from the OpenSpec CLI and are versioned by it.
 
-If you skip this step, the openspec-dependent `ai-*` commands (`ai-explore`, `ai-1-spec`, `ai-2-implement`, `sai-4-apply`, `ai-archive`) will halt with a clear error message.
+If you skip this step, the `sai-*` commands will halt with a clear error message.
 
 ### Automatic npx installer (recommended)
 
 ```bash
+# 1. Install shared-AI commands globally
 npx github:mmadariaga/shared-ai
 ```
 
 Presents an interactive checklist to select Claude Code and/or Opencode as targets, then copies all files to the correct OS-aware destinations.
+
+```bash
+# 2. In each project where you want to use shared-AI:
+npx github:mmadariaga/shared-ai setup /path/to/your/project
+```
+
+Verifies the openspec CLI, runs `openspec init` if needed, sets `schema: sai-workflow` in `openspec/config.yaml`, and copies the schema templates into the project.
 
 ### Manual installation (alternative)
 
@@ -276,7 +280,7 @@ For step-by-step manual installation without npx:
 - Opencode: see [INSTALL.opencode.md](INSTALL.opencode.md)
 - Claude Code: see [INSTALL.claude.md](INSTALL.claude.md)
 
-## Per project installation
+## Per project installation / override
 
 Per-project commands are still possible via `.opencode/commands/` or `.claude/commands/` at the repo root — useful when a project needs specific variants. Globals act as a base; locals override by name.
 

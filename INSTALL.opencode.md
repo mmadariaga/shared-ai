@@ -1,36 +1,32 @@
-# Opencode — Manual Installation
-
-> **Recommended:** Run `npx github:mmadariaga/shared-ai` for automated installation. The steps below are for manual installation only.
+# Opencode — Installation
 
 ## Prerequisites
 
-The pipeline depends on the [OpenSpec](https://github.com/Fission-AI/OpenSpec) CLI for change lifecycle and skill provisioning. Install it once globally, and initialize it inside every project that will use shared-AI:
+The pipeline depends on the [OpenSpec](https://github.com/Fission-AI/OpenSpec) CLI for change lifecycle and skill provisioning. Install it once globally:
 
 ```bash
-# 1. Install OpenSpec CLI (see https://github.com/Fission-AI/OpenSpec for current install instructions)
+# Install OpenSpec CLI (see https://github.com/Fission-AI/OpenSpec for current install instructions)
 npm install -g @fission-ai/openspec   # example — check the project README for the canonical command
-
-# 2. In each project where you want to use shared-AI, initialize OpenSpec
-cd /path/to/your/project
-openspec init --tools opencode
 ```
-
-`openspec init` scaffolds:
-- `openspec/` directory at the project root (where change artifacts live)
-- `.opencode/skills/openspec-*/` — the skill files invoked by the `sai-*` wrappers
 
 Shared-AI **does not bundle the OpenSpec skills**; they come from the OpenSpec CLI and are versioned by it.
 
-If you skip this step, the openspec-dependent `sai-*` commands (`sai-explore`, `sai-1-spec`, `sai-2-design`, `sai-3-implement`, `sai-4-apply`, `sai-archive`) will halt with a clear error message.
+If you skip this step, the `sai-*` commands will halt with a clear error message.
 
 
-## Automatic Shared-AI instalation
+## Automatic installation (recommended)
 
 ```bash
+# 1. Install shared-AI commands globally
 npx github:mmadariaga/shared-ai
+
+# 2. In each project where you want to use shared-AI:
+npx github:mmadariaga/shared-ai setup /path/to/your/project
 ```
 
-## Manual Shared-AI instalation
+Step 1 copies all commands and skills to `~/.config/opencode/`. Step 2 verifies the openspec CLI, runs `openspec init --tools opencode` if needed, sets `schema: sai-workflow` in `openspec/config.yaml`, and copies the schema templates into the project.
+
+## Manual installation
 
 | OS | Destination |
 |----|---------|
@@ -145,6 +141,21 @@ if (-not (Test-Path $jsonPath) -and -not (Test-Path $jsoncPath)) {
     Write-Host '    }'
     Write-Host '  }'
 }
+```
+
+### Post-install
+
+After the files are in place, in each project where you want to use shared-AI:
+
+```bash
+# 1. Initialize OpenSpec for opencode
+openspec init --tools opencode
+
+# 2. Copy the SAI workflow schema templates into the project
+cp -r openspec/schemas/sai-workflow /path/to/your/project/openspec/schemas/
+
+# 3. Edit openspec/config.yaml in your project and set:
+#    schema: sai-workflow
 ```
 
 ## Post Install

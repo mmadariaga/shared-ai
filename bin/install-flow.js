@@ -245,7 +245,7 @@ async function main() {
   }
 
   console.log(
-    "\nReminder: run 'openspec init --tools claude' (or --tools opencode) in each project,\nthen copy the openspec/schemas folder from this repo into the project root."
+    "\nReminder: run 'npx github:mmadariaga/shared-ai setup' in each project to configure the SAI workflow."
   );
 }
 

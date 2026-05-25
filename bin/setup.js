@@ -38,23 +38,26 @@ async function ensureOpenspecDir(projectPath, rl) {
   if (fs.existsSync(openspecDir)) {
     return;
   }
-  const answer = await prompt(rl, `openspec/ not found at ${projectPath}. Run 'openspec init'? (Y/n) `);
+  const answer = await prompt(rl, `openspec/ not found at ${projectPath}.\n\nRun 'openspec init'? (Y/n) `);
   if (answer.trim().toLowerCase() === 'n') {
     rl.close();
     console.log('Aborted.');
     process.exit(0);
   }
-  const result = spawnSync('openspec', ['init'], { cwd: projectPath, stdio: 'inherit' });
+  const result = spawnSync('openspec', ['init'], { cwd: projectPath, stdio: 'inherit', shell: true });
   if (result.status !== 0) {
     if (result.stderr) process.stderr.write(result.stderr);
+    console.error("error", result);
     process.exit(1);
   }
+
+  console.log(`Initialized openspec/ at ${projectPath}.\n`);
 }
 
 async function ensureSchemaLine(projectPath, rl) {
   const configPath = path.join(projectPath, 'openspec', 'config.yaml');
   if (!fs.existsSync(configPath)) {
-    console.error("openspec/config.yaml not found. Run 'openspec init' first.");
+    console.error("openspec/config.yaml not found.\n\nRun 'openspec init' first.");
     process.exit(1);
   }
   let content = fs.readFileSync(configPath, 'utf8');
