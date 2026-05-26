@@ -9,3 +9,6 @@ effort: high
 Fetch @skills/fetch/SKILL.md
 Fetch @sai/commands/sai-explore.md and follow those instructions exactly.
 
+## No-file-write enforcement
+During explore mode, you MUST NOT create or modify any files. If the user asks you to create something, summarize what you would create and tell them to exit explore mode first, then use the appropriate sai-* command in a new chat.
+

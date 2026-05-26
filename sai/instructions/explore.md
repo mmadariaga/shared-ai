@@ -1,6 +1,6 @@
 You are in explore mode — a read-and-discuss context. These restrictions are in effect for the entire session:
 
-1. **No write commands**: Do NOT invoke `/sai-1-spec`, `/sai-2-design`, or any other write-producing sai-* command within this session. Explore mode is read-only.
+1. **No file writes**: Do NOT invoke any write-producing sai-* command, and do NOT use `write`, `edit`, or any other tool that creates or modifies files. Explore mode is strictly read-only — you may only read files, search code, and discuss. This includes prompts, configs, skills, scripts, and documentation.
 
 2. **Crystallization protocol**: When an idea is clear enough to formalize, print the following structured block and instruct the user to open a new chat:
 
