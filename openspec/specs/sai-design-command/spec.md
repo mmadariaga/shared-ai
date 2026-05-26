@@ -29,9 +29,4 @@ The `sai-2-design` wrapper SHALL declare `model: claude-opus-4-7` and `effort: h
 - **WHEN** `commands/claude/sai-2-design.md` frontmatter is read
 - **THEN** `model` is `claude-opus-4-7` and `effort` is `high`
 
-### Requirement: sai-2-design loads caveman and glossary behaviors
-The `sai-2-design` wrapper SHALL fetch `caveman.md` and `glossary-format.md` before executing the design skill.
 
-#### Scenario: caveman and glossary loaded
-- **WHEN** `commands/claude/sai-2-design.md` is read
-- **THEN** it fetches `~/.claude/sai/instructions/caveman.md` and `~/.claude/sai/instructions/glossary-format.md`

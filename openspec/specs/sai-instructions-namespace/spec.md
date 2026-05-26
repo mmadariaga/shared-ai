@@ -13,7 +13,7 @@ All shared-AI instruction files SHALL reside in `instructions/sai/` within the r
 
 #### Scenario: sai subdirectory contains all expected files
 - **WHEN** `instructions/sai/` is listed
-- **THEN** the following files are present: `caveman.md`, `commit.md`, `glossary-format.md`, `implement.md`, `performance.md`, `plan.md`, `pr.md`, `remember.md`, `review.md`, `security.md`, `spec.propose.md`, `accessibility.md`
+- **THEN** the following files are present: `commit.md`, `glossary-format.md`, `implement.md`, `performance.md`, `plan.md`, `pr.md`, `remember.md`, `review.md`, `security.md`, `spec.propose.md`, `accessibility.md`
 
 ### Requirement: Instructions are installed into a sai/ subdirectory on the target system
 The install script SHALL copy instruction files from `instructions/sai/` to `~/.claude/instructions/sai/` (Claude Code) and to `~/.config/opencode/instructions/sai/` (OpenCode), creating the subdirectory if it does not exist.

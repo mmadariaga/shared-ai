@@ -96,20 +96,13 @@ Instruction files (`sai/instructions/*.md`) MUST be overwritten at the destinati
 ---
 
 ### Requirement: copy-rule-skills
-`skills/universal/caveman/SKILL.md` MUST be skipped if already installed at the destination (skip-if-exists). No error is raised; the installer prints:
-    Skipping <destination-path> (already exists)
-
-All other skill files (`skills/**/SKILL.md`) MUST always be overwritten at the destination. Before writing, the installer MUST print:
+All skill files (`skills/**/SKILL.md`) MUST always be overwritten at the destination. Before writing, the installer MUST print:
     Overwriting <destination-path>
 or, if the file does not exist:
     Creating <destination-path>
 
-#### Scenario: caveman already installed
-- **WHEN** `skills/caveman/SKILL.md` already exists at the destination
-- **THEN** the file is not overwritten and the skip message is printed
-
-#### Scenario: non-caveman skill already installed
-- **WHEN** any other `SKILL.md` already exists at the target skill path
+#### Scenario: skill already installed
+- **WHEN** a `SKILL.md` already exists at the target skill path
 - **THEN** the file IS overwritten and the Overwriting message is printed
 
 #### Scenario: skill not yet installed
@@ -138,7 +131,6 @@ When Claude Code is selected, the installer MUST copy:
     commands/claude/*.md                          →    commands/
     sai/commands/*.md                             →    sai/commands/
     sai/instructions/*.md                         →    sai/instructions/
-    skills/universal/caveman/SKILL.md             →    skills/caveman/SKILL.md
     skills/universal/token-efficient-languages/SKILL.md → skills/token-efficient-languages/SKILL.md
     skills/claude/budget-explorer/SKILL.md        →    skills/budget-explorer/SKILL.md
     skills/claude/budget-executor/SKILL.md        →    skills/budget-executor/SKILL.md
@@ -147,7 +139,7 @@ When Claude Code is selected, the installer MUST copy:
 
 #### Scenario: claude install copies all mapped files
 - **WHEN** Claude Code is selected
-- **THEN** all nine source paths (glob-expanded where wildcards used) are copied to the correct destinations under `~/.claude/`
+- **THEN** all eight source paths (glob-expanded where wildcards used) are copied to the correct destinations under `~/.claude/`
 
 ---
 
@@ -158,7 +150,6 @@ When Opencode is selected, the installer MUST copy:
     commands/opencode/*.md                        →    commands/
     sai/commands/*.md                             →    sai/commands/
     sai/instructions/*.md                         →    sai/instructions/
-    skills/universal/caveman/SKILL.md             →    skills/caveman/SKILL.md
     skills/universal/token-efficient-languages/SKILL.md → skills/token-efficient-languages/SKILL.md
     skills/opencode/budget-explorer/SKILL.md      →    skills/budget-explorer/SKILL.md
     skills/opencode/budget-executor/SKILL.md      →    skills/budget-executor/SKILL.md
@@ -168,7 +159,7 @@ When Opencode is selected, the installer MUST copy:
 
 #### Scenario: opencode install copies all mapped files
 - **WHEN** Opencode is selected
-- **THEN** all ten source paths are processed per their copy rules under `~/.config/opencode/`
+- **THEN** all nine source paths are processed per their copy rules under `~/.config/opencode/`
 
 ---
 

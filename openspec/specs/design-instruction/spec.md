@@ -11,7 +11,7 @@ The system SHALL provide a single `instructions/sai/design.md` file containing t
 - **WHEN** either `claude/commands/sai-2-design.md` or `opencode/commands/sai-2-design.md` is invoked
 - **THEN** the wrapper fetches `instructions/sai/design.md` from the harness-specific path (`~/.claude/instructions/sai/` or `~/.config/opencode/instructions/sai/`)
 - **AND** follows those instructions exactly
-- **AND** the wrapper file contains only: frontmatter (description, model, optional argument-hint/effort), prereqs fetch, behavior fetches (explorer, caveman, glossary-format), the design.md fetch line, and remember.md fetch
+- **AND** the wrapper file contains only: frontmatter (description, model, optional argument-hint/effort), prereqs fetch, behavior fetches (explorer, glossary-format), the design.md fetch line, and remember.md fetch
 
 ### Requirement: No inline duplication
 

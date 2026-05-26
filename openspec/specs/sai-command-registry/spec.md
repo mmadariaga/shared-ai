@@ -28,7 +28,7 @@ The skill SHALL state that the LLM MUST resolve `/sai-*` commands by reading the
 
 ### Requirement: Skill explains why loading matters
 
-The skill SHALL document the quality layers that sai-* commands provide: prerequisite checks, caveman communication mode, cost discipline via budget skills, phase-specific instructions, and OpenSpec skill chaining.
+The skill SHALL document the quality layers that sai-* commands provide: prerequisite checks, cost discipline via budget skills, phase-specific instructions, and OpenSpec skill chaining.
 
 #### Scenario: LLM understands consequence of skipping
 - **WHEN** the LLM considers skipping the command file

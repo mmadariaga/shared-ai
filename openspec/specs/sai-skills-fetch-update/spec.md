@@ -8,7 +8,7 @@ TBD - created by archiving change sai-explorer-harness-context. Update Purpose a
 
 #### Scenario: fetch order in sai-1-spec
 - **WHEN** sai-1-spec is invoked
-- **THEN** explorer.claude.md is loaded before caveman.md, glossary-format.md, and spec.propose.md
+- **THEN** explorer.claude.md is loaded before glossary-format.md and spec.propose.md
 
 #### Scenario: fetch line exact syntax
 - **WHEN** the modified sai-1-spec.md is read
@@ -19,14 +19,14 @@ TBD - created by archiving change sai-explorer-harness-context. Update Purpose a
 
 #### Scenario: fetch order in sai-2-design
 - **WHEN** sai-2-design is invoked
-- **THEN** explorer.claude.md is loaded before caveman.md and glossary-format.md
+- **THEN** explorer.claude.md is loaded before glossary-format.md
 
 ### Requirement: sai-3-explorer-fetch
 `~/.claude/commands/sai-3-implement.md` SHALL include `Fetch @~/.claude/instructions/sai/explorer.claude.md` as the first entry in its `## Load behaviors (in order)` block.
 
 #### Scenario: fetch order in sai-3-implement
 - **WHEN** sai-3-implement is invoked
-- **THEN** explorer.claude.md is loaded before caveman.md and glossary-format.md
+- **THEN** explorer.claude.md is loaded before glossary-format.md
 
 ### Requirement: fetch-position-within-load-behaviors
 In all three skills, the `Fetch @~/.claude/instructions/sai/explorer.claude.md` line SHALL appear as the first `Fetch` statement inside the `## Load behaviors (in order)` section, before any other instruction fetches.

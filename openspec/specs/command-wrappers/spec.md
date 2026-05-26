@@ -2,15 +2,15 @@
 
 ## Requirements
 ### Requirement: ai-* commands wrap opsx skills additively
-Each sai-* command that maps to an opsx skill SHALL load the skill content via `Fetch` and prepend shared-AI behaviors (caveman mode, isolation mode, model routing, relevant instructions) from `~/.claude/sai/instructions/` paths. The skill SKILL.md files SHALL NOT be modified.
+Each sai-* command that maps to an opsx skill SHALL load the skill content via `Fetch` and prepend shared-AI behaviors (isolation mode, model routing, relevant instructions) from `~/.claude/sai/instructions/` paths. The skill SKILL.md files SHALL NOT be modified.
 
 #### Scenario: sai-1-spec executes with full enrichment but stops before design
 - **WHEN** user invokes `sai-1-spec`
-- **THEN** command loads `~/.claude/sai/instructions/caveman.md`, `~/.claude/sai/instructions/glossary-format.md`, `~/.claude/sai/instructions/spec.propose.md`, then fetches the openspec skill to generate only proposal.md and specs/ — it does NOT proceed to design.md or tasks.md
+- **THEN** command loads `~/.claude/sai/instructions/glossary-format.md`, `~/.claude/sai/instructions/spec.propose.md`, then fetches the openspec skill to generate only proposal.md and specs/ — it does NOT proceed to design.md or tasks.md
 
 #### Scenario: sai-2-design executes with enrichment and approval check
 - **WHEN** user invokes `sai-2-design`
-- **THEN** command loads `~/.claude/sai/instructions/caveman.md` and `~/.claude/sai/instructions/glossary-format.md`, verifies specs approval in `.openspec.yaml`, then generates design.md and tasks.md
+- **THEN** command loads `~/.claude/sai/instructions/glossary-format.md`, verifies specs approval in `.openspec.yaml`, then generates design.md and tasks.md
 
 #### Scenario: all wrappers use sai/ instruction paths
 - **WHEN** any `commands/claude/sai-*.md` wrapper is executed

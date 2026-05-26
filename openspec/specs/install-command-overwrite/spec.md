@@ -14,15 +14,9 @@ The install script SHALL use `copyWithWarn` (not `copySkipIfExists`) when copyin
 
 ### Requirement: universal skill copy order is consistent
 
-Both `installClaude()` and `installOpencode()` SHALL copy universal skills (`budget/SKILL.md`, `caveman/SKILL.md`, `sai-commands/SKILL.md`, `token-efficient-languages/SKILL.md`) in the same relative order, with `budget/SKILL.md` and `sai-commands/SKILL.md` appearing before `caveman/SKILL.md`.
+Both `installClaude()` and `installOpencode()` SHALL copy universal skills (`budget/SKILL.md`, `sai-commands/SKILL.md`, `token-efficient-languages/SKILL.md`).
 
-#### Scenario: installClaude skill ordering
-- **WHEN** `installClaude()` executes
-- **THEN** `budget/SKILL.md` and `sai-commands/SKILL.md` are copied before `caveman/SKILL.md`
 
-#### Scenario: installOpencode skill ordering
-- **WHEN** `installOpencode()` executes
-- **THEN** `budget/SKILL.md` and `sai-commands/SKILL.md` are copied before `caveman/SKILL.md`
 
 ### Requirement: INSTALL.opencode.md documents per-project override pattern
 

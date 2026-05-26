@@ -6,7 +6,7 @@
 - A YAML frontmatter `description:` field explaining the command's purpose
 - A single `Fetch` directive pointing to the installed skill path: `@~/.claude/skills/token-efficient-languages/SKILL.md`
 
-The file structure SHALL follow the same pattern as other single-skill command files (e.g., the caveman skill command files in the sai suite).
+The file structure SHALL follow the same pattern as other single-skill command files (e.g., the budget skill command files in the sai suite).
 
 #### Scenario: Claude Code command invocation
 
