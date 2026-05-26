@@ -11,8 +11,6 @@
 
   ## Load behaviors (in order)
   Fetch @skills/budget/SKILL.md and use it
-  Fetch @skills/caveman/SKILL.md
-  Caveman lite mode active by default. If `--full-caveman` appears in arguments, use full instead.
 
   ## Load instructions (in order)
   Fetch @sai/instructions/security.md and follow those instructions exactly.
