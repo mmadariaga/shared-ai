@@ -50,10 +50,6 @@ mkdir -p ~/.config/opencode/sai/instructions
 cp sai/instructions/*.md ~/.config/opencode/sai/instructions/
 
 # Copy skills (skip if already installed)
-if [ ! -f ~/.config/opencode/skills/caveman/SKILL.md ]; then
-    mkdir -p ~/.config/opencode/skills/caveman
-    cp skills/universal/caveman/SKILL.md ~/.config/opencode/skills/caveman/SKILL.md
-fi
 mkdir -p ~/.config/opencode/skills/token-efficient-languages
 cp skills/universal/token-efficient-languages/SKILL.md ~/.config/opencode/skills/token-efficient-languages/SKILL.md
 mkdir -p ~/.config/opencode/skills/budget-explorer
@@ -107,10 +103,6 @@ New-Item -ItemType Directory -Force -Path $instructionsDir | Out-Null
 Copy-Item sai\instructions\*.md $instructionsDir\
 
 # Copy skills
-if (-not (Test-Path "$configDir\skills\caveman\SKILL.md")) {
-    New-Item -ItemType Directory -Force -Path "$configDir\skills\caveman" | Out-Null
-    Copy-Item skills\universal\caveman\SKILL.md "$configDir\skills\caveman\SKILL.md"
-}
 New-Item -ItemType Directory -Force -Path "$configDir\skills\token-efficient-languages" | Out-Null
 Copy-Item skills\universal\token-efficient-languages\SKILL.md "$configDir\skills\token-efficient-languages\SKILL.md"
 New-Item -ItemType Directory -Force -Path "$configDir\skills\budget-explorer" | Out-Null

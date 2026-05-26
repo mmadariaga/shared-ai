@@ -46,11 +46,6 @@ fi
 mkdir -p ~/.claude/sai/instructions
 cp sai/instructions/*.md ~/.claude/sai/instructions/
 
-# Copy skills (skip if already installed)
-if [ ! -f ~/.claude/skills/caveman/SKILL.md ]; then
-    mkdir -p ~/.claude/skills/caveman
-    cp skills/universal/caveman/SKILL.md ~/.claude/skills/caveman/SKILL.md
-fi
 mkdir -p ~/.claude/skills/token-efficient-languages
 cp skills/universal/token-efficient-languages/SKILL.md ~/.claude/skills/token-efficient-languages/SKILL.md
 mkdir -p ~/.claude/skills/budget-explorer
@@ -81,10 +76,6 @@ New-Item -ItemType Directory -Force -Path $instructionsDir | Out-Null
 Copy-Item sai\instructions\*.md $instructionsDir\
 
 # Copy skills
-if (-not (Test-Path "$env:USERPROFILE\.claude\skills\caveman\SKILL.md")) {
-    New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\.claude\skills\caveman" | Out-Null
-    Copy-Item skills\universal\caveman\SKILL.md "$env:USERPROFILE\.claude\skills\caveman\SKILL.md"
-}
 New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\.claude\skills\token-efficient-languages" | Out-Null
 Copy-Item skills\universal\token-efficient-languages\SKILL.md "$env:USERPROFILE\.claude\skills\token-efficient-languages\SKILL.md"
 New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\.claude\skills\budget-explorer" | Out-Null
