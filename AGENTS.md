@@ -6,7 +6,7 @@ A prompt and instruction library for orchestrating a **structured AI-assisted de
 
 It contains no application code. It is prompt infrastructure installed as global commands in Claude Code and opencode.
 
-The `sai-*` commands are **wrappers over OpenSpec skills**. OpenSpec owns the change lifecycle and artifact schema; shared-AI owns the quality layer (caveman, isolation mode, model routing, glossary, cost discipline, RED→GREEN) and adds a granular implementation phase optimized for cheap-model execution.
+The `sai-*` commands are **wrappers over OpenSpec skills**. OpenSpec owns the change lifecycle and artifact schema; shared-AI owns the quality layer (isolation mode, model routing, glossary, cost discipline, RED→GREEN) and adds a granular implementation phase optimized for cheap-model execution.
 
 ## Main pipeline
 
@@ -56,7 +56,6 @@ The openspec-dependent `ai-*` commands halt with a clear error if either is miss
 | `sai/instructions/prereqs.md` | Universal prerequisite check fetched first by all openspec-dependent sai-* wrappers. `sai-commit` is the only exception. |
 | `sai/commands/` | Sai command body files fetched by wrappers at runtime. |
 | `skills/` | Universal skills installed globally (not project-local). Fetched by wrappers via `~/.claude/skills/` or `~/.config/opencode/skills/`. |
-| `skills/universal/caveman/SKILL.md` | Ultra-compressed communication skill. Fetched by all sai-* wrappers. |
 | `skills/universal/sai-commands/SKILL.md` | SAI command registry — lists all /sai-* commands and enforces fetch-before-execute discipline. Loaded to prevent LLM from skipping command files. |
 | `skills/universal/` | Universal skills (no vendor). Fetched by all wrappers. |
 | `skills/claude/` | Claude Code-specific skills (subagent dispatch rules, etc.). Fetched by wrappers that spawn subagents. |
@@ -75,7 +74,7 @@ Wrappers are **thin** — they specify the model, fetch the markdown from `instr
 ## Critical conventions
 
 ### Wrappers, never skills
-sai-* commands prepend shared-AI behaviors (caveman, glossary-format, spec.propose) and then `Fetch` the OpenSpec skill content. The skill `SKILL.md` files are **never modified** — the OpenSpec CLI regenerates them on update.
+sai-* commands prepend shared-AI behaviors (glossary-format, spec.propose) and then `Fetch` the OpenSpec skill content. The skill `SKILL.md` files are **never modified** — the OpenSpec CLI regenerates them on update.
 
 ### Single artifact home
 All sai-* artifacts (`implementation.md`, `review.md`, `security.md`, `performance.md`, `accessibility.md`, `pr.md`) write to `openspec/changes/{change-name}/`. The legacy `plans/` directory is **not used** by the new pipeline.
@@ -99,9 +98,6 @@ All agents MUST think and reason internally in English, regardless of the user's
 
 - **User-facing chat:** respond in the language the user writes in (default English if unclear).
 - **Generated artifacts** (`implementation.md`, `review.md`, `security.md`, `performance.md`, `accessibility.md`, commit messages, PR bodies, code, technical explanations): written in English unless the user explicitly requests otherwise.
-
-### Caveman Communication Mode
-All wrappers fetch `skills/universal/caveman/SKILL.md` (installed to `~/.claude/skills/caveman/SKILL.md` / `~/.config/opencode/skills/caveman/SKILL.md`). Default is **lite**. Flag `--full-caveman` in `$ARGUMENTS` activates full mode.
 
 ### Cost Discipline (research subagents)
 Wrappers that spawn subagents fetch `skills/claude/budget-explorer/SKILL.md` (Claude) or `skills/opencode/budget-explorer/SKILL.md` (opencode). The main agent reasons and synthesizes. Subagents do I/O. Key rules:
