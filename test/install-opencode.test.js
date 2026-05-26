@@ -6,7 +6,7 @@ const path = require('path');
 const os = require('os');
 const fs = require('fs');
 
-const { installOpencode, copyOpencodeConfig } = require('../bin/install.js');
+const { installOpencode, copyOpencodeConfig } = require('../bin/install-flow.js');
 
 test('installOpencode copies commands/opencode/*.md to dest/commands/', () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-'));
@@ -32,7 +32,6 @@ test('installOpencode copies sai/instructions/*.md with Overwriting warn', () =>
 test('installOpencode copies six Opencode-specific skills including budget', () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-'));
   installOpencode(tmpDir);
-  assert.ok(fs.existsSync(path.join(tmpDir, 'skills', 'caveman', 'SKILL.md')), 'skills/caveman/SKILL.md');
   assert.ok(fs.existsSync(path.join(tmpDir, 'skills', 'token-efficient-languages', 'SKILL.md')), 'skills/token-efficient-languages/SKILL.md');
   assert.ok(fs.existsSync(path.join(tmpDir, 'skills', 'budget-explorer', 'SKILL.md')), 'skills/budget-explorer/SKILL.md');
   assert.ok(fs.existsSync(path.join(tmpDir, 'skills', 'budget-executor', 'SKILL.md')), 'skills/budget-executor/SKILL.md');
@@ -83,7 +82,7 @@ test('installOpencode skips existing vendor command files', () => {
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });
 
-test('installOpencode overwrites existing non-caveman skill files and logs', () => {
+test('installOpencode overwrites stale command wrappers and logs', () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-'));
   const skillFile = path.join(tmpDir, 'skills', 'budget-explorer', 'SKILL.md');
   fs.mkdirSync(path.dirname(skillFile), { recursive: true });
@@ -93,8 +92,8 @@ test('installOpencode overwrites existing non-caveman skill files and logs', () 
   console.log = (msg) => messages.push(String(msg));
   installOpencode(tmpDir);
   console.log = origLog;
-  assert.notEqual(fs.readFileSync(skillFile, 'utf8'), 'old content', 'existing non-caveman skill should be overwritten');
-  assert.ok(messages.some(m => m.startsWith('Overwriting')), 'should log Overwriting for existing skill');
+  assert.notEqual(fs.readFileSync(skillFile, 'utf8'), 'old content', 'existing stale file should be overwritten');
+  assert.ok(messages.some(m => m.startsWith('Overwriting')), 'should log Overwriting for existing file');
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });
 

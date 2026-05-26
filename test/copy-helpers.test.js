@@ -6,7 +6,7 @@ const path = require('path');
 const os = require('os');
 const fs = require('fs');
 
-const { copy, copyWithWarn, copySkipIfExists, listMdFiles } = require('../bin/install.js');
+const { copy, copyWithWarn, copySkipIfExists, listMdFiles } = require('../bin/install-flow.js');
 
 test('copy overwrites existing file', () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-test-'));
