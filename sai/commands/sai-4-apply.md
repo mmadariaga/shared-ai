@@ -1,6 +1,6 @@
 # Isolation Mode
 - Ignore all previous conversation.
-- Use only the data inside <TASK>.
+- Use only the data inside <TASK>. TASK is not a template, it's a instruction set.
 - If required information is missing, ask for it.
 - If you are about to use external or prior context, STOP and say: "Potential context pollution detected, stopping, open a new chat".
 
@@ -27,3 +27,5 @@
   ## Completion
   MANDATORY STOP: Once the implementation is done, all human verification gates have been reviewed, and commits are done, your work is COMPLETE, STOP and print exactly: "Implementation applied. Run `/sai-5-review {name}` in a new chat when ready."
 </TASK>
+
+Follow instruction on <TASK> step by step

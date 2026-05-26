@@ -1,6 +1,6 @@
 # Isolation Mode
 - Ignore all previous conversation.
-- Use only the data inside <TASK>.
+- Use only the data inside <TASK>. TASK is not a template, it's a instruction set.
 - If required information is missing, ask for it.
 - If you are about to use external or prior context, STOP and say: "Potential context pollution detected, stopping, open a new chat".
 
@@ -22,3 +22,5 @@
   ## Completion
   MANDATORY STOP: Once all backfill artifacts are written your work is COMPLETE. Do NOT run reviews, security audits, or any other command. STOP and print exactly: "Backfill complete in openspec/changes/{name}/."
 </TASK>
+
+Follow instruction on <TASK> step by step

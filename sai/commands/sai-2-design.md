@@ -1,6 +1,6 @@
 # Isolation Mode
 - Ignore all previous conversation.
-- Use only the data inside <TASK>.
+- Use only the data inside <TASK>. TASK is not a template, it's a instruction set.
 - If required information is missing, ask for it.
 - If you are about to use external or prior context, STOP and say: "Potential context pollution detected, stopping, open a new chat".
 
@@ -23,3 +23,5 @@
   ## Completion
   MANDATORY STOP: Once all artifacts are written your work is COMPLETE, STOP and print exactly: "Design done in openspec/changes/{name}/. Run `/sai-3-implement {name}` **in a new chat** when ready."
 </TASK>
+
+Follow instruction on <TASK> step by step
