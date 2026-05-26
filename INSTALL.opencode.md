@@ -164,9 +164,22 @@ cp -r openspec/schemas/sai-workflow /path/to/your/project/openspec/schemas/
 
 ## Post Install
 
-Once installed, modify the models in your commands to adapt them to your subscriptions and personal preferences.
+Once installed, adapt the models to your subscriptions and personal preferences.
 
-Open `~/.config/opencode/commands/sai-1-spec.md` and `sai-2-design.md` and set your preferred frontier model based on your subscriptions.
+### Recommended: per-project override
+
+Copy the commands you want to customize into your project's `.opencode/commands/` directory. Opencode will use the project-local file instead of the global one, and your changes will survive future reinstalls and updates.
+
+```bash
+cp ~/.config/opencode/commands/sai-1-spec.md .opencode/commands/
+cp ~/.config/opencode/commands/sai-2-design.md .opencode/commands/
+```
+
+Then edit copied files and set your preferred model.
+
+### Alternative: edit global commands
+
+You can also edit `~/.config/opencode/commands/sai-*.md` directly, but **these changes will be overwritten** on future updates or reinstalls.
 
 To list all models available in your opencode subscriptions, run:
 
