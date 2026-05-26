@@ -24,6 +24,7 @@ artifacts:
         - **Modified Capabilities**: existing capabilities whose requirements are changing. Only include if spec-level behavior changes.
       - **Impact**: affected code, APIs, dependencies, or systems.
       - **Proposal Research Documentation**: list of relevant files and URLs consulted during proposal research.
+      - **Additional Notes**: Any other info gathered during the spec that may be relevant.
 
       The Capabilities section is critical — it is the contract between proposal and specs.
       Research existing specs before filling it in. Keep it concise (1-2 pages).

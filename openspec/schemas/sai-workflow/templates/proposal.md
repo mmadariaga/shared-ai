@@ -25,3 +25,8 @@
 **Local files**: <!-- List every local file consulted during spec-phase codebase research -->
 
 **External URLs**: <!-- List every external URL consulted during spec-phase codebase research -->
+
+
+## Additional Notes
+
+<!-- Non-normative facts for the designer / implementer — code that already exists, exact object shapes, and gotchas not expressible as requirements. -->

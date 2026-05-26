@@ -55,3 +55,17 @@ The project's `openspec/config.yaml` SHALL declare `schema: sai-workflow` so tha
 #### Scenario: new change picks up sai-workflow schema
 - **WHEN** `openspec new change <name>` is run after the config update
 - **THEN** the created change reports `schemaName: sai-workflow` in its status JSON
+
+### Requirement: sai-workflow proposal template includes Additional Notes section
+The proposal template SHALL include an `## Additional Notes` section for non-normative information useful to designers and implementers.
+
+#### Scenario: Proposal template contains Additional Notes section
+- **WHEN** a spec author opens `openspec/schemas/sai-workflow/templates/proposal.md`
+- **THEN** an `## Additional Notes` section is present at the end of the file with a comment placeholder describing its intended use
+
+### Requirement: sai-workflow schema artifact description lists Additional Notes
+The schema artifact description for the proposal SHALL document `Additional Notes` as a valid proposal section.
+
+#### Scenario: Schema documents the Additional Notes section
+- **WHEN** the `artifacts.proposal` description in `openspec/schemas/sai-workflow/schema.yaml` is read
+- **THEN** a `**Additional Notes**` bullet is present in the list of expected proposal sections
