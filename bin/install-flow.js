@@ -136,11 +136,6 @@ function installClaude(destBase) {
     path.join(targetPath, 'skills', 'budget', 'SKILL.md')
   );
 
-  copySkipIfExists(
-    path.join(REPOSITORY_ROOT, 'skills', 'universal', 'caveman', 'SKILL.md'),
-    path.join(targetPath, 'skills', 'caveman', 'SKILL.md')
-  );
-
   copyWithWarn(
     path.join(REPOSITORY_ROOT, 'skills', 'universal', 'sai-commands', 'SKILL.md'),
     path.join(targetPath, 'skills', 'sai-commands', 'SKILL.md')
@@ -184,11 +179,6 @@ function installOpencode(destBase) {
   copyWithWarn(
     path.join(REPOSITORY_ROOT, 'skills', 'universal', 'budget', 'SKILL.md'),
     path.join(targetPath, 'skills', 'budget', 'SKILL.md')
-  );
-
-  copySkipIfExists(
-    path.join(REPOSITORY_ROOT, 'skills', 'universal', 'caveman', 'SKILL.md'),
-    path.join(targetPath, 'skills', 'caveman', 'SKILL.md')
   );
 
   copyWithWarn(
