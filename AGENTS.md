@@ -57,6 +57,7 @@ The openspec-dependent `ai-*` commands halt with a clear error if either is miss
 | `sai/commands/` | Sai command body files fetched by wrappers at runtime. |
 | `skills/` | Universal skills installed globally (not project-local). Fetched by wrappers via `~/.claude/skills/` or `~/.config/opencode/skills/`. |
 | `skills/universal/caveman/SKILL.md` | Ultra-compressed communication skill. Fetched by all sai-* wrappers. |
+| `skills/universal/sai-commands/SKILL.md` | SAI command registry — lists all /sai-* commands and enforces fetch-before-execute discipline. Loaded to prevent LLM from skipping command files. |
 | `skills/universal/` | Universal skills (no vendor). Fetched by all wrappers. |
 | `skills/claude/` | Claude Code-specific skills (subagent dispatch rules, etc.). Fetched by wrappers that spawn subagents. |
 | `skills/opencode/` | Opencode-specific skills (subagent dispatch rules, etc.). Fetched by wrappers that spawn subagents. |
