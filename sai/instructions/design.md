@@ -27,9 +27,25 @@ Generate ONLY `design.md` and `tasks.md` for change `$ARGUMENTS`. Do NOT regener
 
 ### Inputs
 
-Read the following files in parallel:
+Read the following known files in the main agent (paths are fixed by convention):
 - `openspec/changes/$ARGUMENTS/proposal.md` — motivation, what changes, capabilities in scope
 - All files matching `openspec/changes/$ARGUMENTS/specs/**/*.md` — capability delta specs
+
+### Codebase Research (DELEGATED)
+
+**ALL** codebase discovery and deep reading MUST be delegated to the `explore` subagent. The main agent MUST NOT run `glob`, `grep`, `Read`, or any file operation on source code.
+
+Launch ONE `explore` subagent with this prompt:
+
+> Read the proposal and specs for change `$ARGUMENTS`. Discover and deeply read the most relevant source files for this change. Search broadly (glob/grep) — do not assume frameworks. For each discovered file, report: `filePath`, `keyExports`, `isReusableForThisChange` (boolean), `notes` (max 20 words). Return structured data only. No prose narrative.
+
+The main agent acts **exclusively** on the explore subagent's output. If the output is ambiguous, ask the explore agent for clarification. Do NOT open files to "verify".
+
+## Trust Rule
+
+The explore subagent is the single source of truth for codebase facts during design. The main agent MUST NOT re-read any source file the explore has already reported on, even if the report contains something surprising (e.g. "this component has a bug" or "this pattern is unusual"). Assume the explore is correct and design accordingly.
+
+The only exception: files the explore explicitly marks as `NOT_FOUND` or files not in its list (e.g. external URLs, newly created files).
 
 ### Generate design.md
 
@@ -57,6 +73,8 @@ If any questions remain unresolved, present them to the user and ask for answers
 
 ### Generate tasks.md
 
+**Rule of conciseness:** Each step MUST be a planning scaffold, not a restatement of requirements. Do NOT copy scenario text, field names, or detailed behavior from specs into the steps. Instead, reference the relevant spec file and describe ONLY the implementation approach and how it maps to the existing codebase.
+
 Write to `openspec/changes/$ARGUMENTS/tasks.md`.
 
 IMPORTANT: Do NOT use checkbox markers (`- [ ]` or `- [x]`). This file is a planning scaffold, not a progress tracker. Implementation progress is tracked in `implementation.md`.
@@ -67,7 +85,7 @@ Structure — one numbered section per implementation step:
 
     **Files Affected**: <comma-separated list of file paths>
 
-    **What Will Be Done**: <prose description of the work>
+    **What Will Be Done**: <prose description of HOW to build it, not WHAT to build>. Reference the relevant `specs/<capability>/spec.md` by path. Do NOT restate requirements already defined there.
 
     **Testing Strategy**: <how correctness will be verified>
 
@@ -77,8 +95,9 @@ Reference specs for what to build, design for how to build it.
 
 After all implementation steps, end the file with these two mandatory sections in order:
 
-1. `## Required Documentation` — list every file read and every external URL consulted during design-phase codebase research:
+1. `## Required Documentation` — list every file consulted during design. **Populate this entirely from the explore subagent's report**. Also list every spec file that the steps reference:
    - `### Local files`: one path per line; use line ranges (e.g., `path/to/file.md:10-50`) when only a portion applies; write `None` if empty.
+   - `### Spec files`: one path per line to every `specs/**/*.md` consulted. Do NOT leave empty.
    - `### External URLs`: one URL per line; write `None` if empty.
    - Do NOT leave either subsection empty or omit it.
 
@@ -88,3 +107,7 @@ After all implementation steps, end the file with these two mandatory sections i
    - `**Avoid**`: anti-patterns the implementation agent might default to given the declared stack.
 
 Both sections are mandatory. They must contain real content derived from research, not placeholder text.
+
+## Cost discipline reminder
+
+Every source code line read by the main agent costs frontier-tier tokens. If you are about to `Read` a file that is not `proposal.md` or a `spec.md`, STOP and delegate to the explore subagent instead.

@@ -161,11 +161,19 @@ and `## Implementation Context` are the primary source of truth.
 
 ##### RED phase
 
-- [ ] Write the test into `{test-file}`:
+- **Rule:** RED may only contain the failing test + minimal stubs/imports. Do NOT paste the full implementation here. If a stub is needed to compile, make it return the wrong value so the test still fails with an assertion error.
+
+- [ ] Create a minimal stub at `{file}` so the test can compile:
 
 ```{language}
-{TEST CODE THAT FAILS against current codebase}
+{MINIMAL STUB — exposes the symbol but returns null/wrong value}
 ```
+
+- [ ] Write the test into `{test-file}`:
+
+- {Scenario A description}
+- {Scenario B description}
+- (sai-4-apply will expand these into full test assertions during RED)
 
 - [ ] Verify RED: run `{test-command}` — expected: **assertion failure** (exit ≠ 0 AND failure attributable to behaviour under test, NOT a setup/import/compilation error).
 - [ ] **GATE — DO NOT PROCEED to GREEN until RED is verified.** If the test passes, or the failure is not an assertion failure, STOP and report to the user per the RED → GREEN handling rules in the implementation instructions. Do not paste the GREEN code below.
@@ -264,13 +272,19 @@ MANDATORY: Save the implementation file to path:
 
 ## Hard Rules
 
-- Write complete, tested code for every step. Do not write partial implementations or speculative code.
-- Every code block must be final and executable. Do not use "TODO", "you may want to", or similar.
+- Write complete production code for every step. Do not write partial implementations or speculative production code.
+- Every production code block must be final and executable. Do not use "TODO", "you may want to", or similar.
+- Tests may be expressed as a minimal stub in the plan (just enough to fail RED with an assertion error) plus a bullet list of scenarios to cover. The sai-4-apply agent will write the full test code during RED phase. This keeps the plan lightweight without sacrificing the RED→GREEN contract.
 - Commit to a single implementation path per step. Do not include alternative paths or optional decisions.
 - Implement every step in the exact order defined by `tasks.md`. Do not skip steps unless explicitly marked as skipped in the plan. Do not change the structure or order.
 - Adopt the Expertise Profile from `tasks.md` as a non-negotiable contract. Do not deviate from it. If `## Implementation Context` is missing, STOP per the STOP condition above.
 - **Deferred verifications:** Human checks that cannot be performed at their step (because the component is not yet rendered in the app) must be deferred — not omitted — to the step where they first become observable. At that integration step, list them in labeled blocks before the step's own Human checks: `*Deferred from Step N ({name}):*`. Every deferred check must appear exactly once in the plan.
 - **RED → GREEN:** For testable steps, always write the test first (RED) and verify it fails before writing the implementation (GREEN). This proves the test is real and not tautological.
+- **RED phase code contract:** The RED phase may ONLY contain:
+  1. The **test** that asserts the missing behaviour.
+  2. **Minimal stubs** (functions/classes that expose the required symbol but return `null`/empty/wrong value) — just enough to avoid compilation/import errors.
+  3. **Type-only scaffolding** (imports, union members, interfaces) strictly required for the test file to compile.
+  Any logic that would make the test pass — the real implementation, algorithm, branching, or data mapping — MUST be deferred to the GREEN phase.
 
 ## Contextual Intelligence
 
