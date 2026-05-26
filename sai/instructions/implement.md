@@ -60,6 +60,8 @@ Read the full content of `proposal.md`, `design.md`, `tasks.md`, and all `specs/
 - Extract and internalize the Expertise Profile from `## Implementation Context` in `tasks.md`
 - If `## Implementation Context` is missing entirely, STOP per the STOP condition above.
 
+**Exception (audit artifacts):** Check whether any of `review.md`, `security.md`, `performance.md`, or `accessibility.md` exist in `openspec/changes/{change-name}/`. For each one that exists, read it and extract all actionable findings or suggested changes. These will be appended as additional steps at the end of `implementation.md` in Step 5 — one step per artifact, titled e.g. `Step N: Address review findings`, `Step N+1: Address security findings`, etc. Do not merge them with existing steps.
+
 ### Step 3: Validate Design Decisions for ADR/DDR
 
 Read the `## Decisions` section from `design.md`. For each decision recorded, evaluate whether it meets all three criteria for a persistent record:
