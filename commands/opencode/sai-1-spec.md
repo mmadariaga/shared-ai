@@ -5,5 +5,5 @@ model: opencode-go/qwen3.6-plus
 
 ## Sai Spec - 1
 
-Load `skill` fetch before you continue.
+Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.
 Fetch @sai/commands/sai-1-spec.md and follow those instructions exactly.

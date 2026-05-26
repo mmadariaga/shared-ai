@@ -6,5 +6,5 @@ variant: default
 
 ## Sai Apply - 4
 
-Load `skill` fetch before you continue.
+Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.
 Fetch @sai/commands/sai-4-apply.md and follow those instructions exactly.

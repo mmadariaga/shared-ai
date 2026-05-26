@@ -5,5 +5,5 @@ model: opencode-go/qwen3.6-plus
 
 ## Sai Review - 5
 
-Load `skill` fetch before you continue.
+Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.
 Fetch @sai/commands/sai-5-review.md and follow those instructions exactly.

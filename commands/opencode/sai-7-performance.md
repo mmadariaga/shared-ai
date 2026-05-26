@@ -5,5 +5,5 @@ model: opencode-go/qwen3.6-plus
 
 ## Sai Performance - 7
 
-Load `skill` fetch before you continue.
+Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.
 Fetch @sai/commands/sai-7-performance.md and follow those instructions exactly.

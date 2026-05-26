@@ -6,5 +6,5 @@ variant: default
 
 ## Sai PR
 
-Load `skill` fetch before you continue.
+Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.
 Fetch @sai/commands/sai-pr.md and follow those instructions exactly.

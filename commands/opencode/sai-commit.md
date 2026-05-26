@@ -6,5 +6,5 @@ variant: default
 
 ## Sai Commit
 
-Load `skill` fetch before you continue.
+Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.
 Fetch @sai/commands/sai-commit.md and follow those instructions exactly.

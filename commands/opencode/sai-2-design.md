@@ -5,5 +5,5 @@ model: opencode-go/kimi-k2.6
 
 ## Sai Design - 2
 
-Load `skill` fetch before you continue.
+Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.
 Fetch @sai/commands/sai-2-design.md and follow those instructions exactly.
