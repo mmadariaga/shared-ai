@@ -58,6 +58,7 @@ test('copyOpencodeConfig skips copy and prints instructions when opencode.jsonc 
   console.log = origLog;
   assert.equal(fs.readFileSync(path.join(tmpDir, 'opencode.jsonc'), 'utf8'), '{}', 'existing config should not be overwritten');
   assert.ok(printed.includes('"agent"'), 'should print manual instructions containing "agent"');
+  assert.ok(printed.includes('"budget"'), 'should print the budget agent key in manual instructions');
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });
 
@@ -70,6 +71,7 @@ test('copyOpencodeConfig skips copy and prints instructions when opencode.json e
   copyOpencodeConfig(tmpDir);
   console.log = origLog;
   assert.ok(printed.includes('"agent"'), 'should print manual instructions when opencode.json exists');
+  assert.ok(printed.includes('"budget"'), 'should print the budget agent key in manual instructions');
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });
 

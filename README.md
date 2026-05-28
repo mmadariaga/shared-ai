@@ -175,7 +175,8 @@ All skills are invoked automatically by `sai-*` commands, but you can also trigg
 | `token-efficient-languages` | Enforces a 3-rule language contract: (1) think/reason in English, (2) respond in user's language, (3) write all artifacts in English. English tokenizers produce fewer tokens per unit of meaning. | `"budget language"`, `"cheap language"` |
 | `budget-explorer` | Low-cost agent for research, exploration, and doc-lookup tasks. Model resolved via `agent.explore.model` in `opencode.jsonc` (or `subagent_type: General` + model tiers in Claude Code). Enforces tool-call caps (≤30 per spawn) and output contracts (exact fields, length cap, no raw content). | `"budget explorer"`, `"cheap explorer"` |
 | `budget-executor` | Low-cost agent for running commands, tests, and build checks. Model resolved via `agent.executor.model` in `opencode.jsonc` (or `subagent_type: General`, `model: haiku` in Claude Code). Enforces execute-only discipline: exact commands, no self-correction, minimal output, structured failure reports. No tool-call cap. | `"budget executor"`, `"cheap executor"` |
-| `budget` | Loads all budget skills simultaneously (`budget-explorer` + `budget-executor` + `token-efficient-languages`). Activates full cost-discipline for the session. | `"budget mode"`, `"cheap mode"`, `"low-cost mode"`, `"economy mode"` |
+| `budget-subagent` | Low-cost agent for general-purpose task delegation — file reads, searches, writes, code analysis. Model resolved via `agent.budget.model` in `opencode.jsonc` (or `subagent_type: General` + `model: haiku` in Claude Code). Enforces single-task discipline: structured completion report, ~30-call soft cap, no raw output. | `"budget subagent"`, `"cheap subagent"`, `"budget task"` |
+| `budget` | Loads all budget skills simultaneously (`budget-explorer` + `budget-executor` + `budget-subagent` + `token-efficient-languages`). Activates full cost-discipline for the session. | `"budget mode"`, `"cheap mode"`, `"low-cost mode"`, `"economy mode"` |
 
 ## Cost-Effective Strategies
 
@@ -195,7 +196,13 @@ Research or exploratory tasks are delegated to **sub-agents running cost-effecti
 
 Available as skills for both Claude Code and OpenCode.
 
+### Executor Sub-Agent
 
+Verbose shell commands (tests, builds, lints) are delegated to the **executor sub-agent** (running a cheap model). The executor runs the exact command as instructed — no retrying, no workarounds — and returns a structured failure report (exit code + key reason + file:line). This prevents the main agent from wasting tokens on verbose build logs or test output. Available as skills for both Claude Code and Opencode.
+
+### Budget Sub-Agent
+
+General-purpose task delegation (file reads, searches, writes, code analysis) is handed off to the **budget sub-agent** (running a cheap model). The budget sub-agent executes exactly one task, returns a structured completion report (`status` / `actions_taken` / `failures`), and aborts on permission blocks rather than waiting. A soft ~30-call cap prevents scope drift on multi-step work. Available as skills for both Claude Code and Opencode.
 
 ## Project highlights
 

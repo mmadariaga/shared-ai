@@ -1,7 +1,7 @@
 ---
 name: budget-subagent
 description: >
-  Binds "task subagent" to the OpenCode cheap agent keyword. Model resolved via agent.cheap.model in the project's opencode.jsonc — not hardcoded here. Use for general-purpose task delegation (file operations, searches, writes, code analysis).
+  Binds cost-controlled task delegation to the OpenCode `budget` agent keyword. Model resolved via agent.budget.model in the project's opencode.jsonc — not hardcoded here. Use for general-purpose task delegation (file operations, searches, writes, code analysis).
   TRIGGER when: "budget subagent", "cheap subagent", "budget task", "cheap task", "budget mode", "cheap mode", "low-cost mode", "economy mode"
 license: MIT
 compatibility: opencode
@@ -35,7 +35,7 @@ metadata:
 
 ## OpenCode Binding
 
-- **Agent keyword**: `cheap` (lowercase)
-- **Model resolution**: controlled by `agent.cheap.model` in the project's `opencode.jsonc` — not hardcoded in this file
+- **Agent keyword**: `budget` (lowercase)
+- **Model resolution**: controlled by `agent.budget.model` in the project's `opencode.jsonc` — not hardcoded in this file
 - **Tool-call cap**: none enforced by harness (behavioral rule 6 governs this)
 - **Raw output**: not allowed — always use the structured completion report format

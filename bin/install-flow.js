@@ -236,7 +236,7 @@ function copyOpencodeConfig(destBase) {
   console.log('      // Your trusted low-cost model below');
   console.log('      "model": "opencode-go/deepseek-v4-flash"');
   console.log('    },');
-  console.log('    "cheap": {');
+  console.log('    "budget": {');
   console.log('      "mode": "subagent",');
   console.log('      // Your trusted low-cost model below');
   console.log('      "model": "opencode-go/deepseek-v4-flash"');
