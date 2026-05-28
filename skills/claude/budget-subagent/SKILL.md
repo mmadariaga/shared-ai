@@ -35,7 +35,7 @@ metadata:
 
 ## Claude Code Binding
 
-- **Subagent type**: `subagent_type: "General"` (capital G — required for full tool access: read, write, search, bash)
+- **Subagent type**: `subagent_type: "general-purpose"` (required for full tool access: read, write, search, bash)
 - **Model**: `model: "haiku"` — must be set explicitly on every spawn
 - **Tool-call cap**: none enforced by harness (behavioral rule 6 governs this)
 - **Raw output**: not allowed — always use the structured completion report format

@@ -29,7 +29,7 @@ test('installOpencode copies sai/instructions/*.md with Overwriting warn', () =>
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });
 
-test('installOpencode copies six Opencode-specific skills including budget', () => {
+test('installOpencode copies all Opencode-specific skills', () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-'));
   installOpencode(tmpDir);
   assert.ok(fs.existsSync(path.join(tmpDir, 'skills', 'token-efficient-languages', 'SKILL.md')), 'skills/token-efficient-languages/SKILL.md');

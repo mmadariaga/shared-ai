@@ -38,7 +38,7 @@ Read `## Implementation Context` (**Stack**, **Conventions**, **Avoid**) from `t
 
 **MANDATORY: Spawn a subagent for this step. Do NOT read `implementation.md` yourself.**
 
-If `openspec/changes/{change-name}/implementation.md` exists, spawn a subagent using a cheap model, use the one defined for **budget-executor** (the skill), with this prompt (fill in `{change-name}`):
+If `openspec/changes/{change-name}/implementation.md` exists, spawn a subagent using a cheap model, use **budget-subagent** skill, with this prompt (fill in `{change-name}`):
 
 1. Read `openspec/changes/{change-name}/implementation.md`.
 2. For each `#### Step N:` section, check whether every checkbox in that section is `[x]`.

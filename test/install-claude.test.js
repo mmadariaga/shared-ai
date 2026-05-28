@@ -42,7 +42,7 @@ test('installClaude copies sai/instructions/*.md with Overwriting warn', () => {
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });
 
-test('installClaude copies six Claude-specific skills', () => {
+test('installClaude copies all Claude-specific skills', () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-claude-'));
   installClaude(tmpDir);
   assert.ok(fs.existsSync(path.join(tmpDir, 'skills', 'token-efficient-languages', 'SKILL.md')), 'skills/token-efficient-languages/SKILL.md');
