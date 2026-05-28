@@ -52,6 +52,8 @@ mkdir -p ~/.claude/skills/budget-explorer
 cp skills/claude/budget-explorer/SKILL.md ~/.claude/skills/budget-explorer/SKILL.md
 mkdir -p ~/.claude/skills/budget-executor
 cp skills/claude/budget-executor/SKILL.md ~/.claude/skills/budget-executor/SKILL.md
+mkdir -p ~/.claude/skills/budget-subagent
+cp skills/claude/budget-subagent/SKILL.md ~/.claude/skills/budget-subagent/SKILL.md
 mkdir -p ~/.claude/skills/budget
 cp skills/universal/budget/SKILL.md ~/.claude/skills/budget/SKILL.md
 mkdir -p ~/.claude/skills/fetch
@@ -82,6 +84,8 @@ New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\.claude\skills\budge
 Copy-Item skills\claude\budget-explorer\SKILL.md "$env:USERPROFILE\.claude\skills\budget-explorer\SKILL.md"
 New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\.claude\skills\budget-executor" | Out-Null
 Copy-Item skills\claude\budget-executor\SKILL.md "$env:USERPROFILE\.claude\skills\budget-executor\SKILL.md"
+New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\.claude\skills\budget-subagent" | Out-Null
+Copy-Item skills\claude\budget-subagent\SKILL.md "$env:USERPROFILE\.claude\skills\budget-subagent\SKILL.md"
 New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\.claude\skills\budget" | Out-Null
 Copy-Item skills\universal\budget\SKILL.md "$env:USERPROFILE\.claude\skills\budget\SKILL.md"
 New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\.claude\skills\fetch" | Out-Null
