@@ -39,3 +39,11 @@ metadata:
 - **Model**: `model: "haiku"` — must be set explicitly on every spawn
 - **Tool-call cap**: none enforced by harness (behavioral rule 6 governs this)
 - **Raw output**: not allowed — always use the structured completion report format
+
+## Cost model
+
+This subagent runs on a commodity model. Its tier is enforced via the explicit `model: "haiku"` parameter set on every `Agent()` spawn call — that parameter is the only lever to change the cost of delegation.
+
+**Why delegate:**
+- **Cost:** Bulk I/O (reads, searches, diffs) is processed at a cheaper per-token rate than the main agent's model.
+- **Context hygiene:** The subagent starts with a clean context — no task instructions, no conversation history — and returns only a structured summary, keeping the main agent's reasoning context uncontaminated.
