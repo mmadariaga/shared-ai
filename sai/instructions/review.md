@@ -66,7 +66,7 @@ Review categories (apply each pass to the full diff):
      - HTTP boundaries (new endpoints, headers, CORS, redirects)
      - New or upgraded dependencies
      - Logging that may capture sensitive data
-     Your job here is **not** to perform SAST/SCA. Only flag *surface touched: yes/no* and list the specific files. If yes, recommend `/ai-5-security` in the report. Do not raise individual security findings unless they are blatant (e.g. literal hardcoded password, SQL string concatenation in plain sight) — those go as Blockers with a note that `/ai-5-security` will cover the rest.
+     Your job here is **not** to perform SAST/SCA. Only flag *surface touched: yes/no* and list the specific files. If yes, recommend `/sai-6-security` in the report. Do not raise individual security findings unless they are blatant (e.g. literal hardcoded password, SQL string concatenation in plain sight) — those go as Blockers with a note that `/sai-6-security` will cover the rest.
 4. **Performance (triage only — DO NOT deep audit)** — Detect whether the diff touches **performance surface**:
      - New or modified DB queries / ORM access (N+1 risk, missing indexes)
      - New HTTP endpoints, controllers, or hot-path handlers
@@ -75,12 +75,12 @@ Review categories (apply each pass to the full diff):
      - New dependencies (bundle size, transitive cost)
      - Loops or data transformations over user-controlled or unbounded inputs
      - Caching layers added, removed, or invalidated
-     Your job here is **not** to run EXPLAIN, profile, or measure CWV. Only flag *surface touched: yes/no* and list the specific files. If yes, recommend `/ai-6-performance` in the report. Do not raise individual performance findings unless they are blatant (e.g. nested loop on a known-large collection, `SELECT *` inside a per-row loop, render-blocking `<script>` without `defer`) — those go as Major/Blocker with a note that `/ai-6-performance` will cover the rest.
+     Your job here is **not** to run EXPLAIN, profile, or measure CWV. Only flag *surface touched: yes/no* and list the specific files. If yes, recommend `/sai-7-performance` in the report. Do not raise individual performance findings unless they are blatant (e.g. nested loop on a known-large collection, `SELECT *` inside a per-row loop, render-blocking `<script>` without `defer`) — those go as Major/Blocker with a note that `/sai-7-performance` will cover the rest.
 5. **Accessibility (triage only — DO NOT deep audit)** — Detect whether the diff touches **UI surface**:
      - Files with extensions `.tsx`/`.jsx`/`.astro`/`.html`/`.vue`/`.svelte`/`.css`
      - Component-bearing markdown
      - Interactive widgets, forms, navigation, media, dynamic-SPA, visual-design tokens, route announcements
-     Your job here is **not** to run axe, lighthouse, or manual SR testing. Only flag *surface touched: yes/no* and list the specific files. If yes, recommend `/ai-7-accessibility` in the report. Do not raise individual a11y findings unless blatant (e.g. `<img>` without alt, click handler on `<div>` with no role/keyboard) — those go as Major/Blocker with a note that `/ai-7-accessibility` will cover the rest.
+     Your job here is **not** to run axe, lighthouse, or manual SR testing. Only flag *surface touched: yes/no* and list the specific files. If yes, recommend `/sai-8-accessibility` in the report. Do not raise individual a11y findings unless blatant (e.g. `<img>` without alt, click handler on `<div>` with no role/keyboard) — those go as Major/Blocker with a note that `/sai-8-accessibility` will cover the rest.
 6. **Maintainability** — SOLID violations, unjustified coupling, duplication, unclear naming, dead code, leaked abstractions, missing or misleading comments where the WHY is non-obvious.
 7. **Testing** — Are new code paths covered? Do tests assert real behavior or just call the code? Are integration boundaries (DB, HTTP, queues) exercised where the project's convention requires it?
 8. **Consistency with Codebase** — Does the change follow existing architectural patterns, naming, error handling, and logging conventions discoverable in the repo? Does it respect the Expertise Profile from `spec.md`?
@@ -108,9 +108,9 @@ Drop findings that are purely stylistic if the codebase has no enforced conventi
 
      ```
      ## Recommended Audits
-     Security     → { ⚠️  Run `/ai-5-security {change-name}` | ✅ Not required }
-     Performance  → { ⚠️  Run `/ai-6-performance {change-name}` | ✅ Not required }
-     Accessibility→ { ⚠️  Run `/ai-7-accessibility {change-name}` | ✅ Not required }
+     Security     → { ⚠️  Run `/sai-6-security {change-name}` | ✅ Not required }
+     Performance  → { ⚠️  Run `/sai-7-performance {change-name}` | ✅ Not required }
+     Accessibility→ { ⚠️  Run `/sai-8-accessibility {change-name}` | ✅ Not required }
      ```
 
 5. **Pause for feedback.** Do not modify production code. Fixes are the responsibility of a follow-up implementation pass driven by the user.
@@ -151,7 +151,7 @@ Drop findings that are purely stylistic if the codebase has no enforced conventi
 
 - **Surface touched:** {Yes / No}
 - **Areas affected:** {auth / input parsing / dynamic queries / crypto / HTTP boundary / deps / logging — list only the ones that apply, with file paths}
-- **Recommendation:** {"Run `/ai-5-security {change-name}`" if Yes, else "Not required"}
+- **Recommendation:** {"Run `/sai-6-security {change-name}`" if Yes, else "Not required"}
 
 ---
 
@@ -160,7 +160,7 @@ Drop findings that are purely stylistic if the codebase has no enforced conventi
 - **Surface touched:** {Yes / No}
 - **Tiers affected:** {backend / frontend / db / queue — list only those in scope, with file paths}
 - **Areas affected:** {new queries / new endpoints / consumers / hot components / new deps / unbounded loops / caching changes — list only the ones that apply}
-- **Recommendation:** {"Run `/ai-6-performance {change-name}`" if Yes, else "Not required"}
+- **Recommendation:** {"Run `/sai-7-performance {change-name}`" if Yes, else "Not required"}
 
 ---
 
@@ -168,7 +168,7 @@ Drop findings that are purely stylistic if the codebase has no enforced conventi
 
 - **Surface touched:** {Yes / No — Yes if diff contains UI files: `.tsx`/`.jsx`/`.astro`/`.html`/`.vue`/`.svelte`/`.css` or component-bearing markdown}
 - **Areas affected:** {interactive widgets / forms / navigation / media / dynamic-SPA / visual-design tokens / route announcements — list only the ones that apply, with file paths}
-- **Recommendation:** {"Run `/ai-7-accessibility {change-name}`" if Yes, else "Not required"}
+- **Recommendation:** {"Run `/sai-8-accessibility {change-name}`" if Yes, else "Not required"}
 
 ---
 

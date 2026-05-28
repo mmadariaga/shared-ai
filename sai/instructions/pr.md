@@ -106,10 +106,10 @@ Present in chat:
 
 <!-- Check each audit you ran during development. Mark as N/A if the surface is not touched by this PR. -->
 
-- [ ] `/ai-4-review`
-- [ ] `/ai-5-security`
-- [ ] `/ai-6-performance`
-- [ ] `/ai-7-accessibility`
+- [ ] `/sai-5-review`
+- [ ] `/sai-6-security`
+- [ ] `/sai-7-performance`
+- [ ] `/sai-8-accessibility`
 
 ## Out of Scope / Follow-ups
 

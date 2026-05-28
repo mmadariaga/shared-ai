@@ -195,8 +195,7 @@ Research or exploratory tasks are delegated to **sub-agents running cost-effecti
 
 Available as skills for both Claude Code and OpenCode.
 
-### Executor Sub-Agent
-Verbose CLI commands are delegated to the **executor sub-agents** (running a cheap model) together with instructions on which parts of the output to extract. This keeps the main agent's context free of noise and prevents long-running commands from consuming reasoning capacity in the main thread. Available as skills for both Claude Code and OpenCode.
+
 
 ## Project highlights
 
@@ -305,8 +304,12 @@ We set these defaults to models that have worked best for us, you may find bette
 
 This chart may help you identify which models to test. The intelligence axis is highly task-type-dependent — do not rely on it without running your own tests tailored to your project and specific use case.
 
-The x-axis (cost) is usually more reliable, but again, do your own tests.
+The x-axis (cost) is usually more reliable, but again, do your own tests. Note that costs can vary depending on the provider — the same model may be priced differently across API providers, subscriptions, and regions.
 
 ![Intelligence vs Cost (May 2026)](Intelligence%20vs%20Cost%20(May%202026).png)
 
 Another ranking of models focused on coding tasks: https://llm-stats.com/leaderboards/best-ai-for-coding
+
+## Third Party Tools
+
+Consider combining SAI with **[CodeGraph](https://github.com/colbymchenry/codegraph)** — a pre-indexed, 100% local code knowledge graph that exposes your codebase as an MCP server. Instead of scanning files with grep/glob/Read, agents query a SQLite symbol graph directly, cutting costs ~35%, token usage ~57%, and tool calls ~71% on average. Works with Claude Code, opencode, Cursor, Codex CLI, and more.

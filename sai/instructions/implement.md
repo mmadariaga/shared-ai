@@ -38,7 +38,7 @@ Read `## Implementation Context` (**Stack**, **Conventions**, **Avoid**) from `t
 
 **MANDATORY: Spawn a subagent for this step. Do NOT read `implementation.md` yourself.**
 
-If `openspec/changes/{change-name}/implementation.md` exists, spawn a General subagent with this prompt (fill in `{change-name}`):
+If `openspec/changes/{change-name}/implementation.md` exists, spawn a subagent using a cheap model, use the one defined for **budget-executor** (the skill), with this prompt (fill in `{change-name}`):
 
 1. Read `openspec/changes/{change-name}/implementation.md`.
 2. For each `#### Step N:` section, check whether every checkbox in that section is `[x]`.
@@ -60,7 +60,7 @@ Read the full content of `proposal.md`, `design.md`, `tasks.md`, and all `specs/
 - Extract and internalize the Expertise Profile from `## Implementation Context` in `tasks.md`
 - If `## Implementation Context` is missing entirely, STOP per the STOP condition above.
 
-**Exception (audit artifacts):** Check whether any of `review.md`, `security.md`, `performance.md`, or `accessibility.md` exist in `openspec/changes/{change-name}/`. For each one that exists, read it and extract all actionable findings or suggested changes. These will be appended as additional steps at the end of `implementation.md` in Step 5 — one step per artifact, titled e.g. `Step N: Address review findings`, `Step N+1: Address security findings`, etc. Do not merge them with existing steps.
+**Exception (audit artifacts):** Check whether any of `review.md`, `security.md`, `performance.md`, or `accessibility.md` exist in `openspec/changes/{change-name}/`. For each one that exists, read it and extract all actionable findings or suggested changes. These will be appended as additional steps at the end of `implementation.md` last step — one step per artifact, titled e.g. `Step N: Address review findings`, `Step N+1: Address security findings`, etc. Do not merge them with existing steps.
 
 ### Step 3: Validate Design Decisions for ADR/DDR
 
