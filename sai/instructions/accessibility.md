@@ -52,7 +52,7 @@ Skip the audit (with a one-line note) when the diff contains **no UI files** (`.
 
 ## Audit Phases
 
-**Subagent reference:** When this document says "research subagent", invoke the cheap research subagent your harness exposes — `explore` in opencode, `Explore` in Claude Code, the pre-defined explorer custom agent in GitHub Copilot. Never route lookup work to the general/frontier-tier subagent.
+**Subagent reference:** When this document says "research subagent", use the **`budget-explorer`** skill. Never route lookup work to a general/frontier-tier subagent.
 
 ### Phase 1: Discovery & Component Mapping
 
@@ -60,7 +60,7 @@ Skip the audit (with a one-line note) when the diff contains **no UI files** (`.
 2. **Determine scope** (see Required Inputs). For diff mode:
     - `git diff --name-status {parent-branch}...HEAD`
     - Filter to UI files. If empty, STOP with note.
-    - If >5 UI files in scope, delegate per-component scan to research subagents with output contract (file:line + WCAG SC + finding category + ≤80 words).
+    - If >5 UI files in scope, delegate per-component scan to **`budget-explorer`** subagents with output contract (file:line + WCAG SC + finding category + ≤80 words).
 3. **Detect framework(s) in scope:**
     - React (`.tsx`, `.jsx`) — hook patterns, `React.memo`, `useRef` for focus, portals
     - Astro (`.astro`) — client directives, island hydration boundaries
@@ -75,7 +75,7 @@ Skip the audit (with a one-line note) when the diff contains **no UI files** (`.
     - Static content (headings, landmarks, lists, tables, links)
 5. **Identify design tokens in scope** — Tailwind theme colors, custom CSS variables — for contrast checks.
 
-Use the **research subagent** in parallel when independent component areas need codebase context (e.g. tracing a `Modal` component reused across pages to determine impact). Each research-subagent call MUST declare an output contract: exact fields (file:line + WCAG SC + 1-line note), max-words cap (≤200), no raw code blocks returned to main. Cap total research-subagent invocations at ≤8 per audit.
+Use **`budget-explorer`** subagents in parallel when independent component areas need codebase context (e.g. tracing a `Modal` component reused across pages to determine impact). Each **`budget-explorer`** subagent call MUST declare an output contract: exact fields (file:line + WCAG SC + 1-line note), max-words cap (≤200), no raw code blocks returned to main. Cap total **`budget-explorer`** subagent invocations at ≤8 per audit.
 
 ### Phase 2: Semantics & Structure
 

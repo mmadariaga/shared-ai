@@ -38,7 +38,7 @@ Read `## Implementation Context` (**Stack**, **Conventions**, **Avoid**) from `t
 
 **MANDATORY: Spawn a subagent for this step. Do NOT read `implementation.md` yourself.**
 
-If `openspec/changes/{change-name}/implementation.md` exists, spawn a subagent using a cheap model, use **budget-subagent** skill, with this prompt (fill in `{change-name}`):
+If `openspec/changes/{change-name}/implementation.md` exists, spawn a subagent using a cheap model, **use `budget-subagent` skill**, with this prompt (fill in `{change-name}`):
 
 1. Read `openspec/changes/{change-name}/implementation.md`.
 2. For each `#### Step N:` section, check whether every checkbox in that section is `[x]`.
@@ -79,7 +79,7 @@ MANDATORY: Read every document listed in `## Required Documentation` from `tasks
 Do NOT load `SKILL.md` indexes or explore documentation trees beyond what is listed.
 Do NOT use subagents for documentation research — read the listed files directly.
 
-**Exception (re-run):** If Step 1 detected an existing `implementation.md` (i.e., the applied-steps set is non-empty), research on elements introduced since the last run is permitted — spawn a subagent scoped to those new elements only.
+**Exception (re-run):** If Step 1 detected an existing `implementation.md` (i.e., the applied-steps set is non-empty), research on elements introduced since the last run is permitted — spawn a **`budget-subagent`** subagent scoped to those new elements only.
 
 Once all documents are read, validate findings against the Expertise Profile.
 If a listed document is missing or contradicts the declared stack, STOP and request clarification.

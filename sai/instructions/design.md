@@ -33,19 +33,19 @@ Read the following known files in the main agent (paths are fixed by convention)
 
 ### Codebase Research (DELEGATED)
 
-**ALL** codebase discovery and deep reading MUST be delegated to the `explore` subagent. The main agent MUST NOT run `glob`, `grep`, `Read`, or any file operation on source code.
+**ALL** codebase discovery and deep reading MUST be delegated to a **`budget-explorer`** subagent. The main agent MUST NOT run `glob`, `grep`, `Read`, or any file operation on source code.
 
-Launch ONE `explore` subagent with this prompt:
+Launch ONE **`budget-explorer`** subagent with this prompt:
 
 > Read the proposal and specs for change `$ARGUMENTS`. Discover and deeply read the most relevant source files for this change. Search broadly (glob/grep) — do not assume frameworks. For each discovered file, report: `filePath`, `keyExports`, `isReusableForThisChange` (boolean), `notes` (max 20 words). Return structured data only. No prose narrative.
 
-The main agent acts **exclusively** on the explore subagent's output. If the output is ambiguous, ask the explore agent for clarification. Do NOT open files to "verify".
+The main agent acts **exclusively** on the `budget-explorer` subagent's output. If the output is ambiguous, spawn another `budget-explorer` subagent with a more targeted prompt. Do NOT open files to "verify".
 
 ## Trust Rule
 
-The explore subagent is the single source of truth for codebase facts during design. The main agent MUST NOT re-read any source file the explore has already reported on, even if the report contains something surprising (e.g. "this component has a bug" or "this pattern is unusual"). Assume the explore is correct and design accordingly.
+The `budget-explorer` subagent is the single source of truth for codebase facts during design. The main agent MUST NOT re-read any source file the `budget-explorer` has already reported on, even if the report contains something surprising (e.g. "this component has a bug" or "this pattern is unusual"). Assume the `budget-explorer` is correct and design accordingly.
 
-The only exception: files the explore explicitly marks as `NOT_FOUND` or files not in its list (e.g. external URLs, newly created files).
+The only exception: files the `budget-explorer` explicitly marks as `NOT_FOUND` or files not in its list (e.g. external URLs, newly created files).
 
 ### Generate design.md
 
@@ -69,7 +69,12 @@ Reference `proposal.md` for motivation, `specs/**/*.md` for requirements.
 
 After writing `design.md`, review the **Open Questions** section.
 
-If any questions remain unresolved, present them to the user and ask for answers. Do NOT proceed to `tasks.md` until every Open Question has been resolved. Incorporate the user's answers into `design.md` before continuing.
+For each question:
+   1. **Delegate** it to a **`budget-explorer`** subagent with a precise search prompt. Do NOT search yourself.
+   2. If the subagent returns a clear answer from the codebase, incorporate it into `design.md` and remove the question.
+   3. If the subagent reports it cannot find the answer (not found, ambiguous, or out of scope), present the question to the user.
+
+Do NOT proceed to `tasks.md` until every Open Question has been either answered by the codebase or resolved by the user. Incorporate all answers into `design.md` before continuing.
 
 ### Generate tasks.md
 
@@ -95,7 +100,7 @@ Reference specs for what to build, design for how to build it.
 
 After all implementation steps, end the file with these two mandatory sections in order:
 
-1. `## Required Documentation` — list every file consulted during design. **Populate this entirely from the explore subagent's report**. Also list every spec file that the steps reference:
+1. `## Required Documentation` — list every file consulted during design. **Populate this entirely from the `budget-explorer` subagent's report**. Also list every spec file that the steps reference:
    - `### Local files`: one path per line; use line ranges (e.g., `path/to/file.md:10-50`) when only a portion applies; write `None` if empty.
    - `### Spec files`: one path per line to every `specs/**/*.md` consulted. Do NOT leave empty.
    - `### External URLs`: one URL per line; write `None` if empty.
@@ -110,4 +115,4 @@ Both sections are mandatory. They must contain real content derived from researc
 
 ## Cost discipline reminder
 
-Every source code line read by the main agent costs frontier-tier tokens. If you are about to `Read` a file that is not `proposal.md` or a `spec.md`, STOP and delegate to the explore subagent instead.
+Every source code line read by the main agent costs frontier-tier tokens. If you are about to `Read` a file that is not `proposal.md` or a `spec.md`, STOP and delegate to a `budget-explorer` subagent instead.

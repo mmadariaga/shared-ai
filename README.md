@@ -137,7 +137,9 @@ Pick an entry point based on what the findings require:
 
   ```
   /sai-3-implement oauth2-auth
-  Cancel button does nothing — fix before archive.
+
+  Incorporate review and audit findings into implementation.md.
+  Also, the cancel button does nothing on click.
   ```
 
   Never amend an archived change. Once archived, follow-ups always go through a new change.

@@ -48,10 +48,17 @@ Do NOT write any artifact until ALL answers (fixed + adaptive) are collected.
 
 ## Phase 3: Conflict Detection
 
-Scan `openspec/specs/` for specs whose content overlaps with the diff:
-1. List all directories under `openspec/specs/`
-2. For each directory, read `openspec/specs/{name}/spec.md`
-3. Identify specs that describe behavior the diff modifies, replaces, or extends
+Delegate spec scanning to a **`budget-explorer`** subagent (lookup task, ≤10 tool calls).
+Subagent prompt:
+
+> You have the following diff in context:
+> ```
+> {paste full diff here}
+> ```
+> 1. Glob all files matching `openspec/specs/*/spec.md`.
+> 2. Read each one.
+> 3. Return ONLY specs whose requirements overlap with the diff (behavior the diff modifies, replaces, or extends).
+> Output contract: for each conflict, return exactly — `path`, `what_would_change` (≤30 words), `why` (≤20 words). No prose. No raw file contents. If no conflicts, return an empty list.
 
 If conflicts are found, surface each one with this structure:
 

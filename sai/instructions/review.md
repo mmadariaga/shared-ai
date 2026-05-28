@@ -34,7 +34,7 @@ If `spec.md` is missing, respond with: **"spec.md is required to perform a domai
 
 ## Workflow
 
-**Subagent reference:** When this document says "research subagent", invoke the cheap research subagent your harness exposes — `explore` in opencode, `Explore` in Claude Code, the pre-defined explorer custom agent in GitHub Copilot. Never route lookup work to the general/frontier-tier subagent.
+**Subagent reference:** When this document says "research subagent", use the **`budget-explorer`** skill. Never route lookup work to a general/frontier-tier subagent.
 
 ### Step 1: Establish Diff Scope
 
@@ -44,15 +44,17 @@ If `spec.md` is missing, respond with: **"spec.md is required to perform a domai
      - Required documentation references
      - Implementation Generator Expertise Profile (technologies, standards, quality bar)
 2. Determine the parent branch (see Required Inputs).
-3. Compute the diff in one pass:
+3. Compute the diff:
      - File list: `git diff --name-status {parent-branch}...HEAD`
-     - Unified diff: `git diff {parent-branch}...HEAD` (single call). If diff exceeds 500 LOC, delegate per-file inspection to research subagents with output contract (file:line + finding category + ≤80 words).
+     - Line count: `git diff --stat {parent-branch}...HEAD` (no content — just totals)
      - Commit map: `git log {parent-branch}..HEAD --oneline`
+     - **If total LOC ≤ 500:** load the full diff with `git diff {parent-branch}...HEAD` and review directly.
+     - **If total LOC > 500:** do NOT load the full diff. Instead, delegate per-file inspection to **`budget-explorer`** subagents (one per file or logical group) with output contract: file:line + finding category + ≤80 words per finding.
 4. Verify the diff is non-empty. If empty, respond with: **"No changes detected against {parent-branch}. Nothing to review."** and STOP.
 
 ### Step 2: Review the Changes
 
-For every modified file, perform a multi-pass review against the categories below. Use the **research subagent** in parallel when independent areas of the diff need codebase context (e.g. checking how a modified function is called elsewhere, verifying a pattern is consistent with existing code). Each research-subagent call MUST declare an output contract: exact fields (file:line + 1-line note), max-words cap (≤200), no raw code blocks returned to main. Cap total research-subagent invocations at ≤8 per review.
+For every modified file, perform a multi-pass review against the categories below. Use **`budget-explorer`** subagents in parallel when independent areas of the diff need codebase context (e.g. checking how a modified function is called elsewhere, verifying a pattern is consistent with existing code). Each **`budget-explorer`** subagent call MUST declare an output contract: exact fields (file:line + 1-line note), max-words cap (≤200), no raw code blocks returned to main. Cap total **`budget-explorer`** subagent invocations at ≤8 per review.
 
 Review categories (apply each pass to the full diff):
 
@@ -84,7 +86,7 @@ Review categories (apply each pass to the full diff):
 6. **Maintainability** — SOLID violations, unjustified coupling, duplication, unclear naming, dead code, leaked abstractions, missing or misleading comments where the WHY is non-obvious.
 7. **Testing** — Are new code paths covered? Do tests assert real behavior or just call the code? Are integration boundaries (DB, HTTP, queues) exercised where the project's convention requires it?
 8. **Consistency with Codebase** — Does the change follow existing architectural patterns, naming, error handling, and logging conventions discoverable in the repo? Does it respect the Expertise Profile from `spec.md`?
-9. **Domain Language Consistency** — Only if `GLOSSARY.md` exists at repo root: delegate to a research subagent — include the `<glossary_format>` block from context in the subagent prompt — and return ≤30 canonical terms (Language, Relationships, Example dialogue, Flagged ambiguities sections). Then check new identifiers (classes, functions, files, variables) against those terms. Flag deviations as Minor. If no `GLOSSARY.md`, skip this category entirely.
+9. **Domain Language Consistency** — Only if `GLOSSARY.md` exists at repo root: delegate to a **`budget-explorer`** subagent — include the `<glossary_format>` block from context in the subagent prompt — and return ≤30 canonical terms (Language, Relationships, Example dialogue, Flagged ambiguities sections). Then check new identifiers (classes, functions, files, variables) against those terms. Flag deviations as Minor. If no `GLOSSARY.md`, skip this category entirely.
 10. **Documentation & Migrations** — Are ADRs/DDRs, READMEs, OpenAPI/typedefs, or DB migrations updated when the change requires it?
 
 ### Step 3: Classify and Prioritize Findings
