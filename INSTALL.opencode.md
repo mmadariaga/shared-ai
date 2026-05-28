@@ -56,6 +56,8 @@ mkdir -p ~/.config/opencode/skills/budget-explorer
 cp skills/opencode/budget-explorer/SKILL.md ~/.config/opencode/skills/budget-explorer/SKILL.md
 mkdir -p ~/.config/opencode/skills/budget-executor
 cp skills/opencode/budget-executor/SKILL.md ~/.config/opencode/skills/budget-executor/SKILL.md
+mkdir -p ~/.config/opencode/skills/budget-subagent
+cp skills/opencode/budget-subagent/SKILL.md ~/.config/opencode/skills/budget-subagent/SKILL.md
 mkdir -p ~/.config/opencode/skills/budget
 cp skills/universal/budget/SKILL.md ~/.config/opencode/skills/budget/SKILL.md
 mkdir -p ~/.config/opencode/skills/fetch
@@ -76,6 +78,11 @@ else
     echo '      "model": "opencode-go/deepseek-v4-flash"'
     echo '    },'
     echo '    "executor": {'
+    echo '      "mode": "subagent",'
+    echo '      // Set your trusted low-cost model below'
+    echo '      "model": "opencode-go/deepseek-v4-flash"'
+    echo '    },'
+    echo '    "cheap": {'
     echo '      "mode": "subagent",'
     echo '      // Set your trusted low-cost model below'
     echo '      "model": "opencode-go/deepseek-v4-flash"'
@@ -109,6 +116,8 @@ New-Item -ItemType Directory -Force -Path "$configDir\skills\budget-explorer" | 
 Copy-Item skills\opencode\budget-explorer\SKILL.md "$configDir\skills\budget-explorer\SKILL.md"
 New-Item -ItemType Directory -Force -Path "$configDir\skills\budget-executor" | Out-Null
 Copy-Item skills\opencode\budget-executor\SKILL.md "$configDir\skills\budget-executor\SKILL.md"
+New-Item -ItemType Directory -Force -Path "$configDir\skills\budget-subagent" | Out-Null
+Copy-Item skills\opencode\budget-subagent\SKILL.md "$configDir\skills\budget-subagent\SKILL.md"
 New-Item -ItemType Directory -Force -Path "$configDir\skills\budget" | Out-Null
 Copy-Item skills\universal\budget\SKILL.md "$configDir\skills\budget\SKILL.md"
 New-Item -ItemType Directory -Force -Path "$configDir\skills\fetch" | Out-Null
@@ -131,6 +140,11 @@ if (-not (Test-Path $jsonPath) -and -not (Test-Path $jsoncPath)) {
     Write-Host '      "model": "opencode-go/deepseek-v4-flash"'
     Write-Host '    },'
     Write-Host '    "executor": {'
+    Write-Host '      "mode": "subagent",'
+    Write-Host '      // Set your trusted low-cost model below'
+    Write-Host '      "model": "opencode-go/deepseek-v4-flash"'
+    Write-Host '    },'
+    Write-Host '    "cheap": {'
     Write-Host '      "mode": "subagent",'
     Write-Host '      // Set your trusted low-cost model below'
     Write-Host '      "model": "opencode-go/deepseek-v4-flash"'
