@@ -155,6 +155,10 @@ function installClaude(destBase) {
     path.join(targetPath, 'skills', 'budget-executor', 'SKILL.md')
   );
   copyWithWarn(
+    path.join(REPOSITORY_ROOT, 'skills', 'claude', 'budget-subagent', 'SKILL.md'),
+    path.join(targetPath, 'skills', 'budget-subagent', 'SKILL.md')
+  );
+  copyWithWarn(
     path.join(REPOSITORY_ROOT, 'skills', 'claude', 'fetch', 'SKILL.md'),
     path.join(targetPath, 'skills', 'fetch', 'SKILL.md')
   );
@@ -199,6 +203,10 @@ function installOpencode(destBase) {
     path.join(REPOSITORY_ROOT, 'skills', 'opencode', 'budget-executor', 'SKILL.md'),
     path.join(targetPath, 'skills', 'budget-executor', 'SKILL.md')
   );
+  copyWithWarn(
+    path.join(REPOSITORY_ROOT, 'skills', 'opencode', 'budget-subagent', 'SKILL.md'),
+    path.join(targetPath, 'skills', 'budget-subagent', 'SKILL.md')
+  );
 
   copyWithWarn(
     path.join(REPOSITORY_ROOT, 'skills', 'opencode', 'fetch', 'SKILL.md'),
@@ -224,6 +232,11 @@ function copyOpencodeConfig(destBase) {
   console.log('      "model": "opencode-go/deepseek-v4-flash"');
   console.log('    },');
   console.log('    "executor": {');
+  console.log('      "mode": "subagent",');
+  console.log('      // Your trusted low-cost model below');
+  console.log('      "model": "opencode-go/deepseek-v4-flash"');
+  console.log('    },');
+  console.log('    "cheap": {');
   console.log('      "mode": "subagent",');
   console.log('      // Your trusted low-cost model below');
   console.log('      "model": "opencode-go/deepseek-v4-flash"');
