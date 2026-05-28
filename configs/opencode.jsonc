@@ -27,6 +27,11 @@
       "mode": "subagent",
       // Put your trusted low-cost model here
       "model": "opencode-go/deepseek-v4-flash"
+    },
+    "cheap": {
+      "mode": "subagent",
+      // Put your trusted low-cost model here
+      "model": "opencode-go/deepseek-v4-flash"
     }
   }
 }
