@@ -22,6 +22,14 @@ The model for `explore` subagents is controlled by `agent.explore.model` in the 
 
 Per-spawn cap for `explore` subagents: ≤30 tool calls. If a task exceeds the cap, spawn an additional subagent rather than raising the cap.
 
+## Cost model
+
+This subagent runs on a commodity model. Its tier is controlled by `agent.explore.model` in the project's `opencode.jsonc` — that setting is the only lever to change the cost of delegation.
+
+**Why delegate:**
+- **Cost:** Bulk I/O (reads, searches, diffs) is processed at a cheaper per-token rate than the main agent's model.
+- **Context hygiene:** The subagent starts with a clean context — no task instructions, no conversation history — and returns only a structured summary, keeping the main agent's reasoning context uncontaminated.
+
 ## Output contract
 
 Every subagent spawn MUST declare in its prompt:

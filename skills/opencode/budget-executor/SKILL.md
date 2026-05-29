@@ -35,3 +35,11 @@ metadata:
 - **Model resolution**: controlled by `agent.executor.model` in the project's `opencode.jsonc` — not hardcoded in this file
 - **Tool-call cap**: none
 - **Raw output**: allowed — executor responses may include verbatim command output (error strings, compiler messages)
+
+## Cost model
+
+This subagent runs on a commodity model. Its tier is controlled by `agent.executor.model` in the project's `opencode.jsonc` — that setting is the only lever to change the cost of delegation.
+
+**Why delegate:**
+- **Cost:** Bulk I/O (reads, searches, diffs) is processed at a cheaper per-token rate than the main agent's model.
+- **Context hygiene:** The subagent starts with a clean context — no task instructions, no conversation history — and returns only a structured summary, keeping the main agent's reasoning context uncontaminated.
