@@ -234,7 +234,7 @@ function copyOpencodeConfig(destBase) {
     return;
   }
 
-  console.log('\nOpencode config already exists. Verify that you have these settings properly configured:\n');
+  console.log(`\nOpencode config already exists at ${base}. Verify that you have these settings properly configured:\n`);
   console.log('  "agent": {');
   console.log('    "explore": {');
   console.log('      "mode": "subagent",');

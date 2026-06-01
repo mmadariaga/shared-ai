@@ -58,6 +58,7 @@ To understand the change request, perform structured research:
 2. **Internal Documentation** — read relevant docs, READMEs, ADRs/DDRs. Read `GLOSSARY.md` if present; use its terms during planning and challenge ambiguous language. Append new resolved terms immediately (do not batch). Bootstrap if absent. Format per the `<glossary_format>` block pre-loaded in context.
 3. **External Dependencies** — investigate required APIs/SDKs/platform tools. Official documentation only. All web fetching via the research subagent with a distilled output contract.
 4. **Design Patterns** — review similar features; reuse proven patterns.
+5. **Never speculate about code you have not read.** If a specific file is referenced and its content is already in context (returned by a prior subagent), answer from that. If not, either open it directly when it's a single known path (inline read budget applies), or delegate to a budget-explorer subagent for broader retrieval. Never make claims about code without grounded evidence.
 
 Stop research once ~80% confident in how to break the request into testable steps, identify the correct expertise profile, and list the exact docs needed for code generation.
 
