@@ -8,6 +8,7 @@
 
   ## Load behaviors (in order)
   Fetch @skills/budget/SKILL.md
+  Fetch @skills/safe-operations/SKILL.md and use it
 
   ## Load instructions (in order)
   Also fetch @sai/instructions/commit.md and follow those instructions exactly.

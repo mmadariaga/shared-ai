@@ -11,6 +11,7 @@
 
   ## Load behaviors (in order)
   Fetch @skills/budget/SKILL.md and use it
+  Fetch @skills/safe-operations/SKILL.md and use it
 
   ## Load instructions (in order)
   Fetch @sai/instructions/pr.md and follow those instructions exactly.

@@ -36,8 +36,12 @@ The install script and INSTALL.*.md documentation SHALL list OpenSpec CLI as a r
 - **THEN** the copy command SHALL read from `configs/opencode.jsonc` (previously `opencode/opencode.jsonc`)
 - **THEN** the destination `~/.config/opencode/opencode.jsonc` is unchanged
 
-#### Scenario: skills directory unchanged
+#### Scenario: universal skills install list
 - **WHEN** user runs the install script
-- **THEN** NO files are copied to `~/.claude/skills/`
-- **THEN** script prints reminder to run `openspec init` in each project
+- **THEN** the following universal skills are copied to user-level skills directories:
+  - `sai-commands` → `~/.claude/skills/sai-commands/` and `~/.config/opencode/skills/sai-commands/`
+  - `safe-operations` → `~/.claude/skills/safe-operations/` and `~/.config/opencode/skills/safe-operations/`
+  - `token-efficient-languages` → `~/.claude/skills/token-efficient-languages/` and `~/.config/opencode/skills/token-efficient-languages/`
+- **THEN** `fetch` skill is copied from vendor-specific paths (`skills/claude/fetch/` or `skills/opencode/fetch/`)
+- **THEN** no other skills are copied to user-level directories
 

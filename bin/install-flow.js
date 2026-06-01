@@ -142,6 +142,11 @@ function installClaude(destBase) {
   );
 
   copyWithWarn(
+    path.join(REPOSITORY_ROOT, 'skills', 'universal', 'safe-operations', 'SKILL.md'),
+    path.join(targetPath, 'skills', 'safe-operations', 'SKILL.md')
+  );
+
+  copyWithWarn(
     path.join(REPOSITORY_ROOT, 'skills', 'universal', 'token-efficient-languages', 'SKILL.md'),
     path.join(targetPath, 'skills', 'token-efficient-languages', 'SKILL.md')
   );
@@ -188,6 +193,11 @@ function installOpencode(destBase) {
   copyWithWarn(
     path.join(REPOSITORY_ROOT, 'skills', 'universal', 'sai-commands', 'SKILL.md'),
     path.join(targetPath, 'skills', 'sai-commands', 'SKILL.md')
+  );
+
+  copyWithWarn(
+    path.join(REPOSITORY_ROOT, 'skills', 'universal', 'safe-operations', 'SKILL.md'),
+    path.join(targetPath, 'skills', 'safe-operations', 'SKILL.md')
   );
 
   copyWithWarn(

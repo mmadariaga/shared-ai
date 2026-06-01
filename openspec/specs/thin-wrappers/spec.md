@@ -47,6 +47,7 @@ sai-commit.md, sai-explore.md, sai-pr.md
 
 - Every wrapper file is ≤10 lines total (frontmatter block + blank line + Fetch line + optional args line).
 - No wrapper contains any instruction body content (no Fetch @instructions/..., no Fetch @skills/...).
+- This constraint applies ONLY to `commands/claude/` and `commands/opencode/` wrappers. `sai/commands/` body files MAY contain Fetch @skills/ lines.
 - `$ARGUMENTS` appears only in wrappers that had it before (i.e., 11 of 12; not in sai-2-design.md).
 - The Fetch path format is `@sai/commands/<cmd>.md` where `<cmd>` matches the wrapper filename without extension.
 

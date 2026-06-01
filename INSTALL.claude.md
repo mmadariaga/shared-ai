@@ -60,6 +60,8 @@ mkdir -p ~/.claude/skills/fetch
 cp skills/claude/fetch/SKILL.md ~/.claude/skills/fetch/SKILL.md
 mkdir -p ~/.claude/skills/sai-commands
 cp skills/universal/sai-commands/SKILL.md ~/.claude/skills/sai-commands/SKILL.md
+mkdir -p ~/.claude/skills/safe-operations
+cp skills/universal/safe-operations/SKILL.md ~/.claude/skills/safe-operations/SKILL.md
 ```
 
 ### Windows (PowerShell)
@@ -92,6 +94,8 @@ New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\.claude\skills\fetch
 Copy-Item skills\claude\fetch\SKILL.md "$env:USERPROFILE\.claude\skills\fetch\SKILL.md"
 New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\.claude\skills\sai-commands" | Out-Null
 Copy-Item skills\universal\sai-commands\SKILL.md "$env:USERPROFILE\.claude\skills\sai-commands\SKILL.md"
+New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\.claude\skills\safe-operations" | Out-Null
+Copy-Item skills\universal\safe-operations\SKILL.md "$env:USERPROFILE\.claude\skills\safe-operations\SKILL.md"
 ```
 
 ### Post-install

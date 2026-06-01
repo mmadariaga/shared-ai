@@ -8,6 +8,7 @@
 
   ## Prerequisite checks
   Fetch @sai/instructions/prereqs.md
+  Fetch @skills/safe-operations/SKILL.md and use it
 
   ## Load behaviors (in order)
   Fetch @skills/budget/SKILL.md and use it
