@@ -33,3 +33,14 @@ Instruction text → What you do
 ### Recursion
 
 Skills you load and files you fetch may themselves contain `Fetch @` directives. Apply the same resolution rules recursively — the fetch rules remain active for all subsequent instructions in this session.
+
+### File disambiguation
+
+**Important:** `@sai/commands/X.md` and `@commands/X.md` are DIFFERENT files.
+
+| Reference | Resolves to |
+|-----------|-------------|
+| `@sai/commands/X.md` | `~/.claude/sai/commands/X.md` |
+| `@commands/X.md` | `~/.claude/commands/X.md` |
+
+Always read the full resolved path — do NOT assume two `@` references point to the same file because their filenames match.

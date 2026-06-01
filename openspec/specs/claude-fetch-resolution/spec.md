@@ -1,5 +1,7 @@
-## ADDED Requirements
+## Purpose
 
+Define how Claude Code resolves `Fetch @<path>` instructions to the correct file or skill, including namespace disambiguation between `@sai/commands/` and `@commands/` paths.
+## Requirements
 ### Requirement: Resolve Fetch @subpath to Claude config directories
 When an instruction contains `Fetch @<subpath>` (where `<subpath>` does not start with `skills/`), Claude SHALL resolve the path using this lookup order:
 1. Read `.claude/<subpath>` (project-level config)
@@ -46,3 +48,12 @@ The SKILL.md file MUST include frontmatter with `compatibility: claude` so it is
 #### Scenario: frontmatter present
 - **WHEN** the SKILL.md file is authored
 - **THEN** its YAML frontmatter contains `compatibility: claude` and a `name: fetch` field
+
+### Requirement: The fetch skill SHALL include a file disambiguation section that prevents confusion between `@sai/commands/` and `@commands/` namespaces
+
+The disambiguation table MUST document that these two patterns resolve to different directories and instruct the agent to always read the full resolved path.
+
+#### Scenario: Agent encounters both @sai/commands/ and @commands/ references
+- **WHEN** an instruction contains `@sai/commands/X.md` and `@commands/X.md`
+- **THEN** the agent SHALL resolve them to `~/.claude/sai/commands/X.md` and `~/.claude/commands/X.md` respectively, treating them as distinct files
+

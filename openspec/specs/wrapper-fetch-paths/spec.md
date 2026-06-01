@@ -1,5 +1,7 @@
-## ADDED Requirements
+## Purpose
 
+Define the standard fetch path patterns for sai command wrappers and instructions, and document the namespace distinction between `@sai/commands/` and `@commands/` paths.
+## Requirements
 ### Requirement: wrapper-sai-commands-fetch-path
 All 24 thin wrapper files at `commands/claude/*.md` and `commands/opencode/*.md` that fetch a sai command body SHALL use `Fetch @sai/commands/<name>.md`. The path `@commands/sai/` SHALL NOT appear in any wrapper file.
 
@@ -33,6 +35,11 @@ Wrapper files that do not fetch sai command bodies (e.g., `budget.md`) SHALL NOT
 - **WHEN** `commands/claude/budget.md` and `commands/opencode/budget.md` are read
 - **THEN** their content SHALL be identical to the pre-restructure originals
 
-## MODIFIED Requirements
+### Requirement: The fetch skill SHALL explicitly document that `@sai/commands/` and `@commands/` are different namespaces
 
-## REMOVED Requirements
+The disambiguation MUST be present in both the Claude and opencode variants of the fetch skill, with platform-appropriate path prefixes.
+
+#### Scenario: Agent resolves @sai/commands/ path in opencode context
+- **WHEN** the opencode fetch skill encounters `@sai/commands/X.md`
+- **THEN** it SHALL resolve to `~/.config/opencode/sai/commands/X.md`, not `~/.config/opencode/commands/X.md`
+
