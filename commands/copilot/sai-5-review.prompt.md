@@ -2,7 +2,7 @@
 description: Structured Code Review Prompt — diffs current branch against parent, contrasts with the OpenSpec change artifacts, and produces openspec/changes/{change-name}/review.md
 argument-hint: "[change-name] [optional: parent branch]"
 agent: agent
-model: Claude Sonnet 4.6 (copilot)
+model: GPT-5.4 (copilot)
 ---
 ## Sai Review - 5
 
