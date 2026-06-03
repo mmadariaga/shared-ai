@@ -1,9 +1,9 @@
 
 ## Input
 
-The first argument is the change name (kebab-case). Resolve all artifact paths under `openspec/changes/{change-name}/`:
-- `proposal.md` + `design.md` + `specs/**/*.md` are the equivalent of `spec.md`
-- Write the report to `openspec/changes/{change-name}/security.md`
+The first argument is the change name (kebab-case). All artifact paths resolve under `openspec/changes/{change-name}/`:
+- **Read:** `proposal.md`, `design.md` (if present), and all files matching `specs/**/*.md`
+- **Write:** `openspec/changes/{change-name}/security.md`
 
 ## Communication Mode
 
@@ -13,11 +13,14 @@ You **do not write or modify production code**. You scan, identify code-level an
 
 Every finding must carry concrete evidence (file:line + taint trace for SAST, CVE ID + version range for SCA). Speculation is forbidden.
 
-## Required Inputs
+## Prerequisites
 
-Before starting, the user MUST provide:
+Before executing the workflow, verify and load:
 
-1. **`spec.md`** — the feature specification (`openspec/changes/{change-name}/proposal.md`). Anchors the audit to recorded design decisions so you do not flag accepted security trade-offs as defects.
+1. **Change artifacts** — read from `openspec/changes/{change-name}/` (where `{change-name}` is the first argument):
+    - `proposal.md` — feature goal, accepted/discarded decisions, and any explicitly accepted security trade-offs. These become *Acknowledged*, not findings.
+    - `design.md` — architecture decisions and trust boundaries (may be absent for backfilled changes; proceed if missing).
+    - `specs/**/*.md` — per-capability acceptance criteria. **List the directory first** to discover all spec files before reading them; there may be zero or more.
 2. **Scope** (optional, default = diff vs parent branch):
     - `--full` → scan the whole repository
     - `--path {dir}` → scan a specific path
@@ -27,7 +30,7 @@ Before starting, the user MUST provide:
         - If unset, try `master`, then `main` — verify each with `git rev-parse --verify <branch>`.
         - State the inferred parent branch explicitly to the user before proceeding.
 
-If `spec.md` is missing, respond with: **"spec.md is required to perform a domain-aware security audit. Please attach `openspec/changes/{change-name}/proposal.md`."** and STOP.
+If `proposal.md` is missing, respond with: **"`openspec/changes/{change-name}/proposal.md` not found. Ensure the change name is correct and that `/sai-1-spec` has been run for this change."** and STOP.
 
 ## Severity Taxonomy
 
@@ -44,7 +47,7 @@ If `spec.md` is missing, respond with: **"spec.md is required to perform a domai
 
 ### Phase 1: Discovery & Module Mapping
 
-1. **Read `spec.md`** first to record explicitly accepted security trade-offs — these become *Acknowledged*, not findings. Anchors all later phases.
+1. **Read the change artifacts** first — record all explicitly accepted security trade-offs from `proposal.md` and `design.md`. These become *Acknowledged*, not findings. Anchors all later phases.
 2. **Determine scope** (see Required Inputs). For diff mode:
     - File list: `git diff --name-status {parent-branch}...HEAD`
     - Line count: `git diff --stat {parent-branch}...HEAD` (no content — just totals)
@@ -147,7 +150,7 @@ For each modified manifest:
 ## Step Final: Produce the Security Report
 
 1. Draft using `<output_template>`.
-2. Save to: `openspec/changes/{change-name}/security.md` (derive `{feature-name}` from the spec path).
+2. Save to: `openspec/changes/{change-name}/security.md` (derive `{feature-name}` from the change name: convert kebab-case to title case).
 3. Present in chat: severity counts, top 3 Critical/High findings (if any), path to saved file.
 4. **Pause for feedback.** Do not modify code. Fixes are a follow-up implementation pass.
 
@@ -158,7 +161,7 @@ For each modified manifest:
   ```markdown
   # Security Report — {Feature Name}
 
-  **Spec:** `openspec/changes/{change-name}/proposal.md`
+  **Change:** `openspec/changes/{change-name}/`
   **Scan type:** {SAST | SCA | SAST+SCA}
   **Scope:** {diff vs `{parent-branch}` | full repo | `{path}`}
   **Branch:** `{current-branch}`
@@ -209,7 +212,7 @@ For each modified manifest:
     ```{lang}
     {fixed snippet or one-line action}
     ```
-  - **Spec note:** {"Acknowledged in spec.md §X" / "—"}
+  - **Spec note:** {"Acknowledged in `proposal.md` §X" | "Acknowledged in `specs/{capability}/spec.md` §X" | "—"}
 
   ---
 
@@ -265,11 +268,11 @@ For each modified manifest:
 
   ---
 
-  ## Acknowledged Trade-offs (from spec.md)
+  ## Acknowledged Trade-offs (from change artifacts)
 
-  > Optional. Include only if spec.md contains explicit security decisions you evaluated and discarded.
+  > Optional. Include only if `proposal.md` or `design.md` contain explicit security decisions you evaluated and accepted.
 
-  - {Item with spec section reference}
+  - {Item with artifact and section reference}
 
   ---
 
@@ -300,7 +303,7 @@ For each modified manifest:
 - **Every SAST finding has `file:line` + taint flow** (for injection-class) or precise location + evidence snippet (for misconfig/crypto).
 - **Every SCA finding has CVE ID + affected version range + fix version.**
 - **No speculation.** Every finding must point to actual code or manifest evidence.
-- **No suppression by deployment context.** "It's behind a firewall" is not a justification — defense in depth applies. Only `spec.md` decisions can downgrade a finding to *Acknowledged*.
+- **No suppression by deployment context.** "It's behind a firewall" is not a justification — defense in depth applies. Only decisions explicitly recorded in the change artifacts can downgrade a finding to *Acknowledged*.
 - **Assign CWE/OWASP only when the mapping is direct and obvious.** Do not force a security classification on a performance bug, functional off-by-one, or architectural what-if.
 - **Diff-scoped strictly.** Audit ONLY files and dependencies introduced or modified in the diff. Do not audit pre-existing code, unmodified modules, or branch predecessor changes.
 - **No auto-dismissed findings.** Do NOT include a finding if your conclusion is "no actual flaw exists", "no action needed", "noted for completeness", or "future code changes could...". If there is no concrete exploit on the current code, do not report it.
@@ -314,7 +317,7 @@ Before writing the report, verify:
 1. **Taint coverage** — every external input source identified in Phase 1 was traced to at least one sink (or silently ignored as clean).
 2. **Evidence completeness** — every SAST finding has `file:line` + trace; every SCA finding has CVE + version range.
 3. **No speculative findings** — every exploit scenario describes the current code, not a hypothetical future change.
-4. **Spec respect** — no finding contradicts a decision recorded in `spec.md` without being marked *Acknowledged*.
+4. **Spec respect** — no finding contradicts a decision recorded in the change artifacts without being marked *Acknowledged*.
 5. **Conciseness** — sections without content were omitted entirely.
 6. **Severity floor** — no findings below Low severity were included in the report. Informational-level observations are omitted.
 

@@ -115,4 +115,4 @@ Both sections are mandatory. They must contain real content derived from researc
 
 ## Cost discipline reminder
 
-Every source code line read by the main agent costs frontier-tier tokens. If you are about to `Read` a file that is not `proposal.md` or a `spec.md`, STOP and delegate to a `budget-explorer` subagent instead.
+Every source code line read by the main agent costs frontier-tier tokens. If you are about to `Read` a file that is not `proposal.md`, a `specs/**/*.md`, or `design.md`, STOP and delegate to a `budget-explorer` subagent instead.

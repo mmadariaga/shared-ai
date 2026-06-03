@@ -1,8 +1,8 @@
 ## Input
 
-The first argument is the change name (kebab-case). Resolve all artifact paths under `openspec/changes/{change-name}/`:
-- `proposal.md` + `design.md` + `specs/**/*.md` are the equivalent of `spec.md`
-- Write the report to `openspec/changes/{change-name}/accessibility.md`
+The first argument is the change name (kebab-case). All artifact paths resolve under `openspec/changes/{change-name}/`:
+- **Read:** `proposal.md`, `design.md` (if present), and all files matching `specs/**/*.md`
+- **Write:** `openspec/changes/{change-name}/accessibility.md`
 
 ## Communication Mode
 
@@ -12,11 +12,14 @@ You **do not modify production code, components, or styles**. Your only writable
 
 Every finding must carry: precise location (`file:line` or selector), the failing WCAG Success Criterion (e.g. `2.4.7 Focus Visible`), evidence, severity, and remediation aligned with the project's framework (React, Astro, Tailwind).
 
-## Required Inputs
+## Prerequisites
 
-Before starting, the user MUST provide:
+Before executing the workflow, verify and load:
 
-1. **`spec.md`** — `openspec/changes/{change-name}/proposal.md`. Anchors the audit to recorded design decisions so you do not flag accepted UX trade-offs as defects (e.g. spec explicitly accepts no-JS fallback for an internal-only admin panel → finding becomes *Acknowledged*, not a defect).
+1. **Change artifacts** — read from `openspec/changes/{change-name}/` (where `{change-name}` is the first argument):
+    - `proposal.md` — feature goal, accepted/discarded decisions, and any explicitly accepted accessibility trade-offs (e.g. spec explicitly accepts no-JS fallback for an internal-only admin panel → *Acknowledged*, not a defect).
+    - `design.md` — architecture decisions and UX constraints (may be absent for backfilled changes; proceed if missing).
+    - `specs/**/*.md` — per-capability acceptance criteria. **List the directory first** to discover all spec files before reading them; there may be zero or more.
 2. **Scope** (optional, default = diff vs parent branch):
     - `--full` → audit all UI files in the repo
     - `--path {dir}` → audit a specific path
@@ -27,7 +30,7 @@ Before starting, the user MUST provide:
         - State the inferred parent branch explicitly to the user before proceeding.
 3. **Runtime mode** (optional): `--runtime` to enable browser-based axe/Lighthouse/keyboard walks. Default: static-only. Runtime requires the user to start the dev server and explicitly authorize each command.
 
-If `spec.md` is missing, respond with: **"spec.md is required to perform a domain-aware accessibility audit. Please attach `openspec/changes/{change-name}/proposal.md`."** and STOP.
+If `proposal.md` is missing, respond with: **"`openspec/changes/{change-name}/proposal.md` not found. Ensure the change name is correct and that `/sai-1-spec` has been run for this change."** and STOP.
 
 Skip the audit (with a one-line note) when the diff contains **no UI files** (`.tsx`, `.jsx`, `.astro`, `.html`, `.vue`, `.svelte`, `.css`, component-bearing markdown).
 
@@ -47,7 +50,7 @@ Skip the audit (with a one-line note) when the diff contains **no UI files** (`.
 2. **Evidence over opinion.** Quote the offending JSX/HTML/CSS or runtime output. No "this might confuse a user" without a concrete failure pattern.
 3. **Reference WCAG SC** for every finding (e.g. `1.4.3 Contrast (Minimum)`, `2.1.1 Keyboard`, `4.1.2 Name, Role, Value`).
 4. **Static + Runtime separation.** Static review scales; runtime catches what static cannot (focus restoration, live region timing, real contrast under tokens). Runtime requires explicit authorization per command.
-5. **Respect spec decisions.** Accepted trade-offs in `spec.md` become *Acknowledged*, not findings.
+5. **Respect spec decisions.** Accepted trade-offs in the change artifacts become *Acknowledged*, not findings.
 6. **No regressions.** A diff that removes a focus outline, drops `alt`, or removes ARIA without replacement is always at least Major.
 
 ## Audit Phases
@@ -56,7 +59,7 @@ Skip the audit (with a one-line note) when the diff contains **no UI files** (`.
 
 ### Phase 1: Discovery & Component Mapping
 
-1. **Read `spec.md`** first and record explicitly accepted accessibility trade-offs as *Acknowledged*. Anchors all later phases.
+1. **Read the change artifacts** first and record all explicitly accepted accessibility trade-offs from `proposal.md` and `design.md` as *Acknowledged*. Anchors all later phases.
 2. **Determine scope** (see Required Inputs). For diff mode:
     - `git diff --name-status {parent-branch}...HEAD`
     - Filter to UI files. If empty, STOP with note.
@@ -196,7 +199,7 @@ Cross-reference automated findings with static phase results; runtime tools have
 ## Step Final: Produce the Accessibility Report
 
 1. Draft using `<output_template>`.
-2. Save to: `openspec/changes/{change-name}/accessibility.md` (derive `{feature-name}` from the spec path).
+2. Save to: `openspec/changes/{change-name}/accessibility.md` (derive `{feature-name}` from the change name: convert kebab-case to title case).
 3. Present in chat: severity counts, top 3 Critical/High findings, path to saved file.
 4. **Pause for feedback.** Do not modify code. Fixes are a follow-up implementation pass.
 
@@ -207,7 +210,7 @@ Cross-reference automated findings with static phase results; runtime tools have
 ```markdown
 # Accessibility Report — {Feature Name}
 
-**Spec:** `openspec/changes/{change-name}/proposal.md`  
+**Change:** `openspec/changes/{change-name}/`  
 **Standard:** WCAG 2.2 Level AA  
 **Scope:** {diff vs `{parent-branch}` | full repo | `{path}`}  
 **Mode:** {Static | Static + Runtime}  
@@ -251,13 +254,13 @@ Cross-reference automated findings with static phase results; runtime tools have
     {fixed snippet using the project's framework idioms}
     ```
 - **Validation:** {keyboard path / screen-reader check / axe rule / Lighthouse audit to re-run}
-- **Spec note:** {"Acknowledged in spec.md §X" / "—"}
+- **Spec note:** {"Acknowledged in `proposal.md` §X" | "Acknowledged in `specs/{capability}/spec.md` §X" | "—"}
 
 ---
 
-## Acknowledged Trade-offs (from spec.md)
+## Acknowledged Trade-offs (from change artifacts)
 
-- {Item explicitly accepted in spec.md and therefore not a finding, with spec section reference}
+- {Item explicitly accepted in `proposal.md` or `design.md` and therefore not a finding, with artifact and section reference}
 
 ---
 
@@ -315,7 +318,7 @@ Before writing the report, verify:
 1. **Coverage** — every static phase was evaluated; clean ones say "No instances detected".
 2. **WCAG mapping** — every finding has a specific SC code + level. No "general best practice" without anchor.
 3. **Severity sanity** — Critical reserved for Level A failures or task-blocking issues; not for AAA aspirations.
-4. **Spec respect** — no finding contradicts a decision recorded in `spec.md` without being marked *Acknowledged*.
+4. **Spec respect** — no finding contradicts a decision recorded in the change artifacts without being marked *Acknowledged*.
 5. **Re-test checklist present** — reflects the actual flows touched in the diff.
 6. **Framework idiom respected** — React fixes use hooks/refs; Astro fixes account for hydration; Tailwind fixes use utilities or theme tokens.
 

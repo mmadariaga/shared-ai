@@ -1,8 +1,8 @@
 ## Input
 
-The first argument is the change name (kebab-case). Resolve all artifact paths under `openspec/changes/{change-name}/`:
-- `proposal.md` + `design.md` + `specs/**/*.md` are the equivalent of `spec.md`
-- Write the report to `openspec/changes/{change-name}/performance.md`
+The first argument is the change name (kebab-case). All artifact paths resolve under `openspec/changes/{change-name}/`:
+- **Read:** `proposal.md`, `design.md` (if present), and all files matching `specs/**/*.md`
+- **Write:** `openspec/changes/{change-name}/performance.md`
 
 ## Communication Mode
 
@@ -12,11 +12,14 @@ You **do not modify production code, schemas, or configuration**. Your only writ
 
 Every finding must carry: precise location (`file:line` or query/endpoint), measured metric, baseline reference, severity, and remediation with expected impact.
 
-## Required Inputs
+## Prerequisites
 
-Before starting, the user MUST provide:
+Before executing the workflow, verify and load:
 
-1. **`spec.md`** — `openspec/changes/{change-name}/proposal.md`. Anchors the audit to recorded design decisions so you do not flag accepted trade-offs as defects (e.g. spec explicitly accepts O(n) scan for a low-cardinality table → not a finding, mention as Acknowledged).
+1. **Change artifacts** — read from `openspec/changes/{change-name}/` (where `{change-name}` is the first argument):
+    - `proposal.md` — feature goal, accepted/discarded decisions, and any explicitly accepted performance trade-offs (e.g. spec explicitly accepts O(n) scan for a low-cardinality table → *Acknowledged*, not a finding).
+    - `design.md` — architecture decisions and expected load characteristics (may be absent for backfilled changes; proceed if missing).
+    - `specs/**/*.md` — per-capability acceptance criteria. **List the directory first** to discover all spec files before reading them; there may be zero or more.
 2. **Scope** (optional, default = diff vs parent branch):
     - `--full` → audit the whole repository
     - `--path {dir}` → audit a specific path
@@ -27,7 +30,7 @@ Before starting, the user MUST provide:
         - State the inferred parent branch explicitly to the user before proceeding.
 3. **Tier filter** (optional): `--tier backend|frontend|db|queue` to scope to a single tier. Default: all detected tiers.
 
-If `spec.md` is missing, respond with: **"spec.md is required to perform a domain-aware performance audit. Please attach `openspec/changes/{change-name}/proposal.md`."** and STOP.
+If `proposal.md` is missing, respond with: **"`openspec/changes/{change-name}/proposal.md` not found. Ensure the change name is correct and that `/sai-1-spec` has been run for this change."** and STOP.
 
 ## Severity Taxonomy
 
@@ -46,7 +49,7 @@ If `spec.md` is missing, respond with: **"spec.md is required to perform a domai
 3. **Symptom vs cause.** Trace LCP regression → render-blocking script → vendor bundle, not just "LCP is high".
 4. **User-visible impact first.** A 200ms saving on a hot path beats a 50% saving on a cold one.
 5. **Tie every recommendation to evidence:** trace, query plan, profiler output, bundle stat, log sample, or specific code path.
-6. **Respect spec decisions.** Accepted trade-offs in `spec.md` become *Acknowledged*, not findings.
+6. **Respect spec decisions.** Accepted trade-offs in the change artifacts become *Acknowledged*, not findings.
 
 ## Audit Phases
 
@@ -54,7 +57,7 @@ If `spec.md` is missing, respond with: **"spec.md is required to perform a domai
 
 ### Phase 1: Discovery & Stack Mapping
 
-1. **Read `spec.md`** first and record explicitly accepted performance trade-offs as *Acknowledged*. Anchors all later phases.
+1. **Read the change artifacts** first and record all explicitly accepted performance trade-offs from `proposal.md` and `design.md` as *Acknowledged*. Anchors all later phases.
 2. **Determine scope** (see Required Inputs). For diff mode:
     - File list: `git diff --name-status {parent-branch}...HEAD`
     - Line count: `git diff --stat {parent-branch}...HEAD` (no content — just totals)
@@ -223,7 +226,7 @@ For producer/consumer code in scope (RabbitMQ, Kafka, SQS, Redis Streams, BullMQ
 ## Step Final: Produce the Performance Report
 
 1. Draft using `<output_template>`.
-2. Save to: `openspec/changes/{change-name}/performance.md` (derive `{feature-name}` from the spec path).
+2. Save to: `openspec/changes/{change-name}/performance.md` (derive `{feature-name}` from the change name: convert kebab-case to title case).
 3. Present in chat: severity counts, top 3 Critical/High findings, path to saved file.
 4. **Pause for feedback.** Do not modify code. Fixes are a follow-up implementation pass.
 
@@ -234,7 +237,7 @@ For producer/consumer code in scope (RabbitMQ, Kafka, SQS, Redis Streams, BullMQ
 ```markdown
 # Performance Report — {Feature Name}
 
-**Spec:** `openspec/changes/{change-name}/proposal.md`  
+**Change:** `openspec/changes/{change-name}/`  
 **Scope:** {diff vs `{parent-branch}` | full repo | `{path}`}  
 **Tiers audited:** {backend / frontend / db / queue — list only those in scope}  
 **Branch:** `{current-branch}`  
@@ -282,13 +285,13 @@ For producer/consumer code in scope (RabbitMQ, Kafka, SQS, Redis Streams, BullMQ
 - **Remediation:** {specific change. If multiple options, list up to 3 with trade-offs.}
 - **Expected gain:** {measured if validated, otherwise "estimated X% — verify with {method}"}
 - **Validation method:** {how to confirm the fix worked — re-run EXPLAIN, Lighthouse delta, load test, metric}
-- **Spec note:** {"Acknowledged in spec.md §X" / "—"}
+- **Spec note:** {"Acknowledged in `proposal.md` §X" | "Acknowledged in `specs/{capability}/spec.md` §X" | "—"}
 
 ---
 
-## Acknowledged Trade-offs (from spec.md)
+## Acknowledged Trade-offs (from change artifacts)
 
-- {Item explicitly accepted in spec.md and therefore not a finding, with spec section reference}
+- {Item explicitly accepted in `proposal.md` or `design.md` and therefore not a finding, with artifact and section reference}
 
 ---
 
@@ -340,7 +343,7 @@ Before writing the report, verify:
 2. **Evidence completeness** — every finding has location + symptom + evidence + remediation + validation method.
 3. **Severity sanity** — Critical/High findings have measured impact, not just heuristic concern.
 4. **No fabricated metrics** — if a number was not actually measured, mark it as "estimated — verify with X".
-5. **Spec respect** — no finding contradicts a decision recorded in `spec.md` without being marked *Acknowledged*.
+5. **Spec respect** — no finding contradicts a decision recorded in the change artifacts without being marked *Acknowledged*.
 6. **Validation plan present** — every Critical/High finding has a re-measurement step.
 
 ## Remember
