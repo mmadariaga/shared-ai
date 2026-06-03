@@ -11,18 +11,30 @@ const REPOSITORY_ROOT = path.join(__dirname, '..');
 const CLAUDE_BASE = path.join(os.homedir(), '.claude');
 const OPENCODE_BASE = path.join(os.homedir(), '.config', 'opencode');
 
-if (process.argv.includes('--help')) {
-  console.log(`shared-ai installer
-
-Usage: npx github:mmadariaga/shared-ai [--help]
-
-Interactive keys:
-  ↑ / ↓     Move cursor
-  Space      Toggle selection
-  Enter      Confirm selection
-  Ctrl-C / q Exit without installing`);
-  process.exit(0);
+function getCopilotPromptsDir() {
+  if (process.platform === 'win32') {
+    return path.join(process.env.APPDATA || path.join(os.homedir(), 'AppData', 'Roaming'), 'Code', 'User', 'prompts');
+  } else if (process.platform === 'darwin') {
+    return path.join(os.homedir(), 'Library', 'Application Support', 'Code', 'User', 'prompts');
+  } else {
+    return path.join(os.homedir(), '.config', 'Code', 'User', 'prompts');
+  }
 }
+
+function getCopilotSaiDir() {
+  if (process.platform === 'win32') {
+    return path.join(process.env.APPDATA || path.join(os.homedir(), 'AppData', 'Roaming'), 'Code', 'User', 'sai');
+  } else if (process.platform === 'darwin') {
+    return path.join(os.homedir(), 'Library', 'Application Support', 'Code', 'User', 'sai');
+  } else {
+    return path.join(os.homedir(), '.config', 'Code', 'User', 'sai');
+  }
+}
+
+const COPILOT_PROMPTS_BASE = getCopilotPromptsDir();
+const COPILOT_SAI_BASE = getCopilotSaiDir();
+const COPILOT_SKILLS_BASE = path.join(os.homedir(), '.copilot', 'skills');
+const COPILOT_AGENTS_BASE = path.join(os.homedir(), '.copilot', 'agents');
 
 function promptChecklist(items, defaultSelected) {
   if (!process.stdin.isTTY) {
@@ -170,6 +182,62 @@ function installClaude(destBase) {
 
 }
 
+function installCopilot(promptsBase, skillsBase, agentsBase, saiBase) {
+  const promptsPath = promptsBase || COPILOT_PROMPTS_BASE;
+  const skillsPath = skillsBase || COPILOT_SKILLS_BASE;
+  const agentsPath = agentsBase || COPILOT_AGENTS_BASE;
+  const saiPath = saiBase || COPILOT_SAI_BASE;
+
+  listMdFiles(path.join(REPOSITORY_ROOT, 'commands', 'copilot')).forEach(src => {
+    copyWithWarn(src, path.join(promptsPath, path.basename(src)));
+  });
+
+  listMdFiles(path.join(REPOSITORY_ROOT, 'sai', 'commands')).forEach(src => {
+    copyWithWarn(src, path.join(saiPath, 'commands', path.basename(src)));
+  });
+
+  listMdFiles(path.join(REPOSITORY_ROOT, 'sai', 'instructions')).forEach(src => {
+    copyWithWarn(src, path.join(saiPath, 'instructions', path.basename(src)));
+  });
+
+  copyWithWarn(
+    path.join(REPOSITORY_ROOT, 'skills', 'copilot', 'fetch', 'SKILL.md'),
+    path.join(skillsPath, 'fetch', 'SKILL.md')
+  );
+  copyWithWarn(
+    path.join(REPOSITORY_ROOT, 'skills', 'universal', 'budget', 'SKILL.md'),
+    path.join(skillsPath, 'budget', 'SKILL.md')
+  );
+  copyWithWarn(
+    path.join(REPOSITORY_ROOT, 'skills', 'copilot', 'budget-explorer', 'SKILL.md'),
+    path.join(skillsPath, 'budget-explorer', 'SKILL.md')
+  );
+  copyWithWarn(
+    path.join(REPOSITORY_ROOT, 'skills', 'copilot', 'budget-executor', 'SKILL.md'),
+    path.join(skillsPath, 'budget-executor', 'SKILL.md')
+  );
+  copyWithWarn(
+    path.join(REPOSITORY_ROOT, 'skills', 'copilot', 'budget-subagent', 'SKILL.md'),
+    path.join(skillsPath, 'budget-subagent', 'SKILL.md')
+  );
+  copyWithWarn(
+    path.join(REPOSITORY_ROOT, 'skills', 'universal', 'sai-commands', 'SKILL.md'),
+    path.join(skillsPath, 'sai-commands', 'SKILL.md')
+  );
+  copyWithWarn(
+    path.join(REPOSITORY_ROOT, 'skills', 'universal', 'safe-operations', 'SKILL.md'),
+    path.join(skillsPath, 'safe-operations', 'SKILL.md')
+  );
+  copyWithWarn(
+    path.join(REPOSITORY_ROOT, 'skills', 'universal', 'token-efficient-languages', 'SKILL.md'),
+    path.join(skillsPath, 'token-efficient-languages', 'SKILL.md')
+  );
+
+  listMdFiles(path.join(REPOSITORY_ROOT, 'agents', 'copilot')).forEach(src => {
+    copyWithWarn(src, path.join(agentsPath, path.basename(src)));
+  });
+}
+
 function installOpencode(destBase) {
   const targetPath = destBase || OPENCODE_BASE;
 
@@ -255,10 +323,20 @@ function copyOpencodeConfig(destBase) {
   console.log('\nAdjust the model to your preferred low-cost provider.');
 }
 
+function detectInstalledEditors() {
+  const detected = [];
+  if (fs.existsSync(CLAUDE_BASE)) detected.push('Claude Code');
+  if (fs.existsSync(OPENCODE_BASE)) detected.push('Opencode');
+  if (fs.existsSync(COPILOT_PROMPTS_BASE)) detected.push('GitHub Copilot');
+  return detected;
+}
+
 async function main() {
+  const preselected = detectInstalledEditors();
+  const defaults = preselected.length > 0 ? preselected : ['Opencode'];
   const choices = await promptChecklist(
-    ['Claude Code', 'Opencode'],
-    ['Opencode']
+    ['Claude Code', 'Opencode', 'GitHub Copilot'],
+    defaults
   );
 
   if (choices.length === 0) {
@@ -273,6 +351,14 @@ async function main() {
   if (choices.includes('Opencode')) {
     installOpencode();
     copyOpencodeConfig();
+  }
+
+  if (choices.includes('GitHub Copilot')) {
+    installCopilot();
+    console.log(`\nCopilot prompt files installed to: ${COPILOT_PROMPTS_BASE}`);
+    console.log(`Copilot SAI commands/instructions installed to: ${COPILOT_SAI_BASE}`);
+    console.log(`Copilot skills installed to: ${COPILOT_SKILLS_BASE}`);
+    console.log(`Copilot agents installed to: ${COPILOT_AGENTS_BASE}`);
   }
 
   console.log(
@@ -295,6 +381,7 @@ module.exports = {
   listMdFiles,
   installClaude,
   installOpencode,
+  installCopilot,
   copyOpencodeConfig,
   main,
 };

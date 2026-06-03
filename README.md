@@ -11,9 +11,11 @@ Software development oriented AI commands for a cost-efficient, spec-first, stru
 
 Built on top of [OpenSpec](https://github.com/Fission-AI/OpenSpec): OpenSpec owns the lifecycle and artifact structure, Shared-AI owns the code and quality layers.
 
-Works great on **opencode** with an opencode-go subscription + any frontier model provider sub (Claude / GPT / Gemini).
+Works great on **Opencode** with an opencode-go subscription + any frontier model provider sub (Claude / GPT / Gemini).
 
-Can also run on Claude Code, though it is less cost-effective there due to model availability and pricing constraints — you can combine both: use Claude Code for deep thinking phases and switch to opencode after to work around those limitations.
+Can also run on **Claude Code**, though it is less cost-effective there due to model availability and pricing constraints — you can combine both: use Claude Code for deep thinking phases and switch to opencode after to work around those limitations.
+
+Also supports **GitHub Copilot** (VS Code) natively — a good fit if you already have a Copilot subscription and prefer to stay inside VS Code without an extra tool. Model selection is more limited than opencode, but the full pipeline runs end to end.
 
 ## Why use this
 
@@ -280,10 +282,11 @@ For step-by-step manual installation without npx:
 
 - Opencode: see [INSTALL.opencode.md](INSTALL.opencode.md)
 - Claude Code: see [INSTALL.claude.md](INSTALL.claude.md)
+- GitHub Copilot (VS Code): see [INSTALL.copilot.md](INSTALL.copilot.md)
 
 ## Per project installation / override
 
-Per-project commands are still possible via `.opencode/commands/` or `.claude/commands/` at the repo root — useful when a project needs specific variants. Globals act as a base; locals override by name.
+Per-project commands are still possible via `.opencode/commands/`, `.claude/commands/`, or `.github/prompts/` at the repo root — useful when a project needs specific variants. Globals act as a base; locals override by name.
 
 ## Post Install
 
@@ -295,20 +298,24 @@ See [INSTALL.opencode.md](INSTALL.opencode.md#post-install) for post-install ste
 
 We set these defaults to models that have worked best for us, you may find better alternatives for your specific needs though.
 
-| Command | Opencode | Claude Code | Copilot |
-|-------|----------|-------------|---------|
-| explore | `opencode-go/qwen3.6-plus` | `claude-sonnet-4-6` High | `github-copilot/claude-sonnet-4.6` |
-| spec (1) | `opencode-go/kimi-k2.6` | `claude-sonnet-4-6` High | `github-copilot/claude-sonnet-4.6` |
-| design (2) | `opencode/claude-opus-4-8`<br />\|\| `opencode/gpt-5.5` <br />\|\|`opencode/gemini-3.1-pro`<br />\|\| `opencode-go/glm-5.1` | `claude-opus-4-8` High |``github-copilot/claude-opus-4.6`` | 
-| implement (3) | `opencode-go/kimi-k2.6` | `claude-sonnet-4-6` | ``github-copilot/claude-sonnet-4.6`` |
-| apply (4) | `opencode-go/deepseek-v4-flash` | `claude-haiku-4-5` | `github-copilot/gpt-5-mini` |
-| review (5) | `opencode-go/qwen3.6-plus` | `claude-sonnet-4-6` | `github-copilot/claude-sonnet-4.6` |
-| security (6) | `opencode-go/qwen3.6-plus` | `claude-opus-4-8` High | `github-copilot/claude-opus-4.6` |
-| performance (7) | `opencode-go/qwen3.6-plus` | `claude-sonnet-4-6` | `github-copilot/claude-sonnet-4.6` |
-| accessibility (8) | `opencode-go/qwen3.6-plus` | `claude-sonnet-4-6` | `github-copilot/claude-sonnet-4.6` |
-| commit | `opencode-go/deepseek-v4-flash` | `claude-haiku-4-5` | `github-copilot/gpt-5-mini` |
-| pr | `opencode-go/deepseek-v4-flash` | `claude-haiku-4-5` | `github-copilot/gpt-5-mini` |
-| archive | `opencode-go/deepseek-v4-flash` | `claude-haiku-4-5` | `github-copilot/gpt-5-mini` |
+The **Copilot** column shows two model identifiers:
+- *VS Code* — the model name used in `.prompt.md` frontmatter (GitHub Copilot in VS Code)
+- *opencode* — the model ID used in opencode commands when routing through a Copilot subscription
+
+| Command | Opencode | Claude Code | Copilot (VS Code) | Copilot (opencode) |
+|-------|----------|-------------|-------------------|--------------------|
+| explore | `opencode-go/qwen3.6-plus` | `claude-sonnet-4-6` High | `Claude Sonnet 4.6 (copilot)` | `github-copilot/claude-sonnet-4.6` |
+| spec (1) | `opencode-go/kimi-k2.6` | `claude-sonnet-4-6` High | `Claude Sonnet 4.6 (copilot)` | `github-copilot/claude-sonnet-4.6` |
+| design (2) | `opencode/claude-opus-4-8`<br />\|\| `opencode/gpt-5.5` <br />\|\|`opencode/gemini-3.1-pro`<br />\|\| `opencode-go/glm-5.1` | `claude-opus-4-8` High | `Claude Opus 4.6 (copilot)` | `github-copilot/claude-opus-4.6` |
+| implement (3) | `opencode-go/kimi-k2.6` | `claude-sonnet-4-6` | `Claude Sonnet 4.6 (copilot)` | `github-copilot/claude-sonnet-4.6` |
+| apply (4) | `opencode-go/deepseek-v4-flash` | `claude-haiku-4-5` | `GPT-5 mini (copilot)` | `github-copilot/gpt-5-mini` |
+| review (5) | `opencode-go/qwen3.6-plus` | `claude-sonnet-4-6` | `Claude Sonnet 4.6 (copilot)` | `github-copilot/claude-sonnet-4.6` |
+| security (6) | `opencode-go/qwen3.6-plus` | `claude-opus-4-8` High | `Claude Opus 4.6 (copilot)` | `github-copilot/claude-opus-4.6` |
+| performance (7) | `opencode-go/qwen3.6-plus` | `claude-sonnet-4-6` | `Claude Sonnet 4.6 (copilot)` | `github-copilot/claude-sonnet-4.6` |
+| accessibility (8) | `opencode-go/qwen3.6-plus` | `claude-sonnet-4-6` | `Claude Sonnet 4.6 (copilot)` | `github-copilot/claude-sonnet-4.6` |
+| commit | `opencode-go/deepseek-v4-flash` | `claude-haiku-4-5` | `GPT-5 mini (copilot)` | `github-copilot/gpt-5-mini` |
+| pr | `opencode-go/deepseek-v4-flash` | `claude-haiku-4-5` | `GPT-5 mini (copilot)` | `github-copilot/gpt-5-mini` |
+| archive | `opencode-go/deepseek-v4-flash` | `claude-haiku-4-5` | `GPT-5 mini (copilot)` | `github-copilot/gpt-5-mini` |
 
 ### Choosing a model
 
