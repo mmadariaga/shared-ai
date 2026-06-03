@@ -15,7 +15,7 @@ Works great on **Opencode** with an opencode-go subscription + any frontier mode
 
 Can also run on **Claude Code**, though it is less cost-effective there due to model availability and pricing constraints — you can combine both: use Claude Code for deep thinking phases and switch to opencode after to work around those limitations.
 
-Also supports **GitHub Copilot** (VS Code in editor window, not agents window) natively — a good fit if you already have a Copilot subscription and prefer to stay inside VS Code without an extra tool. Model selection is more limited than opencode, but the full pipeline runs end to end.
+Also supports **GitHub Copilot** natively (only in the VS Code editor window, **not in the agents window (preview)**) — a good fit if you already have a Copilot subscription and prefer to stay inside VS Code without an extra tool.
 
 ## Why use this
 
