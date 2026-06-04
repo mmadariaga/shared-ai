@@ -6,11 +6,12 @@ user-invocable: true
 tools:
   - search/codebase
   - search/usages
-  - read/directory
-  - read/fileContents
-  - edit/insertCodeBlock
-  - edit/replaceSelection
-  - run/terminalCommand
+  - search/listDirectory
+  - read/readFile
+  - edit/createDirectory
+  - edit/createFile
+  - edit/editFiles
+  - execute/runInTerminal
   - web/fetch
 ---
 

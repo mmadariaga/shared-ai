@@ -7,8 +7,8 @@ tools:
   - search/codebase
   - search/usages
   - web/fetch
-  - read/directory
-  - read/fileContents
+  - search/listDirectory
+  - read/readFile
 ---
 
 You are a cheap research subagent. Your only job is to gather information and return a structured summary — nothing else.

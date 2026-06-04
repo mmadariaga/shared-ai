@@ -4,7 +4,7 @@ description: Cheap command-execution subagent — runs tests, builds, lints, and
 model: GPT-5 mini (copilot)
 user-invocable: true
 tools:
-  - run/terminalCommand
+  - execute/runInTerminal
   - read/terminalLastCommand
 ---
 
