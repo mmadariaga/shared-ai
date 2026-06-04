@@ -4,11 +4,11 @@
 TBD - created by archiving change sai-explorer-harness-context. Update Purpose after archive.
 ## Requirements
 ### Requirement: harness-file-location
-`~/.claude/instructions/sai/explorer.opencode.md` SHALL exist as a standalone instruction file for the OpenCode harness.
+`~/.claude/sai/instructions/explorer.opencode.md` SHALL exist as a standalone instruction file for the OpenCode harness.
 
 #### Scenario: file exists at path
 - **WHEN** an OpenCode harness references the sai instruction layer
-- **THEN** `~/.claude/instructions/sai/explorer.opencode.md` is present and resolvable
+- **THEN** `~/.claude/sai/instructions/explorer.opencode.md` is present and resolvable
 
 ### Requirement: subagent-type-binding
 The file SHALL declare that "cheap research subagent" maps to `explore` (lowercase) as used in the OpenCode harness agent keyword syntax.

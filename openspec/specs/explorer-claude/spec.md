@@ -4,10 +4,10 @@
 TBD - created by archiving change sai-explorer-harness-context. Update Purpose after archive.
 ## Requirements
 ### Requirement: harness-file-location
-`~/.claude/instructions/sai/explorer.claude.md` SHALL exist as a standalone instruction file for the Claude Code harness.
+`~/.claude/sai/instructions/explorer.claude.md` SHALL exist as a standalone instruction file for the Claude Code harness.
 
 #### Scenario: file resolvable via fetch
-- **WHEN** a sai skill command executes `Fetch @~/.claude/instructions/sai/explorer.claude.md`
+- **WHEN** a sai skill command executes `Fetch @~/.claude/sai/instructions/explorer.claude.md`
 - **THEN** the file is found and its contents are loaded into the active instruction context
 
 ### Requirement: subagent-type-binding
