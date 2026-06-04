@@ -16,7 +16,7 @@ The `# Isolation Mode` block (a 5-line block consisting of the heading and four 
 
 ### Requirement: Isolation block prepended to sai/commands body files
 
-The exact verbatim text of the `# Isolation Mode` block SHALL be prepended as the first content of each of the 9 `.claude/commands/sai/sai-*.md` body files: `sai-8-accessibility.md`, `sai-4-apply.md`, `sai-commit.md`, `sai-2-design.md`, `sai-3-implement.md`, `sai-7-performance.md`, `sai-pr.md`, `sai-5-review.md`, `sai-6-security.md`. A blank line MUST separate the block from the existing first line of each file.
+The exact verbatim text of the `# Isolation Mode` block SHALL be prepended as the first content of each of the 9 `.claude/commands/sai/sai-*.md` body files: <!-- TODO: verify path --> `sai-8-accessibility.md`, `sai-4-apply.md`, `sai-commit.md`, `sai-2-design.md`, `sai-3-implement.md`, `sai-7-performance.md`, `sai-pr.md`, `sai-5-review.md`, `sai-6-security.md`. A blank line MUST separate the block from the existing first line of each file.
 
 #### Scenario: command body file starts with Isolation Mode block
 
@@ -34,10 +34,10 @@ The exact verbatim text of the `# Isolation Mode` block SHALL be prepended as th
 
 #### Scenario: sai-explore unchanged
 
-- **WHEN** `.claude/commands/sai/sai-explore.md` is read after the change
+- **WHEN** `.claude/commands/sai/sai-explore.md` is read after the change <!-- TODO: verify path -->
 - **THEN** its content MUST be identical to its pre-change content
 
 #### Scenario: sai-archive unchanged
 
-- **WHEN** `.claude/commands/sai/sai-archive.md` is read after the change
+- **WHEN** `.claude/commands/sai/sai-archive.md` is read after the change <!-- TODO: verify path -->
 - **THEN** its content MUST be identical to its pre-change content
