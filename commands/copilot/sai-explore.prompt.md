@@ -7,6 +7,7 @@ model: Claude Sonnet 4.6 (copilot)
 ## Sai Explore
 
 Use the skill tool to load the fetch skill.
+Fetch @sai/instructions/harness/copilot.md and follow those instructions exactly.
 Fetch @sai/commands/sai-explore.md and follow those instructions exactly.
 
 ## No-file-write enforcement

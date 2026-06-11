@@ -7,4 +7,5 @@ model: Claude Sonnet 4.6 (copilot)
 ## Sai Implement - 3
 
 Use the skill tool to load the fetch skill.
+Fetch @sai/instructions/harness/copilot.md and follow those instructions exactly.
 Fetch @sai/commands/sai-3-implement.md and follow those instructions exactly.

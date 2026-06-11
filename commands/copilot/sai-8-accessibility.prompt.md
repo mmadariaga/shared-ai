@@ -7,4 +7,5 @@ model: GPT-5.4 (copilot)
 ## Sai Accessibility - 8
 
 Use the skill tool to load the fetch skill.
+Fetch @sai/instructions/harness/copilot.md and follow those instructions exactly.
 Fetch @sai/commands/sai-8-accessibility.md and follow those instructions exactly.

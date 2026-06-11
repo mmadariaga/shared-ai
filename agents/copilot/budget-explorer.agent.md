@@ -6,8 +6,8 @@ user-invocable: true
 tools:
   - search/codebase
   - search/usages
-  - web/fetch
   - search/listDirectory
+  - web/fetch
   - read/readFile
 ---
 

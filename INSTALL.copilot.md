@@ -57,7 +57,7 @@ if [ -d "$SAI_DIR/instructions" ]; then
     echo "Overwriting $SAI_DIR/instructions/"
 fi
 mkdir -p "$SAI_DIR/instructions"
-cp sai/instructions/*.md "$SAI_DIR/instructions/"
+cp -r sai/instructions/. "$SAI_DIR/instructions/"
 
 # Copy skills
 mkdir -p "$SKILLS_DIR/fetch"
@@ -104,7 +104,7 @@ if (Test-Path $instructionsDir) {
     Write-Host "Overwriting $instructionsDir"
 }
 New-Item -ItemType Directory -Force -Path $instructionsDir | Out-Null
-Copy-Item sai\instructions\*.md "$instructionsDir\"
+Copy-Item sai\instructions\* $instructionsDir -Recurse -Force
 
 # Copy skills
 New-Item -ItemType Directory -Force -Path "$skillsDir\fetch" | Out-Null

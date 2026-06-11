@@ -128,6 +128,26 @@ function listMdFiles(dir) {
     .map(f => path.join(dir, f));
 }
 
+function listMdFilesRecursive(dir) {
+  const entries = fs.readdirSync(dir, { withFileTypes: true });
+  const files = [];
+
+  entries.forEach((entry) => {
+    const entryPath = path.join(dir, entry.name);
+
+    if (entry.isDirectory()) {
+      files.push(...listMdFilesRecursive(entryPath));
+      return;
+    }
+
+    if (entry.isFile() && entry.name.endsWith('.md')) {
+      files.push(entryPath);
+    }
+  });
+
+  return files;
+}
+
 function installClaude(destBase) {
   const targetPath = destBase || CLAUDE_BASE;
 
@@ -139,8 +159,8 @@ function installClaude(destBase) {
     copyWithWarn(src, path.join(targetPath, 'sai', 'commands', path.basename(src)));
   });
 
-  listMdFiles(path.join(REPOSITORY_ROOT, 'sai', 'instructions')).forEach(src => {
-    copyWithWarn(src, path.join(targetPath, 'sai', 'instructions', path.basename(src)));
+  listMdFilesRecursive(path.join(REPOSITORY_ROOT, 'sai', 'instructions')).forEach(src => {
+    copyWithWarn(src, path.join(targetPath, 'sai', 'instructions', path.relative(path.join(REPOSITORY_ROOT, 'sai', 'instructions'), src)));
   });
 
   copyWithWarn(
@@ -196,8 +216,8 @@ function installCopilot(promptsBase, skillsBase, agentsBase, saiBase) {
     copyWithWarn(src, path.join(saiPath, 'commands', path.basename(src)));
   });
 
-  listMdFiles(path.join(REPOSITORY_ROOT, 'sai', 'instructions')).forEach(src => {
-    copyWithWarn(src, path.join(saiPath, 'instructions', path.basename(src)));
+  listMdFilesRecursive(path.join(REPOSITORY_ROOT, 'sai', 'instructions')).forEach(src => {
+    copyWithWarn(src, path.join(saiPath, 'instructions', path.relative(path.join(REPOSITORY_ROOT, 'sai', 'instructions'), src)));
   });
 
   copyWithWarn(
@@ -249,8 +269,8 @@ function installOpencode(destBase) {
     copyWithWarn(src, path.join(targetPath, 'sai', 'commands', path.basename(src)));
   });
 
-  listMdFiles(path.join(REPOSITORY_ROOT, 'sai', 'instructions')).forEach(src => {
-    copyWithWarn(src, path.join(targetPath, 'sai', 'instructions', path.basename(src)));
+  listMdFilesRecursive(path.join(REPOSITORY_ROOT, 'sai', 'instructions')).forEach(src => {
+    copyWithWarn(src, path.join(targetPath, 'sai', 'instructions', path.relative(path.join(REPOSITORY_ROOT, 'sai', 'instructions'), src)));
   });
 
   copyWithWarn(
@@ -379,6 +399,7 @@ module.exports = {
   copyWithWarn,
   copySkipIfExists,
   listMdFiles,
+  listMdFilesRecursive,
   installClaude,
   installOpencode,
   installCopilot,

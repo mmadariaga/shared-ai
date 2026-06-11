@@ -6,7 +6,7 @@ const path = require('path');
 const os = require('os');
 const fs = require('fs');
 
-const { copy, copyWithWarn, copySkipIfExists, listMdFiles } = require('../bin/install-flow.js');
+const { copy, copyWithWarn, copySkipIfExists, listMdFiles, listMdFilesRecursive } = require('../bin/install-flow.js');
 
 test('copy overwrites existing file', () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-test-'));
@@ -91,5 +91,20 @@ test('listMdFiles returns .md files with full paths, excludes non-.md', () => {
   assert.ok(result.length >= 2, `expected >= 2 .md files, got ${result.length}`);
   assert.ok(result.some(f => f.endsWith('a.md')), 'should include a.md');
   assert.ok(!result.some(f => f.endsWith('c.txt')), 'should not include c.txt');
+  fs.rmSync(tmpDir, { recursive: true });
+});
+
+test('listMdFilesRecursive returns nested .md files', () => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-test-'));
+  fs.mkdirSync(path.join(tmpDir, 'nested', 'deeper'), { recursive: true });
+  fs.writeFileSync(path.join(tmpDir, 'root.md'), '');
+  fs.writeFileSync(path.join(tmpDir, 'nested', 'child.md'), '');
+  fs.writeFileSync(path.join(tmpDir, 'nested', 'deeper', 'grandchild.md'), '');
+  fs.writeFileSync(path.join(tmpDir, 'nested', 'deeper', 'note.txt'), '');
+  const result = listMdFilesRecursive(tmpDir);
+  assert.ok(result.some(f => f.endsWith(path.join('root.md'))), 'should include root.md');
+  assert.ok(result.some(f => f.endsWith(path.join('nested', 'child.md'))), 'should include nested child.md');
+  assert.ok(result.some(f => f.endsWith(path.join('nested', 'deeper', 'grandchild.md'))), 'should include nested grandchild.md');
+  assert.ok(!result.some(f => f.endsWith('note.txt')), 'should not include note.txt');
   fs.rmSync(tmpDir, { recursive: true });
 });

@@ -42,6 +42,13 @@ test('installClaude copies sai/instructions/*.md with Overwriting warn', () => {
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });
 
+test('installClaude copies nested sai instruction files', () => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-claude-'));
+  installClaude(tmpDir);
+  assert.ok(fs.existsSync(path.join(tmpDir, 'sai', 'instructions', 'harness', 'copilot.md')), 'nested harness instruction should be copied');
+  fs.rmSync(tmpDir, { recursive: true, force: true });
+});
+
 test('installClaude copies all Claude-specific skills', () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-claude-'));
   installClaude(tmpDir);

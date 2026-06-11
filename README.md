@@ -15,7 +15,7 @@ Works great on **Opencode** with an opencode-go subscription + any frontier mode
 
 Can also run on **Claude Code**, though it is less cost-effective there due to model availability and pricing constraints — you can combine both: use Claude Code for deep thinking phases and switch to opencode after to work around those limitations.
 
-Also supports **GitHub Copilot** natively (only in the VS Code editor window, **not in the agents window (preview) or in Copilot CLI**) — a good fit if you already have a Copilot subscription and prefer to stay inside VS Code without an extra tool.
+Also supports **GitHub Copilot** natively (only in the VS Code editor window, **not in the agents window (preview) or in Copilot CLI**, since prompt files aren’t supported there yet) — a good fit if you already have a Copilot subscription and prefer to stay inside VS Code without an extra tool.
 
 ## Why use this
 
@@ -305,7 +305,7 @@ The **Copilot** column shows two model identifiers:
 | Command | Opencode | Claude Code | Copilot (VS Code) | Copilot (opencode) |
 |-------|----------|-------------|-------------------|--------------------|
 | explore | `opencode-go/qwen3.7-plus` | `claude-sonnet-4-6` medium | `Claude Sonnet 4.6 (copilot)` | `github-copilot/claude-sonnet-4.6` |
-| spec (1) | `opencode-go/qwen3.7-plus` | `claude-sonnet-4-6` medium | `Claude Sonnet 4.6 (copilot)` | `github-copilot/claude-sonnet-4.6` |
+| spec (1) | `opencode-go/qwen3.7-plus` | `claude-sonnet-4-6` medium | `GPT-5.4 (copilot)` | `github-copilot/gpt-5.4` |
 | design (2) | `opencode/claude-opus-4-8` | `claude-opus-4-8` high | `Claude Opus 4.8 (copilot)` | `github-copilot/claude-opus-4.8` |
 | implement (3) | `opencode-go/kimi-k2.6` | `claude-sonnet-4-6` high | `Claude Sonnet 4.6 (copilot)` | `github-copilot/claude-sonnet-4.6` |
 | apply (4) | `opencode-go/deepseek-v4-flash` | `claude-haiku-4-5` | `GPT-5.4 mini (copilot)` | `github-copilot/gpt-5.4-mini` |
