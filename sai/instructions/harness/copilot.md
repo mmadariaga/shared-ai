@@ -11,3 +11,7 @@ Examples:
 
 - Use `/openspec/changes/cookiebot-runtime-env/design.md`
 - Do not use `**/openspec/changes/cookiebot-runtime-env/design.md`
+
+## Copilot Git Rules
+
+- If the user gives permission to make a `git commit`, you can also assume permission to run `git add`.
