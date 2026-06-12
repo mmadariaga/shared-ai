@@ -27,7 +27,7 @@ Also supports **GitHub Copilot** natively (only in the VS Code editor window, **
 
 **Cost-effective by design.** Each phase runs on the cheapest model that can do the job. Cheap models for commits and PRs, mid-range for planning and review, frontier only where reasoning depth actually matters. Agents think in English regardless of your language — English tokenizers produce fewer tokens per unit of meaning, so reasoning is cheaper without losing quality (details in [Token-Efficient Languages](#token-efficient-languages)). Communication is compressed to the minimum. You get the output — not the filler.
 
-**Testing is not optional.** Every implementation step includes a failing test (RED) before the code that makes it pass (GREEN). The agent runs RED first to confirm the assertion is real, then writes GREEN. What can't be covered by unit tests — visual behavior, end-to-end flows — becomes an explicit verification request to you, placed at the earliest point it can be observed. Nothing ships unverified.
+**Testing is not optional.** For every step, sai-3 writes the production code and specifies exactly what to test. sai-4 then writes the test first (RED) to confirm the assertion is real, applies the production code (GREEN), and verifies it passes. What can't be covered by unit tests — visual behavior, end-to-end flows — becomes an explicit verification request to you, placed at the earliest point it can be observed. Nothing ships unverified.
 
 ## Index
 
@@ -47,8 +47,8 @@ All artifact paths below resolve under `openspec/changes/{change-name}/` (referr
 |---------|-------|--------|---------|
 | `/sai-1-spec` | feature description | `{c}/proposal.md`, `specs/**` | Describe what you want to build. The AI writes a proposal and acceptance criteria for you to review and approve — nothing else happens until you say yes. |
 | `/sai-2-design` | {change-name} | `{c}/design.md`, `tasks.md` | Turns approved specs into a technical plan: architecture decisions, trade-offs, and a concrete task list. |
-| `/sai-3-implement` | {change-name} | `{c}/implementation.md` | Writes the full coding playbook — every step spelled out, tests before code, commit points marked. Designed so a cheaper/faster model can execute it mechanically. |
-| `/sai-4-apply` | {change-name} | code | Follows the playbook step by step: writes code, runs tests, commits. Asks you before any git operation. |
+| `/sai-3-implement` | {change-name} | `{c}/implementation.md` | Writes the full coding playbook — production code for every step spelled out, test specifications (what to verify, not code), commit points marked. Designed so a cheaper/faster model can execute it mechanically. |
+| `/sai-4-apply` | {change-name} | code | Follows the playbook step by step: copies production code to project files, writes and runs tests, commits. Asks you before any git operation. |
 | `/sai-5-review` | {change-name} + diff | `{c}/review.md` | Reviews the finished code across 10 dimensions (correctness, maintainability, tests, etc.). Also tells you which specialized audits to run next based on what changed. |
 | `/sai-6-security` | {change-name} + diff | `{c}/security.md` | Finds security vulnerabilities in the diff — points to exact file and line, explains the risk, and maps findings to known standards (OWASP, CVE). |
 | `/sai-7-performance` | {change-name} + diff | `{c}/performance.md` | Flags real performance bottlenecks (slow queries, heavy renders, unbounded loops). Evidence-based — no guesswork. |
@@ -221,7 +221,7 @@ Every feature starts with a change proposal (`proposal.md` + `design.md` + capab
 Each phase produces exactly one artifact. Only `sai-4-apply` writes code; spec, implement, review, and audits produce only markdown in `openspec/changes/{change-name}/`. No phase oversteps its scope.
 
 ### RED → GREEN
-Each testable step includes a failing test (RED) before the minimal implementation (GREEN). The agent runs RED first, confirms the failure is a valid assertion failure (not a setup error), then writes GREEN and verifies it passes. This proves the test is real and not tautological.
+sai-3 writes production code for each step and specifies exactly what to test (no test code). sai-4-apply then writes the test (RED), confirms the failure is a valid assertion failure (not a setup error), copies the production code to the project (GREEN), and verifies the test passes. This proves the test is real and not tautological.
 
 ### Ubiquitous Language via GLOSSARY.md
 Domain terms are captured in a living `GLOSSARY.md` at the project root. Spec reads and appends new terms inline (no batching), Plan uses canonical terms for all new identifiers, and Review validates language consistency in the diff. This enforces a DDD-style ubiquitous language across the entire pipeline —every agent and every artifact speaks the same vocabulary.
