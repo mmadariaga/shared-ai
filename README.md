@@ -304,10 +304,12 @@ The **Copilot** column shows two model identifiers:
 
 | Command | Opencode | Claude Code | Copilot (VS Code) | Copilot (opencode) |
 |-------|----------|-------------|-------------------|--------------------|
-| explore | `opencode-go/qwen3.7-plus` | `claude-sonnet-4-6` medium | `Claude Sonnet 4.6 (copilot)` | `github-copilot/claude-sonnet-4.6` |
+| explore | `opencode-go/qwen3.7-plus` | `claude-sonnet-4-6` medium | `GPT-5.4 (copilot)` | `github-copilot/gpt-5.4` |
 | spec (1) | `opencode-go/qwen3.7-plus` | `claude-sonnet-4-6` medium | `GPT-5.4 (copilot)` | `github-copilot/gpt-5.4` |
-| design (2) | `opencode/claude-opus-4-8` | `claude-opus-4-8` high | `Claude Opus 4.8 (copilot)` | `github-copilot/claude-opus-4.8` |
+| design (2) | `opencode-go/glm-5.2` | `claude-opus-4-8` high | `Claude Opus 4.8 (copilot)` | `github-copilot/claude-opus-4.8` |
 | implement (3) | `opencode-go/kimi-k2.6` | `claude-sonnet-4-6` high | `Claude Sonnet 4.6 (copilot)` | `github-copilot/claude-sonnet-4.6` |
+| implement-low (3) ¹ | `opencode-go/minimax-m3` | — | — | — |
+| implement-high (3) ¹ | `opencode-go/glm-5.2` | — | — | — |
 | apply (4) | `opencode-go/deepseek-v4-flash` | `claude-haiku-4-5` | `GPT-5.4 mini (copilot)` | `github-copilot/gpt-5.4-mini` |
 | review (5) | `opencode-go/qwen3.7-plus` | `claude-sonnet-4-6` high | `GPT-5.4 (copilot)` | `github-copilot/gpt-5.4` |
 | security (6) | `opencode-go/qwen3.7-plus` | `claude-opus-4-8` high | `GPT-5.4 (copilot)` | `github-copilot/gpt-5.4` |
@@ -315,8 +317,10 @@ The **Copilot** column shows two model identifiers:
 | accessibility (8) | `opencode-go/qwen3.7-plus` | `claude-sonnet-4-6` high | `GPT-5.4 (copilot)` | `github-copilot/gpt-5.4` |
 | commit | `opencode-go/deepseek-v4-flash` | `claude-haiku-4-5` | `GPT-5 mini (copilot)` | `github-copilot/gpt-5-mini` |
 | pr | `opencode-go/deepseek-v4-flash` | `claude-haiku-4-5` | `GPT-5 mini (copilot)` | `github-copilot/gpt-5-mini` |
-| backfill | `opencode-go/qwen3.7-plus` | `claude-sonnet-4-6` medium | `Claude Sonnet 4.6 (copilot)` | `github-copilot/claude-sonnet-4.6` |
+| backfill | `opencode-go/qwen3.7-plus` | `claude-sonnet-4-6` medium | `GPT-5.4 (copilot)` | `github-copilot/gpt-5.4` |
 | archive | `opencode-go/deepseek-v4-flash` | `claude-haiku-4-5` | `GPT-5 mini (copilot)` | `github-copilot/gpt-5-mini` |
+
+> ¹ `implement-low` and `implement-high` are **opencode-only** model variants of `implement (3)`. Other harnesses use the single `implement (3)` wrapper.
 
 ### Choosing a model
 
@@ -324,7 +328,7 @@ This chart may help you identify which models to test. The intelligence axis is 
 
 The x-axis (cost) is usually more reliable, but again, do your own tests. Note that costs can vary depending on the provider — the same model may be priced differently across API providers, subscriptions, and regions.
 
-![Intelligence vs Cost (May 2026)](Intelligence-vs-Cost-(3-Jun-'26).png)
+![Intelligence vs Cost (Jun 2026)](Intelligence-vs-Cost-(17-Jun-'26).png)
 
 Another ranking of models focused on coding tasks: https://llm-stats.com/leaderboards/best-ai-for-coding
 

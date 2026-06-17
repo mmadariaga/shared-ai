@@ -2,7 +2,7 @@
 description: Explore mode wrapper — thinking partner for ideas, problems, and requirements. Wraps opsx:explore skill, adds caveman mode. Optionally pass a change name to explore an existing change.
 argument-hint: "[optional: change-name or topic]"
 agent: agent
-model: Claude Sonnet 4.6 (copilot)
+model: GPT-5.4 (copilot)
 ---
 ## Sai Explore
 
