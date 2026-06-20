@@ -98,6 +98,21 @@ Order steps by dependency. Steps should be small enough to expand into a single 
 
 Reference specs for what to build, design for how to build it.
 
+#### Commit atomicity constraints
+
+Each `## Step N` becomes a single commit, so every step MUST leave the repository in a state that compiles, typechecks, and builds on its own. Apply these constraints while emitting steps — they are static planning-time reasoning over the planned file snapshot. The design phase never executes a real build; it reasons about code that does not yet exist.
+
+- **Every step is a buildable boundary.** If a candidate step cannot be reasoned as buildable on its own (combined with all previously committed files), merge it forward into subsequent steps until the combined snapshot is buildable. Never plan a step that depends on a *later* step to restore a building state.
+- **Group contract-breaking changes atomically.** When a step changes a function signature, removes an exported symbol, renames a public API, or alters any contract other files depend on, list every affected file — callers, consumers, and re-exporters — under the same `**Files Affected**`. Such a change MUST NOT be a standalone step that relies on a later step to fix broken references.
+- **Never cite lint as proof a boundary is safe.** Lint (Biome, ESLint, …) runs per-file and does not resolve cross-file types, so it cannot confirm a snapshot typechecks. A boundary is valid only if a full typecheck/build would pass against the exact committed snapshot.
+- **Verification checklist** — reason through each item against the planned snapshot before designating a step a commit point:
+  - No calls to functions with outdated signatures.
+  - No imports of removed or renamed symbols.
+  - No references to APIs that have been relocated or deleted.
+  - No missing implementations of interfaces or abstract contracts introduced in this or a prior step of the same batch.
+
+  If any item fails, expand or merge the step with adjacent steps until the checklist passes for the combined snapshot.
+
 After all implementation steps, end the file with these two mandatory sections in order:
 
 1. `## Required Documentation` — list every file consulted during design. **Populate this entirely from the `budget-explorer` subagent's report**. Also list every spec file that the steps reference:
