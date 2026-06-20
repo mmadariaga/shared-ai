@@ -86,6 +86,13 @@ If a listed document is missing or contradicts the declared stack, STOP and requ
 
 ### Step 5: Generate Full Implementation
 
+**Re-run preamble.** Before generating, check whether `openspec/changes/{change-name}/implementation.md` already exists on disk (equivalently: whether Step 1 ran at all). The check keys on **file presence**, not on the count of steps Step 1 collapsed — a file where every step is FALLO MENOR (code applied, verification pending) has zero collapsed steps but MUST still be preserved.
+
+- **If the file does NOT exist (first run):** take the **first-run generation path** below.
+- **If the file exists (re-run):** take the **re-run preservation path** below. Do NOT fall through into `<plan_template>` regeneration on a re-run.
+
+#### First-run generation path
+
 - Create one full markdown file using <plan_template>
 - Include:
 - Complete code for each step
@@ -106,6 +113,30 @@ If a listed document is missing or contradicts the declared stack, STOP and requ
       - **Valid RED failure** = the test runner exits non-zero AND the failure is an assertion failure attributable to the missing/incomplete code under test (assertion mismatch, expected vs actual, raised wrong exception). It is NOT a valid RED if the failure is a setup/import/compilation error, a missing dependency, a syntax error in the test file itself, or any error unrelated to the behaviour being asserted. If the only way to make the test fail is by referencing a symbol that does not yet exist, scaffold a minimal stub that exposes the symbol and returns/raises the wrong value, so the failure is a proper assertion failure.
       - If a step is NOT testable (config changes, migrations, scaffolding), skip RED/GREEN and use the standard format.
       - Include both RED and GREEN verification commands in the Verification Checklist.
+
+#### Re-run preservation path
+
+On a re-run, Step 5 builds its output from the prior `implementation.md` as Step 1 left it on disk — it does NOT regenerate from `<plan_template>`. The preservation path runs in two phases: **preserve**, then **append audit-derived steps**.
+
+##### Preserve the prior file byte-for-byte
+
+Build the new `implementation.md` by copying the prior file as Step 1 left it:
+
+- Every step Step 1 collapsed to a heading followed by `*(already applied)*` is copied **byte-for-byte** — the heading line and the exact marker line, unchanged. Do NOT rewrite, re-expand, re-word, re-number, or re-order a compacted step. Do NOT add commit references or timestamps to the marker. Do NOT re-open a compacted step (no code blocks, checklists, or any other content added back to it).
+- Every step with at least one unchecked `[ ]` checkbox is carried over unchanged.
+- Orphan headings (steps no longer present in `tasks.md`) are preserved as-is — never deleted, renamed, or remapped. `tasks.md` drift is out of scope.
+- Step 5 never re-derives an existing step from `<plan_template>`.
+
+##### Append audit-derived steps
+
+After preservation, for each audit artifact that exists in `openspec/changes/{change-name}/` among `review.md`, `security.md`, `performance.md`, `accessibility.md`, append exactly one new step at the end of `implementation.md`:
+
+- Number the first appended step strictly after the **highest** existing `#### Step N:` number found in the prior file (scan every `#### Step N:` heading, so out-of-order or orphan headings still yield the correct N+1). Subsequent appended steps continue N+2, N+3, …
+- Each appended step is dedicated to a single artifact and MUST NOT be merged into an existing step (e.g., `#### Step 7: Address review findings`, `#### Step 8: Address security findings`).
+- When an audit artifact's finding references an already-compacted step, address it as a **new appended step** whose text references the original step number. Do NOT re-open or modify the compacted step the finding names.
+- If none of the four audit artifacts exist, append nothing — the preserved file stands as-is.
+
+Do NOT add audit-step dedup logic. Idempotency across repeated audit-loop passes is out of scope — append one new step per existing artifact each re-run, exactly as the spec contract states.
 
 <research_task>
 
@@ -137,6 +168,8 @@ and `## Implementation Context` are the primary source of truth.
 </research_task>
 
 ---
+
+The `<plan_template>` below applies to the **first-run generation path only**. On a re-run, Step 5 uses the re-run preservation path and MUST NOT regenerate existing steps from this template.
 
 <plan_template>
 
@@ -271,6 +304,8 @@ MANDATORY: Save the implementation file to path:
 `openspec/changes/{change-name}/implementation.md`
 
 ## Hard Rules
+
+The generation rules below (complete production code, RED → GREEN, deferred verifications, step ordering from `tasks.md`) govern the **first-run generation path**. On the re-run preservation path, the preservation contract in Step 5 is authoritative for existing steps; these rules do not cause existing steps to be regenerated. The Expertise Profile contract applies to both paths.
 
 - Write complete production code for every step. Do not write partial implementations or speculative production code.
 - Every production code block must be final and executable. Do not use "TODO", "you may want to", or similar.
