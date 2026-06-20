@@ -218,6 +218,7 @@ Drop findings that are purely stylistic if the codebase has no enforced conventi
 **Verdict:** {Ready to merge | Ready after Blockers fixed | Needs rework}
 
 **Findings count:** {X Blockers · Y Major · Z Minor · W Questions}
+*(Mutation Analysis severities are folded into these counts: each surviving / pre-check-failed mutation is a Major, each revert-failed mutation is a Blocker.)*
 
 ---
 
@@ -285,6 +286,52 @@ Drop findings that are purely stylistic if the codebase has no enforced conventi
 #### Q1 — {Short title}
 - **Location:** `path/to/file.ext:LINE` (or "general")
 - **Question:** {What you need clarified and why the spec did not resolve it.}
+
+---
+
+## Mutation Analysis (Pass 11)
+
+> Include this section only when pass 11 ran. If the activation gate was not met, or no test command could be detected, replace the entire section body with the single skipped note below and emit no mutation findings:
+>
+> *Mutation Analysis (Pass 11): skipped — {no testable production code in diff | repository has no test files | no test command could be detected}. No mutation findings.*
+
+**Strategy:** {Tier 1 — `{tool}` | Tier 2 — LLM-as-mutator}  
+**Test command:** `{detected test command}`  
+**Mutations decided:** {totalMutations}
+
+**Aggregate:** survived {s} + killed {k} + pre-check-failed {p} + revert-failed {r} = {totalMutations}
+*(This identity MUST hold: `survived + killed + preCheckFailed + revertFailed == totalMutations`. Every mutation the main agent decided on appears below — killed ones internally only — even when an impediment prevented testing.)*
+
+Killed mutations produce no finding (internal only). Surviving mutants and impediment outcomes are listed below under the `mMUT-N` namespace (N is a 1-based counter over the mutation findings in this review).
+
+### Surviving mutants
+
+#### mMUT-1 — {Short title}
+- **Location:** `path/to/file.ext:LINE` (or range `LINE-LINE`)
+- **Mutation class:** {NegatedCondition | ChangedOperator | RemovedCall | ChangedReturn | NegatedBoolean | InvertedBranch | OffByOne | another concise label}
+- **Original:** `{unmutated code at the location, or its essence}`
+- **Applied:** `{the mutated code that was applied and reverted}`
+- **Result:** Survived — the test suite passed with this mutation in place.
+- **Why it survives:** {one sentence referencing the missing test or untested branch}
+- **Suggested fix:** {a concrete test the developer can add to catch this mutation}
+
+### Impediments
+
+> Mutations that could not be tested. Each still appears here to preserve the full-visibility invariant.
+
+#### mMUT-N — pre-check-failed (Major)
+- **Location:** `path/to/file.ext:LINE`
+- **Result:** Could not test {file}: uncommitted changes. Commit or undo and re-run review.
+
+#### mMUT-N — revert-failed (Blocker)
+- **Location:** `path/to/file.ext:LINE`
+- **Result:** Revert verification failed — `git diff {file}` was non-empty after `git checkout -- {file}`. Working tree left polluted.
+
+> Whenever any mutation is revert-failed, ALSO print this critical warning to the user (in chat, outside the report file):
+>
+> **⚠️ CRITICAL — working tree polluted:** the file `{file}` could not be reverted after mutation `mMUT-N`. Inspect and restore it manually (`git diff {file}`, then `git checkout -- {file}`) before relying on the working tree.
+
+**Severity roll-up:** each surviving and pre-check-failed mutation counts as a **Major**, and each revert-failed mutation counts as a **Blocker**, in the Findings count and Verdict above — exactly like any other finding of that severity.
 
 ---
 
