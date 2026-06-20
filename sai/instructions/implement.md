@@ -116,7 +116,28 @@ If a listed document is missing or contradicts the declared stack, STOP and requ
 
 #### Re-run preservation path
 
-On a re-run, Step 5 builds its output from the prior `implementation.md` as Step 1 left it on disk — it does NOT regenerate from `<plan_template>`. The preservation path runs in two phases: **preserve**, then **append audit-derived steps**.
+On a re-run, Step 5 builds its output from the prior `implementation.md` as Step 1 left it on disk — it does NOT regenerate from `<plan_template>`. The preservation path runs in three phases: **classify**, **preserve**, then **append audit-derived steps**.
+
+##### Classify each prior step
+
+Before preserving or appending anything, classify every `#### Step N:` section in the prior file from its checkbox state. Distinguish two checkbox categories **functionally** (by what the box's line does, not by a literal phrase — the file does not use the phrase "instruction box"):
+
+- **Code-writing checkbox** — its line introduces or modifies project files: a RED phase box that writes a failing test or stub, or a GREEN phase box that writes the implementation.
+- **Verification checkbox** — its line only runs or inspects: a Verification Checklist box, a "Verify RED" / GATE box, or a "Verify GREEN" box.
+
+The classifications:
+
+- **COMPLETO** — every checkbox in the step is `[x]` (Step 1 will already have collapsed it to `*(already applied)*`).
+- **FALLO MENOR** — every code-writing checkbox is `[x]` but at least one verification checkbox is `[ ]`.
+- **INCOMPLETO** — at least one code-writing checkbox is `[ ]`.
+
+Classification is derived from checkbox state only, not from commit history.
+
+Gate actions:
+
+- If **any** prior step is **INCOMPLETO**: **STOP** before preserving or appending audit-derived steps. Report to the user which step is incomplete. Downstream audit steps would otherwise be generated on the false premise that the step's code exists.
+- If no step is INCOMPLETO but one or more steps are **FALLO MENOR**: emit a warning naming each FALLO MENOR step, then continue best-effort. A FALLO MENOR classification MUST NOT, by itself, halt the run.
+- If every step is **COMPLETO** (or the only non-COMPLETO steps are FALLO MENOR): proceed to preserve the prior file.
 
 ##### Preserve the prior file byte-for-byte
 
