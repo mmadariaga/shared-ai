@@ -164,9 +164,9 @@ artifacts:
     instruction: |
       Create review.md — a structured review of the implementation against the proposal and specs.
 
-      Perform ten review passes: Domain Alignment, Correctness & Bugs, Security triage, Performance triage,
+      Perform eleven review passes: Domain Alignment, Correctness & Bugs, Security triage, Performance triage,
       Accessibility triage, Maintainability, Testing, Consistency with Codebase, Domain Language Consistency,
-      Documentation & Migrations.
+      Documentation & Migrations, Mutation Analysis.
 
       Classify each finding: Blocker | Major | Minor | Question.
       Every finding needs a precise file:line location.
