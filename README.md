@@ -220,14 +220,20 @@ Every feature starts with a change proposal (`proposal.md` + `design.md` + capab
 ### Single Responsibility Per Phase
 Each phase produces exactly one artifact. Only `sai-4-apply` writes code; spec, implement, review, and audits produce only markdown in `openspec/changes/{change-name}/`. No phase oversteps its scope.
 
+### Built-In Code Quality
+The pipeline enforces the same practices experienced developers rely on: build only what you need now, keep each piece focused on one thing, name things so they explain themselves, reuse what already exists, and ship the smallest change that works. The result is code that's easier to read, easier to change, and easier to trust — no matter your experience level.
+
 ### RED → GREEN
 sai-3 writes production code for each step and specifies exactly what to test (no test code). sai-4-apply then writes the test (RED), confirms the failure is a valid assertion failure (not a setup error), copies the production code to the project (GREEN), and verifies the test passes. This proves the test is real and not tautological.
 
 ### Ubiquitous Language via GLOSSARY.md
 Domain terms are captured in a living `GLOSSARY.md` at the project root. Spec reads and appends new terms inline (no batching), Plan uses canonical terms for all new identifiers, and Review validates language consistency in the diff. This enforces a DDD-style ubiquitous language across the entire pipeline —every agent and every artifact speaks the same vocabulary.
 
-### Multi-Pass Review (10 categories)
-The review agent runs ten distinct passes across the full diff: Domain Alignment, Correctness & Bugs, Security triage, Performance triage, Accessibility triage, Maintainability, Testing, Consistency with Codebase, Domain Language Consistency, and Documentation & Migrations.
+### Multi-Pass Review (11 categories)
+The review agent runs eleven distinct passes across the full diff: Domain Alignment, Correctness & Bugs, Security triage, Performance triage, Accessibility triage, Maintainability, Testing, Consistency with Codebase, Domain Language Consistency, Documentation & Migrations, and Mutation Analysis.
+
+### Mutation Analysis
+A test that runs your code without checking the result looks fine on paper but catches nothing in practice. Pass 11 deliberately breaks your code in small ways and verifies your tests actually notice — if a test still passes after the code is broken, that test isn't really testing anything. It runs automatically during review, against only the code that changed, and uses your existing mutation tool when the project has one (Stryker, PIT, mutmut, …) or falls back to the LLM itself as the mutator when it doesn't.
 
 ### No self-review bias
 The review phase (`sai-5-review`) runs on a different model than the one used for planning (`sai-3-implement`). The plan agent proposes the code architecture and design decisions — having the same model later review its own output tends to confirm its own assumptions and miss the same blind spots it had when designing the solution. Using a separate model for review introduces a genuinely independent perspective — different training data, different reasoning patterns, different failure modes — which catches real issues that self-review would not.
