@@ -92,13 +92,13 @@ Review categories (apply each pass to the full diff):
 8. **Consistency with Codebase** — Does the change follow existing architectural patterns, naming, error handling, and logging conventions discoverable in the repo? Does it respect the Expertise Profile from the change artifacts?
 9. **Domain Language Consistency** — Only if `GLOSSARY.md` exists at repo root: delegate to a **`budget-explorer`** subagent — include the `<glossary_format>` block from context in the subagent prompt — and return ≤30 canonical terms (Language, Relationships, Example dialogue, Flagged ambiguities sections). Then check new identifiers (classes, functions, files, variables) against those terms. Flag deviations as Minor. If no `GLOSSARY.md`, skip this category entirely.
 10. **Documentation & Migrations** — Are ADRs/DDRs, READMEs, OpenAPI/typedefs, or DB migrations updated when the change requires it?
-11. **Mutation Analysis** — Verify test *sensitivity* (not just coverage) by mutating diff-scoped production code and checking whether the test suite catches each mutation. This pass **writes to the working tree and runs tests**, so it is NOT executed inside this read-only Step 2: run it per the dedicated **`## Mutation Analysis (Pass 11)`** protocol section below (activation gate, two-tier detection, safety protocol, dispatch contract). Step 4 renders its outcomes.
+11. **Mutation Analysis** — Verify test *sensitivity* (not just coverage) by mutating diff-scoped production code and checking whether the test suite catches each mutation. This pass **writes to the working tree and runs tests**, so it is NOT executed inside this read-only Step 2: run it per the dedicated **`### Mutation Analysis (Pass 11)`** protocol section below (activation gate, two-tier detection, safety protocol, dispatch contract). Step 4 renders its outcomes.
 
-## Mutation Analysis (Pass 11)
+### Mutation Analysis (Pass 11)
 
 Pass 11 runs after passes 1–10. Unlike them it **writes to the working tree** and **runs the test suite**, so it is specified here as a standalone protocol rather than as a read-only Step 2 bullet. It measures test *sensitivity*: whether the suite would actually fail if the diffed production code regressed.
 
-### Activation Gate
+#### Activation Gate
 
 Run pass 11 only when BOTH conditions hold:
 
@@ -107,11 +107,11 @@ Run pass 11 only when BOTH conditions hold:
 
 If either is false, **skip pass 11 silently** — emit no finding and no Mutation Analysis content beyond a one-line skipped note in the report (Step 4).
 
-### Mutation Scope
+#### Mutation Scope
 
 The set of files eligible for mutation is **exactly the production-code files changed in the diff against the parent branch**. Never mutate a file outside that diff.
 
-### Tier 1 — Mutation Tool Auto-Detection
+#### Tier 1 — Mutation Tool Auto-Detection
 
 Inspect the project's manifest files to detect whether a supported mutation tool is declared as a project dependency:
 
@@ -126,7 +126,7 @@ Inspect the project's manifest files to detect whether a supported mutation tool
 
 A tool counts as available **only when its package is declared as a project dependency**. If a tool is detected, **run it, parse its surviving mutants, and SKIP the Tier-2 LLM-as-mutator path entirely**. If no supported tool is declared in any manifest, fall back to Tier 2.
 
-### Tier 2 — Test Command Auto-Detection
+#### Tier 2 — Test Command Auto-Detection
 
 Under Tier 2, detect the project's test command from the same manifests:
 
@@ -140,7 +140,7 @@ Under Tier 2, detect the project's test command from the same manifests:
 
 The detected command is used for the baseline pass and every per-mutation run (subject to the 60-second timeout). If **no** test command can be detected, report in `review.md` that mutation analysis could not run due to an undetermined test command, emit **no** mutation findings, and stop pass 11.
 
-### Tier 2 — Baseline and Per-Mutation Safety Protocol
+#### Tier 2 — Baseline and Per-Mutation Safety Protocol
 
 Before any mutation, run the detected test command once as a **baseline**. If the baseline does **not** pass, apply no mutations and report the baseline failure instead of mutation findings.
 
@@ -148,17 +148,17 @@ The main agent (frontier tier) decides **which** mutations to apply and **what**
 
 1. **Pre-check** — confirm `git status --porcelain {file}` is empty. If it is non-empty (dirty), do **not** mutate that file; record the mutation as **pre-check-failed** and ask the user to commit or undo the changes to that file.
 2. **Apply** the mutation to `{file}`.
-3. **Test** — run the detected test command with a **60-second timeout**.
+3. **Test** — run the detected test command with a **60-second timeout**. A run that exceeds the timeout counts as a non-passing test, so the mutation is treated as **killed** (the regression is caught — the suite did not pass within the bound).
 4. **Revert** — restore the file with the **file-scoped** command `git checkout -- {file}`. Never use a project-wide revert (`git reset`, bare `git checkout`).
 5. **Verify revert** — confirm `git diff {file}` is empty. If it is non-empty, record the mutation as **revert-failed**.
 
 Each mutation ends in exactly one outcome: **killed** (a test failed → no finding, internal only), **survived** (all tests passed → Major), **pre-check-failed** (Major), or **revert-failed** (Blocker, plus a working-tree-pollution warning printed to the user).
 
-### Revert-Failure Cascade
+#### Revert-Failure Cascade
 
 If a mutation is revert-failed, **continue** dispatching subsequent batches. The per-file pre-check on later batches naturally records any file left dirty by the failed revert as **pre-check-failed**, so the downstream effect stays visible rather than hidden.
 
-### Subagent Dispatch Contract
+#### Subagent Dispatch Contract
 
 Delegate the apply/test/revert/verify I/O to the write-capable cheap tier — the **`budget-subagent`** skill (per-harness binding; `model` and `subagent_type` resolved by the installed skill). This is the **only** place in `review.md` that uses a write-capable subagent; every other pass uses read-only `budget-explorer`. **Do not "normalize" it back to `budget-explorer`.**
 
