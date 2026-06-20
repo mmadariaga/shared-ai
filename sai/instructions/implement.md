@@ -286,6 +286,19 @@ MANDATORY: Save the implementation file to path:
   3. **Type-only scaffolding** (imports, union members, interfaces) strictly required for the test file to compile.
   Any logic that would make the test pass — the real implementation, algorithm, branching, or data mapping — MUST be deferred to the GREEN phase.
 
+## Code Quality Priority Stack
+
+When two good practices conflict, resolve the tension deterministically: the rule with the **lower number wins**. Apply the rules in this fixed priority order.
+
+1. **YAGNI** — Do not build behavior, abstraction, or configurability that the current change does not require. Speculative generality yields to the change actually in front of you.
+2. **SOLID (object-oriented designs only)** — Each unit has one reason to change; new behavior is added by extension without breaking existing callers; a caller depends only on the narrow interface it actually uses, not a concrete or over-wide one. State these as checkable properties of the code — never as the bare slogan "follow SOLID".
+3. **Self-documenting code** — Names and structure carry the intent so a reader follows the code without external context; comment only the non-obvious WHY.
+4. **Dependency ladder** — Prefer an already-installed project dependency over the standard library, and the standard library over a native platform feature. Do not add a new third-party dependency when any earlier rung already covers the need.
+5. **No boilerplate / DRY / deletion over addition / boring over clever** — Omit boilerplate unless it is the project standard; remove duplication; prefer deleting and rewriting over patching; choose the obvious single implementation path over a clever one.
+6. **Minimum surface area** — Ship the least code, configuration, and public API the change needs.
+
+**Project-alignment meta-rule (overrides the entire stack).** Alignment with the conventions and patterns of the surrounding codebase outranks every numbered rule above, subject to a minimum-violation budget: when following a numbered rule would diverge from an established pattern in the code being changed, follow the established pattern AND break the fewest additional numbered rules as possible. If honoring the pattern would itself require breaking a higher-priority numbered rule, the meta-rule does not apply unconditionally — choose the path that breaks the fewest total numbered rules.
+
 ## Contextual Intelligence
 
 Use the research findings to:
