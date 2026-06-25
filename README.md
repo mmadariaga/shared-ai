@@ -310,7 +310,7 @@ The **Copilot** column shows two model identifiers:
 
 | Command | Opencode | Claude Code | Copilot (VS Code) | Copilot (opencode) |
 |-------|----------|-------------|-------------------|--------------------|
-| explore | `opencode-go/qwen3.7-plus` | `claude-sonnet-4-6` medium | `GPT-5.4 (copilot)` | `github-copilot/gpt-5.4` |
+| explore | `opencode-go/minimax-m3` | `claude-sonnet-4-6` medium | `GPT-5.4 (copilot)` | `github-copilot/gpt-5.4` |
 | spec (1) | `opencode-go/minimax-m3` | `claude-sonnet-4-6` medium | `GPT-5.4 (copilot)` | `github-copilot/gpt-5.4` |
 | design (2) | `opencode-go/glm-5.2` | `claude-opus-4-8` high | `Claude Opus 4.8 (copilot)` | `github-copilot/claude-opus-4.8` |
 | implement (3) | `opencode-go/kimi-k2.6` | `claude-sonnet-4-6` high | `Claude Sonnet 4.6 (copilot)` | `github-copilot/claude-sonnet-4.6` |
