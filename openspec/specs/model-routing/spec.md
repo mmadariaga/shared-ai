@@ -19,6 +19,21 @@ Each command wrapper's YAML frontmatter `model` field SHALL reflect the currentl
 - **WHEN** the opencode `sai-2-design` wrapper is invoked
 - **THEN** the system SHALL use `opencode-go/glm-5.2` as the model
 
+#### Scenario: Opencode spec wrapper uses current model
+
+- **WHEN** the opencode `sai-1-spec` wrapper is invoked
+- **THEN** the system SHALL use `opencode-go/minimax-m3` as the model
+
+#### Scenario: Opencode backfill wrapper uses current model
+
+- **WHEN** the opencode `sai-backfill` wrapper is invoked
+- **THEN** the system SHALL use `opencode-go/minimax-m3` as the model
+
+#### Scenario: README model reference table reflects current assignments
+
+- **WHEN** a user consults the model reference table in `README.md`
+- **THEN** the `spec (1)` and `backfill` rows SHALL show `opencode-go/minimax-m3` for the Opencode column
+
 #### Scenario: Command registry lists all active wrappers
 
 - **WHEN** the `sai-commands` SKILL.md registry is loaded
