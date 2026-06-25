@@ -18,16 +18,8 @@
   ## Load behaviors (in order)
   Fetch @skills/budget/SKILL.md and use it
 
-  ## Load instructions (in order)
-  Fetch @sai/instructions/glossary-format.md
-  Fetch @sai/instructions/implement.md and follow those instructions exactly.
-  Fetch @sai/instructions/remember.md
-
-  ## Run
-  **User's request:** $ARGUMENTS
-
-  ## Completion
-  MANDATORY STOP: Once `openspec/changes/{change-name}/implementation.md` is written your work is COMPLETE. Do NOT execute any steps, run verification commands, mark any checkboxes, or modify any project file. That is sai-4-apply's job. STOP and print exactly: "Implementation plan done in openspec/changes/{name}/. Review and run `/sai-4-apply {name}` **in a new chat** when ready."
+  ## Invoke implementation
+  Fetch @sai/instructions/implement-invocation.md and follow it exactly (Load instructions, Run, Completion).
 </TASK>
 
 Follow instruction on <TASK> step by step

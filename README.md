@@ -336,7 +336,7 @@ The x-axis (cost) is usually more reliable, but again, do your own tests. Note t
 
 ![Intelligence vs Cost (Jun 2026)](Intelligence-vs-Cost-(17-Jun-'26).png)
 
-Another ranking of models focused on coding tasks: https://llm-stats.com/leaderboards/best-ai-for-coding
+Another ranking of models focused on front-end web development tasks: https://arena.ai/leaderboard/code/webdev
 
 ## Third Party Tools
 
