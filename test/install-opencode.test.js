@@ -29,13 +29,6 @@ test('installOpencode copies sai/instructions/*.md with Overwriting warn', () =>
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });
 
-test('installOpencode copies nested sai instruction files', () => {
-  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-'));
-  installOpencode(tmpDir);
-  assert.ok(fs.existsSync(path.join(tmpDir, 'sai', 'instructions', 'harness', 'copilot.md')), 'nested harness instruction should be copied');
-  fs.rmSync(tmpDir, { recursive: true, force: true });
-});
-
 test('installOpencode copies all Opencode-specific skills', () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-'));
   installOpencode(tmpDir);

@@ -7,5 +7,4 @@ model: Claude Opus 4.8 (copilot)
 ## Sai Design - 2
 
 Use the skill tool to load the fetch skill.
-Fetch @sai/instructions/harness/copilot.md and follow those instructions exactly.
 Fetch @sai/commands/sai-2-design.md and follow those instructions exactly.

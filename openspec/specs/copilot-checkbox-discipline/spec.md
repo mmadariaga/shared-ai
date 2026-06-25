@@ -2,7 +2,7 @@
 
 ### Requirement: Checkbox progress tracking
 
-The Copilot harness instructions (`sai/instructions/harness/copilot.md`) SHALL include a rule that instructs the agent to mark task checkboxes (convert `- [ ]` to `- [x]`) as each task is completed.
+The Copilot harness instructions (`sai/instructions/remember.md`) SHALL include a rule that instructs the agent to mark task checkboxes (convert `- [ ]` to `- [x]`) as each task is completed.
 
 #### Scenario: Agent completes a checkbox task
 

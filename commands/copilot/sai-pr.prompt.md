@@ -7,5 +7,4 @@ model: GPT-5 mini (copilot)
 ## Sai PR
 
 Use the skill tool to load the fetch skill.
-Fetch @sai/instructions/harness/copilot.md and follow those instructions exactly.
 Fetch @sai/commands/sai-pr.md and follow those instructions exactly.

@@ -53,7 +53,7 @@ The openspec-dependent `ai-*` commands halt with a clear error if either is miss
 | `sai/instructions/` | Phase content (Isolation Mode + TASK block). Fetched by wrappers. |
 | `sai/instructions/spec.propose.md` | Quality layer prepended to the `openspec-propose` skill by `ai-1-spec`. Collaboration style, cost discipline, research guide, scope reminder. |
 | `sai/instructions/remember.md` | Consolidated reminders appended by wrappers. |
-| `sai/instructions/prereqs.md` | Universal prerequisite check fetched first by all openspec-dependent sai-* wrappers. `sai-commit` is the only exception. |
+| `sai/instructions/prereqs.md` | Universal prerequisite check + OpenSpec path resolution guidance, fetched first by all openspec-dependent sai-* wrappers. `sai-commit` is the only exception. |
 | `sai/commands/` | Sai command body files fetched by wrappers at runtime. |
 | `skills/` | Universal skills installed globally (not project-local). Fetched by wrappers via `~/.claude/skills/` or `~/.config/opencode/skills/`. |
 | `skills/universal/sai-commands/SKILL.md` | SAI command registry — lists all /sai-* commands and enforces fetch-before-execute discipline. Loaded to prevent LLM from skipping command files. |

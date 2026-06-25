@@ -1,3 +1,5 @@
+> **RETIRED** — `sai/instructions/harness/copilot.md` has been removed. The OpenSpec path rules it once carried now live in `sai/instructions/prereqs.md`. The `commands/copilot/*.prompt.md` wrappers no longer fetch this file.
+
 # copilot-harness-instructions Specification
 
 ## Purpose

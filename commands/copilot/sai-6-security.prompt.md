@@ -7,5 +7,4 @@ model: GPT-5.4 (copilot)
 ## Sai Security - 6
 
 Use the skill tool to load the fetch skill.
-Fetch @sai/instructions/harness/copilot.md and follow those instructions exactly.
 Fetch @sai/commands/sai-6-security.md and follow those instructions exactly.

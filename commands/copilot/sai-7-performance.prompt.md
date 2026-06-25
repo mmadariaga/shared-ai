@@ -7,5 +7,4 @@ model: GPT-5.4 (copilot)
 ## Sai Performance - 7
 
 Use the skill tool to load the fetch skill.
-Fetch @sai/instructions/harness/copilot.md and follow those instructions exactly.
 Fetch @sai/commands/sai-7-performance.md and follow those instructions exactly.

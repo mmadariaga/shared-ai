@@ -14,3 +14,14 @@ When the implementation plan reaches a STOP & COMMIT marker, the agent SHALL app
 - **WHEN** the agent proposes a commit message at a STOP & COMMIT marker
 - **THEN** the proposed subject MUST follow `type(scope): description` format, be ≤ 50 characters, and every claim MUST map to staged hunks only
 
+### Requirement: Explicit permission gate at STOP & COMMIT
+When `apply.md` is executed and a STOP & COMMIT marker is encountered, the agent MUST ask the user for explicit per-invocation authorization before running `git commit`. Silently skipping the commit step is a spec violation.
+
+#### Scenario: User grants commit permission
+- **WHEN** the agent reaches a STOP & COMMIT marker and the user answers `y` to the proposed commit
+- **THEN** the agent runs `git commit` and reports the resulting SHA + subject
+
+#### Scenario: User declines or does not respond
+- **WHEN** the agent reaches a STOP & COMMIT marker and the user does not answer `y`
+- **THEN** the agent MUST NOT run `git commit`; MUST describe the staged changes and instruct the user to commit themselves
+

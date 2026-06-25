@@ -7,5 +7,4 @@ model: GPT-5 mini (copilot)
 ## Sai Archive
 
 Use the skill tool to load the fetch skill.
-Fetch @sai/instructions/harness/copilot.md and follow those instructions exactly.
 Fetch @sai/commands/sai-archive.md and follow those instructions exactly.

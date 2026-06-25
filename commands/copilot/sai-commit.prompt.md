@@ -7,5 +7,4 @@ model: GPT-5 mini (copilot)
 ## Sai Commit
 
 Use the skill tool to load the fetch skill.
-Fetch @sai/instructions/harness/copilot.md and follow those instructions exactly.
 Fetch @sai/commands/sai-commit.md and follow those instructions exactly.

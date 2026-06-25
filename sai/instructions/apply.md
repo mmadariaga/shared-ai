@@ -51,6 +51,17 @@ No skills are required by default. Load a skill only if the plan invokes it expl
     Document every deviation you encountered (e.g., methods that needed extra annotations, order-of-operations bugs discovered in the plan, tests removed because they were invalid, launcher changes, missing imports, etc.). Do not omit deviations just because they are small. If a step had zero deviations, do NOT add an empty entry — skip it.
 </workflow>
 
+## STOP & COMMIT Checklist
+
+Every `STOP & COMMIT` marker in `implementation.md` requires the same 4-step sequence — no exception, no shortcut:
+
+1. **Propose the commit message.** Follow the format rules in `@sai/instructions/commit-rules.md` (loaded in the next section). The message must describe only what is staged.
+2. **Ask explicitly.** Print in chat: `Ready to commit Step N. May I create commit with message: '<subject>'? (y/n)`. Do NOT run `git commit` before the user answers `y`.
+3. **Wait.** Stop here. Do not advance to the next step, do not run other git operations, do not start a subagent.
+4. **On `y` only** → run `git commit -m "..."` (or the HEREDOC form for multi-line) and report the resulting SHA + subject. **On anything else (n, silence, redirect)** → do NOT commit. Print: "Commit not authorized. The staged changes are: <summary>. Run `git commit` yourself when ready."
+
+This checklist overrides any directive in the plan that says "stage and commit". The plan describes the work; this checklist describes the commit gate.
+
 ## Git Operations
 
 Fetch @sai/instructions/commit-rules.md
