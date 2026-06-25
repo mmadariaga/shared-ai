@@ -202,9 +202,12 @@ The `<plan_template>` below applies to the **first-run generation path only**. O
 
 ## Prerequisites
 
-- Ensure branch is not master or main. Ask the user to select the branch to use:
-  1. `{feature-name}` (derived from the change name)
-  2. Custom branch name (free input — e.g., backlog-linked name like `JIRA-123-feature-name`)
+- Detect the current git branch with `git rev-parse --abbrev-ref HEAD` (or equivalent). If the command returns empty (detached HEAD), use the literal text `detached HEAD` for option 2.
+- Present exactly three options in the user's input language (English fallback), in this fixed order. Canonical English labels — translate to match the user's input language, preserving meaning and order:
+  1. `Suggest branch "{feature-name}"` — the change-name-derived branch (default).
+  2. `Stay on current branch "{current-branch}"` — the detected current branch, or `detached HEAD`.
+  3. `Enter branch name manually` — free text for a custom branch name.
+- No option is prohibited. The user bears full responsibility for the choice.
 - If the selected branch does not exist, create it from `main` before implementing.
 
 ### Step-by-Step Instructions
