@@ -21,6 +21,20 @@
   **User's request:** $ARGUMENTS
 
   ## Completion
+  Before printing the handoff prompt below, print a **decision summary (design phase)** derived exclusively from the artifacts just written (`design.md` and `tasks.md`) — never from prior conversation (Isolation Mode):
+
+  - **Decisions**: one line per decision from `design.md`'s Decisions section. Every `### D<n>` heading under `## Decisions` counts as one decision; sub-elements (`**ADR/DDR criteria**`, `**Alternatives considered**`, `**Chosen**`) are NOT separate decisions.
+  - **Risks**: one line per risk from `design.md`'s Risks / Trade-offs section. Each `- **[<Risk>]** → Mitigation:` entry counts as one risk.
+  - **Resolved Open Questions**: one line per open question resolved during the design phase (by codebase research or by the user). Omit this block entirely when none were resolved.
+
+  Rules:
+  - Every summary line SHALL trace to content in `design.md` or `tasks.md` just written; no information from prior conversation SHALL appear.
+  - Hard cap: the summary SHALL NOT exceed 15 non-blank lines (excluding blank separator lines).
+  - When decisions + risks + resolved-questions items exceed the cap, compress by trimming only the largest block(s) — preserve Decisions before Risks before Resolved Open Questions — and reserve one slot for a single trailing signal line `+N more — see openspec/changes/{name}/design.md` (N = count of omitted items). Silent drops are forbidden.
+  - When items fit within the cap, print exactly one line per item with no `+N more` signal.
+
+  Contract: the `design-quality` capability spec (`openspec/specs/design-quality/spec.md`).
+
   Once all artifacts are written, ask the user how to proceed to implementation:
   (a) **Stop for a new chat** — isolated; use a cheaper model for `/sai-3-implement {name}` (the standard pipeline path).
   (b) **Continue now in this chat** — create the implementation plan with the current model, keeping this design context. Note: this is cheaper than running an independent `/sai-3-implement` with the same model, but more expensive than using the default `/sai-3-implement` model — a good choice for complex implementations.
