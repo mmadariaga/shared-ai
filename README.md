@@ -313,10 +313,10 @@ The **Copilot** column shows two model identifiers:
 | explore | `opencode-go/minimax-m3` | `claude-sonnet-4-6` medium | `GPT-5.4 (copilot)` | `github-copilot/gpt-5.4` |
 | spec (1) | `opencode-go/minimax-m3` | `claude-sonnet-4-6` medium | `GPT-5.4 (copilot)` | `github-copilot/gpt-5.4` |
 | design (2) | `opencode-go/glm-5.2` | `claude-opus-4-8` high | `Claude Opus 4.8 (copilot)` | `github-copilot/claude-opus-4.8` |
-| implement (3) | `opencode-go/kimi-k2.6` | `claude-sonnet-4-6` high | `Claude Sonnet 4.6 (copilot)` | `github-copilot/claude-sonnet-4.6` |
-| implement-low (3) ¹ | `opencode-go/minimax-m3` | — | — | — |
-| implement-high (3) ¹ | `opencode-go/glm-5.2` | — | — | — |
-| apply (4) | `opencode-go/deepseek-v4-flash` | `claude-haiku-4-5` | `GPT-5.4 mini (copilot)` | `github-copilot/gpt-5.4-mini` |
+| implement (3) | `opencode-go/kimi-k2.6` | `claude-sonnet-4-6` high | `GPT-5.3-Codex (copilot)` | `github-copilot/gpt-5.3-codex` |
+| implement-low (3) ¹ | `opencode-go/minimax-m3` | — | — | `github-copilot/gpt-5.4-mini` |
+| implement-high (3) ¹ | `opencode-go/glm-5.2` | — | — | `github-copilot/claude-opus-4.8` |
+| apply (4) | `opencode-go/deepseek-v4-flash` | `claude-haiku-4-5` | `GPT-5 mini (copilot)` | `github-copilot/gpt-5-mini` |
 | review (5) | `opencode-go/qwen3.7-plus` | `claude-sonnet-4-6` high | `GPT-5.4 (copilot)` | `github-copilot/gpt-5.4` |
 | security (6) | `opencode-go/qwen3.7-plus` | `claude-opus-4-8` high | `GPT-5.4 (copilot)` | `github-copilot/gpt-5.4` |
 | performance (7) | `opencode-go/qwen3.7-plus` | `claude-sonnet-4-6` high | `GPT-5.4 (copilot)` | `github-copilot/gpt-5.4` |
@@ -334,7 +334,7 @@ This chart may help you identify which models to test. The intelligence axis is 
 
 The x-axis (cost) is usually more reliable, but again, do your own tests. Note that costs can vary depending on the provider — the same model may be priced differently across API providers, subscriptions, and regions.
 
-![Intelligence vs Cost (Jun 2026)](Intelligence-vs-Cost-(17-Jun-'26).png)
+![Intelligence vs Cost (Jul 2026)](Intelligence-vs-Cost-(2-Jul-'26).png)
 
 Another ranking of models focused on front-end web development tasks: https://arena.ai/leaderboard/code/webdev
 

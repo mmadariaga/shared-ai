@@ -1,7 +1,7 @@
 ---
 name: budget-subagent
 description: Cheap general-purpose subagent — file reads, searches, writes, and code analysis. Single-task scope with ~30-call soft cap and structured completion report.
-model: GPT-5.4 mini (copilot)
+model: GPT-5 mini (copilot)
 user-invocable: true
 tools:
   - search/codebase

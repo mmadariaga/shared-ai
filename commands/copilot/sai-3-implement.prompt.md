@@ -2,7 +2,7 @@
 description: Granular implementation plan — reads OpenSpec change artifacts (proposal/design/tasks), writes implementation.md with code, RED→GREEN, STOP & COMMIT markers, to openspec/changes/{name}/implementation.md.
 argument-hint: "[change-name]"
 agent: agent
-model: Claude Sonnet 4.6 (copilot)
+model: GPT-5.3-Codex (copilot)
 ---
 ## Sai Implement - 3
 
