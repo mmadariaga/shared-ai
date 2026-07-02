@@ -142,7 +142,7 @@ artifacts:
 
   - id: implementation
     generates: implementation.md
-    description: Granular implementation plan — code-level steps with RED→GREEN and STOP & COMMIT markers
+    description: Granular implementation plan — code-level steps with RED→GREEN and STOP & COMMIT markers, with Discarded findings sub-blocks inside audit steps derived from review.md / security.md / performance.md / accessibility.md
     template: implementation.md
     instruction: |
       Create implementation.md — a step-by-step plan ready for cheap-model execution.
