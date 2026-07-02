@@ -60,7 +60,31 @@ Read the full content of `proposal.md`, `design.md`, `tasks.md`, and all `specs/
 - Extract and internalize the Expertise Profile from `## Implementation Context` in `tasks.md`
 - If `## Implementation Context` is missing entirely, STOP per the STOP condition above.
 
-**Exception (audit artifacts):** Check whether any of `review.md`, `security.md`, `performance.md`, or `accessibility.md` exist in `openspec/changes/{change-name}/`. For each one that exists, read it and extract all actionable findings or suggested changes. These will be appended as additional steps at the end of `implementation.md` last step — one step per artifact, titled e.g. `Step N: Address review findings`, `Step N+1: Address security findings`, etc. Do not merge them with existing steps.
+**Exception (audit artifacts):** Check whether any of `review.md`, `security.md`, `performance.md`, or `accessibility.md` exist in `openspec/changes/{change-name}/`. For each one that exists, read it and apply the **Judgment Rubric for Audit Findings** (see below) to every finding, classifying each as Apply or Discard. The classified results are appended as additional steps at the end of `implementation.md` — one step per artifact, titled e.g. `Step N: Address review findings`, `Step N+1: Address security findings`, etc. Each appended step contains the Apply code actions and the Discarded findings sub-block side by side (the Discarded sub-block lives INSIDE the same step, not as a separate step). Do not merge them with existing steps.
+
+### Judgment Rubric for Audit Findings
+
+The rubric is defined normatively in `openspec/specs/audit-artifact-ingestion/spec.md`; this section is its operational restatement. Both Step 2's audit-reading exception and Step 5's first-run generation path / "Append audit-derived steps" sub-section invoke this rubric before appending any audit-derived step.
+
+For every finding in an existing audit artifact (`review.md`, `security.md`, `performance.md`, `accessibility.md`), evaluate all five criteria and classify the finding as **Apply** or **Discard**:
+
+1. **Severity** — does the finding rise to Blocker/Major (review.md) or Critical/High (security/performance/accessibility), or is it a non-issue?
+2. **Actionability** — is the proposed fix specific enough to implement as a concrete file:line change, or is it a vague suggestion?
+3. **Spec-decision consistency** — does the finding contradict a decision in `design.md` or a requirement in `specs/**/*.md`?
+4. **Duplication** — does the finding repeat another finding already addressed in an earlier step of `implementation.md`?
+5. **Scope** — does the finding stay within the change's declared scope, or does it propose out-of-scope work?
+
+The Apply/Discard classification SHALL follow from the rubric outcome, not from gut feel.
+
+- **Apply** findings are rendered as concrete code-writing checkboxes (file:line location + specific change) inside the appended audit step — the same kind of code-writing checkboxes `<plan_template>` uses elsewhere in `implementation.md`.
+- **Discard** findings appear in a **Discarded findings sub-block** inside the same appended step (not a separate step). Each entry uses the format:
+  `**{id}** — {one-sentence reason} (source: {artifact} § {category} {id})`
+- **Question (Q) findings** (only `review.md` has a Questions category) are auto-discarded with the reason `requires user response, not a code change`. The full Q text SHALL be transcribed verbatim beneath the entry line so the user can answer in chat. Q findings SHALL NOT be rendered as Apply code actions under any circumstance.
+- **Informational findings** in `security.md` / `performance.md` / `accessibility.md` are NOT auto-discarded — they go through the normal rubric like any other finding. (Only `review.md` Questions are auto-discarded; `security.md` has no Informational tier, while `performance.md` and `accessibility.md` do.)
+
+After generating an appended audit step, the agent SHALL print the list of Discarded findings to chat (one line per Discard, plus the verbatim Q text for any Q Discard) and ask the user to confirm or override before `/sai-4-apply` starts. Confirmation is conversational in chat only — the agent SHALL NOT write any approval key to `.openspec.yaml` and SHALL NOT introduce a new approval gate for Discards.
+
+When every finding in an artifact is Discard, the appended step SHALL still exist, containing only the Discarded findings sub-block and a single `- [ ] No code changes from this audit` checkbox (no Apply code actions). The user closes the step by checking that box.
 
 ### Step 3: Validate Design Decisions for ADR/DDR
 
@@ -113,6 +137,7 @@ If a listed document is missing or contradicts the declared stack, STOP and requ
       - **Valid RED failure** = the test runner exits non-zero AND the failure is an assertion failure attributable to the missing/incomplete code under test (assertion mismatch, expected vs actual, raised wrong exception). It is NOT a valid RED if the failure is a setup/import/compilation error, a missing dependency, a syntax error in the test file itself, or any error unrelated to the behaviour being asserted. If the only way to make the test fail is by referencing a symbol that does not yet exist, scaffold a minimal stub that exposes the symbol and returns/raises the wrong value, so the failure is a proper assertion failure.
       - If a step is NOT testable (config changes, migrations, scaffolding), skip RED/GREEN and use the standard format.
       - Include both RED and GREEN verification commands in the Verification Checklist.
+- **Audit artifacts on a first run (rare):** If any of `review.md`, `security.md`, `performance.md`, `accessibility.md` exists in `openspec/changes/{change-name}/`, append one audit step per existing artifact after the last `<plan_template>`-derived step, invoking the **Judgment Rubric for Audit Findings** and emitting the Apply code actions + Discarded findings sub-block. No slot is added to `<plan_template>` — audit steps are generated dynamically (see D1 in `design.md`). Number the first audit step strictly after the highest `#### Step N:` number in the generated plan; continue N+2, N+3, … for subsequent artifacts.
 
 #### Re-run preservation path
 
@@ -154,10 +179,13 @@ After preservation, for each audit artifact that exists in `openspec/changes/{ch
 
 - Number the first appended step strictly after the **highest** existing `#### Step N:` number found in the prior file (scan every `#### Step N:` heading, so out-of-order or orphan headings still yield the correct N+1). Subsequent appended steps continue N+2, N+3, …
 - Each appended step is dedicated to a single artifact and MUST NOT be merged into an existing step (e.g., `#### Step 7: Address review findings`, `#### Step 8: Address security findings`).
+- For every finding in the artifact, invoke the **Judgment Rubric for Audit Findings** and classify it as Apply or Discard. The appended step contains the Apply code actions and the Discarded findings sub-block side by side — the Discarded sub-block lives INSIDE the same step, not as a separate step.
+- **All-Discarded case:** when every finding in an artifact is Discard, the appended step SHALL still exist, containing only the Discarded findings sub-block and a single `- [ ] No code changes from this audit` checkbox (no Apply code actions). The user closes the step by checking that box.
+- **Chat confirmation:** after generating each appended step, print the list of Discarded findings to chat (one line per Discard, plus the verbatim Q text for any Q Discard) and ask the user to confirm or override before the plan is considered final. Confirmation is conversational in chat only — do NOT write any approval key to `.openspec.yaml` and do NOT introduce a new approval gate.
 - When an audit artifact's finding references an already-compacted step, address it as a **new appended step** whose text references the original step number. Do NOT re-open or modify the compacted step the finding names.
 - If none of the four audit artifacts exist, append nothing — the preserved file stands as-is.
 
-Do NOT add audit-step dedup logic. Idempotency across repeated audit-loop passes is out of scope — append one new step per existing artifact each re-run, exactly as the spec contract states.
+Do NOT add audit-step dedup logic. Idempotency across repeated audit-loop passes is out of scope — append one new step per existing artifact each re-run, exactly as the spec contract states. The judgment is re-exercised on every re-run; judgment is not idempotent w.r.t. the audit artifact, so two re-runs against the same unchanged artifact may produce slightly different Apply/Discard lists.
 
 <research_task>
 
