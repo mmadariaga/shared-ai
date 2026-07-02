@@ -58,7 +58,7 @@ All artifact paths below resolve under `openspec/changes/{change-name}/` (referr
 
 | Command | Purpose |
 |---------|---------|
-| `/sai-explore` | Open-ended thinking session before committing to anything — good for fuzzy requirements, unclear trade-offs, or when you just want to think out loud with the AI. |
+| `/sai-explore` | Open-ended thinking session before committing to anything — good for fuzzy requirements, unclear trade-offs, or when you just want to think out loud with the AI. When a feature is too big for one reviewable change, it slices the idea into a Walking Skeleton plus a dependency-ordered backlog, each ready to enter the pipeline as its own change. |
 | `/sai-commit` | Reads your staged changes and writes a clean, structured commit message. Runs `git commit` only after you explicitly approve. |
 | `/sai-pr` | Drafts a complete PR description using everything produced during the change (proposal, design, review findings, etc.). Opens the PR on GitHub after you approve. |
 | `/sai-archive` | Moves a completed change to the archive, keeping your active changes folder clean. |
