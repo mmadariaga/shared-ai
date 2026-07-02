@@ -67,22 +67,25 @@ All artifact paths below resolve under `openspec/changes/{change-name}/` (referr
 ## Typical usage
 
 ```
+/sai-explore                                 # debate the idea before committing to anything
+                                             # → sai-explore hands you the exact prompts
+                                             #   to paste into /sai-1-spec
+                                             # → keep this chat open: you can lean on it
+                                             #   to review the artifacts from /sai-1-spec
+                                             #   and /sai-2-design as you go
+
 /sai-1-spec Add OAuth2 authentication        # creates change "oauth2-auth"
-                                             # → review specs, confirm approval
+                                             # → review proposal & specs, confirm approval
 
 /sai-2-design oauth2-auth                    # generates design.md + tasks.md
+                                             # → review design & tasks
 
 /sai-3-implement oauth2-auth
-/sai-4-apply oauth2-auth
+/sai-4-apply oauth2-auth                     # asks for permission to commit as it completes each step
 
 ############################################################
-# git add ... && /sai-commit
-#
-# OR
-#
-# let /sai-4-apply do the commits
+# Review
 ############################################################
-
 /sai-5-review oauth2-auth
 
 ############################################################
@@ -94,6 +97,7 @@ All artifact paths below resolve under `openspec/changes/{change-name}/` (referr
 
 ############################################################
 # ...iterate as needed...
+# Usually /sai-3-implement & /sai-4-apply one last time
 ############################################################
 
 /sai-archive oauth2-auth
