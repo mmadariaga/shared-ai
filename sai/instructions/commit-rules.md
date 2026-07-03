@@ -44,6 +44,66 @@ Pick exactly one Conventional Commits type, in this priority order:
 - `Refs: #123` / `Closes: #123` if the user mentions an issue or it appears in branch name
 - **No `Co-Authored-By` or "Generated with Claude Code" trailers** unless the user explicitly requests them
 
+## Repo Commit-Style Detection Rubric
+
+Before classifying and composing, measure the repository's recent commit history
+against the Conventional Commits shape to decide whether to adopt the established
+vocabulary or fall back to the hard-coded rules in this file.
+
+**Conventional Commits shape:** `^<type>(\(<scope>\))?: <subject>$`
+
+**Scan window:** `N = 20` — the last 20 commits. *(Fixed value declared in this
+rubric; adjust by editing this line, not via a runtime flag.)*
+
+**Adoption threshold:** `70%`. *(Fixed value declared in this rubric; adjust by
+editing this line, not via a runtime flag.)*
+
+From the last `N` commits, compute four measures:
+
+1. **Match rate** — fraction of subjects matching the Conventional Commits shape.
+2. **Type & scope vocabulary** — the distinct types (e.g. `feat`, `fix`, `docs`)
+   and scopes actually used.
+3. **Body-presence rate** — fraction of commits with a non-empty body.
+4. **Recurring body section headers** — repeated body lines such as
+   `Spec changes:`, `Instruction changes:`, `Archived:`, `Includes backfilled`,
+   `Refactored … to`. These are **body section headers, not git trailers**: they
+   MAY be mirrored, and are distinct from the forbidden `Co-Authored-By` /
+   "Generated with Claude Code" git trailers, which remain banned unconditionally
+   (see Hard Rules).
+
+### Adoption branch (match rate ≥ 70%)
+
+Adopt the detected style when composing:
+
+- Prefer a detected **type** only to break a genuine tie when the staged diff does
+  not clearly dictate one. A type the staged diff clearly dictates is **never**
+  overridden by the dominant detected type.
+- Prefer a detected **scope** that maps to the changed path prefix of the staged
+  files over an invented scope.
+- Mirror the detected **body/footer style** (bulleted bodies and recurring body
+  section headers) when a body is emitted.
+
+Adoption never relaxes faithfulness: every claim must still map to a staged hunk,
+and detected vocabulary never introduces content absent from `git diff --cached`.
+
+### Fallback branch (match rate < 70%)
+
+Compose using only the hard-coded classification, subject, body, and footer rules
+in this file — they are the sole source of truth. Apply no detected type, scope,
+or body style.
+
+### Precedence: flags and hard limits override detected style
+
+- Explicit user flags always win: `--type` / `--scope` override any detected
+  type/scope, `--no-body` suppresses a body even when the detected style uses
+  bodies, and `--amend` keeps its current semantics.
+- The hard limits hold under adoption exactly as under fallback: subject ≤ 50
+  characters, body wrapped at 72, no emoji unless explicitly requested, and no
+  `Co-Authored-By` / "Generated with Claude Code" trailers unless explicitly
+  requested. If a mirrored body/subject would exceed a hard limit or add a
+  forbidden trailer, enforce the limit and omit the trailer, adjusting the
+  mirrored style to comply.
+
 ## Hard Rules
 
 - **Never stage or unstage files.** Operate only on what is already staged.
@@ -57,7 +117,7 @@ Pick exactly one Conventional Commits type, in this priority order:
 - **No `Co-Authored-By` / "Generated with Claude Code" trailers** unless the user explicitly asks.
 - **No emoji** unless the user explicitly asks.
 - **No speculation.** Every claim must map to a staged hunk.
-- **Match the repo's commit style.** If recent commits use a particular convention (scope naming, ticket refs, language), match it.
+- **Match the repo's commit style** per the Repo Commit-Style Detection Rubric above — apply the adoption branch (match rate ≥ 70%) or the fallback branch (match rate < 70%) rather than treating this as advisory only.
 
 ## Self-Critique Checklist
 
@@ -67,5 +127,5 @@ Verify:
 3. **Body wrap** — 72 chars per line if body present.
 4. **Faithfulness** — every claim backed by `git diff --cached`.
 5. **No anticipated work** in the message.
-6. **Repo convention match** — prefix style, scope naming, language consistent with recent commits.
+6. **Repo convention match** — applied the correct rubric branch: adoption (match rate ≥ 70%: detected type/scope/body vocabulary) or fallback (match rate < 70%: hard-coded rules) per the detection rubric — not a free-form "consistent with recent commits" judgement.
 7. **Secrets check** — no obvious secret-looking files in staging without warning.
