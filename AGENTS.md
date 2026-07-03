@@ -181,6 +181,15 @@ Existing projects with `plans/{feature-name}/` artifacts are **not migrated auto
 2. If it changes a per-phase artifact path, update the corresponding wrapper REPLACEMENT block (`sai-3-implement.md`, `sai-4-apply.md`) and the AGENTS.md artifact table above.
 3. If the recommended model changes, update the wrappers in `commands/claude/` and `commands/opencode/`.
 
+### Change picker
+Ten `sai-*` commands consume an OpenSpec change name via `$ARGUMENTS`: `sai-2-design`, `sai-3-implement`, `sai-4-apply`, `sai-5-review`, `sai-6-security`, `sai-7-performance`, `sai-8-accessibility`, `sai-archive`, `sai-pr`, `sai-backfill`. When `$ARGUMENTS` is empty, each fetches the shared `sai/instructions/change-picker.md` to resolve a change name before proceeding — never duplicate its 0/1/N logic inline. `sai-1-spec` is excluded (it creates a new change, not consumes one).
+
+Placement depends on command shape:
+- **8 commands** (`sai-2-design`, `sai-5-review`, `sai-6-security`, `sai-7-performance`, `sai-8-accessibility`, `sai-archive`, `sai-pr`, `sai-backfill`): fetch it as the first line under `## Load instructions (in order)`, before the first existing fetch.
+- **2 commands** (`sai-3-implement`, `sai-4-apply`): fetch it at the very top of the `<TASK>` block, before `## Prerequisite checks` — because their own "Also verify" block dereferences `{change-name}` inside `## Prerequisite checks`, which runs before `## Load instructions`.
+
+When adding a new change-consuming command, check whether it dereferences `{change-name}` inside its own `## Prerequisite checks` before picking a placement.
+
 ### Add a new command
 1. Create the instruction in `sai/instructions/{name}.md` with Isolation Mode + TASK block (or, for openspec-backed commands, write a wrapper that fetches a skill).
 2. Create wrappers in `commands/claude/sai-{name}.md` and `commands/opencode/sai-{name}.md`.
