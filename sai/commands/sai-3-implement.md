@@ -6,6 +6,8 @@
 
 <TASK>
 
+  Fetch @sai/instructions/change-picker.md and follow it exactly.
+
   ## Prerequisite checks
   Fetch @sai/instructions/prereqs.md
 
