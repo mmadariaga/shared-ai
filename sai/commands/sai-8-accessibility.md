@@ -13,6 +13,7 @@
   Fetch @skills/budget/SKILL.md and use it
 
   ## Load instructions (in order)
+  Fetch @sai/instructions/change-picker.md and follow it exactly.
   Fetch @sai/instructions/accessibility.md and follow those instructions exactly.
   Fetch @sai/instructions/remember.md
 
