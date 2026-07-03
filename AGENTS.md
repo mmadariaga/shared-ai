@@ -81,7 +81,7 @@ sai-* commands prepend shared-AI behaviors (glossary-format, spec.propose) and t
 All sai-* artifacts (`implementation.md`, `review.md`, `security.md`, `performance.md`, `accessibility.md`, `pr.md`) write to `openspec/changes/{change-name}/`. The legacy `plans/` directory is **not used** by the new pipeline.
 
 ### Prerequisite check
-All openspec-dependent sai-* commands (`sai-explore`, `sai-1-spec`, `sai-2-design`, `sai-3-implement` (plus its opencode-only `-low`/`-high` variants), `sai-4-apply`, `sai-archive`, `sai-5-review`, `sai-6-security`, `sai-7-performance`, `sai-8-accessibility`, `sai-pr`) perform three checks via `Fetch @~/.claude/sai/instructions/prereqs.md` (Claude) or `Fetch @~/.config/opencode/sai/instructions/prereqs.md` (OpenCode): (1) `openspec` binary in PATH, (2) `openspec/` directory exists, (3) `openspec/config.yaml` declares `schema: sai-workflow`. `sai-commit` is the only exception — it operates on git state only and works in projects without openspec.
+All openspec-dependent sai-* commands (`sai-explore`, `sai-1-spec`, `sai-2-design`, `sai-3-implement`, `sai-4-apply`, `sai-archive`, `sai-5-review`, `sai-6-security`, `sai-7-performance`, `sai-8-accessibility`, `sai-pr`) perform three checks via `Fetch @~/.claude/sai/instructions/prereqs.md` (Claude) or `Fetch @~/.config/opencode/sai/instructions/prereqs.md` (OpenCode): (1) `openspec` binary in PATH, (2) `openspec/` directory exists, (3) `openspec/config.yaml` declares `schema: sai-workflow`. `sai-commit` is the only exception — it operates on git state only and works in projects without openspec.
 
 ### Isolation Mode
 Every `sai/commands/sai-*.md` body file starts with:
@@ -158,7 +158,7 @@ openspec/changes/{change-name}/
 ├── specs/**/*.md       # sai-1-spec  (via opsx:propose — specs phase)
 ├── design.md           # sai-2-design (via opsx:continue — gated on specs approval)
 ├── tasks.md            # sai-2-design (via opsx:continue — gated on specs approval)
-├── implementation.md   # sai-3-implement (granular plan; opencode-only -low/-high variants)
+├── implementation.md   # sai-3-implement (granular plan)
 ├── review.md           # sai-5-review
 ├── security.md         # sai-6-security      (required; N/A justification if not applicable)
 ├── performance.md      # sai-7-performance   (required; N/A justification if not applicable)
@@ -191,8 +191,6 @@ Existing projects with `plans/{feature-name}/` artifacts are **not migrated auto
 
 ### Mirror discipline
 Any change to `commands/claude/` MUST be mirrored to `commands/opencode/` in the same commit (and vice versa). Enforce via PR checklist.
-
-**Exception — model variants:** a harness may offer extra wrappers for the same command at different model tiers (e.g. `commands/opencode/sai-3-implement-low.md`, `sai-3-implement-high.md`). These are not mirrored to other harnesses; they exist only where the provider ecosystem justifies them. The canonical wrapper (`sai-3-implement.md`) stays mirrored.
 
 ### Format conventions
 - Never use `any` in TypeScript (even though there is no TS here, it applies to code examples in instructions).

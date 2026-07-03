@@ -318,8 +318,6 @@ The **Copilot** column shows two model identifiers:
 | spec (1) | `opencode-go/minimax-m3` | `claude-sonnet-4-6` medium | `GPT-5.4 (copilot)` | `github-copilot/gpt-5.4` |
 | design (2) | `opencode-go/glm-5.2` | `claude-opus-4-8` high | `Claude Opus 4.8 (copilot)` | `github-copilot/claude-opus-4.8` |
 | implement (3) | `opencode-go/kimi-k2.6` | `claude-sonnet-4-6` high | `GPT-5.3-Codex (copilot)` | `github-copilot/gpt-5.3-codex` |
-| implement-low (3) ¹ | `opencode-go/minimax-m3` | — | — | `github-copilot/gpt-5.4-mini` |
-| implement-high (3) ¹ | `opencode-go/glm-5.2` | — | — | `github-copilot/claude-opus-4.8` |
 | apply (4) | `opencode-go/deepseek-v4-flash` | `claude-haiku-4-5` | `GPT-5 mini (copilot)` | `github-copilot/gpt-5-mini` |
 | review (5) | `opencode-go/qwen3.7-plus` | `claude-sonnet-4-6` high | `GPT-5.4 (copilot)` | `github-copilot/gpt-5.4` |
 | security (6) | `opencode-go/qwen3.7-plus` | `claude-opus-4-8` high | `GPT-5.4 (copilot)` | `github-copilot/gpt-5.4` |
@@ -329,8 +327,6 @@ The **Copilot** column shows two model identifiers:
 | pr | `opencode-go/deepseek-v4-flash` | `claude-haiku-4-5` | `GPT-5 mini (copilot)` | `github-copilot/gpt-5-mini` |
 | backfill | `opencode-go/minimax-m3` | `claude-sonnet-4-6` medium | `GPT-5.4 (copilot)` | `github-copilot/gpt-5.4` |
 | archive | `opencode-go/deepseek-v4-flash` | `claude-haiku-4-5` | `GPT-5 mini (copilot)` | `github-copilot/gpt-5-mini` |
-
-> ¹ `implement-low` and `implement-high` are **opencode-only** model variants of `implement (3)`. Other harnesses use the single `implement (3)` wrapper.
 
 ### Choosing a model
 
