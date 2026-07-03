@@ -296,7 +296,20 @@ For step-by-step manual installation without npx:
 
 ## Per project installation / override
 
-Per-project commands are still possible via `.opencode/commands/`, `.claude/commands/`, or `.github/prompts/` at the repo root — useful when a project needs specific variants. Globals act as a base; locals override by name.
+Per-project commands are still possible: a file placed in a harness's project-local command folder at the repo root overrides the user-global wrapper of the same name. Globals act as a base; project-local files override them by filename.
+
+| Harness | Project-local command folder |
+|---------|------------------------------|
+| opencode | `.opencode/commands/` |
+| Claude Code | `.claude/commands/` |
+| GitHub Copilot (VS Code) | `.github/prompts/` |
+
+Two override patterns are supported:
+
+- **Swap a wrapper's model for one project** — copy the canonical wrapper (e.g. `sai-3-implement`) into your harness's folder above and edit its `model` field. The project-local copy takes precedence over the global.
+- **Create a custom variant command** — copy the canonical wrapper into the folder under a new name (e.g. `sai-3-implement-opus`, `sai-3-implement-gpt`) and set its `model` field. This is the supported replacement for the removed upstream `-low`/`-high` implement variants.
+
+See each harness's `INSTALL.<harness>.md` for a concrete, harness-specific example.
 
 ## Post Install
 
