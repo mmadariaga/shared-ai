@@ -20,7 +20,7 @@ No skills are required by default. Load a skill only if the plan invokes it expl
 - When the subagent returns its report (see "## Subagent Report Contract" below), process it in this fixed order — the coordinator's own re-verification (step 1) MUST pass before either checkbox marking (step 4) or the commit proposal (STOP & COMMIT, below):
     1. **Coordinator verification.** Re-run the Step's Verification Checklist yourself — quiet confirmation only (the automated checks), not the RED→GREEN cycle or the read-before-write reads. If your own re-run disagrees with what the subagent reported, do NOT mark checkboxes and do NOT propose a commit — surface the discrepancy to the user instead.
     2. **Incorporate learnings.** Immediately after a matching verification pass, add the report's technical-learnings entries (if any) to the accumulated learnings memory (see "## Technical Learnings Memory" below).
-    3. **Human Verification gate.** If the Step has Human Verification checks, present them to the user and wait — do NOT mark any of them `[x]` until the user confirms they have reviewed.
+    3. **Human Verification gate.** If the Step's Human section contains at least one `- [ ]` checkbox, present those checks to the user and wait — do NOT mark any of them `[x]` until the user confirms they have reviewed. The gate keys on checkbox count, not on the presence of a `**Human (...)**` header: if the Human section contains zero `- [ ]` checkboxes (for example it holds only an italic explanatory note), or the Step has no Human section, this gate does not apply — proceed directly to the commit proposal after automated checks pass.
     4. **Mark checkboxes.** Once verification passed and (if applicable) the user confirmed Human Verification, mark all of that Step's checkboxes `[x]` in `openspec/changes/{change-name}/implementation.md` in one batched update — per Step, not per item. This supersedes the general "mark each item immediately, do not batch" default for `sai-4-apply` only.
     5. **Deviations appendix.** Append the report's deviations (if any) per the format below. This must happen before the coordinator commits, so the appendix entry lands in the same commit as the changes it describes.
 - If the subagent's report indicates "STOP reached? = yes" (it halted mid-Step at a STOP & COMMIT marker in the Step's own body), treat the work reported so far exactly as reaching that Step's STOP & COMMIT: run the checklist below for what was completed.
@@ -117,7 +117,7 @@ Example workflow:
 2. Receive the subagent's report (7 fields — see "## Subagent Report Contract")
 3. Re-run the Step's Verification Checklist yourself (Automated checks); on a mismatch with the report, stop and surface the discrepancy instead of continuing
 4. Incorporate the report's technical learnings into the coordinator's memory
-5. If the step has Human Verification checks: present the checklist to the user and wait — do NOT mark them yet
+5. If the step's Human section has ≥1 `- [ ]` checkbox: present the checklist to the user and wait — do NOT mark them yet. If it has zero `- [ ]` checkboxes (italic note only) or there is no Human section: skip this gate and proceed to the commit proposal
 6. If the user confirms they have reviewed and asks to continue (or the step had no Human Verification checks), mark all of that Step's checkboxes `[x]` in the plan in one batched update, and append any reported deviations to the plan's appendix
 7. "Ready to commit Step N. May I create commit with message: '...'?" → Wait for approval
 8. If yes → Create commit
