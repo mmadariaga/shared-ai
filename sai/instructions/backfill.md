@@ -93,11 +93,14 @@ Only after Phases 1–4 complete with no abort and a confirmed change name, crea
 
 ### 5a. Create `.openspec.yaml`
 
+> The ".openspec.yaml" written in this phase MUST contain exactly three keys: `schema`, `created`, and `backfilled: true`. The `backfilled` key is mandatory for every backfill run.
+
 Write `openspec/changes/{name}/.openspec.yaml`:
 
 ```yaml
 schema: sai-workflow
 created: {ISO-8601 datetime, e.g. 2026-05-21T14:30:00Z}
+backfilled: true
 ```
 
 ### 5b. Create `proposal.md`
