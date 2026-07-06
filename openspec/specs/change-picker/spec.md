@@ -59,4 +59,4 @@ The change-picker logic SHALL live in exactly one file, `sai/instructions/change
 
 #### Scenario: Picker updated once, applies everywhere
 - **WHEN** `sai/instructions/change-picker.md` is edited
-- **THEN** every command body that fetches it (`sai-2-design`, `sai-3-implement`, `sai-4-apply`, `sai-5-review`, `sai-6-security`, `sai-7-performance`, `sai-8-accessibility`, `sai-archive`, `sai-pr`, `sai-backfill`) reflects the change without any of those command bodies being edited
+- **THEN** every command body that fetches it (`sai-2-design`, `sai-3-implement`, `sai-4-apply`, `sai-5-review`, `sai-6-security`, `sai-7-performance`, `sai-8-accessibility`, `sai-archive`, `sai-pr`) reflects the change without any of those command bodies being edited. `sai-backfill` is the only `sai-*` command that previously fetched the picker and now does not; it is excluded from this list because `/sai-backfill` creates changes from a diff and therefore has its own name-resolution flow (`sai/instructions/backfill.md` STOP Conditions and Phase 4).
