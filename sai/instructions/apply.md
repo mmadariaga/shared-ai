@@ -88,14 +88,47 @@ The coordinator holds an accumulated technical-learnings memory across Steps, he
 
 After incorporating a Step's learnings (workflow step 2 above), select only the entries relevant to the next Step being dispatched and inject those into its prompt. Never dump the full memory into a dispatch — that would reintroduce the execution noise the delegation is designed to avoid.
 
+## Pre-commit File Visibility Report
+
+At every STOP & COMMIT marker, the coordinator SHALL print a structured pre-commit file visibility report **before** proposing the commit message. The report is mandatory — there is no opt-out flag, and skipping it is a spec violation.
+
+The report is sourced from three inputs read in order:
+
+1. `git status` (full, with untracked files) — to know which paths exist in the working tree.
+2. `git diff --cached --stat` — to know which paths are staged, with `+N -M` line counts per file and total stats.
+3. The subagent's report field 8 (`Files modified`) — to know what the subagent claims to have changed in its own context.
+
+The report SHALL contain, in this fixed order:
+
+1. A header line with the change name, the Step number `N`, and the overall status letter (one of `OK`, `WARN`, `MISMATCH`, `DEVIATION`).
+2. A human-readable status line summarising what the letter means (e.g. "All changes staged match the plan", "1 unstaged file present", "Subagent reported 3 files; git shows 5 — see mismatch section").
+3. A `Staged` block listing each staged path with its `+N -M` count, one per line, paths relative to repo root. For renames (git status shows `R  old -> new`), format as a single line `R  <new-path>  (renamed from <old-path>, +N -M)` rather than two separate entries.
+4. A `Totals` line in the format `Totals: <N> files, +<ins> -<del>` summing insertions and deletions across staged files.
+5. An `Unstaged (will NOT be committed)` block listing any unstaged, untracked, or otherwise-not-staged paths from `git status`, one per line. If there are none, the block is omitted entirely.
+6. A `Plan cross-check` block: a `Missing` sub-list of paths declared in the matching tasks.md step's `**Files Affected**` line that have no matching entry in `git status` (neither staged nor unstaged), and an `Extra` sub-list of paths present in `git status` (staged or unstaged) that are not declared in the matching tasks.md step's `**Files Affected**`. The lookup matches the integer `N` from the current implementation.md `## Step N — <title>` heading to the integer `N` of the tasks.md `## Step N: <title>` heading. The implementation.md template's `**Task ref:**` value is NOT the lookup key. If both sub-lists are empty, the block prints `No deviations`. If no tasks.md step with that integer exists, the block prints `Plan scope not declared — cross-check skipped`. If the matching tasks.md step's `**Files Affected**` value is empty (or only a placeholder), the block prints `Plan scope empty — cross-check skipped`. In both skip cases, the status letter is not downgraded to `DEVIATION` solely on that basis.
+7. A `Subagent ↔ git` block: when the subagent's `Files modified` set differs from the union of staged + unstaged paths in `git status`, the block lists paths present in one set and not the other, prefixed with `only-in-subagent:` or `only-in-git:`. When the sets are equal, the block prints `In sync`.
+
+The report SHALL NOT include a diff preview, full file contents, or tracebacks.
+
+### Malformed subagent report
+
+If the subagent's report omits field 8 (`Files modified`) or returns it as empty, the coordinator SHALL treat the report as malformed and surface that to the user explicitly. The coordinator SHALL NOT guess or fabricate the file list from `git status` alone when the subagent failed to provide it. In this case, print:
+
+```
+Subagent report missing field 8 (Files modified). Cannot produce a reliable pre-commit report. Review the staged state manually before committing.
+```
+
+and pause for the user before proposing the commit message.
+
 ## STOP & COMMIT Checklist
 
-Every `STOP & COMMIT` marker in `implementation.md` requires the same 4-step sequence — no exception, no shortcut:
+Every `STOP & COMMIT` marker in `implementation.md` requires the same 5-step sequence — no exception, no shortcut:
 
-1. **Propose the commit message.** Follow the format rules in `@sai/instructions/commit-rules.md` (loaded in the next section). The message must describe only what is staged.
-2. **Ask explicitly.** Print in chat: `Ready to commit Step N. May I create commit with message: '<subject>'? (y/n)`. Do NOT run `git commit` before the user answers `y`.
-3. **Wait.** Stop here. Do not advance to the next step, do not run other git operations, do not start a subagent.
-4. **On `y` only** → run `git commit -m "..."` (or the HEREDOC form for multi-line) and report the resulting SHA + subject. **On anything else (n, silence, redirect)** → do NOT commit. Print: "Commit not authorized. The staged changes are: <summary>. Run `git commit` yourself when ready."
+1. **Print the pre-commit file visibility report** per the `## Pre-commit File Visibility Report` section above. This step is mandatory and runs unconditionally so the user has the file list before being asked to authorize.
+2. **Propose the commit message.** Follow the format rules in `@sai/instructions/commit-rules.md` (loaded in the next section). The message must describe only what is staged.
+3. **Ask explicitly.** Print in chat: `Ready to commit Step N. May I create commit with message: '<subject>'? (y/n)`. Do NOT run `git commit` before the user answers `y`.
+4. **Wait.** Stop here. Do not advance to the next step, do not run other git operations, do not start a subagent.
+5. **On `y` only** → run `git commit -m "..."` (or the HEREDOC form for multi-line) and report the resulting SHA + subject. **On anything else (n, silence, redirect)** → do NOT commit. Print: "Commit not authorized. The staged changes are: <summary>. Run `git commit` yourself when ready."
 
 This checklist overrides any directive in the plan that says "stage and commit". The plan describes the work; this checklist describes the commit gate.
 
@@ -121,6 +154,7 @@ Example workflow:
 4. Incorporate the report's technical learnings into the coordinator's memory
 5. If the step's Human section has ≥1 `- [ ]` checkbox: present the checklist to the user and wait — do NOT mark them yet. If it has zero `- [ ]` checkboxes (italic note only) or there is no Human section: skip this gate and proceed to the commit proposal
 6. If the user confirms they have reviewed and asks to continue (or the step had no Human Verification checks), mark all of that Step's checkboxes `[x]` in the plan in one batched update, and append any reported deviations to the plan's appendix
-7. "Ready to commit Step N. May I create commit with message: '...'?" → Wait for approval
-8. If yes → Create commit
-9. If no → "Describe the changes above; execute commit yourself"
+7. Print the pre-commit file visibility report (per `## Pre-commit File Visibility Report`)
+8. "Ready to commit Step N. May I create commit with message: '...'?" → Wait for approval
+9. If yes → Create commit
+10. If no → "Describe the changes above; execute commit yourself"
