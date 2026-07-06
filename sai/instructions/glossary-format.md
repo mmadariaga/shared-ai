@@ -10,6 +10,10 @@ This file is consumed by the spec, plan, and review instructions. Any agent that
 
 `GLOSSARY.md` documents domain language and concepts only. It excludes general programming concepts.
 
+## Canonical location
+
+`GLOSSARY.md` lives at exactly one place: the **project root** (`./GLOSSARY.md`). This is the single canonical location — every SAI phase (spec bootstrap/append, implement reader, review auditor) reads and writes it there. No SAI instruction or spec places the canonical glossary inside `openspec/changes/{name}/` or any other directory.
+
 ## File structure
 
 ```markdown
@@ -58,14 +62,16 @@ When a new domain term is resolved during planning:
 3. If it conflicts with an existing term or alias, add an entry to `## Flagged ambiguities` with the chosen resolution.
 4. Do not batch — append immediately.
 
-## Multi-context repos
+## Multi-context repos (deferred / optional)
 
-For projects with multiple bounded contexts, create a root `GLOSSARY-MAP.md` listing:
+> **Deferred / optional — does not override the single canonical root.** The single project-root `GLOSSARY.md` (see [Canonical location](#canonical-location)) is always authoritative. The `GLOSSARY-MAP.md` mechanism below is a future idea, not an active resolution rule, and MUST NOT be treated as taking precedence over the root `GLOSSARY.md`.
+
+For projects that later need to split multiple bounded contexts, a root `GLOSSARY-MAP.md` could list:
 - Each context's location (path to its own `GLOSSARY.md`) and purpose
 - Cross-context relationships and event flows
 - Shared types or conventions
 
-Resolution order: check for `GLOSSARY-MAP.md` first, then fall back to a single root `GLOSSARY.md`.
+Until that mechanism is designed, resolution is unconditional: use the single project-root `GLOSSARY.md`.
 
 ## Bootstrap (when no `GLOSSARY.md` exists yet)
 
