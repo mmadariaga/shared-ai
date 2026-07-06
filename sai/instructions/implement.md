@@ -130,6 +130,7 @@ If a listed document is missing or contradicts the declared stack, STOP and requ
 - **Automated checks** (lint, build, typecheck, unit tests): always include in the step where they apply. The agent runs these before stopping.
 - **Human checks** (browser/UI behavior): only include them in the step where the behavior is first observable. If a step creates a component not yet integrated into any page or layout, defer all its Human checks to the integration step.
 - **Deferred checks**: at the integration step, group all deferred Human checks before the step's own Human checks, using labeled blocks per origin step (see `<plan_template>`).
+- **Service-side / non-UI steps** (no observable browser behavior anywhere — config, migration, scaffolding, or service-side logic): omit the `**Human (...)**` header entirely and emit a single italic parenthetical note explaining why no human check applies (e.g. `*(No Human checks — service-side step with no observable browser behavior.)*`). Do NOT invent a `- [ ] No human check required` (or any equivalent placeholder) checkbox. This differs from a deferred check: a deferred check's human verification lands at a later integration step, whereas a service-side step has no human check anywhere.
 - **RED → GREEN for testable steps:** For any step that introduces testable code (new functions, classes, endpoints, components, business logic), structure it as:
       1. **RED**: Write the test first. The test must fail when run against the current codebase (before the step's code is added). This proves the test is real and not tautological.
       2. **GREEN**: Write the minimal implementation that makes the test pass.
@@ -313,6 +314,30 @@ The `<plan_template>` below applies to the **first-run generation path only**. O
 
 **STOP & COMMIT:** Stage and commit after Automated checks pass. No browser verification required at this step.
 
+#### Step 3: {Action — service-side / non-UI step with no observable browser behavior}
+
+*(Service-side / non-UI step — standard format. No human check anywhere because nothing is rendered for a human to observe. Distinct from Step 2, whose checks are deferred, not absent.)*
+
+- [ ] {Specific Instruction 1}
+- [ ] Copy and paste code below into `{file}`:
+
+```{language}
+{COMPLETE, TESTED CODE - NO PLACEHOLDERS - NO "TODO" COMMENTS}
+```
+
+##### Step 3 Verification Checklist
+
+**Automated (agent runs before stopping):**
+- [ ] `{command}` — {expected result}
+
+*(No Human checks — service-side step with no observable browser behavior. Unlike Step 2 these checks are not deferred; there is no human check for this step anywhere. Never substitute a `- [ ] No human check required` checkbox.)*
+
+#### Step 3 STOP & COMMIT
+
+**sai-4-apply:** Run all Automated checks above and confirm they pass before stopping.
+
+**STOP & COMMIT:** Stage and commit after Automated checks pass. No browser verification required at this step.
+
 #### Step N: {Integration step — first step where deferred components are rendered}
 
 - [ ] {Specific Instruction 1}
@@ -347,6 +372,7 @@ Before saving the plan file, verify:
 - Every step has a STOP & COMMIT marker.
 - Every Human check that cannot be performed at its step is explicitly deferred — not omitted — to the correct integration step, grouped in a labeled block matching its origin step.
 - No integration step is missing deferred checks from any prior step.
+- **Human-check encoding:** every step's Human section is either (a) a `**Human (...)**` header with ≥1 `- [ ]` checkbox, or (b) a single italic parenthetical note (not-yet-rendered, deferred-away, or service-side) with no header and no checkbox. No step contains an invented `- [ ] No human check required` (or equivalent placeholder) checkbox. The audit `- [ ] No code changes from this audit` checkbox and `*Deferred from Step N (...)*` blocks are genuine actions and are exempt from this rule.
 - All code strictly follows the Expertise Profile from `tasks.md`.
 - **RED → GREEN check:** Every step that introduces testable code has a RED block (test that fails against current codebase) and a GREEN block (minimal implementation that passes). Non-testable steps skip RED/GREEN.
 
