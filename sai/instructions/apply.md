@@ -67,6 +67,7 @@ Per Step, the coordinator dispatches exactly one subagent:
     - Run any git operation or create any commit.
     - Mark any checkbox or otherwise edit `openspec/changes/{change-name}/implementation.md`.
     - Act on a STOP & COMMIT marker if the Step's body reaches one — it halts and reports the STOP (with the exact marker message) instead of staging or committing.
+    - **Report completeness** (the subagent SHALL): populate field 8 (`Files modified`) in its return report. An empty list is valid if no files were modified; omitting the field produces a malformed report.
 
 ## Subagent Report Contract
 
@@ -79,6 +80,7 @@ The subagent returns exactly these 7 fields, and nothing else (no raw file conte
 5. **Deviations** — a list of `{plan, final, reason}` entries; empty if none.
 6. **Technical learnings / friction** — self-contained, actionable facts discovered during execution (a symbol that does not exist, a real API signature, a version incompatibility, a workaround applied) — states what was attempted, what failed, and what works instead; empty if none.
 7. **STOP reached?** — yes/no, with the exact marker message when yes.
+8. **Files modified** — paths modified or created by the subagent during this Step, relative to the repo root, one path per entry; empty list if the subagent modified nothing.
 
 ## Technical Learnings Memory
 
