@@ -9,7 +9,7 @@ Deduplicate shared behavior between Claude Code and opencode wrappers by extract
 `sai/instructions/spec.propose.md` SHALL contain an "Artifact-Only Scope" section that explicitly lists:
 - What the spec command must NEVER create, modify, or delete (project source files, configuration files, infrastructure definitions, build artifacts)
 - What commands it must NEVER run (build, test, lint, deploy, migrate)
-- What files it MAY create or modify (only `openspec/changes/{name}/` artifacts)
+- What files it MAY create or modify: only `openspec/changes/{name}/` artifacts, plus `./GLOSSARY.md` at the project root as a named exception
 
 #### Scenario: Artifact-Only Scope section present
 - **WHEN** `sai/instructions/spec.propose.md` is read
@@ -18,7 +18,8 @@ Deduplicate shared behavior between Claude Code and opencode wrappers by extract
 #### Scenario: scope covers file mutations
 - **WHEN** the Artifact-Only Scope section is parsed
 - **THEN** it lists at least: project source files, configuration files, infrastructure definitions, build artifacts as NEVER-touch
-- **THEN** it lists exactly the `openspec/changes/{name}/` subset (proposal.md, specs/**/*.md, GLOSSARY.md, .openspec.yaml) as MAY-modify
+- **THEN** it lists the `openspec/changes/{name}/` subset (proposal.md, specs/**/*.md, .openspec.yaml) as MAY-modify
+- **THEN** it lists `./GLOSSARY.md` at the project root as a named MAY-modify exception, NOT as part of the `openspec/changes/{name}/` subset
 
 #### Scenario: scope covers forbidden commands
 - **WHEN** the Artifact-Only Scope section is parsed

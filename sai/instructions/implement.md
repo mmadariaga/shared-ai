@@ -209,7 +209,7 @@ and `## Implementation Context` are the primary source of truth.
    - Extract only what is needed to confirm syntax, API signatures, and version-specific behaviors for this feature
 
 5. Domain Language
-   - Read `GLOSSARY.md` if it exists. Format reference: use the `<glossary_format>` block pre-loaded in context to interpret the file structure (Language, Relationships, Example dialogue, Flagged ambiguities).
+   - Read the project-root `GLOSSARY.md` (`./GLOSSARY.md`) if it exists — this is its single canonical location; do not fall back to `openspec/changes/{name}/`. Format reference: use the `<glossary_format>` block pre-loaded in context to interpret the file structure (Language, Relationships, Example dialogue, Flagged ambiguities).
    - Use its canonical terms for all new identifiers (classes, functions, files, variables) in the generated plan.
    - If the spec introduces a term not in `GLOSSARY.md`, use the exact term from the spec and do not invent synonyms.
 
