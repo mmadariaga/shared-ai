@@ -23,7 +23,11 @@ Before running the archive skill, perform this check:
 Before running the archive skill, perform this check:
 
 1. Check if openspec/changes/$ARGUMENTS/implementation.md exists.
-   - **If it exists**: search it for unchecked items (- [ ]). If any are found, STOP and print: "openspec/changes/$ARGUMENTS/implementation.md contains incomplete tasks. Complete all steps before archiving." Do not proceed with the archive.
+   - **If it exists**: search it for unchecked items (`- [ ]`). If one or more are found, this is a **soft confirmation gate**, not a hard stop:
+     - List every unchecked item concretely — for each, print its location as `implementation.md:{line}`, the `#### Step N` heading it falls under, and the checkbox's own text.
+     - Prompt: `Continue archiving with N unchecked items? (y/n)` where `N` is the count of unchecked items.
+     - Perform the archive move ONLY on an explicit `y`. On `n`, on silence, or on any answer other than `y`, do NOT perform the archive move and report that archiving was not performed, citing the unchecked items.
+     - This prompt is conversational in chat only: do NOT write any approval key to `.openspec.yaml` and do NOT introduce any new formal approval gate. Only the unchecked-items rule changes; the Classification Check, missing-main-spec handling, and spec-sync behavior are untouched.
    - **If it does not exist**: skip this check entirely. Proceed without any warning about incomplete tasks.
 
 ## Missing main spec handling (applies to step 4 of the archive skill)
