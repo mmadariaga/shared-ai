@@ -3,18 +3,24 @@
 Before running the archive skill, perform this check:
 
 1. Run `openspec status --change "$ARGUMENTS" --json` to get the artifact completion status.
-2. From the `artifacts` array in the JSON, classify the nine `sai-workflow` artifacts into two groups:
+2. Read `openspec/changes/$ARGUMENTS/.openspec.yaml` and parse the `backfilled` field.
+   - Treat `backfilled` as `true` **only** when the file exists, parses as valid YAML, and the key is present with the boolean literal value `true`.
+   - Absent file, absent key, or any other value (including `false`, string `"true"`, `null`, etc.) → treat as `false`.
+   - If the file exists but is corrupt / unparseable as YAML, treat as `false` and emit a single warning line, then continue — do NOT abort.
+   - Log the resolved value as intermediate state (e.g. `[sai-archive] backfilled=<true|false>`).
+3. From the `artifacts` array in the JSON, classify the nine `sai-workflow` artifacts into two groups:
    - **CORE** (blocking): `proposal`, `specs`, `design`, `tasks`, `implementation`.
    - **AUDIT** (informational only): `review`, `security`, `performance`, `accessibility`.
-3. Evaluate CORE artifacts:
-   - For each CORE artifact, if its `status` is not `done`, collect its `id`.
+4. Evaluate CORE artifacts:
+   - If `backfilled === true`, skip `design`, `tasks`, and `implementation` from the not-`done` collection. `proposal` and `specs` are scanned unconditionally.
+   - For each remaining CORE artifact, if its `status` is not `done`, collect its `id`.
    - If any CORE artifact is not `done`, STOP and print a single error message: "Missing CORE artifact(s): <id1>, <id2>. Archive blocked." Do not proceed with the archive. Do not emit any AUDIT soft warning.
-4. Evaluate AUDIT artifacts (only when all CORE artifacts are `done`):
+5. Evaluate AUDIT artifacts (only when all CORE artifacts are `done`):
    - For each AUDIT artifact, if its `status` is not `done`, check whether the file `openspec/changes/$ARGUMENTS/<id>.md` exists and contains a markdown heading `## Not Applicable` (case-sensitive, leading `## ` followed by the exact text `Not Applicable`).
      - If the file exists and contains `## Not Applicable`, treat that artifact as present.
      - Otherwise, collect its `id`.
    - If one or more AUDIT artifacts are missing, print exactly one informational line: `[sai-archive] informational: missing AUDIT artifact(s): <id1>, <id2>`.
-5. When following the upstream `openspec-archive-change` skill:
+6. When following the upstream `openspec-archive-change` skill:
    - If all CORE artifacts are `done` and only AUDIT artifacts are missing (or treated as present via `## Not Applicable`), **skip step 2** of the upstream skill and continue at step 3.
    - Otherwise, let the upstream skill run normally.
 
