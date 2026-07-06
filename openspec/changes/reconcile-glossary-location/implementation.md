@@ -82,7 +82,7 @@ Until that mechanism is designed, resolution is unconditional: use the single pr
 
 *(Docs step — no RED/GREEN. Edits `sai/instructions/spec.propose.md`.)*
 
-- [ ] **Edit 2a — rewrite the MAY-modify list.** In `sai/instructions/spec.propose.md`, replace the block that currently reads:
+- [x] **Edit 2a — rewrite the MAY-modify list.** In `sai/instructions/spec.propose.md`, replace the block that currently reads:
 
 ```markdown
 The ONLY files you are allowed to create or modify are:
@@ -107,9 +107,9 @@ Plus exactly one named exception outside that folder:
 ##### Step 2 Verification Checklist
 
 **Automated (agent runs before stopping):**
-- [ ] `rg -n '\./GLOSSARY\.md' sai/instructions/spec.propose.md` — the MAY-modify list references `./GLOSSARY.md`.
-- [ ] `rg -n 'openspec/changes/\{name\}/GLOSSARY\.md' sai/instructions/spec.propose.md` — returns **no matches** (old change-folder path removed).
-- [ ] `rg -n "named exception|single file the spec command may touch outside" sai/instructions/spec.propose.md` — the glossary is framed as a named project-root exception, distinct from the change-folder subset.
+- [x] `rg -n '\./GLOSSARY\.md' sai/instructions/spec.propose.md` — the MAY-modify list references `./GLOSSARY.md`.
+- [x] `rg -n 'openspec/changes/\{name\}/GLOSSARY\.md' sai/instructions/spec.propose.md` — returns **no matches** (old change-folder path removed).
+- [x] `rg -n "named exception|single file the spec command may touch outside" sai/instructions/spec.propose.md` — the glossary is framed as a named project-root exception, distinct from the change-folder subset.
 
 *(No Human checks — service-side docs edit with no observable browser behavior.)*
 

@@ -19,11 +19,13 @@ You must NEVER run commands that mutate the project:
 - Test, lint, or type-check
 - Deploy, migrate, or provision infrastructure
 
-The ONLY files you are allowed to create or modify are:
+The ONLY files you are allowed to create or modify are the `openspec/changes/{name}/` subset:
 - `openspec/changes/{name}/proposal.md`
 - `openspec/changes/{name}/specs/**/*.md`
-- `openspec/changes/{name}/GLOSSARY.md` (if bootstrapping)
 - `openspec/changes/{name}/.openspec.yaml`
+
+Plus exactly one named exception outside that folder:
+- `./GLOSSARY.md` — the project-root glossary (if bootstrapping or appending a domain term). This is the single file the spec command may touch outside `openspec/changes/{name}/`. It does NOT widen the allowed scope to any other project-root file.
 
 Code generation, configuration changes, and project modifications are the explicit responsibility of downstream commands (`sai-3-implement`, `sai-4-apply`). Do not perform them during the spec phase.
 
