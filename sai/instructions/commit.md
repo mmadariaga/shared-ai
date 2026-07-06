@@ -90,14 +90,19 @@ Before presenting the message, audit it:
 
 ### Step 6: Present and Authorize
 
-1. Show the proposed message in chat:
-    ```
-    Proposed commit message:
-    ----
-    {message}
-    ----
-    Files staged: {N} ({first 5 paths, ...if more})
-    ```
+1. Print the structured pre-commit file report in chat, sourced from `git status` + `git diff --cached --stat`:
+
+   The report SHALL contain, in this fixed order:
+
+   1. A header line with the overall status letter (`OK` or `WARN`). No change name is printed — the change is not necessarily present in `sai-commit`'s context.
+   2. A human-readable status line summarising the staging state.
+   3. A `Staged` block listing each staged path with its `+N -M` count, one per line, paths relative to repo root.
+   4. A `Totals` line in the format `Totals: <N> files, +<ins> -<del>` summing insertions and deletions across staged files.
+   5. An `Unstaged (will NOT be committed)` block listing any unstaged, untracked, or otherwise-not-staged paths from `git status`, one per line. If there are none, the block is omitted entirely.
+
+   The status letter SHALL be `WARN` if the `Unstaged` block is non-empty, and `OK` otherwise.
+
+   The `Plan cross-check` and `Subagent ↔ git` blocks SHALL NOT appear — `sai-commit` has no subagent and no plan.
 2. If `--amend`: also show `git log -1 --pretty=format:'%h %s'` of the commit being amended and warn if it's already pushed (`git log @{push}..HEAD --oneline` — if empty and HEAD matches push, it's pushed).
 3. Ask: **"Run `git commit -m '...'` (or `git commit --amend ...`)? (y/n)"**
 4. On `y` → execute. Use HEREDOC for multi-line messages:

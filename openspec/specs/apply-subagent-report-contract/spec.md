@@ -14,13 +14,16 @@ When a Step-execution subagent finishes (or stops), it SHALL return a compact re
 5. **Deviations** — a list of `{plan, final, reason}` entries for the appendix; empty if none.
 6. **Technical learnings / friction** — reusable, self-contained, actionable facts discovered during execution; empty if none (per `apply-technical-learnings-memory`).
 7. **STOP reached?** — yes/no, with the exact marker message when yes.
+8. **Files modified** — paths modified or created by the subagent during this Step, relative to the repo root, one path per entry; empty list if the subagent modified nothing.
+
+Fields 1–7 are unchanged in shape, semantics, and order. Field 8 is appended after field 7 and is required (the subagent MUST populate it; an empty list is a valid value but an absent field is a malformed report).
 
 The report SHALL NOT include raw file contents, full tracebacks, or iteration logs.
 
 #### Scenario: Subagent completes a Step cleanly
 
 - **WHEN** a subagent finishes a Step with no deviations and no STOP
-- **THEN** it returns the report with Step N, per-item done statuses, RED result, GREEN=pass, empty deviations, technical learnings (empty or populated), and STOP reached = no — and nothing else
+- **THEN** it returns the report with Step N, per-item done statuses, RED result, GREEN=pass, empty deviations, technical learnings (empty or populated), STOP reached = no, and `Files modified` = the set of paths the subagent changed — and nothing else
 
 #### Scenario: Subagent stops at a STOP & COMMIT
 
@@ -31,6 +34,16 @@ The report SHALL NOT include raw file contents, full tracebacks, or iteration lo
 
 - **WHEN** the RED verification either already passes or fails for a non-assertion reason
 - **THEN** the report's RED result records `passes` or `wrong-failure` (with the error type), so the coordinator can act on the invalid RED rather than the subagent silently proceeding
+
+#### Scenario: Subagent modifies no files
+
+- **WHEN** a subagent executes a Step that produces no file changes (for example, a Step that only runs a verification command)
+- **THEN** the report's `Files modified` field is an empty list, not absent; the report remains 8 fields and the coordinator cross-checks against an empty set
+
+#### Scenario: Subagent omits field 8
+
+- **WHEN** a subagent returns a 7-field report without `Files modified`
+- **THEN** the coordinator treats the report as malformed per `apply-pre-commit-file-report` and surfaces the omission to the user before any commit is proposed
 
 ### Requirement: Each technical-learning entry is self-contained and actionable
 
