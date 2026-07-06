@@ -9,15 +9,17 @@ TBD - created by archiving change tasks-as-scaffold. Update Purpose after archiv
 
 If `implementation.md` does not exist for the change, `sai-archive` SHALL skip the completion check entirely and proceed without a warning.
 
+When incomplete items are found, the check is a **soft confirmation gate** (defined normatively in `sai-archive-soft-warn-audits`): `sai-archive` SHALL list every unchecked item concretely (its `implementation.md:{line}` location, enclosing `#### Step N`, and checkbox text) and prompt the user to confirm before archiving, rather than performing a silent hard stop.
+
 #### Scenario: implementation.md exists with all tasks complete
 
 - **WHEN** `sai-archive` is run on a change whose `implementation.md` contains only `- [x]` markers (no `- [ ]` remaining)
-- **THEN** the archive proceeds without a completion warning
+- **THEN** the archive proceeds without a completion prompt
 
 #### Scenario: implementation.md exists with incomplete tasks
 
 - **WHEN** `sai-archive` is run on a change whose `implementation.md` contains one or more `- [ ]` markers
-- **THEN** `sai-archive` warns the user about incomplete tasks, citing `implementation.md` (not `tasks.md`)
+- **THEN** `sai-archive` lists the unchecked items (citing `implementation.md`, not `tasks.md`) and prompts the user to confirm before archiving; it proceeds with the archive only on explicit confirmation
 
 #### Scenario: implementation.md does not exist
 

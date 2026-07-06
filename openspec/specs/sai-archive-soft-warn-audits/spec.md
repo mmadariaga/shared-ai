@@ -39,21 +39,35 @@ The `sai-archive` command SHALL run the classification check BEFORE invoking ste
 - **THEN** the classification logic defined in `sai/instructions/archive.md` MUST be evaluated first
 - **THEN** control passes to the upstream skill only after the classification check has produced a decision (halt-on-missing-CORE OR proceed-with-AUDIT-soft-warning)
 
-### Requirement: Incomplete-tasks hard stop is preserved
+### Requirement: Incomplete-tasks soft confirmation gate
 
-The pre-existing check in `sai/instructions/archive.md` that scans `openspec/changes/{name}/implementation.md` for `- [ ]` items and blocks archive when any are found MUST remain a hard stop. The classification of artifacts into CORE/AUDIT SHALL NOT alter this check.
+The check in `sai/instructions/archive.md` that scans `openspec/changes/{name}/implementation.md` for `- [ ]` items SHALL be a **soft confirmation gate**, not a hard stop. When one or more unchecked items are found, `sai-archive` SHALL list every unchecked item concretely — each item's location as `implementation.md:{line}`, the `#### Step N` heading it falls under, and the checkbox's own text — then prompt the user with `Continue archiving with N unchecked items? (y/n)` (where `N` is the count). The command SHALL perform the archive move ONLY on an explicit `y`. On `n`, on silence, or on any answer other than `y`, the command SHALL NOT perform the archive move and SHALL report that archiving was not performed and why.
+
+The prompt is conversational in chat: `sai-archive` SHALL NOT write any approval key to `.openspec.yaml` and SHALL NOT introduce any new formal approval gate. This requirement governs ONLY the unchecked-items rule of the Completion Check; the CORE/AUDIT classification, the AUDIT soft-warning, the missing-main-spec handling, and the spec-sync behavior are unchanged. When `implementation.md` does not exist, this check is skipped entirely.
 
 #### Scenario: implementation.md contains unchecked items
 
 - **WHEN** the `sai-archive` command runs and `openspec/changes/{name}/implementation.md` exists and contains one or more `- [ ]` items
-- **THEN** the command MUST halt and print the existing message: "openspec/changes/{name}/implementation.md contains incomplete tasks. Complete all steps before archiving."
-- **THEN** the command MUST NOT perform the archive move and MUST NOT emit any AUDIT soft warning
+- **THEN** the command lists every unchecked item, each showing its `implementation.md:{line}` location, its enclosing `#### Step N` heading, and the checkbox text
+- **AND** prompts `Continue archiving with N unchecked items? (y/n)` where `N` is the count of unchecked items
+- **AND** does not perform the archive move before the user answers
+
+#### Scenario: User confirms archiving with unchecked items
+
+- **WHEN** the user answers `y` to the prompt
+- **THEN** the command proceeds with the rest of the archive flow and performs the archive move
+
+#### Scenario: User declines or stays silent
+
+- **WHEN** the user answers `n`, stays silent, or gives any answer other than `y`
+- **THEN** the command does NOT perform the archive move
+- **AND** reports that archiving was not performed, citing the unchecked items
 
 #### Scenario: implementation.md does not exist
 
 - **WHEN** the `sai-archive` command runs and `openspec/changes/{name}/implementation.md` does not exist
-- **THEN** the incomplete-tasks check MUST be skipped entirely
-- **THEN** the classification check MUST still run, and CORE/AUDIT behavior applies as defined above
+- **THEN** the unchecked-items check is skipped entirely
+- **AND** the CORE/AUDIT classification check still runs, and CORE/AUDIT behavior applies as defined elsewhere in this spec
 
 ### Requirement: No new flags, no upstream modifications, no schema modifications
 
