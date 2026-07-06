@@ -1,7 +1,6 @@
 ---
 description: Apply the granular implementation plan mechanically — reads openspec/changes/{name}/implementation.md and executes step-by-step with a cheap model. Uses openspec CLI for status context.
 model: opencode-go/deepseek-v4-flash
-variant: default
 ---
 
 ## Sai Apply - 4
