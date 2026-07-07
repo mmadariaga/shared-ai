@@ -45,34 +45,40 @@ The pipeline depends on the OpenSpec CLI:
 1. Install the `openspec` binary globally (see https://github.com/Fission-AI/OpenSpec).
 2. Run `openspec init` in each project that will use shared-AI.
 
-The openspec-dependent `ai-*` commands halt with a clear error if either is missing. Skills are installed by `openspec init` (per project), never bundled by the shared-AI install script.
+The openspec-dependent `sai-*` commands halt with a clear error if either is missing. Skills are installed by `openspec init` (per project), never bundled by the shared-AI install script.
 
 ## Repository structure
 
 | Directory | Purpose |
 |-----------|---------|
 | `sai/instructions/` | Phase content (Isolation Mode + TASK block). Fetched by wrappers. |
-| `sai/instructions/spec.propose.md` | Quality layer prepended to the `openspec-propose` skill by `ai-1-spec`. Collaboration style, cost discipline, research guide, scope reminder. |
+| `sai/instructions/spec.propose.md` | Quality layer prepended to the `openspec-propose` skill by `sai-1-spec`. Collaboration style, cost discipline, research guide, scope reminder. |
 | `sai/instructions/remember.md` | Consolidated reminders appended by wrappers. |
 | `sai/instructions/prereqs.md` | Universal prerequisite check + OpenSpec path resolution guidance, fetched first by all openspec-dependent sai-* wrappers. `sai-commit` is the only exception. |
 | `sai/commands/` | Sai command body files fetched by wrappers at runtime. |
-| `skills/` | Universal skills installed globally (not project-local). Fetched by wrappers via `~/.claude/skills/` or `~/.config/opencode/skills/`. |
+| `skills/` | Universal skills installed globally (not project-local). Fetched by wrappers via `~/.claude/skills/`, `~/.config/opencode/skills/`, or `~/.copilot/skills/`. |
 | `skills/universal/sai-commands/SKILL.md` | SAI command registry — lists all /sai-* commands and enforces fetch-before-execute discipline. Loaded to prevent LLM from skipping command files. |
 | `skills/universal/safe-operations/SKILL.md` | Safe operations skill — enforces reversibility and impact awareness, requires user confirmation before destructive/hard-to-reverse/shared-system operations. Loaded by 7 sai-* command wrappers. |
 | `skills/universal/` | Universal skills (no vendor). Fetched by all wrappers. |
 | `skills/claude/` | Claude Code-specific skills (subagent dispatch rules, etc.). Fetched by wrappers that spawn subagents. |
 | `skills/opencode/` | Opencode-specific skills (subagent dispatch rules, etc.). Fetched by wrappers that spawn subagents. |
+| `skills/copilot/` | Copilot-specific skills (subagent dispatch rules, fetch path resolver, etc.). Fetched by wrappers that spawn subagents. |
 | `skills/claude/budget-explorer/SKILL.md` | Subagent dispatch rules for Claude Code — model tiers, task classification, tool-call caps, output contracts. Fetched by wrappers that spawn subagents. |
 | `skills/claude/budget-executor/SKILL.md` | Executor subagent rules for Claude Code — subagent_type: General, model: haiku, execute-only discipline. Fetched by wrappers that spawn executor subagents. |
 | `skills/opencode/budget-explorer/SKILL.md` | Subagent dispatch rules for opencode — explore keyword binding, cap rules, output contracts. Model resolved via opencode.jsonc. |
 | `skills/opencode/budget-executor/SKILL.md` | Executor subagent rules for opencode — executor keyword binding, execute-only discipline. Model resolved via opencode.jsonc. |
 | `skills/opencode/fetch/SKILL.md` | Fetch @ path resolver for opencode — replicates Claude Code's built-in Fetch @ mechanism. Loaded first by all opencode wrappers to enable `@sai/` and `@skills/` path resolution. |
+| `skills/copilot/budget-explorer/SKILL.md` | Subagent dispatch rules for Copilot — `budget-explorer` custom agent binding, GPT-5 mini, read-only, tool-call caps, output contracts. |
+| `skills/copilot/budget-executor/SKILL.md` | Executor subagent rules for Copilot — `budget-executor` custom agent, GPT-5 mini, execute-only discipline. No tool-call cap. |
+| `skills/copilot/budget-subagent/SKILL.md` | Task subagent rules for Copilot — `budget-subagent` custom agent, GPT-5 mini, ~30-call soft cap, structured completion report. |
+| `skills/copilot/fetch/SKILL.md` | Fetch @ path resolver for Copilot — maps `@<subpath>` to `.github/sai/<subpath>` then the VS Code SAI folder. Loaded first by all Copilot wrappers to enable `@sai/` and `@skills/` path resolution. |
+| `agents/copilot/` | Copilot custom agent definitions (`budget-explorer`, `budget-executor`, `budget-subagent`). Installed to `~/.copilot/agents/`, hidden from the agent picker, invoked programmatically by the main agent when the `budget` skill is active. |
 | `commands/claude/` | Wrappers for Claude Code. YAML frontmatter (`description`, `argument-hint`, `model`, `effort`) + fetch to `sai/commands/` + fetch to project-local skill files. |
 | `commands/opencode/` | Wrappers for opencode. YAML frontmatter (`description`, `model`) + fetch to `sai/commands/` + fetch to project-local skill files. |
 | `commands/copilot/` | Wrappers for GitHub Copilot. YAML frontmatter (`description`, `argument-hint`, `agent`, `model`) + fetch to `sai/commands/` via the copilot fetch skill. |
 | `configs/` | Config samples. `opencode.jsonc`: sub-agent explore configuration (mode + trusted low-cost model). Required for cost-effective research delegation. |
 
-Wrappers are **thin** — they specify the model, fetch the markdown from `instructions/`, and (for openspec-dependent commands) fetch the relevant skill from the project's `.claude/skills/` or `.opencode/skills/` directory.
+Wrappers are **thin** — they specify the model, fetch the markdown from `instructions/`, and (for openspec-dependent commands) fetch the relevant skill from the project's `.claude/skills/`, `.opencode/skills/`, or `.github/skills/` directory.
 
 ## Critical conventions
 
@@ -89,7 +95,7 @@ All sai-* artifacts (`implementation.md`, `review.md`, `security.md`, `performan
 In `implementation.md`, a **checkbox** (`- [ ]`) is an **action** — something `/sai-4-apply` runs or the user verifies, then marks `[x]`; every `- [ ]` is a task a downstream consumer (`sai-4-apply`, `sai-archive`, `sai-pr`) acts on. An **italic note** (`*(...)*`) is an **explanation** — context for the reader that is never marked or acted on. A step with no observable human check therefore encodes that absence as an italic note, never as a placeholder `- [ ] No human check required` checkbox.
 
 ### Prerequisite check
-All openspec-dependent sai-* commands (`sai-explore`, `sai-1-spec`, `sai-2-design`, `sai-3-implement`, `sai-4-apply`, `sai-archive`, `sai-5-review`, `sai-6-security`, `sai-7-performance`, `sai-8-accessibility`, `sai-pr`) perform three checks via `Fetch @~/.claude/sai/instructions/prereqs.md` (Claude) or `Fetch @~/.config/opencode/sai/instructions/prereqs.md` (OpenCode): (1) `openspec` binary in PATH, (2) `openspec/` directory exists, (3) `openspec/config.yaml` declares `schema: sai-workflow`. `sai-commit` is the only exception — it operates on git state only and works in projects without openspec.
+All openspec-dependent sai-* commands (`sai-explore`, `sai-1-spec`, `sai-2-design`, `sai-3-implement`, `sai-4-apply`, `sai-archive`, `sai-5-review`, `sai-6-security`, `sai-7-performance`, `sai-8-accessibility`, `sai-pr`) perform three checks by fetching `@sai/instructions/prereqs.md` (resolved per harness: Claude Code via `~/.claude/sai/`, opencode via `~/.config/opencode/sai/`, Copilot via the copilot fetch skill): (1) `openspec` binary in PATH, (2) `openspec/` directory exists, (3) `openspec/config.yaml` declares `schema: sai-workflow`. `sai-commit` is the only exception — it operates on git state only and works in projects without openspec.
 
 ### Isolation Mode
 Every `sai/commands/sai-*.md` body file starts with:
@@ -115,8 +121,8 @@ All agents MUST think and reason internally in English, regardless of the user's
 - **Generated artifacts** (`implementation.md`, `review.md`, `security.md`, `performance.md`, `accessibility.md`, commit messages, PR bodies, code, technical explanations): written in English unless the user explicitly requests otherwise.
 
 ### Cost Discipline (research subagents)
-Wrappers that spawn subagents fetch `skills/claude/budget-explorer/SKILL.md` (Claude) or `skills/opencode/budget-explorer/SKILL.md` (opencode). The main agent reasons and synthesizes. Subagents do I/O. Key rules:
-- Default research subagent is the **cheap** tier (haiku/Explore+haiku/explorer custom agent). Escalated tier only for multi-step synthesis.
+Wrappers that spawn subagents fetch `skills/claude/budget-explorer/SKILL.md` (Claude), `skills/opencode/budget-explorer/SKILL.md` (opencode), or `skills/copilot/budget-explorer/SKILL.md` (Copilot). The main agent reasons and synthesizes. Subagents do I/O. Key rules:
+- Default research subagent is the **cheap** tier — Claude Code (`subagent_type: Explore`, model haiku/sonnet), opencode (`explore` keyword, model via `opencode.jsonc`), Copilot (`budget-explorer` custom agent, GPT-5 mini). Escalated tier only for multi-step synthesis.
 - Every subagent call declares an **output contract** (exact fields, length cap, no raw content).
 - Main agent never calls WebFetch directly.
 - Speculative exploration ("look around") allowed only in the cheap tier.
@@ -157,7 +163,7 @@ Commands are **user globals**, not per-project.
 
 Supported harnesses: Claude Code, opencode, and GitHub Copilot.
 
-Project-local commands (`.claude/commands/` or `.opencode/commands/` at repo root) override by name. OpenSpec skills are always **project-local** (installed by `openspec init`) — never copied to user globals.
+Project-local commands (`.claude/commands/`, `.opencode/commands/`, or `.github/prompts/` at repo root) override by name. OpenSpec skills are always **project-local** (installed by `openspec init`) — never copied to user globals.
 
 ## Generated artifacts
 
@@ -214,5 +220,5 @@ Any change to `commands/claude/` MUST be mirrored to `commands/opencode/` and `c
 - Never use `any` in TypeScript (even though there is no TS here, it applies to code examples in instructions).
 - Generated artifacts are in English unless the user explicitly requests otherwise.
 - Fetch URLs point to `@~/.claude/sai/instructions/...` (claude), `@~/.config/opencode/sai/instructions/...` (opencode), or the Copilot SAI folder resolved by the copilot fetch skill (see `INSTALL.copilot.md`).
-- Skill fetches use project-local paths (`.claude/skills/...` or `.opencode/skills/...`).
+- Skill fetches use project-local paths (`.claude/skills/...`, `.opencode/skills/...`, or `.github/skills/...`).
 - `TODO-ENHANCEMENTS.md` tracks future enhancement ideas (not part of the pipeline).

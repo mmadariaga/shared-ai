@@ -34,12 +34,23 @@ When dispatching a subagent, the coordinator SHALL provide the full text of the 
 - **WHEN** the coordinator dispatches a Step that contains a RED block
 - **THEN** the subagent's instructions include the full Step text and the RED→GREEN rules, and the subagent writes the test first, runs the RED verification, then writes and iterates the GREEN implementation until it passes
 
-### Requirement: Subagent runs on the same model as the coordinator
-The Step-execution subagent SHALL run on the same model as the coordinator, not a cheaper tier. This overrides any default budget routing that would assign a lower-tier model to an executor subagent.
+### Requirement: Step-execution subagent is dispatched via the per-harness budget-subagent skill binding
 
-#### Scenario: Budget routing would downgrade the executor
-- **WHEN** budget/cost-discipline defaults would route an executor subagent to a cheaper model
-- **THEN** the apply coordinator overrides that default and dispatches the Step-execution subagent on its own model, preserving RED→GREEN judgment quality
+The Step-execution subagent SHALL be dispatched via the per-harness **`budget-subagent`** skill, resolved at runtime from `skills/{claude,opencode,copilot}/budget-subagent/`. The skill binding provides write-capable tool access (Bash, Read, Write, Edit, Glob, Grep) — required for RED→GREEN execution — and resolves the model via `agent.budget.model` in `opencode.jsonc` (opencode), via `subagent_type: General` + a model tier (Claude Code), or via the Copilot `budget-subagent` custom agent (GPT-5 mini). The standard cheap tier applies; the model is **not** forced to match the coordinator's model.
+
+The subagent SHALL NOT be dispatched to `budget-explorer` (which is read-only and lacks the write access required for RED→GREEN execution). The previous "no `model:` param" carve-out that forced model inheritance from the coordinator, and the `docs/adr/0017-same-model-dispatch-via-omitted-model-param.md` reference, are superseded by this requirement.
+
+#### Scenario: budget-subagent skill binding used for step dispatch
+- **WHEN** the coordinator dispatches a Step-execution subagent for a Step in `implementation.md`
+- **THEN** the dispatch uses the per-harness `budget-subagent` skill binding (write-capable, cheap tier model)
+
+#### Scenario: budget-explorer is NOT used for step dispatch
+- **WHEN** the coordinator needs a write-capable subagent for a Step's RED→GREEN execution
+- **THEN** it dispatches via `budget-subagent`, NOT `budget-explorer` (which is read-only)
+
+#### Scenario: Step-execution subagent model is the cheap tier, not the coordinator's model
+- **WHEN** the per-harness `budget-subagent` skill binding resolves a model
+- **THEN** the resolved model is the standard cheap tier — the coordinator does NOT force the subagent to inherit its own model
 
 ### Requirement: Checkboxes are marked per Step, not per item
 The coordinator SHALL mark a Step's checkboxes after it receives the subagent's report and verifies the Step (per `apply-coordinator-verification`). This per-Step granularity supersedes the prior "mark each item immediately, do not batch" rule for the `sai-4-apply` phase.

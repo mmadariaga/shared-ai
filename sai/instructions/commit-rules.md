@@ -42,7 +42,7 @@ Pick exactly one Conventional Commits type, in this priority order:
 **Footer (optional):**
 - `BREAKING CHANGE: ...` for incompatible API changes (also bump subject to `feat!:`/`fix!:`)
 - `Refs: #123` / `Closes: #123` if the user mentions an issue or it appears in branch name
-- **No `Co-Authored-By` or "Generated with Claude Code" trailers** unless the user explicitly requests them
+- **No `Co-Authored-By` or AI-generated attribution trailers** unless the user explicitly requests them
 
 ## Repo Commit-Style Detection Rubric
 
@@ -68,7 +68,7 @@ From the last `N` commits, compute four measures:
    `Spec changes:`, `Instruction changes:`, `Archived:`, `Includes backfilled`,
    `Refactored … to`. These are **body section headers, not git trailers**: they
    MAY be mirrored, and are distinct from the forbidden `Co-Authored-By` /
-   "Generated with Claude Code" git trailers, which remain banned unconditionally
+   AI-generated attribution git trailers, which remain banned unconditionally
    (see Hard Rules).
 
 ### Adoption branch (match rate ≥ 70%)
@@ -99,7 +99,7 @@ or body style.
   bodies, and `--amend` keeps its current semantics.
 - The hard limits hold under adoption exactly as under fallback: subject ≤ 50
   characters, body wrapped at 72, no emoji unless explicitly requested, and no
-  `Co-Authored-By` / "Generated with Claude Code" trailers unless explicitly
+  `Co-Authored-By` / AI-generated attribution trailers unless explicitly
   requested. If a mirrored body/subject would exceed a hard limit or add a
   forbidden trailer, enforce the limit and omit the trailer, adjusting the
   mirrored style to comply.
@@ -114,7 +114,7 @@ or body style.
 - **Never include unstaged content** in the message — describe only `git diff --cached`.
 - **Subject ≤ 50 chars, body wrap 72.** Hard limits.
 - **Imperative mood, no trailing period, lowercase after colon.**
-- **No `Co-Authored-By` / "Generated with Claude Code" trailers** unless the user explicitly asks.
+- **No `Co-Authored-By` or AI-generated attribution trailers** unless the user explicitly asks.
 - **No emoji** unless the user explicitly asks.
 - **No speculation.** Every claim must map to a staged hunk.
 - **Match the repo's commit style** per the Repo Commit-Style Detection Rubric above — apply the adoption branch (match rate ≥ 70%) or the fallback branch (match rate < 70%) rather than treating this as advisory only.

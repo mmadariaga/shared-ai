@@ -129,7 +129,7 @@ Present in chat:
 - **Title ≤70 characters**, imperative, Conventional Commits prefix. No emoji unless the user explicitly asks. No trailing period.
 - **Faithful to the diff.** Every claim in the body must be backed by a commit or file in `git log {parent}..HEAD` / `git diff {parent}...HEAD`.
 - **Omit empty sections.** Drop Design Decisions and Out of Scope if `spec.md` has nothing to populate them. Leave audit checkboxes unchecked when the audit artefact is absent.
-- **No "Generated with Claude Code" footer or co-author trailers** unless the user explicitly requests them.
+- **No `Co-Authored-By` or AI-generated attribution footer/trailers** unless the user explicitly requests them.
 
 ## Remember
 

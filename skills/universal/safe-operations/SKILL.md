@@ -4,7 +4,7 @@ description: >
   Enforces reversibility and impact awareness — the agent must ask before performing destructive, hard-to-reverse, or shared-system operations, and must not use destructive actions as shortcuts.
   TRIGGER when: users mentions dangerous, destructive, or shared-system operations, or when the task involves git push --force, rm -rf, deleting files/branches, or bypassing safety checks
 license: MIT
-compatibility: opencode, claude
+compatibility: opencode, claude, copilot
 metadata:
   author: Mikel Madariaga
   version: "1.0"

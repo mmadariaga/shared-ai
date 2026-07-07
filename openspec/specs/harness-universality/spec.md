@@ -55,3 +55,43 @@ AGENTS.md's "Format conventions" section SHALL document the Fetch URL convention
 #### Scenario: Skill fetches use project-local paths
 - **WHEN** any wrapper fetches a skill
 - **THEN** the path is `.claude/skills/...` or `.opencode/skills/...` (project-local), not a user-global path
+
+### Requirement: Copilot-specific skill and agent directories exist in the repo
+
+The repository MUST contain a `skills/copilot/` directory holding Copilot-specific subagent skills (`skills/copilot/budget-explorer/SKILL.md`, `skills/copilot/budget-executor/SKILL.md`, `skills/copilot/budget-subagent/SKILL.md`, `skills/copilot/fetch/SKILL.md`) and an `agents/copilot/` directory holding Copilot custom agent definitions (`agents/copilot/budget-explorer.agent.md`, `agents/copilot/budget-executor.agent.md`, `agents/copilot/budget-subagent.agent.md`). The custom agent files are installed to `~/.copilot/agents/` on the user's machine.
+
+#### Scenario: Copilot skill subdirectories present
+- **WHEN** a reader consults the repo structure for Copilot-specific skills
+- **THEN** `skills/copilot/` contains `budget-explorer/`, `budget-executor/`, `budget-subagent/`, and `fetch/`
+
+#### Scenario: Copilot custom agent definitions present
+- **WHEN** a reader consults the repo structure for Copilot custom agents
+- **THEN** `agents/copilot/` contains `budget-explorer.agent.md`, `budget-executor.agent.md`, and `budget-subagent.agent.md`
+
+### Requirement: Project-local skill and command paths cover all three harnesses
+
+The "Skill fetches" list in AGENTS.md MUST include `.github/skills/...` (project-local skill path for Copilot) alongside `.claude/skills/...` and `.opencode/skills/...`. The "Project-local commands" list in AGENTS.md MUST include `.github/prompts/` (project-local command path for Copilot) alongside `.claude/commands/` and `.opencode/commands/`.
+
+#### Scenario: Copilot skill fetch path documented
+- **WHEN** a Copilot wrapper fetches a skill
+- **THEN** the path is `.github/skills/...` (project-local), not a user-global path
+
+#### Scenario: Copilot project-local commands documented
+- **WHEN** a reader consults the "Project-local commands" list in AGENTS.md
+- **THEN** `.github/prompts/` is listed for GitHub Copilot alongside `.claude/commands/` and `.opencode/commands/`
+
+### Requirement: Prerequisite-check paragraph names the fetch path for all three harnesses
+
+The "Prerequisite check" paragraph in AGENTS.md MUST document the fetch path for `@sai/instructions/prereqs.md` for every supported harness: `~/.claude/sai/` for Claude Code, `~/.config/opencode/sai/` for opencode, and the Copilot SAI folder (resolved by the Copilot fetch skill) for GitHub Copilot.
+
+#### Scenario: Prereqs fetch resolution covers Copilot
+- **WHEN** a reader consults the "Prerequisite check" paragraph
+- **THEN** the paragraph names the Copilot SAI folder as one of the resolution targets for `@sai/instructions/prereqs.md`
+
+### Requirement: Cost Discipline paragraph names the cheap-tier subagent for all three harnesses
+
+The "Cost Discipline" paragraph in AGENTS.md MUST describe the cheap-tier subagent for every supported harness: Claude Code (`subagent_type: Explore`, model haiku/sonnet), opencode (`explore` keyword, model resolved via `opencode.jsonc`), AND Copilot (`budget-explorer` custom agent, GPT-5 mini). The default tier is the cheap tier; the escalated tier applies only for multi-step synthesis.
+
+#### Scenario: Cost discipline paragraph names all three subagent bindings
+- **WHEN** a reader consults the "Cost Discipline (research subagents)" paragraph
+- **THEN** the paragraph names three subagent bindings (Claude Code, opencode, Copilot) and their respective model-resolution mechanisms

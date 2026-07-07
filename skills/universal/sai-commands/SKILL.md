@@ -3,7 +3,7 @@ name: sai-commands
 description: >
   Lists all /sai-* commands and their locations. The LLM MUST load this skill before executing any sai-* command to prevent skipping command files and interpreting tasks freely.
 license: MIT
-compatibility: opencode, claude
+compatibility: opencode, claude, copilot
 metadata:
   author: Mikel Madariaga
   version: "1.0"

@@ -51,8 +51,8 @@ No skills are required by default. Load a skill only if the plan invokes it expl
 
 Per Step, the coordinator dispatches exactly one subagent:
 
-- **Type**: `subagent_type: general-purpose` (full tool access — Bash, Read, Write, Edit; required for RED/GREEN execution, unlike the read-only `Explore` type).
-- **Model**: do NOT pass a `model:` parameter. Omitting it makes the subagent inherit the coordinator's own running model — a deliberate, scoped exception to the usual "always pass an explicit `model:`" default, made because RED→GREEN judgment quality must not degrade for this dispatch (see `docs/adr/0017-same-model-dispatch-via-omitted-model-param.md`).
+- **Type**: a **write-capable** subagent — the **`budget-subagent`** skill (per-harness binding; `subagent_type` and full tool access resolved by the installed skill in `skills/{claude,opencode,copilot}/budget-subagent/`). Full read/write/search/run access is required for RED/GREEN execution, unlike the read-only `budget-explorer` tier — do NOT dispatch this Step to `budget-explorer`.
+- **Model**: resolved by the `budget-subagent` skill's per-harness binding — the standard cheap tier applies.
 - **Prompt contents**: exactly three parts — the full text of the Step, the following rules verbatim, and any technical-learnings entries the coordinator judges relevant to this Step (see "## Technical Learnings Memory" below; never the full memory) — and **nothing else**. The coordinator SHALL NOT add repo summaries, "relevant context" sections, or lists of files to inspect: the Step is self-contained, and any extra hint invites the exploration the *No exploration* rule prohibits.
     - *Scope*: Implement ONLY what is specified in the Step. DO NOT WRITE ANY CODE OUTSIDE OF WHAT IS SPECIFIED IN THE STEP. Exception: minimal stubs required to make a RED test fail by assertion (per the RED → GREEN handling rules below) are permitted; they are part of the test scaffolding, not new feature code.
     - *No exploration*: The Step is self-contained — it already names the exact files, the code to write, and the verification commands to run. Do NOT inspect the project to gain context: no orientation Grep/Glob sweeps, no reading neighboring modules "for patterns", no reading change artifacts (`implementation.md`, `tasks.md`, `proposal.md`, `design.md`), no `openspec` commands, no loading skills. The only files you may read are (a) the files the Step modifies (read-before-write), (b) the test files the Step creates or runs, and (c) existing test files and test infrastructure (fixtures, harness, shared test helpers) — reading the test suite to match its patterns and configuration is allowed. Production code stays off-limits until a failure demands it: if a symbol or API from the plan turns out not to exist — proven by a compile or test failure, not suspected in advance — you may then read the single file that defines the real symbol, apply the minimal correction, and record it as a deviation. Exploration is a reaction to a concrete failure, never preparation.
@@ -153,7 +153,7 @@ of plan markers.
 - **Operations requiring permission**: Branch creation/switching, commits, push, rebase, merge, tag operations, or any destructive git action.
 
 Example workflow:
-1. Dispatch a Step-execution subagent for the current Step (no `model:` param, `subagent_type: general-purpose`)
+1. Dispatch a Step-execution subagent for the current Step (per "## Step-Execution Subagent Dispatch" — write-capable per-harness binding)
 2. Receive the subagent's report (7 fields — see "## Subagent Report Contract")
 3. Re-run the Step's Verification Checklist yourself (Automated checks); on a mismatch with the report, stop and surface the discrepancy instead of continuing
 4. Incorporate the report's technical learnings into the coordinator's memory
