@@ -1,5 +1,5 @@
 ---
-description: Generate design.md and tasks.md for an approved change — gated on specs approval recorded by /sai-1-spec.
+description: Generate design.md and tasks.md for a change — gated on specs approval the wrapper itself asks for and records (body file: sai/instructions/design.md).
 model: opencode-go/glm-5.2
 ---
 
