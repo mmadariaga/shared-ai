@@ -19,7 +19,7 @@ This prevents the LLM from skipping command loading and making free interpretati
 
 | Command | File | Description |
 |---------|------|-------------|
-| `/sai-explore` | `@commands/sai-explore.md` | Explore mode — thinking partner for ideas, problems, and requirements. Wraps opsx:explore skill, adds caveman mode. |
+| `/sai-explore` | `@commands/sai-explore.md` | Explore mode — thinking partner for ideas, problems, and requirements. Wraps opsx:explore skill. |
 | `/sai-1-spec` | `@commands/sai-1-spec.md` | Propose a new change — generates proposal.md and specs/ only. Stops before design. |
 | `/sai-2-design` | `@commands/sai-2-design.md` | Generate design.md and tasks.md for an approved change — gated on specs approval. |
 | `/sai-3-implement` | `@commands/sai-3-implement.md` | Granular implementation plan — reads OpenSpec change artifacts, writes implementation.md with code, RED→GREEN, STOP & COMMIT markers. |
@@ -32,7 +32,7 @@ This prevents the LLM from skipping command loading and making free interpretati
 | `/sai-pr` | `@commands/sai-pr.md` | Pull Request Author — synthesizes PR title and body from change artifacts and git diff, opens PR via gh. |
 | `/sai-commit` | `@commands/sai-commit.md` | Conventional Commits message author from staged changes — generates subject and body, gates commit behind explicit authorization. |
 | `/sai-backfill` | `@commands/sai-backfill.md` | Post-hoc backfill — reconstructs proposal.md and capability specs for changes that skipped the SAI workflow. |
-| `/budget` | `@commands/budget.md` | Load all three budget skills (explorer + executor + token-efficient-languages) simultaneously. |
+| `/budget` | `@commands/budget.md` | Load all four budget skills (explorer + executor + budget-subagent + token-efficient-languages) simultaneously. |
 
 ### Resolution Steps
 
@@ -45,7 +45,6 @@ This prevents the LLM from skipping command loading and making free interpretati
 
 The sai-* commands are wrappers that:
 - Load prerequisite checks
-- Apply caveman communication mode
 - Enforce cost discipline via budget skills
 - Load phase-specific instructions
 - Chain OpenSpec skills in the correct order
