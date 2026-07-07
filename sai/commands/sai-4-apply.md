@@ -28,7 +28,14 @@
   **User's request:** $ARGUMENTS
 
   ## Completion
-  MANDATORY STOP: Once the implementation is done, all human verification gates have been reviewed, and commits are done, your work is COMPLETE, STOP and print exactly: "Implementation applied. Run `/sai-5-review {name}` in a new chat when ready."
+  "Done" means ALL of the following, together — a single Step finishing (or its commit landing) is NOT completion:
+  - Every Step in `openspec/changes/{change-name}/implementation.md` has all its checkboxes `[x]`, confirmed by the Final sweep.
+  - All human verification gates have been reviewed.
+  - All commits are done.
+
+  If any Step remains unchecked, your work is NOT complete: do not print the completion message, do not mention `/sai-5-review`, and do not end — dispatch the next unchecked Step instead.
+
+  MANDATORY STOP: Only once all the conditions above hold, your work is COMPLETE, STOP and print exactly: "Implementation applied. Run `/sai-5-review {name}` in a new chat when ready."
 </TASK>
 
 Follow instruction on <TASK> step by step
