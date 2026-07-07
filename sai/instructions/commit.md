@@ -104,8 +104,8 @@ Before presenting the message, audit it:
 
    The `Plan cross-check` and `Subagent ↔ git` blocks SHALL NOT appear — `sai-commit` has no subagent and no plan.
 2. If `--amend`: also show `git log -1 --pretty=format:'%h %s'` of the commit being amended and warn if it's already pushed (`git log @{push}..HEAD --oneline` — if empty and HEAD matches push, it's pushed).
-3. Ask: **"Run `git commit -m '...'` (or `git commit --amend ...`)? (y/n)"**
-4. On `y` → execute. Use HEREDOC for multi-line messages:
+3. Ask: **"Run `git commit -m '...'` (or `git commit --amend ...`)?"** — as a closed-choice prompt with options `yes` / `no` (per the "Closed-choice prompts" rule in `remember.md`, which gives the per-harness option-picker mapping).
+4. On `yes` → execute. Use HEREDOC for multi-line messages:
     ```
     git commit -m "$(cat <<'EOF'
     {subject}
@@ -115,4 +115,4 @@ Before presenting the message, audit it:
     )"
     ```
     Capture and show the resulting commit SHA + subject.
-5. On `n` → STOP. Tell the user the message is ready to copy from above.
+5. On `no` → STOP. Tell the user the message is ready to copy from above.

@@ -33,10 +33,10 @@ Checkbox marking and the deviations appendix in `implementation.md` SHALL be wri
 
 ### Requirement: Human commit gate stays in the main thread
 
-The STOP & COMMIT human authorization gate SHALL remain in the coordinator (main thread): the coordinator proposes the commit message and waits for explicit `y/n` authorization before running `git commit`, exactly as defined by the existing apply STOP & COMMIT checklist.
+The STOP & COMMIT human authorization gate SHALL remain in the coordinator (main thread): the coordinator proposes the commit message and waits for explicit authorization before running `git commit`, exactly as defined by the existing apply STOP & COMMIT checklist. The authorization MUST be presented as a closed-choice prompt with options `yes` / `no` (per the "Closed-choice prompts" rule in `remember.md`, which gives the per-harness option-picker mapping), preserving the `yes`-only execute semantics and treating anything other than an explicit `yes` (no, silence, redirect, or any other reply) as a decline.
 
 #### Scenario: Coordinator reaches a STOP & COMMIT after a Step's report
 
 - **WHEN** the coordinator has verified a Step whose plan ends at a STOP & COMMIT
-- **THEN** the coordinator proposes the commit message and asks the user `(y/n)`, committing only on explicit `y` and otherwise describing the staged changes for the user to commit themselves
+- **THEN** the coordinator proposes the commit message and asks via a closed-choice yes/no prompt, committing only on explicit `yes` and otherwise describing the staged changes for the user to commit themselves
 

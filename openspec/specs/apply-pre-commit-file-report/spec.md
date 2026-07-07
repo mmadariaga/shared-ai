@@ -64,16 +64,16 @@ The report SHALL NOT include a diff preview, full file contents, or tracebacks.
 
 ### Requirement: Pre-commit report is not a second approval gate
 
-The pre-commit file visibility report SHALL NOT introduce a second user approval step. The existing single user authorization at the STOP & COMMIT checklist is the only gate. The report informs the user so they can decide at the existing gate; it does not require a separate `y/n` for itself.
+The pre-commit file visibility report SHALL NOT introduce a second user approval step. The existing single user authorization at the STOP & COMMIT checklist is the only gate. The report informs the user so they can decide at the existing gate; it does not require a separate authorization for itself. The gate is presented as a closed-choice prompt with options `yes` / `no` (per the "Closed-choice prompts" rule in `remember.md`, which gives the per-harness option-picker mapping), and the existing single `yes`-only / decline-on-anything-else semantics are preserved.
 
 #### Scenario: User authorizes commit after reviewing the report
 
-- **WHEN** the coordinator prints the pre-commit report and the existing checklist prompt `Ready to commit Step N. May I create commit with message: '<subject>'? (y/n)`, and the user answers `y`
+- **WHEN** the coordinator prints the pre-commit report and the existing checklist prompt `Ready to commit Step N. May I create commit with message: '<subject>'?`, and the user answers `yes` (clicked or typed)
 - **THEN** the coordinator runs `git commit` exactly as before — no additional prompt is required for the report
 
 #### Scenario: User vetoes commit because the file list is wrong
 
-- **WHEN** the user sees the pre-commit report, decides the file list is wrong, and answers `n` to the existing prompt
+- **WHEN** the user sees the pre-commit report, decides the file list is wrong, and answers `no` to the existing prompt
 - **THEN** the coordinator does not run `git commit` and prints the existing "Commit not authorized" message — the report's purpose is satisfied by surfacing the wrong list to the user
 
 ### Requirement: Section ordering is stable when sections are absent

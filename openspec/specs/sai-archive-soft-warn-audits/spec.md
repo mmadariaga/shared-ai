@@ -41,7 +41,7 @@ The `sai-archive` command SHALL run the classification check BEFORE invoking ste
 
 ### Requirement: Incomplete-tasks soft confirmation gate
 
-The check in `sai/instructions/archive.md` that scans `openspec/changes/{name}/implementation.md` for `- [ ]` items SHALL be a **soft confirmation gate**, not a hard stop. When one or more unchecked items are found, `sai-archive` SHALL list every unchecked item concretely — each item's location as `implementation.md:{line}`, the `#### Step N` heading it falls under, and the checkbox's own text — then prompt the user with `Continue archiving with N unchecked items? (y/n)` (where `N` is the count). The command SHALL perform the archive move ONLY on an explicit `y`. On `n`, on silence, or on any answer other than `y`, the command SHALL NOT perform the archive move and SHALL report that archiving was not performed and why.
+The check in `sai/instructions/archive.md` that scans `openspec/changes/{name}/implementation.md` for `- [ ]` items SHALL be a **soft confirmation gate**, not a hard stop. When one or more unchecked items are found, `sai-archive` SHALL list every unchecked item concretely — each item's location as `implementation.md:{line}`, the `#### Step N` heading it falls under, and the checkbox's own text — then ask the user with a closed-choice prompt `Continue archiving with N unchecked items?` with options `yes` / `no` (per the "Closed-choice prompts" rule in `remember.md`, which gives the per-harness option-picker mapping), where `N` is the count. The plain-text fallback reads `Continue archiving with N unchecked items? (yes/no)`. The command SHALL perform the archive move ONLY on an explicit `yes` selection or reply. On `no`, on silence, or on any answer other than `yes`, the command SHALL NOT perform the archive move and SHALL report that archiving was not performed and why.
 
 The prompt is conversational in chat: `sai-archive` SHALL NOT write any approval key to `.openspec.yaml` and SHALL NOT introduce any new formal approval gate. This requirement governs ONLY the unchecked-items rule of the Completion Check; the CORE/AUDIT classification, the AUDIT soft-warning, the missing-main-spec handling, and the spec-sync behavior are unchanged. When `implementation.md` does not exist, this check is skipped entirely.
 
@@ -49,17 +49,17 @@ The prompt is conversational in chat: `sai-archive` SHALL NOT write any approval
 
 - **WHEN** the `sai-archive` command runs and `openspec/changes/{name}/implementation.md` exists and contains one or more `- [ ]` items
 - **THEN** the command lists every unchecked item, each showing its `implementation.md:{line}` location, its enclosing `#### Step N` heading, and the checkbox text
-- **AND** prompts `Continue archiving with N unchecked items? (y/n)` where `N` is the count of unchecked items
+- **AND** asks via a closed-choice yes/no prompt `Continue archiving with N unchecked items?` where `N` is the count of unchecked items
 - **AND** does not perform the archive move before the user answers
 
 #### Scenario: User confirms archiving with unchecked items
 
-- **WHEN** the user answers `y` to the prompt
+- **WHEN** the user answers `yes` to the prompt (clicked or typed)
 - **THEN** the command proceeds with the rest of the archive flow and performs the archive move
 
 #### Scenario: User declines or stays silent
 
-- **WHEN** the user answers `n`, stays silent, or gives any answer other than `y`
+- **WHEN** the user answers `no`, stays silent, or gives any answer other than `yes`
 - **THEN** the command does NOT perform the archive move
 - **AND** reports that archiving was not performed, citing the unchecked items
 

@@ -26,25 +26,29 @@ WHEN `openspec list --json` returns zero active changes, the change-picker instr
 - **THEN** it prints a friendly stop message referencing `/sai-1-spec` and the consuming command halts without picking a name
 
 ### Requirement: Single Change Confirmation
-WHEN exactly one active change exists, the change-picker instruction SHALL NOT auto-select it. It SHALL present the single change's name to the user and require an explicit yes/no confirmation before treating it as the resolved change name.
+WHEN exactly one active change exists, the change-picker instruction SHALL NOT auto-select it. It SHALL present the single change's name to the user and require an explicit yes/no confirmation before treating it as the resolved change name. The confirmation MUST be presented as a closed-choice prompt with options `yes` / `no` (per the "Closed-choice prompts" rule in `remember.md`, which gives the per-harness option-picker mapping); the plain-text fallback reads `Use change '{name}'? (yes/no)`. A `yes` is matched case-insensitively whether the user clicks the option or types it.
 
 #### Scenario: One active change, user confirms
-- **WHEN** `openspec list --json` returns exactly one change and the user answers yes to the confirmation prompt
+- **WHEN** `openspec list --json` returns exactly one change and the user answers `yes` to the confirmation prompt
 - **THEN** that change's name becomes the resolved change name and the command continues as if the user had typed it
 
 #### Scenario: One active change, user declines
-- **WHEN** `openspec list --json` returns exactly one change and the user answers no to the confirmation prompt
+- **WHEN** `openspec list --json` returns exactly one change and the user answers `no` to the confirmation prompt (or stays silent, or gives an off-topic reply)
 - **THEN** the change-picker instruction does not resolve a name and the command halts without proceeding
 
 ### Requirement: Multiple Changes Numbered Picker
-WHEN two or more active changes exist, the change-picker instruction SHALL present a numbered list of change names and prompt the user to select one by number. It SHALL reject input that does not correspond to a valid list number and re-prompt rather than guessing or defaulting.
+WHEN two or more active changes exist, the change-picker instruction SHALL present one option per change name (in the order returned by `openspec list --json`) and ask the user to select one. The selection MUST be presented as a closed-choice prompt (per the "Closed-choice prompts" rule in `remember.md`): on harnesses with a native option-picker, one option per change name; on harnesses without one, a plain-text fallback that prints a 1-indexed numbered list with the prompt `Which change? Enter a number (1-{N}).` The instruction SHALL reject input that does not correspond to a valid selection (a clicked option that does not match, a number outside the range, a non-numeric reply, or a free-text reply that matches no listed name) and re-prompt rather than guessing or defaulting. Re-prompting is unbounded — no retry cap.
 
-#### Scenario: Multiple active changes, valid selection
+#### Scenario: Multiple active changes, valid selection via click
+- **WHEN** `openspec list --json` returns two or more changes and the user clicks one of the listed options
+- **THEN** the change matching that option becomes the resolved change name and the command continues as if the user had typed it
+
+#### Scenario: Multiple active changes, valid selection via number
 - **WHEN** `openspec list --json` returns two or more changes and the user enters a number within the listed range
 - **THEN** the change at that position becomes the resolved change name and the command continues as if the user had typed it
 
 #### Scenario: Multiple active changes, invalid selection
-- **WHEN** `openspec list --json` returns two or more changes and the user enters a number outside the listed range or non-numeric input
+- **WHEN** `openspec list --json` returns two or more changes and the user enters a number outside the listed range, a non-numeric input, or a free-text reply that matches no listed name
 - **THEN** the change-picker instruction rejects the input and re-prompts without resolving a name
 
 ### Requirement: Resolved Name Substitution

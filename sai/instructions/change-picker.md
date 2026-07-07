@@ -12,13 +12,15 @@ Run this instruction only when `$ARGUMENTS` is empty at the point the consuming 
 
 2. **Zero changes** — if `changes` is empty: STOP and print exactly: "No active changes found. Run `/sai-1-spec` to create one." Do not proceed to any further processing in the consuming command.
 
-3. **Exactly one change** — present the single change's name and ask: "Use change '{name}'? (yes/no)"
-   - "yes" (case-insensitive) → confirm. That change's name becomes the resolved change name; go to "Resolved name substitution" below.
+Both prompts below are closed-choice: present the choices through the harness's native option-picker tool when one exists, otherwise fall back to the plain-text prompts as written (per the "Closed-choice prompts" rule in `remember.md`, which gives the per-harness mapping). The selection semantics are identical either way.
+
+3. **Exactly one change** — ask: "Use change '{name}'?" with options "yes" / "no" (plain-text fallback: "Use change '{name}'? (yes/no)").
+   - "yes" (clicked or typed, case-insensitive) → confirm. That change's name becomes the resolved change name; go to "Resolved name substitution" below.
    - Anything else (including "no", silence, or an off-topic reply) → decline. STOP. Do not resolve a name and do not proceed further in the consuming command. No retry loop for this path.
 
-4. **Two or more changes** — present a numbered list of change names (1-indexed, in the order returned by `openspec list --json`) and prompt: "Which change? Enter a number (1-{N})."
-   - A number within `1-{N}` → valid. The change at that position becomes the resolved change name; go to "Resolved name substitution" below.
-   - Anything else (non-numeric, out of range, or otherwise invalid) → reject the input and re-prompt with the same numbered list. Re-prompt unboundedly — no retry cap.
+4. **Two or more changes** — ask: "Which change?" with one option per change name (in the order returned by `openspec list --json`; plain-text fallback: a 1-indexed numbered list with the prompt "Which change? Enter a number (1-{N}).").
+   - A clicked option, or a number within `1-{N}` → valid. That change becomes the resolved change name; go to "Resolved name substitution" below.
+   - Anything else (non-numeric, out of range, or a free-text reply that matches no listed name) → reject the input and re-prompt with the same options. Re-prompt unboundedly — no retry cap.
 
 ## Resolved name substitution
 

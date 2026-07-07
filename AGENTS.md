@@ -4,7 +4,7 @@
 
 A prompt and instruction library for orchestrating a **structured AI-assisted development pipeline** built on top of [OpenSpec](https://github.com/Fission-AI/OpenSpec).
 
-It contains no application code. It is prompt infrastructure installed as global commands in Claude Code and opencode.
+It contains no application code. It is prompt infrastructure installed as global commands in Claude Code, opencode, and GitHub Copilot.
 
 The `sai-*` commands are **wrappers over OpenSpec skills**. OpenSpec owns the change lifecycle and artifact schema; shared-AI owns the quality layer (isolation mode, model routing, glossary, cost discipline, RED→GREEN) and adds a granular implementation phase optimized for cheap-model execution.
 
@@ -34,6 +34,7 @@ sai/instructions/prereqs.md      ← universal prereq check fetched by all opens
 sai/commands/              ← sai command body files (fetched by wrappers at runtime)
 commands/claude/           ← wrappers for Claude Code (model + effort + fetch to sai/commands/)
 commands/opencode/         ← wrappers for opencode (model + fetch to sai/commands/)
+commands/copilot/          ← wrappers for GitHub Copilot (model + fetch to sai/commands/ via the fetch skill)
 configs/                   ← config samples (opencode.jsonc)
 openspec/schemas/sai-workflow/  ← custom OpenSpec schema (schema.yaml + 9 templates)
 ```
@@ -68,6 +69,7 @@ The openspec-dependent `ai-*` commands halt with a clear error if either is miss
 | `skills/opencode/fetch/SKILL.md` | Fetch @ path resolver for opencode — replicates Claude Code's built-in Fetch @ mechanism. Loaded first by all opencode wrappers to enable `@sai/` and `@skills/` path resolution. |
 | `commands/claude/` | Wrappers for Claude Code. YAML frontmatter (`description`, `argument-hint`, `model`, `effort`) + fetch to `sai/commands/` + fetch to project-local skill files. |
 | `commands/opencode/` | Wrappers for opencode. YAML frontmatter (`description`, `model`) + fetch to `sai/commands/` + fetch to project-local skill files. |
+| `commands/copilot/` | Wrappers for GitHub Copilot. YAML frontmatter (`description`, `argument-hint`, `agent`, `model`) + fetch to `sai/commands/` via the copilot fetch skill. |
 | `configs/` | Config samples. `opencode.jsonc`: sub-agent explore configuration (mode + trusted low-cost model). Required for cost-effective research delegation. |
 
 Wrappers are **thin** — they specify the model, fetch the markdown from `instructions/`, and (for openspec-dependent commands) fetch the relevant skill from the project's `.claude/skills/` or `.opencode/skills/` directory.
@@ -76,6 +78,9 @@ Wrappers are **thin** — they specify the model, fetch the markdown from `instr
 
 ### Wrappers, never skills
 sai-* commands prepend shared-AI behaviors (glossary-format, spec.propose) and then `Fetch` the OpenSpec skill content. The skill `SKILL.md` files are **never modified** — the OpenSpec CLI regenerates them on update.
+
+### Harness universality
+The pipeline supports three harnesses: **Claude Code**, **opencode**, and **GitHub Copilot**. Every change — to a wrapper (`commands/{claude,opencode,copilot}/`), a shared instruction (`sai/instructions/`), a skill, an installer, or this AGENTS.md — MUST consider all three. Harness-agnostic content stays harness-agnostic (no harness named at all); the moment one harness is named, all three are named, each with its own mechanism. This rule is upstream of Mirror discipline and also governs instruction prose (e.g. closed-choice prompts must cover Claude Code's `AskUserQuestion`, opencode's `question` tool, and Copilot's plain-text fallback — see `remember.md`), installer scripts, model tables, and docs. Before finishing any change, scan the diff for a harness name; if one appears, verify the other two are addressed or explicitly marked N/A.
 
 ### Single artifact home
 All sai-* artifacts (`implementation.md`, `review.md`, `security.md`, `performance.md`, `accessibility.md`, `pr.md`) write to `openspec/changes/{change-name}/`. The legacy `plans/` directory is **not used** by the new pipeline.
@@ -148,8 +153,9 @@ Commands are **user globals**, not per-project.
 
 - **Claude Code**: `~/.claude/commands/`
 - **opencode**: `~/.config/opencode/commands/`
+- **GitHub Copilot**: VS Code user prompts folder (see `INSTALL.copilot.md`)
 
-Supported harnesses: Claude Code and opencode only.
+Supported harnesses: Claude Code, opencode, and GitHub Copilot.
 
 Project-local commands (`.claude/commands/` or `.opencode/commands/` at repo root) override by name. OpenSpec skills are always **project-local** (installed by `openspec init`) — never copied to user globals.
 
@@ -182,7 +188,7 @@ Existing projects with `plans/{feature-name}/` artifacts are **not migrated auto
 ### Add / modify an instruction
 1. Edit the file in `sai/instructions/`.
 2. If it changes a per-phase artifact path, update the corresponding wrapper REPLACEMENT block (`sai-3-implement.md`, `sai-4-apply.md`) and the AGENTS.md artifact table above.
-3. If the recommended model changes, update the wrappers in `commands/claude/` and `commands/opencode/`.
+3. If the recommended model changes, update the wrappers in `commands/claude/`, `commands/opencode/`, and `commands/copilot/`.
 
 ### Change picker
 Nine `sai-*` commands consume an OpenSpec change name via `$ARGUMENTS`: `sai-2-design`, `sai-3-implement`, `sai-4-apply`, `sai-5-review`, `sai-6-security`, `sai-7-performance`, `sai-8-accessibility`, `sai-archive`, `sai-pr`. When `$ARGUMENTS` is empty, each fetches the shared `sai/instructions/change-picker.md` to resolve a change name before proceeding — never duplicate its 0/1/N logic inline. `sai-1-spec` is excluded (it creates a new change, not consumes one).
@@ -195,18 +201,18 @@ When adding a new change-consuming command, check whether it dereferences `{chan
 
 ### Add a new command
 1. Create the instruction in `sai/instructions/{name}.md` with Isolation Mode + TASK block (or, for openspec-backed commands, write a wrapper that fetches a skill).
-2. Create wrappers in `commands/claude/sai-{name}.md` and `commands/opencode/sai-{name}.md`.
+2. Create wrappers in `commands/claude/sai-{name}.md`, `commands/opencode/sai-{name}.md`, and `commands/copilot/sai-{name}.prompt.md`.
 3. Update README.md with the phase in the corresponding table.
 
 ### Specs approval gate
 `sai-1-spec` stops after generating `proposal.md` and `specs/`. It asks the user to review and confirm approval, then writes `approval.specs.approved_at` + `approval.specs.notes` to `.openspec.yaml`. `sai-2-design` reads this key before proceeding. Bypassing `sai-2-design` (e.g. calling `opsx:continue` directly) skips this check — `opsx:*` commands are internal, document this accordingly.
 
 ### Mirror discipline
-Any change to `commands/claude/` MUST be mirrored to `commands/opencode/` in the same commit (and vice versa). Enforce via PR checklist.
+Any change to `commands/claude/` MUST be mirrored to `commands/opencode/` and `commands/copilot/` in the same commit (and vice versa — all three stay in sync). Enforce via PR checklist. This is one consequence of the "Harness universality" convention above, which also covers shared instructions, installers, and docs.
 
 ### Format conventions
 - Never use `any` in TypeScript (even though there is no TS here, it applies to code examples in instructions).
 - Generated artifacts are in English unless the user explicitly requests otherwise.
-- Fetch URLs point to `@~/.config/opencode/sai/instructions/...` (opencode) or `@~/.claude/sai/instructions/...` (claude).
+- Fetch URLs point to `@~/.claude/sai/instructions/...` (claude), `@~/.config/opencode/sai/instructions/...` (opencode), or the Copilot SAI folder resolved by the copilot fetch skill (see `INSTALL.copilot.md`).
 - Skill fetches use project-local paths (`.claude/skills/...` or `.opencode/skills/...`).
 - `TODO-ENHANCEMENTS.md` tracks future enhancement ideas (not part of the pipeline).

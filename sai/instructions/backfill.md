@@ -11,7 +11,7 @@ Before any other step, check:
 
 ## Phase 1: Diff Source Selection
 
-Present the user with exactly this message and do NOT proceed until a valid selection is received:
+Ask the user which diff to analyze and do NOT proceed until a valid selection is received. Ask **"Which diff should I analyze?"** as a closed-choice prompt with the three options below (per the "Closed-choice prompts" rule in `remember.md`, which gives the per-harness option-picker mapping); a free-text reply that maps to none of them is invalid — re-ask. On a harness with no native option-picker, print exactly:
 
 ```
 **Which diff should I analyze?**

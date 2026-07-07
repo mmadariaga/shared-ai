@@ -3,12 +3,18 @@
 ## Purpose
 TBD - created by archiving change extract-commit-rules-shared-instruction. Update Purpose after archive.
 ## Requirements
-### Requirement: Coordinator dispatches each Step to a subagent
+### Requirement: Coordinator dispatches each Step to a subagent on every iteration
 During `sai-4-apply`, the main thread SHALL act as a coordinator: for each Step in `implementation.md` it SHALL identify the next unchecked Step and dispatch a subagent to execute that Step's implementation body. The coordinator itself SHALL NOT perform the read-before-write reads, RED-test runs, or GREEN iteration of the Step — those happen inside the subagent so their output never enters the coordinator's context. The subagent SHALL continue executing Steps sequentially until the plan is finished, without returning control to the coordinator between Steps. Each subagent invocation SHALL be self-contained: the prompt SHALL include all necessary context (Step text, RED→GREEN rules, read-before-write rule, relevant technical learnings) so the subagent does not need to refer back to prior conversation.
+
+The no-self-execution rule holds on every iteration, not just the first. After a Step's STOP & COMMIT checklist finishes (commit created, or the user declined and was told how to commit themselves), the first action of the new iteration MUST be the same: dispatch a NEW Step-execution subagent for the next unchecked Step (per `## Step-Execution Subagent Dispatch` in `apply.md`). The coordinator SHALL NOT edit code, run tests, or perform the next Step's body itself, no matter how small or familiar the next Step looks after the ones already done.
 
 #### Scenario: Coordinator reaches the next unchecked Step
 - **WHEN** the coordinator finishes one Step and looks for the next work
 - **THEN** it locates the next Step in `implementation.md` whose checkboxes are not all `[x]` and dispatches a subagent to execute that Step's implementation body
+
+#### Scenario: Coordinator reaches the next unchecked Step on a later iteration
+- **WHEN** the coordinator finishes a Step's STOP & COMMIT checklist (commit authorized or declined) and an unchecked Step remains
+- **THEN** the coordinator dispatches a NEW Step-execution subagent for the next unchecked Step — it does not execute the next Step's body itself, even when the next Step is small or familiar
 
 #### Scenario: Coordinator does not absorb execution noise
 - **WHEN** a Step requires reading files before writing, running a RED test, or iterating on GREEN
@@ -76,19 +82,19 @@ When the implementation plan reaches a STOP & COMMIT marker, the agent SHALL app
 - **THEN** the proposed subject MUST follow `type(scope): description` format, be ≤ 50 characters, and every claim MUST map to staged hunks only
 
 ### Requirement: Explicit permission gate at STOP & COMMIT stays in the main thread
-When `apply.md` is executed and a STOP & COMMIT marker is encountered, the main thread (coordinator) SHALL propose the commit message and ask the user for explicit per-invocation authorization before running `git commit`. The STOP & COMMIT human authorization gate SHALL remain in the coordinator — it SHALL NOT be delegated to the subagent. Silently skipping the commit step is a spec violation.
+When `apply.md` is executed and a STOP & COMMIT marker is encountered, the main thread (coordinator) SHALL propose the commit message and ask the user for explicit per-invocation authorization before running `git commit`. The STOP & COMMIT human authorization gate SHALL remain in the coordinator — it SHALL NOT be delegated to the subagent. Silently skipping the commit step is a spec violation. The authorization prompt MUST be presented as a closed-choice prompt with options `yes` / `no` (per the "Closed-choice prompts" rule in `remember.md`, which gives the per-harness option-picker mapping). The coordinator commits only on an explicit `yes`; anything else (no, silence, redirect, or any other reply) is a decline.
 
 #### Scenario: User grants commit permission
-- **WHEN** the coordinator reaches a STOP & COMMIT marker and the user answers `y` to the proposed commit
+- **WHEN** the coordinator reaches a STOP & COMMIT marker and the user answers `yes` to the proposed commit
 - **THEN** the coordinator runs `git commit` and reports the resulting SHA + subject
 
 #### Scenario: User declines or does not respond
-- **WHEN** the coordinator reaches a STOP & COMMIT marker and the user does not answer `y`
+- **WHEN** the coordinator reaches a STOP & COMMIT marker and the user does not answer `yes`
 - **THEN** the coordinator MUST NOT run `git commit`; MUST describe the staged changes and instruct the user to commit themselves
 
 #### Scenario: Subagent reports a STOP & COMMIT was reached
 - **WHEN** a subagent report indicates a STOP was reached at a STOP & COMMIT marker
-- **THEN** the coordinator proposes the commit message and asks the user `(y/n)`, committing only on explicit `y` and otherwise describing the staged changes for the user to commit themselves
+- **THEN** the coordinator proposes the commit message and asks via a closed-choice yes/no prompt, committing only on explicit `yes` and otherwise describing the staged changes for the user to commit themselves
 
 ### Requirement: Agent SHALL perform a final checkbox sweep after all steps complete
 When all steps in `implementation.md` are complete, the apply agent MUST scan the entire file and verify that every checkbox that should be checked is marked `[x]`. Any unchecked items MUST be reported to the user before the implementation is declared done.
