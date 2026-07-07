@@ -1,4 +1,4 @@
-## MODIFIED Requirements
+## Requirements
 
 ### Requirement: The system SHALL maintain up-to-date model assignments in all command wrappers
 
@@ -33,8 +33,3 @@ Each command wrapper's YAML frontmatter `model` field SHALL reflect the currentl
 
 - **WHEN** a user consults the model reference table in `README.md`
 - **THEN** the `spec (1)` and `backfill` rows SHALL show `opencode-go/minimax-m3` for the Opencode column
-
-#### Scenario: Command registry lists all active wrappers
-
-- **WHEN** the `sai-commands` SKILL.md registry is loaded
-- **THEN** it SHALL include entries for all active command wrappers, including `sai-3-implement-low` and `sai-3-implement-high`
