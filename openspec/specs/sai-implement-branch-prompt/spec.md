@@ -51,7 +51,7 @@ The resolved branch name SHALL be substituted into the `## Prerequisites` sectio
 The branch selection prompt in `sai/instructions/implement.md` SHALL present three options:
 1. `{feature-name}` (derived from the change name)
 2. Custom branch name (free input — e.g., backlog-linked name like `JIRA-123-feature-name`)
-3. Create the selected branch from `main` if it does not already exist
+3. Create the selected branch from the chosen base branch — the dynamically resolved default branch (`main`/`master`) or the current branch, per the base prompt defined in `sai-apply-branch-prompt` — if it does not already exist. The base SHALL NOT be hardcoded to `main`.
 
 #### Scenario: user selects custom branch name
 - **WHEN** the user runs `/sai-3-implement my-change`
@@ -60,5 +60,5 @@ The branch selection prompt in `sai/instructions/implement.md` SHALL present thr
 
 #### Scenario: selected branch does not exist
 - **WHEN** the user selects a branch name that does not exist in the repository
-- **THEN** the agent creates the branch from `main` before proceeding with implementation
+- **THEN** the agent creates the branch from the chosen base branch (per the base prompt), never hardcoded to `main`, before proceeding with implementation
 

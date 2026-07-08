@@ -85,11 +85,15 @@ No option is prohibited. The user has complete opt-out and bears responsibility 
 - **THEN** the Prerequisites section records `JIRA-456-add-validation` as the target branch
 
 ### Requirement: Branch creation instruction preserved
-If the selected branch does not exist in the repository, the Prerequisites section SHALL instruct the agent to create it from `main` before proceeding with implementation.
+If the selected branch does not exist in the repository, the Prerequisites section SHALL instruct the agent to create it from the chosen base branch before proceeding with implementation. The base branch is the default branch (dynamically resolved `main`/`master`) or the current branch, as determined by the base prompt — or the default branch directly when the base prompt is skipped because the current branch already equals the default branch. The instruction SHALL NOT hardcode `main` as the base.
 
-#### Scenario: selected branch does not exist
-- **WHEN** the user selects a branch name that does not exist in the repository
-- **THEN** the Prerequisites section instructs the agent to create the branch from `main` before implementing
+#### Scenario: selected branch does not exist — created from chosen base
+- **WHEN** the user selects a branch name that does not exist in the repository and the base prompt resolves to the current branch `feature/parent`
+- **THEN** the Prerequisites section instructs the agent to create the branch from `feature/parent` before implementing
+
+#### Scenario: selected branch does not exist — default base on master repo
+- **WHEN** the user selects a new branch that does not exist in a repository whose default branch is `master` and the base prompt resolves to the default branch
+- **THEN** the Prerequisites section instructs the agent to create the branch from `master` before implementing
 
 #### Scenario: user stays on existing branch — no creation needed
 - **WHEN** the user selects the stay option and the current branch exists
@@ -106,3 +110,64 @@ Only the `## Prerequisites` section inside `<plan_template>` in `sai/instruction
 #### Scenario: existing implementation.md files untouched
 - **WHEN** the change is applied
 - **THEN** no existing `openspec/changes/*/implementation.md` file is modified or regenerated
+
+### Requirement: Default branch SHALL be detected dynamically
+The `## Prerequisites` block inside `<plan_template>` in `sai/instructions/implement.md` SHALL instruct the agent to resolve the repository's default branch dynamically rather than assuming `main`. Resolution SHALL prefer the remote head (for example `git symbolic-ref --quiet refs/remotes/origin/HEAD`, taking the trailing segment), falling back to whichever of `main` or `master` exists locally. The resolved name is referred to below as the default branch.
+
+#### Scenario: repository default branch is main
+- **WHEN** the agent generates an `implementation.md` in a repository whose default branch is `main`
+- **THEN** the resolved default branch used by the base prompt and the branch-creation instruction is `main`
+
+#### Scenario: repository default branch is master
+- **WHEN** the agent generates an `implementation.md` in a repository whose default branch is `master`
+- **THEN** the resolved default branch used by the base prompt and the branch-creation instruction is `master`
+- **THEN** no text in the Prerequisites block hardcodes `main` as the base
+
+### Requirement: New branch SHALL prompt for its base
+When the user selects a branch that does NOT already exist in the repository — option 1 (suggested `{feature-name}`) or option 3 (manually entered name) — the `<plan_template>` Prerequisites block SHALL instruct the agent to present a 2-option closed choice asking which branch the new branch is based on, before creating it. The two options, in this order, are:
+1. Base on the default branch (the dynamically resolved `main`/`master`) — the default option.
+2. Base on the current branch (`{current-branch}`); when the current state is detached HEAD, option 2's label SHALL show the literal text `detached HEAD`, mirroring option 2 of the three-option branch-selection prompt.
+
+This requirement applies except where the base prompt is skipped per the skip-conditions requirement below. The prompt SHALL be presented through the harness's native option-picker per the closed-choice-prompt rule in `remember.md` (the `AskUserQuestion` tool on Claude Code), with a plain-text fallback where no picker exists. Option labels SHALL follow the user's input language with English fallback, consistent with the three-option branch-selection prompt; surrounding plan text remains in English. The chosen base is recorded and used by the branch-creation instruction.
+
+#### Scenario: user picks suggested new branch, chooses default base
+- **WHEN** the user selects option 1 for a new branch that does not exist, on current branch `feature/parent`
+- **THEN** a 2-option base prompt is presented with "base on default branch" as the default option and "base on current branch `feature/parent`" as the alternative
+- **WHEN** the user picks the default-branch base
+- **THEN** the Prerequisites section instructs the agent to create the new branch from the default branch
+
+#### Scenario: user picks manual new branch, chooses current-branch base
+- **WHEN** the user selects option 3 and enters a new branch name that does not exist, on current branch `feature/parent`
+- **WHEN** the user picks "base on current branch"
+- **THEN** the Prerequisites section instructs the agent to create the new branch from `feature/parent`
+
+#### Scenario: base prompt uses the harness option-picker
+- **WHEN** the base prompt is presented on Claude Code
+- **THEN** it is rendered through the `AskUserQuestion` option-picker with one option per base choice, not as an unstructured free-text question
+
+#### Scenario: current state is detached HEAD
+- **WHEN** the user selects a new branch via option 1 or 3 while in detached HEAD (and the base prompt is not skipped)
+- **THEN** the base prompt's "base on current branch" option label shows the literal text `detached HEAD`
+- **WHEN** the user picks that option
+- **THEN** the Prerequisites section instructs the agent to create the new branch from the current detached commit
+
+### Requirement: Base prompt SHALL be skipped when there is no meaningful choice
+The `<plan_template>` Prerequisites block SHALL NOT present the base prompt when any of these hold:
+1. The user selects option 2 (stay on the current branch) — no branch is created.
+2. The selected target branch already exists in the repository — no branch is created.
+3. The current branch already equals the resolved default branch — basing on current and basing on default are identical.
+
+In case 3, the new branch SHALL be created from the default branch without prompting.
+
+#### Scenario: stay-on-current skips the base prompt
+- **WHEN** the user selects option 2 (stay on current branch)
+- **THEN** no base prompt is presented and no branch-creation instruction is included
+
+#### Scenario: existing target branch skips the base prompt
+- **WHEN** the user selects a branch (via any option) that already exists in the repository
+- **THEN** no base prompt is presented and no branch-creation instruction is included
+
+#### Scenario: current branch equals default branch skips the base prompt
+- **WHEN** the current branch is the resolved default branch (for example `main`) and the user selects a new branch via option 1 or 3
+- **THEN** no base prompt is presented
+- **THEN** the Prerequisites section instructs the agent to create the new branch from the default branch
