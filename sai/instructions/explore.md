@@ -2,7 +2,31 @@ You are in explore mode — a read-and-discuss context. These restrictions are i
 
 1. **No file writes**: Do NOT invoke any write-producing sai-* command, and do NOT use `write`, `edit`, or any other tool that creates or modifies files. Explore mode is strictly read-only — you may only read files, search code, and discuss. This includes prompts, configs, skills, scripts, and documentation.
 
-2. **Language gate for artifact reviews (sai-explore only)**: When this turn requests a review of an existing OpenSpec artifact, and the user's dominant natural language is not English, ask a single 2-option language question before producing any review content. This gate applies only within `sai-explore`; no other `sai-*` command is affected. It qualifies `sai/instructions/remember.md:4` ("Agent responses to user: Same language as user input by default") for artifact-review turns only; `remember.md` itself is unchanged.
+2. **Research-tooling check (sai-explore only)**: At session start, before any grep/glob/Read for the user's request — and before the `openspec-explore` skill's own `openspec list --json` and codebase reading — evaluate the code-graph MCP state **once** and print the single matching notice below. This check applies only within `sai-explore`; no other `sai-*` command is affected. It is **non-blocking** (never halts the session, prompts the user, or gates later work) and **read-only** (`Glob` is the only permitted filesystem probe; do NOT use `write`, `edit`, or any other file-modifying tool).
+
+  **Fires**: once per session, at the start, before the first code search. Do NOT repeat the check or reprint the notice on later turns in the same session.
+
+  **Detection** (read-only signals only):
+  - **Tools present**: inspect the session's available tools for any name matching `codegraph_*` or `mcp__codegraph__*`. Match **either** form across the full tool list, including deferred/searchable tools not yet loaded — a matching name visible only as a deferred entry still counts as present. Do NOT depend on a single literal prefix, and do NOT call a code-graph tool to probe liveness.
+  - **Index present**: run a read-only `Glob` for `.codegraph/*` at the project root (spell the directory literally; match entries *inside* it so an empty-but-present directory is not counted). A non-empty match means an index exists. A nested `.codegraph/` under some other directory does not by itself decide the state.
+
+  **States** — print the one that matches, **verbatim** and **always in English** regardless of the conversation language (this narrowly diverges from `remember.md:4` for this notice only; all other output stays on the language policy):
+  - **not installed** (no matching code-graph tools present):
+    ```
+    > ⚠️ **CodeGraph not detected — structural research falls back to grep/glob/Read.** For faster, cheaper structural queries, install CodeGraph, a local code knowledge-graph MCP: https://github.com/colbymchenry/codegraph
+    ```
+  - **installed but no index** (tools present, but the project-root `.codegraph/` Glob returns no match):
+    ```
+    > ⚠️ **CodeGraph available but this project has no index — structural research falls back to grep/glob/Read.** Run `codegraph init -i` at the project root to build the index and enable structural queries. (CodeGraph: https://github.com/colbymchenry/codegraph)
+    ```
+  - **ready** (tools present **and** a project-root `.codegraph/` exists):
+    ```
+    > ⚠️ **CodeGraph ready — structural research will use codegraph instead of grep/glob/Read.**
+    ```
+
+  **Do NOT** restate the global "prefer codegraph over grep" guidance a code-graph MCP already injects into the harness's memory — this check's only added value is the fallback notice and the install/init recommendation.
+
+3. **Language gate for artifact reviews (sai-explore only)**: When this turn requests a review of an existing OpenSpec artifact, and the user's dominant natural language is not English, ask a single 2-option language question before producing any review content. This gate applies only within `sai-explore`; no other `sai-*` command is affected. It qualifies `sai/instructions/remember.md:4` ("Agent responses to user: Same language as user input by default") for artifact-review turns only; `remember.md` itself is unchanged.
 
   The gate fires **only** when reviewing one of the following artifacts is the turn's **primary deliverable**: `proposal.md`, `design.md`, `tasks.md`, `specs/**/*.md`, `implementation.md`, `review.md`, `security.md`, `performance.md`, or `accessibility.md` under `openspec/changes/{name}/`, `openspec/specs/`, or `openspec/changes/archive/`. The artifact may be referenced by literal path, bare filename, or change-name plus artifact mention. Free-form debate of the original idea, and turns that only cite an artifact as supporting evidence, do **not** trigger the gate.
 
@@ -25,7 +49,7 @@ You are in explore mode — a read-and-discuss context. These restrictions are i
 
   **`Ready to Propose` invariant**: The `Ready to Propose` block (item 4 after renumbering) stays in English regardless of gate outcome. No artifact file's format or content is altered by the gate.
 
-3. **Slicing assessment (before crystallizing)**: Before emitting any proposal block, judge whether the idea fits a single OpenSpec change — one cohesive, end-to-end slice buildable in one pass through the pipeline.
+4. **Slicing assessment (before crystallizing)**: Before emitting any proposal block, judge whether the idea fits a single OpenSpec change — one cohesive, end-to-end slice buildable in one pass through the pipeline.
 
   A change is "too big" when it would likely produce a diff too large to review carefully in one sitting (review fatigue hides defects). You cannot see the diff yet, so judge from the scope signals below:
   - several distinct user tasks with orthogonal concerns (not facets of one behavior);
@@ -37,7 +61,7 @@ You are in explore mode — a read-and-discuss context. These restrictions are i
 
   Ask a clarifying question only if the answer would change where the cuts fall; otherwise state your assumptions and proceed. When ambiguity materially affects where to cut, surface your assumptions explicitly inside the proposal block(s) so the user can correct them. Recommending a split is guidance, not a gate: if the user prefers to keep a large feature as a single change, state the review risk once, briefly, then proceed with the single-block protocol (3). Do not re-litigate.
 
-4. **Crystallization protocol (single change)**: When an idea is clear and fits one change, print the following structured block and instruct the user to open a new chat:
+5. **Crystallization protocol (single change)**: When an idea is clear and fits one change, print the following structured block and instruct the user to open a new chat:
 
   ## Ready to Propose
 
@@ -52,6 +76,6 @@ You are in explore mode — a read-and-discuss context. These restrictions are i
   ---
   **Open a new chat** and run `/sai-1-spec` with the content above.
 
-5. **Crystallization protocol (sliced feature)**: When the feature was sliced, print one `Ready to Propose` block per slice, ordered (Walking Skeleton first, then backlog by dependency), under a short header that names the skeleton-vs-backlog split. Each slice is one future change: the Walking Skeleton is slice 1; remaining work is grouped into slices each sized to be reviewable as a standalone unit (typically ~1–3 days, a handful of files with no deep refactor). Number the blocks; add a one-line `Depends on:` to each backlog slice. Tell the user to take the **first** block to a new chat with `/sai-1-spec`, and that each later slice becomes its own change once its predecessor is specced (the "new change per follow-up" pattern).
+6. **Crystallization protocol (sliced feature)**: When the feature was sliced, print one `Ready to Propose` block per slice, ordered (Walking Skeleton first, then backlog by dependency), under a short header that names the skeleton-vs-backlog split. Each slice is one future change: the Walking Skeleton is slice 1; remaining work is grouped into slices each sized to be reviewable as a standalone unit (typically ~1–3 days, a handful of files with no deep refactor). Number the blocks; add a one-line `Depends on:` to each backlog slice. Tell the user to take the **first** block to a new chat with `/sai-1-spec`, and that each later slice becomes its own change once its predecessor is specced (the "new change per follow-up" pattern).
 
-6. **Inline proposal refusal**: If the user asks to create a proposal or run `/sai-1-spec` now, decline with: "Creating a proposal opens a new context. Use the block(s) above in a new chat with `/sai-1-spec` to keep the spec session clean." Then print the paste-ready block(s).
+7. **Inline proposal refusal**: If the user asks to create a proposal or run `/sai-1-spec` now, decline with: "Creating a proposal opens a new context. Use the block(s) above in a new chat with `/sai-1-spec` to keep the spec session clean." Then print the paste-ready block(s).
