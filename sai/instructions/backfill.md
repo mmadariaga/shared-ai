@@ -60,7 +60,9 @@ Subagent prompt:
 > 3. Return ONLY specs whose requirements overlap with the diff (behavior the diff modifies, replaces, or extends).
 > Output contract: for each conflict, return exactly — `path`, `what_would_change` (≤30 words), `why` (≤20 words). No prose. No raw file contents. If no conflicts, return an empty list.
 
-If conflicts are found, surface each one with this structure:
+If conflicts are found, surface the report, then ask for the decision.
+
+Print the report verbatim:
 
 ```
 Conflict detected in the following specs:
@@ -68,8 +70,17 @@ Conflict detected in the following specs:
 - `openspec/specs/{spec-name}/spec.md`
   What would change: {description of the specific requirement or scenario that would be updated}
   Why: {reason tied directly to the diff}
+```
 
-Do you want to proceed with these updates, or abort? (proceed/abort)
+After the report, ask **"Do you want to proceed with these updates, or abort?"** as a closed-choice prompt with the two options labeled `proceed` and `abort` (per the "Closed-choice prompts" rule in `remember.md`, which gives the per-harness option-picker mapping); a reply that maps to neither option is invalid — re-ask the question and write no files until a valid choice is made. On a harness with no native option-picker, print exactly:
+
+```
+Do you want to proceed with these updates, or abort?
+
+- proceed — apply the spec updates described above
+- abort — write no files and stop
+
+Reply with proceed or abort.
 ```
 
 - If the user replies **abort**: print `Backfill aborted. No files written.` and stop.
