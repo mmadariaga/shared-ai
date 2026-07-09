@@ -140,6 +140,28 @@ artifacts:
       - specs
       - design
 
+  - id: interfaces
+    generates: interfaces.md
+    description: Per-step interface contract — new/modified public signatures plus exact spec-anchored test assertions, keyed by Step N to tasks.md; consumable without the implementation body
+    template: interfaces.md
+    instruction: |
+      Create interfaces.md — the per-step contract of public signatures and exact test assertions,
+      consumable without the implementation body.
+
+      Keyed by ## Step N using the same integer keys as tasks.md. Emit one section per step that
+      introduces a new/modified public interface or a testable assertion; each section has two parts:
+      - **Interfaces**: new/modified public signatures only (function/method signatures, exported
+        types, public surface) — no implementation body.
+      - **Test assertions**: exact expected input → output/behavior assertions, each anchored to a
+        specs/**/*.md requirement or scenario by path.
+
+      Omit any step that introduces no new/modified interface and no testable assertion — do NOT emit
+      an empty section. Do NOT add a testing-stack, setup, or ## Implementation Context section: the
+      testing stack stays single-sourced in tasks.md. Regenerate wholesale each run from the same step
+      decomposition as tasks.md; there is no cross-run preservation path at the design stage.
+    requires:
+      - tasks
+
   - id: implementation
     generates: implementation.md
     description: Granular implementation plan — code-level steps with RED→GREEN and STOP & COMMIT markers, with Discarded findings sub-blocks inside audit steps derived from review.md / security.md / performance.md / accessibility.md
