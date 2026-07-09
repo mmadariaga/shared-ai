@@ -126,6 +126,9 @@ If a listed document is missing or contradicts the declared stack, STOP and requ
 - STOP & COMMIT markers after each step
 - No placeholders, no TODOs, no ambiguity
 - All code MUST strictly follow the Expertise Profile from `tasks.md`
+- **Interface conformance**: When `interfaces.md` exists for this change, treat its per-step `**Interfaces**` block as the authoritative declaration of public signatures for that Step. Every function/method signature, exported type, and public surface generated into `implementation.md` for Step N SHALL match the signature declared under the matching `## Step N` in `interfaces.md`. The generated plan SHALL NOT introduce a public signature that contradicts the one declared in `interfaces.md`.
+- **Absent-`interfaces.md` fallback**: If no `interfaces.md` exists for the change, generate `implementation.md` from `tasks.md`/`design.md` as before, with no interface-conformance gating.
+- **STOP on unsatisfiable signature**: If a signature declared in `interfaces.md` cannot be honored (for example it is inconsistent with the stack, an existing API, or another Step's contract), STOP and surface the conflict as an interface amendment request to the coordinator/human. Do NOT amend the interface autonomously, and do NOT silently generate a divergent signature to work around the conflict.
 - Before writing any Verification Checklist, determine whether the step's output is observable in the browser at this point (i.e., the component or change is already rendered in the app). Apply the following rules:
 - **Automated checks** (lint, build, typecheck, unit tests): always include in the step where they apply. The agent runs these before stopping.
 - **Human checks** (browser/UI behavior): only include them in the step where the behavior is first observable. If a step creates a component not yet integrated into any page or layout, defer all its Human checks to the integration step.
@@ -266,9 +269,12 @@ The `<plan_template>` below applies to the **first-run generation path only**. O
 
 - [ ] Write the test into `{test-file}`:
 
+When `interfaces.md` exists for this change, list the step's scenarios at a high level only — concrete expected-value assertions are single-sourced in `interfaces.md` and are not restated here.
+
+When `interfaces.md` is absent, sai-4-apply will expand the scenario descriptions into full test assertions during RED.
+
 - {Scenario A description}
 - {Scenario B description}
-- (sai-4-apply will expand these into full test assertions during RED)
 
 - [ ] Verify RED: run `{test-command}` — expected: **assertion failure** (exit ≠ 0 AND failure attributable to behaviour under test, NOT a setup/import/compilation error).
 - [ ] **GATE — DO NOT PROCEED to GREEN until RED is verified.** If the test passes, or the failure is not an assertion failure, STOP and report to the user per the RED → GREEN handling rules in the implementation instructions. Do not paste the GREEN code below.
