@@ -10,12 +10,24 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 **Backfilled Change**: "An OpenSpec change reconstructed post-implementation by `/sai-backfill`, with `backfilled: true` written to `.openspec.yaml` and contractually forbidden from producing `design.md`, `tasks.md`, or `implementation.md`."
 *Avoid*: post-hoc change, retroactive change, reconstructed change
 
+**Blind Test-Writer**: "The first `/sai-4-apply` dispatch of a testable Step, given only that Step's `interfaces.md` section plus injected testing context — never the GREEN implementation body — that writes the tests (and RED stubs) and verifies a valid RED."
+*Avoid*: test dispatch, test agent, RED writer, test-first subagent
+
+**GREEN Conflict**: "The state where an Implementation Dispatch cannot make the test-writer's tests pass within bounded, test-file-untouching iteration, so it halts and reports to the coordinator for a human to decide whether the fault is the implementation, the test, or the interface."
+*Avoid*: test failure, GREEN failure, broken test, unpassable step
+
+**Implementation Dispatch**: "The second `/sai-4-apply` dispatch of a testable Step, given the GREEN implementation body, that writes the implementation and verifies GREEN and is forbidden from creating or modifying any test file."
+*Avoid*: GREEN dispatch, impl agent, code writer, build dispatch
+
 ## Relationships
 
 - An **Advisor Skill** is consulted by the phase directly below its model tier: `mid-advisor` by the `/sai-4-apply` coordinator, `senior-advisor` by `/sai-3-implement`.
 - An **Advisor Skill** is the inverse of a budget-* skill (escalates upward to smarter models rather than delegating downward to cheaper ones).
 - A **Backfilled Change** is archived via `/sai-archive` (the same command that archives non-backfilled changes).
 - A **Backfilled Change** is produced only by `/sai-backfill`; no other `sai-*` command writes `backfilled: true`.
+- A **Blind Test-Writer** precedes an **Implementation Dispatch** for every testable Step; the two never communicate directly — only the `/sai-4-apply` coordinator relays learnings between them.
+- A **GREEN Conflict** is raised by an **Implementation Dispatch** and is resolved only by a human via the coordinator, never by the subagent editing the test or interface.
+- A **Blind Test-Writer** and an **Implementation Dispatch** replace the single per-Step dispatch only for testable Steps; a non-testable Step keeps one dispatch.
 
 ## Example dialogue
 

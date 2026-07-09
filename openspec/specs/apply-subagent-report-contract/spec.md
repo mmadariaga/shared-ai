@@ -1,29 +1,42 @@
 # apply-subagent-report-contract Specification
 
-## Purpose
-TBD - created by archiving change delegate-apply-steps-to-subagent. Update Purpose after archive.
-## Requirements
+## MODIFIED Requirements
+
 ### Requirement: Subagent returns a compact fixed-field report
 
 When a Step-execution subagent finishes (or stops), it SHALL return a compact report containing exactly these fields:
 
 1. **Step executed** — the Step number `N`.
 2. **Per-item status** — done/failed status for each of the Step's checkbox items.
-3. **RED result** — one of: valid / passes / wrong-failure, including the error type when applicable.
-4. **GREEN result** — pass/fail.
+3. **RED result** — one of: valid / passes / wrong-failure / `n/a`, including the error type when applicable.
+4. **GREEN result** — pass / fail / `n/a`.
 5. **Deviations** — a list of `{plan, final, reason}` entries for the appendix; empty if none.
 6. **Technical learnings / friction** — reusable, self-contained, actionable facts discovered during execution; empty if none (per `apply-technical-learnings-memory`).
 7. **STOP reached?** — yes/no, with the exact marker message when yes.
 8. **Files modified** — paths modified or created by the subagent during this Step, relative to the repo root, one path per entry; empty list if the subagent modified nothing.
 
-Fields 1–7 are unchanged in shape, semantics, and order. Field 8 is appended after field 7 and is required (the subagent MUST populate it; an empty list is a valid value but an absent field is a malformed report).
+The report shape (8 fields, order, semantics) is stable across all dispatch kinds. Which fields carry a real value depends on the dispatch:
 
-The report SHALL NOT include raw file contents, full tracebacks, or iteration logs.
+- **Non-testable Step (single dispatch):** fields 3 and 4 both carry real values (RED result and GREEN result) exactly as before.
+- **Testable Step — test-writer dispatch:** field 3 (RED result) carries a real value; field 4 (GREEN result) is `n/a` because the test-writer does not write or verify GREEN.
+- **Testable Step — implementation dispatch:** field 4 (GREEN result) carries a real value; field 3 (RED result) is `n/a` because the implementation dispatch does not author or verify the RED test.
 
-#### Scenario: Subagent completes a Step cleanly
+Field 8 is required in every report kind (an empty list is a valid value but an absent field is a malformed report). The report SHALL NOT include raw file contents, full tracebacks, or iteration logs.
 
-- **WHEN** a subagent finishes a Step with no deviations and no STOP
+#### Scenario: Non-testable Step completes cleanly
+
+- **WHEN** a single subagent finishes a non-testable Step with no deviations and no STOP
 - **THEN** it returns the report with Step N, per-item done statuses, RED result, GREEN=pass, empty deviations, technical learnings (empty or populated), STOP reached = no, and `Files modified` = the set of paths the subagent changed — and nothing else
+
+#### Scenario: Test-writer dispatch reports RED with GREEN `n/a`
+
+- **WHEN** the test-writer subagent for a testable Step finishes after verifying a valid RED
+- **THEN** its report sets field 3 (RED result) = `valid`, field 4 (GREEN result) = `n/a`, populates field 8 with the test/stub files it wrote, and carries per-item status, deviations, learnings, and STOP as usual
+
+#### Scenario: Implementation dispatch reports GREEN with RED `n/a`
+
+- **WHEN** the implementation subagent for a testable Step finishes after verifying GREEN
+- **THEN** its report sets field 4 (GREEN result) = `pass`, field 3 (RED result) = `n/a`, populates field 8 with the production files it modified, and carries per-item status, deviations, learnings, and STOP as usual
 
 #### Scenario: Subagent stops at a STOP & COMMIT
 
@@ -32,8 +45,8 @@ The report SHALL NOT include raw file contents, full tracebacks, or iteration lo
 
 #### Scenario: RED check is invalid
 
-- **WHEN** the RED verification either already passes or fails for a non-assertion reason
-- **THEN** the report's RED result records `passes` or `wrong-failure` (with the error type), so the coordinator can act on the invalid RED rather than the subagent silently proceeding
+- **WHEN** the test-writer's RED verification either already passes or fails for a non-assertion reason
+- **THEN** the report's field 3 (RED result) records `passes` or `wrong-failure` (with the error type), so the coordinator can act on the invalid RED rather than dispatching the implementation subagent
 
 #### Scenario: Subagent modifies no files
 
@@ -42,15 +55,5 @@ The report SHALL NOT include raw file contents, full tracebacks, or iteration lo
 
 #### Scenario: Subagent omits field 8
 
-- **WHEN** a subagent returns a 7-field report without `Files modified`
+- **WHEN** a subagent returns a report without `Files modified`
 - **THEN** the coordinator treats the report as malformed per `apply-pre-commit-file-report` and surfaces the omission to the user before any commit is proposed
-
-### Requirement: Each technical-learning entry is self-contained and actionable
-
-Every entry in the report's technical-learnings field SHALL be self-contained and actionable: it states what was attempted, what failed, and what works instead (e.g., a symbol that does not exist, a real API signature or name, a version incompatibility, an undocumented behavior, or a workaround applied).
-
-#### Scenario: Subagent discovers a non-existent method
-
-- **WHEN** the subagent tries a method that does not exist and finds the correct one
-- **THEN** the corresponding learnings entry records the attempted symbol, that it does not exist, and the working alternative — enough for a later subagent to avoid the same wall without extra context
-
