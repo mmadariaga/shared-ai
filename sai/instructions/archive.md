@@ -8,9 +8,11 @@ Before running the archive skill, perform this check:
    - Absent file, absent key, or any other value (including `false`, string `"true"`, `null`, etc.) → treat as `false`.
    - If the file exists but is corrupt / unparseable as YAML, treat as `false` and emit a single warning line, then continue — do NOT abort.
    - Log the resolved value as intermediate state (e.g. `[sai-archive] backfilled=<true|false>`).
-3. From the `artifacts` array in the JSON, classify the nine `sai-workflow` artifacts into two groups:
+3. From the `artifacts` array in the JSON, classify the ten `sai-workflow` artifacts into three groups:
    - **CORE** (blocking): `proposal`, `specs`, `design`, `tasks`, `implementation`.
    - **AUDIT** (informational only): `review`, `security`, `performance`, `accessibility`.
+   - **EXEMPT** (non-blocking, silent when present or absent): `interfaces`.
+   The `interfaces` artifact is never collected into the CORE not-`done` set or the AUDIT missing set under any input condition, and no diagnostic mentioning `interfaces` is emitted.
 4. Evaluate CORE artifacts:
    - If `backfilled === true`, skip `design`, `tasks`, and `implementation` from the not-`done` collection. `proposal` and `specs` are scanned unconditionally.
    - For each remaining CORE artifact, if its `status` is not `done`, collect its `id`.
