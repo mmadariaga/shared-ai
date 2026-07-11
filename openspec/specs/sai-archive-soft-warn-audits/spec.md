@@ -1,18 +1,22 @@
 ## ADDED Requirements
 
-### Requirement: Artifact classification into CORE and AUDIT
+### Requirement: Artifact classification into CORE, AUDIT, and EXEMPT
 
-The `sai-archive` command SHALL classify the nine artifacts defined by the `sai-workflow` schema into two groups:
+The `sai-archive` command SHALL classify the ten artifacts defined by the `sai-workflow` schema into three groups:
 
 - **CORE** (blocking): `proposal`, `specs`, `design`, `tasks`, `implementation`.
 - **AUDIT** (informational only): `review`, `security`, `performance`, `accessibility`.
+- **EXEMPT** (non-blocking, silent when present or absent): `interfaces`.
 
-The classification SHALL be defined natively inside `sai/instructions/archive.md` (no CLI flags, no environment variables, no schema changes).
+The classification SHALL be defined natively inside `sai/instructions/archive.md` (no CLI flags, no environment variables, no schema changes). The instruction file SHALL name ten artifacts in total and SHALL NOT refer to "nine" artifacts anywhere in the Classification Check.
 
-#### Scenario: All artifacts are present and complete
+The `sai-archive` Classification Check SHALL evaluate `interfaces` independently of the CORE not-`done` collection and the AUDIT missing collection. The `interfaces` artifact id SHALL NOT appear in either the "Missing CORE artifact(s)" halt message or the "informational: missing AUDIT artifact(s)" message under any input condition. EXEMPT is strictly weaker than AUDIT: it produces no log line, no warning, and no prompt.
 
-- **WHEN** the `sai-archive` command runs for a change whose nine `sai-workflow` artifacts all exist and have status `done` in `openspec status --change "<name>" --json`
-- **THEN** the command MUST proceed with the archive flow without emitting a CORE-missing or AUDIT-missing diagnostic
+#### Scenario: All ten artifacts are present and complete
+
+- **WHEN** the `sai-archive` command runs for a change whose ten `sai-workflow` artifacts all exist and have status `done` in `openspec status --change "<name>" --json`
+- **THEN** the command MUST proceed with the archive flow without emitting a CORE-missing, AUDIT-missing, or EXEMPT diagnostic
+- **THEN** the command MUST NOT log any reference to `interfaces` in the diagnostic output
 
 #### Scenario: Only AUDIT artifacts are missing
 
@@ -25,6 +29,26 @@ The classification SHALL be defined natively inside `sai/instructions/archive.md
 - **WHEN** the `sai-archive` command runs for a change where any of `proposal`, `specs`, `design`, `tasks`, `implementation` is missing or has status other than `done`
 - **THEN** the command MUST halt immediately and print a single error message that lists every missing CORE artifact by name
 - **THEN** the command MUST NOT perform the archive move and MUST NOT emit any AUDIT soft warning
+
+#### Scenario: Only the EXEMPT artifact is missing
+
+- **WHEN** the `sai-archive` command runs for a change where all five CORE and all four AUDIT artifacts are present with status `done` and `interfaces` is the only artifact without status `done` (whether absent or present-but-not-`done`)
+- **THEN** the command MUST proceed with the archive flow without halting, prompting, or emitting any diagnostic mentioning `interfaces`
+- **THEN** the command MUST NOT include `interfaces` in any CORE-missing or AUDIT-missing diagnostic
+
+#### Scenario: interfaces is missing alongside a CORE gap
+
+- **WHEN** the `sai-archive` command runs for a change where `interfaces` is missing or not `done` and at least one CORE artifact is also missing or not `done`
+- **THEN** the command MUST halt with the existing single "Missing CORE artifact(s): <id1>, <id2>" error
+- **THEN** the listed CORE ids MUST NOT include `interfaces`
+- **THEN** the command MUST NOT emit any AUDIT soft warning
+
+#### Scenario: interfaces is missing alongside an AUDIT gap
+
+- **WHEN** the `sai-archive` command runs for a change where all five CORE artifacts are `done`, `interfaces` is missing or not `done`, and one or more AUDIT artifacts are also missing
+- **THEN** the command MUST emit exactly one informational line listing the missing AUDIT artifact names
+- **THEN** the listed AUDIT ids MUST NOT include `interfaces`
+- **THEN** the archive flow MUST proceed
 
 ### Requirement: Upstream skill is invoked only when CORE is complete
 
@@ -125,3 +149,22 @@ When an AUDIT artifact file exists and its content includes a "Not Applicable" h
 - **THEN** the command MUST treat `security` as `done` and MUST NOT include `security` in any AUDIT-missing diagnostic
 - **THEN** the command MUST emit the AUDIT soft warning listing only `accessibility`
 - **THEN** the archive flow MUST proceed
+
+### Requirement: Backfilled changes explicitly skip interfaces
+
+When the `backfilled` field in `openspec/changes/<name>/.openspec.yaml` resolves to `true` (per the existing resolution rules in `sai/instructions/archive.md`), the `sai-archive` Classification Check MUST treat `interfaces` as if it were `done` for the purposes of the CORE check, in addition to `design`, `tasks`, and `implementation`. This is a robustness rule: `interfaces` has `requires: [tasks]` per ADR 0022, so a backfilled change cannot produce it; the explicit treatment prevents the backfill path from depending on a transitive absence.
+
+The requirement is at the behavior level, not the implementation level. The implementation MAY satisfy it by extending the backfill skip list to include `interfaces`, OR by structuring the CORE check so that `interfaces` is excluded from CORE under any condition. Both implementations are conformant.
+
+#### Scenario: Backfilled change with proposal and specs only
+
+- **WHEN** the `sai-archive` command runs for a change where `backfilled === true` and only `proposal` and `specs` exist with status `done` (no `interfaces.md`, no `design.md`, no `tasks.md`, no `implementation.md`)
+- **THEN** the command MUST NOT halt with a CORE-missing diagnostic
+- **THEN** the command MUST NOT emit any diagnostic mentioning `interfaces`
+- **THEN** the archive flow MUST proceed exactly as before this change (proposal + specs → archive)
+
+#### Scenario: Backfilled change where interfaces is incidentally present
+
+- **WHEN** the `sai-archive` command runs for a backfilled change and `interfaces.md` exists on disk (manually authored, stale, or otherwise incidentally present)
+- **THEN** the command MUST treat `interfaces` as skipped regardless of its on-disk status
+- **THEN** the archive flow MUST proceed without halting on `interfaces`

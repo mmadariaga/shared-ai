@@ -14,7 +14,7 @@ Before running the archive skill, perform this check:
    - **EXEMPT** (non-blocking, silent when present or absent): `interfaces`.
    The `interfaces` artifact is never collected into the CORE not-`done` set or the AUDIT missing set under any input condition, and no diagnostic mentioning `interfaces` is emitted.
 4. Evaluate CORE artifacts:
-   - If `backfilled === true`, skip `design`, `tasks`, and `implementation` from the not-`done` collection. `proposal` and `specs` are scanned unconditionally.
+   - If `backfilled === true`, skip `design`, `tasks`, `implementation`, and `interfaces` from the not-`done` collection. `proposal` and `specs` are scanned unconditionally.
    - For each remaining CORE artifact, if its `status` is not `done`, collect its `id`.
    - If any CORE artifact is not `done`, STOP and print a single error message: "Missing CORE artifact(s): <id1>, <id2>. Archive blocked." Do not proceed with the archive. Do not emit any AUDIT soft warning.
 5. Evaluate AUDIT artifacts (only when all CORE artifacts are `done`):
