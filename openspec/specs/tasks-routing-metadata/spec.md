@@ -104,6 +104,25 @@ The `<discipline>` token SHALL be one of the following five values, and only the
 - **WHEN** a step touches only `README.md`
 - **THEN** the layer is `infra` AND the discipline is `config`
 
+#### Scenario: Frontend multi-discipline decomposition for a substantial deliverable
+- **WHEN** a substantial frontend deliverable in `tasks.md` spans both markup (UI/UX sensibility) and logic (app-code glue) — for example, multiple files, or a component complex enough that the UI checkpoint is reviewable on its own
+- **THEN** `sai-2-design` SHOULD split the deliverable into two consecutive `## Step N` sections in `tasks.md` (the two steps are back-to-back in the file, with sequential numbering — e.g. `## Step 3` followed by `## Step 4`, never `## Step 3` and `## Step 5` with another step interleaved)
+- **THEN** the first `## Step N` section has `**Routing**: layer=frontend · discipline=ui-ux · complexity=low|medium|high` and the second `## Step N` section has `**Routing**: layer=frontend · discipline=app-code · complexity=low|medium|high`
+- **THEN** the two steps are emitted in that order (the `ui-ux` step first, the `app-code` step second), with no new layer or discipline token introduced — the existing `ui-ux` and `app-code` disciplines are reused verbatim
+- **THEN** the heuristic is a routing hint, not a serialization mandate: a future orchestrator MAY run the two steps in parallel against different files (UI agent on `.css` / markup-only `.tsx`, app-code agent on a store / api-client file); the `tasks.md` ordering is a recommended sequence, not a hard dependency
+
+#### Scenario: Trivial single-component FE deliverable MAY stay atomic
+- **WHEN** a frontend deliverable is trivial — a single component file (one `.tsx` or similar) with both markup and a small amount of state, fetch, or framework glue in the same file
+- **THEN** `sai-2-design` MAY keep the step atomic with a single `## Step N` section, choosing the closest single discipline from the enumeration above (typically `ui-ux` when the file is primarily markup, `app-code` when the file is primarily logic)
+- **THEN** the multi-discipline decomposition is a SHOULD gated on *substantiality*; trivial deliverables do not pay back the overhead of an extra step
+
+#### Scenario: Second step inherits a component that already contains the markup from the first step
+- **WHEN** a substantial frontend deliverable is split per the multi-discipline decomposition pattern (the `ui-ux` step emits a component file with markup, the `app-code` step follows)
+- **THEN** the second step's `**Files Affected**` includes the same component file (typically the `.tsx`) that the first step emitted markup for
+- **THEN** the intermediate state — the file with only markup, before the second step adds the logic — is internal to the OpenSpec change and is never deployed or reviewed standalone
+- **THEN** the implementer in `sai-4-apply` is responsible for producing one coherent final file (markup + logic), not two partial states
+- **THEN** the `**Routing**` line format and position are unchanged on both steps: each step is independently a complete Routing line, and the two steps do not introduce a new token or a new field
+
 #### Scenario: No new discipline tokens invented
 - **WHEN** a step would naturally belong to a discipline not enumerated above (e.g. `add`, `modify`, `refactor`, `fix`, `chore`, `perf`, `style`, `build`, `test-only`, `migrate`)
 - **THEN** the design agent MUST NOT invent a new token
