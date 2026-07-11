@@ -83,15 +83,17 @@ Each sai-* wrapper SHALL declare the appropriate model in frontmatter, matching 
 - **THEN** every `Claude Code` cell in the table contains the same model identifier and effort suffix as the corresponding wrapper frontmatter (or its absence for the Haiku wrappers that have no `effort` field)
 
 ### Requirement: spec.propose.md is the sole spec instruction source
-The `sai-1-spec` wrappers SHALL fetch `sai/instructions/spec.propose.md` (installed at `~/.claude/sai/instructions/spec.propose.md`) and no other spec instruction file.
+The `sai-1-spec` wrappers SHALL fetch `sai/instructions/spec.propose.md` (installed at `~/.claude/sai/instructions/spec.propose.md`) as their only spec-generation instruction file. The completion-phase gate instruction `sai/instructions/artifact-feedback-gate.md` is NOT a spec-generation instruction and is therefore exempt from this rule: the `sai-1-spec` body file MAY additionally fetch it at its completion phase.
 
-#### Scenario: claude wrapper fetches only spec.propose.md
+#### Scenario: claude wrapper fetches only spec.propose.md for spec generation
 - **WHEN** `commands/claude/sai-1-spec.md` is executed
-- **THEN** the only fetched spec instruction file is `~/.claude/sai/instructions/spec.propose.md`
+- **THEN** the only fetched spec-generation instruction file is `~/.claude/sai/instructions/spec.propose.md`
+- **AND** the completion-phase fetch of `~/.claude/sai/instructions/artifact-feedback-gate.md` is permitted and does not count as a spec-generation instruction
 
-#### Scenario: opencode wrapper fetches only spec.propose.md
+#### Scenario: opencode wrapper fetches only spec.propose.md for spec generation
 - **WHEN** `commands/opencode/sai-1-spec.md` is executed
-- **THEN** the only fetched spec instruction file is `~/.config/opencode/sai/instructions/spec.propose.md`
+- **THEN** the only fetched spec-generation instruction file is `~/.config/opencode/sai/instructions/spec.propose.md`
+- **AND** the completion-phase fetch of the artifact-feedback-gate instruction is permitted
 
 ### Requirement: single canonical wrapper per command per harness
 Each supported harness SHALL provide exactly one wrapper per sai-* command. Model-variant duplicates SHALL NOT exist.
