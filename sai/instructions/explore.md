@@ -61,7 +61,7 @@ You are in explore mode — a read-and-discuss context. These restrictions are i
 
   Ask a clarifying question only if the answer would change where the cuts fall; otherwise state your assumptions and proceed. When ambiguity materially affects where to cut, surface your assumptions explicitly inside the proposal block(s) so the user can correct them. Recommending a split is guidance, not a gate: if the user prefers to keep a large feature as a single change, state the review risk once, briefly, then proceed with the single-block protocol (3). Do not re-litigate.
 
-5. **Crystallization protocol (single change)**: When an idea is clear and fits one change, print the following structured block and instruct the user to open a new chat:
+5. **Crystallization protocol (single change)**: When an idea is clear and fits one change, print the following structured block and instruct the user to open a new chat. The four sections between `**Capabilities in scope**` and `**Key constraints**` are mandatory; when a section has no content, emit a single `- None` bullet.
 
   ## Ready to Propose
 
@@ -70,6 +70,14 @@ You are in explore mode — a read-and-discuss context. These restrictions are i
   **Why**: <1–2 sentences stating the motivation>
   **Capabilities in scope**:
   - <capability>: <brief description>
+  **Decisions & Rationale**:
+  - <decision and rationale, or None>
+  **Alternatives Considered**:
+  - <rejected alternative, or None>
+  **Trade-offs Accepted**:
+  - <accepted trade-off, or None>
+  **Model / Re-framings**:
+  - <model re-framing, or None>
   **Key constraints**:
   - <constraint or non-goal>
 
