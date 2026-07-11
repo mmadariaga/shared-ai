@@ -95,6 +95,15 @@ artifacts:
 
       ## Step N: <title>
 
+      **Routing**: layer=<layer> · discipline=<discipline> · complexity=<complexity>
+
+      The three keys are mandatory and in the order shown above. Values are drawn from the
+      enumerations in the `tasks-routing-metadata` capability spec, and the derivation rubric
+      is encoded in the design instructions. An optional one-line parenthetical justification
+      MAY follow the three key=value pairs (e.g. `layer=frontend · discipline=ui-ux ·
+      complexity=medium (Next.js component)`). Any parser MUST ignore everything from the first
+      `(` onward on the line.
+
       **Files Affected**: <comma-separated list of file paths to be modified or created>
 
       **What Will Be Done**: <prose description of the work in this step>

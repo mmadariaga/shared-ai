@@ -1,5 +1,7 @@
 ## Step 1: <!-- Title -->
 
+**Routing**: layer=<!-- frontend|backend|infra|cross-cutting --> · discipline=<!-- ui-ux|app-code|service|data|config --> · complexity=<!-- low|medium|high -->
+
 **Files Affected**: <!-- comma-separated file paths -->
 
 **What Will Be Done**: <!-- prose description of the work in this step -->
@@ -7,6 +9,8 @@
 **Testing Strategy**: <!-- how correctness will be verified for this step -->
 
 ## Step 2: <!-- Title -->
+
+**Routing**: layer=<!-- frontend|backend|infra|cross-cutting --> · discipline=<!-- ui-ux|app-code|service|data|config --> · complexity=<!-- low|medium|high -->
 
 **Files Affected**: <!-- comma-separated file paths -->
 
@@ -25,12 +29,6 @@
 
 <!-- one URL per line -->
 <!-- if nothing to list, write: None -->
-
-## Required Documentation
-
-**Local files**: <!-- List every local file consulted during design-phase codebase research -->
-
-**External URLs**: <!-- List every external URL consulted during design-phase codebase research -->
 
 ## Implementation Context
 
