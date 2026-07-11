@@ -19,6 +19,18 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 **Implementation Dispatch**: "The second `/sai-4-apply` dispatch of a testable Step, given the GREEN implementation body, that writes the implementation and verifies GREEN and is forbidden from creating or modifying any test file."
 *Avoid*: GREEN dispatch, impl agent, code writer, build dispatch
 
+**Routing Complexity**: "One of the three tokens (`low`, `medium`, `high`) on a step's `**Routing**` line that describes the coarse effort or risk of the step as judged at design time — refined freely by `sai-3-implement` without re-tagging `tasks.md`."
+*Avoid*: routing tier, effort estimate, step complexity
+
+**Routing Discipline**: "One of the five tokens (`ui-ux`, `app-code`, `service`, `data`, `config`) on a step's `**Routing**` line that describes the type of thinking or agent specialty the step requires, orthogonal to its layer and derived from `**Files Affected**` path patterns."
+*Avoid*: routing kind, work type, step discipline, commit-verb (e.g. add/modify/refactor/fix)
+
+**Routing Layer**: "One of the four tokens (`frontend`, `backend`, `infra`, `cross-cutting`) on a step's `**Routing**` line that describes the architectural location a step touches — `cross-cutting` is the escape hatch for steps that span layers in a non-trivial way."
+*Avoid*: routing domain, step layer, agent domain, frontend-split (e.g. fe-ui/fe-code)
+
+**Routing Line**: "The per-step `**Routing**: layer=<layer> · discipline=<discipline> · complexity=<complexity>` keyword line on `tasks.md` (key=value tagged, not positional) that captures descriptive routing metadata at design time so a future orchestrator can dispatch each step without re-deriving routing cues from the step body or binding to a specific agent roster."
+*Avoid*: routing metadata, dispatch hint, step routing, positional routing tuple
+
 ## Relationships
 
 - An **Advisor Skill** is consulted by the phase directly below its model tier: `mid-advisor` by the `/sai-4-apply` coordinator, `senior-advisor` by `/sai-3-implement`.
@@ -28,6 +40,9 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 - A **Blind Test-Writer** precedes an **Implementation Dispatch** for every testable Step; the two never communicate directly — only the `/sai-4-apply` coordinator relays learnings between them.
 - A **GREEN Conflict** is raised by an **Implementation Dispatch** and is resolved only by a human via the coordinator, never by the subagent editing the test or interface.
 - A **Blind Test-Writer** and an **Implementation Dispatch** replace the single per-Step dispatch only for testable Steps; a non-testable Step keeps one dispatch.
+- A **Routing Line** contains exactly one **Routing Layer**, one **Routing Discipline**, and one **Routing Complexity** token, in that order, each emitted as a `key=value` pair separated by middle dots.
+- A **Routing Layer** is derived from the step's `**Files Affected**` paths; **Routing Discipline** is derived from the same paths against a parallel pattern set, and is orthogonal to **Routing Layer** (e.g. `(frontend, ui-ux)` vs `(frontend, app-code)` discriminate agents within the same layer); **Routing Complexity** is a coarse design-time judgment.
+- A **Routing Line** is descriptive, not prescriptive — a future orchestrator maps the three tokens to its own agent roster at dispatch time, and `sai-3-implement` may refine the **Routing Complexity** (or split the step) without re-tagging `tasks.md`.
 
 ## Example dialogue
 
