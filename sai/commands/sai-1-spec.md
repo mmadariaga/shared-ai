@@ -23,6 +23,8 @@
   **User's request:** $ARGUMENTS
 
   ## Completion
+  Apply the sai-1 Completion rules in @sai/instructions/spec.propose.md before printing the decision summary.
+
   Before printing the stop message below, print a **decision summary (spec phase)** derived exclusively from the artifacts just written (`proposal.md` and `specs/**/*.md`) — never from prior conversation (Isolation Mode):
 
   - **Scope**: one line per capability listed in `proposal.md`'s Capabilities section (new and modified). Omit the block entirely when there are no capabilities.
