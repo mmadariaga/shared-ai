@@ -7,6 +7,16 @@ const path = require('path');
 const os = require('os');
 const readline = require('readline');
 
+let jsoncParser = null;
+try {
+  jsoncParser = require('jsonc-parser');
+} catch {
+  jsoncParser = null;
+}
+
+const OPENCODE_AGENT_KEYS = ['explore', 'executor', 'budget'];
+const OPENCODE_PLACEHOLDER_MODEL = 'opencode-go/deepseek-v4-flash';
+
 const REPOSITORY_ROOT = path.join(__dirname, '..');
 const CLAUDE_BASE = path.join(os.homedir(), '.claude');
 const OPENCODE_BASE = path.join(os.homedir(), '.config', 'opencode');
@@ -262,7 +272,7 @@ function installOpencode(destBase) {
   const targetPath = destBase || OPENCODE_BASE;
 
   listMdFiles(path.join(REPOSITORY_ROOT, 'commands', 'opencode')).forEach(src => {
-    copyWithWarn(src, path.join(targetPath, 'commands', path.basename(src)));
+    copySkipIfExists(src, path.join(targetPath, 'commands', path.basename(src)));
   });
 
   listMdFiles(path.join(REPOSITORY_ROOT, 'sai', 'commands')).forEach(src => {
@@ -312,16 +322,7 @@ function installOpencode(destBase) {
   );
 }
 
-function copyOpencodeConfig(destBase) {
-  const base = destBase || OPENCODE_BASE;
-  const hasJson = fs.existsSync(path.join(base, 'opencode.json'));
-  const hasJsonc = fs.existsSync(path.join(base, 'opencode.jsonc'));
-
-  if (!hasJson && !hasJsonc) {
-    copy(path.join(REPOSITORY_ROOT, 'configs', 'opencode.jsonc'), path.join(base, 'opencode.jsonc'));
-    return;
-  }
-
+function printOpencodeConfigMessage(base) {
   console.log(`\nOpencode config already exists at ${base}. Verify that you have these settings properly configured:\n`);
   console.log('  "agent": {');
   console.log('    "explore": {');
@@ -341,6 +342,73 @@ function copyOpencodeConfig(destBase) {
   console.log('    }');
   console.log('  }');
   console.log('\nAdjust the model to your preferred low-cost provider.');
+}
+
+// Returns { text, added } on a successful (possibly no-op) merge, or null to
+// signal the caller must fall back to printOpencodeConfigMessage.
+function mergeOpencodeAgents(text) {
+  if (!jsoncParser) {
+    return null;
+  }
+  const { parse, modify, applyEdits } = jsoncParser;
+  const errors = [];
+  const root = parse(text, errors, { allowTrailingComma: true });
+  if (errors.length > 0) {
+    return null;
+  }
+  if (root === null || typeof root !== 'object' || Array.isArray(root)) {
+    return null;
+  }
+  if (Object.keys(root).length === 0) {
+    return null;
+  }
+  const hasAgent = Object.prototype.hasOwnProperty.call(root, 'agent');
+  if (hasAgent && (root.agent === null || typeof root.agent !== 'object' || Array.isArray(root.agent))) {
+    return null;
+  }
+  const existing = hasAgent ? root.agent : {};
+  const formattingOptions = { insertSpaces: true, tabSize: 2 };
+  let out = text;
+  const added = [];
+  for (const key of OPENCODE_AGENT_KEYS) {
+    if (Object.prototype.hasOwnProperty.call(existing, key)) {
+      continue;
+    }
+    const edits = modify(
+      out,
+      ['agent', key],
+      { mode: 'subagent', model: OPENCODE_PLACEHOLDER_MODEL },
+      { formattingOptions }
+    );
+    out = applyEdits(out, edits);
+    added.push(key);
+  }
+  return { text: out, added };
+}
+
+function copyOpencodeConfig(destBase) {
+  const base = destBase || OPENCODE_BASE;
+  const hasJson = fs.existsSync(path.join(base, 'opencode.json'));
+  const hasJsonc = fs.existsSync(path.join(base, 'opencode.jsonc'));
+
+  if (!hasJson && !hasJsonc) {
+    copy(path.join(REPOSITORY_ROOT, 'configs', 'opencode.jsonc'), path.join(base, 'opencode.jsonc'));
+    return;
+  }
+
+  // Precedence: opencode.json is merged over opencode.jsonc when both exist (ADR 0030).
+  const target = path.join(base, hasJson ? 'opencode.json' : 'opencode.jsonc');
+  const merged = mergeOpencodeAgents(fs.readFileSync(target, 'utf8'));
+
+  if (!merged) {
+    printOpencodeConfigMessage(base);
+    return;
+  }
+
+  if (merged.added.length > 0) {
+    fs.writeFileSync(target, merged.text);
+    console.log(`Added opencode agent keys to ${target}: ${merged.added.join(', ')}. Adjust the placeholder model "${OPENCODE_PLACEHOLDER_MODEL}" to your preferred low-cost provider.`);
+  }
 }
 
 function detectInstalledEditors() {

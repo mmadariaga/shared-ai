@@ -10,11 +10,18 @@ The repo root MUST contain a `package.json` with `"name": "shared-ai"`, `"versio
 ---
 
 ### Requirement: installer-shebang-and-no-deps
-`bin/install.js` MUST start with `#!/usr/bin/env node` and use ONLY Node.js built-in modules (`fs`, `path`, `os`, `readline`). No external npm dependencies are permitted.
 
-#### Scenario: zero-dep execution
-- **WHEN** the installer runs in a clean environment with Node.js ≥ 18
-- **THEN** it completes without installing any additional packages
+`bin/install.js` MUST start with `#!/usr/bin/env node`. Beyond Node.js built-in modules (`fs`, `path`, `os`, `readline`), the installer MAY use npm packages declared in `package.json` `dependencies`, which are installed when the package is fetched via `npx github:mmadariaga/shared-ai`. Any such dependency MUST be limited to genuine installer needs; the interactive tool-selection checklist and the file-copy paths SHALL continue to rely only on Node.js built-in modules. The first permitted dependency is `jsonc-parser`, used by `copyOpencodeConfig` to merge the `agent` block into an existing opencode config.
+
+#### Scenario: declared dependency resolves under npx
+
+- **WHEN** a user runs `npx github:mmadariaga/shared-ai` and the installer requires a package listed in `package.json` `dependencies`
+- **THEN** the package resolves and loads at runtime without a separate manual `npm install`
+
+#### Scenario: built-in-only interactive startup
+
+- **WHEN** the installer starts and renders the interactive target checklist
+- **THEN** it uses only Node.js built-in modules to render and handle the checklist
 
 ---
 
