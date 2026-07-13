@@ -19,17 +19,19 @@ Based on the assessment, `sai-explore` SHALL:
 - route to the single-block crystallization protocol when the idea fits one change AND the refactor-first friction assessment (capability `explore-refactor-first-slicing`) does not fire;
 - route to the sliced crystallization protocol when the idea is too big — identifying one Walking Skeleton (the simplest end-to-end path covering every user task, reversible) plus the remaining work grouped into review-sized slices ordered by dependency — OR when the idea fits one change but the friction assessment fires, in which case the sliced protocol carries slice 0 (the behavior-preserving refactor) plus slice 1 (the feature).
 
+The routing determines *how many* blocks a crystallization produces and in what order; *when* a block is actually emitted is governed by the `explore-crystallization-on-demand` capability (on an explicit crystallize request, not automatically when the assessment completes).
+
 #### Scenario: idea fits a single change
 - **WHEN** the candidate idea passes the slicing assessment (none of the scope signals apply) AND the refactor-first friction assessment does not fire
-- **THEN** `sai-explore` uses the single-block crystallization protocol and emits exactly one `Ready to Propose` block
+- **THEN** `sai-explore` uses the single-block crystallization protocol and, when the user explicitly asks to crystallize, emits exactly one `Ready to Propose` block
 
 #### Scenario: idea fits a single change but friction fires
 - **WHEN** the candidate idea passes the slicing assessment (none of the scope signals apply) but the refactor-first friction assessment fires
-- **THEN** `sai-explore` routes to the sliced crystallization protocol and emits a 2-block set — slice 0 (behavior-preserving refactor) followed by slice 1 (the feature) — instead of a single block
+- **THEN** `sai-explore` routes to the sliced crystallization protocol and, on an explicit crystallize request, emits a 2-block set — slice 0 (behavior-preserving refactor) followed by slice 1 (the feature) — instead of a single block
 
 #### Scenario: idea is too big for one change
 - **WHEN** the candidate idea trips one or more scope signals during the assessment
-- **THEN** `sai-explore` identifies a Walking Skeleton slice and a dependency-ordered backlog of review-sized slices, and uses the sliced crystallization protocol to emit one block per slice
+- **THEN** `sai-explore` identifies a Walking Skeleton slice and a dependency-ordered backlog of review-sized slices, and uses the sliced crystallization protocol to emit one block per slice on an explicit crystallize request
 
 ### Requirement: explore-sliced-crystallization-protocol
 
@@ -42,11 +44,11 @@ When the candidate idea was sliced, `sai-explore` SHALL emit one `Ready to Propo
 
 The sliced protocol composes with the refactor-first friction assessment (capability `explore-refactor-first-slicing`): when the friction assessment fires, a behavior-preserving refactor is prepended as **slice 0** ahead of the Walking Skeleton, producing the ordered set refactor → skeleton → backlog. Slice 0 is the one slice exempt from the user-facing outcome-description rule (it is marked as enabling / behavior-preserving); every other slice is still described as a user-facing outcome.
 
-Each emitted block SHALL use the standard single-block format (Change name, What, Why, Capabilities in scope, Key constraints).
+Each emitted block SHALL use the standard single-block format (Change name, What, Why, Capabilities in scope, Key constraints). This protocol defines the *composition and ordering* of the block set; *when* the set is emitted is governed by the `explore-crystallization-on-demand` capability (only on an explicit crystallize request).
 
 #### Scenario: sliced feature crystallizes
 
-- **WHEN** the candidate idea was assessed as too big and the user signals the idea is clear enough to crystallize
+- **WHEN** the candidate idea was assessed as too big and the user explicitly asks to crystallize
 - **THEN** `sai-explore` emits an ordered set of `Ready to Propose` blocks (Walking Skeleton first, then backlog by dependency) with `Depends on:` lines on backlog slices, and instructs the user to take the first block to a new chat
 
 #### Scenario: sliced feature crystallizes with a friction-driven slice 0

@@ -40,12 +40,12 @@ When the friction assessment fires, `sai-explore` SHALL emit the behavior-preser
 - When the feature was already sliced (Walking Skeleton + backlog), slice 0 is prepended ahead of the Walking Skeleton, producing the ordered set refactor → skeleton → backlog.
 - When the idea fits a single change, a fired friction assessment SHALL promote the single block into a 2-block set: slice 0 (refactor) → slice 1 (feature).
 
-Slice 0 SHALL live inside the SAME `Ready to Propose` set as the feature slice(s) — one dependency-ordered crystallization output — and SHALL NOT be emitted as a separate recommended change.
+Slice 0 SHALL live inside the SAME `Ready to Propose` set as the feature slice(s) — one dependency-ordered crystallization output — and SHALL NOT be emitted as a separate recommended change. This requirement defines the *composition* of the emitted set; *when* the set is emitted is governed by the `explore-crystallization-on-demand` capability (only on an explicit crystallize request).
 
 #### Scenario: friction promotes a single-block idea into refactor → feature
 
 - **WHEN** the size assessment judged the idea to fit one change AND the friction assessment fires
-- **THEN** `sai-explore` emits a 2-block ordered set — slice 0 (behavior-preserving refactor) followed by slice 1 (the feature) — instead of a single block
+- **THEN** `sai-explore`, on an explicit crystallize request, emits a 2-block ordered set — slice 0 (behavior-preserving refactor) followed by slice 1 (the feature) — instead of a single block
 
 #### Scenario: friction composes with an already-sliced feature
 

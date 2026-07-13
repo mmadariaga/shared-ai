@@ -5,7 +5,7 @@ TBD - created by archiving change tasks-as-scaffold. Update Purpose after archiv
 ## Requirements
 ### Requirement: explore-no-inline-proposal
 
-`sai-explore` SHALL NOT create a change proposal or run `/sai-1-spec` inline during an explore session. When an idea crystallizes and is ready to formalize, `sai-explore` SHALL offer a structured summary block (or, for sliced features, an ordered set of blocks) that the user can copy and paste into `/sai-1-spec` in a new session.
+`sai-explore` SHALL NOT create a change proposal or run `/sai-1-spec` inline during an explore session. When an idea becomes solid, `sai-explore` SHALL emit a one-line readiness signal (per the `explore-crystallization-on-demand` capability) instead of auto-printing a block. It SHALL offer the structured summary block (or, for sliced features, an ordered set of blocks) that the user can copy and paste into `/sai-1-spec` in a new session ONLY when the user explicitly asks to crystallize. The block content and the isolation guarantee — no inline `/sai-1-spec` execution — are unchanged; only the emission trigger becomes on-demand.
 
 The single-change summary block SHALL contain:
 - **Change name** (suggested kebab-case)
@@ -18,8 +18,13 @@ For sliced features, the slicing assessment and the sliced crystallization proto
 
 #### Scenario: idea crystallizes during exploration (single change)
 
-- **WHEN** the user's idea becomes clear enough to propose during a `sai-explore` session and the idea fits a single change per the slicing assessment
+- **WHEN** the user's idea becomes clear enough to propose during a `sai-explore` session, the idea fits a single change per the slicing assessment, AND the user explicitly asks to crystallize (for example, asks for the paste-ready block or to create a proposal / run `/sai-1-spec`)
 - **THEN** `sai-explore` presents a structured summary block (formatted for copy-paste) and instructs the user to open a new chat and run `/sai-1-spec` with the content — it does NOT call or execute `/sai-1-spec` in the current session
+
+#### Scenario: idea becomes clear without an explicit crystallize request
+
+- **WHEN** the user's idea becomes clear enough to propose but the user has NOT explicitly asked to crystallize
+- **THEN** `sai-explore` emits the one-line readiness signal only (per the `explore-crystallization-on-demand` capability) and does NOT present the structured summary block
 
 #### Scenario: user explicitly asks to create a proposal inline
 

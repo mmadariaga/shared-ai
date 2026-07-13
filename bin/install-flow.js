@@ -119,6 +119,7 @@ async function offerCodegraphInstall({
   isTTY = process.stdin.isTTY,
 } = {}) {
   if (probe()) {
+    console.log();
     console.log(CODEGRAPH_WIRING_HINT);
     return;
   }
@@ -512,6 +513,7 @@ async function main() {
 
   if (choices.includes('Claude Code')) {
     installClaude();
+    console.log();
     console.log(`Claude commands installed to: ${path.join(CLAUDE_BASE, 'commands')}`);
     console.log(`Claude SAI commands/instructions installed to: ${path.join(CLAUDE_BASE, 'sai')}`);
     console.log(`Claude skills installed to: ${path.join(CLAUDE_BASE, 'skills')}`);
