@@ -196,3 +196,5 @@ To list all models available in your opencode subscriptions, run:
 ```bash
 opencode models
 ```
+
+If you pull a repo update that touches `commands/opencode/`, re-run `node bin/install.js` to refresh your `~/.config/opencode/commands/` snapshot.
