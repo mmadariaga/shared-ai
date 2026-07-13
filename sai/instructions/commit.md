@@ -104,7 +104,7 @@ Before presenting the message, audit it:
 
    The `Plan cross-check` and `Subagent ↔ git` blocks SHALL NOT appear — `sai-commit` has no subagent and no plan.
 2. If `--amend`: also show `git log -1 --pretty=format:'%h %s'` of the commit being amended and warn if it's already pushed (`git log @{push}..HEAD --oneline` — if empty and HEAD matches push, it's pushed).
-3. Ask: **"Run `git commit -m '...'` (or `git commit --amend ...`)?"** — as a closed-choice prompt with options `yes (Recommended)` / `no` (per the "Closed-choice prompts" rule in `remember.md`, which gives the per-harness option-picker mapping).
+3. Ask: **"Run `git commit -m '...'` (or `git commit --amend ...`)?"** — as a closed-choice prompt with options `yes (Recommended)` / `no` / `Allow on this session` (per the "Closed-choice prompts" rule in `remember.md`, which gives the per-harness option-picker mapping).
 4. On `yes` → execute. Use HEREDOC for multi-line messages:
     ```
     git commit -m "$(cat <<'EOF'
@@ -115,4 +115,7 @@ Before presenting the message, audit it:
     )"
     ```
     Capture and show the resulting commit SHA + subject.
-5. On `no` → STOP. Tell the user the message is ready to copy from above.
+5. On `Allow on this session` → execute exactly as on `yes`, AND set the session-scoped commit-authorization flag to active for the remainder of the in-conversation session.
+6. On `no` → STOP. Tell the user the message is ready to copy from above.
+
+The session-scoped commit-authorization flag set by `Allow on this session` applies only to `git add` + `git commit` at this gate. It does NOT authorize `push`, `--force`, branch create/switch, rebase, merge, tag, or `gh pr`; those operations still require their own per-operation approval.
