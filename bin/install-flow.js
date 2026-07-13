@@ -483,12 +483,18 @@ async function main() {
 
   if (choices.includes('Claude Code')) {
     installClaude();
+    console.log(`Claude commands installed to: ${path.join(CLAUDE_BASE, 'commands')}`);
+    console.log(`Claude SAI commands/instructions installed to: ${path.join(CLAUDE_BASE, 'sai')}`);
+    console.log(`Claude skills installed to: ${path.join(CLAUDE_BASE, 'skills')}`);
   }
 
   if (choices.includes('Opencode')) {
     await offerOpencodeInstall();
     installOpencode();
     copyOpencodeConfig();
+    console.log(`Opencode commands installed to: ${path.join(OPENCODE_BASE, 'commands')}`);
+    console.log(`Opencode SAI commands/instructions installed to: ${path.join(OPENCODE_BASE, 'sai')}`);
+    console.log(`Opencode skills installed to: ${path.join(OPENCODE_BASE, 'skills')}`);
   }
 
   if (choices.includes('GitHub Copilot')) {
