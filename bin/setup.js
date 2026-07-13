@@ -6,6 +6,7 @@ const fs = require('fs');
 const path = require('path');
 const { spawnSync, execSync } = require('child_process');
 const readline = require('readline');
+const { offerCodegraphInstall, probeCodegraph } = require('./install-flow.js');
 
 function prompt(rl, question) {
   return new Promise(resolve => rl.question(question, resolve));
@@ -52,6 +53,27 @@ async function ensureOpenspecDir(projectPath, rl) {
   }
 
   console.log(`Initialized openspec/ at ${projectPath}.\n`);
+}
+
+function ensureCodegraphIndex(projectPath, { probe = probeCodegraph, runInit, indexExists } = {}) {
+  if (typeof indexExists !== 'function') {
+    indexExists = () => fs.existsSync(path.join(projectPath, '.codegraph'));
+  }
+  if (typeof runInit !== 'function') {
+    runInit = () => {
+      spawnSync('codegraph', ['init'], { cwd: projectPath, stdio: 'inherit', shell: true });
+    };
+  }
+
+  if (indexExists()) {
+    return;
+  }
+
+  if (!probe()) {
+    return;
+  }
+
+  runInit();
 }
 
 async function ensureSchemaLine(projectPath, rl) {
@@ -116,6 +138,8 @@ async function main() {
   }
 
   checkOpenspecCli();
+  await offerCodegraphInstall();
+  ensureCodegraphIndex(projectPath);
   await ensureOpenspecDir(projectPath, rl);
   await ensureSchemaLine(projectPath, rl);
   rl.close();
@@ -128,4 +152,4 @@ if (require.main === module) {
   main().catch(err => { console.error(err); process.exit(1); });
 }
 
-module.exports = { main };
+module.exports = { main, ensureCodegraphIndex };
