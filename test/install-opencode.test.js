@@ -23,17 +23,6 @@ test('installOpencode copies commands/opencode/*.md to dest/commands/', () => {
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });
 
-test('installOpencode copies sai/instructions/*.md with Overwriting warn', () => {
-  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-'));
-  const messages = [];
-  const origLog = console.log;
-  console.log = (msg) => messages.push(String(msg));
-  installOpencode(tmpDir);
-  console.log = origLog;
-  assert.ok(messages.some(m => m.startsWith('Overwriting') || m.startsWith('Creating')), 'should print Overwriting or Creating for instruction files');
-  fs.rmSync(tmpDir, { recursive: true, force: true });
-});
-
 test('installOpencode copies all Opencode-specific skills', () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-'));
   installOpencode(tmpDir);
@@ -80,28 +69,24 @@ test('copyOpencodeConfig skips copy and prints instructions when opencode.json e
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });
 
-test('installOpencode skips existing vendor command files', () => {
+test('installOpencode overwrites existing vendor command files', () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-'));
   const cmdFile = path.join(tmpDir, 'commands', 'sai-1-spec.md');
   fs.mkdirSync(path.dirname(cmdFile), { recursive: true });
-  fs.writeFileSync(cmdFile, 'old content');
+  fs.writeFileSync(cmdFile, 'old sentinel content');
   installOpencode(tmpDir);
-  assert.equal(fs.readFileSync(cmdFile, 'utf8'), 'old content', 'existing vendor command should not be overwritten');
+  const expected = fs.readFileSync(path.join(__dirname, '..', 'commands', 'opencode', 'sai-1-spec.md'), 'utf8');
+  assert.equal(fs.readFileSync(cmdFile, 'utf8'), expected, 'existing vendor command should be overwritten with repo version');
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });
 
-test('installOpencode overwrites stale command wrappers and logs', () => {
+test('installOpencode overwrites stale command wrappers', () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-'));
   const skillFile = path.join(tmpDir, 'skills', 'budget-explorer', 'SKILL.md');
   fs.mkdirSync(path.dirname(skillFile), { recursive: true });
   fs.writeFileSync(skillFile, 'old content');
-  const messages = [];
-  const origLog = console.log;
-  console.log = (msg) => messages.push(String(msg));
   installOpencode(tmpDir);
-  console.log = origLog;
   assert.notEqual(fs.readFileSync(skillFile, 'utf8'), 'old content', 'existing stale file should be overwritten');
-  assert.ok(messages.some(m => m.startsWith('Overwriting')), 'should log Overwriting for existing file');
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });
 

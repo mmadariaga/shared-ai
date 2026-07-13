@@ -29,19 +29,6 @@ test('installClaude copies sai/commands/*.md to dest/sai/commands/', () => {
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });
 
-test('installClaude copies sai/instructions/*.md with Overwriting warn', () => {
-  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-claude-'));
-  const messages = [];
-  const origLog = console.log;
-  console.log = (msg) => messages.push(String(msg));
-  installClaude(tmpDir);
-  console.log = origLog;
-  const instrDir = path.join(tmpDir, 'sai', 'instructions');
-  assert.ok(fs.existsSync(instrDir), 'sai/instructions/ dir should exist');
-  assert.ok(messages.some(m => m.startsWith('Overwriting') || m.startsWith('Creating')), 'should print Overwriting or Creating for instruction files');
-  fs.rmSync(tmpDir, { recursive: true, force: true });
-});
-
 test('installClaude copies all Claude-specific skills', () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-claude-'));
   installClaude(tmpDir);
@@ -54,28 +41,24 @@ test('installClaude copies all Claude-specific skills', () => {
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });
 
-test('installClaude skips existing vendor command files', () => {
+test('installClaude overwrites existing vendor command files', () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-claude-'));
   const cmdFile = path.join(tmpDir, 'commands', 'sai-1-spec.md');
   fs.mkdirSync(path.dirname(cmdFile), { recursive: true });
-  fs.writeFileSync(cmdFile, 'old content');
+  fs.writeFileSync(cmdFile, 'old sentinel content');
   installClaude(tmpDir);
-  assert.equal(fs.readFileSync(cmdFile, 'utf8'), 'old content', 'existing vendor command should not be overwritten');
+  const expected = fs.readFileSync(path.join(__dirname, '..', 'commands', 'claude', 'sai-1-spec.md'), 'utf8');
+  assert.equal(fs.readFileSync(cmdFile, 'utf8'), expected, 'existing vendor command should be overwritten with repo version');
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });
 
-test('installClaude overwrites stale command wrappers and logs', () => {
+test('installClaude overwrites stale command wrappers', () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-claude-'));
   const skillFile = path.join(tmpDir, 'skills', 'budget-explorer', 'SKILL.md');
   fs.mkdirSync(path.dirname(skillFile), { recursive: true });
   fs.writeFileSync(skillFile, 'old content');
-  const messages = [];
-  const origLog = console.log;
-  console.log = (msg) => messages.push(String(msg));
   installClaude(tmpDir);
-  console.log = origLog;
   assert.notEqual(fs.readFileSync(skillFile, 'utf8'), 'old content', 'existing stale file should be overwritten');
-  assert.ok(messages.some(m => m.startsWith('Overwriting')), 'should log Overwriting for existing file');
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });
 
