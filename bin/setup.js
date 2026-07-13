@@ -4,7 +4,8 @@
 
 const fs = require('fs');
 const path = require('path');
-const { spawnSync, execSync } = require('child_process');
+const childProcess = require('child_process');
+const { spawnSync, execSync } = childProcess;
 const readline = require('readline');
 const { offerCodegraphInstall, probeCodegraph } = require('./install-flow.js');
 
@@ -61,7 +62,7 @@ function ensureCodegraphIndex(projectPath, { probe = probeCodegraph, runInit, in
   }
   if (typeof runInit !== 'function') {
     runInit = () => {
-      spawnSync('codegraph', ['init'], { cwd: projectPath, stdio: 'inherit', shell: true });
+      childProcess.spawnSync('codegraph', ['init'], { cwd: projectPath, stdio: 'inherit', shell: true });
     };
   }
 
@@ -73,7 +74,7 @@ function ensureCodegraphIndex(projectPath, { probe = probeCodegraph, runInit, in
     return;
   }
 
-  runInit();
+  runInit(projectPath);
 }
 
 async function ensureSchemaLine(projectPath, rl) {
