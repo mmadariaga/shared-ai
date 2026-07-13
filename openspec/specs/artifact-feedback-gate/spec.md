@@ -19,13 +19,42 @@ The gate logic SHALL live in exactly one shared instruction file, `sai/instructi
 
 The gate SHALL present its two choices through the harness's native option-picker per the "Closed-choice prompts" rule in `sai/instructions/remember.md` (on Claude Code, the `AskUserQuestion` tool). Option labels SHALL be full words. The two options are a feedback option and the step-specific proceed option (`Finish step` for sai-1, `Continue` for sai-2).
 
+The feedback option label SHALL be iteration-aware: on the first presentation of the gate within a given `/sai-*` invocation, the label SHALL read `Give feedback`; on every subsequent re-presentation within the same invocation (i.e. after the user has selected the feedback option and the gate is being offered again), the label SHALL read `Give more feedback`. The option description text SHALL remain unchanged across iterations — only the short label changes between the first presentation and any re-presentation. The internal `## On "Give feedback"` section heading in the gate instruction SHALL stay literal and SHALL NOT be re-titled to match the iteration-aware label (it is internal section prose, not user-visible). The iteration-aware label rule applies identically under Claude Code, opencode, and Copilot.
+
 #### Scenario: Claude Code presentation
+
 - **WHEN** the gate is reached on Claude Code
-- **THEN** it presents exactly two clickable options through `AskUserQuestion` — one to give feedback on the artifacts and one proceed option carrying the step-specific full-word label
+- **THEN** it presents exactly two clickable options through `AskUserQuestion` — one to give feedback on the artifacts and one proceed option carrying the step-specific full-word label, with the iteration-aware feedback option label per the requirement above
 
 #### Scenario: labels are full words
+
 - **WHEN** the gate's option labels are drafted
-- **THEN** they read as full words (e.g. `Finish step`, `Continue`) and never as single- or two-letter abbreviations
+- **THEN** they read as full words (e.g. `Finish step`, `Continue`, `Give feedback`, `Give more feedback`) and never as single- or two-letter abbreviations
+
+#### Scenario: first presentation reads "Give feedback"
+
+- **WHEN** the gate is offered for the first time within a `/sai-*` invocation (the in-conversation iteration counter is 0)
+- **THEN** the feedback option label SHALL read `Give feedback`
+
+#### Scenario: subsequent presentations read "Give more feedback"
+
+- **WHEN** the gate is re-offered after the user has previously selected the feedback option within the same `/sai-*` invocation (the in-conversation iteration counter is ≥ 1)
+- **THEN** the feedback option label SHALL read `Give more feedback`
+
+#### Scenario: only the label changes between iterations
+
+- **WHEN** the gate is re-offered on the second or later iteration
+- **THEN** only the feedback option label differs from the first presentation; the feedback option's description text, the proceed option's label and description, the harness option-picker path, and every other field of both options stay identical to the first presentation
+
+#### Scenario: internal section heading stays literal
+
+- **WHEN** the gate instruction is updated to add the iteration-aware label rule
+- **THEN** the internal `## On "Give feedback"` section heading in `sai/instructions/artifact-feedback-gate.md` SHALL remain byte-for-byte unchanged — it is internal prose, not user-visible, and re-titling it would be cosmetic noise
+
+#### Scenario: iteration-aware label applies across all three harnesses
+
+- **WHEN** the gate is offered on Claude Code, opencode, or Copilot
+- **THEN** the same iteration-aware label rule applies — first presentation `Give feedback`, subsequent `Give more feedback` — because the rule lives in the shared gate instruction that all three harnesses fetch
 
 ### Requirement: Per-step artifact listing
 
@@ -128,3 +157,32 @@ The feedback loop SHALL operate purely as same-session interaction grounded in t
 #### Scenario: no context pollution in the loop
 - **WHEN** the gate reprints the decision summary after a feedback edit
 - **THEN** every summary line traces to content in the updated step artifacts and no information from prior conversation appears
+
+### Requirement: Iteration counter is in-conversation only
+
+The gate SHALL track the iteration that drives the iteration-aware feedback option label with a single in-conversation counter starting at 0. The counter SHALL be incremented by 1 immediately after each feedback-selection turn completes. The counter SHALL be held in the agent's working memory for the duration of the current session only and SHALL NOT be written to any artifact, configuration file, `.openspec.yaml`, or any other on-disk state. The counter SHALL reset to 0 at the start of every fresh `/sai-*` invocation, so the first presentation of the gate in a new chat always reads `Give feedback`. The counter SHALL NOT be derived from any marker in the gate's own artifact set, hidden comment, or external state.
+
+#### Scenario: counter starts at 0 on the first presentation
+
+- **WHEN** a `/sai-*` invocation reaches the gate for the first time
+- **THEN** the counter is 0 and the feedback option label reads `Give feedback`
+
+#### Scenario: counter increments after a feedback turn completes
+
+- **WHEN** the user selects the feedback option and the gate applies the feedback, reprints the decision summary, and re-offers the gate
+- **THEN** the counter has been incremented by 1 before the next presentation, and the next presentation of the feedback option label reads `Give more feedback`
+
+#### Scenario: counter is not written to disk
+
+- **WHEN** the gate tracks the iteration counter
+- **THEN** no artifact under `openspec/changes/{change-name}/` (including `proposal.md`, `design.md`, `tasks.md`, `interfaces.md`, `specs/**`, `review.md`, `security.md`, `performance.md`, `accessibility.md`, `implementation.md`, or `.openspec.yaml`) is created or modified to record the counter, and no project source or configuration file outside the change directory is touched to record the counter
+
+#### Scenario: counter resets across invocations
+
+- **WHEN** a new `/sai-*` invocation reaches the gate
+- **THEN** the counter is 0 for that invocation regardless of any prior chat's history, and the first presentation of the feedback option label reads `Give feedback`
+
+#### Scenario: counter is not derived from artifact state
+
+- **WHEN** the gate tracks the iteration counter
+- **THEN** the counter is held in the agent's working memory only — it is NOT re-derived from a marker in `proposal.md`, `design.md`, `tasks.md`, `interfaces.md`, `specs/**`, `review.md`, `security.md`, `performance.md`, `accessibility.md`, `implementation.md`, or `.openspec.yaml`, and it is NOT re-derived from any external or prior-conversation context (Isolation Mode)

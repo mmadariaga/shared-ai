@@ -16,11 +16,24 @@ If any parameter is missing, STOP and ask for it — do not assume a default (Is
 
 This gate MUST NOT ask for approval and MUST NOT write to `.openspec.yaml`. It is a feedback loop only.
 
+## Iteration counter (in-conversation only)
+
+The gate tracks the feedback-option iteration with a single integer counter held in the agent's working memory for the duration of the current session only.
+
+- The counter starts at 0 at the beginning of every fresh `/sai-*` invocation.
+- The counter is incremented by 1 immediately after each feedback-selection turn completes (in `## On "Give feedback"`, step 7), before the gate is re-offered.
+- The counter is NOT written to any artifact, configuration file, `.openspec.yaml`, or any other on-disk state.
+- The counter is NOT derived from any marker in the gate's artifact set, hidden comment, or external/prior-conversation context (Isolation Mode).
+- The counter resets to 0 for free at the start of every new chat because Isolation Mode begins each wrapper invocation with no inherited context.
+
 ## Present the gate
 
 Present exactly two choices through the harness's native option-picker per the "Closed-choice prompts" rule in `sai/instructions/remember.md` (on Claude Code, the `AskUserQuestion` tool). Labels are full words, never single- or two-letter abbreviations:
 
-1. **Give feedback** — feedback on the artifacts written in this step. Name every entry in `artifacts` so the user knows exactly what is open to feedback.
+1. **`Give feedback` when in-conversation iteration counter == 0, else `Give more feedback`** — feedback on the artifacts written in this step. Name every entry in `artifacts` so the user knows exactly what is open to feedback.
+
+The description text, the proceed option label, the proceed option description, and the harness option-picker path stay byte-for-byte identical across every iteration; only this short label changes between the first presentation and any re-presentation.
+
 2. **`proceed-label`** — the step-specific proceed option.
 
 ## On "Give feedback"
@@ -38,6 +51,7 @@ Apply feedback **selectively per item, never as an all-or-nothing turn**:
 4. Report every **discarded** item individually: state the item and the specific reason it was not applied, before reprinting the summary. Discards are **soft** — if the user reimposes a discarded item on a later iteration, treat it as ordinary feedback and apply it.
 5. Reprint the step's decision summary, recomputed from the updated artifacts, **exactly as the surrounding step's `## Completion` section defines it** — do not embed or invent a summary format here. Every summary line SHALL trace only to the updated artifacts; no prior-conversation or external context (Isolation Mode).
 6. Re-offer the same two-option gate.
+7. Increment the in-conversation iteration counter by 1 immediately after this feedback turn completes, before re-offering the gate.
 
 Repeat this loop until the user selects the proceed option.
 
