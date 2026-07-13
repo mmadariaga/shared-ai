@@ -6,7 +6,7 @@ const path = require('path');
 const os = require('os');
 const fs = require('fs');
 
-const { copy, copyWithWarn, copySkipIfExists, listMdFiles, listMdFilesRecursive } = require('../bin/install-flow.js');
+const { copy, listMdFiles, listMdFilesRecursive } = require('../bin/install-flow.js');
 
 test('copy overwrites existing file', () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-test-'));
@@ -26,59 +26,6 @@ test('copy creates missing parent dirs', () => {
   fs.writeFileSync(src, 'hello');
   copy(src, dest);
   assert.ok(fs.existsSync(dest), 'dest should exist after copy');
-  fs.rmSync(tmpDir, { recursive: true });
-});
-
-test('copyWithWarn prints Overwriting and copies file', () => {
-  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-test-'));
-  const src = path.join(tmpDir, 'src.txt');
-  const dest = path.join(tmpDir, 'dest.txt');
-  fs.writeFileSync(src, 'new content');
-  fs.writeFileSync(dest, 'old content');
-  let printed = '';
-  const origLog = console.log;
-  console.log = (msg) => { printed += String(msg); };
-  copyWithWarn(src, dest);
-  console.log = origLog;
-  assert.ok(printed.startsWith('Overwriting'), `expected "Overwriting..." but got "${printed}"`);
-  assert.ok(fs.existsSync(dest), 'dest should exist after copyWithWarn');
-  assert.equal(fs.readFileSync(dest, 'utf8'), 'new content');
-  fs.rmSync(tmpDir, { recursive: true });
-});
-
-test('copySkipIfExists does not overwrite when dest exists', () => {
-  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-test-'));
-  const src = path.join(tmpDir, 'src.txt');
-  const dest = path.join(tmpDir, 'dest.txt');
-  fs.writeFileSync(src, 'new content');
-  fs.writeFileSync(dest, 'old content');
-  copySkipIfExists(src, dest);
-  assert.equal(fs.readFileSync(dest, 'utf8'), 'old content');
-  fs.rmSync(tmpDir, { recursive: true });
-});
-
-test('copySkipIfExists prints skip message when dest exists', () => {
-  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-test-'));
-  const src = path.join(tmpDir, 'src.txt');
-  const dest = path.join(tmpDir, 'dest.txt');
-  fs.writeFileSync(src, 'new content');
-  fs.writeFileSync(dest, 'old content');
-  let printed = '';
-  const origLog = console.log;
-  console.log = (msg) => { printed += String(msg); };
-  copySkipIfExists(src, dest);
-  console.log = origLog;
-  assert.ok(printed.startsWith('Skipping'), `expected "Skipping..." but got "${printed}"`);
-  fs.rmSync(tmpDir, { recursive: true });
-});
-
-test('copySkipIfExists copies when dest does not exist', () => {
-  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-test-'));
-  const src = path.join(tmpDir, 'src.txt');
-  const dest = path.join(tmpDir, 'dest.txt');
-  fs.writeFileSync(src, 'hello');
-  copySkipIfExists(src, dest);
-  assert.equal(fs.readFileSync(dest, 'utf8'), 'hello');
   fs.rmSync(tmpDir, { recursive: true });
 });
 

@@ -163,24 +163,6 @@ function copy(src, dest) {
   fs.copyFileSync(src, dest);
 }
 
-function copyWithWarn(src, dest) {
-  if (fs.existsSync(dest)) {
-    console.log(`Overwriting ${dest}`);
-  } else {
-    console.log(`Creating ${dest}`);
-  }
-
-  copy(src, dest);
-}
-
-function copySkipIfExists(src, dest) {
-  if (fs.existsSync(dest)) {
-    console.log(`Skipping ${dest} (already exists)`);
-    return;
-  }
-  copy(src, dest);
-}
-
 function listMdFiles(dir) {
   return fs.readdirSync(dir)
     .filter(f => f.endsWith('.md'))
@@ -489,6 +471,7 @@ async function main() {
   }
 
   if (choices.includes('Opencode')) {
+    console.log();
     await offerOpencodeInstall();
     installOpencode();
     copyOpencodeConfig();
@@ -520,8 +503,6 @@ if (require.main === module) {
 module.exports = {
   ensureDir,
   copy,
-  copyWithWarn,
-  copySkipIfExists,
   listMdFiles,
   listMdFilesRecursive,
   installClaude,
