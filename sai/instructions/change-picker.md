@@ -4,7 +4,11 @@ Shared instruction that resolves a missing OpenSpec change name for change-consu
 
 ## Invocation trigger
 
-Run this instruction only when `$ARGUMENTS` is empty at the point the consuming command's fetch reaches it. If `$ARGUMENTS` is already non-empty, this instruction is a no-op: do not query OpenSpec, do not prompt the user, and proceed using the provided value exactly as before this capability existed.
+Run this instruction only when no change name is available from the wrapper-echo line and the consuming command's `$ARGUMENTS` is empty at the point the consuming command's fetch reaches it. If either source provides a non-empty change name, this instruction is a no-op: do not query OpenSpec, do not prompt the user, and proceed using the provided value exactly as before this capability existed. The wrapper-echo line check runs first; the `$ARGUMENTS` check is the fall-through path.
+
+## Wrapper-Echo Resolution
+
+When the conversation history contains a line matching exactly `**Change-name argument:** <value>` (two literal asterisks, the literal text `Change-name argument:`, a single space, and the change name; the value extends to the end of that line) with non-empty `<value>`, treat `<value>` as the resolved change name and skip the picker entirely. The scan covers the user message that invoked the command (the wrapper), so the line is reliably found even if tool results or model turns have appeared afterward. If the line is absent, or present with an empty or whitespace-only value, fall through to the existing `$ARGUMENTS` check and the 0/1/N picker logic.
 
 ## Resolution (when `$ARGUMENTS` is empty)
 
