@@ -6,6 +6,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const readline = require('readline');
+const childProcess = require('child_process');
 
 let jsoncParser = null;
 try {
@@ -45,6 +46,54 @@ const COPILOT_PROMPTS_BASE = getCopilotPromptsDir();
 const COPILOT_SAI_BASE = getCopilotSaiDir();
 const COPILOT_SKILLS_BASE = path.join(os.homedir(), '.copilot', 'skills');
 const COPILOT_AGENTS_BASE = path.join(os.homedir(), '.copilot', 'agents');
+
+const OPENCODE_INSTALL_CMD = 'npm i -g opencode-ai@latest';
+
+function probeOpencode() {
+  const result = childProcess.spawnSync('opencode', ['--version'], { shell: true, stdio: 'ignore' });
+  return !result.error && result.status === 0;
+}
+
+function runOpencodeInstall() {
+  const result = childProcess.spawnSync('npm', ['i', '-g', 'opencode-ai@latest'], { shell: true, stdio: 'inherit' });
+  return !result.error && result.status === 0;
+}
+
+async function promptYesNoReadline(question) {
+  const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+  try {
+    const answer = await new Promise(resolve => rl.question(question, resolve));
+    return /^y(es)?$/i.test(answer.trim());
+  } finally {
+    rl.close();
+  }
+}
+
+async function offerOpencodeInstall({
+  probe = probeOpencode,
+  runInstall = runOpencodeInstall,
+  promptYesNo = promptYesNoReadline,
+  isTTY = process.stdin.isTTY,
+} = {}) {
+  if (probe()) {
+    return;
+  }
+
+  if (!isTTY) {
+    console.log(OPENCODE_INSTALL_CMD);
+    return;
+  }
+
+  const answer = await promptYesNo('Install opencode now? [y/n] ');
+  if (answer) {
+    const success = runInstall();
+    if (!success) {
+      console.log(OPENCODE_INSTALL_CMD);
+    }
+  } else {
+    console.log(OPENCODE_INSTALL_CMD);
+  }
+}
 
 function promptChecklist(items, defaultSelected) {
   if (!process.stdin.isTTY) {
@@ -437,6 +486,7 @@ async function main() {
   }
 
   if (choices.includes('Opencode')) {
+    await offerOpencodeInstall();
     installOpencode();
     copyOpencodeConfig();
   }
@@ -473,4 +523,9 @@ module.exports = {
   installCopilot,
   copyOpencodeConfig,
   main,
+  OPENCODE_INSTALL_CMD,
+  probeOpencode,
+  runOpencodeInstall,
+  promptYesNoReadline,
+  offerOpencodeInstall,
 };
