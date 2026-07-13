@@ -381,8 +381,9 @@ test('probeOpencode uses spawnSync exit-code semantics', () => {
     assert.equal(probeOpencode(), true, 'zero status should return true');
     assert.ok(spawnSyncCalls.length >= 3, 'spawnSync should be called at least 3 times');
     for (const call of spawnSyncCalls) {
-      assert.deepEqual(call[1], ['--version'], 'should call with --version array');
-      assert.equal(call[2]?.shell, true, 'should use shell: true');
+      assert.equal(typeof call[0], 'string', 'should use string command');
+      assert.equal(call[0], 'opencode --version', 'should use exact command string');
+      assert.equal(call[1]?.shell, true, 'should use shell: true');
     }
   } finally {
     childProcess.spawnSync = origSpawnSync;

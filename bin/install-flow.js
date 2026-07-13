@@ -50,12 +50,12 @@ const COPILOT_AGENTS_BASE = path.join(os.homedir(), '.copilot', 'agents');
 const OPENCODE_INSTALL_CMD = 'npm i -g opencode-ai@latest';
 
 function probeOpencode() {
-  const result = childProcess.spawnSync('opencode', ['--version'], { shell: true, stdio: 'ignore' });
+  const result = childProcess.spawnSync('opencode --version', { shell: true, stdio: 'ignore' });
   return !result.error && result.status === 0;
 }
 
 function runOpencodeInstall() {
-  const result = childProcess.spawnSync('npm', ['i', '-g', 'opencode-ai@latest'], { shell: true, stdio: 'inherit' });
+  const result = childProcess.spawnSync('npm i -g opencode-ai@latest', { shell: true, stdio: 'inherit' });
   return !result.error && result.status === 0;
 }
 
