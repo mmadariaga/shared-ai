@@ -48,15 +48,32 @@ const COPILOT_SKILLS_BASE = path.join(os.homedir(), '.copilot', 'skills');
 const COPILOT_AGENTS_BASE = path.join(os.homedir(), '.copilot', 'agents');
 
 const OPENCODE_INSTALL_CMD = 'npm i -g opencode-ai@latest';
+const CODEGRAPH_CLI_INSTALL_CMD = 'npm i -g @colbymchenry/codegraph';
+const CODEGRAPH_MCP_INSTALL_CMD = 'codegraph install';
+const CODEGRAPH_WIRING_HINT = 'MCP wiring: run `codegraph install` if not already wired';
 
 function probeOpencode() {
   const result = childProcess.spawnSync('opencode --version', { shell: true, stdio: 'ignore' });
   return !result.error && result.status === 0;
 }
 
+function probeCodegraph() {
+  const result = childProcess.spawnSync('codegraph --version', { shell: true, stdio: 'ignore' });
+  return !result.error && result.status === 0;
+}
+
 function runOpencodeInstall() {
   const result = childProcess.spawnSync('npm i -g opencode-ai@latest', { shell: true, stdio: 'inherit' });
   return !result.error && result.status === 0;
+}
+
+function runCodegraphInstall() {
+  const cliResult = childProcess.spawnSync(CODEGRAPH_CLI_INSTALL_CMD, { shell: true, stdio: 'inherit' });
+  if (cliResult.error || cliResult.status !== 0) {
+    return false;
+  }
+  const mcpResult = childProcess.spawnSync(CODEGRAPH_MCP_INSTALL_CMD, { shell: true, stdio: 'inherit' });
+  return !mcpResult.error && mcpResult.status === 0;
 }
 
 async function promptYesNoReadline(question) {
@@ -92,6 +109,36 @@ async function offerOpencodeInstall({
     }
   } else {
     console.log(OPENCODE_INSTALL_CMD);
+  }
+}
+
+async function offerCodegraphInstall({
+  probe = probeCodegraph,
+  runInstall = runCodegraphInstall,
+  promptYesNo = promptYesNoReadline,
+  isTTY = process.stdin.isTTY,
+} = {}) {
+  if (probe()) {
+    console.log(CODEGRAPH_WIRING_HINT);
+    return;
+  }
+
+  if (!isTTY) {
+    console.log(CODEGRAPH_CLI_INSTALL_CMD);
+    console.log(CODEGRAPH_MCP_INSTALL_CMD);
+    return;
+  }
+
+  const answer = await promptYesNo('Install CodeGraph now? [y/n] ');
+  if (answer) {
+    const success = runInstall();
+    if (!success) {
+      console.log(CODEGRAPH_CLI_INSTALL_CMD);
+      console.log(CODEGRAPH_MCP_INSTALL_CMD);
+    }
+  } else {
+    console.log(CODEGRAPH_CLI_INSTALL_CMD);
+    console.log(CODEGRAPH_MCP_INSTALL_CMD);
   }
 }
 
@@ -488,6 +535,8 @@ async function main() {
     console.log(`Copilot agents installed to: ${COPILOT_AGENTS_BASE}`);
   }
 
+  await offerCodegraphInstall();
+
   console.log(
     "\nReminder: run 'npx github:mmadariaga/shared-ai setup' in each project to configure the SAI workflow."
   );
@@ -515,4 +564,10 @@ module.exports = {
   runOpencodeInstall,
   promptYesNoReadline,
   offerOpencodeInstall,
+  CODEGRAPH_CLI_INSTALL_CMD,
+  CODEGRAPH_MCP_INSTALL_CMD,
+  CODEGRAPH_WIRING_HINT,
+  probeCodegraph,
+  runCodegraphInstall,
+  offerCodegraphInstall,
 };
