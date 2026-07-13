@@ -107,8 +107,8 @@ or body style.
 ## Hard Rules
 
 - **Never stage or unstage files.** Operate only on what is already staged.
-- **Never run `git commit` without explicit per-invocation authorization.**
-- **Always ask for explicit per-invocation authorization before running `git commit`.** Once the user has granted permission for a commit, `git add` for the same step is implicitly authorized — do not ask again. If the user does not respond or declines, do not commit; describe the staged changes and instruct the user to commit themselves.
+- **Never run `git commit` without explicit per-invocation authorization, unless a session-scoped commit authorization is active.**
+- **Always ask for explicit per-invocation authorization before running `git commit`, unless a session-scoped commit authorization is active.** Once the user has granted permission for a commit, `git add` for the same step is implicitly authorized — do not ask again. If the user does not respond or declines, do not commit; describe the staged changes and instruct the user to commit themselves.
 - **Never amend a commit that is already pushed** without explicit warning + secondary confirmation.
 - **Never use `--no-verify`** to skip hooks. If a pre-commit hook fails, surface the failure, do not bypass it.
 - **Never include unstaged content** in the message — describe only `git diff --cached`.

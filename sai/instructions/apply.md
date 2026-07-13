@@ -200,12 +200,22 @@ Every `STOP & COMMIT` marker in `implementation.md` requires the same 6-step seq
 
 1. **Print the pre-commit file visibility report** per the `## Pre-commit File Visibility Report` section above. This step is mandatory and runs unconditionally so the user has the file list before being asked to authorize.
 2. **Propose the commit message.** Follow the format rules in `@sai/instructions/commit-rules.md` (loaded in the next section). The message must describe only what is staged.
-3. **Ask explicitly.** Ask: `Ready to commit Step N. May I create commit with message: '<subject>'?` — as a closed-choice prompt with options `yes (Recommended)` / `no` (per the "Closed-choice prompts" rule in `remember.md`, which gives the per-harness option-picker mapping). Do NOT run `git commit` before the user answers `yes`; anything other than an explicit `yes` selection or reply is a decline.
-4. **Wait.** Stop here. Do not advance to the next step, do not run other git operations, do not start a subagent.
-5. **On `yes` only** → run `git commit -m "..."` (or the HEREDOC form for multi-line) and report the resulting SHA + subject. **On anything else (no, silence, redirect)** → do NOT commit. Print: "Commit not authorized. The staged changes are: <summary>. Run `git commit` yourself when ready."
-6. **Continue the loop.** In both outcomes, the next action after reporting is dispatching a NEW Step-execution subagent for the next unchecked Step — not implementing it yourself, and not ending the turn. Only if no unchecked Step remains: run the Final sweep and declare the implementation done.
+3. **Session flag check.** If a session-scoped commit-authorization flag is active for the current in-conversation session (set by a prior `Allow on this session` selection), skip the prompt and proceed directly to `git add` + `git commit`. The pre-commit file visibility report and proposed commit message still print unconditionally before committing; only the authorization ask and wait are removed.
+4. **Ask explicitly (when flag is inactive).** Ask: `Ready to commit Step N. May I create commit with message: '<subject>'?` — as a closed-choice prompt with options `yes (Recommended)` / `no` / `Allow on this session` (per the "Closed-choice prompts" rule in `remember.md`, which gives the per-harness option-picker mapping). Do NOT run `git commit` before the user answers.
+5. **Wait.** Stop here. Do not advance to the next step, do not run other git operations, do not start a subagent.
+6. **On `yes` only** → run `git commit -m "..."` (or the HEREDOC form for multi-line) and report the resulting SHA + subject. **On `Allow on this session`** → run `git commit` as on `yes`, AND set the session-scoped commit-authorization flag to active for the remainder of the in-conversation session. **On anything else (no, silence, redirect)** → do NOT commit. Print: "Commit not authorized. The staged changes are: <summary>. Run `git commit` yourself when ready."
+7. **Continue the loop.** In all outcomes, the next action after reporting is dispatching a NEW Step-execution subagent for the next unchecked Step — not implementing it yourself, and not ending the turn. Only if no unchecked Step remains: run the Final sweep and declare the implementation done.
 
 This checklist overrides any directive in the plan that says "stage and commit". The plan describes the work; this checklist describes the commit gate.
+
+### Session-scoped commit authorization flag
+
+The agent MAY maintain a single boolean flag in its in-conversation working memory: `session_commit_authorized`.
+
+- **Set active:** when the user selects `Allow on this session` at the commit-authorization gate. The flag remains active for the remainder of the in-conversation session.
+- **Read:** at every subsequent entry to the commit-authorization gate (step 3 above). If active, the agent skips the ask and proceeds to `git add` + `git commit` after printing the file-visibility report and proposed message.
+- **Reset:** the flag is inactive at the start of every new chat or new `/sai-*` invocation (Isolation Mode clears inherited context). It is NEVER written to `.openspec.yaml`, config, or any file on disk.
+- **Scope boundary:** the grant covers `git add` + `git commit` at the commit gate ONLY. It does NOT authorize `push`, `--force`, branch create/switch, rebase, merge, tag, or `gh pr`; those operations still require their own per-operation approval regardless of the flag. The grant does NOT bypass the GREEN-conflict STOP or the apply Human Verification gate; those still halt the workflow regardless of the flag.
 
 ## Git Operations
 
@@ -218,7 +228,8 @@ running `git commit`. Branch creation/switching always requires explicit approva
 of plan markers.
 
 - **Ask before any git operation**: Before creating branches, commits, pushing, or any other git action, ask the user for explicit permission.
-- **No implicit authorization**: Do not assume permission from previous sessions or tasks. Ask every time.
+- **No implicit authorization** (default): Do not assume permission from previous sessions or tasks. Ask every time.
+- **Session opt-in carve-out**: The user MAY select `Allow on this session` at the commit-authorization gate. When selected, `git add` + `git commit` for the remainder of the in-conversation session proceed without re-asking. This carve-out applies ONLY to `git add` + `git commit` at the commit gate; it does NOT relax the per-operation approval requirement for push, `--force`, branch create/switch, rebase, merge, tag, or `gh pr`.
 - **Delegate to user if not authorized**: If user does not grant permission, describe what needs to be done and let the user execute the git operations.
 - **Operations requiring permission**: Branch creation/switching, commits, push, rebase, merge, tag operations, or any destructive git action.
 
