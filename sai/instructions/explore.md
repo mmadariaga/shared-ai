@@ -36,10 +36,10 @@ You are in explore mode — a read-and-discuss context. These restrictions are i
 
    **English skip**: If the turn's dominant natural language is English, produce the review directly in English with no question.
 
-   **Non-English gate**: If the turn's dominant natural language is not English, ask exactly one question with two options. The **entire question prompt and the non-English option label SHALL be translated into the user's current language**; only the literal word `English` (the English-option label) is preserved verbatim. Produce **no** review content until the user answers. The English placeholder template below is NOT output verbatim:
+   **Non-English gate**: If the turn's dominant natural language is not English, ask exactly one question with two options. The **entire question prompt and the non-English option label SHALL be translated into the user's current language**; only the literal word `English` (the English-option label) is preserved verbatim. The English option is the default: it SHALL be emitted first and carry the `Recommended` marker appended alongside the literal word `English` (e.g. `English (Recommended)`), preserving the verbatim-`English` guarantee. Produce **no** review content until the user answers. The English placeholder template below is NOT output verbatim:
    ```
    You're about to review an OpenSpec artifact. Which language should the review be in?
-   - English
+   - English (Recommended)
    - <endonym of the user's current language, written in that language>
    ```
 
