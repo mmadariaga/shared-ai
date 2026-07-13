@@ -2,7 +2,7 @@
 
 Confirm `openspec/changes/$ARGUMENTS/proposal.md` exists AND at least one file matching `openspec/changes/$ARGUMENTS/specs/**/*.md` exists. If either is missing, STOP and print: "Change '$ARGUMENTS' not found or has no specs. Run /sai-1-spec to create it first."
 
-Ask exactly: "**Have you reviewed the specs in openspec/changes/$ARGUMENTS/specs/** and are ready to **approve** them for design? (yes/no, and any notes)"
+Ask exactly: "**Have you reviewed the specs in openspec/changes/$ARGUMENTS/specs/** and are ready to **approve** them for design? (yes/no, and any notes)" — present as a closed-choice prompt with `yes (Recommended)` first, then `no`.
 
 If the user's response is "no" or any clearly negative answer, STOP without writing any file.
 
