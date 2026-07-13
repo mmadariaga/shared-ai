@@ -7,3 +7,5 @@ model: opencode-go/deepseek-v4-flash
 
 Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.
 Fetch @sai/commands/sai-pr.md and follow those instructions exactly.
+
+**Change-name argument:** $ARGUMENTS

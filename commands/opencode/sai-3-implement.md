@@ -8,3 +8,5 @@ model: opencode-go/kimi-k2.6
 Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.
 Fetch @sai/commands/sai-3-implement.md and follow those instructions exactly.
 
+**Change-name argument:** $ARGUMENTS
+

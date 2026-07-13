@@ -7,3 +7,5 @@ model: opencode-go/glm-5.2
 
 Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.
 Fetch @sai/commands/sai-2-design.md and follow those instructions exactly.
+
+**Change-name argument:** $ARGUMENTS

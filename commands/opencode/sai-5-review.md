@@ -7,3 +7,5 @@ model: opencode-go/qwen3.7-plus
 
 Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.
 Fetch @sai/commands/sai-5-review.md and follow those instructions exactly.
+
+**Change-name argument:** $ARGUMENTS
