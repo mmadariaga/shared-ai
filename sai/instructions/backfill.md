@@ -72,12 +72,12 @@ Conflict detected in the following specs:
   Why: {reason tied directly to the diff}
 ```
 
-After the report, ask **"Do you want to proceed with these updates, or abort?"** as a closed-choice prompt with the two options labeled `proceed` and `abort` (per the "Closed-choice prompts" rule in `remember.md`, which gives the per-harness option-picker mapping); a reply that maps to neither option is invalid — re-ask the question and write no files until a valid choice is made. On a harness with no native option-picker, print exactly:
+After the report, ask **"Do you want to proceed with these updates, or abort?"** as a closed-choice prompt with the two options labeled `proceed (Recommended)` and `abort` (per the "Closed-choice prompts" rule in `remember.md`, which gives the per-harness option-picker mapping); a reply that maps to neither option is invalid — re-ask the question and write no files until a valid choice is made. On a harness with no native option-picker, print exactly:
 
 ```
 Do you want to proceed with these updates, or abort?
 
-- proceed — apply the spec updates described above
+- proceed (Recommended) — apply the spec updates described above
 - abort — write no files and stop
 
 Reply with proceed or abort.
