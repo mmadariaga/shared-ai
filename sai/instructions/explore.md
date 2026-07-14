@@ -36,6 +36,8 @@ You are in explore mode — a read-and-discuss context. These restrictions are i
 
    **English skip**: If the turn's dominant natural language is English, produce the review directly in English with no question.
 
+   **Fast-track skip**: If the fast-track signal is active, produce the review directly in English with no question.
+
    **Non-English gate**: If the turn's dominant natural language is not English, ask exactly one question with two options. The **entire question prompt and the non-English option label SHALL be translated into the user's current language**; only the literal word `English` (the English-option label) is preserved verbatim. The English option is the default: it SHALL be emitted first and carry the `Recommended` marker appended alongside the literal word `English` (e.g. `English (Recommended)`), preserving the verbatim-`English` guarantee. Produce **no** review content until the user answers. The English placeholder template below is NOT output verbatim:
    ```
    You're about to review an OpenSpec artifact. Which language should the review be in?
@@ -110,6 +112,8 @@ The full `Ready to Propose` block(s) are printed only when the user explicitly a
 8. **Crystallization language gate (sai-explore only)**: When this turn is an explicit crystallize request — the user asks to crystallize, asks for the paste-ready block, or asks to create a proposal / run `/sai-1-spec` — evaluate this gate after the §4 slicing assessment (so single-vs-sliced routing is already determined) and before printing any `Ready to Propose` block. This gate applies only within `sai-explore`; no other `sai-*` command is affected. It qualifies `sai/instructions/remember.md:4` ("Agent responses to user: Same language as user input by default") for crystallization turns only; `remember.md` itself is unchanged.
 
    The gate's machinery — English skip, Non-English gate, question presentation, dominant-language determination, persistence, decline fallback — is identical to item 3's, with these four deltas:
+
+   **Fast-track skip**: If the fast-track signal is active, produce the review directly in English with no question.
 
    1. **Trigger**: an explicit crystallize request (per the Emission gate's trigger list) instead of an artifact-review request.
    2. **Tracked target**: the current crystallized idea or slice set instead of the reviewed artifact set.

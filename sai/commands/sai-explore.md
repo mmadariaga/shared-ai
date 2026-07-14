@@ -10,6 +10,17 @@
   Fetch @sai/instructions/prereqs.md
   Fetch @skills/safe-operations/SKILL.md and use it
 
+  ## Fast-track parse
+  Before proceeding, inspect `$ARGUMENTS` for the positional token `--fast-track`:
+  - If the token is present anywhere in `$ARGUMENTS`:
+    1. Set the in-conversation fast-track signal to active.
+    2. Remove the `--fast-track` token from `$ARGUMENTS` and trim surrounding whitespace.
+    3. Print the exact line `> FAST-TRACK MODE ACTIVE` as ordinary conversation text (do not write it to any file).
+    4. Use the cleaned remainder as the effective request for all downstream steps.
+  - If the token is absent:
+    1. Leave the fast-track signal inactive.
+    2. Use `$ARGUMENTS` verbatim.
+
   ## Load behaviors (in order)
   Fetch @skills/budget/SKILL.md and use it
 
