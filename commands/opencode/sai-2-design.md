@@ -9,3 +9,4 @@ Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.
 Fetch @sai/commands/sai-2-design.md and follow those instructions exactly.
 
 **Change-name argument:** $ARGUMENTS
+<!-- Optional: append --fast-track after the change name for fast-track mode -->

@@ -1,6 +1,6 @@
 ---
 description: Generate design.md and tasks.md for a change — gated on specs approval the wrapper itself asks for and records (body file: sai/instructions/design.md).
-argument-hint: "[change-name]"
+argument-hint: "[change-name] [--fast-track]"
 model: claude-opus-4-8
 effort: high
 ---

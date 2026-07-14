@@ -9,11 +9,27 @@
   ## Prerequisite checks
   Fetch @sai/instructions/prereqs.md
 
+  ## Fast-track parse
+  Before proceeding, inspect `$ARGUMENTS` for the positional token `--fast-track`:
+  - If the token is present anywhere in `$ARGUMENTS`:
+    1. Set the in-conversation fast-track signal to active.
+    2. Remove the `--fast-track` token from `$ARGUMENTS` and trim surrounding whitespace.
+    3. Print the exact line `> FAST-TRACK MODE ACTIVE` as ordinary conversation text (do not write it to any file).
+    4. Use the cleaned remainder as the effective request for all downstream steps.
+  - If the token is absent:
+    1. Leave the fast-track signal inactive.
+    2. Use `$ARGUMENTS` verbatim.
+
   ## Load behaviors (in order)
   Fetch @skills/budget/SKILL.md and use it
 
   ## Load instructions (in order)
   Fetch @sai/instructions/change-picker.md and follow it exactly.
+
+  After the change-picker resolves a change name, if the resolved value still contains `--fast-track`:
+  1. Remove the token and trim surrounding whitespace.
+  2. Use the cleaned remainder as the effective change name for all downstream steps.
+
   Fetch @sai/instructions/glossary-format.md
   Fetch @sai/instructions/design.md and follow those instructions exactly.
   Fetch @sai/instructions/remember.md
