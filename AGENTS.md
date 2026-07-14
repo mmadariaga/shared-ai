@@ -153,6 +153,15 @@ Only proposes creating an ADR/DDR if the project already has an ADR culture or t
 - Performance surface → `sai-7-performance`
 - Accessibility surface (`.tsx`/`.jsx`/`.astro`/`.html`/`.vue`/`.svelte`/`.css`) → `sai-8-accessibility`
 
+### Fast-track flag (`--fast-track`)
+
+A per-invocation opt-in on `sai-explore`, `sai-2-design`, and `sai-4-apply` that trades a fixed, audited set of gates for a single end-of-run checkpoint. Parsed in the shared body file (not the wrappers) so behavior is identical across Claude Code, opencode, and GitHub Copilot. Each command's opt-out set is fixed:
+- `sai-explore` — skips both language gates (artifact review and crystallization).
+- `sai-2-design` — auto-approves the specs approval gate.
+- `sai-4-apply` — pre-activates session commit authorization and defers Human Verification to end-of-run.
+
+Safe-operations confirmations and all unnamed gates remain in force.
+
 ## Installation
 
 Commands are **user globals**, not per-project.
