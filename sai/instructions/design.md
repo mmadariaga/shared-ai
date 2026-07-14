@@ -23,7 +23,17 @@ Do not create or modify any other files if the user declines.
 
 ## Generation Instructions
 
-Generate ONLY `design.md` and `tasks.md` for change `$ARGUMENTS`. Do NOT regenerate `proposal.md` or `specs/`.
+Generate `design.md`, `tasks.md`, and `interfaces.md` for change `$ARGUMENTS` as the default outputs. `proposal.md` and `specs/**` may be amended in place only when a spec problem is discovered during design, clarity on the fix is present, and the user explicitly consents — never by default.
+
+### Spec-problem handling during design
+
+While generating design artifacts, if you discover a problem in `proposal.md` or any `specs/**/*.md` (for example: a requirement that contradicts the codebase, a missing or wrong scenario, an internally inconsistent spec, or a spec-vs-source contradiction), classify your clarity on the fix before proceeding:
+
+- **Clarity present** — you can state the exact text to change and the exact replacement, grounded in the proposal, the specs, and any codebase facts already gathered. Present to the user: (1) the discovered problem, (2) the concrete diff to `proposal.md` and/or the affected `specs/**/*.md` file(s), and (3) a closed-choice offer between applying the patch **in place** and routing to `/sai-1-spec`, per the closed-choice-prompts convention in `sai/instructions/remember.md`. Never apply the amendment by default; wait for the user's explicit selection.
+  - If the user selects **in place**: apply exactly the presented patch, then write `approval.specs.amendment.{at, notes}` to `openspec/changes/$ARGUMENTS/.openspec.yaml`, merging into the existing file content and preserving all prior top-level keys (including `schema:`, `created:`, `approval.specs.approved_at`, and `approval.specs.notes`) verbatim — do NOT truncate or rewrite the whole file. Then continue generating design artifacts from the amended specs.
+  - If the user selects **route to `/sai-1-spec`** (or any non-in-place response): do NOT modify `proposal.md` or `specs/**`, do NOT write an amendment audit entry, and direct the user to re-run `/sai-1-spec` to make the correction in a fresh spec pass.
+
+- **Clarity absent** — you cannot determine the correct amendment (for example, a spec-vs-codebase contradiction where you cannot tell which side is stale, or a fundamentally wrong spec you cannot safely patch). Route the user to `/sai-1-spec` directly. Do NOT offer an in-place amendment and do NOT modify `proposal.md` or `specs/**`.
 
 ### Inputs
 
