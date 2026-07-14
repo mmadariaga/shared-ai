@@ -91,10 +91,15 @@ If the user declines to answer or responds non-committally (e.g. "whatever"), th
 
 ### Requirement: Gate changes chat output only
 
-The gate SHALL affect chat output only. It SHALL NOT change any OpenSpec artifact's file format or content, and the `Ready to Propose` block SHALL remain in English regardless of the gate outcome.
+The review language gate SHALL affect review chat output only. It SHALL NOT change any OpenSpec artifact's file format or content. It SHALL NOT alter the `Ready to Propose` block — neither its content nor its language: the block's prose language is governed **solely** by the crystallization language gate, not by this review gate.
 
-#### Scenario: artifacts and Ready to Propose stay unchanged
+#### Scenario: artifacts stay unchanged
 
-- **WHEN** the gate resolves to any language
-- **THEN** no artifact file's format or content is altered by the gate
-- **AND** any `Ready to Propose` block the session later emits is still written in English
+- **WHEN** the review gate resolves to any language
+- **THEN** no artifact file's format or content is altered by the review gate
+
+#### Scenario: review gate does not govern the Ready to Propose block
+
+- **WHEN** the review gate resolves to any language and the session later emits a `Ready to Propose` block
+- **THEN** the review gate does not alter that block
+- **AND** the block's prose language is determined solely by the crystallization language gate
