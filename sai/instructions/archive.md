@@ -33,6 +33,7 @@ Before running the archive skill, perform this check:
 1. Check if openspec/changes/$ARGUMENTS/implementation.md exists.
    - **If it exists**: search it for unchecked items (`- [ ]`). If one or more are found, this is a **soft confirmation gate**, not a hard stop:
      - List every unchecked item concretely — for each, print its location as `implementation.md:{line}`, the `#### Step N` heading it falls under, and the checkbox's own text.
+     - **If fast-track is active** (`sai-archive --fast-track`; opt-out set per `openspec/specs/sai-fast-track-flag/spec.md`): auto-proceed as if the user answered `yes`. Do NOT ask the question below; perform the archive move; write no approval key to `.openspec.yaml`; skip the remaining bullets of this gate.
       - Ask as a closed-choice prompt: `Continue archiving with N unchecked items?` with options `yes (Recommended)` / `no` (per the "Closed-choice prompts" rule in `remember.md`, which gives the per-harness option-picker mapping), where `N` is the count of unchecked items.
      - Perform the archive move ONLY on an explicit `yes`. On `no`, on silence, or on any answer other than `yes`, do NOT perform the archive move and report that archiving was not performed, citing the unchecked items.
      - This prompt is conversational in chat only: do NOT write any approval key to `.openspec.yaml` and do NOT introduce any new formal approval gate. Only the unchecked-items rule changes; the Classification Check, missing-main-spec handling, and spec-sync behavior are untouched.
@@ -44,3 +45,11 @@ When assessing delta spec sync state:
 - If a delta spec capability has **no matching main spec** at `openspec/specs/<capability>/spec.md`, treat it as a new addition.
 - Include it in the combined summary as `[ADD] <capability>`.
 - The "changes needed" branch applies: offer "Sync now (recommended — creates new main spec)" and "Archive without syncing".
+
+### Fast-track sync-gate handling (step 4 of the archive skill)
+
+When fast-track is active (`sai-archive --fast-track`; opt-out set per `openspec/specs/sai-fast-track-flag/spec.md`), the delta-spec sync gate auto-proceeds instead of prompting:
+- **Changes-needed path** (options "Sync now (recommended — creates new main spec)" / "Archive without syncing"): auto-select **Sync now** — never **Archive without syncing** — if and only if the change is low-risk-by-construction: EITHER `openspec/changes/$ARGUMENTS/implementation.md` exists AND contains at least one `- [x]`, OR the Classification Check resolved `backfilled=true` (reuse that value; do not re-read `.openspec.yaml`). When neither disjunct holds, present the gate interactively with its usual options.
+- **Already-synced path** (options "Archive now" / "Sync anyway" / "Cancel"): auto-select **Archive now** unconditionally — it is a no-op, nothing to sync.
+- Detect applied state by a single read of `implementation.md` for a `- [x]` — no git-log traversal.
+- Every other gate stays in force: the CORE-missing hard stop, the AUDIT informational line, all safe-operations confirmations, the pre-existence check, and the opencode change-name resolution.
