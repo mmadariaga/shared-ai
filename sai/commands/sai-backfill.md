@@ -25,7 +25,7 @@
   ## Ready to Archive
 
   **Change name**: {name}
-  **Open a new chat** and run `/sai-archive {name}`.
+  **Open a new chat** and run `/sai-archive {name}` (--fast-track).
 </TASK>
 
 Follow instruction on <TASK> step by step

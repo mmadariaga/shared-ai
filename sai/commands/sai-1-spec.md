@@ -40,7 +40,7 @@
 
   After the decision summary, present the feedback gate: Fetch @sai/instructions/artifact-feedback-gate.md and follow it exactly, supplying — artifacts = `proposal.md`, `specs/**`; proceed-label = `Finish step`; next-action = fire the MANDATORY STOP below. The gate MUST NOT ask for approval and MUST NOT write to `.openspec.yaml`.
 
-  MANDATORY STOP (fires only after the user selects `Finish step` in the gate): Once all artifacts are written your work is COMPLETE, STOP and print exactly: "Spec proposal done in openspec/changes/{name}/. Review it and run `/sai-2-design {name}` **in a new chat** when ready."
+  MANDATORY STOP (fires only after the user selects `Finish step` in the gate): Once all artifacts are written your work is COMPLETE, STOP and print exactly: "Spec proposal done in openspec/changes/{name}/. Review it and run `/sai-2-design {name}` (--fast-track) **in a new chat** when ready."
 </TASK>
 
 Follow instruction on <TASK> step by step
