@@ -39,37 +39,40 @@ Immediately after a `Ready to Propose` block is printed, `sai-explore` SHALL pri
 - **WHEN** a crystallization turn emits multiple `Ready to Propose` blocks (sliced mode)
 - **THEN** the global Yes/No question is offered only once, after the final block of that turn
 
-### Requirement: Per-change review loop over non-archived changes
+### Requirement: Per-change review loop over chat-crystallized changes
 
-When the user selects Yes, `sai-explore` SHALL iterate over every non-archived change under `openspec/changes/`, resolved via `openspec list --json` as the single source of change names. The loop SHALL iterate in the order `openspec list --json` returns, without re-sorting. For each change the agent SHALL present a picker with exactly three options parameterized by the current change: `Review sai-1`, `Review sai-2`, and `Skip`. The loop SHALL iterate over all non-archived changes, not only the change whose idea was just crystallized. When `openspec list --json` returns zero non-archived changes, the loop SHALL be a no-op and terminate immediately after the global Yes.
+When the user selects Yes, `sai-explore` SHALL iterate only the set of change names that the current `sai-explore` chat has already crystallized. This tracked set is in-conversation state only: it starts empty at the beginning of the chat, is updated only when crystallization output emits a change name, preserves first-emission order, and ignores duplicate later emissions of the same change name. The loop SHALL iterate the tracked set in that preserved order, without re-sorting and without consulting repository-wide change discovery. The loop SHALL NOT include unrelated non-archived changes that were not crystallized in the current chat. When the tracked set is empty, the per-change loop SHALL be a no-op and terminate immediately after the global Yes.
 
-#### Scenario: iterate over all non-archived changes
+#### Scenario: iterate only over changes crystallized in this chat
 
-- **WHEN** the user selects Yes and multiple non-archived changes exist
-- **THEN** the agent iterates over each non-archived change and presents the three-option picker for each in turn
+- **WHEN** the user selects Yes after the current chat has crystallized one or more change names
+- **THEN** the agent iterates only those crystallized change names
+- **AND** it does not offer reviews for any other non-archived change in the repository
 
-#### Scenario: change names resolved from openspec list
+#### Scenario: tracked set starts empty for a fresh chat
 
-- **WHEN** the loop determines which changes to iterate
-- **THEN** it uses `openspec list --json` as the single source of non-archived change names
+- **WHEN** a fresh `sai-explore` chat reaches the global Yes path before any crystallization output emitted a change name
+- **THEN** the tracked set is empty
+- **AND** the per-change loop performs no iterations and ends immediately
 
-#### Scenario: iteration order follows openspec list
+#### Scenario: first emission order is preserved
 
-- **WHEN** the loop iterates over multiple non-archived changes
-- **THEN** it presents the picker for each change in the order `openspec list --json` returns them, without re-sorting
+- **WHEN** the current chat crystallizes change A, then change B, then change C
+- **THEN** the global Yes path iterates A, then B, then C in that same order
 
-#### Scenario: empty change set is a no-op
+#### Scenario: duplicate crystallized names are ignored
 
-- **WHEN** the user selects Yes and `openspec list --json` reports zero non-archived changes
-- **THEN** the per-change loop performs no iterations and the section ends
+- **WHEN** the current chat crystallizes change A and later emits change A again
+- **THEN** the tracked set contains change A only once
+- **AND** the global Yes path offers the picker for change A only once in the loop
 
 ### Requirement: Review actions read their artifact sets
 
-For the change currently being iterated, selecting `Review sai-1` SHALL produce a read-only review of that change's `proposal.md` and `specs/**`, and selecting `Review sai-2` SHALL produce a read-only review of that change's `design.md`, `tasks.md`, and `interfaces.md`. When a requested artifact does not exist for the change, the agent SHALL report its absence without treating it as an error and without leaving the loop.
+For the change currently being iterated, selecting `Review sai-1's artifacts` SHALL produce a read-only review of that change's `proposal.md` and `specs/**`, and selecting `Review sai-2` SHALL produce a read-only review of that change's `design.md`, `tasks.md`, and `interfaces.md`. When a requested artifact does not exist for the change, the agent SHALL report its absence without treating it as an error and without leaving the loop.
 
-#### Scenario: Review sai-1 reads proposal and specs
+#### Scenario: Review sai-1's artifacts reads proposal and specs
 
-- **WHEN** the user selects `Review sai-1` for the current change
+- **WHEN** the user selects `Review sai-1's artifacts` for the current change
 - **THEN** the agent produces a read-only review of that change's `proposal.md` and `specs/**`
 
 #### Scenario: Review sai-2 reads design, tasks, and interfaces
@@ -82,28 +85,36 @@ For the change currently being iterated, selecting `Review sai-1` SHALL produce 
 - **WHEN** the user selects a review action for a change whose requested artifact does not exist
 - **THEN** the agent reports the artifact's absence and remains in the loop
 
+#### Scenario: proposal exists but sai-1 specs are missing
+
+- **WHEN** the user selects `Review sai-1's artifacts` for a change that has `proposal.md` but no `specs/**/*.md`
+- **THEN** the agent reviews the available proposal read-only
+- **AND** it explicitly reports that the sai-1 artifact set is incomplete because the normative specs are missing
+- **AND** it states that behavior review is blocked by the missing specs rather than presenting the artifact set as fully reviewable
+- **AND** it remains in the loop
+
 ### Requirement: Picker re-entry and loop advancement
 
-After a `Review sai-1` or `Review sai-2` selection for a change, the agent SHALL re-show the same three-option picker for that same change, so the user can review both artifact sets or repeat a review. Only `Skip` SHALL advance the loop to the next change. The loop SHALL terminate when every non-archived change has been processed.
+After a `Review sai-1's artifacts` or `Review sai-2` selection for a change, the agent SHALL re-show the same three-option picker for that same change, so the user can review both artifact sets or repeat a review. Only `Skip` SHALL advance the loop to the next eligible change. The loop SHALL terminate when every eligible change in the tracked chat-scoped set has been processed.
 
 #### Scenario: review re-shows the picker for the same change
 
-- **WHEN** the user selects `Review sai-1` or `Review sai-2` for a change
+- **WHEN** the user selects `Review sai-1's artifacts` or `Review sai-2` for a change
 - **THEN** after the review the agent re-shows the same picker for that same change
 
 #### Scenario: both sets reviewable for one change
 
-- **WHEN** the user selects `Review sai-1`, and then on the re-shown picker selects `Review sai-2` for the same change
+- **WHEN** the user selects `Review sai-1's artifacts`, and then on the re-shown picker selects `Review sai-2` for the same change
 - **THEN** the agent produces both reviews and re-shows the picker after each
 
 #### Scenario: only Skip advances to the next change
 
 - **WHEN** the user selects `Skip` for the current change
-- **THEN** the loop advances to the next non-archived change (or terminates if none remain)
+- **THEN** the loop advances to the next eligible change in the tracked set (or terminates if none remain)
 
-#### Scenario: loop terminates when changes are exhausted
+#### Scenario: loop terminates when eligible changes are exhausted
 
-- **WHEN** the user has processed every non-archived change (by `Skip`)
+- **WHEN** the user has processed every eligible change in the tracked chat-scoped set (by `Skip`)
 - **THEN** the loop terminates and the section ends
 
 ### Requirement: Read-only constraint
