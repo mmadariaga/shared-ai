@@ -155,10 +155,11 @@ Only proposes creating an ADR/DDR if the project already has an ADR culture or t
 
 ### Fast-track flag (`--fast-track`)
 
-A per-invocation opt-in on `sai-explore`, `sai-2-design`, and `sai-4-apply` that trades a fixed, audited set of gates for a single end-of-run checkpoint. Parsed in the shared body file (not the wrappers) so behavior is identical across Claude Code, opencode, and GitHub Copilot. Each command's opt-out set is fixed:
+A per-invocation opt-in on `sai-explore`, `sai-2-design`, `sai-4-apply`, and `sai-archive` that trades a fixed, audited set of gates for a single end-of-run checkpoint. Parsed in the shared body file (not the wrappers) so behavior is identical across Claude Code, opencode, and GitHub Copilot. Each command's opt-out set is fixed:
 - `sai-explore` — skips both language gates (artifact review and crystallization).
 - `sai-2-design` — auto-approves the specs approval gate.
 - `sai-4-apply` — pre-activates session commit authorization and defers Human Verification to end-of-run.
+- `sai-archive` — auto-proceeds the unchecked-items gate (always) and the delta-spec sync gate (conditional: implementation applied or change backfilled).
 
 Safe-operations confirmations and all unnamed gates remain in force.
 

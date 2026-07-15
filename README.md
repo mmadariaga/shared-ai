@@ -61,7 +61,7 @@ All artifact paths below resolve under `openspec/changes/{change-name}/` (referr
 | `/sai-explore` | Open-ended thinking session before committing to anything — good for fuzzy requirements, unclear trade-offs, or when you just want to think out loud with the AI. When a feature is too big for one reviewable change, it slices the idea into a Walking Skeleton plus a dependency-ordered backlog, each ready to enter the pipeline as its own change; when it detects friction at the integration point (mixed responsibilities, no clean extension seam), it prepends a behavior-preserving SOLID refactor as *slice 0* so the feature attaches by extension. After crystallizing, it can loop back over your active changes to review their `sai-1`/`sai-2` artifacts read-only. Supports `--fast-track` to skip language gates. |
 | `/sai-commit` | Reads your staged changes and detects the repo's commit style from the last 20 commits (Conventional Commits shape, type/scope vocabulary, body conventions). Adopts the detected vocabulary when it fits, falls back to hard-coded rules otherwise. Shows a pre-commit file report and runs `git commit` only after you explicitly approve. |
 | `/sai-pr` | Drafts a complete PR description using everything produced during the change (proposal, design, review findings, etc.). Opens the PR on GitHub after you approve. |
-| `/sai-archive` | Moves a completed change to the archive, keeping your active changes folder clean. |
+| `/sai-archive` | Moves a completed change to the archive, keeping your active changes folder clean. Supports `--fast-track` to auto-proceed the archive soft gates. |
 | `/sai-backfill` | Made a quick fix directly in code without going through the pipeline? This reconstructs the missing documentation after the fact — interviewing you about intent and writing only what can be reliably derived from the diff. |
 
 ## Typical usage
@@ -252,13 +252,14 @@ Proposes creating an ADR/DDR if all 3 criteria below are met:
 3. **Real trade-off** — genuine alternatives existed and one was chosen for specific reasons.
 
 ### Fast-track mode (`--fast-track`)
-For low-risk or high-trust runs, three commands accept a `--fast-track` argument that auto-advances their approval gates instead of stopping to ask. A `> FAST-TRACK MODE ACTIVE` banner prints at the start of the run so the relaxed gating is never silent.
+For low-risk or high-trust runs, four commands accept a `--fast-track` argument that auto-advances their approval gates instead of stopping to ask. A `> FAST-TRACK MODE ACTIVE` banner prints at the start of the run so the relaxed gating is never silent.
 
 | Command | What `--fast-track` skips |
 |---------|---------------------------|
 | `/sai-explore` | Both language gates take their English path without asking. |
 | `/sai-2-design` | Auto-approves the specs gate and records the approval in `.openspec.yaml`. |
 | `/sai-4-apply` | Pre-authorizes every commit for the run and defers all human-verification checks into one combined list presented after the final sweep. |
+| `/sai-archive` | Auto-proceeds the unchecked-items confirmation (always) and the delta-spec sync gate (when the implementation is applied or the change was backfilled). |
 
 Everything else stays intact.
 
