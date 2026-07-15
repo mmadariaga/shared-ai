@@ -21,13 +21,13 @@ Also supports **GitHub Copilot** natively (only in the VS Code editor window, **
 
 **You stay in control.** The AI is a peer, not a decision-maker. Every phase is a conversation where you validate direction before anything gets written. You don't delegate to the AI — you collaborate with it.
 
-**Spec first, always.** No code is written without prior change artifacts: `proposal.md` (what + why), `design.md` (decisions + trade-offs), and `specs/**` (acceptance criteria). The implementation plan is derived from them, and the code follows the plan. This is the difference between AI-assisted development and vibe coding.
+**Spec first, always.** No code is written without a prior proposal and specs capturing what, why, and the acceptance criteria. The implementation plan is derived from them, and code follows the plan — the difference between AI-assisted development and vibe coding.
 
 **Knowledge stays in the project.** Each phase writes its own artifact under `openspec/changes/{change-name}/`. When you come back months later — or hand it off to someone else — the reasoning is already there, organized by concern instead of buried in chat history.
 
 **Cost-effective by design.** Each phase runs on the cheapest model that can do the job. Cheap models for commits and PRs, mid-range for planning and review, frontier only where reasoning depth actually matters. Agents think in English regardless of your language — English tokenizers produce fewer tokens per unit of meaning, so reasoning is cheaper without losing quality (details in [Token-Efficient Languages](#token-efficient-languages)). Communication is compressed to the minimum. You get the output — not the filler.
 
-**Testing is not optional.** For every step, sai-3 writes the production code and specifies exactly what to test. sai-4 then writes the test first (RED) to confirm the assertion is real, applies the production code (GREEN), and verifies it passes. What can't be covered by unit tests — visual behavior, end-to-end flows — becomes an explicit verification request to you, placed at the earliest point it can be observed. Nothing ships unverified.
+**Testing is not optional.** For every step, sai-3 writes the production code in the playbook; test assertions come from `interfaces.md` (produced by sai-2). sai-4 then runs each testable step through two distinct subagents: the **first** writes the test (RED) and confirms it fails by a real assertion — not a setup error; a **separate second** subagent copies the production code into the project (GREEN) and makes the test pass, **without permission to modify the tests** — so the production code is validated against an assertion it never touched. The second agent adjusts code only if compilation or tests fail. What can't be covered by unit tests — visual behavior, end-to-end flows — becomes an explicit verification request to you, placed at the earliest point it can be observed. Nothing ships unverified.
 
 ## Index
 
@@ -47,9 +47,9 @@ All artifact paths below resolve under `openspec/changes/{change-name}/` (referr
 |---------|-------|--------|---------|
 | `/sai-1-spec` | feature description | `{c}/proposal.md`, `specs/**` | Describe what you want to build. The AI writes a proposal and acceptance criteria for you to review and approve — nothing else happens until you say yes. |
 | `/sai-2-design` | {change-name} | `{c}/design.md`, `tasks.md`, `interfaces.md` | Turns approved specs into a technical plan: architecture decisions, trade-offs, a concrete task list, and a per-step interface contract (`interfaces.md`) listing the new/modified public signatures and exact test assertions for each step. Supports `--fast-track` to auto-approve specs. |
-| `/sai-3-implement` | {change-name} | `{c}/implementation.md` | Writes the full coding playbook — production code for every step spelled out, test specifications (what to verify, not code), commit points marked. Designed so a cheaper/faster model can execute it mechanically. |
-| `/sai-4-apply` | {change-name} | code | Follows the playbook step by step as a **coordinator**: each step's work is delegated to a subagent (the coordinator never edits code itself), then the coordinator re-verifies the result, prints a pre-commit files-modified report cross-checked against `tasks.md`, and asks for your approval before each commit. A **testable** step runs through apply twice — first a *blind test-writer* dispatch authors the RED test and confirms it fails by assertion, then an *implementation* dispatch writes the GREEN code and makes the test pass — so the same step occupies two dispatches, never one subagent doing both. Supports `--fast-track` to auto-commit and defer human checks to end-of-run. |
-| `/sai-5-review` | {change-name} + diff | `{c}/review.md` | Reviews the finished code across 10 dimensions (correctness, maintainability, tests, etc.). Also tells you which specialized audits to run next based on what changed. |
+| `/sai-3-implement` | {change-name} | `{c}/implementation.md` | Writes the full coding playbook — production code for every step embedded in the playbook, commit points marked. Designed so a cheaper/faster model can copy the code into the project mechanically. Test assertions come from `interfaces.md` (produced by `/sai-2-design`); no code reaches the project at this stage. `/sai-4-apply` follows the playbook and copies each step's code verbatim, adjusting only for compilation errors or test failures. |
+| `/sai-4-apply` | {change-name} | code | Follows the playbook step by step as a **coordinator**: each step's work is delegated to a subagent (the coordinator never edits code itself), then the coordinator re-verifies the result, prints a pre-commit files-modified report cross-checked against `tasks.md`, and asks for your approval before each commit. A **testable** step runs through apply twice — first a *blind test-writer* dispatch authors the RED test (from the assertions in `interfaces.md`) and confirms it fails by assertion; then a *separate implementation* dispatch copies the GREEN code from the playbook into the project and makes the test pass, **without permission to modify the tests**, adjusting code only for compilation errors or test failures — so the same step occupies two dispatches, never one subagent doing both. Supports `--fast-track` to auto-commit and defer human checks to end-of-run. |
+| `/sai-5-review` | {change-name} + diff | `{c}/review.md` | Reviews the finished code across 11 dimensions (correctness, maintainability, tests, etc.). Also tells you which specialized audits to run next based on what changed. |
 | `/sai-6-security` | {change-name} + diff | `{c}/security.md` | Finds security vulnerabilities in the diff — points to exact file and line, explains the risk, and maps findings to known standards (OWASP, CVE). |
 | `/sai-7-performance` | {change-name} + diff | `{c}/performance.md` | Flags real performance bottlenecks (slow queries, heavy renders, unbounded loops). Evidence-based — no guesswork. |
 | `/sai-8-accessibility` | {change-name} + diff | `{c}/accessibility.md` | Checks UI code for accessibility issues against WCAG 2.2 AA. Can also run browser-based tools for deeper analysis. |
@@ -77,7 +77,7 @@ All artifact paths below resolve under `openspec/changes/{change-name}/` (referr
 /sai-1-spec Add OAuth2 authentication        # creates change "oauth2-auth"
                                              # → review proposal & specs, confirm approval
 
-/sai-2-design oauth2-auth                    # generates design.md + tasks.md
+/sai-2-design oauth2-auth                    # generates design.md + tasks.md + interfaces.md
                                              # → review design & tasks
 
 /sai-3-implement oauth2-auth
@@ -170,7 +170,7 @@ Pick an entry point based on what the findings require:
   # derivable artifacts (proposal.md + specs/**).
   ```
 
-  Backfill does **not** generate `design.md` or `tasks.md` — those require decisions that cannot be reliably inferred from the diff alone. Use it for small fixes, typo corrections, or config changes where the code change is self-explanatory.
+  Backfill does **not** generate `design.md`, `tasks.md`, or `interfaces.md` — those require decisions that cannot be reliably inferred from the diff alone. Use it for small fixes, typo corrections, or config changes where the code change is self-explanatory.
 
 ## Skills
 
@@ -196,7 +196,7 @@ Every phase in this pipeline is optimized to minimize token consumption without 
 All agents think and reason internally in English, regardless of the user's input language. English tokenizers produce fewer tokens per unit of meaning than most other languages [—non-English languages can cost 2–3× more tokens for the same meaning](https://x.com/arankomatsuzaki/status/2049125048792006965). This keeps reasoning efficient while user-facing chat always responds in the user's own language (Spanish, French, German, etc.). All generated artifacts (`proposal.md`, `design.md`, `implementation.md`, `review.md`, code, commit messages, PRs) are written in English.
 
 ### Task-Matched Model Selection
-Each phase uses a model chosen for its specific strengths: reasoning-heavy phases (spec) use frontier models; planning and review use balanced mid-range models; implementation, commit, and PR use fast, cost-efficient models. See the [Recommended models by command](#recommended-models-by-command-and-provider) table below.
+Each phase uses a model chosen for its specific strengths: the design and security phases use the strongest model; spec, implement, review, performance, and accessibility use balanced mid-range models; apply, commit, PR, and archive use fast, cost-efficient models. See the [Recommended models by command](#recommended-models-by-command-and-provider) table below.
 
 ### Explore Sub-Agent
 Research or exploratory tasks are delegated to **sub-agents running cost-effective models** matched to the subtask complexity. By default, sub-agents do not inherit the main session's token window, keeping costs predictable. Each subagent call declares an **output contract** (exact fields, length cap, no raw content) so only distilled signal enters the main context. The main agent never calls WebFetch directly — all external doc lookups go through the cheap explore subagent. Caps: ≤8 research-subagent invocations per audit; in audit mode, ≤15 main-agent reads + ≤30 main-agent `Grep`/`Glob` calls per pass.
@@ -219,16 +219,16 @@ General-purpose task delegation (file reads, searches, writes, code analysis) is
 Every command starts with zero inherited context —it reads only the `<TASK>` block and the artifacts it needs. This prevents context pollution across phases, makes each run replicable, and enables safe model switching between phases.
 
 ### Spec First
-Every feature starts with a change proposal (`proposal.md` + `design.md` + capability specs under `specs/`) that captures goals, acceptance criteria, technical constraints, and design decisions — produced by `/sai-1-spec` via the OpenSpec `opsx:propose` skill. The implementation plan (`implementation.md`) is derived from those artifacts, and code follows the plan. This is [Spec-Driven Development](https://scrummanager.com/community/spec-driven-development-qu-es-de-dnde-viene-y-por-qu-importa) at the *spec-first* level — the change artifacts drive the current task and live as the source of truth for the pipeline phases that follow (review, security, performance, accessibility). No *vibe coding*: every line of generated code is grounded in an explicit contract.
+Every feature starts with a change proposal (`proposal.md` + `specs/**`, produced by `/sai-1-spec` via the OpenSpec `opsx:propose` skill) capturing goals and acceptance criteria, followed by a design (`design.md`, produced by `/sai-2-design`) capturing technical constraints and design decisions. The implementation plan (`implementation.md`) is derived from those artifacts, and code follows the plan. This is [Spec-Driven Development](https://scrummanager.com/community/spec-driven-development-qu-es-de-dnde-viene-y-por-qu-importa) at the *spec-first* level — the change artifacts drive the current task and live as the source of truth for the pipeline phases that follow (review, security, performance, accessibility). No *vibe coding*: every line of generated code is grounded in an explicit contract.
 
 ### Single Responsibility Per Phase
-Each phase produces exactly one artifact. Only `sai-4-apply` writes code; spec, implement, review, and audits produce only markdown in `openspec/changes/{change-name}/`. No phase oversteps its scope.
+Each phase owns a single concern. Only `sai-4-apply` writes code; spec, design, implement, review, and audits produce only markdown in `openspec/changes/{change-name}/`. No phase oversteps its scope.
 
 ### Built-In Code Quality
 The pipeline enforces the same practices experienced developers rely on: build only what you need now, keep each piece focused on one thing, name things so they explain themselves, reuse what already exists, and ship the smallest change that works. The result is code that's easier to read, easier to change, and easier to trust — no matter your experience level.
 
 ### RED → GREEN
-sai-3 writes production code for each step and specifies exactly what to test (no test code). sai-4-apply then writes the test (RED), confirms the failure is a valid assertion failure (not a setup error), copies the production code to the project (GREEN), and verifies the test passes. This proves the test is real and not tautological.
+sai-3 writes production code for each step in the playbook. Test assertions come from `interfaces.md` (produced by sai-2). sai-4-apply then runs each testable step through two distinct subagents: the **first** writes the test (RED) and confirms it fails by a real assertion; a **separate second** subagent copies the production code into the project (GREEN) and makes the test pass, **without permission to modify the tests**, adjusting code only for compilation errors or test failures. This proves the test is real and not tautological — the production code is validated against an assertion it never touched.
 
 ### Ubiquitous Language via GLOSSARY.md
 Domain terms are captured in a living `GLOSSARY.md` at the project root. Spec reads and appends new terms inline (no batching), Plan uses canonical terms for all new identifiers, and Review validates language consistency in the diff. This enforces a DDD-style ubiquitous language across the entire pipeline —every agent and every artifact speaks the same vocabulary.
@@ -260,7 +260,7 @@ For low-risk or high-trust runs, three commands accept a `--fast-track` argument
 | `/sai-2-design` | Auto-approves the specs gate and records the approval in `.openspec.yaml`. |
 | `/sai-4-apply` | Pre-authorizes every commit for the run and defers all human-verification checks into one combined list presented after the final sweep. |
 
-Everything else stays intact — the pre-commit file report, the GREEN-conflict stop, and the deferred checks themselves still run; fast-track only removes the per-gate wait.
+Everything else stays intact.
 
 
 ## Global installation (multi-project)
