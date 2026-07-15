@@ -3,6 +3,7 @@ description: Granular implementation plan — reads OpenSpec change artifacts (p
 argument-hint: "[change-name]"
 agent: agent
 model: GPT-5.3-Codex (copilot)
+tools: [vscode, read, search, edit, execute, web]
 ---
 ## Sai Implement - 3
 

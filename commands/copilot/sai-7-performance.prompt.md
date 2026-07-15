@@ -3,6 +3,7 @@ description: Structured Performance Audit Prompt — backend / frontend / databa
 argument-hint: "[change-name] [optional: --full | --path {dir}] [optional: --tier backend|frontend|db|queue] [optional: parent branch]"
 agent: agent
 model: GPT-5.4 (copilot)
+tools: [vscode, read, search, edit, execute, web]
 ---
 ## Sai Performance - 7
 

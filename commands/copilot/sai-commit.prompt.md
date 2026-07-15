@@ -3,6 +3,7 @@ description: Conventional Commits message author from staged changes — generat
 argument-hint: "[optional: --scope X --type Y --no-body --amend]"
 agent: agent
 model: GPT-5 mini (copilot)
+tools: [vscode, read, execute]
 ---
 ## Sai Commit
 

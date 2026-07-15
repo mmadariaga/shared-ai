@@ -3,6 +3,7 @@ description: Generate design.md and tasks.md for a change — gated on specs app
 argument-hint: "[change-name] [--fast-track]"
 agent: agent
 model: Claude Opus 4.8 (copilot)
+tools: [vscode, read, search, edit, execute, web]
 ---
 ## Sai Design - 2
 

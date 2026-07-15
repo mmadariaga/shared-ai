@@ -3,6 +3,7 @@ description: Propose a new change — generates proposal.md and specs/ only. Sto
 argument-hint: "[change name or feature description]"
 agent: agent
 model: GPT-5.4 (copilot)
+tools: [vscode, read, search, edit, execute, web]
 ---
 ## Sai Spec - 1
 

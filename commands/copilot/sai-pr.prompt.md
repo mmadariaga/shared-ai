@@ -3,6 +3,7 @@ description: Pull Request Author — synthesizes title and body from the OpenSpe
 argument-hint: "[change-name] [optional: parent branch]"
 agent: agent
 model: GPT-5 mini (copilot)
+tools: [vscode, read, search, edit, execute, web]
 ---
 ## Sai PR
 

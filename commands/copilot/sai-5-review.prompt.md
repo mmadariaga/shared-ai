@@ -3,6 +3,7 @@ description: Structured Code Review Prompt — diffs current branch against pare
 argument-hint: "[change-name] [optional: parent branch]"
 agent: agent
 model: GPT-5.4 (copilot)
+tools: [vscode, read, search, edit, execute, web]
 ---
 ## Sai Review - 5
 

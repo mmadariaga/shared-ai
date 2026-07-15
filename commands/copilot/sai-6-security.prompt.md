@@ -3,6 +3,7 @@ description: Structured Security Audit Prompt — SAST + SCA on the diff vs pare
 argument-hint: "[change-name] [optional: --full | --path {dir}] [optional: parent branch]"
 agent: agent
 model: GPT-5.4 (copilot)
+tools: [vscode, read, search, edit, execute, web]
 ---
 ## Sai Security - 6
 
