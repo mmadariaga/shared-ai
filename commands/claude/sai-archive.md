@@ -1,6 +1,6 @@
 ---
 description: Archive a completed change — wraps opsx:archive skill. Moves openspec/changes/{name}/ into the archive folder once tasks are done.
-argument-hint: "[change-name]"
+argument-hint: "[change-name] [--fast-track]"
 model: claude-haiku-4-5
 ---
 ## Sai Archive
