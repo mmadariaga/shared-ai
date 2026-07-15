@@ -118,4 +118,20 @@ The full `Ready to Propose` block(s) are printed only when the user explicitly a
    1. **Trigger**: an explicit crystallize request (per the Emission gate's trigger list) instead of an artifact-review request.
    2. **Tracked target**: the current crystallized idea or slice set instead of the reviewed artifact set.
    3. **Translated surface**: only the block's free-text prose is rendered in the chosen language. The following scaffolding stays in English regardless of language choice: the bold field labels (`**Change name**`, `**What**`, `**Why**`, `**Capabilities in scope**`, `**Decisions & Rationale**`, `**Alternatives Considered**`, `**Trade-offs Accepted**`, `**Model / Re-framings**`, `**Key constraints**`), the kebab-case Change name value, the `/sai-1-spec` command, and the "Open a new chat" line. The gate SHALL NOT alter any OpenSpec artifact file's format or content.
-   4. **Sliced crystallization**: the gate fires once for the whole slice set, and the chosen language applies to the free-text prose of every emitted block. Per-slice scaffolding stays English.
+    4. **Sliced crystallization**: the gate fires once for the whole slice set, and the chosen language applies to the free-text prose of every emitted block. Per-slice scaffolding stays English.
+
+9. **Post-crystallization review loop (sai-explore only)**: After the final `Ready to Propose` block of a crystallization turn (emitted by items 5 or 6), print a visual divider (`---`) and offer a single global Yes/No question asking whether the user wants to review downstream artifacts for any non-archived change. The question is offered with **no precondition** — it is asked whether or not any downstream artifact exists — so the section behaves identically across sessions. Selecting No is a hard stop on the entire new section.
+
+   **On Yes**: resolve the non-archived change list once by running `openspec list --json` and iterate that snapshot in returned order (no re-sorting). For each change present a three-option picker parameterized by the current change: `Review sai-1`, `Review sai-2`, and `Skip`.
+
+   - `Review sai-1` produces a read-only review of that change's `proposal.md` and `specs/**/*.md`.
+   - `Review sai-2` produces a read-only review of that change's `design.md`, `tasks.md`, and `interfaces.md`.
+   - If a requested artifact does not exist for the change, report its absence without treating it as an error and without leaving the loop.
+
+   After a `Review sai-1` or `Review sai-2` selection, re-show the same three-option picker for that same change so the user can review both artifact sets or repeat a review. Only `Skip` advances the loop to the next change. The loop terminates when every non-archived change has been processed (each change needs exactly one `Skip` to advance). When `openspec list --json` returns zero non-archived changes, the loop is a no-op and the section ends immediately after the global Yes.
+
+   **Language gate reuse**: Before producing any review content for a `Review sai-1` or `Review sai-2` turn, evaluate item 3's artifact-review language gate (including its Persistence rule). Name the exact artifact set of the current review turn as the tracked target so that item 3's path-keyed rule drives re-asks automatically: a different artifact set or a different change triggers a re-ask; the same set on the same change reuses the previously chosen language. The control prompts (global Yes/No and per-change picker) are asked in the conversation's ambient language every time and are never suppressed by `--fast-track`; item 3's gate governs only the review content language.
+
+   **Read-only constraint**: The review loop is strictly read-only. It never creates, modifies, or deletes `proposal.md`, `specs/**/*.md`, `design.md`, `tasks.md`, `interfaces.md`, or any other file under any change directory. It does not alter the already-emitted `Ready to Propose` block — neither its content nor its language.
+
+   **Explicit re-crystallization path**: The loop does not auto-emit a new `Ready to Propose` block. If the user wants the idea re-crystallized in light of the reviews, they must explicitly request it; that request routes back through item 8 (crystallization language gate) and a revised block may then be emitted.
