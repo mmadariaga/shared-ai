@@ -50,6 +50,17 @@
 
 ---
 
+## Mutation Analysis (Pass 11)
+
+- **Status:** <!-- Ran / Skipped — skipped when the diff has no testable production code OR the repo has no test file -->
+- **Tool:** <!-- detected tool (Stryker/PIT/mutmut/...) / LLM-as-mutator / — if skipped -->
+- **Counts:** <!-- survived / killed / pre-check-failed / revert-failed (must sum to total decided) -->
+
+<!-- Surviving mutants are emitted as Major findings identified mMUT-N below.
+     Revert-failed mutants are Blockers. If Status is Skipped, state why and emit no mutation findings. -->
+
+---
+
 ## Findings
 
 ### Blockers
@@ -69,6 +80,16 @@
 - **Category:** <!-- ... -->
 - **Problem:** <!-- ... -->
 - **Suggested fix:** <!-- ... -->
+
+<!-- Surviving-mutant row (Pass 11) — one per surviving mutation, N = 1-based counter:
+#### mMUT-1 — <!-- Short title -->
+- **Location:** `path/to/file.ext:LINE`
+- **Mutation class:** <!-- NegatedCondition | ChangedOperator | RemovedCall | ChangedReturn | ... -->
+- **Original:** <!-- unmutated code at the location -->
+- **Applied:** <!-- mutated code that was applied and reverted -->
+- **Result:** <!-- mutation survived the test suite -->
+- **Why it survives:** <!-- the missing test or untested branch -->
+- **Suggested fix:** <!-- concrete test to add that catches this mutation --> -->
 
 ### Minor
 

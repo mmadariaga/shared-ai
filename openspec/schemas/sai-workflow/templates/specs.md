@@ -16,3 +16,8 @@
 <!-- ### Requirement: <name>
 **Reason**: <why it was removed>
 **Migration**: <how to migrate> -->
+
+## RENAMED Requirements
+
+<!-- - FROM: `### Requirement: <old name>`
+     TO: `### Requirement: <new name>` -->

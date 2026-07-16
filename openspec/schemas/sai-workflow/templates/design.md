@@ -12,11 +12,12 @@
 
 ## Decisions
 
-<!-- For each key decision, evaluate the three ADR/DDR criteria before documenting:
+<!-- For each key decision, evaluate the three ADR/DDR criteria:
      1. Hard to reverse — would changing later be costly?
      2. Surprising without context — would a future reader ask "why did they do this?"
      3. Real trade-off — were genuine alternatives available?
-     Only document a decision if at least two criteria apply. -->
+     If all three apply, give the full treatment below (Alternatives considered + Rationale).
+     Otherwise the decision is still documented, but brief-only (drop the Alternatives block). -->
 
 ### D1: <!-- Decision title -->
 **Decision**: <!-- What was decided -->

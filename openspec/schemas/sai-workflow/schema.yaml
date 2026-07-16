@@ -1,12 +1,12 @@
 # sai-workflow — custom OpenSpec schema for the shared-AI pipeline
 #
-# Encodes the full 9-artifact graph with dependency edges and apply requirements.
+# Encodes the full 10-artifact graph with dependency edges and apply requirements.
 # Stored here (not in spec-driven) so CLI updates never overwrite it.
 # See design.md D1 for rationale.
 
 name: sai-workflow
 version: 1
-description: shared-AI pipeline — proposal → specs → design → tasks → implementation → review → audits
+description: shared-AI pipeline — proposal → specs → design → tasks → interfaces → implementation → review → audits
 
 artifacts:
   - id: proposal
