@@ -194,9 +194,62 @@ function inventoryHarness(section, expectedEntries, { projectRoot, harness }) {
   return records;
 }
 
+function readGeneratedBy(skillMdPath) {
+  let text;
+  try { text = fs.readFileSync(skillMdPath, 'utf8'); } catch { return null; }
+  const m = text.match(/^generatedBy:\s*["']?([^"'\n]+?)["']?\s*$/m);
+  return m ? m[1].trim() : null;
+}
+
+function openspecCliVersion(execOpenspec) {
+  try {
+    const r = execOpenspec(['--version']);
+    if (!r || r.error || r.status !== 0 || !r.stdout) return null;
+    const m = String(r.stdout).match(/\d+\.\d+\.\d+/);
+    return m ? m[0] : null;
+  } catch { return null; }
+}
+
+function checkSkillStaleness({ projectRoot, execOpenspec }) {
+  const section = '[OpenSpec skills]';
+  const roots = [
+    path.join(projectRoot, '.claude', 'skills'),
+    path.join(projectRoot, '.opencode', 'skills'),
+    path.join(projectRoot, '.github', 'skills'),
+  ];
+  const skills = [];
+  for (const root of roots) {
+    if (!fs.existsSync(root)) continue;
+    for (const entry of fs.readdirSync(root, { withFileTypes: true })) {
+      if (entry.isDirectory() && entry.name.startsWith('openspec-')) {
+        skills.push({ name: entry.name, md: path.join(root, entry.name, 'SKILL.md') });
+      }
+    }
+  }
+  if (skills.length === 0) {
+    return [{ section, name: 'skills', severity: 'ok', message: 'nothing to check — no project-local OpenSpec skills installed' }];
+  }
+  const cliVersion = openspecCliVersion(execOpenspec);
+  if (cliVersion === null) {
+    return [{ section, name: 'skills', severity: 'warn', message: 'OpenSpec CLI version unavailable — staleness indeterminate' }];
+  }
+  const records = [];
+  for (const s of skills) {
+    const gen = readGeneratedBy(s.md);
+    if (gen === null) {
+      records.push({ section, name: s.name, severity: 'warn', message: `generatedBy could not be read for ${s.name}` });
+    } else if (gen !== cliVersion) {
+      records.push({ section, name: s.name, severity: 'warn', message: `${s.name} generatedBy ${gen} != CLI ${cliVersion}`, recommendation: 'Re-run: openspec init' });
+    } else {
+      records.push({ section, name: s.name, severity: 'ok', message: `${s.name} current (${gen})` });
+    }
+  }
+  return records;
+}
+
 function sectionObjFromRecords(sectionName, allRecords) {
   const sectionRecords = allRecords.filter(r => r.section === sectionName);
-  if (sectionName === '[Project health]') {
+  if (sectionName === '[Project health]' || sectionName === '[OpenSpec skills]') {
     return sectionRecords;
   }
   const obj = {};
@@ -240,6 +293,8 @@ async function main(options = {}) {
     records.push(...sectionRecords);
   }
 
+  records.push(...checkSkillStaleness({ projectRoot, execOpenspec }));
+
   const sections = groupSections(records);
   const code = aggregateExit(records);
 
@@ -255,4 +310,4 @@ async function main(options = {}) {
   return code;
 }
 
-module.exports = { main, checkProjectHealth, aggregateExit, groupSections, renderHuman, shorten, detectHarnesses, inventoryHarness, parseFetchRefs, resolveFetchRefs, fetchResolutionRecords };
+module.exports = { main, checkProjectHealth, aggregateExit, groupSections, renderHuman, shorten, detectHarnesses, inventoryHarness, parseFetchRefs, resolveFetchRefs, fetchResolutionRecords, checkSkillStaleness, readGeneratedBy };
