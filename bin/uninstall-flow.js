@@ -4,6 +4,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 
 const {
   listMdFiles,
@@ -116,9 +117,52 @@ function buildDeletionSet(overrides = {}) {
   ];
 }
 
+const VERSION_SKEW_NOTE =
+  'Note: this deletion set reflects the currently-resolved shared-ai version. ' +
+  'If you upgraded since installing, run `npx shared-ai install` first to normalize on-disk files before uninstalling.';
+
+function sha256File(filePath) {
+  if (!fs.existsSync(filePath)) {
+    return null;
+  }
+  return crypto.createHash('sha256').update(fs.readFileSync(filePath)).digest('hex');
+}
+
+function computePlanEntry(entry) {
+  const destHash = sha256File(entry.dest);
+  if (destHash === null) {
+    return { ...entry, action: 'not-found', exists: false, hashMatches: false };
+  }
+  const srcHash = sha256File(entry.src);
+  const hashMatches = srcHash !== null && srcHash === destHash;
+  return { ...entry, action: hashMatches ? 'delete' : 'keep-override', exists: true, hashMatches };
+}
+
+function computePlan(deletionSet) {
+  return deletionSet.map(computePlanEntry);
+}
+
+function printPlan(plan, opts = {}) {
+  const stream = opts.stream || process.stdout;
+  stream.write('shared-ai uninstall plan:\n');
+  for (const entry of plan) {
+    stream.write(`  ${entry.action.padEnd(13)} ${entry.dest}  (exists=${entry.exists}, hash-matches=${entry.hashMatches})\n`);
+  }
+  stream.write(`\n${VERSION_SKEW_NOTE}\n`);
+}
+
+function formatSummary(counts) {
+  return `Uninstall summary: ${counts.deleted} deleted, ${counts.keptOverride} kept-as-override, ${counts.notFound} not-found.`;
+}
+
 module.exports = {
   buildDeletionSet,
   enumerateClaude,
   enumerateOpencode,
   enumerateCopilot,
+  sha256File,
+  computePlanEntry,
+  computePlan,
+  printPlan,
+  formatSummary,
 };
