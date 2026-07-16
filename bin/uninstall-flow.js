@@ -15,6 +15,7 @@ const {
   COPILOT_SKILLS_BASE,
   COPILOT_AGENTS_BASE,
   COPILOT_SAI_BASE,
+  promptYesNoReadline,
 } = require('./install-flow.js');
 
 const REPOSITORY_ROOT = path.join(__dirname, '..');
@@ -80,6 +81,18 @@ function enumerateClaude(destBase) {
     ...mapMdRecursive(path.join(REPOSITORY_ROOT, 'sai', 'instructions'), path.join(targetPath, 'sai', 'instructions')),
     ...mapSkills(CLAUDE_SKILLS, path.join(targetPath, 'skills')),
   ];
+  const mappedDests = new Set(entries.map(e => e.dest));
+  for (const dir of ['commands']) {
+    const dirPath = path.join(targetPath, dir);
+    if (fs.existsSync(dirPath)) {
+      for (const f of fs.readdirSync(dirPath).filter(f => f.endsWith('.md'))) {
+        const dest = path.join(dirPath, f);
+        if (!mappedDests.has(dest)) {
+          entries.push({ src: dest, dest, editorBase: targetPath });
+        }
+      }
+    }
+  }
   return entries.map(e => ({ ...e, editorBase: targetPath }));
 }
 
@@ -143,12 +156,13 @@ function computePlan(deletionSet) {
 }
 
 function printPlan(plan, opts = {}) {
-  const stream = opts.stream || process.stdout;
-  stream.write('shared-ai uninstall plan:\n');
+  const stream = opts.stream || { write: (s) => console.log(s) };
+  stream.write('shared-ai uninstall plan:');
   for (const entry of plan) {
-    stream.write(`  ${entry.action.padEnd(13)} ${entry.dest}  (exists=${entry.exists}, hash-matches=${entry.hashMatches})\n`);
+    stream.write(`  ${entry.action.padEnd(13)} ${entry.dest}  (exists=${entry.exists}, hash-matches=${entry.hashMatches})`);
   }
-  stream.write(`\n${VERSION_SKEW_NOTE}\n`);
+  stream.write('');
+  stream.write(VERSION_SKEW_NOTE);
 }
 
 function formatSummary(counts) {
@@ -203,6 +217,53 @@ function runDeletion(plan) {
   return counts;
 }
 
+function parseArgs(argv) {
+  const result = { dryRun: false, yes: false };
+  const args = argv[0] === 'uninstall' ? argv.slice(1) : argv;
+  for (const token of args) {
+    if (token === '--dry-run') {
+      result.dryRun = true;
+    } else if (token === '--yes') {
+      result.yes = true;
+    } else if (token.startsWith('-')) {
+      throw new Error(`Unrecognized flag: ${token}`);
+    } else {
+      throw new Error(`Unexpected argument: ${token}`);
+    }
+  }
+  return result;
+}
+
+async function main({ argv = process.argv.slice(2), confirm = promptYesNoReadline, claudeBase, opencodeBase, copilot } = {}) {
+  let opts;
+  try {
+    opts = parseArgs(argv);
+  } catch (err) {
+    console.error(err.message);
+    return 1;
+  }
+
+  const overrides = { claudeBase, opencodeBase, copilot };
+  const plan = computePlan(buildDeletionSet(overrides));
+  printPlan(plan);
+
+  if (opts.dryRun) {
+    return 0;
+  }
+
+  if (!opts.yes) {
+    const proceed = await confirm('Delete the files listed above? [y/n] ');
+    if (!proceed) {
+      console.log('Aborted. Nothing was deleted.');
+      return 0;
+    }
+  }
+
+  const counts = runDeletion(plan);
+  console.log(formatSummary(counts));
+  return 0;
+}
+
 module.exports = {
   buildDeletionSet,
   enumerateClaude,
@@ -216,4 +277,6 @@ module.exports = {
   deleteEntry,
   pruneEmptyDirs,
   runDeletion,
+  parseArgs,
+  main,
 };
