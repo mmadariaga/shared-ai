@@ -170,3 +170,13 @@ cp "$PROMPTS_DIR/sai-1-spec.prompt.md" .github/prompts/
 
 - **Skills installed by `openspec init`** — OpenSpec installs project-level skills (e.g., `openspec-propose`, `openspec-explore`) into `.github/skills/`. These are loaded automatically by the `sai-*` commands via the `Fetch @skills/<name>/SKILL.md` pattern.
 - **Budget subagents** — `budget-explorer`, `budget-executor`, and `budget-subagent` are installed as user-global custom agents (`~/.copilot/agents/`). They are hidden from the agent picker (`user-invocable: false`) and are only invoked programmatically by the main agent when the `budget` skill is active.
+
+## Uninstall
+
+To remove all shared-AI files from VS Code's user data folder (`prompts/`, `sai/`) and `~/.copilot/skills/`:
+
+```bash
+npx shared-ai uninstall --target copilot
+```
+
+See the [Uninstall section in README.md](README.md#uninstall) for details on `--dry-run`, `--yes`, the sha256 override guard, idempotent re-runs, empty-directory pruning, and excluded targets.

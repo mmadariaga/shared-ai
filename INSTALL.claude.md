@@ -123,3 +123,13 @@ cp ~/.claude/commands/sai-1-spec.md .claude/commands/
 ```
 
 Claude Code's project-local commands (`.claude/commands/`) take precedence over user-global ones (`~/.claude/commands/`) by filename — a project-local command with the same filename as a user-global one silently shadows it. This is the documented override mechanism; implementations that need a project-specific model without affecting the global install can rely on it. (GitHub Copilot in VS Code does **not** support this pattern — see `INSTALL.copilot.md#customizing-models`.)
+
+## Uninstall
+
+To remove all shared-AI files from Claude Code's global directories (`~/.claude/commands/`, `~/.claude/sai/`, `~/.claude/skills/`):
+
+```bash
+npx shared-ai uninstall --target claude-code
+```
+
+See the [Uninstall section in README.md](README.md#uninstall) for details on `--dry-run`, `--yes`, the sha256 override guard, idempotent re-runs, empty-directory pruning, and excluded targets.

@@ -200,3 +200,13 @@ opencode models
 ```
 
 If you pull a repo update that touches `commands/opencode/`, re-run `node bin/install.js` to refresh your `~/.config/opencode/commands/` snapshot.
+
+## Uninstall
+
+To remove all shared-AI files from opencode's global directories (`~/.config/opencode/commands/`, `~/.config/opencode/sai/`, `~/.config/opencode/skills/`):
+
+```bash
+npx shared-ai uninstall --target opencode
+```
+
+See the [Uninstall section in README.md](README.md#uninstall) for details on `--dry-run`, `--yes`, the sha256 override guard, idempotent re-runs, empty-directory pruning, and excluded targets.

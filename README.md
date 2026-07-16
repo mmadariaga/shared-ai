@@ -312,6 +312,31 @@ Two override patterns are supported:
 
 See each harness's `INSTALL.<harness>.md` for a concrete, harness-specific example.
 
+## Uninstall
+
+```bash
+npx github:mmadariaga/shared-ai uninstall
+```
+
+The `uninstall` command reverses the installation process:
+
+- **Interactive mode** — prints the full plan of what will be removed (commands, instructions, skills, configs, agents) and asks for confirmation before touching anything.
+- **`--dry-run`** — prints the same plan and exits 0 without modifying anything.
+- **`--yes`** — skips the confirmation prompt (use in CI/scripts).
+
+**sha256 override guard**: Files that have been locally edited (their content hash differs from the installed manifest) are **kept in place** and logged to stderr. The uninstaller will not silently delete customized files. A re-run after the override is confirmed will remove them.
+
+**Idempotent re-runs**: Running `uninstall` again after a successful uninstall is safe — it checks what's still present and produces a plan with nothing to do.
+
+**Empty-directory pruning**: After removing tracked files, the uninstaller prunes empty ancestor directories up to the editor base directory (`~/.claude/`, `~/.config/opencode/`, or VS Code's `User/` folder). It never removes the base directory itself or files it didn't place.
+
+**Excluded targets**: The following are **never touched** by the uninstaller:
+- opencode config merges — `opencode.json` / `opencode.jsonc` are left intact
+- Per-project `setup` artifacts — `openspec/config.yaml`, `openspec/schemas/sai-workflow/`
+- External CLIs — `openspec`, `opencode-ai`, and `@colbymchenry/codegraph` are never uninstalled
+
+**Version-skew guidance**: If you upgraded shared-AI and some files were updated, run `npx shared-ai install` first to sync the installed files, then `npx shared-ai uninstall` to remove them cleanly.
+
 ## Post Install
 
 If you use opencode, modify the models for each command to match your preferred providers and personal taste.
@@ -348,7 +373,7 @@ This chart may help you identify which models to test. The intelligence axis is 
 
 The x-axis (cost) is usually more reliable, but again, do your own tests. Note that costs can vary depending on the provider — the same model may be priced differently across API providers, subscriptions, and regions.
 
-![Intelligence vs Cost (Jul 2026)](Intelligence-vs-Cost-(2-Jul-'26).png)
+![Intelligence vs Cost (Jul 2026)](Intelligence-vs-Cost-(16-Jul-'26).png)
 
 Another ranking of models focused on front-end web development tasks: https://arena.ai/leaderboard/code/webdev
 
