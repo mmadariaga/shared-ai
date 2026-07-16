@@ -164,3 +164,34 @@ The loop SHALL NOT auto-emit a new `Ready to Propose` block. If the user wants t
 
 - **WHEN** the user explicitly requests re-crystallization after reviewing
 - **THEN** the crystallization language gate is evaluated afresh and a revised `Ready to Propose` block may be emitted
+
+### Requirement: Silent loop close after any review
+
+When the post-crystallization review loop terminates and at least one review (`Review sai-1's artifacts` or `Review sai-2's artifacts`) has happened during the loop, `sai-explore` SHALL close the loop without proposing any new command prompt. Any next-step command prompt SHALL be suppressed at loop close, including but not limited to `/sai-1-spec`, `/sai-2-design`, and `/sai-3-implement`; a templated next-step prompt is still a prompt and is therefore prohibited. `sai-explore` SHALL NOT propose `/sai-1-spec` for any change in the tracked crystallized set at loop close, because sai-1's artifacts are exactly what the loop reviews. A minimal status indicator that the loop has closed (for example, a short "Loop closed" line) MAY be printed, and pure silence is also acceptable; the prohibition is on proposing a new command prompt, not on printing a status indicator. This requirement fires on whether any review happened during the loop, not on which artifact sets were reviewed. The existing **Explicit re-crystallization path** behavior is unchanged: a user-initiated re-crystallization request is not an auto-emitted prompt and does not violate this rule.
+
+#### Scenario: loop closes silently after at least one review
+
+- **WHEN** the review loop terminates and at least one `Review sai-1's artifacts` or `Review sai-2's artifacts` review happened during the loop
+- **THEN** the loop closes without proposing any new command prompt
+- **AND** at most a minimal status indicator (or nothing) is printed
+
+#### Scenario: no sai-1-spec proposal for a tracked change at close
+
+- **WHEN** the review loop closes after reviewing a change in the tracked crystallized set
+- **THEN** `sai-explore` does not propose `/sai-1-spec` for that change or any other change in the tracked set
+
+#### Scenario: templated next-step prompt is also suppressed
+
+- **WHEN** the review loop closes after at least one review
+- **THEN** no templated next-step command prompt (such as `/sai-2-design` or `/sai-3-implement`) is proposed either
+
+#### Scenario: rule fires regardless of which artifact set was reviewed
+
+- **WHEN** the loop closes after the user reviewed only sai-1 artifacts, or only sai-2 artifacts, or both, for any tracked change
+- **THEN** the silent-close rule applies identically in every case, because it fires on whether any review happened, not on which set
+
+#### Scenario: explicit re-crystallization remains available
+
+- **WHEN** the user explicitly requests re-crystallization after the reviews
+- **THEN** that user-initiated request routes through the crystallization language gate and a revised `Ready to Propose` block may be emitted
+- **AND** this does not count as the loop proposing a new command prompt
