@@ -6,6 +6,9 @@ const path = require('path');
 const os = require('os');
 const childProcess = require('child_process');
 
+const flow = require('./install-flow');
+const uninstall = require('./uninstall-flow');
+
 const REPO_ROOT_DEFAULT = path.join(__dirname, '..');
 
 function shorten(p) {
@@ -83,10 +86,82 @@ function renderHuman(sections) {
   return lines.join('\n');
 }
 
+function detectHarnesses({ claudeBase, opencodeBase, copilot }) {
+  return [
+    { id: 'Claude Code', base: claudeBase, kind: 'claude',
+      entries: () => uninstall.enumerateClaude(claudeBase) },
+    { id: 'Opencode', base: opencodeBase, kind: 'opencode',
+      entries: () => uninstall.enumerateOpencode(opencodeBase) },
+    { id: 'GitHub Copilot', base: copilot.promptsBase, kind: 'copilot',
+      entries: () => uninstall.enumerateCopilot(copilot.promptsBase, copilot.skillsBase, copilot.agentsBase, copilot.saiBase) },
+  ];
+}
+
+function inventoryHarness(section, expectedEntries, { projectRoot, harness }) {
+  const records = [];
+  const expected = expectedEntries.filter(e => e.src !== e.dest);
+  const expectedDests = new Set(expected.map(e => e.dest));
+
+  const missing = expected.filter(e => !fs.existsSync(e.dest)).map(e => shorten(e.dest));
+  records.push(missing.length === 0
+    ? { section, name: 'files', severity: 'ok', message: `${expected.length} expected files present` }
+    : { section, name: 'files', severity: 'error', message: `${missing.length} expected file(s) missing: ${missing.join(', ')}`, path: missing.join(', '), recommendation: 'Re-run the installer: npx github:mmadariaga/shared-ai install' });
+
+  const dirs = new Set(expected.map(e => path.dirname(e.dest)));
+  const unexpected = [];
+  for (const dir of dirs) {
+    if (!fs.existsSync(dir)) continue;
+    for (const f of fs.readdirSync(dir).filter(n => n.endsWith('.md'))) {
+      const full = path.join(dir, f);
+      if (!expectedDests.has(full)) unexpected.push(shorten(full));
+    }
+  }
+  if (unexpected.length > 0) {
+    records.push({ section, name: 'unexpected', severity: 'warn', message: `${unexpected.length} unexpected file(s): ${unexpected.join(', ')}`, path: unexpected.join(', ') });
+  }
+
+  if (harness.kind === 'copilot') {
+    const projectPrompts = path.join(projectRoot, '.github', 'prompts');
+    if (fs.existsSync(projectPrompts)) {
+      const overrides = expected
+        .filter(e => path.dirname(e.dest) === harness.base)
+        .filter(e => fs.existsSync(path.join(projectPrompts, path.basename(e.dest))))
+        .map(e => path.basename(e.dest));
+      if (overrides.length > 0) {
+        records.push({ section, name: 'project-override', severity: 'warn', message: `project-local Copilot override(s) present: ${overrides.join(', ')}` });
+      }
+    }
+  }
+
+  return records;
+}
+
+function sectionObjFromRecords(sectionName, allRecords) {
+  const sectionRecords = allRecords.filter(r => r.section === sectionName);
+  if (sectionName === '[Project health]') {
+    return sectionRecords;
+  }
+  const obj = {};
+  for (const r of sectionRecords) {
+    const key = r.name;
+    if (key === 'detection' && r.message === 'not installed (user-global dir absent)') {
+      obj.notInstalled = true;
+      continue;
+    }
+    if (!obj[key]) obj[key] = [];
+    obj[key].push(r);
+  }
+  return obj;
+}
+
 async function main(options = {}) {
   const {
     argv = process.argv.slice(2),
     projectRoot = process.cwd(),
+    claudeBase = flow.CLAUDE_BASE,
+    opencodeBase = flow.OPENCODE_BASE,
+    copilot = { promptsBase: flow.COPILOT_PROMPTS_BASE, skillsBase: flow.COPILOT_SKILLS_BASE, agentsBase: flow.COPILOT_AGENTS_BASE, saiBase: flow.COPILOT_SAI_BASE },
+    repoRoot = REPO_ROOT_DEFAULT,
     execOpenspec = defaultExecOpenspec,
     out = process.stdout,
   } = options;
@@ -95,10 +170,29 @@ async function main(options = {}) {
   const records = [];
   records.push(...checkProjectHealth({ projectRoot, execOpenspec }));
 
+  const harnesses = detectHarnesses({ claudeBase, opencodeBase, copilot });
+  for (const h of harnesses) {
+    if (!h.base || !fs.existsSync(h.base)) {
+      records.push({ section: `[${h.id}]`, name: 'detection', severity: 'ok', message: 'not installed (user-global dir absent)' });
+      continue;
+    }
+    const entries = h.entries();
+    records.push(...inventoryHarness(`[${h.id}]`, entries, { projectRoot, harness: h }));
+  }
+
   const sections = groupSections(records);
   const code = aggregateExit(records);
-  out.write((json ? JSON.stringify(objectify(sections), null, 2) : renderHuman(sections)) + '\n');
+
+  if (json) {
+    const obj = {};
+    for (const { section } of sections) {
+      obj[section] = sectionObjFromRecords(section, records);
+    }
+    out.write(JSON.stringify(obj, null, 2) + '\n');
+  } else {
+    out.write(renderHuman(sections) + '\n');
+  }
   return code;
 }
 
-module.exports = { main, checkProjectHealth, aggregateExit, groupSections, renderHuman, shorten };
+module.exports = { main, checkProjectHealth, aggregateExit, groupSections, renderHuman, shorten, detectHarnesses, inventoryHarness };
