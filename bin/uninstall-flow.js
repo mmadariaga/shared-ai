@@ -155,6 +155,54 @@ function formatSummary(counts) {
   return `Uninstall summary: ${counts.deleted} deleted, ${counts.keptOverride} kept-as-override, ${counts.notFound} not-found.`;
 }
 
+function deleteEntry(entry) {
+  const destHash = sha256File(entry.dest);
+  if (destHash === null) {
+    return 'not-found';
+  }
+  const srcHash = sha256File(entry.src);
+  if (srcHash === null || srcHash !== destHash) {
+    console.warn(`Kept (project-local override): ${entry.dest}`);
+    return 'kept-override';
+  }
+  fs.unlinkSync(entry.dest);
+  return 'deleted';
+}
+
+function pruneEmptyDirs(startDir, editorBase) {
+  const base = path.resolve(editorBase);
+  let dir = path.resolve(startDir);
+  while (dir !== base && dir.startsWith(base + path.sep)) {
+    let entries;
+    try {
+      entries = fs.readdirSync(dir);
+    } catch {
+      break;
+    }
+    if (entries.length > 0) {
+      break;
+    }
+    fs.rmdirSync(dir);
+    dir = path.dirname(dir);
+  }
+}
+
+function runDeletion(plan) {
+  const counts = { deleted: 0, keptOverride: 0, notFound: 0 };
+  for (const entry of plan) {
+    const result = deleteEntry(entry);
+    if (result === 'deleted') {
+      counts.deleted += 1;
+      pruneEmptyDirs(path.dirname(entry.dest), entry.editorBase);
+    } else if (result === 'kept-override') {
+      counts.keptOverride += 1;
+    } else {
+      counts.notFound += 1;
+    }
+  }
+  return counts;
+}
+
 module.exports = {
   buildDeletionSet,
   enumerateClaude,
@@ -165,4 +213,7 @@ module.exports = {
   computePlan,
   printPlan,
   formatSummary,
+  deleteEntry,
+  pruneEmptyDirs,
+  runDeletion,
 };
