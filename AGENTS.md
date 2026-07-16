@@ -173,7 +173,7 @@ Commands are **user globals**, not per-project.
 
 Supported harnesses: Claude Code, opencode, and GitHub Copilot.
 
-Project-local commands (`.claude/commands/`, `.opencode/commands/`, or `.github/prompts/` at repo root) override by name. OpenSpec skills are always **project-local** (installed by `openspec init`) — never copied to user globals.
+Project-local commands override user-global ones by filename in Claude Code (`.claude/commands/`) and opencode (`.opencode/commands/`). GitHub Copilot (VS Code) is **excepted**: VS Code discovers `.github/prompts/` (workspace) and `%APPDATA%\Code\User\prompts\` (user) as two independent scopes, so a project-local `.prompt.md` with the same name as a user-global one does **not** shadow it — both remain visible as separate prompts (distinguished only by a source tooltip in `Chat: Configure Prompt Files`). See `INSTALL.copilot.md#customizing-models` for supported VS Code workarounds (renamed variant, edit-in-place, or removing the global). OpenSpec skills are always **project-local** (installed by `openspec init`) — never copied to user globals.
 
 ## Generated artifacts
 

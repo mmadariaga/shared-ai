@@ -5,9 +5,9 @@
 const fs = require('fs');
 const path = require('path');
 const childProcess = require('child_process');
-const { spawnSync, execSync } = childProcess;
+const { spawnSync } = childProcess;
 const readline = require('readline');
-const { offerCodegraphInstall, probeCodegraph } = require('./install-flow.js');
+const { offerCodegraphInstall, probeCodegraph, offerOpenspecInstall } = require('./install-flow.js');
 
 function prompt(rl, question) {
   return new Promise(resolve => rl.question(question, resolve));
@@ -23,16 +23,6 @@ function resolvePath() {
     return path.resolve(arg);
   }
   return process.cwd();
-}
-
-function checkOpenspecCli() {
-  const cmd = process.platform === 'win32' ? 'where openspec' : 'which openspec';
-  try {
-    execSync(cmd, { stdio: 'pipe' });
-  } catch {
-    console.error('openspec CLI not found. Install it first: https://github.com/Fission-AI/OpenSpec');
-    process.exit(1);
-  }
 }
 
 async function ensureOpenspecDir(projectPath, rl) {
@@ -138,7 +128,10 @@ async function main() {
     }
   }
 
-  checkOpenspecCli();
+  if (!(await offerOpenspecInstall())) {
+    rl.close();
+    process.exit(1);
+  }
   await offerCodegraphInstall();
   ensureCodegraphIndex(projectPath);
   await ensureOpenspecDir(projectPath, rl);

@@ -51,9 +51,15 @@ const OPENCODE_INSTALL_CMD = 'npm i -g opencode-ai@latest';
 const CODEGRAPH_CLI_INSTALL_CMD = 'npm i -g @colbymchenry/codegraph';
 const CODEGRAPH_MCP_INSTALL_CMD = 'codegraph install';
 const CODEGRAPH_WIRING_HINT = 'MCP wiring: run `codegraph install` if not already wired';
+const OPENSPEC_INSTALL_CMD = 'npm i -g @fission-ai/openspec';
 
 function probeOpencode() {
   const result = childProcess.spawnSync('opencode --version', { shell: true, stdio: 'ignore' });
+  return !result.error && result.status === 0;
+}
+
+function probeOpenspec() {
+  const result = childProcess.spawnSync('openspec --version', { shell: true, stdio: 'ignore' });
   return !result.error && result.status === 0;
 }
 
@@ -74,6 +80,11 @@ function runCodegraphInstall() {
   }
   const mcpResult = childProcess.spawnSync(CODEGRAPH_MCP_INSTALL_CMD, { shell: true, stdio: 'inherit' });
   return !mcpResult.error && mcpResult.status === 0;
+}
+
+function runOpenspecInstall() {
+  const result = childProcess.spawnSync(OPENSPEC_INSTALL_CMD, { shell: true, stdio: 'inherit' });
+  return !result.error && result.status === 0;
 }
 
 async function promptYesNoReadline(question) {
@@ -141,6 +152,35 @@ async function offerCodegraphInstall({
     console.log(CODEGRAPH_CLI_INSTALL_CMD);
     console.log(CODEGRAPH_MCP_INSTALL_CMD);
   }
+}
+
+// openspec is REQUIRED for the SAI workflow (unlike opencode/CodeGraph, which
+// are optional). Returns true when openspec is present or was just installed,
+// false when the caller must abort. Never calls process.exit itself so it stays
+// unit-testable — the fatal exit lives in setup.js main().
+async function offerOpenspecInstall({
+  probe = probeOpenspec,
+  runInstall = runOpenspecInstall,
+  promptYesNo = promptYesNoReadline,
+  isTTY = process.stdin.isTTY,
+} = {}) {
+  if (probe()) {
+    return true;
+  }
+
+  console.log('openspec CLI not found — it is required for the SAI workflow.');
+
+  if (!isTTY) {
+    console.log(OPENSPEC_INSTALL_CMD);
+    return false;
+  }
+
+  const answer = await promptYesNo('Install openspec now? [y/n] ');
+  if (answer && runInstall()) {
+    return true;
+  }
+  console.log(OPENSPEC_INSTALL_CMD);
+  return false;
 }
 
 function promptChecklist(items, defaultSelected) {
@@ -572,4 +612,8 @@ module.exports = {
   probeCodegraph,
   runCodegraphInstall,
   offerCodegraphInstall,
+  OPENSPEC_INSTALL_CMD,
+  probeOpenspec,
+  runOpenspecInstall,
+  offerOpenspecInstall,
 };

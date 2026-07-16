@@ -112,3 +112,14 @@ cp -r openspec/schemas/sai-workflow /path/to/your/project/openspec/schemas/
 # 3. Edit openspec/config.yaml in your project and set:
 #    schema: sai-workflow
 ```
+
+## Customizing models
+
+The default models are set in each Claude Code wrapper's YAML frontmatter (`model:` field). To customize them for a specific project, copy the relevant wrapper into the project's `.claude/commands/` directory and edit the `model` field:
+
+```bash
+cp ~/.claude/commands/sai-1-spec.md .claude/commands/
+# Then edit .claude/commands/sai-1-spec.md and change the model: field
+```
+
+Claude Code's project-local commands (`.claude/commands/`) take precedence over user-global ones (`~/.claude/commands/`) by filename — a project-local command with the same filename as a user-global one silently shadows it. This is the documented override mechanism; implementations that need a project-specific model without affecting the global install can rely on it. (GitHub Copilot in VS Code does **not** support this pattern — see `INSTALL.copilot.md#customizing-models`.)

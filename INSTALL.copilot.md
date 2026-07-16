@@ -152,14 +152,19 @@ Once installed, type `/` in the GitHub Copilot chat to see all `sai-*` commands.
 
 ## Customizing models
 
-The default models are set in each `.prompt.md` file. To override them for a specific project, copy the relevant prompt files into your project's `.github/prompts/` directory and edit the `model` field:
+The default models are set in each `.prompt.md` file. To customize them for a specific project, copy the relevant prompt files into your project's `.github/prompts/` directory (a discovered workspace prompt scope) and edit the `model` field:
 
 ```bash
 cp "$PROMPTS_DIR/sai-1-spec.prompt.md" .github/prompts/
 # Then edit .github/prompts/sai-1-spec.prompt.md and change the model field
 ```
 
-Project-local prompt files take precedence over user-global ones.
+> **⚠️ VS Code prompt files do NOT support name-based override.** Unlike Claude Code (`~/.claude/commands/` vs `.claude/commands/`) and opencode (`~/.config/opencode/commands/` vs `.opencode/commands/`), where a project-local command with the same filename silently shadows the user-global one, VS Code discovers `.github/prompts/` and the user `prompts/` folder as two independent scopes. A prompt file placed in `.github/prompts/` with the same name as a user-global one does **not** take precedence over it — both are discoverable as separate prompts (distinguished only by their source tooltip in `Chat: Configure Prompt Files`). This is a limitation of VS Code's prompt-file discovery model, not of shared-AI.
+>
+> **Workarounds for VS Code:**
+> 1. **Renamed variant** (recommended) — copy the wrapper into `.github/prompts/` under a new filename (e.g. `sai-1-spec-gpt5.prompt.md`) and set `name:` frontmatter or just invoke it as `/sai-1-spec-local`. The user-global `/sai-1-spec` stays untouched.
+> 2. **Edit-in-place** — modify the file directly under `%APPDATA%\Code\User\prompts\`. Reinstalls and updates will overwrite these edits; commit them to a fork of shared-AI for persistence.
+> 3. **Remove the global** — delete (or rename) the matching file from `%APPDATA%\Code\User\prompts\` so only the `.github/prompts/` copy remains in scope.
 
 ## Notes
 

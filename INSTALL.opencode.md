@@ -187,6 +187,8 @@ cp ~/.config/opencode/commands/sai-2-design.md .opencode/commands/
 
 Then edit copied files and set your preferred model.
 
+Opencode's project-local commands (`.opencode/commands/`) take precedence over user-global ones (`~/.config/opencode/commands/`) by filename — a project-local command with the same filename as a user-global one silently shadows it. This is the documented override mechanism. (GitHub Copilot in VS Code does **not** support this pattern — see `INSTALL.copilot.md#customizing-models`.)
+
 ### Alternative: edit global commands
 
 You can also edit `~/.config/opencode/commands/sai-*.md` directly, but **these changes will be overwritten** on future updates or reinstalls.

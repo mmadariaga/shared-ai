@@ -29,10 +29,56 @@ Also supports **GitHub Copilot** natively (only in the VS Code editor window, **
 
 **Testing is not optional.** For every step, sai-3 writes the production code in the playbook; test assertions come from `interfaces.md` (produced by sai-2). sai-4 then runs each testable step through two distinct subagents: the **first** writes the test (RED) and confirms it fails by a real assertion — not a setup error; a **separate second** subagent copies the production code into the project (GREEN) and makes the test pass, **without permission to modify the tests** — so the production code is validated against an assertion it never touched. The second agent adjusts code only if compilation or tests fail. What can't be covered by unit tests — visual behavior, end-to-end flows — becomes an explicit verification request to you, placed at the earliest point it can be observed. Nothing ships unverified.
 
+## Typical usage
+
+```
+/sai-explore                    # debate the idea before committing to anything
+                                # → sai-explore hands you the exact prompts
+                                #   to paste into /sai-1-spec
+                                # You → keep this chat open: you can lean on it
+                                #   to review the artifacts from /sai-1-spec
+                                #   and /sai-2-design as you go
+
+/sai-1-spec {prompt}            # creates change "oauth2-auth"
+                                # You → review proposal & specs with sai-explore
+                                # You → confirm proposal & specs approval
+
+/sai-2-design oauth2-auth       # generates design.md + tasks.md + interfaces.md
+                                # You → review design and tasks with sai-explore
+
+/sai-3-implement oauth2-auth    # "On-paper" implementation
+/sai-4-apply oauth2-auth        # Real implementation. 
+                                # → Asks for permission to commit as it completes each step
+
+##################################################################
+# Review
+##################################################################
+/sai-5-review oauth2-auth
+
+##################################################################
+# Audits based on /sai-5-review triage:
+##################################################################
+/sai-6-security oauth2-auth
+/sai-7-performance oauth2-auth
+/sai-8-accessibility oauth2-auth
+
+##################################################################
+# ...iterate as needed...
+# Usually /sai-3-implement & /sai-4-apply to apply review findings
+##################################################################
+
+/sai-archive oauth2-auth
+/sai-pr oauth2-auth
+```
+
+> **Important:** open a new chat between commands:
+> - **Token savings** — each phase only inherits the artifact it needs, not the full history.
+> - **Clean, replicable context** — each phase starts from scratch (Isolation Mode), making it easy to debug and replay steps in isolation.
+> - **Cost efficiency** — each phase uses the most cost-effective model for its task.
+
 ## Index
 
 - [Commands](#sequential-pipeline-numbered)
-- [Typical usage](#typical-usage)
 - [Skills](#skills)
 - [Cost-Effective Strategies](#cost-effective-strategies)
 - [Project highlights](#project-highlights)
@@ -63,51 +109,6 @@ All artifact paths below resolve under `openspec/changes/{change-name}/` (referr
 | `/sai-pr` | Drafts a complete PR description using everything produced during the change (proposal, design, review findings, etc.). Opens the PR on GitHub after you approve. |
 | `/sai-archive` | Moves a completed change to the archive, keeping your active changes folder clean. Supports `--fast-track` to auto-proceed the archive soft gates. |
 | `/sai-backfill` | Made a quick fix directly in code without going through the pipeline? This reconstructs the missing documentation after the fact — interviewing you about intent and writing only what can be reliably derived from the diff. |
-
-## Typical usage
-
-```
-/sai-explore                                 # debate the idea before committing to anything
-                                             # → sai-explore hands you the exact prompts
-                                             #   to paste into /sai-1-spec
-                                             # → keep this chat open: you can lean on it
-                                             #   to review the artifacts from /sai-1-spec
-                                             #   and /sai-2-design as you go
-
-/sai-1-spec Add OAuth2 authentication        # creates change "oauth2-auth"
-                                             # → review proposal & specs, confirm approval
-
-/sai-2-design oauth2-auth                    # generates design.md + tasks.md + interfaces.md
-                                             # → review design & tasks
-
-/sai-3-implement oauth2-auth
-/sai-4-apply oauth2-auth                     # asks for permission to commit as it completes each step
-
-############################################################
-# Review
-############################################################
-/sai-5-review oauth2-auth
-
-############################################################
-# Audits based on /sai-5-review indications:
-############################################################
-/sai-6-security oauth2-auth
-/sai-7-performance oauth2-auth
-/sai-8-accessibility oauth2-auth
-
-############################################################
-# ...iterate as needed...
-# Usually /sai-3-implement & /sai-4-apply one last time
-############################################################
-
-/sai-archive oauth2-auth
-/sai-pr oauth2-auth
-```
-
-> **Important:** open a new chat between commands:
-> - **Token savings** — each phase only inherits the artifact it needs, not the full history.
-> - **Clean, replicable context** — each phase starts from scratch (Isolation Mode), making it easy to debug and replay steps in isolation.
-> - **Model isolation** — each phase uses the most cost-effective model for its task.
 
 ## Triage in `/sai-5-review`
 
@@ -268,20 +269,6 @@ Everything else stays intact.
 
 Commands are designed as **user globals**, not per project. A single copy in the CLI's global directory makes them available in any repo.
 
-
-### Prerequisites
-
-The pipeline depends on the [OpenSpec](https://github.com/Fission-AI/OpenSpec) CLI for change lifecycle and skill provisioning. Install it once globally:
-
-```bash
-# Install OpenSpec CLI (see https://github.com/Fission-AI/OpenSpec for current install instructions)
-npm install -g @fission-ai/openspec   # example — check the project README for the canonical command
-```
-
-Shared-AI **does not bundle the OpenSpec skills**; they come from the OpenSpec CLI and are versioned by it.
-
-If you skip this step, the `sai-*` commands will halt with a clear error message.
-
 ### Automatic npx installer (recommended)
 
 ```bash
@@ -296,7 +283,7 @@ Presents an interactive checklist to select Claude Code, opencode, and/or GitHub
 npx github:mmadariaga/shared-ai setup /path/to/your/project
 ```
 
-Verifies the openspec CLI, runs `openspec init` if needed, sets `schema: sai-workflow` in `openspec/config.yaml`, and copies the schema templates into the project. When the CodeGraph CLI is available, it also builds the project index with `codegraph init` (skipped cleanly if CodeGraph isn't installed — it never blocks setup).
+Installs the openspec CLI if missing (offers on a TTY; prints the command in CI), runs `openspec init` if needed, sets `schema: sai-workflow` in `openspec/config.yaml`, and copies the schema templates into the project. When the CodeGraph CLI is available, it also builds the project index with `codegraph init` (skipped cleanly if CodeGraph isn't installed — it never blocks setup).
 
 ### Manual installation (alternative)
 
@@ -310,11 +297,13 @@ For step-by-step manual installation without npx:
 
 Per-project commands are still possible: a file placed in a harness's project-local command folder at the repo root overrides the user-global wrapper of the same name. Globals act as a base; project-local files override them by filename.
 
-| Harness | Project-local command folder |
-|---------|------------------------------|
-| opencode | `.opencode/commands/` |
-| Claude Code | `.claude/commands/` |
-| GitHub Copilot (VS Code) | `.github/prompts/` |
+| Harness | Project-local command folder | Overrides by filename? |
+|---------|------------------------------|------------------------|
+| opencode | `.opencode/commands/` | ✅ Yes |
+| Claude Code | `.claude/commands/` | ✅ Yes |
+| GitHub Copilot (VS Code) | `.github/prompts/` | ❌ No (see note below) |
+
+> **⚠️ GitHub Copilot (VS Code) does not support name-based override.** VS Code discovers `.github/prompts/` (workspace scope) and `%APPDATA%\Code\User\prompts\` (user scope) as two **independent** scopes — a project-local prompt with the same name as a user-global one does **not** shadow it. Both remain discoverable (distinguished only by a source tooltip). This differs from Claude Code and opencode, where the project-local file with the same filename silently takes precedence. See [INSTALL.copilot.md](INSTALL.copilot.md#customizing-models) for VS Code-specific workarounds (renamed variant, edit-in-place, or removing the global).
 
 Two override patterns are supported:
 
