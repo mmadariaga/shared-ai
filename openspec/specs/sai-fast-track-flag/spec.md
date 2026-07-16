@@ -1,5 +1,9 @@
-## ADDED Requirements
+# sai-fast-track-flag Specification
 
+## Purpose
+
+TBD - created by archiving change minor-bugfixes. Update Purpose after archive.
+## Requirements
 ### Requirement: The fast-track command set is the single canonical membership list
 
 The set of commands that accept `--fast-track` SHALL be exactly `sai-explore`, `sai-2-design`, `sai-4-apply`, and `sai-archive`. This requirement is the single source of truth for fast-track membership. Every other requirement in this capability, and the `sai-fast-track-next-prompt-hint` capability (`openspec/specs/sai-fast-track-next-prompt-hint/spec.md`), SHALL derive membership from this list rather than maintaining an independent copy. Adding or removing a fast-track command SHALL be a single-point edit to this list, after which dependent requirements follow.
@@ -56,8 +60,6 @@ The following gates SHALL remain in force under `sai-archive --fast-track` and S
 - **WHEN** `sai-archive {name} --fast-track` runs, all CORE artifacts are `done`, and one or more AUDIT artifacts are missing
 - **THEN** the agent still prints the informational line `[sai-archive] informational: missing AUDIT artifact(s): …`; fast-track does not suppress it
 
-## MODIFIED Requirements
-
 ### Requirement: The --fast-track flag is parsed in the shared body file and never reaches the picker
 
 Exactly four commands — `sai-explore`, `sai-2-design`, `sai-4-apply`, and `sai-archive` — SHALL accept a `--fast-track` token in their arguments. The token SHALL be parsed by the command's shared body file (`sai/commands/sai-explore.md`, `sai/commands/sai-2-design.md`, `sai/commands/sai-4-apply.md`, `sai/commands/sai-archive.md`) out of `$ARGUMENTS`. After extraction the token SHALL be removed from the argument string, and the cleaned remainder (the change-name for `sai-2-design`/`sai-4-apply`/`sai-archive`, or the free-form request for `sai-explore`) SHALL be passed to the change-picker / run step exactly as if the flag had not been typed. The flag SHALL be a single positional token, not a session flag, environment variable, or `.openspec.yaml` key.
@@ -110,20 +112,9 @@ For each of the four commands, `--fast-track` SHALL opt out of exactly the named
 - **THEN** no gate beyond that command's named set changes behavior
 
 ### Requirement: Fast-track behavior is harness-agnostic and documented
-
-The `--fast-track` behavior SHALL be identical under Claude Code, opencode, and GitHub Copilot, achieved by single-sourcing the parse and gate branches in the shared body files and shared instructions. Any wrapper-level `argument-hint` change SHALL be mirrored across `commands/claude/`, `commands/opencode/`, and `commands/copilot/` in the same commit (Mirror discipline). Where a wrapper shape does not carry an `argument-hint` — specifically the opencode `sai-archive` wrapper, whose shape is echo-line-driven — the consistency marker SHALL be an HTML comment on the echo line rather than an `argument-hint`, and the Claude Code and Copilot `sai-archive` wrappers SHALL carry the real `argument-hint`. `AGENTS.md` SHALL name `--fast-track` and its four affected commands under "Critical conventions", and `README.md` SHALL document the flag in the commands table.
-
-#### Scenario: Same behavior across all four harness-supported commands
-
-- **WHEN** `--fast-track` is used under Claude Code, opencode, or GitHub Copilot on any of the four commands
-- **THEN** the flag is parsed and the gate opt-outs applied identically, because the logic lives in the shared body files and instructions all three harnesses fetch
+The `--fast-track` behavior SHALL be identical under Claude Code, opencode, and GitHub Copilot, achieved by single-sourcing the parse and gate branches in the shared body files and shared instructions. Any wrapper-level `argument-hint` change SHALL be mirrored across `commands/claude/`, `commands/opencode/`, and `commands/copilot/` in the same commit (Mirror discipline). Where a wrapper shape does not carry an `argument-hint` — specifically the opencode `sai-archive` wrapper, whose shape is echo-line-driven — no separate consistency marker is required on the echo line; the wrapper's echo-line shape matches every other opencode change-consuming wrapper, and the Claude Code and Copilot `sai-archive` wrappers SHALL carry the real `argument-hint`. `AGENTS.md` SHALL name `--fast-track` and its four affected commands under "Critical conventions", and `README.md` SHALL document the flag in the commands table.
 
 #### Scenario: opencode sai-archive wrapper keeps its echo-line shape
-
 - **WHEN** the `sai-archive` `argument-hint` is added to the Claude Code and Copilot wrappers
-- **THEN** the opencode `sai-archive` wrapper does NOT gain a real `argument-hint`; its consistency marker is an HTML comment on the echo line, and this does not count as a Mirror-discipline violation
+- **THEN** the opencode `sai-archive` wrapper does NOT gain a real `argument-hint`; no HTML comment consistency marker is required on the echo line, and this does not count as a Mirror-discipline violation
 
-#### Scenario: Docs describe the flag
-
-- **WHEN** the change is implemented
-- **THEN** `AGENTS.md` has a "Critical conventions" entry naming `--fast-track` and its four commands, and `README.md`'s commands table documents the flag; the AGENTS.md generated-artifact table is unchanged
