@@ -30,11 +30,15 @@ function sha256(filePath) {
   return crypto.createHash('sha256').update(fs.readFileSync(filePath)).digest('hex');
 }
 
+function writtenMinusVersion(tmpDir) {
+  return walkFiles(tmpDir).map(f => path.relative(tmpDir, f)).filter(f => f !== '.version');
+}
+
 test('enumerateClaude dests match installClaude written files', () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-uninstall-'));
   try {
     installClaude(tmpDir);
-    const written = walkFiles(tmpDir).map(f => path.relative(tmpDir, f));
+    const written = writtenMinusVersion(tmpDir);
     const entries = enumerateClaude(tmpDir);
     const enumeratedDests = entries.map(e => path.relative(tmpDir, e.dest));
     assert.deepEqual([...written].sort(), [...enumeratedDests].sort());
@@ -47,7 +51,7 @@ test('enumerateOpencode dests match installOpencode written files', () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-uninstall-'));
   try {
     installOpencode(tmpDir);
-    const written = walkFiles(tmpDir).map(f => path.relative(tmpDir, f));
+    const written = writtenMinusVersion(tmpDir);
     const entries = enumerateOpencode(tmpDir);
     const enumeratedDests = entries.map(e => path.relative(tmpDir, e.dest));
     assert.deepEqual([...written].sort(), [...enumeratedDests].sort());
@@ -60,7 +64,7 @@ test('enumerateCopilot dests match installCopilot written files', () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-uninstall-'));
   try {
     installCopilot(tmpDir, tmpDir, tmpDir, tmpDir);
-    const written = walkFiles(tmpDir).map(f => path.relative(tmpDir, f));
+    const written = writtenMinusVersion(tmpDir);
     const entries = enumerateCopilot(tmpDir, tmpDir, tmpDir, tmpDir);
     const enumeratedDests = entries.map(e => path.relative(tmpDir, e.dest));
     assert.deepEqual([...written].sort(), [...enumeratedDests].sort());

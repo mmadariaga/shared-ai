@@ -19,6 +19,13 @@ const OPENCODE_AGENT_KEYS = ['explore', 'executor', 'budget'];
 const OPENCODE_PLACEHOLDER_MODEL = 'opencode-go/deepseek-v4-flash';
 
 const REPOSITORY_ROOT = path.join(__dirname, '..');
+const PACKAGE_VERSION = require(path.join(REPOSITORY_ROOT, 'package.json')).version;
+
+function writeVersionMarker(baseDir) {
+  ensureDir(baseDir);
+  fs.writeFileSync(path.join(baseDir, '.version'), PACKAGE_VERSION);
+}
+
 const CLAUDE_BASE = path.join(os.homedir(), '.claude');
 const OPENCODE_BASE = path.join(os.homedir(), '.config', 'opencode');
 
@@ -329,6 +336,7 @@ function installClaude(destBase) {
     path.join(targetPath, 'skills', 'fetch', 'SKILL.md')
   );
 
+  writeVersionMarker(targetPath);
 }
 
 function installCopilot(promptsBase, skillsBase, agentsBase, saiBase) {
@@ -385,6 +393,8 @@ function installCopilot(promptsBase, skillsBase, agentsBase, saiBase) {
   listMdFiles(path.join(REPOSITORY_ROOT, 'agents', 'copilot')).forEach(src => {
     copy(src, path.join(agentsPath, path.basename(src)));
   });
+
+  writeVersionMarker(saiPath);
 }
 
 function installOpencode(destBase) {
@@ -439,6 +449,8 @@ function installOpencode(destBase) {
     path.join(REPOSITORY_ROOT, 'skills', 'opencode', 'fetch', 'SKILL.md'),
     path.join(targetPath, 'skills', 'fetch', 'SKILL.md')
   );
+
+  writeVersionMarker(targetPath);
 }
 
 function printOpencodeConfigMessage(base) {
@@ -592,6 +604,7 @@ if (require.main === module) {
 }
 
 module.exports = {
+  PACKAGE_VERSION,
   ensureDir,
   copy,
   listMdFiles,
