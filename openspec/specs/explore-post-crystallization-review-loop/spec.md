@@ -68,16 +68,16 @@ When the user selects Yes, `sai-explore` SHALL iterate only the set of change na
 
 ### Requirement: Review actions read their artifact sets
 
-For the change currently being iterated, selecting `Review sai-1's artifacts` SHALL produce a read-only review of that change's `proposal.md` and `specs/**`, and selecting `Review sai-2` SHALL produce a read-only review of that change's `design.md`, `tasks.md`, and `interfaces.md`. When a requested artifact does not exist for the change, the agent SHALL report its absence without treating it as an error and without leaving the loop.
+For the change currently being iterated, selecting `Review sai-1's artifacts` SHALL produce a read-only review of that change's `proposal.md` and `specs/**`, and selecting `Review sai-2's artifacts` SHALL produce a read-only review of that change's `design.md`, `tasks.md`, and `interfaces.md`. When a requested artifact does not exist for the change, the agent SHALL report its absence without treating it as an error and without leaving the loop.
 
 #### Scenario: Review sai-1's artifacts reads proposal and specs
 
 - **WHEN** the user selects `Review sai-1's artifacts` for the current change
 - **THEN** the agent produces a read-only review of that change's `proposal.md` and `specs/**`
 
-#### Scenario: Review sai-2 reads design, tasks, and interfaces
+#### Scenario: Review sai-2's artifacts reads design, tasks, and interfaces
 
-- **WHEN** the user selects `Review sai-2` for the current change
+- **WHEN** the user selects `Review sai-2's artifacts` for the current change
 - **THEN** the agent produces a read-only review of that change's `design.md`, `tasks.md`, and `interfaces.md`
 
 #### Scenario: missing downstream artifact is reported, not fatal
@@ -95,16 +95,16 @@ For the change currently being iterated, selecting `Review sai-1's artifacts` SH
 
 ### Requirement: Picker re-entry and loop advancement
 
-After a `Review sai-1's artifacts` or `Review sai-2` selection for a change, the agent SHALL re-show the same three-option picker for that same change, so the user can review both artifact sets or repeat a review. Only `Skip` SHALL advance the loop to the next eligible change. The loop SHALL terminate when every eligible change in the tracked chat-scoped set has been processed.
+After a `Review sai-1's artifacts` or `Review sai-2's artifacts` selection for a change, the agent SHALL re-show the same three-option picker for that same change, so the user can review both artifact sets or repeat a review. Only `Skip` SHALL advance the loop to the next eligible change. The loop SHALL terminate when every eligible change in the tracked chat-scoped set has been processed.
 
 #### Scenario: review re-shows the picker for the same change
 
-- **WHEN** the user selects `Review sai-1's artifacts` or `Review sai-2` for a change
+- **WHEN** the user selects `Review sai-1's artifacts` or `Review sai-2's artifacts` for a change
 - **THEN** after the review the agent re-shows the same picker for that same change
 
 #### Scenario: both sets reviewable for one change
 
-- **WHEN** the user selects `Review sai-1's artifacts`, and then on the re-shown picker selects `Review sai-2` for the same change
+- **WHEN** the user selects `Review sai-1's artifacts`, and then on the re-shown picker selects `Review sai-2's artifacts` for the same change
 - **THEN** the agent produces both reviews and re-shows the picker after each
 
 #### Scenario: only Skip advances to the next change
@@ -142,7 +142,7 @@ Each review turn produced by the loop SHALL reuse the existing artifact-review l
 
 #### Scenario: switching artifact set re-asks per the Persistence rule
 
-- **WHEN** the user reviews the sai-1 set of a change and then, on the re-shown picker, selects `Review sai-2` for that same change (a different artifact set)
+- **WHEN** the user reviews the sai-1 set of a change and then, on the re-shown picker, selects `Review sai-2's artifacts` for that same change (a different artifact set)
 - **THEN** the language gate re-asks before the sai-2 review, because the tracked review target changed, per item 3's Persistence rule
 
 #### Scenario: fast-track skips only the language question

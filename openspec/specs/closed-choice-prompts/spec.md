@@ -1,14 +1,15 @@
-## ADDED Requirements
+## MODIFIED Requirements
 
 ### Requirement: Closed-choice prompts MUST use the harness's native option-picker when available
 
-The SAI pipeline presents many closed-choice prompts to the user (yes/no questions, numbered lists, commit authorization gates, change pickers). Whenever a `sai-*` command asks the user to pick from a closed set of options, it MUST present the choices through the harness's native option-picker tool when one exists, and MUST fall back to plain text when it does not. Presentation changes per harness; question text, option semantics, retry rules, decline rules, and "wait for the answer" requirements stay exactly as the defining instruction specifies.
+The SAI pipeline presents many closed-choice prompts to the user (yes/no questions, numbered lists, commit authorization gates, change pickers). Whenever a `sai-*` command asks the user to pick from a closed set of options, the harness's native option-picker tool is the default channel and MUST be used whenever one exists; plain text is a deliberate fallback used only on surfaces that have no native option-picker, never a co-equal alternative on surfaces that do. Presentation changes per harness; question text, option semantics, retry rules, decline rules, and "wait for the answer" requirements stay exactly as the defining instruction specifies.
 
 The per-harness mapping is:
 
     - Claude Code — use the `AskUserQuestion` tool (one clickable option per choice; a free-text "Other" is appended automatically by the harness).
     - opencode — use the `question` tool (one option per choice under `options`; single-select by default).
-    - GitHub Copilot — no native option-picker; print the question and options as plain text and wait for a typed reply.
+    - GitHub Copilot (VS Code) — use the `vscode/askQuestions` tool, granted via the `vscode` category present in every `commands/copilot/*.prompt.md` frontmatter (one option per choice).
+    - GitHub Copilot (other surfaces: CLI, web) — no native option-picker; print the question and options as plain text and wait for a typed reply.
 
 A free-text reply that does not map to a listed option follows that instruction's invalid-input rule (typically "reject and re-prompt" for picker prompts, "treat as decline" for yes/no gates).
 
@@ -20,9 +21,17 @@ A free-text reply that does not map to a listed option follows that instruction'
 - **WHEN** `openspec list --json` returns two or more active changes and the consuming `sai-*` command runs on opencode
 - **THEN** the change-picker presents one option per change name through the `question` tool (single-select), and a selection resolves to the matching change name
 
-#### Scenario: GitHub Copilot — plain-text fallback
-- **WHEN** the same change-picker scenario runs on GitHub Copilot
+#### Scenario: GitHub Copilot in VS Code — change picker uses the native picker
+- **WHEN** the change-picker scenario runs on GitHub Copilot inside VS Code
+- **THEN** the command presents one option per change name through the `vscode/askQuestions` tool rather than plain text, because the `vscode` category on the prompt file grants that tool; the selection semantics are identical to the other option-picker presentations
+
+#### Scenario: GitHub Copilot on a non-VS-Code surface — plain-text fallback
+- **WHEN** the same change-picker scenario runs on a GitHub Copilot surface with no native option-picker (CLI, web)
 - **THEN** the command prints the question and a 1-indexed numbered list of change names as plain text and waits for a typed reply; the selection semantics are identical to the option-picker presentation
+
+#### Scenario: Plain-text fallback — reply maps to no listed option
+- **WHEN** the user replies to a plain-text closed-choice prompt (non-VS-Code Copilot surface) with free text that maps to none of the listed options
+- **THEN** the command applies the defining instruction's invalid-input rule ("reject and re-prompt" for picker-style prompts, "treat as decline" for yes/no gates) rather than guessing an option, exactly as it would on a native-picker harness
 
 ### Requirement: Option labels MUST be full words, not abbreviations
 
