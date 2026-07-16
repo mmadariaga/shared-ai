@@ -353,18 +353,18 @@ The **Copilot** column shows two model identifiers:
 
 | Command | Opencode | Claude Code | Copilot (VS Code) | Copilot (opencode) |
 |-------|----------|-------------|-------------------|--------------------|
-| explore | `opencode-go/minimax-m3` | `claude-sonnet-4-6` medium | `GPT-5.4 (copilot)` | `github-copilot/gpt-5.4` |
-| spec (1) | `opencode-go/minimax-m3` | `claude-sonnet-4-6` medium | `GPT-5.4 (copilot)` | `github-copilot/gpt-5.4` |
-| design (2) | `opencode-go/glm-5.2` | `claude-opus-4-8` high | `Claude Opus 4.8 (copilot)` | `github-copilot/claude-opus-4.8` |
-| implement (3) | `opencode-go/kimi-k2.6` | `claude-sonnet-4-6` high | `GPT-5.3-Codex (copilot)` | `github-copilot/gpt-5.3-codex` |
+| explore | `opencode-go/minimax-m3` | `claude-sonnet-5` | `GPT-5.4 (copilot)` | `github-copilot/gpt-5.4` |
+| spec (1) | `opencode-go/minimax-m3` | `claude-sonnet-5` | `GPT-5.4 (copilot)` | `github-copilot/gpt-5.4` |
+| design (2) | `opencode-go/glm-5.2` | `claude-opus-4-8` | `Claude Opus 4.8 (copilot)` | `github-copilot/claude-opus-4.8` |
+| implement (3) | `opencode-go/kimi-k2.6` | `claude-opus-4-8` | `GPT-5.3-Codex (copilot)` | `github-copilot/gpt-5.3-codex` |
 | apply (4) | `opencode-go/deepseek-v4-flash` | `claude-haiku-4-5` | `GPT-5.4 mini (copilot)` | `github-copilot/gpt-5.4-mini` |
-| review (5) | `opencode-go/qwen3.7-plus` | `claude-sonnet-4-6` high | `GPT-5.4 (copilot)` | `github-copilot/gpt-5.4` |
-| security (6) | `opencode-go/qwen3.7-plus` | `claude-opus-4-8` high | `GPT-5.4 (copilot)` | `github-copilot/gpt-5.4` |
-| performance (7) | `opencode-go/qwen3.7-plus` | `claude-sonnet-4-6` high | `GPT-5.4 (copilot)` | `github-copilot/gpt-5.4` |
-| accessibility (8) | `opencode-go/qwen3.7-plus` | `claude-sonnet-4-6` high | `GPT-5.4 (copilot)` | `github-copilot/gpt-5.4` |
+| review (5) | `opencode-go/qwen3.7-plus` | `claude-sonnet-5` | `GPT-5.4 (copilot)` | `github-copilot/gpt-5.4` |
+| security (6) | `opencode-go/qwen3.7-plus` | `claude-opus-4-8` | `GPT-5.4 (copilot)` | `github-copilot/gpt-5.4` |
+| performance (7) | `opencode-go/qwen3.7-plus` | `claude-sonnet-5` | `GPT-5.4 (copilot)` | `github-copilot/gpt-5.4` |
+| accessibility (8) | `opencode-go/qwen3.7-plus` | `claude-sonnet-5` | `GPT-5.4 (copilot)` | `github-copilot/gpt-5.4` |
 | commit | `opencode-go/deepseek-v4-flash` | `claude-haiku-4-5` | `GPT-5 mini (copilot)` | `github-copilot/gpt-5-mini` |
 | pr | `opencode-go/deepseek-v4-flash` | `claude-haiku-4-5` | `GPT-5 mini (copilot)` | `github-copilot/gpt-5-mini` |
-| backfill | `opencode-go/minimax-m3` | `claude-sonnet-4-6` medium | `GPT-5.4 (copilot)` | `github-copilot/gpt-5.4` |
+| backfill | `opencode-go/minimax-m3` | `claude-sonnet-5` | `GPT-5.4 (copilot)` | `github-copilot/gpt-5.4` |
 | archive | `opencode-go/deepseek-v4-flash` | `claude-haiku-4-5` | `GPT-5 mini (copilot)` | `github-copilot/gpt-5-mini` |
 
 ### Choosing a model

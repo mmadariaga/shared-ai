@@ -1,8 +1,7 @@
 ---
 description: Granular implementation plan — reads OpenSpec change artifacts (proposal/design/tasks), writes implementation.md with code, RED→GREEN, STOP & COMMIT markers, to openspec/changes/{name}/implementation.md.
 argument-hint: "[change-name]"
-model: claude-sonnet-4-6
-effort: high
+model: claude-opus-4-8
 ---
 ## Sai Implement - 3
 
