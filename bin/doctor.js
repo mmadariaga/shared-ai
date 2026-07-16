@@ -11,6 +11,64 @@ const uninstall = require('./uninstall-flow');
 
 const REPO_ROOT_DEFAULT = path.join(__dirname, '..');
 
+const FETCH_ORDER = {
+  claude:   (root, base, sub) => [path.join(root, '.claude', sub), path.join(base, sub)],
+  opencode: (root, base, sub) => [path.join(root, '.opencode', sub), path.join(base, sub)],
+  copilot:  (root, saiBase, sub) => { const c = sub.replace(/^sai\//, ''); return [path.join(root, '.github', 'sai', c), path.join(saiBase, c)]; },
+};
+
+const SKILL_BASES = {
+  claude:   (root, base) => [path.join(root, '.claude', 'skills'), path.join(base, 'skills')],
+  opencode: (root, base) => [path.join(root, '.opencode', 'skills'), path.join(base, 'skills')],
+  copilot:  (root, base) => [path.join(root, '.github', 'skills'), base],
+};
+
+function parseFetchRefs(text) {
+  const refs = [];
+  const re = /(?:Also fetch|Fetch)\s+@([^\s`)]+)/g;
+  let m;
+  while ((m = re.exec(text)) !== null) refs.push(m[1].replace(/[.,;:]+$/, ''));
+  return refs;
+}
+
+function resolveFetchRefs(section, wrapperPath, kind, { projectRoot, globalBase, skillsBase }) {
+  const records = [];
+  let text;
+  try { text = fs.readFileSync(wrapperPath, 'utf8'); } catch { return records; }
+  for (const ref of parseFetchRefs(text)) {
+    if (ref.startsWith('~')) continue;
+    const skillMatch = ref.match(/^skills\/([^/]+)\/SKILL\.md$/);
+    if (skillMatch) {
+      const name = skillMatch[1];
+      const bases = SKILL_BASES[kind](projectRoot, skillsBase);
+      const found = bases.some(b => fs.existsSync(path.join(b, name, 'SKILL.md')));
+      if (!found) {
+        records.push({ section, name: 'fetch-skill', severity: 'error', message: `skill not installed: ${name} (in ${shorten(wrapperPath)})`, recommendation: 'Re-run the installer to restore the skill' });
+      }
+      continue;
+    }
+    const candidates = FETCH_ORDER[kind](projectRoot, globalBase, ref);
+    if (!candidates.some(c => fs.existsSync(c))) {
+      records.push({ section, name: 'fetch-ref', severity: 'error', message: `dangling Fetch @${ref} in ${shorten(wrapperPath)}`, recommendation: 'Re-run the installer to restore the referenced file' });
+    }
+  }
+  return records;
+}
+
+function fetchResolutionRecords(harness, expectedEntries, { projectRoot }) {
+  const section = `[${harness.id}]`;
+  const globalBase = harness.kind === 'copilot' ? harness.copilotSaiBase : harness.base;
+  const skillsBase = harness.kind === 'copilot' ? harness.copilotSkillsBase : harness.base;
+  const wrappers = expectedEntries
+    .filter(e => e.src !== e.dest && e.dest.endsWith('.md') && !e.src.includes(`${path.sep}sai${path.sep}`) && !e.src.includes(`${path.sep}skills${path.sep}`) && !e.src.includes(`${path.sep}agents${path.sep}`))
+    .filter(e => fs.existsSync(e.dest));
+  const records = [];
+  for (const w of wrappers) {
+    records.push(...resolveFetchRefs(section, w.dest, harness.kind, { projectRoot, globalBase, skillsBase }));
+  }
+  return records;
+}
+
 function shorten(p) {
   const home = os.homedir();
   return p.startsWith(home) ? '~' + p.slice(home.length) : p;
@@ -92,7 +150,7 @@ function detectHarnesses({ claudeBase, opencodeBase, copilot }) {
       entries: () => uninstall.enumerateClaude(claudeBase) },
     { id: 'Opencode', base: opencodeBase, kind: 'opencode',
       entries: () => uninstall.enumerateOpencode(opencodeBase) },
-    { id: 'GitHub Copilot', base: copilot.promptsBase, kind: 'copilot',
+    { id: 'GitHub Copilot', base: copilot.promptsBase, kind: 'copilot', copilotSaiBase: copilot.saiBase, copilotSkillsBase: copilot.skillsBase,
       entries: () => uninstall.enumerateCopilot(copilot.promptsBase, copilot.skillsBase, copilot.agentsBase, copilot.saiBase) },
   ];
 }
@@ -177,7 +235,9 @@ async function main(options = {}) {
       continue;
     }
     const entries = h.entries();
-    records.push(...inventoryHarness(`[${h.id}]`, entries, { projectRoot, harness: h }));
+    const sectionRecords = inventoryHarness(`[${h.id}]`, entries, { projectRoot, harness: h });
+    sectionRecords.push(...fetchResolutionRecords(h, entries, { projectRoot }));
+    records.push(...sectionRecords);
   }
 
   const sections = groupSections(records);
@@ -195,4 +255,4 @@ async function main(options = {}) {
   return code;
 }
 
-module.exports = { main, checkProjectHealth, aggregateExit, groupSections, renderHuman, shorten, detectHarnesses, inventoryHarness };
+module.exports = { main, checkProjectHealth, aggregateExit, groupSections, renderHuman, shorten, detectHarnesses, inventoryHarness, parseFetchRefs, resolveFetchRefs, fetchResolutionRecords };
