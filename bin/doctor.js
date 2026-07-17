@@ -5,6 +5,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const childProcess = require('child_process');
+const https = require('https');
 
 const flow = require('./install-flow');
 const uninstall = require('./uninstall-flow');
@@ -265,6 +266,58 @@ function sectionObjFromRecords(sectionName, allRecords) {
   return obj;
 }
 
+function defaultFetchLatestVersion(timeoutMs = 5000) {
+  return new Promise((resolve) => {
+    const req = https.get(
+      'https://raw.githubusercontent.com/mmadariaga/shared-ai/main/package.json',
+      { headers: { 'User-Agent': 'shared-ai-doctor' } },
+      (res) => {
+        if (res.statusCode !== 200) { res.resume(); return resolve(null); }
+        let data = '';
+        res.on('data', (c) => { data += c; });
+        res.on('end', () => {
+          try { resolve(JSON.parse(data).version || null); } catch { resolve(null); }
+        });
+      });
+    req.on('error', () => resolve(null));
+    req.setTimeout(timeoutMs, () => { req.destroy(); resolve(null); });
+  });
+}
+
+function readMarker(base) {
+  const p = path.join(base, '.version');
+  try { return fs.readFileSync(p, 'utf8').trim() || null; } catch { return null; }
+}
+
+function diffAgainstBundled(expectedEntries) {
+  const drift = [];
+  for (const e of expectedEntries.filter(x => x.src !== x.dest)) {
+    const destHash = uninstall.sha256File(e.dest);
+    if (destHash === null) { drift.push(`${shorten(e.dest)} (missing)`); continue; }
+    const srcHash = uninstall.sha256File(e.src);
+    if (srcHash !== null && srcHash !== destHash) drift.push(`${shorten(e.dest)} (differs)`);
+  }
+  return drift;
+}
+
+function versionSkewRecords(harness, expectedEntries, latest) {
+  const section = `[${harness.id}]`;
+  const markerBase = harness.kind === 'copilot' ? harness.copilotSaiBase : harness.base;
+  const marker = readMarker(markerBase);
+  if (marker !== null) {
+    if (latest === null) {
+      return [{ section, name: 'version', severity: 'warn', message: `installed ${marker}; latest version unknown (network)` }];
+    }
+    return marker === latest
+      ? [{ section, name: 'version', severity: 'ok', message: `up to date (${marker})` }]
+      : [{ section, name: 'version', severity: 'warn', message: `version skew: installed ${marker}, latest ${latest}`, recommendation: 'Re-run the installer to update' }];
+  }
+  const drift = diffAgainstBundled(expectedEntries);
+  return drift.length === 0
+    ? [{ section, name: 'version', severity: 'ok', message: 'no .version marker; installed files match bundled source' }]
+    : [{ section, name: 'version', severity: 'warn', message: `no .version marker; ${drift.length} file(s) differ from bundled source: ${drift.join(', ')}`, recommendation: 'Re-run the installer to normalize' }];
+}
+
 async function main(options = {}) {
   const {
     argv = process.argv.slice(2),
@@ -275,12 +328,14 @@ async function main(options = {}) {
     repoRoot = REPO_ROOT_DEFAULT,
     execOpenspec = defaultExecOpenspec,
     out = process.stdout,
+    fetchLatestVersion = defaultFetchLatestVersion,
   } = options;
   const json = argv.includes('--json');
 
   const records = [];
   records.push(...checkProjectHealth({ projectRoot, execOpenspec }));
 
+  const latest = argv.includes('--offline') ? null : await fetchLatestVersion();
   const harnesses = detectHarnesses({ claudeBase, opencodeBase, copilot });
   for (const h of harnesses) {
     if (!h.base || !fs.existsSync(h.base)) {
@@ -290,6 +345,7 @@ async function main(options = {}) {
     const entries = h.entries();
     const sectionRecords = inventoryHarness(`[${h.id}]`, entries, { projectRoot, harness: h });
     sectionRecords.push(...fetchResolutionRecords(h, entries, { projectRoot }));
+    sectionRecords.push(...versionSkewRecords(h, entries, latest));
     records.push(...sectionRecords);
   }
 
@@ -310,4 +366,4 @@ async function main(options = {}) {
   return code;
 }
 
-module.exports = { main, checkProjectHealth, aggregateExit, groupSections, renderHuman, shorten, detectHarnesses, inventoryHarness, parseFetchRefs, resolveFetchRefs, fetchResolutionRecords, checkSkillStaleness, readGeneratedBy };
+module.exports = { main, checkProjectHealth, aggregateExit, groupSections, renderHuman, shorten, detectHarnesses, inventoryHarness, parseFetchRefs, resolveFetchRefs, fetchResolutionRecords, checkSkillStaleness, readGeneratedBy, readMarker, diffAgainstBundled, versionSkewRecords, defaultFetchLatestVersion };
