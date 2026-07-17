@@ -380,3 +380,19 @@ Another ranking of models focused on front-end web development tasks: https://ar
 ## Third Party Tools
 
 Consider combining SAI with **[CodeGraph](https://github.com/colbymchenry/codegraph)** — a pre-indexed, 100% local code knowledge graph that exposes your codebase as an MCP server. Instead of scanning files with grep/glob/Read, agents query a SQLite symbol graph directly, cutting costs ~35%, token usage ~57%, and tool calls ~71% on average. Works with Claude Code, opencode, Cursor, Codex CLI, and more.
+
+## Diagnosing an install — `doctor`
+
+Run a read-only health check of your shared-ai install across every detected
+harness plus the project's OpenSpec state:
+
+    npx github:mmadariaga/shared-ai doctor
+
+It reports, per harness (Claude Code, opencode, Copilot): missing/unexpected
+files, dangling `Fetch @` references, and version skew against `main`; plus a
+`[Project health]` section (openspec binary, `openspec/` dir, `schema: sai-workflow`)
+and OpenSpec-skill staleness. It never changes anything — it only recommends
+fixes (re-run the installer, `openspec init`).
+
+- Exit code `0` when green, `1` when any error-severity check fails (CI-usable).
+- Add `--json` for machine-readable output.
