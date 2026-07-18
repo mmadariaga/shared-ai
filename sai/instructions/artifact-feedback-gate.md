@@ -36,6 +36,18 @@ The description text, the proceed option label, the proceed option description, 
 
 2. **`proceed-label`** — the step-specific proceed option.
 
+## On selecting the feedback option
+
+Selecting the feedback option lands on an empty turn — the harness option-picker cannot carry the feedback text. Do NOT report or imply that no feedback was supplied, and do NOT run the per-item split/evaluate processing (`## On "Give feedback"`) on this empty selection turn.
+
+FIRST emit a clean, non-accusatory prompt that names every entry in `artifacts`, then wait for the user's reply. The prompt's canonical form is:
+
+> Share your feedback on {artifacts} below.
+
+where `{artifacts}` is replaced by the step's artifact list (supplied by the fetching body — `proposal.md`, `specs/**` under sai-1; `design.md`, `tasks.md`, `interfaces.md` under sai-2). Following the established explore.md item-3 pattern, this canonical form is authored in English but is NOT output verbatim in English: render it in the user's language at runtime per `sai/instructions/remember.md` (for a Spanish-speaking user: `Indícame a continuación tu feedback sobre {artifacts}`). Only when the user's language is English is the English form output as-is.
+
+After the user replies, feed the supplied text into `## On "Give feedback"` below and apply its per-item processing unchanged.
+
 ## On "Give feedback"
 
 Apply feedback **selectively per item, never as an all-or-nothing turn**:
