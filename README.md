@@ -6,12 +6,12 @@ Software development oriented AI commands for a cost-efficient, spec-first, stru
 |-------|-------|
 | Idea | explore *(optional)* → spec → validation |
 | Code | design → implement → apply |
-| Quality | review → audits *(security · performance · accessibility, per review findings)* |
+| Quality | review → audits *(security · performance · accessibility, per review triage)* |
 | Ship | archive → PR |
 
-Built on top of [OpenSpec](https://github.com/Fission-AI/OpenSpec): OpenSpec owns the lifecycle and artifact structure, Shared-AI owns the code and quality layers.
+Built on top of [OpenSpec](https://github.com/Fission-AI/OpenSpec): OpenSpec owns the lifecycle and artifact structure. Shared-AI owns the code, quality and cost efficiency layers.
 
-Works great on **Opencode** with an opencode-go subscription + any frontier model provider sub (Claude / GPT / Gemini).
+Works great on **OpenCode** with an opencode-go subscription + any frontier model provider sub (Claude / GPT / OpenCode Zen).
 
 Can also run on **Claude Code**, though it is less cost-effective there due to model availability and pricing constraints — you can combine both: use Claude Code for deep thinking phases and switch to opencode after to work around those limitations.
 
@@ -23,7 +23,7 @@ Also supports **GitHub Copilot** natively (only in the VS Code editor window, **
 
 **Spec first, always.** No code is written without a prior proposal and specs capturing what, why, and the acceptance criteria. The implementation plan is derived from them, and code follows the plan — the difference between AI-assisted development and vibe coding.
 
-**Knowledge stays in the project.** Each phase writes its own artifact under `openspec/changes/{change-name}/`. When you come back months later — or hand it off to someone else — the reasoning is already there, organized by concern instead of buried in chat history.
+**Knowledge stays in the project.** Each phase writes its own artifact under `openspec/changes/{change-name}/` and `openspec/specs`. When you come back months later — or hand it off to someone else — the reasoning is already there, organized by concern instead of buried in chat history.
 
 **Cost-effective by design.** Each phase runs on the cheapest model that can do the job. Cheap models for commits and PRs, mid-range for planning and review, frontier only where reasoning depth actually matters. Agents think in English regardless of your language — English tokenizers produce fewer tokens per unit of meaning, so reasoning is cheaper without losing quality (details in [Token-Efficient Languages](#token-efficient-languages)). Communication is compressed to the minimum. You get the output — not the filler.
 
@@ -64,7 +64,7 @@ Also supports **GitHub Copilot** natively (only in the VS Code editor window, **
 
 ###########################################################################################
 # ...iterate as needed...
-# Usually /sai-3-implement & /sai-4-apply to apply review findings
+# Usually /sai-3-implement & /sai-4-apply to fix review findings
 ###########################################################################################
 
 /sai-archive oauth2-auth

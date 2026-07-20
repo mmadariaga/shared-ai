@@ -15,29 +15,59 @@ The post-crystallization review loop SHALL apply only within `sai-explore`. No o
 - **THEN** the new behavior is expressed entirely in `sai/instructions/explore.md`
 - **AND** no wrapper, `AGENTS.md`, or other `sai-*` instruction file is modified
 
-### Requirement: Global Yes/No offered unconditionally
+### Requirement: Review invitation is a user-triggered plain-text standing invitation
 
-Immediately after a `Ready to Propose` block is printed, `sai-explore` SHALL print a visual divider and then offer a single global Yes/No question asking whether the user wants to review downstream artifacts. The question SHALL be offered with **no precondition** — it SHALL be asked whether or not any downstream artifact exists — so the section behaves identically across sessions. Selecting No SHALL be a hard stop on the entire new section.
+The global review invitation SHALL NOT be auto-offered as a harness option-picker immediately after a `Ready to Propose` block. Instead, `sai-explore` SHALL treat the review as a **user-triggered, plain-text sí/no standing invitation**: the crystallization block closes by recommending the user keep the explore window open (per the `explore-crystallization-block` capability), and the user triggers the review on return — by accepting the standing invitation or by asking to review the downstream artifacts.
 
-#### Scenario: question follows every Ready to Propose block
+When the user triggers the review, `sai-explore` SHALL ask, in **plain conversational text** (never a harness option-picker), a single sí/no question rendered in the conversation's ambient language: whether the user wants to review the downstream artifacts of the changes crystallized in this chat. This plain-text question is a **deliberate exception** to the "Closed-choice prompts" native-picker rule in `sai/instructions/remember.md`; it applies only to this global review invitation. Answering no SHALL be a hard stop on the entire review section. Answering yes SHALL enter the per-change review loop over the chat-crystallized set, unchanged from its existing behavior.
 
-- **WHEN** `sai-explore` prints a `Ready to Propose` block
-- **THEN** it prints a visual divider and offers the global Yes/No review question below the block
+The invitation carries **no precondition** — it remains available whether or not any downstream artifact exists and whether or not this chat crystallized any change — so the section behaves identically across sessions. When the tracked crystallized set is empty, accepting the invitation SHALL be a no-op that ends the section immediately after the yes.
 
-#### Scenario: no precondition on downstream artifacts
+#### Scenario: review is not auto-offered at crystallization
 
-- **WHEN** the global Yes/No question is due to be offered and no downstream artifact exists for any change
-- **THEN** the question is still offered
+- **WHEN** `sai-explore` prints a `Ready to Propose` block (single-change or the final block of a sliced turn)
+- **THEN** it does NOT auto-offer a harness Yes/No review picker below the block
+- **AND** the review invitation is instead left as a standing invitation the user triggers on return
 
-#### Scenario: No is a hard stop
+#### Scenario: triggered invitation is asked in plain text, not a picker
 
-- **WHEN** the user selects No on the global question
+- **WHEN** the user triggers the review by accepting the standing invitation or asking to review the crystallized changes' downstream artifacts
+- **THEN** `sai-explore` asks the sí/no review question as plain conversational text in the ambient language
+- **AND** it does NOT present that global question through the harness option-picker
+
+#### Scenario: no is a hard stop
+
+- **WHEN** the user answers no to the plain-text review invitation
 - **THEN** the entire post-crystallization review section ends immediately and no per-change loop is entered
 
-#### Scenario: sliced crystallization offers the section once
+#### Scenario: yes enters the existing per-change loop
 
-- **WHEN** a crystallization turn emits multiple `Ready to Propose` blocks (sliced mode)
-- **THEN** the global Yes/No question is offered only once, after the final block of that turn
+- **WHEN** the user answers yes to the plain-text review invitation and the tracked crystallized set is non-empty
+- **THEN** `sai-explore` enters the per-change review loop over the chat-crystallized set in its preserved first-emission order, unchanged
+
+#### Scenario: yes with an empty tracked set ends the section
+
+- **WHEN** the user answers yes but the chat has crystallized no change names
+- **THEN** the per-change loop performs no iterations and the section ends immediately after the yes
+
+#### Scenario: plain-text global invitation is a deliberate remember.md exception
+
+- **WHEN** the global review invitation is presented on a harness that has a native option-picker (for example Claude Code)
+- **THEN** it is still presented as plain conversational text, as a deliberate documented exception to the "Closed-choice prompts" rule, and is not "corrected" back into an option-picker
+
+### Requirement: Per-change review picker remains a harness option-picker
+
+While the global review invitation becomes plain text, the per-change navigation menu SHALL remain a harness native option-picker. For each change in the tracked crystallized set, `sai-explore` SHALL present the three options `Review sai-1's artifacts`, `Review sai-2's artifacts`, and `Skip` through the harness option-picker per the "Closed-choice prompts" rule in `sai/instructions/remember.md`. The plain-text treatment applies ONLY to the global review invitation and SHALL NOT be extended to this per-change menu.
+
+#### Scenario: per-change menu still uses the native picker
+
+- **WHEN** the user answers yes to the global invitation and the per-change loop iterates a change
+- **THEN** the three-option per-change menu (`Review sai-1's artifacts`, `Review sai-2's artifacts`, `Skip`) is presented through the harness option-picker
+
+#### Scenario: plain-text exception does not extend to the per-change menu
+
+- **WHEN** the global review invitation is presented as plain text
+- **THEN** the per-change picker is unaffected and continues to honor the native-picker rule
 
 ### Requirement: Per-change review loop over chat-crystallized changes
 

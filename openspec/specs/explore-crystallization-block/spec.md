@@ -48,6 +48,33 @@ The sliced-feature `Ready to Propose` blocks emitted by `sai-explore` (`sai/inst
 - **WHEN** `sai-explore` emits the sliced-feature protocol with one `Ready to Propose` block per slice
 - **THEN** each per-slice block contains the original 5 fields only and does not include `**Decisions & Rationale**`, `**Alternatives Considered**`, `**Trade-offs Accepted**`, or `**Model / Re-framings**` sections
 
+### Requirement: Crystallization output closes with a keep-window-open recommendation
+
+Both the single-change crystallization output (`sai/instructions/explore.md` item 5) and the sliced-feature crystallization output (item 6) SHALL close with a recommendation that the user keep the current explore window open and use it to review and refine the artifacts created next by `/sai-1-spec` and `/sai-2-design`. This closing recommendation is plain conversational text rendered in the user's language at runtime (per `sai/instructions/remember.md`). It is emitted after the `Ready to Propose` block(s) — once, after the final block, in the sliced case — and replaces the removed auto-fired review picker as the thing that closes the crystallization turn.
+
+The recommendation SHALL NOT alter the `Ready to Propose` block itself — neither its field scaffolding nor the existing `Open a new chat` / `/sai-1-spec` line — and SHALL NOT alter the item-8 crystallization language-gate invariants (the block's bold field labels, kebab-case change name, `/sai-1-spec` command, and `Open a new chat` line stay in English; only free-text prose is rendered in the chosen language).
+
+#### Scenario: single-change block closes with the recommendation
+
+- **WHEN** `sai-explore` emits the single-change `Ready to Propose` block (item 5)
+- **THEN** it follows the block with a recommendation to keep the explore window open and review/refine the downstream `/sai-1-spec` and `/sai-2-design` artifacts there
+
+#### Scenario: sliced output emits the recommendation once after the final block
+
+- **WHEN** `sai-explore` emits the sliced-feature protocol with one `Ready to Propose` block per slice (item 6)
+- **THEN** the keep-window-open recommendation is emitted once, after the final slice block, and not repeated per slice
+
+#### Scenario: recommendation does not alter the block or the item-8 gate
+
+- **WHEN** the closing recommendation is emitted
+- **THEN** the `Ready to Propose` block's scaffolding, its `Open a new chat` / `/sai-1-spec` line, and the item-8 crystallization language-gate invariants are unchanged
+- **AND** the recommendation itself is plain conversational text rendered in the user's language
+
+#### Scenario: recommendation renders in the user's language
+
+- **WHEN** the conversation's ambient language is not English
+- **THEN** the closing recommendation prose is rendered in the user's language per `remember.md`, while the block scaffolding it follows stays governed by the item-8 gate
+
 ### Requirement: Sole edit target is sai/instructions/explore.md
 
 The change SHALL modify `sai/instructions/explore.md` only. No new files are created; no other shared instruction, command, skill, schema, OpenSpec template, or `sai-*` wrapper is modified. `/sai-1-spec` itself is unchanged because it reads the user's message in the new chat, which carries the block content directly. None of the three `sai-1-spec` wrappers under `commands/claude/`, `commands/opencode/`, or `commands/copilot/` is modified. No harness-specific configuration (opencode.jsonc, Copilot agent definitions, Claude Code skills) is touched.

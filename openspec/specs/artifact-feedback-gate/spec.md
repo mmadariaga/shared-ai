@@ -158,6 +158,36 @@ The feedback loop SHALL operate purely as same-session interaction grounded in t
 - **WHEN** the gate reprints the decision summary after a feedback edit
 - **THEN** every summary line traces to content in the updated step artifacts and no information from prior conversation appears
 
+### Requirement: Selecting the feedback option prompts cleanly for feedback text
+
+Because the gate is presented through a harness option-picker, selecting the feedback option cannot itself carry the feedback text. On selecting the feedback option, the gate SHALL FIRST emit a clean, non-accusatory prompt that names the step's `artifacts` and invites the user to supply their feedback in the next turn — it SHALL NOT report or imply that no feedback was supplied, and SHALL NOT run the per-item split/evaluate processing on an empty turn.
+
+The prompt's canonical form is `Share your feedback on {artifacts} below.`, where `{artifacts}` is replaced by the step's artifact list. Following the established explore.md item-3 pattern, this canonical form is authored in English but is NOT output verbatim in English: it is rendered in the user's language at runtime per `sai/instructions/remember.md` (for a Spanish-speaking user it reads `Indícame a continuación tu feedback sobre {artifacts}`). Only when the user's language is English is the English form output as-is.
+
+After emitting this prompt the gate SHALL wait for the user's reply, then apply the existing per-item feedback processing (`## On "Give feedback"`) to the supplied text. The existing selective-application, discard-reporting, resummarize, and re-offer behavior is unchanged; this requirement only inserts the clean prompt-and-wait step ahead of it.
+
+#### Scenario: feedback option emits a clean prompt naming the artifacts
+
+- **WHEN** the user selects the feedback option in the gate
+- **THEN** the gate emits a clean prompt that names the step's `artifacts` and asks the user to supply feedback in the next turn
+- **AND** it does NOT report that no feedback was found and does NOT run the per-item processing on an empty turn
+
+#### Scenario: prompt is rendered in the user's language
+
+- **WHEN** the user's conversation language is not English
+- **THEN** the canonical English prompt `Share your feedback on {artifacts} below.` is rendered in the user's language (for Spanish: `Indícame a continuación tu feedback sobre {artifacts}`)
+- **AND** when the user's language is English the English form is output as-is
+
+#### Scenario: supplied feedback flows into the existing per-item processing
+
+- **WHEN** the user replies to the clean prompt with their feedback text
+- **THEN** the gate applies the existing `## On "Give feedback"` per-item split, selective application, discard reporting, resummarize, and re-offer behavior to that text, unchanged
+
+#### Scenario: artifact list matches the step
+
+- **WHEN** the clean prompt is emitted in sai-1 versus sai-2
+- **THEN** `{artifacts}` names `proposal.md` and `specs/**` in sai-1, and `design.md`, `tasks.md`, and `interfaces.md` in sai-2 — matching the step's existing artifact list
+
 ### Requirement: Iteration counter is in-conversation only
 
 The gate SHALL track the iteration that drives the iteration-aware feedback option label with a single in-conversation counter starting at 0. The counter SHALL be incremented by 1 immediately after each feedback-selection turn completes. The counter SHALL be held in the agent's working memory for the duration of the current session only and SHALL NOT be written to any artifact, configuration file, `.openspec.yaml`, or any other on-disk state. The counter SHALL reset to 0 at the start of every fresh `/sai-*` invocation, so the first presentation of the gate in a new chat always reads `Give feedback`. The counter SHALL NOT be derived from any marker in the gate's own artifact set, hidden comment, or external state.

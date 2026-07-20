@@ -2,7 +2,8 @@
 
 ## Purpose
 
-TBD - created by archiving change minor-bugfixes. Update Purpose after archive.
+Enables the `--fast-track` per-invocation flag on `sai-explore`, `sai-2-design`, `sai-4-apply`, and `sai-archive`, defining each command's opt-out set, auto-stay behavior under fast-track mode, the single-canonical-membership rule, and the cross-command guardrails that survive fast-track.
+
 ## Requirements
 ### Requirement: The fast-track command set is the single canonical membership list
 
@@ -97,6 +98,36 @@ When `--fast-track` is active, the command's body file SHALL emit the single lin
 - **WHEN** a command runs without `--fast-track`
 - **THEN** no `FAST-TRACK MODE ACTIVE` banner is printed
 
+### Requirement: sai-4-apply under fast-track auto-selects Stay on current branch for the Prerequisites branch prompt
+
+When `sai-4-apply` runs with `--fast-track` active, the implementation.md Prerequisites branch-selection prompt (the three-option choice authored in `sai/instructions/implement.md`: `Suggest branch "{feature-name}"`, `Stay on current branch "{current-branch}"`, `Enter branch name manually`) SHALL be auto-resolved to option 2 "Stay on current branch" WITHOUT asking, and the agent SHALL print the single announcement line `> Fast-track: staying on current branch "{current-branch}"` (where `{current-branch}` is the detected current branch, matching the token used by the Prerequisites prompt option label) so there is a trace of why no prompt appeared.
+
+This auto-selection is a git no-op: option 2 creates no branch and switches to none. It therefore stays consistent with the fast-track carve-out that keeps branch create/switch outside fast-track — the auto-default is "pick the zero-mutation branch choice", not "skip a git approval". Because the branch-base sub-prompt is already skipped whenever option 2 is chosen (per `sai/instructions/implement.md`, the branch-base prompt is surfaced only for new branches), no additional handling of that sub-prompt is required.
+
+**Detached-HEAD safe fallback.** When the current git branch resolves as empty (detached HEAD — option 2's label would be `detached HEAD`), fast-track SHALL NOT auto-stay; the branch-selection prompt SHALL fire interactively exactly as it would without `--fast-track`, and no announcement line is printed.
+
+The auto-selection SHALL be implemented at apply time in `sai/instructions/apply.md` — fast-track state is known only at apply time, and this colocates with the existing sai-4-apply fast-track behaviors (commit pre-activation, Human-Verification deferral) — NOT in the implementation.md Prerequisites template. Scope is `sai-4-apply` only: no other command surfaces this prompt. All other apply gates — safe-operations confirmations, the commit-authorization gate's pre-commit file visibility report and proposed message, the GREEN-conflict STOP, and every gate outside sai-4-apply's named opt-out set — SHALL remain in force. No `.openspec.yaml` key, session flag, or environment variable is introduced by this requirement.
+
+#### Scenario: Branch prompt auto-stays on current branch under fast-track
+
+- **WHEN** `sai-4-apply {name} --fast-track` reaches the implementation.md Prerequisites branch-selection prompt and the current branch resolves to a non-empty name
+- **THEN** the agent does not present the three-option prompt, auto-selects option 2 "Stay on current branch", prints the line `> Fast-track: staying on current branch "{current-branch}"`, creates and switches to no branch, and proceeds to implement on the current branch
+
+#### Scenario: Branch-base sub-prompt needs no handling because stay is a git no-op
+
+- **WHEN** the branch prompt is auto-resolved to "Stay on current branch" under fast-track
+- **THEN** the branch-base sub-prompt is not reached — it is surfaced only for new branches — so the auto-selection introduces no additional prompt to suppress
+
+#### Scenario: Detached HEAD falls back to asking under fast-track
+
+- **WHEN** `sai-4-apply {name} --fast-track` reaches the branch-selection prompt but the current branch resolves as empty (detached HEAD)
+- **THEN** fast-track does NOT auto-stay; the three-option branch prompt fires interactively exactly as without `--fast-track`, and no `Fast-track: staying on current branch` announcement is printed
+
+#### Scenario: Auto-stay does not relax any other apply gate
+
+- **WHEN** `sai-4-apply {name} --fast-track` auto-stays on the current branch and later reaches a safe-operations confirmation or the commit-authorization gate
+- **THEN** the safe-operations confirmation is still required and the commit gate still prints its pre-commit file visibility report and proposed message; auto-staying opts out of the branch prompt only, nothing else
+
 ### Requirement: The fast-track flag opts out only of the gates named per command, never others
 
 For each of the four commands, `--fast-track` SHALL opt out of exactly the named gates and nothing else — it is a fixed, audited list of opt-outs, not a generic "skip all gates" switch. Safe-operations confirmations SHALL remain in force under fast-track for all four commands. No gate outside the per-command list SHALL be auto-answered or skipped.
@@ -108,7 +139,7 @@ For each of the four commands, `--fast-track` SHALL opt out of exactly the named
 
 #### Scenario: The opt-out set is fixed per command
 
-- **WHEN** fast-track is active for `sai-explore` (two language gates), `sai-2-design` (specs approval gate only), `sai-4-apply` (commit authorization + Human Verification deferral only), or `sai-archive` (unchecked-items gate always + delta-spec sync gate conditional only)
+- **WHEN** fast-track is active for `sai-explore` (two language gates), `sai-2-design` (specs approval gate only), `sai-4-apply` (commit authorization + Human Verification deferral + Prerequisites branch-selection prompt auto-stay only), or `sai-archive` (unchecked-items gate always + delta-spec sync gate conditional only)
 - **THEN** no gate beyond that command's named set changes behavior
 
 ### Requirement: Fast-track behavior is harness-agnostic and documented

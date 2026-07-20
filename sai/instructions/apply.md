@@ -225,6 +225,17 @@ The agent MAY maintain a single boolean flag in its in-conversation working memo
 - **Reset:** the flag is inactive at the start of every new chat or new `/sai-*` invocation (Isolation Mode clears inherited context). It is NEVER written to `.openspec.yaml`, config, or any file on disk.
 - **Scope boundary:** the grant covers `git add` + `git commit` at the commit gate ONLY. It does NOT authorize `push`, `--force`, branch create/switch, rebase, merge, tag, or `gh pr`; those operations still require their own per-operation approval regardless of the flag. The grant does NOT bypass the GREEN-conflict STOP or the apply Human Verification gate; those still halt the workflow regardless of the flag.
 
+### Fast-track branch auto-stay
+
+This behavior is triggered at apply time when the running plan reaches the implementation.md **Prerequisites branch-selection prompt** — the three-option closed choice authored in `sai/instructions/implement.md:243-246` (`Suggest branch "{feature-name}"`, `Stay on current branch "{current-branch}"`, `Enter branch name manually`). The rule lives here in `apply.md` rather than in `implement.md` because the fast-track signal is resolvable only at apply time; naming the `implement.md` trigger keeps that cross-file coupling explicit (see `docs/adr/0059-fast-track-auto-stay-branch-rule-in-apply.md`).
+
+If the fast-track signal is active when that prompt is reached, the coordinator SHALL auto-resolve it to option 2 "Stay on current branch" WITHOUT presenting the three options, reusing the prompt's own `{current-branch}` value and its "empty ⇒ detached HEAD" convention:
+
+- **Non-empty current branch** → auto-stay (create no branch, switch to none) and print exactly one trace line: `> Fast-track: staying on current branch "{current-branch}"` (`{current-branch}` is the same token the option-2 label resolves).
+- **Empty current branch (detached HEAD)** → do NOT auto-stay. Let the three-option prompt fire interactively exactly as it would without `--fast-track`, and print no announcement line.
+
+The branch-base sub-prompt needs no separate handling: it is surfaced only for new branches and is already skipped whenever option 2 is chosen (`sai/instructions/implement.md:248-251`). This auto-selection is a git no-op and opts out of the branch prompt only — every other gate stays in force (safe-operations confirmations, the commit-authorization gate's pre-commit file visibility report and proposed message, and the GREEN-conflict STOP). See `openspec/specs/sai-fast-track-flag/spec.md` for the exact behavior, announcement string, and scope guarantees.
+
 ## Git Operations
 
 Fetch @sai/instructions/commit-rules.md
