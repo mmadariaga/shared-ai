@@ -3,6 +3,7 @@ description: Explore mode wrapper — thinking partner for ideas, problems, and 
 argument-hint: "[optional: change-name or topic] [--fast-track]"
 model: claude-sonnet-4-6
 effort: medium
+allowed-tools: Read, Glob, Grep, Bash(openspec:*), Bash(git:*), AskUserQuestion, Skill, Task, TodoWrite, WebFetch, WebSearch, mcp__codegraph__codegraph_explore
 ---
 ## Sai Explore
 
