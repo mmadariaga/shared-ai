@@ -114,6 +114,9 @@ Loaded by 7 sai-* command wrappers (`sai-1-spec`, `sai-4-apply`, `sai-archive`, 
 - **Confirmation gate**: agent MUST ask user before: deleting files/branches, `rm -rf`, `git push --force`, `git reset --hard`, amending published commits, pushing code, commenting on PRs/issues, modifying shared infrastructure.
 - **No destructive shortcuts**: agent MUST NOT bypass safety checks (`--no-verify`) or discard unfamiliar files that may be in-progress work.
 
+### Explore-mode read-only enforcement
+`sai-explore`'s explore-mode "No file writes" guarantee (`sai/instructions/explore.md`) is **enforced**, not merely conventional, in the two harnesses whose command frontmatter supports tool restriction: **Claude Code** via `allowed-tools` (scoped to read/search/dispatch tools — `Edit`, `Write`, and bare `Bash` omitted; shell limited to the prefix-scoped globs `Bash(openspec:*)` and `Bash(git:*)`) and **GitHub Copilot** via `tools:` (terminal `execute` dropped, the broad `vscode` category narrowed to `vscode/askQuestions`). **opencode** has no per-command tool-restriction frontmatter field, so `commands/opencode/sai-explore.md` is intentionally left unchanged and its read-only guarantee stays model-discipline-only; routing opencode's `sai-explore` to a read-only sub-agent was rejected because it breaks the main-session interactivity the command requires.
+
 ### Language Policy
 All agents MUST think and reason internally in English, regardless of the user's input language.
 
