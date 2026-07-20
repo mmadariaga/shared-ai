@@ -3,7 +3,7 @@ description: Explore mode wrapper — thinking partner for ideas, problems, and 
 argument-hint: "[optional: change-name or topic] [--fast-track]"
 agent: agent
 model: GPT-5.4 (copilot)
-tools: [vscode, read, execute, search, web, todo]
+tools: [vscode/askQuestions, read, search, web, todo]
 ---
 ## Sai Explore
 
