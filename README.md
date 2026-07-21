@@ -108,6 +108,7 @@ All artifact paths below resolve under `openspec/changes/{change-name}/` (referr
 | `/sai-commit` | Reads your staged changes and detects the repo's commit style from the last 20 commits (Conventional Commits shape, type/scope vocabulary, body conventions). Adopts the detected vocabulary when it fits, falls back to hard-coded rules otherwise. Shows a pre-commit file report and runs `git commit` only after you explicitly approve. |
 | `/sai-pr` | Drafts a complete PR description using everything produced during the change (proposal, design, review findings, etc.). Opens the PR on GitHub after you approve. |
 | `/sai-archive` | Moves a completed change to the archive, keeping your active changes folder clean. Supports `--fast-track` to auto-proceed the archive soft gates. |
+| `/sai-status` | Read-only progress panel for one OpenSpec change — shows which of the 10 sai-workflow artifacts exist, the specs approval state, implementation progress, the archive location if archived, and a `Next:` hint suggesting the appropriate `/sai-N` command. Never writes anything. |
 | `/sai-backfill` | Made a quick fix directly in code without going through the pipeline? This reconstructs the missing documentation after the fact — interviewing you about intent and writing only what can be reliably derived from the diff. |
 
 ## Triage in `/sai-5-review`
@@ -366,6 +367,7 @@ The **Copilot** column shows two model identifiers:
 | pr | `opencode-go/deepseek-v4-flash` | `claude-haiku-4-5` | `GPT-5 mini (copilot)` | `github-copilot/gpt-5-mini` |
 | backfill | `opencode-go/minimax-m3` | `claude-sonnet-5` | `GPT-5.4 (copilot)` | `github-copilot/gpt-5.4` |
 | archive | `opencode-go/deepseek-v4-flash` | `claude-haiku-4-5` | `GPT-5 mini (copilot)` | `github-copilot/gpt-5-mini` |
+| status | `opencode-go/deepseek-v4-flash` | `claude-haiku-4-5` | `GPT-5 mini (copilot)` | `github-copilot/gpt-5-mini` |
 
 ### Choosing a model
 

@@ -30,6 +30,7 @@ This prevents the LLM from skipping command loading and making free interpretati
 | `/sai-8-accessibility` | `@commands/sai-8-accessibility.md` | Structured Accessibility Audit — WCAG 2.2 AA static review, produces accessibility.md. |
 | `/sai-archive` | `@commands/sai-archive.md` | Archive a completed change — moves openspec/changes/{name}/ into the archive folder. |
 | `/sai-pr` | `@commands/sai-pr.md` | Pull Request Author — synthesizes PR title and body from change artifacts and git diff, opens PR via gh. |
+| `/sai-status` | `@commands/sai-status.md` | Read-only progress panel for one OpenSpec change — the 10 sai-workflow artifacts, specs approval, implementation progress, and a Next: hint. |
 | `/sai-commit` | `@commands/sai-commit.md` | Conventional Commits message author from staged changes — generates subject and body, gates commit behind explicit authorization. |
 | `/sai-backfill` | `@commands/sai-backfill.md` | Post-hoc backfill — reconstructs proposal.md and capability specs for changes that skipped the SAI workflow. |
 | `/budget` | `@commands/budget.md` | Load all four budget skills (explorer + executor + budget-subagent + token-efficient-languages) simultaneously. |
