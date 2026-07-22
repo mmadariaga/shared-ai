@@ -200,6 +200,8 @@ The report is sourced from three inputs read in order:
 2. The **intended add-list** — the exact paths the coordinator will `git add` on `yes`, taken from the subagent report field 8 (`Files modified`). For a **non-testable** Step this is the single dispatch's field 8. For a **testable** Step (split into a test-writer dispatch and an implementation dispatch) the coordinator SHALL use the **union** of field 8 from BOTH reports, because the commit is per-Step and includes the files written by both dispatches.
 3. Per-file `+N -M` line counts computed from the **working tree vs `HEAD`** for the add-list paths (e.g. `git diff --stat HEAD -- <paths>`), NOT from `git diff --cached` (which is empty before staging). Untracked add-list paths have no `HEAD` baseline, so their counts SHALL be computed explicitly as all-insertions via `git diff --no-index --stat -- /dev/null <path>` — the same `--stat` form used for tracked paths. Note `git diff --no-index` **exits non-zero (1) when the files differ** — the expected case here — so the coordinator MUST NOT treat that exit code as a failure inside a `&&` / `if ($?)` chain.
 
+This report's inputs are field 8 only. Field 9 (`Attempts per phase`) contributes nothing to the add-list, to any block of this report, or to the status letter, and its absence never degrades or blocks it.
+
 The report SHALL contain, in this fixed order:
 
 1. A header line with the change name, the Step number `N`, and the overall status letter (one of `OK`, `WARN`, `MISMATCH`, `DEVIATION`).
@@ -216,13 +218,15 @@ The report SHALL NOT include a diff preview, full file contents, or tracebacks.
 
 ### Malformed subagent report
 
-If a subagent report omits field 8 (`Files modified`) or returns it as empty, the coordinator SHALL treat that report as malformed and surface it to the user explicitly. The coordinator SHALL NOT guess or fabricate the file list from `git status` alone when a subagent failed to provide it. For a **testable** Step this check applies independently to BOTH the test-writer report and the implementation report — either one omitting field 8 makes the pre-commit report unreliable for that Step. A subagent's failure to populate field 8 is itself a deviation worth flagging. In this case, print:
+This rule keys on **field 8 only**. If a subagent report omits field 8 (`Files modified`) or returns it as empty, the coordinator SHALL treat that report as malformed and surface it to the user explicitly. The coordinator SHALL NOT guess or fabricate the file list from `git status` alone when a subagent failed to provide it. For a **testable** Step this check applies independently to BOTH the test-writer report and the implementation report — either one omitting field 8 makes the pre-commit report unreliable for that Step. A subagent's failure to populate field 8 is itself a deviation worth flagging. In this case, print:
 
 ```
 Subagent report missing field 8 (Files modified). Cannot produce a reliable pre-commit report. Review the staged state manually before committing.
 ```
 
 and pause for the user before proposing the commit message.
+
+**Field 9 is exempt.** An absent or empty field 9 (`Attempts per phase`) SHALL NOT make a report malformed. The coordinator SHALL NOT print the message above on its account, SHALL NOT pause for the user on its account, and SHALL NOT block checkbox marking, the pre-commit file visibility report, or the commit gate. Instrumentation can never stop the workflow: when field 9 is absent the coordinator proceeds with every other workflow step unchanged and simply records no telemetry rows for that dispatch.
 
 ## STOP & COMMIT Checklist
 
