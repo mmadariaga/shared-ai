@@ -46,6 +46,9 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 **Step Contract**: "The `## Step N` section of a change's `interfaces.md` carrying that Step's signatures and exact assertions, whose availability is evaluated per Step because `design.md` omits the section for any step with no interface surface."
 *Avoid*: interface contract, interfaces section, Step N block, contract file
 
+**Test Command**: "The mandatory `## Implementation Context` field carrying the directly executable command that runs this project's tests plus its parameterised scoping idiom, derived by `/sai-2-design` from codebase research and injected into a **Blind Test-Writer**, which is otherwise given no way to obtain it."
+*Avoid*: run command, test runner, test script, testing command, suite command
+
 **Tracked Crystallized Set**: "The chat-scoped, in-conversation-only list of every `**Change name**` value that this `sai-explore` chat's crystallization turns emitted, held in first-emission order and never derived from repository state."
 *Avoid*: crystallized changes, change list, session changes, active changes
 
@@ -60,6 +63,7 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 - An **Attempts Per Phase** entry exists for `red` exactly where the report's RED result is non-`n/a`, and for `green` exactly where the GREEN result is non-`n/a`; a **Blind Test-Writer** therefore emits one entry, an **Implementation Dispatch** one, and a non-testable Step's single dispatch two when its body contains a RED block and one otherwise.
 - An **Attempts Per Phase** entry is retrospective and flows only into the **Execution Telemetry Appendix** — never back into a later dispatch prompt, which is the technical-learnings channel's job.
 - An **Execution Telemetry Appendix** is written only by the `/sai-4-apply` coordinator, in the same per-Step loop slot as the deviations appendix, so it lands in the Step's own commit.
+- A **Test Command** belongs to one change's `## Implementation Context` and is consumed by exactly one dispatch — the **Blind Test-Writer**; a single dispatch receives the Step's own verification commands instead.
 - A **Blind Test-Writer** and an **Implementation Dispatch** replace the single per-Step dispatch only for a **Split-Routed Step**; every other Step keeps one dispatch, including a Step with a RED block whose **Step Contract** is unavailable.
 - A **Step Contract** that is missing for a Step routes that Step to a single dispatch (announced by a coordinator trace line); a **Step Contract** that is ambiguous — several `## Step N` matching the same `N` — is a desync and STOPs the run.
 - A **Review-Loop Token** firing enters the per-change review loop over the **Tracked Crystallized Set**; when that set is empty the token yields a one-line acknowledgment instead of any iteration.
