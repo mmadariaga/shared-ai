@@ -210,6 +210,17 @@ For a testable Step split into a test-writer dispatch then an implementation dis
 
 When dispatching a subagent, the coordinator SHALL select and inject only the accumulated learnings it deems relevant to that dispatch. It SHALL NOT dump the entire learnings memory into a dispatch — that would reintroduce the execution noise the delegation is designed to avoid. Learnings MAY be injected into a blind test-writer dispatch, subject to the blindness constraint: the coordinator SHALL NOT inject any learning that reveals the current Step's GREEN implementation body. Prior-Step environmental facts (missing symbols, real API signatures) do not violate blindness and MAY be injected.
 
+**Field 6 is injected; field 9 is not.** The two fields are separated by destination, not by content quality:
+
+- Field 6 (technical learnings) is **prospective** — facts the next dispatch needs in order to do its work, and is therefore injected under the rules above.
+- Field 9 (attempts per phase) is **retrospective** — a diagnosis of the run just executed, written for the human tuning the workflow, and is therefore persisted to the Execution Telemetry appendix and never injected.
+
+The coordinator SHALL NOT include any field-9 content — an entry, an `attempts` count, a `first_failure` token, a `note`, or a rendered telemetry row — in any subsequent dispatch prompt, for the same Step or any later Step. This holds for the non-testable single dispatch, the blind test-writer dispatch, and the implementation dispatch alike, and no dispatch prompt SHALL reference the `## Appendix: Execution Telemetry` table. A fact that a subagent expressed as a field-9 `note` and that a later dispatch genuinely needs SHALL reach that dispatch only via field 6, authored as a technical learning by the subagent — never by the coordinator lifting the note out of field 9.
+
+The coordinator SHALL NOT ask a subagent to expand, explain, or justify a field-9 entry. A high `attempts` count is recorded as reported; it is not grounds to re-dispatch, to prompt, or to request the failing output.
+
+**A `note` that violates its contract is dropped, not cleaned.** When a `note` contains a traceback, a raw file excerpt, or an iteration log, the coordinator SHALL write the row with an **empty `note` cell** — dropping the note entirely rather than editing, trimming, or sanitising it — and continue without blocking the workflow. Partial cleaning of prose the coordinator has already read is not a containment guarantee and SHALL NOT be treated as one. The bound on execution noise is the subagent-side note contract plus the fixed-column table: the mechanism adds no request for failing output, no follow-up prompt, and no free-text retry field. Because the report is returned to the coordinator, a violating note is already in the coordinator's context and nothing downstream removes it; the guarantee covers what is persisted and the absence of any new pathway, nothing more.
+
 ## Pre-commit File Visibility Report
 
 At every STOP & COMMIT marker, the coordinator SHALL print a structured pre-commit file visibility report **before** proposing the commit message. The report is mandatory — there is no opt-out flag, and skipping it is a spec violation.
