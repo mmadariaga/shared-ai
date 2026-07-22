@@ -26,6 +26,7 @@ No skills are required by default. Load a skill only if the plan invokes it expl
 
      4. **Mark checkboxes.** Once verification passed and (if applicable) the user confirmed Human Verification, mark all of that Step's checkboxes `[x]` in `openspec/changes/{change-name}/implementation.md` in one batched update — per Step, not per item. This supersedes the general "mark each item immediately, do not batch" default for `sai-4-apply` only.
     5. **Deviations appendix.** Append the report's deviations (if any) per the format below. This must happen before the coordinator commits, so the appendix entry lands in the same commit as the changes it describes.
+    6. **Telemetry appendix.** Append the report's field-9 entries (if any) as rows per the format below. Like the deviations appendix, this MUST happen before the coordinator commits.
 - If a subagent's report indicates "STOP reached? = yes" (it halted mid-Step at a STOP & COMMIT marker in the Step's own body, or at a GREEN-conflict STOP), treat the work reported so far according to the halt type: for a STOP & COMMIT marker, run the checklist below for what was completed; for a GREEN-conflict STOP, follow the GREEN-conflict halt path above.
 - **GREEN-conflict halt (testable Steps only):** If the implementation dispatch for a testable Step reports GREEN = fail and STOP reached = yes (unpassable GREEN — the implementation cannot satisfy the test-writer's tests within bounded, test-file-untouching iteration), the coordinator SHALL surface the conflict to the user and SHALL NOT mark the Step's checkboxes, propose a commit, or advance to the next Step. The coordinator waits for the human to decide whether the fault is the implementation, the test, or the interface. This path is distinct from a STOP & COMMIT marker: it is a failure, not a checkpoint.
 - **Loop until every Step is done:** completing a Step — its verification, its checkboxes, its commit — is NOT the end of the run; it is one iteration of this workflow. After a Step's STOP & COMMIT checklist finishes (commit created, or the user declined and was told how to commit themselves), immediately return to the top of this workflow, and the first action of the new iteration is always the same: dispatch a NEW Step-execution subagent for the next unchecked Step (per "## Step-Execution Subagent Dispatch"). The no-self-execution rule holds on every iteration, not just the first: no matter how small or familiar the next Step looks after the ones already done, the coordinator never edits code, runs tests, or performs the Step's body itself — it dispatches. The only reasons to end the turn early are: the user says stop, a discrepancy/failed verification is being surfaced, or you are waiting on a Human Verification or commit-authorization answer. While `implementation.md` still contains an unchecked Step, you MUST NOT declare the implementation done, print the completion message, or suggest `/sai-5-review` — doing so mid-plan is a workflow violation, not a stylistic choice.
@@ -49,6 +50,27 @@ No skills are required by default. Load a skill only if the plan invokes it expl
     ```
 
     Document every deviation you encountered (e.g., methods that needed extra annotations, order-of-operations bugs discovered in the plan, tests removed because they were invalid, launcher changes, missing imports, etc.). Do not omit deviations just because they are small. If a step had zero deviations, do NOT add an empty entry — skip it.
+
+- **Execution Telemetry appendix (incremental):** In the same slot as the deviations appendix — after the coordinator's own verification passes and (if applicable) the user confirms Human Verification, and **before** the commit — append one row per field-9 entry to a `## Appendix: Execution Telemetry` section at the end of `openspec/changes/{change-name}/implementation.md`. Create the section on the first row written and append below the existing rows thereafter; never create a second section. The section holds exactly one table, with these columns in this fixed order:
+
+    ````markdown
+    ## Appendix: Execution Telemetry
+
+    | Step | dispatch | phase | attempts | first_failure | note |
+    |---|---|---|---|---|---|
+    | 3 | writer | red | 1 | n/a | |
+    | 3 | implementation | green | 2 | assertion | switched the fixture to the shared test helper |
+    ````
+
+    Column sources: `Step` is the integer `N` of the Step just executed, and `dispatch` is one of `single` / `writer` / `implementation`. **Both are supplied by the coordinator** from the dispatch it issued, never read from the subagent report — the subagent does not report the dispatch kind, and a subagent-supplied dispatch value (if one ever appeared) is ignored. `phase`, `attempts`, `first_failure`, and `note` are copied verbatim from the corresponding field-9 entry.
+
+    Write exactly one row per field-9 entry — no more and no fewer. A testable Step contributes rows from both its test-writer dispatch and its implementation dispatch. A non-testable Step contributes rows from its single dispatch: two (one `red`, one `green`) when the Step's body contains a RED block, and one (`green`) when it does not. Non-testable Steps are NEVER excluded from the appendix. Both the `dispatch` axis and the `phase` axis are recorded so a RED attempt count from the non-blind single dispatch stays distinguishable from a RED attempt count from the blind test-writer; the coordinator SHALL NOT collapse the two axes into one.
+
+    Do NOT extend the table with a free-text column, and do NOT write raw file contents, tracebacks, or iteration logs into any cell.
+
+    Writing rows is never a gate: if a Step's dispatches returned no field-9 entries at all, append no rows, create no empty section, print no warning, and continue to the commit gate unchanged — exactly as an empty deviations entry is skipped.
+
+- **Appendix order (invariant):** Both appendices live at the end of `implementation.md` in this fixed order — `## Appendix: Plan vs Final Implementation` first, then `## Appendix: Execution Telemetry`. The order SHALL NOT depend on which section a given run happened to create first. When the deviations section is created while a telemetry section already exists, **insert it above** the `## Appendix: Execution Telemetry` heading rather than appending it at the end of the file, so a plan whose early Steps produce no deviations lays the sections out identically to one whose early Steps do.
 </workflow>
 
 ## Step-Execution Subagent Dispatch
