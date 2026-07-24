@@ -16,7 +16,7 @@ The argument is the change name (kebab-case). Read these artifacts from `openspe
 
 ## Expertise Profile
 
-Read `## Implementation Context` (**Stack**, **Conventions**, **Avoid**) from `tasks.md`. Treat these three fields as the complete Expertise Profile contract.
+Read `## Implementation Context` (**Stack**, **Conventions**, **Avoid**, **Test Command**) from `tasks.md`. Treat these four fields as the complete Expertise Profile contract.
 - Do NOT require a separate Primary Role / Technologies & Libraries / Standards / Output Quality Bar block.
 - Do NOT STOP on missing Expertise Profile subsections.
 - Do NOT perform codebase exploration to recover stack or convention information.
