@@ -19,7 +19,13 @@ The file SHALL contain one numbered section per implementation step, structured 
 
     **Testing Strategy**: <how correctness will be verified for this step>
 
+    **Existing Tests Broken**: <existing tests this step breaks, each with failure mode `compile` or `runtime`; `None` when the step breaks none>
+
 The `**Routing**` line SHALL be the first sub-field under the step title, immediately preceding `**Files Affected**`. The line uses key=value tagged pairs (not positional tokens); the three keys `layer`, `discipline`, `complexity` are mandatory and in that order. The three values are drawn from the enumerations defined in the `tasks-routing-metadata` capability spec, and the derivation rubric is encoded in the design instructions. No `routing.md`, routing table, or routing JSON sidecar is emitted; the formatted line is the only routing artifact. An optional trailing parenthetical `(... )` is allowed for human audit and MUST be ignored by any parser of the line.
+
+The `**Existing Tests Broken**` sub-field SHALL be the fifth and last sub-field of every step section, immediately following `**Testing Strategy**`. Its literal label SHALL be exactly `**Existing Tests Broken**` — the label is pinned so two independent design runs emit the same parseable token. Its content contract is defined by the `tasks-existing-test-impact` capability spec. The sub-field is mandatory for all `tasks.md` files emitted by `/sai-2-design` after this change lands; archived `tasks.md` files are exempt.
+
+The five sub-fields enumerated above are the complete and closed set for a `## Step N` section. No sixth sub-field SHALL be invented by the design agent.
 
 The file SHALL NOT contain any `- [ ]` or `- [x]` markers.
 
@@ -33,7 +39,7 @@ Both sections are mandatory for all new changes. Archived `tasks.md` files that 
 #### Scenario: tasks.md generated without checkboxes
 
 - **WHEN** `sai-2-design` generates `tasks.md` for a change
-- **THEN** the file contains only numbered `## Step N:` sections with Routing, Files Affected, What Will Be Done, and Testing Strategy sub-fields; no `- [ ]` markers are present anywhere in the file
+- **THEN** the file contains only numbered `## Step N:` sections with Routing, Files Affected, What Will Be Done, Testing Strategy, and Existing Tests Broken sub-fields; no `- [ ]` markers are present anywhere in the file
 
 #### Scenario: tasks.md used as narrative context
 
@@ -44,6 +50,17 @@ Both sections are mandatory for all new changes. Archived `tasks.md` files that 
 
 - **WHEN** `sai-2-design` generates `tasks.md`
 - **THEN** the file ends with `## Required Documentation` followed by `## Implementation Context`, both containing real content derived from design-phase research
+
+#### Scenario: Existing Tests Broken label is pinned
+
+- **WHEN** `sai-2-design` emits a step's existing-test-impact declaration
+- **THEN** the sub-field label is exactly `**Existing Tests Broken**`
+- **AND** no synonym such as "Tests Affected" or "Broken Tests" is emitted in its place
+
+#### Scenario: Archived tasks.md files exempt from the fifth sub-field
+
+- **WHEN** a reader inspects a `tasks.md` archived before this change
+- **THEN** the absence of an `**Existing Tests Broken**` sub-field is not a violation
 
 ### Requirement: schema-tasks-instruction-updated
 
@@ -88,6 +105,7 @@ Every `## Step N:` section in a new `tasks.md` SHALL include a line of the form 
 #### Scenario: Routing line position is invariant
 
 - **WHEN** a reader scans a step section top-to-bottom
-- **THEN** the order of sub-fields is: Routing, Files Affected, What Will Be Done, Testing Strategy
-- **THEN** no other ordering of these four sub-fields is acceptable
+- **THEN** the order of sub-fields is: Routing, Files Affected, What Will Be Done, Testing Strategy, Existing Tests Broken
+- **THEN** no other ordering of these five sub-fields is acceptable
+- **THEN** the relative order of the original four sub-fields is unchanged by the addition of the fifth
 
