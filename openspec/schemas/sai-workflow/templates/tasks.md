@@ -40,3 +40,8 @@
 
 **Avoid**:
 <!-- anti-patterns the implementation agent might default to given the declared stack -->
+
+**Test Command**:
+<!-- exact command that runs this project's tests, from the project root -->
+<!-- carry the parameterised scoping idiom (flag + test-project/path + <TestName> placeholder), e.g. dotnet test tests/<Project> --filter FullyQualifiedName~<TestName> — not a bare suite command -->
+<!-- if the project has no test runner at all, write: None — no test runner in this project -->

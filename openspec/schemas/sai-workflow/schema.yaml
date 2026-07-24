@@ -133,7 +133,7 @@ artifacts:
 
       ## Implementation Context
 
-      Derived from codebase research performed during design. Contains exactly three fields:
+      Derived from codebase research performed during design. Contains exactly four fields:
 
       **Stack**: primary language/framework + key versions relevant to this change
 
@@ -143,7 +143,15 @@ artifacts:
 
       **Avoid**: anti-patterns the implementation agent might default to given the declared stack.
 
-      IMPORTANT: Stack, Conventions, and Avoid MUST be derived from the actual codebase.
+      **Test Command**: the exact command that runs this project's test suite, executable from the
+      project root by a subagent that has read neither implementation.md nor design.md. Where the
+      runner supports scoping a run to a subset of tests, also carry the project's scoping idiom in
+      parameterised form — the concrete flag and the concrete test-project/path argument with a
+      substitutable placeholder for the test identifier (e.g. dotnet test tests/<Project> --filter
+      FullyQualifiedName~<TestName>) — not a bare suite command and not one Step's resolved filter.
+      When the project has no test runner at all, write the sentinel: None — no test runner in this project.
+
+      IMPORTANT: Stack, Conventions, Avoid, and Test Command MUST be derived from the actual codebase.
       Generic or placeholder content is not acceptable.
     requires:
       - specs
