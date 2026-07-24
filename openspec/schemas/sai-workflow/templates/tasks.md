@@ -8,6 +8,8 @@
 
 **Testing Strategy**: <!-- how correctness will be verified for this step -->
 
+**Existing Tests Broken**: <!-- existing tests this step breaks, each with failure mode compile or runtime, shared fixtures first; None when the step breaks none -->
+
 ## Step 2: <!-- Title -->
 
 **Routing**: layer=<!-- frontend|backend|infra|cross-cutting --> · discipline=<!-- ui-ux|app-code|service|data|config --> · complexity=<!-- low|medium|high -->
@@ -17,6 +19,8 @@
 **What Will Be Done**: <!-- prose description of the work in this step -->
 
 **Testing Strategy**: <!-- how correctness will be verified for this step -->
+
+**Existing Tests Broken**: <!-- existing tests this step breaks, each with failure mode compile or runtime, shared fixtures first; None when the step breaks none -->
 
 ## Required Documentation
 

@@ -72,9 +72,12 @@ artifacts:
           2. Surprising without context — would a future reader ask "why did they do it this way"?
           3. Real trade-off — were genuine alternatives available?
         If all three apply, document alternatives-considered and the rationale for the chosen approach.
-      - **Risks / Trade-offs**: known limitations; format: [Risk] → Mitigation
+        Each decision also carries a pinned `**Provenance**: <token>` marker — one of `user` / `codebase-forced` / `derived` (precedence in that order).
+      - **Risks / Trade-offs**: known limitations; format: [Risk] → Mitigation. A risk MAY carry a pinned `(**Verify-first**: Step N)` marker naming a step it gates.
       - **Migration Plan**: deploy steps, rollback strategy (if applicable)
       - **Open Questions**: outstanding unknowns to resolve
+      - **Deferred**: decisions deliberately postponed, each with a concrete cost-of-postponing and a recommendation; `None` when empty. Non-blocking — not routed through the Open Questions gate.
+      - **Manual Verification**: closing section — hand-cheap / automation-expensive checks (generated-artifact drift, end-to-end smoke); `None` with a one-line reason when empty.
 
       Reference proposal for motivation, specs for requirements.
     requires:
@@ -109,6 +112,8 @@ artifacts:
       **What Will Be Done**: <prose description of the work in this step>
 
       **Testing Strategy**: <how correctness will be verified for this step>
+
+      **Existing Tests Broken**: <existing tests this step breaks, each with failure mode `compile` or `runtime`, shared fixtures first; `None` when the step breaks none — fifth and last sub-field, label pinned>
 
       Order steps by dependency (what must be done first). Steps should be small enough to
       expand into a single implementation.md step group.
@@ -164,6 +169,10 @@ artifacts:
     instruction: |
       Create interfaces.md — the per-step contract of public signatures and exact test assertions,
       consumable without the implementation body.
+
+      The file opens with a single `## Target State` section (the finished shape as one concrete
+      artifact) before the first `## Step N` — the only admitted leading non-step section; `None`
+      with a one-line reason when no finished shape is expressible.
 
       Keyed by ## Step N using the same integer keys as tasks.md. Emit one section per step that
       introduces a new/modified public interface or a testable assertion; each section has two parts:

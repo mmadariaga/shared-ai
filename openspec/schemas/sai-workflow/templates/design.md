@@ -20,6 +20,7 @@
      Otherwise the decision is still documented, but brief-only (drop the Alternatives block). -->
 
 ### D1: <!-- Decision title -->
+**Provenance**: <!-- user | codebase-forced | derived — the highest-precedence applicable token -->
 **Decision**: <!-- What was decided -->
 **Rationale**: <!-- Why this approach over the alternatives -->
 **Alternatives considered**:
@@ -39,7 +40,8 @@
 
 ## Risks / Trade-offs
 
-<!-- [Risk description] → Mitigation -->
+<!-- [Risk description] (**Verify-first**: Step N) → Mitigation -->
+<!-- The (**Verify-first**: Step N) marker is optional — include it only when the risk gates a specific step; omit it otherwise. -->
 
 ## Migration Plan
 
@@ -48,3 +50,11 @@
 ## Open Questions
 
 <!-- Outstanding unknowns or decisions deferred to implementation. -->
+
+## Deferred
+
+<!-- Decisions deliberately postponed, each with: a concrete cost of postponing (what accumulates or must be reworked later) + a recommendation. Non-blocking — NOT an Open Question. Write None if nothing is deferred. -->
+
+## Manual Verification
+
+<!-- Closing section (always last). Checks that are cheap by hand and expensive to automate: generated-artifact drift, end-to-end smoke. Each item names what to check and what a correct result looks like — not "verify it works". Write None + a one-line reason if no manual check applies. -->

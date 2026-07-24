@@ -16,14 +16,26 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 **Blind Test-Writer**: "The first `/sai-4-apply` dispatch of a **Split-Routed Step**, given only that Step's `interfaces.md` section plus injected testing context — never the GREEN implementation body — that writes the tests (and RED stubs) and verifies a valid RED."
 *Avoid*: test dispatch, test agent, RED writer, test-first subagent
 
+**Deferred Decision**: "A decision a change could have made and deliberately postponed because its cost rises the longer it waits, recorded in `design.md`'s `## Deferred` section with a concrete postponement cost and a recommendation."
+*Avoid*: postponed decision, open question, non-goal, backlog item, TODO
+
 **Execution Telemetry Appendix**: "The coordinator-authored `## Appendix: Execution Telemetry` table at the end of `implementation.md`, one row per **Attempts Per Phase** entry, whose `Step` and `dispatch` columns are supplied by the coordinator rather than reported by the subagent."
 *Avoid*: telemetry log, retry appendix, metrics table, execution log
+
+**Existing Tests Broken**: "The pinned fifth `## Step N` sub-field of `tasks.md` naming the existing tests a step breaks and each one's `compile` or `runtime` failure mode, shared fixtures first, `None` when it breaks none."
+*Avoid*: Tests Affected, Broken Tests, test impact, regressions
 
 **GREEN Conflict**: "The state where an Implementation Dispatch cannot make the test-writer's tests pass within bounded, test-file-untouching iteration, so it halts and reports to the coordinator for a human to decide whether the fault is the implementation, the test, or the interface."
 *Avoid*: test failure, GREEN failure, broken test, unpassable step
 
 **Implementation Dispatch**: "The second `/sai-4-apply` dispatch of a **Split-Routed Step**, given the GREEN implementation body, that writes the implementation and verifies GREEN and is forbidden from creating or modifying any test file."
 *Avoid*: GREEN dispatch, impl agent, code writer, build dispatch
+
+**Manual Verification**: "The closing section of `design.md` listing the checks that are cheap by hand and expensive to automate — generated-artifact drift and end-to-end smoke — naming the middle tier between automated tests and `/sai-5-review`."
+*Avoid*: QA checklist, manual QA, smoke test section, verification steps
+
+**Provenance Marker**: "The pinned `**Provenance**` sub-field on every `design.md` Decision carrying one of `user` / `codebase-forced` / `derived`, signalling how re-litigable the decision is downstream."
+*Avoid*: Decision Source, Origin, decision tag, author marker
 
 **Review-Loop Token**: "The literal, English-invariant string `review-loop` that a user types in a `sai-explore` turn to enter the post-crystallization review loop directly, skipping the plain-text global sí/no invitation."
 *Avoid*: review keyword, review trigger, `/review-loop`, revisar, review command
@@ -46,11 +58,17 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 **Step Contract**: "The `## Step N` section of a change's `interfaces.md` carrying that Step's signatures and exact assertions, whose availability is evaluated per Step because `design.md` omits the section for any step with no interface surface."
 *Avoid*: interface contract, interfaces section, Step N block, contract file
 
+**Target State**: "The single leading non-step section of `interfaces.md` presenting the change's finished shape as one concrete artifact, readable without any `## Step N` section."
+*Avoid*: end state, final shape, goal state, summary section
+
 **Test Command**: "The mandatory `## Implementation Context` field carrying the directly executable command that runs this project's tests plus its parameterised scoping idiom, derived by `/sai-2-design` from codebase research and injected into a **Blind Test-Writer**, which is otherwise given no way to obtain it."
 *Avoid*: run command, test runner, test script, testing command, suite command
 
 **Tracked Crystallized Set**: "The chat-scoped, in-conversation-only list of every `**Change name**` value that this `sai-explore` chat's crystallization turns emitted, held in first-emission order and never derived from repository state."
 *Avoid*: crystallized changes, change list, session changes, active changes
+
+**Verify-First Marker**: "The optional pinned `(**Verify-first**: Step N)` parenthetical on a `design.md` risk, naming the step whose design depends on that risk being resolved or disproven first."
+*Avoid*: Blocker, Gate, Check First, precondition, dependency marker
 
 ## Relationships
 
@@ -71,6 +89,8 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 - A **Routing Line** contains exactly one **Routing Layer**, one **Routing Discipline**, and one **Routing Complexity** token, in that order, each emitted as a `key=value` pair separated by middle dots.
 - A **Routing Layer** is derived from the step's `**Files Affected**` paths; **Routing Discipline** is derived from the same paths against a parallel pattern set, and is orthogonal to **Routing Layer** (e.g. `(frontend, ui-ux)` vs `(frontend, app-code)` discriminate agents within the same layer); **Routing Complexity** is a coarse design-time judgment.
 - A **Routing Line** is descriptive, not prescriptive — a future orchestrator maps the three tokens to its own agent roster at dispatch time, and `sai-3-implement` may refine the **Routing Complexity** (or split the step) without re-tagging `tasks.md`.
+- A **Target State** belongs to the same `interfaces.md` artifact as the **Step Contract**, appearing once as the leading section before every `## Step N` section.
+- A **Verify-First Marker** on a risk constrains **Routing Line** step ordering in `tasks.md`, sequencing the work that resolves the risk before the step it names.
 
 ## Example dialogue
 
