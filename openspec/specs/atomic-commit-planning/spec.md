@@ -56,13 +56,41 @@ Before finalizing any step as a commit point in `tasks.md`, the sai-2-design age
 - No imports of removed or renamed symbols
 - No references to APIs that have been relocated or deleted
 - No missing implementations of interfaces or abstract contracts introduced in this or a prior step in the same batch
+- No test compilation unit left uncompilable — test projects, test assemblies, and test source sets are subject to every item above exactly as production code is
+
+The checklist SHALL reason over **all** compilation units in the repository snapshot, not production code alone. A step that changes a signature, removes an exported symbol, or renames a public API SHALL treat existing test files that reference that contract as affected files, on the same terms as production callers. Such test files SHALL be listed under the step's `**Files Affected**`.
+
+A step whose snapshot leaves any test compilation unit unbuildable SHALL NOT be designated a commit boundary, even when all production code compiles.
+
+A commit boundary SHALL NOT leave the test suite failing. Both failure modes a step introduces — tests that no longer **compile** and tests that compile but whose **assertions** no longer hold — SHALL be resolved within the same step. The checklist item above is the structural half of that obligation; the assertion half is not weaker, merely not expressible as a compilation check.
+
+The `compile` / `runtime` distinction declared per step by the `tasks-existing-test-impact` capability is therefore NOT a boundary-validity discriminator: both modes block the boundary until resolved. The distinction carries **effort and ordering** information for the implementation phase — structural breakage is mechanical and bulk-fixable, assertion breakage requires per-test judgment — and SHALL NOT be read as licensing a commit with a red suite.
 
 #### Scenario: Checklist passes
 
-- **WHEN** all four checklist items are satisfied for a given step's file snapshot
+- **WHEN** all checklist items are satisfied for a given step's file snapshot, including every test compilation unit
 - **THEN** the step MAY be designated as a commit point
 
 #### Scenario: Checklist fails on any item
 
 - **WHEN** any checklist item fails
 - **THEN** the step MUST be expanded or merged with adjacent steps until the checklist passes for the combined snapshot
+
+#### Scenario: Production compiles but test project does not
+
+- **WHEN** a step changes a function signature and all production callers are updated within that step
+- **BUT** existing test files still call the old signature and would fail to compile
+- **THEN** the step SHALL NOT be designated a commit boundary
+- **AND** those test files MUST be listed under the step's `**Files Affected**` and updated within the same step
+
+#### Scenario: Test assertions break but tests still compile
+
+- **WHEN** a step changes behavior such that existing tests compile but their assertions no longer hold
+- **THEN** the step is NOT a valid commit boundary until those assertions are updated within the same step
+- **AND** the affected tests are declared with failure mode `runtime`, which records the effort involved and does NOT exempt them from the boundary
+
+#### Scenario: Removed export referenced only by tests
+
+- **WHEN** a step removes an exported symbol that no production file imports but existing test files do
+- **THEN** those test files are treated as affected files exactly as production callers would be
+- **AND** the step is not a valid commit boundary until they are updated within it

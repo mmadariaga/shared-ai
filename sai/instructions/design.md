@@ -167,8 +167,11 @@ Each `## Step N` becomes a single commit, so every step MUST leave the repositor
   - No imports of removed or renamed symbols.
   - No references to APIs that have been relocated or deleted.
   - No missing implementations of interfaces or abstract contracts introduced in this or a prior step of the same batch.
+  - No test compilation unit left uncompilable — test projects, test assemblies, and test source sets are subject to every item above exactly as production code is.
 
   If any item fails, expand or merge the step with adjacent steps until the checklist passes for the combined snapshot.
+
+  The checklist reasons over **all** compilation units in the snapshot, not production code alone. A step that changes a signature, removes an exported symbol, or renames a public API treats existing test files that reference that contract as affected files on the same terms as production callers, listing them under the step's `**Files Affected**`. A snapshot that leaves any test compilation unit unbuildable is not a valid commit boundary even when all production code compiles, and a boundary never leaves the suite red — both breakage modes (tests that no longer **compile**, and tests that compile but whose **assertions** no longer hold) are resolved within the same step. The `compile` / `runtime` distinction recorded by `**Existing Tests Broken**` (Step N field) is therefore effort-and-ordering information, NOT a boundary-validity discriminator: both modes block the boundary until resolved.
 
 After all implementation steps, end the file with these two mandatory sections in order:
 
