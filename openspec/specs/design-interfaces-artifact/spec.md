@@ -22,6 +22,8 @@ The concrete public signatures and exact test assertions that `interfaces.md` ca
 
 `interfaces.md` SHALL be organized as one `## Step N` section per step, using the same integer `Step N` keying as `tasks.md` and `implementation.md`. Each `## Step N` heading in `interfaces.md` SHALL correspond to the `## Step N` of the same number in `tasks.md`.
 
+`interfaces.md` SHALL admit **exactly one** leading non-`Step N` section: the `## Target State` section defined by the `design-target-state` capability, which SHALL appear before the first `## Step N` section. No other non-`Step N` top-level section SHALL be emitted, and no non-`Step N` section SHALL appear after the first `## Step N` section. The per-step keying rule governs everything from the first `## Step N` heading onward.
+
 `interfaces.md` SHALL be regenerated wholesale on every `sai-2-design` run, alongside `design.md` and `tasks.md`, from the same fresh step decomposition. There is NO cross-run preservation path at the design stage (unlike `implement.md`'s re-run preservation of `implementation.md`), so `interfaces.md` keys always reflect the current `tasks.md` and cannot desync from it across re-runs.
 
 #### Scenario: step keys mirror tasks.md at generation
@@ -32,6 +34,16 @@ The concrete public signatures and exact test assertions that `interfaces.md` ca
 - **WHEN** `sai-2-design` is re-run and produces a new `tasks.md` decomposition
 - **THEN** `interfaces.md` is regenerated in full from that same fresh decomposition, so its `## Step N` keys always match the current `tasks.md`
 - **AND** no `## Step N` section from a prior `interfaces.md` is preserved across the re-run — there is no design-stage preservation path, so orphaned or desynced step sections cannot arise
+
+#### Scenario: Target State is the only admitted non-step section
+- **WHEN** `sai-2-design` generates `interfaces.md`
+- **THEN** the only top-level section that is not a `## Step N` section is `## Target State`
+- **AND** it appears before the first `## Step N` section
+
+#### Scenario: no trailing non-step section
+- **WHEN** a reader scans `interfaces.md` from the first `## Step N` heading to the end of the file
+- **THEN** every top-level section in that range is a `## Step N` section
+- **AND** no additional non-step section is emitted after the step sections
 
 ### Requirement: Each step lists public signatures and exact test assertions
 

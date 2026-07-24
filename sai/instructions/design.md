@@ -188,6 +188,8 @@ Write to `openspec/changes/$ARGUMENTS/interfaces.md`.
 
 `interfaces.md` is the per-step **contract** — the new/modified public signatures plus the exact assertions a test author needs — kept in a separate file from `tasks.md` so it is consumable without the implementation body. Derive it from the **same fresh step decomposition** as `tasks.md`, in the same run. Regenerate it wholesale every run; there is NO cross-run preservation path at the design stage (unlike `implementation.md`, which the implementation phase preserves byte-for-byte), so its `## Step N` keys always match the current `tasks.md` and cannot desync.
 
+`interfaces.md` opens with a `## Target State` section, emitted before the first `## Step N` section — the single admitted leading non-step section. `## Target State` presents the finished shape the change converges on as **one concrete artifact** (not a per-step narrative, not a restatement of the change's motivation), readable on its own without reading any `## Step N` section. Interpret "finished shape" by what the change produces: for code changes, the resulting payload, public signature, schema, file layout, or config shape as it will exist after the last step; for prose, instruction, or documentation changes, the resulting section and field structure of each document the change touches, as it will read after the last step. Do NOT omit the section on the grounds that no payload, signature, or schema is involved. When a change genuinely produces no finished shape expressible under either reading, emit `## Target State` with an explicit `None` and a one-line reason — never silently omit it. `## Target State` does NOT replace the per-step sections: each step with an interface surface still emits its own `## Step N`, and where a signature appears in both, the `## Step N` section remains the authority on step attribution.
+
 Structure — one section per step that introduces a new/modified public interface or a testable assertion, keyed by the same integer `## Step N` as `tasks.md`:
 
     ## Step N: <title>
@@ -201,6 +203,7 @@ Rules:
 - **Keep signatures and assertions OUT of `tasks.md`.** They are the "detailed behavior" that `tasks.md`'s conciseness rule excludes. `tasks.md`'s `**Testing Strategy**` stays high-level *approach* prose (what kind of test, what surface it exercises); the concrete assertion values live only here. Never restate them into `tasks.md`.
 - **No testing-stack section.** Do NOT add a testing-setup, stack, or `## Implementation Context` section to `interfaces.md`; the testing stack stays single-sourced in `tasks.md`'s `## Implementation Context`.
 - **Self-contained.** The signature plus its anchored assertions must be sufficient to author the step's tests without reading `implementation.md`, `design.md`, or source code.
+- **Emit `## Target State` first.** It is the only admitted leading non-`## Step N` top-level section; every `## Step N` follows it, and no non-step section appears once the first `## Step N` begins. Its presence does NOT cause an empty `## Step N` to be emitted for a step with no interface surface — the *Omit steps with no interface surface* rule still applies.
 
 ## Cost discipline reminder
 
