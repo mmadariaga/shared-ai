@@ -75,15 +75,16 @@ No skills are required by default. Load a skill only if the plan invokes it expl
 
 ## Step-Execution Subagent Dispatch
 
-Per Step, the coordinator dispatches subagents according to the Step's testability:
+The coordinator routes each Step to either a single dispatch or the two-dispatch flow (a **blind test-writer** dispatch, then — only after the test-writer reports a valid RED — an **implementation** dispatch) by a **two-part routing condition**. The two-dispatch flow is selected **if and only if both** parts hold; if **either** part fails, the Step routes to a single dispatch:
 
-- **Testability signal**: a Step is **testable** when its body contains a `##### RED phase` block; it is **non-testable** when no RED block is present.
-- **Non-testable Step**: the coordinator dispatches exactly **one** subagent, as in the pre-split flow.
-- **Testable Step**: the coordinator dispatches **two** ordered subagents:
-  1. A **blind test-writer** dispatch.
-  2. An **implementation** dispatch (only after the test-writer reports a valid RED).
+1. the Step's body contains a `##### RED phase` block, **and**
+2. a **Step Contract** is available for that Step: `interfaces.md` exists for the change and contains a `## Step N` section whose integer `N` matches the Step's `implementation.md` `## Step N` heading.
 
-### Non-testable Step dispatch
+Part 2 is evaluated **per Step**, not by testing only whether `interfaces.md` exists — the test-writer's prompt is assembled from that `## Step N` section, so with no matching section there is nothing to make the writer blind *to* and the dispatch cannot be assembled. A Step that satisfies both parts is a **Split-Routed Step**; every other Step — including a Step with a RED block whose contract is unavailable — keeps the single-dispatch flow.
+
+### Single-dispatch Step
+
+This section covers every Step routed to a single dispatch — two shapes: a Step with **no RED block** (config, migration, scaffolding, service-side), and a Step with **a RED block but no available Step Contract**. For the second shape the single dispatch authors the test from the Step's own scenario descriptions and then runs the RED → GREEN cycle itself; this requires no read permission beyond the existing *No exploration* rule, which already permits reading test files and test infrastructure. The *RED → GREEN handling* bullet below is therefore reachable, not dead text.
 
 - **Type**: a **write-capable** subagent — the **`budget-subagent`** skill. Full read/write/search/run access is required.
 - **Model**: resolved by the `budget-subagent` skill's per-harness binding — the standard cheap tier applies.
@@ -107,7 +108,7 @@ Per Step, the coordinator dispatches subagents according to the Step's testabili
     - Read any file outside the *No exploration* rule's permitted set (files the Step modifies, test files and test infrastructure, and — only after a concrete compile/test failure — the file defining the real symbol).
     - **Report completeness**: populate field 8 (`Files modified`). An empty list is valid if no files were modified; omitting the field produces a malformed report.
 
-### Testable Step — blind test-writer dispatch
+### Split-Routed Step — blind test-writer dispatch
 
 - **Type**: a **write-capable** subagent — the **`budget-subagent`** skill.
 - **Model**: resolved by the `budget-subagent` skill's per-harness binding.
@@ -136,7 +137,7 @@ Per Step, the coordinator dispatches subagents according to the Step's testabili
     - Read any production source file outside the *Blindness* fallback.
     - **Report completeness**: populate field 8 (`Files modified`) with the test/stub files written. An empty list is valid; omitting the field produces a malformed report.
 
-### Testable Step — implementation dispatch
+### Split-Routed Step — implementation dispatch
 
 - **Type**: a **write-capable** subagent — the **`budget-subagent`** skill.
 - **Model**: resolved by the `budget-subagent` skill's per-harness binding.
