@@ -10,7 +10,7 @@
   Fetch @sai/instructions/prereqs.md
 
   ## Load instructions (in order)
-  Fetch @sai/instructions/change-picker.md and follow it exactly.
+  Fetch @sai/instructions/status-picker.md and follow it exactly.
 
   Fetch @sai/instructions/remember.md
 
@@ -19,7 +19,23 @@
 
   `sai-status` is a **read-only** progress panel for one OpenSpec change. It creates, modifies, or deletes NOTHING — not under `openspec/changes/{name}/`, not `openspec/specs/`, not `.openspec.yaml`. It dispatches no `budget-explorer` / `budget-executor` subagent and accepts no `--fast-track` flag. Run entirely in the main session: at most one `openspec status` CLI call plus a handful of local file reads.
 
-  After the change name is resolved (from `$ARGUMENTS`, or by `change-picker.md` when no name was given), render the panel with the algorithm below.
+  After the change name is resolved (from `$ARGUMENTS`, or by `status-picker.md` when no name was given), render the panel with the algorithm below.
+
+  ### Bulk mode — "See all" (all-changes table)
+  If `status-picker.md` emitted the `> BULK-MODE ACTIVE` signal line (the user chose "See all" on the 2+ branch), render the bulk table below INSTEAD of the single-change panel, then STOP — do not run Steps A–E for any single change.
+
+  1. Run `openspec list --json` and take `changes[].name` in the returned order (no cap, no re-sort). `openspec list --json` returns only live changes, so archived changes never appear as rows.
+  2. For EACH change `{name}` in that order, derive its cells exactly as the single-change panel does:
+     - **Artifacts** — run `openspec status --change {name} --json`; for each of the 10 canonical artifacts (`proposal`, `specs`, `design`, `tasks`, `interfaces`, `implementation`, `review`, `security`, `performance`, `accessibility`) map `done` → `●` and `ready` / `blocked` → `·`. `pr` gets NO column.
+     - **Specs cell (3-state)** — read `openspec/changes/{name}/.openspec.yaml`: `approval.specs.approved_at` present and non-empty → `●` (approved); specs artifact present but no approval → `○` (present, unapproved); specs absent → `·`. This 3-state cell keeps each row's `Next:` hint correct.
+     - **Not-Applicable audits** — for each present audit artifact (`review`, `security`, `performance`, `accessibility`) whose body contains a `## Not Applicable` heading, render `N/A` instead of `●`.
+     - **interfaces** — an absent `interfaces` renders `·` with NO missing-artifact warning (ADR 0023).
+     - **Impl progress** — if `openspec/changes/{name}/implementation.md` exists, count `- [x]` over `- [x]` + `- [ ]` task lines and show `checked/total`; if it does not exist, leave the `Impl` cell empty.
+     - **Next** — resolve the FIRST matching row of the Step E algorithm below for this change (using its specs-approval state) and print the `/sai-N-...` hint.
+  3. Render ONE Markdown table with a header row and one data row per change, columns in this exact order:
+     `Change | prop | spec | dsgn | task | intf | impl | rev | sec | perf | a11y | Impl | Next`
+     Legend printed beneath the table: `●` present · `○` specs present-unapproved · `·` absent · `N/A` not-applicable audit.
+  4. **Read-only:** this branch issues exactly N `openspec status --change {name} --json` calls plus local reads of each change's `.openspec.yaml`, `implementation.md`, and audit bodies. It creates, modifies, or deletes NOTHING under any `openspec/` path.
 
   ### Step A — Archive detection (before any CLI call)
   Glob `openspec/changes/archive/*-{name}/`. If a directory matches:
