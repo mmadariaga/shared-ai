@@ -179,11 +179,13 @@ The subagent returns a compact report containing exactly these 9 fields, and not
 8. **Files modified** — paths modified or created by the subagent during this Step, relative to the repo root, one path per entry; empty list if the subagent modified nothing.
 9. **Attempts per phase** — a list of `{phase, attempts, first_failure, note}` entries, one per verification phase this dispatch actually ran.
 
-The report shape (9 fields, order, semantics) is stable across all dispatch kinds. Which fields carry a real value depends on the dispatch:
+The report shape (9 fields, order, semantics) is stable across all dispatch kinds. Which fields carry a real value is keyed on the **dispatch**, not on the Step's testability:
 
-- **Non-testable Step (single dispatch):** fields 3 and 4 both carry real values (RED result and GREEN result) exactly as before.
-- **Testable Step — test-writer dispatch:** field 3 (RED result) carries a real value; field 4 (GREEN result) is `n/a` because the test-writer does not write or verify GREEN.
-- **Testable Step — implementation dispatch:** field 4 (GREEN result) carries a real value; field 3 (RED result) is `n/a` because the implementation dispatch does not author or verify the RED test.
+- **Single dispatch:** field 4 (GREEN result) always carries a real value. Field 3 (RED result) carries a real value when the Step it executes contains a RED block, and is `n/a` when it does not — a single dispatch runs both phases only when there is a RED phase to run.
+- **Test-writer dispatch:** field 3 (RED result) carries a real value; field 4 (GREEN result) is `n/a` because the test-writer does not write or verify GREEN.
+- **Implementation dispatch:** field 4 (GREEN result) carries a real value; field 3 (RED result) is `n/a` because the implementation dispatch does not author or verify the RED test.
+
+Which Steps reach which dispatch is decided by the routing condition in `## Step-Execution Subagent Dispatch`; this table describes only what a dispatch reports once routed.
 
 Field 8 is required in every report kind (an empty list is a valid value but an absent field is a malformed report). Field 9 is the sole exception to the fixed-field list: it is expected but not required, and its absence SHALL NOT make a report malformed — see `### Field 9 — attempts per phase` below and `### Malformed subagent report`.
 
@@ -198,7 +200,7 @@ Field 9 (`Attempts per phase`) is a list of entries, each with exactly these fou
 
 Because `attempts` counts runs rather than successes, and `first_failure` is `n/a` only for a first run that did not fail, a phase that failed once and then halted (`attempts` = `1`, `first_failure` = `import`) stays distinguishable from a phase that passed first try (`attempts` = `1`, `first_failure` = `n/a`). The blind test-writer does not iterate on an invalid RED — it halts — so without this distinction the single most diagnostic failure mode would read identically to a clean pass. The closed `first_failure` vocabulary is what makes the column aggregable across changes; an open set would let each dispatch coin its own synonym.
 
-**Binding to fields 3/4.** Field 9 carries an entry for `phase` = `red` exactly where field 3 (RED result) carries a non-`n/a` value, and an entry for `phase` = `green` exactly where field 4 (GREEN result) carries a non-`n/a` value. The non-testable Step's single dispatch therefore emits two entries when its body contains a RED block and one (`green`) when it does not — no special case and no new enum value.
+**Binding to fields 3/4.** Field 9 carries an entry for `phase` = `red` exactly where field 3 (RED result) carries a non-`n/a` value, and an entry for `phase` = `green` exactly where field 4 (GREEN result) carries a non-`n/a` value. A single dispatch therefore emits two entries when the Step it executes contains a RED block and one (`green`) when it does not — no special case and no new enum value.
 
 A field 9 that disagrees with fields 3/4 is resolved in both directions, and neither direction is a malformed report:
 
