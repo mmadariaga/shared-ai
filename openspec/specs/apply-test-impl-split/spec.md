@@ -18,7 +18,11 @@ For every **testable** Step (a Step that contains a RED block), the `sai-4-apply
 
 ### Requirement: Test-writer is blind to the implementation body
 
-The test-writer dispatch's prompt SHALL contain the `interfaces.md` section for that Step N (its signatures + exact assertions) plus the testing-relevant slice of `tasks.md`'s `## Implementation Context` (framework, assertion/mock libraries, test file location/naming, run command) injected by the coordinator — and NOTHING from the GREEN implementation body of the Step. The test-writer writes the interface stubs and the tests and verifies a VALID RED (an assertion failure attributable to the behavior under test, not a setup/import/compilation error).
+The test-writer dispatch's prompt SHALL contain the `interfaces.md` section for that Step N (its signatures + exact assertions) plus the testing-relevant slice of `tasks.md`'s `## Implementation Context` injected by the coordinator — and NOTHING from the GREEN implementation body of the Step. The test-writer writes the interface stubs and the tests and verifies a VALID RED (an assertion failure attributable to the behavior under test, not a setup/import/compilation error).
+
+The injected slice SHALL name its source fields explicitly rather than paraphrasing them. It SHALL include the **Test Command** field verbatim, because the test-writer is required to run the test command during RED verification and is forbidden from reading `implementation.md`, where the command otherwise lives. The framework and assertion/mock libraries SHALL be taken from the **Stack** field. Test file location and naming SHALL NOT be mandated as `## Implementation Context` fields; the test-writer recovers them under its existing permission to read existing test files and test infrastructure. The coordinator's own enumeration of the injected slice SHALL therefore drop test file location/naming, so that it no longer promises an injection whose source is guaranteed not to exist.
+
+The test-writer SHALL scope its RED run to the tests it authored, substituting the test identifier into the scoping idiom the **Test Command** field carries. Where the field carries the no-runner sentinel, or the project's runner offers no scoping, the test-writer SHALL attribute the RED classification only to failures originating in the tests it authored, and SHALL NOT classify a pre-existing unrelated failure elsewhere in the suite as either a valid RED or a `wrong-failure` for this Step.
 
 #### Scenario: Coordinator assembles the test-writer prompt
 
@@ -28,7 +32,22 @@ The test-writer dispatch's prompt SHALL contain the `interfaces.md` section for 
 #### Scenario: Testing context is single-sourced in tasks.md
 
 - **WHEN** the coordinator injects the testing stack into the test-writer prompt
-- **THEN** it takes the framework, assertion/mock libraries, test file location/naming, and run command from `tasks.md`'s `## Implementation Context`, not from `interfaces.md` (which carries no testing-stack section)
+- **THEN** it takes the framework and assertion/mock libraries from the **Stack** field and the test command from the **Test Command** field of `tasks.md`'s `## Implementation Context`, not from `interfaces.md` (which carries no testing-stack section)
+
+#### Scenario: Test-writer runs the injected command during RED verification
+
+- **WHEN** the test-writer reaches RED verification
+- **THEN** the command it runs is the **Test Command** value injected by the coordinator, scoped to the tests it authored via that value's scoping idiom, not a command it inferred from the test files it read
+
+#### Scenario: Pre-existing unrelated failure in an unscoped run
+
+- **WHEN** the test-writer must run the suite unscoped and the run exits non-zero because of a failure in tests it did not author
+- **THEN** it classifies RED only from the results of its own tests and does not report that unrelated failure as a valid RED or as a `wrong-failure`
+
+#### Scenario: Injected slice no longer promises location and naming
+
+- **WHEN** `sai/instructions/apply.md` enumerates the testing-relevant slice injected into the test-writer
+- **THEN** the enumeration names the **Stack**-sourced framework and libraries and the **Test Command**, and does not list test file location/naming
 
 ### Requirement: Coordinator guards interfaces.md ↔ implementation.md Step-N key integrity
 

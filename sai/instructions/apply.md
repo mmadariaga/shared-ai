@@ -113,7 +113,7 @@ Per Step, the coordinator dispatches subagents according to the Step's testabili
 - **Model**: resolved by the `budget-subagent` skill's per-harness binding.
 - **Prompt contents**: exactly four parts:
   1. That Step's `## Step N` section from `interfaces.md` (signatures + exact assertions).
-  2. The testing-relevant slice of `tasks.md`'s `## Implementation Context` (framework, assertion/mock libraries, test file location/naming, run command) injected by the coordinator.
+  2. The testing-relevant slice of `tasks.md`'s `## Implementation Context`, injected by the coordinator: the framework and assertion/mock libraries taken from the **Stack** field, and the run command taken from the **Test Command** field (injected verbatim). Test file location/naming is NOT injected — after this change no such field exists; the test-writer recovers it under its existing permission to read existing test files and test infrastructure.
   3. The following rules verbatim.
   4. Any relevant technical-learnings entries the coordinator judges applicable (subject to the blindness constraint below; never the full memory).
   The coordinator SHALL NOT include the Step's GREEN implementation body, `implementation.md`, `design.md`, `proposal.md`, or any other artifact that reveals the intended implementation.
@@ -123,7 +123,7 @@ Per Step, the coordinator dispatches subagents according to the Step's testabili
     - *Blindness*: Do NOT read the Step's GREEN implementation body or any production source file to derive assertions. When the injected testing context is insufficient to author a valid RED, you MAY read existing test files and test infrastructure (fixtures, harness, shared helpers) to match their patterns. Reading existing test files does not leak the implementation body.
     - *RED phase contract*: The interface stubs you write SHALL expose the required symbol but return a null/empty/wrong value and contain no logic that would satisfy the assertion. Do NOT write real implementation logic into a stub — doing so would either make the RED pass (an invalid RED) or leak implementation authorship into the blind test-writer.
     - *Read-before-write*: Before modifying any file, read its current content.
-    - *RED verification*: Run the test command and inspect the failure type:
+    - *RED verification*: Run the injected **Test Command**, scoping the run to the tests you authored by substituting their test identifier into the scoping idiom the **Test Command** value carries. When the field carries the `None — no test runner in this project` sentinel, or the project's runner offers no scoping, run what is available and attribute the RED classification ONLY to failures originating in the tests you authored — a pre-existing unrelated failure elsewhere in the suite is neither a valid RED nor a `wrong-failure` for this Step. Inspect the failure type:
         - **Valid RED**: exit code ≠ 0 AND the failure is an assertion failure attributable to the behaviour under test. Report RED result = `valid`.
         - **Invalid RED — passes**: if the test passes, STOP and record RED result = `passes`.
         - **Invalid RED — wrong failure**: if the failure is a setup/import/compilation error, STOP and record RED result = `wrong-failure` (with the error type).
