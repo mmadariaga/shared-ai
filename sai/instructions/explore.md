@@ -85,10 +85,10 @@ The full `Ready to Propose` block(s) are printed only when the user explicitly a
 
    **Change name**: <kebab-case suggestion>
    **What**: <1–2 sentences describing the change>
-   **Why**: <1–2 sentences stating the motivation>
+   **Why**: <1–2 sentences stating the motivation; optional inline file:line provenance citations when the hypothesis was grounded in specific files>
    **Capabilities in scope**:
    - <capability>: <brief description>
-   **Decisions & Rationale**:
+   **Decisions & Rationale**: <optional inline file:line provenance citations when a decision was grounded in specific files>
    - <decision and rationale, or None>
    **Alternatives Considered**:
    - <rejected alternative, or None>
@@ -101,6 +101,8 @@ The full `Ready to Propose` block(s) are printed only when the user explicitly a
 
    ---
    **Open a new chat** and run `/sai-1-spec` with the content above.
+
+   Optional evidence-provenance citations: when the hypothesis or a decision was grounded in specific files, the **Why** and **Decisions & Rationale** fields MAY carry inline `file:line` or `path:startLine-endLine` citations as evidence for intent. These citations are optional — when there is nothing to cite, the fields render exactly as today with no citation-specific placeholder. Provenance is a citation for intent only and SHALL NOT designate files to modify; no target-file field is introduced.
 
    After printing the block, close the crystallization turn with a plain, user-language recommendation to keep this explore window open and return to it to review and refine the artifacts that `/sai-1-spec` and `/sai-2-design` create next (per the `explore-crystallization-block` capability). This closing recommendation is free-text prose rendered in the user's language per item 8 / `sai/instructions/remember.md`; only it is localized — the `Ready to Propose` block scaffolding and the `Open a new chat` / `/sai-1-spec` line above stay English. It replaces the removed auto-fired review picker (item 9) as the thing that closes the crystallization turn. The recommendation SHALL name the literal token `review-loop` verbatim as the way to enter that review loop (item 9), mirroring how the Emission gate advertises `crystallize` — the token stays English even though the surrounding recommendation prose is localized.
 
@@ -121,7 +123,7 @@ The full `Ready to Propose` block(s) are printed only when the user explicitly a
 
    1. **Trigger**: an explicit crystallize request (per the Emission gate's trigger list) instead of an artifact-review request.
    2. **Tracked target**: the current crystallized idea or slice set instead of the reviewed artifact set.
-   3. **Translated surface**: only the block's free-text prose is rendered in the chosen language. The following scaffolding stays in English regardless of language choice: the bold field labels (`**Change name**`, `**What**`, `**Why**`, `**Capabilities in scope**`, `**Decisions & Rationale**`, `**Alternatives Considered**`, `**Trade-offs Accepted**`, `**Model / Re-framings**`, `**Key constraints**`), the kebab-case Change name value, the `/sai-1-spec` command, the "Open a new chat" line, and the literal `review-loop` token wherever the closing keep-window-open recommendation (items 5/6) names it. The gate SHALL NOT alter any OpenSpec artifact file's format or content.
+   3. **Translated surface**: only the block's free-text prose is rendered in the chosen language. The following scaffolding stays in English regardless of language choice: the bold field labels (`**Change name**`, `**What**`, `**Why**`, `**Capabilities in scope**`, `**Decisions & Rationale**`, `**Alternatives Considered**`, `**Trade-offs Accepted**`, `**Model / Re-framings**`, `**Key constraints**`), the kebab-case Change name value, any inline `file:line` or `path:startLine-endLine` provenance citations within **Why** or **Decisions & Rationale**, the `/sai-1-spec` command, the "Open a new chat" line, and the literal `review-loop` token wherever the closing keep-window-open recommendation (items 5/6) names it. The gate SHALL NOT alter any OpenSpec artifact file's format or content.
     4. **Sliced crystallization**: the gate fires once for the whole slice set, and the chosen language applies to the free-text prose of every emitted block. Per-slice scaffolding stays English.
 
 9. **Post-crystallization review loop (sai-explore only)**: The review is **not** auto-offered at crystallization. Do NOT print a visual divider (`---`) and a global Yes/No option-picker after the final `Ready to Propose` block — the crystallization block instead closes by recommending the user keep the explore window open (per the `explore-crystallization-block` capability, items 5/6). Treat the review as a **user-triggered standing invitation** with two entry paths: the **token path** — the user fires the literal token `review-loop`, which enters the per-change loop directly (see **Token trigger** below) — and the **semantic path** — the user accepts that standing invitation in natural language, or asks to review the downstream artifacts of the changes crystallized in this chat.
