@@ -167,10 +167,11 @@ After all implementation steps, end the file with these two mandatory sections i
    - `### External URLs`: one URL per line; write `None` if empty.
    - Do NOT leave either subsection empty or omit it.
 
-2. `## Implementation Context` — derive all three fields from actual codebase research, not from the change description:
+2. `## Implementation Context` — derive all four fields from actual codebase research, not from the change description:
    - `**Stack**`: primary language/framework + key versions relevant to this change.
    - `**Conventions**`: 2–5 project-specific, non-obvious bullets observed in the actual codebase (naming, file organization, error handling, testing idioms). Generic best-practices ("follow SOLID", "write clean code") are NOT acceptable.
    - `**Avoid**`: anti-patterns the implementation agent might default to given the declared stack.
+   - `**Test Command**`: the exact command that runs this project's test suite, directly executable from the project root by a subagent that has read neither `implementation.md` nor `design.md`. Where the runner supports scoping a run to a subset of tests, also carry the project's scoping idiom in **parameterised** form — the concrete flag and the concrete test-project/path argument, with a substitutable placeholder for the test identifier (e.g. `dotnet test tests/<Project> --filter FullyQualifiedName~<TestName>`); do NOT pin a specific Step's filter value. When the project has no test runner at all, write the explicit sentinel `None — no test runner in this project` (a researched finding, not placeholder text). This field is a sibling of the three above and sits **outside** the **Conventions** 2–5 bullet quota — a run command is an infrastructure fact, not a project-specific convention.
 
 Both sections are mandatory. They must contain real content derived from research, not placeholder text.
 
