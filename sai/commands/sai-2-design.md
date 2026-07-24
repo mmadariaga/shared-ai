@@ -59,7 +59,7 @@
   (b) **Continue now in this chat** — create the implementation plan with the current model, keeping this design context. Note: this is cheaper than running an independent `/sai-3-implement` with the same model, but more expensive than using the default `/sai-3-implement` model — a good choice for complex implementations.
 
   - If the user chooses (a): MANDATORY STOP. Your work is COMPLETE. STOP and print exactly: "Design done in openspec/changes/{name}/. Run `/sai-3-implement {name}` **in a new chat** when ready."
-  - If the user chooses (b): Ask the user to review `design.md`, `tasks.md`, and `interfaces.md` before continuing, and STOP until they confirm. Once they confirm, re-read `design.md`, `tasks.md`, and `interfaces.md` from disk (they may have changed during review or a gate iteration), then Fetch @sai/instructions/implement-invocation.md and follow it exactly (Load instructions, Run, Completion), using {name} as $ARGUMENTS. Do NOT proceed past its Completion (that is sai-4-apply's job).
+  - If the user chooses (b): re-read `design.md`, `tasks.md`, and `interfaces.md` from disk (they may have changed during a gate iteration), then Fetch @sai/instructions/implement-invocation.md and follow it exactly (Load instructions, Run, Completion), using {name} as $ARGUMENTS. Do NOT proceed past its Completion (that is sai-4-apply's job).
 </TASK>
 
 Follow instruction on <TASK> step by step
