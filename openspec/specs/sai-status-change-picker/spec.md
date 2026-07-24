@@ -1,25 +1,9 @@
-## ADDED Requirements
+## REMOVED Requirements
 
 ### Requirement: sai-status resolves a missing change name via change-picker
-
-When `/sai-status` is invoked with no change name, the command SHALL inherit the existing `change-picker.md` resolution machinery (the 0/1/N flow driven by `openspec list --json`) exactly as the other change-consuming `sai-*` commands do, without introducing a new resolution mechanism.
-
-#### Scenario: no change name provided
-- **WHEN** `/sai-status` is invoked with empty `$ARGUMENTS` and no wrapper-echo change-name line
-- **THEN** the command runs `change-picker.md` and resolves the change name through its 0/1/N flow before printing any panel
-
-#### Scenario: change name provided
-- **WHEN** `/sai-status <change-name>` is invoked with a non-empty change name
-- **THEN** the change-picker is a no-op and the panel is printed for the provided change
+**Reason**: Superseded by the new `status-picker` capability. `sai-status` no longer inherits `change-picker.md`; it resolves missing change names via a dedicated `status-picker.md` so it can offer a "See all" bulk view on the 2+ branch without touching the shared picker.
+**Migration**: `sai/commands/sai-status.md` fetches `sai/instructions/status-picker.md` instead of `change-picker.md`. The 0-change and 1-change resolution behavior is preserved verbatim by `status-picker.md`; see the `status-picker` capability.
 
 ### Requirement: sai-status joins the change-picker consumer list
-
-`sai-status` SHALL be added to the consumer list documented in `sai/instructions/change-picker.md`, bringing the documented consumer count from 9 to 10. No `change-picker.md` resolution logic SHALL be modified — only the consumer name is added.
-
-#### Scenario: consumer list includes sai-status
-- **WHEN** the consumer list in `sai/instructions/change-picker.md` is read
-- **THEN** `sai-status` appears in the list and the list enumerates 10 consumers
-
-#### Scenario: change-picker logic unchanged
-- **WHEN** the `change-picker.md` resolution steps are compared before and after this change
-- **THEN** only the consumer enumeration differs; the wrapper-echo, invocation-trigger, and 0/1/N steps are unchanged
+**Reason**: Superseded by the new `status-picker` capability. With `sai-status` decoupled from `change-picker.md`, it is no longer one of that instruction's consumers, so the consumer count returns to 9.
+**Migration**: Remove `sai-status` from the consumer list in `sai/instructions/change-picker.md` (10 → 9). The `change-picker` capability's new consumer-scope requirement locks this exclusion; see the `change-picker` capability.
