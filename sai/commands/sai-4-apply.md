@@ -51,6 +51,8 @@
 
   Under fast-track, the Human Verification evaluation changes: accumulate each Step's Human `- [ ]` checkboxes in the coordinator's in-conversation memory as they are reached, mark them `[x]` after that Step's automated checks pass, and defer presentation to a single combined list printed after the Final sweep and before the MANDATORY STOP. Steps with zero Human checkboxes (italic note only) contribute nothing. Wait for the user to review the combined list before declaring completion.
 
+  After the Final sweep and before the MANDATORY STOP, run the single end-of-run learnings promotion pass per `## Learnings Promotion Pass` in `apply.md`. It has its own minimal disclosure and its own `yes`/`no` commit authorization; a decline leaves the file uncommitted in the working tree and does not block completion.
+
   If any Step remains unchecked, your work is NOT complete: do not print the completion message, do not mention `/sai-5-review`, and do not end — dispatch the next unchecked Step instead.
 
   MANDATORY STOP: Only once all the conditions above hold, your work is COMPLETE, STOP and print exactly: "Implementation applied. Run `/sai-5-review {name}` in a new chat when ready."
