@@ -66,6 +66,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0064 — Instruction-file-only Steps are classified non-testable](./0064-instruction-only-steps-classified-non-testable.md)
 - [0070 — Test Command carries the project's parameterised scoping idiom, not a bare suite command](./0070-test-command-carries-parameterised-scoping-idiom.md)
 - [0071 — Two-part dispatch-routing condition (RED block AND Step Contract)](./0071-two-part-dispatch-routing-condition.md) — Supersedes 0024, Refs 0064
+- [0073 — The durable channel was always the deviations appendix, not the learnings memory](./0073-durable-channel-is-the-deviations-appendix.md) — **Reframes** 0020
 
 ### `/sai-5-review`
 
@@ -251,6 +252,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 | [0058](./0058-gate-ux-tweaks-as-deltas-against-existing-capabilities.md) | reframes | [0053](./0053-post-crystallization-review-once-per-turn.md) |
 | [0062](./0062-field-9-soft-degradation-stated-at-two-sites.md) | amends | [0026](./0026-stable-eight-field-report.md) |
 | [0071](./0071-two-part-dispatch-routing-condition.md) | supersedes | [0024](./0024-split-only-testable-steps.md) |
+| [0073](./0073-durable-channel-is-the-deviations-appendix.md) | reframes | [0020](./0020-ephemeral-in-context-technical-learnings-memory.md) |
 
 ## Superseded ADRs (historical)
 
