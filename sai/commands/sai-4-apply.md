@@ -36,6 +36,7 @@
   Fetch @skills/safe-operations/SKILL.md and use it
 
   ## Load instructions (in order)
+  Fetch @sai/instructions/sai-learnings-format.md
   Fetch @sai/instructions/apply.md and follow those instructions exactly.
   Fetch @sai/instructions/remember.md
 

@@ -31,6 +31,7 @@
   2. Use the cleaned remainder as the effective change name for all downstream steps.
 
   Fetch @sai/instructions/glossary-format.md
+  Fetch @sai/instructions/sai-learnings-format.md
   Fetch @sai/instructions/design.md and follow those instructions exactly.
   Fetch @sai/instructions/remember.md
 
