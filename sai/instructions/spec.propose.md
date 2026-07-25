@@ -83,6 +83,38 @@ When `design.md` is being authored, evaluate whether each design decision meets 
 
 Only propose creating an ADR/DDR if the project already has an ADR culture or the user explicitly approves.
 
+## Complexity Derivation Rubric
+
+This section governs the `**Complexity**` line of `proposal.md` only, and is applied during `/sai-1-spec`. It is unrelated to the `## ADR/DDR Proposal Check` above, which is scoped to `design.md`.
+
+Derive the token from these five signals, all read from the finished `proposal.md` and the change's `specs/**/*.md`:
+
+- **S1 capabilities** — the number of entries under `## Capabilities` (New plus Modified).
+- **S2 requirements** — the number of `### Requirement:` headings across this change's `specs/**/*.md`.
+- **S3 breaking** — whether any `**BREAKING**` marker appears in `## What Changes`.
+- **S4 new dependency** — whether the proposal states that a dependency is introduced.
+- **S5 affected paths** — the number of distinct literal file paths listed as affected under `## Impact`. Paths the proposal lists as explicitly not touched are NOT counted. Count literal paths; do not interpret narrative breadth.
+
+Select the tier by escalation precedence — evaluate `high`, then `medium`, then `low`, and take the first match:
+
+- **high** — S1 ≥ 4, **or** S2 > 10, **or** S3 is true, **or** S4 is true, **or** S5 > 8.
+- **medium** — S1 in 2–3, **or** S2 in 4–10, **or** S5 in 3–8.
+- **low** — none of the above matched: S1 ≤ 1, S2 ≤ 3, no breaking change, no new dependency, S5 ≤ 2.
+
+`high` is the ceiling. A change larger than `high` still emits `high`; never invent a fourth tier. Record the overflow as an Open Question in `design.md` during `/sai-2-design`.
+
+Because S2 depends on the specs, derive or revise the token **after** `specs/**/*.md` are written and before `/sai-1-spec` reports completion. A token derived from an early draft is corrected before the step completes.
+
+**Calibration.** The cuts are grounded in a survey of all 140 archived changes at the time of writing: median S2 = 5, max S2 = 37. `S2 > 10` sits at twice the median and tags roughly 18% of a 40-change sample `high`, which keeps all three tiers populated. Reproduce the distribution before re-tuning any cut:
+
+    for d in openspec/changes/archive/*/; do
+      n=$(grep -rh '^### Requirement:' "$d"specs/ 2>/dev/null | wc -l)
+      c=$(ls -d "$d"specs/*/ 2>/dev/null | wc -l)
+      echo "$(basename $d) req=$n caps=$c"
+    done
+
+The cuts are deliberately coarse step functions; a soft gradient is foreclosed by the closed three-tier vocabulary.
+
 ## Required Documentation discipline
 
 When the skill template asks you to fill an implementation-context section (or equivalent), list ONLY the specific docs that downstream phases must read — not entire skill indexes. Identify exact sub-files or sections with line ranges when only a portion applies.

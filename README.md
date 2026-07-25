@@ -4,7 +4,7 @@ Software development oriented AI commands for a cost-efficient, spec-first, stru
 
 | Phase | Steps |
 |-------|-------|
-| Idea | explore *(optional)* → spec → validation |
+| Idea | explore → spec → validation |
 | Code | design → implement → apply |
 | Quality | review → audits *(security · performance · accessibility, per review triage)* |
 | Ship | archive → PR |
@@ -121,40 +121,9 @@ All artifact paths below resolve under `openspec/changes/{change-name}/` (referr
 
 All audits are diff-scoped by default vs parent branch. Support `--full` or `--path {dir}` to expand scope.
 
-## Iterate as needed
+## Skipping the full SAI workflow while keeping specs updated
 
-In OpenSpec, a `change` represents a single cohesive set of modifications. When review or audits surface follow-up work, prefer creating a **new change** that references the original, rather than overwriting artifacts of an active or archived change. This preserves the original reasoning, keeps history auditable, and matches the OpenSpec lifecycle (one change → spec → implement → review → audits → PR → archive).
-
-Pick an entry point based on what the findings require:
-
-- **New change (recommended for any finding)** — captures the follow-up as its own auditable unit:
-  ```
-  /sai-1-spec
-  Follow-up to oauth2-auth: harden token storage and address review findings.
-  Token storage must move to httpOnly cookies; review flagged XSS exposure...
-  ```
-  This creates a sibling change (e.g. `oauth2-auth-hardening`) that goes through the full pipeline. The original `oauth2-auth` stays untouched.
-
-- **Amend the active change (only before archive)** — if the original change has not been archived yet and the finding is a direct correction (not new scope), re-run the appropriate phase on the same change name. `implementation.md` is a transient execution artifact — once `sai-4-apply` runs, the resulting commits capture what was applied, making the artifact redundant:
-
-  | What changed | Phase to re-run |
-  |---|---|
-  | Design decision or task scope | `sai-2-design` (updates `design.md` + `tasks.md`) |
-  | Only the execution approach | `sai-3-implement` (replaces `implementation.md`) |
-  | Isolated bug or one-liner fix | Directly to code, no phase re-run needed |
-
-  ```
-  /sai-3-implement oauth2-auth
-
-  Incorporate review and audit findings into implementation.md.
-  Also, the cancel button does nothing on click.
-  ```
-
-  Never amend an archived change. Once archived, follow-ups always go through a new change.
-
-  > **New scope always → new change.** If the finding requires new services, new dependencies,
-  > or new architectural decisions (e.g. adding a cache layer), treat it as a new change even
-  > if the original is not yet archived.
+The full SAI workflow can be overkill for small changes.
 
 - **Backfill a manual change** — when you made a quick fix directly in code without going through the SAI workflow, use `/sai-backfill` to reconstruct the missing artifacts after the fact:
 
@@ -217,41 +186,38 @@ General-purpose task delegation (file reads, searches, writes, code analysis) is
 
 ## Project highlights
 
-### Isolation Mode
-Every command starts with zero inherited context —it reads only the `<TASK>` block and the artifacts it needs. This prevents context pollution across phases, makes each run replicable, and enables safe model switching between phases.
-
-### Spec First
-Every feature starts with a change proposal (`proposal.md` + `specs/**`, produced by `/sai-1-spec` via the OpenSpec `opsx:propose` skill) capturing goals and acceptance criteria, followed by a design (`design.md`, produced by `/sai-2-design`) capturing technical constraints and design decisions. The implementation plan (`implementation.md`) is derived from those artifacts, and code follows the plan. This is [Spec-Driven Development](https://scrummanager.com/community/spec-driven-development-qu-es-de-dnde-viene-y-por-qu-importa) at the *spec-first* level — the change artifacts drive the current task and live as the source of truth for the pipeline phases that follow (review, security, performance, accessibility). No *vibe coding*: every line of generated code is grounded in an explicit contract.
-
-### Single Responsibility Per Phase
-Each phase owns a single concern. Only `sai-4-apply` writes code; spec, design, implement, review, and audits produce only markdown in `openspec/changes/{change-name}/`. No phase oversteps its scope.
+### Spec First, and Beyond
+The change artifacts are the source of truth for the entire pipeline: `proposal.md` + `specs/**` (from `/sai-1-spec`) capture goals and acceptance criteria; `design.md` captures technical constraints and trade-offs, while `tasks.md` lists the concrete atomic work to do; `interfaces.md` defines the exact public signatures and per-step test assertions; and `implementation.md` is derived from all of them, with code following the plan. The trio of `/sai-1-spec` → `/sai-2-design` → `/sai-3-implement` guarantees every line of generated code is grounded in an explicit contract — no *vibe coding*. This is Spec-Driven Development.
 
 ### Built-In Code Quality
-The pipeline enforces the same practices experienced developers rely on: build only what you need now, keep each piece focused on one thing, name things so they explain themselves, reuse what already exists, and ship the smallest change that works. The result is code that's easier to read, easier to change, and easier to trust — no matter your experience level.
-
-### RED → GREEN
-sai-3 writes production code for each step in the playbook. Test assertions come from `interfaces.md` (produced by sai-2). sai-4-apply then runs each testable step through two distinct subagents: the **first** writes the test (RED) and confirms it fails by a real assertion; a **separate second** subagent copies the production code into the project (GREEN) and makes the test pass, **without permission to modify the tests**, adjusting code only for compilation errors or test failures. This proves the test is real and not tautological — the production code is validated against an assertion it never touched.
-
-### Ubiquitous Language via GLOSSARY.md
-Domain terms are captured in a living `GLOSSARY.md` at the project root. Spec reads and appends new terms inline (no batching), Plan uses canonical terms for all new identifiers, and Review validates language consistency in the diff. This enforces a DDD-style ubiquitous language across the entire pipeline —every agent and every artifact speaks the same vocabulary.
-
-### Multi-Pass Review (11 categories)
-The review agent runs eleven distinct passes across the full diff: Domain Alignment, Correctness & Bugs, Security triage, Performance triage, Accessibility triage, Maintainability, Testing, Consistency with Codebase, Domain Language Consistency, Documentation & Migrations, and Mutation Analysis.
-
-### Mutation Analysis
-A test that runs your code without checking the result looks fine on paper but catches nothing in practice. Pass 11 deliberately breaks your code in small ways and verifies your tests actually notice — if a test still passes after the code is broken, that test isn't really testing anything. It runs automatically during review, against only the code that changed, and uses your existing mutation tool when the project has one (Stryker, PIT, mutmut, …) or falls back to the LLM itself as the mutator when it doesn't.
+The pipeline enforces the same practices experienced developers rely on: build only what you need now, keep each piece focused on one thing, name things so they explain themselves, reuse what already exists, favor extension over modification (the open-closed principle), and ship the smallest change that works. Every acceptance criterion in the specs is backed by a test that must pass before the step is considered done — no behavior ships unverified. The result is code that's easier to read, easier to change, and easier to trust — no matter your experience level.
 
 ### No self-review bias
 The review phase (`sai-5-review`) runs on a different model than the one used for planning (`sai-3-implement`). The plan agent proposes the code architecture and design decisions — having the same model later review its own output tends to confirm its own assumptions and miss the same blind spots it had when designing the solution. Using a separate model for review introduces a genuinely independent perspective — different training data, different reasoning patterns, different failure modes — which catches real issues that self-review would not.
 
-### Deferred Verification
+### Multi-Pass Review (11 categories)
+The review agent runs eleven distinct passes across the full diff: Domain Alignment, Correctness & Bugs, Security triage, Performance triage, Accessibility triage, Maintainability, Testing, Consistency with Codebase, Domain Language Consistency, Documentation & Migrations, and Mutation Analysis.
+
+### RED → GREEN
+For every testable step, the test is written first (RED) and run against the not-yet-implemented function — so it fails because the behavior is missing, not because of a setup bug. A separate agent then writes the implementation to make the test pass (GREEN), with **no permission to modify the tests** — no cheating. The production code ends up validated against an assertion it never touched.
+
+### Deferred Human Verification
 Human checks (browser/UI behavior, visual confirmation) are deferred to the integration step where the behavior is first observable —the plan asks the user to verify parts of the feature as early as possible, not all at the end. Every deferred check appears exactly once, labeled with its origin step.
 
-### ADR/DDR Proposals
+### Mutation Analysis
+A test that runs your code without checking the result looks fine on paper but catches nothing in practice. Pass 11 deliberately breaks your code in small ways and verifies your tests actually notice — if a test still passes after the code is broken, that test isn't really testing anything. It runs automatically during review, against only the code that changed, and uses your existing mutation tool when the project has one (Stryker, PIT, mutmut, …) or falls back to the LLM itself as the mutator when it doesn't.
+
+### ADR Proposals
 Proposes creating an ADR/DDR if all 3 criteria below are met:
 1. **Hard to reverse** — the cost of changing later is meaningful.
 2. **Surprising without context** — a future reader would wonder "why did they do it this way?"
 3. **Real trade-off** — genuine alternatives existed and one was chosen for specific reasons.
+
+### Isolation Mode
+Every command starts with zero inherited context —it reads only the `<TASK>` block and the artifacts it needs. This prevents context pollution across phases, makes each run replicable, and enables safe model switching between phases.
+
+### Ubiquitous Language via GLOSSARY.md
+Domain terms are captured in a living `GLOSSARY.md` at the project root. Spec reads and appends new terms inline (no batching), Plan uses canonical terms for all new identifiers, and Review validates language consistency in the diff. This enforces a DDD-style ubiquitous language across the entire pipeline —every agent and every artifact speaks the same vocabulary.
 
 ### Fast-track mode (`--fast-track`)
 For low-risk or high-trust runs, four commands accept a `--fast-track` argument that auto-advances their approval gates instead of stopping to ask. A `> FAST-TRACK MODE ACTIVE` banner prints at the start of the run so the relaxed gating is never silent.
@@ -264,7 +230,6 @@ For low-risk or high-trust runs, four commands accept a `--fast-track` argument 
 | `/sai-archive` | Auto-proceeds the unchecked-items confirmation (always) and the delta-spec sync gate (when the implementation is applied or the change was backfilled). |
 
 Everything else stays intact.
-
 
 ## Global installation (multi-project)
 
