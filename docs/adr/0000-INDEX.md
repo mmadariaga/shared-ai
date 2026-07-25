@@ -5,184 +5,236 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 ## Conventions
 
 - Each entry references the ADR by its original title (as it appears in the file).
-- *Note* indicates a relationship: `Pair with NNNN`, `Refs NNNN`, `Amends NNNN`, `Supersedes NNNN`, etc.
+- *Note* indicates a relationship using pinned entry-line token forms: `— Pair with NNNN`, `— Refs NNNN`, `— **Amends** NNNN`, `— **Reframes** NNNN`, `— **Reverses** NNNN`, `— Supersedes NNNN`.
 - *Superseded* marks ADRs whose decision was replaced; the content remains historically accurate.
+- The cold build is the sole branch that recomputes global structural thresholds: a cross-cutting category appears as its own `### ` subsection only when ≥2 ADRs reference it; fewer than 8 cross-cutting ADRs collapse to a single list; the 8–12 target subsection count is a cold-build-time recomputation. The warm path does NOT recompute these — minor category/threshold drift between cold builds is accepted.
 
 ---
 
 ## By command
 
-### `/sai-1-spec` / `/sai-2-design`
+### `/sai-1-spec`
 
-- [0005 — Verbatim Extraction of Commit Rules](./0005-verbatim-extraction-of-commit-rules.md)
-- [0006 — Load commit-rules at Git Operations Section Header in apply.md](./0006-commit-rules-fetch-placement-in-apply.md) — Refs 0005
-- [0014 — Decision summary derived exclusively from written artifacts](./0014-decision-summary-derived-from-artifacts-only.md) — Pair with 0015
-- [0015 — Decision summary precedes the completion sentinel](./0015-decision-summary-precedes-completion-sentinel.md) — Pair with 0014
+- [0014 — Decision summary derived exclusively from written artifacts](./0014-decision-summary-derived-from-artifacts-only.md)
+- [0015 — Decision summary precedes the completion sentinel](./0015-decision-summary-precedes-completion-sentinel.md) — **Amends** 0014
 - [0028 — The feedback gate takes three named parameters supplied inline at the fetch site](./0028-gate-parameters-inline-at-fetch-site.md)
-- [0046 — Single-object amendment audit with overwrite-latest semantics](./0046-single-object-amendment-audit.md) — Pair with 0047
-- [0047 — Keep the amendment path distinct from the artifact-feedback-gate](./0047-amendment-path-distinct-from-feedback-gate.md) — Pair with 0046
-- [0066 — Provenance as inline citations on existing Why / Decisions & Rationale fields](./0066-inline-provenance-no-new-field.md) — Consumed by sai-1-spec; Pair with 0067/0068
-- [0067 — Handoff provenance consumption as "premise to confirm and extend"](./0067-confirm-extend-consumption-framing.md) — Pair with 0066/0068
-- [0068 — Scope provenance to item-5 single-change block; defer item-6 sliced blocks](./0068-scope-item-5-defer-sliced.md) — Pair with 0066/0067
+- [0066 — Provenance as inline citations on existing Why / Decisions & Rationale fields — no new field](./0066-inline-provenance-no-new-field.md)
+- [0067 — Handoff provenance consumption as "premise to confirm and extend"](./0067-confirm-extend-consumption-framing.md)
+- [0072 — Numeric complexity thresholds calibrated from an archive survey](./0072-complexity-thresholds-calibrated-from-archive-survey.md) — Refs 0069, Refs 0070
+
+### `/sai-2-design`
+
+- [0014 — Decision summary derived exclusively from written artifacts](./0014-decision-summary-derived-from-artifacts-only.md)
+- [0015 — Decision summary precedes the completion sentinel](./0015-decision-summary-precedes-completion-sentinel.md) — **Amends** 0014
+- [0022 — interfaces.md is a standalone, step-keyed artifact rather than a section of tasks.md](./0022-interfaces-artifact-standalone-file.md)
+- [0023 — interfaces.md is an optional soft dependency, not a schema hard requirement](./0023-interfaces-soft-dependency.md)
+- [0028 — The feedback gate takes three named parameters supplied inline at the fetch site](./0028-gate-parameters-inline-at-fetch-site.md)
+- [0046 — Single-object amendment audit with overwrite-latest semantics](./0046-single-object-amendment-audit.md)
+- [0047 — Keep the amendment path distinct from the artifact-feedback-gate](./0047-amendment-path-distinct-from-feedback-gate.md) — Refs 0028
+- [0069 — Test Command is a sibling field of Implementation Context, outside the Conventions bullet quota](./0069-test-command-sibling-field-outside-conventions-quota.md)
+- [0070 — Test Command carries the project's parameterised scoping idiom, not a bare suite command](./0070-test-command-carries-parameterised-scoping-idiom.md)
+- [0072 — Numeric complexity thresholds calibrated from an archive survey](./0072-complexity-thresholds-calibrated-from-archive-survey.md) — Refs 0069, Refs 0070
 
 ### `/sai-3-implement`
 
 - [0016 — Accept double branch-selection prompt with the sibling spec](./0016-accept-double-prompt-with-sibling-spec.md)
-- [0048 — Single-source the `--fast-track` parse in each command's body file](./0048-single-source-fast-track-parse-in-body-file.md) — Shared with sai-explore, sai-2, sai-4
-- [0059 — The fast-track branch auto-stay rule lives in `apply.md`](./0059-fast-track-auto-stay-branch-rule-in-apply.md) — Sibling pair with 0052
+- [0021 — Preserve the no-dedup re-run contract when adding audit-finding judgment](./0021-preserve-rerun-no-dedup-contract.md)
+- [0023 — interfaces.md is an optional soft dependency, not a schema hard requirement](./0023-interfaces-soft-dependency.md)
+- [0064 — Instruction-file-only Steps are classified non-testable](./0064-instruction-only-steps-classified-non-testable.md)
 
 ### `/sai-4-apply`
 
-*Dispatch, subagent reports, RED→GREEN and commit-staging in this command.*
-
-- [0005](./0005-verbatim-extraction-of-commit-rules.md) / [0006](./0006-commit-rules-fetch-placement-in-apply.md)
-- [0014](./0014-decision-summary-derived-from-artifacts-only.md) / [0015](./0015-decision-summary-precedes-completion-sentinel.md)
-- [0016 — Accept double branch-selection prompt](./0016-accept-double-prompt-with-sibling-spec.md)
+- [0005 — Verbatim Extraction of Commit Rules into commit-rules.md](./0005-verbatim-extraction-of-commit-rules.md) — Refs 0006
+- [0006 — Load commit-rules at Git Operations Section Header in apply.md](./0006-commit-rules-fetch-placement-in-apply.md) — Refs 0005
+- [0016 — Accept double branch-selection prompt with the sibling spec](./0016-accept-double-prompt-with-sibling-spec.md)
 - [0017 — Same-model Step-execution dispatch via omitted `model:` parameter](./0017-same-model-dispatch-via-omitted-model-param.md)
-- [0018 — Per-Step checkbox override scoped locally to apply.md](./0018-checkbox-override-scoped-to-apply-not-remember.md) — Local supersede of `remember.md` for this phase
+- [0018 — Per-Step checkbox override scoped locally to apply.md, not remember.md](./0018-checkbox-override-scoped-to-apply-not-remember.md)
 - [0019 — Fixed gate ordering after a Step-execution subagent's report](./0019-coordinator-gate-ordering-after-subagent-report.md)
-- [0020 — Ephemeral in-context technical-learnings memory](./0020-ephemeral-in-context-technical-learnings-memory.md) — Refs 0019
-- [0021 — Preserve the no-dedup re-run contract](./0021-preserve-rerun-no-dedup-contract.md)
-- [0022 — interfaces.md is a standalone, step-keyed artifact](./0022-interfaces-artifact-standalone-file.md)
-- [0023 — interfaces.md is an optional soft dependency](./0023-interfaces-soft-dependency.md)
-- [0024 — Split into two dispatches ONLY for testable Steps](./0024-split-only-testable-steps.md)
-- [0025 — Blind test-writer receives injected context](./0025-blind-test-writer-impl-test-prohibition.md)
-- [0026 — Stable 8-field report shape](./0026-stable-eight-field-report.md)
-- [0027 — A failing GREEN is a human decision](./0027-failing-green-human-decision.md)
-- [0028 — Feedback gate takes three named parameters inline](./0028-gate-parameters-inline-at-fetch-site.md)
-- [0044 — Preview committed-files block from intended add-list](./0044-preview-committed-block-from-add-list-not-index.md) — Pair with 0045
-- [0045 — Pin staged file set to previewed add-list](./0045-pin-staged-set-to-previewed-add-list.md) — Pair with 0044
-- [0048](./0048-single-source-fast-track-parse-in-body-file.md) / [0052](./0052-human-verification-deferral-under-fast-track.md) / [0059](./0059-fast-track-auto-stay-branch-rule-in-apply.md)
-- [0062 — Field 9's soft-degradation exemption stated at two sites](./0062-field-9-soft-degradation-stated-at-two-sites.md) — **Amends** 0026
-- [0063 — A contract-violating telemetry note is dropped whole](./0063-violating-telemetry-note-dropped-not-cleaned.md)
+- [0020 — Ephemeral in-context technical-learnings memory for the apply coordinator](./0020-ephemeral-in-context-technical-learnings-memory.md) — Refs 0019
+- [0025 — Blind test-writer receives injected context; implementation dispatch is barred from test files](./0025-blind-test-writer-impl-test-prohibition.md)
+- [0026 — Stable 8-field report shape with per-dispatch n/a for the unowned field](./0026-stable-eight-field-report.md)
+- [0027 — A failing GREEN is a human decision, reached via bounded iteration](./0027-failing-green-human-decision.md)
+- [0040 — Session-scoped commit authorization lives in in-conversation working memory only](./0040-session-auth-in-memory-only.md)
+- [0041 — Uniform three-option commit gate across apply.md and commit.md](./0041-uniform-three-option-gate.md)
+- [0042 — Reconcile the "ask every time" authorization principle atomically at the principle layer](./0042-reconcile-authorization-principle-atomically.md)
+- [0044 — Preview committed-files block from intended add-list instead of git index](./0044-preview-committed-block-from-add-list-not-index.md)
+- [0045 — Pin staged file set to previewed add-list with deferred timing preserved](./0045-pin-staged-set-to-previewed-add-list.md) — Pair with 0044
+- [0052 — Human-Verification deferral under `--fast-track` with bounded-failure semantics](./0052-human-verification-deferral-under-fast-track.md)
+- [0059 — The fast-track branch auto-stay rule lives in `apply.md`, not in the `implement.md` Prerequisites template](./0059-fast-track-auto-stay-branch-rule-in-apply.md) — Pair with 0052
+- [0062 — Field 9's soft-degradation exemption is stated at two sites](./0062-field-9-soft-degradation-stated-at-two-sites.md) — **Amends** 0026
+- [0063 — A contract-violating telemetry note is dropped whole, never trimmed](./0063-violating-telemetry-note-dropped-not-cleaned.md)
 - [0064 — Instruction-file-only Steps are classified non-testable](./0064-instruction-only-steps-classified-non-testable.md)
-- [0069 — Test Command is a sibling field of Implementation Context](./0069-test-command-sibling-field-outside-conventions-quota.md) — Pair with 0070
-- [0070 — Test Command carries the project's parameterised scoping idiom](./0070-test-command-carries-parameterised-scoping-idiom.md) — Pair with 0069
+- [0070 — Test Command carries the project's parameterised scoping idiom, not a bare suite command](./0070-test-command-carries-parameterised-scoping-idiom.md)
+- [0071 — Two-part dispatch-routing condition (RED block AND Step Contract)](./0071-two-part-dispatch-routing-condition.md) — Supersedes 0024, Refs 0064
 
 ### `/sai-5-review`
 
-- [0012 — Mutation Analysis (pass 11) as a dedicated protocol section](./0012-mutation-analysis-as-dedicated-protocol-section.md)
-- [0013 — Dedicated mMUT-N finding namespace](./0013-mmut-n-finding-namespace-for-mutation-analysis.md) — Refs 0012
-
-### `/sai-backfill`
-
-- [0007 — Diff Source selected interactively](./0007-backfill-diff-source-interactive-selection.md) — Pair with 0008
-- [0008 — Does not generate design.md, tasks.md, or implementation.md](./0008-backfill-prohibited-design-artifacts.md) — Pair with 0007
-
-### `/sai-commit`
-
-- [0005 — Verbatim extraction of commit rules](./0005-verbatim-extraction-of-commit-rules.md)
-- [0006 — Load commit-rules at Git Operations Section Header in apply.md](./0006-commit-rules-fetch-placement-in-apply.md)
-- [0040 — Session-scoped commit authorization in-memory only](./0040-session-auth-in-memory-only.md)
-- [0041 — Uniform three-option commit gate](./0041-uniform-three-option-gate.md)
-- [0042 — Reconcile the "ask every time" authorization principle atomically](./0042-reconcile-authorization-principle-atomically.md) — **Amends** the CRITICAL block of `apply.md` and `commit-rules.md`; integrates 0040
-
-### `/sai-status`
-
-- [0065 — Fork `status-picker.md` from `change-picker.md`](./0065-fork-status-picker-from-change-picker.md)
+- [0012 — Mutation Analysis (pass 11) as a dedicated protocol section in review.md](./0012-mutation-analysis-as-dedicated-protocol-section.md)
+- [0013 — Dedicated mMUT-N finding namespace and Mutation Analysis output section](./0013-mmut-n-finding-namespace-for-mutation-analysis.md) — **Amends** 0012
 
 ### `/sai-explore`
 
-*Crystallization, post-crystallization review loop, and handoff to `sai-1-spec`.*
+- [0038 — Shared unnumbered "Emission gate" subsection at the §4→§5 seam in `explore.md`](./0038-shared-unnumbered-emission-gate-subsection.md)
+- [0039 — Align baseline `explore-*` spec emission-timing language via MODIFIED deltas](./0039-align-explore-spec-emission-timing-language.md) — Pair with 0038
+- [0043 — Append crystallization language gate as item 8; do not renumber items 1–7 in `explore.md`](./0043-append-crystallization-gate-as-item-8.md) — Refs 0038
+- [0053 — Post-crystallization review loop fires once per turn, after the final `Ready to Propose` block](./0053-post-crystallization-review-once-per-turn.md)
+- [0054 — Reuse item 3's path-keyed Persistence rule for post-crystallization review-loop re-asks](./0054-reuse-item-3-persistence-rule-for-review-loop.md)
+- [0058 — The explore/feedback gate UX tweaks are expressed as deltas against the existing capabilities, not a new combined capability](./0058-gate-ux-tweaks-as-deltas-against-existing-capabilities.md) — **Reframes** 0053
+- [0060 — The post-crystallization review loop's explicit trigger is the hyphenated literal token `review-loop`](./0060-review-loop-is-a-hyphenated-literal-token.md) — Pair with 0061, Refs 0053, Refs 0058
+- [0061 — An artifact-review turn naming a tracked crystallized change is served first and then offered the loop, never rerouted into it](./0061-item-3-precedence-is-additive-not-a-reroute.md) — Pair with 0060, Refs 0053, Refs 0054
+- [0066 — Provenance as inline citations on existing Why / Decisions & Rationale fields — no new field](./0066-inline-provenance-no-new-field.md)
+- [0068 — Scope provenance to item-5 single-change block; defer item-6 sliced blocks](./0068-scope-item-5-defer-sliced.md)
 
-- [0038 — Shared unnumbered "Emission gate" subsection at the §4→§5 seam in explore.md](./0038-shared-unnumbered-emission-gate-subsection.md)
-- [0039 — Align baseline `explore-*` spec emission-timing language via MODIFIED deltas](./0039-align-explore-spec-emission-timing-language.md)
-- [0043 — Append crystallization language gate as item 8; do not renumber items 1–7 in explore.md](./0043-append-crystallization-gate-as-item-8.md)
-- [0053 — Post-crystallization review loop fires once per turn](./0053-post-crystallization-review-once-per-turn.md)
-- [0054 — Reuse item 3's path-keyed Persistence rule for post-crystallization review-loop re-asks](./0054-reuse-item-3-persistence-rule-for-review-loop.md) — Pair with 0061
-- [0058 — The explore/feedback gate UX tweaks are expressed as deltas against the existing capabilities](./0058-gate-ux-tweaks-as-deltas-against-existing-capabilities.md) — **Reframes** 0053
-- [0060 — The post-crystallization review loop's explicit trigger is the hyphenated literal token `review-loop`](./0060-review-loop-is-a-hyphenated-literal-token.md) — Pair with 0061
-- [0061 — An artifact-review turn naming a tracked crystallized change is served first and then offered the loop, never rerouted into it](./0061-item-3-precedence-is-additive-not-a-reroute.md) — Pair with 0060
-- [0066 — Provenance as inline citations on existing Why / Decisions & Rationale fields](./0066-inline-provenance-no-new-field.md) — Pair with 0067/0068
-- [0067 — Handoff provenance consumption as "premise to confirm and extend"](./0067-confirm-extend-consumption-framing.md) — Pair with 0066/0068
-- [0068 — Scope provenance to item-5 single-change block; defer item-6 sliced blocks](./0068-scope-item-5-defer-sliced.md) — Pair with 0066/0067
+### `/sai-backfill`
+
+- [0007 — Diff Source for sai-backfill Selected Interactively](./0007-backfill-diff-source-interactive-selection.md) — Refs 0008
+- [0008 — sai-backfill Does Not Generate design.md, tasks.md, or implementation.md](./0008-backfill-prohibited-design-artifacts.md) — Refs 0007
+
+### `/sai-commit`
+
+- [0005 — Verbatim Extraction of Commit Rules into commit-rules.md](./0005-verbatim-extraction-of-commit-rules.md) — Refs 0006
+- [0040 — Session-scoped commit authorization lives in in-conversation working memory only](./0040-session-auth-in-memory-only.md)
+- [0041 — Uniform three-option commit gate across apply.md and commit.md](./0041-uniform-three-option-gate.md)
+- [0042 — Reconcile the "ask every time" authorization principle atomically at the principle layer](./0042-reconcile-authorization-principle-atomically.md)
+
+### `/sai-status`
+
+- [0065 — Fork `status-picker.md` from `change-picker.md` rather than parameterize the shared picker](./0065-fork-status-picker-from-change-picker.md)
+
+### `npx shared-ai` (install / setup / uninstall / doctor)
+
+- [0010 — Raw readline for interactive checklist instead of npm library](./0010-readline-over-npm-for-interactive-checklist.md)
+- [0011 — Regex line-level patch for config.yaml schema field instead of YAML library](./0011-regex-line-patch-over-yaml-library-for-config.md) — Refs 0010
+- [0029 — Surgical merge of the opencode `agent` block via jsonc-parser](./0029-jsonc-parser-surgical-merge-for-opencode-agent-block.md) — Refs 0031
+- [0030 — Merge `opencode.json` over `opencode.jsonc` when both exist](./0030-opencode-json-over-jsonc-merge-precedence.md)
+- [0031 — Permit declared npm dependencies in the installer (jsonc-parser)](./0031-permit-declared-npm-dependencies-in-installer.md) — **Amends** 0010, **Amends** 0011
+- [0032 — Installer may execute an external installer](./0032-installer-may-execute-external-installer.md) — Refs 0031
+- [0036 — Bundle CodeGraph CLI install and MCP wiring into a single boolean-returning runner](./0036-codegraph-install-bundled-runner-boolean.md)
+- [0037 — `setup.js` imports the shared CodeGraph offer directly from `install-flow.js`](./0037-setup-imports-install-flow-directly.md)
+- [0055 — Re-derive the uninstall deletion set and verify symmetry by test](./0055-re-derive-uninstall-deletion-set-verify-by-test.md)
+- [0056 — The doctor's "fresh repo from main" is its own npx-bundled checkout](./0056-doctor-fresh-repo-is-npx-bundled-checkout.md) — Refs 0057
+- [0057 — The doctor reuses uninstall-flow's enumeration as the install-graph source of truth](./0057-doctor-reuses-uninstall-enumeration-as-install-graph.md) — Refs 0055
+
+### Harness wrappers & the shared instruction layer
+
+- [0001 — Separate per-harness instruction files for the sai subagent resolver](./0001-sai-separate-harness-files.md)
+- [0004 — Source Layout and Install Path Restructure for sai-* Commands and Skills](./0004-source-layout-and-install-path-restructure.md) — Supersedes 0002, Supersedes 0003, Refs 0001
+- [0009 — Claude-Specific Fetch Skill at skills/claude/fetch/](./0009-claude-specific-fetch-skill.md) — Refs 0003
+- [0033 — Echo line format and placement](./0033-echo-line-format-and-placement.md)
+- [0034 — Resolution precedence — wrapper-echo check runs first](./0034-resolution-precedence-wrapper-echo-first.md) — Pair with 0033
+- [0035 — Harness-specific adapter carve-out](./0035-harness-specific-adapter-carve-out.md) — Pair with 0033
+- [0048 — Single-source the `--fast-track` parse in each command's body file](./0048-single-source-fast-track-parse-in-body-file.md)
+- [0049 — Fast-track flag-strip precedes change-picker; cleaned change-name is authoritative](./0049-fast-track-flag-strip-before-change-picker.md)
+- [0050 — Respect each harness's native argument-surface convention for `--fast-track`](./0050-respect-harness-native-argument-surface.md)
+- [0051 — Model `--fast-track` as ephemeral in-conversation state only](./0051-ephemeral-in-conversation-fast-track-state.md) — Refs 0040
 
 ---
 
 ## Cross-cutting categories
 
-### Repo layout, fetch paths and skill installation
+### Fetch resolution & path conventions
 
-- [0001 — Separate per-harness instruction files for the sai subagent resolver](./0001-sai-separate-harness-files.md) — *Still valid; separate file now lives as `skills/{claude,opencode}/`*
-- [0004 — Source Layout and Install Path Restructure](./0004-source-layout-and-install-path-restructure.md) — Supersedes 0002; amends 0003; 0001 remains valid via `skills/`
+- [0004 — Source Layout and Install Path Restructure for sai-* Commands and Skills](./0004-source-layout-and-install-path-restructure.md) — Supersedes 0002, Supersedes 0003, Refs 0001
 - [0009 — Claude-Specific Fetch Skill at skills/claude/fetch/](./0009-claude-specific-fetch-skill.md) — Refs 0003
 
-### `bin/`, installer and npm dependencies
+### Harness portability & mirror discipline
 
-- [0010 — Raw readline for interactive checklist instead of npm library](./0010-readline-over-npm-for-interactive-checklist.md)
-- [0011 — Regex line-level patch for config.yaml schema field instead of YAML library](./0011-regex-line-patch-over-yaml-library-for-config.md) — Refs 0010 constraint (zero-dep)
-- [0031 — Permit declared npm dependencies in the installer (jsonc-parser)](./0031-permit-declared-npm-dependencies-in-installer.md) — **Reverses** the zero-dep stance of 0010/0011
-- [0032 — Installer may execute an external installer](./0032-installer-may-execute-external-installer.md) — Refs 0031 precedent
-- [0036 — Bundle CodeGraph CLI install and MCP wiring into a single boolean runner](./0036-codegraph-install-bundled-runner-boolean.md)
-- [0037 — `setup.js` imports the shared CodeGraph offer from `install-flow.js`](./0037-setup-imports-install-flow-directly.md) — Refs 0036
-- [0055 — Re-derive the uninstall deletion set and verify symmetry by test](./0055-re-derive-uninstall-deletion-set-verify-by-test.md)
-- [0056 — The doctor's "fresh repo from main" is its own npx-bundled checkout](./0056-doctor-fresh-repo-is-npx-bundled-checkout.md) — Refs 0057
-- [0057 — The doctor reuses uninstall-flow's enumeration as the install-graph source of truth](./0057-doctor-reuses-uninstall-enumeration-as-install-graph.md) — Pair/sibling with 0056
-
-### Cross-harness / wrapper mechanism
-
-- [0001 — Separate per-harness instruction files](./0001-sai-separate-harness-files.md)
-- [0004 — Source Layout and Install Path Restructure](./0004-source-layout-and-install-path-restructure.md)
-- [0009 — Claude-Specific Fetch Skill](./0009-claude-specific-fetch-skill.md)
-- [0033 — Echo line format and placement](./0033-echo-line-format-and-placement.md) — Only meaningful in opencode (wrapper-echo)
-- [0034 — Resolution precedence — wrapper-echo check runs first](./0034-resolution-precedence-wrapper-echo-first.md) — Builds on 0033
-- [0035 — Harness-specific adapter carve-out](./0035-harness-specific-adapter-carve-out.md) — Justifies that 0033/0034 are not mirrored to Claude/Copilot
+- [0001 — Separate per-harness instruction files for the sai subagent resolver](./0001-sai-separate-harness-files.md)
+- [0035 — Harness-specific adapter carve-out](./0035-harness-specific-adapter-carve-out.md) — Pair with 0033
 - [0050 — Respect each harness's native argument-surface convention for `--fast-track`](./0050-respect-harness-native-argument-surface.md)
 
-### opencode config merging
+### Argument passing & change-name resolution
 
-- [0029 — Surgical merge of the opencode `agent` block via jsonc-parser](./0029-jsonc-parser-surgical-merge-for-opencode-agent-block.md) — Introduces `jsonc-parser`; depends on 0031
-- [0030 — Merge `opencode.json` over `opencode.jsonc` when both exist](./0030-opencode-json-over-jsonc-merge-precedence.md) — Sibling pair with 0029
+- [0033 — Echo line format and placement](./0033-echo-line-format-and-placement.md)
+- [0034 — Resolution precedence — wrapper-echo check runs first](./0034-resolution-precedence-wrapper-echo-first.md) — Pair with 0033
+- [0049 — Fast-track flag-strip precedes change-picker; cleaned change-name is authoritative](./0049-fast-track-flag-strip-before-change-picker.md)
+- [0065 — Fork `status-picker.md` from `change-picker.md` rather than parameterize the shared picker](./0065-fork-status-picker-from-change-picker.md)
 
-### Flag `--fast-track`
+### Fast-track mode
 
-- [0048 — Single-source the parse in each command's body file](./0048-single-source-fast-track-parse-in-body-file.md)
-- [0049 — Fast-track flag-strip precedes change-picker](./0049-fast-track-flag-strip-before-change-picker.md)
-- [0050 — Respect each harness's native argument-surface convention](./0050-respect-harness-native-argument-surface.md)
-- [0051 — Model `--fast-track` as ephemeral in-conversation state only](./0051-ephemeral-in-conversation-fast-track-state.md)
-- [0052 — Human-Verification deferral under `--fast-track`](./0052-human-verification-deferral-under-fast-track.md) — Sibling pair with 0059
-- [0059 — Fast-track branch auto-stay rule lives in `apply.md`](./0059-fast-track-auto-stay-branch-rule-in-apply.md) — Sibling pair with 0052
+- [0048 — Single-source the `--fast-track` parse in each command's body file](./0048-single-source-fast-track-parse-in-body-file.md)
+- [0049 — Fast-track flag-strip precedes change-picker; cleaned change-name is authoritative](./0049-fast-track-flag-strip-before-change-picker.md)
+- [0050 — Respect each harness's native argument-surface convention for `--fast-track`](./0050-respect-harness-native-argument-surface.md)
+- [0051 — Model `--fast-track` as ephemeral in-conversation state only](./0051-ephemeral-in-conversation-fast-track-state.md) — Refs 0040
+- [0052 — Human-Verification deferral under `--fast-track` with bounded-failure semantics](./0052-human-verification-deferral-under-fast-track.md)
+- [0059 — The fast-track branch auto-stay rule lives in `apply.md`, not in the `implement.md` Prerequisites template](./0059-fast-track-auto-stay-branch-rule-in-apply.md) — Pair with 0052
 
-### Commit authorization & audit (sai-4-apply / sai-commit)
+### Commit authorization, staging & message rules
 
-- [0040 — Session-scoped commit authorization in-memory only](./0040-session-auth-in-memory-only.md)
+- [0005 — Verbatim Extraction of Commit Rules into commit-rules.md](./0005-verbatim-extraction-of-commit-rules.md) — Refs 0006
+- [0006 — Load commit-rules at Git Operations Section Header in apply.md](./0006-commit-rules-fetch-placement-in-apply.md) — Refs 0005
+- [0040 — Session-scoped commit authorization lives in in-conversation working memory only](./0040-session-auth-in-memory-only.md)
 - [0041 — Uniform three-option commit gate across apply.md and commit.md](./0041-uniform-three-option-gate.md)
-- [0042 — Reconcile the "ask every time" authorization principle atomically](./0042-reconcile-authorization-principle-atomically.md) — **Amends** the CRITICAL principle + `commit-rules.md`; integrates 0040
-- [0044 — Preview committed-files block from intended add-list](./0044-preview-committed-block-from-add-list-not-index.md)
-- [0045 — Pin staged file set to previewed add-list](./0045-pin-staged-set-to-previewed-add-list.md) — Pair with 0044
-- [0046 — Single-object amendment audit with overwrite-latest semantics](./0046-single-object-amendment-audit.md)
-- [0047 — Keep the amendment path distinct from the artifact-feedback-gate](./0047-amendment-path-distinct-from-feedback-gate.md) — Pair with 0046
+- [0042 — Reconcile the "ask every time" authorization principle atomically at the principle layer](./0042-reconcile-authorization-principle-atomically.md)
+- [0044 — Preview committed-files block from intended add-list instead of git index](./0044-preview-committed-block-from-add-list-not-index.md)
+- [0045 — Pin staged file set to previewed add-list with deferred timing preserved](./0045-pin-staged-set-to-previewed-add-list.md) — Pair with 0044
 
-### Subagent report contract (8 → 9 fields)
+### Subagent dispatch & report contract
 
-- [0026 — Stable 8-field report shape with per-dispatch n/a for the unowned field](./0026-stable-eight-field-report.md)
-- [0062 — Field 9's soft-degradation exemption stated at two sites](./0062-field-9-soft-degradation-stated-at-two-sites.md) — **Amends** 0026 (field count 8→9; stability principle intact)
-
-### RED→GREEN, blind test-writer & interfaces.md (test isolation)
-
-- [0022 — interfaces.md is a standalone, step-keyed artifact](./0022-interfaces-artifact-standalone-file.md)
-- [0023 — interfaces.md is an optional soft dependency, not a schema hard requirement](./0023-interfaces-soft-dependency.md)
-- [0024 — Split into two dispatches ONLY for testable Steps](./0024-split-only-testable-steps.md)
+- [0017 — Same-model Step-execution dispatch via omitted `model:` parameter](./0017-same-model-dispatch-via-omitted-model-param.md)
+- [0019 — Fixed gate ordering after a Step-execution subagent's report](./0019-coordinator-gate-ordering-after-subagent-report.md)
+- [0020 — Ephemeral in-context technical-learnings memory for the apply coordinator](./0020-ephemeral-in-context-technical-learnings-memory.md) — Refs 0019
 - [0025 — Blind test-writer receives injected context; implementation dispatch is barred from test files](./0025-blind-test-writer-impl-test-prohibition.md)
-- [0027 — A failing GREEN is a human decision](./0027-failing-green-human-decision.md)
-- [0069 — Test Command is a sibling field of Implementation Context](./0069-test-command-sibling-field-outside-conventions-quota.md)
-- [0070 — Test Command carries the project's parameterised scoping idiom](./0070-test-command-carries-parameterised-scoping-idiom.md) — Pair with 0069
+- [0026 — Stable 8-field report shape with per-dispatch n/a for the unowned field](./0026-stable-eight-field-report.md)
+- [0027 — A failing GREEN is a human decision, reached via bounded iteration](./0027-failing-green-human-decision.md)
+- [0062 — Field 9's soft-degradation exemption is stated at two sites](./0062-field-9-soft-degradation-stated-at-two-sites.md) — **Amends** 0026
+- [0063 — A contract-violating telemetry note is dropped whole, never trimmed](./0063-violating-telemetry-note-dropped-not-cleaned.md)
 
-### Decision summary (governance of the emitted summary)
+### Testability routing & RED → GREEN
+
+- [0025 — Blind test-writer receives injected context; implementation dispatch is barred from test files](./0025-blind-test-writer-impl-test-prohibition.md)
+- [0064 — Instruction-file-only Steps are classified non-testable](./0064-instruction-only-steps-classified-non-testable.md)
+- [0070 — Test Command carries the project's parameterised scoping idiom, not a bare suite command](./0070-test-command-carries-parameterised-scoping-idiom.md)
+- [0071 — Two-part dispatch-routing condition (RED block AND Step Contract)](./0071-two-part-dispatch-routing-condition.md) — Supersedes 0024, Refs 0064
+
+### The `interfaces.md` contract
+
+- [0022 — interfaces.md is a standalone, step-keyed artifact rather than a section of tasks.md](./0022-interfaces-artifact-standalone-file.md)
+- [0023 — interfaces.md is an optional soft dependency, not a schema hard requirement](./0023-interfaces-soft-dependency.md)
+- [0071 — Two-part dispatch-routing condition (RED block AND Step Contract)](./0071-two-part-dispatch-routing-condition.md) — Supersedes 0024, Refs 0064
+
+### Gates, decision summaries & feedback loops
 
 - [0014 — Decision summary derived exclusively from written artifacts](./0014-decision-summary-derived-from-artifacts-only.md)
-- [0015 — Decision summary precedes the completion sentinel](./0015-decision-summary-precedes-completion-sentinel.md) — Pair with 0014
+- [0015 — Decision summary precedes the completion sentinel](./0015-decision-summary-precedes-completion-sentinel.md) — **Amends** 0014
+- [0028 — The feedback gate takes three named parameters supplied inline at the fetch site](./0028-gate-parameters-inline-at-fetch-site.md)
+- [0046 — Single-object amendment audit with overwrite-latest semantics](./0046-single-object-amendment-audit.md)
+- [0047 — Keep the amendment path distinct from the artifact-feedback-gate](./0047-amendment-path-distinct-from-feedback-gate.md) — Refs 0028
+- [0058 — The explore/feedback gate UX tweaks are expressed as deltas against the existing capabilities, not a new combined capability](./0058-gate-ux-tweaks-as-deltas-against-existing-capabilities.md) — **Reframes** 0053
 
-### Change-picker / status-picker
+### Explore crystallization & the review loop
 
-- [0033 — Echo line format and placement](./0033-echo-line-format-and-placement.md) — Enables the picker in opencode
-- [0034 — Resolution precedence — wrapper-echo check runs first](./0034-resolution-precedence-wrapper-echo-first.md)
-- [0065 — Fork `status-picker.md` from `change-picker.md`](./0065-fork-status-picker-from-change-picker.md)
+- [0038 — Shared unnumbered "Emission gate" subsection at the §4→§5 seam in `explore.md`](./0038-shared-unnumbered-emission-gate-subsection.md)
+- [0039 — Align baseline `explore-*` spec emission-timing language via MODIFIED deltas](./0039-align-explore-spec-emission-timing-language.md) — Pair with 0038
+- [0043 — Append crystallization language gate as item 8; do not renumber items 1–7 in `explore.md`](./0043-append-crystallization-gate-as-item-8.md) — Refs 0038
+- [0053 — Post-crystallization review loop fires once per turn, after the final `Ready to Propose` block](./0053-post-crystallization-review-once-per-turn.md)
+- [0054 — Reuse item 3's path-keyed Persistence rule for post-crystallization review-loop re-asks](./0054-reuse-item-3-persistence-rule-for-review-loop.md)
+- [0060 — The post-crystallization review loop's explicit trigger is the hyphenated literal token `review-loop`](./0060-review-loop-is-a-hyphenated-literal-token.md) — Pair with 0061, Refs 0053, Refs 0058
+- [0061 — An artifact-review turn naming a tracked crystallized change is served first and then offered the loop, never rerouted into it](./0061-item-3-precedence-is-additive-not-a-reroute.md) — Pair with 0060, Refs 0053, Refs 0054
+- [0066 — Provenance as inline citations on existing Why / Decisions & Rationale fields — no new field](./0066-inline-provenance-no-new-field.md)
+- [0068 — Scope provenance to item-5 single-change block; defer item-6 sliced blocks](./0068-scope-item-5-defer-sliced.md)
 
-### Doctor
+### Artifact metadata & routing tokens
 
-- [0056 — Fresh repo bundled npx checkout](./0056-doctor-fresh-repo-is-npx-bundled-checkout.md)
-- [0057 — Doctor reuses uninstall enumeration as install-graph source](./0057-doctor-reuses-uninstall-enumeration-as-install-graph.md)
+- [0066 — Provenance as inline citations on existing Why / Decisions & Rationale fields — no new field](./0066-inline-provenance-no-new-field.md)
+- [0067 — Handoff provenance consumption as "premise to confirm and extend"](./0067-confirm-extend-consumption-framing.md)
+- [0069 — Test Command is a sibling field of Implementation Context, outside the Conventions bullet quota](./0069-test-command-sibling-field-outside-conventions-quota.md)
+- [0070 — Test Command carries the project's parameterised scoping idiom, not a bare suite command](./0070-test-command-carries-parameterised-scoping-idiom.md)
+- [0072 — Numeric complexity thresholds calibrated from an archive survey](./0072-complexity-thresholds-calibrated-from-archive-survey.md) — Refs 0069, Refs 0070
+
+### Installer dependency policy & external tooling
+
+- [0010 — Raw readline for interactive checklist instead of npm library](./0010-readline-over-npm-for-interactive-checklist.md)
+- [0011 — Regex line-level patch for config.yaml schema field instead of YAML library](./0011-regex-line-patch-over-yaml-library-for-config.md) — Refs 0010
+- [0029 — Surgical merge of the opencode `agent` block via jsonc-parser](./0029-jsonc-parser-surgical-merge-for-opencode-agent-block.md) — Refs 0031
+- [0030 — Merge `opencode.json` over `opencode.jsonc` when both exist](./0030-opencode-json-over-jsonc-merge-precedence.md)
+- [0031 — Permit declared npm dependencies in the installer (jsonc-parser)](./0031-permit-declared-npm-dependencies-in-installer.md) — **Amends** 0010, **Amends** 0011
+- [0032 — Installer may execute an external installer](./0032-installer-may-execute-external-installer.md) — Refs 0031
+- [0036 — Bundle CodeGraph CLI install and MCP wiring into a single boolean-returning runner](./0036-codegraph-install-bundled-runner-boolean.md)
+- [0037 — `setup.js` imports the shared CodeGraph offer directly from `install-flow.js`](./0037-setup-imports-install-flow-directly.md)
+- [0055 — Re-derive the uninstall deletion set and verify symmetry by test](./0055-re-derive-uninstall-deletion-set-verify-by-test.md)
+- [0056 — The doctor's "fresh repo from main" is its own npx-bundled checkout](./0056-doctor-fresh-repo-is-npx-bundled-checkout.md) — Refs 0057
+- [0057 — The doctor reuses uninstall-flow's enumeration as the install-graph source of truth](./0057-doctor-reuses-uninstall-enumeration-as-install-graph.md) — Refs 0055
 
 ---
 
@@ -190,14 +242,18 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 
 | ADR | Action | Over |
 |---|---|---|
-| [0004](./0004-source-layout-and-install-path-restructure.md) | supersedes | [0002](./0002-sai-harness-files-under-claude-instructions.md), [0003](./0003-fetch-path-convention-commands-sai.md) (amend) |
-| [0018](./0018-checkbox-override-scoped-to-apply-not-remember.md) | local supersede | `remember.md` default, for `sai-4-apply` only |
-| [0031](./0031-permit-declared-npm-dependencies-in-installer.md) | reverses stance | [0010](./0010-readline-over-npm-for-interactive-checklist.md), [0011](./0011-regex-line-patch-over-yaml-library-for-config.md) zero-dep policy |
-| [0042](./0042-reconcile-authorization-principle-atomically.md) | amends | CRITICAL "ask every time" block + `commit-rules.md` hard rules |
+| [0004](./0004-source-layout-and-install-path-restructure.md) | supersedes | [0002](./0002-sai-harness-files-under-claude-instructions.md) |
+| [0004](./0004-source-layout-and-install-path-restructure.md) | supersedes | [0003](./0003-fetch-path-convention-commands-sai.md) |
+| [0013](./0013-mmut-n-finding-namespace-for-mutation-analysis.md) | amends | [0012](./0012-mutation-analysis-as-dedicated-protocol-section.md) |
+| [0015](./0015-decision-summary-precedes-completion-sentinel.md) | amends | [0014](./0014-decision-summary-derived-from-artifacts-only.md) |
+| [0031](./0031-permit-declared-npm-dependencies-in-installer.md) | amends | [0010](./0010-readline-over-npm-for-interactive-checklist.md) |
+| [0031](./0031-permit-declared-npm-dependencies-in-installer.md) | amends | [0011](./0011-regex-line-patch-over-yaml-library-for-config.md) |
 | [0058](./0058-gate-ux-tweaks-as-deltas-against-existing-capabilities.md) | reframes | [0053](./0053-post-crystallization-review-once-per-turn.md) |
-| [0062](./0062-field-9-soft-degradation-stated-at-two-sites.md) | amends | [0026](./0026-stable-eight-field-report.md) (field count 8→9; stability intact) |
+| [0062](./0062-field-9-soft-degradation-stated-at-two-sites.md) | amends | [0026](./0026-stable-eight-field-report.md) |
+| [0071](./0071-two-part-dispatch-routing-condition.md) | supersedes | [0024](./0024-split-only-testable-steps.md) |
 
 ## Superseded ADRs (historical)
 
 - [0002 — Both harness resolver files live under ~/.claude/instructions/sai/](./0002-sai-harness-files-under-claude-instructions.md) — *Superseded by [0004](./0004-source-layout-and-install-path-restructure.md)*
-- [0003 — Fetch Path Convention for Shared Command Bodies](./0003-fetch-path-convention-commands-sai.md) — *Superseded (amended) by [0004](./0004-source-layout-and-install-path-restructure.md)*
+- [0003 — Fetch Path Convention for Shared Command Bodies](./0003-fetch-path-convention-commands-sai.md) — *Superseded by [0004](./0004-source-layout-and-install-path-restructure.md)*
+- [0024 — Split into two dispatches ONLY for testable Steps, keyed by the already-authored RED block](./0024-split-only-testable-steps.md) — *Superseded by [0071](./0071-two-part-dispatch-routing-condition.md)*

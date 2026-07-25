@@ -34,6 +34,9 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 **Manual Verification**: "The closing section of `design.md` listing the checks that are cheap by hand and expensive to automate — generated-artifact drift and end-to-end smoke — naming the middle tier between automated tests and `/sai-5-review`."
 *Avoid*: QA checklist, manual QA, smoke test section, verification steps
 
+**Proposal Complexity**: "The single `low` / `medium` / `high` token on the `**Complexity**` line at the top of `proposal.md`, describing the coarse size of a whole change as judged at spec time from five signals, before `design.md` and `tasks.md` exist."
+*Avoid*: change complexity, proposal routing, proposal size, change tier
+
 **Provenance Marker**: "The pinned `**Provenance**` sub-field on every `design.md` Decision carrying one of `user` / `codebase-forced` / `derived`, signalling how re-litigable the decision is downstream."
 *Avoid*: Decision Source, Origin, decision tag, author marker
 
@@ -91,6 +94,9 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 - A **Routing Line** is descriptive, not prescriptive — a future orchestrator maps the three tokens to its own agent roster at dispatch time, and `sai-3-implement` may refine the **Routing Complexity** (or split the step) without re-tagging `tasks.md`.
 - A **Target State** belongs to the same `interfaces.md` artifact as the **Step Contract**, appearing once as the leading section before every `## Step N` section.
 - A **Verify-First Marker** on a risk constrains **Routing Line** step ordering in `tasks.md`, sequencing the work that resolves the risk before the step it names.
+- A **Proposal Complexity** token draws on the same three-value vocabulary as a **Routing Complexity** token, so one orchestrator mapping table serves both; it is emitted once per change, whereas **Routing Complexity** is emitted once per step.
+- A **Proposal Complexity** token is derived by `/sai-1-spec` after `specs/**/*.md` are written, because the requirements count is one of its five signals; `/sai-2-design` may size the work differently without re-tagging `proposal.md`.
+- A **Proposal Complexity** token has no consumer: like the **Routing Line** it is descriptive metadata awaiting a future orchestrator.
 
 ## Example dialogue
 
@@ -99,4 +105,5 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 
 ## Flagged ambiguities
 
+- **Change-level vs step-level complexity** — both **Proposal Complexity** and **Routing Complexity** are spelled `low|medium|high`, so a bare "complexity" is ambiguous about which artifact and which granularity is meant. **Resolution:** the shared vocabulary is deliberate (one mapping table serves both), so the tokens are not renamed; instead the qualified terms are always used — **Proposal Complexity** for the per-change token on `proposal.md`, **Routing Complexity** for the per-step token on `tasks.md`. A divergence between the two is expected and is never reported as an inconsistency.
 - **"Testable Step" vs the dispatch it routes to** — `apply.md` used "testable" to mean both "has a RED block" and "gets two dispatches", which collapsed once a RED-carrying Step with no **Step Contract** was recognised. **Resolution:** "testable" describes only the RED block; **Split-Routed Step** is the term for the two-dispatch outcome, and the two are no longer synonyms.

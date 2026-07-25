@@ -17,6 +17,14 @@ artifacts:
       Create proposal.md establishing WHY this change is needed.
 
       Sections:
+      - **Complexity**: the FIRST line of the file, immediately above `## Why`, separated from it by one blank line.
+        Form: `**Complexity**: <token>` where <token> is exactly one of `low`, `medium`, `high`.
+        An optional trailing parenthetical may follow for audit, e.g. `medium (3 files, no breaking change)`;
+        parsers ignore everything from the first `(` onward.
+        Derive the token using `## Complexity Derivation Rubric` in sai/instructions/spec.propose.md.
+        Because the requirements count is one of the rubric's signals, derive or revise the token AFTER
+        specs/**/*.md are written, before reporting completion. Never invent a tier outside the three.
+        The line is descriptive metadata: it names no model, vendor, price tier, or harness.
       - **Why**: 1-2 sentences. What problem does this solve? Why now?
       - **What Changes**: Bullet list. Mark breaking changes with **BREAKING**.
       - **Capabilities**:

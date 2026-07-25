@@ -1,3 +1,6 @@
+**Complexity**: <low|medium|high>
+<!-- First line of the file. Derive per `## Complexity Derivation Rubric` in sai/instructions/spec.propose.md, after specs/**/*.md are written. Optional trailing parenthetical, e.g. `medium (3 files, no breaking change)` — parsers ignore everything from the first `(`. Any change that adds content above `## Why` must re-anchor this line in openspec/specs/proposal-complexity/spec.md rather than displace it. -->
+
 ## Why
 
 <!-- What problem does this solve? Why now? (1-2 sentences) -->
