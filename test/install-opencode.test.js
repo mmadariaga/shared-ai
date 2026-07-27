@@ -7,7 +7,7 @@ const os = require('os');
 const fs = require('fs');
 const childProcess = require('child_process');
 
-const { installOpencode, copyOpencodeConfig, OPENCODE_INSTALL_CMD, probeOpencode, runOpencodeInstall, promptYesNoReadline, offerOpencodeInstall } = require('../bin/install-flow.js');
+const { installOpencode, copyOpencodeConfig, OPENCODE_INSTALL_CMD, OPENCODE_MANAGED_AGENTS, probeOpencode, runOpencodeInstall, promptYesNoReadline, offerOpencodeInstall } = require('../bin/install-flow.js');
 const jsonc = require('jsonc-parser');
 
 const AGENT_PLACEHOLDER = { mode: 'subagent', model: 'opencode-go/deepseek-v4-flash' };
@@ -20,6 +20,11 @@ test('installOpencode copies commands/opencode/*.md to dest/commands/', () => {
   assert.ok(fs.existsSync(cmdDir), 'commands/ dir should exist');
   const files = fs.readdirSync(cmdDir);
   assert.ok(files.includes('sai-1-spec.md'), 'sai-1-spec.md should be in commands/');
+  const design = fs.readFileSync(path.join(cmdDir, 'sai-2-design.md'), 'utf8');
+  assert.match(design, /^agent: sai-design-coordinator$/m);
+  assert.match(design, /^subtask: false$/m);
+  assert.doesNotMatch(design, /^model:/m);
+  assert.ok(design.includes('**Change-name argument and and optional flags:** $ARGUMENTS'));
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });
 
@@ -179,10 +184,11 @@ test('copyOpencodeConfig does not overwrite existing target key', () => {
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });
 
-test('copyOpencodeConfig is idempotent when fully configured', () => {
+test('copyOpencodeConfig is idempotent when fully configured with all agents', () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-'));
   const config = { agent: {} };
   for (const key of AGENT_KEYS) config.agent[key] = { ...AGENT_PLACEHOLDER };
+  for (const [key, shape] of Object.entries(OPENCODE_MANAGED_AGENTS)) config.agent[key] = JSON.parse(JSON.stringify(shape));
   fs.writeFileSync(path.join(tmpDir, 'opencode.json'), JSON.stringify(config, null, 2));
   const beforeBytes = fs.readFileSync(path.join(tmpDir, 'opencode.json'));
   copyOpencodeConfig(tmpDir);
@@ -214,6 +220,7 @@ test('copyOpencodeConfig prints no add-notice when nothing added', () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-'));
   const config = { agent: {} };
   for (const key of AGENT_KEYS) config.agent[key] = { ...AGENT_PLACEHOLDER };
+  for (const [key, shape] of Object.entries(OPENCODE_MANAGED_AGENTS)) config.agent[key] = JSON.parse(JSON.stringify(shape));
   fs.writeFileSync(path.join(tmpDir, 'opencode.json'), JSON.stringify(config, null, 2));
   const messages = [];
   const origLog = console.log;
@@ -221,6 +228,86 @@ test('copyOpencodeConfig prints no add-notice when nothing added', () => {
   copyOpencodeConfig(tmpDir);
   console.log = origLog;
   assert.ok(!messages.some(m => /added/i.test(m)), 'should not print any add-notice');
+  fs.rmSync(tmpDir, { recursive: true, force: true });
+});
+
+// --- Step 1 live-probe blocker regression: legacy three-agent placeholder gets managed agents ---
+
+test('copyOpencodeConfig adds managed agents to legacy three-agent placeholder config', () => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-'));
+  const config = { agent: {} };
+  for (const key of AGENT_KEYS) config.agent[key] = { ...AGENT_PLACEHOLDER };
+  fs.writeFileSync(path.join(tmpDir, 'opencode.json'), JSON.stringify(config, null, 2));
+  copyOpencodeConfig(tmpDir);
+  const parsed = jsonc.parse(fs.readFileSync(path.join(tmpDir, 'opencode.json'), 'utf8'));
+  assert.ok(parsed.agent, 'agent block should exist');
+  for (const key of AGENT_KEYS) {
+    assert.deepEqual(parsed.agent[key], AGENT_PLACEHOLDER, `legacy agent ${key} should be preserved`);
+  }
+  for (const [key, shape] of Object.entries(OPENCODE_MANAGED_AGENTS)) {
+    assert.ok(key in parsed.agent, `managed agent ${key} should be added`);
+    assert.deepEqual(parsed.agent[key], shape, `managed agent ${key} should have exact shape`);
+  }
+  assert.equal(Object.keys(parsed.agent).length, AGENT_KEYS.length + Object.keys(OPENCODE_MANAGED_AGENTS).length,
+    'total agent keys should equal legacy + managed');
+  fs.rmSync(tmpDir, { recursive: true, force: true });
+});
+
+test('copyOpencodeConfig preserves comments and unrelated keys during legacy-to-managed migration', () => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-'));
+  const fixture = '{\n  // user comment\n  "displayName": "my-project",\n  "agent": {\n    "explore": { "mode": "subagent", "model": "opencode-go/deepseek-v4-flash" },\n    "executor": { "mode": "subagent", "model": "opencode-go/deepseek-v4-flash" },\n    "budget": { "mode": "subagent", "model": "opencode-go/deepseek-v4-flash" }\n  }\n}\n';
+  fs.writeFileSync(path.join(tmpDir, 'opencode.jsonc'), fixture);
+  copyOpencodeConfig(tmpDir);
+  const raw = fs.readFileSync(path.join(tmpDir, 'opencode.jsonc'), 'utf8');
+  assert.ok(raw.includes('// user comment'), 'comment should survive');
+  assert.ok(raw.includes('"displayName"'), 'unrelated key should survive');
+  const parsed = jsonc.parse(raw);
+  assert.equal(parsed.displayName, 'my-project', 'unrelated value should be unchanged');
+  for (const key of AGENT_KEYS) {
+    assert.deepEqual(parsed.agent[key], AGENT_PLACEHOLDER, `legacy agent ${key} should be preserved`);
+  }
+  for (const [key, shape] of Object.entries(OPENCODE_MANAGED_AGENTS)) {
+    assert.ok(key in parsed.agent, `managed agent ${key} should be added during migration`);
+    assert.deepEqual(parsed.agent[key], shape, `managed agent ${key} should have exact shape`);
+  }
+  fs.rmSync(tmpDir, { recursive: true, force: true });
+});
+
+test('copyOpencodeConfig is idempotent after legacy three-agent migration', () => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-'));
+  const config = { agent: {} };
+  for (const key of AGENT_KEYS) config.agent[key] = { ...AGENT_PLACEHOLDER };
+  fs.writeFileSync(path.join(tmpDir, 'opencode.json'), JSON.stringify(config, null, 2));
+  copyOpencodeConfig(tmpDir);
+  const afterFirst = fs.readFileSync(path.join(tmpDir, 'opencode.json'), 'utf8');
+  const firstParsed = jsonc.parse(afterFirst);
+  const totalKeys = AGENT_KEYS.length + Object.keys(OPENCODE_MANAGED_AGENTS).length;
+  assert.equal(Object.keys(firstParsed.agent).length, totalKeys,
+    'first run should add all managed agents');
+  copyOpencodeConfig(tmpDir);
+  const afterSecond = fs.readFileSync(path.join(tmpDir, 'opencode.json'), 'utf8');
+  assert.equal(afterSecond, afterFirst, 'second run should produce identical bytes');
+  fs.rmSync(tmpDir, { recursive: true, force: true });
+});
+
+test('copyOpencodeConfig prints add-notice naming legacy and managed agents during migration', () => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-'));
+  const config = { agent: {} };
+  for (const key of AGENT_KEYS) config.agent[key] = { ...AGENT_PLACEHOLDER };
+  fs.writeFileSync(path.join(tmpDir, 'opencode.json'), JSON.stringify(config, null, 2));
+  const messages = [];
+  const origLog = console.log;
+  console.log = (m) => messages.push(String(m));
+  copyOpencodeConfig(tmpDir);
+  console.log = origLog;
+  const addedLines = messages.filter(m => /added/i.test(m));
+  assert.ok(addedLines.length > 0, 'should print at least one add-notice');
+  assert.ok(!addedLines.some(l => l.includes('explore')), 'should NOT name explore as added');
+  assert.ok(!addedLines.some(l => l.includes('executor')), 'should NOT name executor as added');
+  assert.ok(!addedLines.some(l => l.includes('budget')), 'should NOT name budget as added');
+  for (const key of Object.keys(OPENCODE_MANAGED_AGENTS)) {
+    assert.ok(addedLines.some(l => l.includes(key)), `should name ${key} as added`);
+  }
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });
 
@@ -374,4 +461,3 @@ test('probeOpencode uses spawnSync exit-code semantics', () => {
     childProcess.spawnSync = origSpawnSync;
   }
 });
-

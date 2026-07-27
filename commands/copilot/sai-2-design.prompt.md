@@ -1,5 +1,5 @@
 ---
-description: Generate design.md and tasks.md for a change — gated on specs approval the wrapper itself asks for and records (body file: sai/instructions/design.md).
+description: Generate design.md and tasks.md for a change through the inline design path.
 argument-hint: "[change-name] [--fast-track]"
 agent: agent
 model: Claude Opus 4.8 (copilot)
@@ -8,4 +8,4 @@ tools: [vscode, read, search, edit, execute, web]
 ## Sai Design - 2
 
 Use the skill tool to load the fetch skill.
-Fetch @sai/commands/sai-2-design.md and follow those instructions exactly.
+Fetch @sai/commands/sai-2-design-inline.md and follow those instructions exactly.

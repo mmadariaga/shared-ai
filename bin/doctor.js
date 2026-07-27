@@ -304,23 +304,34 @@ function diffAgainstBundled(expectedEntries) {
 
 const COLLISION_REMEDIATION = 'Rename or remove the conflicting definition, then retry';
 
+const MANAGED_CLAUDE_WORKERS = [
+  { agentKey: 'CLAUDE_IMPLEMENTATION_WORKER_AGENT', label: 'implementation' },
+  { agentKey: 'CLAUDE_DESIGN_WORKER_AGENT', label: 'design' },
+];
+
 function managedClaudeWorkerRecords(harness, repoRoot) {
   const section = `[${harness.id}]`;
-  const destination = path.join(harness.base, 'agents', flow.CLAUDE_IMPLEMENTATION_WORKER_AGENT);
-  const source = path.join(repoRoot, 'agents', 'claude', flow.CLAUDE_IMPLEMENTATION_WORKER_AGENT);
-  if (!fs.existsSync(destination)) {
-    return [{
-      section,
-      name: flow.CLAUDE_IMPLEMENTATION_WORKER_AGENT,
-      severity: 'error',
-      message: 'managed Claude implementation worker is missing',
-      recommendation: 'Re-run the installer to restore the worker',
-    }];
+  const records = [];
+  for (const { agentKey, label } of MANAGED_CLAUDE_WORKERS) {
+    const agentName = flow[agentKey];
+    const destination = path.join(harness.base, 'agents', agentName);
+    const source = path.join(repoRoot, 'agents', 'claude', agentName);
+    if (!fs.existsSync(destination)) {
+      records.push({
+        section,
+        name: agentName,
+        severity: 'error',
+        message: `managed Claude ${label} worker is missing`,
+        recommendation: 'Re-run the installer to restore the worker',
+      });
+      continue;
+    }
+    const compatible = uninstall.sha256File(source) === uninstall.sha256File(destination);
+    records.push(compatible
+      ? { section, name: agentName, severity: 'ok', message: `managed Claude ${label} worker is compatible` }
+      : { section, name: agentName, severity: 'error', message: `incompatible Claude ${label} worker definition`, recommendation: COLLISION_REMEDIATION });
   }
-  const compatible = uninstall.sha256File(source) === uninstall.sha256File(destination);
-  return [compatible
-    ? { section, name: flow.CLAUDE_IMPLEMENTATION_WORKER_AGENT, severity: 'ok', message: 'managed Claude implementation worker is compatible' }
-    : { section, name: flow.CLAUDE_IMPLEMENTATION_WORKER_AGENT, severity: 'error', message: 'incompatible Claude implementation worker definition', recommendation: COLLISION_REMEDIATION }];
+  return records;
 }
 
 function managedOpencodeAgentRecords(harness) {

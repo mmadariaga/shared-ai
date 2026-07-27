@@ -18,6 +18,8 @@ const {
   promptYesNoReadline,
   CLAUDE_IMPLEMENTATION_WORKER_AGENT,
   CLAUDE_IMPLEMENTATION_WORKER_OWNER,
+  CLAUDE_DESIGN_WORKER_AGENT,
+  CLAUDE_DESIGN_WORKER_OWNER,
 } = require('./install-flow.js');
 
 const REPOSITORY_ROOT = path.join(__dirname, '..');
@@ -34,6 +36,7 @@ const CLAUDE_SKILLS = [
   { tier: 'claude', name: 'budget-subagent' },
   { tier: 'claude', name: 'fetch' },
   { tier: 'claude', name: 'sai-implementation-planning-worker' },
+  { tier: 'claude', name: 'sai-design-planning-worker' },
 ];
 
 const OPENCODE_SKILLS = [
@@ -46,6 +49,7 @@ const OPENCODE_SKILLS = [
   { tier: 'opencode', name: 'budget-subagent' },
   { tier: 'opencode', name: 'fetch' },
   { tier: 'opencode', name: 'sai-implementation-planning-worker' },
+  { tier: 'opencode', name: 'sai-design-planning-worker' },
 ];
 
 const COPILOT_SKILLS = [
@@ -84,16 +88,22 @@ function enumerateClaude(destBase) {
     ...mapMdFlat(path.join(REPOSITORY_ROOT, 'sai', 'commands'), path.join(targetPath, 'sai', 'commands')),
     ...mapMdRecursive(path.join(REPOSITORY_ROOT, 'sai', 'instructions'), path.join(targetPath, 'sai', 'instructions')),
   ];
-  const agentPath = path.join(targetPath, 'agents', CLAUDE_IMPLEMENTATION_WORKER_AGENT);
-  const ownerPath = path.join(targetPath, 'agents', CLAUDE_IMPLEMENTATION_WORKER_OWNER);
-  entries.push({
-    src: path.join(REPOSITORY_ROOT, 'agents', 'claude', CLAUDE_IMPLEMENTATION_WORKER_AGENT),
-    dest: agentPath,
-    assetType: 'claude-managed-agent',
-    ownerPath,
-  });
-  if (fs.existsSync(ownerPath)) {
-    entries.push({ src: ownerPath, dest: ownerPath, assetType: 'claude-managed-agent-owner' });
+  const managedWorkers = [
+    { agent: CLAUDE_IMPLEMENTATION_WORKER_AGENT, owner: CLAUDE_IMPLEMENTATION_WORKER_OWNER },
+    { agent: CLAUDE_DESIGN_WORKER_AGENT, owner: CLAUDE_DESIGN_WORKER_OWNER },
+  ];
+  for (const { agent, owner } of managedWorkers) {
+    const agentPath = path.join(targetPath, 'agents', agent);
+    const ownerPath = path.join(targetPath, 'agents', owner);
+    entries.push({
+      src: path.join(REPOSITORY_ROOT, 'agents', 'claude', agent),
+      dest: agentPath,
+      assetType: 'claude-managed-agent',
+      ownerPath,
+    });
+    if (fs.existsSync(ownerPath)) {
+      entries.push({ src: ownerPath, dest: ownerPath, assetType: 'claude-managed-agent-owner' });
+    }
   }
   entries.push(...mapSkills(CLAUDE_SKILLS, path.join(targetPath, 'skills')));
   const mappedDests = new Set(entries.map(e => e.dest));

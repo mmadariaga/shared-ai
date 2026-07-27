@@ -92,7 +92,7 @@ All artifact paths below resolve under `openspec/changes/{change-name}/` (referr
 | Command | Input | Output | Purpose |
 |---------|-------|--------|---------|
 | `/sai-1-spec` | feature description | `{c}/proposal.md`, `specs/**` | Describe what you want to build. The AI writes a proposal and acceptance criteria for you to review and approve — nothing else happens until you say yes. |
-| `/sai-2-design` | {change-name} | `{c}/design.md`, `tasks.md`, `interfaces.md` | Turns approved specs into a technical plan: architecture decisions, trade-offs, a concrete task list, and a per-step interface contract (`interfaces.md`) listing the new/modified public signatures and exact test assertions for each step. Supports `--fast-track` to auto-approve specs. |
+| `/sai-2-design` | {change-name} | `{c}/design.md`, `tasks.md`, `interfaces.md` | Turns approved specs into a technical plan: architecture decisions, trade-offs, a concrete task list, and a per-step interface contract (`interfaces.md`) listing the new/modified public signatures and exact test assertions for each step. Claude Code routes through a low-effort Opus 4.8 coordinator and high-effort Opus 4.8 design worker; opencode routes through named GLM 5.2 `variant: high` coordinator and worker agents; GitHub Copilot remains inline because no portable cross-turn continuation contract spans the supported surfaces. The fixed notice is acknowledged before continuation, and Continue now starts a fresh implementation namespace. Proposal Complexity remains descriptive, not a routing gate. Supports `--fast-track` to auto-approve specs. |
 | `/sai-3-implement` | {change-name} | `{c}/implementation.md` | Claude Code uses a low-effort Opus 4.8 coordinator and a high-effort Opus 4.8 background planning worker; opencode uses a GLM 5.2 high-reasoning coordinator and a Kimi K2.6 fixed-reasoning planning worker; GitHub Copilot retains inline planning because this slice has no portable coordinator-worker continuation contract. All paths preserve `openspec/changes/{change-name}/implementation.md` and the MANDATORY STOP. The worker writes the full coding playbook, while `/sai-4-apply` follows it and copies each step's code verbatim, adjusting only for compilation errors or test failures. |
 | `/sai-4-apply` | {change-name} | code | Follows the playbook step by step as a **coordinator**: each step's work is delegated to a subagent (the coordinator never edits code itself), then the coordinator re-verifies the result, prints a pre-commit files-modified report cross-checked against `tasks.md`, and asks for your approval before each commit. A **testable** step runs through apply twice — first a *blind test-writer* dispatch authors the RED test (from the assertions in `interfaces.md`) and confirms it fails by assertion; then a *separate implementation* dispatch copies the GREEN code from the playbook into the project and makes the test pass, **without permission to modify the tests**, adjusting code only for compilation errors or test failures — so the same step occupies two dispatches, never one subagent doing both. Supports `--fast-track` to auto-commit and defer human checks to end-of-run. |
 | `/sai-5-review` | {change-name} + diff | `{c}/review.md` | Reviews the finished code across 11 dimensions (correctness, maintainability, tests, etc.). Also tells you which specialized audits to run next based on what changed. |
@@ -107,6 +107,10 @@ The routed Claude Code and opencode paths pass a two-field `InvocationEnvelope`:
 For `needs_input`, the active harness binding forwards the selected value through `continuation_reference` to the same worker. If same-worker continuation fails, the binding starts one fresh worker with the original envelope and a reconstruction instruction so the worker can rebuild from current durable artifacts. Every routed path preserves the durable artifact at `openspec/changes/{change-name}/implementation.md` and the explicit MANDATORY STOP completion boundary.
 
 Claude Code also manages the worker agent with an ownership sidecar and hash guard. Opencode merges the namespaced coordinator and worker entries into existing configuration without replacing incompatible or unrelated configuration. GitHub Copilot remains on the inline compatibility boundary for this slice because there is no portable coordinator-worker continuation contract; Copilot has subagent support, and this boundary is a portability choice.
+
+### Design coordinator and worker
+
+The routed `/sai-2-design` paths use a low-effort Opus 4.8 coordinator and high-effort Opus 4.8 design worker in Claude Code, and named `sai-design-coordinator` and `sai-design-planning-worker` agents with GLM 5.2 `variant: high` in opencode. The coordinator owns lifecycle routing; the worker owns technical I/O and design-artifact writes. The fixed notice is acknowledged with `continue_after_notice` before continuation. Continue now clears design lifecycle state and dispatches the implementation binding in a fresh namespace with resolved arguments. GitHub Copilot remains inline because no portable cross-turn continuation contract spans the supported surfaces; Copilot retains `budget-explorer` delegation and has subagent support. All harnesses preserve `openspec/changes/{change-name}/design.md`, `tasks.md`, and `interfaces.md`. Proposal Complexity remains descriptive rather than a routing gate.
 
 ## On-demand commands (unnumbered)
 
@@ -315,7 +319,7 @@ The `uninstall` command reverses the installation process:
 
 If you use opencode, modify the models for each command to match your preferred providers and personal taste.
 
-See [INSTALL.opencode.md](INSTALL.opencode.md#post-install) for post-install steps.
+See [INSTALL.opencode.md](INSTALL.opencode.md#post-install) for post-install steps. Routed coordinator and worker roles are customized through named agent configuration, not a command `model` field.
 
 ### Recommended models by command and provider
 
@@ -327,20 +331,20 @@ The **Copilot** column shows two model identifiers:
 
 | Command | Opencode | Claude Code | Copilot (VS Code) | Copilot (opencode) |
 |-------|----------|-------------|-------------------|--------------------|
-| explore | `opencode-go/minimax-m3` | `claude-sonnet-5` | `GPT-5.4 (copilot)` | `github-copilot/gpt-5.4` |
-| spec (1) | `opencode-go/minimax-m3` | `claude-sonnet-5` | `GPT-5.4 (copilot)` | `github-copilot/gpt-5.4` |
-| design (2) | `opencode-go/glm-5.2` | `claude-opus-4-8` | `Claude Opus 4.8 (copilot)` | `github-copilot/claude-opus-4.8` |
-| implement (3) | `opencode-go/kimi-k2.6` | `claude-opus-4-8` | `GPT-5.3-Codex (copilot)` | `github-copilot/gpt-5.3-codex` |
-| apply (4) | `opencode-go/deepseek-v4-flash` | `claude-haiku-4-5` | `GPT-5.4 mini (copilot)` | `github-copilot/gpt-5.4-mini` |
-| review (5) | `opencode-go/qwen3.7-plus` | `claude-sonnet-5` | `GPT-5.4 (copilot)` | `github-copilot/gpt-5.4` |
-| security (6) | `opencode-go/qwen3.7-plus` | `claude-opus-4-8` | `GPT-5.4 (copilot)` | `github-copilot/gpt-5.4` |
-| performance (7) | `opencode-go/qwen3.7-plus` | `claude-sonnet-5` | `GPT-5.4 (copilot)` | `github-copilot/gpt-5.4` |
-| accessibility (8) | `opencode-go/qwen3.7-plus` | `claude-sonnet-5` | `GPT-5.4 (copilot)` | `github-copilot/gpt-5.4` |
-| commit | `opencode-go/deepseek-v4-flash` | `claude-haiku-4-5` | `GPT-5 mini (copilot)` | `github-copilot/gpt-5-mini` |
-| pr | `opencode-go/deepseek-v4-flash` | `claude-haiku-4-5` | `GPT-5 mini (copilot)` | `github-copilot/gpt-5-mini` |
-| backfill | `opencode-go/minimax-m3` | `claude-sonnet-5` | `GPT-5.4 (copilot)` | `github-copilot/gpt-5.4` |
-| archive | `opencode-go/deepseek-v4-flash` | `claude-haiku-4-5` | `GPT-5 mini (copilot)` | `github-copilot/gpt-5-mini` |
-| status | `opencode-go/deepseek-v4-flash` | `claude-haiku-4-5` | `GPT-5 mini (copilot)` | `github-copilot/gpt-5-mini` |
+| explore | `opencode-go/minimax-m3` | `sonnet` - medium | `GPT-5.6 Luna (copilot)` | `github-copilot/gpt-5.6-luna` |
+| spec (1) | `opencode-go/minimax-m3` | `opus` - medium | `GPT-5.6 Terra (copilot)` | `github-copilot/gpt-5.6-terra` |
+| design (2) | named `sai-design-coordinator` / `sai-design-planning-worker`: `opencode-go/glm-5.2`, `variant: high` | coordinator `opus` - low; worker `opus` - high | `Claude Opus 4.8 (copilot)` inline | `github-copilot/claude-opus-4.8` |
+| implement (3) | `opencode-go/kimi-k2.6` | `opus` - medium | `GPT-5.6 Terra (copilot)` | `github-copilot/gpt-5.6-terra` |
+| apply (4) | `opencode-go/deepseek-v4-flash` | `sonnet` - low | `GPT-5.6 Luna (copilot)` | `github-copilot/gpt-5.6-luna` |
+| review (5) | `opencode-go/qwen3.7-plus` | `opus` - medium | `GPT-5.4 (copilot)` | `github-copilot/gpt-5.4` |
+| security (6) | `opencode-go/qwen3.7-plus` | `opus` - xhigh | `Claude Opus 4.8 (copilot)` | `github-copilot/claude-opus-4.8` |
+| performance (7) | `opencode-go/qwen3.7-plus` | `opus` - medium | `GPT-5.4 (copilot)` | `github-copilot/gpt-5.4` |
+| accessibility (8) | `opencode-go/qwen3.7-plus` | `opus` - medium | `GPT-5.4 (copilot)` | `github-copilot/gpt-5.4` |
+| backfill | `opencode-go/minimax-m3` | `sonnet` - medium | `GPT-5.6 Luna (copilot)` | `github-copilot/gpt-5.6-luna` |
+| commit | `opencode-go/deepseek-v4-flash` | `haiku` | `GPT-5 mini (copilot)` | `github-copilot/gpt-5-mini` |
+| pr | `opencode-go/deepseek-v4-flash` | `haiku` | `GPT-5 mini (copilot)` | `github-copilot/gpt-5-mini` |
+| archive | `opencode-go/deepseek-v4-flash` | `haiku` | `GPT-5 mini (copilot)` | `github-copilot/gpt-5-mini` |
+| status | `opencode-go/deepseek-v4-flash` | `haiku` | `GPT-5 mini (copilot)` | `github-copilot/gpt-5-mini` |
 
 ### Choosing a model
 

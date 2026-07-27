@@ -357,8 +357,11 @@ test('design continue-now bypasses the coordinator through invocation core', () 
   const design = artifact('sai/commands/sai-2-design.md');
   const invocation = artifact('sai/instructions/implement-invocation.md');
 
-  assert.match(design, /Continue now in this chat/);
-  assert.match(design, /implement-invocation\.md/);
+  assert.match(design, /After Continue/);
+  assert.match(design, /Continue now/);
+  assert.match(design, /implementation-worker binding/);
+  assert.match(design, /wrapper_echo_value:\s*""/);
+  assert.match(design, /arguments_value:\s*resolved_change_name/);
   assert.doesNotMatch(design, /sai-implementation-coordinator/);
   assert.match(invocation, /implement-invocation-core\.md/);
 });

@@ -34,8 +34,8 @@ Step 1 copies all commands and skills to `~/.claude/`. Step 2 verifies the opens
 
 ### Linux / macOS
 ```bash
-# This is the Claude Code adapter. Opencode uses its namespaced config entries,
-# and GitHub Copilot retains the inline implementation adapter.
+# This is the Claude Code adapter. Opencode uses namespaced config entries,
+# and GitHub Copilot retains inline design and implementation adapters.
 mkdir -p ~/.claude/commands
 cp commands/claude/*.md ~/.claude/commands/
 mkdir -p ~/.claude/sai/commands
@@ -66,14 +66,17 @@ mkdir -p ~/.claude/skills/safe-operations
 cp skills/universal/safe-operations/SKILL.md ~/.claude/skills/safe-operations/SKILL.md
 mkdir -p ~/.claude/skills/sai-implementation-planning-worker
 cp skills/claude/sai-implementation-planning-worker/SKILL.md ~/.claude/skills/sai-implementation-planning-worker/SKILL.md
+mkdir -p ~/.claude/skills/sai-design-planning-worker
+cp skills/claude/sai-design-planning-worker/SKILL.md ~/.claude/skills/sai-design-planning-worker/SKILL.md
 mkdir -p ~/.claude/agents
 cp agents/claude/sai-implementation-planning-worker.md ~/.claude/agents/sai-implementation-planning-worker.md
+cp agents/claude/sai-design-planning-worker.md ~/.claude/agents/sai-design-planning-worker.md
 ```
 
 ### Windows (PowerShell)
 ```powershell
-# This is the Claude Code adapter. Opencode uses its namespaced config entries,
-# and GitHub Copilot retains the inline implementation adapter.
+# This is the Claude Code adapter. Opencode uses namespaced config entries,
+# and GitHub Copilot retains inline design and implementation adapters.
 New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\.claude\commands"
 Copy-Item commands\claude\*.md "$env:USERPROFILE\.claude\commands\"
 New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\.claude\sai\commands"
@@ -106,8 +109,11 @@ New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\.claude\skills\safe-
 Copy-Item skills\universal\safe-operations\SKILL.md "$env:USERPROFILE\.claude\skills\safe-operations\SKILL.md"
 New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\.claude\skills\sai-implementation-planning-worker" | Out-Null
 Copy-Item skills\claude\sai-implementation-planning-worker\SKILL.md "$env:USERPROFILE\.claude\skills\sai-implementation-planning-worker\SKILL.md"
+New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\.claude\skills\sai-design-planning-worker" | Out-Null
+Copy-Item skills\claude\sai-design-planning-worker\SKILL.md "$env:USERPROFILE\.claude\skills\sai-design-planning-worker\SKILL.md"
 New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\.claude\agents" | Out-Null
 Copy-Item agents\claude\sai-implementation-planning-worker.md "$env:USERPROFILE\.claude\agents\sai-implementation-planning-worker.md"
+Copy-Item agents\claude\sai-design-planning-worker.md "$env:USERPROFILE\.claude\agents\sai-design-planning-worker.md"
 ```
 
 ### Managed implementation-planning worker
@@ -115,6 +121,10 @@ Copy-Item agents\claude\sai-implementation-planning-worker.md "$env:USERPROFILE\
 Claude Code's managed worker is installed alongside the shared command files. The installer records the worker's content hash in `.sai-implementation-planning-worker.owner.json`. An exact-compatible existing definition is reused without adoption; installation does not adopt or silently claim an existing user-owned definition. An incompatible collision blocks activation without overwrite and reports the remediation: manually rename or remove the conflicting agent, then retry.
 
 The Claude Code uninstall path uses the ownership sidecar-plus-hash guard: it removes the worker only when the recorded managed hash still matches, and preserves a modified worker. This managed asset is a Claude Code harness adapter; opencode instead manages its coordinator and worker entries in `opencode.json` or `opencode.jsonc`, while GitHub Copilot retains inline planning. Copilot has subagent support; its inline boundary is an adapter choice for this slice.
+
+### Managed design-planning worker
+
+Claude Code routes `/sai-2-design` through the low-effort coordinator and high-effort worker. It preserves `openspec/changes/{change-name}/design.md`, `tasks.md`, and `interfaces.md`. The worker is recorded in `.sai-design-planning-worker.owner.json`. An exact-compatible existing agent is reused without adoption; an incompatible collision blocks activation and preserves the user-owned definition. Uninstall removes the managed design agent only when the sidecar hash still matches, and preserves edited or non-adopted agents. Restart Claude Code after changing definitions; reinstall after upgrades to synchronize the command, skill, agent, and ownership metadata.
 
 ### Post-install
 

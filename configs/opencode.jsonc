@@ -56,6 +56,27 @@
           "explore": "allow"
         }
       }
+    },
+    "sai-design-coordinator": {
+      "mode": "primary",
+      "model": "opencode-go/glm-5.2",
+      "variant": "high",
+      "permission": {
+        "task": {
+          "*": "deny",
+          "sai-design-planning-worker": "allow",
+          "sai-implementation-planning-worker": "allow"
+        },
+        "question": "allow"
+      }
+    },
+    "sai-design-planning-worker": {
+      "mode": "subagent",
+      "model": "opencode-go/glm-5.2",
+      "variant": "high",
+      "permission": {
+        "task": { "*": "deny", "explore": "allow" }
+      }
     }
   }
 }

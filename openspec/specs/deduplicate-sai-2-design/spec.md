@@ -57,3 +57,22 @@ The opencode `sai-1-spec` wrapper SHALL load `remember.md` from `~/.config/openc
 #### Scenario: no claude path leak in opencode commands
 - **WHEN** any file under `commands/opencode/` is searched
 - **THEN** no file contains the string `~/.claude/`
+
+### Requirement: inactive-infrastructure-boundary
+
+Before the shared command becomes routed, all three wrappers SHALL point to the explicit inline entry. The inactive coordinator-worker infrastructure SHALL preserve current inline behavior.
+
+#### Scenario: claude design wrapper stays inline
+- **WHEN** `commands/claude/sai-2-design.md` is read during Step 1
+- **THEN** it SHALL reference the inline body file `sai/commands/sai-2-design.md`
+- **AND** it SHALL NOT reference a design coordinator, design planning worker, or routed dispatch
+
+#### Scenario: opencode design wrapper stays inline
+- **WHEN** `commands/opencode/sai-2-design.md` is read during Step 1
+- **THEN** it SHALL reference the inline body file `sai/commands/sai-2-design.md`
+- **AND** it SHALL NOT reference a design coordinator, agent routing, or worker binding
+
+#### Scenario: copilot design wrapper stays inline
+- **WHEN** `commands/copilot/sai-2-design.prompt.md` is read during Step 1
+- **THEN** it SHALL reference the inline body file `sai/commands/sai-2-design.md`
+- **AND** it SHALL NOT reference an agent-based coordinator or worker dispatch mechanism

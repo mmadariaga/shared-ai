@@ -21,6 +21,8 @@ const OPENCODE_AGENT_KEYS = ['explore', 'executor', 'budget'];
 const OPENCODE_PLACEHOLDER_MODEL = 'opencode-go/deepseek-v4-flash';
 const CLAUDE_IMPLEMENTATION_WORKER_AGENT = 'sai-implementation-planning-worker.md';
 const CLAUDE_IMPLEMENTATION_WORKER_OWNER = '.sai-implementation-planning-worker.owner.json';
+const CLAUDE_DESIGN_WORKER_AGENT = 'sai-design-planning-worker.md';
+const CLAUDE_DESIGN_WORKER_OWNER = '.sai-design-planning-worker.owner.json';
 const OPENCODE_MANAGED_AGENTS = Object.freeze({
   'sai-implementation-coordinator': {
     mode: 'primary',
@@ -43,6 +45,27 @@ const OPENCODE_MANAGED_AGENTS = Object.freeze({
         budget: 'allow',
         explore: 'allow',
       },
+    },
+  },
+  'sai-design-coordinator': {
+    mode: 'primary',
+    model: 'opencode-go/glm-5.2',
+    variant: 'high',
+    permission: {
+      task: {
+        '*': 'deny',
+        'sai-design-planning-worker': 'allow',
+        'sai-implementation-planning-worker': 'allow',
+      },
+      question: 'allow',
+    },
+  },
+  'sai-design-planning-worker': {
+    mode: 'subagent',
+    model: 'opencode-go/glm-5.2',
+    variant: 'high',
+    permission: {
+      task: { '*': 'deny', explore: 'allow' },
     },
   },
 });
@@ -291,11 +314,11 @@ function sha256Buffer(value) {
   return crypto.createHash('sha256').update(value).digest('hex');
 }
 
-function installClaudeImplementationWorker(targetPath) {
-  const source = path.join(REPOSITORY_ROOT, 'agents', 'claude', CLAUDE_IMPLEMENTATION_WORKER_AGENT);
+function installClaudeManagedWorker(targetPath, agentName, ownerName) {
+  const source = path.join(REPOSITORY_ROOT, 'agents', 'claude', agentName);
   const agentsDir = path.join(targetPath, 'agents');
-  const destination = path.join(agentsDir, CLAUDE_IMPLEMENTATION_WORKER_AGENT);
-  const ownerPath = path.join(agentsDir, CLAUDE_IMPLEMENTATION_WORKER_OWNER);
+  const destination = path.join(agentsDir, agentName);
+  const ownerPath = path.join(agentsDir, ownerName);
   const sourceBytes = fs.readFileSync(source);
   const managedHash = sha256Buffer(sourceBytes);
 
@@ -312,6 +335,10 @@ function installClaudeImplementationWorker(targetPath) {
   }
 
   return fs.existsSync(ownerPath) ? 'reused-owned' : 'reused-user-owned';
+}
+
+function installClaudeImplementationWorker(targetPath) {
+  return installClaudeManagedWorker(targetPath, CLAUDE_IMPLEMENTATION_WORKER_AGENT, CLAUDE_IMPLEMENTATION_WORKER_OWNER);
 }
 
 function listMdFiles(dir) {
@@ -397,7 +424,13 @@ function installClaude(destBase) {
     path.join(targetPath, 'skills', 'sai-implementation-planning-worker', 'SKILL.md')
   );
 
+  copy(
+    path.join(REPOSITORY_ROOT, 'skills', 'claude', 'sai-design-planning-worker', 'SKILL.md'),
+    path.join(targetPath, 'skills', 'sai-design-planning-worker', 'SKILL.md')
+  );
+
   installClaudeImplementationWorker(targetPath);
+  installClaudeManagedWorker(targetPath, CLAUDE_DESIGN_WORKER_AGENT, CLAUDE_DESIGN_WORKER_OWNER);
 
   writeVersionMarker(targetPath);
 }
@@ -517,6 +550,11 @@ function installOpencode(destBase) {
     path.join(targetPath, 'skills', 'sai-implementation-planning-worker', 'SKILL.md')
   );
 
+  copy(
+    path.join(REPOSITORY_ROOT, 'skills', 'opencode', 'sai-design-planning-worker', 'SKILL.md'),
+    path.join(targetPath, 'skills', 'sai-design-planning-worker', 'SKILL.md')
+  );
+
   copyOpencodeConfig(targetPath);
 
   writeVersionMarker(targetPath);
@@ -569,12 +607,6 @@ function mergeOpencodeAgents(text) {
     return null;
   }
   const existing = hasAgent ? root.agent : {};
-  const legacyPlaceholderOnly =
-    Object.keys(existing).length === OPENCODE_AGENT_KEYS.length &&
-    OPENCODE_AGENT_KEYS.every(key => isDeepStrictEqual(existing[key], { mode: 'subagent', model: OPENCODE_PLACEHOLDER_MODEL }));
-  if (legacyPlaceholderOnly) {
-    return { text, added: [] };
-  }
   const formattingOptions = { insertSpaces: true, tabSize: 2 };
   let out = text;
   const added = [];
@@ -727,7 +759,10 @@ module.exports = {
   offerOpenspecInstall,
   CLAUDE_IMPLEMENTATION_WORKER_AGENT,
   CLAUDE_IMPLEMENTATION_WORKER_OWNER,
+  CLAUDE_DESIGN_WORKER_AGENT,
+  CLAUDE_DESIGN_WORKER_OWNER,
   OPENCODE_MANAGED_AGENTS,
   sha256Buffer,
   installClaudeImplementationWorker,
+  installClaudeManagedWorker,
 };

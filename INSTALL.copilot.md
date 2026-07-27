@@ -150,6 +150,10 @@ Once installed, type `/` in the GitHub Copilot chat to see all `sai-*` commands.
 
 > **Open a new chat between commands.** Each phase uses Isolation Mode: it ignores prior conversation and reads only its required artifacts. A fresh chat keeps token costs low and ensures clean, replicable context.
 
+### Design portability boundary
+
+`/sai-2-design` remains inline in Copilot because no portable cross-turn continuation contract spans the supported Claude Code, opencode, and Copilot surfaces. This is a portability boundary, not a claim that Copilot lacks subagent support: Copilot retains its `budget-explorer` delegation for research and the inline design lifecycle. The inline path preserves `openspec/changes/{change-name}/design.md`, `tasks.md`, and `interfaces.md`.
+
 ## Customizing models
 
 The default models are set in each `.prompt.md` file. To customize them for a specific project, copy the relevant prompt files into your project's `.github/prompts/` directory (a discovered workspace prompt scope) and edit the `model` field:

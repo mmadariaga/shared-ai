@@ -39,3 +39,19 @@ The prompt sent to the explore subagent MUST specify: exact fields expected, a h
 - **WHEN** the main agent launches the explore subagent during the design step
 - **THEN** the subagent prompt contains `filePath`, `keyExports`, `isReusableForThisChange`, `notes (max 20 words)` as required output fields, and states "Return structured data only. No prose narrative."
 
+---
+
+### Requirement: Coordinator has no file/search/shell/git/web/OpenSpec access
+
+The design coordinator SHALL have zero technical I/O capability. Any file, search, shell, git, web, or OpenSpec operation SHALL be delegated to the worker.
+
+#### Scenario: Coordinator restricted to orchestration
+- **WHEN** the design coordinator is running
+- **THEN** it SHALL NOT read files, search, run shell commands, access git, fetch web content, or run OpenSpec CLI commands
+- **AND** all such operations SHALL be delegated to the design planning worker
+
+#### Scenario: Worker delegates source discovery only to explore
+- **WHEN** the design planning worker needs source code discovery
+- **THEN** it SHALL delegate only to budget-explorer or explore
+- **AND** SHALL NOT delegate to shell, git, or direct file reads
+

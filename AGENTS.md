@@ -36,12 +36,18 @@ sai/commands/sai-3-implement.md ← routed implementation coordinator body
 sai/commands/sai-3-implement-inline.md ← inline implementation caller body
 sai/instructions/implement-invocation-core.md ← caller-neutral implementation invocation core
 sai/instructions/implement-worker.md ← implementation-planning worker lifecycle contract
+sai/commands/sai-2-design-inline.md ← inline design caller body for the Copilot adapter boundary
+sai/instructions/design-invocation-core.md ← caller-neutral design invocation core
+sai/instructions/design-worker.md ← design-planning worker lifecycle contract
 commands/claude/           ← wrappers for Claude Code (model + effort + fetch to sai/commands/)
 commands/opencode/         ← wrappers for opencode (model + fetch to sai/commands/)
 commands/copilot/          ← wrappers for GitHub Copilot (model + fetch to sai/commands/ via the fetch skill)
 agents/claude/sai-implementation-planning-worker.md ← Claude Code planning worker agent
+agents/claude/sai-design-planning-worker.md ← Claude Code high-effort design planning worker agent
 skills/claude/sai-implementation-planning-worker/SKILL.md ← Claude Code worker binding
+skills/claude/sai-design-planning-worker/SKILL.md ← Claude Code design worker binding
 skills/opencode/sai-implementation-planning-worker/SKILL.md ← opencode worker binding
+skills/opencode/sai-design-planning-worker/SKILL.md ← opencode design worker binding
 configs/                   ← config samples (opencode.jsonc)
 openspec/schemas/sai-workflow/  ← custom OpenSpec schema (schema.yaml + 9 templates)
 ```
@@ -67,6 +73,9 @@ The openspec-dependent `sai-*` commands halt with a clear error if either is mis
 | `sai/commands/sai-3-implement-inline.md` | Inline implementation caller body for the Copilot adapter boundary. |
 | `sai/instructions/implement-invocation-core.md` | Caller-neutral implementation invocation core shared by routed and inline paths. |
 | `sai/instructions/implement-worker.md` | Implementation-planning worker lifecycle, input, output, and durable-artifact contract. |
+| `sai/commands/sai-2-design-inline.md` | Inline design caller body for the Copilot adapter boundary. |
+| `sai/instructions/design-invocation-core.md` | Caller-neutral design invocation core shared by routed and inline paths. |
+| `sai/instructions/design-worker.md` | Design-planning worker lifecycle, input, output, and durable-artifact contract. |
 | `skills/` | Universal skills installed globally (not project-local). Fetched by wrappers via `~/.claude/skills/`, `~/.config/opencode/skills/`, or `~/.copilot/skills/`. |
 | `skills/universal/sai-commands/SKILL.md` | SAI command registry — lists all /sai-* commands and enforces fetch-before-execute discipline. Loaded to prevent LLM from skipping command files. |
 | `skills/universal/safe-operations/SKILL.md` | Safe operations skill — enforces reversibility and impact awareness, requires user confirmation before destructive/hard-to-reverse/shared-system operations. Loaded by 7 sai-* command wrappers. |
@@ -85,8 +94,11 @@ The openspec-dependent `sai-*` commands halt with a clear error if either is mis
 | `skills/copilot/fetch/SKILL.md` | Fetch @ path resolver for Copilot — maps `@<subpath>` to `.github/sai/<subpath>` then the VS Code SAI folder. Loaded first by all Copilot wrappers to enable `@sai/` and `@skills/` path resolution. |
 | `agents/copilot/` | Copilot custom agent definitions (`budget-explorer`, `budget-executor`, `budget-subagent`). Installed to `~/.copilot/agents/`, hidden from the agent picker, invoked programmatically by the main agent when the `budget` skill is active. |
 | `agents/claude/sai-implementation-planning-worker.md` | Claude Code custom agent for the high-effort implementation-planning worker. |
+| `agents/claude/sai-design-planning-worker.md` | Claude Code custom agent for the high-effort design-planning worker. |
 | `skills/claude/sai-implementation-planning-worker/SKILL.md` | Claude Code binding for worker dispatch, same-worker continuation, and recovery. |
+| `skills/claude/sai-design-planning-worker/SKILL.md` | Claude Code binding for design-worker dispatch, same-worker continuation, and recovery. |
 | `skills/opencode/sai-implementation-planning-worker/SKILL.md` | opencode binding for worker dispatch, same-task continuation, and recovery. |
+| `skills/opencode/sai-design-planning-worker/SKILL.md` | opencode binding for design-worker same-task continuation and recovery. |
 | `commands/claude/` | Wrappers for Claude Code. YAML frontmatter (`description`, `argument-hint`, `model`, `effort`) + fetch to `sai/commands/` + fetch to project-local skill files. |
 | `commands/opencode/` | Wrappers for opencode. YAML frontmatter (`description`, `model`) + fetch to `sai/commands/` + fetch to project-local skill files. |
 | `commands/copilot/` | Wrappers for GitHub Copilot. YAML frontmatter (`description`, `argument-hint`, `agent`, `model`) + fetch to `sai/commands/` via the copilot fetch skill. |
@@ -104,6 +116,9 @@ The pipeline supports three harnesses: **Claude Code**, **opencode**, and **GitH
 
 ### Implementation coordinator and worker
 Claude Code and opencode route `/sai-3-implement` through a coordinator and planning worker; GitHub Copilot stays inline through an explicit harness adapter carve-out. All three preserve the same `implementation.md` artifact contract and MANDATORY STOP. The coordinator performs no technical I/O and only the worker owns routed planning writes. Copilot has subagent support; this asymmetry is an adapter choice under the universality rule.
+
+### Design coordinator and worker
+Claude Code and opencode route `/sai-2-design` through a coordinator and design-planning worker; Claude uses a low-effort coordinator and high-effort worker, while opencode uses named agents with GLM 5.2 `variant: high`. The coordinator owns lifecycle routing and the worker owns technical I/O and routed design-artifact writes. Fixed notices are acknowledged with `continue_after_notice`; Continue now clears design lifecycle state and dispatches the implementation binding in a fresh namespace. GitHub Copilot stays inline through an explicit adapter carve-out because no portable cross-turn continuation contract spans the supported surfaces. Copilot has subagent support and retains `budget-explorer` delegation. All paths preserve `openspec/changes/{change-name}/design.md`, `tasks.md`, and `interfaces.md`; Proposal Complexity remains descriptive.
 
 ### Single artifact home
 All sai-* artifacts (`implementation.md`, `review.md`, `security.md`, `performance.md`, `accessibility.md`, `pr.md`) write to `openspec/changes/{change-name}/`. The legacy `plans/` directory is **not used** by the new pipeline.

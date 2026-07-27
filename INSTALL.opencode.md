@@ -36,8 +36,8 @@ Step 1 copies all commands and skills to `~/.config/opencode/`. Step 2 verifies 
 ### Linux / macOS
 
 ```bash
-# This is the opencode adapter. Claude Code installs a managed worker agent,
-# and GitHub Copilot retains the inline implementation adapter.
+# This is the opencode adapter. Claude Code installs managed worker agents,
+# and GitHub Copilot retains inline design and implementation adapters.
 # Copy commands
 mkdir -p ~/.config/opencode/commands
 cp commands/opencode/*.md ~/.config/opencode/commands/
@@ -68,6 +68,10 @@ mkdir -p ~/.config/opencode/skills/sai-commands
 cp skills/universal/sai-commands/SKILL.md ~/.config/opencode/skills/sai-commands/SKILL.md
 mkdir -p ~/.config/opencode/skills/safe-operations
 cp skills/universal/safe-operations/SKILL.md ~/.config/opencode/skills/safe-operations/SKILL.md
+mkdir -p ~/.config/opencode/skills/sai-implementation-planning-worker
+cp skills/opencode/sai-implementation-planning-worker/SKILL.md ~/.config/opencode/skills/sai-implementation-planning-worker/SKILL.md
+mkdir -p ~/.config/opencode/skills/sai-design-planning-worker
+cp skills/opencode/sai-design-planning-worker/SKILL.md ~/.config/opencode/skills/sai-design-planning-worker/SKILL.md
 
 # Copy opencode.json
 if [ ! -f ~/.config/opencode/opencode.json ] && [ ! -f ~/.config/opencode/opencode.jsonc ]; then
@@ -105,6 +109,8 @@ else
     echo '        "task": { "*": "deny", "budget": "allow", "explore": "allow" }'
     echo '      }'
     echo '    }'
+    echo '    "sai-design-coordinator": { "mode": "primary", "model": "opencode-go/glm-5.2", "variant": "high", "permission": { "task": { "*": "deny", "sai-design-planning-worker": "allow", "sai-implementation-planning-worker": "allow" }, "question": "allow" } },'
+    echo '    "sai-design-planning-worker": { "mode": "subagent", "model": "opencode-go/glm-5.2", "variant": "high", "permission": { "task": { "*": "deny", "explore": "allow" } } }'
     echo '  }'
 fi
 ```
@@ -112,8 +118,8 @@ fi
 ### Windows (PowerShell)
 
 ```powershell
-# This is the opencode adapter. Claude Code installs a managed worker agent,
-# and GitHub Copilot retains the inline implementation adapter.
+# This is the opencode adapter. Claude Code installs managed worker agents,
+# and GitHub Copilot retains inline design and implementation adapters.
 # Copy commands
 $configDir = "$env:USERPROFILE\.config\opencode"
 New-Item -ItemType Directory -Force -Path "$configDir\commands"
@@ -146,6 +152,10 @@ New-Item -ItemType Directory -Force -Path "$configDir\skills\sai-commands" | Out
 Copy-Item skills\universal\sai-commands\SKILL.md "$configDir\skills\sai-commands\SKILL.md"
 New-Item -ItemType Directory -Force -Path "$configDir\skills\safe-operations" | Out-Null
 Copy-Item skills\universal\safe-operations\SKILL.md "$configDir\skills\safe-operations\SKILL.md"
+New-Item -ItemType Directory -Force -Path "$configDir\skills\sai-implementation-planning-worker" | Out-Null
+Copy-Item skills\opencode\sai-implementation-planning-worker\SKILL.md "$configDir\skills\sai-implementation-planning-worker\SKILL.md"
+New-Item -ItemType Directory -Force -Path "$configDir\skills\sai-design-planning-worker" | Out-Null
+Copy-Item skills\opencode\sai-design-planning-worker\SKILL.md "$configDir\skills\sai-design-planning-worker\SKILL.md"
 
 # Copy opencode.json
 $jsonPath = Join-Path $configDir "opencode.json"
@@ -185,6 +195,8 @@ if (-not (Test-Path $jsonPath) -and -not (Test-Path $jsoncPath)) {
     Write-Host '        "task": { "*": "deny", "budget": "allow", "explore": "allow" }'
     Write-Host '      }'
     Write-Host '    }'
+    Write-Host '    "sai-design-coordinator": { "mode": "primary", "model": "opencode-go/glm-5.2", "variant": "high", "permission": { "task": { "*": "deny", "sai-design-planning-worker": "allow", "sai-implementation-planning-worker": "allow" }, "question": "allow" } },'
+    Write-Host '    "sai-design-planning-worker": { "mode": "subagent", "model": "opencode-go/glm-5.2", "variant": "high", "permission": { "task": { "*": "deny", "explore": "allow" } } }'
     Write-Host '  }'
 }
 ```
@@ -196,6 +208,12 @@ The canonical opencode sample sets `subagent_depth: 2`, uses `opencode-go/glm-5.
 Installation adds absent entries, reuses only exact-compatible entries, and blocks incompatible entries without overwrite. Resolve a collision by manually renaming or removing the conflicting definition, then retry. Existing configuration and unrelated entries are preserved by the merge. Uninstall preserves both merged entries because opencode configuration is excluded from deletion. Restart opencode after config-time agent changes so the new coordinator and worker definitions are loaded.
 
 This is the opencode harness adapter. Claude Code uses its managed worker agent and ownership sidecar, while GitHub Copilot keeps the inline implementation boundary for this slice because there is no portable coordinator-worker continuation contract. Copilot has subagent support; its inline boundary is a portability choice.
+
+### Managed design agents
+
+`/sai-2-design` preserves `openspec/changes/{change-name}/design.md`, `tasks.md`, and `interfaces.md`. Add `sai-design-coordinator` in `primary` mode and `sai-design-planning-worker` in `subagent` mode. Both use `opencode-go/glm-5.2` with `variant: high`; the coordinator permits `question` and only the named design and implementation planning-worker task targets, while the design worker denies `task.*` by default and allows `explore`. The design wrapper uses `agent: sai-design-coordinator` and `subtask: false`; it intentionally has no `model` field.
+
+Installation preserves existing configuration and unrelated entries, reuses exact-compatible entries, and blocks incompatible collisions without overwrite. Configuration exclusion means uninstall excludes `opencode.json` and `opencode.jsonc`, so merged design and implementation agent entries remain. Restart opencode after configuration changes; reinstall after updates to refresh command, instruction, and both design/implementation binding skill files.
 
 ### Post-install
 
@@ -225,7 +243,7 @@ cp ~/.config/opencode/commands/sai-1-spec.md .opencode/commands/
 cp ~/.config/opencode/commands/sai-2-design.md .opencode/commands/
 ```
 
-Then edit copied files and set your preferred model.
+Then edit copied files for command-level customization. Routed design and implementation wrappers are customized through named agent entries in `opencode.json` or `opencode.jsonc`, not through a command `model` field.
 
 Opencode's project-local commands (`.opencode/commands/`) take precedence over user-global ones (`~/.config/opencode/commands/`) by filename — a project-local command with the same filename as a user-global one silently shadows it. Claude Code has the analogous `.claude/commands/` precedence; GitHub Copilot in VS Code uses independent prompt scopes and the inline implementation adapter. Copilot has subagent support; these are harness-specific boundaries. See `INSTALL.copilot.md#customizing-models`.
 

@@ -16,6 +16,10 @@ test('installClaude copies commands/claude/*.md to dest/commands/', () => {
   const files = fs.readdirSync(cmdDir);
   assert.ok(files.includes('sai-1-spec.md'), 'sai-1-spec.md should be in commands/');
   assert.ok(files.includes('budget.md'), 'budget.md should be in commands/');
+  const design = fs.readFileSync(path.join(cmdDir, 'sai-2-design.md'), 'utf8');
+  assert.match(design, /^model: claude-opus-4-8$/m);
+  assert.match(design, /^effort: low$/m);
+  assert.match(design, /^allowed-tools: Skill, Agent, SendMessage, AskUserQuestion$/m);
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });
 
@@ -61,6 +65,5 @@ test('installClaude overwrites stale command wrappers', () => {
   assert.notEqual(fs.readFileSync(skillFile, 'utf8'), 'old content', 'existing stale file should be overwritten');
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });
-
 
 

@@ -16,6 +16,10 @@ If any parameter is missing, STOP and ask for it — do not assume a default (Is
 
 This gate MUST NOT ask for approval and MUST NOT write to `.openspec.yaml`. It is a feedback loop only.
 
+## Routed design ownership adapter
+
+`sai-1-spec` and inline Copilot retain all existing inline behavior. For routed `sai-2-design`, the coordinator owns picker presentation, the iteration counter, and pending raw feedback. The design-planning worker owns per-item judgment, design-artifact edits, verification, discard reasons, and the summary. The canonical labels, descriptions, ordering, counter transitions, artifact sets, and proceed semantics remain single-sourced in their existing sections below.
+
 ## Iteration counter (in-conversation only)
 
 The gate tracks the feedback-option iteration with a single integer counter held in the agent's working memory for the duration of the current session only.
