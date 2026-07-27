@@ -1,0 +1,48 @@
+# Implementation Harness Bindings Specification
+
+## Purpose
+
+Define the harness-specific binding contracts for the implementation coordinator and worker across Claude Code, opencode, and GitHub Copilot.
+
+## Requirements
+
+### Requirement: Claude coordinator-worker binding
+The Claude Code wrapper SHALL run both the implementation coordinator and the `sai-implementation-planning-worker` custom agent on `claude-opus-4-8`, with low effort for the coordinator and high effort for the worker. The binding SHALL start the custom worker in the background, capture the returned agent ID as coordinator-owned dispatch metadata, forward user answers with `SendMessage(to: agent_id, message: answer)`, and wait asynchronously for the same background worker's next structured payload. Agent continuation parameters SHALL NOT be used. When the agent destination is absent, the installer SHALL create the canonical SAI-namespaced agent and an adjacent `.sai-implementation-planning-worker.owner.json` sidecar recording the managed hash. When an exact-compatible agent already exists without that sidecar, the installer SHALL reuse it without adopting ownership or rewriting it. An incompatible existing file SHALL NOT be overwritten, SHALL block activation with rename-or-remove remediation, and SHALL be reported by doctor and version-skew checks. Guarded uninstall SHALL remove the agent only when the ownership sidecar exists and the current agent hash matches the sidecar; a pre-existing compatible or user-modified agent SHALL be preserved. This change SHALL provide no implicit adoption path.
+
+#### Scenario: Claude implementation invocation
+- **WHEN** `/sai-3-implement` runs under Claude Code
+- **THEN** the coordinator and worker SHALL use their specified model and effort bindings, the binding SHALL attach the returned agent ID to `needs_input` as coordinator-owned continuation metadata, and the coordinator SHALL use `SendMessage` and await the same background worker's next structured payload
+
+#### Scenario: Claude agent-name collision
+- **WHEN** `~/.claude/agents/sai-implementation-planning-worker.md` already exists with content that does not exactly match the managed definition
+- **THEN** installation and activation SHALL stop without overwriting the file, doctor SHALL report the incompatible collision, and remediation SHALL instruct the user to rename or remove the conflicting definition before retrying
+
+#### Scenario: Pre-existing compatible Claude agent
+- **WHEN** the namespaced Claude agent already exists with the exact managed content but has no SAI ownership sidecar
+- **THEN** installation SHALL reuse it without creating ownership metadata and uninstall SHALL preserve it as user-owned
+
+#### Scenario: SAI-created Claude agent uninstall
+- **WHEN** installation created the Claude agent and ownership sidecar and the current agent hash still matches the recorded managed hash
+- **THEN** guarded uninstall SHALL remove both the agent and sidecar; when the hash differs, uninstall SHALL preserve the agent and relinquish ownership without deleting user-modified content
+
+### Requirement: Opencode coordinator-worker binding
+The opencode wrapper SHALL run the `sai-implementation-coordinator` primary agent on GLM 5.2 with high reasoning and SHALL run the `sai-implementation-planning-worker` subagent on Kimi K2.6 whose fixed reasoning is intrinsic model behavior. The wrapper SHALL select the configured primary coordinator without a command-level model override. The coordinator agent SHALL explicitly deny all task targets except `sai-implementation-planning-worker` and SHALL explicitly allow the native `question` tool, so its required capabilities do not depend on inherited top-level permissions. Before wrapper activation, the effective configuration SHALL be live-probed with top-level task and question denial; if the per-agent task dispatch or question permission is unavailable, activation SHALL stop. The binding SHALL capture the returned task ID as coordinator-owned dispatch metadata and continue the same explicit task worker by task ID when possible. The installer SHALL add each SAI-namespaced config entry only when absent or exactly compatible with the canonical managed shape; an incompatible existing entry SHALL NOT be overwritten, SHALL block activation with rename-or-remove remediation, and SHALL be reported by doctor and version-skew checks. Consistent with the existing config-merge exclusion, uninstall SHALL NOT remove or revert either opencode config entry, regardless of whether installation added or reused it.
+
+#### Scenario: Opencode implementation invocation
+- **WHEN** `/sai-3-implement` runs under opencode
+- **THEN** the coordinator and worker SHALL use their specified model and reasoning bindings, the wrapper SHALL not override the coordinator model, the effective coordinator permissions SHALL allow only task dispatch to `sai-implementation-planning-worker` plus native questions even when top-level permissions deny them, and the binding SHALL attach the returned task ID to `needs_input` as coordinator-owned continuation metadata
+
+#### Scenario: Opencode agent-name collision
+- **WHEN** `sai-implementation-coordinator` or `sai-implementation-planning-worker` already exists with a shape that is not exactly compatible with the managed model, variant, mode, and permission fields
+- **THEN** installation and activation SHALL stop without overwriting the entry, doctor SHALL report the incompatible collision, and remediation SHALL instruct the user to rename or remove the conflicting definition before retrying
+
+#### Scenario: Opencode uninstall preserves merged entries
+- **WHEN** shared-AI is uninstalled after either namespaced opencode entry was added or reused
+- **THEN** uninstall SHALL leave both config entries intact under the existing config-merge exclusion
+
+### Requirement: Copilot compatibility boundary
+The Copilot implementation command SHALL preserve its existing inline execution path and documentation SHALL state that the portable coordinator-worker contract is not implemented for Copilot in this slice without stating that Copilot cannot use subagents.
+
+#### Scenario: Copilot implementation invocation
+- **WHEN** `/sai-3-implement` runs under GitHub Copilot
+- **THEN** it SHALL continue inline execution with its current observable behavior and SHALL expose the documented compatibility limitation

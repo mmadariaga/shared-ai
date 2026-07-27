@@ -216,3 +216,29 @@ The gate SHALL track the iteration that drives the iteration-aware feedback opti
 
 - **WHEN** the gate tracks the iteration counter
 - **THEN** the counter is held in the agent's working memory only — it is NOT re-derived from a marker in `proposal.md`, `design.md`, `tasks.md`, `interfaces.md`, `specs/**`, `review.md`, `security.md`, `performance.md`, `accessibility.md`, `implementation.md`, or `.openspec.yaml`, and it is NOT re-derived from any external or prior-conversation context (Isolation Mode)
+
+### Requirement: The sai-1 inline feedback consumer remains unchanged
+Changes that let the routed design coordinator own gate presentation while its worker owns design-artifact feedback processing SHALL NOT change `/sai-1-spec`'s inline use of `sai/instructions/artifact-feedback-gate.md`. Sai-1 SHALL continue to own presentation, selective evaluation, edits, summary recomputation, and iteration state in the same inline agent context.
+
+#### Scenario: sai-1 presents its first feedback gate
+- **WHEN** `/sai-1-spec` finishes writing `proposal.md` and `specs/**`
+- **THEN** it SHALL list exactly `proposal.md` and `specs/**`, present feedback before `Finish step`, mark only the first `Give feedback` option as recommended, and keep the existing option labels, descriptions, and native-picker behavior
+
+#### Scenario: sai-1 applies mixed feedback inline
+- **WHEN** a sai-1 feedback turn contains legitimate and illegitimate items
+- **THEN** the sai-1 inline agent SHALL edit only `proposal.md` and `specs/**` for legitimate items, report every discarded item with its reason, recompute the existing artifact-derived spec summary, increment its in-conversation iteration counter, and re-offer `Give more feedback` before `Finish step`
+
+#### Scenario: sai-1 finishes the gate
+- **WHEN** the user selects `Finish step` in `/sai-1-spec`
+- **THEN** the existing mandatory spec stop SHALL fire exactly once without writing approval metadata or entering any coordinator-worker lifecycle
+
+### Requirement: Routed design adapts ownership without forking gate semantics
+The shared gate instruction SHALL remain the single source of artifact lists, option labels and order, recommendation-marker behavior, iteration semantics, selective feedback rules, summary placement, and proceed behavior for both sai-1 and sai-2. The routed design adapter MAY assign presentation state to the coordinator and design-artifact evaluation and edits to the worker, but SHALL NOT duplicate or change those shared semantics.
+
+#### Scenario: Shared gate instruction is updated for routed design
+- **WHEN** `sai/instructions/artifact-feedback-gate.md` gains coordinator-worker ownership guidance
+- **THEN** the guidance SHALL explicitly preserve sai-1's inline execution path and SHALL keep one canonical definition of the gate's user-visible and selective-edit behavior
+
+#### Scenario: Routed design retains its artifact set
+- **WHEN** routed `/sai-2-design` presents or processes the shared feedback gate
+- **THEN** the coordinator SHALL name exactly `design.md`, `tasks.md`, and `interfaces.md`, and the worker SHALL selectively edit only those artifacts before returning the recomputed design summary
