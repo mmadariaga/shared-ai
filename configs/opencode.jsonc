@@ -32,6 +32,29 @@
       "mode": "subagent",
       // Put your trusted low-cost model here
       "model": "opencode-go/deepseek-v4-flash"
+    },
+    "sai-implementation-coordinator": {
+      "mode": "primary",
+      "model": "opencode-go/glm-5.2",
+      "variant": "high",
+      "permission": {
+        "task": {
+          "*": "deny",
+          "sai-implementation-planning-worker": "allow"
+        },
+        "question": "allow"
+      }
+    },
+    "sai-implementation-planning-worker": {
+      "mode": "subagent",
+      "model": "opencode-go/kimi-k2.6",
+      "permission": {
+        "task": {
+          "*": "deny",
+          "budget": "allow",
+          "explore": "allow"
+        }
+      }
     }
   }
 }

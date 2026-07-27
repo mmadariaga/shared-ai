@@ -6,6 +6,8 @@ const path = require('path');
 const os = require('os');
 const childProcess = require('child_process');
 const https = require('https');
+const { isDeepStrictEqual } = require('util');
+const jsoncParser = require('jsonc-parser');
 
 const flow = require('./install-flow');
 const uninstall = require('./uninstall-flow');
@@ -300,6 +302,66 @@ function diffAgainstBundled(expectedEntries) {
   return drift;
 }
 
+const COLLISION_REMEDIATION = 'Rename or remove the conflicting definition, then retry';
+
+function managedClaudeWorkerRecords(harness, repoRoot) {
+  const section = `[${harness.id}]`;
+  const destination = path.join(harness.base, 'agents', flow.CLAUDE_IMPLEMENTATION_WORKER_AGENT);
+  const source = path.join(repoRoot, 'agents', 'claude', flow.CLAUDE_IMPLEMENTATION_WORKER_AGENT);
+  if (!fs.existsSync(destination)) {
+    return [{
+      section,
+      name: flow.CLAUDE_IMPLEMENTATION_WORKER_AGENT,
+      severity: 'error',
+      message: 'managed Claude implementation worker is missing',
+      recommendation: 'Re-run the installer to restore the worker',
+    }];
+  }
+  const compatible = uninstall.sha256File(source) === uninstall.sha256File(destination);
+  return [compatible
+    ? { section, name: flow.CLAUDE_IMPLEMENTATION_WORKER_AGENT, severity: 'ok', message: 'managed Claude implementation worker is compatible' }
+    : { section, name: flow.CLAUDE_IMPLEMENTATION_WORKER_AGENT, severity: 'error', message: 'incompatible Claude implementation worker definition', recommendation: COLLISION_REMEDIATION }];
+}
+
+function managedOpencodeAgentRecords(harness) {
+  const section = `[${harness.id}]`;
+  const configPath = fs.existsSync(path.join(harness.base, 'opencode.json'))
+    ? path.join(harness.base, 'opencode.json')
+    : path.join(harness.base, 'opencode.jsonc');
+  let root = null;
+  let parseFailed = false;
+  if (fs.existsSync(configPath)) {
+    const errors = [];
+    root = jsoncParser.parse(fs.readFileSync(configPath, 'utf8'), errors, { allowTrailingComma: true });
+    parseFailed = errors.length > 0 || root === null || typeof root !== 'object' || Array.isArray(root);
+  } else {
+    parseFailed = true;
+  }
+
+  return Object.entries(flow.OPENCODE_MANAGED_AGENTS).map(([key, shape]) => {
+    const actual = root && root.agent && typeof root.agent === 'object' && !Array.isArray(root.agent)
+      ? root.agent[key]
+      : undefined;
+    const compatible = !parseFailed && actual !== undefined && isDeepStrictEqual(actual, shape);
+    if (compatible) {
+      return { section, name: key, severity: 'ok', message: `managed opencode agent "${key}" is compatible` };
+    }
+    return {
+      section,
+      name: key,
+      severity: 'error',
+      message: parseFailed ? `missing or malformed opencode agent "${key}"` : `incompatible opencode agent "${key}"`,
+      recommendation: COLLISION_REMEDIATION,
+    };
+  });
+}
+
+function managedAssetRecords(harness, repoRoot) {
+  if (harness.kind === 'claude') return managedClaudeWorkerRecords(harness, repoRoot);
+  if (harness.kind === 'opencode') return managedOpencodeAgentRecords(harness);
+  return [];
+}
+
 function versionSkewRecords(harness, expectedEntries, latest) {
   const section = `[${harness.id}]`;
   const markerBase = harness.kind === 'copilot' ? harness.copilotSaiBase : harness.base;
@@ -345,6 +407,7 @@ async function main(options = {}) {
     const entries = h.entries();
     const sectionRecords = inventoryHarness(`[${h.id}]`, entries, { projectRoot, harness: h });
     sectionRecords.push(...fetchResolutionRecords(h, entries, { projectRoot }));
+    sectionRecords.push(...managedAssetRecords(h, repoRoot));
     sectionRecords.push(...versionSkewRecords(h, entries, latest));
     records.push(...sectionRecords);
   }
@@ -366,4 +429,4 @@ async function main(options = {}) {
   return code;
 }
 
-module.exports = { main, checkProjectHealth, aggregateExit, groupSections, renderHuman, shorten, detectHarnesses, inventoryHarness, parseFetchRefs, resolveFetchRefs, fetchResolutionRecords, checkSkillStaleness, readGeneratedBy, readMarker, diffAgainstBundled, versionSkewRecords, defaultFetchLatestVersion };
+module.exports = { main, checkProjectHealth, aggregateExit, groupSections, renderHuman, shorten, detectHarnesses, inventoryHarness, parseFetchRefs, resolveFetchRefs, fetchResolutionRecords, checkSkillStaleness, readGeneratedBy, readMarker, diffAgainstBundled, versionSkewRecords, managedClaudeWorkerRecords, managedOpencodeAgentRecords, managedAssetRecords, defaultFetchLatestVersion };

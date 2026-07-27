@@ -9,6 +9,7 @@ const { PassThrough } = require('stream');
 const { spawnSync } = require('child_process');
 
 const { main } = require('../bin/doctor.js');
+const { installClaude, installOpencode } = require('../bin/install-flow.js');
 
 function execOk() {
   return { status: 0, stdout: '1.4.1\n', stderr: '', error: null };
@@ -36,9 +37,27 @@ function makeGoodFixture() {
 // 1. Good fixture → JSON with ok severities, exit 0
 test('main --json with healthy fixture produces three ok records and exits 0', async () => {
   const projectRoot = makeGoodFixture();
+  const claudeBase = path.join(projectRoot, 'claude');
+  const opencodeBase = path.join(projectRoot, 'opencode');
+  const copilot = {
+    promptsBase: path.join(projectRoot, 'copilot-prompts'),
+    skillsBase: path.join(projectRoot, 'copilot-skills'),
+    agentsBase: path.join(projectRoot, 'copilot-agents'),
+    saiBase: path.join(projectRoot, 'copilot-sai'),
+  };
   try {
+    installClaude(claudeBase);
+    installOpencode(opencodeBase);
     const { stream: out, end } = collectOut();
-    const code = await main({ argv: ['--json'], projectRoot, execOpenspec: execOk, out });
+    const code = await main({
+      argv: ['--json'],
+      projectRoot,
+      claudeBase,
+      opencodeBase,
+      copilot,
+      execOpenspec: execOk,
+      out,
+    });
     assert.equal(code, 0);
     const raw = end();
     const parsed = JSON.parse(raw);

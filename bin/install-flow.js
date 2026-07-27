@@ -7,6 +7,8 @@ const path = require('path');
 const os = require('os');
 const readline = require('readline');
 const childProcess = require('child_process');
+const crypto = require('crypto');
+const { isDeepStrictEqual } = require('util');
 
 let jsoncParser = null;
 try {
@@ -17,6 +19,33 @@ try {
 
 const OPENCODE_AGENT_KEYS = ['explore', 'executor', 'budget'];
 const OPENCODE_PLACEHOLDER_MODEL = 'opencode-go/deepseek-v4-flash';
+const CLAUDE_IMPLEMENTATION_WORKER_AGENT = 'sai-implementation-planning-worker.md';
+const CLAUDE_IMPLEMENTATION_WORKER_OWNER = '.sai-implementation-planning-worker.owner.json';
+const OPENCODE_MANAGED_AGENTS = Object.freeze({
+  'sai-implementation-coordinator': {
+    mode: 'primary',
+    model: 'opencode-go/glm-5.2',
+    variant: 'high',
+    permission: {
+      task: {
+        '*': 'deny',
+        'sai-implementation-planning-worker': 'allow',
+      },
+      question: 'allow',
+    },
+  },
+  'sai-implementation-planning-worker': {
+    mode: 'subagent',
+    model: 'opencode-go/kimi-k2.6',
+    permission: {
+      task: {
+        '*': 'deny',
+        budget: 'allow',
+        explore: 'allow',
+      },
+    },
+  },
+});
 
 const REPOSITORY_ROOT = path.join(__dirname, '..');
 const PACKAGE_VERSION = require(path.join(REPOSITORY_ROOT, 'package.json')).version;
@@ -258,6 +287,33 @@ function copy(src, dest) {
   fs.copyFileSync(src, dest);
 }
 
+function sha256Buffer(value) {
+  return crypto.createHash('sha256').update(value).digest('hex');
+}
+
+function installClaudeImplementationWorker(targetPath) {
+  const source = path.join(REPOSITORY_ROOT, 'agents', 'claude', CLAUDE_IMPLEMENTATION_WORKER_AGENT);
+  const agentsDir = path.join(targetPath, 'agents');
+  const destination = path.join(agentsDir, CLAUDE_IMPLEMENTATION_WORKER_AGENT);
+  const ownerPath = path.join(agentsDir, CLAUDE_IMPLEMENTATION_WORKER_OWNER);
+  const sourceBytes = fs.readFileSync(source);
+  const managedHash = sha256Buffer(sourceBytes);
+
+  ensureDir(agentsDir);
+  if (!fs.existsSync(destination)) {
+    fs.writeFileSync(destination, sourceBytes);
+    fs.writeFileSync(ownerPath, `${JSON.stringify({ managedHash }, null, 2)}\n`);
+    return 'created';
+  }
+
+  const destinationHash = sha256Buffer(fs.readFileSync(destination));
+  if (destinationHash !== managedHash) {
+    throw new Error(`Incompatible Claude agent at ${destination}. Rename or remove the conflicting definition, then retry.`);
+  }
+
+  return fs.existsSync(ownerPath) ? 'reused-owned' : 'reused-user-owned';
+}
+
 function listMdFiles(dir) {
   return fs.readdirSync(dir)
     .filter(f => f.endsWith('.md'))
@@ -335,6 +391,13 @@ function installClaude(destBase) {
     path.join(REPOSITORY_ROOT, 'skills', 'claude', 'fetch', 'SKILL.md'),
     path.join(targetPath, 'skills', 'fetch', 'SKILL.md')
   );
+
+  copy(
+    path.join(REPOSITORY_ROOT, 'skills', 'claude', 'sai-implementation-planning-worker', 'SKILL.md'),
+    path.join(targetPath, 'skills', 'sai-implementation-planning-worker', 'SKILL.md')
+  );
+
+  installClaudeImplementationWorker(targetPath);
 
   writeVersionMarker(targetPath);
 }
@@ -450,6 +513,8 @@ function installOpencode(destBase) {
     path.join(targetPath, 'skills', 'fetch', 'SKILL.md')
   );
 
+  copyOpencodeConfig(targetPath);
+
   writeVersionMarker(targetPath);
 }
 
@@ -472,6 +537,8 @@ function printOpencodeConfigMessage(base) {
   console.log('      "model": "opencode-go/deepseek-v4-flash"');
   console.log('    }');
   console.log('  }');
+  console.log('\nRequired namespaced implementation agents:');
+  console.log(JSON.stringify(OPENCODE_MANAGED_AGENTS, null, 2));
   console.log('\nAdjust the model to your preferred low-cost provider.');
 }
 
@@ -498,17 +565,36 @@ function mergeOpencodeAgents(text) {
     return null;
   }
   const existing = hasAgent ? root.agent : {};
+  const legacyPlaceholderOnly =
+    Object.keys(existing).length === OPENCODE_AGENT_KEYS.length &&
+    OPENCODE_AGENT_KEYS.every(key => isDeepStrictEqual(existing[key], { mode: 'subagent', model: OPENCODE_PLACEHOLDER_MODEL }));
+  if (legacyPlaceholderOnly) {
+    return { text, added: [] };
+  }
   const formattingOptions = { insertSpaces: true, tabSize: 2 };
   let out = text;
   const added = [];
-  for (const key of OPENCODE_AGENT_KEYS) {
+  for (const [key, shape] of Object.entries(OPENCODE_MANAGED_AGENTS)) {
+    if (Object.prototype.hasOwnProperty.call(existing, key) && !isDeepStrictEqual(existing[key], shape)) {
+      throw new Error(`Incompatible opencode agent "${key}". Rename or remove the conflicting definition, then retry.`);
+    }
+  }
+
+  const shapes = {
+    explore: { mode: 'subagent', model: OPENCODE_PLACEHOLDER_MODEL },
+    executor: { mode: 'subagent', model: OPENCODE_PLACEHOLDER_MODEL },
+    budget: { mode: 'subagent', model: OPENCODE_PLACEHOLDER_MODEL },
+    ...OPENCODE_MANAGED_AGENTS,
+  };
+
+  for (const [key, shape] of Object.entries(shapes)) {
     if (Object.prototype.hasOwnProperty.call(existing, key)) {
       continue;
     }
     const edits = modify(
       out,
       ['agent', key],
-      { mode: 'subagent', model: OPENCODE_PLACEHOLDER_MODEL },
+      shape,
       { formattingOptions }
     );
     out = applyEdits(out, edits);
@@ -635,4 +721,9 @@ module.exports = {
   probeOpenspec,
   runOpenspecInstall,
   offerOpenspecInstall,
+  CLAUDE_IMPLEMENTATION_WORKER_AGENT,
+  CLAUDE_IMPLEMENTATION_WORKER_OWNER,
+  OPENCODE_MANAGED_AGENTS,
+  sha256Buffer,
+  installClaudeImplementationWorker,
 };

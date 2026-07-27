@@ -16,6 +16,8 @@ const {
   COPILOT_AGENTS_BASE,
   COPILOT_SAI_BASE,
   promptYesNoReadline,
+  CLAUDE_IMPLEMENTATION_WORKER_AGENT,
+  CLAUDE_IMPLEMENTATION_WORKER_OWNER,
 } = require('./install-flow.js');
 
 const REPOSITORY_ROOT = path.join(__dirname, '..');
@@ -31,6 +33,7 @@ const CLAUDE_SKILLS = [
   { tier: 'claude', name: 'budget-executor' },
   { tier: 'claude', name: 'budget-subagent' },
   { tier: 'claude', name: 'fetch' },
+  { tier: 'claude', name: 'sai-implementation-planning-worker' },
 ];
 
 const OPENCODE_SKILLS = [
@@ -79,8 +82,19 @@ function enumerateClaude(destBase) {
     ...mapMdFlat(path.join(REPOSITORY_ROOT, 'commands', 'claude'), path.join(targetPath, 'commands')),
     ...mapMdFlat(path.join(REPOSITORY_ROOT, 'sai', 'commands'), path.join(targetPath, 'sai', 'commands')),
     ...mapMdRecursive(path.join(REPOSITORY_ROOT, 'sai', 'instructions'), path.join(targetPath, 'sai', 'instructions')),
-    ...mapSkills(CLAUDE_SKILLS, path.join(targetPath, 'skills')),
   ];
+  const agentPath = path.join(targetPath, 'agents', CLAUDE_IMPLEMENTATION_WORKER_AGENT);
+  const ownerPath = path.join(targetPath, 'agents', CLAUDE_IMPLEMENTATION_WORKER_OWNER);
+  entries.push({
+    src: path.join(REPOSITORY_ROOT, 'agents', 'claude', CLAUDE_IMPLEMENTATION_WORKER_AGENT),
+    dest: agentPath,
+    assetType: 'claude-managed-agent',
+    ownerPath,
+  });
+  if (fs.existsSync(ownerPath)) {
+    entries.push({ src: ownerPath, dest: ownerPath, assetType: 'claude-managed-agent-owner' });
+  }
+  entries.push(...mapSkills(CLAUDE_SKILLS, path.join(targetPath, 'skills')));
   const mappedDests = new Set(entries.map(e => e.dest));
   for (const dir of ['commands']) {
     const dirPath = path.join(targetPath, dir);
@@ -104,6 +118,12 @@ function enumerateOpencode(destBase) {
     ...mapMdRecursive(path.join(REPOSITORY_ROOT, 'sai', 'instructions'), path.join(targetPath, 'sai', 'instructions')),
     ...mapSkills(OPENCODE_SKILLS, path.join(targetPath, 'skills')),
   ];
+  const configPath = fs.existsSync(path.join(targetPath, 'opencode.json'))
+    ? path.join(targetPath, 'opencode.json')
+    : path.join(targetPath, 'opencode.jsonc');
+  if (fs.existsSync(configPath)) {
+    entries.push({ src: configPath, dest: configPath, assetType: 'opencode-config' });
+  }
   return entries.map(e => ({ ...e, editorBase: targetPath }));
 }
 
@@ -127,7 +147,7 @@ function buildDeletionSet(overrides = {}) {
     ...enumerateClaude(claudeBase),
     ...enumerateOpencode(opencodeBase),
     ...enumerateCopilot(copilot.promptsBase, copilot.skillsBase, copilot.agentsBase, copilot.saiBase),
-  ];
+  ].filter(entry => entry.assetType !== 'opencode-config');
 }
 
 const VERSION_SKEW_NOTE =
@@ -141,7 +161,34 @@ function sha256File(filePath) {
   return crypto.createHash('sha256').update(fs.readFileSync(filePath)).digest('hex');
 }
 
+function readManagedHash(ownerPath) {
+  try {
+    const parsed = JSON.parse(fs.readFileSync(ownerPath, 'utf8'));
+    return typeof parsed.managedHash === 'string' ? parsed.managedHash : null;
+  } catch {
+    return null;
+  }
+}
+
+function computeClaudeAgentPlanEntry(entry) {
+  const destHash = sha256File(entry.dest);
+  if (destHash === null) {
+    return { ...entry, action: 'not-found', exists: false, hashMatches: false };
+  }
+  const managedHash = readManagedHash(entry.ownerPath);
+  const hashMatches = managedHash !== null && managedHash === destHash;
+  return {
+    ...entry,
+    action: hashMatches ? 'delete' : 'keep-override',
+    exists: true,
+    hashMatches,
+  };
+}
+
 function computePlanEntry(entry) {
+  if (entry.assetType === 'claude-managed-agent') {
+    return computeClaudeAgentPlanEntry(entry);
+  }
   const destHash = sha256File(entry.dest);
   if (destHash === null) {
     return { ...entry, action: 'not-found', exists: false, hashMatches: false };
@@ -170,6 +217,19 @@ function formatSummary(counts) {
 }
 
 function deleteEntry(entry) {
+  if (entry.assetType === 'claude-managed-agent') {
+    const destHash = sha256File(entry.dest);
+    const managedHash = readManagedHash(entry.ownerPath);
+    if (destHash === null) {
+      return 'not-found';
+    }
+    if (managedHash === null || managedHash !== destHash) {
+      console.warn(`Kept (project-local override): ${entry.dest}`);
+      return 'kept-override';
+    }
+    fs.unlinkSync(entry.dest);
+    return 'deleted';
+  }
   const destHash = sha256File(entry.dest);
   if (destHash === null) {
     return 'not-found';
@@ -270,6 +330,8 @@ module.exports = {
   enumerateOpencode,
   enumerateCopilot,
   sha256File,
+  readManagedHash,
+  computeClaudeAgentPlanEntry,
   computePlanEntry,
   computePlan,
   printPlan,
