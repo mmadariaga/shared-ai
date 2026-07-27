@@ -362,3 +362,70 @@ test('design continue-now bypasses the coordinator through invocation core', () 
   assert.doesNotMatch(design, /sai-implementation-coordinator/);
   assert.match(invocation, /implement-invocation-core\.md/);
 });
+
+test('Step 3 README documents routed roles, inline Copilot boundary, model independence, and artifact stability', () => {
+  const readme = artifact('README.md');
+
+  assert.match(readme, /Claude Code[\s\S]{0,240}(?:coordinator|rout)/i);
+  assert.match(readme, /opencode[\s\S]{0,240}(?:coordinator|rout)/i);
+  assert.match(readme, /Copilot[\s\S]{0,180}inline/i);
+  assert.match(readme, /independent[\s\S]{0,100}model/i);
+  assert.match(readme, /openspec\/changes\/\{change-name\}\/implementation\.md/);
+
+  const documentation = [
+    'README.md',
+    'AGENTS.md',
+    'INSTALL.claude.md',
+    'INSTALL.opencode.md',
+  ].map(artifact).join('\n');
+  assert.doesNotMatch(
+    documentation,
+    /Copilot\b[\s\S]{0,140}\b(?:does not|doesn't|lacks|has no|without)\b[\s\S]{0,60}\b(?:subagents?|sub-agent support)\b/i
+  );
+  assert.doesNotMatch(
+    documentation,
+    /(?:subagents?|sub-agent support)\b[\s\S]{0,100}\b(?:is not|isn't|is unavailable|unsupported|not available)\b[\s\S]{0,60}\bCopilot\b/i
+  );
+});
+
+test('Step 3 AGENTS documents every coordinator, inline, worker, agent, binding, and harness boundary', () => {
+  const agents = artifact('AGENTS.md');
+
+  for (const entry of [
+    'sai/commands/sai-3-implement.md',
+    'sai/commands/sai-3-implement-inline.md',
+    'sai/instructions/implement-worker.md',
+    'agents/claude/sai-implementation-planning-worker.md',
+    'skills/claude/sai-implementation-planning-worker/SKILL.md',
+    'skills/opencode/sai-implementation-planning-worker/SKILL.md',
+  ]) {
+    assert.match(agents, new RegExp(entry.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+  }
+  assert.match(agents, /Copilot[\s\S]{0,220}(?:adapter[ -]carve-out|carve-out[\s\S]{0,100}adapter)/i);
+  assert.match(agents, /harness universality/i);
+});
+
+test('Step 3 Claude installer documentation covers ownership, compatibility, collisions, uninstall guards, and manual copy', () => {
+  const claude = artifact('INSTALL.claude.md');
+
+  assert.match(claude, /agents\/claude\/sai-implementation-planning-worker\.md/);
+  assert.match(claude, /(?:~\/\.claude|%USERPROFILE%[\\/]\.claude)[\\/]agents[\\/]sai-implementation-planning-worker\.md/);
+  assert.match(claude, /\.sai-implementation-planning-worker\.owner\.json/);
+  assert.match(claude, /compatible[\s\S]{0,140}(?:not adopt|non-adopt|not used|unchanged)/i);
+  assert.match(claude, /collision[\s\S]{0,140}(?:rename|remove|remediat|manual)/i);
+  assert.match(claude, /uninstall[\s\S]{0,180}(?:ownership|guard|modified|preserv)/i);
+  assert.match(claude, /(?:cp|Copy-Item)[\s\S]{0,220}sai-implementation-planning-worker/i);
+});
+
+test('Step 3 opencode installer documentation covers managed entries, routing shapes, collisions, preservation, and restart', () => {
+  const opencode = artifact('INSTALL.opencode.md');
+
+  assert.match(opencode, /sai-implementation-coordinator/);
+  assert.match(opencode, /sai-implementation-planning-worker/);
+  assert.match(opencode, /sai-implementation-coordinator[\s\S]{0,280}primary[\s\S]{0,280}opencode-go\/glm-5\.2[\s\S]{0,280}high/i);
+  assert.match(opencode, /sai-implementation-planning-worker[\s\S]{0,280}subagent[\s\S]{0,280}opencode-go\/kimi-k2\.6/i);
+  assert.match(opencode, /variant/i);
+  assert.match(opencode, /collision[\s\S]{0,160}(?:preserv|rename|remove|manual)/i);
+  assert.match(opencode, /uninstall[\s\S]{0,220}(?:preserv|retain|unchanged)[\s\S]{0,100}(?:config|opencode\.jsonc)/i);
+  assert.match(opencode, /restart(?:ing)?[\s\S]{0,120}(?:required|must|need|after|reload)/i);
+});

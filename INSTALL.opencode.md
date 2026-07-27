@@ -36,6 +36,8 @@ Step 1 copies all commands and skills to `~/.config/opencode/`. Step 2 verifies 
 ### Linux / macOS
 
 ```bash
+# This is the opencode adapter. Claude Code installs a managed worker agent,
+# and GitHub Copilot retains the inline implementation adapter.
 # Copy commands
 mkdir -p ~/.config/opencode/commands
 cp commands/opencode/*.md ~/.config/opencode/commands/
@@ -72,22 +74,36 @@ if [ ! -f ~/.config/opencode/opencode.json ] && [ ! -f ~/.config/opencode/openco
     cp configs/opencode.jsonc ~/.config/opencode/
 else
     echo "~/.config/opencode/opencode.json(c) already exists."
-    echo "Ensure it includes the 'agent' section:"
+    echo "Ensure it includes subagent_depth and these agent entries:"
+    echo '  "subagent_depth": 2,'
     echo '  "agent": {'
     echo '    "explore": {'
     echo '      "mode": "subagent",'
-    echo '      // Set your trusted low-cost model below'
-    echo '      "model": "opencode-go/deepseek-v4-flash"'
+    echo '      "model": "opencode-go/glm-5.1"'
     echo '    },'
     echo '    "executor": {'
     echo '      "mode": "subagent",'
-    echo '      // Set your trusted low-cost model below'
-    echo '      "model": "opencode-go/deepseek-v4-flash"'
+    echo '      "model": "opencode-go/glm-5.1"'
     echo '    },'
     echo '    "budget": {'
     echo '      "mode": "subagent",'
-    echo '      // Set your trusted low-cost model below'
-    echo '      "model": "opencode-go/deepseek-v4-flash"'
+    echo '      "model": "opencode-go/glm-5.1"'
+    echo '    },'
+    echo '    "sai-implementation-coordinator": {'
+    echo '      "mode": "primary",'
+    echo '      "model": "opencode-go/glm-5.2",'
+    echo '      "variant": "high",'
+    echo '      "permission": {'
+    echo '        "task": { "*": "deny", "sai-implementation-planning-worker": "allow" },'
+    echo '        "question": "allow"'
+    echo '      }'
+    echo '    },'
+    echo '    "sai-implementation-planning-worker": {'
+    echo '      "mode": "subagent",'
+    echo '      "model": "opencode-go/kimi-k2.6",'
+    echo '      "permission": {'
+    echo '        "task": { "*": "deny", "budget": "allow", "explore": "allow" }'
+    echo '      }'
     echo '    }'
     echo '  }'
 fi
@@ -96,6 +112,8 @@ fi
 ### Windows (PowerShell)
 
 ```powershell
+# This is the opencode adapter. Claude Code installs a managed worker agent,
+# and GitHub Copilot retains the inline implementation adapter.
 # Copy commands
 $configDir = "$env:USERPROFILE\.config\opencode"
 New-Item -ItemType Directory -Force -Path "$configDir\commands"
@@ -136,26 +154,48 @@ if (-not (Test-Path $jsonPath) -and -not (Test-Path $jsoncPath)) {
     Copy-Item configs\opencode.jsonc $configDir\
 } else {
     Write-Host "$configDir\opencode.json(c) already exists."
-    Write-Host "Ensure it includes the 'agent' section:"
+    Write-Host "Ensure it includes subagent_depth and these agent entries:"
+    Write-Host '  "subagent_depth": 2,'
     Write-Host '  "agent": {'
     Write-Host '    "explore": {'
     Write-Host '      "mode": "subagent",'
-    Write-Host '      // Set your trusted low-cost model below'
-    Write-Host '      "model": "opencode-go/deepseek-v4-flash"'
+    Write-Host '      "model": "opencode-go/glm-5.1"'
     Write-Host '    },'
     Write-Host '    "executor": {'
     Write-Host '      "mode": "subagent",'
-    Write-Host '      // Set your trusted low-cost model below'
-    Write-Host '      "model": "opencode-go/deepseek-v4-flash"'
+    Write-Host '      "model": "opencode-go/glm-5.1"'
     Write-Host '    },'
     Write-Host '    "budget": {'
     Write-Host '      "mode": "subagent",'
-    Write-Host '      // Set your trusted low-cost model below'
-    Write-Host '      "model": "opencode-go/deepseek-v4-flash"'
+    Write-Host '      "model": "opencode-go/glm-5.1"'
+    Write-Host '    },'
+    Write-Host '    "sai-implementation-coordinator": {'
+    Write-Host '      "mode": "primary",'
+    Write-Host '      "model": "opencode-go/glm-5.2",'
+    Write-Host '      "variant": "high",'
+    Write-Host '      "permission": {'
+    Write-Host '        "task": { "*": "deny", "sai-implementation-planning-worker": "allow" },'
+    Write-Host '        "question": "allow"'
+    Write-Host '      }'
+    Write-Host '    },'
+    Write-Host '    "sai-implementation-planning-worker": {'
+    Write-Host '      "mode": "subagent",'
+    Write-Host '      "model": "opencode-go/kimi-k2.6",'
+    Write-Host '      "permission": {'
+    Write-Host '        "task": { "*": "deny", "budget": "allow", "explore": "allow" }'
+    Write-Host '      }'
     Write-Host '    }'
     Write-Host '  }'
 }
 ```
+
+### Managed implementation agents
+
+The canonical opencode sample sets `subagent_depth: 2`, uses `opencode-go/glm-5.1` for the existing low-cost helper agents, and adds these exact namespaced entries: `sai-implementation-coordinator` in `primary` mode with `opencode-go/glm-5.2` and `variant: high`, plus `sai-implementation-planning-worker` in `subagent` mode with `opencode-go/kimi-k2.6` and no variant. The coordinator permits only its worker task and questions; the worker permits only `budget` and `explore` tasks.
+
+Installation adds absent entries, reuses only exact-compatible entries, and blocks incompatible entries without overwrite. Resolve a collision by manually renaming or removing the conflicting definition, then retry. Existing configuration and unrelated entries are preserved by the merge. Uninstall preserves both merged entries because opencode configuration is excluded from deletion. Restart opencode after config-time agent changes so the new coordinator and worker definitions are loaded.
+
+This is the opencode harness adapter. Claude Code uses its managed worker agent and ownership sidecar, while GitHub Copilot keeps the inline implementation boundary for this slice because there is no portable coordinator-worker continuation contract. Copilot has subagent support; its inline boundary is a portability choice.
 
 ### Post-install
 
@@ -187,7 +227,7 @@ cp ~/.config/opencode/commands/sai-2-design.md .opencode/commands/
 
 Then edit copied files and set your preferred model.
 
-Opencode's project-local commands (`.opencode/commands/`) take precedence over user-global ones (`~/.config/opencode/commands/`) by filename — a project-local command with the same filename as a user-global one silently shadows it. This is the documented override mechanism. (GitHub Copilot in VS Code does **not** support this pattern — see `INSTALL.copilot.md#customizing-models`.)
+Opencode's project-local commands (`.opencode/commands/`) take precedence over user-global ones (`~/.config/opencode/commands/`) by filename — a project-local command with the same filename as a user-global one silently shadows it. Claude Code has the analogous `.claude/commands/` precedence; GitHub Copilot in VS Code uses independent prompt scopes and the inline implementation adapter. Copilot has subagent support; these are harness-specific boundaries. See `INSTALL.copilot.md#customizing-models`.
 
 ### Alternative: edit global commands
 
