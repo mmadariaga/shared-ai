@@ -1,7 +1,8 @@
 ---
 description: Structured Code Review Prompt — diffs current branch against parent, contrasts with the OpenSpec change artifacts, and produces openspec/changes/{change-name}/review.md
 argument-hint: "[change-name] [optional: parent branch]"
-model: claude-sonnet-5
+model: opus
+effort: medium
 ---
 ## Sai Review - 5
 

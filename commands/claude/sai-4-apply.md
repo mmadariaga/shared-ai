@@ -1,7 +1,8 @@
 ---
 description: Apply the granular implementation plan mechanically — reads openspec/changes/{name}/implementation.md and executes step-by-step with a cheap model. Uses openspec CLI for status context.
 argument-hint: "[change-name] [--fast-track]"
-model: claude-haiku-4-5
+model: sonnet
+effort: low
 ---
 ## Sai Apply - 4
 

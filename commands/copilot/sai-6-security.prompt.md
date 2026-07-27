@@ -2,7 +2,7 @@
 description: Structured Security Audit Prompt — SAST + SCA on the diff vs parent branch (or full repo / path), produces openspec/changes/{change-name}/security.md
 argument-hint: "[change-name] [optional: --full | --path {dir}] [optional: parent branch]"
 agent: agent
-model: GPT-5.4 (copilot)
+model: Claude Opus 4.8 (copilot)
 tools: [vscode, read, search, edit, execute, web]
 ---
 ## Sai Security - 6

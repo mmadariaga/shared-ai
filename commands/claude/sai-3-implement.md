@@ -1,8 +1,8 @@
 ---
 description: Granular implementation plan - coordinates a dedicated worker that writes openspec/changes/{name}/implementation.md.
 argument-hint: "[change-name]"
-model: claude-opus-4-8
-effort: low
+model: opus
+effort: medium
 allowed-tools: Skill, Agent, SendMessage, AskUserQuestion
 ---
 ## Sai Implement - 3

@@ -2,7 +2,7 @@
 description: Apply the granular implementation plan mechanically — reads openspec/changes/{name}/implementation.md and executes step-by-step. Uses openspec CLI for status context.
 argument-hint: "[change-name] [--fast-track]"
 agent: agent
-model: GPT-5.4 mini (copilot)
+model: GPT-5.6 Luna (copilot)
 tools: [vscode, read, search, edit, execute, web]
 ---
 ## Sai Apply - 4

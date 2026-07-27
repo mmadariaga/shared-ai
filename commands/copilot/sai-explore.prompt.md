@@ -2,7 +2,7 @@
 description: Explore mode wrapper — thinking partner for ideas, problems, and requirements. Wraps opsx:explore skill. Optionally pass a change name to explore an existing change.
 argument-hint: "[optional: change-name or topic] [--fast-track]"
 agent: agent
-model: GPT-5.4 (copilot)
+model: GPT-5.6 Luna (copilot)
 tools: [vscode/askQuestions, read, search, web, todo]
 ---
 ## Sai Explore

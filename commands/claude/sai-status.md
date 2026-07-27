@@ -1,7 +1,7 @@
 ---
 description: Read-only progress panel for one OpenSpec change — the 10 sai-workflow artifacts, specs approval, implementation progress, and a Next: hint. Writes nothing.
 argument-hint: "[change-name]"
-model: claude-haiku-4-5
+model: haiku
 allowed-tools: Read, Glob, Grep, Bash(openspec:*), AskUserQuestion, Skill
 ---
 ## Sai Status

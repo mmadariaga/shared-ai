@@ -2,7 +2,7 @@
 description: Post-hoc backfill — reconstructs proposal.md and capability specs for changes that skipped the SAI workflow.
 argument-hint: "<change-name>"
 agent: agent
-model: GPT-5.4 (copilot)
+model: GPT-5.6 Luna (copilot)
 tools: [vscode, read, search, edit, execute, web]
 ---
 ## Sai Backfill
