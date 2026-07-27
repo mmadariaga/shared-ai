@@ -45,6 +45,7 @@ const OPENCODE_SKILLS = [
   { tier: 'opencode', name: 'budget-executor' },
   { tier: 'opencode', name: 'budget-subagent' },
   { tier: 'opencode', name: 'fetch' },
+  { tier: 'opencode', name: 'sai-implementation-planning-worker' },
 ];
 
 const COPILOT_SKILLS = [

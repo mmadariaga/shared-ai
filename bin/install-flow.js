@@ -512,6 +512,10 @@ function installOpencode(destBase) {
     path.join(REPOSITORY_ROOT, 'skills', 'opencode', 'fetch', 'SKILL.md'),
     path.join(targetPath, 'skills', 'fetch', 'SKILL.md')
   );
+  copy(
+    path.join(REPOSITORY_ROOT, 'skills', 'opencode', 'sai-implementation-planning-worker', 'SKILL.md'),
+    path.join(targetPath, 'skills', 'sai-implementation-planning-worker', 'SKILL.md')
+  );
 
   copyOpencodeConfig(targetPath);
 

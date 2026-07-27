@@ -229,3 +229,136 @@ test('uninstall and doctor expose ownership guards and collision status', async 
     removeTempDir(projectRoot);
   }
 });
+
+test('Step 2 routes Claude and opencode through the coordinator but preserves Copilot inline dispatch', () => {
+  const claude = artifact('commands/claude/sai-3-implement.md');
+  const opencode = artifact('commands/opencode/sai-3-implement.md');
+  const copilot = artifact('commands/copilot/sai-3-implement.prompt.md');
+
+  assert.match(claude, /^model:\s*claude-opus-4-8\s*$/m);
+  assert.match(claude, /^effort:\s*low\s*$/m);
+  assert.match(claude, /Fetch @skills\/sai-implementation-planning-worker\/SKILL\.md/);
+  assert.match(claude, /Fetch @sai\/commands\/sai-3-implement\.md/);
+  assert.match(opencode, /sai-implementation-coordinator/);
+  assert.match(opencode, /Fetch @skills\/sai-implementation-planning-worker\/SKILL\.md/);
+  assert.match(opencode, /Fetch @sai\/commands\/sai-3-implement\.md/);
+  assert.match(copilot, /sai-3-implement-inline\.md/);
+  assert.doesNotMatch(copilot, /sai-implementation-coordinator/);
+  assert.match(opencode, /^agent:\s*sai-implementation-coordinator\s*$/m);
+  assert.match(opencode, /^subtask:\s*false\s*$/m);
+  assert.doesNotMatch(opencode, /^model:/m);
+  assert.match(opencode, /\*\*Change-name argument:\*\* \$ARGUMENTS/);
+});
+
+test('shared implement coordinator has a two-field envelope and no artifact or resolution access', () => {
+  const coordinator = artifact('sai/commands/sai-3-implement.md');
+
+  assert.match(
+    coordinator,
+    /Do not run prerequisites, query OpenSpec, resolve a change, read git, code, change artifacts, audit artifacts, or `implementation\.md`, and do not write any planning file\./
+  );
+  assert.match(coordinator, /wrapper_echo_value/);
+  assert.match(coordinator, /arguments_value/);
+  assert.match(coordinator, /exactly these two/i);
+  assert.match(coordinator, /dispatch/);
+  assert.match(coordinator, /continuation/);
+  assert.match(coordinator, /question/);
+  assert.match(coordinator, /summary/);
+  assert.match(coordinator, /stop/);
+  assert.match(coordinator, /sai-implementation-planning-worker/);
+  assert.match(coordinator, /one worker|exactly one worker/i);
+
+  assert.doesNotMatch(coordinator, /openspec CLI not found|OpenSpec not initialized|schema:\s*sai-workflow/i);
+  assert.doesNotMatch(coordinator, /Use change '\{name\}'\?|Which change\?|0\/1\/N|zero,? one,? or multiple/i);
+  assert.doesNotMatch(coordinator, /change-picker|change resolution instructions|change-selection instructions|select a change/i);
+});
+
+test('coordinator owns status transitions, changed-file union, and exact terminal behavior', () => {
+  const coordinator = artifact('sai/commands/sai-3-implement.md');
+
+  for (const status of ['completed', 'needs_input', 'failed', 'cancelled']) {
+    assert.match(coordinator, new RegExp(`\\b${status}\\b`));
+  }
+  assert.match(coordinator, /changed_files/);
+  assert.match(coordinator, /union|accumulat|InvocationChangedFiles/i);
+  assert.match(coordinator, /completed[\s\S]*concise summary[\s\S]*accumulated changed-file list/i);
+  assert.match(coordinator, /failed[\s\S]*blocking summary[\s\S]*accumulated changed-file list[\s\S]*stop without the completion message/i);
+  assert.match(coordinator, /cancelled[\s\S]*clean-stop summary[\s\S]*accumulated changed-file list[\s\S]*stop without claiming completion/i);
+  assert.match(coordinator, /cancelled[\s\S]*without claiming completion/i);
+  assert.match(coordinator, /payload status must be exactly one of/i);
+  assert.ok(
+    coordinator.includes(
+      'then print exactly: `Implementation plan done in openspec/changes/{name}/. Review and run \\`/sai-4-apply {name}\\` (--fast-track) **in a new chat** when ready.` Stop immediately.'
+    )
+  );
+});
+
+test('needs_input continuation stays on the same worker and uses each harness binding', () => {
+  const coordinator = artifact('sai/commands/sai-3-implement.md');
+  const claudeBinding = artifact('skills/claude/sai-implementation-planning-worker/SKILL.md');
+  const opencodeBinding = artifact('skills/opencode/sai-implementation-planning-worker/SKILL.md');
+
+  assert.match(coordinator, /continuation_reference/);
+  assert.match(coordinator, /binding-owned `continuation_reference`/);
+  assert.match(coordinator, /## Result loop/);
+  assert.match(coordinator, /needs_input[\s\S]*native option picker/i);
+  assert.match(coordinator, /selected (?:option )?value[\s\S]*(?:same worker|continuation)/i);
+  assert.match(coordinator, /await the same worker's next payload/i);
+  assert.match(coordinator, /re-present|re-presenting|present.*again/i);
+  assert.match(coordinator, /without dispatching a second worker|no second worker|one worker/i);
+  assert.match(coordinator, /continuation failure[\s\S]*fresh worker/i);
+  assert.match(coordinator, /original envelope[\s\S]*reconstruction instruction/i);
+  assert.match(coordinator, /fresh worker[\s\S]*(?:durable|artifact)/i);
+
+  assert.match(claudeBinding, /SendMessage/);
+  assert.match(claudeBinding, /Do not use an Agent `resume` parameter/);
+  assert.match(claudeBinding, /fresh worker[\s\S]*reconstruct/i);
+  assert.match(opencodeBinding, /task_id/);
+  assert.match(opencodeBinding, /fresh worker|reconstruct/i);
+});
+
+test('worker and inline invocation own prerequisites and picker while coordinator does not', () => {
+  const coordinator = artifact('sai/commands/sai-3-implement.md');
+  const worker = artifact('sai/instructions/implement-worker.md');
+  const inline = artifact('commands/copilot/sai-3-implement.prompt.md');
+
+  assert.match(worker, /openspec CLI not found|OpenSpec not initialized|schema:\s*sai-workflow/i);
+  assert.match(worker, /Use change '\{name\}'\?|Which change\?|0\/1\/N|zero,? one,? or multiple/i);
+  assert.match(inline, /sai-3-implement-inline\.md/);
+  assert.doesNotMatch(coordinator, /openspec CLI not found|OpenSpec not initialized|schema:\s*sai-workflow/i);
+  assert.doesNotMatch(coordinator, /Use change '\{name\}'\?|Which change\?|0\/1\/N|zero,? one,? or multiple/i);
+});
+
+test('Step 2 coordinator makes no live-proof or smoke-success claims', () => {
+  const coordinator = artifact('sai/commands/sai-3-implement.md');
+
+  assert.doesNotMatch(coordinator, /\b(?:live|runtime)\s+(?:probe|proof)\b/i);
+  assert.doesNotMatch(coordinator, /\bsmoke[- ]?(?:check|test)\b/i);
+});
+
+test('completed routed output uses the coordinator contract while inline invocation preserves its stop', () => {
+  const coordinator = artifact('sai/commands/sai-3-implement.md');
+  const inline = artifact('commands/copilot/sai-3-implement.prompt.md');
+  const invocation = artifact('sai/instructions/implement-invocation.md');
+
+  assert.match(coordinator, /completed[\s\S]*concise summary[\s\S]*accumulated changed-file list/i);
+  assert.ok(
+    coordinator.includes(
+      'Implementation plan done in openspec/changes/{name}/. Review and run \\`/sai-4-apply {name}\\` (--fast-track) **in a new chat** when ready.'
+    )
+  );
+  assert.match(coordinator, /Stop immediately/);
+  assert.match(inline, /sai-3-implement-inline\.md/);
+  assert.match(invocation, /core/);
+  assert.match(invocation, /MANDATORY STOP/);
+});
+
+test('design continue-now bypasses the coordinator through invocation core', () => {
+  const design = artifact('sai/commands/sai-2-design.md');
+  const invocation = artifact('sai/instructions/implement-invocation.md');
+
+  assert.match(design, /Continue now in this chat/);
+  assert.match(design, /implement-invocation\.md/);
+  assert.doesNotMatch(design, /sai-implementation-coordinator/);
+  assert.match(invocation, /implement-invocation-core\.md/);
+});
