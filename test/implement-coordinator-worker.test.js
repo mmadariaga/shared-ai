@@ -250,6 +250,67 @@ test('Step 2 routes Claude and opencode through the coordinator but preserves Co
   assert.match(opencode, /\*\*Change-name argument:\*\* \$ARGUMENTS/);
 });
 
+test('routed harness bindings and inline parity', () => {
+  const workerName = 'sai-implementation-planning-worker';
+  const worker = artifact('sai/orchestration/workers/implementation-worker.md');
+  const surfaces = [
+    {
+      name: 'Claude Code',
+      binding: artifact('sai/orchestration/workers/bindings/claude/implementation-worker.md'),
+      forwardingSkill: artifact('skills/claude/sai-implementation-planning-worker/SKILL.md'),
+      wrapper: artifact('commands/claude/sai-3-implement.md'),
+      agent: artifact('agents/claude/sai-implementation-planning-worker.md'),
+      assertContract(binding, forwardingSkill, wrapper) {
+        assert.match(binding, new RegExp(`Agent\\(subagent_type: "${workerName}",\\s*run_in_background: true,`));
+        assert.match(binding, /SendMessage/);
+        assert.doesNotMatch(binding, /Agent[\\s\\S]{0,120}resume/);
+        assert.match(forwardingSkill, /claude[\\/\\]implementation-worker\.md/);
+        assert.doesNotMatch(forwardingSkill, /opencode[\\/\\]implementation-worker\.md/);
+        assert.match(wrapper, /^model:\s*opus\s*$/m);
+        assert.match(wrapper, /^effort:\s*medium\s*$/m);
+      },
+    },
+    {
+      name: 'opencode',
+      binding: artifact('sai/orchestration/workers/bindings/opencode/implementation-worker.md'),
+      forwardingSkill: artifact('skills/opencode/sai-implementation-planning-worker/SKILL.md'),
+      wrapper: artifact('commands/opencode/sai-3-implement.md'),
+      assertContract(binding, forwardingSkill, wrapper) {
+        assert.match(binding, new RegExp(`task\\(subagent_type: "${workerName}"`));
+        assert.match(binding, /Capture and bind `task_id`/);
+        assert.match(binding, /task\(task_id: "<captured task ID>"/);
+        assert.match(binding, /nested helper branches use the permitted budget and explore targets/);
+        assert.doesNotMatch(binding, /nested task target(?:s)?[\\s\S]{0,120}(?!budget|explore)[a-z][a-z-]+/i);
+        assert.match(forwardingSkill, /opencode[\\/\\]implementation-worker\.md/);
+        assert.doesNotMatch(forwardingSkill, /claude[\\/\\]implementation-worker\.md/);
+        assert.match(wrapper, /^agent:\s*sai-implementation-coordinator\s*$/m);
+      },
+    },
+    {
+      name: 'Copilot',
+      wrapper: artifact('commands/copilot/sai-3-implement.prompt.md'),
+      assertContract(_binding, _forwardingSkill, wrapper) {
+        assert.match(wrapper, /sai-3-implement-inline\.md/);
+        assert.doesNotMatch(wrapper, /sai-implementation-coordinator/);
+      },
+    },
+  ];
+
+  for (const surface of surfaces) {
+    assert.ok(surface.name);
+    surface.assertContract(surface.binding, surface.forwardingSkill, surface.wrapper);
+  }
+
+  const claudeAgent = surfaces[0].agent;
+  assert.match(claudeAgent, /^model:\s*claude-opus-4-8\s*$/m);
+  assert.match(claudeAgent, /^effort:\s*high\s*$/m);
+  assert.match(
+    claudeAgent,
+    /^tools:\s*Read,\s*Glob,\s*Grep,\s*Bash,\s*Edit,\s*Write,\s*Agent,\s*Skill,\s*SendMessage\s*$/m
+  );
+  assert.doesNotMatch(worker, /\b(?:task_id|run_in_background|SendMessage)\b/);
+});
+
 test('shared implement coordinator has a two-field envelope and no artifact or resolution access', () => {
   const coordinator = artifact('sai/commands/sai-3-implement.md');
 
