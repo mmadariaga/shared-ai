@@ -273,6 +273,41 @@ test('shared implement coordinator has a two-field envelope and no artifact or r
   assert.doesNotMatch(coordinator, /change-picker|change resolution instructions|change-selection instructions|select a change/i);
 });
 
+test('implementation adapter pins resolved-name and reconstruction transport', () => {
+  const coordinator = artifact('sai/commands/sai-3-implement.md');
+  const worker = artifact('sai/orchestration/workers/implementation-worker.md');
+  const core = artifact('sai/compat/implement-invocation-core.md');
+
+  for (const field of [
+    'original_envelope',
+    'dispatch_operation',
+    'continuation_operation',
+    'allowed_nonterminal_extensions',
+    'extension_handlers',
+    'replacement_reconstruction_fields',
+    'terminal_navigation',
+  ]) {
+    assert.match(coordinator, new RegExp('`' + field + '`'));
+  }
+
+  assert.match(coordinator, /allowed_nonterminal_extensions`:\s*empty/);
+  assert.match(coordinator, /extension_handlers`:\s*empty/);
+  assert.match(
+    coordinator,
+    /replacement_reconstruction_fields`:[\s\S]*resolved_change_name[\s\S]*opaque_input_history[\s\S]*fixed durable-artifact reconstruction instruction/
+  );
+  assert.match(coordinator, /Every post-resolution payload supplies `resolved_change_name`/);
+  assert.match(coordinator, /worker-returned value as invocation-scoped state/);
+  assert.match(coordinator, /never derive it by reparsing either envelope field/);
+  assert.match(coordinator, /entries contain only the exact worker-authored `question`, ordered\s+`options`, and selected\s+`answer_value`/);
+  assert.match(coordinator, /replacement must rerun[\s\S]*independently reread current change artifacts[\s\S]*audit[\s\S]*`implementation\.md`/);
+  assert.match(coordinator, /Do not include artifact contents[\s\S]*binding identifiers/);
+  assert.match(worker, /openspec CLI not found\. Install it first: https:\/\/github\.com\/Fission-AI\/OpenSpec/);
+  assert.doesNotMatch(worker, /OpenSpec\)/);
+  assert.doesNotMatch(core, /^## Completion\b/m);
+  assert.doesNotMatch(core, /MANDATORY STOP/);
+});
+
 test('coordinator owns status transitions, changed-file union, and exact terminal behavior', () => {
   const coordinator = artifact('sai/commands/sai-3-implement.md');
 

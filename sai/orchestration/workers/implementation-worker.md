@@ -33,9 +33,9 @@ scan parent conversation history.
 
 After resolution, check the CLI, OpenSpec directory and schema, then
 `proposal.md`, `design.md`, and `tasks.md`, in that order. Make no file write
-when a check fails. If the CLI is absent return `openspec CLI not found. Install it first: https://github.com/Fission-AI/OpenSpec)`;
+when a check fails. If the CLI is absent return `openspec CLI not found. Install it first: https://github.com/Fission-AI/OpenSpec`;
 if OpenSpec is not initialized return `OpenSpec not initialized in this project. Run: openspec init`;
-and if the schema is wrong return `openspec/config.yaml does not declare `schema: sai-workflow`. The sai commands require this schema. Add `schema: sai-workflow` to the top of openspec/config.yaml.`
+and if the schema is wrong return ``openspec/config.yaml does not declare `schema: sai-workflow`. The sai commands require this schema. Add `schema: sai-workflow` to the top of openspec/config.yaml.``
 
 Set `$ARGUMENTS` to the resolved name, fetch `@skills/budget/SKILL.md`, then
 fetch `@sai/compat/implement-invocation-core.md` and follow it. Return
