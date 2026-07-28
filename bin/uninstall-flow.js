@@ -56,8 +56,13 @@ function manifestEntries(harness, destinationRoot, editorBase) {
 
 function enumerateClaude(destBase) {
   const targetPath = destBase || CLAUDE_BASE;
-  return manifestEntries('claude', { commands: path.join(targetPath, 'commands'), sai: path.join(targetPath, 'sai'), skills: path.join(targetPath, 'skills'), agents: path.join(targetPath, 'agents'), config: targetPath }, targetPath);
+  const entries = manifestEntries('claude', { commands: path.join(targetPath, 'commands'), sai: path.join(targetPath, 'sai'), skills: path.join(targetPath, 'skills'), agents: path.join(targetPath, 'agents'), config: targetPath }, targetPath);
+  if (flowCanonicalNumbered()) entries.push(...legacyClaudeRecords(targetPath, entries));
+  return entries;
 }
+
+function flowCanonicalNumbered() { return false; }
+function legacyClaudeRecords() { return []; }
 
 function enumerateOpencode(destBase) {
   const targetPath = destBase || OPENCODE_BASE;

@@ -10,6 +10,7 @@ const childProcess = require('child_process');
 const crypto = require('crypto');
 const { isDeepStrictEqual } = require('util');
 const { loadInstallManifest, expandInstallManifest } = require('./install-manifest');
+const { inspectManagedWorkerMigration, migrateManagedWorkerIdentity } = require('./managed-worker-migration');
 
 let jsoncParser = null;
 try {
@@ -24,6 +25,37 @@ const CLAUDE_IMPLEMENTATION_WORKER_AGENT = 'sai-implementation-planning-worker.m
 const CLAUDE_IMPLEMENTATION_WORKER_OWNER = '.sai-implementation-planning-worker.owner.json';
 const CLAUDE_DESIGN_WORKER_AGENT = 'sai-design-planning-worker.md';
 const CLAUDE_DESIGN_WORKER_OWNER = '.sai-design-planning-worker.owner.json';
+const LEGACY_CLAUDE_WORKERS = [
+  { agent: 'sai-design-planning-worker.md', owner: '.sai-design-planning-worker.owner.json', replacement: 'sai-2-design-worker.md', replacementOwner: '.sai-2-design-worker.owner.json' },
+  { agent: 'sai-implementation-planning-worker.md', owner: '.sai-implementation-planning-worker.owner.json', replacement: 'sai-3-implementation-worker.md', replacementOwner: '.sai-3-implementation-worker.owner.json' },
+];
+
+function migrateLegacyClaudeWorkers(targetPath = CLAUDE_BASE) {
+  // Activated when Step 2 changes the canonical worker constants to numbered names.
+  if (!CLAUDE_DESIGN_WORKER_AGENT.startsWith('sai-2-') || !CLAUDE_IMPLEMENTATION_WORKER_AGENT.startsWith('sai-3-')) return [];
+  const migrated = [];
+  for (const legacy of LEGACY_CLAUDE_WORKERS) {
+    const agentsDir = path.join(targetPath, 'agents');
+    const assessment = inspectManagedWorkerMigration({
+      legacyPath: path.join(agentsDir, legacy.agent),
+      legacyOwnerPath: path.join(agentsDir, legacy.owner),
+      replacementPath: path.join(agentsDir, legacy.replacement),
+      replacementOwnerPath: path.join(agentsDir, legacy.replacementOwner),
+      replacementBytes: fs.readFileSync(path.join(REPOSITORY_ROOT, 'agents', 'claude', legacy.replacement)),
+    });
+    if (assessment.status === 'protected-collision') {
+      throw new Error(`Incompatible Claude agent at ${path.join(agentsDir, legacy.replacement)}. Rename or remove the conflicting definition, then retry.`);
+    }
+    if (assessment.status !== 'not-found') migrated.push(migrateManagedWorkerIdentity({
+      legacyPath: path.join(agentsDir, legacy.agent),
+      legacyOwnerPath: path.join(agentsDir, legacy.owner),
+      replacementPath: path.join(agentsDir, legacy.replacement),
+      replacementOwnerPath: path.join(agentsDir, legacy.replacementOwner),
+      replacementBytes: fs.readFileSync(path.join(REPOSITORY_ROOT, 'agents', 'claude', legacy.replacement)),
+    }));
+  }
+  return migrated;
+}
 const OPENCODE_MANAGED_AGENTS = Object.freeze({
   'sai-implementation-coordinator': {
     mode: 'primary',
@@ -624,6 +656,10 @@ module.exports = {
   CLAUDE_IMPLEMENTATION_WORKER_OWNER,
   CLAUDE_DESIGN_WORKER_AGENT,
   CLAUDE_DESIGN_WORKER_OWNER,
+  LEGACY_CLAUDE_WORKERS,
+  migrateLegacyClaudeWorkers,
+  inspectManagedWorkerMigration,
+  migrateManagedWorkerIdentity,
   OPENCODE_MANAGED_AGENTS,
   sha256Buffer,
   installClaudeImplementationWorker,

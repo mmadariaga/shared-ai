@@ -3,6 +3,7 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
 
 const repoRoot = path.join(__dirname, '..');
@@ -11,6 +12,30 @@ function artifact(relativePath) {
   const fullPath = path.join(repoRoot, relativePath);
   assert.ok(fs.existsSync(fullPath), `${relativePath} should exist`);
   return fs.readFileSync(fullPath, 'utf8');
+}
+
+function tempDir(prefix) {
+  return fs.mkdtempSync(path.join(os.tmpdir(), prefix));
+}
+
+function removeTempDir(dir) {
+  fs.rmSync(dir, { recursive: true, force: true });
+}
+
+function capture(fn) {
+  const messages = [];
+  const originalLog = console.log;
+  const originalError = console.error;
+  console.log = (...args) => messages.push(args.join(' '));
+  console.error = (...args) => messages.push(args.join(' '));
+  try {
+    return { value: fn(), error: null, output: messages.join('\n') };
+  } catch (error) {
+    return { value: undefined, error, output: messages.join('\n') };
+  } finally {
+    console.log = originalLog;
+    console.error = originalError;
+  }
 }
 
 test('Step 2 uses one canonical coordinator, lifecycle, worker, and binding layout', () => {
@@ -471,4 +496,64 @@ test('Step 5 documentation records manifest projections and routed-source bounda
   assert.match(opencode, /opencode-only routed bindings/i);
   assert.match(copilot, /does not install `sai\/orchestration\/`/i);
   assert.match(copilot, /no routed binding/i);
+});
+
+// ─── Step 1: preservation-first legacy identity migration ───────────────────
+
+test('design install migrates an owned legacy worker pair to the numbered identity', () => {
+  const { installClaude } = require('../bin/install-flow.js');
+  const base = tempDir('sai-design-legacy-');
+  const legacy = path.join(base, 'agents', 'sai-design-planning-worker.md');
+  const legacyOwner = path.join(base, 'agents', '.sai-design-planning-worker.owner.json');
+  const numbered = path.join(base, 'agents', 'sai-2-design-worker.md');
+  const numberedOwner = path.join(base, 'agents', '.sai-2-design-worker.owner.json');
+  try {
+    installClaude(base);
+    assert.ok(fs.existsSync(legacy), 'legacy fixture should exist after baseline install');
+    installClaude(base);
+    assert.equal(fs.existsSync(legacy), false);
+    assert.equal(fs.existsSync(legacyOwner), false);
+    assert.equal(fs.existsSync(numbered), true);
+    assert.equal(fs.existsSync(numberedOwner), true);
+  } finally {
+    removeTempDir(base);
+  }
+});
+
+test('design install preserves a protected legacy pair and reports manual migration', () => {
+  const { installClaude } = require('../bin/install-flow.js');
+  const base = tempDir('sai-design-legacy-protected-');
+  const legacy = path.join(base, 'agents', 'sai-design-planning-worker.md');
+  const legacyOwner = path.join(base, 'agents', '.sai-design-planning-worker.owner.json');
+  try {
+    installClaude(base);
+    assert.ok(fs.existsSync(legacy), 'legacy fixture should exist after baseline install');
+    fs.writeFileSync(legacyOwner, '{}');
+    const before = fs.readFileSync(legacy, 'utf8');
+    const output = capture(() => installClaude(base));
+    assert.equal(fs.readFileSync(legacy, 'utf8'), before);
+    assert.equal(fs.existsSync(path.join(base, 'agents', 'sai-2-design-worker.md')), false);
+    assert.match(`${output.output}\n${output.error?.message || ''}`, /protected|manual.*migration|collision/i);
+  } finally {
+    removeTempDir(base);
+  }
+});
+
+test('design install and uninstall preserve incompatible numbered destination content', () => {
+  const { installClaude } = require('../bin/install-flow.js');
+  const { enumerateClaude, runDeletion } = require('../bin/uninstall-flow.js');
+  const base = tempDir('sai-design-numbered-collision-');
+  const target = path.join(base, 'agents', 'sai-2-design-worker.md');
+  const sentinel = 'user-owned numbered worker\n';
+  try {
+    fs.mkdirSync(path.dirname(target), { recursive: true });
+    fs.writeFileSync(target, sentinel);
+    const result = capture(() => installClaude(base));
+    assert.equal(fs.readFileSync(target, 'utf8'), sentinel);
+    assert.match(`${result.output}\n${result.error?.message || ''}`, /unmanaged|incompatible|collision/i);
+    runDeletion(enumerateClaude(base));
+    assert.equal(fs.readFileSync(target, 'utf8'), sentinel);
+  } finally {
+    removeTempDir(base);
+  }
 });

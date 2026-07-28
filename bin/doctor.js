@@ -11,6 +11,7 @@ const jsoncParser = require('jsonc-parser');
 
 const flow = require('./install-flow');
 const uninstall = require('./uninstall-flow');
+const { inspectManagedWorkerMigration } = require('./managed-worker-migration');
 
 const REPO_ROOT_DEFAULT = path.join(__dirname, '..');
 
@@ -325,6 +326,13 @@ const MANAGED_CLAUDE_WORKERS = [
 function managedClaudeWorkerRecords(harness, repoRoot) {
   const section = `[${harness.id}]`;
   const records = [];
+  if (flow.CLAUDE_DESIGN_WORKER_AGENT.startsWith('sai-2-') && flow.CLAUDE_IMPLEMENTATION_WORKER_AGENT.startsWith('sai-3-')) {
+    for (const legacy of flow.LEGACY_CLAUDE_WORKERS) {
+      const legacyPath = path.join(harness.base, 'agents', legacy.agent);
+      const assessment = inspectManagedWorkerMigration({ legacyPath, legacyOwnerPath: path.join(harness.base, 'agents', legacy.owner), replacementPath: path.join(harness.base, 'agents', legacy.replacement), replacementOwnerPath: path.join(harness.base, 'agents', legacy.replacementOwner), replacementBytes: fs.readFileSync(path.join(repoRoot, 'agents', 'claude', legacy.replacement)) });
+      if (assessment.status === 'protected-collision') records.push({ section, name: legacy.agent, severity: 'error', message: `legacy Claude worker preserved at ${legacyPath}`, recommendation: COLLISION_REMEDIATION });
+    }
+  }
   for (const { agentKey, label } of MANAGED_CLAUDE_WORKERS) {
     const agentName = flow[agentKey];
     const destination = path.join(harness.base, 'agents', agentName);
