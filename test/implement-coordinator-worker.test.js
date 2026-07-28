@@ -87,7 +87,7 @@ test('Claude worker agent is pinned to the required model, effort, and tools', (
   const agent = artifact('agents/claude/sai-3-implementation-worker.md');
   assert.match(agent, /^name:\s*sai-3-implementation-worker\s*$/m);
   assert.match(agent, /^model:\s*claude-opus-4-8\s*$/m);
-  assert.match(agent, /^effort:\s*high\s*$/m);
+   assert.match(agent, /^effort:\s*medium\s*$/m);
   assert.match(
     agent,
     /^tools:\s*Read,\s*Glob,\s*Grep,\s*Bash,\s*Edit,\s*Write,\s*Agent,\s*Skill,\s*SendMessage\s*$/m
@@ -301,7 +301,7 @@ test('Step 2 routes Claude and opencode through the coordinator but preserves Co
   const copilot = artifact('commands/copilot/sai-3-implement.prompt.md');
 
   assert.match(claude, /^model:\s*opus\s*$/m);
-  assert.match(claude, /^effort:\s*medium\s*$/m);
+   assert.match(claude, /^effort:\s*low\s*$/m);
   assert.match(claude, /Fetch @skills\/sai-3-implementation-worker\/SKILL\.md/);
   assert.match(claude, /Fetch @sai\/commands\/sai-3-implement\.md/);
   assert.match(opencode, /sai-coordinator/);
@@ -335,7 +335,7 @@ test('routed harness bindings and inline parity', () => {
         assert.match(forwardingSkill, /claude[\\/\\]implementation-worker\.md/);
         assert.doesNotMatch(forwardingSkill, /opencode[\\/\\]implementation-worker\.md/);
         assert.match(wrapper, /^model:\s*opus\s*$/m);
-        assert.match(wrapper, /^effort:\s*medium\s*$/m);
+         assert.match(wrapper, /^effort:\s*low\s*$/m);
       },
     },
     {
@@ -374,7 +374,7 @@ test('routed harness bindings and inline parity', () => {
 
   const claudeAgent = surfaces[0].agent;
   assert.match(claudeAgent, /^model:\s*claude-opus-4-8\s*$/m);
-  assert.match(claudeAgent, /^effort:\s*high\s*$/m);
+   assert.match(claudeAgent, /^effort:\s*medium\s*$/m);
   assert.match(
     claudeAgent,
     /^tools:\s*Read,\s*Glob,\s*Grep,\s*Bash,\s*Edit,\s*Write,\s*Agent,\s*Skill,\s*SendMessage\s*$/m

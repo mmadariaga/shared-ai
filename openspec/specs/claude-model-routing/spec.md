@@ -10,4 +10,4 @@ The affected Claude command wrappers SHALL use the model and effort assignments 
 
 #### Scenario: Claude effort metadata is loaded
 - **WHEN** a Claude wrapper with explicit effort metadata is read
-- **THEN** `sai-1-spec`, `sai-3-implement`, `sai-5-review`, `sai-7-performance`, `sai-8-accessibility`, and `sai-backfill` use `medium`; `sai-4-apply` uses `low`; `sai-6-security` uses `xhigh`; and `sai-explore` uses `medium`
+- **THEN** `sai-1-spec`, `sai-5-review`, `sai-7-performance`, `sai-8-accessibility`, and `sai-backfill` use `medium`; `sai-3-implement` uses `low`; `sai-4-apply` uses `low`; `sai-6-security` uses `xhigh`; and `sai-explore` uses `medium`
