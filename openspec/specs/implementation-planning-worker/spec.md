@@ -32,12 +32,33 @@ The routed worker SHALL own the existing prerequisite and change-picker behavior
 - **WHEN** any required prerequisite or change artifact is absent
 - **THEN** the worker SHALL preserve the existing stop message, including `openspec CLI not found. Install it first: https://github.com/Fission-AI/OpenSpec`, `OpenSpec not initialized in this project. Run: openspec init`, `openspec/config.yaml does not declare \`schema: sai-workflow\`. The sai commands require this schema. Add \`schema: sai-workflow\` to the top of openspec/config.yaml.`, `Change '{change-name}' not found. Run /sai-1-spec to create it first.`, `design.md not found for '{change-name}'. Run /sai-2-design first.`, or `tasks.md not found for '{change-name}'. Run /sai-2-design first.` as applicable, and SHALL not modify files
 
+### Requirement: Implementation phase policy isolation
+The implementation-planning worker contract SHALL layer implementation-only Phase Policy over the shared worker lifecycle and SHALL remain separate from the design-worker contract. It SHALL own implementation prerequisites, change resolution, planning research, rerun handling, audit ingestion, RED -> GREEN planning, STOP & COMMIT planning, interface conformance, ADR/DDR evaluation and authorized writes, and `implementation.md` verification without adding those rules to the Orchestration Core or importing design-only feedback and notice behavior.
+
+#### Scenario: Implementation-only rule changes
+- **WHEN** a maintainer changes an implementation planning rule
+- **THEN** the rule SHALL be defined in the implementation worker or caller-neutral implementation planning policy
+- **AND** neither the shared worker lifecycle nor the design worker SHALL acquire an implementation-specific conditional branch
+
+#### Scenario: Worker returns phase progress
+- **WHEN** implementation planning needs user input or reaches a terminal outcome
+- **THEN** the worker SHALL return lifecycle metadata only and SHALL leave `implementation.md` as the authoritative transport for technical planning content
+
+#### Scenario: Replacement worker reconstructs planning state
+- **WHEN** a replacement worker receives the original envelope, `resolved_change_name` when already known, exact `opaque_input_history`, and `durable_artifact_reconstruction_instruction`
+- **THEN** it SHALL replay only the recorded input decisions, rerun prerequisites, and independently reread current durable artifacts from disk
+- **AND** it SHALL start a new empty write journal without treating the coordinator's accumulated changed-file union as its own writes
+
 ### Requirement: Durable artifact verification
-The worker SHALL verify that its generated `implementation.md` exists at the selected change path and satisfies the implementation artifact contract before reporting completion.
+The worker SHALL verify before reporting completion that the selected change contains a non-empty `implementation.md`; that every `tasks.md` task is represented in order; that each planned step contains the required verification and STOP & COMMIT markers; that each testable step places an assertion-based RED phase before its GREEN phase; that signatures and assertions conform to applicable `interfaces.md` Step Contracts; that automated and human verification use the established encoding; and that the planning run executed no implementation step and checked no implementation-plan checkbox. A failed verification SHALL return a non-completed lifecycle result and SHALL NOT emit the mandatory completion message.
 
 #### Scenario: Direct artifact write succeeds
-- **WHEN** the worker finishes writing the implementation plan
-- **THEN** it SHALL verify the durable artifact and include `implementation.md` in the changed-file list returned to the coordinator
+- **WHEN** the worker finishes writing an implementation plan that satisfies every durable verification check
+- **THEN** it SHALL include `implementation.md` in `changed_files` and MAY return `completed`
+
+#### Scenario: Durable artifact verification fails
+- **WHEN** `implementation.md` is missing, empty, out of task order, lacks a required marker, violates RED-before-GREEN or an interface contract, mis-encodes a human check, or reflects executed implementation work
+- **THEN** the worker SHALL return `failed` with a concise blocking summary and SHALL NOT claim planning completion
 
 ### Requirement: Worker reasoning ownership
 The worker SHALL own technical reasoning and artifact decisions, and its response SHALL be a status report rather than a transport channel for the contents of `implementation.md`.

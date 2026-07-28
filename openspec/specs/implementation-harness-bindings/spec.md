@@ -46,3 +46,37 @@ The Copilot implementation command SHALL preserve its existing inline execution 
 #### Scenario: Copilot implementation invocation
 - **WHEN** `/sai-3-implement` runs under GitHub Copilot
 - **THEN** it SHALL continue inline execution with its current observable behavior and SHALL expose the documented compatibility limitation
+
+### Requirement: Managed implementation worker projections
+The single installation manifest SHALL project the canonical shared coordinator and worker-lifecycle contracts, the implementation worker contract, and only the active routed harness's implementation binding to Claude Code and opencode. Their runtime skills and Claude agent surface SHALL remain thin forwarders to those canonical sources. The Copilot projection SHALL retain the caller-neutral compatibility assets required by its inline path but SHALL exclude routed orchestration bindings and routed implementation worker-agent surfaces. Installer, doctor, and uninstall SHALL derive these projections from the same manifest while preserving deterministic collision detection, managed-content drift checks, ownership sidecars, compatible-unowned reuse, user-modified-file retention, and opencode merged-config preservation. Exact-compatible pre-existing Claude worker agents SHALL be reused without rewriting or adopting ownership, and all unrelated entries in an existing opencode JSONC configuration SHALL remain unchanged.
+
+#### Scenario: Claude Code projection is installed
+- **WHEN** the manifest expands the Claude Code implementation surfaces
+- **THEN** it SHALL include the shared lifecycle sources, canonical implementation worker, Claude implementation binding, forwarding skill, and managed worker agent
+- **AND** it SHALL exclude the opencode binding subtree
+
+#### Scenario: Exact-compatible Claude agent already exists
+- **WHEN** the canonical Claude implementation worker agent already exists with exact-compatible content and no SAI ownership sidecar
+- **THEN** installation SHALL reuse it without rewriting it or creating ownership metadata
+- **AND** guarded uninstall SHALL preserve it as user-owned
+- **AND** the agent's unrelated user content SHALL remain unchanged
+
+#### Scenario: Opencode projection is installed
+- **WHEN** the manifest expands the opencode implementation surfaces
+- **THEN** it SHALL include the shared lifecycle sources, canonical implementation worker, opencode implementation binding, forwarding skill, and namespaced coordinator and worker configuration entries
+- **AND** it SHALL exclude the Claude binding subtree and Claude worker-agent projection
+
+#### Scenario: Opencode entries merge into existing JSONC
+- **WHEN** installation adds or reuses exact-compatible SAI-namespaced implementation entries in an existing opencode JSONC configuration
+- **THEN** it SHALL preserve comments, formatting, and every unrelated model, agent, permission, plugin, and MCP entry
+- **AND** uninstall SHALL leave the merged SAI entries and all unrelated configuration intact under the existing config-merge exclusion
+- **AND** no unrelated JSONC entry SHALL be rewritten, removed, or adopted by the SAI projection
+
+#### Scenario: Copilot projection remains inline
+- **WHEN** the manifest expands the Copilot implementation surfaces
+- **THEN** it SHALL include the inline command and its required compatibility sources
+- **AND** it SHALL exclude the shared routed coordinator, routed implementation bindings, and routed planning-worker runtime surfaces
+
+#### Scenario: Existing destination is incompatible
+- **WHEN** installation or activation encounters an incompatible managed file, Claude worker-agent definition, opencode namespaced config entry, or destination collision
+- **THEN** it SHALL stop without overwriting the existing destination and SHALL preserve the established doctor remediation and guarded-uninstall ownership rules

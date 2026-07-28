@@ -14,11 +14,19 @@ The refactor SHALL preserve the current `implementation.md` format, including it
 - **THEN** the worker SHALL preserve the existing plan semantics and apply the current re-run rules rather than regenerating incompatible content
 
 ### Requirement: Planning quality parity
-The worker SHALL preserve ADR/DDR evaluation, RED -> GREEN planning, applicable interface conformance checks, audit-finding handling, and implementation-plan verification from the current phase.
+The routed worker and the inline Copilot path SHALL preserve the current `implementation.md` planning contract, including first-run and rerun behavior, ordered task coverage, audit-finding ingestion, ADR/DDR evaluation and approved ADR index maintenance, interface conformance, assertion-based RED before minimal GREEN for each testable step, automated verification, correctly encoded human verification, and a STOP & COMMIT marker for each planned step. Planning SHALL write the authoritative artifact but SHALL NOT execute production implementation or mark plan checkboxes complete.
 
-#### Scenario: Planning checks remain applicable
-- **WHEN** the selected change contains the inputs that activate an existing planning check
-- **THEN** the worker SHALL apply that check and record the result in `implementation.md` using the existing artifact conventions
+#### Scenario: Testable implementation step is planned
+- **WHEN** a selected task has behavior that can be covered automatically
+- **THEN** its implementation plan SHALL place a failing assertion-based RED phase before the minimal GREEN implementation and SHALL include commands that verify both phases
+
+#### Scenario: Non-testable human verification is needed
+- **WHEN** an observable check cannot be automated economically
+- **THEN** the plan SHALL encode that check using the established human-verification convention without inventing a placeholder action checkbox
+
+#### Scenario: ADR or DDR qualifies
+- **WHEN** a planning decision is hard to reverse, surprising without context, and has a real trade-off
+- **THEN** the phase SHALL preserve the existing approval gate, authorized ADR/DDR write behavior, relationship annotation, and exactly-once ADR index maintenance
 
 ### Requirement: Observable command contract parity
 The coordinator-worker path SHALL preserve the current prerequisite failures, 0/1/N change-picker behavior, raw argument and flag handling, canonical glossary use, and ADR/DDR approval interaction.
@@ -43,8 +51,16 @@ The worker SHALL own and preserve every file write currently authorized by the i
 - **THEN** the worker SHALL perform that write, preserve the existing index rules, and include each resulting path in the structured changed-file list
 
 ### Requirement: Stop semantics parity
-The coordinator-worker refactor SHALL preserve the current MANDATORY STOP semantics, including stopping after a completed implementation-planning phase and not applying project code during `/sai-3-implement`.
+The routed Claude Code and opencode paths and the inline Copilot path SHALL preserve the implementation phase's no-execution boundary and exactly-once MANDATORY STOP. After `implementation.md` has been durably verified and the terminal path reports completion, the user-facing path SHALL print exactly `Implementation plan done in openspec/changes/{name}/. Review and run `/sai-4-apply {name}` (--fast-track) **in a new chat** when ready.` and SHALL stop immediately. Failed, cancelled, or needs-input outcomes SHALL NOT print that completion message.
 
-#### Scenario: Completed planning phase
-- **WHEN** the worker has written and verified `implementation.md` and returns `completed`
-- **THEN** the coordinator SHALL report completion and stop without executing implementation tasks or modifying project source files
+#### Scenario: Routed planning completes
+- **WHEN** the implementation-planning worker returns a valid `completed` payload after durable verification
+- **THEN** the coordinator SHALL report the concise summary and ordered changed files, print the exact completion message once, and stop without executing implementation tasks or modifying project source files
+
+#### Scenario: Inline Copilot planning completes
+- **WHEN** the Copilot inline implementation path durably completes the same plan
+- **THEN** it SHALL print the same exact completion message once and stop without entering the routed coordinator lifecycle
+
+#### Scenario: Planning does not complete
+- **WHEN** the lifecycle status is `needs_input`, `failed`, or `cancelled`
+- **THEN** the user-facing path SHALL preserve that outcome and SHALL NOT print the implementation completion message

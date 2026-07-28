@@ -2,59 +2,51 @@
 
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const { ImplementationAdapter } = require('../fixtures/implementation-adapter.js');
+const fs = require('fs');
+const path = require('path');
+const { IMPLEMENTATION_ARTIFACTS } = require('../fixtures/implementation-adapter.js');
+
+const repoRoot = path.join(__dirname, '..');
+
+function artifact(relativePath) {
+  const fullPath = path.join(repoRoot, relativePath);
+  assert.ok(fs.existsSync(fullPath), `${relativePath} should exist`);
+  return fs.readFileSync(fullPath, 'utf8');
+}
 
 test('Step 1 rejects post-resolution terminal payloads without a resolved change name', () => {
-  const payload = {
-    status: 'completed',
-    lifecycle: { phase: 'terminal' },
-  };
+  const worker = artifact(IMPLEMENTATION_ARTIFACTS.worker);
+  const coordinator = artifact(IMPLEMENTATION_ARTIFACTS.coordinator);
 
-  assert.equal(ImplementationAdapter.validate_terminal_payload(payload), false);
-  assert.notEqual(ImplementationAdapter.terminal_navigation(payload), 'completion');
+  assert.match(worker, /every post-resolution payload include[s]?[^\n]*resolved_change_name/i);
+  assert.match(coordinator, /Every post-resolution payload.*requires `resolved_change_name`/);
+  assert.match(coordinator, /terminal\s+navigation/i);
 });
 
 test('Step 1 replacement request forwards only the exact reconstruction envelope', () => {
-  const input = {
-    original_envelope: { wrapper_echo_value: '', arguments_value: 'change-a' },
-    resolved_change_name: 'change-a',
-    opaque_input_history: [
-      {
-        question: 'Which change?',
-        options: [
-          { label: 'Change A', value: 'change-a' },
-          { label: 'Change B', value: 'change-b' },
-        ],
-        answer_value: 'change-a',
-      },
-    ],
-    durable_artifact_reconstruction_instruction:
-      'Reread the current durable artifacts before continuing.',
-    binding_identifier: 'must-not-forward',
-  };
-  const expected = {
-    original_envelope: input.original_envelope,
-    resolved_change_name: input.resolved_change_name,
-    opaque_input_history: input.opaque_input_history,
-    durable_artifact_reconstruction_instruction:
-      input.durable_artifact_reconstruction_instruction,
-  };
-
-  assert.deepEqual(ImplementationAdapter.build_replacement_request(input), expected);
+  const coordinator = artifact(IMPLEMENTATION_ARTIFACTS.coordinator);
+  for (const field of [
+    'original_envelope',
+    'resolved_change_name',
+    'opaque_input_history',
+  ]) {
+    assert.match(coordinator, new RegExp(`\\b${field}\\b`));
+  }
+  assert.match(coordinator, /durable-artifact reconstruction instruction/);
+  assert.match(coordinator, /Do not include artifact contents/);
+  assert.match(coordinator, /binding identifiers/);
 });
 
 test('Step 1 accepts a plan with ordered coverage, RED before GREEN, verification, STOP and COMMIT, and no execution', () => {
-  const plan = {
-    tasks: [
-      { order: 1, description: 'Define the adapter contract' },
-      { order: 2, description: 'Define worker payload handling' },
-    ],
-    verification: ['Run the focused Node test command'],
-    markers: ['RED', 'GREEN', 'STOP & COMMIT'],
-    red_before_green: true,
-    interface_conformance: true,
-    implementation_executed: false,
-  };
-
-  assert.equal(ImplementationAdapter.validate_plan(plan), true);
+  const worker = artifact(IMPLEMENTATION_ARTIFACTS.worker);
+  for (const requirement of [
+    /implementation\.md/,
+    /every task in order/i,
+    /verification and STOP markers/i,
+    /RED\s+before GREEN/i,
+    /human-check encoding/i,
+    /executed no implementation step/i,
+  ]) {
+    assert.match(worker, requirement);
+  }
 });

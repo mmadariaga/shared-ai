@@ -57,3 +57,40 @@ The coordinator SHALL preserve the existing user communication and MANDATORY STO
 #### Scenario: User declines cleanly
 - **WHEN** the worker returns `cancelled` because the user deliberately declined a decision whose existing semantics terminate the invocation, such as a one-change selection
 - **THEN** the coordinator SHALL report a clean stop without claiming planning completion, SHALL identify changed files, and SHALL not fire the completed-planning MANDATORY STOP path
+
+### Requirement: Shared lifecycle adapter integration
+The routed `/sai-3-implement` coordinator SHALL consume the canonical shared coordinator contract through an implementation phase adapter. The adapter SHALL provide the original two-field invocation envelope, harness binding dispatch and continuation operations, an empty set of allowed nonterminal extensions, no extension handlers, the enumerated implementation replacement-reconstruction fields below, and implementation terminal navigation. The adapter SHALL NOT duplicate lifecycle payload validation, ordered changed-file aggregation, continuation-first recovery, replacement-worker limits, or terminal routing, and SHALL NOT import design feedback, notice, or continue-now behavior.
+
+The replacement-reconstruction fields SHALL be exactly:
+
+- `resolved_change_name` when resolution already occurred;
+- `opaque_input_history`, an ordered list whose entries contain only one prior worker-authored `question`, its ordered `options`, and the exact selected `answer_value`; and
+- `durable_artifact_reconstruction_instruction`, a fixed instruction requiring the replacement worker to rerun prerequisites and independently reread current change artifacts, audit artifacts, and `implementation.md` from disk.
+
+The coordinator SHALL retain the accumulated `changed_files` union itself rather than seed the replacement worker's empty journal. It SHALL NOT pass artifact contents, inferred planning state, design `pending_feedback`, design notice acknowledgements, design fast-track presentation flags, or binding continuation identifiers as reconstruction fields.
+
+#### Scenario: Implementation lifecycle result is processed
+- **WHEN** the implementation-planning worker returns a lifecycle payload under Claude Code or opencode
+- **THEN** the coordinator SHALL process it through the canonical shared coordinator contract
+- **AND** implementation-specific behavior SHALL enter only through the declared phase-adapter fields
+
+#### Scenario: Design-only event reaches implementation
+- **WHEN** the implementation coordinator receives a design notice, artifact-feedback event, or continue-now transition
+- **THEN** it SHALL reject that event as unsupported rather than adding a design-only extension or processing it as an implementation lifecycle status
+
+#### Scenario: Continuation cannot resume the original worker
+- **WHEN** same-worker implementation continuation fails
+- **THEN** the shared lifecycle SHALL preserve the ordered changed-file union and dispatch at most one replacement worker only when the original envelope, `resolved_change_name` when applicable, complete `opaque_input_history`, and `durable_artifact_reconstruction_instruction` are available
+- **AND** the replacement worker SHALL rebuild technical state from durable artifacts rather than receive artifact contents or the prior worker journal
+
+#### Scenario: Reconstruction metadata is incomplete
+- **WHEN** the coordinator cannot provide an exact required reconstruction field
+- **THEN** it SHALL return a failed restart request and SHALL NOT dispatch a replacement worker with inferred or partial state
+
+### Requirement: Resolved change name propagation
+After the worker resolves a change, every `completed`, `needs_input`, `failed`, or `cancelled` lifecycle payload SHALL contain the coordinator-owned `resolved_change_name` field. The coordinator SHALL retain that exact value in invocation-scoped state and SHALL pass it to terminal navigation so the exact completion message can replace `{name}`, including when the original invocation envelope contained no change name. A post-resolution payload missing `resolved_change_name` SHALL be treated as a failed lifecycle result and SHALL NOT reach terminal completion navigation.
+
+#### Scenario: Resolved name reaches terminal navigation
+- **WHEN** an empty invocation resolves `{name}` through the worker-owned change picker and later returns a terminal payload
+- **THEN** the payload SHALL contain `resolved_change_name: {name}`
+- **AND** terminal navigation SHALL receive that value and use it in the exact completion message
