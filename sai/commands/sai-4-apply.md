@@ -6,10 +6,10 @@
 
 <TASK>
 
-  Fetch @sai/instructions/change-picker.md and follow it exactly.
+  Fetch @sai/policies/change-picker.md and follow it exactly.
 
   ## Prerequisite checks
-  Fetch @sai/instructions/prereqs.md
+  Fetch @sai/policies/prereqs.md
 
   Also verify before proceeding:
   - `openspec/changes/{change-name}/implementation.md` exists. If not, STOP and print: "implementation.md not found for '{change-name}'. Run /sai-3-implement first."

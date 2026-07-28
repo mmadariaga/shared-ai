@@ -14,7 +14,7 @@ The worker receives exactly two strings:
 Parse `--fast-track` first. If present in the combined envelope, activate the
 signal, remove the token from its source value, and emit `> FAST-TRACK MODE ACTIVE`
 once per session unless reconstruction says `fast_track_banner_emitted: true`.
-Then run universal prerequisite checks via `Fetch @sai/instructions/prereqs.md`.
+Then run universal prerequisite checks via `Fetch @sai/policies/prereqs.md`.
 Return `failed` with the missing-prerequisite summary when a check fails.
 
 When both envelope values are non-empty, wrapper echo takes precedence. When

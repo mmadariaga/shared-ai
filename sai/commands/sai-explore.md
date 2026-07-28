@@ -7,7 +7,7 @@
 <TASK>
 
   ## Prerequisite checks
-  Fetch @sai/instructions/prereqs.md
+  Fetch @sai/policies/prereqs.md
   Fetch @skills/safe-operations/SKILL.md and use it
 
   ## Fast-track parse

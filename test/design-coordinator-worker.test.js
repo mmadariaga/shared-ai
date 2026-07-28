@@ -64,12 +64,38 @@ test('design wrappers activate routed Claude/opencode entry and preserve inline 
 });
 
 test('shared feedback gate defines routed design ownership without changing canonical gate rules', () => {
-  const gate = artifact('sai/instructions/artifact-feedback-gate.md');
+  const gate = artifact('sai/policies/artifact-feedback-gate.md');
   assert.match(gate, /Routed design ownership adapter/);
   assert.match(gate, /sai-1-spec.*inline Copilot retain all existing inline behavior/i);
   assert.match(gate, /coordinator owns picker presentation.*iteration counter.*pending raw feedback/i);
   assert.match(gate, /worker owns per-item judgment.*design-artifact edits.*verification.*discard reasons.*summary/i);
   assert.match(gate, /single-sourced in their existing sections/i);
+});
+
+test('standalone policies have one canonical home and active fetches use it', () => {
+  const policies = [
+    'artifact-feedback-gate.md',
+    'change-picker.md',
+    'commit-rules.md',
+    'prereqs.md',
+    'status-picker.md',
+  ];
+  for (const file of policies) {
+    assert.ok(fs.existsSync(path.join(repoRoot, 'sai', 'policies', file)));
+    assert.equal(fs.existsSync(path.join(repoRoot, 'sai', 'instructions', file)), false);
+  }
+
+  const activeSources = [
+    ...fs.readdirSync(path.join(repoRoot, 'sai', 'commands'))
+      .map(file => artifact(`sai/commands/${file}`)),
+    artifact('sai/instructions/apply.md'),
+    artifact('sai/instructions/commit.md'),
+    artifact('sai/orchestration/workers/design-worker.md'),
+  ].join('\n');
+  assert.doesNotMatch(activeSources, /@sai\/instructions\/(?:artifact-feedback-gate|change-picker|commit-rules|prereqs|status-picker)\.md/);
+  for (const file of policies) {
+    assert.match(activeSources, new RegExp(`@sai/policies/${file.replace('.', '\\.')}`));
+  }
 });
 
 test('routed design coordinator has no technical I/O and owns only lifecycle routing', () => {

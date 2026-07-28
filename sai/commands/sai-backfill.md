@@ -7,7 +7,7 @@
 <TASK>
 
   ## Prerequisite checks
-  Fetch @sai/instructions/prereqs.md
+  Fetch @sai/policies/prereqs.md
 
   ## Load behaviors (in order)
   Fetch @skills/budget/SKILL.md

@@ -28,6 +28,15 @@ test('installOpencode copies commands/opencode/*.md to dest/commands/', () => {
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });
 
+test('installOpencode copies all standalone policies to dest/sai/policies/', () => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-'));
+  installOpencode(tmpDir);
+  for (const file of ['artifact-feedback-gate.md', 'change-picker.md', 'commit-rules.md', 'prereqs.md', 'status-picker.md']) {
+    assert.ok(fs.existsSync(path.join(tmpDir, 'sai', 'policies', file)), `${file} should be projected`);
+  }
+  fs.rmSync(tmpDir, { recursive: true, force: true });
+});
+
 test('installOpencode copies all Opencode-specific skills', () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-'));
   installOpencode(tmpDir);

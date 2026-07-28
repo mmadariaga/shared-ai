@@ -33,6 +33,15 @@ test('installClaude copies sai/commands/*.md to dest/sai/commands/', () => {
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });
 
+test('installClaude copies all standalone policies to dest/sai/policies/', () => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-claude-'));
+  installClaude(tmpDir);
+  for (const file of ['artifact-feedback-gate.md', 'change-picker.md', 'commit-rules.md', 'prereqs.md', 'status-picker.md']) {
+    assert.ok(fs.existsSync(path.join(tmpDir, 'sai', 'policies', file)), `${file} should be projected`);
+  }
+  fs.rmSync(tmpDir, { recursive: true, force: true });
+});
+
 test('installClaude copies all Claude-specific skills', () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-claude-'));
   installClaude(tmpDir);
@@ -65,5 +74,4 @@ test('installClaude overwrites stale command wrappers', () => {
   assert.notEqual(fs.readFileSync(skillFile, 'utf8'), 'old content', 'existing stale file should be overwritten');
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });
-
 

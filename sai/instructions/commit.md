@@ -8,7 +8,7 @@ The message must be faithful to what is actually staged: every claim in the subj
 
 ---
 
-Fetch @sai/instructions/commit-rules.md
+Fetch @sai/policies/commit-rules.md
 
 ## Required Inputs
 

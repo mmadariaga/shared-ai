@@ -7,13 +7,13 @@
 <TASK>
 
   ## Prerequisite checks
-  Fetch @sai/instructions/prereqs.md
+  Fetch @sai/policies/prereqs.md
 
   ## Load behaviors (in order)
   Fetch @skills/budget/SKILL.md and use it
 
   ## Load instructions (in order)
-  Fetch @sai/instructions/change-picker.md and follow it exactly.
+  Fetch @sai/policies/change-picker.md and follow it exactly.
   Fetch @sai/instructions/glossary-format.md
   Fetch @sai/instructions/review.md and follow those instructions exactly.
   Fetch @sai/instructions/remember.md

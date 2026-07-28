@@ -301,7 +301,7 @@ and pause for the user before proposing the commit message.
 Every `STOP & COMMIT` marker in `implementation.md` requires the same 6-step sequence — no exception, no shortcut:
 
 1. **Print the pre-commit file visibility report** per the `## Pre-commit File Visibility Report` section above. This step is mandatory and runs unconditionally so the user has the file list before being asked to authorize.
-2. **Propose the commit message.** Follow the format rules in `@sai/instructions/commit-rules.md` (loaded in the next section). The message must describe only what is staged.
+2. **Propose the commit message.** Follow the format rules in `@sai/policies/commit-rules.md` (loaded in the next section). The message must describe only what is staged.
 3. **Session flag check.** If a session-scoped commit-authorization flag is active for the current in-conversation session (set by a prior `Allow on this session` selection), skip the prompt and proceed directly to `git add` + `git commit`. The pre-commit file visibility report and proposed commit message still print unconditionally before committing; only the authorization ask and wait are removed.
 4. **Ask explicitly (when flag is inactive).** Ask: `Ready to commit Step N. May I create commit with message: '<subject>'?` — as a closed-choice prompt with options `yes (Recommended)` / `no` / `Allow on this session` (per the "Closed-choice prompts" rule in `remember.md`, which gives the per-harness option-picker mapping). Do NOT run `git commit` before the user answers.
 5. **Wait.** Stop here. Do not advance to the next step, do not run other git operations, do not start a subagent.
@@ -333,7 +333,7 @@ The branch-base sub-prompt needs no separate handling: it is surfaced only for n
 
 ## Git Operations
 
-Fetch @sai/instructions/commit-rules.md
+Fetch @sai/policies/commit-rules.md
 
 **CRITICAL:** Do not manage git branches or create commits without explicit user authorization - ask for it.
 The plan's `STOP & COMMIT` markers signal that the step is ready to commit, but they are NOT

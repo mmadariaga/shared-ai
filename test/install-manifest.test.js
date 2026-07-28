@@ -54,6 +54,23 @@ test('loadInstallManifest reads the versioned manifest shape', () => {
   }
 });
 
+test('canonical manifest projects policies recursively to all harnesses', () => {
+  const manifest = loadInstallManifest(path.join(__dirname, '..'));
+  const policyRule = manifest.projections.find(projection => projection.id === 'sai-policies');
+  assert.deepEqual(policyRule, {
+    id: 'sai-policies',
+    source: 'sai/policies',
+    destination: { class: 'sai', path: 'policies' },
+    harnesses: ['claude', 'opencode', 'copilot'],
+    strategy: 'copy',
+    recursive: true,
+    include: ['**/*.md'],
+    ownership: 'managed',
+    drift: 'content',
+  });
+  assert.equal(manifest.projections.filter(projection => projection.source === 'sai/policies').length, 1);
+});
+
 test('the same manifest expansion provides one ordered inventory for all consumers', () => {
   const repoRoot = makeRepo();
   try {

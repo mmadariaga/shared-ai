@@ -7,7 +7,7 @@
 <TASK>
 
   ## Prerequisite checks
-  Fetch @sai/instructions/prereqs.md
+  Fetch @sai/policies/prereqs.md
 
   ## Fast-track parse
   Before proceeding, inspect `$ARGUMENTS` for the positional token `--fast-track`:
@@ -25,7 +25,7 @@
   Fetch @skills/safe-operations/SKILL.md and use it
 
   ## Load instructions (in order)
-  Fetch @sai/instructions/change-picker.md and follow it exactly.
+  Fetch @sai/policies/change-picker.md and follow it exactly.
 
   After the change-picker resolves a change name, if the resolved value still contains `--fast-track`:
   1. Remove the token and trim surrounding whitespace.

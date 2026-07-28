@@ -7,7 +7,7 @@
 <TASK>
 
   ## Prerequisite checks
-  Fetch @sai/instructions/prereqs.md
+  Fetch @sai/policies/prereqs.md
 
   ## Fast-track parse
   Before proceeding, inspect `$ARGUMENTS` for the positional token `--fast-track`:
@@ -24,7 +24,7 @@
   Fetch @skills/budget/SKILL.md and use it
 
   ## Load instructions (in order)
-  Fetch @sai/instructions/change-picker.md and follow it exactly.
+  Fetch @sai/policies/change-picker.md and follow it exactly.
 
   After the change-picker resolves a change name, if the resolved value still contains `--fast-track`:
   1. Remove the token and trim surrounding whitespace.
@@ -47,7 +47,7 @@
 
   Contract: the `design-quality` capability spec (`openspec/specs/design-quality/spec.md`).
 
-  After the decision summary, present the feedback gate: Fetch @sai/instructions/artifact-feedback-gate.md and follow it exactly, supplying — artifacts = `design.md`, `tasks.md`, `interfaces.md`; proceed-label = `Continue`; next-action = advance to the (a)/(b) implementation-continuation question below. Present the (a)/(b) question only after the user selects `Continue`.
+  After the decision summary, present the feedback gate: Fetch @sai/policies/artifact-feedback-gate.md and follow it exactly, supplying — artifacts = `design.md`, `tasks.md`, `interfaces.md`; proceed-label = `Continue`; next-action = advance to the (a)/(b) implementation-continuation question below. Present the (a)/(b) question only after the user selects `Continue`.
 
   Once all artifacts are written, ask the user how to proceed to implementation:
   (a) **Stop for a new chat (Recommended)** — isolated; use a cheaper model for `/sai-3-implement {name}` (the standard pipeline path).

@@ -7,10 +7,10 @@
 <TASK>
 
   ## Prerequisite checks
-  Fetch @sai/instructions/prereqs.md
+  Fetch @sai/policies/prereqs.md
 
   ## Load instructions (in order)
-  Fetch @sai/instructions/status-picker.md and follow it exactly.
+  Fetch @sai/policies/status-picker.md and follow it exactly.
 
   Fetch @sai/instructions/remember.md
 

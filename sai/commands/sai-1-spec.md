@@ -7,7 +7,7 @@
 <TASK>
 
   ## Prerequisite checks
-  Fetch @sai/instructions/prereqs.md
+  Fetch @sai/policies/prereqs.md
 
   ## Load behaviors (in order)
   Fetch @skills/budget/SKILL.md and use it
@@ -38,7 +38,7 @@
 
   Contract: the `spec-quality` capability spec (`openspec/specs/spec-quality/spec.md`).
 
-  After the decision summary, present the feedback gate: Fetch @sai/instructions/artifact-feedback-gate.md and follow it exactly, supplying — artifacts = `proposal.md`, `specs/**`; proceed-label = `Finish step`; next-action = fire the MANDATORY STOP below. The gate MUST NOT ask for approval and MUST NOT write to `.openspec.yaml`.
+  After the decision summary, present the feedback gate: Fetch @sai/policies/artifact-feedback-gate.md and follow it exactly, supplying — artifacts = `proposal.md`, `specs/**`; proceed-label = `Finish step`; next-action = fire the MANDATORY STOP below. The gate MUST NOT ask for approval and MUST NOT write to `.openspec.yaml`.
 
   MANDATORY STOP (fires only after the user selects `Finish step` in the gate): Once all artifacts are written your work is COMPLETE, STOP and print exactly: "Spec proposal done in openspec/changes/{name}/. Review it and run `/sai-2-design {name}` (--fast-track) **in a new chat** when ready."
 </TASK>
