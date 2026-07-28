@@ -19,9 +19,7 @@ arguments_value: string
 wrapper_echo_value: "placeholder-value"
 arguments_value: "placeholder-change-name"
 ```
-
 ## Requirements
-
 ### Requirement: step-1-inactive-infrastructure-boundary
 
 During Step 1, all three design wrappers (Claude, opencode, Copilot) SHALL reference the explicit inline entry `sai/commands/sai-2-design-inline.md` and SHALL NOT reference a routed dispatch path.
@@ -124,3 +122,60 @@ After design artifacts and feedback are complete, the coordinator SHALL preserve
 #### Scenario: User continues into implementation planning
 - **WHEN** the user selects Continue now on Claude Code or opencode
 - **THEN** the coordinator SHALL clear all design lifecycle state except the copied `resolved_change_name`, dispatch the established implementation planning worker with `{wrapper_echo_value: "", arguments_value: resolved_change_name}`, handle it through a new implementation result-loop namespace, and emit implementation planning's mandatory stop exactly once
+
+### Requirement: shared-routed-coordinator-profile
+Opencode routed design planning SHALL use the shared `sai-coordinator` primary control-plane profile rather than a design-only coordinator profile. Claude Code SHALL retain its wrapper-session coordinator model and effort settings; only its managed worker identity SHALL align with the numbered phase name. The opencode profile SHALL retain the union of the routed design and implementation coordinator permissions and SHALL preserve `subagent_depth: 2`.
+
+#### Scenario: opencode starts routed design planning
+- **WHEN** opencode invokes `/sai-2-design` through the routed path
+- **THEN** the invocation SHALL use the `sai-coordinator` primary profile
+- **AND** the profile SHALL dispatch the design phase worker without performing technical I/O itself
+
+#### Scenario: Claude Code retains coordinator adapter settings
+- **WHEN** Claude Code invokes `/sai-2-design`
+- **THEN** its wrapper session SHALL retain the established coordinator model and effort settings
+- **AND** its managed worker definition SHALL target the numbered design worker identity
+
+#### Scenario: shared profile preserves coordinator lifecycle
+- **WHEN** the shared profile handles a design lifecycle event
+- **THEN** it SHALL use the existing shared coordinator lifecycle contract and design phase adapter
+- **AND** it SHALL preserve the existing notice, feedback, continuation, and terminal behavior
+
+### Requirement: numbered-design-worker-identity
+The routed design worker SHALL use the phase-specific identifier `sai-2-design-worker` across opencode agent configuration, Claude Code managed worker definitions, forwarding skill directories and fetch references, harness bindings, installer projections, and verification/documentation surfaces. Its reusable technical core SHALL be named `sai-2-design-core` in `sai/compat/` and SHALL remain separate from the implementation worker contract. The Claude Code, opencode, and Copilot inline callers SHALL fetch the renamed core wherever they consume the design invocation core.
+
+#### Scenario: design dispatch resolves the phase worker
+- **WHEN** the routed design coordinator dispatches technical design work
+- **THEN** the harness binding SHALL target `sai-2-design-worker`
+- **AND** the worker SHALL retain the existing design lifecycle, permissions, artifact, and phase-policy contract
+
+#### Scenario: opencode wrapper activates the shared profile
+- **WHEN** opencode invokes `/sai-2-design`
+- **THEN** the wrapper SHALL select `agent: sai-coordinator`
+- **AND** the wrapper SHALL omit a command-level model override
+
+#### Scenario: all design callers use the renamed core
+- **WHEN** a Claude Code, opencode, or Copilot inline design path loads the reusable design invocation behavior
+- **THEN** its forwarding or inline caller SHALL reference `sai-2-design-core`
+- **AND** no caller SHALL fetch the former unnumbered design core name
+
+#### Scenario: shared permissions do not change design dispatch
+- **WHEN** the shared coordinator is permitted to launch both phase workers
+- **THEN** `/sai-2-design` SHALL dispatch only `sai-2-design-worker`
+- **AND** it SHALL NOT dispatch `sai-3-implementation-worker`
+
+#### Scenario: existing design worker is migrated
+- **WHEN** installation finds the former managed design worker identity `sai-design-planning-worker`
+- **THEN** it SHALL verify that the file content matches its recorded ownership hash before removing the file or sidecar
+- **AND** after a successful hash match it SHALL replace the managed identity with `sai-2-design-worker` and its sidecar without leaving both managed identities installed
+
+#### Scenario: modified design worker is preserved
+- **WHEN** the former managed design worker file fails ownership-hash verification or its sidecar is missing or incompatible
+- **THEN** migration SHALL preserve the old file and sidecar
+- **AND** it SHALL report a protected manual-migration collision without deleting, overwriting, or silently installing a duplicate replacement
+
+#### Scenario: design-name collision is protected
+- **WHEN** the new `sai-2-design-worker` destination exists with incompatible user-owned content
+- **THEN** installation, doctor, and uninstall SHALL report the collision as unmanaged or incompatible
+- **AND** SHALL not overwrite or delete that content
+

@@ -21,10 +21,10 @@ try {
 
 const OPENCODE_AGENT_KEYS = ['explore', 'executor', 'budget'];
 const OPENCODE_PLACEHOLDER_MODEL = 'opencode-go/deepseek-v4-flash';
-const CLAUDE_IMPLEMENTATION_WORKER_AGENT = 'sai-implementation-planning-worker.md';
-const CLAUDE_IMPLEMENTATION_WORKER_OWNER = '.sai-implementation-planning-worker.owner.json';
-const CLAUDE_DESIGN_WORKER_AGENT = 'sai-design-planning-worker.md';
-const CLAUDE_DESIGN_WORKER_OWNER = '.sai-design-planning-worker.owner.json';
+const CLAUDE_IMPLEMENTATION_WORKER_AGENT = 'sai-3-implementation-worker.md';
+const CLAUDE_IMPLEMENTATION_WORKER_OWNER = '.sai-3-implementation-worker.owner.json';
+const CLAUDE_DESIGN_WORKER_AGENT = 'sai-2-design-worker.md';
+const CLAUDE_DESIGN_WORKER_OWNER = '.sai-2-design-worker.owner.json';
 const LEGACY_CLAUDE_WORKERS = [
   { agent: 'sai-design-planning-worker.md', owner: '.sai-design-planning-worker.owner.json', replacement: 'sai-2-design-worker.md', replacementOwner: '.sai-2-design-worker.owner.json' },
   { agent: 'sai-implementation-planning-worker.md', owner: '.sai-implementation-planning-worker.owner.json', replacement: 'sai-3-implementation-worker.md', replacementOwner: '.sai-3-implementation-worker.owner.json' },
@@ -36,18 +36,19 @@ function migrateLegacyClaudeWorkers(targetPath = CLAUDE_BASE) {
   const migrated = [];
   for (const legacy of LEGACY_CLAUDE_WORKERS) {
     const agentsDir = path.join(targetPath, 'agents');
+    const legacyPath = path.join(agentsDir, legacy.agent);
     const assessment = inspectManagedWorkerMigration({
-      legacyPath: path.join(agentsDir, legacy.agent),
+      legacyPath,
       legacyOwnerPath: path.join(agentsDir, legacy.owner),
       replacementPath: path.join(agentsDir, legacy.replacement),
       replacementOwnerPath: path.join(agentsDir, legacy.replacementOwner),
       replacementBytes: fs.readFileSync(path.join(REPOSITORY_ROOT, 'agents', 'claude', legacy.replacement)),
     });
     if (assessment.status === 'protected-collision') {
-      throw new Error(`Incompatible Claude agent at ${path.join(agentsDir, legacy.replacement)}. Rename or remove the conflicting definition, then retry.`);
+      throw new Error(`Protected legacy Claude agent at ${legacyPath}: ${assessment.reason}. Rename or remove it manually, then retry.`);
     }
     if (assessment.status !== 'not-found') migrated.push(migrateManagedWorkerIdentity({
-      legacyPath: path.join(agentsDir, legacy.agent),
+      legacyPath,
       legacyOwnerPath: path.join(agentsDir, legacy.owner),
       replacementPath: path.join(agentsDir, legacy.replacement),
       replacementOwnerPath: path.join(agentsDir, legacy.replacementOwner),
@@ -57,19 +58,20 @@ function migrateLegacyClaudeWorkers(targetPath = CLAUDE_BASE) {
   return migrated;
 }
 const OPENCODE_MANAGED_AGENTS = Object.freeze({
-  'sai-implementation-coordinator': {
+  'sai-coordinator': {
     mode: 'primary',
     model: 'opencode-go/glm-5.2',
     variant: 'high',
     permission: {
       task: {
         '*': 'deny',
-        'sai-implementation-planning-worker': 'allow',
+        'sai-2-design-worker': 'allow',
+        'sai-3-implementation-worker': 'allow',
       },
       question: 'allow',
     },
   },
-  'sai-implementation-planning-worker': {
+  'sai-3-implementation-worker': {
     mode: 'subagent',
     model: 'opencode-go/kimi-k2.6',
     permission: {
@@ -80,20 +82,7 @@ const OPENCODE_MANAGED_AGENTS = Object.freeze({
       },
     },
   },
-  'sai-design-coordinator': {
-    mode: 'primary',
-    model: 'opencode-go/glm-5.2',
-    variant: 'high',
-    permission: {
-      task: {
-        '*': 'deny',
-        'sai-design-planning-worker': 'allow',
-        'sai-implementation-planning-worker': 'allow',
-      },
-      question: 'allow',
-    },
-  },
-  'sai-design-planning-worker': {
+  'sai-2-design-worker': {
     mode: 'subagent',
     model: 'opencode-go/glm-5.2',
     variant: 'high',
@@ -432,6 +421,7 @@ function listMdFilesRecursive(dir) {
 
 function installClaude(destBase) {
   const targetPath = destBase || CLAUDE_BASE;
+  migrateLegacyClaudeWorkers(targetPath);
   for (const projection of expandForInstall('claude', { base: targetPath })) installProjection(projection, targetPath);
 
   writeVersionMarker(targetPath);

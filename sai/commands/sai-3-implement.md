@@ -33,7 +33,7 @@
   accumulated coordinator changed-file union, the prior worker journal, design
   state, or binding identifiers.
 
-  Construct exactly these two envelope fields, `wrapper_echo_value` and `arguments_value`, as specified by the active wrapper. Use the active `sai-implementation-planning-worker` binding's `dispatch_operation` to dispatch exactly one worker. `continuation_reference` is binding-owned and never worker output; binding-owned `continuation_reference` is not worker output.
+  Construct exactly these two envelope fields, `wrapper_echo_value` and `arguments_value`, as specified by the active wrapper. Use the active `sai-3-implementation-worker` binding's `dispatch_operation` to dispatch exactly one worker. `continuation_reference` is binding-owned and never worker output; binding-owned `continuation_reference` is not worker output.
 
   Keep an invocation-scoped ordered union of `payload.changed_files`; add each path once and never reset it. Validate every result: the payload status must be exactly one of `completed`, `needs_input`, `failed`, or `cancelled`, with string `summary` and string-list `changed_files`. `needs_input` requires its question and ordered options where applicable. Every post-resolution payload, including `completed`, requires `resolved_change_name`.
 

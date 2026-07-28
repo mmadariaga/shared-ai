@@ -2,7 +2,7 @@
 
 Start exactly one background worker with:
 
-`Agent(subagent_type: "sai-design-planning-worker", run_in_background: true, prompt: "<original InvocationEnvelope and design-worker instruction>")`
+`Agent(subagent_type: "sai-2-design-worker", run_in_background: true, prompt: "<original InvocationEnvelope and design-worker instruction>")`
 
 Capture the agent ID in coordinator state, await its structured payload, and
 bind it as `continuation_reference` for `needs_input`. The identifier is

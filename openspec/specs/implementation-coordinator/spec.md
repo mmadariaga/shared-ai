@@ -3,9 +3,7 @@
 ## Purpose
 
 Define the coordination boundary, I/O isolation, and user-facing result handling responsibilities of the implementation coordinator that dispatches work to the implementation-planning worker.
-
 ## Requirements
-
 ### Requirement: Harness adapter dispatch seam
 The Claude Code and opencode command wrappers SHALL select the shared coordinator entry path, while the Copilot command wrapper SHALL select the existing inline implementation entry path and SHALL NOT consume the shared coordinator instructions as its execution path. The routed prerequisite and change-picker behavior SHALL execute in the worker; the preserved Copilot inline body SHALL retain that behavior for Copilot.
 
@@ -94,3 +92,60 @@ After the worker resolves a change, every `completed`, `needs_input`, `failed`, 
 - **WHEN** an empty invocation resolves `{name}` through the worker-owned change picker and later returns a terminal payload
 - **THEN** the payload SHALL contain `resolved_change_name: {name}`
 - **AND** terminal navigation SHALL receive that value and use it in the exact completion message
+
+### Requirement: shared-routed-coordinator-profile
+Opencode routed implementation planning SHALL use the shared `sai-coordinator` primary control-plane profile rather than an implementation-only coordinator profile. Claude Code SHALL retain its wrapper-session coordinator model and effort settings; only its managed worker identity SHALL align with the numbered phase name. The opencode profile SHALL retain the union of the routed design and implementation coordinator permissions and SHALL preserve `subagent_depth: 2`.
+
+#### Scenario: opencode starts routed implementation planning
+- **WHEN** opencode invokes `/sai-3-implement` through the routed path
+- **THEN** the invocation SHALL use the `sai-coordinator` primary profile
+- **AND** the profile SHALL dispatch the implementation phase worker without performing technical I/O itself
+
+#### Scenario: Claude Code retains coordinator adapter settings
+- **WHEN** Claude Code invokes `/sai-3-implement`
+- **THEN** its wrapper session SHALL retain the established coordinator model and effort settings
+- **AND** its managed worker definition SHALL target the numbered implementation worker identity
+
+#### Scenario: shared profile preserves implementation lifecycle
+- **WHEN** the shared profile handles an implementation lifecycle event
+- **THEN** it SHALL use the existing shared coordinator lifecycle contract and implementation phase adapter
+- **AND** it SHALL preserve the existing prerequisite, picker, continuation, replacement, and terminal behavior
+
+### Requirement: numbered-implementation-worker-identity
+The routed implementation worker SHALL use the phase-specific identifier `sai-3-implementation-worker` across opencode agent configuration, Claude Code managed worker definitions, forwarding skill directories and fetch references, harness bindings, installer projections, and verification/documentation surfaces. Its reusable technical core SHALL be named `sai-3-implementation-core` in `sai/compat/` and SHALL remain separate from the design worker contract. The Claude Code, opencode, and Copilot inline callers SHALL fetch the renamed core wherever they consume the implementation invocation core.
+
+#### Scenario: implementation dispatch resolves the phase worker
+- **WHEN** the routed implementation coordinator dispatches technical implementation planning
+- **THEN** the harness binding SHALL target `sai-3-implementation-worker`
+- **AND** the worker SHALL retain the existing implementation lifecycle, permissions, artifact, and phase-policy contract
+
+#### Scenario: opencode wrapper activates the shared profile
+- **WHEN** opencode invokes `/sai-3-implement`
+- **THEN** the wrapper SHALL select `agent: sai-coordinator`
+- **AND** the wrapper SHALL omit a command-level model override
+
+#### Scenario: all implementation callers use the renamed core
+- **WHEN** a Claude Code, opencode, or Copilot inline implementation path loads the reusable implementation invocation behavior
+- **THEN** its forwarding or inline caller SHALL reference `sai-3-implementation-core`
+- **AND** no caller SHALL fetch the former unnumbered implementation core name
+
+#### Scenario: shared permissions do not change implementation dispatch
+- **WHEN** the shared coordinator is permitted to launch both phase workers
+- **THEN** `/sai-3-implement` SHALL dispatch only `sai-3-implementation-worker`
+- **AND** it SHALL NOT dispatch `sai-2-design-worker`
+
+#### Scenario: existing implementation worker is migrated
+- **WHEN** installation finds the former managed implementation worker identity `sai-implementation-planning-worker`
+- **THEN** it SHALL verify that the file content matches its recorded ownership hash before removing the file or sidecar
+- **AND** after a successful hash match it SHALL replace the managed identity with `sai-3-implementation-worker` and its sidecar without leaving both managed identities installed
+
+#### Scenario: modified implementation worker is preserved
+- **WHEN** the former managed implementation worker file fails ownership-hash verification or its sidecar is missing or incompatible
+- **THEN** migration SHALL preserve the old file and sidecar
+- **AND** it SHALL report a protected manual-migration collision without deleting, overwriting, or silently installing a duplicate replacement
+
+#### Scenario: implementation-name collision is protected
+- **WHEN** the new `sai-3-implementation-worker` destination exists with incompatible user-owned content
+- **THEN** installation, doctor, and uninstall SHALL report the collision as unmanaged or incompatible
+- **AND** SHALL not overwrite or delete that content
+

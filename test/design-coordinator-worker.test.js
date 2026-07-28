@@ -41,7 +41,7 @@ function capture(fn) {
 test('Step 2 uses one canonical coordinator, lifecycle, worker, and binding layout', () => {
   const coordinator = artifact('sai/orchestration/coordinator-contract.md');
   const lifecycle = artifact('sai/orchestration/worker-lifecycle.md');
-  const worker = artifact('sai/orchestration/workers/design-worker.md');
+  const worker = artifact('sai/orchestration/workers/sai-2-design-worker.md');
   assert.match(coordinator, /completed|needs_input|failed|cancelled/);
   assert.match(coordinator, /changed_files.*union|union.*changed_files/i);
   assert.match(lifecycle, /resolved_change_name/);
@@ -49,7 +49,7 @@ test('Step 2 uses one canonical coordinator, lifecycle, worker, and binding layo
   assert.match(worker, /Fetch @sai\/orchestration\/worker-lifecycle\.md/);
   for (const harness of ['claude', 'opencode']) {
     assert.match(
-      artifact(`skills/${harness}/sai-design-planning-worker/SKILL.md`),
+      artifact(`skills/${harness}/sai-2-design-worker/SKILL.md`),
       new RegExp(`sai/orchestration/workers/bindings/${harness}/design-worker\\.md`)
     );
   }
@@ -65,22 +65,22 @@ test('design wrappers activate routed Claude/opencode entry and preserve inline 
   assert.match(claude, /^model: claude-opus-4-8$/m);
   assert.match(claude, /^effort: low$/m);
   assert.match(claude, /^allowed-tools: Skill, Agent, SendMessage, AskUserQuestion$/m);
-  assert.match(claude, /sai-design-planning-worker/);
-  assert.match(claude, /sai-implementation-planning-worker/);
+  assert.match(claude, /sai-2-design-worker/);
+  assert.match(claude, /sai-3-implementation-worker/);
   assert.match(claude, /sai-2-design\.md/);
 
   assert.doesNotMatch(opencode, /^model:/m);
-  assert.match(opencode, /^agent: sai-design-coordinator$/m);
+  assert.match(opencode, /^agent: sai-coordinator$/m);
   assert.match(opencode, /^subtask: false$/m);
-  assert.match(opencode, /sai-design-planning-worker/);
-  assert.match(opencode, /sai-implementation-planning-worker/);
+  assert.match(opencode, /sai-2-design-worker/);
+  assert.match(opencode, /sai-3-implementation-worker/);
   assert.match(opencode, /sai-2-design\.md/);
   assert.ok(opencode.includes('**Change-name argument and and optional flags:** $ARGUMENTS'));
 
   assert.match(copilot, /model: Claude Opus 4\.8 \(copilot\)/);
   assert.match(copilot, /tools: \[vscode, read, search, edit, execute, web\]/);
   assert.match(copilot, /sai-2-design-inline\.md/);
-  assert.doesNotMatch(copilot, /sai-design-planning-worker|sai-implementation-planning-worker/);
+  assert.doesNotMatch(copilot, /sai-design-coordinator|sai-design-planning-worker|sai-implementation-planning-worker/);
 
   const spec = artifact('openspec/specs/design-coordinator/spec.md');
 
@@ -115,7 +115,7 @@ test('standalone policies have one canonical home and active fetches use it', ()
       .map(file => artifact(`sai/commands/${file}`)),
     artifact('sai/instructions/apply.md'),
     artifact('sai/instructions/commit.md'),
-    artifact('sai/orchestration/workers/design-worker.md'),
+    artifact('sai/orchestration/workers/sai-2-design-worker.md'),
   ].join('\n');
   assert.doesNotMatch(activeSources, /@sai\/instructions\/(?:artifact-feedback-gate|change-picker|commit-rules|prereqs|status-picker)\.md/);
   for (const file of policies) {
@@ -324,8 +324,8 @@ test('opencode config restricts coordinator to questions and the two named plann
   const spec = artifact('openspec/specs/design-harness-bindings/spec.md');
 
   assert.match(spec, /question.*allow|allow.*question/i);
-  assert.match(spec, /sai-implementation-planning-worker/);
-  assert.match(spec, /sai-design-planning-worker/);
+  assert.match(spec, /implementation.*worker/i);
+  assert.match(spec, /design.*worker/i);
   assert.match(spec, /\*.*deny/);
 });
 
@@ -434,8 +434,8 @@ test('documentation records the active design compatibility boundary and managed
     assert.match(text, /interfaces\.md/);
   }
 
-  assert.match(readme, /sai-design-planning-worker/);
-  assert.match(agents, /sai-design-planning-worker/);
+  assert.match(readme, /sai-2-design-worker/);
+  assert.match(agents, /sai-2-design-worker/);
 
   assert.match(readme, /Claude Code.*low-effort.*coordinator.*high-effort.*design worker/i);
   assert.match(readme, /opencode.*GLM 5\.2.*variant: high/i);
@@ -444,26 +444,26 @@ test('documentation records the active design compatibility boundary and managed
   assert.match(readme, /Proposal Complexity.*descriptive/i);
   assert.match(readme, /named.*agent.*not.*command.*model/i);
 
-  assert.match(agents, /sai\/compat\/design-invocation-core\.md/);
-  assert.match(agents, /design-worker\.md/);
-  assert.match(agents, /agents\/claude\/sai-design-planning-worker\.md/);
-  assert.match(agents, /skills\/claude\/sai-design-planning-worker\/SKILL\.md/);
-  assert.match(agents, /skills\/opencode\/sai-design-planning-worker\/SKILL\.md/);
+  assert.match(agents, /sai\/compat\/sai-2-design-core\.md/);
+  assert.match(agents, /sai-2-design-worker\.md/);
+  assert.match(agents, /agents\/claude\/sai-2-design-worker\.md/);
+  assert.match(agents, /skills\/claude\/sai-2-design-worker\/SKILL\.md/);
+  assert.match(agents, /skills\/opencode\/sai-2-design-worker\/SKILL\.md/);
   assert.match(agents, /fresh namespace/i);
   assert.match(agents, /Copilot.*inline.*adapter/i);
 
-  assert.match(claude, /\.sai-design-planning-worker\.owner\.json/);
+  assert.match(claude, /\.sai-2-design-worker\.owner\.json/);
   assert.match(claude, /low[- ]effort/);
   assert.match(claude, /high[- ]effort/);
   assert.match(claude, /collision/i);
   assert.match(claude, /does not adopt|without adoption|non-adopt/i);
   assert.match(claude, /restart.*re-?install|re-?install.*restart/i);
 
-  assert.match(opencode, /sai-design-coordinator/);
-  assert.match(opencode, /sai-design-planning-worker/);
+  assert.match(opencode, /sai-coordinator/);
+  assert.match(opencode, /sai-2-design-worker/);
   assert.match(opencode, /variant.*high/);
   assert.match(opencode, /permission/);
-  assert.match(opencode, /agent: sai-design-coordinator/);
+  assert.match(opencode, /agent: sai-coordinator/);
   assert.match(opencode, /subtask: false/);
   assert.match(opencode, /no `model` field|no model field/i);
   assert.match(opencode, /collision/i);
@@ -501,15 +501,17 @@ test('Step 5 documentation records manifest projections and routed-source bounda
 // ─── Step 1: preservation-first legacy identity migration ───────────────────
 
 test('design install migrates an owned legacy worker pair to the numbered identity', () => {
-  const { installClaude } = require('../bin/install-flow.js');
+  const { installClaude, sha256Buffer } = require('../bin/install-flow.js');
   const base = tempDir('sai-design-legacy-');
   const legacy = path.join(base, 'agents', 'sai-design-planning-worker.md');
   const legacyOwner = path.join(base, 'agents', '.sai-design-planning-worker.owner.json');
   const numbered = path.join(base, 'agents', 'sai-2-design-worker.md');
   const numberedOwner = path.join(base, 'agents', '.sai-2-design-worker.owner.json');
   try {
-    installClaude(base);
-    assert.ok(fs.existsSync(legacy), 'legacy fixture should exist after baseline install');
+    const legacyBytes = Buffer.from('managed legacy design worker\n');
+    fs.mkdirSync(path.dirname(legacy), { recursive: true });
+    fs.writeFileSync(legacy, legacyBytes);
+    fs.writeFileSync(legacyOwner, `${JSON.stringify({ managedHash: sha256Buffer(legacyBytes) })}\n`);
     installClaude(base);
     assert.equal(fs.existsSync(legacy), false);
     assert.equal(fs.existsSync(legacyOwner), false);
@@ -526,8 +528,8 @@ test('design install preserves a protected legacy pair and reports manual migrat
   const legacy = path.join(base, 'agents', 'sai-design-planning-worker.md');
   const legacyOwner = path.join(base, 'agents', '.sai-design-planning-worker.owner.json');
   try {
-    installClaude(base);
-    assert.ok(fs.existsSync(legacy), 'legacy fixture should exist after baseline install');
+    fs.mkdirSync(path.dirname(legacy), { recursive: true });
+    fs.writeFileSync(legacy, 'user-modified legacy design worker\n');
     fs.writeFileSync(legacyOwner, '{}');
     const before = fs.readFileSync(legacy, 'utf8');
     const output = capture(() => installClaude(base));

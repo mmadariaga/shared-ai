@@ -42,6 +42,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0083 — Extract shared coordinator mechanics through phase adapters](./0083-shared-coordinator-mechanics-through-phase-adapters.md) — Refs 0075, Refs 0076, Refs 0079, Refs 0080
 - [0086 — Separate worker write journals from the coordinator changed-file union](./0086-worker-journals-and-coordinator-union.md) — Refs 0075, Refs 0076
 - [0087 — Implementation phase adapter and durable verification](./0087-implementation-phase-adapter-and-durable-verification.md) — Refs 0083, Refs 0086
+- [0089 — Share one routed SAI coordinator profile across planning phases](./0089-shared-sai-coordinator-profile.md) — Refs 0083, Refs 0074, Refs 0078
 
 ### `/sai-3-implement`
 
@@ -57,6 +58,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0082 — Keep canonical phase workers and bindings in mirrored orchestration subtrees](./0082-canonical-phase-workers-and-mirrored-bindings.md) — Refs 0077, Refs 0078
 - [0083 — Extract shared coordinator mechanics through phase adapters](./0083-shared-coordinator-mechanics-through-phase-adapters.md) — Refs 0075, Refs 0076, Refs 0079, Refs 0080
 - [0086 — Separate worker write journals from the coordinator changed-file union](./0086-worker-journals-and-coordinator-union.md) — Refs 0075, Refs 0076
+- [0089 — Share one routed SAI coordinator profile across planning phases](./0089-shared-sai-coordinator-profile.md) — Refs 0083, Refs 0074, Refs 0078
 
 ### `/sai-4-apply`
 
@@ -153,6 +155,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0081 — Name shared orchestration contracts explicitly](./0081-name-shared-orchestration-contracts-explicitly.md) — Refs 0004, Refs 0075
 - [0082 — Keep canonical phase workers and bindings in mirrored orchestration subtrees](./0082-canonical-phase-workers-and-mirrored-bindings.md) — Refs 0077, Refs 0078
 - [0083 — Extract shared coordinator mechanics through phase adapters](./0083-shared-coordinator-mechanics-through-phase-adapters.md) — Refs 0075, Refs 0076, Refs 0079, Refs 0080
+- [0089 — Share one routed SAI coordinator profile across planning phases](./0089-shared-sai-coordinator-profile.md) — Refs 0083, Refs 0074, Refs 0078
 
 ---
 
@@ -164,6 +167,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0009 — Claude-Specific Fetch Skill at skills/claude/fetch/](./0009-claude-specific-fetch-skill.md) — Refs 0003
 - [0081 — Name shared orchestration contracts explicitly](./0081-name-shared-orchestration-contracts-explicitly.md) — Refs 0004, Refs 0075
 - [0082 — Keep canonical phase workers and bindings in mirrored orchestration subtrees](./0082-canonical-phase-workers-and-mirrored-bindings.md) — Refs 0077, Refs 0078
+- [0089 — Share one routed SAI coordinator profile across planning phases](./0089-shared-sai-coordinator-profile.md) — Refs 0083, Refs 0074, Refs 0078
 
 ### Harness portability & mirror discipline
 
@@ -220,6 +224,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0083 — Extract shared coordinator mechanics through phase adapters](./0083-shared-coordinator-mechanics-through-phase-adapters.md) — Refs 0075, Refs 0076, Refs 0079, Refs 0080
 - [0086 — Separate worker write journals from the coordinator changed-file union](./0086-worker-journals-and-coordinator-union.md) — Refs 0075, Refs 0076
 - [0087 — Implementation phase adapter and durable verification](./0087-implementation-phase-adapter-and-durable-verification.md) — Refs 0083, Refs 0086
+- [0089 — Share one routed SAI coordinator profile across planning phases](./0089-shared-sai-coordinator-profile.md) — Refs 0083, Refs 0074, Refs 0078
 
 ### Testability routing & RED → GREEN
 

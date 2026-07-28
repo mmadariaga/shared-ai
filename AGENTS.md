@@ -68,21 +68,21 @@ The openspec-dependent `sai-*` commands halt with a clear error if either is mis
 | `sai/orchestration/` | Shared coordinator/worker lifecycle contracts and routed worker contracts. Claude Code and opencode receive their own binding projections; Copilot is explicitly inline and receives none. |
 | `sai/policies/` | Canonical glossary, prerequisite, picker, commit, status, and feedback policies. |
 | `sai/compat/` | Caller-neutral design/implementation invocation cores and compatibility assets shared by the applicable harnesses. |
-| `sai/compat/implement-invocation-core.md` | Caller-neutral implementation invocation core shared by routed and inline paths. |
-| `sai/compat/design-invocation-core.md` | Caller-neutral design invocation core shared by routed and inline paths. |
-| `sai/orchestration/workers/implementation-worker.md` | Implementation-planning worker lifecycle, input, output, and durable-artifact contract. |
-| `sai/orchestration/workers/design-worker.md` | Design-planning worker lifecycle, input, output, and durable-artifact contract. |
+| `sai/compat/sai-3-implementation-core.md` | Caller-neutral implementation invocation core shared by routed and inline paths. |
+| `sai/compat/sai-2-design-core.md` | Caller-neutral design invocation core shared by routed and inline paths. |
+| `sai/orchestration/workers/sai-3-implementation-worker.md` | Implementation-planning worker lifecycle, input, output, and durable-artifact contract. |
+| `sai/orchestration/workers/sai-2-design-worker.md` | Design-planning worker lifecycle, input, output, and durable-artifact contract. |
 | `sai/install-manifest.json` | Deterministic source-to-destination projection rules consumed by installer, doctor, and uninstall. |
 | `agents/claude/` | Claude Code managed worker agents. |
-| `agents/claude/sai-implementation-planning-worker.md` | Claude Code custom agent for the high-effort implementation-planning worker. |
-| `agents/claude/sai-design-planning-worker.md` | Claude Code custom agent for the high-effort design-planning worker. |
+| `agents/claude/sai-3-implementation-worker.md` | Claude Code custom agent for the high-effort implementation-planning worker. |
+| `agents/claude/sai-2-design-worker.md` | Claude Code custom agent for the high-effort design-planning worker. |
 | `skills/claude/` | Claude Code worker binding loaders and harness skills. |
 | `skills/opencode/` | opencode worker binding loaders and harness skills. |
 | `skills/copilot/` | Copilot inline support skills; no routed worker binding. |
-| `skills/claude/sai-implementation-planning-worker/SKILL.md` | Claude Code binding for worker dispatch, same-worker continuation, and recovery. |
-| `skills/claude/sai-design-planning-worker/SKILL.md` | Claude Code binding for design-worker dispatch, same-worker continuation, and recovery. |
-| `skills/opencode/sai-implementation-planning-worker/SKILL.md` | opencode binding for worker dispatch, same-task continuation, and recovery. |
-| `skills/opencode/sai-design-planning-worker/SKILL.md` | opencode binding for design-worker dispatch, same-task continuation, and recovery. |
+| `skills/claude/sai-3-implementation-worker/SKILL.md` | Claude Code binding for worker dispatch, same-worker continuation, and recovery. |
+| `skills/claude/sai-2-design-worker/SKILL.md` | Claude Code binding for design-worker dispatch, same-worker continuation, and recovery. |
+| `skills/opencode/sai-3-implementation-worker/SKILL.md` | opencode binding for worker dispatch, same-task continuation, and recovery. |
+| `skills/opencode/sai-2-design-worker/SKILL.md` | opencode binding for design-worker dispatch, same-task continuation, and recovery. |
 | `skills/` | Universal skills installed globally (not project-local). Fetched by wrappers via `~/.claude/skills/`, `~/.config/opencode/skills/`, or `~/.copilot/skills/`. |
 | `skills/universal/sai-commands/SKILL.md` | SAI command registry — lists all /sai-* commands and enforces fetch-before-execute discipline. Loaded to prevent LLM from skipping command files. |
 | `skills/universal/safe-operations/SKILL.md` | Safe operations skill — enforces reversibility and impact awareness, requires user confirmation before destructive/hard-to-reverse/shared-system operations. Loaded by 7 sai-* command wrappers. |
@@ -100,12 +100,12 @@ The openspec-dependent `sai-*` commands halt with a clear error if either is mis
 | `skills/copilot/budget-subagent/SKILL.md` | Task subagent rules for Copilot — `budget-subagent` custom agent, GPT-5 mini, ~30-call soft cap, structured completion report. |
 | `skills/copilot/fetch/SKILL.md` | Fetch @ path resolver for Copilot — maps `@<subpath>` to `.github/sai/<subpath>` then the VS Code SAI folder. Loaded first by all Copilot wrappers to enable `@sai/` and `@skills/` path resolution. |
 | `agents/copilot/` | Copilot custom agent definitions (`budget-explorer`, `budget-executor`, `budget-subagent`). Installed to `~/.copilot/agents/`, hidden from the agent picker, invoked programmatically by the main agent when the `budget` skill is active. |
-| `agents/claude/sai-implementation-planning-worker.md` | Claude Code custom agent for the high-effort implementation-planning worker. |
-| `agents/claude/sai-design-planning-worker.md` | Claude Code custom agent for the high-effort design-planning worker. |
-| `skills/claude/sai-implementation-planning-worker/SKILL.md` | Claude Code binding for worker dispatch, same-worker continuation, and recovery. |
-| `skills/claude/sai-design-planning-worker/SKILL.md` | Claude Code binding for design-worker dispatch, same-worker continuation, and recovery. |
-| `skills/opencode/sai-implementation-planning-worker/SKILL.md` | opencode binding for worker dispatch, same-task continuation, and recovery. |
-| `skills/opencode/sai-design-planning-worker/SKILL.md` | opencode binding for design-worker same-task continuation and recovery. |
+| `agents/claude/sai-3-implementation-worker.md` | Claude Code custom agent for the high-effort implementation-planning worker. |
+| `agents/claude/sai-2-design-worker.md` | Claude Code custom agent for the high-effort design-planning worker. |
+| `skills/claude/sai-3-implementation-worker/SKILL.md` | Claude Code binding for worker dispatch, same-worker continuation, and recovery. |
+| `skills/claude/sai-2-design-worker/SKILL.md` | Claude Code binding for design-worker dispatch, same-worker continuation, and recovery. |
+| `skills/opencode/sai-3-implementation-worker/SKILL.md` | opencode binding for worker dispatch, same-task continuation, and recovery. |
+| `skills/opencode/sai-2-design-worker/SKILL.md` | opencode binding for design-worker same-task continuation and recovery. |
 | `commands/claude/` | Wrappers for Claude Code. YAML frontmatter (`description`, `argument-hint`, `model`, `effort`) + fetch to `sai/commands/` + fetch to project-local skill files. |
 | `commands/opencode/` | Wrappers for opencode. YAML frontmatter (`description`, `model`) + fetch to `sai/commands/` + fetch to project-local skill files. |
 | `commands/copilot/` | Wrappers for GitHub Copilot. YAML frontmatter (`description`, `argument-hint`, `agent`, `model`) + fetch to `sai/commands/` via the copilot fetch skill. |

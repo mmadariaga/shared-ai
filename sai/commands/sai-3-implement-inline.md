@@ -22,7 +22,7 @@
   Fetch @skills/budget/SKILL.md and use it
 
   ## Invoke implementation
-  Fetch @sai/compat/implement-invocation.md and follow it exactly (Load instructions, Run, Completion).
+Fetch @sai/compat/implement-invocation.md and follow it exactly (Load instructions, Run, Completion).
 </TASK>
 
 Follow instruction on <TASK> step by step

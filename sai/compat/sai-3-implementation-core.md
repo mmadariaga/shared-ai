@@ -1,4 +1,4 @@
-# Implement invocation core
+# sai-3 implementation invocation core
 
 Shared technical invocation used by the inline caller and the implementation-planning worker. This file owns no terminal completion message.
 

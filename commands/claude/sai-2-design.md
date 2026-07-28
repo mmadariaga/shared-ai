@@ -8,6 +8,6 @@ allowed-tools: Skill, Agent, SendMessage, AskUserQuestion
 ## Sai Design - 2
 
 Fetch @skills/fetch/SKILL.md
-Fetch @skills/sai-design-planning-worker/SKILL.md and use it.
-Fetch @skills/sai-implementation-planning-worker/SKILL.md and use it.
+Fetch @skills/sai-2-design-worker/SKILL.md and use it.
+Fetch @skills/sai-3-implementation-worker/SKILL.md and use it.
 Fetch @sai/commands/sai-2-design.md and follow those instructions exactly.

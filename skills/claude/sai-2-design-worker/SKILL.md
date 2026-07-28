@@ -1,6 +1,6 @@
 ---
-name: sai-design-planning-worker
-description: Claude Code binding for the SAI design-planning worker.
+name: sai-2-design-worker
+description: Claude Code binding for the SAI numbered design worker.
 license: MIT
 compatibility: claude
 ---

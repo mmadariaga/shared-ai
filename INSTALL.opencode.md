@@ -79,10 +79,10 @@ mkdir -p ~/.config/opencode/skills/sai-commands
 cp skills/universal/sai-commands/SKILL.md ~/.config/opencode/skills/sai-commands/SKILL.md
 mkdir -p ~/.config/opencode/skills/safe-operations
 cp skills/universal/safe-operations/SKILL.md ~/.config/opencode/skills/safe-operations/SKILL.md
-mkdir -p ~/.config/opencode/skills/sai-implementation-planning-worker
-cp skills/opencode/sai-implementation-planning-worker/SKILL.md ~/.config/opencode/skills/sai-implementation-planning-worker/SKILL.md
-mkdir -p ~/.config/opencode/skills/sai-design-planning-worker
-cp skills/opencode/sai-design-planning-worker/SKILL.md ~/.config/opencode/skills/sai-design-planning-worker/SKILL.md
+mkdir -p ~/.config/opencode/skills/sai-3-implementation-worker
+cp skills/opencode/sai-3-implementation-worker/SKILL.md ~/.config/opencode/skills/sai-3-implementation-worker/SKILL.md
+mkdir -p ~/.config/opencode/skills/sai-2-design-worker
+cp skills/opencode/sai-2-design-worker/SKILL.md ~/.config/opencode/skills/sai-2-design-worker/SKILL.md
 
 # Copy opencode.json
 if [ ! -f ~/.config/opencode/opencode.json ] && [ ! -f ~/.config/opencode/opencode.jsonc ]; then
@@ -104,24 +104,23 @@ else
     echo '      "mode": "subagent",'
     echo '      "model": "opencode-go/glm-5.1"'
     echo '    },'
-    echo '    "sai-implementation-coordinator": {'
+    echo '    "sai-coordinator": {'
     echo '      "mode": "primary",'
     echo '      "model": "opencode-go/glm-5.2",'
     echo '      "variant": "high",'
     echo '      "permission": {'
-    echo '        "task": { "*": "deny", "sai-implementation-planning-worker": "allow" },'
+    echo '        "task": { "*": "deny", "sai-2-design-worker": "allow", "sai-3-implementation-worker": "allow" },'
     echo '        "question": "allow"'
     echo '      }'
     echo '    },'
-    echo '    "sai-implementation-planning-worker": {'
+    echo '    "sai-3-implementation-worker": {'
     echo '      "mode": "subagent",'
     echo '      "model": "opencode-go/kimi-k2.6",'
     echo '      "permission": {'
     echo '        "task": { "*": "deny", "budget": "allow", "explore": "allow" }'
     echo '      }'
-    echo '    }'
-    echo '    "sai-design-coordinator": { "mode": "primary", "model": "opencode-go/glm-5.2", "variant": "high", "permission": { "task": { "*": "deny", "sai-design-planning-worker": "allow", "sai-implementation-planning-worker": "allow" }, "question": "allow" } },'
-    echo '    "sai-design-planning-worker": { "mode": "subagent", "model": "opencode-go/glm-5.2", "variant": "high", "permission": { "task": { "*": "deny", "explore": "allow" } } }'
+    echo '    },'
+    echo '    "sai-2-design-worker": { "mode": "subagent", "model": "opencode-go/glm-5.2", "variant": "high", "permission": { "task": { "*": "deny", "explore": "allow" } } }'
     echo '  }'
 fi
 ```
@@ -175,10 +174,10 @@ New-Item -ItemType Directory -Force -Path "$configDir\skills\sai-commands" | Out
 Copy-Item skills\universal\sai-commands\SKILL.md "$configDir\skills\sai-commands\SKILL.md"
 New-Item -ItemType Directory -Force -Path "$configDir\skills\safe-operations" | Out-Null
 Copy-Item skills\universal\safe-operations\SKILL.md "$configDir\skills\safe-operations\SKILL.md"
-New-Item -ItemType Directory -Force -Path "$configDir\skills\sai-implementation-planning-worker" | Out-Null
-Copy-Item skills\opencode\sai-implementation-planning-worker\SKILL.md "$configDir\skills\sai-implementation-planning-worker\SKILL.md"
-New-Item -ItemType Directory -Force -Path "$configDir\skills\sai-design-planning-worker" | Out-Null
-Copy-Item skills\opencode\sai-design-planning-worker\SKILL.md "$configDir\skills\sai-design-planning-worker\SKILL.md"
+New-Item -ItemType Directory -Force -Path "$configDir\skills\sai-3-implementation-worker" | Out-Null
+Copy-Item skills\opencode\sai-3-implementation-worker\SKILL.md "$configDir\skills\sai-3-implementation-worker\SKILL.md"
+New-Item -ItemType Directory -Force -Path "$configDir\skills\sai-2-design-worker" | Out-Null
+Copy-Item skills\opencode\sai-2-design-worker\SKILL.md "$configDir\skills\sai-2-design-worker\SKILL.md"
 
 # Copy opencode.json
 $jsonPath = Join-Path $configDir "opencode.json"
@@ -202,31 +201,30 @@ if (-not (Test-Path $jsonPath) -and -not (Test-Path $jsoncPath)) {
     Write-Host '      "mode": "subagent",'
     Write-Host '      "model": "opencode-go/glm-5.1"'
     Write-Host '    },'
-    Write-Host '    "sai-implementation-coordinator": {'
+    Write-Host '    "sai-coordinator": {'
     Write-Host '      "mode": "primary",'
     Write-Host '      "model": "opencode-go/glm-5.2",'
     Write-Host '      "variant": "high",'
     Write-Host '      "permission": {'
-    Write-Host '        "task": { "*": "deny", "sai-implementation-planning-worker": "allow" },'
+    Write-Host '        "task": { "*": "deny", "sai-2-design-worker": "allow", "sai-3-implementation-worker": "allow" },'
     Write-Host '        "question": "allow"'
     Write-Host '      }'
     Write-Host '    },'
-    Write-Host '    "sai-implementation-planning-worker": {'
+    Write-Host '    "sai-3-implementation-worker": {'
     Write-Host '      "mode": "subagent",'
     Write-Host '      "model": "opencode-go/kimi-k2.6",'
     Write-Host '      "permission": {'
     Write-Host '        "task": { "*": "deny", "budget": "allow", "explore": "allow" }'
     Write-Host '      }'
-    Write-Host '    }'
-    Write-Host '    "sai-design-coordinator": { "mode": "primary", "model": "opencode-go/glm-5.2", "variant": "high", "permission": { "task": { "*": "deny", "sai-design-planning-worker": "allow", "sai-implementation-planning-worker": "allow" }, "question": "allow" } },'
-    Write-Host '    "sai-design-planning-worker": { "mode": "subagent", "model": "opencode-go/glm-5.2", "variant": "high", "permission": { "task": { "*": "deny", "explore": "allow" } } }'
+    Write-Host '    },'
+    Write-Host '    "sai-2-design-worker": { "mode": "subagent", "model": "opencode-go/glm-5.2", "variant": "high", "permission": { "task": { "*": "deny", "explore": "allow" } } }'
     Write-Host '  }'
 }
 ```
 
 ### Managed implementation agents
 
-The canonical opencode sample sets `subagent_depth: 2`, uses `opencode-go/glm-5.1` for the existing low-cost helper agents, and adds these exact namespaced entries: `sai-implementation-coordinator` in `primary` mode with `opencode-go/glm-5.2` and `variant: high`, plus `sai-implementation-planning-worker` in `subagent` mode with `opencode-go/kimi-k2.6` and no variant. The coordinator permits only its worker task and questions; the worker permits only `budget` and `explore` tasks.
+The canonical opencode sample sets `subagent_depth: 2`, uses `opencode-go/glm-5.1` for the existing low-cost helper agents, and adds one shared `sai-coordinator` in `primary` mode with `opencode-go/glm-5.2` and `variant: high`, plus `sai-3-implementation-worker` in `subagent` mode with `opencode-go/kimi-k2.6` and no variant. The coordinator permits questions and only the two numbered worker tasks; the implementation worker permits only `budget` and `explore` tasks.
 
 Installation adds absent entries, reuses only exact-compatible entries, and blocks incompatible entries without overwrite. Resolve a collision by manually renaming or removing the conflicting definition, then retry. Existing configuration and unrelated entries are preserved by the merge. Uninstall preserves both merged entries because opencode configuration is excluded from deletion. Restart opencode after config-time agent changes so the new coordinator and worker definitions are loaded.
 
@@ -234,7 +232,7 @@ This is the opencode harness adapter. Claude Code uses its managed worker agent 
 
 ### Managed design agents
 
-`/sai-2-design` preserves `openspec/changes/{change-name}/design.md`, `tasks.md`, and `interfaces.md`. Add `sai-design-coordinator` in `primary` mode and `sai-design-planning-worker` in `subagent` mode. Both use `opencode-go/glm-5.2` with `variant: high`; the coordinator permits `question` and only the named design and implementation planning-worker task targets, while the design worker denies `task.*` by default and allows `explore`. The design wrapper uses `agent: sai-design-coordinator` and `subtask: false`; it intentionally has no `model` field.
+`/sai-2-design` preserves `openspec/changes/{change-name}/design.md`, `tasks.md`, and `interfaces.md`. It uses the shared `sai-coordinator` in `primary` mode and `sai-2-design-worker` in `subagent` mode. Both use `opencode-go/glm-5.2` with `variant: high`; the coordinator permits `question` and only the two numbered worker task targets, while the design worker denies `task.*` by default and allows `explore`. The design wrapper uses `agent: sai-coordinator` and `subtask: false`; it intentionally has no `model` field.
 
 Installation preserves existing configuration and unrelated entries, reuses exact-compatible entries, and blocks incompatible collisions without overwrite. Configuration exclusion means uninstall excludes `opencode.json` and `opencode.jsonc`, so merged design and implementation agent entries remain. Restart opencode after configuration changes; reinstall after updates to refresh command, instruction, and both design/implementation binding skill files.
 

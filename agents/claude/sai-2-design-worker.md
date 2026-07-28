@@ -1,5 +1,5 @@
 ---
-name: sai-design-planning-worker
+name: sai-2-design-worker
 description: Owns the complete technical design phase and returns structured lifecycle metadata.
 model: claude-opus-4-8
 effort: high
@@ -8,4 +8,4 @@ tools: Read, Glob, Grep, Bash, Edit, Write, Agent, Skill, SendMessage
 
 Fetch @skills/fetch/SKILL.md and follow those instructions.
 Fetch @skills/budget-explorer/SKILL.md and use it.
-Fetch @sai/orchestration/workers/design-worker.md and follow it exactly.
+Fetch @sai/orchestration/workers/sai-2-design-worker.md and follow it exactly.

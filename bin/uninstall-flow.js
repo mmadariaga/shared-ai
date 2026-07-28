@@ -17,6 +17,7 @@ const {
   COPILOT_SAI_BASE,
   promptYesNoReadline,
 } = require('./install-flow.js');
+const flow = require('./install-flow.js');
 const { loadInstallManifest, expandInstallManifest } = require('./install-manifest');
 
 const REPOSITORY_ROOT = path.join(__dirname, '..');
@@ -61,8 +62,16 @@ function enumerateClaude(destBase) {
   return entries;
 }
 
-function flowCanonicalNumbered() { return false; }
-function legacyClaudeRecords() { return []; }
+function flowCanonicalNumbered() { return flow.CLAUDE_DESIGN_WORKER_AGENT.startsWith('sai-2-') && flow.CLAUDE_IMPLEMENTATION_WORKER_AGENT.startsWith('sai-3-'); }
+function legacyClaudeRecords(targetPath, entries) {
+  const known = new Set(entries.map(entry => entry.dest));
+  return flow.LEGACY_CLAUDE_WORKERS.flatMap(legacy => {
+    const dest = path.join(targetPath, 'agents', legacy.agent);
+    const ownerPath = path.join(targetPath, 'agents', legacy.owner);
+    if (known.has(dest) || (!fs.existsSync(dest) && !fs.existsSync(ownerPath))) return [];
+    return [{ src: dest, dest, editorBase: targetPath, assetType: 'claude-legacy-agent', ownerPath, ruleId: `legacy-${legacy.agent}` }];
+  });
+}
 
 function enumerateOpencode(destBase) {
   const targetPath = destBase || OPENCODE_BASE;
@@ -122,6 +131,9 @@ function computeClaudeAgentPlanEntry(entry) {
 }
 
 function computePlanEntry(entry) {
+  if (entry.assetType === 'claude-legacy-agent') {
+    return computeClaudeAgentPlanEntry(entry);
+  }
   if (entry.assetType === 'claude-managed-agent') {
     return computeClaudeAgentPlanEntry(entry);
   }
@@ -153,7 +165,7 @@ function formatSummary(counts) {
 }
 
 function deleteEntry(entry) {
-  if (entry.assetType === 'claude-managed-agent') {
+  if (entry.assetType === 'claude-managed-agent' || entry.assetType === 'claude-legacy-agent') {
     const destHash = sha256File(entry.dest);
     const managedHash = readManagedHash(entry.ownerPath);
     if (destHash === null) {
@@ -164,6 +176,7 @@ function deleteEntry(entry) {
       return 'kept-override';
     }
     fs.unlinkSync(entry.dest);
+    if (fs.existsSync(entry.ownerPath)) fs.unlinkSync(entry.ownerPath);
     return 'deleted';
   }
   const destHash = sha256File(entry.dest);

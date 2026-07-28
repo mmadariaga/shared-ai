@@ -1,4 +1,4 @@
-# Design invocation core
+# sai-2 design invocation core
 
 Shared technical design invocation used by the inline caller and the design-planning worker. This file owns no prerequisite parsing, change selection, fast-track banner presentation, or terminal navigation message.
 

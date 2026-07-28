@@ -52,7 +52,7 @@ function projectionSources(harness) {
 
 test('canonical manifest keeps implementation projections interface returns the required projection record', () => {
   const projection = projectionSources('claude').find(({ source }) =>
-    source === 'agents/claude/sai-implementation-planning-worker.md');
+    source === 'agents/claude/sai-3-implementation-worker.md');
   assert.ok(projection, 'Claude worker projection should exist');
   for (const field of REQUIRED_PROJECTION_FIELDS) {
     assert.ok(projection[field], `${field} should be populated`);
@@ -64,20 +64,20 @@ test('Step 3 manifest projects the shared lifecycle and one active harness bindi
     claude: [
       'sai/orchestration/coordinator-contract.md',
       'sai/orchestration/worker-lifecycle.md',
-      'sai/orchestration/workers/implementation-worker.md',
+      'sai/orchestration/workers/sai-3-implementation-worker.md',
       'sai/orchestration/workers/bindings/claude/implementation-worker.md',
-      'skills/claude/sai-implementation-planning-worker/SKILL.md',
-      'agents/claude/sai-implementation-planning-worker.md',
+      'skills/claude/sai-3-implementation-worker/SKILL.md',
+      'agents/claude/sai-3-implementation-worker.md',
     ],
     opencode: [
       'sai/orchestration/coordinator-contract.md',
       'sai/orchestration/worker-lifecycle.md',
-      'sai/orchestration/workers/implementation-worker.md',
+      'sai/orchestration/workers/sai-3-implementation-worker.md',
       'sai/orchestration/workers/bindings/opencode/implementation-worker.md',
-      'skills/opencode/sai-implementation-planning-worker/SKILL.md',
+      'skills/opencode/sai-3-implementation-worker/SKILL.md',
     ],
     copilot: [
-      'sai/compat/implement-invocation-core.md',
+      'sai/compat/sai-3-implementation-core.md',
       'sai/compat/implement-invocation.md',
     ],
   };
@@ -94,7 +94,7 @@ test('Step 3 manifest projects the shared lifecycle and one active harness bindi
       assert.equal(sources.has('sai/orchestration/workers/bindings/opencode/implementation-worker.md'), false);
     } else if (harness === 'opencode') {
       assert.equal(sources.has('sai/orchestration/workers/bindings/claude/implementation-worker.md'), false);
-      assert.equal(sources.has('agents/claude/sai-implementation-planning-worker.md'), false);
+      assert.equal(sources.has('agents/claude/sai-3-implementation-worker.md'), false);
     } else {
       assert.equal([...sources].some(source => source.startsWith('sai/orchestration/')), false);
       assert.equal([...sources].some(source => source.includes('/bindings/')), false);
@@ -106,8 +106,8 @@ test('uninstall and doctor expose ownership guards by reusing an exact-compatibl
   const base = tempDir('sai-step-3-claude-');
   try {
     installClaude(base);
-    const workerPath = path.join(base, 'agents', 'sai-implementation-planning-worker.md');
-    const ownerPath = path.join(base, 'agents', '.sai-implementation-planning-worker.owner.json');
+    const workerPath = path.join(base, 'agents', 'sai-3-implementation-worker.md');
+    const ownerPath = path.join(base, 'agents', '.sai-3-implementation-worker.owner.json');
     const beforeBytes = fs.readFileSync(workerPath);
     fs.unlinkSync(ownerPath);
 
@@ -176,10 +176,10 @@ test('preserves commented JSONC and non-SAI settings through namespaced opencode
 test('Step 3 stops on incompatible Claude and opencode destinations without overwrite', () => {
   const claudeBase = tempDir('sai-step-3-claude-collision-');
   const opencodeBase = tempDir('sai-step-3-opencode-collision-');
-  const claudePath = path.join(claudeBase, 'agents', 'sai-implementation-planning-worker.md');
+  const claudePath = path.join(claudeBase, 'agents', 'sai-3-implementation-worker.md');
   const opencodePath = path.join(opencodeBase, 'opencode.jsonc');
   const claudeSentinel = 'incompatible Claude worker\n';
-  const opencodeSentinel = '{\n  "agent": {\n    "sai-implementation-coordinator": { "mode": "primary", "model": "user-model" }\n  }\n}\n';
+  const opencodeSentinel = '{\n  "agent": {\n    "sai-coordinator": { "mode": "primary", "model": "user-model" }\n  }\n}\n';
   try {
     fs.mkdirSync(path.dirname(claudePath), { recursive: true });
     fs.writeFileSync(claudePath, claudeSentinel);

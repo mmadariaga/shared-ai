@@ -33,7 +33,7 @@ spec approval, write the approval metadata, and handle amendments per
 
 ## Planning
 
-Fetch @sai/compat/design-invocation-core.md and follow it exactly.
+Fetch @sai/compat/sai-2-design-core.md and follow it exactly.
 Delegate all codebase discovery and deep reading to one budget-explorer using
 the prompt specified by `design.md`. Delegate each Open Question to a
 budget-explorer and resolve all questions before `tasks.md`.

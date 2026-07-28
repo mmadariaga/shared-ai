@@ -110,7 +110,7 @@ Claude Code also manages the worker agent with an ownership sidecar and hash gua
 
 ### Design coordinator and worker
 
-The routed `/sai-2-design` paths use a low-effort Opus 4.8 coordinator and high-effort Opus 4.8 design worker in Claude Code, and named `sai-design-coordinator` and `sai-design-planning-worker` agents with GLM 5.2 `variant: high` in opencode. The coordinator owns lifecycle routing; the worker owns technical I/O and design-artifact writes. The fixed notice is acknowledged with `continue_after_notice` before continuation. Continue now clears design lifecycle state and dispatches the implementation binding in a fresh namespace with resolved arguments. GitHub Copilot remains inline because no portable cross-turn continuation contract spans the supported surfaces; Copilot retains `budget-explorer` delegation and has subagent support. All harnesses preserve `openspec/changes/{change-name}/design.md`, `tasks.md`, and `interfaces.md`. Proposal Complexity remains descriptive rather than a routing gate.
+The routed `/sai-2-design` paths use a low-effort Opus 4.8 coordinator and high-effort Opus 4.8 design worker in Claude Code, and the shared `sai-coordinator` plus `sai-2-design-worker` agents with GLM 5.2 `variant: high` in opencode. The coordinator owns lifecycle routing; the worker owns technical I/O and design-artifact writes. The fixed notice is acknowledged with `continue_after_notice` before continuation. Continue now clears design lifecycle state and dispatches the implementation binding in a fresh namespace with resolved arguments. GitHub Copilot remains inline because no portable cross-turn continuation contract spans the supported surfaces; Copilot retains `budget-explorer` delegation and has subagent support. All harnesses preserve `openspec/changes/{change-name}/design.md`, `tasks.md`, and `interfaces.md`. Proposal Complexity remains descriptive rather than a routing gate.
 
 ## On-demand commands (unnumbered)
 
@@ -339,7 +339,7 @@ The **Copilot** column shows two model identifiers:
 |-------|----------|-------------|-------------------|--------------------|
 | explore | `opencode-go/minimax-m3` | `sonnet` - medium | `GPT-5.6 Luna (copilot)` | `github-copilot/gpt-5.6-luna` |
 | spec (1) | `opencode-go/minimax-m3` | `opus` - medium | `GPT-5.6 Terra (copilot)` | `github-copilot/gpt-5.6-terra` |
-| design (2) | named `sai-design-coordinator` / `sai-design-planning-worker`: `opencode-go/glm-5.2`, `variant: high` | coordinator `opus` - low; worker `opus` - high | `Claude Opus 4.8 (copilot)` inline | `github-copilot/claude-opus-4.8` |
+| design (2) | shared `sai-coordinator` / `sai-2-design-worker`: `opencode-go/glm-5.2`, `variant: high` | coordinator `opus` - low; worker `opus` - high | `Claude Opus 4.8 (copilot)` inline | `github-copilot/claude-opus-4.8` |
 | implement (3) | `opencode-go/kimi-k2.6` | `opus` - medium | `GPT-5.6 Terra (copilot)` | `github-copilot/gpt-5.6-terra` |
 | apply (4) | `opencode-go/deepseek-v4-flash` | `sonnet` - low | `GPT-5.6 Luna (copilot)` | `github-copilot/gpt-5.6-luna` |
 | review (5) | `opencode-go/qwen3.7-plus` | `opus` - medium | `GPT-5.4 (copilot)` | `github-copilot/gpt-5.4` |

@@ -21,7 +21,7 @@ test('installOpencode copies commands/opencode/*.md to dest/commands/', () => {
   const files = fs.readdirSync(cmdDir);
   assert.ok(files.includes('sai-1-spec.md'), 'sai-1-spec.md should be in commands/');
   const design = fs.readFileSync(path.join(cmdDir, 'sai-2-design.md'), 'utf8');
-  assert.match(design, /^agent: sai-design-coordinator$/m);
+  assert.match(design, /^agent: sai-coordinator$/m);
   assert.match(design, /^subtask: false$/m);
   assert.doesNotMatch(design, /^model:/m);
   assert.ok(design.includes('**Change-name argument and and optional flags:** $ARGUMENTS'));
@@ -40,7 +40,7 @@ test('installOpencode copies all standalone policies to dest/sai/policies/', () 
 test('installOpencode copies shared compatibility assets but not the Copilot-only inline loader', () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-'));
   installOpencode(tmpDir);
-  for (const file of ['design-invocation-core.md', 'implement-invocation-core.md', path.join('_templates', 'adr-index.md')]) {
+  for (const file of ['sai-2-design-core.md', 'sai-3-implementation-core.md', path.join('_templates', 'adr-index.md')]) {
     assert.ok(fs.existsSync(path.join(tmpDir, 'sai', 'compat', file)), `${file} should be projected`);
   }
   assert.equal(fs.existsSync(path.join(tmpDir, 'sai', 'compat', 'implement-invocation.md')), false);

@@ -30,7 +30,7 @@
   1. Remove the token and trim surrounding whitespace.
   2. Use the cleaned remainder as the effective change name for all downstream steps.
 
-  Fetch @sai/compat/design-invocation-core.md and follow it exactly.
+Fetch @sai/compat/sai-2-design-core.md and follow it exactly.
 
   ## Completion
   Before printing the handoff prompt below, print a **decision summary (design phase)** derived exclusively from the artifacts just written (`design.md` and `tasks.md`) — never from prior conversation (Isolation Mode):

@@ -41,19 +41,19 @@ function capture(fn) {
 }
 
 test('implementation invocation core and inline caller own distinct completion contracts', () => {
-  const core = artifact('sai/compat/implement-invocation-core.md');
+  const core = artifact('sai/compat/sai-3-implementation-core.md');
   assert.match(core, /^## Load instructions \(in order\)/m);
   assert.match(core, /^## Run\s*$/m);
   assert.doesNotMatch(core, /^## Completion\b/m);
   assert.doesNotMatch(core, /MANDATORY STOP/);
 
   const invocation = artifact('sai/compat/implement-invocation.md');
-  assert.match(invocation, /Fetch @sai\/compat\/implement-invocation-core\.md/);
+  assert.match(invocation, /Fetch @sai\/compat\/sai-3-implementation-core\.md/);
   assert.match(invocation, /MANDATORY STOP/);
 });
 
 test('implementation worker declares the lifecycle and input/output contract', () => {
-  const worker = artifact('sai/orchestration/workers/implementation-worker.md');
+  const worker = artifact('sai/orchestration/workers/sai-3-implementation-worker.md');
 
   assert.match(worker, /InvocationEnvelope/);
   assert.match(worker, /wrapper_echo_value/);
@@ -84,8 +84,8 @@ test('implementation worker declares the lifecycle and input/output contract', (
 });
 
 test('Claude worker agent is pinned to the required model, effort, and tools', () => {
-  const agent = artifact('agents/claude/sai-implementation-planning-worker.md');
-  assert.match(agent, /^name:\s*sai-implementation-planning-worker\s*$/m);
+  const agent = artifact('agents/claude/sai-3-implementation-worker.md');
+  assert.match(agent, /^name:\s*sai-3-implementation-worker\s*$/m);
   assert.match(agent, /^model:\s*claude-opus-4-8\s*$/m);
   assert.match(agent, /^effort:\s*high\s*$/m);
   assert.match(
@@ -111,8 +111,8 @@ test('Claude and opencode worker bindings own dispatch and continuation mechanic
 
 test('opencode config defines exact namespaced coordinator and worker shapes', () => {
   const config = jsonc.parse(artifact('configs/opencode.jsonc'));
-  const coordinator = config.agent['sai-implementation-coordinator'];
-  const worker = config.agent['sai-implementation-planning-worker'];
+  const coordinator = config.agent['sai-coordinator'];
+  const worker = config.agent['sai-3-implementation-worker'];
 
   assert.ok(coordinator, 'namespaced coordinator should be present');
   assert.ok(worker, 'namespaced worker should be present');
@@ -121,8 +121,10 @@ test('opencode config defines exact namespaced coordinator and worker shapes', (
   assert.equal(coordinator.model, 'opencode-go/glm-5.2');
   assert.equal(coordinator.variant, 'high');
   assert.equal(coordinator.permission.task['*'], 'deny');
-  assert.equal(coordinator.permission.task['sai-implementation-planning-worker'], 'allow');
+  assert.equal(coordinator.permission.task['sai-3-implementation-worker'], 'allow');
+  assert.equal(coordinator.permission.task['sai-2-design-worker'], 'allow');
   assert.equal(coordinator.permission.question, 'allow');
+  assert.equal(config.subagent_depth, 2);
 
   assert.equal(worker.mode, 'subagent');
   assert.equal(worker.model, 'opencode-go/kimi-k2.6');
@@ -139,13 +141,13 @@ const { loadInstallManifest, expandInstallManifest } = require('../bin/install-m
   const opencodeBase = tempDir('sai-implement-opencode-');
   try {
     installClaude(claudeBase);
-    assert.ok(fs.existsSync(path.join(claudeBase, 'agents', 'sai-implementation-planning-worker.md')));
-    assert.ok(fs.existsSync(path.join(claudeBase, 'agents', '.sai-implementation-planning-worker.owner.json')));
+    assert.ok(fs.existsSync(path.join(claudeBase, 'agents', 'sai-3-implementation-worker.md')));
+    assert.ok(fs.existsSync(path.join(claudeBase, 'agents', '.sai-3-implementation-worker.owner.json')));
 
     installOpencode(opencodeBase);
     const config = fs.readFileSync(path.join(opencodeBase, 'opencode.jsonc'), 'utf8');
-    assert.match(config, /sai-implementation-coordinator/);
-    assert.match(config, /sai-implementation-planning-worker/);
+    assert.match(config, /sai-coordinator/);
+    assert.match(config, /sai-3-implementation-worker/);
   } finally {
     removeTempDir(claudeBase);
     removeTempDir(opencodeBase);
@@ -156,10 +158,10 @@ test('installer collisions preserve unfamiliar content and provide remediation g
   const { installClaude, installOpencode } = require('../bin/install-flow.js');
   const claudeBase = tempDir('sai-implement-claude-collision-');
   const opencodeBase = tempDir('sai-implement-opencode-collision-');
-  const agentPath = path.join(claudeBase, 'agents', 'sai-implementation-planning-worker.md');
+  const agentPath = path.join(claudeBase, 'agents', 'sai-3-implementation-worker.md');
   const configPath = path.join(opencodeBase, 'opencode.jsonc');
   const claudeSentinel = 'user-owned incompatible Claude agent\n';
-  const opencodeSentinel = '{\n  "agent": {\n    "sai-implementation-coordinator": { "mode": "primary", "model": "user-model" }\n  }\n}\n';
+  const opencodeSentinel = '{\n  "agent": {\n    "sai-coordinator": { "mode": "primary", "model": "user-model" }\n  }\n}\n';
   try {
     fs.mkdirSync(path.dirname(agentPath), { recursive: true });
     fs.writeFileSync(agentPath, claudeSentinel);
@@ -200,12 +202,12 @@ test('uninstall and doctor expose ownership guards and collision status', async 
     const implementationSources = new Set([
       'sai/orchestration/coordinator-contract.md',
       'sai/orchestration/worker-lifecycle.md',
-      'sai/orchestration/workers/implementation-worker.md',
+      'sai/orchestration/workers/sai-3-implementation-worker.md',
       'sai/orchestration/workers/bindings/claude/implementation-worker.md',
-      'skills/claude/sai-implementation-planning-worker/SKILL.md',
-      'agents/claude/sai-implementation-planning-worker.md',
+      'skills/claude/sai-3-implementation-worker/SKILL.md',
+      'agents/claude/sai-3-implementation-worker.md',
       'sai/orchestration/workers/bindings/opencode/implementation-worker.md',
-      'skills/opencode/sai-implementation-planning-worker/SKILL.md',
+      'skills/opencode/sai-3-implementation-worker/SKILL.md',
     ]);
     const manifest = loadInstallManifest(repoRoot);
     function expectedSources(harness) {
@@ -231,8 +233,8 @@ test('uninstall and doctor expose ownership guards and collision status', async 
         .sort();
     }
 
-    const agentPath = path.join(claudeBase, 'agents', 'sai-implementation-planning-worker.md');
-    const sidecarPath = path.join(claudeBase, 'agents', '.sai-implementation-planning-worker.owner.json');
+    const agentPath = path.join(claudeBase, 'agents', 'sai-3-implementation-worker.md');
+    const sidecarPath = path.join(claudeBase, 'agents', '.sai-3-implementation-worker.owner.json');
     assert.ok(fs.existsSync(agentPath), 'managed Claude agent should be enumerable');
     assert.ok(fs.existsSync(sidecarPath), 'managed Claude ownership sidecar should be enumerable');
 
@@ -263,11 +265,11 @@ test('uninstall and doctor expose ownership guards and collision status', async 
     });
     const report = output.join('');
     assert.ok(code === 0 || code === 1, 'doctor should return a normal status code');
-    assert.match(report, /sai-implementation-planning-worker/);
+    assert.match(report, /sai-3-implementation-worker/);
     assert.match(report, /ownership|collision|rename|remove|modified/i);
     const doctorReport = JSON.parse(report);
     const claudeDoctorSection = JSON.stringify(doctorReport['[Claude Code]']);
-    assert.match(claudeDoctorSection, /sai-implementation-planning-worker/,
+    assert.match(claudeDoctorSection, /sai-3-implementation-worker/,
       'doctor should enumerate the managed implementation worker');
     assert.match(claudeDoctorSection, /ownership|collision|modified|incompatible/i,
       'doctor should report the incompatible managed worker');
@@ -300,29 +302,29 @@ test('Step 2 routes Claude and opencode through the coordinator but preserves Co
 
   assert.match(claude, /^model:\s*opus\s*$/m);
   assert.match(claude, /^effort:\s*medium\s*$/m);
-  assert.match(claude, /Fetch @skills\/sai-implementation-planning-worker\/SKILL\.md/);
+  assert.match(claude, /Fetch @skills\/sai-3-implementation-worker\/SKILL\.md/);
   assert.match(claude, /Fetch @sai\/commands\/sai-3-implement\.md/);
-  assert.match(opencode, /sai-implementation-coordinator/);
-  assert.match(opencode, /Fetch @skills\/sai-implementation-planning-worker\/SKILL\.md/);
+  assert.match(opencode, /sai-coordinator/);
+  assert.match(opencode, /Fetch @skills\/sai-3-implementation-worker\/SKILL\.md/);
   assert.match(opencode, /Fetch @sai\/commands\/sai-3-implement\.md/);
   assert.match(copilot, /sai-3-implement-inline\.md/);
   assert.doesNotMatch(copilot, /sai-implementation-coordinator/);
-  assert.match(opencode, /^agent:\s*sai-implementation-coordinator\s*$/m);
+  assert.match(opencode, /^agent:\s*sai-coordinator\s*$/m);
   assert.match(opencode, /^subtask:\s*false\s*$/m);
   assert.doesNotMatch(opencode, /^model:/m);
   assert.match(opencode, /\*\*Change-name argument:\*\* \$ARGUMENTS/);
 });
 
 test('routed harness bindings and inline parity', () => {
-  const workerName = 'sai-implementation-planning-worker';
-  const worker = artifact('sai/orchestration/workers/implementation-worker.md');
+  const workerName = 'sai-3-implementation-worker';
+  const worker = artifact('sai/orchestration/workers/sai-3-implementation-worker.md');
   const surfaces = [
     {
       name: 'Claude Code',
       binding: artifact('sai/orchestration/workers/bindings/claude/implementation-worker.md'),
-      forwardingSkill: artifact('skills/claude/sai-implementation-planning-worker/SKILL.md'),
+      forwardingSkill: artifact('skills/claude/sai-3-implementation-worker/SKILL.md'),
       wrapper: artifact('commands/claude/sai-3-implement.md'),
-      agent: artifact('agents/claude/sai-implementation-planning-worker.md'),
+      agent: artifact('agents/claude/sai-3-implementation-worker.md'),
       assertContract(binding, forwardingSkill, wrapper) {
         assert.match(binding, new RegExp(`Agent\\(subagent_type: "${workerName}",\\s*run_in_background: true,`));
         assert.match(binding, /SendMessage/);
@@ -336,7 +338,7 @@ test('routed harness bindings and inline parity', () => {
     {
       name: 'opencode',
       binding: artifact('sai/orchestration/workers/bindings/opencode/implementation-worker.md'),
-      forwardingSkill: artifact('skills/opencode/sai-implementation-planning-worker/SKILL.md'),
+      forwardingSkill: artifact('skills/opencode/sai-3-implementation-worker/SKILL.md'),
       wrapper: artifact('commands/opencode/sai-3-implement.md'),
       assertContract(binding, forwardingSkill, wrapper) {
         assert.match(binding, new RegExp(`task\\(subagent_type: "${workerName}"`));
@@ -346,7 +348,7 @@ test('routed harness bindings and inline parity', () => {
         assert.doesNotMatch(binding, /nested task target(?:s)?[\\s\S]{0,120}(?!budget|explore)[a-z][a-z-]+/i);
         assert.match(forwardingSkill, /opencode[\\/\\]implementation-worker\.md/);
         assert.doesNotMatch(forwardingSkill, /claude[\\/\\]implementation-worker\.md/);
-        assert.match(wrapper, /^agent:\s*sai-implementation-coordinator\s*$/m);
+        assert.match(wrapper, /^agent:\s*sai-coordinator\s*$/m);
       },
     },
     {
@@ -389,7 +391,7 @@ test('shared implement coordinator has a two-field envelope and no artifact or r
   assert.match(coordinator, /question/);
   assert.match(coordinator, /summary/);
   assert.match(coordinator, /stop/);
-  assert.match(coordinator, /sai-implementation-planning-worker/);
+  assert.match(coordinator, /sai-3-implementation-worker/);
   assert.match(coordinator, /one worker|exactly one worker/i);
 
   assert.doesNotMatch(coordinator, /openspec CLI not found|OpenSpec not initialized|schema:\s*sai-workflow/i);
@@ -399,8 +401,8 @@ test('shared implement coordinator has a two-field envelope and no artifact or r
 
 test('implementation adapter pins resolved-name and reconstruction transport', () => {
   const coordinator = artifact('sai/commands/sai-3-implement.md');
-  const worker = artifact('sai/orchestration/workers/implementation-worker.md');
-  const core = artifact('sai/compat/implement-invocation-core.md');
+  const worker = artifact('sai/orchestration/workers/sai-3-implementation-worker.md');
+  const core = artifact('sai/compat/sai-3-implementation-core.md');
 
   for (const field of [
     'original_envelope',
@@ -478,7 +480,7 @@ test('needs_input continuation stays on the same worker and uses each harness bi
 
 test('worker and inline invocation own prerequisites and picker while coordinator does not', () => {
   const coordinator = artifact('sai/commands/sai-3-implement.md');
-  const worker = artifact('sai/orchestration/workers/implementation-worker.md');
+  const worker = artifact('sai/orchestration/workers/sai-3-implementation-worker.md');
   const inline = artifact('commands/copilot/sai-3-implement.prompt.md');
 
   assert.match(worker, /openspec CLI not found|OpenSpec not initialized|schema:\s*sai-workflow/i);
@@ -522,7 +524,7 @@ test('design continue-now bypasses the coordinator through invocation core', () 
   assert.match(design, /wrapper_echo_value:\s*""/);
   assert.match(design, /arguments_value:\s*resolved_change_name/);
   assert.doesNotMatch(design, /sai-implementation-coordinator/);
-  assert.match(invocation, /@sai\/compat\/implement-invocation-core\.md/);
+  assert.match(invocation, /@sai\/compat\/sai-3-implementation-core\.md/);
 });
 
 test('Step 3 README documents routed roles, inline Copilot boundary, model independence, and artifact stability', () => {
@@ -556,9 +558,9 @@ test('Step 3 AGENTS documents every coordinator, inline, worker, agent, binding,
   for (const entry of [
     'sai/commands/sai-3-implement.md',
     'sai/commands/sai-3-implement-inline.md',
-    'agents/claude/sai-implementation-planning-worker.md',
-    'skills/claude/sai-implementation-planning-worker/SKILL.md',
-    'skills/opencode/sai-implementation-planning-worker/SKILL.md',
+    'agents/claude/sai-3-implementation-worker.md',
+    'skills/claude/sai-3-implementation-worker/SKILL.md',
+    'skills/opencode/sai-3-implementation-worker/SKILL.md',
   ]) {
     assert.match(agents, new RegExp(entry.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
   }
@@ -569,22 +571,22 @@ test('Step 3 AGENTS documents every coordinator, inline, worker, agent, binding,
 test('Step 3 Claude installer documentation covers ownership, compatibility, collisions, uninstall guards, and manual copy', () => {
   const claude = artifact('INSTALL.claude.md');
 
-  assert.match(claude, /agents\/claude\/sai-implementation-planning-worker\.md/);
-  assert.match(claude, /(?:~\/\.claude|%USERPROFILE%[\\/]\.claude)[\\/]agents[\\/]sai-implementation-planning-worker\.md/);
-  assert.match(claude, /\.sai-implementation-planning-worker\.owner\.json/);
+  assert.match(claude, /agents\/claude\/sai-3-implementation-worker\.md/);
+  assert.match(claude, /(?:~\/\.claude|%USERPROFILE%[\\/]\.claude)[\\/]agents[\\/]sai-3-implementation-worker\.md/);
+  assert.match(claude, /\.sai-3-implementation-worker\.owner\.json/);
   assert.match(claude, /compatible[\s\S]{0,140}(?:not adopt|non-adopt|not used|unchanged)/i);
   assert.match(claude, /collision[\s\S]{0,140}(?:rename|remove|remediat|manual)/i);
   assert.match(claude, /uninstall[\s\S]{0,180}(?:ownership|guard|modified|preserv)/i);
-  assert.match(claude, /(?:cp|Copy-Item)[\s\S]{0,220}sai-implementation-planning-worker/i);
+  assert.match(claude, /(?:cp|Copy-Item)[\s\S]{0,220}sai-3-implementation-worker/i);
 });
 
 test('Step 3 opencode installer documentation covers managed entries, routing shapes, collisions, preservation, and restart', () => {
   const opencode = artifact('INSTALL.opencode.md');
 
-  assert.match(opencode, /sai-implementation-coordinator/);
-  assert.match(opencode, /sai-implementation-planning-worker/);
-  assert.match(opencode, /sai-implementation-coordinator[\s\S]{0,280}primary[\s\S]{0,280}opencode-go\/glm-5\.2[\s\S]{0,280}high/i);
-  assert.match(opencode, /sai-implementation-planning-worker[\s\S]{0,280}subagent[\s\S]{0,280}opencode-go\/kimi-k2\.6/i);
+  assert.match(opencode, /sai-coordinator/);
+  assert.match(opencode, /sai-3-implementation-worker/);
+  assert.match(opencode, /sai-coordinator[\s\S]{0,280}primary[\s\S]{0,280}opencode-go\/glm-5\.2[\s\S]{0,280}high/i);
+  assert.match(opencode, /sai-3-implementation-worker[\s\S]{0,280}subagent[\s\S]{0,280}opencode-go\/kimi-k2\.6/i);
   assert.match(opencode, /variant/i);
   assert.match(opencode, /collision[\s\S]{0,160}(?:preserv|rename|remove|manual)/i);
   assert.match(opencode, /uninstall[\s\S]{0,220}(?:preserv|retain|unchanged)[\s\S]{0,100}(?:config|opencode\.jsonc)/i);
@@ -612,14 +614,20 @@ test('Step 5 installer documentation matches the deterministic manifest and Copi
 // ─── Step 1: preservation-first legacy identity migration ───────────────────
 
 test('implementation install migrates an owned legacy worker pair to the numbered identity', () => {
-  const { installClaude } = require('../bin/install-flow.js');
+  const { installClaude, sha256Buffer } = require('../bin/install-flow.js');
   const base = tempDir('sai-implementation-legacy-');
+  const legacy = path.join(base, 'agents', 'sai-implementation-planning-worker.md');
+  const legacyOwner = path.join(base, 'agents', '.sai-implementation-planning-worker.owner.json');
   const numbered = path.join(base, 'agents', 'sai-3-implementation-worker.md');
+  const numberedOwner = path.join(base, 'agents', '.sai-3-implementation-worker.owner.json');
   try {
+    const legacyBytes = Buffer.from('managed legacy implementation worker\n');
+    fs.mkdirSync(path.dirname(legacy), { recursive: true });
+    fs.writeFileSync(legacy, legacyBytes);
+    fs.writeFileSync(legacyOwner, `${JSON.stringify({ managedHash: sha256Buffer(legacyBytes) })}\n`);
     installClaude(base);
-    assert.ok(fs.existsSync(path.join(base, 'agents', 'sai-implementation-planning-worker.md')), 'legacy fixture should exist after baseline install');
-    installClaude(base);
-    assert.equal(fs.existsSync(path.join(base, 'agents', 'sai-implementation-planning-worker.md')), false);
+    assert.equal(fs.existsSync(legacy), false);
+    assert.equal(fs.existsSync(legacyOwner), false);
     assert.equal(fs.existsSync(numbered), true);
     assert.equal(fs.existsSync(numberedOwner), true);
   } finally {
@@ -633,8 +641,8 @@ test('implementation install preserves a mismatched legacy sidecar and reports m
   const legacy = path.join(base, 'agents', 'sai-implementation-planning-worker.md');
   const owner = path.join(base, 'agents', '.sai-implementation-planning-worker.owner.json');
   try {
-    installClaude(base);
-    assert.ok(fs.existsSync(legacy), 'legacy fixture should exist after baseline install');
+    fs.mkdirSync(path.dirname(legacy), { recursive: true });
+    fs.writeFileSync(legacy, 'user-modified legacy worker\n');
     fs.writeFileSync(owner, '{}');
     const result = capture(() => installClaude(base));
     assert.equal(fs.existsSync(legacy), true);

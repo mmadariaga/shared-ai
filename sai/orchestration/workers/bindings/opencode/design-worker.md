@@ -2,7 +2,7 @@
 
 Start exactly one explicit worker with:
 
-`task(subagent_type: "sai-design-planning-worker", prompt: "<original InvocationEnvelope and design-worker instruction>")`
+`task(subagent_type: "sai-2-design-worker", prompt: "<original InvocationEnvelope and design-worker instruction>")`
 
 Capture and bind `task_id` in coordinator state. For `needs_input`, expose it
 only as binding-owned `continuation_reference`.

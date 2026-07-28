@@ -84,15 +84,15 @@ test('canonical manifest exposes the exact compatibility allowlist', () => {
     }));
   assert.deepEqual(compatibility, [
     {
-      source: 'sai/compat/design-invocation-core.md',
-      destination: { class: 'sai', path: 'compat/design-invocation-core.md' },
+      source: 'sai/compat/sai-2-design-core.md',
+      destination: { class: 'sai', path: 'compat/sai-2-design-core.md' },
       harnesses: ['claude', 'opencode', 'copilot'],
       recursive: false,
       overrides: 'sai-instructions',
     },
     {
-      source: 'sai/compat/implement-invocation-core.md',
-      destination: { class: 'sai', path: 'compat/implement-invocation-core.md' },
+      source: 'sai/compat/sai-3-implementation-core.md',
+      destination: { class: 'sai', path: 'compat/sai-3-implementation-core.md' },
       harnesses: ['claude', 'opencode', 'copilot'],
       recursive: false,
       overrides: 'sai-instructions',
@@ -128,20 +128,20 @@ test('canonical manifest keeps implementation projections harness-specific', () 
     claude: [
       'sai/orchestration/coordinator-contract.md',
       'sai/orchestration/worker-lifecycle.md',
-      'sai/orchestration/workers/implementation-worker.md',
+      'sai/orchestration/workers/sai-3-implementation-worker.md',
       'sai/orchestration/workers/bindings/claude/implementation-worker.md',
-      'skills/claude/sai-implementation-planning-worker/SKILL.md',
-      'agents/claude/sai-implementation-planning-worker.md',
+      'skills/claude/sai-3-implementation-worker/SKILL.md',
+      'agents/claude/sai-3-implementation-worker.md',
     ],
     opencode: [
       'sai/orchestration/coordinator-contract.md',
       'sai/orchestration/worker-lifecycle.md',
-      'sai/orchestration/workers/implementation-worker.md',
+      'sai/orchestration/workers/sai-3-implementation-worker.md',
       'sai/orchestration/workers/bindings/opencode/implementation-worker.md',
-      'skills/opencode/sai-implementation-planning-worker/SKILL.md',
+      'skills/opencode/sai-3-implementation-worker/SKILL.md',
     ],
     copilot: [
-      'sai/compat/implement-invocation-core.md',
+      'sai/compat/sai-3-implementation-core.md',
       'sai/compat/implement-invocation.md',
     ],
   };
@@ -161,7 +161,7 @@ test('canonical manifest keeps implementation projections harness-specific', () 
       assert.equal(sourceSet.has('sai/orchestration/workers/bindings/opencode/implementation-worker.md'), false);
     } else if (harness === 'opencode') {
       assert.equal(sourceSet.has('sai/orchestration/workers/bindings/claude/implementation-worker.md'), false);
-      assert.equal(sourceSet.has('agents/claude/sai-implementation-planning-worker.md'), false);
+      assert.equal(sourceSet.has('agents/claude/sai-3-implementation-worker.md'), false);
     } else {
       assert.equal([...sourceSet].some(source => source.startsWith('sai/orchestration/')), false);
       assert.equal([...sourceSet].some(source => source.includes('/bindings/')), false);
@@ -185,8 +185,8 @@ test('compatibility and policy projections resolve for every supported harness',
       repoRoot: path.join(__dirname, '..'),
       destinationRoot,
     });
-    assert.ok(projections.some(p => p.destinationPath.endsWith(path.join('compat', 'design-invocation-core.md'))));
-    assert.ok(projections.some(p => p.destinationPath.endsWith(path.join('compat', 'implement-invocation-core.md'))));
+    assert.ok(projections.some(p => p.destinationPath.endsWith(path.join('compat', 'sai-2-design-core.md'))));
+    assert.ok(projections.some(p => p.destinationPath.endsWith(path.join('compat', 'sai-3-implementation-core.md'))));
     assert.ok(projections.some(p => p.destinationPath.endsWith(path.join('compat', '_templates', 'adr-index.md'))));
     assert.ok(projections.some(p => p.destinationPath.endsWith(path.join('policies', 'glossary-format.md'))));
     assert.ok(projections.some(p => p.destinationPath.endsWith(path.join('policies', 'remember.md'))));
@@ -195,6 +195,28 @@ test('compatibility and policy projections resolve for every supported harness',
       projections.some(p => p.destinationPath.endsWith(path.join('compat', 'implement-invocation.md'))),
       harness === 'copilot'
     );
+  }
+});
+
+test('canonical identity surfaces reject former routed names', () => {
+  const repoRoot = path.join(__dirname, '..');
+  const paths = [
+    'configs/opencode.jsonc',
+    'sai/install-manifest.json',
+    'commands/claude/sai-2-design.md',
+    'commands/claude/sai-3-implement.md',
+    'commands/opencode/sai-2-design.md',
+    'commands/opencode/sai-3-implement.md',
+    'commands/copilot/sai-2-design.prompt.md',
+    'commands/copilot/sai-3-implement.prompt.md',
+    'sai/orchestration/workers/sai-2-design-worker.md',
+    'sai/orchestration/workers/sai-3-implementation-worker.md',
+    'README.md',
+    'AGENTS.md',
+  ];
+  const former = /sai-design-coordinator|sai-implementation-coordinator|sai-design-planning-worker|sai-implementation-planning-worker|Fetch @sai\/compat\/(?:design|implement)-invocation-core\.md/;
+  for (const relativePath of paths) {
+    assert.doesNotMatch(fs.readFileSync(path.join(repoRoot, relativePath), 'utf8'), former, relativePath);
   }
 });
 

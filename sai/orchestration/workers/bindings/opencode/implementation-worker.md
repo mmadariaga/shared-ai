@@ -4,7 +4,7 @@
 
 Start exactly one explicit worker with:
 
-`task(subagent_type: "sai-implementation-planning-worker", prompt: "<original InvocationEnvelope and implementation-worker instruction>")`
+`task(subagent_type: "sai-3-implementation-worker", prompt: "<original InvocationEnvelope and implementation-worker instruction>")`
 
 This is the binding dispatch operation.
 

@@ -45,7 +45,7 @@ test('installClaude copies all standalone policies to dest/sai/policies/', () =>
 test('installClaude copies shared compatibility assets but not the Copilot-only inline loader', () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-claude-'));
   installClaude(tmpDir);
-  for (const file of ['design-invocation-core.md', 'implement-invocation-core.md', path.join('_templates', 'adr-index.md')]) {
+  for (const file of ['sai-2-design-core.md', 'sai-3-implementation-core.md', path.join('_templates', 'adr-index.md')]) {
     assert.ok(fs.existsSync(path.join(tmpDir, 'sai', 'compat', file)), `${file} should be projected`);
   }
   assert.equal(fs.existsSync(path.join(tmpDir, 'sai', 'compat', 'implement-invocation.md')), false);
@@ -89,8 +89,8 @@ test('installClaude reuses compatible unowned worker content without recreating 
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-claude-'));
   try {
     installClaude(tmpDir);
-    const agentPath = path.join(tmpDir, 'agents', 'sai-implementation-planning-worker.md');
-    const sidecarPath = path.join(tmpDir, 'agents', '.sai-implementation-planning-worker.owner.json');
+    const agentPath = path.join(tmpDir, 'agents', 'sai-3-implementation-worker.md');
+    const sidecarPath = path.join(tmpDir, 'agents', '.sai-3-implementation-worker.owner.json');
     const beforeBytes = fs.readFileSync(agentPath);
     fs.unlinkSync(sidecarPath);
 

@@ -1,6 +1,6 @@
 ---
-name: sai-implementation-planning-worker
-description: Claude Code binding for the SAI implementation-planning worker.
+name: sai-3-implementation-worker
+description: Claude Code binding for the SAI numbered implementation worker.
 license: MIT
 compatibility: claude
 ---
