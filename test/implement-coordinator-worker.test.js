@@ -8,6 +8,7 @@ const path = require('path');
 const jsonc = require('jsonc-parser');
 
 const repoRoot = path.join(__dirname, '..');
+const { loadInstallManifest, expandInstallManifest } = require('../bin/install-manifest.js');
 
 function artifact(relativePath) {
   const fullPath = path.join(repoRoot, relativePath);
@@ -132,7 +133,8 @@ test('opencode config defines exact namespaced coordinator and worker shapes', (
 });
 
 test('install surfaces expose managed Claude assets and opencode shapes', () => {
-  const { installClaude, installOpencode } = require('../bin/install-flow.js');
+const { installClaude, installOpencode } = require('../bin/install-flow.js');
+const { loadInstallManifest, expandInstallManifest } = require('../bin/install-manifest.js');
   const claudeBase = tempDir('sai-implement-claude-');
   const opencodeBase = tempDir('sai-implement-opencode-');
   try {
@@ -177,12 +179,12 @@ test('installer collisions preserve unfamiliar content and provide remediation g
 });
 
 test('uninstall and doctor expose ownership guards and collision status', async () => {
-  const { installClaude } = require('../bin/install-flow.js');
-  const { enumerateClaude, runDeletion } = require('../bin/uninstall-flow.js');
+  const { installClaude, installOpencode } = require('../bin/install-flow.js');
+  const { enumerateClaude, enumerateOpencode, buildDeletionSet, runDeletion } = require('../bin/uninstall-flow.js');
   const { main } = require('../bin/doctor.js');
   const claudeBase = tempDir('sai-implement-claude-guard-');
   const projectRoot = tempDir('sai-implement-doctor-');
-  const opencodeBase = path.join(projectRoot, 'missing-opencode');
+  const opencodeBase = path.join(projectRoot, 'opencode');
   const copilot = {
     promptsBase: path.join(projectRoot, 'missing-copilot-prompts'),
     skillsBase: path.join(projectRoot, 'missing-copilot-skills'),
@@ -194,12 +196,51 @@ test('uninstall and doctor expose ownership guards and collision status', async 
     fs.writeFileSync(path.join(projectRoot, 'openspec', 'config.yaml'), 'schema: sai-workflow\n');
 
     installClaude(claudeBase);
+    installOpencode(opencodeBase);
+    const implementationSources = new Set([
+      'sai/orchestration/coordinator-contract.md',
+      'sai/orchestration/worker-lifecycle.md',
+      'sai/orchestration/workers/implementation-worker.md',
+      'sai/orchestration/workers/bindings/claude/implementation-worker.md',
+      'skills/claude/sai-implementation-planning-worker/SKILL.md',
+      'agents/claude/sai-implementation-planning-worker.md',
+      'sai/orchestration/workers/bindings/opencode/implementation-worker.md',
+      'skills/opencode/sai-implementation-planning-worker/SKILL.md',
+    ]);
+    const manifest = loadInstallManifest(repoRoot);
+    function expectedSources(harness) {
+      return expandInstallManifest(manifest, {
+        harness,
+        repoRoot,
+        destinationRoot: {
+          commands: projectRoot,
+          sai: projectRoot,
+          skills: projectRoot,
+          agents: projectRoot,
+          config: projectRoot,
+        },
+      })
+        .filter(projection => implementationSources.has(path.relative(repoRoot, projection.sourcePath).split(path.sep).join('/')))
+        .map(projection => path.relative(repoRoot, projection.sourcePath).split(path.sep).join('/'))
+        .sort();
+    }
+    function enumeratedSources(entries) {
+      return entries
+        .map(entry => path.relative(repoRoot, entry.src).split(path.sep).join('/'))
+        .filter(source => implementationSources.has(source))
+        .sort();
+    }
+
     const agentPath = path.join(claudeBase, 'agents', 'sai-implementation-planning-worker.md');
     const sidecarPath = path.join(claudeBase, 'agents', '.sai-implementation-planning-worker.owner.json');
     assert.ok(fs.existsSync(agentPath), 'managed Claude agent should be enumerable');
     assert.ok(fs.existsSync(sidecarPath), 'managed Claude ownership sidecar should be enumerable');
 
     const unchangedEntries = enumerateClaude(claudeBase);
+    assert.deepEqual(enumeratedSources(unchangedEntries), expectedSources('claude'),
+      'Claude uninstall should enumerate the installer implementation projection set');
+    assert.deepEqual(enumeratedSources(enumerateOpencode(opencodeBase)), expectedSources('opencode'),
+      'opencode uninstall should enumerate the installer implementation projection set');
     assert.ok(unchangedEntries.some(entry => entry.dest === agentPath), 'uninstall should include the managed agent');
     runDeletion(unchangedEntries);
     assert.equal(fs.existsSync(agentPath), false, 'unchanged owned agent should be deleted');
@@ -224,6 +265,28 @@ test('uninstall and doctor expose ownership guards and collision status', async 
     assert.ok(code === 0 || code === 1, 'doctor should return a normal status code');
     assert.match(report, /sai-implementation-planning-worker/);
     assert.match(report, /ownership|collision|rename|remove|modified/i);
+    const doctorReport = JSON.parse(report);
+    const claudeDoctorSection = JSON.stringify(doctorReport['[Claude Code]']);
+    assert.match(claudeDoctorSection, /sai-implementation-planning-worker/,
+      'doctor should enumerate the managed implementation worker');
+    assert.match(claudeDoctorSection, /ownership|collision|modified|incompatible/i,
+      'doctor should report the incompatible managed worker');
+
+    const opencodeEntries = buildDeletionSet({
+      claudeBase: path.join(projectRoot, 'missing-claude'),
+      opencodeBase,
+      copilot: {
+        promptsBase: path.join(projectRoot, 'missing-copilot-prompts'),
+        skillsBase: path.join(projectRoot, 'missing-copilot-skills'),
+        agentsBase: path.join(projectRoot, 'missing-copilot-agents'),
+        saiBase: path.join(projectRoot, 'missing-copilot-sai'),
+      },
+    }).filter(entry => entry.dest.startsWith(opencodeBase));
+    assert.equal(opencodeEntries.some(entry => /opencode\.jsonc?$/.test(entry.dest)), false,
+      'opencode configuration should be excluded from uninstall enumeration');
+    runDeletion(opencodeEntries);
+    assert.equal(fs.existsSync(path.join(opencodeBase, 'opencode.jsonc')), true,
+      'uninstall should preserve opencode configuration');
   } finally {
     removeTempDir(claudeBase);
     removeTempDir(projectRoot);

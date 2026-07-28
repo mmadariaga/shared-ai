@@ -114,6 +114,62 @@ test('canonical manifest exposes the exact compatibility allowlist', () => {
   ]);
 });
 
+test('canonical manifest keeps implementation projections harness-specific', () => {
+  const repoRoot = path.join(__dirname, '..');
+  const manifest = loadInstallManifest(repoRoot);
+  const destinationRoot = {
+    commands: path.join(os.tmpdir(), 'sai-matrix-commands'),
+    sai: path.join(os.tmpdir(), 'sai-matrix-sai'),
+    skills: path.join(os.tmpdir(), 'sai-matrix-skills'),
+    agents: path.join(os.tmpdir(), 'sai-matrix-agents'),
+    config: path.join(os.tmpdir(), 'sai-matrix-config'),
+  };
+  const implementationSources = {
+    claude: [
+      'sai/orchestration/coordinator-contract.md',
+      'sai/orchestration/worker-lifecycle.md',
+      'sai/orchestration/workers/implementation-worker.md',
+      'sai/orchestration/workers/bindings/claude/implementation-worker.md',
+      'skills/claude/sai-implementation-planning-worker/SKILL.md',
+      'agents/claude/sai-implementation-planning-worker.md',
+    ],
+    opencode: [
+      'sai/orchestration/coordinator-contract.md',
+      'sai/orchestration/worker-lifecycle.md',
+      'sai/orchestration/workers/implementation-worker.md',
+      'sai/orchestration/workers/bindings/opencode/implementation-worker.md',
+      'skills/opencode/sai-implementation-planning-worker/SKILL.md',
+    ],
+    copilot: [
+      'sai/compat/implement-invocation-core.md',
+      'sai/compat/implement-invocation.md',
+    ],
+  };
+
+  for (const harness of Object.keys(implementationSources)) {
+    const projections = expandInstallManifest(manifest, { harness, repoRoot, destinationRoot });
+    const sourceSet = new Set(projections.map(projection => path.relative(repoRoot, projection.sourcePath).split(path.sep).join('/')));
+    const destinations = projections.map(projection => projection.destinationPath);
+
+    assert.equal(new Set(destinations).size, destinations.length, `${harness} destinations should be unique`);
+    assert.deepEqual(destinations, [...destinations].sort(), `${harness} destinations should be ordered`);
+    for (const source of implementationSources[harness]) {
+      assert.ok(sourceSet.has(source), `${harness} should include ${source}`);
+    }
+
+    if (harness === 'claude') {
+      assert.equal(sourceSet.has('sai/orchestration/workers/bindings/opencode/implementation-worker.md'), false);
+    } else if (harness === 'opencode') {
+      assert.equal(sourceSet.has('sai/orchestration/workers/bindings/claude/implementation-worker.md'), false);
+      assert.equal(sourceSet.has('agents/claude/sai-implementation-planning-worker.md'), false);
+    } else {
+      assert.equal([...sourceSet].some(source => source.startsWith('sai/orchestration/')), false);
+      assert.equal([...sourceSet].some(source => source.includes('/bindings/')), false);
+      assert.equal([...sourceSet].some(source => source.startsWith('agents/claude/')), false);
+    }
+  }
+});
+
 test('compatibility and policy projections resolve for every supported harness', () => {
   const manifest = loadInstallManifest(path.join(__dirname, '..'));
   const destinationRoot = {

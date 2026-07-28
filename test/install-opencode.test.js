@@ -219,6 +219,26 @@ test('copyOpencodeConfig is idempotent when fully configured with all agents', (
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });
 
+test('installOpencode preserves commented JSONC with compatible namespaced agents', () => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-'));
+  const configPath = path.join(tmpDir, 'opencode.jsonc');
+  const config = {
+    displayName: 'unrelated project',
+    agent: Object.fromEntries([
+      ...AGENT_KEYS.map(key => [key, { ...AGENT_PLACEHOLDER }]),
+      ...Object.entries(OPENCODE_MANAGED_AGENTS),
+    ]),
+  };
+  const fixture = `// preserve this comment\n${JSON.stringify(config, null, 2)}\n`;
+  try {
+    fs.writeFileSync(configPath, fixture);
+    installOpencode(tmpDir);
+    assert.deepEqual(fs.readFileSync(configPath, 'utf8'), fixture, 'compatible namespaced JSONC should remain byte-identical');
+  } finally {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+});
+
 test('copyOpencodeConfig prints add-notice naming only added keys', () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-'));
   const config = { agent: { explore: { mode: 'subagent', model: 'opencode-go/deepseek-v4-flash' } } };

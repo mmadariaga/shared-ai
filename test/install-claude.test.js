@@ -84,3 +84,21 @@ test('installClaude overwrites stale command wrappers', () => {
   assert.notEqual(fs.readFileSync(skillFile, 'utf8'), 'old content', 'existing stale file should be overwritten');
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });
+
+test('installClaude reuses compatible unowned worker content without recreating ownership', () => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-claude-'));
+  try {
+    installClaude(tmpDir);
+    const agentPath = path.join(tmpDir, 'agents', 'sai-implementation-planning-worker.md');
+    const sidecarPath = path.join(tmpDir, 'agents', '.sai-implementation-planning-worker.owner.json');
+    const beforeBytes = fs.readFileSync(agentPath);
+    fs.unlinkSync(sidecarPath);
+
+    installClaude(tmpDir);
+
+    assert.deepEqual(fs.readFileSync(agentPath), beforeBytes, 'compatible unowned worker bytes should remain unchanged');
+    assert.equal(fs.existsSync(sidecarPath), false, 'compatible unowned worker should remain unowned');
+  } finally {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+});
