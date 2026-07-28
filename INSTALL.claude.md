@@ -23,7 +23,7 @@ npx github:mmadariaga/shared-ai
 npx github:mmadariaga/shared-ai setup /path/to/your/project
 ```
 
-Step 1 copies all commands and skills to `~/.claude/`. Step 2 verifies the openspec CLI, runs `openspec init --tools claude` if needed, sets `schema: sai-workflow` in `openspec/config.yaml`, and copies the schema templates into the project.
+Step 1 expands `sai/install-manifest.json` and copies the Claude Code projection to `~/.claude/`. It includes Claude commands, shared instructions/policies/compatibility assets, the shared Orchestration Core contracts, only the Claude routed worker bindings, Claude skills, and managed worker agents. Step 2 verifies the openspec CLI, runs `openspec init --tools claude` if needed, sets `schema: sai-workflow` in `openspec/config.yaml`, and copies the schema templates into the project. `doctor` and `uninstall` use the same manifest projection.
 
 ## Manual installation
 
@@ -47,6 +47,17 @@ if [ -d ~/.claude/sai/instructions ]; then
 fi
 mkdir -p ~/.claude/sai/instructions
 cp sai/instructions/*.md ~/.claude/sai/instructions/
+
+# Copy shared policies and compatibility assets
+mkdir -p ~/.claude/sai/policies ~/.claude/sai/compat
+cp sai/policies/*.md ~/.claude/sai/policies/
+cp -r sai/compat/. ~/.claude/sai/compat/
+
+# Copy the shared Orchestration Core and Claude-only routed bindings
+mkdir -p ~/.claude/sai/orchestration
+cp sai/orchestration/coordinator-contract.md ~/.claude/sai/orchestration/
+cp sai/orchestration/worker-lifecycle.md ~/.claude/sai/orchestration/
+cp -r sai/orchestration/workers/. ~/.claude/sai/orchestration/workers/
 
 mkdir -p ~/.claude/skills/token-efficient-languages
 cp skills/universal/token-efficient-languages/SKILL.md ~/.claude/skills/token-efficient-languages/SKILL.md
@@ -89,6 +100,18 @@ if (Test-Path $instructionsDir) {
 }
 New-Item -ItemType Directory -Force -Path $instructionsDir | Out-Null
 Copy-Item sai\instructions\*.md $instructionsDir\
+
+# Copy shared policies and compatibility assets
+New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\.claude\sai\policies" | Out-Null
+Copy-Item sai\policies\*.md "$env:USERPROFILE\.claude\sai\policies\"
+New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\.claude\sai\compat" | Out-Null
+Copy-Item sai\compat\* "$env:USERPROFILE\.claude\sai\compat\" -Recurse -Force
+
+# Copy the shared Orchestration Core and Claude-only routed bindings
+New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\.claude\sai\orchestration" | Out-Null
+Copy-Item sai\orchestration\coordinator-contract.md "$env:USERPROFILE\.claude\sai\orchestration\"
+Copy-Item sai\orchestration\worker-lifecycle.md "$env:USERPROFILE\.claude\sai\orchestration\"
+Copy-Item sai\orchestration\workers\ "$env:USERPROFILE\.claude\sai\orchestration\workers" -Recurse -Force
 
 # Copy skills
 New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\.claude\skills\token-efficient-languages" | Out-Null

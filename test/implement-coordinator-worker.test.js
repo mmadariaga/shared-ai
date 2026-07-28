@@ -431,3 +431,21 @@ test('Step 3 opencode installer documentation covers managed entries, routing sh
   assert.match(opencode, /uninstall[\s\S]{0,220}(?:preserv|retain|unchanged)[\s\S]{0,100}(?:config|opencode\.jsonc)/i);
   assert.match(opencode, /restart(?:ing)?[\s\S]{0,120}(?:required|must|need|after|reload)/i);
 });
+
+test('Step 5 installer documentation matches the deterministic manifest and Copilot allowlist', () => {
+  const manifest = artifact('sai/install-manifest.json');
+  const agents = artifact('AGENTS.md');
+  const claude = artifact('INSTALL.claude.md');
+  const opencode = artifact('INSTALL.opencode.md');
+  const copilot = artifact('INSTALL.copilot.md');
+
+  assert.match(manifest, /"id": "claude-orchestration"/);
+  assert.match(manifest, /"id": "opencode-orchestration"/);
+  assert.match(manifest, /"id": "copilot-implement-invocation"/);
+  assert.match(agents, /manifest-driven installer|deterministic.*manifest/i);
+  assert.match(claude, /sai\/orchestration\/workers/);
+  assert.match(opencode, /sai\/orchestration\/workers/);
+  assert.match(copilot, /policy and compatibility allowlist/i);
+  assert.match(copilot, /Do not copy sai\/orchestration/i);
+  assert.doesNotMatch(copilot, /copy sai[\\/]orchestration[\\/]workers/i);
+});

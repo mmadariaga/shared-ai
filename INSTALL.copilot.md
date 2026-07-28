@@ -23,7 +23,7 @@ npx github:mmadariaga/shared-ai
 npx github:mmadariaga/shared-ai setup /path/to/your/project
 ```
 
-Step 1 copies all commands and skills to the VS Code user prompts folder and `~/.copilot/skills/`. Step 2 verifies the openspec CLI, runs `openspec init --tools copilot` if needed, sets `schema: sai-workflow` in `openspec/config.yaml`, and copies the schema templates into the project.
+Step 1 expands `sai/install-manifest.json` into the Copilot projection: prompt files, shared commands/instructions, the shared policies, and the explicit compatibility allowlist under `sai/compat/`. It does not install `sai/orchestration/` or any Claude/opencode routed worker binding, so Copilot has no routed binding. Step 2 verifies the openspec CLI, runs `openspec init --tools copilot` if needed, sets `schema: sai-workflow` in `openspec/config.yaml`, and copies the schema templates into the project. `doctor` and `uninstall` use the same manifest projection.
 
 ## Manual installation
 
@@ -58,6 +58,15 @@ if [ -d "$SAI_DIR/instructions" ]; then
 fi
 mkdir -p "$SAI_DIR/instructions"
 cp -r sai/instructions/. "$SAI_DIR/instructions/"
+
+# Copy the Copilot policy and compatibility allowlist only.
+mkdir -p "$SAI_DIR/policies" "$SAI_DIR/compat"
+cp sai/policies/*.md "$SAI_DIR/policies/"
+cp sai/compat/design-invocation-core.md "$SAI_DIR/compat/"
+cp sai/compat/implement-invocation-core.md "$SAI_DIR/compat/"
+cp sai/compat/implement-invocation.md "$SAI_DIR/compat/"
+cp -r sai/compat/_templates "$SAI_DIR/compat/"
+# Do not copy sai/orchestration or routed Claude/opencode bindings.
 
 # Copy skills
 mkdir -p "$SKILLS_DIR/fetch"
@@ -105,6 +114,16 @@ if (Test-Path $instructionsDir) {
 }
 New-Item -ItemType Directory -Force -Path $instructionsDir | Out-Null
 Copy-Item sai\instructions\* $instructionsDir -Recurse -Force
+
+# Copy the Copilot policy and compatibility allowlist only.
+New-Item -ItemType Directory -Force -Path "$saiDir\policies" | Out-Null
+Copy-Item sai\policies\*.md "$saiDir\policies\"
+New-Item -ItemType Directory -Force -Path "$saiDir\compat" | Out-Null
+Copy-Item sai\compat\design-invocation-core.md "$saiDir\compat\"
+Copy-Item sai\compat\implement-invocation-core.md "$saiDir\compat\"
+Copy-Item sai\compat\implement-invocation.md "$saiDir\compat\"
+Copy-Item sai\compat\_templates "$saiDir\compat" -Recurse -Force
+# Do not copy sai/orchestration or routed Claude/opencode bindings.
 
 # Copy skills
 New-Item -ItemType Directory -Force -Path "$skillsDir\fetch" | Out-Null

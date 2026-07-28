@@ -247,6 +247,12 @@ Everything else stays intact.
 
 Commands are designed as **user globals**, not per project. A single copy in the CLI's global directory makes them available in any repo.
 
+### Shared Orchestration Core
+
+Claude Code and opencode use the shared Orchestration Core under `sai/orchestration/`: common coordinator and worker lifecycle contracts plus mirrored harness bindings. Their bindings are installed as separate projections, so each harness owns only its dispatch mechanics. The reusable policy layer lives under `sai/policies/`, and caller-neutral loaders/assets live under `sai/compat/`. GitHub Copilot remains inline through an explicit compatibility boundary: it receives the shared policies and compatibility allowlist, but no routed orchestration source or worker binding. All three harnesses preserve the same durable artifacts and command contracts.
+
+The installer expands `sai/install-manifest.json` deterministically. Install, `doctor`, and uninstall consume that same manifest, so the allowlisted files, destination projections, content-drift checks, and safe removal behavior stay aligned across Claude Code, opencode, and Copilot.
+
 ### Automatic npx installer (recommended)
 
 ```bash
@@ -254,7 +260,7 @@ Commands are designed as **user globals**, not per project. A single copy in the
 npx github:mmadariaga/shared-ai
 ```
 
-Presents an interactive checklist to select Claude Code, opencode, and/or GitHub Copilot as targets, then copies all files to the correct OS-aware destinations. If you pick opencode and its CLI isn't on PATH, the installer offers to install it for you. It also offers (once, editor-agnostic) to install the **CodeGraph** CLI and wire its MCP server — see [Third Party Tools](#third-party-tools). Both offers only prompt on a TTY; in CI they just print the command and never block the file copy.
+Presents an interactive checklist to select Claude Code, opencode, and/or GitHub Copilot as targets, then expands `sai/install-manifest.json` into deterministic OS-aware projections. If you pick opencode and its CLI isn't on PATH, the installer offers to install it for you. It also offers (once, editor-agnostic) to install the **CodeGraph** CLI and wire its MCP server — see [Third Party Tools](#third-party-tools). Both offers only prompt on a TTY; in CI they just print the command and never block the file copy.
 
 ```bash
 # 2. In each project where you want to use shared-AI:
@@ -352,7 +358,7 @@ This chart may help you identify which models to test. The intelligence axis is 
 
 The x-axis (cost) is usually more reliable, but again, do your own tests. Note that costs can vary depending on the provider — the same model may be priced differently across API providers, subscriptions, and regions.
 
-![Intelligence vs Cost (Jul 2026)](Intelligence-vs-Cost-(16-Jul-'26).png)
+![Intelligence vs Cost (Jul 2026)](Intelligence-vs-Cost-(27-Jul-'26).png)
 
 Another ranking of models focused on front-end web development tasks: https://arena.ai/leaderboard/code/webdev
 
@@ -367,8 +373,9 @@ harness plus the project's OpenSpec state:
 
     npx github:mmadariaga/shared-ai doctor
 
-It reports, per harness (Claude Code, opencode, Copilot): missing/unexpected
-files, dangling `Fetch @` references, and version skew against `main`; plus a
+It reports, per harness (Claude Code, opencode, Copilot): manifest-allowlisted
+missing/unexpected files, content drift, dangling `Fetch @` references, and
+version skew against `main`; plus a
 `[Project health]` section (openspec binary, `openspec/` dir, `schema: sai-workflow`)
 and OpenSpec-skill staleness. It never changes anything — it only recommends
 fixes (re-run the installer, `openspec init`).

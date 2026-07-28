@@ -24,7 +24,7 @@ npx github:mmadariaga/shared-ai
 npx github:mmadariaga/shared-ai setup /path/to/your/project
 ```
 
-Step 1 copies all commands and skills to `~/.config/opencode/`. Step 2 verifies the openspec CLI, runs `openspec init --tools opencode` if needed, sets `schema: sai-workflow` in `openspec/config.yaml`, and copies the schema templates into the project.
+Step 1 expands `sai/install-manifest.json` and copies the opencode projection to `~/.config/opencode/`. It includes opencode commands, shared instructions/policies/compatibility assets, the shared Orchestration Core contracts, only the opencode routed worker bindings, opencode skills, and the managed configuration projection. Step 2 verifies the openspec CLI, runs `openspec init --tools opencode` if needed, sets `schema: sai-workflow` in `openspec/config.yaml`, and copies the schema templates into the project. `doctor` and `uninstall` use the same manifest projection.
 
 ## Manual installation
 
@@ -50,6 +50,17 @@ if [ -d ~/.config/opencode/sai/instructions ]; then
 fi
 mkdir -p ~/.config/opencode/sai/instructions
 cp sai/instructions/*.md ~/.config/opencode/sai/instructions/
+
+# Copy shared policies and compatibility assets
+mkdir -p ~/.config/opencode/sai/policies ~/.config/opencode/sai/compat
+cp sai/policies/*.md ~/.config/opencode/sai/policies/
+cp -r sai/compat/. ~/.config/opencode/sai/compat/
+
+# Copy the shared Orchestration Core and opencode-only routed bindings
+mkdir -p ~/.config/opencode/sai/orchestration
+cp sai/orchestration/coordinator-contract.md ~/.config/opencode/sai/orchestration/
+cp sai/orchestration/worker-lifecycle.md ~/.config/opencode/sai/orchestration/
+cp -r sai/orchestration/workers/. ~/.config/opencode/sai/orchestration/workers/
 
 # Copy skills (skip if already installed)
 mkdir -p ~/.config/opencode/skills/token-efficient-languages
@@ -134,6 +145,18 @@ if (Test-Path $instructionsDir) {
 }
 New-Item -ItemType Directory -Force -Path $instructionsDir | Out-Null
 Copy-Item sai\instructions\*.md $instructionsDir\
+
+# Copy shared policies and compatibility assets
+New-Item -ItemType Directory -Force -Path "$configDir\sai\policies" | Out-Null
+Copy-Item sai\policies\*.md "$configDir\sai\policies\"
+New-Item -ItemType Directory -Force -Path "$configDir\sai\compat" | Out-Null
+Copy-Item sai\compat\* "$configDir\sai\compat\" -Recurse -Force
+
+# Copy the shared Orchestration Core and opencode-only routed bindings
+New-Item -ItemType Directory -Force -Path "$configDir\sai\orchestration" | Out-Null
+Copy-Item sai\orchestration\coordinator-contract.md "$configDir\sai\orchestration\"
+Copy-Item sai\orchestration\worker-lifecycle.md "$configDir\sai\orchestration\"
+Copy-Item sai\orchestration\workers\ "$configDir\sai\orchestration\workers" -Recurse -Force
 
 # Copy skills
 New-Item -ItemType Directory -Force -Path "$configDir\skills\token-efficient-languages" | Out-Null

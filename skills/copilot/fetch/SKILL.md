@@ -30,9 +30,9 @@ When you encounter `"Fetch @<path>"` or `"Also fetch @<path>"` in any instructio
 | macOS | `~/Library/Application Support/Code/User/prompts` | `~/Library/Application Support/Code/User/sai` |
 | Linux | `~/.config/Code/User/prompts` | `~/.config/Code/User/sai` |
 
-So `Fetch @sai/instructions/prereqs.md` resolves to:
-- `.github/sai/instructions/prereqs.md` (project-local, if it exists), OR
-- `%APPDATA%\Code\User\sai\instructions\prereqs.md` (Windows global)
+So `Fetch @sai/policies/prereqs.md` resolves to:
+- `.github/sai/policies/prereqs.md` (project-local, if it exists), OR
+- `%APPDATA%\Code\User\sai\policies\prereqs.md` (Windows global)
 
 ### Examples
 

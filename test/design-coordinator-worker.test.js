@@ -450,3 +450,25 @@ test('documentation records the active design compatibility boundary and managed
   assert.match(copilot, /budget-explorer/);
   assert.match(copilot, /subagent support/i);
 });
+
+test('Step 5 documentation records manifest projections and routed-source boundaries', () => {
+  const readme = artifact('README.md');
+  const agents = artifact('AGENTS.md');
+  const claude = artifact('INSTALL.claude.md');
+  const opencode = artifact('INSTALL.opencode.md');
+  const copilot = artifact('INSTALL.copilot.md');
+
+  for (const text of [readme, agents, claude, opencode, copilot]) {
+    assert.match(text, /sai\/install-manifest\.json/);
+    assert.match(text, /doctor/);
+    assert.match(text, /uninstall/);
+    assert.match(text, /sai\/policies/);
+    assert.match(text, /sai\/compat/);
+  }
+  assert.match(agents, /sai\/orchestration\//);
+  assert.match(readme, /shared Orchestration Core/i);
+  assert.match(claude, /Claude-only routed bindings/i);
+  assert.match(opencode, /opencode-only routed bindings/i);
+  assert.match(copilot, /does not install `sai\/orchestration\/`/i);
+  assert.match(copilot, /no routed binding/i);
+});
