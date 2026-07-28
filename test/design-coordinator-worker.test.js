@@ -79,7 +79,10 @@ test('design wrappers activate routed Claude/opencode entry and preserve inline 
 
   assert.match(copilot, /model: Claude Opus 4\.8 \(copilot\)/);
   assert.match(copilot, /tools: \[vscode, read, search, edit, execute, web\]/);
-  assert.match(copilot, /sai-2-design-inline\.md/);
+  assert.match(copilot, /sai\/orchestration\/inline-invocation\.md/);
+  assert.match(copilot, /^phase: sai-2-design$/m);
+  assert.match(copilot, /^arguments: \$ARGUMENTS$/m);
+  assert.doesNotMatch(copilot, /sai-2-design-inline\.md/);
   assert.doesNotMatch(copilot, /sai-design-coordinator|sai-design-planning-worker|sai-implementation-planning-worker/);
 
   const spec = artifact('openspec/specs/design-coordinator/spec.md');
@@ -515,8 +518,9 @@ test('Step 5 documentation records manifest projections and routed-source bounda
   assert.match(readme, /shared Orchestration Core/i);
   assert.match(claude, /Claude-only routed bindings/i);
   assert.match(opencode, /opencode-only routed bindings/i);
-  assert.match(copilot, /does not install `sai\/orchestration\/`/i);
-  assert.match(copilot, /no routed binding/i);
+  assert.match(copilot, /sai\/orchestration\/inline-invocation\.md/);
+  assert.match(copilot, /no routed binding|Do not copy routed/i);
+  assert.doesNotMatch(copilot, /copy sai[\\/]orchestration[\\/]workers/i);
 });
 
 // ─── Step 1: preservation-first legacy identity migration ───────────────────

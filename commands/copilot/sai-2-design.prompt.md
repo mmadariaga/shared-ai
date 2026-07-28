@@ -8,4 +8,7 @@ tools: [vscode, read, search, edit, execute, web]
 ## Sai Design - 2
 
 Use the skill tool to load the fetch skill.
-Fetch @sai/commands/sai-2-design-inline.md and follow those instructions exactly.
+Fetch @sai/orchestration/inline-invocation.md and follow those instructions exactly.
+
+phase: sai-2-design
+arguments: $ARGUMENTS

@@ -8,4 +8,7 @@ tools: [vscode, read, search, edit, execute, web]
 ## Sai Implement - 3
 
 Use the skill tool to load the fetch skill.
-Fetch @sai/commands/sai-3-implement-inline.md and follow those instructions exactly.
+Fetch @sai/orchestration/inline-invocation.md and follow those instructions exactly.
+
+phase: sai-3-implement
+arguments: $ARGUMENTS

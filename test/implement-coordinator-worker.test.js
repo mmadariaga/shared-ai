@@ -307,7 +307,10 @@ test('Step 2 routes Claude and opencode through the coordinator but preserves Co
   assert.match(opencode, /sai-coordinator/);
   assert.match(opencode, /Fetch @skills\/sai-3-implementation-worker\/SKILL\.md/);
   assert.match(opencode, /Fetch @sai\/commands\/sai-3-implement\.md/);
-  assert.match(copilot, /sai-3-implement-inline\.md/);
+  assert.match(copilot, /sai\/orchestration\/inline-invocation\.md/);
+  assert.match(copilot, /^phase: sai-3-implement$/m);
+  assert.match(copilot, /^arguments: \$ARGUMENTS$/m);
+  assert.doesNotMatch(copilot, /sai-3-implement-inline\.md/);
   assert.doesNotMatch(copilot, /sai-implementation-coordinator/);
   assert.match(opencode, /^agent:\s*sai-coordinator\s*$/m);
   assert.match(opencode, /^subtask:\s*false\s*$/m);
@@ -355,7 +358,10 @@ test('routed harness bindings and inline parity', () => {
       name: 'Copilot',
       wrapper: artifact('commands/copilot/sai-3-implement.prompt.md'),
       assertContract(_binding, _forwardingSkill, wrapper) {
-        assert.match(wrapper, /sai-3-implement-inline\.md/);
+        assert.match(wrapper, /sai\/orchestration\/inline-invocation\.md/);
+        assert.match(wrapper, /^phase: sai-3-implement$/m);
+        assert.match(wrapper, /^arguments: \$ARGUMENTS$/m);
+        assert.doesNotMatch(wrapper, /sai-3-implement-inline\.md/);
         assert.doesNotMatch(wrapper, /sai-implementation-coordinator/);
       },
     },
@@ -485,7 +491,11 @@ test('worker and inline invocation own prerequisites and picker while coordinato
 
   assert.match(worker, /openspec CLI not found|OpenSpec not initialized|schema:\s*sai-workflow/i);
   assert.match(worker, /Use change '\{name\}'\?|Which change\?|0\/1\/N|zero,? one,? or multiple/i);
-  assert.match(inline, /sai-3-implement-inline\.md/);
+  assert.match(inline, /sai\/orchestration\/inline-invocation\.md/);
+  assert.match(inline, /^phase: sai-3-implement$/m);
+  assert.match(inline, /^arguments: \$ARGUMENTS$/m);
+  assert.doesNotMatch(inline, /sai-3-implement-inline\.md/);
+  assert.doesNotMatch(inline, /sai-implementation-coordinator/);
   assert.doesNotMatch(coordinator, /openspec CLI not found|OpenSpec not initialized|schema:\s*sai-workflow/i);
   assert.doesNotMatch(coordinator, /Use change '\{name\}'\?|Which change\?|0\/1\/N|zero,? one,? or multiple/i);
 });
@@ -509,7 +519,11 @@ test('completed routed output uses the coordinator contract while inline invocat
     )
   );
   assert.match(coordinator, /Stop immediately/);
-  assert.match(inline, /sai-3-implement-inline\.md/);
+  assert.match(inline, /sai\/orchestration\/inline-invocation\.md/);
+  assert.match(inline, /^phase: sai-3-implement$/m);
+  assert.match(inline, /^arguments: \$ARGUMENTS$/m);
+  assert.doesNotMatch(inline, /sai-3-implement-inline\.md/);
+  assert.doesNotMatch(inline, /sai-implementation-coordinator/);
   assert.match(invocation, /core/);
   assert.match(invocation, /MANDATORY STOP/);
 });
@@ -620,7 +634,8 @@ test('Step 5 installer documentation matches the deterministic manifest and Copi
   assert.match(claude, /sai\/orchestration\/workers/);
   assert.match(opencode, /sai\/orchestration\/workers/);
   assert.match(copilot, /policy and compatibility allowlist/i);
-  assert.match(copilot, /Do not copy sai\/orchestration/i);
+  assert.match(copilot, /sai\/orchestration\/inline-invocation\.md/);
+  assert.match(copilot, /no routed binding|Do not copy routed/i);
   assert.doesNotMatch(copilot, /copy sai[\\/]orchestration[\\/]workers/i);
 });
 

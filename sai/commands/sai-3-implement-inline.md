@@ -6,23 +6,10 @@
 
 <TASK>
 
-  Fetch @sai/policies/change-picker.md and follow it exactly.
+Fetch @sai/orchestration/inline-invocation.md and follow those instructions exactly.
 
-  ## Prerequisite checks
-  Fetch @sai/policies/prereqs.md
-
-  Also verify before proceeding:
-  - `openspec/changes/{change-name}/proposal.md` exists. If not, STOP and print: "Change '{change-name}' not found. Run /sai-1-spec to create it first."
-  - `openspec/changes/{change-name}/design.md` exists. If not, STOP and print: "design.md not found for '{change-name}'. Run /sai-2-design first."
-  - `openspec/changes/{change-name}/tasks.md` exists. If not, STOP and print: "tasks.md not found for '{change-name}'. Run /sai-2-design first."
-
-  Do not create or modify any files if any check fails.
-
-  ## Load behaviors (in order)
-  Fetch @skills/budget/SKILL.md and use it
-
-  ## Invoke implementation
-Fetch @sai/compat/implement-invocation.md and follow it exactly (Load instructions, Run, Completion).
+phase: sai-3-implement
+arguments: $ARGUMENTS
 </TASK>
 
 Follow instruction on <TASK> step by step
