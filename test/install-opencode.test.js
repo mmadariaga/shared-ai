@@ -47,6 +47,13 @@ test('installOpencode copies shared compatibility assets but not the Copilot-onl
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });
 
+test('installOpencode does not project the Copilot inline orchestration adapter', () => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-'));
+  installOpencode(tmpDir);
+  assert.equal(fs.existsSync(path.join(tmpDir, 'sai', 'orchestration', 'inline-invocation.md')), false);
+  fs.rmSync(tmpDir, { recursive: true, force: true });
+});
+
 test('installOpencode copies all Opencode-specific skills', () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-'));
   installOpencode(tmpDir);

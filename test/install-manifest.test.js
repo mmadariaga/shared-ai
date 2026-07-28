@@ -114,6 +114,63 @@ test('canonical manifest exposes the exact compatibility allowlist', () => {
   ]);
 });
 
+test('canonical manifest installs exactly one Copilot inline orchestration adapter projection', () => {
+  const repoRoot = path.join(__dirname, '..');
+  const manifest = loadInstallManifest(repoRoot);
+  const inline = manifest.projections.filter(projection => projection.source === 'sai/orchestration/inline-invocation.md');
+
+  assert.equal(inline.length, 1, 'inline adapter should have one managed owner');
+  assert.deepEqual(
+    {
+      source: inline[0].source,
+      destination: inline[0].destination,
+      harnesses: inline[0].harnesses,
+      strategy: inline[0].strategy,
+      recursive: inline[0].recursive,
+      ownership: inline[0].ownership,
+      drift: inline[0].drift,
+    },
+    {
+      source: 'sai/orchestration/inline-invocation.md',
+      destination: { class: 'sai', path: 'orchestration/inline-invocation.md' },
+      harnesses: ['copilot'],
+      strategy: 'copy',
+      recursive: false,
+      ownership: 'managed',
+      drift: 'content',
+    }
+  );
+  assert.equal(
+    manifest.projections.filter(projection => projection.destination.path === 'orchestration/inline-invocation.md').length,
+    1,
+    'inline adapter destination should not have a second owner'
+  );
+  for (const harness of ['claude', 'opencode']) {
+    const projections = expandInstallManifest(manifest, {
+      harness,
+      repoRoot,
+      destinationRoot: {
+        commands: path.join(os.tmpdir(), `sai-inline-${harness}-commands`),
+        sai: path.join(os.tmpdir(), `sai-inline-${harness}-sai`),
+        skills: path.join(os.tmpdir(), `sai-inline-${harness}-skills`),
+        agents: path.join(os.tmpdir(), `sai-inline-${harness}-agents`),
+        config: path.join(os.tmpdir(), `sai-inline-${harness}-config`),
+      },
+    });
+    assert.equal(
+      projections.some(projection => projection.sourcePath.endsWith(path.join('sai', 'orchestration', 'inline-invocation.md'))),
+      false,
+      `${harness} must not receive the Copilot inline adapter`
+    );
+  }
+  const copilotOrchestration = manifest.projections.filter(projection =>
+    projection.harnesses.includes('copilot') && projection.source.startsWith('sai/orchestration/')
+  );
+  assert.deepEqual(copilotOrchestration.map(projection => projection.source), [
+    'sai/orchestration/inline-invocation.md',
+  ]);
+});
+
 test('canonical manifest keeps implementation projections harness-specific', () => {
   const repoRoot = path.join(__dirname, '..');
   const manifest = loadInstallManifest(repoRoot);
@@ -163,8 +220,12 @@ test('canonical manifest keeps implementation projections harness-specific', () 
       assert.equal(sourceSet.has('sai/orchestration/workers/bindings/claude/implementation-worker.md'), false);
       assert.equal(sourceSet.has('agents/claude/sai-3-implementation-worker.md'), false);
     } else {
-      assert.equal([...sourceSet].some(source => source.startsWith('sai/orchestration/')), false);
+      assert.deepEqual(
+        [...sourceSet].filter(source => source.startsWith('sai/orchestration/')).sort(),
+        ['sai/orchestration/inline-invocation.md']
+      );
       assert.equal([...sourceSet].some(source => source.includes('/bindings/')), false);
+      assert.equal([...sourceSet].some(source => source.includes('/workers/')), false);
       assert.equal([...sourceSet].some(source => source.startsWith('agents/claude/')), false);
     }
   }

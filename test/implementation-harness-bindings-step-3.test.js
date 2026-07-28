@@ -96,8 +96,12 @@ test('Step 3 manifest projects the shared lifecycle and one active harness bindi
       assert.equal(sources.has('sai/orchestration/workers/bindings/claude/implementation-worker.md'), false);
       assert.equal(sources.has('agents/claude/sai-3-implementation-worker.md'), false);
     } else {
-      assert.equal([...sources].some(source => source.startsWith('sai/orchestration/')), false);
+      assert.deepEqual(
+        [...sources].filter(source => source.startsWith('sai/orchestration/')).sort(),
+        ['sai/orchestration/inline-invocation.md']
+      );
       assert.equal([...sources].some(source => source.includes('/bindings/')), false);
+      assert.equal([...sources].some(source => source.includes('/workers/')), false);
     }
   }
 });

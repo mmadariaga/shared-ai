@@ -52,6 +52,13 @@ test('installClaude copies shared compatibility assets but not the Copilot-only 
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });
 
+test('installClaude does not project the Copilot inline orchestration adapter', () => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-claude-'));
+  installClaude(tmpDir);
+  assert.equal(fs.existsSync(path.join(tmpDir, 'sai', 'orchestration', 'inline-invocation.md')), false);
+  fs.rmSync(tmpDir, { recursive: true, force: true });
+});
+
 test('installClaude copies all Claude-specific skills', () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-claude-'));
   installClaude(tmpDir);
