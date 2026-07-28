@@ -16,126 +16,52 @@ const {
   COPILOT_AGENTS_BASE,
   COPILOT_SAI_BASE,
   promptYesNoReadline,
-  CLAUDE_IMPLEMENTATION_WORKER_AGENT,
-  CLAUDE_IMPLEMENTATION_WORKER_OWNER,
-  CLAUDE_DESIGN_WORKER_AGENT,
-  CLAUDE_DESIGN_WORKER_OWNER,
 } = require('./install-flow.js');
+const { loadInstallManifest, expandInstallManifest } = require('./install-manifest');
 
 const REPOSITORY_ROOT = path.join(__dirname, '..');
 
-// Per-editor skill lists — mirror the hardcoded copy() calls in install-flow.js's
-// install* functions (design D1). The symmetry test locks any drift.
-const CLAUDE_SKILLS = [
-  { tier: 'universal', name: 'budget' },
-  { tier: 'universal', name: 'sai-commands' },
-  { tier: 'universal', name: 'safe-operations' },
-  { tier: 'universal', name: 'token-efficient-languages' },
-  { tier: 'claude', name: 'budget-explorer' },
-  { tier: 'claude', name: 'budget-executor' },
-  { tier: 'claude', name: 'budget-subagent' },
-  { tier: 'claude', name: 'fetch' },
-  { tier: 'claude', name: 'sai-implementation-planning-worker' },
-  { tier: 'claude', name: 'sai-design-planning-worker' },
-];
-
-const OPENCODE_SKILLS = [
-  { tier: 'universal', name: 'budget' },
-  { tier: 'universal', name: 'sai-commands' },
-  { tier: 'universal', name: 'safe-operations' },
-  { tier: 'universal', name: 'token-efficient-languages' },
-  { tier: 'opencode', name: 'budget-explorer' },
-  { tier: 'opencode', name: 'budget-executor' },
-  { tier: 'opencode', name: 'budget-subagent' },
-  { tier: 'opencode', name: 'fetch' },
-  { tier: 'opencode', name: 'sai-implementation-planning-worker' },
-  { tier: 'opencode', name: 'sai-design-planning-worker' },
-];
-
-const COPILOT_SKILLS = [
-  { tier: 'copilot', name: 'fetch' },
-  { tier: 'universal', name: 'budget' },
-  { tier: 'copilot', name: 'budget-explorer' },
-  { tier: 'copilot', name: 'budget-executor' },
-  { tier: 'copilot', name: 'budget-subagent' },
-  { tier: 'universal', name: 'sai-commands' },
-  { tier: 'universal', name: 'safe-operations' },
-  { tier: 'universal', name: 'token-efficient-languages' },
-];
-
-function mapMdFlat(srcDir, destDir) {
-  return listMdFiles(srcDir).map(src => ({ src, dest: path.join(destDir, path.basename(src)) }));
-}
-
-function mapMdRecursive(srcRoot, destRoot) {
-  return listMdFilesRecursive(srcRoot).map(src => ({
-    src,
-    dest: path.join(destRoot, path.relative(srcRoot, src)),
-  }));
-}
-
-function mapSkills(skillList, destSkillsDir) {
-  return skillList.map(({ tier, name }) => ({
-    src: path.join(REPOSITORY_ROOT, 'skills', tier, name, 'SKILL.md'),
-    dest: path.join(destSkillsDir, name, 'SKILL.md'),
-  }));
+function manifestEntries(harness, destinationRoot, editorBase) {
+  const projections = expandInstallManifest(loadInstallManifest(REPOSITORY_ROOT), {
+    harness,
+    repoRoot: REPOSITORY_ROOT,
+    destinationRoot,
+  });
+  const entries = [];
+  for (const projection of projections) {
+    if (projection.strategy === 'merge-jsonc') {
+      const configPath = fs.existsSync(path.join(editorBase, 'opencode.json'))
+        ? path.join(editorBase, 'opencode.json')
+        : path.join(editorBase, 'opencode.jsonc');
+      if (fs.existsSync(configPath)) entries.push({ src: configPath, dest: configPath, editorBase, assetType: 'opencode-config', ruleId: projection.id });
+      continue;
+    }
+    const entry = {
+      src: projection.sourcePath,
+      dest: projection.destinationPath,
+      editorBase,
+      ruleId: projection.id,
+    };
+    if (projection.strategy === 'owned-copy') {
+      entry.assetType = 'claude-managed-agent';
+      entry.ownerPath = path.join(path.dirname(projection.destinationPath), `.${path.basename(projection.destinationPath, '.md')}.owner.json`);
+      entries.push(entry);
+      if (fs.existsSync(entry.ownerPath)) entries.push({ src: entry.ownerPath, dest: entry.ownerPath, editorBase, assetType: 'claude-managed-agent-owner', ruleId: projection.id });
+    } else {
+      entries.push(entry);
+    }
+  }
+  return entries;
 }
 
 function enumerateClaude(destBase) {
   const targetPath = destBase || CLAUDE_BASE;
-  const entries = [
-    ...mapMdFlat(path.join(REPOSITORY_ROOT, 'commands', 'claude'), path.join(targetPath, 'commands')),
-    ...mapMdFlat(path.join(REPOSITORY_ROOT, 'sai', 'commands'), path.join(targetPath, 'sai', 'commands')),
-    ...mapMdRecursive(path.join(REPOSITORY_ROOT, 'sai', 'instructions'), path.join(targetPath, 'sai', 'instructions')),
-  ];
-  const managedWorkers = [
-    { agent: CLAUDE_IMPLEMENTATION_WORKER_AGENT, owner: CLAUDE_IMPLEMENTATION_WORKER_OWNER },
-    { agent: CLAUDE_DESIGN_WORKER_AGENT, owner: CLAUDE_DESIGN_WORKER_OWNER },
-  ];
-  for (const { agent, owner } of managedWorkers) {
-    const agentPath = path.join(targetPath, 'agents', agent);
-    const ownerPath = path.join(targetPath, 'agents', owner);
-    entries.push({
-      src: path.join(REPOSITORY_ROOT, 'agents', 'claude', agent),
-      dest: agentPath,
-      assetType: 'claude-managed-agent',
-      ownerPath,
-    });
-    if (fs.existsSync(ownerPath)) {
-      entries.push({ src: ownerPath, dest: ownerPath, assetType: 'claude-managed-agent-owner' });
-    }
-  }
-  entries.push(...mapSkills(CLAUDE_SKILLS, path.join(targetPath, 'skills')));
-  const mappedDests = new Set(entries.map(e => e.dest));
-  for (const dir of ['commands']) {
-    const dirPath = path.join(targetPath, dir);
-    if (fs.existsSync(dirPath)) {
-      for (const f of fs.readdirSync(dirPath).filter(f => f.endsWith('.md'))) {
-        const dest = path.join(dirPath, f);
-        if (!mappedDests.has(dest)) {
-          entries.push({ src: dest, dest, editorBase: targetPath });
-        }
-      }
-    }
-  }
-  return entries.map(e => ({ ...e, editorBase: targetPath }));
+  return manifestEntries('claude', { commands: path.join(targetPath, 'commands'), sai: path.join(targetPath, 'sai'), skills: path.join(targetPath, 'skills'), agents: path.join(targetPath, 'agents'), config: targetPath }, targetPath);
 }
 
 function enumerateOpencode(destBase) {
   const targetPath = destBase || OPENCODE_BASE;
-  const entries = [
-    ...mapMdFlat(path.join(REPOSITORY_ROOT, 'commands', 'opencode'), path.join(targetPath, 'commands')),
-    ...mapMdFlat(path.join(REPOSITORY_ROOT, 'sai', 'commands'), path.join(targetPath, 'sai', 'commands')),
-    ...mapMdRecursive(path.join(REPOSITORY_ROOT, 'sai', 'instructions'), path.join(targetPath, 'sai', 'instructions')),
-    ...mapSkills(OPENCODE_SKILLS, path.join(targetPath, 'skills')),
-  ];
-  const configPath = fs.existsSync(path.join(targetPath, 'opencode.json'))
-    ? path.join(targetPath, 'opencode.json')
-    : path.join(targetPath, 'opencode.jsonc');
-  if (fs.existsSync(configPath)) {
-    entries.push({ src: configPath, dest: configPath, assetType: 'opencode-config' });
-  }
-  return entries.map(e => ({ ...e, editorBase: targetPath }));
+  return manifestEntries('opencode', { commands: path.join(targetPath, 'commands'), sai: path.join(targetPath, 'sai'), skills: path.join(targetPath, 'skills'), agents: path.join(targetPath, 'agents'), config: targetPath }, targetPath);
 }
 
 function enumerateCopilot(promptsBase, skillsBase, agentsBase, saiBase) {
@@ -143,13 +69,7 @@ function enumerateCopilot(promptsBase, skillsBase, agentsBase, saiBase) {
   const skillsPath = skillsBase || COPILOT_SKILLS_BASE;
   const agentsPath = agentsBase || COPILOT_AGENTS_BASE;
   const saiPath = saiBase || COPILOT_SAI_BASE;
-  return [
-    ...mapMdFlat(path.join(REPOSITORY_ROOT, 'commands', 'copilot'), promptsPath).map(e => ({ ...e, editorBase: promptsPath })),
-    ...mapMdFlat(path.join(REPOSITORY_ROOT, 'sai', 'commands'), path.join(saiPath, 'commands')).map(e => ({ ...e, editorBase: saiPath })),
-    ...mapMdRecursive(path.join(REPOSITORY_ROOT, 'sai', 'instructions'), path.join(saiPath, 'instructions')).map(e => ({ ...e, editorBase: saiPath })),
-    ...mapSkills(COPILOT_SKILLS, skillsPath).map(e => ({ ...e, editorBase: skillsPath })),
-    ...mapMdFlat(path.join(REPOSITORY_ROOT, 'agents', 'copilot'), agentsPath).map(e => ({ ...e, editorBase: agentsPath })),
-  ];
+  return manifestEntries('copilot', { commands: promptsPath, sai: saiPath, skills: skillsPath, agents: agentsPath, config: saiPath }, saiPath);
 }
 
 function buildDeletionSet(overrides = {}) {

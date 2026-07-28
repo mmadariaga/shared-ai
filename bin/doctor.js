@@ -161,24 +161,37 @@ function detectHarnesses({ claudeBase, opencodeBase, copilot }) {
 function inventoryHarness(section, expectedEntries, { projectRoot, harness }) {
   const records = [];
   const expected = expectedEntries.filter(e => e.src !== e.dest);
-  const expectedDests = new Set(expected.map(e => e.dest));
+  const expectedDests = new Set(expectedEntries.map(e => e.dest));
 
-  const missing = expected.filter(e => !fs.existsSync(e.dest)).map(e => shorten(e.dest));
+  const missing = expected.filter(e => !fs.existsSync(e.dest)).map(e => ({ path: shorten(e.dest), ruleId: e.ruleId }));
   records.push(missing.length === 0
     ? { section, name: 'files', severity: 'ok', message: `${expected.length} expected files present` }
-    : { section, name: 'files', severity: 'error', message: `${missing.length} expected file(s) missing: ${missing.join(', ')}`, path: missing.join(', '), recommendation: 'Re-run the installer: npx github:mmadariaga/shared-ai install' });
+    : { section, name: 'files', severity: 'error', message: `${missing.length} expected file(s) missing: ${missing.map(item => item.path).join(', ')}`, path: missing.map(item => item.path).join(', '), rules: missing.map(item => item.ruleId), recommendation: 'Re-run the installer: npx github:mmadariaga/shared-ai install' });
 
-  const dirs = new Set(expected.map(e => path.dirname(e.dest)));
+  const roots = new Set();
+  if (harness.kind === 'copilot') {
+    roots.add(harness.base);
+    roots.add(harness.copilotSaiBase);
+    roots.add(harness.copilotSkillsBase);
+    roots.add(harness.copilotAgentsBase);
+  } else {
+    roots.add(path.join(harness.base, 'commands'));
+    roots.add(path.join(harness.base, 'sai'));
+    roots.add(path.join(harness.base, 'skills'));
+    roots.add(path.join(harness.base, 'agents'));
+  }
   const unexpected = [];
-  for (const dir of dirs) {
-    if (!fs.existsSync(dir)) continue;
-    for (const f of fs.readdirSync(dir).filter(n => n.endsWith('.md'))) {
-      const full = path.join(dir, f);
-      if (!expectedDests.has(full)) unexpected.push(shorten(full));
+  function visit(dir) {
+    if (!fs.existsSync(dir)) return;
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) visit(full);
+      else if (entry.isFile() && !expectedDests.has(full)) unexpected.push(shorten(full));
     }
   }
+  for (const root of roots) visit(root);
   if (unexpected.length > 0) {
-    records.push({ section, name: 'unexpected', severity: 'warn', message: `${unexpected.length} unexpected file(s): ${unexpected.join(', ')}`, path: unexpected.join(', ') });
+    records.push({ section, name: 'unexpected', severity: 'warn', message: `${unexpected.length} unexpected file(s): ${unexpected.join(', ')}`, path: unexpected.join(', '), rules: unexpected.map(() => null) });
   }
 
   if (harness.kind === 'copilot') {

@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "projections": [
+    { "id": "claude-commands", "source": "commands/claude", "destination": { "class": "commands", "path": "." }, "harnesses": ["claude"], "strategy": "copy", "recursive": true, "include": ["*.md"], "ownership": "managed", "drift": "content" },
+    { "id": "opencode-commands", "source": "commands/opencode", "destination": { "class": "commands", "path": "." }, "harnesses": ["opencode"], "strategy": "copy", "recursive": true, "include": ["*.md"], "ownership": "managed", "drift": "content" },
+    { "id": "copilot-prompts", "source": "commands/copilot", "destination": { "class": "commands", "path": "." }, "harnesses": ["copilot"], "strategy": "copy", "recursive": true, "include": ["*.prompt.md"], "ownership": "managed", "drift": "content" },
+    { "id": "sai-commands", "source": "sai/commands", "destination": { "class": "sai", "path": "commands" }, "harnesses": ["claude", "opencode", "copilot"], "strategy": "copy", "recursive": true, "include": ["*.md"], "ownership": "managed", "drift": "content" },
+    { "id": "sai-instructions", "source": "sai/instructions", "destination": { "class": "sai", "path": "instructions" }, "harnesses": ["claude", "opencode", "copilot"], "strategy": "copy", "recursive": true, "include": ["**/*.md"], "ownership": "managed", "drift": "content" },
+    { "id": "universal-skills", "source": "skills/universal", "destination": { "class": "skills", "path": "." }, "harnesses": ["claude", "opencode", "copilot"], "strategy": "copy", "recursive": true, "include": ["**/SKILL.md"], "ownership": "managed", "drift": "content" },
+    { "id": "claude-skills", "source": "skills/claude", "destination": { "class": "skills", "path": "." }, "harnesses": ["claude"], "strategy": "copy", "recursive": true, "include": ["**/SKILL.md"], "ownership": "managed", "drift": "content" },
+    { "id": "opencode-skills", "source": "skills/opencode", "destination": { "class": "skills", "path": "." }, "harnesses": ["opencode"], "strategy": "copy", "recursive": true, "include": ["**/SKILL.md"], "ownership": "managed", "drift": "content" },
+    { "id": "copilot-skills", "source": "skills/copilot", "destination": { "class": "skills", "path": "." }, "harnesses": ["copilot"], "strategy": "copy", "recursive": true, "include": ["**/SKILL.md"], "ownership": "managed", "drift": "content" },
+    { "id": "claude-implementation-agent", "source": "agents/claude/sai-implementation-planning-worker.md", "destination": { "class": "agents", "path": "sai-implementation-planning-worker.md" }, "harnesses": ["claude"], "strategy": "owned-copy", "recursive": false, "ownership": "owned", "drift": "content" },
+    { "id": "claude-design-agent", "source": "agents/claude/sai-design-planning-worker.md", "destination": { "class": "agents", "path": "sai-design-planning-worker.md" }, "harnesses": ["claude"], "strategy": "owned-copy", "recursive": false, "ownership": "owned", "drift": "content" },
+    { "id": "copilot-agents", "source": "agents/copilot", "destination": { "class": "agents", "path": "." }, "harnesses": ["copilot"], "strategy": "copy", "recursive": true, "include": ["*.agent.md"], "ownership": "managed", "drift": "content" },
+    { "id": "opencode-config", "source": "configs/opencode.jsonc", "destination": { "class": "config", "path": "opencode.jsonc" }, "harnesses": ["opencode"], "strategy": "merge-jsonc", "recursive": false, "ownership": "managed", "drift": "content" }
+  ]
+}

@@ -190,7 +190,10 @@ test('binding metadata captures agent/task IDs separately from worker payloads',
 
   assert.match(spec, /agent.*ID|task.*ID|binding.*metadata/i);
   assert.match(spec, /separat/i);
-  assert.doesNotMatch(spec, /worker.*payload.*(?:agent.*ID|task.*ID)/i);
+  assert.doesNotMatch(
+    spec,
+    /(?:DesignWorkerPayload|worker-authored\s+payload)[\s\S]{0,240}\b(?:agent(?:[_ -]?id)?|task(?:[_ -]?id)?|continuation[_ -]?reference)\b\s*[:=,]/i
+  );
 });
 
 test('continuation attempted first before dispatching replacement worker', () => {

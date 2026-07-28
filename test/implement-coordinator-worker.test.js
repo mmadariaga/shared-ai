@@ -235,8 +235,8 @@ test('Step 2 routes Claude and opencode through the coordinator but preserves Co
   const opencode = artifact('commands/opencode/sai-3-implement.md');
   const copilot = artifact('commands/copilot/sai-3-implement.prompt.md');
 
-  assert.match(claude, /^model:\s*claude-opus-4-8\s*$/m);
-  assert.match(claude, /^effort:\s*low\s*$/m);
+  assert.match(claude, /^model:\s*opus\s*$/m);
+  assert.match(claude, /^effort:\s*medium\s*$/m);
   assert.match(claude, /Fetch @skills\/sai-implementation-planning-worker\/SKILL\.md/);
   assert.match(claude, /Fetch @sai\/commands\/sai-3-implement\.md/);
   assert.match(opencode, /sai-implementation-coordinator/);

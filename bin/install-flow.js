@@ -9,6 +9,7 @@ const readline = require('readline');
 const childProcess = require('child_process');
 const crypto = require('crypto');
 const { isDeepStrictEqual } = require('util');
+const { loadInstallManifest, expandInstallManifest } = require('./install-manifest');
 
 let jsoncParser = null;
 try {
@@ -341,6 +342,36 @@ function installClaudeImplementationWorker(targetPath) {
   return installClaudeManagedWorker(targetPath, CLAUDE_IMPLEMENTATION_WORKER_AGENT, CLAUDE_IMPLEMENTATION_WORKER_OWNER);
 }
 
+function destinationRoots(harness, roots) {
+  if (harness === 'copilot') {
+    return { commands: roots.prompts, sai: roots.sai, skills: roots.skills, agents: roots.agents, config: roots.sai };
+  }
+  return { commands: path.join(roots.base, 'commands'), sai: path.join(roots.base, 'sai'), skills: path.join(roots.base, 'skills'), agents: path.join(roots.base, 'agents'), config: roots.base };
+}
+
+function installProjection(projection, targetPath) {
+  if (projection.strategy === 'merge-jsonc') {
+    copyOpencodeConfig(targetPath);
+    return;
+  }
+  if (projection.strategy === 'owned-copy') {
+    const agentName = path.basename(projection.destinationPath);
+    const ownerName = agentName === CLAUDE_IMPLEMENTATION_WORKER_AGENT ? CLAUDE_IMPLEMENTATION_WORKER_OWNER : CLAUDE_DESIGN_WORKER_OWNER;
+    installClaudeManagedWorker(targetPath, agentName, ownerName);
+    return;
+  }
+  copy(projection.sourcePath, projection.destinationPath);
+}
+
+function expandForInstall(harness, roots) {
+  const manifest = loadInstallManifest(REPOSITORY_ROOT);
+  return expandInstallManifest(manifest, {
+    harness,
+    repoRoot: REPOSITORY_ROOT,
+    destinationRoot: destinationRoots(harness, roots),
+  });
+}
+
 function listMdFiles(dir) {
   return fs.readdirSync(dir)
     .filter(f => f.endsWith('.md'))
@@ -369,68 +400,7 @@ function listMdFilesRecursive(dir) {
 
 function installClaude(destBase) {
   const targetPath = destBase || CLAUDE_BASE;
-
-  listMdFiles(path.join(REPOSITORY_ROOT, 'commands', 'claude')).forEach(src => {
-    copy(src, path.join(targetPath, 'commands', path.basename(src)));
-  });
-
-  listMdFiles(path.join(REPOSITORY_ROOT, 'sai', 'commands')).forEach(src => {
-    copy(src, path.join(targetPath, 'sai', 'commands', path.basename(src)));
-  });
-
-  listMdFilesRecursive(path.join(REPOSITORY_ROOT, 'sai', 'instructions')).forEach(src => {
-    copy(src, path.join(targetPath, 'sai', 'instructions', path.relative(path.join(REPOSITORY_ROOT, 'sai', 'instructions'), src)));
-  });
-
-  copy(
-    path.join(REPOSITORY_ROOT, 'skills', 'universal', 'budget', 'SKILL.md'),
-    path.join(targetPath, 'skills', 'budget', 'SKILL.md')
-  );
-
-  copy(
-    path.join(REPOSITORY_ROOT, 'skills', 'universal', 'sai-commands', 'SKILL.md'),
-    path.join(targetPath, 'skills', 'sai-commands', 'SKILL.md')
-  );
-
-  copy(
-    path.join(REPOSITORY_ROOT, 'skills', 'universal', 'safe-operations', 'SKILL.md'),
-    path.join(targetPath, 'skills', 'safe-operations', 'SKILL.md')
-  );
-
-  copy(
-    path.join(REPOSITORY_ROOT, 'skills', 'universal', 'token-efficient-languages', 'SKILL.md'),
-    path.join(targetPath, 'skills', 'token-efficient-languages', 'SKILL.md')
-  );
-
-  copy(
-    path.join(REPOSITORY_ROOT, 'skills', 'claude', 'budget-explorer', 'SKILL.md'),
-    path.join(targetPath, 'skills', 'budget-explorer', 'SKILL.md')
-  );
-  copy(
-    path.join(REPOSITORY_ROOT, 'skills', 'claude', 'budget-executor', 'SKILL.md'),
-    path.join(targetPath, 'skills', 'budget-executor', 'SKILL.md')
-  );
-  copy(
-    path.join(REPOSITORY_ROOT, 'skills', 'claude', 'budget-subagent', 'SKILL.md'),
-    path.join(targetPath, 'skills', 'budget-subagent', 'SKILL.md')
-  );
-  copy(
-    path.join(REPOSITORY_ROOT, 'skills', 'claude', 'fetch', 'SKILL.md'),
-    path.join(targetPath, 'skills', 'fetch', 'SKILL.md')
-  );
-
-  copy(
-    path.join(REPOSITORY_ROOT, 'skills', 'claude', 'sai-implementation-planning-worker', 'SKILL.md'),
-    path.join(targetPath, 'skills', 'sai-implementation-planning-worker', 'SKILL.md')
-  );
-
-  copy(
-    path.join(REPOSITORY_ROOT, 'skills', 'claude', 'sai-design-planning-worker', 'SKILL.md'),
-    path.join(targetPath, 'skills', 'sai-design-planning-worker', 'SKILL.md')
-  );
-
-  installClaudeImplementationWorker(targetPath);
-  installClaudeManagedWorker(targetPath, CLAUDE_DESIGN_WORKER_AGENT, CLAUDE_DESIGN_WORKER_OWNER);
+  for (const projection of expandForInstall('claude', { base: targetPath })) installProjection(projection, targetPath);
 
   writeVersionMarker(targetPath);
 }
@@ -441,121 +411,14 @@ function installCopilot(promptsBase, skillsBase, agentsBase, saiBase) {
   const agentsPath = agentsBase || COPILOT_AGENTS_BASE;
   const saiPath = saiBase || COPILOT_SAI_BASE;
 
-  listMdFiles(path.join(REPOSITORY_ROOT, 'commands', 'copilot')).forEach(src => {
-    copy(src, path.join(promptsPath, path.basename(src)));
-  });
-
-  listMdFiles(path.join(REPOSITORY_ROOT, 'sai', 'commands')).forEach(src => {
-    copy(src, path.join(saiPath, 'commands', path.basename(src)));
-  });
-
-  listMdFilesRecursive(path.join(REPOSITORY_ROOT, 'sai', 'instructions')).forEach(src => {
-    copy(src, path.join(saiPath, 'instructions', path.relative(path.join(REPOSITORY_ROOT, 'sai', 'instructions'), src)));
-  });
-
-  copy(
-    path.join(REPOSITORY_ROOT, 'skills', 'copilot', 'fetch', 'SKILL.md'),
-    path.join(skillsPath, 'fetch', 'SKILL.md')
-  );
-  copy(
-    path.join(REPOSITORY_ROOT, 'skills', 'universal', 'budget', 'SKILL.md'),
-    path.join(skillsPath, 'budget', 'SKILL.md')
-  );
-  copy(
-    path.join(REPOSITORY_ROOT, 'skills', 'copilot', 'budget-explorer', 'SKILL.md'),
-    path.join(skillsPath, 'budget-explorer', 'SKILL.md')
-  );
-  copy(
-    path.join(REPOSITORY_ROOT, 'skills', 'copilot', 'budget-executor', 'SKILL.md'),
-    path.join(skillsPath, 'budget-executor', 'SKILL.md')
-  );
-  copy(
-    path.join(REPOSITORY_ROOT, 'skills', 'copilot', 'budget-subagent', 'SKILL.md'),
-    path.join(skillsPath, 'budget-subagent', 'SKILL.md')
-  );
-  copy(
-    path.join(REPOSITORY_ROOT, 'skills', 'universal', 'sai-commands', 'SKILL.md'),
-    path.join(skillsPath, 'sai-commands', 'SKILL.md')
-  );
-  copy(
-    path.join(REPOSITORY_ROOT, 'skills', 'universal', 'safe-operations', 'SKILL.md'),
-    path.join(skillsPath, 'safe-operations', 'SKILL.md')
-  );
-  copy(
-    path.join(REPOSITORY_ROOT, 'skills', 'universal', 'token-efficient-languages', 'SKILL.md'),
-    path.join(skillsPath, 'token-efficient-languages', 'SKILL.md')
-  );
-
-  listMdFiles(path.join(REPOSITORY_ROOT, 'agents', 'copilot')).forEach(src => {
-    copy(src, path.join(agentsPath, path.basename(src)));
-  });
+  for (const projection of expandForInstall('copilot', { prompts: promptsPath, skills: skillsPath, agents: agentsPath, sai: saiPath })) installProjection(projection, saiPath);
 
   writeVersionMarker(saiPath);
 }
 
 function installOpencode(destBase) {
   const targetPath = destBase || OPENCODE_BASE;
-
-  listMdFiles(path.join(REPOSITORY_ROOT, 'commands', 'opencode')).forEach(src => {
-    copy(src, path.join(targetPath, 'commands', path.basename(src)));
-  });
-
-  listMdFiles(path.join(REPOSITORY_ROOT, 'sai', 'commands')).forEach(src => {
-    copy(src, path.join(targetPath, 'sai', 'commands', path.basename(src)));
-  });
-
-  listMdFilesRecursive(path.join(REPOSITORY_ROOT, 'sai', 'instructions')).forEach(src => {
-    copy(src, path.join(targetPath, 'sai', 'instructions', path.relative(path.join(REPOSITORY_ROOT, 'sai', 'instructions'), src)));
-  });
-
-  copy(
-    path.join(REPOSITORY_ROOT, 'skills', 'universal', 'budget', 'SKILL.md'),
-    path.join(targetPath, 'skills', 'budget', 'SKILL.md')
-  );
-
-  copy(
-    path.join(REPOSITORY_ROOT, 'skills', 'universal', 'sai-commands', 'SKILL.md'),
-    path.join(targetPath, 'skills', 'sai-commands', 'SKILL.md')
-  );
-
-  copy(
-    path.join(REPOSITORY_ROOT, 'skills', 'universal', 'safe-operations', 'SKILL.md'),
-    path.join(targetPath, 'skills', 'safe-operations', 'SKILL.md')
-  );
-
-  copy(
-    path.join(REPOSITORY_ROOT, 'skills', 'universal', 'token-efficient-languages', 'SKILL.md'),
-    path.join(targetPath, 'skills', 'token-efficient-languages', 'SKILL.md')
-  );
-
-  copy(
-    path.join(REPOSITORY_ROOT, 'skills', 'opencode', 'budget-explorer', 'SKILL.md'),
-    path.join(targetPath, 'skills', 'budget-explorer', 'SKILL.md')
-  );
-  copy(
-    path.join(REPOSITORY_ROOT, 'skills', 'opencode', 'budget-executor', 'SKILL.md'),
-    path.join(targetPath, 'skills', 'budget-executor', 'SKILL.md')
-  );
-  copy(
-    path.join(REPOSITORY_ROOT, 'skills', 'opencode', 'budget-subagent', 'SKILL.md'),
-    path.join(targetPath, 'skills', 'budget-subagent', 'SKILL.md')
-  );
-
-  copy(
-    path.join(REPOSITORY_ROOT, 'skills', 'opencode', 'fetch', 'SKILL.md'),
-    path.join(targetPath, 'skills', 'fetch', 'SKILL.md')
-  );
-  copy(
-    path.join(REPOSITORY_ROOT, 'skills', 'opencode', 'sai-implementation-planning-worker', 'SKILL.md'),
-    path.join(targetPath, 'skills', 'sai-implementation-planning-worker', 'SKILL.md')
-  );
-
-  copy(
-    path.join(REPOSITORY_ROOT, 'skills', 'opencode', 'sai-design-planning-worker', 'SKILL.md'),
-    path.join(targetPath, 'skills', 'sai-design-planning-worker', 'SKILL.md')
-  );
-
-  copyOpencodeConfig(targetPath);
+  for (const projection of expandForInstall('opencode', { base: targetPath })) installProjection(projection, targetPath);
 
   writeVersionMarker(targetPath);
 }
