@@ -13,6 +13,23 @@ function artifact(relativePath) {
   return fs.readFileSync(fullPath, 'utf8');
 }
 
+test('Step 2 uses one canonical coordinator, lifecycle, worker, and binding layout', () => {
+  const coordinator = artifact('sai/orchestration/coordinator-contract.md');
+  const lifecycle = artifact('sai/orchestration/worker-lifecycle.md');
+  const worker = artifact('sai/orchestration/workers/design-worker.md');
+  assert.match(coordinator, /completed|needs_input|failed|cancelled/);
+  assert.match(coordinator, /changed_files.*union|union.*changed_files/i);
+  assert.match(lifecycle, /resolved_change_name/);
+  assert.match(lifecycle, /binding-owned/);
+  assert.match(worker, /Fetch @sai\/orchestration\/worker-lifecycle\.md/);
+  for (const harness of ['claude', 'opencode']) {
+    assert.match(
+      artifact(`skills/${harness}/sai-design-planning-worker/SKILL.md`),
+      new RegExp(`sai/orchestration/workers/bindings/${harness}/design-worker\\.md`)
+    );
+  }
+});
+
 // ─── specs/deduplicate-sai-2-design/spec.md ────────────────────────────────
 
 test('design wrappers activate routed Claude/opencode entry and preserve inline Copilot boundary', () => {

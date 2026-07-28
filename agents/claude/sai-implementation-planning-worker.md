@@ -7,4 +7,4 @@ tools: Read, Glob, Grep, Bash, Edit, Write, Agent, Skill, SendMessage
 ---
 
 Fetch @skills/fetch/SKILL.md and follow those instructions.
-Fetch @sai/instructions/implement-worker.md and follow it exactly.
+Fetch @sai/orchestration/workers/implementation-worker.md and follow it exactly.

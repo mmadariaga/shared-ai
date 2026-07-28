@@ -1,5 +1,5 @@
 ---
-description: Granular implementation plan - coordinates a dedicated worker that writes openspec/changes/{name}/implementation.md.
+description: Granular implementation plan through the canonical coordinator contract and a routed worker.
 agent: sai-implementation-coordinator
 subtask: false
 ---

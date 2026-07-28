@@ -52,7 +52,7 @@ test('implementation invocation core and inline caller own distinct completion c
 });
 
 test('implementation worker declares the lifecycle and input/output contract', () => {
-  const worker = artifact('sai/instructions/implement-worker.md');
+  const worker = artifact('sai/orchestration/workers/implementation-worker.md');
 
   assert.match(worker, /InvocationEnvelope/);
   assert.match(worker, /wrapper_echo_value/);
@@ -95,7 +95,7 @@ test('Claude worker agent is pinned to the required model, effort, and tools', (
 
 test('Claude and opencode worker bindings own dispatch and continuation mechanics', () => {
   for (const harness of ['claude', 'opencode']) {
-    const binding = artifact(`skills/${harness}/sai-implementation-planning-worker/SKILL.md`);
+    const binding = artifact(`sai/orchestration/workers/bindings/${harness}/implementation-worker.md`);
     assert.match(binding, /dispatch/i);
     assert.match(binding, /binding[- ]owned|coordinator[- ]owned/i);
     assert.match(binding, /continuation_reference|continuation metadata/i);
@@ -295,8 +295,8 @@ test('coordinator owns status transitions, changed-file union, and exact termina
 
 test('needs_input continuation stays on the same worker and uses each harness binding', () => {
   const coordinator = artifact('sai/commands/sai-3-implement.md');
-  const claudeBinding = artifact('skills/claude/sai-implementation-planning-worker/SKILL.md');
-  const opencodeBinding = artifact('skills/opencode/sai-implementation-planning-worker/SKILL.md');
+  const claudeBinding = artifact('sai/orchestration/workers/bindings/claude/implementation-worker.md');
+  const opencodeBinding = artifact('sai/orchestration/workers/bindings/opencode/implementation-worker.md');
 
   assert.match(coordinator, /continuation_reference/);
   assert.match(coordinator, /binding-owned `continuation_reference`/);
@@ -319,7 +319,7 @@ test('needs_input continuation stays on the same worker and uses each harness bi
 
 test('worker and inline invocation own prerequisites and picker while coordinator does not', () => {
   const coordinator = artifact('sai/commands/sai-3-implement.md');
-  const worker = artifact('sai/instructions/implement-worker.md');
+  const worker = artifact('sai/orchestration/workers/implementation-worker.md');
   const inline = artifact('commands/copilot/sai-3-implement.prompt.md');
 
   assert.match(worker, /openspec CLI not found|OpenSpec not initialized|schema:\s*sai-workflow/i);
@@ -397,7 +397,6 @@ test('Step 3 AGENTS documents every coordinator, inline, worker, agent, binding,
   for (const entry of [
     'sai/commands/sai-3-implement.md',
     'sai/commands/sai-3-implement-inline.md',
-    'sai/instructions/implement-worker.md',
     'agents/claude/sai-implementation-planning-worker.md',
     'skills/claude/sai-implementation-planning-worker/SKILL.md',
     'skills/opencode/sai-implementation-planning-worker/SKILL.md',

@@ -1,5 +1,5 @@
 ---
-description: Generate design.md and tasks.md for a change through a routed design coordinator and planning worker.
+description: Generate design.md and tasks.md through the canonical coordinator contract and a routed design worker.
 argument-hint: "[change-name] [--fast-track]"
 model: claude-opus-4-8
 effort: low
