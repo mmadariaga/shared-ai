@@ -527,6 +527,19 @@ test('design continue-now bypasses the coordinator through invocation core', () 
   assert.match(invocation, /@sai\/compat\/sai-3-implementation-core\.md/);
 });
 
+test('Copilot inline coordinator owns implementation prerequisites and completion', () => {
+  const inline = artifact('sai/orchestration/inline-invocation.md');
+
+  assert.match(inline, /phase: sai-3-implement/);
+  assert.match(inline, /Fetch @sai\/compat\/sai-3-implementation-core\.md/);
+  assert.match(inline, /proposal\.md/);
+  assert.match(inline, /design\.md/);
+  assert.match(inline, /tasks\.md/);
+  assert.match(inline, /MANDATORY STOP/);
+  assert.match(inline, /Implementation plan done in openspec\/changes\/\{name\}\//);
+  assert.doesNotMatch(inline, /sai-4-apply's instructions|execute sai-4-apply/i);
+});
+
 test('Step 3 README documents routed roles, inline Copilot boundary, model independence, and artifact stability', () => {
   const readme = artifact('README.md');
 

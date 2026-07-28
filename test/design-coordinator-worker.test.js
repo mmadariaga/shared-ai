@@ -420,6 +420,27 @@ test('design coordinator spec says worker delegates only to explore', () => {
     'coordinator spec should not say worker delegates to any binding');
 });
 
+test('Copilot inline coordinator owns design dispatch and caller navigation', () => {
+  const inline = artifact('sai/orchestration/inline-invocation.md');
+
+  assert.match(inline, /^## Invocation envelope$/m);
+  assert.match(inline, /phase: sai-2-design/);
+  assert.match(inline, /arguments: \$ARGUMENTS/);
+  assert.match(inline, /Fetch @sai\/compat\/sai-2-design-core\.md/);
+  assert.match(inline, /fast-track/i);
+  assert.match(inline, /artifact-feedback-gate\.md/);
+  assert.match(inline, /Stop for a new chat/);
+  assert.match(inline, /Continue now in this chat/);
+});
+
+test('Copilot inline coordinator rejects an unsupported phase before phase work', () => {
+  const inline = artifact('sai/orchestration/inline-invocation.md');
+
+  assert.match(inline, /Invalid inline phase/);
+  assert.match(inline, /before running prerequisites, selection, or either phase core/i);
+  assert.match(inline, /MUST NOT introduce routed worker identifiers, worker continuation state, or `subagent_depth`/);
+});
+
 test('documentation records the active design compatibility boundary and managed paths', () => {
   const readme = artifact('README.md');
   const agents = artifact('AGENTS.md');
