@@ -9,6 +9,7 @@ const path = require('path');
 const {
   loadInstallManifest,
   expandInstallManifest,
+  expandRetirementManifest,
 } = require('../bin/install-manifest.js');
 
 function makeRepo() {
@@ -45,10 +46,10 @@ test('loadInstallManifest reads the versioned manifest shape', () => {
   try {
     fs.writeFileSync(
       path.join(repoRoot, 'sai', 'install-manifest.json'),
-      '{"version": 1, "projections": []}'
+      '{"version": 1, "projections": [], "retirements": []}'
     );
     const manifest = loadInstallManifest(repoRoot);
-    assert.deepEqual(manifest, { version: 1, projections: [] });
+    assert.deepEqual(manifest, { version: 1, projections: [], retirements: [] });
   } finally {
     fs.rmSync(repoRoot, { recursive: true, force: true });
   }
@@ -284,7 +285,7 @@ test('canonical identity surfaces reject former routed names', () => {
 test('the same manifest expansion provides one ordered inventory for all consumers', () => {
   const repoRoot = makeRepo();
   try {
-    const manifest = { version: 1, projections: [rule()] };
+    const manifest = { version: 1, projections: [rule()], retirements: [] };
      const options = { harness: 'claude', repoRoot, destinationRoot: { root: '' } };
     const installer = expandInstallManifest(manifest, options);
     const doctor = expandInstallManifest(manifest, options);
@@ -303,9 +304,10 @@ test('the same manifest expansion provides one ordered inventory for all consume
 test('recursive candidates are normalized, sorted, and filtered include-before-exclude', () => {
   const repoRoot = makeRepo();
   try {
-    const manifest = {
-      version: 1,
-      projections: [rule({ include: ['**/alpha.md', '**/zeta.md'], exclude: ['**/zeta.md'] })],
+      const manifest = {
+        version: 1,
+        projections: [rule({ include: ['**/alpha.md', '**/zeta.md'], exclude: ['**/zeta.md'] })],
+        retirements: [],
     };
     const projections = expandInstallManifest(manifest, { harness: 'claude', repoRoot, destinationRoot: { root: '/dest' } });
     assert.deepEqual(projections.map(p => p.destinationPath), [
@@ -319,16 +321,17 @@ test('recursive candidates are normalized, sorted, and filtered include-before-e
 test('explicit rules replace recursive candidates only when declared as overrides', () => {
   const repoRoot = makeRepo();
   try {
-    const manifest = {
-      version: 1,
-      projections: [
+      const manifest = {
+        version: 1,
+        projections: [
           rule({ id: 'recursive' }),
           rule({ id: 'explicit', source: 'commands/claude/alpha.md', destination: { class: 'root', path: 'claude/commands/alpha.md' }, recursive: false, overrides: 'recursive' }),
-      ],
+        ],
+        retirements: [],
     };
      const projections = expandInstallManifest(manifest, { harness: 'claude', repoRoot, destinationRoot: { root: '' } });
     assert.equal(projections.filter(p => p.destinationPath.endsWith('alpha.md')).length, 1);
-     assert.throws(() => expandInstallManifest({ version: 1, projections: [rule(), rule({ id: 'duplicate' })] }, { harness: 'claude', repoRoot, destinationRoot: { root: '' } }), /duplicate/i);
+      assert.throws(() => expandInstallManifest({ version: 1, projections: [rule(), rule({ id: 'duplicate' })], retirements: [] }, { harness: 'claude', repoRoot, destinationRoot: { root: '' } }), /duplicate/i);
   } finally {
     fs.rmSync(repoRoot, { recursive: true, force: true });
   }
@@ -336,13 +339,14 @@ test('explicit rules replace recursive candidates only when declared as override
 
 test('the graph is sorted by normalized destination and rule id without foreign harness bindings', () => {
   const repoRoot = makeRepo();
-  const manifest = {
+   const manifest = {
     version: 1,
     projections: [
        rule({ id: 'z-rule', destination: { class: 'root', path: 'z/claude' }, recursive: false, source: 'commands/claude/zeta.md' }),
        rule({ id: 'a-rule', destination: { class: 'root', path: 'a/claude' }, recursive: false, source: 'commands/claude/alpha.md' }),
       rule({ id: 'copilot-only', harnesses: ['copilot'], recursive: false, source: 'commands/copilot/foreign.md', destination: { class: 'root', path: 'copilot/foreign.md' } }),
     ],
+    retirements: [],
   };
   try {
       const projections = expandInstallManifest(manifest, { harness: 'claude', repoRoot, destinationRoot: { root: '' } });
@@ -369,8 +373,9 @@ test('all supported strategies produce generic projection metadata and safeguard
         recursive: false,
         strategy,
         ownership: index === 1 ? 'owned' : 'managed',
-        drift: index === 2 ? 'content' : 'missing',
+         drift: index === 2 ? 'content' : 'missing',
       })),
+      retirements: [],
     };
       const projections = expandInstallManifest(manifest, { harness: 'claude', repoRoot, destinationRoot: { root: '' } });
     assert.deepEqual(projections.map(p => p.strategy), strategies);
@@ -383,10 +388,99 @@ test('all supported strategies produce generic projection metadata and safeguard
 test('expanded projections expose missing, unexpected nested, and content drift audit targets', () => {
   const repoRoot = makeRepo();
   try {
-    const manifest = { version: 1, projections: [rule({ drift: 'content' })] };
+    const manifest = { version: 1, projections: [rule({ drift: 'content' })], retirements: [] };
      const projections = expandInstallManifest(manifest, { harness: 'claude', repoRoot, destinationRoot: { root: path.join(repoRoot, 'installed') } });
     assert.ok(projections.every(p => 'sourcePath' in p && 'destinationPath' in p && 'ownership' in p && 'drift' in p));
     assert.ok(projections.some(p => p.drift === 'content'));
+  } finally {
+    fs.rmSync(repoRoot, { recursive: true, force: true });
+  }
+});
+
+test('canonical manifest validates all historical retirements and excludes them from active projections', () => {
+  const repoRoot = path.join(__dirname, '..');
+  const manifest = loadInstallManifest(repoRoot);
+  const expected = [
+    {
+      id: 'retired-sai-2-design-inline',
+      destination: { class: 'sai', path: 'commands/sai-2-design-inline.md' },
+      harnesses: ['claude', 'opencode', 'copilot'],
+      managedHashes: [
+        'dc1a8c7a30896a9368a5c114aba100e45f26aa9d826996084d674576c274f1f7',
+        '21d3130c2d41251162aabb1682495e9cb37ab397c6de45e38207b701709e5159',
+        '7524f761c55a20c2c69915c8656e2699fa4b1aba2771ea2132970bf9afb00981',
+        'c1bb3a75dc12160745e6fda6fc26d091e1f23eda69775acac224bf29d5ab4741',
+        'a1db1d07057d6ef6f05b4c9b0254a7c45c6c8cfeedcbe1a6a7a5415638350141',
+      ],
+    },
+    {
+      id: 'retired-sai-3-implement-inline',
+      destination: { class: 'sai', path: 'commands/sai-3-implement-inline.md' },
+      harnesses: ['claude', 'opencode', 'copilot'],
+      managedHashes: [
+        '9881841bfee6eaf4492e4da3df936281abe5816e46c9dda11559ac319c87f050',
+        '8c7333f28044b93a745e68dd70a53515a8911995955916f63d55c2e84088f9b5',
+        'a6272f4d3bb8bd114bcedbc7c1f0ebc9464a8abc3fd6c3c3241fea03a7af63dd',
+        'b5fc306377ccc505eed731c98326f3f3afdeb5950e1f417143d5a2267d8557df',
+        '6775d9054e3e9bd90c1c1cda26cfce40ff784236009a88e667430bb7d4db0380',
+      ],
+    },
+  ];
+  assert.deepEqual(manifest.retirements, expected);
+  assert.equal(manifest.retirements.flatMap(retirement => retirement.managedHashes).length, 10);
+  assert.ok(manifest.retirements.flatMap(retirement => retirement.managedHashes).every(hash => /^[0-9a-f]{64}$/.test(hash)));
+
+  const destinationRoot = {
+    commands: path.join(os.tmpdir(), 'sai-retirement-commands'),
+    sai: path.join(os.tmpdir(), 'sai-retirement-sai'),
+    skills: path.join(os.tmpdir(), 'sai-retirement-skills'),
+    agents: path.join(os.tmpdir(), 'sai-retirement-agents'),
+    config: path.join(os.tmpdir(), 'sai-retirement-config'),
+  };
+  for (const harness of ['claude', 'opencode', 'copilot']) {
+    const retirements = expandRetirementManifest(manifest, { harness, repoRoot, destinationRoot });
+    assert.deepEqual(retirements.map(retirement => retirement.destinationPath), [
+      path.resolve(destinationRoot.sai, 'commands/sai-2-design-inline.md'),
+      path.resolve(destinationRoot.sai, 'commands/sai-3-implement-inline.md'),
+    ]);
+    assert.ok(retirements.every(retirement => retirement.harness === harness));
+    const active = expandInstallManifest(manifest, { harness, repoRoot, destinationRoot });
+    assert.equal(active.some(projection => projection.destinationPath.endsWith('sai-2-design-inline.md')), false);
+    assert.equal(active.some(projection => projection.destinationPath.endsWith('sai-3-implement-inline.md')), false);
+  }
+});
+
+test('retirement validation rejects malformed records, duplicate ids or destinations, and invalid hashes', () => {
+  const repoRoot = makeRepo();
+  try {
+    const base = {
+      version: 1,
+      projections: [],
+      retirements: [{
+        id: 'retired',
+        destination: { class: 'sai', path: 'old.md' },
+        harnesses: ['claude', 'opencode', 'copilot'],
+        managedHashes: ['a'.repeat(64)],
+      }],
+    };
+    const cases = [
+      [{ ...base, retirements: undefined }, /retirements array/],
+      [{ ...base, projections: [rule({ id: 'retired' })] }, /duplicate retirement id/],
+      [{ ...base, retirements: [{ ...base.retirements[0], destination: { class: 'root', path: 'old.md' } }] }, /destination/],
+      [{ ...base, retirements: [{ ...base.retirements[0], harnesses: ['unknown'] }] }, /invalid harnesses/],
+      [{ ...base, retirements: [{ ...base.retirements[0], managedHashes: ['A'.repeat(64)] }] }, /lowercase SHA-256/],
+      [{ ...base, retirements: [{ ...base.retirements[0], managedHashes: ['a'.repeat(63)] }] }, /lowercase SHA-256/],
+      [{ ...base, retirements: [{ ...base.retirements[0], managedHashes: ['a'.repeat(64), 'a'.repeat(64)] }] }, /duplicate managedHashes/],
+      [{ ...base, retirements: [base.retirements[0], { ...base.retirements[0] }] }, /duplicate retirement id/],
+      [{ ...base, retirements: [base.retirements[0], { ...base.retirements[0], id: 'other' }] }, /Duplicate retirement destination/],
+    ];
+    for (const [manifest, pattern] of cases) {
+      assert.throws(() => expandRetirementManifest(manifest, {
+        harness: 'claude',
+        repoRoot,
+        destinationRoot: { sai: '/dest' },
+      }), pattern);
+    }
   } finally {
     fs.rmSync(repoRoot, { recursive: true, force: true });
   }

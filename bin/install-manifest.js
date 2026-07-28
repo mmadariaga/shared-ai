@@ -9,6 +9,8 @@ const STRATEGIES = new Set([
   'merge-jsonc',
   'forwarding-manifest',
 ]);
+const SUPPORTED_HARNESSES = new Set(['claude', 'opencode', 'copilot']);
+const SHA256 = /^[0-9a-f]{64}$/;
 
 function normalizeRelative(value) {
   return value.split(path.sep).join('/').replace(/^\.\//, '');
@@ -72,6 +74,36 @@ function validateManifest(manifest) {
     }
     if (rule.overrides !== undefined && typeof rule.overrides !== 'string') {
       throw new Error(`Projection ${rule.id} overrides must name one rule id`);
+    }
+  }
+  validateRetirements(manifest, ids);
+}
+
+function validateRetirements(manifest, projectionIds) {
+  if (!Array.isArray(manifest.retirements)) {
+    throw new Error('sai/install-manifest.json must contain a retirements array');
+  }
+  const ids = new Set(projectionIds);
+  const destinations = new Set();
+  for (const retirement of manifest.retirements) {
+    if (!retirement || typeof retirement.id !== 'string' || retirement.id.length === 0 || ids.has(retirement.id)) {
+      throw new Error(`Invalid or duplicate retirement id: ${retirement && retirement.id}`);
+    }
+    ids.add(retirement.id);
+    if (!retirement.destination || retirement.destination.class !== 'sai' || typeof retirement.destination.path !== 'string') {
+      throw new Error(`Retirement ${retirement.id} must declare destination { class: "sai", path }`);
+    }
+    const destination = `${retirement.destination.class}/${normalizeRelative(retirement.destination.path)}`;
+    if (destinations.has(destination)) throw new Error(`Duplicate retirement destination: ${destination}`);
+    destinations.add(destination);
+    if (!Array.isArray(retirement.harnesses) || retirement.harnesses.length === 0 || retirement.harnesses.some(harness => !SUPPORTED_HARNESSES.has(harness))) {
+      throw new Error(`Retirement ${retirement.id} has invalid harnesses`);
+    }
+    if (!Array.isArray(retirement.managedHashes) || retirement.managedHashes.length === 0 || retirement.managedHashes.some(hash => !SHA256.test(hash))) {
+      throw new Error(`Retirement ${retirement.id} managedHashes must contain lowercase SHA-256 digests`);
+    }
+    if (new Set(retirement.managedHashes).size !== retirement.managedHashes.length) {
+      throw new Error(`Retirement ${retirement.id} has duplicate managedHashes`);
     }
   }
 }
@@ -140,4 +172,22 @@ function expandInstallManifest(manifest, { harness, repoRoot, destinationRoot })
     .map(({ overrides, recursive, ...projection }) => projection);
 }
 
-module.exports = { loadInstallManifest, expandInstallManifest };
+function expandRetirementManifest(manifest, { harness, repoRoot, destinationRoot }) {
+  validateManifest(manifest);
+  void repoRoot;
+  return manifest.retirements
+    .filter(retirement => retirement.harnesses.includes(harness))
+    .map(retirement => {
+      const destinationBase = destinationRoot[retirement.destination.class];
+      if (typeof destinationBase !== 'string') throw new Error(`No destination root for class ${retirement.destination.class} on ${harness}`);
+      return {
+        id: retirement.id,
+        destinationPath: path.resolve(destinationBase, retirement.destination.path),
+        harness,
+        managedHashes: [...retirement.managedHashes],
+      };
+    })
+    .sort((left, right) => normalizeRelative(left.destinationPath).localeCompare(normalizeRelative(right.destinationPath)) || left.id.localeCompare(right.id));
+}
+
+module.exports = { loadInstallManifest, expandInstallManifest, expandRetirementManifest };

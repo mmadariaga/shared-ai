@@ -30,5 +30,31 @@
     { "id": "claude-sai-2-design-worker", "source": "agents/claude/sai-2-design-worker.md", "destination": { "class": "agents", "path": "sai-2-design-worker.md" }, "harnesses": ["claude"], "strategy": "owned-copy", "recursive": false, "ownership": "owned", "drift": "content" },
     { "id": "copilot-agents", "source": "agents/copilot", "destination": { "class": "agents", "path": "." }, "harnesses": ["copilot"], "strategy": "copy", "recursive": true, "include": ["*.agent.md"], "ownership": "managed", "drift": "content" },
     { "id": "opencode-config", "source": "configs/opencode.jsonc", "destination": { "class": "config", "path": "opencode.jsonc" }, "harnesses": ["opencode"], "strategy": "merge-jsonc", "recursive": false, "ownership": "managed", "drift": "content" }
+  ],
+  "retirements": [
+    {
+      "id": "retired-sai-2-design-inline",
+      "destination": { "class": "sai", "path": "commands/sai-2-design-inline.md" },
+      "harnesses": ["claude", "opencode", "copilot"],
+      "managedHashes": [
+        "dc1a8c7a30896a9368a5c114aba100e45f26aa9d826996084d674576c274f1f7",
+        "21d3130c2d41251162aabb1682495e9cb37ab397c6de45e38207b701709e5159",
+        "7524f761c55a20c2c69915c8656e2699fa4b1aba2771ea2132970bf9afb00981",
+        "c1bb3a75dc12160745e6fda6fc26d091e1f23eda69775acac224bf29d5ab4741",
+        "a1db1d07057d6ef6f05b4c9b0254a7c45c6c8cfeedcbe1a6a7a5415638350141"
+      ]
+    },
+    {
+      "id": "retired-sai-3-implement-inline",
+      "destination": { "class": "sai", "path": "commands/sai-3-implement-inline.md" },
+      "harnesses": ["claude", "opencode", "copilot"],
+      "managedHashes": [
+        "9881841bfee6eaf4492e4da3df936281abe5816e46c9dda11559ac319c87f050",
+        "8c7333f28044b93a745e68dd70a53515a8911995955916f63d55c2e84088f9b5",
+        "a6272f4d3bb8bd114bcedbc7c1f0ebc9464a8abc3fd6c3c3241fea03a7af63dd",
+        "b5fc306377ccc505eed731c98326f3f3afdeb5950e1f417143d5a2267d8557df",
+        "6775d9054e3e9bd90c1c1cda26cfce40ff784236009a88e667430bb7d4db0380"
+      ]
+    }
   ]
 }
