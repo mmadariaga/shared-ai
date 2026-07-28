@@ -159,9 +159,29 @@ function detectHarnesses({ claudeBase, opencodeBase, copilot }) {
   ];
 }
 
+function retiredFileRecords(section, entries) {
+  return entries
+    .filter(entry => entry.assetType === 'retired-managed-file' && fs.existsSync(entry.dest))
+    .map(entry => {
+      const recognized = entry.acceptedHashes.includes(uninstall.sha256File(entry.dest));
+      return {
+        section,
+        name: 'retired-file',
+        severity: 'warn',
+        message: `${recognized ? 'recognized' : 'unrecognized'} retired loader: ${shorten(entry.dest)}`,
+        path: shorten(entry.dest),
+        rule: entry.ruleId,
+        recognized,
+        recommendation: recognized
+          ? 'Run install/update or uninstall to remove this managed historical copy'
+          : 'Review and remove this preserved file manually if it is no longer needed',
+      };
+    });
+}
+
 function inventoryHarness(section, expectedEntries, { projectRoot, harness }) {
   const records = [];
-  const expected = expectedEntries.filter(e => e.src !== e.dest);
+  const expected = expectedEntries.filter(e => e.src !== e.dest && e.assetType !== 'retired-managed-file');
   const expectedDests = new Set(expectedEntries.map(e => e.dest));
 
   const missing = expected.filter(e => !fs.existsSync(e.dest)).map(e => ({ path: shorten(e.dest), ruleId: e.ruleId }));
@@ -194,6 +214,7 @@ function inventoryHarness(section, expectedEntries, { projectRoot, harness }) {
   if (unexpected.length > 0) {
     records.push({ section, name: 'unexpected', severity: 'warn', message: `${unexpected.length} unexpected file(s): ${unexpected.join(', ')}`, path: unexpected.join(', '), rules: unexpected.map(() => null) });
   }
+  records.push(...retiredFileRecords(section, expectedEntries));
 
   if (harness.kind === 'copilot') {
     const projectPrompts = path.join(projectRoot, '.github', 'prompts');
@@ -461,4 +482,4 @@ async function main(options = {}) {
   return code;
 }
 
-module.exports = { main, checkProjectHealth, aggregateExit, groupSections, renderHuman, shorten, detectHarnesses, inventoryHarness, parseFetchRefs, resolveFetchRefs, fetchResolutionRecords, checkSkillStaleness, readGeneratedBy, readMarker, diffAgainstBundled, versionSkewRecords, managedClaudeWorkerRecords, managedOpencodeAgentRecords, managedAssetRecords, defaultFetchLatestVersion };
+module.exports = { main, checkProjectHealth, aggregateExit, groupSections, renderHuman, shorten, detectHarnesses, retiredFileRecords, inventoryHarness, parseFetchRefs, resolveFetchRefs, fetchResolutionRecords, checkSkillStaleness, readGeneratedBy, readMarker, diffAgainstBundled, versionSkewRecords, managedClaudeWorkerRecords, managedOpencodeAgentRecords, managedAssetRecords, defaultFetchLatestVersion };
