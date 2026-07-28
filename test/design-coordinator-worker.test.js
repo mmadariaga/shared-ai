@@ -419,7 +419,7 @@ test('documentation records the active design compatibility boundary and managed
   assert.match(readme, /Proposal Complexity.*descriptive/i);
   assert.match(readme, /named.*agent.*not.*command.*model/i);
 
-  assert.match(agents, /design-invocation-core\.md/);
+  assert.match(agents, /sai\/compat\/design-invocation-core\.md/);
   assert.match(agents, /design-worker\.md/);
   assert.match(agents, /agents\/claude\/sai-design-planning-worker\.md/);
   assert.match(agents, /skills\/claude\/sai-design-planning-worker\/SKILL\.md/);

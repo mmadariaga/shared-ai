@@ -2,7 +2,7 @@
 
 # SAI_LEARNINGS.md Format
 
-Canonical structure for `SAI_LEARNINGS.md` — the durable record of execution-observed facts about how a repository actually builds, tests, and behaves. Modeled structurally on `sai/instructions/glossary-format.md`.
+Canonical structure for `SAI_LEARNINGS.md` — the durable record of execution-observed facts about how a repository actually builds, tests, and behaves. Modeled structurally on `sai/policies/glossary-format.md`.
 
 This file is consumed by the promotion and consumption instructions. Any agent that reads, writes, or audits `SAI_LEARNINGS.md` must conform to this format.
 

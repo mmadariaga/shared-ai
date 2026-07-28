@@ -37,6 +37,16 @@ test('installOpencode copies all standalone policies to dest/sai/policies/', () 
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });
 
+test('installOpencode copies shared compatibility assets but not the Copilot-only inline loader', () => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-'));
+  installOpencode(tmpDir);
+  for (const file of ['design-invocation-core.md', 'implement-invocation-core.md', path.join('_templates', 'adr-index.md')]) {
+    assert.ok(fs.existsSync(path.join(tmpDir, 'sai', 'compat', file)), `${file} should be projected`);
+  }
+  assert.equal(fs.existsSync(path.join(tmpDir, 'sai', 'compat', 'implement-invocation.md')), false);
+  fs.rmSync(tmpDir, { recursive: true, force: true });
+});
+
 test('installOpencode copies all Opencode-specific skills', () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-'));
   installOpencode(tmpDir);

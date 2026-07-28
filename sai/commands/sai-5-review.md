@@ -14,9 +14,9 @@
 
   ## Load instructions (in order)
   Fetch @sai/policies/change-picker.md and follow it exactly.
-  Fetch @sai/instructions/glossary-format.md
+  Fetch @sai/policies/glossary-format.md
   Fetch @sai/instructions/review.md and follow those instructions exactly.
-  Fetch @sai/instructions/remember.md
+  Fetch @sai/policies/remember.md
 
   ## Run
   **User's request:** $ARGUMENTS

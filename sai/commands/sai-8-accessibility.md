@@ -15,7 +15,7 @@
   ## Load instructions (in order)
   Fetch @sai/policies/change-picker.md and follow it exactly.
   Fetch @sai/instructions/accessibility.md and follow those instructions exactly.
-  Fetch @sai/instructions/remember.md
+  Fetch @sai/policies/remember.md
 
   ## Run
   **User's accessibility audit request:** $ARGUMENTS

@@ -38,9 +38,9 @@ So `Fetch @sai/instructions/prereqs.md` resolves to:
 
 Instruction text → What you do
 
-- `"Fetch @sai/instructions/prereqs.md"` → Check `.github/sai/instructions/prereqs.md`; if yes read it, else read from SAI folder `instructions/prereqs.md`
+- `"Fetch @sai/policies/prereqs.md"` → Check `.github/sai/policies/prereqs.md`; if yes read it, else read from SAI folder `policies/prereqs.md`
 - `"Fetch @skills/budget/SKILL.md"` → `skill("budget")`
-- `"Also fetch @sai/instructions/remember.md"` → Check `.github/sai/instructions/remember.md`; if yes read it, else read from SAI folder `instructions/remember.md`
+- `"Also fetch @sai/policies/remember.md"` → Check `.github/sai/policies/remember.md`; if yes read it, else read from SAI folder `policies/remember.md`
 - `"Fetch @skills/openspec-explore/SKILL.md and follow those instructions exactly."` → `skill("openspec-explore")`, then follow its instructions
 
 ### Recursion

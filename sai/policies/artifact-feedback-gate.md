@@ -32,7 +32,7 @@ The gate tracks the feedback-option iteration with a single integer counter held
 
 ## Present the gate
 
-Present exactly two choices through the harness's native option-picker per the "Closed-choice prompts" rule in `sai/instructions/remember.md` (on Claude Code, the `AskUserQuestion` tool). Labels are full words, never single- or two-letter abbreviations:
+Present exactly two choices through the harness's native option-picker per the "Closed-choice prompts" rule in `sai/policies/remember.md` (on Claude Code, the `AskUserQuestion` tool). Labels are full words, never single- or two-letter abbreviations:
 
 1. **`Give feedback (Recommended)` when in-conversation iteration counter == 0, else `Give more feedback`** — feedback on the artifacts written in this step. Name every entry in `artifacts` so the user knows exactly what is open to feedback. The feedback option is emitted FIRST in every presentation (ordering is unaffected by the iteration counter).
 
@@ -48,7 +48,7 @@ FIRST emit a clean, non-accusatory prompt that names every entry in `artifacts`,
 
 > Share your feedback on {artifacts} below.
 
-where `{artifacts}` is replaced by the step's artifact list (supplied by the fetching body — `proposal.md`, `specs/**` under sai-1; `design.md`, `tasks.md`, `interfaces.md` under sai-2). Following the established explore.md item-3 pattern, this canonical form is authored in English but is NOT output verbatim in English: render it in the user's language at runtime per `sai/instructions/remember.md` (for a Spanish-speaking user: `Indícame a continuación tu feedback sobre {artifacts}`). Only when the user's language is English is the English form output as-is.
+where `{artifacts}` is replaced by the step's artifact list (supplied by the fetching body — `proposal.md`, `specs/**` under sai-1; `design.md`, `tasks.md`, `interfaces.md` under sai-2). Following the established explore.md item-3 pattern, this canonical form is authored in English but is NOT output verbatim in English: render it in the user's language at runtime per `sai/policies/remember.md` (for a Spanish-speaking user: `Indícame a continuación tu feedback sobre {artifacts}`). Only when the user's language is English is the English form output as-is.
 
 After the user replies, feed the supplied text into `## On "Give feedback"` below and apply its per-item processing unchanged.
 

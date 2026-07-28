@@ -24,9 +24,9 @@ When you encounter `"Fetch @<path>"` or `"Also fetch @<path>"` in any instructio
 
 Instruction text → What you do
 
-- "Fetch @sai/instructions/prereqs.md" → Check if `.opencode/sai/instructions/prereqs.md` exists; if yes Read it, else Read `~/.config/opencode/sai/instructions/prereqs.md` directly
+- "Fetch @sai/policies/prereqs.md" → Check if `.opencode/sai/policies/prereqs.md` exists; if yes Read it, else Read `~/.config/opencode/sai/policies/prereqs.md` directly
 - "Fetch @skills/budget/SKILL.md" → `skill("budget")`
-- "Also fetch @sai/instructions/remember.md" → Check if `.opencode/sai/instructions/remember.md` exists; if yes Read it, else Read `~/.config/opencode/sai/instructions/remember.md` directly
+- "Also fetch @sai/policies/remember.md" → Check if `.opencode/sai/policies/remember.md` exists; if yes Read it, else Read `~/.config/opencode/sai/policies/remember.md` directly
 - "Fetch @skills/openspec-explore/SKILL.md and follow those instructions exactly." → `skill("openspec-explore")`, then follow
 
 ### Recursion

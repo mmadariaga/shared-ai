@@ -28,16 +28,16 @@ Each phase reads from and writes to **`openspec/changes/{change-name}/`** — si
 ```
 sai/instructions/                ← actual content for each agent (plain markdown, Isolation Mode + TASK)
 sai/instructions/spec.propose.md ← spec quality layer prepended to the openspec-propose skill
-sai/instructions/glossary-format.md ← canonical GLOSSARY.md format used by spec/plan/review
-sai/instructions/remember.md     ← consolidated reminders appended by wrappers
+sai/policies/glossary-format.md ← canonical GLOSSARY.md format used by spec/plan/review
+sai/policies/remember.md     ← consolidated reminders appended by wrappers
 sai/instructions/prereqs.md      ← universal prereq check fetched by all openspec-dependent sai-* wrappers
 sai/commands/              ← sai command body files (fetched by wrappers at runtime)
 sai/commands/sai-3-implement.md ← routed implementation coordinator body
 sai/commands/sai-3-implement-inline.md ← inline implementation caller body
-sai/instructions/implement-invocation-core.md ← caller-neutral implementation invocation core
+sai/compat/implement-invocation-core.md ← caller-neutral implementation invocation core
 sai/instructions/implement-worker.md ← implementation-planning worker lifecycle contract
 sai/commands/sai-2-design-inline.md ← inline design caller body for the Copilot adapter boundary
-sai/instructions/design-invocation-core.md ← caller-neutral design invocation core
+sai/compat/design-invocation-core.md ← caller-neutral design invocation core
 sai/instructions/design-worker.md ← design-planning worker lifecycle contract
 commands/claude/           ← wrappers for Claude Code (model + effort + fetch to sai/commands/)
 commands/opencode/         ← wrappers for opencode (model + fetch to sai/commands/)
@@ -66,15 +66,15 @@ The openspec-dependent `sai-*` commands halt with a clear error if either is mis
 |-----------|---------|
 | `sai/instructions/` | Phase content (Isolation Mode + TASK block). Fetched by wrappers. |
 | `sai/instructions/spec.propose.md` | Quality layer prepended to the `openspec-propose` skill by `sai-1-spec`. Collaboration style, cost discipline, research guide, scope reminder. |
-| `sai/instructions/remember.md` | Consolidated reminders appended by wrappers. |
+| `sai/policies/remember.md` | Consolidated reminders appended by wrappers. |
 | `sai/instructions/prereqs.md` | Universal prerequisite check + OpenSpec path resolution guidance, fetched first by all openspec-dependent sai-* wrappers. `sai-commit` is the only exception. |
 | `sai/commands/` | Sai command body files fetched by wrappers at runtime. |
 | `sai/commands/sai-3-implement.md` | Routed implementation coordinator body for Claude Code and opencode. |
 | `sai/commands/sai-3-implement-inline.md` | Inline implementation caller body for the Copilot adapter boundary. |
-| `sai/instructions/implement-invocation-core.md` | Caller-neutral implementation invocation core shared by routed and inline paths. |
+| `sai/compat/implement-invocation-core.md` | Caller-neutral implementation invocation core shared by routed and inline paths. |
 | `sai/instructions/implement-worker.md` | Implementation-planning worker lifecycle, input, output, and durable-artifact contract. |
 | `sai/commands/sai-2-design-inline.md` | Inline design caller body for the Copilot adapter boundary. |
-| `sai/instructions/design-invocation-core.md` | Caller-neutral design invocation core shared by routed and inline paths. |
+| `sai/compat/design-invocation-core.md` | Caller-neutral design invocation core shared by routed and inline paths. |
 | `sai/instructions/design-worker.md` | Design-planning worker lifecycle, input, output, and durable-artifact contract. |
 | `skills/` | Universal skills installed globally (not project-local). Fetched by wrappers via `~/.claude/skills/`, `~/.config/opencode/skills/`, or `~/.copilot/skills/`. |
 | `skills/universal/sai-commands/SKILL.md` | SAI command registry — lists all /sai-* commands and enforces fetch-before-execute discipline. Loaded to prevent LLM from skipping command files. |
@@ -167,7 +167,7 @@ Wrappers that spawn subagents fetch `skills/claude/budget-explorer/SKILL.md` (Cl
 - `sai-1-spec` reads `GLOSSARY.md`, updates it inline, challenges ambiguous terms.
 - `sai-3-implement` uses canonical glossary terms for identifiers.
 - `sai-5-review` validates language consistency in new code.
-- Format: `instructions/glossary-format.md`, pre-loaded at startup by each wrapper.
+- Format: `policies/glossary-format.md`, pre-loaded at startup by each wrapper.
 
 ### RED → GREEN
 Integrated in `plan.md` (loaded by `sai-3-implement`) and `implement.md` (loaded by `sai-4-apply`):

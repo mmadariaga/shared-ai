@@ -71,6 +71,77 @@ test('canonical manifest projects policies recursively to all harnesses', () => 
   assert.equal(manifest.projections.filter(projection => projection.source === 'sai/policies').length, 1);
 });
 
+test('canonical manifest exposes the exact compatibility allowlist', () => {
+  const manifest = loadInstallManifest(path.join(__dirname, '..'));
+  const compatibility = manifest.projections
+    .filter(projection => projection.source.startsWith('sai/compat/'))
+    .map(projection => ({
+      source: projection.source,
+      destination: projection.destination,
+      harnesses: projection.harnesses,
+      recursive: projection.recursive,
+      overrides: projection.overrides,
+    }));
+  assert.deepEqual(compatibility, [
+    {
+      source: 'sai/compat/design-invocation-core.md',
+      destination: { class: 'sai', path: 'compat/design-invocation-core.md' },
+      harnesses: ['claude', 'opencode', 'copilot'],
+      recursive: false,
+      overrides: 'sai-instructions',
+    },
+    {
+      source: 'sai/compat/implement-invocation-core.md',
+      destination: { class: 'sai', path: 'compat/implement-invocation-core.md' },
+      harnesses: ['claude', 'opencode', 'copilot'],
+      recursive: false,
+      overrides: 'sai-instructions',
+    },
+    {
+      source: 'sai/compat/implement-invocation.md',
+      destination: { class: 'sai', path: 'compat/implement-invocation.md' },
+      harnesses: ['copilot'],
+      recursive: false,
+      overrides: 'sai-instructions',
+    },
+    {
+      source: 'sai/compat/_templates/adr-index.md',
+      destination: { class: 'sai', path: 'compat/_templates/adr-index.md' },
+      harnesses: ['claude', 'opencode', 'copilot'],
+      recursive: false,
+      overrides: 'sai-instructions',
+    },
+  ]);
+});
+
+test('compatibility and policy projections resolve for every supported harness', () => {
+  const manifest = loadInstallManifest(path.join(__dirname, '..'));
+  const destinationRoot = {
+    commands: path.join(os.tmpdir(), 'sai-projection-commands'),
+    sai: path.join(os.tmpdir(), 'sai-projection-sai'),
+    skills: path.join(os.tmpdir(), 'sai-projection-skills'),
+    agents: path.join(os.tmpdir(), 'sai-projection-agents'),
+    config: path.join(os.tmpdir(), 'sai-projection-config'),
+  };
+  for (const harness of ['claude', 'opencode', 'copilot']) {
+    const projections = expandInstallManifest(manifest, {
+      harness,
+      repoRoot: path.join(__dirname, '..'),
+      destinationRoot,
+    });
+    assert.ok(projections.some(p => p.destinationPath.endsWith(path.join('compat', 'design-invocation-core.md'))));
+    assert.ok(projections.some(p => p.destinationPath.endsWith(path.join('compat', 'implement-invocation-core.md'))));
+    assert.ok(projections.some(p => p.destinationPath.endsWith(path.join('compat', '_templates', 'adr-index.md'))));
+    assert.ok(projections.some(p => p.destinationPath.endsWith(path.join('policies', 'glossary-format.md'))));
+    assert.ok(projections.some(p => p.destinationPath.endsWith(path.join('policies', 'remember.md'))));
+    assert.ok(projections.some(p => p.destinationPath.endsWith(path.join('policies', 'sai-learnings-format.md'))));
+    assert.equal(
+      projections.some(p => p.destinationPath.endsWith(path.join('compat', 'implement-invocation.md'))),
+      harness === 'copilot'
+    );
+  }
+});
+
 test('the same manifest expansion provides one ordered inventory for all consumers', () => {
   const repoRoot = makeRepo();
   try {

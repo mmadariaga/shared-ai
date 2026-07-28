@@ -6,10 +6,10 @@ Shared technical design invocation used by the inline caller and the design-plan
 Fetch @skills/budget/SKILL.md and use it
 
 ## Load instructions (in order)
-Fetch @sai/instructions/glossary-format.md
-Fetch @sai/instructions/sai-learnings-format.md
+Fetch @sai/policies/glossary-format.md
+Fetch @sai/policies/sai-learnings-format.md
 Fetch @sai/instructions/design.md and follow those instructions exactly.
-Fetch @sai/instructions/remember.md
+Fetch @sai/policies/remember.md
 
 ## Run
 **User's request:** $ARGUMENTS

@@ -32,7 +32,7 @@
   2. Use the cleaned remainder as the effective change name for all downstream steps.
 
   Fetch @sai/instructions/archive.md
-  Fetch @sai/instructions/remember.md
+  Fetch @sai/policies/remember.md
 
   Fetch @skills/openspec-archive-change/SKILL.md and follow those instructions exactly.
 

@@ -30,7 +30,7 @@
   1. Remove the token and trim surrounding whitespace.
   2. Use the cleaned remainder as the effective change name for all downstream steps.
 
-  Fetch @sai/instructions/design-invocation-core.md and follow it exactly.
+  Fetch @sai/compat/design-invocation-core.md and follow it exactly.
 
   ## Completion
   Before printing the handoff prompt below, print a **decision summary (design phase)** derived exclusively from the artifacts just written (`design.md` and `tasks.md`) — never from prior conversation (Isolation Mode):
@@ -54,7 +54,7 @@
   (b) **Continue now in this chat** — create the implementation plan with the current model, keeping this design context. Note: this is cheaper than running an independent `/sai-3-implement` with the same model, but more expensive than using the default `/sai-3-implement` model — a good choice for complex implementations.
 
   - If the user chooses (a): MANDATORY STOP. Your work is COMPLETE. STOP and print exactly: "Design done in openspec/changes/{name}/. Run `/sai-3-implement {name}` **in a new chat** when ready."
-  - If the user chooses (b): re-read `design.md`, `tasks.md`, and `interfaces.md` from disk (they may have changed during a gate iteration), then Fetch @sai/instructions/implement-invocation.md and follow it exactly (Load instructions, Run, Completion), using {name} as $ARGUMENTS. Do NOT proceed past its Completion (that is sai-4-apply's job).
+  - If the user chooses (b): re-read `design.md`, `tasks.md`, and `interfaces.md` from disk (they may have changed during a gate iteration), then Fetch @sai/compat/implement-invocation.md and follow it exactly (Load instructions, Run, Completion), using {name} as $ARGUMENTS. Do NOT proceed past its Completion (that is sai-4-apply's job).
 </TASK>
 
 Follow instruction on <TASK> step by step

@@ -42,6 +42,16 @@ test('installClaude copies all standalone policies to dest/sai/policies/', () =>
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });
 
+test('installClaude copies shared compatibility assets but not the Copilot-only inline loader', () => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-claude-'));
+  installClaude(tmpDir);
+  for (const file of ['design-invocation-core.md', 'implement-invocation-core.md', path.join('_templates', 'adr-index.md')]) {
+    assert.ok(fs.existsSync(path.join(tmpDir, 'sai', 'compat', file)), `${file} should be projected`);
+  }
+  assert.equal(fs.existsSync(path.join(tmpDir, 'sai', 'compat', 'implement-invocation.md')), false);
+  fs.rmSync(tmpDir, { recursive: true, force: true });
+});
+
 test('installClaude copies all Claude-specific skills', () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-claude-'));
   installClaude(tmpDir);
@@ -74,4 +84,3 @@ test('installClaude overwrites stale command wrappers', () => {
   assert.notEqual(fs.readFileSync(skillFile, 'utf8'), 'old content', 'existing stale file should be overwritten');
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });
-

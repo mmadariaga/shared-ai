@@ -14,10 +14,10 @@
   Fetch @skills/safe-operations/SKILL.md and use it
 
   ## Load instructions (in order)
-  Fetch @sai/instructions/glossary-format.md
+  Fetch @sai/policies/glossary-format.md
   Fetch @sai/instructions/spec.propose.md
   Fetch @skills/openspec-propose/SKILL.md and follow those instructions exactly.
-  Fetch @sai/instructions/remember.md
+  Fetch @sai/policies/remember.md
 
   ## Run
   **User's request:** $ARGUMENTS

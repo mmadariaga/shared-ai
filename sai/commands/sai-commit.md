@@ -12,7 +12,7 @@
 
   ## Load instructions (in order)
   Also fetch @sai/instructions/commit.md and follow those instructions exactly.
-  Also fetch @sai/instructions/remember.md
+  Also fetch @sai/policies/remember.md
 
   ## Run
   > **Scope reminder (read before every response):** Your only deliverable is the proposed commit message and — only with explicit authorization — the `git commit` invocation. Do not stage, do not unstage, do not push, do not modify code.

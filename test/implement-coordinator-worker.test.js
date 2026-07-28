@@ -40,14 +40,14 @@ function capture(fn) {
 }
 
 test('implementation invocation core and inline caller own distinct completion contracts', () => {
-  const core = artifact('sai/instructions/implement-invocation-core.md');
+  const core = artifact('sai/compat/implement-invocation-core.md');
   assert.match(core, /^## Load instructions \(in order\)/m);
   assert.match(core, /^## Run\s*$/m);
   assert.doesNotMatch(core, /^## Completion\b/m);
   assert.doesNotMatch(core, /MANDATORY STOP/);
 
-  const invocation = artifact('sai/instructions/implement-invocation.md');
-  assert.match(invocation, /Fetch @sai\/instructions\/implement-invocation-core\.md/);
+  const invocation = artifact('sai/compat/implement-invocation.md');
+  assert.match(invocation, /Fetch @sai\/compat\/implement-invocation-core\.md/);
   assert.match(invocation, /MANDATORY STOP/);
 });
 
@@ -339,7 +339,7 @@ test('Step 2 coordinator makes no live-proof or smoke-success claims', () => {
 test('completed routed output uses the coordinator contract while inline invocation preserves its stop', () => {
   const coordinator = artifact('sai/commands/sai-3-implement.md');
   const inline = artifact('commands/copilot/sai-3-implement.prompt.md');
-  const invocation = artifact('sai/instructions/implement-invocation.md');
+  const invocation = artifact('sai/compat/implement-invocation.md');
 
   assert.match(coordinator, /completed[\s\S]*concise summary[\s\S]*accumulated changed-file list/i);
   assert.ok(
@@ -355,7 +355,7 @@ test('completed routed output uses the coordinator contract while inline invocat
 
 test('design continue-now bypasses the coordinator through invocation core', () => {
   const design = artifact('sai/commands/sai-2-design.md');
-  const invocation = artifact('sai/instructions/implement-invocation.md');
+  const invocation = artifact('sai/compat/implement-invocation.md');
 
   assert.match(design, /After Continue/);
   assert.match(design, /Continue now/);
@@ -363,7 +363,7 @@ test('design continue-now bypasses the coordinator through invocation core', () 
   assert.match(design, /wrapper_echo_value:\s*""/);
   assert.match(design, /arguments_value:\s*resolved_change_name/);
   assert.doesNotMatch(design, /sai-implementation-coordinator/);
-  assert.match(invocation, /implement-invocation-core\.md/);
+  assert.match(invocation, /@sai\/compat\/implement-invocation-core\.md/);
 });
 
 test('Step 3 README documents routed roles, inline Copilot boundary, model independence, and artifact stability', () => {
