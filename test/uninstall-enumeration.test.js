@@ -40,7 +40,7 @@ test('enumerateClaude dests match installClaude written files', () => {
     installClaude(tmpDir);
     const written = writtenMinusVersion(tmpDir);
     const entries = enumerateClaude(tmpDir);
-    const enumeratedDests = entries.map(e => path.relative(tmpDir, e.dest));
+    const enumeratedDests = entries.filter(e => e.assetType !== 'retired-managed-file').map(e => path.relative(tmpDir, e.dest));
     assert.deepEqual([...written].sort(), [...enumeratedDests].sort());
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });
@@ -53,7 +53,7 @@ test('enumerateOpencode dests match installOpencode written files', () => {
     installOpencode(tmpDir);
     const written = writtenMinusVersion(tmpDir);
     const entries = enumerateOpencode(tmpDir);
-    const enumeratedDests = entries.map(e => path.relative(tmpDir, e.dest));
+    const enumeratedDests = entries.filter(e => e.assetType !== 'retired-managed-file').map(e => path.relative(tmpDir, e.dest));
     assert.deepEqual([...written].sort(), [...enumeratedDests].sort());
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });
@@ -66,7 +66,7 @@ test('enumerateCopilot dests match installCopilot written files', () => {
     installCopilot(tmpDir, tmpDir, tmpDir, tmpDir);
     const written = writtenMinusVersion(tmpDir);
     const entries = enumerateCopilot(tmpDir, tmpDir, tmpDir, tmpDir);
-    const enumeratedDests = entries.map(e => path.relative(tmpDir, e.dest));
+    const enumeratedDests = entries.filter(e => e.assetType !== 'retired-managed-file').map(e => path.relative(tmpDir, e.dest));
     assert.deepEqual([...written].sort(), [...enumeratedDests].sort());
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });
@@ -79,7 +79,8 @@ test('enumerateClaude src sha256 matches installed dest sha256', () => {
     installClaude(tmpDir);
     const entries = enumerateClaude(tmpDir);
     assert.ok(entries.length > 0, 'enumerateClaude should return entries after install');
-    for (const { src, dest } of entries) {
+    for (const { src, dest, assetType } of entries) {
+      if (assetType === 'retired-managed-file') continue;
       assert.equal(sha256(src), sha256(dest), `sha256 mismatch: ${src} -> ${dest}`);
     }
   } finally {
@@ -93,7 +94,8 @@ test('enumerateOpencode src sha256 matches installed dest sha256', () => {
     installOpencode(tmpDir);
     const entries = enumerateOpencode(tmpDir);
     assert.ok(entries.length > 0, 'enumerateOpencode should return entries after install');
-    for (const { src, dest } of entries) {
+    for (const { src, dest, assetType } of entries) {
+      if (assetType === 'retired-managed-file') continue;
       assert.equal(sha256(src), sha256(dest), `sha256 mismatch: ${src} -> ${dest}`);
     }
   } finally {
@@ -107,9 +109,31 @@ test('enumerateCopilot src sha256 matches installed dest sha256', () => {
     installCopilot(tmpDir, tmpDir, tmpDir, tmpDir);
     const entries = enumerateCopilot(tmpDir, tmpDir, tmpDir, tmpDir);
     assert.ok(entries.length > 0, 'enumerateCopilot should return entries after install');
-    for (const { src, dest } of entries) {
+    for (const { src, dest, assetType } of entries) {
+      if (assetType === 'retired-managed-file') continue;
       assert.equal(sha256(src), sha256(dest), `sha256 mismatch: ${src} -> ${dest}`);
     }
+  } finally {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+});
+
+test('enumeration includes retirement records but excludes them from active projections', () => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-uninstall-'));
+  try {
+    const entries = enumerateOpencode(tmpDir);
+    const retired = entries.filter(e => e.assetType === 'retired-managed-file');
+    assert.deepEqual(retired.map(e => path.relative(tmpDir, e.dest)).sort(), [
+      path.join('sai', 'commands', 'sai-2-design-inline.md'),
+      path.join('sai', 'commands', 'sai-3-implement-inline.md'),
+    ].sort());
+    for (const entry of retired) {
+      assert.ok(Array.isArray(entry.acceptedHashes));
+      assert.ok(entry.acceptedHashes.length > 0);
+      assert.match(entry.ruleId, /^retired-sai-[23]-/);
+    }
+    assert.equal(entries.some(e => e.assetType !== 'retired-managed-file' && e.dest.endsWith('sai-2-design-inline.md')), false);
+    assert.equal(entries.some(e => e.assetType !== 'retired-managed-file' && e.dest.endsWith('sai-3-implement-inline.md')), false);
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }

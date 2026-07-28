@@ -12,11 +12,17 @@ const {
   runDeletion,
 } = require('../bin/uninstall-flow.js');
 
+const crypto = require('crypto');
+
 function writeFile(dir, relPath, content) {
   const fullPath = path.join(dir, relPath);
   fs.mkdirSync(path.dirname(fullPath), { recursive: true });
   fs.writeFileSync(fullPath, content);
   return fullPath;
+}
+
+function hash(content) {
+  return crypto.createHash('sha256').update(content).digest('hex');
 }
 
 test('deleteEntry deletes file when dest hash matches src hash', () => {
@@ -55,6 +61,32 @@ test('deleteEntry returns not-found for missing destination without throwing', (
       const result = deleteEntry({ src: srcPath, dest: missingDest, editorBase: tmpDir });
       assert.equal(result, 'not-found');
     });
+  } finally {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+});
+
+test('retired entries delete accepted content and preserve unknown content', () => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-exec-'));
+  try {
+    const managed = 'retired managed content';
+    const acceptedHashes = [hash(managed)];
+    const matchingDest = writeFile(tmpDir, path.join('commands', 'retired.md'), managed);
+    const modifiedDest = writeFile(tmpDir, path.join('commands', 'modified.md'), 'unknown content');
+    const configPath = writeFile(tmpDir, 'opencode.jsonc', '{"unrelated":true}');
+    const unrelatedPath = writeFile(tmpDir, 'commands/unrelated.md', 'keep me');
+    const plan = [
+      { assetType: 'retired-managed-file', acceptedHashes, ruleId: 'retired-test', dest: matchingDest, editorBase: tmpDir },
+      { assetType: 'retired-managed-file', acceptedHashes, ruleId: 'retired-test', dest: modifiedDest, editorBase: tmpDir },
+    ];
+    const result = runDeletion(plan);
+    assert.equal(result.deleted, 1);
+    assert.equal(result.keptOverride, 1);
+    assert.equal(result.notFound, 0);
+    assert.equal(fs.existsSync(matchingDest), false);
+    assert.equal(fs.readFileSync(modifiedDest, 'utf8'), 'unknown content');
+    assert.equal(fs.readFileSync(unrelatedPath, 'utf8'), 'keep me');
+    assert.equal(fs.readFileSync(configPath, 'utf8'), '{"unrelated":true}');
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }

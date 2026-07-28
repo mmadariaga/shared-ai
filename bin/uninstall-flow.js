@@ -18,7 +18,7 @@ const {
   promptYesNoReadline,
 } = require('./install-flow.js');
 const flow = require('./install-flow.js');
-const { loadInstallManifest, expandInstallManifest } = require('./install-manifest');
+const { loadInstallManifest, expandInstallManifest, expandRetirementManifest } = require('./install-manifest');
 
 const REPOSITORY_ROOT = path.join(__dirname, '..');
 
@@ -51,6 +51,21 @@ function manifestEntries(harness, destinationRoot, editorBase) {
     } else {
       entries.push(entry);
     }
+  }
+  const retirements = expandRetirementManifest(loadInstallManifest(REPOSITORY_ROOT), {
+    harness,
+    repoRoot: REPOSITORY_ROOT,
+    destinationRoot,
+  });
+  for (const retirement of retirements) {
+    entries.push({
+      src: retirement.destinationPath,
+      dest: retirement.destinationPath,
+      editorBase,
+      assetType: 'retired-managed-file',
+      acceptedHashes: retirement.managedHashes,
+      ruleId: retirement.id,
+    });
   }
   return entries;
 }
@@ -130,7 +145,15 @@ function computeClaudeAgentPlanEntry(entry) {
   };
 }
 
+function computeRetiredPlanEntry(entry) {
+  const destHash = sha256File(entry.dest);
+  if (destHash === null) return { ...entry, action: 'not-found', exists: false, hashMatches: false };
+  const hashMatches = entry.acceptedHashes.includes(destHash);
+  return { ...entry, action: hashMatches ? 'delete' : 'keep-override', exists: true, hashMatches };
+}
+
 function computePlanEntry(entry) {
+  if (entry.assetType === 'retired-managed-file') return computeRetiredPlanEntry(entry);
   if (entry.assetType === 'claude-legacy-agent') {
     return computeClaudeAgentPlanEntry(entry);
   }
@@ -165,6 +188,16 @@ function formatSummary(counts) {
 }
 
 function deleteEntry(entry) {
+  if (entry.assetType === 'retired-managed-file') {
+    const destHash = sha256File(entry.dest);
+    if (destHash === null) return 'not-found';
+    if (!entry.acceptedHashes.includes(destHash)) {
+      console.warn(`Kept (unrecognized retired file): ${entry.dest}`);
+      return 'kept-override';
+    }
+    fs.unlinkSync(entry.dest);
+    return 'deleted';
+  }
   if (entry.assetType === 'claude-managed-agent' || entry.assetType === 'claude-legacy-agent') {
     const destHash = sha256File(entry.dest);
     const managedHash = readManagedHash(entry.ownerPath);
@@ -281,6 +314,7 @@ module.exports = {
   sha256File,
   readManagedHash,
   computeClaudeAgentPlanEntry,
+  computeRetiredPlanEntry,
   computePlanEntry,
   computePlan,
   printPlan,

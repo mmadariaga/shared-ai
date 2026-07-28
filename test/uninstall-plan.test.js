@@ -15,6 +15,10 @@ const {
   formatSummary,
 } = require('../bin/uninstall-flow.js');
 
+function hash(content) {
+  return require('crypto').createHash('sha256').update(content).digest('hex');
+}
+
 test('sha256File returns 64 hex chars for existing file', () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-plan-'));
   try {
@@ -106,6 +110,25 @@ test('computePlanEntry returns not-found when dest is absent', () => {
     });
     assert.equal(result.action, 'not-found');
     assert.equal(result.exists, false);
+  } finally {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+});
+
+test('computePlanEntry applies retirement accepted-hash classification', () => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-plan-'));
+  try {
+    const managed = 'retired managed content';
+    const acceptedHashes = [hash(managed)];
+    const base = { assetType: 'retired-managed-file', acceptedHashes, ruleId: 'retired-test', editorBase: tmpDir };
+    const matchingDest = path.join(tmpDir, 'matching.md');
+    const modifiedDest = path.join(tmpDir, 'modified.md');
+    const missingDest = path.join(tmpDir, 'missing.md');
+    fs.writeFileSync(matchingDest, managed);
+    fs.writeFileSync(modifiedDest, 'modified content');
+    assert.equal(computePlanEntry({ ...base, dest: matchingDest, src: matchingDest }).action, 'delete');
+    assert.equal(computePlanEntry({ ...base, dest: modifiedDest, src: modifiedDest }).action, 'keep-override');
+    assert.equal(computePlanEntry({ ...base, dest: missingDest, src: missingDest }).action, 'not-found');
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }
