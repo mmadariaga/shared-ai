@@ -9,7 +9,7 @@ const readline = require('readline');
 const childProcess = require('child_process');
 const crypto = require('crypto');
 const { isDeepStrictEqual } = require('util');
-const { loadInstallManifest, expandInstallManifest } = require('./install-manifest');
+const { loadInstallManifest, expandInstallManifest, expandRetirementManifest } = require('./install-manifest');
 const { inspectManagedWorkerMigration, migrateManagedWorkerIdentity } = require('./managed-worker-migration');
 
 let jsoncParser = null;
@@ -393,6 +393,30 @@ function expandForInstall(harness, roots) {
   });
 }
 
+function cleanupRetiredProjections(harness, roots) {
+  const manifest = loadInstallManifest(REPOSITORY_ROOT);
+  const retirements = expandRetirementManifest(manifest, {
+    harness,
+    repoRoot: REPOSITORY_ROOT,
+    destinationRoot: destinationRoots(harness, roots),
+  });
+  const results = [];
+  for (const retirement of retirements) {
+    if (!fs.existsSync(retirement.destinationPath)) {
+      results.push({ ...retirement, action: 'not-found' });
+      continue;
+    }
+    const currentHash = sha256Buffer(fs.readFileSync(retirement.destinationPath));
+    if (!retirement.managedHashes.includes(currentHash)) {
+      results.push({ ...retirement, action: 'preserved' });
+      continue;
+    }
+    fs.unlinkSync(retirement.destinationPath);
+    results.push({ ...retirement, action: 'deleted' });
+  }
+  return results;
+}
+
 function listMdFiles(dir) {
   return fs.readdirSync(dir)
     .filter(f => f.endsWith('.md'))
@@ -421,6 +445,7 @@ function listMdFilesRecursive(dir) {
 
 function installClaude(destBase) {
   const targetPath = destBase || CLAUDE_BASE;
+  cleanupRetiredProjections('claude', { base: targetPath });
   migrateLegacyClaudeWorkers(targetPath);
   for (const projection of expandForInstall('claude', { base: targetPath })) installProjection(projection, targetPath);
 
@@ -433,6 +458,7 @@ function installCopilot(promptsBase, skillsBase, agentsBase, saiBase) {
   const agentsPath = agentsBase || COPILOT_AGENTS_BASE;
   const saiPath = saiBase || COPILOT_SAI_BASE;
 
+  cleanupRetiredProjections('copilot', { prompts: promptsPath, skills: skillsPath, agents: agentsPath, sai: saiPath });
   for (const projection of expandForInstall('copilot', { prompts: promptsPath, skills: skillsPath, agents: agentsPath, sai: saiPath })) installProjection(projection, saiPath);
 
   writeVersionMarker(saiPath);
@@ -440,6 +466,7 @@ function installCopilot(promptsBase, skillsBase, agentsBase, saiBase) {
 
 function installOpencode(destBase) {
   const targetPath = destBase || OPENCODE_BASE;
+  cleanupRetiredProjections('opencode', { base: targetPath });
   for (const projection of expandForInstall('opencode', { base: targetPath })) installProjection(projection, targetPath);
 
   writeVersionMarker(targetPath);
@@ -650,6 +677,7 @@ module.exports = {
   migrateLegacyClaudeWorkers,
   inspectManagedWorkerMigration,
   migrateManagedWorkerIdentity,
+  cleanupRetiredProjections,
   OPENCODE_MANAGED_AGENTS,
   sha256Buffer,
   installClaudeImplementationWorker,
