@@ -31,6 +31,9 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 **Implementation Dispatch**: "The second `/sai-4-apply` dispatch of a **Split-Routed Step**, given the GREEN implementation body, that writes the implementation and verifies GREEN and is forbidden from creating or modifying any test file."
 *Avoid*: GREEN dispatch, impl agent, code writer, build dispatch
 
+**Inline Coordinator Adapter**: "The caller-neutral `sai/orchestration/inline-invocation.md` contract that dispatches VS Code's inline design or implementation phase to its existing phase core without routed workers."
+*Avoid*: fake coordinator, inline phase router, inline worker
+
 **Manual Verification**: "The closing section of `design.md` listing the checks that are cheap by hand and expensive to automate — generated-artifact drift and end-to-end smoke — naming the middle tier between automated tests and `/sai-5-review`."
 *Avoid*: QA checklist, manual QA, smoke test section, verification steps
 
@@ -91,6 +94,7 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 - An **Attempts Per Phase** entry is retrospective and flows only into the **Execution Telemetry Appendix** — never back into a later dispatch prompt, which is the technical-learnings channel's job.
 - An **Execution Telemetry Appendix** is written only by the `/sai-4-apply` coordinator, in the same per-Step loop slot as the deviations appendix, so it lands in the Step's own commit.
 - A **Phase Policy** extends the **Orchestration Core** for exactly one planning phase without adding that phase's rules to the shared lifecycle contract.
+- An **Inline Coordinator Adapter** delegates to one phase-specific invocation core while remaining outside the routed **Orchestration Core** lifecycle.
 - A **Test Command** belongs to one change's `## Implementation Context` and is consumed by exactly one dispatch — the **Blind Test-Writer**; a single dispatch receives the Step's own verification commands instead.
 - A **Blind Test-Writer** and an **Implementation Dispatch** replace the single per-Step dispatch only for a **Split-Routed Step**; every other Step keeps one dispatch, including a Step with a RED block whose **Step Contract** is unavailable.
 - A **Step Contract** that is missing for a Step routes that Step to a single dispatch (announced by a coordinator trace line); a **Step Contract** that is ambiguous — several `## Step N` matching the same `N` — is a desync and STOPs the run.
