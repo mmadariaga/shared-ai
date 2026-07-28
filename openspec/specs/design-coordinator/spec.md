@@ -20,9 +20,9 @@ wrapper_echo_value: "placeholder-value"
 arguments_value: "placeholder-change-name"
 ```
 ## Requirements
-### Requirement: step-1-inactive-infrastructure-boundary
+### Requirement: active-harness-entry-boundary
 
-During Step 1, all three design wrappers (Claude, opencode, Copilot) SHALL reference the explicit inline entry `sai/commands/sai-2-design-inline.md` and SHALL NOT reference a routed dispatch path.
+Claude Code and opencode SHALL invoke the routed design coordinator and their respective design-worker bindings. GitHub Copilot SHALL invoke `sai/orchestration/inline-invocation.md` directly with `phase: sai-2-design`; no supported entrypoint SHALL require a legacy loader.
 
 ### Requirement: coordinator-has-no-file-search-shell-git-web-openspec-access
 
@@ -178,4 +178,3 @@ The routed design worker SHALL use the phase-specific identifier `sai-2-design-w
 - **WHEN** the new `sai-2-design-worker` destination exists with incompatible user-owned content
 - **THEN** installation, doctor, and uninstall SHALL report the collision as unmanaged or incompatible
 - **AND** SHALL not overwrite or delete that content
-

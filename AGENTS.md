@@ -32,7 +32,7 @@ Each phase reads from and writes to **`openspec/changes/{change-name}/`** — si
  sai/orchestration/workers/bindings/claude/   ← Claude Code routed worker binding
  sai/orchestration/workers/bindings/opencode/ ← opencode routed worker binding
  sai/policies/                    ← canonical reusable policies and prerequisite rules
- sai/compat/                      ← caller-neutral compatibility loaders and assets
+ sai/compat/                      ← caller-neutral compatibility assets
  sai/install-manifest.json        ← deterministic harness projection manifest for install, doctor, and uninstall
  commands/claude/                 ← Claude Code wrappers
  commands/opencode/               ← opencode wrappers
@@ -63,7 +63,7 @@ The openspec-dependent `sai-*` commands halt with a clear error if either is mis
 | `sai/instructions/` | Phase content (Isolation Mode + TASK block). Fetched by wrappers. |
 | `sai/commands/` | Sai command body files fetched by wrappers at runtime. |
 | `sai/commands/sai-3-implement.md` | Routed implementation coordinator body for Claude Code and opencode. |
-| `sai/commands/sai-3-implement-inline.md` | Inline implementation caller body for the Copilot adapter boundary. |
+| `sai/orchestration/inline-invocation.md` | Direct Copilot adapter for inline design and implementation dispatch. |
 | `sai/instructions/` | Phase content and inline caller contracts fetched by wrappers. |
 | `sai/orchestration/` | Shared coordinator/worker lifecycle contracts and routed worker contracts. Claude Code and opencode receive their own binding projections; Copilot is explicitly inline and receives none. |
 | `sai/policies/` | Canonical glossary, prerequisite, picker, commit, status, and feedback policies. |
@@ -122,10 +122,10 @@ sai-* commands prepend shared-AI behaviors (glossary-format, spec.propose) and t
 The pipeline supports three harnesses: **Claude Code**, **opencode**, and **GitHub Copilot**. Every change — to a wrapper (`commands/{claude,opencode,copilot}/`), a shared instruction (`sai/instructions/`), a skill, an installer, or this AGENTS.md — MUST consider all three. Harness-agnostic content stays harness-agnostic (no harness named at all); the moment one harness is named, all three are named, each with its own mechanism. This rule is upstream of Mirror discipline and also governs instruction prose (e.g. closed-choice prompts must cover Claude Code's `AskUserQuestion`, opencode's `question` tool, and Copilot's plain-text fallback — see `remember.md`), installer scripts, model tables, and docs. Before finishing any change, scan the diff for a harness name; if one appears, verify the other two are addressed or explicitly marked N/A.
 
 ### Implementation coordinator and worker
-Claude Code and opencode route `/sai-3-implement` through the shared orchestration core and their respective binding; GitHub Copilot stays inline through an explicit harness adapter carve-out and receives no routed orchestration source or binding. All three preserve the same `implementation.md` artifact contract and MANDATORY STOP. The coordinator performs no technical I/O and only the worker owns routed planning writes. Copilot has subagent support; this asymmetry is an adapter choice under the universality rule.
+Claude Code and opencode route `/sai-3-implement` through the shared orchestration core and their respective worker binding; GitHub Copilot dispatches directly through `sai/orchestration/inline-invocation.md` with no routed worker binding. All three preserve the same `implementation.md` artifact contract and MANDATORY STOP. The routed coordinator performs no technical I/O and only the worker owns routed planning writes. Copilot has subagent support; this asymmetry is an adapter choice under the universality rule.
 
 ### Design coordinator and worker
-Claude Code and opencode route `/sai-2-design` through the shared orchestration core and their respective design-worker binding; Claude uses a low-effort coordinator and high-effort worker, while opencode uses named agents with GLM 5.2 `variant: high`. The coordinator owns lifecycle routing and the worker owns technical I/O and routed design-artifact writes. Fixed notices are acknowledged with `continue_after_notice`; Continue now clears design lifecycle state and dispatches the implementation binding in a fresh namespace. GitHub Copilot stays inline through an explicit adapter carve-out, receives no routed orchestration source or binding, and retains `budget-explorer` delegation because no portable cross-turn continuation contract spans the supported surfaces. All paths preserve `openspec/changes/{change-name}/design.md`, `tasks.md`, and `interfaces.md`; Proposal Complexity remains descriptive.
+Claude Code and opencode route `/sai-2-design` through the shared orchestration core and their respective design-worker binding; Claude uses a low-effort coordinator and high-effort worker, while opencode uses named agents with GLM 5.2 `variant: high`. The coordinator owns lifecycle routing and the worker owns technical I/O and routed design-artifact writes. Fixed notices are acknowledged with `continue_after_notice`; Continue now clears design lifecycle state and dispatches the implementation binding in a fresh namespace. GitHub Copilot dispatches directly through `sai/orchestration/inline-invocation.md` with no routed worker binding and retains `budget-explorer` delegation because no portable cross-turn continuation contract spans the supported surfaces. All paths preserve `openspec/changes/{change-name}/design.md`, `tasks.md`, and `interfaces.md`; Proposal Complexity remains descriptive.
 
 ### Single artifact home
 All sai-* artifacts (`implementation.md`, `review.md`, `security.md`, `performance.md`, `accessibility.md`, `pr.md`) write to `openspec/changes/{change-name}/`. The legacy `plans/` directory is **not used** by the new pipeline.

@@ -318,6 +318,19 @@ test('Step 2 routes Claude and opencode through the coordinator but preserves Co
   assert.match(opencode, /\*\*Change-name argument:\*\* \$ARGUMENTS/);
 });
 
+test('Step 1 implementation contracts use the routed entrypoints and exact inline prerequisites', () => {
+  const inline = artifact('sai/orchestration/inline-invocation.md');
+  const copilot = artifact('commands/copilot/sai-3-implement.prompt.md');
+
+  assert.match(inline, /Change '\{change-name\}' not found\. Run \/sai-1-spec to create it first\./);
+  assert.match(inline, /design\.md not found for '\{change-name\}'\. Run \/sai-2-design first\./);
+  assert.match(inline, /tasks\.md not found for '\{change-name\}'\. Run \/sai-2-design first\./);
+  assert.match(inline, /first missing artifact[\s\S]*without checking later artifacts or writing any\s+file/i);
+  assert.match(copilot, /Fetch @sai\/orchestration\/inline-invocation\.md/);
+  assert.match(copilot, /^phase: sai-3-implement\r?\narguments: \$ARGUMENTS$/m);
+  assert.doesNotMatch(copilot, /supported loader/i);
+});
+
 test('routed harness bindings and inline parity', () => {
   const workerName = 'sai-3-implementation-worker';
   const worker = artifact('sai/orchestration/workers/sai-3-implementation-worker.md');
@@ -584,14 +597,16 @@ test('Step 3 AGENTS documents every coordinator, inline, worker, agent, binding,
 
   for (const entry of [
     'sai/commands/sai-3-implement.md',
-    'sai/commands/sai-3-implement-inline.md',
     'agents/claude/sai-3-implementation-worker.md',
     'skills/claude/sai-3-implementation-worker/SKILL.md',
     'skills/opencode/sai-3-implementation-worker/SKILL.md',
   ]) {
     assert.match(agents, new RegExp(entry.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
   }
-  assert.match(agents, /Copilot[\s\S]{0,220}(?:adapter[ -]carve-out|carve-out[\s\S]{0,100}adapter)/i);
+  assert.match(
+    agents,
+    /GitHub Copilot dispatches directly through `sai\/orchestration\/inline-invocation\.md` with no routed worker binding/i
+  );
   assert.match(agents, /harness universality/i);
 });
 

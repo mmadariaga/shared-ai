@@ -59,9 +59,15 @@ branch below in the current context. The adapter MUST NOT introduce routed worke
 
 1. Fetch @sai/policies/change-picker.md and follow it exactly.
 2. Fetch @sai/policies/prereqs.md and perform its checks.
-3. Verify that the resolved change contains `proposal.md`, `design.md`, and
-   `tasks.md`. Use the existing missing-artifact failure text from
-   `sai-3-implement-inline.md` and do not write any file when a check fails.
+3. Verify the resolved change's planning artifacts in this exact order and STOP
+   on the first missing artifact without checking later artifacts or writing any
+   file:
+   - Missing `proposal.md`: print exactly
+     `Change '{change-name}' not found. Run /sai-1-spec to create it first.`
+   - Missing `design.md`: print exactly
+     `design.md not found for '{change-name}'. Run /sai-2-design first.`
+   - Missing `tasks.md`: print exactly
+     `tasks.md not found for '{change-name}'. Run /sai-2-design first.`
 4. Fetch @skills/budget/SKILL.md and use it.
 5. Fetch @sai/compat/sai-3-implementation-core.md and follow it exactly using
    the resolved change name as `$ARGUMENTS`.

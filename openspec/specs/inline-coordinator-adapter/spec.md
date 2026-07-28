@@ -99,7 +99,7 @@ The adapter SHALL preserve the existing phase artifact locations, user feedback 
 
 ### Requirement: Shared adapter is installable
 
-The installation manifest SHALL add one managed, non-recursive copy projection with source `sai/orchestration/inline-invocation.md`, destination class `sai` and path `orchestration/inline-invocation.md`, and harnesses `copilot`. The projection SHALL use the manifest's content-drift ownership semantics, SHALL be the sole owner of that destination, and SHALL NOT be folded into the routed Claude Code or opencode orchestration projections. Every retained VS Code prompt or inline loader SHALL resolve this installed path.
+The installation manifest SHALL add one managed, non-recursive copy projection with source `sai/orchestration/inline-invocation.md`, destination class `sai` and path `orchestration/inline-invocation.md`, and harnesses `copilot`. The projection SHALL use the manifest's content-drift ownership semantics, SHALL be the sole owner of that destination, and SHALL NOT be folded into the routed Claude Code or opencode orchestration projections. Every retained VS Code prompt SHALL resolve this installed path directly.
 
 #### Scenario: Installed VS Code prompts resolve the adapter
 

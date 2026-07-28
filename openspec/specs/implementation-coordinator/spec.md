@@ -5,7 +5,7 @@
 Define the coordination boundary, I/O isolation, and user-facing result handling responsibilities of the implementation coordinator that dispatches work to the implementation-planning worker.
 ## Requirements
 ### Requirement: Harness adapter dispatch seam
-The Claude Code and opencode command wrappers SHALL select the shared coordinator entry path, while the Copilot command wrapper SHALL select the existing inline implementation entry path and SHALL NOT consume the shared coordinator instructions as its execution path. The routed prerequisite and change-picker behavior SHALL execute in the worker; the preserved Copilot inline body SHALL retain that behavior for Copilot.
+The Claude Code and opencode command wrappers SHALL select the shared coordinator entry path, while the Copilot command wrapper SHALL dispatch directly through `sai/orchestration/inline-invocation.md` and SHALL NOT consume the shared coordinator instructions as its execution path. The routed prerequisite and change-picker behavior SHALL execute in the worker; the Copilot adapter SHALL retain that behavior for Copilot.
 
 #### Scenario: Harness-specific entry selection
 - **WHEN** `/sai-3-implement` is invoked under Claude Code
@@ -17,7 +17,7 @@ The Claude Code and opencode command wrappers SHALL select the shared coordinato
 
 #### Scenario: Copilot inline entry selection
 - **WHEN** `/sai-3-implement` is invoked under GitHub Copilot
-- **THEN** its wrapper SHALL bypass that seam and continue through the existing inline implementation path with the current prerequisite and change-picker behavior
+- **THEN** its wrapper SHALL bypass that seam and dispatch the direct inline adapter with the current prerequisite and change-picker behavior
 
 ### Requirement: Coordinator dispatch boundary
 The `/sai-3-implement` coordinator SHALL construct a normalized invocation envelope containing both `wrapper_echo_value` (the non-empty `**Change-name argument:** <value>` wrapper-echo value, or empty when absent) and `arguments_value` (the raw `$ARGUMENTS` value, including flags). It SHALL pass that envelope unchanged to one implementation-planning worker, SHALL preserve wrapper-echo precedence for the worker, and SHALL NOT run prerequisite checks, query OpenSpec, execute change-picker logic, resolve the change name, or perform technical planning itself.
@@ -148,4 +148,3 @@ The routed implementation worker SHALL use the phase-specific identifier `sai-3-
 - **WHEN** the new `sai-3-implementation-worker` destination exists with incompatible user-owned content
 - **THEN** installation, doctor, and uninstall SHALL report the collision as unmanaged or incompatible
 - **AND** SHALL not overwrite or delete that content
-

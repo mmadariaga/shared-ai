@@ -25,7 +25,7 @@ Deduplicate shared behavior between Claude Code and opencode wrappers by extract
 - **WHEN** the Artifact-Only Scope section is parsed
 - **THEN** it lists at least: build, test, lint, deploy, migrate as commands the spec agent must NEVER run
 ### Requirement: design-instruction
-The design workflow SHALL be split into caller-neutral design invocation instructions, a routed coordinator body, a routed design-worker instruction, and a preserved inline body. Claude Code and opencode wrappers SHALL select the routed coordinator and their harness binding; GitHub Copilot SHALL select the inline body. Both entry paths SHALL consume the same design artifact and interaction contract so approval, generation, feedback, and navigation behavior remain single-sourced rather than independently reimplemented.
+The design workflow SHALL be split into caller-neutral design invocation instructions, a routed coordinator body, and a routed design-worker instruction. Claude Code and opencode wrappers SHALL select the routed coordinator and their harness binding; GitHub Copilot SHALL dispatch directly through `sai/orchestration/inline-invocation.md`. Both entry paths SHALL consume the same design artifact and interaction contract so approval, generation, feedback, and navigation behavior remain single-sourced rather than independently reimplemented.
 
 #### Scenario: shared design workflow exists
 - **WHEN** the design instruction surfaces are read
@@ -35,13 +35,13 @@ The design workflow SHALL be split into caller-neutral design invocation instruc
 - **WHEN** `sai/commands/sai-2-design.md` is read
 - **THEN** it SHALL contain only coordinator lifecycle and interaction responsibilities and SHALL delegate technical execution to the design worker binding
 
-#### Scenario: inline body preserves compatibility
+#### Scenario: inline adapter preserves compatibility
 - **WHEN** the GitHub Copilot `sai-2-design` wrapper is read
-- **THEN** it SHALL fetch the explicit inline design entry rather than the routed coordinator body and SHALL retain the shared workflow semantics
+- **THEN** it SHALL fetch `sai/orchestration/inline-invocation.md` directly with `phase: sai-2-design` rather than the routed coordinator body and SHALL retain the shared workflow semantics
 
 #### Scenario: Copilot wrapper selects inline entry
 - **WHEN** `commands/copilot/sai-2-design.prompt.md` is read
-- **THEN** it SHALL load the Copilot fetch adapter and explicit inline design body without loading a routed design-worker binding
+- **THEN** it SHALL load the Copilot fetch adapter and direct inline adapter without loading a routed design-worker binding
 
 #### Scenario: Claude Code wrapper selects routed binding
 - **WHEN** `commands/claude/sai-2-design.md` is read
@@ -62,21 +62,19 @@ The opencode `sai-1-spec` wrapper SHALL load `remember.md` from `~/.config/openc
 - **WHEN** any file under `commands/opencode/` is searched
 - **THEN** no file contains the string `~/.claude/`
 
-### Requirement: inactive-infrastructure-boundary
+### Requirement: active-infrastructure-boundary
 
-Before the shared command becomes routed, all three wrappers SHALL point to the explicit inline entry. The inactive coordinator-worker infrastructure SHALL preserve current inline behavior.
+Claude Code and opencode SHALL use the routed coordinator-worker infrastructure. GitHub Copilot SHALL preserve inline behavior through the direct adapter.
 
-#### Scenario: claude design wrapper stays inline
+#### Scenario: claude design wrapper uses routed entry
 - **WHEN** `commands/claude/sai-2-design.md` is read during Step 1
-- **THEN** it SHALL reference the inline body file `sai/commands/sai-2-design.md`
-- **AND** it SHALL NOT reference a design coordinator, design planning worker, or routed dispatch
+- **THEN** it SHALL reference the routed coordinator, design planning worker, and routed dispatch
 
-#### Scenario: opencode design wrapper stays inline
+#### Scenario: opencode design wrapper uses routed entry
 - **WHEN** `commands/opencode/sai-2-design.md` is read during Step 1
-- **THEN** it SHALL reference the inline body file `sai/commands/sai-2-design.md`
-- **AND** it SHALL NOT reference a design coordinator, agent routing, or worker binding
+- **THEN** it SHALL reference the routed coordinator, agent routing, and worker binding
 
 #### Scenario: copilot design wrapper stays inline
 - **WHEN** `commands/copilot/sai-2-design.prompt.md` is read during Step 1
-- **THEN** it SHALL reference the inline body file `sai/commands/sai-2-design.md`
+- **THEN** it SHALL reference `sai/orchestration/inline-invocation.md` directly with `phase: sai-2-design`
 - **AND** it SHALL NOT reference an agent-based coordinator or worker dispatch mechanism

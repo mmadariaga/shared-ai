@@ -85,10 +85,20 @@ test('design wrappers activate routed Claude/opencode entry and preserve inline 
   assert.doesNotMatch(copilot, /sai-2-design-inline\.md/);
   assert.doesNotMatch(copilot, /sai-design-coordinator|sai-design-planning-worker|sai-implementation-planning-worker/);
 
+  for (const relativePath of [
+    'sai/commands/sai-2-design-inline.md',
+    'sai/commands/sai-3-implement-inline.md',
+  ]) {
+    assert.equal(fs.existsSync(path.join(repoRoot, relativePath)), false, `${relativePath} should be absent`);
+  }
+
   const spec = artifact('openspec/specs/design-coordinator/spec.md');
 
-  assert.match(spec, /inactive[- ]infrastructure[- ]boundary/i);
-  assert.match(spec, /all three.*wrappers/i);
+  assert.match(
+    spec,
+    /Claude Code and opencode SHALL invoke the routed design coordinator.*GitHub Copilot SHALL invoke `sai\/orchestration\/inline-invocation\.md` directly/i
+  );
+  assert.match(spec, /no supported entrypoint SHALL require a legacy loader/i);
 });
 
 test('shared feedback gate defines routed design ownership without changing canonical gate rules', () => {

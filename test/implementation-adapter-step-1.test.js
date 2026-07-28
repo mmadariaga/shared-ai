@@ -8,6 +8,16 @@ const { IMPLEMENTATION_ARTIFACTS } = require('../fixtures/implementation-adapter
 
 const repoRoot = path.join(__dirname, '..');
 
+test('Step 1 artifact interfaces remain plain CommonJS maps', () => {
+  assert.deepEqual(Object.keys(IMPLEMENTATION_ARTIFACTS).sort(), [
+    'coordinator',
+    'inlineCaller',
+    'invocationCore',
+    'worker',
+  ]);
+  assert.doesNotMatch(JSON.stringify(IMPLEMENTATION_ARTIFACTS), /loader|claude|opencode|copilot/i);
+});
+
 function artifact(relativePath) {
   const fullPath = path.join(repoRoot, relativePath);
   assert.ok(fs.existsSync(fullPath), `${relativePath} should exist`);

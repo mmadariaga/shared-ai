@@ -24,13 +24,11 @@ test('completed routed output uses the coordinator contract and reports ordered 
 
 test('Step 4 completed inline planning emits the same sentence once without routed lifecycle', () => {
   const inlineWrapper = artifact(COMPLETION_ARTIFACTS.inlineWrapper);
-  const inlineCommand = artifact(COMPLETION_ARTIFACTS.inlineCommand);
-  const adapter = artifact('sai/orchestration/inline-invocation.md');
+  const invocation = artifact(COMPLETION_ARTIFACTS.invocation);
   assert.match(inlineWrapper, /sai\/orchestration\/inline-invocation\.md/);
-  assert.match(inlineCommand, /sai\/orchestration\/inline-invocation\.md/);
-  assert.match(inlineCommand, /^phase: sai-3-implement$/m);
-  assert.match(adapter, /sai-3-implementation-core\.md/);
-  assert.match(adapter, /MANDATORY STOP/);
+  assert.match(inlineWrapper, /^phase: sai-3-implement\r?\narguments: \$ARGUMENTS$/m);
+  assert.match(invocation, /sai-3-implementation-core\.md/);
+  assert.match(invocation, /MANDATORY STOP/);
 });
 
 test('Step 4 non-completed outcomes do not emit the completion sentence', () => {

@@ -52,11 +52,11 @@ Harness runtime files under `skills/` and `agents/` SHALL remain valid thin forw
 - **THEN** its forwarding manifest SHALL fetch the corresponding installed canonical binding under `sai/orchestration/workers/bindings/<harness>/`
 
 ### Requirement: Copilot inline adapter remains inline
-GitHub Copilot SHALL continue to execute design and implementation planning through the existing inline adapter and SHALL NOT be required to consume a routed-worker binding merely because canonical routed bindings moved under `workers/bindings/`.
+GitHub Copilot SHALL continue to execute design and implementation planning through the direct inline adapter at `sai/orchestration/inline-invocation.md` and SHALL NOT be required to consume a routed-worker binding merely because canonical routed bindings live under `workers/bindings/`.
 
 #### Scenario: Copilot invokes a planning phase
 - **WHEN** GitHub Copilot runs design or implementation planning
-- **THEN** it SHALL follow the existing inline command path
+- **THEN** it SHALL follow the direct inline adapter path
 - **AND** the shared-source extraction SHALL NOT introduce routed worker lifecycle state into that path
 
 ### Requirement: Dedicated compatibility source
@@ -105,4 +105,3 @@ The repository copies under `sai/orchestration/`, `sai/instructions/`, `sai/poli
 #### Scenario: Manifest and filesystem disagree
 - **WHEN** doctor finds a managed destination missing, extra, or different from the source selected by the manifest
 - **THEN** it SHALL report the disagreement against the corresponding manifest entry
-

@@ -41,11 +41,11 @@ The opencode wrapper SHALL run the `sai-implementation-coordinator` primary agen
 - **THEN** uninstall SHALL leave both config entries intact under the existing config-merge exclusion
 
 ### Requirement: Copilot compatibility boundary
-The Copilot implementation command SHALL preserve its existing inline execution path and documentation SHALL state that the portable coordinator-worker contract is not implemented for Copilot in this slice without stating that Copilot cannot use subagents.
+The Copilot implementation command SHALL preserve direct inline execution through `sai/orchestration/inline-invocation.md`, and documentation SHALL state that the portable coordinator-worker contract is not implemented for Copilot in this slice without stating that Copilot cannot use subagents.
 
 #### Scenario: Copilot implementation invocation
 - **WHEN** `/sai-3-implement` runs under GitHub Copilot
-- **THEN** it SHALL continue inline execution with its current observable behavior and SHALL expose the documented compatibility limitation
+- **THEN** it SHALL dispatch the direct inline adapter with its current observable behavior and SHALL expose the documented compatibility limitation
 
 ### Requirement: Managed implementation worker projections
 The single installation manifest SHALL project the canonical shared coordinator and worker-lifecycle contracts, the implementation worker contract, and only the active routed harness's implementation binding to Claude Code and opencode. Their runtime skills and Claude agent surface SHALL remain thin forwarders to those canonical sources. The Copilot projection SHALL retain the caller-neutral compatibility assets required by its inline path but SHALL exclude routed orchestration bindings and routed implementation worker-agent surfaces. Installer, doctor, and uninstall SHALL derive these projections from the same manifest while preserving deterministic collision detection, managed-content drift checks, ownership sidecars, compatible-unowned reuse, user-modified-file retention, and opencode merged-config preservation. Exact-compatible pre-existing Claude worker agents SHALL be reused without rewriting or adopting ownership, and all unrelated entries in an existing opencode JSONC configuration SHALL remain unchanged.
