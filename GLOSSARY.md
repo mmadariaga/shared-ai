@@ -34,6 +34,12 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 **Manual Verification**: "The closing section of `design.md` listing the checks that are cheap by hand and expensive to automate — generated-artifact drift and end-to-end smoke — naming the middle tier between automated tests and `/sai-5-review`."
 *Avoid*: QA checklist, manual QA, smoke test section, verification steps
 
+**Orchestration Core**: "The canonical `sai/orchestration/` contracts for coordinator mechanics and worker lifecycle behavior shared by routed planning phases."
+*Avoid*: shared worker prompt, universal phase prompt, coordinator implementation
+
+**Phase Policy**: "The design-only or implementation-only rules layered by a separate phase worker contract over the shared **Orchestration Core** lifecycle."
+*Avoid*: lifecycle core, shared phase logic, conditional worker branch
+
 **Proposal Complexity**: "The single `low` / `medium` / `high` token on the `**Complexity**` line at the top of `proposal.md`, describing the coarse size of a whole change as judged at spec time from five signals, before `design.md` and `tasks.md` exist."
 *Avoid*: change complexity, proposal routing, proposal size, change tier
 
@@ -84,6 +90,7 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 - An **Attempts Per Phase** entry exists for `red` exactly where the report's RED result is non-`n/a`, and for `green` exactly where the GREEN result is non-`n/a`; a **Blind Test-Writer** therefore emits one entry, an **Implementation Dispatch** one, and a single dispatch two when its body contains a RED block and one otherwise.
 - An **Attempts Per Phase** entry is retrospective and flows only into the **Execution Telemetry Appendix** — never back into a later dispatch prompt, which is the technical-learnings channel's job.
 - An **Execution Telemetry Appendix** is written only by the `/sai-4-apply` coordinator, in the same per-Step loop slot as the deviations appendix, so it lands in the Step's own commit.
+- A **Phase Policy** extends the **Orchestration Core** for exactly one planning phase without adding that phase's rules to the shared lifecycle contract.
 - A **Test Command** belongs to one change's `## Implementation Context` and is consumed by exactly one dispatch — the **Blind Test-Writer**; a single dispatch receives the Step's own verification commands instead.
 - A **Blind Test-Writer** and an **Implementation Dispatch** replace the single per-Step dispatch only for a **Split-Routed Step**; every other Step keeps one dispatch, including a Step with a RED block whose **Step Contract** is unavailable.
 - A **Step Contract** that is missing for a Step routes that Step to a single dispatch (announced by a coordinator trace line); a **Step Contract** that is ambiguous — several `## Step N` matching the same `N` — is a desync and STOPs the run.

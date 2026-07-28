@@ -11,6 +11,11 @@ Durable execution-observed facts about the shared-ai prompt and installer reposi
 
 ## Conventions
 
+- **sai/install-manifest.json**: Manifest consumers and fixtures use the canonical JSON path, nested `destination: { class, path }` values, optional single-string `overrides`, and absolute resolved destination paths.
+  *Observed:* extract-sai-orchestration-core — blind test fixtures inferred a `.jsonc` path, flattened destinations, collection-shaped overrides, and relative paths; aligning them with the manifest contract produced the valid GREEN suite.
+- **commands/claude/sai-3-implement.md**: Structural assertions track the supported wrapper metadata `model: opus` and `effort: medium` rather than a provider-specific model identifier or stale effort value.
+  *Observed:* extract-sai-orchestration-core — obsolete exact metadata expectations caused unrelated baseline failures; matching the current wrapper metadata restored the coordinator suite.
+
 ## Avoid
 
 ## Test Command

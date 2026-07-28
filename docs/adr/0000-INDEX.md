@@ -37,6 +37,10 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0078 — Design workflow selects routed or inline entry](./0078-design-workflow-selects-routed-or-inline-entry.md) — Refs 0074, Refs 0035
 - [0079 — Design worker notices and reconstruction metadata](./0079-design-worker-notices-and-reconstruction-metadata.md) — Refs 0075, Refs 0076
 - [0080 — Design-to-implementation lifecycle boundary](./0080-design-to-implementation-lifecycle-boundary.md) — Refs 0075, Refs 0076
+- [0081 — Name shared orchestration contracts explicitly](./0081-name-shared-orchestration-contracts-explicitly.md) — Refs 0004, Refs 0075
+- [0082 — Keep canonical phase workers and bindings in mirrored orchestration subtrees](./0082-canonical-phase-workers-and-mirrored-bindings.md) — Refs 0077, Refs 0078
+- [0083 — Extract shared coordinator mechanics through phase adapters](./0083-shared-coordinator-mechanics-through-phase-adapters.md) — Refs 0075, Refs 0076, Refs 0079, Refs 0080
+- [0086 — Separate worker write journals from the coordinator changed-file union](./0086-worker-journals-and-coordinator-union.md) — Refs 0075, Refs 0076
 
 ### `/sai-3-implement`
 
@@ -48,6 +52,10 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0075 — Normalize coordinator-worker exchange around an invocation envelope and lifecycle payload](./0075-normalized-invocation-envelope-and-lifecycle-payload.md) — Pair with 0076
 - [0076 — Resume the current planning worker before reconstructing from durable artifacts](./0076-resume-worker-before-durable-reconstruction.md) — Pair with 0075
 - [0077 — Keep model and continuation mechanics in harness-specific worker bindings](./0077-harness-specific-worker-bindings.md) — Refs 0074, Refs 0075, Refs 0076
+- [0081 — Name shared orchestration contracts explicitly](./0081-name-shared-orchestration-contracts-explicitly.md) — Refs 0004, Refs 0075
+- [0082 — Keep canonical phase workers and bindings in mirrored orchestration subtrees](./0082-canonical-phase-workers-and-mirrored-bindings.md) — Refs 0077, Refs 0078
+- [0083 — Extract shared coordinator mechanics through phase adapters](./0083-shared-coordinator-mechanics-through-phase-adapters.md) — Refs 0075, Refs 0076, Refs 0079, Refs 0080
+- [0086 — Separate worker write journals from the coordinator changed-file union](./0086-worker-journals-and-coordinator-union.md) — Refs 0075, Refs 0076
 
 ### `/sai-4-apply`
 
@@ -123,6 +131,8 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0056 — The doctor's "fresh repo from main" is its own npx-bundled checkout](./0056-doctor-fresh-repo-is-npx-bundled-checkout.md) — Refs 0057
 - [0057 — The doctor reuses uninstall-flow's enumeration as the install-graph source of truth](./0057-doctor-reuses-uninstall-enumeration-as-install-graph.md) — Refs 0055
 - [0077 — Keep model and continuation mechanics in harness-specific worker bindings](./0077-harness-specific-worker-bindings.md) — Refs 0074, Refs 0075, Refs 0076
+- [0084 — Use a hybrid declarative installation manifest](./0084-hybrid-declarative-installation-manifest.md) — Refs 0055, Refs 0057
+- [0085 — Implement declared projection strategies with generic handlers](./0085-generic-handlers-for-declared-projection-strategies.md) — Pair with 0084, Refs 0029, Refs 0055, Refs 0057
 
 ### Harness wrappers & the shared instruction layer
 
@@ -138,6 +148,9 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0051 — Model `--fast-track` as ephemeral in-conversation state only](./0051-ephemeral-in-conversation-fast-track-state.md) — Refs 0040
 - [0074 — Harness wrappers select coordinator or inline implementation planning](./0074-harness-wrappers-select-coordinator-or-inline-implementation-planning.md) — Refs 0035
 - [0077 — Keep model and continuation mechanics in harness-specific worker bindings](./0077-harness-specific-worker-bindings.md) — Refs 0074, Refs 0075, Refs 0076
+- [0081 — Name shared orchestration contracts explicitly](./0081-name-shared-orchestration-contracts-explicitly.md) — Refs 0004, Refs 0075
+- [0082 — Keep canonical phase workers and bindings in mirrored orchestration subtrees](./0082-canonical-phase-workers-and-mirrored-bindings.md) — Refs 0077, Refs 0078
+- [0083 — Extract shared coordinator mechanics through phase adapters](./0083-shared-coordinator-mechanics-through-phase-adapters.md) — Refs 0075, Refs 0076, Refs 0079, Refs 0080
 
 ---
 
@@ -147,6 +160,8 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 
 - [0004 — Source Layout and Install Path Restructure for sai-* Commands and Skills](./0004-source-layout-and-install-path-restructure.md) — Supersedes 0002, Supersedes 0003, Refs 0001
 - [0009 — Claude-Specific Fetch Skill at skills/claude/fetch/](./0009-claude-specific-fetch-skill.md) — Refs 0003
+- [0081 — Name shared orchestration contracts explicitly](./0081-name-shared-orchestration-contracts-explicitly.md) — Refs 0004, Refs 0075
+- [0082 — Keep canonical phase workers and bindings in mirrored orchestration subtrees](./0082-canonical-phase-workers-and-mirrored-bindings.md) — Refs 0077, Refs 0078
 
 ### Harness portability & mirror discipline
 
@@ -156,6 +171,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0074 — Harness wrappers select coordinator or inline implementation planning](./0074-harness-wrappers-select-coordinator-or-inline-implementation-planning.md) — Refs 0035
 - [0077 — Keep model and continuation mechanics in harness-specific worker bindings](./0077-harness-specific-worker-bindings.md) — Refs 0074, Refs 0075, Refs 0076
 - [0078 — Design workflow selects routed or inline entry](./0078-design-workflow-selects-routed-or-inline-entry.md) — Refs 0074, Refs 0035
+- [0082 — Keep canonical phase workers and bindings in mirrored orchestration subtrees](./0082-canonical-phase-workers-and-mirrored-bindings.md) — Refs 0077, Refs 0078
 
 ### Argument passing & change-name resolution
 
@@ -199,6 +215,8 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0076 — Resume the current planning worker before reconstructing from durable artifacts](./0076-resume-worker-before-durable-reconstruction.md) — Pair with 0075
 - [0077 — Keep model and continuation mechanics in harness-specific worker bindings](./0077-harness-specific-worker-bindings.md) — Refs 0074, Refs 0075, Refs 0076
 - [0079 — Design worker notices and reconstruction metadata](./0079-design-worker-notices-and-reconstruction-metadata.md) — Refs 0075, Refs 0076
+- [0083 — Extract shared coordinator mechanics through phase adapters](./0083-shared-coordinator-mechanics-through-phase-adapters.md) — Refs 0075, Refs 0076, Refs 0079, Refs 0080
+- [0086 — Separate worker write journals from the coordinator changed-file union](./0086-worker-journals-and-coordinator-union.md) — Refs 0075, Refs 0076
 
 ### Testability routing & RED → GREEN
 
@@ -255,6 +273,8 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0055 — Re-derive the uninstall deletion set and verify symmetry by test](./0055-re-derive-uninstall-deletion-set-verify-by-test.md)
 - [0056 — The doctor's "fresh repo from main" is its own npx-bundled checkout](./0056-doctor-fresh-repo-is-npx-bundled-checkout.md) — Refs 0057
 - [0057 — The doctor reuses uninstall-flow's enumeration as the install-graph source of truth](./0057-doctor-reuses-uninstall-enumeration-as-install-graph.md) — Refs 0055
+- [0084 — Use a hybrid declarative installation manifest](./0084-hybrid-declarative-installation-manifest.md) — Refs 0055, Refs 0057
+- [0085 — Implement declared projection strategies with generic handlers](./0085-generic-handlers-for-declared-projection-strategies.md) — Pair with 0084, Refs 0029, Refs 0055, Refs 0057
 
 ---
 

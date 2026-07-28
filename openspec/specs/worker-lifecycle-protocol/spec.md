@@ -6,6 +6,14 @@ Define the common lifecycle protocol shared across all worker types (design, imp
 
 ## Requirements
 
+### Requirement: Canonical shared lifecycle ownership
+The worker lifecycle protocol SHALL be defined once at the shared orchestration lifecycle seam and SHALL be consumed by every routed planning worker and coordinator. Phase contracts MAY extend the protocol only with phase-specific fields or events already permitted by their capability specifications.
+
+#### Scenario: Common lifecycle mechanics are changed
+- **WHEN** a maintainer changes statuses, payload validation, binding-owned continuation metadata, changed-file aggregation, continuation, or fallback mechanics
+- **THEN** the change SHALL be made in the canonical shared lifecycle contract
+- **AND** routed phase contracts SHALL consume that contract without duplicating its normative mechanics
+
 ### Requirement: implementation-worker-terminal-statuses
 
 Implementation workers SHALL retain exactly the four terminal statuses.
@@ -25,7 +33,7 @@ Implementation workers SHALL NOT receive design notices or reconstruction extens
 
 ### Requirement: binding-metadata-separate-capture
 
-Binding metadata captures agent/task IDs separately from worker payloads.
+Binding metadata SHALL capture agent/task IDs separately from worker payloads.
 
 #### Scenario: IDs captured separately
 - **WHEN** a worker is dispatched
@@ -34,7 +42,7 @@ Binding metadata captures agent/task IDs separately from worker payloads.
 
 ### Requirement: continuation-before-replacement
 
-Continuation is attempted first before dispatching a replacement worker.
+Continuation SHALL be attempted first before dispatching a replacement worker.
 
 #### Scenario: continuation attempted first
 - **WHEN** a `needs_input` payload is produced
@@ -133,5 +141,3 @@ Every worker session identifier SHALL be retained only in coordinator conversati
 #### Scenario: Design transitions to implementation in the same invocation
 - **WHEN** Continue now dispatches an implementation planning worker after design completion
 - **THEN** the implementation worker SHALL receive a new continuation namespace, empty changed-file aggregate, no design opaque history, no pending feedback, and no design presentation counter
-
-
