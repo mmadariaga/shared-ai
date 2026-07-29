@@ -8,7 +8,6 @@ const os = require('os');
 const readline = require('readline');
 const childProcess = require('child_process');
 const crypto = require('crypto');
-const { isDeepStrictEqual } = require('util');
 const { loadInstallManifest, expandInstallManifest, expandRetirementManifest } = require('./install-manifest');
 const { inspectManagedWorkerMigration, migrateManagedWorkerIdentity } = require('./managed-worker-migration');
 
@@ -509,12 +508,6 @@ function mergeOpencodeAgents(text) {
   const formattingOptions = { insertSpaces: true, tabSize: 2 };
   let out = text;
   const added = [];
-  for (const [key, shape] of Object.entries(OPENCODE_MANAGED_AGENTS)) {
-    if (Object.prototype.hasOwnProperty.call(existing, key) && !isDeepStrictEqual(existing[key], shape)) {
-      throw new Error(`Incompatible opencode agent "${key}". Rename or remove the conflicting definition, then retry.`);
-    }
-  }
-
   const shapes = {
     explore: { mode: 'subagent', model: OPENCODE_PLACEHOLDER_MODEL },
     executor: { mode: 'subagent', model: OPENCODE_PLACEHOLDER_MODEL },

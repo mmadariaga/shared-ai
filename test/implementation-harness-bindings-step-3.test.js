@@ -183,7 +183,7 @@ test('preserves commented JSONC and non-SAI settings through namespaced opencode
   }
 });
 
-test('Step 3 stops on incompatible Claude and opencode destinations without overwrite', () => {
+test('Step 3 stops on incompatible Claude destinations while preserving customized opencode workers', () => {
   const claudeBase = tempDir('sai-step-3-claude-collision-');
   const opencodeBase = tempDir('sai-step-3-opencode-collision-');
   const claudePath = path.join(claudeBase, 'agents', 'sai-3-implementation-worker.md');
@@ -197,8 +197,12 @@ test('Step 3 stops on incompatible Claude and opencode destinations without over
     assert.equal(fs.readFileSync(claudePath, 'utf8'), claudeSentinel);
 
     fs.writeFileSync(opencodePath, opencodeSentinel);
-    assert.throws(() => installOpencode(opencodeBase), /collision|rename|remove/i);
-    assert.equal(fs.readFileSync(opencodePath, 'utf8'), opencodeSentinel);
+    installOpencode(opencodeBase);
+    const opencodeConfig = jsonc.parse(fs.readFileSync(opencodePath, 'utf8'));
+    assert.deepEqual(opencodeConfig.agent['sai-3-implementation-worker'], {
+      mode: 'subagent',
+      model: 'user-model',
+    });
   } finally {
     fs.rmSync(claudeBase, { recursive: true, force: true });
     fs.rmSync(opencodeBase, { recursive: true, force: true });

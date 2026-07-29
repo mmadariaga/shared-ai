@@ -340,14 +340,14 @@ test('opencode config restricts coordinator to questions and the two named plann
   assert.match(spec, /question.*allow|allow.*question/i);
   assert.match(spec, /implementation.*worker/i);
   assert.match(spec, /design.*worker/i);
-  assert.match(spec, /\*.*deny/);
+   assert.match(spec, /permission\.task.*denying all targets/i);
 });
 
 test('design worker denies all task targets before allowing only explore', () => {
   const spec = artifact('openspec/specs/design-harness-bindings/spec.md');
 
   assert.match(spec, /explore.*allow|allow.*explore/i);
-  assert.match(spec, /task\['\*'\]|task\.\*.*deny/i);
+   assert.match(spec, /permission\.task.*denying all targets/i);
 });
 
 // ─── specs/design-subagent-delegation/spec.md ──────────────────────────────
@@ -507,7 +507,6 @@ test('documentation records the active design compatibility boundary and managed
   assert.doesNotMatch(opencode, /agent: sai-coordinator/);
   assert.match(opencode, /subtask: false/);
   assert.match(opencode, /variant: high/);
-  assert.match(opencode, /collision/i);
   assert.match(opencode, /excludes?.*opencode\.json|opencode\.json.*excludes?/i);
   assert.match(opencode, /restart opencode/i);
 

@@ -508,3 +508,114 @@ test('probeOpencode uses spawnSync exit-code semantics', () => {
     childProcess.spawnSync = origSpawnSync;
   }
 });
+
+// --- Step 1: preservation-first numbered worker bootstrap tests ---
+
+test('copyOpencodeConfig merges customized and missing numbered workers without replacing the customized value', () => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-preserve-'));
+  const custom = {
+    mode: 'subagent',
+    model: 'user-design-model',
+    variant: 'low',
+    permission: { question: 'deny', edit: 'allow' },
+    description: 'user-owned design runtime',
+  };
+  const config = { agent: { 'sai-2-design-worker': custom } };
+  try {
+    fs.writeFileSync(path.join(tmpDir, 'opencode.json'), JSON.stringify(config, null, 2));
+    copyOpencodeConfig(tmpDir);
+    const parsed = jsonc.parse(fs.readFileSync(path.join(tmpDir, 'opencode.json'), 'utf8'));
+    assert.deepEqual(parsed.agent['sai-2-design-worker'], custom);
+    assert.deepEqual(parsed.agent['sai-3-implementation-worker'], OPENCODE_MANAGED_AGENTS['sai-3-implementation-worker']);
+  } finally {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+});
+
+test('installOpencode preserves customized design and implementation runtime entries', () => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-runtime-'));
+  const custom = {
+    mode: 'subagent',
+    model: 'user-worker-model',
+    variant: 'medium',
+    permission: { question: 'allow', edit: 'deny', bash: 'deny' },
+    prompt: 'custom worker prompt',
+  };
+  const configPath = path.join(tmpDir, 'opencode.json');
+  try {
+    fs.writeFileSync(configPath, JSON.stringify({ agent: {
+      'sai-2-design-worker': { ...custom, model: 'user-design-model' },
+      'sai-3-implementation-worker': { ...custom, model: 'user-implementation-model' },
+    } }, null, 2));
+    installOpencode(tmpDir);
+    const parsed = jsonc.parse(fs.readFileSync(configPath, 'utf8'));
+    assert.deepEqual(parsed.agent['sai-2-design-worker'], { ...custom, model: 'user-design-model' });
+    assert.deepEqual(parsed.agent['sai-3-implementation-worker'], { ...custom, model: 'user-implementation-model' });
+  } finally {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+});
+
+test('copyOpencodeConfig leaves fully populated numbered configuration byte-identical', () => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-byte-'));
+  const config = {
+    theme: 'custom',
+    permission: { bash: 'deny' },
+    agent: Object.fromEntries([
+      ...AGENT_KEYS.map(name => [name, { ...AGENT_PLACEHOLDER, model: `user-${name}` }]),
+      ...Object.entries(OPENCODE_MANAGED_AGENTS).map(([name, value]) => [name, {
+      ...value,
+      model: `user-${name}`,
+      variant: 'custom',
+      permission: { question: 'allow' },
+      }]),
+    ]),
+  };
+  const content = `// preserve user configuration\n${JSON.stringify(config, null, 2)}\n`;
+  const configPath = path.join(tmpDir, 'opencode.json');
+  try {
+    fs.writeFileSync(configPath, content);
+    copyOpencodeConfig(tmpDir);
+    assert.deepEqual(fs.readFileSync(configPath, 'utf8'), content);
+  } finally {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+});
+
+test('copyOpencodeConfig edits only opencode.json when both config filenames exist', () => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-dual-'));
+  const jsonContent = JSON.stringify({ agent: { 'sai-2-design-worker': { mode: 'subagent', model: 'custom' } } }, null, 2);
+  const jsoncContent = '// untouched\n{ "theme": "light" }\n';
+  try {
+    fs.writeFileSync(path.join(tmpDir, 'opencode.json'), jsonContent);
+    fs.writeFileSync(path.join(tmpDir, 'opencode.jsonc'), jsoncContent);
+    copyOpencodeConfig(tmpDir);
+    assert.deepEqual(fs.readFileSync(path.join(tmpDir, 'opencode.jsonc'), 'utf8'), jsoncContent);
+    const parsed = jsonc.parse(fs.readFileSync(path.join(tmpDir, 'opencode.json'), 'utf8'));
+    assert.deepEqual(parsed.agent['sai-2-design-worker'], { mode: 'subagent', model: 'custom' });
+    assert.ok(parsed.agent['sai-3-implementation-worker']);
+  } finally {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+});
+
+test('copyOpencodeConfig protects malformed roots and agent maps in both config files', () => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-malformed-'));
+  const files = {
+    'opencode.json': JSON.stringify({ agent: ['not', 'an', 'object'] }),
+    'opencode.jsonc': '{ "agent": 42 }\n',
+  };
+  const messages = [];
+  const originalLog = console.log;
+  try {
+    for (const [name, content] of Object.entries(files)) fs.writeFileSync(path.join(tmpDir, name), content);
+    console.log = message => messages.push(String(message));
+    copyOpencodeConfig(tmpDir);
+    assert.deepEqual(fs.readFileSync(path.join(tmpDir, 'opencode.json'), 'utf8'), files['opencode.json']);
+    assert.deepEqual(fs.readFileSync(path.join(tmpDir, 'opencode.jsonc'), 'utf8'), files['opencode.jsonc']);
+    assert.ok(messages.some(message => /manual|already exists|verify/i.test(message)));
+  } finally {
+    console.log = originalLog;
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+});
