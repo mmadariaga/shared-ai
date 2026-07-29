@@ -8,6 +8,18 @@ const fs = require('fs');
 
 const { parseArgs, main } = require('../bin/uninstall-flow.js');
 
+function isolatedHarnessRoots(tmpDir) {
+  return {
+    opencodeBase: path.join(tmpDir, 'opencode'),
+    copilot: {
+      promptsBase: path.join(tmpDir, 'copilot', 'prompts'),
+      skillsBase: path.join(tmpDir, 'copilot', 'skills'),
+      agentsBase: path.join(tmpDir, 'copilot', 'agents'),
+      saiBase: path.join(tmpDir, 'copilot', 'sai'),
+    },
+  };
+}
+
 // ---------- parseArgs ----------
 
 test('parseArgs throws on positional argument, naming the token', () => {
@@ -86,6 +98,7 @@ test('main --dry-run prints plan, touches nothing, does not call confirm', async
         argv: ['uninstall', '--dry-run'],
         confirm: async () => { confirmCalled = true; return true; },
         claudeBase: tmpDir,
+        ...isolatedHarnessRoots(tmpDir),
       });
 
       assert.equal(exitCode, 0);
@@ -119,6 +132,7 @@ test('main --dry-run --yes behaves identically to --dry-run (dry-run takes prece
         argv: ['uninstall', '--dry-run', '--yes'],
         confirm: async () => { confirmCalled = true; return true; },
         claudeBase: tmpDir,
+        ...isolatedHarnessRoots(tmpDir),
       });
 
       assert.equal(exitCode, 0);
@@ -152,6 +166,7 @@ test('main default with confirm=true deletes installed files and prints summary'
         argv: ['uninstall'],
         confirm: async () => true,
         claudeBase: tmpDir,
+        ...isolatedHarnessRoots(tmpDir),
       });
 
       assert.equal(exitCode, 0);
@@ -178,6 +193,7 @@ test('main default with confirm=false calls confirm and does not delete', async 
       argv: ['uninstall'],
       confirm: async () => { confirmCalled = true; return false; },
       claudeBase: tmpDir,
+      ...isolatedHarnessRoots(tmpDir),
     });
 
     assert.equal(exitCode, 0);
@@ -207,6 +223,7 @@ test('main --yes proceeds without confirmation, deletes files, emits summary', a
         argv: ['uninstall', '--yes'],
         confirm: async () => { confirmCalled = true; return true; },
         claudeBase: tmpDir,
+        ...isolatedHarnessRoots(tmpDir),
       });
 
       assert.equal(exitCode, 0);
