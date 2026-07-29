@@ -69,9 +69,10 @@ test('design wrappers activate routed Claude/opencode entry and preserve inline 
   assert.match(claude, /sai-3-implementation-worker/);
   assert.match(claude, /sai-2-design\.md/);
 
-  assert.doesNotMatch(opencode, /^model:/m);
-  assert.match(opencode, /^agent: sai-coordinator$/m);
-  assert.match(opencode, /^subtask: false$/m);
+   assert.match(opencode, /^model: opencode-go\/glm-5\.2$/m);
+   assert.match(opencode, /^variant: high$/m);
+   assert.match(opencode, /^subtask: false$/m);
+   assert.doesNotMatch(opencode, /^agent:/m);
   assert.match(opencode, /sai-2-design-worker/);
   assert.match(opencode, /sai-3-implementation-worker/);
   assert.match(opencode, /sai-2-design\.md/);

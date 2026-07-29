@@ -109,21 +109,11 @@ test('Claude and opencode worker bindings own dispatch and continuation mechanic
   }
 });
 
-test('opencode config defines exact namespaced coordinator and worker shapes', () => {
+test('opencode config ships only worker shapes and no coordinator profile', () => {
   const config = jsonc.parse(artifact('configs/opencode.jsonc'));
-  const coordinator = config.agent['sai-coordinator'];
   const worker = config.agent['sai-3-implementation-worker'];
 
-  assert.ok(coordinator, 'namespaced coordinator should be present');
   assert.ok(worker, 'namespaced worker should be present');
-
-  assert.equal(coordinator.mode, 'primary');
-  assert.equal(coordinator.model, 'opencode-go/glm-5.2');
-  assert.equal(coordinator.variant, 'high');
-  assert.equal(coordinator.permission.task['*'], 'deny');
-  assert.equal(coordinator.permission.task['sai-3-implementation-worker'], 'allow');
-  assert.equal(coordinator.permission.task['sai-2-design-worker'], 'allow');
-  assert.equal(coordinator.permission.question, 'allow');
   assert.equal(config.subagent_depth, 2);
 
   assert.equal(worker.mode, 'subagent');
@@ -132,6 +122,7 @@ test('opencode config defines exact namespaced coordinator and worker shapes', (
   assert.equal(worker.permission.task['*'], 'deny');
   assert.equal(worker.permission.task.budget, 'allow');
   assert.equal(worker.permission.task.explore, 'allow');
+  assert.equal(config.agent['sai-coordinator'], undefined, 'no coordinator profile is shipped');
 });
 
 test('install surfaces expose managed Claude assets and opencode shapes', () => {
@@ -146,7 +137,7 @@ const { loadInstallManifest, expandInstallManifest } = require('../bin/install-m
 
     installOpencode(opencodeBase);
     const config = fs.readFileSync(path.join(opencodeBase, 'opencode.jsonc'), 'utf8');
-    assert.match(config, /sai-coordinator/);
+    assert.doesNotMatch(config, /sai-coordinator/);
     assert.match(config, /sai-3-implementation-worker/);
   } finally {
     removeTempDir(claudeBase);
@@ -161,7 +152,7 @@ test('installer collisions preserve unfamiliar content and provide remediation g
   const agentPath = path.join(claudeBase, 'agents', 'sai-3-implementation-worker.md');
   const configPath = path.join(opencodeBase, 'opencode.jsonc');
   const claudeSentinel = 'user-owned incompatible Claude agent\n';
-  const opencodeSentinel = '{\n  "agent": {\n    "sai-coordinator": { "mode": "primary", "model": "user-model" }\n  }\n}\n';
+   const opencodeSentinel = '{\n  "agent": {\n    "sai-3-implementation-worker": { "mode": "subagent", "model": "user-model" }\n  }\n}\n';
   try {
     fs.mkdirSync(path.dirname(agentPath), { recursive: true });
     fs.writeFileSync(agentPath, claudeSentinel);
@@ -304,17 +295,17 @@ test('Step 2 routes Claude and opencode through the coordinator but preserves Co
    assert.match(claude, /^effort:\s*low\s*$/m);
   assert.match(claude, /Fetch @skills\/sai-3-implementation-worker\/SKILL\.md/);
   assert.match(claude, /Fetch @sai\/commands\/sai-3-implement\.md/);
-  assert.match(opencode, /sai-coordinator/);
-  assert.match(opencode, /Fetch @skills\/sai-3-implementation-worker\/SKILL\.md/);
-  assert.match(opencode, /Fetch @sai\/commands\/sai-3-implement\.md/);
+   assert.match(opencode, /^model: opencode-go\/glm-5\.2$/m);
+   assert.match(opencode, /Fetch @skills\/sai-3-implementation-worker\/SKILL\.md/);
+   assert.match(opencode, /Fetch @sai\/commands\/sai-3-implement\.md/);
   assert.match(copilot, /sai\/orchestration\/inline-invocation\.md/);
   assert.match(copilot, /^phase: sai-3-implement$/m);
   assert.match(copilot, /^arguments: \$ARGUMENTS$/m);
   assert.doesNotMatch(copilot, /sai-3-implement-inline\.md/);
   assert.doesNotMatch(copilot, /sai-implementation-coordinator/);
-  assert.match(opencode, /^agent:\s*sai-coordinator\s*$/m);
-  assert.match(opencode, /^subtask:\s*false\s*$/m);
-  assert.doesNotMatch(opencode, /^model:/m);
+   assert.match(opencode, /^variant: high$/m);
+   assert.match(opencode, /^subtask:\s*false\s*$/m);
+   assert.doesNotMatch(opencode, /^agent:/m);
   assert.match(opencode, /\*\*Change-name argument:\*\* \$ARGUMENTS/);
 });
 
@@ -364,7 +355,10 @@ test('routed harness bindings and inline parity', () => {
         assert.doesNotMatch(binding, /nested task target(?:s)?[\\s\S]{0,120}(?!budget|explore)[a-z][a-z-]+/i);
         assert.match(forwardingSkill, /opencode[\\/\\]implementation-worker\.md/);
         assert.doesNotMatch(forwardingSkill, /claude[\\/\\]implementation-worker\.md/);
-        assert.match(wrapper, /^agent:\s*sai-coordinator\s*$/m);
+         assert.match(wrapper, /^model: opencode-go\/glm-5\.2$/m);
+         assert.match(wrapper, /^variant: high$/m);
+         assert.match(wrapper, /^subtask:\s*false\s*$/m);
+         assert.doesNotMatch(wrapper, /^agent:/m);
       },
     },
     {

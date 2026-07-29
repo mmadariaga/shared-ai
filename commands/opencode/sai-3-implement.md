@@ -1,6 +1,7 @@
 ---
 description: Granular implementation plan through the canonical coordinator contract and a routed worker.
-agent: sai-coordinator
+model: opencode-go/glm-5.2
+variant: high
 subtask: false
 ---
 

@@ -1,6 +1,7 @@
 ---
 description: Generate design.md and tasks.md through the canonical coordinator contract and a routed design worker.
-agent: sai-coordinator
+model: opencode-go/glm-5.2
+variant: high
 subtask: false
 ---
 

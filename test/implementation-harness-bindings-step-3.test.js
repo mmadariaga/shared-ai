@@ -189,7 +189,7 @@ test('Step 3 stops on incompatible Claude and opencode destinations without over
   const claudePath = path.join(claudeBase, 'agents', 'sai-3-implementation-worker.md');
   const opencodePath = path.join(opencodeBase, 'opencode.jsonc');
   const claudeSentinel = 'incompatible Claude worker\n';
-  const opencodeSentinel = '{\n  "agent": {\n    "sai-coordinator": { "mode": "primary", "model": "user-model" }\n  }\n}\n';
+   const opencodeSentinel = '{\n  "agent": {\n    "sai-3-implementation-worker": { "mode": "subagent", "model": "user-model" }\n  }\n}\n';
   try {
     fs.mkdirSync(path.dirname(claudePath), { recursive: true });
     fs.writeFileSync(claudePath, claudeSentinel);

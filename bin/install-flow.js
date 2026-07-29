@@ -58,19 +58,6 @@ function migrateLegacyClaudeWorkers(targetPath = CLAUDE_BASE) {
   return migrated;
 }
 const OPENCODE_MANAGED_AGENTS = Object.freeze({
-  'sai-coordinator': {
-    mode: 'primary',
-    model: 'opencode-go/glm-5.2',
-    variant: 'high',
-    permission: {
-      task: {
-        '*': 'deny',
-        'sai-2-design-worker': 'allow',
-        'sai-3-implementation-worker': 'allow',
-      },
-      question: 'allow',
-    },
-  },
   'sai-3-implementation-worker': {
     mode: 'subagent',
     model: 'opencode-go/kimi-k2.6',
