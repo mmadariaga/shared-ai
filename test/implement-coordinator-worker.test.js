@@ -535,17 +535,15 @@ test('completed routed output uses the coordinator contract while inline invocat
   assert.match(invocation, /MANDATORY STOP/);
 });
 
-test('design continue-now bypasses the coordinator through invocation core', () => {
+test('design navigation stops after completion with no continuation', () => {
   const design = artifact('sai/commands/sai-2-design.md');
-  const invocation = artifact('sai/compat/implement-invocation.md');
 
-  assert.match(design, /After Continue/);
-  assert.match(design, /Continue now/);
-  assert.match(design, /implementation-worker binding/);
-  assert.match(design, /wrapper_echo_value:\s*""/);
-  assert.match(design, /arguments_value:\s*resolved_change_name/);
-  assert.doesNotMatch(design, /sai-implementation-coordinator/);
-  assert.match(invocation, /@sai\/compat\/sai-3-implementation-core\.md/);
+  assert.doesNotMatch(design, /After Continue/);
+  assert.doesNotMatch(design, /Continue now/);
+  assert.doesNotMatch(design, /implementation-worker binding/);
+  assert.doesNotMatch(design, /wrapper_echo_value:\s*""/);
+  assert.doesNotMatch(design, /arguments_value:\s*resolved_change_name/);
+  assert.match(design, /Design done in openspec\/changes\/\{name\}\//);
 });
 
 test('Copilot inline coordinator owns implementation prerequisites and completion', () => {

@@ -23,7 +23,8 @@
   After completed, present the shared artifact-feedback gate for exactly `design.md`, `tasks.md`, and `interfaces.md`. Retain exact free-form feedback as pending feedback, continue the same worker, report worker-authored discards, clear pending feedback only after verified completion, increment iteration, print the artifact-derived summary, and re-present the gate. Never inspect or edit artifacts.
 
   ## Design navigation
-  After Continue, ask Stop for new chat or Continue now. Stop emits the existing design completion sentence. Continue now copies only `resolved_change_name`, clears all design lifecycle state, and starts the implementation-worker binding with `{wrapper_echo_value: "", arguments_value: resolved_change_name}` in a fresh result-loop namespace. Stop after implementation planning's existing completion message.
+  When the artifact-feedback gate proceeds, emit the existing design completion sentence and stop. Offer no continuation question, copy no lifecycle state, and dispatch no implementation worker. Print exactly:
+  `Design done in openspec/changes/{name}/. Run \`/sai-3-implement {name}\` **in a new chat** when ready.`
 
 </TASK>
 

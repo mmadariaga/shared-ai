@@ -40,20 +40,12 @@ branch below in the current context. The adapter MUST NOT introduce routed worke
    risk, and resolved Open Questions only when present. Keep the summary at or
    below 15 non-blank lines and use the existing `+N more` signal when needed.
 7. Fetch @sai/policies/artifact-feedback-gate.md and follow it exactly with:
-   artifacts = `design.md`, `tasks.md`, `interfaces.md`; proceed-label =
-   `Continue`; next-action = the implementation navigation below.
-8. After `Continue`, present these choices:
-   - `Stop for a new chat (Recommended)`
-   - `Continue now in this chat`
-9. On Stop, print exactly:
+    artifacts = `design.md`, `tasks.md`, `interfaces.md`; proceed-label =
+    `Continue`; next-action = the design completion stop below.
+8. When the gate proceeds, print exactly:
    `Design done in openspec/changes/{name}/. Run \`/sai-3-implement {name}\` **in a new chat** when ready.`
-   Then STOP.
-10. On Continue now, re-read `design.md`, `tasks.md`, and `interfaces.md`, clear
-    the design lifecycle state, and enter this adapter's implementation branch
-    in the same context with:
-
-        phase: sai-3-implement
-        arguments: {name}
+   Then STOP. Present no Stop-versus-Continue-now choice and dispatch or inline no
+   implementation-planning work in this prompt.
 
 ## Implementation branch: phase: sai-3-implement
 

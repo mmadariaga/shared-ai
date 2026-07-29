@@ -66,15 +66,15 @@ test('design wrappers activate routed Claude/opencode entry and preserve inline 
   assert.match(claude, /^effort: low$/m);
   assert.match(claude, /^allowed-tools: Skill, Agent, SendMessage, AskUserQuestion$/m);
   assert.match(claude, /sai-2-design-worker/);
-  assert.match(claude, /sai-3-implementation-worker/);
+  assert.doesNotMatch(claude, /sai-3-implementation-worker/);
   assert.match(claude, /sai-2-design\.md/);
 
    assert.match(opencode, /^model: opencode-go\/glm-5\.2$/m);
    assert.match(opencode, /^variant: high$/m);
    assert.match(opencode, /^subtask: false$/m);
-   assert.doesNotMatch(opencode, /^agent:/m);
+  assert.doesNotMatch(opencode, /^agent:/m);
   assert.match(opencode, /sai-2-design-worker/);
-  assert.match(opencode, /sai-3-implementation-worker/);
+  assert.doesNotMatch(opencode, /sai-3-implementation-worker/);
   assert.match(opencode, /sai-2-design\.md/);
   assert.ok(opencode.includes('**Change-name argument and and optional flags:** $ARGUMENTS'));
 
@@ -436,6 +436,10 @@ test('design coordinator spec says worker delegates only to explore', () => {
 
 test('Copilot inline coordinator owns design dispatch and caller navigation', () => {
   const inline = artifact('sai/orchestration/inline-invocation.md');
+  const designBranch = inline.slice(
+    inline.indexOf('## Design branch: phase: sai-2-design'),
+    inline.indexOf('## Implementation branch: phase: sai-3-implement'),
+  );
 
   assert.match(inline, /^## Invocation envelope$/m);
   assert.match(inline, /phase: sai-2-design/);
@@ -443,8 +447,10 @@ test('Copilot inline coordinator owns design dispatch and caller navigation', ()
   assert.match(inline, /Fetch @sai\/compat\/sai-2-design-core\.md/);
   assert.match(inline, /fast-track/i);
   assert.match(inline, /artifact-feedback-gate\.md/);
-  assert.match(inline, /Stop for a new chat/);
-  assert.match(inline, /Continue now in this chat/);
+  assert.match(designBranch, /Design done in openspec\/changes\/\{name\}\/\. Run \\`\/sai-3-implement \{name\}\\` \*\*in a new chat\*\* when ready\./);
+  assert.doesNotMatch(designBranch, /Stop for a new chat/);
+  assert.doesNotMatch(designBranch, /Continue now/);
+  assert.doesNotMatch(designBranch, /dispatch implementation-planning/);
 });
 
 test('Copilot inline coordinator rejects an unsupported phase before phase work', () => {
