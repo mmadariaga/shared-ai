@@ -126,68 +126,35 @@ The coordinator SHALL process `completed`, `needs_input`, `failed`, and `cancell
 - **THEN** the coordinator SHALL report the supplied blocking or clean-stop summary with the aggregated changed files and SHALL stop without attempting technical recovery itself
 
 ### Requirement: The coordinator owns post-design navigation only as protocol relay
-After design artifacts and feedback are complete, the coordinator SHALL preserve the existing Stop for new chat and Continue now choices. On routed harnesses, Continue now SHALL begin a fresh implementation lifecycle namespace, resetting the changed-file aggregate, continuation reference, opaque input history, pending feedback, fast-track banner-emitted flag, and all phase-presentation counters before dispatch. It SHALL then dispatch the existing implementation planning worker binding directly using a new implementation invocation envelope whose `wrapper_echo_value` is the empty string and whose `arguments_value` is exactly the design worker's `resolved_change_name`; the implementation worker SHALL apply its established explicit-argument resolution and lifecycle unchanged. The coordinator SHALL run the established implementation coordinator result loop for that worker, including its separate changed-file aggregation, continuation, and fallback. On the Copilot inline path, Continue now SHALL preserve the current inline implementation continuation. The transition SHALL not cause the design coordinator to resolve the change, read design artifacts, or perform implementation planning.
+After design artifacts and feedback are complete, the coordinator SHALL emit the existing design completion stop and SHALL stop. It SHALL NOT present a post-feedback navigation choice, SHALL NOT begin an implementation lifecycle namespace, and SHALL NOT dispatch the implementation planning worker. On the Copilot inline path the same boundary applies: the inline design path SHALL stop at design completion rather than entering its inline implementation continuation. The stop SHALL not cause the design coordinator to resolve the change, read design artifacts, or perform implementation planning.
 
 #### Scenario: User stops after design
-- **WHEN** the user selects Stop for new chat
+- **WHEN** the artifact-feedback gate's proceed option is selected
 - **THEN** the command SHALL emit the existing mandatory design completion stop and SHALL not start implementation planning
 
-#### Scenario: User continues into implementation planning
-- **WHEN** the user selects Continue now on Claude Code or opencode
-- **THEN** the coordinator SHALL clear all design lifecycle state except the copied `resolved_change_name`, dispatch the established implementation planning worker with `{wrapper_echo_value: "", arguments_value: resolved_change_name}`, handle it through a new implementation result-loop namespace, and emit implementation planning's mandatory stop exactly once
-
-### Requirement: shared-routed-coordinator-profile
-Opencode routed design planning SHALL use the shared `sai-coordinator` primary control-plane profile rather than a design-only coordinator profile. Claude Code SHALL retain its wrapper-session coordinator model and effort settings; only its managed worker identity SHALL align with the numbered phase name. The opencode profile SHALL retain the union of the routed design and implementation coordinator permissions and SHALL preserve `subagent_depth: 2`.
-
-#### Scenario: opencode starts routed design planning
-- **WHEN** opencode invokes `/sai-2-design` through the routed path
-- **THEN** the invocation SHALL use the `sai-coordinator` primary profile
-- **AND** the profile SHALL dispatch the design phase worker without performing technical I/O itself
-
-#### Scenario: Claude Code retains coordinator adapter settings
-- **WHEN** Claude Code invokes `/sai-2-design`
-- **THEN** its wrapper session SHALL retain the established coordinator model and effort settings
-- **AND** its managed worker definition SHALL target the numbered design worker identity
-
-#### Scenario: shared profile preserves coordinator lifecycle
-- **WHEN** the shared profile handles a design lifecycle event
-- **THEN** it SHALL use the existing shared coordinator lifecycle contract and design phase adapter
-- **AND** it SHALL preserve the existing notice, feedback, continuation, and terminal behavior
+#### Scenario: No continuation is offered
+- **WHEN** design artifacts and feedback are complete on Claude Code, opencode, or Copilot
+- **THEN** the coordinator SHALL NOT offer a same-prompt continuation into implementation planning and SHALL NOT construct an implementation invocation envelope
 
 ### Requirement: numbered-design-worker-identity
-The routed design worker SHALL use the phase-specific identifier `sai-2-design-worker` across opencode agent configuration, Claude Code managed worker definitions, forwarding skill directories and fetch references, harness bindings, installer projections, and verification/documentation surfaces. Its reusable technical core SHALL be named `sai-2-design-core` in `sai/compat/` and SHALL remain separate from the implementation worker contract. The routed Claude Code and opencode design workers and the Copilot Inline Coordinator Adapter SHALL fetch the renamed core wherever they consume the design invocation core.
+The routed design worker SHALL use the phase-specific identifier `sai-2-design-worker` across opencode agent configuration, Claude Code managed worker definitions, forwarding skill directories and fetch references, harness bindings, installer projections, and verification/documentation surfaces. Its reusable technical core SHALL be named `sai-2-design-core` in `sai/compat/` and SHALL remain separate from the implementation worker contract. The Claude Code, opencode, and Copilot inline callers SHALL fetch the renamed core wherever they consume the design invocation core.
 
 #### Scenario: design dispatch resolves the phase worker
 - **WHEN** the routed design coordinator dispatches technical design work
 - **THEN** the harness binding SHALL target `sai-2-design-worker`
 - **AND** the worker SHALL retain the existing design lifecycle, permissions, artifact, and phase-policy contract
 
-#### Scenario: opencode wrapper activates the shared profile
+#### Scenario: opencode wrapper declares its own coordinator runtime
 - **WHEN** opencode invokes `/sai-2-design`
-- **THEN** the wrapper SHALL select `agent: sai-coordinator`
-- **AND** the wrapper SHALL omit a command-level model override
+- **THEN** the wrapper SHALL declare `model: opencode-go/glm-5.2` and `variant: high`
+- **AND** the wrapper SHALL NOT declare an `agent:` field
 
 #### Scenario: all design paths use the renamed core
 - **WHEN** a routed design worker or the Copilot Inline Coordinator Adapter loads the reusable design invocation behavior
 - **THEN** it SHALL reference `sai-2-design-core`
 - **AND** no caller SHALL fetch the former unnumbered design core name
 
-#### Scenario: shared permissions do not change design dispatch
-- **WHEN** the shared coordinator is permitted to launch both phase workers
+#### Scenario: design planning starts only from its own invocation
+- **WHEN** `/sai-2-design` runs
 - **THEN** `/sai-2-design` SHALL dispatch only `sai-2-design-worker`
 - **AND** it SHALL NOT dispatch `sai-3-implementation-worker`
-
-#### Scenario: existing design worker is migrated
-- **WHEN** installation finds the former managed design worker identity `sai-design-planning-worker`
-- **THEN** it SHALL verify that the file content matches its recorded ownership hash before removing the file or sidecar
-- **AND** after a successful hash match it SHALL replace the managed identity with `sai-2-design-worker` and its sidecar without leaving both managed identities installed
-
-#### Scenario: modified design worker is preserved
-- **WHEN** the former managed design worker file fails ownership-hash verification or its sidecar is missing or incompatible
-- **THEN** migration SHALL preserve the old file and sidecar
-- **AND** it SHALL report a protected manual-migration collision without deleting, overwriting, or silently installing a duplicate replacement
-
-#### Scenario: design-name collision is protected
-- **WHEN** the new `sai-2-design-worker` destination exists with incompatible user-owned content
-- **THEN** installation, doctor, and uninstall SHALL report the collision as unmanaged or incompatible
-- **AND** SHALL not overwrite or delete that content

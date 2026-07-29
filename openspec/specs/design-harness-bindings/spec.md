@@ -55,40 +55,23 @@ Claude installation SHALL reuse exact-compatible user-owned agents without claim
 - **WHEN** a managed Claude agent has been edited by the user
 - **THEN** the uninstaller SHALL preserve the edited agent and skip its removal
 
-### Requirement: opencode-config-coordinator-restrictions
-
-The opencode configuration SHALL restrict the coordinator to questions and the two named planning workers, while the design worker SHALL deny all task targets before allowing only `explore`.
-
-#### Scenario: coordinator permission scope
-- **WHEN** the opencode agent config for `sai-design-coordinator` is read
-- **THEN** its permissions SHALL allow `question`
-- **AND** SHALL allow `sai-implementation-planning-worker` and `sai-design-planning-worker` as task targets
-- **AND** SHALL deny all other task targets
-
-#### Scenario: design worker permission scope
-- **WHEN** the opencode agent config for `sai-design-planning-worker` is read
-- **THEN** `task['*']` SHALL be set to `deny`
-- **AND** `task.budget` SHALL be set to `allow`
-- **AND** `task.explore` SHALL be set to `allow`
-- **AND** `task` SHALL contain NO other allow entries beyond `budget` and `explore`
-
 ### Requirement: Claude Code uses separate low-effort coordinator and high-effort worker bindings
-The Claude Code `/sai-2-design` wrapper SHALL run the coordinator on `claude-opus-4-8` with low effort and SHALL permit only `Skill`, `Agent`, `SendMessage`, and `AskUserQuestion`; file, search, shell, web, git, and OpenSpec tools SHALL be unavailable to it. It SHALL load both the design-worker binding and the existing implementation-worker binding so Continue now can dispatch the latter with the explicit resolved-change envelope. The SAI-namespaced design worker definition SHALL run `claude-opus-4-8` with high effort and SHALL have `Read`, `Glob`, `Grep`, `Bash`, `Edit`, `Write`, `Agent`, and `Skill` access, including the Claude budget-explorer binding required for source discovery. Its binding SHALL capture the dispatched agent ID and use harness-native continuation for later answers and feedback.
+The Claude Code `/sai-2-design` wrapper SHALL run the coordinator on `claude-opus-4-8` with low effort and SHALL permit only `Skill`, `Agent`, `SendMessage`, and `AskUserQuestion`; file, search, shell, web, git, and OpenSpec tools SHALL be unavailable to it. It SHALL load the design-worker binding and SHALL NOT load the implementation-worker binding, because `/sai-2-design` no longer dispatches the implementation worker. The SAI-namespaced design worker definition SHALL run `claude-opus-4-8` with high effort and SHALL have `Read`, `Glob`, `Grep`, `Bash`, `Edit`, `Write`, `Agent`, and `Skill` access, including the Claude budget-explorer binding required for source discovery. Its binding SHALL capture the dispatched agent ID and use harness-native continuation for later answers and feedback.
 
 #### Scenario: Claude Code dispatches design work
 - **WHEN** `/sai-2-design` starts in Claude Code
-- **THEN** the low-effort coordinator SHALL dispatch `sai-design-planning-worker`, capture its agent ID outside the worker payload, and continue that agent for later `needs_input` answers
+- **THEN** the low-effort coordinator SHALL dispatch the numbered design worker, capture its agent ID outside the worker payload, and continue that agent for later `needs_input` answers
 
 ### Requirement: opencode uses high-reasoning GLM 5.2 for both roles
-The canonical opencode configuration SHALL define SAI-namespaced `sai-design-coordinator` and `sai-design-planning-worker` entries, both using GLM 5.2 with high reasoning. The coordinator SHALL be a primary agent restricted to the native `question` tool and exactly the `sai-design-planning-worker` and existing `sai-implementation-planning-worker` task bindings, with read, search, edit, shell, web, git, and OpenSpec access denied; the design worker SHALL be a subagent with technical I/O permissions and `permission.task` SHALL deny all targets before allowing `explore` for mandatory source discovery. The opencode wrapper frontmatter SHALL contain `agent: sai-design-coordinator` and `subtask: false` and SHALL omit `model`, so command-level model selection cannot bypass or override the coordinator entry's GLM 5.2 `variant: high`. The wrapper SHALL load both worker bindings. The design-worker binding SHALL capture and continue the harness task ID outside the worker-authored payload, and Continue now SHALL use the existing implementation-worker binding unchanged.
+The canonical opencode configuration SHALL define the numbered design worker as a subagent using GLM 5.2 with high reasoning, with technical I/O permissions and `permission.task` denying all targets before allowing `explore` for mandatory source discovery. SAI SHALL neither install a coordinator agent entry nor select one from a wrapper — a user-defined primary agent is outside this constraint: the `/sai-2-design` wrapper frontmatter SHALL contain `model: opencode-go/glm-5.2`, `variant: high`, and `subtask: false`, SHALL omit `agent`, and the coordinator SHALL therefore run on GLM 5.2 with high reasoning selected by the wrapper itself. Its native `question` capability and its `task` dispatch to `sai-2-design-worker` SHALL be preconditions on the active primary agent per `opencode-coordinator-runtime`, not permissions supplied by shipped configuration. The wrapper SHALL load only the design-worker binding. The design-worker binding SHALL capture and continue the harness task ID outside the worker-authored payload.
 
 #### Scenario: opencode dispatches and resumes design work
 - **WHEN** `/sai-2-design` starts in opencode and the worker later requests input
-- **THEN** `sai-design-coordinator` SHALL dispatch `sai-design-planning-worker`, retain the task ID in invocation-scoped coordinator state, and continue that task after presenting the native question
+- **THEN** the wrapper-run coordinator SHALL dispatch the numbered design worker, retain the task ID in invocation-scoped coordinator state, and continue that task after presenting the native question
 
-#### Scenario: opencode wrapper selects the configured coordinator
+#### Scenario: opencode wrapper declares its coordinator runtime
 - **WHEN** `commands/opencode/sai-2-design.md` activates routed design
-- **THEN** its frontmatter SHALL contain `agent: sai-design-coordinator` and `subtask: false`, SHALL contain no `model` field, and the selected configuration entry SHALL use GLM 5.2 with `variant: high`
+- **THEN** its frontmatter SHALL contain `model: opencode-go/glm-5.2`, `variant: high`, and `subtask: false`, and SHALL contain no `agent` field
 
 #### Scenario: Claude acknowledges a design notice
 - **WHEN** a design worker notice is returned with a binding-captured agent ID

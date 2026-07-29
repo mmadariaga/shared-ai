@@ -40,12 +40,12 @@ The migration SHALL preserve Open Questions resolution, the artifact-derived dec
 - **THEN** the responsible inline agent or design worker SHALL update and verify all affected design artifacts and emit a summary derived from the updated files
 
 ### Requirement: Stop and Continue navigation remain equivalent
-The workflow SHALL preserve the post-feedback Stop for new chat and Continue now choices and their mandatory stop semantics. Continue now SHALL generate `implementation.md` without applying it; routed harnesses SHALL use the implementation coordinator-worker architecture established by the preceding slice where applicable, while Copilot SHALL retain its inline implementation path.
+The workflow SHALL present a single post-feedback terminal behavior on every harness: after the artifact-feedback gate is satisfied, the design command SHALL emit its mandatory design completion stop and end. There SHALL be no Continue-now choice and no same-prompt generation of `implementation.md` on any harness. Routed harnesses and the Copilot inline path SHALL be equivalent at this boundary, differing only in the harness-specific mechanism used within the design phase itself.
 
-#### Scenario: Continue now is selected on a routed harness
-- **WHEN** the user selects Continue now after routed design completion
-- **THEN** the coordinator SHALL reset lifecycle state, pass `resolved_change_name` as the `arguments_value` of an explicit envelope with empty `wrapper_echo_value` to the established implementation-worker binding, report only implementation-phase changed files from that new namespace, and stop after verified `implementation.md` generation without applying code
+#### Scenario: routed harness ends at design completion
+- **WHEN** routed design completes on Claude Code or opencode
+- **THEN** the coordinator SHALL emit the mandatory design completion stop exactly once, SHALL NOT reset lifecycle state into an implementation namespace, SHALL NOT dispatch the implementation-worker binding, and SHALL NOT generate `implementation.md`
 
-#### Scenario: Continue now is selected on Copilot
-- **WHEN** the user selects Continue now after inline Copilot design completion
-- **THEN** the existing inline implementation planning path SHALL run and preserve the same final mandatory stop
+#### Scenario: Copilot ends at design completion
+- **WHEN** inline Copilot design completes
+- **THEN** it SHALL emit the same mandatory design completion stop and SHALL NOT run its inline implementation planning path
