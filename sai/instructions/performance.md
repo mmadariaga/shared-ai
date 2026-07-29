@@ -225,103 +225,14 @@ For producer/consumer code in scope (RabbitMQ, Kafka, SQS, Redis Streams, BullMQ
 
 ## Step Final: Produce the Performance Report
 
-1. Draft using `<output_template>`.
+1. Draft using the output template loaded below.
 2. Save to: `openspec/changes/{change-name}/performance.md` (derive `{feature-name}` from the change name: convert kebab-case to title case).
 3. Present in chat: severity counts, top 3 Critical/High findings, path to saved file.
 4. **Pause for feedback.** Do not modify code. Fixes are a follow-up implementation pass.
 
 ## Output Template
 
-<output_template>
-
-```markdown
-# Performance Report — {Feature Name}
-
-**Change:** `openspec/changes/{change-name}/`  
-**Scope:** {diff vs `{parent-branch}` | full repo | `{path}`}  
-**Tiers audited:** {backend / frontend / db / queue — list only those in scope}  
-**Branch:** `{current-branch}`  
-**Baseline reference:** {prior benchmark / SLO / observability dashboard / "absolute thresholds — no baseline"}  
-**Date:** {YYYY-MM-DD}
-
-## Executive Summary
-
-| Severity | Backend | Frontend | DB | Queue | Total |
-|----------|---------|----------|----|----|-------|
-| Critical | | | | | |
-| High | | | | | |
-| Medium | | | | | |
-| Low | | | | | |
-| Informational | | | | | |
-| **Total** | | | | | |
-
-**Verdict:** {Block release | Release after Critical/High fixed | Acceptable}
-
-**Risk posture:** {one-sentence assessment of user-visible impact}
-
----
-
-## Hot Paths in Scope
-
-| Path | Tier | Why it matters |
-|------|------|----------------|
-| `{endpoint / route / consumer / query}` | {tier} | {brief reason — traffic share, criticality, regression evidence} |
-
----
-
-## Findings
-
-### [SEVERITY] {Tier}: {short title}
-
-- **Location:** `{file}:{line}` (or `{endpoint}` / `{query id}` / `{component}`)
-- **Category:** {Concurrency / Caching / N+1 / Bundle / CWV / Backpressure / ...}
-- **Symptom:** {observable behavior — latency, throughput, bundle delta, query rows examined}
-- **Evidence:**
-    ```
-    {trace excerpt / EXPLAIN output / profiler frame / bundle stat / code snippet — quote exactly}
-    ```
-- **Root cause:** {one or two sentences}
-- **Expected impact if unfixed:** {user-visible consequence at expected load}
-- **Remediation:** {specific change. If multiple options, list up to 3 with trade-offs.}
-- **Expected gain:** {measured if validated, otherwise "estimated X% — verify with {method}"}
-- **Validation method:** {how to confirm the fix worked — re-run EXPLAIN, Lighthouse delta, load test, metric}
-- **Spec note:** {"Acknowledged in `proposal.md` §X" | "Acknowledged in `specs/{capability}/spec.md` §X" | "—"}
-
----
-
-## Acknowledged Trade-offs (from change artifacts)
-
-- {Item explicitly accepted in `proposal.md` or `design.md` and therefore not a finding, with artifact and section reference}
-
----
-
-## Observability Gaps
-
-- {Hot path lacking timing/metric/trace span — must be added regardless of finding count}
-
----
-
-## Prioritized Remediation Plan
-
-### Block release (Critical / High)
-1. **{finding}** (`{location}`) — {one-line action} — est. {gain}
-
-### Next sprint (Medium)
-1. **{finding}** (`{location}`) — {one-line action}
-
-### Backlog (Low / Informational)
-1. **{finding}** (`{location}`) — {one-line action}
-
----
-
-## Validation Plan
-
-Before merging, re-measure:
-- [ ] {metric} via {tool/command} — target: {threshold}
-- [ ] {metric} via {tool/command} — target: {threshold}
-```
-
-</output_template>
+Fetch @sai/instructions/_templates/performance-report.md
 
 ## Hard Rules
 
@@ -351,4 +262,3 @@ Before writing the report, verify:
 > **Scope reminder (read before every response):** Your only deliverable is `openspec/changes/{change-name}/performance.md`. Do not implement fixes; the user (or a later `/sai-4-apply` pass) does that.
 
 > **Completion rule:** Once the artifact is created, your work is done. Do not propose new tasks or follow-up actions. Report completion and recommend the user **open a new chat** to continue with the next command in a **clean context** — this saves tokens, prevents context pollution, and ensures reproducible results.
-
