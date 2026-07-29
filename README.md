@@ -245,11 +245,11 @@ Everything else stays intact.
 
 ## Global installation (multi-project)
 
-Commands are designed as **user globals**, not per project. A single copy in the CLI's global directory makes them available in any repo.
+Commands are designed as **user globals**, not per project. A single copy in the CLI's global directory makes them available in any repo. Maintained phase bodies use `sai/commands/{design,implement}/{coordinator,invocation}.md`.
 
 ### Shared Orchestration Core
 
-Claude Code and opencode use the shared Orchestration Core under `sai/orchestration/`: common coordinator and worker lifecycle contracts plus mirrored harness bindings. Their bindings are installed as separate projections, so each harness owns only its dispatch mechanics. The reusable policy layer lives under `sai/policies/`, and caller-neutral loaders/assets live under `sai/compat/`. GitHub Copilot's only inline planning boundary is the `sai/orchestration/inline-invocation.md` **Inline Coordinator Adapter**: it receives the shared policies and compatibility allowlist, but no routed orchestration source or worker binding. All three harnesses preserve the same durable artifacts and command contracts.
+Claude Code and opencode use the shared Orchestration Core under `sai/orchestration/`: common coordinator and worker lifecycle contracts plus mirrored harness bindings. Their grouped phase coordinator/invocation bodies live under `sai/commands/{design,implement}/`, their reusable policies live under `sai/policies/`, and their bindings are installed as separate projections. GitHub Copilot's only inline planning boundary is the `sai/orchestration/inline-invocation.md` **Inline Coordinator Adapter**: it receives the shared policies and compatibility allowlist under `sai/compat/`, but no routed orchestration source or worker binding. All three harnesses preserve the same durable artifacts and command contracts.
 
 The installer expands `sai/install-manifest.json` deterministically. Install, `doctor`, and uninstall consume that same manifest, so the allowlisted files, destination projections, content-drift checks, and safe removal behavior stay aligned across Claude Code, opencode, and Copilot. The manifest also owns retirement records for removed managed destinations: historical copies are deleted only on a registered SHA-256 hash match, while modified or unrecognized copies remain untouched and are reported for manual cleanup. Retired records are cleanup evidence, not active dependencies.
 

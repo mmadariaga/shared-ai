@@ -60,6 +60,17 @@ test('Step 1 removes legacy inline coordinator sources', () => {
   }
 });
 
+test('Step 4 removes superseded source loaders without shims', () => {
+  for (const relativePath of [
+    'sai/commands/sai-2-design.md',
+    'sai/commands/sai-3-implement.md',
+    'sai/compat/sai-2-design-core.md',
+    'sai/compat/sai-3-implementation-core.md',
+    'sai/compat/implement-invocation.md',
+  ]) assert.equal(fs.existsSync(path.join(repoRoot, relativePath)), false);
+  assert.equal(fs.existsSync(path.join(repoRoot, 'sai/compat/_templates/adr-index.md')), true);
+});
+
 test('Step 1 completion artifact interface remains a plain CommonJS map', () => {
   assert.deepEqual(Object.keys(COMPLETION_ARTIFACTS).sort(), [
     'coordinator',

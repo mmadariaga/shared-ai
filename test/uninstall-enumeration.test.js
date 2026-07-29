@@ -134,7 +134,7 @@ test('enumeration includes retirement records but excludes them from active proj
     for (const entry of retired) {
       assert.ok(Array.isArray(entry.acceptedHashes));
       assert.ok(entry.acceptedHashes.length > 0);
-      assert.match(entry.ruleId, /^retired-sai-[23]-/);
+       assert.match(entry.ruleId, /^retired-/);
     }
     assert.equal(entries.some(e => e.assetType !== 'retired-managed-file' && e.dest.endsWith('sai-2-design-inline.md')), false);
     assert.equal(entries.some(e => e.assetType !== 'retired-managed-file' && e.dest.endsWith('sai-3-implement-inline.md')), false);

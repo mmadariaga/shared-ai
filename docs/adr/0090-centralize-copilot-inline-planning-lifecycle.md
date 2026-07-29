@@ -12,7 +12,7 @@ The Copilot entrypoints for `/sai-2-design` and `/sai-3-implement` execute inlin
 
 ## Decision
 
-Use one Copilot-only Inline Coordinator Adapter at `sai/orchestration/inline-invocation.md`. It accepts the exact `phase:` and `arguments:` envelope, rejects unsupported phases before phase processing, owns each inline phase's caller lifecycle, and invokes the existing `sai-2-design-core` or `sai-3-implementation-core` for technical planning.
+Use one Copilot-only Inline Coordinator Adapter at `sai/orchestration/inline-invocation.md`. It accepts the exact `phase:` and `arguments:` envelope, rejects unsupported phases before phase processing, owns each inline phase's caller lifecycle, and invokes the grouped `sai/commands/design/invocation.md` or `sai/commands/implement/invocation.md` bodies for technical planning.
 
 Keep the visible Copilot prompts and retained inline command files as thin phase-selecting entrypoints. Install the adapter through one managed, non-recursive Copilot projection. Do not project it into Claude Code or opencode, and do not introduce routed worker identifiers, continuation state, or `subagent_depth` into the inline path.
 

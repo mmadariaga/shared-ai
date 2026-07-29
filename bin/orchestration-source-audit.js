@@ -7,7 +7,12 @@ const ACTIVE_REFERENCE_EXCLUSIONS = [
   path.join('openspec', 'changes', 'archive'),
   path.join('docs', 'adr'),
 ];
-const RETIRED_LOADERS = [
+const RETIRED_SOURCES = [
+  'sai/commands/sai-2-design.md',
+  'sai/commands/sai-3-implement.md',
+  'sai/compat/sai-2-design-core.md',
+  'sai/compat/sai-3-implementation-core.md',
+  'sai/compat/implement-invocation.md',
   'sai/commands/sai-2-design-inline.md',
   'sai/commands/sai-3-implement-inline.md',
 ];
@@ -36,6 +41,7 @@ function isHistoricalReference(relativePath) {
 function isRetirementEvidence(relativePath, line) {
   if (relativePath === path.join('sai', 'install-manifest.json')) return true;
   if (relativePath.startsWith(`${path.join('openspec', 'changes', 'remove-legacy-inline-command-loaders')}${path.sep}`)) return true;
+  if (relativePath.startsWith(`${path.join('openspec', 'changes', 'group-phase-command-assets')}${path.sep}`)) return true;
   return /absent|exclude|historical|retir|removed|cleanup|former|not\s+(?:an?\s+)?available|doesnotmatch/i.test(line);
 }
 
@@ -66,9 +72,9 @@ function auditActiveReferences(repoRoot) {
       if (researchDocumentation >= 0 && index > researchDocumentation) continue;
       const nearby = lines.slice(Math.max(0, index - 3), index + 4).join('\n');
       if (relativePath.startsWith(`test${path.sep}`) && /doesNotMatch|existsSync|should be (?:absent|removed)/i.test(nearby)) continue;
-      const retiredLoaders = [...RETIRED_LOADERS];
-      if (!fs.existsSync(path.join(repoRoot, 'test'))) retiredLoaders.push(...TEST_REFERENCE_ALIASES);
-      for (const reference of retiredLoaders) {
+      const retiredSources = [...RETIRED_SOURCES];
+      if (!fs.existsSync(path.join(repoRoot, 'test'))) retiredSources.push(...TEST_REFERENCE_ALIASES);
+      for (const reference of retiredSources) {
         if (line.includes(reference)) references.push({ file: relativePath, reference });
       }
     }

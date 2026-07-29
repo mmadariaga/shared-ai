@@ -23,7 +23,7 @@ npx github:mmadariaga/shared-ai
 npx github:mmadariaga/shared-ai setup /path/to/your/project
 ```
 
-Step 1 expands `sai/install-manifest.json` and copies the Claude Code projection to `~/.claude/`. It includes Claude commands, shared instructions/policies/compatibility assets, the shared Orchestration Core contracts, only the Claude routed worker bindings, Claude skills, and managed worker agents. Step 2 verifies the openspec CLI, runs `openspec init --tools claude` if needed, sets `schema: sai-workflow` in `openspec/config.yaml`, and copies the schema templates into the project. `doctor` and `uninstall` use the same manifest projection.
+Step 1 expands `sai/install-manifest.json` and copies the Claude Code projection to `~/.claude/`. It includes Claude commands, `sai/instructions/`, `sai/policies/`, and `sai/compat/` assets, the shared Orchestration Core contracts, only the Claude routed worker bindings, Claude skills, and managed worker agents. Step 2 verifies the openspec CLI, runs `openspec init --tools claude` if needed, sets `schema: sai-workflow` in `openspec/config.yaml`, and copies the schema templates into the project. `doctor` and `uninstall` use the same manifest projection.
 
 ## Manual installation
 
@@ -91,7 +91,7 @@ cp agents/claude/sai-2-design-worker.md ~/.claude/agents/sai-2-design-worker.md
 New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\.claude\commands"
 Copy-Item commands\claude\*.md "$env:USERPROFILE\.claude\commands\"
 New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\.claude\sai\commands"
-Copy-Item sai\commands\*.md "$env:USERPROFILE\.claude\sai\commands\"
+Copy-Item sai\commands\* "$env:USERPROFILE\.claude\sai\commands\" -Recurse -Force
 
 # Copy instructions
 $instructionsDir = "$env:USERPROFILE\.claude\sai\instructions"

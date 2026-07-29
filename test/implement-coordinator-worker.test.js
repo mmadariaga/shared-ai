@@ -41,7 +41,7 @@ function capture(fn) {
 }
 
 test('implementation invocation core and inline caller own distinct completion contracts', () => {
-   const core = artifact('sai/compat/sai-3-implementation-core.md');
+   const core = artifact('sai/commands/implement/invocation.md');
   assert.match(core, /^## Load instructions \(in order\)/m);
   assert.match(core, /^## Run\s*$/m);
   assert.doesNotMatch(core, /^## Completion\b/m);
@@ -640,7 +640,7 @@ test('Step 5 installer documentation matches the deterministic manifest and Copi
 
   assert.match(manifest, /"id": "claude-orchestration"/);
   assert.match(manifest, /"id": "opencode-orchestration"/);
-  assert.match(manifest, /"id": "copilot-implement-invocation"/);
+  assert.match(manifest, /"id": "copilot-inline-invocation"/);
   assert.match(agents, /manifest-driven installer|deterministic.*manifest/i);
   assert.match(claude, /sai\/orchestration\/workers/);
   assert.match(opencode, /sai\/orchestration\/workers/);

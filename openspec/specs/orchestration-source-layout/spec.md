@@ -4,7 +4,7 @@
 TBD - created by archiving change extract-sai-orchestration-core. Update Purpose after archive.
 ## Requirements
 ### Requirement: Active references exclude retired inline loaders
-Active runtime sources, fixtures, tests, specifications, and maintained documentation SHALL reference the routed Claude Code/opencode entrypoints or the Copilot Inline Coordinator Adapter and SHALL NOT treat `sai/commands/sai-2-design-inline.md` or `sai/commands/sai-3-implement-inline.md` as an available entrypoint. Archived OpenSpec changes and ADRs MAY retain their original historical references.
+Active runtime sources, fixtures, tests, specifications, and maintained documentation SHALL reference `sai/commands/{design,implement}/{coordinator,invocation}.md` or the Copilot Inline Coordinator Adapter and SHALL NOT treat the five retired paths (`sai/commands/sai-2-design.md`, `sai/commands/sai-3-implement.md`, `sai/compat/sai-2-design-core.md`, `sai/compat/sai-3-implementation-core.md`, and `sai/compat/implement-invocation.md`) as available sources. Archived OpenSpec changes and ADRs MAY retain their original historical references.
 
 #### Scenario: Active reference inventory is checked
 - **WHEN** maintained repository references to design and implementation entrypoints are audited
@@ -64,7 +64,7 @@ The extraction SHALL apply the following exhaustive classification to the curren
 - Task instructions remaining under `sai/instructions/`: `accessibility.md`, `archive.md`, `apply.md`, `backfill.md`, `commit.md`, `design.md`, `explore.md`, `implement.md`, `performance.md`, `pr.md`, `review.md`, `security.md`, and `spec.propose.md`.
 - Reusable policies moving to `sai/policies/`: `artifact-feedback-gate.md`, `change-picker.md`, `commit-rules.md`, `glossary-format.md`, `prereqs.md`, `remember.md`, `sai-learnings-format.md`, and `status-picker.md`.
 - Worker contracts moving to `sai/orchestration/workers/`: `design-worker.md` and `implement-worker.md`.
-- Compatibility loaders and assets moving to `sai/compat/`: `design-invocation-core.md`, `implement-invocation-core.md`, `implement-invocation.md`, and `_templates/adr-index.md`.
+- Compatibility assets retained under `sai/compat/`: `_templates/adr-index.md`; the former design and implementation loaders are retired without shims.
 
 The design artifact SHALL map every listed source to its final canonical path and every caller that must change. No unlisted file in the current `sai/instructions/` tree SHALL move as part of this change.
 

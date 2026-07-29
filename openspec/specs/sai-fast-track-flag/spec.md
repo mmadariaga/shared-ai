@@ -63,7 +63,7 @@ The following gates SHALL remain in force under `sai-archive --fast-track` and S
 
 ### Requirement: The --fast-track flag is parsed in the shared body file and never reaches the picker
 
-Exactly four commands — `sai-explore`, `sai-2-design`, `sai-4-apply`, and `sai-archive` — SHALL accept a `--fast-track` token in their arguments. The token SHALL be parsed by the command's shared body file (`sai/commands/sai-explore.md`, `sai/commands/sai-2-design.md`, `sai/commands/sai-4-apply.md`, `sai/commands/sai-archive.md`) out of `$ARGUMENTS`. After extraction the token SHALL be removed from the argument string, and the cleaned remainder (the change-name for `sai-2-design`/`sai-4-apply`/`sai-archive`, or the free-form request for `sai-explore`) SHALL be passed to the change-picker / run step exactly as if the flag had not been typed. The flag SHALL be a single positional token, not a session flag, environment variable, or `.openspec.yaml` key.
+Exactly four commands — `sai-explore`, `sai-2-design`, `sai-4-apply`, and `sai-archive` — SHALL accept a `--fast-track` token in their arguments. The token SHALL be parsed by the command's shared body files (`sai/commands/sai-explore.md`, `sai/commands/design/{coordinator,invocation}.md`, `sai/commands/sai-4-apply.md`, `sai/commands/sai-archive.md`) out of `$ARGUMENTS`. After extraction the token SHALL be removed from the argument string, and the cleaned remainder (the change-name for `sai-2-design`/`sai-4-apply`/`sai-archive`, or the free-form request for `sai-explore`) SHALL be passed to the change-picker / run step exactly as if the flag had not been typed. The flag SHALL be a single positional token, not a session flag, environment variable, or `.openspec.yaml` key.
 
 For commands that resolve a change name through the shared change-picker (`sai-2-design`, `sai-4-apply`, `sai-archive`), the body file SHALL additionally strip any residual `--fast-track` token from the picker's resolved value (the post-picker cleanup that handles the opencode wrapper-echo case) before passing the change name downstream.
 
@@ -148,4 +148,3 @@ The `--fast-track` behavior SHALL be identical under Claude Code, opencode, and 
 #### Scenario: opencode sai-archive wrapper keeps its echo-line shape
 - **WHEN** the `sai-archive` `argument-hint` is added to the Claude Code and Copilot wrappers
 - **THEN** the opencode `sai-archive` wrapper does NOT gain a real `argument-hint`; no HTML comment consistency marker is required on the echo line, and this does not count as a Mirror-discipline violation
-

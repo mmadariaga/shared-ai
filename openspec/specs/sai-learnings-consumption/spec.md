@@ -152,7 +152,7 @@ The invariant SHALL be stated explicitly wherever the promotion filter and the t
 
 ### Requirement: Wrapper wiring fetches the format file for both consuming commands
 
-`sai/commands/sai-2-design.md` and `sai/commands/sai-4-apply.md` SHALL each fetch `sai/instructions/sai-learnings-format.md` in their instruction-loading block, so the format contract is in context wherever the file is read or written. The fetch SHALL mirror how `sai/instructions/glossary-format.md` is already fetched by `sai/commands/sai-2-design.md`.
+`sai/commands/design/coordinator.md` and `sai/commands/sai-4-apply.md` SHALL each fetch `sai/instructions/sai-learnings-format.md` in their instruction-loading block, so the format contract is in context wherever the file is read or written. The fetch SHALL mirror how `sai/instructions/glossary-format.md` is already fetched by `sai/commands/design/coordinator.md`.
 
 These two wrapper edits SHALL be the complete set of wrapper changes. Harness parity SHALL ride the shared instruction bodies rather than being duplicated per harness, consistent with how the existing `glossary-format.md` fetch achieves parity today.
 

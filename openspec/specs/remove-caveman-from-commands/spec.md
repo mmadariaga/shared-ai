@@ -26,9 +26,9 @@ Each of the 13 files under `sai/commands/` SHALL NOT contain a line activating c
 In each `sai/commands/sai-*.md` file that has a `## Load behaviors (in order)` block, that block SHALL NOT list caveman as one of the behaviors to load.
 
 #### Scenario: sai-2-design load behaviors block
-- **WHEN** `sai/commands/sai-2-design.md` is read
+- **WHEN** `sai/commands/design/coordinator.md` is read
 - **THEN** the `## Load behaviors (in order)` block contains no reference to caveman
 
 #### Scenario: sai-3-implement load behaviors block
-- **WHEN** `sai/commands/sai-3-implement.md` is read
+- **WHEN** `sai/commands/implement/coordinator.md` is read
 - **THEN** the `## Load behaviors (in order)` block contains no reference to caveman

@@ -24,7 +24,7 @@ npx github:mmadariaga/shared-ai
 npx github:mmadariaga/shared-ai setup /path/to/your/project
 ```
 
-Step 1 expands `sai/install-manifest.json` and copies the opencode projection to `~/.config/opencode/`. It includes opencode commands, shared instructions/policies/compatibility assets, the shared Orchestration Core contracts, only the opencode routed worker bindings, opencode skills, and the managed configuration projection. Step 2 verifies the openspec CLI, runs `openspec init --tools opencode` if needed, sets `schema: sai-workflow` in `openspec/config.yaml`, and copies the schema templates into the project. `doctor` and `uninstall` use the same manifest projection.
+Step 1 expands `sai/install-manifest.json` and copies the opencode projection to `~/.config/opencode/`. It includes opencode commands, `sai/instructions/`, `sai/policies/`, and `sai/compat/` assets, the shared Orchestration Core contracts, only the opencode routed worker bindings, opencode skills, and the managed configuration projection. Step 2 verifies the openspec CLI, runs `openspec init --tools opencode` if needed, sets `schema: sai-workflow` in `openspec/config.yaml`, and copies the schema templates into the project. `doctor` and `uninstall` use the same manifest projection.
 
 ## Manual installation
 
@@ -42,7 +42,7 @@ Step 1 expands `sai/install-manifest.json` and copies the opencode projection to
 mkdir -p ~/.config/opencode/commands
 cp commands/opencode/*.md ~/.config/opencode/commands/
 mkdir -p ~/.config/opencode/sai/commands
-cp sai/commands/*.md ~/.config/opencode/sai/commands/
+cp -r sai/commands/. ~/.config/opencode/sai/commands/
 
 # Copy instructions
 if [ -d ~/.config/opencode/sai/instructions ]; then
@@ -127,7 +127,7 @@ $configDir = "$env:USERPROFILE\.config\opencode"
 New-Item -ItemType Directory -Force -Path "$configDir\commands"
 Copy-Item commands\opencode\*.md "$configDir\commands\"
 New-Item -ItemType Directory -Force -Path "$configDir\sai\commands"
-Copy-Item sai\commands\*.md "$configDir\sai\commands\"
+Copy-Item sai\commands\* "$configDir\sai\commands\" -Recurse -Force
 
 # Copy instructions
 $instructionsDir = "$configDir\sai\instructions"

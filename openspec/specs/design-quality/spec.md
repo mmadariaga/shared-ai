@@ -4,7 +4,7 @@
 
 ### Requirement: Decision summary printed at end of design phase
 
-When `sai/commands/sai-2-design.md` reaches its Completion section, the agent SHALL print a structured decision summary to the screen before the handoff prompt. The summary is derived exclusively from the artifacts just written (`design.md` and `tasks.md`) — not from prior conversation.
+When `sai/commands/design/coordinator.md` reaches its Completion section, the agent SHALL print a structured decision summary to the screen before the handoff prompt. The summary is derived exclusively from the artifacts just written (`design.md` and `tasks.md`) — not from prior conversation.
 
 The summary SHALL contain three blocks in flat list format:
 - **Decisions**: one line per decision from `design.md`'s Decisions section. Every `### D<n>` heading under `## Decisions` counts as one decision, regardless of whether it meets all three ADR/DDR criteria (the "brief only" ones are still decisions). Sub-elements such as `**ADR/DDR criteria**`, `**Alternatives considered**`, and `**Chosen**` blocks are NOT counted as separate decisions — the heading itself is the unit.

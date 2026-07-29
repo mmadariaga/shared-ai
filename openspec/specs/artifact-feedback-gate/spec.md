@@ -7,7 +7,7 @@
 The gate logic SHALL live in exactly one shared instruction file, `sai/instructions/artifact-feedback-gate.md`, parameterized by three inputs supplied by the fetching body file: the list of artifacts written in the step (by name), the proceed-option label, and the next action to take when proceed is chosen. The gate behavior MUST NOT be duplicated inline in either body file.
 
 #### Scenario: single shared source
-- **WHEN** `sai/commands/sai-1-spec.md` and `sai/commands/sai-2-design.md` both reach their completion phase
+- **WHEN** `sai/commands/sai-1-spec.md` and `sai/commands/design/coordinator.md` both reach their completion phase
 - **THEN** each fetches `sai/instructions/artifact-feedback-gate.md` and supplies its own artifact list, proceed-label, and next-action, and neither body file restates the gate's loop logic inline
 
 #### Scenario: parameters differ per step

@@ -9,8 +9,8 @@ Create `sai/commands/` directory at project root. For each of the 12 sai-* comma
 | Source (either harness) | Output |
 |---|---|
 | sai-1-spec.md | sai/commands/sai-1-spec.md |
-| sai-2-design.md | sai/commands/sai-2-design.md |
-| sai-3-implement.md | sai/commands/sai-3-implement.md |
+| sai-2-design.md | sai/commands/design/{coordinator,invocation}.md |
+| sai-3-implement.md | sai/commands/implement/{coordinator,invocation}.md |
 | sai-4-apply.md | sai/commands/sai-4-apply.md |
 | sai-5-review.md | sai/commands/sai-5-review.md |
 | sai-6-security.md | sai/commands/sai-6-security.md |

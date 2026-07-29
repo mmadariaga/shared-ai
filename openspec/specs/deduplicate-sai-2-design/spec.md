@@ -32,7 +32,7 @@ The design workflow SHALL be split into caller-neutral design invocation instruc
 - **THEN** they SHALL define one caller-neutral workflow that checks specs approval and produces `design.md`, `tasks.md`, and `interfaces.md`
 
 #### Scenario: routed coordinator body is thin
-- **WHEN** `sai/commands/sai-2-design.md` is read
+- **WHEN** `sai/commands/design/coordinator.md` is read
 - **THEN** it SHALL contain only coordinator lifecycle and interaction responsibilities and SHALL delegate technical execution to the design worker binding
 
 #### Scenario: Copilot adapter preserves inline behavior

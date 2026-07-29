@@ -121,15 +121,15 @@ test('grouped design and implementation phase assets preserve their former sourc
     {
       name: 'design',
       directory: path.join(repoRoot, 'sai', 'commands', 'design'),
-      coordinator: path.join(repoRoot, 'sai', 'commands', 'sai-2-design.md'),
-      invocation: path.join(repoRoot, 'sai', 'compat', 'sai-2-design-core.md'),
+       coordinator: path.join(repoRoot, 'sai', 'commands', 'design', 'coordinator.md'),
+       invocation: path.join(repoRoot, 'sai', 'commands', 'design', 'invocation.md'),
       instruction: 'sai/instructions/design.md',
     },
     {
       name: 'implement',
       directory: path.join(repoRoot, 'sai', 'commands', 'implement'),
-      coordinator: path.join(repoRoot, 'sai', 'commands', 'sai-3-implement.md'),
-      invocation: path.join(repoRoot, 'sai', 'compat', 'sai-3-implementation-core.md'),
+       coordinator: path.join(repoRoot, 'sai', 'commands', 'implement', 'coordinator.md'),
+       invocation: path.join(repoRoot, 'sai', 'commands', 'implement', 'invocation.md'),
       instruction: 'sai/instructions/implement.md',
     },
   ];

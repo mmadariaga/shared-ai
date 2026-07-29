@@ -14,7 +14,7 @@ The implementation-planning worker SHALL perform the complete current `/sai-3-im
 - **THEN** the worker SHALL read the applicable proposal, specs, design, tasks, interfaces, and audit artifacts, generate the implementation plan, and write it directly under the selected change directory while reporting every authorized file write
 
 ### Requirement: Existing prerequisite and selection ownership
-The routed worker SHALL own the existing prerequisite and change-picker behavior relocated from `sai/commands/sai-3-implement.md`, including wrapper-echo precedence and 0/1/N change selection, and SHALL return `needs_input` rather than performing user interaction itself when a selection or clarification is required. The worker-authored payload SHALL contain the question and options but SHALL NOT contain a harness continuation identifier.
+The routed worker SHALL own the existing prerequisite and change-picker behavior relocated into the grouped `sai/commands/implement/coordinator.md` and `sai/commands/implement/invocation.md` bodies, including wrapper-echo precedence and 0/1/N change selection, and SHALL return `needs_input` rather than performing user interaction itself when a selection or clarification is required. The worker-authored payload SHALL contain the question and options but SHALL NOT contain a harness continuation identifier.
 
 #### Scenario: Zero active changes
 - **WHEN** raw arguments contain no change name and zero active changes are available

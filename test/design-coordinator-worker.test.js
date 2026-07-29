@@ -87,10 +87,10 @@ test('design wrappers activate routed Claude/opencode entry and preserve inline 
   assert.doesNotMatch(copilot, /sai-design-coordinator|sai-design-planning-worker|sai-implementation-planning-worker/);
 
   for (const relativePath of [
-    'sai/commands/sai-2-design-inline.md',
-    'sai/commands/sai-3-implement-inline.md',
+    'sai/commands/design/coordinator.md',
+    'sai/commands/implement/coordinator.md',
   ]) {
-    assert.equal(fs.existsSync(path.join(repoRoot, relativePath)), false, `${relativePath} should be absent`);
+    assert.equal(fs.existsSync(path.join(repoRoot, relativePath)), true, `${relativePath} should be available`);
   }
 
   const spec = artifact('openspec/specs/design-coordinator/spec.md');
@@ -486,7 +486,7 @@ test('documentation records the active design compatibility boundary and managed
   assert.match(readme, /Proposal Complexity.*descriptive/i);
   assert.match(readme, /wrapper[\s\S]{0,60}(?:model|variant)|command[\s\S]{0,60}(?:model|variant)/i);
 
-  assert.match(agents, /sai\/compat\/sai-2-design-core\.md/);
+  assert.match(agents, /sai\/commands\/design\/invocation\.md/);
   assert.match(agents, /sai-2-design-worker\.md/);
   assert.match(agents, /agents\/claude\/sai-2-design-worker\.md/);
   assert.match(agents, /skills\/claude\/sai-2-design-worker\/SKILL\.md/);

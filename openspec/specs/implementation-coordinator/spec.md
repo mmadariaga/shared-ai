@@ -5,7 +5,7 @@
 Define the coordination boundary, I/O isolation, and user-facing result handling responsibilities of the implementation coordinator that dispatches work to the implementation-planning worker.
 ## Requirements
 ### Requirement: Harness adapter dispatch seam
-The Claude Code and opencode command wrappers SHALL select the shared routed coordinator entry path, while the Copilot command wrapper SHALL select `sai/orchestration/inline-invocation.md` directly with `phase: sai-3-implement` and SHALL NOT consume the shared routed coordinator instructions as its execution path. The routed prerequisite and change-picker behavior SHALL execute in the worker; the Copilot Inline Coordinator Adapter SHALL retain that behavior for Copilot without an intermediate inline command loader.
+The Claude Code and opencode command wrappers SHALL select the grouped `sai/commands/implement/coordinator.md` and `sai/commands/implement/invocation.md` routed entry paths, while the Copilot command wrapper SHALL select `sai/orchestration/inline-invocation.md` directly with `phase: sai-3-implement` and SHALL NOT consume the shared routed coordinator instructions as its execution path. The routed prerequisite and change-picker behavior SHALL execute in the worker; the Copilot Inline Coordinator Adapter SHALL retain that behavior for Copilot without an intermediate inline command loader.
 
 #### Scenario: Harness-specific entry selection
 - **WHEN** `/sai-3-implement` is invoked under Claude Code

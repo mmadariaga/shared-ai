@@ -20,6 +20,8 @@ wrapper_echo_value: "placeholder-value"
 arguments_value: "placeholder-change-name"
 ```
 ## Requirements
+
+The routed design coordinator and invocation bodies are grouped at `sai/commands/design/coordinator.md` and `sai/commands/design/invocation.md`; Copilot remains on the Inline Coordinator Adapter.
 ### Requirement: Current design harness entrypoints
 Claude Code and opencode SHALL invoke the routed design coordinator and their respective design-worker bindings. GitHub Copilot SHALL invoke `sai/orchestration/inline-invocation.md` directly with `phase: sai-2-design`; no supported wrapper SHALL invoke `sai/commands/sai-2-design-inline.md`.
 

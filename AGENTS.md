@@ -62,14 +62,13 @@ The openspec-dependent `sai-*` commands halt with a clear error if either is mis
 |-----------|---------|
 | `sai/instructions/` | Phase content (Isolation Mode + TASK block). Fetched by wrappers. |
 | `sai/commands/` | Sai command body files fetched by wrappers at runtime. |
-| `sai/commands/sai-3-implement.md` | Routed implementation coordinator body for Claude Code and opencode. |
+| `sai/commands/{design,implement}/{coordinator,invocation}.md` | Grouped coordinator and invocation bodies for Claude Code and opencode. |
 | `sai/orchestration/inline-invocation.md` | Direct Copilot adapter for inline design and implementation dispatch. |
 | `sai/instructions/` | Phase content and inline caller contracts fetched by wrappers. |
 | `sai/orchestration/` | Shared coordinator/worker lifecycle contracts and routed worker contracts. Claude Code and opencode receive their own binding projections; Copilot is explicitly inline and receives none. |
 | `sai/policies/` | Canonical glossary, prerequisite, picker, commit, status, and feedback policies. |
 | `sai/compat/` | Caller-neutral design/implementation invocation cores and compatibility assets shared by the applicable harnesses. |
-| `sai/compat/sai-3-implementation-core.md` | Caller-neutral implementation invocation core shared by routed and inline paths. |
-| `sai/compat/sai-2-design-core.md` | Caller-neutral design invocation core shared by routed and inline paths. |
+| `sai/commands/design/invocation.md` and `sai/commands/implement/invocation.md` | Caller-neutral invocation bodies shared by routed and inline paths. |
 | `sai/orchestration/workers/sai-3-implementation-worker.md` | Implementation-planning worker lifecycle, input, output, and durable-artifact contract. |
 | `sai/orchestration/workers/sai-2-design-worker.md` | Design-planning worker lifecycle, input, output, and durable-artifact contract. |
 | `sai/install-manifest.json` | Deterministic source-to-destination projection rules consumed by installer, doctor, and uninstall. |

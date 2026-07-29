@@ -62,7 +62,7 @@ The `/sai-2-design` wrappers SHALL NOT load the `sai-3-implementation-worker` bi
 
 ### Requirement: The routed coordinator-worker seam is preserved
 
-The logical coordinator SHALL remain a role defined by the shared `sai/commands/sai-2-design.md` and `sai/commands/sai-3-implement.md` bodies and the canonical coordinator contract, dispatching technical work to a routed worker. This change SHALL NOT collapse the worker into the primary session and SHALL NOT implement complexity-based worker selection; it SHALL only leave that path open.
+The logical coordinator SHALL remain a role defined by the grouped `sai/commands/design/coordinator.md` and `sai/commands/implement/coordinator.md` bodies and their invocation bodies plus the canonical coordinator contract, dispatching technical work to a routed worker. This change SHALL NOT collapse the worker into the primary session and SHALL NOT implement complexity-based worker selection; it SHALL only leave that path open.
 
 #### Scenario: coordinator role survives profile removal
 

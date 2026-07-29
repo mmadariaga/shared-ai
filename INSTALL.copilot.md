@@ -23,7 +23,7 @@ npx github:mmadariaga/shared-ai
 npx github:mmadariaga/shared-ai setup /path/to/your/project
 ```
 
-Step 1 expands `sai/install-manifest.json` into the Copilot projection: prompt files, shared commands/instructions, the policy and compatibility allowlist, and the Copilot inline adapter under `sai/orchestration/`. It does not install any Claude/opencode routed worker binding, so Copilot has no routed binding. Step 2 verifies the openspec CLI, runs `openspec init --tools copilot` if needed, sets `schema: sai-workflow` in `openspec/config.yaml`, and copies the schema templates into the project. `doctor` and `uninstall` use the same manifest projection.
+Step 1 expands `sai/install-manifest.json` into the Copilot projection: prompt files, shared commands/instructions, `sai/policies/`, the policy and compatibility allowlist under `sai/compat/`, and the Copilot inline adapter under `sai/orchestration/`. It does not install any Claude/opencode routed worker binding, so Copilot has no routed binding. Step 2 verifies the openspec CLI, runs `openspec init --tools copilot` if needed, sets `schema: sai-workflow` in `openspec/config.yaml`, and copies the schema templates into the project. `doctor` and `uninstall` use the same manifest projection.
 
 ## Manual installation
 
@@ -50,20 +50,7 @@ cp commands/copilot/*.prompt.md "$PROMPTS_DIR/"
 
 # Copy sai command bodies
 mkdir -p "$SAI_DIR/commands"
-cp sai/commands/sai-1-spec.md "$SAI_DIR/commands/"
-cp sai/commands/sai-2-design.md "$SAI_DIR/commands/"
-cp sai/commands/sai-3-implement.md "$SAI_DIR/commands/"
-cp sai/commands/sai-4-apply.md "$SAI_DIR/commands/"
-cp sai/commands/sai-5-review.md "$SAI_DIR/commands/"
-cp sai/commands/sai-6-security.md "$SAI_DIR/commands/"
-cp sai/commands/sai-7-performance.md "$SAI_DIR/commands/"
-cp sai/commands/sai-8-accessibility.md "$SAI_DIR/commands/"
-cp sai/commands/sai-archive.md "$SAI_DIR/commands/"
-cp sai/commands/sai-backfill.md "$SAI_DIR/commands/"
-cp sai/commands/sai-commit.md "$SAI_DIR/commands/"
-cp sai/commands/sai-explore.md "$SAI_DIR/commands/"
-cp sai/commands/sai-pr.md "$SAI_DIR/commands/"
-cp sai/commands/sai-status.md "$SAI_DIR/commands/"
+cp -r sai/commands/. "$SAI_DIR/commands/"
 
 # Copy instructions
 if [ -d "$SAI_DIR/instructions" ]; then
@@ -75,9 +62,7 @@ cp -r sai/instructions/. "$SAI_DIR/instructions/"
 # Copy the Copilot policy, compatibility, and inline-coordinator allowlist only.
 mkdir -p "$SAI_DIR/policies" "$SAI_DIR/compat" "$SAI_DIR/orchestration"
 cp sai/policies/*.md "$SAI_DIR/policies/"
-cp sai/compat/sai-2-design-core.md "$SAI_DIR/compat/"
-cp sai/compat/sai-3-implementation-core.md "$SAI_DIR/compat/"
-cp sai/compat/implement-invocation.md "$SAI_DIR/compat/"
+cp -r sai/compat/. "$SAI_DIR/compat/"
 cp -r sai/compat/_templates "$SAI_DIR/compat/"
 cp sai/orchestration/inline-invocation.md "$SAI_DIR/orchestration/"
 # Do not copy routed coordinator, worker, or Claude/opencode binding sources.
@@ -119,20 +104,7 @@ Copy-Item commands\copilot\*.prompt.md "$promptsDir\"
 
 # Copy sai command bodies
 New-Item -ItemType Directory -Force -Path "$saiDir\commands" | Out-Null
-Copy-Item sai\commands\sai-1-spec.md "$saiDir\commands\"
-Copy-Item sai\commands\sai-2-design.md "$saiDir\commands\"
-Copy-Item sai\commands\sai-3-implement.md "$saiDir\commands\"
-Copy-Item sai\commands\sai-4-apply.md "$saiDir\commands\"
-Copy-Item sai\commands\sai-5-review.md "$saiDir\commands\"
-Copy-Item sai\commands\sai-6-security.md "$saiDir\commands\"
-Copy-Item sai\commands\sai-7-performance.md "$saiDir\commands\"
-Copy-Item sai\commands\sai-8-accessibility.md "$saiDir\commands\"
-Copy-Item sai\commands\sai-archive.md "$saiDir\commands\"
-Copy-Item sai\commands\sai-backfill.md "$saiDir\commands\"
-Copy-Item sai\commands\sai-commit.md "$saiDir\commands\"
-Copy-Item sai\commands\sai-explore.md "$saiDir\commands\"
-Copy-Item sai\commands\sai-pr.md "$saiDir\commands\"
-Copy-Item sai\commands\sai-status.md "$saiDir\commands\"
+Copy-Item sai\commands\* "$saiDir\commands\" -Recurse -Force
 
 # Copy instructions
 $instructionsDir = "$saiDir\instructions"
@@ -146,9 +118,7 @@ Copy-Item sai\instructions\* $instructionsDir -Recurse -Force
 New-Item -ItemType Directory -Force -Path "$saiDir\policies" | Out-Null
 Copy-Item sai\policies\*.md "$saiDir\policies\"
 New-Item -ItemType Directory -Force -Path "$saiDir\compat" | Out-Null
-Copy-Item sai\compat\sai-2-design-core.md "$saiDir\compat\"
-Copy-Item sai\compat\sai-3-implementation-core.md "$saiDir\compat\"
-Copy-Item sai\compat\implement-invocation.md "$saiDir\compat\"
+Copy-Item sai\compat\* "$saiDir\compat\" -Recurse -Force
 Copy-Item sai\compat\_templates "$saiDir\compat" -Recurse -Force
 New-Item -ItemType Directory -Force -Path "$saiDir\orchestration" | Out-Null
 Copy-Item sai\orchestration\inline-invocation.md "$saiDir\orchestration\"

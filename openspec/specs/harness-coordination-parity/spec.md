@@ -5,6 +5,8 @@ Define the shared phase boundary and harness-local dispatch mechanisms for route
 
 ## Requirements
 
+Routed coordinator and invocation bodies are grouped under `sai/commands/{design,implement}/`, while GitHub Copilot uses `sai/orchestration/inline-invocation.md`.
+
 ### Requirement: All three harnesses share the same sai-2 phase boundary
 
 Claude Code, opencode, and GitHub Copilot SHALL each end `/sai-2-design` at the same point — after design-artifact completion and the artifact-feedback gate — and SHALL each emit the same design completion stop. No harness SHALL retain a same-prompt path into implementation planning.

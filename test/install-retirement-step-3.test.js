@@ -35,7 +35,7 @@ test('retirement cleanup treats an absent destination as a no-op', () => {
   const base = tempDir();
   try {
     const results = cleanupRetiredProjections('claude', roots(base));
-    assert.equal(results.length, 2);
+    assert.equal(results.length, 6);
     assert.ok(results.every(result => result.action === 'not-found'));
   } finally {
     fs.rmSync(base, { recursive: true, force: true });
@@ -79,7 +79,8 @@ test('retirement cleanup preserves modified and unknown destination bytes', () =
     fs.writeFileSync(unknownPath, unknownBytes);
 
     const results = cleanupRetiredProjections('claude', roots(base));
-    assert.ok(results.every(result => result.action === 'preserved'));
+    assert.equal(results.find(result => result.id === modifiedRetirement.id).action, 'preserved');
+    assert.equal(results.find(result => result.id === unknownRetirement.id).action, 'preserved');
     assert.deepEqual(fs.readFileSync(modifiedPath), modifiedBytes);
     assert.deepEqual(fs.readFileSync(unknownPath), unknownBytes);
   } finally {

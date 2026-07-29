@@ -11,6 +11,13 @@ const { auditActiveReferences } = require('../bin/orchestration-source-audit.js'
 const repoRoot = path.join(__dirname, '..');
 const claudeLoader = ['claude', 'loader.md'].join('-');
 const opencodeLoader = ['opencode', 'loader.md'].join('-');
+const retiredSources = [
+  'sai/commands/sai-2-design.md',
+  'sai/commands/sai-3-implement.md',
+  'sai/compat/sai-2-design-core.md',
+  'sai/compat/sai-3-implementation-core.md',
+  'sai/compat/implement-invocation.md',
+];
 
 function writeFixture(root, relativePath, content) {
   const filePath = path.join(root, relativePath);
@@ -18,11 +25,22 @@ function writeFixture(root, relativePath, content) {
   fs.writeFileSync(filePath, content);
 }
 
-test('active-reference audit reports no supported dependency on either retired loader', () => {
+test('active-reference audit reports no supported dependency on retired sources', () => {
   const references = auditActiveReferences(repoRoot);
 
   assert.ok(Array.isArray(references), 'audit should return a reference list');
   assert.deepEqual(references, []);
+});
+
+test('retired phase sources are absent and grouped callers remain available', () => {
+  for (const source of retiredSources) assert.equal(fs.existsSync(path.join(repoRoot, source)), false);
+  for (const source of [
+    'sai/commands/design/coordinator.md',
+    'sai/commands/design/invocation.md',
+    'sai/commands/implement/coordinator.md',
+    'sai/commands/implement/invocation.md',
+  ]) assert.equal(fs.existsSync(path.join(repoRoot, source)), true);
+  assert.equal(fs.existsSync(path.join(repoRoot, 'sai/compat/_templates/adr-index.md')), true);
 });
 
 test('active-reference audit excludes archived changes and ADRs but scans maintained files', () => {

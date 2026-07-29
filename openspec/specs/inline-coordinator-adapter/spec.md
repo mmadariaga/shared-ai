@@ -6,6 +6,8 @@ Define the shared inline adapter for dispatching the design and implementation p
 
 ## Requirements
 
+The grouped phase invocation bodies are `sai/commands/design/invocation.md` and `sai/commands/implement/invocation.md`; no retired compatibility loader is an active caller.
+
 ### Requirement: Adapter is independent of removed command loaders
 The Copilot Inline Coordinator Adapter SHALL contain every phase-selection, prerequisite, missing-artifact, feedback, and completion reference needed to execute its two supported phases without reading `sai/commands/sai-2-design-inline.md` or `sai/commands/sai-3-implement-inline.md`.
 
