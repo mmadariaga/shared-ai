@@ -29,7 +29,7 @@ Read `## Implementation Context` (**Stack**, **Conventions**, **Avoid**, **Test 
    - Step-by-step implementation actions from `tasks.md`
    - Expertise Profile from `## Implementation Context` in `tasks.md`
 3. Read ONLY the documents listed in `## Required Documentation` from `tasks.md` (local files via Read tool, external URLs via web fetch). Do not perform additional codebase exploration.
-4. Generate a file: `openspec/changes/{change-name}/implementation.md` using <plan_template>
+4. Generate a file: `openspec/changes/{change-name}/implementation.md` using the implementation plan template (`sai/instructions/_templates/implementation-plan.md`)
 5. Ensure all instructions are concrete and directly executable
 
 ## Workflow
@@ -76,7 +76,7 @@ For every finding in an existing audit artifact (`review.md`, `security.md`, `pe
 
 The Apply/Discard classification SHALL follow from the rubric outcome, not from gut feel.
 
-- **Apply** findings are rendered as concrete code-writing checkboxes (file:line location + specific change) inside the appended audit step — the same kind of code-writing checkboxes `<plan_template>` uses elsewhere in `implementation.md`.
+- **Apply** findings are rendered as concrete code-writing checkboxes (file:line location + specific change) inside the appended audit step — the same kind of code-writing checkboxes the implementation plan template uses elsewhere in `implementation.md`.
 - **Discard** findings appear in a **Discarded findings sub-block** inside the same appended step (not a separate step). Each entry uses the format:
   `**{id}** — {one-sentence reason} (source: {artifact} § {category} {id})`
 - **Question (Q) findings** (only `review.md` has a Questions category) are auto-discarded with the reason `requires user response, not a code change`. The full Q text SHALL be transcribed verbatim beneath the entry line so the user can answer in chat. Q findings SHALL NOT be rendered as Apply code actions under any circumstance.
@@ -128,11 +128,11 @@ If a listed document is missing or contradicts the declared stack, STOP and requ
 **Re-run preamble.** Before generating, check whether `openspec/changes/{change-name}/implementation.md` already exists on disk (equivalently: whether Step 1 ran at all). The check keys on **file presence**, not on the count of steps Step 1 collapsed — a file where every step is FALLO MENOR (code applied, verification pending) has zero collapsed steps but MUST still be preserved.
 
 - **If the file does NOT exist (first run):** take the **first-run generation path** below.
-- **If the file exists (re-run):** take the **re-run preservation path** below. Do NOT fall through into `<plan_template>` regeneration on a re-run.
+- **If the file exists (re-run):** take the **re-run preservation path** below. Do NOT fall through into implementation-plan-template regeneration on a re-run.
 
 #### First-run generation path
 
-- Create one full markdown file using <plan_template>
+- Create one full markdown file using the implementation plan template
 - Include:
 - Complete code for each step
 - Precise file locations
@@ -147,7 +147,7 @@ If a listed document is missing or contradicts the declared stack, STOP and requ
 - Before writing any Verification Checklist, determine whether the step's output is observable in the browser at this point (i.e., the component or change is already rendered in the app). Apply the following rules:
 - **Automated checks** (lint, build, typecheck, unit tests): always include in the step where they apply. The agent runs these before stopping.
 - **Human checks** (browser/UI behavior): only include them in the step where the behavior is first observable. If a step creates a component not yet integrated into any page or layout, defer all its Human checks to the integration step.
-- **Deferred checks**: at the integration step, group all deferred Human checks before the step's own Human checks, using labeled blocks per origin step (see `<plan_template>`).
+- **Deferred checks**: at the integration step, group all deferred Human checks before the step's own Human checks, using labeled blocks per origin step (see the implementation plan template).
 - **Service-side / non-UI steps** (no observable browser behavior anywhere — config, migration, scaffolding, or service-side logic): omit the `**Human (...)**` header entirely and emit a single italic parenthetical note explaining why no human check applies (e.g. `*(No Human checks — service-side step with no observable browser behavior.)*`). Do NOT invent a `- [ ] No human check required` (or any equivalent placeholder) checkbox. This differs from a deferred check: a deferred check's human verification lands at a later integration step, whereas a service-side step has no human check anywhere.
 - **RED → GREEN for testable steps:** For any step that introduces testable code (new functions, classes, endpoints, components, business logic), structure it as:
       1. **RED**: Write the test first. The test must fail when run against the current codebase (before the step's code is added). This proves the test is real and not tautological.
@@ -156,11 +156,11 @@ If a listed document is missing or contradicts the declared stack, STOP and requ
       - **Valid RED failure** = the test runner exits non-zero AND the failure is an assertion failure attributable to the missing/incomplete code under test (assertion mismatch, expected vs actual, raised wrong exception). It is NOT a valid RED if the failure is a setup/import/compilation error, a missing dependency, a syntax error in the test file itself, or any error unrelated to the behaviour being asserted. If the only way to make the test fail is by referencing a symbol that does not yet exist, scaffold a minimal stub that exposes the symbol and returns/raises the wrong value, so the failure is a proper assertion failure.
       - If a step is NOT testable (config changes, migrations, scaffolding), skip RED/GREEN and use the standard format.
       - Include both RED and GREEN verification commands in the Verification Checklist.
-- **Audit artifacts on a first run (rare):** If any of `review.md`, `security.md`, `performance.md`, `accessibility.md` exists in `openspec/changes/{change-name}/`, append one audit step per existing artifact after the last `<plan_template>`-derived step, invoking the **Judgment Rubric for Audit Findings** and emitting the Apply code actions + Discarded findings sub-block. No slot is added to `<plan_template>` — audit steps are generated dynamically (see D1 in `design.md`). Number the first audit step strictly after the highest `#### Step N:` number in the generated plan; continue N+2, N+3, … for subsequent artifacts.
+- **Audit artifacts on a first run (rare):** If any of `review.md`, `security.md`, `performance.md`, `accessibility.md` exists in `openspec/changes/{change-name}/`, append one audit step per existing artifact after the last template-derived step, invoking the **Judgment Rubric for Audit Findings** and emitting the Apply code actions + Discarded findings sub-block. No slot is added to the implementation plan template — audit steps are generated dynamically (see D1 in `design.md`). Number the first audit step strictly after the highest `#### Step N:` number in the generated plan; continue N+2, N+3, … for subsequent artifacts.
 
 #### Re-run preservation path
 
-On a re-run, Step 5 builds its output from the prior `implementation.md` as Step 1 left it on disk — it does NOT regenerate from `<plan_template>`. The preservation path runs in three phases: **classify**, **preserve**, then **append audit-derived steps**.
+On a re-run, Step 5 builds its output from the prior `implementation.md` as Step 1 left it on disk — it does NOT regenerate from the implementation plan template. The preservation path runs in three phases: **classify**, **preserve**, then **append audit-derived steps**.
 
 ##### Classify each prior step
 
@@ -190,7 +190,7 @@ Build the new `implementation.md` by copying the prior file as Step 1 left it:
 - Every step Step 1 collapsed to a heading followed by `*(already applied)*` is copied **byte-for-byte** — the heading line and the exact marker line, unchanged. Do NOT rewrite, re-expand, re-word, re-number, or re-order a compacted step. Do NOT add commit references or timestamps to the marker. Do NOT re-open a compacted step (no code blocks, checklists, or any other content added back to it).
 - Every step with at least one unchecked `[ ]` checkbox is carried over unchanged.
 - Orphan headings (steps no longer present in `tasks.md`) are preserved as-is — never deleted, renamed, or remapped. `tasks.md` drift is out of scope.
-- Step 5 never re-derives an existing step from `<plan_template>`.
+- Step 5 never re-derives an existing step from the implementation plan template.
 
 ##### Append audit-derived steps
 
@@ -237,162 +237,9 @@ and `## Implementation Context` are the primary source of truth.
 
 ---
 
-The `<plan_template>` below applies to the **first-run generation path only**. On a re-run, Step 5 uses the re-run preservation path and MUST NOT regenerate existing steps from this template.
+The implementation plan template (loaded below) applies to the **first-run generation path only**. On a re-run, Step 5 uses the re-run preservation path and MUST NOT regenerate existing steps from this template.
 
-<plan_template>
-
-# {FEATURE_NAME}
-
-## Goal
-
-{One sentence describing exactly what this implementation accomplishes}
-
-## Prerequisites
-
-- Detect the current git branch with `git rev-parse --abbrev-ref HEAD` (or equivalent). If the command returns empty (detached HEAD), use the literal text `detached HEAD` for option 2.
-- Resolve the repository **default branch** dynamically — do NOT assume `main`. Apply this chain in order:
-  1. Remote head — `git symbolic-ref --quiet refs/remotes/origin/HEAD`; on success take the trailing path segment (`refs/remotes/origin/main` → `main`).
-  2. Else whichever of `main` / `master` exists locally (`git show-ref --verify --quiet refs/heads/<name>`).
-  3. If both `main` and `master` exist locally and no remote head resolved, prefer `main`.
-  4. If neither exists or there is no `origin`, treat the current branch as the resolved default branch (no distinct default exists, so the base prompt below is skipped).
-- Present exactly three options in the user's input language (English fallback), in this fixed order. Canonical English labels — translate to match the user's input language, preserving meaning and order:
-  1. `Suggest branch "{feature-name}"` — the change-name-derived branch (default).
-  2. `Stay on current branch "{current-branch}"` — the detected current branch, or `detached HEAD`.
-  3. `Enter branch name manually` — free text for a custom branch name.
-- No option is prohibited. The user bears full responsibility for the choice.
-- **Branch-base prompt (new branches only).** When the selected branch does NOT already exist — option 1, or an option-3 name not present in the repository — present a 2-option closed choice for its base branch, before creating it, through the harness option-picker (`AskUserQuestion` on Claude Code per the closed-choice-prompt rule in `remember.md`; plain-text fallback where no picker exists). Present them in this order; labels localize to the user's input language (English fallback), surrounding text stays English:
-  1. `Base on default branch "{default-branch}"` — the dynamically resolved default; this is the pre-selected default option.
-  2. `Base on current branch "{current-branch}"` — the current branch, or the literal `detached HEAD` when in detached HEAD.
-  Record the chosen base. **Skip this prompt entirely** (surface no base choice) when any of these holds: option 2 (stay on current branch) was chosen; the selected target branch already exists; or the current branch already equals the resolved default branch — in that last case create the new branch from the default branch without prompting.
-- If the selected branch does not exist, create it from the chosen base branch — the resolved default branch or the current branch as determined by the base prompt (or the default branch directly when the prompt was skipped because the current branch already equals the default) — before implementing. Never hardcode `main` as the base.
-
-### Step-by-Step Instructions
-
-#### Step 1: {Action}
-
-*(Testable step — use RED → GREEN)*
-
-##### RED phase
-
-- **Rule:** RED may only contain the failing test + minimal stubs/imports. Do NOT paste the full implementation here. If a stub is needed to compile, make it return the wrong value so the test still fails with an assertion error.
-
-- [ ] Create a minimal stub at `{file}` so the test can compile:
-
-```{language}
-{MINIMAL STUB — exposes the symbol but returns null/wrong value}
-```
-
-- [ ] Write the test into `{test-file}`:
-
-When `interfaces.md` exists for this change, list the step's scenarios at a high level only — concrete expected-value assertions are single-sourced in `interfaces.md` and are not restated here.
-
-When `interfaces.md` is absent, sai-4-apply will expand the scenario descriptions into full test assertions during RED.
-
-- {Scenario A description}
-- {Scenario B description}
-
-- [ ] Verify RED: run `{test-command}` — expected: **assertion failure** (exit ≠ 0 AND failure attributable to behaviour under test, NOT a setup/import/compilation error).
-- [ ] **GATE — DO NOT PROCEED to GREEN until RED is verified.** If the test passes, or the failure is not an assertion failure, STOP and report to the user per the RED → GREEN handling rules in the implementation instructions. Do not paste the GREEN code below.
-
-##### GREEN phase (only after RED is verified)
-
-- [ ] Copy and paste code below into `{file}`:
-
-```{language}
-{COMPLETE, TESTED CODE - NO PLACEHOLDERS - NO "TODO" COMMENTS}
-```
-
-- [ ] Verify GREEN: run `{test-command}` — expected: PASS
-
-##### Step 1 Verification Checklist
-
-**Automated (agent runs before stopping):**
-- [ ] RED verified — `{test-command}` fails as expected
-- [ ] GREEN verified — `{test-command}` passes
-- [ ] `{command}` — {expected result}
-
-**Human (verify in browser before committing):**
-- [ ] {Specific observable behavior in the browser}
-
-#### Step 1 STOP & COMMIT
-
-**sai-4-apply:** Run all Automated checks above and confirm they pass before stopping.
-
-**STOP & COMMIT:** Wait for the human to verify all Human checks in the browser, then stage and commit before continuing.
-
-#### Step 2: {Action — creates component not yet integrated into any page}
-
-*(Non-testable step — standard format, no RED/GREEN needed because component is not yet rendered)*
-
-- [ ] {Specific Instruction 1}
-- [ ] Copy and paste code below into `{file}`:
-
-```{language}
-{COMPLETE, TESTED CODE - NO PLACEHOLDERS - NO "TODO" COMMENTS}
-```
-
-##### Step 2 Verification Checklist
-
-**Automated (agent runs before stopping):**
-- [ ] `{command}` — {expected result}
-
-*(No Human checks — component not yet rendered in the app. Browser verifications deferred to Step N where it is first integrated.)*
-
-#### Step 2 STOP & COMMIT
-
-**sai-4-apply:** Run all Automated checks above and confirm they pass before stopping.
-
-**STOP & COMMIT:** Stage and commit after Automated checks pass. No browser verification required at this step.
-
-#### Step 3: {Action — service-side / non-UI step with no observable browser behavior}
-
-*(Service-side / non-UI step — standard format. No human check anywhere because nothing is rendered for a human to observe. Distinct from Step 2, whose checks are deferred, not absent.)*
-
-- [ ] {Specific Instruction 1}
-- [ ] Copy and paste code below into `{file}`:
-
-```{language}
-{COMPLETE, TESTED CODE - NO PLACEHOLDERS - NO "TODO" COMMENTS}
-```
-
-##### Step 3 Verification Checklist
-
-**Automated (agent runs before stopping):**
-- [ ] `{command}` — {expected result}
-
-*(No Human checks — service-side step with no observable browser behavior. Unlike Step 2 these checks are not deferred; there is no human check for this step anywhere. Never substitute a `- [ ] No human check required` checkbox.)*
-
-#### Step 3 STOP & COMMIT
-
-**sai-4-apply:** Run all Automated checks above and confirm they pass before stopping.
-
-**STOP & COMMIT:** Stage and commit after Automated checks pass. No browser verification required at this step.
-
-#### Step N: {Integration step — first step where deferred components are rendered}
-
-- [ ] {Specific Instruction 1}
-
-##### Step N Verification Checklist
-
-**Automated (agent runs before stopping):**
-- [ ] `{command}` — {expected result}
-
-**Human (verify in browser before committing):**
-
-*Deferred from Step 2 ({Component name}):*
-- [ ] {Browser behavior deferred from Step 2}
-- [ ] {Browser behavior deferred from Step 2}
-
-*Step N:*
-- [ ] {Browser behavior specific to this integration step}
-
-#### Step N STOP & COMMIT
-
-**sai-4-apply:** Run all Automated checks above and confirm they pass before stopping.
-
-**STOP & COMMIT:** Wait for the human to verify all Human checks above (including all deferred ones) in the browser, then stage and commit before continuing.
-
-</plan_template>
+Fetch @sai/instructions/_templates/implementation-plan.md
 
 ## Pre-Delivery Verification
 
