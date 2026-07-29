@@ -114,3 +114,39 @@ test('active expansion excludes retirement loaders and keeps Copilot inline orch
     'sai/orchestration/inline-invocation.md',
   ]);
 });
+
+test('grouped design and implementation phase assets preserve their former source contracts', () => {
+  const repoRoot = path.join(__dirname, '..');
+  const phases = [
+    {
+      name: 'design',
+      directory: path.join(repoRoot, 'sai', 'commands', 'design'),
+      coordinator: path.join(repoRoot, 'sai', 'commands', 'sai-2-design.md'),
+      invocation: path.join(repoRoot, 'sai', 'compat', 'sai-2-design-core.md'),
+      instruction: 'sai/instructions/design.md',
+    },
+    {
+      name: 'implement',
+      directory: path.join(repoRoot, 'sai', 'commands', 'implement'),
+      coordinator: path.join(repoRoot, 'sai', 'commands', 'sai-3-implement.md'),
+      invocation: path.join(repoRoot, 'sai', 'compat', 'sai-3-implementation-core.md'),
+      instruction: 'sai/instructions/implement.md',
+    },
+  ];
+
+  for (const phase of phases) {
+    assert.deepEqual(fs.readdirSync(phase.directory).sort(), ['coordinator.md', 'invocation.md']);
+    assert.equal(
+      fs.readFileSync(path.join(phase.directory, 'coordinator.md'), 'utf8'),
+      fs.readFileSync(phase.coordinator, 'utf8')
+    );
+    const invocation = fs.readFileSync(path.join(phase.directory, 'invocation.md'), 'utf8');
+    assert.equal(invocation, fs.readFileSync(phase.invocation, 'utf8'));
+    assert.match(invocation, new RegExp(`Fetch @${phase.instruction.replaceAll('/', '\\/')}`));
+  }
+
+  const adrIndex = path.join(repoRoot, 'sai', 'compat', '_templates', 'adr-index.md');
+  assert.equal(fs.existsSync(adrIndex), true);
+  assert.equal(fs.existsSync(path.join(repoRoot, 'sai', 'commands', 'design', 'adr-index.md')), false);
+  assert.equal(fs.existsSync(path.join(repoRoot, 'sai', 'commands', 'implement', 'adr-index.md')), false);
+});
