@@ -29,6 +29,18 @@ test('installOpencode copies commands/opencode/*.md to dest/commands/', () => {
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });
 
+test('installOpencode projects grouped SAI command assets and excludes former coordinator sources', () => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-'));
+  installOpencode(tmpDir);
+  for (const file of [path.join('design', 'coordinator.md'), path.join('design', 'invocation.md'), path.join('implement', 'coordinator.md'), path.join('implement', 'invocation.md')]) {
+    assert.ok(fs.existsSync(path.join(tmpDir, 'sai', 'commands', file)), `${file} should be projected`);
+  }
+  for (const file of ['sai-2-design.md', 'sai-3-implement.md']) {
+    assert.equal(fs.existsSync(path.join(tmpDir, 'sai', 'commands', file)), false, `${file} should not be projected`);
+  }
+  fs.rmSync(tmpDir, { recursive: true, force: true });
+});
+
 test('installOpencode copies all standalone policies to dest/sai/policies/', () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-'));
   installOpencode(tmpDir);
@@ -38,13 +50,13 @@ test('installOpencode copies all standalone policies to dest/sai/policies/', () 
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });
 
-test('installOpencode copies shared compatibility assets but not the Copilot-only inline loader', () => {
+test('installOpencode keeps only the compatibility template and removes former compatibility destinations', () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-'));
   installOpencode(tmpDir);
-  for (const file of ['sai-2-design-core.md', 'sai-3-implementation-core.md', path.join('_templates', 'adr-index.md')]) {
-    assert.ok(fs.existsSync(path.join(tmpDir, 'sai', 'compat', file)), `${file} should be projected`);
+  assert.ok(fs.existsSync(path.join(tmpDir, 'sai', 'compat', '_templates', 'adr-index.md')));
+  for (const file of ['sai-2-design-core.md', 'sai-3-implementation-core.md', 'implement-invocation.md']) {
+    assert.equal(fs.existsSync(path.join(tmpDir, 'sai', 'compat', file)), false, `${file} should not be projected`);
   }
-  assert.equal(fs.existsSync(path.join(tmpDir, 'sai', 'compat', 'implement-invocation.md')), false);
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });
 

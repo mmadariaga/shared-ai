@@ -63,6 +63,10 @@ describe('doctor fetch resolution', () => {
     try {
       installClaude(claudeBase);
 
+      for (const file of ['sai-2-design.md', 'sai-3-implement.md']) {
+        assert.equal(fs.existsSync(path.join(claudeBase, 'sai', 'commands', file)), false);
+      }
+
       const wrapper = path.join(claudeBase, 'commands', 'sai-1-spec.md');
       fs.appendFileSync(wrapper, '\nFetch @sai/instructions/fr-test-x.md\n');
 

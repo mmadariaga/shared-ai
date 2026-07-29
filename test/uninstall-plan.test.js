@@ -134,6 +134,27 @@ test('computePlanEntry applies retirement accepted-hash classification', () => {
   }
 });
 
+test('retirement destinations have hash-guarded plans for every grouped source', () => {
+  const destinations = [
+    'sai/commands/sai-2-design.md',
+    'sai/commands/sai-3-implement.md',
+    'sai/compat/sai-2-design-core.md',
+    'sai/compat/sai-3-implementation-core.md',
+    'sai/compat/implement-invocation.md',
+  ];
+  assert.equal(new Set(destinations).size, 5);
+  for (const destination of destinations) {
+    assert.equal(computePlanEntry({
+      assetType: 'retired-managed-file',
+      acceptedHashes: [hash('managed')],
+      ruleId: `retired-${destination}`,
+      editorBase: os.tmpdir(),
+      dest: path.join(os.tmpdir(), destination),
+      src: path.join(os.tmpdir(), destination),
+    }).action, 'not-found');
+  }
+});
+
 test('computePlan returns entries with correct shape', () => {
   const deletionSet = [
     { src: '/fake/src/a.md', dest: '/fake/dest/a.md', editorBase: '/fake/base' },

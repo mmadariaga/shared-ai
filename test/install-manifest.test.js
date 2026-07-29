@@ -85,27 +85,6 @@ test('canonical manifest exposes the exact compatibility allowlist', () => {
     }));
   assert.deepEqual(compatibility, [
     {
-      source: 'sai/compat/sai-2-design-core.md',
-      destination: { class: 'sai', path: 'compat/sai-2-design-core.md' },
-      harnesses: ['claude', 'opencode', 'copilot'],
-      recursive: false,
-      overrides: 'sai-instructions',
-    },
-    {
-      source: 'sai/compat/sai-3-implementation-core.md',
-      destination: { class: 'sai', path: 'compat/sai-3-implementation-core.md' },
-      harnesses: ['claude', 'opencode', 'copilot'],
-      recursive: false,
-      overrides: 'sai-instructions',
-    },
-    {
-      source: 'sai/compat/implement-invocation.md',
-      destination: { class: 'sai', path: 'compat/implement-invocation.md' },
-      harnesses: ['copilot'],
-      recursive: false,
-      overrides: 'sai-instructions',
-    },
-    {
       source: 'sai/compat/_templates/adr-index.md',
       destination: { class: 'sai', path: 'compat/_templates/adr-index.md' },
       harnesses: ['claude', 'opencode', 'copilot'],
@@ -199,8 +178,8 @@ test('canonical manifest keeps implementation projections harness-specific', () 
       'skills/opencode/sai-3-implementation-worker/SKILL.md',
     ],
     copilot: [
-      'sai/compat/sai-3-implementation-core.md',
-      'sai/compat/implement-invocation.md',
+      'sai/commands/implement/coordinator.md',
+      'sai/commands/implement/invocation.md',
     ],
   };
 
@@ -247,16 +226,13 @@ test('compatibility and policy projections resolve for every supported harness',
       repoRoot: path.join(__dirname, '..'),
       destinationRoot,
     });
-    assert.ok(projections.some(p => p.destinationPath.endsWith(path.join('compat', 'sai-2-design-core.md'))));
-    assert.ok(projections.some(p => p.destinationPath.endsWith(path.join('compat', 'sai-3-implementation-core.md'))));
-    assert.ok(projections.some(p => p.destinationPath.endsWith(path.join('compat', '_templates', 'adr-index.md'))));
+     assert.ok(projections.some(p => p.destinationPath.endsWith(path.join('compat', '_templates', 'adr-index.md'))));
     assert.ok(projections.some(p => p.destinationPath.endsWith(path.join('policies', 'glossary-format.md'))));
     assert.ok(projections.some(p => p.destinationPath.endsWith(path.join('policies', 'remember.md'))));
     assert.ok(projections.some(p => p.destinationPath.endsWith(path.join('policies', 'sai-learnings-format.md'))));
-    assert.equal(
-      projections.some(p => p.destinationPath.endsWith(path.join('compat', 'implement-invocation.md'))),
-      harness === 'copilot'
-    );
+     assert.equal(projections.some(p => p.destinationPath.endsWith(path.join('compat', 'implement-invocation.md'))), false);
+     assert.equal(projections.some(p => p.destinationPath.endsWith(path.join('compat', 'sai-2-design-core.md'))), false);
+     assert.equal(projections.some(p => p.destinationPath.endsWith(path.join('compat', 'sai-3-implementation-core.md'))), false);
   }
 });
 
@@ -402,6 +378,82 @@ test('canonical manifest validates all historical retirements and excludes them 
   const manifest = loadInstallManifest(repoRoot);
   const expected = [
     {
+      id: 'retired-sai-2-design',
+      destination: { class: 'sai', path: 'commands/sai-2-design.md' },
+      harnesses: ['claude', 'opencode', 'copilot'],
+      managedHashes: [
+        '019a4e3f36fda7d2e9175d00668a5bdfaebbea245609086bffb91f9802e3d22a',
+        '02e501c0ef744b7f064d3149f9177ae5c382814ada87829dc05db23075a23d1e',
+        '11eaceeb96d585ec87256aaf67cd9b8eb188082f80e2d536347ebef2c66722ba',
+        '12c64b9e943e3ad096b22de7edde10299040acdb286fbec43a0d8e07d135e7a1',
+        '217bf88c785582366a68d5b26a125ed1f218f9c281a443ba8a8200e465dce669',
+        '3c1f426088e8741f55ff9aa6f92fab83e5e0d538e1bed2dbd929446f885713d0',
+        '575d793e53678e9f8c26e6704136006a5e91e14c041adbf38d865e47ccf07c81',
+        '5a9269962cd7524429837803fe80623bb858b8dfc49fd5d8f3720af2e916fccc',
+        '5ccb6ee97190bcabb55c63cb4b35f3510443fb1ca55c44af4bd2ef80fa2d9b8a',
+        '6f1eb1d4a18877c8fd64da6f7cb2f132d6e9fac6b91e934834642a46402576ab',
+        '71e196f55e94da7dce0152f97e5f9a46fb6b5ae9056466141e9a37ef54bcd6b6',
+        '7b6683cbfd1611bd5897a2007b2c482085b807e1344bb64316f973b4354b16c0',
+        '7c6c0a5449099407469b9b670e0828f878cea5d9cc9a5d16d51b881aa009894c',
+        'abb5e1d70a943d3b02f4e360f0a4e45efc65244c3a6d50826b096c0fee3887f5',
+        'af7c25ae97dbaf26397e86ea6150fa096e2dd1a52fe99be519d61e6aa8b2741d',
+        'b9a909cce730b032056b9a1aa9574c48878e8008a509eb5c533e8b9c29803300',
+        'b9e8c47a92e5bb3ab7e41583bf7ddff47efcefabb6d1cacb5881c04417569b9f',
+        'c74baf43fe46fcb8a4ca5084480f32f6cb5d55840b4989d0cf5edb3bdfde24da',
+        'd1ff86ea45811f14bc2c65941fdf7b80c3a6531adaa678c356243043b2b26692',
+        'd49b2c04e6ab6f630a4da659d5c45f6ec77e7b143bc38b2d1a24912aa84cc378',
+        'd8df318f314a6e028f804553de712b3fa4da6232aff90ba383a1316a739a71f6',
+        'def179bd4beaa42c7de4e86eabdb7ddd820b6fdb95be76f779b306c8900266ac',
+        'fde71350d93d07bec0fcaf3de1e441da348311e5f205a17f85c3c9637a2a3ee3',
+      ],
+    },
+    {
+      id: 'retired-sai-3-implement',
+      destination: { class: 'sai', path: 'commands/sai-3-implement.md' },
+      harnesses: ['claude', 'opencode', 'copilot'],
+      managedHashes: [
+        '181eae486677d710242e395137f6e3f2c5b0206c26d6b2ce783d48d58ce95a54',
+        '217a21c606584d4a2b05659432c977941409acc2b47b92e937ad3fadcfee2e62',
+        '677d5b154a6228e588507d7c1ba117a921c871f176e92e79d4cff29475866794',
+        '7138bcc212e6cfcd921b7d36a383084f604289cd48e4f6874de14ebdf2ba7df9',
+        '753638b2ebecdb2ea099dffa18b89bc5c4b54a8ddc6fab5c6d35550300f97220',
+        '7624713d11145c4d01b210d36397d5c2874345039cc29095fd1647f301ce06dd',
+        '7c34672592bc626ac9d8e39d53a7b9b1fd61fa4f961590480f06f1a1be545cdc',
+        '7d2435a8d565224f1f3708a8aa51cc29ff29325ae34a608672042f5cac137fbe',
+        '8dacdb9ce90f0a1a231d26cafaeaade9a2a273f6630750ffcc73ac4bff921275',
+        '9881841bfee6eaf4492e4da3df936281abe5816e46c9dda11559ac319c87f050',
+        'ac2c83812a05791d248e13e1740b0be774bba0ab048dae698bbcf7874e7157c2',
+        'b591cb30e451b2020cfe516009214dd50ef0065bb71ae26198e9f43f07cedb36',
+        'c083613112265f522fa8e15b8571a523116028f3f4aa10a91c642415dc603057',
+        'ca3a5fc6cc23efec9b051ded0cbca4fe48451f9b1d766736349512d6f111aa2c',
+        'd8280a41f5eaa13cec8f498d768417f28ba8367a9833b02fb0ce46d06ecc1d13',
+        'dac09dfc50e331550351bc535fde36a532a438be2b5faf13e47902a7d858ffb1',
+        'f2dec038f575ebdcf5f48bf096fc8741318564995b59886a5ef5fe0361cfac4f',
+        'f7358cef4dc7e87a32bda452acbc3a58cc6f0746a83b6721cba4dfcf7a6f872a',
+      ],
+    },
+    {
+      id: 'retired-sai-2-design-core',
+      destination: { class: 'sai', path: 'compat/sai-2-design-core.md' },
+      harnesses: ['claude', 'opencode', 'copilot'],
+      managedHashes: ['072a970983f017a3f46207131c4bede350447f59018cb193fcd9886a81b3bd36'],
+    },
+    {
+      id: 'retired-sai-3-implementation-core',
+      destination: { class: 'sai', path: 'compat/sai-3-implementation-core.md' },
+      harnesses: ['claude', 'opencode', 'copilot'],
+      managedHashes: ['e6f583546585154f15d5629c7da0aeafae2505fa63be4ec8be537a5f03393176'],
+    },
+    {
+      id: 'retired-implement-invocation',
+      destination: { class: 'sai', path: 'compat/implement-invocation.md' },
+      harnesses: ['copilot'],
+      managedHashes: [
+        'd044b9f82118577cf029b06a4ae842454dd6b5c5292aaa56413766f86d79fc83',
+        'f5065219359ef2347a163d21e9b926669659d878e65a8a7722554e2d4affd6ec',
+      ],
+    },
+    {
       id: 'retired-sai-2-design-inline',
       destination: { class: 'sai', path: 'commands/sai-2-design-inline.md' },
       harnesses: ['claude', 'opencode', 'copilot'],
@@ -427,7 +479,7 @@ test('canonical manifest validates all historical retirements and excludes them 
     },
   ];
   assert.deepEqual(manifest.retirements, expected);
-  assert.equal(manifest.retirements.flatMap(retirement => retirement.managedHashes).length, 10);
+   assert.equal(manifest.retirements.flatMap(retirement => retirement.managedHashes).length, 55);
   assert.ok(manifest.retirements.flatMap(retirement => retirement.managedHashes).every(hash => /^[0-9a-f]{64}$/.test(hash)));
 
   const destinationRoot = {
@@ -439,10 +491,15 @@ test('canonical manifest validates all historical retirements and excludes them 
   };
   for (const harness of ['claude', 'opencode', 'copilot']) {
     const retirements = expandRetirementManifest(manifest, { harness, repoRoot, destinationRoot });
-    assert.deepEqual(retirements.map(retirement => retirement.destinationPath), [
-      path.resolve(destinationRoot.sai, 'commands/sai-2-design-inline.md'),
-      path.resolve(destinationRoot.sai, 'commands/sai-3-implement-inline.md'),
-    ]);
+     assert.deepEqual(retirements.map(retirement => retirement.destinationPath), [
+       path.resolve(destinationRoot.sai, 'commands/sai-2-design.md'),
+       path.resolve(destinationRoot.sai, 'commands/sai-2-design-inline.md'),
+       path.resolve(destinationRoot.sai, 'commands/sai-3-implement.md'),
+       path.resolve(destinationRoot.sai, 'commands/sai-3-implement-inline.md'),
+       ...(harness === 'copilot' ? [path.resolve(destinationRoot.sai, 'compat/implement-invocation.md')] : []),
+       path.resolve(destinationRoot.sai, 'compat/sai-2-design-core.md'),
+       path.resolve(destinationRoot.sai, 'compat/sai-3-implementation-core.md'),
+     ].sort());
     assert.ok(retirements.every(retirement => retirement.harness === harness));
     const active = expandInstallManifest(manifest, { harness, repoRoot, destinationRoot });
     assert.equal(active.some(projection => projection.destinationPath.endsWith('sai-2-design-inline.md')), false);

@@ -30,6 +30,12 @@ test('installClaude copies sai/commands/*.md to dest/sai/commands/', () => {
   assert.ok(fs.existsSync(saiCmdDir), 'sai/commands/ dir should exist');
   const files = fs.readdirSync(saiCmdDir);
   assert.ok(files.includes('sai-1-spec.md'), 'sai-1-spec.md should be in sai/commands/');
+  for (const file of [path.join('design', 'coordinator.md'), path.join('design', 'invocation.md'), path.join('implement', 'coordinator.md'), path.join('implement', 'invocation.md')]) {
+    assert.ok(fs.existsSync(path.join(saiCmdDir, file)), `${file} should be projected`);
+  }
+  for (const file of ['sai-2-design.md', 'sai-3-implement.md']) {
+    assert.equal(fs.existsSync(path.join(saiCmdDir, file)), false, `${file} should not be projected`);
+  }
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });
 
@@ -42,13 +48,13 @@ test('installClaude copies all standalone policies to dest/sai/policies/', () =>
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });
 
-test('installClaude copies shared compatibility assets but not the Copilot-only inline loader', () => {
+test('installClaude keeps only the compatibility template and removes former compatibility destinations', () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-claude-'));
   installClaude(tmpDir);
-  for (const file of ['sai-2-design-core.md', 'sai-3-implementation-core.md', path.join('_templates', 'adr-index.md')]) {
-    assert.ok(fs.existsSync(path.join(tmpDir, 'sai', 'compat', file)), `${file} should be projected`);
+  assert.ok(fs.existsSync(path.join(tmpDir, 'sai', 'compat', '_templates', 'adr-index.md')));
+  for (const file of ['sai-2-design-core.md', 'sai-3-implementation-core.md', 'implement-invocation.md']) {
+    assert.equal(fs.existsSync(path.join(tmpDir, 'sai', 'compat', file)), false, `${file} should not be projected`);
   }
-  assert.equal(fs.existsSync(path.join(tmpDir, 'sai', 'compat', 'implement-invocation.md')), false);
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });
 

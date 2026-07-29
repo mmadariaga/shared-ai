@@ -37,6 +37,32 @@ function retiredCopy(claudeBase, contents = 'user-owned retired copy\n') {
   return destination;
 }
 
+test('doctor reports every Claude retirement destination without changing locally modified content', async () => {
+  const { projectRoot, claudeBase } = fixture();
+  const destinations = [
+    ['sai', 'commands', 'sai-2-design.md'],
+    ['sai', 'commands', 'sai-3-implement.md'],
+    ['sai', 'compat', 'sai-2-design-core.md'],
+    ['sai', 'compat', 'sai-3-implementation-core.md'],
+  ];
+  try {
+    const paths = destinations.map(parts => {
+      const destination = path.join(claudeBase, ...parts);
+      fs.mkdirSync(path.dirname(destination), { recursive: true });
+      fs.writeFileSync(destination, 'locally modified retired content\n');
+      return destination;
+    });
+    const { report } = await runJson(projectRoot, claudeBase);
+    for (const destination of paths) {
+      const warning = retirementWarning(report, destination);
+      assert.equal(warning.recognized, false);
+      assert.equal(fs.readFileSync(destination, 'utf8'), 'locally modified retired content\n');
+    }
+  } finally {
+    fs.rmSync(projectRoot, { recursive: true, force: true });
+  }
+});
+
 async function runJson(projectRoot, claudeBase) {
   const capture = output();
   const code = await main({

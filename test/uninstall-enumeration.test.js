@@ -124,8 +124,12 @@ test('enumeration includes retirement records but excludes them from active proj
     const entries = enumerateOpencode(tmpDir);
     const retired = entries.filter(e => e.assetType === 'retired-managed-file');
     assert.deepEqual(retired.map(e => path.relative(tmpDir, e.dest)).sort(), [
+      path.join('sai', 'commands', 'sai-2-design.md'),
       path.join('sai', 'commands', 'sai-2-design-inline.md'),
+      path.join('sai', 'commands', 'sai-3-implement.md'),
       path.join('sai', 'commands', 'sai-3-implement-inline.md'),
+      path.join('sai', 'compat', 'sai-2-design-core.md'),
+      path.join('sai', 'compat', 'sai-3-implementation-core.md'),
     ].sort());
     for (const entry of retired) {
       assert.ok(Array.isArray(entry.acceptedHashes));

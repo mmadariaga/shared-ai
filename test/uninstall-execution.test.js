@@ -92,6 +92,31 @@ test('retired entries delete accepted content and preserve unknown content', () 
   }
 });
 
+test('retired destination inventory preserves modified content across all five destinations', () => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-exec-retirements-'));
+  const destinations = [
+    'sai/commands/sai-2-design.md',
+    'sai/commands/sai-3-implement.md',
+    'sai/compat/sai-2-design-core.md',
+    'sai/compat/sai-3-implementation-core.md',
+    'sai/compat/implement-invocation.md',
+  ];
+  try {
+    const plan = destinations.map(destination => ({
+      assetType: 'retired-managed-file',
+      acceptedHashes: [hash('managed')],
+      ruleId: `retired-${destination}`,
+      dest: writeFile(tmpDir, destination, 'locally modified'),
+      editorBase: tmpDir,
+    }));
+    const result = runDeletion(plan);
+    assert.equal(result.keptOverride, destinations.length);
+    for (const destination of destinations) assert.equal(fs.readFileSync(path.join(tmpDir, destination), 'utf8'), 'locally modified');
+  } finally {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+});
+
 test('pruneEmptyDirs removes empty parent directories walking upward to editorBase', () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-exec-'));
   try {

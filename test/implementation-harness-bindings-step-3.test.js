@@ -83,8 +83,8 @@ test('Step 3 manifest projects the shared lifecycle and one active harness bindi
       'skills/opencode/sai-3-implementation-worker/SKILL.md',
     ],
     copilot: [
-      'sai/compat/sai-3-implementation-core.md',
-      'sai/compat/implement-invocation.md',
+      'sai/commands/implement/coordinator.md',
+      'sai/commands/implement/invocation.md',
     ],
   };
 

@@ -124,6 +124,15 @@ describe('doctor harness inventory', () => {
           assert.equal(r.severity, 'ok', `${key} file ${r.name} should be ok`);
         }
       }
+      for (const file of [
+        path.join('sai', 'commands', 'design', 'coordinator.md'),
+        path.join('sai', 'commands', 'design', 'invocation.md'),
+        path.join('sai', 'commands', 'implement', 'coordinator.md'),
+        path.join('sai', 'commands', 'implement', 'invocation.md'),
+      ]) {
+        assert.equal(fs.existsSync(path.join(claudeBase, file)), true, `${file} should be installed`);
+        assert.equal(fs.existsSync(path.join(opencodeBase, file)), true, `${file} should be installed`);
+      }
     } finally {
       fs.rmSync(projectRoot, { recursive: true, force: true });
       for (const d of [claudeBase, opencodeBase, copilot.promptsBase, copilot.skillsBase, copilot.agentsBase, copilot.saiBase]) {
