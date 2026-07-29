@@ -104,15 +104,6 @@ else
     echo '      "mode": "subagent",'
     echo '      "model": "opencode-go/glm-5.1"'
     echo '    },'
-    echo '    "sai-coordinator": {'
-    echo '      "mode": "primary",'
-    echo '      "model": "opencode-go/glm-5.2",'
-    echo '      "variant": "high",'
-    echo '      "permission": {'
-    echo '        "task": { "*": "deny", "sai-2-design-worker": "allow", "sai-3-implementation-worker": "allow" },'
-    echo '        "question": "allow"'
-    echo '      }'
-    echo '    },'
     echo '    "sai-3-implementation-worker": {'
     echo '      "mode": "subagent",'
     echo '      "model": "opencode-go/kimi-k2.6",'
@@ -201,16 +192,7 @@ if (-not (Test-Path $jsonPath) -and -not (Test-Path $jsoncPath)) {
     Write-Host '      "mode": "subagent",'
     Write-Host '      "model": "opencode-go/glm-5.1"'
     Write-Host '    },'
-    Write-Host '    "sai-coordinator": {'
-    Write-Host '      "mode": "primary",'
-    Write-Host '      "model": "opencode-go/glm-5.2",'
-    Write-Host '      "variant": "high",'
-    Write-Host '      "permission": {'
-    Write-Host '        "task": { "*": "deny", "sai-2-design-worker": "allow", "sai-3-implementation-worker": "allow" },'
-    Write-Host '        "question": "allow"'
-    Write-Host '      }'
-    Write-Host '    },'
-    Write-Host '    "sai-3-implementation-worker": {'
+     Write-Host '    "sai-3-implementation-worker": {'
     Write-Host '      "mode": "subagent",'
     Write-Host '      "model": "opencode-go/kimi-k2.6",'
     Write-Host '      "permission": {'
@@ -224,17 +206,17 @@ if (-not (Test-Path $jsonPath) -and -not (Test-Path $jsoncPath)) {
 
 ### Managed implementation agents
 
-The canonical opencode sample sets `subagent_depth: 2`, uses `opencode-go/glm-5.1` for the existing low-cost helper agents, and adds one shared `sai-coordinator` in `primary` mode with `opencode-go/glm-5.2` and `variant: high`, plus `sai-3-implementation-worker` in `subagent` mode with `opencode-go/kimi-k2.6` and no variant. The coordinator permits questions and only the two numbered worker tasks; the implementation worker permits only `budget` and `explore` tasks.
+The canonical opencode sample sets `subagent_depth: 2`, uses `opencode-go/glm-5.1` for the existing low-cost helper agents, and keeps `sai-3-implementation-worker` in `subagent` mode with `opencode-go/kimi-k2.6` and no variant. The `/sai-3-implement` wrapper declares the routed coordinator model and `variant: high`; the implementation worker permits only `budget` and `explore` tasks.
 
-Installation adds absent entries, reuses only exact-compatible entries, and blocks incompatible entries without overwrite. Resolve a collision by manually renaming or removing the conflicting definition, then retry. Existing configuration and unrelated entries are preserved by the merge. Uninstall preserves both merged entries because opencode configuration is excluded from deletion. Restart opencode after config-time agent changes so the new coordinator and worker definitions are loaded.
+Installation adds absent entries, reuses only exact-compatible entries, and blocks incompatible entries without overwrite. Resolve a collision by manually renaming or removing the conflicting definition, then retry. Existing configuration and unrelated entries are preserved by the merge. Uninstall preserves the merged worker entry because opencode configuration is excluded from deletion. The opencode routed phases run under your active primary agent; it must permit native question and task dispatch to the numbered SAI workers. The stock build agent satisfies this. If a restrictive primary agent is active, switch to a permissive one (e.g. build) — do not reintroduce a managed coordinator profile. Restart opencode after config-time worker changes so the new worker definition is loaded.
 
 This is the opencode harness adapter. Claude Code uses its managed worker agent and ownership sidecar, while GitHub Copilot keeps the inline implementation boundary for this slice because there is no portable coordinator-worker continuation contract. Copilot has subagent support; its inline boundary is a portability choice.
 
 ### Managed design agents
 
-`/sai-2-design` preserves `openspec/changes/{change-name}/design.md`, `tasks.md`, and `interfaces.md`. It uses the shared `sai-coordinator` in `primary` mode and `sai-2-design-worker` in `subagent` mode. Both use `opencode-go/glm-5.2` with `variant: high`; the coordinator permits `question` and only the two numbered worker task targets, while the design worker denies `task.*` by default and allows `explore`. The design wrapper uses `agent: sai-coordinator` and `subtask: false`; it intentionally has no `model` field.
+`/sai-2-design` preserves `openspec/changes/{change-name}/design.md`, `tasks.md`, and `interfaces.md`. Its wrapper declares `model: opencode-go/glm-5.2`, `variant: high`, `subtask: false`, and no `agent` field; it dispatches `sai-2-design-worker` in `subagent` mode. The design worker denies `task.*` by default and allows `explore`. The phase ends at design completion; run `/sai-3-implement {name}` separately in a new chat. Users may delete a leftover `sai-coordinator` from a previous installation because install and uninstall leave it untouched; a stale allowlist may otherwise deny newer workers.
 
-Installation preserves existing configuration and unrelated entries, reuses exact-compatible entries, and blocks incompatible collisions without overwrite. Configuration exclusion means uninstall excludes `opencode.json` and `opencode.jsonc`, so merged design and implementation agent entries remain. Restart opencode after configuration changes; reinstall after updates to refresh command, instruction, and both design/implementation binding skill files.
+Installation preserves existing configuration and unrelated entries, reuses exact-compatible entries, and blocks incompatible collisions without overwrite. Configuration exclusion means uninstall excludes `opencode.json` and `opencode.jsonc`, so worker entries remain. Restart opencode after configuration changes; reinstall after updates to refresh command, instruction, and both design/implementation binding skill files.
 
 ### Post-install
 
@@ -264,7 +246,7 @@ cp ~/.config/opencode/commands/sai-1-spec.md .opencode/commands/
 cp ~/.config/opencode/commands/sai-2-design.md .opencode/commands/
 ```
 
-Then edit copied files for command-level customization. Routed design and implementation wrappers are customized through named agent entries in `opencode.json` or `opencode.jsonc`, not through a command `model` field.
+Then edit copied files for command-level customization. Routed design and implementation wrappers declare their model and variant directly, as Claude Code already does; no named coordinator is shipped.
 
 Opencode's project-local commands (`.opencode/commands/`) take precedence over user-global ones (`~/.config/opencode/commands/`) by filename — a project-local command with the same filename as a user-global one silently shadows it. Claude Code has the analogous `.claude/commands/` precedence; GitHub Copilot in VS Code uses independent prompt scopes and the inline implementation adapter. Copilot has subagent support; these are harness-specific boundaries. See `INSTALL.copilot.md#customizing-models`.
 

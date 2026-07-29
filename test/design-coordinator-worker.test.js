@@ -481,16 +481,16 @@ test('documentation records the active design compatibility boundary and managed
   assert.match(readme, /Claude Code.*low-effort.*coordinator.*high-effort.*design worker/i);
   assert.match(readme, /opencode.*GLM 5\.2.*variant: high/i);
   assert.match(readme, /continue_after_notice/);
-  assert.match(readme, /Continue now.*fresh namespace/i);
+  assert.match(readme, /new chat[\s\S]{0,80}\/sai-3-implement|\/sai-3-implement[\s\S]{0,80}new chat/i);
   assert.match(readme, /Proposal Complexity.*descriptive/i);
-  assert.match(readme, /named.*agent.*not.*command.*model/i);
+  assert.match(readme, /wrapper[\s\S]{0,60}(?:model|variant)|command[\s\S]{0,60}(?:model|variant)/i);
 
   assert.match(agents, /sai\/compat\/sai-2-design-core\.md/);
   assert.match(agents, /sai-2-design-worker\.md/);
   assert.match(agents, /agents\/claude\/sai-2-design-worker\.md/);
   assert.match(agents, /skills\/claude\/sai-2-design-worker\/SKILL\.md/);
   assert.match(agents, /skills\/opencode\/sai-2-design-worker\/SKILL\.md/);
-  assert.match(agents, /fresh namespace/i);
+  assert.match(agents, /ends? at design completion|separate[\s\S]{0,40}\/sai-3-implement/i);
   assert.match(agents, /Copilot.*inline.*adapter/i);
 
   assert.match(claude, /\.sai-2-design-worker\.owner\.json/);
@@ -504,9 +504,9 @@ test('documentation records the active design compatibility boundary and managed
   assert.match(opencode, /sai-2-design-worker/);
   assert.match(opencode, /variant.*high/);
   assert.match(opencode, /permission/);
-  assert.match(opencode, /agent: sai-coordinator/);
+  assert.doesNotMatch(opencode, /agent: sai-coordinator/);
   assert.match(opencode, /subtask: false/);
-  assert.match(opencode, /no `model` field|no model field/i);
+  assert.match(opencode, /variant: high/);
   assert.match(opencode, /collision/i);
   assert.match(opencode, /excludes?.*opencode\.json|opencode\.json.*excludes?/i);
   assert.match(opencode, /restart opencode/i);

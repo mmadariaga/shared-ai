@@ -4,7 +4,7 @@
 
 ## Status
 
-Accepted
+Superseded by openspec/changes/simplify-routed-phase-coordination
 
 ## Context
 

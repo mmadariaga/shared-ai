@@ -619,7 +619,7 @@ test('Step 3 opencode installer documentation covers managed entries, routing sh
 
   assert.match(opencode, /sai-coordinator/);
   assert.match(opencode, /sai-3-implementation-worker/);
-  assert.match(opencode, /sai-coordinator[\s\S]{0,280}primary[\s\S]{0,280}opencode-go\/glm-5\.2[\s\S]{0,280}high/i);
+  assert.match(opencode, /opencode-go\/glm-5\.2[\s\S]{0,200}variant[\s\S]{0,40}high/i);
   assert.match(opencode, /sai-3-implementation-worker[\s\S]{0,280}subagent[\s\S]{0,280}opencode-go\/kimi-k2\.6/i);
   assert.match(opencode, /variant/i);
   assert.match(opencode, /collision[\s\S]{0,160}(?:preserv|rename|remove|manual)/i);
