@@ -43,7 +43,7 @@ test('Step 1 maintained entrypoints use routed paths or direct Copilot adapter d
     const opencode = artifact(`commands/opencode/${phase}.md`);
     const copilot = artifact(`commands/copilot/${phase}.prompt.md`);
 
-    assert.match(claude, /sai-(?:2-design|3-implementation)-worker|sai\/commands\/sai-[23]-design|sai\/commands\/sai-3-implement/);
+    assert.match(claude, /sai-(?:2-design|3-implementation)-worker|sai\/commands\/(?:design\/coordinator|implement\/coordinator)/);
     assert.match(opencode, /sai-coordinator|sai-(?:2-design|3-implementation)-worker/);
     assert.match(copilot, /sai\/orchestration\/inline-invocation\.md/);
   }

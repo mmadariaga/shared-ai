@@ -41,14 +41,14 @@ function capture(fn) {
 }
 
 test('implementation invocation core and inline caller own distinct completion contracts', () => {
-  const core = artifact('sai/compat/sai-3-implementation-core.md');
+   const core = artifact('sai/compat/sai-3-implementation-core.md');
   assert.match(core, /^## Load instructions \(in order\)/m);
   assert.match(core, /^## Run\s*$/m);
   assert.doesNotMatch(core, /^## Completion\b/m);
   assert.doesNotMatch(core, /MANDATORY STOP/);
 
-  const invocation = artifact('sai/compat/implement-invocation.md');
-  assert.match(invocation, /Fetch @sai\/compat\/sai-3-implementation-core\.md/);
+   const invocation = artifact('sai/orchestration/inline-invocation.md');
+   assert.match(invocation, /Fetch @sai\/commands\/implement\/invocation\.md/);
   assert.match(invocation, /MANDATORY STOP/);
 });
 
@@ -299,10 +299,10 @@ test('Step 2 routes Claude and opencode through the coordinator but preserves Co
   assert.match(claude, /^model:\s*opus\s*$/m);
    assert.match(claude, /^effort:\s*low\s*$/m);
   assert.match(claude, /Fetch @skills\/sai-3-implementation-worker\/SKILL\.md/);
-  assert.match(claude, /Fetch @sai\/commands\/sai-3-implement\.md/);
+   assert.match(claude, /Fetch @sai\/commands\/implement\/coordinator\.md/);
    assert.match(opencode, /^model: opencode-go\/glm-5\.2$/m);
    assert.match(opencode, /Fetch @skills\/sai-3-implementation-worker\/SKILL\.md/);
-   assert.match(opencode, /Fetch @sai\/commands\/sai-3-implement\.md/);
+   assert.match(opencode, /Fetch @sai\/commands\/implement\/coordinator\.md/);
   assert.match(copilot, /sai\/orchestration\/inline-invocation\.md/);
   assert.match(copilot, /^phase: sai-3-implement$/m);
   assert.match(copilot, /^arguments: \$ARGUMENTS$/m);
@@ -395,7 +395,7 @@ test('routed harness bindings and inline parity', () => {
 });
 
 test('shared implement coordinator has a two-field envelope and no artifact or resolution access', () => {
-  const coordinator = artifact('sai/commands/sai-3-implement.md');
+   const coordinator = artifact('sai/commands/implement/coordinator.md');
 
   assert.match(
     coordinator,
@@ -418,9 +418,9 @@ test('shared implement coordinator has a two-field envelope and no artifact or r
 });
 
 test('implementation adapter pins resolved-name and reconstruction transport', () => {
-  const coordinator = artifact('sai/commands/sai-3-implement.md');
+   const coordinator = artifact('sai/commands/implement/coordinator.md');
   const worker = artifact('sai/orchestration/workers/sai-3-implementation-worker.md');
-  const core = artifact('sai/compat/sai-3-implementation-core.md');
+   const core = artifact('sai/commands/implement/invocation.md');
 
   for (const field of [
     'original_envelope',
@@ -453,7 +453,7 @@ test('implementation adapter pins resolved-name and reconstruction transport', (
 });
 
 test('coordinator owns status transitions, changed-file union, and exact terminal behavior', () => {
-  const coordinator = artifact('sai/commands/sai-3-implement.md');
+   const coordinator = artifact('sai/commands/implement/coordinator.md');
 
   for (const status of ['completed', 'needs_input', 'failed', 'cancelled']) {
     assert.match(coordinator, new RegExp(`\\b${status}\\b`));
@@ -473,7 +473,7 @@ test('coordinator owns status transitions, changed-file union, and exact termina
 });
 
 test('needs_input continuation stays on the same worker and uses each harness binding', () => {
-  const coordinator = artifact('sai/commands/sai-3-implement.md');
+   const coordinator = artifact('sai/commands/implement/coordinator.md');
   const claudeBinding = artifact('sai/orchestration/workers/bindings/claude/implementation-worker.md');
   const opencodeBinding = artifact('sai/orchestration/workers/bindings/opencode/implementation-worker.md');
 
@@ -497,7 +497,7 @@ test('needs_input continuation stays on the same worker and uses each harness bi
 });
 
 test('worker and inline invocation own prerequisites and picker while coordinator does not', () => {
-  const coordinator = artifact('sai/commands/sai-3-implement.md');
+   const coordinator = artifact('sai/commands/implement/coordinator.md');
   const worker = artifact('sai/orchestration/workers/sai-3-implementation-worker.md');
   const inline = artifact('commands/copilot/sai-3-implement.prompt.md');
 
@@ -513,16 +513,16 @@ test('worker and inline invocation own prerequisites and picker while coordinato
 });
 
 test('Step 2 coordinator makes no live-proof or smoke-success claims', () => {
-  const coordinator = artifact('sai/commands/sai-3-implement.md');
+   const coordinator = artifact('sai/commands/implement/coordinator.md');
 
   assert.doesNotMatch(coordinator, /\b(?:live|runtime)\s+(?:probe|proof)\b/i);
   assert.doesNotMatch(coordinator, /\bsmoke[- ]?(?:check|test)\b/i);
 });
 
 test('completed routed output uses the coordinator contract while inline invocation preserves its stop', () => {
-  const coordinator = artifact('sai/commands/sai-3-implement.md');
+   const coordinator = artifact('sai/commands/implement/coordinator.md');
   const inline = artifact('commands/copilot/sai-3-implement.prompt.md');
-  const invocation = artifact('sai/compat/implement-invocation.md');
+   const invocation = artifact('sai/orchestration/inline-invocation.md');
 
   assert.match(coordinator, /completed[\s\S]*concise summary[\s\S]*accumulated changed-file list/i);
   assert.ok(
@@ -541,7 +541,7 @@ test('completed routed output uses the coordinator contract while inline invocat
 });
 
 test('design navigation stops after completion with no continuation', () => {
-  const design = artifact('sai/commands/sai-2-design.md');
+   const design = artifact('sai/commands/design/coordinator.md');
 
   assert.doesNotMatch(design, /After Continue/);
   assert.doesNotMatch(design, /Continue now/);
@@ -555,7 +555,7 @@ test('Copilot inline coordinator owns implementation prerequisites and completio
   const inline = artifact('sai/orchestration/inline-invocation.md');
 
   assert.match(inline, /phase: sai-3-implement/);
-  assert.match(inline, /Fetch @sai\/compat\/sai-3-implementation-core\.md/);
+   assert.match(inline, /Fetch @sai\/commands\/implement\/invocation\.md/);
   assert.match(inline, /proposal\.md/);
   assert.match(inline, /design\.md/);
   assert.match(inline, /tasks\.md/);
@@ -593,7 +593,6 @@ test('Step 3 AGENTS documents every coordinator, inline, worker, agent, binding,
   const agents = artifact('AGENTS.md');
 
   for (const entry of [
-    'sai/commands/sai-3-implement.md',
     'agents/claude/sai-3-implementation-worker.md',
     'skills/claude/sai-3-implementation-worker/SKILL.md',
     'skills/opencode/sai-3-implementation-worker/SKILL.md',

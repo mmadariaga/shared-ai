@@ -38,7 +38,7 @@ if OpenSpec is not initialized return `OpenSpec not initialized in this project.
 and if the schema is wrong return ``openspec/config.yaml does not declare `schema: sai-workflow`. The sai commands require this schema. Add `schema: sai-workflow` to the top of openspec/config.yaml.``
 
 Set `$ARGUMENTS` to the resolved name, fetch `@skills/budget/SKILL.md`, then
-fetch `@sai/compat/sai-3-implementation-core.md` and follow it. Return
+fetch `@sai/commands/implement/invocation.md` and follow it. Return
 `needs_input` for planning questions, continue the same planning operation,
 return `cancelled` for a deliberate decline, and return `failed` for blockers.
 Use `budget-subagent` for existing-plan simplification and rerun-new-element

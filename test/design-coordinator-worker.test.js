@@ -67,7 +67,7 @@ test('design wrappers activate routed Claude/opencode entry and preserve inline 
   assert.match(claude, /^allowed-tools: Skill, Agent, SendMessage, AskUserQuestion$/m);
   assert.match(claude, /sai-2-design-worker/);
   assert.doesNotMatch(claude, /sai-3-implementation-worker/);
-  assert.match(claude, /sai-2-design\.md/);
+   assert.match(claude, /sai\/commands\/design\/coordinator\.md/);
 
    assert.match(opencode, /^model: opencode-go\/glm-5\.2$/m);
    assert.match(opencode, /^variant: high$/m);
@@ -75,7 +75,7 @@ test('design wrappers activate routed Claude/opencode entry and preserve inline 
   assert.doesNotMatch(opencode, /^agent:/m);
   assert.match(opencode, /sai-2-design-worker/);
   assert.doesNotMatch(opencode, /sai-3-implementation-worker/);
-  assert.match(opencode, /sai-2-design\.md/);
+   assert.match(opencode, /sai\/commands\/design\/coordinator\.md/);
   assert.ok(opencode.includes('**Change-name argument and and optional flags:** $ARGUMENTS'));
 
   assert.match(copilot, /model: Claude Opus 4\.8 \(copilot\)/);
@@ -125,8 +125,9 @@ test('standalone policies have one canonical home and active fetches use it', ()
   }
 
   const activeSources = [
-    ...fs.readdirSync(path.join(repoRoot, 'sai', 'commands'))
-      .map(file => artifact(`sai/commands/${file}`)),
+    ...fs.readdirSync(path.join(repoRoot, 'sai', 'commands'), { withFileTypes: true })
+      .filter(entry => entry.isFile())
+      .map(entry => artifact(`sai/commands/${entry.name}`)),
     artifact('sai/instructions/apply.md'),
     artifact('sai/instructions/commit.md'),
     artifact('sai/orchestration/workers/sai-2-design-worker.md'),
@@ -138,7 +139,7 @@ test('standalone policies have one canonical home and active fetches use it', ()
 });
 
 test('routed design coordinator has no technical I/O and owns only lifecycle routing', () => {
-  const coordinator = artifact('sai/commands/sai-2-design.md');
+   const coordinator = artifact('sai/commands/design/coordinator.md');
   assert.match(coordinator, /Do not run prerequisites, parse arguments.*read git, code, configuration, documentation, change artifacts, or design artifacts/i);
   assert.match(coordinator, /do not write any file.*technical design decisions/i);
   assert.match(coordinator, /continue_after_notice/);
@@ -444,7 +445,7 @@ test('Copilot inline coordinator owns design dispatch and caller navigation', ()
   assert.match(inline, /^## Invocation envelope$/m);
   assert.match(inline, /phase: sai-2-design/);
   assert.match(inline, /arguments: \$ARGUMENTS/);
-  assert.match(inline, /Fetch @sai\/compat\/sai-2-design-core\.md/);
+   assert.match(inline, /Fetch @sai\/commands\/design\/invocation\.md/);
   assert.match(inline, /fast-track/i);
   assert.match(inline, /artifact-feedback-gate\.md/);
   assert.match(designBranch, /Design done in openspec\/changes\/\{name\}\/\. Run \\`\/sai-3-implement \{name\}\\` \*\*in a new chat\*\* when ready\./);
@@ -630,7 +631,7 @@ test('interfaces contract defines one portable architecture snapshot under Targe
 
 test('architecture snapshot display is feedback-aware and equivalent across routed and inline paths', () => {
   const instruction = artifact('sai/instructions/design.md');
-  const coordinator = artifact('sai/commands/sai-2-design.md');
+   const coordinator = artifact('sai/commands/design/coordinator.md');
   const worker = artifact('sai/orchestration/workers/sai-2-design-worker.md');
   const inline = artifact('sai/orchestration/inline-invocation.md');
   const gate = artifact('sai/policies/artifact-feedback-gate.md');

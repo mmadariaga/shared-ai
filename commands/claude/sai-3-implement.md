@@ -9,4 +9,4 @@ allowed-tools: Skill, Agent, SendMessage, AskUserQuestion
 
 Fetch @skills/fetch/SKILL.md
 Fetch @skills/sai-3-implementation-worker/SKILL.md and use it.
-Fetch @sai/commands/sai-3-implement.md and follow those instructions exactly.
+Fetch @sai/commands/implement/coordinator.md and follow those instructions exactly.

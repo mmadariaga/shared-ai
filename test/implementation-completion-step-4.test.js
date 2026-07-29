@@ -27,7 +27,7 @@ test('Step 4 completed inline planning emits the same sentence once without rout
   const invocation = artifact(COMPLETION_ARTIFACTS.invocation);
   assert.match(inlineWrapper, /sai\/orchestration\/inline-invocation\.md/);
   assert.match(inlineWrapper, /^phase: sai-3-implement\r?\narguments: \$ARGUMENTS$/m);
-  assert.match(invocation, /sai-3-implementation-core\.md/);
+   assert.match(invocation, /sai\/commands\/implement\/invocation\.md/);
   assert.match(invocation, /MANDATORY STOP/);
 });
 

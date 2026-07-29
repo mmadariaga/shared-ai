@@ -33,7 +33,7 @@ branch below in the current context. The adapter MUST NOT introduce routed worke
 3. Fetch @skills/budget/SKILL.md and use it.
 4. Fetch @sai/policies/change-picker.md and follow it exactly. If the resolved
    value still contains `--fast-track`, remove the token and trim whitespace.
-5. Fetch @sai/compat/sai-2-design-core.md and follow it exactly using the
+5. Fetch @sai/commands/design/invocation.md and follow it exactly using the
    resolved change name as `$ARGUMENTS`.
 6. Retain the previous `interfaces.md` text in in-conversation state before each feedback edit and apply the complete-effective-artifact normalization from `sai/instructions/design.md`. Print the current Architecture Snapshot immediately before the initial feedback gate. On later iterations, print it immediately before the gate only when normalized `interfaces.md` changed; omit it after identical regeneration or `design.md`/`tasks.md`-only changes. Do not create a snapshot payload field or separate artifact.
 7. Derive the existing design decision summary only from the written
@@ -62,7 +62,7 @@ branch below in the current context. The adapter MUST NOT introduce routed worke
    - Missing `tasks.md`: print exactly
      `tasks.md not found for '{change-name}'. Run /sai-2-design first.`
 4. Fetch @skills/budget/SKILL.md and use it.
-5. Fetch @sai/compat/sai-3-implementation-core.md and follow it exactly using
+5. Fetch @sai/commands/implement/invocation.md and follow it exactly using
    the resolved change name as `$ARGUMENTS`.
 6. MANDATORY STOP: once
    `openspec/changes/{name}/implementation.md` is written, do not execute plan
