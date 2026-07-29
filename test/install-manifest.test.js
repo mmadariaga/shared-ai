@@ -485,3 +485,46 @@ test('retirement validation rejects malformed records, duplicate ids or destinat
     fs.rmSync(repoRoot, { recursive: true, force: true });
   }
 });
+
+test('recursive sai-instructions projection carries the extracted _templates files to every harness', () => {
+  const repoRoot = path.join(__dirname, '..');
+  const manifest = loadInstallManifest(repoRoot);
+  const destinationRoot = {
+    commands: path.join(os.tmpdir(), 'sai-templates-commands'),
+    sai: path.join(os.tmpdir(), 'sai-templates-sai'),
+    skills: path.join(os.tmpdir(), 'sai-templates-skills'),
+    agents: path.join(os.tmpdir(), 'sai-templates-agents'),
+    config: path.join(os.tmpdir(), 'sai-templates-config'),
+  };
+  const templateFiles = [
+    'implementation-plan.md',
+    'review-report.md',
+    'security-report.md',
+    'performance-report.md',
+    'accessibility-report.md',
+    'pr-body.md',
+  ];
+  let projectedCount = 0;
+  for (const harness of ['claude', 'opencode', 'copilot']) {
+    const projections = expandInstallManifest(manifest, { harness, repoRoot, destinationRoot });
+    for (const name of templateFiles) {
+      const relativeSource = `sai/instructions/_templates/${name}`;
+      const projection = projections.find(
+        p => path.relative(repoRoot, p.sourcePath).split(path.sep).join('/') === relativeSource
+      );
+      assert.ok(projection, `${harness} should project ${relativeSource} via the recursive sai-instructions rule`);
+      assert.equal(
+        projection.destinationPath.endsWith(path.join('instructions', '_templates', name)),
+        true,
+        `${harness} ${name} should land under instructions/_templates`
+      );
+      assert.equal(
+        fs.readFileSync(projection.sourcePath, 'utf8'),
+        fs.readFileSync(path.join(repoRoot, relativeSource), 'utf8'),
+        `${harness} ${name} projected source should equal its repository source`
+      );
+      projectedCount += 1;
+    }
+  }
+  assert.equal(projectedCount, 18, 'six templates across three harnesses should project to 18 paths');
+});
