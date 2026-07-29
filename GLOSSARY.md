@@ -19,6 +19,9 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 **Blind Test-Writer**: "The first `/sai-4-apply` dispatch of a **Split-Routed Step**, given only that Step's `interfaces.md` section plus injected testing context — never the GREEN implementation body — that writes the tests (and RED stubs) and verifies a valid RED."
 *Avoid*: test dispatch, test agent, RED writer, test-first subagent
 
+**Coordinator Verification**: "The `/sai-4-apply` coordinator's independent rerun of a Step's Verification Checklist after a Subagent Report and before checkbox marking or commit gating."
+*Avoid*: trust check, report retest, coordinator retry
+
 **Deferred Decision**: "A decision a change could have made and deliberately postponed because its cost rises the longer it waits, recorded in `design.md`'s `## Deferred` section with a concrete postponement cost and a recommendation."
 *Avoid*: postponed decision, open question, non-goal, backlog item, TODO
 
@@ -37,6 +40,9 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 **Inline Coordinator Adapter**: "The caller-neutral `sai/orchestration/inline-invocation.md` contract that dispatches VS Code's inline design or implementation phase to its existing phase core without routed workers."
 *Avoid*: fake coordinator, inline phase router, inline worker
 
+**Known-False Report Recovery**: "A bounded `/sai-4-apply` correction path for a Subagent Report that coordinator evidence disproves and whose safe cause and correction are clear."
+*Avoid*: automatic retry, indefinite retry, advisor escalation
+
 **Manual Verification**: "The closing section of `design.md` listing the checks that are cheap by hand and expensive to automate — generated-artifact drift and end-to-end smoke — naming the middle tier between automated tests and `/sai-5-review`."
 *Avoid*: QA checklist, manual QA, smoke test section, verification steps
 
@@ -51,6 +57,9 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 
 **Provenance Marker**: "The pinned `**Provenance**` sub-field on every `design.md` Decision carrying one of `user` / `codebase-forced` / `derived`, signalling how re-litigable the decision is downstream."
 *Avoid*: Decision Source, Origin, decision tag, author marker
+
+**Recovery Dispatch**: "The single corrective subagent dispatch permitted by Known-False Report Recovery, constrained to the current Step and existing plan scope."
+*Avoid*: retry dispatch, second opinion, advisor dispatch
 
 **Review-Loop Token**: "The literal, English-invariant string `review-loop` that a user types in a `sai-explore` turn to enter the post-crystallization review loop directly, skipping the plain-text global sí/no invitation."
 *Avoid*: review keyword, review trigger, `/review-loop`, revisar, review command
@@ -90,6 +99,7 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 - An **Advisor Skill** is consulted by the phase directly below its model tier: `mid-advisor` by the `/sai-4-apply` coordinator, `senior-advisor` by `/sai-3-implement`.
 - An **Advisor Skill** is the inverse of a budget-* skill (escalates upward to smarter models rather than delegating downward to cheaper ones).
 - An **Architecture Snapshot** belongs to one **Target State** and is displayed before the sai-2 design feedback loop when its effective `interfaces.md` content is current or changed.
+- **Coordinator Verification** may trigger one **Recovery Dispatch** when a **Known-False Report Recovery** is clear, safe, and in scope; a failed or ambiguous recovery returns to human intervention.
 - A **Backfilled Change** is archived via `/sai-archive` (the same command that archives non-backfilled changes).
 - A **Backfilled Change** is produced only by `/sai-backfill`; no other `sai-*` command writes `backfilled: true`.
 - A **Blind Test-Writer** precedes an **Implementation Dispatch** for every **Split-Routed Step**; the two never communicate directly — only the `/sai-4-apply` coordinator relays learnings between them.
@@ -99,6 +109,7 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 - An **Execution Telemetry Appendix** is written only by the `/sai-4-apply` coordinator, in the same per-Step loop slot as the deviations appendix, so it lands in the Step's own commit.
 - A **Phase Policy** extends the **Orchestration Core** for exactly one planning phase without adding that phase's rules to the shared lifecycle contract.
 - An **Inline Coordinator Adapter** delegates to one phase-specific invocation core while remaining outside the routed **Orchestration Core** lifecycle.
+- A **Known-False Report Recovery** permits at most one **Recovery Dispatch** for a single contradicted Subagent Report and never changes the fixed report field set.
 - A **Test Command** belongs to one change's `## Implementation Context` and is consumed by exactly one dispatch — the **Blind Test-Writer**; a single dispatch receives the Step's own verification commands instead.
 - A **Blind Test-Writer** and an **Implementation Dispatch** replace the single per-Step dispatch only for a **Split-Routed Step**; every other Step keeps one dispatch, including a Step with a RED block whose **Step Contract** is unavailable.
 - A **Step Contract** that is missing for a Step routes that Step to a single dispatch (announced by a coordinator trace line); a **Step Contract** that is ambiguous — several `## Step N` matching the same `N` — is a desync and STOPs the run.

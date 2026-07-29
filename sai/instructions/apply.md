@@ -16,9 +16,10 @@ No skills are required by default. Load a skill only if the plan invokes it expl
 
 <workflow>
 - Follow the plan exactly as it is written, picking up with the next unchecked Step in the implementation plan document. You MUST NOT skip any Step.
+- **Pre-dispatch evidence state.** Before every ordinary Step dispatch, record the tracked and untracked path identities visible in the working tree, derive the Step's plan-level file scope from its existing file metadata, and derive the dispatch-kind-specific allowed-file set. For a single dispatch, the allowed-file set is the Step's plan-level scope. For a blind test-writer dispatch, it contains only plan-authorized tests and explicitly permitted RED/interface stubs and excludes production files. For an implementation dispatch, it contains only plan-authorized production files and excludes tests and declared interfaces. Keep the baseline and both scope sets in coordinator-only in-conversation state.
 - Dispatch Step-execution subagent(s) (see "## Step-Execution Subagent Dispatch" below) to execute the next unchecked Step's implementation body. **The coordinator SHALL NOT itself perform the Step's read-before-write reads, RED-test runs, or GREEN iteration** — those happen only inside the subagent(s), so their raw output (file dumps, tracebacks, iteration logs) never enters the coordinator's context.
 - When the subagent(s) return their report(s) (see "## Subagent Report Contract" below), process them in this fixed order — the coordinator's own re-verification (step 1) MUST pass before either checkbox marking (step 4) or the commit proposal (STOP & COMMIT, below):
-    1. **Coordinator verification.** Re-run the Step's Verification Checklist yourself — quiet confirmation only (the automated checks), not the RED→GREEN cycle or the read-before-write reads. If your own re-run disagrees with what the subagent reported, do NOT mark checkboxes and do NOT propose a commit — surface the discrepancy to the user instead.
+    1. **Coordinator verification and discrepancy classification.** Re-run the Step's Verification Checklist yourself - quiet confirmation only, not the RED->GREEN cycle or read-before-write reads. Independently compare observed changed paths with the pre-dispatch baseline, the dispatch-kind-specific allowed-file set, and the report's `Files modified` field. When the checklist, path comparison, and report agree, continue to gate 2 without dispatching recovery. A checklist pass is required before continuing. When coordinator evidence contradicts the report, do not mark checkboxes or propose a commit. Classify whether the evidence directly disproves the report and whether every cause and correction is clear, safe, reversible, limited to the current Step, and inside the existing plan scope. Enter the bounded recovery subsection only when all conditions hold; otherwise surface the discrepancy for human intervention.
     2. **Incorporate learnings.** Immediately after a matching verification pass, add the report's technical-learnings entries (if any) to the accumulated learnings memory (see "## Technical Learnings Memory" below).
      3. **Human Verification gate.** If the Step's Human section contains at least one `- [ ]` checkbox, present those checks to the user and wait — do NOT mark any of them `[x]` until the user confirms they have reviewed. The gate keys on checkbox count, not on the presence of a `**Human (...)**` header: if the Human section contains zero `- [ ]` checkboxes (for example it holds only an italic explanatory note), or the Step has no Human section, this gate does not apply — proceed directly to the commit proposal after automated checks pass.
 
@@ -73,6 +74,8 @@ No skills are required by default. Load a skill only if the plan invokes it expl
 - **Appendix order (invariant):** Both appendices live at the end of `implementation.md` in this fixed order — `## Appendix: Plan vs Final Implementation` first, then `## Appendix: Execution Telemetry`. The order SHALL NOT depend on which section a given run happened to create first. When the deviations section is created while a telemetry section already exists, **insert it above** the `## Appendix: Execution Telemetry` heading rather than appending it at the end of the file, so a plan whose early Steps produce no deviations lays the sections out identically to one whose early Steps do.
 </workflow>
 
+- **File-scope recovery eligibility.** Automatic cleanup is eligible only when an unexpected path was absent from the pre-dispatch baseline, was newly created by the current dispatch, and can be safely and reversibly restored under existing authorization. Cleanup that only undoes the current dispatch's own scope violation is corrective scope, not feature work. A path present in the baseline, a path with unknown or shared ownership, or a destructive or unauthorized correction is never eligible; this is a no recovery path and requires human intervention without dispatching recovery.
+
 ## Step-Execution Subagent Dispatch
 
 The coordinator routes each Step to either a single dispatch or the two-dispatch flow (a **blind test-writer** dispatch, then — only after the test-writer reports a valid RED — an **implementation** dispatch) by a **two-part routing condition**. The two-dispatch flow is selected **if and only if both** parts hold; if **either** part fails, the Step routes to a single dispatch:
@@ -89,6 +92,36 @@ Step {N}: RED block present but no `## Step N` contract in interfaces.md — rou
 ```
 
 The same wording is emitted for **both** absence shapes. **Whole-file absence** (`interfaces.md` does not exist) is a legitimate, supported plan shape — the one `sai/instructions/implement.md` anticipates and that an externally authored or partially generated plan produces. **Per-Step absence** (`interfaces.md` exists but omits that `## Step N`) is, for a RED-carrying Step, a probable **desync** rather than a legitimate omission: `/sai-2-design` never omits a `## Step N` for a Step that has a testable assertion, and a RED block is one by construction — the reachable cause is an orphan Step preserved byte-for-byte in `implementation.md` across a re-run that regenerated `interfaces.md` wholesale. Neither shape halts the run: whole-file absence because it is legitimate, per-Step absence because the single dispatch executes the Step correctly from its own scenario descriptions regardless — a STOP would cost the whole run to report a fault this one line reports for free. The line SHALL NOT block, prompt, or gate the dispatch, and a Step that routes to the two-dispatch flow prints no such line.
+
+### Known-False Report Recovery
+
+For one or more directly disproven claims from a single Subagent Report, perform at most one bounded recovery attempt in that Step/report handling cycle. Aggregate every confirmed, clearly correctable contradiction into that one attempt. The recovery operation stays within the current Step and existing plan scope, uses the same dispatch kind and budget-subagent binding as the ordinary dispatch, and preserves every applicable blindness, test-file, implementation-file, no-exploration, no-raw-output, and fixed-report restriction.
+
+The recovery prompt retains the ordinary dispatch prompt's first three sections unchanged and appends exactly one fourth section with these headings in this order:
+
+#### Reported
+
+State every contradictory claim from the Subagent Report.
+
+#### Evidence
+
+State only the relevant coordinator observations needed to establish the contradiction. Do not include raw command output, file contents, diffs, tracebacks, the pre-dispatch baseline, the allowed-file set, or details forbidden to the underlying dispatch kind. No raw output enters the recovery prompt.
+
+#### Cause
+
+State the coordinator-diagnosed execution defects that explain the contradicted claims.
+
+#### Correction
+
+State the exact safe, reversible corrections authorized inside the current Step and existing plan scope.
+
+#### Verification
+
+State the normal Step Verification Checklist and its pass condition.
+
+The pre-dispatch baseline, allowed-file set, and per-report recovery assessment remain coordinator-only and never enter an ordinary or recovery prompt. Recovery adds no new advisor layer, dispatch kind, report field, or implementation-plan field.
+
+After the Recovery Dispatch returns, treat its fixed Subagent Report as advisory and independently re-run the normal Verification Checklist and path comparison. The coordinator verification is authoritative. On a pass, resume the existing order at learnings, Human Verification, checkbox marking, appendices, and commit gating. The bounded attempt completes before checkbox marking or a commit proposal. On a failed or uncertain verification, or an unresolved, unsafe, destructive, unauthorized, or out-of-scope result, stop for human intervention. Do not perform a second Recovery Dispatch, mark any checkbox, propose a commit, or advance the Step.
 
 ### Single-dispatch Step
 
@@ -125,7 +158,7 @@ This section covers every Step routed to a single dispatch — two shapes: a Ste
   2. The testing-relevant slice of `tasks.md`'s `## Implementation Context`, injected by the coordinator: the framework and assertion/mock libraries taken from the **Stack** field, and the run command taken from the **Test Command** field (injected verbatim). Test file location/naming is NOT injected — after this change no such field exists; the test-writer recovers it under its existing permission to read existing test files and test infrastructure. **Blindness invariant (site 2 of 2):** when this slice carries a fact promoted into `SAI_LEARNINGS.md`, that fact names only a repo-level artifact — a framework version, a runner invocation, a linter rule — because the promotion classification in `## Learnings Promotion Pass` cannot key on a symbol the change introduces, so it reveals nothing about the current Step's implementation body. The coordinator's injection-time blindness constraint in `## Technical Learnings Memory` remains unchanged and in force for entries injected directly into a dispatch.
   3. The following rules verbatim.
   4. Any relevant technical-learnings entries the coordinator judges applicable (subject to the blindness constraint below; never the full memory).
-  The coordinator SHALL NOT include the Step's GREEN implementation body, `implementation.md`, `design.md`, `proposal.md`, or any other artifact that reveals the intended implementation.
+  The coordinator SHALL NOT include the Step's GREEN implementation body, `implementation.md`, `design.md`, `proposal.md`, or any other artifact that reveals the intended implementation. The blind test-writer is forbidden from receiving coordinator-only evidence or other implementation-revealing details.
 - **Step-N key-integrity guard**: Before dispatching, the coordinator SHALL match the integer `N` of the current `implementation.md` `## Step N` heading to a single `## Step N` in `interfaces.md`. On missing or ambiguous match, STOP and surface the desync to the user — do NOT inject an empty or mismatched contract into the blind writer. A single leading `## Target State` section in `interfaces.md` (the one non-`## Step N` top-level section admitted by `openspec/specs/design-interfaces-artifact/spec.md`) is explicitly NOT a key-integrity violation: the guard keys only on `## Step N` headings and ignores the `## Target State` section entirely.
 - **Rules**:
     - *Scope*: Write ONLY the interface stubs and the tests for this Step. Do NOT write the implementation.
@@ -348,14 +381,14 @@ of plan markers.
 - **Operations requiring permission**: Branch creation/switching, commits, push, rebase, merge, tag operations, or any destructive git action.
 
 Example workflow:
-1. Dispatch Step-execution subagent(s) for the current Step (per "## Step-Execution Subagent Dispatch" — write-capable per-harness binding)
-2. Receive the subagent report(s) (9 fields — see "## Subagent Report Contract")
-3. Re-run the Step's Verification Checklist yourself (Automated checks); on a mismatch with the report, stop and surface the discrepancy instead of continuing
-4. Incorporate the report's technical learnings into the coordinator's memory
-5. If the step's Human section has ≥1 `- [ ]` checkbox: present the checklist to the user and wait — do NOT mark them yet. If it has zero `- [ ]` checkboxes (italic note only) or there is no Human section: skip this gate and proceed to the commit proposal
-6. If the user confirms they have reviewed and asks to continue (or the step had no Human Verification checks), mark all of that Step's checkboxes `[x]` in the plan in one batched update, and append any reported deviations to the plan's appendix
-7. Print the pre-commit file visibility report (per `## Pre-commit File Visibility Report`)
-8. "Ready to commit Step N. May I create commit with message: '...'?" → Wait for approval
-9. If yes → Create commit
-10. If no → "Describe the changes above; execute commit yourself"
-11. Either way → back to 1: dispatch a NEW subagent for the next unchecked Step (never execute it yourself). Only when no unchecked Step remains: run the Final sweep, then declare the implementation done
+1. Record the tracked and untracked path baseline, the current Step's plan-level scope, and the dispatch-kind-specific allowed files before dispatch.
+2. Dispatch Step-execution subagent(s) for the current Step (per "## Step-Execution Subagent Dispatch" — write-capable per-harness binding).
+3. Receive the subagent report(s) (9 fields — see "## Subagent Report Contract") and independently compare the Verification Checklist, changed paths, allowed files, baseline, and report. If they agree, proceed without recovery; if a claim is directly disproven and the correction is safe and in scope, use the bounded Known-False Report Recovery subsection once.
+4. Independently re-run the normal Verification Checklist and path comparison after recovery. On success, incorporate the report's technical learnings into the coordinator's memory; on failure or uncertainty, stop for human intervention without retry, checkbox marking, or commit proposal.
+5. If the step's Human section has ≥1 `- [ ]` checkbox: present the checklist to the user and wait — do NOT mark them yet. If it has zero `- [ ]` checkboxes (italic note only) or there is no Human section: skip this gate and proceed to the commit proposal.
+6. If the user confirms they have reviewed and asks to continue (or the step had no Human Verification checks), mark all of that Step's checkboxes `[x]` in the plan in one batched update, and append any reported deviations to the plan's appendix.
+7. Print the pre-commit file visibility report (per `## Pre-commit File Visibility Report`).
+8. "Ready to commit Step N. May I create commit with message: '...' ?" → Wait for approval.
+9. If yes → Create commit.
+10. If no → "Describe the changes above; execute commit yourself."
+11. Either way → back to 1: dispatch a NEW subagent for the next unchecked Step (never execute it yourself). Only when no unchecked Step remains: run the Final sweep, then declare the implementation done.
