@@ -41,19 +41,21 @@ The opencode wrapper SHALL run the `sai-implementation-coordinator` primary agen
 - **THEN** uninstall SHALL leave both config entries intact under the existing config-merge exclusion
 
 ### Requirement: Copilot compatibility boundary
-The Copilot implementation command SHALL preserve direct inline execution through `sai/orchestration/inline-invocation.md`, and documentation SHALL state that the portable coordinator-worker contract is not implemented for Copilot in this slice without stating that Copilot cannot use subagents.
+The Copilot implementation command SHALL preserve its existing inline execution behavior by invoking the Copilot Inline Coordinator Adapter directly. Documentation SHALL identify `sai/orchestration/inline-invocation.md` as that boundary, SHALL NOT describe either removed inline command loader as an entrypoint, and SHALL state that the portable coordinator-worker contract is not implemented for Copilot in this slice without stating that Copilot cannot use subagents.
 
 #### Scenario: Copilot implementation invocation
 - **WHEN** `/sai-3-implement` runs under GitHub Copilot
-- **THEN** it SHALL dispatch the direct inline adapter with its current observable behavior and SHALL expose the documented compatibility limitation
+- **THEN** it SHALL execute through the Copilot Inline Coordinator Adapter with its current observable behavior
+- **AND** it SHALL expose the documented compatibility limitation without an intermediate inline command loader
 
 ### Requirement: Managed implementation worker projections
-The single installation manifest SHALL project the canonical shared coordinator and worker-lifecycle contracts, the implementation worker contract, and only the active routed harness's implementation binding to Claude Code and opencode. Their runtime skills and Claude agent surface SHALL remain thin forwarders to those canonical sources. The Copilot projection SHALL retain the caller-neutral compatibility assets required by its inline path but SHALL exclude routed orchestration bindings and routed implementation worker-agent surfaces. Installer, doctor, and uninstall SHALL derive these projections from the same manifest while preserving deterministic collision detection, managed-content drift checks, ownership sidecars, compatible-unowned reuse, user-modified-file retention, and opencode merged-config preservation. Exact-compatible pre-existing Claude worker agents SHALL be reused without rewriting or adopting ownership, and all unrelated entries in an existing opencode JSONC configuration SHALL remain unchanged.
+The single installation manifest SHALL project the canonical shared coordinator and worker-lifecycle contracts, the implementation worker contract, and only the active routed harness's implementation binding to Claude Code and opencode. Their runtime skills and Claude agent surface SHALL remain thin forwarders to those canonical sources. The Copilot projection SHALL retain `sai/orchestration/inline-invocation.md` and the caller-neutral compatibility assets required by its inline path, SHALL exclude both obsolete inline command loaders, and SHALL exclude routed orchestration bindings and routed implementation worker-agent surfaces. Installer, doctor, and uninstall SHALL derive these projections from the same manifest while preserving deterministic collision detection, managed-content drift checks, ownership sidecars, compatible-unowned reuse, user-modified-file retention, and opencode merged-config preservation. Exact-compatible pre-existing Claude worker agents SHALL be reused without rewriting or adopting ownership, and all unrelated entries in an existing opencode JSONC configuration SHALL remain unchanged.
 
 #### Scenario: Claude Code projection is installed
 - **WHEN** the manifest expands the Claude Code implementation surfaces
 - **THEN** it SHALL include the shared lifecycle sources, canonical implementation worker, Claude implementation binding, forwarding skill, and managed worker agent
 - **AND** it SHALL exclude the opencode binding subtree
+- **AND** it SHALL exclude both obsolete inline command loaders
 
 #### Scenario: Exact-compatible Claude agent already exists
 - **WHEN** the canonical Claude implementation worker agent already exists with exact-compatible content and no SAI ownership sidecar
@@ -65,6 +67,7 @@ The single installation manifest SHALL project the canonical shared coordinator 
 - **WHEN** the manifest expands the opencode implementation surfaces
 - **THEN** it SHALL include the shared lifecycle sources, canonical implementation worker, opencode implementation binding, forwarding skill, and namespaced coordinator and worker configuration entries
 - **AND** it SHALL exclude the Claude binding subtree and Claude worker-agent projection
+- **AND** it SHALL exclude both obsolete inline command loaders
 
 #### Scenario: Opencode entries merge into existing JSONC
 - **WHEN** installation adds or reuses exact-compatible SAI-namespaced implementation entries in an existing opencode JSONC configuration
@@ -74,8 +77,8 @@ The single installation manifest SHALL project the canonical shared coordinator 
 
 #### Scenario: Copilot projection remains inline
 - **WHEN** the manifest expands the Copilot implementation surfaces
-- **THEN** it SHALL include the inline command and its required compatibility sources
-- **AND** it SHALL exclude the shared routed coordinator, routed implementation bindings, and routed planning-worker runtime surfaces
+- **THEN** it SHALL include `orchestration/inline-invocation.md` and its required compatibility sources
+- **AND** it SHALL exclude `commands/sai-2-design-inline.md`, `commands/sai-3-implement-inline.md`, the shared routed coordinator, routed implementation bindings, and routed planning-worker runtime surfaces
 
 #### Scenario: Existing destination is incompatible
 - **WHEN** installation or activation encounters an incompatible managed file, Claude worker-agent definition, opencode namespaced config entry, or destination collision

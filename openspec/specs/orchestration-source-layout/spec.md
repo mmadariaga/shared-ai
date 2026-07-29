@@ -3,6 +3,45 @@
 ## Purpose
 TBD - created by archiving change extract-sai-orchestration-core. Update Purpose after archive.
 ## Requirements
+### Requirement: Active references exclude retired inline loaders
+Active runtime sources, fixtures, tests, specifications, and maintained documentation SHALL reference the routed Claude Code/opencode entrypoints or the Copilot Inline Coordinator Adapter and SHALL NOT treat `sai/commands/sai-2-design-inline.md` or `sai/commands/sai-3-implement-inline.md` as an available entrypoint. Archived OpenSpec changes and ADRs MAY retain their original historical references.
+
+#### Scenario: Active reference inventory is checked
+- **WHEN** maintained repository references to design and implementation entrypoints are audited
+- **THEN** active sources, fixtures, tests, specifications, and documentation SHALL contain no dependency on either removed loader path
+- **AND** historical references under archived changes and ADRs SHALL not require rewriting
+
+### Requirement: Retired managed loader cleanup is ownership-safe
+Install/update and uninstall SHALL remove an existing destination for `commands/sai-2-design-inline.md` or `commands/sai-3-implement-inline.md` only when its content matches a recorded historical managed hash for that destination. A modified copy, an unrecognized copy, or a copy without matching managed ownership evidence SHALL remain untouched and doctor SHALL report it as an unexpected retired loader requiring manual cleanup.
+
+`sai/install-manifest.json` SHALL own this evidence in a top-level `retirements` array alongside `projections`. Each retired loader SHALL have exactly one record containing a stable `id`, a `destination` with class `sai` and its former `commands/<filename>` path, the harness allowlist `claude`, `opencode`, and `copilot`, and a non-empty `managedHashes` array of lowercase SHA-256 digests. `managedHashes` SHALL include every known repository-published byte variant of that loader that the recursive managed `sai-commands` projection could have installed. The shared manifest expansion module SHALL validate these records and expose the applicable per-harness retirement inventory to install, doctor, and uninstall; those consumers SHALL NOT define their own loader paths or hash tables.
+
+#### Scenario: Install or update finds an exact historical managed copy
+- **WHEN** install or update finds a retired loader destination whose content matches a recorded historical managed hash
+- **THEN** it SHALL remove that destination and SHALL NOT recreate it
+
+#### Scenario: Uninstall finds an exact historical managed copy
+- **WHEN** uninstall runs without a prior cleanup update and finds a retired loader destination whose content matches a recorded historical managed hash
+- **THEN** it SHALL remove that destination under the same ownership safeguard
+
+#### Scenario: Retired copy is modified or unrecognized
+- **WHEN** install, update, doctor, or uninstall finds a retired loader destination without a matching recorded historical managed hash
+- **THEN** install, update, and uninstall SHALL preserve the file
+- **AND** doctor SHALL report the unexpected retired loader and identify manual cleanup as remediation
+
+#### Scenario: Fresh installation has no retired copy
+- **WHEN** a fresh installation expands the managed projections
+- **THEN** it SHALL neither create a retired loader nor require a retirement cleanup action
+
+#### Scenario: Retirement registry is expanded for a harness
+- **WHEN** the shared manifest module expands `sai/install-manifest.json` for Claude Code, opencode, or Copilot
+- **THEN** it SHALL return both retired loader destinations with their registered managed SHA-256 hashes for that harness
+- **AND** install, doctor, and uninstall SHALL consume that returned retirement inventory without a separate hard-coded mapping
+
+#### Scenario: Retirement record is malformed
+- **WHEN** a retirement record omits its destination, supported-harness allowlist, or non-empty lowercase SHA-256 `managedHashes` array
+- **THEN** manifest validation SHALL fail before install, doctor, or uninstall mutates a destination
+
 ### Requirement: Canonical orchestration source layout
 Shared coordinator and worker-lifecycle contracts SHALL live under `sai/orchestration/`. Canonical phase worker contracts SHALL live under `sai/orchestration/workers/`, and canonical harness-specific routed-worker bindings SHALL live under `sai/orchestration/workers/bindings/`.
 
@@ -52,12 +91,12 @@ Harness runtime files under `skills/` and `agents/` SHALL remain valid thin forw
 - **THEN** its forwarding manifest SHALL fetch the corresponding installed canonical binding under `sai/orchestration/workers/bindings/<harness>/`
 
 ### Requirement: Copilot inline adapter remains inline
-GitHub Copilot SHALL continue to execute design and implementation planning through the direct inline adapter at `sai/orchestration/inline-invocation.md` and SHALL NOT be required to consume a routed-worker binding merely because canonical routed bindings live under `workers/bindings/`.
+GitHub Copilot SHALL continue to execute design and implementation planning through `sai/orchestration/inline-invocation.md` and SHALL NOT be required to consume a routed-worker binding. The adapter SHALL be invoked directly by the Copilot prompts without an intermediate command loader.
 
 #### Scenario: Copilot invokes a planning phase
 - **WHEN** GitHub Copilot runs design or implementation planning
 - **THEN** it SHALL follow the direct inline adapter path
-- **AND** the shared-source extraction SHALL NOT introduce routed worker lifecycle state into that path
+- **AND** source-layout changes SHALL NOT introduce routed worker lifecycle state or an obsolete inline command loader into that path
 
 ### Requirement: Dedicated compatibility source
 Compatibility loaders and path-sensitive compatibility assets SHALL live under `sai/compat/`, not `sai/instructions/`, `sai/policies/`, or `sai/orchestration/`. The extraction SHALL update all repository callers in the same change and SHALL NOT leave forwarding shims at the former `sai/instructions/` paths.
@@ -68,7 +107,7 @@ Compatibility loaders and path-sensitive compatibility assets SHALL live under `
 - **AND** the former instruction path SHALL NOT remain as a shim
 
 ### Requirement: Managed source-to-runtime projection
-The installer SHALL project canonical sources using per-harness allowlists in `sai/install-manifest.json` and the existing copy-based installation model. All harnesses SHALL receive their required `sai/instructions/`, `sai/policies/`, and `sai/compat/` sources. Claude Code and opencode SHALL receive the shared routed coordinator, lifecycle, and phase-worker contracts plus only their own subtree under `sai/orchestration/workers/bindings/<harness>/`. GitHub Copilot SHALL receive only the sources required by its inline command paths and SHALL receive no routed planning-worker binding, routed planning-agent projection, or Claude/opencode binding subtree.
+The installer SHALL project canonical sources using per-harness allowlists in `sai/install-manifest.json` and the existing copy-based installation model. All harnesses SHALL receive their required `sai/instructions/`, `sai/policies/`, and `sai/compat/` sources. Claude Code and opencode SHALL receive the shared routed coordinator, lifecycle, and phase-worker contracts plus only their own subtree under `sai/orchestration/workers/bindings/<harness>/`. GitHub Copilot SHALL receive `sai/orchestration/inline-invocation.md` and only the other sources required by its direct inline adapter path. No harness SHALL receive `sai/commands/sai-2-design-inline.md` or `sai/commands/sai-3-implement-inline.md`, and GitHub Copilot SHALL receive no routed planning-worker binding, routed planning-agent projection, or Claude/opencode binding subtree.
 
 The repository copies under `sai/orchestration/`, `sai/instructions/`, `sai/policies/`, and `sai/compat/` SHALL be the editable authorities. Installed copies are managed runtime projections, and forwarding manifests under `skills/` and `agents/` own only runtime resolution metadata. Doctor SHALL compare every allowlisted projection and forwarding manifest with its bundled source and report missing, unexpected, or drifted files. Uninstall SHALL consume the same allowlists and SHALL retain locally modified managed files under the existing hash-based safeguards.
 
@@ -76,15 +115,18 @@ The repository copies under `sai/orchestration/`, `sai/instructions/`, `sai/poli
 - **WHEN** a supported harness is installed or updated
 - **THEN** its managed SAI root SHALL receive exactly the canonical sources allowed for that harness
 - **AND** only the runtime forwarding surfaces allowed for that harness SHALL be projected to skill, agent, command, or prompt locations
+- **AND** neither obsolete inline command loader SHALL be created
 
 #### Scenario: Copilot projection excludes routed bindings
 - **WHEN** the Copilot projection allowlist is evaluated
 - **THEN** it SHALL exclude the Claude and opencode binding subtrees and all routed planning-worker runtime surfaces
+- **AND** it SHALL include the Copilot Inline Coordinator Adapter
+- **AND** it SHALL exclude both obsolete inline command loaders
 
 #### Scenario: Routed harness projection excludes foreign bindings
 - **WHEN** the Claude Code or opencode projection allowlist is evaluated
 - **THEN** it SHALL include only that harness's routed binding subtree
-- **AND** it SHALL exclude the other routed harness's binding subtree
+- **AND** it SHALL exclude the other routed harness's binding subtree, the Copilot Inline Coordinator Adapter, and both obsolete inline command loaders
 
 #### Scenario: Doctor detects projection drift
 - **WHEN** an installed canonical source or forwarding manifest differs from its bundled source, is missing, or is unexpected
@@ -95,12 +137,18 @@ The repository copies under `sai/orchestration/`, `sai/instructions/`, `sai/poli
 - **THEN** it SHALL retain that file under the existing modified-file safeguard
 
 ### Requirement: Single structured installation manifest
-`sai/install-manifest.json` SHALL be the single structured source of truth for managed source-to-runtime projections. Each entry SHALL identify its repository source, destination class or relative destination, harness allowlist, and ownership or drift policy. Installer, doctor, and uninstall SHALL consume this manifest rather than maintain separate hard-coded projection inventories.
+`sai/install-manifest.json` SHALL be the single structured source of truth for active managed source-to-runtime projections and retired managed-destination cleanup records. Each active entry SHALL identify its repository source, destination class or relative destination, harness allowlist, and ownership or drift policy; each top-level `retirements` record SHALL identify its destination, harness allowlist, and accepted historical managed SHA-256 hashes. The shared manifest expansion module, installer, doctor, and uninstall SHALL consume this manifest rather than maintain separate hard-coded active or retired projection inventories. Removing a source covered by a recursive projection SHALL remove it from fresh expanded inventories for every harness without adding a replacement projection or compatibility shim.
 
 #### Scenario: Managed projection is added or moved
 - **WHEN** a managed canonical source or runtime forwarding surface is added, moved, or removed
 - **THEN** its projection SHALL be changed once in `sai/install-manifest.json`
 - **AND** installer, doctor, and uninstall SHALL derive their behavior from that same entry
+
+#### Scenario: Retired command loader is absent from expansion
+- **WHEN** the recursive `sai-commands` projection is expanded after either obsolete inline loader source is removed
+- **THEN** the retired destination SHALL be absent from fresh install and doctor-required active inventories
+- **AND** it MAY remain in the top-level `retirements` cleanup inventory only with destination, harness, and historical managed SHA-256 evidence
+- **AND** no harness-specific compatibility projection SHALL recreate it
 
 #### Scenario: Manifest and filesystem disagree
 - **WHEN** doctor finds a managed destination missing, extra, or different from the source selected by the manifest

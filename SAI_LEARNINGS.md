@@ -25,3 +25,6 @@ Durable execution-observed facts about the shared-ai prompt and installer reposi
 ## Avoid
 
 ## Test Command
+
+npm test
+*Observed:* remove-legacy-inline-command-loaders

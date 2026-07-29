@@ -25,7 +25,7 @@ Deduplicate shared behavior between Claude Code and opencode wrappers by extract
 - **WHEN** the Artifact-Only Scope section is parsed
 - **THEN** it lists at least: build, test, lint, deploy, migrate as commands the spec agent must NEVER run
 ### Requirement: design-instruction
-The design workflow SHALL be split into caller-neutral design invocation instructions, a routed coordinator body, and a routed design-worker instruction. Claude Code and opencode wrappers SHALL select the routed coordinator and their harness binding; GitHub Copilot SHALL dispatch directly through `sai/orchestration/inline-invocation.md`. Both entry paths SHALL consume the same design artifact and interaction contract so approval, generation, feedback, and navigation behavior remain single-sourced rather than independently reimplemented.
+The design workflow SHALL be split into caller-neutral design invocation instructions, a routed coordinator body, a routed design-worker instruction, and a Copilot Inline Coordinator Adapter. Claude Code and opencode wrappers SHALL select the routed coordinator and their harness binding; GitHub Copilot SHALL select `sai/orchestration/inline-invocation.md` directly. Both execution paths SHALL consume the same design artifact and interaction contract so approval, generation, feedback, and navigation behavior remain single-sourced rather than independently reimplemented.
 
 #### Scenario: shared design workflow exists
 - **WHEN** the design instruction surfaces are read
@@ -35,13 +35,14 @@ The design workflow SHALL be split into caller-neutral design invocation instruc
 - **WHEN** `sai/commands/sai-2-design.md` is read
 - **THEN** it SHALL contain only coordinator lifecycle and interaction responsibilities and SHALL delegate technical execution to the design worker binding
 
-#### Scenario: inline adapter preserves compatibility
+#### Scenario: Copilot adapter preserves inline behavior
 - **WHEN** the GitHub Copilot `sai-2-design` wrapper is read
-- **THEN** it SHALL fetch `sai/orchestration/inline-invocation.md` directly with `phase: sai-2-design` rather than the routed coordinator body and SHALL retain the shared workflow semantics
+- **THEN** it SHALL fetch the Copilot Inline Coordinator Adapter rather than the routed coordinator body or an inline command loader
+- **AND** it SHALL retain the shared workflow semantics
 
-#### Scenario: Copilot wrapper selects inline entry
+#### Scenario: Copilot wrapper selects adapter entry
 - **WHEN** `commands/copilot/sai-2-design.prompt.md` is read
-- **THEN** it SHALL load the Copilot fetch adapter and direct inline adapter without loading a routed design-worker binding
+- **THEN** it SHALL load the Copilot fetch adapter and `sai/orchestration/inline-invocation.md` without loading a routed design-worker binding
 
 #### Scenario: Claude Code wrapper selects routed binding
 - **WHEN** `commands/claude/sai-2-design.md` is read

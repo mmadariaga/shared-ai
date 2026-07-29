@@ -6,6 +6,25 @@ Define the shared inline adapter for dispatching the design and implementation p
 
 ## Requirements
 
+### Requirement: Adapter is independent of removed command loaders
+The Copilot Inline Coordinator Adapter SHALL contain every phase-selection, prerequisite, missing-artifact, feedback, and completion reference needed to execute its two supported phases without reading `sai/commands/sai-2-design-inline.md` or `sai/commands/sai-3-implement-inline.md`.
+
+For `phase: sai-3-implement`, the adapter SHALL resolve the change and check `proposal.md`, then `design.md`, then `tasks.md`. It SHALL stop on the first missing artifact, make no file write, and emit exactly the matching message:
+
+- Missing `proposal.md`: `Change '{change-name}' not found. Run /sai-1-spec to create it first.`
+- Missing `design.md`: `design.md not found for '{change-name}'. Run /sai-2-design first.`
+- Missing `tasks.md`: `tasks.md not found for '{change-name}'. Run /sai-2-design first.`
+
+#### Scenario: Implementation prerequisite fails
+- **WHEN** the adapter receives `phase: sai-3-implement` for a change missing `proposal.md`, `design.md`, or `tasks.md`
+- **THEN** it SHALL emit the exact message for the first missing artifact in proposal-design-tasks order, stop immediately, and make no file write
+- **AND** it SHALL NOT resolve that behavior from either removed command loader
+
+#### Scenario: Design is the first missing artifact
+- **WHEN** `proposal.md` exists but `design.md` does not exist for change `example-change`
+- **THEN** the adapter SHALL print exactly `design.md not found for 'example-change'. Run /sai-2-design first.`
+- **AND** it SHALL stop before checking `tasks.md` or writing a file
+
 ### Requirement: Shared inline phase dispatch
 
 The inline coordinator adapter SHALL accept a phase marker and SHALL dispatch only `phase: sai-2-design` or `phase: sai-3-implement` to the corresponding phase invocation core.
@@ -46,7 +65,7 @@ For `phase: sai-3-implement`, the adapter SHALL preserve the current inline impl
 
 ### Requirement: VS Code prompts are thin entrypoints
 
-The visible VS Code design and implementation prompt files SHALL remain separate and SHALL contain only the entrypoint metadata, fetch/load behavior, phase marker selection, and argument forwarding needed to invoke the shared inline coordinator adapter. They SHALL NOT duplicate phase-specific orchestration rules.
+The visible VS Code design and implementation prompt files SHALL remain separate and SHALL be the only supported inline entrypoints for their commands. They SHALL contain only the entrypoint metadata, fetch/load behavior, phase marker selection, and argument forwarding needed to invoke the shared inline coordinator adapter. They SHALL NOT duplicate phase-specific orchestration rules or delegate through `sai/commands/sai-2-design-inline.md` or `sai/commands/sai-3-implement-inline.md`.
 Each prompt SHALL invoke the adapter with this exact two-line envelope, replacing the phase value for the implementation prompt while preserving the second line verbatim:
 
     phase: sai-2-design
@@ -68,6 +87,12 @@ The adapter SHALL treat the text after `arguments:` as the forwarded request wit
 
 - **WHEN** a valid phase envelope contains an empty `arguments:` value
 - **THEN** the adapter SHALL forward an empty request and SHALL not invent a change name or alter the phase selection
+
+#### Scenario: Legacy loader path is invoked manually
+
+- **WHEN** a caller attempts to load either removed inline command loader path
+- **THEN** no compatibility shim SHALL be present
+- **AND** supported Copilot invocation SHALL remain available through the visible prompt and shared adapter
 
 ### Requirement: Inline execution boundary is preserved
 
@@ -99,7 +124,7 @@ The adapter SHALL preserve the existing phase artifact locations, user feedback 
 
 ### Requirement: Shared adapter is installable
 
-The installation manifest SHALL add one managed, non-recursive copy projection with source `sai/orchestration/inline-invocation.md`, destination class `sai` and path `orchestration/inline-invocation.md`, and harnesses `copilot`. The projection SHALL use the manifest's content-drift ownership semantics, SHALL be the sole owner of that destination, and SHALL NOT be folded into the routed Claude Code or opencode orchestration projections. Every retained VS Code prompt SHALL resolve this installed path directly.
+The installation manifest SHALL contain one managed, non-recursive copy projection with source `sai/orchestration/inline-invocation.md`, destination class `sai` and path `orchestration/inline-invocation.md`, and harnesses `copilot`. The projection SHALL use the manifest's content-drift ownership semantics, SHALL be the sole owner of that destination, and SHALL NOT be folded into the routed Claude Code or opencode orchestration projections. Both retained VS Code prompts SHALL resolve this installed path directly, and no inline command loader SHALL be installed for any harness.
 
 #### Scenario: Installed VS Code prompts resolve the adapter
 
@@ -110,3 +135,8 @@ The installation manifest SHALL add one managed, non-recursive copy projection w
 
 - **WHEN** the installation manifest is evaluated for Claude Code, opencode, and Copilot
 - **THEN** the Copilot-only inline projection SHALL own `orchestration/inline-invocation.md` without overriding or adding the file to either routed worker projection
+
+#### Scenario: Fresh command projections exclude retired loaders
+
+- **WHEN** the managed command-body projection is expanded for any supported harness
+- **THEN** it SHALL NOT contain `commands/sai-2-design-inline.md` or `commands/sai-3-implement-inline.md`

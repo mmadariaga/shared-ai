@@ -139,6 +139,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0084 — Use a hybrid declarative installation manifest](./0084-hybrid-declarative-installation-manifest.md) — Refs 0055, Refs 0057
 - [0085 — Implement declared projection strategies with generic handlers](./0085-generic-handlers-for-declared-projection-strategies.md) — Pair with 0084, Refs 0029, Refs 0055, Refs 0057
 - [0088 — Implementation harness projection boundaries](./0088-implementation-harness-projection-boundaries.md) — Refs 0084, Refs 0085, Refs 0074
+- [0091 — Manifest hash evidence for retired managed destinations](./0091-manifest-hash-evidence-for-retired-managed-destinations.md) — Refs 0084, Refs 0085, Refs 0055, Refs 0057
 
 ### Harness wrappers & the shared instruction layer
 
@@ -182,6 +183,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0078 — Design workflow selects routed or inline entry](./0078-design-workflow-selects-routed-or-inline-entry.md) — Refs 0074, Refs 0035
 - [0082 — Keep canonical phase workers and bindings in mirrored orchestration subtrees](./0082-canonical-phase-workers-and-mirrored-bindings.md) — Refs 0077, Refs 0078
 - [0090 — Centralize Copilot inline planning lifecycle in one adapter](./0090-centralize-copilot-inline-planning-lifecycle.md) — Refs 0089, Refs 0083, Refs 0078, Refs 0074
+- [0091 — Manifest hash evidence for retired managed destinations](./0091-manifest-hash-evidence-for-retired-managed-destinations.md) — Refs 0084, Refs 0085, Refs 0055, Refs 0057
 
 ### Argument passing & change-name resolution
 

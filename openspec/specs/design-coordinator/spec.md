@@ -20,6 +20,19 @@ wrapper_echo_value: "placeholder-value"
 arguments_value: "placeholder-change-name"
 ```
 ## Requirements
+### Requirement: Current design harness entrypoints
+Claude Code and opencode SHALL invoke the routed design coordinator and their respective design-worker bindings. GitHub Copilot SHALL invoke `sai/orchestration/inline-invocation.md` directly with `phase: sai-2-design`; no supported wrapper SHALL invoke `sai/commands/sai-2-design-inline.md`.
+
+#### Scenario: Routed harness starts design
+- **WHEN** Claude Code or opencode invokes `/sai-2-design`
+- **THEN** its wrapper SHALL enter the routed coordinator and design-worker binding
+- **AND** it SHALL NOT fetch the Copilot Inline Coordinator Adapter or the removed inline command loader
+
+#### Scenario: Copilot starts design
+- **WHEN** GitHub Copilot invokes `/sai-2-design`
+- **THEN** its prompt SHALL fetch `sai/orchestration/inline-invocation.md` and supply `phase: sai-2-design`
+- **AND** it SHALL NOT fetch a routed design-worker binding or the removed inline command loader
+
 ### Requirement: active-harness-entry-boundary
 
 Claude Code and opencode SHALL invoke the routed design coordinator and their respective design-worker bindings. GitHub Copilot SHALL invoke `sai/orchestration/inline-invocation.md` directly with `phase: sai-2-design`; no supported entrypoint SHALL require a legacy loader.
@@ -142,7 +155,7 @@ Opencode routed design planning SHALL use the shared `sai-coordinator` primary c
 - **AND** it SHALL preserve the existing notice, feedback, continuation, and terminal behavior
 
 ### Requirement: numbered-design-worker-identity
-The routed design worker SHALL use the phase-specific identifier `sai-2-design-worker` across opencode agent configuration, Claude Code managed worker definitions, forwarding skill directories and fetch references, harness bindings, installer projections, and verification/documentation surfaces. Its reusable technical core SHALL be named `sai-2-design-core` in `sai/compat/` and SHALL remain separate from the implementation worker contract. The Claude Code, opencode, and Copilot inline callers SHALL fetch the renamed core wherever they consume the design invocation core.
+The routed design worker SHALL use the phase-specific identifier `sai-2-design-worker` across opencode agent configuration, Claude Code managed worker definitions, forwarding skill directories and fetch references, harness bindings, installer projections, and verification/documentation surfaces. Its reusable technical core SHALL be named `sai-2-design-core` in `sai/compat/` and SHALL remain separate from the implementation worker contract. The routed Claude Code and opencode design workers and the Copilot Inline Coordinator Adapter SHALL fetch the renamed core wherever they consume the design invocation core.
 
 #### Scenario: design dispatch resolves the phase worker
 - **WHEN** the routed design coordinator dispatches technical design work
@@ -154,9 +167,9 @@ The routed design worker SHALL use the phase-specific identifier `sai-2-design-w
 - **THEN** the wrapper SHALL select `agent: sai-coordinator`
 - **AND** the wrapper SHALL omit a command-level model override
 
-#### Scenario: all design callers use the renamed core
-- **WHEN** a Claude Code, opencode, or Copilot inline design path loads the reusable design invocation behavior
-- **THEN** its forwarding or inline caller SHALL reference `sai-2-design-core`
+#### Scenario: all design paths use the renamed core
+- **WHEN** a routed design worker or the Copilot Inline Coordinator Adapter loads the reusable design invocation behavior
+- **THEN** it SHALL reference `sai-2-design-core`
 - **AND** no caller SHALL fetch the former unnumbered design core name
 
 #### Scenario: shared permissions do not change design dispatch
