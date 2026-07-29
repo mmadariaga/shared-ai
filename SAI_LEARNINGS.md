@@ -25,6 +25,8 @@ Durable execution-observed facts about the shared-ai prompt and installer reposi
   *Observed:* share-vscode-inline-coordinator — the former blanket no-orchestration assertion rejected the intentional inline exception; exact-source filtering restored the suite.
 - **opencode.json/opencode.jsonc doctor fixtures**: Clear both configuration files before writing malformed fixture inputs because doctor resolves `opencode.json` ahead of `opencode.jsonc`, and installer-generated output can otherwise mask the intended case.
   *Observed:* preserve-custom-opencode-agents — clearing both files before each malformed fixture produced the expected error records.
+- **sai/instructions/design.md**: The shared design feedback contract owns normalized complete `interfaces.md` comparison and conditional Architecture Snapshot presentation across routed and inline adapters.
+  *Observed:* render-architecture-snapshot-in-sai-2 — the Step 2 task scope omitted this file, but the GREEN contract required the shared behavior and the lifecycle suite passed.
 
 ## Avoid
 
