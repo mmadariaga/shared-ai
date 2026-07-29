@@ -9,6 +9,7 @@ const crypto = require('crypto');
 
 const {
   computePlanEntry,
+  computeRetiredPlanEntry,
   deleteEntry,
   runDeletion,
 } = require('../bin/uninstall-flow.js');
@@ -24,7 +25,7 @@ function sha256(content) {
 }
 
 function retirementEntry(src, dest, acceptedHashes, editorBase) {
-  return { src, dest, acceptedHashes, editorBase };
+  return { src, dest, acceptedHashes, editorBase, assetType: 'retired-managed-file' };
 }
 
 test('computePlanEntry deletes a retirement destination matching any accepted hash', () => {
@@ -37,7 +38,7 @@ test('computePlanEntry deletes a retirement destination matching any accepted ha
       sha256('previous released content'),
     ];
 
-    const result = computePlanEntry(
+    const result = computeRetiredPlanEntry(
       retirementEntry(retiredSource, destination, acceptedHashes, tmpDir)
     );
 
@@ -56,7 +57,7 @@ test('computePlanEntry preserves every retirement destination that matches no ac
     const destination = writeFile(tmpDir, 'destination.txt', 'user configuration');
     const acceptedHashes = [sha256('older released content')];
 
-    const result = computePlanEntry(
+    const result = computeRetiredPlanEntry(
       retirementEntry(retiredSource, destination, acceptedHashes, tmpDir)
     );
 

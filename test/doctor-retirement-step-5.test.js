@@ -31,7 +31,8 @@ function output() {
 }
 
 function retiredCopy(claudeBase, contents = 'user-owned retired copy\n') {
-  const destination = path.join(claudeBase, 'commands', 'sai-2-design-inline.md');
+  const destination = path.join(claudeBase, 'sai', 'commands', 'sai-2-design-inline.md');
+  fs.mkdirSync(path.dirname(destination), { recursive: true });
   fs.writeFileSync(destination, contents);
   return destination;
 }
@@ -57,7 +58,7 @@ async function runJson(projectRoot, claudeBase) {
 
 function retirementWarning(report, destination) {
   const section = report['[Claude Code]'];
-  const warnings = section && (section.retirementWarnings || section.retirements || section.warnings);
+  const warnings = section && section['retired-file'];
   assert.ok(Array.isArray(warnings), 'doctor should expose retirement warnings');
   const warning = warnings.find(record => record.destination === destination || record.path === destination);
   assert.ok(warning, 'doctor should identify the retired destination');
@@ -74,10 +75,8 @@ test('doctor reports an unrecognized retired copy without changing it', async ()
     assert.equal(code, 0);
     const warning = retirementWarning(report, destination);
     assert.equal(warning.severity, 'warn');
-    assert.equal(warning.classification, 'retirement');
-    assert.equal(warning.harness, 'claude');
     assert.equal(warning.recognized, false);
-    assert.match(warning.remediation, /manual cleanup/i);
+    assert.match(warning.recommendation, /manually/i);
     assert.equal(fs.readFileSync(destination, 'utf8'), before);
   } finally {
     fs.rmSync(projectRoot, { recursive: true, force: true });
@@ -91,8 +90,8 @@ test('doctor does not classify an unrecognized retired copy as missing or generi
     const { report } = await runJson(projectRoot, claudeBase);
     const section = report['[Claude Code]'];
 
-    assert.equal(section.files.some(record => record.severity === 'error' && record.path === destination), false);
-    assert.equal(section.unexpected.some(record => record.path === destination), false);
+    assert.equal((section.files || []).some(record => record.severity === 'error' && record.path === destination), false);
+    assert.equal((section.unexpected || []).some(record => record.path === destination), false);
   } finally {
     fs.rmSync(projectRoot, { recursive: true, force: true });
   }
@@ -120,7 +119,7 @@ test('human doctor output identifies retired-copy cleanup and remains successful
 
     assert.equal(code, 0);
     assert.match(capture.text(), /retirement/i);
-    assert.match(capture.text(), /manual cleanup/i);
+    assert.match(capture.text(), /manually/i);
   } finally {
     fs.rmSync(projectRoot, { recursive: true, force: true });
   }

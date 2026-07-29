@@ -7,7 +7,7 @@ const os = require('os');
 const path = require('path');
 
 const { loadInstallManifest, expandInstallManifest } = require('../bin/install-manifest.js');
-const { expandRetirementManifest } = require('../bin/install-manifest-retirement.js');
+const { expandRetirementManifest } = require('../bin/install-manifest.js');
 
 const HARNESSes = ['claude', 'opencode', 'copilot'];
 const HASH = 'a'.repeat(64);
@@ -26,8 +26,7 @@ function retirementManifest() {
   return {
     version: 1,
     projections: [],
-    retirement: {
-      loaders: [
+  retirements: [
         {
           id: 'claude-orchestration-loader',
           source: 'sai/orchestration/claude-loader.md',
@@ -43,18 +42,17 @@ function retirementManifest() {
           managedHashes: [HASH],
         },
       ],
-    },
   };
 }
 
 test('Step 2 retirement loaders have one sai record per loader for every harness', () => {
   const manifest = retirementManifest();
-  assert.equal(manifest.retirement.loaders.length, 2);
-  for (const loader of manifest.retirement.loaders) {
-    assert.equal(loader.destination.class, 'sai');
-    assert.deepEqual(loader.harnesses, HARNESSes);
-    assert.ok(loader.managedHashes.length > 0);
-    assert.ok(loader.managedHashes.every(hash => /^[a-f0-9]{64}$/.test(hash)));
+  assert.equal(manifest.retirements.length, 2);
+  for (const retirement of manifest.retirements) {
+    assert.equal(retirement.destination.class, 'sai');
+    assert.deepEqual(retirement.harnesses, HARNESSes);
+    assert.ok(retirement.managedHashes.length > 0);
+    assert.ok(retirement.managedHashes.every(hash => /^[a-f0-9]{64}$/.test(hash)));
   }
 });
 
@@ -63,7 +61,7 @@ test('malformed retirement loaders fail before destination mutation', () => {
   const sentinel = path.join(destination, 'sentinel.txt');
   fs.writeFileSync(sentinel, 'unchanged');
   const manifest = retirementManifest();
-  manifest.retirement.loaders[0].managedHashes = ['NOT-A-SHA256'];
+  manifest.retirements[0].managedHashes = ['NOT-A-SHA256'];
 
   try {
     assert.throws(

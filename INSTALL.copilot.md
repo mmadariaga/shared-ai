@@ -50,7 +50,20 @@ cp commands/copilot/*.prompt.md "$PROMPTS_DIR/"
 
 # Copy sai command bodies
 mkdir -p "$SAI_DIR/commands"
-cp sai/commands/*.md "$SAI_DIR/commands/"
+cp sai/commands/sai-1-spec.md "$SAI_DIR/commands/"
+cp sai/commands/sai-2-design.md "$SAI_DIR/commands/"
+cp sai/commands/sai-3-implement.md "$SAI_DIR/commands/"
+cp sai/commands/sai-4-apply.md "$SAI_DIR/commands/"
+cp sai/commands/sai-5-review.md "$SAI_DIR/commands/"
+cp sai/commands/sai-6-security.md "$SAI_DIR/commands/"
+cp sai/commands/sai-7-performance.md "$SAI_DIR/commands/"
+cp sai/commands/sai-8-accessibility.md "$SAI_DIR/commands/"
+cp sai/commands/sai-archive.md "$SAI_DIR/commands/"
+cp sai/commands/sai-backfill.md "$SAI_DIR/commands/"
+cp sai/commands/sai-commit.md "$SAI_DIR/commands/"
+cp sai/commands/sai-explore.md "$SAI_DIR/commands/"
+cp sai/commands/sai-pr.md "$SAI_DIR/commands/"
+cp sai/commands/sai-status.md "$SAI_DIR/commands/"
 
 # Copy instructions
 if [ -d "$SAI_DIR/instructions" ]; then
@@ -106,7 +119,20 @@ Copy-Item commands\copilot\*.prompt.md "$promptsDir\"
 
 # Copy sai command bodies
 New-Item -ItemType Directory -Force -Path "$saiDir\commands" | Out-Null
-Copy-Item sai\commands\*.md "$saiDir\commands\"
+Copy-Item sai\commands\sai-1-spec.md "$saiDir\commands\"
+Copy-Item sai\commands\sai-2-design.md "$saiDir\commands\"
+Copy-Item sai\commands\sai-3-implement.md "$saiDir\commands\"
+Copy-Item sai\commands\sai-4-apply.md "$saiDir\commands\"
+Copy-Item sai\commands\sai-5-review.md "$saiDir\commands\"
+Copy-Item sai\commands\sai-6-security.md "$saiDir\commands\"
+Copy-Item sai\commands\sai-7-performance.md "$saiDir\commands\"
+Copy-Item sai\commands\sai-8-accessibility.md "$saiDir\commands\"
+Copy-Item sai\commands\sai-archive.md "$saiDir\commands\"
+Copy-Item sai\commands\sai-backfill.md "$saiDir\commands\"
+Copy-Item sai\commands\sai-commit.md "$saiDir\commands\"
+Copy-Item sai\commands\sai-explore.md "$saiDir\commands\"
+Copy-Item sai\commands\sai-pr.md "$saiDir\commands\"
+Copy-Item sai\commands\sai-status.md "$saiDir\commands\"
 
 # Copy instructions
 $instructionsDir = "$saiDir\instructions"
@@ -174,7 +200,9 @@ Once installed, type `/` in the GitHub Copilot chat to see all `sai-*` commands.
 
 ### Design portability boundary
 
-`/sai-2-design` remains inline in Copilot because no portable cross-turn continuation contract spans the supported Claude Code, opencode, and Copilot surfaces. This is a portability boundary, not a claim that Copilot lacks subagent support: Copilot retains its `budget-explorer` delegation for research and the inline design lifecycle. The inline path preserves `openspec/changes/{change-name}/design.md`, `tasks.md`, and `interfaces.md`.
+The `sai/orchestration/inline-invocation.md` **Inline Coordinator Adapter** is Copilot's only inline planning boundary. Copilot remains inline for `/sai-2-design` and `/sai-3-implement` through this adapter because no portable cross-turn continuation contract spans the supported Claude Code, opencode, and Copilot surfaces. This is a portability boundary, not a claim that Copilot lacks subagent support: Copilot retains its `budget-explorer` delegation for research and the inline planning lifecycle. The inline path preserves `openspec/changes/{change-name}/design.md`, `tasks.md`, and `interfaces.md`.
+
+The explicit command allowlist above mirrors the Copilot entries expanded by `sai/install-manifest.json`; it intentionally excludes retired inline loaders. Install, update, doctor, and uninstall use the manifest's retirement records across Claude Code, opencode, and GitHub Copilot. A retired destination is removed only when its content matches a registered historical SHA-256 hash; modified or unrecognized copies are preserved and reported for manual cleanup.
 
 ## Customizing models
 

@@ -11,7 +11,6 @@ const repoRoot = path.join(__dirname, '..');
 test('Step 1 artifact interfaces remain plain CommonJS maps', () => {
   assert.deepEqual(Object.keys(IMPLEMENTATION_ARTIFACTS).sort(), [
     'coordinator',
-    'inlineCaller',
     'invocationCore',
     'worker',
   ]);

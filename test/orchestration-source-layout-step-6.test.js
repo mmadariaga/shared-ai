@@ -1,0 +1,44 @@
+'use strict';
+
+const { test } = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('fs');
+const os = require('os');
+const path = require('path');
+
+const { auditActiveReferences } = require('../bin/orchestration-source-audit.js');
+
+const repoRoot = path.join(__dirname, '..');
+const claudeLoader = ['claude', 'loader.md'].join('-');
+const opencodeLoader = ['opencode', 'loader.md'].join('-');
+
+function writeFixture(root, relativePath, content) {
+  const filePath = path.join(root, relativePath);
+  fs.mkdirSync(path.dirname(filePath), { recursive: true });
+  fs.writeFileSync(filePath, content);
+}
+
+test('active-reference audit reports no supported dependency on either retired loader', () => {
+  const references = auditActiveReferences(repoRoot);
+
+  assert.ok(Array.isArray(references), 'audit should return a reference list');
+  assert.deepEqual(references, []);
+});
+
+test('active-reference audit excludes archived changes and ADRs but scans maintained files', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-step-6-audit-'));
+  try {
+    writeFixture(root, 'README.md', `uses ${claudeLoader}\n`);
+    writeFixture(root, path.join('openspec', 'changes', 'archive', 'old', 'proposal.md'), `uses ${opencodeLoader}\n`);
+    writeFixture(root, path.join('docs', 'adr', '0001-retired-loader.md'), `uses ${claudeLoader}\n`);
+
+    const references = auditActiveReferences(root);
+
+    assert.ok(Array.isArray(references), 'audit should return a reference list');
+    assert.deepEqual(references, [
+      { file: 'README.md', reference: claudeLoader },
+    ]);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});

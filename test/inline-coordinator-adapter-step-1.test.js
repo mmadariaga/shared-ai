@@ -18,10 +18,11 @@ function artifact(relativePath) {
 test('Step 1 inline coordinator stops on the first missing artifact without writing', () => {
   const inline = artifact('sai/orchestration/inline-invocation.md');
 
-  assert.match(inline, /Change '\{change-name\}' not found\. Run \/sai-1-spec to create it first\./);
-  assert.match(inline, /design\.md not found for '\{change-name\}'\. Run \/sai-2-design first\./);
-  assert.match(inline, /tasks\.md not found for '\{change-name\}'\. Run \/sai-2-design first\./);
-  assert.match(inline, /first missing artifact[\s\S]*no write|stop processing[\s\S]*no write/i);
+  const proposal = inline.indexOf("`Change '{change-name}' not found. Run /sai-1-spec to create it first.`");
+  const design = inline.indexOf('`design.md not found for \'{change-name}\'. Run /sai-2-design first.`');
+  const tasks = inline.indexOf('`tasks.md not found for \'{change-name}\'. Run /sai-2-design first.`');
+  assert.ok(proposal >= 0 && proposal < design && design < tasks);
+  assert.match(inline, /first missing artifact without checking later artifacts or writing any\s+file/i);
 });
 
 test('Step 1 Copilot envelopes remain phase then arguments for both adapters', () => {
@@ -62,7 +63,6 @@ test('Step 1 removes legacy inline coordinator sources', () => {
 test('Step 1 completion artifact interface remains a plain CommonJS map', () => {
   assert.deepEqual(Object.keys(COMPLETION_ARTIFACTS).sort(), [
     'coordinator',
-    'inlineCommand',
     'inlineWrapper',
     'invocation',
   ]);
