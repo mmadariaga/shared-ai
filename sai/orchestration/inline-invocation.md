@@ -35,14 +35,15 @@ branch below in the current context. The adapter MUST NOT introduce routed worke
    value still contains `--fast-track`, remove the token and trim whitespace.
 5. Fetch @sai/compat/sai-2-design-core.md and follow it exactly using the
    resolved change name as `$ARGUMENTS`.
-6. Derive the existing design decision summary only from the written
+6. Retain the previous `interfaces.md` text in in-conversation state before each feedback edit and apply the complete-effective-artifact normalization from `sai/instructions/design.md`. Print the current Architecture Snapshot immediately before the initial feedback gate. On later iterations, print it immediately before the gate only when normalized `interfaces.md` changed; omit it after identical regeneration or `design.md`/`tasks.md`-only changes. Do not create a snapshot payload field or separate artifact.
+7. Derive the existing design decision summary only from the written
    `design.md` and `tasks.md`: one line per `### D<n>` decision, one line per
    risk, and resolved Open Questions only when present. Keep the summary at or
    below 15 non-blank lines and use the existing `+N more` signal when needed.
-7. Fetch @sai/policies/artifact-feedback-gate.md and follow it exactly with:
+8. Fetch @sai/policies/artifact-feedback-gate.md and follow it exactly with:
     artifacts = `design.md`, `tasks.md`, `interfaces.md`; proceed-label =
     `Continue`; next-action = the design completion stop below.
-8. When the gate proceeds, print exactly:
+9. When the gate proceeds, print exactly:
    `Design done in openspec/changes/{name}/. Run \`/sai-3-implement {name}\` **in a new chat** when ready.`
    Then STOP. Present no Stop-versus-Continue-now choice and dispatch or inline no
    implementation-planning work in this prompt.

@@ -20,7 +20,7 @@
   For `needs_input`, present the exact question and ordered options through the native picker, append only `{question, options, answer_value}` to opaque history, and forward the exact value. Require complete reconstruction state before one replacement worker. A completed result requires `resolved_change_name`.
 
   ## Design feedback
-  After completed, present the shared artifact-feedback gate for exactly `design.md`, `tasks.md`, and `interfaces.md`. Retain exact free-form feedback as pending feedback, continue the same worker, report worker-authored discards, clear pending feedback only after verified completion, increment iteration, print the artifact-derived summary, and re-present the gate. Never inspect or edit artifacts.
+   After completed, print the worker-authored existing summary immediately before presenting the shared artifact-feedback gate for exactly `design.md`, `tasks.md`, and `interfaces.md`; the worker summary carries the Architecture Snapshot when applicable. Never read, parse, or reconstruct the Architecture Snapshot. Retain exact free-form feedback as pending feedback, continue the same worker, report worker-authored discards, clear pending feedback only after verified completion, increment iteration, print the artifact-derived summary, and re-present the gate. Never inspect or edit artifacts.
 
   ## Design navigation
   When the artifact-feedback gate proceeds, emit the existing design completion sentence and stop. Offer no continuation question, copy no lifecycle state, and dispatch no implementation worker. Print exactly:

@@ -627,3 +627,29 @@ test('interfaces contract defines one portable architecture snapshot under Targe
   assert.ok(targetState !== -1 && snapshot > targetState,
     'Architecture Snapshot should be defined beneath Target State');
 });
+
+test('architecture snapshot display is feedback-aware and equivalent across routed and inline paths', () => {
+  const instruction = artifact('sai/instructions/design.md');
+  const coordinator = artifact('sai/commands/sai-2-design.md');
+  const worker = artifact('sai/orchestration/workers/sai-2-design-worker.md');
+  const inline = artifact('sai/orchestration/inline-invocation.md');
+  const gate = artifact('sai/policies/artifact-feedback-gate.md');
+  const lifecycle = artifact('sai/orchestration/worker-lifecycle.md');
+
+  assert.match(instruction, /normalize[\s\S]{0,180}(?:line endings|CRLF)[\s\S]{0,180}trailing whitespace/i);
+  assert.match(instruction, /complete effective `interfaces\.md`|entire effective `interfaces\.md`/i);
+  assert.match(instruction, /initial[\s\S]{0,180}Architecture Snapshot[\s\S]{0,180}(?:feedback loop|feedback gate)/i);
+  assert.match(instruction, /identical[\s\S]{0,180}(?:omit|do not|unchanged)/i);
+
+  assert.match(worker, /previous `interfaces\.md`[\s\S]{0,240}invocation-scoped/i);
+  assert.match(worker, /existing terminal `summary`[\s\S]{0,240}Architecture Snapshot/i);
+  assert.match(coordinator, /print[\s\S]{0,160}(?:existing|worker-authored) summary[\s\S]{0,160}feedback/i);
+  assert.match(coordinator, /Never read, parse, or reconstruct the Architecture Snapshot/);
+
+  assert.match(inline, /previous `interfaces\.md`[\s\S]{0,240}in-conversation/i);
+  assert.match(inline, /Architecture Snapshot[\s\S]{0,180}feedback/i);
+  assert.match(gate, /Architecture Snapshot[\s\S]{0,240}routed[\s\S]{0,240}inline/i);
+
+  assert.doesNotMatch(lifecycle, /^\s*(?:architecture_)?snapshot\s*:/m);
+  assert.match(lifecycle, /summary: string/);
+});

@@ -220,6 +220,12 @@ Rules:
 - **Self-contained.** The signature plus its anchored assertions must be sufficient to author the step's tests without reading `implementation.md`, `design.md`, or source code.
 - **Emit `## Target State` first.** It is the only admitted leading non-`## Step N` top-level section; every `## Step N` follows it, and no non-step section appears once the first `## Step N` begins. Its presence does NOT cause an empty `## Step N` to be emitted for a step with no interface surface — the *Omit steps with no interface surface* rule still applies.
 
+### Architecture Snapshot feedback presentation
+
+The initial design feedback iteration always presents the current `### Architecture Snapshot` immediately before the existing feedback loop. For each later feedback iteration, retain the previous complete `interfaces.md` text in invocation-scoped or in-conversation state before applying feedback and regenerating artifacts. Normalize the previous and regenerated complete effective `interfaces.md` by converting CRLF and CR line endings to LF and removing trailing whitespace from every line. Preserve all other text and ordering, including headings, section order, blank lines, signatures, assertions, and snapshot text.
+
+Present the updated Architecture Snapshot immediately before the next feedback loop only when those normalized complete artifacts differ. Identical normalized regeneration, or feedback that changes only `design.md` or `tasks.md`, is unchanged and omits the snapshot for that iteration. Routed workers carry applicable snapshot display text through the existing terminal `summary`; coordinators print that worker-authored summary without reading, parsing, or reconstructing the artifact. Inline callers retain equivalent in-conversation comparison and presentation behavior. Do not add a snapshot payload field or top-level artifact.
+
 ## Cost discipline reminder
 
 Every source code line read by the main agent costs frontier-tier tokens. If you are about to `Read` a file that is not `proposal.md`, a `specs/**/*.md`, or `design.md`, STOP and delegate to a `budget-explorer` subagent instead.
