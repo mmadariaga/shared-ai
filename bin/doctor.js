@@ -6,7 +6,6 @@ const path = require('path');
 const os = require('os');
 const childProcess = require('child_process');
 const https = require('https');
-const { isDeepStrictEqual } = require('util');
 const jsoncParser = require('jsonc-parser');
 
 const flow = require('./install-flow');
@@ -391,20 +390,23 @@ function managedOpencodeAgentRecords(harness) {
     parseFailed = true;
   }
 
-  return Object.entries(flow.OPENCODE_MANAGED_AGENTS).map(([key, shape]) => {
-    const actual = root && root.agent && typeof root.agent === 'object' && !Array.isArray(root.agent)
-      ? root.agent[key]
-      : undefined;
-    const compatible = !parseFailed && actual !== undefined && isDeepStrictEqual(actual, shape);
-    if (compatible) {
-      return { section, name: key, severity: 'ok', message: `managed opencode agent "${key}" is compatible` };
+  const hasAgentMap = !parseFailed
+    && root.agent !== null
+    && typeof root.agent === 'object'
+    && !Array.isArray(root.agent);
+
+  return Object.keys(flow.OPENCODE_MANAGED_AGENTS).map((key) => {
+    if (hasAgentMap && Object.prototype.hasOwnProperty.call(root.agent, key)) {
+      return { section, name: key, severity: 'ok', message: `managed opencode agent "${key}" is present` };
     }
     return {
       section,
       name: key,
       severity: 'error',
-      message: parseFailed ? `missing or malformed opencode agent "${key}"` : `incompatible opencode agent "${key}"`,
-      recommendation: COLLISION_REMEDIATION,
+      message: !hasAgentMap
+        ? `missing or malformed opencode agent "${key}"`
+        : `missing opencode agent "${key}"`,
+      recommendation: 'Re-run the installer to restore the worker',
     };
   });
 }

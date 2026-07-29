@@ -124,25 +124,25 @@ function mergeOpencodeAgents(text) {
 
 - **Rule:** RED contains only doctor tests. Do not change `bin/doctor.js` before RED is verified.
 
-- [ ] Extend `test/doctor-harness-inventory.test.js` with temporary opencode configurations covering the authoritative `interfaces.md` scenarios:
+- [x] Extend `test/doctor-harness-inventory.test.js` with temporary opencode configurations covering the authoritative `interfaces.md` scenarios:
   - Every expected managed name is present with customized definitions.
   - One managed name is absent while another customized name remains present.
   - The configuration is absent, unparsable, has a non-object root, or has a non-object `agent` value.
 
-- [ ] Assert through the existing JSON doctor output that customized present names are `ok`, missing names are errors identifying the missing name, malformed configurations remain errors, and aggregate exit codes retain their existing semantics.
+- [x] Assert through the existing JSON doctor output that customized present names are `ok`, missing names are errors identifying the missing name, malformed configurations remain errors, and aggregate exit codes retain their existing semantics.
 
-- [ ] Verify RED: run `node --test test/doctor-harness-inventory.test.js` - expected: **assertion failure** because doctor currently deep-compares each present definition with the repository default.
-- [ ] **GATE - DO NOT PROCEED to GREEN until RED is verified.** If the test passes, or fails because of setup, import, compilation, or syntax errors, STOP and report the invalid RED result.
+- [x] Verify RED: run `node --test test/doctor-harness-inventory.test.js` - expected: **assertion failure** because doctor currently deep-compares each present definition with the repository default.
+- [x] **GATE - DO NOT PROCEED to GREEN until RED is verified.** If the test passes, or fails because of setup, import, compilation, or syntax errors, STOP and report the invalid RED result.
 
 ##### GREEN phase (only after RED is verified)
 
-- [ ] In `bin/doctor.js`, remove the now-unused import below:
+- [x] In `bin/doctor.js`, remove the now-unused import below:
 
 ```js
 const { isDeepStrictEqual } = require('util');
 ```
 
-- [ ] Replace `managedOpencodeAgentRecords` in `bin/doctor.js` with the following implementation. Preserve the existing record shape and error severity while making own-name presence the only success predicate:
+- [x] Replace `managedOpencodeAgentRecords` in `bin/doctor.js` with the following implementation. Preserve the existing record shape and error severity while making own-name presence the only success predicate:
 
 ```js
 function managedOpencodeAgentRecords(harness) {
@@ -182,14 +182,14 @@ function managedOpencodeAgentRecords(harness) {
 }
 ```
 
-- [ ] Verify GREEN: run `node --test test/doctor-harness-inventory.test.js` - expected: PASS.
+- [x] Verify GREEN: run `node --test test/doctor-harness-inventory.test.js` - expected: PASS.
 
 ##### Step 2 Verification Checklist
 
 **Automated (agent runs before stopping):**
-- [ ] RED verified - the focused doctor suite rejects customized present definitions under the old equality predicate.
-- [ ] GREEN verified - `node --test test/doctor-harness-inventory.test.js` passes.
-- [ ] `node --test test/doctor-cli.test.js` - project-health, JSON output, and exit-code behavior remain unchanged.
+- [x] RED verified - the focused doctor suite rejects customized present definitions under the old equality predicate.
+- [x] GREEN verified - `node --test test/doctor-harness-inventory.test.js` passes.
+- [x] `node --test test/doctor-cli.test.js` - project-health, JSON output, and exit-code behavior remain unchanged.
 
 *(No Human checks - doctor records and exit semantics are covered by deterministic CLI fixtures.)*
 
@@ -198,26 +198,6 @@ function managedOpencodeAgentRecords(harness) {
 **sai-4-apply:** Run all Automated checks above and confirm they pass before stopping.
 
 **STOP & COMMIT:** Stage and commit after Automated checks pass. No browser verification is required.
-
-## Appendix: Plan vs Final Implementation
-
-This section documents deviations between the original plan and the code that was actually merged.
-
-### Step 1 — Focused test expectations aligned with ownership behavior
-
-**Plan:** Update focused tests for customized opencode workers while retaining Claude and non-opencode collision protection.
-
-**Final:** Updated stale permission and opencode documentation assertions, preserved Claude collision blocking, and populated the byte-identity fixture with all helper and numbered worker names.
-
-**Reason:** The focused suite exposed stale expectations and an incomplete fully populated configuration fixture after the add-only implementation was applied.
-
-## Appendix: Execution Telemetry
-
-| Step | dispatch | phase | attempts | first_failure | note |
-|---|---|---|---|---|---|
-| 1 | writer | red | 1 | assertion | |
-| 1 | implementation | green | 1 | assertion | |
-| 1 | writer | green | 3 | assertion | Two focused runs exposed stale assertions; the third passed all 88 tests. |
 
 #### Step 3: Align accepted policy and operator guidance
 
@@ -273,3 +253,34 @@ Installation preserves an existing `sai-2-design-worker` definition by name and 
 **sai-4-apply:** Run all Automated checks above and confirm they pass before stopping.
 
 **STOP & COMMIT:** Stage and commit after Automated checks pass. No browser verification is required.
+
+## Appendix: Plan vs Final Implementation
+
+This section documents deviations between the original plan and the code that was actually merged.
+
+### Step 1 — Focused test expectations aligned with ownership behavior
+
+**Plan:** Update focused tests for customized opencode workers while retaining Claude and non-opencode collision protection.
+
+**Final:** Updated stale permission and opencode documentation assertions, preserved Claude collision blocking, and populated the byte-identity fixture with all helper and numbered worker names.
+
+**Reason:** The focused suite exposed stale expectations and an incomplete fully populated configuration fixture after the add-only implementation was applied.
+
+### Step 2 — Dedicated doctor fixture and isolated malformed cases
+
+**Plan:** Extend `test/doctor-harness-inventory.test.js` with the managed-agent presence and malformed-configuration scenarios.
+
+**Final:** Added `test/doctor-opencode-agent-preservation-step-2.test.js` for the focused scenarios and cleared both opencode configuration filenames before writing each malformed fixture.
+
+**Reason:** The installer-generated configuration masked test input, and the dedicated fixture kept each malformed case isolated while preserving the existing inventory suite.
+
+## Appendix: Execution Telemetry
+
+| Step | dispatch | phase | attempts | first_failure | note |
+|---|---|---|---|---|---|
+| 1 | writer | red | 1 | assertion | |
+| 1 | implementation | green | 1 | assertion | |
+| 1 | writer | green | 3 | assertion | Two focused runs exposed stale assertions; the third passed all 88 tests. |
+| 2 | writer | red | 3 | assertion | |
+| 2 | implementation | green | 1 | n/a | |
+| 2 | writer | green | 1 | n/a | |
