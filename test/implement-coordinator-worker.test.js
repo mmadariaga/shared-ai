@@ -163,8 +163,13 @@ test('installer collisions preserve unfamiliar content and provide remediation g
 
     fs.writeFileSync(configPath, opencodeSentinel);
     const opencodeResult = capture(() => installOpencode(opencodeBase));
-    assert.equal(fs.readFileSync(configPath, 'utf8'), opencodeSentinel);
-    assert.match(`${opencodeResult.output}\n${opencodeResult.error?.message || ''}`, /rename|remove|collision/i);
+    const opencodeConfig = jsonc.parse(fs.readFileSync(configPath, 'utf8'));
+    assert.deepEqual(opencodeConfig.agent['sai-3-implementation-worker'], {
+      mode: 'subagent',
+      model: 'user-model',
+    });
+    assert.ok(opencodeConfig.agent['sai-2-design-worker'], 'missing numbered worker should receive its repository default');
+    assert.match(`${opencodeResult.output}\n${opencodeResult.error?.message || ''}`, /Added opencode agent keys/);
   } finally {
     removeTempDir(claudeBase);
     removeTempDir(opencodeBase);

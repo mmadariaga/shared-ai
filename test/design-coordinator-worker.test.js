@@ -500,14 +500,20 @@ test('documentation records the active design compatibility boundary and managed
   assert.match(claude, /does not adopt|without adoption|non-adopt/i);
   assert.match(claude, /restart.*re-?install|re-?install.*restart/i);
 
-  assert.match(opencode, /sai-coordinator/);
-  assert.match(opencode, /sai-2-design-worker/);
+   assert.match(opencode, /sai-2-design-worker/);
+   assert.match(opencode, /sai-3-implementation-worker/);
+   assert.match(opencode, /existing.*agent.*(?:preserv|user-owned)|preserv.*existing.*agent/i);
+   assert.match(opencode, /absent.*(?:default|entry)|default.*absent/i);
+   assert.match(opencode, /configured.*(?:model|variant|mode|permissions).*runtime|runtime.*(?:model|variant|mode|permissions)/i);
+   assert.match(opencode, /no separate coordinator profile|do not reintroduce.*coordinator/i);
+   assert.match(opencode, /Claude worker files.*collision protection|collision protection.*Claude/i);
+   assert.match(opencode, /sai-2-design-worker/);
   assert.match(opencode, /variant.*high/);
   assert.match(opencode, /permission/);
-  assert.doesNotMatch(opencode, /agent: sai-coordinator/);
+   assert.doesNotMatch(opencode, /agent: sai-coordinator/);
   assert.match(opencode, /subtask: false/);
   assert.match(opencode, /variant: high/);
-  assert.match(opencode, /excludes?.*opencode\.json|opencode\.json.*excludes?/i);
+   assert.match(opencode, /configuration exclusion|excludes?.*opencode\.json|opencode\.json.*excludes?/i);
   assert.match(opencode, /restart opencode/i);
 
   assert.match(copilot, /remains inline/i);

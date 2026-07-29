@@ -7,6 +7,9 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 **Advisor Skill**: "A read-only consultation skill (`mid-advisor`, `senior-advisor`) that a cheaper pipeline phase escalates to — a subagent running the model tier of the phase above it — returning a structured advice report instead of editing anything."
 *Avoid*: consultant skill, oracle, reviewer skill, helper agent
 
+**Architecture Snapshot**: "The concise `interfaces.md` subsection under **Target State** that inventories planned public surfaces, project-root-relative paths, and portable ASCII relationships or execution flows for design review."
+*Avoid*: architecture summary, architecture diagram, interface overview
+
 **Attempts Per Phase**: "Field 9 of the `/sai-4-apply` Subagent Report Contract — a list of `{phase, attempts, first_failure, note}` entries, one per verification phase the dispatch actually ran, where `attempts` counts command runs regardless of outcome and `first_failure` draws on a closed vocabulary, and whose absence can never block the workflow."
 *Avoid*: retries, retry count, field 9 notes, iteration log, attempt log
 
@@ -86,6 +89,7 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 
 - An **Advisor Skill** is consulted by the phase directly below its model tier: `mid-advisor` by the `/sai-4-apply` coordinator, `senior-advisor` by `/sai-3-implement`.
 - An **Advisor Skill** is the inverse of a budget-* skill (escalates upward to smarter models rather than delegating downward to cheaper ones).
+- An **Architecture Snapshot** belongs to one **Target State** and is displayed before the sai-2 design feedback loop when its effective `interfaces.md` content is current or changed.
 - A **Backfilled Change** is archived via `/sai-archive` (the same command that archives non-backfilled changes).
 - A **Backfilled Change** is produced only by `/sai-backfill`; no other `sai-*` command writes `backfilled: true`.
 - A **Blind Test-Writer** precedes an **Implementation Dispatch** for every **Split-Routed Step**; the two never communicate directly — only the `/sai-4-apply` coordinator relays learnings between them.

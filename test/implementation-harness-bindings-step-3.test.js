@@ -203,6 +203,18 @@ test('Step 3 stops on incompatible Claude destinations while preserving customiz
       mode: 'subagent',
       model: 'user-model',
     });
+
+    const adr = fs.readFileSync(path.join(repoRoot, 'docs', 'adr', '0077-harness-specific-worker-bindings.md'), 'utf8');
+    const boundaries = fs.readFileSync(path.join(repoRoot, 'docs', 'adr', '0088-implementation-harness-projection-boundaries.md'), 'utf8');
+    const install = fs.readFileSync(path.join(repoRoot, 'INSTALL.opencode.md'), 'utf8');
+    const documentation = [adr, boundaries, install].join('\n');
+    assert.match(documentation, /sai-2-design-worker/);
+    assert.match(documentation, /sai-3-implementation-worker/);
+    assert.match(documentation, /existing.*(?:user-owned|preserv)|user-owned.*existing/i);
+    assert.match(documentation, /absent.*(?:default|bootstrap)|default.*(?:absent|missing)/i);
+    assert.match(documentation, /model.*variant.*mode.*permissions|configured.*runtime/i);
+    assert.match(documentation, /no separate coordinator profile|no .*coordinator profile|never.*coordinator/i);
+    assert.match(documentation, /Claude.*collision|collision.*Claude|non-opencode.*collision/i);
   } finally {
     fs.rmSync(claudeBase, { recursive: true, force: true });
     fs.rmSync(opencodeBase, { recursive: true, force: true });

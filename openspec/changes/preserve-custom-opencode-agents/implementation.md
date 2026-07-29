@@ -203,7 +203,7 @@ function managedOpencodeAgentRecords(harness) {
 
 *(Non-testable documentation step - standard format; existing structural tests provide automated verification.)*
 
-- [ ] In `docs/adr/0077-harness-specific-worker-bindings.md`, retain the title, status, structured relationship line, Claude ownership text, alternatives, and related links. Replace the stale opencode paragraphs in `## Decision` with:
+- [x] In `docs/adr/0077-harness-specific-worker-bindings.md`, retain the title, status, structured relationship line, Claude ownership text, alternatives, and related links. Replace the stale opencode paragraphs in `## Decision` with:
 
 ```markdown
 Opencode declares the logical coordinator runtime in each routed wrapper and uses only the current numbered worker entries: `sai-2-design-worker` and `sai-3-implementation-worker`. The repository definitions are bootstrap defaults for missing names. An existing opencode agent name is user-owned: installation preserves its complete definition without comparison or mutation, doctor accepts its own-name presence in a valid agent map, and runtime dispatch uses its configured model, variant, mode, and permissions.
@@ -211,40 +211,40 @@ Opencode declares the logical coordinator runtime in each routed wrapper and use
 Claude Code continues to block incompatible worker-file collisions. Opencode adds only absent agent names and never removes configuration entries on uninstall. Copilot receives no routed worker binding and keeps the inline route selected by its wrapper.
 ```
 
-- [ ] In `docs/adr/0088-implementation-harness-projection-boundaries.md`, keep the manifest and harness projection boundaries unchanged. Replace the final paragraph in `## Decision` with:
+- [x] In `docs/adr/0088-implementation-harness-projection-boundaries.md`, keep the manifest and harness projection boundaries unchanged. Replace the final paragraph in `## Decision` with:
 
 ```markdown
 Installer, doctor, and uninstall consume the same expanded projection graph. Exact-compatible unowned Claude agents remain user-owned, incompatible non-opencode destinations stop without overwrite, and unrelated opencode JSONC content remains unchanged. For opencode agent configuration specifically, an existing own name is preserved without definition comparison and a repository default is inserted only when that name is absent; doctor validates managed workers by name presence in a valid agent map.
 ```
 
-- [ ] In `docs/adr/0088-implementation-harness-projection-boundaries.md`, replace the opencode consequence that implies exact-compatible collision handling with:
+- [x] In `docs/adr/0088-implementation-harness-projection-boundaries.md`, replace the opencode consequence that implies exact-compatible collision handling with:
 
 ```markdown
 - Opencode worker defaults bootstrap missing names, while existing user-owned definitions control runtime behavior.
 ```
 
-- [ ] In both the Unix and PowerShell manual-install branches of `INSTALL.opencode.md`, add one sentence immediately before the emitted `agent` examples: `Existing agent names are user-owned; keep their definitions unchanged and add repository defaults only for names that are absent.`
+- [x] In both the Unix and PowerShell manual-install branches of `INSTALL.opencode.md`, add one sentence immediately before the emitted `agent` examples: `Existing agent names are user-owned; keep their definitions unchanged and add repository defaults only for names that are absent.`
 
-- [ ] Replace the second paragraph under `### Managed implementation agents` in `INSTALL.opencode.md` with:
+- [x] Replace the second paragraph under `### Managed implementation agents` in `INSTALL.opencode.md` with:
 
 ```markdown
 Installation preserves every existing agent definition by name and adds the repository default only when a name is absent. Existing `sai-3-implementation-worker` values, including model, variant, mode, and permissions, govern runtime dispatch; Kimi K2.6 is only the bootstrap default for a missing entry. A fully populated configuration is not rewritten. Parseable JSON/JSONC files retain comments, formatting, unrelated entries, and `opencode.json` precedence; malformed roots or agent maps remain unchanged and receive the existing manual-guidance fallback. Claude worker files and ordinary managed destinations retain their collision protection. Uninstall preserves opencode configuration under the existing config-merge exclusion. The opencode routed phases run under the active primary agent, which must permit native question and numbered-worker task dispatch; no separate coordinator profile is installed. Restart opencode after configuration changes.
 ```
 
-- [ ] Replace the second paragraph under `### Managed design agents` in `INSTALL.opencode.md` with:
+- [x] Replace the second paragraph under `### Managed design agents` in `INSTALL.opencode.md` with:
 
 ```markdown
 Installation preserves an existing `sai-2-design-worker` definition by name and adds the GLM 5.2 high-reasoning repository default only when the name is absent. Existing configured model, variant, mode, and permissions govern runtime dispatch. Doctor accepts the present name in a valid agent map and still reports missing names or malformed configuration as errors. Configuration exclusion means uninstall leaves both reused and bootstrapped entries intact. Restart opencode after configuration changes; reinstall after updates to refresh command, instruction, and both design/implementation binding skill files.
 ```
 
-- [ ] Update the documentation assertions in `test/design-coordinator-worker.test.js` and the final collision-policy assertions in `test/implementation-harness-bindings-step-3.test.js` so they require all of these invariants: both numbered workers are named, existing opencode names are preserved, missing names receive defaults, customized runtime values govern dispatch, no coordinator profile is restored, and Claude/non-opencode collision protection remains documented.
+- [x] Update the documentation assertions in `test/design-coordinator-worker.test.js` and the final collision-policy assertions in `test/implementation-harness-bindings-step-3.test.js` so they require all of these invariants: both numbered workers are named, existing opencode names are preserved, missing names receive defaults, customized runtime values govern dispatch, no coordinator profile is restored, and Claude/non-opencode collision protection remains documented.
 
 ##### Step 3 Verification Checklist
 
 **Automated (agent runs before stopping):**
-- [ ] `node --test test/design-coordinator-worker.test.js test/implementation-harness-bindings-step-3.test.js` - documentation and harness-boundary assertions pass.
-- [ ] `node --test test/install-opencode.test.js test/doctor-harness-inventory.test.js` - documented ownership behavior matches installer and doctor behavior.
-- [ ] `npm test` - full repository suite passes.
+- [x] `node --test test/design-coordinator-worker.test.js test/implementation-harness-bindings-step-3.test.js` - documentation and harness-boundary assertions pass.
+- [x] `node --test test/install-opencode.test.js test/doctor-harness-inventory.test.js` - documented ownership behavior matches installer and doctor behavior.
+- [x] `npm test` - full repository suite passes.
 
 *(No Human checks - accepted-policy wording, operator guidance, and cross-harness safeguards are covered by structural and behavioral tests.)*
 
@@ -274,6 +274,14 @@ This section documents deviations between the original plan and the code that wa
 
 **Reason:** The installer-generated configuration masked test input, and the dedicated fixture kept each malformed case isolated while preserving the existing inventory suite.
 
+### Step 3 — Additional stale full-suite assertion
+
+**Plan:** Modify only the documentation and assertion files named in Step 3.
+
+**Final:** Updated `test/implement-coordinator-worker.test.js` in addition to the named documentation and harness-binding test files.
+
+**Reason:** A stale full-suite assertion conflicted with the accepted opencode ownership behavior and had to be aligned for the required full suite to pass.
+
 ## Appendix: Execution Telemetry
 
 | Step | dispatch | phase | attempts | first_failure | note |
@@ -284,3 +292,4 @@ This section documents deviations between the original plan and the code that wa
 | 2 | writer | red | 3 | assertion | |
 | 2 | implementation | green | 1 | n/a | |
 | 2 | writer | green | 1 | n/a | |
+| 3 | single | green | 5 | assertion | Initial focused and full-suite runs exposed stale assertions; corrected and reran successfully |

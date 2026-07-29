@@ -26,15 +26,23 @@ The Claude Code wrapper SHALL run the implementation coordinator on `opus` and t
 - **THEN** guarded uninstall SHALL remove both the agent and sidecar; when the hash differs, uninstall SHALL preserve the agent and relinquish ownership without deleting user-modified content
 
 ### Requirement: Opencode coordinator-worker binding
-The opencode `/sai-3-implement` wrapper SHALL run the logical coordinator on GLM 5.2 with high reasoning declared in its own frontmatter (`model: opencode-go/glm-5.2`, `variant: high`, `subtask: false`, no `agent` field) and SHALL run the `sai-3-implementation-worker` subagent on Kimi K2.6 whose fixed reasoning is intrinsic model behavior. No coordinator agent entry SHALL be installed by SAI or selected by a SAI wrapper, so neither a coordinator task allowlist nor a coordinator `question` permission SHALL be shipped. This constrains what SAI installs and selects; it does not constrain what a user may independently define or activate as their primary agent. Both capabilities SHALL instead be preconditions on the active primary agent, as specified by `opencode-coordinator-runtime`: the invocation SHALL require native `question` and `task` dispatch to `sai-3-implementation-worker`, and this dependence SHALL be documented rather than guaranteed by shipped configuration. Removing the live permission probe SHALL NOT be read as a claim that the capabilities are always present. The binding SHALL capture the returned task ID as coordinator-owned dispatch metadata and continue the same explicit task worker by task ID when possible. The installer SHALL add the managed worker config entry only when absent or exactly compatible with the canonical managed shape; an incompatible existing entry SHALL NOT be overwritten, SHALL block activation with rename-or-remove remediation, and SHALL be reported by doctor and version-skew checks. Consistent with the existing config-merge exclusion, uninstall SHALL NOT remove or revert the opencode config entry, regardless of whether installation added or reused it.
+The opencode `/sai-3-implement` wrapper SHALL declare the logical coordinator runtime as GLM 5.2 with high reasoning in its own frontmatter and SHALL dispatch only the `sai-3-implementation-worker` subagent. The repository default for a missing `sai-3-implementation-worker` entry SHALL use Kimi K2.6, whose fixed reasoning is intrinsic model behavior. The wrapper SHALL not select or install a separate coordinator agent profile. The binding SHALL capture the returned task ID as coordinator-owned dispatch metadata and continue the same explicit task worker by task ID when possible. The installer SHALL add the `sai-3-implementation-worker` config entry only when absent and SHALL preserve an existing entry unchanged regardless of its model, variant, mode, permission, or other fields. Existing names SHALL be treated as user-owned, so definition differences SHALL NOT block activation or produce an incompatible-collision result. Doctor SHALL validate a present entry by name when the configuration parses and its agent map is an object, while missing names and malformed configurations SHALL remain errors. When an existing user-owned worker entry is selected at runtime, its configured model, variant, mode, and permissions SHALL govern that worker invocation; the repository Kimi default SHALL apply only to an entry added because the name was absent. Consistent with the existing config-merge exclusion, uninstall SHALL NOT remove or revert the opencode config entry, regardless of whether installation added or reused it.
 
 #### Scenario: Opencode implementation invocation
 - **WHEN** `/sai-3-implement` runs under opencode
 - **THEN** the coordinator SHALL use the wrapper-declared GLM 5.2 high-reasoning binding, the worker SHALL use its configured Kimi K2.6 binding, and the binding SHALL attach the returned task ID to `needs_input` as coordinator-owned continuation metadata
 
-#### Scenario: Opencode agent-name collision
-- **WHEN** `sai-3-implementation-worker` already exists with a shape that is not exactly compatible with the managed model, variant, mode, and permission fields
-- **THEN** installation and activation SHALL stop without overwriting the entry, doctor SHALL report the incompatible collision, and remediation SHALL instruct the user to rename or remove the conflicting definition before retrying
+#### Scenario: Existing customized opencode implementation entry
+- **WHEN** `sai-3-implementation-worker` already exists with a customized model, variant, mode, permission, or other fields
+- **THEN** installation SHALL preserve the entry unchanged, SHALL not report an incompatible collision, and SHALL allow activation to continue
+
+#### Scenario: Missing opencode implementation entry
+- **WHEN** `sai-3-implementation-worker` is absent
+- **THEN** installation SHALL add that entry with the canonical Kimi K2.6 managed shape
+
+#### Scenario: Customized worker runtime is honored
+- **WHEN** `/sai-3-implement` dispatches an existing user-owned `sai-3-implementation-worker` entry with a customized model or variant
+- **THEN** the invocation SHALL use that existing worker configuration without requiring the repository Kimi default
 
 #### Scenario: Opencode uninstall preserves merged entries
 - **WHEN** shared-AI is uninstalled after the managed opencode worker entry was added or reused
@@ -49,7 +57,7 @@ The Copilot implementation command SHALL preserve its existing inline execution 
 - **AND** it SHALL expose the documented compatibility limitation without an intermediate inline command loader
 
 ### Requirement: Managed implementation worker projections
-The single installation manifest SHALL project the canonical shared coordinator and worker-lifecycle contracts, the implementation worker contract, and only the active routed harness's implementation binding to Claude Code and opencode. Their runtime skills and Claude agent surface SHALL remain thin forwarders to those canonical sources. The Copilot projection SHALL retain `sai/orchestration/inline-invocation.md` and the caller-neutral compatibility assets required by its inline path, SHALL exclude both obsolete inline command loaders, and SHALL exclude routed orchestration bindings and routed implementation worker-agent surfaces. Installer, doctor, and uninstall SHALL derive these projections from the same manifest while preserving deterministic collision detection, managed-content drift checks, ownership sidecars, compatible-unowned reuse, user-modified-file retention, and opencode merged-config preservation. Exact-compatible pre-existing Claude worker agents SHALL be reused without rewriting or adopting ownership, and all unrelated entries in an existing opencode JSONC configuration SHALL remain unchanged.
+The single installation manifest SHALL project the canonical shared coordinator and worker-lifecycle contracts, the implementation worker contract, and only the active routed harness's implementation binding to Claude Code and opencode. Their runtime skills and Claude agent surface SHALL remain thin forwarders to those canonical sources. The Copilot projection SHALL retain `sai/orchestration/inline-invocation.md` and the caller-neutral compatibility assets required by its inline path, SHALL exclude both obsolete inline command loaders, and SHALL exclude routed orchestration bindings and routed implementation worker-agent surfaces. Installer, doctor, and uninstall SHALL derive these projections from the same manifest while preserving deterministic collision detection for ordinary managed files and Claude worker-agent definitions, presence-based opencode merged-config preservation, managed-content drift checks, ownership sidecars, compatible-unowned reuse, and user-modified-file retention. Exact-compatible pre-existing Claude worker agents SHALL be reused without rewriting or adopting ownership, and all unrelated entries in an existing opencode JSONC configuration SHALL remain unchanged.
 
 #### Scenario: Claude Code projection is installed
 - **WHEN** the manifest expands the Claude Code implementation surfaces
@@ -65,12 +73,12 @@ The single installation manifest SHALL project the canonical shared coordinator 
 
 #### Scenario: Opencode projection is installed
 - **WHEN** the manifest expands the opencode implementation surfaces
-- **THEN** it SHALL include the shared lifecycle sources, canonical implementation worker, opencode implementation binding, forwarding skill, and namespaced coordinator and worker configuration entries
+- **THEN** it SHALL include the shared lifecycle sources, canonical implementation worker, opencode implementation binding, forwarding skill, and the namespaced `sai-3-implementation-worker` configuration entry
 - **AND** it SHALL exclude the Claude binding subtree and Claude worker-agent projection
 - **AND** it SHALL exclude both obsolete inline command loaders
 
 #### Scenario: Opencode entries merge into existing JSONC
-- **WHEN** installation adds or reuses exact-compatible SAI-namespaced implementation entries in an existing opencode JSONC configuration
+- **WHEN** installation adds or reuses the namespaced `sai-3-implementation-worker` entry in an existing opencode JSONC configuration
 - **THEN** it SHALL preserve comments, formatting, and every unrelated model, agent, permission, plugin, and MCP entry
 - **AND** uninstall SHALL leave the merged SAI entries and all unrelated configuration intact under the existing config-merge exclusion
 - **AND** no unrelated JSONC entry SHALL be rewritten, removed, or adopted by the SAI projection

@@ -104,15 +104,27 @@ The GitHub Copilot `/sai-2-design` wrapper SHALL retain the existing inline desi
 - **THEN** the existing inline path SHALL execute without requiring the routed coordinator, design worker definition, or lifecycle continuation binding
 
 ### Requirement: Design binding definitions are collision-safe and ownership-aware
-Design coordinator and worker identifiers SHALL be SAI-namespaced. Installation SHALL create absent managed definitions, reuse exact-compatible pre-existing definitions without adopting ownership, and stop on incompatible collisions without overwriting user content. Claude worker uninstall SHALL delete only a SAI-created definition whose ownership record still matches its current content; modified or user-owned definitions SHALL be preserved. Opencode uninstall SHALL preserve pre-existing and installed namespaced configuration entries under the established policy.
+Design coordinator and worker identifiers SHALL be SAI-namespaced. Installation SHALL create absent managed definitions. For Claude worker definitions, installation SHALL reuse exact-compatible pre-existing definitions without adopting ownership, stop on incompatible collisions without overwriting user content, and preserve edited managed agents during guarded uninstall. For opencode definitions, the existing `sai-2-design-worker` name SHALL be treated as user-owned and preserved unchanged regardless of model, variant, mode, permission, or other fields; installation SHALL add the canonical GLM 5.2 high-reasoning definition only when that name is absent and SHALL NOT block on definition differences. Doctor SHALL accept a present `sai-2-design-worker` name when the configuration parses and its agent map is an object, while a missing name and malformed configurations SHALL remain errors. When `/sai-2-design` dispatches an existing user-owned worker entry, that entry's configured model, variant, mode, and permissions SHALL govern the worker invocation; the canonical GLM 5.2 default SHALL apply only to an entry added because the name was absent. Opencode uninstall SHALL preserve pre-existing and installed namespaced configuration entries under the established policy.
 
 #### Scenario: Compatible user-owned Claude worker exists
 - **WHEN** installation finds an exact-compatible `sai-design-planning-worker` definition without a SAI ownership record
 - **THEN** installation SHALL reuse it, SHALL NOT create an ownership record, and uninstall SHALL preserve it
 
-#### Scenario: Incompatible namespaced definition exists
-- **WHEN** installation finds an incompatible Claude agent file or opencode agent entry at a design coordinator or worker identifier
+#### Scenario: Incompatible Claude worker definition exists
+- **WHEN** installation finds an incompatible Claude agent file at a design coordinator or worker identifier
 - **THEN** installation SHALL stop with rename-or-remove remediation and SHALL NOT overwrite the definition or partially install the conflicting managed surface
+
+#### Scenario: Customized opencode design entry exists
+- **WHEN** installation finds an existing `sai-2-design-worker` opencode agent entry with customized model, variant, mode, permission, or other fields
+- **THEN** installation SHALL preserve the entry unchanged, SHALL NOT report an incompatible collision, and SHALL continue processing missing names
+
+#### Scenario: Customized design worker runtime is honored
+- **WHEN** `/sai-2-design` dispatches an existing user-owned `sai-2-design-worker` entry with a customized model or variant
+- **THEN** the invocation SHALL use that existing worker configuration without requiring the canonical GLM 5.2 default
+
+#### Scenario: Missing opencode design entry exists
+- **WHEN** the `sai-2-design-worker` opencode entry is absent
+- **THEN** installation SHALL add the canonical GLM 5.2 high-reasoning managed definition
 
 #### Scenario: SAI-created Claude worker was edited
 - **WHEN** uninstall finds a worker ownership record but the current worker content no longer matches its recorded managed hash

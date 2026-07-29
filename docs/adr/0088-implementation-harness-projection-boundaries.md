@@ -14,7 +14,7 @@ Implementation planning has routed Claude Code and opencode worker bindings but 
 
 The single installation manifest remains the source of truth for implementation projections. Claude Code receives the shared lifecycle sources, implementation worker, Claude binding, forwarding skill, and managed worker agent. Opencode receives the shared lifecycle sources, implementation worker, opencode binding, forwarding skill, and namespaced worker configuration. Copilot receives the inline command and caller-neutral compatibility assets but no routed orchestration or routed worker-agent surfaces.
 
-Installer, doctor, and uninstall consume the same expanded projection graph. Exact-compatible unowned Claude agents remain user-owned, incompatible destinations stop without overwrite, and unrelated opencode JSONC content remains unchanged.
+Installer, doctor, and uninstall consume the same expanded projection graph. Exact-compatible unowned Claude agents remain user-owned, incompatible non-opencode destinations stop without overwrite, and unrelated opencode JSONC content remains unchanged. For opencode agent configuration specifically, an existing own name is preserved without definition comparison and a repository default is inserted only when that name is absent; doctor validates managed workers by name presence in a valid agent map.
 
 ## Alternatives Considered
 
@@ -27,6 +27,7 @@ Installer, doctor, and uninstall consume the same expanded projection graph. Exa
 - Harness boundaries are explicit and testable in one manifest.
 - Installer safety behavior remains generic rather than implementation-specific.
 - Adding another routed harness requires a separate binding, projection, and parity decision.
+- Opencode worker defaults bootstrap missing names, while existing user-owned definitions control runtime behavior.
 
 ## Related
 
