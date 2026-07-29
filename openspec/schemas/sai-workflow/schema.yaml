@@ -182,6 +182,13 @@ artifacts:
       artifact) before the first `## Step N` — the only admitted leading non-step section; `None`
       with a one-line reason when no finished shape is expressible.
 
+      Directly beneath `## Target State`, emit exactly one `### Architecture Snapshot`. Inventory each
+      planned public class, interface, and method with its project-root-relative path, and show relevant
+      relationships or execution flows with portable ASCII notation. Do not emit absolute paths. When
+      there are no planned public surfaces, emit `None — no planned public surfaces` followed by a
+      one-line reason; do not invent file-level entries as substitutes. The `## Step N` sections remain
+      authoritative for step attribution, detailed signatures, and exact test assertions.
+
       Keyed by ## Step N using the same integer keys as tasks.md. Emit one section per step that
       introduces a new/modified public interface or a testable assertion; each section has two parts:
       - **Interfaces**: new/modified public signatures only (function/method signatures, exported

@@ -606,3 +606,24 @@ test('design install and uninstall preserve incompatible numbered destination co
     removeTempDir(base);
   }
 });
+
+test('interfaces contract defines one portable architecture snapshot under Target State', () => {
+  const instruction = artifact('sai/instructions/design.md');
+  const schema = artifact('openspec/schemas/sai-workflow/schema.yaml');
+  const template = artifact('openspec/schemas/sai-workflow/templates/interfaces.md');
+
+  for (const contract of [instruction, schema, template]) {
+    assert.match(contract, /### Architecture Snapshot/);
+    assert.match(contract, /project-root-relative/);
+    assert.match(contract, /ASCII/);
+    assert.match(contract, /None — no planned public surfaces/);
+    assert.match(contract, /one-line reason/);
+    assert.match(contract, /(?:do not|does not|shall not|must not) invent file-level/i);
+    assert.match(contract, /## Step N[\s\S]{0,180}(?:authoritative|authority)/i);
+  }
+
+  const targetState = instruction.indexOf('`## Target State`');
+  const snapshot = instruction.indexOf('`### Architecture Snapshot`', targetState);
+  assert.ok(targetState !== -1 && snapshot > targetState,
+    'Architecture Snapshot should be defined beneath Target State');
+});
