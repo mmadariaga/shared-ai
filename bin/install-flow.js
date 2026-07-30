@@ -482,32 +482,136 @@ function printOpencodeConfigMessage(base) {
   console.log('\nAdjust the model to your preferred low-cost provider.');
 }
 
-// Returns { text, added } on a successful (possibly no-op) merge, or null to
-// signal the caller must fall back to printOpencodeConfigMessage.
-function mergeOpencodeAgents(text) {
-  if (!jsoncParser) {
-    return null;
+const OPENCODE_SAI_PERMISSION_PATTERN = '~/.config/opencode/sai/**';
+const PERMISSION_ACTIONS = new Set(['allow', 'ask', 'deny']);
+
+function isPlainObject(value) {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function createPermissionMatchContext(overrides = {}) {
+  return {
+    homeDirectory: overrides.homeDirectory || os.homedir(),
+    caseSensitive: overrides.caseSensitive ?? process.platform !== 'win32',
+    separators: overrides.separators || ['/', '\\'],
+  };
+}
+
+function normalizePermissionPattern(value, context) {
+  let expanded = value;
+  if (expanded === '~') expanded = context.homeDirectory;
+  else if (expanded.startsWith('~/') || expanded.startsWith('~\\')) {
+    expanded = context.homeDirectory + expanded.slice(1);
+  } else if (expanded === '$HOME') expanded = context.homeDirectory;
+  else if (expanded.startsWith('$HOME/') || expanded.startsWith('$HOME\\')) {
+    expanded = context.homeDirectory + expanded.slice(5);
   }
+
+  for (const separator of context.separators) {
+    if (separator !== '/') expanded = expanded.split(separator).join('/');
+  }
+
+  const prefix = expanded.startsWith('/') ? '/' : '';
+  const segments = [];
+  for (const segment of expanded.split('/')) {
+    if (!segment || segment === '.') continue;
+    if (segment === '..' && segments.length > 0 && segments.at(-1) !== '..') {
+      segments.pop();
+      continue;
+    }
+    segments.push(segment);
+  }
+  const normalized = prefix + segments.join('/');
+  return context.caseSensitive ? normalized : normalized.toLowerCase();
+}
+
+function wildcardMatches(value, pattern) {
+  const expression = pattern
+    .replace(/[.+^${}()|[\]\\]/g, '\\$&')
+    .replace(/\*/g, '.*')
+    .replace(/\?/g, '.');
+  return new RegExp(`^${expression}$`, 's').test(value);
+}
+
+function invalidPermissionResult(text, location, detail) {
+  return {
+    text,
+    added: [],
+    messages: [
+      `OpenCode SAI permission: no change for ${OPENCODE_SAI_PERMISSION_PATTERN}; ${location} has invalid ${detail}; expected allow, ask, deny, or a rule object.`,
+    ],
+  };
+}
+
+function classifySaiPermission(permission, context) {
+  if (permission === undefined) return { action: 'append' };
+  if (typeof permission === 'string') {
+    if (!PERMISSION_ACTIONS.has(permission)) {
+      return { invalid: ['permission', 'action'] };
+    }
+    return { action: 'preserve-scalar', value: permission, location: 'permission' };
+  }
+  if (Array.isArray(permission)) return { invalid: ['permission', 'array'] };
+  if (!isPlainObject(permission)) return { invalid: ['permission', 'shape'] };
+
+  const external = permission.external_directory;
+  if (external === undefined) return { action: 'append' };
+  if (typeof external === 'string') {
+    if (!PERMISSION_ACTIONS.has(external)) {
+      return { invalid: ['permission.external_directory', 'action'] };
+    }
+    return { action: 'preserve-scalar', value: external, location: 'permission.external_directory' };
+  }
+  if (!isPlainObject(external)) return { invalid: ['permission.external_directory', 'shape'] };
+
+  const generated = normalizePermissionPattern(OPENCODE_SAI_PERMISSION_PATTERN, context);
+  const probe = normalizePermissionPattern('~/.config/opencode/sai/__sai_probe__', context);
+  let equivalent = false;
+  let equivalentCandidate;
+  let effective;
+  for (const [candidate, action] of Object.entries(external)) {
+    if (!PERMISSION_ACTIONS.has(action)) {
+      return {
+        invalid: [
+          'permission.external_directory',
+          'action',
+        ],
+      };
+    }
+    const normalized = normalizePermissionPattern(candidate, context);
+    if (normalized === generated) {
+      equivalent = true;
+      equivalentCandidate = candidate;
+    }
+    if (wildcardMatches(probe, normalized)) effective = action;
+  }
+
+  if (effective === 'ask' || effective === 'deny') {
+    return { action: 'restricted', value: effective, equivalentCandidate };
+  }
+  return { action: equivalent ? 'unchanged' : 'append' };
+}
+
+function mergeOpencodeAgents(text, permissionContext = createPermissionMatchContext()) {
+  if (!jsoncParser) return null;
   const { parse, modify, applyEdits } = jsoncParser;
   const errors = [];
   const root = parse(text, errors, { allowTrailingComma: true });
-  if (errors.length > 0) {
-    return null;
-  }
-  if (root === null || typeof root !== 'object' || Array.isArray(root)) {
-    return null;
-  }
-  if (Object.keys(root).length === 0) {
-    return null;
-  }
+  if (errors.length > 0 || !isPlainObject(root) || Object.keys(root).length === 0) return null;
+
   const hasAgent = Object.prototype.hasOwnProperty.call(root, 'agent');
-  if (hasAgent && (root.agent === null || typeof root.agent !== 'object' || Array.isArray(root.agent))) {
-    return null;
+  if (hasAgent && !isPlainObject(root.agent)) return null;
+
+  const permissionState = classifySaiPermission(root.permission, permissionContext);
+  if (permissionState.invalid) {
+    return invalidPermissionResult(text, permissionState.invalid[0], permissionState.invalid[1]);
   }
-  const existing = hasAgent ? root.agent : {};
+
   const formattingOptions = { insertSpaces: true, tabSize: 2 };
   let out = text;
   const added = [];
+  const messages = [];
+  const existing = hasAgent ? root.agent : {};
   const shapes = {
     explore: { mode: 'subagent', model: OPENCODE_PLACEHOLDER_MODEL },
     executor: { mode: 'subagent', model: OPENCODE_PLACEHOLDER_MODEL },
@@ -516,19 +620,46 @@ function mergeOpencodeAgents(text) {
   };
 
   for (const [key, shape] of Object.entries(shapes)) {
-    if (Object.prototype.hasOwnProperty.call(existing, key)) {
-      continue;
-    }
-    const edits = modify(
-      out,
-      ['agent', key],
-      shape,
-      { formattingOptions }
-    );
-    out = applyEdits(out, edits);
+    if (Object.prototype.hasOwnProperty.call(existing, key)) continue;
+    out = applyEdits(out, modify(out, ['agent', key], shape, { formattingOptions }));
     added.push(key);
   }
-  return { text: out, added };
+
+  if (permissionState.action === 'append') {
+    if (root.permission === undefined) {
+      out = applyEdits(out, modify(out, ['permission'], {}, { formattingOptions }));
+    }
+    out = applyEdits(out, modify(
+      out,
+      ['permission', 'external_directory', OPENCODE_SAI_PERMISSION_PATTERN],
+      'allow',
+      { formattingOptions },
+    ));
+  } else if (permissionState.action === 'restricted') {
+    if (permissionState.equivalentCandidate !== undefined) {
+      out = applyEdits(out, modify(
+        out,
+        ['permission', 'external_directory', permissionState.equivalentCandidate],
+        permissionState.value,
+        { formattingOptions },
+      ));
+    }
+    messages.push(
+      `OpenCode SAI permission: preserved ${permissionState.value} for ${OPENCODE_SAI_PERMISSION_PATTERN}; explicit user restriction prevents automatic SAI access.`,
+    );
+  } else if (permissionState.action === 'preserve-scalar') {
+    if (permissionState.value === 'allow') {
+      messages.push(
+        `OpenCode SAI permission: preserved allow at ${permissionState.location}; existing broad user permission allows ${OPENCODE_SAI_PERMISSION_PATTERN}.`,
+      );
+    } else {
+      messages.push(
+        `OpenCode SAI permission: preserved ${permissionState.value} for ${OPENCODE_SAI_PERMISSION_PATTERN}; explicit user restriction prevents automatic SAI access.`,
+      );
+    }
+  }
+
+  return { text: out, added, messages };
 }
 
 function copyOpencodeConfig(destBase) {
@@ -550,10 +681,13 @@ function copyOpencodeConfig(destBase) {
     return;
   }
 
-  if (merged.added.length > 0) {
+  if (merged.text !== fs.readFileSync(target, 'utf8')) {
     fs.writeFileSync(target, merged.text);
+  }
+  if (merged.added.length > 0) {
     console.log(`Added opencode agent keys to ${target}: ${merged.added.join(', ')}. Adjust the placeholder model "${OPENCODE_PLACEHOLDER_MODEL}" to your preferred low-cost provider.`);
   }
+  for (const message of merged.messages) console.log(message);
 }
 
 function detectInstalledEditors() {
@@ -662,4 +796,10 @@ module.exports = {
   sha256Buffer,
   installClaudeImplementationWorker,
   installClaudeManagedWorker,
+  __test: {
+    mergeOpencodeAgents,
+    createPermissionMatchContext,
+    normalizePermissionPattern,
+    wildcardMatches,
+  },
 };

@@ -157,7 +157,10 @@ test('preserves commented JSONC and non-SAI settings through namespaced opencode
     const parsed = jsonc.parse(installed);
     assert.ok(installed.includes('// preserve this comment'), 'existing comment should survive');
     assert.equal(parsed.theme, 'dark');
-    assert.deepEqual(parsed.permission, { bash: 'deny' });
+     assert.deepEqual(parsed.permission, {
+       bash: 'deny',
+       external_directory: { '~/.config/opencode/sai/**': 'allow' },
+     });
     assert.deepEqual(parsed.agent.custom, { mode: 'subagent', model: 'custom-model' });
     assert.deepEqual(parsed.agent.explore, { mode: 'subagent', model: 'user-explore' });
     assert.deepEqual(parsed.agent.executor, { mode: 'subagent', model: 'user-executor' });

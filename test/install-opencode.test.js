@@ -12,6 +12,7 @@ const jsonc = require('jsonc-parser');
 
 const AGENT_PLACEHOLDER = { mode: 'subagent', model: 'opencode-go/deepseek-v4-flash' };
 const AGENT_KEYS = ['explore', 'executor', 'budget'];
+const SAI_EXTERNAL_DIRECTORY = '~/.config/opencode/sai/**';
 
 test('installOpencode copies commands/opencode/*.md to dest/commands/', () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-'));
@@ -188,7 +189,7 @@ test('copyOpencodeConfig preserves comments and unrelated keys', () => {
   assert.ok(raw.includes('"theme"'), 'theme key should survive');
   const parsed = jsonc.parse(raw);
   assert.equal(parsed.theme, 'dark', 'theme value should be unchanged');
-  assert.deepEqual(Object.keys(parsed).sort(), ['agent', 'theme'].sort(), 'only agent and theme should be top-level keys');
+  assert.deepEqual(Object.keys(parsed).sort(), ['agent', 'permission', 'theme'].sort(), 'only agent, permission, and theme should be top-level keys');
   for (const key of AGENT_KEYS) {
     assert.deepEqual(parsed.agent[key], AGENT_PLACEHOLDER, `agent.${key} should be added`);
   }
@@ -225,7 +226,7 @@ test('copyOpencodeConfig does not overwrite existing target key', () => {
 
 test('copyOpencodeConfig is idempotent when fully configured with all agents', () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-'));
-  const config = { agent: {} };
+  const config = { permission: { external_directory: { [SAI_EXTERNAL_DIRECTORY]: 'allow' } }, agent: {} };
   for (const key of AGENT_KEYS) config.agent[key] = { ...AGENT_PLACEHOLDER };
   for (const [key, shape] of Object.entries(OPENCODE_MANAGED_AGENTS)) config.agent[key] = JSON.parse(JSON.stringify(shape));
   fs.writeFileSync(path.join(tmpDir, 'opencode.json'), JSON.stringify(config, null, 2));
@@ -244,6 +245,7 @@ test('installOpencode preserves commented JSONC with compatible namespaced agent
   const configPath = path.join(tmpDir, 'opencode.jsonc');
   const config = {
     displayName: 'unrelated project',
+    permission: { external_directory: { [SAI_EXTERNAL_DIRECTORY]: 'allow' } },
     agent: Object.fromEntries([
       ...AGENT_KEYS.map(key => [key, { ...AGENT_PLACEHOLDER }]),
       ...Object.entries(OPENCODE_MANAGED_AGENTS),
@@ -572,7 +574,7 @@ test('copyOpencodeConfig leaves fully populated numbered configuration byte-iden
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-byte-'));
   const config = {
     theme: 'custom',
-    permission: { bash: 'deny' },
+    permission: { bash: 'deny', external_directory: { [SAI_EXTERNAL_DIRECTORY]: 'allow' } },
     agent: Object.fromEntries([
       ...AGENT_KEYS.map(name => [name, { ...AGENT_PLACEHOLDER, model: `user-${name}` }]),
       ...Object.entries(OPENCODE_MANAGED_AGENTS).map(([name, value]) => [name, {
@@ -629,5 +631,207 @@ test('copyOpencodeConfig protects malformed roots and agent maps in both config 
   } finally {
     console.log = originalLog;
     fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+});
+
+// --- Step 1: external-directory permission merge tests ---
+
+function permissionStepTempDir() {
+  return fs.mkdtempSync(path.join(os.tmpdir(), 'sai-permission-step-1-'));
+}
+
+function writePermissionConfig(dir, name, value) {
+  const content = typeof value === 'string' ? value : JSON.stringify(value, null, 2);
+  fs.writeFileSync(path.join(dir, name), content);
+  return content;
+}
+
+function readPermissionConfig(dir, name) {
+  return jsonc.parse(fs.readFileSync(path.join(dir, name), 'utf8'));
+}
+
+function capturePermissionOutput(fn) {
+  const messages = [];
+  const originalLog = console.log;
+  console.log = message => messages.push(String(message));
+  try {
+    fn();
+  } finally {
+    console.log = originalLog;
+  }
+  return messages;
+}
+
+test('Step 1 fresh install grants narrow SAI external-directory access and retains managed agents', () => {
+  const dir = permissionStepTempDir();
+  try {
+    installOpencode(dir);
+    const name = fs.existsSync(path.join(dir, 'opencode.json')) ? 'opencode.json' : 'opencode.jsonc';
+    const config = readPermissionConfig(dir, name);
+    assert.equal(config.permission.external_directory[SAI_EXTERNAL_DIRECTORY], 'allow');
+    assert.ok(config.permission.read, 'SAI read permissions should remain present');
+    assert.ok(config.agent, 'managed agents should remain present');
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('Step 1 JSON-only and JSONC-only object permissions append exactly one narrow rule', () => {
+  for (const name of ['opencode.json', 'opencode.jsonc']) {
+    const dir = permissionStepTempDir();
+    try {
+      writePermissionConfig(dir, name, { permission: { read: { [SAI_EXTERNAL_DIRECTORY]: 'allow' }, external_directory: { '*.md': 'ask' } } });
+      copyOpencodeConfig(dir);
+      const config = readPermissionConfig(dir, name);
+      assert.equal(config.permission.external_directory[SAI_EXTERNAL_DIRECTORY], 'allow');
+      assert.equal(Object.keys(config.permission.external_directory).length, 2);
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  }
+});
+
+test('Step 1 changes only opencode.json when both config files exist', () => {
+  const dir = permissionStepTempDir();
+  const jsoncContent = '// untouched\n{ "permission": { "external_directory": { "*.md": "ask" } } }\n';
+  try {
+    writePermissionConfig(dir, 'opencode.json', { permission: { external_directory: { '*.md': 'ask' } } });
+    writePermissionConfig(dir, 'opencode.jsonc', jsoncContent);
+    copyOpencodeConfig(dir);
+    assert.equal(fs.readFileSync(path.join(dir, 'opencode.jsonc'), 'utf8'), jsoncContent);
+    assert.equal(readPermissionConfig(dir, 'opencode.json').permission.external_directory[SAI_EXTERNAL_DIRECTORY], 'allow');
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('Step 1 preserves comments, unrelated values, agents, plugins, MCP entries, and rule order', () => {
+  const dir = permissionStepTempDir();
+  const fixture = `// keep this comment\n${JSON.stringify({
+    permission: { external_directory: { first: 'ask', second: 'deny' } },
+    agent: { custom: { model: 'user-model' } },
+    plugin: ['user-plugin'],
+    mcp: { local: { command: 'user-command' } },
+  }, null, 2)}\n`;
+  try {
+    writePermissionConfig(dir, 'opencode.jsonc', fixture);
+    copyOpencodeConfig(dir);
+    const raw = fs.readFileSync(path.join(dir, 'opencode.jsonc'), 'utf8');
+    const config = jsonc.parse(raw);
+    assert.match(raw, /keep this comment/);
+    assert.deepEqual(config.agent.custom, { model: 'user-model' });
+    assert.deepEqual(config.plugin, ['user-plugin']);
+    assert.deepEqual(config.mcp.local, { command: 'user-command' });
+    assert.deepEqual(Object.keys(config.permission.external_directory), ['first', 'second', SAI_EXTERNAL_DIRECTORY]);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('Step 1 treats wildcard as broad, and normalized equivalent SAI spellings as existing', () => {
+  const absolute = path.join(os.homedir(), '.config', 'opencode', 'sai', '**');
+  const variants = [
+    '*',
+    absolute,
+    absolute.replaceAll(path.sep, path.sep === '/' ? '\\' : '/'),
+    '~/.config/opencode/./sai/**',
+  ];
+  for (const existing of variants) {
+    const dir = permissionStepTempDir();
+    try {
+      writePermissionConfig(dir, 'opencode.json', { permission: { external_directory: { [existing]: 'allow' } } });
+      copyOpencodeConfig(dir);
+      const rules = readPermissionConfig(dir, 'opencode.json').permission.external_directory;
+      if (existing === '*') assert.equal(Object.keys(rules).length, 2);
+      else assert.equal(Object.keys(rules).length, 1);
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  }
+});
+
+test('Step 1 respects effective rule order for broad deny and narrow allow or deny', () => {
+  const cases = [
+    { rules: { '*': 'deny', [SAI_EXTERNAL_DIRECTORY]: 'allow' }, expected: 'allow' },
+    { rules: { [SAI_EXTERNAL_DIRECTORY]: 'allow', '*': 'deny' }, expected: 'deny' },
+  ];
+  for (const { rules, expected } of cases) {
+    const dir = permissionStepTempDir();
+    try {
+      writePermissionConfig(dir, 'opencode.json', { permission: { external_directory: rules } });
+      copyOpencodeConfig(dir);
+      const config = readPermissionConfig(dir, 'opencode.json');
+      assert.equal(config.permission.external_directory[SAI_EXTERNAL_DIRECTORY], expected);
+      assert.equal(Object.keys(config.permission.external_directory).length, 2);
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  }
+});
+
+test('Step 1 preserves valid scalar permissions and reports broad access or restriction', () => {
+  for (const [location, action] of [['permission', 'allow'], ['permission', 'ask'], ['permission.external_directory', 'deny'], ['permission.external_directory', 'allow']]) {
+    const dir = permissionStepTempDir();
+    try {
+      const permission = location === 'permission' ? action : { external_directory: action };
+      writePermissionConfig(dir, 'opencode.json', { permission });
+      const messages = capturePermissionOutput(() => copyOpencodeConfig(dir));
+      const config = readPermissionConfig(dir, 'opencode.json');
+      if (location === 'permission') assert.equal(config.permission, action);
+      else assert.equal(config.permission.external_directory, action);
+      if (action === 'allow') assert.ok(messages.some(message => message === `OpenCode SAI permission: preserved allow at ${location}; existing broad user permission allows ${SAI_EXTERNAL_DIRECTORY}.`));
+      else assert.ok(messages.some(message => message === `OpenCode SAI permission: preserved ${action} for ${SAI_EXTERNAL_DIRECTORY}; explicit user restriction prevents automatic SAI access.`));
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  }
+});
+
+test('Step 1 rejects invalid permission inputs without partial writes', () => {
+  const cases = [
+    ['permission', ['array'], 'array'],
+    ['permission', 'maybe', 'action'],
+    ['permission.external_directory', ['array'], 'shape'],
+    ['permission.external_directory', { [SAI_EXTERNAL_DIRECTORY]: 'maybe' }, 'action'],
+  ];
+  for (const [location, value, diagnostic] of cases) {
+    const dir = permissionStepTempDir();
+    try {
+      const config = location === 'permission' ? { permission: value } : { permission: { external_directory: value } };
+      writePermissionConfig(dir, 'opencode.json', config);
+      const messages = capturePermissionOutput(() => copyOpencodeConfig(dir));
+      const after = readPermissionConfig(dir, 'opencode.json');
+      assert.deepEqual(after.permission, config.permission);
+      assert.ok(messages.some(message => message === `OpenCode SAI permission: no change for ${SAI_EXTERNAL_DIRECTORY}; ${location} has invalid ${diagnostic}; expected allow, ask, deny, or a rule object.`));
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  }
+});
+
+test('Step 1 leaves effective configuration and bytes unchanged on a second installation', () => {
+  const dir = permissionStepTempDir();
+  try {
+    writePermissionConfig(dir, 'opencode.json', { permission: { external_directory: { '*.md': 'ask' } } });
+    copyOpencodeConfig(dir);
+    const firstBytes = fs.readFileSync(path.join(dir, 'opencode.json'));
+    const firstConfig = readPermissionConfig(dir, 'opencode.json');
+    copyOpencodeConfig(dir);
+    assert.deepEqual(readPermissionConfig(dir, 'opencode.json'), firstConfig);
+    assert.deepEqual(fs.readFileSync(path.join(dir, 'opencode.json')), firstBytes);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('Step 1 does not treat permission.read as external-directory access', () => {
+  const dir = permissionStepTempDir();
+  try {
+    writePermissionConfig(dir, 'opencode.json', { permission: { read: { [SAI_EXTERNAL_DIRECTORY]: 'allow' } } });
+    copyOpencodeConfig(dir);
+    const config = readPermissionConfig(dir, 'opencode.json');
+    assert.equal(config.permission.external_directory[SAI_EXTERNAL_DIRECTORY], 'allow');
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
   }
 });
