@@ -115,6 +115,26 @@ else
     echo '    "sai-2-design-worker": { "mode": "subagent", "model": "opencode-go/glm-5.2", "variant": "high", "permission": { "task": { "*": "deny", "explore": "allow" } } }'
     echo '  }'
 fi
+
+# Manual edits are needed only when automatic installation cannot safely merge the file.
+# This is the narrow external-directory authorization:
+# {
+#   "permission": {
+#     "external_directory": {
+#       "~/.config/opencode/sai/**": "allow"
+#     }
+#   }
+# }
+```
+
+```jsonc
+{
+  "permission": {
+    "external_directory": {
+      "~/.config/opencode/sai/**": "allow"
+    }
+  }
+}
 ```
 
 ### Windows (PowerShell)
@@ -204,6 +224,26 @@ if (-not (Test-Path $jsonPath) -and -not (Test-Path $jsoncPath)) {
     Write-Host '    "sai-2-design-worker": { "mode": "subagent", "model": "opencode-go/glm-5.2", "variant": "high", "permission": { "task": { "*": "deny", "explore": "allow" } } }'
     Write-Host '  }'
 }
+
+# Manual edits are needed only when automatic installation cannot safely merge the file.
+# This is the narrow external-directory authorization:
+# {
+#   "permission": {
+#     "external_directory": {
+#       "~/.config/opencode/sai/**": "allow"
+#     }
+#   }
+# }
+```
+
+```jsonc
+{
+  "permission": {
+    "external_directory": {
+      "~/.config/opencode/sai/**": "allow"
+    }
+  }
+}
 ```
 
 ### Managed implementation agents
@@ -213,6 +253,24 @@ The canonical opencode sample sets `subagent_depth: 2`, uses `opencode-go/glm-5.
 Installation preserves every existing agent definition by name and adds the repository default only when a name is absent. Existing `sai-3-implementation-worker` values, including model, variant, mode, and permissions, govern runtime dispatch; Kimi K2.6 is only the bootstrap default for a missing entry. A fully populated configuration is not rewritten. Parseable JSON/JSONC files retain comments, formatting, unrelated entries, and `opencode.json` precedence; malformed roots or agent maps remain unchanged and receive the existing manual-guidance fallback. Claude worker files and ordinary managed destinations retain their collision protection. Uninstall preserves opencode configuration under the existing config-merge exclusion. The opencode routed phases run under the active primary agent, which must permit native question and numbered-worker task dispatch; no separate coordinator profile is installed. Restart opencode after configuration changes.
 
 This is the opencode harness adapter. Claude Code uses its managed worker agent and ownership sidecar, while GitHub Copilot keeps the inline implementation boundary for this slice because there is no portable coordinator-worker continuation contract. Copilot has subagent support; its inline boundary is a portability choice.
+
+Automatic installation surgically merges `permission.external_directory["~/.config/opencode/sai/**"] = "allow"` into the selected OpenCode configuration. The permission trusts only the installed SAI prompt tree; it does not allow every external directory. This permission is separate from `permission.read`: read access alone does not authorize a tool to cross the workspace boundary.
+
+Automatic installation merges rather than overwrites user settings and preserves user comments.
+Automatic installation merges rather than overwrite user settings.
+
+This external-directory authorization is intentionally narrower than read access and applies only to the installed SAI prompt tree.
+External-directory authorization is separate from read authorization; do not grant broad external-directory access.
+
+The merge preserves comments, formatting, unrelated permissions, agents, plugins, MCP entries, and user rule order. When both files exist, `opencode.json` is the merge target and `opencode.jsonc` remains unchanged. Equivalent tilde, `$HOME`, absolute-home, separator, dot-segment, and host-case spellings are not duplicated. An effective user `ask` or `deny` rule is never overridden.
+
+Installer diagnostics write these stable stdout diagnostic forms:
+
+- `OpenCode SAI permission: preserved <ask|deny> for ~/.config/opencode/sai/**; explicit user restriction prevents automatic SAI access.`
+- `OpenCode SAI permission: preserved allow at <permission|permission.external_directory>; existing broad user permission allows ~/.config/opencode/sai/**.`
+- `OpenCode SAI permission: no change for ~/.config/opencode/sai/**; <location> has invalid <shape-or-action>; expected allow, ask, deny, or a rule object.`
+
+Effective allow passes without a prompt.
 
 ### Managed design agents
 
@@ -234,6 +292,16 @@ cp -r openspec/schemas/sai-workflow /path/to/your/project/openspec/schemas/
 # 3. Edit openspec/config.yaml in your project and set:
 #    schema: sai-workflow
 ```
+
+Restart or reload OpenCode after installation, then invoke one SAI command that reads its global prompt or binding under `~/.config/opencode/sai/`.
+
+- Effective `allow`: pass means access is allowed with no prompt; any prompt or block is failure.
+- Preserved `ask`: pass means installation printed the matching install notice and runtime prompt; silence or a block is failure.
+- Preserved `deny`: pass means installation printed the matching install notice and runtime prompt or block; silence is failure.
+
+For preserved `ask`, the pass condition is a matching install notice followed by a runtime prompt.
+
+A matching `permission.read` rule without the narrow `permission.external_directory` authorization fails this check. Do not replace the narrow rule with a wildcard that trusts every external directory.
 
 ## Post Install
 

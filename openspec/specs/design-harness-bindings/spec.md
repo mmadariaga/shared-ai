@@ -129,3 +129,22 @@ Design coordinator and worker identifiers SHALL be SAI-namespaced. Installation 
 #### Scenario: SAI-created Claude worker was edited
 - **WHEN** uninstall finds a worker ownership record but the current worker content no longer matches its recorded managed hash
 - **THEN** uninstall SHALL preserve the worker definition and remove only stale ownership metadata according to the established guarded-uninstall policy
+
+### Requirement: opencode design permission verification covers the SAI directory
+
+The routed OpenCode design-binding activation checks SHALL verify that the active OpenCode configuration grants external-directory access to the narrow SAI global prompt path `~/.config/opencode/sai/**`. The resulting configuration assertion SHALL be owned by the OpenCode installer integration tests in `test/install-opencode.test.js`. Runtime no-additional-prompt behavior SHALL be a documented manual verification in the `Post-install` section of `INSTALL.opencode.md`, not an assumption about a non-existent automated live probe. The check SHALL reject a configuration that relies only on `permission.read`, and SHALL NOT require or recommend a wildcard trust rule for all external directories.
+
+#### Scenario: OpenCode design permission verification verifies the SAI path
+- **WHEN** the installer integration test and documented post-install verification are performed
+- **THEN** the installer test SHALL verify that `permission.external_directory` allows `~/.config/opencode/sai/**`
+- **AND** the documented manual verification SHALL instruct the user to invoke an SAI command after installation and confirm that reading its SAI prompt or binding does not produce an external-directory permission request
+
+#### Scenario: Read-only permission does not satisfy verification
+- **WHEN** an OpenCode configuration contains a matching `permission.read` rule but no matching `permission.external_directory` rule
+- **THEN** the installer test or documented post-install verification SHALL fail
+- **AND** it SHALL report the missing external-directory permission rather than treating read access as sufficient
+
+#### Scenario: Broad external-directory permission is not required
+- **WHEN** the routed design binding is validated
+- **THEN** the validation SHALL accept the narrow SAI path rule
+- **AND** it SHALL NOT require a rule that allows every external directory

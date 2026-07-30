@@ -835,3 +835,35 @@ test('Step 1 does not treat permission.read as external-directory access', () =>
     fs.rmSync(dir, { recursive: true, force: true });
   }
 });
+
+// --- Step 2: external-directory trust-boundary documentation contracts ---
+
+const OPENCODE_INSTALL_GUIDE = fs.readFileSync(path.join(__dirname, '..', 'INSTALL.opencode.md'), 'utf8');
+
+test('Step 2 installation guide documents the narrow merge boundary and JSON precedence', () => {
+  assert.match(OPENCODE_INSTALL_GUIDE, /merge(?:s|d)? rather than overwrit(?:e|ing) user settings/i);
+  assert.match(OPENCODE_INSTALL_GUIDE, /preserv(?:e|es|ing) user comments/i);
+  assert.match(OPENCODE_INSTALL_GUIDE, /~\/\.config\/opencode\/sai\/\*\*/);
+  assert.match(OPENCODE_INSTALL_GUIDE, /opencode\.json.*(?:merge target|takes precedence|preferred).*opencode\.jsonc/is);
+});
+
+test('Step 2 installation guide documents the post-install smoke procedure and diagnostics', () => {
+  assert.match(OPENCODE_INSTALL_GUIDE, /restart|reload/i);
+  assert.match(OPENCODE_INSTALL_GUIDE, /(?:invoke|run|execute) (?:one )?SAI command/i);
+  assert.match(OPENCODE_INSTALL_GUIDE, /no prompt/i);
+  assert.match(OPENCODE_INSTALL_GUIDE, /preserv(?:e|es|ed|ing).*\bask\b.*\bdeny\b/is);
+  assert.match(OPENCODE_INSTALL_GUIDE, /stdout diagnostic/i);
+});
+
+test('Step 2 design guidance distinguishes external-directory authorization from read authorization', () => {
+  assert.match(OPENCODE_INSTALL_GUIDE, /external[- ]directory authorization/i);
+  assert.match(OPENCODE_INSTALL_GUIDE, /read authorization/i);
+  assert.match(OPENCODE_INSTALL_GUIDE, /(?:do not|not).*broad external[- ]directory access/i);
+});
+
+test('Step 2 installation guide contains the canonical narrow restriction template and effective outcomes', () => {
+  assert.match(OPENCODE_INSTALL_GUIDE, /"external_directory"\s*:\s*\{[\s\S]*"~\/\.config\/opencode\/sai\/\*\*"\s*:\s*"allow"[\s\S]*\}/);
+  assert.match(OPENCODE_INSTALL_GUIDE, /effective.*allow.*without a prompt/is);
+  assert.match(OPENCODE_INSTALL_GUIDE, /\bask\b.*matching install notice.*runtime prompt/is);
+  assert.match(OPENCODE_INSTALL_GUIDE, /\bdeny\b.*matching install notice.*runtime (?:prompt|block)/is);
+});
