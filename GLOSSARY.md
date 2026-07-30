@@ -52,6 +52,9 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 **Phase Policy**: "The design-only or implementation-only rules layered by a separate phase worker contract over the shared **Orchestration Core** lifecycle."
 *Avoid*: lifecycle core, shared phase logic, conditional worker branch
 
+**Phase Transition**: "The supervised pipeline report that records the completed outcome of one phase before the next phase begins."
+*Avoid*: phase handoff, phase switch, transition notice
+
 **Proposal Complexity**: "The single `low` / `medium` / `high` token on the `**Complexity**` line at the top of `proposal.md`, describing the coarse size of a whole change as judged at spec time from five signals, before `design.md` and `tasks.md` exist."
 *Avoid*: change complexity, proposal routing, proposal size, change tier
 
@@ -63,6 +66,9 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 
 **Review-Loop Token**: "The literal, English-invariant string `review-loop` that a user types in a `sai-explore` turn to enter the post-crystallization review loop directly, skipping the plain-text global sí/no invitation."
 *Avoid*: review keyword, review trigger, `/review-loop`, revisar, review command
+
+**Supervised Pipeline**: "A single-invocation workflow that dispatches phase workers, reviews their artifacts, and converges each phase before continuing to the next."
+*Avoid*: automatic pipeline, chained workflow, phase automation
 
 **Routing Complexity**: "One of the three tokens (`low`, `medium`, `high`) on a step's `**Routing**` line that describes the coarse effort or risk of the step as judged at design time — refined freely by `sai-3-implement` without re-tagging `tasks.md`."
 *Avoid*: routing tier, effort estimate, step complexity
@@ -123,6 +129,8 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 - A **Proposal Complexity** token draws on the same three-value vocabulary as a **Routing Complexity** token, so one orchestrator mapping table serves both; it is emitted once per change, whereas **Routing Complexity** is emitted once per step.
 - A **Proposal Complexity** token is derived by `/sai-1-spec` after `specs/**/*.md` are written, because the requirements count is one of its five signals; `/sai-2-design` may size the work differently without re-tagging `proposal.md`.
 - A **Proposal Complexity** token has no consumer: like the **Routing Line** it is descriptive metadata awaiting a future orchestrator.
+- A **Supervised Pipeline** emits a **Phase Transition** after one phase converges and before dispatching the next phase.
+- A **Phase Transition** belongs to one completed phase and precedes one downstream phase in a **Supervised Pipeline**.
 
 ## Example dialogue
 

@@ -64,15 +64,16 @@ To understand the change request, perform structured research:
 
 Stop research once ~80% confident in how to break the request into testable steps, identify the correct expertise profile, and list the exact docs needed for code generation.
 
-### Handoff provenance consumption
+### Handoff research input consumption
 
-When the pasted `Ready to Propose` handoff carries `file:line` evidence-provenance in its **Why** or **Decisions & Rationale** fields, treat those cited sources as a **premise to confirm and extend**: read and validate them first, then build on them. This framing is mandatory and additive — it does NOT replace independent research. The existing rules above (never speculate about unread code, stop at ~80% confidence, structured research) remain unchanged.
+When the pasted `Ready to Propose` handoff carries `file:line` evidence-provenance in its **Why** or **Decisions & Rationale** fields, or carries entries in **Research Leads**, treat those sources as **premises to confirm and extend**: validate them first, then build on them. This framing is mandatory and additive - it does NOT replace independent research. The existing rules above (never speculate about unread code, stop at ~80% confidence, structured research) remain unchanged.
 
-- If a cited source contradicts or under-supports the attributed hypothesis (including a resolved path whose line now points at different code), extend research beyond the citation and write specs from what the current source actually supports. A disconfirming citation must not propagate unexamined.
-- If a cited path no longer resolves (file deleted or renamed), fall back to normal from-scratch research for that item without erroring or halting.
-- If the handoff carries no provenance, proceed with normal independent research exactly as today — zero behavioral change.
-- This instruction does not mandate whether reclaimed effort is banked as speed or reinvested as quality; that trade-off is deliberately left open.
-- Provenance remains a citation for intent only; no target-file / "where to modify" field is introduced.
+- For each Research Lead, validate the current path or path range. When it resolves, inspect the relevant source, follow related code and documentation, and continue open-ended independent research beyond the listed leads. Research Leads are suggested starting points, not a closed inspection list, authoritative scope, or target-file selection.
+- If a cited source or Research Lead contradicts or under-supports the attributed hypothesis, including a resolving line range that now points at unrelated content, reject the unsupported premise, extend research beyond it, and write specs from what current sources support. Disconfirming input must not propagate unexamined.
+- If a cited path or Research Lead no longer resolves because it was deleted or renamed, fall back to normal from-scratch research for that item without erroring or halting.
+- If Research Leads are absent, contain `- None`, or are insufficient, proceed with or expand normal independent research until the existing confidence threshold is met.
+- This instruction does not mandate whether reclaimed effort is banked as speed or reinvested as quality; that trade-off remains open.
+- Provenance remains a citation for intent and Research Leads remain investigative guidance. Neither introduces a target-file, files-to-modify, or "where to modify" field; implementation targeting remains downstream.
 
 ## ADR/DDR Proposal Check
 

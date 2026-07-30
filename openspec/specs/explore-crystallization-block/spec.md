@@ -88,3 +88,71 @@ The change SHALL modify `sai/instructions/explore.md` only. No new files are cre
 
 - **WHEN** the change is applied
 - **THEN** `sai/commands/sai-1-spec.md` and the three `sai-1-spec` wrappers under `commands/claude/`, `commands/opencode/`, and `commands/copilot/` are unchanged
+
+### Requirement: Single-change handoffs expose dedicated research leads
+
+The single-change `Ready to Propose` block emitted by `sai-explore` SHALL include a dedicated **Research Leads** section separate from **Why** and **Decisions & Rationale**. When the explore conversation identifies relevant code or documentation for follow-up research, the section SHALL list concise repository-relative path references, optionally using `path:start-end` line ranges, with a short note explaining each lead's relevance. The section SHALL represent investigative starting points only: it SHALL NOT identify files to modify, define implementation scope, or replace the existing intent provenance citations.
+
+#### Scenario: relevant leads were identified during exploration
+
+- **WHEN** `sai-explore` crystallizes a single-change handoff after identifying relevant files or documentation
+- **THEN** the handoff includes a **Research Leads** section with each useful path or path-range reference and a concise relevance note
+- **AND** the listed leads are presented as suggestions for later research, not as target files
+
+#### Scenario: exploration has no useful follow-up leads
+
+- **WHEN** `sai-explore` crystallizes a single-change handoff without identifying a useful file or documentation starting point
+- **THEN** the handoff still includes the **Research Leads** section with `- None`
+- **AND** the absence of leads does not change the rest of the handoff or block the user from continuing
+
+#### Scenario: leads do not replace intent provenance
+
+- **WHEN** a single-change handoff contains both **Research Leads** and inline `file:line` evidence-provenance
+- **THEN** each remains in its existing role: leads guide investigation and provenance supports intent
+- **AND** no target-file, files-to-modify, or where-to-modify field is introduced
+
+### Requirement: Research leads are limited to single-change crystallization
+
+The dedicated **Research Leads** section SHALL be added only to the single-change `Ready to Propose` format. Sliced-feature per-slice blocks SHALL retain their existing format and SHALL NOT gain a Research Leads section through this change.
+
+#### Scenario: a sliced feature is crystallized
+
+- **WHEN** `sai-explore` emits the ordered per-slice handoff blocks for a sliced feature
+- **THEN** those blocks retain their existing fields and ordering without a **Research Leads** section
+- **AND** the single-change lead rules do not alter slice boundaries or dependencies
+
+## MODIFIED Requirements
+
+### Requirement: Optional evidence-provenance citations in the Why and Decisions & Rationale fields
+
+The single-change `Ready to Propose` block emitted by `sai-explore` SHALL permit optional evidence-provenance citations inside the **Why** and **Decisions & Rationale** fields. When `sai-explore` grounded its hypothesis in specific files during the explore conversation, it SHALL elicit and record that grounding as inline citations attached to those two fields. "Elicit and record" means the block itself surfaces and includes the provenance as part of the same autonomous crystallization emission; it SHALL NOT add a new interactive user question and SHALL NOT alter the emission gate. A separate **Research Leads** section SHALL carry follow-up investigation starting points and SHALL NOT be used to relocate or reinterpret intent provenance.
+
+A provenance citation is a `file:line` reference where the line component MAY be a single line (`path:line`) or a line range (`path:startLine-endLine`); both forms are permitted. Provenance is a citation for intent (WHY), is NEVER an implementation target, and no target-file field is added. Provenance citations remain optional: when there is nothing to cite, the **Why** and **Decisions & Rationale** fields render without citation-specific placeholders.
+
+#### Scenario: explore grounded its hypothesis in specific files
+
+- **WHEN** `sai-explore` emits the single-change `Ready to Propose` block and its hypothesis was grounded in specific files during the conversation
+- **THEN** the **Why** and/or **Decisions & Rationale** fields carry inline `file:line` provenance citations for that grounding
+- **AND** any **Research Leads** entries remain separate suggestions for follow-up research
+
+#### Scenario: no provenance to cite
+
+- **WHEN** the explore conversation produced no file-grounded evidence worth citing
+- **THEN** the **Why** and **Decisions & Rationale** fields render without provenance and without a citation-specific `None` placeholder
+- **AND** the **Research Leads** section independently reports useful leads or `- None`
+
+#### Scenario: provenance never becomes an implementation target
+
+- **WHEN** provenance citations or Research Leads are recorded in the block
+- **THEN** both remain intent or research guidance only and do not designate files to modify
+- **AND** no target-file or "where to modify" field is introduced
+
+### Requirement: Provenance and research-lead literals are reproduced verbatim under the crystallization language gate
+
+The `file:line` provenance citations permitted in the **Why** and **Decisions & Rationale** fields, and the path references listed in **Research Leads**, SHALL be reproduced verbatim and SHALL NOT be localized by the crystallization language gate. The gate's existing scaffolding invariants remain unchanged; only localizable free-text prose continues to render in the user's chosen language.
+
+#### Scenario: non-English crystallization preserves path literals
+
+- **WHEN** the crystallization language gate renders a single-change block in a non-English language and the block carries provenance or Research Leads
+- **THEN** the surrounding free-text prose is rendered in the user's language while every path and line-range literal is reproduced verbatim
+- **AND** the **Research Leads** heading remains the dedicated English section label defined by the handoff format
