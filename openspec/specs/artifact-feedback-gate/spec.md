@@ -249,9 +249,9 @@ The shared gate instruction SHALL remain the single source of artifact lists, op
 
 ### Requirement: Machine review findings use a pre-gate adapter
 
-The shared artifact feedback gate capability SHALL define one machine-feedback adapter for supervised sai-1 review findings. The adapter SHALL accept a structured findings array, continue each finding to the same spec-proposal worker, and apply the gate's canonical per-item split, legitimacy judgment, artifact-only edit, discard-reason, and decision-summary recomputation rules. These semantics SHALL remain single-sourced in the shared gate instruction and SHALL NOT be restated in explore or reviewer instructions.
+The shared artifact feedback gate capability SHALL define one machine-feedback adapter for supervised sai-1 review findings. For every completed pass in the bounded convergence loop, the adapter SHALL accept that pass's structured findings array, continue each finding to the same spec-proposal worker, and apply the gate's canonical per-item split, legitimacy judgment, artifact-only edit, discard-reason, and decision-summary recomputation rules. These semantics SHALL remain single-sourced in the shared gate instruction and SHALL NOT be restated in explore or reviewer instructions.
 
-The machine-feedback adapter is not a user feedback-selection turn. It SHALL NOT present the gate picker, emit the empty-turn prompt for user feedback text, increment the in-conversation iteration counter, or execute the proceed branch. After adapter processing, the ordinary user-facing gate SHALL be presented for the first time at iteration 0 with `Give feedback (Recommended)` before `Finish step`.
+Machine-feedback processing is not a user feedback-selection turn. It SHALL NOT present the gate picker, emit the empty-turn prompt for user feedback text, increment the in-conversation iteration counter, or execute the proceed branch. The ordinary user-facing gate SHALL be deferred while another review pass is required and SHALL be presented for the first time at iteration 0 only after the convergence loop converges, exhausts its three-pass cap, or is interrupted by `review_failed` or `review_cancelled`. Its first options SHALL remain `Give feedback (Recommended)` before `Finish step`.
 
 #### Scenario: machine findings are accepted for evaluation
 
@@ -260,15 +260,33 @@ The machine-feedback adapter is not a user feedback-selection turn. It SHALL NOT
 - **AND** accepted edits stay within `proposal.md` and `specs/**`
 - **AND** every discarded finding is reported with its specific reason
 
-#### Scenario: machine processing preserves the first user presentation
+#### Scenario: High finding schedules another pass
 
-- **WHEN** machine findings have been processed before the user-facing gate
-- **THEN** no feedback picker or empty-turn prompt was emitted for that machine input
+- **WHEN** a completed review pass contains a `High` finding and another pass remains within the bound
+- **THEN** machine-feedback processing completes without presenting or advancing the user-facing gate
 - **AND** the iteration counter remains 0
+- **AND** the gate's in-conversation iteration counter remains 0 for the later first presentation
+
+#### Scenario: convergence reaches the ordinary gate
+
+- **WHEN** a completed review pass contains no `High` findings and its machine feedback has been processed
+- **THEN** the ordinary user-facing gate is presented at iteration 0
 - **AND** the first user-facing option remains `Give feedback (Recommended)`
 
-#### Scenario: no machine findings still reaches the ordinary gate
+#### Scenario: cap exhaustion reaches the ordinary gate
+
+- **WHEN** machine-feedback processing completes for a third review pass that contained `High` findings
+- **THEN** no later review pass is dispatched
+- **AND** the ordinary user-facing gate is presented at iteration 0
+
+#### Scenario: empty findings converge
 
 - **WHEN** the independent reviewer returns `review_complete` with an empty findings array
 - **THEN** the adapter makes no artifact edit
+- **AND** the ordinary user-facing gate is presented at iteration 0
+
+#### Scenario: failed review reaches the ordinary gate
+
+- **WHEN** an independent reviewer returns `review_failed` or `review_cancelled`
+- **THEN** no machine finding is fabricated or processed
 - **AND** the ordinary user-facing gate is presented at iteration 0
