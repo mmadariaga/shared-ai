@@ -147,3 +147,64 @@ test('explore remains read-only and closes with the exact supervised completion 
   );
   assert.match(source, /Ready to Propose/);
 });
+
+test('Claude Code explore adapter permits worker supervision without direct writes', () => {
+  const source = fs.readFileSync(path.join(repoRoot, 'commands/claude/sai-explore.md'), 'utf8');
+
+  const allowedToolsLine = source.match(/^allowed-tools:\s*(.+)$/im);
+  assert.ok(allowedToolsLine, 'allowed-tools frontmatter should exist');
+  const allowedTools = allowedToolsLine[1].split(',').map(tool => tool.trim());
+
+  assert.ok(allowedTools.includes('Agent'));
+  assert.ok(allowedTools.includes('SendMessage'));
+  assert.ok(allowedTools.includes('Bash(openspec:*)'));
+  assert.ok(allowedTools.includes('Bash(git:*)'));
+  assert.equal(allowedTools.includes('Edit'), false);
+  assert.equal(allowedTools.includes('Write'), false);
+  assert.equal(allowedTools.includes('Bash'), false);
+});
+
+test('opencode explore adapter enables native task dispatch with the existing spec worker only', () => {
+  const source = fs.readFileSync(path.join(repoRoot, 'commands/opencode/sai-explore.md'), 'utf8');
+
+  assert.match(source, /Fetch @skills\/sai-1-spec-proposal-worker\/SKILL\.md/);
+  assert.doesNotMatch(source, /reviewer[- ](?:binding|skill|agent)|independent[- ]review.*(?:binding|skill|agent)/i);
+});
+
+test('Copilot explore adapter remains question/read/search-only and reports unavailable supervision', () => {
+  const source = fs.readFileSync(path.join(repoRoot, 'commands/copilot/sai-explore.prompt.md'), 'utf8');
+  const instructions = fs.readFileSync(path.join(repoRoot, 'sai/instructions/explore.md'), 'utf8');
+
+  assert.match(source, /tools:/i);
+  for (const tool of ['vscode/askQuestions', 'read', 'search', 'web', 'todo']) {
+    assert.match(source, new RegExp(tool.replace('/', '\\/'), 'i'));
+  }
+  assert.match(instructions, /start-pipeline/);
+  assert.match(instructions, /unavailable|supervision unavailable/i);
+  assert.doesNotMatch(source, /reviewer|dispatch|write artifact|artifact write/i);
+});
+
+test('install manifest projects shared explore assets and routed spec assets only to routed harnesses', () => {
+  const source = fs.readFileSync(path.join(repoRoot, 'sai/install-manifest.json'), 'utf8');
+
+  assert.match(source, /Claude Code|claude/i);
+  assert.match(source, /opencode/i);
+  assert.match(source, /Copilot|copilot/i);
+  assert.match(source, /sai-1-spec-proposal-worker/);
+  assert.match(source, /shared.*instruction|instruction.*shared|policies/i);
+  assert.doesNotMatch(source, /reviewer.*lifecycle|independent.*reviewer.*projection/i);
+});
+
+test('direct spec and design wrappers retain their existing terminal contracts', () => {
+  const source = [
+    'commands/claude/sai-1-spec.md',
+    'commands/opencode/sai-1-spec.md',
+    'commands/copilot/sai-1-spec.prompt.md',
+    'commands/claude/sai-2-design.md',
+    'commands/opencode/sai-2-design.md',
+    'commands/copilot/sai-2-design.prompt.md',
+  ].map(relativePath => fs.readFileSync(path.join(repoRoot, relativePath), 'utf8')).join('\n');
+
+  assert.doesNotMatch(source, /start-pipeline.*adapter|explore.*adapter/i);
+  assert.doesNotMatch(source, /independent[- ]reviewer|reviewer[- ]binding/i);
+});
