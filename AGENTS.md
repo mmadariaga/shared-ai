@@ -62,24 +62,28 @@ The openspec-dependent `sai-*` commands halt with a clear error if either is mis
 |-----------|---------|
 | `sai/instructions/` | Phase content (Isolation Mode + TASK block). Fetched by wrappers. |
 | `sai/commands/` | Sai command body files fetched by wrappers at runtime. |
-| `sai/commands/{design,implement}/{coordinator,invocation}.md` | Grouped coordinator and invocation bodies for Claude Code and opencode. |
-| `sai/orchestration/inline-invocation.md` | Direct Copilot adapter for inline design and implementation dispatch. |
+| `sai/commands/{spec,design,implement}/{coordinator,invocation}.md` | Grouped coordinator and invocation bodies for Claude Code and opencode. |
+| `sai/orchestration/inline-invocation.md` | Direct Copilot adapter for inline spec, design, and implementation dispatch. |
 | `sai/instructions/` | Phase content and inline caller contracts fetched by wrappers. |
 | `sai/orchestration/` | Shared coordinator/worker lifecycle contracts and routed worker contracts. Claude Code and opencode receive their own binding projections; Copilot is explicitly inline and receives none. |
 | `sai/policies/` | Canonical glossary, prerequisite, picker, commit, status, and feedback policies. |
-| `sai/compat/` | Caller-neutral design/implementation invocation cores and compatibility assets shared by the applicable harnesses. |
-| `sai/commands/design/invocation.md` and `sai/commands/implement/invocation.md` | Caller-neutral invocation bodies shared by routed and inline paths. |
+| `sai/compat/` | Caller-neutral spec/design/implementation invocation cores and compatibility assets shared by the applicable harnesses. |
+| `sai/commands/spec/invocation.md`, `sai/commands/design/invocation.md`, and `sai/commands/implement/invocation.md` | Caller-neutral invocation bodies shared by routed and inline paths. |
+| `sai/orchestration/workers/sai-1-spec-proposal-worker.md` | Spec proposal worker lifecycle, input, output, and proposal/spec artifact contract. |
 | `sai/orchestration/workers/sai-3-implementation-worker.md` | Implementation-planning worker lifecycle, input, output, and durable-artifact contract. |
 | `sai/orchestration/workers/sai-2-design-worker.md` | Design-planning worker lifecycle, input, output, and durable-artifact contract. |
 | `sai/install-manifest.json` | Deterministic source-to-destination projection rules consumed by installer, doctor, and uninstall. |
 | `agents/claude/` | Claude Code managed worker agents. |
+| `agents/claude/sai-1-spec-proposal-worker.md` | Claude Code custom agent for the medium-effort spec proposal worker. |
 | `agents/claude/sai-3-implementation-worker.md` | Claude Code custom agent for the high-effort implementation-planning worker. |
 | `agents/claude/sai-2-design-worker.md` | Claude Code custom agent for the high-effort design-planning worker. |
 | `skills/claude/` | Claude Code worker binding loaders and harness skills. |
 | `skills/opencode/` | opencode worker binding loaders and harness skills. |
 | `skills/copilot/` | Copilot inline support skills; no routed worker binding. |
+| `skills/claude/sai-1-spec-proposal-worker/SKILL.md` | Claude Code binding for spec worker dispatch, same-worker continuation, and recovery. |
 | `skills/claude/sai-3-implementation-worker/SKILL.md` | Claude Code binding for worker dispatch, same-worker continuation, and recovery. |
 | `skills/claude/sai-2-design-worker/SKILL.md` | Claude Code binding for design-worker dispatch, same-worker continuation, and recovery. |
+| `skills/opencode/sai-1-spec-proposal-worker/SKILL.md` | opencode binding for spec worker dispatch, same-task continuation, and recovery. |
 | `skills/opencode/sai-3-implementation-worker/SKILL.md` | opencode binding for worker dispatch, same-task continuation, and recovery. |
 | `skills/opencode/sai-2-design-worker/SKILL.md` | opencode binding for design-worker dispatch, same-task continuation, and recovery. |
 | `skills/` | Universal skills installed globally (not project-local). Fetched by wrappers via `~/.claude/skills/`, `~/.config/opencode/skills/`, or `~/.copilot/skills/`. |
@@ -99,10 +103,13 @@ The openspec-dependent `sai-*` commands halt with a clear error if either is mis
 | `skills/copilot/budget-subagent/SKILL.md` | Task subagent rules for Copilot — `budget-subagent` custom agent, GPT-5 mini, ~30-call soft cap, structured completion report. |
 | `skills/copilot/fetch/SKILL.md` | Fetch @ path resolver for Copilot — maps `@<subpath>` to `.github/sai/<subpath>` then the VS Code SAI folder. Loaded first by all Copilot wrappers to enable `@sai/` and `@skills/` path resolution. |
 | `agents/copilot/` | Copilot custom agent definitions (`budget-explorer`, `budget-executor`, `budget-subagent`). Installed to `~/.copilot/agents/`, hidden from the agent picker, invoked programmatically by the main agent when the `budget` skill is active. |
+| `agents/claude/sai-1-spec-proposal-worker.md` | Claude Code custom agent for the medium-effort spec proposal worker. |
 | `agents/claude/sai-3-implementation-worker.md` | Claude Code custom agent for the high-effort implementation-planning worker. |
 | `agents/claude/sai-2-design-worker.md` | Claude Code custom agent for the high-effort design-planning worker. |
+| `skills/claude/sai-1-spec-proposal-worker/SKILL.md` | Claude Code binding for spec worker dispatch, same-worker continuation, and recovery. |
 | `skills/claude/sai-3-implementation-worker/SKILL.md` | Claude Code binding for worker dispatch, same-worker continuation, and recovery. |
 | `skills/claude/sai-2-design-worker/SKILL.md` | Claude Code binding for design-worker dispatch, same-worker continuation, and recovery. |
+| `skills/opencode/sai-1-spec-proposal-worker/SKILL.md` | opencode binding for spec worker dispatch, same-task continuation, and recovery. |
 | `skills/opencode/sai-3-implementation-worker/SKILL.md` | opencode binding for worker dispatch, same-task continuation, and recovery. |
 | `skills/opencode/sai-2-design-worker/SKILL.md` | opencode binding for design-worker same-task continuation and recovery. |
 | `commands/claude/` | Wrappers for Claude Code. YAML frontmatter (`description`, `argument-hint`, `model`, `effort`) + fetch to `sai/commands/` + fetch to project-local skill files. |
@@ -125,6 +132,9 @@ Claude Code and opencode route `/sai-3-implement` through the shared orchestrati
 
 ### Design coordinator and worker
 Claude Code and opencode route `/sai-2-design` through the shared orchestration core and their respective design-worker binding; Claude uses a low-effort coordinator and high-effort worker, while opencode declares `model: opencode-go/glm-5.2` and `variant: high` on the wrapper and uses `sai-2-design-worker`. Fixed notices are acknowledged with `continue_after_notice`; `/sai-2-design` ends at design completion, and `/sai-3-implement {name}` is separate in a new chat. The opencode routed phases run under your active primary agent; it must permit native question and task dispatch to the numbered SAI workers. The stock build agent satisfies this. If a restrictive primary agent is active, switch to a permissive one (e.g. build) — do not reintroduce a managed coordinator profile. GitHub Copilot dispatches directly through `sai/orchestration/inline-invocation.md` with no routed worker binding and retains `budget-explorer` delegation because no portable cross-turn continuation contract spans the supported surfaces. All paths preserve `openspec/changes/{change-name}/design.md`, `tasks.md`, and `interfaces.md`; Proposal Complexity remains descriptive.
+
+### Spec coordinator and worker
+Claude Code and opencode route `/sai-1-spec` through the shared spec core `sai/commands/spec/invocation.md` and their respective spec worker bindings; GitHub Copilot remains inline through `sai/orchestration/inline-invocation.md` and is excluded from routed spec assets. Claude Code preserves the `opus`/medium wrapper and uses the medium-effort `sai-1-spec-proposal-worker`; opencode uses `opencode-go/minimax-m3` and `sai-1-spec-proposal-worker`. The worker owns prerequisites, resolution, proposal/spec artifacts, summary, and feedback; all paths create only proposal/spec artifacts plus permitted glossary updates, preserve the same summary/feedback/stop contract, and require same-harness parity evidence.
 
 ### Single artifact home
 All sai-* artifacts (`implementation.md`, `review.md`, `security.md`, `performance.md`, `accessibility.md`, `pr.md`) write to `openspec/changes/{change-name}/`. The legacy `plans/` directory is **not used** by the new pipeline.
@@ -206,7 +216,7 @@ Safe-operations confirmations and all unnamed gates remain in force.
 
 ## Installation
 
-Commands are **user globals**, not per-project. The manifest-driven installer expands `sai/install-manifest.json` into deterministic harness projections, and the same projections are used by `doctor` for missing/drift checks and by `uninstall` for safe removal. Claude Code and opencode receive mirrored routed bindings from the shared Orchestration Core; Copilot receives the policy/compatibility allowlist and remains inline without routed bindings.
+Commands are **user globals**, not per-project. The manifest-driven installer expands `sai/install-manifest.json` into deterministic harness projections, and the same projections are used by `doctor` for missing/drift checks and by `uninstall` for safe removal. Claude Code and opencode receive mirrored routed spec, design, and implementation bindings from the shared Orchestration Core; Copilot receives the policy/compatibility allowlist and remains inline without routed spec assets or other routed bindings.
 
 - **Claude Code**: `~/.claude/commands/`
 - **opencode**: `~/.config/opencode/commands/`

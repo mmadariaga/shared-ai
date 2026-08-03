@@ -140,3 +140,46 @@ test('opencode spec invocation routes through the coordinator and opencode worke
   assert.match(wrapper, /sai-1-spec-proposal-worker/);
   assert.match(wrapper, /\$ARGUMENTS/);
 });
+
+test('README documents the three-harness spec architecture and proposal-only scope', () => {
+  const readme = artifact('README.md');
+  for (const harness of ['Claude Code', 'opencode', 'GitHub Copilot']) {
+    assert.match(readme, new RegExp(harness.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i'));
+  }
+  assert.match(readme, /Claude Code.*rout|rout.*Claude Code/i);
+  assert.match(readme, /opencode.*rout|rout.*opencode/i);
+  assert.match(readme, /Copilot.*inline|inline.*Copilot/i);
+  assert.match(readme, /spec.*core|core.*spec/i);
+  assert.match(readme, /spec.*worker|worker.*spec/i);
+  assert.match(readme, /proposal.*spec|spec.*proposal/i);
+});
+
+test('AGENTS documents the three-harness architecture, ownership, and artifact scope', () => {
+  const agents = artifact('AGENTS.md');
+  for (const harness of ['Claude Code', 'opencode', 'GitHub Copilot']) {
+    assert.match(agents, new RegExp(harness.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i'));
+  }
+  assert.match(agents, /Claude Code.*rout|rout.*Claude Code/i);
+  assert.match(agents, /opencode.*rout|rout.*opencode/i);
+  assert.match(agents, /Copilot.*inline|inline.*Copilot/i);
+  assert.match(agents, /spec.*core|core.*spec/i);
+  assert.match(agents, /spec.*worker|worker.*spec/i);
+  assert.match(agents, /proposal.*spec|spec.*proposal/i);
+});
+
+test('README model references and installation topology match routed metadata', () => {
+  const readme = artifact('README.md');
+  const claude = artifact('commands/claude/sai-1-spec.md');
+  const opencode = artifact('commands/opencode/sai-1-spec.md');
+  const manifest = artifact('sai/install-manifest.json');
+  assert.match(readme, /opus/);
+  assert.match(readme, /medium/);
+  assert.match(readme, /opencode-go\/minimax-m3/);
+  assert.match(readme, /commands[\\/]claude|Claude Code/);
+  assert.match(readme, /commands[\\/]opencode|opencode/);
+  assert.match(readme, /Copilot.*inline|inline.*Copilot/i);
+  assert.match(claude, /^model:\s*opus\s*$/m);
+  assert.match(claude, /^effort:\s*medium\s*$/m);
+  assert.match(opencode, /^model:\s*opencode-go\/minimax-m3\s*$/m);
+  assert.match(manifest, /agents[\\/]claude[\\/]sai-1-spec-proposal-worker\.md/);
+});
