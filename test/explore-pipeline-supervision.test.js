@@ -90,6 +90,42 @@ test('review findings require complete correction data and preserve worker owner
   assert.match(source, /discarded findings.*specific reasons|specific reasons.*discard/i);
 });
 
+test('machine feedback continues each actionable finding to the same spec worker', () => {
+  const source = fs.readFileSync(path.join(repoRoot, 'sai/instructions/explore.md'), 'utf8');
+  const policy = fs.readFileSync(path.join(repoRoot, 'sai/policies/artifact-feedback-gate.md'), 'utf8');
+
+  assert.match(source, /MachineFeedbackAdapter/);
+  assert.match(source, /sai\/policies\/artifact-feedback-gate\.md/);
+  assert.match(source, /needs_input/);
+  assert.match(source, /same spec[- ]proposal worker|same.*spec worker/i);
+
+  assert.match(policy, /IndependentReviewFinding\[\]/);
+  assert.match(policy, /For each finding.*one same-worker continuation/i);
+  assert.match(policy, /per-item legitimacy rules/i);
+  assert.match(policy, /artifact-only scope/i);
+  assert.match(policy, /decision-summary recomputation/i);
+  assert.match(policy, /Accepted changes remain worker-owned.*proposal\.md.*specs/si);
+  assert.match(policy, /specific discard reporting|Every discarded finding.*specific reason/i);
+});
+
+test('machine feedback cannot enter or advance the user gate or proceed branch', () => {
+  const source = fs.readFileSync(path.join(repoRoot, 'sai/policies/artifact-feedback-gate.md'), 'utf8');
+
+  assert.match(source, /emits neither the picker nor the empty-turn prompt/i);
+  assert.match(source, /does not consume a user feedback turn/i);
+  assert.match(source, /does not increment.*iteration counter/i);
+  assert.match(source, /does not execute.*proceed-label.*next-action/i);
+});
+
+test('iteration zero always offers feedback before finishing after independent review', () => {
+  const source = fs.readFileSync(path.join(repoRoot, 'sai/policies/artifact-feedback-gate.md'), 'utf8');
+
+  assert.match(source, /empty findings array is a no-op/i);
+  assert.match(source, /enter the existing ordinary gate unchanged at iteration 0/i);
+  assert.match(source, /first ordered labels remain.*Give feedback \(Recommended\).*proceed-label/i);
+  assert.match(source, /iteration 0/);
+});
+
 test('explore remains read-only and closes with the exact supervised completion contract', () => {
   const source = exploreContract();
 

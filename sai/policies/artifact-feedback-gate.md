@@ -32,6 +32,16 @@ The gate tracks the feedback-option iteration with a single integer counter held
 - The counter is NOT derived from any marker in the gate's artifact set, hidden comment, or external/prior-conversation context (Isolation Mode).
 - The counter resets to 0 for free at the start of every new chat because Isolation Mode begins each wrapper invocation with no inherited context.
 
+## Machine-feedback adapter (supervised sai-1 only)
+
+`MachineFeedbackAdapter` accepts the structured `IndependentReviewFinding[]` from the supervised sai-1 reviewer and uses the same sai-1 spec-proposal worker that generated the supervised artifacts. For each finding, in array order, perform one same-worker continuation that invokes the existing `## On "Give feedback"` per-item legitimacy rules, artifact-only scope, specific discard reporting, and decision-summary recomputation. The adapter reuses those canonical rules; it does not restate or replace them.
+
+Accepted changes remain worker-owned and may be written only by that worker to `proposal.md` or `specs/**` in the selected change directory. Explore and the independent reviewer never edit artifacts. Every discarded finding is reported with a specific reason.
+
+Machine processing is not a feedback-option selection: it emits neither the picker nor the empty-turn prompt, does not consume a user feedback turn, does not increment the in-conversation iteration counter, and does not execute `proceed-label`/`next-action`. An empty findings array is a no-op.
+
+If finding processing returns `needs_input`, the supervising coordinator must present the exact question and ordered options to the user, then continue the same worker with only the selected answer. After every finding, or immediately after an empty, failed, or cancelled review, enter the existing ordinary gate unchanged at iteration 0; its first ordered labels remain `Give feedback (Recommended)` followed by `proceed-label` (for sai-1, `Finish step`).
+
 ## Present the gate
 
 Present exactly two choices through the harness's native option-picker per the "Closed-choice prompts" rule in `sai/policies/remember.md` (on Claude Code, the `AskUserQuestion` tool). Labels are full words, never single- or two-letter abbreviations:
