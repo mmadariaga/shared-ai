@@ -10,14 +10,10 @@
   Fetch @sai/policies/prereqs.md
 
   ## Load behaviors (in order)
-  Fetch @skills/budget/SKILL.md and use it
   Fetch @skills/safe-operations/SKILL.md and use it
 
   ## Load instructions (in order)
-  Fetch @sai/policies/glossary-format.md
-  Fetch @sai/instructions/spec.propose.md
-  Fetch @skills/openspec-propose/SKILL.md and follow those instructions exactly.
-  Fetch @sai/policies/remember.md
+  Fetch @sai/commands/spec/invocation.md and follow it exactly.
 
   ## Run
   **User's request:** $ARGUMENTS
