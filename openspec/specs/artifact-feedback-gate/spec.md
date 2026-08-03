@@ -1,5 +1,9 @@
 # Artifact Feedback Gate Specification
 
+## Purpose
+
+Define the shared user-facing and machine-feedback processing semantics for artifact review gates.
+
 ## Requirements
 
 ### Requirement: Shared parameterized gate instruction
@@ -242,3 +246,29 @@ The shared gate instruction SHALL remain the single source of artifact lists, op
 #### Scenario: Routed design retains its artifact set
 - **WHEN** routed `/sai-2-design` presents or processes the shared feedback gate
 - **THEN** the coordinator SHALL name exactly `design.md`, `tasks.md`, and `interfaces.md`, and the worker SHALL selectively edit only those artifacts before returning the recomputed design summary
+
+### Requirement: Machine review findings use a pre-gate adapter
+
+The shared artifact feedback gate capability SHALL define one machine-feedback adapter for supervised sai-1 review findings. The adapter SHALL accept a structured findings array, continue each finding to the same spec-proposal worker, and apply the gate's canonical per-item split, legitimacy judgment, artifact-only edit, discard-reason, and decision-summary recomputation rules. These semantics SHALL remain single-sourced in the shared gate instruction and SHALL NOT be restated in explore or reviewer instructions.
+
+The machine-feedback adapter is not a user feedback-selection turn. It SHALL NOT present the gate picker, emit the empty-turn prompt for user feedback text, increment the in-conversation iteration counter, or execute the proceed branch. After adapter processing, the ordinary user-facing gate SHALL be presented for the first time at iteration 0 with `Give feedback (Recommended)` before `Finish step`.
+
+#### Scenario: machine findings are accepted for evaluation
+
+- **WHEN** a supervised sai-1 independent reviewer returns one or more structured findings
+- **THEN** the shared machine-feedback adapter sends each finding to the same spec-proposal worker for canonical per-item evaluation
+- **AND** accepted edits stay within `proposal.md` and `specs/**`
+- **AND** every discarded finding is reported with its specific reason
+
+#### Scenario: machine processing preserves the first user presentation
+
+- **WHEN** machine findings have been processed before the user-facing gate
+- **THEN** no feedback picker or empty-turn prompt was emitted for that machine input
+- **AND** the iteration counter remains 0
+- **AND** the first user-facing option remains `Give feedback (Recommended)`
+
+#### Scenario: no machine findings still reaches the ordinary gate
+
+- **WHEN** the independent reviewer returns `review_complete` with an empty findings array
+- **THEN** the adapter makes no artifact edit
+- **AND** the ordinary user-facing gate is presented at iteration 0

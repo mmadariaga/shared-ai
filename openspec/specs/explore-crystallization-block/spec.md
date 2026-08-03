@@ -1,4 +1,10 @@
-## ADDED Requirements
+# explore-crystallization-block Specification
+
+## Purpose
+
+Define the crystallized handoff format and closing behavior for `sai-explore`.
+
+## Requirements
 
 ### Requirement: Three mandatory decision-facet sections in the single-change Ready to Propose block
 
@@ -50,14 +56,15 @@ The sliced-feature `Ready to Propose` blocks emitted by `sai-explore` (`sai/inst
 
 ### Requirement: Crystallization output closes with a keep-window-open recommendation
 
-Both the single-change crystallization output (`sai/instructions/explore.md` item 5) and the sliced-feature crystallization output (item 6) SHALL close with a recommendation that the user keep the current explore window open and use it to review and refine the artifacts created next by `/sai-1-spec` and `/sai-2-design`. This closing recommendation is plain conversational text rendered in the user's language at runtime (per `sai/instructions/remember.md`). It is emitted after the `Ready to Propose` block(s) — once, after the final block, in the sliced case — and replaces the removed auto-fired review picker as the thing that closes the crystallization turn.
+Both the single-change crystallization output (`sai/instructions/explore.md` item 5) and the sliced-feature crystallization output (item 6) SHALL close with a recommendation that the user keep the current explore window open and use it to review and refine downstream artifacts. The recommendation SHALL name the literal `review-loop` and `start-pipeline` tokens as user-triggered paths, without presenting either as a picker, auto-offering either path, or auto-firing either token. It SHALL explain that `start-pipeline` supervision is available on Claude Code and opencode and unavailable on GitHub Copilot.
 
-The recommendation SHALL NOT alter the `Ready to Propose` block itself — neither its field scaffolding nor the existing `Open a new chat` / `/sai-1-spec` line — and SHALL NOT alter the item-8 crystallization language-gate invariants (the block's bold field labels, kebab-case change name, `/sai-1-spec` command, and `Open a new chat` line stay in English; only free-text prose is rendered in the chosen language).
+The recommendation SHALL NOT alter the `Ready to Propose` block itself, including its field scaffolding and existing language-gate invariants. It is plain conversational text rendered in the user's language, while both literal tokens remain verbatim.
 
 #### Scenario: single-change block closes with the recommendation
 
 - **WHEN** `sai-explore` emits the single-change `Ready to Propose` block (item 5)
-- **THEN** it follows the block with a recommendation to keep the explore window open and review/refine the downstream `/sai-1-spec` and `/sai-2-design` artifacts there
+- **THEN** it follows the block with a recommendation to keep the explore window open and review/refine downstream artifacts there, naming `review-loop` and `start-pipeline` as user-triggered paths
+- **AND** the recommendation explains that `start-pipeline` supervision is available on Claude Code and opencode and unavailable on GitHub Copilot
 
 #### Scenario: sliced output emits the recommendation once after the final block
 
@@ -67,8 +74,9 @@ The recommendation SHALL NOT alter the `Ready to Propose` block itself — neith
 #### Scenario: recommendation does not alter the block or the item-8 gate
 
 - **WHEN** the closing recommendation is emitted
-- **THEN** the `Ready to Propose` block's scaffolding, its `Open a new chat` / `/sai-1-spec` line, and the item-8 crystallization language-gate invariants are unchanged
+- **THEN** the `Ready to Propose` block's scaffolding and the item-8 crystallization language-gate invariants are unchanged
 - **AND** the recommendation itself is plain conversational text rendered in the user's language
+- **AND** neither token is presented through a picker or started automatically
 
 #### Scenario: recommendation renders in the user's language
 
@@ -120,8 +128,6 @@ The dedicated **Research Leads** section SHALL be added only to the single-chang
 - **WHEN** `sai-explore` emits the ordered per-slice handoff blocks for a sliced feature
 - **THEN** those blocks retain their existing fields and ordering without a **Research Leads** section
 - **AND** the single-change lead rules do not alter slice boundaries or dependencies
-
-## MODIFIED Requirements
 
 ### Requirement: Optional evidence-provenance citations in the Why and Decisions & Rationale fields
 
