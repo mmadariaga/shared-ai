@@ -28,6 +28,13 @@ function spec(relativePath) {
   return fs.readFileSync(fullPath, 'utf8');
 }
 
+function supervisionContract() {
+  return [
+    exploreContract(),
+    spec('sai/policies/artifact-feedback-gate.md'),
+  ].join('\n');
+}
+
 test('supervision recognizes start-pipeline only from explicit user intent', () => {
   const source = exploreContract();
 
@@ -249,4 +256,104 @@ test('Step 1 defers the ordinary gate until review convergence, cap, or interrup
   assert.match(feedbackGate, /Defer the ordinary user-facing gate while another review pass is required/i);
   assert.match(feedbackGate, /Present that gate for the first time, unchanged at iteration 0, only after the review loop converges, exhausts its three-pass cap, or is interrupted by `review_failed` or `review_cancelled`\./i);
   assert.match(feedbackGate, /Its first ordered labels remain `Give feedback \(Recommended\)` followed by `proceed-label`/i);
+});
+
+test('Step 2 validates severity before processing a completed review result', () => {
+  const source = supervisionContract();
+
+  assert.match(source, /PipelineReviewFinding/);
+  assert.match(source, /severity\s*=.*High.*Medium.*Low|severity.*(?:High|Medium|Low).*out[- ]of[- ]set/i);
+  assert.match(source, /missing.*severity|severity.*missing/i);
+  assert.match(source, /whole.*completed result.*review_failed|review_failed.*whole.*result/i);
+  assert.match(source, /rejected:\s*output-contract violation/i);
+  assert.match(source, /no automatic retry|does not retry|without retry/i);
+  assert.match(source, /not processed.*reviewer output-contract violation/i);
+  assert.match(source, /rather than crash|not.*cancellation|output-contract violation.*cancellation/i);
+});
+
+test('Step 2 emits the exact ordered pass and rejected-finding history contracts', () => {
+  const source = supervisionContract();
+
+  assert.match(source, /IndependentReviewResult/);
+  for (const outcome of ['review_complete', 'review_failed', 'review_cancelled']) {
+    assert.match(source, new RegExp(outcome));
+  }
+  assert.match(source, /Pass.*positive integer/);
+  assert.match(source, /ascending order/);
+  assert.match(source, /Finding.*pass-local identifier/);
+  for (const field of [
+    'Severity:',
+    'Artifact location:',
+    'Issue:',
+    'Recommended correction:',
+    'Feedback disposition:',
+  ]) assert.match(source, new RegExp(field.replace(':', '\\:')));
+  assert.match(source, /reviewer-returned order|returned order/);
+  assert.match(source, /Findings:\s*None/);
+  assert.match(source, /well-formed siblings|every raw finding|all raw findings/i);
+  assert.match(source, /not processed — reviewer output-contract violation|not processed.*output-contract violation/i);
+  assert.match(source, /does not enter.*machine-feedback|none enters.*feedback/i);
+});
+
+test('Step 2 only starts another isolated review when a completed pass has High findings', () => {
+  const source = supervisionContract();
+
+  assert.match(source, /completed pass.*High|High.*completed pass/i);
+  assert.match(source, /fresh isolated reviewer|isolated.*reviewer.*fresh/i);
+  assert.match(source, /another pass remains|pass remains/i);
+  assert.match(source, /pass with no High.*dispatches none|no High.*no.*dispatch|without High.*does not dispatch/i);
+});
+
+test('Step 2 reports accepted Medium and Low edits without claiming convergence', () => {
+  const source = supervisionContract();
+
+  assert.match(source, /accepted.*(?:Medium|Low)|(?:Medium|Low).*accepted/si);
+  assert.match(source, /not re-reviewed|not.*re[- ]reviewed/i);
+  assert.match(source, /no convergence claim.*edited state|does not claim convergence.*edited state/i);
+});
+
+test('Step 2 keeps per-item continuations outside the bounded review-pass count', () => {
+  const source = supervisionContract();
+
+  assert.match(source, /initial review.*pass 1|pass 1.*initial review/i);
+  assert.match(source, /per-item continuation.*does not increment|continuation.*not increment.*pass|continuations.*do not increment/i);
+  assert.match(source, /pass 3.*High.*no fourth|third pass.*no fourth|three-pass.*no.*fourth/i);
+});
+
+test('Step 2 treats cap exhaustion as non-failure and reports every final High finding', () => {
+  const source = supervisionContract();
+
+  assert.match(source, /cap exhaustion.*non[- ]failure|exhaust.*cap.*not.*failure/i);
+  assert.match(source, /final pass.*High|final-pass.*High/i);
+  assert.match(source, /artifact location.*issue.*recommendation.*disposition/is);
+  assert.match(source, /every.*final[- ]pass.*High|all.*final[- ]pass.*High/i);
+});
+
+test('Step 2 preserves history and unvalidated edits across reviewer failure or cancellation', () => {
+  const source = supervisionContract();
+
+  assert.match(source, /reviewer failure.*cancellation|failure or cancellation/i);
+  assert.match(source, /prior completed-pass history|completed-pass history.*preserv/i);
+  assert.match(source, /unvalidated-edit state|unvalidated edits/i);
+  assert.match(source, /no automatic retry|does not retry|without retry/i);
+  assert.match(source, /ordinary feedback gate|ordinary user-facing gate/i);
+});
+
+test('Step 2 reports deterministic pass summaries and outstanding High identifiers before the outcome', () => {
+  const source = supervisionContract();
+
+  assert.match(source, /deterministic pass blocks|pass blocks.*outcome|pass blocks precede/i);
+  assert.match(source, /opening summary|summary.*opening/i);
+  assert.match(source, /per-pass severity counts|severity counts.*pass/i);
+  assert.match(source, /Outstanding High/);
+  assert.match(source, /Pass.*High=.*Medium=.*Low=.*Contract-violations=/);
+  assert.match(source, /Outstanding High:.*None/);
+});
+
+test('Step 2 starts a fresh three-pass bound on later user retry and preserves standalone spec behavior', () => {
+  const source = supervisionContract();
+
+  assert.match(source, /later user retry.*new.*three-pass|retry.*new.*three-pass bound/i);
+  assert.match(source, /preserved artifacts|preserve.*artifacts/i);
+  assert.match(source, /direct.*\/sai-1-spec.*standalone terminal|standalone.*terminal.*sai-1-spec/i);
 });
