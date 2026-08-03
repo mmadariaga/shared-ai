@@ -211,6 +211,44 @@ test('canonical manifest keeps implementation projections harness-specific', () 
   }
 });
 
+test('canonical manifest projects routed spec assets only to Claude Code and opencode', () => {
+  const repoRoot = path.join(__dirname, '..');
+  const manifest = loadInstallManifest(repoRoot);
+  const expected = {
+    claude: [
+      'sai/orchestration/coordinator-contract.md',
+      'sai/orchestration/worker-lifecycle.md',
+      'sai/orchestration/workers/sai-1-spec-proposal-worker.md',
+      'sai/orchestration/workers/bindings/claude/spec-worker.md',
+      'skills/claude/sai-1-spec-proposal-worker/SKILL.md',
+      'agents/claude/sai-1-spec-proposal-worker.md',
+    ],
+    opencode: [
+      'sai/orchestration/coordinator-contract.md',
+      'sai/orchestration/worker-lifecycle.md',
+      'sai/orchestration/workers/sai-1-spec-proposal-worker.md',
+      'sai/orchestration/workers/bindings/opencode/spec-worker.md',
+      'skills/opencode/sai-1-spec-proposal-worker/SKILL.md',
+    ],
+  };
+  const destinationRoot = {
+    commands: path.join(os.tmpdir(), 'sai-spec-commands'),
+    sai: path.join(os.tmpdir(), 'sai-spec-sai'),
+    skills: path.join(os.tmpdir(), 'sai-spec-skills'),
+    agents: path.join(os.tmpdir(), 'sai-spec-agents'),
+    config: path.join(os.tmpdir(), 'sai-spec-config'),
+  };
+  for (const [harness, requiredSources] of Object.entries(expected)) {
+    const sources = new Set(expandInstallManifest(manifest, { harness, repoRoot, destinationRoot })
+      .map(projection => path.relative(repoRoot, projection.sourcePath).split(path.sep).join('/')));
+    for (const source of requiredSources) assert.ok(sources.has(source), `${harness} should project ${source}`);
+  }
+  const copilotSources = new Set(expandInstallManifest(manifest, { harness: 'copilot', repoRoot, destinationRoot })
+    .map(projection => path.relative(repoRoot, projection.sourcePath).split(path.sep).join('/')));
+  assert.equal([...copilotSources].some(source => source.includes('spec-worker') || source.includes('spec-proposal')), false);
+  assert.equal([...copilotSources].some(source => source.includes('sai/commands/spec/coordinator')), false);
+});
+
 test('compatibility and policy projections resolve for every supported harness', () => {
   const manifest = loadInstallManifest(path.join(__dirname, '..'));
   const destinationRoot = {

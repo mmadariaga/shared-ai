@@ -7,5 +7,10 @@ effort: medium
 ## Sai Spec - 1
 
 Fetch @skills/fetch/SKILL.md
-Fetch @sai/commands/sai-1-spec.md and follow those instructions exactly.
+Fetch @sai/policies/glossary-format.md
+Fetch @skills/budget/SKILL.md and use it.
+Fetch @skills/safe-operations/SKILL.md and use it.
+Fetch @skills/sai-1-spec-proposal-worker/SKILL.md and use it.
+Fetch @sai/commands/spec/coordinator.md and follow those instructions exactly.
 
+**Spec request argument:** $ARGUMENTS

@@ -80,6 +80,20 @@ test('installOpencode copies all Opencode-specific skills', () => {
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });
 
+test('installOpencode projects the routed spec coordinator, binding, and skill', () => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-spec-'));
+  try {
+    installOpencode(tmpDir);
+    for (const file of [
+      path.join('sai', 'commands', 'spec', 'coordinator.md'),
+      path.join('sai', 'orchestration', 'workers', 'bindings', 'opencode', 'spec-worker.md'),
+      path.join('skills', 'sai-1-spec-proposal-worker', 'SKILL.md'),
+    ]) assert.ok(fs.existsSync(path.join(tmpDir, file)), `${file} should be projected`);
+  } finally {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+});
+
 test('copyOpencodeConfig copies config when no existing config', () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-'));
   copyOpencodeConfig(tmpDir);

@@ -77,6 +77,21 @@ test('installClaude copies all Claude-specific skills', () => {
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });
 
+test('installClaude projects the routed spec coordinator, binding, skill, and agent', () => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-claude-spec-'));
+  try {
+    installClaude(tmpDir);
+    for (const file of [
+      path.join('sai', 'commands', 'spec', 'coordinator.md'),
+      path.join('sai', 'orchestration', 'workers', 'bindings', 'claude', 'spec-worker.md'),
+      path.join('skills', 'sai-1-spec-proposal-worker', 'SKILL.md'),
+      path.join('agents', 'sai-1-spec-proposal-worker.md'),
+    ]) assert.ok(fs.existsSync(path.join(tmpDir, file)), `${file} should be projected`);
+  } finally {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+});
+
 test('installClaude overwrites existing vendor command files', () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-claude-'));
   const cmdFile = path.join(tmpDir, 'commands', 'sai-1-spec.md');

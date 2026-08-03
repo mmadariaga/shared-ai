@@ -119,3 +119,24 @@ test('Claude and opencode bindings mirror envelope and continuation mechanics', 
   assert.match(claude, /SendMessage|agent ID/i);
   assert.match(opencode, /task|session|continu/i);
 });
+
+test('Claude spec invocation routes through the coordinator and Claude worker binding', () => {
+  const wrapper = artifact('commands/claude/sai-1-spec.md');
+  const claudeBinding = artifact('sai/orchestration/workers/bindings/claude/spec-worker.md');
+  const manifest = artifact('sai/install-manifest.json');
+  assert.match(wrapper, /^model:\s*opus\s*$/m);
+  assert.match(wrapper, /^effort:\s*medium\s*$/m);
+  assert.match(wrapper, /spec[\\/]coordinator\.md/);
+  assert.match(wrapper, /sai-1-spec-proposal-worker/);
+  assert.match(claudeBinding, /subagent_type:\s*"sai-1-spec-proposal-worker"/);
+  assert.match(manifest, /agents\/claude\/sai-1-spec-proposal-worker\.md/);
+  assert.match(wrapper, /\$ARGUMENTS/);
+});
+
+test('opencode spec invocation routes through the coordinator and opencode worker binding', () => {
+  const wrapper = artifact('commands/opencode/sai-1-spec.md');
+  assert.match(wrapper, /^model:\s*opencode-go\/minimax-m3\s*$/m);
+  assert.match(wrapper, /spec[\\/]coordinator\.md/);
+  assert.match(wrapper, /sai-1-spec-proposal-worker/);
+  assert.match(wrapper, /\$ARGUMENTS/);
+});
