@@ -34,13 +34,15 @@ The gate tracks the feedback-option iteration with a single integer counter held
 
 ## Machine-feedback adapter (supervised sai-1 only)
 
-`MachineFeedbackAdapter` accepts the structured `IndependentReviewFinding[]` from the supervised sai-1 reviewer and uses the same sai-1 spec-proposal worker that generated the supervised artifacts. For each finding, in array order, perform one same-worker continuation that invokes the existing `## On "Give feedback"` per-item legitimacy rules, artifact-only scope, specific discard reporting, and decision-summary recomputation. The adapter reuses those canonical rules; it does not restate or replace them.
+`MachineFeedbackAdapter` accepts one completed review pass's structured `IndependentReviewFinding[]` and its positive `passNumber` from supervised sai-1. For every completed review pass in the bounded convergence loop, use the same sai-1 spec-proposal worker that generated the supervised artifacts. For each finding in that pass, in array order, perform one same-worker continuation that invokes the existing `## On "Give feedback"` per-item legitimacy rules, artifact-only scope, specific discard reporting, and decision-summary recomputation. These semantics remain single-sourced here and are not restated by explore or a reviewer.
 
-Accepted changes remain worker-owned and may be written only by that worker to `proposal.md` or `specs/**` in the selected change directory. Explore and the independent reviewer never edit artifacts. Every discarded finding is reported with a specific reason.
+Accepted changes remain worker-owned and may be written only by that worker to `proposal.md` or `specs/**` in the selected change directory. Explore and every independent reviewer remain read-only. Preserve every pass-local finding occurrence with its pass number and the worker's accepted or specifically reasoned discarded feedback disposition; do not infer cross-pass finding identity or suppress repeated findings.
 
-Machine processing is not a feedback-option selection: it emits neither the picker nor the empty-turn prompt, does not consume a user feedback turn, does not increment the in-conversation iteration counter, and does not execute `proceed-label`/`next-action`. An empty findings array is a no-op.
+Machine processing is not a feedback-option selection: it emits neither the picker nor the empty-turn prompt, does not consume a user feedback turn, does not increment the in-conversation iteration counter, and does not execute `proceed-label`/`next-action`. An empty findings array is a no-op. Per-item continuations remain part of the current review pass and never increment the review-pass count.
 
-If finding processing returns `needs_input`, the supervising coordinator must present the exact question and ordered options to the user, then continue the same worker with only the selected answer. After every finding, or immediately after an empty, failed, or cancelled review, enter the existing ordinary gate unchanged at iteration 0; its first ordered labels remain `Give feedback (Recommended)` followed by `proceed-label` (for sai-1, `Finish step`).
+If finding processing returns `needs_input`, the supervising coordinator must present the exact question and ordered options to the user, then continue the same worker with only the selected answer. Complete all findings for the current pass before supervision evaluates whether another fresh review pass is required.
+
+Defer the ordinary user-facing gate while another review pass is required. Present that gate for the first time, unchanged at iteration 0, only after the review loop converges, exhausts its three-pass cap, or is interrupted by `review_failed` or `review_cancelled`. Its first ordered labels remain `Give feedback (Recommended)` followed by `proceed-label` (for sai-1, `Finish step`).
 
 ## Present the gate
 

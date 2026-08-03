@@ -22,6 +22,12 @@ function exploreContract() {
   }).join('\n');
 }
 
+function spec(relativePath) {
+  const fullPath = path.join(repoRoot, relativePath);
+  assert.equal(fs.existsSync(fullPath), true, `${relativePath} should exist`);
+  return fs.readFileSync(fullPath, 'utf8');
+}
+
 test('supervision recognizes start-pipeline only from explicit user intent', () => {
   const source = exploreContract();
 
@@ -117,11 +123,12 @@ test('machine feedback cannot enter or advance the user gate or proceed branch',
   assert.match(source, /does not execute.*proceed-label.*next-action/i);
 });
 
-test('iteration zero always offers feedback before finishing after independent review', () => {
+test('iteration zero offers feedback after the supervised review loop settles', () => {
   const source = fs.readFileSync(path.join(repoRoot, 'sai/policies/artifact-feedback-gate.md'), 'utf8');
 
   assert.match(source, /empty findings array is a no-op/i);
-  assert.match(source, /enter the existing ordinary gate unchanged at iteration 0/i);
+  assert.match(source, /Defer the ordinary user-facing gate while another review pass is required/i);
+  assert.match(source, /Present that gate for the first time, unchanged at iteration 0, only after the review loop converges, exhausts its three-pass cap, or is interrupted by `review_failed` or `review_cancelled`\./i);
   assert.match(source, /first ordered labels remain.*Give feedback \(Recommended\).*proceed-label/i);
   assert.match(source, /iteration 0/);
 });
@@ -207,4 +214,39 @@ test('direct spec and design wrappers retain their existing terminal contracts',
 
   assert.doesNotMatch(source, /start-pipeline.*adapter|explore.*adapter/i);
   assert.doesNotMatch(source, /independent[- ]reviewer|reviewer[- ]binding/i);
+});
+
+test('Step 1 continues every completed-pass finding to the same worker', () => {
+  const feedbackGate = fs.readFileSync(
+    path.join(repoRoot, 'sai/policies/artifact-feedback-gate.md'),
+    'utf8'
+  );
+
+  assert.match(feedbackGate, /For every completed review pass in the bounded convergence loop/i);
+  assert.match(feedbackGate, /For each finding in that pass, in array order, perform one same-worker continuation/i);
+  assert.match(feedbackGate, /Complete all findings for the current pass before supervision evaluates whether another fresh review pass is required/i);
+});
+
+test('Step 1 preserves artifact-only worker ownership and specific discard reasons', () => {
+  const feedbackGate = fs.readFileSync(
+    path.join(repoRoot, 'sai/policies/artifact-feedback-gate.md'),
+    'utf8'
+  );
+  const supervision = fs.readFileSync(path.join(repoRoot, 'sai/instructions/explore.md'), 'utf8');
+
+  assert.match(feedbackGate, /Accepted changes remain worker-owned and may be written only by that worker to `proposal\.md` or `specs\/\*\*` in the selected change directory/i);
+  assert.match(feedbackGate, /Report every \*\*discarded\*\* item individually[\s\S]{0,240}specific reason/i);
+  assert.match(supervision, /The spec worker is the only delegated writer: its write scope is limited to `proposal\.md`, `specs\/\*\*`, and permitted metadata in its selected change directory/i);
+  assert.match(supervision, /Explore never writes directly/i);
+});
+
+test('Step 1 defers the ordinary gate until review convergence, cap, or interruption', () => {
+  const feedbackGate = fs.readFileSync(
+    path.join(repoRoot, 'sai/policies/artifact-feedback-gate.md'),
+    'utf8'
+  );
+
+  assert.match(feedbackGate, /Defer the ordinary user-facing gate while another review pass is required/i);
+  assert.match(feedbackGate, /Present that gate for the first time, unchanged at iteration 0, only after the review loop converges, exhausts its three-pass cap, or is interrupted by `review_failed` or `review_cancelled`\./i);
+  assert.match(feedbackGate, /Its first ordered labels remain `Give feedback \(Recommended\)` followed by `proceed-label`/i);
 });
