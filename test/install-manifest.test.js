@@ -245,6 +245,60 @@ test('canonical manifest projects routed spec assets only to Claude Code and ope
   assert.equal([...copilotSources].some(source => source.includes('sai/commands/spec/coordinator')), false);
 });
 
+test('Installer projects every routed review surface', () => {
+  const repoRoot = path.join(__dirname, '..');
+  const manifest = loadInstallManifest(repoRoot);
+  const destinationRoot = {
+    commands: path.join(os.tmpdir(), 'sai-review-commands'),
+    sai: path.join(os.tmpdir(), 'sai-review-sai'),
+    skills: path.join(os.tmpdir(), 'sai-review-skills'),
+    agents: path.join(os.tmpdir(), 'sai-review-agents'),
+    config: path.join(os.tmpdir(), 'sai-review-config'),
+  };
+  const expected = [
+    ['claude', 'sai/orchestration/workers/bindings/claude/review-worker.md', path.join('orchestration', 'workers', 'bindings', 'claude', 'review-worker.md')],
+    ['opencode', 'sai/orchestration/workers/bindings/opencode/review-worker.md', path.join('orchestration', 'workers', 'bindings', 'opencode', 'review-worker.md')],
+    ['claude', 'skills/claude/sai-5-review-worker/SKILL.md', path.join('sai-5-review-worker', 'SKILL.md')],
+    ['opencode', 'skills/opencode/sai-5-review-worker/SKILL.md', path.join('sai-5-review-worker', 'SKILL.md')],
+    ['claude', 'agents/claude/sai-5-review-worker.md', 'sai-5-review-worker.md'],
+  ];
+
+  for (const harness of ['claude', 'opencode']) {
+    const first = expandInstallManifest(manifest, { harness, repoRoot, destinationRoot });
+    const second = expandInstallManifest(manifest, { harness, repoRoot, destinationRoot });
+    const normalize = projections => projections.map(projection => ({
+      source: path.relative(repoRoot, projection.sourcePath).split(path.sep).join('/'),
+      destination: projection.destinationPath,
+    }));
+    assert.deepEqual(normalize(first), normalize(second), `${harness} review expansion should be deterministic`);
+
+    for (const [expectedHarness, source, destinationSuffix] of expected.filter(item => item[0] === harness)) {
+      const projection = first.find(item =>
+        path.relative(repoRoot, item.sourcePath).split(path.sep).join('/') === source
+      );
+      assert.ok(projection, `${expectedHarness} should project ${source}`);
+      assert.equal(projection.destinationPath.endsWith(destinationSuffix), true,
+        `${source} should land at ${destinationSuffix}`);
+    }
+  }
+
+  const copilot = expandInstallManifest(manifest, { harness: 'copilot', repoRoot, destinationRoot });
+  assert.equal(copilot.some(projection => {
+    const source = path.relative(repoRoot, projection.sourcePath).split(path.sep).join('/');
+    return source.includes('review-worker') || source.includes('sai-5-review');
+  }), false, 'Copilot receives no routed review binding');
+});
+
+test('Copilot receives no routed review binding', () => {
+  const repoRoot = path.join(__dirname, '..');
+  const manifest = loadInstallManifest(repoRoot);
+  const routedReview = manifest.projections.filter(projection =>
+    projection.source.includes('review-worker') || projection.source.includes('sai-5-review')
+  );
+  assert.ok(routedReview.length >= 5, 'the manifest should declare all five routed review surfaces');
+  assert.ok(routedReview.every(projection => !projection.harnesses.includes('copilot')));
+});
+
 test('compatibility and policy projections resolve for every supported harness', () => {
   const manifest = loadInstallManifest(path.join(__dirname, '..'));
   const destinationRoot = {

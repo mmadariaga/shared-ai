@@ -95,6 +95,52 @@ test('installOpencode projects the routed spec coordinator, binding, and skill',
   }
 });
 
+test('opencode worker registration is preserved and configurable', () => {
+  assert.deepEqual(OPENCODE_MANAGED_AGENTS['sai-5-review-worker'], {
+    mode: 'subagent',
+    model: 'opencode-go/glm-5.2',
+    variant: 'high',
+    permission: { task: { '*': 'deny', budget: 'allow', explore: 'allow' } },
+  });
+
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-review-worker-'));
+  const custom = {
+    mode: 'subagent',
+    model: 'user-review-model',
+    variant: 'low',
+    permission: { task: { '*': 'allow' } },
+  };
+  try {
+    fs.writeFileSync(path.join(tmpDir, 'opencode.json'), JSON.stringify({ agent: {
+      'sai-5-review-worker': custom,
+    } }, null, 2));
+    copyOpencodeConfig(tmpDir);
+    const parsed = jsonc.parse(fs.readFileSync(path.join(tmpDir, 'opencode.json'), 'utf8'));
+    assert.deepEqual(parsed.agent['sai-5-review-worker'], custom,
+      'an existing review worker registration should remain configurable');
+  } finally {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+});
+
+test('Installation verification covers routed review parity', () => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-review-parity-'));
+  try {
+    installOpencode(tmpDir);
+    const configName = fs.existsSync(path.join(tmpDir, 'opencode.json')) ? 'opencode.json' : 'opencode.jsonc';
+    const config = jsonc.parse(fs.readFileSync(path.join(tmpDir, configName), 'utf8'));
+    assert.deepEqual(config.agent['sai-5-review-worker']?.permission?.task, {
+      '*': 'deny', budget: 'allow', explore: 'allow',
+    }, 'missing review permission should identify the review surface');
+    assert.ok(fs.existsSync(path.join(tmpDir, 'sai', 'orchestration', 'workers', 'bindings', 'opencode', 'review-worker.md')),
+      'missing review projection should identify the opencode review binding');
+    assert.ok(fs.existsSync(path.join(tmpDir, 'skills', 'sai-5-review-worker', 'SKILL.md')),
+      'missing review projection should identify the forwarded review skill');
+  } finally {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+});
+
 test('copyOpencodeConfig copies config when no existing config', () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-'));
   copyOpencodeConfig(tmpDir);

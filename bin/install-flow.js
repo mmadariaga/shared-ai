@@ -24,6 +24,16 @@ const CLAUDE_IMPLEMENTATION_WORKER_AGENT = 'sai-3-implementation-worker.md';
 const CLAUDE_IMPLEMENTATION_WORKER_OWNER = '.sai-3-implementation-worker.owner.json';
 const CLAUDE_DESIGN_WORKER_AGENT = 'sai-2-design-worker.md';
 const CLAUDE_DESIGN_WORKER_OWNER = '.sai-2-design-worker.owner.json';
+const CLAUDE_SPEC_WORKER_AGENT = 'sai-1-spec-proposal-worker.md';
+const CLAUDE_SPEC_WORKER_OWNER = '.sai-1-spec-proposal-worker.owner.json';
+const CLAUDE_REVIEW_WORKER_AGENT = 'sai-5-review-worker.md';
+const CLAUDE_REVIEW_WORKER_OWNER = '.sai-5-review-worker.owner.json';
+const OWNER_BY_CLAUDE_AGENT = Object.freeze({
+  [CLAUDE_SPEC_WORKER_AGENT]: CLAUDE_SPEC_WORKER_OWNER,
+  [CLAUDE_DESIGN_WORKER_AGENT]: CLAUDE_DESIGN_WORKER_OWNER,
+  [CLAUDE_IMPLEMENTATION_WORKER_AGENT]: CLAUDE_IMPLEMENTATION_WORKER_OWNER,
+  [CLAUDE_REVIEW_WORKER_AGENT]: CLAUDE_REVIEW_WORKER_OWNER,
+});
 const LEGACY_CLAUDE_WORKERS = [
   { agent: 'sai-design-planning-worker.md', owner: '.sai-design-planning-worker.owner.json', replacement: 'sai-2-design-worker.md', replacementOwner: '.sai-2-design-worker.owner.json' },
   { agent: 'sai-implementation-planning-worker.md', owner: '.sai-implementation-planning-worker.owner.json', replacement: 'sai-3-implementation-worker.md', replacementOwner: '.sai-3-implementation-worker.owner.json' },
@@ -74,6 +84,18 @@ const OPENCODE_MANAGED_AGENTS = Object.freeze({
     variant: 'high',
     permission: {
       task: { '*': 'deny', explore: 'allow' },
+    },
+  },
+  'sai-5-review-worker': {
+    mode: 'subagent',
+    model: 'opencode-go/glm-5.2',
+    variant: 'high',
+    permission: {
+      task: {
+        '*': 'deny',
+        budget: 'allow',
+        explore: 'allow',
+      },
     },
   },
 });
@@ -363,7 +385,10 @@ function installProjection(projection, targetPath) {
   }
   if (projection.strategy === 'owned-copy') {
     const agentName = path.basename(projection.destinationPath);
-    const ownerName = agentName === CLAUDE_IMPLEMENTATION_WORKER_AGENT ? CLAUDE_IMPLEMENTATION_WORKER_OWNER : CLAUDE_DESIGN_WORKER_OWNER;
+    const ownerName = OWNER_BY_CLAUDE_AGENT[agentName];
+    if (!ownerName) {
+      throw new Error(`No Claude owner sidecar registered for owned agent ${agentName}.`);
+    }
     installClaudeManagedWorker(targetPath, agentName, ownerName);
     return;
   }
@@ -668,7 +693,11 @@ function copyOpencodeConfig(destBase) {
   const hasJsonc = fs.existsSync(path.join(base, 'opencode.jsonc'));
 
   if (!hasJson && !hasJsonc) {
-    copy(path.join(REPOSITORY_ROOT, 'configs', 'opencode.jsonc'), path.join(base, 'opencode.jsonc'));
+    const target = path.join(base, 'opencode.jsonc');
+    copy(path.join(REPOSITORY_ROOT, 'configs', 'opencode.jsonc'), target);
+    const initial = fs.readFileSync(target, 'utf8');
+    const merged = mergeOpencodeAgents(initial);
+    if (merged && merged.text !== initial) fs.writeFileSync(target, merged.text);
     return;
   }
 
@@ -787,6 +816,11 @@ module.exports = {
   CLAUDE_IMPLEMENTATION_WORKER_OWNER,
   CLAUDE_DESIGN_WORKER_AGENT,
   CLAUDE_DESIGN_WORKER_OWNER,
+  CLAUDE_SPEC_WORKER_AGENT,
+  CLAUDE_SPEC_WORKER_OWNER,
+  CLAUDE_REVIEW_WORKER_AGENT,
+  CLAUDE_REVIEW_WORKER_OWNER,
+  OWNER_BY_CLAUDE_AGENT,
   LEGACY_CLAUDE_WORKERS,
   migrateLegacyClaudeWorkers,
   inspectManagedWorkerMigration,

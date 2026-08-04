@@ -7,6 +7,7 @@ const os = require('os');
 const fs = require('fs');
 
 const { installClaude } = require('../bin/install-flow.js');
+const { loadInstallManifest, expandInstallManifest } = require('../bin/install-manifest.js');
 
 test('installClaude copies commands/claude/*.md to dest/commands/', () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-claude-'));
@@ -88,6 +89,73 @@ test('installClaude projects the routed spec coordinator, binding, skill, and ag
       path.join('skills', 'sai-1-spec-proposal-worker', 'SKILL.md'),
       path.join('agents', 'sai-1-spec-proposal-worker.md'),
     ]) assert.ok(fs.existsSync(path.join(tmpDir, file)), `${file} should be projected`);
+  } finally {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+});
+
+test('Claude worker ownership is collision-safe', () => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-claude-review-ownership-'));
+  const repoRoot = path.join(__dirname, '..');
+  try {
+    const manifest = loadInstallManifest(repoRoot);
+    const destinationRoot = {
+      commands: path.join(tmpDir, 'commands'),
+      sai: path.join(tmpDir, 'sai'),
+      skills: path.join(tmpDir, 'skills'),
+      agents: path.join(tmpDir, 'agents'),
+      config: tmpDir,
+    };
+    const owned = expandInstallManifest(manifest, { harness: 'claude', repoRoot, destinationRoot })
+      .filter(projection => projection.strategy === 'owned-copy');
+    assert.ok(owned.length > 0, 'the manifest should declare owned-copy workers');
+
+    installClaude(tmpDir);
+    for (const projection of owned) {
+      assert.ok(fs.existsSync(projection.destinationPath), `owned worker should be installed: ${projection.destinationPath}`);
+      const ownerPath = path.join(
+        path.dirname(projection.destinationPath),
+        `.${path.basename(projection.destinationPath, '.md')}.owner.json`
+      );
+      assert.ok(fs.existsSync(ownerPath),
+        `owned worker should have a sidecar: ${projection.destinationPath}`);
+    }
+
+    const spec = owned.find(projection => projection.sourcePath.endsWith(path.join('sai-1-spec-proposal-worker.md')));
+    assert.ok(spec, 'the manifest should declare the spec owned-copy worker');
+    assert.ok(fs.existsSync(path.join(tmpDir, 'agents', '.sai-1-spec-proposal-worker.owner.json')),
+      'spec worker should map to its own owner sidecar');
+    assert.equal(fs.existsSync(path.join(tmpDir, 'agents', '.sai-2-design-worker.owner.json')), true,
+      'spec worker must never use the design owner sidecar');
+
+    const review = owned.find(projection => projection.sourcePath.endsWith(path.join('sai-5-review-worker.md')));
+    assert.ok(review, 'the manifest should declare the review owned-copy worker');
+    assert.ok(fs.existsSync(path.join(tmpDir, 'agents', '.sai-5-review-worker.owner.json')),
+      'review worker should map to its own owner sidecar');
+  } finally {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+});
+
+test('Every owned worker resolves to its owner sidecar and rejects an incompatible agent', () => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-claude-review-collision-'));
+  const agentPath = path.join(tmpDir, 'agents', 'sai-5-review-worker.md');
+  const sentinel = 'user-owned incompatible review worker\n';
+  try {
+    fs.mkdirSync(path.dirname(agentPath), { recursive: true });
+    fs.writeFileSync(agentPath, sentinel);
+    assert.throws(() => installClaude(tmpDir), /collision|rename|remove|ownership/i);
+    assert.equal(fs.readFileSync(agentPath, 'utf8'), sentinel, 'incompatible content must not be overwritten');
+
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+    fs.mkdirSync(path.dirname(agentPath), { recursive: true });
+    installClaude(tmpDir);
+    const reviewBytes = fs.readFileSync(agentPath);
+    fs.unlinkSync(path.join(tmpDir, 'agents', '.sai-5-review-worker.owner.json'));
+    installClaude(tmpDir);
+    assert.deepEqual(fs.readFileSync(agentPath), reviewBytes, 'exact-compatible content should be reused');
+    assert.equal(fs.existsSync(path.join(tmpDir, 'agents', '.sai-5-review-worker.owner.json')), false,
+      'exact-compatible unowned content should not gain a sidecar');
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }

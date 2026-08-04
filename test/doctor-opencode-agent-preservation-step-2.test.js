@@ -10,7 +10,7 @@ const { PassThrough } = require('stream');
 const { main } = require('../bin/doctor.js');
 const { installOpencode } = require('../bin/install-flow.js');
 
-const MANAGED_NAMES = ['sai-2-design-worker', 'sai-3-implementation-worker'];
+const MANAGED_NAMES = ['sai-2-design-worker', 'sai-3-implementation-worker', 'sai-5-review-worker'];
 
 function makeProjectRoot() {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-doctor-opencode-agents-'));
@@ -83,6 +83,7 @@ test('customized managed agents are accepted by name presence', async () => {
     writeConfig(opencodeBase, JSON.stringify({ agent: {
       'sai-2-design-worker': { mode: 'subagent', model: 'user-design-model', variant: 'low' },
       'sai-3-implementation-worker': { mode: 'subagent', model: 'user-implementation-model', permission: { edit: 'deny' } },
+      'sai-5-review-worker': { mode: 'subagent', model: 'user-review-model' },
     } }));
 
     const { code, report } = await runDoctor(projectRoot, opencodeBase);
@@ -103,6 +104,7 @@ test('missing managed agent is reported while present customized agents remain o
     installOpencode(opencodeBase);
     writeConfig(opencodeBase, JSON.stringify({ agent: {
       'sai-2-design-worker': { mode: 'subagent', model: 'user-design-model' },
+      'sai-5-review-worker': { mode: 'subagent', model: 'user-review-model' },
     } }));
 
     const { code, report } = await runDoctor(projectRoot, opencodeBase);
