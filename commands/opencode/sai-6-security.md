@@ -6,6 +6,7 @@ model: opencode-go/qwen3.7-plus
 ## Sai Security - 6
 
 Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.
-Fetch @sai/commands/sai-6-security.md and follow those instructions exactly.
+Fetch @skills/sai-6-security-worker/SKILL.md and use it.
+Fetch @sai/commands/security/coordinator.md and follow those instructions exactly.
 
-**Change-name argument:** $ARGUMENTS
+**Security arguments:** $ARGUMENTS
