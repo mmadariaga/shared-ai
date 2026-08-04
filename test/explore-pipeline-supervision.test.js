@@ -60,7 +60,7 @@ test('supervision tracks ordered unique changes and dispatches only eligible wor
   ]) assert.match(source, term);
 });
 
-test('supervised spec dispatch preserves the selected block and exact user input', () => {
+test('supervised spec dispatch preserves the selected block and branches between auto-answer and escalation', () => {
   const source = exploreContract();
 
   assert.match(source, /SpecWorkerRequest/);
@@ -69,9 +69,69 @@ test('supervised spec dispatch preserves the selected block and exact user input
   assert.match(source, /only.*selected.*block|receives only.*block/i);
   assert.match(source, /needs_input/);
   assert.match(source, /ordered option|options.*order|order.*option/i);
-  assert.match(source, /escalated exactly|exactly.*escalat/i);
+  assert.match(source, /auto[- ]answer/i);
+  assert.match(source, /escalat/i);
+  assert.match(source, /closed[- ]choice/i);
+  assert.match(source, /worker's own offered option values|offered option values.*worker/i);
   assert.match(source, /same worker/);
   assert.match(source, /only.*user.*answer|user's answer/i);
+});
+
+test('supervised question autonomy uses qualitative confidence and escalates ambiguity', () => {
+  const source = exploreContract();
+
+  assert.match(source, /confidence is judged qualitatively/i);
+  assert.match(source, /Ambiguity resolves toward escalation/i);
+  assert.match(source, /borderline|unclear/i);
+  assert.match(source, /(?:borderline|unclear).*escalat|escalat.*(?:borderline|unclear)/i);
+});
+
+test('supervised auto-answers require bounded grounding and escalate ungrounded answers', () => {
+  const source = exploreContract();
+
+  assert.match(source, /The answer must be located in the permitted grounding sources/i);
+  assert.match(source, /The permitted grounding sources are bounded/i);
+  assert.match(source, /conversation-only|ungrounded/i);
+  assert.match(source, /(?:conversation-only|ungrounded).*escalat|escalat.*(?:conversation-only|ungrounded)/i);
+});
+
+test('below-threshold questions preserve exact worker wording and continue the same worker', () => {
+  const source = exploreContract();
+
+  assert.match(source, /Below-threshold questions escalate to the user unchanged/i);
+  assert.match(source, /worker's exact question/i);
+  assert.match(source, /exact option labels\/values/i);
+  assert.match(source, /harness-native picker/i);
+  assert.match(source, /selected value.*same worker|same worker.*selected value/i);
+  assert.match(source, /same-worker continuation|same worker continuation/i);
+});
+
+test('question autonomy is limited to start-pipeline supervision', () => {
+  const source = exploreContract();
+
+  assert.match(source, /Autonomy is scoped to supervised spec execution/i);
+  assert.match(source, /start-pipeline supervision/i);
+  assert.match(source, /independent `?\/sai-1-spec`?/i);
+  assert.match(source, /standalone coordinator.*unchanged|unchanged.*standalone coordinator/i);
+});
+
+test('each auto-answer emits the interim accountability notice with ordered fields', () => {
+  const source = exploreContract();
+
+  assert.match(source, /Auto-answered questions are reported/i);
+  assert.match(source, /interim inline notice|inline notice.*point.*auto-answer/i);
+  assert.match(source, /Auto-answered \(supervised\):.*\u2192.*\n\s+\[grounding:.*\u2014/is);
+  assert.match(source, /question.*answer.*grounding.*citation/is);
+});
+
+test('supervised autonomy keeps state in conversation and tracks escalations', () => {
+  const source = exploreContract();
+
+  assert.match(source, /in-conversation-only|conversation-only state/i);
+  assert.match(source, /per-auto-answer record|auto-answer record/i);
+  assert.match(source, /question.*answer.*grounding citation/is);
+  assert.match(source, /running escalated count/i);
+  assert.match(source, /scoped to `?start-pipeline`? supervision/i);
 });
 
 test('independent review is fresh, input-scoped, and returns only the declared outcomes', () => {
