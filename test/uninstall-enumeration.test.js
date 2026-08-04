@@ -7,8 +7,127 @@ const os = require('os');
 const fs = require('fs');
 const crypto = require('crypto');
 
-const { installClaude, installOpencode, installCopilot } = require('../bin/install-flow.js');
+const { installClaude, installOpencode, installCopilot, MANAGED_WORKERS } = require('../bin/install-flow.js');
 const { enumerateClaude, enumerateOpencode, enumerateCopilot, buildDeletionSet } = require('../bin/uninstall-flow.js');
+const { loadInstallManifest, expandInstallManifest } = require('../bin/install-manifest.js');
+
+function inventoryRoots(base, harness) {
+  if (harness === 'copilot') {
+    return {
+      commands: path.join(base, 'prompts'),
+      sai: path.join(base, 'sai'),
+      skills: path.join(base, 'skills'),
+      agents: path.join(base, 'agents'),
+      config: path.join(base, 'sai'),
+    };
+  }
+  return {
+    commands: path.join(base, 'commands'),
+    sai: path.join(base, 'sai'),
+    skills: path.join(base, 'skills'),
+    agents: path.join(base, 'agents'),
+    config: base,
+  };
+}
+
+function normalizeInventoryDestination(destination, destinationRoot) {
+  const root = Object.entries(destinationRoot)
+    .sort((left, right) => right[1].length - left[1].length)
+    .find(([, candidate]) => {
+      const relative = path.relative(candidate, destination);
+      return relative === '' || (!relative.startsWith(`..${path.sep}`) && relative !== '..' && !path.isAbsolute(relative));
+    });
+  assert.ok(root, `destination should be under an install root: ${destination}`);
+  return `${root[0]}/${path.relative(root[1], destination).split(path.sep).join('/')}`;
+}
+
+function managedWorkerSourcePaths(repoRoot) {
+  const workerStems = {
+    'sai-3-implementation-worker': 'implementation-worker',
+    'sai-2-design-worker': 'design-worker',
+    'sai-5-review-worker': 'review-worker',
+    'sai-1-spec-proposal-worker': 'spec-worker',
+  };
+  return new Set(Object.entries(MANAGED_WORKERS).flatMap(([name, worker]) => [
+    `sai/orchestration/workers/bindings/claude/${workerStems[name]}.md`,
+    `sai/orchestration/workers/bindings/opencode/${workerStems[name]}.md`,
+    `skills/claude/${name}/SKILL.md`,
+    `skills/opencode/${name}/SKILL.md`,
+    `agents/claude/${worker.claude.agent}`,
+  ].map(source => path.resolve(repoRoot, source))));
+}
+
+test('install and uninstall inventories are exact and deterministic for every harness', () => {
+  const repoRoot = path.join(__dirname, '..');
+  const manifest = loadInstallManifest(repoRoot);
+  const cases = [
+    {
+      harness: 'claude',
+      install: (base) => installClaude(base),
+      enumerate: (base) => enumerateClaude(base),
+    },
+    {
+      harness: 'opencode',
+      install: (base) => installOpencode(base),
+      enumerate: (base) => enumerateOpencode(base),
+    },
+    {
+      harness: 'copilot',
+      install: (base, roots) => installCopilot(roots.commands, roots.skills, roots.agents, roots.sai),
+      enumerate: (base, roots) => enumerateCopilot(roots.commands, roots.skills, roots.agents, roots.sai),
+    },
+  ];
+
+  for (const { harness, install, enumerate } of cases) {
+    const base = fs.mkdtempSync(path.join(os.tmpdir(), `sai-inventory-${harness}-`));
+    const destinationRoot = inventoryRoots(base, harness);
+    try {
+      install(base, destinationRoot);
+      const active = expandInstallManifest(manifest, { harness, repoRoot, destinationRoot });
+      const activeDestinations = active.map(projection => projection.destinationPath);
+      for (const projection of active.filter(item => item.strategy === 'owned-copy')) {
+        activeDestinations.push(path.join(path.dirname(projection.destinationPath),
+          `.${path.basename(projection.destinationPath, '.md')}.owner.json`));
+      }
+      const normalize = destinations => destinations
+        .map(destination => normalizeInventoryDestination(destination, destinationRoot))
+        .sort();
+      const normalizedActive = normalize(activeDestinations);
+      const entries = enumerate(base, destinationRoot);
+      const normalizedUninstall = normalize(entries
+        .filter(entry => entry.assetType !== 'retired-managed-file')
+        .map(entry => entry.dest));
+      assert.deepEqual(normalizedUninstall, normalizedActive, `${harness} uninstall inventory should match install inventory`);
+      assert.equal(new Set(normalizedUninstall).size, normalizedUninstall.length,
+        `${harness} uninstall destinations should be unique`);
+      assert.deepEqual(normalizedUninstall, [...normalizedUninstall].sort(),
+        `${harness} uninstall destinations should have deterministic order`);
+      const second = normalize(enumerate(base, destinationRoot)
+        .filter(entry => entry.assetType !== 'retired-managed-file')
+        .map(entry => entry.dest));
+      assert.deepEqual(normalizedUninstall, second, `${harness} uninstall enumeration should be deterministic`);
+
+      if (harness === 'claude') {
+        const managedAgents = entries.filter(entry => entry.assetType === 'claude-managed-agent');
+        assert.equal(managedAgents.length, Object.keys(MANAGED_WORKERS).length);
+        for (const worker of Object.values(MANAGED_WORKERS)) {
+          const agentPath = path.join(destinationRoot.agents, worker.claude.agent);
+          const entry = managedAgents.find(candidate => candidate.dest === agentPath);
+          assert.ok(entry, `Claude should enumerate ${worker.claude.agent}`);
+          assert.equal(entry.ownerPath, path.join(destinationRoot.agents, worker.claude.owner));
+        }
+      }
+
+      if (harness === 'copilot') {
+        const workerSources = managedWorkerSourcePaths(repoRoot);
+        assert.equal(entries.some(entry => workerSources.has(entry.src)), false,
+          'Copilot enumeration must exclude managed worker bindings, forwarding skills, and Claude agents');
+      }
+    } finally {
+      fs.rmSync(base, { recursive: true, force: true });
+    }
+  }
+});
 
 function walkFiles(dir) {
   const result = [];

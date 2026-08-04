@@ -52,6 +52,9 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 **Known-False Report Recovery**: "A bounded `/sai-4-apply` correction path for a Subagent Report that coordinator evidence disproves and whose safe cause and correction are clear."
 *Avoid*: automatic retry, indefinite retry, advisor escalation
 
+**Managed Worker**: "A phase worker whose agent, ownership sidecar, and harness-specific registration are installed and tracked by the shared-AI installer."
+*Avoid*: worker agent, installer worker, managed agent
+
 **Manual Verification**: "The closing section of `design.md` listing the checks that are cheap by hand and expensive to automate — generated-artifact drift and end-to-end smoke — naming the middle tier between automated tests and `/sai-5-review`."
 *Avoid*: QA checklist, manual QA, smoke test section, verification steps
 
