@@ -27,12 +27,12 @@ Each phase reads from and writes to **`openspec/changes/{change-name}/`** — si
 
 ```
  sai/commands/                    ← sai command body files (fetched by wrappers at runtime)
- sai/instructions/                ← phase content and inline command contracts
+ sai/instructions/                ← phase content, inline command contracts, and canonical ADR template
  sai/orchestration/               ← shared coordinator/worker contracts and routed worker contracts
  sai/orchestration/workers/bindings/claude/   ← Claude Code routed worker binding
  sai/orchestration/workers/bindings/opencode/ ← opencode routed worker binding
  sai/policies/                    ← canonical reusable policies and prerequisite rules
- sai/compat/                      ← caller-neutral compatibility assets
+ sai/compat/                      ← caller-neutral compatibility-only assets
  sai/install-manifest.json        ← deterministic harness projection manifest for install, doctor, and uninstall
  commands/claude/                 ← Claude Code wrappers
  commands/opencode/               ← opencode wrappers
@@ -60,14 +60,14 @@ The openspec-dependent `sai-*` commands halt with a clear error if either is mis
 
 | Directory | Purpose |
 |-----------|---------|
-| `sai/instructions/` | Phase content (Isolation Mode + TASK block). Fetched by wrappers. |
+| `sai/instructions/` | Phase content (Isolation Mode + TASK block) and the canonical project-agnostic `sai/instructions/_templates/adr-index.md` template. Fetched by wrappers. |
 | `sai/commands/` | Sai command body files fetched by wrappers at runtime. |
 | `sai/commands/{spec,design,implement}/{coordinator,invocation}.md` | Grouped coordinator and invocation bodies for Claude Code and opencode. |
 | `sai/orchestration/inline-invocation.md` | Direct Copilot adapter for inline spec, design, and implementation dispatch. |
-| `sai/instructions/` | Phase content and inline caller contracts fetched by wrappers. |
+| `sai/instructions/` | Phase content, inline caller contracts, and shared instruction templates fetched by wrappers. |
 | `sai/orchestration/` | Shared coordinator/worker lifecycle contracts and routed worker contracts. Claude Code and opencode receive their own binding projections; Copilot is explicitly inline and receives none. |
 | `sai/policies/` | Canonical glossary, prerequisite, picker, commit, status, and feedback policies. |
-| `sai/compat/` | Caller-neutral spec/design/implementation invocation cores and compatibility assets shared by the applicable harnesses. |
+| `sai/compat/` | Caller-neutral spec/design/implementation invocation cores and compatibility-only assets shared by the applicable harnesses. The ADR index template is not owned here. |
 | `sai/commands/spec/invocation.md`, `sai/commands/design/invocation.md`, and `sai/commands/implement/invocation.md` | Caller-neutral invocation bodies shared by routed and inline paths. |
 | `sai/orchestration/workers/sai-1-spec-proposal-worker.md` | Spec proposal worker lifecycle, input, output, and proposal/spec artifact contract. |
 | `sai/orchestration/workers/sai-3-implementation-worker.md` | Implementation-planning worker lifecycle, input, output, and durable-artifact contract. |
@@ -216,7 +216,7 @@ Safe-operations confirmations and all unnamed gates remain in force.
 
 ## Installation
 
-Commands are **user globals**, not per-project. The manifest-driven installer expands `sai/install-manifest.json` into deterministic harness projections, and the same projections are used by `doctor` for missing/drift checks and by `uninstall` for safe removal. Claude Code and opencode receive mirrored routed spec, design, and implementation bindings from the shared Orchestration Core; Copilot receives the policy/compatibility allowlist and remains inline without routed spec assets or other routed bindings.
+Commands are **user globals**, not per-project. The manifest-driven installer expands `sai/install-manifest.json` into deterministic harness projections, and the same projections are used by `doctor` for missing/drift checks and by `uninstall` for safe removal. Claude Code and opencode receive mirrored routed spec, design, and implementation bindings from the shared Orchestration Core; Copilot receives the policy/compatibility allowlist and remains inline without routed spec assets or other routed bindings. The canonical project-agnostic ADR index template is `sai/instructions/_templates/adr-index.md`; the recursive `sai-instructions` projection installs it for Claude Code, opencode, and GitHub Copilot, and no active compatibility projection owns it.
 
 - **Claude Code**: `~/.claude/commands/`
 - **opencode**: `~/.config/opencode/commands/`
@@ -253,7 +253,7 @@ Existing projects with `plans/{feature-name}/` artifacts are **not migrated auto
 ## How to modify this repo
 
 ### Add / modify an instruction
-1. Edit the canonical file in `sai/instructions/`, `sai/policies/`, `sai/compat/`, or `sai/orchestration/` as appropriate.
+1. Edit the canonical file in `sai/instructions/`, `sai/policies/`, `sai/compat/`, or `sai/orchestration/` as appropriate. The ADR index template belongs at `sai/instructions/_templates/adr-index.md`; `sai/compat/` remains for compatibility-only assets.
 2. If it changes a per-phase artifact path, update the corresponding wrapper REPLACEMENT block (`sai-3-implement.md`, `sai-4-apply.md`) and the AGENTS.md artifact table above.
 3. If it changes an installable surface, update `sai/install-manifest.json` and keep Claude Code, opencode, and Copilot projections explicit. Claude Code and opencode routed bindings must remain mirrored; Copilot remains inline unless an explicit adapter decision changes that boundary.
 4. If the recommended model changes, update the wrappers in `commands/claude/`, `commands/opencode/`, and `commands/copilot/`.

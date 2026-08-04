@@ -38,6 +38,11 @@ The cold-build boilerplate for the relational ADR index SHALL live as a separate
 - **WHEN** `sai/instructions/_templates/adr-index.md` is consulted
 - **THEN** the `## By <domain unit>` H2 SHALL carry the literal placeholder token `<domain unit>` (never the concrete word "command" or any other concrete noun), AND the `## By <domain unit>` and `## Cross-cutting categories` sections SHALL contain only empty placeholder skeletons (e.g. a single HTML comment insertion site per section, or an explicitly empty body with a `<!-- cold-build: derive <domain unit> / cross-cutting subsections from ADR content -->` marker), AND SHALL NOT list any specific `### /sai-N-*` subsection or any specific cross-cutting category subsection name (no `### /sai-1-spec`, no `### Repo layout, fetch paths and skill installation`, no `### Doctor`, etc.). A consumer project running `sai-3` cold-build against this template SHALL therefore produce a H2 named after ITS OWN domain-unit noun (e.g. `## By module`) — never receive a skeleton pre-populated with another project's domain units AND never receive a H2 that contradicts the noun the project's own ADRs use to group themselves.
 
+#### Scenario: Relocation preserves the template content and index behavior
+
+- **WHEN** the template is moved from `sai/compat/_templates/adr-index.md` to `sai/instructions/_templates/adr-index.md`
+- **THEN** the destination content SHALL be byte-for-byte identical to the source content before the move, and no ADR index output or maintenance behavior SHALL change
+
 ### Requirement: Cold build shall construct the full relational index from the template, deriving the domain unit and all categorization from ADR content
 
 When `docs/adr/0000-INDEX.md` does not exist, Step 3 SHALL cold-build the full relational index over every ADR file currently present under `docs/adr/` using the template at `sai/instructions/_templates/adr-index.md`. The cold build is a **total reconstruction over every ADR in `docs/adr/`**, NOT a session-scoped increment — it processes every ADR the project contains (whether the current session created it or it pre-exists the session) on equal terms. The cold build SHALL:

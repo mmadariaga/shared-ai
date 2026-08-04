@@ -18,6 +18,7 @@ const retiredSources = [
   'sai/compat/sai-3-implementation-core.md',
   'sai/compat/implement-invocation.md',
 ];
+const formerAdrTemplateSource = 'sai/compat/_templates/adr-index.md';
 
 function writeFixture(root, relativePath, content) {
   const filePath = path.join(root, relativePath);
@@ -40,7 +41,10 @@ test('retired phase sources are absent and grouped callers remain available', ()
     'sai/commands/implement/coordinator.md',
     'sai/commands/implement/invocation.md',
   ]) assert.equal(fs.existsSync(path.join(repoRoot, source)), true);
-  assert.equal(fs.existsSync(path.join(repoRoot, 'sai/compat/_templates/adr-index.md')), true);
+  assert.equal(fs.existsSync(path.join(repoRoot, 'sai/instructions/_templates/adr-index.md')), true);
+  assert.equal(fs.existsSync(path.join(repoRoot, formerAdrTemplateSource)), false);
+  const manifest = JSON.parse(fs.readFileSync(path.join(repoRoot, 'sai', 'install-manifest.json'), 'utf8'));
+  assert.ok(manifest.retirements.some(retirement => retirement.destination.path === 'compat/_templates/adr-index.md'));
 });
 
 test('active-reference audit excludes archived changes and ADRs but scans maintained files', () => {

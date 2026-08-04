@@ -8,7 +8,6 @@
     { "id": "routed-spec-coordinator", "source": "sai/commands/spec/coordinator.md", "destination": { "class": "sai", "path": "commands/spec/coordinator.md" }, "harnesses": ["claude", "opencode"], "strategy": "copy", "recursive": false, "overrides": "sai-commands", "ownership": "managed", "drift": "content" },
     { "id": "sai-instructions", "source": "sai/instructions", "destination": { "class": "sai", "path": "instructions" }, "harnesses": ["claude", "opencode", "copilot"], "strategy": "copy", "recursive": true, "include": ["**/*.md"], "ownership": "managed", "drift": "content" },
     { "id": "copilot-inline-invocation", "source": "sai/orchestration/inline-invocation.md", "destination": { "class": "sai", "path": "orchestration/inline-invocation.md" }, "harnesses": ["copilot"], "strategy": "copy", "recursive": false, "overrides": "sai-instructions", "ownership": "managed", "drift": "content" },
-    { "id": "claude-opencode-copilot-adr-index-template", "source": "sai/compat/_templates/adr-index.md", "destination": { "class": "sai", "path": "compat/_templates/adr-index.md" }, "harnesses": ["claude", "opencode", "copilot"], "strategy": "copy", "recursive": false, "overrides": "sai-instructions", "ownership": "managed", "drift": "content" },
     { "id": "sai-policies", "source": "sai/policies", "destination": { "class": "sai", "path": "policies" }, "harnesses": ["claude", "opencode", "copilot"], "strategy": "copy", "recursive": true, "include": ["**/*.md"], "ownership": "managed", "drift": "content" },
     { "id": "claude-orchestration", "source": "sai/orchestration", "destination": { "class": "sai", "path": "orchestration" }, "harnesses": ["claude"], "strategy": "copy", "recursive": true, "include": ["coordinator-contract.md", "worker-lifecycle.md", "workers/*.md"], "ownership": "managed", "drift": "content" },
     { "id": "opencode-orchestration", "source": "sai/orchestration", "destination": { "class": "sai", "path": "orchestration" }, "harnesses": ["opencode"], "strategy": "copy", "recursive": true, "include": ["coordinator-contract.md", "worker-lifecycle.md", "workers/*.md"], "ownership": "managed", "drift": "content" },
@@ -133,6 +132,15 @@
         "a6272f4d3bb8bd114bcedbc7c1f0ebc9464a8abc3fd6c3c3241fea03a7af63dd",
         "b5fc306377ccc505eed731c98326f3f3afdeb5950e1f417143d5a2267d8557df",
         "6775d9054e3e9bd90c1c1cda26cfce40ff784236009a88e667430bb7d4db0380"
+      ]
+    },
+    {
+      "id": "retired-adr-index-template",
+      "destination": { "class": "sai", "path": "compat/_templates/adr-index.md" },
+      "harnesses": ["claude", "opencode", "copilot"],
+      "managedHashes": [
+        "689c2cab58cd9cc41c3a37ecc32e16a4e4503c1ac379304de1fc8e3b6c4311c2",
+        "2a8052146bbcf677adfd4881bc280b71a9a92ffaf5a23142cf3b92c7a85eaf01"
       ]
     }
   ]

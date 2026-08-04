@@ -4,7 +4,7 @@
 TBD - created by archiving change extract-sai-orchestration-core. Update Purpose after archive.
 ## Requirements
 ### Requirement: Active references exclude retired inline loaders
-Active runtime sources, fixtures, tests, specifications, and maintained documentation SHALL reference `sai/commands/{design,implement}/{coordinator,invocation}.md` or the Copilot Inline Coordinator Adapter and SHALL NOT treat the five retired paths (`sai/commands/sai-2-design.md`, `sai/commands/sai-3-implement.md`, `sai/compat/sai-2-design-core.md`, `sai/compat/sai-3-implementation-core.md`, and `sai/compat/implement-invocation.md`) as available sources. Archived OpenSpec changes and ADRs MAY retain their original historical references.
+Active runtime sources, fixtures, tests, specifications, and maintained documentation SHALL reference `sai/commands/{design,implement}/{coordinator,invocation}.md` or the Copilot Inline Coordinator Adapter and SHALL NOT treat the five retired paths (`sai/commands/sai-2-design.md`, `sai/commands/sai-3-implement.md`, `sai/compat/sai-2-design-core.md`, `sai/compat/sai-3-implementation-core.md`, and `sai/compat/implement-invocation.md`) or the former ADR template source `sai/compat/_templates/adr-index.md` as available sources. Archived OpenSpec changes and ADRs MAY retain their original historical references.
 
 #### Scenario: Active reference inventory is checked
 - **WHEN** maintained repository references to design and implementation entrypoints are audited
@@ -64,14 +64,16 @@ The extraction SHALL apply the following exhaustive classification to the curren
 - Task instructions remaining under `sai/instructions/`: `accessibility.md`, `archive.md`, `apply.md`, `backfill.md`, `commit.md`, `design.md`, `explore.md`, `implement.md`, `performance.md`, `pr.md`, `review.md`, `security.md`, and `spec.propose.md`.
 - Reusable policies moving to `sai/policies/`: `artifact-feedback-gate.md`, `change-picker.md`, `commit-rules.md`, `glossary-format.md`, `prereqs.md`, `remember.md`, `sai-learnings-format.md`, and `status-picker.md`.
 - Worker contracts moving to `sai/orchestration/workers/`: `design-worker.md` and `implement-worker.md`.
-- Compatibility assets retained under `sai/compat/`: `_templates/adr-index.md`; the former design and implementation loaders are retired without shims.
+- Shared instruction templates under `sai/instructions/_templates/`: `adr-index.md` and the existing phase output templates, recursively projected to Claude Code, opencode, and GitHub Copilot.
+- Compatibility-only assets retained under `sai/compat/`: the former design and implementation loaders are retired without shims, the former dedicated ADR template projection is absent, and no active caller or projection expects the former ADR template source.
 
 The design artifact SHALL map every listed source to its final canonical path and every caller that must change. No unlisted file in the current `sai/instructions/` tree SHALL move as part of this change.
 
 #### Scenario: Migration plan is generated
 - **WHEN** the design phase defines file moves and fetch updates
 - **THEN** it SHALL cover every file in the exhaustive classification exactly once
-- **AND** it SHALL update every compatibility consumer atomically to the corresponding `sai/compat/` path
+- **AND** it SHALL update every caller atomically to its corresponding final canonical path
+- **AND** it SHALL classify `adr-index.md` exactly once under `sai/instructions/_templates/`, update every runtime and installation caller to that canonical path, remove the dedicated compatibility projection, and leave archived change records unchanged
 - **AND** it SHALL leave all unlisted instruction files in place
 
 ### Requirement: Thin harness runtime surfaces
@@ -99,12 +101,17 @@ GitHub Copilot SHALL continue to execute design and implementation planning thro
 - **AND** source-layout changes SHALL NOT introduce routed worker lifecycle state or an obsolete inline command loader into that path
 
 ### Requirement: Dedicated compatibility source
-Compatibility loaders and path-sensitive compatibility assets SHALL live under `sai/compat/`, not `sai/instructions/`, `sai/policies/`, or `sai/orchestration/`. The extraction SHALL update all repository callers in the same change and SHALL NOT leave forwarding shims at the former `sai/instructions/` paths.
+Compatibility loaders and compatibility-only path-sensitive assets SHALL live under `sai/compat/`, not `sai/instructions/`, `sai/policies/`, or `sai/orchestration/`. Shared instruction templates, including `adr-index.md`, SHALL live under `sai/instructions/_templates/`. The extraction SHALL update all repository callers in the same change and SHALL NOT leave forwarding shims at former source paths.
 
 #### Scenario: Compatibility source moves
 - **WHEN** a compatibility loader or asset moves from `sai/instructions/` to `sai/compat/`
 - **THEN** every caller SHALL move to the new path in the same change
 - **AND** the former instruction path SHALL NOT remain as a shim
+
+#### Scenario: Shared ADR template has no compatibility duplicate
+
+- **WHEN** the ADR index template is relocated from `sai/compat/_templates/adr-index.md`
+- **THEN** every caller SHALL use `sai/instructions/_templates/adr-index.md`, the former compatibility source SHALL be absent, and no compatibility copy or shim SHALL remain
 
 ### Requirement: Managed source-to-runtime projection
 The installer SHALL project canonical sources using per-harness allowlists in `sai/install-manifest.json` and the existing copy-based installation model. All harnesses SHALL receive their required `sai/instructions/`, `sai/policies/`, and `sai/compat/` sources. Claude Code and opencode SHALL receive the shared routed coordinator, lifecycle, and phase-worker contracts plus only their own subtree under `sai/orchestration/workers/bindings/<harness>/`. GitHub Copilot SHALL receive `sai/orchestration/inline-invocation.md` and only the other sources required by its direct inline adapter path. No harness SHALL receive `sai/commands/sai-2-design-inline.md` or `sai/commands/sai-3-implement-inline.md`, and GitHub Copilot SHALL receive no routed planning-worker binding, routed planning-agent projection, or Claude/opencode binding subtree.

@@ -92,19 +92,33 @@ The extraction change SHALL verify that each dedicated file contains the complet
 
 ### Requirement: Existing installation projections remain consistent
 
-The existing recursive `sai-instructions` projection in `sai/install-manifest.json` SHALL continue to install Markdown files beneath `sai/instructions/_templates/` to Claude Code, opencode, and GitHub Copilot without requiring a new projection rule. The explicit projection for `sai/compat/_templates/adr-index.md` SHALL remain separate and unchanged.
+The existing recursive `sai-instructions` projection in `sai/install-manifest.json` SHALL continue to install Markdown files beneath `sai/instructions/_templates/`, including the active project-agnostic ADR template `sai/instructions/_templates/adr-index.md`, to Claude Code, opencode, and GitHub Copilot without requiring a new projection rule. There SHALL be no separate explicit compatibility projection for the former ADR template destination; `retired-adr-index-template` is the retirement record for cleanup evidence only.
 
 #### Scenario: New templates are projected to all supported harnesses
 - **WHEN** the manifest-driven installer projects the `sai-instructions` source tree
-- **THEN** all six files under `sai/instructions/_templates/` are installed through the existing recursive rule for each of Claude Code, opencode, and GitHub Copilot
+- **THEN** the six phase output templates and `adr-index.md` under `sai/instructions/_templates/` are installed through the existing recursive rule for each of Claude Code, opencode, and GitHub Copilot
 
-#### Scenario: Compatibility template projection is not merged
-- **WHEN** installation or projection logic handles `sai/compat/_templates/adr-index.md`
-- **THEN** it continues to use its existing explicit compatibility projection rather than the instruction-template directory
+#### Scenario: ADR template uses the recursive instruction projection
+- **WHEN** installation or projection logic handles `sai/instructions/_templates/adr-index.md`
+- **THEN** each supported harness receives it through `sai-instructions` at `instructions/_templates/adr-index.md`, with source-equivalent content, and no active projection targets the former compatibility destination
+
+### Requirement: Maintained installer and documentation references stay aligned
+
+Maintained installer instructions and repository documentation for Claude Code, opencode, and GitHub Copilot SHALL describe the ADR template at `sai/instructions/_templates/adr-index.md` and its ownership by the recursive `sai-instructions` projection. Active documentation SHALL NOT direct maintainers to copy or expect `sai/compat/_templates/adr-index.md`. Historical archived change records are excluded from this requirement.
+
+#### Scenario: Manual installer guidance uses the canonical source
+
+- **WHEN** a maintainer follows the maintained installation guidance for any supported harness
+- **THEN** the guidance SHALL project the ADR template through the recursive instruction source and SHALL contain no active instruction to copy the former compatibility template path
+
+#### Scenario: Repository documentation matches the manifest ownership
+
+- **WHEN** a maintainer reads maintained repository documentation describing SAI source layout or installation projections
+- **THEN** it SHALL identify `sai/instructions/_templates/adr-index.md` as the canonical source and SHALL not describe a separate compatibility projection for that template
 
 ### Requirement: No workflow behavior changes
 
-The extraction SHALL not modify generated artifact names or locations, OpenSpec-owned skills, production code, configuration, audit semantics, phase ordering, or cross-harness behavior. The only intended runtime difference SHALL be loading identical template content from dedicated files instead of inline parent-instruction content. The pre-existing `openspec/specs/adr-index-maintenance/spec.md` reference to `sai/instructions/_templates/adr-index.md` SHALL remain outside this change; the active `sai/compat/_templates/adr-index.md` source and its explicit manifest projection SHALL remain unchanged.
+The extraction SHALL not modify generated artifact names or locations, OpenSpec-owned skills, production code, configuration, audit semantics, phase ordering, or cross-harness behavior. The only intended runtime difference SHALL be loading identical template content from dedicated files instead of inline parent-instruction content. The active project-agnostic ADR template source SHALL be `sai/instructions/_templates/adr-index.md`; the former compatibility destination is represented only by the `retired-adr-index-template` retirement record.
 
 #### Scenario: Generated artifacts remain unchanged
 - **WHEN** any of the six phases completes after the extraction

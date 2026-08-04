@@ -51,10 +51,11 @@ test('installOpencode copies all standalone policies to dest/sai/policies/', () 
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });
 
-test('installOpencode keeps only the compatibility template and removes former compatibility destinations', () => {
+test('installOpencode projects the canonical ADR template and removes former compatibility destinations', () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-'));
   installOpencode(tmpDir);
-  assert.ok(fs.existsSync(path.join(tmpDir, 'sai', 'compat', '_templates', 'adr-index.md')));
+  assert.ok(fs.existsSync(path.join(tmpDir, 'sai', 'instructions', '_templates', 'adr-index.md')));
+  assert.equal(fs.existsSync(path.join(tmpDir, 'sai', 'compat', '_templates', 'adr-index.md')), false);
   for (const file of ['sai-2-design-core.md', 'sai-3-implementation-core.md', 'implement-invocation.md']) {
     assert.equal(fs.existsSync(path.join(tmpDir, 'sai', 'compat', file)), false, `${file} should not be projected`);
   }

@@ -72,7 +72,7 @@ test('canonical manifest projects policies recursively to all harnesses', () => 
   assert.equal(manifest.projections.filter(projection => projection.source === 'sai/policies').length, 1);
 });
 
-test('canonical manifest exposes the exact compatibility allowlist', () => {
+test('canonical manifest has no active compatibility ADR-template projection', () => {
   const manifest = loadInstallManifest(path.join(__dirname, '..'));
   const compatibility = manifest.projections
     .filter(projection => projection.source.startsWith('sai/compat/'))
@@ -83,15 +83,11 @@ test('canonical manifest exposes the exact compatibility allowlist', () => {
       recursive: projection.recursive,
       overrides: projection.overrides,
     }));
-  assert.deepEqual(compatibility, [
-    {
-      source: 'sai/compat/_templates/adr-index.md',
-      destination: { class: 'sai', path: 'compat/_templates/adr-index.md' },
-      harnesses: ['claude', 'opencode', 'copilot'],
-      recursive: false,
-      overrides: 'sai-instructions',
-    },
-  ]);
+  assert.deepEqual(compatibility, []);
+  assert.equal(
+    manifest.projections.some(projection => projection.source === 'sai/compat/_templates/adr-index.md'),
+    false
+  );
 });
 
 test('canonical manifest installs exactly one Copilot inline orchestration adapter projection', () => {
@@ -264,7 +260,9 @@ test('compatibility and policy projections resolve for every supported harness',
       repoRoot: path.join(__dirname, '..'),
       destinationRoot,
     });
-     assert.ok(projections.some(p => p.destinationPath.endsWith(path.join('compat', '_templates', 'adr-index.md'))));
+     assert.ok(projections.some(p => p.destinationPath.endsWith(path.join('instructions', '_templates', 'adr-index.md'))));
+     assert.ok(projections.some(p => path.relative(path.join(__dirname, '..'), p.sourcePath).split(path.sep).join('/') === 'sai/instructions/_templates/adr-index.md'));
+     assert.equal(projections.some(p => p.destinationPath.endsWith(path.join('compat', '_templates', 'adr-index.md'))), false);
     assert.ok(projections.some(p => p.destinationPath.endsWith(path.join('policies', 'glossary-format.md'))));
     assert.ok(projections.some(p => p.destinationPath.endsWith(path.join('policies', 'remember.md'))));
     assert.ok(projections.some(p => p.destinationPath.endsWith(path.join('policies', 'sai-learnings-format.md'))));
@@ -515,9 +513,18 @@ test('canonical manifest validates all historical retirements and excludes them 
         '6775d9054e3e9bd90c1c1cda26cfce40ff784236009a88e667430bb7d4db0380',
       ],
     },
+    {
+      id: 'retired-adr-index-template',
+      destination: { class: 'sai', path: 'compat/_templates/adr-index.md' },
+      harnesses: ['claude', 'opencode', 'copilot'],
+      managedHashes: [
+        '689c2cab58cd9cc41c3a37ecc32e16a4e4503c1ac379304de1fc8e3b6c4311c2',
+        '2a8052146bbcf677adfd4881bc280b71a9a92ffaf5a23142cf3b92c7a85eaf01',
+      ],
+    },
   ];
   assert.deepEqual(manifest.retirements, expected);
-   assert.equal(manifest.retirements.flatMap(retirement => retirement.managedHashes).length, 55);
+   assert.equal(manifest.retirements.flatMap(retirement => retirement.managedHashes).length, 57);
   assert.ok(manifest.retirements.flatMap(retirement => retirement.managedHashes).every(hash => /^[0-9a-f]{64}$/.test(hash)));
 
   const destinationRoot = {
@@ -533,9 +540,10 @@ test('canonical manifest validates all historical retirements and excludes them 
        path.resolve(destinationRoot.sai, 'commands/sai-2-design.md'),
        path.resolve(destinationRoot.sai, 'commands/sai-2-design-inline.md'),
        path.resolve(destinationRoot.sai, 'commands/sai-3-implement.md'),
-       path.resolve(destinationRoot.sai, 'commands/sai-3-implement-inline.md'),
-       ...(harness === 'copilot' ? [path.resolve(destinationRoot.sai, 'compat/implement-invocation.md')] : []),
-       path.resolve(destinationRoot.sai, 'compat/sai-2-design-core.md'),
+        path.resolve(destinationRoot.sai, 'commands/sai-3-implement-inline.md'),
+        ...(harness === 'copilot' ? [path.resolve(destinationRoot.sai, 'compat/implement-invocation.md')] : []),
+        path.resolve(destinationRoot.sai, 'compat/_templates/adr-index.md'),
+        path.resolve(destinationRoot.sai, 'compat/sai-2-design-core.md'),
        path.resolve(destinationRoot.sai, 'compat/sai-3-implementation-core.md'),
      ].sort());
     assert.ok(retirements.every(retirement => retirement.harness === harness));
@@ -592,6 +600,7 @@ test('recursive sai-instructions projection carries the extracted _templates fil
     config: path.join(os.tmpdir(), 'sai-templates-config'),
   };
   const templateFiles = [
+    'adr-index.md',
     'implementation-plan.md',
     'review-report.md',
     'security-report.md',
@@ -621,5 +630,5 @@ test('recursive sai-instructions projection carries the extracted _templates fil
       projectedCount += 1;
     }
   }
-  assert.equal(projectedCount, 18, 'six templates across three harnesses should project to 18 paths');
+  assert.equal(projectedCount, 21, 'seven templates across three harnesses should project to 21 paths');
 });

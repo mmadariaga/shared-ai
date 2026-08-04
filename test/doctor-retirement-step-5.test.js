@@ -37,11 +37,21 @@ function retiredCopy(claudeBase, contents = 'user-owned retired copy\n') {
   return destination;
 }
 
+function adrRetiredCopy(claudeBase, contents = 'user-owned retired ADR template copy\n') {
+  const destination = path.join(claudeBase, 'sai', 'compat', '_templates', 'adr-index.md');
+  fs.mkdirSync(path.dirname(destination), { recursive: true });
+  fs.writeFileSync(destination, contents);
+  return destination;
+}
+
 test('doctor reports every Claude retirement destination without changing locally modified content', async () => {
   const { projectRoot, claudeBase } = fixture();
   const destinations = [
     ['sai', 'commands', 'sai-2-design.md'],
+    ['sai', 'commands', 'sai-2-design-inline.md'],
     ['sai', 'commands', 'sai-3-implement.md'],
+    ['sai', 'commands', 'sai-3-implement-inline.md'],
+    ['sai', 'compat', '_templates', 'adr-index.md'],
     ['sai', 'compat', 'sai-2-design-core.md'],
     ['sai', 'compat', 'sai-3-implementation-core.md'],
   ];
@@ -101,6 +111,38 @@ test('doctor reports an unrecognized retired copy without changing it', async ()
     assert.equal(code, 0);
     const warning = retirementWarning(report, destination);
     assert.equal(warning.severity, 'warn');
+    assert.equal(warning.recognized, false);
+    assert.match(warning.recommendation, /manually/i);
+    assert.equal(fs.readFileSync(destination, 'utf8'), before);
+  } finally {
+    fs.rmSync(projectRoot, { recursive: true, force: true });
+  }
+});
+
+test('doctor reports a recognized former ADR-template copy through retirement state', async () => {
+  const { projectRoot, claudeBase } = fixture();
+  try {
+    const destination = path.join(claudeBase, 'sai', 'compat', '_templates', 'adr-index.md');
+    const source = path.join(__dirname, '..', 'sai', 'instructions', '_templates', 'adr-index.md');
+    fs.mkdirSync(path.dirname(destination), { recursive: true });
+    fs.copyFileSync(source, destination);
+
+    const { report } = await runJson(projectRoot, claudeBase);
+    const warning = retirementWarning(report, destination);
+    assert.equal(warning.recognized, true);
+  } finally {
+    fs.rmSync(projectRoot, { recursive: true, force: true });
+  }
+});
+
+test('doctor preserves an unrecognized former ADR-template copy and gives manual-cleanup guidance', async () => {
+  const { projectRoot, claudeBase } = fixture();
+  try {
+    const destination = adrRetiredCopy(claudeBase);
+    const before = fs.readFileSync(destination, 'utf8');
+    const { report } = await runJson(projectRoot, claudeBase);
+    const warning = retirementWarning(report, destination);
+
     assert.equal(warning.recognized, false);
     assert.match(warning.recommendation, /manually/i);
     assert.equal(fs.readFileSync(destination, 'utf8'), before);

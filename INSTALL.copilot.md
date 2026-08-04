@@ -23,7 +23,7 @@ npx github:mmadariaga/shared-ai
 npx github:mmadariaga/shared-ai setup /path/to/your/project
 ```
 
-Step 1 expands `sai/install-manifest.json` into the Copilot projection: prompt files, shared commands/instructions, `sai/policies/`, the policy and compatibility allowlist under `sai/compat/`, and the Copilot inline adapter under `sai/orchestration/`. It does not install any Claude/opencode routed worker binding, so Copilot has no routed binding. Step 2 verifies the openspec CLI, runs `openspec init --tools copilot` if needed, sets `schema: sai-workflow` in `openspec/config.yaml`, and copies the schema templates into the project. `doctor` and `uninstall` use the same manifest projection.
+Step 1 expands `sai/install-manifest.json` into the Copilot projection: prompt files, the recursively projected shared commands/instructions including the canonical project-agnostic `sai/instructions/_templates/adr-index.md`, `sai/policies/`, the policy and compatibility allowlist under `sai/compat/`, and the Copilot inline adapter under `sai/orchestration/`. It does not install any Claude/opencode routed worker binding, so Copilot has no routed binding. Step 2 verifies the openspec CLI, runs `openspec init --tools copilot` if needed, sets `schema: sai-workflow` in `openspec/config.yaml`, and copies the schema templates into the project. `doctor` and `uninstall` use the same manifest projection.
 
 ## Manual installation
 
@@ -52,7 +52,7 @@ cp commands/copilot/*.prompt.md "$PROMPTS_DIR/"
 mkdir -p "$SAI_DIR/commands"
 cp -r sai/commands/. "$SAI_DIR/commands/"
 
-# Copy instructions
+# Copy instructions, including the recursively projected canonical ADR template
 if [ -d "$SAI_DIR/instructions" ]; then
     echo "Overwriting $SAI_DIR/instructions/"
 fi
@@ -63,7 +63,6 @@ cp -r sai/instructions/. "$SAI_DIR/instructions/"
 mkdir -p "$SAI_DIR/policies" "$SAI_DIR/compat" "$SAI_DIR/orchestration"
 cp sai/policies/*.md "$SAI_DIR/policies/"
 cp -r sai/compat/. "$SAI_DIR/compat/"
-cp -r sai/compat/_templates "$SAI_DIR/compat/"
 cp sai/orchestration/inline-invocation.md "$SAI_DIR/orchestration/"
 # Do not copy routed coordinator, worker, or Claude/opencode binding sources.
 
@@ -119,7 +118,6 @@ New-Item -ItemType Directory -Force -Path "$saiDir\policies" | Out-Null
 Copy-Item sai\policies\*.md "$saiDir\policies\"
 New-Item -ItemType Directory -Force -Path "$saiDir\compat" | Out-Null
 Copy-Item sai\compat\* "$saiDir\compat\" -Recurse -Force
-Copy-Item sai\compat\_templates "$saiDir\compat" -Recurse -Force
 New-Item -ItemType Directory -Force -Path "$saiDir\orchestration" | Out-Null
 Copy-Item sai\orchestration\inline-invocation.md "$saiDir\orchestration\"
 # Do not copy routed coordinator, worker, or Claude/opencode binding sources.

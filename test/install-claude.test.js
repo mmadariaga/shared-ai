@@ -48,10 +48,11 @@ test('installClaude copies all standalone policies to dest/sai/policies/', () =>
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });
 
-test('installClaude keeps only the compatibility template and removes former compatibility destinations', () => {
+test('installClaude projects the canonical ADR template and removes former compatibility destinations', () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-claude-'));
   installClaude(tmpDir);
-  assert.ok(fs.existsSync(path.join(tmpDir, 'sai', 'compat', '_templates', 'adr-index.md')));
+  assert.ok(fs.existsSync(path.join(tmpDir, 'sai', 'instructions', '_templates', 'adr-index.md')));
+  assert.equal(fs.existsSync(path.join(tmpDir, 'sai', 'compat', '_templates', 'adr-index.md')), false);
   for (const file of ['sai-2-design-core.md', 'sai-3-implementation-core.md', 'implement-invocation.md']) {
     assert.equal(fs.existsSync(path.join(tmpDir, 'sai', 'compat', file)), false, `${file} should not be projected`);
   }

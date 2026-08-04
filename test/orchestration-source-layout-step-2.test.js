@@ -145,8 +145,9 @@ test('grouped design and implementation phase assets preserve their former sourc
     assert.match(invocation, new RegExp(`Fetch @${phase.instruction.replaceAll('/', '\\/')}`));
   }
 
-  const adrIndex = path.join(repoRoot, 'sai', 'compat', '_templates', 'adr-index.md');
+  const adrIndex = path.join(repoRoot, 'sai', 'instructions', '_templates', 'adr-index.md');
   assert.equal(fs.existsSync(adrIndex), true);
+  assert.equal(fs.existsSync(path.join(repoRoot, 'sai', 'compat', '_templates', 'adr-index.md')), false);
   assert.equal(fs.existsSync(path.join(repoRoot, 'sai', 'commands', 'design', 'adr-index.md')), false);
   assert.equal(fs.existsSync(path.join(repoRoot, 'sai', 'commands', 'implement', 'adr-index.md')), false);
 });

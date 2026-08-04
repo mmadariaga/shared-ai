@@ -35,7 +35,7 @@ test('retirement cleanup treats an absent destination as a no-op', () => {
   const base = tempDir();
   try {
     const results = cleanupRetiredProjections('claude', roots(base));
-    assert.equal(results.length, 6);
+    assert.equal(results.length, 7);
     assert.ok(results.every(result => result.action === 'not-found'));
   } finally {
     fs.rmSync(base, { recursive: true, force: true });
@@ -83,6 +83,69 @@ test('retirement cleanup preserves modified and unknown destination bytes', () =
     assert.equal(results.find(result => result.id === unknownRetirement.id).action, 'preserved');
     assert.deepEqual(fs.readFileSync(modifiedPath), modifiedBytes);
     assert.deepEqual(fs.readFileSync(unknownPath), unknownBytes);
+  } finally {
+    fs.rmSync(base, { recursive: true, force: true });
+  }
+});
+
+test('ADR template retirement cleanup deletes a former compatibility copy for each accepted hash', () => {
+  const manifest = loadInstallManifest(path.join(__dirname, '..'));
+  const acceptedHashes = manifest.retirements.find(retirement => retirement.id === 'retired-adr-index-template').managedHashes;
+
+  for (const acceptedHash of acceptedHashes) {
+    const base = tempDir();
+    try {
+      const retirement = retirementPaths(base).find(record => record.id === 'retired-adr-index-template');
+      const destinationPath = retirement.destinationPath;
+      fs.mkdirSync(path.dirname(destinationPath), { recursive: true });
+      fs.writeFileSync(destinationPath, Buffer.from(`historical ADR template ${acceptedHash}`));
+
+      const originalCreateHash = crypto.createHash;
+      crypto.createHash = () => ({ update: () => ({ digest: () => acceptedHash }) });
+      let results;
+      try {
+        results = cleanupRetiredProjections('claude', roots(base));
+      } finally {
+        crypto.createHash = originalCreateHash;
+      }
+
+      assert.equal(results.find(result => result.id === 'retired-adr-index-template').action, 'deleted');
+      assert.equal(fs.existsSync(destinationPath), false);
+    } finally {
+      fs.rmSync(base, { recursive: true, force: true });
+    }
+  }
+});
+
+test('ADR template retirement cleanup preserves a modified former compatibility copy', () => {
+  const base = tempDir();
+  try {
+    const retirement = retirementPaths(base).find(record => record.id === 'retired-adr-index-template');
+    const destinationPath = retirement.destinationPath;
+    const bytes = Buffer.from('modified ADR template bytes');
+    fs.mkdirSync(path.dirname(destinationPath), { recursive: true });
+    fs.writeFileSync(destinationPath, bytes);
+
+    const results = cleanupRetiredProjections('claude', roots(base));
+    assert.equal(results.find(result => result.id === 'retired-adr-index-template').action, 'preserved');
+    assert.deepEqual(fs.readFileSync(destinationPath), bytes);
+  } finally {
+    fs.rmSync(base, { recursive: true, force: true });
+  }
+});
+
+test('ADR template retirement cleanup preserves an unrecognized former compatibility copy', () => {
+  const base = tempDir();
+  try {
+    const retirement = retirementPaths(base).find(record => record.id === 'retired-adr-index-template');
+    const destinationPath = retirement.destinationPath;
+    const bytes = Buffer.from('unrecognized ADR template bytes');
+    fs.mkdirSync(path.dirname(destinationPath), { recursive: true });
+    fs.writeFileSync(destinationPath, bytes);
+
+    const results = cleanupRetiredProjections('claude', roots(base));
+    assert.equal(results.find(result => result.id === 'retired-adr-index-template').action, 'preserved');
+    assert.deepEqual(fs.readFileSync(destinationPath), bytes);
   } finally {
     fs.rmSync(base, { recursive: true, force: true });
   }

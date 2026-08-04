@@ -68,7 +68,8 @@ test('Step 4 removes superseded source loaders without shims', () => {
     'sai/compat/sai-3-implementation-core.md',
     'sai/compat/implement-invocation.md',
   ]) assert.equal(fs.existsSync(path.join(repoRoot, relativePath)), false);
-  assert.equal(fs.existsSync(path.join(repoRoot, 'sai/compat/_templates/adr-index.md')), true);
+  assert.equal(fs.existsSync(path.join(repoRoot, 'sai/instructions/_templates/adr-index.md')), true);
+  assert.equal(fs.existsSync(path.join(repoRoot, 'sai/compat/_templates/adr-index.md')), false);
 });
 
 test('Step 1 completion artifact interface remains a plain CommonJS map', () => {
