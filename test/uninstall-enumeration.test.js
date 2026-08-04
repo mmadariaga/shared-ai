@@ -8,7 +8,7 @@ const fs = require('fs');
 const crypto = require('crypto');
 
 const { installClaude, installOpencode, installCopilot, MANAGED_WORKERS } = require('../bin/install-flow.js');
-const { enumerateClaude, enumerateOpencode, enumerateCopilot, buildDeletionSet } = require('../bin/uninstall-flow.js');
+const { enumerateClaude, enumerateOpencode, enumerateCopilot, buildDeletionSet, runDeletion } = require('../bin/uninstall-flow.js');
 const { loadInstallManifest, expandInstallManifest } = require('../bin/install-manifest.js');
 
 function inventoryRoots(base, harness) {
@@ -48,6 +48,7 @@ function managedWorkerSourcePaths(repoRoot) {
     'sai-5-review-worker': 'review-worker',
     'sai-1-spec-proposal-worker': 'spec-worker',
     'sai-6-security-worker': 'security-worker',
+    'sai-7-performance-worker': 'performance-worker',
   };
   return new Set(Object.entries(MANAGED_WORKERS).flatMap(([name, worker]) => [
     `sai/orchestration/workers/bindings/claude/${workerStems[name]}.md`,
@@ -305,4 +306,38 @@ test('enumerateCopilot does not error with default paths (no manifest)', () => {
     const result = enumerateCopilot();
     assert.ok(Array.isArray(result));
   });
+});
+
+test('Step 4 incompatible Claude performance agents remain protected during install and uninstall', () => {
+  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-performance-collision-'));
+  const agent = path.join(base, 'agents', 'sai-7-performance-worker.md');
+  const owner = path.join(base, 'agents', '.sai-7-performance-worker.owner.json');
+  const sentinel = 'user-owned incompatible performance worker\n';
+  try {
+    fs.mkdirSync(path.dirname(agent), { recursive: true });
+    fs.writeFileSync(agent, sentinel);
+    assert.throws(() => installClaude(base), /collision|incompatible|ownership|rename|remove/i);
+    assert.equal(fs.readFileSync(agent, 'utf8'), sentinel);
+    assert.equal(fs.existsSync(owner), false, 'blocked installation must not create an owner sidecar');
+    runDeletion(enumerateClaude(base));
+    assert.equal(fs.readFileSync(agent, 'utf8'), sentinel, 'guarded uninstall must preserve user-owned content');
+  } finally {
+    fs.rmSync(base, { recursive: true, force: true });
+  }
+});
+
+test('Step 4 proven managed performance agent and owner sidecar are removed together', () => {
+  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-performance-managed-'));
+  try {
+    installClaude(base);
+    const agent = path.join(base, 'agents', 'sai-7-performance-worker.md');
+    const owner = path.join(base, 'agents', '.sai-7-performance-worker.owner.json');
+    assert.equal(fs.existsSync(agent), true, 'managed performance agent should be installed');
+    assert.equal(fs.existsSync(owner), true, 'managed performance owner sidecar should be installed');
+    runDeletion(enumerateClaude(base));
+    assert.equal(fs.existsSync(agent), false);
+    assert.equal(fs.existsSync(owner), false);
+  } finally {
+    fs.rmSync(base, { recursive: true, force: true });
+  }
 });

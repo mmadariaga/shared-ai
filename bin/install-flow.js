@@ -76,6 +76,20 @@ const MANAGED_WORKERS = Object.freeze({
       }),
     }),
   }),
+  'sai-7-performance-worker': Object.freeze({
+    claude: Object.freeze({
+      agent: 'sai-7-performance-worker.md',
+      owner: '.sai-7-performance-worker.owner.json',
+    }),
+    opencode: Object.freeze({
+      mode: 'subagent',
+      model: 'opencode-go/glm-5.2',
+      variant: 'high',
+      permission: Object.freeze({
+        task: Object.freeze({ '*': 'deny', budget: 'allow', explore: 'allow' }),
+      }),
+    }),
+  }),
   'sai-1-spec-proposal-worker': Object.freeze({
     claude: Object.freeze({
       agent: 'sai-1-spec-proposal-worker.md',

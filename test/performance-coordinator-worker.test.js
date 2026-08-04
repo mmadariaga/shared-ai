@@ -247,3 +247,35 @@ test('Step 3 managed-agent and forwarding-skill identities match the canonical b
   assert.match(artifact('skills/claude/sai-7-performance-worker/SKILL.md'), /Claude forwarding skill/i);
   assert.match(artifact('skills/opencode/sai-7-performance-worker/SKILL.md'), /opencode forwarding skill/i);
 });
+
+test('Step 4 routed performance wrappers fetch only their matching skill and coordinator surfaces', () => {
+  const wrappers = [
+    {
+      name: 'Claude',
+      path: 'commands/claude/sai-7-performance.md',
+      model: /^model:\s*\S+$/m,
+      setting: /^effort:\s*\S+$/m,
+      forbidden: /skills[\\/]opencode[\\/]sai-7-performance-worker|opencode-worker/i,
+    },
+    {
+      name: 'opencode',
+      path: 'commands/opencode/sai-7-performance.md',
+      model: /^model:\s*\S+$/m,
+      setting: /^variant:\s*\S+$/m,
+      forbidden: /skills[\\/]claude[\\/]sai-7-performance-worker|claude-worker/i,
+    },
+  ];
+
+  for (const wrapper of wrappers) {
+    const source = artifact(wrapper.path);
+    assert.match(source, wrapper.model, `${wrapper.name} wrapper should declare its model`);
+    assert.match(source, wrapper.setting, `${wrapper.name} wrapper should declare its harness setting`);
+    assert.match(source, /sai[\\/]commands[\\/]performance[\\/]coordinator\.md/,
+      `${wrapper.name} wrapper should fetch the performance coordinator`);
+    assert.match(source, /skills[\\/]sai-7-performance-worker[\\/]SKILL\.md/,
+      `${wrapper.name} wrapper should fetch the matching forwarding skill`);
+    assert.match(source, /\$ARGUMENTS/, `${wrapper.name} wrapper should preserve complete arguments`);
+    assert.doesNotMatch(source, wrapper.forbidden,
+      `${wrapper.name} wrapper should not fetch the other harness binding`);
+  }
+});

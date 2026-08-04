@@ -53,6 +53,18 @@ test('copyOpencodeConfig preserves a fixed configured output independently of re
     '          "explore": "allow"',
     '        }',
     '      }',
+    '    },',
+    '    "sai-7-performance-worker": {',
+    '      "mode": "subagent",',
+    '      "model": "opencode-go/glm-5.2",',
+    '      "variant": "high",',
+    '      "permission": {',
+    '        "task": {',
+    '          "*": "deny",',
+    '          "budget": "allow",',
+    '          "explore": "allow"',
+    '        }',
+    '      }',
     '    }',
     '  }',
     '}',
@@ -183,6 +195,7 @@ test('opencode managed agents are derived from registry metadata', () => {
     'sai-2-design-worker',
     'sai-5-review-worker',
     'sai-6-security-worker',
+    'sai-7-performance-worker',
   ]);
   assert.deepEqual(OPENCODE_MANAGED_AGENTS['sai-3-implementation-worker'], {
     mode: 'subagent',
@@ -202,6 +215,12 @@ test('opencode managed agents are derived from registry metadata', () => {
     permission: { task: { '*': 'deny', budget: 'allow', explore: 'allow' } },
   });
   assert.deepEqual(OPENCODE_MANAGED_AGENTS['sai-6-security-worker'], {
+    mode: 'subagent',
+    model: 'opencode-go/glm-5.2',
+    variant: 'high',
+    permission: { task: { '*': 'deny', budget: 'allow', explore: 'allow' } },
+  });
+  assert.deepEqual(OPENCODE_MANAGED_AGENTS['sai-7-performance-worker'], {
     mode: 'subagent',
     model: 'opencode-go/glm-5.2',
     variant: 'high',
@@ -238,6 +257,7 @@ test('Step 2 fresh and repeated installation preserves the fixed registration ou
     'sai-2-design-worker',
     'sai-5-review-worker',
     'sai-6-security-worker',
+    'sai-7-performance-worker',
     ]);
     assert.deepEqual(first.agent['sai-3-implementation-worker'], {
       mode: 'subagent',
@@ -257,6 +277,12 @@ test('Step 2 fresh and repeated installation preserves the fixed registration ou
       permission: { task: { '*': 'deny', budget: 'allow', explore: 'allow' } },
     });
     assert.deepEqual(first.agent['sai-6-security-worker'], {
+      mode: 'subagent',
+      model: 'opencode-go/glm-5.2',
+      variant: 'high',
+      permission: { task: { '*': 'deny', budget: 'allow', explore: 'allow' } },
+    });
+    assert.deepEqual(first.agent['sai-7-performance-worker'], {
       mode: 'subagent',
       model: 'opencode-go/glm-5.2',
       variant: 'high',
@@ -304,6 +330,11 @@ test('Step 2 preserves compatible customized registrations and unrelated user co
         'sai-6-security-worker': {
           mode: 'subagent',
           model: 'user-security',
+          variant: 'low',
+        },
+        'sai-7-performance-worker': {
+          mode: 'subagent',
+          model: 'user-performance',
           variant: 'low',
         },
       },

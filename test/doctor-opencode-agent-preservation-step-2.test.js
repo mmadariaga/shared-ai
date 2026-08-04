@@ -10,7 +10,7 @@ const { PassThrough } = require('stream');
 const { main } = require('../bin/doctor.js');
 const { installOpencode } = require('../bin/install-flow.js');
 
-const MANAGED_NAMES = ['sai-2-design-worker', 'sai-3-implementation-worker', 'sai-5-review-worker', 'sai-6-security-worker'];
+const MANAGED_NAMES = ['sai-2-design-worker', 'sai-3-implementation-worker', 'sai-5-review-worker', 'sai-6-security-worker', 'sai-7-performance-worker'];
 
 function makeProjectRoot() {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-doctor-opencode-agents-'));
@@ -85,6 +85,7 @@ test('customized managed agents are accepted by name presence', async () => {
       'sai-3-implementation-worker': { mode: 'subagent', model: 'user-implementation-model', permission: { edit: 'deny' } },
       'sai-5-review-worker': { mode: 'subagent', model: 'user-review-model' },
       'sai-6-security-worker': { mode: 'subagent', model: 'user-security-model' },
+      'sai-7-performance-worker': { mode: 'subagent', model: 'user-performance-model' },
     } }));
 
     const { code, report } = await runDoctor(projectRoot, opencodeBase);
@@ -95,6 +96,7 @@ test('customized managed agents are accepted by name presence', async () => {
       'sai-3-implementation-worker',
       'sai-5-review-worker',
       'sai-6-security-worker',
+      'sai-7-performance-worker',
     ]);
     for (const record of records) assert.equal(record.severity, 'ok', `${record.name} should be ok`);
     assert.equal(records.some(record => record.severity === 'error' && /incompatible/i.test(record.message || '')), false);

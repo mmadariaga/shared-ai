@@ -151,6 +151,33 @@ const MANAGED_WORKER_PROJECTIONS = {
       destinationPath: 'sai-6-security-worker.md',
     },
   },
+  'sai-7-performance-worker': {
+    claudeBinding: {
+      id: 'claude-performance-worker-binding',
+      sourcePath: 'sai/orchestration/workers/bindings/claude/performance-worker.md',
+      destinationPath: 'orchestration/workers/bindings/claude/performance-worker.md',
+    },
+    opencodeBinding: {
+      id: 'opencode-performance-worker-binding',
+      sourcePath: 'sai/orchestration/workers/bindings/opencode/performance-worker.md',
+      destinationPath: 'orchestration/workers/bindings/opencode/performance-worker.md',
+    },
+    claudeForwarding: {
+      id: 'claude-sai-7-performance-worker-forwarding',
+      sourcePath: 'skills/claude/sai-7-performance-worker/SKILL.md',
+      destinationPath: 'sai-7-performance-worker/SKILL.md',
+    },
+    opencodeForwarding: {
+      id: 'opencode-sai-7-performance-worker-forwarding',
+      sourcePath: 'skills/opencode/sai-7-performance-worker/SKILL.md',
+      destinationPath: 'sai-7-performance-worker/SKILL.md',
+    },
+    claudeAgent: {
+      id: 'claude-sai-7-performance-worker',
+      sourcePath: 'agents/claude/sai-7-performance-worker.md',
+      destinationPath: 'sai-7-performance-worker.md',
+    },
+  },
   'sai-1-spec-proposal-worker': {
     claudeBinding: {
       id: 'claude-spec-worker-binding',
@@ -580,6 +607,108 @@ test('Installer projects every routed review surface', () => {
     const source = path.relative(repoRoot, projection.sourcePath).split(path.sep).join('/');
     return source.includes('review-worker') || source.includes('sai-5-review');
   }), false, 'Copilot receives no routed review binding');
+});
+
+test('Installer projects deterministic routed performance surfaces with ownership metadata', () => {
+  const repoRoot = path.join(__dirname, '..');
+  const manifest = loadInstallManifest(repoRoot);
+  const destinationRoot = workerDestinationRoots(path.join(os.tmpdir(), 'sai-performance-worker-projections'));
+  const expected = {
+    'sai/commands/performance/coordinator.md': {
+      harnesses: ['claude', 'opencode'],
+      destination: 'commands/performance/coordinator.md',
+      strategy: 'copy',
+      ownership: 'managed',
+    },
+    'sai/commands/performance/invocation.md': {
+      harnesses: ['claude', 'opencode'],
+      destination: 'commands/performance/invocation.md',
+      strategy: 'copy',
+      ownership: 'managed',
+    },
+    'sai/orchestration/workers/sai-7-performance-worker.md': {
+      harnesses: ['claude', 'opencode'],
+      destination: 'orchestration/workers/sai-7-performance-worker.md',
+      strategy: 'copy',
+      ownership: 'managed',
+    },
+    'sai/orchestration/workers/bindings/claude/performance-worker.md': {
+      harnesses: ['claude'],
+      destination: 'orchestration/workers/bindings/claude/performance-worker.md',
+      strategy: 'copy',
+      ownership: 'managed',
+    },
+    'sai/orchestration/workers/bindings/opencode/performance-worker.md': {
+      harnesses: ['opencode'],
+      destination: 'orchestration/workers/bindings/opencode/performance-worker.md',
+      strategy: 'copy',
+      ownership: 'managed',
+    },
+    'skills/claude/sai-7-performance-worker/SKILL.md': {
+      harnesses: ['claude'],
+      destination: 'sai-7-performance-worker/SKILL.md',
+      strategy: 'forwarding-manifest',
+      ownership: 'managed',
+    },
+    'skills/opencode/sai-7-performance-worker/SKILL.md': {
+      harnesses: ['opencode'],
+      destination: 'sai-7-performance-worker/SKILL.md',
+      strategy: 'forwarding-manifest',
+      ownership: 'managed',
+    },
+    'agents/claude/sai-7-performance-worker.md': {
+      harnesses: ['claude'],
+      destination: 'sai-7-performance-worker.md',
+      strategy: 'owned-copy',
+      ownership: 'owned',
+    },
+  };
+
+  for (const harness of ['claude', 'opencode']) {
+    const normalize = projections => projections.map(projection => ({
+      source: path.relative(repoRoot, projection.sourcePath).split(path.sep).join('/'),
+      destination: path.relative(
+        destinationRoot[projection.sourcePath.includes(`${path.sep}agents${path.sep}`) ? 'agents' :
+          projection.sourcePath.includes(`${path.sep}skills${path.sep}`) ? 'skills' : 'sai'],
+        projection.destinationPath
+      ).split(path.sep).join('/'),
+      strategy: projection.strategy,
+      ownership: projection.ownership,
+      drift: projection.drift,
+    }));
+    const first = normalize(expandInstallManifest(manifest, { harness, repoRoot, destinationRoot }));
+    const second = normalize(expandInstallManifest(manifest, { harness, repoRoot, destinationRoot }));
+    assert.deepEqual(first, second, `${harness} performance expansion should be deterministic`);
+
+    for (const [source, contract] of Object.entries(expected)) {
+      if (!contract.harnesses.includes(harness)) continue;
+      const projection = first.find(candidate => candidate.source === source);
+      assert.ok(projection, `${harness} should project ${source}`);
+      assert.equal(projection.destination, contract.destination, `${source} destination should be stable`);
+      assert.equal(projection.strategy, contract.strategy, `${source} strategy should be stable`);
+      assert.equal(projection.ownership, contract.ownership, `${source} ownership should be stable`);
+      assert.equal(projection.drift, 'content', `${source} drift should be content`);
+    }
+  }
+
+  const copilotSources = new Set(expandInstallManifest(manifest, {
+    harness: 'copilot',
+    repoRoot,
+    destinationRoot,
+  }).map(projection => path.relative(repoRoot, projection.sourcePath).split(path.sep).join('/')));
+  assert.equal(copilotSources.has('sai/commands/sai-7-performance.md'), true);
+  assert.equal(copilotSources.has('commands/copilot/sai-7-performance.prompt.md'), true);
+  for (const source of [
+    'sai/orchestration/workers/sai-7-performance-worker.md',
+    'sai/orchestration/workers/bindings/claude/performance-worker.md',
+    'sai/orchestration/workers/bindings/opencode/performance-worker.md',
+    'skills/claude/sai-7-performance-worker/SKILL.md',
+    'skills/opencode/sai-7-performance-worker/SKILL.md',
+    'agents/claude/sai-7-performance-worker.md',
+  ]) assert.equal(copilotSources.has(source), false, `Copilot must exclude ${source}`);
+  assert.equal(manifest.projections.some(projection =>
+    JSON.stringify(projection.exclude || []).includes('sai-7-performance')), false,
+  'Copilot must not need a command-specific performance exclude entry');
 });
 
 test('Copilot receives no routed review binding', () => {
