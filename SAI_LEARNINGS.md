@@ -4,8 +4,8 @@ Durable execution-observed facts about the shared-ai prompt and installer reposi
 
 ## Stack
 
-- **bin/install-flow.js**: Existing legacy opencode configurations are augmented with missing managed agents instead of being returned unchanged, while user-configurable low-cost entries are preserved and validated only when they are namespaced managed entries.
-  *Observed:* introduce-implement-coordinator-worker — comparing existing `explore`, `executor`, and `budget` entries with placeholder shapes rejected valid user configuration; limiting collision validation to namespaced entries made the merge pass.
+- **bin/install-flow.js**: Fresh opencode configuration installs must merge the managed-agent registry after copying the static config so newly registered workers are available while existing entries remain configurable.
+  *Observed:* sai-5-review-coordinator-worker-split — copying the static config alone omitted the review worker; merging managed agents made fresh-install registration and smoke checks pass.
 - **opencode wrapper metadata**: Wrapper-facing documentation and structural tests use both the human-readable `GLM 5.2` wording and the runtime model ID `opencode-go/glm-5.2` when documenting the declared runtime.
   *Observed:* simplify-routed-phase-coordination — replacing coordinator-profile assertions exposed the two representations; retaining both made the documentation and runtime-ID checks pass.
 - **configs/opencode.jsonc**: Nested low-cost opencode helper dispatch requires `subagent_depth: 2` and `opencode-go/glm-5.1` in the repository's live probe configuration.
@@ -15,8 +15,8 @@ Durable execution-observed facts about the shared-ai prompt and installer reposi
 
 ## Conventions
 
-- **sai/install-manifest.json**: Manifest consumers and fixtures use the canonical JSON path, nested `destination: { class, path }` values, optional single-string `overrides`, and absolute resolved destination paths.
-  *Observed:* extract-sai-orchestration-core — blind test fixtures inferred a `.jsonc` path, flattened destinations, collection-shaped overrides, and relative paths; aligning them with the manifest contract produced the valid GREEN suite.
+- **sai/install-manifest.json**: Harness-specific command projections must exclude routed review sources from Copilot while Claude Code and opencode receive them; Copilot remains on the inline review path.
+  *Observed:* sai-5-review-coordinator-worker-split — the routed review projections initially matched Copilot's shared command sources; partitioning the manifest preserved the inline boundary and made parity checks pass.
 - **commands/claude/sai-3-implement.md**: Structural assertions track the supported wrapper metadata `model: opus` and `effort: medium` rather than a provider-specific model identifier or stale effort value.
   *Observed:* extract-sai-orchestration-core — obsolete exact metadata expectations caused unrelated baseline failures; matching the current wrapper metadata restored the coordinator suite.
 - **sai/install-manifest.json**: Copilot inline entrypoints and their installed adapter projection must be updated together; doctor and full-suite checks fail when wrappers resolve an unprojected adapter.

@@ -71,57 +71,92 @@ No additional rubric, scoring, weighting, or multi-criteria judgement SHALL be i
 
 ### Requirement: Promotion is committed separately behind its own authorization gate
 
-When the promotion pass writes `SAI_LEARNINGS.md`, the coordinator SHALL propose a commit containing that file and no other, and SHALL obtain explicit authorization before running `git commit`.
+After the Final sweep and the once-per-run promotion pass, `/sai-4-apply` SHALL treat the terminal commit as the run's documentation commit rather than as a commit owned exclusively by learnings promotion. The terminal documentation commit SHALL be a sibling subsection of `## Learnings Promotion Pass` in the apply instructions and SHALL be governed by one authorization gate for the complete terminal set.
 
-Before proposing the commit, the coordinator SHALL print a **minimal disclosure**: the path written, and the count of entries added and entries superseded, broken down by section. This disclosure replaces the pre-commit file visibility report for this commit.
+When the promotion pass writes `SAI_LEARNINGS.md`, the coordinator SHALL include that file in the terminal documentation commit. The same commit MAY also include eligible documentation changes under `docs/**`; it SHALL NOT include any other path, including OpenSpec change artifacts.
 
-The disclosure SHALL additionally list the keys of any pre-seeded entries that this run's own execution contradicted — entries the coordinator superseded because a deviation reported the opposite of what the file recorded. Surfacing them is disclosure only and grants no delete authority; it exists so the human can see which recorded facts the repository has moved past.
+The terminal documentation commit SHALL be proposed whenever `docs/**` has working-tree changes or the promotion pass wrote `SAI_LEARNINGS.md`, even when the promotion pass produced no qualifying entry. Eligibility SHALL be evaluated from the working-tree state at the terminal pass, not from a run-start baseline, so pre-existing uncommitted `docs/**` changes are intentionally included and made visible by the terminal file visibility listing. When neither condition holds, no terminal documentation commit SHALL be proposed.
 
-The authorization SHALL be a closed-choice `yes` / `no` prompt presented through the harness's native option-picker where one exists, with `yes`-only execute semantics: anything other than an explicit `yes` — no, silence, a redirect, or any other reply — SHALL be treated as a decline. On decline, the coordinator SHALL leave the written file in the working tree, describe it so the user can commit it themselves, and proceed to the MANDATORY STOP without halting or retrying.
+When the promotion pass writes `SAI_LEARNINGS.md`, before proposing the terminal documentation commit the coordinator SHALL print a minimal promotion disclosure containing the path written, the count of entries added and superseded broken down by section, and the keys of any pre-seeded entries that this run's execution contradicted and superseded. The contradicted-key list is disclosure only and grants no delete authority. The coordinator SHALL also print the terminal file visibility listing specified below before proposing the commit message and before authorization. The disclosure and listing SHALL describe only the files eligible for this terminal commit.
 
-#### Scenario: Promotion writes entries and the user authorizes
+Before proposing the terminal documentation commit message, the coordinator SHALL apply `sai/policies/commit-rules.md`. The message SHALL use the policy's commit-type classification, subject/body/footer limits, and faithfulness rules, and SHALL describe only the terminal documentation commit's staged paths and hunks.
 
-- **WHEN** the promotion pass adds two entries and supersedes one, and the user answers `yes`
-- **THEN** the coordinator commits `SAI_LEARNINGS.md` alone, after having printed the path and the per-section added/superseded counts
+The authorization SHALL be a closed-choice `yes` / `no` prompt presented through the harness's native option-picker where one exists, with yes-only execute semantics: anything other than an explicit `yes` SHALL be treated as a decline. On decline, the coordinator SHALL leave the eligible files in the working tree, describe what remains uncommitted, and proceed to the MANDATORY STOP without halting or retrying.
 
-#### Scenario: User declines the promotion commit
+#### Scenario: Documentation exists but no learning is promoted
 
-- **WHEN** the coordinator proposes the promotion commit and the user answers anything other than `yes`
-- **THEN** no commit is created, the modified `SAI_LEARNINGS.md` is left in the working tree with a description of what it contains, and the run proceeds to the MANDATORY STOP
+- **WHEN** the Final sweep passes, the promotion pass produces no qualifying entry, and `docs/**` has working-tree changes
+- **THEN** the coordinator proposes the terminal documentation commit, shows the eligible docs files and any excluded paths before authorization, and does not skip the gate because promotion was a no-op
 
-#### Scenario: No candidate survives the filter
+#### Scenario: Promotion and ADR documentation are both written
 
-- **WHEN** the promotion pass finds no candidate that passes the artifact classification
-- **THEN** it writes nothing, proposes no commit, prints no authorization prompt, and the run proceeds to the MANDATORY STOP
+- **WHEN** the promotion pass writes `SAI_LEARNINGS.md` and `docs/adr/0000-INDEX.md` or ADR files are changed
+- **THEN** the coordinator proposes one terminal documentation commit containing `SAI_LEARNINGS.md` and the changed `docs/**` paths, subject to the single authorization gate
 
-### Requirement: The pre-commit file visibility report does not fire for the promotion commit
+#### Scenario: No terminal documentation inputs exist
 
-The mandatory pre-commit file visibility report is specified to fire at every STOP & COMMIT marker. The promotion commit is not a STOP & COMMIT marker, and the report SHALL NOT be printed for it.
+- **WHEN** the Final sweep passes, the promotion pass writes no `SAI_LEARNINGS.md`, and `docs/**` has no working-tree changes
+- **THEN** the coordinator proposes no terminal documentation commit and asks no terminal commit-authorization question
 
-The report's blocks have no referent at this point in the run: the intended add-list is sourced from subagent report field 8, the `Plan cross-check` block is keyed on the integer `N` of a `## Step N` heading, and the `Subagent ↔ git` block compares a subagent-claimed set against the working tree. The promotion commit follows the last Step, involves no subagent report, and stages a single coordinator-written file.
+#### Scenario: User declines the terminal documentation commit
 
-Suppressing the report for this commit SHALL NOT weaken it anywhere else: the report continues to fire, unmodified, at every STOP & COMMIT marker.
+- **WHEN** the coordinator presents the terminal documentation commit gate and the user answers `no`, remains silent, or gives any response other than explicit `yes`
+- **THEN** no terminal commit is created, the eligible docs and learnings files remain in the working tree, and the coordinator proceeds to the MANDATORY STOP
 
-#### Scenario: Coordinator reaches the promotion commit
+### Requirement: Terminal documentation commit emits a file visibility listing
 
-- **WHEN** the coordinator is about to propose the promotion commit
-- **THEN** it prints the minimal disclosure rather than the pre-commit file visibility report, and prints no add-list, `Plan cross-check`, or `Subagent ↔ git` block
+The terminal documentation commit, which replaces the former single-file promotion commit, SHALL print a terminal file visibility listing before the coordinator proposes its commit message and before authorization.
 
-#### Scenario: A later run reaches a STOP & COMMIT marker
+For this terminal commit, the listing SHALL not depend on a Step number, a matching `tasks.md` scope, or a subagent report. It SHALL show the exact paths under `docs/**` and `SAI_LEARNINGS.md` that would be staged, and SHALL show working-tree paths that would remain uncommitted because they are outside that terminal set. It SHALL not stage or mutate the index while producing the preview.
 
-- **WHEN** any Step in any run reaches a STOP & COMMIT marker
-- **THEN** the full pre-commit file visibility report fires exactly as specified today
+The standard pre-commit file visibility report SHALL continue to fire unchanged at every ordinary STOP & COMMIT marker, including per-Step commits.
 
-### Requirement: The promotion commit is independent of the per-Step add-list rule
+#### Scenario: Terminal documentation commit has docs and learnings files
 
-The promotion commit SHALL stage exactly the path `SAI_LEARNINGS.md`, determined directly by the promotion pass. The coordinator SHALL NOT consult the per-Step intended add-list, and SHALL NOT consult subagent report field 8, when staging the promotion commit.
+- **WHEN** the terminal documentation commit is about to be proposed and both `docs/**` and `SAI_LEARNINGS.md` are eligible
+- **THEN** the coordinator prints a terminal file listing containing both sets of paths, plus any working-tree paths excluded from the commit, before proposing the message or asking for authorization
 
-This independence is deliberate: the per-Step add-list rule is scoped per Step and sourced from field 8, and routing the promotion through it would couple this behavior to the separate, unresolved question of how the per-Step staging rule interacts with the report's other blocks. That question is explicitly out of scope here and is neither fixed nor worsened by this requirement.
+#### Scenario: Terminal documentation commit has no subagent report
 
-#### Scenario: Coordinator stages the promotion commit
+- **WHEN** the terminal documentation commit follows the last Step and no subagent report exists for it
+- **THEN** the terminal file visibility listing uses the eligible path set directly and does not attempt a Step-number, plan cross-check, or subagent-to-git comparison
 
-- **WHEN** the coordinator stages files for the promotion commit
-- **THEN** it stages `SAI_LEARNINGS.md` and nothing else, without reading any subagent report field 8
+#### Scenario: Ordinary Step commit remains covered
+
+- **WHEN** an ordinary Step reaches a STOP & COMMIT marker
+- **THEN** the existing full pre-commit file visibility report still fires before that Step's commit proposal
+
+### Requirement: Terminal documentation commit is independent of the per-Step add-list rule
+
+Per-Step commits SHALL remain field-8-only: the coordinator SHALL continue to stage exactly the add-list supplied by the applicable subagent report field 8 for each Step and SHALL NOT widen that rule to sweep `docs/**` or `SAI_LEARNINGS.md`.
+
+The terminal documentation commit SHALL use its own fixed path set, consisting only of `docs/**` and `SAI_LEARNINGS.md`. The coordinator SHALL determine eligibility from the terminal working-tree state and whether the promotion pass wrote `SAI_LEARNINGS.md`; it SHALL NOT consult a Step's intended add-list or any subagent report field 8 to construct this terminal set.
+
+The coordinator SHALL NOT use `git add -A`, a broad working-tree sweep, or an equivalent operation that stages paths outside `docs/**` and `SAI_LEARNINGS.md`. In particular, `openspec/changes/{change-name}/` and its `implementation.md` SHALL remain outside the terminal documentation commit.
+
+#### Scenario: Terminal commit stages only documentation and learnings
+
+- **WHEN** the coordinator authorizes the terminal documentation commit while unrelated files and OpenSpec artifacts are also modified
+- **THEN** it stages only changed paths under `docs/**` and `SAI_LEARNINGS.md`, leaving every other path uncommitted
+
+#### Scenario: Per-Step add-list remains field-8-only
+
+- **WHEN** an ordinary Step commit is prepared after or before the terminal documentation commit
+- **THEN** its add-list remains sourced only from the relevant subagent report field 8 and does not include unrelated `docs/**` paths by default
+
+#### Scenario: No learning promotion but docs trigger the terminal set
+
+- **WHEN** the promotion pass writes no learning entry but `docs/**` has working-tree changes
+- **THEN** the coordinator constructs the terminal set from the changed docs paths and does not require a qualifying promotion as a trigger
+
+### Requirement: Terminal documentation commit preserves the halted-run boundary
+
+The terminal documentation commit SHALL be evaluated only after the Final sweep and the once-per-run promotion pass. If the run halts before the Final sweep, the coordinator SHALL perform neither the promotion pass nor the terminal documentation commit, preserving the existing halted-run rule.
+
+#### Scenario: Run halts before the Final sweep
+
+- **WHEN** a GREEN conflict, user stop, or declined per-Step commit ends the run before the Final sweep
+- **THEN** no terminal documentation commit is proposed, and any docs or learnings changes remain subject to a later completed run or manual commit
 
 ### Requirement: Bootstrap on first promotion
 
