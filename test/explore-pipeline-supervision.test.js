@@ -244,8 +244,7 @@ test('Step 1 explore adapters route only the permitted planning workers', () => 
   const copilot = fs.readFileSync(path.join(repoRoot, 'commands/copilot/sai-explore.prompt.md'), 'utf8');
   const inline = fs.readFileSync(path.join(repoRoot, 'sai/orchestration/inline-invocation.md'), 'utf8');
 
-  assert.match(claude, /sai-1-spec-proposal-worker/);
-  assert.match(claude, /sai-2-design-worker/);
+  assert.match(claude, /Fetch @skills\/sai-2-design-worker\/SKILL\.md/);
   assert.doesNotMatch(claude, /allowed-tools:[^\n]*(?:^|,\s*)Edit(?:,|\s|$)/m);
   assert.doesNotMatch(claude, /allowed-tools:[^\n]*(?:^|,\s*)Write(?:,|\s|$)/m);
   assert.doesNotMatch(claude, /allowed-tools:[^\n]*(?:^|,\s*)Bash(?:,|\s|$)/m);
@@ -473,4 +472,53 @@ test('Step 2 pins the autonomy audit field order and empty-report form', () => {
   assert.match(source, /Auto-answered:.*Escalated:/i);
   assert.match(source, /Q:.*A:.*Grounding:/is);
   assert.match(source, /no questions were auto-answered this phase/i);
+});
+
+test('Step 2 blind pipeline state extends the start-pipeline interface by phase', () => {
+  const source = supervisionContract();
+
+  for (const field of [
+    'tracked_changes',
+    'completed_changes',
+    'active_change',
+    'active_phase',
+    'auto_answered',
+    'escalated_count',
+    'specs_converged_changes',
+    'review_passes',
+    'finding_history',
+  ]) assert.match(source, new RegExp(`\\b${field}\\b`));
+
+  assert.match(source, /auto_answered.*phase-keyed|phase-keyed.*auto_answered/i);
+  assert.match(source, /escalated_count.*phase-keyed|phase-keyed.*escalated_count/i);
+  assert.match(source, /review_passes.*phase-keyed|phase-keyed.*review_passes/i);
+  assert.match(source, /finding_history.*phase-keyed|phase-keyed.*finding_history/i);
+  assert.match(source, /spec-to-design transition adapter|transition adapter.*design/i);
+  assert.match(source, /wrapper_echo_value\s*:\s*""/);
+  assert.match(source, /arguments_value\s*:\s*"\{name\} --fast-track"/);
+});
+
+test('Step 2 blind supervision reports spec convergence before design dispatch and preserves the token', () => {
+  const source = supervisionContract();
+
+  assert.match(
+    source,
+    /spec phase.*converg[\s\S]{0,360}(?:pass outcome|autonomy audit)[\s\S]{0,360}(?:design worker|design dispatch)/i
+  );
+  assert.match(source, /same active token|active token remains in force/i);
+  assert.match(source, /spec cap exhaustion[\s\S]{0,180}(?:no design|design worker.*not|does not dispatch design)/i);
+  assert.match(source, /reviewer failure.*cancellation[\s\S]{0,180}(?:no design|design worker.*not|does not dispatch design)/i);
+  assert.match(source, /severity-contract violation[\s\S]{0,180}(?:no design|design worker.*not|does not dispatch design)/i);
+  assert.match(source, /failed or cancelled spec-worker[\s\S]{0,180}(?:no design|design worker.*not|does not dispatch design)/i);
+});
+
+test('Step 2 blind supervision rejects duplicate starts until the chained design outcome', () => {
+  const source = supervisionContract();
+
+  assert.match(source, /active supervision rejects another `?start-pipeline`? token/i);
+  assert.match(source, /throughout the chained design phase/i);
+  assert.match(source, /ends only at the applicable terminal outcome/i);
+  assert.match(source, /spec and design.*review.*autonomy records remain separate/i);
+  assert.match(source, /completed_changes.*applicable terminal worker result/i);
+  assert.match(source, /specs_converged_changes.*active_phase.*design/i);
 });
