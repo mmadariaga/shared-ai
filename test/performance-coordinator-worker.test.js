@@ -169,3 +169,81 @@ test('performance lifecycle payloads carry metadata rather than report contents'
   assert.match(worker, /lifecycle payloads?[\s\S]{0,240}metadata[\s\S]{0,240}(?:not|rather than|exclude)[\s\S]{0,160}(?:report|performance\.md) contents/i);
   assert.match(worker, /report contents[\s\S]{0,160}(?:shall not|must not|never|exclude)/i);
 });
+
+test('Step 3 Claude and opencode bindings route only their canonical performance worker', () => {
+  const bindings = [
+    {
+      name: 'Claude',
+      path: 'sai/orchestration/workers/bindings/claude/performance-worker.md',
+      identity: 'canonical managed Agent identity',
+      mechanism: 'Agent',
+    },
+    {
+      name: 'opencode',
+      path: 'sai/orchestration/workers/bindings/opencode/performance-worker.md',
+      identity: 'canonical numbered task identity',
+      mechanism: 'task',
+    },
+  ];
+
+  for (const binding of bindings) {
+    const source = artifact(binding.path);
+    assert.match(source, new RegExp(`${binding.identity}[\\s\\S]{0,100}sai-7-performance-worker`, 'i'),
+      `${binding.name} binding should declare the canonical worker identity`);
+    assert.match(source, new RegExp(`${binding.mechanism}[\\s\\S]{0,100}sai-7-performance-worker`, 'i'),
+      `${binding.name} binding should dispatch only its canonical worker`);
+    assert.match(source, /complete original envelope|original_envelope/i,
+      `${binding.name} dispatch should preserve the original envelope`);
+    assert.match(source, /same-worker continuation|continue[\s\S]{0,100}same worker/i,
+      `${binding.name} should attempt same-worker continuation first`);
+    assert.match(source, /at most one replacement|one replacement|replacement[\s\S]{0,100}1/i,
+      `${binding.name} should permit at most one replacement`);
+  }
+});
+
+test('Step 3 bindings bound delegated research evidence and reject unauthorized operations', () => {
+  for (const relativePath of [
+    'sai/orchestration/workers/bindings/claude/performance-worker.md',
+    'sai/orchestration/workers/bindings/opencode/performance-worker.md',
+  ]) {
+    const binding = artifact(relativePath);
+    assert.match(binding, /bounded evidence/i, `${relativePath} should bound research evidence`);
+    assert.match(binding, /eight-call cap|8-call cap|cap of 8/i,
+      `${relativePath} should enforce the eight-call audit cap`);
+    assert.match(binding, /authorized read-only diagnostics/i,
+      `${relativePath} should permit only authorized read-only diagnostics`);
+    assert.match(binding, /reject[\s\S]{0,240}(?:write-capable delegation|production|schema|migration|config|dependency)/i,
+      `${relativePath} should reject unauthorized writes and mutations`);
+  }
+});
+
+test('Step 3 bindings preserve worker lifecycle results and own continuation metadata', () => {
+  for (const relativePath of [
+    'sai/orchestration/workers/bindings/claude/performance-worker.md',
+    'sai/orchestration/workers/bindings/opencode/performance-worker.md',
+  ]) {
+    const binding = artifact(relativePath);
+    for (const field of ['summary', 'question', 'ordered options', 'paths', 'resolved names']) {
+      assert.match(binding, new RegExp(field, 'i'), `${relativePath} should preserve ${field}`);
+    }
+    assert.match(binding, /continuation metadata[\s\S]{0,100}(?:binding-owned|owned by the binding)/i,
+      `${relativePath} continuation metadata should remain binding-owned`);
+  }
+});
+
+test('Step 3 managed-agent and forwarding-skill identities match the canonical binding identity', () => {
+  const identity = 'sai-7-performance-worker';
+  const surfaces = [
+    'agents/claude/sai-7-performance-worker.md',
+    'skills/claude/sai-7-performance-worker/SKILL.md',
+    'skills/opencode/sai-7-performance-worker/SKILL.md',
+  ];
+
+  for (const relativePath of surfaces) {
+    assert.match(artifact(relativePath), new RegExp(identity),
+      `${relativePath} should use the canonical performance worker identity`);
+  }
+  assert.match(artifact('agents/claude/sai-7-performance-worker.md'), /managed agent/i);
+  assert.match(artifact('skills/claude/sai-7-performance-worker/SKILL.md'), /Claude forwarding skill/i);
+  assert.match(artifact('skills/opencode/sai-7-performance-worker/SKILL.md'), /opencode forwarding skill/i);
+});
