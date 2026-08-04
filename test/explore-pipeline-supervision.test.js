@@ -417,3 +417,35 @@ test('Step 2 starts a fresh three-pass bound on later user retry and preserves s
   assert.match(source, /preserved artifacts|preserve.*artifacts/i);
   assert.match(source, /direct.*\/sai-1-spec.*standalone terminal|standalone.*terminal.*sai-1-spec/i);
 });
+
+test('Step 2 reports auto-answered questions at every terminal outcome with grounding citations', () => {
+  const source = exploreContract();
+
+  assert.match(source, /Auto-answered questions are reported at every phase ending/i);
+  assert.match(source, /convergence.*cap exhaustion.*reviewer failure.*failed.*cancelled.*worker/is);
+  assert.match(source, /each.*auto[- ]answer.*grounding citation|grounding citation.*each.*auto[- ]answer/is);
+});
+
+test('Step 2 reports only the aggregate escalation denominator without escalated question content', () => {
+  const source = exploreContract();
+
+  assert.match(source, /The audit log reports the escalation denominator/i);
+  assert.match(source, /escalated question content is absent from the audit log/i);
+});
+
+test('Step 2 keeps the autonomy audit in conversation and never persists it', () => {
+  const source = exploreContract();
+
+  assert.match(source, /The audit log is never persisted/i);
+  assert.match(source, /in[- ]conversation text|conversation[- ]only/i);
+  assert.match(source, /no file.*artifact.*configuration|never written to any file.*artifact.*config/i);
+});
+
+test('Step 2 pins the autonomy audit field order and empty-report form', () => {
+  const source = exploreContract();
+
+  assert.match(source, /Autonomy audit.*supervised spec phase/is);
+  assert.match(source, /Auto-answered:.*Escalated:/i);
+  assert.match(source, /Q:.*A:.*Grounding:/is);
+  assert.match(source, /no questions were auto-answered this phase/i);
+});

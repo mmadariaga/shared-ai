@@ -13,11 +13,20 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 **Attempts Per Phase**: "Field 9 of the `/sai-4-apply` Subagent Report Contract — a list of `{phase, attempts, first_failure, note}` entries, one per verification phase the dispatch actually ran, where `attempts` counts command runs regardless of outcome and `first_failure` draws on a closed vocabulary, and whose absence can never block the workflow."
 *Avoid*: retries, retry count, field 9 notes, iteration log, attempt log
 
+**Auto-Answer**: "A supervised-pipeline answer that `sai-explore` gives to a spec worker's `needs_input` question on the user's behalf, without escalating, permitted only when its confidence in the answer is clearly above the qualitative **Confidence Threshold**."
+*Avoid*: auto-reply, autonomous reply, silent answer, proxy answer
+
+**Autonomy Audit Log**: "The in-conversation-only report presented at the end of a supervised spec phase listing every **Auto-Answer** given, the answer value, and the reasoning, written to no file or artifact."
+*Avoid*: audit trail, decision log, autonomy report, answer log
+
 **Backfilled Change**: "An OpenSpec change reconstructed post-implementation by `/sai-backfill`, with `backfilled: true` written to `.openspec.yaml` and contractually forbidden from producing `design.md`, `tasks.md`, or `implementation.md`."
 *Avoid*: post-hoc change, retroactive change, reconstructed change
 
 **Blind Test-Writer**: "The first `/sai-4-apply` dispatch of a **Split-Routed Step**, given only that Step's `interfaces.md` section plus injected testing context — never the GREEN implementation body — that writes the tests (and RED stubs) and verifies a valid RED."
 *Avoid*: test dispatch, test agent, RED writer, test-first subagent
+
+**Confidence Threshold**: "The qualitative judgment — not a computed number — above which `sai-explore` may **Auto-Answer** a supervised worker question and below or unclear of which it escalates the question to the user."
+*Avoid*: confidence score, threshold value, certainty level, confidence cutoff
 
 **Coordinator Verification**: "The `/sai-4-apply` coordinator's independent rerun of a Step's Verification Checklist after a Subagent Report and before checkbox marking or commit gating."
 *Avoid*: trust check, report retest, coordinator retry
@@ -131,6 +140,9 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 - A **Proposal Complexity** token has no consumer: like the **Routing Line** it is descriptive metadata awaiting a future orchestrator.
 - A **Supervised Pipeline** emits a **Phase Transition** after one phase converges and before dispatching the next phase.
 - A **Phase Transition** belongs to one completed phase and precedes one downstream phase in a **Supervised Pipeline**.
+- An **Auto-Answer** is given only when confidence is clearly above the **Confidence Threshold**; unclear or below-threshold confidence escalates the worker question to the user instead of auto-answering.
+- Every **Auto-Answer** is recorded in the **Autonomy Audit Log**; an escalated question is not, because the user already saw and answered it.
+- An **Autonomy Audit Log** is presented in conversation at supervised spec-phase end and is never written to any file, artifact, or configuration.
 
 ## Example dialogue
 

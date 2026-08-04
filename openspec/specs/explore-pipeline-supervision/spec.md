@@ -3,9 +3,7 @@
 ## Purpose
 
 Define routed supervision of the isolated sai-1 spec-proposal worker from `sai-explore`.
-
 ## Requirements
-
 ### Requirement: Explore supervises the routed sai-1 phase
 
 On Claude Code and opencode, `sai-explore` SHALL act only as the lifecycle coordinator when `start-pipeline` selects one uncompleted change from the chat-scoped tracked crystallized set. It SHALL dispatch the existing `sai-1` spec-proposal worker with that change's emitted `Ready to Propose` block as the isolated request envelope; the worker SHALL retain ownership of prerequisites, research, change resolution, `proposal.md`, `specs/**`, decision summaries, consistency checks, feedback edits, and spec-phase completion. An uncompleted change is a tracked name that has not returned `completed` from supervised spec execution in this explore chat; failed or cancelled attempts remain uncompleted.
@@ -14,19 +12,6 @@ On Claude Code and opencode, `sai-explore` SHALL act only as the lifecycle coord
 - **WHEN** the user selects an uncompleted tracked change after sending `start-pipeline` in a Claude Code or opencode explore chat
 - **THEN** explore dispatches the existing `sai-1` spec-proposal worker for that change
 - **AND** the worker receives the emitted crystallized block rather than the surrounding explore conversation
-
-### Requirement: Every worker question is escalated to the user
-
-The supervising explore coordinator MUST present every `needs_input` question from the spec-proposal worker to the user without answering it, inferring an answer from explore context, or delegating the decision to another agent. It SHALL preserve the worker's exact question and option values, use the harness-native picker when the question is closed-choice, and continue the same worker with the user's answer according to the existing routed worker lifecycle.
-
-#### Scenario: worker requests clarification
-- **WHEN** the supervised spec-proposal worker returns `needs_input`
-- **THEN** explore presents that question to the user with its exact options and values
-- **AND** after the user answers, explore continues the same worker with that answer
-
-#### Scenario: explore context appears to contain an answer
-- **WHEN** a worker question could seemingly be answered from reasoning earlier in the explore chat
-- **THEN** explore still escalates the question to the user and does not answer autonomously
 
 ### Requirement: Supervision preserves worker terminal behavior
 
@@ -80,3 +65,4 @@ When the supervised spec-proposal worker completes after the bounded independent
 #### Scenario: direct sai-1 retains its terminal line
 - **WHEN** `/sai-1-spec` completes outside explore supervision
 - **THEN** its existing mandatory-stop message remains unchanged
+
