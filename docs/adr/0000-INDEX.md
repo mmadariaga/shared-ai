@@ -95,6 +95,10 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0013 — Dedicated mMUT-N finding namespace and Mutation Analysis output section](./0013-mmut-n-finding-namespace-for-mutation-analysis.md) — **Amends** 0012
 - [0096 — Fail closed when dispatching owned worker sidecars](./0096-fail-closed-owned-worker-owner-dispatch.md) — Refs 0084, Refs 0085
 
+### `/sai-7-performance`
+
+- [0097 — Route performance by continuation capability](./0097-route-performance-by-continuation-capability.md) — Refs 0082, Refs 0083, Refs 0093
+
 ### `/sai-explore`
 
 - [0038 — Shared unnumbered "Emission gate" subsection at the §4→§5 seam in `explore.md`](./0038-shared-unnumbered-emission-gate-subsection.md)
@@ -145,6 +149,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0088 — Implementation harness projection boundaries](./0088-implementation-harness-projection-boundaries.md) — Refs 0084, Refs 0085, Refs 0074
 - [0091 — Manifest hash evidence for retired managed destinations](./0091-manifest-hash-evidence-for-retired-managed-destinations.md) — Refs 0084, Refs 0085, Refs 0055, Refs 0057
 - [0096 — Fail closed when dispatching owned worker sidecars](./0096-fail-closed-owned-worker-owner-dispatch.md) — Refs 0084, Refs 0085
+- [0098 — Register the performance worker through managed projections](./0098-register-performance-worker-through-managed-projections.md) — Refs 0084, Refs 0085, Refs 0096
 
 ### Harness wrappers & the shared instruction layer
 
@@ -167,6 +172,8 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0090 — Centralize Copilot inline planning lifecycle in one adapter](./0090-centralize-copilot-inline-planning-lifecycle.md) — Refs 0089, Refs 0083, Refs 0078, Refs 0074
 - [0092 — Group planning assets by phase without changing harness routing](./0092-group-planning-assets-by-phase-without-changing-harness-routing.md) — Refs 0082, Refs 0088, Refs 0090
 - [0093 — Route spec through workers while Copilot remains inline](./0093-route-spec-through-workers-while-copilot-remains-inline.md) — Refs 0082, Refs 0083, Refs 0090, Refs 0092
+- [0097 — Route performance by continuation capability](./0097-route-performance-by-continuation-capability.md) — Refs 0082, Refs 0083, Refs 0093
+- [0098 — Register the performance worker through managed projections](./0098-register-performance-worker-through-managed-projections.md) — Refs 0084, Refs 0085, Refs 0096
 
 ---
 
@@ -179,6 +186,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0081 — Name shared orchestration contracts explicitly](./0081-name-shared-orchestration-contracts-explicitly.md) — Refs 0004, Refs 0075
 - [0082 — Keep canonical phase workers and bindings in mirrored orchestration subtrees](./0082-canonical-phase-workers-and-mirrored-bindings.md) — Refs 0077, Refs 0078
 - [0089 — Share one routed SAI coordinator profile across planning phases](./0089-shared-sai-coordinator-profile.md) — Refs 0083, Refs 0074, Refs 0078
+- [0097 — Route performance by continuation capability](./0097-route-performance-by-continuation-capability.md) — Refs 0082, Refs 0083, Refs 0093
 - [0092 — Group planning assets by phase without changing harness routing](./0092-group-planning-assets-by-phase-without-changing-harness-routing.md) — Refs 0082, Refs 0088, Refs 0090
 
 ### Harness portability & mirror discipline
@@ -195,6 +203,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0092 — Group planning assets by phase without changing harness routing](./0092-group-planning-assets-by-phase-without-changing-harness-routing.md) — Refs 0082, Refs 0088, Refs 0090
 - [0093 — Route spec through workers while Copilot remains inline](./0093-route-spec-through-workers-while-copilot-remains-inline.md) — Refs 0082, Refs 0083, Refs 0090, Refs 0092
 - [0096 — Fail closed when dispatching owned worker sidecars](./0096-fail-closed-owned-worker-owner-dispatch.md) — Refs 0084, Refs 0085
+- [0098 — Register the performance worker through managed projections](./0098-register-performance-worker-through-managed-projections.md) — Refs 0084, Refs 0085, Refs 0096
 
 ### Argument passing & change-name resolution
 
