@@ -124,6 +124,33 @@ const MANAGED_WORKER_PROJECTIONS = {
       destinationPath: 'sai-5-review-worker.md',
     },
   },
+  'sai-6-security-worker': {
+    claudeBinding: {
+      id: 'claude-security-worker-binding',
+      sourcePath: 'sai/orchestration/workers/bindings/claude/security-worker.md',
+      destinationPath: 'orchestration/workers/bindings/claude/security-worker.md',
+    },
+    opencodeBinding: {
+      id: 'opencode-security-worker-binding',
+      sourcePath: 'sai/orchestration/workers/bindings/opencode/security-worker.md',
+      destinationPath: 'orchestration/workers/bindings/opencode/security-worker.md',
+    },
+    claudeForwarding: {
+      id: 'claude-sai-6-security-worker-forwarding',
+      sourcePath: 'skills/claude/sai-6-security-worker/SKILL.md',
+      destinationPath: 'sai-6-security-worker/SKILL.md',
+    },
+    opencodeForwarding: {
+      id: 'opencode-sai-6-security-worker-forwarding',
+      sourcePath: 'skills/opencode/sai-6-security-worker/SKILL.md',
+      destinationPath: 'sai-6-security-worker/SKILL.md',
+    },
+    claudeAgent: {
+      id: 'claude-sai-6-security-worker',
+      sourcePath: 'agents/claude/sai-6-security-worker.md',
+      destinationPath: 'sai-6-security-worker.md',
+    },
+  },
   'sai-1-spec-proposal-worker': {
     claudeBinding: {
       id: 'claude-spec-worker-binding',
@@ -267,6 +294,44 @@ test('managed worker registry has complete Claude and opencode manifest projecti
   assert.equal(copilot.some(projection => projection.strategy === 'owned-copy' &&
     Object.values(MANAGED_WORKER_PROJECTIONS).some(worker => worker.claudeAgent.id === projection.id)), false,
   'Copilot must not receive managed Claude agent projections');
+});
+
+test('Step 6 security worker exposes five manifest projection records and Copilot commands', () => {
+  const repoRoot = path.join(__dirname, '..');
+  const manifest = loadInstallManifest(repoRoot);
+  const destinationRoot = workerDestinationRoots(path.join(os.tmpdir(), 'sai-security-worker-projections'));
+  const source = projection => path.relative(repoRoot, projection.sourcePath).split(path.sep).join('/');
+  const expected = [
+    ['claude', 'sai/orchestration/workers/bindings/claude/security-worker.md', path.join('orchestration', 'workers', 'bindings', 'claude', 'security-worker.md')],
+    ['opencode', 'sai/orchestration/workers/bindings/opencode/security-worker.md', path.join('orchestration', 'workers', 'bindings', 'opencode', 'security-worker.md')],
+    ['claude', 'skills/claude/sai-6-security-worker/SKILL.md', path.join('sai-6-security-worker', 'SKILL.md')],
+    ['opencode', 'skills/opencode/sai-6-security-worker/SKILL.md', path.join('sai-6-security-worker', 'SKILL.md')],
+    ['claude', 'agents/claude/sai-6-security-worker.md', 'sai-6-security-worker.md'],
+  ];
+
+  for (const [harness, expectedSource, expectedDestination] of expected) {
+    const projection = expandInstallManifest(manifest, { harness, repoRoot, destinationRoot })
+      .find(candidate => source(candidate) === expectedSource);
+    assert.ok(projection, `${harness} should project ${expectedSource}`);
+    assert.equal(projection.destinationPath.endsWith(expectedDestination), true,
+      `${expectedSource} should land at ${expectedDestination}`);
+  }
+
+  const copilotSources = new Set(expandInstallManifest(manifest, {
+    harness: 'copilot',
+    repoRoot,
+    destinationRoot,
+  }).map(source));
+  assert.equal(copilotSources.has('sai/commands/sai-6-security.md'), true);
+  assert.equal(copilotSources.has('commands/copilot/sai-6-security.prompt.md'), true);
+});
+
+test('security worker fixture preserves the owned Claude agent contract', () => {
+  assert.deepEqual(MANAGED_WORKER_PROJECTIONS['sai-6-security-worker'].claudeAgent, {
+    id: 'claude-sai-6-security-worker',
+    sourcePath: 'agents/claude/sai-6-security-worker.md',
+    destinationPath: 'sai-6-security-worker.md',
+  });
 });
 
 test('loadInstallManifest reads the versioned manifest shape', () => {

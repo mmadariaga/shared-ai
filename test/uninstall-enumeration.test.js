@@ -47,6 +47,7 @@ function managedWorkerSourcePaths(repoRoot) {
     'sai-2-design-worker': 'design-worker',
     'sai-5-review-worker': 'review-worker',
     'sai-1-spec-proposal-worker': 'spec-worker',
+    'sai-6-security-worker': 'security-worker',
   };
   return new Set(Object.entries(MANAGED_WORKERS).flatMap(([name, worker]) => [
     `sai/orchestration/workers/bindings/claude/${workerStems[name]}.md`,
@@ -56,6 +57,20 @@ function managedWorkerSourcePaths(repoRoot) {
     `agents/claude/${worker.claude.agent}`,
   ].map(source => path.resolve(repoRoot, source))));
 }
+
+test('managed worker source enumeration resolves the security worker stem', () => {
+  const repoRoot = path.join(__dirname, '..');
+  const sources = managedWorkerSourcePaths(repoRoot);
+  for (const source of [
+    'sai/orchestration/workers/bindings/claude/security-worker.md',
+    'sai/orchestration/workers/bindings/opencode/security-worker.md',
+    'skills/claude/sai-6-security-worker/SKILL.md',
+    'skills/opencode/sai-6-security-worker/SKILL.md',
+    'agents/claude/sai-6-security-worker.md',
+  ]) {
+    assert.equal(sources.has(path.resolve(repoRoot, source)), true, `should enumerate ${source}`);
+  }
+});
 
 test('install and uninstall inventories are exact and deterministic for every harness', () => {
   const repoRoot = path.join(__dirname, '..');

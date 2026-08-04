@@ -41,7 +41,19 @@ test('copyOpencodeConfig preserves a fixed configured output independently of re
     '    "budget": { "mode": "subagent", "model": "user-budget" },',
     '    "sai-3-implementation-worker": { "mode": "subagent", "model": "user-implementation" },',
     '    "sai-2-design-worker": { "mode": "subagent", "model": "user-design" },',
-    '    "sai-5-review-worker": { "mode": "subagent", "model": "user-review" }',
+    '    "sai-5-review-worker": { "mode": "subagent", "model": "user-review" },',
+    '    "sai-6-security-worker": {',
+    '      "mode": "subagent",',
+    '      "model": "opencode-go/glm-5.2",',
+    '      "variant": "high",',
+    '      "permission": {',
+    '        "task": {',
+    '          "*": "deny",',
+    '          "budget": "allow",',
+    '          "explore": "allow"',
+    '        }',
+    '      }',
+    '    }',
     '  }',
     '}',
   ].join('\n') + '\n';
@@ -170,6 +182,7 @@ test('opencode managed agents are derived from registry metadata', () => {
     'sai-3-implementation-worker',
     'sai-2-design-worker',
     'sai-5-review-worker',
+    'sai-6-security-worker',
   ]);
   assert.deepEqual(OPENCODE_MANAGED_AGENTS['sai-3-implementation-worker'], {
     mode: 'subagent',
@@ -183,6 +196,12 @@ test('opencode managed agents are derived from registry metadata', () => {
     permission: { task: { '*': 'deny', explore: 'allow' } },
   });
   assert.deepEqual(OPENCODE_MANAGED_AGENTS['sai-5-review-worker'], {
+    mode: 'subagent',
+    model: 'opencode-go/glm-5.2',
+    variant: 'high',
+    permission: { task: { '*': 'deny', budget: 'allow', explore: 'allow' } },
+  });
+  assert.deepEqual(OPENCODE_MANAGED_AGENTS['sai-6-security-worker'], {
     mode: 'subagent',
     model: 'opencode-go/glm-5.2',
     variant: 'high',
@@ -216,8 +235,9 @@ test('Step 2 fresh and repeated installation preserves the fixed registration ou
       'executor',
       'budget',
       'sai-3-implementation-worker',
-      'sai-2-design-worker',
-      'sai-5-review-worker',
+    'sai-2-design-worker',
+    'sai-5-review-worker',
+    'sai-6-security-worker',
     ]);
     assert.deepEqual(first.agent['sai-3-implementation-worker'], {
       mode: 'subagent',
@@ -231,6 +251,12 @@ test('Step 2 fresh and repeated installation preserves the fixed registration ou
       permission: { task: { '*': 'deny', explore: 'allow' } },
     });
     assert.deepEqual(first.agent['sai-5-review-worker'], {
+      mode: 'subagent',
+      model: 'opencode-go/glm-5.2',
+      variant: 'high',
+      permission: { task: { '*': 'deny', budget: 'allow', explore: 'allow' } },
+    });
+    assert.deepEqual(first.agent['sai-6-security-worker'], {
       mode: 'subagent',
       model: 'opencode-go/glm-5.2',
       variant: 'high',
@@ -274,6 +300,11 @@ test('Step 2 preserves compatible customized registrations and unrelated user co
           mode: 'subagent',
           model: 'user-review',
           variant: 'medium',
+        },
+        'sai-6-security-worker': {
+          mode: 'subagent',
+          model: 'user-security',
+          variant: 'low',
         },
       },
     }, null, 2),
