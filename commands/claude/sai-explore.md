@@ -8,4 +8,5 @@ allowed-tools: Read, Glob, Grep, Bash(openspec:*), Bash(git:*), AskUserQuestion,
 ## Sai Explore
 
 Fetch @skills/fetch/SKILL.md
+Fetch @skills/sai-2-design-worker/SKILL.md and use it.
 Fetch @sai/commands/sai-explore.md and follow those instructions exactly.
