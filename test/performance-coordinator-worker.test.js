@@ -66,3 +66,106 @@ test('generic Copilot projections retain both performance entrypoints', () => {
   assert.equal(sources.has('sai/commands/sai-7-performance.md'), true);
   assert.equal(sources.has('commands/copilot/sai-7-performance.prompt.md'), true);
 });
+
+test('performance coordinator exposes the complete adapter contract', () => {
+  const coordinator = artifact('sai/commands/performance/coordinator.md');
+  const fields = [
+    'original_envelope',
+    'dispatch_operation',
+    'continuation_operation',
+    'allowed_nonterminal_extensions',
+    'extension_handlers',
+    'replacement_reconstruction_fields',
+    'terminal_navigation',
+  ];
+
+  assert.match(coordinator, /performance_coordinator_adapter/);
+  for (const field of fields) {
+    assert.match(coordinator, new RegExp(`\\b${field}\\b`));
+  }
+  assert.match(coordinator, /allowed_nonterminal_extensions[\s\S]{0,120}(?:empty|\[\])/i);
+  assert.match(coordinator, /extension_handlers[\s\S]{0,120}(?:empty|\{\})/i);
+  assert.match(coordinator, /terminal_navigation[\s\S]{0,120}Performance audit done\./i);
+});
+
+test('performance coordinator validates lifecycle payloads and terminal statuses', () => {
+  const coordinator = artifact('sai/commands/performance/coordinator.md');
+
+  assert.match(coordinator, /validat(?:e|es|ion)[\s\S]{0,240}(?:lifecycle|worker)[\s\S]{0,240}(?:payload|result)/i);
+  for (const status of ['completed', 'needs_input', 'failed', 'cancelled']) {
+    assert.match(coordinator, new RegExp(`\\b${status}\\b`));
+  }
+  for (const field of ['summary', 'changed_files', 'resolved_change_name', 'question', 'options']) {
+    assert.match(coordinator, new RegExp(`\\b${field}\\b`));
+  }
+  assert.match(coordinator, /status[\s\S]{0,180}(?:exactly|only)[\s\S]{0,180}(?:completed|needs_input|failed|cancelled)/i);
+});
+
+test('performance coordinator preserves summary text and unions changed paths in first-seen order', () => {
+  const coordinator = artifact('sai/commands/performance/coordinator.md');
+
+  assert.match(coordinator, /changed_files[\s\S]{0,240}(?:ordered|first[- ]seen)[\s\S]{0,120}union/i);
+  assert.match(coordinator, /(?:print|preserve)[\s\S]{0,160}(?:worker )?summary[\s\S]{0,160}(?:unchanged|verbatim|exactly)/i);
+  assert.ok(coordinator.includes('Performance audit done.'));
+});
+
+test('performance coordinator performs no technical prerequisite or research I/O', () => {
+  const coordinator = artifact('sai/commands/performance/coordinator.md');
+
+  for (const operation of [
+    'prerequisite',
+    'artifact',
+    'git',
+    'diff',
+    'tier',
+    'diagnostic',
+    'research',
+  ]) {
+    assert.match(
+      coordinator,
+      new RegExp(`(?:SHALL NOT|MUST NOT|does not)[^\\n]{0,180}${operation}`, 'i'),
+      `coordinator should prohibit ${operation} I/O`
+    );
+  }
+});
+
+test('canonical performance worker preserves the scope, ordering, tier, and evidence contract', () => {
+  const worker = artifact('sai/orchestration/workers/sai-7-performance-worker.md');
+
+  assert.match(worker, /complete scope grammar/i);
+  assert.match(worker, /parent[- ]branch[\s\S]{0,160}order/i);
+  assert.match(worker, /four tiers|tier 1[\s\S]{0,120}tier 4/i);
+  assert.match(worker, /500[- ]LOC cutover/i);
+  assert.match(worker, /eight[- ]call cap|8[- ]call cap/i);
+  assert.match(worker, /exact evidence policy/i);
+});
+
+test('canonical performance worker defines all lifecycle payload shapes', () => {
+  const worker = artifact('sai/orchestration/workers/sai-7-performance-worker.md');
+
+  for (const payload of [
+    'worker_completed',
+    'worker_needs_input_before_resolution',
+    'worker_unsuccessful',
+  ]) {
+    assert.match(worker, new RegExp(`\\b${payload}\\b`));
+  }
+  assert.match(worker, /needs_input[\s\S]{0,240}question[\s\S]{0,240}options/i);
+  assert.match(worker, /failed[\s\S]{0,160}cancelled[\s\S]{0,240}resolved_change_name/i);
+  assert.match(worker, /changed_files[\s\S]{0,240}summary/i);
+});
+
+test('successful performance execution writes and verifies only performance.md', () => {
+  const worker = artifact('sai/orchestration/workers/sai-7-performance-worker.md');
+
+  assert.match(worker, /successful[\s\S]{0,240}(?:write|create)[\s\S]{0,240}openspec\/changes\/\{change-name\}\/performance\.md/i);
+  assert.match(worker, /verif(?:y|ies|ication)[\s\S]{0,240}performance\.md/i);
+  assert.match(worker, /only[\s\S]{0,120}performance\.md/i);
+});
+
+test('performance lifecycle payloads carry metadata rather than report contents', () => {
+  const worker = artifact('sai/orchestration/workers/sai-7-performance-worker.md');
+
+  assert.match(worker, /lifecycle payloads?[\s\S]{0,240}metadata[\s\S]{0,240}(?:not|rather than|exclude)[\s\S]{0,160}(?:report|performance\.md) contents/i);
+  assert.match(worker, /report contents[\s\S]{0,160}(?:shall not|must not|never|exclude)/i);
+});
