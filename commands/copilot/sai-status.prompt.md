@@ -2,7 +2,7 @@
 description: Read-only progress panel for one OpenSpec change — the 10 sai-workflow artifacts, specs approval, implementation progress, and a Next: hint. Writes nothing.
 argument-hint: "[change-name]"
 agent: agent
-model: GPT-5 mini (copilot)
+model: GPT-5.6 Luna (copilot)
 tools: [vscode/askQuestions, read, search, execute]
 ---
 ## Sai Status

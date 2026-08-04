@@ -1,7 +1,7 @@
 ---
 name: budget-explorer
 description: Cheap read-only research subagent — codebase searches, file lookups, doc fetches. Returns structured summaries only.
-model: GPT-5 mini (copilot)
+model: GPT-5.6 Luna (copilot)
 user-invocable: true
 tools:
   - search/codebase

@@ -129,3 +129,83 @@ test('successful recovery independently re-verifies and resumes gates; failed re
   assert.match(recovery, /does not propose|do not propose|no commit/i);
   assert.match(recovery, /human intervention/);
 });
+
+test('terminal documentation commit is a sibling after the final sweep and promotion pass', () => {
+  const apply = artifact('sai/instructions/apply.md');
+  const finalSweep = apply.search(/Final sweep/i);
+  const promotion = apply.search(/## Learnings Promotion Pass/i);
+  const terminalCommit = apply.search(/## Terminal Documentation Commit/i);
+
+  assert.match(apply, /Exactly once per completed run, after the Final sweep and `## Learnings Promotion Pass`/);
+  assert.match(apply, /The sibling `## Terminal Documentation Commit` uses its own non-mutating listing/);
+  assert.ok(finalSweep >= 0 && promotion > finalSweep && terminalCommit > promotion,
+    'the terminal documentation commit must follow the Final sweep and promotion pass');
+});
+
+test('apply directs one gated promotion and documentation commit, including docs-only eligibility and refusal behavior', () => {
+  const apply = artifact('sai/commands/sai-4-apply.md');
+
+  assert.match(apply, /promotion pass/);
+  assert.match(apply, /sibling.*terminal documentation commit|terminal documentation commit.*sibling/i);
+  assert.match(apply, /docs-only|documentation-only/i);
+  assert.match(apply, /one shared gate|shared.*(?:authorization|commit).*gate/i);
+  assert.match(apply, /declin|non-yes|not.*yes/i);
+  assert.match(apply, /eligible.*(?:uncommitted|remain.*commit)|uncommitted.*eligible/i);
+});
+
+test('terminal eligibility uses terminal working-tree state and supports independent docs changes', () => {
+  const apply = artifact('sai/instructions/apply.md');
+  const command = artifact('sai/commands/sai-4-apply.md');
+
+  assert.match(apply, /changed `docs\/\*\*` paths remain independently eligible/);
+  assert.match(apply, /Evaluate `docs\/\*\*` at terminal time with no run-start baseline/);
+  assert.match(apply, /pre-existing uncommitted documentation is eligible/);
+  assert.match(apply, /When this pass writes `SAI_LEARNINGS\.md`/);
+  assert.match(apply, /derive a fixed terminal set from the current working tree/);
+  assert.match(command, /promotion-written `SAI_LEARNINGS\.md` joins the same fixed set and authorization gate/);
+  assert.match(apply, /When the fixed terminal set is empty/);
+  assert.match(apply, /propose no message/);
+  assert.match(apply, /ask no authorization question/);
+});
+
+test('pre-authorization disclosure lists exact paths and learning promotion details without staging or delete authority', () => {
+  const apply = artifact('sai/instructions/apply.md');
+
+  assert.match(apply, /before proposing a message or asking for authorization/);
+  assert.match(apply, /every exact path in the fixed terminal set/);
+  assert.match(apply, /every working-tree path outside that set/);
+  assert.match(apply, /without staging or reading `git diff --cached`/);
+  assert.match(apply, /Do not derive this set from a Step, `tasks\.md`, an intended add-list, or subagent report field 8/);
+  assert.match(apply, /path written/);
+  assert.match(apply, /count of entries added and superseded broken down by section/);
+  assert.match(apply, /keys of any pre-seeded entries/);
+  assert.match(apply, /grants no delete authority/);
+});
+
+test('terminal message and staging rules remain limited to eligible paths and hunks', () => {
+  const apply = artifact('sai/instructions/apply.md');
+  const commitRules = artifact('sai/policies/commit-rules.md');
+
+  assert.match(apply, /Propose one message for the complete terminal set/);
+  assert.match(apply, /apply `sai\/policies\/commit-rules\.md` to the eligible terminal paths and hunks only/);
+  assert.match(apply, /Never use `git add -A`, another broad sweep/);
+  assert.match(apply, /stage exactly the changed `docs\/\*\*` paths in the fixed set plus root `SAI_LEARNINGS\.md`/);
+  assert.match(apply, /Include every changed path under `docs\/\*\*`/);
+  assert.match(apply, /every working-tree path outside that set, including OpenSpec change artifacts/);
+  assert.match(apply, /path that includes `openspec\/changes\/\{change-name\}\//);
+  assert.match(commitRules, /subject/i);
+  assert.match(commitRules, /body/i);
+  assert.match(commitRules, /footer/i);
+});
+
+test('ordinary Step commits and halted runs do not enter the terminal documentation operation', () => {
+  const apply = artifact('sai/instructions/apply.md');
+  const command = artifact('sai/commands/sai-4-apply.md');
+
+  assert.match(apply, /ordinary `## Pre-commit File Visibility Report` remains unchanged/);
+  assert.match(apply, /intended add-list.*field 8/);
+  assert.match(apply, /A run that halts before the Final sweep promotes nothing/);
+  assert.match(apply, /terminal documentation commit SHALL NOT be evaluated/);
+  assert.match(command, /If any Step remains unchecked/);
+  assert.match(command, /continue to the MANDATORY STOP/);
+});

@@ -1,7 +1,7 @@
 ---
 name: budget-executor
 description: >
-  Binds "executor subagent" to the Copilot budget-executor custom agent — GPT-5 mini, execute-only, no tool-call cap, structured failure reports. Copilot only — NOT compatible with Claude Code or opencode.
+  Binds "executor subagent" to the Copilot budget-executor custom agent — GPT-5.6 Luna, execute-only, no tool-call cap, structured failure reports. Copilot only — NOT compatible with Claude Code or opencode.
   TRIGGER when: "budget executor", "cheap executor", "budget mode", "cheap mode", "low-cost mode", "low cost mode", "economy mode"
 license: MIT
 compatibility: copilot
@@ -16,7 +16,7 @@ metadata:
 
 ## Model
 
-Fixed at `GPT-5 mini (copilot)` in `budget-executor.agent.md`. To change the model, edit the agent file.
+Fixed at `GPT-5.6 Luna (copilot)` in `budget-executor.agent.md`. To change the model, edit the agent file.
 
 ## What to delegate
 

@@ -169,9 +169,9 @@ All skills are invoked automatically by `sai-*` commands, but you can also trigg
 |-------|---------|---------|
 | `safe-operations` | Enforces reversibility and impact awareness — agent must ask before destructive, hard-to-reverse, or shared-system operations, and must not use destructive shortcuts. | `"dangerous"`, `"destructive"`, `"git push --force"`, `"rm -rf"`, `"delete files/branches"` |
 | `token-efficient-languages` | Enforces a 3-rule language contract: (1) think/reason in English, (2) respond in user's language, (3) write all artifacts in English. English tokenizers produce fewer tokens per unit of meaning. | `"budget language"`, `"cheap language"` |
-| `budget-explorer` | Low-cost agent for research, exploration, and doc-lookup tasks. Model resolved via `agent.explore.model` in `opencode.jsonc`, via `subagent_type: General` + model tiers in Claude Code, or fixed at `GPT-5 mini (copilot)` in `agents/copilot/budget-explorer.agent.md` for GitHub Copilot. Enforces tool-call caps (≤30 per spawn) and output contracts (exact fields, length cap, no raw content). | `"budget explorer"`, `"cheap explorer"` |
-| `budget-executor` | Low-cost agent for running commands, tests, and build checks. Model resolved via `agent.executor.model` in `opencode.jsonc`, via `subagent_type: General` + `model: haiku` in Claude Code, or fixed at `GPT-5 mini (copilot)` in `agents/copilot/budget-executor.agent.md` for GitHub Copilot. Enforces execute-only discipline: exact commands, no self-correction, minimal output, structured failure reports. No tool-call cap. | `"budget executor"`, `"cheap executor"` |
-| `budget-subagent` | Low-cost agent for general-purpose task delegation — file reads, searches, writes, code analysis. Model resolved via `agent.budget.model` in `opencode.jsonc`, via `subagent_type: General` + `model: haiku` in Claude Code, or fixed at `GPT-5 mini (copilot)` in `agents/copilot/budget-subagent.agent.md` for GitHub Copilot. Enforces single-task discipline: structured completion report, ~30-call soft cap, no raw output. | `"budget subagent"`, `"cheap subagent"`, `"budget task"` |
+| `budget-explorer` | Low-cost agent for research, exploration, and doc-lookup tasks. Model resolved via `agent.explore.model` in `opencode.jsonc`, via `subagent_type: General` + model tiers in Claude Code, or fixed at `GPT-5.6 Luna (copilot)` in `agents/copilot/budget-explorer.agent.md` for GitHub Copilot. Enforces tool-call caps (≤30 per spawn) and output contracts (exact fields, length cap, no raw content). | `"budget explorer"`, `"cheap explorer"` |
+| `budget-executor` | Low-cost agent for running commands, tests, and build checks. Model resolved via `agent.executor.model` in `opencode.jsonc`, via `subagent_type: General` + `model: haiku` in Claude Code, or fixed at `GPT-5.6 Luna (copilot)` in `agents/copilot/budget-executor.agent.md` for GitHub Copilot. Enforces execute-only discipline: exact commands, no self-correction, minimal output, structured failure reports. No tool-call cap. | `"budget executor"`, `"cheap executor"` |
+| `budget-subagent` | Low-cost agent for general-purpose task delegation — file reads, searches, writes, code analysis. Model resolved via `agent.budget.model` in `opencode.jsonc`, via `subagent_type: General` + `model: haiku` in Claude Code, or fixed at `GPT-5.6 Luna (copilot)` in `agents/copilot/budget-subagent.agent.md` for GitHub Copilot. Enforces single-task discipline: structured completion report, ~30-call soft cap, no raw output. | `"budget subagent"`, `"cheap subagent"`, `"budget task"` |
 | `budget` | Loads all budget skills simultaneously (`budget-explorer` + `budget-executor` + `budget-subagent` + `token-efficient-languages`). Activates full cost-discipline for the session. | `"budget mode"`, `"cheap mode"`, `"low-cost mode"`, `"economy mode"` |
 
 ## Cost-Effective Strategies
@@ -343,18 +343,18 @@ The **Copilot** column shows two model identifiers:
 |-------|----------|-------------|-------------------|--------------------|
 | explore | `opencode-go/minimax-m3` | `sonnet` - medium | `GPT-5.6 Luna (copilot)` | `github-copilot/gpt-5.6-luna` |
 | spec (1) | `opencode-go/minimax-m3` | `opus` - medium | `GPT-5.6 Terra (copilot)` | `github-copilot/gpt-5.6-terra` |
-| design (2) | wrapper-declared `opencode-go/glm-5.2`, `variant: high`; worker `sai-2-design-worker` | coordinator `opus` - low; worker `opus` - high | `Claude Opus 4.8 (copilot)` inline | `github-copilot/claude-opus-4.8` |
+| design (2) | wrapper-declared `opencode-go/glm-5.2`, `variant: high`; worker `sai-2-design-worker` | coordinator `opus` - low; worker `opus` - high | `GPT-5.6 Terra (copilot)` inline | `github-copilot/gpt-5.6-terra` |
 | implement (3) | `opencode-go/kimi-k2.6` | coordinator `opus` - low; worker `opus` - medium | `GPT-5.6 Terra (copilot)` | `github-copilot/gpt-5.6-terra` |
 | apply (4) | `opencode-go/deepseek-v4-flash` | `sonnet` - low | `GPT-5.6 Luna (copilot)` | `github-copilot/gpt-5.6-luna` |
-| review (5) | `opencode-go/qwen3.7-plus` | `opus` - medium | `GPT-5.4 (copilot)` | `github-copilot/gpt-5.4` |
-| security (6) | `opencode-go/qwen3.7-plus` | `opus` - xhigh | `Claude Opus 4.8 (copilot)` | `github-copilot/claude-opus-4.8` |
-| performance (7) | `opencode-go/qwen3.7-plus` | `opus` - medium | `GPT-5.4 (copilot)` | `github-copilot/gpt-5.4` |
-| accessibility (8) | `opencode-go/qwen3.7-plus` | `opus` - medium | `GPT-5.4 (copilot)` | `github-copilot/gpt-5.4` |
+| review (5) | `opencode-go/qwen3.7-plus` | `opus` - medium | `GPT-5.6 Terra (copilot)` | `github-copilot/gpt-5.6-terra` |
+| security (6) | `opencode-go/qwen3.7-plus` | `opus` - xhigh | `Claude Opus 5 (copilot)` | `github-copilot/claude-opus-5` |
+| performance (7) | `opencode-go/qwen3.7-plus` | `opus` - medium | `GPT-5.6 Terra (copilot)` | `github-copilot/gpt-5.6-terra` |
+| accessibility (8) | `opencode-go/qwen3.7-plus` | `opus` - medium | `GPT-5.6 Terra (copilot)` | `github-copilot/gpt-5.6-terra` |
 | backfill | `opencode-go/minimax-m3` | `sonnet` - medium | `GPT-5.6 Luna (copilot)` | `github-copilot/gpt-5.6-luna` |
-| commit | `opencode-go/deepseek-v4-flash` | `haiku` | `GPT-5 mini (copilot)` | `github-copilot/gpt-5-mini` |
-| pr | `opencode-go/deepseek-v4-flash` | `haiku` | `GPT-5 mini (copilot)` | `github-copilot/gpt-5-mini` |
-| archive | `opencode-go/deepseek-v4-flash` | `haiku` | `GPT-5 mini (copilot)` | `github-copilot/gpt-5-mini` |
-| status | `opencode-go/deepseek-v4-flash` | `haiku` | `GPT-5 mini (copilot)` | `github-copilot/gpt-5-mini` |
+| commit | `opencode-go/deepseek-v4-flash` | `haiku` | `GPT-5.6 Luna (copilot)` | `github-copilot/gpt-5.6-luna` |
+| pr | `opencode-go/deepseek-v4-flash` | `haiku` | `GPT-5.6 Luna (copilot)` | `github-copilot/gpt-5.6-luna` |
+| archive | `opencode-go/deepseek-v4-flash` | `haiku` | `GPT-5.6 Luna (copilot)` | `github-copilot/gpt-5.6-luna` |
+| status | `opencode-go/deepseek-v4-flash` | `haiku` | `GPT-5.6 Luna (copilot)` | `github-copilot/gpt-5.6-luna` |
 
 ### Choosing a model
 

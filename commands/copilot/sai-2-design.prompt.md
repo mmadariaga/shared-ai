@@ -2,7 +2,7 @@
 description: Generate design.md and tasks.md for a change through the inline design path.
 argument-hint: "[change-name] [--fast-track]"
 agent: agent
-model: Claude Opus 4.8 (copilot)
+model: GPT-5.6 Terra (copilot)
 tools: [vscode, read, search, edit, execute, web]
 ---
 ## Sai Design - 2

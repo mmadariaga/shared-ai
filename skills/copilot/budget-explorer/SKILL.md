@@ -1,7 +1,7 @@
 ---
 name: budget-explorer
 description: >
-  Binds "cheap research subagent" to the Copilot budget-explorer custom agent — read-only, GPT-5 mini, tool-call caps, output contracts. Copilot only — NOT compatible with Claude Code or opencode.
+  Binds "cheap research subagent" to the Copilot budget-explorer custom agent — read-only, GPT-5.6 Luna, tool-call caps, output contracts. Copilot only — NOT compatible with Claude Code or opencode.
   TRIGGER when: "budget explorer", "cheap explorer", "budget mode", "cheap mode", "low-cost mode", "low cost mode", "economy mode"
 license: MIT
 compatibility: copilot
@@ -16,7 +16,7 @@ metadata:
 
 ## Model
 
-Fixed at `GPT-5 mini (copilot)` in `budget-explorer.agent.md`. To change the model, edit the agent file.
+Fixed at `GPT-5.6 Luna (copilot)` in `budget-explorer.agent.md`. To change the model, edit the agent file.
 
 ## Task classification
 

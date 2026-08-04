@@ -1,7 +1,7 @@
 ---
 name: budget-executor
 description: Cheap command-execution subagent — runs tests, builds, lints, and shell commands. Returns pass/fail summary on success, full error output on failure.
-model: GPT-5 mini (copilot)
+model: GPT-5.6 Luna (copilot)
 user-invocable: true
 tools:
   - search/listDirectory

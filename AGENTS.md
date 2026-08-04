@@ -98,9 +98,9 @@ The openspec-dependent `sai-*` commands halt with a clear error if either is mis
 | `skills/opencode/budget-explorer/SKILL.md` | Subagent dispatch rules for opencode — explore keyword binding, cap rules, output contracts. Model resolved via opencode.jsonc. |
 | `skills/opencode/budget-executor/SKILL.md` | Executor subagent rules for opencode — executor keyword binding, execute-only discipline. Model resolved via opencode.jsonc. |
 | `skills/opencode/fetch/SKILL.md` | Fetch @ path resolver for opencode — replicates Claude Code's built-in Fetch @ mechanism. Loaded first by all opencode wrappers to enable `@sai/` and `@skills/` path resolution. |
-| `skills/copilot/budget-explorer/SKILL.md` | Subagent dispatch rules for Copilot — `budget-explorer` custom agent binding, GPT-5 mini, read-only, tool-call caps, output contracts. |
-| `skills/copilot/budget-executor/SKILL.md` | Executor subagent rules for Copilot — `budget-executor` custom agent, GPT-5 mini, execute-only discipline. No tool-call cap. |
-| `skills/copilot/budget-subagent/SKILL.md` | Task subagent rules for Copilot — `budget-subagent` custom agent, GPT-5 mini, ~30-call soft cap, structured completion report. |
+| `skills/copilot/budget-explorer/SKILL.md` | Subagent dispatch rules for Copilot — `budget-explorer` custom agent binding, GPT-5.6 Luna, read-only, tool-call caps, output contracts. |
+| `skills/copilot/budget-executor/SKILL.md` | Executor subagent rules for Copilot — `budget-executor` custom agent, GPT-5.6 Luna, execute-only discipline. No tool-call cap. |
+| `skills/copilot/budget-subagent/SKILL.md` | Task subagent rules for Copilot — `budget-subagent` custom agent, GPT-5.6 Luna, ~30-call soft cap, structured completion report. |
 | `skills/copilot/fetch/SKILL.md` | Fetch @ path resolver for Copilot — maps `@<subpath>` to `.github/sai/<subpath>` then the VS Code SAI folder. Loaded first by all Copilot wrappers to enable `@sai/` and `@skills/` path resolution. |
 | `agents/copilot/` | Copilot custom agent definitions (`budget-explorer`, `budget-executor`, `budget-subagent`). Installed to `~/.copilot/agents/`, hidden from the agent picker, invoked programmatically by the main agent when the `budget` skill is active. |
 | `agents/claude/sai-1-spec-proposal-worker.md` | Claude Code custom agent for the medium-effort spec proposal worker. |
@@ -173,7 +173,7 @@ All agents MUST think and reason internally in English, regardless of the user's
 
 ### Cost Discipline (research subagents)
 Wrappers that spawn subagents fetch `skills/claude/budget-explorer/SKILL.md` (Claude), `skills/opencode/budget-explorer/SKILL.md` (opencode), or `skills/copilot/budget-explorer/SKILL.md` (Copilot). The main agent reasons and synthesizes. Subagents do I/O. Key rules:
-- Default research subagent is the **cheap** tier — Claude Code (`subagent_type: Explore`, model haiku/sonnet), opencode (`explore` keyword, model via `opencode.jsonc`), Copilot (`budget-explorer` custom agent, GPT-5 mini). Escalated tier only for multi-step synthesis.
+- Default research subagent is the **cheap** tier — Claude Code (`subagent_type: Explore`, model haiku/sonnet), opencode (`explore` keyword, model via `opencode.jsonc`), Copilot (`budget-explorer` custom agent, GPT-5.6 Luna). Escalated tier only for multi-step synthesis.
 - Every subagent call declares an **output contract** (exact fields, length cap, no raw content).
 - Main agent never calls WebFetch directly.
 - Speculative exploration ("look around") allowed only in the cheap tier.

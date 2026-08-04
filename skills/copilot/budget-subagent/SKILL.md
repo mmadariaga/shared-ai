@@ -1,7 +1,7 @@
 ---
 name: budget-subagent
 description: >
-  Binds cost-controlled task delegation to the Copilot budget-subagent custom agent — GPT-5 mini, ~30-call soft cap, structured completion report. Use for general-purpose task delegation (file operations, searches, writes, code analysis). Copilot only — NOT compatible with Claude Code or opencode.
+  Binds cost-controlled task delegation to the Copilot budget-subagent custom agent — GPT-5.6 Luna, ~30-call soft cap, structured completion report. Use for general-purpose task delegation (file operations, searches, writes, code analysis). Copilot only — NOT compatible with Claude Code or opencode.
   TRIGGER when: "budget subagent", "cheap subagent", "budget task", "cheap task", "budget mode", "cheap mode", "low-cost mode", "economy mode"
 license: MIT
 compatibility: copilot
@@ -16,7 +16,7 @@ metadata:
 
 ## Model
 
-Fixed at `GPT-5 mini (copilot)` in `budget-subagent.agent.md`. To change the model, edit the agent file.
+Fixed at `GPT-5.6 Luna (copilot)` in `budget-subagent.agent.md`. To change the model, edit the agent file.
 
 ## When to use budget-subagent vs other agents
 

@@ -2,7 +2,7 @@
 description: Pull Request Author — synthesizes title and body from the OpenSpec change artifacts (proposal/design/specs/implementation/review/security/performance/accessibility) and the git diff vs parent branch; saves openspec/changes/{change-name}/pr.md and (with authorization) opens the PR via gh
 argument-hint: "[change-name] [optional: parent branch]"
 agent: agent
-model: GPT-5 mini (copilot)
+model: GPT-5.6 Luna (copilot)
 tools: [vscode, read, search, edit, execute, web]
 ---
 ## Sai PR

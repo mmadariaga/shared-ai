@@ -78,7 +78,7 @@ test('design wrappers activate routed Claude/opencode entry and preserve inline 
    assert.match(opencode, /sai\/commands\/design\/coordinator\.md/);
   assert.ok(opencode.includes('**Change-name argument and and optional flags:** $ARGUMENTS'));
 
-  assert.match(copilot, /model: Claude Opus 4\.8 \(copilot\)/);
+  assert.match(copilot, /model: GPT-5\.6 Terra \(copilot\)/);
   assert.match(copilot, /tools: \[vscode, read, search, edit, execute, web\]/);
   assert.match(copilot, /sai\/orchestration\/inline-invocation\.md/);
   assert.match(copilot, /^phase: sai-2-design$/m);

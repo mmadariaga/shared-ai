@@ -51,7 +51,7 @@
 
   Under fast-track, the Human Verification evaluation changes: accumulate each Step's Human `- [ ]` checkboxes in the coordinator's in-conversation memory as they are reached, mark them `[x]` after that Step's automated checks pass, and defer presentation to a single combined list printed after the Final sweep and before the MANDATORY STOP. Steps with zero Human checkboxes (italic note only) contribute nothing. Wait for the user to review the combined list before declaring completion.
 
-  After the Final sweep and before the MANDATORY STOP, run the single end-of-run learnings promotion pass per `## Learnings Promotion Pass` in `apply.md`. It has its own minimal disclosure and its own `yes`/`no` commit authorization; a decline leaves the file uncommitted in the working tree and does not block completion.
+  After the Final sweep and before the MANDATORY STOP, run `## Learnings Promotion Pass` and then the sibling `## Terminal Documentation Commit` from `apply.md`. Changed `docs/**` paths independently trigger the terminal documentation gate, including documentation-only runs; a promotion-written `SAI_LEARNINGS.md` joins the same fixed set and authorization gate. The promotion pass and documentation-only runs use one shared gate. If the user declines, leave all eligible files uncommitted, report them, and continue to the MANDATORY STOP.
 
   If any Step remains unchecked, your work is NOT complete: do not print the completion message, do not mention `/sai-5-review`, and do not end — dispatch the next unchecked Step instead.
 
