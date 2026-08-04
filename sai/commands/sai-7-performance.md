@@ -9,19 +9,14 @@
   ## Prerequisite checks
   Fetch @sai/policies/prereqs.md
 
-  ## Load behaviors (in order)
-  Fetch @skills/budget/SKILL.md and use it
-
-  ## Load instructions (in order)
+  ## Resolve change
   Fetch @sai/policies/change-picker.md and follow it exactly.
-  Fetch @sai/instructions/performance.md and follow those instructions exactly.
-  Fetch @sai/policies/remember.md
 
-  ## Run
-  **User's request:** $ARGUMENTS
+  ## Technical performance audit
+  Fetch @sai/commands/performance/invocation.md and follow it exactly using the resolved change name and optional scope, tier, or parent branch as `$ARGUMENTS`.
 
   ## Completion
-  MANDATORY STOP: Once all artifacts are written your work is COMPLETE, STOP and print exactly: "Performance audit done."  
+  MANDATORY STOP: Once all artifacts are written your work is COMPLETE, STOP and print exactly: "Performance audit done."
 </TASK>
 
 Follow instruction on <TASK> step by step
