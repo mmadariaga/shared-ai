@@ -11,6 +11,7 @@ const {
   installOpencode,
   copyOpencodeConfig,
   OPENCODE_INSTALL_CMD,
+  MANAGED_WORKERS,
   OPENCODE_MANAGED_AGENTS,
   probeOpencode,
   runOpencodeInstall,
@@ -159,6 +160,132 @@ test('opencode worker registration is preserved and configurable', () => {
     const parsed = jsonc.parse(fs.readFileSync(path.join(tmpDir, 'opencode.json'), 'utf8'));
     assert.deepEqual(parsed.agent['sai-5-review-worker'], custom,
       'an existing review worker registration should remain configurable');
+  } finally {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+});
+
+test('opencode managed agents are derived from registry metadata', () => {
+  assert.deepEqual(Object.keys(OPENCODE_MANAGED_AGENTS), [
+    'sai-3-implementation-worker',
+    'sai-2-design-worker',
+    'sai-5-review-worker',
+  ]);
+  assert.deepEqual(OPENCODE_MANAGED_AGENTS['sai-3-implementation-worker'], {
+    mode: 'subagent',
+    model: 'opencode-go/kimi-k2.6',
+    permission: { task: { '*': 'deny', budget: 'allow', explore: 'allow' } },
+  });
+  assert.deepEqual(OPENCODE_MANAGED_AGENTS['sai-2-design-worker'], {
+    mode: 'subagent',
+    model: 'opencode-go/glm-5.2',
+    variant: 'high',
+    permission: { task: { '*': 'deny', explore: 'allow' } },
+  });
+  assert.deepEqual(OPENCODE_MANAGED_AGENTS['sai-5-review-worker'], {
+    mode: 'subagent',
+    model: 'opencode-go/glm-5.2',
+    variant: 'high',
+    permission: { task: { '*': 'deny', budget: 'allow', explore: 'allow' } },
+  });
+  assert.equal(OPENCODE_MANAGED_AGENTS['sai-1-spec-proposal-worker'], undefined);
+  assert.strictEqual(
+    OPENCODE_MANAGED_AGENTS['sai-3-implementation-worker'],
+    MANAGED_WORKERS['sai-3-implementation-worker'].opencode
+  );
+  assert.strictEqual(
+    OPENCODE_MANAGED_AGENTS['sai-2-design-worker'],
+    MANAGED_WORKERS['sai-2-design-worker'].opencode
+  );
+  assert.strictEqual(
+    OPENCODE_MANAGED_AGENTS['sai-5-review-worker'],
+    MANAGED_WORKERS['sai-5-review-worker'].opencode
+  );
+});
+
+test('Step 2 fresh and repeated installation preserves the fixed registration output', () => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-derived-'));
+  try {
+    installOpencode(tmpDir);
+    const configName = fs.existsSync(path.join(tmpDir, 'opencode.json')) ? 'opencode.json' : 'opencode.jsonc';
+    const configPath = path.join(tmpDir, configName);
+    const firstRaw = fs.readFileSync(configPath, 'utf8');
+    const first = jsonc.parse(firstRaw);
+    assert.deepEqual(Object.keys(first.agent), [
+      'explore',
+      'executor',
+      'budget',
+      'sai-3-implementation-worker',
+      'sai-2-design-worker',
+      'sai-5-review-worker',
+    ]);
+    assert.deepEqual(first.agent['sai-3-implementation-worker'], {
+      mode: 'subagent',
+      model: 'opencode-go/kimi-k2.6',
+      permission: { task: { '*': 'deny', budget: 'allow', explore: 'allow' } },
+    });
+    assert.deepEqual(first.agent['sai-2-design-worker'], {
+      mode: 'subagent',
+      model: 'opencode-go/glm-5.2',
+      variant: 'high',
+      permission: { task: { '*': 'deny', explore: 'allow' } },
+    });
+    assert.deepEqual(first.agent['sai-5-review-worker'], {
+      mode: 'subagent',
+      model: 'opencode-go/glm-5.2',
+      variant: 'high',
+      permission: { task: { '*': 'deny', budget: 'allow', explore: 'allow' } },
+    });
+    installOpencode(tmpDir);
+    assert.equal(fs.readFileSync(configPath, 'utf8'), firstRaw);
+  } finally {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+});
+
+test('Step 2 preserves compatible customized registrations and unrelated user configuration', () => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-derived-custom-'));
+  const fixture = [
+    '// preserve this comment',
+    JSON.stringify({
+      theme: 'user-theme',
+      permission: {
+        bash: 'deny',
+        external_directory: { [SAI_EXTERNAL_DIRECTORY]: 'allow', '*.md': 'ask' },
+      },
+      plugin: ['user-plugin'],
+      agent: {
+        explore: { mode: 'subagent', model: 'user-explore' },
+        executor: { mode: 'subagent', model: 'user-executor' },
+        budget: { mode: 'subagent', model: 'user-budget' },
+        custom: { mode: 'subagent', model: 'user-custom' },
+        'sai-3-implementation-worker': {
+          mode: 'subagent',
+          model: 'user-implementation',
+          permission: { task: { '*': 'allow' } },
+        },
+        'sai-2-design-worker': {
+          mode: 'subagent',
+          model: 'user-design',
+          variant: 'low',
+          description: 'user-owned design runtime',
+        },
+        'sai-5-review-worker': {
+          mode: 'subagent',
+          model: 'user-review',
+          variant: 'medium',
+        },
+      },
+    }, null, 2),
+    '',
+  ].join('\n');
+  const configPath = path.join(tmpDir, 'opencode.jsonc');
+  try {
+    fs.writeFileSync(configPath, fixture);
+    copyOpencodeConfig(tmpDir);
+    assert.equal(fs.readFileSync(configPath, 'utf8'), fixture);
+    copyOpencodeConfig(tmpDir);
+    assert.equal(fs.readFileSync(configPath, 'utf8'), fixture);
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }

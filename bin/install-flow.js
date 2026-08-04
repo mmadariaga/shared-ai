@@ -112,39 +112,11 @@ function migrateLegacyClaudeWorkers(targetPath = CLAUDE_BASE) {
   }
   return migrated;
 }
-const OPENCODE_MANAGED_AGENTS = Object.freeze({
-  'sai-3-implementation-worker': {
-    mode: 'subagent',
-    model: 'opencode-go/kimi-k2.6',
-    permission: {
-      task: {
-        '*': 'deny',
-        budget: 'allow',
-        explore: 'allow',
-      },
-    },
-  },
-  'sai-2-design-worker': {
-    mode: 'subagent',
-    model: 'opencode-go/glm-5.2',
-    variant: 'high',
-    permission: {
-      task: { '*': 'deny', explore: 'allow' },
-    },
-  },
-  'sai-5-review-worker': {
-    mode: 'subagent',
-    model: 'opencode-go/glm-5.2',
-    variant: 'high',
-    permission: {
-      task: {
-        '*': 'deny',
-        budget: 'allow',
-        explore: 'allow',
-      },
-    },
-  },
-});
+const OPENCODE_MANAGED_AGENTS = Object.freeze(Object.fromEntries(
+  Object.entries(MANAGED_WORKERS)
+    .filter(([, worker]) => worker.opencode !== undefined)
+    .map(([name, worker]) => [name, worker.opencode]),
+));
 
 const REPOSITORY_ROOT = path.join(__dirname, '..');
 const PACKAGE_VERSION = require(path.join(REPOSITORY_ROOT, 'package.json')).version;

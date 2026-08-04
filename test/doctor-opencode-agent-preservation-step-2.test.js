@@ -89,7 +89,11 @@ test('customized managed agents are accepted by name presence', async () => {
     const { code, report } = await runDoctor(projectRoot, opencodeBase);
     assert.equal(code, 0);
     const records = managedRecords(report);
-    assert.equal(records.length, MANAGED_NAMES.length);
+    assert.deepEqual(records.map(record => record.name).sort(), [
+      'sai-2-design-worker',
+      'sai-3-implementation-worker',
+      'sai-5-review-worker',
+    ]);
     for (const record of records) assert.equal(record.severity, 'ok', `${record.name} should be ok`);
     assert.equal(records.some(record => record.severity === 'error' && /incompatible/i.test(record.message || '')), false);
   } finally {
