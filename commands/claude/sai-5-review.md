@@ -3,9 +3,10 @@ description: Structured Code Review Prompt — diffs current branch against pare
 argument-hint: "[change-name] [optional: parent branch]"
 model: opus
 effort: medium
+allowed-tools: Skill, Agent, SendMessage, AskUserQuestion
 ---
 ## Sai Review - 5
 
 Fetch @skills/fetch/SKILL.md
-Fetch @sai/commands/sai-5-review.md and follow those instructions exactly.
-
+Fetch @skills/sai-5-review-worker/SKILL.md and use it.
+Fetch @sai/commands/review/coordinator.md and follow those instructions exactly.

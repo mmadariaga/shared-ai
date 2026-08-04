@@ -9,20 +9,14 @@
   ## Prerequisite checks
   Fetch @sai/policies/prereqs.md
 
-  ## Load behaviors (in order)
-  Fetch @skills/budget/SKILL.md and use it
-
-  ## Load instructions (in order)
+  ## Resolve change
   Fetch @sai/policies/change-picker.md and follow it exactly.
-  Fetch @sai/policies/glossary-format.md
-  Fetch @sai/instructions/review.md and follow those instructions exactly.
-  Fetch @sai/policies/remember.md
 
-  ## Run
-  **User's request:** $ARGUMENTS
+  ## Technical review
+  Fetch @sai/commands/review/invocation.md and follow it exactly using the resolved change name and optional parent branch as `$ARGUMENTS`.
 
   ## Completion
-  MANDATORY STOP: Once all artifacts are written your work is COMPLETE, STOP and print exactly: "Review done."  
+  MANDATORY STOP: Once all artifacts are written your work is COMPLETE, STOP and print exactly: "Review done."
 </TASK>
 
 Follow instruction on <TASK> step by step

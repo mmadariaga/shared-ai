@@ -6,6 +6,7 @@ model: opencode-go/qwen3.7-plus
 ## Sai Review - 5
 
 Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.
-Fetch @sai/commands/sai-5-review.md and follow those instructions exactly.
+Fetch @skills/sai-5-review-worker/SKILL.md and use it.
+Fetch @sai/commands/review/coordinator.md and follow those instructions exactly.
 
-**Change-name argument:** $ARGUMENTS
+**Change-name and optional parent-branch argument:** $ARGUMENTS
