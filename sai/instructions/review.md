@@ -105,7 +105,7 @@ Run pass 11 only when BOTH conditions hold:
 1. The diff against the parent branch contains **testable production code** (not docs or config only).
 2. The repository contains **at least one test file**.
 
-If either is false, **skip pass 11 silently** — emit no finding and no Mutation Analysis content beyond a one-line skipped note in the report (Step 4).
+If either condition is false, emit exactly `Mutation Analysis (Pass 11): skipped — {no testable production code in diff | repository has no test files}. No mutation findings.` using the applicable reason, emit no mutation findings, and do not mutate any production file. An undetermined test command is a separate Tier-2 outcome, not an activation-gate reason.
 
 #### Mutation Scope
 
