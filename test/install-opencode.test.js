@@ -7,12 +7,53 @@ const os = require('os');
 const fs = require('fs');
 const childProcess = require('child_process');
 
-const { installOpencode, copyOpencodeConfig, OPENCODE_INSTALL_CMD, OPENCODE_MANAGED_AGENTS, probeOpencode, runOpencodeInstall, promptYesNoReadline, offerOpencodeInstall } = require('../bin/install-flow.js');
+const {
+  installOpencode,
+  copyOpencodeConfig,
+  OPENCODE_INSTALL_CMD,
+  OPENCODE_MANAGED_AGENTS,
+  probeOpencode,
+  runOpencodeInstall,
+  promptYesNoReadline,
+  offerOpencodeInstall,
+} = require('../bin/install-flow.js');
 const jsonc = require('jsonc-parser');
 
 const AGENT_PLACEHOLDER = { mode: 'subagent', model: 'opencode-go/deepseek-v4-flash' };
 const AGENT_KEYS = ['explore', 'executor', 'budget'];
 const SAI_EXTERNAL_DIRECTORY = '~/.config/opencode/sai/**';
+
+test('copyOpencodeConfig preserves a fixed configured output independently of registry values', () => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-baseline-'));
+  const baseline = [
+    '{',
+    '  "theme": "custom",',
+    '  "permission": {',
+    '    "bash": "deny",',
+    '    "external_directory": {',
+    '      "~/.config/opencode/sai/**": "allow"',
+    '    }',
+    '  },',
+    '  "agent": {',
+    '    "explore": { "mode": "subagent", "model": "user-explore" },',
+    '    "executor": { "mode": "subagent", "model": "user-executor" },',
+    '    "budget": { "mode": "subagent", "model": "user-budget" },',
+    '    "sai-3-implementation-worker": { "mode": "subagent", "model": "user-implementation" },',
+    '    "sai-2-design-worker": { "mode": "subagent", "model": "user-design" },',
+    '    "sai-5-review-worker": { "mode": "subagent", "model": "user-review" }',
+    '  }',
+    '}',
+  ].join('\n') + '\n';
+  const configPath = path.join(tmpDir, 'opencode.json');
+  try {
+    fs.writeFileSync(configPath, baseline);
+    copyOpencodeConfig(tmpDir);
+    assert.deepEqual(fs.readFileSync(configPath, 'utf8'), baseline,
+      'the known pre-refactor baseline should remain byte-identical');
+  } finally {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+});
 
 test('installOpencode copies commands/opencode/*.md to dest/commands/', () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-'));

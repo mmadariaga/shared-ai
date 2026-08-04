@@ -6,8 +6,73 @@ const path = require('path');
 const os = require('os');
 const fs = require('fs');
 
-const { installClaude } = require('../bin/install-flow.js');
+const {
+  installClaude,
+  MANAGED_WORKERS,
+  CLAUDE_SPEC_WORKER_AGENT,
+  CLAUDE_SPEC_WORKER_OWNER,
+  CLAUDE_DESIGN_WORKER_AGENT,
+  CLAUDE_DESIGN_WORKER_OWNER,
+  CLAUDE_IMPLEMENTATION_WORKER_AGENT,
+  CLAUDE_IMPLEMENTATION_WORKER_OWNER,
+  CLAUDE_REVIEW_WORKER_AGENT,
+  CLAUDE_REVIEW_WORKER_OWNER,
+  OWNER_BY_CLAUDE_AGENT,
+} = require('../bin/install-flow.js');
 const { loadInstallManifest, expandInstallManifest } = require('../bin/install-manifest.js');
+
+test('managed worker registry defines every Claude compatibility export', () => {
+  assert.ok(MANAGED_WORKERS, 'MANAGED_WORKERS should be exported');
+
+  const expectedNames = [
+    'sai-3-implementation-worker',
+    'sai-2-design-worker',
+    'sai-5-review-worker',
+    'sai-1-spec-proposal-worker',
+  ];
+  assert.deepEqual(Object.keys(MANAGED_WORKERS), expectedNames,
+    'registry keys should contain each managed worker exactly once');
+
+  const expectedClaude = {
+    'sai-1-spec-proposal-worker': {
+      agent: 'sai-1-spec-proposal-worker.md',
+      owner: '.sai-1-spec-proposal-worker.owner.json',
+    },
+    'sai-2-design-worker': {
+      agent: 'sai-2-design-worker.md',
+      owner: '.sai-2-design-worker.owner.json',
+    },
+    'sai-3-implementation-worker': {
+      agent: 'sai-3-implementation-worker.md',
+      owner: '.sai-3-implementation-worker.owner.json',
+    },
+    'sai-5-review-worker': {
+      agent: 'sai-5-review-worker.md',
+      owner: '.sai-5-review-worker.owner.json',
+    },
+  };
+
+  for (const [name, claude] of Object.entries(expectedClaude)) {
+    assert.deepEqual(MANAGED_WORKERS[name].claude, claude, `${name} Claude metadata should remain stable`);
+  }
+  assert.equal(Object.hasOwn(MANAGED_WORKERS['sai-1-spec-proposal-worker'], 'opencode'), false,
+    'the spec worker should remain Claude-only');
+
+  assert.equal(CLAUDE_SPEC_WORKER_AGENT, 'sai-1-spec-proposal-worker.md');
+  assert.equal(CLAUDE_SPEC_WORKER_OWNER, '.sai-1-spec-proposal-worker.owner.json');
+  assert.equal(CLAUDE_DESIGN_WORKER_AGENT, 'sai-2-design-worker.md');
+  assert.equal(CLAUDE_DESIGN_WORKER_OWNER, '.sai-2-design-worker.owner.json');
+  assert.equal(CLAUDE_IMPLEMENTATION_WORKER_AGENT, 'sai-3-implementation-worker.md');
+  assert.equal(CLAUDE_IMPLEMENTATION_WORKER_OWNER, '.sai-3-implementation-worker.owner.json');
+  assert.equal(CLAUDE_REVIEW_WORKER_AGENT, 'sai-5-review-worker.md');
+  assert.equal(CLAUDE_REVIEW_WORKER_OWNER, '.sai-5-review-worker.owner.json');
+  assert.deepEqual(OWNER_BY_CLAUDE_AGENT, {
+    'sai-1-spec-proposal-worker.md': '.sai-1-spec-proposal-worker.owner.json',
+    'sai-2-design-worker.md': '.sai-2-design-worker.owner.json',
+    'sai-3-implementation-worker.md': '.sai-3-implementation-worker.owner.json',
+    'sai-5-review-worker.md': '.sai-5-review-worker.owner.json',
+  });
+});
 
 test('installClaude copies commands/claude/*.md to dest/commands/', () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-claude-'));

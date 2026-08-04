@@ -20,20 +20,66 @@ try {
 
 const OPENCODE_AGENT_KEYS = ['explore', 'executor', 'budget'];
 const OPENCODE_PLACEHOLDER_MODEL = 'opencode-go/deepseek-v4-flash';
-const CLAUDE_IMPLEMENTATION_WORKER_AGENT = 'sai-3-implementation-worker.md';
-const CLAUDE_IMPLEMENTATION_WORKER_OWNER = '.sai-3-implementation-worker.owner.json';
-const CLAUDE_DESIGN_WORKER_AGENT = 'sai-2-design-worker.md';
-const CLAUDE_DESIGN_WORKER_OWNER = '.sai-2-design-worker.owner.json';
-const CLAUDE_SPEC_WORKER_AGENT = 'sai-1-spec-proposal-worker.md';
-const CLAUDE_SPEC_WORKER_OWNER = '.sai-1-spec-proposal-worker.owner.json';
-const CLAUDE_REVIEW_WORKER_AGENT = 'sai-5-review-worker.md';
-const CLAUDE_REVIEW_WORKER_OWNER = '.sai-5-review-worker.owner.json';
-const OWNER_BY_CLAUDE_AGENT = Object.freeze({
-  [CLAUDE_SPEC_WORKER_AGENT]: CLAUDE_SPEC_WORKER_OWNER,
-  [CLAUDE_DESIGN_WORKER_AGENT]: CLAUDE_DESIGN_WORKER_OWNER,
-  [CLAUDE_IMPLEMENTATION_WORKER_AGENT]: CLAUDE_IMPLEMENTATION_WORKER_OWNER,
-  [CLAUDE_REVIEW_WORKER_AGENT]: CLAUDE_REVIEW_WORKER_OWNER,
+const MANAGED_WORKERS = Object.freeze({
+  'sai-3-implementation-worker': Object.freeze({
+    claude: Object.freeze({
+      agent: 'sai-3-implementation-worker.md',
+      owner: '.sai-3-implementation-worker.owner.json',
+    }),
+    opencode: Object.freeze({
+      mode: 'subagent',
+      model: 'opencode-go/kimi-k2.6',
+      permission: Object.freeze({
+        task: Object.freeze({ '*': 'deny', budget: 'allow', explore: 'allow' }),
+      }),
+    }),
+  }),
+  'sai-2-design-worker': Object.freeze({
+    claude: Object.freeze({
+      agent: 'sai-2-design-worker.md',
+      owner: '.sai-2-design-worker.owner.json',
+    }),
+    opencode: Object.freeze({
+      mode: 'subagent',
+      model: 'opencode-go/glm-5.2',
+      variant: 'high',
+      permission: Object.freeze({
+        task: Object.freeze({ '*': 'deny', explore: 'allow' }),
+      }),
+    }),
+  }),
+  'sai-5-review-worker': Object.freeze({
+    claude: Object.freeze({
+      agent: 'sai-5-review-worker.md',
+      owner: '.sai-5-review-worker.owner.json',
+    }),
+    opencode: Object.freeze({
+      mode: 'subagent',
+      model: 'opencode-go/glm-5.2',
+      variant: 'high',
+      permission: Object.freeze({
+        task: Object.freeze({ '*': 'deny', budget: 'allow', explore: 'allow' }),
+      }),
+    }),
+  }),
+  'sai-1-spec-proposal-worker': Object.freeze({
+    claude: Object.freeze({
+      agent: 'sai-1-spec-proposal-worker.md',
+      owner: '.sai-1-spec-proposal-worker.owner.json',
+    }),
+  }),
 });
+const CLAUDE_IMPLEMENTATION_WORKER_AGENT = MANAGED_WORKERS['sai-3-implementation-worker'].claude.agent;
+const CLAUDE_IMPLEMENTATION_WORKER_OWNER = MANAGED_WORKERS['sai-3-implementation-worker'].claude.owner;
+const CLAUDE_DESIGN_WORKER_AGENT = MANAGED_WORKERS['sai-2-design-worker'].claude.agent;
+const CLAUDE_DESIGN_WORKER_OWNER = MANAGED_WORKERS['sai-2-design-worker'].claude.owner;
+const CLAUDE_SPEC_WORKER_AGENT = MANAGED_WORKERS['sai-1-spec-proposal-worker'].claude.agent;
+const CLAUDE_SPEC_WORKER_OWNER = MANAGED_WORKERS['sai-1-spec-proposal-worker'].claude.owner;
+const CLAUDE_REVIEW_WORKER_AGENT = MANAGED_WORKERS['sai-5-review-worker'].claude.agent;
+const CLAUDE_REVIEW_WORKER_OWNER = MANAGED_WORKERS['sai-5-review-worker'].claude.owner;
+const OWNER_BY_CLAUDE_AGENT = Object.freeze(Object.fromEntries(
+  Object.values(MANAGED_WORKERS).map(({ claude }) => [claude.agent, claude.owner]),
+));
 const LEGACY_CLAUDE_WORKERS = [
   { agent: 'sai-design-planning-worker.md', owner: '.sai-design-planning-worker.owner.json', replacement: 'sai-2-design-worker.md', replacementOwner: '.sai-2-design-worker.owner.json' },
   { agent: 'sai-implementation-planning-worker.md', owner: '.sai-implementation-planning-worker.owner.json', replacement: 'sai-3-implementation-worker.md', replacementOwner: '.sai-3-implementation-worker.owner.json' },
@@ -812,6 +858,7 @@ module.exports = {
   probeOpenspec,
   runOpenspecInstall,
   offerOpenspecInstall,
+  MANAGED_WORKERS,
   CLAUDE_IMPLEMENTATION_WORKER_AGENT,
   CLAUDE_IMPLEMENTATION_WORKER_OWNER,
   CLAUDE_DESIGN_WORKER_AGENT,
