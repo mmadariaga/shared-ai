@@ -12,6 +12,12 @@ metadata:
   version: "1.0"
 ---
 
+## Active harness and roots
+
+Active harness identity: `copilot`.
+
+Resolve project-local `.github/sai/` before the user-global VS Code SAI root defined below. This identity and root order are established before interpreting any fetch directive. Copilot remains an inline adapter and does not apply a routed `bindings/<identity>/` stop rule.
+
 ## Fetch @ resolution rules (apply to EVERY instruction)
 
 When you encounter `"Fetch @<path>"` or `"Also fetch @<path>"` in any instruction text, do NOT search for the file locally using glob, grep, or Read. Resolve using these rules instead:

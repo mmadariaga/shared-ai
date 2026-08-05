@@ -239,3 +239,98 @@ describe('doctor fetch resolution', () => {
   });
 
 });
+
+const repoRoot = path.join(__dirname, '..');
+
+function sourceArtifact(relativePath) {
+  const fullPath = path.join(repoRoot, relativePath);
+  assert.ok(fs.existsSync(fullPath), `${relativePath} should exist`);
+  return fs.readFileSync(fullPath, 'utf8');
+}
+
+function positionOf(source, pattern) {
+  const match = source.match(pattern);
+  assert.ok(match, `expected source to contain ${pattern}`);
+  return match.index;
+}
+
+function assertInOrder(source, patterns) {
+  let previous = -1;
+  for (const pattern of patterns) {
+    const position = positionOf(source, pattern);
+    assert.ok(position > previous, `${pattern} should appear after the preceding rule`);
+    previous = position;
+  }
+}
+
+test('Step 1 source fetch skills declare one active identity and local roots before global roots', () => {
+  const skills = [
+    {
+      identity: 'claude',
+      path: 'skills/claude/fetch/SKILL.md',
+      localRoot: /\.claude[\\/]/,
+      globalRoot: /~[\\/]\.claude[\\/]/,
+    },
+    {
+      identity: 'opencode',
+      path: 'skills/opencode/fetch/SKILL.md',
+      localRoot: /\.opencode[\\/]/,
+      globalRoot: /~[\\/]\.config[\\/]opencode[\\/]/,
+    },
+    {
+      identity: 'copilot',
+      path: 'skills/copilot/fetch/SKILL.md',
+      localRoot: /\.github[\\/]sai[\\/]/,
+      globalRoot: /user-global.*(?:VS Code SAI root|SAI folder)/i,
+    },
+  ];
+
+  for (const skill of skills) {
+    const source = sourceArtifact(skill.path);
+    const identities = source.match(new RegExp(`^\\s*Active harness identity\\s*:\\s*` + '`?' + `${skill.identity}` + '`?' + `[.!]?\\s*$`, 'gim')) || [];
+    assert.equal(identities.length, 1, `${skill.path} should declare exactly one active identity`);
+    assertInOrder(source, [skill.localRoot, skill.globalRoot]);
+  }
+});
+
+test('Step 1 opencode fetch resolver stops on a cross-harness binding path before resolution work', () => {
+  const source = sourceArtifact('skills/opencode/fetch/SKILL.md');
+  assert.match(source, /bindings[\\/]<identity>[\\/]/);
+  assertInOrder(source, [
+    /classify the path as cross-harness/i,
+    /candidate lookup|candidate locations/i,
+    /reading any file|read/i,
+    /invoking a skill|skill invocation/i,
+    /recursing|recursion/i,
+    /rewriting|rewrite/i,
+    /guessing|guess/i,
+  ]);
+});
+
+test('Step 1 coordinator-owned fetch mismatch reports the refused path and active identity without retry', () => {
+  const source = sourceArtifact('skills/opencode/fetch/SKILL.md');
+  assert.match(source, /coordinator-owned stop/i);
+  assert.match(source, /refused path|requested path/i);
+  assert.match(source, /active identity/i);
+  assert.match(source, /new chat/i);
+  assert.match(source, /no in-session retry|do not retry|without retry/i);
+});
+
+test('Step 1 worker-owned mismatch stops locally while identity-free paths retain normal fetch behavior', () => {
+  const source = sourceArtifact('skills/opencode/fetch/SKILL.md');
+  assert.match(source, /worker-owned stop/i);
+  assert.match(source, /refused path|does not resolve|do not resolve/i);
+  assert.match(source, /does not retry|do not retry|no automatic retry/i);
+  assert.match(source, /Resolve project-local.*before user-global/i);
+  assert.match(source, /File not found|missing[- ]file/i);
+  assert.match(source, /recursing|recursion/i);
+});
+
+test('Step 1 Copilot declares identity and roots without importing routed binding stop behavior', () => {
+  const source = sourceArtifact('skills/copilot/fetch/SKILL.md');
+  assert.match(source, /Active harness identity\s*:\s*`?copilot`?/i);
+  assert.match(source, /\.github[\\/]sai[\\/]/);
+  assert.match(source, /user-global.*(?:VS Code SAI root|SAI folder)/i);
+  assert.match(source, /does not apply a routed `bindings[\\/]<identity>[\\/]` stop rule/i);
+  assert.doesNotMatch(source, /coordinator-owned|worker-owned/);
+});
