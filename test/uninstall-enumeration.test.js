@@ -114,8 +114,12 @@ test('install and uninstall inventories are exact and deterministic for every ha
       const normalize = destinations => destinations
         .map(destination => normalizeInventoryDestination(destination, destinationRoot))
         .sort();
-      const normalizedActive = normalize(activeDestinations);
-      const entries = enumerate(base, destinationRoot);
+       const normalizedActive = normalize(activeDestinations);
+       assert.equal(normalizedActive.some(destination =>
+         destination.includes('/orchestration/workers/bindings/claude/') ||
+         destination.includes('/orchestration/workers/bindings/opencode/')), false,
+       `${harness} active inventory must not use harness-qualified binding destinations`);
+       const entries = enumerate(base, destinationRoot);
       const normalizedUninstall = normalize(entries
         .filter(entry => entry.assetType !== 'retired-managed-file')
         .map(entry => entry.dest));
@@ -128,6 +132,21 @@ test('install and uninstall inventories are exact and deterministic for every ha
         .filter(entry => entry.assetType !== 'retired-managed-file')
         .map(entry => entry.dest));
       assert.deepEqual(normalizedUninstall, second, `${harness} uninstall enumeration should be deterministic`);
+
+      if (harness !== 'copilot') {
+        const retiredBindings = normalize(entries
+          .filter(entry => entry.assetType === 'retired-managed-file' && entry.ruleId.includes(`-${harness}-`))
+          .map(entry => entry.dest));
+        assert.deepEqual(retiredBindings, [
+          `sai/orchestration/workers/bindings/${harness}/accessibility-worker.md`,
+          `sai/orchestration/workers/bindings/${harness}/design-worker.md`,
+          `sai/orchestration/workers/bindings/${harness}/implementation-worker.md`,
+          `sai/orchestration/workers/bindings/${harness}/performance-worker.md`,
+          `sai/orchestration/workers/bindings/${harness}/review-worker.md`,
+          `sai/orchestration/workers/bindings/${harness}/security-worker.md`,
+          `sai/orchestration/workers/bindings/${harness}/spec-worker.md`,
+        ].sort(), `${harness} should enumerate only its seven retired routed bindings`);
+      }
 
       if (harness === 'claude') {
         const managedAgents = entries.filter(entry => entry.assetType === 'claude-managed-agent');
@@ -268,8 +287,15 @@ test('enumeration includes retirement records but excludes them from active proj
       path.join('sai', 'commands', 'sai-2-design.md'),
       path.join('sai', 'commands', 'sai-2-design-inline.md'),
       path.join('sai', 'commands', 'sai-3-implement.md'),
-      path.join('sai', 'commands', 'sai-3-implement-inline.md'),
-      path.join('sai', 'compat', '_templates', 'adr-index.md'),
+       path.join('sai', 'commands', 'sai-3-implement-inline.md'),
+       path.join('sai', 'orchestration', 'workers', 'bindings', 'opencode', 'accessibility-worker.md'),
+       path.join('sai', 'orchestration', 'workers', 'bindings', 'opencode', 'design-worker.md'),
+       path.join('sai', 'orchestration', 'workers', 'bindings', 'opencode', 'implementation-worker.md'),
+       path.join('sai', 'orchestration', 'workers', 'bindings', 'opencode', 'performance-worker.md'),
+       path.join('sai', 'orchestration', 'workers', 'bindings', 'opencode', 'review-worker.md'),
+       path.join('sai', 'orchestration', 'workers', 'bindings', 'opencode', 'security-worker.md'),
+       path.join('sai', 'orchestration', 'workers', 'bindings', 'opencode', 'spec-worker.md'),
+       path.join('sai', 'compat', '_templates', 'adr-index.md'),
       path.join('sai', 'compat', 'sai-2-design-core.md'),
       path.join('sai', 'compat', 'sai-3-implementation-core.md'),
     ].sort());

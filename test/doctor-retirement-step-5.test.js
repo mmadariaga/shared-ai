@@ -8,15 +8,17 @@ const path = require('path');
 const { PassThrough } = require('stream');
 
 const { main } = require('../bin/doctor.js');
-const { installClaude } = require('../bin/install-flow.js');
+const { installClaude, installOpencode } = require('../bin/install-flow.js');
 
 function fixture() {
   const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-doctor-retirement-'));
   fs.mkdirSync(path.join(projectRoot, 'openspec'), { recursive: true });
   fs.writeFileSync(path.join(projectRoot, 'openspec', 'config.yaml'), 'schema: sai-workflow\n');
   const claudeBase = path.join(projectRoot, 'claude');
+  const opencodeBase = path.join(projectRoot, 'opencode');
   installClaude(claudeBase);
-  return { projectRoot, claudeBase };
+  installOpencode(opencodeBase);
+  return { projectRoot, claudeBase, opencodeBase };
 }
 
 function execOk() {
@@ -44,27 +46,28 @@ function adrRetiredCopy(claudeBase, contents = 'user-owned retired ADR template 
   return destination;
 }
 
-test('doctor reports every Claude retirement destination without changing locally modified content', async () => {
-  const { projectRoot, claudeBase } = fixture();
-  const destinations = [
-    ['sai', 'commands', 'sai-2-design.md'],
-    ['sai', 'commands', 'sai-2-design-inline.md'],
-    ['sai', 'commands', 'sai-3-implement.md'],
-    ['sai', 'commands', 'sai-3-implement-inline.md'],
-    ['sai', 'compat', '_templates', 'adr-index.md'],
-    ['sai', 'compat', 'sai-2-design-core.md'],
-    ['sai', 'compat', 'sai-3-implementation-core.md'],
-  ];
+test('doctor reports every former binding destination without changing locally modified content', async () => {
+  const { projectRoot, claudeBase, opencodeBase } = fixture();
+  const destinations = ['claude', 'opencode'].flatMap(harness => [
+    [harness, 'sai', 'orchestration', 'workers', 'bindings', harness, 'spec-worker.md'],
+    [harness, 'sai', 'orchestration', 'workers', 'bindings', harness, 'design-worker.md'],
+    [harness, 'sai', 'orchestration', 'workers', 'bindings', harness, 'implementation-worker.md'],
+    [harness, 'sai', 'orchestration', 'workers', 'bindings', harness, 'review-worker.md'],
+    [harness, 'sai', 'orchestration', 'workers', 'bindings', harness, 'security-worker.md'],
+    [harness, 'sai', 'orchestration', 'workers', 'bindings', harness, 'performance-worker.md'],
+    [harness, 'sai', 'orchestration', 'workers', 'bindings', harness, 'accessibility-worker.md'],
+  ]);
   try {
-    const paths = destinations.map(parts => {
-      const destination = path.join(claudeBase, ...parts);
+    const paths = destinations.map(([harness, ...parts]) => {
+      const base = harness === 'claude' ? claudeBase : opencodeBase;
+      const destination = path.join(base, ...parts);
       fs.mkdirSync(path.dirname(destination), { recursive: true });
       fs.writeFileSync(destination, 'locally modified retired content\n');
       return destination;
     });
-    const { report } = await runJson(projectRoot, claudeBase);
-    for (const destination of paths) {
-      const warning = retirementWarning(report, destination);
+    const { report } = await runJson(projectRoot, claudeBase, opencodeBase);
+    for (const [index, destination] of paths.entries()) {
+      const warning = retirementWarning(report, destination, destinations[index][0]);
       assert.equal(warning.recognized, false);
       assert.equal(fs.readFileSync(destination, 'utf8'), 'locally modified retired content\n');
     }
@@ -73,13 +76,13 @@ test('doctor reports every Claude retirement destination without changing locall
   }
 });
 
-async function runJson(projectRoot, claudeBase) {
+async function runJson(projectRoot, claudeBase, opencodeBase = path.join(projectRoot, 'missing-opencode')) {
   const capture = output();
   const code = await main({
     argv: ['--json'],
     projectRoot,
     claudeBase,
-    opencodeBase: path.join(projectRoot, 'missing-opencode'),
+    opencodeBase,
     copilot: {
       promptsBase: path.join(projectRoot, 'missing-copilot-prompts'),
       skillsBase: path.join(projectRoot, 'missing-copilot-skills'),
@@ -92,8 +95,8 @@ async function runJson(projectRoot, claudeBase) {
   return { code, report: JSON.parse(capture.text()) };
 }
 
-function retirementWarning(report, destination) {
-  const section = report['[Claude Code]'];
+function retirementWarning(report, destination, harness = 'claude') {
+  const section = report[harness === 'claude' ? '[Claude Code]' : '[Opencode]'];
   const warnings = section && section['retired-file'];
   assert.ok(Array.isArray(warnings), 'doctor should expose retirement warnings');
   const warning = warnings.find(record => record.destination === destination || record.path === destination);
@@ -114,6 +117,31 @@ test('doctor reports an unrecognized retired copy without changing it', async ()
     assert.equal(warning.recognized, false);
     assert.match(warning.recommendation, /manually/i);
     assert.equal(fs.readFileSync(destination, 'utf8'), before);
+  } finally {
+    fs.rmSync(projectRoot, { recursive: true, force: true });
+  }
+});
+
+test('doctor recognizes current historical bytes for all 14 former binding destinations', async () => {
+  const { projectRoot, claudeBase, opencodeBase } = fixture();
+  const workers = ['spec', 'design', 'implementation', 'review', 'security', 'performance', 'accessibility'];
+  try {
+    for (const [harness, base] of [['claude', claudeBase], ['opencode', opencodeBase]]) {
+      for (const worker of workers) {
+        const source = path.join(base, 'sai', 'orchestration', 'workers', 'bindings', `${worker}-worker.md`);
+        const destination = path.join(base, 'sai', 'orchestration', 'workers', 'bindings', harness, `${worker}-worker.md`);
+        fs.mkdirSync(path.dirname(destination), { recursive: true });
+        fs.copyFileSync(source, destination);
+      }
+    }
+    const { report } = await runJson(projectRoot, claudeBase, opencodeBase);
+    for (const [harness, base] of [['claude', claudeBase], ['opencode', opencodeBase]]) {
+      for (const worker of workers) {
+        const destination = path.join(base, 'sai', 'orchestration', 'workers', 'bindings', harness, `${worker}-worker.md`);
+        assert.equal(retirementWarning(report, destination, harness).recognized, true,
+          `${harness} ${worker} retirement should be recognized`);
+      }
+    }
   } finally {
     fs.rmSync(projectRoot, { recursive: true, force: true });
   }

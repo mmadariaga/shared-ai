@@ -163,10 +163,27 @@ test('installOpencode projects the routed spec coordinator, binding, and skill',
   try {
     installOpencode(tmpDir);
     for (const file of [
-      path.join('sai', 'commands', 'spec', 'coordinator.md'),
-      path.join('sai', 'orchestration', 'workers', 'bindings', 'opencode', 'spec-worker.md'),
-      path.join('skills', 'sai-1-spec-proposal-worker', 'SKILL.md'),
+       path.join('sai', 'commands', 'spec', 'coordinator.md'),
+       path.join('sai', 'orchestration', 'workers', 'bindings', 'spec-worker.md'),
+       path.join('skills', 'sai-1-spec-proposal-worker', 'SKILL.md'),
     ]) assert.ok(fs.existsSync(path.join(tmpDir, file)), `${file} should be projected`);
+  } finally {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+});
+
+test('installOpencode projects every routed binding into neutral destinations', () => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-neutral-bindings-'));
+  const workers = ['spec', 'design', 'implementation', 'review', 'security', 'performance', 'accessibility'];
+  try {
+    installOpencode(tmpDir);
+    assert.equal(fs.existsSync(path.join(tmpDir, 'sai', 'orchestration', 'workers', 'bindings', 'opencode')), false);
+    for (const worker of workers) {
+      const destination = path.join(tmpDir, 'sai', 'orchestration', 'workers', 'bindings', `${worker}-worker.md`);
+      const source = path.join(__dirname, '..', 'sai', 'orchestration', 'workers', 'bindings', 'opencode', `${worker}-worker.md`);
+      assert.equal(fs.existsSync(destination), true, `${worker} binding should use a neutral destination`);
+      assert.deepEqual(fs.readFileSync(destination), fs.readFileSync(source), `${worker} binding should match opencode source`);
+    }
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }
@@ -390,7 +407,7 @@ test('Installation verification covers routed review parity', () => {
     assert.deepEqual(config.agent['sai-5-review-worker']?.permission?.task, {
       '*': 'deny', budget: 'allow', explore: 'allow',
     }, 'missing review permission should identify the review surface');
-    assert.ok(fs.existsSync(path.join(tmpDir, 'sai', 'orchestration', 'workers', 'bindings', 'opencode', 'review-worker.md')),
+     assert.ok(fs.existsSync(path.join(tmpDir, 'sai', 'orchestration', 'workers', 'bindings', 'review-worker.md')),
       'missing review projection should identify the opencode review binding');
     assert.ok(fs.existsSync(path.join(tmpDir, 'skills', 'sai-5-review-worker', 'SKILL.md')),
       'missing review projection should identify the forwarded review skill');

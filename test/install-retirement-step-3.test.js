@@ -35,10 +35,47 @@ test('retirement cleanup treats an absent destination as a no-op', () => {
   const base = tempDir();
   try {
     const results = cleanupRetiredProjections('claude', roots(base));
-    assert.equal(results.length, 7);
+    assert.equal(results.length, retirementPaths(base).length);
     assert.ok(results.every(result => result.action === 'not-found'));
   } finally {
     fs.rmSync(base, { recursive: true, force: true });
+  }
+});
+
+test('retirement cleanup deletes matching bytes for every accepted historical worker digest', () => {
+  const manifest = loadInstallManifest(path.join(__dirname, '..'));
+  const retirements = manifest.retirements.filter(retirement =>
+    retirement.id.includes('-claude-') || retirement.id.includes('-opencode-'));
+
+  for (const retirement of retirements) {
+    for (const acceptedHash of retirement.managedHashes) {
+      const base = tempDir();
+      try {
+        const expanded = expandRetirementManifest(manifest, {
+          harness: retirement.harnesses[0],
+          repoRoot: path.join(__dirname, '..'),
+          destinationRoot: { sai: path.join(base, 'sai') },
+        });
+        const target = expanded.find(record => record.id === retirement.id);
+        const bytes = Buffer.from(`historical bytes for ${acceptedHash}`);
+        fs.mkdirSync(path.dirname(target.destinationPath), { recursive: true });
+        fs.writeFileSync(target.destinationPath, bytes);
+
+        const originalCreateHash = crypto.createHash;
+        crypto.createHash = () => ({ update: () => ({ digest: () => acceptedHash }) });
+        let results;
+        try {
+          results = cleanupRetiredProjections(retirement.harnesses[0], roots(base));
+        } finally {
+          crypto.createHash = originalCreateHash;
+        }
+        assert.equal(results.find(result => result.id === retirement.id).action, 'deleted',
+          `${retirement.id} should delete digest ${acceptedHash}`);
+        assert.equal(fs.existsSync(target.destinationPath), false);
+      } finally {
+        fs.rmSync(base, { recursive: true, force: true });
+      }
+    }
   }
 });
 
@@ -83,6 +120,36 @@ test('retirement cleanup preserves modified and unknown destination bytes', () =
     assert.equal(results.find(result => result.id === unknownRetirement.id).action, 'preserved');
     assert.deepEqual(fs.readFileSync(modifiedPath), modifiedBytes);
     assert.deepEqual(fs.readFileSync(unknownPath), unknownBytes);
+  } finally {
+    fs.rmSync(base, { recursive: true, force: true });
+  }
+});
+
+test('retirement cleanup preserves unknown bytes for every former worker binding destination', () => {
+  const manifest = loadInstallManifest(path.join(__dirname, '..'));
+  const retirements = manifest.retirements.filter(retirement =>
+    retirement.id.includes('-claude-') || retirement.id.includes('-opencode-'));
+  const base = tempDir();
+  try {
+    const destinations = retirements.map(retirement => expandRetirementManifest(manifest, {
+      harness: retirement.harnesses[0],
+      repoRoot: path.join(__dirname, '..'),
+      destinationRoot: { sai: path.join(base, 'sai') },
+    }).find(record => record.id === retirement.id));
+    const bytes = Buffer.from('unrecognized worker binding bytes');
+    for (const destination of destinations) {
+      fs.mkdirSync(path.dirname(destination.destinationPath), { recursive: true });
+      fs.writeFileSync(destination.destinationPath, bytes);
+    }
+
+    const results = [
+      ...cleanupRetiredProjections('claude', roots(base)),
+      ...cleanupRetiredProjections('opencode', roots(base)),
+    ];
+    for (const destination of destinations) {
+      assert.equal(results.find(result => result.id === destination.id).action, 'preserved');
+      assert.deepEqual(fs.readFileSync(destination.destinationPath), bytes);
+    }
   } finally {
     fs.rmSync(base, { recursive: true, force: true });
   }

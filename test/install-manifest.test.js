@@ -47,12 +47,12 @@ const MANAGED_WORKER_PROJECTIONS = {
     claudeBinding: {
       id: 'claude-implementation-worker-binding',
       sourcePath: 'sai/orchestration/workers/bindings/claude/implementation-worker.md',
-      destinationPath: 'orchestration/workers/bindings/claude/implementation-worker.md',
+       destinationPath: 'orchestration/workers/bindings/implementation-worker.md',
     },
     opencodeBinding: {
       id: 'opencode-implementation-worker-binding',
       sourcePath: 'sai/orchestration/workers/bindings/opencode/implementation-worker.md',
-      destinationPath: 'orchestration/workers/bindings/opencode/implementation-worker.md',
+       destinationPath: 'orchestration/workers/bindings/implementation-worker.md',
     },
     claudeForwarding: {
       id: 'claude-sai-3-implementation-worker-forwarding',
@@ -74,12 +74,12 @@ const MANAGED_WORKER_PROJECTIONS = {
     claudeBinding: {
       id: 'claude-design-worker-binding',
       sourcePath: 'sai/orchestration/workers/bindings/claude/design-worker.md',
-      destinationPath: 'orchestration/workers/bindings/claude/design-worker.md',
+       destinationPath: 'orchestration/workers/bindings/design-worker.md',
     },
     opencodeBinding: {
       id: 'opencode-design-worker-binding',
       sourcePath: 'sai/orchestration/workers/bindings/opencode/design-worker.md',
-      destinationPath: 'orchestration/workers/bindings/opencode/design-worker.md',
+       destinationPath: 'orchestration/workers/bindings/design-worker.md',
     },
     claudeForwarding: {
       id: 'claude-sai-2-design-worker-forwarding',
@@ -101,12 +101,12 @@ const MANAGED_WORKER_PROJECTIONS = {
     claudeBinding: {
       id: 'claude-review-worker-binding',
       sourcePath: 'sai/orchestration/workers/bindings/claude/review-worker.md',
-      destinationPath: 'orchestration/workers/bindings/claude/review-worker.md',
+       destinationPath: 'orchestration/workers/bindings/review-worker.md',
     },
     opencodeBinding: {
       id: 'opencode-review-worker-binding',
       sourcePath: 'sai/orchestration/workers/bindings/opencode/review-worker.md',
-      destinationPath: 'orchestration/workers/bindings/opencode/review-worker.md',
+       destinationPath: 'orchestration/workers/bindings/review-worker.md',
     },
     claudeForwarding: {
       id: 'claude-sai-5-review-worker-forwarding',
@@ -128,12 +128,12 @@ const MANAGED_WORKER_PROJECTIONS = {
     claudeBinding: {
       id: 'claude-security-worker-binding',
       sourcePath: 'sai/orchestration/workers/bindings/claude/security-worker.md',
-      destinationPath: 'orchestration/workers/bindings/claude/security-worker.md',
+       destinationPath: 'orchestration/workers/bindings/security-worker.md',
     },
     opencodeBinding: {
       id: 'opencode-security-worker-binding',
       sourcePath: 'sai/orchestration/workers/bindings/opencode/security-worker.md',
-      destinationPath: 'orchestration/workers/bindings/opencode/security-worker.md',
+       destinationPath: 'orchestration/workers/bindings/security-worker.md',
     },
     claudeForwarding: {
       id: 'claude-sai-6-security-worker-forwarding',
@@ -155,12 +155,12 @@ const MANAGED_WORKER_PROJECTIONS = {
     claudeBinding: {
       id: 'claude-performance-worker-binding',
       sourcePath: 'sai/orchestration/workers/bindings/claude/performance-worker.md',
-      destinationPath: 'orchestration/workers/bindings/claude/performance-worker.md',
+       destinationPath: 'orchestration/workers/bindings/performance-worker.md',
     },
     opencodeBinding: {
       id: 'opencode-performance-worker-binding',
       sourcePath: 'sai/orchestration/workers/bindings/opencode/performance-worker.md',
-      destinationPath: 'orchestration/workers/bindings/opencode/performance-worker.md',
+       destinationPath: 'orchestration/workers/bindings/performance-worker.md',
     },
     claudeForwarding: {
       id: 'claude-sai-7-performance-worker-forwarding',
@@ -182,12 +182,12 @@ const MANAGED_WORKER_PROJECTIONS = {
     claudeBinding: {
       id: 'claude-accessibility-worker-binding',
       sourcePath: 'sai/orchestration/workers/bindings/claude/accessibility-worker.md',
-      destinationPath: 'orchestration/workers/bindings/claude/accessibility-worker.md',
+       destinationPath: 'orchestration/workers/bindings/accessibility-worker.md',
     },
     opencodeBinding: {
       id: 'opencode-accessibility-worker-binding',
       sourcePath: 'sai/orchestration/workers/bindings/opencode/accessibility-worker.md',
-      destinationPath: 'orchestration/workers/bindings/opencode/accessibility-worker.md',
+       destinationPath: 'orchestration/workers/bindings/accessibility-worker.md',
     },
     claudeForwarding: {
       id: 'claude-sai-8-accessibility-worker-forwarding',
@@ -209,12 +209,12 @@ const MANAGED_WORKER_PROJECTIONS = {
     claudeBinding: {
       id: 'claude-spec-worker-binding',
       sourcePath: 'sai/orchestration/workers/bindings/claude/spec-worker.md',
-      destinationPath: 'orchestration/workers/bindings/claude/spec-worker.md',
+       destinationPath: 'orchestration/workers/bindings/spec-worker.md',
     },
     opencodeBinding: {
       id: 'opencode-spec-worker-binding',
       sourcePath: 'sai/orchestration/workers/bindings/opencode/spec-worker.md',
-      destinationPath: 'orchestration/workers/bindings/opencode/spec-worker.md',
+       destinationPath: 'orchestration/workers/bindings/spec-worker.md',
     },
     claudeForwarding: {
       id: 'claude-sai-1-spec-proposal-worker-forwarding',
@@ -322,6 +322,10 @@ test('managed worker registry has complete Claude and opencode manifest projecti
       compareWorkerProjections(left, right, destinationRoot)));
     assert.equal(new Set(actual.map(projection => projection.destinationPath)).size, actual.length,
       `${harness} worker destinations should be unique`);
+    assert.ok(actual.filter(projection => projection.id.endsWith('-worker-binding'))
+      .every(projection => !projection.destinationPath.includes(`${path.sep}claude${path.sep}`) &&
+        !projection.destinationPath.includes(`${path.sep}opencode${path.sep}`)),
+    `${harness} active worker bindings should use neutral destinations`);
 
     for (const workerName of Object.keys(MANAGED_WORKERS)) {
       const workerRecords = actual.filter(record =>
@@ -356,8 +360,8 @@ test('Step 6 security worker exposes five manifest projection records and Copilo
   const destinationRoot = workerDestinationRoots(path.join(os.tmpdir(), 'sai-security-worker-projections'));
   const source = projection => path.relative(repoRoot, projection.sourcePath).split(path.sep).join('/');
   const expected = [
-    ['claude', 'sai/orchestration/workers/bindings/claude/security-worker.md', path.join('orchestration', 'workers', 'bindings', 'claude', 'security-worker.md')],
-    ['opencode', 'sai/orchestration/workers/bindings/opencode/security-worker.md', path.join('orchestration', 'workers', 'bindings', 'opencode', 'security-worker.md')],
+     ['claude', 'sai/orchestration/workers/bindings/claude/security-worker.md', path.join('orchestration', 'workers', 'bindings', 'security-worker.md')],
+     ['opencode', 'sai/orchestration/workers/bindings/opencode/security-worker.md', path.join('orchestration', 'workers', 'bindings', 'security-worker.md')],
     ['claude', 'skills/claude/sai-6-security-worker/SKILL.md', path.join('sai-6-security-worker', 'SKILL.md')],
     ['opencode', 'skills/opencode/sai-6-security-worker/SKILL.md', path.join('sai-6-security-worker', 'SKILL.md')],
     ['claude', 'agents/claude/sai-6-security-worker.md', 'sai-6-security-worker.md'],
@@ -603,8 +607,8 @@ test('Installer projects every routed review surface', () => {
     config: path.join(os.tmpdir(), 'sai-review-config'),
   };
   const expected = [
-    ['claude', 'sai/orchestration/workers/bindings/claude/review-worker.md', path.join('orchestration', 'workers', 'bindings', 'claude', 'review-worker.md')],
-    ['opencode', 'sai/orchestration/workers/bindings/opencode/review-worker.md', path.join('orchestration', 'workers', 'bindings', 'opencode', 'review-worker.md')],
+     ['claude', 'sai/orchestration/workers/bindings/claude/review-worker.md', path.join('orchestration', 'workers', 'bindings', 'review-worker.md')],
+     ['opencode', 'sai/orchestration/workers/bindings/opencode/review-worker.md', path.join('orchestration', 'workers', 'bindings', 'review-worker.md')],
     ['claude', 'skills/claude/sai-5-review-worker/SKILL.md', path.join('sai-5-review-worker', 'SKILL.md')],
     ['opencode', 'skills/opencode/sai-5-review-worker/SKILL.md', path.join('sai-5-review-worker', 'SKILL.md')],
     ['claude', 'agents/claude/sai-5-review-worker.md', 'sai-5-review-worker.md'],
@@ -661,13 +665,13 @@ test('Installer projects deterministic routed performance surfaces with ownershi
     },
     'sai/orchestration/workers/bindings/claude/performance-worker.md': {
       harnesses: ['claude'],
-      destination: 'orchestration/workers/bindings/claude/performance-worker.md',
+       destination: 'orchestration/workers/bindings/performance-worker.md',
       strategy: 'copy',
       ownership: 'managed',
     },
     'sai/orchestration/workers/bindings/opencode/performance-worker.md': {
       harnesses: ['opencode'],
-      destination: 'orchestration/workers/bindings/opencode/performance-worker.md',
+       destination: 'orchestration/workers/bindings/performance-worker.md',
       strategy: 'copy',
       ownership: 'managed',
     },
@@ -1025,9 +1029,113 @@ test('canonical manifest validates all historical retirements and excludes them 
         '2a8052146bbcf677adfd4881bc280b71a9a92ffaf5a23142cf3b92c7a85eaf01',
       ],
     },
+    {
+      id: 'retired-claude-spec-worker-binding',
+      destination: { class: 'sai', path: 'orchestration/workers/bindings/claude/spec-worker.md' },
+      harnesses: ['claude'],
+      managedHashes: ['cc1234710fcd3aaee81850173e3902110b25caf7036d5a276a8e32c761817258'],
+    },
+    {
+      id: 'retired-claude-design-worker-binding',
+      destination: { class: 'sai', path: 'orchestration/workers/bindings/claude/design-worker.md' },
+      harnesses: ['claude'],
+      managedHashes: [
+        'ce13052eef97c0c64c3b0634dd9297c9c0d9403a06bbe12bcb4c18b104ef529c',
+        'f59bc58934b88f81fe8ee9c2717bbe86701eace201215ecdf22ac02938f0977f',
+      ],
+    },
+    {
+      id: 'retired-claude-implementation-worker-binding',
+      destination: { class: 'sai', path: 'orchestration/workers/bindings/claude/implementation-worker.md' },
+      harnesses: ['claude'],
+      managedHashes: [
+        '38f838655ef7eccada7a7a9373dd3bd5a3d3e7cd28af368f25412bad6cb4f7ff',
+        'bbc973e4749e488a13c295a15b0e5d593cf20e76e030a66038cbed72a2eb5665',
+        'be263652007b2be2f2b77c9983d5656525ad27dfa0dc89311fa6a0a01f3b955b',
+      ],
+    },
+    {
+      id: 'retired-claude-review-worker-binding',
+      destination: { class: 'sai', path: 'orchestration/workers/bindings/claude/review-worker.md' },
+      harnesses: ['claude'],
+      managedHashes: ['54e24207cce8198c9ab9f0bf406aea2340fdb6d598e490d95908b661712b1634'],
+    },
+    {
+      id: 'retired-claude-security-worker-binding',
+      destination: { class: 'sai', path: 'orchestration/workers/bindings/claude/security-worker.md' },
+      harnesses: ['claude'],
+      managedHashes: ['c1a9b87dd71d237d196a468dad22e98c3d44396a3d371225e05a742217dbe9e6'],
+    },
+    {
+      id: 'retired-claude-performance-worker-binding',
+      destination: { class: 'sai', path: 'orchestration/workers/bindings/claude/performance-worker.md' },
+      harnesses: ['claude'],
+      managedHashes: ['f81800d9a7ff68a7abea2dc0e360bf40cabbbc1d51f894846d2df788df18f1bc'],
+    },
+    {
+      id: 'retired-claude-accessibility-worker-binding',
+      destination: { class: 'sai', path: 'orchestration/workers/bindings/claude/accessibility-worker.md' },
+      harnesses: ['claude'],
+      managedHashes: [
+        '6cf9757559429e2b7f394c5ef1b46a5b860720b17d77d2b3118547d9c3294173',
+        '7c5d22e78aa9d2fff5121d5ebcf1d5e8f4593f383ec853f7b228446f80aa4a10',
+      ],
+    },
+    {
+      id: 'retired-opencode-spec-worker-binding',
+      destination: { class: 'sai', path: 'orchestration/workers/bindings/opencode/spec-worker.md' },
+      harnesses: ['opencode'],
+      managedHashes: ['fb326f086cd42d71268379564ee0674bb5bf0544322ffd9a0a3412e535ee646f'],
+    },
+    {
+      id: 'retired-opencode-design-worker-binding',
+      destination: { class: 'sai', path: 'orchestration/workers/bindings/opencode/design-worker.md' },
+      harnesses: ['opencode'],
+      managedHashes: [
+        '179e9f3169cfdea8164dcd8006fa72de7b00b504adbbac8bcad9cd476244dab5',
+        '57bc263bbc70f56a746186fc157b79befda13566334c85c2d7f2f5e076a7bde3',
+      ],
+    },
+    {
+      id: 'retired-opencode-implementation-worker-binding',
+      destination: { class: 'sai', path: 'orchestration/workers/bindings/opencode/implementation-worker.md' },
+      harnesses: ['opencode'],
+      managedHashes: [
+        '48537406a68134f525f6b206c1abd678927097a8d7d4bc525f31da0db953b6d9',
+        'babd46318eb245472a5eb15ec5abee1ee56397e0443b6e53f3664ee482eba4d0',
+        'bb986c56b074b9d9966ef5219f192313a52e39a0bf86c81008581cbe1b77a109',
+      ],
+    },
+    {
+      id: 'retired-opencode-review-worker-binding',
+      destination: { class: 'sai', path: 'orchestration/workers/bindings/opencode/review-worker.md' },
+      harnesses: ['opencode'],
+      managedHashes: ['977381a05d88569190e709bb6cc9514baf5b072137f07c1980e9e63f58a7ab77'],
+    },
+    {
+      id: 'retired-opencode-security-worker-binding',
+      destination: { class: 'sai', path: 'orchestration/workers/bindings/opencode/security-worker.md' },
+      harnesses: ['opencode'],
+      managedHashes: ['4fe4ef0a90291fc72c58be65096170b3a927b365ac9d1da5db2fe254de4db6c1'],
+    },
+    {
+      id: 'retired-opencode-performance-worker-binding',
+      destination: { class: 'sai', path: 'orchestration/workers/bindings/opencode/performance-worker.md' },
+      harnesses: ['opencode'],
+      managedHashes: ['a10766cd4ce3263a10c457dc783a881040af44763a65cb1b32bc68b64d120272'],
+    },
+    {
+      id: 'retired-opencode-accessibility-worker-binding',
+      destination: { class: 'sai', path: 'orchestration/workers/bindings/opencode/accessibility-worker.md' },
+      harnesses: ['opencode'],
+      managedHashes: [
+        '272605e01a63a7c423829ba873504daedff28733b2d27e4677d7850d014f826b',
+        '415b56d211cac6394eca3e0d867ae3f927fdbbbe354a6e0daae94af73eb597f3',
+      ],
+    },
   ];
   assert.deepEqual(manifest.retirements, expected);
-   assert.equal(manifest.retirements.flatMap(retirement => retirement.managedHashes).length, 57);
+   assert.equal(manifest.retirements.flatMap(retirement => retirement.managedHashes).length, 79);
   assert.ok(manifest.retirements.flatMap(retirement => retirement.managedHashes).every(hash => /^[0-9a-f]{64}$/.test(hash)));
 
   const destinationRoot = {
@@ -1043,9 +1151,18 @@ test('canonical manifest validates all historical retirements and excludes them 
        path.resolve(destinationRoot.sai, 'commands/sai-2-design.md'),
        path.resolve(destinationRoot.sai, 'commands/sai-2-design-inline.md'),
        path.resolve(destinationRoot.sai, 'commands/sai-3-implement.md'),
-        path.resolve(destinationRoot.sai, 'commands/sai-3-implement-inline.md'),
-        ...(harness === 'copilot' ? [path.resolve(destinationRoot.sai, 'compat/implement-invocation.md')] : []),
-        path.resolve(destinationRoot.sai, 'compat/_templates/adr-index.md'),
+         path.resolve(destinationRoot.sai, 'commands/sai-3-implement-inline.md'),
+         ...(harness === 'copilot' ? [path.resolve(destinationRoot.sai, 'compat/implement-invocation.md')] : []),
+         ...(harness === 'copilot' ? [] : [
+           path.resolve(destinationRoot.sai, 'orchestration/workers/bindings', harness, 'accessibility-worker.md'),
+           path.resolve(destinationRoot.sai, 'orchestration/workers/bindings', harness, 'design-worker.md'),
+           path.resolve(destinationRoot.sai, 'orchestration/workers/bindings', harness, 'implementation-worker.md'),
+           path.resolve(destinationRoot.sai, 'orchestration/workers/bindings', harness, 'performance-worker.md'),
+           path.resolve(destinationRoot.sai, 'orchestration/workers/bindings', harness, 'review-worker.md'),
+           path.resolve(destinationRoot.sai, 'orchestration/workers/bindings', harness, 'security-worker.md'),
+           path.resolve(destinationRoot.sai, 'orchestration/workers/bindings', harness, 'spec-worker.md'),
+         ]),
+         path.resolve(destinationRoot.sai, 'compat/_templates/adr-index.md'),
         path.resolve(destinationRoot.sai, 'compat/sai-2-design-core.md'),
        path.resolve(destinationRoot.sai, 'compat/sai-3-implementation-core.md'),
      ].sort());

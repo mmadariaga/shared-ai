@@ -11,6 +11,7 @@ const {
   pruneEmptyDirs,
   runDeletion,
 } = require('../bin/uninstall-flow.js');
+const { loadInstallManifest } = require('../bin/install-manifest.js');
 
 const crypto = require('crypto');
 
@@ -92,17 +93,14 @@ test('retired entries delete accepted content and preserve unknown content', () 
   }
 });
 
-test('retired destination inventory preserves modified content across all five destinations', () => {
-  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-exec-retirements-'));
-  const destinations = [
-    'sai/commands/sai-2-design.md',
-    'sai/commands/sai-3-implement.md',
-    'sai/compat/sai-2-design-core.md',
-    'sai/compat/sai-3-implementation-core.md',
-    'sai/compat/implement-invocation.md',
-  ];
-  try {
-    const plan = destinations.map(destination => ({
+test('retired destination inventory preserves modified content across all 14 former worker bindings', () => {
+   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-exec-retirements-'));
+   const retirements = loadInstallManifest(path.join(__dirname, '..')).retirements.filter(retirement =>
+     retirement.id.includes('-claude-') || retirement.id.includes('-opencode-'));
+   const destinations = retirements.map(retirement => path.join('sai', retirement.destination.path));
+   try {
+     assert.equal(destinations.length, 14);
+     const plan = destinations.map(destination => ({
       assetType: 'retired-managed-file',
       acceptedHashes: [hash('managed')],
       ruleId: `retired-${destination}`,
@@ -112,6 +110,34 @@ test('retired destination inventory preserves modified content across all five d
     const result = runDeletion(plan);
     assert.equal(result.keptOverride, destinations.length);
     for (const destination of destinations) assert.equal(fs.readFileSync(path.join(tmpDir, destination), 'utf8'), 'locally modified');
+  } finally {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+});
+
+test('all 14 former worker bindings delete accepted bytes and keep overrides', () => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-exec-retired-worker-bindings-'));
+  const retirements = loadInstallManifest(path.join(__dirname, '..')).retirements.filter(retirement =>
+    retirement.id.includes('-claude-') || retirement.id.includes('-opencode-'));
+  const managed = 'historical managed worker binding';
+  const acceptedHash = hash(managed);
+  const unrelated = writeFile(tmpDir, 'unrelated.txt', 'keep me');
+  try {
+    const matching = retirements.map((retirement, index) => {
+      const dest = writeFile(tmpDir, path.join('matching', `${index}.md`), managed);
+      return { assetType: 'retired-managed-file', acceptedHashes: [acceptedHash], ruleId: retirement.id, dest, editorBase: tmpDir };
+    });
+    const overrides = retirements.map((retirement, index) => {
+      const dest = writeFile(tmpDir, path.join('overrides', `${index}.md`), 'locally modified');
+      return { assetType: 'retired-managed-file', acceptedHashes: [acceptedHash], ruleId: retirement.id, dest, editorBase: tmpDir };
+    });
+    const result = runDeletion([...matching, ...overrides]);
+    assert.equal(result.deleted, 14);
+    assert.equal(result.keptOverride, 14);
+    assert.equal(result.notFound, 0);
+    for (const entry of matching) assert.equal(fs.existsSync(entry.dest), false);
+    for (const entry of overrides) assert.equal(fs.readFileSync(entry.dest, 'utf8'), 'locally modified');
+    assert.equal(fs.readFileSync(unrelated, 'utf8'), 'keep me');
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }

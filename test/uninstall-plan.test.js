@@ -14,6 +14,7 @@ const {
   printPlan,
   formatSummary,
 } = require('../bin/uninstall-flow.js');
+const { loadInstallManifest } = require('../bin/install-manifest.js');
 
 function hash(content) {
   return require('crypto').createHash('sha256').update(content).digest('hex');
@@ -134,24 +135,36 @@ test('computePlanEntry applies retirement accepted-hash classification', () => {
   }
 });
 
-test('retirement destinations have hash-guarded plans for every grouped source', () => {
-  const destinations = [
-    'sai/commands/sai-2-design.md',
-    'sai/commands/sai-3-implement.md',
-    'sai/compat/sai-2-design-core.md',
-    'sai/compat/sai-3-implementation-core.md',
-    'sai/compat/implement-invocation.md',
-  ];
-  assert.equal(new Set(destinations).size, 5);
-  for (const destination of destinations) {
-    assert.equal(computePlanEntry({
+test('retirement destinations have hash-guarded plans for all 14 former worker bindings', () => {
+  const manifest = loadInstallManifest(path.join(__dirname, '..'));
+  const retirements = manifest.retirements.filter(retirement =>
+    retirement.id.includes('-claude-') || retirement.id.includes('-opencode-'));
+  assert.equal(retirements.length, 14);
+  assert.equal(new Set(retirements.map(retirement => retirement.destination.path)).size, 14);
+
+  for (const retirement of retirements) {
+    const managed = `managed ${retirement.id}`;
+    const base = {
       assetType: 'retired-managed-file',
-      acceptedHashes: [hash('managed')],
-      ruleId: `retired-${destination}`,
+      acceptedHashes: [...retirement.managedHashes, hash(managed)],
+      ruleId: retirement.id,
       editorBase: os.tmpdir(),
-      dest: path.join(os.tmpdir(), destination),
-      src: path.join(os.tmpdir(), destination),
-    }).action, 'not-found');
+    };
+    const matching = path.join(os.tmpdir(), 'sai-plan-retired-matching', retirement.destination.path);
+    const modified = path.join(os.tmpdir(), 'sai-plan-retired-modified', retirement.destination.path);
+    const missing = path.join(os.tmpdir(), 'sai-plan-retired-missing', retirement.destination.path);
+    fs.mkdirSync(path.dirname(matching), { recursive: true });
+    fs.mkdirSync(path.dirname(modified), { recursive: true });
+    fs.writeFileSync(matching, managed);
+    fs.writeFileSync(modified, 'modified content');
+    try {
+      assert.equal(computePlanEntry({ ...base, dest: matching, src: matching }).action, 'delete');
+      assert.equal(computePlanEntry({ ...base, dest: modified, src: modified }).action, 'keep-override');
+      assert.equal(computePlanEntry({ ...base, dest: missing, src: missing }).action, 'not-found');
+    } finally {
+      fs.rmSync(path.join(os.tmpdir(), 'sai-plan-retired-matching'), { recursive: true, force: true });
+      fs.rmSync(path.join(os.tmpdir(), 'sai-plan-retired-modified'), { recursive: true, force: true });
+    }
   }
 });
 
