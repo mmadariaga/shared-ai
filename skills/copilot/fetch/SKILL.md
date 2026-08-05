@@ -16,7 +16,7 @@ metadata:
 
 Active harness identity: `copilot`.
 
-Resolve project-local `.github/sai/` before the user-global VS Code SAI root defined below. This identity and root order are established before interpreting any fetch directive. Copilot remains an inline adapter and does not apply a routed `bindings/<identity>/` stop rule.
+Resolve project-local `.github/sai/` before the user-global VS Code SAI root defined below. This identity and root order are established before interpreting any fetch directive. Copilot remains an inline adapter and has no routed worker-binding projection.
 
 ## Fetch @ resolution rules (apply to EVERY instruction)
 

@@ -293,44 +293,61 @@ test('Step 1 source fetch skills declare one active identity and local roots bef
   }
 });
 
-test('Step 1 opencode fetch resolver stops on a cross-harness binding path before resolution work', () => {
-  const source = sourceArtifact('skills/opencode/fetch/SKILL.md');
-  assert.match(source, /bindings[\\/]<identity>[\\/]/);
-  assertInOrder(source, [
-    /classify the path as cross-harness/i,
-    /candidate lookup|candidate locations/i,
-    /reading any file|read/i,
-    /invoking a skill|skill invocation/i,
-    /recursing|recursion/i,
-    /rewriting|rewrite/i,
-    /guessing|guess/i,
-  ]);
+test('Step 3 Claude Code and opencode use ordinary neutral local and global resolution', () => {
+  for (const skill of [
+    {
+      path: 'skills/claude/fetch/SKILL.md',
+      local: /\.claude[\\/]\/.*exists|\.claude[\\/].*exists/i,
+      global: /~[\\/]\.claude[\\/].*directly/i,
+      missing: /File not found: <subpath> \(checked \.claude\//i,
+    },
+    {
+      path: 'skills/opencode/fetch/SKILL.md',
+      local: /\.opencode[\\/]\/.*exists|\.opencode[\\/].*exists/i,
+      global: /~[\\/]\.config[\\/]opencode[\\/].*directly/i,
+      missing: /File not found: <subpath> \(checked \.opencode\//i,
+    },
+  ]) {
+    const source = sourceArtifact(skill.path);
+    assert.match(source, skill.local);
+    assert.match(source, skill.global);
+    assert.match(source, skill.missing);
+    assert.doesNotMatch(source, /bindings[\\/]<(?:identity|claude|opencode)>[\\/]/i);
+    assert.doesNotMatch(source, /coordinator-owned|worker-owned|cross-harness|replacement-worker/i);
+  }
 });
 
-test('Step 1 coordinator-owned fetch mismatch reports the refused path and active identity without retry', () => {
-  const source = sourceArtifact('skills/opencode/fetch/SKILL.md');
-  assert.match(source, /coordinator-owned stop/i);
-  assert.match(source, /refused path|requested path/i);
-  assert.match(source, /active identity/i);
-  assert.match(source, /new chat/i);
-  assert.match(source, /no in-session retry|do not retry|without retry/i);
+test('Step 3 neutral fetch contracts retain recursion and skill loading', () => {
+  for (const source of [
+    sourceArtifact('skills/claude/fetch/SKILL.md'),
+    sourceArtifact('skills/opencode/fetch/SKILL.md'),
+  ]) {
+    assert.match(source, /Fetch @skills\/<name>\/SKILL\.md/);
+    assert.match(source, /skill(?: tool)?/i);
+    assert.match(source, /Recursion/);
+    assert.match(source, /recursively/);
+  }
 });
 
-test('Step 1 worker-owned mismatch stops locally while identity-free paths retain normal fetch behavior', () => {
-  const source = sourceArtifact('skills/opencode/fetch/SKILL.md');
-  assert.match(source, /worker-owned stop/i);
-  assert.match(source, /refused path|does not resolve|do not resolve/i);
-  assert.match(source, /does not retry|do not retry|no automatic retry/i);
-  assert.match(source, /Resolve project-local.*before user-global/i);
-  assert.match(source, /File not found|missing[- ]file/i);
-  assert.match(source, /recursing|recursion/i);
+test('Step 3 stale identity-bearing references receive no special guard', () => {
+  for (const source of [
+    sourceArtifact('skills/claude/fetch/SKILL.md'),
+    sourceArtifact('skills/opencode/fetch/SKILL.md'),
+  ]) {
+    assert.doesNotMatch(source, /identity-bearing|cross-harness|mismatch|migration|stop rule/i);
+    assert.match(source, /Fetch @<subpath>/);
+  }
 });
 
-test('Step 1 Copilot declares identity and roots without importing routed binding stop behavior', () => {
+test('Step 3 Copilot retains inline local/user resolution without routed projection or replacement guard', () => {
   const source = sourceArtifact('skills/copilot/fetch/SKILL.md');
   assert.match(source, /Active harness identity\s*:\s*`?copilot`?/i);
   assert.match(source, /\.github[\\/]sai[\\/]/);
   assert.match(source, /user-global.*(?:VS Code SAI root|SAI folder)/i);
-  assert.match(source, /does not apply a routed `bindings[\\/]<identity>[\\/]` stop rule/i);
-  assert.doesNotMatch(source, /coordinator-owned|worker-owned/);
+  assert.match(source, /no routed worker-binding projection/i);
+  assert.match(source, /File not found|missing[- ]file/i);
+  assert.match(source, /Recursion|recursively/i);
+  assert.match(source, /Fetch @skills\/<name>\/SKILL\.md/);
+  assert.doesNotMatch(source, /bindings[\\/]<(?:identity|claude|opencode)>[\\/]/i);
+  assert.doesNotMatch(source, /coordinator-owned|worker-owned|replacement-worker|migration/i);
 });
