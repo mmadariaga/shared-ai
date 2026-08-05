@@ -50,7 +50,7 @@ test('Step 2 uses one canonical coordinator, lifecycle, worker, and binding layo
   for (const harness of ['claude', 'opencode']) {
     assert.match(
       artifact(`skills/${harness}/sai-2-design-worker/SKILL.md`),
-      new RegExp(`sai/orchestration/workers/bindings/${harness}/design-worker\\.md`)
+      /sai\/orchestration\/workers\/bindings\/design-worker\.md/
     );
   }
 });

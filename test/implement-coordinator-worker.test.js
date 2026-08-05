@@ -341,7 +341,7 @@ test('routed harness bindings and inline parity', () => {
         assert.match(binding, new RegExp(`Agent\\(subagent_type: "${workerName}",\\s*run_in_background: true,`));
         assert.match(binding, /SendMessage/);
         assert.doesNotMatch(binding, /Agent[\\s\\S]{0,120}resume/);
-        assert.match(forwardingSkill, /claude[\\/\\]implementation-worker\.md/);
+        assert.match(forwardingSkill, /sai[\\/]orchestration[\\/]workers[\\/]bindings[\\/]implementation-worker\.md/);
         assert.doesNotMatch(forwardingSkill, /opencode[\\/\\]implementation-worker\.md/);
         assert.match(wrapper, /^model:\s*opus\s*$/m);
          assert.match(wrapper, /^effort:\s*low\s*$/m);
@@ -358,7 +358,7 @@ test('routed harness bindings and inline parity', () => {
         assert.match(binding, /task\(task_id: "<captured task ID>"/);
         assert.match(binding, /nested helper branches use the permitted budget and explore targets/);
         assert.doesNotMatch(binding, /nested task target(?:s)?[\\s\S]{0,120}(?!budget|explore)[a-z][a-z-]+/i);
-        assert.match(forwardingSkill, /opencode[\\/\\]implementation-worker\.md/);
+        assert.match(forwardingSkill, /sai[\\/]orchestration[\\/]workers[\\/]bindings[\\/]implementation-worker\.md/);
         assert.doesNotMatch(forwardingSkill, /claude[\\/\\]implementation-worker\.md/);
          assert.match(wrapper, /^model: opencode-go\/glm-5\.2$/m);
          assert.match(wrapper, /^variant: high$/m);
