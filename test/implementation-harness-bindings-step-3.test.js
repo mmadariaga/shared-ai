@@ -96,6 +96,14 @@ test('Step 3 manifest projects the shared lifecycle and one active harness bindi
     }
     assert.equal(new Set(projections.map(projection => projection.destination)).size, projections.length,
       `${harness} destinations should be unique`);
+    if (harness !== 'copilot') {
+      const bindingSource = `sai/orchestration/workers/bindings/${harness}/implementation-worker.md`;
+      const bindingProjection = projections.find(({ source }) => source === bindingSource);
+      assert.ok(bindingProjection, `${harness} should project its harness-specific binding source`);
+      assert.match(bindingProjection.destination.replace(/\\/g, '/'),
+        /orchestration\/workers\/bindings\/implementation-worker\.md$/,
+        `${harness} binding should project to the neutral relative path`);
+    }
     if (harness === 'claude') {
       assert.equal(sources.has('sai/orchestration/workers/bindings/opencode/implementation-worker.md'), false);
     } else if (harness === 'opencode') {

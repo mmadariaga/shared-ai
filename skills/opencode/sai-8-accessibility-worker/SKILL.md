@@ -5,4 +5,4 @@ license: MIT
 compatibility: opencode
 ---
 
-Fetch @sai/orchestration/workers/bindings/opencode/accessibility-worker.md and follow it exactly.
+Fetch @sai/orchestration/workers/bindings/accessibility-worker.md and follow it exactly.

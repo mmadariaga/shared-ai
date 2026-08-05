@@ -16,11 +16,19 @@ function artifact(relativePath) {
   return fs.readFileSync(fullPath, 'utf8');
 }
 
+const WORKERS = [
+  ['sai-1-spec-proposal-worker', 'spec-worker.md'],
+  ['sai-2-design-worker', 'design-worker.md'],
+  ['sai-3-implementation-worker', 'implementation-worker.md'],
+  ['sai-5-review-worker', 'review-worker.md'],
+  ['sai-6-security-worker', 'security-worker.md'],
+  ['sai-7-performance-worker', 'performance-worker.md'],
+  ['sai-8-accessibility-worker', 'accessibility-worker.md'],
+];
+
 test('Step 2 routed harness bindings expose the required lifecycle symbols', () => {
-  for (const relativePath of [
-    'sai/orchestration/workers/bindings/claude/implementation-worker.md',
-    'sai/orchestration/workers/bindings/opencode/implementation-worker.md',
-  ]) {
+  for (const harness of ['claude', 'opencode']) {
+    const relativePath = `sai/orchestration/workers/bindings/${harness}/implementation-worker.md`;
     const binding = artifact(relativePath);
     for (const operation of REQUIRED_OPERATIONS) {
       assert.match(binding, new RegExp(`## ${operation}`),
@@ -29,35 +37,30 @@ test('Step 2 routed harness bindings expose the required lifecycle symbols', () 
   }
 });
 
-test('Step 2 routed harness bindings use only their canonical harness binding', () => {
-  const surfaces = [
-    {
-      name: 'Claude',
-      binding: artifact('sai/orchestration/workers/bindings/claude/implementation-worker.md'),
-      forwardingSkill: artifact('skills/claude/sai-3-implementation-worker/SKILL.md'),
-      permissionTarget: /Agent\s*\(/,
-      forbiddenHarness: /opencode[\\/]implementation-worker\.md/,
-    },
-    {
-      name: 'opencode',
-      binding: artifact('sai/orchestration/workers/bindings/opencode/implementation-worker.md'),
-      forwardingSkill: artifact('skills/opencode/sai-3-implementation-worker/SKILL.md'),
-      permissionTarget: /task\s*\(/,
-      forbiddenHarness: /claude[\\/]implementation-worker\.md/,
-    },
-  ];
+test('Step 2 forwarding skills use neutral references and preserve harness-specific sources', () => {
+  for (const [harness, permissionTarget] of [
+    ['claude', /Agent\s*\(/],
+    ['opencode', /task\s*\(/],
+  ]) {
+    for (const [worker, filename] of WORKERS) {
+      const forwardingSkill = artifact(`skills/${harness}/${worker}/SKILL.md`);
+      const neutralReference = `Fetch @sai/orchestration/workers/bindings/${filename} and follow it exactly.`;
+      assert.match(forwardingSkill, new RegExp(`^${neutralReference.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'm'),
+        `${harness} forwarding skill should use the exact neutral reference`);
+      assert.doesNotMatch(forwardingSkill, /bindings[\\/]claude[\\/]|bindings[\\/]opencode[\\/]/,
+        `${harness} forwarding skill must not reference a harness binding path`);
 
-  for (const surface of surfaces) {
-    for (const operation of REQUIRED_OPERATIONS) {
-      assert.match(surface.binding, new RegExp(`\\b${operation}\\b`),
-        `${surface.name} binding should define ${operation}`);
+      const relativePath = `sai/orchestration/workers/bindings/${harness}/${filename}`;
+      const binding = artifact(relativePath);
+      assert.match(binding, permissionTarget,
+        `${harness} binding should use its harness permission target`);
+      if (filename === 'implementation-worker.md') {
+        for (const operation of REQUIRED_OPERATIONS) {
+          assert.match(binding, new RegExp(`\\b${operation}\\b`),
+            `${relativePath} should define ${operation}`);
+        }
+      }
     }
-    assert.match(surface.binding, surface.permissionTarget,
-      `${surface.name} binding should use its harness permission target`);
-    assert.match(surface.forwardingSkill, /orchestration[\\/]workers[\\/]bindings[\\/]/,
-      `${surface.name} runtime skill should resolve a binding source`);
-    assert.doesNotMatch(surface.forwardingSkill, surface.forbiddenHarness,
-      `${surface.name} runtime skill must not resolve the other harness binding`);
   }
 });
 

@@ -5,4 +5,4 @@ license: MIT
 compatibility: claude
 ---
 
-Fetch @sai/orchestration/workers/bindings/claude/performance-worker.md and follow it exactly.
+Fetch @sai/orchestration/workers/bindings/performance-worker.md and follow it exactly.

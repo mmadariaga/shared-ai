@@ -5,4 +5,4 @@ license: MIT
 compatibility: claude
 ---
 
-Fetch @sai/orchestration/workers/bindings/claude/accessibility-worker.md and follow it exactly.
+Fetch @sai/orchestration/workers/bindings/accessibility-worker.md and follow it exactly.

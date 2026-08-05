@@ -5,4 +5,4 @@ license: MIT
 compatibility: opencode
 ---
 
-Fetch @sai/orchestration/workers/bindings/opencode/performance-worker.md and follow it exactly.
+Fetch @sai/orchestration/workers/bindings/performance-worker.md and follow it exactly.

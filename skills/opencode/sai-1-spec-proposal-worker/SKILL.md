@@ -5,4 +5,4 @@ license: MIT
 compatibility: opencode
 ---
 
-Fetch @sai/orchestration/workers/bindings/opencode/spec-worker.md and follow it exactly.
+Fetch @sai/orchestration/workers/bindings/spec-worker.md and follow it exactly.
