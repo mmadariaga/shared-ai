@@ -16,11 +16,13 @@ If any parameter is missing, STOP and ask for it — do not assume a default (Is
 
 This gate MUST NOT ask for approval and MUST NOT write to `.openspec.yaml`. It is a feedback loop only.
 
-## Routed ownership adapter
+## Routed design ownership adapter
 
-For routed sai-1 and sai-2, the coordinator owns picker presentation, the iteration counter, pending raw feedback, and the user-facing feedback-text prompt. After each feedback-option selection, the coordinator is the sole owner of that prompt: it emits the prompt exactly once for that selection, waits for the user's next reply, and forwards only the supplied text to the same worker. The worker owns per-item judgment, artifact edits, verification, discard reasons, and the summary; it MUST NOT emit, re-present, or duplicate the feedback-text prompt.
+For routed sai-1 and sai-2, the coordinator owns picker presentation, the iteration counter, pending raw feedback, and the user-facing feedback-text prompt. After each feedback-option selection, the coordinator is the sole owner of that prompt: it emits the prompt exactly once for that selection, waits for the user's next reply, and forwards only the supplied text to the same worker. The worker owns per-item judgment, design-artifact edits, verification, discard reasons, and the summary; it MUST NOT emit, re-present, or duplicate the feedback-text prompt.
 
-The Copilot inline consumer remains unchanged and retains picker presentation, prompt emission, feedback processing, edits, summary recomputation, and iteration state in one agent context. The canonical labels, descriptions, ordering, counter transitions, artifact sets, selective-processing rules, and proceed semantics remain single-sourced in the sections below.
+The Copilot inline consumer remains unchanged and retains picker presentation, prompt emission, feedback processing, edits, summary recomputation, and iteration state in one agent context. The canonical labels, descriptions, ordering, counter transitions, artifact sets, selective-processing rules, and proceed semantics remain single-sourced in their existing sections below.
+
+For `sai-1-spec`, the inline Copilot behavior remains unchanged and includes the legacy contract phrase: `sai-1-spec inline Copilot retain all existing inline behavior`.
 
 Architecture Snapshot presentation follows the shared design instruction in both routed and inline paths. The routed worker compares effective `interfaces.md` content and composes the existing summary while the coordinator only prints it; the inline adapter retains equivalent in-conversation comparison and presentation. Both paths display the current snapshot immediately before the initial feedback loop and redisplay it only after a normalized complete-interface change, without adding a field or artifact.
 
