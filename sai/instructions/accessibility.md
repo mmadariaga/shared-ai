@@ -51,7 +51,7 @@ Skip the audit (with a one-line note) when the diff contains **no UI files** (`.
 3. **Reference WCAG SC** for every finding (e.g. `1.4.3 Contrast (Minimum)`, `2.1.1 Keyboard`, `4.1.2 Name, Role, Value`).
 4. **Static + Runtime separation.** Static review scales; runtime catches what static cannot (focus restoration, live region timing, real contrast under tokens). Runtime requires explicit authorization per command.
 5. **Respect spec decisions.** Accepted trade-offs in the change artifacts become *Acknowledged*, not findings.
-6. **No regressions.** A diff that removes a focus outline, drops `alt`, or removes ARIA without replacement is always at least Major.
+6. **No regressions.** A diff that removes a focus outline, drops `alt`, or removes ARIA without replacement is High at minimum, or Critical when the existing Critical criteria apply.
 
 ## Audit Phases
 
@@ -215,7 +215,7 @@ Fetch @sai/instructions/_templates/accessibility-report.md
 - **Every finding has `file:line` or precise selector + evidence snippet.** No vague locations.
 - **Native first.** When recommending custom widget fixes, propose native HTML or established a11y library before custom JS.
 - **No speculation about screen reader behavior** unless observed at runtime or strongly supported by the SC. Mark inferences as "expected SR behavior" not "SR will say X".
-- **Reject fixes that reduce accessibility** — removing focus outlines, dropping `alt`, removing ARIA — these are always at least Major regressions.
+- **Reject fixes that reduce accessibility** — removing focus outlines, dropping `alt`, removing ARIA — these are High at minimum, or Critical when the existing Critical criteria apply.
 - **State "No instances detected"** for evaluated categories that came up clean — do not silently omit.
 - **Diff-scoped by default.** Out-of-scope risks get a one-line note, not a full audit.
 - **Quote evidence exactly.** No paraphrasing of axe output, Lighthouse findings, or offending markup.

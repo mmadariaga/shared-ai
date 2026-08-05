@@ -1,6 +1,6 @@
 # Inline Coordinator Adapter
 
-Shared caller lifecycle for the Copilot inline design and implementation paths.
+Shared caller lifecycle for the Copilot inline design, accessibility, and implementation paths.
 
 ## Invocation envelope
 
@@ -9,15 +9,15 @@ The caller supplies exactly these two lines:
     phase: sai-2-design
     arguments: $ARGUMENTS
 
-The only supported phase values are `sai-2-design` and `sai-3-implement`. The
+The only supported phase values are `sai-2-design`, `sai-8-accessibility`, and `sai-3-implement`. The
 implementation caller replaces only the phase value. Treat all text after
 `arguments:` as the forwarded request without normalization or invented
 defaults. A missing `arguments:` line or an empty value becomes an empty
 request.
 
 If the phase line is missing, malformed, or unsupported, STOP and print:
-`Invalid inline phase. Expected phase: sai-2-design or phase: sai-3-implement.`
-Reject it before running prerequisites, selection, or either phase core.
+`Invalid inline phase. Expected phase: sai-2-design, phase: sai-8-accessibility, or phase: sai-3-implement.`
+Reject it before running prerequisites, selection, or any phase core.
 
 Set `$ARGUMENTS` to the forwarded request, then execute exactly one matching
 branch below in the current context. The adapter MUST NOT introduce routed worker identifiers, worker continuation state, or `subagent_depth`.
@@ -45,8 +45,22 @@ branch below in the current context. The adapter MUST NOT introduce routed worke
     `Continue`; next-action = the design completion stop below.
 9. When the gate proceeds, print exactly:
    `Design done in openspec/changes/{name}/. Run \`/sai-3-implement {name}\` **in a new chat** when ready.`
-   Then STOP. Present no Stop-versus-Continue-now choice and dispatch or inline no
-   implementation-planning work in this prompt.
+    Then STOP. Present no Stop-versus-Continue-now choice and dispatch or inline no
+    implementation-planning work in this prompt.
+
+## Accessibility branch: phase: sai-8-accessibility
+
+1. Fetch @sai/policies/prereqs.md and perform its checks.
+2. Fetch @sai/policies/change-picker.md and follow it exactly, preserving the
+   optional scope, `--runtime`, and parent-branch values in the resolved request.
+3. Fetch @skills/budget/SKILL.md and use it.
+4. Fetch @sai/commands/accessibility/invocation.md and follow it exactly using the
+   resolved change name plus preserved scope, runtime, and parent values as
+   `$ARGUMENTS`.
+5. MANDATORY STOP: once
+   `openspec/changes/{name}/accessibility.md` is written, print exactly:
+   `Accessibility audit done.`
+   Then STOP without presenting artifact feedback or dispatching a routed worker.
 
 ## Implementation branch: phase: sai-3-implement
 

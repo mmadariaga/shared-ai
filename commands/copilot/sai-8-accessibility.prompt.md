@@ -8,4 +8,7 @@ tools: [vscode, read, search, edit, execute, web, browser]
 ## Sai Accessibility - 8
 
 Use the skill tool to load the fetch skill.
-Fetch @sai/commands/sai-8-accessibility.md and follow those instructions exactly.
+Fetch @sai/orchestration/inline-invocation.md and follow those instructions exactly.
+
+phase: sai-8-accessibility
+arguments: $ARGUMENTS
