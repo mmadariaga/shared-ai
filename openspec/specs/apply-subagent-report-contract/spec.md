@@ -1,6 +1,9 @@
 # apply-subagent-report-contract Specification
 
-## MODIFIED Requirements
+## Purpose
+Defines the fixed worker report fields and verification telemetry contract.
+
+## Requirements
 
 ### Requirement: Subagent returns a compact fixed-field report
 
@@ -13,7 +16,7 @@ When a Step-execution subagent finishes (or stops), it SHALL return a compact re
 5. **Deviations** — a list of `{plan, final, reason}` entries for the appendix; empty if none.
 6. **Technical learnings / friction** — reusable, self-contained, actionable facts discovered during execution; empty if none (per `apply-technical-learnings-memory`).
 7. **STOP reached?** — yes/no, with the exact marker message when yes.
-8. **Files modified** — paths modified or created by the subagent during this Step, relative to the repo root, one path per entry; empty list if the subagent modified nothing.
+8. **Files modified** — non-scratch paths modified or created by the subagent during this Step, relative to the repo root, one path per entry; paths under `.tmp/{change-name}/` SHALL be excluded even when the subagent created or modified them; empty list if no non-scratch files were modified.
 9. **Attempts per phase** — a list of `{phase, attempts, first_failure, note}` entries, one per verification phase this dispatch actually ran.
 
 The report shape (9 fields, order, semantics) is stable across all dispatch kinds. Which fields carry a real value depends on the dispatch:
@@ -49,17 +52,20 @@ Field 8 is required in every report kind (an empty list is a valid value but an 
 - **WHEN** the test-writer's RED verification either already passes or fails for a non-assertion reason
 - **THEN** the report's field 3 (RED result) records `passes` or `wrong-failure` (with the error type), so the coordinator can act on the invalid RED rather than dispatching the implementation subagent
 
-#### Scenario: Subagent modifies no files
+#### Scenario: Subagent modifies no non-scratch files
 
-- **WHEN** a subagent executes a Step that produces no file changes (for example, a Step that only runs a verification command)
+- **WHEN** a subagent executes a Step that produces no non-scratch file changes, whether or not it used declared scratch
 - **THEN** the report's `Files modified` field is an empty list, not absent; the report remains a 9-field report and the coordinator cross-checks against an empty set
+
+#### Scenario: Scratch paths are excluded from field 8
+
+- **WHEN** a subagent creates or modifies `.tmp/{change-name}/notes.txt` and `src/feature.ts` during a clean dispatch
+- **THEN** field 8 contains `src/feature.ts` but does not contain `.tmp/{change-name}/notes.txt`, so the coordinator's pre-commit add-list cannot target the scratch path
 
 #### Scenario: Subagent omits field 8
 
 - **WHEN** a subagent returns a report without `Files modified`
 - **THEN** the coordinator treats the report as malformed per `apply-pre-commit-file-report` and surfaces the omission to the user before any commit is proposed
-
-## ADDED Requirements
 
 ### Requirement: Field 9 records attempts per verification phase
 

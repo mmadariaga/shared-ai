@@ -1,6 +1,9 @@
 # apply-pre-commit-file-report Specification
 
-## ADDED Requirements
+## Purpose
+Defines the coordinator's pre-commit file visibility and staging report.
+
+## Requirements
 
 ### Requirement: Staged set equals the previewed add-list
 
@@ -9,16 +12,12 @@ The report's truthfulness depends on the commit staging exactly what the report 
 This pins only the **staged file set**, not staging timing or authorization: staging remains deferred to the commit-time `git add` after the authorization ask (Design B), and commit authorization is unchanged. The coordinator SHALL NOT stage paths outside the previewed add-list at this gate, and SHALL NOT improvise the add set from `git status` or the working tree.
 
 #### Scenario: Commit stages exactly the previewed add-list
-
 - **WHEN** the report's `Will be committed` block previews add-list `{src/foo.ts, test/foo.test.ts}` and the user authorizes the commit
 - **THEN** the coordinator runs `git add` for exactly `src/foo.ts` and `test/foo.test.ts` and no other path before `git commit`, so the resulting commit contents equal the previewed set
 
 #### Scenario: Coordinator does not improvise the add set
-
 - **WHEN** the previewed add-list is `{src/foo.ts}` but the working tree also contains an unrelated modified file `src/other.ts`
 - **THEN** on authorization the coordinator stages only `src/foo.ts` (the previewed add-list) and leaves `src/other.ts` unstaged, matching the report's `Will NOT be committed` leftovers block
-
-## MODIFIED Requirements
 
 ### Requirement: Mandatory pre-commit file visibility report at every STOP & COMMIT
 
@@ -47,55 +46,49 @@ Because the `Will be committed` block is sourced from the add-list (field 8) rat
 The report SHALL NOT include a diff preview, full file contents, or tracebacks.
 
 #### Scenario: Clean STOP & COMMIT previews the proposed commit with nothing staged
-
 - **WHEN** the subagent reports `Files modified` = `{src/foo.ts}`, `src/foo.ts` is modified in the working tree with `+10 -2` vs `HEAD`, the git index is empty (nothing staged), the Step's `Files Affected` declares `src/foo.ts`, and no other working-tree changes exist
 - **THEN** the report prints status letter `OK`, a status line indicating all changes to be committed match the plan, a `Will be committed` block with one entry `src/foo.ts  +10 -2`, the `Totals` line `Totals: 1 files, +10 -2`, no `Will NOT be committed` block, `Plan cross-check: No deviations`, and `Subagent ↔ git: In sync`
 
 #### Scenario: Committed block reflects the add-list, not the empty index
-
 - **WHEN** the git index is empty at report time (staging deferred) and the intended add-list is `{src/foo.ts}`
 - **THEN** the `Will be committed` block lists `src/foo.ts` (sourced from the add-list) rather than showing 0 files, and the coordinator does NOT run `git diff --cached` to populate it and does NOT stage anything to produce the report
 
 #### Scenario: Leftovers block excludes the add-list
-
 - **WHEN** the add-list is `{src/foo.ts}` and `git status` also shows `src/unrelated.ts` modified and `notes.txt` untracked, neither in the add-list
 - **THEN** the `Will be committed` block lists only `src/foo.ts`, and the `Will NOT be committed` block lists `src/unrelated.ts` and `notes.txt` as genuine leftovers
 
 #### Scenario: Untracked add-list file line counts are all-insertions
-
 - **WHEN** the add-list contains a newly created untracked file `src/new.ts` with 7 lines that has no `HEAD` baseline
 - **THEN** the `Will be committed` block reports `src/new.ts  +7 -0` (counted explicitly since `git diff --stat HEAD -- src/new.ts` is empty for an untracked path), and its lines are included in the `Totals` insertions sum
 
 #### Scenario: Add-list path with no working-tree change is previewed but flagged
-
 - **WHEN** the add-list contains `src/foo.ts` (claimed in field 8) but `src/foo.ts` has no change vs `HEAD` in the working tree (touched-then-reverted, or claimed-but-unmodified)
 - **THEN** the `Will be committed` block lists `src/foo.ts  +0 -0`, the `Subagent ↔ git` block prints `only-in-subagent: src/foo.ts`, and the status letter is `MISMATCH` so the over-claim is surfaced before commit
 
 #### Scenario: Testable Step unions both dispatches' Files modified
-
 - **WHEN** a testable Step's test-writer reports `Files modified` = `{test/foo.test.ts, src/foo.ts}` (test + stub) and the implementation dispatch reports `Files modified` = `{src/foo.ts}`, and both files are modified in the working tree
 - **THEN** the coordinator uses the union `{test/foo.test.ts, src/foo.ts}` as both the add-list (for the `Will be committed` block) and the subagent-claimed set, and the `Subagent ↔ git` block prints `In sync`
 
 #### Scenario: STOP & COMMIT with subagent/git mismatch
-
 - **WHEN** the subagent-claimed set (add-list) is `{src/foo.ts}` and `git status` shows `src/foo.ts` and `src/baz.ts` both changed in the working tree
 - **THEN** the report sets status letter `MISMATCH`, the `Will be committed` block lists only `src/foo.ts`, the `Will NOT be committed` block lists `src/baz.ts`, and the `Subagent ↔ git` block lists `only-in-git: src/baz.ts` so the user can decide whether to proceed
 
 #### Scenario: STOP & COMMIT with a plan deviation (missing path)
-
 - **WHEN** the matching tasks.md step's `**Files Affected**` declares `src/foo.ts, src/bar.ts` but `git status` shows only `src/foo.ts` changed in the working tree
 - **THEN** the report sets status letter `DEVIATION` and the `Plan cross-check` block's `Missing` sub-list contains `src/bar.ts`
 
 ### Requirement: Malformed subagent report is surfaced, not guessed
 
-If a subagent report omits field 8 (`Files modified`) or returns it as empty, the coordinator SHALL treat that report as malformed and surface it to the user explicitly. The coordinator SHALL NOT guess or fabricate the file list from `git status` alone when a subagent failed to provide it. For a **testable** Step this check applies independently to BOTH the test-writer report and the implementation report — either one omitting field 8 makes the pre-commit report unreliable for that Step. A subagent's failure to populate field 8 is itself a deviation worth flagging.
+If a subagent report omits field 8 (`Files modified`), the coordinator SHALL treat that report as malformed and surface the omission to the user explicitly. An explicitly present empty field 8 SHALL be treated as a valid empty add-list, including when the dispatch created or modified only declared scratch paths that are excluded from field 8. The coordinator SHALL NOT guess or fabricate the file list from `git status` alone when a subagent failed to provide field 8. For a **testable** Step this check applies independently to BOTH the test-writer report and the implementation report — either one omitting field 8 makes the pre-commit report unreliable for that Step. A subagent's failure to populate field 8 is itself a deviation worth flagging.
 
 #### Scenario: Single dispatch omits field 8
-
-- **WHEN** a non-testable Step's subagent returns a report with field 8 missing or empty
+- **WHEN** a non-testable Step's subagent returns a report with field 8 missing
 - **THEN** the coordinator prints `Subagent report missing field 8 (Files modified). Cannot produce a reliable pre-commit report. Review the staged state manually before committing.` and pauses for the user before proposing the commit message
 
-#### Scenario: One of a testable Step's two dispatches omits field 8
+#### Scenario: Empty field 8 is valid when explicitly present
+- **WHEN** a dispatch returns `Files modified = []`, including because all files it created or modified were under `.tmp/{change-name}/`
+- **THEN** the coordinator accepts the report as well-formed, uses an empty field-8 add-list, and does not pause under the malformed-report rule
 
+#### Scenario: One of a testable Step's two dispatches omits field 8
 - **WHEN** a testable Step's implementation dispatch returns a report with field 8 missing while the test-writer's field 8 is present
 - **THEN** the coordinator still treats the Step's pre-commit report as unreliable, surfaces which dispatch omitted field 8, and pauses for the user before proposing the commit message

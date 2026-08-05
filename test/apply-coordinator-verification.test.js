@@ -288,3 +288,86 @@ test('ordinary Step commits and halted runs do not enter the terminal documentat
   assert.match(command, /If any Step remains unchecked/);
   assert.match(command, /continue to the MANDATORY STOP/);
 });
+
+test('Step 2 coordinator contract contains the exact scratch sweep and recovery boundaries', () => {
+  const instruction = artifact('sai/instructions/apply.md');
+  const normativeSentences = [
+    'After a clean dispatch return, the coordinator MUST sweep exactly `.tmp/{change-name}/` before any post-dispatch path comparison.',
+    'The coordinator MUST run the sweep once per dispatch, including each dispatch in a Split-Routed Step.',
+    'The coordinator MUST remove the `.tmp/` parent only when it was absent from the first pre-dispatch baseline and is empty after the per-change sweep.',
+    'On STOP, failure, or crash, the coordinator MUST preserve `.tmp/{change-name}/` for human inspection.',
+    'Before another dispatch for the same change, the coordinator MUST obtain one explicit human acknowledgement per preserved-scratch episode.',
+    '`--fast-track` MUST NOT defer or auto-confirm the preserved-scratch acknowledgement.',
+    'A clean-return sweep ends the preserved-scratch episode; another non-clean return within an acknowledged episode MUST NOT trigger a second acknowledgement.',
+    'Scratch cleanup MUST NOT broaden Known-False Report Recovery eligibility or authorize removal of another unexpected path.',
+  ];
+  const pinnedAnchors = [
+    'independently compare the Verification Checklist, changed paths, allowed files, baseline, and report.',
+    'Cleanup that only undoes the current dispatch\'s own scope violation is corrective scope, not feature work.',
+    'The recovery operation stays within the current Step and existing plan scope, uses the same dispatch kind and budget-subagent binding as the ordinary dispatch',
+  ];
+
+  for (const sentence of [...normativeSentences, ...pinnedAnchors]) {
+    assert.ok(instruction.includes(sentence), `missing byte-exact Step 2 sentence: ${sentence}`);
+  }
+});
+
+test('Step 2 clean-return sweep precedes independent split-dispatch comparison', () => {
+  const instruction = artifact('sai/instructions/apply.md');
+  const sweep = 'After a clean dispatch return, the coordinator MUST sweep exactly `.tmp/{change-name}/` before any post-dispatch path comparison.';
+  const splitSweep = 'The coordinator MUST run the sweep once per dispatch, including each dispatch in a Split-Routed Step.';
+  const comparison = 'independently compare the Verification Checklist, changed paths, allowed files, baseline, and report.';
+  const sweepPosition = instruction.indexOf(sweep);
+  const splitSweepPosition = instruction.indexOf(splitSweep);
+  const comparisonPosition = instruction.indexOf(comparison);
+
+  assert.ok(sweepPosition >= 0 && comparisonPosition >= 0 && sweepPosition < comparisonPosition,
+    'clean-return scratch sweep must precede the pinned independent comparison');
+  assert.ok(splitSweepPosition >= 0 && splitSweepPosition < comparisonPosition,
+    'per-dispatch sweep rule must apply before split-dispatch comparison');
+
+  const splitStep = sectionBetween(instruction, /Split-Routed Step/i, /Known-False Report Recovery|Recovery Dispatch/i);
+  assert.match(splitStep, /each dispatch.*Split-Routed Step/i);
+  assert.match(splitStep, /first dispatch|dispatch 1|one dispatch/i);
+  assert.match(splitStep, /second dispatch|dispatch 2|another dispatch/i);
+});
+
+test('Step 2 parent cleanup is conditional and leaves pre-existing or non-empty parents untouched', () => {
+  const instruction = artifact('sai/instructions/apply.md');
+  const parentRule = 'The coordinator MUST remove the `.tmp/` parent only when it was absent from the first pre-dispatch baseline and is empty after the per-change sweep.';
+
+  assert.ok(instruction.includes(parentRule), 'parent-removal condition must remain byte-exact');
+  assert.match(instruction, /first pre-dispatch baseline.*(?:absent|not present)/i);
+  assert.match(instruction, /empty after the per-change sweep/);
+  assert.match(instruction, /pre-existing.*(?:parent|\.tmp\/).*?(?:untouched|preserve|not remove|not delete)/i);
+  assert.match(instruction, /non-empty.*(?:parent|\.tmp\/).*?(?:untouched|preserve|not remove|not delete)/i);
+});
+
+test('Step 2 preserved-scratch episodes require acknowledgement before redispatch and reset after clean return', () => {
+  const instruction = artifact('sai/instructions/apply.md');
+  const preserve = 'On STOP, failure, or crash, the coordinator MUST preserve `.tmp/{change-name}/` for human inspection.';
+  const acknowledgement = 'Before another dispatch for the same change, the coordinator MUST obtain one explicit human acknowledgement per preserved-scratch episode.';
+  const fastTrack = '`--fast-track` MUST NOT defer or auto-confirm the preserved-scratch acknowledgement.';
+  const episode = 'A clean-return sweep ends the preserved-scratch episode; another non-clean return within an acknowledged episode MUST NOT trigger a second acknowledgement.';
+  const cleanupBoundary = 'Scratch cleanup MUST NOT broaden Known-False Report Recovery eligibility or authorize removal of another unexpected path.';
+  const preservePosition = instruction.indexOf(preserve);
+  const acknowledgementPosition = instruction.indexOf(acknowledgement);
+  const cleanSweepPosition = instruction.indexOf('After a clean dispatch return, the coordinator MUST sweep exactly `.tmp/{change-name}/` before any post-dispatch path comparison.');
+
+  for (const sentence of [preserve, acknowledgement, fastTrack, episode, cleanupBoundary]) {
+    assert.ok(instruction.includes(sentence), `missing byte-exact preserved-scratch sentence: ${sentence}`);
+  }
+  assert.ok(preservePosition >= 0 && acknowledgementPosition > preservePosition,
+    'preserved scratch must be acknowledged before another dispatch');
+  assert.ok(cleanSweepPosition >= 0 && cleanSweepPosition < acknowledgementPosition,
+    'a later clean sweep must end the episode before the next acknowledgement');
+  assert.match(instruction, /one explicit human acknowledgement per preserved-scratch episode/);
+  assert.match(instruction, /another non-clean return.*MUST NOT trigger a second acknowledgement/);
+});
+
+test('Step 2 keeps the pinned scope and recovery anchors byte-exact after scratch clauses', () => {
+  const instruction = artifact('sai/instructions/apply.md');
+  assert.ok(instruction.includes('Cleanup that only undoes the current dispatch\'s own scope violation is corrective scope, not feature work.'));
+  assert.ok(instruction.includes('The recovery operation stays within the current Step and existing plan scope, uses the same dispatch kind and budget-subagent binding as the ordinary dispatch'));
+  assert.match(instruction, /Scratch cleanup MUST NOT broaden Known-False Report Recovery eligibility or authorize removal of another unexpected path\./);
+});
