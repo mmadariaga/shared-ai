@@ -111,6 +111,20 @@ test('shared feedback gate defines routed design ownership without changing cano
   assert.match(gate, /single-sourced in their existing sections/i);
 });
 
+test('shared feedback gate delegates picker mapping without a single-harness example', () => {
+  const gate = artifact('sai/policies/artifact-feedback-gate.md');
+  const presentation = gate.slice(
+    gate.indexOf('## Present the gate'),
+    gate.indexOf('## On selecting the feedback option'),
+  );
+
+  assert.match(presentation, /native option-picker per the "Closed-choice prompts" rule in `sai\/policies\/remember\.md/);
+  assert.doesNotMatch(presentation, /AskUserQuestion|Claude Code|opencode|GitHub Copilot/);
+  assert.ok(presentation.indexOf('Give feedback (Recommended)') < presentation.indexOf('2. **`proceed-label`**'));
+  assert.match(gate, /Apply feedback \*\*selectively per item, never as an all-or-nothing turn\*\*/);
+  assert.match(gate, /Stop the loop and perform `next-action` exactly once/);
+});
+
 test('standalone policies have one canonical home and active fetches use it', () => {
   const policies = [
     'artifact-feedback-gate.md',
