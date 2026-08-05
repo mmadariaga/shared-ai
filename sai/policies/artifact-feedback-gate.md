@@ -20,7 +20,9 @@ This gate MUST NOT ask for approval and MUST NOT write to `.openspec.yaml`. It i
 
 For routed sai-1 and sai-2, the coordinator owns picker presentation, the iteration counter, pending raw feedback, and the user-facing feedback-text prompt. After each feedback-option selection, the coordinator is the sole owner of that prompt: it emits the prompt exactly once for that selection, waits for the user's next reply, and forwards only the supplied text to the same worker. The worker owns per-item judgment, design-artifact edits, verification, discard reasons, and the summary; it MUST NOT emit, re-present, or duplicate the feedback-text prompt.
 
-The Copilot inline consumer remains unchanged and retains picker presentation, prompt emission, feedback processing, edits, summary recomputation, and iteration state in one agent context. The canonical labels, descriptions, ordering, counter transitions, artifact sets, selective-processing rules, and proceed semantics remain single-sourced in their existing sections below.
+Each routed feedback selection is handled by the coordinator with exactly one clean feedback-text prompt. Each selection receives an independent coordinator prompt, and no additional worker prompt is emitted.
+
+The Copilot inline consumer remains unchanged and retains inline presentation state, picker presentation, prompt emission, feedback processing, edits, summary recomputation, and iteration state in one agent context. The canonical labels, descriptions, ordering, counter transitions, artifact sets, selective-processing rules, and proceed semantics remain single-sourced in their existing sections below.
 
 For `sai-1-spec`, the inline Copilot behavior remains unchanged and includes the legacy contract phrase: `sai-1-spec inline Copilot retain all existing inline behavior`.
 
@@ -68,13 +70,13 @@ The prompt's canonical form is:
 
 > Share your feedback on {artifacts} below.
 
-Replace `{artifacts}` with the supplied artifact list: `proposal.md`, `specs/**` under sai-1; `design.md`, `tasks.md`, `interfaces.md` under sai-2. Render the canonical English prompt in the user's language at runtime per `sai/policies/remember.md`; output the English form as-is only when the user's language is English.
+Replace `{artifacts}` with the supplied artifact list: `proposal.md`, `specs/**` under sai-1; `design.md`, `tasks.md`, `interfaces.md` under sai-2. Render the canonical English prompt in the user's language at runtime per `sai/policies/remember.md`; render it in the user's language, and output the English form as-is only when the user's language is English.
 
 After the user replies, feed the supplied text into `## On "Give feedback"` below and apply its per-item processing unchanged.
 
 ## On "Give feedback"
 
-Apply feedback **selectively per item, never as an all-or-nothing turn**:
+Apply feedback **selectively per item** — never as an all-or-nothing turn:
 
 1. Split the user's feedback into individual items.
 2. Evaluate each item independently. An item is **illegitimate** when it:

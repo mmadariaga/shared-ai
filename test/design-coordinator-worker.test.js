@@ -147,7 +147,7 @@ test('shared feedback gate delegates picker mapping without a single-harness exa
   assert.match(presentation, /native option-picker per the "Closed-choice prompts" rule in `sai\/policies\/remember\.md/);
   assert.doesNotMatch(presentation, /AskUserQuestion|Claude Code|opencode|GitHub Copilot/);
   assert.ok(presentation.indexOf('Give feedback (Recommended)') < presentation.indexOf('2. **`proceed-label`**'));
-  assert.match(gate, /Apply feedback \*\*selectively per item, never as an all-or-nothing turn\*\*/);
+  assert.match(gate, /Apply feedback \*\*selectively per item\*\*/);
   assert.match(gate, /Stop the loop and perform `next-action` exactly once/);
 });
 
