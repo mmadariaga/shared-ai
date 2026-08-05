@@ -31,6 +31,8 @@ Durable execution-observed facts about the shared-ai prompt and installer reposi
   *Observed:* add-pipeline-review-convergence-loop — production-only compatibility wording preserved the focused and full suite results after the contract replacement.
 - **sai/policies/artifact-feedback-gate.md**: Supervised machine-feedback semantics remain single-sourced in the canonical gate; explore references the adapter and routes worker input without duplicating its judgment rules.
   *Observed:* add-sai-explore-pipeline-supervision — removing duplicated explore semantics and keeping the canonical policy as the source made the focused supervision suite pass.
+- **test/install-opencode.test.js**: Registering a managed worker requires synchronized install, doctor, opencode configuration, and full-suite expectations.
+  *Observed:* sai-8-accessibility-coordinator-worker-split — the accessibility worker registration exposed stale fixed lists and configuration fixtures; updating the related expectations restored all 427 tests.
 - **commands/claude/sai-explore.md**: Explore requires scoped `Bash(openspec:*)` and `Bash(git:*)` capabilities alongside its routed dispatch tools; bare shell and direct write capabilities remain forbidden.
   *Observed:* add-sai-explore-pipeline-supervision — capability-level assertions that preserved scoped Bash matched the required worker and research flow.
 - **commands/opencode/sai-explore.md**: Routed spec-worker behavior is enabled by fetching the existing `sai-1-spec-proposal-worker` skill; the thin wrapper does not need a literal task-dispatch token.
