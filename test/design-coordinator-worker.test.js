@@ -111,6 +111,32 @@ test('shared feedback gate defines routed design ownership without changing cano
   assert.match(gate, /single-sourced in their existing sections/i);
 });
 
+test('sai-2 feedback routes one coordinator prompt to the same worker and preserves terminal proceed', () => {
+  const coordinator = artifact('sai/commands/design/coordinator.md');
+  const worker = artifact('sai/orchestration/workers/sai-2-design-worker.md');
+  const inline = artifact('sai/orchestration/inline-invocation.md');
+
+  const feedbackFetch = coordinator.indexOf('Fetch @sai/policies/artifact-feedback-gate.md');
+  const completionGate = coordinator.search(/completion gate/i);
+  assert.ok(feedbackFetch !== -1, 'coordinator should fetch the canonical feedback gate');
+  assert.ok(completionGate !== -1, 'coordinator should apply the completion gate');
+  assert.ok(feedbackFetch < completionGate, 'feedback gate policy must be loaded before the completion gate');
+
+  assert.match(coordinator, /feedback selection/i);
+  assert.match(coordinator, /one prompt|single prompt|exactly one prompt/i);
+  assert.match(coordinator, /design\.md[\s\S]{0,120}tasks\.md[\s\S]{0,120}interfaces\.md/i);
+  assert.match(coordinator, /await.*text|wait.*text|raw feedback/i);
+  assert.match(coordinator, /forward.*feedback|feedback.*same worker|same worker.*feedback/i);
+  assert.match(worker, /MUST NOT emit, re-present, or duplicate the feedback-text prompt/);
+  assert.match(worker, /forwarded feedback|apply.*feedback|feedback.*apply/i);
+
+  assert.match(coordinator, /Continue/i);
+  assert.match(coordinator, /Design done in openspec\/changes\/\{name\}\/\. Run \\?`\/sai-3-implement \{name\}\\?` \*\*in a new chat\*\* when ready\./i);
+  assert.doesNotMatch(coordinator, /Continue[\s\S]{0,240}dispatch.*implementation worker/i);
+  assert.match(inline, /phase: sai-2-design/);
+  assert.doesNotMatch(inline, /sai-2-design[\s\S]{0,240}dispatch.*implementation worker/i);
+});
+
 test('shared feedback gate delegates picker mapping without a single-harness example', () => {
   const gate = artifact('sai/policies/artifact-feedback-gate.md');
   const presentation = gate.slice(

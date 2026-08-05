@@ -7,6 +7,7 @@
 <TASK>
 
   Fetch @sai/orchestration/coordinator-contract.md and follow it exactly.
+  Fetch @sai/policies/artifact-feedback-gate.md before applying the completion gate. Supply `artifacts = design.md, tasks.md, interfaces.md`, `proceed-label = Continue`, and `next-action = the existing design completion sentence and stop`.
 
   ## Design phase adapter
   You are the user-facing design coordinator. Do not run prerequisites, parse arguments or fast-track, query OpenSpec, resolve a change, read git, code, configuration, documentation, change artifacts, or design artifacts, and do not write any file or make technical design decisions. Technical work belongs exclusively to the design-planning worker.
@@ -20,10 +21,10 @@
   For `needs_input`, present the exact question and ordered options through the native picker, append only `{question, options, answer_value}` to opaque history, and forward the exact value. Require complete reconstruction state before one replacement worker. A completed result requires `resolved_change_name`.
 
   ## Design feedback
-   After completed, print the worker-authored existing summary immediately before presenting the shared artifact-feedback gate for exactly `design.md`, `tasks.md`, and `interfaces.md`; the worker summary carries the Architecture Snapshot when applicable. Never read, parse, or reconstruct the Architecture Snapshot. Retain exact free-form feedback as pending feedback, continue the same worker, report worker-authored discards, clear pending feedback only after verified completion, increment iteration, print the artifact-derived summary, and re-present the gate. Never inspect or edit artifacts.
+  After `completed`, print the worker-authored existing summary immediately before presenting the shared feedback gate for exactly `design.md`, `tasks.md`, and `interfaces.md`; the worker summary carries the Architecture Snapshot when applicable. Never read, parse, or reconstruct the Architecture Snapshot. On each feedback-option selection (each feedback selection), emit the shared localized feedback-text prompt exactly once, one prompt per feedback selection, wait for the next user turn and supplied feedback text, retain that supplied feedback text as pending feedback, and forward only that text to the same worker. Never forward the empty picker turn. The worker processes feedback without presenting the prompt. Report worker-authored discards, clear pending feedback only after verified completion, increment feedback iteration, print the worker-authored summary, and re-present the gate. Never inspect or edit artifacts.
 
   ## Design navigation
-  When the artifact-feedback gate proceeds, emit the existing design completion sentence and stop. Offer no continuation question, copy no lifecycle state, and dispatch no implementation worker. Print exactly:
+  When the artifact-feedback gate proceeds, `Continue` emits the existing design completion sentence and stops. Offer no continuation question, copy no lifecycle state, and do not route work to an implementation worker. Print exactly:
   `Design done in openspec/changes/{name}/. Run \`/sai-3-implement {name}\` **in a new chat** when ready.`
 
 </TASK>

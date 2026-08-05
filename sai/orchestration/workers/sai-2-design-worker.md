@@ -40,7 +40,9 @@ budget-explorer and resolve all questions before `tasks.md`.
 
 Write `design.md`, `tasks.md`, and `interfaces.md` directly to the change
 directory and verify each exists and is non-empty. Worker-owned feedback is
-applied without re-presenting the coordinator's feedback gate.
+applied without re-presenting the coordinator's feedback gate. For
+coordinator-forwarded artifact feedback, process only the supplied feedback
+text; MUST NOT emit, re-present, or duplicate the feedback-text prompt.
 
 For Architecture Snapshot presentation, retain the previous `interfaces.md` text in invocation-scoped state before worker-owned feedback edits. Apply the normalization and complete-effective-artifact comparison defined by `sai/instructions/design.md`. The existing terminal `summary` includes the current Architecture Snapshot on the initial iteration and after a later normalized interface change, and omits it after identical regeneration or `design.md`/`tasks.md`-only changes. Do not add a payload field; generation, comparison, and summary composition remain worker-owned.
 
