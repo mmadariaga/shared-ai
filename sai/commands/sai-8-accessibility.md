@@ -9,18 +9,11 @@
   ## Prerequisite checks
   Fetch @sai/policies/prereqs.md
 
-  ## Load behaviors (in order)
-  Fetch @skills/budget/SKILL.md and use it
-
   ## Load instructions (in order)
   Fetch @sai/policies/change-picker.md and follow it exactly.
-  Fetch @sai/instructions/accessibility.md and follow those instructions exactly.
-  Fetch @sai/policies/remember.md
+  Fetch @sai/commands/accessibility/invocation.md and follow it exactly using the complete `arguments: $ARGUMENTS` passthrough.
 
   ## Run
-  **User's accessibility audit request:** $ARGUMENTS
-
-  ## Completion
   MANDATORY STOP: Once all artifacts are written your work is COMPLETE, STOP and print exactly: "Accessibility audit done."
 </TASK>
 
