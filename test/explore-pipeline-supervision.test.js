@@ -342,6 +342,54 @@ test('Step 1 defers the ordinary gate until review convergence, cap, or interrup
   assert.match(feedbackGate, /Its first ordered labels remain `Give feedback \(Recommended\)` followed by `proceed-label`/i);
 });
 
+test('Step 1 gives each routed feedback selection exactly one coordinator-owned text prompt', () => {
+  const feedbackGate = fs.readFileSync(
+    path.join(repoRoot, 'sai/policies/artifact-feedback-gate.md'),
+    'utf8'
+  );
+
+  assert.match(feedbackGate, /## Parameters[\s\S]{0,500}`artifacts`[\s\S]{0,500}`proceed-label`[\s\S]{0,500}`next-action`/i);
+  assert.match(feedbackGate, /routed feedback selection[\s\S]{0,300}coordinator/i);
+  assert.match(feedbackGate, /exactly one clean feedback-text prompt/i);
+  assert.match(
+    feedbackGate,
+    /worker[\s\S]{0,180}(?:must not|does not|never)[\s\S]{0,120}(?:emit|present|output)[\s\S]{0,120}(?:feedback|prompt)/i
+  );
+});
+
+test('Step 1 gives repeated feedback selections independent coordinator prompts without worker prompts', () => {
+  const feedbackGate = fs.readFileSync(
+    path.join(repoRoot, 'sai/policies/artifact-feedback-gate.md'),
+    'utf8'
+  );
+
+  assert.match(feedbackGate, /each selection[\s\S]{0,240}independent coordinator prompt/i);
+  assert.match(feedbackGate, /no additional worker prompt/i);
+});
+
+test('Step 1 preserves the feedback heading, iteration labels, language, selection, and machine-feedback semantics', () => {
+  const feedbackGate = fs.readFileSync(
+    path.join(repoRoot, 'sai/policies/artifact-feedback-gate.md'),
+    'utf8'
+  );
+
+  assert.match(feedbackGate, /## On "Give feedback"/);
+  assert.match(feedbackGate, /`Give feedback \(Recommended\)`[\s\S]{0,180}`Give more feedback`/i);
+  assert.match(feedbackGate, /render it in the user's language/i);
+  assert.match(feedbackGate, /Apply feedback \*\*selectively per item\*\*/i);
+  assert.match(feedbackGate, /## Machine-feedback adapter \(supervised sai-1 only\)/i);
+});
+
+test('Step 1 applies routed ownership to sai-1 and sai-2 while Copilot keeps inline presentation state', () => {
+  const feedbackGate = fs.readFileSync(
+    path.join(repoRoot, 'sai/policies/artifact-feedback-gate.md'),
+    'utf8'
+  );
+
+  assert.match(feedbackGate, /routed[\s\S]{0,240}sai-1[\s\S]{0,240}sai-2/i);
+  assert.match(feedbackGate, /Copilot[\s\S]{0,240}inline[\s\S]{0,240}presentation state/i);
+});
+
 test('Step 2 validates severity before processing a completed review result', () => {
   const source = supervisionContract();
 

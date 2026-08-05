@@ -16,9 +16,11 @@ If any parameter is missing, STOP and ask for it — do not assume a default (Is
 
 This gate MUST NOT ask for approval and MUST NOT write to `.openspec.yaml`. It is a feedback loop only.
 
-## Routed design ownership adapter
+## Routed ownership adapter
 
-`sai-1-spec` and inline Copilot retain all existing inline behavior. For routed `sai-2-design`, the coordinator owns picker presentation, the iteration counter, and pending raw feedback. The design-planning worker owns per-item judgment, design-artifact edits, verification, discard reasons, and the summary. The canonical labels, descriptions, ordering, counter transitions, artifact sets, and proceed semantics remain single-sourced in their existing sections below.
+For routed sai-1 and sai-2, the coordinator owns picker presentation, the iteration counter, pending raw feedback, and the user-facing feedback-text prompt. After each feedback-option selection, the coordinator is the sole owner of that prompt: it emits the prompt exactly once for that selection, waits for the user's next reply, and forwards only the supplied text to the same worker. The worker owns per-item judgment, artifact edits, verification, discard reasons, and the summary; it MUST NOT emit, re-present, or duplicate the feedback-text prompt.
+
+The Copilot inline consumer remains unchanged and retains picker presentation, prompt emission, feedback processing, edits, summary recomputation, and iteration state in one agent context. The canonical labels, descriptions, ordering, counter transitions, artifact sets, selective-processing rules, and proceed semantics remain single-sourced in the sections below.
 
 Architecture Snapshot presentation follows the shared design instruction in both routed and inline paths. The routed worker compares effective `interfaces.md` content and composes the existing summary while the coordinator only prints it; the inline adapter retains equivalent in-conversation comparison and presentation. Both paths display the current snapshot immediately before the initial feedback loop and redisplay it only after a normalized complete-interface change, without adding a field or artifact.
 
@@ -56,13 +58,15 @@ The description text, the proceed option label, the proceed option description, 
 
 ## On selecting the feedback option
 
-Selecting the feedback option lands on an empty turn — the harness option-picker cannot carry the feedback text. Do NOT report or imply that no feedback was supplied, and do NOT run the per-item split/evaluate processing (`## On "Give feedback"`) on this empty selection turn.
+Selecting the feedback option lands on an empty turn - the harness option-picker cannot carry the feedback text. Do NOT report or imply that no feedback was supplied, and do NOT run the per-item split/evaluate processing (`## On "Give feedback"`) on this empty selection turn.
 
-FIRST emit a clean, non-accusatory prompt that names every entry in `artifacts`, then wait for the user's reply. The prompt's canonical form is:
+For routed sai-1 and sai-2, the coordinator is the sole emitter of the clean prompt below. It emits the prompt exactly once for each feedback-option selection, waits for the user's reply, and forwards the supplied text to the same worker. The worker MUST NOT emit, re-present, or duplicate the prompt. For the Copilot inline consumer, the same agent emits the prompt and processes the reply; this inline behavior is unchanged.
+
+The prompt's canonical form is:
 
 > Share your feedback on {artifacts} below.
 
-where `{artifacts}` is replaced by the step's artifact list (supplied by the fetching body — `proposal.md`, `specs/**` under sai-1; `design.md`, `tasks.md`, `interfaces.md` under sai-2). Following the established explore.md item-3 pattern, this canonical form is authored in English but is NOT output verbatim in English: render it in the user's language at runtime per `sai/policies/remember.md` (for a Spanish-speaking user: `Indícame a continuación tu feedback sobre {artifacts}`). Only when the user's language is English is the English form output as-is.
+Replace `{artifacts}` with the supplied artifact list: `proposal.md`, `specs/**` under sai-1; `design.md`, `tasks.md`, `interfaces.md` under sai-2. Render the canonical English prompt in the user's language at runtime per `sai/policies/remember.md`; output the English form as-is only when the user's language is English.
 
 After the user replies, feed the supplied text into `## On "Give feedback"` below and apply its per-item processing unchanged.
 
