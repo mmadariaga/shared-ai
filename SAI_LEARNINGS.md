@@ -29,8 +29,10 @@ Durable execution-observed facts about the shared-ai prompt and installer reposi
   *Observed:* render-architecture-snapshot-in-sai-2 — the Step 2 task scope omitted this file, but the GREEN contract required the shared behavior and the lifecycle suite passed.
 - **sai/instructions/explore.md**: The supervised review contract may retain compatibility wording for legacy structural assertions without changing its bounded convergence semantics.
   *Observed:* add-pipeline-review-convergence-loop — production-only compatibility wording preserved the focused and full suite results after the contract replacement.
-- **sai/policies/artifact-feedback-gate.md**: Supervised machine-feedback semantics remain single-sourced in the canonical gate; explore references the adapter and routes worker input without duplicating its judgment rules.
-  *Observed:* add-sai-explore-pipeline-supervision — removing duplicated explore semantics and keeping the canonical policy as the source made the focused supervision suite pass.
+- **sai/policies/artifact-feedback-gate.md**: The canonical gate keeps supervised machine-feedback semantics single-sourced and preserves routed coordinator ownership, compatibility wording, and the Copilot inline boundary; structural consumers fetch this policy rather than duplicate its judgment rules.
+  *Observed:* feedback-gate-prompt-single-emission — adding routed ownership wording and restoring compatibility phrases made the combined 107-test suite and full 454-test suite pass while preserving machine semantics.
+- **test/design-coordinator-worker.test.js**: Structural design assertions must recognize the explicit worker no-prompt prohibition and Markdown-bold terminal navigation wording rather than rejecting those contract phrases.
+  *Observed:* feedback-gate-prompt-single-emission — updating stale lexical assertions kept the routed design contract and the full design suite aligned.
 - **test/install-opencode.test.js**: Registering a managed worker requires synchronized install, doctor, opencode configuration, and full-suite expectations.
   *Observed:* sai-8-accessibility-coordinator-worker-split — the accessibility worker registration exposed stale fixed lists and configuration fixtures; updating the related expectations restored all 427 tests.
 - **commands/claude/sai-explore.md**: Explore requires scoped `Bash(openspec:*)` and `Bash(git:*)` capabilities alongside its routed dispatch tools; bare shell and direct write capabilities remain forbidden.
