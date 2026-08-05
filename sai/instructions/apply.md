@@ -16,7 +16,44 @@ No skills are required by default. Load a skill only if the plan invokes it expl
 
 <workflow>
 - Follow the plan exactly as it is written, picking up with the next unchecked Step in the implementation plan document. You MUST NOT skip any Step.
-- **Pre-dispatch evidence state.** Before every ordinary Step dispatch, record the tracked and untracked path identities visible in the working tree, derive the Step's plan-level file scope from its existing file metadata, and derive the dispatch-kind-specific allowed-file set. For a single dispatch, the allowed-file set is the Step's plan-level scope. For a blind test-writer dispatch, it contains only plan-authorized tests and explicitly permitted RED/interface stubs and excludes production files. For an implementation dispatch, it contains only plan-authorized production files and excludes tests and declared interfaces. Keep the baseline and both scope sets in coordinator-only in-conversation state.
+- **Pre-dispatch evidence state.** Before every ordinary Step dispatch, record the tracked and untracked path identities visible in the working tree, derive the Step's plan-level file scope from its existing file metadata, and derive the dispatch-kind-specific allowed-file set. For a single dispatch, the allowed-file set is the Step's plan-level scope.
+     - *Scope*: Implement ONLY what is specified in the Step. DO NOT WRITE ANY CODE OUTSIDE OF WHAT IS SPECIFIED IN THE STEP. Exception: minimal stubs required to make a RED test fail by assertion are permitted; they are part of the test scaffolding, not new feature code.
+     - `Allowed files`: inject the dispatch-specific list derived by the coordinator for this Step. The list contains non-scratch paths only.
+     - Scratch path: `.tmp/{change-name}/` (separate from and excluded from `Allowed files`).
+     - A worker MAY create temporary files only below `.tmp/{change-name}/`, MUST remove all contents of exactly that directory and the directory itself before a clean return, and MUST preserve it on STOP or failure.
+     - A worker MUST NOT remove the `.tmp/` parent.
+     - Files modified MUST contain only non-scratch paths and MUST exclude every path below `.tmp/{change-name}/`.
+  For a blind test-writer dispatch
+     - *Scope*: Write ONLY the interface stubs and the tests for this Step. Do NOT write the implementation.
+     - `Allowed files`: inject the dispatch-specific list derived by the coordinator for this Step. The list contains non-scratch paths only.
+     - Scratch path: `.tmp/{change-name}/` (separate from and excluded from `Allowed files`).
+     - A worker MAY create temporary files only below `.tmp/{change-name}/`, MUST remove all contents of exactly that directory and the directory itself before a clean return, and MUST preserve it on STOP or failure.
+     - A worker MUST NOT remove the `.tmp/` parent.
+     - Files modified MUST contain only non-scratch paths and MUST exclude every path below `.tmp/{change-name}/`.
+  For an implementation dispatch
+     - *Scope*: Implement ONLY what is specified in the Step's GREEN body. Do NOT write tests.
+     - `Allowed files`: inject the dispatch-specific list derived by the coordinator for this Step. The list contains non-scratch paths only.
+     - Scratch path: `.tmp/{change-name}/` (separate from and excluded from `Allowed files`).
+     - A worker MAY create temporary files only below `.tmp/{change-name}/`, MUST remove all contents of exactly that directory and the directory itself before a clean return, and MUST preserve it on STOP or failure.
+     - A worker MUST NOT remove the `.tmp/` parent.
+     - Files modified MUST contain only non-scratch paths and MUST exclude every path below `.tmp/{change-name}/`.
+  It contains only plan-authorized production files and excludes tests and declared interfaces. Every Step-execution prompt MUST include an `Allowed files` list containing exactly that dispatch's plan-authorized paths.
+  Single dispatch Allowed files are exactly the Step's plan-level files.
+     - *Scope*: Implement ONLY what is specified in the Step. DO NOT WRITE ANY CODE OUTSIDE OF WHAT IS SPECIFIED IN THE STEP. Exception: minimal stubs required to make a RED test fail by assertion are permitted; they are part of the test scaffolding, not new feature code.
+     - `Allowed files`: inject the dispatch-specific list derived by the coordinator for this Step. The list contains non-scratch paths only.
+     - Scratch path: `.tmp/{change-name}/` (separate from and excluded from `Allowed files`).
+     - A worker MAY create temporary files only below `.tmp/{change-name}/`, MUST remove all contents of exactly that directory and the directory itself before a clean return, and MUST preserve it on STOP or failure.
+     - A worker MUST NOT remove the `.tmp/` parent.
+     - Files modified MUST contain only non-scratch paths and MUST exclude every path below `.tmp/{change-name}/`.
+  Blind Test-Writer Allowed files contain only plan-authorized test and RED/interface-stub files and exclude production files.
+     - *Scope*: Write ONLY the interface stubs and the tests for this Step. Do NOT write the implementation.
+     - `Allowed files`: inject the dispatch-specific list derived by the coordinator for this Step. The list contains non-scratch paths only.
+     - Scratch path: `.tmp/{change-name}/` (separate from and excluded from `Allowed files`).
+     - A worker MAY create temporary files only below `.tmp/{change-name}/`, MUST remove all contents of exactly that directory and the directory itself before a clean return, and MUST preserve it on STOP or failure.
+     - A worker MUST NOT remove the `.tmp/` parent.
+     - Files modified MUST contain only non-scratch paths and MUST exclude every path below `.tmp/{change-name}/`.
+  Implementation Dispatch Allowed files contain only plan-authorized production files and exclude tests and declared interfaces.
+  The pre-dispatch baseline and recovery assessment are coordinator-only and MUST NOT be included in a Step-execution prompt.
 - Dispatch Step-execution subagent(s) (see "## Step-Execution Subagent Dispatch" below) to execute the next unchecked Step's implementation body. **The coordinator SHALL NOT itself perform the Step's read-before-write reads, RED-test runs, or GREEN iteration** — those happen only inside the subagent(s), so their raw output (file dumps, tracebacks, iteration logs) never enters the coordinator's context.
 - When the subagent(s) return their report(s) (see "## Subagent Report Contract" below), process them in this fixed order — the coordinator's own re-verification (step 1) MUST pass before either checkbox marking (step 4) or the commit proposal (STOP & COMMIT, below):
     1. **Coordinator verification and discrepancy classification.** Re-run the Step's Verification Checklist yourself - quiet confirmation only, not the RED->GREEN cycle or read-before-write reads. Independently compare observed changed paths with the pre-dispatch baseline, the dispatch-kind-specific allowed-file set, and the report's `Files modified` field. When the checklist, path comparison, and report agree, continue to gate 2 without dispatching recovery. A checklist pass is required before continuing. When coordinator evidence contradicts the report, do not mark checkboxes or propose a commit. Classify whether the evidence directly disproves the report and whether every cause and correction is clear, safe, reversible, limited to the current Step, and inside the existing plan scope. Enter the bounded recovery subsection only when all conditions hold; otherwise surface the discrepancy for human intervention.
@@ -130,7 +167,12 @@ This section covers every Step routed to a single dispatch — two shapes: a Ste
 - **Type**: a **write-capable** subagent — the **`budget-subagent`** skill. Full read/write/search/run access is required.
 - **Model**: resolved by the `budget-subagent` skill's per-harness binding — the standard cheap tier applies.
 - **Prompt contents**: exactly three parts — the full text of the Step, the following rules verbatim, and any technical-learnings entries the coordinator judges relevant to this Step (see "## Technical Learnings Memory" below; never the full memory) — and **nothing else**.
-    - *Scope*: Implement ONLY what is specified in the Step. DO NOT WRITE ANY CODE OUTSIDE OF WHAT IS SPECIFIED IN THE STEP. Exception: minimal stubs required to make a RED test fail by assertion are permitted; they are part of the test scaffolding, not new feature code.
+     - *Scope*: Implement ONLY what is specified in the Step. DO NOT WRITE ANY CODE OUTSIDE OF WHAT IS SPECIFIED IN THE STEP. Exception: minimal stubs required to make a RED test fail by assertion are permitted; they are part of the test scaffolding, not new feature code.
+     - `Allowed files`: inject the dispatch-specific list derived by the coordinator for this Step. The list contains non-scratch paths only.
+     - Single dispatch Allowed files are exactly the Step's plan-level files.
+     - Scratch path: `.tmp/{change-name}/` (separate from and excluded from `Allowed files`).
+     - A worker MAY create temporary files only below `.tmp/{change-name}/`, MUST remove all contents of exactly that directory and the directory itself before a clean return, and MUST preserve it on STOP or failure.
+     - A worker MUST NOT remove the `.tmp/` parent.
     - *No exploration*: The Step is self-contained — it already names the exact files, the code to write, and the verification commands to run. Do NOT inspect the project to gain context: no orientation Grep/Glob sweeps, no reading neighboring modules "for patterns", no reading change artifacts (`implementation.md`, `tasks.md`, `proposal.md`, `design.md`), no `openspec` commands, no loading skills. The only files you may read are (a) the files the Step modifies (read-before-write), (b) the test files the Step creates or runs, and (c) existing test files and test infrastructure (fixtures, harness, shared test helpers) — reading the test suite to match its patterns and configuration is allowed. Production code stays off-limits until a failure demands it: if a symbol or API from the plan turns out not to exist — proven by a compile or test failure, not suspected in advance — you may then read the single file that defines the real symbol, apply the minimal correction, and record it as a deviation. Exploration is a reaction to a concrete failure, never preparation.
     - *Read-before-write*: Before modifying any file, read its current content. Never assume the current state of a file — verify its contents before applying changes from the plan.
     - *RED → GREEN handling*: If the step includes a RED block (test that should fail before implementation):
@@ -161,7 +203,12 @@ This section covers every Step routed to a single dispatch — two shapes: a Ste
   The coordinator SHALL NOT include the Step's GREEN implementation body, `implementation.md`, `design.md`, `proposal.md`, or any other artifact that reveals the intended implementation. The blind test-writer is forbidden from receiving coordinator-only evidence or other implementation-revealing details.
 - **Step-N key-integrity guard**: Before dispatching, the coordinator SHALL match the integer `N` of the current `implementation.md` `## Step N` heading to a single `## Step N` in `interfaces.md`. On missing or ambiguous match, STOP and surface the desync to the user — do NOT inject an empty or mismatched contract into the blind writer. A single leading `## Target State` section in `interfaces.md` (the one non-`## Step N` top-level section admitted by `openspec/specs/design-interfaces-artifact/spec.md`) is explicitly NOT a key-integrity violation: the guard keys only on `## Step N` headings and ignores the `## Target State` section entirely.
 - **Rules**:
-    - *Scope*: Write ONLY the interface stubs and the tests for this Step. Do NOT write the implementation.
+     - *Scope*: Write ONLY the interface stubs and the tests for this Step. Do NOT write the implementation.
+     - `Allowed files`: inject the dispatch-specific list derived by the coordinator for this Step. The list contains non-scratch paths only.
+     - Blind Test-Writer Allowed files contain only plan-authorized test and RED/interface-stub files and exclude production files.
+     - Scratch path: `.tmp/{change-name}/` (separate from and excluded from `Allowed files`).
+     - A worker MAY create temporary files only below `.tmp/{change-name}/`, MUST remove all contents of exactly that directory and the directory itself before a clean return, and MUST preserve it on STOP or failure.
+     - A worker MUST NOT remove the `.tmp/` parent.
     - *Blindness*: Do NOT read the Step's GREEN implementation body or any production source file to derive assertions. When the injected testing context is insufficient to author a valid RED, you MAY read existing test files and test infrastructure (fixtures, harness, shared helpers) to match their patterns. Reading existing test files does not leak the implementation body.
     - *RED phase contract*: The interface stubs you write SHALL expose the required symbol but return a null/empty/wrong value and contain no logic that would satisfy the assertion. Do NOT write real implementation logic into a stub — doing so would either make the RED pass (an invalid RED) or leak implementation authorship into the blind test-writer.
     - *Read-before-write*: Before modifying any file, read its current content.
@@ -184,7 +231,12 @@ This section covers every Step routed to a single dispatch — two shapes: a Ste
 - **Model**: resolved by the `budget-subagent` skill's per-harness binding.
 - **Prompt contents**: exactly three parts — the full text of the Step (including its GREEN body), the following rules verbatim, and any technical-learnings entries the coordinator judges relevant to this Step (including the test-writer's learnings re-injected per `## Technical Learnings Memory`) — and **nothing else**. The coordinator SHALL NOT add repo summaries or "relevant context" sections.
 - **Rules**:
-    - *Scope*: Implement ONLY what is specified in the Step's GREEN body. Do NOT write tests.
+     - *Scope*: Implement ONLY what is specified in the Step's GREEN body. Do NOT write tests.
+     - `Allowed files`: inject the dispatch-specific list derived by the coordinator for this Step. The list contains non-scratch paths only.
+     - Implementation Dispatch Allowed files contain only plan-authorized production files and exclude tests and declared interfaces.
+     - Scratch path: `.tmp/{change-name}/` (separate from and excluded from `Allowed files`).
+     - A worker MAY create temporary files only below `.tmp/{change-name}/`, MUST remove all contents of exactly that directory and the directory itself before a clean return, and MUST preserve it on STOP or failure.
+     - A worker MUST NOT remove the `.tmp/` parent.
     - *No test-file edits*: The implementation dispatch is FORBIDDEN from creating or modifying any test file. This prohibition is absolute — even when the subagent believes the test is wrong, it SHALL NOT edit the test or the interface.
     - *Read-before-write*: Before modifying any file, read its current content.
     - *GREEN iteration*: Run the GREEN verification command. If it does NOT pass, iterate on the implementation confined to non-test files. This iteration is bounded: STOP and report the Step as unpassable when either (a) passing would require editing a test file or the declared interface, or (b) repeated attempts make no progress. Do NOT iterate indefinitely.
@@ -209,7 +261,7 @@ The subagent returns a compact report containing exactly these 9 fields, and not
 5. **Deviations** — a list of `{plan, final, reason}` entries; empty if none.
 6. **Technical learnings / friction** — self-contained, actionable facts discovered during execution (a symbol that does not exist, a real API signature, a version incompatibility, a workaround applied) — states what was attempted, what failed, and what works instead; empty if none.
 7. **STOP reached?** — yes/no, with the exact marker message when yes.
-8. **Files modified** — paths modified or created by the subagent during this Step, relative to the repo root, one path per entry; empty list if the subagent modified nothing.
+8. **Files modified** - non-scratch paths modified or created by the subagent during this Step, relative to the repo root, one path per entry; empty list if no non-scratch files were modified. Files modified MUST contain only non-scratch paths and MUST exclude every path below `.tmp/{change-name}/`.
 9. **Attempts per phase** — a list of `{phase, attempts, first_failure, note}` entries, one per verification phase this dispatch actually ran.
 
 The report shape (9 fields, order, semantics) is stable across all dispatch kinds. Which fields carry a real value is keyed on the **dispatch**, not on the Step's testability:
@@ -334,13 +386,11 @@ The report SHALL NOT include a diff preview, full file contents, or tracebacks.
 
 ### Malformed subagent report
 
-This rule keys on **field 8 only**. If a subagent report omits field 8 (`Files modified`) or returns it as empty, the coordinator SHALL treat that report as malformed and surface it to the user explicitly. The coordinator SHALL NOT guess or fabricate the file list from `git status` alone when a subagent failed to provide it. For a **split-routed** Step this check applies independently to BOTH the test-writer report and the implementation report — either one omitting field 8 makes the pre-commit report unreliable for that Step. For a Step executed by a single dispatch the check applies to that one report, whether or not the Step contains a RED block. A subagent's failure to populate field 8 is itself a deviation worth flagging. In this case, print:
-
-```
-Subagent report missing field 8 (Files modified). Cannot produce a reliable pre-commit report. Review the staged state manually before committing.
-```
+This rule keys on **field 8 only**. If a subagent report omits field 8 (`Files modified`); an omitted field 8 is malformed; in the omission case, print: ```Subagent report missing field 8 (Files modified). Cannot produce a reliable pre-commit report. Review the staged state manually before committing.```
 
 and pause for the user before proposing the commit message.
+
+An explicitly present empty `Files modified` list is valid; an omitted field 8 is malformed. The coordinator SHALL NOT guess or fabricate the file list from `git status` alone when a subagent omitted it. For a **split-routed** Step this check applies independently to BOTH the test-writer report and the implementation report. For a Step executed by a single dispatch the check applies to that one report, whether or not the Step contains a RED block. Do not print this message or pause under this rule for an explicitly empty list.
 
 **Field 9 is exempt.** An absent or empty field 9 (`Attempts per phase`) SHALL NOT make a report malformed. The coordinator SHALL NOT print the message above on its account, SHALL NOT pause for the user on its account, and SHALL NOT block checkbox marking, the pre-commit file visibility report, or the commit gate. Instrumentation can never stop the workflow: when field 9 is absent the coordinator proceeds with every other workflow step unchanged and simply records no telemetry rows for that dispatch.
 

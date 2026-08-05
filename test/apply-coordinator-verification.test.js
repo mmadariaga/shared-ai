@@ -19,6 +19,85 @@ function recoverySection(instruction) {
   return instruction.slice(start);
 }
 
+function sectionBetween(instruction, startPattern, endPattern) {
+  const start = instruction.search(startPattern);
+  assert.ok(start >= 0, `apply instruction should define ${startPattern}`);
+  const remainder = instruction.slice(start);
+  const end = remainder.search(endPattern);
+  return end >= 0 ? remainder.slice(0, end) : remainder;
+}
+
+const stepScopeAnchors = [
+  '*Scope*: Implement ONLY what is specified in the Step. DO NOT WRITE ANY CODE OUTSIDE OF WHAT IS SPECIFIED IN THE STEP.',
+  '*Scope*: Write ONLY the interface stubs and the tests for this Step. Do NOT write the implementation.',
+  "*Scope*: Implement ONLY what is specified in the Step's GREEN body. Do NOT write tests.",
+];
+
+const scratchRules = [
+  'Scratch path: `.tmp/{change-name}/` (separate from and excluded from `Allowed files`).',
+  'A worker MAY create temporary files only below `.tmp/{change-name}/`, MUST remove all contents of exactly that directory and the directory itself before a clean return, and MUST preserve it on STOP or failure.',
+  'A worker MUST NOT remove the `.tmp/` parent.',
+  'Files modified MUST contain only non-scratch paths and MUST exclude every path below `.tmp/{change-name}/`.',
+];
+
+test('Step 1 apply contract contains every normative scope and scratch sentence byte-exactly', () => {
+  const instruction = artifact('sai/instructions/apply.md');
+  const normativeSentences = [
+    'Every Step-execution prompt MUST include an `Allowed files` list containing exactly that dispatch\'s plan-authorized paths.',
+    "Single dispatch Allowed files are exactly the Step's plan-level files.",
+    'Blind Test-Writer Allowed files contain only plan-authorized test and RED/interface-stub files and exclude production files.',
+    'Implementation Dispatch Allowed files contain only plan-authorized production files and exclude tests and declared interfaces.',
+    'The pre-dispatch baseline and recovery assessment are coordinator-only and MUST NOT be included in a Step-execution prompt.',
+    ...scratchRules,
+    'An explicitly present empty `Files modified` list is valid; an omitted field 8 is malformed.',
+  ];
+
+  for (const sentence of normativeSentences) {
+    assert.ok(instruction.includes(sentence), `missing byte-exact normative sentence: ${sentence}`);
+  }
+});
+
+test('Step 1 dispatch branches carry allowed files and scratch rules without losing scope anchors', () => {
+  const instruction = artifact('sai/instructions/apply.md');
+  const branches = [
+    {
+      name: 'single dispatch',
+      section: sectionBetween(instruction, /Single dispatch/i, /Blind Test-Writer/i),
+      anchor: stepScopeAnchors[0],
+    },
+    {
+      name: 'Blind Test-Writer dispatch',
+      section: sectionBetween(instruction, /Blind Test-Writer/i, /Implementation Dispatch/i),
+      anchor: stepScopeAnchors[1],
+    },
+    {
+      name: 'Implementation Dispatch',
+      section: sectionBetween(instruction, /Implementation Dispatch/i, /Known-False Report Recovery|Recovery Dispatch/i),
+      anchor: stepScopeAnchors[2],
+    },
+  ];
+
+  for (const branch of branches) {
+    assert.match(branch.section, /Allowed files/, `${branch.name} must declare Allowed files`);
+    for (const rule of scratchRules) {
+      assert.ok(branch.section.includes(rule), `${branch.name} must include scratch rule: ${rule}`);
+    }
+    assert.ok(branch.section.includes(branch.anchor), `${branch.name} must retain its pinned scope anchor`);
+  }
+});
+
+test('Step 1 report field 8 failure is limited to omitted Files modified, not an explicit empty list', () => {
+  const instruction = artifact('sai/instructions/apply.md');
+  const message = 'Subagent report missing field 8 (Files modified). Cannot produce a reliable pre-commit report. Review the staged state manually before committing.';
+  const escapedMessage = message.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+  assert.equal((instruction.match(new RegExp(escapedMessage, 'g')) || []).length, 1,
+    'the malformed-report message must be emitted exactly once');
+  assert.match(instruction, /field 8[^.\n]{0,160}omitted[^.\n]{0,240}Subagent report missing field 8/i);
+  assert.match(instruction, /An explicitly present empty `Files modified` list is valid/);
+  assert.doesNotMatch(instruction, /explicitly present empty `Files modified` list[^.\n]{0,240}Subagent report missing field 8/i);
+});
+
 test('ordinary dispatch captures coordinator-only evidence and derives dispatch-specific scope before report evaluation', () => {
   const instruction = artifact('sai/instructions/apply.md');
   const dispatch = instruction.search(/dispatch/i);
