@@ -65,6 +65,17 @@ test('copyOpencodeConfig preserves a fixed configured output independently of re
     '          "explore": "allow"',
     '        }',
     '      }',
+    '    },',
+    '    "sai-8-accessibility-worker": {',
+    '      "mode": "subagent",',
+    '      "model": "opencode-go/qwen3.7-plus",',
+    '      "permission": {',
+    '        "task": {',
+    '          "*": "deny",',
+    '          "budget": "allow",',
+    '          "explore": "allow"',
+    '        }',
+    '      }',
     '    }',
     '  }',
     '}',
@@ -196,6 +207,7 @@ test('opencode managed agents are derived from registry metadata', () => {
     'sai-5-review-worker',
     'sai-6-security-worker',
     'sai-7-performance-worker',
+    'sai-8-accessibility-worker',
   ]);
   assert.deepEqual(OPENCODE_MANAGED_AGENTS['sai-3-implementation-worker'], {
     mode: 'subagent',
@@ -224,6 +236,11 @@ test('opencode managed agents are derived from registry metadata', () => {
     mode: 'subagent',
     model: 'opencode-go/glm-5.2',
     variant: 'high',
+    permission: { task: { '*': 'deny', budget: 'allow', explore: 'allow' } },
+  });
+  assert.deepEqual(OPENCODE_MANAGED_AGENTS['sai-8-accessibility-worker'], {
+    mode: 'subagent',
+    model: 'opencode-go/qwen3.7-plus',
     permission: { task: { '*': 'deny', budget: 'allow', explore: 'allow' } },
   });
   assert.equal(OPENCODE_MANAGED_AGENTS['sai-1-spec-proposal-worker'], undefined);
@@ -257,7 +274,8 @@ test('Step 2 fresh and repeated installation preserves the fixed registration ou
     'sai-2-design-worker',
     'sai-5-review-worker',
     'sai-6-security-worker',
-    'sai-7-performance-worker',
+      'sai-7-performance-worker',
+      'sai-8-accessibility-worker',
     ]);
     assert.deepEqual(first.agent['sai-3-implementation-worker'], {
       mode: 'subagent',
@@ -286,6 +304,11 @@ test('Step 2 fresh and repeated installation preserves the fixed registration ou
       mode: 'subagent',
       model: 'opencode-go/glm-5.2',
       variant: 'high',
+      permission: { task: { '*': 'deny', budget: 'allow', explore: 'allow' } },
+    });
+    assert.deepEqual(first.agent['sai-8-accessibility-worker'], {
+      mode: 'subagent',
+      model: 'opencode-go/qwen3.7-plus',
       permission: { task: { '*': 'deny', budget: 'allow', explore: 'allow' } },
     });
     installOpencode(tmpDir);
@@ -335,6 +358,11 @@ test('Step 2 preserves compatible customized registrations and unrelated user co
         'sai-7-performance-worker': {
           mode: 'subagent',
           model: 'user-performance',
+          variant: 'low',
+        },
+        'sai-8-accessibility-worker': {
+          mode: 'subagent',
+          model: 'user-accessibility',
           variant: 'low',
         },
       },

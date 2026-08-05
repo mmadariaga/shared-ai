@@ -49,6 +49,7 @@ function managedWorkerSourcePaths(repoRoot) {
     'sai-1-spec-proposal-worker': 'spec-worker',
     'sai-6-security-worker': 'security-worker',
     'sai-7-performance-worker': 'performance-worker',
+    'sai-8-accessibility-worker': 'accessibility-worker',
   };
   return new Set(Object.entries(MANAGED_WORKERS).flatMap(([name, worker]) => [
     `sai/orchestration/workers/bindings/claude/${workerStems[name]}.md`,
@@ -68,6 +69,11 @@ test('managed worker source enumeration resolves the security worker stem', () =
     'skills/claude/sai-6-security-worker/SKILL.md',
     'skills/opencode/sai-6-security-worker/SKILL.md',
     'agents/claude/sai-6-security-worker.md',
+    'sai/orchestration/workers/bindings/claude/accessibility-worker.md',
+    'sai/orchestration/workers/bindings/opencode/accessibility-worker.md',
+    'skills/claude/sai-8-accessibility-worker/SKILL.md',
+    'skills/opencode/sai-8-accessibility-worker/SKILL.md',
+    'agents/claude/sai-8-accessibility-worker.md',
   ]) {
     assert.equal(sources.has(path.resolve(repoRoot, source)), true, `should enumerate ${source}`);
   }

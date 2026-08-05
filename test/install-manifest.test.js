@@ -178,6 +178,33 @@ const MANAGED_WORKER_PROJECTIONS = {
       destinationPath: 'sai-7-performance-worker.md',
     },
   },
+  'sai-8-accessibility-worker': {
+    claudeBinding: {
+      id: 'claude-accessibility-worker-binding',
+      sourcePath: 'sai/orchestration/workers/bindings/claude/accessibility-worker.md',
+      destinationPath: 'orchestration/workers/bindings/claude/accessibility-worker.md',
+    },
+    opencodeBinding: {
+      id: 'opencode-accessibility-worker-binding',
+      sourcePath: 'sai/orchestration/workers/bindings/opencode/accessibility-worker.md',
+      destinationPath: 'orchestration/workers/bindings/opencode/accessibility-worker.md',
+    },
+    claudeForwarding: {
+      id: 'claude-sai-8-accessibility-worker-forwarding',
+      sourcePath: 'skills/claude/sai-8-accessibility-worker/SKILL.md',
+      destinationPath: 'sai-8-accessibility-worker/SKILL.md',
+    },
+    opencodeForwarding: {
+      id: 'opencode-sai-8-accessibility-worker-forwarding',
+      sourcePath: 'skills/opencode/sai-8-accessibility-worker/SKILL.md',
+      destinationPath: 'sai-8-accessibility-worker/SKILL.md',
+    },
+    claudeAgent: {
+      id: 'claude-sai-8-accessibility-worker',
+      sourcePath: 'agents/claude/sai-8-accessibility-worker.md',
+      destinationPath: 'sai-8-accessibility-worker.md',
+    },
+  },
   'sai-1-spec-proposal-worker': {
     claudeBinding: {
       id: 'claude-spec-worker-binding',

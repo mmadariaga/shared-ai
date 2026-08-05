@@ -30,6 +30,7 @@ test('managed worker registry defines every Claude compatibility export', () => 
     'sai-5-review-worker',
     'sai-6-security-worker',
     'sai-7-performance-worker',
+    'sai-8-accessibility-worker',
     'sai-1-spec-proposal-worker',
   ];
   assert.deepEqual(Object.keys(MANAGED_WORKERS), expectedNames,
@@ -60,6 +61,10 @@ test('managed worker registry defines every Claude compatibility export', () => 
       agent: 'sai-7-performance-worker.md',
       owner: '.sai-7-performance-worker.owner.json',
     },
+    'sai-8-accessibility-worker': {
+      agent: 'sai-8-accessibility-worker.md',
+      owner: '.sai-8-accessibility-worker.owner.json',
+    },
   };
 
   for (const [name, claude] of Object.entries(expectedClaude)) {
@@ -83,6 +88,7 @@ test('managed worker registry defines every Claude compatibility export', () => 
     'sai-5-review-worker.md': '.sai-5-review-worker.owner.json',
     'sai-6-security-worker.md': '.sai-6-security-worker.owner.json',
     'sai-7-performance-worker.md': '.sai-7-performance-worker.owner.json',
+    'sai-8-accessibility-worker.md': '.sai-8-accessibility-worker.owner.json',
   });
 });
 

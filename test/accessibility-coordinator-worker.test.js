@@ -4,6 +4,13 @@ const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('fs');
 const path = require('path');
+const os = require('os');
+const { PassThrough } = require('stream');
+
+const { installClaude, installOpencode } = require('../bin/install-flow.js');
+const { loadInstallManifest, expandInstallManifest } = require('../bin/install-manifest.js');
+const { enumerateClaude, enumerateOpencode, runDeletion } = require('../bin/uninstall-flow.js');
+const { main: doctorMain } = require('../bin/doctor.js');
 
 const repoRoot = path.join(__dirname, '..');
 
@@ -11,6 +18,41 @@ function artifact(relativePath) {
   const fullPath = path.join(repoRoot, relativePath);
   assert.ok(fs.existsSync(fullPath), `${relativePath} should exist`);
   return fs.readFileSync(fullPath, 'utf8');
+}
+
+function tempDir(prefix) {
+  return fs.mkdtempSync(path.join(os.tmpdir(), prefix));
+}
+
+function destinationRoots(base) {
+  return {
+    commands: path.join(base, 'commands'),
+    sai: path.join(base, 'sai'),
+    skills: path.join(base, 'skills'),
+    agents: path.join(base, 'agents'),
+    config: base,
+  };
+}
+
+function sourcePath(repoRoot, projection) {
+  return path.relative(repoRoot, projection.sourcePath).split(path.sep).join('/');
+}
+
+function accessibilityProjections(harness, base) {
+  const repoRoot = path.join(__dirname, '..');
+  const manifest = loadInstallManifest(repoRoot);
+  return expandInstallManifest(manifest, {
+    harness,
+    repoRoot,
+    destinationRoot: destinationRoots(base),
+  }).filter(projection => sourcePath(repoRoot, projection).includes('accessibility-worker'));
+}
+
+function collectOutput() {
+  const out = new PassThrough();
+  const chunks = [];
+  out.on('data', chunk => chunks.push(chunk));
+  return { out, text: () => Buffer.concat(chunks).toString('utf8') };
 }
 
 test('accessibility invocation core loads budget, instruction, and remember in order', () => {
@@ -170,11 +212,209 @@ test('Step 2 completion writes only accessibility.md and prints the exact comple
 test('Step 2 GitHub Copilot remains inline without a routed accessibility binding or worker projection', () => {
   const copilot = artifact('commands/copilot/sai-8-accessibility.prompt.md');
   const entrypoint = artifact('sai/commands/sai-8-accessibility.md');
-  const manifest = artifact('sai/install-manifest.json');
+  const manifest = loadInstallManifest(repoRoot);
+  const copilotBase = tempDir('sai-accessibility-step-2-copilot-');
 
-  assert.match(copilot, /sai\/orchestration\/inline-invocation\.md/);
-  assert.match(copilot, /phase: sai-8-accessibility/);
-  assert.doesNotMatch(copilot, /sai-8-accessibility-worker|accessibility[\\/]coordinator/);
-  assert.doesNotMatch(entrypoint, /sai-8-accessibility-worker|accessibility[\\/]coordinator/);
-  assert.doesNotMatch(manifest, /sai-8-accessibility-worker|accessibility[\\/]coordinator/);
+  try {
+    const sources = new Set(expandInstallManifest(manifest, {
+      harness: 'copilot',
+      repoRoot,
+      destinationRoot: destinationRoots(copilotBase),
+    }).map(projection => sourcePath(repoRoot, projection)));
+
+    assert.match(copilot, /sai\/orchestration\/inline-invocation\.md/);
+    assert.match(copilot, /phase: sai-8-accessibility/);
+    assert.doesNotMatch(copilot, /sai-8-accessibility-worker|accessibility[\\/]coordinator/);
+    assert.doesNotMatch(entrypoint, /sai-8-accessibility-worker|accessibility[\\/]coordinator/);
+    assert.equal(sources.has('commands/copilot/sai-8-accessibility.prompt.md'), true);
+    for (const source of [
+      'sai/orchestration/workers/sai-8-accessibility-worker.md',
+      'sai/orchestration/workers/bindings/claude/accessibility-worker.md',
+      'sai/orchestration/workers/bindings/opencode/accessibility-worker.md',
+      'skills/claude/sai-8-accessibility-worker/SKILL.md',
+      'skills/opencode/sai-8-accessibility-worker/SKILL.md',
+      'agents/claude/sai-8-accessibility-worker.md',
+    ]) assert.equal(sources.has(source), false, `Copilot must exclude ${source}`);
+  } finally {
+    fs.rmSync(copilotBase, { recursive: true, force: true });
+  }
+});
+
+// ─── Step 3: installation and inventory projections ─────────────────────────
+
+test('Step 3 Claude Code and opencode wrappers load the coordinator and preserve complete arguments', () => {
+  const wrappers = [
+    ['claude', 'commands/claude/sai-8-accessibility.md', 'skills/sai-8-accessibility-worker', 'claude'],
+    ['opencode', 'commands/opencode/sai-8-accessibility.md', 'skills/sai-8-accessibility-worker', 'opencode'],
+  ];
+
+  for (const [harness, wrapperPath, matchingSkill, bindingHarness] of wrappers) {
+    const wrapper = artifact(wrapperPath);
+    assert.match(wrapper, /sai[\\/]commands[\\/]accessibility[\\/]coordinator\.md/,
+      `${harness} should load the accessibility coordinator`);
+    assert.match(wrapper, new RegExp(matchingSkill.replaceAll('/', '[\\\\/]')),
+      `${harness} should load its accessibility forwarding skill`);
+    assert.match(wrapper, /\$ARGUMENTS/, `${harness} should preserve complete arguments`);
+    assert.match(
+      artifact(`sai/orchestration/workers/bindings/${bindingHarness}/accessibility-worker.md`),
+      /sai-8-accessibility-worker/,
+      `${harness} should have the matching accessibility binding`
+    );
+  }
+});
+
+test('Step 3 accessibility manifest projections are deterministic, unique, and harness-specific', () => {
+  const repoRoot = path.join(__dirname, '..');
+  const manifest = loadInstallManifest(repoRoot);
+  const expected = {
+    claude: [
+      'sai/orchestration/workers/sai-8-accessibility-worker.md',
+      'sai/orchestration/workers/bindings/claude/accessibility-worker.md',
+      'skills/claude/sai-8-accessibility-worker/SKILL.md',
+      'agents/claude/sai-8-accessibility-worker.md',
+    ],
+    opencode: [
+      'sai/orchestration/workers/sai-8-accessibility-worker.md',
+      'sai/orchestration/workers/bindings/opencode/accessibility-worker.md',
+      'skills/opencode/sai-8-accessibility-worker/SKILL.md',
+    ],
+  };
+
+  for (const [harness, requiredSources] of Object.entries(expected)) {
+    const base = tempDir(`sai-accessibility-projections-${harness}-`);
+    try {
+      const first = expandInstallManifest(manifest, {
+        harness,
+        repoRoot,
+        destinationRoot: destinationRoots(base),
+      }).filter(projection => sourcePath(repoRoot, projection).includes('accessibility-worker'));
+      const second = expandInstallManifest(manifest, {
+        harness,
+        repoRoot,
+        destinationRoot: destinationRoots(base),
+      }).filter(projection => sourcePath(repoRoot, projection).includes('accessibility-worker'));
+
+      assert.deepEqual(first.map(projection => ({
+        source: sourcePath(repoRoot, projection),
+        destination: projection.destinationPath,
+        strategy: projection.strategy,
+      })), second.map(projection => ({
+        source: sourcePath(repoRoot, projection),
+        destination: projection.destinationPath,
+        strategy: projection.strategy,
+      })));
+      const sources = new Set(first.map(projection => sourcePath(repoRoot, projection)));
+      for (const source of requiredSources) assert.ok(sources.has(source), `${harness} should project ${source}`);
+      assert.equal(new Set(first.map(projection => projection.destinationPath)).size, first.length,
+        `${harness} accessibility destinations should be unique`);
+    } finally {
+      fs.rmSync(base, { recursive: true, force: true });
+    }
+  }
+
+  const copilotBase = tempDir('sai-accessibility-copilot-');
+  try {
+    const copilotSources = new Set(expandInstallManifest(manifest, {
+      harness: 'copilot',
+      repoRoot,
+      destinationRoot: destinationRoots(copilotBase),
+    }).map(projection => sourcePath(repoRoot, projection)));
+    assert.equal(copilotSources.has('sai/commands/sai-8-accessibility.md'), true);
+    assert.equal(copilotSources.has('commands/copilot/sai-8-accessibility.prompt.md'), true);
+    assert.equal([...copilotSources].some(source => source.includes('accessibility-worker')), false);
+  } finally {
+    fs.rmSync(copilotBase, { recursive: true, force: true });
+  }
+});
+
+test('Step 3 accessibility installation stops on a conflicting Claude destination without replacement', () => {
+  const base = tempDir('sai-accessibility-collision-');
+  const agentPath = path.join(base, 'agents', 'sai-8-accessibility-worker.md');
+  const ownerPath = path.join(base, 'agents', '.sai-8-accessibility-worker.owner.json');
+  const sentinel = 'unrelated user-owned accessibility agent\n';
+  try {
+    fs.mkdirSync(path.dirname(agentPath), { recursive: true });
+    fs.writeFileSync(agentPath, sentinel);
+    assert.throws(() => installClaude(base), /collision|incompatible|ownership|rename|remove/i);
+    assert.equal(fs.readFileSync(agentPath, 'utf8'), sentinel);
+    assert.equal(fs.existsSync(ownerPath), false, 'blocked installation must not create ownership metadata');
+  } finally {
+    fs.rmSync(base, { recursive: true, force: true });
+  }
+});
+
+test('Step 3 doctor and uninstall enumerate accessibility assets from the manifest inventory', () => {
+  for (const [harness, install, enumerate] of [
+    ['claude', installClaude, enumerateClaude],
+    ['opencode', installOpencode, enumerateOpencode],
+  ]) {
+    const base = tempDir(`sai-accessibility-inventory-${harness}-`);
+    try {
+      install(base);
+      const expected = accessibilityProjections(harness, base).map(projection => projection.destinationPath);
+      if (harness === 'claude') {
+        expected.push(path.join(base, 'agents', '.sai-8-accessibility-worker.owner.json'));
+      }
+      const actual = enumerate(base)
+        .filter(entry => entry.assetType !== 'retired-managed-file' &&
+          (entry.dest.includes('accessibility-worker') || entry.dest.includes('accessibility\\worker')))
+        .map(entry => entry.dest)
+        .sort();
+      assert.deepEqual(actual, expected.sort(), `${harness} inventory should match manifest projections`);
+    } finally {
+      fs.rmSync(base, { recursive: true, force: true });
+    }
+  }
+});
+
+test('Step 3 existing user-owned accessibility agents survive doctor and uninstall', async () => {
+  const base = tempDir('sai-accessibility-owned-');
+  const projectRoot = tempDir('sai-accessibility-doctor-');
+  const agentPath = path.join(base, 'agents', 'sai-8-accessibility-worker.md');
+  const sentinel = 'custom user accessibility agent\n';
+  const captured = collectOutput();
+  try {
+    fs.mkdirSync(path.dirname(agentPath), { recursive: true });
+    fs.writeFileSync(agentPath, sentinel);
+    fs.mkdirSync(path.join(projectRoot, 'openspec'), { recursive: true });
+    fs.writeFileSync(path.join(projectRoot, 'openspec', 'config.yaml'), 'schema: sai-workflow\n');
+
+    assert.throws(() => installClaude(base), /collision|incompatible|ownership|rename|remove/i);
+    await doctorMain({
+      argv: ['--json'],
+      projectRoot,
+      claudeBase: base,
+      opencodeBase: path.join(projectRoot, 'missing-opencode'),
+      copilot: {
+        promptsBase: path.join(projectRoot, 'missing-copilot-prompts'),
+        skillsBase: path.join(projectRoot, 'missing-copilot-skills'),
+        agentsBase: path.join(projectRoot, 'missing-copilot-agents'),
+        saiBase: path.join(projectRoot, 'missing-copilot-sai'),
+      },
+      execOpenspec: () => ({ status: 0, stdout: '1.4.1\n', stderr: '', error: null }),
+      out: captured.out,
+    });
+    runDeletion(enumerateClaude(base));
+    assert.equal(fs.readFileSync(agentPath, 'utf8'), sentinel);
+  } finally {
+    fs.rmSync(base, { recursive: true, force: true });
+    fs.rmSync(projectRoot, { recursive: true, force: true });
+  }
+});
+
+test('Step 3 routed accessibility bindings accept only closed lifecycle fields', () => {
+  for (const harness of ['claude', 'opencode']) {
+    const binding = artifact(`sai/orchestration/workers/bindings/${harness}/accessibility-worker.md`);
+    assert.match(binding, /sai-8-accessibility-worker/);
+    const resultContract = binding.match(/(?:closed payload|lifecycle result|result fields)[\s\S]{0,900}/i);
+    assert.ok(resultContract, `${harness} binding should define a closed lifecycle result contract`);
+    for (const field of ['completed', 'needs_input', 'failed', 'cancelled', 'status', 'question', 'options', 'blocking_summary', 'changed_files', 'summary']) {
+      assert.match(resultContract[0], new RegExp(`\\b${field}\\b`, 'i'),
+        `${harness} result should expose only the declared lifecycle field set`);
+    }
+    for (const forbidden of ['continuation identifier', 'runtime command', 'report content', 'binding metadata']) {
+      assert.match(resultContract[0], new RegExp(`(?:must not|shall not|exclude|without|never)[^\\n]{0,180}${forbidden}`, 'i'),
+        `${harness} result should reject ${forbidden}`);
+    }
+  }
 });

@@ -90,6 +90,19 @@ const MANAGED_WORKERS = Object.freeze({
       }),
     }),
   }),
+  'sai-8-accessibility-worker': Object.freeze({
+    claude: Object.freeze({
+      agent: 'sai-8-accessibility-worker.md',
+      owner: '.sai-8-accessibility-worker.owner.json',
+    }),
+    opencode: Object.freeze({
+      mode: 'subagent',
+      model: 'opencode-go/qwen3.7-plus',
+      permission: Object.freeze({
+        task: Object.freeze({ '*': 'deny', budget: 'allow', explore: 'allow' }),
+      }),
+    }),
+  }),
   'sai-1-spec-proposal-worker': Object.freeze({
     claude: Object.freeze({
       agent: 'sai-1-spec-proposal-worker.md',

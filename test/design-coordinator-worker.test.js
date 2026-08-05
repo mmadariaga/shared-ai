@@ -458,7 +458,7 @@ test('Copilot inline coordinator rejects an unsupported phase before phase work'
   const inline = artifact('sai/orchestration/inline-invocation.md');
 
   assert.match(inline, /Invalid inline phase/);
-  assert.match(inline, /before running prerequisites, selection, or either phase core/i);
+  assert.match(inline, /Reject it before running prerequisites, selection, or any phase core/i);
   assert.match(inline, /MUST NOT introduce routed worker identifiers, worker continuation state, or `subagent_depth`/);
 });
 

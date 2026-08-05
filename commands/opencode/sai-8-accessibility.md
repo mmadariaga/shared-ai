@@ -11,3 +11,7 @@ Fetch @skills/sai-8-accessibility-worker/SKILL.md and use it.
 Fetch @sai/commands/accessibility/coordinator.md and follow those instructions exactly.
 
 **Change-name argument:** $ARGUMENTS
+
+InvocationEnvelope:
+  wrapper_echo_value: $ARGUMENTS
+  arguments_value: $ARGUMENTS

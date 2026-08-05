@@ -11,4 +11,6 @@ Fetch @skills/fetch/SKILL.md
 Fetch @skills/sai-8-accessibility-worker/SKILL.md and use it.
 Fetch @sai/commands/accessibility/coordinator.md and follow those instructions exactly.
 
-**Accessibility arguments:** $ARGUMENTS
+InvocationEnvelope:
+  wrapper_echo_value: ""
+  arguments_value: $ARGUMENTS

@@ -8,6 +8,10 @@ Start exactly one background managed Agent with:
 
 `Agent(subagent_type: "sai-8-accessibility-worker", run_in_background: true, prompt: "<original InvocationEnvelope and accessibility-worker instruction>")`
 
+## Closed lifecycle result
+
+Accept only a closed lifecycle result with exactly one of `completed`, `needs_input`, `failed`, or `cancelled` as `status`, plus `summary`, `blocking_summary`, and `changed_files`. A `needs_input` result also contains the worker-authored `question` and ordered `options`. The result must not contain a continuation identifier, runtime command, report content, or binding metadata.
+
 Dispatch the complete original envelope unchanged. Capture the agent ID only as binding-owned continuation metadata, await its closed payload, and bind it as `continuation_reference` for `needs_input`. Preserve the worker's summary, question, ordered options, paths, and resolved names.
 
 ## continue_same_worker
