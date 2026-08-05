@@ -390,6 +390,24 @@ test('Step 1 applies routed ownership to sai-1 and sai-2 while Copilot keeps inl
   assert.match(feedbackGate, /Copilot[\s\S]{0,240}inline[\s\S]{0,240}presentation state/i);
 });
 
+test('Step 4 synchronizes the normative artifact feedback gate contract', () => {
+  const normative = fs.readFileSync(
+    path.join(repoRoot, 'openspec/specs/artifact-feedback-gate/spec.md'),
+    'utf8'
+  );
+
+  assert.match(normative, /sai\/policies\/artifact-feedback-gate\.md/);
+  assert.match(normative, /sai\/policies\/remember\.md/);
+  assert.match(normative, /Give feedback \(Recommended\)/i);
+  assert.match(normative, /Give more feedback/i);
+  assert.match(normative, /exactly one[\s\S]{0,160}routed[\s\S]{0,160}coordinator[\s\S]{0,160}prompt/i);
+  assert.match(normative, /Copilot[\s\S]{0,240}inline/i);
+  assert.match(normative, /sai-2[\s\S]{0,240}Continue[\s\S]{0,240}terminal design navigation/i);
+
+  assert.doesNotMatch(normative, /sai-2 gate coexists with the existing \(b\) confirm without stale re-reads/i);
+  assert.doesNotMatch(normative, /\(a\)[\s\S]{0,500}\(b\)[\s\S]{0,500}continuation/i);
+});
+
 test('Step 2 validates severity before processing a completed review result', () => {
   const source = supervisionContract();
 
