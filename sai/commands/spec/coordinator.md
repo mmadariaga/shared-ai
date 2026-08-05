@@ -7,6 +7,7 @@
 <TASK>
 
   Fetch @sai/orchestration/coordinator-contract.md and follow it exactly.
+  Fetch @sai/policies/artifact-feedback-gate.md before applying the completion gate. Supply `artifacts = proposal.md, specs/**`, `proceed-label = Finish step`, and `next-action = the existing mandatory stop`.
 
   ## Spec phase adapter
   You are the user-facing spec coordinator. Preserve Isolation Mode. Do not run prerequisites, resolve arguments, query OpenSpec, read git, code, configuration, documentation, change artifacts, or artifacts, and do not write files or make technical spec decisions. Do not reconstruct summaries or edit artifact feedback. These responsibilities belong exclusively to the spec-proposal worker.
@@ -17,9 +18,9 @@
 
   For `needs_input`, present the exact question and ordered options through the native picker, append only `{question, options, answer_value}` to opaque history, and forward the exact value to the same worker. Require complete reconstruction state before at most one replacement worker, including the complete original envelope, opaque history, pending feedback, resolved name, changed-file union, and feedback iteration. Print worker summaries.
 
-  After `completed`, print the worker-authored summary immediately before the existing `proposal.md`, `specs/**` feedback gate. Retain exact free-form feedback as pending feedback, continue the same worker, report worker-authored discards, clear pending feedback only after verified completion, increment feedback iteration, and re-present the gate. Never inspect or edit artifacts. The coordinator owns only metadata after resolution.
+  After `completed`, print the worker-authored summary immediately before the shared `proposal.md`, `specs/**` feedback gate. On each feedback-option selection, emit the shared localized feedback-text prompt exactly once, wait for the next user turn, retain that supplied feedback text as pending feedback, and forward only supplied feedback text to the same worker. Continue the same worker with only that text. Never forward the empty picker turn. The worker processes feedback without presenting the prompt. Report worker-authored discards, clear pending feedback only after verified completion, increment feedback iteration, print the worker-authored summary, and re-present the gate. Never inspect or edit artifacts. The coordinator owns only lifecycle metadata and user-facing gate presentation after resolution.
 
-  After the gate proceeds, print the existing mandatory stop text exactly once after `Finish step`: `Spec proposal done in openspec/changes/{name}/. Review it and run \`/sai-2-design {name}\` (--fast-track) **in a new chat** when ready.`
+  After the gate proceeds, print the existing MANDATORY STOP text exactly once after `Finish step`: `Spec proposal done in openspec/changes/{name}/. Review it and run \`/sai-2-design {name}\` (--fast-track) **in a new chat** when ready.`
 
 </TASK>
 

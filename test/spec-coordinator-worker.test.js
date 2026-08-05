@@ -59,6 +59,33 @@ test('inline completion remains outside the spec invocation core', () => {
   assert.match(inline, /Spec proposal done in openspec\/changes\/\{name\}\/\./);
 });
 
+test('feedback selection routes text through the coordinator once and preserves the proceed stop', () => {
+  const coordinator = artifact('sai/commands/spec/coordinator.md');
+  const worker = artifact('sai/orchestration/workers/sai-1-spec-proposal-worker.md');
+
+  const policyPosition = coordinator.indexOf('Fetch @sai/policies/artifact-feedback-gate.md');
+  const completionGatePosition = coordinator.search(/completion gate/i);
+  assert.ok(policyPosition >= 0, 'coordinator should fetch the canonical feedback-gate policy');
+  assert.ok(
+    policyPosition < completionGatePosition,
+    'feedback-gate policy should be fetched before the completion gate is applied',
+  );
+
+  assert.match(coordinator, /exactly one|one prompt|single prompt/i);
+  assert.match(coordinator, /proposal\.md/);
+  assert.match(coordinator, /specs\/\*\*/);
+  assert.match(coordinator, /await|wait.*text|text.*wait/i);
+  assert.match(coordinator, /forward.*feedback|feedback.*forward|continue the same worker/i);
+
+  assert.match(worker, /forwarded feedback|feedback text|feedback input/i);
+  assert.match(worker, /must not|without.*(emit|present)|do not.*(emit|present)/i);
+  assert.equal(
+    (coordinator.match(/MANDATORY STOP/g) || []).length,
+    1,
+    'the routed proceed branch should retain exactly one mandatory stop',
+  );
+});
+
 test('coordinator declares lifecycle-only ownership and the exact two-string envelope', () => {
   const coordinator = artifact(SPEC_COORDINATOR_ARTIFACTS.coordinator);
   assert.match(coordinator, /only metadata|user-facing spec coordinator/i);
