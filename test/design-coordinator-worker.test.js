@@ -7,6 +7,12 @@ const os = require('os');
 const path = require('path');
 
 const repoRoot = path.join(__dirname, '..');
+const FEEDBACK_QUESTION = 'Share your feedback on {artifacts} below. You can also type feedback directly in the free-text box.';
+const FEEDBACK_DESCRIPTION = 'Feedback on {artifacts}; you can also type feedback directly in the free-text box.';
+
+function countLiteral(source, value) {
+  return source.split(value).length - 1;
+}
 
 function artifact(relativePath) {
   const fullPath = path.join(repoRoot, relativePath);
@@ -702,4 +708,29 @@ test('restore-coordinator-instruction-loading Step 1: explore and status preserv
   assert.match(status, /^allowed-tools: Read, Glob, Grep, Bash\(openspec:\*\), AskUserQuestion, Skill$/m);
   assert.match(status, /Fetch @sai\/commands\/sai-status\.md/);
   assert.doesNotMatch(status, /allowed-tools:[^\n]*(?:Edit|Write|Bash\s*,)/m);
+});
+
+test('sai-2 feedback gate advertises and accepts direct free-text replies', () => {
+  const gate = artifact('sai/policies/artifact-feedback-gate.md');
+  const coordinator = artifact('sai/commands/design/coordinator.md');
+  const presentation = gate.slice(
+    gate.indexOf('## Present the gate'),
+    gate.indexOf('## On selecting the feedback option'),
+  );
+
+  assert.match(
+    presentation,
+    /Share your feedback on \{artifacts\} below\. You can also type feedback directly in the free-text box\./,
+  );
+  assert.match(
+    presentation,
+    /Feedback on \{artifacts\}; you can also type feedback directly in the free-text box\./,
+  );
+  assert.match(presentation, /Present exactly two choices/);
+  assert.match(presentation, /Give feedback \(Recommended\)/);
+  assert.match(presentation, /Give more feedback/);
+  assert.match(gate, /non-empty reply[\s\S]{0,260}neither declared option[\s\S]{0,260}## On "Give feedback"/i);
+  assert.match(gate, /directly[\s\S]{0,180}(?:no|without)[\s\S]{0,100}(?:additional|second|clean).*prompt/i);
+  assert.match(coordinator, /artifacts\s*=\s*design\.md,\s*tasks\.md,\s*interfaces\.md/);
+  assert.match(coordinator, /proceed-label\s*=\s*Continue/);
 });

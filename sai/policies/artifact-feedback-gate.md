@@ -48,13 +48,23 @@ Defer the ordinary user-facing gate while another review pass is required. Prese
 
 ## Present the gate
 
-Present exactly two choices through the harness's native option-picker per the "Closed-choice prompts" rule in `sai/policies/remember.md`. Labels are full words, never single- or two-letter abbreviations:
+Present exactly two choices through the harness's native option-picker per the "Closed-choice prompts" rule in `sai/policies/remember.md`. The question text is:
 
-1. **`Give feedback (Recommended)` when in-conversation iteration counter == 0, else `Give more feedback`** — feedback on the artifacts written in this step. Name every entry in `artifacts` so the user knows exactly what is open to feedback. The feedback option is emitted FIRST in every presentation (ordering is unaffected by the iteration counter).
+> Share your feedback on {artifacts} below. You can also type feedback directly in the free-text box.
 
-The description text, the proceed option label, the proceed option description, and the harness option-picker path stay byte-for-byte identical across every iteration; only this short label changes between the first presentation and any re-presentation. On every re-presentation after a feedback turn (iteration counter > 0), NO option carries the `Recommended` marker — neither the feedback option nor the proceed option.
+Replace `{artifacts}` with the supplied artifact list and render the question in the user's language per `sai/policies/remember.md`.
+
+1. **`Give feedback (Recommended)` when in-conversation iteration counter == 0, else `Give more feedback`** — feedback on the artifacts written in this step. Name every entry in `artifacts` so the user knows exactly what is open to feedback. The feedback option description is `Feedback on {artifacts}; you can also type feedback directly in the free-text box.` Replace `{artifacts}` with the supplied artifact list and render the description in the user's language per `sai/policies/remember.md`. The feedback option is emitted FIRST in every presentation (ordering is unaffected by the iteration counter).
+
+The question text, feedback option description, proceed option label, proceed option description, and harness option-picker path stay byte-for-byte identical across every iteration; only this short label changes between the first presentation and any re-presentation. On every re-presentation after a feedback turn (iteration counter > 0), NO option carries the `Recommended` marker — neither the feedback option nor the proceed option.
 
 2. **`proceed-label`** — the step-specific proceed option.
+
+## On a direct free-text reply
+
+A non-empty reply supplied through the harness-provided free-text channel that selects neither declared option is potential feedback, not an option selection. Pass that text directly to `## On "Give feedback"` below and apply the existing per-item split, legitimacy judgment, artifact-only edits, discard reporting, summary recomputation, iteration increment, and gate re-offer behavior; directly, no additional clean feedback-text prompt is emitted for this direct free-text path.
+
+An empty reply is not a direct free-text reply. When the user selects `Give feedback` or `Give more feedback`, use the existing empty-turn follow-up path below so surfaces without a free-text channel remain supported.
 
 ## On selecting the feedback option
 

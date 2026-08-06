@@ -107,6 +107,52 @@ When offering the feedback option, the gate SHALL list the artifacts written in 
 - **WHEN** the gate is offered at the end of sai-2
 - **THEN** the feedback option names `design.md`, `tasks.md`, and `interfaces.md` as the artifacts open to feedback
 
+### Requirement: Gate advertises the free-text feedback channel
+
+The artifact feedback gate SHALL use the canonical question `Share your feedback on {artifacts} below. You can also type feedback directly in the free-text box.` and the canonical `Give feedback` option description `Feedback on {artifacts}; you can also type feedback directly in the free-text box.`, replacing `{artifacts}` with the supplied artifact list and rendering both strings in the user's language per `sai/policies/remember.md`. The shared instruction SHALL use this harness-neutral wording rather than substitute harness-specific labels. The gate SHALL continue to present exactly two declared choices in the existing order: `Give feedback (Recommended)` on the first presentation or `Give more feedback` thereafter, followed by the supplied proceed option. The option labels, ordering, `Recommended` marker, iteration counter, proceed-label values, artifact list, and proceed semantics SHALL remain unchanged.
+
+#### Scenario: initial gate advertises free-text feedback
+
+- **WHEN** the gate is presented for the first time in a sai-1 or sai-2 step
+- **THEN** its question reads `Share your feedback on {artifacts} below. You can also type feedback directly in the free-text box.` after `{artifacts}` is replaced and the text is rendered in the user's language
+- **AND** the `Give feedback (Recommended)` option description reads `Feedback on {artifacts}; you can also type feedback directly in the free-text box.` after the same replacement and language rendering
+- **AND** the declared options remain `Give feedback (Recommended)` followed by the step-specific proceed option
+
+#### Scenario: later gate presentations preserve the existing controls
+
+- **WHEN** the gate is re-presented after a feedback turn completes
+- **THEN** its question and feedback option description continue to use the same canonical wording, with the current artifact list and language rendering
+- **AND** the feedback label is `Give more feedback`, the `Recommended` marker is absent, the option order is unchanged, and the iteration counter follows the existing in-conversation rules
+
+### Requirement: Free-text replies enter existing feedback processing
+
+A non-empty reply supplied through the harness-provided free-text channel that does not select either declared gate option SHALL be treated as potential feedback and SHALL enter the existing `## On "Give feedback"` per-item processing directly. The gate SHALL apply the existing legitimacy judgment, artifact-only edits, discard reporting, summary recomputation, iteration increment, and re-offer behavior without adding a feedback prompt or changing worker-lifecycle payloads. Selecting the declared feedback option SHALL retain the existing clean follow-up prompt and wait behavior for surfaces that use that path.
+
+#### Scenario: free-text reply is processed without a second prompt
+
+- **WHEN** the user types non-empty feedback into the free-text box while responding to the gate
+- **THEN** the gate passes that text directly to the existing `## On "Give feedback"` per-item processing
+- **AND** legitimate items edit only the supplied artifacts, illegitimate items are discarded with specific reasons, and questions are answered without artifact edits
+- **AND** the gate recomputes the decision summary, increments the iteration counter, and re-offers the gate using the existing semantics
+- **AND** no additional clean feedback-text prompt is emitted for that free-text reply
+
+#### Scenario: question-only free-text feedback follows existing turn semantics
+
+- **WHEN** the free-text reply is a question that is answered without editing any supplied artifact
+- **THEN** the gate still recomputes the decision summary, increments the iteration counter, and re-offers the gate using the existing semantics
+- **AND** the next feedback label is `Give more feedback` and no artifact edit is implied by the counter transition
+
+#### Scenario: declared feedback option retains the follow-up path
+
+- **WHEN** the user selects `Give feedback` or `Give more feedback` rather than supplying free-text in the picker response
+- **THEN** the gate retains the existing single clean prompt naming the supplied artifacts, waits for the next reply, and feeds that reply into the same per-item processing
+- **AND** the gate does not report or imply that the empty selection turn contained no feedback
+
+#### Scenario: surfaces without a free-text channel remain supported
+
+- **WHEN** the active surface does not provide a free-text reply channel
+- **THEN** the two declared gate options and the existing follow-up feedback path remain available without a harness-conditional rule in the shared gate
+
 ### Requirement: Feedback loop — edit, resummarize, re-offer
 
 When the user selects the feedback option, the gate SHALL apply the user's feedback by editing the listed artifacts in place, then reprint the step's existing decision summary derived from the updated artifacts, then re-offer the same gate. This loop SHALL repeat until the user selects the proceed option.
@@ -234,7 +280,7 @@ The feedback loop SHALL operate purely as same-session interaction grounded in t
 
 ### Requirement: Selecting the feedback option prompts cleanly for feedback text
 
-Because the gate is presented through a harness option-picker, selecting the feedback option cannot itself carry the feedback text. On selecting the feedback option, the gate SHALL FIRST emit exactly one clean, non-accusatory prompt that names the step's `artifacts` and invites the user to supply their feedback in the next turn. The coordinator owns this emission on routed sai-1 and sai-2; the worker SHALL NOT emit a second copy. The gate SHALL NOT report or imply that no feedback was supplied, and SHALL NOT run the per-item split/evaluate processing on an empty turn.
+Because the gate is presented through a harness option-picker, selecting the feedback option itself carries no feedback text. A harness-provided free-text reply is a separate input path governed by `Free-text replies enter existing feedback processing`. On selecting the declared feedback option, the gate SHALL FIRST emit exactly one clean, non-accusatory prompt that names the step's `artifacts` and invites the user to supply their feedback in the next turn. The coordinator owns this emission on routed sai-1 and sai-2; the worker SHALL NOT emit a second copy. The gate SHALL NOT report or imply that no feedback was supplied, and SHALL NOT run the per-item split/evaluate processing on an empty turn.
 
 The prompt's canonical form is `Share your feedback on {artifacts} below.`, where `{artifacts}` is replaced by the step's artifact list. Following the established explore.md item-3 pattern, this canonical form is authored in English but is NOT output verbatim in English: it is rendered in the user's language at runtime per `sai/policies/remember.md` (for a Spanish-speaking user it reads `Indícame a continuación tu feedback sobre {artifacts}`). Only when the user's language is English is the English form output as-is.
 
