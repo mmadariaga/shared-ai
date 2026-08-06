@@ -52,6 +52,11 @@ Durable execution-observed facts about the shared-ai prompt and installer reposi
 - **bin/install-manifest.js**: Retirement validation and expansion must keep exact per-harness proxy-skill IDs, lowercase 64-character SHA-256 digests, and separate `sai`/`skills` destination roots while leaving neutral binding projections active.
   *Observed:* restore-coordinator-instruction-loading
 
+- **test/apply-coordinator-verification.test.js**: Structural contract tests must anchor section extraction to the exact Markdown heading when the section name can also appear in preceding prose.
+  *Observed:* remove-preserved-scratch-acknowledgement-gate — an unanchored recovery-section lookup matched an earlier prose mention; anchoring to the `### Known-False Report Recovery` heading restored the focused and full-suite passes.
+- **sai/instructions/apply.md**: A Step with only test-file implementation scope requires a single dispatch when split routing would prohibit the implementation dispatch from editing the only plan-authorized file.
+  *Observed:* remove-preserved-scratch-acknowledgement-gate — the split implementation boundary could not execute test-only GREEN; one bounded dispatch completed the RED/GREEN cycle within the declared file.
+
 ## Avoid
 
 ## Test Command

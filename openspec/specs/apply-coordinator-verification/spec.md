@@ -8,9 +8,9 @@ TBD - created by archiving change delegate-apply-steps-to-subagent. Update Purpo
 
 Before marking a Step's checkboxes or proposing a commit, the coordinator SHALL re-run the Step's Verification Checklist itself and confirm it passes. The coordinator SHALL NOT mark checkboxes or commit based solely on the Subagent Report. Before dispatching the Step, the coordinator SHALL establish a pre-dispatch working-tree baseline of tracked and untracked paths visible to the coordinator and SHALL determine the Step's plan-level file scope and the dispatch-kind-specific allowed-file set. For a single dispatch, the allowed-file set SHALL be the Step's plan-level files. For a blind test-writer dispatch, it SHALL contain only the plan-authorized test files and explicitly permitted RED/interface stub files and SHALL exclude production files. For an implementation dispatch, it SHALL contain only the plan-authorized production files and SHALL exclude test files and declared interfaces. The coordinator SHALL inject that plan-derived allowed-file set into the corresponding dispatch prompt, while the baseline and the coordinator's recovery assessment SHALL remain coordinator-only.
 
-Each dispatch SHALL have the declared scratch path `.tmp/{change-name}/`, computed from the coordinator's own change-name argument and not from a Subagent Report. The scratch path SHALL be excluded from the allowed-file set and from field 8's file set. After every dispatch returns, regardless of whether it returns a clean report, STOP, failure, or no report because of a crash, the coordinator SHALL unconditionally sweep the exact per-change scratch path, removing all of its contents and the directory, before any post-dispatch path comparison. The sweep SHALL run once per dispatch, including each dispatch in a split-routed Step. After each coordinator-owned run of the Step's Verification Checklist, the coordinator SHALL sweep the exact per-change scratch path again before the final path comparison or any subsequent dispatch. When a coordinator sweep removes one or more paths, it SHALL emit one trace line in the form `> Scratch cleanup: removed <paths>`. When only the per-change directory is removed, the line SHALL be exactly `> Scratch cleanup: removed .tmp/{change-name}/`; when both the per-change directory and its newly created empty parent are removed, the line SHALL be exactly `> Scratch cleanup: removed .tmp/{change-name}/, .tmp/`. An empty sweep SHALL emit no trace line. The trace SHALL identify paths, not scratch contents. If the `.tmp/` parent did not exist in the first pre-dispatch baseline of the apply run and is empty after a per-change directory is removed, the coordinator SHALL remove that parent; a pre-existing or non-empty `.tmp/` parent SHALL remain untouched. A STOP, failure, or crash still follows the existing halt and human-intervention handling, but it SHALL NOT preserve scratch as a separate episode and SHALL NOT require an acknowledgement before another dispatch.
+Each dispatch SHALL have the declared scratch path `.tmp/{change-name}/`, computed from the coordinator's own change-name argument and not from a Subagent Report. The scratch path SHALL be excluded from the allowed-file set and from field 8's file set. After every dispatch returns, regardless of whether it returns a clean report, STOP, failure, or no report because of a crash, the coordinator SHALL unconditionally sweep the exact per-change scratch path, removing all of its contents and the directory, before any post-dispatch path comparison. This is pre-authorized, location-based cleanup of the declared agent-owned working path, not a judgement over arbitrary files and not Known-False Report Recovery. The sweep SHALL run once per dispatch, including each dispatch in a split-routed Step. After each coordinator-owned run of the Step's Verification Checklist, the coordinator SHALL sweep the exact per-change scratch path again before the final path comparison or any subsequent dispatch. When a coordinator sweep removes one or more paths, it SHALL emit one trace line in the form `> Scratch cleanup: removed <paths>`. When only the per-change directory is removed, the line SHALL be exactly `> Scratch cleanup: removed .tmp/{change-name}/`; when both the per-change directory and its newly created empty parent are removed, the line SHALL be exactly `> Scratch cleanup: removed .tmp/{change-name}/, .tmp/`. An empty sweep SHALL emit no trace line. The trace SHALL identify paths, not scratch contents. If the `.tmp/` parent did not exist in the first pre-dispatch baseline of the apply run and is empty after a per-change directory is removed, the coordinator SHALL remove that parent; a pre-existing or non-empty `.tmp/` parent SHALL remain untouched. A STOP, failure, or crash still follows the existing halt and human-intervention handling, but it SHALL NOT preserve scratch as a separate episode and SHALL NOT require an acknowledgement before another dispatch.
 
-After the ordered sweep, coordinator evidence SHALL include both the Verification Checklist result and an independent comparison of observed changed paths with the pre-dispatch baseline, the dispatch-kind-specific allowed-file set, and the report's `Files modified` field. Scratch paths removed by the ordered sweep SHALL not enter that comparison. Repository-owned scratch fixtures tear down their exact path before this comparison; for example, the census fixture `.tmp/derive-opencode-agent-census-from-bindings/` is temporary scratch, not a feature output. If either kind of coordinator evidence contradicts the report, the coordinator SHALL classify whether the evidence directly disproves the report and whether the cause and correction are clear, safe, limited to the current Step, and within the existing plan scope. For a file-scope discrepancy, automatic cleanup is eligible only when the unexpected path was absent from the baseline, was newly created by the current dispatch, and can be safely and reversibly restored under existing authorization; paths present in the baseline, unknown or shared paths, and destructive or unauthorized corrections are not eligible. Cleanup that only undoes the current dispatch's own scope violation is treated as corrective scope, not feature work. A discrepancy that meets all of those conditions SHALL enter Known-False Report Recovery before any checkbox marking or commit proposal. Scope drift that does not meet those conditions SHALL halt for human intervention; scratch cleanup MUST NOT broaden Known-False Report Recovery eligibility or silently delete out-of-scope work. A Recovery Dispatch return receives its own scratch sweep before its changed-path comparison, and no second recovery is introduced.
+After the final scratch sweep, coordinator evidence SHALL include both the Verification Checklist result and an independent comparison of observed changed paths with the pre-dispatch baseline, the dispatch-kind-specific allowed-file set, and the report's `Files modified` field. Scratch paths removed by the ordered sweeps SHALL not enter that comparison. If either kind of coordinator evidence contradicts the report, the coordinator SHALL classify whether the evidence directly disproves the report and whether the cause and correction are clear, safe, limited to the current Step, and within the existing plan scope. For a file-scope discrepancy, automatic cleanup is eligible only when the unexpected path was absent from the baseline, was newly created by the current dispatch, and can be safely and reversibly restored under existing authorization; paths present in the baseline, unknown or shared paths, and destructive or unauthorized corrections are not eligible. Cleanup that only undoes the current dispatch's own scope violation is treated as corrective scope, not feature work. A discrepancy that meets all of those conditions SHALL enter Known-False Report Recovery before any checkbox marking or commit proposal. Scope drift that does not meet those conditions SHALL halt for human intervention; the scratch sweep SHALL NOT broaden that recovery eligibility or silently delete out-of-scope work. A Recovery Dispatch return receives its own scratch sweep before its changed-path comparison, and no second recovery is introduced.
 
 #### Scenario: Subagent reports GREEN pass and coordinator confirms it
 - **WHEN** the Subagent Report says the Step's GREEN verification passed, the coordinator's Verification Checklist also passes, and the independent file-scope comparison finds no discrepancy
@@ -28,41 +28,57 @@ After the ordered sweep, coordinator evidence SHALL include both the Verificatio
 - **WHEN** the coordinator cannot establish the report's cause and a safe in-scope correction, or the correction would be destructive or expand scope
 - **THEN** the coordinator does not dispatch recovery, does not mark checkboxes, does not propose a commit, and surfaces the discrepancy for human intervention
 
-#### Scenario: Every dispatch outcome receives an unconditional scratch sweep
+#### Scenario: Non-empty dispatch outcome triggers a scratch sweep and trace
 - **WHEN** a dispatch returns a clean report, STOP, failure, or no report because of a crash after using `.tmp/{change-name}/`
-- **THEN** the coordinator sweeps exactly that per-change scratch path before comparing post-dispatch paths, and the outcome follows its existing halt or verification handling without a separate scratch episode or acknowledgement
+- **THEN** the coordinator removes the exact per-change scratch directory and contents, emits the required cleanup trace, and does not create a preserved-scratch acknowledgement episode
+
+#### Scenario: Empty scratch sweep stays silent
+- **WHEN** a dispatch and its coordinator Verification Checklist run create no files under `.tmp/{change-name}/` and the exact per-change scratch directory does not exist
+- **THEN** the coordinator still performs the unconditional sweep but emits no cleanup trace line
+
+#### Scenario: Scratch created by coordinator verification is swept
+- **WHEN** the coordinator's focused Verification Checklist run creates files under `.tmp/{change-name}/`
+- **THEN** the coordinator sweeps that directory after the verification run, emits the required cleanup trace, and excludes the removed scratch from the final changed-path comparison
+
+#### Scenario: Scratch is swept before path comparison
+- **WHEN** a dispatch or coordinator verification run creates temporary scaffolding under `.tmp/{change-name}/`
+- **THEN** the relevant sweep completes before the coordinator compares post-operation paths with the baseline, allowed-file set, or field 8, and the scratch files do not produce a discrepancy
 
 #### Scenario: Scratch is swept independently for split dispatches
-- **WHEN** both the blind test-writer and implementation dispatch return for one Step and each uses the declared scratch location
-- **THEN** the coordinator performs the sweep once after the first dispatch and once after the second dispatch, before each dispatch-specific path comparison
+- **WHEN** the blind test-writer and implementation dispatches of one Step return and use the declared scratch location
+- **THEN** the coordinator performs the unconditional sweep and emits its trace after each dispatch before that dispatch's path comparison, rather than waiting until the Step ends
 
-#### Scenario: Coordinator verification sweep precedes final comparison
-- **WHEN** the coordinator-owned Verification Checklist completes
-- **THEN** the coordinator sweeps the exact per-change scratch path again before final path comparison or any subsequent dispatch
+#### Scenario: Recovery Dispatch return triggers its own scratch sweep
+- **WHEN** a Recovery Dispatch returns after using `.tmp/{change-name}/`
+- **THEN** the coordinator performs the same unconditional sweep and trace before comparing that recovery outcome's changed paths, without waiting for another dispatch or the Step to end
 
-#### Scenario: Scratch cleanup emits only pinned path traces
-- **WHEN** a coordinator sweep removes the per-change directory, with or without its newly created empty parent
-- **THEN** it emits exactly `> Scratch cleanup: removed .tmp/{change-name}/` or `> Scratch cleanup: removed .tmp/{change-name}/, .tmp/`, while an empty sweep emits no trace and no scratch contents
+#### Scenario: Fast-track uses the same unconditional scratch cleanup
+- **WHEN** `--fast-track` is active and a dispatch or coordinator Verification Checklist run uses `.tmp/{change-name}/`
+- **THEN** the coordinator performs the same unconditional sweep and trace without presenting, deferring, or auto-confirming a preserved-scratch acknowledgement
 
 #### Scenario: Newly created scratch parent is removed safely
-- **WHEN** the first pre-dispatch baseline shows no `.tmp/` parent, a clean dispatch creates only `.tmp/{change-name}/` scratch, and the per-change directory is removed
-- **THEN** the coordinator removes the newly created empty `.tmp/` parent and does not leave a scratch namespace behind
+- **WHEN** the first pre-dispatch baseline shows no `.tmp/` parent, a dispatch or coordinator verification run creates only `.tmp/{change-name}/` scratch, and the per-change directory is removed
+- **THEN** the coordinator removes the now-empty `.tmp/` parent, emits exactly `> Scratch cleanup: removed .tmp/{change-name}/, .tmp/`, and does not leave a scratch namespace behind
 
 #### Scenario: Existing scratch parent is preserved
-- **WHEN** the first pre-dispatch baseline already contains `.tmp/` or another file remains under `.tmp/` after the per-change sweep
-- **THEN** the coordinator removes only `.tmp/{change-name}/` and leaves the pre-existing or non-empty `.tmp/` parent untouched
-
-#### Scenario: Repository-owned scratch fixtures tear down their exact path
-- **WHEN** a repository-owned census fixture creates `.tmp/derive-opencode-agent-census-from-bindings/`
-- **THEN** the fixture and coordinator tear down that exact path, and it is excluded from feature outputs and changed-path comparison
-
-#### Scenario: Unrelated scratch remains outside the declared per-change path
-- **WHEN** an unrelated scratch path exists outside `.tmp/{change-name}/`
-- **THEN** the coordinator does not remove it as part of the declared sweep and applies the existing scope-drift and recovery rules
+- **WHEN** the first pre-dispatch baseline already contains `.tmp/` or another file remains under `.tmp/` after a per-change sweep
+- **THEN** the coordinator removes only `.tmp/{change-name}/`, does not remove the pre-existing or non-empty `.tmp/` parent, and traces only the paths actually removed
 
 #### Scenario: Scope drift still halts
 - **WHEN** a dispatch creates a path outside its injected allowed-file set and outside `.tmp/{change-name}/`
 - **THEN** the coordinator's path comparison treats the path as scope drift and halts for human intervention unless the existing Known-False Report Recovery eligibility conditions independently hold
+
+### Requirement: Repository-owned scratch fixtures tear down their exact path
+
+A repository test fixture that creates an apply-style per-change scratch directory SHALL tear down that exact directory before the test completes. Fixture teardown SHALL remain local to the test, SHALL NOT alter the behavior under test, and SHALL NOT remove unrelated `.tmp/` content. The opencode agent-census fixture SHALL tear down `.tmp/derive-opencode-agent-census-from-bindings/` after its census assertions.
+
+#### Scenario: Census fixture leaves no per-change scratch
+- **WHEN** the focused opencode agent-census fixture test completes
+- **THEN** `.tmp/derive-opencode-agent-census-from-bindings/` does not exist and the existing census result remains unchanged
+
+#### Scenario: Census fixture teardown preserves unrelated scratch
+- **WHEN** unrelated content exists under `.tmp/` while the opencode agent-census fixture tears down its scratch
+- **THEN** teardown removes only `.tmp/derive-opencode-agent-census-from-bindings/` and preserves the unrelated content
 
 ### Requirement: Verification re-run must be the quiet confirmation, not the full execution
 
