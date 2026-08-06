@@ -35,6 +35,16 @@ const CURRENT_CENSUS = [
 ];
 const SAI_EXTERNAL_DIRECTORY = '~/.config/opencode/sai/**';
 const CENSUS_SCRATCH_DIR = path.join(__dirname, '..', '.tmp', 'derive-opencode-agent-census-from-bindings');
+test.afterEach(() => {
+  fs.rmSync(CENSUS_SCRATCH_DIR, { recursive: true, force: true });
+});
+test.after(() => {
+  assert.equal(
+    fs.existsSync(CENSUS_SCRATCH_DIR),
+    false,
+    'census fixture scratch directory must be absent after the focused census tests',
+  );
+});
 const STEP_2_SCRATCH_DIR = path.join(__dirname, '..', '.tmp', 'deterministic-worker-contract-delivery');
 const WORKER_CONTRACT_BY_NAME = {
   'sai-1-spec-proposal-worker': 'spec-worker.md',
