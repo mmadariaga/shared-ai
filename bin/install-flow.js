@@ -162,6 +162,112 @@ const OPENCODE_MANAGED_AGENTS = Object.freeze(Object.fromEntries(
 const REPOSITORY_ROOT = path.join(__dirname, '..');
 const PACKAGE_VERSION = require(path.join(REPOSITORY_ROOT, 'package.json')).version;
 
+const OPENCODE_BINDINGS_DIR = path.join(REPOSITORY_ROOT, 'sai', 'orchestration', 'workers', 'bindings', 'opencode');
+
+// Canonical opencode registration defaults keyed by derived worker name.
+// Binding membership supplies names only; these explicit records own model,
+// mode, optional variant, and task permissions (bindings cannot express them).
+const OPENCODE_REGISTRATION_DEFAULTS = Object.freeze({
+  'sai-1-spec-proposal-worker': Object.freeze({
+    mode: 'subagent',
+    model: 'opencode-go/minimax-m3',
+    permission: Object.freeze({ task: Object.freeze({ '*': 'deny', budget: 'allow', explore: 'allow' }) }),
+  }),
+  'sai-2-design-worker': Object.freeze({
+    mode: 'subagent',
+    model: 'opencode-go/glm-5.2',
+    variant: 'high',
+    permission: Object.freeze({ task: Object.freeze({ '*': 'deny', explore: 'allow' }) }),
+  }),
+  'sai-3-implementation-worker': Object.freeze({
+    mode: 'subagent',
+    model: 'opencode-go/kimi-k2.6',
+    permission: Object.freeze({ task: Object.freeze({ '*': 'deny', budget: 'allow', explore: 'allow' }) }),
+  }),
+  'sai-5-review-worker': Object.freeze({
+    mode: 'subagent',
+    model: 'opencode-go/glm-5.2',
+    variant: 'high',
+    permission: Object.freeze({ task: Object.freeze({ '*': 'deny', budget: 'allow', explore: 'allow' }) }),
+  }),
+  'sai-6-security-worker': Object.freeze({
+    mode: 'subagent',
+    model: 'opencode-go/glm-5.2',
+    variant: 'high',
+    permission: Object.freeze({ task: Object.freeze({ '*': 'deny', budget: 'allow', explore: 'allow' }) }),
+  }),
+  'sai-7-performance-worker': Object.freeze({
+    mode: 'subagent',
+    model: 'opencode-go/glm-5.2',
+    variant: 'high',
+    permission: Object.freeze({ task: Object.freeze({ '*': 'deny', budget: 'allow', explore: 'allow' }) }),
+  }),
+  'sai-8-accessibility-worker': Object.freeze({
+    mode: 'subagent',
+    model: 'opencode-go/qwen3.7-plus',
+    permission: Object.freeze({ task: Object.freeze({ '*': 'deny', budget: 'allow', explore: 'allow' }) }),
+  }),
+});
+
+// Matches only true dispatch declarations. Continuation calls carrying
+// task_id (task(task_id: "...")) are intentionally NOT matched.
+const OPENCODE_SUBAGENT_DISPATCH = /task\(\s*subagent_type:\s*"([^"]+)"/g;
+
+function deriveOpencodeAgentCensus(bindingsDir, registrationDefaults) {
+  const bindingPaths = fs.readdirSync(bindingsDir)
+    .filter(name => name.endsWith('.md'))
+    .map(name => path.join(bindingsDir, name))
+    .sort((a, b) => {
+      const na = a.split(path.sep).join('/');
+      const nb = b.split(path.sep).join('/');
+      return na < nb ? -1 : na > nb ? 1 : 0;
+    });
+
+  const seenBy = new Map();
+  const records = [];
+  for (const bindingPath of bindingPaths) {
+    const text = fs.readFileSync(bindingPath, 'utf8');
+    const names = [];
+     let match;
+     OPENCODE_SUBAGENT_DISPATCH.lastIndex = 0;
+     while ((match = OPENCODE_SUBAGENT_DISPATCH.exec(text)) !== null) names.push(match[1]);
+     if (names.length !== 1) {
+      throw new Error(`Opencode binding ${bindingPath} must contain exactly one task(subagent_type: "...") declaration but found ${names.length}.`);
+    }
+    const name = names[0];
+    if (seenBy.has(name)) {
+      throw new Error(`Duplicate opencode worker "${name}" declared by ${seenBy.get(name)} and ${bindingPath}.`);
+    }
+    seenBy.set(name, bindingPath);
+    const defaults = registrationDefaults[name];
+    if (!defaults) {
+      throw new Error(`Opencode worker "${name}" declared by ${bindingPath} has no explicit registration defaults.`);
+    }
+    records.push({ name, ...defaults });
+  }
+
+  for (const name of Object.keys(registrationDefaults)) {
+    if (!seenBy.has(name)) {
+      throw new Error(`Orphan opencode registration default "${name}" is not declared by any binding.`);
+    }
+  }
+
+  return records;
+}
+
+let opencodeManagedAgentsCache = null;
+function getOpencodeManagedAgents() {
+  if (opencodeManagedAgentsCache === null) {
+    const keyed = {};
+    for (const record of deriveOpencodeAgentCensus(OPENCODE_BINDINGS_DIR, OPENCODE_REGISTRATION_DEFAULTS)) {
+      const { name, ...settings } = record;
+      keyed[name] = settings;
+    }
+    opencodeManagedAgentsCache = keyed;
+  }
+  return opencodeManagedAgentsCache;
+}
+
 function writeVersionMarker(baseDir) {
   ensureDir(baseDir);
   fs.writeFileSync(path.join(baseDir, '.version'), PACKAGE_VERSION);
@@ -887,10 +993,13 @@ module.exports = {
   migrateManagedWorkerIdentity,
   cleanupRetiredProjections,
   OPENCODE_MANAGED_AGENTS,
+  OPENCODE_REGISTRATION_DEFAULTS,
+  getOpencodeManagedAgents,
   sha256Buffer,
   installClaudeImplementationWorker,
   installClaudeManagedWorker,
   __test: {
+    deriveOpencodeAgentCensus,
     mergeOpencodeAgents,
     createPermissionMatchContext,
     normalizePermissionPattern,

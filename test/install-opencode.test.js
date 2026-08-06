@@ -13,6 +13,9 @@ const {
   OPENCODE_INSTALL_CMD,
   MANAGED_WORKERS,
   OPENCODE_MANAGED_AGENTS,
+  OPENCODE_REGISTRATION_DEFAULTS,
+  getOpencodeManagedAgents,
+  __test: { deriveOpencodeAgentCensus },
   probeOpencode,
   runOpencodeInstall,
   promptYesNoReadline,
@@ -23,6 +26,168 @@ const jsonc = require('jsonc-parser');
 const AGENT_PLACEHOLDER = { mode: 'subagent', model: 'opencode-go/deepseek-v4-flash' };
 const AGENT_KEYS = ['explore', 'executor', 'budget'];
 const SAI_EXTERNAL_DIRECTORY = '~/.config/opencode/sai/**';
+const CENSUS_SCRATCH_DIR = path.join(__dirname, '..', '.tmp', 'derive-opencode-agent-census-from-bindings');
+
+function writeCensusFixtures(entries) {
+  fs.mkdirSync(CENSUS_SCRATCH_DIR, { recursive: true });
+  const bindingsDir = fs.mkdtempSync(path.join(CENSUS_SCRATCH_DIR, 'bindings-'));
+  for (const [fileName, workerName] of entries) {
+    fs.writeFileSync(path.join(bindingsDir, fileName), `# Direct binding\ntask(subagent_type: "${workerName}")\n`);
+  }
+  return bindingsDir;
+}
+
+function censusDefaults(entries) {
+  return Object.fromEntries(entries.map(([workerName, registration]) => [workerName, {
+    mode: 'subagent',
+    ...registration,
+  }]));
+}
+
+test('Step 1 census derives one record per lexically sorted direct binding', () => {
+  const bindingsDir = writeCensusFixtures([
+    ['02-design.md', 'sai-design-worker'],
+    ['01-spec.md', 'sai-spec-worker'],
+    ['03-review.md', 'sai-review-worker'],
+  ]);
+  const defaults = censusDefaults([
+    ['sai-spec-worker', { model: 'provider/spec', permission: { task: { '*': 'deny' } } }],
+    ['sai-design-worker', { model: 'provider/design', variant: 'high', permission: { task: { explore: 'allow' } } }],
+    ['sai-review-worker', { model: 'provider/review', permission: { task: { budget: 'allow' } } }],
+  ]);
+
+  assert.deepEqual(deriveOpencodeAgentCensus(bindingsDir, defaults), [
+    { name: 'sai-spec-worker', model: 'provider/spec', mode: 'subagent', permission: { task: { '*': 'deny' } } },
+    { name: 'sai-design-worker', model: 'provider/design', mode: 'subagent', variant: 'high', permission: { task: { explore: 'allow' } } },
+    { name: 'sai-review-worker', model: 'provider/review', mode: 'subagent', permission: { task: { budget: 'allow' } } },
+  ], 'specs/opencode-agent-census/spec.md: direct bindings should produce deterministic records');
+});
+
+test('Step 1 census discovers a newly added direct binding with matching defaults', () => {
+  const bindingsDir = writeCensusFixtures([['01-existing.md', 'sai-existing-worker']]);
+  const defaults = censusDefaults([
+    ['sai-existing-worker', { model: 'provider/existing', permission: { task: { '*': 'deny' } } }],
+  ]);
+
+  fs.writeFileSync(path.join(bindingsDir, '02-added.md'), '# Direct binding\ntask(subagent_type: "sai-added-worker")\n');
+  defaults['sai-added-worker'] = {
+    mode: 'subagent',
+    model: 'provider/added',
+    permission: { task: { explore: 'allow' } },
+  };
+
+  assert.deepEqual(
+    deriveOpencodeAgentCensus(bindingsDir, defaults).map(record => record.name),
+    ['sai-existing-worker', 'sai-added-worker'],
+    'specs/opencode-agent-census/spec.md: binding discovery must not require a membership-list edit',
+  );
+});
+
+test('Step 1 census rejects a binding with zero or multiple declarations', () => {
+  const zeroDir = writeCensusFixtures([['zero.md', 'sai-zero-worker']]);
+  fs.writeFileSync(path.join(zeroDir, 'zero.md'), '# Direct binding\nno worker declaration\n');
+  assert.throws(
+    () => deriveOpencodeAgentCensus(zeroDir, {}),
+    error => /zero\.md/.test(error.message) && /declaration|worker/i.test(error.message),
+    'specs/opencode-agent-census/spec.md: zero declarations must identify the binding and declaration problem',
+  );
+
+  const multipleDir = writeCensusFixtures([['multiple.md', 'sai-first-worker']]);
+  fs.appendFileSync(path.join(multipleDir, 'multiple.md'), 'task(subagent_type: "sai-second-worker")\n');
+  assert.throws(
+    () => deriveOpencodeAgentCensus(multipleDir, {}),
+    error => /multiple\.md/.test(error.message) && /declaration|multiple/i.test(error.message),
+    'specs/opencode-agent-census/spec.md: multiple declarations must identify the binding and declaration problem',
+  );
+});
+
+test('Step 1 census rejects duplicate worker declarations with both binding paths', () => {
+  const bindingsDir = writeCensusFixtures([
+    ['01-first.md', 'sai-duplicate-worker'],
+    ['02-second.md', 'sai-duplicate-worker'],
+  ]);
+  assert.throws(
+    () => deriveOpencodeAgentCensus(bindingsDir, censusDefaults([
+      ['sai-duplicate-worker', { model: 'provider/duplicate', permission: { task: { '*': 'deny' } } }],
+    ])),
+    error => /sai-duplicate-worker/.test(error.message) && /01-first\.md/.test(error.message) && /02-second\.md/.test(error.message),
+    'specs/opencode-agent-census/spec.md: duplicate workers must identify the worker and both binding paths',
+  );
+});
+
+test('Step 1 census rejects missing registration defaults and orphan defaults', () => {
+  const missingDefaultsDir = writeCensusFixtures([['01-derived.md', 'sai-missing-default-worker']]);
+  assert.throws(
+    () => deriveOpencodeAgentCensus(missingDefaultsDir, {}),
+    error => /sai-missing-default-worker/.test(error.message) && /01-derived\.md/.test(error.message),
+    'specs/opencode-agent-census/spec.md: a derived worker without defaults must identify the worker and source',
+  );
+
+  const orphanDefaultsDir = writeCensusFixtures([['01-bound.md', 'sai-bound-worker']]);
+  assert.throws(
+    () => deriveOpencodeAgentCensus(orphanDefaultsDir, censusDefaults([
+      ['sai-bound-worker', { model: 'provider/bound', permission: { task: { '*': 'deny' } } }],
+      ['sai-orphan-worker', { model: 'provider/orphan', permission: { task: { '*': 'deny' } } }],
+    ])),
+    error => /orphan/i.test(error.message) && /sai-orphan-worker/.test(error.message),
+    'specs/opencode-agent-census/spec.md: an unbound default must identify its worker as orphaned',
+  );
+});
+
+test('Step 1 census preserves distinct registration fields without common-default normalization', () => {
+  const bindingsDir = writeCensusFixtures([
+    ['01-one.md', 'sai-one-worker'],
+    ['02-two.md', 'sai-two-worker'],
+  ]);
+  const defaults = censusDefaults([
+    ['sai-one-worker', {
+      model: 'provider/one',
+      permission: { task: { '*': 'deny', explore: 'allow' } },
+    }],
+    ['sai-two-worker', {
+      model: 'provider/two',
+      variant: 'high',
+      permission: { task: { '*': 'allow', budget: 'deny' } },
+    }],
+  ]);
+
+  assert.deepEqual(deriveOpencodeAgentCensus(bindingsDir, defaults), [
+    {
+      name: 'sai-one-worker',
+      model: 'provider/one',
+      mode: 'subagent',
+      permission: { task: { '*': 'deny', explore: 'allow' } },
+    },
+    {
+      name: 'sai-two-worker',
+      model: 'provider/two',
+      mode: 'subagent',
+      variant: 'high',
+      permission: { task: { '*': 'allow', budget: 'deny' } },
+    },
+  ], 'specs/opencode-agent-census/spec.md and specs/managed-worker-registry/spec.md: registration fields must survive the join');
+});
+
+test('Step 1 census accessor projects the ordered repository census by worker name', () => {
+  assert.ok(Object.keys(OPENCODE_REGISTRATION_DEFAULTS).length > 0,
+    'specs/opencode-agent-census/spec.md: repository registration defaults should be populated');
+  const agents = getOpencodeManagedAgents();
+  assert.deepEqual(Object.keys(agents), [
+    'sai-8-accessibility-worker',
+    'sai-2-design-worker',
+    'sai-3-implementation-worker',
+    'sai-7-performance-worker',
+    'sai-5-review-worker',
+    'sai-6-security-worker',
+    'sai-1-spec-proposal-worker',
+  ], 'specs/opencode-agent-census/spec.md: object insertion order must follow binding-path order');
+  for (const [name, registration] of Object.entries(agents)) {
+    assert.equal(registration.mode, 'subagent', `${name} should use subagent mode`);
+    assert.equal(typeof registration.model, 'string', `${name} should preserve its model`);
+    assert.ok(registration.permission && registration.permission.task,
+      `specs/managed-worker-registry/spec.md: ${name} should preserve task permission values`);
+  }
+});
 
 test('copyOpencodeConfig preserves a fixed configured output independently of registry values', () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-baseline-'));
