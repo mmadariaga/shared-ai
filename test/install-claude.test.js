@@ -22,6 +22,32 @@ const {
 } = require('../bin/install-flow.js');
 const { loadInstallManifest, expandInstallManifest } = require('../bin/install-manifest.js');
 
+const STEP_2_SCRATCH_DIR = path.join(__dirname, '..', '.tmp', 'deterministic-worker-contract-delivery');
+const WORKER_BINDINGS = [
+  ['sai-1-spec-proposal-worker', 'spec-worker.md'],
+  ['sai-2-design-worker', 'design-worker.md'],
+  ['sai-3-implementation-worker', 'implementation-worker.md'],
+  ['sai-5-review-worker', 'review-worker.md'],
+  ['sai-6-security-worker', 'security-worker.md'],
+  ['sai-7-performance-worker', 'performance-worker.md'],
+  ['sai-8-accessibility-worker', 'accessibility-worker.md'],
+];
+
+function expectedWorkerPrompt(contractName) {
+  return `Worker contract: Fetch @sai/orchestration/workers/${contractName.endsWith('.md') ? contractName : `${contractName}.md`} and follow it exactly.\n\nInvocationEnvelope:\n<original InvocationEnvelope>`;
+}
+
+function extractDispatchCalls(source, keyword) {
+  return [...source.matchAll(new RegExp(`\\b${keyword}\\s*\\(([\\s\\S]*?)\\)`, 'g'))]
+    .map(match => match[1]);
+}
+
+function decodePrompt(call) {
+  const match = call.match(/\bprompt\s*[:=]\s*"((?:\\.|[^"\\])*)"/);
+  assert.ok(match, 'initial dispatch should contain a quoted prompt argument');
+  return JSON.parse(`"${match[1]}"`);
+}
+
 test('managed worker registry defines every Claude compatibility export', () => {
   assert.ok(MANAGED_WORKERS, 'MANAGED_WORKERS should be exported');
 
@@ -241,6 +267,66 @@ test('installClaude projects every routed binding into neutral destinations', ()
     }
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+});
+
+test('Step 2 initial Claude Agent dispatches deliver matching contracts and preserve continuations', () => {
+  fs.mkdirSync(STEP_2_SCRATCH_DIR, { recursive: true });
+  const scratchDir = fs.mkdtempSync(path.join(STEP_2_SCRATCH_DIR, 'claude-dispatch-'));
+  try {
+    const installDir = path.join(scratchDir, 'claude');
+    fs.mkdirSync(installDir, { recursive: true });
+    installClaude(installDir);
+    for (const [workerName, bindingName] of WORKER_BINDINGS) {
+      const bindingPath = path.join(installDir, 'sai', 'orchestration', 'workers', 'bindings', bindingName);
+      const calls = extractDispatchCalls(fs.readFileSync(bindingPath, 'utf8'), 'Agent');
+      const initial = calls.filter(call => !/\btask_id\s*[:=]/.test(call));
+      const continuations = calls.filter(call => /\btask_id\s*[:=]/.test(call));
+
+      assert.equal(initial.length, 1, `${workerName} should have one initial Agent dispatch`);
+       assert.equal(decodePrompt(initial[0]), expectedWorkerPrompt(workerName),
+        `specs/worker-dispatch-prompt-template/spec.md: ${workerName} should receive its matching worker contract`);
+      assert.match(decodePrompt(initial[0]), /InvocationEnvelope:\n<original InvocationEnvelope>$/,
+        `${workerName} should preserve the opaque InvocationEnvelope slot`);
+       for (const continuation of continuations) {
+         assert.doesNotMatch(continuation, /\bprompt\s*[:=]/,
+           `${workerName} continuation dispatch should remain unchanged`);
+      }
+    }
+  } finally {
+    fs.rmSync(scratchDir, { recursive: true, force: true });
+  }
+});
+
+test('Step 2 Claude and Opencode reach the same worker contract while Copilot receives no routed projection', () => {
+  fs.mkdirSync(STEP_2_SCRATCH_DIR, { recursive: true });
+  const scratchDir = fs.mkdtempSync(path.join(STEP_2_SCRATCH_DIR, 'harness-parity-'));
+  const copilotBase = path.join(scratchDir, 'copilot');
+  try {
+    const claudeDir = path.join(scratchDir, 'claude-parity');
+    fs.mkdirSync(claudeDir, { recursive: true });
+    installClaude(claudeDir);
+    const claudeSource = fs.readFileSync(
+      path.join(claudeDir, 'sai', 'orchestration', 'workers', 'bindings', 'review-worker.md'),
+      'utf8',
+    );
+    const claudePrompt = decodePrompt(extractDispatchCalls(claudeSource, 'Agent').find(call => !/\btask_id\s*[:=]/.test(call)));
+
+    const copilot = {
+      prompts: path.join(copilotBase, 'prompts'),
+      skills: path.join(copilotBase, 'skills'),
+      agents: path.join(copilotBase, 'agents'),
+      sai: path.join(copilotBase, 'sai'),
+    };
+    installCopilot(copilot.prompts, copilot.skills, copilot.agents, copilot.sai);
+    assert.equal(fs.existsSync(path.join(copilot.sai, 'orchestration', 'workers', 'bindings')), false,
+      'specs/harness-coordination-parity/spec.md: Copilot should receive no routed binding projection');
+    assert.equal(fs.existsSync(path.join(copilot.sai, 'orchestration', 'workers')), false,
+      'specs/harness-coordination-parity/spec.md: Copilot should receive no routed worker registration projection');
+
+     assert.equal(claudePrompt, expectedWorkerPrompt('sai-5-review-worker'));
+  } finally {
+    fs.rmSync(scratchDir, { recursive: true, force: true });
   }
 });
 

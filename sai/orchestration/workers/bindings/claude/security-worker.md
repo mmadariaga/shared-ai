@@ -2,7 +2,7 @@
 
 Start exactly one background worker with:
 
-`Agent(subagent_type: "sai-6-security-worker", run_in_background: true, prompt: "<original InvocationEnvelope and security-worker instruction>")`
+`Agent(subagent_type: "sai-6-security-worker", run_in_background: true, prompt: "Worker contract: Fetch @sai/orchestration/workers/sai-6-security-worker.md and follow it exactly.\n\nInvocationEnvelope:\n<original InvocationEnvelope>")`
 
 Capture the agent ID in coordinator state, await its closed payload, and bind it as `continuation_reference` for `needs_input`. The identifier is binding-owned and never worker output. Forward exact answers with `SendMessage(to: "<captured agent ID>", message: "<selected value>")`; never use Agent `resume`.
 

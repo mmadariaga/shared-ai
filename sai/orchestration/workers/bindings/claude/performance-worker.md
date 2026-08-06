@@ -6,7 +6,7 @@ Start exactly one background worker with:
 
 Dispatch the complete original envelope unchanged.
 
-`Agent(subagent_type: "sai-7-performance-worker", run_in_background: true, prompt: "<original InvocationEnvelope and performance-worker instruction>")`
+`Agent(subagent_type: "sai-7-performance-worker", run_in_background: true, prompt: "Worker contract: Fetch @sai/orchestration/workers/sai-7-performance-worker.md and follow it exactly.\n\nInvocationEnvelope:\n<original InvocationEnvelope>")`
 
 Capture the agent ID in coordinator state, await its closed payload, and bind it as `continuation_reference` for `needs_input`. Attempt same-worker continuation first. The identifier is binding-owned and never worker output. Continuation metadata is binding-owned. Preserve the worker's `summary`, `question`, ordered options, paths, and resolved names. Forward exact answers with `SendMessage(to: "<captured agent ID>", message: "<selected value>")`; never use Agent `resume`.
 

@@ -124,4 +124,4 @@ function main() {
   }
 }
 
-main();
+if (require.main === module && !process.env.NODE_TEST_CONTEXT) main();

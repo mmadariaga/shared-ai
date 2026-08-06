@@ -167,6 +167,7 @@ test('installer collisions preserve unfamiliar content and provide remediation g
     assert.deepEqual(opencodeConfig.agent['sai-3-implementation-worker'], {
       mode: 'subagent',
       model: 'user-model',
+      prompt: 'Fetch @sai/orchestration/workers/sai-3-implementation-worker.md and follow it exactly.',
     });
     assert.ok(opencodeConfig.agent['sai-2-design-worker'], 'missing numbered worker should receive its repository default');
     assert.match(`${opencodeResult.output}\n${opencodeResult.error?.message || ''}`, /Added opencode agent keys/);

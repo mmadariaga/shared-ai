@@ -111,85 +111,193 @@ const REPOSITORY_ROOT = path.join(__dirname, '..');
 const PACKAGE_VERSION = require(path.join(REPOSITORY_ROOT, 'package.json')).version;
 
 const OPENCODE_BINDINGS_DIR = path.join(REPOSITORY_ROOT, 'sai', 'orchestration', 'workers', 'bindings', 'opencode');
+const CLAUDE_BINDINGS_DIR = path.join(REPOSITORY_ROOT, 'sai', 'orchestration', 'workers', 'bindings', 'claude');
 
-// Canonical opencode registration defaults keyed by derived worker name.
-// Binding membership supplies names only; these explicit records own model,
-// mode, optional variant, and task permissions (bindings cannot express them).
+function expectedRegistrationPrompt(workerName) {
+  return `Fetch @sai/orchestration/workers/${workerName}.md and follow it exactly.`;
+}
+
+function expectedDispatchPrompt(workerName) {
+  return `Worker contract: Fetch @sai/orchestration/workers/${workerName}.md and follow it exactly.\n\nInvocationEnvelope:\n<original InvocationEnvelope>`;
+}
+
 const OPENCODE_REGISTRATION_DEFAULTS = Object.freeze({
   'sai-1-spec-proposal-worker': Object.freeze({
     mode: 'subagent',
     model: 'opencode-go/minimax-m3',
     permission: Object.freeze({ task: Object.freeze({ '*': 'deny', budget: 'allow', explore: 'allow' }) }),
+    prompt: expectedRegistrationPrompt('sai-1-spec-proposal-worker'),
   }),
   'sai-2-design-worker': Object.freeze({
     mode: 'subagent',
     model: 'opencode-go/glm-5.2',
     variant: 'high',
     permission: Object.freeze({ task: Object.freeze({ '*': 'deny', explore: 'allow' }) }),
+    prompt: expectedRegistrationPrompt('sai-2-design-worker'),
   }),
   'sai-3-implementation-worker': Object.freeze({
     mode: 'subagent',
     model: 'opencode-go/kimi-k2.6',
     permission: Object.freeze({ task: Object.freeze({ '*': 'deny', budget: 'allow', explore: 'allow' }) }),
+    prompt: expectedRegistrationPrompt('sai-3-implementation-worker'),
   }),
   'sai-5-review-worker': Object.freeze({
     mode: 'subagent',
     model: 'opencode-go/glm-5.2',
     variant: 'high',
     permission: Object.freeze({ task: Object.freeze({ '*': 'deny', budget: 'allow', explore: 'allow' }) }),
+    prompt: expectedRegistrationPrompt('sai-5-review-worker'),
   }),
   'sai-6-security-worker': Object.freeze({
     mode: 'subagent',
     model: 'opencode-go/glm-5.2',
     variant: 'high',
     permission: Object.freeze({ task: Object.freeze({ '*': 'deny', budget: 'allow', explore: 'allow' }) }),
+    prompt: expectedRegistrationPrompt('sai-6-security-worker'),
   }),
   'sai-7-performance-worker': Object.freeze({
     mode: 'subagent',
     model: 'opencode-go/glm-5.2',
     variant: 'high',
     permission: Object.freeze({ task: Object.freeze({ '*': 'deny', budget: 'allow', explore: 'allow' }) }),
+    prompt: expectedRegistrationPrompt('sai-7-performance-worker'),
   }),
   'sai-8-accessibility-worker': Object.freeze({
     mode: 'subagent',
     model: 'opencode-go/qwen3.7-plus',
     permission: Object.freeze({ task: Object.freeze({ '*': 'deny', budget: 'allow', explore: 'allow' }) }),
+    prompt: expectedRegistrationPrompt('sai-8-accessibility-worker'),
   }),
 });
 
-// Matches only true dispatch declarations. Continuation calls carrying
-// task_id (task(task_id: "...")) are intentionally NOT matched.
-const OPENCODE_SUBAGENT_DISPATCH = /task\(\s*subagent_type:\s*"([^"]+)"/g;
+function collectCallArguments(text, callName, bindingPath) {
+  const matcher = new RegExp(`\\b${callName}\\s*\\(`, 'g');
+  const calls = [];
+  let match;
+  while ((match = matcher.exec(text)) !== null) {
+    const openIndex = matcher.lastIndex - 1;
+    let depth = 1;
+    let quote = null;
+    let escaped = false;
+    let closeIndex = -1;
+    for (let index = openIndex + 1; index < text.length; index += 1) {
+      const character = text[index];
+      if (quote !== null) {
+        if (escaped) {
+          escaped = false;
+        } else if (character === '\\') {
+          escaped = true;
+        } else if (character === quote) {
+          quote = null;
+        }
+        continue;
+      }
+      if (character === '"' || character === "'") {
+        quote = character;
+      } else if (character === '(') {
+        depth += 1;
+      } else if (character === ')') {
+        depth -= 1;
+        if (depth === 0) {
+          closeIndex = index;
+          break;
+        }
+      }
+    }
+    if (closeIndex === -1 || quote !== null) {
+      throw new Error(`Binding ${bindingPath} contains an unterminated ${callName} dispatch call.`);
+    }
+    calls.push(text.slice(openIndex + 1, closeIndex));
+    matcher.lastIndex = closeIndex + 1;
+  }
+  return calls;
+}
 
-function deriveOpencodeAgentCensus(bindingsDir, registrationDefaults) {
-  const bindingPaths = fs.readdirSync(bindingsDir)
+function quotedFieldValues(argumentsText, fieldName) {
+  const matcher = new RegExp(`(?:^|,)\\s*${fieldName}\\s*:\\s*"((?:\\\\.|[^"\\\\])*)"`, 'g');
+  return [...argumentsText.matchAll(matcher)].map(match => match[1]);
+}
+
+function parseInitialDispatches(text, callName, bindingPath) {
+  const dispatches = [];
+  for (const argumentsText of collectCallArguments(text, callName, bindingPath)) {
+    const names = quotedFieldValues(argumentsText, 'subagent_type');
+    if (names.length === 0) continue;
+    if (names.length !== 1) {
+      throw new Error(`Binding ${bindingPath} must contain exactly one initial ${callName}(subagent_type: "...") declaration but found ${names.length}.`);
+    }
+    const prompts = quotedFieldValues(argumentsText, 'prompt');
+    if (prompts.length !== 1 || prompts[0].includes('\n') || prompts[0].includes('\r')) {
+      throw new Error(`Binding ${bindingPath} initial ${callName} for "${names[0]}" must contain exactly one double-quoted single-line prompt.`);
+    }
+    let prompt;
+    try {
+      prompt = JSON.parse(`"${prompts[0]}"`);
+    } catch (error) {
+      throw new Error(`Binding ${bindingPath} initial ${callName} for "${names[0]}" has an invalid escaped prompt: ${error.message}`);
+    }
+    dispatches.push({ name: names[0], prompt });
+  }
+  return dispatches;
+}
+
+function bindingPaths(bindingsDir) {
+  return fs.readdirSync(bindingsDir)
     .filter(name => name.endsWith('.md'))
     .map(name => path.join(bindingsDir, name))
-    .sort((a, b) => {
-      const na = a.split(path.sep).join('/');
-      const nb = b.split(path.sep).join('/');
-      return na < nb ? -1 : na > nb ? 1 : 0;
-    });
+    .sort((left, right) => left.split(path.sep).join('/').localeCompare(right.split(path.sep).join('/')));
+}
 
+function validateClaudeWorkerBindings(bindingsDir = CLAUDE_BINDINGS_DIR) {
+  const seenBy = new Map();
+  for (const bindingPath of bindingPaths(bindingsDir)) {
+    const text = fs.readFileSync(bindingPath, 'utf8');
+    const dispatches = parseInitialDispatches(text, 'Agent', bindingPath);
+    if (dispatches.length !== 1) {
+      throw new Error(`Claude binding ${bindingPath} must contain exactly one initial Agent dispatch but found ${dispatches.length}.`);
+    }
+    const { name, prompt } = dispatches[0];
+    if (!MANAGED_WORKERS[name]) {
+      throw new Error(`Claude binding ${bindingPath} declares unknown worker "${name}".`);
+    }
+    if (seenBy.has(name)) {
+      throw new Error(`Duplicate Claude worker "${name}" declared by ${seenBy.get(name)} and ${bindingPath}.`);
+    }
+    seenBy.set(name, bindingPath);
+    if (prompt !== expectedDispatchPrompt(name)) {
+      throw new Error(`Claude binding ${bindingPath} has the wrong initial prompt for "${name}"; expected the contract for ${name}.md.`);
+    }
+  }
+  for (const name of Object.keys(MANAGED_WORKERS)) {
+    if (!seenBy.has(name)) {
+      throw new Error(`Claude worker "${name}" has no binding with a validated initial Agent dispatch.`);
+    }
+  }
+}
+
+function deriveOpencodeAgentCensus(bindingsDir, registrationDefaults) {
   const seenBy = new Map();
   const records = [];
-  for (const bindingPath of bindingPaths) {
+  for (const bindingPath of bindingPaths(bindingsDir)) {
     const text = fs.readFileSync(bindingPath, 'utf8');
-    const names = [];
-     let match;
-     OPENCODE_SUBAGENT_DISPATCH.lastIndex = 0;
-     while ((match = OPENCODE_SUBAGENT_DISPATCH.exec(text)) !== null) names.push(match[1]);
-     if (names.length !== 1) {
-      throw new Error(`Opencode binding ${bindingPath} must contain exactly one task(subagent_type: "...") declaration but found ${names.length}.`);
+    const dispatches = parseInitialDispatches(text, 'task', bindingPath);
+    if (dispatches.length !== 1) {
+      throw new Error(`Opencode binding ${bindingPath} must contain exactly one initial task dispatch but found ${dispatches.length}.`);
     }
-    const name = names[0];
+    const { name, prompt } = dispatches[0];
     if (seenBy.has(name)) {
       throw new Error(`Duplicate opencode worker "${name}" declared by ${seenBy.get(name)} and ${bindingPath}.`);
     }
     seenBy.set(name, bindingPath);
+    if (prompt !== expectedDispatchPrompt(name)) {
+      throw new Error(`Opencode binding ${bindingPath} has the wrong initial prompt for "${name}"; expected the contract for ${name}.md.`);
+    }
     const defaults = registrationDefaults[name];
     if (!defaults) {
       throw new Error(`Opencode worker "${name}" declared by ${bindingPath} has no explicit registration defaults.`);
+    }
+    if (defaults.prompt !== expectedRegistrationPrompt(name)) {
+      throw new Error(`Opencode registration default "${name}" must contain the canonical worker contract prompt.`);
     }
     records.push({ name, ...defaults });
   }
@@ -199,7 +307,6 @@ function deriveOpencodeAgentCensus(bindingsDir, registrationDefaults) {
       throw new Error(`Orphan opencode registration default "${name}" is not declared by any binding.`);
     }
   }
-
   return records;
 }
 
@@ -568,6 +675,7 @@ function listMdFilesRecursive(dir) {
 }
 
 function installClaude(destBase) {
+  validateClaudeWorkerBindings();
   const targetPath = destBase || CLAUDE_BASE;
   cleanupRetiredProjections('claude', { base: targetPath });
   migrateLegacyClaudeWorkers(targetPath);
@@ -759,9 +867,20 @@ function mergeOpencodeAgents(text, permissionContext = createPermissionMatchCont
   };
 
   for (const [key, shape] of Object.entries(shapes)) {
-    if (Object.prototype.hasOwnProperty.call(existing, key)) continue;
-    out = applyEdits(out, modify(out, ['agent', key], shape, { formattingOptions }));
-    added.push(key);
+    if (!Object.prototype.hasOwnProperty.call(existing, key)) {
+      out = applyEdits(out, modify(out, ['agent', key], shape, { formattingOptions }));
+      added.push(key);
+      continue;
+    }
+
+    const current = existing[key];
+    const promptMissing = isPlainObject(current)
+      && Object.prototype.hasOwnProperty.call(shape, 'prompt')
+      && (typeof current.prompt !== 'string' || current.prompt.length === 0);
+    if (promptMissing) {
+      out = applyEdits(out, modify(out, ['agent', key, 'prompt'], shape.prompt, { formattingOptions }));
+      added.push(key);
+    }
   }
 
   if (permissionState.action === 'append') {
@@ -949,6 +1068,10 @@ module.exports = {
   __test: {
     deriveOpencodeAgentCensus,
     mergeOpencodeAgents,
+    expectedRegistrationPrompt,
+    expectedDispatchPrompt,
+    parseInitialDispatches,
+    validateClaudeWorkerBindings,
     createPermissionMatchContext,
     normalizePermissionPattern,
     wildcardMatches,

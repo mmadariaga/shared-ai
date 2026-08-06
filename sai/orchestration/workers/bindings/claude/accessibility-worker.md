@@ -6,7 +6,7 @@ The canonical managed Agent identity is `sai-8-accessibility-worker`.
 
 Start exactly one background managed Agent with:
 
-`Agent(subagent_type: "sai-8-accessibility-worker", run_in_background: true, prompt: "<original InvocationEnvelope and accessibility-worker instruction>")`
+`Agent(subagent_type: "sai-8-accessibility-worker", run_in_background: true, prompt: "Worker contract: Fetch @sai/orchestration/workers/sai-8-accessibility-worker.md and follow it exactly.\n\nInvocationEnvelope:\n<original InvocationEnvelope>")`
 
 ## Closed lifecycle result
 

@@ -40,6 +40,7 @@
     "sai-1-spec-proposal-worker": {
       "mode": "subagent",
       "model": "opencode-go/minimax-m3",
+      "prompt": "Fetch @sai/orchestration/workers/sai-1-spec-proposal-worker.md and follow it exactly.",
       "permission": {
         "task": { "*": "deny", "budget": "allow", "explore": "allow" }
       }
@@ -47,6 +48,7 @@
     "sai-3-implementation-worker": {
       "mode": "subagent",
       "model": "opencode-go/kimi-k2.6",
+      "prompt": "Fetch @sai/orchestration/workers/sai-3-implementation-worker.md and follow it exactly.",
       "permission": {
         "task": {
           "*": "deny",
@@ -59,6 +61,7 @@
       "mode": "subagent",
       "model": "opencode-go/glm-5.2",
       "variant": "high",
+      "prompt": "Fetch @sai/orchestration/workers/sai-2-design-worker.md and follow it exactly.",
       "permission": {
         "task": { "*": "deny", "explore": "allow" }
       }
@@ -67,6 +70,7 @@
       "mode": "subagent",
       "model": "opencode-go/glm-5.2",
       "variant": "high",
+      "prompt": "Fetch @sai/orchestration/workers/sai-5-review-worker.md and follow it exactly.",
       "permission": {
         "task": { "*": "deny", "budget": "allow", "explore": "allow" }
       }
@@ -75,6 +79,7 @@
       "mode": "subagent",
       "model": "opencode-go/glm-5.2",
       "variant": "high",
+      "prompt": "Fetch @sai/orchestration/workers/sai-6-security-worker.md and follow it exactly.",
       "permission": {
         "task": { "*": "deny", "budget": "allow", "explore": "allow" }
       }
@@ -83,6 +88,7 @@
       "mode": "subagent",
       "model": "opencode-go/glm-5.2",
       "variant": "high",
+      "prompt": "Fetch @sai/orchestration/workers/sai-7-performance-worker.md and follow it exactly.",
       "permission": {
         "task": { "*": "deny", "budget": "allow", "explore": "allow" }
       }
@@ -90,6 +96,7 @@
     "sai-8-accessibility-worker": {
       "mode": "subagent",
       "model": "opencode-go/qwen3.7-plus",
+      "prompt": "Fetch @sai/orchestration/workers/sai-8-accessibility-worker.md and follow it exactly.",
       "permission": {
         "task": { "*": "deny", "budget": "allow", "explore": "allow" }
       }

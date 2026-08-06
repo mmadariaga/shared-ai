@@ -6,7 +6,7 @@ Start exactly one explicit worker with:
 
 Dispatch the complete original envelope unchanged.
 
-`task(subagent_type: "sai-7-performance-worker", prompt: "<original InvocationEnvelope and performance-worker instruction>")`
+`task(subagent_type: "sai-7-performance-worker", prompt: "Worker contract: Fetch @sai/orchestration/workers/sai-7-performance-worker.md and follow it exactly.\n\nInvocationEnvelope:\n<original InvocationEnvelope>")`
 
 Capture `task_id` in coordinator state and expose it only as binding-owned `continuation_reference`. Continuation metadata is binding-owned. Preserve the worker's `summary`, `question`, ordered options, paths, and resolved names. Attempt same-worker continuation first with the same task: continue with `task(task_id: "<captured task ID>", prompt: "<selected value>")` using the exact answer. If same-task continuation fails, start at most one replacement task with the original envelope and complete reconstruction fields. Never package artifacts or the prior journal.
 

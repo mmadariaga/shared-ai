@@ -18,7 +18,7 @@ Place model selection, dispatch syntax, continuation, and result augmentation in
 
 Claude Code uses a low-effort `claude-opus-4-8` coordinator and a high-effort background custom worker with agent-ID continuation through `SendMessage`. Installation creates an ownership sidecar only when SAI creates the agent; uninstall removes only an owned, unchanged agent.
 
-Opencode declares the logical coordinator runtime in each routed wrapper and uses only the current numbered worker entries: `sai-2-design-worker` and `sai-3-implementation-worker`. The repository definitions are bootstrap defaults for missing names. An existing opencode agent name is user-owned: installation preserves its complete definition without comparison or mutation, doctor accepts its own-name presence in a valid agent map, and runtime dispatch uses its configured model, variant, mode, and permissions.
+Opencode declares the logical coordinator runtime in each routed wrapper and uses the current numbered worker entries. The repository definitions are bootstrap defaults for missing names. An existing opencode agent name is user-owned: installation preserves its complete definition without comparison or mutation, doctor accepts its own-name presence in a valid agent map, and runtime dispatch uses its configured model, variant, mode, permissions, and non-empty prompt. Each managed registration explicitly owns the canonical `Fetch @sai/orchestration/workers/<worker-name>.md and follow it exactly.` prompt, which loads the worker contract before coordinator input is processed. The routed binding retains a literal contract-aware initial-dispatch template as defense in depth.
 
 Claude Code continues to block incompatible worker-file collisions. Opencode adds only absent agent names and never removes configuration entries on uninstall. Copilot receives no routed worker binding and keeps the inline route selected by its wrapper.
 
@@ -33,6 +33,7 @@ Claude Code continues to block incompatible worker-file collisions. Opencode add
 
 - Installer, doctor, version-skew, and uninstall inventories must treat Claude agents and opencode entries according to their distinct ownership rules.
 - Activation requires collision checks and a blocking live opencode capability probe before wrappers switch routes.
+- Contract-delivery parity is outcome-based: Claude and opencode may use different harness preambles, but both load the same canonical worker contract before interpreting the opaque invocation envelope.
 - Documentation must name all three harnesses and distinguish Copilot's missing portable contract from general subagent availability.
 
 ## Related

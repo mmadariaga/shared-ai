@@ -211,6 +211,7 @@ test('Step 3 stops on incompatible Claude destinations while preserving customiz
     assert.deepEqual(opencodeConfig.agent['sai-3-implementation-worker'], {
       mode: 'subagent',
       model: 'user-model',
+      prompt: 'Fetch @sai/orchestration/workers/sai-3-implementation-worker.md and follow it exactly.',
     });
 
     const adr = fs.readFileSync(path.join(repoRoot, 'docs', 'adr', '0077-harness-specific-worker-bindings.md'), 'utf8');

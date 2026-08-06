@@ -2,7 +2,7 @@
 
 Start exactly one explicit worker with:
 
-`task(subagent_type: "sai-1-spec-proposal-worker", prompt: "<original InvocationEnvelope and spec-worker instruction>")`
+`task(subagent_type: "sai-1-spec-proposal-worker", prompt: "Worker contract: Fetch @sai/orchestration/workers/sai-1-spec-proposal-worker.md and follow it exactly.\n\nInvocationEnvelope:\n<original InvocationEnvelope>")`
 
 Capture `task_id` only as binding-owned continuation metadata. Continue the same task with `task(task_id: "<captured task ID>", prompt: "<selected value>")` and never replace a same-task continuation unless it fails.
 

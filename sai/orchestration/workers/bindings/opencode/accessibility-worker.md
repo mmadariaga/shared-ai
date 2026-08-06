@@ -6,7 +6,7 @@ The canonical numbered task identity is `sai-8-accessibility-worker`.
 
 Start exactly one explicit numbered task with:
 
-`task(subagent_type: "sai-8-accessibility-worker", prompt: "<original InvocationEnvelope and accessibility-worker instruction>")`
+`task(subagent_type: "sai-8-accessibility-worker", prompt: "Worker contract: Fetch @sai/orchestration/workers/sai-8-accessibility-worker.md and follow it exactly.\n\nInvocationEnvelope:\n<original InvocationEnvelope>")`
 
 ## Closed lifecycle result
 

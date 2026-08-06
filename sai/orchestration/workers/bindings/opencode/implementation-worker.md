@@ -4,7 +4,7 @@
 
 Start exactly one explicit worker with:
 
-`task(subagent_type: "sai-3-implementation-worker", prompt: "<original InvocationEnvelope and implementation-worker instruction>")`
+`task(subagent_type: "sai-3-implementation-worker", prompt: "Worker contract: Fetch @sai/orchestration/workers/sai-3-implementation-worker.md and follow it exactly.\n\nInvocationEnvelope:\n<original InvocationEnvelope>")`
 
 This is the binding dispatch operation.
 

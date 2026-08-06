@@ -2,7 +2,7 @@
 
 Start exactly one explicit worker with:
 
-`task(subagent_type: "sai-6-security-worker", prompt: "<original InvocationEnvelope and security-worker instruction>")`
+`task(subagent_type: "sai-6-security-worker", prompt: "Worker contract: Fetch @sai/orchestration/workers/sai-6-security-worker.md and follow it exactly.\n\nInvocationEnvelope:\n<original InvocationEnvelope>")`
 
 Capture `task_id` in coordinator state and expose it only as binding-owned `continuation_reference`. Continue with `task(task_id: "<captured task ID>", prompt: "<selected value>")` using the exact answer. If same-task continuation fails, start at most one replacement task with the original envelope and complete reconstruction fields. Never package artifacts or the prior journal.
 

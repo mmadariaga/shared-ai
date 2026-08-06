@@ -35,12 +35,44 @@ const CURRENT_CENSUS = [
 ];
 const SAI_EXTERNAL_DIRECTORY = '~/.config/opencode/sai/**';
 const CENSUS_SCRATCH_DIR = path.join(__dirname, '..', '.tmp', 'derive-opencode-agent-census-from-bindings');
+const STEP_2_SCRATCH_DIR = path.join(__dirname, '..', '.tmp', 'deterministic-worker-contract-delivery');
+const WORKER_CONTRACT_BY_NAME = {
+  'sai-1-spec-proposal-worker': 'spec-worker.md',
+  'sai-2-design-worker': 'design-worker.md',
+  'sai-3-implementation-worker': 'implementation-worker.md',
+  'sai-5-review-worker': 'review-worker.md',
+  'sai-6-security-worker': 'security-worker.md',
+  'sai-7-performance-worker': 'performance-worker.md',
+  'sai-8-accessibility-worker': 'accessibility-worker.md',
+};
+
+function expectedWorkerPrompt(workerName) {
+  return `Worker contract: Fetch @sai/orchestration/workers/${workerName}.md and follow it exactly.\n\nInvocationEnvelope:\n<original InvocationEnvelope>`;
+}
+
+function expectedRegistrationPrompt(workerName) {
+  return `Fetch @sai/orchestration/workers/${workerName}.md and follow it exactly.`;
+}
+
+function extractDispatchCalls(source, keyword) {
+  return [...source.matchAll(new RegExp(`\\b${keyword}\\s*\\(([\\s\\S]*?)\\)`, 'g'))]
+    .map(match => match[1]);
+}
+
+function decodePrompt(call) {
+  const match = call.match(/\bprompt\s*[:=]\s*"((?:\\.|[^"\\])*)"/);
+  assert.ok(match, 'initial dispatch should contain a quoted prompt argument');
+  return JSON.parse(`"${match[1]}"`);
+}
 
 function writeCensusFixtures(entries) {
   fs.mkdirSync(CENSUS_SCRATCH_DIR, { recursive: true });
   const bindingsDir = fs.mkdtempSync(path.join(CENSUS_SCRATCH_DIR, 'bindings-'));
   for (const [fileName, workerName] of entries) {
-    fs.writeFileSync(path.join(bindingsDir, fileName), `# Direct binding\ntask(subagent_type: "${workerName}")\n`);
+    fs.writeFileSync(
+      path.join(bindingsDir, fileName),
+      `# Direct binding\ntask(subagent_type: "${workerName}", prompt: "${expectedWorkerPrompt(workerName).replaceAll('\n', '\\n')}")\n`,
+    );
   }
   return bindingsDir;
 }
@@ -48,6 +80,7 @@ function writeCensusFixtures(entries) {
 function censusDefaults(entries) {
   return Object.fromEntries(entries.map(([workerName, registration]) => [workerName, {
     mode: 'subagent',
+    prompt: expectedRegistrationPrompt(workerName),
     ...registration,
   }]));
 }
@@ -65,9 +98,9 @@ test('Step 1 census derives one record per lexically sorted direct binding', () 
   ]);
 
   assert.deepEqual(deriveOpencodeAgentCensus(bindingsDir, defaults), [
-    { name: 'sai-spec-worker', model: 'provider/spec', mode: 'subagent', permission: { task: { '*': 'deny' } } },
-    { name: 'sai-design-worker', model: 'provider/design', mode: 'subagent', variant: 'high', permission: { task: { explore: 'allow' } } },
-    { name: 'sai-review-worker', model: 'provider/review', mode: 'subagent', permission: { task: { budget: 'allow' } } },
+     { name: 'sai-spec-worker', model: 'provider/spec', mode: 'subagent', prompt: expectedRegistrationPrompt('sai-spec-worker'), permission: { task: { '*': 'deny' } } },
+     { name: 'sai-design-worker', model: 'provider/design', mode: 'subagent', prompt: expectedRegistrationPrompt('sai-design-worker'), variant: 'high', permission: { task: { explore: 'allow' } } },
+     { name: 'sai-review-worker', model: 'provider/review', mode: 'subagent', prompt: expectedRegistrationPrompt('sai-review-worker'), permission: { task: { budget: 'allow' } } },
   ], 'specs/opencode-agent-census/spec.md: direct bindings should produce deterministic records');
 });
 
@@ -77,10 +110,14 @@ test('Step 1 census discovers a newly added direct binding with matching default
     ['sai-existing-worker', { model: 'provider/existing', permission: { task: { '*': 'deny' } } }],
   ]);
 
-  fs.writeFileSync(path.join(bindingsDir, '02-added.md'), '# Direct binding\ntask(subagent_type: "sai-added-worker")\n');
+  fs.writeFileSync(
+    path.join(bindingsDir, '02-added.md'),
+    `# Direct binding\ntask(subagent_type: "sai-added-worker", prompt: "${expectedWorkerPrompt('sai-added-worker').replaceAll('\n', '\\n')}")\n`,
+  );
   defaults['sai-added-worker'] = {
     mode: 'subagent',
     model: 'provider/added',
+    prompt: expectedRegistrationPrompt('sai-added-worker'),
     permission: { task: { explore: 'allow' } },
   };
 
@@ -96,12 +133,15 @@ test('Step 1 census rejects a binding with zero or multiple declarations', () =>
   fs.writeFileSync(path.join(zeroDir, 'zero.md'), '# Direct binding\nno worker declaration\n');
   assert.throws(
     () => deriveOpencodeAgentCensus(zeroDir, {}),
-    error => /zero\.md/.test(error.message) && /declaration|worker/i.test(error.message),
+    error => /zero\.md/.test(error.message) && /declaration|dispatch|worker/i.test(error.message),
     'specs/opencode-agent-census/spec.md: zero declarations must identify the binding and declaration problem',
   );
 
   const multipleDir = writeCensusFixtures([['multiple.md', 'sai-first-worker']]);
-  fs.appendFileSync(path.join(multipleDir, 'multiple.md'), 'task(subagent_type: "sai-second-worker")\n');
+  fs.appendFileSync(
+    path.join(multipleDir, 'multiple.md'),
+    `task(subagent_type: "sai-second-worker", prompt: "${expectedWorkerPrompt('sai-second-worker').replaceAll('\n', '\\n')}")\n`,
+  );
   assert.throws(
     () => deriveOpencodeAgentCensus(multipleDir, {}),
     error => /multiple\.md/.test(error.message) && /declaration|multiple/i.test(error.message),
@@ -140,6 +180,63 @@ test('Step 1 census rejects missing registration defaults and orphan defaults', 
     error => /orphan/i.test(error.message) && /sai-orphan-worker/.test(error.message),
     'specs/opencode-agent-census/spec.md: an unbound default must identify its worker as orphaned',
   );
+});
+
+test('Step 2 census rejects malformed quoted prompts with binding-specific diagnostics', () => {
+  const bindingsDir = writeCensusFixtures([['malformed-prompt.md', 'sai-malformed-prompt-worker']]);
+  fs.writeFileSync(
+    path.join(bindingsDir, 'malformed-prompt.md'),
+    'task(subagent_type: "sai-malformed-prompt-worker", prompt: "unterminated)\n',
+  );
+  assert.throws(
+    () => deriveOpencodeAgentCensus(bindingsDir, censusDefaults([
+      ['sai-malformed-prompt-worker', {
+        model: 'provider/malformed',
+         prompt: expectedRegistrationPrompt('sai-malformed-prompt-worker'),
+        permission: { task: { '*': 'deny' } },
+      }],
+    ])),
+    error => /malformed-prompt\.md/.test(error.message) && /prompt|quoted|syntax/i.test(error.message),
+    'specs/opencode-agent-census/spec.md: malformed quoted prompts must identify the binding and prompt syntax',
+  );
+});
+
+test('Step 2 census rejects a binding whose prompt names a different worker contract', () => {
+  const bindingsDir = writeCensusFixtures([['mismatched-contract.md', 'sai-mismatched-contract-worker']]);
+  fs.writeFileSync(
+    path.join(bindingsDir, 'mismatched-contract.md'),
+     `task(subagent_type: "sai-mismatched-contract-worker", prompt: "${expectedWorkerPrompt('sai-other-worker').replaceAll('\n', '\\n')}")\n`,
+  );
+  assert.throws(
+    () => deriveOpencodeAgentCensus(bindingsDir, censusDefaults([
+      ['sai-mismatched-contract-worker', {
+        model: 'provider/mismatched',
+         prompt: expectedRegistrationPrompt('sai-mismatched-contract-worker'),
+        permission: { task: { '*': 'deny' } },
+      }],
+    ])),
+    error => /mismatched-contract\.md/.test(error.message) && /contract|prompt|mismatch/i.test(error.message),
+    'specs/opencode-agent-census/spec.md: mismatched contracts must identify the binding and mismatch',
+  );
+});
+
+test('Step 2 census ignores continuation task_id calls when validating initial declarations', () => {
+  const bindingsDir = writeCensusFixtures([['continuation.md', 'sai-continuation-worker']]);
+  fs.writeFileSync(
+    path.join(bindingsDir, 'continuation.md'),
+    [
+       `task(subagent_type: "sai-continuation-worker", prompt: "${expectedWorkerPrompt('sai-continuation-worker').replaceAll('\n', '\\n')}")`,
+      'task(task_id: "existing-task", prompt: "not an initial dispatch")',
+      '',
+    ].join('\n'),
+  );
+  assert.doesNotThrow(() => deriveOpencodeAgentCensus(bindingsDir, censusDefaults([
+    ['sai-continuation-worker', {
+      model: 'provider/continuation',
+       prompt: expectedRegistrationPrompt('sai-continuation-worker'),
+      permission: { task: { '*': 'deny' } },
+    }],
+  ])), 'specs/opencode-agent-census/spec.md: continuation task_id calls must not create a second declaration');
 });
 
 test('Step 2 resolves the census lazily and isolates malformed bindings to Opencode installation', () => {
@@ -212,17 +309,19 @@ test('Step 1 census preserves distinct registration fields without common-defaul
   ]);
 
   assert.deepEqual(deriveOpencodeAgentCensus(bindingsDir, defaults), [
-    {
-      name: 'sai-one-worker',
-      model: 'provider/one',
-      mode: 'subagent',
-      permission: { task: { '*': 'deny', explore: 'allow' } },
+     {
+       name: 'sai-one-worker',
+       model: 'provider/one',
+       mode: 'subagent',
+       prompt: expectedRegistrationPrompt('sai-one-worker'),
+       permission: { task: { '*': 'deny', explore: 'allow' } },
     },
     {
-      name: 'sai-two-worker',
-      model: 'provider/two',
-      mode: 'subagent',
-      variant: 'high',
+       name: 'sai-two-worker',
+       model: 'provider/two',
+       mode: 'subagent',
+       prompt: expectedRegistrationPrompt('sai-two-worker'),
+       variant: 'high',
       permission: { task: { '*': 'allow', budget: 'deny' } },
     },
   ], 'specs/opencode-agent-census/spec.md and specs/managed-worker-registry/spec.md: registration fields must survive the join');
@@ -254,6 +353,90 @@ test('Step 2 census contains exactly every current worker name', () => {
     'specs/opencode-agent-census/spec.md: the derived census must contain exactly the current workers');
 });
 
+test('Step 2 registration records expose the exact canonical worker prompts', () => {
+  for (const workerName of CURRENT_CENSUS) {
+     const prompt = expectedRegistrationPrompt(workerName);
+    assert.equal(OPENCODE_REGISTRATION_DEFAULTS[workerName].prompt, prompt,
+      `specs/opencode-worker-system-prompt/spec.md: ${workerName} defaults should use the canonical Fetch prompt`);
+    assert.equal(OPENCODE_MANAGED_AGENTS[workerName].prompt, prompt,
+      `specs/opencode-worker-system-prompt/spec.md: ${workerName} managed registration should use the canonical Fetch prompt`);
+     assert.equal(OPENCODE_MANAGED_AGENTS[workerName].prompt.startsWith('Fetch @sai/orchestration/workers/'), true,
+       `${workerName} should use the Fetch prompt without a registration preamble`);
+  }
+});
+
+test('Step 2 initial Opencode task dispatches deliver the matching contract and preserve continuations', () => {
+  fs.mkdirSync(STEP_2_SCRATCH_DIR, { recursive: true });
+  const scratchDir = fs.mkdtempSync(path.join(STEP_2_SCRATCH_DIR, 'opencode-dispatch-'));
+  try {
+    const installDir = path.join(scratchDir, 'opencode');
+    fs.mkdirSync(installDir, { recursive: true });
+    installOpencode(installDir);
+    for (const workerName of CURRENT_CENSUS) {
+      const bindingName = WORKER_CONTRACT_BY_NAME[workerName];
+      const bindingPath = path.join(installDir, 'sai', 'orchestration', 'workers', 'bindings', bindingName);
+      const calls = extractDispatchCalls(fs.readFileSync(bindingPath, 'utf8'), 'task');
+      const initial = calls.filter(call => !/\btask_id\s*[:=]/.test(call));
+      const continuations = calls.filter(call => /\btask_id\s*[:=]/.test(call));
+
+      assert.equal(initial.length, 1, `${workerName} should have one initial task dispatch`);
+      assert.equal(decodePrompt(initial[0]), expectedWorkerPrompt(workerName),
+        `specs/worker-dispatch-prompt-template/spec.md: ${workerName} should receive its matching worker contract`);
+      assert.match(decodePrompt(initial[0]), /InvocationEnvelope:\n<original InvocationEnvelope>$/,
+        `${workerName} should preserve the opaque InvocationEnvelope slot`);
+      assert.ok(continuations.length > 0, `${workerName} should retain a continuation task dispatch`);
+       for (const continuation of continuations) {
+         assert.match(continuation, /\bprompt\s*[:=]\s*"<selected value>"/,
+           `${workerName} continuation dispatch should retain its existing prompt shape`);
+       }
+    }
+  } finally {
+    fs.rmSync(scratchDir, { recursive: true, force: true });
+  }
+});
+
+test('Step 2 config merge adds absent prompts, preserves custom prompts, and is byte-idempotent', () => {
+  fs.mkdirSync(STEP_2_SCRATCH_DIR, { recursive: true });
+  const scratchDir = fs.mkdtempSync(path.join(STEP_2_SCRATCH_DIR, 'opencode-config-'));
+  const configPath = path.join(scratchDir, 'opencode.jsonc');
+  const customPrompt = 'User-owned prompt must remain unchanged';
+  const fixture = [
+    '// preserve this comment',
+    JSON.stringify({
+      displayName: 'unrelated project',
+      plugin: ['unrelated-plugin'],
+      agent: {
+        'sai-1-spec-proposal-worker': { mode: 'subagent', model: 'user-spec' },
+        'sai-2-design-worker': { mode: 'subagent', model: 'user-design', prompt: customPrompt },
+      },
+    }, null, 2),
+    '',
+  ].join('\n');
+  try {
+    fs.writeFileSync(configPath, fixture);
+    copyOpencodeConfig(scratchDir);
+    const firstRaw = fs.readFileSync(configPath, 'utf8');
+    const first = jsonc.parse(firstRaw);
+     assert.equal(first.agent['sai-1-spec-proposal-worker'].prompt,
+       expectedRegistrationPrompt('sai-1-spec-proposal-worker'));
+    assert.equal(first.agent['sai-2-design-worker'].prompt, customPrompt,
+      'specs/opencode-worker-system-prompt/spec.md: non-empty custom prompts should remain unchanged');
+    assert.equal(first.displayName, 'unrelated project');
+    assert.deepEqual(first.plugin, ['unrelated-plugin']);
+    assert.match(firstRaw, /preserve this comment/);
+     for (const workerName of CURRENT_CENSUS) {
+       if (workerName === 'sai-2-design-worker') continue;
+       assert.equal(first.agent[workerName].prompt, expectedRegistrationPrompt(workerName),
+        `specs/opencode-worker-system-prompt/spec.md: ${workerName} should have its exact prompt after merge`);
+    }
+    copyOpencodeConfig(scratchDir);
+    assert.equal(fs.readFileSync(configPath, 'utf8'), firstRaw,
+      'specs/opencode-worker-system-prompt/spec.md: a second install should be byte-identical');
+  } finally {
+    fs.rmSync(scratchDir, { recursive: true, force: true });
+  }
+});
+
 test('copyOpencodeConfig preserves a fixed configured output independently of registry values', () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-baseline-'));
   const baseline = [
@@ -269,14 +452,15 @@ test('copyOpencodeConfig preserves a fixed configured output independently of re
     '    "explore": { "mode": "subagent", "model": "user-explore" },',
     '    "executor": { "mode": "subagent", "model": "user-executor" },',
     '    "budget": { "mode": "subagent", "model": "user-budget" },',
-    '    "sai-1-spec-proposal-worker": { "mode": "subagent", "model": "user-spec" },',
-    '    "sai-3-implementation-worker": { "mode": "subagent", "model": "user-implementation" },',
-    '    "sai-2-design-worker": { "mode": "subagent", "model": "user-design" },',
-    '    "sai-5-review-worker": { "mode": "subagent", "model": "user-review" },',
+     `    "sai-1-spec-proposal-worker": { "mode": "subagent", "model": "user-spec", "prompt": "${expectedRegistrationPrompt('sai-1-spec-proposal-worker')}" },`,
+     `    "sai-3-implementation-worker": { "mode": "subagent", "model": "user-implementation", "prompt": "${expectedRegistrationPrompt('sai-3-implementation-worker')}" },`,
+     `    "sai-2-design-worker": { "mode": "subagent", "model": "user-design", "prompt": "${expectedRegistrationPrompt('sai-2-design-worker')}" },`,
+     `    "sai-5-review-worker": { "mode": "subagent", "model": "user-review", "prompt": "${expectedRegistrationPrompt('sai-5-review-worker')}" },`,
     '    "sai-6-security-worker": {',
     '      "mode": "subagent",',
     '      "model": "opencode-go/glm-5.2",',
     '      "variant": "high",',
+     `      "prompt": "${expectedRegistrationPrompt('sai-6-security-worker')}",`,
     '      "permission": {',
     '        "task": {',
     '          "*": "deny",',
@@ -289,6 +473,7 @@ test('copyOpencodeConfig preserves a fixed configured output independently of re
     '      "mode": "subagent",',
     '      "model": "opencode-go/glm-5.2",',
     '      "variant": "high",',
+     `      "prompt": "${expectedRegistrationPrompt('sai-7-performance-worker')}",`,
     '      "permission": {',
     '        "task": {',
     '          "*": "deny",',
@@ -300,6 +485,7 @@ test('copyOpencodeConfig preserves a fixed configured output independently of re
     '    "sai-8-accessibility-worker": {',
     '      "mode": "subagent",',
     '      "model": "opencode-go/qwen3.7-plus",',
+     `      "prompt": "${expectedRegistrationPrompt('sai-8-accessibility-worker')}",`,
     '      "permission": {',
     '        "task": {',
     '          "*": "deny",',
@@ -449,6 +635,7 @@ test('opencode worker registration is preserved and configurable', () => {
     model: 'opencode-go/glm-5.2',
     variant: 'high',
     permission: { task: { '*': 'deny', budget: 'allow', explore: 'allow' } },
+     prompt: expectedRegistrationPrompt('sai-5-review-worker'),
   });
 
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-review-worker-'));
@@ -464,7 +651,7 @@ test('opencode worker registration is preserved and configurable', () => {
     } }, null, 2));
     copyOpencodeConfig(tmpDir);
     const parsed = jsonc.parse(fs.readFileSync(path.join(tmpDir, 'opencode.json'), 'utf8'));
-    assert.deepEqual(parsed.agent['sai-5-review-worker'], custom,
+     assert.deepEqual(parsed.agent['sai-5-review-worker'], { ...custom, prompt: expectedRegistrationPrompt('sai-5-review-worker') },
       'an existing review worker registration should remain configurable');
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });
@@ -568,6 +755,7 @@ test('Step 2 preserves compatible customized registrations and unrelated user co
       model: 'user-design',
       variant: 'low',
       description: 'user-owned design runtime',
+       prompt: expectedRegistrationPrompt('sai-2-design-worker'),
     });
     assert.equal(Object.hasOwn(parsed.agent, 'sai-1-spec-proposal-worker'), true,
       'specs/installer-config-guidance/spec.md: absent census workers should be added');
@@ -1083,7 +1271,10 @@ test('copyOpencodeConfig merges customized and missing numbered workers without 
     fs.writeFileSync(path.join(tmpDir, 'opencode.json'), JSON.stringify(config, null, 2));
     copyOpencodeConfig(tmpDir);
     const parsed = jsonc.parse(fs.readFileSync(path.join(tmpDir, 'opencode.json'), 'utf8'));
-    assert.deepEqual(parsed.agent['sai-2-design-worker'], custom);
+    assert.deepEqual(parsed.agent['sai-2-design-worker'], {
+      ...custom,
+       prompt: expectedRegistrationPrompt('sai-2-design-worker'),
+    });
     assert.deepEqual(parsed.agent['sai-3-implementation-worker'], OPENCODE_MANAGED_AGENTS['sai-3-implementation-worker']);
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });
@@ -1150,7 +1341,11 @@ test('copyOpencodeConfig edits only opencode.json when both config filenames exi
     copyOpencodeConfig(tmpDir);
     assert.deepEqual(fs.readFileSync(path.join(tmpDir, 'opencode.jsonc'), 'utf8'), jsoncContent);
     const parsed = jsonc.parse(fs.readFileSync(path.join(tmpDir, 'opencode.json'), 'utf8'));
-    assert.deepEqual(parsed.agent['sai-2-design-worker'], { mode: 'subagent', model: 'custom' });
+       assert.deepEqual(parsed.agent['sai-2-design-worker'], {
+         mode: 'subagent',
+         model: 'custom',
+         prompt: expectedRegistrationPrompt('sai-2-design-worker'),
+       });
     assert.ok(parsed.agent['sai-3-implementation-worker']);
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });

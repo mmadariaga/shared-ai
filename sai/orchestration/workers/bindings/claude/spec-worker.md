@@ -2,7 +2,7 @@
 
 Start exactly one background worker with:
 
-`Agent(subagent_type: "sai-1-spec-proposal-worker", run_in_background: true, prompt: "<original InvocationEnvelope and spec-worker instruction>")`
+`Agent(subagent_type: "sai-1-spec-proposal-worker", run_in_background: true, prompt: "Worker contract: Fetch @sai/orchestration/workers/sai-1-spec-proposal-worker.md and follow it exactly.\n\nInvocationEnvelope:\n<original InvocationEnvelope>")`
 
 Capture the agent ID as binding-owned continuation metadata and await its structured payload. Continue with `SendMessage(to: "<captured agent ID>", message: "<selected value>")`; never use Agent `resume`.
 

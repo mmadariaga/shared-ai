@@ -14,6 +14,8 @@ Design and implementation share lifecycle mechanics but retain different policy,
 
 Keep canonical phase contracts at `sai/orchestration/workers/design-worker.md` and `sai/orchestration/workers/implementation-worker.md`. Mirror routed bindings under `workers/bindings/claude/` and `workers/bindings/opencode/`, each with explicit design and implementation files. Runtime skills and Claude agents remain thin forwarding surfaces.
 
+Each routed binding's initial `Agent` or `task` dispatch carries the same worker-specific literal template: the canonical contract Fetch directive, two newlines, `InvocationEnvelope:`, and the opaque original envelope slot. Installer validation compares the decoded template at the initial-dispatch call boundary and excludes continuation calls, so mirrored bindings cannot drift while their harness-native continuation mechanics remain unchanged.
+
 ## Alternatives Considered
 
 - **Merge both phases into one conditional worker** - centralizes files, but couples unrelated phase policy.

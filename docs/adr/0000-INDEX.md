@@ -153,6 +153,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0098 — Register the performance worker through managed projections](./0098-register-performance-worker-through-managed-projections.md) — Refs 0084, Refs 0085, Refs 0096
 - [0100 — Neutral installed worker-binding destinations with harness-specific sources](./0100-neutral-installed-worker-binding-destinations.md) — Refs 0077, Refs 0084, Refs 0088
 - [0101 — Exact Git-blob corpus for binding retirement ownership](./0101-exact-git-blob-corpus-for-binding-retirements.md) — Refs 0091
+- [0102 — Consumer-scoped preflight for routed worker contract assets](./0102-consumer-scoped-preflight-for-routed-worker-contract-assets.md) — Refs 0100
 
 ### Harness wrappers & the shared instruction layer
 
@@ -214,6 +215,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0099 — Terminal routing failure and explicit fresh dispatch](./0099-terminal-routing-failure-and-explicit-fresh-dispatch.md) — Refs 0075, Refs 0076, Refs 0086
 - [0100 — Neutral installed worker-binding destinations with harness-specific sources](./0100-neutral-installed-worker-binding-destinations.md) — Refs 0077, Refs 0084, Refs 0088
 - [0101 — Exact Git-blob corpus for binding retirement ownership](./0101-exact-git-blob-corpus-for-binding-retirements.md) — Refs 0091
+- [0102 — Consumer-scoped preflight for routed worker contract assets](./0102-consumer-scoped-preflight-for-routed-worker-contract-assets.md) — Refs 0100
 
 ### Argument passing & change-name resolution
 
