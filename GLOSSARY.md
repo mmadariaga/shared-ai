@@ -82,6 +82,9 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 **Recovery Dispatch**: "The single corrective subagent dispatch permitted by Known-False Report Recovery, constrained to the current Step and existing plan scope."
 *Avoid*: retry dispatch, second opinion, advisor dispatch
 
+**Report Template Parity**: "The pinned requirement that a report artifact's two template families — the OpenSpec schema scaffold under `openspec/schemas/sai-workflow/templates/` and the write-time contract under `sai/instructions/_templates/` — present the same section skeleton and header metadata, diverging only in placeholder syntax, guidance depth, and code-fence wrapping."
+*Avoid*: template equality, template unification, template consistency
+
 **Review Finding**: "A single structured issue identified by an **Artifact Review**, carrying a severity-prefixed identifier, a `High`, `Medium`, or `Low` severity, artifact location, issue statement, and recommended correction."
 *Avoid*: review issue, review comment, audit finding
 
@@ -143,6 +146,7 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 - A **Review-Loop Token** fires the post-crystallization loop, and each `Review sai-1's artifacts` / `Review sai-2's artifacts` transaction in it is an **Artifact Review**.
 - An **Artifact Review** produces zero or more **Review Finding**s, each carrying a **Finding Identifier** derived from its severity within that review.
 - A **Review Finding** carries exactly one **Finding Identifier**, derived from its `Severity` field; identifiers never imply identity across reviews.
+- A **Report Template Parity** pin covers the four report artifacts — review, security, performance, accessibility — each pairing a schema template scaffold with an instruction output template contract of the same artifact.
 - A **Tracked Crystallized Set** gains a name only when a crystallization turn emits one, ignores duplicate later emissions, and starts empty in every new chat.
 - A **Routing Line** contains exactly one **Routing Layer**, one **Routing Discipline**, and one **Routing Complexity** token, in that order, each emitted as a `key=value` pair separated by middle dots.
 - A **File Change Type** prefixes every `**Files Affected**` entry of a step; the paths of those entries also derive the step's **Routing Layer** and **Routing Discipline** (an `R` entry contributes its destination path), with the change-type token ignored by the derivation.
@@ -170,3 +174,4 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 - **"Testable Step" vs the dispatch it routes to** — `apply.md` used "testable" to mean both "has a RED block" and "gets two dispatches", which collapsed once a RED-carrying Step with no **Step Contract** was recognised. **Resolution:** "testable" describes only the RED block; **Split-Routed Step** is the term for the two-dispatch outcome, and the two are no longer synonyms.
 - **"Change type" vs "OpenSpec change"** — "change" already names the OpenSpec change object, so a bare "change type" (e.g. "tipo de cambio") is ambiguous between the file-level token and the change-level object. **Resolution:** the four per-file tokens are always called **File Change Type**; "change" alone always means the OpenSpec change, and the file-level term is never shortened.
 - **"Finding" across surfaces** — artifact reviews and the audit commands (`sai-5`/`sai-6`/`sai-7`/`sai-8`) both produce "findings", but with different severity vocabularies and identifier schemes: artifact reviews use `H1`/`M1`/`L1` identifiers on `High`/`Medium`/`Low`, while `review.md` uses `B`/`M`/`m`/`Q` sections (incl. `mMUT-N`) and the audit commands carry their own `Critical`-based severities. **Resolution:** **Review Finding** names the artifact-review item only; audit findings keep their own formats and are never called Review Findings.
+- **Schema template vs instruction output template** — both families are "the template" for the same report artifact: `openspec/schemas/sai-workflow/templates/{artifact}.md` is the CLI scaffold served by `openspec instructions`, while `sai/instructions/_templates/{artifact}-report.md` is the write-time contract fetched by the phase instruction. **Resolution:** the two are pinned to skeleton parity by **Report Template Parity** — they diverge only in placeholder syntax, guidance depth, and code-fence wrapping — and neither replaces the other.

@@ -1,6 +1,6 @@
 # Code Review — <!-- Feature Name -->
 
-**Spec:** `openspec/changes/<change-name>/proposal.md`  
+**Change:** `openspec/changes/<change-name>/`  
 **Branch reviewed:** `<current-branch>`  
 **Parent branch:** `<parent-branch>`  
 **Commits in scope:** <!-- N (first-sha..last-sha) -->  
@@ -50,17 +50,6 @@
 
 ---
 
-## Mutation Analysis (Pass 11)
-
-- **Status:** <!-- Ran / Skipped — skipped when the diff has no testable production code OR the repo has no test file -->
-- **Tool:** <!-- detected tool (Stryker/PIT/mutmut/...) / LLM-as-mutator / — if skipped -->
-- **Counts:** <!-- survived / killed / pre-check-failed / revert-failed (must sum to total decided) -->
-
-<!-- Surviving mutants are emitted as Major findings identified mMUT-N below.
-     Revert-failed mutants are Blockers. If Status is Skipped, state why and emit no mutation findings. -->
-
----
-
 ## Findings
 
 ### Blockers
@@ -102,6 +91,18 @@
 #### Q1 — <!-- Short title -->
 - **Location:** `path/to/file.ext:LINE` (or "general")
 - **Question:** <!-- What needs clarification and why the spec did not resolve it -->
+
+---
+
+## Mutation Analysis (Pass 11)
+
+- **Strategy:** <!-- Tier 1 — `{tool}` | Tier 2 — LLM-as-mutator -->
+- **Test command:** <!-- detected test command -->
+- **Mutations decided:** <!-- total decided -->
+- **Aggregate:** <!-- survived + killed + pre-check-failed + revert-failed = total decided -->
+
+<!-- Surviving mutants are emitted as Major findings identified mMUT-N below.
+     Revert-failed mutants are Blockers. If pass 11 is skipped, state why and emit no mutation findings. -->
 
 ---
 

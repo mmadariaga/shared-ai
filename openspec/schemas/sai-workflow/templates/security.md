@@ -1,6 +1,6 @@
 # Security Report — <!-- Feature Name -->
 
-**Spec:** `openspec/changes/<change-name>/proposal.md`  
+**Change:** `openspec/changes/<change-name>/`  
 **Scan type:** <!-- SAST | SCA | SAST+SCA -->  
 **Scope:** <!-- diff vs `<parent-branch>` | full repo | `<path>` -->  
 **Branch:** `<current-branch>`  
@@ -78,6 +78,48 @@
 - **Vulnerability:** <!-- brief description -->
 - **Fix version:** `<version>` (available: yes/no)
 - **Remediation:** <!-- upgrade to / replace with / pin override -->
+
+---
+
+## Supply Chain Hygiene
+
+> Include this section only if dependency manifests were modified in the diff.
+
+- **Lock files present:** <!-- yes/no — list missing -->
+- **GitHub Actions pinned to SHA:** <!-- yes/no — list violations -->
+- **Typosquatting / dependency confusion suspects:** <!-- none / list -->
+- **Abandoned dependencies:** <!-- none / list -->
+
+---
+
+## License Risk
+
+> Include this section only if dependency manifests were modified in the diff.
+
+| Package | License | Risk | Commercial Use |
+|---------|---------|------|----------------|
+| <!-- name --> | <!-- SPDX --> | <!-- Low/Medium/High --> | <!-- Permitted/Restricted/Prohibited --> |
+
+---
+
+## Policy Compliance
+
+> Include this section only if dependency manifests were modified in the diff OR if SAST findings map directly to a policy control.
+
+| Policy | Status | Notes |
+|--------|--------|-------|
+| OWASP Top 10 2025 | <!-- PASS/FAIL --> | <!-- categories --> |
+| PCI-DSS v4.0 | <!-- PASS/FAIL/N/A --> | <!-- requirements --> |
+| SANS/CWE Top 25 | <!-- PASS/FAIL --> | <!-- CWEs --> |
+| GDPR | <!-- PASS/FAIL/N/A --> | <!-- gaps --> |
+
+---
+
+## Acknowledged Trade-offs (from change artifacts)
+
+> Optional. Include only if `proposal.md` or `design.md` contain explicit security decisions you evaluated and accepted.
+
+- <!-- Item with artifact and section reference -->
 
 ---
 

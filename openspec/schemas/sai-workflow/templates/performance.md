@@ -1,6 +1,6 @@
 # Performance Report — <!-- Feature Name -->
 
-**Spec:** `openspec/changes/<change-name>/proposal.md`  
+**Change:** `openspec/changes/<change-name>/`  
 **Scope:** <!-- diff vs `<parent-branch>` | full repo | `<path>` -->  
 **Tiers audited:** <!-- backend / frontend / db / queue — list only those in scope -->  
 **Branch:** `<current-branch>`  
@@ -63,7 +63,7 @@
 
 ---
 
-## Acknowledged Trade-offs (from spec.md)
+## Acknowledged Trade-offs (from change artifacts)
 
 - <!-- Item explicitly accepted in spec.md, with spec section reference -->
 

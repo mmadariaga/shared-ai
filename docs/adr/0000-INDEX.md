@@ -103,10 +103,20 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0012 — Mutation Analysis (pass 11) as a dedicated protocol section in review.md](./0012-mutation-analysis-as-dedicated-protocol-section.md)
 - [0013 — Dedicated mMUT-N finding namespace and Mutation Analysis output section](./0013-mmut-n-finding-namespace-for-mutation-analysis.md) — **Amends** 0012
 - [0096 — Fail closed when dispatching owned worker sidecars](./0096-fail-closed-owned-worker-owner-dispatch.md) — Refs 0084, Refs 0085
+- [0106 — Keep both report template families with pinned skeleton parity](./0106-keep-both-report-template-families-pinned-parity.md)
+
+### `/sai-6-security`
+
+- [0106 — Keep both report template families with pinned skeleton parity](./0106-keep-both-report-template-families-pinned-parity.md)
 
 ### `/sai-7-performance`
 
 - [0097 — Route performance by continuation capability](./0097-route-performance-by-continuation-capability.md) — Refs 0082, Refs 0083, Refs 0093
+- [0106 — Keep both report template families with pinned skeleton parity](./0106-keep-both-report-template-families-pinned-parity.md)
+
+### `/sai-8-accessibility`
+
+- [0106 — Keep both report template families with pinned skeleton parity](./0106-keep-both-report-template-families-pinned-parity.md)
 
 ### `/sai-explore`
 
@@ -191,6 +201,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0098 — Register the performance worker through managed projections](./0098-register-performance-worker-through-managed-projections.md) — Refs 0084, Refs 0085, Refs 0096
 - [0099 — Terminal routing failure and explicit fresh dispatch](./0099-terminal-routing-failure-and-explicit-fresh-dispatch.md) — Refs 0075, Refs 0076, Refs 0086
 - [0100 — Neutral installed worker-binding destinations with harness-specific sources](./0100-neutral-installed-worker-binding-destinations.md) — Refs 0077, Refs 0084, Refs 0088
+- [0106 — Keep both report template families with pinned skeleton parity](./0106-keep-both-report-template-families-pinned-parity.md)
 
 ---
 

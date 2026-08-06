@@ -1,6 +1,6 @@
 # Accessibility Report — <!-- Feature Name -->
 
-**Spec:** `openspec/changes/<change-name>/proposal.md`  
+**Change:** `openspec/changes/<change-name>/`  
 **Standard:** WCAG 2.2 Level AA  
 **Scope:** <!-- diff vs `<parent-branch>` | full repo | `<path>` -->  
 **Mode:** <!-- Static | Static + Runtime -->  
@@ -58,7 +58,7 @@
 
 ---
 
-## Acknowledged Trade-offs (from spec.md)
+## Acknowledged Trade-offs (from change artifacts)
 
 - <!-- Item explicitly accepted in spec.md, with spec section reference -->
 
