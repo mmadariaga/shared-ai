@@ -193,25 +193,6 @@ The gate SHALL report every discarded item individually — the item and the rea
 - **WHEN** the user reimposes a previously discarded item on a later gate iteration
 - **THEN** the gate treats it as ordinary feedback and applies it, rather than silently discarding it again
 
-### Requirement: The Copilot inline feedback consumer remains unchanged
-
-Changes that let routed sai-1 and sai-2 coordinators own gate presentation while their workers process routed feedback SHALL NOT change the Copilot inline use of `sai/policies/artifact-feedback-gate.md`. Copilot inline behavior remains unchanged: it SHALL continue to own presentation, selective evaluation, edits, summary recomputation, and iteration state in the same inline agent context.
-
-#### Scenario: Copilot presents its first feedback gate
-
-- **WHEN** the Copilot inline path finishes writing `proposal.md` and `specs/**`
-- **THEN** it SHALL list exactly `proposal.md` and `specs/**`, present feedback before `Finish step`, mark only the first `Give feedback (Recommended)` option as recommended, and keep the existing option labels, descriptions, and native-picker behavior
-
-#### Scenario: Copilot applies mixed feedback inline
-
-- **WHEN** a Copilot inline sai-1 feedback turn contains legitimate and illegitimate items
-- **THEN** the Copilot inline agent SHALL edit only `proposal.md` and `specs/**` for legitimate items, report every discarded item with its reason, recompute the existing artifact-derived spec summary, increment its in-conversation iteration counter, and re-offer `Give more feedback` before `Finish step`
-
-#### Scenario: Copilot finishes the gate
-
-- **WHEN** the user selects `Finish step` in the Copilot inline sai-1 path
-- **THEN** the existing mandatory spec stop SHALL fire exactly once without writing approval metadata or entering a coordinator-worker lifecycle
-
 ### Requirement: Routed design adapts ownership without forking gate semantics
 
 The shared gate instruction, `sai/policies/artifact-feedback-gate.md`, SHALL remain the single source of artifact lists, option labels and order, recommendation-marker behavior, iteration semantics, selective feedback rules, summary placement, and proceed behavior for both sai-1 and sai-2. The routed design adapter MAY assign presentation state, including the single feedback-text prompt emission, to the coordinator and design-artifact evaluation and edits to the worker, but SHALL NOT duplicate or change those shared semantics.

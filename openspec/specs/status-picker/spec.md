@@ -32,7 +32,7 @@ On the zero-changes and exactly-one-change branches, `status-picker.md` SHALL be
 
 ### Requirement: status-picker 2+ branch offers "See all" as the first option
 
-On the two-or-more-changes branch, `status-picker.md` SHALL present a closed-choice prompt whose FIRST option is "See all", followed by one option per active change name in the order returned by `openspec list --json`. Selecting a specific change SHALL resolve that change name and fall through to the standard single-change `sai-status` panel, identical to the change-picker N branch. Selecting "See all" SHALL trigger the bulk status table. The prompt SHALL be presented through the harness's native option-picker where one exists, with a plain-text fallback listing "See all" as option 1 followed by the changes, identically across opencode, Claude Code, and GitHub Copilot.
+On the two-or-more-changes branch, `status-picker.md` SHALL present a closed-choice prompt whose FIRST option is "See all", followed by one option per active change name in the order returned by `openspec list --json`. Selecting a specific change SHALL resolve that change name and fall through to the standard single-change `sai-status` panel, identical to the change-picker N branch. Selecting "See all" SHALL trigger the bulk status table. The prompt SHALL be presented through the harness's native option-picker where one exists, with a plain-text fallback listing "See all" as option 1 followed by the changes, identically across opencode and Claude Code.
 
 #### Scenario: See all is the first option
 - **WHEN** `status-picker.md` runs and `openspec list --json` returns two or more changes
@@ -46,9 +46,9 @@ On the two-or-more-changes branch, `status-picker.md` SHALL present a closed-cho
 - **WHEN** the user selects the "See all" option
 - **THEN** the bulk status table is rendered for all active changes instead of a single-change panel
 
-#### Scenario: harness-agnostic presentation
-- **WHEN** the 2+ prompt is presented under opencode, Claude Code, or GitHub Copilot
-- **THEN** the option set and its semantics are identical across all three harnesses, using each harness's native option-picker with a plain-text fallback and no harness-specific branch
+#### Scenario: supported-harness presentation
+- **WHEN** the 2+ prompt is presented under opencode or Claude Code
+- **THEN** the option set and its semantics are identical across the two supported harnesses, using each harness's native option-picker with a plain-text fallback and no harness-specific branch
 
 ### Requirement: status-picker preserves the read-only invariant
 

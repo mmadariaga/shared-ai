@@ -25,11 +25,34 @@ The `uninstall` subcommand SHALL recognize exactly two flags — `--dry-run` and
 - **THEN** the flow prints an error naming the unrecognized flag, deletes nothing, and exits non-zero
 
 ### Requirement: symmetric deletion-set enumeration
-The uninstall deletion set SHALL be derived by symmetric enumeration from the same source→destination logic that produces the install copy list, computed against the same OS-aware base paths the installer uses. The deletion set SHALL NOT depend on any persisted install manifest. For every editor target the installer writes to, the deletion set SHALL contain exactly the destination file paths that the corresponding install function (`installClaude`, `installOpencode`, `installCopilot`) would write.
-
-#### Scenario: deletion set mirrors install destinations
+The uninstall deletion set SHALL be derived by symmetric enumeration from the same source-to-destination logic that produces the Claude Code and opencode install copy lists, computed against the same OS-aware base paths. It SHALL contain exactly the destinations those two install functions write and SHALL not enumerate or resolve a Copilot installation surface.
+#### Scenario: deletion set mirrors surviving install destinations
 - **WHEN** the uninstall flow computes its deletion set for a given editor target
-- **THEN** the set equals the exact destination paths the matching install function would produce for that target, using the same base-path resolution
+- **THEN** it contains the exact Claude Code and opencode destinations produced by their install functions
+- **AND** no Copilot destination is enumerated
+
+#### Scenario: Copilot enumeration is absent
+- **WHEN** uninstall runs after this change
+- **THEN** no `enumerateCopilot` function or Copilot base-path resolver participates in enumeration
+- **AND** the flow does not attempt to clean up orphaned Copilot files
+
+### Requirement: Copilot retirement is not a cleanup-only uninstall path
+
+The uninstall flow SHALL not retain a Copilot-only cleanup mode, legacy Copilot sweeper, or alternate Copilot path resolver. Machines upgraded without first running uninstall MAY retain orphaned Copilot files; the supported uninstall behavior remains limited to the surviving Claude Code and opencode inventories.
+
+#### Scenario: Upgrade skips prior uninstall
+- **WHEN** a user upgrades without uninstalling the previous Copilot-enabled release
+- **THEN** orphaned Copilot files are not treated as an uninstall error or cleanup obligation
+- **AND** no destructive Copilot cleanup is attempted
+
+### Requirement: Upgrade notice explains the required pre-upgrade uninstall
+
+The release documentation for this change SHALL tell existing GitHub Copilot users to run the current uninstall command before upgrading. The notice SHALL explain that skipping uninstall may leave orphaned Copilot files and that the new supported uninstall flow intentionally does not clean them up.
+
+#### Scenario: Existing Copilot user reads the upgrade notice
+- **WHEN** a user reads the release documentation for the harness retirement
+- **THEN** it instructs the user to run uninstall before upgrading
+- **AND** it states the consequence of skipping that step and the absence of a cleanup-only path
 
 #### Scenario: no manifest file is read or required
 - **WHEN** the uninstall flow runs on a machine that never wrote an install manifest
