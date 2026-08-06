@@ -4,8 +4,8 @@ Durable execution-observed facts about the shared-ai prompt and installer reposi
 
 ## Stack
 
-- **bin/install-flow.js**: Fresh opencode configuration installs must merge the managed-agent registry after copying the static config so newly registered workers are available while existing entries remain configurable.
-  *Observed:* sai-5-review-coordinator-worker-split — copying the static config alone omitted the review worker; merging managed agents made fresh-install registration and smoke checks pass.
+- **bin/install-flow.js**: Fresh opencode configuration installs must merge the binding-derived managed-agent registry after copying the static config, and must resolve that census before destination mutation so invalid bindings or defaults fail without partial writes.
+  *Observed:* derive-opencode-agent-census-from-bindings — the preflight preserved fresh-install registration and customized entries while keeping malformed census failures write-free.
 - **opencode wrapper metadata**: Wrapper-facing documentation and structural tests use both the human-readable `GLM 5.2` wording and the runtime model ID `opencode-go/glm-5.2` when documenting the declared runtime.
   *Observed:* simplify-routed-phase-coordination — replacing coordinator-profile assertions exposed the two representations; retaining both made the documentation and runtime-ID checks pass.
 - **configs/opencode.jsonc**: Nested low-cost opencode helper dispatch requires `subagent_depth: 2` and `opencode-go/glm-5.1` in the repository's live probe configuration.
@@ -35,6 +35,8 @@ Durable execution-observed facts about the shared-ai prompt and installer reposi
   *Observed:* feedback-gate-prompt-single-emission — updating stale lexical assertions kept the routed design contract and the full design suite aligned.
 - **test/install-opencode.test.js**: Registering a managed worker requires synchronized install, doctor, opencode configuration, and full-suite expectations.
   *Observed:* sai-8-accessibility-coordinator-worker-split — the accessibility worker registration exposed stale fixed lists and configuration fixtures; updating the related expectations restored all 427 tests.
+- **test/install-claude.test.js**: Derivation-failure coverage uses isolated binding and configuration filesystem probes rather than mutating the immutable registration defaults.
+  *Observed:* derive-opencode-agent-census-from-bindings — isolated probes exercised malformed census paths while keeping canonical defaults read-only.
 - **commands/claude/sai-explore.md**: Explore requires scoped `Bash(openspec:*)` and `Bash(git:*)` capabilities alongside its routed dispatch tools; bare shell and direct write capabilities remain forbidden.
   *Observed:* add-sai-explore-pipeline-supervision — capability-level assertions that preserved scoped Bash matched the required worker and research flow.
 - **commands/opencode/sai-explore.md**: Routed spec-worker behavior is enabled by fetching the existing `sai-1-spec-proposal-worker` skill; the thin wrapper does not need a literal task-dispatch token.
