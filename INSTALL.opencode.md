@@ -244,6 +244,16 @@ Installation preserves every existing agent definition by name and adds the repo
 
 This is the opencode harness adapter. Claude Code uses its managed worker agent and ownership sidecar, while GitHub Copilot keeps the inline implementation boundary for this slice because there is no portable coordinator-worker continuation contract. Copilot has subagent support; its inline boundary is a portability choice.
 
+### Deterministic routed worker contract prompts
+
+The installer owns a canonical `prompt` for each managed opencode worker. Every prompt uses that worker's exact contract key, for example `Fetch @sai/orchestration/workers/sai-6-security-worker.md and follow it exactly.`, and is evaluated before the worker receives its coordinator dispatch. The opencode Fetch resolver checks the project-local `.opencode/sai/orchestration/workers/sai-6-security-worker.md` candidate first and falls back to `~/.config/opencode/sai/orchestration/workers/sai-6-security-worker.md` only when the project-local contract is absent; the same rule applies to each of the seven managed worker keys.
+
+The installed binding also carries a literal worker-specific contract template before the opaque `InvocationEnvelope`. The registration prompt is installer-owned; the binding supplies membership and defense-in-depth validation, and neither surface infers the other surface's model, mode, variant, permissions, or envelope serialization.
+
+On a fresh or upgraded configuration, a missing managed worker receives its canonical registration, and an existing worker without a prompt receives only the missing canonical prompt. A non-empty user prompt, model, mode, variant, permissions, comments, unrelated agent fields, and other JSONC configuration remain unchanged. Doctor reports the canonical expected prompt from the same census while continuing to accept present user-customized worker entries by name.
+
+Claude Code continues to use managed worker definitions and Claude-native `Agent`/`SendMessage` bindings. GitHub Copilot continues to use its inline path and receives no routed worker binding or managed opencode registration.
+
 Automatic installation surgically merges `permission.external_directory["~/.config/opencode/sai/**"] = "allow"` into the selected OpenCode configuration. The permission trusts only the installed SAI prompt tree; it does not allow every external directory. This permission is separate from `permission.read`: read access alone does not authorize a tool to cross the workspace boundary.
 
 Automatic installation merges rather than overwrites user settings and preserves user comments.
