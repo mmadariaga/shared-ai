@@ -10,6 +10,9 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 **Architecture Snapshot**: "The concise `interfaces.md` subsection under **Target State** that inventories planned public surfaces, project-root-relative paths, and portable ASCII relationships or execution flows for design review."
 *Avoid*: architecture summary, architecture diagram, interface overview
 
+**Artifact Review**: "A read-only review of a change's OpenSpec artifacts — `proposal.md` and `specs/**` for sai-1, `design.md`, `tasks.md`, and `interfaces.md` for sai-2 — that produces structured findings with `High` / `Medium` / `Low` severities, run either manually through `sai-explore`'s post-crystallization review loop or by an independent pipeline reviewer."
+*Avoid*: artifact audit, artifact check, doc review, artifact review loop
+
 **Attempts Per Phase**: "Field 9 of the `/sai-4-apply` Subagent Report Contract — a list of `{phase, attempts, first_failure, note}` entries, one per verification phase the dispatch actually ran, where `attempts` counts command runs regardless of outcome and `first_failure` draws on a closed vocabulary, and whose absence can never block the workflow."
 *Avoid*: retries, retry count, field 9 notes, iteration log, attempt log
 
@@ -43,6 +46,9 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 **File Change Type**: "One of the four tokens (`A`, `M`, `D`, `R`) that prefixes each `**Files Affected**` entry of a `tasks.md` step, declaring what happens to the file in the step's commit — created, modified, deleted, or moved/renamed (an `R` entry carries the source path and the destination path in the form `R <source> -> <destination>`)."
 *Avoid*: change type, change-kind, file verb, action letter
 
+**Finding Identifier**: "The severity-prefixed label that identifies a **Review Finding** within a single review — the severity's initial followed by the finding's sequence within that severity (`H1`, `H2`, `M1`, `L1`) — derived from the finding's `Severity` field, which remains the source of truth."
+*Avoid*: finding ID, issue number, pass-local identifier, finding label
+
 **GREEN Conflict**: "The state where an Implementation Dispatch cannot make the test-writer's tests pass within bounded, test-file-untouching iteration, so it halts and reports to the coordinator for a human to decide whether the fault is the implementation, the test, or the interface."
 *Avoid*: test failure, GREEN failure, broken test, unpassable step
 
@@ -75,6 +81,9 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 
 **Recovery Dispatch**: "The single corrective subagent dispatch permitted by Known-False Report Recovery, constrained to the current Step and existing plan scope."
 *Avoid*: retry dispatch, second opinion, advisor dispatch
+
+**Review Finding**: "A single structured issue identified by an **Artifact Review**, carrying a severity-prefixed identifier, a `High`, `Medium`, or `Low` severity, artifact location, issue statement, and recommended correction."
+*Avoid*: review issue, review comment, audit finding
 
 **Review-Loop Token**: "The literal, English-invariant string `review-loop` that a user types in a `sai-explore` turn to enter the post-crystallization review loop directly, skipping the plain-text global sí/no invitation."
 *Avoid*: review keyword, review trigger, `/review-loop`, revisar, review command
@@ -131,6 +140,9 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 - A **Blind Test-Writer** and an **Implementation Dispatch** replace the single per-Step dispatch only for a **Split-Routed Step**; every other Step keeps one dispatch, including a Step with a RED block whose **Step Contract** is unavailable.
 - A **Step Contract** that is missing for a Step routes that Step to a single dispatch (announced by a coordinator trace line); a **Step Contract** that is ambiguous — several `## Step N` matching the same `N` — is a desync and STOPs the run.
 - A **Review-Loop Token** firing enters the per-change review loop over the **Tracked Crystallized Set**; when that set is empty the token yields a one-line acknowledgment instead of any iteration.
+- A **Review-Loop Token** fires the post-crystallization loop, and each `Review sai-1's artifacts` / `Review sai-2's artifacts` transaction in it is an **Artifact Review**.
+- An **Artifact Review** produces zero or more **Review Finding**s, each carrying a **Finding Identifier** derived from its severity within that review.
+- A **Review Finding** carries exactly one **Finding Identifier**, derived from its `Severity` field; identifiers never imply identity across reviews.
 - A **Tracked Crystallized Set** gains a name only when a crystallization turn emits one, ignores duplicate later emissions, and starts empty in every new chat.
 - A **Routing Line** contains exactly one **Routing Layer**, one **Routing Discipline**, and one **Routing Complexity** token, in that order, each emitted as a `key=value` pair separated by middle dots.
 - A **File Change Type** prefixes every `**Files Affected**` entry of a step; the paths of those entries also derive the step's **Routing Layer** and **Routing Discipline** (an `R` entry contributes its destination path), with the change-type token ignored by the derivation.
@@ -157,3 +169,4 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 - **Change-level vs step-level complexity** — both **Proposal Complexity** and **Routing Complexity** are spelled `low|medium|high`, so a bare "complexity" is ambiguous about which artifact and which granularity is meant. **Resolution:** the shared vocabulary is deliberate (one mapping table serves both), so the tokens are not renamed; instead the qualified terms are always used — **Proposal Complexity** for the per-change token on `proposal.md`, **Routing Complexity** for the per-step token on `tasks.md`. A divergence between the two is expected and is never reported as an inconsistency.
 - **"Testable Step" vs the dispatch it routes to** — `apply.md` used "testable" to mean both "has a RED block" and "gets two dispatches", which collapsed once a RED-carrying Step with no **Step Contract** was recognised. **Resolution:** "testable" describes only the RED block; **Split-Routed Step** is the term for the two-dispatch outcome, and the two are no longer synonyms.
 - **"Change type" vs "OpenSpec change"** — "change" already names the OpenSpec change object, so a bare "change type" (e.g. "tipo de cambio") is ambiguous between the file-level token and the change-level object. **Resolution:** the four per-file tokens are always called **File Change Type**; "change" alone always means the OpenSpec change, and the file-level term is never shortened.
+- **"Finding" across surfaces** — artifact reviews and the audit commands (`sai-5`/`sai-6`/`sai-7`/`sai-8`) both produce "findings", but with different severity vocabularies and identifier schemes: artifact reviews use `H1`/`M1`/`L1` identifiers on `High`/`Medium`/`Low`, while `review.md` uses `B`/`M`/`m`/`Q` sections (incl. `mMUT-N`) and the audit commands carry their own `Critical`-based severities. **Resolution:** **Review Finding** names the artifact-review item only; audit findings keep their own formats and are never called Review Findings.

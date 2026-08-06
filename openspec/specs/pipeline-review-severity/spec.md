@@ -56,24 +56,32 @@ A pipeline-driven artifact review pass SHALL satisfy the severity stop condition
 
 ### Requirement: Severity levels have shared pipeline artifact criteria
 
-The pipeline artifact reviewer SHALL assign `High` when leaving the finding uncorrected would allow a materially incorrect, incomplete, or out-of-scope implementation, violate an explicit constraint, preserve a normative contradiction, or leave required behavior too untestable to implement reliably. It SHALL assign `Medium` to a material clarity, coverage, consistency, or testability weakness that should be corrected but does not, on the reviewed evidence, prevent a bounded correct implementation or violate explicit scope. It SHALL assign `Low` to a precision, readability, or maintainability improvement with no material effect on implementation correctness or scope.
+The pipeline artifact reviewer SHALL assign `High`, `Medium`, or `Low` per the assignment criteria of the shared review finding contract defined by the `review-finding-format` capability and single-sourced in `sai/policies/artifact-review-contract.md`. The pipeline SHALL use the same criteria every artifact review uses; it SHALL NOT define a pipeline-specific variant of the criteria inline.
 
 #### Scenario: finding can materially misdirect implementation
-- **WHEN** an artifact defect could authorize materially incorrect, incomplete, or out-of-scope implementation if left unchanged
-- **THEN** the reviewer assigns `High`
+- **WHEN** an artifact defect, left uncorrected, would allow a materially incorrect, incomplete, or out-of-scope implementation
+- **THEN** the reviewer assigns `High` per the shared contract criteria
 
 #### Scenario: finding is material but non-blocking
 - **WHEN** an artifact has a meaningful clarity, coverage, consistency, or testability weakness but still supports bounded correct implementation
-- **THEN** the reviewer assigns `Medium`
+- **THEN** the reviewer assigns `Medium` per the shared contract criteria
 
 #### Scenario: finding has no material implementation effect
 - **WHEN** a finding improves precision, readability, or maintainability without materially affecting implementation correctness or scope
-- **THEN** the reviewer assigns `Low`
+- **THEN** the reviewer assigns `Low` per the shared contract criteria
 
-### Requirement: Pipeline review severity is locally scoped
+### Requirement: Artifact review severity vocabulary scope
 
-The `High`, `Medium`, and `Low` vocabulary SHALL apply only to pipeline-driven artifact review. It SHALL NOT alter the manual review-loop output format or replace the severity vocabularies of `sai-5-review`, `sai-6-security`, or `sai-7-performance`.
+The `High`, `Medium`, and `Low` vocabulary SHALL apply to artifact review — pipeline-driven artifact review and the `sai-explore` manual review loop — per the shared `review-finding-format` contract. It SHALL NOT replace the severity vocabularies of `sai-5-review`, `sai-6-security`, `sai-7-performance`, or `sai-8-accessibility`.
 
-#### Scenario: review runs outside pipeline artifact supervision
-- **WHEN** a manual review loop or `sai-5-review`, `sai-6-security`, or `sai-7-performance` runs
+#### Scenario: pipeline review uses the shared vocabulary
+- **WHEN** a pipeline-driven artifact review runs
+- **THEN** it assigns severities from the shared vocabulary per the shared contract
+
+#### Scenario: manual review loop uses the shared vocabulary
+- **WHEN** the manual post-crystallization review loop reviews artifacts
+- **THEN** it uses the same shared `High`, `Medium`, and `Low` vocabulary per the `explore-post-crystallization-review-loop` capability
+
+#### Scenario: audit commands retain their own vocabularies
+- **WHEN** `sai-5-review`, `sai-6-security`, `sai-7-performance`, or `sai-8-accessibility` runs
 - **THEN** that command retains its existing finding format and severity vocabulary

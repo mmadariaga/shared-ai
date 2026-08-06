@@ -1,4 +1,10 @@
-## ADDED Requirements
+# explore-post-crystallization-review-loop Specification
+
+## Purpose
+
+Define the user-triggered, read-only post-crystallization review loop in `sai-explore` over the changes crystallized in the current chat.
+
+## Requirements
 
 ### Requirement: Scope limited to sai-explore
 
@@ -225,3 +231,30 @@ When the post-crystallization review loop terminates and at least one review (`R
 - **WHEN** the user explicitly requests re-crystallization after the reviews
 - **THEN** that user-initiated request routes through the crystallization language gate and a revised `Ready to Propose` block may be emitted
 - **AND** this does not count as the loop proposing a new command prompt
+
+### Requirement: Manual review output follows the shared finding contract
+
+Each review transaction produced by the loop (`Review sai-1's artifacts` or `Review sai-2's artifacts`) SHALL structure its output per the shared review finding contract of the `review-finding-format` capability: findings carry severity-prefixed identifiers and severities from the shared vocabulary, and the review SHALL close with the contract's `Summary:` tally line. The output format SHALL NOT alter the loop's read-only constraint, its navigation, its language-gate reuse, or its silent-close behavior, all of which remain as defined in this capability.
+
+#### Scenario: findings follow the shared contract
+
+- **WHEN** the loop reviews a change's `proposal.md` and `specs/**` or its `design.md`, `tasks.md`, and `interfaces.md`
+- **THEN** every finding carries a severity-prefixed identifier and a severity per the shared contract
+
+#### Scenario: review closes with a summary tally
+
+- **WHEN** the loop completes a review transaction over available artifacts
+- **THEN** the review closes with the contract's `Summary:` tally line
+- **AND** the counts match the review's findings
+
+#### Scenario: absent artifacts produce no review content
+
+- **WHEN** a requested artifact does not exist for the change
+- **THEN** the agent reports the absence per the existing rule
+- **AND** it produces no findings and no `Summary:` line
+
+#### Scenario: read-only and silent-close are unchanged
+
+- **WHEN** the loop produces review output per the shared contract
+- **THEN** no artifact is created, modified, or deleted
+- **AND** the loop still closes silently after at least one review without proposing a new command prompt

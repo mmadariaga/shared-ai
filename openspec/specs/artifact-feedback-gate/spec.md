@@ -326,14 +326,15 @@ The gate SHALL track the iteration that drives the iteration-aware feedback opti
 
 ### Requirement: Machine review findings use a pre-gate adapter
 
-The shared artifact feedback gate capability SHALL define one machine-feedback adapter for supervised sai-1 review findings. For every completed pass in the bounded convergence loop, the adapter SHALL accept that pass's structured findings array, continue each finding to the same spec-proposal worker, and apply the gate's canonical per-item split, legitimacy judgment, artifact-only edit, discard-reason, and decision-summary recomputation rules. These semantics SHALL remain single-sourced in the shared gate instruction and SHALL NOT be restated in explore or reviewer instructions.
+The shared artifact feedback gate capability SHALL define one machine-feedback adapter for supervised sai-1 review findings. For every completed pass in the bounded convergence loop, the adapter SHALL accept that pass's structured findings array — each finding conforming to the shared review finding contract of the `review-finding-format` capability — continue each finding to the same spec-proposal worker, and apply the gate's canonical per-item split, legitimacy judgment, artifact-only edit, discard-reason, and decision-summary recomputation rules. These semantics and the finding shape SHALL remain single-sourced in the shared gate instruction and the shared review finding contract and SHALL NOT be restated in explore or reviewer instructions.
 
 Machine-feedback processing is not a user feedback-selection turn. It SHALL NOT present the gate picker, emit the empty-turn prompt for user feedback text, increment the in-conversation iteration counter, or execute the proceed branch. The ordinary user-facing gate SHALL be deferred while another review pass is required and SHALL be presented for the first time at iteration 0 only after the convergence loop converges, exhausts its three-pass cap, or is interrupted by `review_failed` or `review_cancelled`. Its first options SHALL remain `Give feedback (Recommended)` before `Finish step`.
 
 #### Scenario: machine findings are accepted for evaluation
 
 - **WHEN** a supervised sai-1 independent reviewer returns one or more structured findings
-- **THEN** the shared machine-feedback adapter sends each finding to the same spec-proposal worker for canonical per-item evaluation
+- **THEN** each finding conforms to the shared review finding contract of the `review-finding-format` capability
+- **AND** the shared machine-feedback adapter sends each finding to the same spec-proposal worker for canonical per-item evaluation
 - **AND** accepted edits stay within `proposal.md` and `specs/**`
 - **AND** every discarded finding is reported with its specific reason
 

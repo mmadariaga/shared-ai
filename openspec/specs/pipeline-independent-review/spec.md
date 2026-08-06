@@ -32,11 +32,12 @@ The reviewer SHALL be a fresh subagent given only the emitted crystallized block
 
 ### Requirement: Review findings pass through the artifact feedback gate
 
-The reviewer SHALL return each finding as a separate item containing an identifier, a `High`, `Medium`, or `Low` severity, artifact location, issue statement, and recommended correction. Every actionable finding from every completed pass SHALL be supplied to the same spec-proposal worker through the artifact feedback gate capability's machine-feedback adapter. The pipeline SHALL NOT edit an artifact directly from reviewer output. After convergence or cap exhaustion, the normal user-facing artifact feedback gate SHALL be presented at iteration 0, and every question raised while processing findings or presenting that gate SHALL be escalated to the user.
+The reviewer SHALL return each finding as a separate item conforming to the shared review finding contract of the `review-finding-format` capability. Every actionable finding from every completed pass SHALL be supplied to the same spec-proposal worker through the artifact feedback gate capability's machine-feedback adapter. The pipeline SHALL NOT edit an artifact directly from reviewer output. After convergence or cap exhaustion, the normal user-facing artifact feedback gate SHALL be presented at iteration 0, and every question raised while processing findings or presenting that gate SHALL be escalated to the user.
 
 #### Scenario: reviewer returns actionable findings
 - **WHEN** the independent reviewer identifies one or more actionable findings
-- **THEN** the findings are processed through the artifact feedback gate capability's machine-feedback adapter
+- **THEN** each finding carries a severity-prefixed identifier per the shared contract
+- **AND** the findings are processed through the artifact feedback gate capability's machine-feedback adapter
 - **AND** all accepted edits are made by the spec-proposal worker
 - **AND** discarded findings are reported with specific reasons
 - **AND** machine-fed processing neither presents nor advances the user-facing gate
@@ -46,11 +47,6 @@ The reviewer SHALL return each finding as a separate item containing an identifi
 - **WHEN** the independent reviewer finds no actionable issue
 - **THEN** no artifact edit is made on the reviewer's behalf
 - **AND** the convergence loop terminates without another review pass
-- **AND** the normal user-facing artifact feedback gate is still presented as `Give feedback (Recommended)` at iteration 0
-
-#### Scenario: reviewer returns no actionable findings
-- **WHEN** the independent reviewer finds no actionable issue
-- **THEN** no artifact edit is made on the reviewer's behalf
 - **AND** the normal user-facing artifact feedback gate is still presented as `Give feedback (Recommended)` at iteration 0
 
 #### Scenario: finding processing requires user input
