@@ -539,12 +539,17 @@ function sha256Buffer(value) {
   return crypto.createHash('sha256').update(value).digest('hex');
 }
 
-function installClaudeManagedWorker(targetPath, agentName, ownerName) {
-  const source = path.join(REPOSITORY_ROOT, 'agents', 'claude', agentName);
-  const agentsDir = path.join(targetPath, 'agents');
-  const destination = path.join(agentsDir, agentName);
+function ownedManagedWorkerInstaller(projection, options = {}) {
+  void options;
+  const agentName = path.basename(projection.destinationPath);
+  const ownerName = OWNER_BY_CLAUDE_AGENT[agentName];
+  if (!ownerName) {
+    throw new Error(`No owner sidecar registered for managed agent ${agentName}.`);
+  }
+  const agentsDir = path.dirname(projection.destinationPath);
+  const destination = projection.destinationPath;
   const ownerPath = path.join(agentsDir, ownerName);
-  const sourceBytes = fs.readFileSync(source);
+  const sourceBytes = fs.readFileSync(projection.sourcePath);
   const managedHash = sha256Buffer(sourceBytes);
 
   ensureDir(agentsDir);
@@ -556,14 +561,10 @@ function installClaudeManagedWorker(targetPath, agentName, ownerName) {
 
   const destinationHash = sha256Buffer(fs.readFileSync(destination));
   if (destinationHash !== managedHash) {
-    throw new Error(`Incompatible Claude agent at ${destination}. Rename or remove the conflicting definition, then retry.`);
+    throw new Error(`Incompatible managed agent at ${destination}. Rename or remove the conflicting definition, then retry.`);
   }
 
   return fs.existsSync(ownerPath) ? 'reused-owned' : 'reused-user-owned';
-}
-
-function installClaudeImplementationWorker(targetPath) {
-  return installClaudeManagedWorker(targetPath, CLAUDE_IMPLEMENTATION_WORKER_AGENT, CLAUDE_IMPLEMENTATION_WORKER_OWNER);
 }
 
 function destinationRoots(harness, roots) {
@@ -576,12 +577,7 @@ function installProjection(projection, targetPath) {
     return;
   }
   if (projection.strategy === 'owned-copy') {
-    const agentName = path.basename(projection.destinationPath);
-    const ownerName = OWNER_BY_CLAUDE_AGENT[agentName];
-    if (!ownerName) {
-      throw new Error(`No Claude owner sidecar registered for owned agent ${agentName}.`);
-    }
-    installClaudeManagedWorker(targetPath, agentName, ownerName);
+    ownedManagedWorkerInstaller(projection);
     return;
   }
   copy(projection.sourcePath, projection.destinationPath);
@@ -1006,11 +1002,11 @@ module.exports = {
   inspectManagedWorkerMigration,
   migrateManagedWorkerIdentity,
   cleanupRetiredProjections,
+  installProjection,
+  ownedManagedWorkerInstaller,
   OPENCODE_REGISTRATION_DEFAULTS,
   getOpencodeManagedAgents,
   sha256Buffer,
-  installClaudeImplementationWorker,
-  installClaudeManagedWorker,
   __test: {
     deriveOpencodeAgentCensus,
     mergeOpencodeAgents,

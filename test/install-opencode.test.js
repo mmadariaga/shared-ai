@@ -6,9 +6,12 @@ const path = require('path');
 const os = require('os');
 const fs = require('fs');
 const childProcess = require('child_process');
+const crypto = require('crypto');
 
 const {
   installOpencode,
+  installClaude,
+  installProjection,
   copyOpencodeConfig,
   OPENCODE_INSTALL_CMD,
   OPENCODE_MANAGED_AGENTS,
@@ -1614,4 +1617,128 @@ test('Step 2 installation guide contains the canonical narrow restriction templa
   assert.match(OPENCODE_INSTALL_GUIDE, /effective.*allow.*without a prompt/is);
   assert.match(OPENCODE_INSTALL_GUIDE, /\bask\b.*matching install notice.*runtime prompt/is);
   assert.match(OPENCODE_INSTALL_GUIDE, /\bdeny\b.*matching install notice.*runtime (?:prompt|block)/is);
+});
+
+// --- Step 1: owned-copy installer path harness-neutrality ---
+
+const STEP_1_SCRATCH_DIR = path.join(__dirname, '..', '.tmp', 'opencode-markdown-worker-agents');
+test.after(() => {
+  fs.rmSync(STEP_1_SCRATCH_DIR, { recursive: true, force: true });
+});
+
+function syntheticOpencodeAgentBytes(workerName) {
+  return [
+    '---',
+    'mode: subagent',
+    'model: opencode-go/glm-5.2',
+    'permission:',
+    '  task:',
+    "    '*': deny",
+    '    explore: allow',
+    '---',
+    `# Synthetic opencode source agent: ${workerName}`,
+    '',
+    `SYNTHETIC-OPENCODE-SOURCE-BYTES-${workerName}`,
+    '',
+  ].join('\n');
+}
+
+function sha256Hex(content) {
+  return crypto.createHash('sha256').update(content).digest('hex');
+}
+
+function ownerSidecarHash(agentPath) {
+  const sidecarPath = path.join(path.dirname(agentPath), `.${path.basename(agentPath, '.md')}.owner.json`);
+  const sidecar = JSON.parse(fs.readFileSync(sidecarPath, 'utf8'));
+  const hashes = Object.values(sidecar).filter(value => typeof value === 'string' && /^[0-9a-f]{64}$/.test(value));
+  assert.equal(hashes.length, 1, `owner sidecar should record exactly one sha256 hash (${sidecarPath})`);
+  return hashes[0];
+}
+
+function ownedCopyProjection(targetPath, agentName) {
+  return {
+    strategy: 'owned-copy',
+    harness: 'opencode',
+    sourcePath: path.join(targetPath, 'sources', agentName),
+    destinationPath: path.join(targetPath, 'agents', agentName),
+  };
+}
+
+test('Step 1 owned-copy projection installs the declared opencode source bytes', () => {
+  fs.mkdirSync(STEP_1_SCRATCH_DIR, { recursive: true });
+  const targetPath = fs.mkdtempSync(path.join(STEP_1_SCRATCH_DIR, 'opencode-owned-bytes-'));
+  const agentName = 'sai-5-review-worker.md';
+  const projection = ownedCopyProjection(targetPath, agentName);
+  const opencodeBytes = syntheticOpencodeAgentBytes('sai-5-review-worker');
+  try {
+    fs.mkdirSync(path.dirname(projection.sourcePath), { recursive: true });
+    fs.mkdirSync(path.dirname(projection.destinationPath), { recursive: true });
+    fs.writeFileSync(projection.sourcePath, opencodeBytes);
+    installProjection(projection, targetPath);
+    assert.deepEqual(
+      fs.readFileSync(projection.destinationPath, 'utf8'),
+      opencodeBytes,
+      'specs/managed-worker-registry/spec.md: the owned-copy install must write the declared opencode source bytes, not the Claude counterpart',
+    );
+  } finally {
+    fs.rmSync(targetPath, { recursive: true, force: true });
+  }
+});
+
+test('Step 1 owned-copy projection sidecar records the declared source hash', () => {
+  fs.mkdirSync(STEP_1_SCRATCH_DIR, { recursive: true });
+  const targetPath = fs.mkdtempSync(path.join(STEP_1_SCRATCH_DIR, 'opencode-owned-hash-'));
+  const agentName = 'sai-5-review-worker.md';
+  const projection = ownedCopyProjection(targetPath, agentName);
+  const opencodeBytes = syntheticOpencodeAgentBytes('sai-5-review-worker');
+  try {
+    fs.mkdirSync(path.dirname(projection.sourcePath), { recursive: true });
+    fs.mkdirSync(path.dirname(projection.destinationPath), { recursive: true });
+    fs.writeFileSync(projection.sourcePath, opencodeBytes);
+    installProjection(projection, targetPath);
+    assert.equal(
+      ownerSidecarHash(projection.destinationPath),
+      sha256Hex(fs.readFileSync(projection.sourcePath)),
+      'specs/managed-worker-registry/spec.md: the owner sidecar must record the declared source hash, not the Claude counterpart hash',
+    );
+  } finally {
+    fs.rmSync(targetPath, { recursive: true, force: true });
+  }
+});
+
+test('Step 1 unknown owned agent raises a harness-neutral owner error', () => {
+  fs.mkdirSync(STEP_1_SCRATCH_DIR, { recursive: true });
+  const targetPath = fs.mkdtempSync(path.join(STEP_1_SCRATCH_DIR, 'opencode-owned-unknown-'));
+  const agentName = 'sai-9-unknown-worker.md';
+  const projection = ownedCopyProjection(targetPath, agentName);
+  try {
+    fs.mkdirSync(path.dirname(projection.sourcePath), { recursive: true });
+    fs.mkdirSync(path.dirname(projection.destinationPath), { recursive: true });
+    fs.writeFileSync(projection.sourcePath, syntheticOpencodeAgentBytes('sai-9-unknown-worker'));
+    assert.throws(
+      () => installProjection(projection, targetPath),
+      /No owner sidecar registered for managed agent/,
+      'specs/managed-worker-registry/spec.md: unknown owned agents must surface a harness-neutral owner error',
+    );
+  } finally {
+    fs.rmSync(targetPath, { recursive: true, force: true });
+  }
+});
+
+test('Step 1 Claude owned-copy rows remain byte-preserving with the same managed hash', () => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-claude-owned-bytes-'));
+  try {
+    installClaude(tmpDir);
+    for (const workerName of CURRENT_CENSUS) {
+      const agentPath = path.join(tmpDir, 'agents', `${workerName}.md`);
+      const repoAgentPath = path.join(__dirname, '..', 'agents', 'claude', `${workerName}.md`);
+      assert.ok(fs.existsSync(repoAgentPath), `${workerName} should have a Claude source agent`);
+      assert.deepEqual(fs.readFileSync(agentPath), fs.readFileSync(repoAgentPath),
+        `specs/managed-worker-registry/spec.md: ${workerName} must remain byte-identical to its Claude source`);
+      assert.equal(ownerSidecarHash(agentPath), sha256Hex(fs.readFileSync(agentPath)),
+        `specs/managed-worker-registry/spec.md: ${workerName} owner sidecar must record the managed hash`);
+    }
+  } finally {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
 });
