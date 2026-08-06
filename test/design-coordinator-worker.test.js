@@ -533,8 +533,25 @@ test('Step 5 documentation records manifest projections and routed-source bounda
   }
   assert.match(agents, /sai\/orchestration\//);
   assert.match(readme, /shared Orchestration Core/i);
-  assert.match(claude, /Claude-only routed bindings/i);
-  assert.match(opencode, /opencode-only routed bindings/i);
+  assert.match(claude, /Claude routed worker bindings/i);
+  assert.match(opencode, /opencode routed worker bindings/i);
+});
+
+test('Step 3 documentation names only routed Claude Code and opencode support', () => {
+  const documentation = [
+    'README.md',
+    'AGENTS.md',
+    'INSTALL.claude.md',
+    'INSTALL.opencode.md',
+  ].map(artifact).join('\n');
+
+  assert.match(documentation, /Claude Code/);
+  assert.match(documentation, /opencode/);
+  assert.match(documentation, /routed/);
+  assert.match(documentation, /existing GitHub Copilot users must run the current uninstall command before upgrading/i);
+  assert.match(documentation, /orphaned Copilot files/i);
+  assert.doesNotMatch(documentation, /Inline Coordinator Adapter|inline-invocation\.md/i);
+  assert.doesNotMatch(documentation, /commands\/copilot|skills\/copilot|agents\/copilot|INSTALL\.copilot/i);
 });
 
 // ─── Step 1: preservation-first legacy identity migration ───────────────────

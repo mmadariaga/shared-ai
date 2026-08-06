@@ -9,7 +9,7 @@ const path = require('path');
 const { loadInstallManifest, expandInstallManifest } = require('../bin/install-manifest.js');
 const { expandRetirementManifest } = require('../bin/install-manifest.js');
 
-const HARNESSes = ['claude', 'opencode', 'copilot'];
+const HARNESSES = ['claude', 'opencode'];
 const HASH = 'a'.repeat(64);
 
 function destinationRoot(prefix) {
@@ -31,14 +31,14 @@ function retirementManifest() {
           id: 'claude-orchestration-loader',
           source: 'sai/orchestration/claude-loader.md',
           destination: { class: 'sai', path: 'orchestration/claude-loader.md' },
-          harnesses: HARNESSes,
+           harnesses: HARNESSES,
           managedHashes: [HASH],
         },
         {
           id: 'opencode-orchestration-loader',
           source: 'sai/orchestration/opencode-loader.md',
           destination: { class: 'sai', path: 'orchestration/opencode-loader.md' },
-          harnesses: HARNESSes,
+           harnesses: HARNESSES,
           managedHashes: [HASH],
         },
       ],
@@ -50,7 +50,7 @@ test('Step 2 retirement loaders have one sai record per loader for every harness
   assert.equal(manifest.retirements.length, 2);
   for (const retirement of manifest.retirements) {
     assert.equal(retirement.destination.class, 'sai');
-    assert.deepEqual(retirement.harnesses, HARNESSes);
+    assert.deepEqual(retirement.harnesses, HARNESSES);
     assert.ok(retirement.managedHashes.length > 0);
     assert.ok(retirement.managedHashes.every(hash => /^[a-f0-9]{64}$/.test(hash)));
   }
@@ -80,7 +80,7 @@ test('malformed retirement loaders fail before destination mutation', () => {
 
 test('retirement expansion returns both loader records for each harness', () => {
   const manifest = retirementManifest();
-  for (const harness of HARNESSes) {
+  for (const harness of HARNESSES) {
     const records = expandRetirementManifest(manifest, {
       harness,
       repoRoot: __dirname,
@@ -94,7 +94,7 @@ test('retirement expansion returns both loader records for each harness', () => 
   }
 });
 
-test('active expansion excludes retirement loaders and keeps Copilot inline orchestration ownership sole', () => {
+test('active expansion excludes retirement loaders and retired inline orchestration assets', () => {
   const repoRoot = path.join(__dirname, '..');
   const manifest = loadInstallManifest(repoRoot);
   const roots = destinationRoot('retirement-active');
@@ -107,12 +107,8 @@ test('active expansion excludes retirement loaders and keeps Copilot inline orch
     assert.equal(active.some(record => /orchestration[\\/](?:claude|opencode)-loader\.md$/.test(record.sourcePath)), false);
   }
 
-  const copilot = manifest.projections.filter(projection =>
-    projection.harnesses.includes('copilot') && projection.source.startsWith('sai/orchestration/')
-  );
-  assert.deepEqual(copilot.map(projection => projection.source), [
-    'sai/orchestration/inline-invocation.md',
-  ]);
+  assert.equal(manifest.projections.some(projection => projection.harnesses.includes('copilot')), false);
+  assert.equal(manifest.projections.some(projection => projection.source === 'sai/orchestration/inline-invocation.md'), false);
 });
 
 test('grouped design and implementation phase assets preserve their former source contracts', () => {

@@ -24,7 +24,7 @@ npx github:mmadariaga/shared-ai
 npx github:mmadariaga/shared-ai setup /path/to/your/project
 ```
 
-Step 1 expands `sai/install-manifest.json` and copies the opencode projection to `~/.config/opencode/`. It includes opencode commands, the complete recursively projected `sai/instructions/` tree including the canonical project-agnostic `sai/instructions/_templates/adr-index.md`, `sai/policies/`, and compatibility assets, the shared Orchestration Core contracts, only the opencode routed worker bindings, opencode skills, and the managed configuration projection. Opencode loads routed workers directly from the neutral installed binding paths. Claude Code receives its own harness-selected routed bindings; GitHub Copilot remains inline and receives no routed binding or proxy retirement. Step 2 verifies the openspec CLI, runs `openspec init --tools opencode` if needed, sets `schema: sai-workflow` in `openspec/config.yaml`, and copies the schema templates into the project. `doctor` and `uninstall` use the same manifest projection.
+Step 1 expands `sai/install-manifest.json` and copies the opencode projection to `~/.config/opencode/`. It includes opencode commands, the complete recursively projected `sai/instructions/` tree including the canonical project-agnostic `sai/instructions/_templates/adr-index.md`, `sai/policies/`, `sai/compat/`, the shared Orchestration Core contracts, opencode routed worker bindings, opencode skills, and the managed configuration projection. Opencode loads routed workers directly from the neutral installed binding paths; Claude Code receives its own harness-selected routed bindings. Step 2 verifies the openspec CLI, runs `openspec init --tools opencode` if needed, sets `schema: sai-workflow` in `openspec/config.yaml`, and copies the schema templates into the project. `doctor` and `uninstall` use the same manifest projection.
 
 ## Manual installation
 
@@ -36,8 +36,7 @@ Step 1 expands `sai/install-manifest.json` and copies the opencode projection to
 ### Linux / macOS
 
 ```bash
-# This is the opencode adapter. Claude Code installs managed worker agents,
-# and GitHub Copilot retains inline design and implementation adapters.
+# Opencode uses namespaced worker entries; Claude Code installs managed worker agents.
 # Copy commands
 mkdir -p ~/.config/opencode/commands
 cp commands/opencode/*.md ~/.config/opencode/commands/
@@ -135,8 +134,7 @@ fi
 ### Windows (PowerShell)
 
 ```powershell
-# This is the opencode adapter. Claude Code installs managed worker agents,
-# and GitHub Copilot retains inline design and implementation adapters.
+# Opencode uses namespaced worker entries; Claude Code installs managed worker agents.
 # Copy commands
 $configDir = "$env:USERPROFILE\.config\opencode"
 New-Item -ItemType Directory -Force -Path "$configDir\commands"
@@ -242,7 +240,7 @@ The canonical opencode sample sets `subagent_depth: 2`, uses `opencode-go/glm-5.
 
 Installation preserves every existing agent definition by name and adds the repository default only when a name is absent. Existing `sai-3-implementation-worker` values, including model, variant, mode, and permissions, govern runtime dispatch; Kimi K2.6 is only the bootstrap default for a missing entry. A fully populated configuration is not rewritten. Parseable JSON/JSONC files retain comments, formatting, unrelated entries, and `opencode.json` precedence; malformed roots or agent maps remain unchanged and receive the existing manual-guidance fallback. Claude worker files and ordinary managed destinations retain their collision protection. Uninstall preserves opencode configuration under the existing config-merge exclusion. The opencode routed phases run under the active primary agent, which must permit native question and numbered-worker task dispatch; no separate coordinator profile is installed. Restart opencode after configuration changes.
 
-This is the opencode harness adapter. Claude Code uses its managed worker agent and ownership sidecar, while GitHub Copilot keeps the inline implementation boundary for this slice because there is no portable coordinator-worker continuation contract. Copilot has subagent support; its inline boundary is a portability choice.
+Claude Code uses its managed worker agent and ownership sidecar, while opencode uses namespaced routed worker entries.
 
 ### Deterministic routed worker contract prompts
 
@@ -252,7 +250,7 @@ The installed binding also carries a literal worker-specific contract template b
 
 On a fresh or upgraded configuration, a missing managed worker receives its canonical registration, and an existing worker without a prompt receives only the missing canonical prompt. A non-empty user prompt, model, mode, variant, permissions, comments, unrelated agent fields, and other JSONC configuration remain unchanged. Doctor reports the canonical expected prompt from the same census while continuing to accept present user-customized worker entries by name.
 
-Claude Code continues to use managed worker definitions and Claude-native `Agent`/`SendMessage` bindings. GitHub Copilot continues to use its inline path and receives no routed worker binding or managed opencode registration.
+Claude Code uses managed worker definitions and Claude-native `Agent`/`SendMessage` bindings. Opencode uses its managed routed worker entries.
 
 Automatic installation surgically merges `permission.external_directory["~/.config/opencode/sai/**"] = "allow"` into the selected OpenCode configuration. The permission trusts only the installed SAI prompt tree; it does not allow every external directory. This permission is separate from `permission.read`: read access alone does not authorize a tool to cross the workspace boundary.
 
@@ -318,7 +316,7 @@ cp ~/.config/opencode/commands/sai-2-design.md .opencode/commands/
 
 Then edit copied files for command-level customization. Routed design and implementation wrappers declare their model and variant directly, as Claude Code already does; no named coordinator is shipped.
 
-Opencode's project-local commands (`.opencode/commands/`) take precedence over user-global ones (`~/.config/opencode/commands/`) by filename — a project-local command with the same filename as a user-global one silently shadows it. Claude Code has the analogous `.claude/commands/` precedence; GitHub Copilot in VS Code uses independent prompt scopes and the inline implementation adapter. Copilot has subagent support; these are harness-specific boundaries. See `INSTALL.copilot.md#customizing-models`.
+Opencode's project-local commands (`.opencode/commands/`) take precedence over user-global ones (`~/.config/opencode/commands/`) by filename — a project-local command with the same filename as a user-global one silently shadows it. Claude Code has the analogous `.claude/commands/` precedence.
 
 ### Alternative: edit global commands
 

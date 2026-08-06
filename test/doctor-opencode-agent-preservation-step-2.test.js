@@ -40,15 +40,6 @@ function collectOutput() {
   return { out, read: () => Buffer.concat(chunks).toString('utf8') };
 }
 
-function emptyCopilot() {
-  return {
-    promptsBase: absentPath('sai-doctor-copilot-prompts'),
-    skillsBase: absentPath('sai-doctor-copilot-skills'),
-    agentsBase: absentPath('sai-doctor-copilot-agents'),
-    saiBase: absentPath('sai-doctor-copilot-sai'),
-  };
-}
-
 async function runDoctor(projectRoot, opencodeBase) {
   const captured = collectOutput();
   const code = await main({
@@ -56,7 +47,6 @@ async function runDoctor(projectRoot, opencodeBase) {
     projectRoot,
     claudeBase: absentPath('sai-doctor-claude'),
     opencodeBase,
-    copilot: emptyCopilot(),
     execOpenspec: () => ({ status: 0, stdout: '1.4.1\n', stderr: '', error: null }),
     out: captured.out,
   });
@@ -243,7 +233,7 @@ test('malformed Opencode configurations keep managed-agent records in error', as
 });
 
 test('doctor converts malformed census bindings into actionable error diagnostics', () => {
-  const scratchRoot = path.join(__dirname, '..', '.tmp', 'derive-opencode-agent-census-from-bindings', 'doctor-malformed-bindings');
+  const scratchRoot = path.join(__dirname, '..', '.tmp', 'retire-inline-harness-model', 'doctor-malformed-bindings');
   const script = `
     'use strict';
     const fs = require('fs');
@@ -281,16 +271,10 @@ test('doctor converts malformed census bindings into actionable error diagnostic
     (async () => {
       const code = await main({
         argv: ['--json'],
-        projectRoot,
-        claudeBase: path.join(projectRoot, 'claude-missing'),
-        opencodeBase,
-        copilot: {
-          promptsBase: path.join(projectRoot, 'copilot-prompts-missing'),
-          skillsBase: path.join(projectRoot, 'copilot-skills-missing'),
-          agentsBase: path.join(projectRoot, 'copilot-agents-missing'),
-          saiBase: path.join(projectRoot, 'copilot-sai-missing'),
-        },
-        execOpenspec: () => ({ status: 0, stdout: '1.4.1\\n', stderr: '', error: null }),
+         projectRoot,
+         claudeBase: path.join(projectRoot, 'claude-missing'),
+         opencodeBase,
+         execOpenspec: () => ({ status: 0, stdout: '1.4.1\\n', stderr: '', error: null }),
         out,
       });
       const report = JSON.parse(Buffer.concat(chunks).toString('utf8'));
@@ -340,16 +324,10 @@ test('malformed census input fails before Opencode mutation and preserves unrela
       (async () => {
         const code = await main({
           argv: ['--json'],
-          projectRoot: ${JSON.stringify(projectRoot)},
-          claudeBase: ${JSON.stringify(path.join(projectRoot, 'claude-missing'))},
-          opencodeBase: ${JSON.stringify(opencodeBase)},
-          copilot: {
-            promptsBase: ${JSON.stringify(path.join(projectRoot, 'copilot-prompts-missing'))},
-            skillsBase: ${JSON.stringify(path.join(projectRoot, 'copilot-skills-missing'))},
-            agentsBase: ${JSON.stringify(path.join(projectRoot, 'copilot-agents-missing'))},
-            saiBase: ${JSON.stringify(path.join(projectRoot, 'copilot-sai-missing'))},
-          },
-          execOpenspec: () => ({ status: 0, stdout: '1.4.1\\n', stderr: '', error: null }),
+           projectRoot: ${JSON.stringify(projectRoot)},
+           claudeBase: ${JSON.stringify(path.join(projectRoot, 'claude-missing'))},
+           opencodeBase: ${JSON.stringify(opencodeBase)},
+           execOpenspec: () => ({ status: 0, stdout: '1.4.1\\n', stderr: '', error: null }),
           out,
         });
         process.stdout.write(JSON.stringify({ code, report: JSON.parse(Buffer.concat(chunks).toString('utf8')) }));
@@ -364,11 +342,11 @@ test('malformed census input fails before Opencode mutation and preserves unrela
     });
     assert.equal(result.status, 0, `${result.stderr}\n${result.stdout}`);
     const observation = JSON.parse(result.stdout);
-    assert.equal(observation.error, undefined);
-    assert.equal(observation.code, 1);
-    assert.ok(observation.report['[Claude Code]'], 'Claude diagnostics should still load');
-    assert.ok(observation.report['[GitHub Copilot]'], 'Copilot diagnostics should still load');
-    assert.equal(fs.existsSync(configPaths[0]), false, 'doctor must not create opencode.json');
+     assert.equal(observation.error, undefined);
+     assert.equal(observation.code, 1);
+     assert.ok(observation.report['[Claude Code]'], 'Claude diagnostics should still load');
+     assert.equal(observation.report['[GitHub Copilot]'], undefined, 'retired Copilot diagnostics should be absent');
+     assert.equal(fs.existsSync(configPaths[0]), false, 'doctor must not create opencode.json');
     assert.equal(fs.existsSync(configPaths[1]), false, 'doctor must not create opencode.jsonc');
   } finally {
     fs.rmSync(projectRoot, { recursive: true, force: true });

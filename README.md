@@ -11,11 +11,11 @@ Software development oriented AI commands for a cost-efficient, spec-first, stru
 
 Built on top of [OpenSpec](https://github.com/Fission-AI/OpenSpec): OpenSpec owns the lifecycle and artifact structure. Shared-AI owns the code, quality and cost efficiency layers.
 
-Works great on **OpenCode** with an opencode-go subscription + any frontier model provider sub (Claude / GPT / OpenCode Zen).
+Works great on **opencode** with an opencode-go subscription + any frontier model provider sub (Claude / GPT / OpenCode Zen).
 
 Can also run on **Claude Code**, though it is less cost-effective there due to model availability and pricing constraints — you can combine both: use Claude Code for deep thinking phases and switch to opencode after to work around those limitations.
 
-Also supports **GitHub Copilot** natively (only in the VS Code editor window, **not in the agents window (preview) or in Copilot CLI**, since prompt files aren’t supported there yet) — a good fit if you already have a Copilot subscription and prefer to stay inside VS Code without an extra tool.
+The supported harness roster is **Claude Code** and **opencode**. Both use routed coordinator and worker bindings for the planning phases.
 
 ## Why use this
 
@@ -91,9 +91,9 @@ All artifact paths below resolve under `openspec/changes/{change-name}/` (referr
 
 | Command | Input | Output | Purpose |
 |---------|-------|--------|---------|
-| `/sai-1-spec` | feature description | `{c}/proposal.md`, `specs/**` | Describe what you want to build. Claude Code and opencode route through the shared spec coordinator and worker; GitHub Copilot remains inline. All paths share `sai/commands/spec/invocation.md`, create only proposal/spec artifacts plus permitted glossary updates, and preserve the summary, feedback, and stop behavior. The AI writes a proposal and acceptance criteria for you to review and approve — nothing else happens until you say yes. Same-harness parity evidence is required. |
-| `/sai-2-design` | {change-name} | `{c}/design.md`, `tasks.md`, `interfaces.md` | Turns approved specs into a technical plan: architecture decisions, trade-offs, a concrete task list, and a per-step interface contract (`interfaces.md`) listing the new/modified public signatures and exact test assertions for each step. Claude Code routes through a low-effort Opus 4.8 coordinator and high-effort Opus 4.8 design worker; opencode uses the wrapper-declared GLM 5.2 model ID `opencode-go/glm-5.2`, `variant: high`, and worker `sai-2-design-worker`; GitHub Copilot remains inline because no portable cross-turn continuation contract spans the supported surfaces. The fixed notice is acknowledged with `continue_after_notice`, and `/sai-2-design` ends at design completion. Run `/sai-3-implement {name}` separately in a new chat. Proposal Complexity remains descriptive, not a routing gate. Supports `--fast-track` to auto-approve specs. |
-| `/sai-3-implement` | {change-name} | `{c}/implementation.md` | Claude Code uses a low-effort Opus 4.8 coordinator and a medium-effort Opus 4.8 background planning worker; opencode uses the wrapper-declared GLM 5.2 model and the `sai-3-implementation-worker` planning worker; GitHub Copilot retains inline planning because this slice has no portable coordinator-worker continuation contract. All paths preserve `openspec/changes/{change-name}/implementation.md` and the MANDATORY STOP. The worker writes the full coding playbook, while `/sai-4-apply` follows it and copies each step's code verbatim, adjusting only for compilation errors or test failures. |
+| `/sai-1-spec` | feature description | `{c}/proposal.md`, `specs/**` | Describe what you want to build. Claude Code and opencode route through the shared spec coordinator and worker. Both paths share `sai/commands/spec/invocation.md`, create only proposal/spec artifacts plus permitted glossary updates, and preserve the summary, feedback, and stop behavior. The AI writes a proposal and acceptance criteria for you to review and approve — nothing else happens until you say yes. Same-harness parity evidence is required. |
+| `/sai-2-design` | {change-name} | `{c}/design.md`, `tasks.md`, `interfaces.md` | Turns approved specs into a technical plan: architecture decisions, trade-offs, a concrete task list, and a per-step interface contract (`interfaces.md`) listing the new/modified public signatures and exact test assertions for each step. Claude Code routes through a low-effort Opus 4.8 coordinator and high-effort Opus 4.8 design worker; opencode uses the wrapper-declared GLM 5.2 model ID `opencode-go/glm-5.2`, `variant: high`, and worker `sai-2-design-worker`. The fixed notice is acknowledged with `continue_after_notice`, and `/sai-2-design` ends at design completion. Run `/sai-3-implement {name}` separately in a new chat. Proposal Complexity remains descriptive, not a routing gate. Supports `--fast-track` to auto-approve specs. |
+| `/sai-3-implement` | {change-name} | `{c}/implementation.md` | Claude Code uses a low-effort Opus 4.8 coordinator and a medium-effort Opus 4.8 background planning worker; opencode uses the wrapper-declared GLM 5.2 model and the `sai-3-implementation-worker` planning worker. Both paths preserve `openspec/changes/{change-name}/implementation.md` and the MANDATORY STOP. The worker writes the full coding playbook, while `/sai-4-apply` follows it and copies each step's code verbatim, adjusting only for compilation errors or test failures. |
 | `/sai-4-apply` | {change-name} | code | Follows the playbook step by step as a **coordinator**: each step's work is delegated to a subagent (the coordinator never edits code itself), then the coordinator re-verifies the result, prints a pre-commit files-modified report cross-checked against `tasks.md`, and asks for your approval before each commit. A **testable** step runs through apply twice — first a *blind test-writer* dispatch authors the RED test (from the assertions in `interfaces.md`) and confirms it fails by assertion; then a *separate implementation* dispatch copies the GREEN code from the playbook into the project and makes the test pass, **without permission to modify the tests**, adjusting code only for compilation errors or test failures — so the same step occupies two dispatches, never one subagent doing both. Supports `--fast-track` to auto-commit and defer human checks to end-of-run. |
 | `/sai-5-review` | {change-name} + diff | `{c}/review.md` | Reviews the finished code across 11 dimensions (correctness, maintainability, tests, etc.). Also tells you which specialized audits to run next based on what changed. |
 | `/sai-6-security` | {change-name} + diff | `{c}/security.md` | Finds security vulnerabilities in the diff — points to exact file and line, explains the risk, and maps findings to known standards (OWASP, CVE). |
@@ -106,15 +106,15 @@ The routed Claude Code and opencode paths pass a two-field `InvocationEnvelope`:
 
 For `needs_input`, the active harness binding forwards the selected value through `continuation_reference` to the same worker. If same-worker continuation fails, the binding starts one fresh worker with the original envelope and a reconstruction instruction so the worker can rebuild from current durable artifacts. Every routed path preserves the durable artifact at `openspec/changes/{change-name}/implementation.md` and the explicit MANDATORY STOP completion boundary.
 
-Claude Code also manages the worker agent with an ownership sidecar and hash guard. Opencode merges the namespaced worker entries into existing configuration without replacing incompatible or unrelated configuration. GitHub Copilot remains on the inline compatibility boundary for this slice because there is no portable coordinator-worker continuation contract; Copilot has subagent support, and this boundary is a portability choice.
+Claude Code also manages the worker agent with an ownership sidecar and hash guard. Opencode merges the namespaced worker entries into existing configuration without replacing incompatible or unrelated configuration.
 
 ### Spec coordinator and worker
 
-Claude Code and opencode route `/sai-1-spec` through the shared spec core in `sai/commands/spec/invocation.md` and their respective coordinator/worker bindings; GitHub Copilot remains inline and is explicitly excluded from routed spec assets. Claude Code preserves the `opus`/medium wrapper and uses a medium-effort Opus 4.8 worker; opencode uses `opencode-go/minimax-m3` and `sai-1-spec-proposal-worker`. The shared path creates only `proposal.md` and `specs/**`, plus permitted glossary updates, and preserves the summary, feedback, and MANDATORY STOP behavior. Same-harness parity evidence is required across Claude Code, opencode, and Copilot.
+Claude Code and opencode route `/sai-1-spec` through the shared spec core in `sai/commands/spec/invocation.md` and their respective coordinator/worker bindings. Claude Code preserves the `opus`/medium wrapper and uses a medium-effort Opus 4.8 worker; opencode uses `opencode-go/minimax-m3` and `sai-1-spec-proposal-worker`. The shared path creates only `proposal.md` and `specs/**`, plus permitted glossary updates, and preserves the summary, feedback, and MANDATORY STOP behavior. Same-harness parity evidence is required across the supported harnesses.
 
 ### Design coordinator and worker
 
-The routed `/sai-2-design` paths use a low-effort Opus 4.8 coordinator and high-effort Opus 4.8 design worker in Claude Code. Opencode uses the wrapper-declared `opencode-go/glm-5.2` with `variant: high` and the numbered `sai-2-design-worker`; `/sai-2-design` ends at design completion, and `/sai-3-implement {name}` is a separate command in a new chat. The fixed notice is acknowledged with `continue_after_notice`. The opencode routed phases run under your active primary agent; it must permit native question and task dispatch to the numbered SAI workers. The stock build agent satisfies this. If a restrictive primary agent is active, switch to a permissive one (e.g. build) — do not reintroduce a managed coordinator profile. GitHub Copilot remains inline because no portable cross-turn continuation contract spans the supported surfaces; Copilot retains `budget-explorer` delegation and has subagent support. All harnesses preserve `openspec/changes/{change-name}/design.md`, `tasks.md`, and `interfaces.md`. Proposal Complexity remains descriptive rather than a routing gate.
+The routed `/sai-2-design` paths use a low-effort Opus 4.8 coordinator and high-effort Opus 4.8 design worker in Claude Code. Opencode uses the wrapper-declared `opencode-go/glm-5.2` with `variant: high` and the numbered `sai-2-design-worker`; `/sai-2-design` ends at design completion, and `/sai-3-implement {name}` is a separate command in a new chat. The fixed notice is acknowledged with `continue_after_notice`. The opencode routed phases run under your active primary agent; it must permit native question and task dispatch to the numbered SAI workers. The stock build agent satisfies this. If a restrictive primary agent is active, switch to a permissive one (e.g. build) — do not reintroduce a managed coordinator profile. Both harnesses preserve `openspec/changes/{change-name}/design.md`, `tasks.md`, and `interfaces.md`. Proposal Complexity remains descriptive rather than a routing gate.
 
 ## On-demand commands (unnumbered)
 
@@ -169,9 +169,9 @@ All skills are invoked automatically by `sai-*` commands, but you can also trigg
 |-------|---------|---------|
 | `safe-operations` | Enforces reversibility and impact awareness — agent must ask before destructive, hard-to-reverse, or shared-system operations, and must not use destructive shortcuts. | `"dangerous"`, `"destructive"`, `"git push --force"`, `"rm -rf"`, `"delete files/branches"` |
 | `token-efficient-languages` | Enforces a 3-rule language contract: (1) think/reason in English, (2) respond in user's language, (3) write all artifacts in English. English tokenizers produce fewer tokens per unit of meaning. | `"budget language"`, `"cheap language"` |
-| `budget-explorer` | Low-cost agent for research, exploration, and doc-lookup tasks. Model resolved via `agent.explore.model` in `opencode.jsonc`, via `subagent_type: General` + model tiers in Claude Code, or fixed at `GPT-5.6 Luna (copilot)` in `agents/copilot/budget-explorer.agent.md` for GitHub Copilot. Enforces tool-call caps (≤30 per spawn) and output contracts (exact fields, length cap, no raw content). | `"budget explorer"`, `"cheap explorer"` |
-| `budget-executor` | Low-cost agent for running commands, tests, and build checks. Model resolved via `agent.executor.model` in `opencode.jsonc`, via `subagent_type: General` + `model: haiku` in Claude Code, or fixed at `GPT-5.6 Luna (copilot)` in `agents/copilot/budget-executor.agent.md` for GitHub Copilot. Enforces execute-only discipline: exact commands, no self-correction, minimal output, structured failure reports. No tool-call cap. | `"budget executor"`, `"cheap executor"` |
-| `budget-subagent` | Low-cost agent for general-purpose task delegation — file reads, searches, writes, code analysis. Model resolved via `agent.budget.model` in `opencode.jsonc`, via `subagent_type: General` + `model: haiku` in Claude Code, or fixed at `GPT-5.6 Luna (copilot)` in `agents/copilot/budget-subagent.agent.md` for GitHub Copilot. Enforces single-task discipline: structured completion report, ~30-call soft cap, no raw output. | `"budget subagent"`, `"cheap subagent"`, `"budget task"` |
+| `budget-explorer` | Low-cost agent for research, exploration, and doc-lookup tasks. Model resolved via `agent.explore.model` in `opencode.jsonc` or via `subagent_type: General` + model tiers in Claude Code. Enforces tool-call caps (≤30 per spawn) and output contracts (exact fields, length cap, no raw content). | `"budget explorer"`, `"cheap explorer"` |
+| `budget-executor` | Low-cost agent for running commands, tests, and build checks. Model resolved via `agent.executor.model` in `opencode.jsonc` or via `subagent_type: General` + `model: haiku` in Claude Code. Enforces execute-only discipline: exact commands, no self-correction, minimal output, structured failure reports. No tool-call cap. | `"budget executor"`, `"cheap executor"` |
+| `budget-subagent` | Low-cost agent for general-purpose task delegation — file reads, searches, writes, code analysis. Model resolved via `agent.budget.model` in `opencode.jsonc` or via `subagent_type: General` + `model: haiku` in Claude Code. Enforces single-task discipline: structured completion report, ~30-call soft cap, no raw output. | `"budget subagent"`, `"cheap subagent"`, `"budget task"` |
 | `budget` | Loads all budget skills simultaneously (`budget-explorer` + `budget-executor` + `budget-subagent` + `token-efficient-languages`). Activates full cost-discipline for the session. | `"budget mode"`, `"cheap mode"`, `"low-cost mode"`, `"economy mode"` |
 
 ## Cost-Effective Strategies
@@ -190,15 +190,15 @@ Research or exploratory tasks are delegated to **sub-agents running cost-effecti
 
 >On I/O-heavy spec tasks — codebase-wide searches, deprecated library audits, doc lookups — this technique can cut costs to a third.
 
-Available as skills for Claude Code, opencode, and GitHub Copilot.
+Available as skills for Claude Code and opencode.
 
 ### Executor Sub-Agent
 
-Verbose shell commands (tests, builds, lints) are delegated to the **executor sub-agent** (running a cheap model). The executor runs the exact command as instructed — no retrying, no workarounds — and returns a structured failure report (exit code + key reason + file:line). This prevents the main agent from wasting tokens on verbose build logs or test output. Available as skills for Claude Code, opencode, and GitHub Copilot.
+Verbose shell commands (tests, builds, lints) are delegated to the **executor sub-agent** (running a cheap model). The executor runs the exact command as instructed — no retrying, no workarounds — and returns a structured failure report (exit code + key reason + file:line). This prevents the main agent from wasting tokens on verbose build logs or test output. Available as skills for Claude Code and opencode.
 
 ### Budget Sub-Agent
 
-General-purpose task delegation (file reads, searches, writes, code analysis) is handed off to the **budget sub-agent** (running a cheap model). The budget sub-agent executes exactly one task, returns a structured completion report (`status` / `actions_taken` / `failures`), and aborts on permission blocks rather than waiting. A soft ~30-call cap prevents scope drift on multi-step work. Available as skills for Claude Code, opencode, and GitHub Copilot.
+General-purpose task delegation (file reads, searches, writes, code analysis) is handed off to the **budget sub-agent** (running a cheap model). The budget sub-agent executes exactly one task, returns a structured completion report (`status` / `actions_taken` / `failures`), and aborts on permission blocks rather than waiting. A soft ~30-call cap prevents scope drift on multi-step work. Available as skills for Claude Code and opencode.
 
 ## Project highlights
 
@@ -247,15 +247,19 @@ For low-risk or high-trust runs, four commands accept a `--fast-track` argument 
 
 Everything else stays intact.
 
+## Upgrade Notice
+
+> **Existing GitHub Copilot users must run the current uninstall command before upgrading.** Skipping uninstall may leave orphaned Copilot files behind. The new supported installer and uninstaller intentionally do not clean those files.
+
 ## Global installation (multi-project)
 
 Commands are designed as **user globals**, not per project. A single copy in the CLI's global directory makes them available in any repo. Maintained phase bodies use the grouped `sai/commands/{spec,design,implement}/{coordinator,invocation}.md` assets.
 
 ### Shared Orchestration Core
 
-Claude Code and opencode use the shared Orchestration Core under `sai/orchestration/`: common coordinator and worker lifecycle contracts plus mirrored harness bindings for spec, design, and implement. Their grouped phase coordinator/invocation bodies live under `sai/commands/{spec,design,implement}/`, their reusable policies live under `sai/policies/`, and their bindings are installed as separate projections. GitHub Copilot remains inline for spec, design, and implementation through the `sai/orchestration/inline-invocation.md` **Inline Coordinator Adapter**: it receives the shared policies and compatibility allowlist under `sai/compat/`, but no routed orchestration source or worker binding, including routed spec assets. All three harnesses preserve the same durable artifacts and command contracts.
+Claude Code and opencode use the shared Orchestration Core under `sai/orchestration/`: common coordinator and worker lifecycle contracts plus mirrored harness bindings for spec, design, and implement. Their grouped phase coordinator/invocation bodies live under `sai/commands/{spec,design,implement}/`, their reusable policies live under `sai/policies/`, shared compatibility assets live under `sai/compat/`, and their bindings are installed as separate projections. Both harnesses preserve the same durable artifacts and command contracts.
 
-The installer expands `sai/install-manifest.json` deterministically. Install, `doctor`, and uninstall consume that same manifest, so the allowlisted files, destination projections, content-drift checks, and safe removal behavior stay aligned across Claude Code, opencode, and Copilot. The canonical project-agnostic ADR index template is `sai/instructions/_templates/adr-index.md`; the recursive `sai-instructions` projection installs it for Claude Code, opencode, and GitHub Copilot, with no active compatibility projection. The manifest also owns retirement records for removed managed destinations, including `retired-adr-index-template`: historical copies are deleted only on a registered SHA-256 hash match, while modified or unrecognized copies remain untouched and are reported for manual cleanup. Retired records are cleanup evidence, not active dependencies.
+The installer expands `sai/install-manifest.json` deterministically. Install, `doctor`, and uninstall consume that same manifest, so the allowlisted files, destination projections, content-drift checks, and safe removal behavior stay aligned across Claude Code and opencode. The canonical project-agnostic ADR index template is `sai/instructions/_templates/adr-index.md`; the recursive `sai-instructions` projection installs it for both supported harnesses. The manifest also owns retirement records for removed managed destinations, including `retired-adr-index-template`: historical copies are deleted only on a registered SHA-256 hash match, while modified or unrecognized copies remain untouched and are reported for manual cleanup. Retired records are cleanup evidence, not active dependencies.
 
 ### Automatic npx installer (recommended)
 
@@ -264,7 +268,7 @@ The installer expands `sai/install-manifest.json` deterministically. Install, `d
 npx github:mmadariaga/shared-ai
 ```
 
-Presents an interactive checklist to select Claude Code, opencode, and/or GitHub Copilot as targets, then expands `sai/install-manifest.json` into deterministic OS-aware projections. If you pick opencode and its CLI isn't on PATH, the installer offers to install it for you. It also offers (once, editor-agnostic) to install the **CodeGraph** CLI and wire its MCP server — see [Third Party Tools](#third-party-tools). Both offers only prompt on a TTY; in CI they just print the command and never block the file copy.
+Presents an interactive checklist to select Claude Code and/or opencode as targets, then expands `sai/install-manifest.json` into deterministic OS-aware projections. If you pick opencode and its CLI isn't on PATH, the installer offers to install it for you. It also offers (once, editor-agnostic) to install the **CodeGraph** CLI and wire its MCP server — see [Third Party Tools](#third-party-tools). Both offers only prompt on a TTY; in CI they just print the command and never block the file copy.
 
 ```bash
 # 2. In each project where you want to use shared-AI:
@@ -279,19 +283,16 @@ For step-by-step manual installation without npx:
 
 - Opencode: see [INSTALL.opencode.md](INSTALL.opencode.md)
 - Claude Code: see [INSTALL.claude.md](INSTALL.claude.md)
-- GitHub Copilot (VS Code): see [INSTALL.copilot.md](INSTALL.copilot.md)
 
 ## Per project installation / override
 
-Per-project commands are still possible: a file placed in a harness's project-local command folder at the repo root overrides the user-global wrapper of the same name. Globals act as a base; project-local files override them by filename.
+Per-project commands are still possible: a file placed in a supported harness's project-local command folder at the repo root overrides the user-global wrapper of the same name. Globals act as a base; project-local files override them by filename.
 
 | Harness | Project-local command folder | Overrides by filename? |
 |---------|------------------------------|------------------------|
 | opencode | `.opencode/commands/` | ✅ Yes |
 | Claude Code | `.claude/commands/` | ✅ Yes |
-| GitHub Copilot (VS Code) | `.github/prompts/` | ❌ No (see note below) |
-
-> **⚠️ GitHub Copilot (VS Code) does not support name-based override.** VS Code discovers `.github/prompts/` (workspace scope) and `%APPDATA%\Code\User\prompts\` (user scope) as two **independent** scopes — a project-local prompt with the same name as a user-global one does **not** shadow it. Both remain discoverable (distinguished only by a source tooltip). This differs from Claude Code and opencode, where the project-local file with the same filename silently takes precedence. See [INSTALL.copilot.md](INSTALL.copilot.md#customizing-models) for VS Code-specific workarounds (renamed variant, edit-in-place, or removing the global).
+| Claude Code | `.claude/commands/` | ✅ Yes |
 
 Two override patterns are supported:
 
@@ -335,26 +336,22 @@ See [INSTALL.opencode.md](INSTALL.opencode.md#post-install) for post-install ste
 
 We set these defaults to models that have worked best for us, you may find better alternatives for your specific needs though.
 
-The **Copilot** column shows two model identifiers:
-- *VS Code* — the model name used in `.prompt.md` frontmatter (GitHub Copilot in VS Code)
-- *opencode* — the model ID used in opencode commands when routing through a Copilot subscription
-
-| Command | Opencode | Claude Code | Copilot (VS Code) | Copilot (opencode) |
-|-------|----------|-------------|-------------------|--------------------|
-| explore | `opencode-go/minimax-m3` | `sonnet` - medium | `GPT-5.6 Luna (copilot)` | `github-copilot/gpt-5.6-luna` |
-| spec (1) | `opencode-go/minimax-m3` | `opus` - medium | `GPT-5.6 Terra (copilot)` | `github-copilot/gpt-5.6-terra` |
-| design (2) | wrapper-declared `opencode-go/glm-5.2`, `variant: high`; worker `sai-2-design-worker` | coordinator `opus` - low; worker `opus` - high | `GPT-5.6 Terra (copilot)` inline | `github-copilot/gpt-5.6-terra` |
-| implement (3) | `opencode-go/kimi-k2.6` | coordinator `opus` - low; worker `opus` - medium | `GPT-5.6 Terra (copilot)` | `github-copilot/gpt-5.6-terra` |
-| apply (4) | `opencode-go/deepseek-v4-flash` | `sonnet` - low | `GPT-5.6 Luna (copilot)` | `github-copilot/gpt-5.6-luna` |
-| review (5) | `opencode-go/qwen3.7-plus` | `opus` - medium | `GPT-5.6 Terra (copilot)` | `github-copilot/gpt-5.6-terra` |
-| security (6) | `opencode-go/qwen3.7-plus` | `opus` - xhigh | `Claude Opus 5 (copilot)` | `github-copilot/claude-opus-5` |
-| performance (7) | `opencode-go/qwen3.7-plus` | `opus` - medium | `GPT-5.6 Terra (copilot)` | `github-copilot/gpt-5.6-terra` |
-| accessibility (8) | `opencode-go/qwen3.7-plus` | `opus` - medium | `GPT-5.6 Terra (copilot)` | `github-copilot/gpt-5.6-terra` |
-| backfill | `opencode-go/minimax-m3` | `sonnet` - medium | `GPT-5.6 Luna (copilot)` | `github-copilot/gpt-5.6-luna` |
-| commit | `opencode-go/deepseek-v4-flash` | `haiku` | `GPT-5.6 Luna (copilot)` | `github-copilot/gpt-5.6-luna` |
-| pr | `opencode-go/deepseek-v4-flash` | `haiku` | `GPT-5.6 Luna (copilot)` | `github-copilot/gpt-5.6-luna` |
-| archive | `opencode-go/deepseek-v4-flash` | `haiku` | `GPT-5.6 Luna (copilot)` | `github-copilot/gpt-5.6-luna` |
-| status | `opencode-go/deepseek-v4-flash` | `haiku` | `GPT-5.6 Luna (copilot)` | `github-copilot/gpt-5.6-luna` |
+| Command | Opencode | Claude Code |
+|-------|----------|-------------|
+| explore | `opencode-go/minimax-m3` | `sonnet` - medium |
+| spec (1) | `opencode-go/minimax-m3` | `opus` - medium |
+| design (2) | wrapper-declared `opencode-go/glm-5.2`, `variant: high`; worker `sai-2-design-worker` | coordinator `opus` - low; worker `opus` - high |
+| implement (3) | `opencode-go/kimi-k2.6` | coordinator `opus` - low; worker `opus` - medium |
+| apply (4) | `opencode-go/deepseek-v4-flash` | `sonnet` - low |
+| review (5) | `opencode-go/qwen3.7-plus` | `opus` - medium |
+| security (6) | `opencode-go/qwen3.7-plus` | `opus` - xhigh |
+| performance (7) | `opencode-go/qwen3.7-plus` | `opus` - medium |
+| accessibility (8) | `opencode-go/qwen3.7-plus` | `opus` - medium |
+| backfill | `opencode-go/minimax-m3` | `sonnet` - medium |
+| commit | `opencode-go/deepseek-v4-flash` | `haiku` |
+| pr | `opencode-go/deepseek-v4-flash` | `haiku` |
+| archive | `opencode-go/deepseek-v4-flash` | `haiku` |
+| status | `opencode-go/deepseek-v4-flash` | `haiku` |
 
 ### Choosing a model
 
@@ -372,12 +369,12 @@ Consider combining SAI with **[CodeGraph](https://github.com/colbymchenry/codegr
 
 ## Diagnosing an install — `doctor`
 
-Run a read-only health check of your shared-ai install across every detected
-harness plus the project's OpenSpec state:
+Run a read-only health check of your shared-ai install across Claude Code and
+opencode plus the project's OpenSpec state:
 
     npx github:mmadariaga/shared-ai doctor
 
-It reports, per harness (Claude Code, opencode, Copilot): manifest-allowlisted
+It reports, per harness (Claude Code, opencode): manifest-allowlisted
 missing/unexpected files, content drift, dangling `Fetch @` references, and
 version skew against `main`; plus a
 `[Project health]` section (openspec binary, `openspec/` dir, `schema: sai-workflow`)

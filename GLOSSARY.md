@@ -46,9 +46,6 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 **Implementation Dispatch**: "The second `/sai-4-apply` dispatch of a **Split-Routed Step**, given the GREEN implementation body, that writes the implementation and verifies GREEN and is forbidden from creating or modifying any test file."
 *Avoid*: GREEN dispatch, impl agent, code writer, build dispatch
 
-**Inline Coordinator Adapter**: "The caller-neutral `sai/orchestration/inline-invocation.md` contract that dispatches VS Code's inline design or implementation phase to its existing phase core without routed workers."
-*Avoid*: fake coordinator, inline phase router, inline worker
-
 **Known-False Report Recovery**: "A bounded `/sai-4-apply` correction path for a Subagent Report that coordinator evidence disproves and whose safe cause and correction are clear."
 *Avoid*: automatic retry, indefinite retry, advisor escalation
 
@@ -126,7 +123,6 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 - An **Attempts Per Phase** entry is retrospective and flows only into the **Execution Telemetry Appendix** — never back into a later dispatch prompt, which is the technical-learnings channel's job.
 - An **Execution Telemetry Appendix** is written only by the `/sai-4-apply` coordinator, in the same per-Step loop slot as the deviations appendix, so it lands in the Step's own commit.
 - A **Phase Policy** extends the **Orchestration Core** for exactly one planning phase without adding that phase's rules to the shared lifecycle contract.
-- An **Inline Coordinator Adapter** delegates to one phase-specific invocation core while remaining outside the routed **Orchestration Core** lifecycle.
 - A **Known-False Report Recovery** permits at most one **Recovery Dispatch** for a single contradicted Subagent Report and never changes the fixed report field set.
 - A **Test Command** belongs to one change's `## Implementation Context` and is consumed by exactly one dispatch — the **Blind Test-Writer**; a single dispatch receives the Step's own verification commands instead.
 - A **Blind Test-Writer** and an **Implementation Dispatch** replace the single per-Step dispatch only for a **Split-Routed Step**; every other Step keeps one dispatch, including a Step with a RED block whose **Step Contract** is unavailable.

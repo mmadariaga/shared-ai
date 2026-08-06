@@ -522,6 +522,23 @@ test('Step 3 README documents routed roles, model independence, and artifact sta
   );
 });
 
+test('Step 3 documentation requires the two-harness routed roster and upgrade notice', () => {
+  const documentation = [
+    'README.md',
+    'AGENTS.md',
+    'INSTALL.claude.md',
+    'INSTALL.opencode.md',
+  ].map(artifact).join('\n');
+
+  assert.match(documentation, /Claude Code/);
+  assert.match(documentation, /opencode/);
+  assert.match(documentation, /routed/);
+  assert.match(documentation, /existing GitHub Copilot users must run the current uninstall command before upgrading/i);
+  assert.match(documentation, /orphaned Copilot files/i);
+  assert.doesNotMatch(documentation, /Inline Coordinator Adapter|inline-invocation\.md/i);
+  assert.doesNotMatch(documentation, /commands\/copilot|skills\/copilot|agents\/copilot|INSTALL\.copilot/i);
+});
+
 test('Step 3 AGENTS documents every coordinator, worker, agent, and binding boundary', () => {
   const agents = artifact('AGENTS.md');
 

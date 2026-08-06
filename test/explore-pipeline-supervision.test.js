@@ -11,7 +11,6 @@ const exploreSources = [
   'sai/commands/sai-explore.md',
   'commands/claude/sai-explore.md',
   'commands/opencode/sai-explore.md',
-  'commands/copilot/sai-explore.prompt.md',
 ];
 
 function exploreContract() {
@@ -119,7 +118,7 @@ test('each auto-answer emits the interim accountability notice with ordered fiel
   const source = exploreContract();
 
   assert.match(source, /Auto-answered questions are reported/i);
-  assert.match(source, /interim inline notice|inline notice.*point.*auto-answer/i);
+  assert.match(source, /minimal interim notice at the point of answering|existing minimal interim notice/i);
   assert.match(source, /Auto-answered \(supervised\):.*\u2192.*\n\s+\[grounding:.*\u2014/is);
   assert.match(source, /question.*answer.*grounding.*citation/is);
 });
@@ -208,7 +207,7 @@ test('explore remains read-only and closes with the exact supervised completion 
   assert.match(source, /review-loop/);
   assert.match(source, /start-pipeline/);
   assert.match(source, /user[- ]triggered|user triggered/i);
-  for (const harness of ['Claude Code', 'opencode', 'Copilot']) {
+  for (const harness of ['Claude Code', 'opencode']) {
     assert.match(source, new RegExp(harness.replace(/[.*+?^${}()|[\\]\\]/g, '\\$&'), 'i'));
   }
   assert.match(
@@ -241,8 +240,6 @@ test('Claude Code explore adapter permits worker supervision without direct writ
 test('Step 1 explore adapters route only the permitted planning workers', () => {
   const claude = fs.readFileSync(path.join(repoRoot, 'commands/claude/sai-explore.md'), 'utf8');
   const opencode = fs.readFileSync(path.join(repoRoot, 'commands/opencode/sai-explore.md'), 'utf8');
-  const copilot = fs.readFileSync(path.join(repoRoot, 'commands/copilot/sai-explore.prompt.md'), 'utf8');
-  const inline = fs.readFileSync(path.join(repoRoot, 'sai/orchestration/inline-invocation.md'), 'utf8');
 
    assert.match(claude, /Fetch @sai\/orchestration\/workers\/bindings\/design-worker\.md/);
   assert.doesNotMatch(claude, /Fetch @skills\/sai-2-design-worker\/SKILL\.md/);
@@ -253,11 +250,13 @@ test('Step 1 explore adapters route only the permitted planning workers', () => 
    assert.match(opencode, /Fetch @sai\/orchestration\/workers\/bindings\/spec-worker\.md/);
    assert.match(opencode, /Fetch @sai\/orchestration\/workers\/bindings\/design-worker\.md/);
   assert.doesNotMatch(opencode, /Fetch @skills\/sai-1-spec-proposal-worker\/SKILL\.md/);
-  assert.doesNotMatch(opencode, /Fetch @skills\/sai-2-design-worker\/SKILL\.md/);
-  assert.doesNotMatch(opencode, /managed coordinator|reviewer[- ](?:binding|skill|agent)/i);
+   assert.doesNotMatch(opencode, /Fetch @skills\/sai-2-design-worker\/SKILL\.md/);
+   assert.doesNotMatch(opencode, /managed coordinator|reviewer[- ](?:binding|skill|agent)/i);
 
-  assert.doesNotMatch(copilot, /sai-2-design-worker|design-worker|start-pipeline/i);
-  assert.doesNotMatch(inline, /sai-2-design-worker|design-worker|start-pipeline/i);
+  for (const retiredPath of [
+    'commands/copilot/sai-explore.prompt.md',
+    'sai/orchestration/inline-invocation.md',
+  ]) assert.equal(fs.existsSync(path.join(repoRoot, retiredPath)), false, `${retiredPath} should be absent`);
 });
 
 test('opencode explore adapter enables native task dispatch with both numbered planning workers', () => {
@@ -271,20 +270,11 @@ test('opencode explore adapter enables native task dispatch with both numbered p
   assert.doesNotMatch(source, /reviewer[- ](?:binding|skill|agent)|independent[- ]review.*(?:binding|skill|agent)/i);
 });
 
-test('Copilot explore adapter remains question/read/search-only without routed design supervision', () => {
-  const source = fs.readFileSync(path.join(repoRoot, 'commands/copilot/sai-explore.prompt.md'), 'utf8');
-  const instructions = fs.readFileSync(path.join(repoRoot, 'sai/instructions/explore.md'), 'utf8');
-  const inline = fs.readFileSync(path.join(repoRoot, 'sai/orchestration/inline-invocation.md'), 'utf8');
-
-  assert.match(source, /tools:/i);
-  for (const tool of ['vscode/askQuestions', 'read', 'search', 'web', 'todo']) {
-    assert.match(source, new RegExp(tool.replace('/', '\\/'), 'i'));
-  }
-  assert.match(instructions, /start-pipeline/);
-  assert.match(instructions, /unavailable|supervision unavailable/i);
-  assert.doesNotMatch(source, /reviewer|dispatch|write artifact|artifact write/i);
-  assert.doesNotMatch(source, /sai-2-design-worker|design-worker|start-pipeline/i);
-  assert.doesNotMatch(inline, /sai-2-design-worker|design-worker|start-pipeline/i);
+test('retired Copilot and inline explore surfaces are absent', () => {
+  for (const retiredPath of [
+    'commands/copilot/sai-explore.prompt.md',
+    'sai/orchestration/inline-invocation.md',
+  ]) assert.equal(fs.existsSync(path.join(repoRoot, retiredPath)), false, `${retiredPath} should be absent`);
 });
 
 test('install manifest projects shared explore assets and routed spec assets only to routed harnesses', () => {
@@ -292,7 +282,7 @@ test('install manifest projects shared explore assets and routed spec assets onl
 
   assert.match(source, /Claude Code|claude/i);
   assert.match(source, /opencode/i);
-  assert.match(source, /Copilot|copilot/i);
+  assert.doesNotMatch(source, /Copilot|copilot/i);
   assert.match(source, /sai-1-spec-proposal-worker/);
   assert.match(source, /shared.*instruction|instruction.*shared|policies/i);
   assert.doesNotMatch(source, /reviewer.*lifecycle|independent.*reviewer.*projection/i);
@@ -302,14 +292,16 @@ test('direct spec and design wrappers retain their existing terminal contracts',
   const source = [
     'commands/claude/sai-1-spec.md',
     'commands/opencode/sai-1-spec.md',
-    'commands/copilot/sai-1-spec.prompt.md',
     'commands/claude/sai-2-design.md',
     'commands/opencode/sai-2-design.md',
-    'commands/copilot/sai-2-design.prompt.md',
   ].map(relativePath => fs.readFileSync(path.join(repoRoot, relativePath), 'utf8')).join('\n');
 
   assert.doesNotMatch(source, /start-pipeline.*adapter|explore.*adapter/i);
   assert.doesNotMatch(source, /independent[- ]reviewer|reviewer[- ]binding/i);
+  for (const retiredPath of [
+    'commands/copilot/sai-1-spec.prompt.md',
+    'commands/copilot/sai-2-design.prompt.md',
+  ]) assert.equal(fs.existsSync(path.join(repoRoot, retiredPath)), false, `${retiredPath} should be absent`);
 });
 
 test('Step 1 continues every completed-pass finding to the same worker', () => {
@@ -385,14 +377,13 @@ test('Step 1 preserves the feedback heading, iteration labels, language, selecti
   assert.match(feedbackGate, /## Machine-feedback adapter \(supervised sai-1 only\)/i);
 });
 
-test('Step 1 applies routed ownership to sai-1 and sai-2 while Copilot keeps inline presentation state', () => {
+test('Step 1 applies routed ownership to sai-1 and sai-2', () => {
   const feedbackGate = fs.readFileSync(
     path.join(repoRoot, 'sai/policies/artifact-feedback-gate.md'),
     'utf8'
   );
 
   assert.match(feedbackGate, /routed[\s\S]{0,240}sai-1[\s\S]{0,240}sai-2/i);
-  assert.match(feedbackGate, /Copilot[\s\S]{0,240}inline[\s\S]{0,240}presentation state/i);
 });
 
 test('Step 4 synchronizes the normative artifact feedback gate contract', () => {
@@ -406,7 +397,6 @@ test('Step 4 synchronizes the normative artifact feedback gate contract', () => 
   assert.match(normative, /Give feedback \(Recommended\)/i);
   assert.match(normative, /Give more feedback/i);
   assert.match(normative, /exactly one[\s\S]{0,160}routed[\s\S]{0,160}coordinator[\s\S]{0,160}prompt/i);
-  assert.match(normative, /Copilot[\s\S]{0,240}inline/i);
   assert.match(normative, /sai-2[\s\S]{0,240}Continue[\s\S]{0,240}terminal design navigation/i);
 
   assert.doesNotMatch(normative, /sai-2 gate coexists with the existing \(b\) confirm without stale re-reads/i);
