@@ -118,3 +118,30 @@ The existing re-run preservation contract — one new step appended per existing
 - **AND** the judgment behavior is re-exercised on the artifact's findings for the new step
 - **AND** the new step's Apply/Discard list is permitted to differ from the prior step's list, because judgment is not idempotent
 
+### Requirement: The append of audit-derived steps SHALL be verified before the plan is delivered
+
+Before delivering `implementation.md`, the `/sai-3-implement` agent SHALL verify that the current invocation appended exactly one step per audit artifact that existed at the start of the invocation (among `review.md`, `security.md`, `performance.md`, and `accessibility.md`), each appended step numbered strictly after the baseline established by the run path: on the first-run path, the highest `#### Step N:` number in the generated plan (the plan produced by the current run before the audit steps are appended); on the re-run path, the highest `#### Step N:` number present in `implementation.md` at the start of the invocation, captured before any write. The verification SHALL be scoped to what the current invocation appended, not to what `implementation.md` contains: a step appended by an earlier invocation does NOT satisfy the check, because the re-run contract appends one new step per artifact on every re-run with no dedup. The chat confirmation of the existing "Discarded findings SHALL be surfaced in chat for conversational confirmation" requirement remains a plain obligation of every appended step but is NOT part of this verification: that requirement is conversational-only by design (the agent SHALL NOT write any approval key), so no durable record exists that this check could observe, and a verification clause over it would reduce to the agent's self-report.
+
+This pre-delivery self-check is the first stage of a two-stage design: a failed verification SHALL NOT be delivered as a complete plan, and the agent SHALL repair it by appending the missing step(s) before reporting completion. A repair append SHALL fire the chat confirmation of the existing "Discarded findings SHALL be surfaced in chat for conversational confirmation" requirement exactly as a first-run append does. The implementation-planning worker's Durable artifact verification gate is the second stage and the last resort: it fails only if a required append is still missing at completion time.
+
+#### Scenario: First-run append is verified against the generated-plan baseline
+
+- **WHEN** one or more audit artifacts exist at the start of the invocation and no prior `implementation.md` exists (first run)
+- **THEN** the baseline is the highest `#### Step N:` number in the generated plan
+- **AND** the invocation appends exactly one step per artifact, numbered strictly after that baseline
+- **AND** verifies before delivery that each artifact received a step appended by THIS invocation
+
+#### Scenario: Re-run append is verified against the start-of-invocation baseline
+
+- **WHEN** the invocation is a re-run and an audit artifact already has a step appended by an earlier invocation
+- **THEN** the baseline is the highest `#### Step N:` number present in `implementation.md` at the start of the invocation, captured before any write
+- **AND** the verification keys on whether THIS invocation appended a new step for the artifact, numbered strictly after that captured value
+- **AND** a step appended in an earlier round does not satisfy the check
+
+#### Scenario: Missing append is repaired before delivery
+
+- **WHEN** an audit artifact existed at the start of the invocation but the invocation appended no corresponding step
+- **THEN** the verification fails and the agent appends the missing step before reporting completion
+- **AND** the repair append fires the chat confirmation of the existing "Discarded findings SHALL be surfaced in chat for conversational confirmation" requirement
+- **AND** the worker gate is the last resort, failing only if the append is still missing at completion time
+

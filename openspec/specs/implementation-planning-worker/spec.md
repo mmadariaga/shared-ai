@@ -52,6 +52,8 @@ The implementation-planning worker contract SHALL layer implementation-only Phas
 ### Requirement: Durable artifact verification
 The worker SHALL verify before reporting completion that the selected change contains a non-empty `implementation.md`; that every `tasks.md` task is represented in order; that each planned step contains the required verification and STOP & COMMIT markers; that each testable step places an assertion-based RED phase before its GREEN phase; that signatures and assertions conform to applicable `interfaces.md` Step Contracts; that automated and human verification use the established encoding; and that the planning run executed no implementation step and checked no implementation-plan checkbox. A failed verification SHALL return a non-completed lifecycle result and SHALL NOT emit the mandatory completion message.
 
+The worker SHALL additionally verify the audit-derived step append: for every audit artifact present at the start of the run (among `review.md`, `security.md`, `performance.md`, and `accessibility.md`), the run SHALL have appended exactly one corresponding step, numbered strictly after the run-path baseline — the highest `#### Step N:` number in the generated plan on the first-run path, the highest `#### Step N:` number present in `implementation.md` at the start of the run and captured before any write on the re-run path. A step appended by an earlier run does not satisfy this check. The chat confirmation of the existing "Discarded findings SHALL be surfaced in chat for conversational confirmation" requirement remains a plain conversational obligation of every appended step but is NOT part of this gate: it is conversational-only by design (no approval key is written, and `implementation.md` carries no trace of a chat emission), so the gate has no durable record to verify. The append itself is executed and repaired by the pre-delivery self-check defined by the audit-artifact-ingestion capability; the worker gate is the second stage and the last resort — it fails only when a required append is still missing at completion time after that self-check has run.
+
 #### Scenario: Direct artifact write succeeds
 - **WHEN** the worker finishes writing an implementation plan that satisfies every durable verification check
 - **THEN** it SHALL include `implementation.md` in `changed_files` and MAY return `completed`
@@ -59,6 +61,19 @@ The worker SHALL verify before reporting completion that the selected change con
 #### Scenario: Durable artifact verification fails
 - **WHEN** `implementation.md` is missing, empty, out of task order, lacks a required marker, violates RED-before-GREEN or an interface contract, mis-encodes a human check, or reflects executed implementation work
 - **THEN** the worker SHALL return `failed` with a concise blocking summary and SHALL NOT claim planning completion
+
+#### Scenario: Audit-derived step append is verified per run
+
+- **WHEN** an audit artifact exists at the start of the run and the run appended a corresponding step, numbered strictly after the run-path baseline (generated-plan highest on first run, start-of-run capture on re-run)
+- **THEN** the audit-append check passes and the worker MAY return `completed`
+
+#### Scenario: Audit-derived step append missing blocks completion
+
+- **WHEN** an audit artifact exists at the start of the run and the run appended no corresponding step even after the pre-delivery self-check of the audit-artifact-ingestion capability
+- **THEN** the audit-append check fails
+- **AND** the worker SHALL return `failed` with a concise blocking summary
+- **AND** a step appended by an earlier run does not satisfy the check
+- **AND** the worker SHALL NOT claim planning completion
 
 ### Requirement: Worker reasoning ownership
 The worker SHALL own technical reasoning and artifact decisions, and its response SHALL be a status report rather than a transport channel for the contents of `implementation.md`.
