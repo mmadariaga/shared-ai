@@ -187,14 +187,39 @@ test('installClaude copies all Claude-specific skills', () => {
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });
 
-test('installClaude projects the routed spec coordinator, binding, skill, and agent', () => {
+test('Step 3 fresh Claude install omits all routed worker proxy skills', () => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-claude-no-proxies-'));
+  const workers = [
+    'sai-1-spec-proposal-worker',
+    'sai-2-design-worker',
+    'sai-3-implementation-worker',
+    'sai-5-review-worker',
+    'sai-6-security-worker',
+    'sai-7-performance-worker',
+    'sai-8-accessibility-worker',
+  ];
+  try {
+    installClaude(tmpDir);
+    for (const worker of workers) {
+      assert.equal(fs.existsSync(path.join(tmpDir, 'skills', worker, 'SKILL.md')), false,
+        `${worker} proxy skill should not be installed`);
+    }
+    for (const worker of workers) {
+      assert.ok(fs.existsSync(path.join(tmpDir, 'agents', `${worker}.md`)), `${worker} managed agent should remain installed`);
+      assert.ok(fs.existsSync(path.join(tmpDir, 'agents', `.${worker}.owner.json`)), `${worker} owner sidecar should remain installed`);
+    }
+  } finally {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+});
+
+test('installClaude projects the routed spec coordinator, neutral binding, and agent', () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-claude-spec-'));
   try {
     installClaude(tmpDir);
     for (const file of [
        path.join('sai', 'commands', 'spec', 'coordinator.md'),
        path.join('sai', 'orchestration', 'workers', 'bindings', 'spec-worker.md'),
-       path.join('skills', 'sai-1-spec-proposal-worker', 'SKILL.md'),
       path.join('agents', 'sai-1-spec-proposal-worker.md'),
     ]) assert.ok(fs.existsSync(path.join(tmpDir, file)), `${file} should be projected`);
   } finally {
@@ -325,15 +350,15 @@ test('installClaude reuses compatible unowned worker content without recreating 
   }
 });
 
-test('restore-coordinator-instruction-loading Step 1: isolated Claude installation resolves routed coordinator and neutral binding references', () => {
+test('restore-coordinator-instruction-loading Step 3: isolated Claude installation resolves routed coordinator and neutral binding references', () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-claude-coordinator-loading-'));
   const wrappers = [
-    ['commands/sai-2-design.md', 'design', 'sai-2-design-worker'],
-    ['commands/sai-3-implement.md', 'implement', 'sai-3-implementation-worker'],
-    ['commands/sai-5-review.md', 'review', 'sai-5-review-worker'],
-    ['commands/sai-6-security.md', 'security', 'sai-6-security-worker'],
-    ['commands/sai-7-performance.md', 'performance', 'sai-7-performance-worker'],
-    ['commands/sai-8-accessibility.md', 'accessibility', 'sai-8-accessibility-worker'],
+    ['commands/sai-2-design.md', 'design', 'design-worker.md'],
+    ['commands/sai-3-implement.md', 'implement', 'implementation-worker.md'],
+    ['commands/sai-5-review.md', 'review', 'review-worker.md'],
+    ['commands/sai-6-security.md', 'security', 'security-worker.md'],
+    ['commands/sai-7-performance.md', 'performance', 'performance-worker.md'],
+    ['commands/sai-8-accessibility.md', 'accessibility', 'accessibility-worker.md'],
   ];
 
   function globInstalledFiles(relativeDir = '') {
@@ -366,12 +391,12 @@ test('restore-coordinator-instruction-loading Step 1: isolated Claude installati
     const available = new Set(globInstalledFiles().map(file => path.normalize(file)));
     const loaded = new Set();
 
-    for (const [wrapperPath, coordinator, worker] of wrappers) {
-      const wrapper = readInstalled(wrapperPath);
-      assert.match(wrapper, new RegExp(`Fetch @sai/commands/${coordinator}/coordinator\\.md`));
-      assert.match(wrapper, new RegExp(`Fetch @skills/${worker}/SKILL\\.md`));
-      resolveFetches(wrapperPath, available, loaded);
-      resolveFetches(path.join('skills', worker, 'SKILL.md'), available, loaded);
+     for (const [wrapperPath, coordinator, binding] of wrappers) {
+       const wrapper = readInstalled(wrapperPath);
+       assert.match(wrapper, new RegExp(`Fetch @sai/commands/${coordinator}/coordinator\\.md`));
+       assert.match(wrapper, new RegExp(`Fetch @sai/orchestration/workers/bindings/${binding.replace('.', '\\.')}`));
+       resolveFetches(wrapperPath, available, loaded);
+       resolveFetches(path.join('sai', 'orchestration', 'workers', 'bindings', binding), available, loaded);
     }
 
     const loadedText = [...loaded].map(readInstalled).join('\n');

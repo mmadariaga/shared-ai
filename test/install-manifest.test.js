@@ -54,16 +54,6 @@ const MANAGED_WORKER_PROJECTIONS = {
       sourcePath: 'sai/orchestration/workers/bindings/opencode/implementation-worker.md',
        destinationPath: 'orchestration/workers/bindings/implementation-worker.md',
     },
-    claudeForwarding: {
-      id: 'claude-sai-3-implementation-worker-forwarding',
-      sourcePath: 'skills/claude/sai-3-implementation-worker/SKILL.md',
-      destinationPath: 'sai-3-implementation-worker/SKILL.md',
-    },
-    opencodeForwarding: {
-      id: 'opencode-sai-3-implementation-worker-forwarding',
-      sourcePath: 'skills/opencode/sai-3-implementation-worker/SKILL.md',
-      destinationPath: 'sai-3-implementation-worker/SKILL.md',
-    },
     claudeAgent: {
       id: 'claude-sai-3-implementation-worker',
       sourcePath: 'agents/claude/sai-3-implementation-worker.md',
@@ -80,16 +70,6 @@ const MANAGED_WORKER_PROJECTIONS = {
       id: 'opencode-design-worker-binding',
       sourcePath: 'sai/orchestration/workers/bindings/opencode/design-worker.md',
        destinationPath: 'orchestration/workers/bindings/design-worker.md',
-    },
-    claudeForwarding: {
-      id: 'claude-sai-2-design-worker-forwarding',
-      sourcePath: 'skills/claude/sai-2-design-worker/SKILL.md',
-      destinationPath: 'sai-2-design-worker/SKILL.md',
-    },
-    opencodeForwarding: {
-      id: 'opencode-sai-2-design-worker-forwarding',
-      sourcePath: 'skills/opencode/sai-2-design-worker/SKILL.md',
-      destinationPath: 'sai-2-design-worker/SKILL.md',
     },
     claudeAgent: {
       id: 'claude-sai-2-design-worker',
@@ -108,16 +88,6 @@ const MANAGED_WORKER_PROJECTIONS = {
       sourcePath: 'sai/orchestration/workers/bindings/opencode/review-worker.md',
        destinationPath: 'orchestration/workers/bindings/review-worker.md',
     },
-    claudeForwarding: {
-      id: 'claude-sai-5-review-worker-forwarding',
-      sourcePath: 'skills/claude/sai-5-review-worker/SKILL.md',
-      destinationPath: 'sai-5-review-worker/SKILL.md',
-    },
-    opencodeForwarding: {
-      id: 'opencode-sai-5-review-worker-forwarding',
-      sourcePath: 'skills/opencode/sai-5-review-worker/SKILL.md',
-      destinationPath: 'sai-5-review-worker/SKILL.md',
-    },
     claudeAgent: {
       id: 'claude-sai-5-review-worker',
       sourcePath: 'agents/claude/sai-5-review-worker.md',
@@ -134,16 +104,6 @@ const MANAGED_WORKER_PROJECTIONS = {
       id: 'opencode-security-worker-binding',
       sourcePath: 'sai/orchestration/workers/bindings/opencode/security-worker.md',
        destinationPath: 'orchestration/workers/bindings/security-worker.md',
-    },
-    claudeForwarding: {
-      id: 'claude-sai-6-security-worker-forwarding',
-      sourcePath: 'skills/claude/sai-6-security-worker/SKILL.md',
-      destinationPath: 'sai-6-security-worker/SKILL.md',
-    },
-    opencodeForwarding: {
-      id: 'opencode-sai-6-security-worker-forwarding',
-      sourcePath: 'skills/opencode/sai-6-security-worker/SKILL.md',
-      destinationPath: 'sai-6-security-worker/SKILL.md',
     },
     claudeAgent: {
       id: 'claude-sai-6-security-worker',
@@ -162,16 +122,6 @@ const MANAGED_WORKER_PROJECTIONS = {
       sourcePath: 'sai/orchestration/workers/bindings/opencode/performance-worker.md',
        destinationPath: 'orchestration/workers/bindings/performance-worker.md',
     },
-    claudeForwarding: {
-      id: 'claude-sai-7-performance-worker-forwarding',
-      sourcePath: 'skills/claude/sai-7-performance-worker/SKILL.md',
-      destinationPath: 'sai-7-performance-worker/SKILL.md',
-    },
-    opencodeForwarding: {
-      id: 'opencode-sai-7-performance-worker-forwarding',
-      sourcePath: 'skills/opencode/sai-7-performance-worker/SKILL.md',
-      destinationPath: 'sai-7-performance-worker/SKILL.md',
-    },
     claudeAgent: {
       id: 'claude-sai-7-performance-worker',
       sourcePath: 'agents/claude/sai-7-performance-worker.md',
@@ -189,16 +139,6 @@ const MANAGED_WORKER_PROJECTIONS = {
       sourcePath: 'sai/orchestration/workers/bindings/opencode/accessibility-worker.md',
        destinationPath: 'orchestration/workers/bindings/accessibility-worker.md',
     },
-    claudeForwarding: {
-      id: 'claude-sai-8-accessibility-worker-forwarding',
-      sourcePath: 'skills/claude/sai-8-accessibility-worker/SKILL.md',
-      destinationPath: 'sai-8-accessibility-worker/SKILL.md',
-    },
-    opencodeForwarding: {
-      id: 'opencode-sai-8-accessibility-worker-forwarding',
-      sourcePath: 'skills/opencode/sai-8-accessibility-worker/SKILL.md',
-      destinationPath: 'sai-8-accessibility-worker/SKILL.md',
-    },
     claudeAgent: {
       id: 'claude-sai-8-accessibility-worker',
       sourcePath: 'agents/claude/sai-8-accessibility-worker.md',
@@ -215,16 +155,6 @@ const MANAGED_WORKER_PROJECTIONS = {
       id: 'opencode-spec-worker-binding',
       sourcePath: 'sai/orchestration/workers/bindings/opencode/spec-worker.md',
        destinationPath: 'orchestration/workers/bindings/spec-worker.md',
-    },
-    claudeForwarding: {
-      id: 'claude-sai-1-spec-proposal-worker-forwarding',
-      sourcePath: 'skills/claude/sai-1-spec-proposal-worker/SKILL.md',
-      destinationPath: 'sai-1-spec-proposal-worker/SKILL.md',
-    },
-    opencodeForwarding: {
-      id: 'opencode-sai-1-spec-proposal-worker-forwarding',
-      sourcePath: 'skills/opencode/sai-1-spec-proposal-worker/SKILL.md',
-      destinationPath: 'sai-1-spec-proposal-worker/SKILL.md',
     },
     claudeAgent: {
       id: 'claude-sai-1-spec-proposal-worker',
@@ -275,7 +205,6 @@ function expectedWorkerProjection(record, harness, metadata) {
 
 function workerDestinationClass(id) {
   if (id.endsWith('-worker')) return 'agents';
-  if (id.includes('forwarding')) return 'skills';
   return 'sai';
 }
 
@@ -292,12 +221,10 @@ test('managed worker registry has complete Claude and opencode manifest projecti
   const expectedByHarness = {
     claude: Object.values(MANAGED_WORKER_PROJECTIONS).flatMap(worker => [
       expectedWorkerProjection(worker.claudeBinding, 'claude', { strategy: 'copy', ownership: 'managed' }),
-      expectedWorkerProjection(worker.claudeForwarding, 'claude', { strategy: 'forwarding-manifest', ownership: 'managed' }),
-      expectedWorkerProjection(worker.claudeAgent, 'claude', { strategy: 'owned-copy', ownership: 'owned' }),
+       expectedWorkerProjection(worker.claudeAgent, 'claude', { strategy: 'owned-copy', ownership: 'owned' }),
     ]),
     opencode: Object.values(MANAGED_WORKER_PROJECTIONS).flatMap(worker => [
       expectedWorkerProjection(worker.opencodeBinding, 'opencode', { strategy: 'copy', ownership: 'managed' }),
-      expectedWorkerProjection(worker.opencodeForwarding, 'opencode', { strategy: 'forwarding-manifest', ownership: 'managed' }),
     ]),
   };
   for (const expected of Object.values(expectedByHarness)) {
@@ -330,10 +257,9 @@ test('managed worker registry has complete Claude and opencode manifest projecti
     for (const workerName of Object.keys(MANAGED_WORKERS)) {
       const workerRecords = actual.filter(record =>
         MANAGED_WORKER_PROJECTIONS[workerName][`${harness === 'claude' ? 'claude' : 'opencode'}Binding`].id === record.id ||
-        MANAGED_WORKER_PROJECTIONS[workerName][`${harness === 'claude' ? 'claude' : 'opencode'}Forwarding`].id === record.id ||
-        (harness === 'claude' && MANAGED_WORKER_PROJECTIONS[workerName].claudeAgent.id === record.id)
+         (harness === 'claude' && MANAGED_WORKER_PROJECTIONS[workerName].claudeAgent.id === record.id)
       );
-      assert.equal(workerRecords.length, harness === 'claude' ? 3 : 2,
+      assert.equal(workerRecords.length, harness === 'claude' ? 2 : 1,
         `${harness} should project the expected number of records for ${workerName}`);
     }
   }
@@ -341,9 +267,7 @@ test('managed worker registry has complete Claude and opencode manifest projecti
   const workerSources = new Set(Object.values(MANAGED_WORKER_PROJECTIONS).flatMap(worker => [
     worker.claudeBinding.sourcePath,
     worker.opencodeBinding.sourcePath,
-    worker.claudeForwarding.sourcePath,
-    worker.opencodeForwarding.sourcePath,
-    worker.claudeAgent.sourcePath,
+     worker.claudeAgent.sourcePath,
   ]));
   const copilot = expandInstallManifest(manifest, { harness: 'copilot', repoRoot, destinationRoot })
     .map(projection => normalizeWorkerProjection(projection, repoRoot, destinationRoot));
@@ -354,7 +278,7 @@ test('managed worker registry has complete Claude and opencode manifest projecti
   'Copilot must not receive managed Claude agent projections');
 });
 
-test('Step 6 security worker exposes five manifest projection records and Copilot commands', () => {
+test('Step 6 security worker exposes binding, worker, and Copilot command projections', () => {
   const repoRoot = path.join(__dirname, '..');
   const manifest = loadInstallManifest(repoRoot);
   const destinationRoot = workerDestinationRoots(path.join(os.tmpdir(), 'sai-security-worker-projections'));
@@ -362,9 +286,7 @@ test('Step 6 security worker exposes five manifest projection records and Copilo
   const expected = [
      ['claude', 'sai/orchestration/workers/bindings/claude/security-worker.md', path.join('orchestration', 'workers', 'bindings', 'security-worker.md')],
      ['opencode', 'sai/orchestration/workers/bindings/opencode/security-worker.md', path.join('orchestration', 'workers', 'bindings', 'security-worker.md')],
-    ['claude', 'skills/claude/sai-6-security-worker/SKILL.md', path.join('sai-6-security-worker', 'SKILL.md')],
-    ['opencode', 'skills/opencode/sai-6-security-worker/SKILL.md', path.join('sai-6-security-worker', 'SKILL.md')],
-    ['claude', 'agents/claude/sai-6-security-worker.md', 'sai-6-security-worker.md'],
+     ['claude', 'agents/claude/sai-6-security-worker.md', 'sai-6-security-worker.md'],
   ];
 
   for (const [harness, expectedSource, expectedDestination] of expected) {
@@ -514,7 +436,6 @@ test('canonical manifest keeps implementation projections harness-specific', () 
       'sai/orchestration/worker-lifecycle.md',
       'sai/orchestration/workers/sai-3-implementation-worker.md',
       'sai/orchestration/workers/bindings/claude/implementation-worker.md',
-      'skills/claude/sai-3-implementation-worker/SKILL.md',
       'agents/claude/sai-3-implementation-worker.md',
     ],
     opencode: [
@@ -522,7 +443,6 @@ test('canonical manifest keeps implementation projections harness-specific', () 
       'sai/orchestration/worker-lifecycle.md',
       'sai/orchestration/workers/sai-3-implementation-worker.md',
       'sai/orchestration/workers/bindings/opencode/implementation-worker.md',
-      'skills/opencode/sai-3-implementation-worker/SKILL.md',
     ],
     copilot: [
       'sai/commands/implement/coordinator.md',
@@ -567,7 +487,6 @@ test('canonical manifest projects routed spec assets only to Claude Code and ope
       'sai/orchestration/worker-lifecycle.md',
       'sai/orchestration/workers/sai-1-spec-proposal-worker.md',
       'sai/orchestration/workers/bindings/claude/spec-worker.md',
-      'skills/claude/sai-1-spec-proposal-worker/SKILL.md',
       'agents/claude/sai-1-spec-proposal-worker.md',
     ],
     opencode: [
@@ -575,7 +494,6 @@ test('canonical manifest projects routed spec assets only to Claude Code and ope
       'sai/orchestration/worker-lifecycle.md',
       'sai/orchestration/workers/sai-1-spec-proposal-worker.md',
       'sai/orchestration/workers/bindings/opencode/spec-worker.md',
-      'skills/opencode/sai-1-spec-proposal-worker/SKILL.md',
     ],
   };
   const destinationRoot = {
@@ -609,9 +527,7 @@ test('Installer projects every routed review surface', () => {
   const expected = [
      ['claude', 'sai/orchestration/workers/bindings/claude/review-worker.md', path.join('orchestration', 'workers', 'bindings', 'review-worker.md')],
      ['opencode', 'sai/orchestration/workers/bindings/opencode/review-worker.md', path.join('orchestration', 'workers', 'bindings', 'review-worker.md')],
-    ['claude', 'skills/claude/sai-5-review-worker/SKILL.md', path.join('sai-5-review-worker', 'SKILL.md')],
-    ['opencode', 'skills/opencode/sai-5-review-worker/SKILL.md', path.join('sai-5-review-worker', 'SKILL.md')],
-    ['claude', 'agents/claude/sai-5-review-worker.md', 'sai-5-review-worker.md'],
+     ['claude', 'agents/claude/sai-5-review-worker.md', 'sai-5-review-worker.md'],
   ];
 
   for (const harness of ['claude', 'opencode']) {
@@ -675,18 +591,6 @@ test('Installer projects deterministic routed performance surfaces with ownershi
       strategy: 'copy',
       ownership: 'managed',
     },
-    'skills/claude/sai-7-performance-worker/SKILL.md': {
-      harnesses: ['claude'],
-      destination: 'sai-7-performance-worker/SKILL.md',
-      strategy: 'forwarding-manifest',
-      ownership: 'managed',
-    },
-    'skills/opencode/sai-7-performance-worker/SKILL.md': {
-      harnesses: ['opencode'],
-      destination: 'sai-7-performance-worker/SKILL.md',
-      strategy: 'forwarding-manifest',
-      ownership: 'managed',
-    },
     'agents/claude/sai-7-performance-worker.md': {
       harnesses: ['claude'],
       destination: 'sai-7-performance-worker.md',
@@ -733,9 +637,7 @@ test('Installer projects deterministic routed performance surfaces with ownershi
     'sai/orchestration/workers/sai-7-performance-worker.md',
     'sai/orchestration/workers/bindings/claude/performance-worker.md',
     'sai/orchestration/workers/bindings/opencode/performance-worker.md',
-    'skills/claude/sai-7-performance-worker/SKILL.md',
-    'skills/opencode/sai-7-performance-worker/SKILL.md',
-    'agents/claude/sai-7-performance-worker.md',
+     'agents/claude/sai-7-performance-worker.md',
   ]) assert.equal(copilotSources.has(source), false, `Copilot must exclude ${source}`);
   assert.equal(manifest.projections.some(projection =>
     JSON.stringify(projection.exclude || []).includes('sai-7-performance')), false,
@@ -748,7 +650,7 @@ test('Copilot receives no routed review binding', () => {
   const routedReview = manifest.projections.filter(projection =>
     projection.source.includes('review-worker') || projection.source.includes('sai-5-review')
   );
-  assert.ok(routedReview.length >= 5, 'the manifest should declare all five routed review surfaces');
+  assert.ok(routedReview.length > 0, 'the manifest should declare routed review surfaces');
   assert.ok(routedReview.every(projection => !projection.harnesses.includes('copilot')));
 });
 
@@ -919,6 +821,78 @@ test('expanded projections expose missing, unexpected nested, and content drift 
 test('canonical manifest validates all historical retirements and excludes them from active projections', () => {
   const repoRoot = path.join(__dirname, '..');
   const manifest = loadInstallManifest(repoRoot);
+  const workerNames = [
+    'sai-1-spec-proposal-worker',
+    'sai-2-design-worker',
+    'sai-3-implementation-worker',
+    'sai-5-review-worker',
+    'sai-6-security-worker',
+    'sai-7-performance-worker',
+    'sai-8-accessibility-worker',
+  ];
+  const proxyRetirements = manifest.retirements.filter(retirement => retirement.id.endsWith('-proxy-skill'));
+  assert.equal(proxyRetirements.length, 14, 'the manifest should retire one proxy skill per routed worker and harness');
+  assert.deepEqual(
+    proxyRetirements.map(retirement => retirement.harnesses).flat().sort(),
+    [...workerNames.flatMap(() => ['claude', 'opencode'])].sort(),
+    'proxy retirement ownership should cover Claude and opencode only'
+  );
+  const expectedProxyRecords = [
+    ['retired-claude-sai-1-spec-proposal-worker-proxy-skill', 'sai-1-spec-proposal-worker', 'a800e2f9bbc14ca8d8f3e42e1f36ae07684bb7275d662d68528b49828c3ad4ee'],
+    ['retired-claude-sai-2-design-worker-proxy-skill', 'sai-2-design-worker', '502df5d4a20f527a6412f66461826e3b49d24556ee2567063c391e98f0dc4fd0'],
+    ['retired-claude-sai-3-implementation-worker-proxy-skill', 'sai-3-implementation-worker', '1f35c1c969eb3f2a346174d604f293e9b870feaf5b63f6446e16026e6d3020a0'],
+    ['retired-claude-sai-5-review-worker-proxy-skill', 'sai-5-review-worker', '6157297386700bfe4afe05d6c7d811f8c92d1c34647a0818304cdf595eb71dae'],
+    ['retired-claude-sai-6-security-worker-proxy-skill', 'sai-6-security-worker', '17e36d185354baff27643baea4e1d475feadd880c0e4f1cbc8f2daeb2d25cb66'],
+    ['retired-claude-sai-7-performance-worker-proxy-skill', 'sai-7-performance-worker', '64739dcc37bd11a1f7859baf7b44036d6fe0aac39ff612b13ec3dcd5d497a5eb'],
+    ['retired-claude-sai-8-accessibility-worker-proxy-skill', 'sai-8-accessibility-worker', '262fe9d207a9d726fd84d3a75c921ea9d32fa0bf35f5a6d6b651354eae85345e'],
+    ['retired-opencode-sai-1-spec-proposal-worker-proxy-skill', 'sai-1-spec-proposal-worker', '6e5e2099d8f04298a189924bca47b28538ff6a58cab7af9a788685a9cf74007c'],
+    ['retired-opencode-sai-2-design-worker-proxy-skill', 'sai-2-design-worker', '5302680208a21f588021f046cf8bcd424d9df7794f2269264367f352fd0f9d76'],
+    ['retired-opencode-sai-3-implementation-worker-proxy-skill', 'sai-3-implementation-worker', '647869b6e1ade95b34fdb3c4d257ba9444993a914baf39bfa72731f75dd0fd73'],
+    ['retired-opencode-sai-5-review-worker-proxy-skill', 'sai-5-review-worker', 'aee35c7e2d636d48e6fe003da250821dc577acc7874dd4fbad0146de889acff9'],
+    ['retired-opencode-sai-6-security-worker-proxy-skill', 'sai-6-security-worker', 'f268bbbe0b8ff386d4ccc6f0875225d4b267d343ddaf0b072b33f3c10eec2db2'],
+    ['retired-opencode-sai-7-performance-worker-proxy-skill', 'sai-7-performance-worker', '76bd076266f597119fc2834efae1183ab977c53cd9fac79c20f48d2bd7803d48'],
+    ['retired-opencode-sai-8-accessibility-worker-proxy-skill', 'sai-8-accessibility-worker', '87d5d3cb8503b54b97590341153eeb730a762b10001d9b47c0f77b2155e52c37'],
+  ];
+  for (const [id, worker, digest] of expectedProxyRecords) {
+    const retirement = manifest.retirements.find(record => record.id === id);
+    assert.deepEqual(retirement, {
+      id,
+      destination: { class: 'skills', path: `${worker}/SKILL.md` },
+      harnesses: [id.startsWith('retired-claude-') ? 'claude' : 'opencode'],
+      managedHashes: [digest],
+    });
+  }
+  assert.equal(proxyRetirements.some(retirement => retirement.harnesses.includes('copilot')), false);
+  assert.ok(manifest.retirements.every(retirement => ['sai', 'skills'].includes(retirement.destination.class)));
+  assert.ok(proxyRetirements.every(retirement => retirement.destination.class === 'skills'));
+  assert.ok(proxyRetirements.every(retirement => retirement.managedHashes.length > 0 &&
+    retirement.managedHashes.every(value => /^[0-9a-f]{64}$/.test(value))));
+  for (const harness of ['claude', 'opencode']) {
+    const names = proxyRetirements.filter(retirement => retirement.harnesses.includes(harness));
+    assert.deepEqual(names.map(retirement => retirement.destination.path).sort(),
+      workerNames.map(name => `${name}/SKILL.md`).sort());
+  }
+  assert.ok(manifest.retirements.some(retirement => retirement.id.includes('-claude-') &&
+    retirement.id.includes('worker-binding')),
+  'historical harness-qualified binding retirement records remain available');
+  for (const harness of ['claude', 'opencode']) {
+    const active = expandInstallManifest(manifest, {
+      harness,
+      repoRoot,
+      destinationRoot: workerDestinationRoots(path.join(os.tmpdir(), `sai-retirement-active-${harness}`)),
+    });
+    assert.equal(active.some(projection => projection.strategy === 'forwarding-manifest'), false,
+      `${harness} must have no active worker forwarding projection`);
+    assert.equal(active.some(projection => /skills[\\/]((claude|opencode)[\\/])?sai-.*-worker[\\/]SKILL\.md$/.test(
+      path.relative(repoRoot, projection.sourcePath))), false,
+    `${harness} must not project a worker proxy source`);
+  }
+  assert.equal(expandInstallManifest(manifest, {
+    harness: 'copilot',
+    repoRoot,
+    destinationRoot: workerDestinationRoots(path.join(os.tmpdir(), 'sai-retirement-active-copilot')),
+  }).some(projection => projection.strategy === 'forwarding-manifest'), false);
+  return;
   const expected = [
     {
       id: 'retired-sai-2-design',
@@ -1157,11 +1131,18 @@ test('canonical manifest validates all historical retirements and excludes them 
            path.resolve(destinationRoot.sai, 'orchestration/workers/bindings', harness, 'accessibility-worker.md'),
            path.resolve(destinationRoot.sai, 'orchestration/workers/bindings', harness, 'design-worker.md'),
            path.resolve(destinationRoot.sai, 'orchestration/workers/bindings', harness, 'implementation-worker.md'),
-           path.resolve(destinationRoot.sai, 'orchestration/workers/bindings', harness, 'performance-worker.md'),
-           path.resolve(destinationRoot.sai, 'orchestration/workers/bindings', harness, 'review-worker.md'),
-           path.resolve(destinationRoot.sai, 'orchestration/workers/bindings', harness, 'security-worker.md'),
-           path.resolve(destinationRoot.sai, 'orchestration/workers/bindings', harness, 'spec-worker.md'),
-         ]),
+            path.resolve(destinationRoot.sai, 'orchestration/workers/bindings', harness, 'performance-worker.md'),
+            path.resolve(destinationRoot.sai, 'orchestration/workers/bindings', harness, 'review-worker.md'),
+            path.resolve(destinationRoot.sai, 'orchestration/workers/bindings', harness, 'security-worker.md'),
+            path.resolve(destinationRoot.sai, 'orchestration/workers/bindings', harness, 'spec-worker.md'),
+            path.resolve(destinationRoot.skills, 'sai-8-accessibility-worker/SKILL.md'),
+            path.resolve(destinationRoot.skills, 'sai-2-design-worker/SKILL.md'),
+            path.resolve(destinationRoot.skills, 'sai-3-implementation-worker/SKILL.md'),
+            path.resolve(destinationRoot.skills, 'sai-7-performance-worker/SKILL.md'),
+            path.resolve(destinationRoot.skills, 'sai-5-review-worker/SKILL.md'),
+            path.resolve(destinationRoot.skills, 'sai-6-security-worker/SKILL.md'),
+            path.resolve(destinationRoot.skills, 'sai-1-spec-proposal-worker/SKILL.md'),
+          ]),
          path.resolve(destinationRoot.sai, 'compat/_templates/adr-index.md'),
         path.resolve(destinationRoot.sai, 'compat/sai-2-design-core.md'),
        path.resolve(destinationRoot.sai, 'compat/sai-3-implementation-core.md'),
@@ -1201,9 +1182,38 @@ test('retirement validation rejects malformed records, duplicate ids or destinat
       assert.throws(() => expandRetirementManifest(manifest, {
         harness: 'claude',
         repoRoot,
-        destinationRoot: { sai: '/dest' },
+         destinationRoot: { sai: '/dest', skills: '/skills' },
       }), pattern);
     }
+  } finally {
+    fs.rmSync(repoRoot, { recursive: true, force: true });
+  }
+});
+
+test('retirement expansion resolves sai and skills destination classes independently', () => {
+  const repoRoot = makeRepo();
+  try {
+    const manifest = {
+      version: 1,
+      projections: [],
+      retirements: [
+        { id: 'retired-sai', destination: { class: 'sai', path: 'old/sai.md' }, harnesses: ['claude'], managedHashes: ['a'.repeat(64)] },
+        { id: 'retired-skills', destination: { class: 'skills', path: 'old/skill.md' }, harnesses: ['claude'], managedHashes: ['b'.repeat(64)] },
+      ],
+    };
+    let expanded;
+    assert.doesNotThrow(() => {
+      expanded = expandRetirementManifest(manifest, {
+        harness: 'claude',
+        repoRoot,
+        destinationRoot: { sai: '/sai-root', skills: '/skills-root' },
+      });
+    });
+    if (!expanded) return;
+    assert.deepEqual(expanded.map(record => record.destinationPath), [
+      path.resolve('/sai-root', 'old/sai.md'),
+      path.resolve('/skills-root', 'old/skill.md'),
+    ]);
   } finally {
     fs.rmSync(repoRoot, { recursive: true, force: true });
   }

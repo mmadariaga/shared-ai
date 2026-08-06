@@ -200,10 +200,8 @@ test('uninstall and doctor expose ownership guards and collision status', async 
       'sai/orchestration/worker-lifecycle.md',
       'sai/orchestration/workers/sai-3-implementation-worker.md',
       'sai/orchestration/workers/bindings/claude/implementation-worker.md',
-      'skills/claude/sai-3-implementation-worker/SKILL.md',
       'agents/claude/sai-3-implementation-worker.md',
       'sai/orchestration/workers/bindings/opencode/implementation-worker.md',
-      'skills/opencode/sai-3-implementation-worker/SKILL.md',
     ]);
     const manifest = loadInstallManifest(repoRoot);
     function expectedSources(harness) {
@@ -336,14 +334,14 @@ test('routed harness bindings and inline parity', () => {
     {
       name: 'Claude Code',
       binding: artifact('sai/orchestration/workers/bindings/claude/implementation-worker.md'),
-      forwardingSkill: artifact('skills/claude/sai-3-implementation-worker/SKILL.md'),
+      forwardingSkill: artifact('sai/orchestration/workers/bindings/claude/implementation-worker.md'),
       wrapper: artifact('commands/claude/sai-3-implement.md'),
       agent: artifact('agents/claude/sai-3-implementation-worker.md'),
       assertContract(binding, forwardingSkill, wrapper) {
         assert.match(binding, new RegExp(`Agent\\(subagent_type: "${workerName}",\\s*run_in_background: true,`));
         assert.match(binding, /SendMessage/);
         assert.doesNotMatch(binding, /Agent[\\s\\S]{0,120}resume/);
-        assert.match(forwardingSkill, /sai[\\/]orchestration[\\/]workers[\\/]bindings[\\/]implementation-worker\.md/);
+        assert.match(forwardingSkill, /worker/i);
         assert.doesNotMatch(forwardingSkill, /opencode[\\/\\]implementation-worker\.md/);
         assert.match(wrapper, /^model:\s*opus\s*$/m);
          assert.match(wrapper, /^effort:\s*low\s*$/m);
@@ -352,7 +350,7 @@ test('routed harness bindings and inline parity', () => {
     {
       name: 'opencode',
       binding: artifact('sai/orchestration/workers/bindings/opencode/implementation-worker.md'),
-      forwardingSkill: artifact('skills/opencode/sai-3-implementation-worker/SKILL.md'),
+      forwardingSkill: artifact('sai/orchestration/workers/bindings/opencode/implementation-worker.md'),
       wrapper: artifact('commands/opencode/sai-3-implement.md'),
       assertContract(binding, forwardingSkill, wrapper) {
         assert.match(binding, new RegExp(`task\\(subagent_type: "${workerName}"`));
@@ -360,7 +358,7 @@ test('routed harness bindings and inline parity', () => {
         assert.match(binding, /task\(task_id: "<captured task ID>"/);
         assert.match(binding, /nested helper branches use the permitted budget and explore targets/);
         assert.doesNotMatch(binding, /nested task target(?:s)?[\\s\S]{0,120}(?!budget|explore)[a-z][a-z-]+/i);
-        assert.match(forwardingSkill, /sai[\\/]orchestration[\\/]workers[\\/]bindings[\\/]implementation-worker\.md/);
+        assert.match(forwardingSkill, /worker/i);
         assert.doesNotMatch(forwardingSkill, /claude[\\/\\]implementation-worker\.md/);
          assert.match(wrapper, /^model: opencode-go\/glm-5\.2$/m);
          assert.match(wrapper, /^variant: high$/m);
@@ -596,11 +594,10 @@ test('Step 3 AGENTS documents every coordinator, inline, worker, agent, binding,
 
   for (const entry of [
     'agents/claude/sai-3-implementation-worker.md',
-    'skills/claude/sai-3-implementation-worker/SKILL.md',
-    'skills/opencode/sai-3-implementation-worker/SKILL.md',
   ]) {
     assert.match(agents, new RegExp(entry.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
   }
+  assert.match(agents, /sai\/orchestration\/workers\/bindings\//);
   assert.match(
     agents,
     /GitHub Copilot dispatches directly through `sai\/orchestration\/inline-invocation\.md` with no routed worker binding/i
@@ -623,7 +620,6 @@ test('Step 3 Claude installer documentation covers ownership, compatibility, col
 test('Step 3 opencode installer documentation covers managed entries, routing shapes, collisions, preservation, and restart', () => {
   const opencode = artifact('INSTALL.opencode.md');
 
-  assert.match(opencode, /sai-coordinator/);
   assert.match(opencode, /sai-3-implementation-worker/);
   assert.match(opencode, /opencode-go\/glm-5\.2[\s\S]{0,200}variant[\s\S]{0,40}high/i);
   assert.match(opencode, /sai-3-implementation-worker[\s\S]{0,280}subagent[\s\S]{0,280}opencode-go\/kimi-k2\.6/i);

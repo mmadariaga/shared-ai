@@ -41,8 +41,8 @@ commands/claude/           ← wrappers for Claude Code (model + effort + fetch 
 commands/opencode/         ← wrappers for opencode (model + fetch to sai/commands/)
 commands/copilot/          ← wrappers for GitHub Copilot (model + fetch to sai/commands/ via the fetch skill)
 agents/claude/             ← Claude Code managed worker agents
-skills/claude/             ← Claude Code skills and routed worker binding loaders
-skills/opencode/           ← opencode skills and routed worker binding loaders
+ skills/claude/             ← Claude Code harness skills
+ skills/opencode/           ← opencode harness skills
 skills/copilot/            ← Copilot skills, including inline compatibility support
 configs/                   ← config samples (opencode.jsonc)
 openspec/schemas/sai-workflow/  ← custom OpenSpec schema (schema.yaml + 9 templates)
@@ -77,21 +77,15 @@ The openspec-dependent `sai-*` commands halt with a clear error if either is mis
 | `agents/claude/sai-1-spec-proposal-worker.md` | Claude Code custom agent for the medium-effort spec proposal worker. |
 | `agents/claude/sai-3-implementation-worker.md` | Claude Code custom agent for the high-effort implementation-planning worker. |
 | `agents/claude/sai-2-design-worker.md` | Claude Code custom agent for the high-effort design-planning worker. |
-| `skills/claude/` | Claude Code worker binding loaders and harness skills. |
-| `skills/opencode/` | opencode worker binding loaders and harness skills. |
+| `skills/claude/` | Claude Code harness skills. |
+| `skills/opencode/` | opencode harness skills. |
 | `skills/copilot/` | Copilot inline support skills; no routed worker binding. |
-| `skills/claude/sai-1-spec-proposal-worker/SKILL.md` | Claude Code binding for spec worker dispatch, same-worker continuation, and recovery. |
-| `skills/claude/sai-3-implementation-worker/SKILL.md` | Claude Code binding for worker dispatch, same-worker continuation, and recovery. |
-| `skills/claude/sai-2-design-worker/SKILL.md` | Claude Code binding for design-worker dispatch, same-worker continuation, and recovery. |
-| `skills/opencode/sai-1-spec-proposal-worker/SKILL.md` | opencode binding for spec worker dispatch, same-task continuation, and recovery. |
-| `skills/opencode/sai-3-implementation-worker/SKILL.md` | opencode binding for worker dispatch, same-task continuation, and recovery. |
-| `skills/opencode/sai-2-design-worker/SKILL.md` | opencode binding for design-worker dispatch, same-task continuation, and recovery. |
 | `skills/` | Universal skills installed globally (not project-local). Fetched by wrappers via `~/.claude/skills/`, `~/.config/opencode/skills/`, or `~/.copilot/skills/`. |
 | `skills/universal/sai-commands/SKILL.md` | SAI command registry — lists all /sai-* commands and enforces fetch-before-execute discipline. Loaded to prevent LLM from skipping command files. |
 | `skills/universal/safe-operations/SKILL.md` | Safe operations skill — enforces reversibility and impact awareness, requires user confirmation before destructive/hard-to-reverse/shared-system operations. Loaded by 7 sai-* command wrappers. |
 | `skills/universal/` | Universal skills (no vendor). Fetched by all wrappers. |
-| `skills/claude/` | Claude Code-specific skills (subagent dispatch rules, etc.). Fetched by wrappers that spawn subagents. |
-| `skills/opencode/` | Opencode-specific skills (subagent dispatch rules, etc.). Fetched by wrappers that spawn subagents. |
+| `skills/claude/` | Claude Code-specific skills (subagent dispatch rules, etc.). Fetched by wrappers that spawn subagents. Routed workers load neutral bindings directly from installed `sai/orchestration/workers/bindings/` paths. |
+| `skills/opencode/` | Opencode-specific skills (subagent dispatch rules, etc.). Fetched by wrappers that spawn subagents. Routed workers load neutral bindings directly from installed `sai/orchestration/workers/bindings/` paths. |
 | `skills/copilot/` | Copilot-specific skills (subagent dispatch rules, fetch path resolver, etc.). Fetched by wrappers that spawn subagents. |
 | `skills/claude/budget-explorer/SKILL.md` | Subagent dispatch rules for Claude Code — model tiers, task classification, tool-call caps, output contracts. Fetched by wrappers that spawn subagents. |
 | `skills/claude/budget-executor/SKILL.md` | Executor subagent rules for Claude Code — subagent_type: General, model: haiku, execute-only discipline. Fetched by wrappers that spawn executor subagents. |
@@ -106,18 +100,12 @@ The openspec-dependent `sai-*` commands halt with a clear error if either is mis
 | `agents/claude/sai-1-spec-proposal-worker.md` | Claude Code custom agent for the medium-effort spec proposal worker. |
 | `agents/claude/sai-3-implementation-worker.md` | Claude Code custom agent for the high-effort implementation-planning worker. |
 | `agents/claude/sai-2-design-worker.md` | Claude Code custom agent for the high-effort design-planning worker. |
-| `skills/claude/sai-1-spec-proposal-worker/SKILL.md` | Claude Code binding for spec worker dispatch, same-worker continuation, and recovery. |
-| `skills/claude/sai-3-implementation-worker/SKILL.md` | Claude Code binding for worker dispatch, same-worker continuation, and recovery. |
-| `skills/claude/sai-2-design-worker/SKILL.md` | Claude Code binding for design-worker dispatch, same-worker continuation, and recovery. |
-| `skills/opencode/sai-1-spec-proposal-worker/SKILL.md` | opencode binding for spec worker dispatch, same-task continuation, and recovery. |
-| `skills/opencode/sai-3-implementation-worker/SKILL.md` | opencode binding for worker dispatch, same-task continuation, and recovery. |
-| `skills/opencode/sai-2-design-worker/SKILL.md` | opencode binding for design-worker same-task continuation and recovery. |
 | `commands/claude/` | Wrappers for Claude Code. YAML frontmatter (`description`, `argument-hint`, `model`, `effort`) + fetch to `sai/commands/` + fetch to project-local skill files. |
 | `commands/opencode/` | Wrappers for opencode. YAML frontmatter (`description`, `model`) + fetch to `sai/commands/` + fetch to project-local skill files. |
 | `commands/copilot/` | Wrappers for GitHub Copilot. YAML frontmatter (`description`, `argument-hint`, `agent`, `model`) + fetch to `sai/commands/` via the copilot fetch skill. |
 | `configs/` | Config samples. `opencode.jsonc`: sub-agent explore configuration (mode + trusted low-cost model). Required for cost-effective research delegation. |
 
-Wrappers are **thin** — they specify the model, fetch command content from `sai/commands/`, and (for openspec-dependent commands) fetch policies, compatibility assets, and relevant project-local skills. The manifest determines which source files are installed for Claude Code, opencode, and Copilot.
+Wrappers are **thin** — they specify the model, fetch command content from `sai/commands/`, and (for openspec-dependent commands) fetch policies, compatibility assets, and relevant project-local skills. Claude Code and opencode load harness-selected routed bindings directly from the neutral installed SAI paths; GitHub Copilot remains inline and receives no routed binding or proxy retirement. The manifest determines which source files are installed for all three harnesses.
 
 ## Critical conventions
 

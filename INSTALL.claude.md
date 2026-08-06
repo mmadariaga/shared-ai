@@ -23,7 +23,7 @@ npx github:mmadariaga/shared-ai
 npx github:mmadariaga/shared-ai setup /path/to/your/project
 ```
 
-Step 1 expands `sai/install-manifest.json` and copies the Claude Code projection to `~/.claude/`. It includes Claude commands, the complete recursively projected `sai/instructions/` tree including the canonical project-agnostic `sai/instructions/_templates/adr-index.md`, `sai/policies/`, and compatibility assets, the shared Orchestration Core contracts, only the Claude routed worker bindings, Claude skills, and managed worker agents. Step 2 verifies the openspec CLI, runs `openspec init --tools claude` if needed, sets `schema: sai-workflow` in `openspec/config.yaml`, and copies the schema templates into the project. `doctor` and `uninstall` use the same manifest projection.
+Step 1 expands `sai/install-manifest.json` and copies the Claude Code projection to `~/.claude/`. It includes Claude commands, the complete recursively projected `sai/instructions/` tree including the canonical project-agnostic `sai/instructions/_templates/adr-index.md`, `sai/policies/`, and compatibility assets, the shared Orchestration Core contracts, only the Claude routed worker bindings, Claude skills, and managed worker agents. Claude Code loads routed workers directly from the neutral installed binding paths. Opencode receives its own harness-selected routed bindings; GitHub Copilot remains inline and receives no routed binding or proxy retirement. Step 2 verifies the openspec CLI, runs `openspec init --tools claude` if needed, sets `schema: sai-workflow` in `openspec/config.yaml`, and copies the schema templates into the project. `doctor` and `uninstall` use the same manifest projection.
 
 ## Manual installation
 
@@ -75,10 +75,6 @@ mkdir -p ~/.claude/skills/sai-commands
 cp skills/universal/sai-commands/SKILL.md ~/.claude/skills/sai-commands/SKILL.md
 mkdir -p ~/.claude/skills/safe-operations
 cp skills/universal/safe-operations/SKILL.md ~/.claude/skills/safe-operations/SKILL.md
-mkdir -p ~/.claude/skills/sai-3-implementation-worker
-cp skills/claude/sai-3-implementation-worker/SKILL.md ~/.claude/skills/sai-3-implementation-worker/SKILL.md
-mkdir -p ~/.claude/skills/sai-2-design-worker
-cp skills/claude/sai-2-design-worker/SKILL.md ~/.claude/skills/sai-2-design-worker/SKILL.md
 mkdir -p ~/.claude/agents
 cp agents/claude/sai-3-implementation-worker.md ~/.claude/agents/sai-3-implementation-worker.md
 cp agents/claude/sai-2-design-worker.md ~/.claude/agents/sai-2-design-worker.md
@@ -130,10 +126,6 @@ New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\.claude\skills\sai-c
 Copy-Item skills\universal\sai-commands\SKILL.md "$env:USERPROFILE\.claude\skills\sai-commands\SKILL.md"
 New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\.claude\skills\safe-operations" | Out-Null
 Copy-Item skills\universal\safe-operations\SKILL.md "$env:USERPROFILE\.claude\skills\safe-operations\SKILL.md"
-New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\.claude\skills\sai-3-implementation-worker" | Out-Null
-Copy-Item skills\claude\sai-3-implementation-worker\SKILL.md "$env:USERPROFILE\.claude\skills\sai-3-implementation-worker\SKILL.md"
-New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\.claude\skills\sai-2-design-worker" | Out-Null
-Copy-Item skills\claude\sai-2-design-worker\SKILL.md "$env:USERPROFILE\.claude\skills\sai-2-design-worker\SKILL.md"
 New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\.claude\agents" | Out-Null
 Copy-Item agents\claude\sai-3-implementation-worker.md "$env:USERPROFILE\.claude\agents\sai-3-implementation-worker.md"
 Copy-Item agents\claude\sai-2-design-worker.md "$env:USERPROFILE\.claude\agents\sai-2-design-worker.md"

@@ -24,7 +24,7 @@ npx github:mmadariaga/shared-ai
 npx github:mmadariaga/shared-ai setup /path/to/your/project
 ```
 
-Step 1 expands `sai/install-manifest.json` and copies the opencode projection to `~/.config/opencode/`. It includes opencode commands, the complete recursively projected `sai/instructions/` tree including the canonical project-agnostic `sai/instructions/_templates/adr-index.md`, `sai/policies/`, and compatibility assets, the shared Orchestration Core contracts, only the opencode routed worker bindings, opencode skills, and the managed configuration projection. Step 2 verifies the openspec CLI, runs `openspec init --tools opencode` if needed, sets `schema: sai-workflow` in `openspec/config.yaml`, and copies the schema templates into the project. `doctor` and `uninstall` use the same manifest projection.
+Step 1 expands `sai/install-manifest.json` and copies the opencode projection to `~/.config/opencode/`. It includes opencode commands, the complete recursively projected `sai/instructions/` tree including the canonical project-agnostic `sai/instructions/_templates/adr-index.md`, `sai/policies/`, and compatibility assets, the shared Orchestration Core contracts, only the opencode routed worker bindings, opencode skills, and the managed configuration projection. Opencode loads routed workers directly from the neutral installed binding paths. Claude Code receives its own harness-selected routed bindings; GitHub Copilot remains inline and receives no routed binding or proxy retirement. Step 2 verifies the openspec CLI, runs `openspec init --tools opencode` if needed, sets `schema: sai-workflow` in `openspec/config.yaml`, and copies the schema templates into the project. `doctor` and `uninstall` use the same manifest projection.
 
 ## Manual installation
 
@@ -79,11 +79,6 @@ mkdir -p ~/.config/opencode/skills/sai-commands
 cp skills/universal/sai-commands/SKILL.md ~/.config/opencode/skills/sai-commands/SKILL.md
 mkdir -p ~/.config/opencode/skills/safe-operations
 cp skills/universal/safe-operations/SKILL.md ~/.config/opencode/skills/safe-operations/SKILL.md
-mkdir -p ~/.config/opencode/skills/sai-3-implementation-worker
-cp skills/opencode/sai-3-implementation-worker/SKILL.md ~/.config/opencode/skills/sai-3-implementation-worker/SKILL.md
-mkdir -p ~/.config/opencode/skills/sai-2-design-worker
-cp skills/opencode/sai-2-design-worker/SKILL.md ~/.config/opencode/skills/sai-2-design-worker/SKILL.md
-
 # Copy opencode.json
 if [ ! -f ~/.config/opencode/opencode.json ] && [ ! -f ~/.config/opencode/opencode.jsonc ]; then
     cp configs/opencode.jsonc ~/.config/opencode/
@@ -186,11 +181,6 @@ New-Item -ItemType Directory -Force -Path "$configDir\skills\sai-commands" | Out
 Copy-Item skills\universal\sai-commands\SKILL.md "$configDir\skills\sai-commands\SKILL.md"
 New-Item -ItemType Directory -Force -Path "$configDir\skills\safe-operations" | Out-Null
 Copy-Item skills\universal\safe-operations\SKILL.md "$configDir\skills\safe-operations\SKILL.md"
-New-Item -ItemType Directory -Force -Path "$configDir\skills\sai-3-implementation-worker" | Out-Null
-Copy-Item skills\opencode\sai-3-implementation-worker\SKILL.md "$configDir\skills\sai-3-implementation-worker\SKILL.md"
-New-Item -ItemType Directory -Force -Path "$configDir\skills\sai-2-design-worker" | Out-Null
-Copy-Item skills\opencode\sai-2-design-worker\SKILL.md "$configDir\skills\sai-2-design-worker\SKILL.md"
-
 # Copy opencode.json
 $jsonPath = Join-Path $configDir "opencode.json"
 $jsoncPath = Join-Path $configDir "opencode.jsonc"
@@ -276,7 +266,7 @@ Effective allow passes without a prompt.
 
 `/sai-2-design` preserves `openspec/changes/{change-name}/design.md`, `tasks.md`, and `interfaces.md`. Its wrapper declares `model: opencode-go/glm-5.2`, `variant: high`, `subtask: false`, and no `agent` field; it dispatches `sai-2-design-worker` in `subagent` mode. The design worker denies `task.*` by default and allows `explore`. The phase ends at design completion; run `/sai-3-implement {name}` separately in a new chat. Users may delete a leftover `sai-coordinator` from a previous installation because install and uninstall leave it untouched; a stale allowlist may otherwise deny newer workers.
 
-Installation preserves an existing `sai-2-design-worker` definition by name and adds the GLM 5.2 high-reasoning repository default only when the name is absent. Existing configured model, variant, mode, and permissions govern runtime dispatch. Doctor accepts the present name in a valid agent map and still reports missing names or malformed configuration as errors. Configuration exclusion means uninstall leaves both reused and bootstrapped entries intact. Restart opencode after configuration changes; reinstall after updates to refresh command, instruction, and both design/implementation binding skill files.
+Installation preserves an existing `sai-2-design-worker` definition by name and adds the GLM 5.2 high-reasoning repository default only when the name is absent. Existing configured model, variant, mode, and permissions govern runtime dispatch. Doctor accepts the present name in a valid agent map and still reports missing names or malformed configuration as errors. Configuration exclusion means uninstall leaves both reused and bootstrapped entries intact. Restart opencode after configuration changes; reinstall after updates to refresh command, instruction, and neutral routed binding files.
 
 ### Post-install
 

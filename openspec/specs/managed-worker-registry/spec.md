@@ -6,6 +6,29 @@ Define a canonical managed-worker registry that preserves installer compatibilit
 
 ## Requirements
 
+### Requirement: Proxy skill identities are absent without changing managed workers
+
+The managed-worker registry and manifest projection inventory SHALL distinguish the 14 retired worker-binding proxy skill files from the surviving Managed Workers. Removing the proxy skill projections SHALL NOT remove, rename, or alter any existing Claude agent record, owner sidecar, opencode managed-agent registration, binding declaration, or registration default.
+
+#### Scenario: Registry retains the surviving worker identity
+
+- **WHEN** installer, doctor, or uninstall derives the managed-worker inventory after proxy retirement
+- **THEN** each existing routed worker remains present with its current identity, registration settings, and binding
+- **AND** no proxy skill projection is treated as a separate Managed Worker identity
+
+#### Scenario: Identity collision disappears through projection removal
+
+- **WHEN** an opencode installation enumerates skills and managed worker agents
+- **THEN** the retired `sai-*-worker` proxy skill files are absent from the skill namespace
+- **AND** the corresponding `sai-*-worker` managed-agent registrations remain available exactly as before
+- **AND** the installer does not rename or re-register the agent to avoid the collision
+
+#### Scenario: Existing registry safety contracts remain in force
+
+- **WHEN** a destination collision, incompatible existing content, missing source, or unsupported ownership mapping is encountered during installation, doctor, or uninstall
+- **THEN** the existing fail-safe behavior remains in force
+- **AND** the proxy retirement does not silently overwrite or delete unrelated user-owned content
+
 ### Requirement: Canonical managed-worker registry
 The installer SHALL preserve one declarative managed-worker registry keyed by worker name for the existing Claude agent filename and owner-sidecar metadata. Opencode managed-agent membership SHALL instead be derived from opencode binding declarations, and every derived worker MUST have exactly one explicit repository registration-default record containing its model, `mode: "subagent"`, task permissions, and optional variant. The Claude registry MUST NOT retain opencode-only registration settings after those defaults are separated.
 

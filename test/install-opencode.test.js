@@ -389,14 +389,37 @@ test('installOpencode copies all Opencode-specific skills', () => {
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });
 
-test('installOpencode projects the routed spec coordinator, binding, and skill', () => {
+test('Step 3 fresh opencode install omits all routed worker proxy skills', () => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-no-proxies-'));
+  try {
+    installOpencode(tmpDir);
+    for (const worker of CURRENT_CENSUS) {
+      assert.equal(fs.existsSync(path.join(tmpDir, 'skills', worker, 'SKILL.md')), false,
+        `${worker} proxy skill should not be installed`);
+      assert.ok(fs.existsSync(path.join(tmpDir, 'sai', 'orchestration', 'workers', 'bindings', `${worker
+        .replace('sai-1-spec-proposal-worker', 'spec-worker')
+        .replace('sai-2-design-worker', 'design-worker')
+        .replace('sai-3-implementation-worker', 'implementation-worker')
+        .replace('sai-5-review-worker', 'review-worker')
+        .replace('sai-6-security-worker', 'security-worker')
+        .replace('sai-7-performance-worker', 'performance-worker')
+        .replace('sai-8-accessibility-worker', 'accessibility-worker')}.md`)));
+    }
+    const configName = fs.existsSync(path.join(tmpDir, 'opencode.json')) ? 'opencode.json' : 'opencode.jsonc';
+    const config = jsonc.parse(fs.readFileSync(path.join(tmpDir, configName), 'utf8'));
+    for (const worker of CURRENT_CENSUS) assert.deepEqual(config.agent[worker], OPENCODE_MANAGED_AGENTS[worker]);
+  } finally {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+});
+
+test('installOpencode projects the routed spec coordinator and neutral binding', () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-spec-'));
   try {
     installOpencode(tmpDir);
     for (const file of [
        path.join('sai', 'commands', 'spec', 'coordinator.md'),
        path.join('sai', 'orchestration', 'workers', 'bindings', 'spec-worker.md'),
-       path.join('skills', 'sai-1-spec-proposal-worker', 'SKILL.md'),
     ]) assert.ok(fs.existsSync(path.join(tmpDir, file)), `${file} should be projected`);
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });
@@ -567,8 +590,8 @@ test('Installation verification covers routed review parity', () => {
     }, 'missing review permission should identify the review surface');
      assert.ok(fs.existsSync(path.join(tmpDir, 'sai', 'orchestration', 'workers', 'bindings', 'review-worker.md')),
       'missing review projection should identify the opencode review binding');
-    assert.ok(fs.existsSync(path.join(tmpDir, 'skills', 'sai-5-review-worker', 'SKILL.md')),
-      'missing review projection should identify the forwarded review skill');
+     assert.equal(fs.existsSync(path.join(tmpDir, 'skills', 'sai-5-review-worker', 'SKILL.md')), false,
+       'review worker proxy skill should not be installed');
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }

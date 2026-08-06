@@ -11,6 +11,7 @@ const STRATEGIES = new Set([
 ]);
 const SUPPORTED_HARNESSES = new Set(['claude', 'opencode', 'copilot']);
 const SHA256 = /^[0-9a-f]{64}$/;
+const RETIREMENT_DESTINATION_CLASSES = new Set(['sai', 'skills']);
 
 function normalizeRelative(value) {
   return value.split(path.sep).join('/').replace(/^\.\//, '');
@@ -90,14 +91,19 @@ function validateRetirements(manifest, projectionIds) {
       throw new Error(`Invalid or duplicate retirement id: ${retirement && retirement.id}`);
     }
     ids.add(retirement.id);
-    if (!retirement.destination || retirement.destination.class !== 'sai' || typeof retirement.destination.path !== 'string') {
-      throw new Error(`Retirement ${retirement.id} must declare destination { class: "sai", path }`);
+    if (!retirement.destination
+        || !RETIREMENT_DESTINATION_CLASSES.has(retirement.destination.class)
+        || typeof retirement.destination.path !== 'string') {
+      throw new Error(`Retirement ${retirement.id} must declare destination { class: "sai" | "skills", path }`);
     }
     const destination = `${retirement.destination.class}/${normalizeRelative(retirement.destination.path)}`;
-    if (destinations.has(destination)) throw new Error(`Duplicate retirement destination: ${destination}`);
-    destinations.add(destination);
     if (!Array.isArray(retirement.harnesses) || retirement.harnesses.length === 0 || retirement.harnesses.some(harness => !SUPPORTED_HARNESSES.has(harness))) {
       throw new Error(`Retirement ${retirement.id} has invalid harnesses`);
+    }
+    for (const harness of retirement.harnesses) {
+      const harnessDestination = `${harness}:${destination}`;
+      if (destinations.has(harnessDestination)) throw new Error(`Duplicate retirement destination: ${destination}`);
+      destinations.add(harnessDestination);
     }
     if (!Array.isArray(retirement.managedHashes) || retirement.managedHashes.length === 0 || retirement.managedHashes.some(hash => !SHA256.test(hash))) {
       throw new Error(`Retirement ${retirement.id} managedHashes must contain lowercase SHA-256 digests`);

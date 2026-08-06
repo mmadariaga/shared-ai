@@ -3,12 +3,14 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('fs');
+const crypto = require('crypto');
 const os = require('os');
 const path = require('path');
 const { PassThrough } = require('stream');
 
 const { main } = require('../bin/doctor.js');
 const { installClaude, installOpencode } = require('../bin/install-flow.js');
+const { loadInstallManifest } = require('../bin/install-manifest.js');
 
 function fixture() {
   const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-doctor-retirement-'));
@@ -46,16 +48,16 @@ function adrRetiredCopy(claudeBase, contents = 'user-owned retired ADR template 
   return destination;
 }
 
-test('doctor reports every former binding destination without changing locally modified content', async () => {
+test('doctor reports every former worker proxy destination without changing locally modified content', async () => {
   const { projectRoot, claudeBase, opencodeBase } = fixture();
   const destinations = ['claude', 'opencode'].flatMap(harness => [
-    [harness, 'sai', 'orchestration', 'workers', 'bindings', harness, 'spec-worker.md'],
-    [harness, 'sai', 'orchestration', 'workers', 'bindings', harness, 'design-worker.md'],
-    [harness, 'sai', 'orchestration', 'workers', 'bindings', harness, 'implementation-worker.md'],
-    [harness, 'sai', 'orchestration', 'workers', 'bindings', harness, 'review-worker.md'],
-    [harness, 'sai', 'orchestration', 'workers', 'bindings', harness, 'security-worker.md'],
-    [harness, 'sai', 'orchestration', 'workers', 'bindings', harness, 'performance-worker.md'],
-    [harness, 'sai', 'orchestration', 'workers', 'bindings', harness, 'accessibility-worker.md'],
+    [harness, 'skills', 'sai-1-spec-proposal-worker', 'SKILL.md'],
+    [harness, 'skills', 'sai-2-design-worker', 'SKILL.md'],
+    [harness, 'skills', 'sai-3-implementation-worker', 'SKILL.md'],
+    [harness, 'skills', 'sai-5-review-worker', 'SKILL.md'],
+    [harness, 'skills', 'sai-6-security-worker', 'SKILL.md'],
+    [harness, 'skills', 'sai-7-performance-worker', 'SKILL.md'],
+    [harness, 'skills', 'sai-8-accessibility-worker', 'SKILL.md'],
   ]);
   try {
     const paths = destinations.map(([harness, ...parts]) => {
@@ -122,22 +124,52 @@ test('doctor reports an unrecognized retired copy without changing it', async ()
   }
 });
 
-test('doctor recognizes current historical bytes for all 14 former binding destinations', async () => {
+test('doctor recognizes current historical bytes for all 14 former worker proxy destinations', async () => {
   const { projectRoot, claudeBase, opencodeBase } = fixture();
   const workers = ['spec', 'design', 'implementation', 'review', 'security', 'performance', 'accessibility'];
+  const workerNames = {
+    spec: 'sai-1-spec-proposal-worker',
+    design: 'sai-2-design-worker',
+    implementation: 'sai-3-implementation-worker',
+    review: 'sai-5-review-worker',
+    security: 'sai-6-security-worker',
+    performance: 'sai-7-performance-worker',
+    accessibility: 'sai-8-accessibility-worker',
+  };
+  const manifest = loadInstallManifest(path.join(__dirname, '..'));
+  const historicalHashes = new Map();
   try {
     for (const [harness, base] of [['claude', claudeBase], ['opencode', opencodeBase]]) {
       for (const worker of workers) {
-        const source = path.join(base, 'sai', 'orchestration', 'workers', 'bindings', `${worker}-worker.md`);
-        const destination = path.join(base, 'sai', 'orchestration', 'workers', 'bindings', harness, `${worker}-worker.md`);
+        const workerName = workerNames[worker];
+        const destination = path.join(base, 'skills', workerName, 'SKILL.md');
+        const contents = `historical ${harness} ${worker} proxy\n`;
+        const retirement = manifest.retirements.find(record => record.id ===
+          `retired-${harness}-${workerName}-proxy-skill`);
+        assert.ok(retirement, `${harness} ${worker} proxy retirement should exist`);
+        historicalHashes.set(contents, retirement.managedHashes[0]);
         fs.mkdirSync(path.dirname(destination), { recursive: true });
-        fs.copyFileSync(source, destination);
+        fs.writeFileSync(destination, contents);
       }
     }
-    const { report } = await runJson(projectRoot, claudeBase, opencodeBase);
+    const originalCreateHash = crypto.createHash;
+    crypto.createHash = () => ({
+      update: bytes => ({
+        digest: () => historicalHashes.get(bytes.toString()) ||
+          originalCreateHash('sha256').update(bytes).digest('hex'),
+      }),
+    });
+    let report;
+    try {
+      const result = await runJson(projectRoot, claudeBase, opencodeBase);
+      report = result.report;
+    } finally {
+      crypto.createHash = originalCreateHash;
+    }
     for (const [harness, base] of [['claude', claudeBase], ['opencode', opencodeBase]]) {
       for (const worker of workers) {
-        const destination = path.join(base, 'sai', 'orchestration', 'workers', 'bindings', harness, `${worker}-worker.md`);
+        const workerName = workerNames[worker];
+        const destination = path.join(base, 'skills', workerName, 'SKILL.md');
         assert.equal(retirementWarning(report, destination, harness).recognized, true,
           `${harness} ${worker} retirement should be recognized`);
       }

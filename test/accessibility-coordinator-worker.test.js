@@ -272,13 +272,11 @@ test('Step 3 accessibility manifest projections are deterministic, unique, and h
     claude: [
       'sai/orchestration/workers/sai-8-accessibility-worker.md',
       'sai/orchestration/workers/bindings/claude/accessibility-worker.md',
-      'skills/claude/sai-8-accessibility-worker/SKILL.md',
       'agents/claude/sai-8-accessibility-worker.md',
     ],
     opencode: [
       'sai/orchestration/workers/sai-8-accessibility-worker.md',
       'sai/orchestration/workers/bindings/opencode/accessibility-worker.md',
-      'skills/opencode/sai-8-accessibility-worker/SKILL.md',
     ],
   };
 
@@ -305,8 +303,10 @@ test('Step 3 accessibility manifest projections are deterministic, unique, and h
         destination: projection.destinationPath,
         strategy: projection.strategy,
       })));
-      const sources = new Set(first.map(projection => sourcePath(repoRoot, projection)));
-      for (const source of requiredSources) assert.ok(sources.has(source), `${harness} should project ${source}`);
+       const sources = new Set(first.map(projection => sourcePath(repoRoot, projection)));
+       for (const source of requiredSources) assert.ok(sources.has(source), `${harness} should project ${source}`);
+       assert.equal(first.some(projection => sourcePath(repoRoot, projection).startsWith('skills/')), false,
+         `${harness} should not project an accessibility worker proxy skill`);
       assert.equal(new Set(first.map(projection => projection.destinationPath)).size, first.length,
         `${harness} accessibility destinations should be unique`);
     } finally {

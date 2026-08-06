@@ -6,11 +6,12 @@ TBD - created by syncing change sai-6-security-coordinator-worker-split. Update 
 
 ### Requirement: Installer registers and projects every routed security surface
 
-The managed-worker registry SHALL define the numbered security worker, its Claude managed-agent identity and owner metadata, and its opencode worker identity. The installation manifest SHALL deterministically project the security coordinator and invocation core, numbered worker contract, Claude and opencode bindings, Claude managed agent, and both harness forwarding skills to their established destinations.
+The managed-worker registry SHALL define the numbered security worker, its Claude managed-agent identity and owner metadata, and its opencode worker identity. The installation manifest SHALL deterministically project the security coordinator and invocation core, numbered worker contract, Claude and opencode bindings, and Claude managed agent to their established destinations. It SHALL NOT project either harness's retired forwarding skill.
 
 #### Scenario: Fresh installation runs
 - **WHEN** the installer expands the manifest for Claude Code and opencode
-- **THEN** every routed security surface is projected to its expected destination
+- **THEN** every active routed security surface is projected to its expected destination
+- **AND** neither retired forwarding skill is projected
 - **AND** repeated installation produces the same projection and ownership metadata
 
 ### Requirement: Claude security-worker ownership is collision-safe
@@ -29,7 +30,7 @@ Installer flow SHALL define the numbered Claude security-worker agent and owner 
 
 ### Requirement: Routed wrappers preserve three-harness entrypoint parity
 
-Claude Code and opencode security wrappers SHALL be thin routed wrappers that load the shared security coordinator and only their matching worker binding while preserving their harness-specific model and argument behavior. The Copilot security prompt SHALL remain inline and SHALL receive no routed binding, managed agent, or routed manifest projection. Structural verification SHALL assert this intentional exclusion and all required Claude/opencode surfaces.
+Claude Code and opencode security wrappers SHALL be thin routed wrappers that load the shared security coordinator and fetch the matching neutral worker-binding destination directly while preserving their harness-specific model and argument behavior. The Copilot security prompt SHALL remain inline and SHALL receive no routed binding, managed agent, or routed manifest projection. Structural verification SHALL assert this intentional exclusion and all required Claude/opencode surfaces.
 
 #### Scenario: Routed wrappers are inspected
 - **WHEN** the Claude Code or opencode `/sai-6-security` wrapper is loaded

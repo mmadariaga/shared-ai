@@ -48,10 +48,7 @@ test('Step 2 uses one canonical coordinator, lifecycle, worker, and binding layo
   assert.match(lifecycle, /binding-owned/);
   assert.match(worker, /Fetch @sai\/orchestration\/worker-lifecycle\.md/);
   for (const harness of ['claude', 'opencode']) {
-    assert.match(
-      artifact(`skills/${harness}/sai-2-design-worker/SKILL.md`),
-      /sai\/orchestration\/workers\/bindings\/design-worker\.md/
-    );
+    assert.match(artifact(`sai/orchestration/workers/bindings/${harness}/design-worker.md`), /worker/i);
   }
 });
 
@@ -533,8 +530,7 @@ test('documentation records the active design compatibility boundary and managed
   assert.match(agents, /sai\/commands\/design\/invocation\.md/);
   assert.match(agents, /sai-2-design-worker\.md/);
   assert.match(agents, /agents\/claude\/sai-2-design-worker\.md/);
-  assert.match(agents, /skills\/claude\/sai-2-design-worker\/SKILL\.md/);
-  assert.match(agents, /skills\/opencode\/sai-2-design-worker\/SKILL\.md/);
+   assert.match(agents, /sai\/orchestration\/workers\/bindings\//);
   assert.match(agents, /ends? at design completion|separate[\s\S]{0,40}\/sai-3-implement/i);
   assert.match(agents, /Copilot.*inline.*adapter/i);
 

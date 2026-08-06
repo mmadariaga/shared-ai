@@ -59,11 +59,11 @@ The Copilot implementation command SHALL preserve its existing inline execution 
 - **AND** it SHALL expose the documented compatibility limitation without an intermediate inline command loader
 
 ### Requirement: Managed implementation worker projections
-The single installation manifest SHALL project the canonical shared coordinator and worker-lifecycle contracts, the implementation worker contract, and only the active routed harness's implementation binding to Claude Code and opencode. Their runtime skills and Claude agent surface SHALL remain thin forwarders to those canonical sources. The Copilot projection SHALL retain `sai/orchestration/inline-invocation.md` and the caller-neutral compatibility assets required by its inline path, SHALL exclude both obsolete inline command loaders, and SHALL exclude routed orchestration bindings and routed implementation worker-agent surfaces. Installer, doctor, and uninstall SHALL derive these projections from the same manifest while preserving deterministic collision detection for ordinary managed files and Claude worker-agent definitions, presence-based opencode merged-config preservation, managed-content drift checks, ownership sidecars, compatible-unowned reuse, and user-modified-file retention. Exact-compatible pre-existing Claude worker agents SHALL be reused without rewriting or adopting ownership, and all unrelated entries in an existing opencode JSONC configuration SHALL remain unchanged.
+The single installation manifest SHALL project the canonical shared coordinator and worker-lifecycle contracts, the implementation worker contract, and only the active routed harness's implementation binding to Claude Code and opencode. Routed wrappers SHALL fetch that neutral installed binding destination directly; no forwarding skill SHALL be projected. The Claude agent surface SHALL remain a thin forwarder to the canonical sources. The Copilot projection SHALL retain `sai/orchestration/inline-invocation.md` and the caller-neutral compatibility assets required by its inline path, SHALL exclude both obsolete inline command loaders, and SHALL exclude routed orchestration bindings and routed implementation worker-agent surfaces. Installer, doctor, and uninstall SHALL derive these projections from the same manifest while preserving deterministic collision detection for ordinary managed files and Claude worker-agent definitions, presence-based opencode merged-config preservation, managed-content drift checks, ownership sidecars, compatible-unowned reuse, and user-modified-file retention. Exact-compatible pre-existing Claude worker agents SHALL be reused without rewriting or adopting ownership, and all unrelated entries in an existing opencode JSONC configuration SHALL remain unchanged.
 
 #### Scenario: Claude Code projection is installed
 - **WHEN** the manifest expands the Claude Code implementation surfaces
-- **THEN** it SHALL include the shared lifecycle sources, canonical implementation worker, Claude implementation binding, forwarding skill, and managed worker agent
+- **THEN** it SHALL include the shared lifecycle sources, canonical implementation worker, Claude implementation binding, and managed worker agent
 - **AND** it SHALL exclude the opencode binding subtree
 - **AND** it SHALL exclude both obsolete inline command loaders
 
@@ -75,7 +75,7 @@ The single installation manifest SHALL project the canonical shared coordinator 
 
 #### Scenario: Opencode projection is installed
 - **WHEN** the manifest expands the opencode implementation surfaces
-- **THEN** it SHALL include the shared lifecycle sources, canonical implementation worker, opencode implementation binding, forwarding skill, and the namespaced `sai-3-implementation-worker` configuration entry
+- **THEN** it SHALL include the shared lifecycle sources, canonical implementation worker, opencode implementation binding, and the namespaced `sai-3-implementation-worker` configuration entry
 - **AND** it SHALL exclude the Claude binding subtree and Claude worker-agent projection
 - **AND** it SHALL exclude both obsolete inline command loaders
 

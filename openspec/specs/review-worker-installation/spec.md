@@ -5,11 +5,12 @@ TBD - created by archiving change sai-5-review-coordinator-worker-split. Update 
 ## Requirements
 ### Requirement: Installer projects every routed review surface
 
-The installation manifest SHALL project the review coordinator/invocation assets, numbered review worker contract, Claude and opencode bindings, Claude managed worker agent, and both harness forwarding skills to their established destinations. Projection order and ownership metadata SHALL remain deterministic.
+The installation manifest SHALL project the review coordinator/invocation assets, numbered review worker contract, Claude and opencode bindings, and Claude managed worker agent to their established destinations. It SHALL NOT project either harness's retired forwarding skill. Projection order and ownership metadata SHALL remain deterministic.
 
 #### Scenario: Fresh installation runs
 - **WHEN** the installer expands the manifest for Claude Code and opencode
-- **THEN** every routed review surface is projected to its expected destination
+- **THEN** every active routed review surface is projected to its expected destination
+- **AND** neither retired forwarding skill is projected
 - **AND** the resulting projection is deterministic across repeated runs
 
 ### Requirement: Claude worker ownership is collision-safe
@@ -78,4 +79,3 @@ Installer and structural verification SHALL cover the Claude/opencode review wra
 - **WHEN** a manifest or structural check cannot find a required routed review surface
 - **THEN** activation fails with the missing surface identified
 - **AND** the installer does not silently fall back to an incomplete routed worker
-

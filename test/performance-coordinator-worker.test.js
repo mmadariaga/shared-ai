@@ -231,12 +231,12 @@ test('Step 3 bindings preserve worker lifecycle results and own continuation met
   }
 });
 
-test('Step 3 managed-agent and forwarding-skill identities match the canonical binding identity', () => {
+test('Step 3 managed-agent identity and binding remain while forwarding skill sources are retired', () => {
   const identity = 'sai-7-performance-worker';
   const surfaces = [
     'agents/claude/sai-7-performance-worker.md',
-    'skills/claude/sai-7-performance-worker/SKILL.md',
-    'skills/opencode/sai-7-performance-worker/SKILL.md',
+    'sai/orchestration/workers/bindings/claude/performance-worker.md',
+    'sai/orchestration/workers/bindings/opencode/performance-worker.md',
   ];
 
   for (const relativePath of surfaces) {
@@ -244,8 +244,8 @@ test('Step 3 managed-agent and forwarding-skill identities match the canonical b
       `${relativePath} should use the canonical performance worker identity`);
   }
   assert.match(artifact('agents/claude/sai-7-performance-worker.md'), /managed agent/i);
-  assert.match(artifact('skills/claude/sai-7-performance-worker/SKILL.md'), /Claude forwarding skill/i);
-  assert.match(artifact('skills/opencode/sai-7-performance-worker/SKILL.md'), /opencode forwarding skill/i);
+  assert.equal(fs.existsSync(path.join(repoRoot, 'skills', 'claude', identity, 'SKILL.md')), false);
+  assert.equal(fs.existsSync(path.join(repoRoot, 'skills', 'opencode', identity, 'SKILL.md')), false);
 });
 
 test('Step 4 routed performance wrappers fetch only their matching binding and coordinator surfaces', () => {

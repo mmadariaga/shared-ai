@@ -19,7 +19,7 @@ function hash(bytes) {
 }
 
 function roots(base) {
-  return { base };
+  return { base, sai: path.join(base, 'sai'), skills: path.join(base, 'skills') };
 }
 
 function retirementPaths(base) {
@@ -27,7 +27,7 @@ function retirementPaths(base) {
   return expandRetirementManifest(manifest, {
     harness: 'claude',
     repoRoot: path.join(__dirname, '..'),
-    destinationRoot: { sai: path.join(base, 'sai') },
+    destinationRoot: { sai: path.join(base, 'sai'), skills: path.join(base, 'skills') },
   });
 }
 
@@ -44,8 +44,7 @@ test('retirement cleanup treats an absent destination as a no-op', () => {
 
 test('retirement cleanup deletes matching bytes for every accepted historical worker digest', () => {
   const manifest = loadInstallManifest(path.join(__dirname, '..'));
-  const retirements = manifest.retirements.filter(retirement =>
-    retirement.id.includes('-claude-') || retirement.id.includes('-opencode-'));
+  const retirements = manifest.retirements.filter(retirement => retirement.id.endsWith('-proxy-skill'));
 
   for (const retirement of retirements) {
     for (const acceptedHash of retirement.managedHashes) {
@@ -54,7 +53,7 @@ test('retirement cleanup deletes matching bytes for every accepted historical wo
         const expanded = expandRetirementManifest(manifest, {
           harness: retirement.harnesses[0],
           repoRoot: path.join(__dirname, '..'),
-          destinationRoot: { sai: path.join(base, 'sai') },
+          destinationRoot: { sai: path.join(base, 'sai'), skills: path.join(base, 'skills') },
         });
         const target = expanded.find(record => record.id === retirement.id);
         const bytes = Buffer.from(`historical bytes for ${acceptedHash}`);
@@ -82,7 +81,8 @@ test('retirement cleanup deletes matching bytes for every accepted historical wo
 test('retirement cleanup deletes a destination whose bytes match a registered hash', () => {
   const base = tempDir();
   try {
-    const [retirement] = retirementPaths(base);
+    const retirement = retirementPaths(base).find(record => record.id.endsWith('-proxy-skill'));
+    assert.ok(retirement, 'a proxy retirement record should be available');
     const bytes = Buffer.from('managed loader bytes');
     const destinationPath = retirement.destinationPath;
     fs.mkdirSync(path.dirname(destinationPath), { recursive: true });
@@ -106,12 +106,15 @@ test('retirement cleanup deletes a destination whose bytes match a registered ha
 test('retirement cleanup preserves modified and unknown destination bytes', () => {
   const base = tempDir();
   try {
-    const [modifiedRetirement, unknownRetirement] = retirementPaths(base);
+    const [modifiedRetirement, unknownRetirement] = retirementPaths(base)
+      .filter(record => record.id.endsWith('-proxy-skill'));
+    assert.ok(modifiedRetirement && unknownRetirement, 'two proxy retirement records should be available');
     const modifiedPath = modifiedRetirement.destinationPath;
     const unknownPath = unknownRetirement.destinationPath;
     const modifiedBytes = Buffer.from('user-modified loader bytes');
     const unknownBytes = Buffer.from('unrecognized loader bytes');
     fs.mkdirSync(path.dirname(modifiedPath), { recursive: true });
+    fs.mkdirSync(path.dirname(unknownPath), { recursive: true });
     fs.writeFileSync(modifiedPath, modifiedBytes);
     fs.writeFileSync(unknownPath, unknownBytes);
 
@@ -127,14 +130,13 @@ test('retirement cleanup preserves modified and unknown destination bytes', () =
 
 test('retirement cleanup preserves unknown bytes for every former worker binding destination', () => {
   const manifest = loadInstallManifest(path.join(__dirname, '..'));
-  const retirements = manifest.retirements.filter(retirement =>
-    retirement.id.includes('-claude-') || retirement.id.includes('-opencode-'));
+  const retirements = manifest.retirements.filter(retirement => retirement.id.endsWith('-proxy-skill'));
   const base = tempDir();
   try {
     const destinations = retirements.map(retirement => expandRetirementManifest(manifest, {
       harness: retirement.harnesses[0],
       repoRoot: path.join(__dirname, '..'),
-      destinationRoot: { sai: path.join(base, 'sai') },
+       destinationRoot: { sai: path.join(base, 'sai'), skills: path.join(base, 'skills') },
     }).find(record => record.id === retirement.id));
     const bytes = Buffer.from('unrecognized worker binding bytes');
     for (const destination of destinations) {

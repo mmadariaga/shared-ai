@@ -1,4 +1,27 @@
-## ADDED Requirements
+## Requirements
+
+### Requirement: Routed coordinator read scope is sufficient but non-writing
+
+The Claude Code allowed-tools list for each routed design, implementation, review, security, performance, and accessibility coordinator SHALL be exactly `Read, Glob, Skill, Agent, SendMessage, AskUserQuestion`. `Read` and `Glob` SHALL be available for resolving the coordinator's own fetched instruction chain, while `Edit`, `Write`, and bare unrestricted `Bash` SHALL remain unavailable.
+
+#### Scenario: All six routed coordinators receive the restored read tools
+
+- **WHEN** the frontmatter of `commands/claude/sai-2-design.md`, `commands/claude/sai-3-implement.md`, `commands/claude/sai-5-review.md`, `commands/claude/sai-6-security.md`, `commands/claude/sai-7-performance.md`, and `commands/claude/sai-8-accessibility.md` is inspected
+- **THEN** each file declares `allowed-tools: Read, Glob, Skill, Agent, SendMessage, AskUserQuestion`
+- **AND** each list contains both `Read` and `Glob`
+
+#### Scenario: Write-capable tools remain absent
+
+- **WHEN** any routed coordinator allowed-tools list is inspected
+- **THEN** it does not contain `Edit`, `Write`, or a bare `Bash` entry
+- **AND** no scoped shell permission is introduced as part of restoring instruction loading
+
+#### Scenario: Existing read-scoped commands do not change
+
+- **WHEN** the change is applied
+- **THEN** `commands/claude/sai-explore.md` retains its existing read-only and scoped-shell tool list
+- **AND** `sai-status` retains its existing behavior
+- **AND** opencode and Copilot tool-scoping behavior is unchanged because neither has the Claude `allowed-tools` frontmatter contract
 
 ### Requirement: Claude Code sai-explore is scoped read-only via allowed-tools
 

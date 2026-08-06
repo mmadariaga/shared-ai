@@ -139,7 +139,7 @@ After design artifacts and feedback are complete, the coordinator SHALL emit the
 - **THEN** the coordinator SHALL NOT offer a same-prompt continuation into implementation planning and SHALL NOT construct an implementation invocation envelope
 
 ### Requirement: numbered-design-worker-identity
-The routed design worker SHALL use the phase-specific identifier `sai-2-design-worker` across opencode agent configuration, Claude Code managed worker definitions, forwarding skill directories and fetch references, harness bindings, installer projections, and verification/documentation surfaces. Its reusable technical core SHALL be named `sai-2-design-core` in `sai/compat/` and SHALL remain separate from the implementation worker contract. The Claude Code, opencode, and Copilot inline callers SHALL fetch the renamed core wherever they consume the design invocation core.
+The routed design worker SHALL use the phase-specific identifier `sai-2-design-worker` across opencode agent configuration, Claude Code managed worker definitions, direct wrapper binding fetch references, harness bindings, installer projections, and verification/documentation surfaces. Its reusable technical core SHALL be named `sai-2-design-core` in `sai/compat/` and SHALL remain separate from the implementation worker contract. The Claude Code, opencode, and Copilot inline callers SHALL fetch the renamed core wherever they consume the design invocation core.
 
 #### Scenario: design dispatch resolves the phase worker
 - **WHEN** the routed design coordinator dispatches technical design work

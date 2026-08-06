@@ -72,7 +72,6 @@ test('Step 3 manifest projects the shared lifecycle and one active harness bindi
       'sai/orchestration/worker-lifecycle.md',
       'sai/orchestration/workers/sai-3-implementation-worker.md',
       'sai/orchestration/workers/bindings/claude/implementation-worker.md',
-      'skills/claude/sai-3-implementation-worker/SKILL.md',
       'agents/claude/sai-3-implementation-worker.md',
     ],
     opencode: [
@@ -80,7 +79,6 @@ test('Step 3 manifest projects the shared lifecycle and one active harness bindi
       'sai/orchestration/worker-lifecycle.md',
       'sai/orchestration/workers/sai-3-implementation-worker.md',
       'sai/orchestration/workers/bindings/opencode/implementation-worker.md',
-      'skills/opencode/sai-3-implementation-worker/SKILL.md',
     ],
     copilot: [
       'sai/commands/implement/coordinator.md',

@@ -37,18 +37,14 @@ test('Step 2 routed harness bindings expose the required lifecycle symbols', () 
   }
 });
 
-test('Step 2 forwarding skills use neutral references and preserve harness-specific sources', () => {
+test('Step 3 removes worker proxy skills while preserving harness-specific binding sources', () => {
   for (const [harness, permissionTarget] of [
     ['claude', /Agent\s*\(/],
     ['opencode', /task\s*\(/],
   ]) {
     for (const [worker, filename] of WORKERS) {
-      const forwardingSkill = artifact(`skills/${harness}/${worker}/SKILL.md`);
-      const neutralReference = `Fetch @sai/orchestration/workers/bindings/${filename} and follow it exactly.`;
-      assert.match(forwardingSkill, new RegExp(`^${neutralReference.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'm'),
-        `${harness} forwarding skill should use the exact neutral reference`);
-      assert.doesNotMatch(forwardingSkill, /bindings[\\/]claude[\\/]|bindings[\\/]opencode[\\/]/,
-        `${harness} forwarding skill must not reference a harness binding path`);
+      assert.equal(fs.existsSync(path.join(repoRoot, 'skills', harness, worker, 'SKILL.md')), false,
+        `${harness} worker proxy source should be absent`);
 
       const relativePath = `sai/orchestration/workers/bindings/${harness}/${filename}`;
       const binding = artifact(relativePath);
@@ -61,6 +57,13 @@ test('Step 2 forwarding skills use neutral references and preserve harness-speci
         }
       }
     }
+  }
+});
+
+test('Step 3 keeps all seven managed Claude agents alongside the neutral binding sources', () => {
+  for (const [worker, filename] of WORKERS) {
+    assert.ok(fs.existsSync(path.join(repoRoot, 'sai', 'orchestration', 'workers', 'bindings', 'claude', filename)));
+    assert.ok(fs.existsSync(path.join(repoRoot, 'agents', 'claude', `${worker}.md`)));
   }
 });
 
@@ -83,5 +86,16 @@ test('Step 2 routed harness bindings failed needs_input continuation allows one 
       assert.match(binding, new RegExp(`\\b${field}\\b`),
         `${relativePath} should reconstruct ${field}`);
     }
+  }
+});
+
+test('Step 3 documentation does not instruct ownership or copying of retired proxy skills', () => {
+  for (const relativePath of ['README.md', 'AGENTS.md', 'INSTALL.claude.md', 'INSTALL.opencode.md', 'INSTALL.copilot.md']) {
+    const fullPath = path.join(repoRoot, relativePath);
+    if (!fs.existsSync(fullPath)) continue;
+    const documentation = fs.readFileSync(fullPath, 'utf8');
+    assert.doesNotMatch(documentation,
+      /(?:copy|install|project|own|forward)[^\n]{0,160}skills[\\/](?:claude|opencode)[\\/]sai-[^\n]*SKILL\.md/i,
+      `${relativePath} should not document retired proxy ownership or copying`);
   }
 });

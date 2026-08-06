@@ -95,9 +95,8 @@ test('retired entries delete accepted content and preserve unknown content', () 
 
 test('retired destination inventory preserves modified content across all 14 former worker bindings', () => {
    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-exec-retirements-'));
-   const retirements = loadInstallManifest(path.join(__dirname, '..')).retirements.filter(retirement =>
-     retirement.id.includes('-claude-') || retirement.id.includes('-opencode-'));
-   const destinations = retirements.map(retirement => path.join('sai', retirement.destination.path));
+   const retirements = loadInstallManifest(path.join(__dirname, '..')).retirements.filter(retirement => retirement.id.endsWith('-proxy-skill'));
+   const destinations = retirements.map(retirement => path.join(retirement.destination.class, retirement.destination.path));
    try {
      assert.equal(destinations.length, 14);
      const plan = destinations.map(destination => ({
@@ -117,8 +116,7 @@ test('retired destination inventory preserves modified content across all 14 for
 
 test('all 14 former worker bindings delete accepted bytes and keep overrides', () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-exec-retired-worker-bindings-'));
-  const retirements = loadInstallManifest(path.join(__dirname, '..')).retirements.filter(retirement =>
-    retirement.id.includes('-claude-') || retirement.id.includes('-opencode-'));
+   const retirements = loadInstallManifest(path.join(__dirname, '..')).retirements.filter(retirement => retirement.id.endsWith('-proxy-skill'));
   const managed = 'historical managed worker binding';
   const acceptedHash = hash(managed);
   const unrelated = writeFile(tmpDir, 'unrelated.txt', 'keep me');

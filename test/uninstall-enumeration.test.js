@@ -54,8 +54,6 @@ function managedWorkerSourcePaths(repoRoot) {
   return new Set(Object.entries(MANAGED_WORKERS).flatMap(([name, worker]) => [
     `sai/orchestration/workers/bindings/claude/${workerStems[name]}.md`,
     `sai/orchestration/workers/bindings/opencode/${workerStems[name]}.md`,
-    `skills/claude/${name}/SKILL.md`,
-    `skills/opencode/${name}/SKILL.md`,
     `agents/claude/${worker.claude.agent}`,
   ].map(source => path.resolve(repoRoot, source))));
 }
@@ -66,13 +64,9 @@ test('managed worker source enumeration resolves the security worker stem', () =
   for (const source of [
     'sai/orchestration/workers/bindings/claude/security-worker.md',
     'sai/orchestration/workers/bindings/opencode/security-worker.md',
-    'skills/claude/sai-6-security-worker/SKILL.md',
-    'skills/opencode/sai-6-security-worker/SKILL.md',
     'agents/claude/sai-6-security-worker.md',
     'sai/orchestration/workers/bindings/claude/accessibility-worker.md',
     'sai/orchestration/workers/bindings/opencode/accessibility-worker.md',
-    'skills/claude/sai-8-accessibility-worker/SKILL.md',
-    'skills/opencode/sai-8-accessibility-worker/SKILL.md',
     'agents/claude/sai-8-accessibility-worker.md',
   ]) {
     assert.equal(sources.has(path.resolve(repoRoot, source)), true, `should enumerate ${source}`);
@@ -134,17 +128,17 @@ test('install and uninstall inventories are exact and deterministic for every ha
       assert.deepEqual(normalizedUninstall, second, `${harness} uninstall enumeration should be deterministic`);
 
       if (harness !== 'copilot') {
-        const retiredBindings = normalize(entries
-          .filter(entry => entry.assetType === 'retired-managed-file' && entry.ruleId.includes(`-${harness}-`))
-          .map(entry => entry.dest));
-        assert.deepEqual(retiredBindings, [
-          `sai/orchestration/workers/bindings/${harness}/accessibility-worker.md`,
-          `sai/orchestration/workers/bindings/${harness}/design-worker.md`,
-          `sai/orchestration/workers/bindings/${harness}/implementation-worker.md`,
-          `sai/orchestration/workers/bindings/${harness}/performance-worker.md`,
-          `sai/orchestration/workers/bindings/${harness}/review-worker.md`,
-          `sai/orchestration/workers/bindings/${harness}/security-worker.md`,
-          `sai/orchestration/workers/bindings/${harness}/spec-worker.md`,
+         const retiredBindings = normalize(entries
+           .filter(entry => entry.assetType === 'retired-managed-file' && entry.ruleId.endsWith('-proxy-skill') && entry.ruleId.includes(`-${harness}-`))
+           .map(entry => entry.dest));
+         assert.deepEqual(retiredBindings, [
+           'skills/sai-8-accessibility-worker/SKILL.md',
+           'skills/sai-2-design-worker/SKILL.md',
+           'skills/sai-3-implementation-worker/SKILL.md',
+           'skills/sai-7-performance-worker/SKILL.md',
+           'skills/sai-5-review-worker/SKILL.md',
+           'skills/sai-6-security-worker/SKILL.md',
+           'skills/sai-1-spec-proposal-worker/SKILL.md',
         ].sort(), `${harness} should enumerate only its seven retired routed bindings`);
       }
 
@@ -288,6 +282,13 @@ test('enumeration includes retirement records but excludes them from active proj
       path.join('sai', 'commands', 'sai-2-design-inline.md'),
       path.join('sai', 'commands', 'sai-3-implement.md'),
        path.join('sai', 'commands', 'sai-3-implement-inline.md'),
+       path.join('skills', 'sai-8-accessibility-worker', 'SKILL.md'),
+       path.join('skills', 'sai-2-design-worker', 'SKILL.md'),
+       path.join('skills', 'sai-3-implementation-worker', 'SKILL.md'),
+       path.join('skills', 'sai-7-performance-worker', 'SKILL.md'),
+       path.join('skills', 'sai-5-review-worker', 'SKILL.md'),
+       path.join('skills', 'sai-6-security-worker', 'SKILL.md'),
+       path.join('skills', 'sai-1-spec-proposal-worker', 'SKILL.md'),
        path.join('sai', 'orchestration', 'workers', 'bindings', 'opencode', 'accessibility-worker.md'),
        path.join('sai', 'orchestration', 'workers', 'bindings', 'opencode', 'design-worker.md'),
        path.join('sai', 'orchestration', 'workers', 'bindings', 'opencode', 'implementation-worker.md'),

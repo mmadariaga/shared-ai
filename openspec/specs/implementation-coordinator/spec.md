@@ -95,7 +95,7 @@ After the worker resolves a change, every `completed`, `needs_input`, `failed`, 
 - **AND** terminal navigation SHALL receive that value and use it in the exact completion message
 
 ### Requirement: numbered-implementation-worker-identity
-The routed implementation worker SHALL use the phase-specific identifier `sai-3-implementation-worker` across opencode agent configuration, Claude Code managed worker definitions, forwarding skill directories and fetch references, harness bindings, installer projections, and verification/documentation surfaces. Its reusable technical core SHALL be named `sai-3-implementation-core` in `sai/compat/` and SHALL remain separate from the design worker contract. The Claude Code, opencode, and Copilot inline callers SHALL fetch the renamed core wherever they consume the implementation invocation core.
+The routed implementation worker SHALL use the phase-specific identifier `sai-3-implementation-worker` across opencode agent configuration, Claude Code managed worker definitions, direct wrapper binding fetch references, harness bindings, installer projections, and verification/documentation surfaces. Its reusable technical core SHALL be named `sai-3-implementation-core` in `sai/compat/` and SHALL remain separate from the design worker contract. The Claude Code, opencode, and Copilot inline callers SHALL fetch the renamed core wherever they consume the implementation invocation core.
 
 #### Scenario: implementation dispatch resolves the phase worker
 - **WHEN** the routed implementation coordinator dispatches technical implementation planning

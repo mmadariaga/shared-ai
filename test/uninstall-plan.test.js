@@ -138,7 +138,7 @@ test('computePlanEntry applies retirement accepted-hash classification', () => {
 test('retirement destinations have hash-guarded plans for all 14 former worker bindings', () => {
   const manifest = loadInstallManifest(path.join(__dirname, '..'));
   const retirements = manifest.retirements.filter(retirement =>
-    retirement.id.includes('-claude-') || retirement.id.includes('-opencode-'));
+    retirement.id.includes('worker-binding'));
   assert.equal(retirements.length, 14);
   assert.equal(new Set(retirements.map(retirement => retirement.destination.path)).size, 14);
 
