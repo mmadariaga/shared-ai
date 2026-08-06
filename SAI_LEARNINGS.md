@@ -41,6 +41,10 @@ Durable execution-observed facts about the shared-ai prompt and installer reposi
   *Observed:* add-sai-explore-pipeline-supervision — capability-level assertions that preserved scoped Bash matched the required worker and research flow.
 - **commands/opencode/sai-explore.md**: Routed spec-worker behavior is enabled by fetching the existing `sai-1-spec-proposal-worker` skill; the thin wrapper does not need a literal task-dispatch token.
   *Observed:* add-sai-explore-pipeline-supervision — the exact worker-skill fetch matched the routed binding contract and kept the wrapper thin.
+- **Worker proxy retirement**: Routed wrappers fetch neutral installed binding paths directly; obsolete proxy skills are represented only by `skills`-class hash-gated retirement records, so modified user copies remain preserved.
+  *Observed:* restore-coordinator-instruction-loading
+- **bin/install-manifest.js**: Retirement validation and expansion must keep exact per-harness proxy-skill IDs, lowercase 64-character SHA-256 digests, and separate `sai`/`skills` destination roots while leaving neutral binding projections active.
+  *Observed:* restore-coordinator-instruction-loading
 
 ## Avoid
 
