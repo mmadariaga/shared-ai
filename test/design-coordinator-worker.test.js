@@ -54,10 +54,9 @@ test('Step 2 uses one canonical coordinator, lifecycle, worker, and binding layo
 
 // ─── specs/deduplicate-sai-2-design/spec.md ────────────────────────────────
 
-test('design wrappers activate routed Claude/opencode entry and preserve inline Copilot boundary', () => {
+test('design wrappers activate routed Claude/opencode entry and preserve phase boundary', () => {
   const claude = artifact('commands/claude/sai-2-design.md');
   const opencode = artifact('commands/opencode/sai-2-design.md');
-  const copilot = artifact('commands/copilot/sai-2-design.prompt.md');
 
   assert.match(claude, /^model: claude-opus-4-8$/m);
   assert.match(claude, /^effort: low$/m);
@@ -79,14 +78,6 @@ test('design wrappers activate routed Claude/opencode entry and preserve inline 
    assert.doesNotMatch(opencode, /Fetch @skills\/sai-2-design-worker\/SKILL\.md/);
   assert.ok(opencode.includes('**Change-name argument and and optional flags:** $ARGUMENTS'));
 
-  assert.match(copilot, /model: GPT-5\.6 Terra \(copilot\)/);
-  assert.match(copilot, /tools: \[vscode, read, search, edit, execute, web\]/);
-  assert.match(copilot, /sai\/orchestration\/inline-invocation\.md/);
-  assert.match(copilot, /^phase: sai-2-design$/m);
-  assert.match(copilot, /^arguments: \$ARGUMENTS$/m);
-  assert.doesNotMatch(copilot, /sai-2-design-inline\.md/);
-  assert.doesNotMatch(copilot, /sai-design-coordinator|sai-design-planning-worker|sai-implementation-planning-worker/);
-
   for (const relativePath of [
     'sai/commands/design/coordinator.md',
     'sai/commands/implement/coordinator.md',
@@ -96,26 +87,23 @@ test('design wrappers activate routed Claude/opencode entry and preserve inline 
 
   const spec = artifact('openspec/specs/design-coordinator/spec.md');
 
-  assert.match(
-    spec,
-    /Claude Code and opencode SHALL invoke the routed design coordinator.*GitHub Copilot SHALL invoke `sai\/orchestration\/inline-invocation\.md` directly/i
-  );
+  assert.match(spec, /Claude Code and opencode SHALL invoke the routed design coordinator/i);
   assert.match(spec, /no supported entrypoint SHALL require a legacy loader/i);
+  assert.doesNotMatch(artifact('sai/instructions/design.md'), /sai\/orchestration\/inline-invocation\.md/);
 });
 
 test('shared feedback gate defines routed design ownership without changing canonical gate rules', () => {
   const gate = artifact('sai/policies/artifact-feedback-gate.md');
   assert.match(gate, /Routed design ownership adapter/);
-  assert.match(gate, /sai-1-spec.*inline Copilot retain all existing inline behavior/i);
   assert.match(gate, /coordinator owns picker presentation.*iteration counter.*pending raw feedback/i);
   assert.match(gate, /worker owns per-item judgment.*design-artifact edits.*verification.*discard reasons.*summary/i);
   assert.match(gate, /single-sourced in their existing sections/i);
+  assert.doesNotMatch(gate, /sai\/orchestration\/inline-invocation\.md|Copilot|inline consumer/i);
 });
 
 test('sai-2 feedback routes one coordinator prompt to the same worker and preserves terminal proceed', () => {
   const coordinator = artifact('sai/commands/design/coordinator.md');
   const worker = artifact('sai/orchestration/workers/sai-2-design-worker.md');
-  const inline = artifact('sai/orchestration/inline-invocation.md');
 
   const feedbackFetch = coordinator.indexOf('Fetch @sai/policies/artifact-feedback-gate.md');
   const completionGate = coordinator.search(/completion gate/i);
@@ -134,12 +122,12 @@ test('sai-2 feedback routes one coordinator prompt to the same worker and preser
   assert.match(coordinator, /Continue/i);
   assert.match(coordinator, /Design done in openspec\/changes\/\{name\}\/\. Run \\?`\/sai-3-implement \{name\}\\?` \*\*in a new chat\*\* when ready\./i);
   assert.doesNotMatch(coordinator, /Continue[\s\S]{0,240}dispatch.*implementation worker/i);
-  assert.match(inline, /phase: sai-2-design/);
-  assert.doesNotMatch(inline, /sai-2-design[\s\S]{0,240}dispatch.*implementation worker/i);
+  assert.doesNotMatch(coordinator, /sai\/orchestration\/inline-invocation\.md/);
 });
 
 test('shared feedback gate delegates picker mapping without a single-harness example', () => {
   const gate = artifact('sai/policies/artifact-feedback-gate.md');
+  const remember = artifact('sai/policies/remember.md');
   const presentation = gate.slice(
     gate.indexOf('## Present the gate'),
     gate.indexOf('## On selecting the feedback option'),
@@ -150,6 +138,8 @@ test('shared feedback gate delegates picker mapping without a single-harness exa
   assert.ok(presentation.indexOf('Give feedback (Recommended)') < presentation.indexOf('2. **`proceed-label`**'));
   assert.match(gate, /Apply feedback \*\*selectively per item\*\*/);
   assert.match(gate, /Stop the loop and perform `next-action` exactly once/);
+  assert.match(remember, /Claude Code.*AskUserQuestion[\s\S]*opencode.*question/i);
+  assert.doesNotMatch(remember, /Copilot|vscode\/askQuestions/);
 });
 
 test('standalone policies have one canonical home and active fetches use it', () => {
@@ -460,8 +450,6 @@ test('NoticeAcknowledgement is defined as exactly continue_after_notice', () => 
     'NoticeAcknowledgement should equal continue_after_notice');
 });
 
-// ─── Harness-specific tests ────────────────────────────────────────────────
-
 test('design coordinator spec defines no file/search/shell/git/web/OpenSpec access for coordinator', () => {
   const coordinatorSpec = artifact('openspec/specs/design-coordinator/spec.md');
 
@@ -476,41 +464,13 @@ test('design coordinator spec says worker delegates only to explore', () => {
     'coordinator spec should not say worker delegates to any binding');
 });
 
-test('Copilot inline coordinator owns design dispatch and caller navigation', () => {
-  const inline = artifact('sai/orchestration/inline-invocation.md');
-  const designBranch = inline.slice(
-    inline.indexOf('## Design branch: phase: sai-2-design'),
-    inline.indexOf('## Implementation branch: phase: sai-3-implement'),
-  );
-
-  assert.match(inline, /^## Invocation envelope$/m);
-  assert.match(inline, /phase: sai-2-design/);
-  assert.match(inline, /arguments: \$ARGUMENTS/);
-   assert.match(inline, /Fetch @sai\/commands\/design\/invocation\.md/);
-  assert.match(inline, /fast-track/i);
-  assert.match(inline, /artifact-feedback-gate\.md/);
-  assert.match(designBranch, /Design done in openspec\/changes\/\{name\}\/\. Run \\`\/sai-3-implement \{name\}\\` \*\*in a new chat\*\* when ready\./);
-  assert.doesNotMatch(designBranch, /Stop for a new chat/);
-  assert.doesNotMatch(designBranch, /Continue now/);
-  assert.doesNotMatch(designBranch, /dispatch implementation-planning/);
-});
-
-test('Copilot inline coordinator rejects an unsupported phase before phase work', () => {
-  const inline = artifact('sai/orchestration/inline-invocation.md');
-
-  assert.match(inline, /Invalid inline phase/);
-  assert.match(inline, /Reject it before running prerequisites, selection, or any phase core/i);
-  assert.match(inline, /MUST NOT introduce routed worker identifiers, worker continuation state, or `subagent_depth`/);
-});
-
 test('documentation records the active design compatibility boundary and managed paths', () => {
   const readme = artifact('README.md');
   const agents = artifact('AGENTS.md');
   const claude = artifact('INSTALL.claude.md');
   const opencode = artifact('INSTALL.opencode.md');
-  const copilot = artifact('INSTALL.copilot.md');
 
-  for (const text of [readme, agents, claude, opencode, copilot]) {
+  for (const text of [readme, agents, claude, opencode]) {
     assert.match(text, /sai-2-design/);
     assert.match(text, /openspec\/changes\/\{change-name\}\/design\.md|design\.md/);
     assert.match(text, /tasks\.md/);
@@ -532,7 +492,6 @@ test('documentation records the active design compatibility boundary and managed
   assert.match(agents, /agents\/claude\/sai-2-design-worker\.md/);
    assert.match(agents, /sai\/orchestration\/workers\/bindings\//);
   assert.match(agents, /ends? at design completion|separate[\s\S]{0,40}\/sai-3-implement/i);
-  assert.match(agents, /Copilot.*inline.*adapter/i);
 
   assert.match(claude, /\.sai-2-design-worker\.owner\.json/);
   assert.match(claude, /low[- ]effort/);
@@ -557,10 +516,6 @@ test('documentation records the active design compatibility boundary and managed
    assert.match(opencode, /configuration exclusion|excludes?.*opencode\.json|opencode\.json.*excludes?/i);
   assert.match(opencode, /restart opencode/i);
 
-  assert.match(copilot, /remains inline/i);
-  assert.match(copilot, /no portable cross-turn continuation contract/i);
-  assert.match(copilot, /budget-explorer/);
-  assert.match(copilot, /subagent support/i);
 });
 
 test('Step 5 documentation records manifest projections and routed-source boundaries', () => {
@@ -568,9 +523,8 @@ test('Step 5 documentation records manifest projections and routed-source bounda
   const agents = artifact('AGENTS.md');
   const claude = artifact('INSTALL.claude.md');
   const opencode = artifact('INSTALL.opencode.md');
-  const copilot = artifact('INSTALL.copilot.md');
 
-  for (const text of [readme, agents, claude, opencode, copilot]) {
+  for (const text of [readme, agents, claude, opencode]) {
     assert.match(text, /sai\/install-manifest\.json/);
     assert.match(text, /doctor/);
     assert.match(text, /uninstall/);
@@ -581,9 +535,6 @@ test('Step 5 documentation records manifest projections and routed-source bounda
   assert.match(readme, /shared Orchestration Core/i);
   assert.match(claude, /Claude-only routed bindings/i);
   assert.match(opencode, /opencode-only routed bindings/i);
-  assert.match(copilot, /sai\/orchestration\/inline-invocation\.md/);
-  assert.match(copilot, /no routed binding|Do not copy routed/i);
-  assert.doesNotMatch(copilot, /copy sai[\\/]orchestration[\\/]workers/i);
 });
 
 // ─── Step 1: preservation-first legacy identity migration ───────────────────
@@ -669,11 +620,10 @@ test('interfaces contract defines one portable architecture snapshot under Targe
     'Architecture Snapshot should be defined beneath Target State');
 });
 
-test('architecture snapshot display is feedback-aware and equivalent across routed and inline paths', () => {
+test('architecture snapshot display is feedback-aware across routed paths', () => {
   const instruction = artifact('sai/instructions/design.md');
    const coordinator = artifact('sai/commands/design/coordinator.md');
   const worker = artifact('sai/orchestration/workers/sai-2-design-worker.md');
-  const inline = artifact('sai/orchestration/inline-invocation.md');
   const gate = artifact('sai/policies/artifact-feedback-gate.md');
   const lifecycle = artifact('sai/orchestration/worker-lifecycle.md');
 
@@ -687,9 +637,9 @@ test('architecture snapshot display is feedback-aware and equivalent across rout
   assert.match(coordinator, /print[\s\S]{0,160}(?:existing|worker-authored) summary[\s\S]{0,160}feedback/i);
   assert.match(coordinator, /Never read, parse, or reconstruct the Architecture Snapshot/);
 
-  assert.match(inline, /previous `interfaces\.md`[\s\S]{0,240}in-conversation/i);
-  assert.match(inline, /Architecture Snapshot[\s\S]{0,180}feedback/i);
-  assert.match(gate, /Architecture Snapshot[\s\S]{0,240}routed[\s\S]{0,240}inline/i);
+  assert.match(gate, /Architecture Snapshot[\s\S]{0,240}routed/i);
+  assert.doesNotMatch(instruction, /sai\/orchestration\/inline-invocation\.md/);
+  assert.doesNotMatch(gate, /sai\/orchestration\/inline-invocation\.md|Copilot|inline consumer/i);
 
   assert.doesNotMatch(lifecycle, /^\s*(?:architecture_)?snapshot\s*:/m);
   assert.match(lifecycle, /summary: string/);

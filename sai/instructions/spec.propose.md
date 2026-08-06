@@ -44,7 +44,7 @@ How to spawn subagents, which model to use, task classification (lookup / synthe
 Rules for the main agent specifically:
 
 1. **Do not do I/O yourself.** Never call a web fetch tool directly, read more than 3 files in a row for exploration, or run broad `Grep`/`Glob` searches. Delegate all of that to a **`budget-explorer`** subagent.
-   - Exception: you may open a single known file at a known path to confirm a specific fact, or run a targeted search for a known symbol.
+    - Exception: you may open a single known file at a known path to confirm a specific fact, or run a targeted search for a known symbol.
    - Exception (audit tasks): you may read target artifacts directly up to ≤15 reads + ≤30 `Grep`/`Glob` per pass. Beyond that, delegate.
 2. **Own the scope for audit tasks.** Break the task into ≥3 concrete categories. Spawn one **`budget-explorer`** subagent per category in parallel. Require complete results — not "top N". If you can't define ≥3 categories, the task is not audit-class.
 3. **Run independent research calls in parallel**, not sequentially.
@@ -144,7 +144,7 @@ The specs' requirements and scenarios are normative. When a proposal statement a
 
 The absence of spec coverage is NOT a contradiction: a proposal note describing something intentionally deferred, out of scope, or left to a future iteration — where the specs are simply silent — SHALL NOT be flagged as an inconsistency.
 
-This behavior is harness-agnostic: it applies identically under Claude, opencode, and Copilot.
+This behavior applies identically under Claude Code and opencode.
 
 ### Rule #2 — Source-grounding of spec-pinned literals
 
@@ -170,7 +170,7 @@ Verify the pinned literal against the current project source, not only against t
 - **Introduced**, literal not yet in source (new ADDED first introduction) → report `could not ground literal <X>: not found` in the warning area, NOT a divergence claim.
 - **Ambiguous** → fall through to the SAME shared warning block defined for the preserved case, matching Rule #1's "Ambiguous intent is surfaced, not guessed" handling. No separate block, no silent suppression.
 
-This behavior is harness-agnostic: it applies identically under Claude, opencode, and Copilot.
+This behavior applies identically under Claude Code and opencode.
 
 ### Shared warning format (ONE canonical block)
 

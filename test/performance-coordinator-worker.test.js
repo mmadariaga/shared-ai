@@ -5,26 +5,11 @@ const assert = require('node:assert/strict');
 const fs = require('fs');
 const path = require('path');
 
-const { loadInstallManifest, expandInstallManifest } = require('../bin/install-manifest.js');
-
 const repoRoot = path.join(__dirname, '..');
 
 function artifact(relativePath) {
   const fullPath = path.join(repoRoot, relativePath);
   return fs.existsSync(fullPath) ? fs.readFileSync(fullPath, 'utf8') : '';
-}
-
-function projectedSources(harness) {
-  const manifest = loadInstallManifest(repoRoot);
-  const destinationRoot = {
-    commands: path.join(repoRoot, '.test-performance-commands'),
-    sai: path.join(repoRoot, '.test-performance-sai'),
-    skills: path.join(repoRoot, '.test-performance-skills'),
-    agents: path.join(repoRoot, '.test-performance-agents'),
-    config: path.join(repoRoot, '.test-performance-config'),
-  };
-  return expandInstallManifest(manifest, { harness, repoRoot, destinationRoot })
-    .map(projection => path.relative(repoRoot, projection.sourcePath).split(path.sep).join('/'));
 }
 
 test('performance invocation core loads the shared audit sequence in order', () => {
@@ -46,25 +31,6 @@ test('performance invocation core loads the shared audit sequence in order', () 
   assert.equal((core.match(/Fetch @sai\/instructions\/performance\.md/g) || []).length, 1);
   assert.doesNotMatch(core, /InvocationEnvelope|resolved_change_name|terminal navigation|MANDATORY STOP/i);
   assert.doesNotMatch(core, /Files Affected[\s\S]{0,240}sai\/instructions\/performance\.md/);
-});
-
-test('Copilot inline caller shares the performance invocation core and retains its boundaries', () => {
-  const caller = artifact('sai/commands/sai-7-performance.md');
-
-  assert.match(caller, /Fetch @sai\/commands\/performance\/invocation\.md/);
-  assert.match(caller, /<TASK>[\s\S]*## Prerequisite checks/);
-  assert.match(caller, /Fetch @sai\/policies\/prereqs\.md/);
-  assert.match(caller, /## Resolve change[\s\S]*Fetch @sai\/policies\/change-picker\.md/);
-  assert.match(caller, /## Technical performance audit[\s\S]*Fetch @sai\/commands\/performance\/invocation\.md/);
-  assert.match(caller, /## Completion[\s\S]*MANDATORY STOP/);
-  assert.match(caller, /\$ARGUMENTS/);
-});
-
-test('generic Copilot projections retain both performance entrypoints', () => {
-  const sources = new Set(projectedSources('copilot'));
-
-  assert.equal(sources.has('sai/commands/sai-7-performance.md'), true);
-  assert.equal(sources.has('commands/copilot/sai-7-performance.prompt.md'), true);
 });
 
 test('performance coordinator exposes the complete adapter contract', () => {
@@ -198,6 +164,7 @@ test('Step 3 Claude and opencode bindings route only their canonical performance
       `${binding.name} should attempt same-worker continuation first`);
     assert.match(source, /at most one replacement|one replacement|replacement[\s\S]{0,100}1/i,
       `${binding.name} should permit at most one replacement`);
+    assert.doesNotMatch(source, /sai\/orchestration\/inline-invocation\.md/);
   }
 });
 

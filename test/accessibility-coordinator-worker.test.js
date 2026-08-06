@@ -73,15 +73,6 @@ test('accessibility invocation core loads budget, instruction, and remember in o
   assert.match(core, /^arguments:\s*\$ARGUMENTS\s*$/m);
 });
 
-test('Copilot inline accessibility caller loads the shared core once without a routed binding', () => {
-  const caller = artifact('sai/commands/sai-8-accessibility.md');
-  const coreLoads = caller.match(/Fetch @sai\/commands\/accessibility\/invocation\.md/g) || [];
-
-  assert.equal(coreLoads.length, 1);
-  assert.doesNotMatch(caller, /Fetch @sai\/orchestration\/workers\/bindings\//);
-  assert.doesNotMatch(caller, /Fetch @skills\/(?:claude|opencode)\/sai-8-accessibility-worker\//);
-});
-
 test('accessibility scope, runtime, and parent arguments reach the shared core unchanged', () => {
   const caller = artifact('sai/commands/sai-8-accessibility.md');
   const core = artifact('sai/commands/accessibility/invocation.md');
@@ -181,6 +172,7 @@ test('Step 2 Claude and opencode bindings continue the same worker with only the
     assert.match(binding, /selected value|selected_value/);
     assert.match(binding, /only.*selected|forwards only.*value/i);
     assert.match(binding, /preserv.*active worker state|active worker state.*preserv/i);
+    assert.doesNotMatch(binding, /sai\/orchestration\/inline-invocation\.md/);
   }
 });
 
@@ -207,37 +199,6 @@ test('Step 2 completion writes only accessibility.md and prints the exact comple
   assert.match(coordinator, /worker-authored summary/);
   assert.match(coordinator, /ordered duplicate-free changed_files/);
   assert.ok(coordinator.includes('Accessibility audit done.'));
-});
-
-test('Step 2 GitHub Copilot remains inline without a routed accessibility binding or worker projection', () => {
-  const copilot = artifact('commands/copilot/sai-8-accessibility.prompt.md');
-  const entrypoint = artifact('sai/commands/sai-8-accessibility.md');
-  const manifest = loadInstallManifest(repoRoot);
-  const copilotBase = tempDir('sai-accessibility-step-2-copilot-');
-
-  try {
-    const sources = new Set(expandInstallManifest(manifest, {
-      harness: 'copilot',
-      repoRoot,
-      destinationRoot: destinationRoots(copilotBase),
-    }).map(projection => sourcePath(repoRoot, projection)));
-
-    assert.match(copilot, /sai\/orchestration\/inline-invocation\.md/);
-    assert.match(copilot, /phase: sai-8-accessibility/);
-    assert.doesNotMatch(copilot, /sai-8-accessibility-worker|accessibility[\\/]coordinator/);
-    assert.doesNotMatch(entrypoint, /sai-8-accessibility-worker|accessibility[\\/]coordinator/);
-    assert.equal(sources.has('commands/copilot/sai-8-accessibility.prompt.md'), true);
-    for (const source of [
-      'sai/orchestration/workers/sai-8-accessibility-worker.md',
-      'sai/orchestration/workers/bindings/claude/accessibility-worker.md',
-      'sai/orchestration/workers/bindings/opencode/accessibility-worker.md',
-      'skills/claude/sai-8-accessibility-worker/SKILL.md',
-      'skills/opencode/sai-8-accessibility-worker/SKILL.md',
-      'agents/claude/sai-8-accessibility-worker.md',
-    ]) assert.equal(sources.has(source), false, `Copilot must exclude ${source}`);
-  } finally {
-    fs.rmSync(copilotBase, { recursive: true, force: true });
-  }
 });
 
 // ─── Step 3: installation and inventory projections ─────────────────────────
@@ -314,19 +275,6 @@ test('Step 3 accessibility manifest projections are deterministic, unique, and h
     }
   }
 
-  const copilotBase = tempDir('sai-accessibility-copilot-');
-  try {
-    const copilotSources = new Set(expandInstallManifest(manifest, {
-      harness: 'copilot',
-      repoRoot,
-      destinationRoot: destinationRoots(copilotBase),
-    }).map(projection => sourcePath(repoRoot, projection)));
-    assert.equal(copilotSources.has('sai/commands/sai-8-accessibility.md'), true);
-    assert.equal(copilotSources.has('commands/copilot/sai-8-accessibility.prompt.md'), true);
-    assert.equal([...copilotSources].some(source => source.includes('accessibility-worker')), false);
-  } finally {
-    fs.rmSync(copilotBase, { recursive: true, force: true });
-  }
 });
 
 test('Step 3 accessibility installation stops on a conflicting Claude destination without replacement', () => {
@@ -387,12 +335,6 @@ test('Step 3 existing user-owned accessibility agents survive doctor and uninsta
       projectRoot,
       claudeBase: base,
       opencodeBase: path.join(projectRoot, 'missing-opencode'),
-      copilot: {
-        promptsBase: path.join(projectRoot, 'missing-copilot-prompts'),
-        skillsBase: path.join(projectRoot, 'missing-copilot-skills'),
-        agentsBase: path.join(projectRoot, 'missing-copilot-agents'),
-        saiBase: path.join(projectRoot, 'missing-copilot-sai'),
-      },
       execOpenspec: () => ({ status: 0, stdout: '1.4.1\n', stderr: '', error: null }),
       out: captured.out,
     });

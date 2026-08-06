@@ -80,10 +80,6 @@ test('Step 3 manifest projects the shared lifecycle and one active harness bindi
       'sai/orchestration/workers/sai-3-implementation-worker.md',
       'sai/orchestration/workers/bindings/opencode/implementation-worker.md',
     ],
-    copilot: [
-      'sai/commands/implement/coordinator.md',
-      'sai/commands/implement/invocation.md',
-    ],
   };
 
   for (const [harness, requiredSources] of Object.entries(expected)) {
@@ -94,26 +90,18 @@ test('Step 3 manifest projects the shared lifecycle and one active harness bindi
     }
     assert.equal(new Set(projections.map(projection => projection.destination)).size, projections.length,
       `${harness} destinations should be unique`);
-    if (harness !== 'copilot') {
-      const bindingSource = `sai/orchestration/workers/bindings/${harness}/implementation-worker.md`;
-      const bindingProjection = projections.find(({ source }) => source === bindingSource);
-      assert.ok(bindingProjection, `${harness} should project its harness-specific binding source`);
-      assert.match(bindingProjection.destination.replace(/\\/g, '/'),
-        /orchestration\/workers\/bindings\/implementation-worker\.md$/,
-        `${harness} binding should project to the neutral relative path`);
-    }
+    const bindingSource = `sai/orchestration/workers/bindings/${harness}/implementation-worker.md`;
+    const bindingProjection = projections.find(({ source }) => source === bindingSource);
+    assert.ok(bindingProjection, `${harness} should project its harness-specific binding source`);
+    assert.match(bindingProjection.destination.replace(/\\/g, '/'),
+      /orchestration\/workers\/bindings\/implementation-worker\.md$/,
+      `${harness} binding should project to the neutral relative path`);
+    assert.doesNotMatch([...sources].join('\n'), /sai\/orchestration\/inline-invocation\.md/);
     if (harness === 'claude') {
       assert.equal(sources.has('sai/orchestration/workers/bindings/opencode/implementation-worker.md'), false);
-    } else if (harness === 'opencode') {
+    } else {
       assert.equal(sources.has('sai/orchestration/workers/bindings/claude/implementation-worker.md'), false);
       assert.equal(sources.has('agents/claude/sai-3-implementation-worker.md'), false);
-    } else {
-      assert.deepEqual(
-        [...sources].filter(source => source.startsWith('sai/orchestration/')).sort(),
-        ['sai/orchestration/inline-invocation.md']
-      );
-      assert.equal([...sources].some(source => source.includes('/bindings/')), false);
-      assert.equal([...sources].some(source => source.includes('/workers/')), false);
     }
   }
 });
@@ -178,12 +166,6 @@ test('preserves commented JSONC and non-SAI settings through namespaced opencode
     runDeletion(buildDeletionSet({
       claudeBase: path.join(base, 'missing-claude'),
       opencodeBase: base,
-      copilot: {
-        promptsBase: path.join(base, 'missing-prompts'),
-        skillsBase: path.join(base, 'missing-skills'),
-        agentsBase: path.join(base, 'missing-agents'),
-        saiBase: path.join(base, 'missing-sai'),
-      },
     }));
     assert.equal(fs.readFileSync(configPath, 'utf8'), installed,
       'uninstall should preserve the merged opencode configuration');

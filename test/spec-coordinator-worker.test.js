@@ -40,16 +40,7 @@ test('spec invocation core loads only the technical instruction sequence', () =>
   assert.doesNotMatch(core, /Spec proposal done in openspec\/changes\//);
 });
 
-test('existing Copilot wrapper reaches the shared spec core without routed workers', () => {
-  const wrapper = artifact('commands/copilot/sai-1-spec.prompt.md');
-  const entrypoint = artifact('sai/commands/sai-1-spec.md');
-
-  assert.match(wrapper, /Fetch @sai\/commands\/sai-1-spec\.md/);
-  assert.doesNotMatch(wrapper, /worker|coordinator/i);
-  assert.doesNotMatch(entrypoint, /worker|coordinator/i);
-});
-
-test('inline completion remains outside the spec invocation core', () => {
+test('completion remains outside the spec invocation core', () => {
   const core = artifact('sai/commands/spec/invocation.md');
   const inline = artifact('sai/commands/sai-1-spec.md');
 
@@ -57,11 +48,13 @@ test('inline completion remains outside the spec invocation core', () => {
   assert.match(inline, /decision summary/i);
   assert.match(inline, /artifact-feedback-gate\.md/);
   assert.match(inline, /Spec proposal done in openspec\/changes\/\{name\}\/\./);
+  assert.doesNotMatch(core, /sai\/orchestration\/inline-invocation\.md/);
 });
 
 test('feedback selection routes text through the coordinator once and preserves the proceed stop', () => {
   const coordinator = artifact('sai/commands/spec/coordinator.md');
   const worker = artifact('sai/orchestration/workers/sai-1-spec-proposal-worker.md');
+  const core = artifact('sai/commands/spec/invocation.md');
 
   const policyPosition = coordinator.indexOf('Fetch @sai/policies/artifact-feedback-gate.md');
   const completionGatePosition = coordinator.search(/completion gate/i);
@@ -84,6 +77,8 @@ test('feedback selection routes text through the coordinator once and preserves 
     1,
     'the routed proceed branch should retain exactly one mandatory stop',
   );
+  assert.doesNotMatch(core, /sai\/orchestration\/inline-invocation\.md/);
+  assert.doesNotMatch(coordinator, /sai\/orchestration\/inline-invocation\.md/);
 });
 
 test('coordinator declares lifecycle-only ownership and the exact two-string envelope', () => {
@@ -172,27 +167,25 @@ test('opencode spec invocation routes through the coordinator and neutral worker
   assert.match(wrapper, /\$ARGUMENTS/);
 });
 
-test('README documents the three-harness spec architecture and proposal-only scope', () => {
+test('README documents the routed spec architecture and proposal-only scope', () => {
   const readme = artifact('README.md');
-  for (const harness of ['Claude Code', 'opencode', 'GitHub Copilot']) {
+  for (const harness of ['Claude Code', 'opencode']) {
     assert.match(readme, new RegExp(harness.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i'));
   }
   assert.match(readme, /Claude Code.*rout|rout.*Claude Code/i);
   assert.match(readme, /opencode.*rout|rout.*opencode/i);
-  assert.match(readme, /Copilot.*inline|inline.*Copilot/i);
   assert.match(readme, /spec.*core|core.*spec/i);
   assert.match(readme, /spec.*worker|worker.*spec/i);
   assert.match(readme, /proposal.*spec|spec.*proposal/i);
 });
 
-test('AGENTS documents the three-harness architecture, ownership, and artifact scope', () => {
+test('AGENTS documents the routed architecture, ownership, and artifact scope', () => {
   const agents = artifact('AGENTS.md');
-  for (const harness of ['Claude Code', 'opencode', 'GitHub Copilot']) {
+  for (const harness of ['Claude Code', 'opencode']) {
     assert.match(agents, new RegExp(harness.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i'));
   }
   assert.match(agents, /Claude Code.*rout|rout.*Claude Code/i);
   assert.match(agents, /opencode.*rout|rout.*opencode/i);
-  assert.match(agents, /Copilot.*inline|inline.*Copilot/i);
   assert.match(agents, /spec.*core|core.*spec/i);
   assert.match(agents, /spec.*worker|worker.*spec/i);
   assert.match(agents, /proposal.*spec|spec.*proposal/i);
@@ -208,7 +201,6 @@ test('README model references and installation topology match routed metadata', 
   assert.match(readme, /opencode-go\/minimax-m3/);
   assert.match(readme, /commands[\\/]claude|Claude Code/);
   assert.match(readme, /commands[\\/]opencode|opencode/);
-  assert.match(readme, /Copilot.*inline|inline.*Copilot/i);
   assert.match(claude, /^model:\s*opus\s*$/m);
   assert.match(claude, /^effort:\s*medium\s*$/m);
   assert.match(opencode, /^model:\s*opencode-go\/minimax-m3\s*$/m);
