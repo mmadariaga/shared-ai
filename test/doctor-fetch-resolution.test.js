@@ -8,7 +8,7 @@ const fs = require('fs');
 const { PassThrough } = require('stream');
 
 const { main } = require('../bin/doctor.js');
-const { installClaude, installCopilot, ensureDir } = require('../bin/install-flow.js');
+const { installClaude, installOpencode, installCopilot, ensureDir } = require('../bin/install-flow.js');
 
 function execOk() {
   return { status: 0, stdout: '1.4.1\n', stderr: '', error: null };
@@ -235,6 +235,119 @@ describe('doctor fetch resolution', () => {
     } finally {
       fs.rmSync(projectRoot, { recursive: true, force: true });
       fs.rmSync(claudeBase, { recursive: true, force: true });
+    }
+  });
+
+  test('Step 2: installed routed wrappers classify all direct worker bindings as non-skill fetches', async () => {
+    const projectRoot = makeGoodFixture();
+    const claudeBase = makeTempDir('sai-dr-fr-claude-');
+    const opencodeBase = makeTempDir('sai-dr-fr-opencode-');
+    const copilot = {
+      promptsBase: nonexistentPath('sai-dr-fr-cp-prompts-'),
+      skillsBase: nonexistentPath('sai-dr-fr-cp-skills-'),
+      agentsBase: nonexistentPath('sai-dr-fr-cp-agents-'),
+      saiBase: nonexistentPath('sai-dr-fr-cp-sai-'),
+    };
+    const phases = [
+      'spec-worker.md',
+      'design-worker.md',
+      'implementation-worker.md',
+      'review-worker.md',
+      'security-worker.md',
+      'performance-worker.md',
+      'accessibility-worker.md',
+    ];
+    const wrapperRefs = {
+        '[Claude Code]': [
+         ...phases.map((binding, index) => [`sai-${index === 0 ? '1-spec' : index === 1 ? '2-design' : index === 2 ? '3-implement' : index === 3 ? '5-review' : index === 4 ? '6-security' : index === 5 ? '7-performance' : '8-accessibility'}.md`, `bindings/${binding}`]),
+         ['sai-explore.md', 'bindings/design-worker.md'],
+      ],
+        '[Opencode]': [
+         ...phases.map((binding, index) => [`sai-${index === 0 ? '1-spec' : index === 1 ? '2-design' : index === 2 ? '3-implement' : index === 3 ? '5-review' : index === 4 ? '6-security' : index === 5 ? '7-performance' : '8-accessibility'}.md`, `bindings/${binding}`]),
+         ['sai-explore.md', 'bindings/spec-worker.md'],
+         ['sai-explore.md', 'bindings/design-worker.md'],
+      ],
+    };
+
+    try {
+      installClaude(claudeBase);
+      installOpencode(opencodeBase);
+
+      const { code, parsed } = await runDoctor({ projectRoot, claudeBase, opencodeBase, copilot });
+      assert.equal(code, 0);
+
+      const expected = {
+        '[Claude Code]': [
+          ...phases.map(binding => `bindings/${binding}`),
+          'bindings/design-worker.md',
+        ],
+        '[Opencode]': [
+          ...phases.map(binding => `bindings/${binding}`),
+          'bindings/spec-worker.md',
+          'bindings/design-worker.md',
+        ],
+      };
+      assert.equal(Object.values(wrapperRefs).flat().length, 17,
+        'wrapper mapping should cover exactly 17 direct binding references');
+
+      for (const [sectionName, refs] of Object.entries(wrapperRefs)) {
+        const base = sectionName === '[Claude Code]' ? claudeBase : opencodeBase;
+        const wrapperText = [...new Set(refs.map(([wrapper]) => wrapper))].map(wrapper => {
+          const targetsForWrapper = refs
+            .filter(([candidate]) => candidate === wrapper)
+            .map(([, target]) => target);
+          const source = fs.readFileSync(path.join(base, 'commands', wrapper), 'utf8');
+          for (const target of targetsForWrapper) {
+            assert.match(source, new RegExp(`Fetch @sai/orchestration/workers/${target.replace(/[\\/.-]/g, '\\$&')}`),
+              `${sectionName} ${wrapper} should use ${target}`);
+          }
+          assert.doesNotMatch(source, /Fetch @skills\/sai-[^\s/]+-worker\/SKILL\.md/,
+            `${sectionName} ${wrapper} should not use a worker skill fetch`);
+          return source;
+        }).join('\n');
+        assert.equal(
+          (wrapperText.match(/Fetch @sai\/orchestration\/workers\/bindings\/[^\s`]+/g) || []).length,
+          refs.length,
+          `${sectionName} should contain exactly its expected direct binding references`
+        );
+      }
+
+      for (const [sectionName, targets] of Object.entries(expected)) {
+        const section = parsed[sectionName];
+        assert.ok(section, `${sectionName} section should exist`);
+        const refs = section['fetch-ref'] || [];
+        const refText = refs.map(ref => JSON.stringify(ref));
+        for (const target of new Set(targets)) {
+          assert.doesNotMatch(JSON.stringify(section['fetch-skill'] || []),
+            new RegExp(target.replace(/[\\/.-]/g, '\\$&')),
+            `${sectionName} should not classify ${target} as fetch-skill`);
+          const base = sectionName === '[Claude Code]' ? claudeBase : opencodeBase;
+          assert.equal(
+            fs.existsSync(path.join(base, 'sai', 'orchestration', 'workers', ...target.split('/'))),
+            true,
+            `${sectionName} should install ${target}`
+          );
+          const sourceHarness = sectionName === '[Claude Code]' ? 'claude' : 'opencode';
+          const sourceTarget = target.replace(/^bindings\//, `bindings/${sourceHarness}/`);
+          assert.deepEqual(
+            fs.readFileSync(path.join(base, 'sai', 'orchestration', 'workers', ...target.split('/'))),
+            fs.readFileSync(path.join(repoRoot, 'sai', 'orchestration', 'workers', ...sourceTarget.split('/'))),
+            `${sectionName} should preserve the neutral binding bytes for ${target}`
+          );
+          assert.match(
+            fs.readFileSync(path.join(base, 'sai', 'orchestration', 'workers', ...target.split('/')), 'utf8'),
+            sectionName === '[Claude Code]' ? /Agent\(/ : /task\(/,
+            `${sectionName} ${target} should preserve its dispatch mechanism`
+          );
+        }
+
+        assert.equal(refText.filter(text => /Fetch @skills\/sai-.*worker\/SKILL\.md/.test(text)).length, 0,
+          `${sectionName} should contain no active worker skill fetches`);
+      }
+    } finally {
+      fs.rmSync(projectRoot, { recursive: true, force: true });
+      fs.rmSync(claudeBase, { recursive: true, force: true });
+      fs.rmSync(opencodeBase, { recursive: true, force: true });
     }
   });
 

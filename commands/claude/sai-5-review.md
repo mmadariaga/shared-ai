@@ -8,5 +8,5 @@ allowed-tools: Read, Glob, Skill, Agent, SendMessage, AskUserQuestion
 ## Sai Review - 5
 
 Fetch @skills/fetch/SKILL.md
-Fetch @skills/sai-5-review-worker/SKILL.md and use it.
+Fetch @sai/orchestration/workers/bindings/review-worker.md and use it.
 Fetch @sai/commands/review/coordinator.md and follow those instructions exactly.

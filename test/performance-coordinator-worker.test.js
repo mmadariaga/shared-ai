@@ -180,7 +180,7 @@ test('Step 3 Claude and opencode bindings route only their canonical performance
     },
     {
       name: 'opencode',
-      path: 'sai/orchestration/workers/bindings/opencode/performance-worker.md',
+       path: 'sai/orchestration/workers/bindings/opencode/performance-worker.md',
       identity: 'canonical numbered task identity',
       mechanism: 'task',
     },
@@ -203,8 +203,8 @@ test('Step 3 Claude and opencode bindings route only their canonical performance
 
 test('Step 3 bindings bound delegated research evidence and reject unauthorized operations', () => {
   for (const relativePath of [
-    'sai/orchestration/workers/bindings/claude/performance-worker.md',
-    'sai/orchestration/workers/bindings/opencode/performance-worker.md',
+      'sai/orchestration/workers/bindings/claude/performance-worker.md',
+      'sai/orchestration/workers/bindings/opencode/performance-worker.md',
   ]) {
     const binding = artifact(relativePath);
     assert.match(binding, /bounded evidence/i, `${relativePath} should bound research evidence`);
@@ -219,8 +219,8 @@ test('Step 3 bindings bound delegated research evidence and reject unauthorized 
 
 test('Step 3 bindings preserve worker lifecycle results and own continuation metadata', () => {
   for (const relativePath of [
-    'sai/orchestration/workers/bindings/claude/performance-worker.md',
-    'sai/orchestration/workers/bindings/opencode/performance-worker.md',
+      'sai/orchestration/workers/bindings/claude/performance-worker.md',
+      'sai/orchestration/workers/bindings/opencode/performance-worker.md',
   ]) {
     const binding = artifact(relativePath);
     for (const field of ['summary', 'question', 'ordered options', 'paths', 'resolved names']) {
@@ -248,7 +248,7 @@ test('Step 3 managed-agent and forwarding-skill identities match the canonical b
   assert.match(artifact('skills/opencode/sai-7-performance-worker/SKILL.md'), /opencode forwarding skill/i);
 });
 
-test('Step 4 routed performance wrappers fetch only their matching skill and coordinator surfaces', () => {
+test('Step 4 routed performance wrappers fetch only their matching binding and coordinator surfaces', () => {
   const wrappers = [
     {
       name: 'Claude',
@@ -272,8 +272,10 @@ test('Step 4 routed performance wrappers fetch only their matching skill and coo
     assert.match(source, wrapper.setting, `${wrapper.name} wrapper should declare its harness setting`);
     assert.match(source, /sai[\\/]commands[\\/]performance[\\/]coordinator\.md/,
       `${wrapper.name} wrapper should fetch the performance coordinator`);
-    assert.match(source, /skills[\\/]sai-7-performance-worker[\\/]SKILL\.md/,
-      `${wrapper.name} wrapper should fetch the matching forwarding skill`);
+    assert.match(source, /sai[\\/]orchestration[\\/]workers[\\/]bindings[\\/]performance-worker\.md/,
+      `${wrapper.name} wrapper should fetch the matching neutral binding`);
+    assert.doesNotMatch(source, /Fetch @skills\/sai-7-performance-worker\/SKILL\.md/,
+      `${wrapper.name} wrapper should not fetch the worker forwarding skill`);
     assert.match(source, /\$ARGUMENTS/, `${wrapper.name} wrapper should preserve complete arguments`);
     assert.doesNotMatch(source, wrapper.forbidden,
       `${wrapper.name} wrapper should not fetch the other harness binding`);

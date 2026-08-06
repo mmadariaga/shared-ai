@@ -8,5 +8,5 @@ allowed-tools: Read, Glob, Skill, Agent, SendMessage, AskUserQuestion
 ## Sai Design - 2
 
 Fetch @skills/fetch/SKILL.md
-Fetch @skills/sai-2-design-worker/SKILL.md and use it.
+Fetch @sai/orchestration/workers/bindings/design-worker.md and use it.
 Fetch @sai/commands/design/coordinator.md and follow those instructions exactly.

@@ -242,18 +242,20 @@ test('Step 2 GitHub Copilot remains inline without a routed accessibility bindin
 
 // ─── Step 3: installation and inventory projections ─────────────────────────
 
-test('Step 3 Claude Code and opencode wrappers load the coordinator and preserve complete arguments', () => {
+test('Step 3 Claude Code and opencode wrappers load the coordinator and direct worker binding', () => {
   const wrappers = [
-    ['claude', 'commands/claude/sai-8-accessibility.md', 'skills/sai-8-accessibility-worker', 'claude'],
-    ['opencode', 'commands/opencode/sai-8-accessibility.md', 'skills/sai-8-accessibility-worker', 'opencode'],
+    ['claude', 'commands/claude/sai-8-accessibility.md', 'sai/orchestration/workers/bindings/accessibility-worker.md', 'claude'],
+    ['opencode', 'commands/opencode/sai-8-accessibility.md', 'sai/orchestration/workers/bindings/accessibility-worker.md', 'opencode'],
   ];
 
-  for (const [harness, wrapperPath, matchingSkill, bindingHarness] of wrappers) {
+  for (const [harness, wrapperPath, bindingPath, bindingHarness] of wrappers) {
     const wrapper = artifact(wrapperPath);
     assert.match(wrapper, /sai[\\/]commands[\\/]accessibility[\\/]coordinator\.md/,
       `${harness} should load the accessibility coordinator`);
-    assert.match(wrapper, new RegExp(matchingSkill.replaceAll('/', '[\\\\/]')),
-      `${harness} should load its accessibility forwarding skill`);
+    assert.match(wrapper, new RegExp(`Fetch @${bindingPath.replaceAll('/', '[\\\\/]')}`),
+      `${harness} should load its neutral accessibility binding`);
+    assert.doesNotMatch(wrapper, /Fetch @skills\/sai-8-accessibility-worker\/SKILL\.md/,
+      `${harness} should not load the worker forwarding skill`);
     assert.match(wrapper, /\$ARGUMENTS/, `${harness} should preserve complete arguments`);
     assert.match(
       artifact(`sai/orchestration/workers/bindings/${bindingHarness}/accessibility-worker.md`),

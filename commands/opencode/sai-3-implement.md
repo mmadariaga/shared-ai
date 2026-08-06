@@ -8,7 +8,7 @@ subtask: false
 ## Sai Implement - 3
 
 Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.
-Fetch @skills/sai-3-implementation-worker/SKILL.md and use it.
+Fetch @sai/orchestration/workers/bindings/implementation-worker.md and use it.
 Fetch @sai/commands/implement/coordinator.md and follow those instructions exactly.
 
 **Change-name argument:** $ARGUMENTS

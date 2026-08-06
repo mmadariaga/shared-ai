@@ -7,7 +7,7 @@ variant: high
 ## Sai Accessibility - 8
 
 Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.
-Fetch @skills/sai-8-accessibility-worker/SKILL.md and use it.
+Fetch @sai/orchestration/workers/bindings/accessibility-worker.md and use it.
 Fetch @sai/commands/accessibility/coordinator.md and follow those instructions exactly.
 
 **Change-name argument:** $ARGUMENTS

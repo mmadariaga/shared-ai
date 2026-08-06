@@ -8,7 +8,7 @@ subtask: false
 ## Sai Design - 2
 
 Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.
-Fetch @skills/sai-2-design-worker/SKILL.md and use it.
+Fetch @sai/orchestration/workers/bindings/design-worker.md and use it.
 Fetch @sai/commands/design/coordinator.md and follow those instructions exactly.
 
 **Change-name argument and and optional flags:** $ARGUMENTS

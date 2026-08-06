@@ -244,13 +244,16 @@ test('Step 1 explore adapters route only the permitted planning workers', () => 
   const copilot = fs.readFileSync(path.join(repoRoot, 'commands/copilot/sai-explore.prompt.md'), 'utf8');
   const inline = fs.readFileSync(path.join(repoRoot, 'sai/orchestration/inline-invocation.md'), 'utf8');
 
-  assert.match(claude, /Fetch @skills\/sai-2-design-worker\/SKILL\.md/);
+   assert.match(claude, /Fetch @sai\/orchestration\/workers\/bindings\/design-worker\.md/);
+  assert.doesNotMatch(claude, /Fetch @skills\/sai-2-design-worker\/SKILL\.md/);
   assert.doesNotMatch(claude, /allowed-tools:[^\n]*(?:^|,\s*)Edit(?:,|\s|$)/m);
   assert.doesNotMatch(claude, /allowed-tools:[^\n]*(?:^|,\s*)Write(?:,|\s|$)/m);
   assert.doesNotMatch(claude, /allowed-tools:[^\n]*(?:^|,\s*)Bash(?:,|\s|$)/m);
 
-  assert.match(opencode, /Fetch @skills\/sai-1-spec-proposal-worker\/SKILL\.md/);
-  assert.match(opencode, /Fetch @skills\/sai-2-design-worker\/SKILL\.md/);
+   assert.match(opencode, /Fetch @sai\/orchestration\/workers\/bindings\/spec-worker\.md/);
+   assert.match(opencode, /Fetch @sai\/orchestration\/workers\/bindings\/design-worker\.md/);
+  assert.doesNotMatch(opencode, /Fetch @skills\/sai-1-spec-proposal-worker\/SKILL\.md/);
+  assert.doesNotMatch(opencode, /Fetch @skills\/sai-2-design-worker\/SKILL\.md/);
   assert.doesNotMatch(opencode, /managed coordinator|reviewer[- ](?:binding|skill|agent)/i);
 
   assert.doesNotMatch(copilot, /sai-2-design-worker|design-worker|start-pipeline/i);
@@ -260,8 +263,10 @@ test('Step 1 explore adapters route only the permitted planning workers', () => 
 test('opencode explore adapter enables native task dispatch with both numbered planning workers', () => {
   const source = fs.readFileSync(path.join(repoRoot, 'commands/opencode/sai-explore.md'), 'utf8');
 
-  assert.match(source, /Fetch @skills\/sai-1-spec-proposal-worker\/SKILL\.md/);
-  assert.match(source, /Fetch @skills\/sai-2-design-worker\/SKILL\.md/);
+   assert.match(source, /Fetch @sai\/orchestration\/workers\/bindings\/spec-worker\.md/);
+   assert.match(source, /Fetch @sai\/orchestration\/workers\/bindings\/design-worker\.md/);
+  assert.doesNotMatch(source, /Fetch @skills\/sai-1-spec-proposal-worker\/SKILL\.md/);
+  assert.doesNotMatch(source, /Fetch @skills\/sai-2-design-worker\/SKILL\.md/);
   assert.doesNotMatch(source, /sai-coordinator|managed coordinator/i);
   assert.doesNotMatch(source, /reviewer[- ](?:binding|skill|agent)|independent[- ]review.*(?:binding|skill|agent)/i);
 });

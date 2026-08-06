@@ -8,7 +8,7 @@ allowed-tools: Read, Glob, Skill, Agent, SendMessage, AskUserQuestion
 ## Sai Performance - 7
 
 Fetch @skills/fetch/SKILL.md
-Fetch @skills/sai-7-performance-worker/SKILL.md and use it.
+Fetch @sai/orchestration/workers/bindings/performance-worker.md and use it.
 Fetch @sai/commands/performance/coordinator.md and follow those instructions exactly.
 
 **Performance arguments:** $ARGUMENTS

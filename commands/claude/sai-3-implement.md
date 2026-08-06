@@ -8,5 +8,5 @@ allowed-tools: Read, Glob, Skill, Agent, SendMessage, AskUserQuestion
 ## Sai Implement - 3
 
 Fetch @skills/fetch/SKILL.md
-Fetch @skills/sai-3-implementation-worker/SKILL.md and use it.
+Fetch @sai/orchestration/workers/bindings/implementation-worker.md and use it.
 Fetch @sai/commands/implement/coordinator.md and follow those instructions exactly.

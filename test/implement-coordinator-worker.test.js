@@ -298,10 +298,12 @@ test('Step 2 routes Claude and opencode through the coordinator but preserves Co
 
   assert.match(claude, /^model:\s*opus\s*$/m);
    assert.match(claude, /^effort:\s*low\s*$/m);
-  assert.match(claude, /Fetch @skills\/sai-3-implementation-worker\/SKILL\.md/);
+    assert.match(claude, /Fetch @sai\/orchestration\/workers\/bindings\/implementation-worker\.md/);
+   assert.doesNotMatch(claude, /Fetch @skills\/sai-3-implementation-worker\/SKILL\.md/);
    assert.match(claude, /Fetch @sai\/commands\/implement\/coordinator\.md/);
    assert.match(opencode, /^model: opencode-go\/glm-5\.2$/m);
-   assert.match(opencode, /Fetch @skills\/sai-3-implementation-worker\/SKILL\.md/);
+     assert.match(opencode, /Fetch @sai\/orchestration\/workers\/bindings\/implementation-worker\.md/);
+    assert.doesNotMatch(opencode, /Fetch @skills\/sai-3-implementation-worker\/SKILL\.md/);
    assert.match(opencode, /Fetch @sai\/commands\/implement\/coordinator\.md/);
   assert.match(copilot, /sai\/orchestration\/inline-invocation\.md/);
   assert.match(copilot, /^phase: sai-3-implement$/m);

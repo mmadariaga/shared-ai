@@ -65,17 +65,21 @@ test('design wrappers activate routed Claude/opencode entry and preserve inline 
   assert.match(claude, /^model: claude-opus-4-8$/m);
   assert.match(claude, /^effort: low$/m);
    assert.match(claude, /^allowed-tools: Read, Glob, Skill, Agent, SendMessage, AskUserQuestion$/m);
-  assert.match(claude, /sai-2-design-worker/);
+   assert.doesNotMatch(claude, /sai-2-design-worker/);
   assert.doesNotMatch(claude, /sai-3-implementation-worker/);
-   assert.match(claude, /sai\/commands\/design\/coordinator\.md/);
+    assert.match(claude, /sai\/commands\/design\/coordinator\.md/);
+    assert.match(claude, /Fetch @sai\/orchestration\/workers\/bindings\/design-worker\.md/);
+   assert.doesNotMatch(claude, /Fetch @skills\/sai-2-design-worker\/SKILL\.md/);
 
    assert.match(opencode, /^model: opencode-go\/glm-5\.2$/m);
    assert.match(opencode, /^variant: high$/m);
    assert.match(opencode, /^subtask: false$/m);
-  assert.doesNotMatch(opencode, /^agent:/m);
-  assert.match(opencode, /sai-2-design-worker/);
+   assert.doesNotMatch(opencode, /^agent:/m);
+   assert.doesNotMatch(opencode, /sai-2-design-worker/);
   assert.doesNotMatch(opencode, /sai-3-implementation-worker/);
-   assert.match(opencode, /sai\/commands\/design\/coordinator\.md/);
+    assert.match(opencode, /sai\/commands\/design\/coordinator\.md/);
+    assert.match(opencode, /Fetch @sai\/orchestration\/workers\/bindings\/design-worker\.md/);
+   assert.doesNotMatch(opencode, /Fetch @skills\/sai-2-design-worker\/SKILL\.md/);
   assert.ok(opencode.includes('**Change-name argument and and optional flags:** $ARGUMENTS'));
 
   assert.match(copilot, /model: GPT-5\.6 Terra \(copilot\)/);
@@ -541,14 +545,14 @@ test('documentation records the active design compatibility boundary and managed
   assert.match(claude, /does not adopt|without adoption|non-adopt/i);
   assert.match(claude, /restart.*re-?install|re-?install.*restart/i);
 
-   assert.match(opencode, /sai-2-design-worker/);
-   assert.match(opencode, /sai-3-implementation-worker/);
+    assert.match(opencode, /sai-2-design-worker/);
+    assert.match(opencode, /sai-3-implementation-worker/);
    assert.match(opencode, /existing.*agent.*(?:preserv|user-owned)|preserv.*existing.*agent/i);
    assert.match(opencode, /absent.*(?:default|entry)|default.*absent/i);
    assert.match(opencode, /configured.*(?:model|variant|mode|permissions).*runtime|runtime.*(?:model|variant|mode|permissions)/i);
    assert.match(opencode, /no separate coordinator profile|do not reintroduce.*coordinator/i);
    assert.match(opencode, /Claude worker files.*collision protection|collision protection.*Claude/i);
-   assert.match(opencode, /sai-2-design-worker/);
+    assert.match(opencode, /sai-2-design-worker/);
   assert.match(opencode, /variant.*high/);
   assert.match(opencode, /permission/);
    assert.doesNotMatch(opencode, /agent: sai-coordinator/);
