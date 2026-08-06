@@ -62,7 +62,7 @@ The openspec-dependent `sai-*` commands halt with a clear error if either is mis
 | `sai/commands/{spec,design,implement}/{coordinator,invocation}.md` | Grouped coordinator and invocation bodies for Claude Code and opencode. |
 | `sai/instructions/` | Phase content, caller contracts, and shared instruction templates fetched by wrappers. |
 | `sai/orchestration/` | Shared coordinator/worker lifecycle contracts and routed worker contracts. Claude Code and opencode receive their own mirrored binding projections. |
-| `sai/policies/` | Canonical glossary, prerequisite, picker, commit, status, and feedback policies. |
+| `sai/policies/` | Canonical glossary, prerequisite, picker, commit, status, and feedback policies. `sai/policies/artifact-review-contract.md`: shared artifact review finding contract — closed severity vocabulary and assignment criteria, finding shape, severity-prefixed identifier scheme, and closing `Summary:` tally line — single-sourced and referenced by every artifact review surface. |
 | `sai/compat/` | Caller-neutral spec/design/implementation invocation cores and shared compatibility assets. The ADR index template is not owned here. |
 | `sai/commands/spec/invocation.md`, `sai/commands/design/invocation.md`, and `sai/commands/implement/invocation.md` | Caller-neutral invocation bodies shared by the routed paths. |
 | `sai/orchestration/workers/sai-1-spec-proposal-worker.md` | Spec proposal worker lifecycle, input, output, and proposal/spec artifact contract. |
