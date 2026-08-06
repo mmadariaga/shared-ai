@@ -8,6 +8,7 @@ const fs = require('fs');
 
 const {
   installClaude,
+  installCopilot,
   MANAGED_WORKERS,
   CLAUDE_SPEC_WORKER_AGENT,
   CLAUDE_SPEC_WORKER_OWNER,
@@ -69,6 +70,12 @@ test('managed worker registry defines every Claude compatibility export', () => 
 
   for (const [name, claude] of Object.entries(expectedClaude)) {
     assert.deepEqual(MANAGED_WORKERS[name].claude, claude, `${name} Claude metadata should remain stable`);
+    assert.equal(Object.hasOwn(MANAGED_WORKERS[name], 'opencode'), false,
+      `${name} should not carry opencode-only settings in the Claude registry`);
+    for (const field of ['model', 'mode', 'variant', 'permission']) {
+      assert.equal(Object.hasOwn(MANAGED_WORKERS[name], field), false,
+        `${name} should not expose opencode-only ${field} settings`);
+    }
   }
   assert.equal(Object.hasOwn(MANAGED_WORKERS['sai-1-spec-proposal-worker'], 'opencode'), false,
     'the spec worker should remain Claude-only');
@@ -90,6 +97,24 @@ test('managed worker registry defines every Claude compatibility export', () => 
     'sai-7-performance-worker.md': '.sai-7-performance-worker.owner.json',
     'sai-8-accessibility-worker.md': '.sai-8-accessibility-worker.owner.json',
   });
+});
+
+test('Claude and Copilot worker projections remain loadable independently of Opencode settings', () => {
+  const claudeDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-claude-independent-'));
+  const copilotBase = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-copilot-independent-'));
+  const copilot = {
+    prompts: path.join(copilotBase, 'prompts'),
+    skills: path.join(copilotBase, 'skills'),
+    agents: path.join(copilotBase, 'agents'),
+    sai: path.join(copilotBase, 'sai'),
+  };
+  try {
+    assert.doesNotThrow(() => installClaude(claudeDir));
+    assert.doesNotThrow(() => installCopilot(copilot.prompts, copilot.skills, copilot.agents, copilot.sai));
+  } finally {
+    fs.rmSync(claudeDir, { recursive: true, force: true });
+    fs.rmSync(copilotBase, { recursive: true, force: true });
+  }
 });
 
 test('installClaude copies commands/claude/*.md to dest/commands/', () => {

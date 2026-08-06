@@ -5,12 +5,14 @@ const assert = require('node:assert/strict');
 const path = require('path');
 const os = require('os');
 const fs = require('fs');
+const childProcess = require('child_process');
 const { PassThrough } = require('stream');
 
 const { main } = require('../bin/doctor.js');
 const { installOpencode } = require('../bin/install-flow.js');
 
 const MANAGED_NAMES = [
+  'sai-1-spec-proposal-worker',
   'sai-2-design-worker',
   'sai-3-implementation-worker',
   'sai-5-review-worker',
@@ -73,6 +75,19 @@ function managedRecords(report) {
   return records;
 }
 
+function diagnosticRecords(report) {
+  const section = report['[Opencode]'];
+  assert.ok(section, 'Opencode section should exist');
+  const records = [];
+  const visit = value => {
+    if (!value || typeof value !== 'object') return;
+    if (!Array.isArray(value) && typeof value.severity === 'string') records.push(value);
+    for (const child of Object.values(value)) visit(child);
+  };
+  visit(section);
+  return records;
+}
+
 function writeConfig(opencodeBase, content) {
   fs.mkdirSync(opencodeBase, { recursive: true });
   for (const filename of ['opencode.json', 'opencode.jsonc']) {
@@ -88,6 +103,7 @@ test('customized managed agents are accepted by name presence', async () => {
   try {
     installOpencode(opencodeBase);
     writeConfig(opencodeBase, JSON.stringify({ agent: {
+      'sai-1-spec-proposal-worker': { mode: 'subagent', model: 'user-spec-model' },
       'sai-2-design-worker': { mode: 'subagent', model: 'user-design-model', variant: 'low' },
       'sai-3-implementation-worker': { mode: 'subagent', model: 'user-implementation-model', permission: { edit: 'deny' } },
       'sai-5-review-worker': { mode: 'subagent', model: 'user-review-model' },
@@ -100,6 +116,7 @@ test('customized managed agents are accepted by name presence', async () => {
     assert.equal(code, 0);
     const records = managedRecords(report);
     assert.deepEqual(records.map(record => record.name).sort(), [
+      'sai-1-spec-proposal-worker',
       'sai-2-design-worker',
       'sai-3-implementation-worker',
       'sai-5-review-worker',
@@ -107,7 +124,10 @@ test('customized managed agents are accepted by name presence', async () => {
       'sai-7-performance-worker',
       'sai-8-accessibility-worker',
     ]);
-    for (const record of records) assert.equal(record.severity, 'ok', `${record.name} should be ok`);
+    for (const record of records) {
+      assert.equal(record.severity, 'ok', `${record.name} should be ok`);
+      assert.equal(/^\d+$/.test(String(record.name)), false, 'doctor should enumerate worker names, not numeric indexes');
+    }
     assert.equal(records.some(record => record.severity === 'error' && /incompatible/i.test(record.message || '')), false);
   } finally {
     fs.rmSync(projectRoot, { recursive: true, force: true });
@@ -129,8 +149,13 @@ test('missing managed agent is reported while present customized agents remain o
     const records = managedRecords(report);
     assert.equal(records.find(record => record.name === 'sai-2-design-worker').severity, 'ok');
     const missing = records.find(record => record.name === 'sai-3-implementation-worker');
+    assert.ok(missing, 'implementation worker should be enumerated by name');
     assert.equal(missing.severity, 'error');
     assert.match(missing.message, /missing/i);
+    const missingSpec = records.find(record => record.name === 'sai-1-spec-proposal-worker');
+    assert.ok(missingSpec, 'spec worker should be enumerated by name');
+    assert.equal(missingSpec.severity, 'error');
+    assert.match(missingSpec.message, /missing/i);
   } finally {
     fs.rmSync(projectRoot, { recursive: true, force: true });
   }
@@ -158,4 +183,76 @@ test('malformed Opencode configurations keep managed-agent records in error', as
       fs.rmSync(projectRoot, { recursive: true, force: true });
     }
   }
+});
+
+test('doctor converts malformed census bindings into actionable error diagnostics', () => {
+  const scratchRoot = path.join(__dirname, '..', '.tmp', 'derive-opencode-agent-census-from-bindings', 'doctor-malformed-bindings');
+  const script = `
+    'use strict';
+    const fs = require('fs');
+    const path = require('path');
+    const { PassThrough } = require('stream');
+    const bindingsDir = path.join(process.cwd(), 'sai', 'orchestration', 'workers', 'bindings', 'opencode');
+    const originalReaddirSync = fs.readdirSync;
+    fs.readdirSync = (target, ...args) => typeof target === 'string' && path.resolve(target) === path.resolve(bindingsDir)
+      ? []
+      : originalReaddirSync(target, ...args);
+    const { main } = require(${JSON.stringify(path.join(__dirname, '..', 'bin', 'doctor.js'))});
+    const projectRoot = ${JSON.stringify(scratchRoot)};
+    const opencodeBase = path.join(projectRoot, 'opencode');
+    fs.rmSync(projectRoot, { recursive: true, force: true });
+    fs.mkdirSync(path.join(projectRoot, 'openspec'), { recursive: true });
+    fs.mkdirSync(opencodeBase, { recursive: true });
+    fs.writeFileSync(path.join(projectRoot, 'openspec', 'config.yaml'), 'schema: sai-workflow\\n');
+     fs.writeFileSync(path.join(opencodeBase, 'opencode.jsonc'), JSON.stringify({ agent: {
+      'sai-1-spec-proposal-worker': { mode: 'subagent', model: 'user-spec' },
+      'sai-2-design-worker': { mode: 'subagent', model: 'user-design' },
+      'sai-3-implementation-worker': { mode: 'subagent', model: 'user-implementation' },
+      'sai-5-review-worker': { mode: 'subagent', model: 'user-review' },
+      'sai-6-security-worker': { mode: 'subagent', model: 'user-security' },
+      'sai-7-performance-worker': { mode: 'subagent', model: 'user-performance' },
+      'sai-8-accessibility-worker': { mode: 'subagent', model: 'user-accessibility' },
+    } }));
+    const out = new PassThrough();
+    const chunks = [];
+    out.on('data', chunk => chunks.push(chunk));
+    const visit = (value, records) => {
+      if (!value || typeof value !== 'object') return;
+      if (!Array.isArray(value) && typeof value.severity === 'string') records.push(value);
+      for (const child of Object.values(value)) visit(child, records);
+    };
+    (async () => {
+      const code = await main({
+        argv: ['--json'],
+        projectRoot,
+        claudeBase: path.join(projectRoot, 'claude-missing'),
+        opencodeBase,
+        copilot: {
+          promptsBase: path.join(projectRoot, 'copilot-prompts-missing'),
+          skillsBase: path.join(projectRoot, 'copilot-skills-missing'),
+          agentsBase: path.join(projectRoot, 'copilot-agents-missing'),
+          saiBase: path.join(projectRoot, 'copilot-sai-missing'),
+        },
+        execOpenspec: () => ({ status: 0, stdout: '1.4.1\\n', stderr: '', error: null }),
+        out,
+      });
+      const report = JSON.parse(Buffer.concat(chunks).toString('utf8'));
+      const records = [];
+      visit(report['[Opencode]'], records);
+      process.stdout.write(JSON.stringify({ code, hasActionableError: records.some(record => record.severity === 'error' && /census|derive/i.test(String(record.name || '') + ' ' + String(record.message || ''))) }));
+    })().catch(error => {
+      process.stdout.write(JSON.stringify({ error: error.message }));
+      process.exitCode = 1;
+    });
+  `;
+  const result = childProcess.spawnSync(process.execPath, ['-e', script], {
+    cwd: path.join(__dirname, '..'),
+    encoding: 'utf8',
+  });
+  assert.equal(result.status, 0, `${result.stderr}\n${result.stdout}\ndoctor diagnostic probe should run`);
+  const observation = JSON.parse(result.stdout);
+  assert.equal(observation.error, undefined, 'doctor should not throw while generating diagnostics');
+  assert.equal(observation.code, 1, 'derivation failures should make doctor fail');
+  assert.equal(observation.hasActionableError, true,
+    'doctor should report an actionable census/binding diagnostic instead of throwing');
 });

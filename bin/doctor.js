@@ -377,6 +377,18 @@ function managedClaudeWorkerRecords(harness, repoRoot) {
 
 function managedOpencodeAgentRecords(harness) {
   const section = `[${harness.id}]`;
+  let managedNames;
+  try {
+    managedNames = Object.keys(flow.OPENCODE_MANAGED_AGENTS);
+  } catch (err) {
+    return [{
+      section,
+      name: 'opencode-census',
+      severity: 'error',
+      message: `opencode managed-agent census derivation failed: ${err.message}`,
+      recommendation: 'Fix the opencode worker bindings or registration defaults, then re-run',
+    }];
+  }
   const configPath = fs.existsSync(path.join(harness.base, 'opencode.json'))
     ? path.join(harness.base, 'opencode.json')
     : path.join(harness.base, 'opencode.jsonc');
@@ -395,7 +407,7 @@ function managedOpencodeAgentRecords(harness) {
     && typeof root.agent === 'object'
     && !Array.isArray(root.agent);
 
-  return Object.keys(flow.OPENCODE_MANAGED_AGENTS).map((key) => {
+  return managedNames.map((key) => {
     if (hasAgentMap && Object.prototype.hasOwnProperty.call(root.agent, key)) {
       return { section, name: key, severity: 'ok', message: `managed opencode agent "${key}" is present` };
     }

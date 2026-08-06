@@ -37,6 +37,13 @@
       // Put your trusted low-cost model here
       "model": "opencode-go/glm-5.1"
     },
+    "sai-1-spec-proposal-worker": {
+      "mode": "subagent",
+      "model": "opencode-go/minimax-m3",
+      "permission": {
+        "task": { "*": "deny", "budget": "allow", "explore": "allow" }
+      }
+    },
     "sai-3-implementation-worker": {
       "mode": "subagent",
       "model": "opencode-go/kimi-k2.6",
@@ -54,6 +61,37 @@
       "variant": "high",
       "permission": {
         "task": { "*": "deny", "explore": "allow" }
+      }
+    },
+    "sai-5-review-worker": {
+      "mode": "subagent",
+      "model": "opencode-go/glm-5.2",
+      "variant": "high",
+      "permission": {
+        "task": { "*": "deny", "budget": "allow", "explore": "allow" }
+      }
+    },
+    "sai-6-security-worker": {
+      "mode": "subagent",
+      "model": "opencode-go/glm-5.2",
+      "variant": "high",
+      "permission": {
+        "task": { "*": "deny", "budget": "allow", "explore": "allow" }
+      }
+    },
+    "sai-7-performance-worker": {
+      "mode": "subagent",
+      "model": "opencode-go/glm-5.2",
+      "variant": "high",
+      "permission": {
+        "task": { "*": "deny", "budget": "allow", "explore": "allow" }
+      }
+    },
+    "sai-8-accessibility-worker": {
+      "mode": "subagent",
+      "model": "opencode-go/qwen3.7-plus",
+      "permission": {
+        "task": { "*": "deny", "budget": "allow", "explore": "allow" }
       }
     }
   }

@@ -26,26 +26,11 @@ const MANAGED_WORKERS = Object.freeze({
       agent: 'sai-3-implementation-worker.md',
       owner: '.sai-3-implementation-worker.owner.json',
     }),
-    opencode: Object.freeze({
-      mode: 'subagent',
-      model: 'opencode-go/kimi-k2.6',
-      permission: Object.freeze({
-        task: Object.freeze({ '*': 'deny', budget: 'allow', explore: 'allow' }),
-      }),
-    }),
   }),
   'sai-2-design-worker': Object.freeze({
     claude: Object.freeze({
       agent: 'sai-2-design-worker.md',
       owner: '.sai-2-design-worker.owner.json',
-    }),
-    opencode: Object.freeze({
-      mode: 'subagent',
-      model: 'opencode-go/glm-5.2',
-      variant: 'high',
-      permission: Object.freeze({
-        task: Object.freeze({ '*': 'deny', explore: 'allow' }),
-      }),
     }),
   }),
   'sai-5-review-worker': Object.freeze({
@@ -53,27 +38,11 @@ const MANAGED_WORKERS = Object.freeze({
       agent: 'sai-5-review-worker.md',
       owner: '.sai-5-review-worker.owner.json',
     }),
-    opencode: Object.freeze({
-      mode: 'subagent',
-      model: 'opencode-go/glm-5.2',
-      variant: 'high',
-      permission: Object.freeze({
-        task: Object.freeze({ '*': 'deny', budget: 'allow', explore: 'allow' }),
-      }),
-    }),
   }),
   'sai-6-security-worker': Object.freeze({
     claude: Object.freeze({
       agent: 'sai-6-security-worker.md',
       owner: '.sai-6-security-worker.owner.json',
-    }),
-    opencode: Object.freeze({
-      mode: 'subagent',
-      model: 'opencode-go/glm-5.2',
-      variant: 'high',
-      permission: Object.freeze({
-        task: Object.freeze({ '*': 'deny', budget: 'allow', explore: 'allow' }),
-      }),
     }),
   }),
   'sai-7-performance-worker': Object.freeze({
@@ -81,26 +50,11 @@ const MANAGED_WORKERS = Object.freeze({
       agent: 'sai-7-performance-worker.md',
       owner: '.sai-7-performance-worker.owner.json',
     }),
-    opencode: Object.freeze({
-      mode: 'subagent',
-      model: 'opencode-go/glm-5.2',
-      variant: 'high',
-      permission: Object.freeze({
-        task: Object.freeze({ '*': 'deny', budget: 'allow', explore: 'allow' }),
-      }),
-    }),
   }),
   'sai-8-accessibility-worker': Object.freeze({
     claude: Object.freeze({
       agent: 'sai-8-accessibility-worker.md',
       owner: '.sai-8-accessibility-worker.owner.json',
-    }),
-    opencode: Object.freeze({
-      mode: 'subagent',
-      model: 'opencode-go/qwen3.7-plus',
-      permission: Object.freeze({
-        task: Object.freeze({ '*': 'deny', budget: 'allow', explore: 'allow' }),
-      }),
     }),
   }),
   'sai-1-spec-proposal-worker': Object.freeze({
@@ -153,12 +107,6 @@ function migrateLegacyClaudeWorkers(targetPath = CLAUDE_BASE) {
   }
   return migrated;
 }
-const OPENCODE_MANAGED_AGENTS = Object.freeze(Object.fromEntries(
-  Object.entries(MANAGED_WORKERS)
-    .filter(([, worker]) => worker.opencode !== undefined)
-    .map(([name, worker]) => [name, worker.opencode]),
-));
-
 const REPOSITORY_ROOT = path.join(__dirname, '..');
 const PACKAGE_VERSION = require(path.join(REPOSITORY_ROOT, 'package.json')).version;
 
@@ -641,6 +589,7 @@ function installCopilot(promptsBase, skillsBase, agentsBase, saiBase) {
 }
 
 function installOpencode(destBase) {
+  getOpencodeManagedAgents();
   const targetPath = destBase || OPENCODE_BASE;
   cleanupRetiredProjections('opencode', { base: targetPath });
   for (const projection of expandForInstall('opencode', { base: targetPath })) installProjection(projection, targetPath);
@@ -668,7 +617,7 @@ function printOpencodeConfigMessage(base) {
   console.log('    }');
   console.log('  }');
   console.log('\nRequired namespaced implementation agents:');
-  console.log(JSON.stringify(OPENCODE_MANAGED_AGENTS, null, 2));
+  console.log(JSON.stringify(getOpencodeManagedAgents(), null, 2));
   console.log('\nAdjust the model to your preferred low-cost provider.');
 }
 
@@ -806,7 +755,7 @@ function mergeOpencodeAgents(text, permissionContext = createPermissionMatchCont
     explore: { mode: 'subagent', model: OPENCODE_PLACEHOLDER_MODEL },
     executor: { mode: 'subagent', model: OPENCODE_PLACEHOLDER_MODEL },
     budget: { mode: 'subagent', model: OPENCODE_PLACEHOLDER_MODEL },
-    ...OPENCODE_MANAGED_AGENTS,
+    ...getOpencodeManagedAgents(),
   };
 
   for (const [key, shape] of Object.entries(shapes)) {
@@ -992,7 +941,6 @@ module.exports = {
   inspectManagedWorkerMigration,
   migrateManagedWorkerIdentity,
   cleanupRetiredProjections,
-  OPENCODE_MANAGED_AGENTS,
   OPENCODE_REGISTRATION_DEFAULTS,
   getOpencodeManagedAgents,
   sha256Buffer,
@@ -1006,3 +954,9 @@ module.exports = {
     wildcardMatches,
   },
 };
+
+Object.defineProperty(module.exports, 'OPENCODE_MANAGED_AGENTS', {
+  enumerable: true,
+  configurable: true,
+  get: getOpencodeManagedAgents,
+});
