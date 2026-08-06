@@ -408,12 +408,20 @@ function managedOpencodeAgentRecords(harness) {
     && !Array.isArray(root.agent);
 
   return managedNames.map((key) => {
+    const prompt = flow.OPENCODE_MANAGED_AGENTS[key].prompt;
     if (hasAgentMap && Object.prototype.hasOwnProperty.call(root.agent, key)) {
-      return { section, name: key, severity: 'ok', message: `managed opencode agent "${key}" is present` };
+      return {
+        section,
+        name: key,
+        prompt,
+        severity: 'ok',
+        message: `managed opencode agent "${key}" is present`,
+      };
     }
     return {
       section,
       name: key,
+      prompt,
       severity: 'error',
       message: !hasAgentMap
         ? `missing or malformed opencode agent "${key}"`
