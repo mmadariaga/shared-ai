@@ -11,6 +11,16 @@
 **Components in scope:** {list}  
 **Date:** {YYYY-MM-DD}
 
+## Not Applicable
+
+{REQUIRED: Fill this section even when accessibility audit is not applicable.
+If the diff contains no UI files (.tsx/.jsx/.astro/.html/.vue/.svelte/.css
+or component-bearing markdown), explain why here and leave findings empty.}
+
+**Justification:** {Why no UI surface is touched, OR leave blank and fill findings below}
+
+---
+
 ## Executive Summary
 
 | Severity | Count |

@@ -9,6 +9,17 @@
 **Baseline reference:** {prior benchmark / SLO / observability dashboard / "absolute thresholds — no baseline"}  
 **Date:** {YYYY-MM-DD}
 
+## Not Applicable
+
+{REQUIRED: Fill this section even when performance audit is not applicable.
+If this change has no performance surface (no new queries, endpoints, consumers,
+hot components, deps, loops over unbounded input, or caching changes),
+explain why here and leave the findings sections empty.}
+
+**Justification:** {Why this change has no performance surface, OR leave blank and fill findings below}
+
+---
+
 ## Executive Summary
 
 | Severity | Backend | Frontend | DB | Queue | Total |
