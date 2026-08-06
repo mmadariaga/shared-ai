@@ -154,6 +154,8 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0100 — Neutral installed worker-binding destinations with harness-specific sources](./0100-neutral-installed-worker-binding-destinations.md) — Refs 0077, Refs 0084, Refs 0088
 - [0101 — Exact Git-blob corpus for binding retirement ownership](./0101-exact-git-blob-corpus-for-binding-retirements.md) — Refs 0091
 - [0102 — Consumer-scoped preflight for routed worker contract assets](./0102-consumer-scoped-preflight-for-routed-worker-contract-assets.md) — Refs 0100
+- [0103 — Retire the inline harness model in favor of two routed harnesses](./0103-retire-inline-harness-model-in-favor-of-routed-harnesses.md)
+- [0104 — Remove Copilot from the active installer inventory](./0104-remove-copilot-from-active-installer-inventory.md) — Pair with 0103
 
 ### Harness wrappers & the shared instruction layer
 
@@ -216,6 +218,8 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0100 — Neutral installed worker-binding destinations with harness-specific sources](./0100-neutral-installed-worker-binding-destinations.md) — Refs 0077, Refs 0084, Refs 0088
 - [0101 — Exact Git-blob corpus for binding retirement ownership](./0101-exact-git-blob-corpus-for-binding-retirements.md) — Refs 0091
 - [0102 — Consumer-scoped preflight for routed worker contract assets](./0102-consumer-scoped-preflight-for-routed-worker-contract-assets.md) — Refs 0100
+- [0103 — Retire the inline harness model in favor of two routed harnesses](./0103-retire-inline-harness-model-in-favor-of-routed-harnesses.md)
+- [0104 — Remove Copilot from the active installer inventory](./0104-remove-copilot-from-active-installer-inventory.md) — Pair with 0103
 
 ### Argument passing & change-name resolution
 
