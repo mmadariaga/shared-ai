@@ -50,6 +50,25 @@ before GREEN for testable steps, conforms to interfaces, uses the required
 human-check encoding, and has executed no implementation step or checked plan
 checkbox.
 
+Additionally verify the audit-derived step append: for every audit artifact
+present at the start of the run (among `review.md`, `security.md`,
+`performance.md`, and `accessibility.md`), the run SHALL have appended exactly
+one corresponding step, numbered strictly after the run-path baseline — the
+highest `#### Step N:` number in the generated plan on the first-run path, or
+the highest `#### Step N:` number present in `implementation.md` at the start
+of the run and captured before any write on the re-run path. A step appended by
+an earlier run does NOT satisfy this check (the re-run contract appends one new
+step per artifact on every re-run with no dedup). The append itself is executed
+and repaired by the pre-delivery self-check of the `audit-artifact-ingestion`
+capability (the first stage of the two-stage design); this gate is the second
+stage and the last resort — when a required append is still missing at
+completion time after that self-check has run, return `failed` with a concise
+blocking summary and do not claim planning completion. The chat confirmation of
+the existing "Discarded findings SHALL be surfaced in chat for conversational
+confirmation" requirement is NOT part of this gate: it is conversational-only
+by design (no approval key is written, and `implementation.md` carries no trace
+of a chat emission), so no durable record exists for this gate to verify.
+
 Every lifecycle payload includes the current `changed_files` list. Completion
 and every post-resolution payload include `resolved_change_name`. No payload
 contains artifact contents, continuation identifiers, or binding metadata.
