@@ -25,6 +25,12 @@ Durable execution-observed facts about the shared-ai prompt and installer reposi
   *Observed:* share-vscode-inline-coordinator — the former blanket no-orchestration assertion rejected the intentional inline exception; exact-source filtering restored the suite.
 - **opencode.json/opencode.jsonc doctor fixtures**: Clear both configuration files before writing malformed fixture inputs because doctor resolves `opencode.json` ahead of `opencode.jsonc`, and installer-generated output can otherwise mask the intended case.
   *Observed:* preserve-custom-opencode-agents — clearing both files before each malformed fixture produced the expected error records.
+- **test/implement-coordinator-worker.test.js**: Assertions for customized managed-worker records must include the canonical registration prompt when the installed entry lacks one.
+  *Observed:* deterministic-worker-contract-delivery — the legacy promptless expectation failed after prompt-bearing merge; updating it made the full suite pass.
+- **test/implementation-harness-bindings-step-3.test.js**: Harness-preservation assertions must expect the canonical registration prompt on managed worker entries while retaining user-owned runtime fields.
+  *Observed:* deterministic-worker-contract-delivery — the legacy promptless expectation failed after prompt-bearing merge; updating it made the full suite pass.
+- **test/manual-opencode-contract-smoke.js**: A direct runtime smoke probe must guard its entry point from automatic `node --test` discovery while preserving direct runtime-unavailable exit `2`.
+  *Observed:* deterministic-worker-contract-delivery — `npm test` loaded the manual probe and failed on exit `2`; a direct-execution guard preserved manual behavior and the full-suite pass.
 - **sai/instructions/design.md**: The shared design feedback contract owns normalized complete `interfaces.md` comparison and conditional Architecture Snapshot presentation across routed and inline adapters.
   *Observed:* render-architecture-snapshot-in-sai-2 — the Step 2 task scope omitted this file, but the GREEN contract required the shared behavior and the lifecycle suite passed.
 - **sai/instructions/explore.md**: The supervised review contract may retain compatibility wording for legacy structural assertions without changing its bounded convergence semantics.
