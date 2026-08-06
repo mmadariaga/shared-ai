@@ -24,7 +24,7 @@ When dispatching a subagent, the coordinator SHALL provide the material that sub
 - For a **blind test-writer dispatch**, the coordinator SHALL provide that Step's `interfaces.md` section, the injected testing context, the following rules, the dispatch's `Allowed files` list, and any relevant technical learnings. The allowed-file list SHALL contain only plan-authorized test files and explicitly permitted RED/interface stub files; it SHALL exclude production files.
 - For an **implementation dispatch**, the coordinator SHALL provide exactly the full GREEN implementation body, the following rules (including the read-before-write rule, the dispatch's `Allowed files` list, and the declared scratch rules), and any relevant technical learnings. The allowed-file list SHALL contain only plan-authorized production files; it SHALL exclude tests and declared interfaces.
 
-For all three dispatch kinds, the coordinator SHALL inject the exact declared scratch path `.tmp/{change-name}/` using its own change-name argument. The scratch path SHALL be separate from and excluded from the `Allowed files` list. A subagent MAY create temporary files only below that path, SHALL remove all contents of exactly `.tmp/{change-name}/` and that directory before returning from a clean dispatch, and SHALL preserve the path when returning STOP or failure. A subagent SHALL NOT remove the `.tmp/` parent; parent cleanup is coordinator-owned and follows the coordinator verification requirement. Scratch paths SHALL NOT be treated as feature outputs or included in the Subagent Report's `Files modified` field.
+For all three dispatch kinds, the coordinator SHALL inject the exact declared scratch path `.tmp/{change-name}/` using its own change-name argument. The scratch path SHALL be separate from and excluded from the `Allowed files` list. A subagent MAY create temporary files only below that path and MAY remove all contents of exactly `.tmp/{change-name}/` and that directory before a clean return. A subagent has no preservation obligation on STOP or failure. A subagent SHALL never remove the `.tmp/` parent; parent cleanup is coordinator-owned and follows the coordinator verification requirement. Scratch paths SHALL NOT be treated as feature outputs or included in the Subagent Report's `Files modified` field. The coordinator SHALL perform an unconditional sweep after every dispatch outcome, including non-clean outcomes, before path comparison.
 
 #### Scenario: Single dispatch receives its plan scope and scratch rules
 - **WHEN** the coordinator dispatches a Step through the single-dispatch path whose plan-level files are `src/a.ts` and `tests/a.test.ts`
@@ -38,18 +38,22 @@ For all three dispatch kinds, the coordinator SHALL inject the exact declared sc
 - **WHEN** a Split-Routed Step is dispatched to the implementation subagent with plan-authorized production, test, and interface paths
 - **THEN** the prompt's `Allowed files` list contains only the authorized production paths, excludes tests and declared interfaces, and separately declares `.tmp/{change-name}/` as scratch
 
-#### Scenario: Clean dispatch removes its scratch before reporting
+#### Scenario: Worker may remove per-change scratch on clean return
 - **WHEN** a subagent uses `.tmp/{change-name}/` for temporary scaffolding and completes the dispatch without STOP or failure
-- **THEN** it removes the scratch contents and directory before returning, and field 8 reports only non-scratch paths
+- **THEN** it may remove the exact per-change scratch contents and directory before a clean return, and field 8 reports only non-scratch paths
 
-#### Scenario: Non-clean dispatch preserves scratch evidence
+#### Scenario: Non-clean dispatch has no preservation obligation
 - **WHEN** a subagent reaches STOP, fails, or cannot return a normal report after using `.tmp/{change-name}/`
-- **THEN** it does not claim the scratch paths in field 8 and the scratch evidence remains available for coordinator or human inspection
+- **THEN** it does not claim scratch paths in field 8, has no requirement to preserve them, and the coordinator applies its unconditional sweep and existing halt handling
 
-#### Scenario: Split-routed dispatches do not share surviving scratch
-- **WHEN** a blind test-writer dispatch completes cleanly before the implementation dispatch of the same Step
-- **THEN** the writer's scratch path has been removed before the implementation dispatch starts, so scratch cannot act as a cross-dispatch communication channel
+#### Scenario: Split-routed dispatches receive independent coordinator sweeps
+- **WHEN** a blind test-writer dispatch returns before the implementation dispatch of the same Step
+- **THEN** the coordinator sweeps the writer's exact per-change scratch path before the implementation dispatch starts, so scratch cannot act as a cross-dispatch communication channel
 
-#### Scenario: Worker does not remove the scratch parent
-- **WHEN** a clean dispatch uses `.tmp/{change-name}/` while `.tmp/` is pre-existing or contains another path
-- **THEN** the worker removes only the exact per-change scratch directory and leaves `.tmp/` for the coordinator's parent-lifecycle decision
+#### Scenario: Worker never removes the scratch parent
+- **WHEN** a dispatch uses `.tmp/{change-name}/` while `.tmp/` is pre-existing or contains another path
+- **THEN** the worker never removes `.tmp/`; only the coordinator may remove a newly created empty parent after its per-change sweep
+
+#### Scenario: Scratch is not a feature output
+- **WHEN** a dispatch creates scratch alongside a production output
+- **THEN** `Files modified` contains only the non-scratch feature output and excludes every path below `.tmp/{change-name}/`

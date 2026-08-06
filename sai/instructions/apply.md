@@ -16,54 +16,46 @@ No skills are required by default. Load a skill only if the plan invokes it expl
 
 <workflow>
 - Follow the plan exactly as it is written, picking up with the next unchecked Step in the implementation plan document. You MUST NOT skip any Step.
-- On STOP, failure, or crash, the coordinator MUST preserve `.tmp/{change-name}/` for human inspection.
-- **Preserved-scratch episode gate.** Treat a non-clean outcome that leaves `.tmp/{change-name}/`, or a resumed run that finds that path from an earlier non-clean outcome, as one preserved-scratch episode. Before another dispatch for the same change, pause for explicit human acknowledgement that the evidence was inspected or is no longer needed. `--fast-track` does not defer or auto-confirm this acknowledgement. A clean-return sweep ends the episode; another non-clean return within an acknowledged episode does not trigger a second acknowledgement.
+- After every dispatch returns, regardless of whether it returns a clean report, STOP, failure, or no report because of a crash, the coordinator SHALL unconditionally sweep the exact per-change scratch path, removing all of its contents and the directory, before any post-dispatch path comparison.
+- The sweep SHALL run once per dispatch, including each dispatch in a split-routed Step.
+- The coordinator SHALL sweep exactly `.tmp/{change-name}/` for each dispatch outcome.
+- After each coordinator-owned run of the Step's Verification Checklist, the coordinator SHALL sweep the exact per-change scratch path again before the final path comparison or any subsequent dispatch.
+- When a coordinator sweep removes one or more paths, it SHALL emit one trace line in the form `> Scratch cleanup: removed <paths>`. When only the per-change directory is removed, the line SHALL be exactly `> Scratch cleanup: removed .tmp/{change-name}/`; when both the per-change directory and its newly created empty parent are removed, the line SHALL be exactly `> Scratch cleanup: removed .tmp/{change-name}/, .tmp/`. An empty sweep SHALL emit no trace line. The trace SHALL identify paths, not scratch contents.
+- An empty sweep emits no message.
+- If the `.tmp/` parent did not exist in the first pre-dispatch baseline of the apply run and is empty after a per-change directory is removed, the coordinator SHALL remove that parent; a pre-existing or non-empty `.tmp/` parent SHALL remain untouched.
+- A STOP, failure, or crash still follows the existing halt and human-intervention handling, but it SHALL NOT preserve scratch as a separate episode and SHALL NOT require an acknowledgement before another dispatch.
 - **Pre-dispatch evidence state.** Before every ordinary Step dispatch, record the tracked and untracked path identities visible in the working tree, derive the Step's plan-level file scope from its existing file metadata, and derive the dispatch-kind-specific allowed-file set. For a single dispatch, the allowed-file set is the Step's plan-level scope.
      - *Scope*: Implement ONLY what is specified in the Step. DO NOT WRITE ANY CODE OUTSIDE OF WHAT IS SPECIFIED IN THE STEP. Exception: minimal stubs required to make a RED test fail by assertion are permitted; they are part of the test scaffolding, not new feature code.
-     - `Allowed files`: inject the dispatch-specific list derived by the coordinator for this Step. The list contains non-scratch paths only.
      - Scratch path: `.tmp/{change-name}/` (separate from and excluded from `Allowed files`).
-     - A worker MAY create temporary files only below `.tmp/{change-name}/`, MUST remove all contents of exactly that directory and the directory itself before a clean return, and MUST preserve it on STOP or failure.
+     - `Allowed files`: inject the dispatch-specific list derived by the coordinator for this Step. The list contains non-scratch paths only.
+     - A worker MAY create temporary files only below `.tmp/{change-name}/`, MAY remove all contents of exactly that directory and the directory itself before a clean return, and has no preservation obligation on STOP or failure. A non-clean return has no preservation obligation.
      - A worker MUST NOT remove the `.tmp/` parent.
      - Files modified MUST contain only non-scratch paths and MUST exclude every path below `.tmp/{change-name}/`.
   For a blind test-writer dispatch
      - *Scope*: Write ONLY the interface stubs and the tests for this Step. Do NOT write the implementation.
-     - `Allowed files`: inject the dispatch-specific list derived by the coordinator for this Step. The list contains non-scratch paths only.
      - Scratch path: `.tmp/{change-name}/` (separate from and excluded from `Allowed files`).
-     - A worker MAY create temporary files only below `.tmp/{change-name}/`, MUST remove all contents of exactly that directory and the directory itself before a clean return, and MUST preserve it on STOP or failure.
+     - `Allowed files`: inject the dispatch-specific list derived by the coordinator for this Step. The list contains non-scratch paths only.
+     - A worker MAY create temporary files only below `.tmp/{change-name}/`, MAY remove all contents of exactly that directory and the directory itself before a clean return, and has no preservation obligation on STOP or failure. A non-clean return has no preservation obligation.
      - A worker MUST NOT remove the `.tmp/` parent.
      - Files modified MUST contain only non-scratch paths and MUST exclude every path below `.tmp/{change-name}/`.
   For an implementation dispatch
      - *Scope*: Implement ONLY what is specified in the Step's GREEN body. Do NOT write tests.
-     - `Allowed files`: inject the dispatch-specific list derived by the coordinator for this Step. The list contains non-scratch paths only.
+     - Implementation Dispatch Allowed files contain only plan-authorized production files and exclude tests and declared interfaces.
      - Scratch path: `.tmp/{change-name}/` (separate from and excluded from `Allowed files`).
-     - A worker MAY create temporary files only below `.tmp/{change-name}/`, MUST remove all contents of exactly that directory and the directory itself before a clean return, and MUST preserve it on STOP or failure.
+     - `Allowed files`: inject the dispatch-specific list derived by the coordinator for this Step. The list contains non-scratch paths only.
+     - A worker MAY create temporary files only below `.tmp/{change-name}/`, MAY remove all contents of exactly that directory and the directory itself before a clean return, and has no preservation obligation on STOP or failure. A non-clean return has no preservation obligation.
      - A worker MUST NOT remove the `.tmp/` parent.
      - Files modified MUST contain only non-scratch paths and MUST exclude every path below `.tmp/{change-name}/`.
   It contains only plan-authorized production files and excludes tests and declared interfaces. Every Step-execution prompt MUST include an `Allowed files` list containing exactly that dispatch's plan-authorized paths.
   Single dispatch Allowed files are exactly the Step's plan-level files.
-     - *Scope*: Implement ONLY what is specified in the Step. DO NOT WRITE ANY CODE OUTSIDE OF WHAT IS SPECIFIED IN THE STEP. Exception: minimal stubs required to make a RED test fail by assertion are permitted; they are part of the test scaffolding, not new feature code.
-     - `Allowed files`: inject the dispatch-specific list derived by the coordinator for this Step. The list contains non-scratch paths only.
-     - Scratch path: `.tmp/{change-name}/` (separate from and excluded from `Allowed files`).
-     - A worker MAY create temporary files only below `.tmp/{change-name}/`, MUST remove all contents of exactly that directory and the directory itself before a clean return, and MUST preserve it on STOP or failure.
-     - A worker MUST NOT remove the `.tmp/` parent.
-     - Files modified MUST contain only non-scratch paths and MUST exclude every path below `.tmp/{change-name}/`.
   Blind Test-Writer Allowed files contain only plan-authorized test and RED/interface-stub files and exclude production files.
-     - *Scope*: Write ONLY the interface stubs and the tests for this Step. Do NOT write the implementation.
-     - `Allowed files`: inject the dispatch-specific list derived by the coordinator for this Step. The list contains non-scratch paths only.
-     - Scratch path: `.tmp/{change-name}/` (separate from and excluded from `Allowed files`).
-     - A worker MAY create temporary files only below `.tmp/{change-name}/`, MUST remove all contents of exactly that directory and the directory itself before a clean return, and MUST preserve it on STOP or failure.
-     - A worker MUST NOT remove the `.tmp/` parent.
-     - Files modified MUST contain only non-scratch paths and MUST exclude every path below `.tmp/{change-name}/`.
-  Implementation Dispatch Allowed files contain only plan-authorized production files and exclude tests and declared interfaces.
   The pre-dispatch baseline and recovery assessment are coordinator-only and MUST NOT be included in a Step-execution prompt.
 - Dispatch Step-execution subagent(s) (see "## Step-Execution Subagent Dispatch" below) to execute the next unchecked Step's implementation body. **The coordinator SHALL NOT itself perform the Step's read-before-write reads, RED-test runs, or GREEN iteration** — those happen only inside the subagent(s), so their raw output (file dumps, tracebacks, iteration logs) never enters the coordinator's context.
 - When the subagent(s) return their report(s) (see "## Subagent Report Contract" below), process them in this fixed order — the coordinator's own re-verification (step 1) MUST pass before either checkbox marking (step 4) or the commit proposal (STOP & COMMIT, below):
-    1. **Clean-return scratch sweep, coordinator verification, and discrepancy classification.** On a clean dispatch return, perform the declared scratch cleanup before verification comparison. After a clean dispatch return, the coordinator MUST sweep exactly `.tmp/{change-name}/` before any post-dispatch path comparison. The coordinator MUST run the sweep once per dispatch, including each dispatch in a Split-Routed Step. Remove all contents of the exact per-change directory and the directory itself. The coordinator MUST remove the `.tmp/` parent only when it was absent from the first pre-dispatch baseline and is empty after the per-change sweep. A pre-existing or non-empty `.tmp/` parent remains untouched. Then re-run the Step's Verification Checklist yourself - quiet confirmation only, not the RED->GREEN cycle or read-before-write reads. Paths removed by the ordered clean-return scratch sweep SHALL be excluded from observed changed paths, the plan cross-check, the `Subagent <-> git` comparison, the field-8 add-list, and line-count totals; every non-scratch path remains subject to the existing comparison and scope-drift rules. independently compare the Verification Checklist, changed paths, allowed files, baseline, and report. When the checklist, path comparison, and report agree, continue to gate 2 without dispatching recovery. A checklist pass is required before continuing. When coordinator evidence contradicts the report, do not mark checkboxes or propose a commit. Classify whether the evidence directly disproves the report and whether every cause and correction is clear, safe, reversible, limited to the current Step, and inside the existing plan scope. Enter the bounded recovery subsection only when all conditions hold; otherwise surface the discrepancy for human intervention.
+     1. **Coordinator scratch sweeps, verification, and discrepancy classification.** After every dispatch returns, regardless of whether it returns a clean report, STOP, failure, or no report because of a crash, the coordinator SHALL unconditionally sweep the exact per-change scratch path before any post-dispatch path comparison. The sweep SHALL run once per dispatch, including each dispatch in a split-routed Step. Remove all contents of the exact per-change directory and the directory itself. After each coordinator-owned run of the Step's Verification Checklist, the coordinator SHALL sweep the exact per-change scratch path again before the final path comparison or any subsequent dispatch. The coordinator SHALL remove the `.tmp/` parent only when it was absent from the first pre-dispatch baseline and is empty after the per-change sweep; a pre-existing or non-empty `.tmp/` parent remains untouched. When a coordinator sweep removes one or more paths, it SHALL emit one trace line in the form `> Scratch cleanup: removed <paths>`. An empty sweep SHALL emit no trace line. The trace SHALL identify paths, not scratch contents. Then re-run the Step's Verification Checklist yourself - quiet confirmation only, not the RED->GREEN cycle or read-before-write reads. Scratch paths removed by the ordered sweep SHALL be excluded from observed changed paths, the plan cross-check, the `Subagent <-> git` comparison, the field-8 add-list, and line-count totals; every non-scratch path remains subject to the existing comparison and scope-drift rules. independently compare the Verification Checklist, changed paths, allowed files, baseline, and report. When the checklist, path comparison, and report agree, continue to gate 2 without dispatching recovery. A checklist pass is required before continuing. When coordinator evidence contradicts the report, do not mark checkboxes or propose a commit. Classify whether the evidence directly disproves the report and whether every cause and correction is clear, safe, reversible, limited to the current Step, and inside the existing plan scope. Enter the bounded recovery subsection only when all conditions hold; otherwise surface the discrepancy for human intervention.
 
-    The sweep applies to each dispatch in a Split-Routed Step: the first dispatch and the second dispatch each run it before comparison.
     The first pre-dispatch baseline MUST show the `.tmp/` parent absent before the coordinator may remove it after the sweep.
-    On STOP, failure, or crash, the coordinator MUST preserve `.tmp/{change-name}/` for human inspection and MUST NOT run the clean-return sweep. Scratch cleanup MUST NOT broaden recovery eligibility or authorize removal of another unexpected path. Cleanup that only undoes the current dispatch's own scope violation is corrective scope, not feature work. The recovery operation stays within the current Step and existing plan scope, uses the same dispatch kind and budget-subagent binding as the ordinary dispatch.
-    - **Preserved-scratch episode gate.** Treat a non-clean outcome that leaves `.tmp/{change-name}/`, or a resumed run that finds that path from an earlier non-clean outcome, as one preserved-scratch episode. Before another dispatch for the same change, the coordinator MUST obtain one explicit human acknowledgement per preserved-scratch episode. The acknowledgement confirms that the evidence was inspected or is no longer needed. `--fast-track` MUST NOT defer or auto-confirm the preserved-scratch acknowledgement. A clean-return sweep ends the preserved-scratch episode; another non-clean return within an acknowledged episode MUST NOT trigger a second acknowledgement.
+     On STOP, failure, or crash, the coordinator SHALL retain the existing halt and human-intervention handling without treating scratch as a separate episode or requiring an acknowledgement before another dispatch. Scratch cleanup MUST NOT broaden Known-False Report Recovery eligibility or authorize removal of another unexpected path. Cleanup that only undoes the current dispatch's own scope violation is corrective scope, not feature work. An unrelated out-of-scope path remains subject to recovery or human intervention. The recovery operation stays within the current Step and existing plan scope, uses the same dispatch kind and budget-subagent binding as the ordinary dispatch.
     2. **Incorporate learnings.** Immediately after a matching verification pass, add the report's technical-learnings entries (if any) to the accumulated learnings memory (see "## Technical Learnings Memory" below).
      3. **Human Verification gate.** If the Step's Human section contains at least one `- [ ]` checkbox, present those checks to the user and wait — do NOT mark any of them `[x]` until the user confirms they have reviewed. The gate keys on checkbox count, not on the presence of a `**Human (...)**` header: if the Human section contains zero `- [ ]` checkboxes (for example it holds only an italic explanatory note), or the Step has no Human section, this gate does not apply — proceed directly to the commit proposal after automated checks pass.
 
@@ -129,7 +121,7 @@ The coordinator routes each Step to either a single dispatch or the two-dispatch
 
 Part 2 is evaluated **per Step**, not by testing only whether `interfaces.md` exists — the test-writer's prompt is assembled from that `## Step N` section, so with no matching section there is nothing to make the writer blind *to* and the dispatch cannot be assembled. A Step that satisfies both parts is a **Split-Routed Step**; every other Step — including a Step with a RED block whose contract is unavailable — keeps the single-dispatch flow.
 
-For each dispatch in a Split-Routed Step, the coordinator performs the clean-return sweep after the first dispatch and after the second dispatch, before path comparison.
+In a Split-Routed Step, each dispatch receives the unconditional coordinator scratch sweep after it returns and before path comparison: the first dispatch and the second dispatch each run it before comparison.
 
 **Contract-absent fall-back.** When part 1 holds (the Step has a RED block) but part 2 fails (no `## Step N` contract is available — either `interfaces.md` does not exist, or it exists but has no `## Step N` for that integer), the coordinator SHALL route the Step to a single dispatch and, **before dispatching**, print exactly one non-blocking trace line:
 
@@ -142,6 +134,8 @@ The same wording is emitted for **both** absence shapes. **Whole-file absence** 
 ### Known-False Report Recovery
 
 Scratch cleanup MUST NOT broaden Known-False Report Recovery eligibility or authorize removal of another unexpected path.
+
+Every Recovery Dispatch return receives its own coordinator scratch sweep before changed-path comparison.
 
 For one or more directly disproven claims from a single Subagent Report, perform at most one bounded recovery attempt in that Step/report handling cycle. Aggregate every confirmed, clearly correctable contradiction into that one attempt. The recovery operation stays within the current Step and existing plan scope, uses the same dispatch kind and budget-subagent binding as the ordinary dispatch, and preserves every applicable blindness, test-file, implementation-file, no-exploration, no-raw-output, and fixed-report restriction.
 
@@ -165,11 +159,11 @@ State the exact safe, reversible corrections authorized inside the current Step 
 
 #### Verification
 
-State the normal Step Verification Checklist and its pass condition.
+State the normal Step Verification Checklist and its pass condition. After this Verification Checklist run, the coordinator SHALL sweep the exact per-change scratch path before comparison.
 
 The pre-dispatch baseline, allowed-file set, and per-report recovery assessment remain coordinator-only and never enter an ordinary or recovery prompt. Recovery adds no new advisor layer, dispatch kind, report field, or implementation-plan field.
 
-After the Recovery Dispatch returns, treat its fixed Subagent Report as advisory and independently re-run the normal Verification Checklist and path comparison. The coordinator verification is authoritative. On a pass, resume the existing order at learnings, Human Verification, checkbox marking, appendices, and commit gating. The bounded attempt completes before checkbox marking or a commit proposal. On a failed or uncertain verification, or an unresolved, unsafe, destructive, unauthorized, or out-of-scope result, stop for human intervention. Do not perform a second Recovery Dispatch, mark any checkbox, propose a commit, or advance the Step.
+After the Recovery Dispatch returns, treat its fixed Subagent Report as advisory and independently re-run the normal Verification Checklist and path comparison. The coordinator SHALL sweep the exact per-change scratch path after that Verification Checklist run and before comparison. The coordinator verification is authoritative. On a pass, resume the existing order at learnings, Human Verification, checkbox marking, appendices, and commit gating. The bounded attempt completes before checkbox marking or a commit proposal. On a failed or uncertain verification, or an unresolved, unsafe, destructive, unauthorized, or out-of-scope result, stop for human intervention. Do not perform a second Recovery Dispatch, mark any checkbox, propose a commit, or advance the Step.
 
 ### Single-dispatch Step
 
@@ -179,10 +173,10 @@ This section covers every Step routed to a single dispatch — two shapes: a Ste
 - **Model**: resolved by the `budget-subagent` skill's per-harness binding — the standard cheap tier applies.
 - **Prompt contents**: exactly three parts — the full text of the Step, the following rules verbatim, and any technical-learnings entries the coordinator judges relevant to this Step (see "## Technical Learnings Memory" below; never the full memory) — and **nothing else**.
      - *Scope*: Implement ONLY what is specified in the Step. DO NOT WRITE ANY CODE OUTSIDE OF WHAT IS SPECIFIED IN THE STEP. Exception: minimal stubs required to make a RED test fail by assertion are permitted; they are part of the test scaffolding, not new feature code.
-     - `Allowed files`: inject the dispatch-specific list derived by the coordinator for this Step. The list contains non-scratch paths only.
-     - Single dispatch Allowed files are exactly the Step's plan-level files.
-     - Scratch path: `.tmp/{change-name}/` (separate from and excluded from `Allowed files`).
-     - A worker MAY create temporary files only below `.tmp/{change-name}/`, MUST remove all contents of exactly that directory and the directory itself before a clean return, and MUST preserve it on STOP or failure.
+      - Single dispatch Allowed files are exactly the Step's plan-level files.
+      - Scratch path: `.tmp/{change-name}/` (separate from and excluded from `Allowed files`).
+      - `Allowed files`: inject the dispatch-specific list derived by the coordinator for this Step. The list contains non-scratch paths only.
+     - A worker MAY create temporary files only below `.tmp/{change-name}/`, MAY remove all contents of exactly that directory and the directory itself before a clean return, and has no preservation obligation on STOP or failure.
      - A worker MUST NOT remove the `.tmp/` parent.
     - *No exploration*: The Step is self-contained — it already names the exact files, the code to write, and the verification commands to run. Do NOT inspect the project to gain context: no orientation Grep/Glob sweeps, no reading neighboring modules "for patterns", no reading change artifacts (`implementation.md`, `tasks.md`, `proposal.md`, `design.md`), no `openspec` commands, no loading skills. The only files you may read are (a) the files the Step modifies (read-before-write), (b) the test files the Step creates or runs, and (c) existing test files and test infrastructure (fixtures, harness, shared test helpers) — reading the test suite to match its patterns and configuration is allowed. Production code stays off-limits until a failure demands it: if a symbol or API from the plan turns out not to exist — proven by a compile or test failure, not suspected in advance — you may then read the single file that defines the real symbol, apply the minimal correction, and record it as a deviation. Exploration is a reaction to a concrete failure, never preparation.
     - *Read-before-write*: Before modifying any file, read its current content. Never assume the current state of a file — verify its contents before applying changes from the plan.
@@ -215,10 +209,10 @@ This section covers every Step routed to a single dispatch — two shapes: a Ste
 - **Step-N key-integrity guard**: Before dispatching, the coordinator SHALL match the integer `N` of the current `implementation.md` `## Step N` heading to a single `## Step N` in `interfaces.md`. On missing or ambiguous match, STOP and surface the desync to the user — do NOT inject an empty or mismatched contract into the blind writer. A single leading `## Target State` section in `interfaces.md` (the one non-`## Step N` top-level section admitted by `openspec/specs/design-interfaces-artifact/spec.md`) is explicitly NOT a key-integrity violation: the guard keys only on `## Step N` headings and ignores the `## Target State` section entirely.
 - **Rules**:
      - *Scope*: Write ONLY the interface stubs and the tests for this Step. Do NOT write the implementation.
-     - `Allowed files`: inject the dispatch-specific list derived by the coordinator for this Step. The list contains non-scratch paths only.
-     - Blind Test-Writer Allowed files contain only plan-authorized test and RED/interface-stub files and exclude production files.
-     - Scratch path: `.tmp/{change-name}/` (separate from and excluded from `Allowed files`).
-     - A worker MAY create temporary files only below `.tmp/{change-name}/`, MUST remove all contents of exactly that directory and the directory itself before a clean return, and MUST preserve it on STOP or failure.
+      - Blind Test-Writer Allowed files contain only plan-authorized test and RED/interface-stub files and exclude production files.
+      - Scratch path: `.tmp/{change-name}/` (separate from and excluded from `Allowed files`).
+      - `Allowed files`: inject the dispatch-specific list derived by the coordinator for this Step. The list contains non-scratch paths only.
+      - A worker MAY create temporary files only below `.tmp/{change-name}/`, MAY remove all contents of exactly that directory and the directory itself before a clean return, and has no preservation obligation on STOP or failure.
      - A worker MUST NOT remove the `.tmp/` parent.
     - *Blindness*: Do NOT read the Step's GREEN implementation body or any production source file to derive assertions. When the injected testing context is insufficient to author a valid RED, you MAY read existing test files and test infrastructure (fixtures, harness, shared helpers) to match their patterns. Reading existing test files does not leak the implementation body.
     - *RED phase contract*: The interface stubs you write SHALL expose the required symbol but return a null/empty/wrong value and contain no logic that would satisfy the assertion. Do NOT write real implementation logic into a stub — doing so would either make the RED pass (an invalid RED) or leak implementation authorship into the blind test-writer.
@@ -243,10 +237,10 @@ This section covers every Step routed to a single dispatch — two shapes: a Ste
 - **Prompt contents**: exactly three parts — the full text of the Step (including its GREEN body), the following rules verbatim, and any technical-learnings entries the coordinator judges relevant to this Step (including the test-writer's learnings re-injected per `## Technical Learnings Memory`) — and **nothing else**. The coordinator SHALL NOT add repo summaries or "relevant context" sections.
 - **Rules**:
      - *Scope*: Implement ONLY what is specified in the Step's GREEN body. Do NOT write tests.
-     - `Allowed files`: inject the dispatch-specific list derived by the coordinator for this Step. The list contains non-scratch paths only.
-     - Implementation Dispatch Allowed files contain only plan-authorized production files and exclude tests and declared interfaces.
-     - Scratch path: `.tmp/{change-name}/` (separate from and excluded from `Allowed files`).
-     - A worker MAY create temporary files only below `.tmp/{change-name}/`, MUST remove all contents of exactly that directory and the directory itself before a clean return, and MUST preserve it on STOP or failure.
+      - Implementation Dispatch Allowed files contain only plan-authorized production files and exclude tests and declared interfaces.
+      - Scratch path: `.tmp/{change-name}/` (separate from and excluded from `Allowed files`).
+      - `Allowed files`: inject the dispatch-specific list derived by the coordinator for this Step. The list contains non-scratch paths only.
+      - A worker MAY create temporary files only below `.tmp/{change-name}/`, MAY remove all contents of exactly that directory and the directory itself before a clean return, and has no preservation obligation on STOP or failure.
      - A worker MUST NOT remove the `.tmp/` parent.
     - *No test-file edits*: The implementation dispatch is FORBIDDEN from creating or modifying any test file. This prohibition is absolute — even when the subagent believes the test is wrong, it SHALL NOT edit the test or the interface.
     - *Read-before-write*: Before modifying any file, read its current content.
@@ -432,6 +426,8 @@ The agent MAY maintain a single boolean flag in its in-conversation working memo
 
 ### Fast-track branch auto-stay
 
+When `--fast-track` is active, the same unconditional sweep runs after every dispatch and retains the pinned cleanup trace contract.
+
 This behavior is triggered at apply time when the running plan reaches the implementation.md **Prerequisites branch-selection prompt** — the three-option closed choice authored in `sai/instructions/implement.md:243-246` (`Suggest branch "{feature-name}"`, `Stay on current branch "{current-branch}"`, `Enter branch name manually`). The rule lives here in `apply.md` rather than in `implement.md` because the fast-track signal is resolvable only at apply time; naming the `implement.md` trigger keeps that cross-file coupling explicit (see `docs/adr/0059-fast-track-auto-stay-branch-rule-in-apply.md`).
 
 If the fast-track signal is active when that prompt is reached, the coordinator SHALL auto-resolve it to option 2 "Stay on current branch" WITHOUT presenting the three options, reusing the prompt's own `{current-branch}` value and its "empty ⇒ detached HEAD" convention:
@@ -440,8 +436,6 @@ If the fast-track signal is active when that prompt is reached, the coordinator 
 - **Empty current branch (detached HEAD)** → do NOT auto-stay. Let the three-option prompt fire interactively exactly as it would without `--fast-track`, and print no announcement line.
 
 The branch-base sub-prompt needs no separate handling: it is surfaced only for new branches and is already skipped whenever option 2 is chosen (`sai/instructions/implement.md:248-251`). This auto-selection is a git no-op and opts out of the branch prompt only — every other gate stays in force (safe-operations confirmations, the commit-authorization gate's pre-commit file visibility report and proposed message, and the GREEN-conflict STOP). See `openspec/specs/sai-fast-track-flag/spec.md` for the exact behavior, announcement string, and scope guarantees.
-
-`--fast-track` MUST NOT defer or auto-confirm the preserved-scratch acknowledgement.
 
 ## Git Operations
 
@@ -462,8 +456,8 @@ of plan markers.
 Example workflow:
 1. Record the tracked and untracked path baseline, the current Step's plan-level scope, and the dispatch-kind-specific allowed files before dispatch.
 2. Dispatch Step-execution subagent(s) for the current Step (per "## Step-Execution Subagent Dispatch" — write-capable per-harness binding).
-3. Receive the subagent report(s) (9 fields — see "## Subagent Report Contract"). After each clean dispatch return, perform the ordered clean-return scratch sweep. Paths removed by the ordered clean-return scratch sweep SHALL be excluded from observed changed paths, the plan cross-check, the `Subagent <-> git` comparison, the field-8 add-list, and line-count totals; every non-scratch path remains subject to the existing comparison and scope-drift rules. independently compare the Verification Checklist, changed paths, allowed files, baseline, and report. If they agree, proceed without recovery; if a claim is directly disproven and the correction is safe and in scope, use the bounded Known-False Report Recovery subsection once.
-4. Independently re-run the normal Verification Checklist and path comparison after recovery. On success, incorporate the report's technical learnings into the coordinator's memory; on failure or uncertainty, stop for human intervention without retry, checkbox marking, or commit proposal.
+3. Receive the subagent report(s) (9 fields — see "## Subagent Report Contract"). After every dispatch return, perform the unconditional ordered scratch sweep before path comparison. Paths removed by the ordered sweep SHALL be excluded from observed changed paths, the plan cross-check, the `Subagent <-> git` comparison, the field-8 add-list, and line-count totals; every non-scratch path remains subject to the existing comparison and scope-drift rules. Independently compare the Verification Checklist, changed paths, allowed files, baseline, and report; sweep the exact per-change scratch path after the Verification Checklist comparison. If they agree, proceed without recovery; if a claim is directly disproven and the correction is safe and in scope, use the bounded Known-False Report Recovery subsection once.
+4. Independently re-run the normal Verification Checklist and path comparison after recovery. Sweep the exact per-change scratch path after this Verification Checklist run. On success, incorporate the report's technical learnings into the coordinator's memory; on failure or uncertainty, stop for human intervention without retry, checkbox marking, or commit proposal.
 5. If the step's Human section has ≥1 `- [ ]` checkbox: present the checklist to the user and wait — do NOT mark them yet. If it has zero `- [ ]` checkboxes (italic note only) or there is no Human section: skip this gate and proceed to the commit proposal.
 6. If the user confirms they have reviewed and asks to continue (or the step had no Human Verification checks), mark all of that Step's checkboxes `[x]` in the plan in one batched update, and append any reported deviations to the plan's appendix.
 7. Print the pre-commit file visibility report (per `## Pre-commit File Visibility Report`).

@@ -148,12 +148,3 @@ The `--fast-track` behavior SHALL be identical under Claude Code, opencode, and 
 #### Scenario: opencode sai-archive wrapper keeps its echo-line shape
 - **WHEN** the `sai-archive` `argument-hint` is added to the Claude Code and Copilot wrappers
 - **THEN** the opencode `sai-archive` wrapper does NOT gain a real `argument-hint`; no HTML comment consistency marker is required on the echo line, and this does not count as a Mirror-discipline violation
-
-### Requirement: Preserved-scratch acknowledgement remains in force under fast-track
-
-When `/sai-4-apply {name} --fast-track` encounters a preserved-scratch episode for `.tmp/{change-name}/`, the coordinator SHALL require the same explicit human confirmation that the evidence has been inspected or is no longer needed before a subsequent dispatch for that change. The acknowledgement gate SHALL remain outside the command's fixed fast-track opt-out set: fast-track SHALL neither defer it to the Final sweep nor auto-confirm it.
-
-#### Scenario: Fast-track does not bypass preserved-scratch acknowledgement
-
-- **WHEN** `/sai-4-apply {name} --fast-track` preserves `.tmp/{change-name}/` after STOP, failure, or crash and another dispatch for the same change is pending
-- **THEN** the coordinator waits for explicit human acknowledgement for that preserved-scratch episode before dispatching again, exactly as without `--fast-track`
