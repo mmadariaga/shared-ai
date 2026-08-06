@@ -405,6 +405,10 @@ test('Step 4 synchronizes the normative artifact feedback gate contract', () => 
 
 test('Step 2 validates severity before processing a completed review result', () => {
   const source = supervisionContract();
+  const contract = fs.readFileSync(
+    path.join(repoRoot, 'sai/policies/artifact-review-contract.md'),
+    'utf8'
+  );
 
   assert.match(source, /PipelineReviewFinding/);
   assert.match(source, /severity\s*=.*High.*Medium.*Low|severity.*(?:High|Medium|Low).*out[- ]of[- ]set/i);
@@ -414,6 +418,10 @@ test('Step 2 validates severity before processing a completed review result', ()
   assert.match(source, /no automatic retry|does not retry|without retry/i);
   assert.match(source, /not processed.*reviewer output-contract violation/i);
   assert.match(source, /rather than crash|not.*cancellation|output-contract violation.*cancellation/i);
+  assert.match(source, /sai\/policies\/artifact-review-contract\.md/);
+  assert.doesNotMatch(source, /could materially authorize/);
+  assert.match(contract, /would allow a materially incorrect/);
+  assert.match(contract, /High.*Medium.*Low/);
 });
 
 test('Step 2 emits the exact ordered pass and rejected-finding history contracts', () => {
@@ -425,7 +433,10 @@ test('Step 2 emits the exact ordered pass and rejected-finding history contracts
   }
   assert.match(source, /Pass.*positive integer/);
   assert.match(source, /ascending order/);
-  assert.match(source, /Finding.*pass-local identifier/);
+  assert.match(source, /Finding\s+H\d+/);
+  assert.match(source, /Finding\s+M\d+/);
+  assert.match(source, /Finding\s+L\d+/);
+  assert.doesNotMatch(source, /Finding.*pass-local identifier/);
   for (const field of [
     'Severity:',
     'Artifact location:',
