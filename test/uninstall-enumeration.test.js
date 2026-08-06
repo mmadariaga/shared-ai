@@ -7,20 +7,11 @@ const os = require('os');
 const fs = require('fs');
 const crypto = require('crypto');
 
-const { installClaude, installOpencode, installCopilot, MANAGED_WORKERS } = require('../bin/install-flow.js');
-const { enumerateClaude, enumerateOpencode, enumerateCopilot, buildDeletionSet, runDeletion } = require('../bin/uninstall-flow.js');
+const { installClaude, installOpencode, MANAGED_WORKERS } = require('../bin/install-flow.js');
+const { enumerateClaude, enumerateOpencode, buildDeletionSet, runDeletion } = require('../bin/uninstall-flow.js');
 const { loadInstallManifest, expandInstallManifest } = require('../bin/install-manifest.js');
 
 function inventoryRoots(base, harness) {
-  if (harness === 'copilot') {
-    return {
-      commands: path.join(base, 'prompts'),
-      sai: path.join(base, 'sai'),
-      skills: path.join(base, 'skills'),
-      agents: path.join(base, 'agents'),
-      config: path.join(base, 'sai'),
-    };
-  }
   return {
     commands: path.join(base, 'commands'),
     sai: path.join(base, 'sai'),
@@ -73,7 +64,7 @@ test('managed worker source enumeration resolves the security worker stem', () =
   }
 });
 
-test('install and uninstall inventories are exact and deterministic for every harness', () => {
+test('install and uninstall inventories are exact and deterministic for every supported harness', () => {
   const repoRoot = path.join(__dirname, '..');
   const manifest = loadInstallManifest(repoRoot);
   const cases = [
@@ -86,11 +77,6 @@ test('install and uninstall inventories are exact and deterministic for every ha
       harness: 'opencode',
       install: (base) => installOpencode(base),
       enumerate: (base) => enumerateOpencode(base),
-    },
-    {
-      harness: 'copilot',
-      install: (base, roots) => installCopilot(roots.commands, roots.skills, roots.agents, roots.sai),
-      enumerate: (base, roots) => enumerateCopilot(roots.commands, roots.skills, roots.agents, roots.sai),
     },
   ];
 
@@ -127,20 +113,18 @@ test('install and uninstall inventories are exact and deterministic for every ha
         .map(entry => entry.dest));
       assert.deepEqual(normalizedUninstall, second, `${harness} uninstall enumeration should be deterministic`);
 
-      if (harness !== 'copilot') {
-         const retiredBindings = normalize(entries
-           .filter(entry => entry.assetType === 'retired-managed-file' && entry.ruleId.endsWith('-proxy-skill') && entry.ruleId.includes(`-${harness}-`))
-           .map(entry => entry.dest));
-         assert.deepEqual(retiredBindings, [
-           'skills/sai-8-accessibility-worker/SKILL.md',
-           'skills/sai-2-design-worker/SKILL.md',
-           'skills/sai-3-implementation-worker/SKILL.md',
-           'skills/sai-7-performance-worker/SKILL.md',
-           'skills/sai-5-review-worker/SKILL.md',
-           'skills/sai-6-security-worker/SKILL.md',
-           'skills/sai-1-spec-proposal-worker/SKILL.md',
-        ].sort(), `${harness} should enumerate only its seven retired routed bindings`);
-      }
+       const retiredBindings = normalize(entries
+         .filter(entry => entry.assetType === 'retired-managed-file' && entry.ruleId.endsWith('-proxy-skill') && entry.ruleId.includes(`-${harness}-`))
+         .map(entry => entry.dest));
+       assert.deepEqual(retiredBindings, [
+         'skills/sai-8-accessibility-worker/SKILL.md',
+         'skills/sai-2-design-worker/SKILL.md',
+         'skills/sai-3-implementation-worker/SKILL.md',
+         'skills/sai-7-performance-worker/SKILL.md',
+         'skills/sai-5-review-worker/SKILL.md',
+         'skills/sai-6-security-worker/SKILL.md',
+         'skills/sai-1-spec-proposal-worker/SKILL.md',
+       ].sort(), `${harness} should enumerate only its seven retired routed bindings`);
 
       if (harness === 'claude') {
         const managedAgents = entries.filter(entry => entry.assetType === 'claude-managed-agent');
@@ -153,14 +137,62 @@ test('install and uninstall inventories are exact and deterministic for every ha
         }
       }
 
-      if (harness === 'copilot') {
-        const workerSources = managedWorkerSourcePaths(repoRoot);
-        assert.equal(entries.some(entry => workerSources.has(entry.src)), false,
-          'Copilot enumeration must exclude managed worker bindings, forwarding skills, and Claude agents');
-      }
     } finally {
       fs.rmSync(base, { recursive: true, force: true });
     }
+  }
+});
+
+test('STEP1_RETIRE_INLINE: uninstall retains only Claude and opencode destinations', () => {
+  const flow = require('../bin/install-flow.js');
+  const uninstall = require('../bin/uninstall-flow.js');
+  const repoRoot = path.join(__dirname, '..');
+  const manifest = loadInstallManifest(repoRoot);
+  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-step1-uninstall-'));
+  const claudeBase = path.join(base, 'claude');
+  const opencodeBase = path.join(base, 'opencode');
+
+  try {
+    assert.deepEqual(Object.keys(flow).filter(name => /copilot/i.test(name)), []);
+    assert.deepEqual(Object.keys(uninstall).filter(name => /copilot/i.test(name)), []);
+    assert.equal(typeof flow.installClaude, 'function');
+    assert.equal(typeof flow.installOpencode, 'function');
+    assert.equal(typeof uninstall.enumerateClaude, 'function');
+    assert.equal(typeof uninstall.enumerateOpencode, 'function');
+    assert.equal(typeof uninstall.enumerateCopilot, 'undefined');
+
+    flow.installClaude(claudeBase);
+    flow.installOpencode(opencodeBase);
+    const roots = {
+      claude: inventoryRoots(claudeBase, 'claude'),
+      opencode: inventoryRoots(opencodeBase, 'opencode'),
+    };
+    const active = ['claude', 'opencode'].flatMap(harness =>
+      expandInstallManifest(manifest, {
+        harness,
+        repoRoot,
+        destinationRoot: roots[harness],
+      }).flatMap(projection => [
+        normalizeInventoryDestination(projection.destinationPath, roots[harness]),
+        ...(projection.strategy === 'owned-copy' ? [normalizeInventoryDestination(
+          path.join(path.dirname(projection.destinationPath),
+            `.${path.basename(projection.destinationPath, '.md')}.owner.json`),
+          roots[harness],
+        )] : []),
+      ])
+    ).sort();
+    const enumerated = [
+      ...uninstall.enumerateClaude(claudeBase),
+      ...uninstall.enumerateOpencode(opencodeBase),
+    ]
+      .filter(entry => entry.assetType !== 'retired-managed-file')
+      .map(entry => normalizeInventoryDestination(entry.dest, roots[entry.dest.startsWith(opencodeBase) ? 'opencode' : 'claude']))
+      .sort();
+
+    assert.deepEqual(enumerated, active);
+    assert.equal(enumerated.some(destination => /copilot|inline-invocation/i.test(destination)), false);
+  } finally {
+    fs.rmSync(base, { recursive: true, force: true });
   }
 });
 
@@ -214,19 +246,6 @@ test('enumerateOpencode dests match installOpencode written files', () => {
   }
 });
 
-test('enumerateCopilot dests match installCopilot written files', () => {
-  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-uninstall-'));
-  try {
-    installCopilot(tmpDir, tmpDir, tmpDir, tmpDir);
-    const written = writtenMinusVersion(tmpDir);
-    const entries = enumerateCopilot(tmpDir, tmpDir, tmpDir, tmpDir);
-    const enumeratedDests = entries.filter(e => e.assetType !== 'retired-managed-file').map(e => path.relative(tmpDir, e.dest));
-    assert.deepEqual([...written].sort(), [...enumeratedDests].sort());
-  } finally {
-    fs.rmSync(tmpDir, { recursive: true, force: true });
-  }
-});
-
 test('enumerateClaude src sha256 matches installed dest sha256', () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-uninstall-'));
   try {
@@ -248,21 +267,6 @@ test('enumerateOpencode src sha256 matches installed dest sha256', () => {
     installOpencode(tmpDir);
     const entries = enumerateOpencode(tmpDir);
     assert.ok(entries.length > 0, 'enumerateOpencode should return entries after install');
-    for (const { src, dest, assetType } of entries) {
-      if (assetType === 'retired-managed-file') continue;
-      assert.equal(sha256(src), sha256(dest), `sha256 mismatch: ${src} -> ${dest}`);
-    }
-  } finally {
-    fs.rmSync(tmpDir, { recursive: true, force: true });
-  }
-});
-
-test('enumerateCopilot src sha256 matches installed dest sha256', () => {
-  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-uninstall-'));
-  try {
-    installCopilot(tmpDir, tmpDir, tmpDir, tmpDir);
-    const entries = enumerateCopilot(tmpDir, tmpDir, tmpDir, tmpDir);
-    assert.ok(entries.length > 0, 'enumerateCopilot should return entries after install');
     for (const { src, dest, assetType } of entries) {
       if (assetType === 'retired-managed-file') continue;
       assert.equal(sha256(src), sha256(dest), `sha256 mismatch: ${src} -> ${dest}`);
@@ -330,13 +334,6 @@ test('enumerateClaude does not error with default paths (no manifest)', () => {
 test('enumerateOpencode does not error with default paths (no manifest)', () => {
   assert.doesNotThrow(() => {
     const result = enumerateOpencode();
-    assert.ok(Array.isArray(result));
-  });
-});
-
-test('enumerateCopilot does not error with default paths (no manifest)', () => {
-  assert.doesNotThrow(() => {
-    const result = enumerateCopilot();
     assert.ok(Array.isArray(result));
   });
 });

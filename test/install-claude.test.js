@@ -8,7 +8,6 @@ const fs = require('fs');
 
 const {
   installClaude,
-  installCopilot,
   MANAGED_WORKERS,
   CLAUDE_SPEC_WORKER_AGENT,
   CLAUDE_SPEC_WORKER_OWNER,
@@ -125,22 +124,11 @@ test('managed worker registry defines every Claude compatibility export', () => 
   });
 });
 
-test('Claude and Copilot worker projections remain loadable independently of Opencode settings', () => {
-  const claudeDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-claude-independent-'));
-  const copilotBase = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-copilot-independent-'));
-  const copilot = {
-    prompts: path.join(copilotBase, 'prompts'),
-    skills: path.join(copilotBase, 'skills'),
-    agents: path.join(copilotBase, 'agents'),
-    sai: path.join(copilotBase, 'sai'),
-  };
-  try {
-    assert.doesNotThrow(() => installClaude(claudeDir));
-    assert.doesNotThrow(() => installCopilot(copilot.prompts, copilot.skills, copilot.agents, copilot.sai));
-  } finally {
-    fs.rmSync(claudeDir, { recursive: true, force: true });
-    fs.rmSync(copilotBase, { recursive: true, force: true });
-  }
+test('STEP1_RETIRE_INLINE: installer exports retain only Claude and opencode entrypoints', () => {
+  const flow = require('../bin/install-flow.js');
+  assert.equal(typeof flow.installClaude, 'function');
+  assert.equal(typeof flow.installOpencode, 'function');
+  assert.deepEqual(Object.keys(flow).filter(name => /copilot/i.test(name)), []);
 });
 
 test('installClaude copies commands/claude/*.md to dest/commands/', () => {
@@ -293,38 +281,6 @@ test('Step 2 initial Claude Agent dispatches deliver matching contracts and pres
            `${workerName} continuation dispatch should remain unchanged`);
       }
     }
-  } finally {
-    fs.rmSync(scratchDir, { recursive: true, force: true });
-  }
-});
-
-test('Step 2 Claude and Opencode reach the same worker contract while Copilot receives no routed projection', () => {
-  fs.mkdirSync(STEP_2_SCRATCH_DIR, { recursive: true });
-  const scratchDir = fs.mkdtempSync(path.join(STEP_2_SCRATCH_DIR, 'harness-parity-'));
-  const copilotBase = path.join(scratchDir, 'copilot');
-  try {
-    const claudeDir = path.join(scratchDir, 'claude-parity');
-    fs.mkdirSync(claudeDir, { recursive: true });
-    installClaude(claudeDir);
-    const claudeSource = fs.readFileSync(
-      path.join(claudeDir, 'sai', 'orchestration', 'workers', 'bindings', 'review-worker.md'),
-      'utf8',
-    );
-    const claudePrompt = decodePrompt(extractDispatchCalls(claudeSource, 'Agent').find(call => !/\btask_id\s*[:=]/.test(call)));
-
-    const copilot = {
-      prompts: path.join(copilotBase, 'prompts'),
-      skills: path.join(copilotBase, 'skills'),
-      agents: path.join(copilotBase, 'agents'),
-      sai: path.join(copilotBase, 'sai'),
-    };
-    installCopilot(copilot.prompts, copilot.skills, copilot.agents, copilot.sai);
-    assert.equal(fs.existsSync(path.join(copilot.sai, 'orchestration', 'workers', 'bindings')), false,
-      'specs/harness-coordination-parity/spec.md: Copilot should receive no routed binding projection');
-    assert.equal(fs.existsSync(path.join(copilot.sai, 'orchestration', 'workers')), false,
-      'specs/harness-coordination-parity/spec.md: Copilot should receive no routed worker registration projection');
-
-     assert.equal(claudePrompt, expectedWorkerPrompt('sai-5-review-worker'));
   } finally {
     fs.rmSync(scratchDir, { recursive: true, force: true });
   }

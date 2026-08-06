@@ -9,7 +9,7 @@ const STRATEGIES = new Set([
   'merge-jsonc',
   'forwarding-manifest',
 ]);
-const SUPPORTED_HARNESSES = new Set(['claude', 'opencode', 'copilot']);
+const SUPPORTED_HARNESSES = new Set(['claude', 'opencode']);
 const SHA256 = /^[0-9a-f]{64}$/;
 const RETIREMENT_DESTINATION_CLASSES = new Set(['sai', 'skills']);
 

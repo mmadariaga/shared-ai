@@ -3,13 +3,10 @@
   "projections": [
     { "id": "claude-commands", "source": "commands/claude", "destination": { "class": "commands", "path": "." }, "harnesses": ["claude"], "strategy": "copy", "recursive": true, "include": ["*.md"], "ownership": "managed", "drift": "content" },
     { "id": "opencode-commands", "source": "commands/opencode", "destination": { "class": "commands", "path": "." }, "harnesses": ["opencode"], "strategy": "copy", "recursive": true, "include": ["*.md"], "ownership": "managed", "drift": "content" },
-    { "id": "copilot-prompts", "source": "commands/copilot", "destination": { "class": "commands", "path": "." }, "harnesses": ["copilot"], "strategy": "copy", "recursive": true, "include": ["*.prompt.md"], "exclude": ["sai-5-review.prompt.md"], "ownership": "managed", "drift": "content" },
     { "id": "sai-commands", "source": "sai/commands", "destination": { "class": "sai", "path": "commands" }, "harnesses": ["claude", "opencode"], "strategy": "copy", "recursive": true, "include": ["**/*.md"], "exclude": ["sai-2-design.md", "sai-3-implement.md", "spec/coordinator.md"], "ownership": "managed", "drift": "content" },
-    { "id": "copilot-sai-commands", "source": "sai/commands", "destination": { "class": "sai", "path": "commands" }, "harnesses": ["copilot"], "strategy": "copy", "recursive": true, "include": ["**/*.md"], "exclude": ["sai-2-design.md", "sai-3-implement.md", "sai-5-review.md", "spec/coordinator.md"], "ownership": "managed", "drift": "content" },
     { "id": "routed-spec-coordinator", "source": "sai/commands/spec/coordinator.md", "destination": { "class": "sai", "path": "commands/spec/coordinator.md" }, "harnesses": ["claude", "opencode"], "strategy": "copy", "recursive": false, "overrides": "sai-commands", "ownership": "managed", "drift": "content" },
-    { "id": "sai-instructions", "source": "sai/instructions", "destination": { "class": "sai", "path": "instructions" }, "harnesses": ["claude", "opencode", "copilot"], "strategy": "copy", "recursive": true, "include": ["**/*.md"], "ownership": "managed", "drift": "content" },
-    { "id": "copilot-inline-invocation", "source": "sai/orchestration/inline-invocation.md", "destination": { "class": "sai", "path": "orchestration/inline-invocation.md" }, "harnesses": ["copilot"], "strategy": "copy", "recursive": false, "overrides": "sai-instructions", "ownership": "managed", "drift": "content" },
-    { "id": "sai-policies", "source": "sai/policies", "destination": { "class": "sai", "path": "policies" }, "harnesses": ["claude", "opencode", "copilot"], "strategy": "copy", "recursive": true, "include": ["**/*.md"], "ownership": "managed", "drift": "content" },
+    { "id": "sai-instructions", "source": "sai/instructions", "destination": { "class": "sai", "path": "instructions" }, "harnesses": ["claude", "opencode"], "strategy": "copy", "recursive": true, "include": ["**/*.md"], "ownership": "managed", "drift": "content" },
+    { "id": "sai-policies", "source": "sai/policies", "destination": { "class": "sai", "path": "policies" }, "harnesses": ["claude", "opencode"], "strategy": "copy", "recursive": true, "include": ["**/*.md"], "ownership": "managed", "drift": "content" },
     { "id": "claude-orchestration", "source": "sai/orchestration", "destination": { "class": "sai", "path": "orchestration" }, "harnesses": ["claude"], "strategy": "copy", "recursive": true, "include": ["coordinator-contract.md", "worker-lifecycle.md", "workers/*.md"], "ownership": "managed", "drift": "content" },
     { "id": "opencode-orchestration", "source": "sai/orchestration", "destination": { "class": "sai", "path": "orchestration" }, "harnesses": ["opencode"], "strategy": "copy", "recursive": true, "include": ["coordinator-contract.md", "worker-lifecycle.md", "workers/*.md"], "ownership": "managed", "drift": "content" },
     { "id": "claude-design-worker-binding", "source": "sai/orchestration/workers/bindings/claude/design-worker.md", "destination": { "class": "sai", "path": "orchestration/workers/bindings/design-worker.md" }, "harnesses": ["claude"], "strategy": "copy", "recursive": false, "ownership": "managed", "drift": "content" },
@@ -26,10 +23,9 @@
     { "id": "opencode-security-worker-binding", "source": "sai/orchestration/workers/bindings/opencode/security-worker.md", "destination": { "class": "sai", "path": "orchestration/workers/bindings/security-worker.md" }, "harnesses": ["opencode"], "strategy": "copy", "recursive": false, "ownership": "managed", "drift": "content" },
     { "id": "opencode-performance-worker-binding", "source": "sai/orchestration/workers/bindings/opencode/performance-worker.md", "destination": { "class": "sai", "path": "orchestration/workers/bindings/performance-worker.md" }, "harnesses": ["opencode"], "strategy": "copy", "recursive": false, "ownership": "managed", "drift": "content" },
     { "id": "opencode-accessibility-worker-binding", "source": "sai/orchestration/workers/bindings/opencode/accessibility-worker.md", "destination": { "class": "sai", "path": "orchestration/workers/bindings/accessibility-worker.md" }, "harnesses": ["opencode"], "strategy": "copy", "recursive": false, "ownership": "managed", "drift": "content" },
-    { "id": "universal-skills", "source": "skills/universal", "destination": { "class": "skills", "path": "." }, "harnesses": ["claude", "opencode", "copilot"], "strategy": "copy", "recursive": true, "include": ["**/SKILL.md"], "ownership": "managed", "drift": "content" },
+    { "id": "universal-skills", "source": "skills/universal", "destination": { "class": "skills", "path": "." }, "harnesses": ["claude", "opencode"], "strategy": "copy", "recursive": true, "include": ["**/SKILL.md"], "ownership": "managed", "drift": "content" },
     { "id": "claude-skills", "source": "skills/claude", "destination": { "class": "skills", "path": "." }, "harnesses": ["claude"], "strategy": "copy", "recursive": true, "include": ["**/SKILL.md"], "ownership": "managed", "drift": "content" },
     { "id": "opencode-skills", "source": "skills/opencode", "destination": { "class": "skills", "path": "." }, "harnesses": ["opencode"], "strategy": "copy", "recursive": true, "include": ["**/SKILL.md"], "ownership": "managed", "drift": "content" },
-    { "id": "copilot-skills", "source": "skills/copilot", "destination": { "class": "skills", "path": "." }, "harnesses": ["copilot"], "strategy": "copy", "recursive": true, "include": ["**/SKILL.md"], "ownership": "managed", "drift": "content" },
     { "id": "claude-sai-3-implementation-worker", "source": "agents/claude/sai-3-implementation-worker.md", "destination": { "class": "agents", "path": "sai-3-implementation-worker.md" }, "harnesses": ["claude"], "strategy": "owned-copy", "recursive": false, "ownership": "owned", "drift": "content" },
     { "id": "claude-sai-2-design-worker", "source": "agents/claude/sai-2-design-worker.md", "destination": { "class": "agents", "path": "sai-2-design-worker.md" }, "harnesses": ["claude"], "strategy": "owned-copy", "recursive": false, "ownership": "owned", "drift": "content" },
     { "id": "claude-sai-1-spec-proposal-worker", "source": "agents/claude/sai-1-spec-proposal-worker.md", "destination": { "class": "agents", "path": "sai-1-spec-proposal-worker.md" }, "harnesses": ["claude"], "strategy": "owned-copy", "recursive": false, "ownership": "owned", "drift": "content" },
@@ -37,14 +33,13 @@
     { "id": "claude-sai-6-security-worker", "source": "agents/claude/sai-6-security-worker.md", "destination": { "class": "agents", "path": "sai-6-security-worker.md" }, "harnesses": ["claude"], "strategy": "owned-copy", "recursive": false, "ownership": "owned", "drift": "content" },
     { "id": "claude-sai-7-performance-worker", "source": "agents/claude/sai-7-performance-worker.md", "destination": { "class": "agents", "path": "sai-7-performance-worker.md" }, "harnesses": ["claude"], "strategy": "owned-copy", "recursive": false, "ownership": "owned", "drift": "content" },
     { "id": "claude-sai-8-accessibility-worker", "source": "agents/claude/sai-8-accessibility-worker.md", "destination": { "class": "agents", "path": "sai-8-accessibility-worker.md" }, "harnesses": ["claude"], "strategy": "owned-copy", "recursive": false, "ownership": "owned", "drift": "content" },
-    { "id": "copilot-agents", "source": "agents/copilot", "destination": { "class": "agents", "path": "." }, "harnesses": ["copilot"], "strategy": "copy", "recursive": true, "include": ["*.agent.md"], "ownership": "managed", "drift": "content" },
     { "id": "opencode-config", "source": "configs/opencode.jsonc", "destination": { "class": "config", "path": "opencode.jsonc" }, "harnesses": ["opencode"], "strategy": "merge-jsonc", "recursive": false, "ownership": "managed", "drift": "content" }
   ],
   "retirements": [
     {
       "id": "retired-sai-2-design",
       "destination": { "class": "sai", "path": "commands/sai-2-design.md" },
-      "harnesses": ["claude", "opencode", "copilot"],
+      "harnesses": ["claude", "opencode"],
       "managedHashes": [
         "019a4e3f36fda7d2e9175d00668a5bdfaebbea245609086bffb91f9802e3d22a",
         "02e501c0ef744b7f064d3149f9177ae5c382814ada87829dc05db23075a23d1e",
@@ -74,7 +69,7 @@
     {
       "id": "retired-sai-3-implement",
       "destination": { "class": "sai", "path": "commands/sai-3-implement.md" },
-      "harnesses": ["claude", "opencode", "copilot"],
+      "harnesses": ["claude", "opencode"],
       "managedHashes": [
         "181eae486677d710242e395137f6e3f2c5b0206c26d6b2ce783d48d58ce95a54",
         "217a21c606584d4a2b05659432c977941409acc2b47b92e937ad3fadcfee2e62",
@@ -99,28 +94,19 @@
     {
       "id": "retired-sai-2-design-core",
       "destination": { "class": "sai", "path": "compat/sai-2-design-core.md" },
-      "harnesses": ["claude", "opencode", "copilot"],
+      "harnesses": ["claude", "opencode"],
       "managedHashes": ["072a970983f017a3f46207131c4bede350447f59018cb193fcd9886a81b3bd36"]
     },
     {
       "id": "retired-sai-3-implementation-core",
       "destination": { "class": "sai", "path": "compat/sai-3-implementation-core.md" },
-      "harnesses": ["claude", "opencode", "copilot"],
+      "harnesses": ["claude", "opencode"],
       "managedHashes": ["e6f583546585154f15d5629c7da0aeafae2505fa63be4ec8be537a5f03393176"]
-    },
-    {
-      "id": "retired-implement-invocation",
-      "destination": { "class": "sai", "path": "compat/implement-invocation.md" },
-      "harnesses": ["copilot"],
-      "managedHashes": [
-        "d044b9f82118577cf029b06a4ae842454dd6b5c5292aaa56413766f86d79fc83",
-        "f5065219359ef2347a163d21e9b926669659d878e65a8a7722554e2d4affd6ec"
-      ]
     },
     {
       "id": "retired-sai-2-design-inline",
       "destination": { "class": "sai", "path": "commands/sai-2-design-inline.md" },
-      "harnesses": ["claude", "opencode", "copilot"],
+      "harnesses": ["claude", "opencode"],
       "managedHashes": [
         "dc1a8c7a30896a9368a5c114aba100e45f26aa9d826996084d674576c274f1f7",
         "21d3130c2d41251162aabb1682495e9cb37ab397c6de45e38207b701709e5159",
@@ -132,7 +118,7 @@
     {
       "id": "retired-sai-3-implement-inline",
       "destination": { "class": "sai", "path": "commands/sai-3-implement-inline.md" },
-      "harnesses": ["claude", "opencode", "copilot"],
+      "harnesses": ["claude", "opencode"],
       "managedHashes": [
         "9881841bfee6eaf4492e4da3df936281abe5816e46c9dda11559ac319c87f050",
         "8c7333f28044b93a745e68dd70a53515a8911995955916f63d55c2e84088f9b5",
@@ -144,7 +130,7 @@
     {
       "id": "retired-adr-index-template",
       "destination": { "class": "sai", "path": "compat/_templates/adr-index.md" },
-      "harnesses": ["claude", "opencode", "copilot"],
+      "harnesses": ["claude", "opencode"],
       "managedHashes": [
         "689c2cab58cd9cc41c3a37ecc32e16a4e4503c1ac379304de1fc8e3b6c4311c2",
         "2a8052146bbcf677adfd4881bc280b71a9a92ffaf5a23142cf3b92c7a85eaf01"

@@ -11,10 +11,6 @@ const {
   listMdFilesRecursive,
   CLAUDE_BASE,
   OPENCODE_BASE,
-  COPILOT_PROMPTS_BASE,
-  COPILOT_SKILLS_BASE,
-  COPILOT_AGENTS_BASE,
-  COPILOT_SAI_BASE,
   promptYesNoReadline,
 } = require('./install-flow.js');
 const flow = require('./install-flow.js');
@@ -93,20 +89,11 @@ function enumerateOpencode(destBase) {
   return manifestEntries('opencode', { commands: path.join(targetPath, 'commands'), sai: path.join(targetPath, 'sai'), skills: path.join(targetPath, 'skills'), agents: path.join(targetPath, 'agents'), config: targetPath }, targetPath);
 }
 
-function enumerateCopilot(promptsBase, skillsBase, agentsBase, saiBase) {
-  const promptsPath = promptsBase || COPILOT_PROMPTS_BASE;
-  const skillsPath = skillsBase || COPILOT_SKILLS_BASE;
-  const agentsPath = agentsBase || COPILOT_AGENTS_BASE;
-  const saiPath = saiBase || COPILOT_SAI_BASE;
-  return manifestEntries('copilot', { commands: promptsPath, sai: saiPath, skills: skillsPath, agents: agentsPath, config: saiPath }, saiPath);
-}
-
 function buildDeletionSet(overrides = {}) {
-  const { claudeBase, opencodeBase, copilot = {} } = overrides;
+  const { claudeBase, opencodeBase } = overrides;
   return [
     ...enumerateClaude(claudeBase),
     ...enumerateOpencode(opencodeBase),
-    ...enumerateCopilot(copilot.promptsBase, copilot.skillsBase, copilot.agentsBase, copilot.saiBase),
   ].filter(entry => entry.assetType !== 'opencode-config');
 }
 
@@ -276,7 +263,7 @@ function parseArgs(argv) {
   return result;
 }
 
-async function main({ argv = process.argv.slice(2), confirm = promptYesNoReadline, claudeBase, opencodeBase, copilot } = {}) {
+async function main({ argv = process.argv.slice(2), confirm = promptYesNoReadline, claudeBase, opencodeBase } = {}) {
   let opts;
   try {
     opts = parseArgs(argv);
@@ -285,7 +272,7 @@ async function main({ argv = process.argv.slice(2), confirm = promptYesNoReadlin
     return 1;
   }
 
-  const overrides = { claudeBase, opencodeBase, copilot };
+  const overrides = { claudeBase, opencodeBase };
   const plan = computePlan(buildDeletionSet(overrides));
   printPlan(plan);
 
@@ -310,7 +297,6 @@ module.exports = {
   buildDeletionSet,
   enumerateClaude,
   enumerateOpencode,
-  enumerateCopilot,
   sha256File,
   readManagedHash,
   computeClaudeAgentPlanEntry,

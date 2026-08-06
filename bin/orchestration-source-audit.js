@@ -15,6 +15,7 @@ const RETIRED_SOURCES = [
   'sai/compat/implement-invocation.md',
   'sai/commands/sai-2-design-inline.md',
   'sai/commands/sai-3-implement-inline.md',
+  'sai/orchestration/inline-invocation.md',
 ];
 const TEST_REFERENCE_ALIASES = ['claude-loader.md', 'opencode-loader.md'];
 const MAINTAINED_ROOTS = [
@@ -30,7 +31,6 @@ const MAINTAINED_ROOT_FILES = [
   'GLOSSARY.md',
   'README.md',
   'INSTALL.claude.md',
-  'INSTALL.copilot.md',
   'INSTALL.opencode.md',
 ];
 

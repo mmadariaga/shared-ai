@@ -26,13 +26,6 @@ function writeFixture(root, relativePath, content) {
   fs.writeFileSync(filePath, content);
 }
 
-test('active-reference audit reports no supported dependency on retired sources', () => {
-  const references = auditActiveReferences(repoRoot);
-
-  assert.ok(Array.isArray(references), 'audit should return a reference list');
-  assert.deepEqual(references, []);
-});
-
 test('retired phase sources are absent and grouped callers remain available', () => {
   for (const source of retiredSources) assert.equal(fs.existsSync(path.join(repoRoot, source)), false);
   for (const source of [
@@ -60,6 +53,79 @@ test('active-reference audit excludes archived changes and ADRs but scans mainta
     assert.deepEqual(references, [
       { file: 'README.md', reference: claudeLoader },
     ]);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('STEP1_RETIRE_INLINE: active projections retain both routed inventories and no inline destination', () => {
+  const repoRoot = path.join(__dirname, '..');
+  const { loadInstallManifest, expandInstallManifest } = require('../bin/install-manifest.js');
+  const manifest = loadInstallManifest(repoRoot);
+  const roots = {
+    commands: path.join(os.tmpdir(), 'sai-step1-layout-commands'),
+    sai: path.join(os.tmpdir(), 'sai-step1-layout-sai'),
+    skills: path.join(os.tmpdir(), 'sai-step1-layout-skills'),
+    agents: path.join(os.tmpdir(), 'sai-step1-layout-agents'),
+    config: path.join(os.tmpdir(), 'sai-step1-layout-config'),
+  };
+  const workers = ['spec', 'design', 'implementation', 'review', 'security', 'performance', 'accessibility'];
+
+  assert.equal(manifest.projections.some(projection =>
+    projection.source === 'sai/orchestration/inline-invocation.md' ||
+    /inline-invocation\.md$/.test(projection.destination.path)), false);
+  for (const harness of ['claude', 'opencode']) {
+    const sources = new Set(expandInstallManifest(manifest, {
+      harness,
+      repoRoot,
+      destinationRoot: roots,
+    }).map(projection => path.relative(repoRoot, projection.sourcePath).split(path.sep).join('/')));
+    assert.deepEqual(
+      workers.map(name => `sai/orchestration/workers/bindings/${harness}/${name}-worker.md`)
+        .filter(source => sources.has(source)),
+      workers.map(name => `sai/orchestration/workers/bindings/${harness}/${name}-worker.md`),
+      `${harness} routed inventory should remain complete`,
+    );
+    assert.equal([...sources].some(source => source.includes('/copilot/')), false);
+  }
+});
+
+test('STEP1_RETIRE_INLINE: adapter source, capability spec, Copilot assets, and adapter-only tests are absent', () => {
+  const repoRoot = path.join(__dirname, '..');
+  for (const relativePath of [
+    'sai/orchestration/inline-invocation.md',
+    'specs/inline-coordinator-adapter/spec.md',
+    'skills/copilot',
+    'commands/copilot',
+    'agents/copilot',
+    'INSTALL.copilot.md',
+    'test/inline-coordinator-adapter-step-1.test.js',
+  ]) {
+    assert.equal(fs.existsSync(path.join(repoRoot, relativePath)), false,
+      `${relativePath} should be absent after Step 1 retirement`);
+  }
+});
+
+test('STEP1_RETIRE_INLINE: active-reference audit rejects retired loaders but exempts archives and ADRs', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-step1-audit-'));
+  try {
+    writeFixture(root, 'README.md', `uses ${claudeLoader}\n`);
+    writeFixture(root, path.join('openspec', 'changes', 'archive', 'old', 'proposal.md'), `uses ${opencodeLoader}\n`);
+    writeFixture(root, path.join('docs', 'adr', '0001-loader.md'), `uses ${claudeLoader}\n`);
+    assert.deepEqual(auditActiveReferences(root), [
+      { file: 'README.md', reference: claudeLoader },
+    ]);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('STEP1_RETIRE_INLINE: active-reference audit also rejects the deleted inline adapter', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-step1-inline-audit-'));
+  try {
+    writeFixture(root, 'README.md', 'Fetch @sai/orchestration/inline-invocation.md\n');
+    assert.ok(auditActiveReferences(root).length > 0,
+      'active-reference audit should report the deleted inline adapter reference');
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }

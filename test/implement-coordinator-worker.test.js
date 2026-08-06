@@ -40,16 +40,13 @@ function capture(fn) {
   }
 }
 
-test('implementation invocation core and inline caller own distinct completion contracts', () => {
+test('implementation invocation core owns the routed completion boundary', () => {
    const core = artifact('sai/commands/implement/invocation.md');
   assert.match(core, /^## Load instructions \(in order\)/m);
   assert.match(core, /^## Run\s*$/m);
   assert.doesNotMatch(core, /^## Completion\b/m);
   assert.doesNotMatch(core, /MANDATORY STOP/);
 
-   const invocation = artifact('sai/orchestration/inline-invocation.md');
-   assert.match(invocation, /Fetch @sai\/commands\/implement\/invocation\.md/);
-  assert.match(invocation, /MANDATORY STOP/);
 });
 
 test('implementation worker declares the lifecycle and input/output contract', () => {
@@ -184,12 +181,6 @@ test('uninstall and doctor expose ownership guards and collision status', async 
   const claudeBase = tempDir('sai-implement-claude-guard-');
   const projectRoot = tempDir('sai-implement-doctor-');
   const opencodeBase = path.join(projectRoot, 'opencode');
-  const copilot = {
-    promptsBase: path.join(projectRoot, 'missing-copilot-prompts'),
-    skillsBase: path.join(projectRoot, 'missing-copilot-skills'),
-    agentsBase: path.join(projectRoot, 'missing-copilot-agents'),
-    saiBase: path.join(projectRoot, 'missing-copilot-sai'),
-  };
   try {
     fs.mkdirSync(path.join(projectRoot, 'openspec'), { recursive: true });
     fs.writeFileSync(path.join(projectRoot, 'openspec', 'config.yaml'), 'schema: sai-workflow\n');
@@ -254,7 +245,6 @@ test('uninstall and doctor expose ownership guards and collision status', async 
       projectRoot,
       claudeBase,
       opencodeBase,
-      copilot,
       execOpenspec: () => ({ status: 0, stdout: '1.0.0\n', stderr: '', error: null }),
       out: { write(chunk) { output.push(String(chunk)); } },
     });
@@ -272,12 +262,6 @@ test('uninstall and doctor expose ownership guards and collision status', async 
     const opencodeEntries = buildDeletionSet({
       claudeBase: path.join(projectRoot, 'missing-claude'),
       opencodeBase,
-      copilot: {
-        promptsBase: path.join(projectRoot, 'missing-copilot-prompts'),
-        skillsBase: path.join(projectRoot, 'missing-copilot-skills'),
-        agentsBase: path.join(projectRoot, 'missing-copilot-agents'),
-        saiBase: path.join(projectRoot, 'missing-copilot-sai'),
-      },
     }).filter(entry => entry.dest.startsWith(opencodeBase));
     assert.equal(opencodeEntries.some(entry => /opencode\.jsonc?$/.test(entry.dest)), false,
       'opencode configuration should be excluded from uninstall enumeration');
@@ -290,10 +274,9 @@ test('uninstall and doctor expose ownership guards and collision status', async 
   }
 });
 
-test('Step 2 routes Claude and opencode through the coordinator but preserves Copilot inline dispatch', () => {
+test('Step 2 routes Claude and opencode through the coordinator', () => {
   const claude = artifact('commands/claude/sai-3-implement.md');
   const opencode = artifact('commands/opencode/sai-3-implement.md');
-  const copilot = artifact('commands/copilot/sai-3-implement.prompt.md');
 
   assert.match(claude, /^model:\s*opus\s*$/m);
    assert.match(claude, /^effort:\s*low\s*$/m);
@@ -304,28 +287,17 @@ test('Step 2 routes Claude and opencode through the coordinator but preserves Co
      assert.match(opencode, /Fetch @sai\/orchestration\/workers\/bindings\/implementation-worker\.md/);
     assert.doesNotMatch(opencode, /Fetch @skills\/sai-3-implementation-worker\/SKILL\.md/);
    assert.match(opencode, /Fetch @sai\/commands\/implement\/coordinator\.md/);
-  assert.match(copilot, /sai\/orchestration\/inline-invocation\.md/);
-  assert.match(copilot, /^phase: sai-3-implement$/m);
-  assert.match(copilot, /^arguments: \$ARGUMENTS$/m);
-  assert.doesNotMatch(copilot, /sai-3-implement-inline\.md/);
-  assert.doesNotMatch(copilot, /sai-implementation-coordinator/);
    assert.match(opencode, /^variant: high$/m);
    assert.match(opencode, /^subtask:\s*false\s*$/m);
    assert.doesNotMatch(opencode, /^agent:/m);
   assert.match(opencode, /\*\*Change-name argument:\*\* \$ARGUMENTS/);
 });
 
-test('Step 1 implementation contracts use the routed entrypoints and exact inline prerequisites', () => {
-  const inline = artifact('sai/orchestration/inline-invocation.md');
-  const copilot = artifact('commands/copilot/sai-3-implement.prompt.md');
-
-  assert.match(inline, /Change '\{change-name\}' not found\. Run \/sai-1-spec to create it first\./);
-  assert.match(inline, /design\.md not found for '\{change-name\}'\. Run \/sai-2-design first\./);
-  assert.match(inline, /tasks\.md not found for '\{change-name\}'\. Run \/sai-2-design first\./);
-  assert.match(inline, /first missing artifact[\s\S]*without checking later artifacts or writing any\s+file/i);
-  assert.match(copilot, /Fetch @sai\/orchestration\/inline-invocation\.md/);
-  assert.match(copilot, /^phase: sai-3-implement\r?\narguments: \$ARGUMENTS$/m);
-  assert.doesNotMatch(copilot, /supported loader/i);
+test('Step 1 implementation contracts use the routed entrypoints', () => {
+  const claude = artifact('commands/claude/sai-3-implement.md');
+  const opencode = artifact('commands/opencode/sai-3-implement.md');
+  assert.match(claude, /Fetch @sai\/commands\/implement\/coordinator\.md/);
+  assert.match(opencode, /Fetch @sai\/commands\/implement\/coordinator\.md/);
 });
 
 test('routed harness bindings and inline parity', () => {
@@ -365,17 +337,6 @@ test('routed harness bindings and inline parity', () => {
          assert.match(wrapper, /^variant: high$/m);
          assert.match(wrapper, /^subtask:\s*false\s*$/m);
          assert.doesNotMatch(wrapper, /^agent:/m);
-      },
-    },
-    {
-      name: 'Copilot',
-      wrapper: artifact('commands/copilot/sai-3-implement.prompt.md'),
-      assertContract(_binding, _forwardingSkill, wrapper) {
-        assert.match(wrapper, /sai\/orchestration\/inline-invocation\.md/);
-        assert.match(wrapper, /^phase: sai-3-implement$/m);
-        assert.match(wrapper, /^arguments: \$ARGUMENTS$/m);
-        assert.doesNotMatch(wrapper, /sai-3-implement-inline\.md/);
-        assert.doesNotMatch(wrapper, /sai-implementation-coordinator/);
       },
     },
   ];
@@ -497,18 +458,12 @@ test('needs_input continuation stays on the same worker and uses each harness bi
   assert.match(opencodeBinding, /fresh worker|reconstruct/i);
 });
 
-test('worker and inline invocation own prerequisites and picker while coordinator does not', () => {
+test('worker owns prerequisites and picker while coordinator does not', () => {
    const coordinator = artifact('sai/commands/implement/coordinator.md');
   const worker = artifact('sai/orchestration/workers/sai-3-implementation-worker.md');
-  const inline = artifact('commands/copilot/sai-3-implement.prompt.md');
 
   assert.match(worker, /openspec CLI not found|OpenSpec not initialized|schema:\s*sai-workflow/i);
   assert.match(worker, /Use change '\{name\}'\?|Which change\?|0\/1\/N|zero,? one,? or multiple/i);
-  assert.match(inline, /sai\/orchestration\/inline-invocation\.md/);
-  assert.match(inline, /^phase: sai-3-implement$/m);
-  assert.match(inline, /^arguments: \$ARGUMENTS$/m);
-  assert.doesNotMatch(inline, /sai-3-implement-inline\.md/);
-  assert.doesNotMatch(inline, /sai-implementation-coordinator/);
   assert.doesNotMatch(coordinator, /openspec CLI not found|OpenSpec not initialized|schema:\s*sai-workflow/i);
   assert.doesNotMatch(coordinator, /Use change '\{name\}'\?|Which change\?|0\/1\/N|zero,? one,? or multiple/i);
 });
@@ -520,10 +475,8 @@ test('Step 2 coordinator makes no live-proof or smoke-success claims', () => {
   assert.doesNotMatch(coordinator, /\bsmoke[- ]?(?:check|test)\b/i);
 });
 
-test('completed routed output uses the coordinator contract while inline invocation preserves its stop', () => {
+test('completed routed output uses the coordinator contract', () => {
    const coordinator = artifact('sai/commands/implement/coordinator.md');
-  const inline = artifact('commands/copilot/sai-3-implement.prompt.md');
-   const invocation = artifact('sai/orchestration/inline-invocation.md');
 
   assert.match(coordinator, /completed[\s\S]*concise summary[\s\S]*accumulated changed-file list/i);
   assert.ok(
@@ -532,13 +485,6 @@ test('completed routed output uses the coordinator contract while inline invocat
     )
   );
   assert.match(coordinator, /Stop immediately/);
-  assert.match(inline, /sai\/orchestration\/inline-invocation\.md/);
-  assert.match(inline, /^phase: sai-3-implement$/m);
-  assert.match(inline, /^arguments: \$ARGUMENTS$/m);
-  assert.doesNotMatch(inline, /sai-3-implement-inline\.md/);
-  assert.doesNotMatch(inline, /sai-implementation-coordinator/);
-  assert.match(invocation, /core/);
-  assert.match(invocation, /MANDATORY STOP/);
 });
 
 test('design navigation stops after completion with no continuation', () => {
@@ -552,25 +498,11 @@ test('design navigation stops after completion with no continuation', () => {
   assert.match(design, /Design done in openspec\/changes\/\{name\}\//);
 });
 
-test('Copilot inline coordinator owns implementation prerequisites and completion', () => {
-  const inline = artifact('sai/orchestration/inline-invocation.md');
-
-  assert.match(inline, /phase: sai-3-implement/);
-   assert.match(inline, /Fetch @sai\/commands\/implement\/invocation\.md/);
-  assert.match(inline, /proposal\.md/);
-  assert.match(inline, /design\.md/);
-  assert.match(inline, /tasks\.md/);
-  assert.match(inline, /MANDATORY STOP/);
-  assert.match(inline, /Implementation plan done in openspec\/changes\/\{name\}\//);
-  assert.doesNotMatch(inline, /sai-4-apply's instructions|execute sai-4-apply/i);
-});
-
-test('Step 3 README documents routed roles, inline Copilot boundary, model independence, and artifact stability', () => {
+test('Step 3 README documents routed roles, model independence, and artifact stability', () => {
   const readme = artifact('README.md');
 
   assert.match(readme, /Claude Code[\s\S]{0,240}(?:coordinator|rout)/i);
   assert.match(readme, /opencode[\s\S]{0,240}(?:coordinator|rout)/i);
-  assert.match(readme, /Copilot[\s\S]{0,180}inline/i);
   assert.match(readme, /independent[\s\S]{0,100}model/i);
   assert.match(readme, /openspec\/changes\/\{change-name\}\/implementation\.md/);
 
@@ -590,7 +522,7 @@ test('Step 3 README documents routed roles, inline Copilot boundary, model indep
   );
 });
 
-test('Step 3 AGENTS documents every coordinator, inline, worker, agent, binding, and harness boundary', () => {
+test('Step 3 AGENTS documents every coordinator, worker, agent, and binding boundary', () => {
   const agents = artifact('AGENTS.md');
 
   for (const entry of [
@@ -599,10 +531,6 @@ test('Step 3 AGENTS documents every coordinator, inline, worker, agent, binding,
     assert.match(agents, new RegExp(entry.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
   }
   assert.match(agents, /sai\/orchestration\/workers\/bindings\//);
-  assert.match(
-    agents,
-    /GitHub Copilot dispatches directly through `sai\/orchestration\/inline-invocation\.md` with no routed worker binding/i
-  );
   assert.match(agents, /harness universality/i);
 });
 
@@ -630,23 +558,17 @@ test('Step 3 opencode installer documentation covers managed entries, routing sh
   assert.match(opencode, /restart(?:ing)?[\s\S]{0,120}(?:required|must|need|after|reload)/i);
 });
 
-test('Step 5 installer documentation matches the deterministic manifest and Copilot allowlist', () => {
+test('Step 5 installer documentation matches the deterministic manifest', () => {
   const manifest = artifact('sai/install-manifest.json');
   const agents = artifact('AGENTS.md');
   const claude = artifact('INSTALL.claude.md');
   const opencode = artifact('INSTALL.opencode.md');
-  const copilot = artifact('INSTALL.copilot.md');
 
   assert.match(manifest, /"id": "claude-orchestration"/);
   assert.match(manifest, /"id": "opencode-orchestration"/);
-  assert.match(manifest, /"id": "copilot-inline-invocation"/);
   assert.match(agents, /manifest-driven installer|deterministic.*manifest/i);
   assert.match(claude, /sai\/orchestration\/workers/);
   assert.match(opencode, /sai\/orchestration\/workers/);
-  assert.match(copilot, /policy and compatibility allowlist/i);
-  assert.match(copilot, /sai\/orchestration\/inline-invocation\.md/);
-  assert.match(copilot, /no routed binding|Do not copy routed/i);
-  assert.doesNotMatch(copilot, /copy sai[\\/]orchestration[\\/]workers/i);
 });
 
 // ─── Step 1: preservation-first legacy identity migration ───────────────────

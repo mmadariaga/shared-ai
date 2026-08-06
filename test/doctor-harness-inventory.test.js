@@ -8,7 +8,7 @@ const fs = require('fs');
 const { PassThrough } = require('stream');
 
 const { main } = require('../bin/doctor.js');
-const { installClaude, installOpencode, installCopilot, ensureDir } = require('../bin/install-flow.js');
+const { installClaude, installOpencode } = require('../bin/install-flow.js');
 
 function execOk() {
   return { status: 0, stdout: '1.4.1\n', stderr: '', error: null };
@@ -39,14 +39,13 @@ function nonexistentPath(prefix) {
   return path.join(os.tmpdir(), prefix + '-' + ts + '-' + rnd);
 }
 
-async function runDoctor({ projectRoot, claudeBase, opencodeBase, copilot }) {
+async function runDoctor({ projectRoot, claudeBase, opencodeBase }) {
   const { stream: out, end } = collectOut();
   const code = await main({
     argv: ['--json'],
     projectRoot,
     claudeBase,
     opencodeBase,
-    copilot,
     execOpenspec: execOk,
     out,
   });
@@ -57,6 +56,32 @@ async function runDoctor({ projectRoot, claudeBase, opencodeBase, copilot }) {
 
 describe('doctor harness inventory', () => {
 
+  test('STEP1_RETIRE_INLINE: doctor reports exactly Claude Code and opencode', async () => {
+    const projectRoot = makeGoodFixture();
+    const claudeBase = makeTempDir('sai-step1-doctor-claude-');
+    const opencodeBase = makeTempDir('sai-step1-doctor-opencode-');
+    try {
+      installClaude(claudeBase);
+      installOpencode(opencodeBase);
+      const { code, parsed } = await runDoctor({
+        projectRoot,
+        claudeBase,
+        opencodeBase,
+      });
+
+      assert.equal(code, 0);
+      assert.ok(parsed['[Claude Code]']);
+      assert.ok(parsed['[Opencode]']);
+      assert.equal(Object.hasOwn(parsed, '[GitHub Copilot]'), false);
+      assert.equal(JSON.stringify(parsed).toLowerCase().includes('copilot'), false);
+      assert.equal(JSON.stringify(parsed).toLowerCase().includes('sai-step1-doctor-copilot'), false);
+    } finally {
+      fs.rmSync(projectRoot, { recursive: true, force: true });
+      fs.rmSync(claudeBase, { recursive: true, force: true });
+      fs.rmSync(opencodeBase, { recursive: true, force: true });
+    }
+  });
+
   test('1: only claudeBase exists — opencode and copilot dirs absent', async () => {
     const projectRoot = makeGoodFixture();
     const claudeBase = makeTempDir('sai-harness-claude-');
@@ -64,14 +89,7 @@ describe('doctor harness inventory', () => {
       installClaude(claudeBase);
 
       const opencodeBase = nonexistentPath('sai-harness-oc-nonexistent');
-      const copilot = {
-        promptsBase: nonexistentPath('sai-harness-cp-prompts-'),
-        skillsBase: nonexistentPath('sai-harness-cp-skills-'),
-        agentsBase: nonexistentPath('sai-harness-cp-agents-'),
-        saiBase: nonexistentPath('sai-harness-cp-sai-'),
-      };
-
-      const { code, parsed } = await runDoctor({ projectRoot, claudeBase, opencodeBase, copilot });
+      const { code, parsed } = await runDoctor({ projectRoot, claudeBase, opencodeBase });
 
       assert.equal(code, 0);
 
@@ -87,35 +105,26 @@ describe('doctor harness inventory', () => {
       assert.ok(oc, '[Opencode] section should exist');
       assert.equal(oc.notInstalled, true, 'opencode should report not installed');
 
-      const cp = parsed['[GitHub Copilot]'];
-      assert.ok(cp, '[GitHub Copilot] section should exist');
-      assert.equal(cp.notInstalled, true, 'copilot should report not installed');
+      assert.deepEqual(Object.keys(parsed).filter(key => ['[Claude Code]', '[Opencode]'].includes(key)).sort(), ['[Claude Code]', '[Opencode]']);
     } finally {
       fs.rmSync(projectRoot, { recursive: true, force: true });
       fs.rmSync(claudeBase, { recursive: true, force: true });
     }
   });
 
-  test('2: fully-populated harness — all three installed', async () => {
+  test('2: fully-populated supported harnesses', async () => {
     const projectRoot = makeGoodFixture();
     const claudeBase = makeTempDir('sai-harness-claude-');
     const opencodeBase = makeTempDir('sai-harness-opencode-');
-    const copilot = {
-      promptsBase: makeTempDir('sai-harness-cp-prompts-'),
-      skillsBase: makeTempDir('sai-harness-cp-skills-'),
-      agentsBase: makeTempDir('sai-harness-cp-agents-'),
-      saiBase: makeTempDir('sai-harness-cp-sai-'),
-    };
     try {
       installClaude(claudeBase);
       installOpencode(opencodeBase);
-      installCopilot(copilot.promptsBase, copilot.skillsBase, copilot.agentsBase, copilot.saiBase);
 
-      const { code, parsed } = await runDoctor({ projectRoot, claudeBase, opencodeBase, copilot });
+      const { code, parsed } = await runDoctor({ projectRoot, claudeBase, opencodeBase });
 
       assert.equal(code, 0);
 
-      for (const key of ['[Claude Code]', '[Opencode]', '[GitHub Copilot]']) {
+      for (const key of ['[Claude Code]', '[Opencode]']) {
         const section = parsed[key];
         assert.ok(section, `${key} section should exist`);
         assert.ok(Array.isArray(section.files), `${key} files should be an array`);
@@ -135,7 +144,7 @@ describe('doctor harness inventory', () => {
       }
     } finally {
       fs.rmSync(projectRoot, { recursive: true, force: true });
-      for (const d of [claudeBase, opencodeBase, copilot.promptsBase, copilot.skillsBase, copilot.agentsBase, copilot.saiBase]) {
+      for (const d of [claudeBase, opencodeBase]) {
         fs.rmSync(d, { recursive: true, force: true });
       }
     }
@@ -152,14 +161,7 @@ describe('doctor harness inventory', () => {
       fs.unlinkSync(target);
 
       const opencodeBase = nonexistentPath('sai-harness-oc-nonexistent');
-      const copilot = {
-        promptsBase: nonexistentPath('sai-harness-cp-prompts-'),
-        skillsBase: nonexistentPath('sai-harness-cp-skills-'),
-        agentsBase: nonexistentPath('sai-harness-cp-agents-'),
-        saiBase: nonexistentPath('sai-harness-cp-sai-'),
-      };
-
-      const { code, parsed } = await runDoctor({ projectRoot, claudeBase, opencodeBase, copilot });
+      const { code, parsed } = await runDoctor({ projectRoot, claudeBase, opencodeBase });
 
       assert.equal(code, 1);
 
@@ -188,14 +190,7 @@ describe('doctor harness inventory', () => {
       fs.writeFileSync(extra, '# User-added file\n');
 
       const opencodeBase = nonexistentPath('sai-harness-oc-nonexistent');
-      const copilot = {
-        promptsBase: nonexistentPath('sai-harness-cp-prompts-'),
-        skillsBase: nonexistentPath('sai-harness-cp-skills-'),
-        agentsBase: nonexistentPath('sai-harness-cp-agents-'),
-        saiBase: nonexistentPath('sai-harness-cp-sai-'),
-      };
-
-      const { code, parsed } = await runDoctor({ projectRoot, claudeBase, opencodeBase, copilot });
+      const { code, parsed } = await runDoctor({ projectRoot, claudeBase, opencodeBase });
 
       assert.equal(code, 0);
 
@@ -217,48 +212,6 @@ describe('doctor harness inventory', () => {
     } finally {
       fs.rmSync(projectRoot, { recursive: true, force: true });
       fs.rmSync(claudeBase, { recursive: true, force: true });
-    }
-  });
-
-  test('5: copilot prompt also present at projectRoot/.github/prompts/ — project-override warn', async () => {
-    const projectRoot = makeGoodFixture();
-    const copilot = {
-      promptsBase: makeTempDir('sai-harness-cp-prompts-'),
-      skillsBase: makeTempDir('sai-harness-cp-skills-'),
-      agentsBase: makeTempDir('sai-harness-cp-agents-'),
-      saiBase: makeTempDir('sai-harness-cp-sai-'),
-    };
-    try {
-      installCopilot(copilot.promptsBase, copilot.skillsBase, copilot.agentsBase, copilot.saiBase);
-
-      const promptsDir = path.join(projectRoot, '.github', 'prompts');
-      ensureDir(promptsDir);
-      const cmdFiles = fs.readdirSync(copilot.promptsBase).filter(f => f.endsWith('.prompt.md'));
-      assert.ok(cmdFiles.length > 0, 'should have installed copilot prompt files');
-      const sample = cmdFiles[0];
-      fs.writeFileSync(path.join(promptsDir, sample), '# project-local override\n');
-
-      const claudeBase = nonexistentPath('sai-harness-claude-nonexistent');
-      const opencodeBase = nonexistentPath('sai-harness-oc-nonexistent');
-
-      const { code, parsed } = await runDoctor({ projectRoot, claudeBase, opencodeBase, copilot });
-
-      assert.equal(code, 0);
-
-      const cpSection = parsed['[GitHub Copilot]'];
-      assert.ok(cpSection, '[GitHub Copilot] section should exist');
-      const override = cpSection['project-override'];
-      assert.ok(Array.isArray(override), 'should have project-override array');
-      assert.ok(override.length >= 1, 'should have at least one project-override record');
-      assert.ok(
-        override.some(r => r.severity === 'warn'),
-        'project-override records should have warn severity'
-      );
-    } finally {
-      fs.rmSync(projectRoot, { recursive: true, force: true });
-      for (const d of [copilot.promptsBase, copilot.skillsBase, copilot.agentsBase, copilot.saiBase]) {
-        fs.rmSync(d, { recursive: true, force: true });
-      }
     }
   });
 

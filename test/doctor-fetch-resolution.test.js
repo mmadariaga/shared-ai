@@ -8,7 +8,7 @@ const fs = require('fs');
 const { PassThrough } = require('stream');
 
 const { main } = require('../bin/doctor.js');
-const { installClaude, installOpencode, installCopilot, ensureDir } = require('../bin/install-flow.js');
+const { installClaude, installOpencode, ensureDir } = require('../bin/install-flow.js');
 
 function execOk() {
   return { status: 0, stdout: '1.4.1\n', stderr: '', error: null };
@@ -39,14 +39,13 @@ function nonexistentPath(prefix) {
   return path.join(os.tmpdir(), prefix + '-' + ts + '-' + rnd);
 }
 
-async function runDoctor({ projectRoot, claudeBase, opencodeBase, copilot }) {
+async function runDoctor({ projectRoot, claudeBase, opencodeBase }) {
   const { stream: out, end } = collectOut();
   const code = await main({
     argv: ['--json'],
     projectRoot,
     claudeBase,
     opencodeBase,
-    copilot,
     execOpenspec: execOk,
     out,
   });
@@ -56,6 +55,28 @@ async function runDoctor({ projectRoot, claudeBase, opencodeBase, copilot }) {
 }
 
 describe('doctor fetch resolution', () => {
+
+  test('STEP1_RETIRE_INLINE: fetch resolution has no Copilot identity or root', async () => {
+    const projectRoot = makeGoodFixture();
+    const claudeBase = makeTempDir('sai-step1-fetch-claude-');
+    const opencodeBase = makeTempDir('sai-step1-fetch-opencode-');
+    try {
+      installClaude(claudeBase);
+      installOpencode(opencodeBase);
+      const { code, parsed } = await runDoctor({
+        projectRoot,
+        claudeBase,
+        opencodeBase,
+      });
+
+      assert.equal(code, 0);
+      assert.equal(Object.keys(parsed).some(key => /copilot/i.test(key)), false);
+    } finally {
+      fs.rmSync(projectRoot, { recursive: true, force: true });
+      fs.rmSync(claudeBase, { recursive: true, force: true });
+      fs.rmSync(opencodeBase, { recursive: true, force: true });
+    }
+  });
 
   test('1: Fetch @sai/instructions/x.md resolved via global fallback — no error', async () => {
     const projectRoot = makeGoodFixture();
@@ -75,14 +96,7 @@ describe('doctor fetch resolution', () => {
       fs.writeFileSync(path.join(targetDir, 'fr-test-x.md'), '# x\n');
 
       const opencodeBase = nonexistentPath('sai-dr-fr-oc-');
-      const copilot = {
-        promptsBase: nonexistentPath('sai-dr-fr-cp-prompts-'),
-        skillsBase: nonexistentPath('sai-dr-fr-cp-skills-'),
-        agentsBase: nonexistentPath('sai-dr-fr-cp-agents-'),
-        saiBase: nonexistentPath('sai-dr-fr-cp-sai-'),
-      };
-
-      const { code, parsed } = await runDoctor({ projectRoot, claudeBase, opencodeBase, copilot });
+      const { code, parsed } = await runDoctor({ projectRoot, claudeBase, opencodeBase });
 
       assert.equal(code, 0);
 
@@ -108,14 +122,7 @@ describe('doctor fetch resolution', () => {
       fs.appendFileSync(wrapper, '\nFetch @sai/instructions/fr-test-missing.md\n');
 
       const opencodeBase = nonexistentPath('sai-dr-fr-oc-');
-      const copilot = {
-        promptsBase: nonexistentPath('sai-dr-fr-cp-prompts-'),
-        skillsBase: nonexistentPath('sai-dr-fr-cp-skills-'),
-        agentsBase: nonexistentPath('sai-dr-fr-cp-agents-'),
-        saiBase: nonexistentPath('sai-dr-fr-cp-sai-'),
-      };
-
-      const { code, parsed } = await runDoctor({ projectRoot, claudeBase, opencodeBase, copilot });
+      const { code, parsed } = await runDoctor({ projectRoot, claudeBase, opencodeBase });
 
       assert.equal(code, 1);
 
@@ -133,47 +140,6 @@ describe('doctor fetch resolution', () => {
     }
   });
 
-  test('3: Copilot wrapper token resolvable at .github/sai/ — no error', async () => {
-    const projectRoot = makeGoodFixture();
-    const copilot = {
-      promptsBase: makeTempDir('sai-dr-fr-cp-prompts-'),
-      skillsBase: makeTempDir('sai-dr-fr-cp-skills-'),
-      agentsBase: makeTempDir('sai-dr-fr-cp-agents-'),
-      saiBase: makeTempDir('sai-dr-fr-cp-sai-'),
-    };
-    try {
-      installCopilot(copilot.promptsBase, copilot.skillsBase, copilot.agentsBase, copilot.saiBase);
-
-      const promptsDir = copilot.promptsBase;
-      const cmdFiles = fs.readdirSync(promptsDir).filter(f => f.endsWith('.prompt.md'));
-      assert.ok(cmdFiles.length > 0, 'should have copilot prompt files');
-      const wrapper = path.join(promptsDir, cmdFiles[0]);
-      fs.appendFileSync(wrapper, '\nFetch @sai/instructions/fr-copilot-ref.md\n');
-
-      const projectSaiDir = path.join(projectRoot, '.github', 'sai', 'instructions');
-      ensureDir(projectSaiDir);
-      fs.writeFileSync(path.join(projectSaiDir, 'fr-copilot-ref.md'), '# resolved\n');
-
-      const claudeBase = nonexistentPath('sai-dr-fr-claude-');
-      const opencodeBase = nonexistentPath('sai-dr-fr-oc-');
-
-      const { code, parsed } = await runDoctor({ projectRoot, claudeBase, opencodeBase, copilot });
-
-      assert.equal(code, 0);
-
-      const cpSection = parsed['[GitHub Copilot]'];
-      assert.ok(cpSection, '[GitHub Copilot] section should exist');
-      const fetchRefErrors = (cpSection['fetch-ref'] || []).filter(r => r.severity === 'error');
-      assert.equal(fetchRefErrors.length, 0,
-        `expected no fetch-ref errors, got: ${JSON.stringify(fetchRefErrors)}`);
-    } finally {
-      fs.rmSync(projectRoot, { recursive: true, force: true });
-      for (const d of [copilot.promptsBase, copilot.skillsBase, copilot.agentsBase, copilot.saiBase]) {
-        fs.rmSync(d, { recursive: true, force: true });
-      }
-    }
-  });
-
   test('4a: Fetch @skills/fetch/SKILL.md — installed skill, no error', async () => {
     const projectRoot = makeGoodFixture();
     const claudeBase = makeTempDir('sai-dr-fr-claude-');
@@ -181,14 +147,7 @@ describe('doctor fetch resolution', () => {
       installClaude(claudeBase);
 
       const opencodeBase = nonexistentPath('sai-dr-fr-oc-');
-      const copilot = {
-        promptsBase: nonexistentPath('sai-dr-fr-cp-prompts-'),
-        skillsBase: nonexistentPath('sai-dr-fr-cp-skills-'),
-        agentsBase: nonexistentPath('sai-dr-fr-cp-agents-'),
-        saiBase: nonexistentPath('sai-dr-fr-cp-sai-'),
-      };
-
-      const { code, parsed } = await runDoctor({ projectRoot, claudeBase, opencodeBase, copilot });
+      const { code, parsed } = await runDoctor({ projectRoot, claudeBase, opencodeBase });
 
       assert.equal(code, 0);
 
@@ -213,14 +172,7 @@ describe('doctor fetch resolution', () => {
       fs.appendFileSync(wrapper, '\nFetch @skills/nonexistent/SKILL.md\n');
 
       const opencodeBase = nonexistentPath('sai-dr-fr-oc-');
-      const copilot = {
-        promptsBase: nonexistentPath('sai-dr-fr-cp-prompts-'),
-        skillsBase: nonexistentPath('sai-dr-fr-cp-skills-'),
-        agentsBase: nonexistentPath('sai-dr-fr-cp-agents-'),
-        saiBase: nonexistentPath('sai-dr-fr-cp-sai-'),
-      };
-
-      const { code, parsed } = await runDoctor({ projectRoot, claudeBase, opencodeBase, copilot });
+      const { code, parsed } = await runDoctor({ projectRoot, claudeBase, opencodeBase });
 
       assert.equal(code, 1);
 
@@ -242,12 +194,6 @@ describe('doctor fetch resolution', () => {
     const projectRoot = makeGoodFixture();
     const claudeBase = makeTempDir('sai-dr-fr-claude-');
     const opencodeBase = makeTempDir('sai-dr-fr-opencode-');
-    const copilot = {
-      promptsBase: nonexistentPath('sai-dr-fr-cp-prompts-'),
-      skillsBase: nonexistentPath('sai-dr-fr-cp-skills-'),
-      agentsBase: nonexistentPath('sai-dr-fr-cp-agents-'),
-      saiBase: nonexistentPath('sai-dr-fr-cp-sai-'),
-    };
     const phases = [
       'spec-worker.md',
       'design-worker.md',
@@ -273,7 +219,7 @@ describe('doctor fetch resolution', () => {
       installClaude(claudeBase);
       installOpencode(opencodeBase);
 
-      const { code, parsed } = await runDoctor({ projectRoot, claudeBase, opencodeBase, copilot });
+      const { code, parsed } = await runDoctor({ projectRoot, claudeBase, opencodeBase });
       assert.equal(code, 0);
 
       const expected = {
@@ -390,12 +336,6 @@ test('Step 1 source fetch skills declare one active identity and local roots bef
       localRoot: /\.opencode[\\/]/,
       globalRoot: /~[\\/]\.config[\\/]opencode[\\/]/,
     },
-    {
-      identity: 'copilot',
-      path: 'skills/copilot/fetch/SKILL.md',
-      localRoot: /\.github[\\/]sai[\\/]/,
-      globalRoot: /user-global.*(?:VS Code SAI root|SAI folder)/i,
-    },
   ];
 
   for (const skill of skills) {
@@ -452,18 +392,7 @@ test('Step 3 stale identity-bearing references receive no special guard', () => 
   }
 });
 
-test('Step 3 Copilot retains inline local/user resolution without routed projection or replacement guard', () => {
-  const source = sourceArtifact('skills/copilot/fetch/SKILL.md');
-  assert.match(source, /Active harness identity\s*:\s*`?copilot`?/i);
-  assert.match(source, /\.github[\\/]sai[\\/]/);
-  assert.match(source, /user-global.*(?:VS Code SAI root|SAI folder)/i);
-  assert.match(source, /no routed worker-binding projection/i);
-  assert.match(source, /File not found|missing[- ]file/i);
-  assert.match(source, /Recursion|recursively/i);
-  assert.match(source, /Fetch @skills\/<name>\/SKILL\.md/);
-  assert.doesNotMatch(source, /bindings[\\/]<(?:identity|claude|opencode)>[\\/]/i);
-  assert.doesNotMatch(source, /coordinator-owned|worker-owned|replacement-worker|migration/i);
-});
+// Retired Copilot fetch contract intentionally has no test.
 
 test('restore-coordinator-instruction-loading Step 1: Claude and opencode fetch resolvers use Glob and Read without LS', () => {
   for (const relativePath of ['skills/claude/fetch/SKILL.md', 'skills/opencode/fetch/SKILL.md']) {
@@ -472,12 +401,4 @@ test('restore-coordinator-instruction-loading Step 1: Claude and opencode fetch 
     assert.match(source, /\bRead\b/, `${relativePath} should name Read for non-skill resolution`);
     assert.doesNotMatch(source, /\bLS\b/, `${relativePath} must not require LS`);
   }
-});
-
-test('restore-coordinator-instruction-loading Step 1: Copilot keeps its inline candidate-check/read resolver contract', () => {
-  const source = sourceArtifact('skills/copilot/fetch/SKILL.md');
-  assert.match(source, /Check whether .*exists/i);
-  assert.match(source, /If it does, read it\. Otherwise, read/i);
-  assert.doesNotMatch(source, /\bGlob\b/);
-  assert.doesNotMatch(source, /\bLS\b/);
 });

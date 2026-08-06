@@ -17,13 +17,11 @@ const REPO_ROOT_DEFAULT = path.join(__dirname, '..');
 const FETCH_ORDER = {
   claude:   (root, base, sub) => [path.join(root, '.claude', sub), path.join(base, sub)],
   opencode: (root, base, sub) => [path.join(root, '.opencode', sub), path.join(base, sub)],
-  copilot:  (root, saiBase, sub) => { const c = sub.replace(/^sai\//, ''); return [path.join(root, '.github', 'sai', c), path.join(saiBase, c)]; },
 };
 
 const SKILL_BASES = {
   claude:   (root, base) => [path.join(root, '.claude', 'skills'), path.join(base, 'skills')],
   opencode: (root, base) => [path.join(root, '.opencode', 'skills'), path.join(base, 'skills')],
-  copilot:  (root, base) => [path.join(root, '.github', 'skills'), base],
 };
 
 function parseFetchRefs(text) {
@@ -60,8 +58,8 @@ function resolveFetchRefs(section, wrapperPath, kind, { projectRoot, globalBase,
 
 function fetchResolutionRecords(harness, expectedEntries, { projectRoot }) {
   const section = `[${harness.id}]`;
-  const globalBase = harness.kind === 'copilot' ? harness.copilotSaiBase : harness.base;
-  const skillsBase = harness.kind === 'copilot' ? harness.copilotSkillsBase : harness.base;
+  const globalBase = harness.base;
+  const skillsBase = harness.base;
   const wrappers = expectedEntries
     .filter(e => e.src !== e.dest && e.dest.endsWith('.md') && !e.src.includes(`${path.sep}sai${path.sep}`) && !e.src.includes(`${path.sep}skills${path.sep}`) && !e.src.includes(`${path.sep}agents${path.sep}`))
     .filter(e => fs.existsSync(e.dest));
@@ -147,14 +145,12 @@ function renderHuman(sections) {
   return lines.join('\n');
 }
 
-function detectHarnesses({ claudeBase, opencodeBase, copilot }) {
+function detectHarnesses({ claudeBase, opencodeBase }) {
   return [
     { id: 'Claude Code', base: claudeBase, kind: 'claude',
       entries: () => uninstall.enumerateClaude(claudeBase) },
     { id: 'Opencode', base: opencodeBase, kind: 'opencode',
       entries: () => uninstall.enumerateOpencode(opencodeBase) },
-    { id: 'GitHub Copilot', base: copilot.promptsBase, kind: 'copilot', copilotSaiBase: copilot.saiBase, copilotSkillsBase: copilot.skillsBase,
-      entries: () => uninstall.enumerateCopilot(copilot.promptsBase, copilot.skillsBase, copilot.agentsBase, copilot.saiBase) },
   ];
 }
 
@@ -189,17 +185,10 @@ function inventoryHarness(section, expectedEntries, { projectRoot, harness }) {
     : { section, name: 'files', severity: 'error', message: `${missing.length} expected file(s) missing: ${missing.map(item => item.path).join(', ')}`, path: missing.map(item => item.path).join(', '), rules: missing.map(item => item.ruleId), recommendation: 'Re-run the installer: npx github:mmadariaga/shared-ai install' });
 
   const roots = new Set();
-  if (harness.kind === 'copilot') {
-    roots.add(harness.base);
-    roots.add(harness.copilotSaiBase);
-    roots.add(harness.copilotSkillsBase);
-    roots.add(harness.copilotAgentsBase);
-  } else {
-    roots.add(path.join(harness.base, 'commands'));
-    roots.add(path.join(harness.base, 'sai'));
-    roots.add(path.join(harness.base, 'skills'));
-    roots.add(path.join(harness.base, 'agents'));
-  }
+  roots.add(path.join(harness.base, 'commands'));
+  roots.add(path.join(harness.base, 'sai'));
+  roots.add(path.join(harness.base, 'skills'));
+  roots.add(path.join(harness.base, 'agents'));
   const unexpected = [];
   function visit(dir) {
     if (!fs.existsSync(dir)) return;
@@ -214,19 +203,6 @@ function inventoryHarness(section, expectedEntries, { projectRoot, harness }) {
     records.push({ section, name: 'unexpected', severity: 'warn', message: `${unexpected.length} unexpected file(s): ${unexpected.join(', ')}`, path: unexpected.join(', '), rules: unexpected.map(() => null) });
   }
   records.push(...retiredFileRecords(section, expectedEntries));
-
-  if (harness.kind === 'copilot') {
-    const projectPrompts = path.join(projectRoot, '.github', 'prompts');
-    if (fs.existsSync(projectPrompts)) {
-      const overrides = expected
-        .filter(e => path.dirname(e.dest) === harness.base)
-        .filter(e => fs.existsSync(path.join(projectPrompts, path.basename(e.dest))))
-        .map(e => path.basename(e.dest));
-      if (overrides.length > 0) {
-        records.push({ section, name: 'project-override', severity: 'warn', message: `project-local Copilot override(s) present: ${overrides.join(', ')}` });
-      }
-    }
-  }
 
   return records;
 }
@@ -439,8 +415,7 @@ function managedAssetRecords(harness, repoRoot) {
 
 function versionSkewRecords(harness, expectedEntries, latest) {
   const section = `[${harness.id}]`;
-  const markerBase = harness.kind === 'copilot' ? harness.copilotSaiBase : harness.base;
-  const marker = readMarker(markerBase);
+  const marker = readMarker(harness.base);
   if (marker !== null) {
     if (latest === null) {
       return [{ section, name: 'version', severity: 'warn', message: `installed ${marker}; latest version unknown (network)` }];
@@ -461,7 +436,6 @@ async function main(options = {}) {
     projectRoot = process.cwd(),
     claudeBase = flow.CLAUDE_BASE,
     opencodeBase = flow.OPENCODE_BASE,
-    copilot = { promptsBase: flow.COPILOT_PROMPTS_BASE, skillsBase: flow.COPILOT_SKILLS_BASE, agentsBase: flow.COPILOT_AGENTS_BASE, saiBase: flow.COPILOT_SAI_BASE },
     repoRoot = REPO_ROOT_DEFAULT,
     execOpenspec = defaultExecOpenspec,
     out = process.stdout,
@@ -473,7 +447,7 @@ async function main(options = {}) {
   records.push(...checkProjectHealth({ projectRoot, execOpenspec }));
 
   const latest = argv.includes('--offline') ? null : await fetchLatestVersion();
-  const harnesses = detectHarnesses({ claudeBase, opencodeBase, copilot });
+  const harnesses = detectHarnesses({ claudeBase, opencodeBase });
   for (const h of harnesses) {
     if (!h.base || !fs.existsSync(h.base)) {
       records.push({ section: `[${h.id}]`, name: 'detection', severity: 'ok', message: 'not installed (user-global dir absent)' });

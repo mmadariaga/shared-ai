@@ -85,12 +85,6 @@ async function runJson(projectRoot, claudeBase, opencodeBase = path.join(project
     projectRoot,
     claudeBase,
     opencodeBase,
-    copilot: {
-      promptsBase: path.join(projectRoot, 'missing-copilot-prompts'),
-      skillsBase: path.join(projectRoot, 'missing-copilot-skills'),
-      agentsBase: path.join(projectRoot, 'missing-copilot-agents'),
-      saiBase: path.join(projectRoot, 'missing-copilot-sai'),
-    },
     execOpenspec: execOk,
     out: capture.out,
   });
@@ -235,12 +229,6 @@ test('human doctor output identifies retired-copy cleanup and remains successful
       projectRoot,
       claudeBase,
       opencodeBase: path.join(projectRoot, 'missing-opencode'),
-      copilot: {
-        promptsBase: path.join(projectRoot, 'missing-copilot-prompts'),
-        skillsBase: path.join(projectRoot, 'missing-copilot-skills'),
-        agentsBase: path.join(projectRoot, 'missing-copilot-agents'),
-        saiBase: path.join(projectRoot, 'missing-copilot-sai'),
-      },
       execOpenspec: execOk,
       out: capture.out,
     });

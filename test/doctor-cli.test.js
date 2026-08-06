@@ -39,12 +39,6 @@ test('main --json with healthy fixture produces three ok records and exits 0', a
   const projectRoot = makeGoodFixture();
   const claudeBase = path.join(projectRoot, 'claude');
   const opencodeBase = path.join(projectRoot, 'opencode');
-  const copilot = {
-    promptsBase: path.join(projectRoot, 'copilot-prompts'),
-    skillsBase: path.join(projectRoot, 'copilot-skills'),
-    agentsBase: path.join(projectRoot, 'copilot-agents'),
-    saiBase: path.join(projectRoot, 'copilot-sai'),
-  };
   try {
     installClaude(claudeBase);
     installOpencode(opencodeBase);
@@ -54,7 +48,6 @@ test('main --json with healthy fixture produces three ok records and exits 0', a
       projectRoot,
       claudeBase,
       opencodeBase,
-      copilot,
       execOpenspec: execOk,
       out,
     });

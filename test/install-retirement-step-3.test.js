@@ -219,3 +219,58 @@ test('ADR template retirement cleanup preserves an unrecognized former compatibi
     fs.rmSync(base, { recursive: true, force: true });
   }
 });
+
+test('STEP1_RETIRE_INLINE: retired routed loaders use exact hashes and preserve modified copies', () => {
+  const repoRoot = path.join(__dirname, '..');
+  const manifest = loadInstallManifest(repoRoot);
+  const retiredLoaderPaths = [
+    'commands/sai-2-design.md',
+    'commands/sai-3-implement.md',
+    'commands/sai-2-design-inline.md',
+    'commands/sai-3-implement-inline.md',
+    'compat/sai-2-design-core.md',
+    'compat/sai-3-implementation-core.md',
+    'compat/implement-invocation.md',
+  ];
+  const loaderRetirements = manifest.retirements.filter(retirement =>
+    retiredLoaderPaths.includes(retirement.destination.path));
+  assert.ok(loaderRetirements.length > 0, 'routed loader retirements should be declared');
+  assert.ok(loaderRetirements.every(retirement =>
+    retirement.harnesses.every(harness => ['claude', 'opencode'].includes(harness)) &&
+    retirement.managedHashes.length > 0 &&
+    retirement.managedHashes.every(value => /^[0-9a-f]{64}$/.test(value))));
+
+  for (const retirement of loaderRetirements) {
+    const base = tempDir();
+    try {
+      const expanded = expandRetirementManifest(manifest, {
+        harness: retirement.harnesses[0],
+        repoRoot,
+        destinationRoot: { sai: path.join(base, 'sai'), skills: path.join(base, 'skills') },
+      });
+      const target = expanded.find(record => record.id === retirement.id);
+      assert.ok(target, `${retirement.id} should expand for its owning harness`);
+      fs.mkdirSync(path.dirname(target.destinationPath), { recursive: true });
+      fs.writeFileSync(target.destinationPath, 'retired routed loader bytes');
+
+      const originalCreateHash = crypto.createHash;
+      crypto.createHash = () => ({ update: () => ({ digest: () => retirement.managedHashes[0] }) });
+      try {
+        assert.equal(cleanupRetiredProjections(retirement.harnesses[0], roots(base))
+          .find(result => result.id === retirement.id).action, 'deleted');
+      } finally {
+        crypto.createHash = originalCreateHash;
+      }
+      assert.equal(fs.existsSync(target.destinationPath), false);
+
+      fs.mkdirSync(path.dirname(target.destinationPath), { recursive: true });
+      fs.writeFileSync(target.destinationPath, 'modified routed loader bytes');
+      const result = cleanupRetiredProjections(retirement.harnesses[0], roots(base))
+        .find(record => record.id === retirement.id);
+      assert.equal(result.action, 'preserved');
+      assert.equal(fs.readFileSync(target.destinationPath, 'utf8'), 'modified routed loader bytes');
+    } finally {
+      fs.rmSync(base, { recursive: true, force: true });
+    }
+  }
+});

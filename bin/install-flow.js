@@ -331,31 +331,6 @@ function writeVersionMarker(baseDir) {
 const CLAUDE_BASE = path.join(os.homedir(), '.claude');
 const OPENCODE_BASE = path.join(os.homedir(), '.config', 'opencode');
 
-function getCopilotPromptsDir() {
-  if (process.platform === 'win32') {
-    return path.join(process.env.APPDATA || path.join(os.homedir(), 'AppData', 'Roaming'), 'Code', 'User', 'prompts');
-  } else if (process.platform === 'darwin') {
-    return path.join(os.homedir(), 'Library', 'Application Support', 'Code', 'User', 'prompts');
-  } else {
-    return path.join(os.homedir(), '.config', 'Code', 'User', 'prompts');
-  }
-}
-
-function getCopilotSaiDir() {
-  if (process.platform === 'win32') {
-    return path.join(process.env.APPDATA || path.join(os.homedir(), 'AppData', 'Roaming'), 'Code', 'User', 'sai');
-  } else if (process.platform === 'darwin') {
-    return path.join(os.homedir(), 'Library', 'Application Support', 'Code', 'User', 'sai');
-  } else {
-    return path.join(os.homedir(), '.config', 'Code', 'User', 'sai');
-  }
-}
-
-const COPILOT_PROMPTS_BASE = getCopilotPromptsDir();
-const COPILOT_SAI_BASE = getCopilotSaiDir();
-const COPILOT_SKILLS_BASE = path.join(os.homedir(), '.copilot', 'skills');
-const COPILOT_AGENTS_BASE = path.join(os.homedir(), '.copilot', 'agents');
-
 const OPENCODE_INSTALL_CMD = 'npm i -g opencode-ai@latest';
 const CODEGRAPH_CLI_INSTALL_CMD = 'npm i -g @colbymchenry/codegraph';
 const CODEGRAPH_MCP_INSTALL_CMD = 'codegraph install';
@@ -592,9 +567,6 @@ function installClaudeImplementationWorker(targetPath) {
 }
 
 function destinationRoots(harness, roots) {
-  if (harness === 'copilot') {
-    return { commands: roots.prompts, sai: roots.sai, skills: roots.skills, agents: roots.agents, config: roots.sai };
-  }
   return { commands: path.join(roots.base, 'commands'), sai: path.join(roots.base, 'sai'), skills: path.join(roots.base, 'skills'), agents: path.join(roots.base, 'agents'), config: roots.base };
 }
 
@@ -682,18 +654,6 @@ function installClaude(destBase) {
   for (const projection of expandForInstall('claude', { base: targetPath })) installProjection(projection, targetPath);
 
   writeVersionMarker(targetPath);
-}
-
-function installCopilot(promptsBase, skillsBase, agentsBase, saiBase) {
-  const promptsPath = promptsBase || COPILOT_PROMPTS_BASE;
-  const skillsPath = skillsBase || COPILOT_SKILLS_BASE;
-  const agentsPath = agentsBase || COPILOT_AGENTS_BASE;
-  const saiPath = saiBase || COPILOT_SAI_BASE;
-
-  cleanupRetiredProjections('copilot', { prompts: promptsPath, skills: skillsPath, agents: agentsPath, sai: saiPath });
-  for (const projection of expandForInstall('copilot', { prompts: promptsPath, skills: skillsPath, agents: agentsPath, sai: saiPath })) installProjection(projection, saiPath);
-
-  writeVersionMarker(saiPath);
 }
 
 function installOpencode(destBase) {
@@ -956,7 +916,6 @@ function detectInstalledEditors() {
   const detected = [];
   if (fs.existsSync(CLAUDE_BASE)) detected.push('Claude Code');
   if (fs.existsSync(OPENCODE_BASE)) detected.push('Opencode');
-  if (fs.existsSync(COPILOT_PROMPTS_BASE)) detected.push('GitHub Copilot');
   return detected;
 }
 
@@ -964,7 +923,7 @@ async function main() {
   const preselected = detectInstalledEditors();
   const defaults = preselected.length > 0 ? preselected : ['Opencode'];
   const choices = await promptChecklist(
-    ['Claude Code', 'Opencode', 'GitHub Copilot'],
+    ['Claude Code', 'Opencode'],
     defaults
   );
 
@@ -991,14 +950,6 @@ async function main() {
     console.log(`Opencode skills installed to: ${path.join(OPENCODE_BASE, 'skills')}`);
   }
 
-  if (choices.includes('GitHub Copilot')) {
-    installCopilot();
-    console.log(`\nCopilot prompt files installed to: ${COPILOT_PROMPTS_BASE}`);
-    console.log(`Copilot SAI commands/instructions installed to: ${COPILOT_SAI_BASE}`);
-    console.log(`Copilot skills installed to: ${COPILOT_SKILLS_BASE}`);
-    console.log(`Copilot agents installed to: ${COPILOT_AGENTS_BASE}`);
-  }
-
   await offerCodegraphInstall();
 
   console.log(
@@ -1021,15 +972,10 @@ module.exports = {
   listMdFilesRecursive,
   installClaude,
   installOpencode,
-  installCopilot,
   copyOpencodeConfig,
   main,
   CLAUDE_BASE,
   OPENCODE_BASE,
-  COPILOT_PROMPTS_BASE,
-  COPILOT_SKILLS_BASE,
-  COPILOT_AGENTS_BASE,
-  COPILOT_SAI_BASE,
   OPENCODE_INSTALL_CMD,
   probeOpencode,
   runOpencodeInstall,

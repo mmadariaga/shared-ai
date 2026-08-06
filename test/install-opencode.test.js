@@ -45,6 +45,13 @@ test.after(() => {
     'census fixture scratch directory must be absent after the focused census tests',
   );
 });
+
+test('STEP1_RETIRE_INLINE: opencode installer has no Copilot path constants or entrypoint', () => {
+  const flow = require('../bin/install-flow.js');
+  assert.equal(typeof flow.installOpencode, 'function');
+  assert.equal(typeof flow.installClaude, 'function');
+  assert.deepEqual(Object.keys(flow).filter(name => /copilot/i.test(name)), []);
+});
 const STEP_2_SCRATCH_DIR = path.join(__dirname, '..', '.tmp', 'deterministic-worker-contract-delivery');
 const WORKER_CONTRACT_BY_NAME = {
   'sai-1-spec-proposal-worker': 'spec-worker.md',
@@ -270,22 +277,15 @@ test('Step 2 resolves the census lazily and isolates malformed bindings to Openc
     const silence = console.log;
     console.log = () => {};
     let claudeError = null;
-    let copilotError = null;
-    let opencodeError = null;
+     let opencodeError = null;
     try {
       if (!flow) throw new Error('installer module failed to load');
       try { flow.installClaude(${JSON.stringify(path.join(CENSUS_SCRATCH_DIR, 'lazy-failure-claude'))}); } catch (error) { claudeError = error.message; }
-      try { flow.installCopilot(
-        ${JSON.stringify(path.join(CENSUS_SCRATCH_DIR, 'lazy-failure-copilot-prompts'))},
-        ${JSON.stringify(path.join(CENSUS_SCRATCH_DIR, 'lazy-failure-copilot-skills'))},
-        ${JSON.stringify(path.join(CENSUS_SCRATCH_DIR, 'lazy-failure-copilot-agents'))},
-        ${JSON.stringify(path.join(CENSUS_SCRATCH_DIR, 'lazy-failure-copilot-sai'))}
-      ); } catch (error) { copilotError = error.message; }
       try { flow.installOpencode(destination); } catch (error) { opencodeError = error.message; }
     } finally {
       console.log = silence;
     }
-    process.stdout.write(JSON.stringify({ requireError, claudeError, copilotError, opencodeError, entries: fs.readdirSync(destination) }));
+    process.stdout.write(JSON.stringify({ requireError, claudeError, opencodeError, entries: fs.readdirSync(destination) }));
   `;
   const result = childProcess.spawnSync(process.execPath, ['-e', script], {
     cwd: path.join(__dirname, '..'),
@@ -295,7 +295,6 @@ test('Step 2 resolves the census lazily and isolates malformed bindings to Openc
   const observation = JSON.parse(result.stdout);
   assert.equal(observation.requireError, null, 'requiring the shared installer should not derive malformed bindings');
   assert.equal(observation.claudeError, null, 'Claude operations should remain loadable when Opencode bindings are malformed');
-  assert.equal(observation.copilotError, null, 'Copilot operations should remain loadable when Opencode bindings are malformed');
   assert.match(observation.opencodeError || '', /default|census|worker|registration/i,
     'Opencode installation should fail with an actionable census/default diagnostic');
   assert.deepEqual(observation.entries, [], 'Opencode installation should fail before destination mutation');

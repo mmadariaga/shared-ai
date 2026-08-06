@@ -18,11 +18,9 @@ function makeRepo() {
   fs.mkdirSync(path.join(repoRoot, 'sai'), { recursive: true });
   fs.mkdirSync(path.join(repoRoot, 'commands', 'claude'), { recursive: true });
   fs.mkdirSync(path.join(repoRoot, 'commands', 'opencode'), { recursive: true });
-  fs.mkdirSync(path.join(repoRoot, 'commands', 'copilot'), { recursive: true });
   fs.writeFileSync(path.join(repoRoot, 'commands', 'claude', 'alpha.md'), 'alpha');
   fs.writeFileSync(path.join(repoRoot, 'commands', 'claude', 'zeta.md'), 'zeta');
   fs.writeFileSync(path.join(repoRoot, 'commands', 'opencode', 'foreign.md'), 'foreign');
-  fs.writeFileSync(path.join(repoRoot, 'commands', 'copilot', 'foreign.md'), 'foreign');
   return repoRoot;
 }
 
@@ -31,7 +29,7 @@ function rule(overrides = {}) {
     id: 'commands',
     source: 'commands/claude',
     destination: { class: 'root', path: 'claude/commands' },
-    harnesses: ['claude', 'opencode', 'copilot'],
+    harnesses: ['claude', 'opencode'],
     strategy: 'copy',
     recursive: true,
     include: ['**/*.md'],
@@ -269,16 +267,9 @@ test('managed worker registry has complete Claude and opencode manifest projecti
     worker.opencodeBinding.sourcePath,
      worker.claudeAgent.sourcePath,
   ]));
-  const copilot = expandInstallManifest(manifest, { harness: 'copilot', repoRoot, destinationRoot })
-    .map(projection => normalizeWorkerProjection(projection, repoRoot, destinationRoot));
-  assert.equal(copilot.some(projection => workerSources.has(projection.sourcePath)), false,
-    'Copilot must not receive managed worker bindings, forwarding skills, or Claude agents');
-  assert.equal(copilot.some(projection => projection.strategy === 'owned-copy' &&
-    Object.values(MANAGED_WORKER_PROJECTIONS).some(worker => worker.claudeAgent.id === projection.id)), false,
-  'Copilot must not receive managed Claude agent projections');
 });
 
-test('Step 6 security worker exposes binding, worker, and Copilot command projections', () => {
+test('Step 6 security worker exposes binding and worker projections', () => {
   const repoRoot = path.join(__dirname, '..');
   const manifest = loadInstallManifest(repoRoot);
   const destinationRoot = workerDestinationRoots(path.join(os.tmpdir(), 'sai-security-worker-projections'));
@@ -297,13 +288,6 @@ test('Step 6 security worker exposes binding, worker, and Copilot command projec
       `${expectedSource} should land at ${expectedDestination}`);
   }
 
-  const copilotSources = new Set(expandInstallManifest(manifest, {
-    harness: 'copilot',
-    repoRoot,
-    destinationRoot,
-  }).map(source));
-  assert.equal(copilotSources.has('sai/commands/sai-6-security.md'), true);
-  assert.equal(copilotSources.has('commands/copilot/sai-6-security.prompt.md'), true);
 });
 
 test('security worker fixture preserves the owned Claude agent contract', () => {
@@ -335,7 +319,7 @@ test('canonical manifest projects policies recursively to all harnesses', () => 
     id: 'sai-policies',
     source: 'sai/policies',
     destination: { class: 'sai', path: 'policies' },
-    harnesses: ['claude', 'opencode', 'copilot'],
+    harnesses: ['claude', 'opencode'],
     strategy: 'copy',
     recursive: true,
     include: ['**/*.md'],
@@ -363,63 +347,6 @@ test('canonical manifest has no active compatibility ADR-template projection', (
   );
 });
 
-test('canonical manifest installs exactly one Copilot inline orchestration adapter projection', () => {
-  const repoRoot = path.join(__dirname, '..');
-  const manifest = loadInstallManifest(repoRoot);
-  const inline = manifest.projections.filter(projection => projection.source === 'sai/orchestration/inline-invocation.md');
-
-  assert.equal(inline.length, 1, 'inline adapter should have one managed owner');
-  assert.deepEqual(
-    {
-      source: inline[0].source,
-      destination: inline[0].destination,
-      harnesses: inline[0].harnesses,
-      strategy: inline[0].strategy,
-      recursive: inline[0].recursive,
-      ownership: inline[0].ownership,
-      drift: inline[0].drift,
-    },
-    {
-      source: 'sai/orchestration/inline-invocation.md',
-      destination: { class: 'sai', path: 'orchestration/inline-invocation.md' },
-      harnesses: ['copilot'],
-      strategy: 'copy',
-      recursive: false,
-      ownership: 'managed',
-      drift: 'content',
-    }
-  );
-  assert.equal(
-    manifest.projections.filter(projection => projection.destination.path === 'orchestration/inline-invocation.md').length,
-    1,
-    'inline adapter destination should not have a second owner'
-  );
-  for (const harness of ['claude', 'opencode']) {
-    const projections = expandInstallManifest(manifest, {
-      harness,
-      repoRoot,
-      destinationRoot: {
-        commands: path.join(os.tmpdir(), `sai-inline-${harness}-commands`),
-        sai: path.join(os.tmpdir(), `sai-inline-${harness}-sai`),
-        skills: path.join(os.tmpdir(), `sai-inline-${harness}-skills`),
-        agents: path.join(os.tmpdir(), `sai-inline-${harness}-agents`),
-        config: path.join(os.tmpdir(), `sai-inline-${harness}-config`),
-      },
-    });
-    assert.equal(
-      projections.some(projection => projection.sourcePath.endsWith(path.join('sai', 'orchestration', 'inline-invocation.md'))),
-      false,
-      `${harness} must not receive the Copilot inline adapter`
-    );
-  }
-  const copilotOrchestration = manifest.projections.filter(projection =>
-    projection.harnesses.includes('copilot') && projection.source.startsWith('sai/orchestration/')
-  );
-  assert.deepEqual(copilotOrchestration.map(projection => projection.source), [
-    'sai/orchestration/inline-invocation.md',
-  ]);
-});
-
 test('canonical manifest keeps implementation projections harness-specific', () => {
   const repoRoot = path.join(__dirname, '..');
   const manifest = loadInstallManifest(repoRoot);
@@ -444,10 +371,6 @@ test('canonical manifest keeps implementation projections harness-specific', () 
       'sai/orchestration/workers/sai-3-implementation-worker.md',
       'sai/orchestration/workers/bindings/opencode/implementation-worker.md',
     ],
-    copilot: [
-      'sai/commands/implement/coordinator.md',
-      'sai/commands/implement/invocation.md',
-    ],
   };
 
   for (const harness of Object.keys(implementationSources)) {
@@ -466,14 +389,6 @@ test('canonical manifest keeps implementation projections harness-specific', () 
     } else if (harness === 'opencode') {
       assert.equal(sourceSet.has('sai/orchestration/workers/bindings/claude/implementation-worker.md'), false);
       assert.equal(sourceSet.has('agents/claude/sai-3-implementation-worker.md'), false);
-    } else {
-      assert.deepEqual(
-        [...sourceSet].filter(source => source.startsWith('sai/orchestration/')).sort(),
-        ['sai/orchestration/inline-invocation.md']
-      );
-      assert.equal([...sourceSet].some(source => source.includes('/bindings/')), false);
-      assert.equal([...sourceSet].some(source => source.includes('/workers/')), false);
-      assert.equal([...sourceSet].some(source => source.startsWith('agents/claude/')), false);
     }
   }
 });
@@ -508,10 +423,6 @@ test('canonical manifest projects routed spec assets only to Claude Code and ope
       .map(projection => path.relative(repoRoot, projection.sourcePath).split(path.sep).join('/')));
     for (const source of requiredSources) assert.ok(sources.has(source), `${harness} should project ${source}`);
   }
-  const copilotSources = new Set(expandInstallManifest(manifest, { harness: 'copilot', repoRoot, destinationRoot })
-    .map(projection => path.relative(repoRoot, projection.sourcePath).split(path.sep).join('/')));
-  assert.equal([...copilotSources].some(source => source.includes('spec-worker') || source.includes('spec-proposal')), false);
-  assert.equal([...copilotSources].some(source => source.includes('sai/commands/spec/coordinator')), false);
 });
 
 test('Installer projects every routed review surface', () => {
@@ -549,11 +460,6 @@ test('Installer projects every routed review surface', () => {
     }
   }
 
-  const copilot = expandInstallManifest(manifest, { harness: 'copilot', repoRoot, destinationRoot });
-  assert.equal(copilot.some(projection => {
-    const source = path.relative(repoRoot, projection.sourcePath).split(path.sep).join('/');
-    return source.includes('review-worker') || source.includes('sai-5-review');
-  }), false, 'Copilot receives no routed review binding');
 });
 
 test('Installer projects deterministic routed performance surfaces with ownership metadata', () => {
@@ -626,32 +532,16 @@ test('Installer projects deterministic routed performance surfaces with ownershi
     }
   }
 
-  const copilotSources = new Set(expandInstallManifest(manifest, {
-    harness: 'copilot',
-    repoRoot,
-    destinationRoot,
-  }).map(projection => path.relative(repoRoot, projection.sourcePath).split(path.sep).join('/')));
-  assert.equal(copilotSources.has('sai/commands/sai-7-performance.md'), true);
-  assert.equal(copilotSources.has('commands/copilot/sai-7-performance.prompt.md'), true);
-  for (const source of [
-    'sai/orchestration/workers/sai-7-performance-worker.md',
-    'sai/orchestration/workers/bindings/claude/performance-worker.md',
-    'sai/orchestration/workers/bindings/opencode/performance-worker.md',
-     'agents/claude/sai-7-performance-worker.md',
-  ]) assert.equal(copilotSources.has(source), false, `Copilot must exclude ${source}`);
-  assert.equal(manifest.projections.some(projection =>
-    JSON.stringify(projection.exclude || []).includes('sai-7-performance')), false,
-  'Copilot must not need a command-specific performance exclude entry');
 });
 
-test('Copilot receives no routed review binding', () => {
+test('Routed review bindings remain harness-specific', () => {
   const repoRoot = path.join(__dirname, '..');
   const manifest = loadInstallManifest(repoRoot);
   const routedReview = manifest.projections.filter(projection =>
     projection.source.includes('review-worker') || projection.source.includes('sai-5-review')
   );
   assert.ok(routedReview.length > 0, 'the manifest should declare routed review surfaces');
-  assert.ok(routedReview.every(projection => !projection.harnesses.includes('copilot')));
+  assert.ok(routedReview.every(projection => projection.harnesses.every(harness => ['claude', 'opencode'].includes(harness))));
 });
 
 test('compatibility and policy projections resolve for every supported harness', () => {
@@ -663,7 +553,7 @@ test('compatibility and policy projections resolve for every supported harness',
     agents: path.join(os.tmpdir(), 'sai-projection-agents'),
     config: path.join(os.tmpdir(), 'sai-projection-config'),
   };
-  for (const harness of ['claude', 'opencode', 'copilot']) {
+  for (const harness of ['claude', 'opencode']) {
     const projections = expandInstallManifest(manifest, {
       harness,
       repoRoot: path.join(__dirname, '..'),
@@ -690,8 +580,6 @@ test('canonical identity surfaces reject former routed names', () => {
     'commands/claude/sai-3-implement.md',
     'commands/opencode/sai-2-design.md',
     'commands/opencode/sai-3-implement.md',
-    'commands/copilot/sai-2-design.prompt.md',
-    'commands/copilot/sai-3-implement.prompt.md',
     'sai/orchestration/workers/sai-2-design-worker.md',
     'sai/orchestration/workers/sai-3-implementation-worker.md',
     'README.md',
@@ -818,6 +706,66 @@ test('expanded projections expose missing, unexpected nested, and content drift 
   }
 });
 
+test('STEP1_RETIRE_INLINE: manifest and installer expose only routed harnesses', () => {
+  const repoRoot = path.join(__dirname, '..');
+  const manifest = loadInstallManifest(repoRoot);
+  const destinationRoot = workerDestinationRoots(path.join(os.tmpdir(), 'sai-step1-retire-inline'));
+  const supported = ['claude', 'opencode'];
+  const flow = require('../bin/install-flow.js');
+
+  assert.deepEqual(Object.keys(flow).filter(name => /copilot/i.test(name)), []);
+  assert.equal(typeof flow.installClaude, 'function');
+  assert.equal(typeof flow.installOpencode, 'function');
+  assert.equal(typeof flow.installCopilot, 'undefined');
+
+  assert.ok(manifest.projections.length > 0);
+  assert.ok(manifest.projections.every(projection =>
+    projection.harnesses.every(harness => supported.includes(harness))));
+  assert.equal(manifest.projections.some(projection =>
+    projection.source === 'sai/orchestration/inline-invocation.md' ||
+    /inline-invocation\.md$/.test(projection.destination.path)), false);
+
+  for (const harness of supported) {
+    const active = expandInstallManifest(manifest, {
+      harness,
+      repoRoot,
+      destinationRoot,
+    });
+    assert.ok(active.length > 0, `${harness} should have active projections`);
+    assert.ok(active.every(projection => projection.harness === harness));
+    const routedBindings = active
+      .map(projection => path.relative(repoRoot, projection.sourcePath).split(path.sep).join('/'))
+      .filter(source => source.startsWith(`sai/orchestration/workers/bindings/${harness}/`));
+    assert.equal(routedBindings.length, 7, `${harness} should retain all routed worker bindings`);
+
+    const retirements = expandRetirementManifest(manifest, {
+      harness,
+      repoRoot,
+      destinationRoot,
+    });
+    assert.ok(retirements.length > 0, `${harness} should expose applicable retirements`);
+    assert.ok(retirements.every(retirement => retirement.harness === harness));
+  }
+
+  assert.deepEqual(expandInstallManifest(manifest, {
+    harness: 'copilot',
+    repoRoot,
+    destinationRoot,
+  }), []);
+});
+
+test('STEP1_RETIRE_INLINE: universal skill metadata names only the supported harnesses', () => {
+  for (const relativePath of [
+    'skills/universal/sai-commands/SKILL.md',
+    'skills/universal/safe-operations/SKILL.md',
+  ]) {
+    const source = fs.readFileSync(path.join(__dirname, '..', relativePath), 'utf8');
+    const metadata = source.match(/^compatibility:\s*(.+)$/im);
+    assert.ok(metadata, `${relativePath} should declare compatibility metadata`);
+    assert.match(metadata[1], /^\s*(?:claude\s*,\s*opencode|opencode\s*,\s*claude)\s*$/i);
+  }
+});
+
 test('canonical manifest validates all historical retirements and excludes them from active projections', () => {
   const repoRoot = path.join(__dirname, '..');
   const manifest = loadInstallManifest(repoRoot);
@@ -887,11 +835,6 @@ test('canonical manifest validates all historical retirements and excludes them 
       path.relative(repoRoot, projection.sourcePath))), false,
     `${harness} must not project a worker proxy source`);
   }
-  assert.equal(expandInstallManifest(manifest, {
-    harness: 'copilot',
-    repoRoot,
-    destinationRoot: workerDestinationRoots(path.join(os.tmpdir(), 'sai-retirement-active-copilot')),
-  }).some(projection => projection.strategy === 'forwarding-manifest'), false);
   return;
   const expected = [
     {
@@ -1119,15 +1062,14 @@ test('canonical manifest validates all historical retirements and excludes them 
     agents: path.join(os.tmpdir(), 'sai-retirement-agents'),
     config: path.join(os.tmpdir(), 'sai-retirement-config'),
   };
-  for (const harness of ['claude', 'opencode', 'copilot']) {
+  for (const harness of ['claude', 'opencode']) {
     const retirements = expandRetirementManifest(manifest, { harness, repoRoot, destinationRoot });
      assert.deepEqual(retirements.map(retirement => retirement.destinationPath), [
        path.resolve(destinationRoot.sai, 'commands/sai-2-design.md'),
        path.resolve(destinationRoot.sai, 'commands/sai-2-design-inline.md'),
        path.resolve(destinationRoot.sai, 'commands/sai-3-implement.md'),
          path.resolve(destinationRoot.sai, 'commands/sai-3-implement-inline.md'),
-         ...(harness === 'copilot' ? [path.resolve(destinationRoot.sai, 'compat/implement-invocation.md')] : []),
-         ...(harness === 'copilot' ? [] : [
+          ...[
            path.resolve(destinationRoot.sai, 'orchestration/workers/bindings', harness, 'accessibility-worker.md'),
            path.resolve(destinationRoot.sai, 'orchestration/workers/bindings', harness, 'design-worker.md'),
            path.resolve(destinationRoot.sai, 'orchestration/workers/bindings', harness, 'implementation-worker.md'),
@@ -1142,7 +1084,7 @@ test('canonical manifest validates all historical retirements and excludes them 
             path.resolve(destinationRoot.skills, 'sai-5-review-worker/SKILL.md'),
             path.resolve(destinationRoot.skills, 'sai-6-security-worker/SKILL.md'),
             path.resolve(destinationRoot.skills, 'sai-1-spec-proposal-worker/SKILL.md'),
-          ]),
+           ],
          path.resolve(destinationRoot.sai, 'compat/_templates/adr-index.md'),
         path.resolve(destinationRoot.sai, 'compat/sai-2-design-core.md'),
        path.resolve(destinationRoot.sai, 'compat/sai-3-implementation-core.md'),
@@ -1163,7 +1105,7 @@ test('retirement validation rejects malformed records, duplicate ids or destinat
       retirements: [{
         id: 'retired',
         destination: { class: 'sai', path: 'old.md' },
-        harnesses: ['claude', 'opencode', 'copilot'],
+        harnesses: ['claude', 'opencode'],
         managedHashes: ['a'.repeat(64)],
       }],
     };
@@ -1239,7 +1181,7 @@ test('recursive sai-instructions projection carries the extracted _templates fil
     'pr-body.md',
   ];
   let projectedCount = 0;
-  for (const harness of ['claude', 'opencode', 'copilot']) {
+  for (const harness of ['claude', 'opencode']) {
     const projections = expandInstallManifest(manifest, { harness, repoRoot, destinationRoot });
     for (const name of templateFiles) {
       const relativeSource = `sai/instructions/_templates/${name}`;
@@ -1260,5 +1202,5 @@ test('recursive sai-instructions projection carries the extracted _templates fil
       projectedCount += 1;
     }
   }
-  assert.equal(projectedCount, 21, 'seven templates across three harnesses should project to 21 paths');
+  assert.equal(projectedCount, 14, 'seven templates across two harnesses should project to 14 paths');
 });
