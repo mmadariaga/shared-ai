@@ -128,7 +128,7 @@ test('installClaude copies commands/claude/*.md to dest/commands/', () => {
   const design = fs.readFileSync(path.join(cmdDir, 'sai-2-design.md'), 'utf8');
   assert.match(design, /^model: claude-opus-4-8$/m);
   assert.match(design, /^effort: low$/m);
-  assert.match(design, /^allowed-tools: Skill, Agent, SendMessage, AskUserQuestion$/m);
+   assert.match(design, /^allowed-tools: Read, Glob, Skill, Agent, SendMessage, AskUserQuestion$/m);
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });
 
@@ -320,6 +320,63 @@ test('installClaude reuses compatible unowned worker content without recreating 
 
     assert.deepEqual(fs.readFileSync(agentPath), beforeBytes, 'compatible unowned worker bytes should remain unchanged');
     assert.equal(fs.existsSync(sidecarPath), false, 'compatible unowned worker should remain unowned');
+  } finally {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+});
+
+test('restore-coordinator-instruction-loading Step 1: isolated Claude installation resolves routed coordinator and neutral binding references', () => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-claude-coordinator-loading-'));
+  const wrappers = [
+    ['commands/sai-2-design.md', 'design', 'sai-2-design-worker'],
+    ['commands/sai-3-implement.md', 'implement', 'sai-3-implementation-worker'],
+    ['commands/sai-5-review.md', 'review', 'sai-5-review-worker'],
+    ['commands/sai-6-security.md', 'security', 'sai-6-security-worker'],
+    ['commands/sai-7-performance.md', 'performance', 'sai-7-performance-worker'],
+    ['commands/sai-8-accessibility.md', 'accessibility', 'sai-8-accessibility-worker'],
+  ];
+
+  function globInstalledFiles(relativeDir = '') {
+    const absoluteDir = path.join(tmpDir, relativeDir);
+    return fs.readdirSync(absoluteDir, { withFileTypes: true }).flatMap(entry => {
+      const relativePath = path.join(relativeDir, entry.name);
+      return entry.isDirectory() ? globInstalledFiles(relativePath) : [relativePath];
+    });
+  }
+
+  function readInstalled(relativePath) {
+    return fs.readFileSync(path.join(tmpDir, relativePath), 'utf8');
+  }
+
+  function resolveFetches(relativePath, available, visited = new Set()) {
+    if (visited.has(relativePath)) return;
+    visited.add(relativePath);
+    const source = readInstalled(relativePath);
+    for (const match of source.matchAll(/Fetch @((?:sai|skills)\/[^\s`]+)/g)) {
+      const target = path.normalize(match[1]);
+      if (match[1].startsWith('skills/')) continue;
+      assert.equal(available.has(target), true,
+        `${relativePath} should resolve ${match[1]} beneath the isolated installation root`);
+      resolveFetches(target, available, visited);
+    }
+  }
+
+  try {
+    installClaude(tmpDir);
+    const available = new Set(globInstalledFiles().map(file => path.normalize(file)));
+    const loaded = new Set();
+
+    for (const [wrapperPath, coordinator, worker] of wrappers) {
+      const wrapper = readInstalled(wrapperPath);
+      assert.match(wrapper, new RegExp(`Fetch @sai/commands/${coordinator}/coordinator\\.md`));
+      assert.match(wrapper, new RegExp(`Fetch @skills/${worker}/SKILL\\.md`));
+      resolveFetches(wrapperPath, available, loaded);
+      resolveFetches(path.join('skills', worker, 'SKILL.md'), available, loaded);
+    }
+
+    const loadedText = [...loaded].map(readInstalled).join('\n');
+    assert.match(loadedText, /bindings\/[a-z-]+-worker\.md/);
+    assert.doesNotMatch(loadedText, /bindings\/claude\//);
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }

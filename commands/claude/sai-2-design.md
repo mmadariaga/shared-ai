@@ -3,7 +3,7 @@ description: Generate design.md and tasks.md through the canonical coordinator c
 argument-hint: "[change-name] [--fast-track]"
 model: claude-opus-4-8
 effort: low
-allowed-tools: Skill, Agent, SendMessage, AskUserQuestion
+allowed-tools: Read, Glob, Skill, Agent, SendMessage, AskUserQuestion
 ---
 ## Sai Design - 2
 

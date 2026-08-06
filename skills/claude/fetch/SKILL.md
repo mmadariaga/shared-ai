@@ -19,21 +19,21 @@ Resolve project-local `.claude/` before user-global `~/.claude/`. This identity 
 
 ## Fetch @ resolution rules (apply to EVERY instruction)
 
-When you encounter `"Fetch @<path>"` or `"Also fetch @<path>"` in any instruction text, do NOT search for the file locally using glob, grep, or Read. Resolve using these rules instead:
+When you encounter `"Fetch @<path>"` or `"Also fetch @<path>"` in any instruction text, resolve it using these rules:
 
 | Pattern | Resolution |
 |---------|-----------|
 | `Fetch @skills/<name>/SKILL.md` | Invoke the `Skill` tool with skill name `<name>` |
 | `Fetch @skills/<name>/SKILL.md and follow those instructions exactly.` | Invoke the `Skill` tool with skill name `<name>`, then follow its instructions |
-| `Fetch @<subpath>` (any other path) | Use glob/LS to check whether `.claude/<subpath>` exists. If it does, Read it. Otherwise, Read `~/.claude/<subpath>` directly. If that read fails, stop and report: "File not found: <subpath> (checked .claude/ and ~/.claude/)" |
+| `Fetch @<subpath>` (any other path) | Use Glob to check whether .claude/<subpath> exists. If it does, use Read to load it. Otherwise, use Read on ~/.claude/<subpath> directly. If that read fails, stop and report: File not found: <subpath> (checked .claude/ and ~/.claude/) |
 
 ### Examples
 
 Instruction text → What you do
 
-- `"Fetch @sai/policies/prereqs.md"` → Check if `.claude/sai/policies/prereqs.md` exists; if yes Read it, else Read `~/.claude/sai/policies/prereqs.md` directly
+- `"Fetch @sai/policies/prereqs.md"` → Use Glob to check whether `.claude/sai/policies/prereqs.md` exists. If it does, use Read to load it. Otherwise, use Read on `~/.claude/sai/policies/prereqs.md` directly
 - `"Fetch @skills/budget/SKILL.md"` → `Skill("budget")`
-- `"Also fetch @sai/policies/remember.md"` → Check if `.claude/sai/policies/remember.md` exists; if yes Read it, else Read `~/.claude/sai/policies/remember.md` directly
+- `"Also fetch @sai/policies/remember.md"` → Use Glob to check whether `.claude/sai/policies/remember.md` exists. If it does, use Read to load it. Otherwise, use Read on `~/.claude/sai/policies/remember.md` directly
 - `"Fetch @skills/openspec-explore/SKILL.md and follow those instructions exactly."` → `Skill("openspec-explore")`, then follow its instructions
 
 ### Recursion

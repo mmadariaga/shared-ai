@@ -3,7 +3,7 @@ description: Structured Security Audit Prompt — SAST + SCA on the diff vs pare
 argument-hint: "[change-name] [optional: --full | --path {dir}] [optional: parent branch]"
 model: opus
 effort: xhigh
-allowed-tools: Skill, Agent, SendMessage, AskUserQuestion
+allowed-tools: Read, Glob, Skill, Agent, SendMessage, AskUserQuestion
 ---
 ## Sai Security - 6
 

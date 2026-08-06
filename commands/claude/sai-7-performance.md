@@ -3,7 +3,7 @@ description: Structured Performance Audit Prompt - backend / frontend / database
 argument-hint: "[change-name] [optional: --full | --path {dir}] [optional: --tier backend|frontend|db|queue] [optional: parent branch]"
 model: opus
 effort: medium
-allowed-tools: Skill, Agent, SendMessage, AskUserQuestion
+allowed-tools: Read, Glob, Skill, Agent, SendMessage, AskUserQuestion
 ---
 ## Sai Performance - 7
 

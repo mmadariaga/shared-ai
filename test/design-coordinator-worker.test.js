@@ -64,7 +64,7 @@ test('design wrappers activate routed Claude/opencode entry and preserve inline 
 
   assert.match(claude, /^model: claude-opus-4-8$/m);
   assert.match(claude, /^effort: low$/m);
-  assert.match(claude, /^allowed-tools: Skill, Agent, SendMessage, AskUserQuestion$/m);
+   assert.match(claude, /^allowed-tools: Read, Glob, Skill, Agent, SendMessage, AskUserQuestion$/m);
   assert.match(claude, /sai-2-design-worker/);
   assert.doesNotMatch(claude, /sai-3-implementation-worker/);
    assert.match(claude, /sai\/commands\/design\/coordinator\.md/);
@@ -693,4 +693,46 @@ test('architecture snapshot display is feedback-aware and equivalent across rout
 
   assert.doesNotMatch(lifecycle, /^\s*(?:architecture_)?snapshot\s*:/m);
   assert.match(lifecycle, /summary: string/);
+});
+
+test('restore-coordinator-instruction-loading Step 1: routed Claude wrappers expose the exact read-only tool scope', () => {
+  const expectedTools = ['Read', 'Glob', 'Skill', 'Agent', 'SendMessage', 'AskUserQuestion'];
+  const wrappers = [
+    'commands/claude/sai-2-design.md',
+    'commands/claude/sai-3-implement.md',
+    'commands/claude/sai-5-review.md',
+    'commands/claude/sai-6-security.md',
+    'commands/claude/sai-7-performance.md',
+    'commands/claude/sai-8-accessibility.md',
+  ];
+
+  for (const relativePath of wrappers) {
+    const source = artifact(relativePath);
+    const match = source.match(/^allowed-tools:\s*(.+)$/m);
+    assert.ok(match, `${relativePath} should declare allowed-tools`);
+    assert.deepEqual(match[1].split(',').map(tool => tool.trim()), expectedTools,
+      `${relativePath} should use the exact read-only routed scope`);
+    for (const forbidden of ['Edit', 'Write', 'Grep', 'Bash']) {
+      assert.equal(match[1].includes(forbidden), false,
+        `${relativePath} must not expose ${forbidden}`);
+    }
+  }
+});
+
+test('restore-coordinator-instruction-loading Step 1: explore and status preserve their current adapter behavior', () => {
+  const explore = artifact('commands/claude/sai-explore.md');
+  const exploreTools = explore.match(/^allowed-tools:\s*(.+)$/m);
+  assert.ok(exploreTools, 'sai-explore should declare allowed-tools');
+  const exploreToolNames = exploreTools[1].split(',').map(tool => tool.trim());
+  for (const required of ['Read', 'Glob', 'Skill', 'Agent', 'SendMessage', 'AskUserQuestion', 'Bash(openspec:*)', 'Bash(git:*)']) {
+    assert.ok(exploreToolNames.includes(required),
+      `sai-explore should retain ${required}`);
+  }
+  assert.doesNotMatch(exploreTools[1], /(?:^|,\s*)Bash(?:,|$)/);
+  assert.doesNotMatch(exploreTools[1], /(?:^|,\s*)(?:Edit|Write)(?:,|$)/);
+
+  const status = artifact('commands/claude/sai-status.md');
+  assert.match(status, /^allowed-tools: Read, Glob, Grep, Bash\(openspec:\*\), AskUserQuestion, Skill$/m);
+  assert.match(status, /Fetch @sai\/commands\/sai-status\.md/);
+  assert.doesNotMatch(status, /allowed-tools:[^\n]*(?:Edit|Write|Bash\s*,)/m);
 });

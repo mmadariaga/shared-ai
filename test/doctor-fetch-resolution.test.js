@@ -351,3 +351,20 @@ test('Step 3 Copilot retains inline local/user resolution without routed project
   assert.doesNotMatch(source, /bindings[\\/]<(?:identity|claude|opencode)>[\\/]/i);
   assert.doesNotMatch(source, /coordinator-owned|worker-owned|replacement-worker|migration/i);
 });
+
+test('restore-coordinator-instruction-loading Step 1: Claude and opencode fetch resolvers use Glob and Read without LS', () => {
+  for (const relativePath of ['skills/claude/fetch/SKILL.md', 'skills/opencode/fetch/SKILL.md']) {
+    const source = sourceArtifact(relativePath);
+    assert.match(source, /\bGlob\b/, `${relativePath} should name Glob for non-skill resolution`);
+    assert.match(source, /\bRead\b/, `${relativePath} should name Read for non-skill resolution`);
+    assert.doesNotMatch(source, /\bLS\b/, `${relativePath} must not require LS`);
+  }
+});
+
+test('restore-coordinator-instruction-loading Step 1: Copilot keeps its inline candidate-check/read resolver contract', () => {
+  const source = sourceArtifact('skills/copilot/fetch/SKILL.md');
+  assert.match(source, /Check whether .*exists/i);
+  assert.match(source, /If it does, read it\. Otherwise, read/i);
+  assert.doesNotMatch(source, /\bGlob\b/);
+  assert.doesNotMatch(source, /\bLS\b/);
+});

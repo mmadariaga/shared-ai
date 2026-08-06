@@ -3,7 +3,7 @@ description: Structured Code Review Prompt — diffs current branch against pare
 argument-hint: "[change-name] [optional: parent branch]"
 model: opus
 effort: medium
-allowed-tools: Skill, Agent, SendMessage, AskUserQuestion
+allowed-tools: Read, Glob, Skill, Agent, SendMessage, AskUserQuestion
 ---
 ## Sai Review - 5
 
