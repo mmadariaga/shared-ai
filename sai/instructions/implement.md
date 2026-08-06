@@ -60,7 +60,7 @@ Read the full content of `proposal.md`, `design.md`, `tasks.md`, and all `specs/
 - Extract and internalize the Expertise Profile from `## Implementation Context` in `tasks.md`
 - If `## Implementation Context` is missing entirely, STOP per the STOP condition above.
 
-**Exception (audit artifacts):** Check whether any of `review.md`, `security.md`, `performance.md`, or `accessibility.md` exist in `openspec/changes/{change-name}/`. For each one that exists, read it and apply the **Judgment Rubric for Audit Findings** (see below) to every finding, classifying each as Apply or Discard. The classified results are appended as additional steps at the end of `implementation.md` — one step per artifact, titled e.g. `Step N: Address review findings`, `Step N+1: Address security findings`, etc. Each appended step contains the Apply code actions and the Discarded findings sub-block side by side (the Discarded sub-block lives INSIDE the same step, not as a separate step). Do not merge them with existing steps.
+**Exception (audit artifacts):** Check whether any of `review.md`, `security.md`, `performance.md`, or `accessibility.md` exist in `openspec/changes/{change-name}/`. For each one that exists, read it and apply the **Judgment Rubric for Audit Findings** (see below) to every finding, classifying each as Apply or Discard. The classified results are appended as audit-derived steps by Step 5 ("Append audit-derived steps") below — the append description lives at that execution site; this step only reads and classifies.
 
 ### Judgment Rubric for Audit Findings
 
