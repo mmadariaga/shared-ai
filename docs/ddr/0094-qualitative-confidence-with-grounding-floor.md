@@ -1,6 +1,6 @@
 # DDR 0094: Supervised auto-answer confidence is a qualitative judgment gated by an objective grounding floor
 
-<!-- drr-index: pair-with 0095 -->
+<!-- adr-index: pair-with 0095 -->
 
 ## Status
 

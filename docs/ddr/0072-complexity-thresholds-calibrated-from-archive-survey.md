@@ -1,6 +1,6 @@
 # DDR 0072: Numeric complexity thresholds calibrated from an archive survey
 
-<!-- drr-index: refs 0069; refs 0070 -->
+<!-- adr-index: refs adr:0069; refs adr:0070 -->
 
 ## Status
 

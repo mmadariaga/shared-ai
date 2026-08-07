@@ -1,6 +1,6 @@
 # DDR Index
 
-This index groups the DDRs in `docs/drr/` by **command** and by **cross-cutting category**. A DDR may appear in more than one category: the filesystem already lists them alphabetically; the value here is the relational map (amends, supersedes, sibling pairs, refs).
+This index groups the DDRs in `docs/ddr/` by **command** and by **cross-cutting category**. A DDR may appear in more than one category: the filesystem already lists them alphabetically; the value here is the relational map (amends, supersedes, sibling pairs, refs).
 
 ## Conventions
 
@@ -17,12 +17,12 @@ This index groups the DDRs in `docs/drr/` by **command** and by **cross-cutting 
 
 - [0014 — Decision summary derived exclusively from written artifacts](./0014-decision-summary-derived-from-artifacts-only.md)
 - [0067 — Handoff provenance consumption as "premise to confirm and extend"](./0067-confirm-extend-consumption-framing.md)
-- [0072 — Numeric complexity thresholds calibrated from an archive survey](./0072-complexity-thresholds-calibrated-from-archive-survey.md) — Refs 0069, Refs 0070
+- [0072 — Numeric complexity thresholds calibrated from an archive survey](./0072-complexity-thresholds-calibrated-from-archive-survey.md) — Refs adr:0069, Refs adr:0070
 
 ### `/sai-2-design`
 
 - [0014 — Decision summary derived exclusively from written artifacts](./0014-decision-summary-derived-from-artifacts-only.md)
-- [0072 — Numeric complexity thresholds calibrated from an archive survey](./0072-complexity-thresholds-calibrated-from-archive-survey.md) — Refs 0069, Refs 0070
+- [0072 — Numeric complexity thresholds calibrated from an archive survey](./0072-complexity-thresholds-calibrated-from-archive-survey.md) — Refs adr:0069, Refs adr:0070
 
 ### `/sai-3-implement`
 
@@ -36,12 +36,12 @@ This index groups the DDRs in `docs/drr/` by **command** and by **cross-cutting 
 - [0041 — Uniform three-option commit gate across apply.md and commit.md](./0041-uniform-three-option-gate.md)
 - [0042 — Reconcile the "ask every time" authorization principle atomically at the principle layer](./0042-reconcile-authorization-principle-atomically.md)
 - [0052 — Human-Verification deferral under `--fast-track` with bounded-failure semantics](./0052-human-verification-deferral-under-fast-track.md)
-- [0062 — Field 9's soft-degradation exemption is stated at two sites](./0062-field-9-soft-degradation-stated-at-two-sites.md) — **Amends** 0026
+- [0062 — Field 9's soft-degradation exemption is stated at two sites](./0062-field-9-soft-degradation-stated-at-two-sites.md) — **Amends** adr:0026
 - [0063 — A contract-violating telemetry note is dropped whole, never trimmed](./0063-violating-telemetry-note-dropped-not-cleaned.md)
 
 ### `/sai-5-review`
 
-- [0013 — Dedicated mMUT-N finding namespace and Mutation Analysis output section](./0013-mmut-n-finding-namespace-for-mutation-analysis.md) — **Amends** 0012
+- [0013 — Dedicated mMUT-N finding namespace and Mutation Analysis output section](./0013-mmut-n-finding-namespace-for-mutation-analysis.md) — **Amends** adr:0012
 
 ### `/sai-6-security`
 
@@ -62,7 +62,7 @@ This index groups the DDRs in `docs/drr/` by **command** and by **cross-cutting 
 
 ### `/sai-backfill`
 
-- [0008 — sai-backfill Does Not Generate design.md, tasks.md, or implementation.md](./0008-backfill-prohibited-design-artifacts.md) — Refs 0007
+- [0008 — sai-backfill Does Not Generate design.md, tasks.md, or implementation.md](./0008-backfill-prohibited-design-artifacts.md) — Refs adr:0007
 
 ### `/sai-commit`
 
@@ -103,7 +103,7 @@ This index groups the DDRs in `docs/drr/` by **command** and by **cross-cutting 
 ### Subagent dispatch & report contract
 
 - [0027 — A failing GREEN is a human decision, reached via bounded iteration](./0027-failing-green-human-decision.md)
-- [0062 — Field 9's soft-degradation exemption is stated at two sites](./0062-field-9-soft-degradation-stated-at-two-sites.md) — **Amends** 0026
+- [0062 — Field 9's soft-degradation exemption is stated at two sites](./0062-field-9-soft-degradation-stated-at-two-sites.md) — **Amends** adr:0026
 - [0063 — A contract-violating telemetry note is dropped whole, never trimmed](./0063-violating-telemetry-note-dropped-not-cleaned.md)
 
 ### Testability routing & RED → GREEN
@@ -127,7 +127,7 @@ This index groups the DDRs in `docs/drr/` by **command** and by **cross-cutting 
 ### Artifact metadata & routing tokens
 
 - [0067 — Handoff provenance consumption as "premise to confirm and extend"](./0067-confirm-extend-consumption-framing.md)
-- [0072 — Numeric complexity thresholds calibrated from an archive survey](./0072-complexity-thresholds-calibrated-from-archive-survey.md) — Refs 0069, Refs 0070
+- [0072 — Numeric complexity thresholds calibrated from an archive survey](./0072-complexity-thresholds-calibrated-from-archive-survey.md) — Refs adr:0069, Refs adr:0070
 
 ### Installer dependency policy & external tooling
 

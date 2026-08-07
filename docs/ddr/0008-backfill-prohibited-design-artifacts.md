@@ -1,5 +1,7 @@
 # DDR 0008: sai-backfill Does Not Generate design.md, tasks.md, or implementation.md
 
+<!-- adr-index: refs adr:0007 -->
+
 ## Status
 
 Accepted

@@ -30,7 +30,7 @@ The summary block prints immediately before the existing terminal content. The t
 
 ## Related
 
-- [ADR 0014](../drr/0014-decision-summary-derived-from-artifacts-only.md) — Decision summary derived exclusively from written artifacts
+- [DDR 0014](../ddr/0014-decision-summary-derived-from-artifacts-only.md) — Decision summary derived exclusively from written artifacts
 - `openspec/specs/apply-completion-clarity/spec.md` — subordinate content precedes the done sentinel
 - `openspec/changes/add-decision-summary-to-spec-and-design-phases/design.md` — decision D2
 

@@ -1,6 +1,6 @@
 # DDR 0095: Auto-answer grounding sources are bounded and exclude the explore conversation
 
-<!-- drr-index: pair-with 0094 -->
+<!-- adr-index: pair-with 0094 -->
 
 ## Status
 

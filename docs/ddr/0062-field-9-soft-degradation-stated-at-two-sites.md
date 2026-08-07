@@ -1,5 +1,7 @@
 # DDR 0062: Field 9's soft-degradation exemption is stated at two sites
 
+<!-- adr-index: amends adr:0026 -->
+
 ## Status
 
 Accepted

@@ -15,14 +15,14 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 
 ### `/sai-1-spec`
 
-- [0015 — Decision summary precedes the completion sentinel](./0015-decision-summary-precedes-completion-sentinel.md) — **Amends** 0014
+- [0015 — Decision summary precedes the completion sentinel](./0015-decision-summary-precedes-completion-sentinel.md) — **Amends** ddr:0014
 - [0028 — The feedback gate takes three named parameters supplied inline at the fetch site](./0028-gate-parameters-inline-at-fetch-site.md)
 - [0066 — Provenance as inline citations on existing Why / Decisions & Rationale fields — no new field](./0066-inline-provenance-no-new-field.md)
 - [0093 — Route spec through workers while Copilot remains inline](./0093-route-spec-through-workers-while-copilot-remains-inline.md) — Refs 0082, Refs 0083, Refs 0090, Refs 0092
 
 ### `/sai-2-design`
 
-- [0015 — Decision summary precedes the completion sentinel](./0015-decision-summary-precedes-completion-sentinel.md) — **Amends** 0014
+- [0015 — Decision summary precedes the completion sentinel](./0015-decision-summary-precedes-completion-sentinel.md) — **Amends** ddr:0014
 - [0022 — interfaces.md is a standalone, step-keyed artifact rather than a section of tasks.md](./0022-interfaces-artifact-standalone-file.md)
 - [0023 — interfaces.md is an optional soft dependency, not a schema hard requirement](./0023-interfaces-soft-dependency.md)
 - [0028 — The feedback gate takes three named parameters supplied inline at the fetch site](./0028-gate-parameters-inline-at-fetch-site.md)
@@ -58,7 +58,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0090 — Centralize Copilot inline planning lifecycle in one adapter](./0090-centralize-copilot-inline-planning-lifecycle.md) — Refs 0089, Refs 0083, Refs 0078, Refs 0074
 - [0092 — Group planning assets by phase without changing harness routing](./0092-group-planning-assets-by-phase-without-changing-harness-routing.md) — Refs 0082, Refs 0088, Refs 0090
 - [0099 — Terminal routing failure and explicit fresh dispatch](./0099-terminal-routing-failure-and-explicit-fresh-dispatch.md) — Refs 0075, Refs 0076, Refs 0086
-- [0105 — Two-stage verification for the audit-derived-step append](./0105-two-stage-audit-append-verification.md) — Refs 0021, Refs 0087
+- [0105 — Two-stage verification for the audit-derived-step append](./0105-two-stage-audit-append-verification.md) — Refs ddr:0021, Refs 0087
 - [0106 — Run-path baseline predicate for the audit-append check](./0106-run-path-baseline-predicate.md) — Pair with 0105
 - [0107 — ADR creation decision gets its own capability](./0107-adr-creation-decision-capability.md)
 - [0108 — Tasks files-affected entries carry a closed four-letter change-type vocabulary](./0108-tasks-files-affected-change-type-vocabulary.md)
@@ -89,23 +89,23 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0012 — Mutation Analysis (pass 11) as a dedicated protocol section in review.md](./0012-mutation-analysis-as-dedicated-protocol-section.md)
 - [0096 — Fail closed when dispatching owned worker sidecars](./0096-fail-closed-owned-worker-owner-dispatch.md) — Refs 0084, Refs 0085
 - [0106 — Keep both report template families with pinned skeleton parity](./0106-keep-both-report-template-families-pinned-parity.md)
-- [0107 — Unified audit severity vocabulary across the four report surfaces](./0107-unified-audit-severity-vocabulary.md) — Supersedes 0013
+- [0107 — Unified audit severity vocabulary across the four report surfaces](./0107-unified-audit-severity-vocabulary.md) — Supersedes ddr:0013
 
 ### `/sai-6-security`
 
 - [0106 — Keep both report template families with pinned skeleton parity](./0106-keep-both-report-template-families-pinned-parity.md)
-- [0107 — Unified audit severity vocabulary across the four report surfaces](./0107-unified-audit-severity-vocabulary.md) — Supersedes 0013
+- [0107 — Unified audit severity vocabulary across the four report surfaces](./0107-unified-audit-severity-vocabulary.md) — Supersedes ddr:0013
 
 ### `/sai-7-performance`
 
 - [0097 — Route performance by continuation capability](./0097-route-performance-by-continuation-capability.md) — Refs 0082, Refs 0083, Refs 0093
 - [0106 — Keep both report template families with pinned skeleton parity](./0106-keep-both-report-template-families-pinned-parity.md)
-- [0107 — Unified audit severity vocabulary across the four report surfaces](./0107-unified-audit-severity-vocabulary.md) — Supersedes 0013
+- [0107 — Unified audit severity vocabulary across the four report surfaces](./0107-unified-audit-severity-vocabulary.md) — Supersedes ddr:0013
 
 ### `/sai-8-accessibility`
 
 - [0106 — Keep both report template families with pinned skeleton parity](./0106-keep-both-report-template-families-pinned-parity.md)
-- [0107 — Unified audit severity vocabulary across the four report surfaces](./0107-unified-audit-severity-vocabulary.md) — Supersedes 0013
+- [0107 — Unified audit severity vocabulary across the four report surfaces](./0107-unified-audit-severity-vocabulary.md) — Supersedes ddr:0013
 
 ### `/sai-explore`
 
@@ -113,9 +113,9 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0039 — Align baseline `explore-*` spec emission-timing language via MODIFIED deltas](./0039-align-explore-spec-emission-timing-language.md) — Pair with 0038
 - [0043 — Append crystallization language gate as item 8; do not renumber items 1–7 in `explore.md`](./0043-append-crystallization-gate-as-item-8.md) — Refs 0038
 - [0054 — Reuse item 3's path-keyed Persistence rule for post-crystallization review-loop re-asks](./0054-reuse-item-3-persistence-rule-for-review-loop.md)
-- [0058 — The explore/feedback gate UX tweaks are expressed as deltas against the existing capabilities, not a new combined capability](./0058-gate-ux-tweaks-as-deltas-against-existing-capabilities.md) — **Reframes** 0053
-- [0060 — The post-crystallization review loop's explicit trigger is the hyphenated literal token `review-loop`](./0060-review-loop-is-a-hyphenated-literal-token.md) — Pair with 0061, Refs 0053, Refs 0058
-- [0061 — An artifact-review turn naming a tracked crystallized change is served first and then offered the loop, never rerouted into it](./0061-item-3-precedence-is-additive-not-a-reroute.md) — Pair with 0060, Refs 0053, Refs 0054
+- [0058 — The explore/feedback gate UX tweaks are expressed as deltas against the existing capabilities, not a new combined capability](./0058-gate-ux-tweaks-as-deltas-against-existing-capabilities.md) — **Reframes** ddr:0053
+- [0060 — The post-crystallization review loop's explicit trigger is the hyphenated literal token `review-loop`](./0060-review-loop-is-a-hyphenated-literal-token.md) — Pair with 0061, Refs ddr:0053, Refs 0058
+- [0061 — An artifact-review turn naming a tracked crystallized change is served first and then offered the loop, never rerouted into it](./0061-item-3-precedence-is-additive-not-a-reroute.md) — Pair with 0060, Refs ddr:0053, Refs 0054
 - [0066 — Provenance as inline citations on existing Why / Decisions & Rationale fields — no new field](./0066-inline-provenance-no-new-field.md)
 
 ### `/sai-backfill`
@@ -188,7 +188,8 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 
 ## Cross-cutting categories
 
-- [0107 — Unified audit severity vocabulary across the four report surfaces](./0107-unified-audit-severity-vocabulary.md) — Supersedes 0013
+- [0107 — Unified audit severity vocabulary across the four report surfaces](./0107-unified-audit-severity-vocabulary.md) — Supersedes ddr:0013
+
 
 ### Fetch resolution & path conventions
 
@@ -266,7 +267,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0087 — Implementation phase adapter and durable verification](./0087-implementation-phase-adapter-and-durable-verification.md) — Refs 0083, Refs 0086
 - [0089 — Share one routed SAI coordinator profile across planning phases](./0089-shared-sai-coordinator-profile.md) — Refs 0083, Refs 0074, Refs 0078
 - [0099 — Terminal routing failure and explicit fresh dispatch](./0099-terminal-routing-failure-and-explicit-fresh-dispatch.md) — Refs 0075, Refs 0076, Refs 0086
-- [0105 — Two-stage verification for the audit-derived-step append](./0105-two-stage-audit-append-verification.md) — Refs 0021, Refs 0087
+- [0105 — Two-stage verification for the audit-derived-step append](./0105-two-stage-audit-append-verification.md) — Refs ddr:0021, Refs 0087
 
 ### Testability routing & RED → GREEN
 
@@ -283,11 +284,11 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 
 ### Gates, decision summaries & feedback loops
 
-- [0015 — Decision summary precedes the completion sentinel](./0015-decision-summary-precedes-completion-sentinel.md) — **Amends** 0014
+- [0015 — Decision summary precedes the completion sentinel](./0015-decision-summary-precedes-completion-sentinel.md) — **Amends** ddr:0014
 - [0028 — The feedback gate takes three named parameters supplied inline at the fetch site](./0028-gate-parameters-inline-at-fetch-site.md)
 - [0046 — Single-object amendment audit with overwrite-latest semantics](./0046-single-object-amendment-audit.md)
 - [0047 — Keep the amendment path distinct from the artifact-feedback-gate](./0047-amendment-path-distinct-from-feedback-gate.md) — Refs 0028
-- [0058 — The explore/feedback gate UX tweaks are expressed as deltas against the existing capabilities, not a new combined capability](./0058-gate-ux-tweaks-as-deltas-against-existing-capabilities.md) — **Reframes** 0053
+- [0058 — The explore/feedback gate UX tweaks are expressed as deltas against the existing capabilities, not a new combined capability](./0058-gate-ux-tweaks-as-deltas-against-existing-capabilities.md) — **Reframes** ddr:0053
 - [0090 — Centralize Copilot inline planning lifecycle in one adapter](./0090-centralize-copilot-inline-planning-lifecycle.md) — Refs 0089, Refs 0083, Refs 0078, Refs 0074
 
 ### Explore crystallization & the review loop
@@ -296,8 +297,8 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0039 — Align baseline `explore-*` spec emission-timing language via MODIFIED deltas](./0039-align-explore-spec-emission-timing-language.md) — Pair with 0038
 - [0043 — Append crystallization language gate as item 8; do not renumber items 1–7 in `explore.md`](./0043-append-crystallization-gate-as-item-8.md) — Refs 0038
 - [0054 — Reuse item 3's path-keyed Persistence rule for post-crystallization review-loop re-asks](./0054-reuse-item-3-persistence-rule-for-review-loop.md)
-- [0060 — The post-crystallization review loop's explicit trigger is the hyphenated literal token `review-loop`](./0060-review-loop-is-a-hyphenated-literal-token.md) — Pair with 0061, Refs 0053, Refs 0058
-- [0061 — An artifact-review turn naming a tracked crystallized change is served first and then offered the loop, never rerouted into it](./0061-item-3-precedence-is-additive-not-a-reroute.md) — Pair with 0060, Refs 0053, Refs 0054
+- [0060 — The post-crystallization review loop's explicit trigger is the hyphenated literal token `review-loop`](./0060-review-loop-is-a-hyphenated-literal-token.md) — Pair with 0061, Refs ddr:0053, Refs 0058
+- [0061 — An artifact-review turn naming a tracked crystallized change is served first and then offered the loop, never rerouted into it](./0061-item-3-precedence-is-additive-not-a-reroute.md) — Pair with 0060, Refs ddr:0053, Refs 0054
 - [0066 — Provenance as inline citations on existing Why / Decisions & Rationale fields — no new field](./0066-inline-provenance-no-new-field.md)
 
 ### Artifact metadata & routing tokens
@@ -334,13 +335,13 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 |---|---|---|
 | [0004](./0004-source-layout-and-install-path-restructure.md) | supersedes | [0002](./0002-sai-harness-files-under-claude-instructions.md) |
 | [0004](./0004-source-layout-and-install-path-restructure.md) | supersedes | [0003](./0003-fetch-path-convention-commands-sai.md) |
-| [0015](./0015-decision-summary-precedes-completion-sentinel.md) | amends | [0014](../drr/0014-decision-summary-derived-from-artifacts-only.md) |
+| [0015](./0015-decision-summary-precedes-completion-sentinel.md) | amends | [0014](../ddr/0014-decision-summary-derived-from-artifacts-only.md) |
 | [0031](./0031-permit-declared-npm-dependencies-in-installer.md) | amends | [0010](./0010-readline-over-npm-for-interactive-checklist.md) |
 | [0031](./0031-permit-declared-npm-dependencies-in-installer.md) | amends | [0011](./0011-regex-line-patch-over-yaml-library-for-config.md) |
-| [0058](./0058-gate-ux-tweaks-as-deltas-against-existing-capabilities.md) | reframes | [0053](../drr/0053-post-crystallization-review-once-per-turn.md) |
+| [0058](./0058-gate-ux-tweaks-as-deltas-against-existing-capabilities.md) | reframes | [0053](../ddr/0053-post-crystallization-review-once-per-turn.md) |
 | [0071](./0071-two-part-dispatch-routing-condition.md) | supersedes | [0024](./0024-split-only-testable-steps.md) |
 | [0073](./0073-durable-channel-is-the-deviations-appendix.md) | reframes | [0020](./0020-ephemeral-in-context-technical-learnings-memory.md) |
-| [0107](./0107-unified-audit-severity-vocabulary.md) | supersedes | [0013](./0013-mmut-n-finding-namespace-for-mutation-analysis.md) |
+| [0107](./0107-unified-audit-severity-vocabulary.md) | supersedes | [0013](../ddr/0013-mmut-n-finding-namespace-for-mutation-analysis.md) |
 
 ## Superseded ADRs (historical)
 

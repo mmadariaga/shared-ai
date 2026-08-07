@@ -1,10 +1,12 @@
 # DDR 0013: Dedicated mMUT-N finding namespace and Mutation Analysis output section
 
+<!-- adr-index: amends adr:0012 -->
+
 ## Status
 
 Accepted
 
-> **Note (ADR 0107):** the severity-mapping portion of this ADR (`survived`/`pre-check-failed` → Major, `revert-failed` → Blocker) is superseded by [ADR 0107](./0107-unified-audit-severity-vocabulary.md); the `mMUT-N` namespace and seven-field surviving-mutant row remain in force.
+> **Note (ADR 0107):** the severity-mapping portion of this DDR (`survived`/`pre-check-failed` → Major, `revert-failed` → Blocker) is superseded by [ADR 0107](../adr/0107-unified-audit-severity-vocabulary.md); the `mMUT-N` namespace and seven-field surviving-mutant row remain in force.
 
 ## Context
 

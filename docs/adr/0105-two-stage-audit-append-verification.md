@@ -1,6 +1,6 @@
 # ADR 0105: Two-stage verification for the audit-derived-step append
 
-<!-- adr-index: refs 0021; refs 0087 -->
+<!-- adr-index: refs ddr:0021; refs 0087 -->
 
 ## Status
 
