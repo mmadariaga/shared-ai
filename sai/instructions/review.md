@@ -72,7 +72,7 @@ Review categories (apply each pass to the full diff):
      - HTTP boundaries (new endpoints, headers, CORS, redirects)
      - New or upgraded dependencies
      - Logging that may capture sensitive data
-     Your job here is **not** to perform SAST/SCA. Only flag *surface touched: yes/no* and list the specific files. If yes, recommend `/sai-6-security` in the report. Do not raise individual security findings unless they are blatant (e.g. literal hardcoded password, SQL string concatenation in plain sight) — those go as Blockers with a note that `/sai-6-security` will cover the rest.
+     Your job here is **not** to perform SAST/SCA. Only flag *surface touched: yes/no* and list the specific files. If yes, recommend `/sai-6-security` in the report. Do not raise individual security findings unless they are blatant (e.g. literal hardcoded password, SQL string concatenation in plain sight) — those go as Critical with a note that `/sai-6-security` will cover the rest.
 4. **Performance (triage only — DO NOT deep audit)** — Detect whether the diff touches **performance surface**:
      - New or modified DB queries / ORM access (N+1 risk, missing indexes)
      - New HTTP endpoints, controllers, or hot-path handlers
@@ -81,16 +81,16 @@ Review categories (apply each pass to the full diff):
      - New dependencies (bundle size, transitive cost)
      - Loops or data transformations over user-controlled or unbounded inputs
      - Caching layers added, removed, or invalidated
-     Your job here is **not** to run EXPLAIN, profile, or measure CWV. Only flag *surface touched: yes/no* and list the specific files. If yes, recommend `/sai-7-performance` in the report. Do not raise individual performance findings unless they are blatant (e.g. nested loop on a known-large collection, `SELECT *` inside a per-row loop, render-blocking `<script>` without `defer`) — those go as Major/Blocker with a note that `/sai-7-performance` will cover the rest.
+     Your job here is **not** to run EXPLAIN, profile, or measure CWV. Only flag *surface touched: yes/no* and list the specific files. If yes, recommend `/sai-7-performance` in the report. Do not raise individual performance findings unless they are blatant (e.g. nested loop on a known-large collection, `SELECT *` inside a per-row loop, render-blocking `<script>` without `defer`) — those go as High or Critical with a note that `/sai-7-performance` will cover the rest.
 5. **Accessibility (triage only — DO NOT deep audit)** — Detect whether the diff touches **UI surface**:
      - Files with extensions `.tsx`/`.jsx`/`.astro`/`.html`/`.vue`/`.svelte`/`.css`
      - Component-bearing markdown
      - Interactive widgets, forms, navigation, media, dynamic-SPA, visual-design tokens, route announcements
-     Your job here is **not** to run axe, lighthouse, or manual SR testing. Only flag *surface touched: yes/no* and list the specific files. If yes, recommend `/sai-8-accessibility` in the report. Do not raise individual a11y findings unless blatant (e.g. `<img>` without alt, click handler on `<div>` with no role/keyboard) — those go as Major/Blocker with a note that `/sai-8-accessibility` will cover the rest.
+     Your job here is **not** to run axe, lighthouse, or manual SR testing. Only flag *surface touched: yes/no* and list the specific files. If yes, recommend `/sai-8-accessibility` in the report. Do not raise individual a11y findings unless blatant (e.g. `<img>` without alt, click handler on `<div>` with no role/keyboard) — those go as High or Critical with a note that `/sai-8-accessibility` will cover the rest.
 6. **Maintainability** — SOLID violations, unjustified coupling, duplication, unclear naming, dead code, leaked abstractions, missing or misleading comments where the WHY is non-obvious. When two code-quality practices conflict, cite the **Code Quality Priority Stack** in `sai/instructions/implement.md` as the resolution order rather than re-deriving a tie-breaker.
 7. **Testing** — Are new code paths covered? Do tests assert real behavior or just call the code? Are integration boundaries (DB, HTTP, queues) exercised where the project's convention requires it?
 8. **Consistency with Codebase** — Does the change follow existing architectural patterns, naming, error handling, and logging conventions discoverable in the repo? Does it respect the Expertise Profile from the change artifacts?
-9. **Domain Language Consistency** — Only if `GLOSSARY.md` exists at repo root: delegate to a **`budget-explorer`** subagent — include the `<glossary_format>` block from context in the subagent prompt — and return ≤30 canonical terms (Language, Relationships, Example dialogue, Flagged ambiguities sections). Then check new identifiers (classes, functions, files, variables) against those terms. Flag deviations as Minor. If no `GLOSSARY.md`, skip this category entirely.
+9. **Domain Language Consistency** — Only if `GLOSSARY.md` exists at repo root: delegate to a **`budget-explorer`** subagent — include the `<glossary_format>` block from context in the subagent prompt — and return ≤30 canonical terms (Language, Relationships, Example dialogue, Flagged ambiguities sections). Then check new identifiers (classes, functions, files, variables) against those terms. Flag deviations as Low. If no `GLOSSARY.md`, skip this category entirely.
 10. **Documentation & Migrations** — Are ADRs/DDRs, READMEs, OpenAPI/typedefs, or DB migrations updated when the change requires it?
 11. **Mutation Analysis** — Verify test *sensitivity* (not just coverage) by mutating diff-scoped production code and checking whether the test suite catches each mutation. This pass **writes to the working tree and runs tests**, so it is NOT executed inside this read-only Step 2: run it per the dedicated **`### Mutation Analysis (Pass 11)`** protocol section below (activation gate, two-tier detection, safety protocol, dispatch contract). Step 4 renders its outcomes.
 
@@ -152,7 +152,7 @@ The main agent (frontier tier) decides **which** mutations to apply and **what**
 4. **Revert** — restore the file with the **file-scoped** command `git checkout -- {file}`. Never use a project-wide revert (`git reset`, bare `git checkout`).
 5. **Verify revert** — confirm `git diff {file}` is empty. If it is non-empty, record the mutation as **revert-failed**.
 
-Each mutation ends in exactly one outcome: **killed** (a test failed → no finding, internal only), **survived** (all tests passed → Major), **pre-check-failed** (Major), or **revert-failed** (Blocker, plus a working-tree-pollution warning printed to the user).
+Each mutation ends in exactly one outcome: **killed** (a test failed → no finding, internal only), **survived** (all tests passed → High), **pre-check-failed** (High), or **revert-failed** (Critical, plus a working-tree-pollution warning printed to the user).
 
 #### Revert-Failure Cascade
 
@@ -173,9 +173,10 @@ The aggregate over all batches MUST satisfy `survived + killed + preCheckFailed 
 
 Assign each finding one of:
 
-- **Blocker** — Must be fixed before merge. Bugs, security holes, broken builds, contract violations, contradictions of the change artifacts.
-- **Major** — Should be fixed before merge. Significant maintainability, performance, or test-coverage issues that will hurt soon.
-- **Minor** — Nice to fix. Naming, small refactors, low-impact polish.
+- **Critical** — Must be fixed before merge. Bugs, security holes, broken builds, contract violations, contradictions of the change artifacts.
+- **High** — Should be fixed before merge. Significant maintainability, performance, or test-coverage issues that will hurt soon.
+- **Medium** — Moderate maintainability, performance, or test-coverage concern that does not threaten merge-readiness but should be addressed soon.
+- **Low** — Nice to fix. Naming, small refactors, low-impact polish.
 - **Question** — Genuine uncertainty needing user input. Use sparingly.
 
 Drop findings that are purely stylistic if the codebase has no enforced convention for them.
@@ -185,7 +186,7 @@ Drop findings that are purely stylistic if the codebase has no enforced conventi
 1. Draft the report using the output template loaded below.
 2. Save it to: `openspec/changes/{change-name}/review.md`
      - Derive `{feature-name}` from the change name: convert kebab-case to title case (e.g. `oauth2-auth` → `OAuth2 Auth`).
-3. Present a concise summary in chat: counts per severity, the top 3 Blockers (if any), and the path to the saved file.
+3. Present a concise summary in chat: counts per severity, the top three Critical findings (when present), and the path to the saved file.
 4. **Print an audit recommendations block** in chat immediately after the summary. Always show all three triage lines, using `✅ Not required` or `⚠️ Recommended` accordingly:
 
      ```

@@ -13,10 +13,10 @@
 
 {2–4 sentence assessment: does the change meet the spec goal, overall code health, and merge-readiness verdict.}
 
-**Verdict:** {Ready to merge | Ready after Blockers fixed | Needs rework}
+**Verdict:** {Ready to merge | Ready after Critical findings fixed | Needs rework}
 
-**Findings count:** {X Blockers · Y Major · Z Minor · W Questions}
-*(Mutation Analysis severities are folded into these counts: each surviving / pre-check-failed mutation is a Major, each revert-failed mutation is a Blocker.)*
+**Findings count:** {X Critical · Y High · Z Medium · W Low · V Questions}
+*(Mutation Analysis severities are folded into these counts: each surviving / pre-check-failed mutation is High, each revert-failed mutation is Critical.)*
 
 ---
 
@@ -55,9 +55,9 @@
 
 ## Findings
 
-### Blockers
+### Critical
 
-#### B1 — {Short title}
+#### C1 — {Short title}
 - **Location:** `path/to/file.ext:LINE` (or range `LINE-LINE`)
 - **Category:** {Correctness | Security | Domain Alignment | ...}
 - **Problem:** {Concrete description of what is wrong and the concrete impact.}
@@ -65,7 +65,15 @@
 - **Suggested fix:** {Specific change. If multiple valid options, list up to 3 with trade-offs.}
 - **Spec reference:** {`proposal.md` section | `specs/{capability}/spec.md` section | "—"}
 
-### Major
+### High
+
+#### H1 — {Short title}
+- **Location:** `path/to/file.ext:LINE`
+- **Category:** {…}
+- **Problem:** {…}
+- **Suggested fix:** {…}
+
+### Medium
 
 #### M1 — {Short title}
 - **Location:** `path/to/file.ext:LINE`
@@ -73,9 +81,9 @@
 - **Problem:** {…}
 - **Suggested fix:** {…}
 
-### Minor
+### Low
 
-#### m1 — {Short title}
+#### L1 — {Short title}
 - **Location:** `path/to/file.ext:LINE`
 - **Suggestion:** {one-line fix or rationale}
 
@@ -117,11 +125,11 @@ Killed mutations produce no finding (internal only). Surviving mutants and imped
 
 > Mutations that could not be tested. Each still appears here to preserve the full-visibility invariant.
 
-#### mMUT-N — pre-check-failed (Major)
+#### mMUT-N — pre-check-failed (High)
 - **Location:** `path/to/file.ext:LINE`
 - **Result:** Could not test {file}: uncommitted changes. Commit or undo and re-run review.
 
-#### mMUT-N — revert-failed (Blocker)
+#### mMUT-N — revert-failed (Critical)
 - **Location:** `path/to/file.ext:LINE`
 - **Result:** Revert verification failed — `git diff {file}` was non-empty after `git checkout -- {file}`. Working tree left polluted.
 
@@ -129,7 +137,7 @@ Killed mutations produce no finding (internal only). Surviving mutants and imped
 >
 > **⚠️ CRITICAL — working tree polluted:** the file `{file}` could not be reverted after mutation `mMUT-N`. Inspect and restore it manually (`git diff {file}`, then `git checkout -- {file}`) before relying on the working tree.
 
-**Severity roll-up:** each surviving and pre-check-failed mutation counts as a **Major**, and each revert-failed mutation counts as a **Blocker**, in the Findings count and Verdict above — exactly like any other finding of that severity.
+**Severity roll-up:** each surviving and pre-check-failed mutation counts as **High**, and each revert-failed mutation counts as **Critical**, in the Findings count and Verdict above — exactly like any other finding of that severity.
 
 ---
 
@@ -143,6 +151,7 @@ Killed mutations produce no finding (internal only). Surviving mutants and imped
 
 ## Next Steps
 
-- {Ordered list of recommended actions for the user, e.g. "Fix B1, B2 → re-run review" / "Open question Q1 with team before merge"}
+- {Ordered list of recommended actions for the user, e.g. "Fix C1, C2 → re-run review" / "Open question Q1 with team before merge"}
+Summary: Critical={n} High={n} Medium={n} Low={n} Questions={n}
 ```
 

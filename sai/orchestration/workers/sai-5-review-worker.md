@@ -29,7 +29,7 @@ Execute review passes 1-10 from the shared review instruction. Keep all research
 
 Write and verify only `openspec/changes/{change-name}/review.md` outside temporary bounded Pass 11 mutations. `changed_files` contains `review.md` plus only production files whose revert failed or whose outcome was unaccounted; exclude cleanly reverted targets.
 
-Before returning `completed`, verify `review.md` exists, is non-empty, and contains findings, severity roll-up, coverage, Pass 11 outcomes, and all three audit recommendations. The worker-authored summary contains severity counts, up to three Blockers when present, report path, parent-branch statement, and the complete verbatim `## Recommended Audits` block. Return no report contents.
+Before returning `completed`, verify `review.md` exists, is non-empty, and contains findings with severity-prefixed identifiers (`C1`/`H1`/`M1`/`L1`/`Q1`), severity roll-up, coverage, Pass 11 outcomes, all three audit recommendations, and a closing `Summary:` tally line whose counts match the report's findings (mutation findings folded at their remapped severities). The worker-authored summary contains severity counts, top three Critical findings when present, report path, parent-branch statement, and the complete verbatim `## Recommended Audits` block. Return no report contents.
 
 ## Continuation and Reconstruction
 

@@ -11,9 +11,9 @@
 
 <!-- 2-4 sentence assessment: does the change meet the spec goal, overall code health, merge-readiness verdict. -->
 
-**Verdict:** <!-- Ready to merge | Ready after Blockers fixed | Needs rework -->
+**Verdict:** <!-- Ready to merge | Ready after Critical findings fixed | Needs rework -->
 
-**Findings count:** <!-- X Blockers · Y Major · Z Minor · W Questions -->
+**Findings count:** <!-- X Critical · Y High · Z Medium · W Low · V Questions -->
 
 ---
 
@@ -52,9 +52,9 @@
 
 ## Findings
 
-### Blockers
+### Critical
 
-#### B1 — <!-- Short title -->
+#### C1 — <!-- Short title -->
 - **Location:** `path/to/file.ext:LINE`
 - **Category:** <!-- Correctness | Security | Domain Alignment | ... -->
 - **Problem:** <!-- Concrete description and impact -->
@@ -62,9 +62,9 @@
 - **Suggested fix:** <!-- Specific change with trade-offs if multiple options -->
 - **Spec reference:** <!-- spec section if relevant, otherwise — -->
 
-### Major
+### High
 
-#### M1 — <!-- Short title -->
+#### H1 — <!-- Short title -->
 - **Location:** `path/to/file.ext:LINE`
 - **Category:** <!-- ... -->
 - **Problem:** <!-- ... -->
@@ -80,9 +80,17 @@
 - **Why it survives:** <!-- the missing test or untested branch -->
 - **Suggested fix:** <!-- concrete test to add that catches this mutation --> -->
 
-### Minor
+### Medium
 
-#### m1 — <!-- Short title -->
+#### M1 — <!-- Short title -->
+- **Location:** `path/to/file.ext:LINE`
+- **Category:** <!-- ... -->
+- **Problem:** <!-- ... -->
+- **Suggested fix:** <!-- ... -->
+
+### Low
+
+#### L1 — <!-- Short title -->
 - **Location:** `path/to/file.ext:LINE`
 - **Suggestion:** <!-- one-line fix or rationale -->
 
@@ -101,8 +109,8 @@
 - **Mutations decided:** <!-- total decided -->
 - **Aggregate:** <!-- survived + killed + pre-check-failed + revert-failed = total decided -->
 
-<!-- Surviving mutants are emitted as Major findings identified mMUT-N below.
-     Revert-failed mutants are Blockers. If pass 11 is skipped, state why and emit no mutation findings. -->
+<!-- Surviving mutants are emitted as High findings identified mMUT-N below.
+     Revert-failed mutants are Critical. If pass 11 is skipped, state why and emit no mutation findings. -->
 
 ---
 
@@ -117,3 +125,4 @@
 ## Next Steps
 
 - <!-- Ordered list of recommended actions -->
+Summary: Critical=<!-- n --> High=<!-- n --> Medium=<!-- n --> Low=<!-- n --> Questions=<!-- n -->
