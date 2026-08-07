@@ -106,19 +106,17 @@ test('Claude and opencode worker bindings own dispatch and continuation mechanic
   }
 });
 
-test('opencode config ships only worker shapes and no coordinator profile', () => {
+test('opencode config ships helper agents only and no worker or coordinator profile', () => {
   const config = jsonc.parse(artifact('configs/opencode.jsonc'));
-  const worker = config.agent['sai-3-implementation-worker'];
 
-  assert.ok(worker, 'namespaced worker should be present');
   assert.equal(config.subagent_depth, 2);
-
-  assert.equal(worker.mode, 'subagent');
-  assert.equal(worker.model, 'opencode-go/kimi-k2.6');
-  assert.equal(worker.variant, undefined);
-  assert.equal(worker.permission.task['*'], 'deny');
-  assert.equal(worker.permission.task.budget, 'allow');
-  assert.equal(worker.permission.task.explore, 'allow');
+  const workerKeys = Object.keys(config.agent)
+    .filter(key => key.startsWith('sai-') && key.endsWith('-worker'));
+  assert.deepEqual(workerKeys, [], 'sample config should carry no agent.sai-*-worker keys');
+  for (const helper of ['explore', 'executor', 'budget']) {
+    assert.equal(config.agent[helper].mode, 'subagent', `${helper} should be a subagent helper`);
+    assert.ok(config.agent[helper].model, `${helper} should declare a model`);
+  }
   assert.equal(config.agent['sai-coordinator'], undefined, 'no coordinator profile is shipped');
 });
 
@@ -133,9 +131,12 @@ const { loadInstallManifest, expandInstallManifest } = require('../bin/install-m
     assert.ok(fs.existsSync(path.join(claudeBase, 'agents', '.sai-3-implementation-worker.owner.json')));
 
     installOpencode(opencodeBase);
+    assert.ok(fs.existsSync(path.join(opencodeBase, 'agents', 'sai-3-implementation-worker.md')),
+      'the projected opencode worker agent file should exist under agents/');
     const config = fs.readFileSync(path.join(opencodeBase, 'opencode.jsonc'), 'utf8');
     assert.doesNotMatch(config, /sai-coordinator/);
-    assert.match(config, /sai-3-implementation-worker/);
+    assert.doesNotMatch(config, /sai-3-implementation-worker/,
+      'the installed opencode configuration should carry no namespaced worker keys');
   } finally {
     removeTempDir(claudeBase);
     removeTempDir(opencodeBase);
@@ -164,10 +165,13 @@ test('installer collisions preserve unfamiliar content and provide remediation g
     assert.deepEqual(opencodeConfig.agent['sai-3-implementation-worker'], {
       mode: 'subagent',
       model: 'user-model',
-      prompt: 'Fetch @sai/orchestration/workers/sai-3-implementation-worker.md and follow it exactly.',
-    });
-    assert.ok(opencodeConfig.agent['sai-2-design-worker'], 'missing numbered worker should receive its repository default');
-    assert.match(`${opencodeResult.output}\n${opencodeResult.error?.message || ''}`, /Added opencode agent keys/);
+    }, 'customized worker entry must be preserved without prompt injection');
+    assert.equal(opencodeConfig.agent['sai-2-design-worker'], undefined,
+      'no absent numbered worker key should be added');
+    const opencodeOutput = `${opencodeResult.output}\n${opencodeResult.error?.message || ''}`;
+    assert.match(opencodeOutput, /Added opencode agent keys/);
+    assert.doesNotMatch(opencodeOutput, /sai-\d+-.*-worker/,
+      'the add-notice should name only helper agents');
   } finally {
     removeTempDir(claudeBase);
     removeTempDir(opencodeBase);

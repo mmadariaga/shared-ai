@@ -6,11 +6,11 @@ const path = require('path');
 const os = require('os');
 const childProcess = require('child_process');
 const https = require('https');
-const jsoncParser = require('jsonc-parser');
 
 const flow = require('./install-flow');
 const uninstall = require('./uninstall-flow');
 const { inspectManagedWorkerMigration } = require('./managed-worker-migration');
+const { loadInstallManifest, expandInstallManifest } = require('./install-manifest');
 
 const REPO_ROOT_DEFAULT = path.join(__dirname, '..');
 
@@ -351,65 +351,56 @@ function managedClaudeWorkerRecords(harness, repoRoot) {
   return records;
 }
 
-function managedOpencodeAgentRecords(harness) {
+function managedOpencodeAgentRecords(harness, repoRoot) {
   const section = `[${harness.id}]`;
-  let managedNames;
+  const records = [];
+  let projections;
   try {
-    managedNames = Object.keys(flow.OPENCODE_MANAGED_AGENTS);
+    const manifest = loadInstallManifest(repoRoot);
+    const destinationRoot = {
+      commands: path.join(harness.base, 'commands'),
+      sai: path.join(harness.base, 'sai'),
+      skills: path.join(harness.base, 'skills'),
+      agents: path.join(harness.base, 'agents'),
+      config: harness.base,
+    };
+    projections = expandInstallManifest(manifest, { harness: 'opencode', repoRoot, destinationRoot })
+      .filter(projection => projection.strategy === 'owned-copy');
   } catch (err) {
     return [{
       section,
-      name: 'opencode-census',
+      name: 'opencode-projections',
       severity: 'error',
-      message: `opencode managed-agent census derivation failed: ${err.message}`,
-      recommendation: 'Fix the opencode worker bindings or registration defaults, then re-run',
+      message: `opencode owned-copy projection expansion failed: ${err.message}`,
+      recommendation: 'Fix the install manifest, then re-run',
     }];
   }
-  const configPath = fs.existsSync(path.join(harness.base, 'opencode.json'))
-    ? path.join(harness.base, 'opencode.json')
-    : path.join(harness.base, 'opencode.jsonc');
-  let root = null;
-  let parseFailed = false;
-  if (fs.existsSync(configPath)) {
-    const errors = [];
-    root = jsoncParser.parse(fs.readFileSync(configPath, 'utf8'), errors, { allowTrailingComma: true });
-    parseFailed = errors.length > 0 || root === null || typeof root !== 'object' || Array.isArray(root);
-  } else {
-    parseFailed = true;
-  }
-
-  const hasAgentMap = !parseFailed
-    && root.agent !== null
-    && typeof root.agent === 'object'
-    && !Array.isArray(root.agent);
-
-  return managedNames.map((key) => {
-    const prompt = flow.OPENCODE_MANAGED_AGENTS[key].prompt;
-    if (hasAgentMap && Object.prototype.hasOwnProperty.call(root.agent, key)) {
-      return {
+  for (const projection of projections) {
+    const agentName = path.basename(projection.destinationPath);
+    const label = agentName.replace(/\.md$/, '');
+    const source = projection.sourcePath;
+    const destination = projection.destinationPath;
+    if (!fs.existsSync(destination)) {
+      records.push({
         section,
-        name: key,
-        prompt,
-        severity: 'ok',
-        message: `managed opencode agent "${key}" is present`,
-      };
+        name: label,
+        severity: 'error',
+        message: `managed opencode worker ${agentName} is missing; re-install to restore the worker`,
+        recommendation: 'Re-run the installer to restore the worker',
+      });
+      continue;
     }
-    return {
-      section,
-      name: key,
-      prompt,
-      severity: 'error',
-      message: !hasAgentMap
-        ? `missing or malformed opencode agent "${key}"`
-        : `missing opencode agent "${key}"`,
-      recommendation: 'Re-run the installer to restore the worker',
-    };
-  });
+    const compatible = uninstall.sha256File(source) === uninstall.sha256File(destination);
+    records.push(compatible
+      ? { section, name: label, severity: 'ok', message: `managed opencode worker ${agentName} is compatible` }
+      : { section, name: label, severity: 'error', message: `incompatible opencode worker definition ${agentName}; rename or remove the conflicting definition, then retry`, recommendation: COLLISION_REMEDIATION });
+  }
+  return records;
 }
 
 function managedAssetRecords(harness, repoRoot) {
   if (harness.kind === 'claude') return managedClaudeWorkerRecords(harness, repoRoot);
-  if (harness.kind === 'opencode') return managedOpencodeAgentRecords(harness);
+  if (harness.kind === 'opencode') return managedOpencodeAgentRecords(harness, repoRoot);
   return [];
 }
 

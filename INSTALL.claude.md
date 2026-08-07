@@ -34,7 +34,7 @@ Step 1 expands `sai/install-manifest.json` and copies the Claude Code projection
 
 ### Linux / macOS
 ```bash
-# Claude Code uses managed worker agents; opencode uses namespaced config entries.
+# Claude Code uses managed worker agents; opencode installs projected managed worker agent files.
 mkdir -p ~/.claude/commands
 cp commands/claude/*.md ~/.claude/commands/
 mkdir -p ~/.claude/sai/commands
@@ -81,7 +81,7 @@ cp agents/claude/sai-2-design-worker.md ~/.claude/agents/sai-2-design-worker.md
 
 ### Windows (PowerShell)
 ```powershell
-# Claude Code uses managed worker agents; opencode uses namespaced config entries.
+# Claude Code uses managed worker agents; opencode installs projected managed worker agent files.
 New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\.claude\commands"
 Copy-Item commands\claude\*.md "$env:USERPROFILE\.claude\commands\"
 New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\.claude\sai\commands"
@@ -133,7 +133,7 @@ Copy-Item agents\claude\sai-2-design-worker.md "$env:USERPROFILE\.claude\agents\
 
 Claude Code's managed worker is installed as `agents/claude/sai-3-implementation-worker.md` alongside the shared command files. The installer records its content hash in `.sai-3-implementation-worker.owner.json`. An exact-compatible existing definition is reused without adoption; installation does not adopt or silently claim an existing user-owned definition. An incompatible collision blocks activation without overwrite and reports the remediation: manually rename or remove the conflicting agent, then retry.
 
-During legacy migration, a missing or invalid legacy sidecar preserves the legacy file and any existing sidecar, creates no numbered replacement, and reports a protected collision. The Claude Code uninstall path uses the ownership sidecar-plus-hash guard: it removes a legacy or numbered worker only when the recorded managed hash still matches, and preserves a modified worker. Opencode instead manages its routed coordinator and worker entries in `opencode.json` or `opencode.jsonc`.
+During legacy migration, a missing or invalid legacy sidecar preserves the legacy file and any existing sidecar, creates no numbered replacement, and reports a protected collision. The Claude Code uninstall path uses the ownership sidecar-plus-hash guard: it removes a legacy or numbered worker only when the recorded managed hash still matches, and preserves a modified worker. Opencode instead projects its routed coordinator and worker definitions as managed worker agent files under `~/.config/opencode/agents/`, governed by the same owned-copy lifecycle.
 
 ### Managed design-planning worker
 

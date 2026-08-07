@@ -14,10 +14,7 @@ const {
   installProjection,
   copyOpencodeConfig,
   OPENCODE_INSTALL_CMD,
-  OPENCODE_MANAGED_AGENTS,
-  OPENCODE_REGISTRATION_DEFAULTS,
-  getOpencodeManagedAgents,
-  __test: { deriveOpencodeAgentCensus },
+  __test: { validateOpencodeWorkerBindings },
   probeOpencode,
   runOpencodeInstall,
   promptYesNoReadline,
@@ -70,10 +67,6 @@ function expectedWorkerPrompt(workerName) {
   return `Worker contract: Fetch @sai/orchestration/workers/${workerName}.md and follow it exactly.\n\nInvocationEnvelope:\n<original InvocationEnvelope>`;
 }
 
-function expectedRegistrationPrompt(workerName) {
-  return `Fetch @sai/orchestration/workers/${workerName}.md and follow it exactly.`;
-}
-
 function extractDispatchCalls(source, keyword) {
   return [...source.matchAll(new RegExp(`\\b${keyword}\\s*\\(([\\s\\S]*?)\\)`, 'g'))]
     .map(match => match[1]);
@@ -85,181 +78,7 @@ function decodePrompt(call) {
   return JSON.parse(`"${match[1]}"`);
 }
 
-function writeCensusFixtures(entries) {
-  fs.mkdirSync(CENSUS_SCRATCH_DIR, { recursive: true });
-  const bindingsDir = fs.mkdtempSync(path.join(CENSUS_SCRATCH_DIR, 'bindings-'));
-  for (const [fileName, workerName] of entries) {
-    fs.writeFileSync(
-      path.join(bindingsDir, fileName),
-      `# Direct binding\ntask(subagent_type: "${workerName}", prompt: "${expectedWorkerPrompt(workerName).replaceAll('\n', '\\n')}")\n`,
-    );
-  }
-  return bindingsDir;
-}
-
-function censusDefaults(entries) {
-  return Object.fromEntries(entries.map(([workerName, registration]) => [workerName, {
-    mode: 'subagent',
-    prompt: expectedRegistrationPrompt(workerName),
-    ...registration,
-  }]));
-}
-
-test('Step 1 census derives one record per lexically sorted direct binding', () => {
-  const bindingsDir = writeCensusFixtures([
-    ['02-design.md', 'sai-design-worker'],
-    ['01-spec.md', 'sai-spec-worker'],
-    ['03-review.md', 'sai-review-worker'],
-  ]);
-  const defaults = censusDefaults([
-    ['sai-spec-worker', { model: 'provider/spec', permission: { task: { '*': 'deny' } } }],
-    ['sai-design-worker', { model: 'provider/design', variant: 'high', permission: { task: { explore: 'allow' } } }],
-    ['sai-review-worker', { model: 'provider/review', permission: { task: { budget: 'allow' } } }],
-  ]);
-
-  assert.deepEqual(deriveOpencodeAgentCensus(bindingsDir, defaults), [
-     { name: 'sai-spec-worker', model: 'provider/spec', mode: 'subagent', prompt: expectedRegistrationPrompt('sai-spec-worker'), permission: { task: { '*': 'deny' } } },
-     { name: 'sai-design-worker', model: 'provider/design', mode: 'subagent', prompt: expectedRegistrationPrompt('sai-design-worker'), variant: 'high', permission: { task: { explore: 'allow' } } },
-     { name: 'sai-review-worker', model: 'provider/review', mode: 'subagent', prompt: expectedRegistrationPrompt('sai-review-worker'), permission: { task: { budget: 'allow' } } },
-  ], 'specs/opencode-agent-census/spec.md: direct bindings should produce deterministic records');
-});
-
-test('Step 1 census discovers a newly added direct binding with matching defaults', () => {
-  const bindingsDir = writeCensusFixtures([['01-existing.md', 'sai-existing-worker']]);
-  const defaults = censusDefaults([
-    ['sai-existing-worker', { model: 'provider/existing', permission: { task: { '*': 'deny' } } }],
-  ]);
-
-  fs.writeFileSync(
-    path.join(bindingsDir, '02-added.md'),
-    `# Direct binding\ntask(subagent_type: "sai-added-worker", prompt: "${expectedWorkerPrompt('sai-added-worker').replaceAll('\n', '\\n')}")\n`,
-  );
-  defaults['sai-added-worker'] = {
-    mode: 'subagent',
-    model: 'provider/added',
-    prompt: expectedRegistrationPrompt('sai-added-worker'),
-    permission: { task: { explore: 'allow' } },
-  };
-
-  assert.deepEqual(
-    deriveOpencodeAgentCensus(bindingsDir, defaults).map(record => record.name),
-    ['sai-existing-worker', 'sai-added-worker'],
-    'specs/opencode-agent-census/spec.md: binding discovery must not require a membership-list edit',
-  );
-});
-
-test('Step 1 census rejects a binding with zero or multiple declarations', () => {
-  const zeroDir = writeCensusFixtures([['zero.md', 'sai-zero-worker']]);
-  fs.writeFileSync(path.join(zeroDir, 'zero.md'), '# Direct binding\nno worker declaration\n');
-  assert.throws(
-    () => deriveOpencodeAgentCensus(zeroDir, {}),
-    error => /zero\.md/.test(error.message) && /declaration|dispatch|worker/i.test(error.message),
-    'specs/opencode-agent-census/spec.md: zero declarations must identify the binding and declaration problem',
-  );
-
-  const multipleDir = writeCensusFixtures([['multiple.md', 'sai-first-worker']]);
-  fs.appendFileSync(
-    path.join(multipleDir, 'multiple.md'),
-    `task(subagent_type: "sai-second-worker", prompt: "${expectedWorkerPrompt('sai-second-worker').replaceAll('\n', '\\n')}")\n`,
-  );
-  assert.throws(
-    () => deriveOpencodeAgentCensus(multipleDir, {}),
-    error => /multiple\.md/.test(error.message) && /declaration|multiple/i.test(error.message),
-    'specs/opencode-agent-census/spec.md: multiple declarations must identify the binding and declaration problem',
-  );
-});
-
-test('Step 1 census rejects duplicate worker declarations with both binding paths', () => {
-  const bindingsDir = writeCensusFixtures([
-    ['01-first.md', 'sai-duplicate-worker'],
-    ['02-second.md', 'sai-duplicate-worker'],
-  ]);
-  assert.throws(
-    () => deriveOpencodeAgentCensus(bindingsDir, censusDefaults([
-      ['sai-duplicate-worker', { model: 'provider/duplicate', permission: { task: { '*': 'deny' } } }],
-    ])),
-    error => /sai-duplicate-worker/.test(error.message) && /01-first\.md/.test(error.message) && /02-second\.md/.test(error.message),
-    'specs/opencode-agent-census/spec.md: duplicate workers must identify the worker and both binding paths',
-  );
-});
-
-test('Step 1 census rejects missing registration defaults and orphan defaults', () => {
-  const missingDefaultsDir = writeCensusFixtures([['01-derived.md', 'sai-missing-default-worker']]);
-  assert.throws(
-    () => deriveOpencodeAgentCensus(missingDefaultsDir, {}),
-    error => /sai-missing-default-worker/.test(error.message) && /01-derived\.md/.test(error.message),
-    'specs/opencode-agent-census/spec.md: a derived worker without defaults must identify the worker and source',
-  );
-
-  const orphanDefaultsDir = writeCensusFixtures([['01-bound.md', 'sai-bound-worker']]);
-  assert.throws(
-    () => deriveOpencodeAgentCensus(orphanDefaultsDir, censusDefaults([
-      ['sai-bound-worker', { model: 'provider/bound', permission: { task: { '*': 'deny' } } }],
-      ['sai-orphan-worker', { model: 'provider/orphan', permission: { task: { '*': 'deny' } } }],
-    ])),
-    error => /orphan/i.test(error.message) && /sai-orphan-worker/.test(error.message),
-    'specs/opencode-agent-census/spec.md: an unbound default must identify its worker as orphaned',
-  );
-});
-
-test('Step 2 census rejects malformed quoted prompts with binding-specific diagnostics', () => {
-  const bindingsDir = writeCensusFixtures([['malformed-prompt.md', 'sai-malformed-prompt-worker']]);
-  fs.writeFileSync(
-    path.join(bindingsDir, 'malformed-prompt.md'),
-    'task(subagent_type: "sai-malformed-prompt-worker", prompt: "unterminated)\n',
-  );
-  assert.throws(
-    () => deriveOpencodeAgentCensus(bindingsDir, censusDefaults([
-      ['sai-malformed-prompt-worker', {
-        model: 'provider/malformed',
-         prompt: expectedRegistrationPrompt('sai-malformed-prompt-worker'),
-        permission: { task: { '*': 'deny' } },
-      }],
-    ])),
-    error => /malformed-prompt\.md/.test(error.message) && /prompt|quoted|syntax/i.test(error.message),
-    'specs/opencode-agent-census/spec.md: malformed quoted prompts must identify the binding and prompt syntax',
-  );
-});
-
-test('Step 2 census rejects a binding whose prompt names a different worker contract', () => {
-  const bindingsDir = writeCensusFixtures([['mismatched-contract.md', 'sai-mismatched-contract-worker']]);
-  fs.writeFileSync(
-    path.join(bindingsDir, 'mismatched-contract.md'),
-     `task(subagent_type: "sai-mismatched-contract-worker", prompt: "${expectedWorkerPrompt('sai-other-worker').replaceAll('\n', '\\n')}")\n`,
-  );
-  assert.throws(
-    () => deriveOpencodeAgentCensus(bindingsDir, censusDefaults([
-      ['sai-mismatched-contract-worker', {
-        model: 'provider/mismatched',
-         prompt: expectedRegistrationPrompt('sai-mismatched-contract-worker'),
-        permission: { task: { '*': 'deny' } },
-      }],
-    ])),
-    error => /mismatched-contract\.md/.test(error.message) && /contract|prompt|mismatch/i.test(error.message),
-    'specs/opencode-agent-census/spec.md: mismatched contracts must identify the binding and mismatch',
-  );
-});
-
-test('Step 2 census ignores continuation task_id calls when validating initial declarations', () => {
-  const bindingsDir = writeCensusFixtures([['continuation.md', 'sai-continuation-worker']]);
-  fs.writeFileSync(
-    path.join(bindingsDir, 'continuation.md'),
-    [
-       `task(subagent_type: "sai-continuation-worker", prompt: "${expectedWorkerPrompt('sai-continuation-worker').replaceAll('\n', '\\n')}")`,
-      'task(task_id: "existing-task", prompt: "not an initial dispatch")',
-      '',
-    ].join('\n'),
-  );
-  assert.doesNotThrow(() => deriveOpencodeAgentCensus(bindingsDir, censusDefaults([
-    ['sai-continuation-worker', {
-      model: 'provider/continuation',
-       prompt: expectedRegistrationPrompt('sai-continuation-worker'),
-      permission: { task: { '*': 'deny' } },
-    }],
-  ])), 'specs/opencode-agent-census/spec.md: continuation task_id calls must not create a second declaration');
-});
-
-test('Step 2 resolves the census lazily and isolates malformed bindings to Opencode installation', () => {
+test('Step 3 roster validation is isolated to opencode consumers and fails before destination mutation', () => {
   const destination = path.join(CENSUS_SCRATCH_DIR, 'lazy-failure-destination');
   const script = `
     'use strict';
@@ -298,83 +117,9 @@ test('Step 2 resolves the census lazily and isolates malformed bindings to Openc
   const observation = JSON.parse(result.stdout);
   assert.equal(observation.requireError, null, 'requiring the shared installer should not derive malformed bindings');
   assert.equal(observation.claudeError, null, 'Claude operations should remain loadable when Opencode bindings are malformed');
-  assert.match(observation.opencodeError || '', /default|census|worker|registration/i,
-    'Opencode installation should fail with an actionable census/default diagnostic');
+  assert.match(observation.opencodeError || '', /binding|dispatch|roster|default|census|worker|registration/i,
+    'Opencode installation should fail with an actionable binding/roster diagnostic');
   assert.deepEqual(observation.entries, [], 'Opencode installation should fail before destination mutation');
-});
-
-test('Step 1 census preserves distinct registration fields without common-default normalization', () => {
-  const bindingsDir = writeCensusFixtures([
-    ['01-one.md', 'sai-one-worker'],
-    ['02-two.md', 'sai-two-worker'],
-  ]);
-  const defaults = censusDefaults([
-    ['sai-one-worker', {
-      model: 'provider/one',
-      permission: { task: { '*': 'deny', explore: 'allow' } },
-    }],
-    ['sai-two-worker', {
-      model: 'provider/two',
-      variant: 'high',
-      permission: { task: { '*': 'allow', budget: 'deny' } },
-    }],
-  ]);
-
-  assert.deepEqual(deriveOpencodeAgentCensus(bindingsDir, defaults), [
-     {
-       name: 'sai-one-worker',
-       model: 'provider/one',
-       mode: 'subagent',
-       prompt: expectedRegistrationPrompt('sai-one-worker'),
-       permission: { task: { '*': 'deny', explore: 'allow' } },
-    },
-    {
-       name: 'sai-two-worker',
-       model: 'provider/two',
-       mode: 'subagent',
-       prompt: expectedRegistrationPrompt('sai-two-worker'),
-       variant: 'high',
-      permission: { task: { '*': 'allow', budget: 'deny' } },
-    },
-  ], 'specs/opencode-agent-census/spec.md and specs/managed-worker-registry/spec.md: registration fields must survive the join');
-});
-
-test('Step 1 census accessor projects the ordered repository census by worker name', () => {
-  assert.ok(Object.keys(OPENCODE_REGISTRATION_DEFAULTS).length > 0,
-    'specs/opencode-agent-census/spec.md: repository registration defaults should be populated');
-  const agents = getOpencodeManagedAgents();
-  assert.deepEqual(Object.keys(agents), [
-    'sai-8-accessibility-worker',
-    'sai-2-design-worker',
-    'sai-3-implementation-worker',
-    'sai-7-performance-worker',
-    'sai-5-review-worker',
-    'sai-6-security-worker',
-    'sai-1-spec-proposal-worker',
-  ], 'specs/opencode-agent-census/spec.md: object insertion order must follow binding-path order');
-  for (const [name, registration] of Object.entries(agents)) {
-    assert.equal(registration.mode, 'subagent', `${name} should use subagent mode`);
-    assert.equal(typeof registration.model, 'string', `${name} should preserve its model`);
-    assert.ok(registration.permission && registration.permission.task,
-      `specs/managed-worker-registry/spec.md: ${name} should preserve task permission values`);
-  }
-});
-
-test('Step 2 census contains exactly every current worker name', () => {
-  assert.deepEqual(Object.keys(getOpencodeManagedAgents()).sort(), [...CURRENT_CENSUS].sort(),
-    'specs/opencode-agent-census/spec.md: the derived census must contain exactly the current workers');
-});
-
-test('Step 2 registration records expose the exact canonical worker prompts', () => {
-  for (const workerName of CURRENT_CENSUS) {
-     const prompt = expectedRegistrationPrompt(workerName);
-    assert.equal(OPENCODE_REGISTRATION_DEFAULTS[workerName].prompt, prompt,
-      `specs/opencode-worker-system-prompt/spec.md: ${workerName} defaults should use the canonical Fetch prompt`);
-    assert.equal(OPENCODE_MANAGED_AGENTS[workerName].prompt, prompt,
-      `specs/opencode-worker-system-prompt/spec.md: ${workerName} managed registration should use the canonical Fetch prompt`);
-     assert.equal(OPENCODE_MANAGED_AGENTS[workerName].prompt.startsWith('Fetch @sai/orchestration/workers/'), true,
-       `${workerName} should use the Fetch prompt without a registration preamble`);
-  }
 });
 
 test('Step 2 initial Opencode task dispatches deliver the matching contract and preserve continuations', () => {
@@ -404,119 +149,6 @@ test('Step 2 initial Opencode task dispatches deliver the matching contract and 
     }
   } finally {
     fs.rmSync(scratchDir, { recursive: true, force: true });
-  }
-});
-
-test('Step 2 config merge adds absent prompts, preserves custom prompts, and is byte-idempotent', () => {
-  fs.mkdirSync(STEP_2_SCRATCH_DIR, { recursive: true });
-  const scratchDir = fs.mkdtempSync(path.join(STEP_2_SCRATCH_DIR, 'opencode-config-'));
-  const configPath = path.join(scratchDir, 'opencode.jsonc');
-  const customPrompt = 'User-owned prompt must remain unchanged';
-  const fixture = [
-    '// preserve this comment',
-    JSON.stringify({
-      displayName: 'unrelated project',
-      plugin: ['unrelated-plugin'],
-      agent: {
-        'sai-1-spec-proposal-worker': { mode: 'subagent', model: 'user-spec' },
-        'sai-2-design-worker': { mode: 'subagent', model: 'user-design', prompt: customPrompt },
-      },
-    }, null, 2),
-    '',
-  ].join('\n');
-  try {
-    fs.writeFileSync(configPath, fixture);
-    copyOpencodeConfig(scratchDir);
-    const firstRaw = fs.readFileSync(configPath, 'utf8');
-    const first = jsonc.parse(firstRaw);
-     assert.equal(first.agent['sai-1-spec-proposal-worker'].prompt,
-       expectedRegistrationPrompt('sai-1-spec-proposal-worker'));
-    assert.equal(first.agent['sai-2-design-worker'].prompt, customPrompt,
-      'specs/opencode-worker-system-prompt/spec.md: non-empty custom prompts should remain unchanged');
-    assert.equal(first.displayName, 'unrelated project');
-    assert.deepEqual(first.plugin, ['unrelated-plugin']);
-    assert.match(firstRaw, /preserve this comment/);
-     for (const workerName of CURRENT_CENSUS) {
-       if (workerName === 'sai-2-design-worker') continue;
-       assert.equal(first.agent[workerName].prompt, expectedRegistrationPrompt(workerName),
-        `specs/opencode-worker-system-prompt/spec.md: ${workerName} should have its exact prompt after merge`);
-    }
-    copyOpencodeConfig(scratchDir);
-    assert.equal(fs.readFileSync(configPath, 'utf8'), firstRaw,
-      'specs/opencode-worker-system-prompt/spec.md: a second install should be byte-identical');
-  } finally {
-    fs.rmSync(scratchDir, { recursive: true, force: true });
-  }
-});
-
-test('copyOpencodeConfig preserves a fixed configured output independently of registry values', () => {
-  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-baseline-'));
-  const baseline = [
-    '{',
-    '  "theme": "custom",',
-    '  "permission": {',
-    '    "bash": "deny",',
-    '    "external_directory": {',
-    '      "~/.config/opencode/sai/**": "allow"',
-    '    }',
-    '  },',
-    '  "agent": {',
-    '    "explore": { "mode": "subagent", "model": "user-explore" },',
-    '    "executor": { "mode": "subagent", "model": "user-executor" },',
-    '    "budget": { "mode": "subagent", "model": "user-budget" },',
-     `    "sai-1-spec-proposal-worker": { "mode": "subagent", "model": "user-spec", "prompt": "${expectedRegistrationPrompt('sai-1-spec-proposal-worker')}" },`,
-     `    "sai-3-implementation-worker": { "mode": "subagent", "model": "user-implementation", "prompt": "${expectedRegistrationPrompt('sai-3-implementation-worker')}" },`,
-     `    "sai-2-design-worker": { "mode": "subagent", "model": "user-design", "prompt": "${expectedRegistrationPrompt('sai-2-design-worker')}" },`,
-     `    "sai-5-review-worker": { "mode": "subagent", "model": "user-review", "prompt": "${expectedRegistrationPrompt('sai-5-review-worker')}" },`,
-    '    "sai-6-security-worker": {',
-    '      "mode": "subagent",',
-    '      "model": "opencode-go/glm-5.2",',
-    '      "variant": "high",',
-     `      "prompt": "${expectedRegistrationPrompt('sai-6-security-worker')}",`,
-    '      "permission": {',
-    '        "task": {',
-    '          "*": "deny",',
-    '          "budget": "allow",',
-    '          "explore": "allow"',
-    '        }',
-    '      }',
-    '    },',
-    '    "sai-7-performance-worker": {',
-    '      "mode": "subagent",',
-    '      "model": "opencode-go/glm-5.2",',
-    '      "variant": "high",',
-     `      "prompt": "${expectedRegistrationPrompt('sai-7-performance-worker')}",`,
-    '      "permission": {',
-    '        "task": {',
-    '          "*": "deny",',
-    '          "budget": "allow",',
-    '          "explore": "allow"',
-    '        }',
-    '      }',
-    '    },',
-    '    "sai-8-accessibility-worker": {',
-    '      "mode": "subagent",',
-    '      "model": "opencode-go/qwen3.7-plus",',
-     `      "prompt": "${expectedRegistrationPrompt('sai-8-accessibility-worker')}",`,
-    '      "permission": {',
-    '        "task": {',
-    '          "*": "deny",',
-    '          "budget": "allow",',
-    '          "explore": "allow"',
-    '        }',
-    '      }',
-    '    }',
-    '  }',
-    '}',
-  ].join('\n') + '\n';
-  const configPath = path.join(tmpDir, 'opencode.json');
-  try {
-    fs.writeFileSync(configPath, baseline);
-    copyOpencodeConfig(tmpDir);
-    assert.deepEqual(fs.readFileSync(configPath, 'utf8'), baseline,
-      'the known pre-refactor baseline should remain byte-identical');
-  } finally {
-    fs.rmSync(tmpDir, { recursive: true, force: true });
   }
 });
 
@@ -587,7 +219,7 @@ test('installOpencode copies all Opencode-specific skills', () => {
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });
 
-test('Step 3 fresh opencode install omits all routed worker proxy skills', () => {
+test('Step 3 fresh opencode install omits all routed worker proxy skills and projects their bindings', () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-no-proxies-'));
   try {
     installOpencode(tmpDir);
@@ -603,9 +235,6 @@ test('Step 3 fresh opencode install omits all routed worker proxy skills', () =>
         .replace('sai-7-performance-worker', 'performance-worker')
         .replace('sai-8-accessibility-worker', 'accessibility-worker')}.md`)));
     }
-    const configName = fs.existsSync(path.join(tmpDir, 'opencode.json')) ? 'opencode.json' : 'opencode.jsonc';
-    const config = jsonc.parse(fs.readFileSync(path.join(tmpDir, configName), 'utf8'));
-    for (const worker of CURRENT_CENSUS) assert.deepEqual(config.agent[worker], OPENCODE_MANAGED_AGENTS[worker]);
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }
@@ -641,170 +270,22 @@ test('installOpencode projects every routed binding into neutral destinations', 
   }
 });
 
-test('opencode worker registration is preserved and configurable', () => {
-  assert.deepEqual(OPENCODE_MANAGED_AGENTS['sai-5-review-worker'], {
-    mode: 'subagent',
-    model: 'opencode-go/glm-5.2',
-    variant: 'high',
-    permission: { task: { '*': 'deny', budget: 'allow', explore: 'allow' } },
-     prompt: expectedRegistrationPrompt('sai-5-review-worker'),
-  });
-
-  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-review-worker-'));
-  const custom = {
-    mode: 'subagent',
-    model: 'user-review-model',
-    variant: 'low',
-    permission: { task: { '*': 'allow' } },
-  };
-  try {
-    fs.writeFileSync(path.join(tmpDir, 'opencode.json'), JSON.stringify({ agent: {
-      'sai-5-review-worker': custom,
-    } }, null, 2));
-    copyOpencodeConfig(tmpDir);
-    const parsed = jsonc.parse(fs.readFileSync(path.join(tmpDir, 'opencode.json'), 'utf8'));
-     assert.deepEqual(parsed.agent['sai-5-review-worker'], { ...custom, prompt: expectedRegistrationPrompt('sai-5-review-worker') },
-      'an existing review worker registration should remain configurable');
-  } finally {
-    fs.rmSync(tmpDir, { recursive: true, force: true });
-  }
-});
-
-test('opencode managed agents are derived from registry metadata', () => {
-  assert.deepEqual(Object.keys(OPENCODE_MANAGED_AGENTS).sort(), [...CURRENT_CENSUS].sort(),
-    'specs/opencode-agent-census/spec.md: the exported managed object must use the complete census');
-  assert.deepEqual(OPENCODE_MANAGED_AGENTS, getOpencodeManagedAgents(),
-    'specs/opencode-agent-census/spec.md: the export must retain the accessor census');
-  for (const name of CURRENT_CENSUS) {
-    const registration = OPENCODE_MANAGED_AGENTS[name];
-    const defaults = OPENCODE_REGISTRATION_DEFAULTS[name];
-    assert.equal(registration.mode, 'subagent', `${name} should use subagent mode`);
-    assert.equal(registration.model, defaults.model, `${name} should use canonical model defaults`);
-    if (Object.hasOwn(defaults, 'variant')) assert.equal(registration.variant, defaults.variant, `${name} should use canonical variant defaults`);
-    else assert.equal(Object.hasOwn(registration, 'variant'), false, `${name} should not invent a variant`);
-    assert.deepEqual(registration.permission?.task, defaults.permission?.task, `${name} should use canonical task permissions`);
-  }
-});
-
-test('Step 2 fresh and repeated installation preserves the fixed registration output', () => {
-  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-derived-'));
-  try {
-    installOpencode(tmpDir);
-    const configName = fs.existsSync(path.join(tmpDir, 'opencode.json')) ? 'opencode.json' : 'opencode.jsonc';
-    const configPath = path.join(tmpDir, configName);
-    const firstRaw = fs.readFileSync(configPath, 'utf8');
-    const first = jsonc.parse(firstRaw);
-    assert.deepEqual(Object.keys(first.agent).sort(), [...AGENT_KEYS, ...CURRENT_CENSUS].sort());
-    for (const name of CURRENT_CENSUS) {
-      assert.equal(Object.hasOwn(first.agent, name), true, `${name} should be seeded`);
-      assert.deepEqual(first.agent[name], OPENCODE_MANAGED_AGENTS[name], `${name} should use canonical seed defaults`);
-    }
-    installOpencode(tmpDir);
-    assert.equal(fs.readFileSync(configPath, 'utf8'), firstRaw);
-  } finally {
-    fs.rmSync(tmpDir, { recursive: true, force: true });
-  }
-});
-
-test('Step 2 preserves compatible customized registrations and unrelated user configuration', () => {
-  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-derived-custom-'));
-  const fixture = [
-    '// preserve this comment',
-    JSON.stringify({
-      theme: 'user-theme',
-      permission: {
-        bash: 'deny',
-        external_directory: { [SAI_EXTERNAL_DIRECTORY]: 'allow', '*.md': 'ask' },
-      },
-      plugin: ['user-plugin'],
-      agent: {
-        explore: { mode: 'subagent', model: 'user-explore' },
-        executor: { mode: 'subagent', model: 'user-executor' },
-        budget: { mode: 'subagent', model: 'user-budget' },
-        custom: { mode: 'subagent', model: 'user-custom' },
-        'sai-3-implementation-worker': {
-          mode: 'subagent',
-          model: 'user-implementation',
-          permission: { task: { '*': 'allow' } },
-        },
-        'sai-2-design-worker': {
-          mode: 'subagent',
-          model: 'user-design',
-          variant: 'low',
-          description: 'user-owned design runtime',
-        },
-        'sai-5-review-worker': {
-          mode: 'subagent',
-          model: 'user-review',
-          variant: 'medium',
-        },
-        'sai-6-security-worker': {
-          mode: 'subagent',
-          model: 'user-security',
-          variant: 'low',
-        },
-        'sai-7-performance-worker': {
-          mode: 'subagent',
-          model: 'user-performance',
-          variant: 'low',
-        },
-         'sai-8-accessibility-worker': {
-           mode: 'subagent',
-           model: 'user-accessibility',
-           variant: 'low',
-         },
-      },
-    }, null, 2),
-    '',
-  ].join('\n');
-  const configPath = path.join(tmpDir, 'opencode.jsonc');
-  try {
-    fs.writeFileSync(configPath, fixture);
-    copyOpencodeConfig(tmpDir);
-    const parsed = jsonc.parse(fs.readFileSync(configPath, 'utf8'));
-    assert.deepEqual(parsed.agent['sai-2-design-worker'], {
-      mode: 'subagent',
-      model: 'user-design',
-      variant: 'low',
-      description: 'user-owned design runtime',
-       prompt: expectedRegistrationPrompt('sai-2-design-worker'),
-    });
-    assert.equal(Object.hasOwn(parsed.agent, 'sai-1-spec-proposal-worker'), true,
-      'specs/installer-config-guidance/spec.md: absent census workers should be added');
-    const afterFirst = fs.readFileSync(configPath, 'utf8');
-    copyOpencodeConfig(tmpDir);
-    assert.equal(fs.readFileSync(configPath, 'utf8'), afterFirst);
-  } finally {
-    fs.rmSync(tmpDir, { recursive: true, force: true });
-  }
-});
-
-test('Installation verification covers routed review parity', () => {
-  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-review-parity-'));
-  try {
-    installOpencode(tmpDir);
-    const configName = fs.existsSync(path.join(tmpDir, 'opencode.json')) ? 'opencode.json' : 'opencode.jsonc';
-    const config = jsonc.parse(fs.readFileSync(path.join(tmpDir, configName), 'utf8'));
-    assert.deepEqual(config.agent['sai-5-review-worker']?.permission?.task, {
-      '*': 'deny', budget: 'allow', explore: 'allow',
-    }, 'missing review permission should identify the review surface');
-     assert.ok(fs.existsSync(path.join(tmpDir, 'sai', 'orchestration', 'workers', 'bindings', 'review-worker.md')),
-      'missing review projection should identify the opencode review binding');
-     assert.equal(fs.existsSync(path.join(tmpDir, 'skills', 'sai-5-review-worker', 'SKILL.md')), false,
-       'review worker proxy skill should not be installed');
-  } finally {
-    fs.rmSync(tmpDir, { recursive: true, force: true });
-  }
-});
-
-test('copyOpencodeConfig copies config when no existing config', () => {
+test('Step 3 copyOpencodeConfig copies the worker-free canonical config when none exists', () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-'));
   try {
     copyOpencodeConfig(tmpDir);
     const configPath = path.join(tmpDir, 'opencode.jsonc');
     assert.ok(fs.existsSync(configPath), 'opencode.jsonc should be copied when none exists');
     const config = jsonc.parse(fs.readFileSync(configPath, 'utf8'));
-    for (const name of CURRENT_CENSUS) assert.equal(Object.hasOwn(config.agent, name), true, `${name} should be seeded`);
+    for (const key of AGENT_KEYS) {
+      assert.ok(Object.hasOwn(config.agent || {}, key), `agent.${key} should be present in the copied config`);
+    }
+    assert.equal(config.permission?.external_directory?.[SAI_EXTERNAL_DIRECTORY], 'allow',
+      'specs/managed-worker-registry/spec.md: the copied config should retain the narrow external-directory rule');
+    for (const worker of CURRENT_CENSUS) {
+      assert.equal(Object.hasOwn(config.agent || {}, worker), false,
+        `specs/managed-worker-registry/spec.md: agent.${worker} must not appear in the copied config`);
+    }
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }
@@ -837,7 +318,7 @@ test('copyOpencodeConfig skips copy and prints instructions when opencode.json e
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });
 
-test('Step 2 installer guidance serializes the complete worker-keyed agent map', () => {
+test('Step 3 installer guidance no longer names managed workers', () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-guidance-'));
   const messages = [];
   const originalLog = console.log;
@@ -850,11 +331,11 @@ test('Step 2 installer guidance serializes the complete worker-keyed agent map',
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }
   const guidance = messages.join('\n');
-  assert.match(guidance, /"agent"\s*:\s*\{/,
-    'specs/installer-config-guidance/spec.md: guidance should show an agent-map object');
-  for (const name of CURRENT_CENSUS) {
-    assert.match(guidance, new RegExp(`"${name}"\\s*:`),
-      `specs/installer-config-guidance/spec.md: guidance should name ${name}`);
+  assert.doesNotMatch(guidance, /required namespaced implementation agents/i,
+    'specs/managed-worker-registry/spec.md: guidance must not print a required-namespaced-implementation-agents block');
+  for (const worker of CURRENT_CENSUS) {
+    assert.doesNotMatch(guidance, new RegExp(`"${worker}"\\s*:`),
+      `specs/managed-worker-registry/spec.md: guidance should not name ${worker}`);
   }
 });
 
@@ -968,11 +449,10 @@ test('copyOpencodeConfig does not overwrite existing target key', () => {
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });
 
-test('copyOpencodeConfig is idempotent when fully configured with all agents', () => {
+test('copyOpencodeConfig is idempotent when fully configured with helper agents and permission', () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-'));
   const config = { permission: { external_directory: { [SAI_EXTERNAL_DIRECTORY]: 'allow' } }, agent: {} };
   for (const key of AGENT_KEYS) config.agent[key] = { ...AGENT_PLACEHOLDER };
-  for (const [key, shape] of Object.entries(OPENCODE_MANAGED_AGENTS)) config.agent[key] = JSON.parse(JSON.stringify(shape));
   fs.writeFileSync(path.join(tmpDir, 'opencode.json'), JSON.stringify(config, null, 2));
   const beforeBytes = fs.readFileSync(path.join(tmpDir, 'opencode.json'));
   copyOpencodeConfig(tmpDir);
@@ -982,27 +462,6 @@ test('copyOpencodeConfig is idempotent when fully configured with all agents', (
   const secondRunBytes = fs.readFileSync(path.join(tmpDir, 'opencode.json'));
   assert.deepEqual(secondRunBytes, afterBytes, 'second run should produce identical bytes');
   fs.rmSync(tmpDir, { recursive: true, force: true });
-});
-
-test('installOpencode preserves commented JSONC with compatible namespaced agents', () => {
-  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-'));
-  const configPath = path.join(tmpDir, 'opencode.jsonc');
-  const config = {
-    displayName: 'unrelated project',
-    permission: { external_directory: { [SAI_EXTERNAL_DIRECTORY]: 'allow' } },
-    agent: Object.fromEntries([
-      ...AGENT_KEYS.map(key => [key, { ...AGENT_PLACEHOLDER }]),
-      ...Object.entries(OPENCODE_MANAGED_AGENTS),
-    ]),
-  };
-  const fixture = `// preserve this comment\n${JSON.stringify(config, null, 2)}\n`;
-  try {
-    fs.writeFileSync(configPath, fixture);
-    installOpencode(tmpDir);
-    assert.deepEqual(fs.readFileSync(configPath, 'utf8'), fixture, 'compatible namespaced JSONC should remain byte-identical');
-  } finally {
-    fs.rmSync(tmpDir, { recursive: true, force: true });
-  }
 });
 
 test('copyOpencodeConfig prints add-notice naming only added keys', () => {
@@ -1023,9 +482,8 @@ test('copyOpencodeConfig prints add-notice naming only added keys', () => {
 
 test('copyOpencodeConfig prints no add-notice when nothing added', () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-'));
-  const config = { agent: {} };
+  const config = { permission: { external_directory: { [SAI_EXTERNAL_DIRECTORY]: 'allow' } }, agent: {} };
   for (const key of AGENT_KEYS) config.agent[key] = { ...AGENT_PLACEHOLDER };
-  for (const [key, shape] of Object.entries(OPENCODE_MANAGED_AGENTS)) config.agent[key] = JSON.parse(JSON.stringify(shape));
   fs.writeFileSync(path.join(tmpDir, 'opencode.json'), JSON.stringify(config, null, 2));
   const messages = [];
   const origLog = console.log;
@@ -1033,86 +491,6 @@ test('copyOpencodeConfig prints no add-notice when nothing added', () => {
   copyOpencodeConfig(tmpDir);
   console.log = origLog;
   assert.ok(!messages.some(m => /added/i.test(m)), 'should not print any add-notice');
-  fs.rmSync(tmpDir, { recursive: true, force: true });
-});
-
-// --- Step 1 live-probe blocker regression: legacy three-agent placeholder gets managed agents ---
-
-test('copyOpencodeConfig adds managed agents to legacy three-agent placeholder config', () => {
-  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-'));
-  const config = { agent: {} };
-  for (const key of AGENT_KEYS) config.agent[key] = { ...AGENT_PLACEHOLDER };
-  fs.writeFileSync(path.join(tmpDir, 'opencode.json'), JSON.stringify(config, null, 2));
-  copyOpencodeConfig(tmpDir);
-  const parsed = jsonc.parse(fs.readFileSync(path.join(tmpDir, 'opencode.json'), 'utf8'));
-  assert.ok(parsed.agent, 'agent block should exist');
-  for (const key of AGENT_KEYS) {
-    assert.deepEqual(parsed.agent[key], AGENT_PLACEHOLDER, `legacy agent ${key} should be preserved`);
-  }
-  for (const [key, shape] of Object.entries(OPENCODE_MANAGED_AGENTS)) {
-    assert.ok(key in parsed.agent, `managed agent ${key} should be added`);
-    assert.deepEqual(parsed.agent[key], shape, `managed agent ${key} should have exact shape`);
-  }
-  assert.equal(Object.keys(parsed.agent).length, AGENT_KEYS.length + Object.keys(OPENCODE_MANAGED_AGENTS).length,
-    'total agent keys should equal legacy + managed');
-  fs.rmSync(tmpDir, { recursive: true, force: true });
-});
-
-test('copyOpencodeConfig preserves comments and unrelated keys during legacy-to-managed migration', () => {
-  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-'));
-  const fixture = '{\n  // user comment\n  "displayName": "my-project",\n  "agent": {\n    "explore": { "mode": "subagent", "model": "opencode-go/deepseek-v4-flash" },\n    "executor": { "mode": "subagent", "model": "opencode-go/deepseek-v4-flash" },\n    "budget": { "mode": "subagent", "model": "opencode-go/deepseek-v4-flash" }\n  }\n}\n';
-  fs.writeFileSync(path.join(tmpDir, 'opencode.jsonc'), fixture);
-  copyOpencodeConfig(tmpDir);
-  const raw = fs.readFileSync(path.join(tmpDir, 'opencode.jsonc'), 'utf8');
-  assert.ok(raw.includes('// user comment'), 'comment should survive');
-  assert.ok(raw.includes('"displayName"'), 'unrelated key should survive');
-  const parsed = jsonc.parse(raw);
-  assert.equal(parsed.displayName, 'my-project', 'unrelated value should be unchanged');
-  for (const key of AGENT_KEYS) {
-    assert.deepEqual(parsed.agent[key], AGENT_PLACEHOLDER, `legacy agent ${key} should be preserved`);
-  }
-  for (const [key, shape] of Object.entries(OPENCODE_MANAGED_AGENTS)) {
-    assert.ok(key in parsed.agent, `managed agent ${key} should be added during migration`);
-    assert.deepEqual(parsed.agent[key], shape, `managed agent ${key} should have exact shape`);
-  }
-  fs.rmSync(tmpDir, { recursive: true, force: true });
-});
-
-test('copyOpencodeConfig is idempotent after legacy three-agent migration', () => {
-  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-'));
-  const config = { agent: {} };
-  for (const key of AGENT_KEYS) config.agent[key] = { ...AGENT_PLACEHOLDER };
-  fs.writeFileSync(path.join(tmpDir, 'opencode.json'), JSON.stringify(config, null, 2));
-  copyOpencodeConfig(tmpDir);
-  const afterFirst = fs.readFileSync(path.join(tmpDir, 'opencode.json'), 'utf8');
-  const firstParsed = jsonc.parse(afterFirst);
-  const totalKeys = AGENT_KEYS.length + Object.keys(OPENCODE_MANAGED_AGENTS).length;
-  assert.equal(Object.keys(firstParsed.agent).length, totalKeys,
-    'first run should add all managed agents');
-  copyOpencodeConfig(tmpDir);
-  const afterSecond = fs.readFileSync(path.join(tmpDir, 'opencode.json'), 'utf8');
-  assert.equal(afterSecond, afterFirst, 'second run should produce identical bytes');
-  fs.rmSync(tmpDir, { recursive: true, force: true });
-});
-
-test('copyOpencodeConfig prints add-notice naming legacy and managed agents during migration', () => {
-  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-'));
-  const config = { agent: {} };
-  for (const key of AGENT_KEYS) config.agent[key] = { ...AGENT_PLACEHOLDER };
-  fs.writeFileSync(path.join(tmpDir, 'opencode.json'), JSON.stringify(config, null, 2));
-  const messages = [];
-  const origLog = console.log;
-  console.log = (m) => messages.push(String(m));
-  copyOpencodeConfig(tmpDir);
-  console.log = origLog;
-  const addedLines = messages.filter(m => /added/i.test(m));
-  assert.ok(addedLines.length > 0, 'should print at least one add-notice');
-  assert.ok(!addedLines.some(l => l.includes('explore')), 'should NOT name explore as added');
-  assert.ok(!addedLines.some(l => l.includes('executor')), 'should NOT name executor as added');
-  assert.ok(!addedLines.some(l => l.includes('budget')), 'should NOT name budget as added');
-  for (const key of Object.keys(OPENCODE_MANAGED_AGENTS)) {
-    assert.ok(addedLines.some(l => l.includes(key)), `should name ${key} as added`);
-  }
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });
 
@@ -1264,103 +642,6 @@ test('probeOpencode uses spawnSync exit-code semantics', () => {
     }
   } finally {
     childProcess.spawnSync = origSpawnSync;
-  }
-});
-
-// --- Step 1: preservation-first numbered worker bootstrap tests ---
-
-test('copyOpencodeConfig merges customized and missing numbered workers without replacing the customized value', () => {
-  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-preserve-'));
-  const custom = {
-    mode: 'subagent',
-    model: 'user-design-model',
-    variant: 'low',
-    permission: { question: 'deny', edit: 'allow' },
-    description: 'user-owned design runtime',
-  };
-  const config = { agent: { 'sai-2-design-worker': custom } };
-  try {
-    fs.writeFileSync(path.join(tmpDir, 'opencode.json'), JSON.stringify(config, null, 2));
-    copyOpencodeConfig(tmpDir);
-    const parsed = jsonc.parse(fs.readFileSync(path.join(tmpDir, 'opencode.json'), 'utf8'));
-    assert.deepEqual(parsed.agent['sai-2-design-worker'], {
-      ...custom,
-       prompt: expectedRegistrationPrompt('sai-2-design-worker'),
-    });
-    assert.deepEqual(parsed.agent['sai-3-implementation-worker'], OPENCODE_MANAGED_AGENTS['sai-3-implementation-worker']);
-  } finally {
-    fs.rmSync(tmpDir, { recursive: true, force: true });
-  }
-});
-
-test('installOpencode preserves customized design and implementation runtime entries', () => {
-  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-runtime-'));
-  const custom = {
-    mode: 'subagent',
-    model: 'user-worker-model',
-    variant: 'medium',
-    permission: { question: 'allow', edit: 'deny', bash: 'deny' },
-    prompt: 'custom worker prompt',
-  };
-  const configPath = path.join(tmpDir, 'opencode.json');
-  try {
-    fs.writeFileSync(configPath, JSON.stringify({ agent: {
-      'sai-2-design-worker': { ...custom, model: 'user-design-model' },
-      'sai-3-implementation-worker': { ...custom, model: 'user-implementation-model' },
-    } }, null, 2));
-    installOpencode(tmpDir);
-    const parsed = jsonc.parse(fs.readFileSync(configPath, 'utf8'));
-    assert.deepEqual(parsed.agent['sai-2-design-worker'], { ...custom, model: 'user-design-model' });
-    assert.deepEqual(parsed.agent['sai-3-implementation-worker'], { ...custom, model: 'user-implementation-model' });
-  } finally {
-    fs.rmSync(tmpDir, { recursive: true, force: true });
-  }
-});
-
-test('copyOpencodeConfig leaves fully populated numbered configuration byte-identical', () => {
-  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-byte-'));
-  const config = {
-    theme: 'custom',
-    permission: { bash: 'deny', external_directory: { [SAI_EXTERNAL_DIRECTORY]: 'allow' } },
-    agent: Object.fromEntries([
-      ...AGENT_KEYS.map(name => [name, { ...AGENT_PLACEHOLDER, model: `user-${name}` }]),
-      ...Object.entries(OPENCODE_MANAGED_AGENTS).map(([name, value]) => [name, {
-      ...value,
-      model: `user-${name}`,
-      variant: 'custom',
-      permission: { question: 'allow' },
-      }]),
-    ]),
-  };
-  const content = `// preserve user configuration\n${JSON.stringify(config, null, 2)}\n`;
-  const configPath = path.join(tmpDir, 'opencode.json');
-  try {
-    fs.writeFileSync(configPath, content);
-    copyOpencodeConfig(tmpDir);
-    assert.deepEqual(fs.readFileSync(configPath, 'utf8'), content);
-  } finally {
-    fs.rmSync(tmpDir, { recursive: true, force: true });
-  }
-});
-
-test('copyOpencodeConfig edits only opencode.json when both config filenames exist', () => {
-  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-dual-'));
-  const jsonContent = JSON.stringify({ agent: { 'sai-2-design-worker': { mode: 'subagent', model: 'custom' } } }, null, 2);
-  const jsoncContent = '// untouched\n{ "theme": "light" }\n';
-  try {
-    fs.writeFileSync(path.join(tmpDir, 'opencode.json'), jsonContent);
-    fs.writeFileSync(path.join(tmpDir, 'opencode.jsonc'), jsoncContent);
-    copyOpencodeConfig(tmpDir);
-    assert.deepEqual(fs.readFileSync(path.join(tmpDir, 'opencode.jsonc'), 'utf8'), jsoncContent);
-    const parsed = jsonc.parse(fs.readFileSync(path.join(tmpDir, 'opencode.json'), 'utf8'));
-       assert.deepEqual(parsed.agent['sai-2-design-worker'], {
-         mode: 'subagent',
-         model: 'custom',
-         prompt: expectedRegistrationPrompt('sai-2-design-worker'),
-       });
-    assert.ok(parsed.agent['sai-3-implementation-worker']);
-  } finally {
-    fs.rmSync(tmpDir, { recursive: true, force: true });
   }
 });
 
@@ -1737,6 +1018,116 @@ test('Step 1 Claude owned-copy rows remain byte-preserving with the same managed
         `specs/managed-worker-registry/spec.md: ${workerName} must remain byte-identical to its Claude source`);
       assert.equal(ownerSidecarHash(agentPath), sha256Hex(fs.readFileSync(agentPath)),
         `specs/managed-worker-registry/spec.md: ${workerName} owner sidecar must record the managed hash`);
+    }
+  } finally {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+});
+
+// --- Step 3: binding-derived roster replaces the retired registration surface ---
+
+test('Step 3 binding roster validation yields exactly the seven managed workers', () => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-roster-'));
+  try {
+    installOpencode(tmpDir);
+    const bindingsDir = path.join(tmpDir, 'sai', 'orchestration', 'workers', 'bindings');
+    const roster = validateOpencodeWorkerBindings(bindingsDir);
+    const names = (Array.isArray(roster) ? roster : Object.keys(roster || {}))
+      .map(entry => (typeof entry === 'string' ? entry : entry && entry.name))
+      .sort();
+    assert.deepEqual(names, [...CURRENT_CENSUS].sort(),
+      'specs/opencode-agent-census/spec.md: the binding roster must contain exactly the seven managed workers with no extra or missing worker');
+  } finally {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+});
+
+test('Step 3 binding files declare exactly the seven initial worker dispatches', () => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-bindings-scan-'));
+  try {
+    installOpencode(tmpDir);
+    const bindingsDir = path.join(tmpDir, 'sai', 'orchestration', 'workers', 'bindings');
+    const declared = [];
+    for (const file of fs.readdirSync(bindingsDir)) {
+      const source = fs.readFileSync(path.join(bindingsDir, file), 'utf8');
+      for (const call of extractDispatchCalls(source, 'task')) {
+        if (/\btask_id\s*[:=]/.test(call)) continue;
+        const match = call.match(/\bsubagent_type\s*[:=]\s*"([^"]+)"/);
+        assert.ok(match, `${file} should carry a quoted subagent_type in its initial dispatch`);
+        declared.push(match[1]);
+      }
+    }
+    assert.deepEqual(declared.sort(), [...CURRENT_CENSUS].sort(),
+      'specs/opencode-agent-census/spec.md: initial binding dispatches must define exactly the managed roster');
+  } finally {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+});
+
+test('Step 3 retired registration surface is no longer exported from the installer', () => {
+  const flow = require('../bin/install-flow.js');
+  assert.equal(flow.OPENCODE_MANAGED_AGENTS, undefined,
+    'specs/managed-worker-registry/spec.md: OPENCODE_MANAGED_AGENTS must be retired');
+  assert.equal(flow.OPENCODE_REGISTRATION_DEFAULTS, undefined,
+    'specs/managed-worker-registry/spec.md: OPENCODE_REGISTRATION_DEFAULTS must be retired');
+  assert.equal(typeof flow.getOpencodeManagedAgents, 'undefined',
+    'specs/managed-worker-registry/spec.md: getOpencodeManagedAgents must be retired');
+  assert.equal(typeof flow.__test.deriveOpencodeAgentCensus, 'undefined',
+    'specs/opencode-agent-census/spec.md: the registration-default half of the census must be retired');
+});
+
+test('Step 3 canonical opencode config sample defines no managed worker', () => {
+  const sample = jsonc.parse(fs.readFileSync(path.join(__dirname, '..', 'configs', 'opencode.jsonc'), 'utf8'));
+  assert.ok(sample.permission, 'specs/managed-worker-registry/spec.md: the sample should retain permission');
+  assert.ok(Object.hasOwn(sample, 'subagent_depth'),
+    'specs/managed-worker-registry/spec.md: the sample should retain subagent_depth');
+  assert.ok(sample.agent, 'the sample should retain an agent map');
+  for (const key of AGENT_KEYS) {
+    assert.ok(Object.hasOwn(sample.agent, key),
+      `specs/managed-worker-registry/spec.md: agent.${key} should be retained in the sample`);
+  }
+  assert.deepEqual(Object.keys(sample.agent).sort(), [...AGENT_KEYS].sort(),
+    'specs/managed-worker-registry/spec.md: the sample agent map should contain only the helper agents');
+});
+
+test('Step 3 fresh install merges no managed worker entries into the opencode config', () => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-worker-free-'));
+  try {
+    installOpencode(tmpDir);
+    const configName = fs.existsSync(path.join(tmpDir, 'opencode.json')) ? 'opencode.json' : 'opencode.jsonc';
+    const config = jsonc.parse(fs.readFileSync(path.join(tmpDir, configName), 'utf8'));
+    assert.ok(config.agent, 'agent block should exist');
+    for (const key of AGENT_KEYS) {
+      assert.ok(Object.hasOwn(config.agent, key), `agent.${key} should be merged as before`);
+    }
+    assert.deepEqual(config.permission?.external_directory?.[SAI_EXTERNAL_DIRECTORY], 'allow',
+      'specs/managed-worker-registry/spec.md: the narrow external-directory rule should be merged as before');
+    for (const worker of CURRENT_CENSUS) {
+      assert.equal(Object.hasOwn(config.agent, worker), false,
+        `specs/managed-worker-registry/spec.md: agent.${worker} must not be injected by the installer`);
+    }
+  } finally {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+});
+
+test('Step 3 install projects the seven managed opencode worker agent files with ownership sidecars', () => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-agents-projected-'));
+  try {
+    installOpencode(tmpDir);
+    for (const worker of CURRENT_CENSUS) {
+      const agentPath = path.join(tmpDir, 'agents', `${worker}.md`);
+      assert.ok(fs.existsSync(agentPath),
+        `specs/managed-worker-registry/spec.md: ${worker}.md should be projected into the agents directory`);
+      const sidecarPath = path.join(tmpDir, 'agents', `.${worker}.owner.json`);
+      assert.ok(fs.existsSync(sidecarPath),
+        `specs/managed-worker-registry/spec.md: ${worker} should have an ownership sidecar`);
+      const sidecar = JSON.parse(fs.readFileSync(sidecarPath, 'utf8'));
+      assert.match(sidecar.managedHash || '', /^[0-9a-f]{64}$/,
+        `${worker} sidecar should record a sha256 managed hash`);
+      assert.equal(sidecar.managedHash,
+        crypto.createHash('sha256').update(fs.readFileSync(agentPath)).digest('hex'),
+        `${worker} sidecar hash should match the installed managed bytes`);
     }
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });

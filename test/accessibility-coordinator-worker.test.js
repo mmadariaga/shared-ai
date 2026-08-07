@@ -302,9 +302,7 @@ test('Step 3 doctor and uninstall enumerate accessibility assets from the manife
     try {
       install(base);
       const expected = accessibilityProjections(harness, base).map(projection => projection.destinationPath);
-      if (harness === 'claude') {
-        expected.push(path.join(base, 'agents', '.sai-8-accessibility-worker.owner.json'));
-      }
+      expected.push(path.join(base, 'agents', '.sai-8-accessibility-worker.owner.json'));
       const actual = enumerate(base)
         .filter(entry => entry.assetType !== 'retired-managed-file' &&
           (entry.dest.includes('accessibility-worker') || entry.dest.includes('accessibility\\worker')))

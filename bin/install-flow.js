@@ -113,62 +113,9 @@ const PACKAGE_VERSION = require(path.join(REPOSITORY_ROOT, 'package.json')).vers
 const OPENCODE_BINDINGS_DIR = path.join(REPOSITORY_ROOT, 'sai', 'orchestration', 'workers', 'bindings', 'opencode');
 const CLAUDE_BINDINGS_DIR = path.join(REPOSITORY_ROOT, 'sai', 'orchestration', 'workers', 'bindings', 'claude');
 
-function expectedRegistrationPrompt(workerName) {
-  return `Fetch @sai/orchestration/workers/${workerName}.md and follow it exactly.`;
-}
-
 function expectedDispatchPrompt(workerName) {
   return `Worker contract: Fetch @sai/orchestration/workers/${workerName}.md and follow it exactly.\n\nInvocationEnvelope:\n<original InvocationEnvelope>`;
 }
-
-const OPENCODE_REGISTRATION_DEFAULTS = Object.freeze({
-  'sai-1-spec-proposal-worker': Object.freeze({
-    mode: 'subagent',
-    model: 'opencode-go/minimax-m3',
-    permission: Object.freeze({ task: Object.freeze({ '*': 'deny', budget: 'allow', explore: 'allow' }) }),
-    prompt: expectedRegistrationPrompt('sai-1-spec-proposal-worker'),
-  }),
-  'sai-2-design-worker': Object.freeze({
-    mode: 'subagent',
-    model: 'opencode-go/glm-5.2',
-    variant: 'high',
-    permission: Object.freeze({ task: Object.freeze({ '*': 'deny', explore: 'allow' }) }),
-    prompt: expectedRegistrationPrompt('sai-2-design-worker'),
-  }),
-  'sai-3-implementation-worker': Object.freeze({
-    mode: 'subagent',
-    model: 'opencode-go/kimi-k2.6',
-    permission: Object.freeze({ task: Object.freeze({ '*': 'deny', budget: 'allow', explore: 'allow' }) }),
-    prompt: expectedRegistrationPrompt('sai-3-implementation-worker'),
-  }),
-  'sai-5-review-worker': Object.freeze({
-    mode: 'subagent',
-    model: 'opencode-go/glm-5.2',
-    variant: 'high',
-    permission: Object.freeze({ task: Object.freeze({ '*': 'deny', budget: 'allow', explore: 'allow' }) }),
-    prompt: expectedRegistrationPrompt('sai-5-review-worker'),
-  }),
-  'sai-6-security-worker': Object.freeze({
-    mode: 'subagent',
-    model: 'opencode-go/glm-5.2',
-    variant: 'high',
-    permission: Object.freeze({ task: Object.freeze({ '*': 'deny', budget: 'allow', explore: 'allow' }) }),
-    prompt: expectedRegistrationPrompt('sai-6-security-worker'),
-  }),
-  'sai-7-performance-worker': Object.freeze({
-    mode: 'subagent',
-    model: 'opencode-go/glm-5.2',
-    variant: 'high',
-    permission: Object.freeze({ task: Object.freeze({ '*': 'deny', budget: 'allow', explore: 'allow' }) }),
-    prompt: expectedRegistrationPrompt('sai-7-performance-worker'),
-  }),
-  'sai-8-accessibility-worker': Object.freeze({
-    mode: 'subagent',
-    model: 'opencode-go/qwen3.7-plus',
-    permission: Object.freeze({ task: Object.freeze({ '*': 'deny', budget: 'allow', explore: 'allow' }) }),
-    prompt: expectedRegistrationPrompt('sai-8-accessibility-worker'),
-  }),
-});
 
 function collectCallArguments(text, callName, bindingPath) {
   const matcher = new RegExp(`\\b${callName}\\s*\\(`, 'g');
@@ -275,10 +222,13 @@ function validateClaudeWorkerBindings(bindingsDir = CLAUDE_BINDINGS_DIR) {
   }
 }
 
-function deriveOpencodeAgentCensus(bindingsDir, registrationDefaults) {
+function validateOpencodeWorkerBindings(bindingsDir = OPENCODE_BINDINGS_DIR) {
+  const bindingFiles = bindingPaths(bindingsDir);
+  if (bindingFiles.length === 0) {
+    throw new Error(`Opencode bindings directory ${bindingsDir} contains no binding files; the worker roster cannot be derived.`);
+  }
   const seenBy = new Map();
-  const records = [];
-  for (const bindingPath of bindingPaths(bindingsDir)) {
+  for (const bindingPath of bindingFiles) {
     const text = fs.readFileSync(bindingPath, 'utf8');
     const dispatches = parseInitialDispatches(text, 'task', bindingPath);
     if (dispatches.length !== 1) {
@@ -292,35 +242,8 @@ function deriveOpencodeAgentCensus(bindingsDir, registrationDefaults) {
     if (prompt !== expectedDispatchPrompt(name)) {
       throw new Error(`Opencode binding ${bindingPath} has the wrong initial prompt for "${name}"; expected the contract for ${name}.md.`);
     }
-    const defaults = registrationDefaults[name];
-    if (!defaults) {
-      throw new Error(`Opencode worker "${name}" declared by ${bindingPath} has no explicit registration defaults.`);
-    }
-    if (defaults.prompt !== expectedRegistrationPrompt(name)) {
-      throw new Error(`Opencode registration default "${name}" must contain the canonical worker contract prompt.`);
-    }
-    records.push({ name, ...defaults });
   }
-
-  for (const name of Object.keys(registrationDefaults)) {
-    if (!seenBy.has(name)) {
-      throw new Error(`Orphan opencode registration default "${name}" is not declared by any binding.`);
-    }
-  }
-  return records;
-}
-
-let opencodeManagedAgentsCache = null;
-function getOpencodeManagedAgents() {
-  if (opencodeManagedAgentsCache === null) {
-    const keyed = {};
-    for (const record of deriveOpencodeAgentCensus(OPENCODE_BINDINGS_DIR, OPENCODE_REGISTRATION_DEFAULTS)) {
-      const { name, ...settings } = record;
-      keyed[name] = settings;
-    }
-    opencodeManagedAgentsCache = keyed;
-  }
-  return opencodeManagedAgentsCache;
+  return [...seenBy.keys()];
 }
 
 function writeVersionMarker(baseDir) {
@@ -653,7 +576,7 @@ function installClaude(destBase) {
 }
 
 function installOpencode(destBase) {
-  getOpencodeManagedAgents();
+  validateOpencodeWorkerBindings();
   const targetPath = destBase || OPENCODE_BASE;
   cleanupRetiredProjections('opencode', { base: targetPath });
   for (const projection of expandForInstall('opencode', { base: targetPath })) installProjection(projection, targetPath);
@@ -679,9 +602,7 @@ function printOpencodeConfigMessage(base) {
   console.log('      // Your trusted low-cost model below');
   console.log('      "model": "opencode-go/deepseek-v4-flash"');
   console.log('    }');
-  console.log('  }');
-  console.log('\nRequired namespaced implementation agents:');
-  console.log(JSON.stringify(getOpencodeManagedAgents(), null, 2));
+    console.log('  }');
   console.log('\nAdjust the model to your preferred low-cost provider.');
 }
 
@@ -819,22 +740,11 @@ function mergeOpencodeAgents(text, permissionContext = createPermissionMatchCont
     explore: { mode: 'subagent', model: OPENCODE_PLACEHOLDER_MODEL },
     executor: { mode: 'subagent', model: OPENCODE_PLACEHOLDER_MODEL },
     budget: { mode: 'subagent', model: OPENCODE_PLACEHOLDER_MODEL },
-    ...getOpencodeManagedAgents(),
   };
 
   for (const [key, shape] of Object.entries(shapes)) {
     if (!Object.prototype.hasOwnProperty.call(existing, key)) {
       out = applyEdits(out, modify(out, ['agent', key], shape, { formattingOptions }));
-      added.push(key);
-      continue;
-    }
-
-    const current = existing[key];
-    const promptMissing = isPlainObject(current)
-      && Object.prototype.hasOwnProperty.call(shape, 'prompt')
-      && (typeof current.prompt !== 'string' || current.prompt.length === 0);
-    if (promptMissing) {
-      out = applyEdits(out, modify(out, ['agent', key, 'prompt'], shape.prompt, { formattingOptions }));
       added.push(key);
     }
   }
@@ -1004,24 +914,15 @@ module.exports = {
   cleanupRetiredProjections,
   installProjection,
   ownedManagedWorkerInstaller,
-  OPENCODE_REGISTRATION_DEFAULTS,
-  getOpencodeManagedAgents,
   sha256Buffer,
   __test: {
-    deriveOpencodeAgentCensus,
     mergeOpencodeAgents,
-    expectedRegistrationPrompt,
     expectedDispatchPrompt,
     parseInitialDispatches,
     validateClaudeWorkerBindings,
+    validateOpencodeWorkerBindings,
     createPermissionMatchContext,
     normalizePermissionPattern,
     wildcardMatches,
   },
 };
-
-Object.defineProperty(module.exports, 'OPENCODE_MANAGED_AGENTS', {
-  enumerable: true,
-  configurable: true,
-  get: getOpencodeManagedAgents,
-});

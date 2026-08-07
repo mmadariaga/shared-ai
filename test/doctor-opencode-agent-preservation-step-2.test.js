@@ -5,9 +5,7 @@ const assert = require('node:assert/strict');
 const path = require('path');
 const os = require('os');
 const fs = require('fs');
-const childProcess = require('child_process');
 const { PassThrough } = require('stream');
-const jsonc = require('jsonc-parser');
 
 const { main } = require('../bin/doctor.js');
 const { installOpencode } = require('../bin/install-flow.js');
@@ -66,23 +64,6 @@ function managedRecords(report) {
   return records;
 }
 
-function diagnosticRecords(report) {
-  const section = report['[Opencode]'];
-  assert.ok(section, 'Opencode section should exist');
-  const records = [];
-  const visit = value => {
-    if (!value || typeof value !== 'object') return;
-    if (!Array.isArray(value) && typeof value.severity === 'string') records.push(value);
-    for (const child of Object.values(value)) visit(child);
-  };
-  visit(section);
-  return records;
-}
-
-function expectedPrompt(workerName) {
-  return `Fetch @sai/orchestration/workers/${workerName}.md and follow it exactly.`;
-}
-
 function writeConfig(opencodeBase, content) {
   fs.mkdirSync(opencodeBase, { recursive: true });
   for (const filename of ['opencode.json', 'opencode.jsonc']) {
@@ -129,86 +110,85 @@ test('customized managed agents are accepted by name presence', async () => {
   }
 });
 
-test('doctor and installer expose the same prompt-bearing worker census', async () => {
+test('doctor and installer expose the same file-based worker roster', async () => {
   const projectRoot = makeProjectRoot();
   const opencodeBase = path.join(projectRoot, 'opencode');
   try {
     installOpencode(opencodeBase);
-    const configName = fs.existsSync(path.join(opencodeBase, 'opencode.json'))
-      ? 'opencode.json'
-      : 'opencode.jsonc';
-    const installed = jsonc.parse(fs.readFileSync(path.join(opencodeBase, configName), 'utf8'));
+    for (const workerName of MANAGED_NAMES) {
+      assert.ok(fs.existsSync(path.join(opencodeBase, 'agents', `${workerName}.md`)),
+        `${workerName}.md should be projected under agents/ after install`);
+    }
     const { code, report } = await runDoctor(projectRoot, opencodeBase);
     assert.equal(code, 0);
 
     const doctor = Object.fromEntries(
       managedRecords(report).map(record => [record.name, record]),
     );
-    const installerNames = Object.keys(installed.agent).filter(name => MANAGED_NAMES.includes(name));
-    assert.deepEqual(Object.keys(doctor).sort(), installerNames.sort());
+    assert.deepEqual(Object.keys(doctor).sort(), [...MANAGED_NAMES].sort());
     for (const workerName of MANAGED_NAMES) {
-      assert.equal(installed.agent[workerName].prompt, expectedPrompt(workerName));
-      assert.equal(doctor[workerName].prompt, expectedPrompt(workerName),
-        `${workerName} should expose its canonical expected prompt`);
+      assert.equal(doctor[workerName].severity, 'ok',
+        `${workerName} should be exact-compatible`);
     }
   } finally {
     fs.rmSync(projectRoot, { recursive: true, force: true });
   }
 });
 
-test('doctor accepts a customized installed prompt while retaining canonical expected metadata', async () => {
-  const projectRoot = makeProjectRoot();
-  const opencodeBase = path.join(projectRoot, 'opencode');
-  const customPrompt = 'User-owned prompt must remain unchanged';
-  try {
-    writeConfig(opencodeBase, JSON.stringify({ agent: {
-      'sai-2-design-worker': { mode: 'subagent', model: 'user-design', prompt: customPrompt },
-    } }));
-    installOpencode(opencodeBase);
-    const configPath = path.join(opencodeBase, 'opencode.jsonc');
-    const beforeDoctor = jsonc.parse(fs.readFileSync(configPath, 'utf8'));
-    assert.equal(beforeDoctor.agent['sai-2-design-worker'].prompt, customPrompt);
-
-    const { code, report } = await runDoctor(projectRoot, opencodeBase);
-    assert.equal(code, 0);
-    const record = managedRecords(report).find(item => item.name === 'sai-2-design-worker');
-    assert.equal(record.severity, 'ok');
-    assert.equal(record.prompt, expectedPrompt('sai-2-design-worker'));
-    const afterDoctor = jsonc.parse(fs.readFileSync(configPath, 'utf8'));
-    assert.equal(afterDoctor.agent['sai-2-design-worker'].prompt, customPrompt);
-  } finally {
-    fs.rmSync(projectRoot, { recursive: true, force: true });
-  }
-});
-
-test('missing managed agent is reported while present customized agents remain ok', async () => {
+test('doctor flags a customized projected worker file while intact workers remain ok', async () => {
   const projectRoot = makeProjectRoot();
   const opencodeBase = path.join(projectRoot, 'opencode');
   try {
     installOpencode(opencodeBase);
-    writeConfig(opencodeBase, JSON.stringify({ agent: {
-      'sai-2-design-worker': { mode: 'subagent', model: 'user-design-model' },
-      'sai-5-review-worker': { mode: 'subagent', model: 'user-review-model' },
-    } }));
+    const workerPath = path.join(opencodeBase, 'agents', 'sai-2-design-worker.md');
+    fs.writeFileSync(workerPath, 'user-customized worker body\n');
 
     const { code, report } = await runDoctor(projectRoot, opencodeBase);
     assert.equal(code, 1);
     const records = managedRecords(report);
-    assert.equal(records.find(record => record.name === 'sai-2-design-worker').severity, 'ok');
-    const missing = records.find(record => record.name === 'sai-3-implementation-worker');
-    assert.ok(missing, 'implementation worker should be enumerated by name');
-    assert.equal(missing.severity, 'error');
-    assert.match(missing.message, /missing/i);
-    const missingSpec = records.find(record => record.name === 'sai-1-spec-proposal-worker');
-    assert.ok(missingSpec, 'spec worker should be enumerated by name');
-    assert.equal(missingSpec.severity, 'error');
-    assert.match(missingSpec.message, /missing/i);
+    const customized = records.find(record => record.name === 'sai-2-design-worker');
+    assert.ok(customized, 'design worker should be enumerated by name');
+    assert.equal(customized.severity, 'error');
+    assert.match(customized.message || '', /incompatible/i);
+    assert.match(customized.message || '', /rename|remove/i,
+      'a customized worker file should carry rename-or-remove remediation');
+    for (const record of records) {
+      if (record.name === 'sai-2-design-worker') continue;
+      assert.equal(record.severity, 'ok', `${record.name} should remain ok`);
+    }
   } finally {
     fs.rmSync(projectRoot, { recursive: true, force: true });
   }
 });
 
-test('malformed Opencode configurations keep managed-agent records in error', async () => {
+test('missing projected worker file is reported while intact workers remain ok', async () => {
+  const projectRoot = makeProjectRoot();
+  const opencodeBase = path.join(projectRoot, 'opencode');
+  try {
+    installOpencode(opencodeBase);
+    const workerPath = path.join(opencodeBase, 'agents', 'sai-3-implementation-worker.md');
+    assert.ok(fs.existsSync(workerPath), 'the projected worker file should exist after install');
+    fs.unlinkSync(workerPath);
+
+    const { code, report } = await runDoctor(projectRoot, opencodeBase);
+    assert.equal(code, 1);
+    const records = managedRecords(report);
+    const missing = records.find(record => record.name === 'sai-3-implementation-worker');
+    assert.ok(missing, 'implementation worker should be enumerated by name');
+    assert.equal(missing.severity, 'error');
+    assert.match(missing.message || '', /missing/i);
+    assert.match(missing.message || '', /re-?install/i,
+      'a missing projected file should carry re-install remediation');
+    for (const record of records) {
+      if (record.name === 'sai-3-implementation-worker') continue;
+      assert.equal(record.severity, 'ok', `${record.name} should remain ok`);
+    }
+  } finally {
+    fs.rmSync(projectRoot, { recursive: true, force: true });
+  }
+});
+
+test('doctor validation is independent of the opencode configuration agent map', async () => {
   const cases = [
     ['absent', null],
     ['unparsable', '{{ not valid jsonc'],
@@ -223,131 +203,78 @@ test('malformed Opencode configurations keep managed-agent records in error', as
       installOpencode(opencodeBase);
       writeConfig(opencodeBase, content);
       const { code, report } = await runDoctor(projectRoot, opencodeBase);
+      assert.equal(code, 0, `${label}: intact projected files should keep doctor green`);
       const records = managedRecords(report);
       assert.equal(records.length, MANAGED_NAMES.length);
-      for (const record of records) assert.equal(record.severity, 'error', `${label}: ${record.name}`);
+      for (const record of records) {
+        assert.equal(record.severity, 'ok', `${label}: ${record.name}`);
+      }
     } finally {
       fs.rmSync(projectRoot, { recursive: true, force: true });
     }
   }
 });
 
-test('doctor converts malformed census bindings into actionable error diagnostics', () => {
-  const scratchRoot = path.join(__dirname, '..', '.tmp', 'retire-inline-harness-model', 'doctor-malformed-bindings');
-  const script = `
-    'use strict';
-    const fs = require('fs');
-    const path = require('path');
-    const { PassThrough } = require('stream');
-    const bindingsDir = path.join(process.cwd(), 'sai', 'orchestration', 'workers', 'bindings', 'opencode');
-    const originalReaddirSync = fs.readdirSync;
-    fs.readdirSync = (target, ...args) => typeof target === 'string' && path.resolve(target) === path.resolve(bindingsDir)
-      ? []
-      : originalReaddirSync(target, ...args);
-    const { main } = require(${JSON.stringify(path.join(__dirname, '..', 'bin', 'doctor.js'))});
-    const projectRoot = ${JSON.stringify(scratchRoot)};
-    const opencodeBase = path.join(projectRoot, 'opencode');
-    fs.rmSync(projectRoot, { recursive: true, force: true });
-    fs.mkdirSync(path.join(projectRoot, 'openspec'), { recursive: true });
-    fs.mkdirSync(opencodeBase, { recursive: true });
-    fs.writeFileSync(path.join(projectRoot, 'openspec', 'config.yaml'), 'schema: sai-workflow\\n');
-     fs.writeFileSync(path.join(opencodeBase, 'opencode.jsonc'), JSON.stringify({ agent: {
-      'sai-1-spec-proposal-worker': { mode: 'subagent', model: 'user-spec' },
-      'sai-2-design-worker': { mode: 'subagent', model: 'user-design' },
-      'sai-3-implementation-worker': { mode: 'subagent', model: 'user-implementation' },
-      'sai-5-review-worker': { mode: 'subagent', model: 'user-review' },
-      'sai-6-security-worker': { mode: 'subagent', model: 'user-security' },
-      'sai-7-performance-worker': { mode: 'subagent', model: 'user-performance' },
-      'sai-8-accessibility-worker': { mode: 'subagent', model: 'user-accessibility' },
-    } }));
-    const out = new PassThrough();
-    const chunks = [];
-    out.on('data', chunk => chunks.push(chunk));
-    const visit = (value, records) => {
-      if (!value || typeof value !== 'object') return;
-      if (!Array.isArray(value) && typeof value.severity === 'string') records.push(value);
-      for (const child of Object.values(value)) visit(child, records);
-    };
-    (async () => {
-      const code = await main({
-        argv: ['--json'],
-         projectRoot,
-         claudeBase: path.join(projectRoot, 'claude-missing'),
-         opencodeBase,
-         execOpenspec: () => ({ status: 0, stdout: '1.4.1\\n', stderr: '', error: null }),
-        out,
-      });
-      const report = JSON.parse(Buffer.concat(chunks).toString('utf8'));
-      const records = [];
-      visit(report['[Opencode]'], records);
-      process.stdout.write(JSON.stringify({ code, hasActionableError: records.some(record => record.severity === 'error' && /census|derive/i.test(String(record.name || '') + ' ' + String(record.message || ''))) }));
-    })().catch(error => {
-      process.stdout.write(JSON.stringify({ error: error.message }));
-      process.exitCode = 1;
-    });
-  `;
-  const result = childProcess.spawnSync(process.execPath, ['-e', script], {
-    cwd: path.join(__dirname, '..'),
-    encoding: 'utf8',
-  });
-  assert.equal(result.status, 0, `${result.stderr}\n${result.stdout}\ndoctor diagnostic probe should run`);
-  const observation = JSON.parse(result.stdout);
-  assert.equal(observation.error, undefined, 'doctor should not throw while generating diagnostics');
-  assert.equal(observation.code, 1, 'derivation failures should make doctor fail');
-  assert.equal(observation.hasActionableError, true,
-    'doctor should report an actionable census/binding diagnostic instead of throwing');
-});
+// --- Step 3: projected-file compatibility records ---
 
-test('malformed census input fails before Opencode mutation and preserves unrelated diagnostics', () => {
+test('Step 3 doctor accepts seven exact-compatible projected worker agent files', async () => {
   const projectRoot = makeProjectRoot();
   const opencodeBase = path.join(projectRoot, 'opencode');
-  const configPaths = ['opencode.json', 'opencode.jsonc'].map(name => path.join(opencodeBase, name));
   try {
     installOpencode(opencodeBase);
-    for (const configPath of configPaths) {
-      if (fs.existsSync(configPath)) fs.unlinkSync(configPath);
+    const { code, report } = await runDoctor(projectRoot, opencodeBase);
+    assert.equal(code, 0);
+    const records = managedRecords(report);
+    assert.deepEqual(records.map(record => record.name).sort(), [...MANAGED_NAMES].sort());
+    for (const record of records) {
+      assert.equal(record.severity, 'ok',
+        `specs/opencode-agent-preservation/spec.md: ${record.name} should be exact-compatible`);
     }
-    const script = `
-      'use strict';
-      const fs = require('fs');
-      const path = require('path');
-      const { PassThrough } = require('stream');
-      const bindingsDir = path.join(process.cwd(), 'sai', 'orchestration', 'workers', 'bindings', 'opencode');
-      const originalReaddirSync = fs.readdirSync;
-      fs.readdirSync = (target, ...args) => typeof target === 'string' && path.resolve(target) === path.resolve(bindingsDir)
-        ? []
-        : originalReaddirSync(target, ...args);
-      const { main } = require(${JSON.stringify(path.join(__dirname, '..', 'bin', 'doctor.js'))});
-      const out = new PassThrough();
-      const chunks = [];
-      out.on('data', chunk => chunks.push(chunk));
-      (async () => {
-        const code = await main({
-          argv: ['--json'],
-           projectRoot: ${JSON.stringify(projectRoot)},
-           claudeBase: ${JSON.stringify(path.join(projectRoot, 'claude-missing'))},
-           opencodeBase: ${JSON.stringify(opencodeBase)},
-           execOpenspec: () => ({ status: 0, stdout: '1.4.1\\n', stderr: '', error: null }),
-          out,
-        });
-        process.stdout.write(JSON.stringify({ code, report: JSON.parse(Buffer.concat(chunks).toString('utf8')) }));
-      })().catch(error => {
-        process.stdout.write(JSON.stringify({ error: error.message }));
-        process.exitCode = 1;
-      });
-    `;
-    const result = childProcess.spawnSync(process.execPath, ['-e', script], {
-      cwd: path.join(__dirname, '..'),
-      encoding: 'utf8',
-    });
-    assert.equal(result.status, 0, `${result.stderr}\n${result.stdout}`);
-    const observation = JSON.parse(result.stdout);
-     assert.equal(observation.error, undefined);
-     assert.equal(observation.code, 1);
-     assert.ok(observation.report['[Claude Code]'], 'Claude diagnostics should still load');
-     assert.equal(observation.report['[GitHub Copilot]'], undefined, 'retired Copilot diagnostics should be absent');
-     assert.equal(fs.existsSync(configPaths[0]), false, 'doctor must not create opencode.json');
-    assert.equal(fs.existsSync(configPaths[1]), false, 'doctor must not create opencode.jsonc');
+  } finally {
+    fs.rmSync(projectRoot, { recursive: true, force: true });
+  }
+});
+
+test('Step 3 doctor flags a missing projected worker agent file with re-install remediation', async () => {
+  const projectRoot = makeProjectRoot();
+  const opencodeBase = path.join(projectRoot, 'opencode');
+  try {
+    installOpencode(opencodeBase);
+    const workerPath = path.join(opencodeBase, 'agents', 'sai-3-implementation-worker.md');
+    assert.ok(fs.existsSync(workerPath),
+      'the projected worker agent file should exist after install before the missing-file probe');
+    fs.unlinkSync(workerPath);
+
+    const { code, report } = await runDoctor(projectRoot, opencodeBase);
+    assert.equal(code, 1);
+    const record = managedRecords(report).find(entry => entry.name === 'sai-3-implementation-worker');
+    assert.ok(record, 'implementation worker should be enumerated by name');
+    assert.equal(record.severity, 'error');
+    assert.match(record.message || '', /missing/i);
+    assert.match(record.message || '', /re-?install/i,
+      'specs/opencode-agent-preservation/spec.md: a missing projected file should carry re-install remediation');
+  } finally {
+    fs.rmSync(projectRoot, { recursive: true, force: true });
+  }
+});
+
+test('Step 3 doctor flags an incompatible projected worker agent file with rename-or-remove remediation', async () => {
+  const projectRoot = makeProjectRoot();
+  const opencodeBase = path.join(projectRoot, 'opencode');
+  try {
+    installOpencode(opencodeBase);
+    const workerPath = path.join(opencodeBase, 'agents', 'sai-2-design-worker.md');
+    fs.mkdirSync(path.dirname(workerPath), { recursive: true });
+    fs.writeFileSync(workerPath, 'user-customized incompatible bytes\n');
+
+    const { code, report } = await runDoctor(projectRoot, opencodeBase);
+    assert.equal(code, 1);
+    const record = managedRecords(report).find(entry => entry.name === 'sai-2-design-worker');
+    assert.ok(record, 'design worker should be enumerated by name');
+    assert.equal(record.severity, 'error');
+    assert.match(record.message || '', /incompatible/i);
+    assert.match(record.message || '', /rename|remove/i,
+      'specs/opencode-agent-preservation/spec.md: an incompatible projected file should carry rename-or-remove remediation');
   } finally {
     fs.rmSync(projectRoot, { recursive: true, force: true });
   }
