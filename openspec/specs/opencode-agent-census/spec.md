@@ -42,11 +42,12 @@ Loading the shared installer module MUST NOT derive or validate the opencode wor
 - **THEN** the operation fails with the actionable validation error before modifying an opencode destination
 
 ### Requirement: The opencode worker roster does not alter other harness paths
-The opencode roster change SHALL affect only opencode managed-worker registration. Claude Code worker registration and owned-copy projections MUST retain their existing assets, ownership, routing, and exclusion of opencode-specific managed-agent configuration.
+The opencode roster change SHALL affect only opencode managed-worker registration. Claude Code worker registration and `tunable-seed` projections MUST retain their existing assets, tunables, and routing, with the new contract replacing the prior `owned-copy` / `owner-sidecar` / `rename-or-remove` behavior with the `tunable-seed` / `tunable-preservation` / `body-overwrite-with-notice` behavior. The exclusion of opencode-specific managed-agent configuration from Claude Code MUST remain in force.
 
 #### Scenario: Claude projections are unaffected
 - **WHEN** the opencode roster is rebuilt or a new opencode binding is processed
-- **THEN** Claude worker registration and owned-copy projections remain unchanged
+- **THEN** Claude worker registration and tunable-seed projections remain unchanged
+- **AND** the new contract (tunable-seed / tunable-preservation / body-overwrite-with-notice) applies to both harnesses
 
 #### Scenario: Routed worker boundaries remain explicit
 - **WHEN** installer or doctor inventories harness-specific worker assets

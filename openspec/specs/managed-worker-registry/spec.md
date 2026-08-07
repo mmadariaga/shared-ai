@@ -30,82 +30,71 @@ The managed-worker registry and manifest projection inventory SHALL distinguish 
 - **AND** the proxy retirement does not silently overwrite or delete unrelated user-owned content
 
 ### Requirement: Canonical managed-worker registry
-The installer SHALL preserve one declarative managed-worker registry keyed by worker name for the existing Claude agent filename and owner-sidecar metadata. The Claude registry MUST NOT retain opencode-only registration settings. Opencode worker registration SHALL be declared by the install manifest as owned markdown agent files under `agents/opencode/`, each carrying mode, model, optional variant, `permission.task`, and the canonical worker-contract fetch in the body; opencode membership SHALL NOT be derived from binding declarations joined with registration defaults.
+The installer SHALL preserve one declarative managed-worker registry keyed by worker name for the existing Claude agent filename. The Claude registry MUST NOT retain opencode-only registration settings. The registry MUST also declare, per harness, the user-owned tunable keys for agent file frontmatter: `model` and `effort` for Claude, `model` and `variant` for opencode. The declaration MUST be a single per-harness constant in installer code, not a per-projection annotation; the 14 agent projections MUST NOT carry any tunable-key metadata in the manifest. Opencode worker registration SHALL be declared by the install manifest as markdown agent files under `agents/opencode/`, each carrying mode, model, optional variant, `permission.task`, and the canonical worker-contract fetch in the body; opencode membership SHALL NOT be derived from binding declarations joined with registration defaults.
 
 #### Scenario: All current workers have complete registration data
 - **WHEN** the installer loads the managed-worker registry and the opencode agent projections
-- **THEN** the existing Claude worker records remain present exactly once without opencode-only settings, and every opencode worker (`sai-1-spec-proposal-worker`, `sai-2-design-worker`, `sai-3-implementation-worker`, `sai-5-review-worker`, `sai-6-security-worker`, `sai-7-performance-worker`, `sai-8-accessibility-worker`) has exactly one manifest row projecting its markdown agent file with frontmatter mode, model, variant, and `permission.task`
-
-### Requirement: Derived Claude worker compatibility surface
-The installer MUST derive the existing per-worker Claude agent and owner constants, the `OWNER_BY_CLAUDE_AGENT` dispatch map, and their existing exports from the canonical registry. The derived values MUST retain the current worker names, agent filenames, owner sidecars, map keys, and map values.
-
-#### Scenario: Existing consumers observe the same Claude values
-- **WHEN** installer code or tests import the existing exported Claude worker constants or owner map
-- **THEN** the names and values are identical to those exposed before the refactor
-
-### Requirement: Fail-closed owner dispatch
-Owned-copy projection dispatch MUST resolve ownership through the registry-derived owner map and MUST throw when an owned-copy agent has no registry entry, for both the Claude and opencode harnesses. The installer MUST NOT default an unknown agent to any owner or silently install it without an owner. The registry-derived owner map is keyed by agent filename, so owned-copy projections under both harnesses SHALL use identical agent filenames for the same worker; a harness-specific filename would lose its owner dispatch.
-
-#### Scenario: Unknown owned-copy agent is rejected
-- **WHEN** an `owned-copy` projection names an agent that is absent from the managed-worker registry
-- **THEN** installation fails with the existing fail-closed behavior before an owner sidecar is selected or written
-
-#### Scenario: Known owned-copy agent keeps its owner
-- **WHEN** an `owned-copy` projection names a currently managed agent under either harness
-- **THEN** the registry-derived dispatch selects the same owner sidecar as the current implementation
+- **THEN** the existing Claude worker records remain present exactly once without opencode-only settings, and every opencode worker (`sai-1-spec-proposal-worker`, `sai-2-design-worker`, `sai-3-implementation-worker`, `sai-5-review-worker`, `sai-6-security-worker`, `sai-7-performance-worker`, `sai-8-accessibility-worker`) has exactly one manifest row projecting its markdown agent file under the `tunable-seed` strategy with frontmatter mode, model, variant, and `permission.task`
 
 ### Requirement: Manifest projection parity and fresh-install preservation
-The registry relationship with `sai/install-manifest.json` SHALL remain deterministic: every current managed-worker projection MUST remain covered exactly once, and the opencode agent rows SHALL mirror the Claude rows' destination shape (`agents` destination class, `owned-copy` strategy, `owned` ownership). The change MUST preserve manifest expansion, projection ordering, harness isolation, collision handling, and fresh-install file, sidecar, and opencode configuration bytes, the sole configuration-byte change being the removal of the seven `agent.sai-*-worker` keys from the canonical sample `configs/opencode.jsonc`.
+The registry relationship with `sai/install-manifest.json` SHALL remain deterministic: every current managed-worker projection MUST remain covered exactly once, and the opencode agent rows SHALL mirror the Claude rows' destination shape (`agents` destination class, `tunable-seed` strategy, `managed` ownership). The change MUST preserve manifest expansion, projection ordering, harness isolation, collision handling, and fresh-install file bytes; the sole change to the manifest is the strategy token (`owned-copy` → `tunable-seed`) and the ownership token (`owned` → `managed`) on the 14 agent rules. The installer identifies a managed file by its body and non-tunable frontmatter; a destination whose tunable lines differ from the source is still considered managed.
 
 #### Scenario: Existing managed projections remain complete
 - **WHEN** installer, doctor, or uninstall expands the install manifest
-- **THEN** the seven Claude owned-copy projections and the seven opencode owned-copy projections are each present exactly once with no duplicate or omitted projection
+- **THEN** the seven Claude tunable-seed projections and the seven opencode tunable-seed projections are each present exactly once with no duplicate or omitted projection
 
-#### Scenario: Fresh installs are byte-preserving
+#### Scenario: Fresh installs are byte-preserving for unmodified users
 - **WHEN** the Claude and opencode installers run against a fresh destination
-- **THEN** the resulting file inventories and file bytes, ownership sidecars, and opencode configuration bytes are identical to the pre-change behavior, plus the seven new opencode agent files and their sidecars, and minus the seven `agent.sai-*-worker` keys removed from the sample configuration
+- **THEN** the resulting file inventories and file bytes are identical to the pre-change behavior for any installation whose agent files were never modified
 
 #### Scenario: Projection safety remains unchanged
-- **WHEN** a projection has a missing source, destination collision, incompatible existing content, or unsupported ownership mapping
+- **WHEN** a projection has a missing source, destination collision, or unsupported ownership mapping
 - **THEN** the same validation failure occurs and no user-owned or incompatible content is silently overwritten
 
 ### Requirement: Downstream worker-consumer compatibility
-The registry change MUST preserve the values observed through the existing exported Claude worker constants and `LEGACY_CLAUDE_WORKERS` surfaces. The `OPENCODE_MANAGED_AGENTS` export and `getOpencodeManagedAgents` SHALL be removed; doctor and uninstall SHALL enumerate the manifest-projected opencode agent files instead of a derived census or the configuration agent map.
+The registry change MUST preserve the values observed through the existing exported Claude worker agent filename constants. The `OWNER_BY_CLAUDE_AGENT` export, the `CLAUDE_*_WORKER_OWNER` constants, the `LEGACY_CLAUDE_WORKERS` constant, and the `migrateLegacyClaudeWorkers` function SHALL be removed; the legacy Claude migration code path is retired. The `OPENCODE_MANAGED_AGENTS` export and `getOpencodeManagedAgents` remain removed. Doctor and uninstall SHALL enumerate the manifest-projected opencode agent files via the new `tunable-seed` strategy and the body-and-non-tunable identity rule.
 
 #### Scenario: Doctor enumeration observes every projected opencode worker
 - **WHEN** doctor enumerates Claude worker agents and opencode worker agent files
 - **THEN** it observes the same Claude agent names and all seven manifest-projected opencode agent files
+- **AND** its identity check compares only the body and non-tunable frontmatter
 
 ### Requirement: Behavior-preservation regression coverage
-The installer test harness MUST verify registry completeness, the derived Claude and owner-dispatch surfaces, the opencode manifest row set and projection order, and fresh-install compatibility contracts, including the scoped sample-config byte change (the seven worker keys removed, everything else byte-identical). Opencode census and registration-default assertions SHALL be replaced by assertions over the projected agent files.
+The installer test harness MUST verify registry completeness, the derived Claude surface, the opencode manifest row set and projection order, and fresh-install compatibility contracts. Opencode census and registration-default assertions SHALL be replaced by assertions over the projected agent files; the owner-sidecar and `readManagedHash` assertions SHALL be removed. The harness MUST cover the new tunable-seed behavior: seed-on-create writes source verbatim, overwrite-managed-on-update preserves user tunables, body divergence produces a console notice without throwing, doctor body-comparison is the only identity check, uninstall uses the same body comparison, uninstall also removes installed `.<basename>.owner.json` sidecars under the same shape guard, and sidecars are deleted on install under the same shape guard.
 
 #### Scenario: Existing installer suites remain green
 - **WHEN** the install-manifest, Claude-install, and opencode-install test suites run after the change
-- **THEN** their existing behavior-preservation assertions pass and additional coverage detects missing manifest rows, owner drift, projection drift, or opencode agent-file content drift
+- **THEN** their existing behavior-preservation assertions pass and additional coverage detects missing manifest rows, projection drift, opencode agent-file content drift, and tunable-line mis-handling
 
-### Requirement: Opencode workers are projected as owned markdown agent files
-The install manifest SHALL declare one `owned-copy` projection per opencode worker agent, mirroring the Claude agent rows: source `agents/opencode/<worker>.md`, destination class `agents`, harness `opencode`, ownership `owned`. Each projected file SHALL carry the worker's mode, model, optional variant, and `permission.task` in YAML frontmatter and the canonical worker-contract fetch in its body, and SHALL NOT rely on the opencode configuration agent map for registration. Existing workers MUST retain their model, `mode: "subagent"`, variant when present, `permission.task` shape, and registration identity.
+### Requirement: Opencode workers are projected as managed markdown agent files
+The install manifest SHALL declare one `tunable-seed` projection per opencode worker agent, mirroring the Claude agent rows: source `agents/opencode/<worker>.md`, destination class `agents`, harness `opencode`, ownership `managed`. Each projected file SHALL carry the worker's mode, model, optional variant, and `permission.task` in YAML frontmatter and the canonical worker-contract fetch in its body, and SHALL NOT rely on the opencode configuration agent map for registration. Existing workers MUST retain their model, `mode: "subagent"`, variant when present, `permission.task` shape, and registration identity. The installer SHALL overwrite the body and non-tunable frontmatter on update while preserving the destination's `model` and `variant` lines; a destination whose body or non-tunable frontmatter differs from source is overwritten with a console notice.
 
 #### Scenario: Fresh opencode installation projects every worker file
 - **WHEN** a fresh opencode installation expands the manifest
-- **THEN** all seven worker agent files are created under `~/.config/opencode/agents/` with their canonical frontmatter and body, each accompanied by its ownership sidecar
+- **THEN** all seven worker agent files are created under `~/.config/opencode/agents/` with their canonical frontmatter and body
 
-#### Scenario: A projected worker file already exists
-- **WHEN** a worker agent file already exists at the projected destination
-- **THEN** installation reuses it when its content is exact-compatible, blocks with rename-or-remove remediation when it is incompatible, and never overwrites or repairs user content
+#### Scenario: A projected worker file already exists with a different body
+- **WHEN** a worker agent file already exists at the projected destination and its body or non-tunable frontmatter differs from source
+- **THEN** the installer overwrites the body and non-tunable frontmatter with source bytes, preserves the destination's tunable values placed per the structural anchor in `agent-tunable-ownership`, and emits a console notice naming the destination path
+- **AND** the installer does not throw
 
-### Requirement: Owned-copy projection installs the manifest source path
-Owned-copy projection SHALL install the bytes of the manifest row's declared `source` file into the harness's `agents/` destination and SHALL NOT re-derive the source from another harness's directory by destination basename. The owned-copy installer SHALL be harness-neutral in function naming, source resolution, and error messaging.
+#### Scenario: A projected worker file exists with body match and tunable changes
+- **WHEN** a worker agent file already exists at the projected destination and its body and non-tunable frontmatter match source, with tunable lines that differ from source
+- **THEN** the installer overwrites the body and non-tunable frontmatter with source bytes while leaving the destination's tunable lines untouched
 
-#### Scenario: Opencode owned-copy rows project opencode sources
-- **WHEN** the manifest expands an opencode owned-copy row whose source is `agents/opencode/sai-2-design-worker.md`
-- **THEN** the file installed at `~/.config/opencode/agents/sai-2-design-worker.md` SHALL be byte-identical to `agents/opencode/sai-2-design-worker.md`
+### Requirement: Tunable-seed projection installs the manifest source path
+Tunable-seed projection SHALL install the bytes of the manifest row's declared `source` file into the harness's `agents/` destination and SHALL NOT re-derive the source from another harness's directory by destination basename. The tunable-seed installer SHALL be harness-neutral in function naming, source resolution, and error messaging. The installer SHALL extract destination tunable scalar lines for the harness's declared tunable keys, overwrite the body and non-tunable frontmatter with source bytes, and splice the destination's tunable lines back using a structural anchor: when the source frontmatter contains the same key, the value is replaced in place at the matching key's source position; when the source omits the key, the line is appended immediately after the last top-level scalar in the source frontmatter and SHALL NOT be emitted inside a nested block (such as `permission:`). The installer SHALL NOT write a `.<basename>.owner.json` sidecar file.
+
+#### Scenario: Opencode tunable-seed rows project opencode sources
+- **WHEN** the manifest expands an opencode tunable-seed row whose source is `agents/opencode/sai-2-design-worker.md`
+- **THEN** the file installed at `~/.config/opencode/agents/sai-2-design-worker.md` SHALL be byte-identical to `agents/opencode/sai-2-design-worker.md` when the destination did not exist before the install
 - **AND** it SHALL NOT contain Claude frontmatter (no `model: claude-opus-4-8`, no `effort` key, no `tools` field)
 - **AND** it SHALL carry the opencode frontmatter (`mode`, `model`, `variant`, `permission.task`) and the canonical contract fetch in the body
 
-#### Scenario: Claude owned-copy rows remain byte-preserving
-- **WHEN** the manifest expands a Claude owned-copy row whose source is `agents/claude/sai-2-design-worker.md`
-- **THEN** the file installed at `~/.claude/agents/sai-2-design-worker.md` SHALL remain byte-identical to the pre-change behavior, and the owner sidecar SHALL record the same managed hash
+#### Scenario: Claude tunable-seed rows remain byte-preserving
+- **WHEN** the manifest expands a Claude tunable-seed row whose source is `agents/claude/sai-2-design-worker.md`
+- **THEN** the file installed at `~/.claude/agents/sai-2-design-worker.md` SHALL remain byte-identical to the pre-change behavior when the destination did not exist before the install
+- **AND** the installer SHALL NOT create a `.<basename>.owner.json` file
 
 ### Requirement: The canonical opencode configuration sample defines no managed worker
 The canonical sample `configs/opencode.jsonc` SHALL NOT define any of the seven managed opencode worker agent keys; the seven `agent.sai-*-worker` keys are removed from it, while `subagent_depth`, `permission`, and the three helper-agent keys (`explore`, `executor`, `budget`) remain unchanged. The fresh-install configuration therefore carries no worker registration; workers register only through the projected markdown agent files.

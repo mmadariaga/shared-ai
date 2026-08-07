@@ -108,20 +108,22 @@ The GitHub Copilot `/sai-2-design` wrapper SHALL retain the existing inline desi
 - **WHEN** `/sai-2-design` is invoked in GitHub Copilot
 - **THEN** the existing inline path SHALL execute without requiring the routed coordinator, design worker definition, or lifecycle continuation binding
 
-### Requirement: Design binding definitions are collision-safe and ownership-aware
-Design coordinator and worker identifiers SHALL be SAI-namespaced. Installation SHALL create absent managed definitions. For Claude worker definitions, installation SHALL reuse exact-compatible pre-existing definitions without adopting ownership, stop on incompatible collisions without overwriting user content, and preserve edited managed agents during guarded uninstall. For opencode definitions, the projected `sai-2-design-worker.md` agent file SHALL follow the same owned-copy lifecycle: created when absent with the canonical GLM 5.2 high-reasoning definition and an ownership sidecar, reused when exact-compatible, and blocked with rename-or-remove remediation when an incompatible file exists; installation SHALL NOT overwrite or repair an existing file. Doctor SHALL validate the projected opencode agent file against its bundled source, reporting a missing or incompatible file as an error and a compatible file as valid. When `/sai-2-design` dispatches an existing user-edited worker agent file, that file's configured model, variant, mode, and permissions SHALL govern the worker invocation; the canonical GLM 5.2 default SHALL apply only to a file created because it was absent. Opencode uninstall SHALL remove the projected agent file only under the ownership-sidecar hash guard and SHALL preserve user-edited files and the opencode configuration.
+### Requirement: Design binding definitions are ownership-aware
+Design coordinator and worker identifiers SHALL be SAI-namespaced. Installation SHALL create absent managed definitions. For Claude worker definitions, installation SHALL reuse exact-compatible pre-existing definitions without adopting ownership, overwrite the body and non-tunable frontmatter on subsequent installs while preserving the destination's `model` and `effort` values placed per the structural anchor in `agent-tunable-ownership`, and emit a console notice when a body overwrite occurs; installation SHALL NOT block on incompatible collisions because the new strategy is overwrite-with-notice. Edited managed agents SHALL be preserved during guarded uninstall, and the installer SHALL overwrite the body and non-tunable frontmatter on subsequent installs (so an editor who keeps their tunables will see their customizations preserved as the values the installer does not touch). For opencode definitions, the projected `sai-2-design-worker.md` agent file SHALL follow the same `tunable-seed` lifecycle: created when absent with the canonical GLM 5.2 high-reasoning definition, overwritten (body and non-tunable frontmatter) on subsequent installs while preserving the destination's `model` and `variant` values placed per the structural anchor, and emitting a console notice when a body overwrite occurs; installation SHALL NOT block on incompatible collisions. Doctor SHALL validate the projected opencode agent file against its bundled source by comparing only the body and non-tunable frontmatter, reporting a missing file as an error with re-install remediation, a body-or-non-tunable-frontmatter divergence as an error naming the file, and a compatible file as valid. When `/sai-2-design` dispatches an existing user-edited worker agent file, that file's configured model, variant, mode, and permissions SHALL govern the worker invocation because the installer preserves the destination's tunable values on overwrite; the canonical GLM 5.2 default SHALL apply only to a file created because it was absent. Opencode uninstall SHALL remove the projected agent file only when its body and non-tunable frontmatter match the source, SHALL preserve a body-divergent file as a project-local override, and SHALL leave the opencode configuration untouched.
 
 #### Scenario: Compatible user-owned Claude worker exists
-- **WHEN** installation finds an exact-compatible `sai-design-planning-worker` definition without a SAI ownership record
-- **THEN** installation SHALL reuse it, SHALL NOT create an ownership record, and uninstall SHALL preserve it
+- **WHEN** installation finds an exact-compatible `sai-design-planning-worker` definition
+- **THEN** installation SHALL reuse it without modifying it and uninstall SHALL preserve it
 
-#### Scenario: Incompatible Claude worker definition exists
-- **WHEN** installation finds an incompatible Claude agent file at a design coordinator or worker identifier
-- **THEN** installation SHALL stop with rename-or-remove remediation and SHALL NOT overwrite the definition or partially install the conflicting managed surface
+#### Scenario: Body-divergent Claude worker is overwritten with notice
+- **WHEN** installation finds a Claude agent file at a design coordinator or worker identifier whose body or non-tunable frontmatter differs from the managed definition
+- **THEN** installation SHALL overwrite the body and non-tunable frontmatter, preserve the destination's `model` and `effort` values placed per the structural anchor in `agent-tunable-ownership`, and emit a console notice naming the destination path
+- **AND** SHALL NOT block installation
 
-#### Scenario: Customized opencode design agent file exists
-- **WHEN** installation finds an existing `sai-2-design-worker.md` agent file with customized model, variant, mode, permission, or other fields
-- **THEN** installation SHALL stop with rename-or-remove remediation and SHALL NOT overwrite or repair the conflicting definition
+#### Scenario: Tuned opencode design agent file preserves its tunables
+- **WHEN** installation finds an existing `sai-2-design-worker.md` agent file whose body and non-tunable frontmatter match the source but whose `model` or `variant` differs
+- **THEN** installation SHALL overwrite the body and non-tunable frontmatter with the source bytes while leaving the destination's tunable lines untouched
+- **AND** SHALL NOT emit a console notice for that destination
 
 #### Scenario: Customized design worker runtime is honored
 - **WHEN** `/sai-2-design` dispatches an existing user-owned `sai-2-design-worker.md` agent file with a customized model or variant
@@ -129,11 +131,13 @@ Design coordinator and worker identifiers SHALL be SAI-namespaced. Installation 
 
 #### Scenario: Missing opencode design worker agent file
 - **WHEN** the `sai-2-design-worker.md` agent file is absent
-- **THEN** installation SHALL create it with the canonical GLM 5.2 high-reasoning managed definition and its ownership sidecar
+- **THEN** installation SHALL create it with the canonical GLM 5.2 high-reasoning managed definition
+- **AND** SHALL NOT create a `.<basename>.owner.json` sidecar
 
-#### Scenario: SAI-created Claude worker was edited
-- **WHEN** uninstall finds a worker ownership record but the current worker content no longer matches its recorded managed hash
-- **THEN** uninstall SHALL preserve the worker definition and remove only stale ownership metadata according to the established guarded-uninstall policy
+#### Scenario: Edited managed Claude agent survives uninstall
+- **WHEN** uninstall finds a Claude worker whose body or non-tunable frontmatter differs from source
+- **THEN** uninstall SHALL preserve the worker definition
+- **AND** SHALL NOT consult any sidecar file
 
 ### Requirement: opencode design permission verification covers the SAI directory
 

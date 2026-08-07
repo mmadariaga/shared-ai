@@ -37,19 +37,22 @@ For each installer-provisioned opencode agent name that is absent from a parseab
 - **THEN** installation SHALL leave the file unchanged and use the existing manual-guidance fallback instead of rewriting it
 
 ### Requirement: Doctor validates projected opencode worker agent files
-Doctor SHALL validate each manifest-projected opencode worker agent file against its bundled source: a missing file SHALL be reported as an error with re-install remediation, an incompatible file SHALL be reported as an error with rename-or-remove remediation, and an exact-compatible file SHALL be reported as valid. Doctor SHALL NOT validate worker presence in the opencode configuration agent map.
+Doctor SHALL validate each manifest-projected opencode worker agent file against its bundled source by comparing only the body and the non-tunable frontmatter: tunable lines (`model`, `variant`) MUST be stripped from both the destination and the source before the comparison. A missing file SHALL be reported as an error with re-install remediation, a body-or-non-tunable-frontmatter divergence SHALL be reported as an error naming the file, and an exact-compatible file (body and non-tunable frontmatter match) SHALL be reported as valid. The "rename or remove the conflicting definition" wording is retired because the new installer overwrites the body and non-tunable frontmatter and emits a console notice rather than blocking installation. Doctor SHALL NOT validate worker presence in the opencode configuration agent map.
 
 #### Scenario: Compatible projected worker files are accepted
-- **WHEN** every projected opencode worker agent file exists with content matching its bundled source
-- **THEN** doctor SHALL report those agent records with `ok` severity and SHALL not report them as incompatible
+- **WHEN** every projected opencode worker agent file exists with content matching its bundled source after tunable lines are stripped
+- **THEN** doctor SHALL report those agent records with `ok` severity
+- **AND** doctor SHALL not report a tunable-only difference as an error
 
 #### Scenario: Missing worker agent file is reported
 - **WHEN** a projected opencode worker agent file is absent
 - **THEN** doctor SHALL report that agent as an error identifying it as missing
+- **AND** the message SHALL match the regular expression `/re-?install/i`
 
-#### Scenario: Incompatible worker agent file is reported
-- **WHEN** a projected opencode worker agent file exists but differs from its bundled source
-- **THEN** doctor SHALL report that agent as an error identifying it as incompatible, with rename-or-remove remediation
+#### Scenario: Incompatible body or non-tunable frontmatter is reported
+- **WHEN** a projected opencode worker agent file exists but its body or non-tunable frontmatter differs from its bundled source
+- **THEN** doctor SHALL report that agent as an error identifying it as incompatible
+- **AND** the message SHALL NOT carry the rename-or-remove remediation, because the installer overwrites and continues
 
 ### Requirement: Regression tests protect agent ownership semantics
 The automated test suite SHALL cover installation and doctor behavior for customized existing agents, missing installer-provisioned agents, preservation of existing definitions, and rejection of malformed configuration. The tests SHALL verify that ordinary installer-managed file replacement behavior is unaffected.
@@ -63,11 +66,13 @@ The automated test suite SHALL cover installation and doctor behavior for custom
 - **THEN** it SHALL verify that present customized names are `ok` and absent names remain errors
 
 ### Requirement: Opencode collision-policy documentation matches ownership semantics
-The accepted opencode collision-policy statements in `docs/adr/0077-harness-specific-worker-bindings.md` and `docs/adr/0088-implementation-harness-projection-boundaries.md` SHALL describe the seven projected opencode worker agent files, the owned-copy lifecycle (create when absent, reuse exact-compatible, block incompatible with rename-or-remove remediation), and guarded uninstall; SHALL describe the configuration merge as covering only the helper agents (`explore`, `executor`, `budget`) plus the external-directory permission; and SHALL avoid stating that customized opencode worker definitions are preserved by name in the configuration. Their Claude worker and ordinary managed-file collision statements SHALL remain unchanged.
+The accepted opencode collision-policy statements in `docs/adr/0077-harness-specific-worker-bindings.md` and `docs/adr/0088-implementation-harness-projection-boundaries.md` SHALL describe the seven projected opencode worker agent files, the new `tunable-seed` lifecycle (create when absent with the shipped tunables, overwrite body and non-tunable frontmatter on subsequent installs while preserving the destination's tunable values placed per the structural anchor in `agent-tunable-ownership`, emit a console notice when a body overwrite occurs), and the body-and-non-tunable identity rule used by doctor and uninstall; SHALL describe the configuration merge as covering only the helper agents (`explore`, `executor`, `budget`) plus the external-directory permission; and SHALL avoid stating that customized opencode worker definitions are preserved by name in the configuration. The `rename-or-remove` wording SHALL be replaced by the new ownership contract. Their Claude worker and ordinary managed-file collision statements SHALL remain unchanged.
 
 #### Scenario: Affected ADRs describe current opencode ownership
 - **WHEN** the affected ADRs are read after this change is applied
-- **THEN** their opencode sections SHALL refer to the projected worker agent files and SHALL state file-based exact-compatibility collision blocking and guarded-uninstall preservation
+- **THEN** their opencode sections SHALL refer to the projected worker agent files
+- **AND** SHALL state the tunable-seed lifecycle and the body-and-non-tunable identity rule
+- **AND** SHALL NOT describe the retired owned-copy / owner-sidecar / rename-or-remove behavior
 
 #### Scenario: Non-opencode safety policy remains documented
 - **WHEN** the affected ADRs describe Claude worker files or ordinary managed destinations

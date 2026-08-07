@@ -21,11 +21,12 @@ The installer SHALL register one managed worker identity for `sai-8-accessibilit
 
 ### Requirement: Routed accessibility wrappers and bindings preserve harness parity
 
-The Claude Code and opencode `/sai-8-accessibility` wrappers SHALL route to their terminal-only coordinator and fetch the matching neutral worker-binding destination directly while preserving their harness-specific model and argument passthrough behavior. The Claude projection SHALL include the managed worker identity and owner sidecar; the opencode projection SHALL include its task-dispatch metadata. GitHub Copilot SHALL retain its existing inline prompt and caller body `sai/commands/sai-8-accessibility.md`, and SHALL receive no routed accessibility worker, binding, forwarding skill, or managed-agent projection.
+The Claude Code and opencode `/sai-8-accessibility` wrappers SHALL route to their terminal-only coordinator and fetch the matching neutral worker-binding destination directly while preserving their harness-specific model and argument passthrough behavior. The Claude projection SHALL include the managed worker identity and the new `tunable-seed` handling (no `.<basename>.owner.json` sidecar; the destination's `model` and `effort` values are preserved on overwrite, placed per the structural anchor in `agent-tunable-ownership`). The opencode projection SHALL include its task-dispatch metadata. GitHub Copilot SHALL retain its existing inline prompt and caller body `sai/commands/sai-8-accessibility.md`, and SHALL receive no routed accessibility worker, binding, forwarding skill, or managed-agent projection.
 
 #### Scenario: Claude Code projection is installed
 - **WHEN** the Claude Code projection is generated
-- **THEN** the wrapper, coordinator, Claude binding, managed agent, and ownership metadata resolve to the accessibility worker
+- **THEN** the wrapper, coordinator, Claude binding, and managed agent resolve to the accessibility worker
+- **AND** the `tunable-seed` installer handles the agent file with the destination's `model` and `effort` values preserved on overwrite, placed per the structural anchor in `agent-tunable-ownership`
 - **AND** the full invocation arguments remain available to worker-owned parsing
 
 #### Scenario: opencode projection is installed
