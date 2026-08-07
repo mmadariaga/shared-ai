@@ -59,3 +59,11 @@ changed_files: string[]
 It is not a lifecycle status and is never emitted by or sent to an
 implementation worker. No outcome contains a continuation identifier,
 binding dispatch metadata, or artifact contents.
+
+## Question Content
+
+Every `needs_input` question SHALL comply with
+`@sai/policies/question-context.md`. The design-only notice `message` SHALL
+comply with that policy's informational-notice subset. Compliance is satisfied
+at the worker source: coordinators forward the question or message verbatim and
+SHALL NOT rephrase, enrich, or restructure it before forwarding.
