@@ -46,7 +46,7 @@ explain why here and leave the findings sections empty.}
 
 ## SAST Findings
 
-### [SEVERITY] CWE-XXX — {short title}
+### C1 [SEVERITY] CWE-XXX — {short title}
 
 - **Module:** `{module}`
 - **File:** `{path}:{line}`
@@ -71,7 +71,7 @@ explain why here and leave the findings sections empty.}
 
 > Include this section **only** if dependency manifests were modified in the diff.
 
-### [SEVERITY] {CVE-ID} — {package}@{version}
+### H1 [SEVERITY] {CVE-ID} — {package}@{version}
 
 - **Package:** `{name}@{version}`
 - **Ecosystem:** {npm/PyPI/Maven/NuGet/Go/...}
@@ -145,4 +145,6 @@ explain why here and leave the findings sections empty.}
 - **Files scanned:** {n}
 - **Flaw density:** {flaws per 1000 LOC scanned}
 - **Est. remediation effort:** {hours}
+
+Summary: Critical={n} High={n} Medium={n} Low={n}
 ```

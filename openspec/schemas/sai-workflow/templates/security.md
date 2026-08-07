@@ -44,7 +44,7 @@
 
 ## SAST Findings
 
-### [SEVERITY] CWE-XXX — <!-- short title -->
+### C1 [SEVERITY] CWE-XXX — <!-- short title -->
 
 - **Module:** `<module>`
 - **File:** `<path>:<line>`
@@ -69,7 +69,7 @@
 
 > Include only if dependency manifests were modified in the diff.
 
-### [SEVERITY] <!-- CVE-ID --> — <!-- package@version -->
+### H1 [SEVERITY] <!-- CVE-ID --> — <!-- package@version -->
 
 - **Package:** `<name>@<version>`
 - **Ecosystem:** <!-- npm/PyPI/Maven/NuGet/Go/... -->
@@ -141,3 +141,4 @@
 - **Files scanned:** <!-- n -->
 - **Flaw density:** <!-- flaws per 1000 LOC -->
 - **Est. remediation effort:** <!-- hours -->
+Summary: Critical=<!-- n --> High=<!-- n --> Medium=<!-- n --> Low=<!-- n -->

@@ -170,6 +170,7 @@ Fetch @sai/instructions/_templates/security-report.md
 - **No auto-dismissed findings.** Do NOT include a finding if your conclusion is "no actual flaw exists", "no action needed", "noted for completeness", or "future code changes could...". If there is no concrete exploit on the current code, do not report it.
 - **No exhaustive "No instances detected" lists.** If a category came up clean, do not list it. A single sentence in the Executive Summary (e.g. "No injection, crypto, or traversal flaws detected in scope") is sufficient.
 - **Quote errors and code exactly.** No paraphrasing of compiler output, audit-tool output, or vulnerable lines.
+- **Identifiers and closing tally.** Every finding carries a severity-prefixed identifier — the severity's initial followed by the finding's sequence within that severity in the current report (`C1`/`H1`/`M1`/`L1`), restarting at 1 per severity per report — and the report closes with `Summary: Critical=<n> High=<n> Medium=<n> Low=<n>` whose counts match the report's findings. The tally lists every level of the phase's subset with its count (zeros included); it has no `Informational` counter.
 - **Be concise.** For a typical diff, the final report must be legible in fewer than 200 lines. Skip sections entirely if they do not apply (e.g. SCA, Acknowledged Trade-offs) rather than filling them with "N/A" or empty tables.
 
 ## Self-Critique Before Saving
@@ -181,6 +182,7 @@ Before writing the report, verify:
 4. **Spec respect** — no finding contradicts a decision recorded in the change artifacts without being marked *Acknowledged*.
 5. **Conciseness** — sections without content were omitted entirely.
 6. **Severity floor** — no findings below Low severity were included in the report. Informational-level observations are omitted.
+7. **Identifiers and tally** — every finding heading leads with its severity-prefixed identifier, and the closing `Summary:` line counts match the report's findings.
 
 ## Remember
 
