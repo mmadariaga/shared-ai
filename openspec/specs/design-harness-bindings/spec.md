@@ -63,7 +63,7 @@ The Claude Code `/sai-2-design` wrapper SHALL run the coordinator on `claude-opu
 - **THEN** the low-effort coordinator SHALL dispatch the numbered design worker, capture its agent ID outside the worker payload, and continue that agent for later `needs_input` answers
 
 ### Requirement: opencode uses high-reasoning GLM 5.2 for both roles
-The canonical opencode configuration SHALL define the numbered design worker as a subagent using GLM 5.2 with high reasoning, with technical I/O permissions and `permission.task` denying all targets before allowing `explore` for mandatory source discovery. SAI SHALL neither install a coordinator agent entry nor select one from a wrapper — a user-defined primary agent is outside this constraint: the `/sai-2-design` wrapper frontmatter SHALL contain `model: opencode-go/glm-5.2`, `variant: high`, and `subtask: false`, SHALL omit `agent`, and the coordinator SHALL therefore run on GLM 5.2 with high reasoning selected by the wrapper itself. Its native `question` capability and its `task` dispatch to `sai-2-design-worker` SHALL be preconditions on the active primary agent per `opencode-coordinator-runtime`, not permissions supplied by shipped configuration. The wrapper SHALL load only the design-worker binding. The design-worker binding SHALL capture and continue the harness task ID outside the worker-authored payload.
+The canonical projected opencode design-worker agent file SHALL define the numbered design worker as a subagent using GLM 5.2 with high reasoning, with technical I/O permissions and `permission.task` denying all targets before allowing `explore` for mandatory source discovery; the definition SHALL live in the frontmatter of the manifest-projected `agents/opencode/sai-2-design-worker.md` file rather than in the opencode configuration agent map. SAI SHALL neither install a coordinator agent entry nor select one from a wrapper — a user-defined primary agent is outside this constraint: the `/sai-2-design` wrapper frontmatter SHALL contain `model: opencode-go/glm-5.2`, `variant: high`, and `subtask: false`, SHALL omit `agent`, and the coordinator SHALL therefore run on GLM 5.2 with high reasoning selected by the wrapper itself. Its native `question` capability and its `task` dispatch to `sai-2-design-worker` SHALL be preconditions on the active primary agent per `opencode-coordinator-runtime`, not permissions supplied by shipped configuration. The wrapper SHALL load only the design-worker binding. The design-worker binding SHALL capture and continue the harness task ID outside the worker-authored payload.
 
 #### Scenario: opencode dispatches and resumes design work
 - **WHEN** `/sai-2-design` starts in opencode and the worker later requests input
@@ -72,6 +72,11 @@ The canonical opencode configuration SHALL define the numbered design worker as 
 #### Scenario: opencode wrapper declares its coordinator runtime
 - **WHEN** `commands/opencode/sai-2-design.md` activates routed design
 - **THEN** its frontmatter SHALL contain `model: opencode-go/glm-5.2`, `variant: high`, and `subtask: false`, and SHALL contain no `agent` field
+
+#### Scenario: The projected design-worker agent carries the canonical definition
+- **WHEN** a fresh opencode installation projects `sai-2-design-worker.md`
+- **THEN** the file SHALL declare `mode: subagent`, `model: opencode-go/glm-5.2`, `variant: high`, and `permission.task` denying all targets before allowing `explore`
+- **AND** the canonical opencode configuration sample SHALL NOT define the design worker entry
 
 #### Scenario: Claude acknowledges a design notice
 - **WHEN** a design worker notice is returned with a binding-captured agent ID
@@ -104,7 +109,7 @@ The GitHub Copilot `/sai-2-design` wrapper SHALL retain the existing inline desi
 - **THEN** the existing inline path SHALL execute without requiring the routed coordinator, design worker definition, or lifecycle continuation binding
 
 ### Requirement: Design binding definitions are collision-safe and ownership-aware
-Design coordinator and worker identifiers SHALL be SAI-namespaced. Installation SHALL create absent managed definitions. For Claude worker definitions, installation SHALL reuse exact-compatible pre-existing definitions without adopting ownership, stop on incompatible collisions without overwriting user content, and preserve edited managed agents during guarded uninstall. For opencode definitions, the existing `sai-2-design-worker` name SHALL be treated as user-owned and preserved unchanged regardless of model, variant, mode, permission, or other fields; installation SHALL add the canonical GLM 5.2 high-reasoning definition only when that name is absent and SHALL NOT block on definition differences. Doctor SHALL accept a present `sai-2-design-worker` name when the configuration parses and its agent map is an object, while a missing name and malformed configurations SHALL remain errors. When `/sai-2-design` dispatches an existing user-owned worker entry, that entry's configured model, variant, mode, and permissions SHALL govern the worker invocation; the canonical GLM 5.2 default SHALL apply only to an entry added because the name was absent. Opencode uninstall SHALL preserve pre-existing and installed namespaced configuration entries under the established policy.
+Design coordinator and worker identifiers SHALL be SAI-namespaced. Installation SHALL create absent managed definitions. For Claude worker definitions, installation SHALL reuse exact-compatible pre-existing definitions without adopting ownership, stop on incompatible collisions without overwriting user content, and preserve edited managed agents during guarded uninstall. For opencode definitions, the projected `sai-2-design-worker.md` agent file SHALL follow the same owned-copy lifecycle: created when absent with the canonical GLM 5.2 high-reasoning definition and an ownership sidecar, reused when exact-compatible, and blocked with rename-or-remove remediation when an incompatible file exists; installation SHALL NOT overwrite or repair an existing file. Doctor SHALL validate the projected opencode agent file against its bundled source, reporting a missing or incompatible file as an error and a compatible file as valid. When `/sai-2-design` dispatches an existing user-edited worker agent file, that file's configured model, variant, mode, and permissions SHALL govern the worker invocation; the canonical GLM 5.2 default SHALL apply only to a file created because it was absent. Opencode uninstall SHALL remove the projected agent file only under the ownership-sidecar hash guard and SHALL preserve user-edited files and the opencode configuration.
 
 #### Scenario: Compatible user-owned Claude worker exists
 - **WHEN** installation finds an exact-compatible `sai-design-planning-worker` definition without a SAI ownership record
@@ -114,17 +119,17 @@ Design coordinator and worker identifiers SHALL be SAI-namespaced. Installation 
 - **WHEN** installation finds an incompatible Claude agent file at a design coordinator or worker identifier
 - **THEN** installation SHALL stop with rename-or-remove remediation and SHALL NOT overwrite the definition or partially install the conflicting managed surface
 
-#### Scenario: Customized opencode design entry exists
-- **WHEN** installation finds an existing `sai-2-design-worker` opencode agent entry with customized model, variant, mode, permission, or other fields
-- **THEN** installation SHALL preserve the entry unchanged, SHALL NOT report an incompatible collision, and SHALL continue processing missing names
+#### Scenario: Customized opencode design agent file exists
+- **WHEN** installation finds an existing `sai-2-design-worker.md` agent file with customized model, variant, mode, permission, or other fields
+- **THEN** installation SHALL stop with rename-or-remove remediation and SHALL NOT overwrite or repair the conflicting definition
 
 #### Scenario: Customized design worker runtime is honored
-- **WHEN** `/sai-2-design` dispatches an existing user-owned `sai-2-design-worker` entry with a customized model or variant
+- **WHEN** `/sai-2-design` dispatches an existing user-owned `sai-2-design-worker.md` agent file with a customized model or variant
 - **THEN** the invocation SHALL use that existing worker configuration without requiring the canonical GLM 5.2 default
 
-#### Scenario: Missing opencode design entry exists
-- **WHEN** the `sai-2-design-worker` opencode entry is absent
-- **THEN** installation SHALL add the canonical GLM 5.2 high-reasoning managed definition
+#### Scenario: Missing opencode design worker agent file
+- **WHEN** the `sai-2-design-worker.md` agent file is absent
+- **THEN** installation SHALL create it with the canonical GLM 5.2 high-reasoning managed definition and its ownership sidecar
 
 #### Scenario: SAI-created Claude worker was edited
 - **WHEN** uninstall finds a worker ownership record but the current worker content no longer matches its recorded managed hash

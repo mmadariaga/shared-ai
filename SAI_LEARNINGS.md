@@ -4,8 +4,8 @@ Durable execution-observed facts about the shared-ai prompt and installer reposi
 
 ## Stack
 
-- **bin/install-flow.js**: Fresh opencode configuration installs must merge the binding-derived managed-agent registry after copying the static config, and must resolve that census before destination mutation so invalid bindings or defaults fail without partial writes.
-  *Observed:* derive-opencode-agent-census-from-bindings — the preflight preserved fresh-install registration and customized entries while keeping malformed census failures write-free.
+- **bin/install-flow.js**: Opencode installation is a file projection: the owned-copy installer honors `projection.sourcePath` (no basename-derived source), and the binding-derived roster is an opencode binding validator (`validateOpencodeWorkerBindings`) that runs before any destination mutation so malformed or duplicate bindings fail write-free. The derived registration-default/census surface is retired.
+  *Observed:* opencode-markdown-worker-agents — replacing the census/registration surface with file-projected owned-copy agents required the roster validator to fail closed pre-mutation.
 - **opencode wrapper metadata**: Wrapper-facing documentation and structural tests use both the human-readable `GLM 5.2` wording and the runtime model ID `opencode-go/glm-5.2` when documenting the declared runtime.
   *Observed:* simplify-routed-phase-coordination — replacing coordinator-profile assertions exposed the two representations; retaining both made the documentation and runtime-ID checks pass.
 - **configs/opencode.jsonc**: Nested low-cost opencode helper dispatch requires `subagent_depth: 2` and `opencode-go/glm-5.1` in the repository's live probe configuration.
@@ -25,10 +25,10 @@ Durable execution-observed facts about the shared-ai prompt and installer reposi
   *Observed:* share-vscode-inline-coordinator — the former blanket no-orchestration assertion rejected the intentional inline exception; exact-source filtering restored the suite.
 - **opencode.json/opencode.jsonc doctor fixtures**: Clear both configuration files before writing malformed fixture inputs because doctor resolves `opencode.json` ahead of `opencode.jsonc`, and installer-generated output can otherwise mask the intended case.
   *Observed:* preserve-custom-opencode-agents — clearing both files before each malformed fixture produced the expected error records.
-- **test/implement-coordinator-worker.test.js**: Assertions for customized managed-worker records must include the canonical registration prompt when the installed entry lacks one.
-  *Observed:* deterministic-worker-contract-delivery — the legacy promptless expectation failed after prompt-bearing merge; updating it made the full suite pass.
-- **test/implementation-harness-bindings-step-3.test.js**: Harness-preservation assertions must expect the canonical registration prompt on managed worker entries while retaining user-owned runtime fields.
-  *Observed:* deterministic-worker-contract-delivery — the legacy promptless expectation failed after prompt-bearing merge; updating it made the full suite pass.
+- **test/implement-coordinator-worker.test.js**: Customized opencode worker configuration entries stay byte-identical (no prompt injection, no missing worker keys added); opencode worker registration is asserted from the projected `agents/opencode/*.md` files, not the config sample.
+  *Observed:* opencode-markdown-worker-agents — the worker-shapes-in-config and prompt-injection assertions were rewritten to the file-based surface.
+- **test/implementation-harness-bindings-step-3.test.js**: Harness-preservation assertions for opencode are file-based: the implementation surface includes `agents/opencode/sai-3-implementation-worker.md` (and excludes the Claude counterpart), fresh merges leave no worker key, customized worker config entries stay byte-identical (no prompt injection), and uninstall preserves the config while removing owned files with their sidecars.
+  *Observed:* opencode-markdown-worker-agents — the config-map merge/prompt assertions were replaced by file-projection and byte-identity assertions.
 - **test/manual-opencode-contract-smoke.js**: A direct runtime smoke probe must guard its entry point from automatic `node --test` discovery while preserving direct runtime-unavailable exit `2`.
   *Observed:* deterministic-worker-contract-delivery — `npm test` loaded the manual probe and failed on exit `2`; a direct-execution guard preserved manual behavior and the full-suite pass.
 - **sai/instructions/design.md**: The shared design feedback contract owns normalized complete `interfaces.md` comparison and conditional Architecture Snapshot presentation across routed and inline adapters.
@@ -39,10 +39,12 @@ Durable execution-observed facts about the shared-ai prompt and installer reposi
   *Observed:* feedback-gate-prompt-single-emission — adding routed ownership wording and restoring compatibility phrases made the combined 107-test suite and full 454-test suite pass while preserving machine semantics.
 - **test/design-coordinator-worker.test.js**: Structural design assertions must recognize the explicit worker no-prompt prohibition and Markdown-bold terminal navigation wording rather than rejecting those contract phrases.
   *Observed:* feedback-gate-prompt-single-emission — updating stale lexical assertions kept the routed design contract and the full design suite aligned.
-- **test/install-opencode.test.js**: Registering a managed worker requires synchronized install, doctor, opencode configuration, and full-suite expectations.
-  *Observed:* sai-8-accessibility-coordinator-worker-split — the accessibility worker registration exposed stale fixed lists and configuration fixtures; updating the related expectations restored all 427 tests.
+- **test/install-opencode.test.js**: Opencode worker registration assertions are file-based — the projected `agents/opencode/*.md` files (mode/model/variant/permission.task frontmatter, canonical contract-fetch body, ownership sidecar hash), not the configuration agent map; retired census/registration-default surfaces must not be asserted.
+  *Observed:* opencode-markdown-worker-agents — 12 stale config-map assertions across five suites failed until the test surface was completed to the file-based projection.
 - **test/install-claude.test.js**: Derivation-failure coverage uses isolated binding and configuration filesystem probes rather than mutating the immutable registration defaults.
   *Observed:* derive-opencode-agent-census-from-bindings — isolated probes exercised malformed census paths while keeping canonical defaults read-only.
+- **bin/doctor.js**: Doctor validates each projected opencode worker agent file against its bundled `agents/opencode/<worker>.md` source by SHA-256 compatibility — missing → error with re-install remediation, incompatible → error with rename-or-remove remediation, exact-compatible → ok — and its record messages carry the remediation wording (re-install / rename or remove) directly, not only the recommendation field.
+  *Observed:* opencode-markdown-worker-agents — the written probes assert the remediation phrasing on `record.message`, so the messages must embed it.
 - **commands/claude/sai-explore.md**: Explore requires scoped `Bash(openspec:*)` and `Bash(git:*)` capabilities alongside its routed dispatch tools; bare shell and direct write capabilities remain forbidden.
   *Observed:* add-sai-explore-pipeline-supervision — capability-level assertions that preserved scoped Bash matched the required worker and research flow.
 - **commands/opencode/sai-explore.md**: Routed spec-worker behavior is enabled by fetching the existing `sai-1-spec-proposal-worker` skill; the thin wrapper does not need a literal task-dispatch token.
@@ -58,6 +60,9 @@ Durable execution-observed facts about the shared-ai prompt and installer reposi
   *Observed:* remove-preserved-scratch-acknowledgement-gate — the split implementation boundary could not execute test-only GREEN; one bounded dispatch completed the RED/GREEN cycle within the declared file.
 
 ## Avoid
+
+- **configs/opencode.jsonc**: Do not assert managed-worker registration from the configuration agent map — the sample carries no `agent.sai-*-worker` keys; worker membership is file-based (projected `agents/opencode/*.md` files plus the binding-derived roster).
+  *Observed:* opencode-markdown-worker-agents — 12 stale config-map assertions across five suites failed until rewritten to the file-based surface.
 
 ## Test Command
 
