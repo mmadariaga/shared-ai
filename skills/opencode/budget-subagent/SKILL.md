@@ -40,6 +40,10 @@ metadata:
 - **Tool-call cap**: none enforced by harness (behavioral rule 6 governs this)
 - **Raw output**: not allowed — always use the structured completion report format
 
+## Dispatch mode
+
+The opencode `task` tool has no `run_in_background` parameter; this binding runs synchronously by default. The dispatch-safety invariant defined in `openspec/specs/dispatch-safety-invariant/spec.md` is the containing rule for this case.
+
 ## Cost model
 
 This subagent runs on a commodity model. Its tier is controlled by `agent.budget.model` in the project's `opencode.jsonc` — that setting is the only lever to change the cost of delegation.

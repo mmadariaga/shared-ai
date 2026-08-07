@@ -14,6 +14,10 @@ metadata:
 
 "cheap research subagent" → `explore` (lowercase) when invoked as an OpenCode agent keyword.
 
+## Dispatch mode
+
+The opencode `task` tool has no `run_in_background` parameter; this binding runs synchronously by default. The dispatch-safety invariant defined in `openspec/specs/dispatch-safety-invariant/spec.md` is the containing rule for this case.
+
 ## Model resolution
 
 The model for `explore` subagents is controlled by `agent.explore.model` in the project's `opencode.jsonc`. This file contains no hardcoded model identifier.
