@@ -1,6 +1,6 @@
 # DDR 0062: Field 9's soft-degradation exemption is stated at two sites
 
-<!-- adr-index: amends adr:0026 -->
+<!-- adr-index: amends 0026 -->
 
 ## Status
 
@@ -12,7 +12,7 @@ Accepted
 
 The rest of the change follows a single-definition rule — field 9's four keys, closed vocabulary, and binding to fields 3/4 live once, in `## Subagent Report Contract`, and every other site points at them. The exemption is the one rule that does not fit that shape. The coordinator's halt decision is made while reading `### Malformed subagent report`, which is a different reading position from where the field list is learned.
 
-ADR 0026 established the stable fixed-field report shape and stated that "field 8 is required in every report kind". This ADR amends that contract's field count from 8 to 9 while preserving 0026's stability principle intact: the shape stays uniform across dispatch kinds, and field 8 stays hard-required.
+DDR 0026 established the stable fixed-field report shape and stated that "field 8 is required in every report kind". This DDR amends that contract's field count from 8 to 9 while preserving 0026's stability principle intact: the shape stays uniform across dispatch kinds, and field 8 stays hard-required.
 
 ## Decision
 
@@ -30,12 +30,12 @@ State the exemption at both sites, and phrase the malformed-report rule so it ke
 
 - `apply.md` restates the exemption twice; a future DRY-motivated edit that removes either statement reintroduces the halt risk and must be rejected.
 - The malformed-report rule's trigger condition is now specific to field 8, so any future soft field inherits the exemption for free.
-- ADR 0026's "8 fields" count is superseded; its stable-shape and field-8-required decisions are not.
+- DDR 0026's "8 fields" count is superseded; its stable-shape and field-8-required decisions are not.
 
 ## Related
 
 - `openspec/changes/subagent-attempt-instrumentation/design.md` — Decision D3
 - `openspec/changes/subagent-attempt-instrumentation/specs/apply-subagent-report-contract/spec.md` — "Field 9 degrades softly and never blocks the workflow"
-- `docs/adr/0026-stable-eight-field-report.md` — field count amended by this change
+- `./0026-stable-eight-field-report.md` — field count amended by this change
 - `sai/instructions/apply.md` — `## Subagent Report Contract`, `### Malformed subagent report`
 

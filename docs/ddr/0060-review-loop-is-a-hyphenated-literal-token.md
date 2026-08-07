@@ -1,4 +1,6 @@
-# ADR 0060: The post-crystallization review loop's explicit trigger is the hyphenated literal token `review-loop`
+# DDR 0060: The post-crystallization review loop's explicit trigger is the hyphenated literal token `review-loop`
+
+<!-- adr-index: pair-with 0061; refs 0053; refs adr:0058 -->
 
 ## Status
 
@@ -32,6 +34,6 @@ Use the hyphenated literal token `review-loop`, lowercase ASCII, no slash prefix
 
 - `openspec/changes/explore-review-loop-keyword-trigger/design.md` — Decision D1 (and D2 for the intent-not-substring firing rule)
 - `openspec/changes/explore-review-loop-keyword-trigger/specs/explore-post-crystallization-review-loop/spec.md` — "Literal `review-loop` token enters the per-change loop directly"
-- ADR 0061 — the additive item-3 precedence rule that ships alongside this token
-- ADR 0053 — post-crystallization review loop fires once per turn
+- DDR 0061 — the additive item-3 precedence rule that ships alongside this token
+- DDR 0053 — post-crystallization review loop fires once per turn
 - ADR 0058 — gate UX tweaks expressed as deltas against existing capabilities

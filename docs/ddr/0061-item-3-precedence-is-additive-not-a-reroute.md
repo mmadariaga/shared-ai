@@ -1,4 +1,6 @@
-# ADR 0061: An artifact-review turn naming a tracked crystallized change is served first and then offered the loop, never rerouted into it
+# DDR 0061: An artifact-review turn naming a tracked crystallized change is served first and then offered the loop, never rerouted into it
+
+<!-- adr-index: pair-with 0060; refs 0053; refs adr:0054 -->
 
 ## Status
 
@@ -35,6 +37,6 @@ When the same turn also fires the `review-loop` token, item 9's mixed-trigger ru
 
 - `openspec/changes/explore-review-loop-keyword-trigger/design.md` — Decision D3
 - `openspec/changes/explore-review-loop-keyword-trigger/specs/explore-post-crystallization-review-loop/spec.md` — "Artifact-review turns naming a tracked crystallized change also emit the invitation"
-- ADR 0060 — the `review-loop` literal token that ships alongside this rule
+- DDR 0060 — the `review-loop` literal token that ships alongside this rule
 - ADR 0054 — reuse of item 3's Persistence rule for the review loop
-- ADR 0053 — post-crystallization review loop fires once per turn
+- DDR 0053 — post-crystallization review loop fires once per turn

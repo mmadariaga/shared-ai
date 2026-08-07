@@ -1,5 +1,7 @@
 # ADR 0058: The explore/feedback gate UX tweaks are expressed as deltas against the existing capabilities, not a new combined capability
 
+<!-- adr-index: reframes ddr:0053 -->
+
 ## Status
 
 Accepted

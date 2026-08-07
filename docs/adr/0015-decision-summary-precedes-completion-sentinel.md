@@ -1,5 +1,7 @@
 # ADR 0015: Decision summary precedes the completion sentinel
 
+<!-- adr-index: amends ddr:0014 -->
+
 ## Status
 
 Accepted

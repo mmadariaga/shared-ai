@@ -1,4 +1,4 @@
-# ADR 0026: Stable 8-field report shape with per-dispatch n/a for the unowned field
+# DDR 0026: Stable 8-field report shape with per-dispatch n/a for the unowned field
 
 ## Status
 
