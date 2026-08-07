@@ -135,6 +135,26 @@ test('computePlanEntry applies retirement accepted-hash classification', () => {
   }
 });
 
+test('computePlanEntry classifies claude-managed-agent entries by body-and-non-tunable identity', () => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-plan-managed-agent-'));
+  try {
+    const canonical = '---\ndescription: Managed agent\nmodel: canonical-model\neffort: canonical-effort\n---\n\nbody\n';
+    const src = path.join(tmpDir, 'canonical.md');
+    fs.writeFileSync(src, canonical);
+    const tuned = path.join(tmpDir, 'tuned.md');
+    fs.writeFileSync(tuned, '---\ndescription: Managed agent\nmodel: user-model\neffort: user-effort\n---\n\nbody\n');
+    const divergent = path.join(tmpDir, 'divergent.md');
+    fs.writeFileSync(divergent, '---\ndescription: Managed agent\nmodel: user-model\n---\n\nuser body\n');
+    const missing = path.join(tmpDir, 'missing.md');
+    const base = { assetType: 'claude-managed-agent', src, editorBase: tmpDir, tunableKeys: ['model', 'effort'] };
+    assert.equal(computePlanEntry({ ...base, dest: tuned }).action, 'delete');
+    assert.equal(computePlanEntry({ ...base, dest: divergent }).action, 'keep-override');
+    assert.equal(computePlanEntry({ ...base, dest: missing }).action, 'not-found');
+  } finally {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+});
+
 test('retirement destinations have hash-guarded plans for all 14 former worker bindings', () => {
   const manifest = loadInstallManifest(path.join(__dirname, '..'));
   const retirements = manifest.retirements.filter(retirement =>

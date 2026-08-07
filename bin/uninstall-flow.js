@@ -39,11 +39,10 @@ function manifestEntries(harness, destinationRoot, editorBase) {
       editorBase,
       ruleId: projection.id,
     };
-    if (projection.strategy === 'owned-copy') {
+    if (projection.strategy === 'tunable-seed') {
       entry.assetType = 'claude-managed-agent';
-      entry.ownerPath = path.join(path.dirname(projection.destinationPath), `.${path.basename(projection.destinationPath, '.md')}.owner.json`);
+      entry.tunableKeys = projection.harness === 'claude' ? flow.CLAUDE_TUNABLE_KEYS : flow.OPENCODE_TUNABLE_KEYS;
       entries.push(entry);
-      if (fs.existsSync(entry.ownerPath)) entries.push({ src: entry.ownerPath, dest: entry.ownerPath, editorBase, assetType: 'claude-managed-agent-owner', ruleId: projection.id });
     } else {
       entries.push(entry);
     }
@@ -96,28 +95,14 @@ function sha256File(filePath) {
   return crypto.createHash('sha256').update(fs.readFileSync(filePath)).digest('hex');
 }
 
-function readManagedHash(ownerPath) {
-  try {
-    const parsed = JSON.parse(fs.readFileSync(ownerPath, 'utf8'));
-    return typeof parsed.managedHash === 'string' ? parsed.managedHash : null;
-  } catch {
-    return null;
-  }
-}
-
 function computeClaudeAgentPlanEntry(entry) {
   const destHash = sha256File(entry.dest);
   if (destHash === null) {
     return { ...entry, action: 'not-found', exists: false, hashMatches: false };
   }
-  const managedHash = readManagedHash(entry.ownerPath);
-  const hashMatches = managedHash !== null && managedHash === destHash;
-  return {
-    ...entry,
-    action: hashMatches ? 'delete' : 'keep-override',
-    exists: true,
-    hashMatches,
-  };
+  const hashMatches = flow.stripTunableLines(fs.readFileSync(entry.src), entry.tunableKeys)
+    .equals(flow.stripTunableLines(fs.readFileSync(entry.dest), entry.tunableKeys));
+  return { ...entry, action: hashMatches ? 'delete' : 'keep-override', exists: true, hashMatches };
 }
 
 function computeRetiredPlanEntry(entry) {
@@ -129,9 +114,6 @@ function computeRetiredPlanEntry(entry) {
 
 function computePlanEntry(entry) {
   if (entry.assetType === 'retired-managed-file') return computeRetiredPlanEntry(entry);
-  if (entry.assetType === 'claude-legacy-agent') {
-    return computeClaudeAgentPlanEntry(entry);
-  }
   if (entry.assetType === 'claude-managed-agent') {
     return computeClaudeAgentPlanEntry(entry);
   }
@@ -173,18 +155,19 @@ function deleteEntry(entry) {
     fs.unlinkSync(entry.dest);
     return 'deleted';
   }
-  if (entry.assetType === 'claude-managed-agent' || entry.assetType === 'claude-legacy-agent') {
+  if (entry.assetType === 'claude-managed-agent') {
     const destHash = sha256File(entry.dest);
-    const managedHash = readManagedHash(entry.ownerPath);
     if (destHash === null) {
       return 'not-found';
     }
-    if (managedHash === null || managedHash !== destHash) {
+    const matches = flow.stripTunableLines(fs.readFileSync(entry.src), entry.tunableKeys)
+      .equals(flow.stripTunableLines(fs.readFileSync(entry.dest), entry.tunableKeys));
+    if (!matches) {
       console.warn(`Kept (project-local override): ${entry.dest}`);
       return 'kept-override';
     }
     fs.unlinkSync(entry.dest);
-    if (fs.existsSync(entry.ownerPath)) fs.unlinkSync(entry.ownerPath);
+    flow.deleteSidecarUnderShapeGuard(entry.dest);
     return 'deleted';
   }
   const destHash = sha256File(entry.dest);
@@ -286,7 +269,6 @@ module.exports = {
   enumerateClaude,
   enumerateOpencode,
   sha256File,
-  readManagedHash,
   computeClaudeAgentPlanEntry,
   computeRetiredPlanEntry,
   computePlanEntry,

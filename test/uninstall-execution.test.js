@@ -228,3 +228,29 @@ test('runDeletion returned counts equal observed deleted, kept-override, not-fou
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }
 });
+
+test('claude-managed-agent entries delete on body-and-non-tunable match and keep divergent destinations', () => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-exec-managed-agent-'));
+  try {
+    const canonical = '---\ndescription: Managed agent\nmodel: canonical-model\neffort: canonical-effort\n---\n\nbody\n';
+    const tunedDest = '---\ndescription: Managed agent\nmodel: user-model\neffort: user-effort\n---\n\nbody\n';
+    const divergentDest = '---\ndescription: Managed agent\nmodel: user-model\neffort: user-effort\n---\n\nuser divergent body\n';
+    const src = writeFile(tmpDir, 'canonical.md', canonical);
+    const tunedPath = writeFile(tmpDir, path.join('agents', 'tuned.md'), tunedDest);
+    const divergentPath = writeFile(tmpDir, path.join('agents', 'divergent.md'), divergentDest);
+    const plan = [
+      { assetType: 'claude-managed-agent', src, dest: tunedPath, editorBase: tmpDir, tunableKeys: ['model', 'effort'] },
+      { assetType: 'claude-managed-agent', src, dest: divergentPath, editorBase: tmpDir, tunableKeys: ['model', 'effort'] },
+    ];
+    const result = runDeletion(plan);
+    assert.equal(result.deleted, 1,
+      'a tuned destination should be deleted as managed');
+    assert.equal(result.keptOverride, 1,
+      'a body-divergent destination should be kept as an override');
+    assert.equal(result.notFound, 0);
+    assert.equal(fs.existsSync(tunedPath), false);
+    assert.equal(fs.readFileSync(divergentPath, 'utf8'), divergentDest);
+  } finally {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+});

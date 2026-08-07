@@ -311,34 +311,55 @@ function diffAgainstBundled(expectedEntries) {
   return drift;
 }
 
-const COLLISION_REMEDIATION = 'Rename or remove the conflicting definition, then retry';
-
-const MANAGED_CLAUDE_WORKERS = [
-  { agentKey: 'CLAUDE_IMPLEMENTATION_WORKER_AGENT', label: 'implementation' },
-  { agentKey: 'CLAUDE_DESIGN_WORKER_AGENT', label: 'design' },
-];
+function managedBytesMatch(sourcePath, destinationPath, tunableKeys) {
+  const source = fs.readFileSync(sourcePath);
+  const destination = fs.readFileSync(destinationPath);
+  return flow.stripTunableLines(source, tunableKeys).equals(flow.stripTunableLines(destination, tunableKeys));
+}
 
 function managedClaudeWorkerRecords(harness, repoRoot) {
   const section = `[${harness.id}]`;
   const records = [];
-  for (const { agentKey, label } of MANAGED_CLAUDE_WORKERS) {
-    const agentName = flow[agentKey];
-    const destination = path.join(harness.base, 'agents', agentName);
-    const source = path.join(repoRoot, 'agents', 'claude', agentName);
+  let projections;
+  try {
+    const manifest = loadInstallManifest(repoRoot);
+    const destinationRoot = {
+      commands: path.join(harness.base, 'commands'),
+      sai: path.join(harness.base, 'sai'),
+      skills: path.join(harness.base, 'skills'),
+      agents: path.join(harness.base, 'agents'),
+      config: harness.base,
+    };
+    projections = expandInstallManifest(manifest, { harness: 'claude', repoRoot, destinationRoot })
+      .filter(projection => projection.strategy === 'tunable-seed');
+  } catch (err) {
+    return [{
+      section,
+      name: 'claude-projections',
+      severity: 'error',
+      message: `claude tunable-seed projection expansion failed: ${err.message}`,
+      recommendation: 'Fix the install manifest, then re-run',
+    }];
+  }
+  for (const projection of projections) {
+    const agentName = path.basename(projection.destinationPath);
+    const label = agentName.replace(/\.md$/, '');
+    const source = projection.sourcePath;
+    const destination = projection.destinationPath;
     if (!fs.existsSync(destination)) {
       records.push({
         section,
-        name: agentName,
+        name: label,
         severity: 'error',
-        message: `managed Claude ${label} worker is missing`,
+        message: `managed Claude worker ${agentName} is missing; re-install to restore the worker`,
         recommendation: 'Re-run the installer to restore the worker',
       });
       continue;
     }
-    const compatible = uninstall.sha256File(source) === uninstall.sha256File(destination);
+    const compatible = managedBytesMatch(source, destination, flow.CLAUDE_TUNABLE_KEYS);
     records.push(compatible
-      ? { section, name: agentName, severity: 'ok', message: `managed Claude ${label} worker is compatible` }
-      : { section, name: agentName, severity: 'error', message: `incompatible Claude ${label} worker definition`, recommendation: COLLISION_REMEDIATION });
+      ? { section, name: label, severity: 'ok', message: `managed Claude worker ${agentName} is compatible` }
+      : { section, name: label, severity: 'error', message: `incompatible Claude worker definition ${agentName}` });
   }
   return records;
 }
@@ -357,13 +378,13 @@ function managedOpencodeAgentRecords(harness, repoRoot) {
       config: harness.base,
     };
     projections = expandInstallManifest(manifest, { harness: 'opencode', repoRoot, destinationRoot })
-      .filter(projection => projection.strategy === 'owned-copy');
+      .filter(projection => projection.strategy === 'tunable-seed');
   } catch (err) {
     return [{
       section,
       name: 'opencode-projections',
       severity: 'error',
-      message: `opencode owned-copy projection expansion failed: ${err.message}`,
+      message: `opencode tunable-seed projection expansion failed: ${err.message}`,
       recommendation: 'Fix the install manifest, then re-run',
     }];
   }
@@ -382,10 +403,10 @@ function managedOpencodeAgentRecords(harness, repoRoot) {
       });
       continue;
     }
-    const compatible = uninstall.sha256File(source) === uninstall.sha256File(destination);
+    const compatible = managedBytesMatch(source, destination, flow.OPENCODE_TUNABLE_KEYS);
     records.push(compatible
       ? { section, name: label, severity: 'ok', message: `managed opencode worker ${agentName} is compatible` }
-      : { section, name: label, severity: 'error', message: `incompatible opencode worker definition ${agentName}; rename or remove the conflicting definition, then retry`, recommendation: COLLISION_REMEDIATION });
+      : { section, name: label, severity: 'error', message: `incompatible opencode worker definition ${agentName}` });
   }
   return records;
 }

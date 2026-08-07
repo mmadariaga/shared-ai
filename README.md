@@ -106,7 +106,7 @@ The routed Claude Code and opencode paths pass a two-field `InvocationEnvelope`:
 
 For `needs_input`, the active harness binding forwards the selected value through `continuation_reference` to the same worker. If same-worker continuation fails, the binding starts one fresh worker with the original envelope and a reconstruction instruction so the worker can rebuild from current durable artifacts. Every routed path preserves the durable artifact at `openspec/changes/{change-name}/implementation.md` and the explicit MANDATORY STOP completion boundary.
 
-Claude Code also manages the worker agent with an ownership sidecar and hash guard. Opencode merges the namespaced worker entries into existing configuration without replacing incompatible or unrelated configuration.
+Claude Code also manages the worker agent under the tunable-seed lifecycle: the user's `model` and `effort` tunables are preserved on every install while the managed body and non-tunable frontmatter are overwritten with a console notice when they diverge. Opencode merges the namespaced worker entries into existing configuration without replacing incompatible or unrelated configuration.
 
 ### Spec coordinator and worker
 

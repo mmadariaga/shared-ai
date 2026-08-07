@@ -277,20 +277,30 @@ test('Step 3 accessibility manifest projections are deterministic, unique, and h
 
 });
 
-test('Step 3 accessibility installation stops on a conflicting Claude destination without replacement', () => {
+test('Step 3 accessibility installation overwrites a conflicting Claude destination with notice', () => {
   const base = tempDir('sai-accessibility-collision-');
   const agentPath = path.join(base, 'agents', 'sai-8-accessibility-worker.md');
   const ownerPath = path.join(base, 'agents', '.sai-8-accessibility-worker.owner.json');
   const sentinel = 'unrelated user-owned accessibility agent\n';
+  const notices = [];
+  const originalLog = console.log;
   try {
     fs.mkdirSync(path.dirname(agentPath), { recursive: true });
     fs.writeFileSync(agentPath, sentinel);
-    assert.throws(() => installClaude(base), /collision|incompatible|ownership|rename|remove/i);
-    assert.equal(fs.readFileSync(agentPath, 'utf8'), sentinel);
-    assert.equal(fs.existsSync(ownerPath), false, 'blocked installation must not create ownership metadata');
+    console.log = message => notices.push(String(message));
+    assert.doesNotThrow(() => installClaude(base),
+      'installClaude should not throw on a conflicting agent destination');
   } finally {
-    fs.rmSync(base, { recursive: true, force: true });
+    console.log = originalLog;
   }
+  assert.deepEqual(
+    fs.readFileSync(agentPath),
+    fs.readFileSync(path.join(__dirname, '..', 'agents', 'claude', 'sai-8-accessibility-worker.md')),
+    'the conflicting content should be overwritten with the managed source bytes');
+  assert.equal(fs.existsSync(ownerPath), false, 'install must not create ownership metadata');
+  assert.ok(notices.some(message => message.includes(agentPath)),
+    'the overwrite should be announced with a stdout notice naming the file');
+  fs.rmSync(base, { recursive: true, force: true });
 });
 
 test('Step 3 doctor and uninstall enumerate accessibility assets from the manifest inventory', () => {
@@ -302,7 +312,6 @@ test('Step 3 doctor and uninstall enumerate accessibility assets from the manife
     try {
       install(base);
       const expected = accessibilityProjections(harness, base).map(projection => projection.destinationPath);
-      expected.push(path.join(base, 'agents', '.sai-8-accessibility-worker.owner.json'));
       const actual = enumerate(base)
         .filter(entry => entry.assetType !== 'retired-managed-file' &&
           (entry.dest.includes('accessibility-worker') || entry.dest.includes('accessibility\\worker')))
@@ -315,10 +324,11 @@ test('Step 3 doctor and uninstall enumerate accessibility assets from the manife
   }
 });
 
-test('Step 3 existing user-owned accessibility agents survive doctor and uninstall', async () => {
+test('Step 3 divergent accessibility agents are overwritten, doctor-clean, and uninstalled', async () => {
   const base = tempDir('sai-accessibility-owned-');
   const projectRoot = tempDir('sai-accessibility-doctor-');
   const agentPath = path.join(base, 'agents', 'sai-8-accessibility-worker.md');
+  const ownerPath = path.join(base, 'agents', '.sai-8-accessibility-worker.owner.json');
   const sentinel = 'custom user accessibility agent\n';
   const captured = collectOutput();
   try {
@@ -327,8 +337,15 @@ test('Step 3 existing user-owned accessibility agents survive doctor and uninsta
     fs.mkdirSync(path.join(projectRoot, 'openspec'), { recursive: true });
     fs.writeFileSync(path.join(projectRoot, 'openspec', 'config.yaml'), 'schema: sai-workflow\n');
 
-    assert.throws(() => installClaude(base), /collision|incompatible|ownership|rename|remove/i);
-    await doctorMain({
+    assert.doesNotThrow(() => installClaude(base),
+      'installClaude should not throw on a divergent agent destination');
+    assert.deepEqual(
+      fs.readFileSync(agentPath),
+      fs.readFileSync(path.join(__dirname, '..', 'agents', 'claude', 'sai-8-accessibility-worker.md')),
+      'the divergent agent should be overwritten with the managed source bytes');
+    assert.equal(fs.existsSync(ownerPath), false, 'no owner sidecar should exist after install');
+
+    const code = await doctorMain({
       argv: ['--json'],
       projectRoot,
       claudeBase: base,
@@ -336,8 +353,10 @@ test('Step 3 existing user-owned accessibility agents survive doctor and uninsta
       execOpenspec: () => ({ status: 0, stdout: '1.4.1\n', stderr: '', error: null }),
       out: captured.out,
     });
+    assert.equal(code, 0, 'doctor should accept the restored managed agent');
     runDeletion(enumerateClaude(base));
-    assert.equal(fs.readFileSync(agentPath, 'utf8'), sentinel);
+    assert.equal(fs.existsSync(agentPath), false,
+      'the body-matching agent should be removed by uninstall');
   } finally {
     fs.rmSync(base, { recursive: true, force: true });
     fs.rmSync(projectRoot, { recursive: true, force: true });

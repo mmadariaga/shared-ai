@@ -5,7 +5,6 @@ const path = require('path');
 
 const STRATEGIES = Object.freeze([
   'copy',
-  'owned-copy',
   'tunable-seed',
   'merge-jsonc',
   'forwarding-manifest',

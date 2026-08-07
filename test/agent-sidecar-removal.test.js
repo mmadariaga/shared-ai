@@ -8,6 +8,116 @@ const fs = require('fs');
 const crypto = require('crypto');
 
 const flow = require('../bin/install-flow.js');
+const { enumerateClaude, runDeletion } = require('../bin/uninstall-flow.js');
+
+const HEX64 = /^[0-9a-f]{64}$/;
+
+function agentProjection(dir, workerName = 'sai-5-review-worker.md') {
+  const sourcePath = path.join(dir, 'sources', workerName);
+  const destinationPath = path.join(dir, 'agents', workerName);
+  fs.mkdirSync(path.dirname(sourcePath), { recursive: true });
+  fs.mkdirSync(path.dirname(destinationPath), { recursive: true });
+  fs.writeFileSync(sourcePath, '---\ndescription: Managed agent\nmodel: canonical-model\neffort: canonical-effort\n---\n\nManaged body.\n');
+  fs.writeFileSync(destinationPath, '---\ndescription: Managed agent\nmodel: tuned-model\neffort: tuned-effort\n---\n\nManaged body.\n');
+  return { sourcePath, destinationPath };
+}
+
+function managedAgentEntry(projection, dir) {
+  return {
+    assetType: 'claude-managed-agent',
+    src: projection.sourcePath,
+    dest: projection.destinationPath,
+    editorBase: dir,
+    tunableKeys: ['model', 'effort'],
+  };
+}
+
+test('uninstall removes a shape-matching sidecar alongside its body-matching agent', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-sidecar-uninstall-match-'));
+  try {
+    const projection = agentProjection(dir);
+    flow.installProjection(tunableSeedProjection(projection.sourcePath, projection.destinationPath), dir);
+    const sidecar = sidecarPath(projection.destinationPath);
+    const managedHash = hex64();
+    assert.match(managedHash, HEX64, 'the fixture managed hash should be 64 hex characters');
+    fs.writeFileSync(sidecar, JSON.stringify({ managedHash }));
+
+    runDeletion([managedAgentEntry(projection, dir)]);
+    assert.equal(fs.existsSync(projection.destinationPath), false,
+      'the body-matching agent should be removed on uninstall');
+    assert.equal(fs.existsSync(sidecar), false,
+      'a shape-matching sidecar should be unlinked alongside its agent');
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('uninstall leaves an extra-keys sidecar alone while removing its body-matching agent', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-sidecar-uninstall-extra-'));
+  try {
+    const projection = agentProjection(dir);
+    flow.installProjection(tunableSeedProjection(projection.sourcePath, projection.destinationPath), dir);
+    const sidecar = sidecarPath(projection.destinationPath);
+    fs.writeFileSync(sidecar, JSON.stringify({ managedHash: hex64(), extra: true }));
+
+    runDeletion([managedAgentEntry(projection, dir)]);
+    assert.equal(fs.existsSync(projection.destinationPath), false,
+      'the body-matching agent should be removed on uninstall');
+    assert.equal(fs.existsSync(sidecar), true,
+      'an extra-keys sidecar must be left alone');
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('uninstall leaves a malformed sidecar alone while removing its body-matching agent', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-sidecar-uninstall-malformed-'));
+  try {
+    const projection = agentProjection(dir);
+    flow.installProjection(tunableSeedProjection(projection.sourcePath, projection.destinationPath), dir);
+    const sidecar = sidecarPath(projection.destinationPath);
+    fs.writeFileSync(sidecar, '{"managedHash": ');
+
+    runDeletion([managedAgentEntry(projection, dir)]);
+    assert.equal(fs.existsSync(projection.destinationPath), false,
+      'the body-matching agent should be removed on uninstall');
+    assert.equal(fs.existsSync(sidecar), true,
+      'a malformed sidecar must be left alone');
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('uninstall leaves a non-sidecar dotfile alone while removing its body-matching agent', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-sidecar-uninstall-dotfile-'));
+  try {
+    const projection = agentProjection(dir);
+    flow.installProjection(tunableSeedProjection(projection.sourcePath, projection.destinationPath), dir);
+    const dotfile = path.join(path.dirname(projection.destinationPath), '.wrapper.notes.json');
+    fs.writeFileSync(dotfile, 'keep me');
+
+    runDeletion([managedAgentEntry(projection, dir)]);
+    assert.equal(fs.existsSync(projection.destinationPath), false,
+      'the body-matching agent should be removed on uninstall');
+    assert.equal(fs.readFileSync(dotfile, 'utf8'), 'keep me',
+      'a non-sidecar dotfile must be preserved');
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('enumerateClaude yields managed agent entries without owner sidecar destinations', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-sidecar-uninstall-enum-'));
+  try {
+    flow.installClaude(dir);
+    const entries = enumerateClaude(dir).filter(entry => entry.assetType === 'claude-managed-agent');
+    assert.equal(entries.length, 7);
+    assert.ok(entries.every(entry => !/owner\.json$/.test(entry.dest)),
+      'no owner sidecar destination may be enumerated as a deletion target');
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
 
 function sidecarPath(destinationPath) {
   return path.join(path.dirname(destinationPath), `.${path.basename(destinationPath, '.md')}.owner.json`);
@@ -143,7 +253,7 @@ test('the legacy migration call site is gone', () => {
   assert.doesNotMatch(source, /migrateLegacyClaudeWorkers/);
 });
 
-test('install-flow no longer references the sidecar machinery — partial, completed in Step 3', { skip: 'pending Step 3 owner-constant removal' }, () => {
+test('install-flow no longer references the sidecar machinery — partial, completed in Step 3', () => {
   const source = fs.readFileSync(path.join(__dirname, '..', 'bin', 'install-flow.js'), 'utf8');
   for (const identifier of ['OWNER_BY_CLAUDE_AGENT', 'CLAUDE_SPEC_WORKER_OWNER', 'CLAUDE_DESIGN_WORKER_OWNER', 'CLAUDE_IMPLEMENTATION_WORKER_OWNER', 'CLAUDE_REVIEW_WORKER_OWNER']) {
     assert.doesNotMatch(source, new RegExp(identifier));

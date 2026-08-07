@@ -8,6 +8,27 @@ const fs = require('fs');
 const Module = require('module');
 
 const flow = require('../bin/install-flow.js');
+const { enumerateClaude, enumerateOpencode, computePlanEntry, runDeletion } = require('../bin/uninstall-flow.js');
+
+const WORKER_NAMES = [
+  'sai-1-spec-proposal-worker',
+  'sai-2-design-worker',
+  'sai-3-implementation-worker',
+  'sai-5-review-worker',
+  'sai-6-security-worker',
+  'sai-7-performance-worker',
+  'sai-8-accessibility-worker',
+];
+
+function ownerSidecarPath(agentPath) {
+  return path.join(path.dirname(agentPath), `.${path.basename(agentPath, '.md')}.owner.json`);
+}
+
+function agentProjection(workerName, dir) {
+  const sourcePath = path.join(__dirname, '..', 'agents', 'claude', `${workerName}.md`);
+  const destinationPath = path.join(dir, 'agents', `${workerName}.md`);
+  return { sourcePath, destinationPath };
+}
 
 const stripTunableLines = text => text.split('\n')
   .filter(line => !/^(model|effort|variant):/.test(line))
@@ -229,5 +250,85 @@ test('extraction does not require a YAML library', () => {
       'the tunable pass should still apply');
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('a tuned managed destination is recognized as managed and deleted', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-tunable-managed-'));
+  try {
+    flow.installClaude(dir);
+    const agentPath = path.join(dir, 'agents', 'sai-5-review-worker.md');
+    const tuned = fs.readFileSync(agentPath, 'utf8')
+      .replace(/^model:.*$/m, 'model: tuned-model')
+      .replace(/^effort:.*$/m, 'effort: tuned-effort');
+    assert.match(tuned, /^model: tuned-model$/m, 'the tuned fixture should carry a new model value');
+    fs.writeFileSync(agentPath, tuned);
+
+    const entry = enumerateClaude(dir)
+      .find(candidate => candidate.assetType === 'claude-managed-agent' && candidate.dest === agentPath);
+    assert.ok(entry, 'a tuned managed destination should enumerate as a claude-managed-agent entry');
+    assert.equal(computePlanEntry(entry).action, 'delete',
+      'a destination whose only difference is its tunables should plan a delete');
+    runDeletion([entry]);
+    assert.equal(fs.existsSync(agentPath), false,
+      'the tuned managed agent should be deleted on uninstall');
+    assert.equal(fs.existsSync(ownerSidecarPath(agentPath)), false,
+      'no owner sidecar should remain after deletion');
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('a body-divergent managed destination is kept as a project-local override', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-tunable-override-'));
+  try {
+    flow.installClaude(dir);
+    const agentPath = path.join(dir, 'agents', 'sai-5-review-worker.md');
+    const divergent = fs.readFileSync(agentPath, 'utf8') + '\n// project-local change\n';
+    fs.writeFileSync(agentPath, divergent);
+
+    const entry = enumerateClaude(dir)
+      .find(candidate => candidate.assetType === 'claude-managed-agent' && candidate.dest === agentPath);
+    assert.ok(entry, 'a divergent managed destination should enumerate as a claude-managed-agent entry');
+    assert.equal(computePlanEntry(entry).action, 'keep-override',
+      'a destination whose body or non-tunable frontmatter differs should be kept');
+    runDeletion([entry]);
+    assert.equal(fs.readFileSync(agentPath, 'utf8'), divergent,
+      'a body-divergent managed destination should be preserved as an override');
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('Claude and opencode uninstall enumerate exactly seven managed agent destinations', () => {
+  for (const [harness, install, enumerate] of [
+    ['claude', flow.installClaude, enumerateClaude],
+    ['opencode', flow.installOpencode, enumerateOpencode],
+  ]) {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), `sai-tunable-seven-${harness}-`));
+    try {
+      install(dir);
+      const agentEntries = enumerate(dir).filter(entry => entry.assetType === 'claude-managed-agent');
+      assert.equal(agentEntries.length, 7,
+        `${harness} uninstall should enumerate exactly 7 managed agent destinations`);
+      assert.ok(agentEntries.every(entry => !/owner\.json$/.test(entry.dest)),
+        `${harness} uninstall must not enumerate owner sidecars as deletion targets`);
+      assert.ok(agentEntries.every(entry => !Object.hasOwn(entry, 'ownerPath')),
+        `${harness} entries must not carry an ownerPath field`);
+      assert.deepEqual(
+        agentEntries.map(entry => path.basename(entry.dest, '.md')).sort(),
+        [...WORKER_NAMES].sort(),
+        `${harness} agent destinations should cover the seven sai worker filenames`);
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  }
+});
+
+test('agentProjection helper resolves the managed Claude source for each worker', () => {
+  for (const workerName of WORKER_NAMES) {
+    const { sourcePath, destinationPath } = agentProjection(workerName, path.join(os.tmpdir(), 'sai-tunable-helper'));
+    assert.ok(fs.existsSync(sourcePath), `${workerName} should have a Claude agent source`);
+    assert.equal(path.basename(destinationPath), `${workerName}.md`);
   }
 });

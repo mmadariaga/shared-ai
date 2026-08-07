@@ -10,14 +10,9 @@ const {
   installClaude,
   MANAGED_WORKERS,
   CLAUDE_SPEC_WORKER_AGENT,
-  CLAUDE_SPEC_WORKER_OWNER,
   CLAUDE_DESIGN_WORKER_AGENT,
-  CLAUDE_DESIGN_WORKER_OWNER,
   CLAUDE_IMPLEMENTATION_WORKER_AGENT,
-  CLAUDE_IMPLEMENTATION_WORKER_OWNER,
   CLAUDE_REVIEW_WORKER_AGENT,
-  CLAUDE_REVIEW_WORKER_OWNER,
-  OWNER_BY_CLAUDE_AGENT,
 } = require('../bin/install-flow.js');
 const { loadInstallManifest, expandInstallManifest } = require('../bin/install-manifest.js');
 
@@ -32,6 +27,10 @@ const WORKER_BINDINGS = [
   ['sai-8-accessibility-worker', 'accessibility-worker.md'],
 ];
 
+function stripTunableLines(text) {
+  return text.split('\n').filter(line => !/^(model|effort|variant):/.test(line)).join('\n');
+}
+
 function expectedWorkerPrompt(contractName) {
   return `Worker contract: Fetch @sai/orchestration/workers/${contractName.endsWith('.md') ? contractName : `${contractName}.md`} and follow it exactly.\n\nInvocationEnvelope:\n<original InvocationEnvelope>`;
 }
@@ -45,6 +44,18 @@ function decodePrompt(call) {
   const match = call.match(/\bprompt\s*[:=]\s*"((?:\\.|[^"\\])*)"/);
   assert.ok(match, 'initial dispatch should contain a quoted prompt argument');
   return JSON.parse(`"${match[1]}"`);
+}
+
+function captureNotices(fn) {
+  const notices = [];
+  const originalLog = console.log;
+  console.log = message => notices.push(String(message));
+  try {
+    fn();
+  } finally {
+    console.log = originalLog;
+  }
+  return notices;
 }
 
 test('managed worker registry defines every Claude compatibility export', () => {
@@ -65,31 +76,24 @@ test('managed worker registry defines every Claude compatibility export', () => 
   const expectedClaude = {
     'sai-1-spec-proposal-worker': {
       agent: 'sai-1-spec-proposal-worker.md',
-      owner: '.sai-1-spec-proposal-worker.owner.json',
     },
     'sai-2-design-worker': {
       agent: 'sai-2-design-worker.md',
-      owner: '.sai-2-design-worker.owner.json',
     },
     'sai-3-implementation-worker': {
       agent: 'sai-3-implementation-worker.md',
-      owner: '.sai-3-implementation-worker.owner.json',
     },
     'sai-5-review-worker': {
       agent: 'sai-5-review-worker.md',
-      owner: '.sai-5-review-worker.owner.json',
     },
     'sai-6-security-worker': {
       agent: 'sai-6-security-worker.md',
-      owner: '.sai-6-security-worker.owner.json',
     },
     'sai-7-performance-worker': {
       agent: 'sai-7-performance-worker.md',
-      owner: '.sai-7-performance-worker.owner.json',
     },
     'sai-8-accessibility-worker': {
       agent: 'sai-8-accessibility-worker.md',
-      owner: '.sai-8-accessibility-worker.owner.json',
     },
   };
 
@@ -106,22 +110,9 @@ test('managed worker registry defines every Claude compatibility export', () => 
     'the spec worker should remain Claude-only');
 
   assert.equal(CLAUDE_SPEC_WORKER_AGENT, 'sai-1-spec-proposal-worker.md');
-  assert.equal(CLAUDE_SPEC_WORKER_OWNER, '.sai-1-spec-proposal-worker.owner.json');
   assert.equal(CLAUDE_DESIGN_WORKER_AGENT, 'sai-2-design-worker.md');
-  assert.equal(CLAUDE_DESIGN_WORKER_OWNER, '.sai-2-design-worker.owner.json');
   assert.equal(CLAUDE_IMPLEMENTATION_WORKER_AGENT, 'sai-3-implementation-worker.md');
-  assert.equal(CLAUDE_IMPLEMENTATION_WORKER_OWNER, '.sai-3-implementation-worker.owner.json');
   assert.equal(CLAUDE_REVIEW_WORKER_AGENT, 'sai-5-review-worker.md');
-  assert.equal(CLAUDE_REVIEW_WORKER_OWNER, '.sai-5-review-worker.owner.json');
-  assert.deepEqual(OWNER_BY_CLAUDE_AGENT, {
-    'sai-1-spec-proposal-worker.md': '.sai-1-spec-proposal-worker.owner.json',
-    'sai-2-design-worker.md': '.sai-2-design-worker.owner.json',
-    'sai-3-implementation-worker.md': '.sai-3-implementation-worker.owner.json',
-    'sai-5-review-worker.md': '.sai-5-review-worker.owner.json',
-    'sai-6-security-worker.md': '.sai-6-security-worker.owner.json',
-    'sai-7-performance-worker.md': '.sai-7-performance-worker.owner.json',
-    'sai-8-accessibility-worker.md': '.sai-8-accessibility-worker.owner.json',
-  });
 });
 
 test('STEP1_RETIRE_INLINE: installer exports retain only Claude and opencode entrypoints', () => {
@@ -220,7 +211,8 @@ test('Step 3 fresh Claude install omits all routed worker proxy skills', () => {
     }
     for (const worker of workers) {
       assert.ok(fs.existsSync(path.join(tmpDir, 'agents', `${worker}.md`)), `${worker} managed agent should remain installed`);
-      assert.ok(fs.existsSync(path.join(tmpDir, 'agents', `.${worker}.owner.json`)), `${worker} owner sidecar should remain installed`);
+      assert.equal(fs.existsSync(path.join(tmpDir, 'agents', `.${worker}.owner.json`)), false,
+        `${worker} must not gain an owner sidecar on a fresh install`);
     }
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });
@@ -278,7 +270,7 @@ test('Step 2 initial Claude Agent dispatches deliver matching contracts and pres
         `${workerName} should preserve the opaque InvocationEnvelope slot`);
        for (const continuation of continuations) {
          assert.doesNotMatch(continuation, /\bprompt\s*[:=]/,
-           `${workerName} continuation dispatch should remain unchanged`);
+          `${workerName} continuation dispatch should remain unchanged`);
       }
     }
   } finally {
@@ -286,8 +278,8 @@ test('Step 2 initial Claude Agent dispatches deliver matching contracts and pres
   }
 });
 
-test('Claude worker ownership is collision-safe', () => {
-  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-claude-review-ownership-'));
+test('Claude managed agents are seeded byte-identically from their sources', () => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-claude-seed-'));
   const repoRoot = path.join(__dirname, '..');
   try {
     const manifest = loadInstallManifest(repoRoot);
@@ -298,56 +290,70 @@ test('Claude worker ownership is collision-safe', () => {
       agents: path.join(tmpDir, 'agents'),
       config: tmpDir,
     };
-    const owned = expandInstallManifest(manifest, { harness: 'claude', repoRoot, destinationRoot })
-      .filter(projection => projection.strategy === 'owned-copy');
-    assert.ok(owned.length > 0, 'the manifest should declare owned-copy workers');
+    const tunable = expandInstallManifest(manifest, { harness: 'claude', repoRoot, destinationRoot })
+      .filter(projection => projection.strategy === 'tunable-seed');
+    assert.equal(tunable.length, 7, 'the manifest should declare 7 tunable-seed Claude agent projections');
+    assert.ok(tunable.every(projection => projection.ownership === 'managed'),
+      'every tunable-seed Claude agent projection should be managed');
 
     installClaude(tmpDir);
-    for (const projection of owned) {
-      assert.ok(fs.existsSync(projection.destinationPath), `owned worker should be installed: ${projection.destinationPath}`);
+    for (const projection of tunable) {
+      assert.ok(fs.existsSync(projection.destinationPath),
+        `managed agent should be installed: ${projection.destinationPath}`);
+      assert.deepEqual(fs.readFileSync(projection.destinationPath), fs.readFileSync(projection.sourcePath),
+        `a fresh install should write the agent source bytes verbatim: ${projection.destinationPath}`);
       const ownerPath = path.join(
         path.dirname(projection.destinationPath),
         `.${path.basename(projection.destinationPath, '.md')}.owner.json`
       );
-      assert.ok(fs.existsSync(ownerPath),
-        `owned worker should have a sidecar: ${projection.destinationPath}`);
+      assert.equal(fs.existsSync(ownerPath), false,
+        `fresh installs must not create owner sidecars: ${projection.destinationPath}`);
     }
-
-    const spec = owned.find(projection => projection.sourcePath.endsWith(path.join('sai-1-spec-proposal-worker.md')));
-    assert.ok(spec, 'the manifest should declare the spec owned-copy worker');
-    assert.ok(fs.existsSync(path.join(tmpDir, 'agents', '.sai-1-spec-proposal-worker.owner.json')),
-      'spec worker should map to its own owner sidecar');
-    assert.equal(fs.existsSync(path.join(tmpDir, 'agents', '.sai-2-design-worker.owner.json')), true,
-      'spec worker must never use the design owner sidecar');
-
-    const review = owned.find(projection => projection.sourcePath.endsWith(path.join('sai-5-review-worker.md')));
-    assert.ok(review, 'the manifest should declare the review owned-copy worker');
-    assert.ok(fs.existsSync(path.join(tmpDir, 'agents', '.sai-5-review-worker.owner.json')),
-      'review worker should map to its own owner sidecar');
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }
 });
 
-test('Every owned worker resolves to its owner sidecar and rejects an incompatible agent', () => {
-  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-claude-review-collision-'));
+test('installClaude preserves tuned tunables and overwrites divergent bodies with notice', () => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-claude-tuned-'));
   const agentPath = path.join(tmpDir, 'agents', 'sai-5-review-worker.md');
-  const sentinel = 'user-owned incompatible review worker\n';
+  const sidecarPath = path.join(tmpDir, 'agents', '.sai-5-review-worker.owner.json');
   try {
-    fs.mkdirSync(path.dirname(agentPath), { recursive: true });
-    fs.writeFileSync(agentPath, sentinel);
-    assert.throws(() => installClaude(tmpDir), /collision|rename|remove|ownership/i);
-    assert.equal(fs.readFileSync(agentPath, 'utf8'), sentinel, 'incompatible content must not be overwritten');
+    installClaude(tmpDir);
+    const sourceBytes = fs.readFileSync(agentPath);
+    const tuned = fs.readFileSync(agentPath, 'utf8')
+      .replace(/^model:.*$/m, 'model: tuned-review-model')
+      .replace(/^effort:.*$/m, 'effort: high');
+    assert.match(tuned, /^model: tuned-review-model$/m);
+    fs.writeFileSync(agentPath, tuned);
 
-    fs.rmSync(tmpDir, { recursive: true, force: true });
-    fs.mkdirSync(path.dirname(agentPath), { recursive: true });
-    installClaude(tmpDir);
-    const reviewBytes = fs.readFileSync(agentPath);
-    fs.unlinkSync(path.join(tmpDir, 'agents', '.sai-5-review-worker.owner.json'));
-    installClaude(tmpDir);
-    assert.deepEqual(fs.readFileSync(agentPath), reviewBytes, 'exact-compatible content should be reused');
-    assert.equal(fs.existsSync(path.join(tmpDir, 'agents', '.sai-5-review-worker.owner.json')), false,
-      'exact-compatible unowned content should not gain a sidecar');
+    let reinstallError = null;
+    try {
+      installClaude(tmpDir);
+    } catch (error) {
+      reinstallError = error;
+    }
+    assert.equal(reinstallError, null,
+      'installClaude should not throw on a tuned agent destination');
+    const after = fs.readFileSync(agentPath, 'utf8');
+    assert.ok(after.includes('model: tuned-review-model'),
+      'the tuned model value should survive a re-install');
+    assert.ok(after.includes('effort: high'),
+      'the tuned effort value should survive a re-install');
+    assert.equal(stripTunableLines(after), stripTunableLines(sourceBytes.toString('utf8')),
+      'body and non-tunable frontmatter should match the source');
+    assert.equal(fs.existsSync(sidecarPath), false,
+      'no owner sidecar should exist after a tuned re-install');
+
+    fs.writeFileSync(agentPath, 'user divergent body\n');
+    const notices = captureNotices(() => {
+      assert.doesNotThrow(() => installClaude(tmpDir),
+        'installClaude should not throw on a divergent agent destination');
+    });
+    assert.deepEqual(fs.readFileSync(agentPath), sourceBytes,
+      'a divergent body should be overwritten with the managed source bytes');
+    assert.ok(notices.some(message => message.includes(agentPath)),
+      'the overwrite should be announced with a stdout notice naming the file');
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }
@@ -374,19 +380,41 @@ test('installClaude overwrites stale command wrappers', () => {
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });
 
-test('installClaude reuses compatible unowned worker content without recreating ownership', () => {
+test('installClaude re-install preserves tuned values and never recreates ownership', () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-claude-'));
   try {
     installClaude(tmpDir);
     const agentPath = path.join(tmpDir, 'agents', 'sai-3-implementation-worker.md');
     const sidecarPath = path.join(tmpDir, 'agents', '.sai-3-implementation-worker.owner.json');
-    const beforeBytes = fs.readFileSync(agentPath);
-    fs.unlinkSync(sidecarPath);
+    const sourceBytes = fs.readFileSync(agentPath);
+    fs.writeFileSync(agentPath, fs.readFileSync(agentPath, 'utf8')
+      .replace(/^model:.*$/m, 'model: tuned-model')
+      .replace(/^effort:.*$/m, 'effort: tuned-effort'));
 
-    installClaude(tmpDir);
-
-    assert.deepEqual(fs.readFileSync(agentPath), beforeBytes, 'compatible unowned worker bytes should remain unchanged');
-    assert.equal(fs.existsSync(sidecarPath), false, 'compatible unowned worker should remain unowned');
+    const notices = [];
+    const originalLog = console.log;
+    let reinstallError = null;
+    console.log = message => notices.push(String(message));
+    try {
+      try {
+        installClaude(tmpDir);
+      } catch (error) {
+        reinstallError = error;
+      }
+    } finally {
+      console.log = originalLog;
+    }
+    assert.equal(reinstallError, null,
+      'installClaude should not throw on a tuned agent destination');
+    const after = fs.readFileSync(agentPath, 'utf8');
+    assert.ok(after.includes('model: tuned-model') && after.includes('effort: tuned-effort'),
+      'tuned values should survive a re-install');
+    assert.equal(stripTunableLines(after), stripTunableLines(sourceBytes.toString('utf8')),
+      'body and non-tunable frontmatter should match the source after a re-install');
+    assert.ok(!notices.some(message => message.includes(agentPath)),
+      'a tunable-only difference should not print an overwrite notice');
+    assert.equal(fs.existsSync(sidecarPath), false,
+      'a re-install must not create an owner sidecar');
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }

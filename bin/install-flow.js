@@ -46,6 +46,7 @@ function extractTunableValues(text, tunableKeys) {
 function spliceTunables(sourceText, destinationText, tunableKeys) {
   const split = splitFrontmatter(sourceText);
   if (!split) return sourceText;
+  if (!splitFrontmatter(destinationText)) return sourceText;
   const fm = split.frontmatter;
   const destValues = extractTunableValues(destinationText, tunableKeys);
   const sourceKeys = extractTunableValues(sourceText, tunableKeys);
@@ -128,57 +129,43 @@ const MANAGED_WORKERS = Object.freeze({
   'sai-3-implementation-worker': Object.freeze({
     claude: Object.freeze({
       agent: 'sai-3-implementation-worker.md',
-      owner: '.sai-3-implementation-worker.owner.json',
     }),
   }),
   'sai-2-design-worker': Object.freeze({
     claude: Object.freeze({
       agent: 'sai-2-design-worker.md',
-      owner: '.sai-2-design-worker.owner.json',
     }),
   }),
   'sai-5-review-worker': Object.freeze({
     claude: Object.freeze({
       agent: 'sai-5-review-worker.md',
-      owner: '.sai-5-review-worker.owner.json',
     }),
   }),
   'sai-6-security-worker': Object.freeze({
     claude: Object.freeze({
       agent: 'sai-6-security-worker.md',
-      owner: '.sai-6-security-worker.owner.json',
     }),
   }),
   'sai-7-performance-worker': Object.freeze({
     claude: Object.freeze({
       agent: 'sai-7-performance-worker.md',
-      owner: '.sai-7-performance-worker.owner.json',
     }),
   }),
   'sai-8-accessibility-worker': Object.freeze({
     claude: Object.freeze({
       agent: 'sai-8-accessibility-worker.md',
-      owner: '.sai-8-accessibility-worker.owner.json',
     }),
   }),
   'sai-1-spec-proposal-worker': Object.freeze({
     claude: Object.freeze({
       agent: 'sai-1-spec-proposal-worker.md',
-      owner: '.sai-1-spec-proposal-worker.owner.json',
     }),
   }),
 });
 const CLAUDE_IMPLEMENTATION_WORKER_AGENT = MANAGED_WORKERS['sai-3-implementation-worker'].claude.agent;
-const CLAUDE_IMPLEMENTATION_WORKER_OWNER = MANAGED_WORKERS['sai-3-implementation-worker'].claude.owner;
 const CLAUDE_DESIGN_WORKER_AGENT = MANAGED_WORKERS['sai-2-design-worker'].claude.agent;
-const CLAUDE_DESIGN_WORKER_OWNER = MANAGED_WORKERS['sai-2-design-worker'].claude.owner;
 const CLAUDE_SPEC_WORKER_AGENT = MANAGED_WORKERS['sai-1-spec-proposal-worker'].claude.agent;
-const CLAUDE_SPEC_WORKER_OWNER = MANAGED_WORKERS['sai-1-spec-proposal-worker'].claude.owner;
 const CLAUDE_REVIEW_WORKER_AGENT = MANAGED_WORKERS['sai-5-review-worker'].claude.agent;
-const CLAUDE_REVIEW_WORKER_OWNER = MANAGED_WORKERS['sai-5-review-worker'].claude.owner;
-const OWNER_BY_CLAUDE_AGENT = Object.freeze(Object.fromEntries(
-  Object.values(MANAGED_WORKERS).map(({ claude }) => [claude.agent, claude.owner]),
-));
 const REPOSITORY_ROOT = path.join(__dirname, '..');
 const PACKAGE_VERSION = require(path.join(REPOSITORY_ROOT, 'package.json')).version;
 
@@ -534,34 +521,6 @@ function sha256Buffer(value) {
   return crypto.createHash('sha256').update(value).digest('hex');
 }
 
-function ownedManagedWorkerInstaller(projection, options = {}) {
-  void options;
-  const agentName = path.basename(projection.destinationPath);
-  const ownerName = OWNER_BY_CLAUDE_AGENT[agentName];
-  if (!ownerName) {
-    throw new Error(`No owner sidecar registered for managed agent ${agentName}.`);
-  }
-  const agentsDir = path.dirname(projection.destinationPath);
-  const destination = projection.destinationPath;
-  const ownerPath = path.join(agentsDir, ownerName);
-  const sourceBytes = fs.readFileSync(projection.sourcePath);
-  const managedHash = sha256Buffer(sourceBytes);
-
-  ensureDir(agentsDir);
-  if (!fs.existsSync(destination)) {
-    fs.writeFileSync(destination, sourceBytes);
-    fs.writeFileSync(ownerPath, `${JSON.stringify({ managedHash }, null, 2)}\n`);
-    return 'created';
-  }
-
-  const destinationHash = sha256Buffer(fs.readFileSync(destination));
-  if (destinationHash !== managedHash) {
-    throw new Error(`Incompatible managed agent at ${destination}. Rename or remove the conflicting definition, then retry.`);
-  }
-
-  return fs.existsSync(ownerPath) ? 'reused-owned' : 'reused-user-owned';
-}
-
 function destinationRoots(harness, roots) {
   return { commands: path.join(roots.base, 'commands'), sai: path.join(roots.base, 'sai'), skills: path.join(roots.base, 'skills'), agents: path.join(roots.base, 'agents'), config: roots.base };
 }
@@ -576,8 +535,7 @@ function installProjection(projection, targetPath) {
     return;
   }
   if (projection.strategy === 'owned-copy') {
-    ownedManagedWorkerInstaller(projection);
-    return;
+    throw new Error(`Projection ${projection.id} declares the retired owned-copy strategy; use tunable-seed`);
   }
   copy(projection.sourcePath, projection.destinationPath);
 }
@@ -974,17 +932,11 @@ module.exports = {
   offerOpenspecInstall,
   MANAGED_WORKERS,
   CLAUDE_IMPLEMENTATION_WORKER_AGENT,
-  CLAUDE_IMPLEMENTATION_WORKER_OWNER,
   CLAUDE_DESIGN_WORKER_AGENT,
-  CLAUDE_DESIGN_WORKER_OWNER,
   CLAUDE_SPEC_WORKER_AGENT,
-  CLAUDE_SPEC_WORKER_OWNER,
   CLAUDE_REVIEW_WORKER_AGENT,
-  CLAUDE_REVIEW_WORKER_OWNER,
-  OWNER_BY_CLAUDE_AGENT,
   cleanupRetiredProjections,
   installProjection,
-  ownedManagedWorkerInstaller,
   sha256Buffer,
   CLAUDE_TUNABLE_KEYS,
   OPENCODE_TUNABLE_KEYS,

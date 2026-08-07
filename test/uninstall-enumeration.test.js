@@ -87,10 +87,6 @@ test('install and uninstall inventories are exact and deterministic for every su
       install(base, destinationRoot);
       const active = expandInstallManifest(manifest, { harness, repoRoot, destinationRoot });
       const activeDestinations = active.map(projection => projection.destinationPath);
-      for (const projection of active.filter(item => item.strategy === 'owned-copy')) {
-        activeDestinations.push(path.join(path.dirname(projection.destinationPath),
-          `.${path.basename(projection.destinationPath, '.md')}.owner.json`));
-      }
       const normalize = destinations => destinations
         .map(destination => normalizeInventoryDestination(destination, destinationRoot))
         .sort();
@@ -133,7 +129,8 @@ test('install and uninstall inventories are exact and deterministic for every su
           const agentPath = path.join(destinationRoot.agents, worker.claude.agent);
           const entry = managedAgents.find(candidate => candidate.dest === agentPath);
           assert.ok(entry, `Claude should enumerate ${worker.claude.agent}`);
-          assert.equal(entry.ownerPath, path.join(destinationRoot.agents, worker.claude.owner));
+          assert.deepEqual(entry.tunableKeys, ['model', 'effort'],
+            'Claude managed agent entries should declare their tunable keys');
         }
       }
 
@@ -172,14 +169,7 @@ test('STEP1_RETIRE_INLINE: uninstall retains only Claude and opencode destinatio
         harness,
         repoRoot,
         destinationRoot: roots[harness],
-      }).flatMap(projection => [
-        normalizeInventoryDestination(projection.destinationPath, roots[harness]),
-        ...(projection.strategy === 'owned-copy' ? [normalizeInventoryDestination(
-          path.join(path.dirname(projection.destinationPath),
-            `.${path.basename(projection.destinationPath, '.md')}.owner.json`),
-          roots[harness],
-        )] : []),
-      ])
+      }).map(projection => normalizeInventoryDestination(projection.destinationPath, roots[harness]))
     ).sort();
     const enumerated = [
       ...uninstall.enumerateClaude(claudeBase),
@@ -338,35 +328,47 @@ test('enumerateOpencode does not error with default paths (no manifest)', () => 
   });
 });
 
-test('Step 4 incompatible Claude performance agents remain protected during install and uninstall', () => {
+test('Step 4 divergent Claude performance agents are overwritten with notice and uninstall removes body-matching agents', () => {
   const base = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-performance-collision-'));
   const agent = path.join(base, 'agents', 'sai-7-performance-worker.md');
-  const owner = path.join(base, 'agents', '.sai-7-performance-worker.owner.json');
   const sentinel = 'user-owned incompatible performance worker\n';
+  const notices = [];
+  const originalLog = console.log;
   try {
     fs.mkdirSync(path.dirname(agent), { recursive: true });
     fs.writeFileSync(agent, sentinel);
-    assert.throws(() => installClaude(base), /collision|incompatible|ownership|rename|remove/i);
-    assert.equal(fs.readFileSync(agent, 'utf8'), sentinel);
-    assert.equal(fs.existsSync(owner), false, 'blocked installation must not create an owner sidecar');
-    runDeletion(enumerateClaude(base));
-    assert.equal(fs.readFileSync(agent, 'utf8'), sentinel, 'guarded uninstall must preserve user-owned content');
+    console.log = message => notices.push(String(message));
+    assert.doesNotThrow(() => installClaude(base),
+      'installClaude should not throw on a divergent agent destination');
   } finally {
-    fs.rmSync(base, { recursive: true, force: true });
+    console.log = originalLog;
   }
+  const expectedBytes = fs.readFileSync(path.join(__dirname, '..', 'agents', 'claude', 'sai-7-performance-worker.md'));
+  assert.deepEqual(fs.readFileSync(agent), expectedBytes,
+    'the sentinel should be replaced by the managed source bytes');
+  assert.ok(notices.some(message => message.includes(agent)),
+    'a stdout notice should name the overwritten file');
+
+  const sidecar = path.join(base, 'agents', '.sai-7-performance-worker.owner.json');
+  fs.writeFileSync(sidecar, JSON.stringify({ managedHash: crypto.createHash('sha256').update(expectedBytes).digest('hex') }));
+  runDeletion(enumerateClaude(base));
+  assert.equal(fs.existsSync(agent), false, 'the body-matching agent should be deleted on uninstall');
+  assert.equal(fs.existsSync(sidecar), false,
+    'a shape-matching sidecar should be removed alongside its agent');
+  fs.rmSync(base, { recursive: true, force: true });
 });
 
-test('Step 4 proven managed performance agent and owner sidecar are removed together', () => {
+test('Step 4 managed performance agent installs without a sidecar and uninstall removes it', () => {
   const base = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-performance-managed-'));
   try {
     installClaude(base);
     const agent = path.join(base, 'agents', 'sai-7-performance-worker.md');
-    const owner = path.join(base, 'agents', '.sai-7-performance-worker.owner.json');
+    const sidecar = path.join(base, 'agents', '.sai-7-performance-worker.owner.json');
     assert.equal(fs.existsSync(agent), true, 'managed performance agent should be installed');
-    assert.equal(fs.existsSync(owner), true, 'managed performance owner sidecar should be installed');
+    assert.equal(fs.existsSync(sidecar), false, 'fresh installs must not create owner sidecars');
     runDeletion(enumerateClaude(base));
     assert.equal(fs.existsSync(agent), false);
-    assert.equal(fs.existsSync(owner), false);
+    assert.equal(fs.existsSync(sidecar), false);
   } finally {
     fs.rmSync(base, { recursive: true, force: true });
   }
