@@ -38,7 +38,7 @@
 
 ## Findings
 
-### [SEVERITY] WCAG <!-- SC code -->: <!-- short title -->
+### C1 [SEVERITY] WCAG <!-- SC code -->: <!-- short title -->
 
 - **Location:** `<file>:<line>` (or selector / component name)
 - **Component / Flow:** <!-- modal / form / nav / route announcer / ... -->
@@ -95,3 +95,5 @@ Before merging, verify:
 - [ ] 200% zoom + 320px width — no horizontal scroll on reading flows
 - [ ] `prefers-reduced-motion` honored
 - [ ] Forced colors mode (Windows high contrast) — content still legible
+
+Summary: Critical=<!-- n --> High=<!-- n --> Medium=<!-- n --> Low=<!-- n --> Informational=<!-- n -->

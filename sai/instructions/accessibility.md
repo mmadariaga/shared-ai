@@ -219,6 +219,7 @@ Fetch @sai/instructions/_templates/accessibility-report.md
 - **State "No instances detected"** for evaluated categories that came up clean — do not silently omit.
 - **Diff-scoped by default.** Out-of-scope risks get a one-line note, not a full audit.
 - **Quote evidence exactly.** No paraphrasing of axe output, Lighthouse findings, or offending markup.
+- **Identifiers and closing tally.** Every finding carries a severity-prefixed identifier — the severity's initial followed by the finding's sequence within that severity in the current report (`C1`/`H1`/`M1`/`L1`, with `I1` for `Informational`), restarting at 1 per severity per report — and the report closes with `Summary: Critical=<n> High=<n> Medium=<n> Low=<n> Informational=<n>` whose counts match the report's findings (zeros included).
 
 ## Self-Critique Before Saving
 
@@ -229,6 +230,7 @@ Before writing the report, verify:
 4. **Spec respect** — no finding contradicts a decision recorded in the change artifacts without being marked *Acknowledged*.
 5. **Re-test checklist present** — reflects the actual flows touched in the diff.
 6. **Framework idiom respected** — React fixes use hooks/refs; Astro fixes account for hydration; Tailwind fixes use utilities or theme tokens.
+7. **Identifiers and tally** — every finding heading leads with its severity-prefixed identifier, and the closing `Summary:` line counts match the report's findings.
 
 ## Remember
 
