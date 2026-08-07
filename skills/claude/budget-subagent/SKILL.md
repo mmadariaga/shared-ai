@@ -40,6 +40,10 @@ metadata:
 - **Tool-call cap**: none enforced by harness (behavioral rule 6 governs this)
 - **Raw output**: not allowed — always use the structured completion report format
 
+## Dispatch mode
+
+This binding is declared `run_in_background: true`, mirroring the parameter the seven routed workers already declare at `sai/orchestration/workers/bindings/claude/design-worker.md:5`. It may be invoked only by a dispatcher whose own lifetime outlives the child: the main agent, a routed SAI coordinator, or a routed SAI worker — each of which captures the continuation reference and awaits the child's structured payload on its own turn, per the dispatch-safety invariant in `openspec/specs/dispatch-safety-invariant/spec.md`.
+
 ## Cost model
 
 This subagent runs on a commodity model. Its tier is enforced via the explicit `model: "haiku"` parameter set on every `Agent()` spawn call — that parameter is the only lever to change the cost of delegation.
