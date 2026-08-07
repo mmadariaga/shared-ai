@@ -61,6 +61,9 @@ Durable execution-observed facts about the shared-ai prompt and installer reposi
 - **openspec/schemas/sai-workflow/schema.yaml**: The tasks artifact's `instruction` field is a YAML block scalar with 6-space indentation, so a mandated multi-line replacement spans several lines and shifts the remaining instruction lines; `openspec instructions tasks --change <name>` reads both the schema `instruction` and the `templates/tasks.md` template from disk, serving as a combined regression check for both surfaces in one invocation.
   *Observed:* declare-file-change-type-in-tasks — replacing the single-line `**Files Affected**` instruction line with the 4-line change-type wording required block-scalar continuation (schema.yaml:118-121), and the command confirmed both the instruction and the template emit the new format.
 
+- **test/*-coordinator-worker.test.js**: Coordinator-worker structural suites assert stale model pins (`glm-5.2`, `minimax-m3`, `claude-opus-4-8`) and a legacy Major-promotion accessibility wording that the committed wrappers and agents no longer carry (`deepseek-v4-flash` / `opus`); those `npm test` failures pre-date any applied change.
+  *Observed:* parameterize-decision-record-index-machinery — apply-time `npm test` showed 465/473 passing; the 8 failures were proven pre-existing because the files those tests read are byte-identical to HEAD.
+
 ## Avoid
 
 - **configs/opencode.jsonc**: Do not assert managed-worker registration from the configuration agent map — the sample carries no `agent.sai-*-worker` keys; worker membership is file-based (projected `agents/opencode/*.md` files plus the binding-derived roster).

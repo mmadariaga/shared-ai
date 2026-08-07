@@ -62,6 +62,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0106 — Run-path baseline predicate for the audit-append check](./0106-run-path-baseline-predicate.md) — Pair with 0105
 - [0107 — ADR creation decision gets its own capability](./0107-adr-creation-decision-capability.md)
 - [0108 — Tasks files-affected entries carry a closed four-letter change-type vocabulary](./0108-tasks-files-affected-change-type-vocabulary.md)
+- [0110 — Extract the decision-record index machinery into an abstract capability with spec-pinned framework values](./0110-extract-decision-record-index-machinery-abstract-capability.md)
 
 ### `/sai-4-apply`
 
