@@ -2,7 +2,11 @@
 
 **Routing**: layer=<!-- frontend|backend|infra|cross-cutting --> · discipline=<!-- ui-ux|app-code|service|data|config --> · complexity=<!-- low|medium|high -->
 
-**Files Affected**: <!-- comma-separated file paths -->
+**Files Affected**: <!-- one entry per line, each starting with exactly one change-type token from the closed vocabulary A (created) / M (modified) / D (deleted) / R (moved/renamed), followed by one space and the project-root-relative path; an R entry carries R <source path> -> <destination path> -->
+<!-- A <path of a file this step creates> -->
+<!-- M <path of a file this step modifies> -->
+<!-- D <path of a file this step deletes> -->
+<!-- R <source path> -> <destination path> -->
 
 **What Will Be Done**: <!-- prose description of the work in this step -->
 
@@ -14,7 +18,11 @@
 
 **Routing**: layer=<!-- frontend|backend|infra|cross-cutting --> · discipline=<!-- ui-ux|app-code|service|data|config --> · complexity=<!-- low|medium|high -->
 
-**Files Affected**: <!-- comma-separated file paths -->
+**Files Affected**: <!-- one entry per line, each starting with exactly one change-type token from the closed vocabulary A (created) / M (modified) / D (deleted) / R (moved/renamed), followed by one space and the project-root-relative path; an R entry carries R <source path> -> <destination path> -->
+<!-- A <path of a file this step creates> -->
+<!-- M <path of a file this step modifies> -->
+<!-- D <path of a file this step deletes> -->
+<!-- R <source path> -> <destination path> -->
 
 **What Will Be Done**: <!-- prose description of the work in this step -->
 

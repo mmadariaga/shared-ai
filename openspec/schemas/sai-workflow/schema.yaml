@@ -115,7 +115,10 @@ artifacts:
       complexity=medium (Next.js component)`). Any parser MUST ignore everything from the first
       `(` onward on the line.
 
-      **Files Affected**: <comma-separated list of file paths to be modified or created>
+      **Files Affected**: one entry per line, each starting with exactly one change-type token
+      from the closed vocabulary `A` (created), `M` (modified), `D` (deleted), `R` (moved/renamed,
+      source path and destination path separated by ` -> `), followed by one space and the
+      project-root-relative path; not a comma-separated list.
 
       **What Will Be Done**: <prose description of the work in this step>
 
