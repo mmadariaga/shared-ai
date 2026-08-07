@@ -4,6 +4,8 @@
 
 Accepted
 
+> **Note (ADR 0107):** the severity-mapping portion of this ADR (`survived`/`pre-check-failed` → Major, `revert-failed` → Blocker) is superseded by [ADR 0107](./0107-unified-audit-severity-vocabulary.md); the `mMUT-N` namespace and seven-field surviving-mutant row remain in force.
+
 ## Context
 
 `sai-5-review` classifies findings with severity-prefixed IDs: `B{n}` (Blocker), `M{n}` (Major), `m{n}` (Minor), `Q{n}` (Question), each rendered in the generic Findings lists of `<output_template>`.

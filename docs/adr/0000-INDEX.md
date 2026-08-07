@@ -89,19 +89,23 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0012 — Mutation Analysis (pass 11) as a dedicated protocol section in review.md](./0012-mutation-analysis-as-dedicated-protocol-section.md)
 - [0096 — Fail closed when dispatching owned worker sidecars](./0096-fail-closed-owned-worker-owner-dispatch.md) — Refs 0084, Refs 0085
 - [0106 — Keep both report template families with pinned skeleton parity](./0106-keep-both-report-template-families-pinned-parity.md)
+- [0107 — Unified audit severity vocabulary across the four report surfaces](./0107-unified-audit-severity-vocabulary.md) — Supersedes 0013
 
 ### `/sai-6-security`
 
 - [0106 — Keep both report template families with pinned skeleton parity](./0106-keep-both-report-template-families-pinned-parity.md)
+- [0107 — Unified audit severity vocabulary across the four report surfaces](./0107-unified-audit-severity-vocabulary.md) — Supersedes 0013
 
 ### `/sai-7-performance`
 
 - [0097 — Route performance by continuation capability](./0097-route-performance-by-continuation-capability.md) — Refs 0082, Refs 0083, Refs 0093
 - [0106 — Keep both report template families with pinned skeleton parity](./0106-keep-both-report-template-families-pinned-parity.md)
+- [0107 — Unified audit severity vocabulary across the four report surfaces](./0107-unified-audit-severity-vocabulary.md) — Supersedes 0013
 
 ### `/sai-8-accessibility`
 
 - [0106 — Keep both report template families with pinned skeleton parity](./0106-keep-both-report-template-families-pinned-parity.md)
+- [0107 — Unified audit severity vocabulary across the four report surfaces](./0107-unified-audit-severity-vocabulary.md) — Supersedes 0013
 
 ### `/sai-explore`
 
@@ -183,6 +187,8 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 ---
 
 ## Cross-cutting categories
+
+- [0107 — Unified audit severity vocabulary across the four report surfaces](./0107-unified-audit-severity-vocabulary.md) — Supersedes 0013
 
 ### Fetch resolution & path conventions
 
@@ -334,6 +340,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 | [0058](./0058-gate-ux-tweaks-as-deltas-against-existing-capabilities.md) | reframes | [0053](../drr/0053-post-crystallization-review-once-per-turn.md) |
 | [0071](./0071-two-part-dispatch-routing-condition.md) | supersedes | [0024](./0024-split-only-testable-steps.md) |
 | [0073](./0073-durable-channel-is-the-deviations-appendix.md) | reframes | [0020](./0020-ephemeral-in-context-technical-learnings-memory.md) |
+| [0107](./0107-unified-audit-severity-vocabulary.md) | supersedes | [0013](./0013-mmut-n-finding-namespace-for-mutation-analysis.md) |
 
 ## Superseded ADRs (historical)
 
