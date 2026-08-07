@@ -39,7 +39,10 @@ the prompt specified by `design.md`. Delegate each Open Question to a
 budget-explorer and resolve all questions before `tasks.md`.
 
 Write `design.md`, `tasks.md`, and `interfaces.md` directly to the change
-directory and verify each exists and is non-empty. Worker-owned feedback is
+directory and verify each exists and is non-empty. Planning questions SHALL
+comply with `@sai/policies/question-context.md`, and the design notice
+`message` SHALL comply with that policy's informational-notice subset.
+Worker-owned feedback is
 applied without re-presenting the coordinator's feedback gate. For
 coordinator-forwarded artifact feedback, process only the supplied feedback
 text; MUST NOT emit, re-present, or duplicate the feedback-text prompt.
