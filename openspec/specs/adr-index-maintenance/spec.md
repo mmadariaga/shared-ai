@@ -10,24 +10,35 @@ This slice ships the abstract surface instantiated for the ADR family only. The 
 
 ## Requirements
 
-### Requirement: Step 3 shall maintain the ADR index after creating ADR files
+### Requirement: Step 3 shall maintain each family's index after creating records in that family
 
-After `sai-3-implement` Step 3 validates design decisions against the three ADR/DDR criteria and writes one or more `docs/adr/NNNN-slug.md` files in the current Step 3 run, Step 3 SHALL enter one index-maintenance branch for the full session ADR set — exactly one maintenance cycle at the end of Step 3 — choosing the branch by the absence or presence of `docs/adr/0000-INDEX.md`:
+After `sai-3-implement` Step 3 validates design decisions against the three ADR/DDR criteria and writes one or more record files in the current Step 3 run — `docs/adr/NNNN-slug.md`, `docs/ddr/NNNN-slug.md`, or both — Step 3 SHALL enter one index-maintenance cycle per family that received records in the run, choosing each cycle's branch by the absence or presence of that family's index file (`docs/adr/0000-INDEX.md` for the ADR family, `docs/ddr/0000-INDEX.md` for the DDR family):
 
-- Cold build — when `docs/adr/0000-INDEX.md` is absent.
-- Warm splice — when `docs/adr/0000-INDEX.md` exists.
+- Cold build — when the family's index file is absent.
+- Warm splice — when the family's index file exists.
 
-The maintenance cycle runs once per Step 3 invocation over the ADRs the current run created; it SHALL NOT run per-file. When Step 3 created no ADR files in the current run, no maintenance cycle executes and the hook is a no-op.
+Each maintenance cycle SHALL cover only the records of its own family that the current run created, SHALL write only its own family's index file, and SHALL NOT touch the other family's index. The maintenance cycles run once per family per Step 3 invocation, not per file and not once overall. When Step 3 created no record files in the current run, no maintenance cycle executes and the hook is a no-op for both families.
 
-#### Scenario: Step 3 end-of-run with zero ADRs created
+#### Scenario: Step 3 end-of-run with zero records created
 
-- **WHEN** the current `sai-3-implement` Step 3 run created no `docs/adr/NNNN-slug.md` files (no design decision met all three ADR criteria, or the user declined ADR creation for each)
-- **THEN** Step 3 SHALL NOT touch `docs/adr/0000-INDEX.md` and SHALL NOT print any index-maintenance instruction into `implementation.md`; the hook is a no-op for this run
+- **WHEN** the current `sai-3-implement` Step 3 run created no `docs/adr/NNNN-slug.md` or `docs/ddr/NNNN-slug.md` files (no design decision met all three ADR/DDR criteria, or the user declined record creation for each)
+- **THEN** Step 3 SHALL NOT touch `docs/adr/0000-INDEX.md` or `docs/ddr/0000-INDEX.md` and SHALL NOT print any index-maintenance instruction into `implementation.md`; the hook is a no-op for this run
+
+#### Scenario: Step 3 creates ADRs and DDRs in one run
+
+- **WHEN** the current Step 3 run created one or more ADRs and one or more DDRs
+- **THEN** exactly two index-maintenance cycles SHALL run, one per family, each covering only the records of its own family and each writing only its own family's index
+
+#### Scenario: Step 3 creates records of one family only
+
+- **WHEN** the current Step 3 run created records of exactly one family (e.g. only ADRs)
+- **THEN** exactly one index-maintenance cycle SHALL run for that family
+- **AND** the other family's index SHALL NOT be touched
 
 #### Scenario: Step 3 end-of-run after the hook decides per-invocation state
 
-- **WHEN** Step 3 has finished writing its ADR(s) for the current run and reaches the end of Step 3
-- **THEN** exactly one index-maintenance cycle SHALL run, covering every ADR the current run created, before Step 3 yields control to Step 4
+- **WHEN** Step 3 has finished writing its record(s) for the current run and reaches the end of Step 3
+- **THEN** one index-maintenance cycle per family that received records SHALL run, covering every record the current run created in that family, before Step 3 yields control to Step 4
 
 ### Requirement: ADR index parameterization binds the three per-index parameters and the two type-specific section headings
 
@@ -194,70 +205,164 @@ The supersede-move operates only on records within the same family (per the abst
 - **THEN** no entry is moved, no correction-table row is added, and the target family's index is not touched
 - **THEN** the classification error is surfaced in chat so the user can reclassify the source or target record into the correct family
 
-### Requirement: Index maintenance shall be idempotent on sai-3 rerun
+### Requirement: Index maintenance shall be idempotent on sai-3 rerun, per family
 
-When `sai-3-implement` is re-run for the same change and an ADR created in a prior run already has an entry in `docs/adr/0000-INDEX.md`, the index maintenance hook SHALL detect the existing entry and SHALL NOT duplicate it. The cold-build branch SHALL remain a no-op once the index has been cold-built by an earlier run. The warm-splice branch SHALL treat a session ADR whose entry already exists as a no-op for that ADR (no duplicate entry, no duplicate correction-table row, no duplicate supersede-move).
+When `sai-3-implement` is re-run for the same change and a record created in a prior run already has an entry in its family's index, the index maintenance hook SHALL detect the existing entry and SHALL NOT duplicate it, independently for each family. The cold-build branch SHALL remain a no-op once that family's index has been cold-built by an earlier run. The warm-splice branch SHALL treat a session record whose entry already exists as a no-op for that record (no duplicate entry, no duplicate correction-table row, no duplicate supersede-move).
 
 #### Scenario: Re-running sai-3 with an already-indexed session ADR
 
-- **WHEN** Step 3 re-runs for a change whose ADR `0072` was already inserted into the index in the prior run, and the current run would re-insert `0072`'s entry
+- **WHEN** Step 3 re-runs for a change whose ADR `0072` was already inserted into the ADR index in the prior run, and the current run would re-insert `0072`'s entry
 - **THEN** the hook SHALL detect the existing entry for `0072` and SHALL skip it, producing zero new entries, zero new correction-table rows, and zero new supersede-moves for that ADR
 
-#### Scenario: Re-running sai-3 after a prior cold build
+#### Scenario: Re-running sai-3 after a prior cold build of one family
 
-- **WHEN** Step 3 re-runs after a prior run cold-built `docs/adr/0000-INDEX.md` (the file now exists)
-- **THEN** the current run SHALL take the warm-splice branch, NEVER re-cold-build, even if the warm splice produces no new entries
+- **WHEN** Step 3 re-runs after a prior run cold-built `docs/adr/0000-INDEX.md` (the file now exists) while `docs/ddr/0000-INDEX.md` is absent
+- **THEN** the current run SHALL take the warm-splice branch for the ADR family and SHALL NEVER re-cold-build the ADR index, even if the warm splice produces no new entries
+- **AND** a DDR-creating run at that point SHALL cold-build the DDR index — idempotency is per family, and the ADR warm branch does not suppress the DDR cold branch
 
-### Requirement: Step 3 shall emit a structured relationship line in ADRs it creates
+### Requirement: Step 3 shall emit a structured relationship line in the records it creates
 
-When `sai-3-implement` Step 3 creates an ADR file (`docs/adr/NNNN-slug.md`) for a decision that declares a relationship to another ADR (or, in a future slice, to a record in another family — using the same `adr-index:` key form, per the abstract surface's family-boundary rule) — amends, supersedes, reverses, reframes, refs, or pair-with — Step 3 SHALL emit a structured, parseable relationship line in the ADR file itself, in addition to any prose discussion of the relationship. The structured line SHALL use a deterministic form the index-maintenance hook reads without prose parsing, with relationship tokens from `amends|supersedes|reverses|reframes|refs|pair-with`, for example an HTML comment at a known location:
+When `sai-3-implement` Step 3 creates a decision-record file (`docs/adr/NNNN-slug.md` or `docs/ddr/NNNN-slug.md`) for a decision that declares a relationship to another record of either family — amends, supersedes, reverses, reframes, refs, or pair-with — Step 3 SHALL emit a structured, parseable relationship line in the record file itself, in addition to any prose discussion of the relationship. The structured line SHALL use the same deterministic HTML-comment form keyed on `adr-index:` for both families (for example `<!-- adr-index: supersedes 0002; amends 0003 -->`), with relationship tokens from `amends|supersedes|reverses|reframes|refs|pair-with`. A relationship target in the same family SHALL be encoded as a bare number (`0002`); a relationship target in the other family SHALL carry the explicit family prefix (`ddr:0014`, `adr:0069`) per the abstract surface's family-boundary rule. The hook's warm-splice and cold-build branches SHALL read this structured line first; the prose-content fallback (parsing the record body for `Supersedes NNNN` phrasing) is best-effort only and SHALL be used solely for hand-written records that predate this requirement. Step 3 SHALL NOT omit the structured line for a record that declares a relationship; a record with no relationship carries no structured line and the hook annotates nothing.
 
-  `<!-- adr-index: supersedes 0002; amends 0003 -->`
-
-The hook's warm-splice and cold-build branches SHALL read this structured line first; the prose-content fallback (parsing the ADR body for `Supersedes NNNN` phrasing) is best-effort only and SHALL be used solely for hand-written ADRs that predate this requirement. Step 3 SHALL NOT omit the structured line for an ADR that declares a relationship; an ADR with no relationship carries no structured line and the hook annotates nothing.
-
-#### Scenario: Step 3 writes an ADR that supersedes a prior ADR
+#### Scenario: Step 3 writes a record that supersedes a prior record
 
 - **WHEN** Step 3 decides to create `docs/adr/0073-foo.md` for a decision that supersedes ADR 0002
-- **THEN** the ADR file `0073-foo.md` SHALL contain a structured relationship line (e.g. `<!-- adr-index: supersedes 0002 -->`) in addition to the ADR's prose, and the index-maintenance hook SHALL read that structured line to annotate `0073`'s entry and populate the correction table, without parsing the ADR's prose body
+- **THEN** the record file SHALL contain a structured relationship line (e.g. `<!-- adr-index: supersedes 0002 -->`) in addition to the record's prose, and the index-maintenance hook SHALL read that structured line to annotate the entry and populate the correction table, without parsing the record's prose body
 
-#### Scenario: Step 3 writes an ADR with no relationship
+#### Scenario: Step 3 writes a DDR that declares a cross-family relationship
 
-- **WHEN** Step 3 creates an ADR that declares no relationship to any other ADR
-- **THEN** the ADR file SHALL NOT carry a structured relationship line, and the index-maintenance hook SHALL insert the entry with no in-line relationship annotation and no correction-table row
+- **WHEN** Step 3 creates `docs/ddr/NNNN-slug.md` for a decision that declares `refs adr:0069`
+- **THEN** the DDR file SHALL contain the structured line `<!-- adr-index: refs adr:0069 -->` with the family-prefixed target
+- **THEN** the DDR index SHALL annotate the entry `— Refs adr:0069` and SHALL NOT touch the ADR index
 
-#### Scenario: Hand-written pre-requirement ADR falls back to prose parsing
+#### Scenario: Step 3 writes a record with no relationship
 
-- **WHEN** the cold build or warm splice categorises a hand-written ADR (e.g. `0004`) that predates this requirement and carries its supersede declaration only in prose
-- **THEN** the hook SHALL fall back to best-effort prose parsing for that ADR only, and the structured-line requirement SHALL NOT retroactively apply to it
+- **WHEN** Step 3 creates a record that declares no relationship to any other record
+- **THEN** the record file SHALL NOT carry a structured relationship line, and the index-maintenance hook SHALL insert the entry with no in-line relationship annotation and no correction-table row
 
-### Requirement: Index output shall follow the abstract surface's invariants and the per-ADR type-specific headings
+#### Scenario: Hand-written pre-requirement record falls back to prose parsing
 
-Every artifact produced by either index-maintenance branch — `docs/adr/0000-INDEX.md` (cold build) or the post-splice state of `docs/adr/0000-INDEX.md` (warm splice) — SHALL preserve the five index-output invariants defined by `decision-record-index-machinery`.
+- **WHEN** the cold build or warm splice categorises a hand-written record (e.g. `0004`) that predates this requirement and carries its relationship declaration only in prose
+- **THEN** the hook SHALL fall back to best-effort prose parsing for that record only, and the structured-line requirement SHALL NOT retroactively apply to it
 
-In addition to the abstract invariants, the ADR index SHALL carry these per-index invariants:
+### Requirement: Index output shall follow the abstract surface's invariants and each family's type-specific headings
 
-- The correction table header is `| ADR | Action | Over |` (the `ADR` keyword matches the per-index family vocabulary; a future DDR family uses `| DDR | Action | Over |`).
-- The entry-line form is `- [NNNN — {Title}](./NNNN-slug.md)`, with the title in the verbatim `{Title}` portion of the ADR's H1.
-- The historical section is `## Superseded ADRs (historical)` and the correction-table section is `## ADRs that extend or correct prior ones` (the two type-specific section headings pinned by this spec's per-index binding).
+Every artifact produced by either index-maintenance branch for either family — `docs/adr/0000-INDEX.md` and `docs/ddr/0000-INDEX.md` (cold build) or their post-splice states (warm splice) — SHALL preserve the five index-output invariants defined by `decision-record-index-machinery`.
 
-#### Scenario: Index links are relative within the ADR family
+In addition to the abstract invariants, each family's index SHALL carry its per-index invariants:
 
-- **WHEN** the warm splice inserts an entry for `docs/adr/0072-foo.md`
-- **THEN** the entry's link SHALL be `./0072-foo.md` (relative path from `docs/adr/0000-INDEX.md`), never an absolute path or URL
+- The ADR index uses the correction-table header `| ADR | Action | Over |`, the entry-line form `- [NNNN — {Title}](./NNNN-slug.md)` with the verbatim `{Title}` from the ADR's H1, and the type-specific section headings `## ADRs that extend or correct prior ones` and `## Superseded ADRs (historical)`.
+- The DDR index uses the correction-table header `| DDR | Action | Over |`, the entry-line form `- [NNNN — {Title}](./NNNN-slug.md)` with the verbatim `{Title}` from the DDR's H1 (`# DDR NNNN: {Title}`), and the type-specific section headings `## DDRs that extend or correct prior ones` and `## Superseded DDRs (historical)`.
+- Neither index carries the other family's vocabulary: the ADR index SHALL NOT carry `| DDR | Action | Over |` or the DDR section headings, and the DDR index SHALL NOT carry the ADR section headings.
+
+#### Scenario: Index links are relative within the record's family
+
+- **WHEN** the warm splice inserts an entry for `docs/adr/0072-foo.md` or `docs/ddr/0105-bar.md`
+- **THEN** the entry's link SHALL be `./0072-foo.md` or `./0105-bar.md` respectively (relative path from that family's `0000-INDEX.md`), never an absolute path or URL
 
 #### Scenario: Index H1 is preserved across reruns
 
-- **WHEN** the warm splice runs on an existing `docs/adr/0000-INDEX.md` whose first line is `# ADR Index`
-- **THEN** the post-splice file SHALL still begin with exactly `# ADR Index` as its first line, unchanged
+- **WHEN** the warm splice runs on an existing index whose first line is `# ADR Index` or `# DDR Index`
+- **THEN** the post-splice file SHALL still begin with exactly that H1 as its first line, unchanged
 
-#### Scenario: ADR titles are preserved verbatim
+#### Scenario: Record titles are preserved verbatim
 
-- **WHEN** an ADR file's H1 reads `# ADR 0072: Foo Bar Baz`
-- **THEN** the index entry listing that ADR SHALL carry the verbatim title text `Foo Bar Baz` (without the `# ADR NNNN:` prefix in the entry text, and with no rewording, casing, or punctuation change)
+- **WHEN** a record file's H1 reads `# ADR 0072: Foo Bar Baz` or `# DDR 0105: Qux`
+- **THEN** the index entry listing that record SHALL carry the verbatim title text (`Foo Bar Baz`, `Qux`) without the `# ADR NNNN:` or `# DDR NNNN:` prefix in the entry text, and with no rewording, casing, or punctuation change
 
-#### Scenario: ADR correction-table header and section names use ADR vocabulary
+#### Scenario: Correction-table headers and section names use the family's own vocabulary
 
-- **WHEN** the cold build writes the correction table and the historical section
-- **THEN** the table header is `| ADR | Action | Over |` and the section headings are `## ADRs that extend or correct prior ones` and `## Superseded ADRs (historical)`
-- **THEN** the same file does NOT carry `| DDR | Action | Over |`, `## DDRs that extend or correct prior ones`, or `## Superseded DDRs (historical)` — those headers belong to a DDR family, which is not in scope for this slice
+- **WHEN** the cold build writes the correction table and the historical section for either family
+- **THEN** the ADR index uses `| ADR | Action | Over |` with `## ADRs that extend or correct prior ones` and `## Superseded ADRs (historical)`
+- **THEN** the DDR index uses `| DDR | Action | Over |` with `## DDRs that extend or correct prior ones` and `## Superseded DDRs (historical)`
+- **THEN** neither file carries the other family's table header or section headings
+
+### Requirement: The DDR family instantiates the abstract surface with the DDR bindings
+
+The DDR index inherits the abstract surface from `decision-record-index-machinery` exactly as the ADR index does, and binds its parameters as follows.
+
+The three per-index bindings:
+
+1. **Storage directory**: `docs/ddr/`.
+2. **Index filename**: `0000-INDEX.md`.
+3. **Index H1**: `# DDR Index`.
+
+The two type-specific section headings (positions #4 and #5 in the canonical section skeleton):
+
+4. **Correction-table heading**: `## DDRs that extend or correct prior ones`.
+5. **Historical-section heading**: `## Superseded DDRs (historical)`.
+
+The `<domain unit>` noun substituted into `## By <domain unit>` is the derived value the cold build computes from the abstract surface's mapping list and the DDRs' content. The DDR index SHALL NOT be bound to any one noun at the spec level; the cold build produces the noun (e.g. `command` in this repository).
+
+#### Scenario: DDR index binds its three per-index parameters and the two type-specific section headings
+
+- **WHEN** a maintainer reads this spec's DDR instantiation
+- **THEN** the three per-index bindings are exactly `docs/ddr/`, `0000-INDEX.md`, `# DDR Index`
+- **THEN** the two type-specific section headings are exactly `## DDRs that extend or correct prior ones` and `## Superseded DDRs (historical)`
+- **THEN** the `<domain unit>` noun is NOT a per-index binding — it is a derived value the cold build computes
+
+#### Scenario: DDR index derives the same domain-unit noun as the ADR index
+
+- **WHEN** the cold build runs in this repository, whose DDRs reference the same slash commands as the ADRs
+- **THEN** the abstract surface's framework mapping list applies identically, the `slash-command → command` rule matches, and the DDR index's H2 reads `## By command`, consistent with the live `docs/ddr/0000-INDEX.md`
+
+### Requirement: DDR index maintenance follows the cold-build and warm-splice branches
+
+The DDR family SHALL run the same two-branch maintenance as the ADR family, instantiated for the DDR bindings:
+
+- **Cold build** — when `docs/ddr/0000-INDEX.md` is absent, Step 3 SHALL construct the full relational DDR index over every DDR file currently present under `docs/ddr/`, using the project-agnostic template at `sai/instructions/_templates/ddr-index.md` AND the abstract surface inherited from `decision-record-index-machinery`, following the same procedure as the ADR cold build: derive the `<domain unit>` noun and the domain-unit references and cross-cutting categories from the DDRs' own content; categorize every DDR; annotate relationships (including cross-family annotations with the `<family>:NNNN` encoding and `../<family>/NNNN-slug.md` links); populate the correction table; move every superseded DDR into the historical section. The cold build's bulk read of every `docs/ddr/NNNN-*.md` file SHALL be delegated to a `budget-explorer` subagent per the cost-discipline rule in `sai/policies/remember.md`, with the same raw per-record context report contract as the ADR cold build.
+- **Warm splice** — when `docs/ddr/0000-INDEX.md` exists, Step 3 SHALL splice ONLY the DDR files the current Step 3 run created into the existing index structure, leaving all hand-curated content for DDRs not created this session byte-for-byte unchanged EXCEPT where a session DDR supersedes one (a supersede-move is the only permitted mutation of a non-session entry).
+- **Supersede-move** — when a session DDR supersedes a prior DDR, move the superseded DDR's entry into `## Superseded DDRs (historical)` with a `*Superseded by [NNNN]*` note and add the correction-table row. A `supersedes` whose target is in the ADR family is a classification error per the abstract surface's family-boundary rule: it is NOT executed, the source DDR is NOT moved, the ADR index is NOT touched, and the error is surfaced in chat.
+- **Idempotency** — per the per-family idempotency requirement; an already-indexed DDR is a no-op for the rerun.
+
+#### Scenario: DDR cold build from a DDR directory with no index
+
+- **WHEN** Step 3 ends its run with at least one DDR created, and `docs/ddr/0000-INDEX.md` does not exist
+- **THEN** Step 3 SHALL construct `docs/ddr/0000-INDEX.md` from `sai/instructions/_templates/ddr-index.md` and the abstract surface, categorising every existing `docs/ddr/NNNN-*.md` file by domain-unit reference and cross-cutting category, annotating relationships, populating the correction table, and placing superseded DDRs in the historical section
+
+#### Scenario: DDR warm splice touches only session DDRs
+
+- **WHEN** the session created DDR `0105` and the live `docs/ddr/0000-INDEX.md` already has hand-curated entries for prior DDRs
+- **THEN** the warm splice SHALL insert the `0105` entry and SHALL leave every existing entry byte-for-byte unchanged except where a session DDR supersedes one
+
+#### Scenario: Cross-family supersede from a DDR is a classification error
+
+- **WHEN** a session DDR's structured relationship line declares `supersedes adr:NNNN`
+- **THEN** the DDR maintenance cycle SHALL treat this as a classification error per the abstract surface's family-boundary rule
+- **THEN** no entry is moved, no correction-table row is added, and the ADR index is not touched
+- **THEN** the classification error is surfaced in chat so the user can reclassify the source or target record into the correct family
+
+### Requirement: Cross-family relationship representation is family-prefixed and family-isolated
+
+Cross-family relationships SHALL be represented in each family's index exactly as the abstract surface's family-boundary rules define, with these concrete bindings for the two live families:
+
+- A relationship target in the same family SHALL be encoded as a bare number (`NNNN`); a relationship target in the other family SHALL carry the explicit family prefix (`<family>:NNNN`, e.g. `refs adr:0069` in the DDR index, `refs ddr:0014` in the ADR index). A bare target therefore always means the same family, which keeps every pre-existing structured line valid.
+- Entry-line annotations follow the abstract surface's relationship-token forms with the family-prefixed encoding for cross-family targets (`— Refs adr:0069`, `— **Amends** ddr:0014`).
+- Correction-table rows for cross-family `amends | reframes | reverses` relationships SHALL use the cross-family link form `[NNNN](../<family>/NNNN-slug.md)` for the target cell and SHALL be written only to the source record's own family index.
+- `supersedes` SHALL NOT cross families: a crossing supersedes is a classification error per the abstract surface, resolved by moving a record (reclassification), never by executing the cross.
+
+#### Scenario: Cross-family refs annotation in the DDR index
+
+- **WHEN** a DDR declares `refs adr:0069` via its structured line
+- **THEN** the DDR index entry carries `— Refs adr:0069` with the `adr:` prefix
+- **THEN** no correction-table row is added for the `refs` relationship
+- **THEN** the ADR index is NOT touched
+
+#### Scenario: Cross-family correction-table row uses the cross-family link form
+
+- **WHEN** an ADR declares `amends ddr:0014`
+- **THEN** the ADR index's correction table adds the row `[NNNN](./NNNN-slug.md) | amends | [0014](../ddr/0014-decision-summary-derived-from-artifacts-only.md)`, with the source cell in the live within-family form `[NNNN](./NNNN-slug.md)` and the target cell in the cross-family `../ddr/` link form — matching the live index's row shape, which never uses a `[NNNN_adr]`-style source cell
+- **THEN** the DDR index is NOT touched
+
+#### Scenario: Bare target means the same family
+
+- **WHEN** a DDR's structured line declares `amends 0026`
+- **THEN** the target `0026` resolves to the DDR family (the same family), not to ADR 0026
+- **THEN** the correction-table row links `./0026-...md` within `docs/ddr/`
+
+#### Scenario: Cross-family supersede from an ADR is a classification error
+
+- **WHEN** an ADR's structured relationship line declares `supersedes ddr:NNNN`
+- **THEN** the ADR maintenance cycle SHALL treat this as a classification error per the abstract surface's family-boundary rule
+- **THEN** the ADR index is NOT touched, the DDR record's entry is NOT moved, and no correction-table row is added
+- **THEN** the classification error is surfaced in chat so the user can reclassify the source or target record into the correct family

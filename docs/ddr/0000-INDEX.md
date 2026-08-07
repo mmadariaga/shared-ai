@@ -18,16 +18,21 @@ This index groups the DDRs in `docs/ddr/` by **command** and by **cross-cutting 
 - [0014 — Decision summary derived exclusively from written artifacts](./0014-decision-summary-derived-from-artifacts-only.md)
 - [0067 — Handoff provenance consumption as "premise to confirm and extend"](./0067-confirm-extend-consumption-framing.md)
 - [0072 — Numeric complexity thresholds calibrated from an archive survey](./0072-complexity-thresholds-calibrated-from-archive-survey.md) — Refs adr:0069, Refs adr:0070
+- [0106 — The ordered routing test resolves a qualifying decision's record family, DDR first, with no tie](./0106-ordered-routing-test-family-resolution.md)
 
 ### `/sai-2-design`
 
 - [0014 — Decision summary derived exclusively from written artifacts](./0014-decision-summary-derived-from-artifacts-only.md)
 - [0072 — Numeric complexity thresholds calibrated from an archive survey](./0072-complexity-thresholds-calibrated-from-archive-survey.md) — Refs adr:0069, Refs adr:0070
+- [0106 — The ordered routing test resolves a qualifying decision's record family, DDR first, with no tie](./0106-ordered-routing-test-family-resolution.md)
 
 ### `/sai-3-implement`
 
 - [0016 — Accept double branch-selection prompt with the sibling spec](./0016-accept-double-prompt-with-sibling-spec.md)
 - [0021 — Preserve the no-dedup re-run contract when adding audit-finding judgment](./0021-preserve-rerun-no-dedup-contract.md)
+- [0106 — The ordered routing test resolves a qualifying decision's record family, DDR first, with no tie](./0106-ordered-routing-test-family-resolution.md)
+- [0107 — Cross-family relationships are family-prefixed and family-isolated; supersedes never crosses families](./0107-cross-family-relationship-encoding.md)
+- [0108 — Numbering stays independent per family; a record keeps its number when it moves between families](./0108-independent-per-family-numbering.md)
 
 ### `/sai-4-apply`
 

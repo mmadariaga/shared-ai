@@ -41,6 +41,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0092 — Group planning assets by phase without changing harness routing](./0092-group-planning-assets-by-phase-without-changing-harness-routing.md) — Refs 0082, Refs 0088, Refs 0090
 - [0108 — Tasks files-affected entries carry a closed four-letter change-type vocabulary](./0108-tasks-files-affected-change-type-vocabulary.md)
 - [0109 — R change-type entry is a single move entry, never a delete-plus-add pair](./0109-r-change-type-single-move-entry.md) — Refs 0108
+- [0111 — design.md records the resolved record family as a pinned marker that Step 3 reads](./0111-record-family-marker-in-design.md)
 
 ### `/sai-3-implement`
 
@@ -63,6 +64,10 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0107 — ADR creation decision gets its own capability](./0107-adr-creation-decision-capability.md)
 - [0108 — Tasks files-affected entries carry a closed four-letter change-type vocabulary](./0108-tasks-files-affected-change-type-vocabulary.md)
 - [0110 — Extract the decision-record index machinery into an abstract capability with spec-pinned framework values](./0110-extract-decision-record-index-machinery-abstract-capability.md)
+- [0111 — design.md records the resolved record family as a pinned marker that Step 3 reads](./0111-record-family-marker-in-design.md)
+- [0112 — DDR is instantiated as a first-class family with the five per-index bindings](./0112-ddr-family-first-class-instantiation.md)
+- [0113 — Index maintenance runs one cycle per family that received records in the run](./0113-per-family-index-maintenance-cycles.md)
+- [0114 — A sibling DDR index template mirrors the ADR index template instance for instance](./0114-sibling-ddr-index-template.md)
 
 ### `/sai-4-apply`
 

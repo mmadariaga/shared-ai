@@ -64,6 +64,12 @@ Durable execution-observed facts about the shared-ai prompt and installer reposi
 - **test/*-coordinator-worker.test.js**: Coordinator-worker structural suites assert stale model pins (`glm-5.2`, `minimax-m3`, `claude-opus-4-8`) and a legacy Major-promotion accessibility wording that the committed wrappers and agents no longer carry (`deepseek-v4-flash` / `opus`); those `npm test` failures pre-date any applied change.
   *Observed:* parameterize-decision-record-index-machinery — apply-time `npm test` showed 465/473 passing; the 8 failures were proven pre-existing because the files those tests read are byte-identical to HEAD.
 
+- **node --test**: On Windows PowerShell 5.1 the summary prints BEFORE the failure detail dumps, with `ℹ`-prefixed `tests`/`pass`/`fail` counts (no `#` anchor and no per-failure `not ok` TAP lines in the default reporter); parse with a trailing-count regex `' (tests|pass|fail) \d+$'` over the full captured output, and locate failing tests via the `test at <file>:<line>:1` markers in the detail dumps, not via tail inspection.
+  *Observed:* split-decision-records-into-adr-and-ddr-families — the parity-guard apply run matched `ℹ tests/pass/fail` counts with the trailing-count regex; tail-only inspection missed the counts and `^#`-anchored and `\u2139`-based matches failed on the mojibake glyph.
+
+- **git grep**: An exit code of 1 means no-match (expected for no-match predicates, not an error) — append `; Write-Output "exit=$LASTEXITCODE"` to distinguish it; single-quote patterns containing backticks or brackets so PowerShell does not interpret them (bracket-heavy patterns like `- [NNNN — {Title}]` need `git grep -n -F` with the `-F` fixed-strings flag).
+  *Observed:* split-decision-records-into-adr-and-ddr-families — the Step 3 predicate greps relied on exit-1-as-no-match, and an unquoted bracket pattern hit git's "unknown switch" error until re-run with `-F`.
+
 ## Avoid
 
 - **configs/opencode.jsonc**: Do not assert managed-worker registration from the configuration agent map — the sample carries no `agent.sai-*-worker` keys; worker membership is file-based (projected `agents/opencode/*.md` files plus the binding-derived roster).

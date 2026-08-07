@@ -25,6 +25,7 @@ The schema directory SHALL include a `templates/` subdirectory with a `.md` temp
 #### Scenario: design template includes ADR/DDR sections
 - **WHEN** `openspec/schemas/sai-workflow/templates/design.md` is read
 - **THEN** it contains sections for ADR/DDR decisions with the three evaluation criteria (hard to reverse, surprising without context, real trade-off), alternatives considered, and an endpoint map section
+- **AND** its per-decision block carries the `**Record family**` marker guidance — `adr|ddr`, resolved by the ordered routing test, emitted when all three criteria apply
 
 #### Scenario: implementation template includes RED/GREEN blocks
 - **WHEN** `openspec/schemas/sai-workflow/templates/implementation.md` is read
@@ -81,3 +82,18 @@ The schema artifact description for the proposal SHALL document `Additional Note
 #### Scenario: Schema documents the Additional Notes section
 - **WHEN** the `artifacts.proposal` description in `openspec/schemas/sai-workflow/schema.yaml` is read
 - **THEN** a `**Additional Notes**` bullet is present in the list of expected proposal sections
+
+### Requirement: sai-workflow schema names the record-family routing in the design artifact
+
+The design artifact's description and instruction in `openspec/schemas/sai-workflow/schema.yaml` SHALL name the record-family routing instead of leaving the ADR-vs-DDR choice open. The design artifact description SHALL state that ADR/DDR evaluation resolves the family via the ordered routing test (replacing the bare "ADR/DDR evaluation" wording), and the design artifact instruction SHALL direct that a decision meeting all three ADR/DDR criteria resolves its record family via the ordered routing test and records it in `design.md` as the `**Record family**` marker, consistent with `sai/instructions/design.md`.
+
+#### Scenario: Schema description names the family routing
+
+- **WHEN** the design artifact description in `openspec/schemas/sai-workflow/schema.yaml` is read
+- **THEN** it names the family resolution (e.g. "ADR/DDR evaluation with the family resolved by the ordered routing test") rather than a bare "ADR/DDR evaluation"
+
+#### Scenario: Schema design instruction directs family resolution
+
+- **WHEN** the design artifact instruction in `openspec/schemas/sai-workflow/schema.yaml` is read
+- **THEN** it directs qualifying decisions to resolve and record the family via the ordered routing test
+- **THEN** the instruction stays consistent with `sai/instructions/design.md`'s Decisions evaluation

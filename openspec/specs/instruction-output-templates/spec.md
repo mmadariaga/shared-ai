@@ -112,15 +112,22 @@ The extraction change SHALL verify that each dedicated file contains the complet
 
 ### Requirement: Existing installation projections remain consistent
 
-The existing recursive `sai-instructions` projection in `sai/install-manifest.json` SHALL continue to install Markdown files beneath `sai/instructions/_templates/`, including the active project-agnostic ADR template `sai/instructions/_templates/adr-index.md`, to Claude Code, opencode, and GitHub Copilot without requiring a new projection rule. There SHALL be no separate explicit compatibility projection for the former ADR template destination; `retired-adr-index-template` is the retirement record for cleanup evidence only.
+The existing recursive `sai-instructions` projection in `sai/install-manifest.json` SHALL continue to install Markdown files beneath `sai/instructions/_templates/`, including the active project-agnostic index templates `sai/instructions/_templates/adr-index.md` and `sai/instructions/_templates/ddr-index.md`, to Claude Code, opencode, and GitHub Copilot without requiring a new projection rule. There SHALL be no separate explicit compatibility projection for the former ADR template destination; `retired-adr-index-template` is the retirement record for cleanup evidence only.
 
 #### Scenario: New templates are projected to all supported harnesses
+
 - **WHEN** the manifest-driven installer projects the `sai-instructions` source tree
-- **THEN** the six phase output templates and `adr-index.md` under `sai/instructions/_templates/` are installed through the existing recursive rule for each of Claude Code, opencode, and GitHub Copilot
+- **THEN** the six phase output templates and the two index templates `adr-index.md` and `ddr-index.md` under `sai/instructions/_templates/` are installed through the existing recursive rule for each of Claude Code, opencode, and GitHub Copilot
 
 #### Scenario: ADR template uses the recursive instruction projection
+
 - **WHEN** installation or projection logic handles `sai/instructions/_templates/adr-index.md`
 - **THEN** each supported harness receives it through `sai-instructions` at `instructions/_templates/adr-index.md`, with source-equivalent content, and no active projection targets the former compatibility destination
+
+#### Scenario: DDR template uses the recursive instruction projection
+
+- **WHEN** installation or projection logic handles `sai/instructions/_templates/ddr-index.md`
+- **THEN** each supported harness receives it through the same `sai-instructions` recursive rule at `instructions/_templates/ddr-index.md`, with source-equivalent content, and no new projection rule is required
 
 ### Requirement: Maintained installer and documentation references stay aligned
 
@@ -162,3 +169,44 @@ When the four report contracts under `sai/instructions/_templates/` change their
 
 - **WHEN** all four template pairs carry the shared severity content
 - **THEN** `node --test test/report-template-parity.test.js` passes for all four pairs
+
+### Requirement: The DDR index template instance mirrors the ADR index template
+
+The instruction library SHALL contain a DDR index template at `sai/instructions/_templates/ddr-index.md` — the project-agnostic cold-build skeleton for the DDR family, mirroring `sai/instructions/_templates/adr-index.md` instance for instance. The template SHALL carry the canonical section skeleton with the DDR per-index bindings: H1 `# DDR Index`, then the five `## ` sections in canonical order — `## Conventions`, `## By <domain unit>`, `## Cross-cutting categories`, `## DDRs that extend or correct prior ones`, `## Superseded DDRs (historical)`. The `## By <domain unit>` H2 SHALL carry the literal placeholder `<domain unit>` (never a concrete noun), and the `## By <domain unit>` and `## Cross-cutting categories` sections SHALL carry only empty placeholder skeletons with cold-build markers naming the DDR family. The template SHALL be referenced by `sai/instructions/implement.md` by exact path as the DDR cold-build source, exactly as `adr-index.md` is for the ADR family.
+
+#### Scenario: DDR template structure matches the canonical section skeleton
+
+- **WHEN** `sai/instructions/_templates/ddr-index.md` is consulted
+- **THEN** it SHALL contain the canonical section skeleton: H1 `# DDR Index`, then the five `## ` sections in canonical order with the DDR type-specific headings `## DDRs that extend or correct prior ones` and `## Superseded DDRs (historical)`
+- **THEN** the `## By <domain unit>` H2 SHALL carry the literal placeholder `<domain unit>`, never the concrete word "command"
+
+#### Scenario: DDR template is project-agnostic
+
+- **WHEN** `sai/instructions/_templates/ddr-index.md` is consulted
+- **THEN** the `## By <domain unit>` and `## Cross-cutting categories` sections SHALL contain only empty placeholder skeletons with cold-build markers naming the DDR family
+- **THEN** the template SHALL NOT list any specific `### /sai-N-*` subsection, any specific cross-cutting category name, or any DDR entry
+
+#### Scenario: Implement.md references the DDR template by exact path
+
+- **WHEN** a maintainer reads `sai/instructions/implement.md` Step 3's DDR index-maintenance branch
+- **THEN** the branch instruction SHALL name `sai/instructions/_templates/ddr-index.md` by exact path as the DDR cold-build source rather than reproducing the index structure inline
+
+### Requirement: The two index template instances stay in parity
+
+The ADR and DDR index template instances SHALL stay in skeleton parity, enforced by an automated test at `test/index-template-parity.test.js` following the `test/report-template-parity.test.js` precedent. The test SHALL read `sai/instructions/_templates/adr-index.md` and `sai/instructions/_templates/ddr-index.md`, normalize the family vocabulary token on both sides (ADR ↔ DDR, ADRs ↔ DDRs, adr ↔ ddr, `docs/adr/` ↔ `docs/ddr/`), and assert:
+
+- identical top-level heading sequence — the H1 and the five `## ` headings in canonical order (family-normalized);
+- identical `## Conventions` bullet sequence (family-normalized);
+- identical pinned skeleton forms: the literal `<domain unit>` placeholder in the `## By <domain unit>` H2, the entry-line form `- [NNNN — {Title}](./NNNN-slug.md)`, the correction-table header `| <Family> | Action | Over |`, and the supersede-note form `— *Superseded by [NNNN](./NNNN-slug.md)*`.
+
+The test SHALL fail when a skeleton element appears on one side without the other, identifying the divergent element, and SHALL pass together with the rest of `node --test`.
+
+#### Scenario: Parity holds and the test passes
+
+- **WHEN** the two index template instances are in parity and the test suite runs
+- **THEN** `test/index-template-parity.test.js` passes together with the rest of `node --test`
+
+#### Scenario: Drift on one side fails the test
+
+- **WHEN** a section heading is added to `adr-index.md` without the corresponding heading in `ddr-index.md` (or vice versa)
+- **THEN** `test/index-template-parity.test.js` fails and identifies the divergent instance and element
