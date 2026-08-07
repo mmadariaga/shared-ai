@@ -9,7 +9,6 @@ const readline = require('readline');
 const childProcess = require('child_process');
 const crypto = require('crypto');
 const { loadInstallManifest, expandInstallManifest, expandRetirementManifest } = require('./install-manifest');
-const { inspectManagedWorkerMigration, migrateManagedWorkerIdentity } = require('./managed-worker-migration');
 
 let jsoncParser = null;
 try {
@@ -180,38 +179,6 @@ const CLAUDE_REVIEW_WORKER_OWNER = MANAGED_WORKERS['sai-5-review-worker'].claude
 const OWNER_BY_CLAUDE_AGENT = Object.freeze(Object.fromEntries(
   Object.values(MANAGED_WORKERS).map(({ claude }) => [claude.agent, claude.owner]),
 ));
-const LEGACY_CLAUDE_WORKERS = [
-  { agent: 'sai-design-planning-worker.md', owner: '.sai-design-planning-worker.owner.json', replacement: 'sai-2-design-worker.md', replacementOwner: '.sai-2-design-worker.owner.json' },
-  { agent: 'sai-implementation-planning-worker.md', owner: '.sai-implementation-planning-worker.owner.json', replacement: 'sai-3-implementation-worker.md', replacementOwner: '.sai-3-implementation-worker.owner.json' },
-];
-
-function migrateLegacyClaudeWorkers(targetPath = CLAUDE_BASE) {
-  // Activated when Step 2 changes the canonical worker constants to numbered names.
-  if (!CLAUDE_DESIGN_WORKER_AGENT.startsWith('sai-2-') || !CLAUDE_IMPLEMENTATION_WORKER_AGENT.startsWith('sai-3-')) return [];
-  const migrated = [];
-  for (const legacy of LEGACY_CLAUDE_WORKERS) {
-    const agentsDir = path.join(targetPath, 'agents');
-    const legacyPath = path.join(agentsDir, legacy.agent);
-    const assessment = inspectManagedWorkerMigration({
-      legacyPath,
-      legacyOwnerPath: path.join(agentsDir, legacy.owner),
-      replacementPath: path.join(agentsDir, legacy.replacement),
-      replacementOwnerPath: path.join(agentsDir, legacy.replacementOwner),
-      replacementBytes: fs.readFileSync(path.join(REPOSITORY_ROOT, 'agents', 'claude', legacy.replacement)),
-    });
-    if (assessment.status === 'protected-collision') {
-      throw new Error(`Protected legacy Claude agent at ${legacyPath}: ${assessment.reason}. Rename or remove it manually, then retry.`);
-    }
-    if (assessment.status !== 'not-found') migrated.push(migrateManagedWorkerIdentity({
-      legacyPath,
-      legacyOwnerPath: path.join(agentsDir, legacy.owner),
-      replacementPath: path.join(agentsDir, legacy.replacement),
-      replacementOwnerPath: path.join(agentsDir, legacy.replacementOwner),
-      replacementBytes: fs.readFileSync(path.join(REPOSITORY_ROOT, 'agents', 'claude', legacy.replacement)),
-    }));
-  }
-  return migrated;
-}
 const REPOSITORY_ROOT = path.join(__dirname, '..');
 const PACKAGE_VERSION = require(path.join(REPOSITORY_ROOT, 'package.json')).version;
 
@@ -678,7 +645,6 @@ function installClaude(destBase) {
   validateClaudeWorkerBindings();
   const targetPath = destBase || CLAUDE_BASE;
   cleanupRetiredProjections('claude', { base: targetPath });
-  migrateLegacyClaudeWorkers(targetPath);
   for (const projection of expandForInstall('claude', { base: targetPath })) installProjection(projection, targetPath);
 
   writeVersionMarker(targetPath);
@@ -1016,10 +982,6 @@ module.exports = {
   CLAUDE_REVIEW_WORKER_AGENT,
   CLAUDE_REVIEW_WORKER_OWNER,
   OWNER_BY_CLAUDE_AGENT,
-  LEGACY_CLAUDE_WORKERS,
-  migrateLegacyClaudeWorkers,
-  inspectManagedWorkerMigration,
-  migrateManagedWorkerIdentity,
   cleanupRetiredProjections,
   installProjection,
   ownedManagedWorkerInstaller,

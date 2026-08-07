@@ -562,47 +562,6 @@ test('Step 3 documentation names only routed Claude Code and opencode support', 
 
 // ─── Step 1: preservation-first legacy identity migration ───────────────────
 
-test('design install migrates an owned legacy worker pair to the numbered identity', () => {
-  const { installClaude, sha256Buffer } = require('../bin/install-flow.js');
-  const base = tempDir('sai-design-legacy-');
-  const legacy = path.join(base, 'agents', 'sai-design-planning-worker.md');
-  const legacyOwner = path.join(base, 'agents', '.sai-design-planning-worker.owner.json');
-  const numbered = path.join(base, 'agents', 'sai-2-design-worker.md');
-  const numberedOwner = path.join(base, 'agents', '.sai-2-design-worker.owner.json');
-  try {
-    const legacyBytes = Buffer.from('managed legacy design worker\n');
-    fs.mkdirSync(path.dirname(legacy), { recursive: true });
-    fs.writeFileSync(legacy, legacyBytes);
-    fs.writeFileSync(legacyOwner, `${JSON.stringify({ managedHash: sha256Buffer(legacyBytes) })}\n`);
-    installClaude(base);
-    assert.equal(fs.existsSync(legacy), false);
-    assert.equal(fs.existsSync(legacyOwner), false);
-    assert.equal(fs.existsSync(numbered), true);
-    assert.equal(fs.existsSync(numberedOwner), true);
-  } finally {
-    removeTempDir(base);
-  }
-});
-
-test('design install preserves a protected legacy pair and reports manual migration', () => {
-  const { installClaude } = require('../bin/install-flow.js');
-  const base = tempDir('sai-design-legacy-protected-');
-  const legacy = path.join(base, 'agents', 'sai-design-planning-worker.md');
-  const legacyOwner = path.join(base, 'agents', '.sai-design-planning-worker.owner.json');
-  try {
-    fs.mkdirSync(path.dirname(legacy), { recursive: true });
-    fs.writeFileSync(legacy, 'user-modified legacy design worker\n');
-    fs.writeFileSync(legacyOwner, '{}');
-    const before = fs.readFileSync(legacy, 'utf8');
-    const output = capture(() => installClaude(base));
-    assert.equal(fs.readFileSync(legacy, 'utf8'), before);
-    assert.equal(fs.existsSync(path.join(base, 'agents', 'sai-2-design-worker.md')), false);
-    assert.match(`${output.output}\n${output.error?.message || ''}`, /protected|manual.*migration|collision/i);
-  } finally {
-    removeTempDir(base);
-  }
-});
-
 test('design install and uninstall preserve incompatible numbered destination content', () => {
   const { installClaude } = require('../bin/install-flow.js');
   const { enumerateClaude, runDeletion } = require('../bin/uninstall-flow.js');

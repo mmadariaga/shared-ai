@@ -111,3 +111,45 @@ test('malformed sidecar is left alone', () => {
     fs.rmSync(dir, { recursive: true, force: true });
   }
 });
+
+function walkFiles(dir) {
+  const result = [];
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) result.push(...walkFiles(full));
+    else if (entry.isFile()) result.push(full);
+  }
+  return result;
+}
+
+test('the migration module is gone', () => {
+  assert.equal(fs.existsSync(path.join(__dirname, '..', 'bin', 'managed-worker-migration.js')), false,
+    'bin/managed-worker-migration.js must not exist');
+  const forbidden = [
+    "require('.." + "/bin/managed-worker-migration.js')",
+    "require('./managed" + "-worker-migration.js')",
+    "require('../.." + "/bin/managed-worker-migration.js')",
+  ];
+  for (const file of [...walkFiles(path.join(__dirname, '..', 'bin')), ...walkFiles(path.join(__dirname, '..', 'test'))]) {
+    const source = fs.readFileSync(file, 'utf8');
+    for (const literal of forbidden) {
+      assert.equal(source.includes(literal), false, `${path.relative(path.join(__dirname, '..'), file)} must not require the migration module`);
+    }
+  }
+});
+
+test('the legacy migration call site is gone', () => {
+  const source = fs.readFileSync(path.join(__dirname, '..', 'bin', 'install-flow.js'), 'utf8');
+  assert.doesNotMatch(source, /migrateLegacyClaudeWorkers/);
+});
+
+test('install-flow no longer references the sidecar machinery — partial, completed in Step 3', { skip: 'pending Step 3 owner-constant removal' }, () => {
+  const source = fs.readFileSync(path.join(__dirname, '..', 'bin', 'install-flow.js'), 'utf8');
+  for (const identifier of ['OWNER_BY_CLAUDE_AGENT', 'CLAUDE_SPEC_WORKER_OWNER', 'CLAUDE_DESIGN_WORKER_OWNER', 'CLAUDE_IMPLEMENTATION_WORKER_OWNER', 'CLAUDE_REVIEW_WORKER_OWNER']) {
+    assert.doesNotMatch(source, new RegExp(identifier));
+  }
+  const { MANAGED_WORKERS } = require('../bin/install-flow.js');
+  for (const entry of Object.values(MANAGED_WORKERS)) {
+    assert.equal(Object.hasOwn(entry.claude, 'owner'), false, 'MANAGED_WORKERS claude entries must not carry an owner field');
+  }
+});

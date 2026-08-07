@@ -69,19 +69,7 @@ function manifestEntries(harness, destinationRoot, editorBase) {
 function enumerateClaude(destBase) {
   const targetPath = destBase || CLAUDE_BASE;
   const entries = manifestEntries('claude', { commands: path.join(targetPath, 'commands'), sai: path.join(targetPath, 'sai'), skills: path.join(targetPath, 'skills'), agents: path.join(targetPath, 'agents'), config: targetPath }, targetPath);
-  if (flowCanonicalNumbered()) entries.push(...legacyClaudeRecords(targetPath, entries));
   return entries;
-}
-
-function flowCanonicalNumbered() { return flow.CLAUDE_DESIGN_WORKER_AGENT.startsWith('sai-2-') && flow.CLAUDE_IMPLEMENTATION_WORKER_AGENT.startsWith('sai-3-'); }
-function legacyClaudeRecords(targetPath, entries) {
-  const known = new Set(entries.map(entry => entry.dest));
-  return flow.LEGACY_CLAUDE_WORKERS.flatMap(legacy => {
-    const dest = path.join(targetPath, 'agents', legacy.agent);
-    const ownerPath = path.join(targetPath, 'agents', legacy.owner);
-    if (known.has(dest) || (!fs.existsSync(dest) && !fs.existsSync(ownerPath))) return [];
-    return [{ src: dest, dest, editorBase: targetPath, assetType: 'claude-legacy-agent', ownerPath, ruleId: `legacy-${legacy.agent}` }];
-  });
 }
 
 function enumerateOpencode(destBase) {
