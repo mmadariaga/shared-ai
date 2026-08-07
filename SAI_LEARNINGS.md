@@ -58,6 +58,8 @@ Durable execution-observed facts about the shared-ai prompt and installer reposi
   *Observed:* remove-preserved-scratch-acknowledgement-gate — an unanchored recovery-section lookup matched an earlier prose mention; anchoring to the `### Known-False Report Recovery` heading restored the focused and full-suite passes.
 - **sai/instructions/apply.md**: A Step with only test-file implementation scope requires a single dispatch when split routing would prohibit the implementation dispatch from editing the only plan-authorized file.
   *Observed:* remove-preserved-scratch-acknowledgement-gate — the split implementation boundary could not execute test-only GREEN; one bounded dispatch completed the RED/GREEN cycle within the declared file.
+- **openspec/schemas/sai-workflow/schema.yaml**: The tasks artifact's `instruction` field is a YAML block scalar with 6-space indentation, so a mandated multi-line replacement spans several lines and shifts the remaining instruction lines; `openspec instructions tasks --change <name>` reads both the schema `instruction` and the `templates/tasks.md` template from disk, serving as a combined regression check for both surfaces in one invocation.
+  *Observed:* declare-file-change-type-in-tasks — replacing the single-line `**Files Affected**` instruction line with the 4-line change-type wording required block-scalar continuation (schema.yaml:118-121), and the command confirmed both the instruction and the template emit the new format.
 
 ## Avoid
 

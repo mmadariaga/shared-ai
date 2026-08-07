@@ -36,20 +36,20 @@ For each installer-provisioned opencode agent name that is absent from a parseab
 - **WHEN** the selected opencode configuration cannot be parsed or does not contain an object-valued root or `agent` map required for merging
 - **THEN** installation SHALL leave the file unchanged and use the existing manual-guidance fallback instead of rewriting it
 
-### Requirement: Doctor validates managed opencode agents by name presence
-When the selected opencode configuration parses successfully and its `agent` map is an object, doctor SHALL report an expected managed agent as valid when the map contains that agent name, without comparing the definition's model, variant, or other fields. Doctor SHALL continue to report missing expected names and malformed configurations as errors.
+### Requirement: Doctor validates projected opencode worker agent files
+Doctor SHALL validate each manifest-projected opencode worker agent file against its bundled source: a missing file SHALL be reported as an error with re-install remediation, an incompatible file SHALL be reported as an error with rename-or-remove remediation, and an exact-compatible file SHALL be reported as valid. Doctor SHALL NOT validate worker presence in the opencode configuration agent map.
 
-#### Scenario: Customized managed agents are accepted
-- **WHEN** every expected managed agent name exists in a parseable `agent` map but one or more definitions use customized models, variants, or fields
+#### Scenario: Compatible projected worker files are accepted
+- **WHEN** every projected opencode worker agent file exists with content matching its bundled source
 - **THEN** doctor SHALL report those agent records with `ok` severity and SHALL not report them as incompatible
 
-#### Scenario: Missing managed agent is reported
-- **WHEN** an expected managed agent name is absent from an otherwise parseable `agent` map
+#### Scenario: Missing worker agent file is reported
+- **WHEN** a projected opencode worker agent file is absent
 - **THEN** doctor SHALL report that agent as an error identifying it as missing
 
-#### Scenario: Malformed configuration remains an error
-- **WHEN** the opencode configuration is absent, unparsable, or has a malformed root or `agent` map
-- **THEN** doctor SHALL continue to report the affected expected agent records as errors
+#### Scenario: Incompatible worker agent file is reported
+- **WHEN** a projected opencode worker agent file exists but differs from its bundled source
+- **THEN** doctor SHALL report that agent as an error identifying it as incompatible, with rename-or-remove remediation
 
 ### Requirement: Regression tests protect agent ownership semantics
 The automated test suite SHALL cover installation and doctor behavior for customized existing agents, missing installer-provisioned agents, preservation of existing definitions, and rejection of malformed configuration. The tests SHALL verify that ordinary installer-managed file replacement behavior is unaffected.
@@ -63,11 +63,11 @@ The automated test suite SHALL cover installation and doctor behavior for custom
 - **THEN** it SHALL verify that present customized names are `ok` and absent names remain errors
 
 ### Requirement: Opencode collision-policy documentation matches ownership semantics
-The accepted opencode collision-policy statements in `docs/adr/0077-harness-specific-worker-bindings.md` and `docs/adr/0088-implementation-harness-projection-boundaries.md` SHALL describe the current numbered worker entries, preserve existing entries by name, add repository defaults only when names are absent, and avoid stating that customized or otherwise different existing opencode definitions block installation or doctor. Their Claude worker and ordinary managed-file collision statements SHALL remain unchanged.
+The accepted opencode collision-policy statements in `docs/adr/0077-harness-specific-worker-bindings.md` and `docs/adr/0088-implementation-harness-projection-boundaries.md` SHALL describe the seven projected opencode worker agent files, the owned-copy lifecycle (create when absent, reuse exact-compatible, block incompatible with rename-or-remove remediation), and guarded uninstall; SHALL describe the configuration merge as covering only the helper agents (`explore`, `executor`, `budget`) plus the external-directory permission; and SHALL avoid stating that customized opencode worker definitions are preserved by name in the configuration. Their Claude worker and ordinary managed-file collision statements SHALL remain unchanged.
 
 #### Scenario: Affected ADRs describe current opencode ownership
 - **WHEN** the affected ADRs are read after this change is applied
-- **THEN** their opencode sections SHALL refer to the current numbered worker projection and SHALL state name-based preservation rather than exact-compatibility collision blocking
+- **THEN** their opencode sections SHALL refer to the projected worker agent files and SHALL state file-based exact-compatibility collision blocking and guarded-uninstall preservation
 
 #### Scenario: Non-opencode safety policy remains documented
 - **WHEN** the affected ADRs describe Claude worker files or ordinary managed destinations

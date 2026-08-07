@@ -44,6 +44,8 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0087 — Implementation phase adapter and durable verification](./0087-implementation-phase-adapter-and-durable-verification.md) — Refs 0083, Refs 0086
 - [0090 — Centralize Copilot inline planning lifecycle in one adapter](./0090-centralize-copilot-inline-planning-lifecycle.md) — Refs 0089, Refs 0083, Refs 0078, Refs 0074
 - [0092 — Group planning assets by phase without changing harness routing](./0092-group-planning-assets-by-phase-without-changing-harness-routing.md) — Refs 0082, Refs 0088, Refs 0090
+- [0108 — Tasks files-affected entries carry a closed four-letter change-type vocabulary](./0108-tasks-files-affected-change-type-vocabulary.md)
+- [0109 — R change-type entry is a single move entry, never a delete-plus-add pair](./0109-r-change-type-single-move-entry.md) — Refs 0108
 
 ### `/sai-3-implement`
 
@@ -66,6 +68,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0105 — Two-stage verification for the audit-derived-step append](./0105-two-stage-audit-append-verification.md) — Refs 0021, Refs 0087
 - [0106 — Run-path baseline predicate for the audit-append check](./0106-run-path-baseline-predicate.md) — Pair with 0105
 - [0107 — ADR creation decision gets its own capability](./0107-adr-creation-decision-capability.md)
+- [0108 — Tasks files-affected entries carry a closed four-letter change-type vocabulary](./0108-tasks-files-affected-change-type-vocabulary.md)
 
 ### `/sai-4-apply`
 
@@ -92,6 +95,8 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0070 — Test Command carries the project's parameterised scoping idiom, not a bare suite command](./0070-test-command-carries-parameterised-scoping-idiom.md)
 - [0071 — Two-part dispatch-routing condition (RED block AND Step Contract)](./0071-two-part-dispatch-routing-condition.md) — Supersedes 0024, Refs 0064
 - [0073 — The durable channel was always the deviations appendix, not the learnings memory](./0073-durable-channel-is-the-deviations-appendix.md) — **Reframes** 0020
+- [0108 — Tasks files-affected entries carry a closed four-letter change-type vocabulary](./0108-tasks-files-affected-change-type-vocabulary.md)
+- [0109 — R change-type entry is a single move entry, never a delete-plus-add pair](./0109-r-change-type-single-move-entry.md) — Refs 0108
 
 ### `/sai-5-review`
 
@@ -318,6 +323,8 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0069 — Test Command is a sibling field of Implementation Context, outside the Conventions bullet quota](./0069-test-command-sibling-field-outside-conventions-quota.md)
 - [0070 — Test Command carries the project's parameterised scoping idiom, not a bare suite command](./0070-test-command-carries-parameterised-scoping-idiom.md)
 - [0072 — Numeric complexity thresholds calibrated from an archive survey](./0072-complexity-thresholds-calibrated-from-archive-survey.md) — Refs 0069, Refs 0070
+- [0108 — Tasks files-affected entries carry a closed four-letter change-type vocabulary](./0108-tasks-files-affected-change-type-vocabulary.md)
+- [0109 — R change-type entry is a single move entry, never a delete-plus-add pair](./0109-r-change-type-single-move-entry.md) — Refs 0108
 
 ### Installer dependency policy & external tooling
 
