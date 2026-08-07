@@ -20,6 +20,111 @@ try {
 
 const OPENCODE_AGENT_KEYS = ['explore', 'executor', 'budget'];
 const OPENCODE_PLACEHOLDER_MODEL = 'opencode-go/deepseek-v4-flash';
+const CLAUDE_TUNABLE_KEYS = Object.freeze(['model', 'effort']);
+const OPENCODE_TUNABLE_KEYS = Object.freeze(['model', 'variant']);
+
+const TUNABLE_SCALAR = /^([A-Za-z0-9_-]+):\s*(.*)$/;
+
+function splitFrontmatter(text) {
+  const lines = text.split('\n');
+  if (lines.length === 0 || lines[0] !== '---') return null;
+  const end = lines.indexOf('---', 1);
+  if (end === -1) return null;
+  return { header: lines[0], frontmatter: lines.slice(1, end), rest: lines.slice(end) };
+}
+
+function extractTunableValues(text, tunableKeys) {
+  const values = new Map();
+  const split = splitFrontmatter(text);
+  if (!split) return values;
+  for (const line of split.frontmatter) {
+    const match = TUNABLE_SCALAR.exec(line);
+    if (match && tunableKeys.includes(match[1])) values.set(match[1], match[2]);
+  }
+  return values;
+}
+
+function spliceTunables(sourceText, destinationText, tunableKeys) {
+  const split = splitFrontmatter(sourceText);
+  if (!split) return sourceText;
+  const fm = split.frontmatter;
+  const destValues = extractTunableValues(destinationText, tunableKeys);
+  const sourceKeys = extractTunableValues(sourceText, tunableKeys);
+
+  const kept = [];
+  let insertionIndex = fm.length;
+  for (let i = 0; i < fm.length; i++) {
+    const line = fm[i];
+    const match = TUNABLE_SCALAR.exec(line);
+    if (!match) {
+      if (/^\s/.test(line) && insertionIndex === fm.length) insertionIndex = kept.length - 1;
+      kept.push(line);
+      continue;
+    }
+    if (tunableKeys.includes(match[1])) {
+      if (destValues.has(match[1])) kept.push(`${match[1]}: ${destValues.get(match[1])}`);
+      continue;
+    }
+    kept.push(line);
+  }
+  const appended = [];
+  for (const key of tunableKeys) {
+    if (!sourceKeys.has(key) && destValues.has(key)) appended.push(`${key}: ${destValues.get(key)}`);
+  }
+  if (insertionIndex === fm.length) insertionIndex = kept.length;
+  return [split.header, ...kept.slice(0, insertionIndex), ...appended, ...kept.slice(insertionIndex), ...split.rest].join('\n');
+}
+
+function stripTunableLines(bytes, tunableKeys) {
+  const text = bytes.toString('utf8');
+  const split = splitFrontmatter(text);
+  if (!split) return bytes;
+  const kept = split.frontmatter.filter((line) => {
+    const match = TUNABLE_SCALAR.exec(line);
+    return !(match && tunableKeys.includes(match[1]));
+  });
+  return Buffer.from([split.header, ...kept, ...split.rest].join('\n'), 'utf8');
+}
+
+function deleteSidecarUnderShapeGuard(destinationPath) {
+  const sidecarPath = path.join(path.dirname(destinationPath), `.${path.basename(destinationPath, '.md')}.owner.json`);
+  if (!fs.existsSync(sidecarPath)) return false;
+  let parsed;
+  try {
+    parsed = JSON.parse(fs.readFileSync(sidecarPath, 'utf8'));
+  } catch {
+    return false;
+  }
+  if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) return false;
+  const keys = Object.keys(parsed);
+  if (keys.length !== 1 || keys[0] !== 'managedHash') return false;
+  if (typeof parsed.managedHash !== 'string' || !/^[0-9a-f]{64}$/.test(parsed.managedHash)) return false;
+  fs.unlinkSync(sidecarPath);
+  return true;
+}
+
+function tunableSeedInstaller(projection) {
+  const sourceBytes = fs.readFileSync(projection.sourcePath);
+  const destination = projection.destinationPath;
+  const tunableKeys = projection.harness === 'claude' ? CLAUDE_TUNABLE_KEYS : OPENCODE_TUNABLE_KEYS;
+  ensureDir(path.dirname(destination));
+  let outcome;
+  if (!fs.existsSync(destination)) {
+    fs.writeFileSync(destination, sourceBytes);
+    outcome = 'created';
+  } else {
+    const destinationBytes = fs.readFileSync(destination);
+    const spliced = spliceTunables(sourceBytes.toString('utf8'), destinationBytes.toString('utf8'), tunableKeys);
+    fs.writeFileSync(destination, spliced);
+    const differs = !stripTunableLines(sourceBytes, tunableKeys).equals(stripTunableLines(destinationBytes, tunableKeys));
+    outcome = differs ? 'overwritten' : 'reused';
+    if (differs) {
+      console.log(`Notice: managed agent body or non-tunable frontmatter differs from source; overwritten ${destination}`);
+    }
+  }
+  deleteSidecarUnderShapeGuard(destination);
+  return outcome;
+}
 const MANAGED_WORKERS = Object.freeze({
   'sai-3-implementation-worker': Object.freeze({
     claude: Object.freeze({
@@ -499,6 +604,10 @@ function installProjection(projection, targetPath) {
     copyOpencodeConfig(targetPath);
     return;
   }
+  if (projection.strategy === 'tunable-seed') {
+    tunableSeedInstaller(projection);
+    return;
+  }
   if (projection.strategy === 'owned-copy') {
     ownedManagedWorkerInstaller(projection);
     return;
@@ -915,6 +1024,11 @@ module.exports = {
   installProjection,
   ownedManagedWorkerInstaller,
   sha256Buffer,
+  CLAUDE_TUNABLE_KEYS,
+  OPENCODE_TUNABLE_KEYS,
+  tunableSeedInstaller,
+  deleteSidecarUnderShapeGuard,
+  stripTunableLines,
   __test: {
     mergeOpencodeAgents,
     expectedDispatchPrompt,

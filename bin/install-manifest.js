@@ -3,9 +3,10 @@
 const fs = require('fs');
 const path = require('path');
 
-const STRATEGIES = new Set([
+const STRATEGIES = Object.freeze([
   'copy',
   'owned-copy',
+  'tunable-seed',
   'merge-jsonc',
   'forwarding-manifest',
 ]);
@@ -57,25 +58,33 @@ function walkFiles(root) {
   return files.sort((left, right) => normalizeRelative(left).localeCompare(normalizeRelative(right)));
 }
 
+function validateRule(rule, ids) {
+  if (!rule || typeof rule.id !== 'string' || rule.id.length === 0 || (ids && ids.has(rule.id))) {
+    throw new Error(`Invalid or duplicate projection id: ${rule && rule.id}`);
+  }
+  if (ids) ids.add(rule.id);
+  if (typeof rule.source !== 'string' || !rule.destination || typeof rule.destination.class !== 'string' || typeof rule.destination.path !== 'string') {
+    throw new Error(`Projection ${rule.id} must declare source and destination { class, path }`);
+  }
+  if (!Array.isArray(rule.harnesses) || rule.harnesses.length === 0 || !STRATEGIES.includes(rule.strategy)) {
+    throw new Error(`Projection ${rule.id} has invalid harnesses or strategy`);
+  }
+  if (rule.overrides !== undefined && typeof rule.overrides !== 'string') {
+    throw new Error(`Projection ${rule.id} overrides must name one rule id`);
+  }
+}
+
 function validateManifest(manifest) {
+  if (manifest && !Array.isArray(manifest.projections) && typeof manifest.id === 'string') {
+    validateRule(manifest);
+    return;
+  }
   if (!manifest || manifest.version !== 1 || !Array.isArray(manifest.projections)) {
     throw new Error('sai/install-manifest.json must contain version 1 and a projections array');
   }
   const ids = new Set();
   for (const rule of manifest.projections) {
-    if (!rule || typeof rule.id !== 'string' || rule.id.length === 0 || ids.has(rule.id)) {
-      throw new Error(`Invalid or duplicate projection id: ${rule && rule.id}`);
-    }
-    ids.add(rule.id);
-    if (typeof rule.source !== 'string' || !rule.destination || typeof rule.destination.class !== 'string' || typeof rule.destination.path !== 'string') {
-      throw new Error(`Projection ${rule.id} must declare source and destination { class, path }`);
-    }
-    if (!Array.isArray(rule.harnesses) || rule.harnesses.length === 0 || !STRATEGIES.has(rule.strategy)) {
-      throw new Error(`Projection ${rule.id} has invalid harnesses or strategy`);
-    }
-    if (rule.overrides !== undefined && typeof rule.overrides !== 'string') {
-      throw new Error(`Projection ${rule.id} overrides must name one rule id`);
-    }
+    validateRule(rule, ids);
   }
   validateRetirements(manifest, ids);
 }
@@ -196,4 +205,10 @@ function expandRetirementManifest(manifest, { harness, repoRoot, destinationRoot
     .sort((left, right) => normalizeRelative(left.destinationPath).localeCompare(normalizeRelative(right.destinationPath)) || left.id.localeCompare(right.id));
 }
 
-module.exports = { loadInstallManifest, expandInstallManifest, expandRetirementManifest };
+module.exports = {
+  loadInstallManifest,
+  expandInstallManifest,
+  expandRetirementManifest,
+  STRATEGIES,
+  validateManifest,
+};
