@@ -1,7 +1,7 @@
 ---
 name: sai-3-implementation-worker
 description: Owns the complete technical implementation-planning phase and returns structured lifecycle metadata.
-model: claude-opus-4-8
+model: opus
 effort: medium
 tools: Read, Glob, Grep, Bash, Edit, Write, Agent, Skill, SendMessage
 ---

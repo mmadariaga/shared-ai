@@ -1,7 +1,7 @@
 ---
 description: Granular implementation plan through the canonical coordinator contract and a routed worker.
-model: opencode-go/glm-5.2
-variant: high
+model: opencode-go/deepseek-v4-flash
+variant: max
 subtask: false
 ---
 

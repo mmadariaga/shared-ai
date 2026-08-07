@@ -1,8 +1,7 @@
 ---
 description: Owns the complete technical review phase and returns structured lifecycle metadata.
 mode: subagent
-model: opencode-go/glm-5.2
-variant: high
+model: opencode-go/qwen3.7-plus
 permission:
   task:
     "*": deny

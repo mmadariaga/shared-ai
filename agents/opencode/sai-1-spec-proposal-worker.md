@@ -1,7 +1,8 @@
 ---
 description: Owns the complete technical spec proposal phase and returns structured lifecycle metadata.
 mode: subagent
-model: opencode-go/minimax-m3
+model: opencode-go/deepseek-v4-flash
+variant: max
 permission:
   task:
     "*": deny

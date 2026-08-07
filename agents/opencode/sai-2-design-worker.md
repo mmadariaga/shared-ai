@@ -1,8 +1,8 @@
 ---
 description: Owns the complete technical design phase and returns structured lifecycle metadata.
 mode: subagent
-model: opencode-go/glm-5.2
-variant: high
+model: opencode-go/deepseek-v4-flash
+variant: max
 permission:
   task:
     "*": deny

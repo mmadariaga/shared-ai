@@ -1,6 +1,7 @@
 ---
 description: Propose a new change — generates proposal.md and specs/ only. Stops before design. Run /sai-2-design when specs are reviewed and approved.
-model: opencode-go/minimax-m3
+model: opencode-go/deepseek-v4-flash
+variant: max
 ---
 
 ## Sai Spec - 1

@@ -1,7 +1,7 @@
 ---
 name: sai-2-design-worker
 description: Owns the complete technical design phase and returns structured lifecycle metadata.
-model: claude-opus-4-8
+model: opus
 effort: high
 tools: Read, Glob, Grep, Bash, Edit, Write, Agent, Skill, SendMessage
 ---
