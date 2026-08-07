@@ -62,8 +62,8 @@ Durable execution-observed facts about the shared-ai prompt and installer reposi
   *Observed:* declare-file-change-type-in-tasks — replacing the single-line `**Files Affected**` instruction line with the 4-line change-type wording required block-scalar continuation (schema.yaml:118-121), and the command confirmed both the instruction and the template emit the new format.
 - **test/accessibility-coordinator-worker.test.js**: The legacy-Major promotion regex at line 123 (`/Major[\s\S]{0,160}(?:High|promot|at least High)/i`) no longer matches `sai/orchestration/workers/sai-8-accessibility-worker.md`, which declares the closed severity set with no legacy-Major promotion clause — `npm test` reports exactly one pre-existing failure at HEAD on that assertion. The worker's closed severity set is the current surface; the stale assertion must be updated, not the worker reverted.
   *Observed:* budget-subagent-hang-resilience — the Step full-suite checks reported 472/473 passing with this single unrelated failure, reproduced across three dispatches and the coordinator re-run.
-- **npm test**: The runner prints a large `npx shared-ai uninstall` dry-run inventory listing into the output before the `node:test` summary; the meaningful result is the trailing `tests N / pass N / fail N` block, so evaluate only the tail.
-  *Observed:* budget-subagent-hang-resilience — Step 3 dispatch reported the full-suite result from the trailing block after the inventory listing.
+- **npm test**: The runner prints a large `npx shared-ai uninstall` dry-run inventory listing into the output before the `node:test` summary, and the failing test's detail dump (including a huge `actual` value) is printed AFTER the summary block; the meaningful result is the `ℹ tests N`, `ℹ pass N`, `ℹ fail N` count lines, so evaluate those lines, not the physical output tail.
+  *Observed:* question-context-contract — Step 3/4 dispatches found the accessibility failure dump trailing the summary block; matching the `ℹ` count lines yielded the exact 473/472/1 result.
 
 ## Avoid
 

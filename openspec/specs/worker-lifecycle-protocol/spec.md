@@ -141,3 +141,22 @@ Every worker session identifier SHALL be retained only in coordinator conversati
 #### Scenario: Design transitions to implementation in the same invocation
 - **WHEN** Continue now dispatches an implementation planning worker after design completion
 - **THEN** the implementation worker SHALL receive a new continuation namespace, empty changed-file aggregate, no design opaque history, no pending feedback, and no design presentation counter
+
+### Requirement: user-facing-question-content-contract
+
+Every `needs_input` question SHALL comply with the question-context policy (`@sai/policies/question-context.md`). The design-only notice `message` SHALL comply with the policy's informational-notice subset. Compliance is satisfied at the worker source; coordinators SHALL NOT rephrase, enrich, or restructure the forwarded question or message.
+
+#### Scenario: needs_input question complies with the policy
+
+- **WHEN** a worker authors a `needs_input` payload
+- **THEN** its `question` SHALL comply with the question-context policy
+
+#### Scenario: design notice message complies with the notice subset
+
+- **WHEN** a design worker emits the nonterminal notice event
+- **THEN** the notice `message` SHALL comply with the question-context policy's informational-notice subset
+
+#### Scenario: coordinator forwarding stays verbatim
+
+- **WHEN** a compliant `needs_input` question or notice message reaches the coordinator
+- **THEN** the coordinator forwards it exactly as authored, without rephrasing or adding context
