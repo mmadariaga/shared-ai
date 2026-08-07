@@ -27,7 +27,7 @@ Each audit artifact produces its own dedicated step. Findings from different art
 
 ### Requirement: Apply/Discard classification SHALL follow a five-criterion judgment rubric
 
-The judgment rubric evaluates each finding against five criteria: (1) **severity** — does the finding rise to blocker/major or is it a non-issue? (2) **actionability** — is the proposed fix specific enough to implement (a concrete file:line change rather than a vague suggestion)? (3) **spec-decision consistency** — does the finding contradict a decision in `design.md` or a requirement in `specs/**/*.md`? (4) **duplication** — does the finding repeat another finding already addressed in an earlier step of `implementation.md`? (5) **scope** — does the finding stay within the change's declared scope or propose out-of-scope work? The Apply/Discard classification SHALL follow from the rubric outcome, not from gut feel.
+The judgment rubric evaluates each finding against five criteria: (1) **severity** — does the finding rise to critical/high or is it a non-issue? (2) **actionability** — is the proposed fix specific enough to implement (a concrete file:line change rather than a vague suggestion)? (3) **spec-decision consistency** — does the finding contradict a decision in `design.md` or a requirement in `specs/**/*.md`? (4) **duplication** — does the finding repeat another finding already addressed in an earlier step of `implementation.md`? (5) **scope** — does the finding stay within the change's declared scope or propose out-of-scope work? The Apply/Discard classification SHALL follow from the rubric outcome, not from gut feel.
 
 #### Scenario: rubric drives every classification
 
@@ -47,7 +47,7 @@ Every finding classified Apply SHALL appear in the appended audit step as a conc
 
 ### Requirement: Discard findings SHALL be listed in a Discarded findings sub-block inside the same step
 
-Every finding classified Discard SHALL appear in a Discarded findings sub-block inside the appended audit step (not a separate step). Each sub-block entry SHALL contain the finding's identifier (e.g., `M3`), a one-sentence reason for the discard, and a pointer to the original artifact (e.g., `review.md § Major M3`). Question (Q) entries SHALL additionally transcribe the full Q text verbatim beneath the entry line so the user can answer in chat.
+Every finding classified Discard SHALL appear in a Discarded findings sub-block inside the appended audit step (not a separate step). Each sub-block entry SHALL contain the finding's identifier (e.g., `M3`), a one-sentence reason for the discard, and a pointer to the original artifact (e.g., `review.md § Medium M3`). Question (Q) entries SHALL additionally transcribe the full Q text verbatim beneath the entry line so the user can answer in chat.
 
 #### Scenario: discarded entry format
 

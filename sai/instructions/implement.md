@@ -68,7 +68,7 @@ The rubric is defined normatively in `openspec/specs/audit-artifact-ingestion/sp
 
 For every finding in an existing audit artifact (`review.md`, `security.md`, `performance.md`, `accessibility.md`), evaluate all five criteria and classify the finding as **Apply** or **Discard**:
 
-1. **Severity** — does the finding rise to Blocker/Major (review.md) or Critical/High (security/performance/accessibility), or is it a non-issue?
+1. **Severity** — does the finding rise to Critical/High (the shared audit severity vocabulary used by review, security, performance, and accessibility), or is it a non-issue?
 2. **Actionability** — is the proposed fix specific enough to implement as a concrete file:line change, or is it a vague suggestion?
 3. **Spec-decision consistency** — does the finding contradict a decision in `design.md` or a requirement in `specs/**/*.md`?
 4. **Duplication** — does the finding repeat another finding already addressed in an earlier step of `implementation.md`?

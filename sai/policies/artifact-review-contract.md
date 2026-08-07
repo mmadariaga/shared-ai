@@ -4,7 +4,7 @@ Single source of the artifact review finding contract. Every artifact review sur
 
 ## Scope
 
-This contract governs **artifact review** only: read-only reviews of OpenSpec change artifacts (`proposal.md` and `specs/**` for sai-1; `design.md`, `tasks.md`, and `interfaces.md` for sai-2), whether run manually through `sai-explore`'s post-crystallization review loop or by a supervised pipeline reviewer. It does NOT govern the audit commands `sai-5-review`, `sai-6-security`, `sai-7-performance`, or `sai-8-accessibility`: those retain their own severity vocabularies and identifier schemes (e.g. `review.md`'s `B` / `M` / `m` / `Q` sections and `mMUT-N` identifiers per ADR 0013) and never emit this contract's `Summary:` tally. See the `Finding across surfaces` flagged ambiguity in the project-root `GLOSSARY.md`.
+This contract governs **artifact review** only: read-only reviews of OpenSpec change artifacts (`proposal.md` and `specs/**` for sai-1; `design.md`, `tasks.md`, and `interfaces.md` for sai-2), whether run manually through `sai-explore`'s post-crystallization review loop or by a supervised pipeline reviewer. It does NOT govern the audit commands `sai-5-review`, `sai-6-security`, `sai-7-performance`, or `sai-8-accessibility`: those retain their own severity vocabularies and identifier schemes (e.g. `review.md`'s `C` / `H` / `M` / `L` / `Q` sections and `mMUT-N` identifiers per ADR 0013) and never emit this contract's `Summary:` tally. See the `Finding across surfaces` flagged ambiguity in the project-root `GLOSSARY.md`.
 
 ## Severity vocabulary and assignment criteria
 
