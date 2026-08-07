@@ -42,7 +42,6 @@ This index groups the DDRs in `docs/ddr/` by **command** and by **cross-cutting 
 
 ### `/sai-5-review`
 
-- [0013 — Dedicated mMUT-N finding namespace and Mutation Analysis output section](./0013-mmut-n-finding-namespace-for-mutation-analysis.md) — **Amends** adr:0012
 - [0107 — Unified audit severity vocabulary across the four report surfaces](./0107-unified-audit-severity-vocabulary.md) — Supersedes 0013
 
 ### `/sai-6-security`
@@ -155,4 +154,6 @@ This index groups the DDRs in `docs/ddr/` by **command** and by **cross-cutting 
 | [0107](./0107-unified-audit-severity-vocabulary.md) | supersedes | [0013](./0013-mmut-n-finding-namespace-for-mutation-analysis.md) |
 
 ## Superseded DDRs (historical)
+
+- [0013 — Dedicated mMUT-N finding namespace and Mutation Analysis output section](./0013-mmut-n-finding-namespace-for-mutation-analysis.md) — *Superseded by [0107](./0107-unified-audit-severity-vocabulary.md)*
 
