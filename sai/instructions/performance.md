@@ -246,6 +246,7 @@ Fetch @sai/instructions/_templates/performance-report.md
 - **Diff-scoped by default.** Out-of-scope risks get a one-line note, not a full audit.
 - **Quote evidence exactly.** No paraphrasing of EXPLAIN output, profiler frames, bundle stats, or log lines.
 - **Acknowledge spec trade-offs** explicitly — do not contradict recorded decisions.
+- **Identifiers and closing tally.** Every finding carries a severity-prefixed identifier — the severity's initial followed by the finding's sequence within that severity in the current report (`C1`/`H1`/`M1`/`L1`, with `I1` for `Informational`), restarting at 1 per severity per report — and the report closes with `Summary: Critical=<n> High=<n> Medium=<n> Low=<n> Informational=<n>` whose counts match the report's findings (zeros included).
 
 ## Self-Critique Before Saving
 
@@ -256,6 +257,7 @@ Before writing the report, verify:
 4. **No fabricated metrics** — if a number was not actually measured, mark it as "estimated — verify with X".
 5. **Spec respect** — no finding contradicts a decision recorded in the change artifacts without being marked *Acknowledged*.
 6. **Validation plan present** — every Critical/High finding has a re-measurement step.
+7. **Identifiers and tally** — every finding heading leads with its severity-prefixed identifier, and the closing `Summary:` line counts match the report's findings.
 
 ## Remember
 

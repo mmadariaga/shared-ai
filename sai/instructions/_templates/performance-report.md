@@ -47,7 +47,7 @@ explain why here and leave the findings sections empty.}
 
 ## Findings
 
-### [SEVERITY] {Tier}: {short title}
+### C1 [SEVERITY] {Tier}: {short title}
 
 - **Location:** `{file}:{line}` (or `{endpoint}` / `{query id}` / `{component}`)
 - **Category:** {Concurrency / Caching / N+1 / Bundle / CWV / Backpressure / ...}
@@ -95,5 +95,6 @@ explain why here and leave the findings sections empty.}
 Before merging, re-measure:
 - [ ] {metric} via {tool/command} — target: {threshold}
 - [ ] {metric} via {tool/command} — target: {threshold}
+Summary: Critical={n} High={n} Medium={n} Low={n} Informational={n}
 ```
 
