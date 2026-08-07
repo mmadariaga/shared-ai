@@ -1,4 +1,4 @@
-# ADR 0042: Reconcile the "ask every time" authorization principle atomically at the principle layer
+# DDR 0042: Reconcile the "ask every time" authorization principle atomically at the principle layer
 
 ## Status
 
@@ -21,3 +21,4 @@ Amend the principle block and the shared hard rules in the same commit as the ga
 
 - The "ask every time" default is no longer absolute; it is explicitly scoped. Future changes that introduce similar session grants must follow the same pattern of atomic principle amendment.
 - The CRITICAL block becomes slightly longer to accommodate the carve-out.
+

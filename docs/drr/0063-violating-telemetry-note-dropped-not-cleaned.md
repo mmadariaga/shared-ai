@@ -1,4 +1,4 @@
-# ADR 0063: A contract-violating telemetry note is dropped whole, never trimmed
+# DDR 0063: A contract-violating telemetry note is dropped whole, never trimmed
 
 ## Status
 
@@ -35,3 +35,4 @@ State the containment guarantee at the scope it actually holds: nothing violatin
 - `openspec/changes/subagent-attempt-instrumentation/design.md` — Decision D5
 - `openspec/changes/subagent-attempt-instrumentation/specs/apply-telemetry-containment/spec.md` — "Telemetry adds no new pathway for execution noise"
 - `sai/instructions/apply.md` — `## Technical Learnings Memory`
+

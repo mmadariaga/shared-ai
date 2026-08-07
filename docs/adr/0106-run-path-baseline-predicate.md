@@ -8,11 +8,11 @@ Accepted
 
 ## Context
 
-Both verification stages of ADR 0105 need an evaluable predicate for "appended
+Both verification stages of DDR 0105 need an evaluable predicate for "appended
 by THIS invocation". A contents-based check ("`implementation.md` contains a
 step for that artifact") is satisfied trivially by a step appended in an
 earlier round, because the re-run contract appends one new step per artifact on
-every re-run with no dedup (ADR 0021).
+every re-run with no dedup (DDR 0021).
 
 ## Decision
 
@@ -44,3 +44,4 @@ re-run contract already reads, without introducing new durable state.
 
 Codebase-forced decision recorded in the `enforce-audit-step-append-verification`
 design (Decision 2).
+

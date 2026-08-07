@@ -34,3 +34,5 @@ Hold accumulated learnings as a running note in the coordinator's own conversati
 - `openspec/changes/delegate-apply-steps-to-subagent/specs/apply-technical-learnings-memory/spec.md`
 - `openspec/changes/delegate-apply-steps-to-subagent/specs/apply-coordinator-authority/spec.md` — implementation.md write scope
 - `docs/adr/0019-coordinator-gate-ordering-after-subagent-report.md` — incorporation timing
+
+

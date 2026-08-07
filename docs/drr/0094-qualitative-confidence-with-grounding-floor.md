@@ -1,6 +1,6 @@
-# ADR 0094: Supervised auto-answer confidence is a qualitative judgment gated by an objective grounding floor
+# DDR 0094: Supervised auto-answer confidence is a qualitative judgment gated by an objective grounding floor
 
-<!-- adr-index: pair-with 0095 -->
+<!-- drr-index: pair-with 0095 -->
 
 ## Status
 
@@ -32,3 +32,4 @@ Pair that qualitative judgment with an **objective grounding floor**: an auto-an
 - `openspec/changes/add-pipeline-autonomous-question-answering/design.md` — Decision "Confidence stays a qualitative model judgment with an objective grounding floor"
 - `openspec/changes/add-pipeline-autonomous-question-answering/specs/pipeline-question-autonomy/spec.md` — "Ambiguity resolves toward escalation", "The answer must be located in the permitted grounding sources"
 - `docs/adr/0095-bounded-grounding-sources-exclude-conversation.md`
+

@@ -1,6 +1,6 @@
-# ADR 0072: Numeric complexity thresholds calibrated from an archive survey
+# DDR 0072: Numeric complexity thresholds calibrated from an archive survey
 
-<!-- adr-index: refs 0069; refs 0070 -->
+<!-- drr-index: refs 0069; refs 0070 -->
 
 ## Status
 
@@ -49,3 +49,4 @@ The thresholds are single-sourced in the rubric. `openspec/schemas/sai-workflow/
 - `docs/adr/0070-test-command-carries-parameterised-scoping-idiom.md` — same single-sourcing posture for a `tasks.md` field.
 - `openspec/specs/tasks-routing-metadata/spec.md` — the per-step `complexity` vocabulary this change mirrors, and the "no consumer is built" precedent.
 - `openspec/changes/proposal-complexity/` — proposal, capability spec, and `design.md` D1 (the decision this ADR records) and D4 (single-sourcing).
+

@@ -1,4 +1,4 @@
-# ADR 0027: A failing GREEN is a human decision, reached via bounded iteration
+# DDR 0027: A failing GREEN is a human decision, reached via bounded iteration
 
 ## Status
 
@@ -30,3 +30,4 @@ The implementation dispatch iterates only over non-test files to make the tests 
 - `openspec/changes/consume-interfaces-artifact/design.md` — Decision D5
 - `openspec/changes/consume-interfaces-artifact/specs/green-conflict-stop/spec.md` — "Bounded GREEN iteration with a defined unpassable boundary", "An unpassable GREEN halts to the coordinator"
 - `sai/instructions/apply.md` — `## Step-Execution Subagent Dispatch` implementation dispatch rules updated by this change
+

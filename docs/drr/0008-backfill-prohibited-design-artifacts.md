@@ -1,4 +1,4 @@
-# ADR 0008: sai-backfill Does Not Generate design.md, tasks.md, or implementation.md
+# DDR 0008: sai-backfill Does Not Generate design.md, tasks.md, or implementation.md
 
 ## Status
 
@@ -33,3 +33,4 @@ Only `proposal.md` and `openspec/specs/{capability}/spec.md` files are produced.
 
 - `openspec/changes/sai-backfill/specs/backfill-proposal-artifact/spec.md`
 - ADR 0007 — Diff source selection for sai-backfill
+

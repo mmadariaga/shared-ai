@@ -1,4 +1,4 @@
-# ADR 0016: Accept double branch-selection prompt with the sibling spec
+# DDR 0016: Accept double branch-selection prompt with the sibling spec
 
 ## Status
 
@@ -35,3 +35,4 @@ Accept the documented duplication. The plan-level prompt is self-contained in ea
 - `openspec/changes/sai-apply-branch-prompt/design.md` — decision D4
 - `openspec/specs/sai-implement-branch-prompt/spec.md` — sibling spec (not modified)
 - `openspec/changes/sai-apply-branch-prompt/proposal.md` — Additional Notes (documented trade-off)
+

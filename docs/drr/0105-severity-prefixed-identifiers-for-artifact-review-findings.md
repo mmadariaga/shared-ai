@@ -1,4 +1,4 @@
-# ADR 0105: Severity-prefixed identifiers for artifact review findings
+# DDR 0105: Severity-prefixed identifiers for artifact review findings
 
 ## Status
 
@@ -26,3 +26,4 @@ Every artifact review finding carries an identifier derived from its `Severity` 
 - Identifier semantics stay tied to the `Severity` field, never replacing it as the validated source of truth.
 - Contract-violating findings keep their reviewer-supplied identifier verbatim, so rejection evidence remains readable.
 - The scheme is artifact-review-scoped; the audit commands retain their own identifier schemes ([ADR 0013](./0013-mmut-n-finding-namespace-for-mutation-analysis.md)).
+

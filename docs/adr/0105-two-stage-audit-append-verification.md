@@ -51,3 +51,4 @@ verification.
 
 User decision recorded in the `enforce-audit-step-append-verification` design
 (Decision 1).
+

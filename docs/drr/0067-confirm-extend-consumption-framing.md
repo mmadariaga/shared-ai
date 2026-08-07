@@ -1,4 +1,4 @@
-# ADR 0067: Handoff provenance consumption as "premise to confirm and extend"
+# DDR 0067: Handoff provenance consumption as "premise to confirm and extend"
 
 ## Status
 
@@ -29,3 +29,4 @@ Mandate "confirm and extend" framing: `sai-1` reads cited sources first and vali
 - `openspec/changes/explore-handoff-evidence-provenance/design.md` — Decision D2
 - `openspec/changes/explore-handoff-evidence-provenance/specs/spec-research-consumption/spec.md`
 - `sai/instructions/spec.propose.md` — Research Guide handoff provenance consumption
+

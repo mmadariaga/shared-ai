@@ -33,3 +33,5 @@ Add **Test Command** as a fourth mandatory field of `## Implementation Context`,
 - `openspec/changes/mandate-test-run-command-in-implementation-context/design.md` — Decision D1
 - `openspec/changes/mandate-test-run-command-in-implementation-context/specs/tasks-implementation-context/spec.md`
 - `docs/adr/0070-test-command-carries-parameterised-scoping-idiom.md`
+
+

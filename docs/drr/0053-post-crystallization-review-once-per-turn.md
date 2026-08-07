@@ -1,4 +1,4 @@
-# ADR 0053: Post-crystallization review loop fires once per turn, after the final `Ready to Propose` block
+# DDR 0053: Post-crystallization review loop fires once per turn, after the final `Ready to Propose` block
 
 ## Status
 
@@ -27,3 +27,4 @@ Offer the post-crystallization review section a single time, after the last bloc
 
 - `openspec/changes/explore-post-crystallization-review-loop/design.md` — Decision D2
 - `openspec/changes/explore-post-crystallization-review-loop/specs/explore-post-crystallization-review-loop/spec.md` — "sliced crystallization offers the section once"
+

@@ -1,4 +1,4 @@
-# ADR 0021: Preserve the no-dedup re-run contract when adding audit-finding judgment
+# DDR 0021: Preserve the no-dedup re-run contract when adding audit-finding judgment
 
 ## Status
 
@@ -34,3 +34,4 @@ Preserve the no-dedup re-run contract unchanged. Do not add any dedup logic acro
 - `openspec/specs/implement-rerun-preservation/spec.md` — canonical no-dedup contract
 - `openspec/changes/archive/2026-06-20-sai-3-rerun-preserve-compacted` — change that introduced the contract
 - `sai/instructions/implement.md` — `Do NOT add audit-step dedup logic` comment (preserved verbatim by Step 1)
+

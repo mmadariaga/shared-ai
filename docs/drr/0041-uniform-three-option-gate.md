@@ -1,4 +1,4 @@
-# ADR 0041: Uniform three-option commit gate across apply.md and commit.md
+# DDR 0041: Uniform three-option commit gate across apply.md and commit.md
 
 ## Status
 
@@ -21,3 +21,4 @@ Present the identical three-option contract (`yes (Recommended)` / `no` / `Allow
 
 - `commit.md` carries the third option even though its skip-effect is inert in a one-shot flow. Revisit if `sai-commit` ever becomes multi-commit.
 - Any future gate change applies to both files consistently.
+

@@ -1,6 +1,6 @@
-# ADR 0095: Auto-answer grounding sources are bounded and exclude the explore conversation
+# DDR 0095: Auto-answer grounding sources are bounded and exclude the explore conversation
 
-<!-- adr-index: pair-with 0094 -->
+<!-- drr-index: pair-with 0094 -->
 
 ## Status
 
@@ -33,3 +33,4 @@ Explicitly **exclude** the surrounding explore conversation, the design discussi
 - `openspec/changes/add-pipeline-autonomous-question-answering/specs/pipeline-question-autonomy/spec.md` — "The permitted grounding sources are bounded"
 - `openspec/specs/explore-context-isolation/spec.md`
 - `docs/adr/0094-qualitative-confidence-with-grounding-floor.md`
+

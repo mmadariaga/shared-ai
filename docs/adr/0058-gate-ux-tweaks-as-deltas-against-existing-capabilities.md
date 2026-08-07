@@ -27,4 +27,5 @@ Map each edit onto the existing capability that owns it and ship three targeted 
 
 - `openspec/changes/sai-gate-ux-tweaks/design.md` — Decision D1
 - `openspec/changes/sai-gate-ux-tweaks/proposal.md` — "Capability naming" note under Additional Notes
-- ADR 0053 — post-crystallization review loop fires once per turn (the review loop this change reframes)
+- DDR 0053 — post-crystallization review loop fires once per turn (the review loop this change reframes)
+

@@ -1,4 +1,4 @@
-# ADR 0068: Scope provenance to item-5 single-change block; defer item-6 sliced blocks
+# DDR 0068: Scope provenance to item-5 single-change block; defer item-6 sliced blocks
 
 ## Status
 
@@ -28,3 +28,4 @@ Attach provenance citations only to the item-5 single-change block. Item-6 per-s
 - `openspec/changes/explore-handoff-evidence-provenance/design.md` — Decision D3
 - `openspec/changes/explore-handoff-evidence-provenance/specs/explore-crystallization-block/spec.md`
 - `sai/instructions/explore.md` — item 6
+

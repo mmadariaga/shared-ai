@@ -27,4 +27,5 @@ Implement the auto-stay as an apply-time rule in `sai/instructions/apply.md`, as
 
 - `openspec/changes/sai-apply-fast-track-auto-stay-branch/design.md` — Decision D1
 - `openspec/changes/sai-apply-fast-track-auto-stay-branch/specs/sai-fast-track-flag/spec.md` — the ADDED auto-stay requirement
-- ADR 0052 — Human-Verification deferral under fast-track (sibling fast-track behavior in `apply.md`)
+- DDR 0052 — Human-Verification deferral under fast-track (sibling fast-track behavior in `apply.md`)
+

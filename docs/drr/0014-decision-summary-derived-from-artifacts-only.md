@@ -1,4 +1,4 @@
-# ADR 0014: Decision summary derived exclusively from written artifacts
+# DDR 0014: Decision summary derived exclusively from written artifacts
 
 ## Status
 
@@ -30,5 +30,7 @@ Each summary line is valid only if it traces to content in the artifacts just wr
 
 ## Related
 
-- [ADR 0015](./0015-decision-summary-precedes-completion-sentinel.md) — Decision summary precedes the completion sentinel
+- [ADR 0015](../adr/0015-decision-summary-precedes-completion-sentinel.md) — Decision summary precedes the completion sentinel
 - `openspec/changes/add-decision-summary-to-spec-and-design-phases/design.md` — decision D1
+
+

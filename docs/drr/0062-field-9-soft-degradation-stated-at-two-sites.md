@@ -1,4 +1,4 @@
-# ADR 0062: Field 9's soft-degradation exemption is stated at two sites
+# DDR 0062: Field 9's soft-degradation exemption is stated at two sites
 
 ## Status
 
@@ -36,3 +36,4 @@ State the exemption at both sites, and phrase the malformed-report rule so it ke
 - `openspec/changes/subagent-attempt-instrumentation/specs/apply-subagent-report-contract/spec.md` — "Field 9 degrades softly and never blocks the workflow"
 - `docs/adr/0026-stable-eight-field-report.md` — field count amended by this change
 - `sai/instructions/apply.md` — `## Subagent Report Contract`, `### Malformed subagent report`
+

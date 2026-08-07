@@ -1,4 +1,4 @@
-# ADR 0052: Human-Verification deferral under `--fast-track` with bounded-failure semantics
+# DDR 0052: Human-Verification deferral under `--fast-track` with bounded-failure semantics
 
 ## Status
 
@@ -27,3 +27,4 @@ Under fast-track, per-Step Human Verification checkboxes are accumulated in the 
 
 - `openspec/changes/add-fast-track-flag/design.md` — Decision D5
 - `openspec/changes/add-fast-track-flag/specs/sai-fast-track-flag/spec.md` — Human-Verification deferral requirement
+
