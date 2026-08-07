@@ -155,6 +155,14 @@ Wrappers that spawn subagents fetch `skills/claude/budget-explorer/SKILL.md` (Cl
 - Speculative exploration ("look around") allowed only in the cheap tier.
 - Tool-call caps per tier: cheap ≤30, escalated ≤15, fallback/general ≤10.
 
+### Budget-subagent hang containment
+
+`CLAUDE_ASYNC_AGENT_STALL_TIMEOUT_MS` is unset in this project's configuration and is not active by default; a probe with the variable unset ran for roughly 600 seconds of complete silence without triggering termination. opencode exposes no equivalent mechanism.
+
+The configured case (a non-zero value of `CLAUDE_ASYNC_AGENT_STALL_TIMEOUT_MS` set explicitly) is an open question that this change did not probe. No design or task in this change may depend on a stall watchdog firing in its current default-off configuration — the rule is scoped to "this change" and to "default-off configuration", not to the future possibility of an activated watchdog.
+
+The only containment layer this change adopts is background dispatch on Claude Code, which keeps a hung child reachable for reaping but does not terminate it automatically, and no wall-clock bound is assumed to fire. The opencode half of this change is documentation parity only, since opencode's `task` tool has no `run_in_background` parameter.
+
 ### GLOSSARY.md
 - `sai-1-spec` reads `GLOSSARY.md`, updates it inline, challenges ambiguous terms.
 - `sai-3-implement` uses canonical glossary terms for identifiers.
