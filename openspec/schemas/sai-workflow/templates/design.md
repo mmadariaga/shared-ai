@@ -28,6 +28,7 @@
 - <!-- Alternative B: why rejected -->
 
 **ADR check**: <!-- Which of the three criteria apply and why → justifies documenting this decision -->
+**Record family**: <!-- adr | ddr — resolved by the ordered routing test (a decision encoding a domain invariant is ddr; otherwise adr); emitted when all three ADR/DDR criteria apply -->
 
 ## Endpoint Map
 
