@@ -107,7 +107,7 @@ Structure — one numbered section per implementation step:
 
     **Routing**: layer=<layer> · discipline=<discipline> · complexity=<complexity>
 
-    **Files Affected**: <comma-separated list of file paths>
+    **Files Affected**: one entry per line, each starting with exactly one change-type token from the closed vocabulary `A` (created), `M` (modified), `D` (deleted), `R` (moved/renamed), followed by one space and the project-root-relative path; an `R` entry carries `R <source path> -> <destination path>`. Derive each token from the file's existence at the repository state immediately before that step's commit, never from the step title or prose verb: a path that already exists is `M` even when the step prose says "add". `R` covers both pure relocation and relocation-with-rewrite; the extent of content change is carried by `**What Will Be Done**` prose, not by the token.
 
     **What Will Be Done**: <prose description of HOW to build it, not WHAT to build>. Reference the relevant `specs/<capability>/spec.md` by path. Do NOT restate requirements already defined there.
 
@@ -127,14 +127,14 @@ Reference specs for what to build, design for how to build it.
 
 Every `## Step N` MUST include a `**Routing**` line immediately after its title and before `**Files Affected**`. The line is produced deterministically from the planned file snapshot using the rubric below. A second design agent given the same `**Files Affected**` list and this rubric MUST produce the same three tokens.
 
-- **Layer derivation** (path → token, with precedence for ambiguity): map `**Files Affected**` paths against the four `layer` enumerations in `tasks-routing-metadata`.
+- **Layer derivation** (path → token, with precedence for ambiguity): map `**Files Affected**` paths against the four `layer` enumerations in `tasks-routing-metadata`, after stripping the leading change-type token (one letter from `A`/`M`/`D`/`R` plus the following space). An `R` entry contributes only its destination path (the path right of the ` -> ` separator), because routing describes where the step's work lands — a single-file move never flips the step's `layer` token.
   - `frontend` patterns: `src/components/`, `src/pages/`, `src/router/`, `src/store/`, `src/api-client/`, `web/`, `client/`, `mobile/`, `app/` (frontend), `pages/` (Next.js).
   - `backend` patterns: `server/`, `api/`, `services/`, `src/handlers/`, `src/repos/`, `src/models/`, `src/db/`, `src/controllers/`, `src/use-cases/`, `cmd/`, `migrations/`, `prisma/`.
   - `infra` patterns: `.github/`, `Dockerfile`, `scripts/`, `infra/`, `terraform/`, `k8s/`, harness `commands/` / `agents/` / `skills/`, and pure declarative artifacts (`*.md`, `*.json`, `*.yaml`, config files) — docs-only steps are `infra` + `config`.
   - `cross-cutting`: when paths span more than one of frontend/backend/infra in a non-trivial way or the primary layer is genuinely ambiguous.
   - **Precedence**: docs/config-only → `infra`; else if any path matches `frontend` and any matches `backend`/`infra` in a non-trivial way → `cross-cutting`; else single-layer match wins.
 
-- **Discipline derivation** (path → token, orthogonal to layer): map `**Files Affected**` paths against the five `discipline` enumerations in `tasks-routing-metadata`.
+- **Discipline derivation** (path → token, orthogonal to layer): map `**Files Affected**` paths against the five `discipline` enumerations in `tasks-routing-metadata`, after stripping the leading change-type token exactly as in layer derivation. An `R` entry contributes only its destination path, so a single-file move never flips the step's `discipline` token either.
   - `ui-ux` (`components/`, `views/`, `pages/` with markup, `layouts/`, `*.css`, `*.scss`, `*.less`, `*.html`, `*.mdx`, `*.astro`, `*.vue`, `*.svelte` with markup, `*.tsx`/`*.jsx` with view markup, `a11y*` files).
   - `app-code` (`src/store/`, `src/router/`, `src/api-client/`, frontend glue, frontend build configs `vite.config.*`/`webpack.config.*`/`rollup.config.*`).
   - `service` (`server/`, `api/` (code), `services/` (code), `src/handlers/`, `src/controllers/`, `src/use-cases/`, `cmd/`, `*Handler*`, `*Service*` (code), `*Controller*`, `*UseCase*`, `*Job*`, `*Worker*`, `*Queue*`).
