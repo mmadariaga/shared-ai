@@ -42,19 +42,15 @@ This index groups the DDRs in `docs/ddr/` by **command** and by **cross-cutting 
 
 ### `/sai-5-review`
 
-- [0107 — Unified audit severity vocabulary across the four report surfaces](./0107-unified-audit-severity-vocabulary.md) — Supersedes 0013
 
 ### `/sai-6-security`
 
-- [0107 — Unified audit severity vocabulary across the four report surfaces](./0107-unified-audit-severity-vocabulary.md) — Supersedes 0013
 
 ### `/sai-7-performance`
 
-- [0107 — Unified audit severity vocabulary across the four report surfaces](./0107-unified-audit-severity-vocabulary.md) — Supersedes 0013
 
 ### `/sai-8-accessibility`
 
-- [0107 — Unified audit severity vocabulary across the four report surfaces](./0107-unified-audit-severity-vocabulary.md) — Supersedes 0013
 
 ### `/sai-explore`
 
@@ -87,8 +83,6 @@ This index groups the DDRs in `docs/ddr/` by **command** and by **cross-cutting 
 ---
 
 ## Cross-cutting categories
-
-- [0107 — Unified audit severity vocabulary across the four report surfaces](./0107-unified-audit-severity-vocabulary.md) — Supersedes 0013
 
 ### Fetch resolution & path conventions
 
@@ -149,11 +143,7 @@ This index groups the DDRs in `docs/ddr/` by **command** and by **cross-cutting 
 
 | DDR | Action | Over |
 |---|---|---|
-| [0013](./0013-mmut-n-finding-namespace-for-mutation-analysis.md) | amends | [0012](../adr/0012-mutation-analysis-as-dedicated-protocol-section.md) |
 | [0062](./0062-field-9-soft-degradation-stated-at-two-sites.md) | amends | [0026](./0026-stable-eight-field-report.md) |
-| [0107](./0107-unified-audit-severity-vocabulary.md) | supersedes | [0013](./0013-mmut-n-finding-namespace-for-mutation-analysis.md) |
 
 ## Superseded DDRs (historical)
-
-- [0013 — Dedicated mMUT-N finding namespace and Mutation Analysis output section](./0013-mmut-n-finding-namespace-for-mutation-analysis.md) — *Superseded by [0107](./0107-unified-audit-severity-vocabulary.md)*
 

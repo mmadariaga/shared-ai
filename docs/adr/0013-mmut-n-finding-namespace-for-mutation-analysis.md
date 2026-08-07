@@ -1,18 +1,18 @@
-# DDR 0013: Dedicated mMUT-N finding namespace and Mutation Analysis output section
+# ADR 0013: Dedicated mMUT-N finding namespace and Mutation Analysis output section
 
-<!-- adr-index: amends adr:0012 -->
+<!-- adr-index: amends 0012 -->
 
 ## Status
 
 Accepted
 
-> **Note (DDR 0107):** the severity-mapping portion of this DDR (`survived`/`pre-check-failed` → Major, `revert-failed` → Blocker) is superseded by [DDR 0107](./0107-unified-audit-severity-vocabulary.md); the `mMUT-N` namespace and seven-field surviving-mutant row remain in force.
+> **Note (ADR 0107):** the severity-mapping portion of this ADR (`survived`/`pre-check-failed` → Major, `revert-failed` → Blocker) is superseded by [ADR 0107](./0107-unified-audit-severity-vocabulary.md); the `mMUT-N` namespace and seven-field surviving-mutant row remain in force.
 
 ## Context
 
 `sai-5-review` classifies findings with severity-prefixed IDs: `B{n}` (Blocker), `M{n}` (Major), `m{n}` (Minor), `Q{n}` (Question), each rendered in the generic Findings lists of `<output_template>`.
 
-Pass 11 (Mutation Analysis, see [ADR 0012](../adr/0012-mutation-analysis-as-dedicated-protocol-section.md)) emits a different kind of finding. A surviving mutant requires a fixed 7-field row — Location, Mutation class, Original, Applied, Result, Why it survives, Suggested fix — whose shape and lifecycle differ from the generic Blocker/Major rows. Mutation outcomes also map to severity in a pass-specific way (`survived`/`pre-check-failed` → Major, `revert-failed` → Blocker plus a printed working-tree-pollution warning), and the aggregate must satisfy the full-visibility invariant `survived + killed + preCheckFailed + revertFailed == totalMutations`.
+Pass 11 (Mutation Analysis, see [ADR 0012](./0012-mutation-analysis-as-dedicated-protocol-section.md)) emits a different kind of finding. A surviving mutant requires a fixed 7-field row — Location, Mutation class, Original, Applied, Result, Why it survives, Suggested fix — whose shape and lifecycle differ from the generic Blocker/Major rows. Mutation outcomes also map to severity in a pass-specific way (`survived`/`pre-check-failed` → Major, `revert-failed` → Blocker plus a printed working-tree-pollution warning), and the aggregate must satisfy the full-visibility invariant `survived + killed + preCheckFailed + revertFailed == totalMutations`.
 
 Reusing `M{n}`/`B{n}` for these findings would interleave a different row format into the generic lists and lose the ability to grep mutation findings as a unit.
 

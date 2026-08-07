@@ -1,4 +1,4 @@
-# DDR 0107: Unified audit severity vocabulary across the four report surfaces
+# ADR 0107: Unified audit severity vocabulary across the four report surfaces
 
 ## Status
 
@@ -20,11 +20,11 @@ Mutation outcomes roll up into the shared vocabulary: `survived` and `pre-check-
 
 ## Supersedes
 
-The severity-mapping portion of [DDR 0013](./0013-mmut-n-finding-namespace-for-mutation-analysis.md) — the mapping of `survived`/`pre-check-failed` → Major and `revert-failed` → Blocker. This DDR replaces only that severity mapping; the rest of DDR 0013 stays in force.
+The severity-mapping portion of [ADR 0013](./0013-mmut-n-finding-namespace-for-mutation-analysis.md) — the mapping of `survived`/`pre-check-failed` → Major and `revert-failed` → Blocker. This ADR replaces only that severity mapping; the rest of ADR 0013 stays in force.
 
 ## Reaffirms
 
-[DDR 0013](./0013-mmut-n-finding-namespace-for-mutation-analysis.md)'s `mMUT-N` finding namespace (N a 1-based counter over the mutation findings in the review) and the seven-field surviving-mutant row (Location, Mutation class, Original, Applied, Result, Why it survives, Suggested fix). Mutation findings are never renumbered into the `C`/`H`/`M`/`L`/`Q` sequences.
+[ADR 0013](./0013-mmut-n-finding-namespace-for-mutation-analysis.md)'s `mMUT-N` finding namespace (N a 1-based counter over the mutation findings in the review) and the seven-field surviving-mutant row (Location, Mutation class, Original, Applied, Result, Why it survives, Suggested fix). Mutation findings are never renumbered into the `C`/`H`/`M`/`L`/`Q` sequences.
 
 ## Alternatives Considered
 
