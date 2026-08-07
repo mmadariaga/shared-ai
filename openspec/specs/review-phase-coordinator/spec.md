@@ -78,7 +78,7 @@ The coordinator SHALL attempt same-worker continuation first. If continuation fa
 
 ### Requirement: Terminal output preserves the review completion boundary
 
-After a completed worker result, the coordinator SHALL print the worker-authored `summary` verbatim. That summary SHALL contain severity counts, top three Blockers when present, report path, parent-branch statement, and the existing `## Recommended Audits` block with all three audit lines. The coordinator SHALL never parse, split, reconstruct, or recompose the summary or its audit block. It SHALL then print the exact existing review completion boundary, `Review done.`, and stop without presenting an artifact-feedback gate.
+After a completed worker result, the coordinator SHALL print the worker-authored `summary` verbatim. That summary SHALL contain severity counts, top three Critical findings when present, report path, parent-branch statement, and the existing `## Recommended Audits` block with all three audit lines. The coordinator SHALL never parse, split, reconstruct, or recompose the summary or its audit block. It SHALL then print the exact existing review completion boundary, `Review done.`, and stop without presenting an artifact-feedback gate.
 
 #### Scenario: Review completes
 - **WHEN** the worker returns `completed`

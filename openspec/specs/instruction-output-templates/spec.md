@@ -35,15 +35,35 @@ The implementation plan template SHALL preserve the current headings, placeholde
 
 ### Requirement: Audit report contracts are preserved independently
 
-The review, security, performance, and accessibility templates SHALL preserve their respective current headings, placeholders, severity rules, evidence requirements, optional-section rules, validation rules, and generated artifact paths. The review template SHALL retain mutation-analysis and severity-total behavior; the security template SHALL retain conditional SCA, supply-chain, license, and policy sections and their evidence requirements; the performance template SHALL retain evidence, metrics, hot-path, remediation, and validation fields; and the accessibility template SHALL retain WCAG/framework fields, precise locations, user impact, runtime mode, and explicit clean-coverage reporting.
+The review, security, performance, and accessibility templates SHALL preserve their respective current headings, placeholders, severity rules, evidence requirements, optional-section rules, validation rules, and generated artifact paths, as amended by this change: the security, performance, and accessibility contracts SHALL additionally include a mandatory `## Not Applicable` section with a `**Justification:**` field, and the security contract SHALL render its fenced template body without leading indentation, matching its three sibling contracts. As further amended by this change, all four contracts SHALL present the shared severity vocabulary and severity-prefixed identifiers (`C1`/`H1`/`M1`/`L1`, with `Q1` in the review contract and `I1` in the performance and accessibility contracts) and SHALL close with a `Summary:` tally line listing every level of the phase's severity subset with its count. The review template SHALL retain mutation-analysis behavior, SHALL fold mutation severities into its counts as `High` (survived / pre-check-failed) and `Critical` (revert-failed), and SHALL close with `Summary: Critical=<count> High=<count> Medium=<count> Low=<count> Questions=<count>`; the security template SHALL close with `Summary: Critical=<count> High=<count> Medium=<count> Low=<count>` and SHALL retain conditional SCA, supply-chain, license, and policy sections and their evidence requirements; the performance template SHALL close with `Summary: Critical=<count> High=<count> Medium=<count> Low=<count> Informational=<count>` and SHALL retain evidence, metrics, hot-path, remediation, and validation fields; and the accessibility template SHALL close with `Summary: Critical=<count> High=<count> Medium=<count> Low=<count> Informational=<count>` and SHALL retain WCAG/framework fields, precise locations, user impact, runtime mode, and explicit clean-coverage reporting. The review template SHALL retain mutation-analysis and severity-total behavior; the security template SHALL retain conditional SCA, supply-chain, license, and policy sections and their evidence requirements; the performance template SHALL retain evidence, metrics, hot-path, remediation, and validation fields; and the accessibility template SHALL retain WCAG/framework fields, precise locations, user impact, runtime mode, and explicit clean-coverage reporting.
 
 #### Scenario: Audit phase loads only its own contract
 - **WHEN** a review, security, performance, or accessibility phase drafts its report
 - **THEN** it loads the matching dedicated template and does not substitute a shared audit template or another audit phase's schema
 
-#### Scenario: Non-applicable audit sections are omitted
+#### Scenario: Non-applicable audit sections are justified
 - **WHEN** an audit surface or optional finding category does not apply
-- **THEN** the generated report follows that template's existing omission or explicit clean-coverage rule rather than rendering an unrelated or empty section
+- **THEN** the generated report follows that template's existing omission or explicit clean-coverage rule — filling the `## Not Applicable` justification when the whole audit does not apply — rather than rendering an unrelated or empty section
+
+#### Scenario: Security, performance, and accessibility contracts contain the mandatory Not Applicable section
+- **WHEN** `sai/instructions/_templates/security-report.md`, `sai/instructions/_templates/performance-report.md`, and `sai/instructions/_templates/accessibility-report.md` are read
+- **THEN** each contains a `## Not Applicable` section with a `**Justification:**` field, while its remaining sections stay unchanged
+
+#### Scenario: Security contract body is not indented relative to sibling contracts
+- **WHEN** `sai/instructions/_templates/security-report.md` is compared with `sai/instructions/_templates/performance-report.md`
+- **THEN** the security contract's fenced template body starts at the same column as the performance contract's, with no leading indentation beyond the fence content itself
+
+#### Scenario: Review contract presents the shared severity sections and tally
+
+- **WHEN** the review contract's Findings section is read
+- **THEN** its severity subsections and example identifiers use `Critical`/`High`/`Medium`/`Low`/`Questions` with `C1`/`H1`/`M1`/`L1`/`Q1`
+- **AND** its header findings-count line, mutation severity roll-up lines, and closing `Summary:` line use the shared vocabulary and the remapped mutation severities
+
+#### Scenario: Audit contracts carry identifiers and closing tallies
+
+- **WHEN** a security, performance, or accessibility contract's finding body and closing section are read
+- **THEN** every example finding heading leads with its severity-prefixed identifier
+- **AND** the contract closes with a `Summary:` line matching its severity subset
 
 ### Requirement: Pull request body contract is preserved
 
@@ -127,3 +147,18 @@ The extraction SHALL not modify generated artifact names or locations, OpenSpec-
 #### Scenario: Harness behavior remains equivalent
 - **WHEN** Claude Code, opencode, and GitHub Copilot execute the affected instructions from their installed projections
 - **THEN** each harness receives equivalent template content and phase behavior
+
+### Requirement: Report template severity content changes preserve the pinned parity
+
+When the four report contracts under `sai/instructions/_templates/` change their severity vocabulary, finding identifiers, or closing summary line, the matching schema scaffolds under `openspec/schemas/sai-workflow/templates/` SHALL receive the equivalent content changes in the same commit, keeping the per-pair skeleton parity pinned by `test/report-template-parity.test.js` intact: identical top-level `##` heading sequences, identical header metadata bold-label sequences, and, for the review pair only, the identical bolded field-label set under `## Mutation Analysis (Pass 11)`. The parity test SHALL pass after the four pairs are edited.
+
+#### Scenario: Scaffold mirrors the contract severity change
+
+- **WHEN** the review contract replaces its legacy three-level severity sections with the shared severity sections
+- **THEN** the review scaffold receives the equivalent replacement in the same commit
+- **AND** both families present the same top-level headings and header metadata labels
+
+#### Scenario: Parity test stays green after the edits
+
+- **WHEN** all four template pairs carry the shared severity content
+- **THEN** `node --test test/report-template-parity.test.js` passes for all four pairs

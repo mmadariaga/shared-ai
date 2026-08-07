@@ -30,20 +30,32 @@ The schema directory SHALL include a `templates/` subdirectory with a `.md` temp
 - **WHEN** `openspec/schemas/sai-workflow/templates/implementation.md` is read
 - **THEN** it contains a RED block (failing test) section before the GREEN block (minimal implementation) section
 
-### Requirement: audit artifact templates always include a Not-Applicable section
-The templates for security.md, performance.md, and accessibility.md SHALL each include a mandatory "Not Applicable" section with a justification field.
+### Requirement: audit report templates always include a Not-Applicable section
+Both template families for the security, performance, and accessibility report artifacts — the schema templates under `openspec/schemas/sai-workflow/templates/` and the write-time contracts under `sai/instructions/_templates/` — SHALL each include a mandatory "Not Applicable" section with a justification field.
 
-#### Scenario: security template has Not Applicable section
+#### Scenario: security schema template has Not Applicable section
 - **WHEN** `openspec/schemas/sai-workflow/templates/security.md` is read
 - **THEN** it contains a "Not Applicable" section with a required justification placeholder
 
-#### Scenario: performance template has Not Applicable section
+#### Scenario: performance schema template has Not Applicable section
 - **WHEN** `openspec/schemas/sai-workflow/templates/performance.md` is read
 - **THEN** it contains a "Not Applicable" section with a required justification placeholder
 
-#### Scenario: accessibility template has Not Applicable section
+#### Scenario: accessibility schema template has Not Applicable section
 - **WHEN** `openspec/schemas/sai-workflow/templates/accessibility.md` is read
 - **THEN** it contains a "Not Applicable" section with a required justification placeholder
+
+#### Scenario: security write-time contract has Not Applicable section
+- **WHEN** `sai/instructions/_templates/security-report.md` is read
+- **THEN** it contains a "Not Applicable" section with a required justification field
+
+#### Scenario: performance write-time contract has Not Applicable section
+- **WHEN** `sai/instructions/_templates/performance-report.md` is read
+- **THEN** it contains a "Not Applicable" section with a required justification field
+
+#### Scenario: accessibility write-time contract has Not Applicable section
+- **WHEN** `sai/instructions/_templates/accessibility-report.md` is read
+- **THEN** it contains a "Not Applicable" section with a required justification field
 
 ### Requirement: openspec/config.yaml uses sai-workflow as active schema
 The project's `openspec/config.yaml` SHALL declare `schema: sai-workflow` so that all new changes use the custom schema.

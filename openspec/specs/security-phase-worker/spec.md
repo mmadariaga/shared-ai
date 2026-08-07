@@ -51,14 +51,36 @@ The worker SHALL preserve the existing SAST flaw categories, direct-and-obvious 
 
 ### Requirement: Worker writes and verifies only the security artifact
 
-The worker SHALL write and verify only `openspec/changes/{change-name}/security.md`, using the existing security report template and preserving concise executive summary, concrete findings, severity counts, acknowledged trade-offs, and applicable SCA sections. Every SAST finding SHALL have precise location and required evidence, every SCA finding SHALL have CVE and affected version-range evidence, speculative or pre-existing issues SHALL be excluded, and the completed summary SHALL report severity counts, top Critical/High findings when present, the report path, and the selected parent branch without embedding report contents.
+The worker SHALL write and verify only `openspec/changes/{change-name}/security.md`, using the existing security report template as amended by the shared audit severity vocabulary — a severity-prefixed identifier on every finding and a closing `Summary:` tally line — and preserving concise executive summary, concrete findings, severity counts, acknowledged trade-offs, and applicable SCA sections. Every SAST finding SHALL have precise location and required evidence, every SCA finding SHALL have CVE and affected version-range evidence, speculative or pre-existing issues SHALL be excluded, and the completed summary SHALL report severity counts, top Critical/High findings when present, the report path, and the selected parent branch without embedding report contents.
 
 #### Scenario: Security report completes
 - **WHEN** all applicable audit phases and self-critique checks complete
-- **THEN** `security.md` exists, is non-empty, and contains only evidence-backed findings in the selected scope
+- **THEN** `security.md` exists, is non-empty, and contains only evidence-backed findings in the selected scope, each with its severity-prefixed identifier and the closing summary tally
 - **AND** the worker returns `completed` with the canonical change name, report path, summary, and `changed_files` containing only `security.md`
 
 #### Scenario: Audit needs no findings
 - **WHEN** the scoped code and dependencies contain no concrete security flaw
 - **THEN** the worker omits speculative and exhaustive clean-category findings
 - **AND** it still writes and verifies the concise security artifact without modifying production code, dependency files, or configuration
+
+### Requirement: Security findings carry severity-prefixed identifiers and a closing summary tally
+
+The security instruction and report contract SHALL assign every finding a severity-prefixed identifier — the severity's initial followed by the finding's sequence within that severity in the current report (`C1`, `H1`, `M1`, `L1`), with the sequence restarting at 1 for each severity at the start of every report. The security report SHALL close with a `Summary:` line in the form `Summary: Critical=<count> High=<count> Medium=<count> Low=<count>` whose counts match the report's findings. The four-level `Critical`/`High`/`Medium`/`Low` taxonomy, the CVSSv3 mapping, and the severity floor (observations below `Low` and `Informational`-level observations are omitted) SHALL remain unchanged.
+
+#### Scenario: SAST finding carries an identifier
+
+- **WHEN** the security report lists a SAST or SCA finding
+- **THEN** the finding heading leads with its severity-prefixed identifier
+- **AND** identifiers restart at 1 per severity per report
+
+#### Scenario: Report closes with the summary tally
+
+- **WHEN** the security report is complete
+- **THEN** it closes with a `Summary:` line tallying `Critical`, `High`, `Medium`, and `Low` counts that match the listed findings
+- **AND** the tally does not include an `Informational` counter
+
+#### Scenario: Severity floor is unchanged
+
+- **WHEN** a candidate observation falls below the `Low` severity
+- **THEN** it is omitted from the report under the existing severity floor
+- **AND** it does not appear in the closing tally

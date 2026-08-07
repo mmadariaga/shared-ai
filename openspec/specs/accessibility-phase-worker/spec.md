@@ -40,7 +40,7 @@ Before analysis, the worker SHALL enforce the existing OpenSpec CLI, `openspec/`
 
 ### Requirement: Static accessibility review preserves WCAG policy and research delegation
 
-The worker SHALL preserve the existing WCAG 2.2 Level AA scope, selected AAA targets only where committed by the project, Critical/High/Medium/Low/Informational severity vocabulary, native-first and no-speculation rules, accepted-trade-off handling, clean-category statements, and exact-evidence rule. Any regression covered by the legacy "at least Major" rule SHALL be classified High at minimum, or Critical when Critical criteria apply; `Major` SHALL NOT be emitted. Every finding SHALL include a precise location, WCAG Success Criterion code and name, severity, evidence, and framework-aligned remediation. When more than five UI files are in scope, the worker SHALL delegate per-component source inspection to `budget-explorer` subagents with explicit output contracts; it SHALL use those subagents in parallel only when independent component areas need codebase context, and total explorer invocations SHALL be capped at eight per audit.
+The worker SHALL preserve the existing WCAG 2.2 Level AA scope, selected AAA targets only where committed by the project, Critical/High/Medium/Low/Informational severity vocabulary, native-first and no-speculation rules, accepted-trade-off handling, clean-category statements, and exact-evidence rule. A regression SHALL be classified High at minimum, or Critical when the Critical criteria apply; the retired `Major` term SHALL NOT appear in the instruction, the report contract, or the routed worker contract. Every finding SHALL include a precise location, WCAG Success Criterion code and name, severity, evidence, framework-aligned remediation, and a severity-prefixed identifier. When more than five UI files are in scope, the worker SHALL delegate per-component source inspection to `budget-explorer` subagents with explicit output contracts; it SHALL use those subagents in parallel only when independent component areas need codebase context, and total explorer invocations SHALL be capped at eight per audit.
 
 #### Scenario: Independent UI areas exist
 - **WHEN** the selected UI scope contains multiple independent component areas
@@ -49,7 +49,7 @@ The worker SHALL preserve the existing WCAG 2.2 Level AA scope, selected AAA tar
 
 #### Scenario: Static finding is reported
 - **WHEN** static evidence identifies an accessibility issue
-- **THEN** the report maps it to a specific WCAG Success Criterion and severity
+- **THEN** the report maps it to a specific WCAG Success Criterion, severity, and severity-prefixed identifier
 - **AND** it quotes the exact offending source evidence with a precise location and remediation
 
 #### Scenario: Category is clean
@@ -94,7 +94,7 @@ When `--runtime` is present, the worker SHALL require that the user has started 
 
 ### Requirement: Worker writes and verifies only the accessibility artifact
 
-The worker SHALL write and verify only `openspec/changes/{change-name}/accessibility.md`, using the existing accessibility report template. It SHALL never modify production code, components, styles, configuration, or runtime state. The completed report SHALL contain severity counts, top three Critical/High findings when present, clean-category statements, exact evidence, a runtime-tools-used statement, and a re-test checklist. The completed lifecycle result SHALL carry the canonical change name, report path, worker-authored summary, and `changed_files` containing only `accessibility.md`.
+The worker SHALL write and verify only `openspec/changes/{change-name}/accessibility.md`, using the existing accessibility report template. It SHALL never modify production code, components, styles, configuration, or runtime state. The completed report SHALL contain severity counts, findings each with a severity-prefixed identifier, a closing `Summary:` tally line whose counts match the report's findings, top three Critical/High findings when present, clean-category statements, exact evidence, a runtime-tools-used statement, and a re-test checklist. The completed lifecycle result SHALL carry the canonical change name, report path, worker-authored summary, and `changed_files` containing only `accessibility.md`.
 
 #### Scenario: Accessibility report completes
 - **WHEN** static review and any authorized runtime checks pass self-critique and report verification
@@ -105,3 +105,18 @@ The worker SHALL write and verify only `openspec/changes/{change-name}/accessibi
 - **WHEN** a proposed audit action would modify production code, components, styles, configuration, or runtime state
 - **THEN** the worker rejects that action
 - **AND** it continues to restrict writes to `accessibility.md`
+
+### Requirement: Accessibility findings carry severity-prefixed identifiers and a closing summary tally
+
+The accessibility instruction and report contract SHALL assign every finding a severity-prefixed identifier — the severity's initial followed by the finding's sequence within that severity in the current report (`C1`, `H1`, `M1`, `L1`, `I1` for `Informational`), with the sequence restarting at 1 for each severity at the start of every report. The accessibility report SHALL close with a `Summary:` line in the form `Summary: Critical=<count> High=<count> Medium=<count> Low=<count> Informational=<count>` whose counts match the report's findings. The five-level `Critical`/`High`/`Medium`/`Low`/`Informational` taxonomy SHALL remain unchanged.
+
+#### Scenario: Finding carries a severity-prefixed identifier
+
+- **WHEN** the accessibility report lists a finding
+- **THEN** the finding heading leads with its severity-prefixed identifier
+- **AND** identifiers restart at 1 per severity per report
+
+#### Scenario: Report closes with the summary tally
+
+- **WHEN** the accessibility report is complete
+- **THEN** it closes with a `Summary:` line tallying `Critical`, `High`, `Medium`, `Low`, and `Informational` counts that match the listed findings

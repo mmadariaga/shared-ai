@@ -117,7 +117,7 @@ The worker SHALL prefer a declared supported mutation tool and skip the LLM-as-m
 
 #### Scenario: A mutation revert fails
 - **WHEN** file-scoped revert verification finds the mutated file still dirty
-- **THEN** the worker records that mutation as `revert-failed` and emits the existing Blocker and working-tree-pollution warning
+- **THEN** the worker records that mutation as `revert-failed` and emits the existing Critical and working-tree-pollution warning
 - **AND** it continues subsequent sequential batches
 
 ### Requirement: Pass 11 authorizes sequential write-capable mutation dispatch
@@ -136,15 +136,53 @@ For the LLM-as-mutator path, the worker SHALL decide mutation targets and mutati
 
 ### Requirement: Worker writes and verifies only the review artifact
 
-The worker SHALL write `openspec/changes/{change-name}/review.md` using the existing review report template, including findings, severity roll-up, coverage, Pass 11 outcomes, and all three audit recommendations. The completed payload's `summary` SHALL contain the complete existing `## Recommended Audits` block, including all three audit lines, as worker-authored text. Outside the explicitly bounded and reverted Pass 11 mutations, it SHALL never modify production code or any other durable artifact, and it SHALL never leave a production file persistently changed. `changed_files` SHALL contain only durable writes by the worker: `review.md`, plus any production file whose revert failed or whose revert result was unaccounted and therefore safety-classified as revert-failed-equivalent; cleanly reverted mutation targets SHALL be excluded.
+The worker SHALL write `openspec/changes/{change-name}/review.md` using the existing review report template, including findings with severity-prefixed identifiers, severity roll-up, the closing `Summary:` tally line, coverage, Pass 11 outcomes, and all three audit recommendations. The completed payload's `summary` SHALL contain the complete existing `## Recommended Audits` block, including all three audit lines, as worker-authored text. Outside the explicitly bounded and reverted Pass 11 mutations, it SHALL never modify production code or any other durable artifact, and it SHALL never leave a production file persistently changed. `changed_files` SHALL contain only durable writes by the worker: `review.md`, plus any production file whose revert failed or whose revert result was unaccounted and therefore safety-classified as revert-failed-equivalent; cleanly reverted mutation targets SHALL be excluded.
 
 #### Scenario: Review report is generated
 - **WHEN** all review passes and any active mutation analysis are complete
-- **THEN** `review.md` exists, is non-empty, and contains the required review sections and audit recommendations
+- **THEN** `review.md` exists, is non-empty, and contains the required review sections, identifiers, summary tally, and audit recommendations
 - **AND** the completed payload reports the canonical change name and only the durable paths defined above
 
 #### Scenario: Worker returns completion
 - **WHEN** `review.md` is verified from disk
-- **THEN** the worker returns `completed` with severity counts, top three Blockers when present, report path, the complete worker-authored `## Recommended Audits` block, and parent-branch statement
+- **THEN** the worker returns `completed` with severity counts, top three Critical findings when present, report path, the complete worker-authored `## Recommended Audits` block, and parent-branch statement
 - **AND** it returns no report contents in the lifecycle payload
+
+### Requirement: Review findings use the shared audit severity vocabulary
+
+The review instruction and worker contract SHALL classify every finding with one of the shared severities `Critical`, `High`, `Medium`, or `Low`, or with the review-only `Question` category. `Critical` SHALL mean must-fix-before-merge (bugs, security holes, broken builds, contract violations, contradictions of the change artifacts); `High` SHALL mean should-fix-before-merge (significant maintainability, performance, or test-coverage issues that will hurt soon); `Medium` SHALL mean a moderate maintainability, performance, or test-coverage concern that does not threaten merge-readiness but should be addressed soon; `Low` SHALL mean nice-to-fix (naming, small refactors, low-impact polish); `Question` SHALL mean genuine uncertainty needing user input, used sparingly. The retired terms `Blocker`, `Major`, and `Minor` SHALL NOT be emitted by the review instruction, the review worker contract, or the review report. Every triage escalation in the review instruction SHALL reference the new levels: blatant security findings SHALL be raised as `Critical`, blatant performance and accessibility findings as `High` or `Critical`, and glossary deviations as `Low`.
+
+#### Scenario: Severity classification uses the shared levels
+
+- **WHEN** the review classifies a finding
+- **THEN** the finding's severity is exactly one of `Critical`, `High`, `Medium`, or `Low`, or its category is `Question`
+- **AND** none of the retired terms `Blocker`, `Major`, or `Minor` is emitted
+
+#### Scenario: Triage escalations reference the shared levels
+
+- **WHEN** the review instruction escalates a blatant security, performance, or accessibility issue during triage
+- **THEN** it names the finding `Critical` or `High` as applicable
+- **AND** it does not use the retired triage vocabulary
+
+#### Scenario: Mutation findings fold into the report by remapped severity
+
+- **WHEN** Pass 11 produced mutation findings
+- **THEN** each surviving and pre-check-failed mutation is counted as `High` and each revert-failed mutation as `Critical` in the review counts and verdict
+- **AND** their `mMUT-N` identifiers are unchanged
+
+### Requirement: Review findings carry severity-prefixed identifiers and a closing summary tally
+
+The review instruction SHALL assign every finding a severity-prefixed identifier: the severity's initial followed by the finding's sequence within that severity in the current report (`C1`, `H1`, `M1`, `L1`, and `Q1` for Questions), with the sequence restarting at 1 for each level at the start of every review. The review report SHALL close with a `Summary:` line in the form `Summary: Critical=<count> High=<count> Medium=<count> Low=<count> Questions=<count>` whose counts match the report's findings, including mutation findings folded in at their remapped severities. The worker contract's completion verification SHALL reference the top three `Critical` findings when present, never the retired `Blocker` term.
+
+#### Scenario: Every finding carries an identifier
+
+- **WHEN** the review report lists a finding
+- **THEN** the finding heading leads with its severity-prefixed identifier
+- **AND** identifiers restart at 1 per level per report
+
+#### Scenario: Report closes with the summary tally
+
+- **WHEN** the review report is complete
+- **THEN** it closes with a `Summary:` line tallying `Critical`, `High`, `Medium`, `Low`, and `Questions` counts that match the listed findings
+- **AND** the worker completion verification names the top three `Critical` findings when present
 

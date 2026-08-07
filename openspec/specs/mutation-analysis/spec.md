@@ -138,28 +138,34 @@ Under Tier 2, the main agent (frontier tier) SHALL decide which mutations to app
 
 ### Requirement: Outcome To Finding Mapping
 
-Each tested mutation has exactly one outcome, mapped to review output as follows. A killed mutation (a test failed) MUST produce no finding and remain internal only. A survived mutation (all tests passed) MUST be reported as a Major finding identified `mMUT-N` in `review.md`. A pre-check-failed mutation MUST be reported as a Major finding whose message is "Could not test {file}: uncommitted changes. Commit or undo and re-run review." A revert-failed mutation MUST be reported as a Blocker finding in `review.md` AND a critical working-tree-pollution warning MUST be printed to the user.
+Each tested mutation has exactly one outcome, mapped to review output as follows. A killed mutation (a test failed) MUST produce no finding and remain internal only. A survived mutation (all tests passed) MUST be reported as a High finding identified `mMUT-N` in `review.md`. A pre-check-failed mutation MUST be reported as a High finding whose message is "Could not test {file}: uncommitted changes. Commit or undo and re-run review." A revert-failed mutation MUST be reported as a Critical finding in `review.md` AND a critical working-tree-pollution warning MUST be printed to the user. The `mMUT-N` namespace and the seven-field surviving-mutant row SHALL remain unchanged per ADR 0013; this remap covers only the severities these outcomes roll up into.
 
 #### Scenario: Killed mutation produces no finding
 
 - **WHEN** a mutation is killed by the test suite
 - **THEN** no finding is written for it
 
-#### Scenario: Survived mutation is Major
+#### Scenario: Survived mutation is High
 
 - **WHEN** a mutation survives the test suite
-- **THEN** it is written as a Major finding identified `mMUT-N`
+- **THEN** it is written as a High finding identified `mMUT-N`
 
-#### Scenario: Pre-check-failed mutation is Major with the could-not-test message
+#### Scenario: Pre-check-failed mutation is High with the could-not-test message
 
 - **WHEN** a mutation is pre-check-failed
-- **THEN** it is written as a Major finding stating "Could not test {file}: uncommitted changes. Commit or undo and re-run review."
+- **THEN** it is written as a High finding stating "Could not test {file}: uncommitted changes. Commit or undo and re-run review."
 
-#### Scenario: Revert-failed mutation is a Blocker with a pollution warning
+#### Scenario: Revert-failed mutation is a Critical with a pollution warning
 
 - **WHEN** a mutation is revert-failed
-- **THEN** it is written as a Blocker finding in `review.md`
+- **THEN** it is written as a Critical finding in `review.md`
 - **AND** a critical working-tree-pollution warning is printed to the user
+
+#### Scenario: mMUT-N namespace and row shape are preserved
+
+- **WHEN** a mutation finding is written
+- **THEN** it is identified `mMUT-N` with N a 1-based counter over the mutation findings in this review
+- **AND** surviving-mutant rows keep the seven fields Location, Mutation class, Original, Applied, Result, Why it survives, and Suggested fix in that order
 
 ### Requirement: Surviving Mutant Finding Row Format
 
