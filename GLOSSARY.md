@@ -4,6 +4,9 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 
 ## Language
 
+**ADR**: "Architecture Decision Record — a decision record that documents a qualifying design decision about how the pipeline is built (layout, mechanism, tooling, ordering, policy) that does not encode a **Domain Invariant**; lives in `docs/adr/` and carries `# ADR NNNN:` H1s."
+*Avoid*: architecture note, design note, "ADR/DDR" as an undecided family
+
 **Advisor Skill**: "A read-only consultation skill (`mid-advisor`, `senior-advisor`) that a cheaper pipeline phase escalates to — a subagent running the model tier of the phase above it — returning a structured advice report instead of editing anything."
 *Avoid*: consultant skill, oracle, reviewer skill, helper agent
 
@@ -34,8 +37,17 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 **Coordinator Verification**: "The `/sai-4-apply` coordinator's independent rerun of a Step's Verification Checklist after a Subagent Report and before checkbox marking or commit gating."
 *Avoid*: trust check, report retest, coordinator retry
 
+**DDR**: "Domain Decision Record — a decision record that documents a qualifying design decision encoding a **Domain Invariant**; lives in `docs/ddr/` and carries `# DDR NNNN:` H1s."
+*Avoid*: domain ADR, domain decision, invariant record, "ADR/DDR" as an undecided family
+
+**Decision Record Family**: "One of the two record families (`adr` or `ddr`) that a qualifying design decision resolves to via the ordered routing test — a decision encoding a **Domain Invariant** is a `ddr`, otherwise it is an `adr`; a record's entry lives in exactly one index, its own family's."
+*Avoid*: record type, record class, template family, bare "family"
+
 **Deferred Decision**: "A decision a change could have made and deliberately postponed because its cost rises the longer it waits, recorded in `design.md`'s `## Deferred` section with a concrete postponement cost and a recommendation."
 *Avoid*: postponed decision, open question, non-goal, backlog item, TODO
+
+**Domain Invariant**: "A constraint the pipeline's domain imposes that must hold of the pipeline's artifacts, records, or behavior at all times, stated as a property of the domain rather than as the mechanism that upholds it — the first test of the ordered routing test, which resolves a qualifying decision to the **DDR** family."
+*Avoid*: business rule, hard constraint, invariant check, domain rule
 
 **Execution Telemetry Appendix**: "The coordinator-authored `## Appendix: Execution Telemetry` table at the end of `implementation.md`, one row per **Attempts Per Phase** entry, whose `Step` and `dispatch` columns are supplied by the coordinator rather than reported by the subagent."
 *Avoid*: telemetry log, retry appendix, metrics table, execution log
@@ -162,6 +174,8 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 - An **Auto-Answer** is given only when confidence is clearly above the **Confidence Threshold**; unclear or below-threshold confidence escalates the worker question to the user instead of auto-answering.
 - Every **Auto-Answer** is recorded in the **Autonomy Audit Log**; an escalated question is not, because the user already saw and answered it.
 - An **Autonomy Audit Log** is presented in conversation at supervised spec-phase end and is never written to any file, artifact, or configuration.
+- A **DDR** encodes a **Domain Invariant**; an **ADR** documents a decision that does not.
+- A qualifying design decision resolves to exactly one **Decision Record Family** via the ordered routing test — a **Domain Invariant** routes to **DDR**, anything else routes to **ADR** — and the resolved family is recorded in `design.md` as the `**Record family**` marker.
 
 ## Example dialogue
 
@@ -176,3 +190,4 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 - **"Finding" across surfaces** — artifact reviews and the audit commands (`sai-5`/`sai-6`/`sai-7`/`sai-8`) both produce "findings", but with different severity vocabularies and identifier schemes: artifact reviews use `H1`/`M1`/`L1` identifiers on `High`/`Medium`/`Low`, while `review.md` uses `B`/`M`/`m`/`Q` sections (incl. `mMUT-N`) and the audit commands carry their own `Critical`-based severities. **Resolution:** **Review Finding** names the artifact-review item only; audit findings keep their own formats and are never called Review Findings.
 - **"Finding" across surfaces** — artifact reviews and the audit commands (`sai-5`/`sai-6`/`sai-7`/`sai-8`) both produce "findings". Artifact reviews use `H1`/`M1`/`L1` identifiers on the closed `High`/`Medium`/`Low` set (no `Critical`), while all four audit commands share one `Critical`-based severity vocabulary — `Critical`/`High`/`Medium`/`Low`, plus the review-only `Question` category and the `sai-7`/`sai-8`-only `Informational` level — with severity-prefixed identifiers (`C`/`H`/`M`/`L`, plus `Q`/`I`) and a closing `Summary:` tally line per report; `review.md`'s mutation findings keep the separate `mMUT-N` namespace per ADR 0013. **Resolution:** **Review Finding** names the artifact-review item only; audit findings use the shared audit severity vocabulary and are never called Review Findings.
 - **Schema template vs instruction output template** — both families are "the template" for the same report artifact: `openspec/schemas/sai-workflow/templates/{artifact}.md` is the CLI scaffold served by `openspec instructions`, while `sai/instructions/_templates/{artifact}-report.md` is the write-time contract fetched by the phase instruction. **Resolution:** the two are pinned to skeleton parity by **Report Template Parity** — they diverge only in placeholder syntax, guidance depth, and code-fence wrapping — and neither replaces the other.
+- **"ADR/DDR" as an undecided pair vs a resolved family** — the criteria surfaces (`design.md`'s `## Decisions`, `spec.propose.md`'s ADR/DDR Proposal Check, the schema's design instruction) use "ADR/DDR" as one phrase without resolving a family, and a bare "family" is ambiguous between the record families and the report template families. **Resolution:** "ADR/DDR" names the two-family evaluation surface only; the ordered routing test resolves the family, recorded in `design.md` as `**Record family**: adr|ddr`; **Decision Record Family** names the `adr`/`ddr` families and the qualified term is always used.
