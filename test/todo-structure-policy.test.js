@@ -44,3 +44,37 @@ test('todo-structure policy restricts task-list tool-call emission to the coordi
   assert.match(source, /never.*worker|worker.*never/i);
   assert.match(source, /exclusively|only the coordinator/i);
 });
+
+test('todo-structure policy names the apply step projection as a governed surface', () => {
+  const source = policy();
+
+  assert.match(source, /apply step projection|apply-step projection/i);
+  assert.match(source, /governed surface|governs the apply step/i);
+});
+
+test('todo-structure policy keeps the apply step projection state vocabulary and deterministic derivation', () => {
+  const source = policy();
+
+  assert.match(source, /apply step projection/i);
+  assert.match(source, /pending|in_progress|completed/i);
+  assert.match(source, /on[- ]disk|marked set/i);
+  assert.match(source, /plan order|deriv(?:ed|es|ation)/i);
+});
+
+test('todo-structure policy keeps the minimum-threshold rule single-sourced for the apply step projection', () => {
+  const source = policy();
+
+  assert.match(source, /apply step projection/i);
+  assert.match(source, /minimum[- ]threshold|render threshold/i);
+  assert.match(source, /single[- ]source/i);
+  assert.match(source, /reference(?:s|d)?(?: the policy)?/i);
+  assert.match(source, /without restating|do not restate|never restate/i);
+});
+
+test('todo-structure policy keeps apply step projection emission ownership in the coordinator session', () => {
+  const source = policy();
+
+  assert.match(source, /apply step projection/i);
+  assert.match(source, /coordinator session|coordinator\b/i);
+  assert.match(source, /(?:only|exclusively).*coordinator|coordinator.*(?:only|exclusively)/i);
+});
