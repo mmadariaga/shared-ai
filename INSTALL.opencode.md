@@ -24,7 +24,7 @@ npx github:mmadariaga/shared-ai
 npx github:mmadariaga/shared-ai setup /path/to/your/project
 ```
 
-Step 1 expands `sai/install-manifest.json` and copies the opencode projection to `~/.config/opencode/`. It includes opencode commands, the complete recursively projected `sai/instructions/` tree including the canonical project-agnostic `sai/instructions/_templates/adr-index.md`, `sai/policies/`, `sai/compat/`, the shared Orchestration Core contracts, opencode routed worker bindings, opencode skills, managed worker agent files, and the managed configuration projection. Opencode loads routed workers directly from the neutral installed binding paths; Claude Code receives its own harness-selected routed bindings. Step 2 verifies the openspec CLI, runs `openspec init --tools opencode` if needed, sets `schema: sai-workflow` in `openspec/config.yaml`, and copies the schema templates into the project. `doctor` and `uninstall` use the same manifest projection.
+Step 1 expands `sai/install-manifest.json` and copies the opencode projection to `~/.config/opencode/`. It includes opencode commands, the complete recursively projected `sai/instructions/` tree including the canonical project-agnostic `sai/instructions/_templates/adr-index.md`, `sai/policies/`, `sai/compat/`, the shared Orchestration Core contracts, opencode routed worker bindings, opencode skills, managed worker and generic agent files, and the managed configuration projection. Opencode loads routed workers directly from the neutral installed binding paths; Claude Code receives its own harness-selected routed bindings. Step 2 verifies the openspec CLI, runs `openspec init --tools opencode` if needed, sets `schema: sai-workflow` in `openspec/config.yaml`, and copies the schema templates into the project. `doctor` and `uninstall` use the same manifest projection.
 
 ## Manual installation
 
@@ -86,23 +86,14 @@ if [ ! -f ~/.config/opencode/opencode.json ] && [ ! -f ~/.config/opencode/openco
     cp configs/opencode.jsonc ~/.config/opencode/
 else
      echo "~/.config/opencode/opencode.json(c) already exists."
-     echo "Ensure it includes subagent_depth and these agent entries:"
-     echo "Managed worker agent files are installed under ~/.config/opencode/agents/ under the tunable-seed lifecycle; the configuration merge covers only the helper agents and the external-directory permission."
+     echo "Managed worker and generic agent files are installed under ~/.config/opencode/agents/ under the tunable-seed lifecycle."
+     echo "The configuration merge covers only the SAI external-directory permission:"
      echo '  "subagent_depth": 2,'
-    echo '  "agent": {'
-    echo '    "explore": {'
-    echo '      "mode": "subagent",'
-    echo '      "model": "opencode-go/glm-5.1"'
-    echo '    },'
-    echo '    "executor": {'
-    echo '      "mode": "subagent",'
-    echo '      "model": "opencode-go/glm-5.1"'
-    echo '    },'
-    echo '    "budget": {'
-    echo '      "mode": "subagent",'
-    echo '      "model": "opencode-go/glm-5.1"'
-    echo '    },'
-    echo '  }'
+     echo '  "permission": {'
+     echo '    "external_directory": {'
+     echo '      "~/.config/opencode/sai/**": "allow"'
+     echo '    }'
+     echo '  }'
 fi
 
 # Manual edits are needed only when automatic installation cannot safely merge the file.
@@ -184,23 +175,14 @@ if (-not (Test-Path $jsonPath) -and -not (Test-Path $jsoncPath)) {
     Copy-Item configs\opencode.jsonc $configDir\
 } else {
      Write-Host "$configDir\opencode.json(c) already exists."
-     Write-Host "Ensure it includes subagent_depth and these agent entries:"
-     Write-Host "Managed worker agent files are installed under ~/.config/opencode/agents/ under the tunable-seed lifecycle; the configuration merge covers only the helper agents and the external-directory permission."
+     Write-Host "Managed worker and generic agent files are installed under ~/.config/opencode/agents/ under the tunable-seed lifecycle."
+     Write-Host "The configuration merge covers only the SAI external-directory permission:"
      Write-Host '  "subagent_depth": 2,'
-    Write-Host '  "agent": {'
-    Write-Host '    "explore": {'
-    Write-Host '      "mode": "subagent",'
-    Write-Host '      "model": "opencode-go/glm-5.1"'
-    Write-Host '    },'
-    Write-Host '    "executor": {'
-    Write-Host '      "mode": "subagent",'
-    Write-Host '      "model": "opencode-go/glm-5.1"'
-    Write-Host '    },'
-    Write-Host '    "budget": {'
-    Write-Host '      "mode": "subagent",'
-    Write-Host '      "model": "opencode-go/glm-5.1"'
-    Write-Host '    },'
-    Write-Host '  }'
+     Write-Host '  "permission": {'
+     Write-Host '    "external_directory": {'
+     Write-Host '      "~/.config/opencode/sai/**": "allow"'
+     Write-Host '    }'
+     Write-Host '  }'
 }
 
 # Manual edits are needed only when automatic installation cannot safely merge the file.
@@ -226,7 +208,7 @@ if (-not (Test-Path $jsonPath) -and -not (Test-Path $jsoncPath)) {
 
 ### Managed implementation agents
 
-The seven opencode worker agents are installed as owned markdown agent files under `~/.config/opencode/agents/`: `sai-1-spec-proposal-worker.md`, `sai-2-design-worker.md`, `sai-3-implementation-worker.md`, `sai-5-review-worker.md`, `sai-6-security-worker.md`, `sai-7-performance-worker.md`, and `sai-8-accessibility-worker.md`. For example, the projected `sai-3-implementation-worker.md` agent file declares `mode: subagent`, `model: opencode-go/kimi-k2.6`, and a `permission.task` of `*: deny` with `budget` and `explore` allowed. Each file follows the tunable-seed lifecycle: when the file is absent, the repository default definition is installed with its shipped tunables (no ownership sidecar is written); an exact-compatible existing file is reused; and a divergent body or non-tunable frontmatter is overwritten with a console notice while the destination's `model` and `variant` tunable lines are preserved. The configuration merge covers only the helper agents (`explore`, `executor`, `budget`) and the narrow external-directory permission, so the `opencode.json` or `opencode.jsonc` file never receives worker entries, and parseable JSON/JSONC files retain comments, formatting, unrelated entries, and `opencode.json` precedence. Doctor validates each projected file against its bundled `agents/opencode/<worker-name>.md` source: a missing file is an error with re-run-the-installer remediation, an incompatible file (body or non-tunable frontmatter divergence) is an error naming the file, and an exact-compatible file — including one whose tunable lines differ — is ok. Uninstall preserves the opencode configuration and removes a worker agent file only when its body and non-tunable frontmatter match the source; a body-divergent file is kept as a project-local override. Configuration exclusion means uninstall leaves the opencode configuration intact, and Claude worker files retain their collision protection. Existing agent definitions that are user-owned are preserved and control runtime behavior; the configured worker agent file — its declared mode, model, and permissions — governs runtime dispatch. The opencode routed phases run under the active primary agent, which must permit native question and numbered-worker task dispatch; no separate coordinator profile is installed. Restart opencode after installation or updates.
+The seven opencode worker agents and the three generic agents (`explore`, `executor`, `budget`) are installed as managed markdown agent files under `~/.config/opencode/agents/` (the explore agent at `~/.config/opencode/agents/explore.md`): `sai-1-spec-proposal-worker.md`, `sai-2-design-worker.md`, `sai-3-implementation-worker.md`, `sai-5-review-worker.md`, `sai-6-security-worker.md`, `sai-7-performance-worker.md`, `sai-8-accessibility-worker.md`, `explore.md`, `executor.md`, and `budget.md`. For example, the projected `sai-3-implementation-worker.md` agent file declares `mode: subagent`, `model: opencode-go/kimi-k2.6`, and a `permission.task` of `*: deny` with `budget` and `explore` allowed. Each file follows the tunable-seed lifecycle: when the file is absent, the repository default definition is installed with its shipped tunables (no ownership sidecar is written); an exact-compatible existing file is reused; and a divergent body or non-tunable frontmatter is overwritten with a console notice while the destination's `model` and `variant` tunable lines are preserved. The configuration merge covers only the narrow SAI external-directory permission, so the `opencode.json` or `opencode.jsonc` file never receives agent entries, and parseable JSON/JSONC files retain comments, formatting, unrelated entries, and `opencode.json` precedence. Doctor validates each projected file against its bundled `agents/opencode/<worker-name>.md` source: a missing file is an error with re-run-the-installer remediation, an incompatible file (body or non-tunable frontmatter divergence) is an error naming the file, and an exact-compatible file — including one whose tunable lines differ — is ok. Uninstall preserves the opencode configuration and removes a worker agent file only when its body and non-tunable frontmatter match the source; a body-divergent file is kept as a project-local override. Configuration exclusion means uninstall leaves the opencode configuration intact, and Claude worker files retain their collision protection. Existing agent definitions that are user-owned are preserved and control runtime behavior; the configured worker agent file — its declared mode, model, and permissions — governs runtime dispatch. The opencode routed phases run under the active primary agent, which must permit native question and numbered-worker task dispatch; no separate coordinator profile is installed. Restart opencode after installation or updates.
 
 ### Deterministic routed worker contract prompts
 

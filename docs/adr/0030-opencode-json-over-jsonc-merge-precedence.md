@@ -2,7 +2,9 @@
 
 ## Status
 
-Accepted
+Superseded in respect of agents
+
+The agent-block merge this record governed is retired by change `relocate-generic-opencode-agents`, but the `opencode.json`-over-`opencode.jsonc` precedence decision continues to govern the SAI permission merge — the only merge the installer now performs.
 
 ## Context
 

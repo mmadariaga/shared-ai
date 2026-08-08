@@ -83,15 +83,15 @@ The openspec-dependent `sai-*` commands halt with a clear error if either is mis
 | `skills/opencode/` | Opencode-specific skills (subagent dispatch rules, etc.). Fetched by wrappers that spawn subagents. Routed workers load neutral bindings directly from installed `sai/orchestration/workers/bindings/` paths. |
 | `skills/claude/budget-explorer/SKILL.md` | Subagent dispatch rules for Claude Code — model tiers, task classification, tool-call caps, output contracts. Fetched by wrappers that spawn subagents. |
 | `skills/claude/budget-executor/SKILL.md` | Executor subagent rules for Claude Code — subagent_type: General, model: haiku, execute-only discipline. Fetched by wrappers that spawn executor subagents. |
-| `skills/opencode/budget-explorer/SKILL.md` | Subagent dispatch rules for opencode — explore keyword binding, cap rules, output contracts. Model resolved via opencode.jsonc. |
-| `skills/opencode/budget-executor/SKILL.md` | Executor subagent rules for opencode — executor keyword binding, execute-only discipline. Model resolved via opencode.jsonc. |
+| `skills/opencode/budget-explorer/SKILL.md` | Subagent dispatch rules for opencode — explore keyword binding, cap rules, output contracts. Model resolved from the explore agent file's `model` frontmatter (`~/.config/opencode/agents/explore.md`). |
+| `skills/opencode/budget-executor/SKILL.md` | Executor subagent rules for opencode — executor keyword binding, execute-only discipline. Model resolved from the executor agent file's `model` frontmatter (`~/.config/opencode/agents/executor.md`). |
 | `skills/opencode/fetch/SKILL.md` | Fetch @ path resolver for opencode — replicates Claude Code's built-in Fetch @ mechanism. Loaded first by all opencode wrappers to enable `@sai/` and `@skills/` path resolution. |
 | `agents/claude/sai-1-spec-proposal-worker.md` | Claude Code custom agent for the medium-effort spec proposal worker. |
 | `agents/claude/sai-3-implementation-worker.md` | Claude Code custom agent for the high-effort implementation-planning worker. |
 | `agents/claude/sai-2-design-worker.md` | Claude Code custom agent for the high-effort design-planning worker. |
 | `commands/claude/` | Wrappers for Claude Code. YAML frontmatter (`description`, `argument-hint`, `model`, `effort`) + fetch to `sai/commands/` + fetch to project-local skill files. |
 | `commands/opencode/` | Wrappers for opencode. YAML frontmatter (`description`, `model`) + fetch to `sai/commands/` + fetch to project-local skill files. |
-| `configs/` | Config samples. `opencode.jsonc`: sub-agent explore configuration (mode + trusted low-cost model). Required for cost-effective research delegation. |
+| `configs/` | Config samples. `opencode.jsonc`: `$schema` + `subagent_depth` + the SAI external-directory permission; no agent definitions (the agents ship as managed agent files). |
 
 Wrappers are **thin** — they specify the model, fetch command content from `sai/commands/`, and (for openspec-dependent commands) fetch policies, compatibility assets, and relevant project-local skills. Claude Code and opencode load harness-selected routed bindings directly from the neutral installed SAI paths. The manifest determines which source files are installed for both harnesses.
 
@@ -149,7 +149,7 @@ All agents MUST think and reason internally in English, regardless of the user's
 
 ### Cost Discipline (research subagents)
 Wrappers that spawn subagents fetch `skills/claude/budget-explorer/SKILL.md` (Claude) or `skills/opencode/budget-explorer/SKILL.md` (opencode). The main agent reasons and synthesizes. Subagents do I/O. Key rules:
-- Default research subagent is the **cheap** tier — Claude Code (`subagent_type: Explore`, model haiku/sonnet) or opencode (`explore` keyword, model via `opencode.jsonc`). Escalated tier only for multi-step synthesis.
+- Default research subagent is the **cheap** tier — Claude Code (`subagent_type: Explore`, model haiku/sonnet) or opencode (`explore` keyword, model from the explore agent file's `model` frontmatter). Escalated tier only for multi-step synthesis.
 - Every subagent call declares an **output contract** (exact fields, length cap, no raw content).
 - Main agent never calls WebFetch directly.
 - Speculative exploration ("look around") allowed only in the cheap tier.

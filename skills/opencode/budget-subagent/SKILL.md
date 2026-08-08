@@ -1,7 +1,7 @@
 ---
 name: budget-subagent
 description: >
-  Binds cost-controlled task delegation to the OpenCode `budget` agent keyword. Model resolved via agent.budget.model in the project's opencode.jsonc — not hardcoded here. Use for general-purpose task delegation (file operations, searches, writes, code analysis).
+  Binds cost-controlled task delegation to the OpenCode `budget` agent keyword. Model resolved via the budget agent file's model frontmatter (installed under ~/.config/opencode/agents/budget.md) — not hardcoded here. Use for general-purpose task delegation (file operations, searches, writes, code analysis).
   TRIGGER when: "budget subagent", "cheap subagent", "budget task", "cheap task", "budget mode", "cheap mode", "low-cost mode", "economy mode"
 license: MIT
 compatibility: opencode
@@ -36,7 +36,7 @@ metadata:
 ## OpenCode Binding
 
 - **Agent keyword**: `budget` (lowercase)
-- **Model resolution**: controlled by `agent.budget.model` in the project's `opencode.jsonc` — not hardcoded in this file
+- **Model resolution**: controlled by the `model` frontmatter of the budget agent file (`~/.config/opencode/agents/budget.md`) — not hardcoded in this file
 - **Tool-call cap**: none enforced by harness (behavioral rule 6 governs this)
 - **Raw output**: not allowed — always use the structured completion report format
 
@@ -46,8 +46,11 @@ The opencode `task` tool has no `run_in_background` parameter; this binding runs
 
 ## Cost model
 
-This subagent runs on a commodity model. Its tier is controlled by `agent.budget.model` in the project's `opencode.jsonc` — that setting is the only lever to change the cost of delegation.
+This subagent runs on a commodity model. Its tier is controlled by the `model` frontmatter of the budget agent file (`~/.config/opencode/agents/budget.md`) — that setting is the only lever to change the cost of delegation.
 
 **Why delegate:**
 - **Cost:** Bulk I/O (reads, searches, diffs) is processed at a cheaper per-token rate than the main agent's model.
 - **Context hygiene:** The subagent starts with a clean context — no task instructions, no conversation history — and returns only a structured summary, keeping the main agent's reasoning context uncontaminated.
+
+**Scope boundaries:**
+- Clear task boundaries enable effective subagent delegation and cost control: one task per spawn, a declared output contract, and a soft tool-call cap keep the delegation cheap and the report parseable.

@@ -2,7 +2,9 @@
 
 ## Status
 
-Accepted
+Historical
+
+The agent-block merge is retired by change `relocate-generic-opencode-agents`: the three generic agents (`explore`, `executor`, `budget`) are provisioned as projected agent files under `~/.config/opencode/agents/`, and the installer's opencode-config path now merges only the SAI external-directory permission. The record remains accurate for the mechanism it governed.
 
 ## Context
 

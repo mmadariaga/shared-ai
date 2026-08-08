@@ -942,6 +942,10 @@ test('Step 2 installation guide documents the narrow merge boundary and JSON pre
   assert.match(OPENCODE_INSTALL_GUIDE, /preserv(?:e|es|ing) user comments/i);
   assert.match(OPENCODE_INSTALL_GUIDE, /~\/\.config\/opencode\/sai\/\*\*/);
   assert.match(OPENCODE_INSTALL_GUIDE, /opencode\.json.*(?:merge target|takes precedence|preferred).*opencode\.jsonc/is);
+  assert.doesNotMatch(OPENCODE_INSTALL_GUIDE, /"agent"\s*:\s*\{/,
+    'the installation guide must not show an agent block');
+  assert.match(OPENCODE_INSTALL_GUIDE, /~\/\.config\/opencode\/agents\/(?:explore|executor|budget)\.md/,
+    'specs/opencode-generic-agent-files/spec.md: the guide should document the generic agent files under the agents directory');
 });
 
 test('Step 2 installation guide documents the post-install smoke procedure and diagnostics', () => {
@@ -1180,5 +1184,79 @@ test('Step 3 install seeds the seven managed opencode worker agent files from th
     }
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+});
+
+test('Step 3 budget skills resolve models from the projected agent files and keep their trigger summaries', () => {
+  const skills = [
+    {
+      name: 'budget-explorer',
+      file: 'explore.md',
+      keyword: 'explore',
+      triggers: [
+        'use explorer',
+        'use cheap subagent',
+        'delegate research',
+        'run cheap subagent',
+        'spawn explore subagent',
+        'cheap research agent',
+        'use explore agent',
+        'delegate lookup',
+      ],
+    },
+    {
+      name: 'budget-executor',
+      file: 'executor.md',
+      keyword: 'executor',
+      triggers: [
+        'use executor',
+        'spawn executor',
+        'run command subagent',
+        'delegate execution',
+        'execute in subagent',
+        'run cheap executor',
+      ],
+    },
+    {
+      name: 'budget-subagent',
+      file: 'budget.md',
+      keyword: 'budget',
+      triggers: [],
+    },
+  ];
+  for (const { name, file, keyword, triggers } of skills) {
+    const skill = fs.readFileSync(path.join(__dirname, '..', 'skills', 'opencode', name, 'SKILL.md'), 'utf8');
+    const descriptionMatch = skill.match(/^description:\s*(.+)$/m);
+    assert.ok(descriptionMatch, `${name} should declare a description`);
+    let description = descriptionMatch[1].trim();
+    if (/^[|>]/.test(description)) {
+      const rest = skill.slice(descriptionMatch.index + descriptionMatch[0].length);
+      const nextField = rest.match(/^[a-zA-Z][a-zA-Z-]*:\s/m);
+      description = (nextField ? rest.slice(0, nextField.index) : rest).trim();
+    }
+    assert.ok(description.length > 0, `${name} should declare a non-empty description`);
+    const triggerIndex = description.indexOf('TRIGGER when:');
+    assert.ok(triggerIndex > 0,
+      `specs/opencode-budget-explorer-triggers/spec.md: ${name} should keep the one-sentence summary before TRIGGER when`);
+    for (const trigger of triggers) {
+      assert.ok(description.includes(trigger),
+        `specs/opencode-budget-explorer-triggers/spec.md: ${name} should trigger on ${trigger}`);
+    }
+    assert.doesNotMatch(skill, new RegExp(`agent\\.${keyword}\\.model`),
+      `specs/opencode-budget-explorer-triggers/spec.md: ${name} must not mention agent.${keyword}.model`);
+    assert.match(skill, new RegExp(`~/\\.config/opencode/agents/${file.replace('.', '\\.')}`),
+      `specs/opencode-budget-explorer-triggers/spec.md: ${name} should name its own agent file as the model-resolution source`);
+    if (name !== 'budget-subagent') {
+      const modelResolutionIndex = skill.indexOf('## Model resolution');
+      const costModelIndex = skill.indexOf('## Cost model');
+      assert.ok(modelResolutionIndex !== -1 && costModelIndex !== -1 && modelResolutionIndex < costModelIndex,
+        `specs/opencode-budget-explorer-triggers/spec.md: ${name} should state agent-file frontmatter resolution in a ## Cost model section after ## Model resolution`);
+    }
+    if (name === 'budget-subagent') {
+      assert.match(skill, /\bbudget\b[\s\S]{0,60}\bkeyword\b/i,
+        'specs/opencode-budget-explorer-triggers/spec.md: budget-subagent should bind to the budget keyword');
+      assert.doesNotMatch(skill, /\bmodel\s*:\s*["']?opencode-go\/[A-Za-z0-9._-]+/,
+        'specs/opencode-budget-explorer-triggers/spec.md: budget-subagent must not hardcode a model id');
+    }
   }
 });
