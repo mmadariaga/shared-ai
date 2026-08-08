@@ -285,8 +285,10 @@ test('Step 3 ADR/INSTALL prose describes tunable-seed projections, body-identity
     'specs/opencode-agent-preservation/spec.md: opencode documentation should describe body-and-non-tunable identity');
   assert.doesNotMatch(documentation, /rename-or-remove|rename or remove/i,
     'specs/opencode-agent-preservation/spec.md: opencode documentation must not carry rename-or-remove remediation');
-  assert.doesNotMatch(documentation, /\.owner\.json/,
-    'specs/opencode-agent-preservation/spec.md: opencode documentation must not reference owner sidecars');
+  assert.match(documentation, /No `\.<basename>\.owner\.json` sidecar is written or read\./,
+    'specs/opencode-agent-preservation/spec.md: opencode documentation should state the owner sidecar is never written');
+  assert.doesNotMatch(documentation, /\.owner\.json(?!` sidecar is written or read\.)/,
+    'specs/opencode-agent-preservation/spec.md: opencode documentation must not positively reference owner sidecars');
   assert.match(documentation, /uninstall/i);
   assert.match(documentation, /guard|identity/i,
     'specs/opencode-agent-preservation/spec.md: opencode documentation should describe guarded uninstall');

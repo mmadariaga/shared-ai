@@ -300,25 +300,32 @@ test('a body-divergent managed destination is kept as a project-local override',
   }
 });
 
-test('Claude and opencode uninstall enumerate exactly seven managed agent destinations', () => {
-  for (const [harness, install, enumerate] of [
-    ['claude', flow.installClaude, enumerateClaude],
-    ['opencode', flow.installOpencode, enumerateOpencode],
+test('Claude and opencode uninstall enumerate their managed agent destinations', () => {
+  const genericNames = ['explore', 'executor', 'budget'];
+  for (const [harness, install, enumerate, expectedCount] of [
+    ['claude', flow.installClaude, enumerateClaude, 7],
+    ['opencode', flow.installOpencode, enumerateOpencode, 10],
   ]) {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), `sai-tunable-seven-${harness}-`));
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), `sai-tunable-${expectedCount}-${harness}-`));
     try {
       install(dir);
       const agentEntries = enumerate(dir).filter(entry => entry.assetType === 'claude-managed-agent');
-      assert.equal(agentEntries.length, 7,
-        `${harness} uninstall should enumerate exactly 7 managed agent destinations`);
+      assert.equal(agentEntries.length, expectedCount,
+        `${harness} uninstall should enumerate exactly ${expectedCount} managed agent destinations`);
       assert.ok(agentEntries.every(entry => !/owner\.json$/.test(entry.dest)),
         `${harness} uninstall must not enumerate owner sidecars as deletion targets`);
       assert.ok(agentEntries.every(entry => !Object.hasOwn(entry, 'ownerPath')),
         `${harness} entries must not carry an ownerPath field`);
-      assert.deepEqual(
-        agentEntries.map(entry => path.basename(entry.dest, '.md')).sort(),
-        [...WORKER_NAMES].sort(),
-        `${harness} agent destinations should cover the seven sai worker filenames`);
+      const basenames = agentEntries.map(entry => path.basename(entry.dest, '.md'));
+      if (harness === 'opencode') {
+        assert.ok(genericNames.every(name => basenames.includes(name)),
+          'opencode agent destinations should include explore, executor, and budget');
+        assert.ok(WORKER_NAMES.every(name => basenames.includes(name)),
+          'opencode agent destinations should still cover the seven sai worker filenames');
+      } else {
+        assert.deepEqual([...basenames].sort(), [...WORKER_NAMES].sort(),
+          `${harness} agent destinations should cover the seven sai worker filenames`);
+      }
     } finally {
       fs.rmSync(dir, { recursive: true, force: true });
     }

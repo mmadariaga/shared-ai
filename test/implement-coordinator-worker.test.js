@@ -562,8 +562,8 @@ test('Step 3 Claude installer documentation covers ownership, compatibility, col
 
   assert.match(claude, /agents\/claude\/sai-3-implementation-worker\.md/);
   assert.match(claude, /(?:~\/\.claude|%USERPROFILE%[\\/]\.claude)[\\/]agents[\\/]sai-3-implementation-worker\.md/);
-  assert.match(claude, /\.sai-3-implementation-worker\.owner\.json/);
-  assert.match(claude, /compatible[\s\S]{0,140}(?:not adopt|non-adopt|not used|unchanged)/i);
+  assert.match(claude, /No ownership sidecar is written or read/i);
+  assert.match(claude, /exact-compatible existing agent is reused/i);
   assert.match(claude, /collision[\s\S]{0,140}(?:rename|remove|remediat|manual)/i);
   assert.match(claude, /uninstall[\s\S]{0,180}(?:ownership|guard|modified|preserv)/i);
   assert.match(claude, /(?:cp|Copy-Item)[\s\S]{0,220}sai-3-implementation-worker/i);

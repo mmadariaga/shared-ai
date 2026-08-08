@@ -101,36 +101,41 @@ test('tunable-seed routes to the dedicated installer', () => {
   }
 });
 
-test('the manifest declares 14 tunable-seed managed agent projections', () => {
+test('the manifest declares 17 tunable-seed managed agent projections', () => {
   const repoRoot = path.join(__dirname, '..');
   const manifest = loadInstallManifest(repoRoot);
-  const destinationRoot = agentDestinationRoots(path.join(os.tmpdir(), 'sai-agent-projection-14'));
+  const destinationRoot = agentDestinationRoots(path.join(os.tmpdir(), 'sai-agent-projection-17'));
   const allAgentProjections = [];
+  const opencodeBasenames = [...WORKER_NAMES, 'explore', 'executor', 'budget'];
   for (const harness of ['claude', 'opencode']) {
     const agentProjections = expandInstallManifest(manifest, { harness, repoRoot, destinationRoot })
       .filter(projection => projection.destinationPath.startsWith(destinationRoot.agents));
-    assert.equal(agentProjections.length, 7,
-      `the manifest should declare exactly 7 agent projections for ${harness}`);
+    const expectedCount = harness === 'opencode' ? 10 : 7;
+    const expectedBasenames = harness === 'opencode' ? opencodeBasenames : WORKER_NAMES;
+    assert.equal(agentProjections.length, expectedCount,
+      `the manifest should declare exactly ${expectedCount} agent projections for ${harness}`);
     assert.ok(agentProjections.every(projection => projection.strategy === 'tunable-seed'),
       `every ${harness} agent projection should use the tunable-seed strategy`);
     assert.ok(agentProjections.every(projection => projection.ownership === 'managed'),
       `every ${harness} agent projection should be managed`);
     assert.deepEqual(
       agentProjections.map(projection => path.basename(projection.destinationPath, '.md')).sort(),
-      [...WORKER_NAMES].sort(),
-      `${harness} agent projections should cover the seven sai worker filenames`);
+      [...expectedBasenames].sort(),
+      harness === 'opencode'
+        ? `${harness} agent projections should cover the seven sai worker filenames plus explore, executor, and budget`
+        : `${harness} agent projections should cover the seven sai worker filenames`);
     allAgentProjections.push(...agentProjections);
   }
-  assert.equal(allAgentProjections.length, 14,
-    'the manifest should declare 14 managed agent projections across both harnesses');
+  assert.equal(allAgentProjections.length, 17,
+    'the manifest should declare 17 managed agent projections across both harnesses');
 });
 
 test('no managed agent projection declares owned-copy', () => {
   const manifest = loadInstallManifest(path.join(__dirname, '..'));
   const agentRules = manifest.projections
     .filter(projection => projection.destination && projection.destination.class === 'agents');
-  assert.equal(agentRules.length, 14,
-    'the manifest should declare 14 agent-class projections');
+  assert.equal(agentRules.length, 17,
+    'the manifest should declare 17 agent-class projections');
   assert.ok(agentRules.every(projection => projection.strategy !== 'owned-copy'),
     'no managed agent projection may declare the retired owned-copy strategy');
 });
