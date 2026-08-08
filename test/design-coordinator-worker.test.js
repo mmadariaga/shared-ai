@@ -1025,3 +1025,86 @@ test('Step 5: the run closes with exactly one terminal lifecycle status, never a
     'a progress event should never be emitted in place of a terminal payload'
   );
 });
+
+// ─── Step 6: command-progress-plan-protocol (design-worker bindings) ─────────
+
+test('Step 6: claude binding updates the harness task list on each progress event, marking reported ids completed and the leading unmarked step in_progress (claude-task-list-update / claude-marks-a-progress-batch)', () => {
+  const binding = artifact('sai/orchestration/workers/bindings/claude/design-worker.md');
+
+  assert.match(binding, /progress event/i,
+    'the binding should act on each progress event');
+  assert.match(binding, /task list/i,
+    'the binding should update the harness task list');
+  assert.match(binding, /completed[\s\S]{0,240}in_progress|in_progress[\s\S]{0,240}completed/i,
+    'reported ids should render completed and the leading unmarked step should render in_progress');
+  assert.match(binding, /unmarked[\s\S]{0,200}in_progress|in_progress[\s\S]{0,200}unmarked/i,
+    'the in_progress mark should apply to the leading unmarked step');
+  assert.match(binding, /deriv/i,
+    'the marks should follow the deterministic derivation');
+  assert.match(binding, /mechanism/i,
+    'the update should go through the harness task-list mechanism');
+  assert.match(binding, /incrementality/i,
+    'the binding should address incrementality');
+  assert.match(
+    binding,
+    /incrementality[\s\S]{0,240}(?:non[- ]?normative|not[\s\S]{0,80}(?:normative|a contract)|optimization)|(?:non[- ]?normative|not[\s\S]{0,80}(?:normative|a contract)|optimization)[\s\S]{0,240}incrementality/i,
+    'incrementality should be a non-normative binding-level optimization'
+  );
+});
+
+test('Step 6: opencode binding issues one todowrite call per progress event replacing the full array with completed, in_progress, and pending under a constant priority (opencode-todowrite-full-replacement / opencode-replaces-the-full-array)', () => {
+  const binding = artifact('sai/orchestration/workers/bindings/opencode/design-worker.md');
+
+  assert.match(binding, /todowrite/i,
+    'the binding should use the todowrite tool');
+  assert.match(binding, /progress event/i,
+    'the todowrite emission should happen per progress event');
+  assert.match(binding, /(?:one|a single|exactly one)[\s\S]{0,200}todowrite|todowrite[\s\S]{0,200}(?:one|a single|exactly one)/i,
+    'each progress event should produce exactly one todowrite call');
+  assert.match(binding, /todos[\s\S]{0,120}array|full[\s\S]{0,120}(?:todos|array)/i,
+    'the call should carry the full todos array');
+  assert.match(
+    binding,
+    /completed[\s\S]{0,240}in_progress[\s\S]{0,240}pending|pending[\s\S]{0,240}in_progress[\s\S]{0,240}completed/i,
+    'the array should map completed, the first incomplete step, and the remaining pending steps'
+  );
+  assert.match(binding, /constant[\s\S]{0,160}priority|priority[\s\S]{0,160}constant/i,
+    'the priority should be constant on every entry');
+});
+
+test('Step 6: both bindings emit no task list / todowrite call below the three-declared-step threshold (claude-renders-below-threshold-plans / opencode-renders-below-threshold-plans)', () => {
+  const claude = artifact('sai/orchestration/workers/bindings/claude/design-worker.md');
+  const opencode = artifact('sai/orchestration/workers/bindings/opencode/design-worker.md');
+
+  for (const binding of [claude, opencode]) {
+    assert.match(binding, /three/i,
+      'the binding should state the declared-step threshold');
+    assert.match(binding, /(?:below|fewer than|less than)[\s\S]{0,120}three|three[\s\S]{0,120}(?:below|fewer than|less than)/i,
+      'the threshold should be below three declared steps');
+    assert.match(binding, /(?:no|without|never)[\s\S]{0,160}(?:task list|todowrite)/i,
+      'no task list / todowrite call should be emitted below the threshold');
+  }
+});
+
+test('Step 6: the neutral policy records the emission-ownership invariant and the opencode binding states its subagent-restriction reason (task-list-emission-coordinator-only / worker-never-emits-the-tool-call / opencode-subagent-restriction)', () => {
+  const policy = artifact('sai/policies/todo-structure.md');
+  const claude = artifact('sai/orchestration/workers/bindings/claude/design-worker.md');
+  const opencode = artifact('sai/orchestration/workers/bindings/opencode/design-worker.md');
+
+  assert.match(policy, /coordinator[\s\S]{0,200}(?:owns?|emission|exclusively)/i,
+    'the policy should record the coordinator-owned emission invariant');
+  assert.match(policy, /(?:never|not)[\s\S]{0,160}(?:worker|subagent)|worker[\s\S]{0,120}(?:never|not)/i,
+    'the policy should state the worker never emits the tool call');
+
+  for (const binding of [claude, opencode]) {
+    assert.match(binding, /todo-structure\.md/,
+      'both bindings should reference the neutral todo-structure policy');
+  }
+
+  assert.match(opencode, /subagent/i,
+    'the opencode binding should note the worker is a subagent');
+  assert.match(opencode, /disabl[\s\S]{0,200}subagent|subagent[\s\S]{0,200}disabl/i,
+    'the binding should tie the disabled-by-default tool to the subagent context');
+  assert.match(opencode, /by default/i,
+    'the binding should state the tool is disabled by default in subagents');
+});

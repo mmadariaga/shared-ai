@@ -19,3 +19,16 @@ reconstruct from current durable OpenSpec artifacts. Never package artifacts.
 
 The worker may dispatch only the mandatory `budget-explorer` nested branch and
 must retain Agent and Skill access.
+
+On each progress event, update the harness task list so the reported step ids
+render `completed` and the leading unmarked step renders `in_progress`, per
+the deterministic state derivation of `@sai/policies/todo-structure.md`, by
+whatever mechanism the harness's task-list tool provides. Incrementality is a
+binding-level optimization, not a normative contract: where the harness tool
+supports updating single entries without re-listing the rest, use them; where
+it replaces the list wholesale, emit the full list on each update. For
+below-threshold plans (fewer than three declared steps), emit no task list at
+all.
+The task-list tool call originates exclusively from the coordinator session,
+never from a worker subagent, per the emission-ownership invariant of
+`@sai/policies/todo-structure.md`.
