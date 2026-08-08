@@ -30,3 +30,13 @@ The nested helper branches use the permitted budget and explore targets.
 The worker permission denies every task target except `budget` and `explore`.
 Existing-plan simplification and rerun-new-element research use `budget`; ADR
 index cold builds use `explore`.
+
+On each progress event, emit one `todowrite` call with the full `todos` array
+per `@sai/policies/todo-structure.md`: completed steps carry state
+`completed`, the first incomplete step carries `in_progress`, all remaining
+steps carry `pending`, and the priority field is filled with a constant for
+every entry. Emit no `todowrite` call for below-threshold plans (fewer than
+three declared steps). The `todowrite` call originates exclusively from the
+coordinator session, never from a worker subagent — opencode disables the tool
+for subagents by default and the worker runs as a subagent, per the
+emission-ownership invariant of `@sai/policies/todo-structure.md`.
