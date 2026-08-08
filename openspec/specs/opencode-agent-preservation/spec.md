@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Define name-based ownership and default bootstrapping for installer-provisioned opencode agents.
+Define file-based ownership for installer-provisioned opencode agents — the installer never writes configuration agent keys, and doctor and uninstall identify managed agent files by body-and-non-tunable-frontmatter identity under the tunable-seed lifecycle.
 
 ## Requirements
 
