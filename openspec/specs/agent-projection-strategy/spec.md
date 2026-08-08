@@ -1,7 +1,7 @@
 # agent-projection-strategy Specification
 
 ## Purpose
-Declares the install strategy contract for managed agent projections: each of the 14 managed agent projections (7 Claude + 7 opencode) MUST declare exactly one `tunable-seed` strategy, the `owned-copy` strategy is retired from validation and dispatch, and `installProjection` routes `tunable-seed` to the dedicated installer.
+Declares the install strategy contract for managed agent projections: each of the 17 managed agent projections (7 Claude + 10 opencode: the seven worker agents per harness plus the three opencode generic agents `explore`, `executor`, and `budget`) MUST declare exactly one `tunable-seed` strategy, the `owned-copy` strategy is retired from validation and dispatch, and `installProjection` routes `tunable-seed` to the dedicated installer.
 
 ## Requirements
 
