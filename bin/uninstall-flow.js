@@ -67,13 +67,13 @@ function manifestEntries(harness, destinationRoot, editorBase) {
 
 function enumerateClaude(destBase) {
   const targetPath = destBase || CLAUDE_BASE;
-  const entries = manifestEntries('claude', { commands: path.join(targetPath, 'commands'), sai: path.join(targetPath, 'sai'), skills: path.join(targetPath, 'skills'), agents: path.join(targetPath, 'agents'), config: targetPath }, targetPath);
+  const entries = manifestEntries('claude', { commands: path.join(targetPath, 'commands'), sai: path.join(targetPath, 'sai'), skills: path.join(targetPath, 'skills'), agents: path.join(targetPath, 'agents'), config: targetPath, root: targetPath }, targetPath);
   return entries;
 }
 
 function enumerateOpencode(destBase) {
   const targetPath = destBase || OPENCODE_BASE;
-  return manifestEntries('opencode', { commands: path.join(targetPath, 'commands'), sai: path.join(targetPath, 'sai'), skills: path.join(targetPath, 'skills'), agents: path.join(targetPath, 'agents'), config: targetPath }, targetPath);
+  return manifestEntries('opencode', { commands: path.join(targetPath, 'commands'), sai: path.join(targetPath, 'sai'), skills: path.join(targetPath, 'skills'), agents: path.join(targetPath, 'agents'), config: targetPath, root: targetPath }, targetPath);
 }
 
 function buildDeletionSet(overrides = {}) {

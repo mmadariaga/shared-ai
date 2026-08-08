@@ -329,6 +329,7 @@ function managedClaudeWorkerRecords(harness, repoRoot) {
       skills: path.join(harness.base, 'skills'),
       agents: path.join(harness.base, 'agents'),
       config: harness.base,
+      root: harness.base,
     };
     projections = expandInstallManifest(manifest, { harness: 'claude', repoRoot, destinationRoot })
       .filter(projection => projection.strategy === 'tunable-seed');
@@ -376,6 +377,7 @@ function managedOpencodeAgentRecords(harness, repoRoot) {
       skills: path.join(harness.base, 'skills'),
       agents: path.join(harness.base, 'agents'),
       config: harness.base,
+      root: harness.base,
     };
     projections = expandInstallManifest(manifest, { harness: 'opencode', repoRoot, destinationRoot })
       .filter(projection => projection.strategy === 'tunable-seed');

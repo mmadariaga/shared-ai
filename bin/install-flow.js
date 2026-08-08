@@ -520,7 +520,7 @@ function sha256Buffer(value) {
 }
 
 function destinationRoots(harness, roots) {
-  return { commands: path.join(roots.base, 'commands'), sai: path.join(roots.base, 'sai'), skills: path.join(roots.base, 'skills'), agents: path.join(roots.base, 'agents'), config: roots.base };
+  return { commands: path.join(roots.base, 'commands'), sai: path.join(roots.base, 'sai'), skills: path.join(roots.base, 'skills'), agents: path.join(roots.base, 'agents'), config: roots.base, root: roots.base };
 }
 
 function installProjection(projection, targetPath) {
