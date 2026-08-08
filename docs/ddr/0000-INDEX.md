@@ -40,6 +40,7 @@ This index groups the DDRs in `docs/ddr/` by **command** and by **cross-cutting 
 - [0107 — Cross-family relationships are family-prefixed and family-isolated; supersedes never crosses families](./0107-cross-family-relationship-encoding.md)
 - [0108 — Numbering stays independent per family; a record keeps its number when it moves between families](./0108-independent-per-family-numbering.md)
 - [0109 — "Testable" (RED block) and "divisible" (production surface) are distinct Step properties](./0109-testable-and-divisible-are-distinct-step-properties.md) — Refs adr:0115
+- [0115 — The implementation plan's step identity is its `#### Step N:` H4-with-colon heading](./0115-implementation-step-identity-is-h4-heading.md)
 
 ### `/sai-4-apply`
 
@@ -52,6 +53,8 @@ This index groups the DDRs in `docs/ddr/` by **command** and by **cross-cutting 
 - [0062 — Field 9's soft-degradation exemption is stated at two sites](./0062-field-9-soft-degradation-stated-at-two-sites.md) — **Amends** adr:0026
 - [0063 — A contract-violating telemetry note is dropped whole, never trimmed](./0063-violating-telemetry-note-dropped-not-cleaned.md)
 - [0109 — "Testable" (RED block) and "divisible" (production surface) are distinct Step properties](./0109-testable-and-divisible-are-distinct-step-properties.md) — Refs adr:0115
+- [0115 — The implementation plan's step identity is its `#### Step N:` H4-with-colon heading](./0115-implementation-step-identity-is-h4-heading.md)
+- [0116 — The apply phase carries no progress events because it has no coordinator-worker boundary](./0116-apply-phase-carries-no-progress-events.md) — Refs 0110
 
 ### `/sai-5-review`
 
@@ -103,6 +106,8 @@ This index groups the DDRs in `docs/ddr/` by **command** and by **cross-cutting 
 - [0110 — Progress reporting is additive and nonterminal; a run closes with exactly one terminal status](./0110-additive-nonterminal-progress-event.md)
 - [0111 — Rendered progress state is a pure function of the declared plan order plus the marked set](./0111-rendered-progress-state-pure-function.md)
 - [0114 — The dispatch envelope is exactly two strings; progress-plan content never travels in it](./0114-progress-plan-never-transported-in-envelope.md)
+- [0115 — The implementation plan's step identity is its `#### Step N:` H4-with-colon heading](./0115-implementation-step-identity-is-h4-heading.md)
+- [0116 — The apply phase carries no progress events because it has no coordinator-worker boundary](./0116-apply-phase-carries-no-progress-events.md) — Refs 0110
 
 ### Fetch resolution & path conventions
 

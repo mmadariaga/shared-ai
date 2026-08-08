@@ -85,6 +85,9 @@ Durable execution-observed facts about the shared-ai prompt and installer reposi
 - **node -e**: Inline verification scripts passed to `node -e` inside PowerShell 5.1 double-quoted commands must double any literal backtick (`` `` ``) — a single backtick is stripped as the PowerShell escape character, silently altering the script (e.g. `d.includes('`Read`')` ran as `d.includes('Read')` and printed `false` although the file content was correct).
   *Observed:* main-agent-shell-containment — the Step 2 delta check command failed with verbatim quoting; doubling the backticks made the same check pass.
 
+- **test/apply-coordinator-verification.test.js**: The suite pins every `Verification Checklist` occurrence in `sai/instructions/apply.md` to be followed by `sweep` within 500 characters (whole-file proximity pin) — new prose mentioning "Verification Checklist" trips it unless a sweep mention follows within 500 chars.
+  *Observed:* apply-step-progress-plan — the plan's Edit-2 marking-hook wording "after the Step's Verification Checklist passes" introduced a new occurrence lacking sweep proximity and failed the line-320 pin; rewording to "after the Step's verification passes" (matching the change's interfaces contract) restored both the projection suite and the coordinator-verification suite.
+
 ## Avoid
 
 - **configs/opencode.jsonc**: Do not assert managed-worker registration from the configuration agent map — the sample carries no `agent.sai-*-worker` keys; worker membership is file-based (projected `agents/opencode/*.md` files plus the binding-derived roster).
