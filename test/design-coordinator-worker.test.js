@@ -816,3 +816,117 @@ test('Step 3: implementation and audit workers never emit progress events and th
   assert.match(lifecycle, /(?:payload|validation)[\s\S]{0,240}unchanged|unchanged[\s\S]{0,240}(?:payload|validation)/i,
     'payload validation for implementation and audit workers should be unchanged');
 });
+
+// ─── Step 4: command-progress-plan-protocol (design coordinator.md) ─────────
+
+test('Step 4: design coordinator declares the plan with the four canonical steps in order', () => {
+  const coordinator = artifact('sai/commands/design/coordinator.md');
+
+  for (const id of ['prereqs-resolution', 'specs-approval', 'research', 'artifacts']) {
+    assert.match(coordinator, new RegExp(id.replace(/-/g, '\\-')),
+      `the plan should declare the ${id} step id`);
+  }
+  assert.match(
+    coordinator,
+    /prereqs-resolution[\s\S]{0,300}specs-approval[\s\S]{0,300}research[\s\S]{0,300}artifacts/,
+    'the four canonical step ids should be declared in order'
+  );
+  assert.match(coordinator, /prereqs-resolution[\s\S]{0,200}Prerequisites and change resolution/i,
+    'prereqs-resolution should carry the "Prerequisites and change resolution" label');
+  assert.match(coordinator, /specs-approval[\s\S]{0,200}Specs approval gate/i,
+    'specs-approval should carry the "Specs approval gate" label');
+  assert.match(coordinator, /research[\s\S]{0,200}Research and open questions/i,
+    'research should carry the "Research and open questions" label');
+  assert.match(coordinator, /artifacts[\s\S]{0,200}Artifact generation and verification/i,
+    'artifacts should carry the "Artifact generation and verification" label');
+});
+
+test('Step 4: the design worker contract enumerates the same four step ids in the same order', () => {
+  const worker = artifact('sai/orchestration/workers/sai-2-design-worker.md');
+
+  assert.match(
+    worker,
+    /prereqs-resolution[\s\S]{0,800}specs-approval[\s\S]{0,800}research[\s\S]{0,800}artifacts/,
+    'the design worker contract should enumerate the same four step ids in the same order'
+  );
+});
+
+test('Step 4: the coordinator nonterminal-extensions line admits progress events resumed with continue_after_progress', () => {
+  const coordinator = artifact('sai/commands/design/coordinator.md');
+
+  assert.match(coordinator, /nonterminal[-_ ]extensions?/i,
+    'the coordinator should declare its nonterminal extensions');
+  assert.match(
+    coordinator,
+    /nonterminal[-_ ]extensions?[\s\S]{0,300}continue_after_progress|continue_after_progress[\s\S]{0,300}nonterminal[-_ ]extensions?/i,
+    'the nonterminal-extensions line should admit progress events'
+  );
+  assert.match(
+    coordinator,
+    /resume[\s\S]{0,200}continue_after_progress|continue_after_progress[\s\S]{0,200}resume/i,
+    'progress events should resume the worker with continue_after_progress'
+  );
+});
+
+test('Step 4: the full plan renders at dispatch before the first worker result with an empty marked set', () => {
+  const coordinator = artifact('sai/commands/design/coordinator.md');
+
+  assert.match(coordinator, /at dispatch/i,
+    'the full plan should render at dispatch');
+  assert.match(
+    coordinator,
+    /before[\s\S]{0,100}first[\s\S]{0,100}worker result|first[\s\S]{0,100}worker result[\s\S]{0,160}before/i,
+    'the render should occur before the first worker result'
+  );
+  assert.match(coordinator, /in_progress/,
+    'the plan should use the in_progress mark value');
+  assert.match(coordinator, /pending/,
+    'the plan should use the pending mark value');
+  assert.match(coordinator, /first[\s\S]{0,160}in_progress|in_progress[\s\S]{0,160}first/i,
+    'the first step should render in_progress');
+  assert.match(
+    coordinator,
+    /(?:remaining|rest|others?)[\s\S]{0,160}pending|pending[\s\S]{0,160}(?:remaining|rest|others?)/i,
+    'the remaining steps should render pending'
+  );
+  assert.match(coordinator, /empty[\s\S]{0,160}mark|mark(?:ed)?[\s\S]{0,160}empty|unmarked/i,
+    'the marked set should be empty at dispatch');
+});
+
+test('Step 4: completed runs render every unmarked step completed; failed and cancelled freeze the list', () => {
+  const coordinator = artifact('sai/commands/design/coordinator.md');
+
+  assert.match(coordinator, /completed[\s\S]{0,240}unmarked|unmarked[\s\S]{0,240}completed/i,
+    'a completed run should render every unmarked step completed');
+  assert.match(
+    coordinator,
+    /(?:all|every)[\s\S]{0,120}steps?[\s\S]{0,160}completed|completed[\s\S]{0,160}(?:all|every)[\s\S]{0,120}steps?/i,
+    'a completed run should render all steps completed'
+  );
+  assert.match(
+    coordinator,
+    /failed[\s\S]{0,200}(?:freeze|frozen|as last rendered)|cancelled[\s\S]{0,200}(?:freeze|frozen|as last rendered)/i,
+    'failed or cancelled runs should freeze the list'
+  );
+  assert.match(coordinator, /as last rendered|last render/i,
+    'the freeze should preserve the list as last rendered');
+});
+
+test('Step 4: needs_input is a terminal lifecycle status but not a run-closing one and leaves the list unchanged', () => {
+  const coordinator = artifact('sai/commands/design/coordinator.md');
+
+  assert.match(coordinator, /needs_input/,
+    'the coordinator should handle the needs_input lifecycle status');
+  assert.match(
+    coordinator,
+    /needs_input[\s\S]{0,240}(?:unchanged|as last rendered|leaves? the (?:plan )?list)|(?:unchanged|leaves? the (?:plan )?list)[\s\S]{0,240}needs_input/i,
+    'needs_input should leave the plan list unchanged'
+  );
+  assert.match(coordinator, /needs_input[\s\S]{0,240}terminal|terminal[\s\S]{0,240}needs_input/i,
+    'needs_input should be described as a terminal lifecycle status');
+  assert.match(
+    coordinator,
+    /needs_input[\s\S]{0,240}(?:not|never)[\s\S]{0,160}(?:run[- ]closing|clos)|(?:not|never)[\s\S]{0,160](?:run[- ]closing|clos)[\s\S]{0,240}needs_input/i,
+    'needs_input should not be a run-closing status'
+  );
+});

@@ -14,9 +14,18 @@
 
   Construct exactly two strings: `wrapper_echo_value` and `arguments_value` as specified by the active wrapper. Dispatch exactly one worker through the active design-worker binding using `original_envelope`.
 
+  Declare the canonical four-step progress plan for this phase, in order, with exactly these ids and labels — no omissions, reorders, renames, or additions:
+
+  - `prereqs-resolution` — "Prerequisites and change resolution"
+  - `specs-approval` — "Specs approval gate"
+  - `research` — "Research and open questions"
+  - `artifacts` — "Artifact generation and verification"
+
+  Render the full plan at dispatch before the first worker result per `@sai/policies/todo-structure.md` (first step `in_progress`, rest `pending`); mark steps only from worker progress-event `step_ids`; and reconcile at run-closing results: `completed` renders every unmarked step `completed`, `failed` and `cancelled` leave the list exactly as last rendered, and a `needs_input` result — a terminal lifecycle status that is not run-closing — leaves the list exactly as last rendered.
+
   Initialize an ordered duplicate-free changed-file union, empty opaque input history, empty pending feedback, `fast_track_banner_emitted: false`, and feedback iteration `0`. Validate the closed terminal payloads and the design-only notice shape. Add every reported path to the union in first-seen order.
 
-  Notices are the only allowed nonterminal extension. Print `message` exactly, set `fast_track_banner_emitted: true`, and continue the same worker with exactly `continue_after_notice`. Do not add that acknowledgement to opaque input history, user answers, or pending feedback.
+  Notices and progress events are the only allowed nonterminal extensions. For a notice, print `message` exactly, set `fast_track_banner_emitted: true`, and continue the same worker with exactly `continue_after_notice`. For a progress event, mark the reported step ids in the declared progress plan and continue the same worker with exactly `continue_after_progress` to resume it. Do not add either acknowledgement to opaque input history, user answers, or pending feedback.
 
   For `needs_input`, present the exact question and ordered options through the native picker, append only `{question, options, answer_value}` to opaque history, and forward the exact value. Require complete reconstruction state before one replacement worker. A completed result requires `resolved_change_name`.
 
