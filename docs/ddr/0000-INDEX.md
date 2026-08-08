@@ -97,6 +97,8 @@ This index groups the DDRs in `docs/ddr/` by **command** and by **cross-cutting 
 
 ### Harness wrappers & the shared instruction layer
 
+- [0117 — Fetch resolution replaces the Glob existence probe with Read-then-Read exact-path fallback](./0117-fetch-resolution-read-then-read-exact-path-fallback.md)
+- [0118 — Every resolved fetch path begins with `sai/`, `commands/`, or `skills/` and the harness root is never named](./0118-fetch-path-scope-invariant.md)
 
 ---
 
@@ -111,6 +113,8 @@ This index groups the DDRs in `docs/ddr/` by **command** and by **cross-cutting 
 
 ### Fetch resolution & path conventions
 
+- [0117 — Fetch resolution replaces the Glob existence probe with Read-then-Read exact-path fallback](./0117-fetch-resolution-read-then-read-exact-path-fallback.md)
+- [0118 — Every resolved fetch path begins with `sai/`, `commands/`, or `skills/` and the harness root is never named](./0118-fetch-path-scope-invariant.md)
 
 ### Harness portability & mirror discipline
 

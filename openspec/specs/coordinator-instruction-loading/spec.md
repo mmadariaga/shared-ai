@@ -28,22 +28,22 @@ The six routed Claude Code coordinator wrappers for design, implementation, revi
 - **THEN** the operation completes without requiring `Edit`, `Write`, or bare `Bash`
 - **AND** restoring the read tools does not grant a project mutation path
 
-### Requirement: Routed non-skill resolution is satisfiable through Glob and Read
+### Requirement: Routed non-skill resolution is satisfiable through Read
 
-The Claude Code and opencode non-skill fetch resolver instructions SHALL name `Glob` as the operation for checking their project-local `.claude/` or `.opencode/` candidate and `Read` as the operation for consuming the selected instruction. Neither routed-harness resolver SHALL require a separate `LS` operation. The Copilot resolver SHALL remain unchanged on its inline candidate-check and read contract because Copilot receives no routed worker-binding projection.
+The Claude Code and opencode non-skill fetch resolver instructions SHALL name `Read` for the project-local `.claude/` or `.opencode/` candidate first and `Read` for the user-global fallback second, and SHALL NOT name `Glob`, `LS`, or any directory-based existence probe in either branch. The Copilot resolver SHALL remain unchanged on its inline candidate-check and read contract because Copilot receives no routed worker-binding projection.
 
-#### Scenario: Glob is sufficient for candidate selection
+#### Scenario: Read is sufficient for candidate selection
 
 - **WHEN** a Claude Code or opencode routed wrapper resolves a non-skill `@sai/...` reference
-- **THEN** candidate selection checks that harness's project-local `.claude/` or `.opencode/` root using the `Glob` operation
-- **AND** the selected project-local file, or the user-global fallback, is consumed using `Read`
-- **AND** resolution does not require a distinct `LS` operation
+- **THEN** the project-local `.claude/` or `.opencode/` candidate is consumed using the `Read` operation
+- **AND** a failed project-local read selects the user-global fallback, which is consumed using `Read`
+- **AND** resolution does not require `Glob`, `LS`, or any directory-based existence probe
 
 #### Scenario: Runtime fetch instructions match the permitted scope
 
 - **WHEN** `skills/claude/fetch/SKILL.md` or `skills/opencode/fetch/SKILL.md` is loaded for a routed wrapper
-- **THEN** its non-skill path rule names `Glob` for candidate selection and `Read` for file loading
-- **AND** it does not instruct the caller to require `LS`
+- **THEN** its non-skill path rule names `Read` for both the project-local candidate and the user-global fallback
+- **AND** it does not instruct the caller to use `Glob`, `LS`, or any directory-based existence probe
 
 #### Scenario: Copilot inline fetch resolution is unchanged
 
