@@ -25,6 +25,12 @@ This index groups the DDRs in `docs/ddr/` by **command** and by **cross-cutting 
 - [0014 — Decision summary derived exclusively from written artifacts](./0014-decision-summary-derived-from-artifacts-only.md)
 - [0072 — Numeric complexity thresholds calibrated from an archive survey](./0072-complexity-thresholds-calibrated-from-archive-survey.md) — Refs adr:0069, Refs adr:0070
 - [0106 — The ordered routing test resolves a qualifying decision's record family, DDR first, with no tie](./0106-ordered-routing-test-family-resolution.md)
+- [0109 — Progress plans are declared, canonical, and immutable; the coordinator renders and marks only](./0109-declared-canonical-immutable-progress-plan.md)
+- [0110 — Progress reporting is additive and nonterminal; a run closes with exactly one terminal status](./0110-additive-nonterminal-progress-event.md)
+- [0111 — Rendered progress state is a pure function of the declared plan order plus the marked set](./0111-rendered-progress-state-pure-function.md)
+- [0112 — Task-list semantics are harness-neutral and single-sourced; below three declared steps no list renders](./0112-neutral-task-list-policy-single-source.md)
+- [0113 — The task-list tool call originates exclusively from the coordinator session, never from a worker subagent](./0113-todowrite-emission-coordinator-only.md)
+- [0114 — The dispatch envelope is exactly two strings; progress-plan content never travels in it](./0114-progress-plan-never-transported-in-envelope.md)
 
 ### `/sai-3-implement`
 
@@ -92,10 +98,17 @@ This index groups the DDRs in `docs/ddr/` by **command** and by **cross-cutting 
 
 ## Cross-cutting categories
 
+- [0109 — Progress plans are declared, canonical, and immutable; the coordinator renders and marks only](./0109-declared-canonical-immutable-progress-plan.md)
+- [0110 — Progress reporting is additive and nonterminal; a run closes with exactly one terminal status](./0110-additive-nonterminal-progress-event.md)
+- [0111 — Rendered progress state is a pure function of the declared plan order plus the marked set](./0111-rendered-progress-state-pure-function.md)
+- [0114 — The dispatch envelope is exactly two strings; progress-plan content never travels in it](./0114-progress-plan-never-transported-in-envelope.md)
+
 ### Fetch resolution & path conventions
 
 
 ### Harness portability & mirror discipline
+
+- [0112 — Task-list semantics are harness-neutral and single-sourced; below three declared steps no list renders](./0112-neutral-task-list-policy-single-source.md)
 
 
 ### Argument passing & change-name resolution
@@ -117,6 +130,7 @@ This index groups the DDRs in `docs/ddr/` by **command** and by **cross-cutting 
 - [0062 — Field 9's soft-degradation exemption is stated at two sites](./0062-field-9-soft-degradation-stated-at-two-sites.md) — **Amends** 0026
 - [0063 — A contract-violating telemetry note is dropped whole, never trimmed](./0063-violating-telemetry-note-dropped-not-cleaned.md)
 - [0109 — The delegation envelope's status is reserved for dispatch outcomes; check verdicts travel only in the output payload](./0109-delegation-envelope-status-reserved-for-dispatch-outcomes.md)
+- [0113 — The task-list tool call originates exclusively from the coordinator session, never from a worker subagent](./0113-todowrite-emission-coordinator-only.md)
 
 ### Testability routing & RED → GREEN
 

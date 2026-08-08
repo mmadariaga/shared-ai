@@ -160,3 +160,18 @@ Every `needs_input` question SHALL comply with the question-context policy (`@sa
 
 - **WHEN** a compliant `needs_input` question or notice message reaches the coordinator
 - **THEN** the coordinator forwards it exactly as authored, without rephrasing or adding context
+
+### Requirement: progress-event-extension
+
+As a further design-scoped, additive extension, after prerequisite checks pass and change resolution completes a design worker MAY return a nonterminal progress event containing exactly `event: progress`, `step_ids`, and `changed_files`; the coordinator SHALL mark the reported step ids in the invocation-scoped progress plan, add every path in the event's `changed_files` to the invocation-scoped changed-file union in first-seen order, and the same worker SHALL resume after the coordinator sends the fixed protocol acknowledgement `continue_after_progress`. The progress extension SHALL NOT apply to implementation planning workers or audit workers, SHALL NOT alter the four-terminal-status contract, and the acknowledgement SHALL be protocol-only, never recorded as user input, opaque interaction history, or pending feedback.
+
+#### Scenario: Design worker emits a progress event
+
+- **WHEN** design prerequisites pass, the change is resolved, and the worker completes one or more declared plan steps
+- **THEN** the worker SHALL return a nonterminal progress event with the completed step ids and changed files
+- **AND** the coordinator SHALL mark them, add the changed files to the invocation-scoped union, and continue that same worker using `continue_after_progress`
+
+#### Scenario: Progress acknowledgement is not interaction history
+
+- **WHEN** the coordinator continues a design worker using `continue_after_progress`
+- **THEN** the acknowledgement SHALL be excluded from opaque input history, user-answer handling, and pending feedback

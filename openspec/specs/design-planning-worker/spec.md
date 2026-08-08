@@ -240,3 +240,22 @@ The design worker SHALL NOT use Proposal Complexity to select a model, effort le
 #### Scenario: Proposal carries any complexity token
 - **WHEN** `proposal.md` contains `low`, `medium`, or `high` Proposal Complexity
 - **THEN** the same configured design worker and workflow SHALL run without routing on that token
+
+### Requirement: design-worker-progress-emission
+
+The design worker SHALL emit progress events, after prerequisite checks pass and change resolution completes, whenever it completes one or more steps of the progress plan whose ids are canonical in the phase contracts. The design worker contract SHALL enumerate exactly the step ids `prereqs-resolution`, `specs-approval`, `research`, and `artifacts`, and every event SHALL carry only ids from that enumeration, in plan order, plus the files changed since the preceding result. The worker SHALL NOT author, extend, or reorder the plan, and SHALL NOT emit a progress event before resolution or in place of a terminal payload.
+
+#### Scenario: startup act is one batch
+
+- **WHEN** the worker completes fast-track parsing, prerequisite checks, and change resolution as one act
+- **THEN** it SHALL emit one progress event carrying every step id that act completed
+
+#### Scenario: skipped steps fold into the batch
+
+- **WHEN** fast-track skips a gate step
+- **THEN** the worker SHALL report the skipped step id inside the completed batch and SHALL NOT invent a separate skipped field
+
+#### Scenario: terminal payload still closes
+
+- **WHEN** the worker completes planning
+- **THEN** it SHALL still return exactly one terminal lifecycle status and SHALL NOT close with a progress event

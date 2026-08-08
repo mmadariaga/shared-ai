@@ -76,7 +76,8 @@ The Continue-now envelope SHALL carry `wrapper_echo_value` and `arguments_value`
 - **AND** `arguments_value` set to the resolved change name
 
 ### Requirement: The design coordinator is a conversational control plane
-For routed `/sai-2-design` invocations, the coordinator SHALL preserve slash-command invocation and interactive navigation while performing no OpenSpec command execution, argument parsing, change resolution, prerequisite checking, codebase inspection, artifact reading, artifact writing, or technical design reasoning. It SHALL delegate the technical workflow to the design worker through the harness binding. It SHALL print user-visible worker notices exactly as authored and resume the same worker, without deriving or interpreting the notice.
+
+For routed `/sai-2-design` invocations, the coordinator SHALL preserve slash-command invocation and interactive navigation while performing no OpenSpec command execution, argument parsing, change resolution, prerequisite checking, codebase inspection, artifact reading, artifact writing, or technical design reasoning. It SHALL delegate the technical workflow to the design worker through the harness binding. It SHALL print user-visible worker notices exactly as authored and resume the same worker, without deriving or interpreting the notice. The design adapter declares a progress plan, so the coordinator SHALL render it as a live task list per the neutral policy, mark steps only from worker progress events, and resume the same worker with `continue_after_progress`; the plan and marked set SHALL be held in invocation-scoped state, rendered at dispatch, and reconciled at terminal results, and SHALL NOT be derived from artifacts.
 
 #### Scenario: Routed design invocation begins
 - **WHEN** Claude Code or opencode invokes `/sai-2-design` with arguments
@@ -89,6 +90,11 @@ For routed `/sai-2-design` invocations, the coordinator SHALL preserve slash-com
 #### Scenario: Fast-track invocation begins
 - **WHEN** the worker returns a nonterminal fast-track notice after successful prerequisite checks
 - **THEN** the coordinator SHALL print the notice exactly once, set its design-scoped banner-emitted flag, and acknowledge the same worker with the fixed protocol value `continue_after_notice` without resolving the change or deciding which gates are skipped
+
+#### Scenario: Progress event is rendered and marked
+
+- **WHEN** the worker returns a nonterminal progress event
+- **THEN** the coordinator SHALL mark the reported step ids in the invocation-scoped plan, update the rendered task list, and continue the same worker with `continue_after_progress` without resolving the change or interpreting the event
 
 #### Scenario: Notice acknowledgement is protocol-only
 - **WHEN** the coordinator sends `continue_after_notice` after presenting a worker notice
@@ -160,3 +166,24 @@ The routed design worker SHALL use the phase-specific identifier `sai-2-design-w
 - **WHEN** `/sai-2-design` runs
 - **THEN** `/sai-2-design` SHALL dispatch only `sai-2-design-worker`
 - **AND** it SHALL NOT dispatch `sai-3-implementation-worker`
+
+### Requirement: design-adapter-declares-progress-plan
+
+The design phase adapter (`sai/commands/design/coordinator.md`) SHALL declare a `progress_plan` with exactly the following ordered progress steps:
+
+    prereqs-resolution: "Prerequisites and change resolution"
+    specs-approval: "Specs approval gate"
+    research: "Research and open questions"
+    artifacts: "Artifact generation and verification"
+
+The design worker contract SHALL enumerate the same step ids in the same order. The adapter SHALL NOT omit, reorder, or rename these steps, and SHALL NOT add steps.
+
+#### Scenario: design plan is declared
+
+- **WHEN** `/sai-2-design` starts in Claude Code or opencode
+- **THEN** the design adapter SHALL declare the four canonical progress steps in order
+
+#### Scenario: worker contract mirrors the ids
+
+- **WHEN** the design worker contract is read
+- **THEN** it SHALL enumerate exactly `prereqs-resolution`, `specs-approval`, `research`, and `artifacts`
