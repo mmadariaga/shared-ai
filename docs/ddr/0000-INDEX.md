@@ -66,6 +66,7 @@ This index groups the DDRs in `docs/ddr/` by **command** and by **cross-cutting 
 - [0094 — Supervised auto-answer confidence is a qualitative judgment gated by an objective grounding floor](./0094-qualitative-confidence-with-grounding-floor.md) — Pair with 0095
 - [0095 — Auto-answer grounding sources are bounded and exclude the explore conversation](./0095-bounded-grounding-sources-exclude-conversation.md) — Pair with 0094
 - [0105 — Severity-prefixed identifiers for artifact review findings](./0105-severity-prefixed-identifiers-for-artifact-review-findings.md)
+- [0109 — The delegation envelope's status is reserved for dispatch outcomes; check verdicts travel only in the output payload](./0109-delegation-envelope-status-reserved-for-dispatch-outcomes.md)
 
 ### `/sai-backfill`
 
@@ -113,6 +114,7 @@ This index groups the DDRs in `docs/ddr/` by **command** and by **cross-cutting 
 - [0027 — A failing GREEN is a human decision, reached via bounded iteration](./0027-failing-green-human-decision.md)
 - [0062 — Field 9's soft-degradation exemption is stated at two sites](./0062-field-9-soft-degradation-stated-at-two-sites.md) — **Amends** 0026
 - [0063 — A contract-violating telemetry note is dropped whole, never trimmed](./0063-violating-telemetry-note-dropped-not-cleaned.md)
+- [0109 — The delegation envelope's status is reserved for dispatch outcomes; check verdicts travel only in the output payload](./0109-delegation-envelope-status-reserved-for-dispatch-outcomes.md)
 
 ### Testability routing & RED → GREEN
 

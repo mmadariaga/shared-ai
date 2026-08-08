@@ -2,11 +2,11 @@
 
 ### Requirement: Routed coordinator read scope is sufficient but non-writing
 
-The Claude Code allowed-tools list for each routed design, implementation, review, security, performance, and accessibility coordinator SHALL be exactly `Read, Glob, Skill, Agent, SendMessage, AskUserQuestion`. `Read` and `Glob` SHALL be available for resolving the coordinator's own fetched instruction chain, while `Edit`, `Write`, and bare unrestricted `Bash` SHALL remain unavailable.
+The Claude Code allowed-tools list for each routed spec, design, implementation, review, security, performance, and accessibility coordinator SHALL be exactly `Read, Glob, Skill, Agent, SendMessage, AskUserQuestion`. `Read` and `Glob` SHALL be available for resolving the coordinator's own fetched instruction chain, while `Edit`, `Write`, and bare unrestricted `Bash` SHALL remain unavailable.
 
-#### Scenario: All six routed coordinators receive the restored read tools
+#### Scenario: All seven routed coordinators receive the restored read tools
 
-- **WHEN** the frontmatter of `commands/claude/sai-2-design.md`, `commands/claude/sai-3-implement.md`, `commands/claude/sai-5-review.md`, `commands/claude/sai-6-security.md`, `commands/claude/sai-7-performance.md`, and `commands/claude/sai-8-accessibility.md` is inspected
+- **WHEN** the frontmatter of `commands/claude/sai-1-spec.md`, `commands/claude/sai-2-design.md`, `commands/claude/sai-3-implement.md`, `commands/claude/sai-5-review.md`, `commands/claude/sai-6-security.md`, `commands/claude/sai-7-performance.md`, and `commands/claude/sai-8-accessibility.md` is inspected
 - **THEN** each file declares `allowed-tools: Read, Glob, Skill, Agent, SendMessage, AskUserQuestion`
 - **AND** each list contains both `Read` and `Glob`
 

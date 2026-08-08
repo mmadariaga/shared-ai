@@ -83,6 +83,9 @@ Durable execution-observed facts about the shared-ai prompt and installer reposi
 - **git grep**: An exit code of 1 means no-match (expected for no-match predicates, not an error) — append `; Write-Output "exit=$LASTEXITCODE"` to distinguish it; single-quote patterns containing backticks or brackets so PowerShell does not interpret them (bracket-heavy patterns like `- [NNNN — {Title}]` need `git grep -n -F` with the `-F` fixed-strings flag). A no-match predicate over lines a change itself introduces (for example a composing router body) is satisfied by match-set membership — matches confined to the expected file with exit 0 — not only by exit 1; verify membership, not the raw exit code.
   *Observed:* split-prereqs-check-and-paths — the fetch-site guard expected exit 1, but the router's own two `Fetch @sai/policies/prereqs-{check,paths}.md` lines matched with exit 0; membership (only the router matches) satisfied the guard.
 
+- **node -e**: Inline verification scripts passed to `node -e` inside PowerShell 5.1 double-quoted commands must double any literal backtick (`` `` ``) — a single backtick is stripped as the PowerShell escape character, silently altering the script (e.g. `d.includes('`Read`')` ran as `d.includes('Read')` and printed `false` although the file content was correct).
+  *Observed:* main-agent-shell-containment — the Step 2 delta check command failed with verbatim quoting; doubling the backticks made the same check pass.
+
 ## Avoid
 
 - **configs/opencode.jsonc**: Do not assert managed-worker registration from the configuration agent map — the sample carries no `agent.sai-*-worker` keys; worker membership is file-based (projected `agents/opencode/*.md` files plus the binding-derived roster).
