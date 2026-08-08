@@ -9,7 +9,6 @@ const readline = require('readline');
 const childProcess = require('child_process');
 const crypto = require('crypto');
 const { loadInstallManifest, expandInstallManifest, expandRetirementManifest } = require('./install-manifest');
-const { inspectManagedWorkerMigration, migrateManagedWorkerIdentity } = require('./managed-worker-migration');
 
 let jsoncParser = null;
 try {
@@ -20,93 +19,153 @@ try {
 
 const OPENCODE_AGENT_KEYS = ['explore', 'executor', 'budget'];
 const OPENCODE_PLACEHOLDER_MODEL = 'opencode-go/deepseek-v4-flash';
+const CLAUDE_TUNABLE_KEYS = Object.freeze(['model', 'effort']);
+const OPENCODE_TUNABLE_KEYS = Object.freeze(['model', 'variant']);
+
+const TUNABLE_SCALAR = /^([A-Za-z0-9_-]+):\s*(.*)$/;
+
+function splitFrontmatter(text) {
+  const lines = text.split('\n');
+  if (lines.length === 0 || lines[0] !== '---') return null;
+  const end = lines.indexOf('---', 1);
+  if (end === -1) return null;
+  return { header: lines[0], frontmatter: lines.slice(1, end), rest: lines.slice(end) };
+}
+
+function extractTunableValues(text, tunableKeys) {
+  const values = new Map();
+  const split = splitFrontmatter(text);
+  if (!split) return values;
+  for (const line of split.frontmatter) {
+    const match = TUNABLE_SCALAR.exec(line);
+    if (match && tunableKeys.includes(match[1])) values.set(match[1], match[2]);
+  }
+  return values;
+}
+
+function spliceTunables(sourceText, destinationText, tunableKeys) {
+  const split = splitFrontmatter(sourceText);
+  if (!split) return sourceText;
+  if (!splitFrontmatter(destinationText)) return sourceText;
+  const fm = split.frontmatter;
+  const destValues = extractTunableValues(destinationText, tunableKeys);
+  const sourceKeys = extractTunableValues(sourceText, tunableKeys);
+
+  const kept = [];
+  let insertionIndex = fm.length;
+  for (let i = 0; i < fm.length; i++) {
+    const line = fm[i];
+    const match = TUNABLE_SCALAR.exec(line);
+    if (!match) {
+      if (/^\s/.test(line) && insertionIndex === fm.length) insertionIndex = kept.length - 1;
+      kept.push(line);
+      continue;
+    }
+    if (tunableKeys.includes(match[1])) {
+      if (destValues.has(match[1])) kept.push(`${match[1]}: ${destValues.get(match[1])}`);
+      continue;
+    }
+    kept.push(line);
+  }
+  const appended = [];
+  for (const key of tunableKeys) {
+    if (!sourceKeys.has(key) && destValues.has(key)) appended.push(`${key}: ${destValues.get(key)}`);
+  }
+  if (insertionIndex === fm.length) insertionIndex = kept.length;
+  return [split.header, ...kept.slice(0, insertionIndex), ...appended, ...kept.slice(insertionIndex), ...split.rest].join('\n');
+}
+
+function stripTunableLines(bytes, tunableKeys) {
+  const text = bytes.toString('utf8');
+  const split = splitFrontmatter(text);
+  if (!split) return bytes;
+  const kept = split.frontmatter.filter((line) => {
+    const match = TUNABLE_SCALAR.exec(line);
+    return !(match && tunableKeys.includes(match[1]));
+  });
+  return Buffer.from([split.header, ...kept, ...split.rest].join('\n'), 'utf8');
+}
+
+function deleteSidecarUnderShapeGuard(destinationPath) {
+  const sidecarPath = path.join(path.dirname(destinationPath), `.${path.basename(destinationPath, '.md')}.owner.json`);
+  if (!fs.existsSync(sidecarPath)) return false;
+  let parsed;
+  try {
+    parsed = JSON.parse(fs.readFileSync(sidecarPath, 'utf8'));
+  } catch {
+    return false;
+  }
+  if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) return false;
+  const keys = Object.keys(parsed);
+  if (keys.length !== 1 || keys[0] !== 'managedHash') return false;
+  if (typeof parsed.managedHash !== 'string' || !/^[0-9a-f]{64}$/.test(parsed.managedHash)) return false;
+  fs.unlinkSync(sidecarPath);
+  return true;
+}
+
+function tunableSeedInstaller(projection) {
+  const sourceBytes = fs.readFileSync(projection.sourcePath);
+  const destination = projection.destinationPath;
+  const tunableKeys = projection.harness === 'claude' ? CLAUDE_TUNABLE_KEYS : OPENCODE_TUNABLE_KEYS;
+  ensureDir(path.dirname(destination));
+  let outcome;
+  if (!fs.existsSync(destination)) {
+    fs.writeFileSync(destination, sourceBytes);
+    outcome = 'created';
+  } else {
+    const destinationBytes = fs.readFileSync(destination);
+    const spliced = spliceTunables(sourceBytes.toString('utf8'), destinationBytes.toString('utf8'), tunableKeys);
+    fs.writeFileSync(destination, spliced);
+    const differs = !stripTunableLines(sourceBytes, tunableKeys).equals(stripTunableLines(destinationBytes, tunableKeys));
+    outcome = differs ? 'overwritten' : 'reused';
+    if (differs) {
+      console.log(`Notice: managed agent body or non-tunable frontmatter differs from source; overwritten ${destination}`);
+    }
+  }
+  deleteSidecarUnderShapeGuard(destination);
+  return outcome;
+}
 const MANAGED_WORKERS = Object.freeze({
   'sai-3-implementation-worker': Object.freeze({
     claude: Object.freeze({
       agent: 'sai-3-implementation-worker.md',
-      owner: '.sai-3-implementation-worker.owner.json',
     }),
   }),
   'sai-2-design-worker': Object.freeze({
     claude: Object.freeze({
       agent: 'sai-2-design-worker.md',
-      owner: '.sai-2-design-worker.owner.json',
     }),
   }),
   'sai-5-review-worker': Object.freeze({
     claude: Object.freeze({
       agent: 'sai-5-review-worker.md',
-      owner: '.sai-5-review-worker.owner.json',
     }),
   }),
   'sai-6-security-worker': Object.freeze({
     claude: Object.freeze({
       agent: 'sai-6-security-worker.md',
-      owner: '.sai-6-security-worker.owner.json',
     }),
   }),
   'sai-7-performance-worker': Object.freeze({
     claude: Object.freeze({
       agent: 'sai-7-performance-worker.md',
-      owner: '.sai-7-performance-worker.owner.json',
     }),
   }),
   'sai-8-accessibility-worker': Object.freeze({
     claude: Object.freeze({
       agent: 'sai-8-accessibility-worker.md',
-      owner: '.sai-8-accessibility-worker.owner.json',
     }),
   }),
   'sai-1-spec-proposal-worker': Object.freeze({
     claude: Object.freeze({
       agent: 'sai-1-spec-proposal-worker.md',
-      owner: '.sai-1-spec-proposal-worker.owner.json',
     }),
   }),
 });
 const CLAUDE_IMPLEMENTATION_WORKER_AGENT = MANAGED_WORKERS['sai-3-implementation-worker'].claude.agent;
-const CLAUDE_IMPLEMENTATION_WORKER_OWNER = MANAGED_WORKERS['sai-3-implementation-worker'].claude.owner;
 const CLAUDE_DESIGN_WORKER_AGENT = MANAGED_WORKERS['sai-2-design-worker'].claude.agent;
-const CLAUDE_DESIGN_WORKER_OWNER = MANAGED_WORKERS['sai-2-design-worker'].claude.owner;
 const CLAUDE_SPEC_WORKER_AGENT = MANAGED_WORKERS['sai-1-spec-proposal-worker'].claude.agent;
-const CLAUDE_SPEC_WORKER_OWNER = MANAGED_WORKERS['sai-1-spec-proposal-worker'].claude.owner;
 const CLAUDE_REVIEW_WORKER_AGENT = MANAGED_WORKERS['sai-5-review-worker'].claude.agent;
-const CLAUDE_REVIEW_WORKER_OWNER = MANAGED_WORKERS['sai-5-review-worker'].claude.owner;
-const OWNER_BY_CLAUDE_AGENT = Object.freeze(Object.fromEntries(
-  Object.values(MANAGED_WORKERS).map(({ claude }) => [claude.agent, claude.owner]),
-));
-const LEGACY_CLAUDE_WORKERS = [
-  { agent: 'sai-design-planning-worker.md', owner: '.sai-design-planning-worker.owner.json', replacement: 'sai-2-design-worker.md', replacementOwner: '.sai-2-design-worker.owner.json' },
-  { agent: 'sai-implementation-planning-worker.md', owner: '.sai-implementation-planning-worker.owner.json', replacement: 'sai-3-implementation-worker.md', replacementOwner: '.sai-3-implementation-worker.owner.json' },
-];
-
-function migrateLegacyClaudeWorkers(targetPath = CLAUDE_BASE) {
-  // Activated when Step 2 changes the canonical worker constants to numbered names.
-  if (!CLAUDE_DESIGN_WORKER_AGENT.startsWith('sai-2-') || !CLAUDE_IMPLEMENTATION_WORKER_AGENT.startsWith('sai-3-')) return [];
-  const migrated = [];
-  for (const legacy of LEGACY_CLAUDE_WORKERS) {
-    const agentsDir = path.join(targetPath, 'agents');
-    const legacyPath = path.join(agentsDir, legacy.agent);
-    const assessment = inspectManagedWorkerMigration({
-      legacyPath,
-      legacyOwnerPath: path.join(agentsDir, legacy.owner),
-      replacementPath: path.join(agentsDir, legacy.replacement),
-      replacementOwnerPath: path.join(agentsDir, legacy.replacementOwner),
-      replacementBytes: fs.readFileSync(path.join(REPOSITORY_ROOT, 'agents', 'claude', legacy.replacement)),
-    });
-    if (assessment.status === 'protected-collision') {
-      throw new Error(`Protected legacy Claude agent at ${legacyPath}: ${assessment.reason}. Rename or remove it manually, then retry.`);
-    }
-    if (assessment.status !== 'not-found') migrated.push(migrateManagedWorkerIdentity({
-      legacyPath,
-      legacyOwnerPath: path.join(agentsDir, legacy.owner),
-      replacementPath: path.join(agentsDir, legacy.replacement),
-      replacementOwnerPath: path.join(agentsDir, legacy.replacementOwner),
-      replacementBytes: fs.readFileSync(path.join(REPOSITORY_ROOT, 'agents', 'claude', legacy.replacement)),
-    }));
-  }
-  return migrated;
-}
 const REPOSITORY_ROOT = path.join(__dirname, '..');
 const PACKAGE_VERSION = require(path.join(REPOSITORY_ROOT, 'package.json')).version;
 
@@ -462,34 +521,6 @@ function sha256Buffer(value) {
   return crypto.createHash('sha256').update(value).digest('hex');
 }
 
-function ownedManagedWorkerInstaller(projection, options = {}) {
-  void options;
-  const agentName = path.basename(projection.destinationPath);
-  const ownerName = OWNER_BY_CLAUDE_AGENT[agentName];
-  if (!ownerName) {
-    throw new Error(`No owner sidecar registered for managed agent ${agentName}.`);
-  }
-  const agentsDir = path.dirname(projection.destinationPath);
-  const destination = projection.destinationPath;
-  const ownerPath = path.join(agentsDir, ownerName);
-  const sourceBytes = fs.readFileSync(projection.sourcePath);
-  const managedHash = sha256Buffer(sourceBytes);
-
-  ensureDir(agentsDir);
-  if (!fs.existsSync(destination)) {
-    fs.writeFileSync(destination, sourceBytes);
-    fs.writeFileSync(ownerPath, `${JSON.stringify({ managedHash }, null, 2)}\n`);
-    return 'created';
-  }
-
-  const destinationHash = sha256Buffer(fs.readFileSync(destination));
-  if (destinationHash !== managedHash) {
-    throw new Error(`Incompatible managed agent at ${destination}. Rename or remove the conflicting definition, then retry.`);
-  }
-
-  return fs.existsSync(ownerPath) ? 'reused-owned' : 'reused-user-owned';
-}
-
 function destinationRoots(harness, roots) {
   return { commands: path.join(roots.base, 'commands'), sai: path.join(roots.base, 'sai'), skills: path.join(roots.base, 'skills'), agents: path.join(roots.base, 'agents'), config: roots.base };
 }
@@ -499,9 +530,12 @@ function installProjection(projection, targetPath) {
     copyOpencodeConfig(targetPath);
     return;
   }
-  if (projection.strategy === 'owned-copy') {
-    ownedManagedWorkerInstaller(projection);
+  if (projection.strategy === 'tunable-seed') {
+    tunableSeedInstaller(projection);
     return;
+  }
+  if (projection.strategy === 'owned-copy') {
+    throw new Error(`Projection ${projection.id} declares the retired owned-copy strategy; use tunable-seed`);
   }
   copy(projection.sourcePath, projection.destinationPath);
 }
@@ -569,7 +603,6 @@ function installClaude(destBase) {
   validateClaudeWorkerBindings();
   const targetPath = destBase || CLAUDE_BASE;
   cleanupRetiredProjections('claude', { base: targetPath });
-  migrateLegacyClaudeWorkers(targetPath);
   for (const projection of expandForInstall('claude', { base: targetPath })) installProjection(projection, targetPath);
 
   writeVersionMarker(targetPath);
@@ -899,22 +932,17 @@ module.exports = {
   offerOpenspecInstall,
   MANAGED_WORKERS,
   CLAUDE_IMPLEMENTATION_WORKER_AGENT,
-  CLAUDE_IMPLEMENTATION_WORKER_OWNER,
   CLAUDE_DESIGN_WORKER_AGENT,
-  CLAUDE_DESIGN_WORKER_OWNER,
   CLAUDE_SPEC_WORKER_AGENT,
-  CLAUDE_SPEC_WORKER_OWNER,
   CLAUDE_REVIEW_WORKER_AGENT,
-  CLAUDE_REVIEW_WORKER_OWNER,
-  OWNER_BY_CLAUDE_AGENT,
-  LEGACY_CLAUDE_WORKERS,
-  migrateLegacyClaudeWorkers,
-  inspectManagedWorkerMigration,
-  migrateManagedWorkerIdentity,
   cleanupRetiredProjections,
   installProjection,
-  ownedManagedWorkerInstaller,
   sha256Buffer,
+  CLAUDE_TUNABLE_KEYS,
+  OPENCODE_TUNABLE_KEYS,
+  tunableSeedInstaller,
+  deleteSidecarUnderShapeGuard,
+  stripTunableLines,
   __test: {
     mergeOpencodeAgents,
     expectedDispatchPrompt,

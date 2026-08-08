@@ -41,21 +41,31 @@ The projected opencode agent files, installer guidance, doctor records, and fres
 - **WHEN** installer guidance and doctor enumerate managed opencode workers
 - **THEN** both SHALL observe the same worker agent files and the same canonical contract fetches
 
-### Requirement: User-owned opencode agent files are never overwritten
+### Requirement: User-owned opencode agent files preserve user tunables
+Installing or re-installing the projected worker agent files SHALL follow the `tunable-seed` lifecycle: a missing file is created with the canonical definition (the shipped tunables are seeded); an existing file is updated by overwriting its body and non-tunable frontmatter with the source bytes while preserving the destination's tunable values (`model`, `variant`) placed per the structural anchor in `agent-tunable-ownership`; a body-or-non-tunable-frontmatter divergence triggers a console notice naming the destination path, and the installer continues. The installer SHALL NOT write a `.<basename>.owner.json` sidecar file. Guarded uninstall SHALL remove a projected agent file only when its body and non-tunable frontmatter match the source; a destination whose body or non-tunable frontmatter differs from source is a project-local override and SHALL be preserved. A destination whose tunable lines differ from the source but whose body and non-tunable frontmatter match SHALL be deleted by uninstall. This requirement SHALL NOT weaken existing configuration-merge and idempotence behavior.
 
-Installing or re-installing the projected worker agent files SHALL follow the owned-copy lifecycle: a missing file is created with the canonical definition and its ownership sidecar; an exact-compatible existing file is reused; an incompatible existing file blocks installation with rename-or-remove remediation and SHALL NOT be overwritten or repaired. Guarded uninstall SHALL remove a projected agent file only when its ownership sidecar exists and its current hash matches the recorded managed hash; user-edited files SHALL be preserved. This requirement SHALL NOT weaken existing configuration-merge and idempotence behavior.
+#### Scenario: Existing custom agent file is overwritten with notice
+- **WHEN** a projected opencode agent file already exists with user-customized body or non-tunable frontmatter content
+- **THEN** installation SHALL overwrite the body and non-tunable frontmatter with the source bytes
+- **AND** SHALL preserve the destination's tunable values placed per the structural anchor in `agent-tunable-ownership`
+- **AND** SHALL emit a console notice naming the destination path
+- **AND** SHALL NOT throw and SHALL NOT block installation
 
-#### Scenario: Existing custom agent file blocks reinstall
-
-- **WHEN** a projected opencode agent file already exists with user-customized content
-- **THEN** installation SHALL NOT overwrite or repair it, and SHALL block with the incompatible-collision remediation when the content differs from the canonical definition
+#### Scenario: Tuned existing agent file preserves its tunables
+- **WHEN** a projected opencode agent file already exists with body and non-tunable frontmatter that match the source, but with tunable lines (`model`, `variant`) that differ from the source
+- **THEN** installation SHALL overwrite the body and non-tunable frontmatter with the source bytes while preserving the destination's tunable lines
+- **AND** SHALL NOT emit a console notice for that destination
 
 #### Scenario: Missing worker receives the canonical definition
-
 - **WHEN** a projected opencode agent file is absent
-- **THEN** installation SHALL create the file with the canonical frontmatter (mode, model, variant, permissions) and contract-fetch body, plus its ownership sidecar
+- **THEN** installation SHALL create the file with the canonical frontmatter (mode, model, variant, permissions) and contract-fetch body
+- **AND** SHALL NOT create a `.<basename>.owner.json` file
 
 #### Scenario: User-edited managed agent survives uninstall
+- **WHEN** uninstall evaluates a destination whose body or non-tunable frontmatter differs from the source
+- **THEN** uninstall SHALL preserve the edited agent file and emit the existing `Kept (project-local override)` warning
 
-- **WHEN** uninstall finds an ownership sidecar but the current agent-file hash no longer matches the recorded managed hash
-- **THEN** uninstall SHALL preserve the edited agent file
+#### Scenario: Tuned managed agent is removed by uninstall
+- **WHEN** uninstall evaluates a destination whose body and non-tunable frontmatter match the source but whose tunable lines differ
+- **THEN** uninstall SHALL remove the agent file
+- **AND** SHALL NOT consult any sidecar file

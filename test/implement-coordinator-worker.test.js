@@ -128,7 +128,8 @@ const { loadInstallManifest, expandInstallManifest } = require('../bin/install-m
   try {
     installClaude(claudeBase);
     assert.ok(fs.existsSync(path.join(claudeBase, 'agents', 'sai-3-implementation-worker.md')));
-    assert.ok(fs.existsSync(path.join(claudeBase, 'agents', '.sai-3-implementation-worker.owner.json')));
+    assert.equal(fs.existsSync(path.join(claudeBase, 'agents', '.sai-3-implementation-worker.owner.json')), false,
+      'fresh installs must not create owner sidecars');
 
     installOpencode(opencodeBase);
     assert.ok(fs.existsSync(path.join(opencodeBase, 'agents', 'sai-3-implementation-worker.md')),
@@ -143,7 +144,7 @@ const { loadInstallManifest, expandInstallManifest } = require('../bin/install-m
   }
 });
 
-test('installer collisions preserve unfamiliar content and provide remediation guidance', () => {
+test('installer collisions overwrite unfamiliar Claude content with notice and preserve customized opencode workers', () => {
   const { installClaude, installOpencode } = require('../bin/install-flow.js');
   const claudeBase = tempDir('sai-implement-claude-collision-');
   const opencodeBase = tempDir('sai-implement-opencode-collision-');
@@ -155,9 +156,13 @@ test('installer collisions preserve unfamiliar content and provide remediation g
     fs.mkdirSync(path.dirname(agentPath), { recursive: true });
     fs.writeFileSync(agentPath, claudeSentinel);
     const claudeResult = capture(() => installClaude(claudeBase));
-    assert.ok(claudeResult.error || claudeResult.value === false, 'Claude collision should block activation');
-    assert.equal(fs.readFileSync(agentPath, 'utf8'), claudeSentinel);
-    assert.match(`${claudeResult.output}\n${claudeResult.error?.message || ''}`, /rename|remove|collision/i);
+    assert.equal(claudeResult.error, null, 'Claude install should not throw on a divergent agent');
+    assert.deepEqual(
+      fs.readFileSync(agentPath),
+      fs.readFileSync(path.join(__dirname, '..', 'agents', 'claude', 'sai-3-implementation-worker.md')),
+      'the divergent Claude agent should be overwritten with the managed source bytes');
+    assert.match(`${claudeResult.output}\n${claudeResult.error?.message || ''}`, /notice|overwrit/i,
+      'the overwrite should be announced in stdout');
 
     fs.writeFileSync(configPath, opencodeSentinel);
     const opencodeResult = capture(() => installOpencode(opencodeBase));
@@ -224,9 +229,7 @@ test('uninstall and doctor expose ownership guards and collision status', async 
     }
 
     const agentPath = path.join(claudeBase, 'agents', 'sai-3-implementation-worker.md');
-    const sidecarPath = path.join(claudeBase, 'agents', '.sai-3-implementation-worker.owner.json');
     assert.ok(fs.existsSync(agentPath), 'managed Claude agent should be enumerable');
-    assert.ok(fs.existsSync(sidecarPath), 'managed Claude ownership sidecar should be enumerable');
 
     const unchangedEntries = enumerateClaude(claudeBase);
     assert.deepEqual(enumeratedSources(unchangedEntries), expectedSources('claude'),
@@ -235,8 +238,7 @@ test('uninstall and doctor expose ownership guards and collision status', async 
       'opencode uninstall should enumerate the installer implementation projection set');
     assert.ok(unchangedEntries.some(entry => entry.dest === agentPath), 'uninstall should include the managed agent');
     runDeletion(unchangedEntries);
-    assert.equal(fs.existsSync(agentPath), false, 'unchanged owned agent should be deleted');
-    assert.equal(fs.existsSync(sidecarPath), false, 'ownership sidecar should be deleted with its agent');
+    assert.equal(fs.existsSync(agentPath), false, 'unchanged managed agent should be deleted');
 
     installClaude(claudeBase);
     fs.appendFileSync(agentPath, '\nuser modification\n');
@@ -255,13 +257,13 @@ test('uninstall and doctor expose ownership guards and collision status', async 
     const report = output.join('');
     assert.ok(code === 0 || code === 1, 'doctor should return a normal status code');
     assert.match(report, /sai-3-implementation-worker/);
-    assert.match(report, /ownership|collision|rename|remove|modified/i);
+    assert.match(report, /modified|incompatible/i);
     const doctorReport = JSON.parse(report);
     const claudeDoctorSection = JSON.stringify(doctorReport['[Claude Code]']);
     assert.match(claudeDoctorSection, /sai-3-implementation-worker/,
       'doctor should enumerate the managed implementation worker');
-    assert.match(claudeDoctorSection, /ownership|collision|modified|incompatible/i,
-      'doctor should report the incompatible managed worker');
+    assert.match(claudeDoctorSection, /modified|incompatible/i,
+      'doctor should report the divergent managed worker');
 
     const opencodeEntries = buildDeletionSet({
       claudeBase: path.join(projectRoot, 'missing-claude'),
@@ -594,47 +596,7 @@ test('Step 5 installer documentation matches the deterministic manifest', () => 
 
 // ─── Step 1: preservation-first legacy identity migration ───────────────────
 
-test('implementation install migrates an owned legacy worker pair to the numbered identity', () => {
-  const { installClaude, sha256Buffer } = require('../bin/install-flow.js');
-  const base = tempDir('sai-implementation-legacy-');
-  const legacy = path.join(base, 'agents', 'sai-implementation-planning-worker.md');
-  const legacyOwner = path.join(base, 'agents', '.sai-implementation-planning-worker.owner.json');
-  const numbered = path.join(base, 'agents', 'sai-3-implementation-worker.md');
-  const numberedOwner = path.join(base, 'agents', '.sai-3-implementation-worker.owner.json');
-  try {
-    const legacyBytes = Buffer.from('managed legacy implementation worker\n');
-    fs.mkdirSync(path.dirname(legacy), { recursive: true });
-    fs.writeFileSync(legacy, legacyBytes);
-    fs.writeFileSync(legacyOwner, `${JSON.stringify({ managedHash: sha256Buffer(legacyBytes) })}\n`);
-    installClaude(base);
-    assert.equal(fs.existsSync(legacy), false);
-    assert.equal(fs.existsSync(legacyOwner), false);
-    assert.equal(fs.existsSync(numbered), true);
-    assert.equal(fs.existsSync(numberedOwner), true);
-  } finally {
-    removeTempDir(base);
-  }
-});
-
-test('implementation install preserves a mismatched legacy sidecar and reports manual migration', () => {
-  const { installClaude } = require('../bin/install-flow.js');
-  const base = tempDir('sai-implementation-legacy-protected-');
-  const legacy = path.join(base, 'agents', 'sai-implementation-planning-worker.md');
-  const owner = path.join(base, 'agents', '.sai-implementation-planning-worker.owner.json');
-  try {
-    fs.mkdirSync(path.dirname(legacy), { recursive: true });
-    fs.writeFileSync(legacy, 'user-modified legacy worker\n');
-    fs.writeFileSync(owner, '{}');
-    const result = capture(() => installClaude(base));
-    assert.equal(fs.existsSync(legacy), true);
-    assert.equal(fs.existsSync(path.join(base, 'agents', 'sai-3-implementation-worker.md')), false);
-    assert.match(`${result.output}\n${result.error?.message || ''}`, /protected|manual.*migration|collision/i);
-  } finally {
-    removeTempDir(base);
-  }
-});
-
-test('implementation install and uninstall preserve incompatible numbered destination content', () => {
+test('implementation install overwrites divergent numbered destination content with notice and uninstall deletes body-matching agents', () => {
   const { installClaude } = require('../bin/install-flow.js');
   const { enumerateClaude, runDeletion } = require('../bin/uninstall-flow.js');
   const base = tempDir('sai-implementation-numbered-collision-');
@@ -644,10 +606,16 @@ test('implementation install and uninstall preserve incompatible numbered destin
     fs.mkdirSync(path.dirname(target), { recursive: true });
     fs.writeFileSync(target, sentinel);
     const result = capture(() => installClaude(base));
-    assert.equal(fs.readFileSync(target, 'utf8'), sentinel);
-    assert.match(`${result.output}\n${result.error?.message || ''}`, /unmanaged|incompatible|collision/i);
+    assert.equal(result.error, null, 'installClaude should not throw on a divergent agent destination');
+    assert.deepEqual(
+      fs.readFileSync(target),
+      fs.readFileSync(path.join(__dirname, '..', 'agents', 'claude', 'sai-3-implementation-worker.md')),
+      'the divergent destination content should be overwritten with the managed source bytes');
+    assert.match(`${result.output}\n${result.error?.message || ''}`, /notice|overwrit/i,
+      'the overwrite should be announced in stdout');
     runDeletion(enumerateClaude(base));
-    assert.equal(fs.readFileSync(target, 'utf8'), sentinel);
+    assert.equal(fs.existsSync(target), false,
+      'the body-matching agent should be deleted by uninstall');
   } finally {
     removeTempDir(base);
   }

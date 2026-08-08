@@ -159,6 +159,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0102 — Consumer-scoped preflight for routed worker contract assets](./0102-consumer-scoped-preflight-for-routed-worker-contract-assets.md) — Refs 0100
 - [0103 — Retire the inline harness model in favor of two routed harnesses](./0103-retire-inline-harness-model-in-favor-of-routed-harnesses.md)
 - [0104 — Remove Copilot from the active installer inventory](./0104-remove-copilot-from-active-installer-inventory.md) — Pair with 0103
+- [0110 — Additive-then-retire decomposition for the tunable-seed strategy switch](./0110-additive-then-retire-decomposition-tunable-seed.md)
 
 ### Harness wrappers & the shared instruction layer
 
@@ -192,6 +193,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 ## Cross-cutting categories
 
 - [0107 — Unified audit severity vocabulary across the four report surfaces](./0107-unified-audit-severity-vocabulary.md) — Supersedes 0013
+- [0110 — Additive-then-retire decomposition for the tunable-seed strategy switch](./0110-additive-then-retire-decomposition-tunable-seed.md)
 
 ### Fetch resolution & path conventions
 

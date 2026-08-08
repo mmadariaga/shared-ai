@@ -38,6 +38,10 @@ function tempDir(prefix) {
   return fs.mkdtempSync(path.join(os.tmpdir(), prefix));
 }
 
+function stripTunableLines(text) {
+  return text.split('\n').filter(line => !/^(model|effort|variant):/.test(line)).join('\n');
+}
+
 function projectionSources(harness) {
   const manifest = loadInstallManifest(repoRoot);
   const destinationRoot = {
@@ -115,21 +119,35 @@ test('Step 3 manifest projects the shared lifecycle and one active harness bindi
   }
 });
 
-test('uninstall and doctor expose ownership guards by reusing an exact-compatible unowned Claude worker', () => {
+test('a tuned Claude worker preserves its tunables across install and is removed by uninstall', () => {
   const base = tempDir('sai-step-3-claude-');
   try {
     installClaude(base);
     const workerPath = path.join(base, 'agents', 'sai-3-implementation-worker.md');
     const ownerPath = path.join(base, 'agents', '.sai-3-implementation-worker.owner.json');
-    const beforeBytes = fs.readFileSync(workerPath);
-    fs.unlinkSync(ownerPath);
+    const sourceBytes = fs.readFileSync(workerPath);
+    const tuned = fs.readFileSync(workerPath, 'utf8')
+      .replace(/^model:.*$/m, 'model: tuned-model')
+      .replace(/^effort:.*$/m, 'effort: tuned-effort');
+    fs.writeFileSync(workerPath, tuned);
 
-    installClaude(base);
-    assert.deepEqual(fs.readFileSync(workerPath), beforeBytes, 'compatible worker bytes should be reused');
-    assert.equal(fs.existsSync(ownerPath), false, 'reused worker should remain unowned');
+    let installError = null;
+    try {
+      installClaude(base);
+    } catch (error) {
+      installError = error;
+    }
+    assert.equal(installError, null, 're-install should not throw on a tuned destination');
+    const after = fs.readFileSync(workerPath, 'utf8');
+    assert.ok(after.includes('model: tuned-model') && after.includes('effort: tuned-effort'),
+      'tuned values should survive a re-install');
+    assert.equal(stripTunableLines(after), stripTunableLines(sourceBytes.toString('utf8')),
+      'body and non-tunable frontmatter should match the source after a re-install');
+    assert.equal(fs.existsSync(ownerPath), false, 'no owner sidecar should exist');
 
     runDeletion(enumerateClaude(base));
-    assert.equal(fs.existsSync(workerPath), true, 'unowned compatible worker should survive uninstall');
+    assert.equal(fs.existsSync(workerPath), false,
+      'a tuned body-matching worker should be deleted by uninstall');
   } finally {
     fs.rmSync(base, { recursive: true, force: true });
   }
@@ -184,7 +202,7 @@ test('preserves commented JSONC and non-SAI settings through namespaced opencode
   }
 });
 
-test('Step 3 stops on incompatible Claude destinations while preserving customized opencode workers', () => {
+test('Step 3 overwrites incompatible Claude destinations with notice while preserving customized opencode workers', () => {
   const claudeBase = tempDir('sai-step-3-claude-collision-');
   const opencodeBase = tempDir('sai-step-3-opencode-collision-');
   const claudePath = path.join(claudeBase, 'agents', 'sai-3-implementation-worker.md');
@@ -206,8 +224,21 @@ test('Step 3 stops on incompatible Claude destinations while preserving customiz
   try {
     fs.mkdirSync(path.dirname(claudePath), { recursive: true });
     fs.writeFileSync(claudePath, claudeSentinel);
-    assert.throws(() => installClaude(claudeBase), /collision|rename|remove/i);
-    assert.equal(fs.readFileSync(claudePath, 'utf8'), claudeSentinel);
+    const claudeNotices = [];
+    const originalLog = console.log;
+    try {
+      console.log = message => claudeNotices.push(String(message));
+      assert.doesNotThrow(() => installClaude(claudeBase),
+        'installClaude should not throw on an incompatible Claude destination');
+    } finally {
+      console.log = originalLog;
+    }
+    assert.deepEqual(
+      fs.readFileSync(claudePath),
+      fs.readFileSync(path.join(repoRoot, 'agents', 'claude', 'sai-3-implementation-worker.md')),
+      'the incompatible Claude worker should be overwritten with the managed source bytes');
+    assert.ok(claudeNotices.some(message => message.includes(claudePath)),
+      'stdout should announce the overwrite naming the file');
 
     fs.writeFileSync(opencodePath, opencodeSentinel);
     installOpencode(opencodeBase);
@@ -228,8 +259,8 @@ test('Step 3 stops on incompatible Claude destinations while preserving customiz
     const documentation = [adr, boundaries, install].join('\n');
     assert.match(documentation, /sai-2-design-worker/);
     assert.match(documentation, /sai-3-implementation-worker/);
-    assert.match(documentation, /existing.*(?:user-owned|preserv)|user-owned.*existing/i);
-    assert.match(documentation, /absent.*(?:default|bootstrap)|default.*(?:absent|missing)/i);
+    assert.match(documentation, /tunable-seed/i);
+    assert.match(documentation, /body[\s\S]{0,120}(?:non-tunable|frontmatter)|non-tunable[\s\S]{0,120}body/i);
     assert.match(documentation, /model.*variant.*mode.*permissions|configured.*runtime/i);
     assert.match(documentation, /no separate coordinator profile|no .*coordinator profile|never.*coordinator/i);
     assert.match(documentation, /Claude.*collision|collision.*Claude|non-opencode.*collision/i);
@@ -239,7 +270,7 @@ test('Step 3 stops on incompatible Claude destinations while preserving customiz
   }
 });
 
-test('Step 3 opencode ADR/INSTALL prose describes projected agent files, owned-copy lifecycle, guarded uninstall, and helper-only merge', () => {
+test('Step 3 ADR/INSTALL prose describes tunable-seed projections, body-identity uninstall, and helper-only merge', () => {
   const adr = fs.readFileSync(path.join(repoRoot, 'docs', 'adr', '0077-harness-specific-worker-bindings.md'), 'utf8');
   const boundaries = fs.readFileSync(path.join(repoRoot, 'docs', 'adr', '0088-implementation-harness-projection-boundaries.md'), 'utf8');
   const installGuide = fs.readFileSync(path.join(repoRoot, 'INSTALL.opencode.md'), 'utf8');
@@ -248,10 +279,16 @@ test('Step 3 opencode ADR/INSTALL prose describes projected agent files, owned-c
     assert.match(documentation, new RegExp(worker),
       `specs/opencode-agent-preservation/spec.md: opencode documentation should describe the projected ${worker} agent file`);
   }
-  assert.match(documentation, /owned|owner|sidecar/i,
-    'specs/opencode-agent-preservation/spec.md: opencode documentation should describe the owned-copy lifecycle');
+  assert.match(documentation, /tunable-seed/,
+    'specs/opencode-agent-preservation/spec.md: opencode documentation should describe the tunable-seed lifecycle');
+  assert.match(documentation, /body[\s\S]{0,120}(?:non-tunable|frontmatter)|non-tunable[\s\S]{0,120}body/i,
+    'specs/opencode-agent-preservation/spec.md: opencode documentation should describe body-and-non-tunable identity');
+  assert.doesNotMatch(documentation, /rename-or-remove|rename or remove/i,
+    'specs/opencode-agent-preservation/spec.md: opencode documentation must not carry rename-or-remove remediation');
+  assert.doesNotMatch(documentation, /\.owner\.json/,
+    'specs/opencode-agent-preservation/spec.md: opencode documentation must not reference owner sidecars');
   assert.match(documentation, /uninstall/i);
-  assert.match(documentation, /guard|sidecar|managed hash/i,
+  assert.match(documentation, /guard|identity/i,
     'specs/opencode-agent-preservation/spec.md: opencode documentation should describe guarded uninstall');
   assert.match(documentation, /explore|executor|budget/,
     'specs/opencode-agent-preservation/spec.md: opencode documentation should describe the helper-agent merge');
@@ -294,7 +331,7 @@ test('Step 3 opencode agent files install with subagent frontmatter and the cano
   }
 });
 
-test('Step 3 opencode uninstall removes owned unmodified worker files, preserves user edits, and leaves config untouched', () => {
+test('Step 3 opencode uninstall removes managed unmodified worker files, preserves user edits, and leaves config untouched', () => {
   const base = tempDir('sai-step-3-opencode-uninstall-');
   try {
     installOpencode(base);
@@ -318,7 +355,7 @@ test('Step 3 opencode uninstall removes owned unmodified worker files, preserves
     for (const worker of MANAGED_WORKER_NAMES) {
       if (worker === 'sai-2-design-worker') continue;
       assert.equal(fs.existsSync(path.join(base, 'agents', `${worker}.md`)), false,
-        `specs/implementation-harness-bindings/spec.md: owned unmodified ${worker}.md should be removed by uninstall`);
+        `specs/implementation-harness-bindings/spec.md: managed unmodified ${worker}.md should be removed by uninstall`);
     }
     assert.equal(fs.readFileSync(configPath, 'utf8'), configBefore,
       'specs/implementation-harness-bindings/spec.md: uninstall should leave the opencode configuration files untouched');

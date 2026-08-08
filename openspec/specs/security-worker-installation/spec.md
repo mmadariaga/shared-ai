@@ -15,18 +15,18 @@ The managed-worker registry SHALL define the numbered security worker, its Claud
 - **AND** repeated installation produces the same projection and ownership metadata
 
 ### Requirement: Claude security-worker ownership is collision-safe
+Installer flow SHALL define the numbered Claude security-worker agent filename constant. The installer SHALL handle each `tunable-seed` projection by writing the agent file when absent, and on subsequent installs by overwriting the body and non-tunable frontmatter with the source bytes while preserving the destination's `model` and `effort` values placed per the structural anchor in `agent-tunable-ownership`. When the body or non-tunable frontmatter differs from source, the installer SHALL emit a console notice naming the destination path and continue; the installer SHALL NOT block installation on a body divergence. The `rename-or-remove` remediation and the `.<basename>.owner.json` sidecar are retired.
 
-Installer flow SHALL define the numbered Claude security-worker agent and owner constants, resolve an owner sidecar for its `owned-copy` projection, reuse exact-compatible user-owned definitions without claiming ownership, block incompatible collisions without overwriting user content, and preserve edited managed agents during guarded uninstall. An owned security worker without a matching owner entry SHALL fail closed rather than defaulting to another worker.
+#### Scenario: Body-divergent security worker is overwritten with notice
+- **WHEN** an existing user-owned security-worker definition has body or non-tunable frontmatter that differs from the managed definition
+- **THEN** installation overwrites the body and non-tunable frontmatter, preserves the destination's `model` and `effort` values placed per the structural anchor in `agent-tunable-ownership`, and emits a console notice naming the destination path
+- **AND** installation does not block and does not partially claim ownership
 
-#### Scenario: Claude security worker collides
-- **WHEN** an existing user-owned security-worker definition is incompatible with the managed definition
-- **THEN** installation stops with the established collision remediation
-- **AND** it does not overwrite the definition or partially claim ownership
-
-#### Scenario: Claude security worker is removed
+#### Scenario: Tuned security worker is preserved on uninstall
 - **WHEN** guarded uninstall evaluates the managed security worker
-- **THEN** it removes only the managed definition and matching owner sidecar when ownership is proven
-- **AND** it preserves a compatible user-owned definition or an edited managed definition according to the established policy
+- **THEN** uninstall removes the agent file only when its body and non-tunable frontmatter match the source
+- **AND** uninstall preserves a body-divergent file as a project-local override
+- **AND** uninstall does not consult any sidecar file
 
 ### Requirement: Routed wrappers preserve three-harness entrypoint parity
 

@@ -219,7 +219,7 @@ test('managed worker registry has complete Claude and opencode manifest projecti
   const expectedByHarness = {
     claude: Object.values(MANAGED_WORKER_PROJECTIONS).flatMap(worker => [
       expectedWorkerProjection(worker.claudeBinding, 'claude', { strategy: 'copy', ownership: 'managed' }),
-       expectedWorkerProjection(worker.claudeAgent, 'claude', { strategy: 'owned-copy', ownership: 'owned' }),
+      expectedWorkerProjection(worker.claudeAgent, 'claude', { strategy: 'tunable-seed', ownership: 'managed' }),
     ]),
     opencode: Object.values(MANAGED_WORKER_PROJECTIONS).flatMap(worker => [
       expectedWorkerProjection(worker.opencodeBinding, 'opencode', { strategy: 'copy', ownership: 'managed' }),
@@ -500,8 +500,8 @@ test('Installer projects deterministic routed performance surfaces with ownershi
     'agents/claude/sai-7-performance-worker.md': {
       harnesses: ['claude'],
       destination: 'sai-7-performance-worker.md',
-      strategy: 'owned-copy',
-      ownership: 'owned',
+      strategy: 'tunable-seed',
+      ownership: 'managed',
     },
   };
 
@@ -672,7 +672,7 @@ test('the graph is sorted by normalized destination and rule id without foreign 
 test('all supported strategies produce generic projection metadata and safeguards', () => {
   const repoRoot = makeRepo();
   try {
-    const strategies = ['copy', 'owned-copy', 'merge-jsonc', 'forwarding-manifest'];
+    const strategies = ['copy', 'tunable-seed', 'merge-jsonc', 'forwarding-manifest'];
     const manifest = {
       version: 1,
       projections: strategies.map((strategy, index) => rule({

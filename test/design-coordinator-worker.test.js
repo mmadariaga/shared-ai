@@ -499,11 +499,13 @@ test('documentation records the active design compatibility boundary and managed
    assert.match(agents, /sai\/orchestration\/workers\/bindings\//);
   assert.match(agents, /ends? at design completion|separate[\s\S]{0,40}\/sai-3-implement/i);
 
-  assert.match(claude, /\.sai-2-design-worker\.owner\.json/);
+  assert.doesNotMatch(claude, /\.sai-2-design-worker\.owner\.json/,
+    'INSTALL.claude.md must not reference an owner sidecar');
   assert.match(claude, /low[- ]effort/);
   assert.match(claude, /high[- ]effort/);
-  assert.match(claude, /collision/i);
-  assert.match(claude, /does not adopt|without adoption|non-adopt/i);
+  assert.match(claude, /tunable-seed/i);
+  assert.match(claude, /preserv(?:e|ing)[\s\S]{0,80}(?:model|effort)/i,
+    'INSTALL.claude.md should describe preserving tuned model/effort values');
   assert.match(claude, /restart.*re-?install|re-?install.*restart/i);
 
     assert.match(opencode, /sai-2-design-worker/);
@@ -562,48 +564,7 @@ test('Step 3 documentation names only routed Claude Code and opencode support', 
 
 // ─── Step 1: preservation-first legacy identity migration ───────────────────
 
-test('design install migrates an owned legacy worker pair to the numbered identity', () => {
-  const { installClaude, sha256Buffer } = require('../bin/install-flow.js');
-  const base = tempDir('sai-design-legacy-');
-  const legacy = path.join(base, 'agents', 'sai-design-planning-worker.md');
-  const legacyOwner = path.join(base, 'agents', '.sai-design-planning-worker.owner.json');
-  const numbered = path.join(base, 'agents', 'sai-2-design-worker.md');
-  const numberedOwner = path.join(base, 'agents', '.sai-2-design-worker.owner.json');
-  try {
-    const legacyBytes = Buffer.from('managed legacy design worker\n');
-    fs.mkdirSync(path.dirname(legacy), { recursive: true });
-    fs.writeFileSync(legacy, legacyBytes);
-    fs.writeFileSync(legacyOwner, `${JSON.stringify({ managedHash: sha256Buffer(legacyBytes) })}\n`);
-    installClaude(base);
-    assert.equal(fs.existsSync(legacy), false);
-    assert.equal(fs.existsSync(legacyOwner), false);
-    assert.equal(fs.existsSync(numbered), true);
-    assert.equal(fs.existsSync(numberedOwner), true);
-  } finally {
-    removeTempDir(base);
-  }
-});
-
-test('design install preserves a protected legacy pair and reports manual migration', () => {
-  const { installClaude } = require('../bin/install-flow.js');
-  const base = tempDir('sai-design-legacy-protected-');
-  const legacy = path.join(base, 'agents', 'sai-design-planning-worker.md');
-  const legacyOwner = path.join(base, 'agents', '.sai-design-planning-worker.owner.json');
-  try {
-    fs.mkdirSync(path.dirname(legacy), { recursive: true });
-    fs.writeFileSync(legacy, 'user-modified legacy design worker\n');
-    fs.writeFileSync(legacyOwner, '{}');
-    const before = fs.readFileSync(legacy, 'utf8');
-    const output = capture(() => installClaude(base));
-    assert.equal(fs.readFileSync(legacy, 'utf8'), before);
-    assert.equal(fs.existsSync(path.join(base, 'agents', 'sai-2-design-worker.md')), false);
-    assert.match(`${output.output}\n${output.error?.message || ''}`, /protected|manual.*migration|collision/i);
-  } finally {
-    removeTempDir(base);
-  }
-});
-
-test('design install and uninstall preserve incompatible numbered destination content', () => {
+test('design install overwrites divergent numbered destination content with notice and uninstall deletes body-matching agents', () => {
   const { installClaude } = require('../bin/install-flow.js');
   const { enumerateClaude, runDeletion } = require('../bin/uninstall-flow.js');
   const base = tempDir('sai-design-numbered-collision-');
@@ -613,10 +574,16 @@ test('design install and uninstall preserve incompatible numbered destination co
     fs.mkdirSync(path.dirname(target), { recursive: true });
     fs.writeFileSync(target, sentinel);
     const result = capture(() => installClaude(base));
-    assert.equal(fs.readFileSync(target, 'utf8'), sentinel);
-    assert.match(`${result.output}\n${result.error?.message || ''}`, /unmanaged|incompatible|collision/i);
+    assert.equal(result.error, null, 'installClaude should not throw on a divergent agent destination');
+    assert.deepEqual(
+      fs.readFileSync(target),
+      fs.readFileSync(path.join(__dirname, '..', 'agents', 'claude', 'sai-2-design-worker.md')),
+      'the divergent destination content should be overwritten with the managed source bytes');
+    assert.match(`${result.output}\n${result.error?.message || ''}`, /notice|overwrit/i,
+      'the overwrite should be announced in stdout');
     runDeletion(enumerateClaude(base));
-    assert.equal(fs.readFileSync(target, 'utf8'), sentinel);
+    assert.equal(fs.existsSync(target), false,
+      'the body-matching agent should be deleted by uninstall');
   } finally {
     removeTempDir(base);
   }

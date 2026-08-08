@@ -150,8 +150,6 @@ test('doctor flags a customized projected worker file while intact workers remai
     assert.ok(customized, 'design worker should be enumerated by name');
     assert.equal(customized.severity, 'error');
     assert.match(customized.message || '', /incompatible/i);
-    assert.match(customized.message || '', /rename|remove/i,
-      'a customized worker file should carry rename-or-remove remediation');
     for (const record of records) {
       if (record.name === 'sai-2-design-worker') continue;
       assert.equal(record.severity, 'ok', `${record.name} should remain ok`);
@@ -258,7 +256,7 @@ test('Step 3 doctor flags a missing projected worker agent file with re-install 
   }
 });
 
-test('Step 3 doctor flags an incompatible projected worker agent file with rename-or-remove remediation', async () => {
+test('Step 3 doctor flags an incompatible projected worker agent file', async () => {
   const projectRoot = makeProjectRoot();
   const opencodeBase = path.join(projectRoot, 'opencode');
   try {
@@ -273,8 +271,8 @@ test('Step 3 doctor flags an incompatible projected worker agent file with renam
     assert.ok(record, 'design worker should be enumerated by name');
     assert.equal(record.severity, 'error');
     assert.match(record.message || '', /incompatible/i);
-    assert.match(record.message || '', /rename|remove/i,
-      'specs/opencode-agent-preservation/spec.md: an incompatible projected file should carry rename-or-remove remediation');
+    assert.doesNotMatch(record.message || '', /rename|remove/i,
+      'specs/opencode-agent-preservation/spec.md: an incompatible projected file must not carry rename-or-remove remediation');
   } finally {
     fs.rmSync(projectRoot, { recursive: true, force: true });
   }

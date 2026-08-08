@@ -14,25 +14,22 @@ The installation manifest SHALL project the review coordinator/invocation assets
 - **AND** the resulting projection is deterministic across repeated runs
 
 ### Requirement: Claude worker ownership is collision-safe
+Installer flow SHALL define the numbered Claude review-worker agent filename constant. The installer SHALL handle each `tunable-seed` projection by writing the agent file when absent, and on subsequent installs by overwriting the body and non-tunable frontmatter with the source bytes while preserving the destination's `model` and `effort` values placed per the structural anchor in `agent-tunable-ownership`. When the body or non-tunable frontmatter differs from source, the installer SHALL emit a console notice naming the destination path and continue; the installer SHALL NOT block installation on a body divergence and SHALL NOT block installation on an unknown agent. The `OWNER_BY_CLAUDE_AGENT` dispatch map and the `rename-or-remove` remediation are retired; the `.<basename>.owner.json` sidecar is no longer written.
 
-Installer flow SHALL define the numbered Claude review-worker agent and owner constants, select that worker in the existing ownership logic, reuse exact-compatible user-owned definitions without claiming ownership, block incompatible collisions without overwriting user content, and preserve edited managed agents during guarded uninstall.
+#### Scenario: Tuned review worker preserves its tunables on update
+- **WHEN** an exact-compatible user-owned `sai-5-review-worker` agent exists, possibly with a customized `model` or `effort`
+- **THEN** installation preserves the agent file as-is (no body or non-tunable frontmatter change to overwrite)
+- **AND** guarded uninstall preserves it as user-owned
 
-The owner dispatch SHALL resolve an owner sidecar for every `owned-copy` projection the manifest declares — not the review worker alone — and SHALL fail closed on any `owned-copy` agent it does not name rather than defaulting to another worker's owner. Adding an owned worker without a matching owner entry SHALL stop installation rather than mis-own it.
+#### Scenario: Body-divergent review worker is overwritten with notice
+- **WHEN** a user-owned review-worker definition exists with body or non-tunable frontmatter that differs from the managed definition
+- **THEN** installation overwrites the body and non-tunable frontmatter, preserves the destination's `model` and `effort` values placed per the structural anchor in `agent-tunable-ownership`, and emits a console notice naming the destination path
+- **AND** installation does not block and does not partially claim ownership
 
-#### Scenario: Every owned worker resolves to its own owner
-- **WHEN** installation expands the `owned-copy` projections
-- **THEN** each declared owned worker — including the spec, design, implementation, and review workers — resolves to its own owner sidecar rather than another worker's
-- **AND** an `owned-copy` agent the dispatch does not name fails installation closed instead of receiving a defaulted owner
-
-#### Scenario: Compatible Claude worker already exists
-- **WHEN** an exact-compatible user-owned `sai-5-review-worker` agent exists
-- **THEN** installation reuses it without creating an ownership sidecar
-- **AND** guarded uninstall preserves it
-
-#### Scenario: Incompatible Claude worker collides
-- **WHEN** a user-owned review-worker definition exists with incompatible content
-- **THEN** installation stops with the established collision remediation
-- **AND** it does not overwrite the definition or partially claim ownership
+#### Scenario: Missing review worker is created with shipped tunables
+- **WHEN** the namespaced Claude review worker agent is absent
+- **THEN** installation creates the agent file with the shipped model and effort values from the source
+- **AND** installation does not create a `.<basename>.owner.json` sidecar
 
 ### Requirement: opencode worker registration is preserved and configurable
 
