@@ -43,7 +43,8 @@
     { "id": "opencode-explore", "source": "agents/opencode/explore.md", "destination": { "class": "agents", "path": "explore.md" }, "harnesses": ["opencode"], "strategy": "tunable-seed", "recursive": false, "ownership": "managed", "drift": "content" },
     { "id": "opencode-executor", "source": "agents/opencode/executor.md", "destination": { "class": "agents", "path": "executor.md" }, "harnesses": ["opencode"], "strategy": "tunable-seed", "recursive": false, "ownership": "managed", "drift": "content" },
     { "id": "opencode-budget", "source": "agents/opencode/budget.md", "destination": { "class": "agents", "path": "budget.md" }, "harnesses": ["opencode"], "strategy": "tunable-seed", "recursive": false, "ownership": "managed", "drift": "content", "overrides": "opencode-commands" },
-    { "id": "opencode-config", "source": "configs/opencode.jsonc", "destination": { "class": "config", "path": "opencode.jsonc" }, "harnesses": ["opencode"], "strategy": "merge-jsonc", "recursive": false, "ownership": "managed", "drift": "content" }
+    { "id": "opencode-config", "source": "configs/opencode.jsonc", "destination": { "class": "config", "path": "opencode.jsonc" }, "harnesses": ["opencode"], "strategy": "merge-jsonc", "recursive": false, "ownership": "managed", "drift": "content" },
+    { "id": "sai-agents-index", "source": "sai/SAI_AGENTS.md", "destination": { "class": "root", "path": "SAI_AGENTS.md" }, "harnesses": ["claude", "opencode"], "strategy": "copy", "recursive": false, "ownership": "managed", "drift": "content" }
   ],
   "retirements": [
     {

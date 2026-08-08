@@ -381,7 +381,7 @@ test('canonical manifest keeps implementation projections harness-specific', () 
     const destinations = projections.map(projection => projection.destinationPath);
 
     assert.equal(new Set(destinations).size, destinations.length, `${harness} destinations should be unique`);
-    assert.deepEqual(destinations, [...destinations].sort(), `${harness} destinations should be ordered`);
+    assert.deepEqual(destinations, [...destinations].sort((a, b) => a.localeCompare(b)), `${harness} destinations should be ordered`);
     for (const source of implementationSources[harness]) {
       assert.ok(sourceSet.has(source), `${harness} should include ${source}`);
     }
