@@ -22,7 +22,7 @@ The concrete public signatures and exact test assertions that `interfaces.md` ca
 
 `interfaces.md` SHALL be organized as one `## Step N` section per step, using the same integer `Step N` keying as `tasks.md` and `implementation.md`. Each `## Step N` heading in `interfaces.md` SHALL correspond to the `## Step N` of the same number in `tasks.md`.
 
-`interfaces.md` SHALL admit **exactly one** leading non-`Step N` section: the `## Target State` section defined by the `design-target-state` capability, which SHALL appear before the first `## Step N` section. No other non-`Step N` top-level section SHALL be emitted, and no non-`Step N` section SHALL appear after the first `## Step N` section. The per-step keying rule governs everything from the first `## Step N` heading onward.
+`interfaces.md` SHALL admit **exactly one** leading non-`Step N` top-level section: the `## Target State` section defined by the `design-target-state` capability, which SHALL appear before the first `## Step N` section. The leading `## Target State` section SHALL contain exactly two subsections, in order: `### Architecture Snapshot` and `### File Manifest`, both defined by the `design-target-state` capability. No other non-`Step N` top-level section SHALL be emitted, no other subsection SHALL be emitted inside `## Target State`, and no non-`Step N` section SHALL appear after the first `## Step N` section. The per-step keying rule governs everything from the first `## Step N` heading onward.
 
 `interfaces.md` SHALL be regenerated wholesale on every `sai-2-design` run, alongside `design.md` and `tasks.md`, from the same fresh step decomposition. There is NO cross-run preservation path at the design stage (unlike `implement.md`'s re-run preservation of `implementation.md`), so `interfaces.md` keys always reflect the current `tasks.md` and cannot desync from it across re-runs.
 
@@ -35,10 +35,15 @@ The concrete public signatures and exact test assertions that `interfaces.md` ca
 - **THEN** `interfaces.md` is regenerated in full from that same fresh decomposition, so its `## Step N` keys always match the current `tasks.md`
 - **AND** no `## Step N` section from a prior `interfaces.md` is preserved across the re-run — there is no design-stage preservation path, so orphaned or desynced step sections cannot arise
 
-#### Scenario: Target State is the only admitted non-step section
+#### Scenario: Target State is the only admitted non-step top-level section
 - **WHEN** `sai-2-design` generates `interfaces.md`
 - **THEN** the only top-level section that is not a `## Step N` section is `## Target State`
 - **AND** it appears before the first `## Step N` section
+
+#### Scenario: Target State contains exactly the two admitted subsections
+- **WHEN** `sai-2-design` generates `interfaces.md`
+- **THEN** `## Target State` contains exactly `### Architecture Snapshot` followed by `### File Manifest` as its subsections
+- **AND** no other subsection is emitted inside `## Target State`
 
 #### Scenario: no trailing non-step section
 - **WHEN** a reader scans `interfaces.md` from the first `## Step N` heading to the end of the file
