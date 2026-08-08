@@ -260,6 +260,14 @@
     { "id": "retired-opencode-sai-5-review-worker-proxy-skill", "destination": { "class": "skills", "path": "sai-5-review-worker/SKILL.md" }, "harnesses": ["opencode"], "managedHashes": ["aee35c7e2d636d48e6fe003da250821dc577acc7874dd4fbad0146de889acff9"] },
     { "id": "retired-opencode-sai-6-security-worker-proxy-skill", "destination": { "class": "skills", "path": "sai-6-security-worker/SKILL.md" }, "harnesses": ["opencode"], "managedHashes": ["f268bbbe0b8ff386d4ccc6f0875225d4b267d343ddaf0b072b33f3c10eec2db2"] },
     { "id": "retired-opencode-sai-7-performance-worker-proxy-skill", "destination": { "class": "skills", "path": "sai-7-performance-worker/SKILL.md" }, "harnesses": ["opencode"], "managedHashes": ["76bd076266f597119fc2834efae1183ab977c53cd9fac79c20f48d2bd7803d48"] },
-    { "id": "retired-opencode-sai-8-accessibility-worker-proxy-skill", "destination": { "class": "skills", "path": "sai-8-accessibility-worker/SKILL.md" }, "harnesses": ["opencode"], "managedHashes": ["87d5d3cb8503b54b97590341153eeb730a762b10001d9b47c0f77b2155e52c37"] }
+    { "id": "retired-opencode-sai-8-accessibility-worker-proxy-skill", "destination": { "class": "skills", "path": "sai-8-accessibility-worker/SKILL.md" }, "harnesses": ["opencode"], "managedHashes": ["87d5d3cb8503b54b97590341153eeb730a762b10001d9b47c0f77b2155e52c37"] },
+    {
+      "id": "retired-instructions-prereqs",
+      "destination": { "class": "sai", "path": "instructions/prereqs.md" },
+      "harnesses": ["claude", "opencode"],
+      "managedHashes": [
+        "9ae247a9bb2a03999fe00dc2852530f5ae228e815dc6804cdad4cc85bc182480"
+      ]
+    }
   ]
 }

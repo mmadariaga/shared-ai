@@ -293,6 +293,7 @@ test('enumeration includes retirement records but excludes them from active proj
        path.join('sai', 'compat', '_templates', 'adr-index.md'),
       path.join('sai', 'compat', 'sai-2-design-core.md'),
       path.join('sai', 'compat', 'sai-3-implementation-core.md'),
+      path.join('sai', 'instructions', 'prereqs.md'),
     ].sort());
     for (const entry of retired) {
       assert.ok(Array.isArray(entry.acceptedHashes));
