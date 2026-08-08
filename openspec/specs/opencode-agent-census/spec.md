@@ -1,7 +1,7 @@
 # opencode-agent-census Specification
 
 ## Purpose
-TBD: Define the binding-derived census and explicit registration defaults for managed opencode agents.
+Define the binding-derived roster of managed opencode workers and its install-time validation as the sole source of managed opencode worker membership.
 
 ## Requirements
 
