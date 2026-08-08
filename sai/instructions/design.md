@@ -6,6 +6,8 @@ If the fast-track signal is active, skip the ask below and proceed as if the use
 
 Ask exactly: "**Have you reviewed the specs in openspec/changes/$ARGUMENTS/specs/** and are ready to **approve** them for design? (yes/no, and any notes)" — present as a closed-choice prompt with `yes (Recommended)` first, then `no`.
 
+The ask SHALL reference `@sai/policies/question-context.md` and comply with its anatomy: it states what is being decided (whether the specs are approved for design), why it matters (design artifacts are generated from these specs, so an unapproved spec set propagates defects downstream), the plain-language options (`yes` — approve and continue to design; `no` — stop without writing any file; notes are carried alongside either answer), and the essential state context (the change `$ARGUMENTS`, and the artifacts under review: `openspec/changes/$ARGUMENTS/proposal.md` and `openspec/changes/$ARGUMENTS/specs/**`). The exact question wording, the `yes (Recommended)` first / `no` second ordering, and the notes semantics SHALL be preserved.
+
 If the user's response is "no" or any clearly negative answer, STOP without writing any file.
 
 If the user's response is "yes" (with or without notes), write the following fields to `openspec/changes/$ARGUMENTS/.openspec.yaml`, MERGING into the existing file content (preserve any existing top-level keys such as `schema:` and `created:` verbatim — do NOT truncate or rewrite the whole file):
@@ -89,6 +91,8 @@ For each question:
    1. **Delegate** it to a **`budget-explorer`** subagent with a precise search prompt. Do NOT search yourself.
    2. If the subagent returns a clear answer from the codebase, incorporate it into `design.md` and remove the question.
    3. If the subagent reports it cannot find the answer (not found, ambiguous, or out of scope), present the question to the user.
+
+The presentation SHALL reference `@sai/policies/question-context.md` and comply with its anatomy: it states what is being decided (the unresolved Open Question), why it matters (no `tasks.md` step that depends on it can be planned until it is resolved), the essential state context (the change `$ARGUMENTS`, the question as recorded in `design.md` `## Open Questions`, and why research could not answer it), and plain-language options where a closed choice applies — in plain wording, without bare artifact references.
 
 Do NOT proceed to `tasks.md` until every Open Question has been either answered by the codebase or resolved by the user. Incorporate all answers into `design.md` before continuing.
 

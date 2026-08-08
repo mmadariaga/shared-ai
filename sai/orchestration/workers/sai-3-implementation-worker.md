@@ -39,7 +39,7 @@ and if the schema is wrong return ``openspec/config.yaml does not declare `schem
 
 Set `$ARGUMENTS` to the resolved name, fetch `@skills/budget/SKILL.md`, then
 fetch `@sai/commands/implement/invocation.md` and follow it. Return
-`needs_input` for planning questions, continue the same planning operation,
+`needs_input` for planning questions, each complying with `@sai/policies/question-context.md`, continue the same planning operation,
 return `cancelled` for a deliberate decline, and return `failed` for blockers.
 Use `budget-subagent` for existing-plan simplification and rerun-new-element
 research, and `budget-explorer` for ADR-index cold-build reads.

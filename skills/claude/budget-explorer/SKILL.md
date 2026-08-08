@@ -14,6 +14,10 @@ metadata:
 
 "cheap research subagent" → `subagent_type: Explore` (capital E). Every spawn MUST include an explicit `model:` parameter.
 
+## Dispatch mode
+
+This binding is declared `run_in_background: true`, mirroring the parameter the seven routed workers already declare at `sai/orchestration/workers/bindings/claude/design-worker.md:5`. It may be invoked only by a dispatcher whose own lifetime outlives the child: the main agent, a routed SAI coordinator, or a routed SAI worker — each of which captures the continuation reference and awaits the child's structured payload on its own turn, per the dispatch-safety invariant in `openspec/specs/dispatch-safety-invariant/spec.md`.
+
 ## Model tiers
 
 - **Lookup tasks**: `model: haiku`

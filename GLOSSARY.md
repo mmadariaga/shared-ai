@@ -91,6 +91,9 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 **Provenance Marker**: "The pinned `**Provenance**` sub-field on every `design.md` Decision carrying one of `user` / `codebase-forced` / `derived`, signalling how re-litigable the decision is downstream."
 *Avoid*: Decision Source, Origin, decision tag, author marker
 
+**Question Context Contract**: "The mandatory five-element anatomy of every user-facing decision prompt — what is being decided, why it matters, plain-language options, essential state context, and plain wording — single-sourced in `sai/policies/question-context.md` and required of worker `needs_input` questions, design notice messages, and the fixed instruction gates."
+*Avoid*: decision prompt, question anatomy, prompt context, context contract, question template
+
 **Recovery Dispatch**: "The single corrective subagent dispatch permitted by Known-False Report Recovery, constrained to the current Step and existing plan scope."
 *Avoid*: retry dispatch, second opinion, advisor dispatch
 
@@ -169,6 +172,9 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 - A **Proposal Complexity** token draws on the same three-value vocabulary as a **Routing Complexity** token, so one orchestrator mapping table serves both; it is emitted once per change, whereas **Routing Complexity** is emitted once per step.
 - A **Proposal Complexity** token is derived by `/sai-1-spec` after `specs/**/*.md` are written, because the requirements count is one of its five signals; `/sai-2-design` may size the work differently without re-tagging `proposal.md`.
 - A **Proposal Complexity** token has no consumer: like the **Routing Line** it is descriptive metadata awaiting a future orchestrator.
+- A **Question Context Contract** governs every user-facing decision prompt: worker `needs_input` questions, design notice messages, and the fixed instruction gates.
+- A **Question Context Contract** is satisfied at the prompt's authoring surface — the worker or the instruction — and the coordinator forwards the question verbatim without rephrasing or adding context.
+- A **Question Context Contract** prompt carries its own essential state context, which is one of the permitted grounding sources for an **Auto-Answer**.
 - A **Supervised Pipeline** emits a **Phase Transition** after one phase converges and before dispatching the next phase.
 - A **Phase Transition** belongs to one completed phase and precedes one downstream phase in a **Supervised Pipeline**.
 - An **Auto-Answer** is given only when confidence is clearly above the **Confidence Threshold**; unclear or below-threshold confidence escalates the worker question to the user instead of auto-answering.
