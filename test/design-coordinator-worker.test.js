@@ -930,3 +930,98 @@ test('Step 4: needs_input is a terminal lifecycle status but not a run-closing o
     'needs_input should not be a run-closing status'
   );
 });
+
+// ─── Step 5: command-progress-plan-protocol (sai-2-design-worker.md) ────────
+
+test('Step 5: the design worker contract emits one progress event per completed batch after resolution, ids in plan order, changed_files since the preceding result', () => {
+  const worker = artifact('sai/orchestration/workers/sai-2-design-worker.md');
+
+  assert.match(worker, /progress event/i,
+    'the design worker contract should define the progress event emission');
+  assert.match(
+    worker,
+    /(?:one|a single|each|per)[\s\S]{0,200}progress event[\s\S]{0,240}(?:completed )?batch|(?:completed )?batch[\s\S]{0,200}(?:one|a single|each|per)[\s\S]{0,200}progress event/i,
+    'the contract should emit one progress event per completed batch'
+  );
+  assert.match(
+    worker,
+    /after[\s\S]{0,160}resolution|resolution[\s\S]{0,160}after|never[\s\S]{0,120}before[\s\S]{0,120}resolution|before[\s\S]{0,120}resolution[\s\S]{0,120}never/i,
+    'progress emission should happen only after resolution'
+  );
+  assert.match(
+    worker,
+    /step[\s\S]{0,40}ids?[\s\S]{0,240}plan order|plan order[\s\S]{0,240}step[\s\S]{0,40}ids?|ids?[\s\S]{0,160}plan order|plan order[\s\S]{0,160}ids?/i,
+    'emitted step ids should follow plan order'
+  );
+  assert.match(
+    worker,
+    /changed_files[\s\S]{0,240}(?:preceding|previous|since)|(?:preceding|previous|since)[\s\S]{0,240}changed_files/i,
+    'changed_files should carry paths written since the preceding result'
+  );
+});
+
+test('Step 5: the startup act is one batch and emits one event carrying every step id that act completed (startup-act-is-one-batch)', () => {
+  const worker = artifact('sai/orchestration/workers/sai-2-design-worker.md');
+
+  assert.match(worker, /startup act|startup[- ]act/i,
+    'the contract should name the startup act');
+  assert.match(
+    worker,
+    /(?:fast[- ]track|prereqs?|prerequisites)[\s\S]{0,320}resolution[\s\S]{0,240}(?:startup|batch)|(?:startup|batch)[\s\S]{0,240}(?:fast[- ]track|prereqs?|prerequisites)[\s\S]{0,320}resolution/i,
+    'the startup act should bundle fast-track parsing, prerequisites, and resolution'
+  );
+  assert.match(
+    worker,
+    /startup[\s\S]{0,300}(?:one|single)[\s\S]{0,160}batch|(?:one|single)[\s\S]{0,160}batch[\s\S]{0,300}startup/i,
+    'the startup act should be one batch'
+  );
+  assert.match(
+    worker,
+    /every[\s\S]{0,200}step id|step ids?[\s\S]{0,240}completed/i,
+    'the startup event should carry every step id that act completed'
+  );
+});
+
+test('Step 5: fast-track-skipped gate steps fold into the completed batch with no separate skipped field (skipped-steps-fold-into-the-batch)', () => {
+  const worker = artifact('sai/orchestration/workers/sai-2-design-worker.md');
+
+  assert.match(worker, /fast[- ]track/i,
+    'the contract should address fast-track handling');
+  assert.match(worker, /skip/i,
+    'the contract should address skipped steps');
+  assert.match(
+    worker,
+    /fold(?:s|ed|ing)?[\s\S]{0,240}completed batch|completed batch[\s\S]{0,240}fold/i,
+    'fast-track-skipped gate steps should fold into the completed batch'
+  );
+  assert.match(
+    worker,
+    /(?:no|without|never)[\s\S]{0,120}(?:separate|own)[\s\S]{0,160}skipped|skipped[\s\S]{0,120}(?:field|flag)|(?:no|without|never)[\s\S]{0,200}skipped field/i,
+    'folded steps should carry no separate skipped field'
+  );
+});
+
+test('Step 5: the run closes with exactly one terminal lifecycle status, never a progress event in place of a terminal payload (terminal-payload-still-closes)', () => {
+  const worker = artifact('sai/orchestration/workers/sai-2-design-worker.md');
+
+  assert.match(
+    worker,
+    /(?:exactly|only)[\s\S]{0,200}terminal|terminal[\s\S]{0,240}(?:exactly|only)|single[\s\S]{0,120}terminal|terminal[\s\S]{0,120}single/i,
+    'the run should close with exactly one terminal lifecycle status'
+  );
+  assert.match(
+    worker,
+    /clos(?:e|es|ing|ure)[\s\S]{0,240}terminal|terminal[\s\S]{0,240}clos/i,
+    'the run should close with a terminal status'
+  );
+  assert.match(
+    worker,
+    /never[\s\S]{0,120}progress event|progress event[\s\S]{0,160}never/i,
+    'the close should never be a progress event'
+  );
+  assert.match(
+    worker,
+    /(?:in place of|instead of|substitut(?:e|es|ing))[\s\S]{0,240}terminal|terminal[\s\S]{0,240}(?:in place of|instead of|substitut)/i,
+    'a progress event should never be emitted in place of a terminal payload'
+  );
+});

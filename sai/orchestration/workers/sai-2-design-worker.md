@@ -31,6 +31,26 @@ the established change-not-found failure. Unless fast-track is active, ask for
 spec approval, write the approval metadata, and handle amendments per
 `design.md`.
 
+## Progress Reporting
+
+This phase declares a progress plan with exactly these canonical step ids, in
+order:
+
+- `prereqs-resolution` — "Prerequisites and change resolution"
+- `specs-approval` — "Specs approval gate"
+- `research` — "Research and open questions"
+- `artifacts` — "Artifact generation and verification"
+
+Emit exactly one progress event per completed batch after prerequisite checks
+pass and change resolution completes, whenever one or more plan steps
+complete. The startup act (fast-track parsing + prerequisites + resolution)
+reports as one batch carrying every step id that act completed; a
+fast-track-skipped gate step folds into the completed batch with no separate
+`skipped` field. Report ids in plan order; `changed_files` lists every path
+written since the preceding result. Never emit a progress event before
+resolution, and never in place of a terminal payload — the run always closes
+with exactly one terminal lifecycle status.
+
 ## Planning
 
 Fetch @sai/commands/design/invocation.md and follow it exactly.
