@@ -94,6 +94,15 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 **Prerequisite Verdict**: "The single `pass` / `halt` outcome that the delegated prerequisite-check budget subagent returns to the `sai-explore` main agent, carrying the verbatim remediation literal from `sai/policies/prereqs-check.md` on halt."
 *Avoid*: check result, prereq status, subagent report, pass/fail result, halt message
 
+**Progress Event**: "An additive, non-terminal lifecycle event a routed planning worker returns to report completed plan steps, carrying exactly `step_ids: string[]` and `changed_files`, structurally modelled on the design notice."
+*Avoid*: progress payload, status update, tick, notice variant
+
+**Progress Plan**: "The static, ordered step plan declared by the phase adapter for one routed command invocation, held in the coordinator's invocation-scoped state — never carried in the dispatch envelope — rendered by the coordinator as a live task list, and marked only from worker progress events."
+*Avoid*: task list, todo list, step list, bare "plan"
+
+**Progress Step**: "A single named entry in a **Progress Plan**, carrying a stable id and a user-facing label; a worker reports its completion by id in a **Progress Event**."
+*Avoid*: task, todo item, checklist item, plan entry
+
 **Proposal Complexity**: "The single `low` / `medium` / `high` token on the `**Complexity**` line at the top of `proposal.md`, describing the coarse size of a whole change as judged at spec time from five signals, before `design.md` and `tasks.md` exist."
 *Avoid*: change complexity, proposal routing, proposal size, change tier
 
@@ -170,6 +179,9 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 - An **Attempts Per Phase** entry is retrospective and flows only into the **Execution Telemetry Appendix** — never back into a later dispatch prompt, which is the technical-learnings channel's job.
 - An **Execution Telemetry Appendix** is written only by the `/sai-4-apply` coordinator, in the same per-Step loop slot as the deviations appendix, so it lands in the Step's own commit.
 - A **Phase Policy** extends the **Orchestration Core** for exactly one planning phase without adding that phase's rules to the shared lifecycle contract.
+- A **Progress Plan** belongs to one routed command invocation and is declared by that phase's adapter, never by the worker.
+- A **Progress Step** belongs to one **Progress Plan** and is marked completed via exactly one **Progress Event**.
+- A **Progress Event** reports completed **Progress Step** ids from a worker to the coordinator, which marks them in the **Progress Plan**, whose render threshold is single-sourced in the neutral task-list policy.
 - A **Known-False Report Recovery** permits at most one **Recovery Dispatch** for a single contradicted Subagent Report and never changes the fixed report field set.
 - A **Test Command** belongs to one change's `## Implementation Context` and is consumed by exactly one dispatch — the **Blind Test-Writer**; a single dispatch receives the Step's own verification commands instead.
 - A **Blind Test-Writer** and an **Implementation Dispatch** replace the single per-Step dispatch only for a **Split-Routed Step**; every other Step keeps one dispatch, including a Step with a RED block whose **Step Contract** is unavailable or whose file scope holds no production file.
