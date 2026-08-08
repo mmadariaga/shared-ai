@@ -402,7 +402,11 @@ test('implementation adapter pins resolved-name and reconstruction transport', (
     assert.match(coordinator, new RegExp('`' + field + '`'));
   }
 
-  assert.match(coordinator, /allowed_nonterminal_extensions`:\s*empty/);
+  assert.match(
+    coordinator,
+    /progress event[\s\S]{0,160}(?:sole|only)[\s\S]{0,120}nonterminal extension/i,
+    'the implementation adapter should admit progress events as the sole allowed nonterminal extension'
+  );
   assert.match(coordinator, /extension_handlers`:\s*empty/);
   assert.match(
     coordinator,

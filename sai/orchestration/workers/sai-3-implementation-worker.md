@@ -44,6 +44,29 @@ return `cancelled` for a deliberate decline, and return `failed` for blockers.
 Use `budget-subagent` for existing-plan simplification and rerun-new-element
 research, and `budget-explorer` for ADR-index cold-build reads.
 
+## Progress Reporting
+
+This phase declares a progress plan with exactly these canonical step ids, in
+order:
+
+- `prereqs-resolution` — "Prerequisites and change resolution"
+- `plan-simplification` — "Existing plan simplification"
+- `artifact-analysis` — "Artifact analysis and decision validation"
+- `documentation-review` — "Required documentation review"
+- `plan-generation` — "Implementation plan generation and verification"
+
+Emit exactly one progress event per completed batch after prerequisite checks
+pass and change resolution completes, whenever one or more plan steps
+complete. The startup act (prerequisite checks + resolution) reports as one
+batch carrying `prereqs-resolution`. Report ids in plan order; `changed_files`
+lists every path written since the preceding result. On a first run the
+simplification step is skipped entirely; the skipped `plan-simplification` id
+folds into the next completed batch in plan order with no separate `skipped`
+field. On a re-run, `plan-simplification` completes as its own batch. Never
+emit a progress event before resolution, in place of a terminal payload,
+during a `needs_input` pause, or during a feedback turn — the run always
+closes with exactly one terminal lifecycle status.
+
 Before completion, verify the durable `implementation.md` is non-empty,
 contains every task in order, includes verification and STOP markers, has RED
 before GREEN for testable steps, conforms to interfaces, uses the required
