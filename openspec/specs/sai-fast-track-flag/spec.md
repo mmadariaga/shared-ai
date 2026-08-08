@@ -139,7 +139,7 @@ For each of the four commands, `--fast-track` SHALL opt out of exactly the named
 
 #### Scenario: The opt-out set is fixed per command
 
-- **WHEN** fast-track is active for `sai-explore` (two language gates), `sai-2-design` (specs approval gate only), `sai-4-apply` (commit authorization + Human Verification deferral + Prerequisites branch-selection prompt auto-stay only), or `sai-archive` (unchecked-items gate always + delta-spec sync gate conditional only)
+- **WHEN** fast-track is active for `sai-explore` (two language gates), `sai-2-design` (specs approval gate only), `sai-4-apply` (both commit-authorization gates — the per-Step STOP & COMMIT gate and the terminal documentation commit gate — + Human Verification deferral + Prerequisites branch-selection prompt auto-stay only), or `sai-archive` (unchecked-items gate always + delta-spec sync gate conditional only)
 - **THEN** no gate beyond that command's named set changes behavior
 
 ### Requirement: Fast-track behavior is harness-agnostic and documented

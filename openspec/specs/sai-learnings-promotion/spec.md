@@ -1,4 +1,10 @@
-## ADDED Requirements
+# sai-learnings-promotion Specification
+
+## Purpose
+
+Defines the once-per-run learnings promotion pass of `/sai-4-apply`: the deviations-appendix source, the single artifact classification, and the terminal documentation commit with its own authorization gate, file visibility listing, and halted-run boundaries.
+
+## Requirements
 
 ### Requirement: Promotion runs once per run, after the Final sweep and before the MANDATORY STOP
 
@@ -81,7 +87,7 @@ When the promotion pass writes `SAI_LEARNINGS.md`, before proposing the terminal
 
 Before proposing the terminal documentation commit message, the coordinator SHALL apply `sai/policies/commit-rules.md`. The message SHALL use the policy's commit-type classification, subject/body/footer limits, and faithfulness rules, and SHALL describe only the terminal documentation commit's staged paths and hunks.
 
-The authorization SHALL be a closed-choice `yes` / `no` prompt presented through the harness's native option-picker where one exists, with yes-only execute semantics: anything other than an explicit `yes` SHALL be treated as a decline. On decline, the coordinator SHALL leave the eligible files in the working tree, describe what remains uncommitted, and proceed to the MANDATORY STOP without halting or retrying.
+The terminal authorization gate SHALL be session-flag-aware. On both authorization paths — the inactive-flag `yes` path and the active-flag skip path — the coordinator SHALL stage exactly the fixed terminal set — the changed `docs/**` paths plus root `SAI_LEARNINGS.md` when the promotion pass wrote it — and SHALL NOT use `git add -A`, a broad sweep, or a path that includes `openspec/changes/{change-name}/`. When the session-scoped commit-authorization flag is inactive, the authorization SHALL be a closed-choice `yes` / `no` prompt presented through the harness's native option-picker where one exists, with yes-only execute semantics: anything other than an explicit `yes` SHALL be treated as a decline. When the flag is active for the current in-conversation session (set by a prior `Allow on this session` selection at an earlier Step's commit gate or pre-activated by `--fast-track`), the coordinator SHALL skip the ask and proceed directly to staging and committing the terminal set, exactly as a per-Step commit under the flag does. In both paths, the promotion disclosure, the terminal file visibility listing, and the proposed commit message SHALL print before the commit; only the authorization ask and wait are removed. The terminal gate SHALL NOT offer an `Allow on this session` option: it is the run's last commit gate, so there is nothing further to grant. On decline, the coordinator SHALL leave the eligible files in the working tree, describe what remains uncommitted, and proceed to the MANDATORY STOP without halting or retrying.
 
 #### Scenario: Documentation exists but no learning is promoted
 
@@ -100,8 +106,18 @@ The authorization SHALL be a closed-choice `yes` / `no` prompt presented through
 
 #### Scenario: User declines the terminal documentation commit
 
-- **WHEN** the coordinator presents the terminal documentation commit gate and the user answers `no`, remains silent, or gives any response other than explicit `yes`
+- **WHEN** the session flag is inactive, the coordinator presents the terminal documentation commit gate, and the user answers `no`, remains silent, or gives any response other than explicit `yes`
 - **THEN** no terminal commit is created, the eligible docs and learnings files remain in the working tree, and the coordinator proceeds to the MANDATORY STOP
+
+#### Scenario: Session flag active skips the terminal authorization ask
+
+- **WHEN** the terminal documentation commit gate is reached and the session-scoped commit-authorization flag is active for the current in-conversation session (from a prior `Allow on this session` selection or `--fast-track` pre-activation)
+- **THEN** the coordinator prints the promotion disclosure, the terminal file visibility listing, and the proposed commit message, then stages and commits the terminal set without presenting the authorization prompt and without waiting
+
+#### Scenario: Terminal gate offers no session grant
+
+- **WHEN** the terminal documentation commit gate is reached with the session flag inactive
+- **THEN** the prompt offers only `yes` and `no` and does NOT offer `Allow on this session`, because no commit follows the terminal commit
 
 ### Requirement: Terminal documentation commit emits a file visibility listing
 

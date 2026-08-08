@@ -1,7 +1,7 @@
 # opencode-worker-system-prompt Specification
 
 ## Purpose
-TBD: Define explicit root-aware contract system prompts for managed opencode workers.
+Define the literal root-aware contract fetch that every projected opencode worker agent file SHALL carry in its body — `Fetch @sai/orchestration/workers/<worker-name>.md and follow it exactly.` — resolved project-local before user-global and preserved across projection, install, and doctor validation.
 
 ## Requirements
 
@@ -28,7 +28,7 @@ Every projected opencode worker agent SHALL contain the literal prompt `Fetch @s
 
 ### Requirement: Installer consumers preserve the canonical contract fetch
 
-The projected opencode agent files, installer guidance, doctor records, and fresh-configuration projection SHALL preserve each agent's canonical contract fetch alongside its model, mode, variant, and task permissions. No consumer SHALL synthesize a fetch from binding text or silently omit it.
+The bundled sources under `agents/opencode/`, the projected worker agent files they seed, and the installer guidance SHALL preserve each agent's canonical contract fetch in the file body alongside the frontmatter's model, mode, variant, and task permissions. Doctor SHALL validate each projected file's body and non-tunable frontmatter against its bundled source, so a contract fetch that diverges from the bundled source is reported as an incompatible file rather than silently tolerated. No consumer SHALL synthesize a fetch from binding text or silently omit it.
 
 #### Scenario: Fresh projection includes every contract fetch
 
@@ -36,10 +36,11 @@ The projected opencode agent files, installer guidance, doctor records, and fres
 - **THEN** every projected worker agent file SHALL contain its canonical contract fetch
 - **AND** the file SHALL retain its worker-specific model, mode, variant policy, and task permissions
 
-#### Scenario: Doctor and installer expose the same agent records
+#### Scenario: Doctor and installer observe the same projected files
 
 - **WHEN** installer guidance and doctor enumerate managed opencode workers
-- **THEN** both SHALL observe the same worker agent files and the same canonical contract fetches
+- **THEN** both SHALL observe the same manifest-projected worker agent files and the same bundled sources
+- **AND** the canonical contract fetch SHALL be preserved as file-body content validated by doctor's body comparison, not as a doctor record field or a configuration projection
 
 ### Requirement: User-owned opencode agent files preserve user tunables
 Installing or re-installing the projected worker agent files SHALL follow the `tunable-seed` lifecycle: a missing file is created with the canonical definition (the shipped tunables are seeded); an existing file is updated by overwriting its body and non-tunable frontmatter with the source bytes while preserving the destination's tunable values (`model`, `variant`) placed per the structural anchor in `agent-tunable-ownership`; a body-or-non-tunable-frontmatter divergence triggers a console notice naming the destination path, and the installer continues. The installer SHALL NOT write a `.<basename>.owner.json` sidecar file. Guarded uninstall SHALL remove a projected agent file only when its body and non-tunable frontmatter match the source; a destination whose body or non-tunable frontmatter differs from source is a project-local override and SHALL be preserved. A destination whose tunable lines differ from the source but whose body and non-tunable frontmatter match SHALL be deleted by uninstall. This requirement SHALL NOT weaken existing configuration-merge and idempotence behavior.
