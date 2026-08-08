@@ -69,6 +69,7 @@ The openspec-dependent `sai-*` commands halt with a clear error if either is mis
 | `sai/orchestration/workers/sai-3-implementation-worker.md` | Implementation-planning worker lifecycle, input, output, and durable-artifact contract. |
 | `sai/orchestration/workers/sai-2-design-worker.md` | Design-planning worker lifecycle, input, output, and durable-artifact contract. |
 | `sai/install-manifest.json` | Deterministic source-to-destination projection rules consumed by installer, doctor, and uninstall. |
+| `sai/SAI_AGENTS.md` | Project-agnostic orientation index over the SAI documentation surfaces; installed at each harness root (`SAI_AGENTS.md`) by the `sai-agents-index` root-class projection. |
 | `agents/claude/` | Claude Code managed worker agents. |
 | `agents/claude/sai-1-spec-proposal-worker.md` | Claude Code custom agent for the medium-effort spec proposal worker. |
 | `agents/claude/sai-3-implementation-worker.md` | Claude Code custom agent for the high-effort implementation-planning worker. |
@@ -201,6 +202,8 @@ Safe-operations confirmations and all unnamed gates remain in force.
 ## Installation
 
 Commands are **user globals**, not per-project. The manifest-driven installer expands `sai/install-manifest.json` into deterministic harness projections, and the same projections are used by `doctor` for missing/drift checks and by `uninstall` for safe removal. Claude Code and opencode receive mirrored routed spec, design, and implementation bindings from the shared Orchestration Core. The canonical project-agnostic ADR index template is `sai/instructions/_templates/adr-index.md`; the recursive `sai-instructions` projection installs it for both supported harnesses.
+
+The `sai-agents-index` root-class projection additionally writes `SAI_AGENTS.md` — the orientation index over the four SAI documentation surfaces — to each harness root, inheriting doctor missing-file detection, drift detection, and uninstall cleanup.
 
 - **Claude Code**: `~/.claude/commands/`
 - **opencode**: `~/.config/opencode/commands/`

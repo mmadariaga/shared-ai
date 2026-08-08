@@ -10,6 +10,9 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 **Advisor Skill**: "A read-only consultation skill (`mid-advisor`, `senior-advisor`) that a cheaper pipeline phase escalates to — a subagent running the model tier of the phase above it — returning a structured advice report instead of editing anything."
 *Avoid*: consultant skill, oracle, reviewer skill, helper agent
 
+**Ambient Agent**: "An agent session that is not running a SAI command — the audience for the **Orientation Index**, which it never auto-loads and reaches only through a pointer in a consumer project's own agent instructions."
+*Avoid*: background agent, idle agent, non-SAI agent, ambient session
+
 **Architecture Snapshot**: "The concise `interfaces.md` subsection under **Target State** that inventories planned public surfaces, project-root-relative paths, and portable ASCII relationships or execution flows for design review."
 *Avoid*: architecture summary, architecture diagram, interface overview
 
@@ -45,6 +48,9 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 
 **Deferred Decision**: "A decision a change could have made and deliberately postponed because its cost rises the longer it waits, recorded in `design.md`'s `## Deferred` section with a concrete postponement cost and a recommendation."
 *Avoid*: postponed decision, open question, non-goal, backlog item, TODO
+
+**Destination Class**: "A named key in the installer's destination-class resolution that maps a projection's `destination.class` to a base directory under the harness root — `commands`, `sai`, `skills`, `agents`, `config`, and `root` — with the class-to-path map duplicated in the install flow, uninstall flow, and doctor, where an unknown class is a runtime expansion error."
+*Avoid*: destination root, target class, install class, destination map
 
 **Divisible Step**: "A Step whose plan-level file scope contains at least one production file — the property, distinct from having a RED block, that makes the Step eligible for the two-dispatch split."
 *Avoid*: splittable step, production step, split-eligible step, "testable" (which describes the RED block only)
@@ -87,6 +93,9 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 
 **Orchestration Core**: "The canonical `sai/orchestration/` contracts for coordinator mechanics and worker lifecycle behavior shared by routed planning phases."
 *Avoid*: shared worker prompt, universal phase prompt, coordinator implementation
+
+**Orientation Index**: "The `SAI_AGENTS.md` document installed at the harness root by the `sai-agents-index` projection, containing one entry per SAI documentation surface — canonical location, purpose, writer, and a pointer to the canonical format file — with conditional-presence wording, no restated normative rules, and no harness named inside the file."
+*Avoid*: agent guide, doc index, SAI manual, agent onboarding doc
 
 **Phase Policy**: "The design-only or implementation-only rules layered by a separate phase worker contract over the shared **Orchestration Core** lifecycle."
 *Avoid*: lifecycle core, shared phase logic, conditional worker branch
@@ -225,6 +234,9 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 - A **DDR** encodes a **Domain Invariant**; an **ADR** documents a decision that does not.
 - A qualifying design decision resolves to exactly one **Decision Record Family** via the ordered routing test — a **Domain Invariant** routes to **DDR**, anything else routes to **ADR** — and the resolved family is recorded in `design.md` as the `**Record family**` marker.
 - A **Worktree Name Triple** belongs to one git worktree created by `/sai-worktree` and is derived from the main worktree's directory name plus the first free counter slot.
+- An **Ambient Agent** is the audience of an **Orientation Index** and never auto-loads it; it reaches the index only through a pointer in a consumer project's own agent instructions.
+- An **Orientation Index** is installed at the harness root through the `root` **Destination Class** projection of `sai/install-manifest.json`.
+- A **Destination Class** resolves to one base directory for install, doctor, and uninstall expansions of the manifest projections that name it.
 
 ## Example dialogue
 
