@@ -206,9 +206,47 @@ Write to `openspec/changes/$ARGUMENTS/interfaces.md`.
 
 `interfaces.md` opens with a `## Target State` section, emitted before the first `## Step N` section — the single admitted leading non-step section. `## Target State` presents the finished shape the change converges on as **one concrete artifact** (not a per-step narrative, not a restatement of the change's motivation), readable on its own without reading any `## Step N` section. Interpret "finished shape" by what the change produces: for code changes, the resulting payload, public signature, schema, file layout, or config shape as it will exist after the last step; for prose, instruction, or documentation changes, the resulting section and field structure of each document the change touches, as it will read after the last step. Do NOT omit the section on the grounds that no payload, signature, or schema is involved. When a change genuinely produces no finished shape expressible under either reading, emit `## Target State` with an explicit `None` and a one-line reason — never silently omit it. `## Target State` does NOT replace the per-step sections: each step with an interface surface still emits its own `## Step N`, and where a signature appears in both, the `## Step N` section remains the authority on step attribution.
 
-Directly beneath `## Target State`, emit exactly one `### Architecture Snapshot` subsection. It is a concise derivative review surface, not a replacement for the authoritative per-step contracts. Inventory every planned public class, interface, and method with its project-root-relative path. Show relevant relationships or execution flows with concise ASCII notation that remains readable without a rendered-diagram dependency. Do not emit absolute filesystem paths.
+Directly beneath `## Target State`, emit exactly two subsections, in order: `### Architecture Snapshot` and `### File Manifest`. It is a concise derivative review surface, not a replacement for the authoritative per-step contracts. Inventory every planned public class, interface, and method with its project-root-relative path. Show relevant relationships or execution flows with concise ASCII notation that remains readable without a rendered-diagram dependency. Do not emit absolute filesystem paths.
 
 When the change plans no public classes, interfaces, or methods, emit the exact sentinel `None — no planned public surfaces` followed by a one-line reason. Do not invent file-level entries as substitutes. The matching `## Step N` sections remain authoritative for step attribution, detailed signatures, and exact test assertions; the snapshot must not override or silently replace them.
+
+Directly beneath `### Architecture Snapshot`, emit a `### File Manifest` subsection: a flat, git-status-style list with exactly one line per file the change creates, modifies, deletes, or renames, produced by a deterministic **net fold** over the per-step `**Files Affected**` entries of the same change's `tasks.md` — the `A`/`M`/`D`/`R` tokens and the `R <src> -> <dst>` form defined by the `tasks-scaffold-format` capability. The manifest is a target-state view: one path, one line, never a concatenation of per-step entries for the same path.
+
+Process `## Step N` sections in ascending step order and, within a step, its `**Files Affected**` entries in file order. State is keyed by path; each path accumulates a state of `(net token, touched steps)`, seeded empty — empty covering both paths never touched and paths whose earlier touches netted to ∅ — and transitions exactly as the following table. A rename migrates the accumulator entry to the destination path key and leaves on the source path key a moved-away marker recording whether the source path existed at the change baseline: a source whose state before the rename was `A`, or a prior rename's destination, did not exist at the baseline; a source whose state was `M` or (empty) existed at it. The marker decides the token a later resurrection of the source path folds to. A resurrection dissolves the rename line: the destination then emits `A <dst>` on its own arc, because no rename survives when the source path exists at target state:
+
+| prior net | incoming token | new net |
+|-----------|----------------|---------|
+| (empty, or ∅) | `A` | `A` |
+| (empty) | `M` | `M` |
+| (empty) | `D` | `D` |
+| (empty, or ∅) | `R` | `R <src> -> <dst>` — the rename merge; the destination is new to the change and the source is not resurrected later |
+| `A` | `M` | `A` |
+| `A` | `D` | ∅ — the path is omitted from the manifest |
+| `A` | `R` | `A <dst>` — the change-created file lives at the destination |
+| `M` | `M` | `M` |
+| `M` | `D` | `D` |
+| `M` | `R` | `R <src> -> <dst>` |
+| `D` | `A` | `M` — the path existed before the change and exists after it |
+| `D` | `R` (as destination) | no merge — the destination existed at the change baseline: the arcs emit `D <src>` and `M <dst>` |
+| `R` (moved away; source existed at baseline) | `A` | `M <src>`, and the rename dissolves into `A <dst>` |
+| `R` (moved away; source created by this change) | `A` | `A <src>`, and the rename dissolves into `A <dst>` |
+| `R` | `M` | `R <src> -> <dst>` (a target-state view records where the file lands; the extent of the content change is carried by the step's `**What Will Be Done**` prose, per the `R`-token convention of `tasks.md`) |
+| `R` | `D` | `D <src>` — the composite dissolves; the deletion of the baseline path is the only fact that survives |
+| `R` | `R` | `R <state src> -> <incoming dst>` — a second rename collapses to the existing state's source and the incoming token's destination; the intermediate path appears nowhere |
+
+The existence-based token derivation of `tasks-scaffold-format` constrains the reachable pairs to exactly the table above: a path absent at a step's baseline is touched only by `A` or as the destination of an `R`; a path present at a step's baseline is never `A` and is touched only by `M`, `D`, `R`, or as the source of an `R`.
+
+A path whose **final** state is ∅ does NOT appear in the manifest, even though it appears in `tasks.md`; an intermediate ∅ (created and deleted, later recreated or renamed onto) does not suppress the path's later line. The final-∅ case is the only asymmetry between the two surfaces: every other touched path appears in both.
+
+Every step whose entry folds into a line is recorded in that line's step-attribution list, in ascending step order — the list names every touching step, not only the step that fixes the net token, so a net-`M` path first touched in Step 2 and modified again in Step 5 reads `(Step 2, Step 5)`, never `(Step 5)` alone. A rename entry contributes its source arc to the source path's line and its destination arc to the destination path's line. When the rename dissolves or collapses, the surviving line(s) carry the rename entry's steps alongside the follow-on entry's steps: `R` + `D` emits `D <src>` carrying the rename step and the deletion step; `R` + `A` emits `A <dst>` carrying the rename step, and the resurrected-source line carries the source-arc steps other than the rename step; `R` + `R` collapses with every rename step carried.
+
+Each line uses the form `<net token> <path> (Step <n>[, Step <n>]*)` — exactly one space between the token and the path, exactly one space before the opening parenthesis, comma-plus-space between step numbers — and a renamed line uses `R <src> -> <dst> (Step <n>…)` with exactly one space on either side of the ` -> ` separator. Do NOT column-align or pad lines.
+
+Sort lines lexicographically by their path — for `R` lines, the destination path (the path right of the ` -> ` separator) — in byte-wise ASCII/UTF-8 code-point order (the reproducible collation; case-insensitive order would diverge on mixed-case path pairs), reusing the destination-only convention of the routing derivation.
+
+The manifest is a concise derivative review surface, not a replacement for the authoritative per-step contracts: `tasks.md` remains authoritative for step attribution and per-step tokens, and no downstream phase parses the manifest as authoritative input.
+
+When the net fold produces no lines, carry the exact sentinel `None — no files affected` followed by a one-line reason. The empty fold is reachable only when the change nets to nothing: every `**Files Affected**` entry cancels to ∅ — each path the change touches is created and later deleted within the same change. A conforming reason line is `None — no files affected (every touched path is created and deleted within the change, so nothing remains at target state)`. The sentinel is independent of the `### Architecture Snapshot`'s `None — no planned public surfaces` sentinel: a change that plans no public surfaces still emits its full manifest beneath the snapshot's `None`, and the two subsections' sentinels do not interact or suppress each other.
 
 Structure — one section per step that introduces a new/modified public interface or a testable assertion, keyed by the same integer `## Step N` as `tasks.md`:
 
