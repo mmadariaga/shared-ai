@@ -40,15 +40,16 @@ Doctor SHALL validate each manifest-projected opencode worker agent file against
 - **AND** the message SHALL NOT carry the rename-or-remove remediation, because the installer overwrites and continues
 
 ### Requirement: Regression tests protect agent ownership semantics
-The automated test suite SHALL cover installation and doctor behavior for customized existing agents, the permission-only merge, and the absence of any agent-key insertion. The tests SHALL verify that ordinary installer-managed file replacement behavior is unaffected, and SHALL assert that a config carrying the three helper-agent keys is left byte-for-byte unchanged and triggers the migration notice.
+The automated test suite SHALL cover installation and doctor behavior: customized existing agent definitions, the permission-only merge, the absence of any agent-key insertion, and the three projected-file outcomes doctor reports for opencode worker agents (compatible, missing, and body-or-non-tunable-frontmatter divergence). The tests SHALL verify that ordinary installer-managed file replacement behavior is unaffected, and SHALL assert that a config carrying the three helper-agent keys is left byte-for-byte unchanged and triggers the migration notice.
 
 #### Scenario: Installer regression coverage confirms no agent-key writes
 - **WHEN** the installation regression suite runs cases with customized existing agents and configs carrying the three helper-agent keys
 - **THEN** it SHALL verify that existing definitions are unchanged, that no agent key is added to any config, and that the migration notice fires when the keys are present
 
-#### Scenario: Doctor regression coverage distinguishes present from missing names
-- **WHEN** the doctor regression suite runs against customized and incomplete opencode configurations
-- **THEN** it SHALL verify that present customized names are `ok` and absent names remain errors, with no config-agent validation performed
+#### Scenario: Doctor regression coverage distinguishes the three projected-file outcomes
+- **WHEN** the doctor regression suite runs against projected agent file trees whose worker files are compatible, missing, or divergent in body or non-tunable frontmatter
+- **THEN** it SHALL verify that compatible projected files are `ok`, missing files remain errors, and body-or-non-tunable-frontmatter-divergent files are reported as incompatible errors
+- **AND** no config-agent validation is performed
 
 ### Requirement: Opencode collision-policy documentation matches ownership semantics
 The accepted opencode collision-policy statements in `docs/adr/0077-harness-specific-worker-bindings.md` and `docs/adr/0088-implementation-harness-projection-boundaries.md` SHALL describe the seven projected opencode worker agent files and the three projected generic agent files (`explore`, `executor`, `budget`), the `tunable-seed` lifecycle (create when absent with the shipped tunables, overwrite body and non-tunable frontmatter on subsequent installs while preserving the destination's tunable values placed per the structural anchor in `agent-tunable-ownership`, emit a console notice when a body overwrite occurs), and the body-and-non-tunable identity rule used by doctor and uninstall; SHALL describe the configuration merge as covering only the external-directory permission; and SHALL avoid stating that customized opencode worker definitions are preserved by name in the configuration. Their Claude worker and ordinary managed-file collision statements SHALL remain unchanged.

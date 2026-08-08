@@ -81,6 +81,7 @@ This index groups the DDRs in `docs/ddr/` by **command** and by **cross-cutting 
 
 ### `npx shared-ai` (install / setup / uninstall / doctor)
 
+- [0109 — Doctor's opencode agent census derives from manifest-projected agent files, with the binding-to-projection alignment desync an explicit open gap](./0109-doctor-census-over-manifest-projected-files.md)
 
 ### Harness wrappers & the shared instruction layer
 
@@ -141,6 +142,7 @@ This index groups the DDRs in `docs/ddr/` by **command** and by **cross-cutting 
 
 ### Installer dependency policy & external tooling
 
+- [0109 — Doctor's opencode agent census derives from manifest-projected agent files, with the binding-to-projection alignment desync an explicit open gap](./0109-doctor-census-over-manifest-projected-files.md)
 
 ---
 

@@ -7,13 +7,13 @@ Declares the install strategy contract for managed agent projections: each of th
 
 ### Requirement: agent projection strategy
 
-The install manifest MUST declare exactly one strategy for each of the 14 managed agent projections (7 Claude + 7 opencode), and that strategy MUST be named `tunable-seed`. The `owned-copy` strategy MUST NOT appear in any managed agent projection's `strategy` field.
+The install manifest MUST declare exactly one strategy for each of the 17 managed agent projections (7 Claude + 10 opencode: the seven worker agents per harness plus the three opencode generic agents `explore`, `executor`, and `budget`), and that strategy MUST be named `tunable-seed`. The `owned-copy` strategy MUST NOT appear in any managed agent projection's `strategy` field.
 
-#### Scenario: manifest declares 14 tunable-seed agent projections
+#### Scenario: manifest declares 17 tunable-seed agent projections
 - **WHEN** the install manifest is loaded
-- **THEN** the `projections` array contains exactly 14 entries whose `destination.class` is `agents` and whose `strategy` is `tunable-seed`
-- **AND** those 14 entries cover the seven `sai-{1,2,3,5,6,7,8}-*-worker.md` filenames on the Claude harness
-- **AND** those 14 entries cover the same seven filenames on the opencode harness
+- **THEN** the `projections` array contains exactly 17 entries whose `destination.class` is `agents` and whose `strategy` is `tunable-seed`
+- **AND** those 17 entries cover the seven `sai-{1,2,3,5,6,7,8}-*-worker.md` filenames on the Claude harness
+- **AND** those 17 entries cover the same seven worker filenames on the opencode harness, plus the three generic agent filenames `explore.md`, `executor.md`, and `budget.md`
 
 #### Scenario: no managed agent projection declares owned-copy
 - **WHEN** the install manifest is loaded
