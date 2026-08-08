@@ -120,6 +120,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0054 — Reuse item 3's path-keyed Persistence rule for post-crystallization review-loop re-asks](./0054-reuse-item-3-persistence-rule-for-review-loop.md)
 - [0058 — The explore/feedback gate UX tweaks are expressed as deltas against the existing capabilities, not a new combined capability](./0058-gate-ux-tweaks-as-deltas-against-existing-capabilities.md) — **Reframes** ddr:0053
 - [0066 — Provenance as inline citations on existing Why / Decisions & Rationale fields — no new field](./0066-inline-provenance-no-new-field.md)
+- [0116 — The idea progress list is expressed entirely in `sai/instructions/explore.md` — the sole edit target](./0116-idea-progress-list-expressed-in-explore-md.md)
 
 ### `/sai-backfill`
 
@@ -300,6 +301,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0043 — Append crystallization language gate as item 8; do not renumber items 1–7 in `explore.md`](./0043-append-crystallization-gate-as-item-8.md) — Refs 0038
 - [0054 — Reuse item 3's path-keyed Persistence rule for post-crystallization review-loop re-asks](./0054-reuse-item-3-persistence-rule-for-review-loop.md)
 - [0066 — Provenance as inline citations on existing Why / Decisions & Rationale fields — no new field](./0066-inline-provenance-no-new-field.md)
+- [0116 — The idea progress list is expressed entirely in `sai/instructions/explore.md` — the sole edit target](./0116-idea-progress-list-expressed-in-explore-md.md)
 
 ### Artifact metadata & routing tokens
 
