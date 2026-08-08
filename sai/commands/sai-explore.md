@@ -7,7 +7,13 @@
 <TASK>
 
   ## Prerequisite checks
-  Fetch @sai/policies/prereqs.md
+  Fetch @sai/policies/prereqs-paths.md and retain the OpenSpec path table in this conversation — local artifact reads use the direct paths from it.
+  Fetch @sai/policies/prereqs-check.md and embed its check task into the delegation prompt below.
+  Delegate the three OpenSpec prerequisite checks — the `openspec` binary availability check, the `openspec/` directory existence check, and the `openspec/config.yaml` `schema: sai-workflow` check, as defined in `@sai/policies/prereqs-check.md` — to exactly one budget subagent per invocation, with no deferral condition (spawn on every invocation, including sessions that never touch `openspec/`). Dispatch under the budget-subagent binding of the active harness: Claude Code — `Agent(subagent_type: budget-subagent, run_in_background: true)`, awaited on your own turn; opencode — `task(subagent_type: budget)`, synchronous default. The subagent prompt SHALL contain only the check task (the three checks, their exact STOP-and-print literals, the verification command, and the operating paths `openspec/` and `openspec/config.yaml`) plus the verdict output contract below. The prompt SHALL NOT include `@sai/policies/prereqs-paths.md`, any change-artifact path (`openspec/specs/{name}/spec.md`, `openspec/schemas/sai-workflow/schema.yaml`, `openspec/changes/{change-name}/**`, or the archive pattern), raw shell evidence, or openspec command transcripts.
+  Verdict output contract: the completion report envelope `status` stays in the budget-subagent binding's closed vocabulary (`success | partial | failed`) with exactly the four fields (`status`, `actions_taken`, `failures`, `output`); the verdict rides in the `output` payload as `verdict: pass` or `verdict: halt`, and on halt the payload includes the verbatim remediation literal from `sai/policies/prereqs-check.md` for the failed check. Relay the verdict:
+  - `verdict: pass` — continue exploration.
+  - `verdict: halt` — print the report's remediation literal unchanged (no prefix, suffix, summary, or rephrasing) and stop without writing any file.
+  - Envelope `status: failed` or `partial` — dispatch failure: the prerequisite check could not be completed; present it as such, print no remediation literal, and do not continue as if the checks passed.
   Fetch @skills/safe-operations/SKILL.md and use it
 
   ## Fast-track parse
