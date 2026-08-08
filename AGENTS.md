@@ -77,7 +77,7 @@ The openspec-dependent `sai-*` commands halt with a clear error if either is mis
 | `skills/opencode/` | opencode harness skills. |
 | `skills/` | Universal skills installed globally (not project-local). Fetched by wrappers via `~/.claude/skills/` or `~/.config/opencode/skills/`. |
 | `skills/universal/sai-commands/SKILL.md` | SAI command registry — lists all /sai-* commands and enforces fetch-before-execute discipline. Loaded to prevent LLM from skipping command files. |
-| `skills/universal/safe-operations/SKILL.md` | Safe operations skill — enforces reversibility and impact awareness, requires user confirmation before destructive/hard-to-reverse/shared-system operations. Loaded by 7 sai-* command wrappers. |
+| `skills/universal/safe-operations/SKILL.md` | Safe operations skill — enforces reversibility and impact awareness, requires user confirmation before destructive/hard-to-reverse/shared-system operations. Loaded by 8 sai-* command wrappers. |
 | `skills/universal/` | Universal skills (no vendor). Fetched by all wrappers. |
 | `skills/claude/` | Claude Code-specific skills (subagent dispatch rules, etc.). Fetched by wrappers that spawn subagents. Routed workers load neutral bindings directly from installed `sai/orchestration/workers/bindings/` paths. |
 | `skills/opencode/` | Opencode-specific skills (subagent dispatch rules, etc.). Fetched by wrappers that spawn subagents. Routed workers load neutral bindings directly from installed `sai/orchestration/workers/bindings/` paths. |
@@ -119,7 +119,7 @@ All sai-* artifacts (`implementation.md`, `review.md`, `security.md`, `performan
 In `implementation.md`, a **checkbox** (`- [ ]`) is an **action** — something `/sai-4-apply` runs or the user verifies, then marks `[x]`; every `- [ ]` is a task a downstream consumer (`sai-4-apply`, `sai-archive`, `sai-pr`) acts on. An **italic note** (`*(...)*`) is an **explanation** — context for the reader that is never marked or acted on. A step with no observable human check therefore encodes that absence as an italic note, never as a placeholder `- [ ] No human check required` checkbox.
 
 ### Prerequisite check
-All openspec-dependent sai-* commands (`sai-explore`, `sai-1-spec`, `sai-2-design`, `sai-3-implement`, `sai-4-apply`, `sai-archive`, `sai-5-review`, `sai-6-security`, `sai-7-performance`, `sai-8-accessibility`, `sai-pr`) perform three checks by fetching `@sai/policies/prereqs.md` (resolved per harness: Claude Code via `~/.claude/sai/`, opencode via `~/.config/opencode/sai/`): (1) `openspec` binary in PATH, (2) `openspec/` directory exists, (3) `openspec/config.yaml` declares `schema: sai-workflow`. `sai-commit` is the only exception — it operates on git state only and works in projects without openspec.
+All openspec-dependent sai-* commands (`sai-explore`, `sai-1-spec`, `sai-2-design`, `sai-3-implement`, `sai-4-apply`, `sai-archive`, `sai-5-review`, `sai-6-security`, `sai-7-performance`, `sai-8-accessibility`, `sai-pr`) perform three checks by fetching `@sai/policies/prereqs.md` (resolved per harness: Claude Code via `~/.claude/sai/`, opencode via `~/.config/opencode/sai/`): (1) `openspec` binary in PATH, (2) `openspec/` directory exists, (3) `openspec/config.yaml` declares `schema: sai-workflow`. `sai-commit` and `/sai-worktree` are the only exceptions — they operate on git state only and work in projects without openspec.
 
 ### Isolation Mode
 Every `sai/commands/sai-*.md` body file starts with:
@@ -133,7 +133,7 @@ Every `sai/commands/sai-*.md` body file starts with:
 Never remove or modify this block.
 
 ### Safe Operations
-Loaded by 7 sai-* command wrappers (`sai-1-spec`, `sai-4-apply`, `sai-archive`, `sai-backfill`, `sai-commit`, `sai-explore`, `sai-pr`) via `Fetch @skills/safe-operations/SKILL.md`. The skill enforces:
+Loaded by 8 sai-* command wrappers (`sai-1-spec`, `sai-4-apply`, `sai-archive`, `sai-backfill`, `sai-commit`, `sai-explore`, `sai-pr`, `sai-worktree`) via `Fetch @skills/safe-operations/SKILL.md`. The skill enforces:
 - **Reversibility assessment**: agent MUST evaluate whether an operation is hard to reverse, destructive, or affects shared systems before executing.
 - **Confirmation gate**: agent MUST ask user before: deleting files/branches, `rm -rf`, `git push --force`, `git reset --hard`, amending published commits, pushing code, commenting on PRs/issues, modifying shared infrastructure.
 - **No destructive shortcuts**: agent MUST NOT bypass safety checks (`--no-verify`) or discard unfamiliar files that may be in-progress work.
