@@ -79,15 +79,15 @@ No additional rubric, scoring, weighting, or multi-criteria judgement SHALL be i
 
 After the Final sweep and the once-per-run promotion pass, `/sai-4-apply` SHALL treat the terminal commit as the run's documentation commit rather than as a commit owned exclusively by learnings promotion. The terminal documentation commit SHALL be a sibling subsection of `## Learnings Promotion Pass` in the apply instructions and SHALL be governed by one authorization gate for the complete terminal set.
 
-When the promotion pass writes `SAI_LEARNINGS.md`, the coordinator SHALL include that file in the terminal documentation commit. The same commit MAY also include eligible documentation changes under `docs/**`; it SHALL NOT include any other path, including OpenSpec change artifacts.
+When the promotion pass writes `SAI_LEARNINGS.md`, the coordinator SHALL include that file in the terminal documentation commit. The same commit SHALL include eligible documentation changes under `docs/**` and SHALL include the project-root `GLOSSARY.md` when it is changed in the working tree at the terminal pass — tracked-modified or untracked; it SHALL NOT include any other path, including OpenSpec change artifacts. `GLOSSARY.md` SHALL be resolved at the project root only, per `openspec/specs/glossary-location/spec.md`; no change-folder fallback exists.
 
-The terminal documentation commit SHALL be proposed whenever `docs/**` has working-tree changes or the promotion pass wrote `SAI_LEARNINGS.md`, even when the promotion pass produced no qualifying entry. Eligibility SHALL be evaluated from the working-tree state at the terminal pass, not from a run-start baseline, so pre-existing uncommitted `docs/**` changes are intentionally included and made visible by the terminal file visibility listing. When neither condition holds, no terminal documentation commit SHALL be proposed.
+The terminal documentation commit SHALL be proposed whenever `docs/**` has working-tree changes, the promotion pass wrote `SAI_LEARNINGS.md`, or the project-root `GLOSSARY.md` is changed in the working tree at the terminal pass — tracked-modified or untracked — even when the promotion pass produced no qualifying entry. Eligibility SHALL be evaluated from the working-tree state at the terminal pass, not from a run-start baseline, so pre-existing uncommitted `docs/**` and `GLOSSARY.md` changes are intentionally included and made visible by the terminal file visibility listing. When none of these conditions holds, no terminal documentation commit SHALL be proposed.
 
 When the promotion pass writes `SAI_LEARNINGS.md`, before proposing the terminal documentation commit the coordinator SHALL print a minimal promotion disclosure containing the path written, the count of entries added and superseded broken down by section, and the keys of any pre-seeded entries that this run's execution contradicted and superseded. The contradicted-key list is disclosure only and grants no delete authority. The coordinator SHALL also print the terminal file visibility listing specified below before proposing the commit message and before authorization. The disclosure and listing SHALL describe only the files eligible for this terminal commit.
 
 Before proposing the terminal documentation commit message, the coordinator SHALL apply `sai/policies/commit-rules.md`. The message SHALL use the policy's commit-type classification, subject/body/footer limits, and faithfulness rules, and SHALL describe only the terminal documentation commit's staged paths and hunks.
 
-The terminal authorization gate SHALL be session-flag-aware. On both authorization paths — the inactive-flag `yes` path and the active-flag skip path — the coordinator SHALL stage exactly the fixed terminal set — the changed `docs/**` paths plus root `SAI_LEARNINGS.md` when the promotion pass wrote it — and SHALL NOT use `git add -A`, a broad sweep, or a path that includes `openspec/changes/{change-name}/`. When the session-scoped commit-authorization flag is inactive, the authorization SHALL be a closed-choice `yes` / `no` prompt presented through the harness's native option-picker where one exists, with yes-only execute semantics: anything other than an explicit `yes` SHALL be treated as a decline. When the flag is active for the current in-conversation session (set by a prior `Allow on this session` selection at an earlier Step's commit gate or pre-activated by `--fast-track`), the coordinator SHALL skip the ask and proceed directly to staging and committing the terminal set, exactly as a per-Step commit under the flag does. In both paths, the promotion disclosure, the terminal file visibility listing, and the proposed commit message SHALL print before the commit; only the authorization ask and wait are removed. The terminal gate SHALL NOT offer an `Allow on this session` option: it is the run's last commit gate, so there is nothing further to grant. On decline, the coordinator SHALL leave the eligible files in the working tree, describe what remains uncommitted, and proceed to the MANDATORY STOP without halting or retrying.
+The terminal authorization gate SHALL be session-flag-aware. On both authorization paths — the inactive-flag `yes` path and the active-flag skip path — the coordinator SHALL stage exactly the fixed terminal set — the changed `docs/**` paths plus root `SAI_LEARNINGS.md` when the promotion pass wrote it plus root `GLOSSARY.md` when it is changed in the working tree, tracked-modified or untracked — and SHALL NOT use `git add -A`, a broad sweep, or a path that includes `openspec/changes/{change-name}/`. When the session-scoped commit-authorization flag is inactive, the authorization SHALL be a closed-choice `yes` / `no` prompt presented through the harness's native option-picker where one exists, with yes-only execute semantics: anything other than an explicit `yes` SHALL be treated as a decline. When the flag is active for the current in-conversation session (set by a prior `Allow on this session` selection at an earlier Step's commit gate or pre-activated by `--fast-track`), the coordinator SHALL skip the ask and proceed directly to staging and committing the terminal set, exactly as a per-Step commit under the flag does. In both paths, the promotion disclosure, the terminal file visibility listing, and the proposed commit message SHALL print before the commit; only the authorization ask and wait are removed. The terminal gate SHALL NOT offer an `Allow on this session` option: it is the run's last commit gate, so there is nothing further to grant. On decline, the coordinator SHALL leave the eligible files in the working tree, describe what remains uncommitted, and proceed to the MANDATORY STOP without halting or retrying.
 
 #### Scenario: Documentation exists but no learning is promoted
 
@@ -99,15 +99,25 @@ The terminal authorization gate SHALL be session-flag-aware. On both authorizati
 - **WHEN** the promotion pass writes `SAI_LEARNINGS.md` and `docs/adr/0000-INDEX.md` or ADR files are changed
 - **THEN** the coordinator proposes one terminal documentation commit containing `SAI_LEARNINGS.md` and the changed `docs/**` paths, subject to the single authorization gate
 
+#### Scenario: Glossary is changed but no learning is promoted
+
+- **WHEN** the Final sweep passes, the promotion pass produces no qualifying entry, `docs/**` has no working-tree changes, and the project-root `GLOSSARY.md` is changed in the working tree
+- **THEN** the coordinator proposes the terminal documentation commit containing that changed `GLOSSARY.md` and does not skip the gate because promotion was a no-op
+
+#### Scenario: Bootstrapped glossary is untracked at the terminal pass
+
+- **WHEN** the spec phase bootstrapped `GLOSSARY.md` at the project root, no prior commit tracked it, and it is untracked in the working tree at the terminal pass
+- **THEN** the coordinator includes the untracked `GLOSSARY.md` in the terminal set, lists it under `Will be committed`, and stages it with the terminal documentation commit
+
 #### Scenario: No terminal documentation inputs exist
 
-- **WHEN** the Final sweep passes, the promotion pass writes no `SAI_LEARNINGS.md`, and `docs/**` has no working-tree changes
+- **WHEN** the Final sweep passes, the promotion pass writes no `SAI_LEARNINGS.md`, `docs/**` has no working-tree changes, and the project-root `GLOSSARY.md` is unchanged in the working tree
 - **THEN** the coordinator proposes no terminal documentation commit and asks no terminal commit-authorization question
 
 #### Scenario: User declines the terminal documentation commit
 
 - **WHEN** the session flag is inactive, the coordinator presents the terminal documentation commit gate, and the user answers `no`, remains silent, or gives any response other than explicit `yes`
-- **THEN** no terminal commit is created, the eligible docs and learnings files remain in the working tree, and the coordinator proceeds to the MANDATORY STOP
+- **THEN** no terminal commit is created, the eligible docs, learnings, and glossary files remain in the working tree, and the coordinator proceeds to the MANDATORY STOP
 
 #### Scenario: Session flag active skips the terminal authorization ask
 
@@ -123,14 +133,19 @@ The terminal authorization gate SHALL be session-flag-aware. On both authorizati
 
 The terminal documentation commit, which replaces the former single-file promotion commit, SHALL print a terminal file visibility listing before the coordinator proposes its commit message and before authorization.
 
-For this terminal commit, the listing SHALL not depend on a Step number, a matching `tasks.md` scope, or a subagent report. It SHALL show the exact paths under `docs/**` and `SAI_LEARNINGS.md` that would be staged, and SHALL show working-tree paths that would remain uncommitted because they are outside that terminal set. It SHALL not stage or mutate the index while producing the preview.
+For this terminal commit, the listing SHALL not depend on a Step number, a matching `tasks.md` scope, or a subagent report. It SHALL show the exact paths under `docs/**` and the root paths `SAI_LEARNINGS.md` and `GLOSSARY.md` that would be staged, and SHALL show working-tree paths that would remain uncommitted because they are outside that terminal set. It SHALL not stage or mutate the index while producing the preview.
 
 The standard pre-commit file visibility report SHALL continue to fire unchanged at every ordinary STOP & COMMIT marker, including per-Step commits.
 
 #### Scenario: Terminal documentation commit has docs and learnings files
 
-- **WHEN** the terminal documentation commit is about to be proposed and both `docs/**` and `SAI_LEARNINGS.md` are eligible
+- **WHEN** the terminal documentation commit is about to be proposed and `docs/**` and `SAI_LEARNINGS.md` are eligible but the project-root `GLOSSARY.md` is not
 - **THEN** the coordinator prints a terminal file listing containing both sets of paths, plus any working-tree paths excluded from the commit, before proposing the message or asking for authorization
+
+#### Scenario: Terminal documentation commit has docs, learnings, and glossary files
+
+- **WHEN** the terminal documentation commit is about to be proposed and `docs/**`, `SAI_LEARNINGS.md`, and `GLOSSARY.md` are all eligible
+- **THEN** the coordinator prints a terminal file listing containing all three sets of paths, plus any working-tree paths excluded from the commit, before proposing the message or asking for authorization
 
 #### Scenario: Terminal documentation commit has no subagent report
 
@@ -144,21 +159,26 @@ The standard pre-commit file visibility report SHALL continue to fire unchanged 
 
 ### Requirement: Terminal documentation commit is independent of the per-Step add-list rule
 
-Per-Step commits SHALL remain field-8-only: the coordinator SHALL continue to stage exactly the add-list supplied by the applicable subagent report field 8 for each Step and SHALL NOT widen that rule to sweep `docs/**` or `SAI_LEARNINGS.md`.
+Per-Step commits SHALL remain field-8-only: the coordinator SHALL continue to stage exactly the add-list supplied by the applicable subagent report field 8 for each Step and SHALL NOT widen that rule to sweep `docs/**`, `SAI_LEARNINGS.md`, or `GLOSSARY.md`.
 
-The terminal documentation commit SHALL use its own fixed path set, consisting only of `docs/**` and `SAI_LEARNINGS.md`. The coordinator SHALL determine eligibility from the terminal working-tree state and whether the promotion pass wrote `SAI_LEARNINGS.md`; it SHALL NOT consult a Step's intended add-list or any subagent report field 8 to construct this terminal set.
+The terminal documentation commit SHALL use its own fixed path set, consisting only of `docs/**`, `SAI_LEARNINGS.md`, and the project-root `GLOSSARY.md`. The coordinator SHALL determine eligibility from the terminal working-tree state, whether the promotion pass wrote `SAI_LEARNINGS.md`, and whether the project-root `GLOSSARY.md` is changed in the working tree — tracked-modified or untracked; it SHALL NOT consult a Step's intended add-list or any subagent report field 8 to construct this terminal set.
 
-The coordinator SHALL NOT use `git add -A`, a broad working-tree sweep, or an equivalent operation that stages paths outside `docs/**` and `SAI_LEARNINGS.md`. In particular, `openspec/changes/{change-name}/` and its `implementation.md` SHALL remain outside the terminal documentation commit.
+The coordinator SHALL NOT use `git add -A`, a broad working-tree sweep, or an equivalent operation that stages paths outside `docs/**`, `SAI_LEARNINGS.md`, and the project-root `GLOSSARY.md`. In particular, `openspec/changes/{change-name}/` and its `implementation.md` SHALL remain outside the terminal documentation commit.
 
-#### Scenario: Terminal commit stages only documentation and learnings
+#### Scenario: Terminal commit stages only documentation, learnings, and glossary
 
 - **WHEN** the coordinator authorizes the terminal documentation commit while unrelated files and OpenSpec artifacts are also modified
-- **THEN** it stages only changed paths under `docs/**` and `SAI_LEARNINGS.md`, leaving every other path uncommitted
+- **THEN** it stages only changed paths under `docs/**`, `SAI_LEARNINGS.md`, and the project-root `GLOSSARY.md`, leaving every other path uncommitted
 
 #### Scenario: Per-Step add-list remains field-8-only
 
 - **WHEN** an ordinary Step commit is prepared after or before the terminal documentation commit
 - **THEN** its add-list remains sourced only from the relevant subagent report field 8 and does not include unrelated `docs/**` paths by default
+
+#### Scenario: Glossary alone triggers the terminal set
+
+- **WHEN** the promotion pass writes no learning entry, `docs/**` has no working-tree changes, and the project-root `GLOSSARY.md` is changed in the working tree
+- **THEN** the coordinator constructs the terminal set from the changed glossary path and does not require a qualifying promotion as a trigger
 
 #### Scenario: No learning promotion but docs trigger the terminal set
 

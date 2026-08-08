@@ -87,6 +87,12 @@ Durable execution-observed facts about the shared-ai prompt and installer reposi
 
 - **test/apply-coordinator-verification.test.js**: The suite pins every `Verification Checklist` occurrence in `sai/instructions/apply.md` to be followed by `sweep` within 500 characters (whole-file proximity pin) — new prose mentioning "Verification Checklist" trips it unless a sweep mention follows within 500 chars.
   *Observed:* apply-step-progress-plan — the plan's Edit-2 marking-hook wording "after the Step's Verification Checklist passes" introduced a new occurrence lacking sweep proximity and failed the line-320 pin; rewording to "after the Step's verification passes" (matching the change's interfaces contract) restored both the projection suite and the coordinator-verification suite.
+- **test/apply-coordinator-verification.test.js**: Structural test regexes may assert phrases that appear in no plan artifact; the GREEN body must supply them in instruction prose within the regex windows rather than editing the tests.
+  *Observed:* include-glossary-in-terminal-documentation-commit — six of ten blind test-writer assertions demanded phrases absent from the GREEN body ("no qualifying entry", "skip the ask", "wrote `SAI_LEARNINGS.md`"); one added paragraph satisfying all windows made the focused suite pass without test edits.
+- **node --test --test-name-pattern**: The flag is silently ignored through the opencode PowerShell 5.1 shell wrapper — a scoped run executes the whole file (all tests run); scope by explicit file paths and attribute failures per-test instead.
+  *Observed:* include-glossary-in-terminal-documentation-commit — the blind test-writer's scoped run and a no-match-pattern probe both executed all 36 file tests; attribution stayed unambiguous because pre-existing tests passed and only the 10 new assertions failed.
+- **node:assert**: `assert.match` throws on the first failing assertion in a test; later assertions in the same test never run, so a multi-assertion test reports only its first failure and fixing that one can expose further failures.
+  *Observed:* include-glossary-in-terminal-documentation-commit — the implementation dispatch verified later assertions manually by index arithmetic after the first failing regex was fixed.
 
 ## Avoid
 
