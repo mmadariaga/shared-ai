@@ -245,16 +245,18 @@ function parseInitialDispatches(text, callName, bindingPath) {
   return dispatches;
 }
 
-function bindingPaths(bindingsDir) {
+function workerBindingPaths(bindingsDir) {
+  // The roster is worker-only: non-worker bindings (e.g. the idea-list render
+  // binding) declare no dispatch and are not part of the derived worker roster.
   return fs.readdirSync(bindingsDir)
-    .filter(name => name.endsWith('.md'))
+    .filter(name => name.endsWith('-worker.md'))
     .map(name => path.join(bindingsDir, name))
     .sort((left, right) => left.split(path.sep).join('/').localeCompare(right.split(path.sep).join('/')));
 }
 
 function validateClaudeWorkerBindings(bindingsDir = CLAUDE_BINDINGS_DIR) {
   const seenBy = new Map();
-  for (const bindingPath of bindingPaths(bindingsDir)) {
+  for (const bindingPath of workerBindingPaths(bindingsDir)) {
     const text = fs.readFileSync(bindingPath, 'utf8');
     const dispatches = parseInitialDispatches(text, 'Agent', bindingPath);
     if (dispatches.length !== 1) {
@@ -280,7 +282,7 @@ function validateClaudeWorkerBindings(bindingsDir = CLAUDE_BINDINGS_DIR) {
 }
 
 function validateOpencodeWorkerBindings(bindingsDir = OPENCODE_BINDINGS_DIR) {
-  const bindingFiles = bindingPaths(bindingsDir);
+  const bindingFiles = workerBindingPaths(bindingsDir);
   if (bindingFiles.length === 0) {
     throw new Error(`Opencode bindings directory ${bindingsDir} contains no binding files; the worker roster cannot be derived.`);
   }

@@ -1087,6 +1087,36 @@ test('Step 3 binding files declare exactly the seven initial worker dispatches',
   }
 });
 
+test('Step 3 roster validation admits dispatch-less render bindings alongside worker bindings', () => {
+  const repoRoot = path.join(__dirname, '..');
+  const fixtureDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-render-binding-'));
+  try {
+    fs.copyFileSync(
+      path.join(repoRoot, 'sai', 'orchestration', 'workers', 'bindings', 'opencode', 'design-worker.md'),
+      path.join(fixtureDir, 'design-worker.md')
+    );
+    fs.writeFileSync(
+      path.join(fixtureDir, 'idea-list-render.md'),
+      '# Opencode Idea-List Render Binding\n\nThis harness has a native task panel. It declares no worker dispatch.\n',
+      'utf8'
+    );
+    let roster = null;
+    let validationError = null;
+    try {
+      roster = validateOpencodeWorkerBindings(fixtureDir);
+    } catch (error) {
+      validationError = error.message;
+    }
+    assert.equal(validationError, null,
+      `a dispatch-less render binding must not fail roster validation: ${validationError}`);
+    const names = (Array.isArray(roster) ? roster : Object.keys(roster || {})).sort();
+    assert.deepEqual(names, ['sai-2-design-worker'],
+      'the roster should contain exactly the validated worker and ignore the render binding');
+  } finally {
+    fs.rmSync(fixtureDir, { recursive: true, force: true });
+  }
+});
+
 test('Step 3 retired registration surface is no longer exported from the installer', () => {
   const flow = require('../bin/install-flow.js');
   assert.equal(flow.OPENCODE_MANAGED_AGENTS, undefined,
