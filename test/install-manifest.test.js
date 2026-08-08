@@ -741,7 +741,7 @@ test('STEP1_RETIRE_INLINE: manifest and installer expose only routed harnesses',
     const routedBindings = active
       .map(projection => path.relative(repoRoot, projection.sourcePath).split(path.sep).join('/'))
       .filter(source => source.startsWith(`sai/orchestration/workers/bindings/${harness}/`));
-    assert.equal(routedBindings.length, 7, `${harness} should retain all routed worker bindings`);
+    assert.equal(routedBindings.length, 8, `${harness} should retain all routed worker bindings`);
 
     const retirements = expandRetirementManifest(manifest, {
       harness,
