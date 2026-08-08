@@ -811,8 +811,8 @@ test('Step 3: implementation and audit workers never emit progress events and th
     'implementation and audit workers should never emit progress events');
   assert.match(lifecycle, /implementation[\s\S]{0,240}audit|audit[\s\S]{0,240}implementation/i,
     'the scope statement should name both implementation and audit workers');
-  assert.match(lifecycle, /design[- ]scoped|design[- ]only|design worker[s]? only/i,
-    'progress events should be design-scoped');
+  assert.match(lifecycle, /design[\s\S]{0,120}spec[- ]proposal[\s\S]{0,120}implementation[- ]planning/i,
+    'progress events should cover the three planning phases: design, spec-proposal, and implementation-planning');
   assert.match(lifecycle, /(?:payload|validation)[\s\S]{0,240}unchanged|unchanged[\s\S]{0,240}(?:payload|validation)/i,
     'payload validation for implementation and audit workers should be unchanged');
 });
