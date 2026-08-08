@@ -17,8 +17,6 @@ try {
   jsoncParser = null;
 }
 
-const OPENCODE_AGENT_KEYS = ['explore', 'executor', 'budget'];
-const OPENCODE_PLACEHOLDER_MODEL = 'opencode-go/deepseek-v4-flash';
 const CLAUDE_TUNABLE_KEYS = Object.freeze(['model', 'effort']);
 const OPENCODE_TUNABLE_KEYS = Object.freeze(['model', 'variant']);
 
@@ -619,24 +617,12 @@ function installOpencode(destBase) {
 
 function printOpencodeConfigMessage(base) {
   console.log(`\nOpencode config already exists at ${base}. Verify that you have these settings properly configured:\n`);
-  console.log('  "agent": {');
-  console.log('    "explore": {');
-  console.log('      "mode": "subagent",');
-  console.log('      // Your trusted low-cost model below');
-  console.log('      "model": "opencode-go/deepseek-v4-flash"');
-  console.log('    },');
-  console.log('    "executor": {');
-  console.log('      "mode": "subagent",');
-  console.log('      // Your trusted low-cost model below');
-  console.log('      "model": "opencode-go/deepseek-v4-flash"');
-  console.log('    },');
-  console.log('    "budget": {');
-  console.log('      "mode": "subagent",');
-  console.log('      // Your trusted low-cost model below');
-  console.log('      "model": "opencode-go/deepseek-v4-flash"');
+  console.log('  "permission": {');
+  console.log('    "external_directory": {');
+  console.log('      "~/.config/opencode/sai/**": "allow"');
   console.log('    }');
-    console.log('  }');
-  console.log('\nAdjust the model to your preferred low-cost provider.');
+  console.log('  }');
+  console.log('\nThis narrow external-directory authorization is the only setting the installer merges into an existing config. The generic agents (explore, executor, budget) are managed agent files under ~/.config/opencode/agents/ and need no config entry.');
 }
 
 const OPENCODE_SAI_PERMISSION_PATTERN = '~/.config/opencode/sai/**';
@@ -693,7 +679,7 @@ function wildcardMatches(value, pattern) {
 function invalidPermissionResult(text, location, detail) {
   return {
     text,
-    added: [],
+    redundantKeys: [],
     messages: [
       `OpenCode SAI permission: no change for ${OPENCODE_SAI_PERMISSION_PATTERN}; ${location} has invalid ${detail}; expected allow, ask, deny, or a rule object.`,
     ],
@@ -754,33 +740,20 @@ function mergeOpencodeAgents(text, permissionContext = createPermissionMatchCont
   const { parse, modify, applyEdits } = jsoncParser;
   const errors = [];
   const root = parse(text, errors, { allowTrailingComma: true });
-  if (errors.length > 0 || !isPlainObject(root) || Object.keys(root).length === 0) return null;
-
-  const hasAgent = Object.prototype.hasOwnProperty.call(root, 'agent');
-  if (hasAgent && !isPlainObject(root.agent)) return null;
+  if (errors.length > 0 || !isPlainObject(root)) return null;
 
   const permissionState = classifySaiPermission(root.permission, permissionContext);
   if (permissionState.invalid) {
     return invalidPermissionResult(text, permissionState.invalid[0], permissionState.invalid[1]);
   }
 
+  const redundantKeys = isPlainObject(root.agent)
+    ? ['explore', 'executor', 'budget'].filter(key => Object.prototype.hasOwnProperty.call(root.agent, key))
+    : [];
+
   const formattingOptions = { insertSpaces: true, tabSize: 2 };
   let out = text;
-  const added = [];
   const messages = [];
-  const existing = hasAgent ? root.agent : {};
-  const shapes = {
-    explore: { mode: 'subagent', model: OPENCODE_PLACEHOLDER_MODEL },
-    executor: { mode: 'subagent', model: OPENCODE_PLACEHOLDER_MODEL },
-    budget: { mode: 'subagent', model: OPENCODE_PLACEHOLDER_MODEL },
-  };
-
-  for (const [key, shape] of Object.entries(shapes)) {
-    if (!Object.prototype.hasOwnProperty.call(existing, key)) {
-      out = applyEdits(out, modify(out, ['agent', key], shape, { formattingOptions }));
-      added.push(key);
-    }
-  }
 
   if (permissionState.action === 'append') {
     if (root.permission === undefined) {
@@ -816,7 +789,7 @@ function mergeOpencodeAgents(text, permissionContext = createPermissionMatchCont
     }
   }
 
-  return { text: out, added, messages };
+  return { text: out, messages, redundantKeys };
 }
 
 function copyOpencodeConfig(destBase) {
@@ -845,8 +818,8 @@ function copyOpencodeConfig(destBase) {
   if (merged.text !== fs.readFileSync(target, 'utf8')) {
     fs.writeFileSync(target, merged.text);
   }
-  if (merged.added.length > 0) {
-    console.log(`Added opencode agent keys to ${target}: ${merged.added.join(', ')}. Adjust the placeholder model "${OPENCODE_PLACEHOLDER_MODEL}" to your preferred low-cost provider.`);
+  if (merged.redundantKeys.length > 0) {
+    console.log(`Migration notice: redundant opencode agent keys detected in ${target}: ${merged.redundantKeys.join(', ')}. The projected agent files under ~/.config/opencode/agents/ now take precedence — agent files take precedence for the keys they declare, including model — a tuned model in the config is no longer effective. Config-only keys the agent files do not declare (for example tools or options) still apply. To keep a tuned model, edit the model line in the matching agent file (~/.config/opencode/agents/{explore,executor,budget}.md), which the tunable-seed lifecycle preserves. Removing the now-redundant keys from the config is your decision; the installer never edits the config.`);
   }
   for (const message of merged.messages) console.log(message);
 }

@@ -138,8 +138,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 
 - [0010 — Raw readline for interactive checklist instead of npm library](./0010-readline-over-npm-for-interactive-checklist.md)
 - [0011 — Regex line-level patch for config.yaml schema field instead of YAML library](./0011-regex-line-patch-over-yaml-library-for-config.md) — Refs 0010
-- [0029 — Surgical merge of the opencode `agent` block via jsonc-parser](./0029-jsonc-parser-surgical-merge-for-opencode-agent-block.md) — Refs 0031
-- [0030 — Merge `opencode.json` over `opencode.jsonc` when both exist](./0030-opencode-json-over-jsonc-merge-precedence.md)
+- [0030 — Merge `opencode.json` over `opencode.jsonc` when both exist](./0030-opencode-json-over-jsonc-merge-precedence.md) — *Superseded in respect of agents; precedence continues to govern the SAI permission merge*
 - [0031 — Permit declared npm dependencies in the installer (jsonc-parser)](./0031-permit-declared-npm-dependencies-in-installer.md) — **Amends** 0010, **Amends** 0011
 - [0032 — Installer may execute an external installer](./0032-installer-may-execute-external-installer.md) — Refs 0031
 - [0036 — Bundle CodeGraph CLI install and MCP wiring into a single boolean-returning runner](./0036-codegraph-install-bundled-runner-boolean.md)
@@ -314,8 +313,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 
 - [0010 — Raw readline for interactive checklist instead of npm library](./0010-readline-over-npm-for-interactive-checklist.md)
 - [0011 — Regex line-level patch for config.yaml schema field instead of YAML library](./0011-regex-line-patch-over-yaml-library-for-config.md) — Refs 0010
-- [0029 — Surgical merge of the opencode `agent` block via jsonc-parser](./0029-jsonc-parser-surgical-merge-for-opencode-agent-block.md) — Refs 0031
-- [0030 — Merge `opencode.json` over `opencode.jsonc` when both exist](./0030-opencode-json-over-jsonc-merge-precedence.md)
+- [0030 — Merge `opencode.json` over `opencode.jsonc` when both exist](./0030-opencode-json-over-jsonc-merge-precedence.md) — *Superseded in respect of agents; precedence continues to govern the SAI permission merge*
 - [0031 — Permit declared npm dependencies in the installer (jsonc-parser)](./0031-permit-declared-npm-dependencies-in-installer.md) — **Amends** 0010, **Amends** 0011
 - [0032 — Installer may execute an external installer](./0032-installer-may-execute-external-installer.md) — Refs 0031
 - [0036 — Bundle CodeGraph CLI install and MCP wiring into a single boolean-returning runner](./0036-codegraph-install-bundled-runner-boolean.md)
@@ -353,3 +351,4 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0080 — Design-to-implementation lifecycle boundary](./0080-design-to-implementation-lifecycle-boundary.md) — Refs 0075, Refs 0076 — *Superseded by simplify-routed-phase-coordination*
 - [0089 — Share one routed SAI coordinator profile across planning phases](./0089-shared-sai-coordinator-profile.md) — Refs 0083, Refs 0074, Refs 0078 — *Superseded by simplify-routed-phase-coordination*
 - [0013 — Dedicated mMUT-N finding namespace and Mutation Analysis output section](./0013-mmut-n-finding-namespace-for-mutation-analysis.md) — *Superseded by [0107](./0107-unified-audit-severity-vocabulary.md)*
+- [0029 — Surgical merge of the opencode `agent` block via jsonc-parser](./0029-jsonc-parser-surgical-merge-for-opencode-agent-block.md) — Refs 0031 — *Historical: the agent-block merge is retired*

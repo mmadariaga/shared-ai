@@ -1,4 +1,10 @@
-## ADDED Requirements
+# executor-opencode-skill Specification
+
+## Purpose
+
+Define the OpenCode executor skill file, its agent keyword binding, and its frontmatter and section structure.
+
+## Requirements
 
 ### Requirement: Skill file location and naming
 
@@ -17,17 +23,6 @@ The skill SHALL bind the "executor subagent" concept to the OpenCode agent keywo
 
 - **WHEN** a main agent in OpenCode spawns an executor subagent per this skill
 - **THEN** it uses the `executor` agent keyword
-
-### Requirement: opencode.jsonc agent entry
-
-An `agent.executor` entry MUST be added to `opencode/opencode.jsonc`. The entry SHALL include:
-- `mode`: `"subagent"`
-- `model`: a cheap model identifier (same tier as `agent.explore.model` — the project's low-cost model)
-
-#### Scenario: Configuration registration
-
-- **WHEN** `opencode/opencode.jsonc` is read
-- **THEN** it contains an `agent.executor` block with `mode` and `model` fields
 
 ### Requirement: No tool-call cap
 

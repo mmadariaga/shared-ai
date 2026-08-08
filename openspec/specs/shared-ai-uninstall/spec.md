@@ -1,3 +1,11 @@
+# shared-ai-uninstall Specification
+
+## Purpose
+
+Define the uninstall subcommand: deletion-set enumeration, dry-run audit mode, confirmation gates, hash-guarded deletion, and the excluded targets that are never modified.
+
+## Requirements
+
 ### Requirement: uninstall subcommand routing
 `bin/install.js` SHALL route the `uninstall` subcommand to a new `bin/uninstall-flow.js` module, alongside the existing `install` and `setup` routes. The router SHALL invoke the module's `main()` and, on a rejected promise, print the error and exit with a non-zero code, mirroring the existing `install` and `setup` routing. The installer's `--help` usage line and its unknown-subcommand error message SHALL both name `uninstall` as a valid subcommand (i.e. `[install|setup|uninstall]`).
 
@@ -126,11 +134,13 @@ Re-running uninstall SHALL be safe. A deletion-set path that does not exist on d
 - **THEN** it prints a summary with the number of files deleted, kept-as-override, and not-found
 
 ### Requirement: excluded targets are never touched
-The uninstall flow SHALL NOT modify the opencode config files (`opencode.json`, `opencode.jsonc`), the per-project `setup` artifacts (`openspec/config.yaml`, `openspec/schemas/sai-workflow/`), or any externally-installed global CLI (`openspec`, `opencode-ai`, `@colbymchenry/codegraph`). No uninstall flag SHALL cause these to be modified.
+The uninstall flow SHALL NOT modify the opencode config files (`opencode.json`, `opencode.jsonc`), the per-project `setup` artifacts (`openspec/config.yaml`, `openspec/schemas/sai-workflow/`), or any externally-installed global CLI (`openspec`, `opencode-ai`, `@colbymchenry/codegraph`). No uninstall flag SHALL cause these to be modified. The opencode config files are left exactly as the user defined them: any keys the user has written — including a pre-existing `agent.*` block from a prior install, or any user-owned `agent.explore`/`agent.executor`/`agent.budget` entry that the pre-slice-1 installer had merged — are preserved verbatim. The uninstall flow does not read these files for modification; no merged-key report line, no per-key restoration, and no retroactive agent-key cleanup are performed.
 
-#### Scenario: opencode config merges are left in place
+#### Scenario: opencode config is left exactly as the user defined it
 - **WHEN** any `uninstall` invocation runs
-- **THEN** `opencode.json` and `opencode.jsonc` are not read for modification and not deleted, leaving the merged agent keys intact
+- **THEN** `opencode.json` and `opencode.jsonc` are not read for modification and not deleted
+- **AND** any keys the user has in their config — including pre-existing `agent.*` keys from a prior install — are preserved verbatim
+- **AND** the flow does not perform any agent-key cleanup, restoration, or "merged keys" reporting
 
 #### Scenario: per-project setup artifacts are not reversed
 - **WHEN** any `uninstall` invocation runs

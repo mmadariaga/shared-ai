@@ -139,6 +139,9 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 **Verify-First Marker**: "The optional pinned `(**Verify-first**: Step N)` parenthetical on a `design.md` risk, naming the step whose design depends on that risk being resolved or disproven first."
 *Avoid*: Blocker, Gate, Check First, precondition, dependency marker
 
+**Worktree Name Triple**: "The three derived names of one git worktree under the `/sai-worktree` convention — the sibling directory suffix, the branch name, and the counter slot — each derivable from the others: the default `<main-dir>.worktree-<n>` directory maps to the `worktree-<n>` branch, a custom name maps to the branch obtained by stripping a leading `<main-dir>.` prefix (falling back to the whole name when no such prefix is present), and `n` is the first free slot."
+*Avoid*: worktree naming, directory-branch pair, worktree pair, worktree slot naming
+
 ## Relationships
 
 - An **Advisor Skill** is consulted by the phase directly below its model tier: `mid-advisor` by the `/sai-4-apply` coordinator, `senior-advisor` by `/sai-3-implement`.
@@ -182,6 +185,7 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 - An **Autonomy Audit Log** is presented in conversation at supervised spec-phase end and is never written to any file, artifact, or configuration.
 - A **DDR** encodes a **Domain Invariant**; an **ADR** documents a decision that does not.
 - A qualifying design decision resolves to exactly one **Decision Record Family** via the ordered routing test — a **Domain Invariant** routes to **DDR**, anything else routes to **ADR** — and the resolved family is recorded in `design.md` as the `**Record family**` marker.
+- A **Worktree Name Triple** belongs to one git worktree created by `/sai-worktree` and is derived from the main worktree's directory name plus the first free counter slot.
 
 ## Example dialogue
 
@@ -197,3 +201,4 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 - **"Finding" across surfaces** — artifact reviews and the audit commands (`sai-5`/`sai-6`/`sai-7`/`sai-8`) both produce "findings". Artifact reviews use `H1`/`M1`/`L1` identifiers on the closed `High`/`Medium`/`Low` set (no `Critical`), while all four audit commands share one `Critical`-based severity vocabulary — `Critical`/`High`/`Medium`/`Low`, plus the review-only `Question` category and the `sai-7`/`sai-8`-only `Informational` level — with severity-prefixed identifiers (`C`/`H`/`M`/`L`, plus `Q`/`I`) and a closing `Summary:` tally line per report; `review.md`'s mutation findings keep the separate `mMUT-N` namespace per ADR 0013. **Resolution:** **Review Finding** names the artifact-review item only; audit findings use the shared audit severity vocabulary and are never called Review Findings.
 - **Schema template vs instruction output template** — both families are "the template" for the same report artifact: `openspec/schemas/sai-workflow/templates/{artifact}.md` is the CLI scaffold served by `openspec instructions`, while `sai/instructions/_templates/{artifact}-report.md` is the write-time contract fetched by the phase instruction. **Resolution:** the two are pinned to skeleton parity by **Report Template Parity** — they diverge only in placeholder syntax, guidance depth, and code-fence wrapping — and neither replaces the other.
 - **"ADR/DDR" as an undecided pair vs a resolved family** — the criteria surfaces (`design.md`'s `## Decisions`, `spec.propose.md`'s ADR/DDR Proposal Check, the schema's design instruction) use "ADR/DDR" as one phrase without resolving a family, and a bare "family" is ambiguous between the record families and the report template families. **Resolution:** "ADR/DDR" names the two-family evaluation surface only; the ordered routing test resolves the family, recorded in `design.md` as `**Record family**: adr|ddr`; **Decision Record Family** names the `adr`/`ddr` families and the qualified term is always used.
+- **Worktree vs worktree name triple** — bare "worktree" names the git object (a linked checkout), while the convention's naming scheme is the triple of directory suffix, branch, and counter slot. **Resolution:** "worktree" alone always means the git worktree; **Worktree Name Triple** is used when referring to the naming convention.

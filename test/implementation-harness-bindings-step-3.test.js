@@ -270,7 +270,7 @@ test('Step 3 overwrites incompatible Claude destinations with notice while prese
   }
 });
 
-test('Step 3 ADR/INSTALL prose describes tunable-seed projections, body-identity uninstall, and helper-only merge', () => {
+test('Step 3 ADR/INSTALL prose describes tunable-seed projections, body-identity uninstall, and permission-only merge', () => {
   const adr = fs.readFileSync(path.join(repoRoot, 'docs', 'adr', '0077-harness-specific-worker-bindings.md'), 'utf8');
   const boundaries = fs.readFileSync(path.join(repoRoot, 'docs', 'adr', '0088-implementation-harness-projection-boundaries.md'), 'utf8');
   const installGuide = fs.readFileSync(path.join(repoRoot, 'INSTALL.opencode.md'), 'utf8');
@@ -285,17 +285,44 @@ test('Step 3 ADR/INSTALL prose describes tunable-seed projections, body-identity
     'specs/opencode-agent-preservation/spec.md: opencode documentation should describe body-and-non-tunable identity');
   assert.doesNotMatch(documentation, /rename-or-remove|rename or remove/i,
     'specs/opencode-agent-preservation/spec.md: opencode documentation must not carry rename-or-remove remediation');
-  assert.doesNotMatch(documentation, /\.owner\.json/,
-    'specs/opencode-agent-preservation/spec.md: opencode documentation must not reference owner sidecars');
+  assert.match(documentation, /No `\.<basename>\.owner\.json` sidecar is written or read\./,
+    'specs/opencode-agent-preservation/spec.md: opencode documentation should state the owner sidecar is never written');
+  assert.doesNotMatch(documentation, /\.owner\.json(?!` sidecar is written or read\.)/,
+    'specs/opencode-agent-preservation/spec.md: opencode documentation must not positively reference owner sidecars');
   assert.match(documentation, /uninstall/i);
   assert.match(documentation, /guard|identity/i,
     'specs/opencode-agent-preservation/spec.md: opencode documentation should describe guarded uninstall');
-  assert.match(documentation, /explore|executor|budget/,
-    'specs/opencode-agent-preservation/spec.md: opencode documentation should describe the helper-agent merge');
+  assert.match(documentation, /permission-only/i,
+    'specs/opencode-agent-preservation/spec.md: the opencode config merge should be described as permission-only');
+  assert.match(documentation, /~\/\.config\/opencode\/agents\/(?:explore|executor|budget)\.md/,
+    'specs/opencode-agent-preservation/spec.md: the three generic agent files should be named as projected agents');
   assert.match(documentation, /permission/i,
     'specs/opencode-agent-preservation/spec.md: opencode documentation should describe the permission merge');
   assert.doesNotMatch(documentation, /customiz(?:ed|ation).{0,120}(?:preserv|retain)/i,
     'specs/opencode-agent-preservation/spec.md: opencode documentation must not claim customized worker definitions are preserved by name in the configuration');
+  assert.match(documentation, /opencode\.json[\s\S]{0,140}exclu|exclu[\s\S]{0,140}opencode\.json/i,
+    'specs/opencode-agent-preservation/spec.md: the opencode.json exclusion should survive');
+  assert.match(documentation, /restart/i,
+    'specs/opencode-agent-preservation/spec.md: the restart instruction should survive');
+});
+
+test('Step 3 ADR 0029/0030 records retire the agent-block merge and keep the permission precedence', () => {
+  const adr0029 = fs.readFileSync(path.join(repoRoot, 'docs', 'adr', '0029-jsonc-parser-surgical-merge-for-opencode-agent-block.md'), 'utf8');
+  const adr0030 = fs.readFileSync(path.join(repoRoot, 'docs', 'adr', '0030-opencode-json-over-jsonc-merge-precedence.md'), 'utf8');
+  const index = fs.readFileSync(path.join(repoRoot, 'docs', 'adr', '0000-INDEX.md'), 'utf8');
+
+  assert.match(adr0029, /status[\s\S]{0,120}historical|historical[\s\S]{0,120}status/i,
+    'opencode agent-block retirement: ADR 0029 status should be recorded historical');
+  assert.match(adr0029, /the agent-block merge is retired/i,
+    'opencode agent-block retirement: ADR 0029 should record the retirement reason');
+  assert.match(adr0030, /status[\s\S]{0,120}superseded|superseded[\s\S]{0,120}status/i,
+    'opencode agent-block retirement: ADR 0030 should be recorded superseded in respect of agents');
+  assert.match(adr0030, /opencode\.json[\s\S]{0,160}opencode\.jsonc/i,
+    'opencode agent-block retirement: ADR 0030 should retain the opencode.json-over-opencode.jsonc precedence for the permission merge');
+  assert.match(index, /0029[^\n]{0,200}historical/i,
+    'opencode agent-block retirement: the index entry for 0029 should match its new status');
+  assert.match(index, /0030[^\n]{0,200}superseded/i,
+    'opencode agent-block retirement: the index entry for 0030 should match its new status');
 });
 
 test('Step 3 opencode manifest projects the seven managed worker agent files to the agents destination', () => {

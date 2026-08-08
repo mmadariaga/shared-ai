@@ -120,13 +120,14 @@ test('Step 2 accessibility worker preserves input precedence, grammar, change re
   assert.match(worker, /scope/);
 });
 
-test('Step 2 accessibility findings use the closed severity set and promote legacy Major findings', () => {
+test('Step 2 accessibility findings use the closed severity set', () => {
   const worker = artifact('sai/orchestration/workers/sai-8-accessibility-worker.md');
 
   for (const severity of ['Critical', 'High', 'Medium', 'Low', 'Informational']) {
     assert.match(worker, new RegExp(`\\b${severity}\\b`));
   }
-  assert.match(worker, /Major[\s\S]{0,160}(?:High|promot|at least High)/i);
+  assert.doesNotMatch(worker, /\bMajor\b/,
+    'the binding carries only the closed Critical/High/Medium/Low/Informational taxonomy');
 });
 
 test('Step 2 accessibility worker owns small-scope inspection without mandatory explorer delegation', () => {

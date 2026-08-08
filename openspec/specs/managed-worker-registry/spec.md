@@ -96,15 +96,15 @@ Tunable-seed projection SHALL install the bytes of the manifest row's declared `
 - **THEN** the file installed at `~/.claude/agents/sai-2-design-worker.md` SHALL remain byte-identical to the pre-change behavior when the destination did not exist before the install
 - **AND** the installer SHALL NOT create a `.<basename>.owner.json` file
 
-### Requirement: The canonical opencode configuration sample defines no managed worker
-The canonical sample `configs/opencode.jsonc` SHALL NOT define any of the seven managed opencode worker agent keys; the seven `agent.sai-*-worker` keys are removed from it, while `subagent_depth`, `permission`, and the three helper-agent keys (`explore`, `executor`, `budget`) remain unchanged. The fresh-install configuration therefore carries no worker registration; workers register only through the projected markdown agent files.
+### Requirement: The canonical opencode configuration sample defines no agent
+The canonical sample `configs/opencode.jsonc` SHALL NOT define any agent key — neither the seven managed opencode worker agent keys nor the three helper-agent keys (`explore`, `executor`, `budget`). It SHALL retain `$schema`, `subagent_depth`, and `permission` (including the `~/.config/opencode/sai/**` external-directory allow rule). The fresh-install configuration therefore carries no agent registration at all; all agents register through the projected markdown agent files — the seven workers and the three generic agents.
 
-#### Scenario: The sample config contains no worker keys
+#### Scenario: The sample config contains no agent keys
 - **WHEN** `configs/opencode.jsonc` is read after the change
-- **THEN** none of `sai-1-spec-proposal-worker`, `sai-2-design-worker`, `sai-3-implementation-worker`, `sai-5-review-worker`, `sai-6-security-worker`, `sai-7-performance-worker`, or `sai-8-accessibility-worker` appears under `agent`
-- **AND** `subagent_depth`, `permission`, and the `agent.explore`, `agent.executor`, and `agent.budget` definitions remain present
+- **THEN** none of `sai-1-spec-proposal-worker`, `sai-2-design-worker`, `sai-3-implementation-worker`, `sai-5-review-worker`, `sai-6-security-worker`, `sai-7-performance-worker`, `sai-8-accessibility-worker`, `explore`, `executor`, or `budget` appears under any `agent` key
+- **AND** `$schema`, `subagent_depth`, and `permission` remain present
 
-#### Scenario: Fresh-install merge does not re-add worker keys
+#### Scenario: Fresh-install merge does not add agent keys
 - **WHEN** the installer copies `configs/opencode.jsonc` to a fresh destination and applies the configuration merge
-- **THEN** the resulting configuration contains no `agent.sai-*-worker` key
-- **AND** the merged configuration retains `permission.external_directory["~/.config/opencode/sai/**"]` and the three helper-agent keys
+- **THEN** the resulting configuration contains no `agent` key
+- **AND** the merged configuration retains `permission.external_directory["~/.config/opencode/sai/**"]`

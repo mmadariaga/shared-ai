@@ -523,6 +523,12 @@ test('documentation records the active design compatibility boundary and managed
   assert.match(opencode, /variant: high/);
    assert.match(opencode, /configuration exclusion|excludes?.*opencode\.json|opencode\.json.*excludes?/i);
   assert.match(opencode, /restart opencode/i);
+  assert.doesNotMatch(opencode, /"agent"\s*:\s*\{/,
+    'INSTALL.opencode.md bash and PowerShell blocks must not show an agent block snippet');
+  assert.match(opencode, /~\/\.config\/opencode\/agents\/(?:explore|executor|budget)\.md/,
+    'INSTALL.opencode.md should document the generic agent files as the model-resolution sources');
+  assert.doesNotMatch(agents, /model resolved via opencode\.jsonc|resolved via agent\.\w+\.model/i,
+    'AGENTS.md model-resolution statements should name the agent files, not opencode.jsonc');
 
 });
 

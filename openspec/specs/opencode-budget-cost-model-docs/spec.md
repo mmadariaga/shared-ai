@@ -12,7 +12,7 @@ The `skills/opencode/budget-explorer/SKILL.md` file SHALL include a `## Cost mod
 
 The section SHALL explain:
 - **Why delegate**: The cost efficiency and context-hygiene benefits of delegating research tasks to subagents
-- **Model resolution**: How the opencode harness resolves the model for this skill via `agent.<keyword>.model` in the project's `opencode.jsonc`
+- **Model resolution**: How the opencode harness resolves the model for this skill via the `model` frontmatter of the explore agent file (`~/.config/opencode/agents/explore.md`), seeded by the installer under the `tunable-seed` lifecycle
 - **When to use**: Guidance on when to invoke this skill based on budget constraints
 
 #### Scenario: Agent loads opencode budget-explorer and reads rationale
@@ -21,10 +21,10 @@ The section SHALL explain:
 - **THEN** it finds the `## Cost model` section clearly positioned after `## Model resolution`
 - **AND** it understands the rationale for delegating research to subagents
 
-#### Scenario: Model resolution via opencode.jsonc
+#### Scenario: Model resolution names the explore agent file
 
 - **WHEN** the cost model section documents model selection
-- **THEN** it explicitly states that the model is resolved via `agent.<keyword>.model` in `opencode.jsonc`, not hardcoded in the SKILL.md
+- **THEN** it explicitly states that the model is resolved via the `model` frontmatter of `~/.config/opencode/agents/explore.md`, not via `agent.explore.model` in `opencode.jsonc` and not hardcoded in the SKILL.md
 
 ---
 
@@ -34,7 +34,7 @@ The `skills/opencode/budget-executor/SKILL.md` file SHALL include a `## Cost mod
 
 The section SHALL explain:
 - **Why delegate**: The cost efficiency and context preservation benefits of delegating execution tasks to subagents
-- **Model resolution**: How the opencode harness resolves the model for this skill via `agent.<keyword>.model` in the project's `opencode.jsonc`
+- **Model resolution**: How the opencode harness resolves the model for this skill via the `model` frontmatter of the executor agent file (`~/.config/opencode/agents/executor.md`), seeded by the installer under the `tunable-seed` lifecycle
 - **Execution overhead**: How delegation reduces main agent context pollution when running long-running or resource-intensive operations
 
 #### Scenario: Agent loads opencode budget-executor and understands delegation
@@ -51,7 +51,7 @@ The `skills/opencode/budget-subagent/SKILL.md` file SHALL include a `## Cost mod
 
 The section SHALL explain:
 - **Why delegate**: The cost efficiency and context-hygiene benefits of delegating general tasks to subagents, particularly for scoped work that benefits from fresh context
-- **Model resolution**: How the opencode harness resolves the model for this skill via `agent.<keyword>.model` in the project's `opencode.jsonc`
+- **Model resolution**: How the opencode harness resolves the model for this skill via the `model` frontmatter of the budget agent file (`~/.config/opencode/agents/budget.md`), seeded by the installer under the `tunable-seed` lifecycle
 - **Scope boundaries**: How clear task boundaries enable effective subagent delegation and cost control
 
 #### Scenario: Agent loads opencode budget-subagent and understands cost model
@@ -64,7 +64,7 @@ The section SHALL explain:
 
 ### Requirement: Consistency with claude budget skills
 
-The cost model sections in all three opencode budget skills SHALL be adapted to opencode's model-resolution mechanism (`agent.<keyword>.model` in `opencode.jsonc`), but SHALL maintain conceptual parity with their claude counterparts regarding:
+The cost model sections in all three opencode budget skills SHALL be adapted to opencode's model-resolution mechanism (the agent file's `model` frontmatter under `~/.config/opencode/agents/`), but SHALL maintain conceptual parity with their claude counterparts regarding:
 - Cost efficiency benefits of delegation
 - Context-hygiene preservation
 - When and why to use each skill
@@ -72,4 +72,4 @@ The cost model sections in all three opencode budget skills SHALL be adapted to 
 #### Scenario: Claude and opencode budget skills convey same rationale
 
 - **WHEN** comparing the cost model sections in `skills/claude/budget-explorer/SKILL.md` and `skills/opencode/budget-explorer/SKILL.md`
-- **THEN** both convey the same rationale for research task delegation, with only the model-resolution mechanism differing (claude: model field; opencode: `agent.<keyword>.model`)
+- **THEN** both convey the same rationale for research task delegation, with only the model-resolution mechanism differing (claude: model field; opencode: agent-file `model` frontmatter)

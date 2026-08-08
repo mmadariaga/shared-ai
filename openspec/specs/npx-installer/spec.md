@@ -1,4 +1,10 @@
-## ADDED Requirements
+# npx-installer Specification
+
+## Purpose
+
+Define the npx-distributed shared-ai installer: package entry point, dependency rules, interactive target selection, file-copy rules, and per-harness file maps.
+
+## Requirements
 
 ### Requirement: package-json-entry-point
 The repo root MUST contain a `package.json` with `"name": "shared-ai"`, `"version": "1.0.0"`, `"bin": { "shared-ai": "bin/install.js" }`, `"files": ["bin", "commands", "sai", "skills", "configs", "openspec/schemas"]`, and `"engines": { "node": ">=18" }`.
@@ -119,15 +125,17 @@ or, if the file does not exist:
 ---
 
 ### Requirement: opencode-config-copy
-`configs/opencode.jsonc` MUST be copied to `~/.config/opencode/opencode.jsonc` ONLY if neither `opencode.json` nor `opencode.jsonc` already exists in that directory. If either exists, the installer MUST print manual instructions for the `agent` section instead of copying.
+`configs/opencode.jsonc` MUST be copied to `~/.config/opencode/opencode.jsonc` ONLY if neither `opencode.json` nor `opencode.jsonc` already exists in that directory. If either exists, the installer MUST apply the SAI external-directory permission merge to the existing file and, when the existing config carries `agent.explore`, `agent.executor`, or `agent.budget`, MUST emit the migration notice (see the `opencode-agent-migration-notice` capability) instead of printing manual instructions for adding an `agent` section.
 
 #### Scenario: no existing opencode config
 - **WHEN** neither `opencode.json` nor `opencode.jsonc` exists in the Opencode config dir
-- **THEN** `opencode.jsonc` is copied there
+- **THEN** `opencode.jsonc` is copied there, carrying no `agent` block
 
 #### Scenario: existing opencode config present
 - **WHEN** `opencode.json` or `opencode.jsonc` already exists
-- **THEN** the file is not copied; installer prints instructions for manually adding the `agent` section
+- **THEN** the file is not copied; the installer merges the SAI permission into it
+- **AND** no manual instructions for adding an `agent` section are printed
+- **AND** if the existing config contains the three agent keys, the migration notice names them
 
 ---
 
