@@ -624,3 +624,138 @@ test('implementation install overwrites divergent numbered destination content w
     removeTempDir(base);
   }
 });
+
+// ─── Step 6: progress-plan-spec-and-implement (implementation coordinator/worker) ──
+
+test('Step 6: the implementation adapter declares the canonical five-step plan in order with its labels', () => {
+  const coordinator = artifact('sai/commands/implement/coordinator.md');
+
+  for (const id of ['prereqs-resolution', 'plan-simplification', 'artifact-analysis', 'documentation-review', 'plan-generation']) {
+    assert.match(coordinator, new RegExp(id.replace(/-/g, '\\-')),
+      `the implementation plan should declare the ${id} step id`);
+  }
+  assert.match(
+    coordinator,
+    /prereqs-resolution[\s\S]{0,300}plan-simplification[\s\S]{0,300}artifact-analysis[\s\S]{0,300}documentation-review[\s\S]{0,300}plan-generation/,
+    'the five canonical step ids should be declared in order'
+  );
+  assert.match(coordinator, /prereqs-resolution[\s\S]{0,200}Prerequisites and change resolution/i,
+    'prereqs-resolution should carry the "Prerequisites and change resolution" label');
+  assert.match(coordinator, /plan-simplification[\s\S]{0,200}Existing plan simplification/i,
+    'plan-simplification should carry the "Existing plan simplification" label');
+  assert.match(coordinator, /artifact-analysis[\s\S]{0,200}Artifact analysis and decision validation/i,
+    'artifact-analysis should carry the "Artifact analysis and decision validation" label');
+  assert.match(coordinator, /documentation-review[\s\S]{0,200}Required documentation review/i,
+    'documentation-review should carry the "Required documentation review" label');
+  assert.match(coordinator, /plan-generation[\s\S]{0,200}Implementation plan generation and verification/i,
+    'plan-generation should carry the "Implementation plan generation and verification" label');
+  assert.doesNotMatch(coordinator, /specs-approval/,
+    'the implementation plan should contain no specs-approval step');
+});
+
+test('Step 6: the implementation-planning worker contract enumerates the same five ids in order', () => {
+  const worker = artifact('sai/orchestration/workers/sai-3-implementation-worker.md');
+
+  assert.match(
+    worker,
+    /prereqs-resolution[\s\S]{0,800}plan-simplification[\s\S]{0,800}artifact-analysis[\s\S]{0,800}documentation-review[\s\S]{0,800}plan-generation/,
+    'the implementation worker contract should enumerate the same five step ids in the same order'
+  );
+});
+
+test('Step 6: the implementation coordinator renders the plan at dispatch, marks from events only, and reconciles', () => {
+  const coordinator = artifact('sai/commands/implement/coordinator.md');
+
+  assert.match(coordinator, /at dispatch/i,
+    'the full plan should render at dispatch');
+  assert.match(coordinator, /first[\s\S]{0,160}in_progress|in_progress[\s\S]{0,160}first/i,
+    'the first step should render in_progress at dispatch');
+  assert.match(coordinator, /(?:remaining|rest|others?)[\s\S]{0,160}pending|pending[\s\S]{0,160}(?:remaining|rest|others?)/i,
+    'the remaining steps should render pending');
+  assert.match(coordinator, /mark steps only from worker progress-event `step_ids`/,
+    'steps should be marked only from worker progress events');
+  assert.match(coordinator, /completed[\s\S]{0,240}unmarked|unmarked[\s\S]{0,240}completed/i,
+    'a completed run should render every unmarked step completed');
+  assert.match(coordinator, /failed[\s\S]{0,200}(?:freeze|frozen|as last rendered)|cancelled[\s\S]{0,200}(?:freeze|frozen|as last rendered)/i,
+    'failed or cancelled runs should leave the list as last rendered');
+  assert.match(coordinator, /needs_input[\s\S]{0,240}(?:unchanged|as last rendered)|(?:unchanged|as last rendered)[\s\S]{0,240}needs_input/i,
+    'a needs_input result should leave the list as last rendered');
+});
+
+test('Step 6: the implementation worker contract emits per completed batch with the first-run skip-fold', () => {
+  const worker = artifact('sai/orchestration/workers/sai-3-implementation-worker.md');
+
+  assert.match(worker, /(?:one|a single|each|per)[\s\S]{0,200}progress event[\s\S]{0,240}(?:completed )?batch|(?:completed )?batch[\s\S]{0,200}(?:one|a single|each|per)[\s\S]{0,200}progress event/i,
+    'the contract should emit one progress event per completed batch');
+  assert.match(worker, /startup act[\s\S]{0,240}prereqs-resolution|prereqs-resolution[\s\S]{0,240}startup/i,
+    'the startup batch should carry prereqs-resolution');
+  assert.match(worker, /skip(?:ped)?[\s\S]{0,240}folds?[\s\S]{0,240}(?:completed )?batch|fold(?:s|ed|ing)?[\s\S]{0,240}completed batch/i,
+    'a first-run skip should fold into the next completed batch');
+  assert.match(worker, /(?:no|without|never)[\s\S]{0,120}(?:separate|own)[\s\S]{0,160}skipped|skipped[\s\S]{0,120}(?:field|flag)|(?:no|without|never)[\s\S]{0,200}skipped field/i,
+    'folded steps should carry no separate skipped field');
+  assert.match(worker, /needs_input[\s\S]{0,200}pause|pause[\s\S]{0,200}needs_input/i,
+    'no progress event should be emitted during a needs_input pause');
+  assert.match(worker, /(?:never|not)[\s\S]{0,120}progress event[\s\S]{0,240}feedback turn|feedback turn[\s\S]{0,240}(?:no|never|not)[\s\S]{0,120}progress/i,
+    'feedback turns should emit no progress event');
+  assert.match(worker, /exactly one terminal lifecycle status|one terminal lifecycle status/i,
+    'the run should close with exactly one terminal lifecycle status');
+});
+
+test('Step 6: continue_after_progress is protocol-only and the plan survives reconstruction without a reconstruction field', () => {
+  const coordinator = artifact('sai/commands/implement/coordinator.md');
+
+  assert.match(coordinator, /continue_after_progress/,
+    'the coordinator should define continue_after_progress');
+  assert.match(coordinator, /protocol[- ]?only/i,
+    'the acknowledgement should be protocol-only');
+  assert.match(coordinator, /(?:excluded|never|not recorded)[\s\S]{0,320}(?:opaque|user[- ]answer|pending feedback)|(?:opaque|user[- ]answer|pending feedback)[\s\S]{0,320}(?:excluded|never|not recorded)/i,
+    'the acknowledgement should be excluded from opaque input history, user-answer handling, and pending feedback');
+  assert.match(coordinator, /survives[\s\S]{0,240}(?:continuation|reconstruction)|(?:continuation|reconstruction)[\s\S]{0,240}survives/i,
+    'the plan should survive same-worker continuation and replacement-worker reconstruction');
+  assert.match(coordinator, /(?:never|not)[\s\S]{0,160}(?:carried|carries?)[\s\S]{0,120}reconstruction|reconstruction[\s\S]{0,160}(?:never|not)[\s\S]{0,120}(?:carried|carries?)/i,
+    'the plan should never be carried in a reconstruction field');
+});
+
+test('Step 6: the implementation bindings emit the harness task list on progress events with the threshold rule', () => {
+  const claude = artifact('sai/orchestration/workers/bindings/claude/implementation-worker.md');
+  const opencode = artifact('sai/orchestration/workers/bindings/opencode/implementation-worker.md');
+
+  assert.match(claude, /progress event/i,
+    'the Claude binding should act on each progress event');
+  assert.match(claude, /task list/i,
+    'the Claude binding should update the harness task list');
+  assert.match(claude, /completed[\s\S]{0,240}in_progress|in_progress[\s\S]{0,240}completed/i,
+    'reported ids should render completed and the leading unmarked step in_progress');
+  assert.match(claude, /unmarked[\s\S]{0,200}in_progress|in_progress[\s\S]{0,200}unmarked/i,
+    'the in_progress mark should apply to the leading unmarked step');
+  assert.match(claude, /deriv/i,
+    'the marks should follow the deterministic derivation');
+  assert.match(claude, /mechanism/i,
+    'the update should go through the harness task-list mechanism');
+  assert.match(claude, /incrementality[\s\S]{0,240}(?:non[- ]?normative|not[\s\S]{0,80}(?:normative|a contract)|optimization)/i,
+    'incrementality should be a non-normative binding-level optimization');
+  assert.match(claude, /(?:below|fewer than|less than)[\s\S]{0,120}three|three[\s\S]{0,120}(?:below|fewer than|less than)/i,
+    'the Claude binding should state the three-declared-step threshold');
+  assert.match(claude, /(?:no|without|never)[\s\S]{0,160}task list/i,
+    'no task list should be emitted below the threshold');
+
+  assert.match(opencode, /todowrite/i,
+    'the opencode binding should use the todowrite tool');
+  assert.match(opencode, /(?:one|a single|exactly one)[\s\S]{0,200}todowrite|todowrite[\s\S]{0,200}(?:one|a single|exactly one)/i,
+    'each progress event should produce exactly one todowrite call');
+  assert.match(opencode, /completed[\s\S]{0,240}in_progress[\s\S]{0,240}pending|pending[\s\S]{0,240}in_progress[\s\S]{0,240}completed/i,
+    'the array should map completed, in_progress, and pending states');
+  assert.match(opencode, /constant[\s\S]{0,160}priority|priority[\s\S]{0,160}constant/i,
+    'the priority should be constant on every entry');
+  assert.match(opencode, /(?:no|without|never)[\s\S]{0,160}todowrite/i,
+    'no todowrite call should be emitted below the threshold');
+
+  for (const binding of [claude, opencode]) {
+    assert.match(binding, /todo-structure\.md/,
+      'both bindings should reference the neutral todo-structure policy');
+  }
+  assert.match(opencode, /subagent[\s\S]{0,160}disabl|disabl[\s\S]{0,160}subagent/i,
+    'the opencode binding should tie the disabled-by-default tool to the subagent context');
+  assert.match(opencode, /by default/i,
+    'the opencode binding should state the tool is disabled by default in subagents');
+});

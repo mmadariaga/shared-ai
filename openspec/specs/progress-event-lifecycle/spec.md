@@ -55,16 +55,16 @@ The coordinator SHALL mark the reported steps and resume the same worker with th
 - **WHEN** the coordinator sends `continue_after_progress`
 - **THEN** the acknowledgement SHALL be excluded from opaque input history, user-answer handling, and pending feedback
 
-### Requirement: design-worker-scope
+### Requirement: planning-worker-scope
 
-In this change, only the design worker SHALL emit progress events, after prerequisite checks pass and change resolution completes. Implementation and audit workers SHALL NOT emit progress events, and their payload validation SHALL remain unchanged.
+In this change, the design, spec-proposal, and implementation-planning workers SHALL emit progress events, after prerequisite checks pass and change resolution completes. Audit workers (review, security, performance, accessibility) SHALL NOT emit progress events, and their payload validation SHALL remain unchanged.
 
-#### Scenario: design worker emits progress
+#### Scenario: planning workers emit progress
 
-- **WHEN** a design worker passes prerequisites, resolves the change, and completes one or more plan steps
+- **WHEN** a design, spec-proposal, or implementation-planning worker passes prerequisites, resolves the change, and completes one or more plan steps
 - **THEN** it SHALL emit a progress event with the completed step ids
 
-#### Scenario: other workers stay untouched
+#### Scenario: audit workers stay untouched
 
-- **WHEN** an implementation, review, security, performance, or accessibility worker runs
+- **WHEN** a review, security, performance, or accessibility worker runs
 - **THEN** it SHALL NOT emit a progress event and its payload validation SHALL be unchanged

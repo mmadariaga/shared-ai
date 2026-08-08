@@ -45,12 +45,12 @@ Both harnesses SHALL follow the same neutral semantic policy for the task list â
 
 ### Requirement: neutral-installed-binding
 
-The progress emission SHALL be implemented in the per-harness binding sources `sai/orchestration/workers/bindings/claude/design-worker.md` and `sai/orchestration/workers/bindings/opencode/design-worker.md`, which install to the single harness-neutral path `sai/orchestration/workers/bindings/design-worker.md`; the install manifest projection SHALL NOT change.
+The progress emission SHALL be implemented in the per-harness binding sources `sai/orchestration/workers/bindings/claude/design-worker.md`, `sai/orchestration/workers/bindings/opencode/design-worker.md`, `sai/orchestration/workers/bindings/claude/spec-worker.md`, `sai/orchestration/workers/bindings/opencode/spec-worker.md`, `sai/orchestration/workers/bindings/claude/implementation-worker.md`, and `sai/orchestration/workers/bindings/opencode/implementation-worker.md`, which install to the single harness-neutral paths `sai/orchestration/workers/bindings/design-worker.md`, `sai/orchestration/workers/bindings/spec-worker.md`, and `sai/orchestration/workers/bindings/implementation-worker.md`; the install manifest projection SHALL NOT change.
 
 #### Scenario: bindings install neutrally
 
 - **WHEN** the install manifest is applied
-- **THEN** each harness's design-worker binding SHALL install to the neutral `bindings/design-worker.md` destination as today
+- **THEN** each harness's design, spec, and implementation worker bindings SHALL install to their neutral `bindings/` destinations as today
 
 ### Requirement: task-list-emission-coordinator-only
 

@@ -81,3 +81,37 @@ The worker SHALL own technical reasoning and artifact decisions, and its respons
 #### Scenario: Large implementation artifact
 - **WHEN** `implementation.md` contains the completed plan
 - **THEN** the worker SHALL return only the lifecycle status, concise summary, and changed-file list, leaving the artifact as the source of truth
+
+### Requirement: Implementation worker emits progress events
+
+The implementation-planning worker SHALL emit progress events, after prerequisite checks pass and change resolution completes, whenever one or more plan steps complete. Every event SHALL carry only the canonical step ids enumerated by `implement-progress-plan` (`prereqs-resolution`, `plan-simplification`, `artifact-analysis`, `documentation-review`, `plan-generation`), in plan order, plus the files changed since the preceding result. The worker SHALL NOT author, extend, or reorder the plan, SHALL NOT emit a progress event before resolution or in place of a terminal payload, and SHALL NOT emit a progress event during a `needs_input` pause or a feedback turn.
+
+#### Scenario: startup act is one batch
+
+- **WHEN** the worker completes change resolution and prerequisite checks as one act
+- **THEN** it SHALL emit one progress event carrying `prereqs-resolution`
+
+#### Scenario: simplification batch
+
+- **WHEN** the worker completes Step 1 (existing-plan simplification) on a re-run
+- **THEN** it SHALL emit one progress event carrying `plan-simplification`, with `changed_files` listing the simplified `implementation.md` path written since the preceding result
+
+#### Scenario: analysis batch
+
+- **WHEN** the worker completes Step 2 (artifact parsing and audit classification) and Step 3 (ADR/DDR validation) as one act
+- **THEN** it SHALL emit one progress event carrying `artifact-analysis`
+
+#### Scenario: documentation batch
+
+- **WHEN** the worker completes Step 4 (required documentation review)
+- **THEN** it SHALL emit one progress event carrying `documentation-review`
+
+#### Scenario: generation batch
+
+- **WHEN** the worker completes Step 5 (first-run generation or re-run preservation plus the audit-derived step append) and the pre-delivery durable-artifact verification
+- **THEN** it SHALL emit one progress event carrying `plan-generation`
+
+#### Scenario: terminal payload still closes
+
+- **WHEN** the worker completes the implementation-planning phase
+- **THEN** it SHALL still return exactly one terminal lifecycle status and SHALL NOT close with a progress event

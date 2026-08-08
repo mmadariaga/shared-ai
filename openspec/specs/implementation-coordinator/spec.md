@@ -58,7 +58,7 @@ The coordinator SHALL preserve the existing user communication and MANDATORY STO
 - **THEN** the coordinator SHALL report a clean stop without claiming planning completion, SHALL identify changed files, and SHALL not fire the completed-planning MANDATORY STOP path
 
 ### Requirement: Shared lifecycle adapter integration
-The routed `/sai-3-implement` coordinator SHALL consume the canonical shared coordinator contract through an implementation phase adapter. The adapter SHALL provide the original two-field invocation envelope, harness binding dispatch and continuation operations, an empty set of allowed nonterminal extensions, no extension handlers, the enumerated implementation replacement-reconstruction fields below, and implementation terminal navigation. The adapter SHALL NOT duplicate lifecycle payload validation, ordered changed-file aggregation, continuation-first recovery, replacement-worker limits, or terminal routing, and SHALL NOT import design feedback, notice, or continue-now behavior.
+The routed `/sai-3-implement` coordinator SHALL consume the canonical shared coordinator contract through an implementation phase adapter. The adapter SHALL provide the original two-field invocation envelope, harness binding dispatch and continuation operations, progress events as the sole allowed nonterminal extension, no extension handlers, the enumerated implementation replacement-reconstruction fields below, and implementation terminal navigation. The adapter SHALL NOT duplicate lifecycle payload validation, ordered changed-file aggregation, continuation-first recovery, replacement-worker limits, or terminal routing, and SHALL NOT import design feedback, notice, or continue-now behavior.
 
 The replacement-reconstruction fields SHALL be exactly:
 
