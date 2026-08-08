@@ -145,6 +145,9 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 **Step Contract**: "The `## Step N` section of a change's `interfaces.md` carrying that Step's signatures and exact assertions, whose availability is evaluated per Step because `design.md` omits the section for any step with no interface surface."
 *Avoid*: interface contract, interfaces section, Step N block, contract file
 
+**Step Projection**: "The harness task list `/sai-4-apply` renders at run start from the `#### Step N:` headings of `openspec/changes/{name}/implementation.md`, mirroring the on-disk checkboxes rather than replacing them and marked `completed` in the same batched update as the Step's checkbox marking — the apply-side counterpart to a routed **Progress Plan**, derived directly from the artifact with no progress protocol."
+*Avoid*: task list, todo list, step list, apply progress plan, progress projection
+
 **Target State**: "The single leading non-step section of `interfaces.md` presenting the change's finished shape as one concrete artifact, readable without any `## Step N` section."
 *Avoid*: end state, final shape, goal state, summary section
 
@@ -182,6 +185,7 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 - A **Progress Plan** belongs to one routed command invocation and is declared by that phase's adapter, never by the worker.
 - A **Progress Step** belongs to one **Progress Plan** and is marked completed via exactly one **Progress Event**.
 - A **Progress Event** reports completed **Progress Step** ids from a worker to the coordinator, which marks them in the **Progress Plan**, whose render threshold is single-sourced in the neutral task-list policy.
+- A **Step Projection** belongs to one `/sai-4-apply` run and mirrors the on-disk checkbox state of one `implementation.md`; unlike a **Progress Plan** it is never marked from worker progress events, because apply has no coordinator-worker boundary.
 - A **Known-False Report Recovery** permits at most one **Recovery Dispatch** for a single contradicted Subagent Report and never changes the fixed report field set.
 - A **Test Command** belongs to one change's `## Implementation Context` and is consumed by exactly one dispatch — the **Blind Test-Writer**; a single dispatch receives the Step's own verification commands instead.
 - A **Blind Test-Writer** and an **Implementation Dispatch** replace the single per-Step dispatch only for a **Split-Routed Step**; every other Step keeps one dispatch, including a Step with a RED block whose **Step Contract** is unavailable or whose file scope holds no production file.
