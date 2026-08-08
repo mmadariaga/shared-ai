@@ -1,4 +1,10 @@
-## ADDED Requirements
+# install-distribution Specification
+
+## Purpose
+
+Define how the budget-subagent skill and the opencode configuration guidance are distributed through the automated and manual install flows.
+
+## Requirements
 
 ### Requirement: install-claude-copy-steps
 `INSTALL.claude.md` SHALL include copy steps for `skills/claude/budget-subagent/SKILL.md` in both the Linux/macOS bash block and the Windows PowerShell block, immediately after the existing `budget-executor` copy steps.
@@ -43,11 +49,12 @@ Windows PowerShell pattern:
 ---
 
 ### Requirement: install-opencode-config-documentation
-`INSTALL.opencode.md` SHALL document the new `"subagent"` agent entry. In the section that shows the `opencode.jsonc` `agent` block snippet (the block that already shows `executor`), the `subagent` entry MUST appear alongside it.
+`INSTALL.opencode.md` SHALL NOT show an `opencode.jsonc` `agent` block snippet — it SHALL document that the generic agent files (`explore`, `executor`, `budget`) are installed under `~/.config/opencode/agents/` by the agent-files copy step, that the shipped config carries no `agent` block, and that the configuration merge covers only the SAI external-directory permission.
 
-#### Scenario: user guided on subagent config
+#### Scenario: user guided to the agent files, not a config block
 - **WHEN** a user already has opencode.jsonc and follows the post-install instructions
-- **THEN** the install doc shows the `"subagent"` block they need to add alongside `"executor"` in their existing config
+- **THEN** the install doc does not show an `"agent"` block to add to their existing config
+- **AND** it points at `~/.config/opencode/agents/explore.md`, `executor.md`, and `budget.md` as the agent definitions, with the model tunable in each file's frontmatter
 
 ---
 
@@ -76,20 +83,3 @@ The `installOpencode()` function in `bin/install-flow.js` SHALL include a `copyW
 #### Scenario: automated install copies budget-subagent for opencode
 - **WHEN** `npx github:mmadariaga/shared-ai` runs and the user selects Opencode
 - **THEN** `~/.config/opencode/skills/budget-subagent/SKILL.md` is created
-
----
-
-### Requirement: install-flow-opencode-config-snippet
-The `copyOpencodeConfig()` function in `bin/install-flow.js` SHALL include `"subagent"` in the agent block it prints when an existing config is detected. The printed snippet MUST show `subagent` as a sibling of `executor`, following the same shape:
-
-    console.log('    "subagent": {');
-    console.log('      "mode": "subagent",');
-    console.log('      // Your trusted low-cost model below');
-    console.log('      "model": "opencode-go/deepseek-v4-flash"');
-    console.log('    }');
-
-The `subagent` block MUST appear after the closing brace of `executor` and before the outer closing brace.
-
-#### Scenario: existing config user sees subagent guidance
-- **WHEN** `copyOpencodeConfig()` detects an existing opencode.json(c) and prints the guidance block
-- **THEN** the output includes the `"subagent"` block alongside `"executor"`

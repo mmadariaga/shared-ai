@@ -4,8 +4,8 @@ Durable execution-observed facts about the shared-ai prompt and installer reposi
 
 ## Stack
 
-- **bin/install-flow.js**: Opencode installation is a file projection: the owned-copy installer honors `projection.sourcePath` (no basename-derived source), and the binding-derived roster is an opencode binding validator (`validateOpencodeWorkerBindings`) that runs before any destination mutation so malformed or duplicate bindings fail write-free. The derived registration-default/census surface is retired.
-  *Observed:* opencode-markdown-worker-agents — replacing the census/registration surface with file-projected owned-copy agents required the roster validator to fail closed pre-mutation.
+- **bin/install-flow.js**: Opencode installation is a file projection: the installer honors `projection.sourcePath` (no basename-derived source), and the binding-derived roster is validated by `validateOpencodeWorkerBindings` before any destination mutation so malformed or duplicate bindings fail write-free. The opencode config merge is permission-only: the SAI external-directory rule merges in place into parseable roots — including empty `{}` configs — while parse failures and non-object roots fall back to printed guidance.
+  *Observed:* opencode-markdown-worker-agents — replacing the census/registration surface with file-projected agents required the roster validator to fail closed pre-mutation; relocate-generic-opencode-agents — the empty-root fallback guard was omitted so parseable empty configs receive the in-place merge per the interface contract.
 - **opencode wrapper metadata**: Wrapper-facing documentation and structural tests use both the human-readable `GLM 5.2` wording and the runtime model ID `opencode-go/glm-5.2` when documenting the declared runtime.
   *Observed:* simplify-routed-phase-coordination — replacing coordinator-profile assertions exposed the two representations; retaining both made the documentation and runtime-ID checks pass.
 - **configs/opencode.jsonc**: Nested low-cost opencode helper dispatch requires `subagent_depth: 2` and `opencode-go/glm-5.1` in the repository's live probe configuration.
@@ -51,8 +51,8 @@ Durable execution-observed facts about the shared-ai prompt and installer reposi
   *Observed:* add-sai-explore-pipeline-supervision — the exact worker-skill fetch matched the routed binding contract and kept the wrapper thin.
 - **Worker proxy retirement**: Routed wrappers fetch neutral installed binding paths directly; obsolete proxy skills are represented only by `skills`-class hash-gated retirement records, so modified user copies remain preserved.
   *Observed:* restore-coordinator-instruction-loading
-- **bin/install-manifest.js**: Retirement validation and expansion must keep exact per-harness proxy-skill IDs, lowercase 64-character SHA-256 digests, and separate `sai`/`skills` destination roots while leaving neutral binding projections active.
-  *Observed:* restore-coordinator-instruction-loading
+- **bin/install-manifest.js**: Retirement validation and expansion must keep exact per-harness proxy-skill IDs, lowercase 64-character SHA-256 digests, and separate `sai`/`skills` destination roots while leaving neutral binding projections active. Expansion resolves basename collisions between projections via the `overrides` field — an agents-class row whose basename collides with a recursive commands-class projection must declare `overrides` naming that projection's id (precedent: `routed-spec-coordinator` overrides `sai-commands`).
+  *Observed:* restore-coordinator-instruction-loading — retirement validation kept the exact per-harness IDs and separate roots; relocate-generic-opencode-agents — the `opencode-budget` agents row collided with the recursive `opencode-commands` projection in the flat-root test harnesses, and the `overrides` field resolved it.
 - **jsonc-parser**: Three test suites require `jsonc-parser` at top level — `test/install-opencode.test.js`, `test/implement-coordinator-worker.test.js`, `test/implementation-harness-bindings-step-3.test.js` — so they fail at load and cannot be verified when `node_modules` is absent; `bin/install-flow.js` guards the same dependency with a lazy try/catch require instead.
   *Observed:* agent-projection-seed-on-create — the three suites were rewritten but only syntax-checkable locally (`node --check`) because `npm install` had not been run.
 
@@ -80,10 +80,10 @@ Durable execution-observed facts about the shared-ai prompt and installer reposi
 
 - **configs/opencode.jsonc**: Do not assert managed-worker registration from the configuration agent map — the sample carries no `agent.sai-*-worker` keys; worker membership is file-based (projected `agents/opencode/*.md` files plus the binding-derived roster).
   *Observed:* opencode-markdown-worker-agents — 12 stale config-map assertions across five suites failed until rewritten to the file-based surface.
-- **test/accessibility-coordinator-worker.test.js**: Do not assert legacy `Major` severity wording against the accessibility worker binding — the binding carries only the closed `Critical`/`High`/`Medium`/`Low`/`Informational` taxonomy, so the `:123` regex assertion is stale and unrelated to installer changes.
-  *Observed:* agent-projection-seed-on-create — the binding-content assertion failed identically before and after all three steps of the tunable-seed change.
+- **test/accessibility-coordinator-worker.test.js**: Do not assert legacy `Major` severity or promotion wording against the accessibility worker binding — the binding carries only the closed `Critical`/`High`/`Medium`/`Low`/`Informational` taxonomy; the stale Major-promotion assertion is removed and the closed taxonomy is pinned with a `doesNotMatch /\bMajor\b/` guard.
+  *Observed:* relocate-generic-opencode-agents — the pre-existing suite failure at HEAD was fixed by dropping the stale assertion and pinning the closed taxonomy.
 
 ## Test Command
 
-npm test
-*Observed:* remove-legacy-inline-command-loaders
+npm test (runs node --test from the repo root; scope a single run with: node --test test/<file>.test.js [test/<file>.test.js ...])
+*Observed:* relocate-generic-opencode-agents

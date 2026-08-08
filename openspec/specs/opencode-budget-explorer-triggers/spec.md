@@ -1,4 +1,10 @@
-## ADDED Requirements
+# opencode-budget-explorer-triggers Specification
+
+## Purpose
+
+Define the TRIGGER when phrases that auto-load the opencode budget-explorer skill and the agent-file source of its model resolution.
+
+## Requirements
 
 ### Requirement: Trigger phrases in description frontmatter
 
@@ -17,7 +23,7 @@ Trigger phrases to include (same set as the claude variant for cross-harness con
 The `description` field format SHALL be:
 
     description: >
-      Binds "cheap research subagent" to the opencode explore agent keyword. Model resolved via agent.explore.model in the project's opencode.jsonc — not hardcoded here.
+      Binds "cheap research subagent" to the opencode explore agent keyword. Model resolved via the explore agent file's model frontmatter (installed under ~/.config/opencode/agents/explore.md) — not hardcoded here.
       TRIGGER when: "use explorer", "use cheap subagent", "delegate research", "run cheap subagent", "spawn explore subagent", "cheap research agent", "use explore agent", "delegate lookup".
 
 No other field in the SKILL.md SHALL be modified.
@@ -27,7 +33,7 @@ No other field in the SKILL.md SHALL be modified.
 - **WHEN** the user types a phrase matching any trigger in the description
 - **THEN** the harness auto-loads `skills/opencode/budget-explorer/SKILL.md` and applies its binding rules
 
-#### Scenario: Model resolution unchanged
+#### Scenario: Model resolution names the explore agent file
 
 - **WHEN** the SKILL.md is loaded
-- **THEN** model is still resolved from `agent.explore.model` in `opencode.jsonc`, not hardcoded
+- **THEN** the model is resolved from the `model` frontmatter of `~/.config/opencode/agents/explore.md`, not hardcoded and not via `agent.explore.model` in `opencode.jsonc`

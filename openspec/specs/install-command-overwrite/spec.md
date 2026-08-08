@@ -1,4 +1,10 @@
-## MODIFIED Requirements
+# install-command-overwrite Specification
+
+## Purpose
+
+Ensure the installer's file-copy behavior is a silent, uniform, declarative sync across harnesses without per-file log output, while preserving the surviving feedback surfaces.
+
+## Requirements
 
 ### Requirement: install script overwrites command wrappers on reinstall
 
@@ -16,11 +22,9 @@ The install script SHALL use `copy` (not `copyWithWarn` and not `copySkipIfExist
 - **WHEN** `installCopilot()` runs and a prompt file already exists in the Copilot prompts destination
 - **THEN** the file is overwritten with the repo version and no per-file `Overwriting`, `Creating`, or `Skipping` line is emitted
 
-## ADDED Requirements
-
 ### Requirement: install script emits no per-file log line for any file copy
 
-The install functions `installClaude()`, `installOpencode()`, and `installCopilot()` SHALL NOT emit any per-file log line (no `Overwriting <path>`, no `Creating <path>`, no `Skipping <path>`) while copying wrapper, command, instruction, skill, or agent files. The installer is a declarative repo-to-user-global sync, not a file-by-file installer; the per-harness summary lines printed by `main()` and the `copyOpencodeConfig` agent-key merge notice are the only per-harness feedback the user needs.
+The install functions `installClaude()`, `installOpencode()`, and `installCopilot()` SHALL NOT emit any per-file log line (no `Overwriting <path>`, no `Creating <path>`, no `Skipping <path>`) while copying wrapper, command, instruction, skill, or agent files. The installer is a declarative repo-to-user-global sync, not a file-by-file installer; the per-harness summary lines printed by `main()`, the `copyOpencodeConfig` permission-merge messaging, and the migration notice (`opencode-agent-migration-notice`) are the only per-harness feedback the user needs.
 
 #### Scenario: Claude Code install emits no per-file log
 - **WHEN** `installClaude()` is invoked
@@ -38,9 +42,10 @@ The install functions `installClaude()`, `installOpencode()`, and `installCopilo
 - **WHEN** `installClaude()`, `installOpencode()`, or `installCopilot()` returns
 - **THEN** `main()` continues to print the per-harness summary block (`<Harness> commands installed to: <path>` and the matching SAI and skills lines) and the shared `Reminder: run 'npx github:mmadariaga/shared-ai setup' in each project to configure the SAI workflow.` line as the final line of `main()`
 
-#### Scenario: copyOpencodeConfig merge notice is preserved
-- **WHEN** `copyOpencodeConfig()` writes agent keys to `opencode.json` or `opencode.jsonc`
-- **THEN** it continues to print `Added opencode agent keys to <path>: <keys>. Adjust the placeholder model "<model>" to your preferred low-cost provider.`
+#### Scenario: the retired agent-key merge notice is never printed
+- **WHEN** `copyOpencodeConfig()` processes an existing `opencode.json` or `opencode.jsonc`
+- **THEN** it never prints `Added opencode agent keys to <path>: <keys>…`
+- **AND** the only config feedback it emits is the permission-merge messaging and, when the three agent keys are present, the migration notice
 
 ### Requirement: install script does not export copyWithWarn or copySkipIfExists
 
