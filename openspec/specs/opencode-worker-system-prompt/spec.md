@@ -1,7 +1,7 @@
 # opencode-worker-system-prompt Specification
 
 ## Purpose
-TBD: Define explicit root-aware contract system prompts for managed opencode workers.
+Define the literal root-aware contract fetch that every projected opencode worker agent file SHALL carry in its body — `Fetch @sai/orchestration/workers/<worker-name>.md and follow it exactly.` — resolved project-local before user-global and preserved across projection, install, and doctor validation.
 
 ## Requirements
 
