@@ -57,6 +57,19 @@ test('Step 1 apply contract contains every normative scope and scratch sentence 
   }
 });
 
+test('Step 1 routing condition pins the three-part selection and both single-dispatch fall-back trace lines byte-exactly', () => {
+  const instruction = artifact('sai/instructions/apply.md');
+  const routingSentences = [
+    'The two-dispatch flow is selected **if and only if all three** parts hold; if **any** part fails, the Step routes to a single dispatch.',
+    "Step {N}: RED block present but no `## Step N` contract in interfaces.md — routing to a single dispatch.",
+    'Step {N}: RED block present but no production files in the Step\'s file scope — routing to a single dispatch.',
+  ];
+
+  for (const sentence of routingSentences) {
+    assert.ok(instruction.includes(sentence), `missing byte-exact routing sentence: ${sentence}`);
+  }
+});
+
 test('Step 1 dispatch branches carry allowed files and scratch rules without losing scope anchors', () => {
   const instruction = artifact('sai/instructions/apply.md');
   const branches = [
