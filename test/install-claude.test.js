@@ -289,6 +289,7 @@ test('Claude managed agents are seeded byte-identically from their sources', () 
       skills: path.join(tmpDir, 'skills'),
       agents: path.join(tmpDir, 'agents'),
       config: tmpDir,
+      root: tmpDir,
     };
     const tunable = expandInstallManifest(manifest, { harness: 'claude', repoRoot, destinationRoot })
       .filter(projection => projection.strategy === 'tunable-seed');

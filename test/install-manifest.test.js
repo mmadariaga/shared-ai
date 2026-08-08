@@ -169,6 +169,7 @@ function workerDestinationRoots(prefix) {
     skills: path.join(prefix, 'skills'),
     agents: path.join(prefix, 'agents'),
     config: path.join(prefix, 'config'),
+    root: path.join(prefix, 'config'),
   };
 }
 
@@ -356,6 +357,7 @@ test('canonical manifest keeps implementation projections harness-specific', () 
     skills: path.join(os.tmpdir(), 'sai-matrix-skills'),
     agents: path.join(os.tmpdir(), 'sai-matrix-agents'),
     config: path.join(os.tmpdir(), 'sai-matrix-config'),
+    root: path.join(os.tmpdir(), 'sai-matrix-config'),
   };
   const implementationSources = {
     claude: [
@@ -417,6 +419,7 @@ test('canonical manifest projects routed spec assets only to Claude Code and ope
     skills: path.join(os.tmpdir(), 'sai-spec-skills'),
     agents: path.join(os.tmpdir(), 'sai-spec-agents'),
     config: path.join(os.tmpdir(), 'sai-spec-config'),
+    root: path.join(os.tmpdir(), 'sai-spec-config'),
   };
   for (const [harness, requiredSources] of Object.entries(expected)) {
     const sources = new Set(expandInstallManifest(manifest, { harness, repoRoot, destinationRoot })
@@ -434,6 +437,7 @@ test('Installer projects every routed review surface', () => {
     skills: path.join(os.tmpdir(), 'sai-review-skills'),
     agents: path.join(os.tmpdir(), 'sai-review-agents'),
     config: path.join(os.tmpdir(), 'sai-review-config'),
+    root: path.join(os.tmpdir(), 'sai-review-config'),
   };
   const expected = [
      ['claude', 'sai/orchestration/workers/bindings/claude/review-worker.md', path.join('orchestration', 'workers', 'bindings', 'review-worker.md')],
@@ -552,6 +556,7 @@ test('compatibility and policy projections resolve for every supported harness',
     skills: path.join(os.tmpdir(), 'sai-projection-skills'),
     agents: path.join(os.tmpdir(), 'sai-projection-agents'),
     config: path.join(os.tmpdir(), 'sai-projection-config'),
+    root: path.join(os.tmpdir(), 'sai-projection-config'),
   };
   for (const harness of ['claude', 'opencode']) {
     const projections = expandInstallManifest(manifest, {
@@ -1061,6 +1066,7 @@ test('canonical manifest validates all historical retirements and excludes them 
     skills: path.join(os.tmpdir(), 'sai-retirement-skills'),
     agents: path.join(os.tmpdir(), 'sai-retirement-agents'),
     config: path.join(os.tmpdir(), 'sai-retirement-config'),
+    root: path.join(os.tmpdir(), 'sai-retirement-config'),
   };
   for (const harness of ['claude', 'opencode']) {
     const retirements = expandRetirementManifest(manifest, { harness, repoRoot, destinationRoot });
@@ -1170,6 +1176,7 @@ test('recursive sai-instructions projection carries the extracted _templates fil
     skills: path.join(os.tmpdir(), 'sai-templates-skills'),
     agents: path.join(os.tmpdir(), 'sai-templates-agents'),
     config: path.join(os.tmpdir(), 'sai-templates-config'),
+    root: path.join(os.tmpdir(), 'sai-templates-config'),
   };
   const templateFiles = [
     'adr-index.md',

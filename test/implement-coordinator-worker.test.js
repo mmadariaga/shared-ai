@@ -215,6 +215,7 @@ test('uninstall and doctor expose ownership guards and collision status', async 
           skills: projectRoot,
           agents: projectRoot,
           config: projectRoot,
+          root: projectRoot,
         },
       })
         .filter(projection => implementationSources.has(path.relative(repoRoot, projection.sourcePath).split(path.sep).join('/')))

@@ -68,6 +68,7 @@ test('STEP1_RETIRE_INLINE: active projections retain both routed inventories and
     skills: path.join(os.tmpdir(), 'sai-step1-layout-skills'),
     agents: path.join(os.tmpdir(), 'sai-step1-layout-agents'),
     config: path.join(os.tmpdir(), 'sai-step1-layout-config'),
+    root: path.join(os.tmpdir(), 'sai-step1-layout-config'),
   };
   const workers = ['spec', 'design', 'implementation', 'review', 'security', 'performance', 'accessibility'];
 

@@ -18,6 +18,7 @@ function inventoryRoots(base, harness) {
     skills: path.join(base, 'skills'),
     agents: path.join(base, 'agents'),
     config: base,
+    root: base,
   };
 }
 

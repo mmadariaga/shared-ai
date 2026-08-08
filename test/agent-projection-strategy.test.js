@@ -41,6 +41,7 @@ function agentDestinationRoots(prefix) {
     skills: path.join(prefix, 'skills'),
     agents: path.join(prefix, 'agents'),
     config: path.join(prefix, 'config'),
+    root: path.join(prefix, 'config'),
   };
 }
 

@@ -19,6 +19,7 @@ function destinationRoot(prefix) {
     skills: path.join(os.tmpdir(), `${prefix}-skills`),
     agents: path.join(os.tmpdir(), `${prefix}-agents`),
     config: path.join(os.tmpdir(), `${prefix}-config`),
+    root: path.join(os.tmpdir(), `${prefix}-config`),
   };
 }
 

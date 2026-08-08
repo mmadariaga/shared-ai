@@ -44,12 +44,14 @@ function stripTunableLines(text) {
 
 function projectionSources(harness) {
   const manifest = loadInstallManifest(repoRoot);
+  const configRoot = tempDir('sai-step-3-config-');
   const destinationRoot = {
     commands: tempDir('sai-step-3-commands-'),
     sai: tempDir('sai-step-3-sai-'),
     skills: tempDir('sai-step-3-skills-'),
     agents: tempDir('sai-step-3-agents-'),
-    config: tempDir('sai-step-3-config-'),
+    config: configRoot,
+    root: configRoot,
   };
   try {
     return expandInstallManifest(manifest, { harness, repoRoot, destinationRoot })
