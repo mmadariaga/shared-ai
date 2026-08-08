@@ -207,11 +207,13 @@ describe('doctor fetch resolution', () => {
         '[Claude Code]': [
          ...phases.map((binding, index) => [`sai-${index === 0 ? '1-spec' : index === 1 ? '2-design' : index === 2 ? '3-implement' : index === 3 ? '5-review' : index === 4 ? '6-security' : index === 5 ? '7-performance' : '8-accessibility'}.md`, `bindings/${binding}`]),
          ['sai-explore.md', 'bindings/design-worker.md'],
+         ['sai-explore.md', 'bindings/idea-list-render.md'],
       ],
         '[Opencode]': [
          ...phases.map((binding, index) => [`sai-${index === 0 ? '1-spec' : index === 1 ? '2-design' : index === 2 ? '3-implement' : index === 3 ? '5-review' : index === 4 ? '6-security' : index === 5 ? '7-performance' : '8-accessibility'}.md`, `bindings/${binding}`]),
          ['sai-explore.md', 'bindings/spec-worker.md'],
          ['sai-explore.md', 'bindings/design-worker.md'],
+         ['sai-explore.md', 'bindings/idea-list-render.md'],
       ],
     };
 
@@ -224,17 +226,19 @@ describe('doctor fetch resolution', () => {
 
       const expected = {
         '[Claude Code]': [
-          ...phases.map(binding => `bindings/${binding}`),
-          'bindings/design-worker.md',
-        ],
-        '[Opencode]': [
-          ...phases.map(binding => `bindings/${binding}`),
-          'bindings/spec-worker.md',
-          'bindings/design-worker.md',
-        ],
+           ...phases.map(binding => `bindings/${binding}`),
+           'bindings/design-worker.md',
+           'bindings/idea-list-render.md',
+         ],
+         '[Opencode]': [
+           ...phases.map(binding => `bindings/${binding}`),
+           'bindings/spec-worker.md',
+           'bindings/design-worker.md',
+           'bindings/idea-list-render.md',
+         ],
       };
-      assert.equal(Object.values(wrapperRefs).flat().length, 17,
-        'wrapper mapping should cover exactly 17 direct binding references');
+      assert.equal(Object.values(wrapperRefs).flat().length, 19,
+        'wrapper mapping should cover exactly 19 direct binding references');
 
       for (const [sectionName, refs] of Object.entries(wrapperRefs)) {
         const base = sectionName === '[Claude Code]' ? claudeBase : opencodeBase;
@@ -280,11 +284,13 @@ describe('doctor fetch resolution', () => {
             fs.readFileSync(path.join(repoRoot, 'sai', 'orchestration', 'workers', ...sourceTarget.split('/'))),
             `${sectionName} should preserve the neutral binding bytes for ${target}`
           );
-          assert.match(
-            fs.readFileSync(path.join(base, 'sai', 'orchestration', 'workers', ...target.split('/')), 'utf8'),
-            sectionName === '[Claude Code]' ? /Agent\(/ : /task\(/,
-            `${sectionName} ${target} should preserve its dispatch mechanism`
-          );
+          if (target.endsWith('-worker.md')) {
+            assert.match(
+              fs.readFileSync(path.join(base, 'sai', 'orchestration', 'workers', ...target.split('/')), 'utf8'),
+              sectionName === '[Claude Code]' ? /Agent\(/ : /task\(/,
+              `${sectionName} ${target} should preserve its dispatch mechanism`
+            );
+          }
         }
 
         assert.equal(refText.filter(text => /Fetch @skills\/sai-.*worker\/SKILL\.md/.test(text)).length, 0,

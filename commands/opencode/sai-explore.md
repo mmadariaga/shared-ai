@@ -9,4 +9,5 @@ variant: max
 Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.
 Fetch @sai/orchestration/workers/bindings/spec-worker.md and use it.
 Fetch @sai/orchestration/workers/bindings/design-worker.md and use it.
+Fetch @sai/orchestration/workers/bindings/idea-list-render.md and use it.
 Fetch @sai/commands/sai-explore.md and follow those instructions exactly.
