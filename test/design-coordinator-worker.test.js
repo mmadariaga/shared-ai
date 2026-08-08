@@ -769,3 +769,50 @@ test('Step 2: the union non-reset enumeration includes progress events', () => {
   assert.match(coordinator, /enumerat[\s\S]{0,200}progress|progress[\s\S]{0,200}enumerat/i,
     'the non-reset enumeration should include progress events');
 });
+
+// ─── Step 3: command-progress-plan-protocol (worker-lifecycle.md) ───────────
+
+test('Step 3: worker-lifecycle defines the progress-event block with exactly event: progress, step_ids, changed_files, nonterminal status, and protocol-only continue_after_progress', () => {
+  const lifecycle = artifact('sai/orchestration/worker-lifecycle.md');
+
+  assert.match(lifecycle, /event:\s*"?progress"?/,
+    'the lifecycle should define the progress event with exactly event: progress');
+  assert.match(lifecycle, /step_ids:\s*string\[\]/,
+    'the progress-event block should carry step_ids: string[]');
+  assert.match(lifecycle, /changed_files:\s*string\[\]/,
+    'the progress-event block should carry changed_files: string[]');
+  assert.match(lifecycle, /non[- ]?terminal|not a lifecycle status|not a status/i,
+    'the lifecycle should state the progress event is nonterminal and not a lifecycle status');
+  assert.match(lifecycle, /changed_files[\s\S]{0,60}like[\s\S]{0,40}notice|like[\s\S]{0,40}notice[\s\S]{0,60}changed_files/i,
+    'the lifecycle should state the progress event carries changed_files like the notice');
+  assert.match(lifecycle, /protocol[- ]?only acknowledgement[\s\S]{0,80}continue_after_progress|continue_after_progress[\s\S]{0,120}protocol[- ]?only/i,
+    'continue_after_progress should be a protocol-only acknowledgement');
+});
+
+test('Step 3: continue_after_progress is excluded from opaque input history, user-answer handling, and pending feedback', () => {
+  const lifecycle = artifact('sai/orchestration/worker-lifecycle.md');
+
+  assert.match(lifecycle, /continue_after_progress/,
+    'the lifecycle should define continue_after_progress');
+  assert.match(lifecycle, /opaque[\s\S]{0,200}(?:input )?histor|(?:input )?histor[\s\S]{0,200}opaque/i,
+    'the lifecycle should mention opaque input history');
+  assert.match(lifecycle, /user[- ]answer/i,
+    'the lifecycle should mention user-answer handling');
+  assert.match(lifecycle, /pending[\s\S]{0,100}feedback/i,
+    'the lifecycle should mention pending feedback');
+  assert.match(lifecycle, /(?:excluded|absent)[\s\S]{0,320}(?:opaque|user[- ]answer|pending feedback)|(?:opaque|user[- ]answer|pending feedback)[\s\S]{0,320}(?:excluded|absent)/i,
+    'the lifecycle should exclude continue_after_progress from those interaction-history surfaces');
+});
+
+test('Step 3: implementation and audit workers never emit progress events and their payload validation is unchanged', () => {
+  const lifecycle = artifact('sai/orchestration/worker-lifecycle.md');
+
+  assert.match(lifecycle, /(?:implementation|audit)[\s\S]{0,240}(?:never|not|no)[\s\S]{0,160}progress/i,
+    'implementation and audit workers should never emit progress events');
+  assert.match(lifecycle, /implementation[\s\S]{0,240}audit|audit[\s\S]{0,240}implementation/i,
+    'the scope statement should name both implementation and audit workers');
+  assert.match(lifecycle, /design[- ]scoped|design[- ]only|design worker[s]? only/i,
+    'progress events should be design-scoped');
+  assert.match(lifecycle, /(?:payload|validation)[\s\S]{0,240}unchanged|unchanged[\s\S]{0,240}(?:payload|validation)/i,
+    'payload validation for implementation and audit workers should be unchanged');
+});
