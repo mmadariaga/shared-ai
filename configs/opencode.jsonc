@@ -3,7 +3,9 @@
   "subagent_depth": 2,
   "permission": {
     "external_directory": {
-      "~/.config/opencode/sai/**": "allow"
+      "~/.config/opencode/sai/**": "allow",
+      "~/.config/opencode/commands/**": "allow",
+      "~/.config/opencode/skills/**": "allow"
     },
     "read": {
       "~/.ssh/**": "deny",
