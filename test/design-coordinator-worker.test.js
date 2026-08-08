@@ -707,3 +707,65 @@ test('sai-2 feedback gate advertises and accepts direct free-text replies', () =
   assert.match(coordinator, /artifacts\s*=\s*design\.md,\s*tasks\.md,\s*interfaces\.md/);
   assert.match(coordinator, /proceed-label\s*=\s*Continue/);
 });
+
+// ─── Step 2: command-progress-plan-protocol (coordinator-contract.md) ───────
+
+test('Step 2: dispatch passes exactly wrapper_echo_value and arguments_value; the plan is not carried in the envelope or any reconstruction field', () => {
+  const coordinator = artifact('sai/orchestration/coordinator-contract.md');
+
+  assert.match(coordinator, /exactly[\s\S]{0,120}wrapper_echo_value/,
+    'the contract should state the dispatch passes exactly wrapper_echo_value');
+  assert.match(coordinator, /exactly[\s\S]{0,120}arguments_value/,
+    'the contract should state the dispatch passes exactly arguments_value');
+  assert.match(
+    coordinator,
+    /(?:envelope|reconstruction)[\s\S]{0,240}(?:never|not)[\s\S]{0,160}plan|plan[\s\S]{0,240}(?:never|not)[\s\S]{0,160}(?:envelope|reconstruction)/i,
+    'the contract should state the plan is not carried in the envelope or any reconstruction field'
+  );
+  assert.match(coordinator, /progress_plan/,
+    'the phase-adapter field set should admit progress_plan');
+});
+
+test('Step 2: progress_plan is an optional static ordered adapter field, fully known at dispatch and immutable', () => {
+  const coordinator = artifact('sai/orchestration/coordinator-contract.md');
+
+  assert.match(coordinator, /optional[\s\S]{0,120}progress_plan|progress_plan[\s\S]{0,120}optional/i,
+    'progress_plan should be optional in the phase-adapter field set');
+  assert.match(coordinator, /static[\s\S]{0,200}(?:ordered|order)|(?:ordered|order)[\s\S]{0,200}progress_plan|progress_plan[\s\S]{0,200}(?:static|ordered)/i,
+    'progress_plan should be static and ordered');
+  assert.match(coordinator, /(?:fully known|known) at dispatch[\s\S]{0,160}progress_plan|progress_plan[\s\S]{0,240}(?:immutable|never changes|fixed at dispatch)/i,
+    'progress_plan should be fully known at dispatch and immutable for the invocation');
+});
+
+test('Step 2: a progress event reporting an undeclared step id is ignored; the plan is never extended or amended', () => {
+  const coordinator = artifact('sai/orchestration/coordinator-contract.md');
+
+  assert.match(coordinator, /undeclared/,
+    'the contract should address undeclared step ids');
+  assert.match(coordinator, /(?:ignored|ignore)[\s\S]{0,240}undeclared|undeclared[\s\S]{0,240}(?:ignored|ignore)/i,
+    'a progress event listing an undeclared step id should be ignored');
+  assert.match(coordinator, /never[\s\S]{0,100}(?:extended|amended)|(?:extended|amended)[\s\S]{0,100}never/i,
+    'the plan should never be extended or amended');
+});
+
+test('Step 2: progress-event paths join the changed-file union in first-seen order and are never reset', () => {
+  const coordinator = artifact('sai/orchestration/coordinator-contract.md');
+
+  assert.match(coordinator, /continue_after_progress/,
+    'the lifecycle should continue the same worker with continue_after_progress');
+  assert.match(coordinator, /(?:first[- ]seen|first seen)[\s\S]{0,120}order|order[\s\S]{0,120}(?:first[- ]seen|first seen)/i,
+    'union joins should preserve first-seen order');
+  assert.match(coordinator, /(?:union|changed[- ]?files)[\s\S]{0,240}(?:never|not)[\s\S]{0,60}reset|reset[\s\S]{0,240}(?:never|not)[\s\S]{0,120}(?:union|changed[- ]?files)/i,
+    'a progress event should never reset the union');
+});
+
+test('Step 2: the union non-reset enumeration includes progress events', () => {
+  const coordinator = artifact('sai/orchestration/coordinator-contract.md');
+
+  assert.match(coordinator, /event:\s*progress|event\s*=\s*progress|progress event/i,
+    'the lifecycle should handle progress events');
+  assert.match(coordinator, /non[- ]reset[\s\S]{0,200}enumerat|enumerat[\s\S]{0,200}non[- ]reset/i,
+    'the union enumeration should be non-reset');
+  assert.match(coordinator, /enumerat[\s\S]{0,200}progress|progress[\s\S]{0,200}enumerat/i,
+    'the non-reset enumeration should include progress events');
+});
