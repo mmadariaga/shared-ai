@@ -381,3 +381,94 @@ test('Step 1 keeps the pinned scope and recovery anchors byte-exact after sweep 
   assert.ok(instruction.includes('The recovery operation stays within the current Step and existing plan scope, uses the same dispatch kind and budget-subagent binding as the ordinary dispatch'));
   assert.match(instruction, /Scratch cleanup[\s\S]{0,260}(?:MUST NOT|does not|not)[\s\S]{0,180}(?:broaden|authorize|remove).*?(?:recovery|unexpected path)/i);
 });
+
+test('terminal fixed set includes the project-root GLOSSARY.md changed at the terminal pass', () => {
+  const apply = artifact('sai/instructions/apply.md');
+
+  assert.match(apply, /derive a fixed terminal set from the current working tree/);
+  assert.match(apply, /fixed terminal set[\s\S]{0,320}GLOSSARY\.md|GLOSSARY\.md[\s\S]{0,320}fixed terminal set/i);
+  assert.match(apply, /GLOSSARY\.md[\s\S]{0,180}changed in the working tree at the terminal pass|changed in the working tree at the terminal pass[\s\S]{0,180}GLOSSARY\.md/i);
+  assert.match(apply, /GLOSSARY\.md[\s\S]{0,220}tracked-modified or untracked|tracked-modified or untracked[\s\S]{0,220}GLOSSARY\.md/i);
+  assert.match(apply, /GLOSSARY\.md[\s\S]{0,240}SAI_LEARNINGS\.md|SAI_LEARNINGS\.md[\s\S]{0,240}GLOSSARY\.md/i);
+});
+
+test('GLOSSARY.md eligibility uses the docs-style working-tree rule, not the promotion-written learnings rule', () => {
+  const apply = artifact('sai/instructions/apply.md');
+
+  assert.match(apply, /Evaluate `docs\/\*\*` at terminal time with no run-start baseline/);
+  assert.match(apply, /GLOSSARY\.md[\s\S]{0,300}run-start baseline|run-start baseline[\s\S]{0,300}GLOSSARY\.md/i);
+  assert.match(apply, /GLOSSARY\.md[\s\S]{0,220}tracked-modified or untracked|tracked-modified or untracked[\s\S]{0,220}GLOSSARY\.md/i);
+  assert.match(apply, /(?:promotion pass|this pass) (?:writes?|wrote) `SAI_LEARNINGS\.md`[\s\S]{0,400}GLOSSARY\.md|GLOSSARY\.md[\s\S]{0,400}(?:promotion pass|this pass) (?:writes?|wrote) `SAI_LEARNINGS\.md`/i);
+  assert.match(apply, /never writes? (?:the glossary|`GLOSSARY\.md`)/i);
+});
+
+test('a changed GLOSSARY.md alone triggers the terminal commit when promotion writes no qualifying entry', () => {
+  const apply = artifact('sai/instructions/apply.md');
+
+  assert.match(apply, /GLOSSARY\.md[\s\S]{0,260}no qualifying entry|no qualifying entry[\s\S]{0,260}GLOSSARY\.md/i);
+  assert.match(apply, /GLOSSARY\.md[\s\S]{0,260}no working-tree changes|no working-tree changes[\s\S]{0,260}GLOSSARY\.md/i);
+  assert.match(apply, /GLOSSARY\.md[\s\S]{0,240}changed in the working tree|changed in the working tree[\s\S]{0,240}GLOSSARY\.md/i);
+});
+
+test('an untracked bootstrapped GLOSSARY.md is eligible, listed under Will be committed, and staged', () => {
+  const apply = artifact('sai/instructions/apply.md');
+
+  assert.match(apply, /GLOSSARY\.md[\s\S]{0,200}untracked|untracked[\s\S]{0,200}GLOSSARY\.md/i);
+  assert.match(apply, /bootstrapped|bootstrap/i);
+  assert.match(apply, /`Will be committed`[\s\S]{0,240}GLOSSARY\.md|GLOSSARY\.md[\s\S]{0,240}`Will be committed`/i);
+  assert.match(apply, /stage[sd]?[\s\S]{0,200}GLOSSARY\.md|GLOSSARY\.md[\s\S]{0,200}stage[sd]?/i);
+});
+
+test('both authorization paths stage the glossary and still forbid git add -A, broad sweeps, and change-folder paths', () => {
+  const apply = artifact('sai/instructions/apply.md');
+
+  assert.match(apply, /stage exactly[\s\S]{0,300}GLOSSARY\.md/i);
+  assert.match(apply, /skip the ask[\s\S]{0,400}GLOSSARY\.md|GLOSSARY\.md[\s\S]{0,400}skip the ask/i);
+  assert.match(apply, /GLOSSARY\.md[\s\S]{0,280}git add -A|git add -A[\s\S]{0,280}GLOSSARY\.md/i);
+  assert.match(apply, /GLOSSARY\.md[\s\S]{0,280}broad sweep|broad sweep[\s\S]{0,280}GLOSSARY\.md/i);
+  assert.match(apply, /GLOSSARY\.md[\s\S]{0,320}openspec\/changes\/\{change-name\}\/|openspec\/changes\/\{change-name\}\/[\s\S]{0,320}GLOSSARY\.md/i);
+});
+
+test('terminal visibility listing stays set-derived and covers the glossary without member enumeration', () => {
+  const apply = artifact('sai/instructions/apply.md');
+
+  assert.match(apply, /`Will be committed`[\s\S]{0,200}every exact path in the fixed terminal set/i);
+  assert.match(apply, /`Will NOT be committed`[\s\S]{0,200}every working-tree path outside that set/i);
+  assert.match(apply, /docs[\s\S]{0,280}SAI_LEARNINGS\.md[\s\S]{0,280}GLOSSARY\.md|GLOSSARY\.md[\s\S]{0,280}SAI_LEARNINGS\.md[\s\S]{0,280}docs/i);
+});
+
+test('an unchanged GLOSSARY.md extends the empty-set pins: no terminal commit and no authorization question', () => {
+  const apply = artifact('sai/instructions/apply.md');
+
+  assert.match(apply, /When the fixed terminal set is empty/);
+  assert.match(apply, /propose no message/);
+  assert.match(apply, /ask no authorization question/);
+  assert.match(apply, /GLOSSARY\.md[\s\S]{0,200}unchanged|unchanged[\s\S]{0,200}GLOSSARY\.md/i);
+  assert.match(apply, /When the fixed terminal set is empty[\s\S]{0,500}GLOSSARY\.md|GLOSSARY\.md[\s\S]{0,500}When the fixed terminal set is empty/i);
+});
+
+test('docs and learnings paths appear in the set-derived listing before authorization when glossary is not eligible', () => {
+  const apply = artifact('sai/instructions/apply.md');
+
+  assert.match(apply, /before proposing a message or asking for authorization/);
+  assert.match(apply, /every exact path in the fixed terminal set/);
+  assert.match(apply, /every working-tree path outside that set/);
+  assert.match(apply, /docs\/\*\*[\s\S]{0,300}SAI_LEARNINGS\.md[\s\S]{0,300}GLOSSARY\.md|GLOSSARY\.md[\s\S]{0,300}SAI_LEARNINGS\.md[\s\S]{0,300}docs\/\*\*/i);
+});
+
+test('sai-4-apply fixed-set summary names the glossary trigger and preserves the promotion-written learnings clause', () => {
+  const command = artifact('sai/commands/sai-4-apply.md');
+
+  assert.match(command, /promotion-written `SAI_LEARNINGS\.md` joins the same fixed set and authorization gate/);
+  assert.match(command, /fixed set[\s\S]{0,250}GLOSSARY\.md|GLOSSARY\.md[\s\S]{0,250}fixed set/i);
+  assert.match(command, /docs[\s\S]{0,300}GLOSSARY\.md|GLOSSARY\.md[\s\S]{0,300}docs/i);
+});
+
+test('per-Step commits stay field-8-only without sweeping the glossary; terminal set never consults field 8', () => {
+  const apply = artifact('sai/instructions/apply.md');
+
+  assert.match(apply, /Do not derive this set from a Step, `tasks\.md`, an intended add-list, or subagent report field 8/);
+  assert.match(apply, /field 8[\s\S]{0,300}(?:not|never)[\s\S]{0,120}widen[\s\S]{0,240}GLOSSARY\.md|GLOSSARY\.md[\s\S]{0,300}field 8/i);
+  assert.match(apply, /GLOSSARY\.md[\s\S]{0,500}intended add-list|intended add-list[\s\S]{0,500}GLOSSARY\.md/i);
+  assert.match(apply, /per-Step commits?[\s\S]{0,260}field 8|field 8[\s\S]{0,260}per-Step/i);
+});
