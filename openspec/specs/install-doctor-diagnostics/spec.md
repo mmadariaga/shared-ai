@@ -1,7 +1,7 @@
 # install-doctor-diagnostics Specification
 
 ## Purpose
-TBD: Define install and doctor diagnostics for the complete binding-derived opencode worker census.
+Define doctor diagnostics over the complete manifest-projected opencode agent census: every manifest-projected opencode agent file receives a doctor record — missing, incompatible, or compatible — so that no projected worker is silently absent from the doctor report, with the installer's binding-derived roster validation as the install-time counterpart.
 
 ## Requirements
 
