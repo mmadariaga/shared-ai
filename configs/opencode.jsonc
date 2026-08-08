@@ -20,22 +20,5 @@
       "*.jks": "deny",
       "*credentials*": "deny"
     }
-  },
-  "agent": {
-    "explore": {
-      "mode": "subagent",
-      // Put your trusted low-cost model here
-      "model": "opencode-go/glm-5.1"
-    },
-    "executor": {
-      "mode": "subagent",
-      // Put your trusted low-cost model here
-      "model": "opencode-go/glm-5.1"
-    },
-    "budget": {
-      "mode": "subagent",
-      // Put your trusted low-cost model here
-      "model": "opencode-go/glm-5.1"
-    }
   }
 }

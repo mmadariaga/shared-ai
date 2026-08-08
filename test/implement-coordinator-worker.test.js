@@ -106,18 +106,17 @@ test('Claude and opencode worker bindings own dispatch and continuation mechanic
   }
 });
 
-test('opencode config ships helper agents only and no worker or coordinator profile', () => {
+test('opencode config sample defines no agent and ships the SAI permission rule', () => {
   const config = jsonc.parse(artifact('configs/opencode.jsonc'));
 
   assert.equal(config.subagent_depth, 2);
-  const workerKeys = Object.keys(config.agent)
-    .filter(key => key.startsWith('sai-') && key.endsWith('-worker'));
-  assert.deepEqual(workerKeys, [], 'sample config should carry no agent.sai-*-worker keys');
-  for (const helper of ['explore', 'executor', 'budget']) {
-    assert.equal(config.agent[helper].mode, 'subagent', `${helper} should be a subagent helper`);
-    assert.ok(config.agent[helper].model, `${helper} should declare a model`);
-  }
-  assert.equal(config.agent['sai-coordinator'], undefined, 'no coordinator profile is shipped');
+  assert.ok(Object.hasOwn(config, '$schema'), 'sample config should retain $schema');
+  assert.ok(config.permission, 'sample config should retain permission');
+  assert.equal(Object.hasOwn(config, 'agent'), false,
+    'specs/managed-worker-registry/spec.md: the canonical opencode configuration sample defines no agent');
+  assert.equal(config.agent, undefined, 'no coordinator profile is shipped');
+  assert.equal(config.permission.external_directory['~/.config/opencode/sai/**'], 'allow',
+    'specs/managed-worker-registry/spec.md: the sample should ship the narrow external-directory rule');
 });
 
 test('install surfaces expose managed Claude assets and opencode shapes', () => {
@@ -174,9 +173,10 @@ test('installer collisions overwrite unfamiliar Claude content with notice and p
     assert.equal(opencodeConfig.agent['sai-2-design-worker'], undefined,
       'no absent numbered worker key should be added');
     const opencodeOutput = `${opencodeResult.output}\n${opencodeResult.error?.message || ''}`;
-    assert.match(opencodeOutput, /Added opencode agent keys/);
+    assert.doesNotMatch(opencodeOutput, /Added opencode agent keys/,
+      'specs/install-command-overwrite/spec.md: the retired agent-key merge notice is never printed');
     assert.doesNotMatch(opencodeOutput, /sai-\d+-.*-worker/,
-      'the add-notice should name only helper agents');
+      'the config feedback should name no agent keys');
   } finally {
     removeTempDir(claudeBase);
     removeTempDir(opencodeBase);

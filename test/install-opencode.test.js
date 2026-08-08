@@ -270,16 +270,15 @@ test('installOpencode projects every routed binding into neutral destinations', 
   }
 });
 
-test('Step 3 copyOpencodeConfig copies the worker-free canonical config when none exists', () => {
+test('Step 2 copyOpencodeConfig copies the agent-free canonical config when none exists', () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-'));
   try {
     copyOpencodeConfig(tmpDir);
     const configPath = path.join(tmpDir, 'opencode.jsonc');
     assert.ok(fs.existsSync(configPath), 'opencode.jsonc should be copied when none exists');
     const config = jsonc.parse(fs.readFileSync(configPath, 'utf8'));
-    for (const key of AGENT_KEYS) {
-      assert.ok(Object.hasOwn(config.agent || {}, key), `agent.${key} should be present in the copied config`);
-    }
+    assert.equal(Object.hasOwn(config, 'agent'), false,
+      'specs/npx-installer/spec.md: the copied config must contain no agent key');
     assert.equal(config.permission?.external_directory?.[SAI_EXTERNAL_DIRECTORY], 'allow',
       'specs/managed-worker-registry/spec.md: the copied config should retain the narrow external-directory rule');
     for (const worker of CURRENT_CENSUS) {
@@ -291,30 +290,39 @@ test('Step 3 copyOpencodeConfig copies the worker-free canonical config when non
   }
 });
 
-test('copyOpencodeConfig skips copy and prints instructions when opencode.jsonc exists', () => {
+test('copyOpencodeConfig merges permission in place into an existing opencode.jsonc', () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-'));
   fs.writeFileSync(path.join(tmpDir, 'opencode.jsonc'), '{}');
-  let printed = '';
+  const messages = [];
   const origLog = console.log;
-  console.log = (msg) => { printed += String(msg) + '\n'; };
+  console.log = (m) => messages.push(String(m));
   copyOpencodeConfig(tmpDir);
   console.log = origLog;
-  assert.equal(fs.readFileSync(path.join(tmpDir, 'opencode.jsonc'), 'utf8'), '{}', 'existing config should not be overwritten');
-  assert.ok(printed.includes('"agent"'), 'should print manual instructions containing "agent"');
-  assert.ok(printed.includes('"budget"'), 'should print the budget agent key in manual instructions');
+  const parsed = jsonc.parse(fs.readFileSync(path.join(tmpDir, 'opencode.jsonc'), 'utf8'));
+  assert.equal(parsed.permission?.external_directory?.[SAI_EXTERNAL_DIRECTORY], 'allow',
+    'the SAI allow rule should be merged in place');
+  assert.equal(Object.hasOwn(parsed, 'agent'), false, 'no agent block should be added');
+  assert.ok(!messages.join('\n').includes('Opencode config already exists'),
+    'no fallback guidance should be printed for a parseable config');
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });
 
-test('copyOpencodeConfig skips copy and prints instructions when opencode.json exists', () => {
+test('copyOpencodeConfig merges permission in place into an existing opencode.json', () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-'));
   fs.writeFileSync(path.join(tmpDir, 'opencode.json'), '{}');
-  let printed = '';
+  const messages = [];
   const origLog = console.log;
-  console.log = (msg) => { printed += String(msg) + '\n'; };
+  console.log = (m) => messages.push(String(m));
   copyOpencodeConfig(tmpDir);
   console.log = origLog;
-  assert.ok(printed.includes('"agent"'), 'should print manual instructions when opencode.json exists');
-  assert.ok(printed.includes('"budget"'), 'should print the budget agent key in manual instructions');
+  const parsed = jsonc.parse(fs.readFileSync(path.join(tmpDir, 'opencode.json'), 'utf8'));
+  assert.equal(parsed.permission?.external_directory?.[SAI_EXTERNAL_DIRECTORY], 'allow',
+    'the SAI allow rule should be merged in place');
+  assert.equal(Object.hasOwn(parsed, 'agent'), false, 'no agent block should be added');
+  assert.equal(fs.existsSync(path.join(tmpDir, 'opencode.jsonc')), false,
+    'should not create the non-target opencode.jsonc');
+  assert.ok(!messages.join('\n').includes('Opencode config already exists'),
+    'no fallback guidance should be printed for a parseable config');
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });
 
@@ -360,30 +368,39 @@ test('installOpencode overwrites stale command wrappers', () => {
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });
 
-// --- Step 2: Agent key merge tests ---
+// --- Step 2: opencode config permission-merge, migration-notice, and fallback tests ---
 
-test('copyOpencodeConfig inserts agent keys into opencode.json when no agent exists', () => {
+test('copyOpencodeConfig merges permission into opencode.json without adding agent keys', () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-'));
   fs.writeFileSync(path.join(tmpDir, 'opencode.json'), JSON.stringify({ theme: 'dark' }));
   copyOpencodeConfig(tmpDir);
   const parsed = jsonc.parse(fs.readFileSync(path.join(tmpDir, 'opencode.json'), 'utf8'));
-  assert.ok(parsed.agent, 'agent block should exist');
+  assert.equal(Object.hasOwn(parsed, 'agent'), false,
+    'specs/opencode-config-install/spec.md: no agent block may be inserted');
   for (const key of AGENT_KEYS) {
-    assert.deepEqual(parsed.agent[key], AGENT_PLACEHOLDER, `agent.${key} should be inserted`);
+    assert.equal(Object.hasOwn(parsed.agent || {}, key), false,
+      `specs/opencode-config-install/spec.md: agent.${key} must not be added`);
   }
+  assert.equal(parsed.permission?.external_directory?.[SAI_EXTERNAL_DIRECTORY], 'allow',
+    'the SAI allow rule should be merged into the existing file');
+  assert.equal(parsed.theme, 'dark', 'unrelated keys should survive');
   assert.ok(!fs.existsSync(path.join(tmpDir, 'opencode.jsonc')), 'should not create opencode.jsonc');
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });
 
-test('copyOpencodeConfig inserts agent keys into opencode.jsonc when no agent exists', () => {
+test('copyOpencodeConfig merges permission into opencode.jsonc without adding agent keys', () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-'));
   fs.writeFileSync(path.join(tmpDir, 'opencode.jsonc'), JSON.stringify({ theme: 'dark' }));
   copyOpencodeConfig(tmpDir);
   const parsed = jsonc.parse(fs.readFileSync(path.join(tmpDir, 'opencode.jsonc'), 'utf8'));
-  assert.ok(parsed.agent, 'agent block should exist in opencode.jsonc');
+  assert.equal(Object.hasOwn(parsed, 'agent'), false,
+    'specs/opencode-config-install/spec.md: no agent block may be inserted into opencode.jsonc');
   for (const key of AGENT_KEYS) {
-    assert.deepEqual(parsed.agent[key], AGENT_PLACEHOLDER, `agent.${key} should be inserted into opencode.jsonc`);
+    assert.equal(Object.hasOwn(parsed.agent || {}, key), false,
+      `specs/opencode-config-install/spec.md: agent.${key} must not be added`);
   }
+  assert.equal(parsed.permission?.external_directory?.[SAI_EXTERNAL_DIRECTORY], 'allow',
+    'the SAI allow rule should be merged in place');
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });
 
@@ -395,18 +412,18 @@ test('copyOpencodeConfig merges only opencode.json when both files exist', () =>
   const beforeJsoncBytes = Buffer.from(jsoncContent, 'utf8');
   copyOpencodeConfig(tmpDir);
   const jsonParsed = jsonc.parse(fs.readFileSync(path.join(tmpDir, 'opencode.json'), 'utf8'));
-  assert.ok(jsonParsed.agent, 'agent should exist in opencode.json after merge');
-  for (const key of AGENT_KEYS) {
-    assert.deepEqual(jsonParsed.agent[key], AGENT_PLACEHOLDER, `agent.${key} should be added to opencode.json`);
-  }
+  assert.equal(Object.hasOwn(jsonParsed, 'agent'), false,
+    'specs/opencode-config-install/spec.md: no agent block may be added to opencode.json');
+  assert.equal(jsonParsed.permission?.external_directory?.[SAI_EXTERNAL_DIRECTORY], 'allow',
+    'the SAI allow rule should be merged into opencode.json');
   const afterJsoncBytes = fs.readFileSync(path.join(tmpDir, 'opencode.jsonc'));
-  assert.deepEqual(afterJsoncBytes, beforeJsoncBytes, 'opencode.jsonc should remain untouched');
+  assert.deepEqual(afterJsoncBytes, beforeJsoncBytes, 'opencode.jsonc should remain byte-for-byte untouched');
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });
 
-test('copyOpencodeConfig preserves comments and unrelated keys', () => {
+test('copyOpencodeConfig preserves comments, trailing commas, and unrelated keys', () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-'));
-  const fixture = '{\n  // preserve this comment\n  "theme": "dark"\n}\n';
+  const fixture = '{\n  // preserve this comment\n  "theme": "dark",\n  "subagent_depth": 2,\n}\n';
   fs.writeFileSync(path.join(tmpDir, 'opencode.jsonc'), fixture);
   copyOpencodeConfig(tmpDir);
   const raw = fs.readFileSync(path.join(tmpDir, 'opencode.jsonc'), 'utf8');
@@ -414,38 +431,43 @@ test('copyOpencodeConfig preserves comments and unrelated keys', () => {
   assert.ok(raw.includes('"theme"'), 'theme key should survive');
   const parsed = jsonc.parse(raw);
   assert.equal(parsed.theme, 'dark', 'theme value should be unchanged');
-  assert.deepEqual(Object.keys(parsed).sort(), ['agent', 'permission', 'theme'].sort(), 'only agent, permission, and theme should be top-level keys');
-  for (const key of AGENT_KEYS) {
-    assert.deepEqual(parsed.agent[key], AGENT_PLACEHOLDER, `agent.${key} should be added`);
-  }
+  assert.deepEqual(Object.keys(parsed).sort(), ['permission', 'subagent_depth', 'theme'].sort(),
+    'only permission, theme, and subagent_depth should be top-level keys');
+  assert.equal(Object.hasOwn(parsed, 'agent'), false, 'no agent block should be added');
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });
 
-test('copyOpencodeConfig preserves non-target agent children', () => {
+test('copyOpencodeConfig preserves a user-defined agent section without adding keys', () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-'));
   const config = { agent: { custom: { mode: 'subagent', model: 'my-model' } } };
   fs.writeFileSync(path.join(tmpDir, 'opencode.json'), JSON.stringify(config, null, 2));
   copyOpencodeConfig(tmpDir);
-  const parsed = jsonc.parse(fs.readFileSync(path.join(tmpDir, 'opencode.json'), 'utf8'));
-  assert.deepEqual(parsed.agent.custom, { mode: 'subagent', model: 'my-model' }, 'agent.custom should survive');
+  const raw = fs.readFileSync(path.join(tmpDir, 'opencode.json'), 'utf8');
+  const parsed = jsonc.parse(raw);
+  assert.deepEqual(parsed.agent, config.agent, 'agent.custom should survive untouched');
+  assert.ok(raw.replace(/\s+/g, '').includes(JSON.stringify(config.agent)),
+    'the agent subtree should remain byte-identical');
   for (const key of AGENT_KEYS) {
-    assert.ok(key in parsed.agent, `agent.${key} should exist alongside custom`);
-    assert.deepEqual(parsed.agent[key], AGENT_PLACEHOLDER, `agent.${key} should be inserted alongside custom`);
+    assert.equal(Object.hasOwn(parsed.agent, key), false,
+      `specs/opencode-config-install/spec.md: agent.${key} must not be added alongside a user-defined agent section`);
   }
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });
 
-test('copyOpencodeConfig does not overwrite existing target key', () => {
+test('copyOpencodeConfig preserves a tuned agent.explore.model without adding sibling keys', () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-'));
   const config = { agent: { explore: { mode: 'subagent', model: 'my-custom-model' } } };
   fs.writeFileSync(path.join(tmpDir, 'opencode.json'), JSON.stringify(config, null, 2));
   copyOpencodeConfig(tmpDir);
-  const parsed = jsonc.parse(fs.readFileSync(path.join(tmpDir, 'opencode.json'), 'utf8'));
-  assert.deepEqual(parsed.agent.explore, { mode: 'subagent', model: 'my-custom-model' }, 'existing explore should not be overwritten');
-  assert.ok('executor' in parsed.agent, 'executor should be present');
-  assert.deepEqual(parsed.agent.executor, AGENT_PLACEHOLDER, 'executor should be inserted');
-  assert.ok('budget' in parsed.agent, 'budget should be present');
-  assert.deepEqual(parsed.agent.budget, AGENT_PLACEHOLDER, 'budget should be inserted');
+  const raw = fs.readFileSync(path.join(tmpDir, 'opencode.json'), 'utf8');
+  const parsed = jsonc.parse(raw);
+  assert.deepEqual(parsed.agent, config.agent, 'the tuned explore entry should survive untouched');
+  assert.ok(raw.replace(/\s+/g, '').includes(JSON.stringify(config.agent)),
+    'the tuned agent subtree should remain byte-identical');
+  assert.equal(Object.hasOwn(parsed.agent, 'executor'), false,
+    'specs/opencode-config-install/spec.md: agent.executor must not be added');
+  assert.equal(Object.hasOwn(parsed.agent, 'budget'), false,
+    'specs/opencode-config-install/spec.md: agent.budget must not be added');
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });
 
@@ -464,33 +486,59 @@ test('copyOpencodeConfig is idempotent when fully configured with helper agents 
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });
 
-test('copyOpencodeConfig prints add-notice naming only added keys', () => {
-  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-'));
-  const config = { agent: { explore: { mode: 'subagent', model: 'opencode-go/deepseek-v4-flash' } } };
-  fs.writeFileSync(path.join(tmpDir, 'opencode.json'), JSON.stringify(config, null, 2));
-  const messages = [];
-  const origLog = console.log;
-  console.log = (m) => messages.push(String(m));
-  copyOpencodeConfig(tmpDir);
-  console.log = origLog;
-  const addedLines = messages.filter(m => /added/i.test(m));
-  assert.ok(addedLines.some(l => l.includes('executor')), 'should name executor as added');
-  assert.ok(addedLines.some(l => l.includes('budget')), 'should name budget as added');
-  assert.ok(!addedLines.some(l => l.includes('explore')), 'should NOT name explore as added');
-  fs.rmSync(tmpDir, { recursive: true, force: true });
-});
-
-test('copyOpencodeConfig prints no add-notice when nothing added', () => {
+test('copyOpencodeConfig prints a migration notice naming every redundant agent key and never the retired add-notice', () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-'));
   const config = { permission: { external_directory: { [SAI_EXTERNAL_DIRECTORY]: 'allow' } }, agent: {} };
   for (const key of AGENT_KEYS) config.agent[key] = { ...AGENT_PLACEHOLDER };
   fs.writeFileSync(path.join(tmpDir, 'opencode.json'), JSON.stringify(config, null, 2));
+  const beforeBytes = fs.readFileSync(path.join(tmpDir, 'opencode.json'));
+  function run() {
+    const messages = [];
+    const origLog = console.log;
+    console.log = (m) => messages.push(String(m));
+    try { copyOpencodeConfig(tmpDir); } finally { console.log = origLog; }
+    return messages.join('\n');
+  }
+  const first = run();
+  const second = run();
+  for (const key of AGENT_KEYS) {
+    assert.ok(first.includes(key), `specs/opencode-agent-migration-notice/spec.md: the notice should name ${key}`);
+  }
+  assert.match(first, /agent files? take precedence[\s\S]{0,200}\bmodel\b/i,
+    'specs/opencode-agent-migration-notice/spec.md: the notice should state the agent files take precedence for declared keys incl. model');
+  assert.match(first, /config-only[\s\S]{0,120}(?:tools|options)/i,
+    'specs/opencode-agent-migration-notice/spec.md: the notice should say config-only keys (tools/options) still apply');
+  assert.match(first, /tunable-seed/i,
+    'specs/opencode-agent-migration-notice/spec.md: the notice should name the tunable-seed tuning surface');
+  assert.match(first, /remov\w*[\s\S]{0,120}decision/i,
+    'specs/opencode-agent-migration-notice/spec.md: the notice should leave removal to the user');
+  assert.doesNotMatch(first, /Added opencode agent keys/,
+    'specs/install-command-overwrite/spec.md: the retired add-notice must never be printed');
+  assert.match(second, /agent files? take precedence/i,
+    'specs/opencode-agent-migration-notice/spec.md: the notice should print on every detecting run');
+  assert.deepEqual(fs.readFileSync(path.join(tmpDir, 'opencode.json')), beforeBytes,
+    'the file should be left byte-for-byte unchanged');
+  fs.rmSync(tmpDir, { recursive: true, force: true });
+});
+
+test('copyOpencodeConfig prints no migration notice when the config carries no agent keys', () => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-'));
+  fs.writeFileSync(path.join(tmpDir, 'opencode.json'), JSON.stringify({ theme: 'dark' }));
   const messages = [];
   const origLog = console.log;
   console.log = (m) => messages.push(String(m));
   copyOpencodeConfig(tmpDir);
   console.log = origLog;
-  assert.ok(!messages.some(m => /added/i.test(m)), 'should not print any add-notice');
+  const parsed = jsonc.parse(fs.readFileSync(path.join(tmpDir, 'opencode.json'), 'utf8'));
+  assert.equal(Object.hasOwn(parsed, 'agent'), false,
+    'specs/opencode-agent-migration-notice/spec.md: no agent block should be added');
+  assert.equal(parsed.permission?.external_directory?.[SAI_EXTERNAL_DIRECTORY], 'allow',
+    'the permission merge should still proceed');
+  const joined = messages.join('\n');
+  assert.doesNotMatch(joined, /Added opencode agent keys/,
+    'the retired add-notice must never be printed');
+  assert.doesNotMatch(joined, /agent files? take precedence|redundant/i,
+    'no migration notice should be printed when no agent keys are redundant');
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });
 
@@ -507,8 +555,12 @@ test('copyOpencodeConfig falls back gracefully for unparseable JSONC', () => {
   assert.equal(fs.readFileSync(configPath, 'utf8'), badContent, 'unparseable file should remain unchanged');
   const joined = messages.join('\n');
   assert.ok(joined.includes('Opencode config already exists'), 'should print intro line for fallback');
-  assert.ok(joined.includes('// Your trusted low-cost model below'), 'fallback should use the correct comment');
-  assert.ok(!joined.includes('// Put your trusted low-cost model here'), 'must not contain the put-model-here string');
+  assert.ok(joined.includes('. Verify that you have these settings properly configured:'),
+    'specs/opencode-config-message/spec.md: intro line should match the pinned wording');
+  assert.ok(joined.includes(SAI_EXTERNAL_DIRECTORY), 'fallback should name the SAI permission rule');
+  assert.ok(!joined.includes('"agent"'), 'fallback must not print an "agent" block');
+  assert.ok(!joined.includes('"model"'), 'fallback must not print a model field');
+  assert.ok(!joined.includes('trusted low-cost model'), 'fallback must not mention a trusted low-cost model');
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });
 
@@ -525,6 +577,12 @@ test('copyOpencodeConfig falls back gracefully for non-object root', () => {
   assert.equal(fs.readFileSync(configPath, 'utf8'), arrayContent, 'array-root config should remain unchanged');
   const joined = messages.join('\n');
   assert.ok(joined.includes('Opencode config already exists'), 'should print fallback for non-object root');
+  assert.ok(joined.includes('. Verify that you have these settings properly configured:'),
+    'specs/opencode-config-message/spec.md: intro line should match the pinned wording');
+  assert.ok(joined.includes(SAI_EXTERNAL_DIRECTORY), 'fallback should name the SAI permission rule');
+  assert.ok(!joined.includes('"agent"'), 'fallback must not print an "agent" block');
+  assert.ok(!joined.includes('"model"'), 'fallback must not print a model field');
+  assert.ok(!joined.includes('trusted low-cost model'), 'fallback must not mention a trusted low-cost model');
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });
 
@@ -645,24 +703,30 @@ test('probeOpencode uses spawnSync exit-code semantics', () => {
   }
 });
 
-test('copyOpencodeConfig protects malformed roots and agent maps in both config files', () => {
-  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-malformed-'));
-  const files = {
-    'opencode.json': JSON.stringify({ agent: ['not', 'an', 'object'] }),
-    'opencode.jsonc': '{ "agent": 42 }\n',
-  };
-  const messages = [];
-  const originalLog = console.log;
-  try {
-    for (const [name, content] of Object.entries(files)) fs.writeFileSync(path.join(tmpDir, name), content);
-    console.log = message => messages.push(String(message));
-    copyOpencodeConfig(tmpDir);
-    assert.deepEqual(fs.readFileSync(path.join(tmpDir, 'opencode.json'), 'utf8'), files['opencode.json']);
-    assert.deepEqual(fs.readFileSync(path.join(tmpDir, 'opencode.jsonc'), 'utf8'), files['opencode.jsonc']);
-    assert.ok(messages.some(message => /manual|already exists|verify/i.test(message)));
-  } finally {
-    console.log = originalLog;
-    fs.rmSync(tmpDir, { recursive: true, force: true });
+test('copyOpencodeConfig proceeds past non-plain-object agent maps and merges permission in place', () => {
+  const cases = [
+    ['opencode.json', JSON.stringify({ agent: ['not', 'an', 'object'] }), ['not', 'an', 'object']],
+    ['opencode.jsonc', '{ "agent": 42 }\n', 42],
+  ];
+  for (const [name, content, expectedAgent] of cases) {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-malformed-'));
+    const messages = [];
+    const originalLog = console.log;
+    try {
+      fs.writeFileSync(path.join(tmpDir, name), content);
+      console.log = message => messages.push(String(message));
+      copyOpencodeConfig(tmpDir);
+      const config = jsonc.parse(fs.readFileSync(path.join(tmpDir, name), 'utf8'));
+      assert.deepEqual(config.agent, expectedAgent,
+        `${name}: the non-plain-object agent subtree must survive untouched`);
+      assert.equal(config.permission?.external_directory?.[SAI_EXTERNAL_DIRECTORY], 'allow',
+        `${name}: the permission merge should proceed despite the non-plain-object agent`);
+      assert.equal(messages.some(message => /manual|already exists|verify/i.test(message)), false,
+        `${name}: no fallback message should be printed when the merge proceeds`);
+    } finally {
+      console.log = originalLog;
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
   }
 });
 
@@ -694,7 +758,7 @@ function capturePermissionOutput(fn) {
   return messages;
 }
 
-test('Step 1 fresh install grants narrow SAI external-directory access and retains managed agents', () => {
+test('Step 1 fresh install grants narrow SAI external-directory access and ships no agent block', () => {
   const dir = permissionStepTempDir();
   try {
     installOpencode(dir);
@@ -702,7 +766,8 @@ test('Step 1 fresh install grants narrow SAI external-directory access and retai
     const config = readPermissionConfig(dir, name);
     assert.equal(config.permission.external_directory[SAI_EXTERNAL_DIRECTORY], 'allow');
     assert.ok(config.permission.read, 'SAI read permissions should remain present');
-    assert.ok(config.agent, 'managed agents should remain present');
+    assert.equal(Object.hasOwn(config, 'agent'), false,
+      'specs/opencode-generic-agent-files/spec.md: the installed config must carry no agent block');
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }
@@ -1030,39 +1095,71 @@ test('Step 3 retired registration surface is no longer exported from the install
     'specs/opencode-agent-census/spec.md: the registration-default half of the census must be retired');
 });
 
-test('Step 3 canonical opencode config sample defines no managed worker', () => {
+test('Step 2 canonical opencode config sample defines no agent', () => {
   const sample = jsonc.parse(fs.readFileSync(path.join(__dirname, '..', 'configs', 'opencode.jsonc'), 'utf8'));
-  assert.ok(sample.permission, 'specs/managed-worker-registry/spec.md: the sample should retain permission');
+  assert.ok(Object.hasOwn(sample, '$schema'),
+    'specs/opencode-config-install/spec.md: the sample should retain $schema');
   assert.ok(Object.hasOwn(sample, 'subagent_depth'),
     'specs/managed-worker-registry/spec.md: the sample should retain subagent_depth');
-  assert.ok(sample.agent, 'the sample should retain an agent map');
-  for (const key of AGENT_KEYS) {
-    assert.ok(Object.hasOwn(sample.agent, key),
-      `specs/managed-worker-registry/spec.md: agent.${key} should be retained in the sample`);
-  }
-  assert.deepEqual(Object.keys(sample.agent).sort(), [...AGENT_KEYS].sort(),
-    'specs/managed-worker-registry/spec.md: the sample agent map should contain only the helper agents');
+  assert.ok(sample.permission, 'specs/managed-worker-registry/spec.md: the sample should retain permission');
+  assert.equal(Object.hasOwn(sample, 'agent'), false,
+    'specs/managed-worker-registry/spec.md: the canonical opencode configuration sample defines no agent');
+  assert.deepEqual(Object.keys(sample).sort(), ['$schema', 'permission', 'subagent_depth'].sort(),
+    'specs/opencode-config-install/spec.md: top-level keys should be exactly $schema, subagent_depth, permission');
+  assert.equal(sample.permission.external_directory[SAI_EXTERNAL_DIRECTORY], 'allow',
+    'specs/managed-worker-registry/spec.md: the sample should ship the narrow external-directory rule');
 });
 
-test('Step 3 fresh install merges no managed worker entries into the opencode config', () => {
+test('Step 2 fresh install ships a config with no agent keys and keeps the narrow permission rule', () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-worker-free-'));
   try {
     installOpencode(tmpDir);
     const configName = fs.existsSync(path.join(tmpDir, 'opencode.json')) ? 'opencode.json' : 'opencode.jsonc';
     const config = jsonc.parse(fs.readFileSync(path.join(tmpDir, configName), 'utf8'));
-    assert.ok(config.agent, 'agent block should exist');
+    assert.equal(Object.hasOwn(config, 'agent'), false,
+      'specs/opencode-generic-agent-files/spec.md: the shipped config must carry no agent block');
     for (const key of AGENT_KEYS) {
-      assert.ok(Object.hasOwn(config.agent, key), `agent.${key} should be merged as before`);
+      assert.equal(Object.hasOwn(config.agent || {}, key), false,
+        `specs/opencode-generic-agent-files/spec.md: agent.${key} must not be merged into the fresh install`);
     }
-    assert.deepEqual(config.permission?.external_directory?.[SAI_EXTERNAL_DIRECTORY], 'allow',
+    assert.equal(config.permission?.external_directory?.[SAI_EXTERNAL_DIRECTORY], 'allow',
       'specs/managed-worker-registry/spec.md: the narrow external-directory rule should be merged as before');
     for (const worker of CURRENT_CENSUS) {
-      assert.equal(Object.hasOwn(config.agent, worker), false,
+      assert.equal(Object.hasOwn(config.agent || {}, worker), false,
         `specs/managed-worker-registry/spec.md: agent.${worker} must not be injected by the installer`);
     }
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }
+});
+
+test('Step 2 fresh install seeds the generic opencode agent files from their sources', () => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-generic-agents-'));
+  try {
+    installOpencode(tmpDir);
+    for (const name of AGENT_KEYS) {
+      const agentPath = path.join(tmpDir, 'agents', `${name}.md`);
+      const repoAgentPath = path.join(__dirname, '..', 'agents', 'opencode', `${name}.md`);
+      assert.ok(fs.existsSync(repoAgentPath),
+        `specs/opencode-generic-agent-files/spec.md: ${name} should have an opencode source agent`);
+      assert.ok(fs.existsSync(agentPath),
+        `specs/opencode-generic-agent-files/spec.md: ${name}.md should be projected into the agents directory`);
+      assert.deepEqual(fs.readFileSync(agentPath), fs.readFileSync(repoAgentPath),
+        `specs/opencode-generic-agent-files/spec.md: ${name} should be byte-identical to its opencode source`);
+      assert.equal(fs.existsSync(path.join(tmpDir, 'agents', `.${name}.owner.json`)), false,
+        `specs/opencode-generic-agent-files/spec.md: ${name} must not gain an ownership sidecar`);
+    }
+  } finally {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+});
+
+test('Step 2 retired agent-key merge exports are no longer available from the installer', () => {
+  const flow = require('../bin/install-flow.js');
+  assert.equal(flow.OPENCODE_AGENT_KEYS, undefined,
+    'specs/opencode-config-install/spec.md: OPENCODE_AGENT_KEYS must be retired');
+  assert.equal(flow.OPENCODE_PLACEHOLDER_MODEL, undefined,
+    'specs/opencode-config-install/spec.md: OPENCODE_PLACEHOLDER_MODEL must be retired');
 });
 
 test('Step 3 install seeds the seven managed opencode worker agent files from their sources', () => {
