@@ -1,15 +1,28 @@
 # apply-test-impl-split Specification
 
-## ADDED Requirements
+## Requirements
 
 ### Requirement: Testable steps split into a test-writer then an implementation dispatch
 
-For every **testable** Step (a Step that contains a RED block), the `sai-4-apply` coordinator SHALL dispatch two separate subagents in order instead of one: first a test-writer dispatch, then — only after the test-writer verifies a valid RED — an implementation dispatch. The coordinator SHALL NOT combine both into a single dispatch for a testable Step.
+The `sai-4-apply` coordinator SHALL select the two-dispatch flow for a Step if and only if **all three parts** of the routing condition hold:
 
-#### Scenario: Coordinator processes a testable Step
+1. the Step's body contains a RED block — the property that makes the Step **testable**;
+2. a **Step Contract** is available for that Step: `interfaces.md` exists for the change and contains a `## Step N` section whose integer `N` matches the Step's `implementation.md` `## Step N` heading;
+3. the Step's plan-level file scope contains at least one production file — the property that makes the Step **divisible**. A production file is a plan-authorized file that the coordinator's existing allowed-files derivation classifies as production: neither a test file nor a declared interface.
 
-- **WHEN** the coordinator reaches an unchecked Step that contains a RED block
+When all three parts hold, the coordinator SHALL dispatch two separate subagents in order instead of one: first a test-writer dispatch, then — only after the test-writer verifies a valid RED — an implementation dispatch. The coordinator SHALL NOT combine both into a single dispatch for a Step that satisfies all three parts.
+
+A Step that is **testable but not divisible** — its plan-level file scope contains no production file, so an implementation dispatch would have an empty allowed-files list — SHALL NOT be split: the coordinator SHALL route it to a single dispatch, exactly as it routes a Step that fails part 2. "Testable" (the RED block) and "divisible" (production surface) are distinct properties: a RED block alone never licenses the two-dispatch flow, because an implementation dispatch with an empty allowed-files list cannot perform its side of the split. The part-3 test is absence-based: it asks whether at least one production file exists in the Step's plan-level file scope, never whether every file is a test — a Step scoped solely to test files and a Step scoped solely to declared interfaces both have no production file, both derive an empty implementation allowed-files list, and both fall back to a single dispatch.
+
+#### Scenario: Coordinator processes a testable, divisible Step
+
+- **WHEN** the coordinator reaches an unchecked Step that contains a RED block, has an available Step Contract, and whose plan-level file scope contains at least one production file
 - **THEN** it dispatches a test-writer subagent first, waits for its report and a valid RED, and only then dispatches a separate implementation subagent for the same Step
+
+#### Scenario: Coordinator processes a testable Step with no production files
+
+- **WHEN** the coordinator reaches an unchecked Step that contains a RED block and has an available Step Contract, but whose plan-level file scope contains no production file (test-only, interfaces-only, or any other production-free scope)
+- **THEN** it does NOT dispatch a test-writer or an implementation subagent; it routes the Step to a single dispatch, which authors the test from the Step's own scenario descriptions and runs the RED → GREEN cycle itself
 
 #### Scenario: Test-writer does not verify a valid RED
 
@@ -51,12 +64,17 @@ The test-writer SHALL scope its RED run to the tests it authored, substituting t
 
 ### Requirement: Coordinator guards interfaces.md ↔ implementation.md Step-N key integrity
 
-The coordinator injects "that Step's `interfaces.md` section" into the test-writer by matching the integer `N` of the current `implementation.md` `## Step N` heading to the `## Step N` heading in `interfaces.md`. Because `interfaces.md` is regenerated wholesale while `implementation.md` is preserved byte-for-byte (including orphan steps) across re-runs, the two can desync. Before dispatching the test-writer, the coordinator SHALL verify a matching `## Step N` exists in `interfaces.md`. If none exists, or the match is ambiguous, the coordinator SHALL STOP and surface the desync to the user — it SHALL NOT silently inject a mismatched or empty interface contract into the blind test-writer.
+The coordinator injects "that Step's `interfaces.md` section" into the test-writer by matching the integer `N` of the current `implementation.md` `## Step N` heading to the `## Step N` heading in `interfaces.md`. Because `interfaces.md` is regenerated wholesale while `implementation.md` is preserved byte-for-byte (including orphan steps) across re-runs, the two can desync. The routing condition's part 2 already confines test-writer dispatch to Steps with an available `## Step N`, so the guard SHALL STOP and surface the desync to the user only when the match is **ambiguous** — more than one `## Step N` section matches the same integer `N`. On an ambiguous match the coordinator SHALL NOT inject a mismatched or empty interface contract into the blind test-writer. A clean absence — no `## Step N` section for the integer — is NOT a guard violation: the Step routes to a single dispatch under the traced fall-back, and no test-writer is dispatched for it.
 
-#### Scenario: No matching Step N in interfaces.md
+#### Scenario: Ambiguous Step N match stops the run
 
-- **WHEN** the coordinator is about to dispatch the test-writer for a testable `implementation.md` Step N and `interfaces.md` has no `## Step N` section (or the keys have drifted after a divergent design re-run)
-- **THEN** the coordinator STOPs, reports the missing/mismatched key, and does not dispatch the test-writer with a wrong or empty interface contract
+- **WHEN** the coordinator is about to dispatch the test-writer for a RED-carrying Step N and more than one `## Step N` section in `interfaces.md` matches the same integer `N` (keys drifted after a divergent design re-run)
+- **THEN** the coordinator STOPs and surfaces the desync, and does not dispatch the test-writer with a wrong or ambiguous interface contract
+
+#### Scenario: No matching Step N falls back to a single dispatch
+
+- **WHEN** the coordinator reaches a RED-carrying Step N for which `interfaces.md` has no `## Step N` section
+- **THEN** no guard STOP fires; the Step routes to a single dispatch under the traced fall-back, and the test-writer is never dispatched for it
 
 #### Scenario: Matching Step N is present
 
@@ -98,3 +116,23 @@ A Step that contains no RED block (config, migration, scaffolding, service-side)
 
 - **WHEN** the coordinator reaches an unchecked Step with no RED block
 - **THEN** it dispatches exactly one subagent for that Step, as in the pre-split flow
+
+### Requirement: Glossary defines the routing vocabulary
+
+The `## Language` section of `GLOSSARY.md` at the project root SHALL contain exactly one `**Divisible Step**` entry with a one-sentence definition stating what it IS — a Step whose plan-level file scope contains at least one production file, the property distinct from having a RED block that makes the Step eligible for the two-dispatch split. The entry SHALL carry an `*Avoid*` line rejecting the aliases "splittable step", "production step", "split-eligible step", and "testable" (which describes the RED block only).
+
+The `## Language` section SHALL also contain exactly one `**Split-Routed Step**` entry whose definition names all three routing parts: a `##### RED phase` block, an available **Step Contract**, and at least one production file in the plan-level file scope.
+
+The `## Relationships` section of `GLOSSARY.md` SHALL contain an entry linking **Divisible Step** to **Split-Routed Step** — a **Divisible Step** that carries a `##### RED phase` block and has an available **Step Contract** is a **Split-Routed Step**, while a testable Step that is not divisible keeps a single dispatch — and SHALL update the **Blind Test-Writer**/**Implementation Dispatch** and **Step Contract** entries so the single-dispatch fall-back covers both absence shapes (contract unavailable; no production file).
+
+The `## Flagged ambiguities` section of `GLOSSARY.md` SHALL contain an entry resolving the "Testable Step vs the dispatch it routes to" overload in favor of the three-term split: "testable" describes only the RED block, **Divisible Step** describes the production-surface property, and **Split-Routed Step** names the two-dispatch outcome.
+
+#### Scenario: Glossary documents the Divisible Step term
+
+- **WHEN** `GLOSSARY.md` is read after the change lands
+- **THEN** it contains exactly one `**Divisible Step**` `## Language` entry with the production-file definition and the `*Avoid*` alias line
+
+#### Scenario: Glossary documents the three-part Split-Routed Step
+
+- **WHEN** `GLOSSARY.md` is read after the change lands
+- **THEN** the `**Split-Routed Step**` entry names all three routing parts, and the `## Relationships` and `## Flagged ambiguities` entries reflect both fall-back absence shapes

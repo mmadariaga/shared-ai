@@ -57,3 +57,37 @@ For all three dispatch kinds, the coordinator SHALL inject the exact declared sc
 #### Scenario: Scratch is not a feature output
 - **WHEN** a dispatch creates scratch alongside a production output
 - **THEN** `Files modified` contains only the non-scratch feature output and excludes every path below `.tmp/{change-name}/`
+
+### Requirement: RED-carrying Steps without split eligibility fall back to a single dispatch
+
+When the coordinator reaches a Step whose body contains a RED block (so part 1 of the routing condition holds) but the Step is not a **Split-Routed Step**, the coordinator SHALL route the Step to a single dispatch and, **before dispatching**, print exactly one non-blocking trace line identifying the failing part. Two absence shapes are recognised, each with its own pinned trace line:
+
+- **Contract-absent**: no `## Step N` contract is available — either `interfaces.md` does not exist, or it exists but has no `## Step N` for the Step's integer:
+
+    Step {N}: RED block present but no `## Step N` contract in interfaces.md — routing to a single dispatch.
+
+- **No-production-surface**: the Step's plan-level file scope contains no production file — test-only, interfaces-only, or any other production-free scope — so an implementation dispatch would have an empty allowed-files list:
+
+    Step {N}: RED block present but no production files in the Step's file scope — routing to a single dispatch.
+
+Neither line SHALL block, prompt, or gate the dispatch. The two shapes are independent and additive: a Step that triggers both — a RED block, no available `## Step N` contract, and no production file in its plan-level file scope — SHALL emit both trace lines, each exactly once, the contract-absent line first and the no-production-surface line second, before the single dispatch, and SHALL still be dispatched. A Step that routes to the two-dispatch flow prints neither line. The fall-back is non-blocking in both shapes because the single dispatch executes the Step correctly from its own scenario descriptions regardless — a STOP would cost the whole run to report a fault one trace line reports for free.
+
+#### Scenario: Contract is unavailable for a RED-carrying Step
+
+- **WHEN** the coordinator reaches a Step with a RED block whose `## Step N` contract is unavailable (whole-file or per-Step absence)
+- **THEN** it routes the Step to a single dispatch and prints exactly one non-blocking trace line in the contract-absent wording before dispatching
+
+#### Scenario: File scope holds no production files for a RED-carrying Step
+
+- **WHEN** the coordinator reaches a Step with a RED block whose plan-level file scope contains no production file (test-only, interfaces-only, or any other production-free scope)
+- **THEN** it routes the Step to a single dispatch and prints exactly one non-blocking trace line in the no-production-surface wording before dispatching
+
+#### Scenario: A RED-carrying Step triggers both absence shapes
+
+- **WHEN** the coordinator reaches a Step with a RED block that has no available `## Step N` contract AND no production file in its plan-level file scope
+- **THEN** it prints both trace lines, each exactly once — the contract-absent line first, the no-production-surface line second — non-blocking, and then dispatches the Step through the single-dispatch flow
+
+#### Scenario: Split-eligible Step prints no fall-back trace
+
+- **WHEN** the coordinator routes a Step to the two-dispatch flow because all three routing parts hold
+- **THEN** no fall-back trace line is printed for that Step

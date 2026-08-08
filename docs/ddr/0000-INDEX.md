@@ -33,6 +33,7 @@ This index groups the DDRs in `docs/ddr/` by **command** and by **cross-cutting 
 - [0106 — The ordered routing test resolves a qualifying decision's record family, DDR first, with no tie](./0106-ordered-routing-test-family-resolution.md)
 - [0107 — Cross-family relationships are family-prefixed and family-isolated; supersedes never crosses families](./0107-cross-family-relationship-encoding.md)
 - [0108 — Numbering stays independent per family; a record keeps its number when it moves between families](./0108-independent-per-family-numbering.md)
+- [0109 — "Testable" (RED block) and "divisible" (production surface) are distinct Step properties](./0109-testable-and-divisible-are-distinct-step-properties.md) — Refs adr:0115
 
 ### `/sai-4-apply`
 
@@ -44,6 +45,7 @@ This index groups the DDRs in `docs/ddr/` by **command** and by **cross-cutting 
 - [0052 — Human-Verification deferral under `--fast-track` with bounded-failure semantics](./0052-human-verification-deferral-under-fast-track.md)
 - [0062 — Field 9's soft-degradation exemption is stated at two sites](./0062-field-9-soft-degradation-stated-at-two-sites.md) — **Amends** adr:0026
 - [0063 — A contract-violating telemetry note is dropped whole, never trimmed](./0063-violating-telemetry-note-dropped-not-cleaned.md)
+- [0109 — "Testable" (RED block) and "divisible" (production surface) are distinct Step properties](./0109-testable-and-divisible-are-distinct-step-properties.md) — Refs adr:0115
 
 ### `/sai-5-review`
 
@@ -118,6 +120,7 @@ This index groups the DDRs in `docs/ddr/` by **command** and by **cross-cutting 
 
 ### Testability routing & RED → GREEN
 
+- [0109 — "Testable" (RED block) and "divisible" (production surface) are distinct Step properties](./0109-testable-and-divisible-are-distinct-step-properties.md) — Refs adr:0115
 
 ### The `interfaces.md` contract
 
