@@ -19,6 +19,18 @@ After resolution, fetch `@sai/policies/prereqs.md` and enforce the OpenSpec CLI,
 
 Every post-resolution payload includes `resolved_change_name`. Every payload includes the current ordered duplicate-free `changed_files` list. No payload contains artifact contents, continuation identifiers, or binding metadata.
 
+## Progress Reporting
+
+This phase declares a progress plan with exactly these canonical step ids, in order:
+
+- `resolve-change` — "Resolve change"
+- `establish-diff-scope` — "Resolve diff scope"
+- `resolve-review-analysis` — "Resolve review analysis"
+- `resolve-mutation-analysis` — "Resolve mutation-analysis gate"
+- `close-review-outcome` — "Close review outcome"
+
+Emit exactly one progress event per completed batch after prerequisite checks pass and change resolution completes, whenever one or more plan steps complete. The startup act (prerequisite checks + change resolution + proposal gate) reports as one batch carrying `resolve-change`; the diff-scope batch carries `establish-diff-scope`; the review-analysis batch carries `resolve-review-analysis`; the mutation-analysis batch carries `resolve-mutation-analysis`, reported completed when the Pass 11 activation gate is resolved whether the applicable mutation path runs or is legitimately skipped; the outcome batch carries `close-review-outcome`. Before an early terminal outcome, report the completed resolution and scope milestones that led to it — an empty diff reports `establish-diff-scope` before returning the existing `cancelled` result. Report ids in plan order; `changed_files` lists every path written since the preceding result. Audit progress plans receive no Milestone Stamp annotation. Never emit a progress event before resolution, in place of a terminal payload, or during a `needs_input` pause — the run always closes with exactly one terminal lifecycle status.
+
 ## Review
 
 Set `$ARGUMENTS` to the resolved change name plus the optional parent branch, fetch `@sai/commands/review/invocation.md`, and follow it exactly.
