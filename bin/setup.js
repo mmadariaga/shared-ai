@@ -13,12 +13,12 @@ function prompt(rl, question) {
   return new Promise(resolve => rl.question(question, resolve));
 }
 
-function getPathArg() {
-  return process.argv[2] === 'setup' ? process.argv[3] : process.argv[2];
+function getPathArg(argv) {
+  return argv[2] === 'setup' ? argv[3] : argv[2];
 }
 
-function resolvePath() {
-  const arg = getPathArg();
+function resolvePath(argv) {
+  const arg = getPathArg(argv);
   if (arg) {
     return path.resolve(arg);
   }
@@ -119,11 +119,17 @@ function copySchemaTemplates(projectPath) {
   console.log(`Copied ${count} schema file(s) to ${destPath}.`);
 }
 
-async function main() {
-  const projectPath = resolvePath();
-  const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+async function main(options = {}) {
+  const {
+    argv = process.argv,
+    createReadline = () => readline.createInterface({ input: process.stdin, output: process.stdout }),
+    postSetupWorkflow = async () => {},
+  } = options;
 
-  if (!getPathArg()) {
+  const projectPath = resolvePath(argv);
+  const rl = createReadline();
+
+  if (!getPathArg(argv)) {
     const answer = await prompt(rl, `Configure SAI workflow at ${projectPath}? (Y/n) `);
     if (answer.trim().toLowerCase() === 'n') {
       rl.close();
@@ -146,8 +152,16 @@ async function main() {
   if (schemaOutcome !== 'success') {
     return schemaOutcome;
   }
+
+  try {
+    copySchemaTemplates(projectPath);
+    await postSetupWorkflow({ projectPath, readline: rl });
+  } catch (err) {
+    rl.close();
+    console.error(err);
+    return 'post-setup-failure';
+  }
   rl.close();
-  copySchemaTemplates(projectPath);
 
   console.log(`SAI workflow configured at ${projectPath}.`);
   return 'success';
