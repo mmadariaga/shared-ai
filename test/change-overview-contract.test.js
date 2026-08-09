@@ -157,3 +157,38 @@ test('installation projections are mirrored with an explicit override entry', ()
   assert.match(manifest, /instructions\/change-overview\.md/, 'manifest should project to instructions/change-overview.md');
   assert.match(manifest, /"overrides"\s*:\s*"sai-instructions"/, 'manifest should override the sai-instructions projection with an explicit entry');
 });
+
+// ─── Step 4: Continue-triggered overview generation in the design coordinator ─
+
+test('Continue triggers the worker-owned generation after the gate closes', () => {
+  const coordinator = artifact('sai/commands/design/coordinator.md');
+
+  assert.match(coordinator, /Continue/, 'the gate-closed next action should be Continue');
+  assert.match(coordinator, /generation[\s-]?(?:pass|trigger|terminal)/i,
+    'Continue should trigger the worker-owned generation pass');
+  assert.match(coordinator, /same[\s-]?worker/i, 'generation should run via a same-worker continuation');
+});
+
+test('failed first materialization suppresses the success terminal', () => {
+  const coordinator = artifact('sai/commands/design/coordinator.md');
+
+  assert.match(coordinator, /failed/i, 'coordinator should map a failed first materialization');
+  assert.match(coordinator, /completion sentence/i, 'coordinator should reference the design completion sentence');
+  assert.match(coordinator, /suppress|do\s*not\s*emit|does\s*not\s*emit/i,
+    'coordinator should suppress the design completion sentence on a failed materialization');
+});
+
+test('run exits before Continue processing materializes nothing', () => {
+  const coordinator = artifact('sai/commands/design/coordinator.md');
+
+  assert.match(coordinator, /materializ/i, 'coordinator should reference materialization');
+  assert.match(coordinator, /without\s+materialization|no\s+overview|unmaterialized/i,
+    'a continuation failure should end the run without materialization');
+});
+
+test('generation terminal changed_files are forwarded without re-derivation', () => {
+  const coordinator = artifact('sai/commands/design/coordinator.md');
+
+  assert.match(coordinator, /changed_files/, 'coordinator should forward the generation terminal changed_files');
+  assert.match(coordinator, /forward/i, 'coordinator should forward changed_files unchanged');
+});
