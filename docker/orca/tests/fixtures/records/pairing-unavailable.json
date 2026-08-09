@@ -1,0 +1,1 @@
+{"type":"orca_server_ready","schemaVersion":1,"runtimeId":"fixture-runtime","endpoint":"ws://0.0.0.0:6768","boundEndpoint":"ws://0.0.0.0:6768","advertisedEndpoint":"ws://127.0.0.1:6768","pairing":{"available":false,"reason":"websocket_unavailable","guidance":"The WebSocket surface could not be opened; check the container network configuration."}}
