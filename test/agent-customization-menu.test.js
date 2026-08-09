@@ -5,8 +5,10 @@ const assert = require('node:assert/strict');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const childProcess = require('child_process');
 
 const agentCustomization = require('../bin/agent-customization.js');
+const { main } = require('../bin/setup.js');
 
 const {
   runPostSetupMenu,
@@ -372,5 +374,246 @@ test('full traversal against a scratch repo root performs zero filesystem writes
       'the agents tree must be byte-identical after the full traversal');
   } finally {
     fs.rmSync(scratch, { recursive: true, force: true });
+  }
+});
+
+// --- Step 2: postSetupMenu wiring in bin/setup.js ---
+
+function captureConsole() {
+  const logs = [];
+  const origLog = console.log;
+  const origError = console.error;
+  console.log = (m) => logs.push(String(m));
+  console.error = (m) => logs.push(String(m));
+  return { logs, restore: () => { console.log = origLog; console.error = origError; } };
+}
+
+function fakeReadline(questionAnswer = 'y') {
+  return {
+    isOpen: true,
+    closeCount: 0,
+    question: (q, cb) => cb(questionAnswer),
+    close() { this.isOpen = false; this.closeCount += 1; },
+  };
+}
+
+function stubSpawnSync() {
+  const orig = childProcess.spawnSync;
+  childProcess.spawnSync = (cmd, args, opts) => {
+    const line = Array.isArray(args) ? `${cmd} ${args.join(' ')}` : String(cmd);
+    if (line.startsWith('openspec --version')) {
+      return { status: 0, stdout: '', stderr: '', error: null };
+    }
+    // every other probe (codegraph --version, openspec init, codegraph init) is absent/failed
+    return { status: 1, stdout: '', stderr: '', error: null };
+  };
+  return () => { childProcess.spawnSync = orig; };
+}
+
+function makeProjectDir({ withOpenspec = true, withConfig = true } = {}) {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-agent-menu-setup-'));
+  if (withOpenspec) {
+    fs.mkdirSync(path.join(dir, 'openspec'), { recursive: true });
+    if (withConfig) {
+      fs.writeFileSync(path.join(dir, 'openspec', 'config.yaml'), 'schema: sai-workflow\n');
+    }
+  }
+  return dir;
+}
+
+test('postSetupMenu spy runs after the completion message and receives exactly { projectPath }', async () => {
+  const restoreSpawn = stubSpawnSync();
+  const projectDir = makeProjectDir();
+  const cap = captureConsole();
+  const rl = fakeReadline();
+  let menuCall = null;
+  try {
+    const outcome = await main({
+      argv: ['node', 'bin/setup.js', projectDir],
+      createReadline: () => rl,
+      postSetupMenu: async (opts) => {
+        menuCall = { args: opts, messagesAtInvocation: cap.logs.slice() };
+      },
+    });
+    assert.equal(outcome, 'success');
+    assert.ok(menuCall, 'the injected postSetupMenu should be invoked');
+    assert.deepEqual(menuCall.args, { projectPath: projectDir },
+      'postSetupMenu should receive exactly { projectPath } and never the setup-owned readline');
+    assert.ok(menuCall.messagesAtInvocation.some(m => m.includes(`SAI workflow configured at ${projectDir}.`)),
+      'the completion message must already be printed when postSetupMenu is invoked');
+  } finally {
+    cap.restore();
+    restoreSpawn();
+    fs.rmSync(projectDir, { recursive: true, force: true });
+  }
+});
+
+test('default postSetupMenu is silent and non-prompting in a non-TTY run', async () => {
+  const restoreSpawn = stubSpawnSync();
+  const projectDir = makeProjectDir();
+  const cap = captureConsole();
+  const rl = fakeReadline();
+  try {
+    const outcome = await main({
+      argv: ['node', 'bin/setup.js', projectDir],
+      createReadline: () => rl,
+    });
+    assert.equal(outcome, 'success');
+    assert.equal(rl.closeCount, 1, 'the setup-owned readline is closed exactly once');
+    assert.ok(cap.logs.some(m => m.includes(`SAI workflow configured at ${projectDir}.`)),
+      'the pre-existing completion message is preserved');
+    const interactiveLines = cap.logs.filter(m =>
+      /Customize models|Claude Code|OpenCode/i.test(m)
+      || /\(\s*y\s*\/\s*n\s*\)/i.test(m)
+      || /\?\s*$/.test(m));
+    assert.deepEqual(interactiveLines, [],
+      'a non-TTY run must not print any menu prompt or customization output');
+  } finally {
+    cap.restore();
+    restoreSpawn();
+    fs.rmSync(projectDir, { recursive: true, force: true });
+  }
+});
+
+test('injected postSetupWorkflow contract is unchanged and the default postSetupMenu runs after the message without touching the setup readline', async () => {
+  const restoreSpawn = stubSpawnSync();
+  const projectDir = makeProjectDir();
+  const cap = captureConsole();
+  const rl = fakeReadline();
+  let workflowCall = null;
+  let menuCalls = 0;
+  let menuArgs = null;
+  let menuMessages = null;
+  const restoreMenu = patchFactory('runPostSetupMenu', async (opts) => {
+    menuCalls += 1;
+    menuArgs = opts;
+    menuMessages = cap.logs.slice();
+  });
+  try {
+    const outcome = await main({
+      argv: ['node', 'bin/setup.js', projectDir],
+      createReadline: () => rl,
+      postSetupWorkflow: async (ctx) => {
+        workflowCall = {
+          projectPath: ctx.projectPath,
+          readline: ctx.readline,
+          isOpen: ctx.readline.isOpen,
+          messages: cap.logs.slice(),
+        };
+      },
+    });
+    assert.equal(outcome, 'success');
+    assert.ok(workflowCall, 'the injected workflow should be invoked');
+    assert.equal(workflowCall.projectPath, projectDir, 'workflow receives the resolved project path');
+    assert.equal(workflowCall.readline, rl, 'workflow receives the same interface instance');
+    assert.equal(workflowCall.isOpen, true, 'interface is still open inside the workflow');
+    assert.ok(workflowCall.messages.some(m => /^Copied \d+ schema file/.test(m)),
+      'schema-copy confirmation precedes the workflow call');
+    assert.ok(!workflowCall.messages.some(m => /SAI workflow configured/.test(m)),
+      'completion message is not yet printed inside the workflow');
+    assert.equal(rl.closeCount, 1, 'readline closed exactly once by the setup flow');
+    assert.equal(rl.isOpen, false, 'readline closed after both settle');
+    assert.equal(menuCalls, 1, 'the default postSetupMenu should run exactly once');
+    assert.deepEqual(menuArgs, { projectPath: projectDir },
+      'the default postSetupMenu receives only { projectPath }');
+    assert.ok(menuMessages.some(m => m.includes(`SAI workflow configured at ${projectDir}.`)),
+      'the default postSetupMenu runs after the completion message');
+    assert.equal(rl.closeCount, 1, 'the default postSetupMenu must not close the setup-owned readline');
+  } finally {
+    restoreMenu();
+    cap.restore();
+    restoreSpawn();
+    fs.rmSync(projectDir, { recursive: true, force: true });
+  }
+});
+
+test('decline/abort never reaches postSetupMenu', async () => {
+  const restoreSpawn = stubSpawnSync();
+  const projectDir = makeProjectDir({ withOpenspec: false }); // openspec/ absent -> ensureOpenspecDir prompts
+  const cap = captureConsole();
+  const rl = fakeReadline('n'); // decline the openspec init offer
+  let menuCalls = 0;
+  try {
+    const outcome = await main({
+      argv: ['node', 'bin/setup.js', projectDir],
+      createReadline: () => rl,
+      postSetupMenu: async () => { menuCalls += 1; },
+    });
+    assert.equal(outcome, 'aborted');
+    assert.equal(menuCalls, 0, 'postSetupMenu must not be reached after an early decline');
+    assert.equal(rl.closeCount, 1, 'readline closed on the decline path');
+    assert.ok(cap.logs.some(m => m.includes('Aborted.')), 'Aborted. message preserved');
+  } finally {
+    cap.restore();
+    restoreSpawn();
+    fs.rmSync(projectDir, { recursive: true, force: true });
+  }
+});
+
+test('required-failure never reaches postSetupMenu', async () => {
+  const restoreSpawn = stubSpawnSync();
+  const projectDir = makeProjectDir({ withConfig: false }); // openspec/ present, config.yaml missing
+  const cap = captureConsole();
+  const rl = fakeReadline();
+  let menuCalls = 0;
+  try {
+    const outcome = await main({
+      argv: ['node', 'bin/setup.js', projectDir],
+      createReadline: () => rl,
+      postSetupMenu: async () => { menuCalls += 1; },
+    });
+    assert.equal(outcome, 'required-failure');
+    assert.equal(menuCalls, 0, 'postSetupMenu must not be reached before schema copy completes');
+    assert.equal(rl.closeCount, 1, 'readline closed on the failure path');
+    assert.ok(cap.logs.some(m => m.includes('openspec/config.yaml not found')),
+      'existing failure message preserved');
+  } finally {
+    cap.restore();
+    restoreSpawn();
+    fs.rmSync(projectDir, { recursive: true, force: true });
+  }
+});
+
+test('workflow-throw post-setup-failure never reaches postSetupMenu', async () => {
+  const restoreSpawn = stubSpawnSync();
+  const projectDir = makeProjectDir();
+  const cap = captureConsole();
+  const rl = fakeReadline();
+  let menuCalls = 0;
+  try {
+    const outcome = await main({
+      argv: ['node', 'bin/setup.js', projectDir],
+      createReadline: () => rl,
+      postSetupWorkflow: async () => { throw new Error('workflow exploded'); },
+      postSetupMenu: async () => { menuCalls += 1; },
+    });
+    assert.equal(outcome, 'post-setup-failure');
+    assert.equal(menuCalls, 0, 'postSetupMenu must not be reached after a workflow rejection');
+    assert.equal(rl.closeCount, 1, 'readline closed exactly once on rejection');
+    assert.ok(cap.logs.some(m => m.includes('workflow exploded')), 'rejection error surfaced');
+  } finally {
+    cap.restore();
+    restoreSpawn();
+    fs.rmSync(projectDir, { recursive: true, force: true });
+  }
+});
+
+test('postSetupMenu rejection resolves post-setup-failure with the readline closed once', async () => {
+  const restoreSpawn = stubSpawnSync();
+  const projectDir = makeProjectDir();
+  const cap = captureConsole();
+  const rl = fakeReadline();
+  try {
+    const outcome = await main({
+      argv: ['node', 'bin/setup.js', projectDir],
+      createReadline: () => rl,
+      postSetupMenu: async () => { throw new Error('menu exploded'); },
+    });
+    assert.equal(outcome, 'post-setup-failure');
+    assert.equal(rl.closeCount, 1, 'readline closed exactly once before the menu runs');
+  } finally {
+    cap.restore();
+    restoreSpawn();
+    fs.rmSync(projectDir, { recursive: true, force: true });
   }
 });
