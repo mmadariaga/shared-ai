@@ -449,63 +449,83 @@ async function offerOpenspecInstall({
   return false;
 }
 
-function promptChecklist(items, defaultSelected) {
-  if (!process.stdin.isTTY) {
-    console.error('Error: interactive mode requires a TTY. Run directly in a terminal.');
-    process.exit(1);
+async function runNavigator({ mode, question, options, defaultSelected, input = process.stdin, footer }) {
+  if (!input.isTTY) {
+    return { status: 'non-interactive' };
   }
 
   return new Promise((resolve) => {
-    const selected = items.map(item => defaultSelected.includes(item));
+    const selected = options.map(option => defaultSelected.includes(option));
     let cursor = 0;
     let rendered = false;
+    const lineCount = (question ? 1 : 0) + options.length + (footer ? 1 : 0);
 
     function render() {
       if (rendered) {
-        process.stdout.write(`\x1B[${items.length}A`);
+        process.stdout.write(`\x1B[${lineCount}A`);
       }
-      items.forEach((item, i) => {
-        const check = selected[i] ? '[x]' : '[ ]';
+      if (question) {
+        process.stdout.write(`${question}\n`);
+      }
+      options.forEach((option, i) => {
+        const marker = mode === 'multi' ? (selected[i] ? '[x]' : '[ ]') : '  ';
         const arrow = i === cursor ? '>' : ' ';
-        process.stdout.write(`${arrow} ${check} ${item}\n`);
+        process.stdout.write(`${arrow} ${marker} ${option}\n`);
       });
+      if (footer) {
+        process.stdout.write(`${footer}\n`);
+      }
       rendered = true;
     }
 
     function cleanup() {
-      process.stdin.setRawMode(false);
-      process.stdin.pause();
-      process.stdin.removeListener('keypress', onKey);
+      input.setRawMode(false);
+      input.pause();
+      input.removeListener('keypress', onKey);
     }
 
     function onKey(str, key) {
       if (!key) return;
       if (key.sequence === '\x03' || str === 'q') {
         cleanup();
-        process.exit(0);
+        resolve({ status: 'cancelled' });
+        return;
       }
       if (key.name === 'up') {
         cursor = Math.max(0, cursor - 1);
         render();
       } else if (key.name === 'down') {
-        cursor = Math.min(items.length - 1, cursor + 1);
+        cursor = Math.min(options.length - 1, cursor + 1);
         render();
       } else if (str === ' ') {
-        selected[cursor] = !selected[cursor];
-        render();
+        if (mode === 'multi') {
+          selected[cursor] = !selected[cursor];
+          render();
+        } else {
+          cleanup();
+          resolve({ status: 'confirmed', items: [options[cursor]] });
+        }
       } else if (key.name === 'return') {
         cleanup();
-        resolve(items.filter((_, i) => selected[i]));
+        if (mode === 'multi') {
+          resolve({ status: 'confirmed', items: options.filter((_, i) => selected[i]) });
+        } else {
+          resolve({ status: 'confirmed', items: [options[cursor]] });
+        }
       }
     }
 
-    readline.emitKeypressEvents(process.stdin);
-    process.stdin.setRawMode(true);
-    process.stdin.resume();
-    process.stdin.on('keypress', onKey);
+    readline.emitKeypressEvents(input);
+    input.setRawMode(true);
+    input.resume();
+    input.on('keypress', onKey);
 
     render();
   });
+}
+
+function promptChecklist(items, defaultSelected, input, footer) {
+  return runNavigator({ mode: 'multi', options: items, defaultSelected, input, footer });
 }
 
 function ensureDir(dir) {
@@ -836,10 +856,20 @@ function detectInstalledEditors() {
 async function main() {
   const preselected = detectInstalledEditors();
   const defaults = preselected.length > 0 ? preselected : ['Opencode'];
-  const choices = await promptChecklist(
+  const outcome = await promptChecklist(
     ['Claude Code', 'Opencode'],
     defaults
   );
+
+  if (outcome.status === 'non-interactive') {
+    console.error('Error: interactive mode requires a TTY. Run directly in a terminal.');
+    process.exit(1);
+  }
+  if (outcome.status === 'cancelled') {
+    process.exit(0);
+  }
+
+  const choices = outcome.items;
 
   if (choices.length === 0) {
     console.log('Nothing selected. Exiting.');
@@ -888,6 +918,7 @@ module.exports = {
   installOpencode,
   copyOpencodeConfig,
   main,
+  promptChecklist,
   CLAUDE_BASE,
   OPENCODE_BASE,
   OPENCODE_INSTALL_CMD,
