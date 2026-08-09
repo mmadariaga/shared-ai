@@ -9,3 +9,20 @@ Capture the agent ID in coordinator state, await its closed payload, and bind it
 If continuation or waiting fails, start at most one fresh background worker with the original envelope and complete reconstruction fields. Never package artifacts or the prior journal.
 
 Authorize read-only `budget-explorer` for source, diff, and glossary research within the worker's eight-call cap. Authorize bounded read-only execution only for applicable `npm audit`, `pip-audit`, `mvn dependency-check`, `trivy`, and `osv-scanner` commands. Reject generic write-capable delegation, package installation, dependency updates, production edits, dependency-file edits, configuration mutation, and every command outside this audit allowlist.
+
+On each progress event, update the harness task list so the reported step ids
+render `completed` and the leading unmarked step renders `in_progress`, per
+the deterministic state derivation of `@sai/policies/todo-structure.md`, by
+whatever mechanism the harness's task-list tool provides. Incrementality is a
+binding-level optimization, not a normative contract: where the harness tool
+supports updating single entries without re-listing the rest, use them; where
+it replaces the list wholesale, emit the full list on each update. Emit no task list
+at all for a declared plan below the minimum threshold defined by
+`@sai/policies/todo-structure.md`.
+The task-list tool call originates exclusively from the coordinator session,
+never from a worker subagent, per the emission-ownership invariant of
+`@sai/policies/todo-structure.md`.
+
+Audit plans receive no Milestone Stamp annotation: render no stamp and make no
+stamp-acquisition call, per the milestone-stamp annotation section of
+`@sai/policies/todo-structure.md`.
