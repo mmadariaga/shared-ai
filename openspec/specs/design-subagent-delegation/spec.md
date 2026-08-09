@@ -7,11 +7,12 @@ Define the subagent delegation rules for the routed design coordinator and worke
 ## Requirements
 
 ### Requirement: The design coordinator SHALL NOT perform file I/O
-For routed design, the coordinator SHALL perform no file I/O, including OpenSpec artifacts, source code, configuration, documentation, or git state. The design worker SHALL own all design-phase I/O and MUST delegate all source-code discovery to budget-explorer through its harness binding; it SHALL NOT call Read, Glob, or Grep directly on source code. On the Copilot inline compatibility path, the inline design agent SHALL retain the existing rule that source-code discovery is delegated rather than performed directly.
+For routed design, the coordinator SHALL perform no file I/O, including OpenSpec artifacts, source code, configuration, documentation, or git state. The design worker SHALL own all design-phase I/O and MUST delegate all source-code discovery to budget-explorer through its harness binding; it SHALL NOT call Read, Glob, or Grep directly on source code. On the Copilot inline compatibility path, the inline design agent SHALL retain the existing rule that source-code discovery is delegated rather than performed directly. The sole exception to the coordinator's zero-I/O rule is the single milestone-stamp wall-clock shell call per render act granted by `coordinator-wall-clock-permission-grant` of `sai-todo-timestamps`.
 
 #### Scenario: Routed design needs source evidence
 - **WHEN** the coordinator receives a worker result or user answer that requires source inspection
 - **THEN** it SHALL continue or replace the design worker and SHALL NOT call Read, Glob, Grep, shell, OpenSpec, or git tools itself
+- **AND** the single wall-clock shell call per render act for milestone-stamp acquisition under `coordinator-wall-clock-permission-grant` of `sai-todo-timestamps` SHALL NOT count as a violation of this scenario
 
 #### Scenario: Design worker needs source evidence
 - **WHEN** the routed design worker needs to inspect source code

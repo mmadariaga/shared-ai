@@ -41,12 +41,13 @@ Claude Code and opencode SHALL invoke the routed design coordinator and their re
 
 ### Requirement: coordinator-has-no-file-search-shell-git-web-openspec-access
 
-The design coordinator SHALL NOT have file, search, shell, git, web, or OpenSpec access. All technical I/O SHALL be delegated to the design planning worker.
+The design coordinator SHALL NOT have file, search, shell, git, web, or OpenSpec access. All technical I/O SHALL be delegated to the design planning worker. The sole exception is the milestone-stamp wall-clock call granted by `coordinator-wall-clock-permission-grant` of `sai-todo-timestamps`: the design coordinator SHALL issue at most one wall-clock shell call per render act to acquire the stamp time, and SHALL perform no other shell use.
 
 #### Scenario: coordinator restricted to coordination
 - **WHEN** the design coordinator is active
 - **THEN** it SHALL NOT perform file reads, globs, grep, shell commands, git operations, web fetches, or OpenSpec commands
 - **AND** it SHALL delegate all such operations to the design planning worker
+- **AND** the sole exception SHALL be the single milestone-stamp wall-clock shell call per render act per `coordinator-wall-clock-permission-grant` of `sai-todo-timestamps`
 
 ### Requirement: worker-delegates-explore-only
 
