@@ -96,6 +96,12 @@ Durable execution-observed facts about the shared-ai prompt and installer reposi
 - **node:assert**: `assert.match` throws on the first failing assertion in a test; later assertions in the same test never run, so a multi-assertion test reports only its first failure and fixing that one can expose further failures.
   *Observed:* include-glossary-in-terminal-documentation-commit — the implementation dispatch verified later assertions manually by index arithmetic after the first failing regex was fixed.
 
+- **`.tmp/{change-name}/` test scratch**: Test suites that build ephemeral scratch repos (e.g. zero-fs-writes traversals) place them under the per-change scratch directory `.tmp/{change-name}/` and remove them via a top-level `after` hook, because the apply worker-scratch rule confines temporary files to that directory.
+  *Observed:* navigable-model-customizer — the zero-fs-writes traversal and null-at-model tests were relocated from `os.tmpdir()`/repo-root to `.tmp/navigable-model-customizer/` with after-hook cleanup.
+
+- **test/agent-customization-menu.test.js**: The existing `answers.shift() ?? '<model>'` promptChoice stub swallows `null` (`null ?? '<model>'` → `'<model>'`); tests that inject a `null` promptChoice resolution must use an index-based stub so the null passes through.
+  *Observed:* navigable-model-customizer — the null-at-harness-picker and null-at-model tests used an index-based stub after the null-swallow was discovered.
+
 ## Avoid
 
 - **configs/opencode.jsonc**: Do not assert managed-worker registration from the configuration agent map — the sample carries no `agent.sai-*-worker` keys; worker membership is file-based (projected `agents/opencode/*.md` files plus the binding-derived roster).

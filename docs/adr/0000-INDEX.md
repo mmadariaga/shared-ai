@@ -166,6 +166,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0103 — Retire the inline harness model in favor of two routed harnesses](./0103-retire-inline-harness-model-in-favor-of-routed-harnesses.md)
 - [0104 — Remove Copilot from the active installer inventory](./0104-remove-copilot-from-active-installer-inventory.md) — Pair with 0103
 - [0110 — Additive-then-retire decomposition for the tunable-seed strategy switch](./0110-additive-then-retire-decomposition-tunable-seed.md)
+- [0119 — Shared raw-readline navigator engine in `bin/install-flow.js`](./0119-shared-raw-readline-navigator-engine-in-install-flow.md) — Refs 0010
 
 ### Harness wrappers & the shared instruction layer
 
@@ -335,6 +336,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0085 — Implement declared projection strategies with generic handlers](./0085-generic-handlers-for-declared-projection-strategies.md) — Pair with 0084, Refs 0029, Refs 0055, Refs 0057
 - [0088 — Implementation harness projection boundaries](./0088-implementation-harness-projection-boundaries.md) — Refs 0084, Refs 0085, Refs 0074
 - [0096 — Fail closed when dispatching owned worker sidecars](./0096-fail-closed-owned-worker-owner-dispatch.md) — Refs 0084, Refs 0085
+- [0119 — Shared raw-readline navigator engine in `bin/install-flow.js`](./0119-shared-raw-readline-navigator-engine-in-install-flow.md) — Refs 0010
 
 ---
 
