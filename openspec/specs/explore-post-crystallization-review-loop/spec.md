@@ -63,12 +63,12 @@ The invitation carries **no precondition** — it remains available whether or n
 
 ### Requirement: Per-change review picker remains a harness option-picker
 
-While the global review invitation becomes plain text, the per-change navigation menu SHALL remain a harness native option-picker. For each change in the tracked crystallized set, `sai-explore` SHALL present the three options `Review sai-1's artifacts`, `Review sai-2's artifacts`, and `Skip` through the harness option-picker per the "Closed-choice prompts" rule in `sai/instructions/remember.md`. The plain-text treatment applies ONLY to the global review invitation and SHALL NOT be extended to this per-change menu.
+While the global review invitation remains plain text, the per-change navigation menu SHALL remain a harness native option-picker. For each change in the tracked crystallized set, `sai-explore` SHALL present the four options `Review sai-1's artifacts`, `Review sai-2's artifacts`, `Review change-overview`, and `Skip` through the harness option-picker per the "Closed-choice prompts" rule in `sai/instructions/remember.md`. The plain-text treatment applies ONLY to the global review invitation and SHALL NOT be extended to this per-change menu.
 
 #### Scenario: per-change menu still uses the native picker
 
 - **WHEN** the user answers yes to the global invitation and the per-change loop iterates a change
-- **THEN** the three-option per-change menu (`Review sai-1's artifacts`, `Review sai-2's artifacts`, `Skip`) is presented through the harness option-picker
+- **THEN** the four-option per-change menu (`Review sai-1's artifacts`, `Review sai-2's artifacts`, `Review change-overview`, `Skip`) is presented through the harness option-picker
 
 #### Scenario: plain-text exception does not extend to the per-change menu
 
@@ -104,7 +104,9 @@ When the user selects Yes, `sai-explore` SHALL iterate only the set of change na
 
 ### Requirement: Review actions read their artifact sets
 
-For the change currently being iterated, selecting `Review sai-1's artifacts` SHALL produce a read-only review of that change's `proposal.md` and `specs/**`, and selecting `Review sai-2's artifacts` SHALL produce a read-only review of that change's `design.md`, `tasks.md`, and `interfaces.md`. When a requested artifact does not exist for the change, the agent SHALL report its absence without treating it as an error and without leaving the loop.
+For the change currently being iterated, selecting `Review sai-1's artifacts` SHALL produce a read-only review of that change's `proposal.md` and `specs/**`, selecting `Review sai-2's artifacts` SHALL produce a read-only review of that change's `design.md`, `tasks.md`, and `interfaces.md`, and selecting `Review change-overview` SHALL produce a read-only review of that change's `change-overview.md` for human presentation, reading the overview's source artifacts (`proposal.md`, `specs/**`, `design.md`, `tasks.md`, `interfaces.md`) to validate its completeness and consistency against them. When a requested artifact does not exist for the change, the agent SHALL report its absence without treating it as an error and without leaving the loop.
+
+A `Review change-overview` transaction SHALL complete as a review only when the overview is the change's current review surface: `overview.state` reads `current` in `.openspec.yaml` AND the CLI reports `change-overview.md` present/done (`openspec status --change <name> --json`). When the state is non-`current` — `unmaterialized`, `materializing`, `failed`, or `stale` — or when current metadata is paired with a missing/not-`done` file, the transaction SHALL produce an availability/integrity report naming the state and the mismatch, SHALL NOT produce a findings tally, and SHALL leave the loop in place. Such an availability report is not a completed review: it SHALL NOT mark or clear any review-evidence item (per the `explore-review-evidence-marking` capability). The review loop SHALL NOT write `overview.state` or any artifact while performing this check.
 
 #### Scenario: Review sai-1's artifacts reads proposal and specs
 
@@ -115,6 +117,18 @@ For the change currently being iterated, selecting `Review sai-1's artifacts` SH
 
 - **WHEN** the user selects `Review sai-2's artifacts` for the current change
 - **THEN** the agent produces a read-only review of that change's `design.md`, `tasks.md`, and `interfaces.md`
+
+#### Scenario: Review change-overview reads the overview and its sources
+
+- **WHEN** the user selects `Review change-overview` for the current change and the overview is the current review surface (`overview.state: current` plus CLI-reported done)
+- **THEN** the agent produces a read-only review of that change's `change-overview.md` for human presentation
+- **AND** it reads the overview's source artifacts to validate completeness and consistency, reporting divergences between the overview and its sources as findings
+
+#### Scenario: non-current overview produces an availability report, not a review
+
+- **WHEN** the user selects `Review change-overview` for a change whose `overview.state` is `materializing`, `failed`, `stale`, or `unmaterialized`, or whose current metadata is paired with a missing/not-`done` file
+- **THEN** the agent produces an availability/integrity report naming the state and the mismatch
+- **AND** it produces no findings and no `Summary:` tally, and the transaction does not mark or clear any review-evidence item
 
 #### Scenario: missing downstream artifact is reported, not fatal
 
@@ -155,17 +169,71 @@ After a `Review sai-1's artifacts` or `Review sai-2's artifacts` selection for a
 
 ### Requirement: Read-only constraint
 
-The review loop SHALL be strictly read-only. It SHALL NOT create, modify, or delete `proposal.md`, `specs/**`, `design.md`, `tasks.md`, `interfaces.md`, or any other file under any change directory. It SHALL NOT alter the already-emitted `Ready to Propose` block — neither its content nor its language.
+The review loop SHALL be strictly read-only. It SHALL NOT create, modify, or delete `proposal.md`, `specs/**`, `design.md`, `tasks.md`, `interfaces.md`, `change-overview.md`, or any other file under any change directory. It SHALL NOT alter the already-emitted `Ready to Propose` block — neither its content nor its language. Review findings are advisory only: accepted corrections are applied by the owning worker through the writable handoff protocol defined below, never by the review loop itself, and exactly one overview regeneration follows those edits per the `change-overview-synchronization` capability.
 
 #### Scenario: reviewed artifacts are never edited
 
-- **WHEN** the user reviews any sai-1 or sai-2 artifact through the loop
+- **WHEN** the user reviews any sai-1, sai-2, or change-overview artifact through the loop
 - **THEN** no reviewed artifact file is created, modified, or deleted
 
 #### Scenario: the emitted block is never altered
 
 - **WHEN** the review loop runs after a `Ready to Propose` block was printed
 - **THEN** the loop does not alter that block's content or language
+
+### Requirement: Correction acceptance and handoff protocol
+
+When a review transaction surfaces findings, the loop SHALL present them for acceptance as a distinct step, and no correction SHALL be applied without that explicit acceptance. Because the harness pickers are single-select (per `sai/policies/remember.md`), the loop SHALL NOT offer one multi-finding picker; it SHALL iterate the findings one at a time in deterministic order — by severity in the order High → Medium → Low, then by ascending numeric identifier within each severity (for example `H1`, `H2`, then `M1`, then `L1` per the shared finding contract) — and SHALL present one yes/no picker per finding through the native option-picker: `Accept` / `Decline`. Answering `Accept` marks that finding accepted; `Decline` marks it declined; the loop proceeds to the next finding, and after the last finding it SHALL present a single confirmation of the accepted set before any handoff. The loop SHALL NOT auto-accept findings.
+
+Accepted corrections SHALL be handed off as feedback payloads in the shared review finding shape (`sai/policies/artifact-review-contract.md`): severity-prefixed identifier, severity, artifact location, issue statement, and recommended correction. Ownership SHALL follow the source artifact's writer, and every accepted correction SHALL be applied by a worker that can consume the current change:
+
+- findings on `design.md`, `tasks.md`, or `interfaces.md` — owned by the **design worker**; they are applied only through a writable design-worker transaction (a re-invoked `/sai-2-design` or the supervised design phase's feedback channel);
+- findings on `proposal.md` or `specs/**` — owned by the **design worker's consent-gated spec-amendment path**: the design phase already holds consent-gated authority to amend `proposal.md` and `specs/**` in place (per `sai/instructions/design.md`), so applying such findings requires explicit user consent and SHALL be executed by a design worker through that path. There is no live spec-proposal worker at review time and `/sai-1-spec` cannot consume an existing change, so the spec-worker continuation is not a supported path.
+
+Regeneration after accepted corrections SHALL be conditioned on the change's persisted `overview.state` (per the `change-overview-synchronization` capability): exactly one regeneration follows the design-worker edits **only when the overview is already materialized** (`overview.state` is `current` or `stale`). Before first materialization — `unmaterialized` or `failed` — accepted corrections update only their authoritative source artifacts and SHALL NOT regenerate or generate an overview; the overview is generated exactly once later, at the successful sai-2 `Continue` processing. The review loop itself SHALL NOT apply, forward, or regenerate on behalf of the user: it SHALL only report which findings were accepted and hand the payload to the user for the owning-worker path.
+
+#### Scenario: findings are accepted one at a time in deterministic order
+
+- **WHEN** a review transaction closes with findings and the user proceeds to acceptance
+- **THEN** the loop presents one `Accept` / `Decline` picker per finding, iterating by severity order High → Medium → Low and ascending numeric identifier within each severity
+- **AND** the loop presents a single confirmation of the accepted set before any handoff
+
+#### Scenario: user accepts findings explicitly
+
+- **WHEN** the user answers `Accept` for one or more findings and confirms the accepted set
+- **THEN** the loop presents the accepted findings as handoff payloads in the shared finding shape
+- **AND** no declined or unconfirmed finding is handed off
+
+#### Scenario: design-artifact corrections route to the design worker
+
+- **WHEN** the user accepts a finding on `design.md`, `tasks.md`, or `interfaces.md`
+- **THEN** the correction is applied by a design worker through a writable design-worker transaction, never by the loop
+- **AND** exactly one regeneration follows after the design-worker edits complete, only if the overview is already materialized (`current` or `stale`)
+
+#### Scenario: proposal or specs corrections route through the design worker's consent-gated amendment path
+
+- **WHEN** the user accepts a finding on `proposal.md` or `specs/**` and explicitly consents to the amendment
+- **THEN** a design worker applies the amendment through the design phase's consent-gated spec-amendment path
+- **AND** exactly one regeneration follows after the edits complete, only if the overview is already materialized
+- **AND** no spec-worker continuation is used, because none is live at review time
+
+#### Scenario: accepted corrections before first materialization update sources only
+
+- **WHEN** accepted corrections are applied to source artifacts of a change whose overview is not yet materialized (`overview.state` is `unmaterialized` or `failed`)
+- **THEN** the corrections update only their authoritative source artifacts
+- **AND** no overview is generated or regenerated by them — the overview is generated exactly once later at the successful sai-2 `Continue` processing
+
+#### Scenario: proposal or specs corrections without consent are not applied
+
+- **WHEN** the user accepts a finding on `proposal.md` or `specs/**` but does not consent to the amendment
+- **THEN** no amendment is applied
+- **AND** the finding remains open for a later consented request
+
+#### Scenario: no acceptance, no handoff
+
+- **WHEN** the user declines all findings or accepts none
+- **THEN** the loop hands off no correction payload
+- **AND** no source artifact is modified and no regeneration occurs
 
 ### Requirement: Language gate reuse for reviews
 
@@ -203,11 +271,11 @@ The loop SHALL NOT auto-emit a new `Ready to Propose` block. If the user wants t
 
 ### Requirement: Silent loop close after any review
 
-When the post-crystallization review loop terminates and at least one review (`Review sai-1's artifacts` or `Review sai-2's artifacts`) has happened during the loop, `sai-explore` SHALL close the loop without proposing any new command prompt. Any next-step command prompt SHALL be suppressed at loop close, including but not limited to `/sai-1-spec`, `/sai-2-design`, and `/sai-3-implement`; a templated next-step prompt is still a prompt and is therefore prohibited. `sai-explore` SHALL NOT propose `/sai-1-spec` for any change in the tracked crystallized set at loop close, because sai-1's artifacts are exactly what the loop reviews. A minimal status indicator that the loop has closed (for example, a short "Loop closed" line) MAY be printed, and pure silence is also acceptable; the prohibition is on proposing a new command prompt, not on printing a status indicator. This requirement fires on whether any review happened during the loop, not on which artifact sets were reviewed. The existing **Explicit re-crystallization path** behavior is unchanged: a user-initiated re-crystallization request is not an auto-emitted prompt and does not violate this rule.
+When the post-crystallization review loop terminates and at least one review (`Review sai-1's artifacts`, `Review sai-2's artifacts`, or `Review change-overview`) has happened during the loop, `sai-explore` SHALL close the loop without proposing any new command prompt. Any next-step command prompt SHALL be suppressed at loop close, including but not limited to `/sai-1-spec`, `/sai-2-design`, and `/sai-3-implement`; a templated next-step prompt is still a prompt and is therefore prohibited. `sai-explore` SHALL NOT propose `/sai-1-spec` for any change in the tracked crystallized set at loop close, because sai-1's artifacts are exactly what the loop reviews. A minimal status indicator that the loop has closed (for example, a short "Loop closed" line) MAY be printed, and pure silence is also acceptable; the prohibition is on proposing a new command prompt, not on printing a status indicator. This requirement fires on whether any review happened during the loop, not on which artifact sets were reviewed. The existing **Explicit re-crystallization path** behavior is unchanged: a user-initiated re-crystallization request is not an auto-emitted prompt and does not violate this rule.
 
 #### Scenario: loop closes silently after at least one review
 
-- **WHEN** the review loop terminates and at least one `Review sai-1's artifacts` or `Review sai-2's artifacts` review happened during the loop
+- **WHEN** the review loop terminates and at least one `Review sai-1's artifacts`, `Review sai-2's artifacts`, or `Review change-overview` review happened during the loop
 - **THEN** the loop closes without proposing any new command prompt
 - **AND** at most a minimal status indicator (or nothing) is printed
 
@@ -223,7 +291,7 @@ When the post-crystallization review loop terminates and at least one review (`R
 
 #### Scenario: rule fires regardless of which artifact set was reviewed
 
-- **WHEN** the loop closes after the user reviewed only sai-1 artifacts, or only sai-2 artifacts, or both, for any tracked change
+- **WHEN** the loop closes after the user reviewed only sai-1 artifacts, or only sai-2 artifacts, or only the change-overview, or any combination, for any tracked change
 - **THEN** the silent-close rule applies identically in every case, because it fires on whether any review happened, not on which set
 
 #### Scenario: explicit re-crystallization remains available
@@ -234,11 +302,11 @@ When the post-crystallization review loop terminates and at least one review (`R
 
 ### Requirement: Manual review output follows the shared finding contract
 
-Each review transaction produced by the loop (`Review sai-1's artifacts` or `Review sai-2's artifacts`) SHALL structure its output per the shared review finding contract of the `review-finding-format` capability: findings carry severity-prefixed identifiers and severities from the shared vocabulary, and the review SHALL close with the contract's `Summary:` tally line. The output format SHALL NOT alter the loop's read-only constraint, its navigation, its language-gate reuse, or its silent-close behavior, all of which remain as defined in this capability.
+Each review transaction produced by the loop (`Review sai-1's artifacts`, `Review sai-2's artifacts`, or `Review change-overview`) SHALL structure its output per the shared review finding contract of the `review-finding-format` capability: findings carry severity-prefixed identifiers and severities from the shared vocabulary, and the review SHALL close with the contract's `Summary:` tally line. The output format SHALL NOT alter the loop's read-only constraint, its navigation, its language-gate reuse, or its silent-close behavior, all of which remain as defined in this capability.
 
 #### Scenario: findings follow the shared contract
 
-- **WHEN** the loop reviews a change's `proposal.md` and `specs/**` or its `design.md`, `tasks.md`, and `interfaces.md`
+- **WHEN** the loop reviews a change's `proposal.md` and `specs/**`, its `design.md`, `tasks.md`, and `interfaces.md`, or its `change-overview.md`
 - **THEN** every finding carries a severity-prefixed identifier and a severity per the shared contract
 
 #### Scenario: review closes with a summary tally
