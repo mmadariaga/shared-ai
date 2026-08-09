@@ -20,7 +20,9 @@ const sub = process.argv[2];
 if (sub === undefined || sub === 'install') {
   require('./install-flow').main().catch(err => { console.error(err); process.exit(1); });
 } else if (sub === 'setup') {
-  require('./setup').main().catch(err => { console.error(err); process.exit(1); });
+  require('./setup').main().then(outcome => {
+    process.exit(outcome === 'success' || outcome === 'aborted' ? 0 : 1);
+  }).catch(err => { console.error(err); process.exit(1); });
 } else if (sub === 'uninstall') {
   require('./uninstall-flow').main().then(code => process.exit(code)).catch(err => { console.error(err); process.exit(1); });
 } else if (sub === 'doctor') {
