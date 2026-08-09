@@ -35,6 +35,7 @@
   Fetch @sai/policies/remember.md
 
   Fetch @skills/openspec-archive-change/SKILL.md and follow those instructions exactly.
+  Fetch @sai/instructions/archive-commit-gate.md and follow those instructions exactly.
 
   ## Run
   **User's request:** $ARGUMENTS
