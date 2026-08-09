@@ -145,11 +145,12 @@ signal_pgid() { # signal_pgid <sig> <pid> — never signals the entrypoint's own
 }
 
 wait_for_pid() { # wait_for_pid <pid> <secs> — exit status of the process, or 124 on timeout
-  local pid="$1" secs="$2" i
+  local pid="$1" secs="$2" i st
   for (( i = 0; i < secs * 5; i++ )); do
     if ! kill -0 "$pid" 2>/dev/null; then
-      wait "$pid" 2>/dev/null
-      return $?
+      st=0
+      wait "$pid" 2>/dev/null || st=$?
+      return $st
     fi
     sleep 0.2
   done
@@ -179,9 +180,9 @@ terminate_children() {
       signal_pgid KILL "$pid"
     fi
   done
-  wait "$SERVER_PID" 2>/dev/null; SERVER_RC=$?
-  wait "$CONSUMER_PID" 2>/dev/null; CONSUMER_RC=$?
-  wait "$XVFB_PID" 2>/dev/null; XVFB_RC=$?
+  SERVER_RC=0; wait "$SERVER_PID" 2>/dev/null || SERVER_RC=$?
+  CONSUMER_RC=0; wait "$CONSUMER_PID" 2>/dev/null || CONSUMER_RC=$?
+  XVFB_RC=0; wait "$XVFB_PID" 2>/dev/null || XVFB_RC=$?
 }
 
 on_signal() {
@@ -215,8 +216,8 @@ write_identity_file xvfb.pid "$XVFB_PID"
 # --- concurrent supervision with an explicit shutdown state ----------------------
 while :; do
   if [[ $SHUTDOWN == 1 ]]; then break; fi
-  wait -n -p done_pid "$XVFB_PID" "$SERVER_PID" "$CONSUMER_PID" 2>/dev/null
-  rc=$?
+  rc=0
+  wait -n -p done_pid "$XVFB_PID" "$SERVER_PID" "$CONSUMER_PID" 2>/dev/null || rc=$?
   if [[ $rc -gt 128 ]]; then
     # Interrupted by a trap (signal): the handler set SHUTDOWN; re-check.
     continue
@@ -228,9 +229,9 @@ while :; do
       log "Xvfb exited first (status $rc) outside shutdown — terminating server and consumer"
       signal_pgid TERM "$SERVER_PID"
       signal_pgid TERM "$CONSUMER_PID"
-      wait_for_pid "$SERVER_PID" 5 >/dev/null;  signal_pgid KILL "$SERVER_PID"
-      wait_for_pid "$CONSUMER_PID" 5 >/dev/null; signal_pgid KILL "$CONSUMER_PID"
-      wait "$SERVER_PID" 2>/dev/null; wait "$CONSUMER_PID" 2>/dev/null
+      wait_for_pid "$SERVER_PID" 5 >/dev/null || true;  signal_pgid KILL "$SERVER_PID" || true
+      wait_for_pid "$CONSUMER_PID" 5 >/dev/null || true; signal_pgid KILL "$CONSUMER_PID" || true
+      wait "$SERVER_PID" 2>/dev/null || true; wait "$CONSUMER_PID" 2>/dev/null || true
       if [[ $rc -ne 0 ]]; then
         log "runtime failure: Xvfb exited with status $rc"
         exit $rc
@@ -242,9 +243,9 @@ while :; do
       log "consumer exited first (status $rc) outside shutdown — terminating server and Xvfb"
       signal_pgid TERM "$SERVER_PID"
       signal_pgid TERM "$XVFB_PID"
-      wait_for_pid "$SERVER_PID" 5 >/dev/null; signal_pgid KILL "$SERVER_PID"
-      wait_for_pid "$XVFB_PID" 5 >/dev/null;  signal_pgid KILL "$XVFB_PID"
-      wait "$SERVER_PID" 2>/dev/null; wait "$XVFB_PID" 2>/dev/null
+      wait_for_pid "$SERVER_PID" 5 >/dev/null || true; signal_pgid KILL "$SERVER_PID" || true
+      wait_for_pid "$XVFB_PID" 5 >/dev/null || true;  signal_pgid KILL "$XVFB_PID" || true
+      wait "$SERVER_PID" 2>/dev/null || true; wait "$XVFB_PID" 2>/dev/null || true
       if [[ $rc -ne 0 ]]; then
         log "runtime failure: consumer exited with status $rc"
         exit $rc
@@ -254,17 +255,17 @@ while :; do
       ;;
     "$SERVER_PID")
       log "server exited first (status $rc) outside shutdown — draining the consumer (bounded ${DRAIN_WINDOW_SECS}s)"
-      wait_for_pid "$CONSUMER_PID" "$DRAIN_WINDOW_SECS"
-      consumer_rc=$?
+      consumer_rc=0
+      wait_for_pid "$CONSUMER_PID" "$DRAIN_WINDOW_SECS" || consumer_rc=$?
       if [[ $consumer_rc == 124 ]]; then
         log "consumer did not drain within ${DRAIN_WINDOW_SECS}s — killing it (runtime failure $RUNTIME_FAILURE_CODE)"
-        signal_pgid KILL "$CONSUMER_PID"
-        wait "$CONSUMER_PID" 2>/dev/null
+        signal_pgid KILL "$CONSUMER_PID" || true
+        wait "$CONSUMER_PID" 2>/dev/null || true
         exit $RUNTIME_FAILURE_CODE
       fi
       signal_pgid TERM "$XVFB_PID"
-      wait_for_pid "$XVFB_PID" 5 >/dev/null; signal_pgid KILL "$XVFB_PID"
-      wait "$XVFB_PID" 2>/dev/null
+      wait_for_pid "$XVFB_PID" 5 >/dev/null || true; signal_pgid KILL "$XVFB_PID" || true
+      wait "$XVFB_PID" 2>/dev/null || true
       if [[ $rc -ne 0 ]]; then
         log "server exited with status $rc"
         exit $rc

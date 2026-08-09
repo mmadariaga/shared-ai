@@ -1,0 +1,10 @@
+{
+  "name": "orca-environment-agent-clis",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Pinned agent CLIs for the Orca Environment image (installed at /opt/agent-cli; exposed through the per-CLI launchers only).",
+  "dependencies": {
+    "@anthropic-ai/claude-code": "2.1.226",
+    "opencode-ai": "1.18.15"
+  }
+}

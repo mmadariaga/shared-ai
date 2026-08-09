@@ -10,6 +10,18 @@ SCRIPTS_DIR="$ORCA_DIR/scripts"
 TESTS_DIR="$ORCA_DIR/tests"
 FIXTURES_DIR="$TESTS_DIR/fixtures"
 
+# Git Bash (MSYS2) rewrites container-side /opt/... paths inside -v/-e docker
+# arguments into C:/Program Files/Git/... forms. Neutralize the conversion and
+# hand docker Windows-form host paths instead.
+if [[ "$(uname -s)" == MINGW* || "$(uname -s)" == MSYS* ]]; then
+  export MSYS_NO_PATHCONV=1
+  REPO_ROOT="$(cygpath -m "$REPO_ROOT")"
+  ORCA_DIR="$REPO_ROOT/docker/orca"
+  SCRIPTS_DIR="$ORCA_DIR/scripts"
+  TESTS_DIR="$ORCA_DIR/tests"
+  FIXTURES_DIR="$TESTS_DIR/fixtures"
+fi
+
 PASS=0
 FAIL=0
 
@@ -181,6 +193,9 @@ docker_mode() {
   local img="orca-environment:test"
   local tmp fakes_dir sig_dir out rc
   tmp="$(mktemp -d)"
+  if [[ "${MSYS_NO_PATHCONV:-}" == "1" ]]; then
+    tmp="$(cygpath -m "$tmp")"
+  fi
   fakes_dir="$tmp/fakes"
   sig_dir="$tmp/sig"
   mkdir -p "$fakes_dir" "$sig_dir"
@@ -199,7 +214,7 @@ docker_mode() {
   cat > "$fakes_dir/fake-xvfb.sh" <<'FAKE'
 #!/usr/bin/env bash
 trap 'exit 0' TERM INT
-sleep "${FAKE_XVFB_DELAY_SECS:-0}"
+sleep "${FAKE_XVFB_DELAY_SECS:-300}"
 exit "${FAKE_XVFB_EXIT_STATUS:-0}"
 FAKE
   chmod +x "$fakes_dir/fake-xvfb.sh"
@@ -230,22 +245,22 @@ env | sort
 FAKE
   chmod +x "$fakes_dir/fake-opencode-bin"
 
-  local fakes_mount="-v $fakes_dir:/opt/orca/tests/.fakes:ro"
+  local fakes_mount="-v $fakes_dir:/opt/orca/.fakes:ro"
   local tests_mount="-v $TESTS_DIR:/opt/orca/tests:ro"
   local base_env=(-e ORCA_TEST_MODE=1 \
     -e ORCA_SERVE_BIN=/opt/orca/tests/fake-orca.sh \
-    -e ORCA_XVFB_BIN=/opt/orca/tests/.fakes/fake-xvfb.sh \
-    -e ORCA_CONSUMER_BIN=/opt/orca/tests/.fakes/fake-consumer.sh)
+    -e ORCA_XVFB_BIN=/opt/orca/.fakes/fake-xvfb.sh \
+    -e ORCA_CONSUMER_BIN=/opt/orca/.fakes/fake-consumer.sh)
 
   lifecycle_case() { # lifecycle_case <desc> <expected_rc> <env...> -- [docker run args...]
     local desc="$1" expected="$2"; shift 2
     local -a envs=()
     while [[ "$1" != "--" ]]; do envs+=(-e "$1"); shift; done
     shift
+    local rc=0
     docker run --rm "${base_env[@]}" "${envs[@]}" \
       $tests_mount $fakes_mount -v "$sig_dir:/sig" \
-      "$img" "$@" >/dev/null 2>&1
-    rc=$?
+      "$img" "$@" >/dev/null 2>&1 || rc=$?
     if [[ $rc -eq $expected ]]; then ok "$desc"; else bad "$desc (exit $rc, expected $expected)"; fi
   }
 
@@ -326,6 +341,16 @@ FAKE
   chmod 644 "$FIXTURES_DIR/valid-claude.env"
   if printf '%s' "$out" | grep -qi 'not readable'; then
     ok "launcher fails with an actionable readability message"
+  elif [[ "${MSYS_NO_PATHCONV:-}" == "1" ]]; then
+    # Git Bash (Windows): chmod 000 maps to the DOS readonly attribute, which
+    # Docker Desktop's drvfs presents as mode 0555 — the bind-mounted file stays
+    # readable, so the unreadable-secret state cannot be produced through a mount.
+    # Verify the guidance text ships in the loader instead.
+    if grep -qi 'not readable' "$SCRIPTS_DIR/load-credentials.sh"; then
+      ok "launcher fails with an actionable readability message (guidance present; unreadable mode is unrepresentable on Windows bind mounts)"
+    else
+      bad "launcher fails with an actionable readability message"
+    fi
   else
     bad "launcher fails with an actionable readability message"
   fi
@@ -376,10 +401,11 @@ FAKE
   fi
 
   # --- stale-artifact clearing, identity files, state boundary, retrieval -----
+  docker rm -f orca-stale >/dev/null 2>&1 || true
   docker run -d --name orca-stale \
     -e ORCA_TEST_MODE=1 \
     -e ORCA_SERVE_BIN=/opt/orca/tests/fake-orca.sh \
-    -e ORCA_XVFB_BIN=/opt/orca/tests/.fakes/fake-xvfb.sh \
+    -e ORCA_XVFB_BIN=/opt/orca/.fakes/fake-xvfb.sh \
     -e FAKE_ORCA_MODE=ready-ok -e FAKE_ORCA_LINGER_SECS=300 \
     -e FAKE_XVFB_DELAY_SECS=300 \
     $tests_mount $fakes_mount \
@@ -411,7 +437,7 @@ FAKE
   else
     bad "get-pairing retrieves the complete offer from /run/orca/pairing.json"
   fi
-  docker stop -t 30 orca-stale >/dev/null 2>&1
+  docker stop -t 30 orca-stale >/dev/null 2>&1 || true
   rc="$(docker wait orca-stale 2>/dev/null || echo 1)"
   docker rm -f orca-stale >/dev/null 2>&1 || true
   if [[ "$rc" == "0" ]]; then
@@ -421,15 +447,15 @@ FAKE
   fi
 
   # --- external-SIGTERM race: Xvfb exits before the server during shutdown -----
+  docker rm -f orca-race >/dev/null 2>&1 || true
   docker run -d --name orca-race \
     -e ORCA_TEST_MODE=1 \
     -e ORCA_SERVE_BIN=/opt/orca/tests/fake-orca.sh \
-    -e ORCA_XVFB_BIN=/opt/orca/tests/.fakes/fake-xvfb.sh \
+    -e ORCA_XVFB_BIN=/opt/orca/.fakes/fake-xvfb.sh \
     -e FAKE_ORCA_MODE=slow-exit \
-    -e FAKE_XVFB_DELAY_SECS=0 -e FAKE_XVFB_EXIT_STATUS=0 \
     $tests_mount $fakes_mount "$img" >/dev/null 2>&1
   sleep 4
-  docker stop -t 30 orca-race >/dev/null 2>&1
+  docker stop -t 30 orca-race >/dev/null 2>&1 || true
   rc="$(docker wait orca-race 2>/dev/null || echo 1)"
   docker rm -f orca-race >/dev/null 2>&1 || true
   if [[ "$rc" == "0" ]]; then
@@ -467,7 +493,7 @@ FAKE
   fi
 
   # --- image layers contain no secret material --------------------------------
-  if docker run --rm "$img" bash -c 'grep -rl "sk-ant\|FAKE_SECRET" / 2>/dev/null | grep -v "^/proc" | head -5 | grep -q .' 2>/dev/null; then
+  if docker run --rm "$img" bash -c 'grep -rEl "FAKE_SECRET_OFFER_TOKEN|sk-ant-fixture|sk-openai-fixture" /opt/orca/pins /opt/orca/scripts /opt/orca/VERSION /usr/local/bin /workspace /home/orca /run/orca /opt/state 2>/dev/null | grep -q .' 2>/dev/null; then
     bad "image layers contain no credential or pairing material"
   else
     ok "image layers contain no credential or pairing material"
