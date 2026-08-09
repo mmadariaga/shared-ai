@@ -3,7 +3,7 @@ description: Propose a new change — generates proposal.md and specs/ only. Sto
 argument-hint: "[change name or feature description]"
 model: opus
 effort: medium
-allowed-tools: Read, Glob, Skill, Agent, SendMessage, AskUserQuestion
+allowed-tools: Read, Glob, Skill, Agent, SendMessage, AskUserQuestion, Bash(date:*)
 ---
 ## Sai Spec - 1
 

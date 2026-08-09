@@ -66,7 +66,7 @@ test('design wrappers activate routed Claude/opencode entry and preserve phase b
 
   assert.match(claude, /^model: claude-opus-4-8$/m);
   assert.match(claude, /^effort: low$/m);
-   assert.match(claude, /^allowed-tools: Read, Glob, Skill, Agent, SendMessage, AskUserQuestion$/m);
+   assert.match(claude, /^allowed-tools: Read, Glob, Skill, Agent, SendMessage, AskUserQuestion, Bash\(date:\*\)$/m);
    assert.doesNotMatch(claude, /sai-2-design-worker/);
   assert.doesNotMatch(claude, /sai-3-implementation-worker/);
     assert.match(claude, /sai\/commands\/design\/coordinator\.md/);
@@ -641,23 +641,43 @@ test('architecture snapshot display is feedback-aware across routed paths', () =
   assert.match(lifecycle, /summary: string/);
 });
 
-test('restore-coordinator-instruction-loading Step 1: routed Claude wrappers expose the exact read-only tool scope', () => {
-  const expectedTools = ['Read', 'Glob', 'Skill', 'Agent', 'SendMessage', 'AskUserQuestion'];
-  const wrappers = [
+test('restore-coordinator-instruction-loading Step 1: routed Claude wrappers expose the exact read-only tool scope (planning grants the scoped date shell)', () => {
+  const planningWrappers = [
     'commands/claude/sai-2-design.md',
     'commands/claude/sai-3-implement.md',
+  ];
+  const planningTools = ['Read', 'Glob', 'Skill', 'Agent', 'SendMessage', 'AskUserQuestion', 'Bash(date:*)'];
+
+  const auditWrappers = [
     'commands/claude/sai-5-review.md',
     'commands/claude/sai-6-security.md',
     'commands/claude/sai-7-performance.md',
     'commands/claude/sai-8-accessibility.md',
   ];
+  const auditTools = ['Read', 'Glob', 'Skill', 'Agent', 'SendMessage', 'AskUserQuestion'];
 
-  for (const relativePath of wrappers) {
+  for (const relativePath of planningWrappers) {
     const source = artifact(relativePath);
     const match = source.match(/^allowed-tools:\s*(.+)$/m);
     assert.ok(match, `${relativePath} should declare allowed-tools`);
-    assert.deepEqual(match[1].split(',').map(tool => tool.trim()), expectedTools,
-      `${relativePath} should use the exact read-only routed scope`);
+    const toolNames = match[1].split(',').map(tool => tool.trim());
+    assert.deepEqual(toolNames, planningTools,
+      `${relativePath} should use the exact read-only routed scope with the scoped date shell grant`);
+    for (const forbidden of ['Edit', 'Write', 'Grep']) {
+      assert.equal(match[1].includes(forbidden), false,
+        `${relativePath} must not expose ${forbidden}`);
+    }
+    assert.equal(toolNames.includes('Bash'), false,
+      `${relativePath} must not expose a bare Bash entry`);
+  }
+
+  for (const relativePath of auditWrappers) {
+    const source = artifact(relativePath);
+    const match = source.match(/^allowed-tools:\s*(.+)$/m);
+    assert.ok(match, `${relativePath} should declare allowed-tools`);
+    const toolNames = match[1].split(',').map(tool => tool.trim());
+    assert.deepEqual(toolNames, auditTools,
+      `${relativePath} should keep the exact read-only routed scope without any shell`);
     for (const forbidden of ['Edit', 'Write', 'Grep', 'Bash']) {
       assert.equal(match[1].includes(forbidden), false,
         `${relativePath} must not expose ${forbidden}`);

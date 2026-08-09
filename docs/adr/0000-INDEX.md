@@ -19,6 +19,8 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0028 — The feedback gate takes three named parameters supplied inline at the fetch site](./0028-gate-parameters-inline-at-fetch-site.md)
 - [0066 — Provenance as inline citations on existing Why / Decisions & Rationale fields — no new field](./0066-inline-provenance-no-new-field.md)
 - [0093 — Route spec through workers while Copilot remains inline](./0093-route-spec-through-workers-while-copilot-remains-inline.md) — Refs 0082, Refs 0083, Refs 0090, Refs 0092
+- [0117 — The three planning-phase coordinators receive the scoped `Bash(date:*)` entry as the sole allowed-tools exception](./0117-planning-coordinators-scoped-shell-entry.md)
+- [0118 — Per-harness wall-clock commands live in the harness bindings, never in the neutral policy](./0118-per-harness-wall-clock-commands-in-bindings.md) — Refs 0077
 
 ### `/sai-2-design`
 
@@ -42,6 +44,8 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0108 — Tasks files-affected entries carry a closed four-letter change-type vocabulary](./0108-tasks-files-affected-change-type-vocabulary.md)
 - [0109 — R change-type entry is a single move entry, never a delete-plus-add pair](./0109-r-change-type-single-move-entry.md) — Refs 0108
 - [0111 — design.md records the resolved record family as a pinned marker that Step 3 reads](./0111-record-family-marker-in-design.md)
+- [0117 — The three planning-phase coordinators receive the scoped `Bash(date:*)` entry as the sole allowed-tools exception](./0117-planning-coordinators-scoped-shell-entry.md)
+- [0118 — Per-harness wall-clock commands live in the harness bindings, never in the neutral policy](./0118-per-harness-wall-clock-commands-in-bindings.md) — Refs 0077
 
 ### `/sai-3-implement`
 
@@ -68,6 +72,8 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0112 — DDR is instantiated as a first-class family with the five per-index bindings](./0112-ddr-family-first-class-instantiation.md)
 - [0113 — Index maintenance runs one cycle per family that received records in the run](./0113-per-family-index-maintenance-cycles.md)
 - [0114 — A sibling DDR index template mirrors the ADR index template instance for instance](./0114-sibling-ddr-index-template.md)
+- [0117 — The three planning-phase coordinators receive the scoped `Bash(date:*)` entry as the sole allowed-tools exception](./0117-planning-coordinators-scoped-shell-entry.md)
+- [0118 — Per-harness wall-clock commands live in the harness bindings, never in the neutral policy](./0118-per-harness-wall-clock-commands-in-bindings.md) — Refs 0077
 
 ### `/sai-4-apply`
 
@@ -228,6 +234,8 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0102 — Consumer-scoped preflight for routed worker contract assets](./0102-consumer-scoped-preflight-for-routed-worker-contract-assets.md) — Refs 0100
 - [0103 — Retire the inline harness model in favor of two routed harnesses](./0103-retire-inline-harness-model-in-favor-of-routed-harnesses.md)
 - [0104 — Remove Copilot from the active installer inventory](./0104-remove-copilot-from-active-installer-inventory.md) — Pair with 0103
+- [0117 — The three planning-phase coordinators receive the scoped `Bash(date:*)` entry as the sole allowed-tools exception](./0117-planning-coordinators-scoped-shell-entry.md)
+- [0118 — Per-harness wall-clock commands live in the harness bindings, never in the neutral policy](./0118-per-harness-wall-clock-commands-in-bindings.md) — Refs 0077
 
 ### Argument passing & change-name resolution
 
