@@ -73,6 +73,9 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 **Finding Identifier**: "The severity-prefixed label that identifies a **Review Finding** within a single review — the severity's initial followed by the finding's sequence within that severity (`H1`, `H2`, `M1`, `L1`) — derived from the finding's `Severity` field, which remains the source of truth."
 *Avoid*: finding ID, issue number, pass-local identifier, finding label
 
+**Fetch Namespace**: "The set of path prefixes (`sai/`, `commands/`, `skills/`) under a harness's project-local or user-global root that `Fetch @<path>` directives resolve to — a directive names exactly one exact file path inside this namespace, and the harness root itself is never named."
+*Avoid*: fetch path space, fetch tree, global fetch paths, allowlist roots
+
 **GREEN Conflict**: "The state where an Implementation Dispatch cannot make the test-writer's tests pass within bounded, test-file-untouching iteration, so it halts and reports to the coordinator for a human to decide whether the fault is the implementation, the test, or the interface."
 *Avoid*: test failure, GREEN failure, broken test, unpassable step
 

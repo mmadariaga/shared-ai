@@ -34,6 +34,8 @@ const CURRENT_CENSUS = [
   'sai-8-accessibility-worker',
 ];
 const SAI_EXTERNAL_DIRECTORY = '~/.config/opencode/sai/**';
+const OPENCODE_COMMANDS_EXTERNAL_DIRECTORY = '~/.config/opencode/commands/**';
+const OPENCODE_SKILLS_EXTERNAL_DIRECTORY = '~/.config/opencode/skills/**';
 const CENSUS_SCRATCH_DIR = path.join(__dirname, '..', '.tmp', 'derive-opencode-agent-census-from-bindings');
 test.afterEach(() => {
   fs.rmSync(CENSUS_SCRATCH_DIR, { recursive: true, force: true });
@@ -281,6 +283,10 @@ test('Step 2 copyOpencodeConfig copies the agent-free canonical config when none
       'specs/npx-installer/spec.md: the copied config must contain no agent key');
     assert.equal(config.permission?.external_directory?.[SAI_EXTERNAL_DIRECTORY], 'allow',
       'specs/managed-worker-registry/spec.md: the copied config should retain the narrow external-directory rule');
+    assert.equal(config.permission?.external_directory?.[OPENCODE_COMMANDS_EXTERNAL_DIRECTORY], 'allow',
+      'specs/opencode-permission-template/spec.md: the copied config should allow the commands/ fetch-namespace entry');
+    assert.equal(config.permission?.external_directory?.[OPENCODE_SKILLS_EXTERNAL_DIRECTORY], 'allow',
+      'specs/opencode-permission-template/spec.md: the copied config should allow the skills/ fetch-namespace entry');
     for (const worker of CURRENT_CENSUS) {
       assert.equal(Object.hasOwn(config.agent || {}, worker), false,
         `specs/managed-worker-registry/spec.md: agent.${worker} must not appear in the copied config`);
@@ -1142,6 +1148,22 @@ test('Step 2 canonical opencode config sample defines no agent', () => {
     'specs/opencode-config-install/spec.md: top-level keys should be exactly $schema, subagent_depth, permission');
   assert.equal(sample.permission.external_directory[SAI_EXTERNAL_DIRECTORY], 'allow',
     'specs/managed-worker-registry/spec.md: the sample should ship the narrow external-directory rule');
+  assert.equal(sample.permission.external_directory[OPENCODE_COMMANDS_EXTERNAL_DIRECTORY], 'allow',
+    'specs/opencode-permission-template/spec.md: the sample should allow the commands/ fetch-namespace entry');
+  assert.equal(sample.permission.external_directory[OPENCODE_SKILLS_EXTERNAL_DIRECTORY], 'allow',
+    'specs/opencode-permission-template/spec.md: the sample should allow the skills/ fetch-namespace entry');
+});
+
+test('Step 3 shipped template external_directory uses forward slashes and only fetch-namespace entries', () => {
+  const sample = jsonc.parse(fs.readFileSync(path.join(__dirname, '..', 'configs', 'opencode.jsonc'), 'utf8'));
+  for (const pattern of Object.keys(sample.permission.external_directory)) {
+    assert.doesNotMatch(pattern, /\\/,
+      `specs/opencode-permission-template/spec.md: external_directory pattern ${pattern} must not contain a backslash separator`);
+    assert.ok(
+      [SAI_EXTERNAL_DIRECTORY, OPENCODE_COMMANDS_EXTERNAL_DIRECTORY, OPENCODE_SKILLS_EXTERNAL_DIRECTORY].includes(pattern),
+      `specs/opencode-permission-template/spec.md: pattern ${pattern} must be one of the three fetch-namespace entries (the skill-tool mapping adds no entry)`
+    );
+  }
 });
 
 test('Step 2 fresh install ships a config with no agent keys and keeps the narrow permission rule', () => {

@@ -400,11 +400,29 @@ test('Step 3 stale identity-bearing references receive no special guard', () => 
 
 // Retired Copilot fetch contract intentionally has no test.
 
-test('restore-coordinator-instruction-loading Step 1: Claude and opencode fetch resolvers use Glob and Read without LS', () => {
+test('restore-coordinator-instruction-loading Step 1: Claude and opencode fetch resolvers use Read-then-Read without Glob or LS', () => {
   for (const relativePath of ['skills/claude/fetch/SKILL.md', 'skills/opencode/fetch/SKILL.md']) {
     const source = sourceArtifact(relativePath);
-    assert.match(source, /\bGlob\b/, `${relativePath} should name Glob for non-skill resolution`);
     assert.match(source, /\bRead\b/, `${relativePath} should name Read for non-skill resolution`);
-    assert.doesNotMatch(source, /\bLS\b/, `${relativePath} must not require LS`);
+    assert.doesNotMatch(source, /\bGlob\b/, `${relativePath} must not require Glob for non-skill resolution`);
+    assert.doesNotMatch(source, /\bLS\b/, `${relativePath} must not require LS for non-skill resolution`);
+  }
+  // The opencode Fetch @<subpath> row marks the project-local branch by Read
+  // existence and the user-global branch as a direct Read — no directory-based
+  // probe is performed in either branch.
+  const opencode = sourceArtifact('skills/opencode/fetch/SKILL.md');
+  assert.match(opencode, /\bexists\b/, 'opencode Fetch @<subpath> row should mark the project-local branch by existence');
+  assert.match(opencode, /\bdirectly\b/, 'opencode Fetch @<subpath> row should Read the user-global branch directly');
+});
+
+test('restore-coordinator-instruction-loading Step 1: both fetch skills reject out-of-namespace directives before any filesystem access', () => {
+  for (const relativePath of ['skills/claude/fetch/SKILL.md', 'skills/opencode/fetch/SKILL.md']) {
+    const source = sourceArtifact(relativePath);
+    assert.match(source, /rejected before any filesystem access/i,
+      `${relativePath} should reject an out-of-namespace directive before any filesystem access`);
+    for (const prefix of ['sai/', 'commands/', 'skills/']) {
+      assert.match(source, new RegExp(prefix, 'i'),
+        `${relativePath} guard should name the permitted prefix ${prefix}`);
+    }
   }
 });

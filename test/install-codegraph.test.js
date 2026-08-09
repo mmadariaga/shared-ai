@@ -3,6 +3,8 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('path');
+const os = require('os');
+const fs = require('fs');
 const childProcess = require('child_process');
 
 const {
@@ -14,7 +16,7 @@ const {
   offerCodegraphInstall,
 } = require('../bin/install-flow.js');
 
-const { ensureCodegraphIndex } = require('../bin/setup.js');
+const { main, ensureCodegraphIndex } = require('../bin/setup.js');
 
 test('probeCodegraph uses spawnSync exit-code semantics', () => {
   const origSpawnSync = childProcess.spawnSync;
@@ -201,5 +203,245 @@ test('ensureCodegraphIndex does not abort on failed init', () => {
     assert.ok(true, 'does not throw on failed init');
   } finally {
     childProcess.spawnSync = origSpawnSync;
+  }
+});
+
+// --- Step 3: setup orchestration DI suites (prepare-setup-menu-seam) ---
+
+function captureConsole() {
+  const logs = [];
+  const origLog = console.log;
+  const origError = console.error;
+  console.log = (m) => logs.push(String(m));
+  console.error = (m) => logs.push(String(m));
+  return { logs, restore: () => { console.log = origLog; console.error = origError; } };
+}
+
+function fakeReadline(questionAnswer = 'y') {
+  return {
+    isOpen: true,
+    closeCount: 0,
+    question: (q, cb) => cb(questionAnswer),
+    close() { this.isOpen = false; this.closeCount += 1; },
+  };
+}
+
+function stubSpawnSync() {
+  const orig = childProcess.spawnSync;
+  childProcess.spawnSync = (cmd, args, opts) => {
+    const line = Array.isArray(args) ? `${cmd} ${args.join(' ')}` : String(cmd);
+    if (line.startsWith('openspec --version')) {
+      return { status: 0, stdout: '', stderr: '', error: null };
+    }
+    // every other probe (codegraph --version, openspec init, codegraph init) is absent/failed
+    return { status: 1, stdout: '', stderr: '', error: null };
+  };
+  return () => { childProcess.spawnSync = orig; };
+}
+
+function makeProjectDir({ withOpenspec = true, withConfig = true } = {}) {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-setup-'));
+  if (withOpenspec) {
+    fs.mkdirSync(path.join(dir, 'openspec'), { recursive: true });
+    if (withConfig) {
+      fs.writeFileSync(path.join(dir, 'openspec', 'config.yaml'), 'schema: sai-workflow\n');
+    }
+  }
+  return dir;
+}
+
+test('setup runs with an injected workflow: copy before workflow, ctx readline live, closed once after settle', async () => {
+  const restoreSpawn = stubSpawnSync();
+  const projectDir = makeProjectDir();
+  const cap = captureConsole();
+  const rl = fakeReadline();
+  let workflowCall = null;
+  try {
+    const outcome = await main({
+      argv: ['node', 'bin/setup.js', projectDir],
+      createReadline: () => rl,
+      postSetupWorkflow: async (ctx) => {
+        workflowCall = {
+          projectPath: ctx.projectPath,
+          readline: ctx.readline,
+          isOpen: ctx.readline.isOpen,
+          messages: cap.logs.slice(),
+        };
+      },
+    });
+    assert.equal(outcome, 'success');
+    assert.ok(workflowCall, 'workflow should be invoked');
+    assert.equal(workflowCall.projectPath, projectDir, 'workflow receives the resolved project path');
+    assert.equal(workflowCall.readline, rl, 'workflow receives the same interface instance');
+    assert.equal(workflowCall.isOpen, true, 'interface is still open inside the workflow');
+    assert.ok(workflowCall.messages.some(m => /^Copied \d+ schema file/.test(m)),
+      'schema-copy confirmation precedes the workflow call');
+    assert.ok(!workflowCall.messages.some(m => /SAI workflow configured/.test(m)),
+      'completion message is not yet printed inside the workflow');
+    assert.equal(rl.closeCount, 1, 'readline closed exactly once');
+    assert.equal(rl.isOpen, false, 'readline closed after both settle');
+    assert.ok(cap.logs.some(m => m.includes(`SAI workflow configured at ${projectDir}.`)),
+      'completion message printed');
+  } finally {
+    cap.restore();
+    restoreSpawn();
+    fs.rmSync(projectDir, { recursive: true, force: true });
+  }
+});
+
+test('setup runs without an injected workflow: resolves success with unchanged completion output', async () => {
+  const restoreSpawn = stubSpawnSync();
+  const projectDir = makeProjectDir();
+  const cap = captureConsole();
+  const rl = fakeReadline();
+  try {
+    const outcome = await main({
+      argv: ['node', 'bin/setup.js', projectDir],
+      createReadline: () => rl,
+    });
+    assert.equal(outcome, 'success');
+    assert.equal(rl.closeCount, 1, 'readline closed exactly once');
+    assert.ok(cap.logs.some(m => m.includes(`SAI workflow configured at ${projectDir}.`)),
+      'existing completion message preserved');
+  } finally {
+    cap.restore();
+    restoreSpawn();
+    fs.rmSync(projectDir, { recursive: true, force: true });
+  }
+});
+
+test('setup with a required-step failure before copy: resolves required-failure, workflow never invoked', async () => {
+  const restoreSpawn = stubSpawnSync();
+  const projectDir = makeProjectDir({ withConfig: false }); // openspec/ present, config.yaml missing
+  const cap = captureConsole();
+  const rl = fakeReadline();
+  let workflowCalls = 0;
+  try {
+    const outcome = await main({
+      argv: ['node', 'bin/setup.js', projectDir],
+      createReadline: () => rl,
+      postSetupWorkflow: async () => { workflowCalls += 1; },
+    });
+    assert.equal(outcome, 'required-failure');
+    assert.equal(workflowCalls, 0, 'workflow must not be invoked before schema copy completes');
+    assert.equal(rl.closeCount, 1, 'readline closed on the failure path');
+    assert.ok(cap.logs.some(m => m.includes('openspec/config.yaml not found')),
+      'existing failure message preserved');
+  } finally {
+    cap.restore();
+    restoreSpawn();
+    fs.rmSync(projectDir, { recursive: true, force: true });
+  }
+});
+
+test('post-setup workflow rejects: resolves post-setup-failure with readline closed before return', async () => {
+  const restoreSpawn = stubSpawnSync();
+  const projectDir = makeProjectDir();
+  const cap = captureConsole();
+  const rl = fakeReadline();
+  let workflowCalls = 0;
+  try {
+    const outcome = await main({
+      argv: ['node', 'bin/setup.js', projectDir],
+      createReadline: () => rl,
+      postSetupWorkflow: async () => { workflowCalls += 1; throw new Error('menu exploded'); },
+    });
+    assert.equal(outcome, 'post-setup-failure');
+    assert.equal(workflowCalls, 1, 'workflow invoked exactly once');
+    assert.equal(rl.closeCount, 1, 'readline closed exactly once on rejection');
+    assert.equal(rl.isOpen, false, 'readline closed before the promise resolves');
+    assert.ok(cap.logs.some(m => m.includes('menu exploded')), 'rejection error surfaced');
+  } finally {
+    cap.restore();
+    restoreSpawn();
+    fs.rmSync(projectDir, { recursive: true, force: true });
+  }
+});
+
+test('setup declined before the seam: resolves aborted with readline closed and workflow never invoked', async () => {
+  const restoreSpawn = stubSpawnSync();
+  const projectDir = makeProjectDir({ withOpenspec: false }); // openspec/ absent → ensureOpenspecDir prompts
+  const cap = captureConsole();
+  const rl = fakeReadline('n'); // decline the openspec init offer
+  let workflowCalls = 0;
+  try {
+    const outcome = await main({
+      argv: ['node', 'bin/setup.js', projectDir],
+      createReadline: () => rl,
+      postSetupWorkflow: async () => { workflowCalls += 1; },
+    });
+    assert.equal(outcome, 'aborted');
+    assert.equal(workflowCalls, 0, 'workflow must not be invoked on an early decline');
+    assert.equal(rl.closeCount, 1, 'readline closed on the decline path');
+    assert.ok(cap.logs.some(m => m.includes('Aborted.')), 'Aborted. message preserved');
+  } finally {
+    cap.restore();
+    restoreSpawn();
+    fs.rmSync(projectDir, { recursive: true, force: true });
+  }
+});
+
+test('requiring bin/setup.js performs no side effects and exports only main and ensureCodegraphIndex', () => {
+  const setupPath = require.resolve('../bin/setup.js');
+  const readlinePath = require.resolve('readline');
+  const origSetup = require.cache[setupPath];
+  const origReadline = require.cache[readlinePath];
+  const created = [];
+  require.cache[readlinePath] = {
+    id: readlinePath,
+    filename: readlinePath,
+    loaded: true,
+    exports: { createInterface: (...args) => { created.push(args); return {}; } },
+  };
+  delete require.cache[setupPath];
+  try {
+    const setup = require('../bin/setup.js');
+    assert.deepEqual(Object.keys(setup).sort(), ['ensureCodegraphIndex', 'main']);
+    assert.equal(created.length, 0, 'no readline interface created at require time');
+  } finally {
+    delete require.cache[setupPath];
+    require.cache[readlinePath] = origReadline;
+    if (origSetup) require.cache[setupPath] = origSetup;
+  }
+});
+
+test('setup CLI maps an interactive decline to exit 0 (aborted)', () => {
+  const res = childProcess.spawnSync(process.execPath, [path.join(__dirname, '..', 'bin', 'setup.js')], {
+    input: 'n\n',
+    encoding: 'utf8',
+    cwd: path.join(__dirname, '..'),
+  });
+  assert.equal(res.status, 0, 'decline must exit 0');
+  assert.ok(res.stdout.includes('Aborted.'), 'Aborted. printed');
+});
+
+test('setup CLI maps a required-step failure to exit 1 (required-failure)', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-setup-'));
+  fs.mkdirSync(path.join(dir, 'openspec'), { recursive: true }); // no config.yaml
+  try {
+    const res = childProcess.spawnSync(process.execPath, [path.join(__dirname, '..', 'bin', 'setup.js'), dir], {
+      encoding: 'utf8',
+      cwd: path.join(__dirname, '..'),
+    });
+    assert.equal(res.status, 1, 'required-step failure must exit 1');
+    assert.ok((res.stdout + res.stderr).includes('openspec'), 'failure output names openspec');
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('setup CLI maps a successful run to exit 0 (success)', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-setup-'));
+  fs.mkdirSync(path.join(dir, 'openspec'), { recursive: true });
+  fs.writeFileSync(path.join(dir, 'openspec', 'config.yaml'), 'schema: sai-workflow\n');
+  try {
+    const res = childProcess.spawnSync(process.execPath, [path.join(__dirname, '..', 'bin', 'setup.js'), dir], {
+      encoding: 'utf8',
+      cwd: path.join(__dirname, '..'),
+    });
+    assert.equal(res.status, 0, 'successful run must exit 0');
+    assert.ok(res.stdout.includes(`SAI workflow configured at ${dir}.`), 'completion message printed');
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
   }
 });

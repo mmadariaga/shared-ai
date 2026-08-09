@@ -8,17 +8,18 @@ const childProcess = require('child_process');
 const { spawnSync } = childProcess;
 const readline = require('readline');
 const { offerCodegraphInstall, probeCodegraph, offerOpenspecInstall } = require('./install-flow.js');
+const agentCustomization = require('./agent-customization.js');
 
 function prompt(rl, question) {
   return new Promise(resolve => rl.question(question, resolve));
 }
 
-function getPathArg() {
-  return process.argv[2] === 'setup' ? process.argv[3] : process.argv[2];
+function getPathArg(argv) {
+  return argv[2] === 'setup' ? argv[3] : argv[2];
 }
 
-function resolvePath() {
-  const arg = getPathArg();
+function resolvePath(argv) {
+  const arg = getPathArg(argv);
   if (arg) {
     return path.resolve(arg);
   }
@@ -28,22 +29,24 @@ function resolvePath() {
 async function ensureOpenspecDir(projectPath, rl) {
   const openspecDir = path.join(projectPath, 'openspec');
   if (fs.existsSync(openspecDir)) {
-    return;
+    return 'success';
   }
   const answer = await prompt(rl, `openspec/ not found at ${projectPath}.\n\nRun 'openspec init'? (Y/n) `);
   if (answer.trim().toLowerCase() === 'n') {
     rl.close();
     console.log('Aborted.');
-    process.exit(0);
+    return 'aborted';
   }
   const result = spawnSync('openspec', ['init'], { cwd: projectPath, stdio: 'inherit', shell: true });
   if (result.status !== 0) {
     if (result.stderr) process.stderr.write(result.stderr);
     console.error("error", result);
-    process.exit(1);
+    rl.close();
+    return 'required-failure';
   }
 
   console.log(`Initialized openspec/ at ${projectPath}.\n`);
+  return 'success';
 }
 
 function ensureCodegraphIndex(projectPath, { probe = probeCodegraph, runInit, indexExists } = {}) {
@@ -71,17 +74,18 @@ async function ensureSchemaLine(projectPath, rl) {
   const configPath = path.join(projectPath, 'openspec', 'config.yaml');
   if (!fs.existsSync(configPath)) {
     console.error("openspec/config.yaml not found.\n\nRun 'openspec init' first.");
-    process.exit(1);
+    rl.close();
+    return 'required-failure';
   }
   let content = fs.readFileSync(configPath, 'utf8');
   if (/^schema:\s*sai-workflow\s*$/m.test(content)) {
-    return;
+    return 'success';
   }
   const answer = await prompt(rl, 'Set schema: sai-workflow in openspec/config.yaml? (Y/n) ');
   if (answer.trim().toLowerCase() === 'n') {
     rl.close();
     console.log('Aborted.');
-    process.exit(0);
+    return 'aborted';
   }
   if (/^schema:.*$/m.test(content)) {
     content = content.replace(/^schema:.*$/m, 'schema: sai-workflow');
@@ -89,6 +93,7 @@ async function ensureSchemaLine(projectPath, rl) {
     content = 'schema: sai-workflow\n' + content;
   }
   fs.writeFileSync(configPath, content, 'utf8');
+  return 'success';
 }
 
 function copyDir(srcDir, destDir) {
@@ -115,35 +120,67 @@ function copySchemaTemplates(projectPath) {
   console.log(`Copied ${count} schema file(s) to ${destPath}.`);
 }
 
-async function main() {
-  const projectPath = resolvePath();
-  const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+async function main(options = {}) {
+  const {
+    argv = process.argv,
+    createReadline = () => readline.createInterface({ input: process.stdin, output: process.stdout }),
+    postSetupWorkflow = async () => {},
+    postSetupMenu = agentCustomization.runPostSetupMenu,
+  } = options;
 
-  if (!getPathArg()) {
+  const projectPath = resolvePath(argv);
+  const rl = createReadline();
+
+  if (!getPathArg(argv)) {
     const answer = await prompt(rl, `Configure SAI workflow at ${projectPath}? (Y/n) `);
     if (answer.trim().toLowerCase() === 'n') {
       rl.close();
       console.log('Aborted.');
-      process.exit(0);
+      return 'aborted';
     }
   }
 
   if (!(await offerOpenspecInstall())) {
     rl.close();
-    process.exit(1);
+    return 'required-failure';
   }
   await offerCodegraphInstall();
   ensureCodegraphIndex(projectPath);
-  await ensureOpenspecDir(projectPath, rl);
-  await ensureSchemaLine(projectPath, rl);
+  const openspecOutcome = await ensureOpenspecDir(projectPath, rl);
+  if (openspecOutcome !== 'success') {
+    return openspecOutcome;
+  }
+  const schemaOutcome = await ensureSchemaLine(projectPath, rl);
+  if (schemaOutcome !== 'success') {
+    return schemaOutcome;
+  }
+
+  try {
+    copySchemaTemplates(projectPath);
+    await postSetupWorkflow({ projectPath, readline: rl });
+  } catch (err) {
+    rl.close();
+    console.error(err);
+    return 'post-setup-failure';
+  }
   rl.close();
-  copySchemaTemplates(projectPath);
 
   console.log(`SAI workflow configured at ${projectPath}.`);
+
+  try {
+    await postSetupMenu({ projectPath });
+  } catch (err) {
+    console.error(err);
+    return 'post-setup-failure';
+  }
+
+  return 'success';
 }
 
 if (require.main === module) {
-  main().catch(err => { console.error(err); process.exit(1); });
+  main().then(outcome => {
+    process.exit(outcome === 'success' || outcome === 'aborted' ? 0 : 1);
+  }).catch(err => { console.error(err); process.exit(1); });
 }
 
 module.exports = { main, ensureCodegraphIndex };
