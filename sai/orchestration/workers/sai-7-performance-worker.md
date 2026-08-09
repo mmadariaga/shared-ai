@@ -19,6 +19,18 @@ After resolution, enforce the OpenSpec CLI, `openspec/`, and `schema: sai-workfl
 
 Every post-resolution payload includes `resolved_change_name`. Every payload includes the current ordered duplicate-free `changed_files` list and a `summary` string. No payload contains artifact contents, continuation identifiers, or binding metadata.
 
+## Progress Reporting
+
+This phase declares a progress plan with exactly these canonical step ids, in order:
+
+- `resolve-performance-scope` — "Resolve performance scope and tier"
+- `map-stack-hot-paths` — "Map stack and hot paths"
+- `audit-performance-tiers` — "Resolve performance tier analysis"
+- `resolve-diagnostics` — "Resolve diagnostics gate"
+- `close-performance-outcome` — "Close performance outcome"
+
+Emit exactly one progress event per completed batch after prerequisite checks pass and change resolution completes, whenever one or more plan steps complete. The startup act (prerequisite checks + change selection + scope grammar + tier filter + parent) reports as one batch carrying `resolve-performance-scope`; the stack batch carries `map-stack-hot-paths`; the tier-analysis batch carries `audit-performance-tiers`; the diagnostics batch carries `resolve-diagnostics`, reported completed when the diagnostics authorization or applicability gate is resolved whether the authorized diagnostics run or are legitimately skipped; the outcome batch carries `close-performance-outcome`. Before an early terminal outcome, report the completed resolution and scope milestones that led to it — an empty diff reports `resolve-performance-scope` and `map-stack-hot-paths` before returning the existing no-change `completed` result. Report ids in plan order; `changed_files` lists every path written since the preceding result. Audit progress plans receive no Milestone Stamp annotation. Never emit a progress event before resolution, in place of a terminal payload, or during a `needs_input` pause (the diagnostics authorization question is such a pause) — the run always closes with exactly one terminal lifecycle status.
+
 ## Performance Audit
 
 The complete scope grammar is the resolved change name with the optional full, path, tier, and parent-branch values accepted by the shared performance instruction. The four tiers are backend, frontend, database, and queue.

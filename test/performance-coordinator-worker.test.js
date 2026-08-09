@@ -49,7 +49,7 @@ test('performance coordinator exposes the complete adapter contract', () => {
   for (const field of fields) {
     assert.match(coordinator, new RegExp(`\\b${field}\\b`));
   }
-  assert.match(coordinator, /allowed_nonterminal_extensions[\s\S]{0,120}(?:empty|\[\])/i);
+  assert.match(coordinator, /allowed_nonterminal_extensions[\s\S]{0,240}progress/i);
   assert.match(coordinator, /extension_handlers[\s\S]{0,120}(?:empty|\{\})/i);
   assert.match(coordinator, /terminal_navigation[\s\S]{0,120}Performance audit done\./i);
 });
@@ -246,5 +246,67 @@ test('Step 4 routed performance wrappers fetch only their matching binding and c
     assert.match(source, /\$ARGUMENTS/, `${wrapper.name} wrapper should preserve complete arguments`);
     assert.doesNotMatch(source, wrapper.forbidden,
       `${wrapper.name} wrapper should not fetch the other harness binding`);
+  }
+});
+
+test('performance coordinator declares the canonical five-step progress plan in order with labels', () => {
+  const coordinator = artifact('sai/commands/performance/coordinator.md');
+
+  for (const id of ['resolve-performance-scope', 'map-stack-hot-paths', 'audit-performance-tiers', 'resolve-diagnostics', 'close-performance-outcome']) {
+    assert.match(coordinator, new RegExp(id.replace(/-/g, '\\-')),
+      `the plan should declare the ${id} step id`);
+  }
+  assert.match(
+    coordinator,
+    /resolve-performance-scope[\s\S]{0,300}map-stack-hot-paths[\s\S]{0,300}audit-performance-tiers[\s\S]{0,300}resolve-diagnostics[\s\S]{0,300}close-performance-outcome/,
+    'the five canonical step ids should be declared in order'
+  );
+  assert.match(coordinator, /resolve-performance-scope[\s\S]{0,200}Resolve performance scope and tier/i);
+  assert.match(coordinator, /map-stack-hot-paths[\s\S]{0,200}Map stack and hot paths/i);
+  assert.match(coordinator, /audit-performance-tiers[\s\S]{0,200}Resolve performance tier analysis/i);
+  assert.match(coordinator, /resolve-diagnostics[\s\S]{0,200}Resolve diagnostics gate/i);
+  assert.match(coordinator, /close-performance-outcome[\s\S]{0,200}Close performance outcome/i);
+  assert.match(coordinator, /at dispatch/i);
+  assert.match(coordinator, /continue_after_progress[\s\S]{0,160}protocol[- ]?only/i);
+});
+
+test('performance worker contract enumerates the five ids and pins the batch semantics', () => {
+  const worker = artifact('sai/orchestration/workers/sai-7-performance-worker.md');
+
+  assert.match(
+    worker,
+    /resolve-performance-scope[\s\S]{0,800}map-stack-hot-paths[\s\S]{0,800}audit-performance-tiers[\s\S]{0,800}resolve-diagnostics[\s\S]{0,800}close-performance-outcome/,
+    'the performance worker contract should enumerate the same five ids in the same order'
+  );
+  assert.match(worker, /startup act/i);
+  assert.match(worker, /resolve-performance-scope/);
+  assert.match(worker, /diagnostics[\s\S]{0,240}(?:authorization|not applicable|skip)/i);
+  assert.match(worker, /resolve-diagnostics/);
+  assert.match(worker, /empty diff[\s\S]{0,240}(?:no-change|completed)/i);
+  assert.match(worker, /no Milestone Stamp/i);
+  assert.match(worker, /never[\s\S]{0,160}(?:before resolution|in place of a terminal|needs_input)/i);
+});
+
+test('performance bindings render the plan coordinator-only with threshold reference and no stamp', () => {
+  const claude = artifact('sai/orchestration/workers/bindings/claude/performance-worker.md');
+  const opencode = artifact('sai/orchestration/workers/bindings/opencode/performance-worker.md');
+
+  assert.match(claude, /task list/i);
+  assert.match(claude, /completed[\s\S]{0,240}in_progress/i);
+  assert.match(claude, /minimum threshold[\s\S]{0,160}todo-structure\.md|todo-structure\.md[\s\S]{0,160}(?:threshold|below)/i);
+  assert.match(claude, /(?:no task list|no todowrite)[\s\S]{0,200}(?:below|threshold)/i);
+  assert.doesNotMatch(claude, /fewer than three|below three/);
+  assert.match(claude, /coordinator session/i);
+  assert.doesNotMatch(claude, /date \+%H:%M/);
+
+  assert.match(opencode, /todowrite/i);
+  assert.match(opencode, /full[\s\S]{0,120}todos/i);
+  assert.match(opencode, /constant[\s\S]{0,160}priority/i);
+  assert.match(opencode, /disabl[\s\S]{0,200}subagent/i);
+  assert.doesNotMatch(opencode, /Get-Date/);
+
+  for (const binding of [claude, opencode]) {
+    assert.match(binding, /no Milestone Stamp/i);
+    assert.match(binding, /todo-structure\.md/);
   }
 });
