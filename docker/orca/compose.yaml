@@ -1,0 +1,41 @@
+# Orca Environment — base Compose service.
+# Runs from the docker/orca/ working directory (Compose resolves relative paths
+# from the Compose file's project directory). The base stack starts and stays
+# healthy with zero credential files; credential injection is opt-in through
+# the committed overlay files (compose.credentials*.yaml).
+#
+# Constrained posture: no privileged mode, no host PID/network mode, no Docker
+# socket mount. Host publication defaults to 127.0.0.1.
+name: orca-environment
+
+services:
+  orca:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      ORCA_PORT: ${ORCA_PORT:-6768}
+      ORCA_PUBLISH_ADDRESS: ${ORCA_PUBLISH_ADDRESS:-127.0.0.1}
+      ORCA_PUBLISH_PORT: ${ORCA_PUBLISH_PORT:-6768}
+      ORCA_PAIRING_ADDRESS: ${ORCA_PAIRING_ADDRESS:-127.0.0.1}
+      ORCA_TOPOLOGY: ${ORCA_TOPOLOGY:-local}
+    ports:
+      - "${ORCA_PUBLISH_ADDRESS}:${ORCA_PUBLISH_PORT}:${ORCA_PORT}"
+    volumes:
+      - orca-workspace:/workspace
+      - orca-state:/home/orca
+      - claude-state:/opt/state/claude
+      - opencode-state:/opt/state/opencode
+    healthcheck:
+      test: ["CMD", "/opt/orca/scripts/healthcheck.sh"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+    restart: unless-stopped
+
+volumes:
+  orca-workspace:
+  orca-state:
+  claude-state:
+  opencode-state:

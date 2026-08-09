@@ -141,6 +141,14 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 
 - [0065 — Fork `status-picker.md` from `change-picker.md` rather than parameterize the shared picker](./0065-fork-status-picker-from-change-picker.md)
 
+### docker/orca
+
+- [0117 — Orca AppImage is extracted at build time (no FUSE)](./0117-orca-appimage-build-time-extraction.md)
+- [0118 — Dedicated non-root service user with a validate-and-fail ownership contract](./0118-orca-environment-nonroot-service-user.md)
+- [0119 — Independent named volumes per state boundary with a common Orca parent](./0119-orca-environment-independent-state-volumes.md)
+- [0120 — Concurrent three-child FIFO supervision for the headless Orca runtime](./0120-orca-headless-runtime-supervision.md)
+- [0121 — Per-CLI launchers with a strict allowlist credential parser](./0121-orca-launcher-credential-boundary.md)
+
 ### `npx shared-ai` (install / setup / uninstall / doctor)
 
 - [0010 — Raw readline for interactive checklist instead of npm library](./0010-readline-over-npm-for-interactive-checklist.md)

@@ -111,6 +111,8 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 
 **Overview State**: "The persisted `overview.state` key in a change's `.openspec.yaml` carrying one of `unmaterialized` / `materializing` / `failed` / `current` / `stale` — the durable signal that lets `sai-status` and `sai-archive` distinguish a not-yet-attempted overview, an in-progress or interrupted generation, a failed first materialization, a current one, and one whose sources changed since materialization, without inspecting `change-overview.md` contents; transitioned by the design worker, who marks `materializing` before generator dispatch and `stale` before the first effective source write of every post-materialization transaction."
 *Avoid*: materialization flag, overview status, overview freshness, stale flag
+**Orca Environment**: "A persistent Docker-based development appliance that hosts Orca and agent command-line interfaces with isolated workspace, runtime state, and credentials."
+*Avoid*: Orca container, remote agent workspace, container appliance
 
 **Phase Policy**: "The design-only or implementation-only rules layered by a separate phase worker contract over the shared **Orchestration Core** lifecycle."
 *Avoid*: lifecycle core, shared phase logic, conditional worker branch
@@ -200,6 +202,7 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 - An **Architecture Snapshot** belongs to one **Target State** and is displayed before the sai-2 design feedback loop when its effective content is current or changed.
 - A **File Manifest** belongs to one **Target State** and is the file-level sibling of the **Architecture Snapshot** under it — the snapshot answers which public surfaces will exist, the manifest answers which files will change.
 - A **File Manifest** is derived by a deterministic net fold over the per-step **File Change Type** tokens of a change's `tasks.md`; `tasks.md` remains the authority for per-step tokens and step attribution.
+- An **Orca Environment** hosts Orca and both supported agent command-line interfaces while keeping repositories under persistent workspace storage and credentials outside the image.
 - **Coordinator Verification** may trigger one **Recovery Dispatch** when a **Known-False Report Recovery** is clear, safe, and in scope; a failed or ambiguous recovery returns to human intervention.
 - A **Backfilled Change** is archived via `/sai-archive` (the same command that archives non-backfilled changes).
 - A **Backfilled Change** is produced only by `/sai-backfill`; no other `sai-*` command writes `backfilled: true`.
