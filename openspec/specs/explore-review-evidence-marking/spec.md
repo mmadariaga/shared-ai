@@ -10,6 +10,8 @@ TBD - seeded from delta spec `explore-review-evidence-marking` in change `explor
 
 A reviewed-sai-1 item SHALL be marked exactly when the most recent completed review over that slice's available sai-1 artifact set reports no High findings, and SHALL be cleared exactly when the most recent completed review reports at least one High finding. A reviewed-sai-2 item SHALL follow the same rule for that slice's sai-2 artifact set. A review transaction that ends without a completed review — an absence report for a missing change directory or missing artifact set (item 9 of `sai/instructions/explore.md`), a review blocked by missing specs, or a failed or cancelled pipeline reviewer — SHALL leave the item unchanged. The marking evidence SHALL come from either entry path: the manual post-crystallization review loop (item 9 of `sai/instructions/explore.md`), whose review closes with the base-form `Summary: High=<count> Medium=<count> Low=<count>` tally, and the supervised pipeline (item 10), whose pass converges on a pass with no High findings. The severity vocabulary, finding shape, and tally form SHALL be applied by reference to `@sai/policies/artifact-review-contract.md` and SHALL NOT be restated.
 
+A completed `Review change-overview` transaction (per the `explore-post-crystallization-review-loop` capability) SHALL participate in reviewed-sai-2 marking on the same evidence rule: a completed `Review change-overview` closing with `High=0` SHALL mark the slice's reviewed-sai-2 item, and a completed `Review change-overview` reporting at least one High finding SHALL clear it. Precedence SHALL be by the most recent completed review over the sai-2 slice: when both a `Review sai-2's artifacts` transaction and a `Review change-overview` transaction complete, the most recent one's High-finding outcome decides the reviewed-sai-2 item's marked state. A `Review change-overview` over an overview that does not exist produces an absence report and SHALL leave the item unchanged.
+
 #### Scenario: manual sai-1 review without High findings marks the item
 
 - **WHEN** the review loop's `Review sai-1's artifacts` transaction over the slice's change closes with a tally reporting `High=0`
@@ -30,6 +32,31 @@ A reviewed-sai-1 item SHALL be marked exactly when the most recent completed rev
 
 - **WHEN** a supervised design pass completes with no High findings
 - **THEN** the slice's reviewed-sai-2 item is marked
+
+#### Scenario: completed Review change-overview with no High findings marks reviewed-sai-2
+
+- **WHEN** the review loop's `Review change-overview` transaction over the slice's change closes with a tally reporting `High=0`
+- **THEN** the slice's reviewed-sai-2 item is marked
+
+#### Scenario: Review change-overview with High findings clears reviewed-sai-2
+
+- **WHEN** a completed `Review change-overview` transaction reports at least one High finding
+- **THEN** the slice's reviewed-sai-2 item is cleared
+
+#### Scenario: most recent review over the sai-2 slice decides precedence
+
+- **WHEN** a `Review sai-2's artifacts` transaction and a later `Review change-overview` transaction both complete over the same slice, and the later overview review reports a High finding
+- **THEN** the slice's reviewed-sai-2 item is cleared, because the most recent completed review over the sai-2 slice decides
+
+#### Scenario: Review change-overview over a missing overview leaves the item unchanged
+
+- **WHEN** a `Review change-overview` transaction reports that the overview does not exist (an absence report)
+- **THEN** the slice's reviewed-sai-2 item is neither marked nor cleared
+
+#### Scenario: Review change-overview over a non-current overview leaves the item unchanged
+
+- **WHEN** a `Review change-overview` transaction produces an availability/integrity report because `overview.state` is `materializing`, `failed`, `stale`, or `unmaterialized` (or current metadata is paired with a missing/not-`done` file), rather than a completed review
+- **THEN** the slice's reviewed-sai-2 item is neither marked nor cleared, because the transaction produced no findings tally
 
 #### Scenario: an empty completed pass marks
 

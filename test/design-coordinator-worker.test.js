@@ -595,50 +595,42 @@ test('design install overwrites divergent numbered destination content with noti
   }
 });
 
-test('interfaces contract defines one portable architecture snapshot under Target State', () => {
+test('Target State contract lives in the design instruction, schema, and design template', () => {
   const instruction = artifact('sai/instructions/design.md');
   const schema = artifact('openspec/schemas/sai-workflow/schema.yaml');
-  const template = artifact('openspec/schemas/sai-workflow/templates/interfaces.md');
+  const designTemplate = artifact('openspec/schemas/sai-workflow/templates/design.md');
+  const interfacesTemplate = artifact('openspec/schemas/sai-workflow/templates/interfaces.md');
 
-  for (const contract of [instruction, schema, template]) {
+  for (const contract of [instruction, schema, designTemplate]) {
     assert.match(contract, /### Architecture Snapshot/);
-    assert.match(contract, /project-root-relative/);
-    assert.match(contract, /ASCII/);
-    assert.match(contract, /None — no planned public surfaces/);
-    assert.match(contract, /one-line reason/);
-    assert.match(contract, /(?:do not|does not|shall not|must not) invent file-level/i);
-    assert.match(contract, /## Step N[\s\S]{0,180}(?:authoritative|authority)/i);
+    assert.match(contract, /### File Manifest/);
   }
 
-  const targetState = instruction.indexOf('`## Target State`');
-  const snapshot = instruction.indexOf('`### Architecture Snapshot`', targetState);
-  assert.ok(targetState !== -1 && snapshot > targetState,
-    'Architecture Snapshot should be defined beneath Target State');
+  for (const text of [instruction, designTemplate]) {
+    const targetStateIndex = text.indexOf('## Target State');
+    const contextIndex = text.indexOf('## Context');
+    assert.ok(targetStateIndex !== -1, 'design surface should contain ## Target State');
+    assert.ok(contextIndex !== -1, 'design surface should contain ## Context');
+    assert.ok(targetStateIndex < contextIndex,
+      '## Target State should be placed before other top-level design sections');
+  }
+
+  assert.doesNotMatch(interfacesTemplate, /## Target State/);
+  assert.doesNotMatch(interfacesTemplate, /### Architecture Snapshot/);
+  assert.doesNotMatch(interfacesTemplate, /### File Manifest/);
 });
 
-test('architecture snapshot display is feedback-aware across routed paths', () => {
+test('architecture snapshot display compares the extracted Target State block and defines the no-step-contracts sentinel', () => {
   const instruction = artifact('sai/instructions/design.md');
-   const coordinator = artifact('sai/commands/design/coordinator.md');
-  const worker = artifact('sai/orchestration/workers/sai-2-design-worker.md');
-  const gate = artifact('sai/policies/artifact-feedback-gate.md');
-  const lifecycle = artifact('sai/orchestration/worker-lifecycle.md');
 
-  assert.match(instruction, /normalize[\s\S]{0,180}(?:line endings|CRLF)[\s\S]{0,180}trailing whitespace/i);
-  assert.match(instruction, /complete effective `interfaces\.md`|entire effective `interfaces\.md`/i);
-  assert.match(instruction, /initial[\s\S]{0,180}Architecture Snapshot[\s\S]{0,180}(?:feedback loop|feedback gate)/i);
-  assert.match(instruction, /identical[\s\S]{0,180}(?:omit|do not|unchanged)/i);
-
-  assert.match(worker, /previous `interfaces\.md`[\s\S]{0,240}invocation-scoped/i);
-  assert.match(worker, /existing terminal `summary`[\s\S]{0,240}Architecture Snapshot/i);
-  assert.match(coordinator, /print[\s\S]{0,160}(?:existing|worker-authored) summary[\s\S]{0,160}feedback/i);
-  assert.match(coordinator, /Never read, parse, or reconstruct the Architecture Snapshot/);
-
-  assert.match(gate, /Architecture Snapshot[\s\S]{0,240}routed/i);
-  assert.doesNotMatch(instruction, /sai\/orchestration\/inline-invocation\.md/);
-  assert.doesNotMatch(gate, /sai\/orchestration\/inline-invocation\.md|Copilot|inline consumer/i);
-
-  assert.doesNotMatch(lifecycle, /^\s*(?:architecture_)?snapshot\s*:/m);
-  assert.match(lifecycle, /summary: string/);
+  assert.match(instruction, /extract(?:ed|s)?[\s\S]{0,200}`## Target State`|`## Target State`[\s\S]{0,200}extract(?:ed|s)?/i,
+    'the instruction should reference the extracted ## Target State block comparison');
+  assert.match(instruction, /normalize[\s\S]{0,180}(?:line endings|CRLF)[\s\S]{0,180}trailing whitespace/i,
+    'the comparison should normalize line endings and trailing whitespace');
+  assert.match(instruction, /(?:only when|only if)[\s\S]{0,160}differ|differ[\s\S]{0,160}(?:present|display)|present(?:ed)?[\s\S]{0,120}only[\s\S]{0,120}differ/i,
+    'the block comparison should be presented only when the blocks differ');
+  assert.match(instruction, /None — no step contracts/,
+    'the instruction should define the exact None — no step contracts sentinel');
 });
 
 test('restore-coordinator-instruction-loading Step 1: routed Claude wrappers expose the exact read-only tool scope (planning grants the scoped date shell)', () => {

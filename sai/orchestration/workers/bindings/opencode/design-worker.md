@@ -15,7 +15,7 @@ On failure, start one fresh explicit worker with the original envelope and
 complete reconstruction fields, including opaque history, pending feedback,
 and `fast_track_banner_emitted` where applicable. Never package artifacts.
 
-The worker permission denies every task target except `explore`.
+The worker permission denies every task target except `explore` and `budget` — the `budget: allow` allowance makes the budget-routed overview generator dispatchable.
 
 On each progress event, emit one `todowrite` call with the full `todos` array
 per `@sai/policies/todo-structure.md`: completed steps carry state

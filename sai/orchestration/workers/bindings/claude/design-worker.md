@@ -17,8 +17,7 @@ If continuation or waiting fails, start one fresh background worker and send
 the original envelope plus the exact reconstruction fields and instruction to
 reconstruct from current durable OpenSpec artifacts. Never package artifacts.
 
-The worker may dispatch only the mandatory `budget-explorer` nested branch and
-must retain Agent and Skill access.
+The worker may dispatch the mandatory `budget-explorer` nested branch and the budget-routed overview-generation subagent (per the change-overview generation contract), and must retain Agent and Skill access.
 
 On each progress event, update the harness task list so the reported step ids
 render `completed` and the leading unmarked step renders `in_progress`, per

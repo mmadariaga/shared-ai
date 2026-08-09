@@ -2,9 +2,9 @@
 
 ## Requirements
 
-### Requirement: interfaces.md opens with a Target State section
+### Requirement: design.md opens with a Target State section
 
-`sai/instructions/design.md` SHALL require that `openspec/changes/{name}/interfaces.md` begins with a `## Target State` section, emitted before the first `## Step N` section.
+`openspec/changes/{name}/design.md` SHALL begin with a `## Target State` section, authored and persisted by the design phase as the authoritative source for the change's finished-shape snapshot. `sai/instructions/design.md` SHALL require that the `## Target State` section is emitted in `design.md` before the other design sections, and SHALL require that `openspec/changes/{name}/interfaces.md` begins directly with its first `## Step N` section — no `## Target State` section and no snapshot or manifest subsection SHALL be emitted in `interfaces.md`. The `change-overview.md` projection SHALL read this section from `design.md`; the overview SHALL NOT author the snapshot content itself.
 
 `## Target State` SHALL present the finished shape the change converges on as **one concrete artifact** — not a per-step narrative and not a restatement of the change's motivation.
 
@@ -17,13 +17,13 @@ The section SHALL be written so a reader who reads only `## Target State` knows 
 
 When a change genuinely produces no finished shape expressible under either interpretation, `## Target State` SHALL still be emitted with an explicit `None` and a one-line reason, matching the `None` provisions of `design-manual-verification` and `design-deferred-decisions`. Silent omission of the section SHALL NOT occur.
 
-`sai/instructions/design.md` SHALL require that, directly beneath `## Target State`, `sai-2-design` emits exactly the subsections admitted by the `design-interfaces-artifact` capability's admitted-section rule. The `### File Manifest` subsection and its `None` sentinel are defined by the `File Manifest is a deterministic net fold over Files Affected` and `File Manifest has an independent None sentinel` requirements of this capability.
+Directly beneath `## Target State`, `design.md` SHALL emit exactly the subsections admitted by the `Target State admits exactly the Architecture Snapshot and File Manifest subsections` requirement of the `change-overview-artifact` capability — the named admitted-section rule: `### Architecture Snapshot` followed by `### File Manifest`, with the `None` behavior that requirement defines. The `### File Manifest` subsection and its `None` sentinel are defined by the `File Manifest is a deterministic net fold over Files Affected` and `File Manifest has an independent None sentinel` requirements of this capability; the persisted manifest in `design.md` is authoritative, and the overview validates it against the recomputed fold per the `change-overview-artifact` capability's Target State projection requirement.
 
-#### Scenario: Target State precedes all step sections
+#### Scenario: Target State is the first section of design.md
 
-- **WHEN** `sai-2-design` generates `interfaces.md` for a change
-- **THEN** the file's first section is `## Target State`
-- **AND** every `## Step N` section appears after it
+- **WHEN** the design phase completes for a change
+- **THEN** `design.md`'s first section is `## Target State`
+- **AND** every other design section appears after it, while `interfaces.md` contains no `## Target State` section
 
 #### Scenario: Target State is one concrete artifact, not a step walkthrough
 
@@ -57,14 +57,14 @@ Where a signature appears in both `## Target State` and a `## Step N` section, t
 
 #### Scenario: per-step sections still emitted alongside Target State
 
-- **WHEN** `interfaces.md` contains a `## Target State` section
-- **THEN** each step that introduces a new or modified public interface still has its own `## Step N` section with Interfaces and Test assertions parts
+- **WHEN** `design.md` contains a `## Target State` section
+- **THEN** each step that introduces a new or modified public interface still has its own `## Step N` section in `interfaces.md` with Interfaces and Test assertions parts
 
 #### Scenario: steps with no interface surface remain omitted
 
 - **WHEN** a step introduces neither a new/modified public interface nor a testable assertion
 - **THEN** that step is still omitted from `interfaces.md` entirely
-- **AND** the presence of `## Target State` does not cause an empty `## Step N` section to be emitted for it
+- **AND** the presence of `## Target State` in `design.md` does not cause an empty `## Step N` section to be emitted for it
 
 ### Requirement: File Manifest is a deterministic net fold over Files Affected
 
@@ -199,11 +199,11 @@ When the net fold produces no lines, `### File Manifest` SHALL carry the exact s
 
 ### Requirement: File Manifest glossary term
 
-The `## Language` section of `GLOSSARY.md` at the project root SHALL contain exactly one `**File Manifest**` entry with a one-sentence definition stating what it IS — the flat `interfaces.md` subsection under `## Target State` that lists every file the change creates, modifies, deletes, or renames, path-sorted and git-status-style with step attribution, derived by a deterministic net fold over the per-step `**Files Affected**` entries of `tasks.md`. The entry SHALL carry an `*Avoid*` line rejecting the aliases "file list", "file inventory", and "change file list".
+The `## Language` section of `GLOSSARY.md` at the project root SHALL contain exactly one `**File Manifest**` entry with a one-sentence definition stating what it IS — the flat `design.md` subsection under `## Target State` that lists every file the change creates, modifies, deletes, or renames, path-sorted and git-status-style with step attribution, derived by a deterministic net fold over the per-step `**Files Affected**` entries of `tasks.md`, and projected into `change-overview.md`. The entry SHALL carry an `*Avoid*` line rejecting the aliases "file list", "file inventory", and "change file list".
 
 The `## Relationships` section of `GLOSSARY.md` SHALL contain an entry linking **File Manifest** to **Target State** and to **File Change Type** — the manifest is the file-level sibling of the **Architecture Snapshot** under one **Target State**, and its net fold consumes the per-step **File Change Type** tokens of `tasks.md`.
 
-The `## Flagged ambiguities` section of `GLOSSARY.md` SHALL contain an entry resolving the "Files Affected vs File Manifest" overload in favor of the split: **Files Affected** names the per-step `tasks.md` field, **File Manifest** names the aggregated `interfaces.md` subsection.
+The `## Flagged ambiguities` section of `GLOSSARY.md` SHALL contain an entry resolving the "Files Affected vs File Manifest" overload in favor of the split: **Files Affected** names the per-step `tasks.md` field, **File Manifest** names the aggregated `design.md` subsection.
 
 #### Scenario: File Manifest entry present in Language with Avoid aliases
 

@@ -31,6 +31,8 @@ This index groups the DDRs in `docs/ddr/` by **command** and by **cross-cutting 
 - [0112 — Task-list semantics are harness-neutral and single-sourced; below three declared steps no list renders](./0112-neutral-task-list-policy-single-source.md)
 - [0113 — The task-list tool call originates exclusively from the coordinator session, never from a worker subagent](./0113-todowrite-emission-coordinator-only.md)
 - [0114 — The dispatch envelope is exactly two strings; progress-plan content never travels in it](./0114-progress-plan-never-transported-in-envelope.md)
+- [0117 — Target State relocates into design.md as the persisted authoritative snapshot](./0117-target-state-relocates-into-design-md-as-the-persisted-authoritative-snapshot.md)
+- [0118 — Every generation is a recoverable two-phase transition with a persisted overview.state key](./0118-every-generation-is-a-recoverable-two-phase-transition-with-a-persisted-overview-state-key.md)
 
 ### `/sai-3-implement`
 
@@ -152,6 +154,7 @@ This index groups the DDRs in `docs/ddr/` by **command** and by **cross-cutting 
 
 ### The `interfaces.md` contract
 
+- [0117 — Target State relocates into design.md as the persisted authoritative snapshot](./0117-target-state-relocates-into-design-md-as-the-persisted-authoritative-snapshot.md)
 
 ### Gates, decision summaries & feedback loops
 
@@ -171,6 +174,7 @@ This index groups the DDRs in `docs/ddr/` by **command** and by **cross-cutting 
 
 - [0067 — Handoff provenance consumption as "premise to confirm and extend"](./0067-confirm-extend-consumption-framing.md)
 - [0072 — Numeric complexity thresholds calibrated from an archive survey](./0072-complexity-thresholds-calibrated-from-archive-survey.md) — Refs adr:0069, Refs adr:0070
+- [0118 — Every generation is a recoverable two-phase transition with a persisted overview.state key](./0118-every-generation-is-a-recoverable-two-phase-transition-with-a-persisted-overview-state-key.md)
 
 ### Installer dependency policy & external tooling
 
