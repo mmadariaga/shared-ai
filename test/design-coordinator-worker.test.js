@@ -1149,3 +1149,14 @@ test('Step 2: the design bindings stamp the task list with HH:mm via per-harness
       'the binding should state the wall-clock call never originates from the worker subagent');
   }
 });
+
+// ─── Step 6: command-progress-plan-protocol (audit documentation) ───────────
+
+test('documentation records the audit progress-plan orientation section', () => {
+  const agents = artifact('AGENTS.md');
+
+  assert.match(agents, /### Audit coordinators and workers/,
+    'AGENTS.md should record the audit coordinator/worker orientation section');
+  assert.match(agents, /Milestone Stamp[\s\S]{0,160}no|no[\s\S]{0,160}Milestone Stamp/i,
+    'the audit orientation section should state audit plans carry no Milestone Stamp');
+});

@@ -113,6 +113,9 @@ Claude Code and opencode route `/sai-2-design` through the shared orchestration 
 ### Spec coordinator and worker
 Claude Code and opencode route `/sai-1-spec` through the shared spec core `sai/commands/spec/invocation.md` and their respective spec worker bindings. Claude Code preserves the `opus`/medium wrapper and uses the medium-effort `sai-1-spec-proposal-worker`; opencode uses `opencode-go/minimax-m3` and `sai-1-spec-proposal-worker`. The worker owns prerequisites, resolution, proposal/spec artifacts, summary, and feedback; both paths create only proposal/spec artifacts plus permitted glossary updates, preserve the same summary/feedback/stop contract, and require same-harness parity evidence.
 
+### Audit coordinators and workers
+Claude Code and opencode route `/sai-5-review`, `/sai-6-security`, `/sai-7-performance`, and `/sai-8-accessibility` through the shared orchestration core and their respective audit-worker bindings. Each audit adapter declares the canonical five-step `progress_plan` (resolution, scope/discovery, primary analysis, gated analysis, report verification) and its worker reports completed milestones through additive progress events; the optional gated stages (review Pass 11 mutation analysis, security SCA, performance diagnostics, accessibility runtime checks) complete when their applicability gates resolve, whether the work runs or is legitimately skipped, and empty-diff/no-UI early outcomes report their completed milestones before the existing terminal result. Both harnesses render the plans through `@sai/policies/todo-structure.md` with coordinator-only emission and no `Milestone Stamp` annotations.
+
 ### Single artifact home
 All sai-* artifacts (`implementation.md`, `review.md`, `security.md`, `performance.md`, `accessibility.md`, `pr.md`) write to `openspec/changes/{change-name}/`. The legacy `plans/` directory is **not used** by the new pipeline.
 

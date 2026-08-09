@@ -23,24 +23,25 @@ A routed phase adapter MAY declare a static, ordered progress plan as a new phas
 
 ### Requirement: plan-ids-canonical-in-phase-contracts
 
-The step ids of a progress plan SHALL be canonical per phase: the phase's worker contract SHALL enumerate the step ids the worker may report, and the phase adapter's `progress_plan` SHALL declare exactly those ids in the same order. Neither side learns the plan through the dispatch envelope, which SHALL remain the closed two-string envelope (`wrapper_echo_value`, `arguments_value`). The worker SHALL NOT add, remove, reorder, or rename steps; an adapter whose ids diverge from the worker contract's enumeration produces unknown ids that the coordinator SHALL ignore.
+The step ids of a progress plan SHALL be canonical per phase: every phase's worker contract whose adapter declares a `progress_plan`, including the review, security, performance, and accessibility audit workers, SHALL enumerate the step ids the worker may report, and the phase adapter's `progress_plan` SHALL declare exactly those ids in the same order. Neither side learns the plan through the dispatch envelope, which SHALL remain the closed two-string envelope (`wrapper_echo_value`, `arguments_value`). The worker SHALL NOT add, remove, reorder, or rename steps; an adapter whose ids diverge from the worker contract's enumeration produces unknown ids that the coordinator SHALL ignore.
 
-#### Scenario: worker reports canonical ids
+#### Scenario: audit worker reports canonical ids
 
-- **WHEN** a worker is dispatched for a phase whose adapter declares a plan
-- **THEN** the worker SHALL report only the step ids its phase contract enumerates
+- **WHEN** an audit worker is dispatched for a phase whose adapter declares a plan
+- **THEN** the worker SHALL report only the step ids its audit phase contract enumerates
 - **AND** the adapter's plan SHALL declare the same ids in the same order
 
-#### Scenario: envelope stays closed
+#### Scenario: planning and audit envelopes stay closed
 
-- **WHEN** a phase with a declared plan dispatches its worker
+- **WHEN** any phase with a declared plan dispatches its worker
 - **THEN** the dispatch SHALL pass only `wrapper_echo_value` and `arguments_value`
 - **AND** the plan SHALL NOT be carried in the envelope
 
-#### Scenario: worker invents a step
+#### Scenario: any worker invents a step
 
-- **WHEN** a worker emits a progress event whose `step_ids` contain a value not declared in the plan
-- **THEN** the coordinator SHALL ignore that value and SHALL NOT extend or amend the plan
+- **WHEN** a planning or audit worker emits a progress event whose `step_ids` contain a value not declared in the plan
+- **THEN** the coordinator SHALL ignore that value
+- **AND** it SHALL NOT extend or amend the plan
 
 ### Requirement: coordinator-rendering-only
 

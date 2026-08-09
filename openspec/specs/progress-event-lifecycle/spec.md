@@ -8,7 +8,7 @@ Define the nonterminal progress event: its shape, its additive non-terminal role
 
 ### Requirement: progress-event-shape
 
-A routed planning worker MAY return an additive non-terminal progress event with exactly:
+A routed worker for a phase whose adapter declares a progress plan SHALL return an additive non-terminal progress event with exactly the following shape whenever one or more newly completed plan steps are available:
 
     event: "progress"
     step_ids: string[]
@@ -16,30 +16,33 @@ A routed planning worker MAY return an additive non-terminal progress event with
 
 It SHALL be structurally modelled on the design notice: it is not a lifecycle status, it carries `changed_files`, and no progress event contains a continuation identifier, binding dispatch metadata, or artifact contents. Every path in the event's `changed_files` feeds the coordinator's invocation-scoped changed-file union in first-seen order.
 
-#### Scenario: worker reports a progress batch
+#### Scenario: audit worker reports a progress batch
 
-- **WHEN** a worker completes one or more progress steps
-- **THEN** it SHALL return a progress event listing every completed step id in the batch in declared plan order
+- **WHEN** a review, security, performance, or accessibility worker completes one or more progress steps
+- **THEN** it SHALL return a progress event listing every newly completed step id in that batch in declared plan order
+- **AND** the event SHALL contain no fields beyond the closed progress-event shape
 
 #### Scenario: progress event carries changed files
 
-- **WHEN** a progress event is returned after a write
+- **WHEN** a progress event is returned after a planning or audit worker write
 - **THEN** its `changed_files` SHALL list every path written since the preceding result
 - **AND** the coordinator SHALL add each path to the invocation-scoped changed-file union in first-seen order
 
 ### Requirement: progress-event-nonterminal-additive
 
-The progress event SHALL be optional and non-terminal: a worker MAY emit zero or more progress events before a terminal result, and the terminal payload (`completed`, `needs_input`, `failed`, `cancelled`) remains the only way the run closes. The event SHALL be additive: it extends, and never replaces, the closed lifecycle payloads.
+The progress event SHALL be optional only for a phase without a declared progress plan or for a planned worker that has no newly completed milestone to report. For a phase with a declared progress plan, a worker SHALL emit one progress event for each result that makes one or more new plan steps complete before the terminal result. The event SHALL remain non-terminal and additive: the terminal payload (`completed`, `needs_input`, `failed`, `cancelled`) remains the only way the run closes.
 
 #### Scenario: progress precedes terminal
 
-- **WHEN** a worker emits progress events during a run
-- **THEN** the run SHALL still close with exactly one terminal lifecycle status
+- **WHEN** a planned worker completes one or more new progress steps before its terminal result
+- **THEN** it SHALL emit the corresponding progress event before returning the terminal result
+- **AND** the run SHALL still close with exactly one terminal lifecycle status
 
-#### Scenario: worker emits no progress
+#### Scenario: worker has no plan or no new step
 
-- **WHEN** a worker never emits a progress event
-- **THEN** the coordinator SHALL render the plan without marked steps during the run, complete normally, and apply terminal reconciliation at the terminal result
+- **WHEN** a worker has no declared progress plan, or a planned worker has no newly completed step since its preceding result
+- **THEN** it MAY return no progress event
+- **AND** the coordinator SHALL retain the worker's existing lifecycle behavior
 
 ### Requirement: progress-event-continuation
 
@@ -57,14 +60,20 @@ The coordinator SHALL mark the reported steps and resume the same worker with th
 
 ### Requirement: planning-worker-scope
 
-In this change, the design, spec-proposal, and implementation-planning workers SHALL emit progress events, after prerequisite checks pass and change resolution completes. Audit workers (review, security, performance, accessibility) SHALL NOT emit progress events, and their payload validation SHALL remain unchanged.
+In this change, the design, spec-proposal, implementation-planning, review, security, performance, and accessibility workers SHALL emit progress events after prerequisite checks pass, their required change or scope resolution completes, and one or more newly completed declared plan steps are available. Progress events remain optional for a worker whose phase adapter declares no progress plan; that worker SHALL retain its existing payload validation and lifecycle behavior.
 
 #### Scenario: planning workers emit progress
 
 - **WHEN** a design, spec-proposal, or implementation-planning worker passes prerequisites, resolves the change, and completes one or more plan steps
 - **THEN** it SHALL emit a progress event with the completed step ids
 
-#### Scenario: audit workers stay untouched
+#### Scenario: audit workers emit progress
 
-- **WHEN** a review, security, performance, or accessibility worker runs
-- **THEN** it SHALL NOT emit a progress event and its payload validation SHALL be unchanged
+- **WHEN** a review, security, performance, or accessibility worker passes prerequisites, resolves its required change or scope, and completes one or more plan steps
+- **THEN** it SHALL emit a progress event with the completed canonical step ids
+
+#### Scenario: progress is not emitted before resolution
+
+- **WHEN** a planning or audit worker has not passed prerequisites or completed its required resolution gate
+- **THEN** it SHALL NOT emit a progress event
+- **AND** its existing `needs_input`, `failed`, or `cancelled` behavior SHALL remain available

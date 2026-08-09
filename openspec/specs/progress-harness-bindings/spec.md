@@ -45,12 +45,25 @@ Both harnesses SHALL follow the same neutral semantic policy for the task list â
 
 ### Requirement: neutral-installed-binding
 
-The progress emission SHALL be implemented in the per-harness binding sources `sai/orchestration/workers/bindings/claude/design-worker.md`, `sai/orchestration/workers/bindings/opencode/design-worker.md`, `sai/orchestration/workers/bindings/claude/spec-worker.md`, `sai/orchestration/workers/bindings/opencode/spec-worker.md`, `sai/orchestration/workers/bindings/claude/implementation-worker.md`, and `sai/orchestration/workers/bindings/opencode/implementation-worker.md`, which install to the single harness-neutral paths `sai/orchestration/workers/bindings/design-worker.md`, `sai/orchestration/workers/bindings/spec-worker.md`, and `sai/orchestration/workers/bindings/implementation-worker.md`; the install manifest projection SHALL NOT change.
+The progress emission SHALL be implemented in the per-harness binding sources for the existing spec, design, and implementation-planning workers and for the review, security, performance, and accessibility audit workers. The Claude Code and opencode sources SHALL install through the corresponding neutral binding destinations using the existing install-manifest projection strategy; adding audit progress rendering SHALL NOT create harness-specific destination divergence or change the shared neutral policy location.
 
-#### Scenario: bindings install neutrally
+#### Scenario: audit bindings install neutrally
 
 - **WHEN** the install manifest is applied
-- **THEN** each harness's design, spec, and implementation worker bindings SHALL install to their neutral `bindings/` destinations as today
+- **THEN** each harness's review, security, performance, and accessibility worker binding SHALL install to its corresponding neutral binding destination
+- **AND** the destination strategy SHALL remain mirrored between Claude Code and opencode
+
+#### Scenario: audit bindings reference the shared policy
+
+- **WHEN** an audit binding renders a progress event
+- **THEN** it SHALL follow `sai/policies/todo-structure.md` for list structure, state derivation, threshold, and terminal reconciliation
+- **AND** it SHALL not restate or fork those neutral rules
+
+#### Scenario: audit binding ownership stays coordinator-only
+
+- **WHEN** an audit worker reports completed progress steps
+- **THEN** the Claude Code task update or opencode `todowrite` call SHALL originate from the coordinator session
+- **AND** the worker subagent SHALL emit only the canonical progress event
 
 ### Requirement: task-list-emission-coordinator-only
 
