@@ -73,6 +73,10 @@ artifacts:
       Create design.md explaining HOW to implement the change.
 
       Required sections:
+      - **Target State**: the finished shape the change converges on as one concrete artifact, the FIRST
+        section of design.md, with exactly two subsections in order — `### Architecture Snapshot` then
+        `### File Manifest` — per the `design-target-state` and `change-overview-artifact` capabilities;
+        the review snapshot is projected into change-overview.md and never emitted in interfaces.md
       - **Context**: background, current state, constraints
       - **Goals / Non-Goals**: what this design achieves and explicitly excludes
       - **Decisions**: key technical choices. For each decision, evaluate the three ADR/DDR criteria:
@@ -182,16 +186,12 @@ artifacts:
       Create interfaces.md — the per-step contract of public signatures and exact test assertions,
       consumable without the implementation body.
 
-      The file opens with a single `## Target State` section (the finished shape as one concrete
-      artifact) before the first `## Step N` — the only admitted leading non-step section; `None`
-      with a one-line reason when no finished shape is expressible.
-
-      Directly beneath `## Target State`, emit exactly one `### Architecture Snapshot`. Inventory each
-      planned public class, interface, and method with its project-root-relative path, and show relevant
-      relationships or execution flows with portable ASCII notation. Do not emit absolute paths. When
-      there are no planned public surfaces, emit `None — no planned public surfaces` followed by a
-      one-line reason; do not invent file-level entries as substitutes. The `## Step N` sections remain
-      authoritative for step attribution, detailed signatures, and exact test assertions.
+      The file admits NO leading non-`Step N` top-level section: no `## Target State` section and no
+      `### Architecture Snapshot` or `### File Manifest` subsection appears anywhere in the file — the
+      review snapshot is authored in design.md (as its first section) and projected into
+      change-overview.md. Every top-level section is a `## Step N` section; when every step would be
+      omitted, the file carries exactly the sentinel `None — no step contracts` plus a one-line reason
+      naming why no step admits a contract.
 
       Keyed by ## Step N using the same integer keys as tasks.md. Emit one section per step that
       introduces a new/modified public interface or a testable assertion; each section has two parts:

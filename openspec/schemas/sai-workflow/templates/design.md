@@ -1,3 +1,30 @@
+## Target State
+
+<!-- The finished shape the change converges on, as ONE concrete artifact, emitted as the FIRST section of design.md —
+     before every other design section. For code changes: the final payload / public signature / schema / file layout /
+     config shape. For prose/instruction/doc changes: the final section + field structure of each document touched.
+     Must be readable on its own, without the step sections. Write None + a one-line reason if no finished shape is
+     expressible. Projected into change-overview.md by the overview generator — never authored there.
+     Authoritative contract: sai/instructions/design.md `### Target State (authored first in design.md)`. -->
+
+### Architecture Snapshot
+
+<!-- Inventory planned public classes, interfaces, and methods with project-root-relative paths.
+     Show relevant relationships or execution flows with concise portable ASCII notation.
+     Do not emit absolute paths. If no public surfaces are planned, write exactly:
+     None — no planned public surfaces
+     followed by a one-line reason; do not invent file-level entries as substitutes. -->
+
+### File Manifest
+
+<!-- The flat, git-status-style list of every file the change creates, modifies, deletes, or renames,
+     path-sorted with step attribution, derived by the deterministic net fold over the per-step
+     `**Files Affected**` entries of tasks.md (see sai/instructions/design.md). If the fold produces
+     no lines, write exactly:
+     None — no files affected
+     followed by a one-line reason. This persisted manifest is authoritative; the change-overview
+     generator recomputes the fold and validates it against this subsection. -->
+
 ## Context
 
 <!-- Background, current state, constraints. Why does this design exist? -->
