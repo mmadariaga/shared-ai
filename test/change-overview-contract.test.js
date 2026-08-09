@@ -192,3 +192,59 @@ test('generation terminal changed_files are forwarded without re-derivation', ()
   assert.match(coordinator, /changed_files/, 'coordinator should forward the generation terminal changed_files');
   assert.match(coordinator, /forward/i, 'coordinator should forward changed_files unchanged');
 });
+
+// ─── Step 5: Read-only Review change-overview action in the sai-explore loop ─
+
+test('per-change menu still uses the native picker with four options', () => {
+  const explore = artifact('sai/instructions/explore.md');
+
+  assert.match(explore, /Review change-overview/, 'the picker should offer Review change-overview');
+  assert.match(explore, /Review sai-1's artifacts/, 'the picker should offer Review sai-1\'s artifacts');
+  assert.match(explore, /Review sai-2's artifacts/, 'the picker should offer Review sai-2\'s artifacts');
+  assert.match(explore, /Skip/, 'the picker should offer Skip');
+  assert.match(explore, /four[\s-]?option/i, 'the picker should be a four-option native picker');
+});
+
+test('non-current overview produces an availability report, not a review', () => {
+  const explore = artifact('sai/instructions/explore.md');
+
+  assert.match(explore, /overview\.state/, 'the currentness conjunction should read overview.state');
+  assert.match(explore, /availability\/integrity|availability and integrity/i,
+    'non-current overviews should produce an availability/integrity report');
+  assert.match(explore, /no findings tally|no `Summary:`|no findings and no/i,
+    'the availability report should carry no findings tally');
+});
+
+test('findings are accepted one at a time in deterministic order', () => {
+  const explore = artifact('sai/instructions/explore.md');
+
+  assert.match(explore, /Accept\s*\/\s*Decline|Accept.*Decline/i,
+    'each finding should be decided via an Accept/Decline picker');
+  assert.match(explore, /High[\s\S]{0,200}Medium[\s\S]{0,200}Low/,
+    'findings should be ordered High then Medium then Low within a bounded window');
+  assert.match(explore, /ascending numeric identifier|ascending numeric/i,
+    'deterministic order should break ties by ascending numeric identifier');
+  assert.match(explore, /confirmation of the accepted set/i,
+    'a single confirmation of the accepted set should precede handoff');
+});
+
+test('design-artifact corrections route to the design worker via DesignCorrectionRequest', () => {
+  const explore = artifact('sai/instructions/explore.md');
+
+  assert.match(explore, /## DesignCorrectionRequest/, 'the loop should emit a ## DesignCorrectionRequest block');
+  assert.match(explore, /feedback gate/i, 'the block should instruct pasting at the feedback gate');
+  assert.match(explore, /apply in place/i, 'accepted corrections should apply in place');
+  assert.match(explore, /\/sai-1-spec[\s\S]{0,200}(?:cannot consume|not offered)/i,
+    'the spec-amendment path should not be offered for design corrections');
+});
+
+test('completed Review change-overview participates in reviewed-sai-2 marking', () => {
+  const explore = artifact('sai/instructions/explore.md');
+
+  assert.match(explore, /Review change-overview[\s\S]{0,4000}reviewed-sai-2/,
+    'the Review change-overview action should participate in reviewed-sai-2 marking');
+  assert.match(explore, /most recent completed review[\s\S]{0,400}reviewed-sai-2/,
+    'the most recent completed review should decide the reviewed-sai-2 marking');
+  assert.match(explore, /High[\s\S]{0,400}reviewed-sai-2/,
+    'a High finding should clear the reviewed-sai-2 marking');
+});
