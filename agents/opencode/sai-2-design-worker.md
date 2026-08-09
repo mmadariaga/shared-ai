@@ -7,6 +7,7 @@ permission:
   task:
     "*": deny
     explore: allow
+    budget: allow
 ---
 
 Fetch @sai/orchestration/workers/sai-2-design-worker.md and follow it exactly.

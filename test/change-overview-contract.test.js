@@ -94,3 +94,66 @@ test('Target State present in design surfaces, absent from interfaces template',
 
   assert.doesNotMatch(interfacesTemplate, /## Target State/);
 });
+
+test('shared instruction is the generation contract', () => {
+  const instruction = artifact('sai/instructions/change-overview.md');
+
+  assert.match(instruction, /write scope/i, 'generation contract should declare its single-file write scope');
+  assert.match(instruction, /writes ONLY/i, 'generation contract should limit writes to exactly one artifact');
+  assert.match(instruction, /single-file/i, 'generation contract should name the single-file write scope');
+
+  assert.match(instruction, /organized by capability/i, 'generation contract should organize by capability');
+  assert.match(instruction, /capability and behavior/i, 'generation contract should organize capability and behavior');
+
+  assert.match(instruction, /validat/i, 'generation contract should contain a validation contract');
+
+  assert.match(instruction, /contradiction_details/, 'result envelope should carry contradiction_details');
+  assert.match(instruction, /failure_kind/, 'result envelope should carry failure_kind');
+  assert.match(instruction, /success\s*\|\s*failed/, 'result envelope should use the success | failed status vocabulary');
+});
+
+test('state key transitions unmaterialized → materializing → current at first Continue', () => {
+  const worker = artifact('sai/orchestration/workers/sai-2-design-worker.md');
+
+  assert.match(worker, /unmaterialized/, 'worker contract should know the unmaterialized initial state');
+  assert.match(worker, /materializing/, 'worker contract should mark materializing before dispatch');
+  assert.match(worker, /current/, 'worker contract should mark current after success');
+  assert.match(worker, /Continue/, 'worker contract should drive the transition through Continue');
+});
+
+test('effective source modification marks stale before the first write', () => {
+  const worker = artifact('sai/orchestration/workers/sai-2-design-worker.md');
+
+  const staleIndex = worker.search(/stale/);
+  assert.ok(staleIndex !== -1, 'worker contract should contain the stale state');
+  const preStale = worker.slice(0, staleIndex);
+  assert.match(preStale, /immediately before/i, 'stale should be tied to immediately before the write');
+  assert.match(preStale, /first/i, 'stale should be set before the first write');
+  assert.match(preStale, /effective/i, 'stale should be tied to effective source writes');
+});
+
+test('no-effective-change transaction verifies the existing overview before restoring current', () => {
+  const worker = artifact('sai/orchestration/workers/sai-2-design-worker.md');
+
+  assert.match(worker, /byte-exact/, 'pre-transaction source capture should be byte-exact');
+  assert.match(worker, /capture/, 'worker contract should capture sources before any write');
+  assert.match(worker, /no effective change/i, 'worker contract should define the no-effective-change protocol');
+  assert.match(worker, /verif/i, 'worker contract should verify the existing overview before restoring current');
+});
+
+test('opencode design worker permits budget dispatch beside explore', () => {
+  const agent = artifact('agents/opencode/sai-2-design-worker.md');
+  const binding = artifact('sai/orchestration/workers/bindings/opencode/design-worker.md');
+
+  assert.match(agent, /explore:\s*allow/, 'permission.task should allow explore');
+  assert.match(agent, /budget:\s*allow/, 'permission.task should allow budget dispatch beside explore');
+  assert.match(binding, /budget/, 'opencode design worker binding should mention budget dispatch');
+});
+
+test('installation projections are mirrored with an explicit override entry', () => {
+  const manifest = artifact('sai/install-manifest.json');
+
+  assert.match(manifest, /change-overview-instruction/, 'manifest should declare the change-overview-instruction projection');
+  assert.match(manifest, /instructions\/change-overview\.md/, 'manifest should project to instructions/change-overview.md');
+  assert.match(manifest, /"overrides"\s*:\s*"sai-instructions"/, 'manifest should override the sai-instructions projection with an explicit entry');
+});
