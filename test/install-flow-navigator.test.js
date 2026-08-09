@@ -22,7 +22,7 @@ const { EventEmitter } = require('node:events');
 const fs = require('node:fs');
 const path = require('node:path');
 
-const { promptChecklist } = require('../bin/install-flow.js');
+const { promptChecklist, promptSelect } = require('../bin/install-flow.js');
 
 const INSTALLER_ITEMS = ['Claude Code', 'Opencode'];
 const TTY_MESSAGE = 'Error: interactive mode requires a TTY. Run directly in a terminal.';
@@ -60,6 +60,12 @@ function schedulePresses(input, presses) {
 
 async function runChecklist({ items, defaultSelected, input, footer, presses }) {
   const promise = promptChecklist(items, defaultSelected, input, footer);
+  schedulePresses(input, presses || []);
+  return await promise;
+}
+
+async function runSelect({ question, options, input, presses }) {
+  const promise = promptSelect(question, options, input);
   schedulePresses(input, presses || []);
   return await promise;
 }
@@ -286,6 +292,103 @@ test('main() preserves the exact non-interactive message before process.exit(1) 
     !checklistSection.includes('process.exit'),
     'promptChecklist must never call process.exit'
   );
+});
+
+// --- promptSelect single-select on the shared engine -----------------------
+
+// Step 2 of the navigable-model-customizer change: add the exported
+// promptSelect(question, options, input?) single-select on the shared engine.
+// Anchors (navigator test scenarios):
+//   - "Arrow keys move the cursor and Enter confirms"
+//   - "Space confirms the highlighted option"
+//   - "promptSelect resolves a selected option string"
+//   - "Engine reports cancellation without terminating the process"
+
+test('promptSelect: down then return resolves the option highlighted at confirmation time', { timeout: INTERACTION_TIMEOUT }, async () => {
+  const input = createFakeInput(true);
+  const result = await runSelect({
+    question: 'Select a model:',
+    options: INSTALLER_ITEMS,
+    input,
+    presses: [
+      ['', keyInfo('down', '\x1b[B')],
+      ['\r', keyInfo('return', '\r')],
+    ],
+  });
+  // `down` moves the `>` cursor onto the second option; Enter confirms it.
+  assert.equal(result, 'Opencode');
+});
+
+test('promptSelect: space with one option highlighted resolves that option value', { timeout: INTERACTION_TIMEOUT }, async () => {
+  const input = createFakeInput(true);
+  const result = await runSelect({
+    question: 'Select a model:',
+    options: INSTALLER_ITEMS,
+    input,
+    presses: [[' ', keyInfo('space', ' ')]],
+  });
+  // Space confirms the initially highlighted (first) option.
+  assert.equal(result, 'Claude Code');
+});
+
+test('promptSelect: resolves the option string, never its index', { timeout: INTERACTION_TIMEOUT }, async () => {
+  const input = createFakeInput(true);
+  const result = await runSelect({
+    question: 'Select a model:',
+    options: INSTALLER_ITEMS,
+    input,
+    presses: [
+      ['', keyInfo('down', '\x1b[B')],
+      ['\r', keyInfo('return', '\r')],
+    ],
+  });
+  assert.equal(typeof result, 'string', 'resolution must be the option string, not an index');
+  assert.equal(result, 'Opencode');
+  assert.notEqual(result, 1);
+});
+
+test('promptSelect: q keypress resolves null without terminating the process', { timeout: INTERACTION_TIMEOUT }, async () => {
+  const spy = installExitSpy();
+  try {
+    const input = createFakeInput(true);
+    const result = await runSelect({
+      question: 'Select a model:',
+      options: INSTALLER_ITEMS,
+      input,
+      presses: [['q', keyInfo('q', 'q')]],
+    });
+    assert.equal(result, null);
+    assert.equal(spy.calls.length, 0, 'cancellation must not call process.exit');
+  } finally {
+    spy.restore();
+  }
+});
+
+test('promptSelect: Ctrl-C keypress resolves null without terminating the process', { timeout: INTERACTION_TIMEOUT }, async () => {
+  const spy = installExitSpy();
+  try {
+    const input = createFakeInput(true);
+    const result = await runSelect({
+      question: 'Select a model:',
+      options: INSTALLER_ITEMS,
+      input,
+      presses: [['\x03', keyInfo('c', '\x03', { ctrl: true })]],
+    });
+    assert.equal(result, null);
+    assert.equal(spy.calls.length, 0, 'cancellation must not call process.exit');
+  } finally {
+    spy.restore();
+  }
+});
+
+test('promptSelect: non-TTY input resolves null', { timeout: INTERACTION_TIMEOUT }, async () => {
+  const input = createFakeInput(false);
+  const result = await runSelect({
+    question: 'Select a model:',
+    options: INSTALLER_ITEMS,
+    input,
+  });
+  assert.equal(result, null);
 });
 
 // --- helpers ---------------------------------------------------------------

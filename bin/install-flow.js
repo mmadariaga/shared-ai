@@ -528,6 +528,11 @@ function promptChecklist(items, defaultSelected, input, footer) {
   return runNavigator({ mode: 'multi', options: items, defaultSelected, input, footer });
 }
 
+async function promptSelect(question, options, input) {
+  const outcome = await runNavigator({ mode: 'single', question, options, defaultSelected: [], input });
+  return outcome.status === 'confirmed' ? outcome.items[0] : null;
+}
+
 function ensureDir(dir) {
   fs.mkdirSync(dir, { recursive: true });
 }
@@ -919,6 +924,7 @@ module.exports = {
   copyOpencodeConfig,
   main,
   promptChecklist,
+  promptSelect,
   CLAUDE_BASE,
   OPENCODE_BASE,
   OPENCODE_INSTALL_CMD,
