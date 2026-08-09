@@ -8,21 +8,25 @@ Before running the archive skill, perform this check:
    - Absent file, absent key, or any other value (including `false`, string `"true"`, `null`, etc.) → treat as `false`.
    - If the file exists but is corrupt / unparseable as YAML, treat as `false` and emit a single warning line, then continue — do NOT abort.
    - Log the resolved value as intermediate state (e.g. `[sai-archive] backfilled=<true|false>`).
-3. From the `artifacts` array in the JSON, classify the ten `sai-workflow` artifacts into three groups:
+3. From the `artifacts` array in the JSON, classify the eleven `sai-workflow` artifacts into three groups:
    - **CORE** (blocking): `proposal`, `specs`, `design`, `tasks`, `implementation`.
-   - **AUDIT** (informational only): `review`, `security`, `performance`, `accessibility`.
+   - **AUDIT** (informational only): `review`, `security`, `performance`, `accessibility`, `change-overview`.
    - **EXEMPT** (non-blocking, silent when present or absent): `interfaces`.
    The `interfaces` artifact is never collected into the CORE not-`done` set or the AUDIT missing set under any input condition, and no diagnostic mentioning `interfaces` is emitted.
 4. Evaluate CORE artifacts:
-   - If `backfilled === true`, skip `design`, `tasks`, `implementation`, and `interfaces` from the not-`done` collection. `proposal` and `specs` are scanned unconditionally.
+   - If `backfilled === true`, skip `design`, `tasks`, `implementation`, `interfaces`, and `change-overview` from the not-`done` collection. `proposal` and `specs` are scanned unconditionally.
    - For each remaining CORE artifact, if its `status` is not `done`, collect its `id`.
    - If any CORE artifact is not `done`, STOP and print a single error message: "Missing CORE artifact(s): <id1>, <id2>. Archive blocked." Do not proceed with the archive. Do not emit any AUDIT soft warning.
 5. Evaluate AUDIT artifacts (only when all CORE artifacts are `done`):
    - For each AUDIT artifact, if its `status` is not `done`, check whether the file `openspec/changes/$ARGUMENTS/<id>.md` exists and contains a markdown heading `## Not Applicable` (case-sensitive, leading `## ` followed by the exact text `Not Applicable`).
      - If the file exists and contains `## Not Applicable`, treat that artifact as present.
      - Otherwise, collect its `id`.
-   - If one or more AUDIT artifacts are missing, print exactly one informational line: `[sai-archive] informational: missing AUDIT artifact(s): <id1>, <id2>`.
-6. When following the upstream `openspec-archive-change` skill:
+    - If one or more AUDIT artifacts are missing, print exactly one informational line: `[sai-archive] informational: missing AUDIT artifact(s): <id1>, <id2>`.
+6. Evaluate the `change-overview` AUDIT artifact (only when all CORE artifacts are `done`):
+   - For a non-backfilled change, read `openspec/changes/$ARGUMENTS/.openspec.yaml` and parse the `overview.state` key (absent key → treat as `unmaterialized`). If `change-overview`'s CLI `status` is not `done` (missing or not-`done` file) OR `overview.state` is `stale`, `failed`, `materializing`, or `unmaterialized`/absent, collect `change-overview` into the missing-AUDIT set. A missing file warns even when the state reads `current`, because currentness is the conjunction of the state key and the file's presence; a file present with any non-`current` state warns for the same reason. `## Not Applicable` does not apply to `change-overview`.
+   - For a backfilled change, `change-overview` is skipped entirely (treated as `done`), exactly like `interfaces` — no diagnostic mentioning `change-overview` is emitted.
+   - If one or more AUDIT artifacts are missing (including `change-overview`), print exactly one informational line: `[sai-archive] informational: missing AUDIT artifact(s): <id1>, <id2>`.
+7. When following the upstream `openspec-archive-change` skill:
    - If all CORE artifacts are `done` and only AUDIT artifacts are missing (or treated as present via `## Not Applicable`), **skip step 2** of the upstream skill and continue at step 3.
    - Otherwise, let the upstream skill run normally.
 

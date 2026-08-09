@@ -26,15 +26,16 @@
 
   1. Run `openspec list --json` and take `changes[].name` in the returned order (no cap, no re-sort). `openspec list --json` returns only live changes, so archived changes never appear as rows.
   2. For EACH change `{name}` in that order, derive its cells exactly as the single-change panel does:
-     - **Artifacts** — run `openspec status --change {name} --json`; for each of the 10 canonical artifacts (`proposal`, `specs`, `design`, `tasks`, `interfaces`, `implementation`, `review`, `security`, `performance`, `accessibility`) map `done` → `●` and `ready` / `blocked` → `·`. `pr` gets NO column.
+     - **Artifacts** — run `openspec status --change {name} --json`; for each of the 11 canonical artifacts (`proposal`, `specs`, `design`, `tasks`, `interfaces`, `change-overview`, `implementation`, `review`, `security`, `performance`, `accessibility`) map `done` → `●` and `ready` / `blocked` → `·`. `pr` gets NO column.
+     - **Overview cell** — read `openspec/changes/{name}/.openspec.yaml`; render `●` when `overview.state` reads `current` AND the CLI reports `change-overview.md` done; `!` (problem) for `overview.state: stale` / `failed` / `materializing` or current-metadata-with-missing-file; `·` for `unmaterialized`/absent key on a non-backfilled change; `N/A` for backfilled changes.
      - **Specs cell (3-state)** — read `openspec/changes/{name}/.openspec.yaml`: `approval.specs.approved_at` present and non-empty → `●` (approved); specs artifact present but no approval → `○` (present, unapproved); specs absent → `·`. This 3-state cell keeps each row's `Next:` hint correct.
      - **Not-Applicable audits** — for each present audit artifact (`review`, `security`, `performance`, `accessibility`) whose body contains a `## Not Applicable` heading, render `N/A` instead of `●`.
      - **interfaces** — an absent `interfaces` renders `·` with NO missing-artifact warning (ADR 0023).
      - **Impl progress** — if `openspec/changes/{name}/implementation.md` exists, count `- [x]` over `- [x]` + `- [ ]` task lines and show `checked/total`; if it does not exist, leave the `Impl` cell empty.
      - **Next** — resolve the FIRST matching row of the Step E algorithm below for this change (using its specs-approval state) and print the `/sai-N-...` hint.
   3. Render ONE Markdown table with a header row and one data row per change, columns in this exact order:
-     `Change | prop | spec | dsgn | task | intf | impl | rev | sec | perf | a11y | Impl | Next`
-     Legend printed beneath the table: `●` present · `○` specs present-unapproved · `·` absent · `N/A` not-applicable audit.
+     `Change | prop | spec | dsgn | task | intf | cov | impl | rev | sec | perf | a11y | Impl | Next`
+     Legend printed beneath the table: `●` present · `○` specs present-unapproved · `·` absent · `!` problem-state overview · `N/A` not-applicable audit.
   4. **Read-only:** this branch issues exactly N `openspec status --change {name} --json` calls plus local reads of each change's `.openspec.yaml`, `implementation.md`, and audit bodies. It creates, modifies, or deletes NOTHING under any `openspec/` path.
 
   ### Step A — Archive detection (before any CLI call)
@@ -47,16 +48,17 @@
   If no archive directory matches, continue to Step B for the live change.
 
   ### Step B — Artifact presence from the CLI
-  Run `openspec status --change {name} --json` and parse the `artifacts[]` array. For each of the 10 sai-workflow schema artifacts — `proposal`, `specs`, `design`, `tasks`, `interfaces`, `implementation`, `review`, `security`, `performance`, `accessibility` — read its `status`: treat `done` as present, `ready` / `blocked` as absent. Do NOT re-derive presence from filesystem globs. `pr` is NOT one of the 10 and never gets a panel line.
+  Run `openspec status --change {name} --json` and parse the `artifacts[]` array. For each of the 11 sai-workflow schema artifacts — `proposal`, `specs`, `design`, `tasks`, `interfaces`, `change-overview`, `implementation`, `review`, `security`, `performance`, `accessibility` — read its `status`: treat `done` as present, `ready` / `blocked` as absent. Do NOT re-derive presence from filesystem globs. `pr` is NOT one of the 11 and never gets a panel line.
 
   ### Step C — Fill the four gaps the CLI does not expose
   1. **Specs approval** — read `openspec/changes/{name}/.openspec.yaml`. If `approval.specs.approved_at` is present and non-empty, the specs are APPROVED (show the timestamp); otherwise NOT APPROVED. Never write this file.
   2. **Not-Applicable audits** — for each present audit artifact (`review`, `security`, `performance`, `accessibility`), read its body; if it contains a `## Not Applicable` heading (case-sensitive `## ` followed by the exact text `Not Applicable`), render it as present / `N/A`, mirroring `sai-archive`'s Classification Check.
   3. **Implementation progress** — if `implementation.md` exists, count `- [x]` (checked) over `- [x]` + `- [ ]` (total) task lines and show `checked/total`. If it does not exist, show the implementation phase with no count and do NOT error. This checked-vs-total count is the ONLY checkbox interpretation in the panel.
   4. **interfaces is EXEMPT** — never flag an absent `interfaces` as a problem or a missing-artifact warning (ADR 0023).
+  5. **change-overview state from `.openspec.yaml`** — read `openspec/changes/{name}/.openspec.yaml` and parse the `overview.state` key (absent key → `unmaterialized` for non-backfilled changes, not applicable for `backfilled: true` changes). Currentness is the conjunction of two signals: render the overview as current ONLY when `overview.state` is `current` AND the CLI reports `change-overview.md` present/`done`. Render as a problem: `overview.state: stale` (the overview is not the current review surface), `overview.state: failed` (first materialization failed; retry required), `overview.state: materializing` (a dispatch is in progress or interrupted; not committed), current metadata paired with a missing/not-`done` file (inconsistent), and any file present paired with a non-`current` state (inconsistent). Render as expected, not a problem: key absent or `overview.state: unmaterialized` on a non-backfilled change (the overview materializes at the first successful sai-2 `Continue`). Render not applicable for `backfilled: true` changes. Never derive the overview state from inspecting `change-overview.md` contents.
 
   ### Step D — Render the panel
-  Print a compact panel: a header naming the change; one per-phase line for each of the 10 artifacts in the canonical order above (present / absent, and `N/A` for a Not-Applicable audit); the specs-approval line; the implementation `checked/total` count; and a `Next:` line.
+  Print a compact panel: a header naming the change; one per-phase line for each of the 11 artifacts in the canonical order above (present / absent, and `N/A` for a Not-Applicable audit); the specs-approval line; the implementation `checked/total` count; and a `Next:` line.
 
   ### Step E — Next hint
   Resolve the FIRST matching row, top-to-bottom, and print it as the `Next:` line:

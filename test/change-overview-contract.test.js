@@ -248,3 +248,46 @@ test('completed Review change-overview participates in reviewed-sai-2 marking', 
   assert.match(explore, /High[\s\S]{0,400}reviewed-sai-2/,
     'a High finding should clear the reviewed-sai-2 marking');
 });
+
+// ─── Step 6: Eleven-artifact archive classification and status panel ─
+
+test('archive names eleven artifacts with change-overview in AUDIT and interfaces in EXEMPT', () => {
+  const archive = artifact('sai/instructions/archive.md');
+
+  assert.match(archive, /eleven/, 'archive classification should name eleven artifacts');
+  assert.doesNotMatch(archive, /ten[\s-]?(?:`?sai-workflow`?\s+)?artifact/i,
+    'archive should drop the stale ten-artifact wording');
+  assert.match(archive, /change-overview/, 'archive should classify change-overview among the eleven');
+  assert.match(archive, /interfaces/, 'archive should classify interfaces');
+
+  const auditIndex = archive.indexOf('AUDIT');
+  assert.ok(auditIndex !== -1, 'archive should define an AUDIT group');
+  const changeOverviewIndex = archive.indexOf('change-overview');
+  assert.ok(changeOverviewIndex > auditIndex, 'change-overview should sit inside the AUDIT group');
+});
+
+test('backfilled changes skip change-overview alongside interfaces', () => {
+  const archive = artifact('sai/instructions/archive.md');
+
+  assert.match(archive, /change-overview/, 'the backfill skip should treat change-overview as done');
+  assert.match(archive, /backfill/, 'the skip should live on the backfill path');
+  assert.match(archive, /interfaces/, 'the skip should name interfaces');
+  assert.match(archive, /skip/i, 'the skip should be expressed as a skip');
+});
+
+test('status panel lists the 11 artifact ids in order and derives overview state', () => {
+  const status = artifact('sai/commands/sai-status.md');
+
+  assert.match(status, /11\s+sai-workflow|eleven/i, 'the panel should reference the eleven-artifact schema');
+
+  const interfacesIndex = status.indexOf('interfaces');
+  assert.ok(interfacesIndex !== -1, 'the panel should list interfaces');
+  const changeOverviewIndex = status.indexOf('change-overview');
+  assert.ok(changeOverviewIndex !== -1, 'the panel should list change-overview');
+  const implementationIndex = status.indexOf('implementation');
+  assert.ok(implementationIndex !== -1, 'the panel should list implementation');
+  assert.ok(interfacesIndex < changeOverviewIndex, 'change-overview should sit after interfaces');
+  assert.ok(changeOverviewIndex < implementationIndex, 'change-overview should sit before implementation');
+
+  assert.match(status, /overview\.state/, 'the overview line should derive from overview.state');
+});
