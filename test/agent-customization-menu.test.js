@@ -1,6 +1,6 @@
 'use strict';
 
-const { test } = require('node:test');
+const { test, after } = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('fs');
 const os = require('os');
@@ -45,6 +45,9 @@ const CLAUDE_AGENTS = [
   'sai-8-accessibility-worker',
 ];
 
+const CHECKLIST_LEGEND = 'Up/Down move · Space toggle · Enter confirm · q/Ctrl-C cancel';
+const SCRATCH_ROOT = path.join(REPO_ROOT, '.tmp', 'navigable-model-customizer');
+
 function snapshotTree(dir) {
   const snapshot = {};
   const walk = current => {
@@ -87,6 +90,42 @@ function patchFactory(name, replacement) {
   };
 }
 
+// Step 3 scratch repo: mirrors the real-repo layout (manifest + agents dirs) so
+// the real adapters can enumerate agents and (non-)write overrides against it.
+function makeScratchRepo() {
+  fs.mkdirSync(SCRATCH_ROOT, { recursive: true });
+  const scratch = fs.mkdtempSync(path.join(SCRATCH_ROOT, 'traversal-'));
+  fs.mkdirSync(path.join(scratch, 'sai'), { recursive: true });
+  fs.mkdirSync(path.join(scratch, 'agents', 'opencode'), { recursive: true });
+  fs.mkdirSync(path.join(scratch, 'agents', 'claude'), { recursive: true });
+  fs.copyFileSync(
+    path.join(REPO_ROOT, 'sai', 'install-manifest.json'),
+    path.join(scratch, 'sai', 'install-manifest.json')
+  );
+  for (const name of OPENCODE_AGENTS) {
+    fs.writeFileSync(path.join(scratch, 'agents', 'opencode', `${name}.md`), `sentinel ${name}\n`);
+  }
+  for (const name of CLAUDE_AGENTS) {
+    fs.writeFileSync(path.join(scratch, 'agents', 'claude', `${name}.md`), `sentinel ${name}\n`);
+  }
+  return scratch;
+}
+
+// Records every invocation (raw arguments) and resolves a checklist outcome.
+// `items` defaults to the full default selection (every agent pre-selected).
+function recordChecklist(calls, outcome) {
+  return async (...args) => {
+    calls.push(args);
+    if (typeof outcome === 'function') return outcome(args);
+    if (outcome) return outcome;
+    return { status: 'confirmed', items: args[1] || [] };
+  };
+}
+
+after(() => {
+  fs.rmSync(SCRATCH_ROOT, { recursive: true, force: true });
+});
+
 test('runPostSetupMenu skips when not a TTY: resolves skipped, never prompts, creates no adapter', async () => {
   let promptCalls = 0;
   let opencodeFactoryCalls = 0;
@@ -117,10 +156,11 @@ test('runPostSetupMenu skips when not a TTY: resolves skipped, never prompts, cr
   }
 });
 
-test('runPostSetupMenu resolves exit when Exit is chosen and creates no adapter', async () => {
+test('runPostSetupMenu resolves undefined when Exit is chosen: no harness picker, no checklist, no adapter', async () => {
   let promptCalls = 0;
   let opencodeFactoryCalls = 0;
   let claudeFactoryCalls = 0;
+  const checklistCalls = [];
   const restoreOpencode = patchFactory('createOpencodeAdapter', () => {
     opencodeFactoryCalls += 1;
     return makeFakeAdapter([], { select: [], create: [] });
@@ -136,9 +176,14 @@ test('runPostSetupMenu resolves exit when Exit is chosen and creates no adapter'
         promptCalls += 1;
         return 'Exit';
       },
+      promptChecklist: async (...args) => {
+        checklistCalls.push(args);
+        return { status: 'confirmed', items: args[1] || [] };
+      },
     });
-    assert.equal(result, 'exit');
+    assert.equal(result, undefined, 'completion and cancel-run both resolve undefined');
     assert.equal(promptCalls, 1, 'the main menu should be prompted exactly once');
+    assert.equal(checklistCalls.length, 0, 'no checklist should be invoked after Exit');
     assert.equal(opencodeFactoryCalls, 0, 'no opencode adapter should be created on exit');
     assert.equal(claudeFactoryCalls, 0, 'no claude adapter should be created on exit');
   } finally {
@@ -147,11 +192,12 @@ test('runPostSetupMenu resolves exit when Exit is chosen and creates no adapter'
   }
 });
 
-test('customize OpenCode flow runs opencode ops for every agent and never invokes Claude', async () => {
+test('customize OpenCode flow runs opencode ops for every selected agent, never invokes Claude, resolves undefined', async () => {
   const opencodeOps = { select: [], create: [] };
   const claudeOps = { select: [], create: [] };
   let opencodeFactoryCalls = 0;
   let claudeFactoryCalls = 0;
+  const checklistCalls = [];
   const restoreOpencode = patchFactory('createOpencodeAdapter', () => {
     opencodeFactoryCalls += 1;
     return makeFakeAdapter(OPENCODE_AGENTS, opencodeOps);
@@ -167,8 +213,13 @@ test('customize OpenCode flow runs opencode ops for every agent and never invoke
       projectPath: REPO_ROOT,
       isTTY: true,
       promptChoice,
+      promptChecklist: async (...args) => {
+        checklistCalls.push(args);
+        return { status: 'confirmed', items: args[1] };
+      },
     });
-    assert.equal(result, 'customized-opencode');
+    assert.equal(result, undefined, 'completion resolves undefined (retired customized-opencode token)');
+    assert.equal(checklistCalls.length, 1, 'the checklist should be invoked exactly once');
     assert.equal(opencodeFactoryCalls, 1, 'createOpencodeAdapter should be invoked exactly once');
     assert.equal(claudeFactoryCalls, 0, 'createClaudeAdapter must never be invoked');
     assert.deepEqual(opencodeOps.select, OPENCODE_AGENTS,
@@ -186,11 +237,12 @@ test('customize OpenCode flow runs opencode ops for every agent and never invoke
   }
 });
 
-test('customize Claude Code flow runs claude ops for every agent and never invokes OpenCode', async () => {
+test('customize Claude Code flow runs claude ops for every selected agent, never invokes OpenCode, resolves undefined', async () => {
   const opencodeOps = { select: [], create: [] };
   const claudeOps = { select: [], create: [] };
   let opencodeFactoryCalls = 0;
   let claudeFactoryCalls = 0;
+  const checklistCalls = [];
   const restoreOpencode = patchFactory('createOpencodeAdapter', () => {
     opencodeFactoryCalls += 1;
     return makeFakeAdapter(OPENCODE_AGENTS, opencodeOps);
@@ -206,8 +258,13 @@ test('customize Claude Code flow runs claude ops for every agent and never invok
       projectPath: REPO_ROOT,
       isTTY: true,
       promptChoice,
+      promptChecklist: async (...args) => {
+        checklistCalls.push(args);
+        return { status: 'confirmed', items: args[1] };
+      },
     });
-    assert.equal(result, 'customized-claude');
+    assert.equal(result, undefined, 'completion resolves undefined (retired customized-claude token)');
+    assert.equal(checklistCalls.length, 1, 'the checklist should be invoked exactly once');
     assert.equal(claudeFactoryCalls, 1, 'createClaudeAdapter should be invoked exactly once');
     assert.equal(opencodeFactoryCalls, 0, 'createOpencodeAdapter must never be invoked');
     assert.deepEqual(claudeOps.select, CLAUDE_AGENTS,
@@ -335,22 +392,8 @@ test('fakeCreateLocalOverride is non-persistent and preserves the selected value
 });
 
 test('full traversal against a scratch repo root performs zero filesystem writes', async () => {
-  const scratch = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-agent-menu-traversal-'));
+  const scratch = makeScratchRepo();
   try {
-    fs.mkdirSync(path.join(scratch, 'sai'), { recursive: true });
-    fs.mkdirSync(path.join(scratch, 'agents', 'opencode'), { recursive: true });
-    fs.mkdirSync(path.join(scratch, 'agents', 'claude'), { recursive: true });
-    fs.copyFileSync(
-      path.join(REPO_ROOT, 'sai', 'install-manifest.json'),
-      path.join(scratch, 'sai', 'install-manifest.json')
-    );
-    for (const name of OPENCODE_AGENTS) {
-      fs.writeFileSync(path.join(scratch, 'agents', 'opencode', `${name}.md`), `sentinel ${name}\n`);
-    }
-    for (const name of CLAUDE_AGENTS) {
-      fs.writeFileSync(path.join(scratch, 'agents', 'claude', `${name}.md`), `sentinel ${name}\n`);
-    }
-
     const before = snapshotTree(path.join(scratch, 'agents'));
 
     const answers = ['Customize models', 'OpenCode'];
@@ -366,14 +409,246 @@ test('full traversal against a scratch repo root performs zero filesystem writes
       return [FAKE_MODEL_OPTIONS, FAKE_EFFORT_OPTIONS][offset % 2][Math.floor(offset / 2) % 2];
     };
 
-    const result = await runPostSetupMenu({ projectPath: scratch, isTTY: true, promptChoice });
-    assert.equal(result, 'customized-opencode',
-      'the full traversal should complete the opencode customization flow');
+    const checklistCalls = [];
+    const result = await runPostSetupMenu({
+      projectPath: scratch,
+      isTTY: true,
+      promptChoice,
+      promptChecklist: async (...args) => {
+        checklistCalls.push(args);
+        return { status: 'confirmed', items: args[1] };
+      },
+    });
+    assert.equal(result, undefined,
+      'the full traversal should complete the opencode customization flow and resolve undefined');
+    assert.equal(checklistCalls.length, 1,
+      'the checklist should be invoked exactly once during the traversal');
 
     assert.deepEqual(snapshotTree(path.join(scratch, 'agents')), before,
       'the agents tree must be byte-identical after the full traversal');
   } finally {
     fs.rmSync(scratch, { recursive: true, force: true });
+  }
+});
+
+// --- Step 3: checklist seam and retired return tokens ---
+
+test('checklist receives the full enumerateAgents list of the chosen harness as its default selection', async () => {
+  const opencodeOps = { select: [], create: [] };
+  const claudeOps = { select: [], create: [] };
+  const checklistCalls = [];
+  const restoreOpencode = patchFactory('createOpencodeAdapter', () => makeFakeAdapter(OPENCODE_AGENTS, opencodeOps));
+  const restoreClaude = patchFactory('createClaudeAdapter', () => makeFakeAdapter(CLAUDE_AGENTS, claudeOps));
+  try {
+    const answers = ['Customize models', 'OpenCode'];
+    const promptChoice = async () => answers.shift() ?? '<model>';
+    const result = await runPostSetupMenu({
+      projectPath: REPO_ROOT,
+      isTTY: true,
+      promptChoice,
+      promptChecklist: recordChecklist(checklistCalls),
+    });
+    assert.equal(checklistCalls.length, 1, 'the checklist should be invoked exactly once');
+    assert.deepEqual(checklistCalls[0][0], OPENCODE_AGENTS,
+      'the checklist items should be the full enumerated opencode agent list');
+    assert.deepEqual(checklistCalls[0][1], OPENCODE_AGENTS,
+      'every agent of the chosen harness should be pre-selected by default');
+    assert.equal(result, undefined);
+  } finally {
+    restoreOpencode();
+    restoreClaude();
+  }
+});
+
+test('checklist receives the canonical legend string as its footer argument', async () => {
+  const opencodeOps = { select: [], create: [] };
+  const claudeOps = { select: [], create: [] };
+  const checklistCalls = [];
+  const restoreOpencode = patchFactory('createOpencodeAdapter', () => makeFakeAdapter(OPENCODE_AGENTS, opencodeOps));
+  const restoreClaude = patchFactory('createClaudeAdapter', () => makeFakeAdapter(CLAUDE_AGENTS, claudeOps));
+  try {
+    const answers = ['Customize models', 'OpenCode'];
+    const promptChoice = async () => answers.shift() ?? '<model>';
+    const result = await runPostSetupMenu({
+      projectPath: REPO_ROOT,
+      isTTY: true,
+      promptChoice,
+      promptChecklist: recordChecklist(checklistCalls),
+    });
+    assert.equal(checklistCalls.length, 1, 'the checklist should be invoked exactly once');
+    assert.ok(checklistCalls[0].includes(CHECKLIST_LEGEND),
+      'the checklist should be invoked with the canonical legend as its footer argument');
+    assert.equal(result, undefined);
+  } finally {
+    restoreOpencode();
+    restoreClaude();
+  }
+});
+
+test('subset selection configures exactly the selected agents: one selectSettings per chosen agent, none for the rest', async () => {
+  const opencodeOps = { select: [], create: [] };
+  const claudeOps = { select: [], create: [] };
+  const subset = [OPENCODE_AGENTS[0], OPENCODE_AGENTS[3]];
+  const restoreOpencode = patchFactory('createOpencodeAdapter', () => makeFakeAdapter(OPENCODE_AGENTS, opencodeOps));
+  const restoreClaude = patchFactory('createClaudeAdapter', () => makeFakeAdapter(CLAUDE_AGENTS, claudeOps));
+  try {
+    const answers = ['Customize models', 'OpenCode'];
+    const promptChoice = async () => answers.shift() ?? '<model>';
+    const result = await runPostSetupMenu({
+      projectPath: REPO_ROOT,
+      isTTY: true,
+      promptChoice,
+      promptChecklist: async () => ({ status: 'confirmed', items: subset }),
+    });
+    assert.equal(result, undefined);
+    assert.deepEqual(opencodeOps.select, subset,
+      'selectSettings should run exactly once per selected agent and never for deselected agents');
+    assert.deepEqual(opencodeOps.create.map(entry => entry.agentName), subset,
+      'createLocalOverride should run exactly once per selected agent and never for deselected agents');
+    assert.equal(claudeOps.select.length, 0, 'claude must never be configured');
+    assert.equal(claudeOps.create.length, 0, 'claude must never create overrides');
+  } finally {
+    restoreOpencode();
+    restoreClaude();
+  }
+});
+
+test('empty checklist selection completes with zero per-agent configuration', async () => {
+  const opencodeOps = { select: [], create: [] };
+  const claudeOps = { select: [], create: [] };
+  const restoreOpencode = patchFactory('createOpencodeAdapter', () => makeFakeAdapter(OPENCODE_AGENTS, opencodeOps));
+  const restoreClaude = patchFactory('createClaudeAdapter', () => makeFakeAdapter(CLAUDE_AGENTS, claudeOps));
+  try {
+    const answers = ['Customize models', 'OpenCode'];
+    const promptChoice = async () => answers.shift() ?? '<model>';
+    const result = await runPostSetupMenu({
+      projectPath: REPO_ROOT,
+      isTTY: true,
+      promptChoice,
+      promptChecklist: async () => ({ status: 'confirmed', items: [] }),
+    });
+    assert.equal(result, undefined);
+    assert.deepEqual(opencodeOps.select, [], 'an empty selection must produce zero selectSettings calls');
+    assert.deepEqual(opencodeOps.create, [], 'an empty selection must produce zero createLocalOverride calls');
+    assert.equal(claudeOps.select.length, 0, 'claude must never be configured');
+  } finally {
+    restoreOpencode();
+    restoreClaude();
+  }
+});
+
+test('promptChoice null at the harness picker aborts before any checklist or per-agent configuration', async () => {
+  let promptCalls = 0;
+  let opencodeFactoryCalls = 0;
+  let claudeFactoryCalls = 0;
+  const checklistCalls = [];
+  const restoreOpencode = patchFactory('createOpencodeAdapter', () => {
+    opencodeFactoryCalls += 1;
+    return makeFakeAdapter([], { select: [], create: [] });
+  });
+  const restoreClaude = patchFactory('createClaudeAdapter', () => {
+    claudeFactoryCalls += 1;
+    return makeFakeAdapter([], { select: [], create: [] });
+  });
+  try {
+    const answers = ['Customize models', null];
+    let promptIndex = 0;
+    const promptChoice = async () => {
+      promptCalls += 1;
+      const value = answers[promptIndex];
+      promptIndex += 1;
+      return value;
+    };
+    const result = await runPostSetupMenu({
+      isTTY: true,
+      promptChoice,
+      promptChecklist: recordChecklist(checklistCalls),
+    });
+    assert.equal(result, undefined, 'a cancelled harness picker aborts the run');
+    assert.equal(promptCalls, 2, 'only the main menu and the harness picker should be prompted');
+    assert.equal(checklistCalls.length, 0,
+      'the checklist must never be reached when the harness picker is cancelled');
+    assert.equal(opencodeFactoryCalls, 0, 'no opencode adapter should be created');
+    assert.equal(claudeFactoryCalls, 0, 'no claude adapter should be created');
+  } finally {
+    restoreOpencode();
+    restoreClaude();
+  }
+});
+
+test('promptChoice null at a per-agent model selection aborts via the real adapter path with no further agent configured', async () => {
+  const scratch = makeScratchRepo();
+  const checklistCalls = [];
+  let promptCalls = 0;
+  try {
+    const answers = ['Customize models', 'OpenCode', null];
+    let promptIndex = 0;
+    const promptChoice = async () => {
+      const value = answers[promptIndex];
+      promptIndex += 1;
+      promptCalls += 1;
+      return value;
+    };
+    const result = await runPostSetupMenu({
+      projectPath: scratch,
+      isTTY: true,
+      promptChoice,
+      promptChecklist: recordChecklist(checklistCalls),
+    });
+    assert.equal(result, undefined, 'a null model selection aborts the run');
+    assert.equal(checklistCalls.length, 1, 'the checklist should be reached exactly once');
+    assert.ok(promptCalls <= 4,
+      'the run must abort at the first model selection: no further agent may be configured');
+  } finally {
+    fs.rmSync(scratch, { recursive: true, force: true });
+  }
+});
+
+test('checklist cancelled aborts with zero agents configured and resolves undefined', async () => {
+  const opencodeOps = { select: [], create: [] };
+  const claudeOps = { select: [], create: [] };
+  const restoreOpencode = patchFactory('createOpencodeAdapter', () => makeFakeAdapter(OPENCODE_AGENTS, opencodeOps));
+  const restoreClaude = patchFactory('createClaudeAdapter', () => makeFakeAdapter(CLAUDE_AGENTS, claudeOps));
+  try {
+    const answers = ['Customize models', 'OpenCode'];
+    const promptChoice = async () => answers.shift() ?? '<model>';
+    const result = await runPostSetupMenu({
+      projectPath: REPO_ROOT,
+      isTTY: true,
+      promptChoice,
+      promptChecklist: async () => ({ status: 'cancelled' }),
+    });
+    assert.equal(result, undefined, 'a cancelled checklist aborts the run');
+    assert.deepEqual(opencodeOps.select, [], 'cancellation must configure zero agents');
+    assert.deepEqual(opencodeOps.create, [], 'cancellation must create zero overrides');
+    assert.equal(claudeOps.select.length, 0, 'claude must never be configured');
+  } finally {
+    restoreOpencode();
+    restoreClaude();
+  }
+});
+
+test('checklist non-interactive aborts exactly like cancelled: zero agents configured, resolves undefined', async () => {
+  const opencodeOps = { select: [], create: [] };
+  const claudeOps = { select: [], create: [] };
+  const restoreOpencode = patchFactory('createOpencodeAdapter', () => makeFakeAdapter(OPENCODE_AGENTS, opencodeOps));
+  const restoreClaude = patchFactory('createClaudeAdapter', () => makeFakeAdapter(CLAUDE_AGENTS, claudeOps));
+  try {
+    const answers = ['Customize models', 'OpenCode'];
+    const promptChoice = async () => answers.shift() ?? '<model>';
+    const result = await runPostSetupMenu({
+      projectPath: REPO_ROOT,
+      isTTY: true,
+      promptChoice,
+      promptChecklist: async () => ({ status: 'non-interactive' }),
+    });
+    assert.equal(result, undefined, 'a non-interactive checklist aborts the run like cancelled');
+    assert.deepEqual(opencodeOps.select, [], 'non-interactive must configure zero agents');
+    assert.deepEqual(opencodeOps.create, [], 'non-interactive must create zero overrides');
+    assert.equal(claudeOps.select.length, 0, 'claude must never be configured');
+  } finally {
+    restoreOpencode();
+    restoreClaude();
   }
 });
 

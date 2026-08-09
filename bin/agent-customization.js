@@ -1,35 +1,19 @@
 'use strict';
 
 const path = require('path');
-const readline = require('readline');
 const { loadInstallManifest } = require('./install-manifest.js');
-const { CLAUDE_TUNABLE_KEYS, OPENCODE_TUNABLE_KEYS } = require('./install-flow.js');
+const {
+  CLAUDE_TUNABLE_KEYS,
+  OPENCODE_TUNABLE_KEYS,
+  promptSelect,
+  promptChecklist: installFlowPromptChecklist,
+} = require('./install-flow.js');
 
 const MENU_OPTIONS = Object.freeze(['Customize models', 'Exit']);
 const HARNESS_OPTIONS = Object.freeze(['OpenCode', 'Claude Code']);
 const FAKE_MODEL_OPTIONS = Object.freeze(['<model>', '<model-alt>']);
 const FAKE_EFFORT_OPTIONS = Object.freeze(['<effort>', '<effort-alt>']);
-
-function promptChoice(question, options) {
-  const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
-  const numberedOptions = options.map((option, index) => `  ${index + 1}. ${option}`).join('\n');
-  return new Promise((resolve) => {
-    const ask = () => {
-      rl.question(`${question}\n${numberedOptions}\n> `, (answer) => {
-        const choice = Number.parseInt(answer.trim(), 10);
-        if (Number.isInteger(choice) && choice >= 1 && choice <= options.length) {
-          rl.close();
-          resolve(options[choice - 1]);
-        } else {
-          ask();
-        }
-      });
-    };
-    ask();
-  });
-}
-
-const defaultPromptChoice = promptChoice;
+const AGENT_CHECKLIST_LEGEND = 'Up/Down move · Space toggle · Enter confirm · q/Ctrl-C cancel';
 
 async function fakeSelectSettings(agentName, promptChoice) {
   const model = await promptChoice(`Placeholder model for ${agentName}:`, FAKE_MODEL_OPTIONS);
@@ -52,7 +36,7 @@ function enumerateAgents(repoRoot, loadManifest, harness) {
 function createAdapter(harness, {
   repoRoot,
   loadManifest = loadInstallManifest,
-  promptChoice = defaultPromptChoice,
+  promptChoice = promptSelect,
   selectSettings = fakeSelectSettings,
   createLocalOverride = fakeCreateLocalOverride,
 } = {}) {
@@ -80,29 +64,40 @@ function createClaudeAdapter(options = {}) {
 async function runPostSetupMenu({
   projectPath,
   isTTY = process.stdin.isTTY,
-  promptChoice = defaultPromptChoice,
+  promptChoice = promptSelect,
+  promptChecklist = installFlowPromptChecklist,
 } = {}) {
   if (!isTTY) {
     return 'skipped';
   }
   const action = await promptChoice('Post-setup customization:', MENU_OPTIONS);
-  if (action === 'Exit') {
-    return 'exit';
+  if (action === null || action === 'Exit') {
+    return undefined;
   }
   const harness = await promptChoice('Choose a harness:', HARNESS_OPTIONS);
+  if (harness === null) {
+    return undefined;
+  }
   const adapter = harness === 'OpenCode'
     ? module.exports.createOpencodeAdapter({ repoRoot: projectPath, promptChoice })
     : module.exports.createClaudeAdapter({ repoRoot: projectPath, promptChoice });
-  for (const agentName of adapter.enumerateAgents()) {
+  const agents = adapter.enumerateAgents();
+  const outcome = await promptChecklist(agents, agents, undefined, AGENT_CHECKLIST_LEGEND);
+  if (outcome.status === 'cancelled' || outcome.status === 'non-interactive') {
+    return undefined;
+  }
+  for (const agentName of outcome.items) {
     const settings = await adapter.selectSettings(agentName);
+    if (settings.model === null || settings.effort === null) {
+      return undefined;
+    }
     adapter.createLocalOverride(agentName, settings);
   }
-  return harness === 'OpenCode' ? 'customized-opencode' : 'customized-claude';
+  return undefined;
 }
 
 module.exports = {
   runPostSetupMenu,
-  promptChoice,
   FAKE_MODEL_OPTIONS,
   FAKE_EFFORT_OPTIONS,
   fakeSelectSettings,
