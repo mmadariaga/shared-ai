@@ -103,6 +103,9 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 **Orientation Index**: "The `SAI_AGENTS.md` document installed at the harness root by the `sai-agents-index` projection, containing one entry per SAI documentation surface — canonical location, purpose, writer, and a pointer to the canonical format file — with conditional-presence wording, no restated normative rules, and no harness named inside the file."
 *Avoid*: agent guide, doc index, SAI manual, agent onboarding doc
 
+**Orca Environment**: "A persistent Docker-based development appliance that hosts Orca and agent command-line interfaces with isolated workspace, runtime state, and credentials."
+*Avoid*: Orca container, remote agent workspace, container appliance
+
 **Phase Policy**: "The design-only or implementation-only rules layered by a separate phase worker contract over the shared **Orchestration Core** lifecycle."
 *Avoid*: lifecycle core, shared phase logic, conditional worker branch
 
@@ -191,6 +194,7 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 - An **Architecture Snapshot** belongs to one **Target State** and is displayed before the sai-2 design feedback loop when its effective `interfaces.md` content is current or changed.
 - A **File Manifest** belongs to one **Target State** and is the file-level sibling of the **Architecture Snapshot** under it — the snapshot answers which public surfaces will exist, the manifest answers which files will change.
 - A **File Manifest** is derived by a deterministic net fold over the per-step **File Change Type** tokens of a change's `tasks.md`; `tasks.md` remains the authority for per-step tokens and step attribution.
+- An **Orca Environment** hosts Orca and both supported agent command-line interfaces while keeping repositories under persistent workspace storage and credentials outside the image.
 - **Coordinator Verification** may trigger one **Recovery Dispatch** when a **Known-False Report Recovery** is clear, safe, and in scope; a failed or ambiguous recovery returns to human intervention.
 - A **Backfilled Change** is archived via `/sai-archive` (the same command that archives non-backfilled changes).
 - A **Backfilled Change** is produced only by `/sai-backfill`; no other `sai-*` command writes `backfilled: true`.

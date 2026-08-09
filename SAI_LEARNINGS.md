@@ -12,6 +12,10 @@ Durable execution-observed facts about the shared-ai prompt and installer reposi
   *Observed:* introduce-implement-coordinator-worker — depth 1 rejected nested calls and `deepseek-v4-flash` produced no usable nested payload; depth 2 with GLM 5.1 completed both nested calls without file writes.
 - **bin/install-manifest.js**: Harness-matrix projection tests must provide destination roots for every manifest destination class, even when asserting one source projection.
   *Observed:* share-vscode-inline-coordinator — a fixture with only the `sai` root failed on the unrelated `commands` class; supplying all five roots made the projection assertion runnable.
+- **ubuntu:24.04 base image**: Ships a pre-existing `ubuntu` user occupying uid 1000, so a Docker build that runs `useradd --uid 1000` fails unless the base user is removed first (`userdel ubuntu`).
+  *Observed:* add-orca-agent-container — the image build failed on `useradd --uid 1000` until `userdel ubuntu` was added before `groupadd`.
+- **@anthropic-ai/claude-code and opencode-ai (npm)**: With `npm ci --ignore-scripts`, both CLIs leave ~500-byte error-shim `bin/*.exe`; the sanctioned fix is running `node <pkg>/install.cjs` (claude-code) and `node <pkg>/postinstall.mjs` (opencode-ai) as root at build time.
+  *Observed:* add-orca-agent-container — `claude --version`/`opencode --version` failed with "native binary not installed"/"postinstall script was not run" until the manual postinstalls were added after `npm ci`.
 
 ## Conventions
 
@@ -95,6 +99,16 @@ Durable execution-observed facts about the shared-ai prompt and installer reposi
   *Observed:* include-glossary-in-terminal-documentation-commit — the blind test-writer's scoped run and a no-match-pattern probe both executed all 36 file tests; attribution stayed unambiguous because pre-existing tests passed and only the 10 new assertions failed.
 - **node:assert**: `assert.match` throws on the first failing assertion in a test; later assertions in the same test never run, so a multi-assertion test reports only its first failure and fixing that one can expose further failures.
   *Observed:* include-glossary-in-terminal-documentation-commit — the implementation dispatch verified later assertions manually by index arithmetic after the first failing regex was fixed.
+- **TARGETARCH (Docker build arg)**: Docker's predefined build args (e.g. `TARGETARCH`) must be declared with `ARG` before they are usable inside a `RUN`; an undeclared reference silently evaluates empty.
+  *Observed:* add-orca-agent-container — the Dockerfile's architecture-match check compared `ORCA_ARCH` against an empty `TARGETARCH` until `ARG TARGETARCH` was declared immediately before the extraction RUN.
+- **MSYS_NO_PATHCONV (Git Bash on Windows)**: When running docker commands from Git Bash, MSYS2 rewrites container-side `/opt/...` paths inside `-e`/`-v` arguments into `C:/Program Files/Git/...` forms and does so inconsistently between invocations. `export MSYS_NO_PATHCONV=1` and pass host-side paths in Windows form (`cygpath -m`) to keep both sides intact.
+  *Observed:* add-orca-agent-container — the docker-mode harness and compose runs failed on rewritten `/opt/...` args until the MSYS guard and `cygpath -m` path conversion were applied.
+- **docker compose config --format json**: Compose v5.3.1 emits the build-context key lowercase (`"context"`), not the uppercase `"Context"` some greps assume; the resolved context must end in `docker/orca` (never `docker/orca/docker/orca`).
+  *Observed:* add-orca-agent-container — the Step 3 context assertion greps matched only after matching the lowercase key.
+- **docker compose run vs up**: `docker compose run` publishes no host ports; the base `compose up` container holds the published port. Health polls must wait for `healthy` specifically (`starting` is a non-null status).
+  *Observed:* add-orca-agent-container — Step 3 health polling initially mistook `starting` for readiness until the `healthy` status was awaited explicitly.
+- **docker compose file: secrets on Windows**: Compose `file:` secrets are bind-mounted retaining host attributes; on Windows (Docker Desktop drvfs) they present as root-owned 0777 with a read-only in-container mount, and MSYS `chmod 000` maps to the DOS readonly attribute — so an unreadable-secret state cannot be produced via host-file permissions. The actionable message can still be verified by running the entrypoint as uid 1000 against a root-owned 0600 file placed at the secret target in-container.
+  *Observed:* add-orca-agent-container — the Step 3 runtime-readability check and the Step 2/4 harness unreadable-secret checks were reproduced by the in-container alternative on this host.
 
 ## Avoid
 
@@ -104,6 +118,10 @@ Durable execution-observed facts about the shared-ai prompt and installer reposi
   *Observed:* explore-idea-list-native-panel — a parallel 3-file install run alongside `npm test` hit ENOTEMPTY on the shared scratch dir; the same suite passed when run alone.
 - **test/accessibility-coordinator-worker.test.js**: Do not assert legacy `Major` severity or promotion wording against the accessibility worker binding — the binding carries only the closed `Critical`/`High`/`Medium`/`Low`/`Informational` taxonomy; the stale Major-promotion assertion is removed and the closed taxonomy is pinned with a `doesNotMatch /\bMajor\b/` guard.
   *Observed:* relocate-generic-opencode-agents — the pre-existing suite failure at HEAD was fixed by dropping the stale assertion and pinning the closed taxonomy.
+- **`sk-ant`-prefixed image-layer scans**: Do not scan an Orca image's filesystem for the bare `sk-ant` prefix — the literal string legitimately appears inside the Claude Code native binary and Orca's `app.asar` (code references to the key format), so a correct image fails the check; scanning `/` recursively also traverses `/proc` and hangs. Scan only the orca-relevant surfaces for actual fixture markers (`FAKE_SECRET_OFFER_TOKEN`, `sk-ant-fixture`, `sk-openai-fixture`) instead.
+  *Observed:* add-orca-agent-container — the committed harness's whole-filesystem `grep -rl "sk-ant"` both false-positived and hung until replaced by the bounded fixture-marker scan.
+- **POSIX-mode assertions in the host-mode harness on Windows/NTFS**: Do not assert file mode 0600/owner-only via `stat -c %a` on this host — NTFS does not store POSIX modes, so node's `0o600` write surfaces as 644 through drvfs. On `MSYS_NO_PATHCONV=1`, verify the source carries the explicit `0o600` intent instead; the assertion holds only on POSIX filesystems.
+  *Observed:* add-orca-agent-container — the host-mode harness "pairing.json is owner-only (0600)" check failed on Git Bash until the MSYS source-intent accommodation was added, mirroring the existing docker-mode unreadable-secret accommodation.
 
 ## Test Command
 
