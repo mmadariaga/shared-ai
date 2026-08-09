@@ -824,17 +824,19 @@ test('Step 3: continue_after_progress is excluded from opaque input history, use
     'the lifecycle should exclude continue_after_progress from those interaction-history surfaces');
 });
 
-test('Step 3: implementation and audit workers never emit progress events and their payload validation is unchanged', () => {
+test('the lifecycle obliges planned workers to emit progress and keeps payload validation for plan-absent workers', () => {
   const lifecycle = artifact('sai/orchestration/worker-lifecycle.md');
 
-  assert.match(lifecycle, /(?:implementation|audit)[\s\S]{0,240}(?:never|not|no)[\s\S]{0,160}progress/i,
-    'implementation and audit workers should never emit progress events');
-  assert.match(lifecycle, /implementation[\s\S]{0,240}audit|audit[\s\S]{0,240}implementation/i,
-    'the scope statement should name both implementation and audit workers');
-  assert.match(lifecycle, /design[\s\S]{0,120}spec[- ]proposal[\s\S]{0,120}implementation[- ]planning/i,
-    'progress events should cover the three planning phases: design, spec-proposal, and implementation-planning');
-  assert.match(lifecycle, /(?:payload|validation)[\s\S]{0,240}unchanged|unchanged[\s\S]{0,240}(?:payload|validation)/i,
-    'payload validation for implementation and audit workers should be unchanged');
+  assert.match(lifecycle, /design[\s\S]{0,200}spec[- ]proposal[\s\S]{0,200}implementation[- ]planning[\s\S]{0,200}review[\s\S]{0,200}security[\s\S]{0,200}performance[\s\S]{0,200}accessibility/i,
+    'the emitter set should name all seven routed workers in order');
+  assert.match(lifecycle, /SHALL[\s\S]{0,160}emit[\s\S]{0,240}(?:one progress event|new plan steps?)/i,
+    'emission should be a SHALL obligation for planned workers with newly completed steps');
+  assert.match(lifecycle, /emit[\s\S]{0,240}after[\s\S]{0,160}resolution|after[\s\S]{0,160}resolution[\s\S]{0,240}emit/i,
+    'emission should be gated after prerequisite checks and scope resolution');
+  assert.match(lifecycle, /no progress plan[\s\S]{0,240}(?:may emit no|optional|unchanged|payload validation)/i,
+    'only plan-absent workers or planned workers with no new step may emit none');
+  assert.match(lifecycle, /unchanged|payload validation/i,
+    'the plan-absent carve-out should preserve payload validation');
 });
 
 // ─── Step 4: command-progress-plan-protocol (design coordinator.md) ─────────

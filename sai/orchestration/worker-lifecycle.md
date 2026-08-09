@@ -60,7 +60,7 @@ It is not a lifecycle status and is never emitted by or sent to an
 implementation worker. No outcome contains a continuation identifier,
 binding dispatch metadata, or artifact contents.
 
-The progress event is the planning-phase additive extension, exactly:
+The progress event is the routed-phase additive extension, exactly:
 
 ```yaml
 event: progress
@@ -69,11 +69,14 @@ changed_files: string[]
 ```
 
 It carries `changed_files` like the notice. It is nonterminal and not a
-lifecycle status: a design, spec-proposal, or implementation-planning worker
-may emit zero or more progress events after prerequisite checks pass and
-change resolution completes, and the run still closes with exactly one
-terminal lifecycle status. Implementation and audit workers never emit it,
-and their payload validation is unchanged. Its acknowledgement
+lifecycle status: a design, spec-proposal, implementation-planning, review, security,
+performance, or accessibility worker SHALL emit one progress event for each
+result that makes one or more new plan steps complete after prerequisite
+checks pass and its required change or scope resolution completes, and the
+run still closes with exactly one terminal lifecycle status. A worker whose
+phase adapter declares no progress plan — or a planned worker with no newly
+completed step since its preceding result — may emit no progress event and
+retains its existing payload validation and lifecycle behavior. Its acknowledgement
 `continue_after_progress` is protocol-only and is excluded from user-answer
 handling, opaque interaction history, and pending feedback; it is never
 recorded as user input. No progress event contains a continuation identifier,

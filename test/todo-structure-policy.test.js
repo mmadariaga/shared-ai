@@ -107,3 +107,10 @@ test('todo-structure policy names no per-harness time command in the milestone s
   assert.doesNotMatch(source, /Get-Date/i);
   assert.doesNotMatch(source, /\bdate\b/i);
 });
+
+test('todo-structure policy names the four audit progress plans as unstamped alongside the Idea Progress List', () => {
+  const source = policy();
+
+  assert.match(source, /audit progress plans[\s\S]{0,160}(?:carry no stamps|no stamps)/i);
+  assert.match(source, /three routed/i);
+});
