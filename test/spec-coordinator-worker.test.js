@@ -363,3 +363,22 @@ test('Step 5: the spec bindings emit the harness task list on progress events wi
   assert.match(opencode, /subagent[\s\S]{0,160}disabl|disabl[\s\S]{0,160}subagent/i,
     'the opencode binding should tie the disabled-by-default tool to the subagent context');
 });
+
+// ─── Step 2: todo-list-step-timestamps (spec bindings) ──────────────────────
+
+test('Step 2: the spec bindings stamp the task list with HH:mm via per-harness wall-clock commands, acquired coordinator-only (per-harness-time-command / stamp-emission-coordinator-only)', () => {
+  const claude = artifact(SPEC_COORDINATOR_ARTIFACTS.claudeBinding);
+  const opencode = artifact(SPEC_COORDINATOR_ARTIFACTS.opencodeBinding);
+
+  assert.match(claude, /date \+%H:%M/,
+    'the Claude spec binding should name `date +%H:%M` as its wall-clock command');
+  assert.match(opencode, /Get-Date -Format "HH:mm"/,
+    'the opencode spec binding should name `Get-Date -Format "HH:mm"` as its wall-clock command');
+
+  for (const binding of [claude, opencode]) {
+    assert.match(binding, /Stamping is coordinator-only/,
+      'the binding should state the stamping is coordinator-only');
+    assert.match(binding, /never from the worker subagent/,
+      'the binding should state the wall-clock call never originates from the worker subagent');
+  }
+});

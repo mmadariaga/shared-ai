@@ -22,3 +22,15 @@ all.
 The task-list tool call originates exclusively from the coordinator session,
 never from a worker subagent, per the emission-ownership invariant of
 `@sai/policies/todo-structure.md`.
+
+Stamping is coordinator-only per the milestone-stamp annotation section of
+`@sai/policies/todo-structure.md`: on the first render, acquire the current
+wall-clock time with `date +%H:%M` and attach it as the start stamp of the
+first `in_progress` step; on each progress event, acquire one shared time
+with `date +%H:%M` and attach it as the closure stamp of every step the
+event marks, inheriting it as the start stamp of the leading unmarked step;
+on the run-closing `completed` reconciliation, acquire one shared time with
+`date +%H:%M` and attach it as the closure stamp of every step reconciled
+only when at least one step is stamped. Issue at most one wall-clock call
+per render act and none on `needs_input`, `failed`, or `cancelled`. The
+calls originate from the coordinator session, never from the worker subagent.
