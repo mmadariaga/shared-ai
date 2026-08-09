@@ -29,8 +29,8 @@ Each phase reads from and writes to **`openspec/changes/{change-name}/`** — si
  sai/commands/                    ← sai command body files (fetched by wrappers at runtime)
  sai/instructions/                ← phase content, command contracts, and canonical ADR template
  sai/orchestration/               ← shared coordinator/worker contracts and routed worker contracts
- sai/orchestration/workers/bindings/claude/   ← Claude Code routed worker binding
- sai/orchestration/workers/bindings/opencode/ ← opencode routed worker binding
+ sai/orchestration/workers/bindings/claude/   ← Claude Code routed design-worker binding (incl. the budget-routed overview-generation dispatch)
+ sai/orchestration/workers/bindings/opencode/ ← opencode routed design-worker binding (incl. the `budget: allow` overview-generation dispatch)
  sai/policies/                    ← canonical reusable policies and prerequisite rules
  sai/compat/                      ← caller-neutral compatibility-only assets
  sai/install-manifest.json        ← deterministic harness projection manifest for install, doctor, and uninstall
@@ -61,13 +61,14 @@ The openspec-dependent `sai-*` commands halt with a clear error if either is mis
 | `sai/commands/` | Sai command body files fetched by wrappers at runtime. |
 | `sai/commands/{spec,design,implement}/{coordinator,invocation}.md` | Grouped coordinator and invocation bodies for Claude Code and opencode. |
 | `sai/instructions/` | Phase content, caller contracts, and shared instruction templates fetched by wrappers. |
+| `sai/instructions/change-overview.md` | Shared overview-generation instruction executed by the budget-routed subagent — the single source of the `change-overview.md` generation contract for every generation and regeneration. |
 | `sai/orchestration/` | Shared coordinator/worker lifecycle contracts and routed worker contracts. Claude Code and opencode receive their own mirrored binding projections. |
 | `sai/policies/` | Canonical glossary, prerequisite, picker, commit, status, and feedback policies. `sai/policies/artifact-review-contract.md`: shared artifact review finding contract — closed severity vocabulary and assignment criteria, finding shape, severity-prefixed identifier scheme, and closing `Summary:` tally line — single-sourced and referenced by every artifact review surface. |
 | `sai/compat/` | Caller-neutral spec/design/implementation invocation cores and shared compatibility assets. The ADR index template is not owned here. |
 | `sai/commands/spec/invocation.md`, `sai/commands/design/invocation.md`, and `sai/commands/implement/invocation.md` | Caller-neutral invocation bodies shared by the routed paths. |
 | `sai/orchestration/workers/sai-1-spec-proposal-worker.md` | Spec proposal worker lifecycle, input, output, and proposal/spec artifact contract. |
 | `sai/orchestration/workers/sai-3-implementation-worker.md` | Implementation-planning worker lifecycle, input, output, and durable-artifact contract. |
-| `sai/orchestration/workers/sai-2-design-worker.md` | Design-planning worker lifecycle, input, output, and durable-artifact contract. |
+| `sai/orchestration/workers/sai-2-design-worker.md` | Design-planning worker lifecycle, input, output, durable-artifact contract, and the overview-generation lifecycle (`overview.state` transitions, generation dispatch, regeneration and reconciliation). |
 | `sai/install-manifest.json` | Deterministic source-to-destination projection rules consumed by installer, doctor, and uninstall. |
 | `sai/SAI_AGENTS.md` | Project-agnostic orientation index over the SAI documentation surfaces; installed at each harness root (`SAI_AGENTS.md`) by the `sai-agents-index` root-class projection. |
 | `agents/claude/` | Claude Code managed worker agents. |
@@ -223,6 +224,7 @@ openspec/changes/{change-name}/
 ├── specs/**/*.md       # sai-1-spec  (via opsx:propose — specs phase)
 ├── design.md           # sai-2-design (via opsx:continue — gated on specs approval)
 ├── tasks.md            # sai-2-design (via opsx:continue — gated on specs approval)
+├── change-overview.md   # sai-2-design (generated after the feedback loop closes; materialized by a budget-routed subagent — not a new phase; `overview.state` persisted in `.openspec.yaml`)
 ├── implementation.md   # sai-3-implement (granular plan)
 ├── review.md           # sai-5-review
 ├── security.md         # sai-6-security      (required; N/A justification if not applicable)
