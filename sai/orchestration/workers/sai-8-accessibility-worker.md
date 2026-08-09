@@ -21,6 +21,18 @@ After resolution, before analysis or any write, verify the `openspec` CLI is ava
 
 Every post-resolution lifecycle payload includes `resolved_change_name`. Every payload includes the current ordered duplicate-free `changed_files` list and a metadata-only `summary`. No payload contains artifact contents, continuation identifiers, binding metadata, journal content, report content, or evidence.
 
+## Progress Reporting
+
+This phase declares a progress plan with exactly these canonical step ids, in order:
+
+- `resolve-accessibility-scope` — "Resolve accessibility scope and runtime mode"
+- `map-ui-framework` — "Map UI components and framework"
+- `resolve-static-audit` — "Resolve static accessibility audit"
+- `resolve-runtime-audit` — "Resolve runtime-audit gate"
+- `close-accessibility-outcome` — "Close accessibility outcome"
+
+Emit exactly one progress event per completed batch after prerequisite checks pass and change resolution completes, whenever one or more plan steps complete. The startup act (prerequisite checks + change selection + UI-scope and no-UI decision + runtime flag + parent) reports as one batch carrying `resolve-accessibility-scope`; the UI-mapping batch carries `map-ui-framework`; the static-audit batch carries `resolve-static-audit`; the runtime batch carries `resolve-runtime-audit`, reported completed when the runtime request, server-confirmation, and per-command authorization gates are resolved whether the applicable runtime checks run or are legitimately skipped; the outcome batch carries `close-accessibility-outcome`. Before an early terminal outcome, report the completed resolution and scope milestones that led to it — a no-UI run reports `resolve-accessibility-scope` before returning the existing skipped-audit `cancelled` result. Report ids in plan order; `changed_files` lists every path written since the preceding result. Audit progress plans receive no Milestone Stamp annotation. Never emit a progress event before resolution, in place of a terminal payload, or during a `needs_input` pause (the runtime server-confirmation and authorize-or-skip questions are such pauses) — the run always closes with exactly one terminal lifecycle status.
+
 ## Accessibility Audit
 
 Reconstruct `$ARGUMENTS` as the resolved change name plus the preserved optional scope, `--runtime`, and parent-branch values, then `Fetch @sai/commands/accessibility/invocation.md` and follow it exactly. The default is static-only. Runtime processing is enabled only by `--runtime`.
