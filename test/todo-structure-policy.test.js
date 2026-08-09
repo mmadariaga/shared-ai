@@ -78,3 +78,32 @@ test('todo-structure policy keeps apply step projection emission ownership in th
   assert.match(source, /coordinator session|coordinator\b/i);
   assert.match(source, /(?:only|exclusively).*coordinator|coordinator.*(?:only|exclusively)/i);
 });
+
+test('todo-structure policy defines the milestone stamp as a decorative rendering action that leaves the step surface unchanged', () => {
+  const source = policy();
+
+  assert.match(source, /decorative rendering action/i);
+  assert.match(source, /milestone stamp/i);
+  assert.match(source, /(?:stable )?(?:step )?id/i);
+  assert.match(source, /label/i);
+  assert.match(source, /plan order/i);
+  assert.match(source, /deriv(?:ed|es|ation)|derived state/i);
+});
+
+test('todo-structure policy restricts milestone stamps to the three routed planning-phase task lists, never the Idea Progress List or apply step projection', () => {
+  const source = policy();
+
+  assert.match(source, /milestone stamp/i);
+  assert.match(source, /three routed/i);
+  assert.match(source, /Idea Progress List/i);
+  assert.match(source, /apply step projection/i);
+  assert.match(source, /(?:never|not|no stamp).*(?:Idea Progress List|apply step projection)|(?:Idea Progress List|apply step projection).*(?:never|not|no stamp)/i);
+});
+
+test('todo-structure policy names no per-harness time command in the milestone stamp surface', () => {
+  const source = policy();
+
+  assert.match(source, /milestone stamp annotation/i);
+  assert.doesNotMatch(source, /Get-Date/i);
+  assert.doesNotMatch(source, /\bdate\b/i);
+});

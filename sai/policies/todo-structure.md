@@ -44,6 +44,16 @@ A declared progress plan with **fewer than three** progress steps SHALL NOT be r
 
 The task-list tool call originates exclusively from the coordinator session, never from a worker subagent: opencode disables `todowrite` for subagents by default and the worker runs as a subagent, so moving emission to the worker breaks opencode support.
 
+## Milestone stamp annotation
+
+The milestone stamp is a decorative rendering action: an HH:mm wall-clock annotation that decorates a rendered step of a progress task list without changing its stable id, user-facing label, plan order, or derived state. The annotation carve-out does not weaken the no-re-labelling rule for any other surface — no step of any progress task list is added, removed, renamed, reordered, or re-labelled by rendering, stamp annotation included. Stamps attach only to the progress task lists of the three routed planning phases whose adapters declare a progress plan (spec, design, implement); the `sai-explore` Idea Progress List and the apply step projection carry no stamps.
+
+Stamping follows the render acts. The first render (render at dispatch) attaches the current wall-clock time as the start stamp of the first `in_progress` step; each progress-event update attaches one shared closure stamp to every step the event marks `completed` and inherits that same value as the start stamp of the leading unmarked step; the run-closing `completed` reconciliation attaches one shared closure stamp to every step it marks. `needs_input`, `failed`, and `cancelled` leave the list and its stamps exactly as last rendered, with no stamping call; pause time is absorbed into the next closure stamp.
+
+The coordinator acquires each stamp with at most one wall-clock shell call per render act — the first render, each progress-event update, and the run-closing `completed` reconciliation — and never with per-step calls; a reconciliation that stamps nothing issues no call. Transitive start inheritance covers the whole list, so a plan of N steps is fully annotated in at most N+1 shell calls.
+
+Stamp acquisition and attachment originate exclusively from the coordinator session, never from a worker subagent, extending the emission-ownership invariant to stamp acquisition. Per-harness wall-clock commands are named by the harness bindings, never by this policy.
+
 ## Apply step projection
 
 The **apply step projection** — the task list `/sai-4-apply` renders at run start from the `#### Step N:` headings of `openspec/changes/{change-name}/implementation.md` — is a governed surface of this policy. The list structure (one entry per planned step, stable id + label), the state vocabulary (`pending` / `in_progress` / `completed`), the deterministic derivation (plan order + on-disk marked set), the minimum-threshold rule, and the emission-ownership invariant apply to the projection unchanged. Consuming surfaces such as `sai/instructions/apply.md` reference this policy and never restate the threshold constant.
