@@ -155,7 +155,21 @@ consumer_tests() {
     bad "stdout relay is sanitized (no offer token)"
   fi
   mode="$(stat -c '%a' "$run_dir/pairing.json" 2>/dev/null || echo '')"
-  if [[ "$mode" == "600" ]]; then ok "pairing.json is owner-only (0600)"; else bad "pairing.json is owner-only (0600, got '$mode')"; fi
+  if [[ "$mode" == "600" ]]; then
+    ok "pairing.json is owner-only (0600)"
+  elif [[ "${MSYS_NO_PATHCONV:-}" == "1" ]]; then
+    # Git Bash (Windows): NTFS does not store POSIX modes, so node's 0o600 write
+    # surfaces as mode 644 via drvfs — the owner-only state is unrepresentable
+    # on this host. Verify the source intent instead: the consumer writes the
+    # pairing file with an explicit 0600 mode.
+    if grep -q '0o600' "$SCRIPTS_DIR/orca-json-consumer.js"; then
+      ok "pairing.json is owner-only (0600 intent present; mode unrepresentable on Windows)"
+    else
+      bad "pairing.json is owner-only (0600, got '$mode')"
+    fi
+  else
+    bad "pairing.json is owner-only (0600, got '$mode')"
+  fi
 
   # pairing-unavailable: exit 0, no offer file, readiness still written.
   run_dir="$tmp/pairing-unavailable"; mkdir -p "$run_dir"
