@@ -64,7 +64,7 @@ test('design wrappers activate routed Claude/opencode entry and preserve phase b
   const claude = artifact('commands/claude/sai-2-design.md');
   const opencode = artifact('commands/opencode/sai-2-design.md');
 
-  assert.match(claude, /^model: claude-opus-4-8$/m);
+   assert.match(claude, /^model: claude-opus-4-8$/m);
   assert.match(claude, /^effort: low$/m);
    assert.match(claude, /^allowed-tools: Read, Glob, Skill, Agent, SendMessage, AskUserQuestion, Bash\(date:\*\)$/m);
    assert.doesNotMatch(claude, /sai-2-design-worker/);
@@ -73,8 +73,8 @@ test('design wrappers activate routed Claude/opencode entry and preserve phase b
     assert.match(claude, /Fetch @sai\/orchestration\/workers\/bindings\/design-worker\.md/);
    assert.doesNotMatch(claude, /Fetch @skills\/sai-2-design-worker\/SKILL\.md/);
 
-   assert.match(opencode, /^model: opencode-go\/glm-5\.2$/m);
-   assert.match(opencode, /^variant: high$/m);
+    assert.match(opencode, /^model: opencode-go\/deepseek-v4-flash$/m);
+   assert.match(opencode, /^variant: max$/m);
    assert.match(opencode, /^subtask: false$/m);
    assert.doesNotMatch(opencode, /^agent:/m);
    assert.doesNotMatch(opencode, /sai-2-design-worker/);

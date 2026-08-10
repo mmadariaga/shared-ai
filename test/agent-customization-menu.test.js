@@ -1066,6 +1066,146 @@ test('postSetupMenu rejection resolves post-setup-failure with the readline clos
   }
 });
 
+test('Step 2 closed customization outcomes preserve required setup success and expose aggregate diagnostics without changing unrelated files', async () => {
+  const cases = [
+    {
+      name: 'completed',
+      outcome: { status: 'completed', skippedAgents: [], diagnostics: [] },
+    },
+    {
+      name: 'skipped',
+      outcome: { status: 'skipped', reason: 'cancelled', skippedAgents: [], diagnostics: [] },
+    },
+    {
+      name: 'persistence-failed',
+      diagnostic: 'aggregate persistence diagnostic',
+      outcome: {
+        status: 'persistence-failed',
+        diagnostics: ['aggregate persistence diagnostic'],
+      },
+    },
+  ];
+
+  for (const item of cases) {
+    const restoreSpawn = stubSpawnSync();
+    const projectDir = makeProjectDir();
+    const unrelatedFile = path.join(projectDir, 'unrelated-project-file.txt');
+    fs.writeFileSync(unrelatedFile, `unchanged-${item.name}\n`);
+    const before = fs.readFileSync(unrelatedFile);
+    const cap = captureConsole();
+    let workflowCompleted = false;
+    let menuCalls = 0;
+    try {
+      const result = await main({
+        argv: ['node', 'bin/setup.js', projectDir],
+        createReadline: () => fakeReadline(),
+        postSetupWorkflow: async () => {
+          workflowCompleted = true;
+        },
+        postSetupMenu: async (opts) => {
+          menuCalls += 1;
+          assert.deepEqual(opts, { projectPath: projectDir });
+          assert.equal(workflowCompleted, true,
+            `${item.name} customization must run after required setup workflow completion`);
+          return item.outcome;
+        },
+      });
+
+      assert.equal(result, 'success',
+        `${item.name} customization outcome is non-fatal after required setup success`);
+      assert.equal(menuCalls, 1, 'the post-setup customization menu remains reachable');
+      assert.deepEqual(fs.readFileSync(unrelatedFile), before,
+        'unrelated project files remain byte-identical');
+      if (item.diagnostic) {
+        assert.ok(cap.logs.some(message => message.includes(item.diagnostic)),
+          'the aggregate persistence diagnostic is exposed');
+      }
+    } finally {
+      cap.restore();
+      restoreSpawn();
+      fs.rmSync(projectDir, { recursive: true, force: true });
+    }
+  }
+});
+
+test('Step 2 unclassified post-setup exceptions remain post-setup-failure', async () => {
+  const restoreSpawn = stubSpawnSync();
+  const projectDir = makeProjectDir();
+  const cap = captureConsole();
+  const defect = new Error('unclassified customization defect');
+  try {
+    const result = await main({
+      argv: ['node', 'bin/setup.js', projectDir],
+      createReadline: () => fakeReadline(),
+      postSetupWorkflow: async () => {},
+      postSetupMenu: async () => { throw defect; },
+    });
+
+    assert.equal(result, 'post-setup-failure',
+      'an exception outside CustomizationOutcome is not suppressed');
+    assert.ok(cap.logs.some(message => message.includes(defect.message)),
+      'the unclassified defect remains visible');
+  } finally {
+    cap.restore();
+    restoreSpawn();
+    fs.rmSync(projectDir, { recursive: true, force: true });
+  }
+});
+
+test('Step 2 cancellation and non-TTY customization complete without local agent writes', async () => {
+  const cases = [
+    {
+      name: 'cancellation',
+      isTTY: true,
+      promptChoice: async () => 'Exit',
+      reason: 'cancelled',
+    },
+    {
+      name: 'non-TTY',
+      isTTY: false,
+      promptChoice: async () => assert.fail('non-TTY customization must not prompt'),
+      reason: 'non-tty',
+    },
+  ];
+
+  for (const item of cases) {
+    const restoreSpawn = stubSpawnSync();
+    const projectDir = makeProjectDir();
+    let workflowCompleted = false;
+    let menuOutcome = null;
+    try {
+      const result = await main({
+        argv: ['node', 'bin/setup.js', projectDir],
+        createReadline: () => fakeReadline(),
+        postSetupWorkflow: async () => {
+          workflowCompleted = true;
+        },
+        postSetupMenu: async (opts) => {
+          assert.equal(workflowCompleted, true,
+            `${item.name} menu remains after required setup workflow completion`);
+          menuOutcome = await runPostSetupMenu({
+            projectPath: opts.projectPath,
+            isTTY: item.isTTY,
+            promptChoice: item.promptChoice,
+          });
+          return menuOutcome;
+        },
+      });
+
+      assert.equal(result, 'success', `${item.name} customization completes successfully`);
+      assert.equal(menuOutcome.status, 'skipped');
+      assert.equal(menuOutcome.reason, item.reason);
+      assert.equal(fs.existsSync(path.join(projectDir, '.claude', 'agents')), false,
+        `${item.name} must not write local Claude agents`);
+      assert.equal(fs.existsSync(path.join(projectDir, '.opencode', 'agents')), false,
+        `${item.name} must not write local OpenCode agents`);
+    } finally {
+      restoreSpawn();
+      fs.rmSync(projectDir, { recursive: true, force: true });
+    }
+  }
+});
+
 // --- Step 1: opencode model-catalog and verbose-record parsing utilities ---
 
 test('parseModelCatalog splits each non-empty stdout line at the first slash into provider and model', () => {

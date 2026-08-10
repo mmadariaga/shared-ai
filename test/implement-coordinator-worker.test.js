@@ -83,7 +83,7 @@ test('implementation worker declares the lifecycle and input/output contract', (
 test('Claude worker agent is pinned to the required model, effort, and tools', () => {
   const agent = artifact('agents/claude/sai-3-implementation-worker.md');
   assert.match(agent, /^name:\s*sai-3-implementation-worker\s*$/m);
-  assert.match(agent, /^model:\s*claude-opus-4-8\s*$/m);
+   assert.match(agent, /^model:\s*opus\s*$/m);
    assert.match(agent, /^effort:\s*medium\s*$/m);
   assert.match(
     agent,
@@ -290,11 +290,11 @@ test('Step 2 routes Claude and opencode through the coordinator', () => {
     assert.match(claude, /Fetch @sai\/orchestration\/workers\/bindings\/implementation-worker\.md/);
    assert.doesNotMatch(claude, /Fetch @skills\/sai-3-implementation-worker\/SKILL\.md/);
    assert.match(claude, /Fetch @sai\/commands\/implement\/coordinator\.md/);
-   assert.match(opencode, /^model: opencode-go\/glm-5\.2$/m);
+    assert.match(opencode, /^model: opencode-go\/deepseek-v4-flash$/m);
      assert.match(opencode, /Fetch @sai\/orchestration\/workers\/bindings\/implementation-worker\.md/);
     assert.doesNotMatch(opencode, /Fetch @skills\/sai-3-implementation-worker\/SKILL\.md/);
    assert.match(opencode, /Fetch @sai\/commands\/implement\/coordinator\.md/);
-   assert.match(opencode, /^variant: high$/m);
+    assert.match(opencode, /^variant: max$/m);
    assert.match(opencode, /^subtask:\s*false\s*$/m);
    assert.doesNotMatch(opencode, /^agent:/m);
   assert.match(opencode, /\*\*Change-name argument:\*\* \$ARGUMENTS/);
@@ -340,8 +340,8 @@ test('routed harness bindings and inline parity', () => {
         assert.doesNotMatch(binding, /nested task target(?:s)?[\\s\S]{0,120}(?!budget|explore)[a-z][a-z-]+/i);
         assert.match(forwardingSkill, /worker/i);
         assert.doesNotMatch(forwardingSkill, /claude[\\/\\]implementation-worker\.md/);
-         assert.match(wrapper, /^model: opencode-go\/glm-5\.2$/m);
-         assert.match(wrapper, /^variant: high$/m);
+         assert.match(wrapper, /^model: opencode-go\/deepseek-v4-flash$/m);
+          assert.match(wrapper, /^variant: max$/m);
          assert.match(wrapper, /^subtask:\s*false\s*$/m);
          assert.doesNotMatch(wrapper, /^agent:/m);
       },
@@ -354,7 +354,7 @@ test('routed harness bindings and inline parity', () => {
   }
 
   const claudeAgent = surfaces[0].agent;
-  assert.match(claudeAgent, /^model:\s*claude-opus-4-8\s*$/m);
+   assert.match(claudeAgent, /^model:\s*opus\s*$/m);
    assert.match(claudeAgent, /^effort:\s*medium\s*$/m);
   assert.match(
     claudeAgent,

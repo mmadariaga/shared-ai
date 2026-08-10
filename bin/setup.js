@@ -167,14 +167,29 @@ async function main(options = {}) {
 
   console.log(`SAI workflow configured at ${projectPath}.`);
 
+  let customizationOutcome;
   try {
-    await postSetupMenu({ projectPath });
+    customizationOutcome = await postSetupMenu({ projectPath });
   } catch (err) {
     console.error(err);
     return 'post-setup-failure';
   }
 
-  return 'success';
+  if (customizationOutcome === undefined) {
+    return 'success';
+  }
+
+  if (customizationOutcome.status === 'completed'
+      || customizationOutcome.status === 'skipped'
+      || customizationOutcome.status === 'persistence-failed') {
+    for (const diagnostic of customizationOutcome.diagnostics || []) {
+      console.error(`Post-setup customization: ${diagnostic}`);
+    }
+    return 'success';
+  }
+
+  console.error(`Unexpected post-setup customization outcome: ${customizationOutcome.status}`);
+  return 'post-setup-failure';
 }
 
 if (require.main === module) {

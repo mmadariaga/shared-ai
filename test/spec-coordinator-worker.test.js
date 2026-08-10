@@ -166,7 +166,7 @@ test('Claude spec invocation routes through the coordinator and neutral worker b
 
 test('opencode spec invocation routes through the coordinator and neutral worker binding', () => {
   const wrapper = artifact('commands/opencode/sai-1-spec.md');
-  assert.match(wrapper, /^model:\s*opencode-go\/minimax-m3\s*$/m);
+   assert.match(wrapper, /^model:\s*opencode-go\/deepseek-v4-flash\s*$/m);
   assert.match(wrapper, /spec[\\/]coordinator\.md/);
    assert.doesNotMatch(wrapper, /sai-1-spec-proposal-worker/);
     assert.match(wrapper, /Fetch @sai\/orchestration\/workers\/bindings\/spec-worker\.md/);
@@ -205,12 +205,12 @@ test('README model references and installation topology match routed metadata', 
   const manifest = artifact('sai/install-manifest.json');
   assert.match(readme, /opus/);
   assert.match(readme, /medium/);
-  assert.match(readme, /opencode-go\/minimax-m3/);
+   assert.match(readme, /opencode-go\/deepseek-v4-flash/);
   assert.match(readme, /commands[\\/]claude|Claude Code/);
   assert.match(readme, /commands[\\/]opencode|opencode/);
   assert.match(claude, /^model:\s*opus\s*$/m);
   assert.match(claude, /^effort:\s*medium\s*$/m);
-  assert.match(opencode, /^model:\s*opencode-go\/minimax-m3\s*$/m);
+   assert.match(opencode, /^model:\s*opencode-go\/deepseek-v4-flash\s*$/m);
   assert.match(manifest, /agents[\\/]claude[\\/]sai-1-spec-proposal-worker\.md/);
 });
 

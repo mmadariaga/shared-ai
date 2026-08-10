@@ -162,8 +162,8 @@ test('installOpencode copies commands/opencode/*.md to dest/commands/', () => {
   const files = fs.readdirSync(cmdDir);
   assert.ok(files.includes('sai-1-spec.md'), 'sai-1-spec.md should be in commands/');
   const design = fs.readFileSync(path.join(cmdDir, 'sai-2-design.md'), 'utf8');
-   assert.match(design, /^model: opencode-go\/glm-5\.2$/m);
-   assert.match(design, /^variant: high$/m);
+   assert.match(design, /^model: opencode-go\/deepseek-v4-flash$/m);
+   assert.match(design, /^variant: max$/m);
    assert.match(design, /^subtask: false$/m);
    assert.doesNotMatch(design, /^agent:/m);
   assert.ok(design.includes('**Change-name argument and and optional flags:** $ARGUMENTS'));
@@ -986,7 +986,7 @@ function syntheticOpencodeAgentBytes(workerName) {
   return [
     '---',
     'mode: subagent',
-    'model: opencode-go/glm-5.2',
+    'model: opencode-go/deepseek-v4-flash',
     'permission:',
     '  task:',
     "    '*': deny",
