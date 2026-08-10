@@ -6,7 +6,7 @@ _TBD: purpose not yet written._
 ## Requirements
 
 ### Requirement: Provider-scoped verbose query after model selection
-After the user selects a model on the model screen, the OpenCode settings selector SHALL execute `opencode models <provider> --verbose` through the injectable command runner, where `<provider>` is the selected model's provider identifier, in order to obtain that provider's model records. The provider identifier is used as-is from the parsed catalog; the runner SHALL receive the executable plus an argument array, with the provider passed as an element of that array and never shell-string-interpolated. The command SHALL NOT pass `--refresh`.
+After the user selects a model on the model screen, the OpenCode settings selector SHALL execute `opencode models <provider> --verbose` through the injectable command runner, where `<provider>` is the selected model's provider identifier, in order to obtain that provider's model records. The provider identifier is used as-is from the parsed catalog; the runner SHALL receive the executable plus an argument array, with the provider passed as an element of that array and never shell-string-interpolated. The command SHALL NOT pass `--refresh`. On Windows, the default runner MUST invoke `powershell.exe` and pass the provider-containing argument array as JSON environment data for decoded PowerShell splatting, with the provider never interpolated into shell syntax; on non-Windows platforms, direct argument-vector execution SHALL remain unchanged.
 
 #### Scenario: verbose query carries the selected provider
 - **WHEN** the user selects model `deepseek-v4-flash` under provider `opencode-go`
@@ -19,6 +19,14 @@ After the user selects a model on the model screen, the OpenCode settings select
 #### Scenario: verbose query never passes the refresh flag
 - **WHEN** the selector executes the provider-scoped verbose query
 - **THEN** the executed command line contains no `--refresh` flag
+
+#### Scenario: Windows verbose discovery preserves the provider argument
+- **WHEN** variant discovery queries a selected provider on Windows
+- **THEN** the runner resolves the OpenCode npm shim through PowerShell and passes `['models', '<provider>', '--verbose']` as decoded argument data.
+
+#### Scenario: Non-Windows verbose discovery keeps direct execution
+- **WHEN** variant discovery queries a selected provider on a non-Windows platform
+- **THEN** the runner invokes `opencode` directly with `['models', '<provider>', '--verbose']`.
 
 ### Requirement: Multiline model-record parsing
 The selector SHALL parse the verbose command's stdout as a sequence of model records. Each record SHALL consist of a header line carrying the model's full `provider/model-id` identity followed by a pretty-printed multiline JSON object. The parser SHALL accumulate lines after a header until the accumulated text parses as JSON, then attach that parsed object to the header's model identity, and continue with the next header. Blank lines between records SHALL be skipped. The parser SHALL treat a header with no parseable JSON object as a parsing failure, and SHALL also treat a record whose accumulated text parses to a JSON value that is not a non-null, non-array object — a string, number, boolean, `null`, or array — as a parsing failure.
@@ -66,7 +74,7 @@ The selector SHALL extract the selected model's variants from the matched record
 - **THEN** variant discovery fails with no variant names derived, array indices are never exposed as variant names, and the run cancels
 
 ### Requirement: Variant discovery failure is non-fatal cancellation
-When the verbose query exits non-zero, its stdout cannot be parsed, no parsed record matches the selected model, or the matched record's `variants` value is present but not a non-null, non-array object, the OpenCode customization SHALL cancel: no variant screen SHALL be presented, no placeholder variant SHALL be offered, and no settings SHALL be produced (hence no override). The customization run SHALL complete normally without hard-exiting the process.
+When the verbose query launch throws, the query exits non-zero, its stdout cannot be parsed, no parsed record matches the selected model, or the matched record's `variants` value is present but not a non-null, non-array object, the OpenCode customization SHALL cancel: no variant screen SHALL be presented, no placeholder variant SHALL be offered, and no settings SHALL be produced (hence no override). The cancellation SHALL emit an actionable diagnostic identifying the failed verbose query, preserving stderr when available or reporting the exit status when stderr is empty. The customization run SHALL complete normally without hard-exiting the process.
 
 #### Scenario: verbose query failure cancels without an override
 - **WHEN** the verbose query exits non-zero or its output cannot be parsed
@@ -79,3 +87,11 @@ When the verbose query exits non-zero, its stdout cannot be parsed, no parsed re
 #### Scenario: invalid variants value cancels without derived names
 - **WHEN** the matched record's `variants` value is present but is an array, `null`, or a primitive
 - **THEN** OpenCode customization is cancelled and no variant names are derived from the invalid value
+
+#### Scenario: Verbose launch failure reports the cause
+- **WHEN** the provider-scoped command runner throws while querying model variants
+- **THEN** the selector logs an `Unable to query OpenCode model variants` diagnostic containing the launch error and returns no settings.
+
+#### Scenario: Verbose non-zero exit reports stderr or status
+- **WHEN** the provider-scoped command exits with a non-zero status
+- **THEN** the selector logs the command failure detail and cancels without showing a variant screen.
