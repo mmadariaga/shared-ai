@@ -75,14 +75,19 @@ test('accessibility invocation core loads budget, instruction, and remember in o
 });
 
 test('accessibility scope, runtime, and parent arguments reach the shared core unchanged', () => {
-  const caller = artifact('sai/commands/sai-8-accessibility.md');
+  const coordinator = artifact('sai/commands/accessibility/coordinator.md');
   const core = artifact('sai/commands/accessibility/invocation.md');
+  const claudeWrapper = artifact('commands/claude/sai-8-accessibility.md');
+  const opencodeWrapper = artifact('commands/opencode/sai-8-accessibility.md');
   const argumentsValue = '--full --path src/components --runtime feature-branch';
 
-  assert.match(caller, /Fetch @sai\/commands\/accessibility\/invocation\.md/);
-  assert.match(caller, /arguments:\s*\$ARGUMENTS/);
+  assert.match(coordinator, /wrapper_echo_value/);
+  assert.match(coordinator, /arguments_value/);
+  assert.match(coordinator, /preserving the complete argument string/);
+  assert.match(claudeWrapper, /arguments_value:\s*\$ARGUMENTS/);
+  assert.match(opencodeWrapper, /wrapper_echo_value:\s*\$ARGUMENTS/);
+  assert.match(opencodeWrapper, /arguments_value:\s*\$ARGUMENTS/);
   assert.match(core, /arguments:\s*\$ARGUMENTS/);
-  assert.ok(caller.includes('$ARGUMENTS'), `complete arguments should preserve ${argumentsValue}`);
   assert.ok(core.includes('$ARGUMENTS'), `complete arguments should reach the core: ${argumentsValue}`);
 });
 

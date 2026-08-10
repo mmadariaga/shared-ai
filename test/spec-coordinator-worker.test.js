@@ -48,12 +48,13 @@ test('spec invocation core loads only the technical instruction sequence', () =>
 
 test('completion remains outside the spec invocation core', () => {
   const core = artifact('sai/commands/spec/invocation.md');
-  const inline = artifact('sai/commands/sai-1-spec.md');
+  const coordinator = artifact('sai/commands/spec/coordinator.md');
+  const worker = artifact('sai/orchestration/workers/sai-1-spec-proposal-worker.md');
 
   assert.doesNotMatch(core, /decision summary|feedback gate|MANDATORY STOP|Spec proposal done in openspec\/changes\//i);
-  assert.match(inline, /decision summary/i);
-  assert.match(inline, /artifact-feedback-gate\.md/);
-  assert.match(inline, /Spec proposal done in openspec\/changes\/\{name\}\/\./);
+  assert.match(coordinator, /artifact-feedback-gate\.md/);
+  assert.match(coordinator, /Spec proposal done in openspec\/changes\/\{name\}\/\./);
+  assert.match(worker, /decision[- ]summary/i);
   assert.doesNotMatch(core, /sai\/orchestration\/inline-invocation\.md/);
 });
 

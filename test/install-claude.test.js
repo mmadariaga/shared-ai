@@ -143,11 +143,11 @@ test('installClaude copies sai/commands/*.md to dest/sai/commands/', () => {
   const saiCmdDir = path.join(tmpDir, 'sai', 'commands');
   assert.ok(fs.existsSync(saiCmdDir), 'sai/commands/ dir should exist');
   const files = fs.readdirSync(saiCmdDir);
-  assert.ok(files.includes('sai-1-spec.md'), 'sai-1-spec.md should be in sai/commands/');
+  assert.ok(files.includes('sai-4-apply.md'), 'sai-4-apply.md should be in sai/commands/');
   for (const file of [path.join('design', 'coordinator.md'), path.join('design', 'invocation.md'), path.join('implement', 'coordinator.md'), path.join('implement', 'invocation.md')]) {
     assert.ok(fs.existsSync(path.join(saiCmdDir, file)), `${file} should be projected`);
   }
-  for (const file of ['sai-2-design.md', 'sai-3-implement.md']) {
+  for (const file of ['sai-1-spec.md', 'sai-5-review.md', 'sai-6-security.md', 'sai-7-performance.md', 'sai-8-accessibility.md', 'sai-2-design.md', 'sai-3-implement.md']) {
     assert.equal(fs.existsSync(path.join(saiCmdDir, file)), false, `${file} should not be projected`);
   }
   fs.rmSync(tmpDir, { recursive: true, force: true });

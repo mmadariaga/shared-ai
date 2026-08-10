@@ -167,6 +167,8 @@ test('standalone policies have one canonical home and active fetches use it', ()
       .map(entry => artifact(`sai/commands/${entry.name}`)),
     artifact('sai/instructions/apply.md'),
     artifact('sai/instructions/commit.md'),
+    artifact('sai/commands/spec/coordinator.md'),
+    artifact('sai/commands/design/coordinator.md'),
     artifact('sai/orchestration/workers/sai-2-design-worker.md'),
   ].join('\n');
   assert.doesNotMatch(activeSources, /@sai\/instructions\/(?:artifact-feedback-gate|change-picker|commit-rules|prereqs|status-picker)\.md/);
