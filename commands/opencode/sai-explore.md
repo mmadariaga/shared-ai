@@ -1,5 +1,6 @@
 ---
 description: Explore mode wrapper — thinking partner for ideas, problems, and requirements. Wraps opsx:explore skill. Optionally pass a change name to explore an existing change.
+argument-hint: "[optional: change-name or topic] [--overview-lang <language>] [--fast-track]"
 model: opencode-go/deepseek-v4-flash
 variant: max
 ---

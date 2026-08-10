@@ -634,3 +634,51 @@ test('Claude Code and opencode consume the same shared closure contract', () => 
     assert.doesNotMatch(opencode, literal);
   }
 });
+
+test('Step 1 parses an optional overview language before fast-track and defaults to English', () => {
+  const source = spec('sai/commands/sai-explore.md');
+
+  assert.match(source, /## Overview-language parse/);
+  assert.match(source, /--overview-lang <language>/);
+  assert.match(source, /English/);
+  assert.match(source, /non-empty/);
+  assert.match(source, /duplicate/i);
+  assert.match(source, /missing.*value|value.*missing/i);
+  assert.match(source, /before.*resolution|resolution.*before/i);
+  assert.match(source, /--fast-track/);
+});
+
+test('Step 1 forwards selected language only through supervised design state', () => {
+  const source = spec('sai/instructions/explore.md');
+
+  assert.match(source, /overview_language/);
+  assert.match(source, /--overview-lang/);
+  assert.match(source, /selected.*language|language.*selected/i);
+  assert.match(source, /arguments_value:\s*"\{name\} --fast-track"/);
+  assert.match(source, /arguments_value:\s*"\{name\} --fast-track --overview-lang \{overview_language\}"/);
+  assert.match(source, /not.*persist|never.*persist/i);
+  assert.match(source, /failed\/cancelled retry|failed or cancelled retry|retry/i);
+});
+
+test('Step 1 keeps explore wrapper documentation equivalent across both harnesses', () => {
+  for (const relativePath of [
+    'commands/claude/sai-explore.md',
+    'commands/opencode/sai-explore.md',
+  ]) {
+    const source = spec(relativePath);
+    assert.match(
+      source,
+      /argument-hint:.*--overview-lang <language>.*--fast-track/,
+      `${relativePath} should document both optional flags`
+    );
+  }
+});
+
+test('Step 1 rejects malformed language input before dispatch', () => {
+  const source = exploreContract();
+
+  assert.match(source, /Missing value for --overview-lang|missing.*value.*--overview-lang/i);
+  assert.match(source, /duplicate.*--overview-lang|--overview-lang.*duplicate/i);
+  assert.match(source, /no.*resolution|before.*change.*resolution/i);
+  assert.match(source, /no.*dispatch|without.*dispatch/i);
+});

@@ -205,8 +205,9 @@ The full `Ready to Propose` block(s) are printed only when the user explicitly a
     - `specs_converged_changes`: names whose spec review converged and whose spec artifact gate proceeded; membership survives a failed or cancelled design worker.
     - `auto_answered`: phase-keyed `spec` and `design` ordered in-conversation-only auto-answer records containing exact question, forwarded answer, and grounding citation.
     - `escalated_count`: phase-keyed `spec` and `design` counts, with a running escalated count for each phase.
-    - `review_passes`: phase-keyed `spec` and `design` completed-pass counts.
-    - `finding_history`: phase-keyed `spec` and `design` ordered pass-local finding and disposition records.
+     - `review_passes`: phase-keyed `spec` and `design` completed-pass counts.
+     - `finding_history`: phase-keyed `spec` and `design` ordered pass-local finding and disposition records.
+     - `overview_language`: the selected non-empty language token for the active supervised invocation, or `English` when the option was absent; this value is conversation-only and is cleared when the active run ends.
 
     Spec and design review and autonomy records remain separate. State is chat-scoped, in-conversation-only, and is never read from or written to repository state. A worker `failed` or `cancelled` result leaves the change uncompleted and retryable at that worker's phase. Cap exhaustion, reviewer failure, reviewer cancellation, and severity-contract rejection follow the phase worker's terminal result for `completed_changes`.
 
@@ -298,18 +299,27 @@ The full `Ready to Propose` block(s) are printed only when the user explicitly a
 
      Report the number of spec review passes and that the last completed review found no `High` findings. When accepted `Medium` or `Low` edits changed artifacts during the converging pass, state that the resulting artifact state was not re-reviewed and do not claim that edited state has no `High` findings. Print `Autonomy audit - supervised spec phase` in the existing pinned field order before dispatching the design worker.
 
-     Set `active_phase: design` and dispatch the existing sai-2 design worker through the active binding with exactly:
+      Set `active_phase: design`.
 
-     ```yaml
-     wrapper_echo_value: ""
-     arguments_value: "{name} --fast-track"
-     ```
+       **Chained design envelope:** Preserve the existing `--fast-track` argument. When no overview language was selected, dispatch the existing sai-2 design worker with exactly:
+
+       ```yaml
+       wrapper_echo_value: ""
+       arguments_value: "{name} --fast-track"
+       ```
+
+       When `overview_language` is selected, dispatch the same worker with exactly:
+
+       ```yaml
+       wrapper_echo_value: ""
+       arguments_value: "{name} --fast-track --overview-lang {overview_language}"
+       ```
+
+       The selected value remains only in the active supervised invocation. Clear it with the active state at the applicable terminal outcome; never persist it and never inject it into a later isolated design chat or a failed/cancelled retry.
 
      The same `start-pipeline` token and `active_change` remain in force. A non-convergent spec ending - cap exhaustion, `review_failed`, `review_cancelled`, severity-contract violation, or spec worker `failed` or `cancelled` - reports its existing deterministic result and autonomy audit, does not dispatch the design worker, and ends the active interval. A spec cap exhaustion does not dispatch design. Spec reviewer failure or cancellation does not dispatch design. A failed or cancelled spec-worker result does not dispatch design. Mark completion only when the applicable worker result was `completed`. This is the spec-to-design transition adapter; a non-convergent spec ending does not dispatch design.
 
-     **Chained design envelope**: The chained design dispatch uses the unchanged active binding and the exact envelope above. It uses the current approved spec artifacts and the selected change's crystallized block; it does not regenerate the spec artifacts.
-
-     **Chained design lifecycle**: Accept only the closed design worker statuses and the existing separate notice shape. Union `changed_files` in first-seen order. A notice is not a status: print its exact message and continue the same worker with exactly `continue_after_notice`; do not record that acknowledgement as user input, opaque history, pending feedback, or an autonomy answer. Continue `needs_input` on the same worker first. Preserve the existing one-replacement reconstruction behavior when same-worker continuation fails.
+      **Chained design lifecycle**: Accept only the closed design worker statuses and the existing separate notice shape. Union `changed_files` in first-seen order. A notice is not a status: print its exact message and continue the same worker with exactly `continue_after_notice`; do not record that acknowledgement as user input, opaque history, pending feedback, or an autonomy answer. Continue `needs_input` on the same worker first. Preserve the existing one-replacement reconstruction behavior when same-worker continuation fails.
 
      **Design question autonomy**: Apply the same qualitative Confidence Threshold, with ambiguity resolving toward escalation. The permitted grounding set is limited to the design worker's `needs_input` payload, the selected change's crystallized block, approved spec artifacts, and design artifacts (`design.md`, `tasks.md`, and `interfaces.md`) written so far. The surrounding explore conversation and unrelated repository context are excluded. Auto-answer only when clearly grounded and clearly above threshold, using one worker-offered option value; record the exact question, answer, and citation under `auto_answered.design` and emit the existing minimal interim notice. Otherwise present the exact question and ordered options unchanged, increment `escalated_count.design`, and continue the same design worker with only the user's selected value. Borderline answers escalate.
 
