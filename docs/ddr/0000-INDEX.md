@@ -82,6 +82,8 @@ This index groups the DDRs in `docs/ddr/` by **command** and by **cross-cutting 
 - [0109 — The delegation envelope's status is reserved for dispatch outcomes; check verdicts travel only in the output payload](./0109-delegation-envelope-status-reserved-for-dispatch-outcomes.md)
 - [0121 — The active review check is a sticky chat-scoped reference selected once at loop start](./0121-active-review-check-sticky-reference-selected-at-loop-start.md)
 - [0122 — The in-progress state is render-only: setting, advancing, or resolving it never marks or clears an item](./0122-in-progress-state-is-render-only.md)
+- [0123 — Closure State is conversation-only and has exactly three lifecycle values](./0123-closure-state-is-conversation-only-and-has-three-lifecycle-values.md)
+- [0124 — Active exploration uses question-first closure and repeatable reminders without repeating readiness](./0124-question-first-closure-repeats-without-repeating-readiness.md)
 
 ### `/sai-backfill`
 
@@ -175,6 +177,8 @@ This index groups the DDRs in `docs/ddr/` by **command** and by **cross-cutting 
 - [0105 — Severity-prefixed identifiers for artifact review findings](./0105-severity-prefixed-identifiers-for-artifact-review-findings.md)
 - [0121 — The active review check is a sticky chat-scoped reference selected once at loop start](./0121-active-review-check-sticky-reference-selected-at-loop-start.md)
 - [0122 — The in-progress state is render-only: setting, advancing, or resolving it never marks or clears an item](./0122-in-progress-state-is-render-only.md)
+- [0123 — Closure State is conversation-only and has exactly three lifecycle values](./0123-closure-state-is-conversation-only-and-has-three-lifecycle-values.md)
+- [0124 — Active exploration uses question-first closure and repeatable reminders without repeating readiness](./0124-question-first-closure-repeats-without-repeating-readiness.md)
 
 ### Artifact metadata & routing tokens
 
@@ -195,4 +199,3 @@ This index groups the DDRs in `docs/ddr/` by **command** and by **cross-cutting 
 | [0062](./0062-field-9-soft-degradation-stated-at-two-sites.md) | amends | [0026](./0026-stable-eight-field-report.md) |
 
 ## Superseded DDRs (historical)
-
