@@ -594,3 +594,43 @@ test('Step 2 blind supervision rejects duplicate starts until the chained design
   assert.match(source, /completed_changes.*applicable terminal worker result/i);
   assert.match(source, /specs_converged_changes.*active_phase.*design/i);
 });
+
+test('active exploration closure defines the three conversation-only states and success-only rule', () => {
+  const source = spec('sai/instructions/explore.md');
+
+  assert.match(source, /\*\*Pre-crystallization closure \(sai-explore only\):\*\*/);
+  assert.match(source, /The state is exactly one of `active-uncrystallized`, `crystallized`, or `discarded`/);
+  assert.match(source, /Before a candidate idea exists, no Closure State is active/);
+  assert.match(source, /Once a candidate idea exists under active exploration, its state starts as `active-uncrystallized`/);
+  assert.match(source, /The one-time readiness signal remains at most once per stable idea/);
+  assert.match(source, /On every successful turn while the state is `active-uncrystallized`/);
+  assert.match(source, /genuine unresolved question remains/);
+  assert.match(source, /When no genuine unresolved question remains/);
+  assert.match(source, /Say `crystallize` when ready; crystallization generates the paste-ready prompt for `\/sai-1-spec`/);
+  assert.match(source, /every later successful qualifying turn/);
+});
+
+test('Claude Code and opencode consume the same shared closure contract', () => {
+  const shared = spec('sai/instructions/explore.md');
+  const claude = spec('commands/claude/sai-explore.md');
+  const opencode = spec('commands/opencode/sai-explore.md');
+
+  assert.match(claude, /Fetch @sai\/commands\/sai-explore\.md/);
+  assert.match(opencode, /Fetch @sai\/commands\/sai-explore\.md/);
+  assert.equal(
+    claude.match(/Fetch @sai\/commands\/sai-explore\.md/)?.[0],
+    opencode.match(/Fetch @sai\/commands\/sai-explore\.md/)?.[0]
+  );
+
+  for (const literal of [
+    /active-uncrystallized/,
+    /crystallized/,
+    /discarded/,
+    /crystallize/,
+    /\/sai-1-spec/,
+  ]) {
+    assert.match(shared, literal);
+    assert.doesNotMatch(claude, literal);
+    assert.doesNotMatch(opencode, literal);
+  }
+});
