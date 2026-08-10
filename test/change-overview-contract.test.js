@@ -215,27 +215,64 @@ test('non-current overview produces an availability report, not a review', () =>
     'the availability report should carry no findings tally');
 });
 
-test('findings are accepted one at a time in deterministic order', () => {
+test('review output is a single findings block handed off without acceptance', () => {
   const explore = artifact('sai/instructions/explore.md');
 
-  assert.match(explore, /Accept\s*\/\s*Decline|Accept.*Decline/i,
-    'each finding should be decided via an Accept/Decline picker');
-  assert.match(explore, /High[\s\S]{0,200}Medium[\s\S]{0,200}Low/,
+  const blockStart = explore.indexOf('When a review transaction surfaces findings');
+  assert.ok(blockStart !== -1, 'the loop should define a findings-block paragraph for review transactions');
+  const nextWhen = explore.indexOf('\n    - When', blockStart);
+  const blockEnd = nextWhen === -1 ? blockStart + 1600 : nextWhen;
+  const block = explore.slice(blockStart, blockEnd);
+
+  assert.match(block, /Finding\s+H\d+/i,
+    'the findings block should open with a severity-prefixed identifier heading');
+  assert.match(block, /Finding\s+H1/i,
+    'the findings block should carry the Finding H1 label');
+  assert.match(block,
+    /`?Severity`?[\s\S]{0,120}`?Artifact location`?[\s\S]{0,120}`?Issue`?[\s\S]{0,120}`?Recommended correction`?/,
+    'the shared finding shape should list Severity, Artifact location, Issue, Recommended correction in order');
+  assert.match(block, /Summary:\s*High=<count>\s*Medium=<count>\s*Low=<count>/,
+    'the findings block should close with the base-form Summary tally');
+  assert.match(block, /High[\s\S]{0,200}Medium[\s\S]{0,200}Low/,
     'findings should be ordered High then Medium then Low within a bounded window');
-  assert.match(explore, /ascending numeric identifier|ascending numeric/i,
+  assert.match(block, /ascending numeric identifier|ascending numeric/i,
     'deterministic order should break ties by ascending numeric identifier');
-  assert.match(explore, /confirmation of the accepted set/i,
-    'a single confirmation of the accepted set should precede handoff');
+  assert.match(block, /every finding|all findings|each finding/i,
+    'the single findings block should include every finding from the transaction');
+  assert.match(block, /findings block[\s\S]{0,200}(?:is the handoff|paste|feedback gate)/i,
+    'the findings block itself should be the handoff payload');
+  assert.match(block, /never[\s\S]{0,80}(?:filters|applies|forwards|regenerates)/i,
+    'the review loop should stay strictly read-only');
+  assert.doesNotMatch(block, /present them for acceptance as a distinct step/i,
+    'the loop should not present a distinct acceptance step');
+  assert.doesNotMatch(block, /confirmation of the accepted set/i,
+    'the loop should not confirm an accepted set before handoff');
+  assert.doesNotMatch(block, /^change:/m,
+    'the findings block should not carry a change: header line');
 });
 
-test('design-artifact corrections route to the design worker via DesignCorrectionRequest', () => {
+test('findings route to the design worker at the feedback gate without a handoff block', () => {
   const explore = artifact('sai/instructions/explore.md');
 
-  assert.match(explore, /## DesignCorrectionRequest/, 'the loop should emit a ## DesignCorrectionRequest block');
-  assert.match(explore, /feedback gate/i, 'the block should instruct pasting at the feedback gate');
-  assert.match(explore, /apply in place/i, 'accepted corrections should apply in place');
-  assert.match(explore, /\/sai-1-spec[\s\S]{0,200}(?:cannot consume|not offered)/i,
-    'the spec-amendment path should not be offered for design corrections');
+  const blockStart = explore.indexOf('When a review transaction surfaces findings');
+  assert.ok(blockStart !== -1, 'the loop should define a findings-block paragraph for review transactions');
+  const nextWhen = explore.indexOf('\n    - When', blockStart);
+  const blockEnd = nextWhen === -1 ? blockStart + 1600 : nextWhen;
+  const block = explore.slice(blockStart, blockEnd);
+
+  assert.doesNotMatch(block, /^## DesignCorrectionRequest/m,
+    'the loop should not emit a ## DesignCorrectionRequest heading');
+  assert.doesNotMatch(block, /^change:/m,
+    'the findings block should not carry a change: header line');
+  assert.match(block, /\/sai-2-design/,
+    'the findings block should route through a re-invoked /sai-2-design');
+  assert.match(block, /feedback gate/i, 'the findings should be pasted at the feedback gate');
+  assert.match(block, /design-artifact findings[\s\S]{0,80}directly/,
+    'design-artifact findings should be applied directly by the design worker');
+  assert.match(block, /apply in place/i,
+    'the spec-amendment path should be consent-gated and apply in place');
+  assert.match(block, /\/sai-1-spec[\s\S]{0,200}(?:cannot consume|not offered)/i,
+    'the spec-amendment path should not offer /sai-1-spec for design corrections');
 });
 
 test('completed Review change-overview participates in reviewed-sai-2 marking', () => {
