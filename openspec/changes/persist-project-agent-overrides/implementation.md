@@ -1,3 +1,47 @@
+# Persist project-local agent overrides
+
+## Goal
+
+Persist selected Claude Code and opencode agent tunables into user-owned
+project-local agent files while preserving existing content and keeping setup
+successful when optional post-setup customization is skipped or partially
+fails.
+
+## Prerequisites
+
+- Detect the current git branch with `git rev-parse --abbrev-ref HEAD` (or equivalent). If the command returns empty (detached HEAD), use the literal text `detached HEAD` for option 2.
+- Resolve the repository **default branch** dynamically — do **not** assume `main`. Apply this chain in order:
+  1. Remote head — `git symbolic-ref --quiet refs/remotes/origin/HEAD`; on success take the trailing path segment (`refs/remotes/origin/main` → `main`).
+  2. Else whichever of `main` / `master` exists locally (`git show-ref --verify --quiet refs/heads/<name>`).
+  3. If both `main` and `master` exist locally and no remote head resolved, prefer `main`.
+  4. If neither exists or there is no `origin`, treat the current branch as the resolved default branch (no distinct default exists, so the base prompt below is skipped).
+- Present exactly three options in the user's input language (English fallback), in this fixed order. Canonical English labels — translate to match the user's input language, preserving meaning and order:
+  1. `Suggest branch "persist-project-agent-overrides"` — the change-name-derived branch (default).
+  2. `Stay on current branch "<current-branch>"` — the detected current branch, or `detached HEAD`.
+  3. `Enter branch name manually` — free text for a custom branch name.
+- No option is prohibited. The user bears full responsibility for the choice.
+- **Branch-base prompt (new branches only).** When the selected branch does **not** already exist — option 1, or an option-3 name not present in the repository — present a 2-option closed choice for its base branch, before creating it, through the harness option-picker (`AskUserQuestion` on Claude Code per the closed-choice-prompt rule in `remember.md`; plain-text fallback where no picker exists). Present them in this order; labels localize to the user's input language (English fallback), surrounding text stays English:
+  1. `Base on default branch "<default-branch>"` — the dynamically resolved default; this is the pre-selected default option.
+  2. `Base on current branch "<current-branch>"` — the current branch, or the literal `detached HEAD` when in detached HEAD.
+- Record the chosen base and create the new branch from it before implementing. Skip the base prompt when staying on the current branch, when the target branch already exists, or when the current branch already equals the resolved default branch; in the last case create directly from the default branch.
+
+### Step-by-Step Instructions
+
+#### Step 1: Materialize selected harness overrides
+
+*(Testable step — use RED → GREEN)*
+
+##### RED phase
+
+- [x] Write the focused tests into `test/agent-customization-menu.test.js` using the exact Step 1 assertions in `interfaces.md`. Keep the fixtures isolated under `.tmp/persist-project-agent-overrides/` and inject package, project, and harness-global roots through the adapter options. Cover first materialization, source cloning without package fallback, tunable-only preservation and updates, repeated settings, selected-agent limits, cancellation, non-TTY behavior, OpenCode's write-free selector, the Claude catalog matrix, missing-source soft skips, and atomic write/rename failures.
+- [x] Verify RED: run `node --test test/agent-customization-menu.test.js` — expected: **assertion failure** attributable to the current fake settings/non-persistent implementation, not a setup, import, syntax, or compilation error.
+- [x] **GATE — DO NOT PROCEED to GREEN until RED is verified.** If the test passes, or the failure is not an assertion failure caused by the missing behavior, stop and report the RED failure.
+
+##### GREEN phase (only after RED is verified)
+
+- [x] Replace `bin/agent-customization.js` with the following complete CommonJS implementation. It keeps selectors filesystem-free, resolves the roster from `packageRoot`, resolves missing-agent bytes only from `globalAgentRoot`, patches only top-level harness tunables, and performs every destination write through a same-directory temporary file followed by rename:
+
+```javascript
 'use strict';
 
 const fs = require('fs');
@@ -62,11 +106,7 @@ function patchFrontmatter(text, tunableKeys, settings) {
     }
 
     const key = match[1];
-    if (!selected.has(key)) {
-      if (key === 'variant' && settings.variant === undefined) continue;
-      patchedFrontmatter.push(line);
-      continue;
-    }
+    if (!selected.has(key)) continue;
     if (seen.has(key)) continue;
     patchedFrontmatter.push(`${key}: ${selected.get(key)}`);
     seen.add(key);
@@ -365,6 +405,7 @@ async function opencodeSelectSettings(subsetLabel, promptChoice, runCommand) {
   }
   const matched = records.find(record => record.identity === identity);
   if (!matched) return null;
+
   let variants;
   try {
     variants = extractVariants(matched.record);
@@ -379,9 +420,7 @@ async function opencodeSelectSettings(subsetLabel, promptChoice, runCommand) {
     variantOptions.map(option => option.display)
   );
   const selected = variantOptions.find(option => option.display === selectedDisplay);
-  if (selected === undefined || selected.value === NO_VARIANT) {
-    return selected === undefined ? null : { model: identity };
-  }
+  if (selected === undefined || selected.value === NO_VARIANT) return selected === undefined ? null : { model: identity };
   return { model: identity, variant: selected.value };
 }
 
@@ -462,8 +501,18 @@ async function runPostSetupMenu({
   if (harness !== 'OpenCode' && harness !== 'Claude Code') return skippedOutcome('cancelled');
 
   const adapter = harness === 'OpenCode'
-    ? module.exports.createOpencodeAdapter({ projectPath, packageRoot, globalAgentRoot: opencodeGlobalAgentRoot, promptChoice })
-    : module.exports.createClaudeAdapter({ projectPath, packageRoot, globalAgentRoot: claudeGlobalAgentRoot, promptChoice });
+    ? module.exports.createOpencodeAdapter({
+      projectPath,
+      packageRoot,
+      globalAgentRoot: opencodeGlobalAgentRoot,
+      promptChoice,
+    })
+    : module.exports.createClaudeAdapter({
+      projectPath,
+      packageRoot,
+      globalAgentRoot: claudeGlobalAgentRoot,
+      promptChoice,
+    });
   const agents = adapter.enumerateAgents();
   const selection = await promptChecklist(agents, agents, undefined, AGENT_CHECKLIST_LEGEND);
   if (!selection || selection.status === 'cancelled') return skippedOutcome('cancelled');
@@ -493,7 +542,9 @@ async function runPostSetupMenu({
     diagnostics.push(result.diagnostic);
   }
 
-  if (failedAgents.length > 0) return { status: 'persistence-failed', failedAgents, diagnostics };
+  if (failedAgents.length > 0) {
+    return { status: 'persistence-failed', failedAgents, diagnostics };
+  }
   return { status: 'completed', skippedAgents, diagnostics };
 }
 
@@ -512,3 +563,98 @@ module.exports = {
   materializeLocalOverride,
   atomicReplace,
 };
+```
+- [x] Verify GREEN: run `node --test test/agent-customization-menu.test.js` — expected: PASS, including the atomic failure cases and all isolated-root assertions.
+
+##### Step 1 Verification Checklist
+
+**Automated (agent runs before stopping):**
+
+- [x] RED verified — `node --test test/agent-customization-menu.test.js` fails with a behavior assertion before the production replacement.
+- [x] GREEN verified — `node --test test/agent-customization-menu.test.js` passes after the production replacement.
+- [x] `node --check bin/agent-customization.js` — expected result: no syntax errors.
+
+*(No Human checks — this is service-side CLI and filesystem behavior with no observable browser surface.)*
+
+#### Step 1 STOP & COMMIT
+
+**sai-4-apply:** Run all Automated checks above and confirm they pass before stopping.
+
+**STOP & COMMIT:** Stage and commit after Automated checks pass. No browser verification is required for this service-side step.
+
+#### Step 2: Keep setup completion non-fatal for expected customization outcomes
+
+*(Testable step — use RED → GREEN)*
+
+##### RED phase
+
+- [ ] Extend `test/agent-customization-menu.test.js` with the exact Step 2 assertions in `interfaces.md`: inject `completed`, `skipped`, and `persistence-failed` post-setup outcomes and verify required setup still returns `success`; inject an unclassified thrown exception and verify `post-setup-failure`; verify post-setup ordering and no unrelated-file mutation.
+- [ ] Verify RED: run `node --test test/agent-customization-menu.test.js` — expected: assertion failure attributable to setup treating a classified post-setup failure as fatal.
+- [ ] **GATE — DO NOT PROCEED to GREEN until RED is verified.** If the test passes, or the failure is not an assertion failure caused by the missing non-fatal boundary, stop and report the RED failure.
+
+##### GREEN phase (only after RED is verified)
+
+- [ ] In `bin/setup.js`, replace the existing post-setup call and rejection-only handling in `main` with this complete block immediately after the existing `console.log('SAI workflow configured...')` section:
+
+```javascript
+  let customizationOutcome;
+  try {
+    customizationOutcome = await postSetupMenu({ projectPath });
+  } catch (err) {
+    console.error(err);
+    return 'post-setup-failure';
+  }
+
+  if (customizationOutcome === undefined) {
+    return 'success';
+  }
+
+  if (customizationOutcome.status === 'completed'
+      || customizationOutcome.status === 'skipped'
+      || customizationOutcome.status === 'persistence-failed') {
+    for (const diagnostic of customizationOutcome.diagnostics || []) {
+      console.error(`Post-setup customization: ${diagnostic}`);
+    }
+    return 'success';
+  }
+
+  console.error(`Unexpected post-setup customization outcome: ${customizationOutcome.status}`);
+  return 'post-setup-failure';
+```
+- [ ] Verify GREEN: run `node --test test/agent-customization-menu.test.js` — expected: PASS, including all classified outcome and unclassified-exception integration assertions.
+
+##### Step 2 Verification Checklist
+
+**Automated (agent runs before stopping):**
+
+- [ ] RED verified — the focused suite fails before the setup boundary is changed.
+- [ ] GREEN verified — `node --test test/agent-customization-menu.test.js` passes after the setup boundary is changed.
+- [ ] `npm test` — expected result: the complete Node test suite passes, with the summary evaluated from its `tests`, `pass`, and `fail` count lines.
+- [ ] `git diff --check` — expected result: no whitespace errors.
+
+*(No Human checks — setup and post-setup customization are service-side CLI behavior with no observable browser surface.)*
+
+#### Step 2 STOP & COMMIT
+
+**sai-4-apply:** Run all Automated checks above and confirm they pass before stopping.
+
+**STOP & COMMIT:** Stage and commit after Automated checks pass. No browser verification is required for this service-side step.
+
+## Appendix: Plan vs Final Implementation
+
+This section documents deviations between the original plan and the code that was actually merged.
+
+### Step 1 — Legacy customization assertions migrated
+
+**Plan:** Extend the focused customization suite with the Step 1 persistence assertions.
+
+**Final:** The focused suite also migrated pre-existing tests that asserted the retired non-persistent adapter results and fake settings exports to the new closed persistence contract.
+
+**Reason:** The Step 1 contract intentionally replaces in-memory override objects and undefined menu outcomes with persistent materialization and classified customization outcomes; retaining those assertions prevented the required GREEN suite from passing.
+
+## Appendix: Execution Telemetry
+
+| Step | dispatch | phase | attempts | first_failure | note |
+|---|---|---|---|---|---|
+| 1 | writer | red | 1 | assertion | |
+| 1 | implementation | green | 1 | other | |

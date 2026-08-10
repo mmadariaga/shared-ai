@@ -12,11 +12,8 @@ const { main } = require('../bin/setup.js');
 
 const {
   runPostSetupMenu,
+  CLAUDE_SETTINGS_CATALOG: EXPORTED_CLAUDE_SETTINGS_CATALOG,
   NO_VARIANT,
-  FAKE_MODEL_OPTIONS,
-  FAKE_EFFORT_OPTIONS,
-  fakeSelectSettings,
-  fakeCreateLocalOverride,
   createOpencodeAdapter,
   createClaudeAdapter,
   defaultRunCommand,
@@ -71,18 +68,22 @@ function snapshotTree(dir) {
   return snapshot;
 }
 
-function makeFakeAdapter(agents, ops) {
+function makeFakeAdapter(agents, ops, settings = { model: 'opencode-go/test-model' }) {
   return {
     enumerateAgents() {
       return agents;
     },
     async selectSettings(agentName) {
       ops.select.push(agentName);
-      return { model: `model:${agentName}`, effort: `effort:${agentName}` };
+      return settings;
     },
     createLocalOverride(agentName, settings) {
       ops.create.push({ agentName, settings });
-      return { agent: agentName, ...settings, persistent: false };
+      return {
+        status: 'persisted',
+        agent: agentName,
+        destination: path.join(REPO_ROOT, '.tmp', 'adapter-spy', `${agentName}.md`),
+      };
     },
   };
 }
@@ -108,10 +109,36 @@ function makeScratchRepo() {
     path.join(scratch, 'sai', 'install-manifest.json')
   );
   for (const name of OPENCODE_AGENTS) {
-    fs.writeFileSync(path.join(scratch, 'agents', 'opencode', `${name}.md`), `sentinel ${name}\n`);
+    fs.writeFileSync(
+      path.join(scratch, 'agents', 'opencode', `${name}.md`),
+      [
+        '---',
+        `name: ${name}`,
+        'description: isolated test source',
+        'model: opencode-go/old-model',
+        'variant: old',
+        '---',
+        '',
+        `sentinel ${name}`,
+        '',
+      ].join('\n')
+    );
   }
   for (const name of CLAUDE_AGENTS) {
-    fs.writeFileSync(path.join(scratch, 'agents', 'claude', `${name}.md`), `sentinel ${name}\n`);
+    fs.writeFileSync(
+      path.join(scratch, 'agents', 'claude', `${name}.md`),
+      [
+        '---',
+        `name: ${name}`,
+        'description: isolated test source',
+        'model: opus',
+        'effort: high',
+        '---',
+        '',
+        `sentinel ${name}`,
+        '',
+      ].join('\n')
+    );
   }
   return scratch;
 }
@@ -127,41 +154,11 @@ function recordChecklist(calls, outcome) {
   };
 }
 
-// Combined-frame helpers. The delimiter literal joining a model option to an
-// effort option is implementation-defined (documented in proposal.md, which
-// the blind test-writer must not read), so entries are parsed structurally
-// from the interface contract's label shape (model + fixed delimiter +
-// effort): an entry must start with a frozen model option and end with a
-// frozen effort option, with a non-empty delimiter between them. The frozen
-// placeholder values are prefix/suffix-unambiguous ('<model>' is not a prefix
-// of '<model-alt>', and '<effort>' is not a suffix of '<effort-alt>').
-function splitCombinedEntry(entry) {
-  for (const model of FAKE_MODEL_OPTIONS) {
-    if (!entry.startsWith(model)) continue;
-    for (const effort of FAKE_EFFORT_OPTIONS) {
-      if (!entry.endsWith(effort)) continue;
-      if (entry.length > model.length + effort.length) {
-        return { model, effort };
-      }
-    }
-  }
-  return null;
-}
-
-// Returns the first combined entry in `options` whose parts are the given
-// model and effort options; returns undefined when no entry matches.
-function findCombinedEntry(options, model, effort) {
-  return options.find(entry => {
-    const parts = splitCombinedEntry(entry);
-    return parts !== null && parts.model === model && parts.effort === effort;
-  });
-}
-
 after(() => {
   fs.rmSync(SCRATCH_ROOT, { recursive: true, force: true });
 });
 
-test('runPostSetupMenu skips when not a TTY: resolves skipped, never prompts, creates no adapter', async () => {
+test('runPostSetupMenu skips when not a TTY: returns the closed non-tty outcome, never prompts, creates no adapter', async () => {
   let promptCalls = 0;
   let opencodeFactoryCalls = 0;
   let claudeFactoryCalls = 0;
@@ -181,7 +178,12 @@ test('runPostSetupMenu skips when not a TTY: resolves skipped, never prompts, cr
         return 'Customize models';
       },
     });
-    assert.equal(result, 'skipped');
+    assert.deepEqual(result, {
+      status: 'skipped',
+      reason: 'non-tty',
+      skippedAgents: [],
+      diagnostics: [],
+    });
     assert.equal(promptCalls, 0, 'promptChoice should never be called when not a TTY');
     assert.equal(opencodeFactoryCalls, 0, 'no opencode adapter should be created when skipped');
     assert.equal(claudeFactoryCalls, 0, 'no claude adapter should be created when skipped');
@@ -191,7 +193,7 @@ test('runPostSetupMenu skips when not a TTY: resolves skipped, never prompts, cr
   }
 });
 
-test('runPostSetupMenu resolves undefined when Exit is chosen: no harness picker, no checklist, no adapter', async () => {
+test('runPostSetupMenu returns cancelled when Exit is chosen: no harness picker, no checklist, no adapter', async () => {
   let promptCalls = 0;
   let opencodeFactoryCalls = 0;
   let claudeFactoryCalls = 0;
@@ -216,7 +218,12 @@ test('runPostSetupMenu resolves undefined when Exit is chosen: no harness picker
         return { status: 'confirmed', items: args[1] || [] };
       },
     });
-    assert.equal(result, undefined, 'completion and cancel-run both resolve undefined');
+    assert.deepEqual(result, {
+      status: 'skipped',
+      reason: 'cancelled',
+      skippedAgents: [],
+      diagnostics: [],
+    });
     assert.equal(promptCalls, 1, 'the main menu should be prompted exactly once');
     assert.equal(checklistCalls.length, 0, 'no checklist should be invoked after Exit');
     assert.equal(opencodeFactoryCalls, 0, 'no opencode adapter should be created on exit');
@@ -227,7 +234,7 @@ test('runPostSetupMenu resolves undefined when Exit is chosen: no harness picker
   }
 });
 
-test('customize OpenCode flow runs opencode ops for every selected agent, never invokes Claude, resolves undefined', async () => {
+test('customize OpenCode flow persists every selected agent, never invokes Claude', async () => {
   const opencodeOps = { select: [], create: [] };
   const claudeOps = { select: [], create: [] };
   let opencodeFactoryCalls = 0;
@@ -235,7 +242,10 @@ test('customize OpenCode flow runs opencode ops for every selected agent, never 
   const checklistCalls = [];
   const restoreOpencode = patchFactory('createOpencodeAdapter', () => {
     opencodeFactoryCalls += 1;
-    return makeFakeAdapter(OPENCODE_AGENTS, opencodeOps);
+     return makeFakeAdapter(OPENCODE_AGENTS, opencodeOps, {
+       model: 'opencode-go/test-model',
+       variant: 'high',
+     });
   });
   const restoreClaude = patchFactory('createClaudeAdapter', () => {
     claudeFactoryCalls += 1;
@@ -253,7 +263,11 @@ test('customize OpenCode flow runs opencode ops for every selected agent, never 
         return { status: 'confirmed', items: args[1] };
       },
     });
-    assert.equal(result, undefined, 'completion resolves undefined (retired customized-opencode token)');
+    assert.deepEqual(result, {
+      status: 'completed',
+      skippedAgents: [],
+      diagnostics: [],
+    });
     assert.equal(checklistCalls.length, 1, 'the checklist should be invoked exactly once');
     assert.equal(opencodeFactoryCalls, 1, 'createOpencodeAdapter should be invoked exactly once');
     assert.equal(claudeFactoryCalls, 0, 'createClaudeAdapter must never be invoked');
@@ -261,10 +275,7 @@ test('customize OpenCode flow runs opencode ops for every selected agent, never 
       'selectSettings should run exactly once for the whole confirmed subset');
     assert.deepEqual(opencodeOps.create.map(entry => entry.agentName), OPENCODE_AGENTS,
       'createLocalOverride should run exactly once per opencode agent');
-    const sharedOpenCodeSettings = {
-      model: `model:${OPENCODE_AGENTS.join(', ')}`,
-      effort: `effort:${OPENCODE_AGENTS.join(', ')}`,
-    };
+    const sharedOpenCodeSettings = { model: 'opencode-go/test-model', variant: 'high' };
     for (let i = 0; i < OPENCODE_AGENTS.length; i += 1) {
       assert.deepEqual(opencodeOps.create[i].settings, sharedOpenCodeSettings,
         'every opencode override should carry the identical shared selectSettings result');
@@ -275,7 +286,7 @@ test('customize OpenCode flow runs opencode ops for every selected agent, never 
   }
 });
 
-test('customize Claude Code flow runs claude ops for every selected agent, never invokes OpenCode, resolves undefined', async () => {
+test('customize Claude Code flow persists every selected agent, never invokes OpenCode', async () => {
   const opencodeOps = { select: [], create: [] };
   const claudeOps = { select: [], create: [] };
   let opencodeFactoryCalls = 0;
@@ -287,7 +298,7 @@ test('customize Claude Code flow runs claude ops for every selected agent, never
   });
   const restoreClaude = patchFactory('createClaudeAdapter', () => {
     claudeFactoryCalls += 1;
-    return makeFakeAdapter(CLAUDE_AGENTS, claudeOps);
+     return makeFakeAdapter(CLAUDE_AGENTS, claudeOps, { model: 'sonnet', effort: 'medium' });
   });
   try {
     const answers = ['Customize models', 'Claude Code'];
@@ -301,7 +312,11 @@ test('customize Claude Code flow runs claude ops for every selected agent, never
         return { status: 'confirmed', items: args[1] };
       },
     });
-    assert.equal(result, undefined, 'completion resolves undefined (retired customized-claude token)');
+    assert.deepEqual(result, {
+      status: 'completed',
+      skippedAgents: [],
+      diagnostics: [],
+    });
     assert.equal(checklistCalls.length, 1, 'the checklist should be invoked exactly once');
     assert.equal(claudeFactoryCalls, 1, 'createClaudeAdapter should be invoked exactly once');
     assert.equal(opencodeFactoryCalls, 0, 'createOpencodeAdapter must never be invoked');
@@ -309,10 +324,7 @@ test('customize Claude Code flow runs claude ops for every selected agent, never
       'selectSettings should run exactly once for the whole confirmed subset');
     assert.deepEqual(claudeOps.create.map(entry => entry.agentName), CLAUDE_AGENTS,
       'createLocalOverride should run exactly once per claude agent');
-    const sharedClaudeSettings = {
-      model: `model:${CLAUDE_AGENTS.join(', ')}`,
-      effort: `effort:${CLAUDE_AGENTS.join(', ')}`,
-    };
+    const sharedClaudeSettings = { model: 'sonnet', effort: 'medium' };
     for (let i = 0; i < CLAUDE_AGENTS.length; i += 1) {
       assert.deepEqual(claudeOps.create[i].settings, sharedClaudeSettings,
         'every claude override should carry the identical shared selectSettings result');
@@ -339,58 +351,46 @@ test('claude enumerateAgents returns exactly the 7 routed workers', () => {
     'claude agents should be exactly the 7 routed workers');
 });
 
-test('fakeSelectSettings asks one combined model×effort frame and resolves the confirmed entry', async () => {
+test('Claude settings selection asks one combined frame from the real catalog and resolves the confirmed pair', async () => {
   const calls = [];
   const promptSpy = async (question, options) => {
     calls.push({ question, options });
-    return findCombinedEntry(options, FAKE_MODEL_OPTIONS[0], FAKE_EFFORT_OPTIONS[1]);
+    return options.find(option => option.includes('sonnet') && option.includes('medium'));
   };
-  const settings = await fakeSelectSettings('explore', promptSpy);
+  const adapter = createClaudeAdapter({ repoRoot: REPO_ROOT, promptChoice: promptSpy });
+  const settings = await adapter.selectSettings('explore');
   assert.equal(calls.length, 1, 'exactly one combined prompt should run per invocation');
-  const expectedSize = FAKE_MODEL_OPTIONS.length * FAKE_EFFORT_OPTIONS.length;
+  const expectedSize = EXPORTED_CLAUDE_SETTINGS_CATALOG.models
+    .reduce((total, entry) => total + entry.efforts.length, 0);
   assert.equal(calls[0].options.length, expectedSize,
-    'the combined frame should offer the full model×effort Cartesian product');
-  for (let i = 0; i < calls[0].options.length; i += 1) {
-    const parts = splitCombinedEntry(calls[0].options[i]);
-    assert.ok(parts, `option ${i} should encode exactly one model together with one effort`);
-    assert.ok(FAKE_MODEL_OPTIONS.includes(parts.model),
-      `option ${i} should carry a frozen model option as its model part`);
-    assert.ok(FAKE_EFFORT_OPTIONS.includes(parts.effort),
-      `option ${i} should carry a frozen effort option as its effort part`);
-    const group = Math.floor(i / FAKE_EFFORT_OPTIONS.length);
-    assert.equal(parts.model, FAKE_MODEL_OPTIONS[group],
-      `option ${i} should be model-major: group ${group} carries FAKE_MODEL_OPTIONS[${group}]`);
-  }
-  assert.deepEqual(settings, { model: FAKE_MODEL_OPTIONS[0], effort: FAKE_EFFORT_OPTIONS[1] },
-    'confirming the entry whose parts are FAKE_MODEL_OPTIONS[0] + FAKE_EFFORT_OPTIONS[1] should resolve the pair');
+    'the combined frame should offer every valid real-catalog model×effort pair');
+  assert.ok(calls[0].options.every(option => typeof option === 'string' && option.includes(' | ')),
+    'each catalog entry should combine one model and one effort in the selector frame');
+  assert.deepEqual(settings, { model: 'sonnet', effort: 'medium' },
+    'confirming the real sonnet/medium catalog entry should resolve the pair');
 });
 
-test('claude adapter selectSettings drives one combined frame via the prompt boundary and returns the selected pair', async () => {
+test('claude adapter selectSettings drives one real combined frame via the prompt boundary and returns the selected pair', async () => {
   const calls = [];
   const promptSpy = async (question, options) => {
     calls.push({ question, options });
-    return findCombinedEntry(options, FAKE_MODEL_OPTIONS[1], FAKE_EFFORT_OPTIONS[0]);
+    return options.find(option => option.includes('sonnet') && option.includes('low'));
   };
   const adapter = createClaudeAdapter({ repoRoot: REPO_ROOT, promptChoice: promptSpy });
   const settings = await adapter.selectSettings('explore');
   assert.equal(calls.length, 1,
     'claude selectSettings(explore) should drive exactly one combined prompt');
-  assert.deepEqual(settings, { model: FAKE_MODEL_OPTIONS[1], effort: FAKE_EFFORT_OPTIONS[0] },
-    'claude selectSettings should resolve the confirmed combined entry to its model and effort values');
+  assert.deepEqual(settings, { model: 'sonnet', effort: 'low' },
+    'claude selectSettings should resolve the confirmed real catalog entry to its model and effort values');
 });
 
-test('each claude agent consumes exactly one combined frame and overrides map effort to the tunable key', async () => {
+test('each claude agent consumes exactly one real combined frame and resolves a catalog pair', async () => {
   let promptIndex = 0;
   const promptSpy = async (question, options) => {
-    const i = promptIndex;
+    const selected = options[promptIndex % options.length];
     promptIndex += 1;
-    const parts = findCombinedEntry(
-      options,
-      FAKE_MODEL_OPTIONS[Math.floor((i % 4) / 2)],
-      FAKE_EFFORT_OPTIONS[i % 2]
-    );
-    assert.ok(parts, `claude prompt ${i} should find the scripted combined entry`);
-    return parts;
+    assert.ok(selected, 'each Claude agent should receive a selectable real catalog entry');
+    return selected;
   };
   const adapter = createClaudeAdapter({ repoRoot: REPO_ROOT, promptChoice: promptSpy });
   const agents = adapter.enumerateAgents();
@@ -400,38 +400,38 @@ test('each claude agent consumes exactly one combined frame and overrides map ef
     `the enumerated agents should be exactly the ${CLAUDE_AGENTS.length} managed claude agents`);
 
   for (let i = 0; i < agents.length; i += 1) {
-    const expectedModel = FAKE_MODEL_OPTIONS[Math.floor((i % 4) / 2)];
-    const expectedEffort = FAKE_EFFORT_OPTIONS[i % 2];
     const settings = await adapter.selectSettings(agents[i]);
-    assert.deepEqual(settings, { model: expectedModel, effort: expectedEffort },
-      `claude selectSettings should resolve the scripted combined entry for agent ${i}`);
-    const override = adapter.createLocalOverride(agents[i], settings);
-    assert.deepEqual(override, {
-      agent: agents[i],
-      model: expectedModel,
-      effort: expectedEffort,
-      persistent: false,
-    }, 'the claude override should map the selected effort value to the effort key');
+    assert.ok(EXPORTED_CLAUDE_SETTINGS_CATALOG.models.some(entry => entry.model === settings.model
+      && entry.efforts.includes(settings.effort)),
+    `claude selectSettings should resolve a valid catalog pair for agent ${i}`);
   }
   assert.equal(promptIndex, agents.length,
     'selectSettings should consume exactly one combined prompt per claude agent');
 });
 
-test('opencode createLocalOverride conditionally includes variant and stays non-persistent', () => {
-  const adapter = createOpencodeAdapter({ repoRoot: REPO_ROOT });
-  const withVariant = adapter.createLocalOverride('explore', { model: '<model>', variant: 'high' });
-  assert.deepEqual(withVariant, {
-    agent: 'explore',
-    model: '<model>',
-    variant: 'high',
-    persistent: false,
-  }, 'the opencode override should carry the selected variant when one is chosen');
-  const withoutVariant = adapter.createLocalOverride('explore', { model: '<model>' });
-  assert.deepEqual(withoutVariant, {
-    agent: 'explore',
-    model: '<model>',
-    persistent: false,
-  }, 'the opencode override should omit the variant key when no variant was chosen');
+test('opencode createLocalOverride persists a selected variant through the adapter contract', () => {
+  const fixture = makePersistenceFixture();
+  try {
+    writeGlobalAgent(fixture, 'opencode', PERSIST_OPENCODE_AGENT, opencodeAgentSource());
+    const adapter = createOpencodeAdapter({
+      repoRoot: fixture.packageRoot,
+      projectPath: fixture.projectPath,
+      packageRoot: fixture.packageRoot,
+      globalAgentRoot: fixture.opencodeGlobalRoot,
+    });
+    const result = adapter.createLocalOverride(PERSIST_OPENCODE_AGENT, {
+      model: 'opencode-go/glm-5.2',
+      variant: 'high',
+    });
+    assert.equal(result.status, 'persisted');
+    assert.equal(result.agent, PERSIST_OPENCODE_AGENT);
+    assert.match(
+      fs.readFileSync(result.destination, 'utf8'),
+      /model: opencode-go\/glm-5\.2\nvariant: high/
+    );
+  } finally {
+    fs.rmSync(fixture.root, { recursive: true, force: true });
+  }
 });
 
 test('default command runner resolves Windows npm shims without interpolating arguments into shell syntax', () => {
@@ -476,28 +476,32 @@ test('default command runner keeps direct argument-vector execution outside Wind
   }]);
 });
 
-test('claude createLocalOverride returns agent, model, effort, persistent:false', () => {
-  const adapter = createClaudeAdapter({ repoRoot: REPO_ROOT });
-  const override = adapter.createLocalOverride('sai-5-review-worker', { model: '<model>', effort: '<effort>' });
-  assert.deepEqual(override, {
-    agent: 'sai-5-review-worker',
-    model: '<model>',
-    effort: '<effort>',
-    persistent: false,
-  }, 'the claude override shape should use the effort tunable key and stay non-persistent');
+test('claude createLocalOverride persists the selected model and effort through the adapter contract', () => {
+  const fixture = makePersistenceFixture();
+  try {
+    writeGlobalAgent(fixture, 'claude', PERSIST_CLAUDE_AGENT, claudeAgentSource());
+    const adapter = createClaudeAdapter({
+      repoRoot: fixture.packageRoot,
+      projectPath: fixture.projectPath,
+      packageRoot: fixture.packageRoot,
+      globalAgentRoot: fixture.claudeGlobalRoot,
+    });
+    const result = adapter.createLocalOverride(PERSIST_CLAUDE_AGENT, {
+      model: 'sonnet',
+      effort: 'medium',
+    });
+    assert.equal(result.status, 'persisted');
+    assert.equal(result.agent, PERSIST_CLAUDE_AGENT);
+    assert.match(
+      fs.readFileSync(result.destination, 'utf8'),
+      /model: sonnet\neffort: medium/
+    );
+  } finally {
+    fs.rmSync(fixture.root, { recursive: true, force: true });
+  }
 });
 
-test('fakeCreateLocalOverride is non-persistent and preserves the selected values', () => {
-  const override = fakeCreateLocalOverride('explore', { model: '<model>', effort: '<effort>' });
-  assert.deepEqual(override, {
-    agent: 'explore',
-    model: '<model>',
-    effort: '<effort>',
-    persistent: false,
-  }, 'the fake override should carry the agent, selected values, and persistent:false');
-});
-
-test('full dependent-flow traversal walks menu, harness, checklist, and provider→model→variant screens with zero filesystem writes', async () => {
+test('full dependent-flow traversal walks menu, harness, checklist, and provider→model→variant screens while preserving installed sources', async () => {
   const scratch = makeScratchRepo();
   try {
     const before = snapshotTree(path.join(scratch, 'agents'));
@@ -546,6 +550,7 @@ test('full dependent-flow traversal walks menu, harness, checklist, and provider
     try {
       const result = await runPostSetupMenu({
         projectPath: scratch,
+        opencodeGlobalAgentRoot: path.join(scratch, 'agents', 'opencode'),
         isTTY: true,
         promptChoice,
         promptChecklist: async (...args) => {
@@ -553,8 +558,11 @@ test('full dependent-flow traversal walks menu, harness, checklist, and provider
           return { status: 'confirmed', items: args[1] };
         },
       });
-      assert.equal(result, undefined,
-        'the dependent-flow traversal should complete the opencode customization flow and resolve undefined');
+      assert.deepEqual(result, {
+        status: 'completed',
+        skippedAgents: [],
+        diagnostics: [],
+      }, 'the dependent-flow traversal should complete the opencode customization flow');
       assert.equal(checklistCalls.length, 1,
         'the checklist should be invoked exactly once during the traversal');
       assert.equal(screenIndex, 3,
@@ -600,7 +608,7 @@ test('checklist receives the full enumerateAgents list of the chosen harness as 
       'the checklist items should be the full enumerated opencode agent list');
     assert.deepEqual(checklistCalls[0][1], OPENCODE_AGENTS,
       'every agent of the chosen harness should be pre-selected by default');
-    assert.equal(result, undefined);
+    assert.equal(result.status, 'completed');
   } finally {
     restoreOpencode();
     restoreClaude();
@@ -625,7 +633,7 @@ test('checklist receives the canonical legend string as its footer argument', as
     assert.equal(checklistCalls.length, 1, 'the checklist should be invoked exactly once');
     assert.ok(checklistCalls[0].includes(CHECKLIST_LEGEND),
       'the checklist should be invoked with the canonical legend as its footer argument');
-    assert.equal(result, undefined);
+    assert.equal(result.status, 'completed');
   } finally {
     restoreOpencode();
     restoreClaude();
@@ -647,7 +655,7 @@ test('subset selection configures exactly the selected agents: one selectSetting
       promptChoice,
       promptChecklist: async () => ({ status: 'confirmed', items: subset }),
     });
-    assert.equal(result, undefined);
+    assert.equal(result.status, 'completed');
     assert.deepEqual(opencodeOps.select, [subset.join(', ')],
       'selectSettings should run exactly once for the confirmed subset and never for deselected agents');
     assert.deepEqual(opencodeOps.create.map(entry => entry.agentName), subset,
@@ -674,7 +682,8 @@ test('empty checklist selection completes with zero per-agent configuration', as
       promptChoice,
       promptChecklist: async () => ({ status: 'confirmed', items: [] }),
     });
-    assert.equal(result, undefined);
+    assert.equal(result.status, 'skipped');
+    assert.equal(result.reason, 'empty-selection');
     assert.deepEqual(opencodeOps.select, [], 'an empty selection must produce zero selectSettings calls');
     assert.deepEqual(opencodeOps.create, [], 'an empty selection must produce zero createLocalOverride calls');
     assert.equal(claudeOps.select.length, 0, 'claude must never be configured');
@@ -711,7 +720,8 @@ test('promptChoice null at the harness picker aborts before any checklist or per
       promptChoice,
       promptChecklist: recordChecklist(checklistCalls),
     });
-    assert.equal(result, undefined, 'a cancelled harness picker aborts the run');
+    assert.equal(result.status, 'skipped');
+    assert.equal(result.reason, 'cancelled');
     assert.equal(promptCalls, 2, 'only the main menu and the harness picker should be prompted');
     assert.equal(checklistCalls.length, 0,
       'the checklist must never be reached when the harness picker is cancelled');
@@ -750,7 +760,8 @@ test('promptChoice null at the provider screen aborts via the real opencode adap
         promptChoice,
         promptChecklist: recordChecklist(checklistCalls),
       });
-      assert.equal(result, undefined, 'a null provider-screen selection aborts the run');
+      assert.equal(result.status, 'skipped');
+      assert.equal(result.reason, 'settings-unavailable');
       assert.equal(checklistCalls.length, 1, 'the checklist should be reached exactly once');
       assert.equal(promptCalls, 3,
         'exactly menu, harness, and the provider screen are prompted: no prompt follows the provider-screen null');
@@ -764,7 +775,7 @@ test('promptChoice null at the provider screen aborts via the real opencode adap
   }
 });
 
-test('checklist cancelled aborts with zero agents configured and resolves undefined', async () => {
+test('checklist cancelled aborts with zero agents configured and returns cancelled', async () => {
   const opencodeOps = { select: [], create: [] };
   const claudeOps = { select: [], create: [] };
   const restoreOpencode = patchFactory('createOpencodeAdapter', () => makeFakeAdapter(OPENCODE_AGENTS, opencodeOps));
@@ -778,7 +789,8 @@ test('checklist cancelled aborts with zero agents configured and resolves undefi
       promptChoice,
       promptChecklist: async () => ({ status: 'cancelled' }),
     });
-    assert.equal(result, undefined, 'a cancelled checklist aborts the run');
+    assert.equal(result.status, 'skipped');
+    assert.equal(result.reason, 'cancelled');
     assert.deepEqual(opencodeOps.select, [], 'cancellation must configure zero agents');
     assert.deepEqual(opencodeOps.create, [], 'cancellation must create zero overrides');
     assert.equal(claudeOps.select.length, 0, 'claude must never be configured');
@@ -788,7 +800,7 @@ test('checklist cancelled aborts with zero agents configured and resolves undefi
   }
 });
 
-test('checklist non-interactive aborts exactly like cancelled: zero agents configured, resolves undefined', async () => {
+test('checklist non-interactive aborts as non-tty: zero agents configured', async () => {
   const opencodeOps = { select: [], create: [] };
   const claudeOps = { select: [], create: [] };
   const restoreOpencode = patchFactory('createOpencodeAdapter', () => makeFakeAdapter(OPENCODE_AGENTS, opencodeOps));
@@ -802,7 +814,8 @@ test('checklist non-interactive aborts exactly like cancelled: zero agents confi
       promptChoice,
       promptChecklist: async () => ({ status: 'non-interactive' }),
     });
-    assert.equal(result, undefined, 'a non-interactive checklist aborts the run like cancelled');
+    assert.equal(result.status, 'skipped');
+    assert.equal(result.reason, 'non-tty');
     assert.deepEqual(opencodeOps.select, [], 'non-interactive must configure zero agents');
     assert.deepEqual(opencodeOps.create, [], 'non-interactive must create zero overrides');
     assert.equal(claudeOps.select.length, 0, 'claude must never be configured');
@@ -1244,18 +1257,14 @@ test('full dependent flow presents provider, model, and variant screens in order
     variant: 'high',
   });
   const adapter = createOpencodeAdapter({ repoRoot: REPO_ROOT, promptChoice: prompt, runCommand: runner });
+  const beforeSelection = snapshotTree(path.join(REPO_ROOT, '.opencode', 'agents'));
   const settings = await adapter.selectSettings('explore');
   assert.equal(prompt.screens.length, 3,
     'the completed dependent flow presents exactly provider, model, and variant screens in order');
   assert.deepEqual(settings, { model: 'opencode-go/deepseek-v4-flash', variant: 'high' },
     'the dependent flow resolves provider, model, and variant into the settings');
-  const override = adapter.createLocalOverride('explore', settings);
-  assert.deepEqual(override, {
-    agent: 'explore',
-    model: 'opencode-go/deepseek-v4-flash',
-    variant: 'high',
-    persistent: false,
-  }, 'the per-agent override carries model and variant when a variant is chosen');
+  assert.deepEqual(snapshotTree(path.join(REPO_ROOT, '.opencode', 'agents')), beforeSelection,
+    'settings selection must not write to the installed agent sources');
 });
 
 test('the runner is invoked as argument vectors, never with --refresh, twice in a completed flow', async () => {
@@ -1502,16 +1511,13 @@ test('a model without variants skips the variant screen and yields a model-only 
     assert.fail('no variant screen may appear for a model without variants');
   };
   const adapter = createOpencodeAdapter({ repoRoot: REPO_ROOT, promptChoice: promptSpy, runCommand: runner });
+  const beforeSelection = snapshotTree(path.join(REPO_ROOT, '.opencode', 'agents'));
   const settings = await adapter.selectSettings('explore');
   assert.deepEqual(settings, { model: 'opencode-go/deepseek-v4-flash' },
     'a model without variants resolves model with no variant key');
   assert.equal(screenIndex, 2, 'exactly the provider and model screens are presented');
-  const override = adapter.createLocalOverride('explore', settings);
-  assert.deepEqual(override, {
-    agent: 'explore',
-    model: 'opencode-go/deepseek-v4-flash',
-    persistent: false,
-  }, 'the override carries model only when the variant is the no-variant default');
+  assert.deepEqual(snapshotTree(path.join(REPO_ROOT, '.opencode', 'agents')), beforeSelection,
+    'settings selection must not write to the installed agent sources');
 });
 
 test('NO_VARIANT is a symbol distinct from every possible variant string', () => {
@@ -1545,15 +1551,12 @@ test('selecting Default (no variant) omits the variant key from the settings', a
     return noVariantOption;
   };
   const adapter = createOpencodeAdapter({ repoRoot: REPO_ROOT, promptChoice: promptSpy, runCommand: runner });
+  const beforeSelection = snapshotTree(path.join(REPO_ROOT, '.opencode', 'agents'));
   const settings = await adapter.selectSettings('explore');
   assert.deepEqual(settings, { model: 'opencode-go/deepseek-v4-flash' },
     'the no-variant option resolves model with no variant key');
-  const override = adapter.createLocalOverride('explore', settings);
-  assert.deepEqual(override, {
-    agent: 'explore',
-    model: 'opencode-go/deepseek-v4-flash',
-    persistent: false,
-  }, 'the override omits the variant key when Default (no variant) is chosen');
+  assert.deepEqual(snapshotTree(path.join(REPO_ROOT, '.opencode', 'agents')), beforeSelection,
+    'settings selection must not write to the installed agent sources');
 });
 
 test('a discovered variant literally named Default or default stays selectable and resolves exactly', async () => {
@@ -1619,7 +1622,7 @@ test('a discovered variant whose identifier equals the pinned label renders a di
     'selecting the disambiguated display resolves the exact variant identifier');
 });
 
-test('a null selectSettings result completes runPostSetupMenu without configuring agents', async () => {
+test('a null selectSettings result returns settings-unavailable without configuring agents', async () => {
   const opencodeOps = { select: [], create: [] };
   const claudeOps = { select: [], create: [] };
   const fakeAdapter = {
@@ -1632,7 +1635,11 @@ test('a null selectSettings result completes runPostSetupMenu without configurin
     },
     createLocalOverride(agentName, settings) {
       opencodeOps.create.push({ agentName, settings });
-      return { agent: agentName, ...(settings || {}), persistent: false };
+      return {
+        status: 'persisted',
+        agent: agentName,
+        destination: path.join(REPO_ROOT, '.tmp', 'adapter-spy', `${agentName}.md`),
+      };
     },
   };
   const restoreOpencode = patchFactory('createOpencodeAdapter', () => fakeAdapter);
@@ -1646,7 +1653,8 @@ test('a null selectSettings result completes runPostSetupMenu without configurin
       promptChoice,
       promptChecklist: async (...args) => ({ status: 'confirmed', items: args[1] }),
     });
-    assert.equal(result, undefined, 'a null selectSettings result completes the run');
+    assert.equal(result.status, 'skipped');
+    assert.equal(result.reason, 'settings-unavailable');
     assert.deepEqual(opencodeOps.select, ['called'], 'selectSettings runs exactly once');
     assert.deepEqual(opencodeOps.create, [],
       'a null selectSettings result must never configure any agent');
@@ -1654,5 +1662,500 @@ test('a null selectSettings result completes runPostSetupMenu without configurin
   } finally {
     restoreOpencode();
     restoreClaude();
+  }
+});
+
+// --- Step 1: materialize selected harness overrides ---
+
+const CLAUDE_SETTINGS_CATALOG = {
+  models: [
+    { model: 'opus', efforts: ['low', 'medium', 'high', 'xhigh'] },
+    { model: 'sonnet', efforts: ['low', 'medium'] },
+  ],
+};
+
+const PERSIST_SCRATCH_ROOT = path.join(REPO_ROOT, '.tmp', 'persist-project-agent-overrides');
+const PERSIST_CLAUDE_AGENT = 'sai-1-spec-proposal-worker';
+const PERSIST_CLAUDE_AGENT_2 = 'sai-2-design-worker';
+const PERSIST_OPENCODE_AGENT = 'explore';
+
+function makePersistenceFixture() {
+  fs.mkdirSync(PERSIST_SCRATCH_ROOT, { recursive: true });
+  const root = fs.mkdtempSync(path.join(PERSIST_SCRATCH_ROOT, 'case-'));
+  const packageRoot = path.join(root, 'package');
+  const projectPath = path.join(root, 'project');
+  const claudeGlobalRoot = path.join(root, 'claude-global');
+  const opencodeGlobalRoot = path.join(root, 'opencode-global');
+  fs.mkdirSync(path.join(packageRoot, 'sai'), { recursive: true });
+  fs.copyFileSync(
+    path.join(REPO_ROOT, 'sai', 'install-manifest.json'),
+    path.join(packageRoot, 'sai', 'install-manifest.json')
+  );
+  fs.mkdirSync(projectPath, { recursive: true });
+  fs.mkdirSync(claudeGlobalRoot, { recursive: true });
+  fs.mkdirSync(opencodeGlobalRoot, { recursive: true });
+  return { root, packageRoot, projectPath, claudeGlobalRoot, opencodeGlobalRoot };
+}
+
+function writeGlobalAgent(fixture, harness, agent, contents) {
+  const root = harness === 'claude' ? fixture.claudeGlobalRoot : fixture.opencodeGlobalRoot;
+  fs.writeFileSync(path.join(root, `${agent}.md`), contents);
+  // Compatibility source for the pre-Step-1 seam, which still resolves agent
+  // bytes from repoRoot. The future contract must use the harness-global copy.
+  writePackageAgent(fixture, harness, agent, `package compatibility bytes for ${agent}\n`);
+}
+
+function writePackageAgent(fixture, harness, agent, contents) {
+  const root = path.join(fixture.packageRoot, 'agents', harness);
+  fs.mkdirSync(root, { recursive: true });
+  fs.writeFileSync(path.join(root, `${agent}.md`), contents);
+}
+
+function claudeAgentSource(agent = PERSIST_CLAUDE_AGENT) {
+  return [
+    '---',
+    `name: ${agent}`,
+    'description: source-owned description',
+    'model: opus',
+    'effort: high',
+    'color: blue',
+    '---',
+    '',
+    '# Source body',
+    'Keep this body byte-identical.',
+    '',
+  ].join('\n');
+}
+
+function opencodeAgentSource(agent = PERSIST_OPENCODE_AGENT) {
+  return [
+    '---',
+    `name: ${agent}`,
+    'description: source-owned description',
+    'model: opencode-go/old-model',
+    'variant: high',
+    'color: green',
+    '---',
+    '',
+    '# Source body',
+    'Keep this body byte-identical.',
+    '',
+  ].join('\n');
+}
+
+function chooseClaudeSonnetMedium(options) {
+  const labels = options.map(option => String(option));
+  const combined = labels.find(label => /sonnet/.test(label) && /medium/.test(label));
+  if (combined !== undefined) return combined;
+  if (labels.includes('sonnet')) return 'sonnet';
+  if (labels.includes('medium')) return 'medium';
+  // RED compatibility: let the placeholder frame reach the catalog assertions.
+  return options[0];
+}
+
+after(() => {
+  fs.rmSync(PERSIST_SCRATCH_ROOT, { recursive: true, force: true });
+});
+
+test('Step 1 materialize selected harness overrides: manifest roster and harness-specific source roots', () => {
+  const fixture = makePersistenceFixture();
+  try {
+    writePackageAgent(fixture, 'claude', PERSIST_CLAUDE_AGENT, 'package-only Claude bytes\n');
+    writePackageAgent(fixture, 'opencode', PERSIST_OPENCODE_AGENT, 'package-only OpenCode bytes\n');
+    const claude = createClaudeAdapter({
+      repoRoot: fixture.packageRoot,
+      projectPath: fixture.projectPath,
+      packageRoot: fixture.packageRoot,
+      globalAgentRoot: fixture.claudeGlobalRoot,
+    });
+    const opencode = createOpencodeAdapter({
+      repoRoot: fixture.packageRoot,
+      projectPath: fixture.projectPath,
+      packageRoot: fixture.packageRoot,
+      globalAgentRoot: fixture.opencodeGlobalRoot,
+    });
+
+    assert.ok(claude.enumerateAgents().includes(PERSIST_CLAUDE_AGENT));
+    assert.ok(opencode.enumerateAgents().includes(PERSIST_OPENCODE_AGENT));
+    assert.equal(claude.enumerateAgents().includes('package-only'), false);
+    assert.equal(opencode.enumerateAgents().includes('package-only'), false);
+
+    const missing = claude.createLocalOverride(PERSIST_CLAUDE_AGENT, {
+      model: 'sonnet',
+      effort: 'medium',
+    });
+    assert.equal(missing.status, 'skipped',
+      'a missing harness-global source must not fall back to package-bundled agent bytes');
+    assert.equal(missing.reason, 'missing-source');
+    assert.equal(
+      fs.existsSync(path.join(fixture.projectPath, '.claude', 'agents', `${PERSIST_CLAUDE_AGENT}.md`)),
+      false
+    );
+  } finally {
+    fs.rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
+
+test('Step 1 materialize selected harness overrides: initial Claude materialization clones and retunes the installed source', () => {
+  const fixture = makePersistenceFixture();
+  try {
+    const source = claudeAgentSource();
+    writeGlobalAgent(fixture, 'claude', PERSIST_CLAUDE_AGENT, source);
+    const adapter = createClaudeAdapter({
+      repoRoot: fixture.packageRoot,
+      projectPath: fixture.projectPath,
+      packageRoot: fixture.packageRoot,
+      globalAgentRoot: fixture.claudeGlobalRoot,
+      settingsCatalog: CLAUDE_SETTINGS_CATALOG,
+    });
+    const destination = path.join(
+      fixture.projectPath,
+      '.claude',
+      'agents',
+      `${PERSIST_CLAUDE_AGENT}.md`
+    );
+
+    const result = adapter.createLocalOverride(PERSIST_CLAUDE_AGENT, {
+      model: 'sonnet',
+      effort: 'medium',
+    });
+
+    assert.equal(result.status, 'persisted');
+    assert.equal(result.agent, PERSIST_CLAUDE_AGENT);
+    assert.equal(result.destination, destination);
+    assert.equal(
+      fs.readFileSync(destination, 'utf8'),
+      source.replace('model: opus', 'model: sonnet').replace('effort: high', 'effort: medium'),
+      'the clone preserves the source body and unrelated frontmatter while applying Claude tunables'
+    );
+  } finally {
+    fs.rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
+
+test('Step 1 materialize selected harness overrides: existing Claude content is updated without an installed source', () => {
+  const fixture = makePersistenceFixture();
+  try {
+    const destination = path.join(
+      fixture.projectPath,
+      '.claude',
+      'agents',
+      `${PERSIST_CLAUDE_AGENT}.md`
+    );
+    const existing = claudeAgentSource();
+    fs.mkdirSync(path.dirname(destination), { recursive: true });
+    fs.writeFileSync(destination, existing);
+    const adapter = createClaudeAdapter({
+      repoRoot: fixture.packageRoot,
+      projectPath: fixture.projectPath,
+      packageRoot: fixture.packageRoot,
+      globalAgentRoot: fixture.claudeGlobalRoot,
+    });
+
+    const result = adapter.createLocalOverride(PERSIST_CLAUDE_AGENT, {
+      model: 'sonnet',
+      effort: 'medium',
+    });
+
+    assert.equal(result.status, 'persisted');
+    assert.equal(
+      fs.readFileSync(destination, 'utf8'),
+      existing.replace('model: opus', 'model: sonnet').replace('effort: high', 'effort: medium'),
+      'only the top-level Claude tunable lines change when the local file is user-owned'
+    );
+  } finally {
+    fs.rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
+
+test('Step 1 materialize selected harness overrides: OpenCode selection is in-memory and materialization is harness-local', async () => {
+  const fixture = makePersistenceFixture();
+  try {
+    const source = opencodeAgentSource();
+    writeGlobalAgent(fixture, 'opencode', PERSIST_OPENCODE_AGENT, source);
+    writePackageAgent(fixture, 'opencode', PERSIST_OPENCODE_AGENT, 'package-only OpenCode bytes\n');
+    const runner = makeCatalogRunner(
+      'opencode-go/deepseek-v4-flash\n',
+      'opencode-go/deepseek-v4-flash\n{\n  "variants": { "high": {} }\n}\n'
+    );
+    const prompt = makeAdaptivePrompt({
+      provider: 'opencode-go',
+      model: 'deepseek-v4-flash',
+      variant: 'high',
+    });
+    const beforeSelection = snapshotTree(fixture.root);
+    const adapter = createOpencodeAdapter({
+      repoRoot: fixture.packageRoot,
+      projectPath: fixture.projectPath,
+      packageRoot: fixture.packageRoot,
+      globalAgentRoot: fixture.opencodeGlobalRoot,
+      promptChoice: prompt,
+      runCommand: runner,
+    });
+    const settings = await adapter.selectSettings(PERSIST_OPENCODE_AGENT);
+    assert.deepEqual(settings, {
+      model: 'opencode-go/deepseek-v4-flash',
+      variant: 'high',
+    });
+    assert.deepEqual(snapshotTree(fixture.root), beforeSelection,
+      'OpenCode settings selection must not materialize or rewrite files');
+
+    const result = adapter.createLocalOverride(PERSIST_OPENCODE_AGENT, {
+      model: 'opencode-go/glm-5.2',
+    });
+    const destination = path.join(
+      fixture.projectPath,
+      '.opencode',
+      'agents',
+      `${PERSIST_OPENCODE_AGENT}.md`
+    );
+    assert.equal(result.status, 'persisted');
+    assert.equal(result.destination, destination);
+    assert.equal(
+      fs.readFileSync(destination, 'utf8'),
+      source.replace('model: opencode-go/old-model', 'model: opencode-go/glm-5.2')
+        .replace('variant: high\n', ''),
+      'OpenCode tunables use the OpenCode destination and remove an old variant when none is selected'
+    );
+    assert.equal(fs.existsSync(path.join(fixture.projectPath, '.claude')), false);
+  } finally {
+    fs.rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
+
+test('Step 1 materialize selected harness overrides: Claude selection honors the catalog and unavailable catalogs do not write', async () => {
+  const fixture = makePersistenceFixture();
+  try {
+    writeGlobalAgent(fixture, 'claude', PERSIST_CLAUDE_AGENT, claudeAgentSource());
+    const frames = [];
+    const adapter = createClaudeAdapter({
+      repoRoot: fixture.packageRoot,
+      projectPath: fixture.projectPath,
+      packageRoot: fixture.packageRoot,
+      globalAgentRoot: fixture.claudeGlobalRoot,
+      settingsCatalog: CLAUDE_SETTINGS_CATALOG,
+      promptChoice: async (question, options) => {
+        frames.push(options);
+        return chooseClaudeSonnetMedium(options);
+      },
+    });
+    const settings = await adapter.selectSettings(PERSIST_CLAUDE_AGENT);
+    const labels = frames.flat().map(option => String(option)).join('\n');
+    for (const value of ['opus', 'sonnet', 'low', 'medium', 'high', 'xhigh']) {
+      assert.match(labels, new RegExp(value), `the Claude settings frame displays ${value}`);
+    }
+    assert.deepEqual(settings, { model: 'sonnet', effort: 'medium' });
+    const result = adapter.createLocalOverride(PERSIST_CLAUDE_AGENT, settings);
+    assert.equal(result.status, 'persisted');
+    assert.match(
+      fs.readFileSync(path.join(fixture.projectPath, '.claude', 'agents', `${PERSIST_CLAUDE_AGENT}.md`), 'utf8'),
+      /model: sonnet\neffort: medium/
+    );
+
+    const unavailableBefore = snapshotTree(fixture.projectPath);
+    const unavailable = createClaudeAdapter({
+      repoRoot: fixture.packageRoot,
+      projectPath: fixture.projectPath,
+      packageRoot: fixture.packageRoot,
+      globalAgentRoot: fixture.claudeGlobalRoot,
+      settingsCatalog: { models: [] },
+      promptChoice: async () => assert.fail('an unavailable catalog must not open a settings prompt'),
+    });
+    assert.equal(await unavailable.selectSettings(PERSIST_CLAUDE_AGENT), null);
+    assert.deepEqual(snapshotTree(fixture.projectPath), unavailableBefore);
+  } finally {
+    fs.rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
+
+test('Step 1 materialize selected harness overrides: confirmed subsets, empty selections, cancellation, and non-TTY runs constrain writes', async () => {
+  const fixture = makePersistenceFixture();
+  const originalClaude = agentCustomization.createClaudeAdapter;
+  const originalOpencode = agentCustomization.createOpencodeAdapter;
+  try {
+    writeGlobalAgent(fixture, 'claude', PERSIST_CLAUDE_AGENT, claudeAgentSource());
+    writeGlobalAgent(fixture, 'claude', PERSIST_CLAUDE_AGENT_2, claudeAgentSource(PERSIST_CLAUDE_AGENT_2));
+    const restoreClaude = patchFactory('createClaudeAdapter', deps => originalClaude({
+      ...deps,
+      repoRoot: fixture.packageRoot,
+      projectPath: fixture.projectPath,
+      packageRoot: fixture.packageRoot,
+      globalAgentRoot: fixture.claudeGlobalRoot,
+      settingsCatalog: CLAUDE_SETTINGS_CATALOG,
+      promptChoice: deps.promptChoice,
+    }));
+    const restoreOpencode = patchFactory('createOpencodeAdapter', deps => originalOpencode({
+      ...deps,
+      repoRoot: fixture.packageRoot,
+      projectPath: fixture.projectPath,
+      packageRoot: fixture.packageRoot,
+      globalAgentRoot: fixture.opencodeGlobalRoot,
+    }));
+    try {
+      const answers = ['Customize models', 'Claude Code'];
+      const promptChoice = async (question, options) => answers.length > 0
+        ? answers.shift()
+        : chooseClaudeSonnetMedium(options);
+      const selectedBefore = snapshotTree(fixture.projectPath);
+      const completed = await runPostSetupMenu({
+        projectPath: fixture.projectPath,
+        isTTY: true,
+        promptChoice,
+        promptChecklist: async () => ({ status: 'confirmed', items: [PERSIST_CLAUDE_AGENT] }),
+      });
+       assert.equal(completed && completed.status, 'completed');
+      assert.equal(
+        fs.existsSync(path.join(fixture.projectPath, '.claude', 'agents', `${PERSIST_CLAUDE_AGENT}.md`)),
+        true
+      );
+      assert.equal(
+        fs.existsSync(path.join(fixture.projectPath, '.claude', 'agents', `${PERSIST_CLAUDE_AGENT_2}.md`)),
+        false,
+        'deselected agents must not be materialized'
+      );
+      assert.notDeepEqual(snapshotTree(fixture.projectPath), selectedBefore);
+
+      const emptyBefore = snapshotTree(fixture.projectPath);
+      const emptyAnswers = ['Customize models', 'Claude Code'];
+      const empty = await runPostSetupMenu({
+        projectPath: fixture.projectPath,
+        isTTY: true,
+        promptChoice: async () => emptyAnswers.shift(),
+        promptChecklist: async () => ({ status: 'confirmed', items: [] }),
+      });
+      assert.equal(empty.status, 'skipped');
+      assert.equal(empty.reason, 'empty-selection');
+      assert.deepEqual(snapshotTree(fixture.projectPath), emptyBefore);
+
+      const cancelledBefore = snapshotTree(fixture.projectPath);
+      const cancelledAnswers = ['Customize models', 'Claude Code'];
+      const cancelled = await runPostSetupMenu({
+        projectPath: fixture.projectPath,
+        isTTY: true,
+        promptChoice: async () => cancelledAnswers.shift(),
+        promptChecklist: async () => ({ status: 'cancelled' }),
+      });
+      assert.equal(cancelled.status, 'skipped');
+      assert.equal(cancelled.reason, 'cancelled');
+      assert.deepEqual(snapshotTree(fixture.projectPath), cancelledBefore);
+
+      const nonTtyBefore = snapshotTree(fixture.projectPath);
+      const nonTty = await runPostSetupMenu({
+        projectPath: fixture.projectPath,
+        isTTY: false,
+        promptChoice: async () => assert.fail('non-TTY execution must not prompt'),
+      });
+      assert.equal(nonTty.status, 'skipped');
+      assert.equal(nonTty.reason, 'non-tty');
+      assert.deepEqual(snapshotTree(fixture.projectPath), nonTtyBefore);
+    } finally {
+      restoreClaude();
+      restoreOpencode();
+    }
+  } finally {
+    fs.rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
+
+test('Step 1 materialize selected harness overrides: missing sources are per-agent soft failures and repeated settings preserve bytes', () => {
+  const fixture = makePersistenceFixture();
+  try {
+    writePackageAgent(fixture, 'claude', PERSIST_CLAUDE_AGENT, 'package fallback must not be used\n');
+    writeGlobalAgent(fixture, 'claude', PERSIST_CLAUDE_AGENT_2, claudeAgentSource(PERSIST_CLAUDE_AGENT_2));
+    const adapter = createClaudeAdapter({
+      repoRoot: fixture.packageRoot,
+      projectPath: fixture.projectPath,
+      packageRoot: fixture.packageRoot,
+      globalAgentRoot: fixture.claudeGlobalRoot,
+    });
+    const missing = adapter.createLocalOverride(PERSIST_CLAUDE_AGENT, {
+      model: 'sonnet',
+      effort: 'medium',
+    });
+    const persisted = adapter.createLocalOverride(PERSIST_CLAUDE_AGENT_2, {
+      model: 'sonnet',
+      effort: 'medium',
+    });
+    const destination = path.join(
+      fixture.projectPath,
+      '.claude',
+      'agents',
+      `${PERSIST_CLAUDE_AGENT_2}.md`
+    );
+     assert.equal(
+       fs.existsSync(destination),
+       true,
+       'the persisted destination must exist before byte-preservation checks'
+     );
+     const firstBytes = fs.readFileSync(destination);
+    const repeated = adapter.createLocalOverride(PERSIST_CLAUDE_AGENT_2, {
+      model: 'sonnet',
+      effort: 'medium',
+    });
+
+    assert.deepEqual(missing, {
+      status: 'skipped',
+      agent: PERSIST_CLAUDE_AGENT,
+      reason: 'missing-source',
+    });
+    assert.equal(persisted.status, 'persisted');
+    assert.equal(repeated.status, 'persisted');
+    assert.deepEqual(fs.readFileSync(destination), firstBytes,
+      'repeating the same settings leaves the local override byte-identical');
+    assert.equal(
+      fs.existsSync(path.join(fixture.projectPath, '.claude', 'agents', `${PERSIST_CLAUDE_AGENT}.md`)),
+      false
+    );
+  } finally {
+    fs.rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
+
+test('Step 1 materialize selected harness overrides: atomic write and Windows rename failures preserve the destination and clean temporary files', () => {
+  const fixture = makePersistenceFixture();
+  const originalRename = fs.renameSync;
+  try {
+    writeGlobalAgent(fixture, 'claude', PERSIST_CLAUDE_AGENT, claudeAgentSource());
+    const adapter = createClaudeAdapter({
+      repoRoot: fixture.packageRoot,
+      projectPath: fixture.projectPath,
+      packageRoot: fixture.packageRoot,
+      globalAgentRoot: fixture.claudeGlobalRoot,
+    });
+    const destination = path.join(
+      fixture.projectPath,
+      '.claude',
+      'agents',
+      `${PERSIST_CLAUDE_AGENT}.md`
+    );
+    fs.renameSync = (from, to, ...rest) => {
+      if (to === destination) throw new Error('simulated atomic rename failure');
+      return originalRename(from, to, ...rest);
+    };
+    const initial = adapter.createLocalOverride(PERSIST_CLAUDE_AGENT, {
+      model: 'sonnet',
+      effort: 'medium',
+    });
+    assert.equal(initial.status, 'persistence-failed');
+    assert.equal(fs.existsSync(destination), false);
+    assert.deepEqual(snapshotTree(path.dirname(destination)), {});
+    fs.renameSync = (from, to, ...rest) => {
+      if (to === destination) throw new Error('simulated Windows existing-file rename failure');
+      return originalRename(from, to, ...rest);
+    };
+    fs.mkdirSync(path.dirname(destination), { recursive: true });
+    const existing = claudeAgentSource().replace('model: opus', 'model: sonnet').replace('effort: high', 'effort: low');
+    fs.writeFileSync(destination, existing);
+    const beforeExistingFailure = snapshotTree(path.dirname(destination));
+    const existingFailure = adapter.createLocalOverride(PERSIST_CLAUDE_AGENT, {
+      model: 'opus',
+      effort: 'xhigh',
+    });
+    assert.equal(existingFailure.status, 'persistence-failed');
+    assert.deepEqual(snapshotTree(path.dirname(destination)), beforeExistingFailure,
+      'a failed Windows replacement must not delete or alter the existing destination');
+  } finally {
+    fs.renameSync = originalRename;
+    fs.rmSync(fixture.root, { recursive: true, force: true });
   }
 });
