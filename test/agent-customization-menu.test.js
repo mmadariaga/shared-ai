@@ -12,6 +12,7 @@ const { main } = require('../bin/setup.js');
 
 const {
   runPostSetupMenu,
+  NO_VARIANT,
   FAKE_MODEL_OPTIONS,
   FAKE_EFFORT_OPTIONS,
   fakeSelectSettings,
@@ -49,7 +50,7 @@ const CLAUDE_AGENTS = [
 ];
 
 const CHECKLIST_LEGEND = 'Up/Down move · Space toggle · Enter confirm · q/Ctrl-C cancel';
-const SCRATCH_ROOT = path.join(REPO_ROOT, '.tmp', 'navigable-model-customizer');
+const SCRATCH_ROOT = path.join(REPO_ROOT, '.tmp', 'discover-opencode-model-settings');
 
 function snapshotTree(dir) {
   const snapshot = {};
@@ -363,78 +364,73 @@ test('fakeSelectSettings asks one combined model×effort frame and resolves the 
     'confirming the entry whose parts are FAKE_MODEL_OPTIONS[0] + FAKE_EFFORT_OPTIONS[1] should resolve the pair');
 });
 
-test('adapter selectSettings drives one combined frame via the prompt boundary and returns the selected pair', async () => {
-  for (const [name, createAdapter] of [
-    ['opencode', createOpencodeAdapter],
-    ['claude', createClaudeAdapter],
-  ]) {
-    const calls = [];
-    const promptSpy = async (question, options) => {
-      calls.push({ question, options });
-      return findCombinedEntry(options, FAKE_MODEL_OPTIONS[1], FAKE_EFFORT_OPTIONS[0]);
-    };
-    const adapter = createAdapter({ repoRoot: REPO_ROOT, promptChoice: promptSpy });
-    const settings = await adapter.selectSettings('explore');
-    assert.equal(calls.length, 1,
-      `${name} selectSettings(explore) should drive exactly one combined prompt`);
-    assert.deepEqual(settings, { model: FAKE_MODEL_OPTIONS[1], effort: FAKE_EFFORT_OPTIONS[0] },
-      `${name} selectSettings should resolve the confirmed combined entry to its model and effort values`);
-  }
+test('claude adapter selectSettings drives one combined frame via the prompt boundary and returns the selected pair', async () => {
+  const calls = [];
+  const promptSpy = async (question, options) => {
+    calls.push({ question, options });
+    return findCombinedEntry(options, FAKE_MODEL_OPTIONS[1], FAKE_EFFORT_OPTIONS[0]);
+  };
+  const adapter = createClaudeAdapter({ repoRoot: REPO_ROOT, promptChoice: promptSpy });
+  const settings = await adapter.selectSettings('explore');
+  assert.equal(calls.length, 1,
+    'claude selectSettings(explore) should drive exactly one combined prompt');
+  assert.deepEqual(settings, { model: FAKE_MODEL_OPTIONS[1], effort: FAKE_EFFORT_OPTIONS[0] },
+    'claude selectSettings should resolve the confirmed combined entry to its model and effort values');
 });
 
-test('each enumerated agent consumes exactly one combined frame and overrides map effort to the tunable key', async () => {
-  const harnesses = [
-    { name: 'opencode', create: createOpencodeAdapter, expectedAgents: OPENCODE_AGENTS, tunable: 'variant' },
-    { name: 'claude', create: createClaudeAdapter, expectedAgents: CLAUDE_AGENTS, tunable: 'effort' },
-  ];
-  for (const { name, create, expectedAgents, tunable } of harnesses) {
-    let promptIndex = 0;
-    const promptSpy = async (question, options) => {
-      const i = promptIndex;
-      promptIndex += 1;
-      const parts = findCombinedEntry(
-        options,
-        FAKE_MODEL_OPTIONS[Math.floor((i % 4) / 2)],
-        FAKE_EFFORT_OPTIONS[i % 2]
-      );
-      assert.ok(parts, `${name} prompt ${i} should find the scripted combined entry`);
-      return parts;
-    };
-    const adapter = create({ repoRoot: REPO_ROOT, promptChoice: promptSpy });
-    const agents = adapter.enumerateAgents();
-    assert.equal(agents.length, expectedAgents.length,
-      `exactly ${expectedAgents.length} agents should enumerate for ${name}`);
-    assert.deepEqual([...agents].sort(), [...expectedAgents].sort(),
-      `the enumerated agents should be exactly the ${expectedAgents.length} managed ${name} agents`);
+test('each claude agent consumes exactly one combined frame and overrides map effort to the tunable key', async () => {
+  let promptIndex = 0;
+  const promptSpy = async (question, options) => {
+    const i = promptIndex;
+    promptIndex += 1;
+    const parts = findCombinedEntry(
+      options,
+      FAKE_MODEL_OPTIONS[Math.floor((i % 4) / 2)],
+      FAKE_EFFORT_OPTIONS[i % 2]
+    );
+    assert.ok(parts, `claude prompt ${i} should find the scripted combined entry`);
+    return parts;
+  };
+  const adapter = createClaudeAdapter({ repoRoot: REPO_ROOT, promptChoice: promptSpy });
+  const agents = adapter.enumerateAgents();
+  assert.equal(agents.length, CLAUDE_AGENTS.length,
+    `exactly ${CLAUDE_AGENTS.length} agents should enumerate for claude`);
+  assert.deepEqual([...agents].sort(), [...CLAUDE_AGENTS].sort(),
+    `the enumerated agents should be exactly the ${CLAUDE_AGENTS.length} managed claude agents`);
 
-    for (let i = 0; i < agents.length; i += 1) {
-      const expectedModel = FAKE_MODEL_OPTIONS[Math.floor((i % 4) / 2)];
-      const expectedEffort = FAKE_EFFORT_OPTIONS[i % 2];
-      const settings = await adapter.selectSettings(agents[i]);
-      assert.deepEqual(settings, { model: expectedModel, effort: expectedEffort },
-        `${name} selectSettings should resolve the scripted combined entry for agent ${i}`);
-      const override = adapter.createLocalOverride(agents[i], settings);
-      assert.deepEqual(override, {
-        agent: agents[i],
-        model: expectedModel,
-        [tunable]: expectedEffort,
-        persistent: false,
-      }, `the ${name} override should map the selected effort value to the ${tunable} key`);
-    }
-    assert.equal(promptIndex, agents.length,
-      `selectSettings should consume exactly one combined prompt per ${name} agent`);
+  for (let i = 0; i < agents.length; i += 1) {
+    const expectedModel = FAKE_MODEL_OPTIONS[Math.floor((i % 4) / 2)];
+    const expectedEffort = FAKE_EFFORT_OPTIONS[i % 2];
+    const settings = await adapter.selectSettings(agents[i]);
+    assert.deepEqual(settings, { model: expectedModel, effort: expectedEffort },
+      `claude selectSettings should resolve the scripted combined entry for agent ${i}`);
+    const override = adapter.createLocalOverride(agents[i], settings);
+    assert.deepEqual(override, {
+      agent: agents[i],
+      model: expectedModel,
+      effort: expectedEffort,
+      persistent: false,
+    }, 'the claude override should map the selected effort value to the effort key');
   }
+  assert.equal(promptIndex, agents.length,
+    'selectSettings should consume exactly one combined prompt per claude agent');
 });
 
-test('opencode createLocalOverride returns agent, model, variant, persistent:false', () => {
+test('opencode createLocalOverride conditionally includes variant and stays non-persistent', () => {
   const adapter = createOpencodeAdapter({ repoRoot: REPO_ROOT });
-  const override = adapter.createLocalOverride('explore', { model: '<model>', effort: '<effort>' });
-  assert.deepEqual(override, {
+  const withVariant = adapter.createLocalOverride('explore', { model: '<model>', variant: 'high' });
+  assert.deepEqual(withVariant, {
     agent: 'explore',
     model: '<model>',
-    variant: '<effort>',
+    variant: 'high',
     persistent: false,
-  }, 'the opencode override shape should use the variant tunable key and stay non-persistent');
+  }, 'the opencode override should carry the selected variant when one is chosen');
+  const withoutVariant = adapter.createLocalOverride('explore', { model: '<model>' });
+  assert.deepEqual(withoutVariant, {
+    agent: 'explore',
+    model: '<model>',
+    persistent: false,
+  }, 'the opencode override should omit the variant key when no variant was chosen');
 });
 
 test('claude createLocalOverride returns agent, model, effort, persistent:false', () => {
@@ -458,45 +454,82 @@ test('fakeCreateLocalOverride is non-persistent and preserves the selected value
   }, 'the fake override should carry the agent, selected values, and persistent:false');
 });
 
-test('full traversal walks menu, harness, checklist, and one combined frame per agent with zero filesystem writes', async () => {
+test('full dependent-flow traversal walks menu, harness, checklist, and provider→model→variant screens with zero filesystem writes', async () => {
   const scratch = makeScratchRepo();
   try {
     const before = snapshotTree(path.join(scratch, 'agents'));
 
+    const runner = makeCatalogRunner(
+      'opencode-go/deepseek-v4-flash\nopencode-go/glm-5.2\nopenai/gpt-5.4\n',
+      'opencode-go/deepseek-v4-flash\n{\n  "variants": { "low": {}, "high": {} }\n}\n');
+
     const answers = ['Customize models', 'OpenCode'];
-    let promptIndex = 0;
+    const overrides = [];
+    const originalOpencode = agentCustomization.createOpencodeAdapter;
+    const restoreOpencode = patchFactory('createOpencodeAdapter', (deps) => {
+      const real = originalOpencode({ ...deps, runCommand: runner });
+      return {
+        ...real,
+        createLocalOverride(agentName, settings) {
+          overrides.push({ agentName, settings });
+          return real.createLocalOverride(agentName, settings);
+        },
+      };
+    });
+
+    let screenIndex = 0;
     const promptChoice = async (question, options) => {
-      if (promptIndex < answers.length) {
-        const value = answers[promptIndex];
-        promptIndex += 1;
-        return value;
+      if (answers.length > 0) {
+        return answers.shift();
       }
-      const agentIndex = promptIndex - answers.length;
-      promptIndex += 1;
-      return findCombinedEntry(
-        options,
-        FAKE_MODEL_OPTIONS[Math.floor((agentIndex % 4) / 2)],
-        FAKE_EFFORT_OPTIONS[agentIndex % 2]
-      );
+      if (screenIndex === 0) {
+        screenIndex += 1;
+        assert.ok(options.includes('opencode-go'),
+          'the traversal presents the provider screen before any model or variant screen');
+        return 'opencode-go';
+      }
+      if (screenIndex === 1) {
+        screenIndex += 1;
+        assert.deepEqual([...options].sort(), ['deepseek-v4-flash', 'glm-5.2'],
+          'the traversal model screen offers exactly the opencode-go models');
+        return 'deepseek-v4-flash';
+      }
+      screenIndex += 1;
+      assert.ok(options.includes('high'), 'the traversal presents the variant screen last');
+      return 'high';
     };
 
     const checklistCalls = [];
-    const result = await runPostSetupMenu({
-      projectPath: scratch,
-      isTTY: true,
-      promptChoice,
-      promptChecklist: async (...args) => {
-        checklistCalls.push(args);
-        return { status: 'confirmed', items: args[1] };
-      },
-    });
-    assert.equal(result, undefined,
-      'the full traversal should complete the opencode customization flow and resolve undefined');
-    assert.equal(checklistCalls.length, 1,
-      'the checklist should be invoked exactly once during the traversal');
-
-    assert.deepEqual(snapshotTree(path.join(scratch, 'agents')), before,
-      'the agents tree must be byte-identical after the full traversal');
+    try {
+      const result = await runPostSetupMenu({
+        projectPath: scratch,
+        isTTY: true,
+        promptChoice,
+        promptChecklist: async (...args) => {
+          checklistCalls.push(args);
+          return { status: 'confirmed', items: args[1] };
+        },
+      });
+      assert.equal(result, undefined,
+        'the dependent-flow traversal should complete the opencode customization flow and resolve undefined');
+      assert.equal(checklistCalls.length, 1,
+        'the checklist should be invoked exactly once during the traversal');
+      assert.equal(screenIndex, 3,
+        'provider, model, and variant screens are presented exactly once each, in that order');
+      assert.deepEqual(runner.calls.map(call => call.args),
+        [['models'], ['models', 'opencode-go', '--verbose']],
+        'the traversal invokes the catalog and verbose queries as argument vectors, never --refresh');
+      assert.equal(overrides.length, OPENCODE_AGENTS.length,
+        'createLocalOverride should run exactly once per selected agent');
+      for (const entry of overrides) {
+        assert.deepEqual(entry.settings, { model: 'opencode-go/deepseek-v4-flash', variant: 'high' },
+          'every selected agent override should carry identical model and variant values');
+      }
+      assert.deepEqual(snapshotTree(path.join(scratch, 'agents')), before,
+        'the agents tree must be byte-identical after the full traversal');
+    } finally {
+      restoreOpencode();
+    }
   } finally {
     fs.rmSync(scratch, { recursive: true, force: true });
   }
@@ -647,29 +680,42 @@ test('promptChoice null at the harness picker aborts before any checklist or per
   }
 });
 
-test('promptChoice null at the single combined model×effort frame aborts via the real adapter path with no agent configured', async () => {
+test('promptChoice null at the provider screen aborts via the real opencode adapter path with no agent configured', async () => {
   const scratch = makeScratchRepo();
   const checklistCalls = [];
   let promptCalls = 0;
   try {
-    const answers = ['Customize models', 'OpenCode', null];
-    let promptIndex = 0;
-    const promptChoice = async () => {
-      const value = answers[promptIndex];
-      promptIndex += 1;
-      promptCalls += 1;
-      return value;
+    const runnerCalls = [];
+    const fakeRunner = (executable, args) => {
+      runnerCalls.push(args);
+      return { stdout: 'opencode-go/deepseek-v4-flash\nopencode-go/glm-5.2\n', status: 0 };
     };
-    const result = await runPostSetupMenu({
-      projectPath: scratch,
-      isTTY: true,
-      promptChoice,
-      promptChecklist: recordChecklist(checklistCalls),
-    });
-    assert.equal(result, undefined, 'a null combined-frame selection aborts the run');
-    assert.equal(checklistCalls.length, 1, 'the checklist should be reached exactly once');
-    assert.equal(promptCalls, 3,
-      'exactly menu, harness, and the single combined frame are prompted: no prompt follows the combined-frame null');
+    const originalOpencode = agentCustomization.createOpencodeAdapter;
+    const restoreOpencode = patchFactory('createOpencodeAdapter', (deps) => originalOpencode({ ...deps, runCommand: fakeRunner }));
+    try {
+      const answers = ['Customize models', 'OpenCode', null];
+      let promptIndex = 0;
+      const promptChoice = async () => {
+        const value = answers[promptIndex];
+        promptIndex += 1;
+        promptCalls += 1;
+        return value;
+      };
+      const result = await runPostSetupMenu({
+        projectPath: scratch,
+        isTTY: true,
+        promptChoice,
+        promptChecklist: recordChecklist(checklistCalls),
+      });
+      assert.equal(result, undefined, 'a null provider-screen selection aborts the run');
+      assert.equal(checklistCalls.length, 1, 'the checklist should be reached exactly once');
+      assert.equal(promptCalls, 3,
+        'exactly menu, harness, and the provider screen are prompted: no prompt follows the provider-screen null');
+      assert.deepEqual(runnerCalls, [['models']],
+        'the catalog runner is invoked exactly once before the provider screen, never with --refresh');
+    } finally {
+      restoreOpencode();
+    }
   } finally {
     fs.rmSync(scratch, { recursive: true, force: true });
   }
@@ -1072,4 +1118,471 @@ test('extractVariants throws when variants is null', () => {
 test('extractVariants throws when variants is a primitive string', () => {
   assert.throws(() => extractVariants({ variants: 'low' }),
     'primitive variants values fail variant discovery instead of silently becoming an empty variant set');
+});
+
+// --- Step 2: dependent opencode model-discovery flow ---
+
+// Scripted runner that records raw invocation vectors and serves the catalog
+// and verbose stdout fixtures. `runner.calls` holds { executable, args } for
+// every invocation in order.
+function makeCatalogRunner(catalogStdout, verboseStdout) {
+  const calls = [];
+  const runner = (executable, args) => {
+    calls.push({ executable, args });
+    if (args.includes('--verbose')) {
+      return { stdout: verboseStdout, status: 0 };
+    }
+    return { stdout: catalogStdout, status: 0 };
+  };
+  runner.calls = calls;
+  return runner;
+}
+
+// Returns true when the options are the legacy combined-frame entries (frozen
+// model + ' | ' + frozen effort), which the dependent flow must never present.
+function isCombinedFrame(options) {
+  return options.length > 0
+    && options.every(option => typeof option === 'string' && option.includes(' | '));
+}
+
+// Adaptive prompt for the dependent flow: classifies each settings screen by
+// its position and option content, asserting the expected shape before
+// resolving the scripted selection. Screen positions: 0 provider, 1 model,
+// 2 variant. When the adapter still presents the legacy combined frame (the
+// RED stub state), the first assertion fails instead of the adapter crashing.
+function makeAdaptivePrompt({
+  provider = 'opencode-go',
+  expectedModels = null,
+  model = null,
+  variant = null,
+  noVariant = false,
+} = {}) {
+  const screens = [];
+  const promptChoice = async (question, options) => {
+    screens.push(options);
+    const index = screens.length - 1;
+    assert.ok(!isCombinedFrame(options),
+      `screen ${index} must not be the legacy combined frame: provider→model→variant screens expected`);
+    if (index === 0) {
+      assert.ok(options.includes(provider), `provider screen should offer ${provider}`);
+      return provider;
+    }
+    if (index === 1) {
+      if (expectedModels !== null) {
+        assert.deepEqual([...options].sort(), [...expectedModels].sort(),
+          `model screen should offer exactly the ${provider} models`);
+      }
+      return model ?? [...options].sort()[0];
+    }
+    if (noVariant) {
+      const option = options.find(entry => /no variant/i.test(String(entry)));
+      assert.ok(option, 'variant screen should offer the Default (no variant) option');
+      return option;
+    }
+    if (variant !== null) {
+      assert.ok(options.includes(variant), `variant screen should offer ${variant}`);
+      return variant;
+    }
+    assert.ok(options.length > 0, 'variant screen should offer at least one option');
+    return options[0];
+  };
+  promptChoice.screens = screens;
+  return promptChoice;
+}
+
+test('full dependent flow presents provider, model, and variant screens in order and builds the variant override', async () => {
+  const runner = makeCatalogRunner(
+    'opencode-go/deepseek-v4-flash\nopencode-go/glm-5.2\nopenai/gpt-5.4\n',
+    'opencode-go/deepseek-v4-flash\n{\n  "variants": { "low": {}, "high": {} }\n}\n');
+  const prompt = makeAdaptivePrompt({
+    provider: 'opencode-go',
+    expectedModels: ['deepseek-v4-flash', 'glm-5.2'],
+    model: 'deepseek-v4-flash',
+    variant: 'high',
+  });
+  const adapter = createOpencodeAdapter({ repoRoot: REPO_ROOT, promptChoice: prompt, runCommand: runner });
+  const settings = await adapter.selectSettings('explore');
+  assert.equal(prompt.screens.length, 3,
+    'the completed dependent flow presents exactly provider, model, and variant screens in order');
+  assert.deepEqual(settings, { model: 'opencode-go/deepseek-v4-flash', variant: 'high' },
+    'the dependent flow resolves provider, model, and variant into the settings');
+  const override = adapter.createLocalOverride('explore', settings);
+  assert.deepEqual(override, {
+    agent: 'explore',
+    model: 'opencode-go/deepseek-v4-flash',
+    variant: 'high',
+    persistent: false,
+  }, 'the per-agent override carries model and variant when a variant is chosen');
+});
+
+test('the runner is invoked as argument vectors, never with --refresh, twice in a completed flow', async () => {
+  const runner = makeCatalogRunner(
+    'opencode-go/deepseek-v4-flash\nopencode-go/glm-5.2\n',
+    'opencode-go/deepseek-v4-flash\n{\n  "variants": { "high": {} }\n}\n');
+  const prompt = makeAdaptivePrompt({
+    provider: 'opencode-go',
+    model: 'deepseek-v4-flash',
+    variant: 'high',
+  });
+  const adapter = createOpencodeAdapter({ repoRoot: REPO_ROOT, promptChoice: prompt, runCommand: runner });
+  const settings = await adapter.selectSettings('explore');
+  assert.deepEqual(settings, { model: 'opencode-go/deepseek-v4-flash', variant: 'high' },
+    'the completed flow resolves the selected variant');
+  assert.deepEqual(runner.calls.map(call => call.args),
+    [['models'], ['models', 'opencode-go', '--verbose']],
+    'the catalog and verbose queries are exact argument vectors in discovery order, never --refresh');
+  for (const call of runner.calls) {
+    assert.ok(Array.isArray(call.args), 'args are passed as an argument array, never a shell string');
+    assert.ok(!call.args.includes('--refresh'), 'the refresh flag is never passed');
+    assert.equal(typeof call.executable, 'string', 'the runner receives the executable as a plain string');
+  }
+});
+
+test('a provider containing shell metacharacters is passed as a single argument-array element', async () => {
+  const runner = makeCatalogRunner(
+    'open;code/deepseek-v4-flash\n',
+    'open;code/deepseek-v4-flash\n{\n  "variants": { "high": {} }\n}\n');
+  const prompt = makeAdaptivePrompt({
+    provider: 'open;code',
+    model: 'deepseek-v4-flash',
+    variant: 'high',
+  });
+  const adapter = createOpencodeAdapter({ repoRoot: REPO_ROOT, promptChoice: prompt, runCommand: runner });
+  const settings = await adapter.selectSettings('explore');
+  assert.deepEqual(settings, { model: 'open;code/deepseek-v4-flash', variant: 'high' },
+    'a metacharacter-bearing provider flows through the whole dependent selection');
+  const verboseCalls = runner.calls.filter(call => call.args.includes('--verbose'));
+  assert.equal(verboseCalls.length, 1, 'the verbose query runs exactly once for the selected model');
+  assert.deepEqual(verboseCalls[0].args, ['models', 'open;code', '--verbose'],
+    'the provider is a single argument-array element and is never interpreted as command syntax');
+});
+
+test('the model screen is scoped to the selected provider from one catalog parse', async () => {
+  const runner = makeCatalogRunner(
+    'opencode-go/deepseek-v4-flash\nopencode-go/glm-5.2\nopenai/gpt-5.4\n',
+    'opencode-go/deepseek-v4-flash\n{\n  "variants": { "high": {} }\n}\n');
+  const prompt = makeAdaptivePrompt({
+    provider: 'opencode-go',
+    expectedModels: ['deepseek-v4-flash', 'glm-5.2'],
+    variant: 'high',
+  });
+  const adapter = createOpencodeAdapter({ repoRoot: REPO_ROOT, promptChoice: prompt, runCommand: runner });
+  const settings = await adapter.selectSettings('explore');
+  assert.deepEqual(settings, { model: 'opencode-go/deepseek-v4-flash', variant: 'high' },
+    'the flow resolves a model belonging to the selected provider');
+  const catalogCalls = runner.calls.filter(call => !call.args.includes('--verbose'));
+  assert.equal(catalogCalls.length, 1,
+    'the model screen is populated from the already-parsed catalog with exactly one catalog launch');
+});
+
+test('the provider screen offers distinct providers in first-appearance order', async () => {
+  const runner = makeCatalogRunner(
+    'openai/gpt-5.4\nopencode-go/deepseek-v4-flash\nopencode-go/glm-5.2\n',
+    'opencode-go/deepseek-v4-flash\n{\n  "variants": { "high": {} }\n}\n');
+  let screenIndex = 0;
+  const promptSpy = async (question, options) => {
+    if (screenIndex === 0) {
+      screenIndex += 1;
+      assert.deepEqual(options, ['openai', 'opencode-go'],
+        'distinct providers are offered once, in first-appearance order');
+      return 'opencode-go';
+    }
+    if (screenIndex === 1) {
+      screenIndex += 1;
+      assert.ok(options.includes('deepseek-v4-flash'), 'model screen follows the provider screen');
+      return 'deepseek-v4-flash';
+    }
+    screenIndex += 1;
+    assert.ok(options.includes('high'), 'variant screen follows the model screen');
+    return 'high';
+  };
+  const adapter = createOpencodeAdapter({ repoRoot: REPO_ROOT, promptChoice: promptSpy, runCommand: runner });
+  const settings = await adapter.selectSettings('explore');
+  assert.deepEqual(settings, { model: 'opencode-go/deepseek-v4-flash', variant: 'high' },
+    'selecting the second provider resolves its model with the full identity');
+});
+
+test('non-zero exit from the catalog command cancels with no screens and no settings', async () => {
+  let promptCalls = 0;
+  const runner = (executable, args) => ({ stdout: '', status: 1 });
+  const promptSpy = async () => {
+    promptCalls += 1;
+    assert.fail(`no provider, model, or variant screen may appear after a catalog failure (got prompt ${promptCalls})`);
+  };
+  const adapter = createOpencodeAdapter({ repoRoot: REPO_ROOT, promptChoice: promptSpy, runCommand: runner });
+  const settings = await adapter.selectSettings('explore');
+  assert.equal(settings, null, 'a non-zero catalog exit cancels the selection with null');
+  assert.equal(promptCalls, 0, 'an early catalog failure presents no settings screens');
+});
+
+test('a malformed catalog line and an empty catalog each cancel with no partial catalog', async () => {
+  for (const stdout of ['nope\n', '']) {
+    let promptCalls = 0;
+    const runner = (executable, args) => ({ stdout, status: 0 });
+    const promptSpy = async () => {
+      promptCalls += 1;
+      assert.fail('no settings screen may be presented from a failed catalog');
+    };
+    const adapter = createOpencodeAdapter({ repoRoot: REPO_ROOT, promptChoice: promptSpy, runCommand: runner });
+    const settings = await adapter.selectSettings('explore');
+    assert.equal(settings, null,
+      `catalog stdout ${JSON.stringify(stdout)} must cancel the selection with null`);
+    assert.equal(promptCalls, 0, 'a failed catalog never reaches a settings screen');
+  }
+});
+
+test('verbose-query failure, unparseable verbose output, and an unmatched model cancel after the screens', async () => {
+  const cases = [
+    { name: 'non-zero verbose exit', verboseStdout: '', verboseStatus: 1 },
+    { name: 'unparseable verbose output', verboseStdout: 'not json\n', verboseStatus: 0 },
+    { name: 'no record matching the selected model',
+      verboseStdout: 'opencode-go/glm-5.2\n{\n  "variants": { "high": {} }\n}\n', verboseStatus: 0 },
+  ];
+  for (const item of cases) {
+    let screenIndex = 0;
+    const promptSpy = async (question, options) => {
+      if (screenIndex === 0) {
+        screenIndex += 1;
+        assert.ok(options.includes('opencode-go'), 'provider screen appears before the verbose query');
+        return 'opencode-go';
+      }
+      if (screenIndex === 1) {
+        screenIndex += 1;
+        assert.ok(options.includes('deepseek-v4-flash'), 'model screen appears before the verbose query');
+        return 'deepseek-v4-flash';
+      }
+      screenIndex += 1;
+      assert.fail('no variant screen may appear after the verbose query fails');
+    };
+    const runner = (executable, args) => args.includes('--verbose')
+      ? { stdout: item.verboseStdout, status: item.verboseStatus }
+      : { stdout: 'opencode-go/deepseek-v4-flash\nopencode-go/glm-5.2\n', status: 0 };
+    const adapter = createOpencodeAdapter({ repoRoot: REPO_ROOT, promptChoice: promptSpy, runCommand: runner });
+    const settings = await adapter.selectSettings('explore');
+    assert.equal(settings, null,
+      `${item.name} must cancel the selection with null after the provider and model screens`);
+    assert.equal(screenIndex, 2,
+      `${item.name} presents exactly the provider and model screens, no further screen`);
+  }
+});
+
+test('q at the provider screen cancels after exactly one catalog launch', async () => {
+  const runner = makeCatalogRunner('opencode-go/deepseek-v4-flash\n', '');
+  let promptCalls = 0;
+  const promptSpy = async (question, options) => {
+    promptCalls += 1;
+    assert.ok(options.includes('opencode-go'),
+      `prompt ${promptCalls} is the provider screen offering the discovered provider`);
+    return 'q';
+  };
+  const adapter = createOpencodeAdapter({ repoRoot: REPO_ROOT, promptChoice: promptSpy, runCommand: runner });
+  const settings = await adapter.selectSettings('explore');
+  assert.equal(settings, null, 'q at the provider screen cancels the selection with null');
+  assert.equal(promptCalls, 1, 'only the provider screen is prompted before q cancels');
+  assert.deepEqual(runner.calls.map(call => call.args), [['models']],
+    'exactly one catalog launch precedes the provider screen, no verbose query');
+});
+
+test('q at the variant screen cancels with no settings after two launches', async () => {
+  const runner = makeCatalogRunner(
+    'opencode-go/deepseek-v4-flash\n',
+    'opencode-go/deepseek-v4-flash\n{\n  "variants": { "low": {}, "high": {} }\n}\n');
+  let screenIndex = 0;
+  const promptSpy = async (question, options) => {
+    if (screenIndex === 0) {
+      screenIndex += 1;
+      assert.ok(options.includes('opencode-go'), 'provider screen precedes the variant screen');
+      return 'opencode-go';
+    }
+    if (screenIndex === 1) {
+      screenIndex += 1;
+      assert.ok(options.includes('deepseek-v4-flash'), 'model screen precedes the variant screen');
+      return 'deepseek-v4-flash';
+    }
+    screenIndex += 1;
+    assert.ok(options.includes('high'), 'variant screen offers the discovered variant');
+    return 'q';
+  };
+  const adapter = createOpencodeAdapter({ repoRoot: REPO_ROOT, promptChoice: promptSpy, runCommand: runner });
+  const settings = await adapter.selectSettings('explore');
+  assert.equal(settings, null, 'q at the variant screen cancels the selection with null');
+  assert.equal(screenIndex, 3, 'q is answered at the variant screen after the provider and model screens');
+  assert.deepEqual(runner.calls.map(call => call.args),
+    [['models'], ['models', 'opencode-go', '--verbose']],
+    'the verbose query runs before the variant screen, for exactly two launches');
+});
+
+test('a model without variants skips the variant screen and yields a model-only override', async () => {
+  const runner = makeCatalogRunner(
+    'opencode-go/deepseek-v4-flash\nopencode-go/glm-5.2\n',
+    'opencode-go/deepseek-v4-flash\n{\n  "variants": {}\n}\n');
+  let screenIndex = 0;
+  const promptSpy = async (question, options) => {
+    if (screenIndex === 0) {
+      screenIndex += 1;
+      assert.ok(options.includes('opencode-go'), 'provider screen is presented');
+      return 'opencode-go';
+    }
+    if (screenIndex === 1) {
+      screenIndex += 1;
+      assert.ok(options.includes('deepseek-v4-flash'), 'model screen is presented');
+      return 'deepseek-v4-flash';
+    }
+    screenIndex += 1;
+    assert.fail('no variant screen may appear for a model without variants');
+  };
+  const adapter = createOpencodeAdapter({ repoRoot: REPO_ROOT, promptChoice: promptSpy, runCommand: runner });
+  const settings = await adapter.selectSettings('explore');
+  assert.deepEqual(settings, { model: 'opencode-go/deepseek-v4-flash' },
+    'a model without variants resolves model with no variant key');
+  assert.equal(screenIndex, 2, 'exactly the provider and model screens are presented');
+  const override = adapter.createLocalOverride('explore', settings);
+  assert.deepEqual(override, {
+    agent: 'explore',
+    model: 'opencode-go/deepseek-v4-flash',
+    persistent: false,
+  }, 'the override carries model only when the variant is the no-variant default');
+});
+
+test('NO_VARIANT is a symbol distinct from every possible variant string', () => {
+  assert.equal(typeof NO_VARIANT, 'symbol',
+    'the Default (no variant) sentinel must be a Symbol so it can never equal a variant identifier string');
+  for (const value of ['Default', 'default', 'high', 'low', 'max', 'Default (no variant)', '']) {
+    assert.notEqual(NO_VARIANT, value,
+      `NO_VARIANT must never equal the string ${JSON.stringify(value)}`);
+  }
+});
+
+test('selecting Default (no variant) omits the variant key from the settings', async () => {
+  const runner = makeCatalogRunner(
+    'opencode-go/deepseek-v4-flash\n',
+    'opencode-go/deepseek-v4-flash\n{\n  "variants": { "low": {}, "high": {} }\n}\n');
+  let screenIndex = 0;
+  const promptSpy = async (question, options) => {
+    if (screenIndex === 0) {
+      screenIndex += 1;
+      assert.ok(options.includes('opencode-go'), 'provider screen is presented');
+      return 'opencode-go';
+    }
+    if (screenIndex === 1) {
+      screenIndex += 1;
+      assert.ok(options.includes('deepseek-v4-flash'), 'model screen is presented');
+      return 'deepseek-v4-flash';
+    }
+    screenIndex += 1;
+    const noVariantOption = options.find(entry => /no variant/i.test(String(entry)));
+    assert.ok(noVariantOption, 'the variant screen offers the pinned Default (no variant) option');
+    return noVariantOption;
+  };
+  const adapter = createOpencodeAdapter({ repoRoot: REPO_ROOT, promptChoice: promptSpy, runCommand: runner });
+  const settings = await adapter.selectSettings('explore');
+  assert.deepEqual(settings, { model: 'opencode-go/deepseek-v4-flash' },
+    'the no-variant option resolves model with no variant key');
+  const override = adapter.createLocalOverride('explore', settings);
+  assert.deepEqual(override, {
+    agent: 'explore',
+    model: 'opencode-go/deepseek-v4-flash',
+    persistent: false,
+  }, 'the override omits the variant key when Default (no variant) is chosen');
+});
+
+test('a discovered variant literally named Default or default stays selectable and resolves exactly', async () => {
+  const cases = [
+    { variant: 'default', verbose: 'opencode-go/deepseek-v4-flash\n{\n  "variants": { "default": {}, "high": {} }\n}\n' },
+    { variant: 'Default', verbose: 'opencode-go/deepseek-v4-flash\n{\n  "variants": { "Default": {}, "high": {} }\n}\n' },
+  ];
+  for (const item of cases) {
+    let screenIndex = 0;
+    const promptSpy = async (question, options) => {
+      if (screenIndex === 0) {
+        screenIndex += 1;
+        assert.ok(options.includes('opencode-go'), 'provider screen is presented');
+        return 'opencode-go';
+      }
+      if (screenIndex === 1) {
+        screenIndex += 1;
+        assert.ok(options.includes('deepseek-v4-flash'), 'model screen is presented');
+        return 'deepseek-v4-flash';
+      }
+      screenIndex += 1;
+      assert.ok(options.includes(item.variant),
+        `a discovered variant named ${item.variant} is offered as a selectable option alongside the no-variant option`);
+      return item.variant;
+    };
+    const runner = makeCatalogRunner('opencode-go/deepseek-v4-flash\n', item.verbose);
+    const adapter = createOpencodeAdapter({ repoRoot: REPO_ROOT, promptChoice: promptSpy, runCommand: runner });
+    const settings = await adapter.selectSettings('explore');
+    assert.deepEqual(settings, { model: 'opencode-go/deepseek-v4-flash', variant: item.variant },
+      `selecting the discovered variant ${item.variant} carries that exact identifier`);
+  }
+});
+
+test('a discovered variant whose identifier equals the pinned label renders a distinct display and resolves exactly', async () => {
+  const runner = makeCatalogRunner(
+    'opencode-go/deepseek-v4-flash\n',
+    'opencode-go/deepseek-v4-flash\n{\n  "variants": { "Default (no variant)": {}, "high": {} }\n}\n');
+  let screenIndex = 0;
+  const promptSpy = async (question, options) => {
+    if (screenIndex === 0) {
+      screenIndex += 1;
+      assert.ok(options.includes('opencode-go'), 'provider screen is presented');
+      return 'opencode-go';
+    }
+    if (screenIndex === 1) {
+      screenIndex += 1;
+      assert.ok(options.includes('deepseek-v4-flash'), 'model screen is presented');
+      return 'deepseek-v4-flash';
+    }
+    screenIndex += 1;
+    const pinned = options.find(entry => /^Default \(no variant\)$/.test(String(entry)));
+    assert.ok(pinned, 'the pinned Default (no variant) option is offered unchanged');
+    const disambiguated = options.find(entry => /^Default \(no variant\) \(variant\)$/.test(String(entry)));
+    assert.ok(disambiguated,
+      'a discovered variant matching the pinned label renders with a (variant) disambiguating suffix');
+    assert.equal(options.length, 3,
+      'the variant screen offers the pinned default, the disambiguated variant, and high');
+    return disambiguated;
+  };
+  const adapter = createOpencodeAdapter({ repoRoot: REPO_ROOT, promptChoice: promptSpy, runCommand: runner });
+  const settings = await adapter.selectSettings('explore');
+  assert.deepEqual(settings, { model: 'opencode-go/deepseek-v4-flash', variant: 'Default (no variant)' },
+    'selecting the disambiguated display resolves the exact variant identifier');
+});
+
+test('a null selectSettings result completes runPostSetupMenu without configuring agents', async () => {
+  const opencodeOps = { select: [], create: [] };
+  const claudeOps = { select: [], create: [] };
+  const fakeAdapter = {
+    enumerateAgents() {
+      return OPENCODE_AGENTS;
+    },
+    async selectSettings() {
+      opencodeOps.select.push('called');
+      return null;
+    },
+    createLocalOverride(agentName, settings) {
+      opencodeOps.create.push({ agentName, settings });
+      return { agent: agentName, ...(settings || {}), persistent: false };
+    },
+  };
+  const restoreOpencode = patchFactory('createOpencodeAdapter', () => fakeAdapter);
+  const restoreClaude = patchFactory('createClaudeAdapter', () => makeFakeAdapter(CLAUDE_AGENTS, claudeOps));
+  try {
+    const answers = ['Customize models', 'OpenCode'];
+    const promptChoice = async () => answers.shift() ?? '<model>';
+    const result = await runPostSetupMenu({
+      projectPath: REPO_ROOT,
+      isTTY: true,
+      promptChoice,
+      promptChecklist: async (...args) => ({ status: 'confirmed', items: args[1] }),
+    });
+    assert.equal(result, undefined, 'a null selectSettings result completes the run');
+    assert.deepEqual(opencodeOps.select, ['called'], 'selectSettings runs exactly once');
+    assert.deepEqual(opencodeOps.create, [],
+      'a null selectSettings result must never configure any agent');
+    assert.equal(claudeOps.create.length, 0, 'claude must never be configured');
+  } finally {
+    restoreOpencode();
+    restoreClaude();
+  }
 });

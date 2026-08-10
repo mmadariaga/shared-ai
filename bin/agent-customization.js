@@ -1,6 +1,7 @@
 'use strict';
 
 const path = require('path');
+const childProcess = require('child_process');
 const { loadInstallManifest } = require('./install-manifest.js');
 const {
   CLAUDE_TUNABLE_KEYS,
@@ -16,6 +17,11 @@ const FAKE_EFFORT_OPTIONS = Object.freeze(['<effort>', '<effort-alt>']);
 const AGENT_CHECKLIST_LEGEND = 'Up/Down move · Space toggle · Enter confirm · q/Ctrl-C cancel';
 
 const COMBINED_ENTRY_DELIMITER = ' | ';
+
+// RED stub: NO_VARIANT must be a Symbol in GREEN; a plain string placeholder
+// keeps the sentinel tests failing by assertion at RED without leaking GREEN.
+const NO_VARIANT = Symbol('NO_VARIANT');
+const NO_VARIANT_LABEL = 'Default (no variant)';
 
 function buildCombinedOptions() {
   const combined = [];
@@ -75,8 +81,116 @@ function createAdapter(harness, {
   };
 }
 
+function buildVariantDisplayOptions(variants) {
+  const options = [{ display: NO_VARIANT_LABEL, value: NO_VARIANT }];
+  for (const variant of variants) {
+    let display = variant;
+    let attempt = 0;
+    while (options.some(option => option.display === display)) {
+      attempt += 1;
+      display = attempt === 1 ? `${variant} (variant)` : `${variant} (variant ${attempt})`;
+    }
+    options.push({ display, value: variant });
+  }
+  return options;
+}
+
+function defaultRunCommand(executable, args) {
+  const result = childProcess.spawnSync(executable, args, { encoding: 'utf8' });
+  return { stdout: result.stdout, status: result.status };
+}
+
+async function opencodeSelectSettings(subsetLabel, promptChoice, runCommand) {
+  let catalogOutcome;
+  try {
+    catalogOutcome = runCommand('opencode', ['models']);
+  } catch {
+    return null;
+  }
+  if (catalogOutcome.status !== 0) return null;
+
+  let catalog;
+  try {
+    catalog = parseModelCatalog(catalogOutcome.stdout);
+  } catch {
+    return null;
+  }
+  if (catalog.length === 0) return null;
+
+  const providers = [];
+  for (const entry of catalog) {
+    if (!providers.includes(entry.provider)) providers.push(entry.provider);
+  }
+
+  const provider = await promptChoice(`Provider for ${subsetLabel}:`, providers);
+  if (!providers.includes(provider)) return null;
+
+  const models = catalog
+    .filter(entry => entry.provider === provider)
+    .map(entry => entry.model);
+  const model = await promptChoice(`Model for ${subsetLabel}:`, models);
+  if (!models.includes(model)) return null;
+
+  const identity = `${provider}/${model}`;
+
+  let verboseOutcome;
+  try {
+    verboseOutcome = runCommand('opencode', ['models', provider, '--verbose']);
+  } catch {
+    return null;
+  }
+  if (verboseOutcome.status !== 0) return null;
+
+  let records;
+  try {
+    records = parseVerboseModelRecords(verboseOutcome.stdout);
+  } catch {
+    return null;
+  }
+  const matched = records.find(record => record.identity === identity);
+  if (!matched) return null;
+
+  let variants;
+  try {
+    variants = extractVariants(matched.record);
+  } catch {
+    return null;
+  }
+  if (variants.length === 0) {
+    return { model: identity };
+  }
+
+  const variantOptions = buildVariantDisplayOptions(variants);
+  const selectedDisplay = await promptChoice(
+    `Variant for ${identity}:`,
+    variantOptions.map(option => option.display)
+  );
+  const selected = variantOptions.find(option => option.display === selectedDisplay);
+  if (selected === undefined) return null;
+  if (selected.value === NO_VARIANT) {
+    return { model: identity };
+  }
+  return { model: identity, variant: selected.value };
+}
+
 function createOpencodeAdapter(options = {}) {
-  return createAdapter('opencode', options);
+  const {
+    repoRoot,
+    loadManifest = loadInstallManifest,
+    promptChoice = promptSelect,
+    runCommand = defaultRunCommand,
+  } = options;
+  return {
+    enumerateAgents: () => enumerateAgents(repoRoot, loadManifest, 'opencode'),
+    selectSettings: (subsetLabel) => opencodeSelectSettings(subsetLabel, promptChoice, runCommand),
+    createLocalOverride: (agentName, settings) => {
+      const override = { agent: agentName, model: settings.model, persistent: false };
+      if (settings.variant !== undefined) {
+        override.variant = settings.variant;
+      }
+      return override;
+    },
+  };
 }
 
 function createClaudeAdapter(options = {}) {
@@ -110,7 +224,7 @@ async function runPostSetupMenu({
   }
   if (outcome.items.length > 0) {
     const settings = await adapter.selectSettings(outcome.items.join(', '));
-    if (settings.model === null || settings.effort === null) {
+    if (settings === null || settings.model === null) {
       return undefined;
     }
     for (const agentName of outcome.items) {
@@ -184,6 +298,7 @@ function extractVariants(record) {
 
 module.exports = {
   runPostSetupMenu,
+  NO_VARIANT,
   FAKE_MODEL_OPTIONS,
   FAKE_EFFORT_OPTIONS,
   fakeSelectSettings,
