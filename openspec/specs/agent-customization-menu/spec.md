@@ -96,35 +96,47 @@ After the agent-selection checklist confirms a non-empty subset and before any l
 - **WHEN** the agent-selection checklist confirms an empty subset
 - **THEN** customization SHALL complete without configuring any agent
 
-### Requirement: Fake settings selection
-For every Claude Code customization run with a non-empty confirmed subset, the Claude Code adapter MUST invoke a placeholder settings selector that collects BOTH a placeholder model choice and a placeholder effort choice through exactly one navigable single-select frame, using `effort` as the Claude Code shared UI concept. Each option in that single frame SHALL encode a model choice together with an effort choice, so that one confirmation resolves both values. The Claude Code adapter MUST expose the selected effort as the placeholder input for its future `effort` mapping. The collected values MUST be forwarded to the fake local-override operation as specified by the Shared settings selection requirement. The Claude Code slice MUST NOT perform model discovery or real settings validation. The OpenCode adapter MUST NOT use this placeholder combined frame: it SHALL collect its settings through the dependent provider-to-model-to-variant selection defined by the `opencode-settings-selection` capability instead.
+### Requirement: Claude settings selection
+For every Claude Code customization run with a non-empty confirmed subset, the Claude Code adapter MUST invoke exactly one navigable single-select frame that presents concrete model and effort choices together. The adapter-owned Claude settings catalog MUST be the authoritative source for both option sets, MUST contain at least one model identifier and one effort value, and MUST contain no placeholder values such as `<model>` or `<effort>`. Each displayed option SHALL encode members of those catalog sets, and the selected result MUST return only catalog members for the whole subset. If the catalog is unavailable or empty, the selector MUST return no settings and MUST allow customization to complete without writing an agent. The selector MUST NOT claim that the end-to-end customization is fake and MUST NOT perform OpenCode provider, model, or variant discovery. The collected values MUST be forwarded to the persistent local-override operation. The OpenCode adapter MUST continue to use its dependent provider-to-model-to-variant selection instead of this combined frame.
 
-#### Scenario: Settings selector runs once for an OpenCode customization run
-- **WHEN** OpenCode customization is selected and a non-empty subset is confirmed
-- **THEN** the adapter MUST collect exactly one model choice and one optional variant choice through the dependent provider, model, and optional variant screens for the whole subset, forward them to the local-override operation for every selected agent, and complete without presenting the placeholder combined model/effort frame
+#### Scenario: Claude selection returns concrete model and effort
+- **WHEN** a non-empty Claude Code subset reaches settings selection and the user confirms a combined option
+- **THEN** the selector SHALL return the concrete model identifier and effort value encoded by that option
 
-#### Scenario: Settings selector runs once for a Claude Code customization run
-- **WHEN** Claude Code customization is selected and a non-empty subset is confirmed
-- **THEN** the adapter MUST collect exactly one placeholder model choice and one placeholder effort choice from the fake selector for the whole subset, forward both values to the fake local-override operation for every selected agent, and complete without discovering or validating a model
+#### Scenario: Claude selection does not use placeholders
+- **WHEN** the Claude Code settings frame is rendered
+- **THEN** no selectable option SHALL use `<model>` or `<effort>` placeholder values
 
-#### Scenario: Model and effort choices share one navigable frame
-- **WHEN** the Claude Code fake settings selector presents the model/effort options for a customization run
-- **THEN** the model and effort choices SHALL be collected through exactly one navigable single-select frame with a `>` cursor and Enter/space confirmation, one confirmation resolving both the placeholder model choice and the placeholder effort choice
+#### Scenario: Claude selection is bounded by its settings catalog
+- **WHEN** the Claude adapter-owned catalog contains a set of model identifiers and effort values
+- **THEN** every displayed and returned Claude setting SHALL be a member of the corresponding catalog set
 
-### Requirement: Non-persistent local override
-For every traversed agent, the selected harness adapter MUST invoke a local-override operation after settings selection, passing the collected settings for that agent — the placeholder model and effort choices for Claude Code, and the discovered model with optional variant for OpenCode. The operation MUST be the sole constructor of the final per-agent override shape: for OpenCode it MUST add the `agent` identity and `persistent: false` and MUST include the `variant` key only when the collected settings carry one; the settings selector itself SHALL NOT construct overrides. The operation MUST return a non-persistent result and MUST NOT create, modify, delete, or copy any agent file.
+#### Scenario: Missing Claude settings catalog produces no settings
+- **WHEN** the Claude settings catalog is unavailable or contains no model or effort choices
+- **THEN** the selector SHALL return no settings and customization SHALL perform no agent write
 
-#### Scenario: Fake override runs without filesystem changes
-- **WHEN** local override creation is invoked for any traversed agent with its collected settings
-- **THEN** the adapter MUST complete without filesystem writes and MUST leave agent bodies and frontmatter unchanged
+#### Scenario: OpenCode does not use the Claude frame
+- **WHEN** OpenCode customization reaches settings selection
+- **THEN** the flow SHALL use the dependent provider, model, and optional variant screens and SHALL not present the Claude combined frame
 
-#### Scenario: End-to-end customization remains explicitly fake
-- **WHEN** a complete Claude Code harness traversal finishes
-- **THEN** the flow MUST be observable as a completed control path while making no claim that model selection or local override creation is operational
+### Requirement: Persistent local override
+For every traversed agent, the selected harness adapter MUST invoke a local-override operation after settings selection, passing the collected settings for that agent — the selected model and effort for Claude Code, and the selected model with optional variant for opencode. The operation MUST materialize the result as the selected agent's project-local file and MUST report the result as persistent only after that file has been written successfully. The operation MUST apply the project-local source, preservation, path, and failure rules defined by the `project-local-agent-overrides` capability.
 
-#### Scenario: OpenCode override creation stays in memory
-- **WHEN** a complete OpenCode harness traversal finishes
-- **THEN** the flow SHALL produce only in-memory non-persistent overrides carrying the discovered model and optional variant, and SHALL make no filesystem changes
+#### Scenario: Selected Claude Code override is persisted
+- **WHEN** Claude Code settings have been selected for a traversed agent
+- **THEN** the local-override operation SHALL write the selected agent under `.claude/agents/<agent>.md` with the selected `model` and `effort`, and SHALL report a persistent result only after the write succeeds
+
+#### Scenario: Selected opencode override is persisted
+- **WHEN** opencode settings have been selected for a traversed agent
+- **THEN** the local-override operation SHALL write the selected agent under `.opencode/agents/<agent>.md` with the selected `model` and optional `variant`, and SHALL report a persistent result only after the write succeeds
+
+#### Scenario: End-to-end customization persists selected agents
+- **WHEN** a complete harness traversal finishes with available installed sources
+- **THEN** the selected agents SHALL have project-local files containing the chosen tunables rather than only in-memory non-persistent override objects
+
+#### Scenario: Failed persistence does not claim success
+- **WHEN** an installed source is unavailable for a traversed agent that has no project-local destination
+- **THEN** that agent SHALL be reported as skipped and SHALL not be represented as a successful persistent override, while other agents continue according to the `project-local-agent-overrides` capability
 
 ### Requirement: Navigable agent-selection checklist
 

@@ -44,7 +44,7 @@ The variant screen SHALL offer exactly one no-variant option plus the discovered
 - **THEN** the internal sentinel for the no-variant option is distinct from every discovered variant identifier, so no variant value can be mistaken for the sentinel
 
 ### Requirement: In-memory shared settings shape
-The OpenCode settings selector SHALL return nullable shared settings carrying exactly the canonical opencode tunable keys: `model` with the selected model's full `provider/model-id` identity, and, when a variant other than the no-variant sentinel was selected, `variant` with the selected variant identifier. The settings SHALL NOT carry a separate provider key, SHALL NOT write any file, and SHALL NOT modify or create any agent file; when the user cancels or discovery fails, the selector SHALL return no settings (`null`). The selector SHALL NOT construct overrides: the final per-agent override, carrying the `agent` identity, `persistent: false`, and the conditional `variant` key, SHALL be constructed exclusively by the per-agent local-override operation defined in `agent-customization-menu`.
+The OpenCode settings selector SHALL return nullable shared settings carrying exactly the canonical opencode tunable keys: `model` with the selected model's full `provider/model-id` identity, and, when a variant other than the no-variant sentinel was selected, `variant` with the selected variant identifier. The settings SHALL NOT carry a separate provider key, SHALL NOT write any file, and SHALL NOT modify or create any agent file; when the user cancels or discovery fails, the selector SHALL return no settings (`null`). The selector SHALL NOT construct overrides: the final per-agent persistent materialization, carrying the selected agent identity and the conditional `variant` key, SHALL be performed exclusively by the per-agent local-override operation defined in `agent-customization-menu` and governed by `project-local-agent-overrides`.
 
 #### Scenario: model value carries the full provider/model-id identity
 - **WHEN** the user selects model `glm-5.2` under provider `opencode-go`
@@ -62,9 +62,9 @@ The OpenCode settings selector SHALL return nullable shared settings carrying ex
 - **WHEN** the user selects a model and then chooses a named variant
 - **THEN** the returned settings carry both the `model` key and the `variant` key with the chosen values
 
-#### Scenario: the final override is built by the per-agent local-override operation
+#### Scenario: the final materialization is built by the per-agent local-override operation
 - **WHEN** the selector returns shared settings for a confirmed subset
-- **THEN** the per-agent local-override operation constructs each agent's final override carrying the `agent` identity, `model`, the conditional `variant`, and `persistent: false`, per `agent-customization-menu`'s Non-persistent local override requirement
+- **THEN** the per-agent local-override operation SHALL materialize each selected agent with its identity, `model`, and conditional `variant` according to the project-local override capability
 
 #### Scenario: selection completes without filesystem changes
 - **WHEN** the selector returns the shared settings for a confirmed subset
