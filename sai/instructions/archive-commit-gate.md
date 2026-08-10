@@ -31,6 +31,30 @@ read, and no session grant is offered.
 
 Ask first, stage after: no `git add` runs until an option is selected.
 
+## Shared empty-index guard
+
+After `git add` of the two literal paths (`openspec/specs`,
+`openspec/changes/archive`) and BEFORE executing `git commit --amend` or
+creating the new commit, check whether the index contains staged changes:
+
+- Run `git diff --cached --quiet`.
+- **Exit 0** (no staged changes) → the two-path staging left the index empty:
+  do NOT amend and do NOT create a commit; print exactly one line:
+
+  `[sai-archive] no commit: staging left the index empty`
+
+  Then leave the index exactly as it was after staging. For the new-commit
+  path, `sai/instructions/commit.md` steps 1–5 are not applied.
+- **Exit 1** (staged changes present) → proceed with the selected commit
+  action.
+
+The guard is shared between the two commit options and between the interactive
+and fast-track paths: it prevents the amend option from rewriting HEAD with an
+identical tree (a pointless SHA) and prevents the new-commit option from
+committing nothing. It does not alter the amend path's ordering: the
+pushed-HEAD guard still runs BEFORE any staging, so the sequence remains
+pushed-HEAD check, then `git add`, then the empty-index check.
+
 ## Amend the latest commit
 
 1. Run the pushed-HEAD guard BEFORE any staging, per the `--amend` detection
@@ -51,7 +75,10 @@ Ask first, stage after: no `git add` runs until an option is selected.
    `git add openspec/specs openspec/changes/archive`
 
    Never `git add -A` and never stage any other path.
-4. Run `git commit --amend --no-edit`.
+4. Run the shared empty-index guard (above). When it fires — the two-path
+   staging left the index empty — do NOT amend, print the guard's single
+   diagnostic line, and run no further git mutation.
+5. Run `git commit --amend --no-edit`.
 
 ## Create a new commit
 
@@ -60,12 +87,17 @@ Ask first, stage after: no `git add` runs until an option is selected.
    `git add openspec/specs openspec/changes/archive`
 
    Never `git add -A` and never stage any other path.
-2. Compose the commit message by applying `sai/instructions/commit.md` steps
+2. Run the shared empty-index guard (above). When it fires — the two-path
+   staging left the index empty — do NOT commit, print the guard's single
+   diagnostic line, and run no further git mutation. The guard runs before
+   `sai/instructions/commit.md` steps 1–5 are applied, so step 1's
+   "No staged changes" stop is never reached on this path.
+3. Compose the commit message by applying `sai/instructions/commit.md` steps
    1–5 — inspect staged state, classify the change, determine scope, compose
    the message, and verify faithfulness — with `sai/policies/commit-rules.md`
    as the single source of commit-message rules. Reference those two files; do
    not restate their rule content.
-3. Commit with the composed message. The picker selection is the per-invocation
+4. Commit with the composed message. The picker selection is the per-invocation
    commit authorization: after selection, stage, compose the message from the
    staged diff, and commit without presenting any further authorization prompt.
 
