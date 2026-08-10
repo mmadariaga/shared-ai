@@ -1,6 +1,6 @@
 # Artifact Feedback Gate (shared parameterized instruction)
 
-Shared completion-phase gate fetched by `sai/commands/sai-1-spec.md` and `sai/commands/sai-2-design.md`. It offers an in-context review loop over the artifacts a step just wrote, then hands control to the step's proceed action. The gate logic lives ONLY here — neither body file restates it inline.
+Shared completion-phase gate fetched by `sai/commands/spec/coordinator.md` and `sai/commands/design/coordinator.md`. It offers an in-context review loop over the artifacts a step just wrote, then hands control to the step's proceed action. The gate logic lives ONLY here — neither body file restates it inline.
 
 ## Parameters (supplied inline by the fetching body)
 
