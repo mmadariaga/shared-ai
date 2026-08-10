@@ -20,14 +20,14 @@ Present a closed-choice action-selector through the harness-native option-picker
 per the "Closed-choice prompts" rule in `sai/policies/remember.md`, with exactly
 three options, in this order:
 
-1. **Amend the latest commit**
-2. **Create a new commit**
+1. **Create a new commit (Recommended)**
+2. **Amend the latest commit**
 3. **Do nothing**
 
-No option carries a Recommended marker. The `commit-auth-gate` option set
-(`yes` / `no` / `Allow on this session`) is never used, the session-scoped
-commit-authorization flag is neither set nor read, and no session grant is
-offered.
+The new-commit option is the only option carrying the `Recommended` marker.
+The `commit-auth-gate` option set (`yes` / `no` / `Allow on this session`) is
+never used, the session-scoped commit-authorization flag is neither set nor
+read, and no session grant is offered.
 
 Ask first, stage after: no `git add` runs until an option is selected.
 
