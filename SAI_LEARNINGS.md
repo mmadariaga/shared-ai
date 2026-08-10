@@ -134,6 +134,8 @@ Durable execution-observed facts about the shared-ai prompt and installer reposi
   *Observed:* add-orca-agent-container — the committed harness's whole-filesystem `grep -rl "sk-ant"` both false-positived and hung until replaced by the bounded fixture-marker scan.
 - **POSIX-mode assertions in the host-mode harness on Windows/NTFS**: Do not assert file mode 0600/owner-only via `stat -c %a` on this host — NTFS does not store POSIX modes, so node's `0o600` write surfaces as 644 through drvfs. On `MSYS_NO_PATHCONV=1`, verify the source carries the explicit `0o600` intent instead; the assertion holds only on POSIX filesystems.
   *Observed:* add-orca-agent-container — the host-mode harness "pairing.json is owner-only (0600)" check failed on Git Bash until the MSYS source-intent accommodation was added, mirroring the existing docker-mode unreadable-secret accommodation.
+- **Select-String**: On Windows PowerShell 5.1 the `**` glob in `Select-String -Path <dir>\**\*.md` does NOT recurse — a `-Path` glob needs `-Recurse` (or `Get-ChildItem -Path <dir> -Recurse -Filter *.md | Select-String`) to enumerate subdirectory files.
+  *Observed:* retire-orphan-inline-callers — the Step 4 fetch-site check `Select-String -Path sai\commands\**\*.md` matched nothing because the glob did not recurse; the `Get-ChildItem -Recurse` form returned exactly the two coordinator fetchers.
 
 ## Test Command
 
