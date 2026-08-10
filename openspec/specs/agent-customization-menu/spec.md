@@ -97,7 +97,7 @@ After the agent-selection checklist confirms a non-empty subset and before any f
 - **THEN** customization SHALL complete without configuring any agent
 
 ### Requirement: Fake settings selection
-For every customization run with a non-empty confirmed subset, the selected harness adapter MUST invoke a placeholder settings selector that collects BOTH a placeholder model choice and a placeholder effort choice through navigable single-select lists, using `effort` as the shared UI concept. The OpenCode adapter MUST expose the selected effort as the placeholder input for its future `variant` mapping, and the Claude Code adapter MUST expose it as the placeholder input for its future `effort` mapping. The collected values MUST be forwarded to the fake local-override operation as specified by the Shared settings selection requirement. This slice MUST NOT perform model discovery or real settings validation.
+For every customization run with a non-empty confirmed subset, the selected harness adapter MUST invoke a placeholder settings selector that collects BOTH a placeholder model choice and a placeholder effort choice through exactly one navigable single-select frame, using `effort` as the shared UI concept. Each option in that single frame SHALL encode a model choice together with an effort choice, so that one confirmation resolves both values. The OpenCode adapter MUST expose the selected effort as the placeholder input for its future `variant` mapping, and the Claude Code adapter MUST expose it as the placeholder input for its future `effort` mapping. The collected values MUST be forwarded to the fake local-override operation as specified by the Shared settings selection requirement. This slice MUST NOT perform model discovery or real settings validation.
 
 #### Scenario: Settings selector runs once for an OpenCode customization run
 - **WHEN** OpenCode customization is selected and a non-empty subset is confirmed
@@ -107,9 +107,9 @@ For every customization run with a non-empty confirmed subset, the selected harn
 - **WHEN** Claude Code customization is selected and a non-empty subset is confirmed
 - **THEN** the adapter MUST collect exactly one placeholder model choice and one placeholder effort choice from the fake selector for the whole subset, forward both values to the fake local-override operation for every selected agent, and complete without discovering or validating a model
 
-#### Scenario: Model and effort choices are navigable single-selects
-- **WHEN** the fake settings selector presents the model or effort options for a customization run
-- **THEN** the choices SHALL be rendered as navigable single-select lists with a `>` cursor and Enter/space confirmation
+#### Scenario: Model and effort choices share one navigable frame
+- **WHEN** the fake settings selector presents the model/effort options for a customization run
+- **THEN** the model and effort choices SHALL be collected through exactly one navigable single-select frame with a `>` cursor and Enter/space confirmation, one confirmation resolving both the placeholder model choice and the placeholder effort choice
 
 ### Requirement: Non-persistent fake local override
 For every traversed agent, the selected harness adapter MUST invoke a placeholder local-copy adapter after fake settings selection, passing the collected placeholder model and effort choices for that agent. The placeholder MUST report or return a non-persistent result and MUST NOT create, modify, delete, or copy any agent file.
@@ -143,7 +143,7 @@ After harness selection and before per-agent configuration, the flow SHALL prese
 
 ### Requirement: Navigable cancellation aborts customization
 
-When the user presses `q` or Ctrl-C at any navigable surface — the post-setup menu, the harness picker, the agent-selection checklist, or the model/effort selection — the flow SHALL cancel the entire customization run: no agent SHALL be configured, no further navigable surface SHALL be presented, and the flow SHALL complete normally without hard-exiting the process (the configurator's non-exit contract, in contrast to the installer's caller-owned exit policy).
+When the user presses `q` or Ctrl-C at any navigable surface — the post-setup menu, the harness picker, the agent-selection checklist, or the combined model/effort selection — the flow SHALL cancel the entire customization run: no agent SHALL be configured, no further navigable surface SHALL be presented, and the flow SHALL complete normally without hard-exiting the process (the configurator's non-exit contract, in contrast to the installer's caller-owned exit policy).
 
 #### Scenario: Cancel from the post-setup menu
 
@@ -162,5 +162,5 @@ When the user presses `q` or Ctrl-C at any navigable surface — the post-setup 
 
 #### Scenario: Cancel during settings selection
 
-- **WHEN** the user presses `q` or Ctrl-C at the model or effort selection, or the settings selector returns no selection
+- **WHEN** the user presses `q` or Ctrl-C at the combined model/effort selection, or the settings selector returns no selection
 - **THEN** customization SHALL be cancelled — no agent SHALL be configured — and the flow SHALL complete normally

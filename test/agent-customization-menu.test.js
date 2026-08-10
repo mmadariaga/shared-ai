@@ -122,6 +122,36 @@ function recordChecklist(calls, outcome) {
   };
 }
 
+// Combined-frame helpers. The delimiter literal joining a model option to an
+// effort option is implementation-defined (documented in proposal.md, which
+// the blind test-writer must not read), so entries are parsed structurally
+// from the interface contract's label shape (model + fixed delimiter +
+// effort): an entry must start with a frozen model option and end with a
+// frozen effort option, with a non-empty delimiter between them. The frozen
+// placeholder values are prefix/suffix-unambiguous ('<model>' is not a prefix
+// of '<model-alt>', and '<effort>' is not a suffix of '<effort-alt>').
+function splitCombinedEntry(entry) {
+  for (const model of FAKE_MODEL_OPTIONS) {
+    if (!entry.startsWith(model)) continue;
+    for (const effort of FAKE_EFFORT_OPTIONS) {
+      if (!entry.endsWith(effort)) continue;
+      if (entry.length > model.length + effort.length) {
+        return { model, effort };
+      }
+    }
+  }
+  return null;
+}
+
+// Returns the first combined entry in `options` whose parts are the given
+// model and effort options; returns undefined when no entry matches.
+function findCombinedEntry(options, model, effort) {
+  return options.find(entry => {
+    const parts = splitCombinedEntry(entry);
+    return parts !== null && parts.model === model && parts.effort === effort;
+  });
+}
+
 after(() => {
   fs.rmSync(SCRATCH_ROOT, { recursive: true, force: true });
 });
@@ -304,65 +334,93 @@ test('claude enumerateAgents returns exactly the 7 routed workers', () => {
     'claude agents should be exactly the 7 routed workers');
 });
 
-test('fakeSelectSettings asks model options first then effort options and returns the selections', async () => {
+test('fakeSelectSettings asks one combined model×effort frame and resolves the confirmed entry', async () => {
   const calls = [];
-  const answers = ['<model>', '<effort-alt>'];
   const promptSpy = async (question, options) => {
     calls.push({ question, options });
-    return answers.shift();
+    return findCombinedEntry(options, FAKE_MODEL_OPTIONS[0], FAKE_EFFORT_OPTIONS[1]);
   };
   const settings = await fakeSelectSettings('explore', promptSpy);
-  assert.equal(calls.length, 2, 'exactly two prompts should run per agent');
-  assert.deepEqual(calls[0].options, FAKE_MODEL_OPTIONS, 'the first prompt should offer the model options');
-  assert.deepEqual(calls[1].options, FAKE_EFFORT_OPTIONS, 'the second prompt should offer the effort options');
-  assert.deepEqual(settings, { model: '<model>', effort: '<effort-alt>' },
-    'the settings should hold the two user-selected placeholder values');
+  assert.equal(calls.length, 1, 'exactly one combined prompt should run per invocation');
+  const expectedSize = FAKE_MODEL_OPTIONS.length * FAKE_EFFORT_OPTIONS.length;
+  assert.equal(calls[0].options.length, expectedSize,
+    'the combined frame should offer the full model×effort Cartesian product');
+  for (let i = 0; i < calls[0].options.length; i += 1) {
+    const parts = splitCombinedEntry(calls[0].options[i]);
+    assert.ok(parts, `option ${i} should encode exactly one model together with one effort`);
+    assert.ok(FAKE_MODEL_OPTIONS.includes(parts.model),
+      `option ${i} should carry a frozen model option as its model part`);
+    assert.ok(FAKE_EFFORT_OPTIONS.includes(parts.effort),
+      `option ${i} should carry a frozen effort option as its effort part`);
+    const group = Math.floor(i / FAKE_EFFORT_OPTIONS.length);
+    assert.equal(parts.model, FAKE_MODEL_OPTIONS[group],
+      `option ${i} should be model-major: group ${group} carries FAKE_MODEL_OPTIONS[${group}]`);
+  }
+  assert.deepEqual(settings, { model: FAKE_MODEL_OPTIONS[0], effort: FAKE_EFFORT_OPTIONS[1] },
+    'confirming the entry whose parts are FAKE_MODEL_OPTIONS[0] + FAKE_EFFORT_OPTIONS[1] should resolve the pair');
 });
 
-test('adapter selectSettings drives exactly two prompts, model then effort, via the prompt boundary', async () => {
-  const calls = [];
-  const answers = ['<model-alt>', '<effort>'];
-  const promptSpy = async (question, options) => {
-    calls.push({ question, options });
-    return answers.shift();
-  };
-  const adapter = createOpencodeAdapter({ repoRoot: REPO_ROOT, promptChoice: promptSpy });
-  const settings = await adapter.selectSettings('explore');
-  assert.equal(calls.length, 2, 'exactly two prompts should run for selectSettings(explore)');
-  assert.deepEqual(calls[0].options, FAKE_MODEL_OPTIONS, 'the first prompt should offer the model options');
-  assert.deepEqual(calls[1].options, FAKE_EFFORT_OPTIONS, 'the second prompt should offer the effort options');
-  assert.deepEqual(settings, { model: '<model-alt>', effort: '<effort>' },
-    'selectSettings should resolve the two selected placeholder values');
+test('adapter selectSettings drives one combined frame via the prompt boundary and returns the selected pair', async () => {
+  for (const [name, createAdapter] of [
+    ['opencode', createOpencodeAdapter],
+    ['claude', createClaudeAdapter],
+  ]) {
+    const calls = [];
+    const promptSpy = async (question, options) => {
+      calls.push({ question, options });
+      return findCombinedEntry(options, FAKE_MODEL_OPTIONS[1], FAKE_EFFORT_OPTIONS[0]);
+    };
+    const adapter = createAdapter({ repoRoot: REPO_ROOT, promptChoice: promptSpy });
+    const settings = await adapter.selectSettings('explore');
+    assert.equal(calls.length, 1,
+      `${name} selectSettings(explore) should drive exactly one combined prompt`);
+    assert.deepEqual(settings, { model: FAKE_MODEL_OPTIONS[1], effort: FAKE_EFFORT_OPTIONS[0] },
+      `${name} selectSettings should resolve the confirmed combined entry to its model and effort values`);
+  }
 });
 
-test('opencode adapter selects and overrides each enumerated agent exactly once', async () => {
-  const answers = [];
-  for (let i = 0; i < OPENCODE_AGENTS.length; i += 1) {
-    answers.push(FAKE_MODEL_OPTIONS[i % 2], FAKE_EFFORT_OPTIONS[i % 2]);
-  }
-  let promptIndex = 0;
-  const promptSpy = async () => answers[promptIndex++];
-  const adapter = createOpencodeAdapter({ repoRoot: REPO_ROOT, promptChoice: promptSpy });
-  const agents = adapter.enumerateAgents();
-  assert.equal(agents.length, OPENCODE_AGENTS.length, 'exactly 10 agents should enumerate');
-  assert.deepEqual([...agents].sort(), [...OPENCODE_AGENTS].sort(),
-    'the enumerated agents should be exactly the 10 managed opencode agents');
+test('each enumerated agent consumes exactly one combined frame and overrides map effort to the tunable key', async () => {
+  const harnesses = [
+    { name: 'opencode', create: createOpencodeAdapter, expectedAgents: OPENCODE_AGENTS, tunable: 'variant' },
+    { name: 'claude', create: createClaudeAdapter, expectedAgents: CLAUDE_AGENTS, tunable: 'effort' },
+  ];
+  for (const { name, create, expectedAgents, tunable } of harnesses) {
+    let promptIndex = 0;
+    const promptSpy = async (question, options) => {
+      const i = promptIndex;
+      promptIndex += 1;
+      const parts = findCombinedEntry(
+        options,
+        FAKE_MODEL_OPTIONS[Math.floor((i % 4) / 2)],
+        FAKE_EFFORT_OPTIONS[i % 2]
+      );
+      assert.ok(parts, `${name} prompt ${i} should find the scripted combined entry`);
+      return parts;
+    };
+    const adapter = create({ repoRoot: REPO_ROOT, promptChoice: promptSpy });
+    const agents = adapter.enumerateAgents();
+    assert.equal(agents.length, expectedAgents.length,
+      `exactly ${expectedAgents.length} agents should enumerate for ${name}`);
+    assert.deepEqual([...agents].sort(), [...expectedAgents].sort(),
+      `the enumerated agents should be exactly the ${expectedAgents.length} managed ${name} agents`);
 
-  for (let i = 0; i < agents.length; i += 1) {
-    const agentName = agents[i];
-    const settings = await adapter.selectSettings(agentName);
-    assert.deepEqual(settings, { model: FAKE_MODEL_OPTIONS[i % 2], effort: FAKE_EFFORT_OPTIONS[i % 2] },
-      'selectSettings should resolve the two selected placeholder values');
-    const override = adapter.createLocalOverride(agentName, settings);
-    assert.deepEqual(override, {
-      agent: agentName,
-      model: FAKE_MODEL_OPTIONS[i % 2],
-      variant: FAKE_EFFORT_OPTIONS[i % 2],
-      persistent: false,
-    }, 'the opencode override should map the selected effort value to variant');
+    for (let i = 0; i < agents.length; i += 1) {
+      const expectedModel = FAKE_MODEL_OPTIONS[Math.floor((i % 4) / 2)];
+      const expectedEffort = FAKE_EFFORT_OPTIONS[i % 2];
+      const settings = await adapter.selectSettings(agents[i]);
+      assert.deepEqual(settings, { model: expectedModel, effort: expectedEffort },
+        `${name} selectSettings should resolve the scripted combined entry for agent ${i}`);
+      const override = adapter.createLocalOverride(agents[i], settings);
+      assert.deepEqual(override, {
+        agent: agents[i],
+        model: expectedModel,
+        [tunable]: expectedEffort,
+        persistent: false,
+      }, `the ${name} override should map the selected effort value to the ${tunable} key`);
+    }
+    assert.equal(promptIndex, agents.length,
+      `selectSettings should consume exactly one combined prompt per ${name} agent`);
   }
-  assert.equal(promptIndex, OPENCODE_AGENTS.length * 2,
-    'selectSettings should consume exactly two prompts per enumerated agent');
 });
 
 test('opencode createLocalOverride returns agent, model, variant, persistent:false', () => {
@@ -397,22 +455,26 @@ test('fakeCreateLocalOverride is non-persistent and preserves the selected value
   }, 'the fake override should carry the agent, selected values, and persistent:false');
 });
 
-test('full traversal against a scratch repo root performs zero filesystem writes', async () => {
+test('full traversal walks menu, harness, checklist, and one combined frame per agent with zero filesystem writes', async () => {
   const scratch = makeScratchRepo();
   try {
     const before = snapshotTree(path.join(scratch, 'agents'));
 
     const answers = ['Customize models', 'OpenCode'];
     let promptIndex = 0;
-    const promptChoice = async () => {
+    const promptChoice = async (question, options) => {
       if (promptIndex < answers.length) {
         const value = answers[promptIndex];
         promptIndex += 1;
         return value;
       }
-      const offset = promptIndex - answers.length;
+      const agentIndex = promptIndex - answers.length;
       promptIndex += 1;
-      return [FAKE_MODEL_OPTIONS, FAKE_EFFORT_OPTIONS][offset % 2][Math.floor(offset / 2) % 2];
+      return findCombinedEntry(
+        options,
+        FAKE_MODEL_OPTIONS[Math.floor((agentIndex % 4) / 2)],
+        FAKE_EFFORT_OPTIONS[agentIndex % 2]
+      );
     };
 
     const checklistCalls = [];
@@ -582,7 +644,7 @@ test('promptChoice null at the harness picker aborts before any checklist or per
   }
 });
 
-test('promptChoice null at the single shared model selection aborts via the real adapter path with no agent configured', async () => {
+test('promptChoice null at the single combined model×effort frame aborts via the real adapter path with no agent configured', async () => {
   const scratch = makeScratchRepo();
   const checklistCalls = [];
   let promptCalls = 0;
@@ -601,10 +663,10 @@ test('promptChoice null at the single shared model selection aborts via the real
       promptChoice,
       promptChecklist: recordChecklist(checklistCalls),
     });
-    assert.equal(result, undefined, 'a null model selection aborts the run');
+    assert.equal(result, undefined, 'a null combined-frame selection aborts the run');
     assert.equal(checklistCalls.length, 1, 'the checklist should be reached exactly once');
-    assert.equal(promptCalls, 4,
-      'the run must abort after the single shared selection: no further agent may be configured');
+    assert.equal(promptCalls, 3,
+      'exactly menu, harness, and the single combined frame are prompted: no prompt follows the combined-frame null');
   } finally {
     fs.rmSync(scratch, { recursive: true, force: true });
   }

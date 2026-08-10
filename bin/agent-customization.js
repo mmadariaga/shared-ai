@@ -15,10 +15,32 @@ const FAKE_MODEL_OPTIONS = Object.freeze(['<model>', '<model-alt>']);
 const FAKE_EFFORT_OPTIONS = Object.freeze(['<effort>', '<effort-alt>']);
 const AGENT_CHECKLIST_LEGEND = 'Up/Down move · Space toggle · Enter confirm · q/Ctrl-C cancel';
 
-async function fakeSelectSettings(subsetLabel, promptChoice) {
-  const model = await promptChoice(`Placeholder model for ${subsetLabel}:`, FAKE_MODEL_OPTIONS);
-  const effort = await promptChoice(`Placeholder effort for ${subsetLabel}:`, FAKE_EFFORT_OPTIONS);
+const COMBINED_ENTRY_DELIMITER = ' | ';
+
+function buildCombinedOptions() {
+  const combined = [];
+  for (const model of FAKE_MODEL_OPTIONS) {
+    for (const effort of FAKE_EFFORT_OPTIONS) {
+      combined.push(`${model}${COMBINED_ENTRY_DELIMITER}${effort}`);
+    }
+  }
+  return combined;
+}
+
+function parseCombinedEntry(entry) {
+  if (entry === null) {
+    return { model: null, effort: null };
+  }
+  const [model, effort] = entry.split(COMBINED_ENTRY_DELIMITER);
+  if (!FAKE_MODEL_OPTIONS.includes(model) || !FAKE_EFFORT_OPTIONS.includes(effort)) {
+    throw new Error(`Unknown combined settings entry: ${entry}`);
+  }
   return { model, effort };
+}
+
+async function fakeSelectSettings(subsetLabel, promptChoice) {
+  const entry = await promptChoice(`Placeholder model and effort for ${subsetLabel}:`, buildCombinedOptions());
+  return parseCombinedEntry(entry);
 }
 
 function fakeCreateLocalOverride(agentName, settings) {
