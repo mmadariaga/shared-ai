@@ -169,7 +169,7 @@ After a `Review sai-1's artifacts` or `Review sai-2's artifacts` selection for a
 
 ### Requirement: Read-only constraint
 
-The review loop SHALL be strictly read-only. It SHALL NOT create, modify, or delete `proposal.md`, `specs/**`, `design.md`, `tasks.md`, `interfaces.md`, `change-overview.md`, or any other file under any change directory. It SHALL NOT alter the already-emitted `Ready to Propose` block — neither its content nor its language. Review findings are advisory only: accepted corrections are applied by the owning worker through the writable handoff protocol defined below, never by the review loop itself, and exactly one overview regeneration follows those edits per the `change-overview-synchronization` capability.
+The review loop SHALL be strictly read-only. It SHALL NOT create, modify, or delete `proposal.md`, `specs/**`, `design.md`, `tasks.md`, `interfaces.md`, `change-overview.md`, or any other file under any change directory. It SHALL NOT alter the already-emitted `Ready to Propose` block — neither its content nor its language. Review findings are advisory only: handed-off corrections are applied by the owning worker through the writable handoff protocol defined below, never by the review loop itself, and exactly one overview regeneration follows those edits per the `change-overview-synchronization` capability.
 
 #### Scenario: reviewed artifacts are never edited
 
@@ -181,59 +181,53 @@ The review loop SHALL be strictly read-only. It SHALL NOT create, modify, or del
 - **WHEN** the review loop runs after a `Ready to Propose` block was printed
 - **THEN** the loop does not alter that block's content or language
 
-### Requirement: Correction acceptance and handoff protocol
+### Requirement: Correction handoff protocol
 
-When a review transaction surfaces findings, the loop SHALL present them for acceptance as a distinct step, and no correction SHALL be applied without that explicit acceptance. Because the harness pickers are single-select (per `sai/policies/remember.md`), the loop SHALL NOT offer one multi-finding picker; it SHALL iterate the findings one at a time in deterministic order — by severity in the order High → Medium → Low, then by ascending numeric identifier within each severity (for example `H1`, `H2`, then `M1`, then `L1` per the shared finding contract) — and SHALL present one yes/no picker per finding through the native option-picker: `Accept` / `Decline`. Answering `Accept` marks that finding accepted; `Decline` marks it declined; the loop proceeds to the next finding, and after the last finding it SHALL present a single confirmation of the accepted set before any handoff. The loop SHALL NOT auto-accept findings.
+When a review transaction surfaces findings, the loop SHALL hand them off directly: after the review closes, the loop SHALL print exactly one findings block presenting every finding from that transaction in deterministic order — by severity in the order High → Medium → Low, then by ascending numeric identifier within each severity (for example `H1`, `H2`, then `M1`, then `L1` per the shared finding contract) — and SHALL print nothing else. The findings block SHALL present each finding in the shared review finding shape per `sai/policies/artifact-review-contract.md`: a severity-prefixed identifier heading (the `Finding H1`-style label) that renders the contract's `Identifier` field, followed by the contract's remaining four fields in order (`Severity`, `Artifact location`, `Issue`, `Recommended correction`), and the contract's base-form `Summary:` tally closing the block. The findings block itself IS the handoff payload: the loop SHALL NOT emit any separate `## DesignCorrectionRequest` block or `change:` header re-encoding the findings. There SHALL be no acceptance step: no per-finding `Accept` / `Decline` picker, no confirmation of an accepted set, and no in-loop filtering of the findings that enter the block; every finding of the closed transaction is handed off. The loop never applies or forwards corrections itself, so it needs no auto-accept rule: its only role is to hand every finding of the closed transaction to the user, who pastes the findings block at the feedback gate of a re-invoked `/sai-2-design`.
 
-Accepted corrections SHALL be handed off as feedback payloads in the shared review finding shape (`sai/policies/artifact-review-contract.md`): severity-prefixed identifier, severity, artifact location, issue statement, and recommended correction. Ownership SHALL follow the source artifact's writer, and every accepted correction SHALL be applied by a worker that can consume the current change:
+Handed-off corrections SHALL be applied by a worker that can consume the current change, with ownership following the source artifact's writer:
 
 - findings on `design.md`, `tasks.md`, or `interfaces.md` — owned by the **design worker**; they are applied only through a writable design-worker transaction (a re-invoked `/sai-2-design` or the supervised design phase's feedback channel);
 - findings on `proposal.md` or `specs/**` — owned by the **design worker's consent-gated spec-amendment path**: the design phase already holds consent-gated authority to amend `proposal.md` and `specs/**` in place (per `sai/instructions/design.md`), so applying such findings requires explicit user consent and SHALL be executed by a design worker through that path. There is no live spec-proposal worker at review time and `/sai-1-spec` cannot consume an existing change, so the spec-worker continuation is not a supported path.
 
-Regeneration after accepted corrections SHALL be conditioned on the change's persisted `overview.state` (per the `change-overview-synchronization` capability): exactly one regeneration follows the design-worker edits **only when the overview is already materialized** (`overview.state` is `current` or `stale`). Before first materialization — `unmaterialized` or `failed` — accepted corrections update only their authoritative source artifacts and SHALL NOT regenerate or generate an overview; the overview is generated exactly once later, at the successful sai-2 `Continue` processing. The review loop itself SHALL NOT apply, forward, or regenerate on behalf of the user: it SHALL only report which findings were accepted and hand the payload to the user for the owning-worker path.
+Regeneration after handed-off corrections SHALL be conditioned on the change's persisted `overview.state` (per the `change-overview-synchronization` capability): exactly one regeneration follows the design-worker edits **only when the overview is already materialized** (`overview.state` is `current` or `stale`). Before first materialization — `unmaterialized` or `failed` — handed-off corrections update only their authoritative source artifacts and SHALL NOT regenerate or generate an overview; the overview is generated exactly once later, at the successful sai-2 `Continue` processing. The review loop itself SHALL NOT apply, forward, or regenerate on behalf of the user: it SHALL only print the findings block and hand the payload to the user for the owning-worker path. A user who wants to drop a specific finding removes that line when pasting the block; a contested finding is declined at the downstream design gate instead.
 
-#### Scenario: findings are accepted one at a time in deterministic order
+#### Scenario: review output is a single findings block in deterministic order
 
-- **WHEN** a review transaction closes with findings and the user proceeds to acceptance
-- **THEN** the loop presents one `Accept` / `Decline` picker per finding, iterating by severity order High → Medium → Low and ascending numeric identifier within each severity
-- **AND** the loop presents a single confirmation of the accepted set before any handoff
+- **WHEN** a review transaction closes with findings
+- **THEN** the loop prints exactly one findings block listing every finding from the transaction in the shared finding shape, in severity order High → Medium → Low and ascending numeric identifier within each severity, closing with the contract's base-form `Summary:` tally
+- **AND** it prints nothing else — no separate `## DesignCorrectionRequest` block and no `change:` header
 
-#### Scenario: user accepts findings explicitly
+#### Scenario: every finding is handed off without acceptance
 
-- **WHEN** the user answers `Accept` for one or more findings and confirms the accepted set
-- **THEN** the loop presents the accepted findings as handoff payloads in the shared finding shape
-- **AND** no declined or unconfirmed finding is handed off
+- **WHEN** a review transaction closes with findings
+- **THEN** the loop presents every finding from the transaction as the handoff payload
+- **AND** no `Accept` / `Decline` picker and no accepted-set confirmation is presented, and no finding is filtered, pre-selected, or excluded by an in-loop decision
 
 #### Scenario: design-artifact corrections route to the design worker
 
-- **WHEN** the user accepts a finding on `design.md`, `tasks.md`, or `interfaces.md`
-- **THEN** the correction is applied by a design worker through a writable design-worker transaction, never by the loop
+- **WHEN** the user pastes the findings block at the feedback gate of a re-invoked `/sai-2-design`, including findings on `design.md`, `tasks.md`, or `interfaces.md`
+- **THEN** the design worker applies those corrections directly through the writable design-worker transaction, never by the loop
 - **AND** exactly one regeneration follows after the design-worker edits complete, only if the overview is already materialized (`current` or `stale`)
 
 #### Scenario: proposal or specs corrections route through the design worker's consent-gated amendment path
 
-- **WHEN** the user accepts a finding on `proposal.md` or `specs/**` and explicitly consents to the amendment
+- **WHEN** the user pastes the findings block at the feedback gate of a re-invoked `/sai-2-design`, including findings on `proposal.md` or `specs/**`, and explicitly consents to the amendment
 - **THEN** a design worker applies the amendment through the design phase's consent-gated spec-amendment path
 - **AND** exactly one regeneration follows after the edits complete, only if the overview is already materialized
 - **AND** no spec-worker continuation is used, because none is live at review time
 
-#### Scenario: accepted corrections before first materialization update sources only
+#### Scenario: handed-off corrections before first materialization update sources only
 
-- **WHEN** accepted corrections are applied to source artifacts of a change whose overview is not yet materialized (`overview.state` is `unmaterialized` or `failed`)
+- **WHEN** handed-off corrections are applied to source artifacts of a change whose overview is not yet materialized (`overview.state` is `unmaterialized` or `failed`)
 - **THEN** the corrections update only their authoritative source artifacts
 - **AND** no overview is generated or regenerated by them — the overview is generated exactly once later at the successful sai-2 `Continue` processing
 
 #### Scenario: proposal or specs corrections without consent are not applied
 
-- **WHEN** the user accepts a finding on `proposal.md` or `specs/**` but does not consent to the amendment
+- **WHEN** a handed-off finding on `proposal.md` or `specs/**` reaches the design gate and the user does not consent to the amendment
 - **THEN** no amendment is applied
 - **AND** the finding remains open for a later consented request
-
-#### Scenario: no acceptance, no handoff
-
-- **WHEN** the user declines all findings or accepts none
-- **THEN** the loop hands off no correction payload
-- **AND** no source artifact is modified and no regeneration occurs
 
 ### Requirement: Language gate reuse for reviews
 
