@@ -52,9 +52,91 @@ The idea progress list SHALL contain exactly these item kinds: one research item
 - **THEN** the list never gains an implementation item
 - **AND** no item is added or marked from that event
 
+### Requirement: idea-list-review-in-progress-state
+
+When the post-crystallization review loop (item 9 of `sai/instructions/explore.md`) begins processing a change, the active review check SHALL be selected once as the first review item of that slice in fixed order — reviewed-sai-1 if not marked completed, otherwise reviewed-sai-2 — that is not marked completed; when both review items are marked completed, no item of the slice SHALL render `in_progress`. While the loop processes the change, the selected active review check SHALL render `in_progress`. The active SHALL be a sticky reference: it SHALL NOT be recomputed from any later mark or clear of a review item, and it SHALL move only forward, and only when it is itself marked completed. The active item SHALL persist across review transactions and per-change picker re-shows while the loop processes the change, until it is marked completed. When the active item is marked completed by a tally reporting `High=0` — from a `Review sai-1's artifacts`, `Review sai-2's artifacts`, or `Review change-overview` transaction — the active SHALL advance to the slice's next review item not marked completed, and when none remains no item of the slice SHALL render `in_progress`. A completed review over the active item that reports at least one High finding SHALL leave the item not marked completed, SHALL keep it the active item, and SHALL keep it rendering `in_progress`; marking-clear wording applies only to previously marked items. A review that clears a review item other than the active one SHALL NOT move the active. Selecting `Skip` for the change, or closing the loop, SHALL resolve the change's in-progress item to render `pending`. The state is render-only: setting, advancing, or resolving it SHALL NOT mark or clear any item, and the evidence-based marking hooks (`explore-review-evidence-marking` requirements `review-item-no-high-pass-marks`, `review-item-per-slice-targeting`, and `review-item-evidence-only-marking`) SHALL remain unchanged. The research item and slice-crystallization items SHALL never render `in_progress`. The supervised pipeline (item 10 of `sai/instructions/explore.md`) SHALL NOT set or resolve the state.
+
+#### Scenario: loop start sets the first uncompleted review check in progress
+
+- **WHEN** the review loop begins processing a change whose reviewed-sai-1 item is not marked completed
+- **THEN** reviewed-sai-1 renders `in_progress` and reviewed-sai-2 renders `pending`
+
+#### Scenario: loop entry renders the active item before the first transaction
+
+- **WHEN** the review loop begins processing a change and presents its per-change picker for the first time
+- **THEN** the slice's active review item renders `in_progress` before any review transaction for that change has run
+- **AND** the item keeps rendering `in_progress` through every later picker re-show until it is marked completed
+
+#### Scenario: the active is the second review check when the first is completed
+
+- **WHEN** the review loop begins processing a change whose reviewed-sai-1 item is marked completed and whose reviewed-sai-2 item is not
+- **THEN** reviewed-sai-2 renders `in_progress`
+
+#### Scenario: no item is in progress when both review checks are completed
+
+- **WHEN** the review loop begins processing a change whose reviewed-sai-1 and reviewed-sai-2 items are both marked completed
+- **THEN** no item of the slice renders `in_progress`
+
+#### Scenario: the active item persists across transactions and re-shows
+
+- **WHEN** a review transaction completes over the active item's slice leaving the active item not marked completed, and the per-change picker re-shows
+- **THEN** the same item remains the active one and renders `in_progress`
+
+#### Scenario: a completed marking advances the active
+
+- **WHEN** the active reviewed-sai-1 item is marked completed by a `Review sai-1's artifacts` transaction closing with `High=0`
+- **THEN** reviewed-sai-2 becomes the active item and renders `in_progress` when it is not marked completed
+
+#### Scenario: a High=0 transaction renders once after mark and advance
+
+- **WHEN** a `Review sai-1's artifacts` transaction closes with `High=0`, marking the active reviewed-sai-1 item completed and advancing the active to reviewed-sai-2
+- **THEN** the list renders exactly once, after both the mark and the advance have been applied
+- **AND** the panel shows reviewed-sai-1 `completed` and reviewed-sai-2 `in_progress`
+
+#### Scenario: a change-overview pass can complete the active sai-2 item
+
+- **WHEN** the active reviewed-sai-2 item is marked completed by a completed `Review change-overview` transaction closing with `High=0`
+- **THEN** no item of the slice renders `in_progress`, because reviewed-sai-1 is already marked completed and no uncompleted review check remains
+
+#### Scenario: a High-finding review keeps the active item in progress
+
+- **WHEN** a completed review over the active item reports at least one High finding
+- **THEN** the item stays not marked completed, remains the active item, and renders `in_progress`
+
+#### Scenario: clearing a non-active review item does not move the active
+
+- **WHEN** a completed review clears a marked review item that is not the active one
+- **THEN** the active item remains unchanged and keeps rendering `in_progress`
+
+#### Scenario: Skip resolves the in-progress state
+
+- **WHEN** the user selects `Skip` for the change
+- **THEN** the change's in-progress item resolves to render `pending`
+
+#### Scenario: closing the loop leaves no item in progress
+
+- **WHEN** the review loop terminates after processing every tracked change
+- **THEN** no item of any processed slice renders `in_progress`
+
+#### Scenario: the state is render-only
+
+- **WHEN** the active item renders `in_progress` or resolves to `pending`
+- **THEN** no item is marked or cleared by that render change
+- **AND** the evidence-based marking hooks apply unchanged
+
+#### Scenario: only review items carry in_progress
+
+- **WHEN** the research item or a slice-crystallization item renders while the review loop is active
+- **THEN** it renders `pending` or `completed`, never `in_progress`
+
+#### Scenario: supervised passes never set the state
+
+- **WHEN** a supervised spec or design pass completes for a change
+- **THEN** no item renders `in_progress` from that pass
+
 ### Requirement: idea-list-rendering
 
-The list SHALL NOT be rendered while it holds only the research item; it SHALL first render when it first carries more than the research item, at the first slice identification, and SHALL re-render whenever an item is added, marked, or cleared after that. Rendering SHALL be performed through the per-harness idea-list render binding, and the binding SHALL declare whether its harness has a native task panel — panel availability is declared by the binding, never determined at runtime. The two supported harnesses (Claude Code and opencode) SHALL declare a native task panel, and their bindings SHALL render the list on the panel, replacing plain in-conversation text — the same list state SHALL NOT render on both surfaces. On the panel, a marked item SHALL render `completed`, a cleared item SHALL render back to `pending`, and no item SHALL carry `in_progress`. Each item's slice `**Change name**` key SHALL be carried in a **settable-and-readable** machine-readable panel entry field **distinct from the label** — the concrete per-harness field is resolved at design and pinned by the render binding (opencode `priority`, Claude Code `description`) — for stable item identity, so that the label is not reduced to the raw key. The label SHALL remain visually unambiguous on every rendered surface: a slice's items SHALL be distinguishable from every other slice's items, with the slice's change name rendered in the label. A binding that declares no native task panel SHALL render plain in-conversation Markdown checkbox text — `- [ ]` for an unmarked item, `- [x]` for a marked item — as the declared fallback; no supported harness exercises that branch today, so it is a declared extension point for a future harness, never a runtime-detected path. The panel update SHALL originate exclusively from the coordinator session, never from a worker subagent. A turn that adds or changes items SHALL render the list exactly once, after all of that turn's additions and state changes have been applied.
+The list SHALL NOT be rendered while it holds only the research item; it SHALL first render when it first carries more than the research item, at the first slice identification, and SHALL re-render whenever an item is added, marked, or cleared, or an item's in-progress state is set or resolved, after that. Rendering SHALL be performed through the per-harness idea-list render binding, and the binding SHALL declare whether its harness has a native task panel — panel availability is declared by the binding, never determined at runtime. The two supported harnesses (Claude Code and opencode) SHALL declare a native task panel, and their bindings SHALL render the list on the panel, replacing plain in-conversation text — the same list state SHALL NOT render on both surfaces. On the panel, a marked item SHALL render `completed`, a cleared item SHALL render back to `pending`, and the slice's active review item SHALL render `in_progress` while the post-crystallization review loop processes that slice — `in_progress` SHALL be carried only by reviewed-sai-1 and reviewed-sai-2 items per `idea-list-review-in-progress-state`, never by the research item or a slice-crystallization item. Each item's slice `**Change name**` key SHALL be carried in a **settable-and-readable** machine-readable panel entry field **distinct from the label** — the concrete per-harness field is resolved at design and pinned by the render binding (opencode `priority`, Claude Code `description`) — for stable item identity, so that the label is not reduced to the raw key. The label SHALL remain visually unambiguous on every rendered surface: a slice's items SHALL be distinguishable from every other slice's items, with the slice's change name rendered in the label. A binding that declares no native task panel SHALL render plain in-conversation Markdown checkbox text — `- [ ]` for an unmarked item, `- [~]` for the active in-progress review item, `- [x]` for a marked item — as the declared fallback; no supported harness exercises that branch today, so it is a declared extension point for a future harness, never a runtime-detected path. The panel update SHALL originate exclusively from the coordinator session, never from a worker subagent. A turn that adds, marks, or clears an item, or that sets or resolves an item's in-progress state, SHALL render the list exactly once, after all of that turn's additions and state changes have been applied.
 
 #### Scenario: no list while it holds only the research item
 
@@ -70,6 +152,11 @@ The list SHALL NOT be rendered while it holds only the research item; it SHALL f
 #### Scenario: later turns re-render on change
 
 - **WHEN** an item is added, marked, or cleared after the first render
+- **THEN** the list re-renders with the updated content
+
+#### Scenario: in-progress state changes re-render
+
+- **WHEN** an item's in-progress state is set or resolved after the first render
 - **THEN** the list re-renders with the updated content
 
 #### Scenario: a turn renders the list once
@@ -89,11 +176,23 @@ The list SHALL NOT be rendered while it holds only the research item; it SHALL f
 - **THEN** the binding renders the list as plain in-conversation Markdown checkbox text
 - **AND** no supported harness (Claude Code or opencode) exercises that branch today
 
+#### Scenario: the plain-text fallback renders the active review item distinctly
+
+- **WHEN** a binding declaring no native task panel renders the list while a review item is the active one
+- **THEN** the active review item renders as `- [~]`
+- **AND** an unmarked item renders as `- [ ]` and a marked item renders as `- [x]`
+
 #### Scenario: panel state expresses mark and clear
 
 - **WHEN** a reviewed-sai-1 item is marked after a completed review reporting no High findings and is cleared after a later completed review reporting at least one High finding
 - **THEN** the item's panel entry renders `completed` and then renders back to `pending`
 - **AND** the item's label is unchanged
+
+#### Scenario: panel state expresses the active review item
+
+- **WHEN** a slice's reviewed-sai-1 item is the active review item while the post-crystallization review loop processes the change
+- **THEN** the item's panel entry renders `in_progress` and the item's label is unchanged
+- **AND** when that item is later marked completed, its panel entry renders `completed` and the slice's next not-completed review item renders `in_progress`
 
 #### Scenario: change-name key rides a machine-readable field
 

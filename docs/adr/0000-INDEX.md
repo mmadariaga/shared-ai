@@ -127,6 +127,8 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0058 — The explore/feedback gate UX tweaks are expressed as deltas against the existing capabilities, not a new combined capability](./0058-gate-ux-tweaks-as-deltas-against-existing-capabilities.md) — **Reframes** ddr:0053
 - [0066 — Provenance as inline citations on existing Why / Decisions & Rationale fields — no new field](./0066-inline-provenance-no-new-field.md)
 - [0116 — The idea progress list is expressed entirely in `sai/instructions/explore.md` — the sole edit target](./0116-idea-progress-list-expressed-in-explore-md.md)
+- [0122 — The findings block is the loop's sole output and handoff payload](./0122-findings-block-is-the-loops-sole-output-and-handoff-payload.md) — Refs 0058, Refs ddr:0060
+- [0123 — Handed-off findings route to the design worker; the loop never applies, forwards, or regenerates](./0123-handed-off-findings-route-to-the-design-worker.md) — Refs 0047, Refs ddr:0060
 
 ### `/sai-backfill`
 
@@ -319,6 +321,8 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0054 — Reuse item 3's path-keyed Persistence rule for post-crystallization review-loop re-asks](./0054-reuse-item-3-persistence-rule-for-review-loop.md)
 - [0066 — Provenance as inline citations on existing Why / Decisions & Rationale fields — no new field](./0066-inline-provenance-no-new-field.md)
 - [0116 — The idea progress list is expressed entirely in `sai/instructions/explore.md` — the sole edit target](./0116-idea-progress-list-expressed-in-explore-md.md)
+- [0122 — The findings block is the loop's sole output and handoff payload](./0122-findings-block-is-the-loops-sole-output-and-handoff-payload.md) — Refs 0058, Refs ddr:0060
+- [0123 — Handed-off findings route to the design worker; the loop never applies, forwards, or regenerates](./0123-handed-off-findings-route-to-the-design-worker.md) — Refs 0047, Refs ddr:0060
 
 ### Artifact metadata & routing tokens
 

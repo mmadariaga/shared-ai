@@ -80,6 +80,8 @@ This index groups the DDRs in `docs/ddr/` by **command** and by **cross-cutting 
 - [0095 — Auto-answer grounding sources are bounded and exclude the explore conversation](./0095-bounded-grounding-sources-exclude-conversation.md) — Pair with 0094
 - [0105 — Severity-prefixed identifiers for artifact review findings](./0105-severity-prefixed-identifiers-for-artifact-review-findings.md)
 - [0109 — The delegation envelope's status is reserved for dispatch outcomes; check verdicts travel only in the output payload](./0109-delegation-envelope-status-reserved-for-dispatch-outcomes.md)
+- [0121 — The active review check is a sticky chat-scoped reference selected once at loop start](./0121-active-review-check-sticky-reference-selected-at-loop-start.md)
+- [0122 — The in-progress state is render-only: setting, advancing, or resolving it never marks or clears an item](./0122-in-progress-state-is-render-only.md)
 
 ### `/sai-backfill`
 
@@ -98,6 +100,7 @@ This index groups the DDRs in `docs/ddr/` by **command** and by **cross-cutting 
 - [0109 — Doctor's opencode agent census derives from manifest-projected agent files, with the binding-to-projection alignment desync an explicit open gap](./0109-doctor-census-over-manifest-projected-files.md)
 - [0119 — Outcome-token completion contract with command-boundary mapping](./0119-outcome-token-completion-contract-with-command-boundary-mapping.md)
 - [0120 — Readline lifecycle owned by setup orchestration, closed once at the settle point](./0120-readline-lifecycle-owned-by-setup-orchestration.md)
+- [0121 — The post-setup customization result stays in memory and never touches agent files](./0121-in-memory-non-persistent-override-contract.md)
 
 ### Harness wrappers & the shared instruction layer
 
@@ -116,6 +119,7 @@ This index groups the DDRs in `docs/ddr/` by **command** and by **cross-cutting 
 - [0116 — The apply phase carries no progress events because it has no coordinator-worker boundary](./0116-apply-phase-carries-no-progress-events.md) — Refs 0110
 - [0119 — Outcome-token completion contract with command-boundary mapping](./0119-outcome-token-completion-contract-with-command-boundary-mapping.md)
 - [0120 — Readline lifecycle owned by setup orchestration, closed once at the settle point](./0120-readline-lifecycle-owned-by-setup-orchestration.md)
+- [0121 — The post-setup customization result stays in memory and never touches agent files](./0121-in-memory-non-persistent-override-contract.md)
 
 ### Fetch resolution & path conventions
 
@@ -169,6 +173,8 @@ This index groups the DDRs in `docs/ddr/` by **command** and by **cross-cutting 
 - [0094 — Supervised auto-answer confidence is a qualitative judgment gated by an objective grounding floor](./0094-qualitative-confidence-with-grounding-floor.md) — Pair with 0095
 - [0095 — Auto-answer grounding sources are bounded and exclude the explore conversation](./0095-bounded-grounding-sources-exclude-conversation.md) — Pair with 0094
 - [0105 — Severity-prefixed identifiers for artifact review findings](./0105-severity-prefixed-identifiers-for-artifact-review-findings.md)
+- [0121 — The active review check is a sticky chat-scoped reference selected once at loop start](./0121-active-review-check-sticky-reference-selected-at-loop-start.md)
+- [0122 — The in-progress state is render-only: setting, advancing, or resolving it never marks or clears an item](./0122-in-progress-state-is-render-only.md)
 
 ### Artifact metadata & routing tokens
 

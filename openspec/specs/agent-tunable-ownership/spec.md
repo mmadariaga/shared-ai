@@ -19,7 +19,7 @@ The Claude installer MUST declare the user-owned tunable keys as exactly the two
 
 ### Requirement: opencode tunable keys
 
-The opencode installer MUST declare the user-owned tunable keys as exactly the two strings `model` and `variant`. The declaration MUST be a single per-harness constant, not a per-projection annotation; the 7 opencode agent projections MUST NOT carry any tunable-key metadata in the manifest.
+The opencode installer MUST declare the user-owned tunable keys as exactly the two strings `model` and `variant`. The declaration MUST be a single per-harness constant, not a per-projection annotation; the opencode agent projections declared by the manifest MUST NOT carry any tunable-key metadata.
 
 #### Scenario: opencode tunable set is model and variant
 - **WHEN** the opencode installer's tunable-keys constant is read
@@ -127,7 +127,7 @@ The uninstall flow SHALL identify a managed agent file as matching its shipped c
 - **THEN** it enumerates exactly the 7 Claude managed agent destinations declared by the manifest
 - **AND** it does not enumerate `.<basename>.owner.json` files as separate deletion targets
 
-#### Scenario: opencode uninstall enumerates 7 opencode agent files
+#### Scenario: opencode uninstall enumerates manifest-declared agent files
 - **WHEN** uninstall builds its deletion set for the opencode harness
-- **THEN** it enumerates exactly the 7 opencode managed agent destinations declared by the manifest
+- **THEN** it enumerates exactly the opencode managed agent destinations declared by the manifest
 - **AND** it does not enumerate `.<basename>.owner.json` files as separate deletion targets
