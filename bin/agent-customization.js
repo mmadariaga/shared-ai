@@ -95,19 +95,56 @@ function buildVariantDisplayOptions(variants) {
   return options;
 }
 
-function defaultRunCommand(executable, args) {
-  const result = childProcess.spawnSync(executable, args, { encoding: 'utf8' });
-  return { stdout: result.stdout, status: result.status };
+function defaultRunCommand(executable, args, {
+  platform = process.platform,
+  spawnSync = childProcess.spawnSync,
+  env = process.env,
+} = {}) {
+  let result;
+  if (platform === 'win32') {
+    // PowerShell resolves npm .cmd shims while environment-backed splatting
+    // keeps every CLI argument out of shell command syntax.
+    const script = '$commandArgs = @((ConvertFrom-Json -InputObject $env:SAI_COMMAND_ARGS)); '
+      + '& $env:SAI_COMMAND_EXECUTABLE @commandArgs; exit $LASTEXITCODE';
+    result = spawnSync('powershell.exe', [
+      '-NoLogo',
+      '-NoProfile',
+      '-NonInteractive',
+      '-Command',
+      script,
+    ], {
+      encoding: 'utf8',
+      env: {
+        ...env,
+        SAI_COMMAND_EXECUTABLE: executable,
+        SAI_COMMAND_ARGS: JSON.stringify(args),
+      },
+    });
+  } else {
+    result = spawnSync(executable, args, { encoding: 'utf8' });
+  }
+  if (result.error) throw result.error;
+  return { stdout: result.stdout, stderr: result.stderr, status: result.status };
+}
+
+function reportCommandFailure(action, outcome) {
+  const detail = typeof outcome.stderr === 'string' ? outcome.stderr.trim() : '';
+  const suffix = detail === '' ? `exit status ${outcome.status}` : detail;
+  console.error(`Unable to ${action}: ${suffix}`);
 }
 
 async function opencodeSelectSettings(subsetLabel, promptChoice, runCommand) {
   let catalogOutcome;
   try {
     catalogOutcome = runCommand('opencode', ['models']);
-  } catch {
+  } catch (error) {
+    console.error(`Unable to query OpenCode models: ${error.message}`);
     return null;
   }
-  if (catalogOutcome.status !== 0) return null;
+  if (catalogOutcome.status !== 0) {
+    reportCommandFailure('query OpenCode models', catalogOutcome);
+    return null;
+  }
 
   let catalog;
   try {
@@ -136,10 +173,14 @@ async function opencodeSelectSettings(subsetLabel, promptChoice, runCommand) {
   let verboseOutcome;
   try {
     verboseOutcome = runCommand('opencode', ['models', provider, '--verbose']);
-  } catch {
+  } catch (error) {
+    console.error(`Unable to query OpenCode model variants: ${error.message}`);
     return null;
   }
-  if (verboseOutcome.status !== 0) return null;
+  if (verboseOutcome.status !== 0) {
+    reportCommandFailure('query OpenCode model variants', verboseOutcome);
+    return null;
+  }
 
   let records;
   try {
@@ -305,6 +346,7 @@ module.exports = {
   fakeCreateLocalOverride,
   createOpencodeAdapter,
   createClaudeAdapter,
+  defaultRunCommand,
   parseModelCatalog,
   parseVerboseModelRecords,
   extractVariants,
