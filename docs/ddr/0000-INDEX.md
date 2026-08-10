@@ -98,6 +98,7 @@ This index groups the DDRs in `docs/ddr/` by **command** and by **cross-cutting 
 - [0109 — Doctor's opencode agent census derives from manifest-projected agent files, with the binding-to-projection alignment desync an explicit open gap](./0109-doctor-census-over-manifest-projected-files.md)
 - [0119 — Outcome-token completion contract with command-boundary mapping](./0119-outcome-token-completion-contract-with-command-boundary-mapping.md)
 - [0120 — Readline lifecycle owned by setup orchestration, closed once at the settle point](./0120-readline-lifecycle-owned-by-setup-orchestration.md)
+- [0121 — The post-setup customization result stays in memory and never touches agent files](./0121-in-memory-non-persistent-override-contract.md)
 
 ### Harness wrappers & the shared instruction layer
 
@@ -116,6 +117,7 @@ This index groups the DDRs in `docs/ddr/` by **command** and by **cross-cutting 
 - [0116 — The apply phase carries no progress events because it has no coordinator-worker boundary](./0116-apply-phase-carries-no-progress-events.md) — Refs 0110
 - [0119 — Outcome-token completion contract with command-boundary mapping](./0119-outcome-token-completion-contract-with-command-boundary-mapping.md)
 - [0120 — Readline lifecycle owned by setup orchestration, closed once at the settle point](./0120-readline-lifecycle-owned-by-setup-orchestration.md)
+- [0121 — The post-setup customization result stays in memory and never touches agent files](./0121-in-memory-non-persistent-override-contract.md)
 
 ### Fetch resolution & path conventions
 
