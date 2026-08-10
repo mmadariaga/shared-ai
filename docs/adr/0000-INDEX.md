@@ -177,6 +177,9 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0104 — Remove Copilot from the active installer inventory](./0104-remove-copilot-from-active-installer-inventory.md) — Pair with 0103
 - [0110 — Additive-then-retire decomposition for the tunable-seed strategy switch](./0110-additive-then-retire-decomposition-tunable-seed.md)
 - [0119 — Shared raw-readline navigator engine in `bin/install-flow.js`](./0119-shared-raw-readline-navigator-engine-in-install-flow.md) — Refs 0010
+- [0124 — Resolve package resources separately from project destinations](./0124-separate-package-resources-from-project-destinations.md)
+- [0125 — Preserve project-local agent content with a line-oriented frontmatter patch](./0125-line-preserving-frontmatter-patching-for-project-local-agents.md)
+- [0126 — Replace project-local agent files through a same-directory temporary file](./0126-atomic-replacement-for-project-local-agent-files.md)
 
 ### Harness wrappers & the shared instruction layer
 
@@ -211,6 +214,9 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 
 - [0107 — Unified audit severity vocabulary across the four report surfaces](./0107-unified-audit-severity-vocabulary.md) — Supersedes 0013
 - [0110 — Additive-then-retire decomposition for the tunable-seed strategy switch](./0110-additive-then-retire-decomposition-tunable-seed.md)
+- [0124 — Resolve package resources separately from project destinations](./0124-separate-package-resources-from-project-destinations.md)
+- [0125 — Preserve project-local agent content with a line-oriented frontmatter patch](./0125-line-preserving-frontmatter-patching-for-project-local-agents.md)
+- [0126 — Replace project-local agent files through a same-directory temporary file](./0126-atomic-replacement-for-project-local-agent-files.md)
 
 ### Fetch resolution & path conventions
 
