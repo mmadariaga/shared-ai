@@ -222,14 +222,17 @@ test('customize OpenCode flow runs opencode ops for every selected agent, never 
     assert.equal(checklistCalls.length, 1, 'the checklist should be invoked exactly once');
     assert.equal(opencodeFactoryCalls, 1, 'createOpencodeAdapter should be invoked exactly once');
     assert.equal(claudeFactoryCalls, 0, 'createClaudeAdapter must never be invoked');
-    assert.deepEqual(opencodeOps.select, OPENCODE_AGENTS,
-      'selectSettings should run exactly once per opencode agent');
+    assert.deepEqual(opencodeOps.select, [OPENCODE_AGENTS.join(', ')],
+      'selectSettings should run exactly once for the whole confirmed subset');
     assert.deepEqual(opencodeOps.create.map(entry => entry.agentName), OPENCODE_AGENTS,
       'createLocalOverride should run exactly once per opencode agent');
+    const sharedOpenCodeSettings = {
+      model: `model:${OPENCODE_AGENTS.join(', ')}`,
+      effort: `effort:${OPENCODE_AGENTS.join(', ')}`,
+    };
     for (let i = 0; i < OPENCODE_AGENTS.length; i += 1) {
-      assert.deepEqual(opencodeOps.create[i].settings,
-        { model: `model:${OPENCODE_AGENTS[i]}`, effort: `effort:${OPENCODE_AGENTS[i]}` },
-        'each createLocalOverride should receive the matching selectSettings result');
+      assert.deepEqual(opencodeOps.create[i].settings, sharedOpenCodeSettings,
+        'every opencode override should carry the identical shared selectSettings result');
     }
   } finally {
     restoreOpencode();
@@ -267,14 +270,17 @@ test('customize Claude Code flow runs claude ops for every selected agent, never
     assert.equal(checklistCalls.length, 1, 'the checklist should be invoked exactly once');
     assert.equal(claudeFactoryCalls, 1, 'createClaudeAdapter should be invoked exactly once');
     assert.equal(opencodeFactoryCalls, 0, 'createOpencodeAdapter must never be invoked');
-    assert.deepEqual(claudeOps.select, CLAUDE_AGENTS,
-      'selectSettings should run exactly once per claude agent');
+    assert.deepEqual(claudeOps.select, [CLAUDE_AGENTS.join(', ')],
+      'selectSettings should run exactly once for the whole confirmed subset');
     assert.deepEqual(claudeOps.create.map(entry => entry.agentName), CLAUDE_AGENTS,
       'createLocalOverride should run exactly once per claude agent');
+    const sharedClaudeSettings = {
+      model: `model:${CLAUDE_AGENTS.join(', ')}`,
+      effort: `effort:${CLAUDE_AGENTS.join(', ')}`,
+    };
     for (let i = 0; i < CLAUDE_AGENTS.length; i += 1) {
-      assert.deepEqual(claudeOps.create[i].settings,
-        { model: `model:${CLAUDE_AGENTS[i]}`, effort: `effort:${CLAUDE_AGENTS[i]}` },
-        'each createLocalOverride should receive the matching selectSettings result');
+      assert.deepEqual(claudeOps.create[i].settings, sharedClaudeSettings,
+        'every claude override should carry the identical shared selectSettings result');
     }
   } finally {
     restoreOpencode();
@@ -501,8 +507,8 @@ test('subset selection configures exactly the selected agents: one selectSetting
       promptChecklist: async () => ({ status: 'confirmed', items: subset }),
     });
     assert.equal(result, undefined);
-    assert.deepEqual(opencodeOps.select, subset,
-      'selectSettings should run exactly once per selected agent and never for deselected agents');
+    assert.deepEqual(opencodeOps.select, [subset.join(', ')],
+      'selectSettings should run exactly once for the confirmed subset and never for deselected agents');
     assert.deepEqual(opencodeOps.create.map(entry => entry.agentName), subset,
       'createLocalOverride should run exactly once per selected agent and never for deselected agents');
     assert.equal(claudeOps.select.length, 0, 'claude must never be configured');
@@ -576,7 +582,7 @@ test('promptChoice null at the harness picker aborts before any checklist or per
   }
 });
 
-test('promptChoice null at a per-agent model selection aborts via the real adapter path with no further agent configured', async () => {
+test('promptChoice null at the single shared model selection aborts via the real adapter path with no agent configured', async () => {
   const scratch = makeScratchRepo();
   const checklistCalls = [];
   let promptCalls = 0;
@@ -597,8 +603,8 @@ test('promptChoice null at a per-agent model selection aborts via the real adapt
     });
     assert.equal(result, undefined, 'a null model selection aborts the run');
     assert.equal(checklistCalls.length, 1, 'the checklist should be reached exactly once');
-    assert.ok(promptCalls <= 4,
-      'the run must abort at the first model selection: no further agent may be configured');
+    assert.equal(promptCalls, 4,
+      'the run must abort after the single shared selection: no further agent may be configured');
   } finally {
     fs.rmSync(scratch, { recursive: true, force: true });
   }

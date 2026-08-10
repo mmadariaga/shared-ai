@@ -15,9 +15,9 @@ const FAKE_MODEL_OPTIONS = Object.freeze(['<model>', '<model-alt>']);
 const FAKE_EFFORT_OPTIONS = Object.freeze(['<effort>', '<effort-alt>']);
 const AGENT_CHECKLIST_LEGEND = 'Up/Down move · Space toggle · Enter confirm · q/Ctrl-C cancel';
 
-async function fakeSelectSettings(agentName, promptChoice) {
-  const model = await promptChoice(`Placeholder model for ${agentName}:`, FAKE_MODEL_OPTIONS);
-  const effort = await promptChoice(`Placeholder effort for ${agentName}:`, FAKE_EFFORT_OPTIONS);
+async function fakeSelectSettings(subsetLabel, promptChoice) {
+  const model = await promptChoice(`Placeholder model for ${subsetLabel}:`, FAKE_MODEL_OPTIONS);
+  const effort = await promptChoice(`Placeholder effort for ${subsetLabel}:`, FAKE_EFFORT_OPTIONS);
   return { model, effort };
 }
 
@@ -86,12 +86,14 @@ async function runPostSetupMenu({
   if (outcome.status === 'cancelled' || outcome.status === 'non-interactive') {
     return undefined;
   }
-  for (const agentName of outcome.items) {
-    const settings = await adapter.selectSettings(agentName);
+  if (outcome.items.length > 0) {
+    const settings = await adapter.selectSettings(outcome.items.join(', '));
     if (settings.model === null || settings.effort === null) {
       return undefined;
     }
-    adapter.createLocalOverride(agentName, settings);
+    for (const agentName of outcome.items) {
+      adapter.createLocalOverride(agentName, settings);
+    }
   }
   return undefined;
 }
