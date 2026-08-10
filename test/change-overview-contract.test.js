@@ -328,3 +328,34 @@ test('status panel lists the 11 artifact ids in order and derives overview state
 
   assert.match(status, /overview\.state/, 'the overview line should derive from overview.state');
 });
+
+test('active closure is question-first and repeats the exact crystallize reminder', () => {
+  const explore = artifact('sai/instructions/explore.md');
+
+  assert.match(explore, /When a genuine unresolved question remains and its answer could change the idea, end with that relevant question/);
+  assert.match(explore, /When no genuine unresolved question remains, end with this concise reminder/);
+  assert.match(explore, /Say `crystallize` when ready; crystallization generates the paste-ready prompt for `\/sai-1-spec`/);
+  assert.match(explore, /Evaluate this rule again on every later successful qualifying turn/);
+  assert.match(explore, /fallback reminder repeats even after readiness has already been emitted/);
+  assert.match(explore, /does not suppress this rule/);
+  assert.match(explore, /readiness signal.*at most once per stable idea/i);
+  assert.doesNotMatch(explore, /manufactur(?:e|ed) a question/);
+});
+
+test('closure stops at crystallization and discard and preserves terminal paths', () => {
+  const explore = artifact('sai/instructions/explore.md');
+  const prereqs = artifact('sai/policies/prereqs-check.md');
+
+  assert.match(explore, /Before a candidate idea exists, no Closure State is active/);
+  assert.match(explore, /An explicit crystallization request transitions the state to `crystallized`/);
+  assert.match(explore, /Do not append the pre-crystallization question-or-reminder closure to that crystallization response/);
+  assert.match(explore, /An explicit discard transitions the state to `discarded`/);
+  assert.match(explore, /subsequent successful responses about that discarded idea receive no pre-crystallization closure/);
+  assert.match(explore, /Do not apply this successful-response closure to prerequisite halts, failures, cancellations/);
+  assert.match(explore, /completed post-crystallization review-loop closes/);
+  assert.match(explore, /preserve their existing remediation literals, terminal behavior, and review-loop silent-close allowance/);
+  assert.match(prereqs, /openspec CLI not found\. Install it first: https:\/\/github\.com\/Fission-AI\/OpenSpec/);
+  assert.match(prereqs, /OpenSpec not initialized in this project\. Run: openspec init/);
+  assert.match(prereqs, /openspec\/config\.yaml does not declare `schema: sai-workflow`/);
+  assert.match(explore, /full `Ready to Propose` block\(s\) are printed only when the user explicitly asks to crystallize/);
+});

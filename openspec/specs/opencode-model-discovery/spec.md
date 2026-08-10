@@ -50,7 +50,7 @@ After the user selects a provider, the model screen SHALL offer exactly the mode
 - **THEN** the model screen is populated from the catalog output already parsed at the provider screen without executing `opencode models` again
 
 ### Requirement: Injectable command execution
-The discovery command SHALL be executed through an injectable command runner whose default SHALL execute the real `opencode` CLI and whose injected replacement SHALL allow deterministic tests to script command output, failure exit codes, and parse boundaries without launching the CLI. Command output, exit status, and errors from the runner SHALL be the only inputs to catalog parsing. The runner SHALL accept an executable plus an argument array and SHALL execute the command without shell-string interpolation, so CLI- or config-derived values are never interpreted as command syntax.
+The discovery command SHALL be executed through an injectable command runner whose default SHALL execute the real `opencode` CLI and whose injected replacement SHALL allow deterministic tests to script command output, failure exit codes, and parse boundaries without launching the CLI. Command output, exit status, and errors from the runner SHALL be the only inputs to catalog parsing. The runner SHALL accept an executable plus an argument array and SHALL execute the command without shell-string interpolation, so CLI- or config-derived values are never interpreted as command syntax. On Windows, the default runner MUST invoke `powershell.exe` and transport the executable and JSON-encoded argument array through environment variables, then decode and splat the arguments without interpolating them into shell syntax; on non-Windows platforms, it SHALL preserve direct argument-vector execution.
 
 #### Scenario: injected runner output drives parsing
 - **WHEN** a test injects a command runner returning a fixed stdout payload and exit status zero
@@ -64,8 +64,16 @@ The discovery command SHALL be executed through an injectable command runner who
 - **WHEN** the selector executes the model discovery command
 - **THEN** the runner is invoked with the executable and the argument array (e.g. `opencode`, `['models']`) and the command is never assembled by interpolating values into a shell string
 
+#### Scenario: Windows catalog discovery resolves the npm shim safely
+- **WHEN** the default runner executes `opencode models` with `platform: 'win32'`
+- **THEN** it invokes `powershell.exe`, preserves the executable and argument array in environment data, and passes the decoded arguments through PowerShell splatting.
+
+#### Scenario: Non-Windows catalog discovery keeps direct execution
+- **WHEN** the default runner executes `opencode models` on a non-Windows platform
+- **THEN** it invokes the executable directly with the unchanged argument array and UTF-8 output encoding.
+
 ### Requirement: Discovery failure is non-fatal cancellation
-When the discovery command exits non-zero, any non-empty stdout line is malformed (missing `/` or an empty provider or model side), or the parsed catalog is empty, the OpenCode customization SHALL cancel: no provider, model, or variant screen SHALL be presented, no placeholder fallback SHALL be offered, and no settings SHALL be produced (hence no override). The customization run SHALL complete normally without hard-exiting the process.
+When the discovery command launch throws, the command exits non-zero, any non-empty stdout line is malformed (missing `/` or an empty provider or model side), or the parsed catalog is empty, the OpenCode customization SHALL cancel: no provider, model, or variant screen SHALL be presented, no placeholder fallback SHALL be offered, and no settings SHALL be produced (hence no override). The cancellation SHALL emit an actionable diagnostic identifying the failed catalog query, preserving stderr when available or reporting the exit status when stderr is empty. The customization run SHALL complete normally without hard-exiting the process.
 
 #### Scenario: non-zero exit cancels without a fallback
 - **WHEN** the discovery command exits non-zero
@@ -78,3 +86,11 @@ When the discovery command exits non-zero, any non-empty stdout line is malforme
 #### Scenario: empty catalog cancels the run
 - **WHEN** the discovery command succeeds and parses but yields an empty catalog
 - **THEN** OpenCode customization is cancelled with no provider screen presented and the run completes normally
+
+#### Scenario: Catalog launch failure reports the cause
+- **WHEN** the command runner throws while querying the model catalog
+- **THEN** the selector logs an `Unable to query OpenCode models` diagnostic containing the launch error and returns no settings.
+
+#### Scenario: Catalog non-zero exit reports stderr or status
+- **WHEN** the catalog command exits with a non-zero status
+- **THEN** the selector logs the command failure detail and cancels without showing a selection screen.

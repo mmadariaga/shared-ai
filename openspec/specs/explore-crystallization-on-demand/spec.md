@@ -6,6 +6,23 @@ Define the on-demand emission mechanism for `sai-explore`'s `Ready to Propose` b
 
 ## Requirements
 
+### Requirement: Pre-crystallization closure is distinct from readiness signaling
+
+The one-line readiness signal SHALL remain a once-per-stable-idea signal, while the actionable closure for an `active-uncrystallized` idea SHALL be evaluated on every successful qualifying turn. When no genuine unresolved question remains, the fallback closure reminder SHALL be emitted and SHALL repeat on each later qualifying turn; when a genuine unresolved question remains, that question takes precedence. The closure reminder SHALL NOT emit the `Ready to Propose` block or weaken the existing explicit-request gate for that block.
+
+#### Scenario: Repeated closure does not repeat readiness
+
+- **WHEN** a stable idea has already emitted its one-time readiness signal and a later successful turn has no genuine unresolved question
+- **THEN** `sai-explore` SHALL repeat the actionable `crystallize` reminder
+- **AND** it does not re-emit the readiness signal
+- **AND** it does not emit a `Ready to Propose` block without an explicit request
+
+#### Scenario: A question takes precedence over the reminder
+
+- **WHEN** a later successful active-uncrystallized turn has a genuine unresolved question
+- **THEN** the response ends with that question
+- **AND** it does not manufacture or append a fallback reminder solely because readiness tracking suppresses the readiness signal
+
 ### Requirement: Readiness signal replaces state-triggered auto-emission
 
 When the explored idea becomes solid, `sai-explore` (`sai/instructions/explore.md`) SHALL NOT auto-print the `Ready to Propose` block. Instead it SHALL emit a single one-line readiness signal indicating the idea is solid enough to crystallize on request. "Solid" is judged at the same qualitative threshold as today's "idea is clear" wording in §5/§6; only the reaction changes (a signal instead of the block). This gate applies to both the single-change protocol (§5) and the sliced protocol (§6).
@@ -50,7 +67,7 @@ The one-line readiness signal SHALL fire at most once per stable idea, reusing t
 
 ### Requirement: Full block is emitted only on explicit user request
 
-`sai-explore` SHALL print (or re-print) the full `Ready to Propose` block(s) only when the user explicitly asks to crystallize — for example, asking for the paste-ready block, to crystallize, or to create a proposal / run `/sai-1-spec`. Absent such an explicit request, no block is printed even when the idea is solid. This user-triggered gate applies to both the single-change protocol (§5) and the sliced protocol (§6); when the sliced protocol applies, an explicit request emits the full ordered set of per-slice blocks. When the user explicitly asks to crystallize before the idea is judged solid, `sai-explore` SHALL honor the explicit request rather than withhold the block, but SHALL still run the §4 slicing assessment first so the emitted block(s) reflect the correct single-vs-sliced routing. The existing §7 inline-proposal path — which already prints the paste-ready block(s) when the user asks to create a proposal or run `/sai-1-spec` now — is one such explicit-request path and remains consistent with this gate.
+`sai-explore` SHALL print (or re-print) the full `Ready to Propose` block(s) only when the user explicitly asks to crystallize — for example, asking for the paste-ready block, to crystallize, or to create a proposal / run `/sai-1-spec`. Absent such an explicit request, no block is printed even when the idea is solid. This user-triggered gate applies to both the single-change protocol (§5) and the sliced protocol (§6); when the sliced protocol applies, an explicit request emits the full ordered set of per-slice blocks. When the user explicitly asks to crystallize before the idea is judged solid, `sai-explore` SHALL honor the explicit request rather than withhold the block, but SHALL still run the §4 slicing assessment first so the emitted block(s) reflect the correct single-vs-sliced routing. The existing §7 inline-proposal path — which already prints the paste-ready block(s) when the user asks to create a proposal or run `/sai-1-spec` now — is one such explicit-request path and remains consistent with this gate. A repeatable pre-crystallization closure reminder is not an explicit request and SHALL NOT emit the block.
 
 #### Scenario: explicit request prints the single-change block
 
@@ -65,7 +82,8 @@ The one-line readiness signal SHALL fire at most once per stable idea, reusing t
 #### Scenario: no block without an explicit request
 
 - **WHEN** the idea is solid but the user has not explicitly asked to crystallize or for the block
-- **THEN** `sai-explore` prints no `Ready to Propose` block and relies on the once-per-stable-idea readiness signal alone
+- **THEN** `sai-explore` prints no `Ready to Propose` block
+- **AND** an active-uncrystallized idea receives the separate actionable closure required by this change
 
 #### Scenario: explicit request before the idea is solid
 

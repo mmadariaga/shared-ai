@@ -19,6 +19,7 @@ const {
   fakeCreateLocalOverride,
   createOpencodeAdapter,
   createClaudeAdapter,
+  defaultRunCommand,
   parseModelCatalog,
   parseVerboseModelRecords,
   extractVariants,
@@ -431,6 +432,48 @@ test('opencode createLocalOverride conditionally includes variant and stays non-
     model: '<model>',
     persistent: false,
   }, 'the opencode override should omit the variant key when no variant was chosen');
+});
+
+test('default command runner resolves Windows npm shims without interpolating arguments into shell syntax', () => {
+  const calls = [];
+  const commandArgs = ['models', 'provider&echo-not-a-command', '--verbose'];
+  const result = defaultRunCommand('opencode', commandArgs, {
+    platform: 'win32',
+    env: { PATH: 'sentinel-path' },
+    spawnSync(executable, args, options) {
+      calls.push({ executable, args, options });
+      return { stdout: 'catalog output', stderr: '', status: 0, error: null };
+    },
+  });
+
+  assert.deepEqual(result, { stdout: 'catalog output', stderr: '', status: 0 });
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].executable, 'powershell.exe',
+    'Windows should use PowerShell so npm .cmd shims resolve through PATH');
+  assert.deepEqual(JSON.parse(calls[0].options.env.SAI_COMMAND_ARGS), commandArgs,
+    'arguments should cross the shell boundary as JSON data');
+  assert.equal(calls[0].options.env.SAI_COMMAND_EXECUTABLE, 'opencode');
+  assert.ok(!calls[0].args.join(' ').includes(commandArgs[1]),
+    'provider text must not be interpolated into PowerShell command syntax');
+  assert.match(calls[0].args.at(-1), /@commandArgs/,
+    'PowerShell should splat the decoded argument array into the CLI invocation');
+});
+
+test('default command runner keeps direct argument-vector execution outside Windows', () => {
+  const calls = [];
+  defaultRunCommand('opencode', ['models'], {
+    platform: 'linux',
+    spawnSync(executable, args, options) {
+      calls.push({ executable, args, options });
+      return { stdout: '', stderr: '', status: 0, error: null };
+    },
+  });
+
+  assert.deepEqual(calls, [{
+    executable: 'opencode',
+    args: ['models'],
+    options: { encoding: 'utf8' },
+  }]);
 });
 
 test('claude createLocalOverride returns agent, model, effort, persistent:false', () => {
@@ -1313,6 +1356,33 @@ test('non-zero exit from the catalog command cancels with no screens and no sett
   const settings = await adapter.selectSettings('explore');
   assert.equal(settings, null, 'a non-zero catalog exit cancels the selection with null');
   assert.equal(promptCalls, 0, 'an early catalog failure presents no settings screens');
+});
+
+test('a catalog launch failure reports an actionable diagnostic instead of ending silently', async () => {
+  const messages = [];
+  const originalError = console.error;
+  console.error = message => messages.push(String(message));
+  try {
+    const runner = () => {
+      const error = new Error('spawnSync opencode ENOENT');
+      error.code = 'ENOENT';
+      throw error;
+    };
+    const adapter = createOpencodeAdapter({
+      repoRoot: REPO_ROOT,
+      promptChoice: async () => assert.fail('no selection screen should follow a launch failure'),
+      runCommand: runner,
+    });
+
+    const settings = await adapter.selectSettings('explore');
+
+    assert.equal(settings, null, 'a launch failure should cancel without settings');
+    assert.equal(messages.length, 1, 'the launch failure should produce one diagnostic');
+    assert.match(messages[0], /Unable to query OpenCode models.*ENOENT/,
+      'the diagnostic should identify the failed operation and preserve the launch error');
+  } finally {
+    console.error = originalError;
+  }
 });
 
 test('a malformed catalog line and an empty catalog each cancel with no partial catalog', async () => {
