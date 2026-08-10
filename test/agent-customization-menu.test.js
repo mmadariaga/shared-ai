@@ -18,6 +18,9 @@ const {
   fakeCreateLocalOverride,
   createOpencodeAdapter,
   createClaudeAdapter,
+  parseModelCatalog,
+  parseVerboseModelRecords,
+  extractVariants,
 } = agentCustomization;
 
 const REPO_ROOT = path.join(__dirname, '..');
@@ -959,4 +962,114 @@ test('postSetupMenu rejection resolves post-setup-failure with the readline clos
     restoreSpawn();
     fs.rmSync(projectDir, { recursive: true, force: true });
   }
+});
+
+// --- Step 1: opencode model-catalog and verbose-record parsing utilities ---
+
+test('parseModelCatalog splits each non-empty stdout line at the first slash into provider and model', () => {
+  const entries = parseModelCatalog('opencode-go/deepseek-v4-flash\nopenai/gpt-5.4\n');
+  assert.deepEqual(entries, [
+    { provider: 'opencode-go', model: 'deepseek-v4-flash' },
+    { provider: 'openai', model: 'gpt-5.4' },
+  ], 'catalog lines parse into provider and model identifiers in stdout order');
+});
+
+test('parseModelCatalog throws on a line without a slash: no partial catalog', () => {
+  assert.throws(() => parseModelCatalog('nope'),
+    'a line missing the slash should fail the whole discovery transaction');
+});
+
+test('parseModelCatalog throws on an empty provider side', () => {
+  assert.throws(() => parseModelCatalog('/model'),
+    'a line with an empty provider should fail the whole discovery transaction');
+});
+
+test('parseModelCatalog throws on an empty model side', () => {
+  assert.throws(() => parseModelCatalog('opencode-go/'),
+    'a line with an empty model should fail the whole discovery transaction');
+});
+
+test('parseModelCatalog of empty output returns an empty catalog', () => {
+  assert.deepEqual(parseModelCatalog(''), [],
+    'an empty catalog is the empty discovery result at the flow level');
+});
+
+test('parseModelCatalog preserves first-appearance provider order for the provider screen', () => {
+  const entries = parseModelCatalog('openai/gpt-5.4\nopencode-go/deepseek-v4-flash\nopencode-go/glm-5.2\n');
+  const providers = [];
+  for (const entry of entries) {
+    if (!providers.includes(entry.provider)) providers.push(entry.provider);
+  }
+  assert.deepEqual(providers, ['openai', 'opencode-go'],
+    'distinct providers are offered once in first-appearance order');
+});
+
+test('parseVerboseModelRecords parses a header plus multiline JSON into one record', () => {
+  const records = parseVerboseModelRecords('opencode-go/deepseek-v4-flash\n{\n  "variants": {}\n}\n');
+  assert.deepEqual(records, [
+    { identity: 'opencode-go/deepseek-v4-flash', record: { variants: {} } },
+  ], 'header plus multiline JSON parses into one record');
+});
+
+test('parseVerboseModelRecords parses two header-plus-JSON records separated by a blank line independently', () => {
+  const stdout = 'opencode-go/deepseek-v4-flash\n{\n  "variants": { "low": {} }\n}\n'
+    + '\n'
+    + 'openai/gpt-5.4\n{\n  "variants": { "high": {}, "max": {} }\n}\n';
+  const records = parseVerboseModelRecords(stdout);
+  assert.deepEqual(records, [
+    { identity: 'opencode-go/deepseek-v4-flash', record: { variants: { low: {} } } },
+    { identity: 'openai/gpt-5.4', record: { variants: { high: {}, max: {} } } },
+  ], 'multiple records separated by blank lines parse independently, never merged');
+});
+
+test('parseVerboseModelRecords throws when a header is followed only by non-JSON garbage', () => {
+  assert.throws(() => parseVerboseModelRecords('opencode-go/deepseek-v4-flash\nthis is not json\n'),
+    'a header without a parseable JSON object is a failure');
+});
+
+test('parseVerboseModelRecords throws when the accumulated record text parses to a number', () => {
+  assert.throws(() => parseVerboseModelRecords('opencode-go/deepseek-v4-flash\n42\n'),
+    'a non-object record is malformed and never becomes a model');
+});
+
+test('parseVerboseModelRecords throws when the accumulated record text parses to null', () => {
+  assert.throws(() => parseVerboseModelRecords('opencode-go/deepseek-v4-flash\nnull\n'),
+    'a non-object record is malformed and never becomes a model');
+});
+
+test('parseVerboseModelRecords throws when the accumulated record text parses to a string', () => {
+  assert.throws(() => parseVerboseModelRecords('opencode-go/deepseek-v4-flash\n"str"\n'),
+    'a non-object record is malformed and never becomes a model');
+});
+
+test('parseVerboseModelRecords throws when the accumulated record text parses to an array', () => {
+  assert.throws(() => parseVerboseModelRecords('opencode-go/deepseek-v4-flash\n[1, 2]\n'),
+    'a non-object record is malformed and never becomes a model');
+});
+
+test('extractVariants returns the variants keys in JSON object order', () => {
+  assert.deepEqual(extractVariants({ variants: { low: {}, high: {}, max: {} } }),
+    ['low', 'high', 'max'], 'variant keys become the variant list in JSON object order');
+});
+
+test('extractVariants returns an empty list for an empty or absent variants field', () => {
+  assert.deepEqual(extractVariants({ variants: {} }), [],
+    'an empty variants field exposes no variants');
+  assert.deepEqual(extractVariants({}), [],
+    'an absent variants field exposes no variants');
+});
+
+test('extractVariants throws when variants is an array', () => {
+  assert.throws(() => extractVariants({ variants: ['low', 'high'] }),
+    'array variants values fail variant discovery instead of array-index variant names');
+});
+
+test('extractVariants throws when variants is null', () => {
+  assert.throws(() => extractVariants({ variants: null }),
+    'null variants values fail variant discovery instead of silently becoming an empty variant set');
+});
+
+test('extractVariants throws when variants is a primitive string', () => {
+  assert.throws(() => extractVariants({ variants: 'low' }),
+    'primitive variants values fail variant discovery instead of silently becoming an empty variant set');
 });

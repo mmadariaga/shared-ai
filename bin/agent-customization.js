@@ -120,6 +120,68 @@ async function runPostSetupMenu({
   return undefined;
 }
 
+// --- OpenCode model catalog and verbose-record parsing ---
+
+function parseModelCatalog(stdout) {
+  const entries = [];
+  for (const rawLine of stdout.split('\n')) {
+    const line = rawLine.trim();
+    if (line === '') continue;
+    const slashIndex = line.indexOf('/');
+    if (slashIndex === -1) {
+      throw new Error(`Malformed model catalog line (missing '/'): ${line}`);
+    }
+    const provider = line.slice(0, slashIndex);
+    const model = line.slice(slashIndex + 1);
+    if (provider === '' || model === '') {
+      throw new Error(`Malformed model catalog line (empty provider or model side): ${line}`);
+    }
+    entries.push({ provider, model });
+  }
+  return entries;
+}
+
+function parseVerboseModelRecords(stdout) {
+  const records = [];
+  let identity = null;
+  let accumulated = null;
+  for (const rawLine of stdout.split('\n')) {
+    const line = rawLine.trim();
+    if (line === '') continue;
+    if (identity === null) {
+      identity = line;
+      accumulated = null;
+      continue;
+    }
+    accumulated = accumulated === null ? line : `${accumulated}\n${line}`;
+    let parsed;
+    try {
+      parsed = JSON.parse(accumulated);
+    } catch {
+      continue;
+    }
+    if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      throw new Error(`Verbose model record for ${identity} parsed to a non-object JSON value`);
+    }
+    records.push({ identity, record: parsed });
+    identity = null;
+    accumulated = null;
+  }
+  if (identity !== null) {
+    throw new Error(`Verbose model record for ${identity} has no parseable JSON object`);
+  }
+  return records;
+}
+
+function extractVariants(record) {
+  if (!Object.prototype.hasOwnProperty.call(record, 'variants')) return [];
+  const variants = record.variants;
+  if (variants === null || typeof variants !== 'object' || Array.isArray(variants)) {
+    throw new Error('Model record variants field is not a plain object');
+  }
+  return Object.keys(variants);
+}
+
 module.exports = {
   runPostSetupMenu,
   FAKE_MODEL_OPTIONS,
@@ -128,4 +190,7 @@ module.exports = {
   fakeCreateLocalOverride,
   createOpencodeAdapter,
   createClaudeAdapter,
+  parseModelCatalog,
+  parseVerboseModelRecords,
+  extractVariants,
 };
