@@ -111,14 +111,29 @@ the gate was reached.
 When the fast-track signal is active for this invocation (`sai-archive
 --fast-track`; opt-out set per `openspec/specs/sai-fast-track-flag/spec.md`):
 
-- Present no gate prompt; auto-select the amend option, assuming unpushed HEAD.
-- The pushed-HEAD guard still applies, exactly as in the amend path above, and
-  still runs before any staging.
-- When the guard fires (HEAD is already pushed): do NOT amend, run no `git add`
-  and no `git commit`, and print exactly one explanatory line:
+- Present no gate prompt; auto-select the new-commit option.
+- Stage exactly the two literal paths:
 
-  `amend skipped because HEAD is already pushed`
+  `git add openspec/specs openspec/changes/archive`
 
+  Never `git add -A` and never stage any other path.
+- Run the shared empty-index guard (above). When it fires — the two-path
+  staging left the index empty — do NOT create a commit, print the guard's
+  single diagnostic line, and run no further git mutation.
+- When the guard passes, apply `sai/instructions/commit.md` steps 1–5 —
+  inspect staged state, classify the change, determine scope, compose the
+  message, and verify faithfulness — with `sai/policies/commit-rules.md` as
+  the single source of commit-message rules, then commit with the composed
+  message. The guard runs before steps 1–5 are applied, so the step-1
+  "No staged changes" and "Only unstaged changes" stop conditions are never
+  reached on this path.
+- The step-1 secret-file heuristic (for example the `*credentials*` pattern)
+  does NOT apply on the fast-track path and presents no confirmation STOP,
+  because the gate fixes the staging scope to exactly the two paths under
+  `openspec/`, so a matching staged path is a capability or archived-change
+  spec, never a secret.
+- There is no pushed-HEAD check, no do-nothing fallback, and no pushed-HEAD
+  explanatory line on this path — a new commit is never destructive.
 - The skip rule still applies: when `git status` shows no changes, the gate and
   its auto-selection are skipped.
 - No other gate is affected.
