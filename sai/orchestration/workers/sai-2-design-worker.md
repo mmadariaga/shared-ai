@@ -8,12 +8,15 @@ The worker receives exactly two strings:
 
 - `wrapper_echo_value`: the value after the exact opencode line `**Change-name argument and and optional flags:** <value>`, or empty when absent
 - `arguments_value`: `$ARGUMENTS` exactly as received from the coordinator
+- `overview_language`: worker-owned invocation state derived from the optional flag after parsing; `English` when absent, never written to an artifact or configuration file.
+
+Every post-resolution worker result carries the current `overview_language` alongside its normal lifecycle metadata; the generator result envelope remains separate and unchanged.
 
 ## Prerequisites and Resolution
 
-Parse `--fast-track` first. If present in the combined envelope, activate the
-signal, remove the token from its source value, and emit `> FAST-TRACK MODE ACTIVE`
-once per session unless reconstruction says `fast_track_banner_emitted: true`.
+Parse invocation-scoped options before change resolution. Scan the selected envelope source (wrapper echo when non-empty, otherwise `arguments_value`) for the option syntax `--overview-lang <language>` and consume exactly one following non-empty token. If the option is absent, set `overview_language: English`; if its value is missing, is another option, or the option occurs more than once, return a clear `failed` validation result before change resolution or dispatch. Remove only the option and its value before resolving the change name. A change-consuming invocation requires the change name before the option; if parsing leaves no change name, return a clear missing-change-name validation result and never treat the language value as the change name. `--fast-track` is recognized independently and remains active in either order. The cleaned arguments and `overview_language` are invocation-scoped and never persisted.
+
+If `--fast-track` is present in the combined envelope, activate the signal, remove the token from its source value, and emit `> FAST-TRACK MODE ACTIVE` once per session unless reconstruction says `fast_track_banner_emitted: true`.
 Then run universal prerequisite checks via `Fetch @sai/policies/prereqs.md`.
 Return `failed` with the missing-prerequisite summary when a check fails.
 
@@ -73,6 +76,7 @@ For Architecture Snapshot presentation, retain the previous `interfaces.md` text
 
 The worker owns the change's overview lifecycle for `change-overview.md` per `specs/change-overview-synchronization/spec.md` and `specs/change-overview-generation-routing/spec.md`:
 
+- **Language transport** — pass the current invocation's `overview_language` to every initial generation or regeneration dispatch. The generator localizes only eligible free-text prose in `change-overview.md`; it preserves the existing structural/source values, writes only that file, and returns the unchanged five-field result envelope. A later unflagged invocation supplies `English` rather than reading a prior invocation's value.
 - **First materialization** — at the feedback gate's `Continue` processing, after all source artifacts (`design.md`, `tasks.md`, `interfaces.md`) verify successfully: set `overview.state: materializing` in `openspec/changes/{change-name}/.openspec.yaml` immediately before dispatching the budget-routed generation subagent, and commit `overview.state: current` only after a successful closed result envelope. A failed first-materialization dispatch sets `overview.state: failed` (the coordinator suppresses the success terminal; a later re-invoked run retries first materialization from `failed`). The worker NEVER writes, deletes, or edits `change-overview.md` itself — the generator exclusively owns writes to that file; the worker only transitions `overview.state`.
 - **Stale-before-first-write** — every post-materialization source-modifying transaction (a re-invoked `/sai-2-design`, the supervised design phase) sets `overview.state: stale` immediately before the run's first effective source-artifact write — never only at transaction end — so cancellation, worker failure, process loss, or chat abandonment at any later point conservatively leaves `stale` with no further execution point required. A run that exits unsuccessfully before its first source write leaves the prior state unchanged.
 - **Exactly one regeneration per effective transaction** — after the requested edits complete and the run closes with a successful `Continue`, regenerate exactly once (via `materializing` → dispatch → `current`), reflecting the post-transaction sources. A regeneration failure from a generator that ran leaves the stale record the generator wrote (carrying the contradiction details on a blocking contradiction) and sets `stale`; a dispatch failure (the subagent never ran, parent-reported `failure_kind: dispatch-failed`) or process loss preserves the prior file and sets `stale`; a malformed or empty envelope (output-contract violation) preserves whatever file state exists and sets `stale` (regeneration) or `failed` (first materialization) — the parent never writes `change-overview.md` in any failure mode.

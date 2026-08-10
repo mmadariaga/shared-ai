@@ -1,5 +1,6 @@
 ---
 description: Generate design.md and tasks.md through the canonical coordinator contract and a routed design worker.
+argument-hint: "[change-name] [--overview-lang <language>] [--fast-track]"
 model: opencode-go/deepseek-v4-flash
 variant: max
 subtask: false

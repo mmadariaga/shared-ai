@@ -342,6 +342,27 @@ test('active closure is question-first and repeats the exact crystallize reminde
   assert.doesNotMatch(explore, /manufactur(?:e|ed) a question/);
 });
 
+test('localized Change Overview generation preserves structural anchors, source artifacts, and its result envelope', () => {
+  const instruction = artifact('sai/instructions/change-overview.md');
+
+  assert.match(instruction, /overview_language/);
+  assert.match(instruction, /English/);
+  assert.match(instruction, /free-text prose/);
+  for (const anchor of [
+    'section headings',
+    'Architecture Snapshot',
+    'requirements',
+    'scenarios',
+    'paths',
+    'commands',
+    'state values',
+    'result keys',
+  ]) assert.match(instruction, new RegExp(anchor));
+  assert.match(instruction, /source artifacts.*never modified|never modified.*source artifacts/i);
+  assert.match(instruction, /exactly five mandatory fields|five mandatory fields/);
+  assert.match(instruction, /change-overview\.md/);
+});
+
 test('closure stops at crystallization and discard and preserves terminal paths', () => {
   const explore = artifact('sai/instructions/explore.md');
   const prereqs = artifact('sai/policies/prereqs-check.md');

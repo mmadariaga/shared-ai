@@ -1154,3 +1154,46 @@ test('documentation records the audit progress-plan orientation section', () => 
   assert.match(agents, /Milestone Stamp[\s\S]{0,160}no|no[\s\S]{0,160}Milestone Stamp/i,
     'the audit orientation section should state audit plans carry no Milestone Stamp');
 });
+
+test('Step 2 design wrappers document the same overview language option', () => {
+  for (const relativePath of [
+    'commands/claude/sai-2-design.md',
+    'commands/opencode/sai-2-design.md',
+  ]) {
+    const source = artifact(relativePath);
+    assert.match(
+      source,
+      /argument-hint:.*--overview-lang <language>.*--fast-track/,
+      `${relativePath} should document both optional flags`
+    );
+  }
+});
+
+test('Step 2 design worker validates and defaults the invocation language before resolution', () => {
+  const worker = artifact('sai/orchestration/workers/sai-2-design-worker.md');
+
+  assert.match(worker, /--overview-lang <language>/);
+  assert.match(worker, /English/);
+  assert.match(worker, /missing.*value|value.*missing/i);
+  assert.match(worker, /duplicate/i);
+  assert.match(worker, /before.*resolution|resolution.*before/i);
+  assert.match(worker, /change name.*before|before.*change name/i);
+  assert.match(worker, /fast-track.*(?:either|regardless)|(?:either|regardless).*fast-track/i);
+});
+
+test('Step 2 carries overview_language through the worker and generation continuation', () => {
+  const worker = artifact('sai/orchestration/workers/sai-2-design-worker.md');
+  const coordinator = artifact('sai/commands/design/coordinator.md');
+  const bindings = [
+    artifact('sai/orchestration/workers/bindings/claude/design-worker.md'),
+    artifact('sai/orchestration/workers/bindings/opencode/design-worker.md'),
+  ].join('\n');
+
+  for (const source of [worker, coordinator, bindings]) {
+    assert.match(source, /overview_language/);
+    assert.match(source, /generation|generator/i);
+  }
+  assert.match(coordinator, /continuation[\s\S]{0,300}overview_language/i);
+  assert.match(worker, /worker result|result[\s\S]{0,180}overview_language/i);
+  assert.match(worker, /not persisted|never.*persist/i);
+});

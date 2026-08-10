@@ -10,6 +10,10 @@ Write exactly one file: `openspec/changes/{change-name}/change-overview.md`. The
 
 Read in parallel: `openspec/changes/{change-name}/proposal.md`, every file matching `openspec/changes/{change-name}/specs/**/*.md`, `openspec/changes/{change-name}/design.md`, `openspec/changes/{change-name}/tasks.md`, and `openspec/changes/{change-name}/interfaces.md`. The overview is derived ONLY from these five source artifacts — never from `implementation.md` or any implementation artifact, and never from conversation context.
 
+## Rendering language
+
+The parent design invocation supplies one invocation-scoped `overview_language` value to the generator. Use that value for eligible free-text prose and use `English` when the value is absent. Never translate or rewrite section headings, the Architecture Snapshot, requirements, scenarios, paths, commands, state values, generator result keys, or any normative source artifact. Do not persist the value in `.openspec.yaml` or any other artifact. This rendering instruction does not change the five-field closed result envelope or the one-file write scope.
+
 ## Output organization
 
 Produce one structured review-oriented document organized by capability and behavior — NOT a concatenation of the source documents. Present, at minimum, these sections in this order:

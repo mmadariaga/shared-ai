@@ -43,3 +43,7 @@ on the run-closing `completed` reconciliation, acquire one shared time with
 only when at least one step is stamped. Issue at most one wall-clock call
 per render act and none on `needs_input`, `failed`, or `cancelled`. The
 calls originate from the coordinator session, never from the worker subagent.
+
+## overview_generation
+
+The worker-owned budget-routed Change Overview dispatch receives `overview_language` from the current invocation, using `English` when the flag was absent. It executes the shared `sai/instructions/change-overview.md` contract, writes only `change-overview.md`, and preserves the generator result fields `status`, `changed_files`, `validation`, `contradiction_details`, and `failure_kind`.
