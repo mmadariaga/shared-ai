@@ -43,6 +43,8 @@ This index groups the DDRs in `docs/ddr/` by **command** and by **cross-cutting 
 - [0108 — Numbering stays independent per family; a record keeps its number when it moves between families](./0108-independent-per-family-numbering.md)
 - [0109 — "Testable" (RED block) and "divisible" (production surface) are distinct Step properties](./0109-testable-and-divisible-are-distinct-step-properties.md) — Refs adr:0115
 - [0115 — The implementation plan's step identity is its `#### Step N:` H4-with-colon heading](./0115-implementation-step-identity-is-h4-heading.md)
+- [0126 — Archive only after requirement-level survival review](./0126-archive-only-after-requirement-level-survival-review.md)
+- [0127 — Archived specs preserve their pre-archival bytes](./0127-archived-specs-preserve-pre-archival-bytes.md)
 
 ### `/sai-4-apply`
 
@@ -105,6 +107,8 @@ This index groups the DDRs in `docs/ddr/` by **command** and by **cross-cutting 
 - [0121 — The post-setup customization result stays in memory and never touches agent files](./0121-in-memory-non-persistent-override-contract.md)
 - [0123 — Retirement records cover every distinct historical content variant, enumerated from git history at implementation time](./0123-retirement-records-cover-every-historical-content-variant.md)
 - [0125 — Existing project-local agent content takes precedence over installed availability](./0125-existing-project-local-agent-content-takes-precedence.md)
+- [0126 — Archive only after requirement-level survival review](./0126-archive-only-after-requirement-level-survival-review.md)
+- [0127 — Archived specs preserve their pre-archival bytes](./0127-archived-specs-preserve-pre-archival-bytes.md)
 
 ### Harness wrappers & the shared instruction layer
 
