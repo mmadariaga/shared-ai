@@ -1,6 +1,6 @@
 # sai-5 review invocation core
 
-Shared technical review invocation used by the inline caller and the review worker. This file owns no prerequisite parsing, change selection, coordinator lifecycle, or terminal navigation.
+Shared technical review invocation used by the routed review worker. This file owns no prerequisite parsing, change selection, coordinator lifecycle, or terminal navigation.
 
 ## Load behaviors (in order)
 Fetch @skills/budget/SKILL.md and use it

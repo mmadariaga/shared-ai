@@ -1,6 +1,6 @@
 # sai-8 accessibility invocation core
 
-Shared technical invocation used by the inline caller and the accessibility worker. This file owns accessibility audit policy only; it does not resolve an invocation envelope or own routed lifecycle state.
+Shared technical invocation used by the routed accessibility worker. This file owns accessibility audit policy only; it does not resolve an invocation envelope or own routed lifecycle state.
 
 ## Load behaviors (in order)
 Fetch @skills/budget/SKILL.md and use it.

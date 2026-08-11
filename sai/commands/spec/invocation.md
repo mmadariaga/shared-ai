@@ -1,6 +1,6 @@
 # sai-1 spec invocation core
 
-Shared technical spec invocation used by the inline caller and the spec-proposal worker. This file owns no prerequisite parsing, change selection, coordinator lifecycle, feedback-gate control, decision-summary presentation, or terminal navigation message.
+Shared technical spec invocation used by the routed spec-proposal worker. This file owns no prerequisite parsing, change selection, coordinator lifecycle, feedback-gate control, decision-summary presentation, or terminal navigation message.
 
 ## Load behaviors (in order)
 Fetch @skills/budget/SKILL.md and use it

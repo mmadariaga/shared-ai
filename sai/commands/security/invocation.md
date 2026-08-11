@@ -1,6 +1,6 @@
 # sai-6 security invocation core
 
-Shared technical security invocation used by the inline caller and the security worker. This file owns no prerequisite parsing, change selection, coordinator lifecycle, or terminal navigation.
+Shared technical security invocation used by the routed security worker. This file owns no prerequisite parsing, change selection, coordinator lifecycle, or terminal navigation.
 
 ## Load behaviors (in order)
 Fetch @skills/budget/SKILL.md and use it

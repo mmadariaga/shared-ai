@@ -1,6 +1,6 @@
 # sai-2 design invocation core
 
-Shared technical design invocation used by the inline caller and the design-planning worker. This file owns no prerequisite parsing, change selection, fast-track banner presentation, or terminal navigation message.
+Shared technical design invocation used by the routed design-planning worker. This file owns no prerequisite parsing, change selection, fast-track banner presentation, or terminal navigation message.
 
 ## Load behaviors (in order)
 Fetch @skills/budget/SKILL.md and use it

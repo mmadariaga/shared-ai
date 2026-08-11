@@ -1,6 +1,6 @@
 # sai-3 implementation invocation core
 
-Shared technical invocation used by the inline caller and the implementation-planning worker. This file owns no terminal completion message.
+Shared technical invocation used by the routed implementation-planning worker. This file owns no terminal completion message.
 
 ## Load instructions (in order)
 Fetch @sai/policies/glossary-format.md
