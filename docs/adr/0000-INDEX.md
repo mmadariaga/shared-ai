@@ -129,6 +129,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0116 — The idea progress list is expressed entirely in `sai/instructions/explore.md` — the sole edit target](./0116-idea-progress-list-expressed-in-explore-md.md)
 - [0122 — The findings block is the loop's sole output and handoff payload](./0122-findings-block-is-the-loops-sole-output-and-handoff-payload.md) — Refs 0058, Refs ddr:0060
 - [0123 — Handed-off findings route to the design worker; the loop never applies, forwards, or regenerates](./0123-handed-off-findings-route-to-the-design-worker.md) — Refs 0047, Refs ddr:0060
+- [0127 — Keep one ordered edge-case list and partition it at sliced handoff](./0127-whole-idea-edge-cases-are-partitioned-at-sliced-handoff.md)
 
 ### `/sai-backfill`
 
@@ -329,6 +330,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0116 — The idea progress list is expressed entirely in `sai/instructions/explore.md` — the sole edit target](./0116-idea-progress-list-expressed-in-explore-md.md)
 - [0122 — The findings block is the loop's sole output and handoff payload](./0122-findings-block-is-the-loops-sole-output-and-handoff-payload.md) — Refs 0058, Refs ddr:0060
 - [0123 — Handed-off findings route to the design worker; the loop never applies, forwards, or regenerates](./0123-handed-off-findings-route-to-the-design-worker.md) — Refs 0047, Refs ddr:0060
+- [0127 — Keep one ordered edge-case list and partition it at sliced handoff](./0127-whole-idea-edge-cases-are-partitioned-at-sliced-handoff.md)
 
 ### Artifact metadata & routing tokens
 
