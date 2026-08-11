@@ -58,9 +58,11 @@ The skill file frontmatter MUST include:
 
 ### Requirement: Universal Behavior section inlined
 
-The skill file SHALL contain a `## Universal Behavior` section with all rules from the `executor-universal-behavior` capability, followed by an `## OpenCode Binding` section with harness-specific parameters.
+The OpenCode executor skill SHALL consume the canonical executor behavior policy through exactly one `Fetch @sai/policies/executor-agent.md` directive. It SHALL NOT inline a `## Universal Behavior` section or duplicate the rules supplied by that policy. It SHALL retain `## OpenCode Binding`, `## Dispatch mode`, `## Model resolution`, and `## Cost model` as skill-local sections, including the lowercase `executor` binding, synchronous dispatch, agent-file model resolution, no tool-call cap, structured failure-report guidance, and the requested-command/error raw-output boundary. The local raw-output guidance SHALL prohibit unrequested full-file dumps and unfiltered log streams.
 
-#### Scenario: Section structure
+#### Scenario: Executor skill uses the canonical behavior boundary
 
-- **WHEN** an agent reads `skills/opencode/executor/SKILL.md`
-- **THEN** it finds both `## Universal Behavior` and `## OpenCode Binding` sections
+- **WHEN** an agent reads `skills/opencode/budget-executor/SKILL.md`
+- **THEN** it finds exactly one `Fetch @sai/policies/executor-agent.md` directive
+- **AND** it finds no `## Universal Behavior` section
+- **AND** it finds the OpenCode-specific binding, dispatch, model-resolution, cost, no-cap, structured-failure, and constrained raw-output guidance
