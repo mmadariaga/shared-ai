@@ -216,7 +216,7 @@ Per-spawn cap for `explore` subagents: ≤30 tool calls. If a task exceeds the c
 
 *(Non-testable step — this adds structural regression assertions for documentation contracts and has no observable browser behavior.)*
 
-- [ ] Append the following complete table-driven regression block to `test/canonical-opencode-agent-behavior.test.js` after the existing tests:
+- [x] Append the following complete table-driven regression block to `test/canonical-opencode-agent-behavior.test.js` after the existing tests:
 
 ```javascript
 const OPENCODE_BUDGET_SKILL_CONTRACTS = [
@@ -306,8 +306,8 @@ test('OpenCode budget skills match their generic-agent policy targets and local 
 });
 ```
 
-- [ ] Run `node --test test/canonical-opencode-agent-behavior.test.js` — expected: the focused suite passes, including the new three-pair parity assertions.
-- [ ] Run `npm test` sequentially after the focused run — expected: the final summary reports `fail 0` and the `pass` count equals the `tests` count.
+- [x] Run `node --test test/canonical-opencode-agent-behavior.test.js` — expected: the focused suite passes, including the new three-pair parity assertions.
+- [x] Run `npm test` sequentially after the focused run — expected: the final summary reports `fail 0` and the `pass` count equals the `tests` count.
 
 *(No Human checks — regression coverage validates Markdown and installer-facing contracts through automated tests.)*
 
@@ -333,9 +333,16 @@ This section documents deviations between the original plan and the code that wa
 **Final:** Step 2 was dispatched through the opencode `general` agent after three consecutive budget-binding dispatches reported they could not perform full-file writes ("Required full-file Write operation could not be performed; only prohibited patch tooling is available").
 **Reason:** The budget binding is write-incapable for whole-file overwrites in this environment. The general binding completed the replacement; the resulting skill files match the plan's content exactly (verified by the focused suite and the structure check).
 
+### Step 3 — Six parity marker regexes adjusted to the on-disk skill content
+
+**Plan:** The regression block carried six marker regexes referencing phrasing not present in the plan's own Step 2 skill content — `keyword` following `(lowercase)`, unquoted `model frontmatter`, and `no tool-call cap`.
+**Final:** The markers were adjusted to the preserved on-disk skill contracts: `/agent keyword[\s\S]{0,80}`budget` \(lowercase\)/i` and the executor equivalent (the content binds the keyword before the lowercase form), `/`model` frontmatter of the ... agent file/i` (the `model` token is backtick-quoted in the skills), and `/tool[- ]call\s+cap[\s\S]{0,20}\bnone\b/i` (executor reads `**Tool-call cap**: none.`).
+**Reason:** The plan's markers did not match the plan's own Step 2 replacement content, so the verbatim block could not pass. The corrected markers assert the same contract (lowercase binding, backtick-quoted agent-file model frontmatter, and the executor no-cap boundary) against the actual files, and the full suite passes 769/769/0.
+
 ## Appendix: Execution Telemetry
 
 | Step | dispatch | phase | attempts | first_failure | note |
 |---|---|---|---|---|---|
 | 1 | single | green | 1 | other | PowerShell mangled the node -e quoting on the first attempt; coordinator re-ran the check via a script file and it passed |
 | 2 | single | green | 1 | n/a | |
+| 3 | single | green | 2 | assertion | corrected six marker regexes to match actual deduplicated SKILL.md content after the verbatim block failed on budget-subagent marker 1 |

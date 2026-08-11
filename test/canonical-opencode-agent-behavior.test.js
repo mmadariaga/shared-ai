@@ -223,3 +223,89 @@ test('OpenCode Fetch wrapper propagation preserves local tuning and resolves upd
     fs.rmSync(scratch, { recursive: true, force: true });
   }
 });
+
+const OPENCODE_BUDGET_SKILL_CONTRACTS = [
+  {
+    skillName: 'budget-subagent',
+    agentName: 'budget',
+    fetchTarget: '@sai/policies/budget-agent.md',
+    forbidden: [/^## Universal Behavior$/m],
+    markers: [
+      /agent keyword[\s\S]{0,80}`budget` \(lowercase\)/i,
+      /synchronously/i,
+      /`model` frontmatter of the budget agent file/i,
+      /structured completion report/i,
+      /permission-block abort/i,
+      /approximately 30-call behavioral limit/i,
+      /scope boundaries/i,
+      /## Cost model/i,
+    ],
+  },
+  {
+    skillName: 'budget-executor',
+    agentName: 'executor',
+    fetchTarget: '@sai/policies/executor-agent.md',
+    forbidden: [/^## Universal Behavior$/m],
+    markers: [
+      /agent keyword[\s\S]{0,80}`executor` \(lowercase\)/i,
+      /synchronously/i,
+      /`model` frontmatter of the executor agent file/i,
+      /tool[- ]call\s+cap[\s\S]{0,20}\bnone\b/i,
+      /structured failure report/i,
+      /results of explicitly requested commands and relevant error or compiler messages/i,
+      /unrequested full-file dumps/i,
+      /unfiltered log streams/i,
+      /## Cost model/i,
+    ],
+  },
+  {
+    skillName: 'budget-explorer',
+    agentName: 'explore',
+    fetchTarget: '@sai/policies/explore-agent.md',
+    forbidden: [/^## Output contract$/m, /Every subagent spawn MUST declare/i],
+    markers: [
+      /`explore` \(lowercase\)[\s\S]{0,100}keyword/i,
+      /synchronously/i,
+      /`model` frontmatter of the explore agent file/i,
+      /30 tool calls/i,
+      /output contract/i,
+      /explore-agent\.md/i,
+      /## Cost model/i,
+    ],
+  },
+];
+
+function extractSkillFetchTargets(content) {
+  return content
+    .split(/\r?\n/)
+    .map(line => line.trim())
+    .filter(line => /^Fetch @sai\/policies\/(?:budget|executor|explore)-agent\.md$/.test(line));
+}
+
+test('OpenCode budget skills match their generic-agent policy targets and local contracts', () => {
+  for (const contract of OPENCODE_BUDGET_SKILL_CONTRACTS) {
+    const skillPath = path.join(REPO_ROOT, 'skills', 'opencode', contract.skillName, 'SKILL.md');
+    const agentPath = path.join(REPO_ROOT, 'agents', 'opencode', `${contract.agentName}.md`);
+    const skill = fs.readFileSync(skillPath, 'utf8');
+    const agent = fs.readFileSync(agentPath, 'utf8');
+    const skillTargets = extractSkillFetchTargets(skill);
+    const agentTargets = extractSkillFetchTargets(agent);
+
+    assert.deepEqual(skillTargets, [`Fetch ${contract.fetchTarget}`],
+      `${contract.skillName} must contain exactly one matching canonical Fetch target`);
+    assert.deepEqual(agentTargets, [`Fetch ${contract.fetchTarget}`],
+      `${contract.agentName} must contain exactly one matching canonical Fetch target`);
+    assert.doesNotMatch(skill,
+      /(?:import|require)\s+(?:[^\n]*\b)?(?:open\s*code|opencode)\b|from\s+['"](?:open\s*code|opencode)/i,
+      `${contract.skillName} must not use a native OpenCode policy import`);
+
+    for (const forbidden of contract.forbidden) {
+      assert.doesNotMatch(skill, forbidden,
+        `${contract.skillName} must not retain policy-owned duplicated behavior`);
+    }
+    for (const marker of contract.markers) {
+      assert.match(skill, marker,
+        `${contract.skillName} must retain its skill-specific OpenCode contract marker ${marker}`);
+    }
+  }
+});
