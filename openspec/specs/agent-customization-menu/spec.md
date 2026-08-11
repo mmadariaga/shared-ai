@@ -21,7 +21,7 @@ The setup flow MUST present a post-setup menu only after all existing setup oper
 - **THEN** the flow MUST act on exactly the highlighted action
 
 ### Requirement: TTY-only interaction
-The setup flow MUST determine whether interaction is available through its injectable TTY check before presenting the post-setup menu, the navigable harness picker, the agent-selection checklist, the Claude Code combined model/effort frame, or any OpenCode provider, model, or variant screen. When no TTY is available, it MUST skip the menu and all customization adapters without adding menu-specific prompts, checklist renders, or output, and `runPostSetupMenu` MUST return `'skipped'` so `setup.js` completes normally — the configurator MUST NOT hard-exit like the installer.
+The setup flow MUST determine whether interaction is available through its injectable TTY check before presenting the post-setup menu, the navigable harness picker, the agent-selection checklist, the Claude Code combined model/effort frame, or any OpenCode provider, model, or variant screen. When no TTY is available, it MUST skip the menu and all customization adapters without adding menu-specific prompts, checklist renders, or output, and `runPostSetupMenu` MUST return 'skipped' so `setup.js` completes normally — the configurator MUST NOT hard-exit like the installer.
 
 #### Scenario: Setup runs without a TTY
 - **WHEN** the injectable TTY check reports that standard input is not interactive
@@ -61,7 +61,7 @@ The OpenCode adapter MUST derive its complete harness-specific agent set from th
 - **THEN** the adapter MUST process exactly the selected agents from the 10 distinct agents derived from the canonical agents-class projections, with no early stop or representative-agent shortcut
 
 ### Requirement: Complete Claude Code traversal
-The Claude Code adapter MUST derive its complete harness-specific agent set from the canonical agents-class projections in `sai/install-manifest.json` and MUST present every resulting Claude Code agent in the agent-selection checklist. It MUST invoke fake settings selection and fake local override creation as specified by the Shared settings selection requirement. For the current repository state, that derived set contains exactly 7 agents; this count is a fixture assertion of the current repository state, not a hardcoded enumeration.
+The Claude Code adapter MUST derive its complete harness-specific agent set from the canonical agents-class projections in `sai/install-manifest.json` and MUST present every resulting Claude Code agent in the agent-selection checklist. It MUST invoke Claude Code settings selection and local override creation as specified by the Shared settings selection requirement. For the current repository state, that derived set contains exactly 7 agents; this count is a fixture assertion of the current repository state, not a hardcoded enumeration.
 
 #### Scenario: Claude Code customization traverses the selected registry subset
 - **WHEN** Claude Code customization is selected and the checklist is confirmed
@@ -69,7 +69,7 @@ The Claude Code adapter MUST derive its complete harness-specific agent set from
 
 ### Requirement: Shared settings selection
 
-After the agent-selection checklist confirms a non-empty subset and before any local override is created, the flow SHALL invoke the selected harness's settings selector exactly once for the whole confirmed subset. The collected settings choices — a model and an effort choice for Claude Code, and a discovered model with an optional variant for OpenCode — SHALL be applied to every selected agent through the per-agent local-override operation. When the checklist confirms an empty subset, the settings selector SHALL NOT be invoked and customization SHALL complete without configuring any agent.
+After the agent-selection checklist confirms a non-empty subset and before any local override is created, the flow SHALL invoke the selected harness's settings selector exactly once for the whole confirmed subset. The collected settings choices — a model and an optional effort choice for Claude Code, and a discovered model with an optional variant for OpenCode — SHALL be applied to every selected agent through the per-agent local-override operation. When the checklist confirms an empty subset, the settings selector SHALL NOT be invoked and customization SHALL complete without configuring any agent.
 
 #### Scenario: Settings selector runs exactly once per customization run
 
@@ -84,7 +84,7 @@ After the agent-selection checklist confirms a non-empty subset and before any l
 #### Scenario: Same settings applied to every selected agent
 
 - **WHEN** the settings selector returns its settings choices for a confirmed subset of two or more agents
-- **THEN** every selected agent's local override SHALL carry those identical settings choices
+- **THEN** every selected agent's local override SHALL carry those identical settings choices, including the absence of `effort` when the chosen Claude model has no effort selector
 
 #### Scenario: Empty subset skips the settings selector
 
@@ -97,34 +97,42 @@ After the agent-selection checklist confirms a non-empty subset and before any l
 - **THEN** customization SHALL complete without configuring any agent
 
 ### Requirement: Claude settings selection
-For every Claude Code customization run with a non-empty confirmed subset, the Claude Code adapter MUST invoke exactly one navigable single-select frame that presents concrete model and effort choices together. The adapter-owned Claude settings catalog MUST be the authoritative source for both option sets, MUST contain at least one model identifier and one effort value, and MUST contain no placeholder values such as `<model>` or `<effort>`. Each displayed option SHALL encode members of those catalog sets, and the selected result MUST return only catalog members for the whole subset. If the catalog is unavailable or empty, the selector MUST return no settings and MUST allow customization to complete without writing an agent. The selector MUST NOT claim that the end-to-end customization is fake and MUST NOT perform OpenCode provider, model, or variant discovery. The collected values MUST be forwarded to the persistent local-override operation. The OpenCode adapter MUST continue to use its dependent provider-to-model-to-variant selection instead of this combined frame.
+For every Claude Code customization run with a non-empty confirmed subset, the Claude Code adapter MUST invoke exactly one navigable single-select frame whose options are derived from the adapter-owned static Claude settings catalog. An entry with an `efforts` array MUST be displayed as a concrete model and effort choice together, using the `<model> | <effort>` form; an entry without an `efforts` array MUST be displayed as the model alone. The catalog MUST be the authoritative source for the available model identifiers and each model's effort values, MUST contain at least one valid model entry, and MUST contain no placeholder values such as `<model>` or `<effort>`. The selected result MUST contain only catalog members: `{ model, effort }` for an effort-bearing entry or `{ model }` with no `effort` property for a model-only entry. If the catalog is unavailable or contains no valid model entries, the selector MUST return no settings and MUST allow customization to complete without writing an agent. The selector MUST NOT perform Claude live model discovery, claim that end-to-end customization is fake, or perform OpenCode provider, model, or variant discovery. The collected values MUST be forwarded to the persistent local-override operation. The OpenCode adapter MUST continue to use its dependent provider-to-model-to-variant selection instead of this combined frame.
+
+#### Scenario: Static Claude catalog contains the current model and effort set
+- **WHEN** the Claude adapter loads its built-in settings catalog
+- **THEN** the catalog SHALL contain `opus` with efforts `low`, `medium`, `high`, `xhigh`, and `max`; `sonnet` with the same five efforts; `fable` with the same five efforts; and `haiku` with no `efforts` array
 
 #### Scenario: Claude selection returns concrete model and effort
-- **WHEN** a non-empty Claude Code subset reaches settings selection and the user confirms a combined option
-- **THEN** the selector SHALL return the concrete model identifier and effort value encoded by that option
+- **WHEN** a non-empty Claude Code subset reaches settings selection and the user confirms an effort-bearing catalog option such as `sonnet | medium`
+- **THEN** the selector SHALL return exactly the concrete catalog values `{ model: 'sonnet', effort: 'medium' }`
+
+#### Scenario: Claude selection returns a model without effort
+- **WHEN** a non-empty Claude Code subset reaches settings selection and the user confirms the `haiku` catalog entry, whose entry has no `efforts` array
+- **THEN** the frame SHALL display `haiku` alone, and the selector SHALL return exactly `{ model: 'haiku' }` without a top-level `effort` property
 
 #### Scenario: Claude selection does not use placeholders
 - **WHEN** the Claude Code settings frame is rendered
-- **THEN** no selectable option SHALL use `<model>` or `<effort>` placeholder values
+- **THEN** no selectable option SHALL use `<model>` or `<effort>` placeholder values, and a model-only option SHALL NOT fabricate an effort label
 
-#### Scenario: Claude selection is bounded by its settings catalog
-- **WHEN** the Claude adapter-owned catalog contains a set of model identifiers and effort values
-- **THEN** every displayed and returned Claude setting SHALL be a member of the corresponding catalog set
+#### Scenario: Claude selection is bounded by per-model catalog entries
+- **WHEN** the Claude adapter-owned catalog contains model entries with model-specific effort arrays or no effort array
+- **THEN** every displayed and returned Claude setting SHALL be derived from one catalog entry, with no effort accepted for a model-only entry and no effort borrowed from another model
 
 #### Scenario: Missing Claude settings catalog produces no settings
-- **WHEN** the Claude settings catalog is unavailable or contains no model or effort choices
+- **WHEN** the Claude settings catalog is unavailable or contains no valid model entries
 - **THEN** the selector SHALL return no settings and customization SHALL perform no agent write
 
 #### Scenario: OpenCode does not use the Claude frame
 - **WHEN** OpenCode customization reaches settings selection
-- **THEN** the flow SHALL use the dependent provider, model, and optional variant screens and SHALL not present the Claude combined frame
+- **THEN** the flow SHALL use the dependent provider, model, and optional variant screens and SHALL not present the Claude combined frame or use the Claude static catalog
 
 ### Requirement: Persistent local override
-For every traversed agent, the selected harness adapter MUST invoke a local-override operation after settings selection, passing the collected settings for that agent — the selected model and effort for Claude Code, and the selected model with optional variant for opencode. The operation MUST materialize the result as the selected agent's project-local file and MUST report the result as persistent only after that file has been written successfully. The operation MUST apply the project-local source, preservation, path, and failure rules defined by the `project-local-agent-overrides` capability.
+For every traversed agent, the selected harness adapter MUST invoke a local-override operation after settings selection, passing the collected settings for that agent — the selected model and optional effort for Claude Code, and the selected model with optional variant for opencode. The operation MUST materialize the result as the selected agent's project-local file and MUST report the result as persistent only after that file has been written successfully. The operation MUST apply the project-local source, preservation, path, and failure rules defined by the `project-local-agent-overrides` capability.
 
 #### Scenario: Selected Claude Code override is persisted
-- **WHEN** Claude Code settings have been selected for a traversed agent
-- **THEN** the local-override operation SHALL write the selected agent under `.claude/agents/<agent>.md` with the selected `model` and `effort`, and SHALL report a persistent result only after the write succeeds
+- **WHEN** Claude Code settings have been selected for a traversed agent, with or without an effort value
+- **THEN** the local-override operation SHALL write the selected agent under `.claude/agents/<agent>.md` with the selected `model` and, only when selected, `effort`, and SHALL report a persistent result only after the write succeeds
 
 #### Scenario: Selected opencode override is persisted
 - **WHEN** opencode settings have been selected for a traversed agent
@@ -139,7 +147,6 @@ For every traversed agent, the selected harness adapter MUST invoke a local-over
 - **THEN** that agent SHALL be reported as skipped and SHALL not be represented as a successful persistent override, while other agents continue according to the `project-local-agent-overrides` capability
 
 ### Requirement: Navigable agent-selection checklist
-
 After harness selection and before per-agent configuration, the flow SHALL present a navigable multi-select checklist listing every agent derived from the canonical agents-class projections in `sai/install-manifest.json` for the chosen harness, with every agent selected by default. Up/down arrows SHALL move the `>` cursor, space SHALL toggle the highlighted agent's selection, and Enter SHALL confirm the selection. The flow SHALL run per-agent configuration exactly for the selected agents; an empty selection SHALL complete customization without configuring any agent.
 
 #### Scenario: Checklist defaults to all agents selected
@@ -158,7 +165,6 @@ After harness selection and before per-agent configuration, the flow SHALL prese
 - **THEN** customization SHALL complete without configuring any agent
 
 ### Requirement: Navigable cancellation aborts customization
-
 When the user presses `q` or Ctrl-C at any navigable surface — the post-setup menu, the harness picker, the agent-selection checklist, the Claude Code combined model/effort frame, or any OpenCode provider, model, or variant screen — the flow SHALL cancel the entire customization run: no agent SHALL be configured, no further navigable surface SHALL be presented, and the flow SHALL complete normally without hard-exiting the process (the configurator's non-exit contract, in contrast to the installer's caller-owned exit policy).
 
 #### Scenario: Cancel from the post-setup menu
