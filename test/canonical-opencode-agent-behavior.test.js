@@ -127,3 +127,99 @@ test('explore policy preserves bounded read-only research and its spawn output c
   assert.match(content, /no\s+raw\s+(?:output|content)/i,
     'explore spawn output contract should prohibit raw output');
 });
+
+test('managed OpenCode generic agents are exact Fetch wrappers with preserved identities', () => {
+  const descriptions = {
+    budget: 'Binds cost-controlled task delegation to the OpenCode budget agent keyword. General-purpose single-task subagent for file operations, searches, writes, and code analysis.',
+    executor: 'Binds "executor subagent" to the OpenCode executor agent keyword. Execute-only command runner with minimal output and structured failure reports.',
+    explore: 'Binds "cheap research subagent" to the opencode explore agent keyword. Read-only research and lookup agent with output-contract discipline.',
+  };
+
+  for (const name of Object.keys(descriptions)) {
+    const source = fs.readFileSync(path.join(REPO_ROOT, 'agents', 'opencode', `${name}.md`), 'utf8')
+      .replaceAll('\r\n', '\n');
+    const frontmatter = source.match(/^---\n([\s\S]*?)\n---\n/);
+    assert.ok(frontmatter, `${name} should contain one YAML frontmatter block`);
+    assert.equal((source.match(/^---\n/gm) || []).length, 2,
+      `${name} should contain exactly one YAML frontmatter block`);
+
+    const fields = frontmatter[1].split('\n');
+    for (const field of [
+      `name: ${name}`,
+      `description: ${descriptions[name]}`,
+      'mode: subagent',
+      'model: opencode-go/deepseek-v4-flash',
+    ]) {
+      assert.equal(fields.filter(line => line === field).length, 1,
+        `${name} frontmatter should contain exactly ${field}`);
+    }
+
+    const body = source.slice(frontmatter[0].length).trim();
+    assert.equal(body, `Fetch @sai/policies/${name}-agent.md`,
+      `${name} post-frontmatter body should be exactly its canonical policy Fetch`);
+    assert.doesNotMatch(source,
+      /(?:import|require)\s+(?:[^\n]*\b)?(?:open\s*code|opencode)\b|from\s+['"](?:open\s*code|opencode)/i,
+      `${name} wrapper must not contain a native OpenCode import`);
+  }
+});
+
+test('OpenCode Fetch wrapper propagation preserves local tuning and resolves updated global policy first', () => {
+  const os = require('node:os');
+  const { installOpencode } = require('../bin/install-flow.js');
+  const { createOpencodeAdapter } = require('../bin/agent-customization.js');
+  const scratch = fs.mkdtempSync(path.join(os.tmpdir(), 'canonicalize-opencode-agent-behavior-'));
+  const projectPath = path.join(scratch, 'project');
+  const globalAgentRoot = path.join(scratch, 'agents');
+  const globalPolicyPath = path.join(scratch, 'sai', 'policies', 'explore-agent.md');
+  const localAgentPath = path.join(projectPath, '.opencode', 'agents', 'explore.md');
+  const localPolicyPath = path.join(projectPath, '.opencode', 'sai', 'policies', 'explore-agent.md');
+  const fetchLine = 'Fetch @sai/policies/explore-agent.md';
+  const localExtension = 'PROJECT_LOCAL_EXTENSION_MARKER';
+  const globalMarker = 'GLOBAL_CANONICAL_POLICY_MARKER';
+
+  try {
+    fs.mkdirSync(projectPath, { recursive: true });
+    installOpencode(scratch);
+
+    const adapter = createOpencodeAdapter({
+      repoRoot: scratch,
+      projectPath,
+      packageRoot: scratch,
+      globalAgentRoot,
+    });
+    const result = adapter.createLocalOverride('explore', {
+      model: 'opencode-go/glm-5.2',
+      variant: 'high',
+    });
+    assert.equal(result.status, 'persisted',
+      'the OpenCode adapter should persist the local explore override');
+
+    const initialLocal = fs.readFileSync(localAgentPath, 'utf8');
+    assert.match(initialLocal, /^model: opencode-go\/glm-5\.2$/m,
+      'the local explore override should retain the selected model');
+    assert.match(initialLocal, /^variant: high$/m,
+      'the local explore override should retain the selected variant');
+    assert.match(initialLocal, new RegExp(`^${fetchLine.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'm'),
+      'the local explore override should retain its canonical policy Fetch line');
+
+    fs.appendFileSync(localAgentPath, `${localExtension}\n`);
+    const localBeforeRerun = fs.readFileSync(localAgentPath);
+    installOpencode(scratch);
+    assert.deepEqual(fs.readFileSync(localAgentPath), localBeforeRerun,
+      'rerunning setup should preserve the project-local agent byte-for-byte');
+    assert.equal(fs.existsSync(localPolicyPath), false,
+      'the project should not receive a shadow copy of the canonical explore policy');
+
+    fs.appendFileSync(globalPolicyPath, `\n${globalMarker}\n`);
+    const local = fs.readFileSync(localAgentPath, 'utf8');
+    const fetchIndex = local.indexOf(fetchLine);
+    assert.ok(fetchIndex >= 0, 'the local agent should resolve its canonical Fetch target');
+    const target = local.slice(fetchIndex + fetchLine.length);
+    const fetchedPolicyPath = fs.existsSync(localPolicyPath) ? localPolicyPath : globalPolicyPath;
+    const resolved = fs.readFileSync(fetchedPolicyPath, 'utf8') + target;
+    assert.ok(resolved.indexOf(globalMarker) < resolved.indexOf(localExtension),
+      'updated global policy content should precede the retained local extension');
+  } finally {
+    fs.rmSync(scratch, { recursive: true, force: true });
+  }
+});
