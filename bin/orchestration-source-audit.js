@@ -38,6 +38,25 @@ const MAINTAINED_ROOT_FILES = [
   'INSTALL.claude.md',
   'INSTALL.opencode.md',
 ];
+const FIXED_LIVE_CONTRACT_INVENTORY = [
+  path.join('openspec', 'specs', 'design-coordinator', 'spec.md'),
+  path.join('openspec', 'specs', 'implementation-harness-bindings', 'spec.md'),
+  path.join('openspec', 'specs', 'implementation-coordinator', 'spec.md'),
+  path.join('openspec', 'specs', 'coordinator-instruction-loading', 'spec.md'),
+  path.join('openspec', 'specs', 'review-phase-worker', 'spec.md'),
+  path.join('openspec', 'specs', 'security-phase-worker', 'spec.md'),
+  path.join('openspec', 'specs', 'accessibility-phase-worker', 'spec.md'),
+  path.join('openspec', 'specs', 'accessibility-worker-bindings', 'spec.md'),
+  path.join('openspec', 'specs', 'accessibility-worker-installation', 'spec.md'),
+  path.join('openspec', 'specs', 'deduplicate-sai-2-design', 'spec.md'),
+];
+const RETIRED_PARTY_PATTERNS = [
+  { reference: 'Copilot', pattern: /\b(?:GitHub\s+)?Copilot\b/i },
+  { reference: 'Inline Coordinator Adapter', pattern: /\bInline Coordinator Adapter\b/i },
+  { reference: 'sai/orchestration/inline-invocation.md', pattern: /sai\/orchestration\/inline-invocation\.md/i },
+  { reference: 'inline caller', pattern: /\binline caller\b/i },
+];
+const RETIRED_PARTY_NEGATIVE_MARKERS = /\b(?:absent|exclude(?:d)?|historical|retired|removed|cleanup|former|unsupported|unavailable|not\s+available|no|not|without|never|does\s+not|do\s+not|no\s+longer)\b/i;
 
 function isHistoricalReference(relativePath) {
   return ACTIVE_REFERENCE_EXCLUSIONS.some(prefix => relativePath === prefix || relativePath.startsWith(`${prefix}${path.sep}`));
@@ -58,6 +77,39 @@ function filesUnder(root, relativeRoot) {
     const relativePath = path.join(relativeRoot, entry.name);
     return entry.isDirectory() ? filesUnder(path.join(root, entry.name), relativePath) : [relativePath];
   });
+}
+
+function toPosix(relativePath) {
+  return relativePath.split(path.sep).join('/');
+}
+
+function activeInvocationCorePaths(repoRoot) {
+  return filesUnder(path.join(repoRoot, 'sai', 'commands'), path.join('sai', 'commands'))
+    .filter(relativePath => /^sai\/commands\/[^/]+\/invocation\.md$/.test(toPosix(relativePath)));
+}
+
+function isRetiredPartyEvidence(line) {
+  return RETIRED_PARTY_NEGATIVE_MARKERS.test(line);
+}
+
+function auditRetiredPartyReferences(repoRoot) {
+  const inventory = [
+    ...activeInvocationCorePaths(repoRoot),
+    ...FIXED_LIVE_CONTRACT_INVENTORY.filter(relativePath => fs.existsSync(path.join(repoRoot, relativePath))),
+  ];
+  const references = [];
+  for (const relativePath of [...new Set(inventory)].sort()) {
+    const content = fs.readFileSync(path.join(repoRoot, relativePath), 'utf8');
+    const lines = content.split(/\r?\n/);
+    for (const [index, line] of lines.entries()) {
+      for (const { reference, pattern } of RETIRED_PARTY_PATTERNS) {
+        if (pattern.test(line) && !isRetiredPartyEvidence(line)) {
+          references.push({ file: toPosix(relativePath), reference, line: index + 1 });
+        }
+      }
+    }
+  }
+  return references;
 }
 
 function auditActiveReferences(repoRoot) {
@@ -84,7 +136,7 @@ function auditActiveReferences(repoRoot) {
       }
     }
   }
-  return references;
+  return [...references, ...auditRetiredPartyReferences(repoRoot)];
 }
 
 module.exports = { auditActiveReferences };

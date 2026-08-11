@@ -6,6 +6,8 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
+const { auditActiveReferences } = require('../bin/orchestration-source-audit.js');
+
 const repoRoot = path.join(__dirname, '..');
 const FEEDBACK_QUESTION = 'Share your feedback on {artifacts} below. You can also type feedback directly in the free-text box.';
 const FEEDBACK_DESCRIPTION = 'Feedback on {artifacts}; you can also type feedback directly in the free-text box.';
@@ -26,6 +28,12 @@ function tempDir(prefix) {
 
 function removeTempDir(dir) {
   fs.rmSync(dir, { recursive: true, force: true });
+}
+
+function writeFixture(root, relativePath, content) {
+  const filePath = path.join(root, relativePath);
+  fs.mkdirSync(path.dirname(filePath), { recursive: true });
+  fs.writeFileSync(filePath, content);
 }
 
 function capture(fn) {
@@ -1196,4 +1204,94 @@ test('Step 2 carries overview_language through the worker and generation continu
   assert.match(coordinator, /continuation[\s\S]{0,300}overview_language/i);
   assert.match(worker, /worker result|result[\s\S]{0,180}overview_language/i);
   assert.match(worker, /not persisted|never.*persist/i);
+});
+
+// ─── Step 3: retired-party prose guard ──────────────────────────────────────
+
+test('Step 3: corrected active routed contract passes the retired-party guard', () => {
+  const lineBearingReferences = auditActiveReferences(repoRoot)
+    .filter(reference => reference.line !== undefined);
+
+  assert.deepEqual(lineBearingReferences, []);
+});
+
+test('Step 3: positive current-party assertion reports the retired reference and line', () => {
+  const root = tempDir('sai-step-3-positive-audit-');
+  try {
+    writeFixture(root, 'sai/commands/design/invocation.md', 'Copilot is the current design worker.\n');
+
+    assert.deepEqual(auditActiveReferences(root), [
+      {
+        file: 'sai/commands/design/invocation.md',
+        reference: 'Copilot',
+        line: 1,
+      },
+    ]);
+  } finally {
+    removeTempDir(root);
+  }
+});
+
+test('Step 3: explicit retirement evidence passes and archived specifications are excluded', () => {
+  const root = tempDir('sai-step-3-retirement-audit-');
+  try {
+    writeFixture(root, 'sai/commands/design/invocation.md', [
+      'Copilot is absent from the current design worker.',
+      'Inline Coordinator Adapter is excluded from the active route.',
+      'sai/orchestration/inline-invocation.md is historical and removed.',
+      'inline caller is not available and unsupported.',
+      '',
+    ].join('\n'));
+    writeFixture(root, 'openspec/specs/_archived/legacy/spec.md',
+      'Copilot is the current design worker.\n');
+
+    assert.deepEqual(auditActiveReferences(root), []);
+  } finally {
+    removeTempDir(root);
+  }
+});
+
+test('Step 3: the shared retired-party guard covers every invocation core and live contract specification', () => {
+  const root = tempDir('sai-step-3-inventory-audit-');
+  const invocationCores = [
+    'sai/commands/spec/invocation.md',
+    'sai/commands/design/invocation.md',
+    'sai/commands/review/invocation.md',
+    'sai/commands/security/invocation.md',
+    'sai/commands/performance/invocation.md',
+    'sai/commands/implement/invocation.md',
+    'sai/commands/accessibility/invocation.md',
+  ];
+  const liveContractSpecifications = [
+    'openspec/specs/design-coordinator/spec.md',
+    'openspec/specs/implementation-harness-bindings/spec.md',
+    'openspec/specs/implementation-coordinator/spec.md',
+    'openspec/specs/coordinator-instruction-loading/spec.md',
+    'openspec/specs/review-phase-worker/spec.md',
+    'openspec/specs/security-phase-worker/spec.md',
+    'openspec/specs/accessibility-phase-worker/spec.md',
+    'openspec/specs/accessibility-worker-bindings/spec.md',
+    'openspec/specs/accessibility-worker-installation/spec.md',
+    'openspec/specs/deduplicate-sai-2-design/spec.md',
+  ];
+  const inventory = [...invocationCores, ...liveContractSpecifications];
+
+  try {
+    for (const relativePath of inventory) {
+      writeFixture(root, relativePath, 'Copilot is the current design worker.\n');
+    }
+
+    const lineBearingReferences = auditActiveReferences(root)
+      .filter(reference => reference.line !== undefined);
+
+    assert.equal(lineBearingReferences.length, 17);
+    assert.deepEqual(
+      [...new Set(lineBearingReferences.map(reference => reference.file))].sort(),
+      [...inventory].sort(),
+    );
+    assert.ok(lineBearingReferences.every(reference =>
+      reference.reference === 'Copilot' && reference.line === 1));
+  } finally {
+    removeTempDir(root);
+  }
 });
