@@ -21,7 +21,6 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0093 — Route spec through workers while Copilot remains inline](./0093-route-spec-through-workers-while-copilot-remains-inline.md) — Refs 0082, Refs 0083, Refs 0090, Refs 0092
 - [0117 — The three planning-phase coordinators receive the scoped `Bash(date:*)` entry as the sole allowed-tools exception](./0117-planning-coordinators-scoped-shell-entry.md)
 - [0118 — Per-harness wall-clock commands live in the harness bindings, never in the neutral policy](./0118-per-harness-wall-clock-commands-in-bindings.md) — Refs 0077
-
 ### `/sai-2-design`
 
 - [0015 — Decision summary precedes the completion sentinel](./0015-decision-summary-precedes-completion-sentinel.md) — **Amends** ddr:0014
@@ -74,6 +73,8 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0114 — A sibling DDR index template mirrors the ADR index template instance for instance](./0114-sibling-ddr-index-template.md)
 - [0117 — The three planning-phase coordinators receive the scoped `Bash(date:*)` entry as the sole allowed-tools exception](./0117-planning-coordinators-scoped-shell-entry.md)
 - [0118 — Per-harness wall-clock commands live in the harness bindings, never in the neutral policy](./0118-per-harness-wall-clock-commands-in-bindings.md) — Refs 0077
+- [0131 — Keep OpenCode budget skills behind canonical behavior policies](./0131-canonicalize-opencode-budget-skill-behavior.md)
+- [0132 — Reconcile the executor capability at the canonical Fetch boundary](./0132-reconcile-executor-capability-at-fetch-boundary.md)
 
 ### `/sai-4-apply`
 
@@ -184,7 +185,6 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0128 — Keep generic OpenCode behavior in canonical SAI policies behind Fetch wrappers](./0128-canonical-generic-opencode-behavior-behind-fetch-wrappers.md)
 - [0129 — Preserve OpenCode agent frontmatter and append-only local extensions](./0129-preserve-opencode-agent-frontmatter-and-local-extensions.md)
 - [0130 — Reuse the recursive SAI policy projection for generic agents](./0130-reuse-recursive-sai-policy-projection-for-generic-agents.md)
-
 ### Harness wrappers & the shared instruction layer
 
 - [0001 — Separate per-harness instruction files for the sai subagent resolver](./0001-sai-separate-harness-files.md)
@@ -213,6 +213,8 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0106 — Keep both report template families with pinned skeleton parity](./0106-keep-both-report-template-families-pinned-parity.md)
 - [0128 — Keep generic OpenCode behavior in canonical SAI policies behind Fetch wrappers](./0128-canonical-generic-opencode-behavior-behind-fetch-wrappers.md)
 - [0130 — Reuse the recursive SAI policy projection for generic agents](./0130-reuse-recursive-sai-policy-projection-for-generic-agents.md)
+- [0131 — Keep OpenCode budget skills behind canonical behavior policies](./0131-canonicalize-opencode-budget-skill-behavior.md)
+- [0132 — Reconcile the executor capability at the canonical Fetch boundary](./0132-reconcile-executor-capability-at-fetch-boundary.md)
 
 ---
 
@@ -226,6 +228,8 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0128 — Keep generic OpenCode behavior in canonical SAI policies behind Fetch wrappers](./0128-canonical-generic-opencode-behavior-behind-fetch-wrappers.md)
 - [0129 — Preserve OpenCode agent frontmatter and append-only local extensions](./0129-preserve-opencode-agent-frontmatter-and-local-extensions.md)
 - [0130 — Reuse the recursive SAI policy projection for generic agents](./0130-reuse-recursive-sai-policy-projection-for-generic-agents.md)
+- [0131 — Keep OpenCode budget skills behind canonical behavior policies](./0131-canonicalize-opencode-budget-skill-behavior.md)
+- [0132 — Reconcile the executor capability at the canonical Fetch boundary](./0132-reconcile-executor-capability-at-fetch-boundary.md)
 
 ### Fetch resolution & path conventions
 
@@ -240,6 +244,8 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0100 — Neutral installed worker-binding destinations with harness-specific sources](./0100-neutral-installed-worker-binding-destinations.md) — Refs 0077, Refs 0084, Refs 0088
 - [0128 — Keep generic OpenCode behavior in canonical SAI policies behind Fetch wrappers](./0128-canonical-generic-opencode-behavior-behind-fetch-wrappers.md)
 - [0130 — Reuse the recursive SAI policy projection for generic agents](./0130-reuse-recursive-sai-policy-projection-for-generic-agents.md)
+- [0131 — Keep OpenCode budget skills behind canonical behavior policies](./0131-canonicalize-opencode-budget-skill-behavior.md)
+- [0132 — Reconcile the executor capability at the canonical Fetch boundary](./0132-reconcile-executor-capability-at-fetch-boundary.md)
 
 ### Harness portability & mirror discipline
 
