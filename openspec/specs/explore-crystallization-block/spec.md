@@ -45,14 +45,21 @@ The single-change `Ready to Propose` block emitted by `sai-explore` SHALL includ
 - **WHEN** the explore conversation did not materially re-frame the model or problem under discussion
 - **THEN** the section is emitted with a single `None` bullet, and is not omitted
 
-### Requirement: Sliced-feature protocol is not modified
+### Requirement: Sliced-feature protocol preserves existing sections while adding Edge Cases
 
-The sliced-feature `Ready to Propose` blocks emitted by `sai-explore` (`sai/instructions/explore.md` item 6) SHALL NOT be modified by this change. The per-slice blocks continue to use the original 5-field format (Change name, What, Why, Capabilities in scope, Key constraints), without the four new sections, because the new sections describe the whole feature and would either repeat the same content per slice or fragment it incorrectly across slices.
+The sliced-feature `Ready to Propose` blocks emitted by `sai-explore` (`sai/instructions/explore.md` item 6) SHALL preserve every existing block section, field, ordering, and language-gate invariant, and SHALL add only the dedicated `**Edge Cases**` section required by the `explore-handoff-edge-cases` capability. The `**Edge Cases**` section SHALL follow `**Key constraints**`, use the one agreed list mechanically partitioned by slice, and emit `- None` when no case is attributed to that slice.
 
-#### Scenario: per-slice blocks keep the original 5-field format
+The companion `explore-handoff-edge-cases` capability governs the same `**Edge Cases**` rendering for the single-change protocol (`sai/instructions/explore.md` item 5). Together, this modified requirement and that companion requirement explicitly cover both single-change and sliced crystallization protocols.
+
+#### Scenario: Per-slice blocks retain their existing fields and add Edge Cases
 
 - **WHEN** `sai-explore` emits the sliced-feature protocol with one `Ready to Propose` block per slice
-- **THEN** each per-slice block contains the original 5 fields only and does not include `**Decisions & Rationale**`, `**Alternatives Considered**`, `**Trade-offs Accepted**`, or `**Model / Re-framings**` sections
+- **THEN** each per-slice block preserves every existing section and field, followed by a dedicated `**Edge Cases**` section
+
+#### Scenario: Empty slice attribution uses None
+
+- **WHEN** a sliced-feature block has no edge case attributed to its slice
+- **THEN** its `**Edge Cases**` section contains exactly `- None`
 
 ### Requirement: Crystallization output closes with a keep-window-open recommendation
 
