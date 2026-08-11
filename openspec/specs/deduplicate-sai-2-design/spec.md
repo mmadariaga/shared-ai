@@ -25,7 +25,7 @@ Deduplicate shared behavior between Claude Code and opencode wrappers by extract
 - **WHEN** the Artifact-Only Scope section is parsed
 - **THEN** it lists at least: build, test, lint, deploy, migrate as commands the spec agent must NEVER run
 ### Requirement: design-instruction
-The design workflow SHALL be split into caller-neutral design invocation instructions, a routed coordinator body, a routed design-worker instruction, and a Copilot Inline Coordinator Adapter. Claude Code and opencode wrappers SHALL select the routed coordinator and their harness binding; GitHub Copilot SHALL select `sai/orchestration/inline-invocation.md` directly. Both execution paths SHALL consume the same design artifact and interaction contract so approval, generation, feedback, and navigation behavior remain single-sourced rather than independently reimplemented.
+The design workflow SHALL be split into caller-neutral design invocation instructions, a routed coordinator body, a routed design-worker instruction, and harness-specific routed worker bindings. Claude Code and opencode wrappers SHALL select the routed coordinator and their harness binding. Both supported paths SHALL consume the same design artifact and interaction contract so approval, generation, feedback, and navigation behavior remain single-sourced rather than independently reimplemented.
 
 #### Scenario: shared design workflow exists
 - **WHEN** the design instruction surfaces are read
@@ -35,22 +35,15 @@ The design workflow SHALL be split into caller-neutral design invocation instruc
 - **WHEN** `sai/commands/design/coordinator.md` is read
 - **THEN** it SHALL contain only coordinator lifecycle and interaction responsibilities and SHALL delegate technical execution to the design worker binding
 
-#### Scenario: Copilot adapter preserves inline behavior
-- **WHEN** the GitHub Copilot `sai-2-design` wrapper is read
-- **THEN** it SHALL fetch the Copilot Inline Coordinator Adapter rather than the routed coordinator body or an inline command loader
-- **AND** it SHALL retain the shared workflow semantics
+#### Scenario: Routed design path preserves the shared workflow
+- **WHEN** a Claude Code or opencode design wrapper is read
+- **THEN** it selects the routed coordinator and matching worker binding
+- **AND** it consumes the shared design artifact and interaction contract
 
-#### Scenario: Copilot wrapper selects adapter entry
-- **WHEN** `commands/copilot/sai-2-design.prompt.md` is read
-- **THEN** it SHALL load the Copilot fetch adapter and `sai/orchestration/inline-invocation.md` without loading a routed design-worker binding
-
-#### Scenario: Claude Code wrapper selects routed binding
-- **WHEN** `commands/claude/sai-2-design.md` is read
-- **THEN** it SHALL be a thin wrapper that loads the Claude design-worker binding and routed coordinator body without inline generation instructions
-
-#### Scenario: opencode wrapper selects routed binding
-- **WHEN** `commands/opencode/sai-2-design.md` is read
-- **THEN** it SHALL be a thin wrapper that preserves the exact `**Change-name argument and and optional flags:** $ARGUMENTS` echo adapter, loads the opencode design-worker and implementation-worker bindings, and loads the routed coordinator body without inline generation instructions
+#### Scenario: Supported wrappers select routed entries
+- **WHEN** a Claude Code or opencode design wrapper is read
+- **THEN** it loads its routed coordinator and harness-specific worker binding
+- **AND** it does not load an inline command loader
 
 ### Requirement: opencode-remember-path-fix
 The opencode `sai-1-spec` wrapper SHALL load `remember.md` from `~/.config/opencode/sai/instructions/remember.md`, not from the `~/.claude/` path.
@@ -65,7 +58,7 @@ The opencode `sai-1-spec` wrapper SHALL load `remember.md` from `~/.config/openc
 
 ### Requirement: active-infrastructure-boundary
 
-Claude Code and opencode SHALL use the routed coordinator-worker infrastructure. GitHub Copilot SHALL preserve inline behavior through the direct adapter.
+Claude Code and opencode SHALL use the routed coordinator-worker infrastructure. The active infrastructure SHALL not define a compatibility inline path.
 
 #### Scenario: claude design wrapper uses routed entry
 - **WHEN** `commands/claude/sai-2-design.md` is read during Step 1
@@ -75,7 +68,7 @@ Claude Code and opencode SHALL use the routed coordinator-worker infrastructure.
 - **WHEN** `commands/opencode/sai-2-design.md` is read during Step 1
 - **THEN** it SHALL reference the routed coordinator, agent routing, and worker binding
 
-#### Scenario: copilot design wrapper stays inline
-- **WHEN** `commands/copilot/sai-2-design.prompt.md` is read during Step 1
-- **THEN** it SHALL reference `sai/orchestration/inline-invocation.md` directly with `phase: sai-2-design`
-- **AND** it SHALL NOT reference an agent-based coordinator or worker dispatch mechanism
+#### Scenario: Unsupported inline entry is absent
+- **WHEN** active design wrappers are inspected
+- **THEN** supported wrappers reference only routed coordinator and worker-binding surfaces
+- **AND** no active wrapper references an inline adapter or inline command loader

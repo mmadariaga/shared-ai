@@ -5,7 +5,7 @@
 Define the coordination boundary, I/O isolation, and user-facing result handling responsibilities of the implementation coordinator that dispatches work to the implementation-planning worker.
 ## Requirements
 ### Requirement: Harness adapter dispatch seam
-The Claude Code and opencode command wrappers SHALL select the grouped `sai/commands/implement/coordinator.md` and `sai/commands/implement/invocation.md` routed entry paths, while the Copilot command wrapper SHALL select `sai/orchestration/inline-invocation.md` directly with `phase: sai-3-implement` and SHALL NOT consume the shared routed coordinator instructions as its execution path. The routed prerequisite and change-picker behavior SHALL execute in the worker; the Copilot Inline Coordinator Adapter SHALL retain that behavior for Copilot without an intermediate inline command loader.
+The Claude Code and opencode command wrappers SHALL select the grouped `sai/commands/implement/coordinator.md` and `sai/commands/implement/invocation.md` routed entry paths. The routed prerequisite and change-picker behavior SHALL execute in the worker. No supported command wrapper SHALL select a retired inline adapter or an intermediate inline command loader.
 
 #### Scenario: Harness-specific entry selection
 - **WHEN** `/sai-3-implement` is invoked under Claude Code
@@ -15,10 +15,10 @@ The Claude Code and opencode command wrappers SHALL select the grouped `sai/comm
 - **WHEN** `/sai-3-implement` is invoked under opencode
 - **THEN** its wrapper SHALL enter the coordinator-to-worker dispatch seam
 
-#### Scenario: Copilot inline entry selection
-- **WHEN** `/sai-3-implement` is invoked under GitHub Copilot
-- **THEN** its wrapper SHALL bypass that seam and dispatch the direct inline adapter with the current prerequisite and change-picker behavior
-- **AND** it SHALL NOT invoke `sai/commands/sai-3-implement-inline.md`
+#### Scenario: Retired inline entry is excluded
+- **WHEN** the supported `/sai-3-implement` wrappers are inspected
+- **THEN** they SHALL enter the coordinator-to-worker dispatch seam
+- **AND** they SHALL NOT invoke a retired adapter or removed inline command loader
 
 ### Requirement: Coordinator dispatch boundary
 The `/sai-3-implement` coordinator SHALL construct a normalized invocation envelope containing both `wrapper_echo_value` (the non-empty `**Change-name argument:** <value>` wrapper-echo value, or empty when absent) and `arguments_value` (the raw `$ARGUMENTS` value, including flags). It SHALL pass that envelope unchanged to one implementation-planning worker, SHALL preserve wrapper-echo precedence for the worker, and SHALL NOT run prerequisite checks, query OpenSpec, execute change-picker logic, resolve the change name, or perform technical planning itself.
@@ -95,7 +95,7 @@ After the worker resolves a change, every `completed`, `needs_input`, `failed`, 
 - **AND** terminal navigation SHALL receive that value and use it in the exact completion message
 
 ### Requirement: numbered-implementation-worker-identity
-The routed implementation worker SHALL use the phase-specific identifier `sai-3-implementation-worker` across opencode agent configuration, Claude Code managed worker definitions, direct wrapper binding fetch references, harness bindings, installer projections, and verification/documentation surfaces. Its reusable technical core SHALL be named `sai-3-implementation-core` in `sai/compat/` and SHALL remain separate from the design worker contract. The Claude Code, opencode, and Copilot inline callers SHALL fetch the renamed core wherever they consume the implementation invocation core.
+The routed implementation worker SHALL use the phase-specific identifier `sai-3-implementation-worker` across opencode agent configuration, Claude Code managed worker definitions, direct wrapper binding fetch references, harness bindings, installer projections, and verification/documentation surfaces. Its reusable technical core SHALL be named `sai-3-implementation-core` in `sai/compat/` and SHALL remain separate from the design worker contract. The Claude Code and opencode routed workers SHALL fetch the renamed core wherever they consume the implementation invocation core.
 
 #### Scenario: implementation dispatch resolves the phase worker
 - **WHEN** the routed implementation coordinator dispatches technical implementation planning
@@ -108,7 +108,7 @@ The routed implementation worker SHALL use the phase-specific identifier `sai-3-
 - **AND** the wrapper SHALL NOT declare an `agent:` field
 
 #### Scenario: all implementation paths use the renamed core
-- **WHEN** a routed implementation worker or the Copilot Inline Coordinator Adapter loads the reusable implementation invocation behavior
+- **WHEN** a routed implementation worker loads the reusable implementation invocation behavior
 - **THEN** it SHALL reference `sai-3-implementation-core`
 - **AND** no caller SHALL fetch the former unnumbered implementation core name
 

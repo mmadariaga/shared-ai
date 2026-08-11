@@ -14,21 +14,21 @@ The review worker SHALL own envelope parsing, prerequisite checks, change resolu
 
 ### Requirement: Technical workflow is loaded through the shared review invocation core
 
-The routed review worker and the inline review caller SHALL load and follow `sai/commands/review/invocation.md` as the shared technical core. That core SHALL load the budget skill, glossary format, `sai/instructions/review.md`, and `sai/policies/remember.md`; it SHALL own none of the prerequisite parsing, change selection, coordinator lifecycle, or terminal navigation.
+The routed review worker SHALL load and follow `sai/commands/review/invocation.md` as the shared technical core. That core SHALL load the budget skill, glossary format, `sai/instructions/review.md`, and `sai/policies/remember.md`; it SHALL own none of the prerequisite parsing, change selection, coordinator lifecycle, or terminal navigation.
 
 #### Scenario: Routed worker starts technical review
 - **WHEN** the routed review worker begins technical work
 - **THEN** it loads the shared review invocation core before executing review instructions
 - **AND** it does not create a routed-only copy of the review instruction-loading sequence
 
-#### Scenario: Inline caller starts review
-- **WHEN** the Copilot inline review path starts
-- **THEN** it uses the same review invocation core and review instruction source
-- **AND** the inline path remains behaviorally aligned with the routed worker
+#### Scenario: Routed review workflow uses the shared core
+- **WHEN** the routed review worker starts technical review
+- **THEN** it uses the shared review invocation core and review instruction source
+- **AND** the core remains single-sourced rather than copied into the worker
 
-#### Scenario: Inline caller retains lifecycle ownership
-- **WHEN** `sai/commands/sai-5-review.md` consumes the shared review invocation core
-- **THEN** that inline caller still owns prerequisite checks, change-picker invocation, and the exact terminal stop `Review done.`
+#### Scenario: Routed review workflow retains lifecycle ownership
+- **WHEN** the routed review worker consumes the shared review invocation core
+- **THEN** the worker still owns prerequisite checks, change-picker invocation, and the exact terminal stop `Review done.`
 - **AND** the invocation core does not take ownership of those lifecycle responsibilities
 
 ### Requirement: Prerequisite failures stop technical work

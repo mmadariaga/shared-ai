@@ -7,17 +7,17 @@ TBD
 
 ### Requirement: Accessibility worker owns the complete technical workflow
 
-The routed accessibility worker SHALL own envelope parsing, prerequisites, change resolution, parent-branch detection, scope selection, UI-file detection, static WCAG 2.2 AA review, optional runtime review, report generation, report verification, self-critique, and lifecycle summary creation. The routed worker and the Copilot inline caller SHALL use the same caller-neutral accessibility invocation core so that the audit policy remains aligned across supported harnesses.
+The routed accessibility worker SHALL own envelope parsing, prerequisites, change resolution, parent-branch detection, scope selection, UI-file detection, static WCAG 2.2 AA review, optional runtime review, report generation, report verification, self-critique, and lifecycle summary creation. The routed worker SHALL use the caller-neutral accessibility invocation core so that the audit policy remains single-sourced.
 
 #### Scenario: Routed worker starts from an invocation envelope
 - **WHEN** the accessibility worker receives the harness envelope
 - **THEN** it performs the complete technical accessibility workflow from that envelope and durable repository state
 - **AND** it returns artifact paths and summary metadata rather than report contents in lifecycle payloads
 
-#### Scenario: Copilot starts inline accessibility
-- **WHEN** the Copilot inline accessibility path starts
-- **THEN** it uses the same accessibility invocation core and instruction source as the routed worker
-- **AND** its technical audit behavior remains aligned with the routed path
+#### Scenario: Routed accessibility worker starts technical accessibility
+- **WHEN** the routed accessibility worker starts technical accessibility
+- **THEN** it uses the caller-neutral accessibility invocation core and instruction source
+- **AND** the audit policy remains single-sourced in that core
 
 ### Requirement: Worker preserves accessibility prerequisites, argument parsing, and scope behavior
 

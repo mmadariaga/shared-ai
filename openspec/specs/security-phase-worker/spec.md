@@ -6,17 +6,17 @@ TBD - created by syncing change sai-6-security-coordinator-worker-split. Update 
 
 ### Requirement: Security worker owns the complete technical workflow
 
-The routed security worker SHALL own envelope parsing, prerequisite checks, change resolution, parent-branch detection, diff scoping, SAST, conditional SCA, report generation, report verification, and the lifecycle summary. The routed worker and the Copilot inline caller SHALL load the shared `sai/commands/security/invocation.md` core, which SHALL load the budget behavior, security instruction, and remember policy without taking ownership of lifecycle control.
+The routed security worker SHALL own envelope parsing, prerequisite checks, change resolution, parent-branch detection, diff scoping, SAST, conditional SCA, report generation, report verification, and the lifecycle summary. The routed worker SHALL load the shared `sai/commands/security/invocation.md` core, which SHALL load the budget behavior, security instruction, and remember policy without taking ownership of lifecycle control.
 
 #### Scenario: Routed worker starts from an invocation envelope
 - **WHEN** a routed security worker receives the harness envelope
 - **THEN** it performs the complete technical security workflow from that envelope and durable repository state
 - **AND** it returns artifact paths and summary data rather than report contents in the lifecycle payload
 
-#### Scenario: Copilot starts inline security
-- **WHEN** the Copilot inline security path starts
-- **THEN** it uses the same security invocation core and security instruction source
-- **AND** its technical audit behavior remains aligned with the routed worker
+#### Scenario: Routed security worker starts technical security
+- **WHEN** the routed security worker starts technical security
+- **THEN** it uses the shared security invocation core and security instruction source
+- **AND** the core remains single-sourced and does not own lifecycle control
 
 ### Requirement: Worker preserves security prerequisites, argument parsing, and diff scope
 

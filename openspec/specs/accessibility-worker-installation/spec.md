@@ -21,7 +21,7 @@ The installer SHALL register one managed worker identity for `sai-8-accessibilit
 
 ### Requirement: Routed accessibility wrappers and bindings preserve harness parity
 
-The Claude Code and opencode `/sai-8-accessibility` wrappers SHALL route to their terminal-only coordinator and fetch the matching neutral worker-binding destination directly while preserving their harness-specific model and argument passthrough behavior. The Claude projection SHALL include the managed worker identity and the new `tunable-seed` handling (no `.<basename>.owner.json` sidecar; the destination's `model` and `effort` values are preserved on overwrite, placed per the structural anchor in `agent-tunable-ownership`). The opencode projection SHALL include its task-dispatch metadata. GitHub Copilot SHALL retain its existing inline prompt and caller body `sai/commands/sai-8-accessibility.md`, and SHALL receive no routed accessibility worker, binding, forwarding skill, or managed-agent projection.
+The Claude Code and opencode `/sai-8-accessibility` wrappers SHALL route to their terminal-only coordinator and fetch the matching neutral worker-binding destination directly while preserving their harness-specific model and argument passthrough behavior. The Claude projection SHALL include the managed worker identity and the new `tunable-seed` handling (no `.<basename>.owner.json` sidecar; the destination's `model` and `effort` values are preserved on overwrite, placed per the structural anchor in `agent-tunable-ownership`). The opencode projection SHALL include its task-dispatch metadata. The active installation projections SHALL contain only Claude Code and opencode worker assets and SHALL not include a compatibility worker, binding, forwarding skill, or managed-agent projection.
 
 #### Scenario: Claude Code projection is installed
 - **WHEN** the Claude Code projection is generated
@@ -34,15 +34,14 @@ The Claude Code and opencode `/sai-8-accessibility` wrappers SHALL route to thei
 - **THEN** the wrapper, coordinator, opencode binding, and task metadata resolve to the accessibility worker
 - **AND** its continuation uses the opencode task reference
 
-#### Scenario: Copilot projection is generated
-- **WHEN** the Copilot projection is generated
-- **THEN** the existing inline accessibility prompt remains available
-- **AND** the existing inline caller body `sai/commands/sai-8-accessibility.md` remains available
-- **AND** no routed accessibility worker asset is projected
+#### Scenario: Compatibility projection is excluded
+- **WHEN** the active projection is generated
+- **THEN** it retains only the supported Claude Code and opencode accessibility surfaces
+- **AND** no compatibility worker, binding, forwarding skill, or managed-agent projection is created
 
 ### Requirement: Installation, doctor, and uninstall inventories remain in parity
 
-The installer, doctor, and uninstall flows SHALL consume the same manifest-derived accessibility worker inventory. Tests SHALL verify the registry entry, unique ownership, Claude/opencode projection parity, wrapper and binding presence, deterministic destinations, preservation of unrelated agents, and explicit Copilot routed-asset exclusion.
+The installer, doctor, and uninstall flows SHALL consume the same manifest-derived accessibility worker inventory. Tests SHALL verify the registry entry, unique ownership, Claude/opencode projection parity, wrapper and binding presence, deterministic destinations, preservation of unrelated agents, and explicit compatibility routed-asset exclusion.
 
 #### Scenario: Doctor checks the accessibility worker
 - **WHEN** doctor evaluates an installed projection set
@@ -52,4 +51,4 @@ The installer, doctor, and uninstall flows SHALL consume the same manifest-deriv
 #### Scenario: Uninstall enumerates the accessibility worker
 - **WHEN** uninstall enumerates installed shared-AI assets
 - **THEN** it includes exactly the accessibility worker assets declared by the manifest
-- **AND** its inventory matches install and does not include Copilot routed assets
+- **AND** its inventory matches install and does not include unsupported compatibility routed assets

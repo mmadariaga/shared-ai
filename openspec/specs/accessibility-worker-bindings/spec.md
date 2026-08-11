@@ -54,14 +54,14 @@ When same-worker continuation fails after runtime commands may have executed, a 
 
 ### Requirement: Worker result payloads remain lifecycle-compatible
 
-The bindings SHALL accept and forward only the closed lifecycle outcomes `completed`, `needs_input`, `failed`, and `cancelled`, preserving `summary`, `changed_files`, `question`, `options`, and `resolved_change_name` according to the shared lifecycle contract. They SHALL not add continuation identifiers, binding metadata, runtime command payloads, report contents, or other technical fields to worker-authored outcomes. GitHub Copilot SHALL continue using the inline accessibility caller and shall not receive these routed bindings.
+The bindings SHALL accept and forward only the closed lifecycle outcomes `completed`, `needs_input`, `failed`, and `cancelled`, preserving `summary`, `changed_files`, `question`, `options`, and `resolved_change_name` according to the shared lifecycle contract. They SHALL not add continuation identifiers, binding metadata, runtime command payloads, report contents, or other technical fields to worker-authored outcomes. Routed bindings SHALL be limited to Claude Code and opencode and SHALL not add a compatibility caller or binding.
 
 #### Scenario: Worker returns a malformed outcome
 - **WHEN** a routed accessibility worker result has an unknown status or invalid lifecycle field shape
 - **THEN** the binding reports the lifecycle failure without inventing missing data
 - **AND** it does not execute technical recovery
 
-#### Scenario: Copilot invokes accessibility
-- **WHEN** GitHub Copilot invokes the accessibility command
-- **THEN** the inline caller uses the caller-neutral accessibility core
-- **AND** no Claude Code or opencode worker binding is loaded
+#### Scenario: Non-routed compatibility path receives no binding
+- **WHEN** supported accessibility bindings are inspected
+- **THEN** they contain only Claude Code and opencode worker bindings
+- **AND** no compatibility caller or inline asset is loaded

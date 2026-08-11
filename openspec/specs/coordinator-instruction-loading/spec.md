@@ -30,7 +30,7 @@ The six routed Claude Code coordinator wrappers for design, implementation, revi
 
 ### Requirement: Routed non-skill resolution is satisfiable through Read
 
-The Claude Code and opencode non-skill fetch resolver instructions SHALL name `Read` for the project-local `.claude/` or `.opencode/` candidate first and `Read` for the user-global fallback second, and SHALL NOT name `Glob`, `LS`, or any directory-based existence probe in either branch. The Copilot resolver SHALL remain unchanged on its inline candidate-check and read contract because Copilot receives no routed worker-binding projection.
+The Claude Code and opencode non-skill fetch resolver instructions SHALL name `Read` for the project-local `.claude/` or `.opencode/` candidate first and SHALL name `Read` for the user-global fallback second, and SHALL NOT name `Glob`, `LS`, or any directory-based existence probe in either branch. The routed resolver contract SHALL not define a compatibility-harness branch.
 
 #### Scenario: Read is sufficient for candidate selection
 
@@ -45,15 +45,14 @@ The Claude Code and opencode non-skill fetch resolver instructions SHALL name `R
 - **THEN** its non-skill path rule names `Read` for both the project-local candidate and the user-global fallback
 - **AND** it does not instruct the caller to use `Glob`, `LS`, or any directory-based existence probe
 
-#### Scenario: Copilot inline fetch resolution is unchanged
-
-- **WHEN** `skills/copilot/fetch/SKILL.md` is inspected
-- **THEN** it retains its existing inline project-local and user-global candidate-check and read contract
-- **AND** it receives no routed worker-binding resolution requirement
+#### Scenario: Routed fetch resolution has no compatibility branch
+- **WHEN** a supported routed wrapper resolves a non-skill `@sai/...` reference
+- **THEN** it SHALL use `Read` for the project-local and user-global candidates
+- **AND** it SHALL not require a compatibility-harness candidate-check branch
 
 ### Requirement: Coordinator instruction loading preserves harness boundaries
 
-The installed binding destination SHALL remain `sai/orchestration/workers/bindings/{phase}-worker.md`, with the harness-specific Claude or opencode source selected by the install manifest. The change SHALL NOT add a routed worker binding to Copilot or change any worker contract or binding prompt text.
+The installed binding destination SHALL remain `sai/orchestration/workers/bindings/{phase}-worker.md`, with the harness-specific Claude or opencode source selected by the install manifest. The change SHALL NOT add any non-routed worker binding or change any worker contract or binding prompt text.
 
 #### Scenario: Claude and opencode resolve their own binding source
 
@@ -62,8 +61,7 @@ The installed binding destination SHALL remain `sai/orchestration/workers/bindin
 - **AND** the content comes from that harness's existing binding source
 - **AND** the binding's dispatch and continuation behavior is unchanged
 
-#### Scenario: Copilot remains inline
-
-- **WHEN** the Copilot command projections are installed or inspected
-- **THEN** no routed worker binding proxy or direct routed binding is added to Copilot
-- **AND** Copilot continues to use the inline coordinator adapter
+#### Scenario: Unsupported compatibility binding is absent
+- **WHEN** supported harness command projections are installed or inspected
+- **THEN** no non-routed worker binding proxy or direct routed binding is added
+- **AND** the installed inventory contains only the Claude Code and opencode binding sources

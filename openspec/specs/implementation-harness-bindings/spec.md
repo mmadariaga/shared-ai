@@ -2,11 +2,11 @@
 
 ## Purpose
 
-Define the harness-specific binding contracts for the implementation coordinator and worker across Claude Code, opencode, and GitHub Copilot.
+Define the harness-specific binding contracts for the implementation coordinator and worker across Claude Code and opencode.
 
 ## Requirements
 
-The routed implementation coordinator and invocation bodies are grouped at `sai/commands/implement/coordinator.md` and `sai/commands/implement/invocation.md`; the Copilot Inline Coordinator Adapter remains `sai/orchestration/inline-invocation.md`.
+The routed implementation coordinator and invocation bodies are grouped at `sai/commands/implement/coordinator.md` and `sai/commands/implement/invocation.md`.
 
 ### Requirement: Claude coordinator-worker binding
 The Claude Code wrapper SHALL run the implementation coordinator on `opus` and the `sai-3-implementation-worker` custom agent on `claude-opus-4-8`, with low effort for the coordinator and medium effort for the worker. The binding SHALL start the custom worker in the background, capture the returned agent ID as coordinator-owned dispatch metadata, forward user answers with `SendMessage(to: agent_id, message: answer)`, and wait asynchronously for the same background worker's next structured payload. Agent continuation parameters SHALL NOT be used. The installer SHALL handle the `sai-3-implementation-worker.md` agent file under the `tunable-seed` strategy: when the agent destination is absent, the installer creates the canonical SAI-namespaced agent with the shipped `model` and `effort` values from the source; when an exact-compatible agent already exists, the installer reuses it; when the body or non-tunable frontmatter differs from source, the installer overwrites the body and non-tunable frontmatter, preserves the destination's `model` and `effort` values placed per the structural anchor in `agent-tunable-ownership`, and emits a console notice naming the destination path. The installer SHALL NOT create a `.<basename>.owner.json` sidecar and SHALL NOT block installation on a body divergence. The `rename-or-remove` remediation is retired. Guarded uninstall SHALL remove the agent file only when its body and non-tunable frontmatter match the source; a body-divergent file SHALL be preserved as a project-local override. This change SHALL provide no implicit adoption path.
@@ -59,13 +59,13 @@ The opencode `/sai-3-implement` wrapper SHALL declare the logical coordinator ru
 - **AND** SHALL leave the opencode configuration files untouched
 - **AND** SHALL NOT consult any sidecar file
 
-### Requirement: Copilot compatibility boundary
-The Copilot implementation command SHALL preserve its existing inline execution behavior by invoking the Copilot Inline Coordinator Adapter directly. Documentation SHALL identify `sai/orchestration/inline-invocation.md` as that boundary, SHALL NOT describe either removed inline command loader as an entrypoint, and SHALL state that the portable coordinator-worker contract is not implemented for Copilot in this slice without stating that Copilot cannot use subagents.
+### Requirement: Routed worker binding boundary
+The routed implementation command contract SHALL define the coordinator-worker behavior for Claude Code and opencode. It SHALL not require a retired compatibility surface or compatibility projection.
 
-#### Scenario: Copilot implementation invocation
-- **WHEN** `/sai-3-implement` runs under GitHub Copilot
-- **THEN** it SHALL execute through the Copilot Inline Coordinator Adapter with its current observable behavior
-- **AND** it SHALL expose the documented compatibility limitation without an intermediate inline command loader
+#### Scenario: Retired compatibility path is excluded
+- **WHEN** the supported implementation projections are inspected
+- **THEN** they SHALL contain only the Claude Code and opencode routed coordinator and worker surfaces
+- **AND** no active projection SHALL require a retired compatibility surface or an intermediate inline command loader
 
 ### Requirement: Managed implementation worker projections
 The single installation manifest SHALL project the canonical shared coordinator and worker-lifecycle contracts, the implementation worker contract, and only the active routed harness's implementation binding to Claude Code and opencode. Routed wrappers SHALL fetch that neutral installed binding destination directly; no forwarding skill SHALL be projected. The Claude agent surface SHALL remain a thin forwarder to the canonical sources, and the opencode worker surface SHALL be the manifest-projected `sai-3-implementation-worker.md` agent file. Installer, doctor, and uninstall SHALL derive these projections from the same manifest while preserving deterministic collision detection for ordinary managed files and the body-and-non-tunable identity rule for Claude and opencode worker-agent definitions. Doctor SHALL compare only the body and non-tunable frontmatter; uninstall SHALL use the same body comparison to decide keep vs delete. The `rename-or-remove` wording is retired; a body-divergent worker agent is overwritten with a console notice by the installer and preserved as a project-local override by uninstall. The `.<basename>.owner.json` sidecar is no longer written, read, or compared. Tunable lines on existing worker files are preserved on every install. Exact-compatible pre-existing worker agent files SHALL be reused without rewriting, and all unrelated entries in an existing opencode JSONC configuration SHALL remain unchanged.

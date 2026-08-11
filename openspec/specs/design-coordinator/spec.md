@@ -21,23 +21,23 @@ arguments_value: "placeholder-change-name"
 ```
 ## Requirements
 
-The routed design coordinator and invocation bodies are grouped at `sai/commands/design/coordinator.md` and `sai/commands/design/invocation.md`; Copilot remains on the Inline Coordinator Adapter.
+The routed design coordinator and invocation bodies are grouped at `sai/commands/design/coordinator.md` and `sai/commands/design/invocation.md`.
 ### Requirement: Current design harness entrypoints
-Claude Code and opencode SHALL invoke the routed design coordinator and their respective design-worker bindings. GitHub Copilot SHALL invoke `sai/orchestration/inline-invocation.md` directly with `phase: sai-2-design`; no supported wrapper SHALL invoke `sai/commands/sai-2-design-inline.md`.
+Claude Code and opencode SHALL invoke the routed design coordinator and their respective design-worker bindings. No supported wrapper SHALL invoke a retired inline loader.
 
 #### Scenario: Routed harness starts design
 - **WHEN** Claude Code or opencode invokes `/sai-2-design`
 - **THEN** its wrapper SHALL enter the routed coordinator and design-worker binding
-- **AND** it SHALL NOT fetch the Copilot Inline Coordinator Adapter or the removed inline command loader
+- **AND** it SHALL NOT fetch a retired inline adapter or a removed inline command loader
 
-#### Scenario: Copilot starts design
-- **WHEN** GitHub Copilot invokes `/sai-2-design`
-- **THEN** its prompt SHALL fetch `sai/orchestration/inline-invocation.md` and supply `phase: sai-2-design`
-- **AND** it SHALL NOT fetch a routed design-worker binding or the removed inline command loader
+#### Scenario: Retired inline design entry is excluded
+- **WHEN** a maintainer inspects the active `/sai-2-design` entrypoints
+- **THEN** the active wrappers SHALL be limited to the Claude Code and opencode routed coordinator and matching worker bindings
+- **AND** no active entrypoint SHALL fetch a retired inline adapter or removed inline loader
 
 ### Requirement: active-harness-entry-boundary
 
-Claude Code and opencode SHALL invoke the routed design coordinator and their respective design-worker bindings. GitHub Copilot SHALL invoke `sai/orchestration/inline-invocation.md` directly with `phase: sai-2-design`; no supported entrypoint SHALL require a legacy loader.
+Claude Code and opencode SHALL invoke the routed design coordinator and their respective design-worker bindings. No supported entrypoint SHALL require a legacy loader.
 
 ### Requirement: coordinator-has-no-file-search-shell-git-web-openspec-access
 
@@ -135,18 +135,18 @@ The coordinator SHALL process `completed`, `needs_input`, `failed`, and `cancell
 - **THEN** the coordinator SHALL report the supplied blocking or clean-stop summary with the aggregated changed files and SHALL stop without attempting technical recovery itself
 
 ### Requirement: The coordinator owns post-design navigation only as protocol relay
-After design artifacts and feedback are complete, the coordinator SHALL emit the existing design completion stop and SHALL stop. It SHALL NOT present a post-feedback navigation choice, SHALL NOT begin an implementation lifecycle namespace, and SHALL NOT dispatch the implementation planning worker. On the Copilot inline path the same boundary applies: the inline design path SHALL stop at design completion rather than entering its inline implementation continuation. The stop SHALL not cause the design coordinator to resolve the change, read design artifacts, or perform implementation planning.
+After design artifacts and feedback are complete, the coordinator SHALL emit the existing design completion stop and SHALL stop. It SHALL NOT present a post-feedback navigation choice, SHALL NOT begin an implementation lifecycle namespace, and SHALL NOT dispatch the implementation planning worker. The stop SHALL not cause the design coordinator to resolve the change, read design artifacts, or perform implementation planning.
 
 #### Scenario: User stops after design
 - **WHEN** the artifact-feedback gate's proceed option is selected
 - **THEN** the command SHALL emit the existing mandatory design completion stop and SHALL not start implementation planning
 
 #### Scenario: No continuation is offered
-- **WHEN** design artifacts and feedback are complete on Claude Code, opencode, or Copilot
+- **WHEN** design artifacts and feedback are complete on Claude Code or opencode
 - **THEN** the coordinator SHALL NOT offer a same-prompt continuation into implementation planning and SHALL NOT construct an implementation invocation envelope
 
 ### Requirement: numbered-design-worker-identity
-The routed design worker SHALL use the phase-specific identifier `sai-2-design-worker` across opencode agent configuration, Claude Code managed worker definitions, direct wrapper binding fetch references, harness bindings, installer projections, and verification/documentation surfaces. Its reusable technical core SHALL be named `sai-2-design-core` in `sai/compat/` and SHALL remain separate from the implementation worker contract. The Claude Code, opencode, and Copilot inline callers SHALL fetch the renamed core wherever they consume the design invocation core.
+The routed design worker SHALL use the phase-specific identifier `sai-2-design-worker` across opencode agent configuration, Claude Code managed worker definitions, direct wrapper binding fetch references, harness bindings, installer projections, and verification/documentation surfaces. Its reusable technical core SHALL be named `sai-2-design-core` in `sai/compat/` and SHALL remain separate from the implementation worker contract. The Claude Code and opencode routed workers SHALL fetch the renamed core wherever they consume the design invocation core.
 
 #### Scenario: design dispatch resolves the phase worker
 - **WHEN** the routed design coordinator dispatches technical design work
@@ -159,7 +159,7 @@ The routed design worker SHALL use the phase-specific identifier `sai-2-design-w
 - **AND** the wrapper SHALL NOT declare an `agent:` field
 
 #### Scenario: all design paths use the renamed core
-- **WHEN** a routed design worker or the Copilot Inline Coordinator Adapter loads the reusable design invocation behavior
+- **WHEN** a routed design worker loads the reusable design invocation behavior
 - **THEN** it SHALL reference `sai-2-design-core`
 - **AND** no caller SHALL fetch the former unnumbered design core name
 
