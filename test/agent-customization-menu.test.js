@@ -13,6 +13,11 @@ const { main } = require('../bin/setup.js');
 const {
   runPostSetupMenu,
   CLAUDE_SETTINGS_CATALOG: EXPORTED_CLAUDE_SETTINGS_CATALOG,
+  buildClaudeSettingsEntries,
+  isClaudeSettingsPair,
+  selectClaudeSettings,
+  patchFrontmatter,
+  materializeLocalOverride,
   NO_VARIANT,
   createOpencodeAdapter,
   createClaudeAdapter,
@@ -360,12 +365,16 @@ test('Claude settings selection asks one combined frame from the real catalog an
   const adapter = createClaudeAdapter({ repoRoot: REPO_ROOT, promptChoice: promptSpy });
   const settings = await adapter.selectSettings('explore');
   assert.equal(calls.length, 1, 'exactly one combined prompt should run per invocation');
-  const expectedSize = EXPORTED_CLAUDE_SETTINGS_CATALOG.models
-    .reduce((total, entry) => total + entry.efforts.length, 0);
-  assert.equal(calls[0].options.length, expectedSize,
-    'the combined frame should offer every valid real-catalog model×effort pair');
-  assert.ok(calls[0].options.every(option => typeof option === 'string' && option.includes(' | ')),
-    'each catalog entry should combine one model and one effort in the selector frame');
+   const expectedSize = EXPORTED_CLAUDE_SETTINGS_CATALOG.models
+     .reduce((total, entry) => total + (entry.efforts ? entry.efforts.length : 1), 0);
+   assert.equal(calls[0].options.length, expectedSize,
+     'the combined frame should offer every valid real-catalog model×effort pair');
+   assert.ok(calls[0].options.some(option => option === 'haiku'),
+     'the model-only catalog entry should be displayed without an effort suffix');
+   assert.ok(calls[0].options
+     .filter(option => option !== 'haiku')
+     .every(option => typeof option === 'string' && option.includes(' | ')),
+   'effort-bearing catalog entries should combine one model and one effort in the selector frame');
   assert.deepEqual(settings, { model: 'sonnet', effort: 'medium' },
     'confirming the real sonnet/medium catalog entry should resolve the pair');
 });
@@ -401,9 +410,9 @@ test('each claude agent consumes exactly one real combined frame and resolves a 
 
   for (let i = 0; i < agents.length; i += 1) {
     const settings = await adapter.selectSettings(agents[i]);
-    assert.ok(EXPORTED_CLAUDE_SETTINGS_CATALOG.models.some(entry => entry.model === settings.model
-      && entry.efforts.includes(settings.effort)),
-    `claude selectSettings should resolve a valid catalog pair for agent ${i}`);
+     assert.ok(EXPORTED_CLAUDE_SETTINGS_CATALOG.models.some(entry => entry.model === settings.model
+       && (entry.efforts ? entry.efforts.includes(settings.effort) : !Object.hasOwn(settings, 'effort'))),
+     `claude selectSettings should resolve a valid catalog pair for agent ${i}`);
   }
   assert.equal(promptIndex, agents.length,
     'selectSettings should consume exactly one combined prompt per claude agent');
@@ -2297,5 +2306,280 @@ test('Step 1 materialize selected harness overrides: atomic write and Windows re
   } finally {
     fs.renameSync = originalRename;
     fs.rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
+
+// --- Step 2: Claude model catalog and model-only persistence ---
+
+function requireClaudeInterface(name, value) {
+  assert.equal(typeof value, 'function', `${name} must be exposed as a callable interface`);
+  return value;
+}
+
+test('Step 2 Claude catalog contains the current models and per-model effort set', () => {
+  const efforts = ['low', 'medium', 'high', 'xhigh', 'max'];
+  for (const model of ['opus', 'sonnet', 'fable']) {
+    const matches = EXPORTED_CLAUDE_SETTINGS_CATALOG.models.filter(entry => entry.model === model);
+    assert.equal(matches.length, 1, `${model} appears exactly once in the Claude catalog`);
+    assert.deepEqual(matches[0].efforts, efforts,
+      `${model} exposes the complete current Claude effort set`);
+  }
+
+  const haiku = EXPORTED_CLAUDE_SETTINGS_CATALOG.models.find(entry => entry.model === 'haiku');
+  assert.ok(haiku, 'haiku appears in the Claude catalog');
+  assert.equal(Object.hasOwn(haiku, 'efforts'), false,
+    'haiku is a model-only catalog entry without an efforts array');
+});
+
+test('Step 2 Claude settings entries render concrete model-effort pairs and model-only entries', () => {
+  const buildEntries = requireClaudeInterface('buildClaudeSettingsEntries', buildClaudeSettingsEntries);
+  const entries = buildEntries(EXPORTED_CLAUDE_SETTINGS_CATALOG);
+  const sonnetMedium = entries.find(entry => entry.model === 'sonnet' && entry.effort === 'medium');
+  const haiku = entries.find(entry => entry.model === 'haiku');
+
+  assert.deepEqual(sonnetMedium, {
+    display: 'sonnet | medium',
+    model: 'sonnet',
+    effort: 'medium',
+  });
+  assert.deepEqual(haiku, { display: 'haiku', model: 'haiku' });
+  assert.ok(entries.every(entry => !/[<>](?:model|effort)[>]/.test(entry.display)),
+    'rendered options never contain model or effort placeholders');
+
+  const modelOnlyCatalog = {
+    models: [
+      { model: 'paired', efforts: ['low'] },
+      { model: 'plain' },
+    ],
+  };
+  assert.deepEqual(buildEntries(modelOnlyCatalog), [
+    { display: 'paired | low', model: 'paired', effort: 'low' },
+    { display: 'plain', model: 'plain' },
+  ], 'a model-only entry never borrows an effort from another catalog entry');
+});
+
+test('Step 2 Claude pair validation is bounded by each model catalog entry', () => {
+  const isPair = requireClaudeInterface('isClaudeSettingsPair', isClaudeSettingsPair);
+  const catalog = {
+    models: [
+      { model: 'paired', efforts: ['low'] },
+      { model: 'plain' },
+    ],
+  };
+
+  assert.equal(isPair(catalog, { model: 'paired', effort: 'low' }), true);
+  assert.equal(isPair(catalog, { model: 'plain' }), true);
+  assert.equal(isPair(catalog, { model: 'plain', effort: 'low' }), false);
+  assert.equal(isPair(catalog, { model: 'paired', effort: 'high' }), false);
+});
+
+test('Step 2 Claude selection returns concrete effort and model-only settings without placeholders', async () => {
+  const selectSettings = requireClaudeInterface('selectClaudeSettings', selectClaudeSettings);
+  const effortOptions = [];
+  const effortSettings = await selectSettings(
+    'selected Claude agents',
+    async (question, options) => {
+      effortOptions.push(options);
+      assert.ok(options.includes('sonnet | medium'));
+      assert.ok(options.includes('haiku'));
+      assert.ok(options.every(option => !/[<>](?:model|effort)[>]/.test(option)));
+      return 'sonnet | medium';
+    },
+    EXPORTED_CLAUDE_SETTINGS_CATALOG
+  );
+  assert.deepEqual(effortSettings, { model: 'sonnet', effort: 'medium' });
+  assert.equal(effortOptions.length, 1, 'one Claude settings selection frame is presented');
+
+  const modelOnlySettings = await selectSettings(
+    'selected Claude agents',
+    async (question, options) => {
+      assert.ok(options.includes('haiku'));
+      return 'haiku';
+    },
+    EXPORTED_CLAUDE_SETTINGS_CATALOG
+  );
+  assert.deepEqual(modelOnlySettings, { model: 'haiku' });
+  assert.equal(Object.hasOwn(modelOnlySettings, 'effort'), false,
+    'a model-only selection does not manufacture an effort');
+});
+
+test('Step 2 unavailable or invalid Claude catalogs return no settings and perform no agent write', async () => {
+  const fixture = makePersistenceFixture();
+  try {
+    writeGlobalAgent(fixture, 'claude', PERSIST_CLAUDE_AGENT, claudeAgentSource());
+    for (const settingsCatalog of [
+      null,
+      { models: [] },
+      { models: [{ model: 'haiku', efforts: 'not-an-array' }] },
+    ]) {
+      const before = snapshotTree(fixture.projectPath);
+      const adapter = createClaudeAdapter({
+        repoRoot: fixture.packageRoot,
+        projectPath: fixture.projectPath,
+        packageRoot: fixture.packageRoot,
+        globalAgentRoot: fixture.claudeGlobalRoot,
+        settingsCatalog,
+        promptChoice: async () => assert.fail('an unavailable catalog must not prompt or write an agent'),
+      });
+      assert.equal(await adapter.selectSettings(PERSIST_CLAUDE_AGENT), null,
+        `catalog ${JSON.stringify(settingsCatalog)} produces no settings`);
+      assert.deepEqual(snapshotTree(fixture.projectPath), before,
+        'an unavailable catalog leaves the project without agent writes');
+    }
+  } finally {
+    fs.rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
+
+test('Step 2 first Claude materialization clones the source, preserves unrelated frontmatter and body, and omits effort for haiku', () => {
+  const fixture = makePersistenceFixture();
+  try {
+    const source = claudeAgentSource();
+    writeGlobalAgent(fixture, 'claude', PERSIST_CLAUDE_AGENT, source);
+    const adapter = createClaudeAdapter({
+      repoRoot: fixture.packageRoot,
+      projectPath: fixture.projectPath,
+      packageRoot: fixture.packageRoot,
+      globalAgentRoot: fixture.claudeGlobalRoot,
+    });
+    const result = adapter.createLocalOverride(PERSIST_CLAUDE_AGENT, { model: 'haiku' });
+    const destination = path.join(
+      fixture.projectPath,
+      '.claude',
+      'agents',
+      `${PERSIST_CLAUDE_AGENT}.md`
+    );
+
+    assert.equal(result.status, 'persisted');
+    assert.equal(result.destination, destination);
+    assert.equal(
+      fs.readFileSync(destination, 'utf8'),
+      source.replace('model: opus', 'model: haiku').replace('effort: high\n', ''),
+      'first materialization preserves source bytes except the selected Claude tunables'
+    );
+    assert.doesNotMatch(fs.readFileSync(destination, 'utf8'), /^effort:/m,
+      'haiku materialization omits the top-level effort line');
+  } finally {
+    fs.rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
+
+test('Step 2 existing Claude customization preserves body and non-tunable frontmatter while removing only top-level effort for haiku', () => {
+  const fixture = makePersistenceFixture();
+  try {
+    const destination = path.join(
+      fixture.projectPath,
+      '.claude',
+      'agents',
+      `${PERSIST_CLAUDE_AGENT}.md`
+    );
+    const existing = claudeAgentSource().replace(
+      '# Source body',
+      '# Source body\nBody text retains the word effort: high.'
+    );
+    fs.mkdirSync(path.dirname(destination), { recursive: true });
+    fs.writeFileSync(destination, existing);
+    const adapter = createClaudeAdapter({
+      repoRoot: fixture.packageRoot,
+      projectPath: fixture.projectPath,
+      packageRoot: fixture.packageRoot,
+      globalAgentRoot: fixture.claudeGlobalRoot,
+    });
+
+    const result = adapter.createLocalOverride(PERSIST_CLAUDE_AGENT, { model: 'haiku' });
+    assert.equal(result.status, 'persisted');
+    assert.equal(
+      fs.readFileSync(destination, 'utf8'),
+      existing.replace('model: opus', 'model: haiku').replace('effort: high\n', ''),
+      'existing local prompt content and non-tunable frontmatter remain unchanged'
+    );
+    assert.match(fs.readFileSync(destination, 'utf8'), /Body text retains the word effort: high\./);
+  } finally {
+    fs.rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
+
+test('Step 2 frontmatter patch persists both Claude tunables only when effort is selected', () => {
+  const patch = requireClaudeInterface('patchFrontmatter', patchFrontmatter);
+  const source = claudeAgentSource();
+  assert.equal(
+    patch(source, ['model', 'effort'], { model: 'sonnet', effort: 'medium' }),
+    source.replace('model: opus', 'model: sonnet').replace('effort: high', 'effort: medium')
+  );
+  assert.equal(
+    patch(source, ['model', 'effort'], { model: 'haiku' }),
+    source.replace('model: opus', 'model: haiku').replace('effort: high\n', '')
+  );
+});
+
+test('Step 2 OpenCode keeps its independent optional-variant contract while Claude omits effort for haiku', () => {
+  const fixture = makePersistenceFixture();
+  try {
+    writeGlobalAgent(fixture, 'claude', PERSIST_CLAUDE_AGENT, claudeAgentSource());
+    writeGlobalAgent(fixture, 'opencode', PERSIST_OPENCODE_AGENT, opencodeAgentSource());
+    const claude = createClaudeAdapter({
+      repoRoot: fixture.packageRoot,
+      projectPath: fixture.projectPath,
+      packageRoot: fixture.packageRoot,
+      globalAgentRoot: fixture.claudeGlobalRoot,
+    });
+    const opencode = createOpencodeAdapter({
+      repoRoot: fixture.packageRoot,
+      projectPath: fixture.projectPath,
+      packageRoot: fixture.packageRoot,
+      globalAgentRoot: fixture.opencodeGlobalRoot,
+    });
+
+    const claudeResult = claude.createLocalOverride(PERSIST_CLAUDE_AGENT, { model: 'haiku' });
+    const opencodeResult = opencode.createLocalOverride(PERSIST_OPENCODE_AGENT, {
+      model: 'opencode-go/new-model',
+    });
+    assert.equal(claudeResult.status, 'persisted');
+    assert.equal(opencodeResult.status, 'persisted');
+    assert.match(
+      fs.readFileSync(claudeResult.destination, 'utf8'),
+      /^model: haiku$/m
+    );
+    assert.doesNotMatch(fs.readFileSync(claudeResult.destination, 'utf8'), /^effort:/m);
+    assert.match(
+      fs.readFileSync(opencodeResult.destination, 'utf8'),
+      /^model: opencode-go\/new-model$/m
+    );
+    assert.doesNotMatch(fs.readFileSync(opencodeResult.destination, 'utf8'), /^variant:/m,
+      'OpenCode continues to omit its optional variant when none is selected');
+  } finally {
+    fs.rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
+
+test('Step 2 non-empty Claude subsets select settings once and apply the same model-only settings once per selected agent', async () => {
+  const claudeOps = { select: [], create: [] };
+  const opencodeOps = { select: [], create: [] };
+  const restoreClaude = patchFactory('createClaudeAdapter', () =>
+    makeFakeAdapter(CLAUDE_AGENTS, claudeOps, { model: 'haiku' }));
+  const restoreOpencode = patchFactory('createOpencodeAdapter', () =>
+    makeFakeAdapter(OPENCODE_AGENTS, opencodeOps));
+  const selected = [CLAUDE_AGENTS[0], CLAUDE_AGENTS[2]];
+  try {
+    const answers = ['Customize models', 'Claude Code'];
+    const result = await runPostSetupMenu({
+      projectPath: REPO_ROOT,
+      isTTY: true,
+      promptChoice: async () => answers.shift(),
+      promptChecklist: async () => ({ status: 'confirmed', items: selected }),
+    });
+
+    assert.equal(result.status, 'completed');
+    assert.deepEqual(claudeOps.select, [selected.join(', ')]);
+    assert.deepEqual(claudeOps.create.map(entry => entry.agentName), selected);
+    assert.deepEqual(claudeOps.create.map(entry => entry.settings), [
+      { model: 'haiku' },
+      { model: 'haiku' },
+    ], 'the same settings object shape, without effort, is applied to every selected agent');
+    assert.deepEqual(opencodeOps.select, []);
+    assert.deepEqual(opencodeOps.create, []);
+  } finally {
+    restoreClaude();
+    restoreOpencode();
   }
 });

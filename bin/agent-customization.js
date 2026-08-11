@@ -21,8 +21,10 @@ const DEFAULT_OPENCODE_GLOBAL_AGENT_ROOT = path.join(os.homedir(), '.config', 'o
 
 const CLAUDE_SETTINGS_CATALOG = Object.freeze({
   models: Object.freeze([
-    Object.freeze({ model: 'opus', efforts: Object.freeze(['low', 'medium', 'high', 'xhigh']) }),
-    Object.freeze({ model: 'sonnet', efforts: Object.freeze(['low', 'medium']) }),
+    Object.freeze({ model: 'opus', efforts: Object.freeze(['low', 'medium', 'high', 'xhigh', 'max']) }),
+    Object.freeze({ model: 'sonnet', efforts: Object.freeze(['low', 'medium', 'high', 'xhigh', 'max']) }),
+    Object.freeze({ model: 'fable', efforts: Object.freeze(['low', 'medium', 'high', 'xhigh', 'max']) }),
+    Object.freeze({ model: 'haiku' }),
   ]),
 });
 
@@ -63,7 +65,7 @@ function patchFrontmatter(text, tunableKeys, settings) {
 
     const key = match[1];
     if (!selected.has(key)) {
-      if (key === 'variant' && settings.variant === undefined) continue;
+      if ((key === 'effort' || key === 'variant') && settings[key] === undefined) continue;
       patchedFrontmatter.push(line);
       continue;
     }
@@ -169,13 +171,26 @@ function enumerateAgents(packageRoot, loadManifest, harness) {
     .sort();
 }
 
+function isConcreteClaudeCatalogValue(value) {
+  return typeof value === 'string'
+    && value !== ''
+    && !/^<[^>]+>$/.test(value);
+}
+
 function buildClaudeSettingsEntries(settingsCatalog) {
   if (settingsCatalog === null || !Array.isArray(settingsCatalog.models)) return [];
   const entries = [];
   for (const modelEntry of settingsCatalog.models) {
-    if (!modelEntry || typeof modelEntry.model !== 'string' || !Array.isArray(modelEntry.efforts)) continue;
+    if (!modelEntry || !isConcreteClaudeCatalogValue(modelEntry.model)) continue;
+
+    if (modelEntry.efforts === undefined) {
+      entries.push({ display: modelEntry.model, model: modelEntry.model });
+      continue;
+    }
+
+    if (!Array.isArray(modelEntry.efforts)) continue;
     for (const effort of modelEntry.efforts) {
-      if (typeof effort !== 'string' || effort === '') continue;
+      if (!isConcreteClaudeCatalogValue(effort)) continue;
       entries.push({
         display: `${modelEntry.model}${COMBINED_ENTRY_DELIMITER}${effort}`,
         model: modelEntry.model,
@@ -187,9 +202,13 @@ function buildClaudeSettingsEntries(settingsCatalog) {
 }
 
 function isClaudeSettingsPair(settingsCatalog, settings) {
-  if (!settings || typeof settings.model !== 'string' || typeof settings.effort !== 'string') return false;
+  if (!settings || typeof settings.model !== 'string') return false;
+  const hasEffort = Object.prototype.hasOwnProperty.call(settings, 'effort');
   return buildClaudeSettingsEntries(settingsCatalog)
-    .some(entry => entry.model === settings.model && entry.effort === settings.effort);
+    .some(entry => entry.model === settings.model
+      && (entry.effort === undefined
+        ? !hasEffort
+        : hasEffort && entry.effort === settings.effort));
 }
 
 async function selectClaudeSettings(subsetLabel, promptChoice, settingsCatalog) {
@@ -201,7 +220,9 @@ async function selectClaudeSettings(subsetLabel, promptChoice, settingsCatalog) 
   );
   const selected = entries.find(entry => entry.display === selectedDisplay);
   if (selected === undefined) return null;
-  return { model: selected.model, effort: selected.effort };
+  return selected.effort === undefined
+    ? { model: selected.model }
+    : { model: selected.model, effort: selected.effort };
 }
 
 function buildVariantDisplayOptions(variants) {
@@ -503,6 +524,9 @@ module.exports = {
   NO_VARIANT,
   createOpencodeAdapter,
   createClaudeAdapter,
+  buildClaudeSettingsEntries,
+  isClaudeSettingsPair,
+  selectClaudeSettings,
   defaultRunCommand,
   parseModelCatalog,
   parseVerboseModelRecords,
