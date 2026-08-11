@@ -17,11 +17,11 @@ The customization adapters MUST write Claude Code overrides to `<projectPath>/.c
 - **THEN** the destination SHALL be `<projectPath>/.opencode/agents/<agent>.md` and a missing destination SHALL be sourced from `~/.config/opencode/agents/<agent>.md`
 
 ### Requirement: Initial materialization clones the installed agent
-When a selected agent has no project-local destination, the adapter MUST create the parent harness agent directory when necessary, clone the installed global source into the project-local destination, and apply the selected harness tunables. The adapter MUST perform this materialization even when the selected model equals the model in the global source. The cloned body and non-tunable frontmatter MUST remain the source content.
+When a selected agent has no project-local destination, the adapter MUST create the parent harness agent directory when necessary, clone the installed global source into the project-local destination, and apply the selected harness tunables. For Claude Code, `model` is required and `effort` is optional; when effort is absent, the resulting local file MUST have no top-level `effort` line. The adapter MUST perform this materialization even when the selected model equals the model in the global source. The cloned body and non-tunable frontmatter MUST remain the source content.
 
 #### Scenario: First Claude Code materialization writes a local extension point
-- **WHEN** a selected Claude Code agent has no local file and its installed global source is available
-- **THEN** the adapter SHALL create `.claude/agents/`, write the source agent as `.claude/agents/<agent>.md`, and persist the selected `model` and `effort`
+- **WHEN** a selected Claude Code agent has no local file, its installed global source is available, and the selected settings are `{ model: 'haiku' }`
+- **THEN** the adapter SHALL create `.claude/agents/`, write the source agent as `.claude/agents/<agent>.md`, persist `model: haiku`, omit any top-level `effort` line, and preserve the source body and non-tunable frontmatter
 
 #### Scenario: First opencode materialization writes a local extension point
 - **WHEN** a selected opencode agent has no local file and its installed global source is available
@@ -32,22 +32,26 @@ When a selected agent has no project-local destination, the adapter MUST create 
 - **THEN** the adapter SHALL still create the project-local agent file
 
 ### Requirement: Existing local content is user-owned
-When a selected project-local agent already exists, the adapter MUST preserve its body and every non-tunable frontmatter line exactly, changing only the selected harness tunable lines. If a selected tunable carries a value and is absent, the adapter MUST add its top-level frontmatter line; an opencode `variant` remains optional and SHALL be absent when no variant is selected. The adapter MUST NOT replace the existing local file wholesale with the installed source.
+When a selected project-local agent already exists, the adapter MUST preserve its body and every non-tunable frontmatter line exactly, changing only the selected harness tunable lines. If a selected tunable carries a value and is absent, the adapter MUST add its top-level frontmatter line; for Claude Code, an absent selected `effort` means the adapter MUST remove any existing top-level `effort` line. An opencode `variant` remains optional and SHALL be absent when no variant is selected. The adapter MUST NOT replace the existing local file wholesale with the installed source.
 
 #### Scenario: Existing Claude Code customization preserves local prompt content
-- **WHEN** an existing Claude Code agent contains project-specific body text or non-tunable frontmatter
-- **THEN** the adapter SHALL retain those bytes and SHALL change only the top-level `model` and `effort` values
+- **WHEN** an existing Claude Code agent contains project-specific body text or non-tunable frontmatter and the selected settings are `{ model: 'haiku' }`
+- **THEN** the adapter SHALL retain those bytes, change the top-level `model` to `haiku`, remove the top-level `effort` line if present, and make no other content change
 
 #### Scenario: Existing opencode customization preserves local permissions
 - **WHEN** an existing opencode agent contains project-specific body text or a non-tunable frontmatter block such as `permission`
 - **THEN** the adapter SHALL retain that content and SHALL change only the top-level `model` and `variant` values
 
 ### Requirement: Harness tunables are mapped independently
-The Claude Code adapter MUST persist exactly the selected `model` and `effort` tunables for a Claude Code agent. The opencode adapter MUST persist the selected `model` and optional `variant` tunables for an opencode agent. Neither adapter SHALL rewrite a non-tunable frontmatter key, body content, or the other harness's tunable vocabulary.
+The Claude Code adapter MUST persist the selected `model` and optional `effort` tunables for a Claude Code agent. When `effort` is selected, it MUST persist the selected top-level `effort` value; when no effort is selected, it MUST omit the top-level `effort` line. The opencode adapter MUST persist the selected `model` and optional `variant` tunables for an opencode agent. Neither adapter SHALL rewrite a non-tunable frontmatter key, body content, or the other harness's tunable vocabulary.
 
 #### Scenario: Claude Code persists model and effort
-- **WHEN** Claude Code settings return a model and effort
+- **WHEN** Claude Code settings return `{ model: 'sonnet', effort: 'medium' }`
 - **THEN** the local Claude Code agent SHALL contain those selected top-level `model` and `effort` values
+
+#### Scenario: Claude Code omits an unselected effort
+- **WHEN** Claude Code settings return `{ model: 'haiku' }` without an effort
+- **THEN** the local Claude Code agent SHALL contain `model: haiku` and SHALL contain no top-level `effort` line
 
 #### Scenario: opencode persists model with a selected variant
 - **WHEN** opencode settings return a model and a variant
