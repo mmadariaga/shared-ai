@@ -181,6 +181,9 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0124 — Resolve package resources separately from project destinations](./0124-separate-package-resources-from-project-destinations.md)
 - [0125 — Preserve project-local agent content with a line-oriented frontmatter patch](./0125-line-preserving-frontmatter-patching-for-project-local-agents.md)
 - [0126 — Replace project-local agent files through a same-directory temporary file](./0126-atomic-replacement-for-project-local-agent-files.md)
+- [0128 — Keep generic OpenCode behavior in canonical SAI policies behind Fetch wrappers](./0128-canonical-generic-opencode-behavior-behind-fetch-wrappers.md)
+- [0129 — Preserve OpenCode agent frontmatter and append-only local extensions](./0129-preserve-opencode-agent-frontmatter-and-local-extensions.md)
+- [0130 — Reuse the recursive SAI policy projection for generic agents](./0130-reuse-recursive-sai-policy-projection-for-generic-agents.md)
 
 ### Harness wrappers & the shared instruction layer
 
@@ -208,6 +211,8 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0099 — Terminal routing failure and explicit fresh dispatch](./0099-terminal-routing-failure-and-explicit-fresh-dispatch.md) — Refs 0075, Refs 0076, Refs 0086
 - [0100 — Neutral installed worker-binding destinations with harness-specific sources](./0100-neutral-installed-worker-binding-destinations.md) — Refs 0077, Refs 0084, Refs 0088
 - [0106 — Keep both report template families with pinned skeleton parity](./0106-keep-both-report-template-families-pinned-parity.md)
+- [0128 — Keep generic OpenCode behavior in canonical SAI policies behind Fetch wrappers](./0128-canonical-generic-opencode-behavior-behind-fetch-wrappers.md)
+- [0130 — Reuse the recursive SAI policy projection for generic agents](./0130-reuse-recursive-sai-policy-projection-for-generic-agents.md)
 
 ---
 
@@ -218,6 +223,9 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0124 — Resolve package resources separately from project destinations](./0124-separate-package-resources-from-project-destinations.md)
 - [0125 — Preserve project-local agent content with a line-oriented frontmatter patch](./0125-line-preserving-frontmatter-patching-for-project-local-agents.md)
 - [0126 — Replace project-local agent files through a same-directory temporary file](./0126-atomic-replacement-for-project-local-agent-files.md)
+- [0128 — Keep generic OpenCode behavior in canonical SAI policies behind Fetch wrappers](./0128-canonical-generic-opencode-behavior-behind-fetch-wrappers.md)
+- [0129 — Preserve OpenCode agent frontmatter and append-only local extensions](./0129-preserve-opencode-agent-frontmatter-and-local-extensions.md)
+- [0130 — Reuse the recursive SAI policy projection for generic agents](./0130-reuse-recursive-sai-policy-projection-for-generic-agents.md)
 
 ### Fetch resolution & path conventions
 
@@ -230,6 +238,8 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0092 — Group planning assets by phase without changing harness routing](./0092-group-planning-assets-by-phase-without-changing-harness-routing.md) — Refs 0082, Refs 0088, Refs 0090
 - [0099 — Terminal routing failure and explicit fresh dispatch](./0099-terminal-routing-failure-and-explicit-fresh-dispatch.md) — Refs 0075, Refs 0076, Refs 0086
 - [0100 — Neutral installed worker-binding destinations with harness-specific sources](./0100-neutral-installed-worker-binding-destinations.md) — Refs 0077, Refs 0084, Refs 0088
+- [0128 — Keep generic OpenCode behavior in canonical SAI policies behind Fetch wrappers](./0128-canonical-generic-opencode-behavior-behind-fetch-wrappers.md)
+- [0130 — Reuse the recursive SAI policy projection for generic agents](./0130-reuse-recursive-sai-policy-projection-for-generic-agents.md)
 
 ### Harness portability & mirror discipline
 
