@@ -3,7 +3,7 @@
 const SPEC_COORDINATOR_ARTIFACTS = {
   invocationCore: 'sai/commands/spec/invocation.md',
   coordinator: 'sai/commands/spec/coordinator.md',
-  worker: 'sai/orchestration/workers/sai-1-spec-proposal-worker.md',
+  worker: 'sai/commands/spec/worker.md',
   claudeBinding: 'sai/orchestration/workers/bindings/claude/spec-worker.md',
   opencodeBinding: 'sai/orchestration/workers/bindings/opencode/spec-worker.md',
 };

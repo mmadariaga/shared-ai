@@ -1,6 +1,6 @@
 # Review Worker
 
-Fetch @sai/orchestration/worker-lifecycle.md and follow it exactly.
+Fetch @sai/worker-core.md and follow it exactly.
 
 ## Invocation Envelope
 

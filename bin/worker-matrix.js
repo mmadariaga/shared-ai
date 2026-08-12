@@ -48,7 +48,7 @@ function validateEntry(entry, index) {
   if (!/^sai-[1278]-[a-z-]+-worker$|^sai-3-implementation-worker$|^sai-5-review-worker$|^sai-6-security-worker$/.test(entry.workerName)) {
     throw new Error(`Invalid Worker Matrix worker identity for ${entry.phase}: ${entry.workerName}`);
   }
-  if (!/^sai\/orchestration\/workers\/sai-[^/]+\.md$/.test(entry.workerContract)) {
+  if (!/^sai\/commands\/[a-z-]+\/worker\.md$/.test(entry.workerContract)) {
     throw new Error(`Invalid Worker Matrix contract path for ${entry.phase}: ${entry.workerContract}`);
   }
   if (!['Agent', 'task'].includes(entry.dispatchPrimitive)) {

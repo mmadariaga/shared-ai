@@ -162,6 +162,8 @@ const MANAGED_WORKER_PROJECTIONS = {
   },
 };
 
+const ROUTED_PHASES = ['spec', 'design', 'implement', 'review', 'security', 'performance', 'accessibility'];
+
 function workerDestinationRoots(prefix) {
   return {
     commands: path.join(prefix, 'commands'),
@@ -392,9 +394,9 @@ test('canonical manifest projects implementation assets to neutral matrix destin
     assert.equal(new Set(destinations).size, destinations.length, `${harness} destinations should be unique`);
     assert.deepEqual(destinations, [...destinations].sort((a, b) => a.localeCompare(b)), `${harness} destinations should be ordered`);
     for (const source of [
-      'sai/orchestration/coordinator-contract.md',
-      'sai/orchestration/worker-lifecycle.md',
-      'sai/orchestration/workers/sai-3-implementation-worker.md',
+      'sai/command-runner.md',
+      'sai/worker-core.md',
+      'sai/commands/implement/worker.md',
     ]) {
       assert.ok(sourceSet.has(source), `${harness} should include ${source}`);
     }
@@ -423,14 +425,14 @@ test('canonical manifest projects routed spec assets only to Claude Code and ope
   const manifest = loadInstallManifest(repoRoot);
   const expectedSources = {
     claude: [
-      'sai/orchestration/coordinator-contract.md',
-      'sai/orchestration/worker-lifecycle.md',
-      'sai/orchestration/workers/sai-1-spec-proposal-worker.md',
+      'sai/command-runner.md',
+      'sai/worker-core.md',
+      'sai/commands/spec/worker.md',
     ],
     opencode: [
-      'sai/orchestration/coordinator-contract.md',
-      'sai/orchestration/worker-lifecycle.md',
-      'sai/orchestration/workers/sai-1-spec-proposal-worker.md',
+      'sai/command-runner.md',
+      'sai/worker-core.md',
+      'sai/commands/spec/worker.md',
     ],
   };
   const destinationRoot = {
@@ -517,9 +519,9 @@ test('Installer projects deterministic routed performance surfaces with ownershi
       strategy: 'copy',
       ownership: 'managed',
     },
-    'sai/orchestration/workers/sai-7-performance-worker.md': {
+    'sai/commands/performance/worker.md': {
       harnesses: ['claude', 'opencode'],
-      destination: 'orchestration/workers/sai-7-performance-worker.md',
+      destination: 'commands/performance/worker.md',
       strategy: 'copy',
       ownership: 'managed',
     },
@@ -630,8 +632,8 @@ test('canonical identity surfaces reject former routed names', () => {
     'commands/claude/sai-3-implement.md',
     'commands/opencode/sai-2-design.md',
     'commands/opencode/sai-3-implement.md',
-    'sai/orchestration/workers/sai-2-design-worker.md',
-    'sai/orchestration/workers/sai-3-implementation-worker.md',
+    'sai/commands/design/worker.md',
+    'sai/commands/implement/worker.md',
     'README.md',
     'AGENTS.md',
   ];

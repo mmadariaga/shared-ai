@@ -18,21 +18,21 @@ const { loadInstallManifest, expandInstallManifest } = require('../bin/install-m
 
 const STEP_2_SCRATCH_DIR = path.join(__dirname, '..', '.tmp', 'collapse-sai-worker-matrix', 'deterministic-worker-contract-delivery');
 const WORKER_BINDINGS = [
-  ['sai-1-spec-proposal-worker', 'spec-worker.md'],
-  ['sai-2-design-worker', 'design-worker.md'],
-  ['sai-3-implementation-worker', 'implementation-worker.md'],
-  ['sai-5-review-worker', 'review-worker.md'],
-  ['sai-6-security-worker', 'security-worker.md'],
-  ['sai-7-performance-worker', 'performance-worker.md'],
-  ['sai-8-accessibility-worker', 'accessibility-worker.md'],
+  ['spec', 'sai-1-spec-proposal-worker', 'spec-worker.md'],
+  ['design', 'sai-2-design-worker', 'design-worker.md'],
+  ['implement', 'sai-3-implementation-worker', 'implementation-worker.md'],
+  ['review', 'sai-5-review-worker', 'review-worker.md'],
+  ['security', 'sai-6-security-worker', 'security-worker.md'],
+  ['performance', 'sai-7-performance-worker', 'performance-worker.md'],
+  ['accessibility', 'sai-8-accessibility-worker', 'accessibility-worker.md'],
 ];
 
 function stripTunableLines(text) {
   return text.split('\n').filter(line => !/^(model|effort|variant):/.test(line)).join('\n');
 }
 
-function expectedWorkerPrompt(contractName) {
-  return `Worker contract: Fetch @sai/orchestration/workers/${contractName.endsWith('.md') ? contractName : `${contractName}.md`} and follow it exactly.\n\nInvocationEnvelope:\n<original InvocationEnvelope>`;
+function expectedWorkerPrompt(phase) {
+  return `Worker contract: Fetch @sai/commands/${phase}/worker.md and follow it exactly.\n\nInvocationEnvelope:\n<original InvocationEnvelope>`;
 }
 
 function extractDispatchCalls(source, keyword) {
@@ -219,12 +219,15 @@ test('Step 3 fresh Claude install omits all routed worker proxy skills', () => {
   }
 });
 
-test('installClaude projects the routed spec coordinator, neutral binding, and agent', () => {
+test('installClaude projects the routed spec coordinator, neutral worker binding, worker card, and agent', () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-claude-spec-'));
   try {
     installClaude(tmpDir);
     for (const file of [
        path.join('sai', 'commands', 'spec', 'coordinator.md'),
+       path.join('sai', 'commands', 'spec', 'worker.md'),
+       path.join('sai', 'command-runner.md'),
+       path.join('sai', 'worker-core.md'),
        path.join('sai', 'orchestration', 'workers', 'bindings', 'spec-worker.md'),
       path.join('agents', 'sai-1-spec-proposal-worker.md'),
     ]) assert.ok(fs.existsSync(path.join(tmpDir, file)), `${file} should be projected`);
@@ -235,25 +238,19 @@ test('installClaude projects the routed spec coordinator, neutral binding, and a
 
 test('installClaude projects every routed binding into neutral destinations', () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-claude-neutral-bindings-'));
-  const workers = ['spec', 'design', 'implementation', 'review', 'security', 'performance', 'accessibility'];
-  const bindingWorker = Object.fromEntries(WORKER_BINDINGS.map(([workerName, bindingName]) => [
-    bindingName.replace('-worker.md', ''),
-    workerName,
-  ]));
   try {
     installClaude(tmpDir);
     assert.equal(fs.existsSync(path.join(tmpDir, 'sai', 'orchestration', 'workers', 'bindings', 'claude')), false);
-    for (const worker of workers) {
-      const destination = path.join(tmpDir, 'sai', 'orchestration', 'workers', 'bindings', `${worker}-worker.md`);
-      assert.equal(fs.existsSync(destination), true, `${worker} binding should use a neutral destination`);
+    for (const [phase, workerName, bindingName] of WORKER_BINDINGS) {
+      const destination = path.join(tmpDir, 'sai', 'orchestration', 'workers', 'bindings', bindingName);
+      assert.equal(fs.existsSync(destination), true, `${workerName} (${phase}) binding should use a neutral destination`);
       const text = fs.readFileSync(destination, 'utf8');
-      const workerName = bindingWorker[worker];
       assert.equal(
-        (text.match(new RegExp(`Fetch @sai/orchestration/workers/${workerName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\.md and follow it exactly\\.`, 'g')) || []).length,
+        (text.match(new RegExp(`Fetch @sai/commands/${phase}/worker\\.md and follow it exactly\\.`, 'g')) || []).length,
         1,
-        `${worker} binding should carry exactly one canonical worker Fetch`
+        `${workerName} (${phase}) binding should carry exactly one canonical worker Fetch`
       );
-      assert.match(text, /Agent\s*\(/, `${worker} binding should preserve the Agent dispatch primitive`);
+      assert.match(text, /Agent\s*\(/, `${workerName} (${phase}) binding should preserve the Agent dispatch primitive`);
     }
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });
@@ -267,14 +264,14 @@ test('Step 2 initial Claude Agent dispatches deliver matching contracts and pres
     const installDir = path.join(scratchDir, 'claude');
     fs.mkdirSync(installDir, { recursive: true });
     installClaude(installDir);
-    for (const [workerName, bindingName] of WORKER_BINDINGS) {
+    for (const [phase, workerName, bindingName] of WORKER_BINDINGS) {
       const bindingPath = path.join(installDir, 'sai', 'orchestration', 'workers', 'bindings', bindingName);
       const calls = extractDispatchCalls(fs.readFileSync(bindingPath, 'utf8'), 'Agent');
       const initial = calls.filter(call => !/\btask_id\s*[:=]/.test(call));
       const continuations = calls.filter(call => /\btask_id\s*[:=]/.test(call));
 
       assert.equal(initial.length, 1, `${workerName} should have one initial Agent dispatch`);
-       assert.equal(decodePrompt(initial[0]), expectedWorkerPrompt(workerName),
+       assert.equal(decodePrompt(initial[0]), expectedWorkerPrompt(phase),
         `specs/worker-dispatch-prompt-template/spec.md: ${workerName} should receive its matching worker contract`);
       assert.match(decodePrompt(initial[0]), /InvocationEnvelope:\n<original InvocationEnvelope>$/,
         `${workerName} should preserve the opaque InvocationEnvelope slot`);
@@ -315,7 +312,7 @@ test('Claude managed agents install with one frontmatter block and one canonical
       assert.equal((text.match(/^---\r?\n/gm) || []).length, 2,
         `managed agent should contain exactly one frontmatter block: ${projection.destinationPath}`);
       assert.equal(
-        (text.match(/^Fetch @sai\/orchestration\/workers\/[^\s`]+\.md and follow it exactly\.$/gm) || []).length,
+        (text.match(/^Fetch @sai\/commands\/[^\s`]+\.md and follow it exactly\.$/gm) || []).length,
         1,
         `managed agent should carry exactly one canonical worker Fetch: ${projection.destinationPath}`);
       const source = path.relative(repoRoot, projection.sourcePath).split(path.sep).join('/');
@@ -529,6 +526,45 @@ test('Claude installer consumes exactly the seven matrix worker bindings and age
       .filter(projection => projection.destinationPath.startsWith(destinationRoot.agents))
       .map(projection => path.basename(projection.destinationPath, '.md'));
     assert.equal(agentNames.length, 7, 'Claude should project exactly seven managed agents');
+  } finally {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+});
+
+test('installClaude active projection carries the neutral root protocols, routed cards, and no flat worker sources', () => {
+  const repoRoot = path.join(__dirname, '..');
+  const manifest = loadInstallManifest(repoRoot);
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-claude-layout-'));
+  try {
+    const destinationRoot = {
+      commands: path.join(tmpDir, 'commands'),
+      sai: path.join(tmpDir, 'sai'),
+      skills: path.join(tmpDir, 'skills'),
+      agents: path.join(tmpDir, 'agents'),
+      config: tmpDir,
+      root: tmpDir,
+    };
+    const active = expandInstallManifest(manifest, { harness: 'claude', repoRoot, destinationRoot });
+    const sources = active.map(projection => path.relative(repoRoot, projection.sourcePath).split(path.sep).join('/'));
+    const sourceSet = new Set(sources);
+
+    for (const protocol of ['sai/command-runner.md', 'sai/worker-core.md']) {
+      assert.ok(sourceSet.has(protocol), `Claude should project the neutral root protocol ${protocol}`);
+    }
+    for (const [phase] of WORKER_BINDINGS) {
+      assert.ok(sourceSet.has(`sai/commands/${phase}/coordinator.md`),
+        `every routed card should carry a coordinator: sai/commands/${phase}/coordinator.md`);
+      assert.ok(sourceSet.has(`sai/commands/${phase}/worker.md`),
+        `every routed card should carry a worker: sai/commands/${phase}/worker.md`);
+    }
+    assert.equal(sources.some(source => /^sai\/orchestration\/workers\/sai-\d-.*-worker\.md$/.test(source)), false,
+      'no flat sai/orchestration/workers/sai-*-worker.md source should remain active');
+    for (const retired of [
+      'sai/orchestration/coordinator-contract.md',
+      'sai/orchestration/worker-lifecycle.md',
+    ]) {
+      assert.equal(sourceSet.has(retired), false, `${retired} should be absent from the active source layout`);
+    }
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }

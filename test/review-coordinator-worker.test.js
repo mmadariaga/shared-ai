@@ -12,6 +12,22 @@ function artifact(relativePath) {
   return fs.existsSync(fullPath) ? fs.readFileSync(fullPath, 'utf8') : '';
 }
 
+test('Step 1 review card uses neutral root protocols and retires flat canonical sources', () => {
+  const coordinator = artifact('sai/commands/review/coordinator.md');
+  const worker = artifact('sai/commands/review/worker.md');
+  assert.match(coordinator, /@sai\/command-runner\.md/);
+  assert.match(coordinator, /@sai\/worker-core\.md/);
+  assert.match(worker, /@sai\/worker-core\.md/);
+  for (const relativePath of [
+    'sai/orchestration/coordinator-contract.md',
+    'sai/orchestration/worker-lifecycle.md',
+    'sai/orchestration/workers/sai-5-review-worker.md',
+  ]) {
+    assert.equal(fs.existsSync(path.join(repoRoot, relativePath)), false,
+      `${relativePath} should be absent from the active source layout`);
+  }
+});
+
 test('review coordinator declares the canonical five-step progress plan in order with labels', () => {
   const coordinator = artifact('sai/commands/review/coordinator.md');
 
@@ -49,7 +65,7 @@ test('review coordinator renders at dispatch and reconciles at run-closing resul
 });
 
 test('review worker contract enumerates the five ids and pins the batch semantics', () => {
-  const worker = artifact('sai/orchestration/workers/sai-5-review-worker.md');
+  const worker = artifact('sai/commands/review/worker.md');
 
   assert.match(
     worker,
@@ -67,7 +83,7 @@ test('review worker contract enumerates the five ids and pins the batch semantic
 test('review coordinator and policy render the plan coordinator-only with threshold reference and no stamp', () => {
   const coordinator = artifact('sai/commands/review/coordinator.md');
   const policy = artifact('sai/policies/todo-structure.md');
-  const worker = artifact('sai/orchestration/workers/sai-5-review-worker.md');
+  const worker = artifact('sai/commands/review/worker.md');
 
   assert.match(coordinator, /todo-structure\.md/,
     'the coordinator should reference the neutral todo-structure policy');

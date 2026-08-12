@@ -29,6 +29,22 @@ function artifact(relativePath) {
   return fs.existsSync(fullPath) ? fs.readFileSync(fullPath, 'utf8') : '';
 }
 
+test('Step 1 performance card uses neutral root protocols and retires flat canonical sources', () => {
+  const coordinator = artifact('sai/commands/performance/coordinator.md');
+  const worker = artifact('sai/commands/performance/worker.md');
+  assert.match(coordinator, /@sai\/command-runner\.md/);
+  assert.match(coordinator, /@sai\/worker-core\.md/);
+  assert.match(worker, /@sai\/worker-core\.md/);
+  for (const relativePath of [
+    'sai/orchestration/coordinator-contract.md',
+    'sai/orchestration/worker-lifecycle.md',
+    'sai/orchestration/workers/sai-7-performance-worker.md',
+  ]) {
+    assert.equal(fs.existsSync(path.join(repoRoot, relativePath)), false,
+      `${relativePath} should be absent from the active source layout`);
+  }
+});
+
 test('performance invocation core loads the shared audit sequence in order', () => {
   const core = artifact('sai/commands/performance/invocation.md');
   const required = [
@@ -113,7 +129,7 @@ test('performance coordinator performs no technical prerequisite or research I/O
 });
 
 test('canonical performance worker preserves the scope, ordering, tier, and evidence contract', () => {
-  const worker = artifact('sai/orchestration/workers/sai-7-performance-worker.md');
+  const worker = artifact('sai/commands/performance/worker.md');
 
   assert.match(worker, /complete scope grammar/i);
   assert.match(worker, /parent[- ]branch[\s\S]{0,160}order/i);
@@ -124,7 +140,7 @@ test('canonical performance worker preserves the scope, ordering, tier, and evid
 });
 
 test('canonical performance worker defines all lifecycle payload shapes', () => {
-  const worker = artifact('sai/orchestration/workers/sai-7-performance-worker.md');
+  const worker = artifact('sai/commands/performance/worker.md');
 
   for (const payload of [
     'worker_completed',
@@ -139,7 +155,7 @@ test('canonical performance worker defines all lifecycle payload shapes', () => 
 });
 
 test('successful performance execution writes and verifies only performance.md', () => {
-  const worker = artifact('sai/orchestration/workers/sai-7-performance-worker.md');
+  const worker = artifact('sai/commands/performance/worker.md');
 
   assert.match(worker, /successful[\s\S]{0,240}(?:write|create)[\s\S]{0,240}openspec\/changes\/\{change-name\}\/performance\.md/i);
   assert.match(worker, /verif(?:y|ies|ication)[\s\S]{0,240}performance\.md/i);
@@ -147,7 +163,7 @@ test('successful performance execution writes and verifies only performance.md',
 });
 
 test('performance lifecycle payloads carry metadata rather than report contents', () => {
-  const worker = artifact('sai/orchestration/workers/sai-7-performance-worker.md');
+  const worker = artifact('sai/commands/performance/worker.md');
 
   assert.match(worker, /lifecycle payloads?[\s\S]{0,240}metadata[\s\S]{0,240}(?:not|rather than|exclude)[\s\S]{0,160}(?:report|performance\.md) contents/i);
   assert.match(worker, /report contents[\s\S]{0,160}(?:shall not|must not|never|exclude)/i);
@@ -182,7 +198,7 @@ test('Step 3 Claude and opencode bindings route only their canonical performance
 });
 
 test('Step 3 worker contract bounds delegated research evidence and rejects unauthorized operations', () => {
-  const worker = artifact('sai/orchestration/workers/sai-7-performance-worker.md');
+  const worker = artifact('sai/commands/performance/worker.md');
   assert.match(worker, /bounded evidence/i, 'the worker contract should bound research evidence');
   assert.match(worker, /eight-call cap|8-call cap|cap of 8/i,
     'the worker contract should enforce the eight-call audit cap');
@@ -275,7 +291,7 @@ test('performance coordinator declares the canonical five-step progress plan in 
 });
 
 test('performance worker contract enumerates the five ids and pins the batch semantics', () => {
-  const worker = artifact('sai/orchestration/workers/sai-7-performance-worker.md');
+  const worker = artifact('sai/commands/performance/worker.md');
 
   assert.match(
     worker,
@@ -294,7 +310,7 @@ test('performance worker contract enumerates the five ids and pins the batch sem
 test('performance coordinator and policy render the plan coordinator-only with threshold reference and no stamp', () => {
   const coordinator = artifact('sai/commands/performance/coordinator.md');
   const policy = artifact('sai/policies/todo-structure.md');
-  const worker = artifact('sai/orchestration/workers/sai-7-performance-worker.md');
+  const worker = artifact('sai/commands/performance/worker.md');
 
   assert.match(coordinator, /todo-structure\.md/,
     'the coordinator should reference the neutral todo-structure policy');

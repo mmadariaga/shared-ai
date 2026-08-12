@@ -1,4 +1,4 @@
-# Worker Lifecycle
+# Worker Core
 
 Each worker session maintains a journal owned by that worker session. The
 journal records the original envelope, resolved input history, pending phase

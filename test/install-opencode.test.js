@@ -57,17 +57,17 @@ test('STEP1_RETIRE_INLINE: opencode installer has no Copilot path constants or e
 });
 const STEP_2_SCRATCH_DIR = path.join(__dirname, '..', '.tmp', 'collapse-sai-worker-matrix', 'deterministic-worker-contract-delivery');
 const WORKER_CONTRACT_BY_NAME = {
-  'sai-1-spec-proposal-worker': 'spec-worker.md',
-  'sai-2-design-worker': 'design-worker.md',
-  'sai-3-implementation-worker': 'implementation-worker.md',
-  'sai-5-review-worker': 'review-worker.md',
-  'sai-6-security-worker': 'security-worker.md',
-  'sai-7-performance-worker': 'performance-worker.md',
-  'sai-8-accessibility-worker': 'accessibility-worker.md',
+  'sai-1-spec-proposal-worker': { phase: 'spec', binding: 'spec-worker.md' },
+  'sai-2-design-worker': { phase: 'design', binding: 'design-worker.md' },
+  'sai-3-implementation-worker': { phase: 'implement', binding: 'implementation-worker.md' },
+  'sai-5-review-worker': { phase: 'review', binding: 'review-worker.md' },
+  'sai-6-security-worker': { phase: 'security', binding: 'security-worker.md' },
+  'sai-7-performance-worker': { phase: 'performance', binding: 'performance-worker.md' },
+  'sai-8-accessibility-worker': { phase: 'accessibility', binding: 'accessibility-worker.md' },
 };
 
-function expectedWorkerPrompt(workerName) {
-  return `Worker contract: Fetch @sai/orchestration/workers/${workerName}.md and follow it exactly.\n\nInvocationEnvelope:\n<original InvocationEnvelope>`;
+function expectedWorkerPrompt(phase) {
+  return `Worker contract: Fetch @sai/commands/${phase}/worker.md and follow it exactly.\n\nInvocationEnvelope:\n<original InvocationEnvelope>`;
 }
 
 function extractDispatchCalls(source, keyword) {
@@ -133,14 +133,14 @@ test('Step 2 initial Opencode task dispatches deliver the matching contract and 
     fs.mkdirSync(installDir, { recursive: true });
     installOpencode(installDir);
     for (const workerName of CURRENT_CENSUS) {
-      const bindingName = WORKER_CONTRACT_BY_NAME[workerName];
+      const { phase, binding: bindingName } = WORKER_CONTRACT_BY_NAME[workerName];
       const bindingPath = path.join(installDir, 'sai', 'orchestration', 'workers', 'bindings', bindingName);
       const calls = extractDispatchCalls(fs.readFileSync(bindingPath, 'utf8'), 'task');
       const initial = calls.filter(call => !/\btask_id\s*[:=]/.test(call));
       const continuations = calls.filter(call => /\btask_id\s*[:=]/.test(call));
 
       assert.equal(initial.length, 1, `${workerName} should have one initial task dispatch`);
-      assert.equal(decodePrompt(initial[0]), expectedWorkerPrompt(workerName),
+      assert.equal(decodePrompt(initial[0]), expectedWorkerPrompt(phase),
         `specs/worker-dispatch-prompt-template/spec.md: ${workerName} should receive its matching worker contract`);
       assert.match(decodePrompt(initial[0]), /InvocationEnvelope:\n<original InvocationEnvelope>$/,
         `${workerName} should preserve the opaque InvocationEnvelope slot`);
@@ -258,25 +258,20 @@ test('installOpencode projects the routed spec coordinator and neutral binding',
 
 test('installOpencode projects every routed binding into neutral destinations', () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-neutral-bindings-'));
-  const workers = ['spec', 'design', 'implementation', 'review', 'security', 'performance', 'accessibility'];
-  const bindingWorker = Object.fromEntries(Object.entries(WORKER_CONTRACT_BY_NAME).map(([workerName, bindingName]) => [
-    bindingName.replace('-worker.md', ''),
-    workerName,
-  ]));
   try {
     installOpencode(tmpDir);
     assert.equal(fs.existsSync(path.join(tmpDir, 'sai', 'orchestration', 'workers', 'bindings', 'opencode')), false);
-    for (const worker of workers) {
-      const destination = path.join(tmpDir, 'sai', 'orchestration', 'workers', 'bindings', `${worker}-worker.md`);
-      assert.equal(fs.existsSync(destination), true, `${worker} binding should use a neutral destination`);
+    for (const workerName of CURRENT_CENSUS) {
+      const { phase, binding: bindingName } = WORKER_CONTRACT_BY_NAME[workerName];
+      const destination = path.join(tmpDir, 'sai', 'orchestration', 'workers', 'bindings', bindingName);
+      assert.equal(fs.existsSync(destination), true, `${workerName} (${phase}) binding should use a neutral destination`);
       const text = fs.readFileSync(destination, 'utf8');
-      const workerName = bindingWorker[worker];
       assert.equal(
-        (text.match(new RegExp(`Fetch @sai/orchestration/workers/${workerName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\.md and follow it exactly\\.`, 'g')) || []).length,
+        (text.match(new RegExp(`Fetch @sai/commands/${phase}/worker\\.md and follow it exactly\\.`, 'g')) || []).length,
         1,
-        `${worker} binding should carry exactly one canonical worker Fetch`
+        `${workerName} (${phase}) binding should carry exactly one canonical worker Fetch`
       );
-      assert.match(text, /task\s*\(/, `${worker} binding should preserve the task dispatch primitive`);
+      assert.match(text, /task\s*\(/, `${workerName} (${phase}) binding should preserve the task dispatch primitive`);
     }
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });
@@ -1068,7 +1063,7 @@ test('Step 1 Claude agent rows remain byte-preserving without ownership sidecars
       assert.equal((text.match(/^---\r?\n/gm) || []).length, 2,
         `specs/managed-worker-registry/spec.md: ${workerName} should contain exactly one frontmatter block`);
       assert.equal(
-        (text.match(/^Fetch @sai\/orchestration\/workers\/[^\s`]+\.md and follow it exactly\.$/gm) || []).length,
+        (text.match(/^Fetch @sai\/commands\/[^\s`]+\.md and follow it exactly\.$/gm) || []).length,
         1,
         `specs/managed-worker-registry/spec.md: ${workerName} should carry exactly one canonical worker Fetch`);
       const projection = active.find(candidate => candidate.destinationPath === agentPath);
@@ -1277,10 +1272,10 @@ test('Step 3 install seeds the seven managed opencode worker agent files with th
       assert.equal((text.match(/^---\r?\n/gm) || []).length, 2,
         `specs/managed-worker-registry/spec.md: ${worker} should contain exactly one frontmatter block`);
       assert.equal(
-        (text.match(/^Fetch @sai\/orchestration\/workers\/[^\s`]+\.md and follow it exactly\.$/gm) || []).length,
+        (text.match(/^Fetch @sai\/commands\/[^\s`]+\.md and follow it exactly\.$/gm) || []).length,
         1,
         `specs/managed-worker-registry/spec.md: ${worker} should carry exactly one canonical worker Fetch`);
-      assert.ok(text.includes(`Fetch @sai/orchestration/workers/${worker}.md and follow it exactly.`),
+      assert.ok(text.includes(`Fetch @sai/commands/${WORKER_CONTRACT_BY_NAME[worker].phase}/worker.md and follow it exactly.`),
         `specs/managed-worker-registry/spec.md: ${worker} should target its own worker contract`);
       const projection = active.find(candidate => candidate.destinationPath === agentPath);
       assert.ok(projection, `specs/managed-worker-registry/spec.md: ${worker} should be an active opencode projection`);
@@ -1336,6 +1331,45 @@ test('opencode installer consumes exactly the seven matrix worker bindings and a
       .map(projection => path.basename(projection.destinationPath, '.md'));
     assert.equal(['budget', 'executor', 'explore'].every(name => allAgentNames.includes(name)), true,
       'opencode should keep its three support agents beside the matrix agents');
+  } finally {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+});
+
+test('installOpencode active projection carries the neutral root protocols, routed cards, and no flat worker sources', () => {
+  const repoRoot = path.join(__dirname, '..');
+  const manifest = loadInstallManifest(repoRoot);
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-layout-'));
+  try {
+    const destinationRoot = {
+      commands: path.join(tmpDir, 'commands'),
+      sai: path.join(tmpDir, 'sai'),
+      skills: path.join(tmpDir, 'skills'),
+      agents: path.join(tmpDir, 'agents'),
+      config: tmpDir,
+      root: tmpDir,
+    };
+    const active = expandInstallManifest(manifest, { harness: 'opencode', repoRoot, destinationRoot });
+    const sources = active.map(projection => path.relative(repoRoot, projection.sourcePath).split(path.sep).join('/'));
+    const sourceSet = new Set(sources);
+
+    for (const protocol of ['sai/command-runner.md', 'sai/worker-core.md']) {
+      assert.ok(sourceSet.has(protocol), `opencode should project the neutral root protocol ${protocol}`);
+    }
+    for (const { phase } of Object.values(WORKER_CONTRACT_BY_NAME)) {
+      assert.ok(sourceSet.has(`sai/commands/${phase}/coordinator.md`),
+        `every routed card should carry a coordinator: sai/commands/${phase}/coordinator.md`);
+      assert.ok(sourceSet.has(`sai/commands/${phase}/worker.md`),
+        `every routed card should carry a worker: sai/commands/${phase}/worker.md`);
+    }
+    assert.equal(sources.some(source => /^sai\/orchestration\/workers\/sai-\d-.*-worker\.md$/.test(source)), false,
+      'no flat sai/orchestration/workers/sai-*-worker.md source should remain active');
+    for (const retired of [
+      'sai/orchestration/coordinator-contract.md',
+      'sai/orchestration/worker-lifecycle.md',
+    ]) {
+      assert.equal(sourceSet.has(retired), false, `${retired} should be absent from the active source layout`);
+    }
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }

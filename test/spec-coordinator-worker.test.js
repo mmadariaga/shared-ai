@@ -27,6 +27,22 @@ function countLiteral(source, value) {
   return source.split(value).length - 1;
 }
 
+test('Step 1 spec card uses neutral root protocols and retires flat canonical sources', () => {
+  const coordinator = artifact('sai/commands/spec/coordinator.md');
+  const worker = artifact('sai/commands/spec/worker.md');
+  assert.match(coordinator, /@sai\/command-runner\.md/);
+  assert.match(coordinator, /@sai\/worker-core\.md/);
+  assert.match(worker, /@sai\/worker-core\.md/);
+  for (const relativePath of [
+    'sai/orchestration/coordinator-contract.md',
+    'sai/orchestration/worker-lifecycle.md',
+    'sai/orchestration/workers/sai-1-spec-proposal-worker.md',
+  ]) {
+    assert.equal(fs.existsSync(path.join(repoRoot, relativePath)), false,
+      `${relativePath} should be absent from the active source layout`);
+  }
+});
+
 function artifact(relativePath) {
   const fullPath = path.join(repoRoot, relativePath);
   assert.ok(fs.existsSync(fullPath), `${relativePath} should exist`);
@@ -59,7 +75,7 @@ test('spec invocation core loads only the technical instruction sequence', () =>
 test('completion remains outside the spec invocation core', () => {
   const core = artifact('sai/commands/spec/invocation.md');
   const coordinator = artifact('sai/commands/spec/coordinator.md');
-  const worker = artifact('sai/orchestration/workers/sai-1-spec-proposal-worker.md');
+  const worker = artifact('sai/commands/spec/worker.md');
 
   assert.doesNotMatch(core, /decision summary|feedback gate|MANDATORY STOP|Spec proposal done in openspec\/changes\//i);
   assert.match(coordinator, /artifact-feedback-gate\.md/);
@@ -70,7 +86,7 @@ test('completion remains outside the spec invocation core', () => {
 
 test('feedback selection routes text through the coordinator once and preserves the proceed stop', () => {
   const coordinator = artifact('sai/commands/spec/coordinator.md');
-  const worker = artifact('sai/orchestration/workers/sai-1-spec-proposal-worker.md');
+  const worker = artifact('sai/commands/spec/worker.md');
   const core = artifact('sai/commands/spec/invocation.md');
 
   const policyPosition = coordinator.indexOf('Fetch @sai/policies/artifact-feedback-gate.md');

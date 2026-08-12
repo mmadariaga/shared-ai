@@ -169,8 +169,13 @@ const CLAUDE_DESIGN_WORKER_AGENT = MANAGED_WORKERS['sai-2-design-worker'].claude
 const CLAUDE_SPEC_WORKER_AGENT = MANAGED_WORKERS['sai-1-spec-proposal-worker'].claude.agent;
 const CLAUDE_REVIEW_WORKER_AGENT = MANAGED_WORKERS['sai-5-review-worker'].claude.agent;
 
+const MANAGED_WORKER_CONTRACTS = Object.freeze(Object.fromEntries(
+  loadInstallManifest(REPOSITORY_ROOT)['worker-matrix'].entries.map(entry => [entry.workerName, entry.workerContract])
+));
+
 function expectedDispatchPrompt(workerName) {
-  return `Worker contract: Fetch @sai/orchestration/workers/${workerName}.md and follow it exactly.\n\nInvocationEnvelope:\n<original InvocationEnvelope>`;
+  const contract = MANAGED_WORKER_CONTRACTS[workerName];
+  return `Worker contract: Fetch @${contract} and follow it exactly.\n\nInvocationEnvelope:\n<original InvocationEnvelope>`;
 }
 
 function collectCallArguments(text, callName, bindingPath) {

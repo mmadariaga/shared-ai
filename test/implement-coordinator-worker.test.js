@@ -55,6 +55,22 @@ function capture(fn) {
   }
 }
 
+test('Step 1 implementation card uses neutral root protocols and retires flat canonical sources', () => {
+  const coordinator = artifact('sai/commands/implement/coordinator.md');
+  const worker = artifact('sai/commands/implement/worker.md');
+  assert.match(coordinator, /@sai\/command-runner\.md/);
+  assert.match(coordinator, /@sai\/worker-core\.md/);
+  assert.match(worker, /@sai\/worker-core\.md/);
+  for (const relativePath of [
+    'sai/orchestration/coordinator-contract.md',
+    'sai/orchestration/worker-lifecycle.md',
+    'sai/orchestration/workers/sai-3-implementation-worker.md',
+  ]) {
+    assert.equal(fs.existsSync(path.join(repoRoot, relativePath)), false,
+      `${relativePath} should be absent from the active source layout`);
+  }
+});
+
 test('implementation invocation core owns the routed completion boundary', () => {
    const core = artifact('sai/commands/implement/invocation.md');
   assert.match(core, /^## Load instructions \(in order\)/m);
@@ -65,7 +81,7 @@ test('implementation invocation core owns the routed completion boundary', () =>
 });
 
 test('implementation worker declares the lifecycle and input/output contract', () => {
-  const worker = artifact('sai/orchestration/workers/sai-3-implementation-worker.md');
+  const worker = artifact('sai/commands/implement/worker.md');
 
   assert.match(worker, /InvocationEnvelope/);
   assert.match(worker, /wrapper_echo_value/);
@@ -210,7 +226,7 @@ test('uninstall and doctor expose ownership guards and collision status', async 
     const implementationSources = new Set([
       'sai/orchestration/coordinator-contract.md',
       'sai/orchestration/worker-lifecycle.md',
-      'sai/orchestration/workers/sai-3-implementation-worker.md',
+      'sai/commands/implement/worker.md',
       '.tmp/collapse-sai-worker-matrix/matrix-sources/claude/implementation-worker.md',
       '.tmp/collapse-sai-worker-matrix/matrix-sources/claude/sai-3-implementation-worker.md',
       '.tmp/collapse-sai-worker-matrix/matrix-sources/opencode/implementation-worker.md',
@@ -320,7 +336,7 @@ test('Step 1 implementation contracts use the routed entrypoints', () => {
 
 test('routed harness bindings and inline parity', () => {
   const workerName = 'sai-3-implementation-worker';
-  const worker = artifact('sai/orchestration/workers/sai-3-implementation-worker.md');
+  const worker = artifact('sai/commands/implement/worker.md');
   const claudeBinding = matrixBinding('claude', 'implementation');
   const opencodeBinding = matrixBinding('opencode', 'implementation');
   const claudeAgent = matrixAgent('claude', 'implementation');
@@ -388,7 +404,7 @@ test('shared implement coordinator has a two-field envelope and no artifact or r
 
 test('implementation adapter pins resolved-name and reconstruction transport', () => {
    const coordinator = artifact('sai/commands/implement/coordinator.md');
-  const worker = artifact('sai/orchestration/workers/sai-3-implementation-worker.md');
+  const worker = artifact('sai/commands/implement/worker.md');
    const core = artifact('sai/commands/implement/invocation.md');
 
   for (const field of [
@@ -471,7 +487,7 @@ test('needs_input continuation stays on the same worker and uses each harness bi
 
 test('worker owns prerequisites and picker while coordinator does not', () => {
    const coordinator = artifact('sai/commands/implement/coordinator.md');
-  const worker = artifact('sai/orchestration/workers/sai-3-implementation-worker.md');
+  const worker = artifact('sai/commands/implement/worker.md');
 
   assert.match(worker, /openspec CLI not found|OpenSpec not initialized|schema:\s*sai-workflow/i);
   assert.match(worker, /Use change '\{name\}'\?|Which change\?|0\/1\/N|zero,? one,? or multiple/i);
@@ -655,7 +671,7 @@ test('Step 6: the implementation adapter declares the canonical five-step plan i
 });
 
 test('Step 6: the implementation-planning worker contract enumerates the same five ids in order', () => {
-  const worker = artifact('sai/orchestration/workers/sai-3-implementation-worker.md');
+  const worker = artifact('sai/commands/implement/worker.md');
 
   assert.match(
     worker,
@@ -684,7 +700,7 @@ test('Step 6: the implementation coordinator renders the plan at dispatch, marks
 });
 
 test('Step 6: the implementation worker contract emits per completed batch with the first-run skip-fold', () => {
-  const worker = artifact('sai/orchestration/workers/sai-3-implementation-worker.md');
+  const worker = artifact('sai/commands/implement/worker.md');
 
   assert.match(worker, /(?:one|a single|each|per)[\s\S]{0,200}progress event[\s\S]{0,240}(?:completed )?batch|(?:completed )?batch[\s\S]{0,200}(?:one|a single|each|per)[\s\S]{0,200}progress event/i,
     'the contract should emit one progress event per completed batch');

@@ -61,7 +61,7 @@ function accessibilityProjections(harness, base) {
     harness,
     repoRoot,
     destinationRoot: destinationRoots(base),
-  }).filter(projection => sourcePath(repoRoot, projection).includes('accessibility-worker'));
+  }).filter(projection => sourcePath(repoRoot, projection).includes('accessibility-worker') || /accessibility[\\/]worker\.md$/.test(sourcePath(repoRoot, projection)));
 }
 
 function collectOutput() {
@@ -70,6 +70,22 @@ function collectOutput() {
   out.on('data', chunk => chunks.push(chunk));
   return { out, text: () => Buffer.concat(chunks).toString('utf8') };
 }
+
+test('Step 1 accessibility card uses neutral root protocols and retires flat canonical sources', () => {
+  const coordinator = artifact('sai/commands/accessibility/coordinator.md');
+  const worker = artifact('sai/commands/accessibility/worker.md');
+  assert.match(coordinator, /@sai\/command-runner\.md/);
+  assert.match(coordinator, /@sai\/worker-core\.md/);
+  assert.match(worker, /@sai\/worker-core\.md/);
+  for (const relativePath of [
+    'sai/orchestration/coordinator-contract.md',
+    'sai/orchestration/worker-lifecycle.md',
+    'sai/orchestration/workers/sai-8-accessibility-worker.md',
+  ]) {
+    assert.equal(fs.existsSync(path.join(repoRoot, relativePath)), false,
+      `${relativePath} should be absent from the active source layout`);
+  }
+});
 
 test('accessibility invocation core loads budget, instruction, and remember in order', () => {
   const core = artifact('sai/commands/accessibility/invocation.md');
@@ -130,7 +146,7 @@ test('Step 2 accessibility coordinator dispatches one worker and performs no tec
 });
 
 test('Step 2 accessibility worker preserves input precedence, grammar, change resolution, and scope ownership', () => {
-  const worker = artifact('sai/orchestration/workers/sai-8-accessibility-worker.md');
+  const worker = artifact('sai/commands/accessibility/worker.md');
 
   assert.match(worker, /wrapper_echo_value[\s\S]{0,240}precedence/i);
   assert.match(worker, /arguments_value/);
@@ -142,7 +158,7 @@ test('Step 2 accessibility worker preserves input precedence, grammar, change re
 });
 
 test('Step 2 accessibility findings use the closed severity set', () => {
-  const worker = artifact('sai/orchestration/workers/sai-8-accessibility-worker.md');
+  const worker = artifact('sai/commands/accessibility/worker.md');
 
   for (const severity of ['Critical', 'High', 'Medium', 'Low', 'Informational']) {
     assert.match(worker, new RegExp(`\\b${severity}\\b`));
@@ -152,7 +168,7 @@ test('Step 2 accessibility findings use the closed severity set', () => {
 });
 
 test('Step 2 accessibility worker owns small-scope inspection without mandatory explorer delegation', () => {
-  const worker = artifact('sai/orchestration/workers/sai-8-accessibility-worker.md');
+  const worker = artifact('sai/commands/accessibility/worker.md');
 
   assert.match(worker, /five or fewer|<=\s*5|at most five/i);
   assert.match(worker, /source inspection[\s\S]{0,180}(?:worker|direct)/i);
@@ -160,7 +176,7 @@ test('Step 2 accessibility worker owns small-scope inspection without mandatory 
 });
 
 test('Step 2 accessibility worker delegates large-scope inspection in bounded parallel areas', () => {
-  const worker = artifact('sai/orchestration/workers/sai-8-accessibility-worker.md');
+  const worker = artifact('sai/commands/accessibility/worker.md');
 
   assert.match(worker, /more than five|>\s*5|six or more/i);
   assert.match(worker, /per-component inspection|component[s-]level inspection/i);
@@ -169,7 +185,7 @@ test('Step 2 accessibility worker delegates large-scope inspection in bounded pa
 });
 
 test('Step 2 runtime mode asks for server confirmation before any scanner command', () => {
-  const worker = artifact('sai/orchestration/workers/sai-8-accessibility-worker.md');
+  const worker = artifact('sai/commands/accessibility/worker.md');
 
   assert.match(worker, /runtime/);
   assert.match(worker, /server confirmation|confirm.*server|server.*question/i);
@@ -178,7 +194,7 @@ test('Step 2 runtime mode asks for server confirmation before any scanner comman
 });
 
 test('Step 2 applicable scanners require one authorize-or-skip question and explicit authorization', () => {
-  const worker = artifact('sai/orchestration/workers/sai-8-accessibility-worker.md');
+  const worker = artifact('sai/commands/accessibility/worker.md');
 
   assert.match(worker, /applicable scanner|scanner.*applicable/i);
   assert.match(worker, /authorize/);
@@ -199,7 +215,7 @@ test('Step 2 Claude and opencode bindings continue the same worker with only the
 });
 
 test('Step 2 replacement restart excludes prior authorization, results, evidence, journal, and report content', () => {
-  const worker = artifact('sai/orchestration/workers/sai-8-accessibility-worker.md');
+  const worker = artifact('sai/commands/accessibility/worker.md');
   assert.match(worker, /replacement/i,
     'the worker contract should define the replacement path');
   for (const item of ['authorization', 'command results', 'evidence', 'journal', 'artifact contents']) {
@@ -212,7 +228,7 @@ test('Step 2 replacement restart excludes prior authorization, results, evidence
 });
 
 test('Step 2 completion writes only accessibility.md and prints the exact completion line', () => {
-  const worker = artifact('sai/orchestration/workers/sai-8-accessibility-worker.md');
+  const worker = artifact('sai/commands/accessibility/worker.md');
   const coordinator = artifact('sai/commands/accessibility/coordinator.md');
 
   assert.match(worker, /openspec\/changes\/\{change-name\}\/accessibility\.md/);
@@ -252,12 +268,12 @@ test('Step 3 accessibility manifest projections are deterministic, unique, and h
   const manifest = loadInstallManifest(repoRoot);
   const expected = {
     claude: [
-      'sai/orchestration/workers/sai-8-accessibility-worker.md',
+      'sai/commands/accessibility/worker.md',
       '.tmp/collapse-sai-worker-matrix/matrix-sources/claude/accessibility-worker.md',
       '.tmp/collapse-sai-worker-matrix/matrix-sources/claude/sai-8-accessibility-worker.md',
     ],
     opencode: [
-      'sai/orchestration/workers/sai-8-accessibility-worker.md',
+      'sai/commands/accessibility/worker.md',
       '.tmp/collapse-sai-worker-matrix/matrix-sources/opencode/accessibility-worker.md',
       '.tmp/collapse-sai-worker-matrix/matrix-sources/opencode/sai-8-accessibility-worker.md',
     ],
@@ -270,12 +286,12 @@ test('Step 3 accessibility manifest projections are deterministic, unique, and h
         harness,
         repoRoot,
         destinationRoot: destinationRoots(base),
-      }).filter(projection => sourcePath(repoRoot, projection).includes('accessibility-worker'));
+      }).filter(projection => sourcePath(repoRoot, projection).includes('accessibility-worker') || /accessibility[\\/]worker\.md$/.test(sourcePath(repoRoot, projection)));
       const second = expandInstallManifest(manifest, {
         harness,
         repoRoot,
         destinationRoot: destinationRoots(base),
-      }).filter(projection => sourcePath(repoRoot, projection).includes('accessibility-worker'));
+      }).filter(projection => sourcePath(repoRoot, projection).includes('accessibility-worker') || /accessibility[\\/]worker\.md$/.test(sourcePath(repoRoot, projection)));
 
       assert.deepEqual(first.map(projection => ({
         source: sourcePath(repoRoot, projection),
@@ -386,7 +402,7 @@ test('Step 3 divergent accessibility agents are overwritten, doctor-clean, and u
 });
 
 test('Step 3 routed accessibility worker contract accepts only closed lifecycle fields', () => {
-  const worker = artifact('sai/orchestration/workers/sai-8-accessibility-worker.md');
+  const worker = artifact('sai/commands/accessibility/worker.md');
   assert.match(worker, /Accessibility Worker|sai-8-accessibility-worker/);
   const payloadContract = worker.match(/(?:payload includes|closed payload|lifecycle result)[\s\S]{0,800}/i);
   assert.ok(payloadContract, 'the worker contract should define a closed lifecycle result contract');
@@ -425,7 +441,7 @@ test('accessibility coordinator declares the canonical five-step progress plan i
 });
 
 test('accessibility worker contract enumerates the five ids and pins the batch semantics', () => {
-  const worker = artifact('sai/orchestration/workers/sai-8-accessibility-worker.md');
+  const worker = artifact('sai/commands/accessibility/worker.md');
 
   assert.match(
     worker,
@@ -444,7 +460,7 @@ test('accessibility worker contract enumerates the five ids and pins the batch s
 test('accessibility coordinator and policy carry a Progress rendering contract with threshold reference and no stamp', () => {
   const coordinator = artifact('sai/commands/accessibility/coordinator.md');
   const policy = artifact('sai/policies/todo-structure.md');
-  const worker = artifact('sai/orchestration/workers/sai-8-accessibility-worker.md');
+  const worker = artifact('sai/commands/accessibility/worker.md');
 
   assert.match(coordinator, /todo-structure\.md/,
     'the coordinator should reference the neutral todo-structure policy');

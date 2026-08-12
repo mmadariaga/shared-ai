@@ -34,6 +34,15 @@ const PHASE_WORKER_IDENTITIES = Object.freeze({
   performance: 'sai-7-performance-worker',
   accessibility: 'sai-8-accessibility-worker',
 });
+const PHASE_CONTRACT_DIRS = Object.freeze({
+  spec: 'spec',
+  design: 'design',
+  implementation: 'implement',
+  review: 'review',
+  security: 'security',
+  performance: 'performance',
+  accessibility: 'accessibility',
+});
 const MATRIX_ENTRY_REQUIRED_FIELDS = Object.freeze([
   'phase',
   'workerName',
@@ -120,7 +129,8 @@ function assertWorkerIdentity(entry, harness) {
   if (canonical && entry.workerName !== canonical) {
     throw new Error(`${prefix}phase ${entry.phase} has misassigned worker identity ${entry.workerName}`);
   }
-  const expectedContract = `sai/orchestration/workers/${entry.workerName}.md`;
+  const contractDir = PHASE_CONTRACT_DIRS[entry.phase] || entry.phase;
+  const expectedContract = `sai/commands/${contractDir}/worker.md`;
   if (entry.workerContract !== expectedContract) {
     throw new Error(`${prefix}phase ${entry.phase} has mismatched worker contract ${entry.workerContract}`);
   }

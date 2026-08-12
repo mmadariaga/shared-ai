@@ -26,7 +26,7 @@
       {
         "phase": "spec",
         "workerName": "sai-1-spec-proposal-worker",
-        "workerContract": "sai/orchestration/workers/sai-1-spec-proposal-worker.md",
+        "workerContract": "sai/commands/spec/worker.md",
         "bindingStem": "spec",
         "dispatchPrimitive": "task",
         "initialDispatch": "dispatch sai-1-spec-proposal-worker",
@@ -53,7 +53,7 @@
       {
         "phase": "design",
         "workerName": "sai-2-design-worker",
-        "workerContract": "sai/orchestration/workers/sai-2-design-worker.md",
+        "workerContract": "sai/commands/design/worker.md",
         "bindingStem": "design",
         "dispatchPrimitive": "Agent",
         "initialDispatch": "dispatch sai-2-design-worker",
@@ -80,7 +80,7 @@
       {
         "phase": "implementation",
         "workerName": "sai-3-implementation-worker",
-        "workerContract": "sai/orchestration/workers/sai-3-implementation-worker.md",
+        "workerContract": "sai/commands/implement/worker.md",
         "bindingStem": "implementation",
         "dispatchPrimitive": "task",
         "initialDispatch": "dispatch sai-3-implementation-worker",
@@ -107,7 +107,7 @@
       {
         "phase": "review",
         "workerName": "sai-5-review-worker",
-        "workerContract": "sai/orchestration/workers/sai-5-review-worker.md",
+        "workerContract": "sai/commands/review/worker.md",
         "bindingStem": "review",
         "dispatchPrimitive": "task",
         "initialDispatch": "dispatch sai-5-review-worker",
@@ -134,7 +134,7 @@
       {
         "phase": "security",
         "workerName": "sai-6-security-worker",
-        "workerContract": "sai/orchestration/workers/sai-6-security-worker.md",
+        "workerContract": "sai/commands/security/worker.md",
         "bindingStem": "security",
         "dispatchPrimitive": "task",
         "initialDispatch": "dispatch sai-6-security-worker",
@@ -161,7 +161,7 @@
       {
         "phase": "performance",
         "workerName": "sai-7-performance-worker",
-        "workerContract": "sai/orchestration/workers/sai-7-performance-worker.md",
+        "workerContract": "sai/commands/performance/worker.md",
         "bindingStem": "performance",
         "dispatchPrimitive": "task",
         "initialDispatch": "dispatch sai-7-performance-worker",
@@ -188,7 +188,7 @@
       {
         "phase": "accessibility",
         "workerName": "sai-8-accessibility-worker",
-        "workerContract": "sai/orchestration/workers/sai-8-accessibility-worker.md",
+        "workerContract": "sai/commands/accessibility/worker.md",
         "bindingStem": "accessibility",
         "dispatchPrimitive": "task",
         "initialDispatch": "dispatch sai-8-accessibility-worker",
@@ -222,8 +222,10 @@
     { "id": "sai-instructions", "source": "sai/instructions", "destination": { "class": "sai", "path": "instructions" }, "harnesses": ["claude", "opencode"], "strategy": "copy", "recursive": true, "include": ["**/*.md"], "ownership": "managed", "drift": "content" },
     { "id": "change-overview-instruction", "source": "sai/instructions/change-overview.md", "destination": { "class": "sai", "path": "instructions/change-overview.md" }, "harnesses": ["claude", "opencode"], "strategy": "copy", "recursive": false, "overrides": "sai-instructions", "ownership": "managed", "drift": "content" },
     { "id": "sai-policies", "source": "sai/policies", "destination": { "class": "sai", "path": "policies" }, "harnesses": ["claude", "opencode"], "strategy": "copy", "recursive": true, "include": ["**/*.md"], "ownership": "managed", "drift": "content" },
-    { "id": "claude-orchestration", "source": "sai/orchestration", "destination": { "class": "sai", "path": "orchestration" }, "harnesses": ["claude"], "strategy": "copy", "recursive": true, "include": ["coordinator-contract.md", "worker-lifecycle.md", "workers/*.md"], "ownership": "managed", "drift": "content" },
-    { "id": "opencode-orchestration", "source": "sai/orchestration", "destination": { "class": "sai", "path": "orchestration" }, "harnesses": ["opencode"], "strategy": "copy", "recursive": true, "include": ["coordinator-contract.md", "worker-lifecycle.md", "workers/*.md"], "ownership": "managed", "drift": "content" },
+    { "id": "sai-command-runner", "source": "sai/command-runner.md", "destination": { "class": "sai", "path": "command-runner.md" }, "harnesses": ["claude", "opencode"], "strategy": "copy", "recursive": false, "ownership": "managed", "drift": "content" },
+    { "id": "sai-worker-core", "source": "sai/worker-core.md", "destination": { "class": "sai", "path": "worker-core.md" }, "harnesses": ["claude", "opencode"], "strategy": "copy", "recursive": false, "ownership": "managed", "drift": "content" },
+    { "id": "claude-orchestration", "source": "sai/orchestration", "destination": { "class": "sai", "path": "orchestration" }, "harnesses": ["claude"], "strategy": "copy", "recursive": true, "include": ["__moved__.md"], "ownership": "managed", "drift": "content" },
+    { "id": "opencode-orchestration", "source": "sai/orchestration", "destination": { "class": "sai", "path": "orchestration" }, "harnesses": ["opencode"], "strategy": "copy", "recursive": true, "include": ["__moved__.md"], "ownership": "managed", "drift": "content" },
     { "id": "claude-idea-list-render-binding", "source": "sai/orchestration/workers/bindings/claude/idea-list-render.md", "destination": { "class": "sai", "path": "orchestration/workers/bindings/idea-list-render.md" }, "harnesses": ["claude"], "strategy": "copy", "recursive": false, "ownership": "managed", "drift": "content" },
     { "id": "opencode-idea-list-render-binding", "source": "sai/orchestration/workers/bindings/opencode/idea-list-render.md", "destination": { "class": "sai", "path": "orchestration/workers/bindings/idea-list-render.md" }, "harnesses": ["opencode"], "strategy": "copy", "recursive": false, "ownership": "managed", "drift": "content" },
     { "id": "universal-skills", "source": "skills/universal", "destination": { "class": "skills", "path": "." }, "harnesses": ["claude", "opencode"], "strategy": "copy", "recursive": true, "include": ["**/SKILL.md"], "ownership": "managed", "drift": "content" },

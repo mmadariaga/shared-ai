@@ -46,6 +46,22 @@ function removeTempDir(dir) {
   fs.rmSync(dir, { recursive: true, force: true });
 }
 
+test('Step 1 design card uses neutral root protocols and retires flat canonical sources', () => {
+  const coordinator = artifact('sai/commands/design/coordinator.md');
+  const worker = artifact('sai/commands/design/worker.md');
+  assert.match(coordinator, /@sai\/command-runner\.md/);
+  assert.match(coordinator, /@sai\/worker-core\.md/);
+  assert.match(worker, /@sai\/worker-core\.md/);
+  for (const relativePath of [
+    'sai/orchestration/coordinator-contract.md',
+    'sai/orchestration/worker-lifecycle.md',
+    'sai/orchestration/workers/sai-2-design-worker.md',
+  ]) {
+    assert.equal(fs.existsSync(path.join(repoRoot, relativePath)), false,
+      `${relativePath} should be absent from the active source layout`);
+  }
+});
+
 function writeFixture(root, relativePath, content) {
   const filePath = path.join(root, relativePath);
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
@@ -69,14 +85,14 @@ function capture(fn) {
 }
 
 test('Step 2 uses one canonical coordinator, lifecycle, worker, and binding layout', () => {
-  const coordinator = artifact('sai/orchestration/coordinator-contract.md');
-  const lifecycle = artifact('sai/orchestration/worker-lifecycle.md');
-  const worker = artifact('sai/orchestration/workers/sai-2-design-worker.md');
+  const coordinator = artifact('sai/command-runner.md');
+  const lifecycle = artifact('sai/worker-core.md');
+  const worker = artifact('sai/commands/design/worker.md');
   assert.match(coordinator, /completed|needs_input|failed|cancelled/);
   assert.match(coordinator, /changed_files.*union|union.*changed_files/i);
   assert.match(lifecycle, /resolved_change_name/);
   assert.match(lifecycle, /binding-owned/);
-  assert.match(worker, /Fetch @sai\/orchestration\/worker-lifecycle\.md/);
+  assert.match(worker, /Fetch @sai\/worker-core\.md/);
   for (const harness of ['claude', 'opencode']) {
     assert.match(matrixBinding(harness, 'design'), /worker/i);
   }
@@ -133,7 +149,7 @@ test('shared feedback gate defines routed design ownership without changing cano
 
 test('sai-2 feedback routes one coordinator prompt to the same worker and preserves terminal proceed', () => {
   const coordinator = artifact('sai/commands/design/coordinator.md');
-  const worker = artifact('sai/orchestration/workers/sai-2-design-worker.md');
+  const worker = artifact('sai/commands/design/worker.md');
 
   const feedbackFetch = coordinator.indexOf('Fetch @sai/policies/artifact-feedback-gate.md');
   const completionGate = coordinator.search(/completion gate/i);
@@ -193,7 +209,7 @@ test('standalone policies have one canonical home and active fetches use it', ()
     artifact('sai/instructions/commit.md'),
     artifact('sai/commands/spec/coordinator.md'),
     artifact('sai/commands/design/coordinator.md'),
-    artifact('sai/orchestration/workers/sai-2-design-worker.md'),
+    artifact('sai/commands/design/worker.md'),
   ].join('\n');
   assert.doesNotMatch(activeSources, /@sai\/instructions\/(?:artifact-feedback-gate|change-picker|commit-rules|prereqs|status-picker)\.md/);
   for (const file of policies) {
@@ -749,7 +765,7 @@ test('sai-2 feedback gate advertises and accepts direct free-text replies', () =
 // ─── Step 2: command-progress-plan-protocol (coordinator-contract.md) ───────
 
 test('Step 2: dispatch passes exactly wrapper_echo_value and arguments_value; the plan is not carried in the envelope or any reconstruction field', () => {
-  const coordinator = artifact('sai/orchestration/coordinator-contract.md');
+  const coordinator = artifact('sai/command-runner.md');
 
   assert.match(coordinator, /exactly[\s\S]{0,120}wrapper_echo_value/,
     'the contract should state the dispatch passes exactly wrapper_echo_value');
@@ -765,7 +781,7 @@ test('Step 2: dispatch passes exactly wrapper_echo_value and arguments_value; th
 });
 
 test('Step 2: progress_plan is an optional static ordered adapter field, fully known at dispatch and immutable', () => {
-  const coordinator = artifact('sai/orchestration/coordinator-contract.md');
+  const coordinator = artifact('sai/command-runner.md');
 
   assert.match(coordinator, /optional[\s\S]{0,120}progress_plan|progress_plan[\s\S]{0,120}optional/i,
     'progress_plan should be optional in the phase-adapter field set');
@@ -776,7 +792,7 @@ test('Step 2: progress_plan is an optional static ordered adapter field, fully k
 });
 
 test('Step 2: a progress event reporting an undeclared step id is ignored; the plan is never extended or amended', () => {
-  const coordinator = artifact('sai/orchestration/coordinator-contract.md');
+  const coordinator = artifact('sai/command-runner.md');
 
   assert.match(coordinator, /undeclared/,
     'the contract should address undeclared step ids');
@@ -787,7 +803,7 @@ test('Step 2: a progress event reporting an undeclared step id is ignored; the p
 });
 
 test('Step 2: progress-event paths join the changed-file union in first-seen order and are never reset', () => {
-  const coordinator = artifact('sai/orchestration/coordinator-contract.md');
+  const coordinator = artifact('sai/command-runner.md');
 
   assert.match(coordinator, /continue_after_progress/,
     'the lifecycle should continue the same worker with continue_after_progress');
@@ -798,7 +814,7 @@ test('Step 2: progress-event paths join the changed-file union in first-seen ord
 });
 
 test('Step 2: the union non-reset enumeration includes progress events', () => {
-  const coordinator = artifact('sai/orchestration/coordinator-contract.md');
+  const coordinator = artifact('sai/command-runner.md');
 
   assert.match(coordinator, /event:\s*progress|event\s*=\s*progress|progress event/i,
     'the lifecycle should handle progress events');
@@ -811,7 +827,7 @@ test('Step 2: the union non-reset enumeration includes progress events', () => {
 // ─── Step 3: command-progress-plan-protocol (worker-lifecycle.md) ───────────
 
 test('Step 3: worker-lifecycle defines the progress-event block with exactly event: progress, step_ids, changed_files, nonterminal status, and protocol-only continue_after_progress', () => {
-  const lifecycle = artifact('sai/orchestration/worker-lifecycle.md');
+  const lifecycle = artifact('sai/worker-core.md');
 
   assert.match(lifecycle, /event:\s*"?progress"?/,
     'the lifecycle should define the progress event with exactly event: progress');
@@ -828,7 +844,7 @@ test('Step 3: worker-lifecycle defines the progress-event block with exactly eve
 });
 
 test('Step 3: continue_after_progress is excluded from opaque input history, user-answer handling, and pending feedback', () => {
-  const lifecycle = artifact('sai/orchestration/worker-lifecycle.md');
+  const lifecycle = artifact('sai/worker-core.md');
 
   assert.match(lifecycle, /continue_after_progress/,
     'the lifecycle should define continue_after_progress');
@@ -843,7 +859,7 @@ test('Step 3: continue_after_progress is excluded from opaque input history, use
 });
 
 test('the lifecycle obliges planned workers to emit progress and keeps payload validation for plan-absent workers', () => {
-  const lifecycle = artifact('sai/orchestration/worker-lifecycle.md');
+  const lifecycle = artifact('sai/worker-core.md');
 
   assert.match(lifecycle, /design[\s\S]{0,200}spec[- ]proposal[\s\S]{0,200}implementation[- ]planning[\s\S]{0,200}review[\s\S]{0,200}security[\s\S]{0,200}performance[\s\S]{0,200}accessibility/i,
     'the emitter set should name all seven routed workers in order');
@@ -882,7 +898,7 @@ test('Step 4: design coordinator declares the plan with the four canonical steps
 });
 
 test('Step 4: the design worker contract enumerates the same four step ids in the same order', () => {
-  const worker = artifact('sai/orchestration/workers/sai-2-design-worker.md');
+  const worker = artifact('sai/commands/design/worker.md');
 
   assert.match(
     worker,
@@ -974,7 +990,7 @@ test('Step 4: needs_input is a terminal lifecycle status but not a run-closing o
 // ─── Step 5: command-progress-plan-protocol (sai-2-design-worker.md) ────────
 
 test('Step 5: the design worker contract emits one progress event per completed batch after resolution, ids in plan order, changed_files since the preceding result', () => {
-  const worker = artifact('sai/orchestration/workers/sai-2-design-worker.md');
+  const worker = artifact('sai/commands/design/worker.md');
 
   assert.match(worker, /progress event/i,
     'the design worker contract should define the progress event emission');
@@ -1001,7 +1017,7 @@ test('Step 5: the design worker contract emits one progress event per completed 
 });
 
 test('Step 5: the startup act is one batch and emits one event carrying every step id that act completed (startup-act-is-one-batch)', () => {
-  const worker = artifact('sai/orchestration/workers/sai-2-design-worker.md');
+  const worker = artifact('sai/commands/design/worker.md');
 
   assert.match(worker, /startup act|startup[- ]act/i,
     'the contract should name the startup act');
@@ -1023,7 +1039,7 @@ test('Step 5: the startup act is one batch and emits one event carrying every st
 });
 
 test('Step 5: fast-track-skipped gate steps fold into the completed batch with no separate skipped field (skipped-steps-fold-into-the-batch)', () => {
-  const worker = artifact('sai/orchestration/workers/sai-2-design-worker.md');
+  const worker = artifact('sai/commands/design/worker.md');
 
   assert.match(worker, /fast[- ]track/i,
     'the contract should address fast-track handling');
@@ -1042,7 +1058,7 @@ test('Step 5: fast-track-skipped gate steps fold into the completed batch with n
 });
 
 test('Step 5: the run closes with exactly one terminal lifecycle status, never a progress event in place of a terminal payload (terminal-payload-still-closes)', () => {
-  const worker = artifact('sai/orchestration/workers/sai-2-design-worker.md');
+  const worker = artifact('sai/commands/design/worker.md');
 
   assert.match(
     worker,
@@ -1178,7 +1194,7 @@ test('Step 2 design wrappers document the same overview language option', () => 
 });
 
 test('Step 2 design worker validates and defaults the invocation language before resolution', () => {
-  const worker = artifact('sai/orchestration/workers/sai-2-design-worker.md');
+  const worker = artifact('sai/commands/design/worker.md');
 
   assert.match(worker, /--overview-lang <language>/);
   assert.match(worker, /English/);
@@ -1190,7 +1206,7 @@ test('Step 2 design worker validates and defaults the invocation language before
 });
 
 test('Step 2 carries overview_language through the worker and generation continuation', () => {
-  const worker = artifact('sai/orchestration/workers/sai-2-design-worker.md');
+  const worker = artifact('sai/commands/design/worker.md');
   const coordinator = artifact('sai/commands/design/coordinator.md');
   const bindings = [
     matrixBinding('claude', 'design'),

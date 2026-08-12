@@ -1,4 +1,4 @@
-# Coordinator Contract
+# Command Runner
 
 This contract is phase-neutral. The coordinator owns lifecycle routing and does
 not perform the technical work delegated to a worker.
