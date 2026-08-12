@@ -7,6 +7,7 @@
 <TASK>
 
   Fetch @sai/orchestration/coordinator-contract.md and follow it exactly.
+  Fetch @sai/orchestration/worker-lifecycle.md and follow it exactly.
 
   ## Performance phase adapter (`performance_coordinator_adapter`)
 

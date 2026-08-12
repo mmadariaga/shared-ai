@@ -7,6 +7,7 @@
 <TASK>
 
   Fetch @sai/orchestration/coordinator-contract.md and follow it exactly.
+  Fetch @sai/orchestration/worker-lifecycle.md and follow it exactly.
 
   ## Accessibility phase adapter (`accessibility_coordinator_adapter`)
 

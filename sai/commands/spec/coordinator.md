@@ -7,6 +7,7 @@
 <TASK>
 
   Fetch @sai/orchestration/coordinator-contract.md and follow it exactly.
+  Fetch @sai/orchestration/worker-lifecycle.md and follow it exactly.
   Fetch @sai/policies/artifact-feedback-gate.md before applying the completion gate. Supply `artifacts = proposal.md, specs/**`, `proceed-label = Finish step`, and `next-action = the existing mandatory stop`.
 
   ## Spec phase adapter
