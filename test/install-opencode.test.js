@@ -34,6 +34,16 @@ const CURRENT_CENSUS = [
   'sai-7-performance-worker',
   'sai-8-accessibility-worker',
 ];
+const UTILITY_COMMANDS = {
+  'sai-4-apply': 'apply',
+  'sai-archive': 'archive',
+  'sai-backfill': 'backfill',
+  'sai-commit': 'commit',
+  'sai-explore': 'explore',
+  'sai-pr': 'pr',
+  'sai-status': 'status',
+  'sai-worktree': 'worktree',
+};
 const SAI_EXTERNAL_DIRECTORY = '~/.config/opencode/sai/**';
 const OPENCODE_COMMANDS_EXTERNAL_DIRECTORY = '~/.config/opencode/commands/**';
 const OPENCODE_SKILLS_EXTERNAL_DIRECTORY = '~/.config/opencode/skills/**';
@@ -1369,6 +1379,92 @@ test('installOpencode active projection carries the neutral root protocols, rout
       'sai/orchestration/worker-lifecycle.md',
     ]) {
       assert.equal(sourceSet.has(retired), false, `${retired} should be absent from the active source layout`);
+    }
+    assert.ok(sourceSet.has('sai/adapters/opencode/boot.md'),
+      'opencode should project its own boot adapter');
+    assert.equal(sourceSet.has('sai/adapters/claude/boot.md'), false,
+      'opencode must not project the Claude boot adapter');
+    for (const utility of Object.values(UTILITY_COMMANDS)) {
+      assert.ok(sourceSet.has(`sai/commands/${utility}/body.md`),
+        `opencode should project the utility card sai/commands/${utility}/body.md`);
+    }
+    for (const flat of Object.keys(UTILITY_COMMANDS).map(name => `sai/commands/${name}.md`)) {
+      assert.equal(sourceSet.has(flat), false, `${flat} must be absent from the active source layout`);
+    }
+  } finally {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+});
+
+test('opencode wrappers route through the opencode boot adapter and never the Claude adapter', () => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-boot-routing-'));
+  const wrappers = [
+    ...Object.keys(UTILITY_COMMANDS),
+    'sai-1-spec',
+    'sai-2-design',
+    'sai-3-implement',
+    'sai-5-review',
+    'sai-6-security',
+    'sai-7-performance',
+    'sai-8-accessibility',
+  ];
+  try {
+    installOpencode(tmpDir);
+    for (const name of wrappers) {
+      const wrapper = fs.readFileSync(path.join(tmpDir, 'commands', `${name}.md`), 'utf8');
+      assert.match(wrapper, /Fetch @sai\/adapters\/opencode\/boot\.md/,
+        `${name} should route through the opencode boot adapter`);
+      assert.doesNotMatch(wrapper, /Fetch @sai\/adapters\/claude\/boot\.md/,
+        `${name} must never route through the Claude boot adapter`);
+    }
+    assert.ok(fs.existsSync(path.join(tmpDir, 'sai', 'adapters', 'opencode', 'boot.md')),
+      'the opencode boot adapter should be installed');
+    assert.equal(fs.existsSync(path.join(tmpDir, 'sai', 'adapters', 'claude', 'boot.md')), false,
+      'the Claude boot adapter must not be installed in the opencode harness');
+  } finally {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+});
+
+test('opencode boot adapter loads command-runner first, selects utility bodies, keeps opencode dispatch, and forwards the envelope byte-for-byte', () => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-boot-'));
+  try {
+    installOpencode(tmpDir);
+    const bootPath = path.join(tmpDir, 'sai', 'adapters', 'opencode', 'boot.md');
+    assert.ok(fs.existsSync(bootPath), 'the opencode boot adapter should be installed');
+    const boot = fs.readFileSync(bootPath, 'utf8');
+
+    const runner = boot.indexOf('Fetch @sai/command-runner.md');
+    assert.ok(runner !== -1, 'the opencode boot should load @sai/command-runner.md');
+    const cardIndexes = ['coordinator\\.md', 'body\\.md'].map(pattern => {
+      const index = boot.search(new RegExp(pattern));
+      return index === -1 ? Infinity : index;
+    });
+    assert.ok(runner < Math.min(...cardIndexes),
+      'the opencode boot should load @sai/command-runner.md before any card selection');
+
+    assert.match(boot, /command_name/, 'the opencode boot should route on command_name');
+    assert.match(boot, /wrapper_echo_value/, 'the opencode boot should carry wrapper_echo_value');
+    assert.match(boot, /arguments_value/, 'the opencode boot should carry arguments_value');
+    assert.match(boot, /byte-for-byte|verbatim|unchanged|without modification/i,
+      'the opencode boot should forward envelope values byte-for-byte');
+
+    assert.match(boot, /Fetch @sai\/commands\/(?:\{name\}|[a-z-]+)\/coordinator\.md/,
+      'routed selection should target the matching coordinator card');
+    assert.match(boot, /Fetch @sai\/commands\/(?:\{name\}|[a-z-]+)\/body\.md/,
+      'utility selection should target the matching body card');
+    for (const name of Object.values(UTILITY_COMMANDS)) {
+      assert.doesNotMatch(boot, new RegExp(`@sai/commands/${name}/coordinator\\.md`),
+        `the opencode boot must not select a coordinator card for the ${name} utility`);
+    }
+
+    assert.doesNotMatch(boot, /\bAgent\s*\(/,
+      'the opencode boot adapter must not mention the Claude Agent dispatch primitive');
+    for (const name of Object.values(UTILITY_COMMANDS)) {
+      const cardDir = path.join(tmpDir, 'sai', 'commands', name);
+      assert.ok(fs.existsSync(cardDir), `the ${name} utility card directory should exist`);
+      assert.deepEqual(fs.readdirSync(cardDir), ['body.md'],
+        `the ${name} utility card directory should contain only body.md`);
     }
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });

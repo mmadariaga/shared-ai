@@ -1311,3 +1311,58 @@ test('matrix worker bindings and agents are the sole worker inventory per harnes
       `${harness} must not project any retired per-phase worker source`);
   }
 });
+
+test('canonical manifest projects exactly one harness boot adapter and the utility body cards per harness', () => {
+  const repoRoot = path.join(__dirname, '..');
+  const manifest = loadInstallManifest(repoRoot);
+  const destinationRoot = {
+    commands: path.join(os.tmpdir(), 'sai-adapter-commands'),
+    sai: path.join(os.tmpdir(), 'sai-adapter-sai'),
+    skills: path.join(os.tmpdir(), 'sai-adapter-skills'),
+    agents: path.join(os.tmpdir(), 'sai-adapter-agents'),
+    config: path.join(os.tmpdir(), 'sai-adapter-config'),
+    root: path.join(os.tmpdir(), 'sai-adapter-config'),
+  };
+  const utilities = ['apply', 'archive', 'backfill', 'commit', 'explore', 'pr', 'status', 'worktree'];
+  const flatSources = [
+    'sai/commands/sai-4-apply.md',
+    'sai/commands/sai-archive.md',
+    'sai/commands/sai-backfill.md',
+    'sai/commands/sai-commit.md',
+    'sai/commands/sai-explore.md',
+    'sai/commands/sai-pr.md',
+    'sai/commands/sai-status.md',
+    'sai/commands/sai-worktree.md',
+  ];
+
+  for (const harness of ['claude', 'opencode']) {
+    const projections = expandInstallManifest(manifest, { harness, repoRoot, destinationRoot });
+    const sources = projections.map(projection => path.relative(repoRoot, projection.sourcePath).split(path.sep).join('/'));
+    const sourceSet = new Set(sources);
+
+    assert.ok(sourceSet.has(`sai/adapters/${harness}/boot.md`),
+      `${harness} should project its own boot adapter`);
+    const foreign = harness === 'claude' ? 'sai/adapters/opencode/boot.md' : 'sai/adapters/claude/boot.md';
+    assert.equal(sourceSet.has(foreign), false,
+      `${harness} must not project the foreign boot adapter ${foreign}`);
+
+    for (const utility of utilities) {
+      assert.ok(sourceSet.has(`sai/commands/${utility}/body.md`),
+        `${harness} should project the utility card sai/commands/${utility}/body.md`);
+    }
+    for (const flat of flatSources) {
+      assert.equal(sourceSet.has(flat), false,
+        `${harness} must not project the flat utility source ${flat}`);
+    }
+
+    const adapter = projections.find(projection =>
+      projection.destinationPath.endsWith(path.join('adapters', harness, 'boot.md')));
+    assert.ok(adapter, `${harness} should land its boot adapter at sai/adapters/${harness}/boot.md`);
+    assert.equal(adapter.harness, harness, `${harness} boot adapter projection should be harness-scoped`);
+    for (const utility of utilities) {
+      const card = projections.find(projection =>
+        projection.destinationPath.endsWith(path.join('commands', utility, 'body.md')));
+      assert.ok(card, `${harness} should land the ${utility} utility card at sai/commands/${utility}/body.md`);
+    }
+  }
+});

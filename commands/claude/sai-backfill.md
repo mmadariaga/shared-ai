@@ -7,4 +7,9 @@ effort: medium
 ## Sai Backfill
 
 Fetch @skills/fetch/SKILL.md
-Fetch @sai/commands/sai-backfill.md and follow those instructions exactly.
+Fetch @sai/adapters/claude/boot.md and follow it.
+
+InvocationEnvelope:
+  command_name: backfill
+  wrapper_echo_value: ""
+  arguments_value: $ARGUMENTS

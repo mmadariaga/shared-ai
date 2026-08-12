@@ -8,5 +8,11 @@ allowed-tools: Read, Glob, Skill, Agent, SendMessage, AskUserQuestion
 ## Sai Review - 5
 
 Fetch @skills/fetch/SKILL.md
+Fetch @sai/adapters/claude/boot.md and follow it.
 Fetch @sai/orchestration/workers/bindings/review-worker.md and use it.
 Fetch @sai/commands/review/coordinator.md and follow those instructions exactly.
+
+InvocationEnvelope:
+  command_name: review
+  wrapper_echo_value: ""
+  arguments_value: $ARGUMENTS

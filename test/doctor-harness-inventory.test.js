@@ -215,4 +215,45 @@ describe('doctor harness inventory', () => {
     }
   });
 
+  test('Step 2: doctor inventories one harness adapter and the utility body cards with no flat sources', async () => {
+    const projectRoot = makeGoodFixture();
+    const claudeBase = makeTempDir('sai-harness-boot-claude-');
+    const opencodeBase = makeTempDir('sai-harness-boot-opencode-');
+    const utilities = ['apply', 'archive', 'backfill', 'commit', 'explore', 'pr', 'status', 'worktree'];
+    try {
+      installClaude(claudeBase);
+      installOpencode(opencodeBase);
+
+      for (const [base, harness, foreign] of [
+        [claudeBase, 'claude', 'opencode'],
+        [opencodeBase, 'opencode', 'claude'],
+      ]) {
+        assert.ok(fs.existsSync(path.join(base, 'sai', 'adapters', harness, 'boot.md')),
+          `${harness} should install its own boot adapter`);
+        assert.equal(fs.existsSync(path.join(base, 'sai', 'adapters', foreign, 'boot.md')), false,
+          `${harness} must not install the foreign boot adapter`);
+        for (const utility of utilities) {
+          assert.ok(fs.existsSync(path.join(base, 'sai', 'commands', utility, 'body.md')),
+            `${harness} should install the ${utility} utility body card`);
+        }
+        assert.equal(fs.existsSync(path.join(base, 'sai', 'commands', 'sai-4-apply.md')), false,
+          `${harness} must not install the flat sai-4-apply.md utility source`);
+      }
+
+      const { code, parsed } = await runDoctor({ projectRoot, claudeBase, opencodeBase });
+      assert.equal(code, 0);
+      for (const key of ['[Claude Code]', '[Opencode]']) {
+        const section = parsed[key];
+        assert.ok(section, `${key} section should exist`);
+        for (const r of section.files) {
+          assert.equal(r.severity, 'ok', `${key} file ${r.name} should be ok`);
+        }
+      }
+    } finally {
+      fs.rmSync(projectRoot, { recursive: true, force: true });
+      fs.rmSync(claudeBase, { recursive: true, force: true });
+      fs.rmSync(opencodeBase, { recursive: true, force: true });
+    }
+  });
+
 });

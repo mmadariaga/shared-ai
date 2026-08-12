@@ -6,6 +6,11 @@ model: opencode-go/deepseek-v4-flash
 ## Sai Archive
 
 Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.
-Fetch @sai/commands/sai-archive.md and follow those instructions exactly.
+Fetch @sai/adapters/opencode/boot.md and follow it.
+
+InvocationEnvelope:
+  command_name: archive
+  wrapper_echo_value: $ARGUMENTS
+  arguments_value: $ARGUMENTS
 
 **Change-name argument and and optional flags:** $ARGUMENTS

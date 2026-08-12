@@ -6,4 +6,9 @@ model: opencode-go/minimax-m3
 ## Sai Backfill
 
 Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.
-Fetch @sai/commands/sai-backfill.md and follow those instructions exactly.
+Fetch @sai/adapters/opencode/boot.md and follow it.
+
+InvocationEnvelope:
+  command_name: backfill
+  wrapper_echo_value: $ARGUMENTS
+  arguments_value: $ARGUMENTS

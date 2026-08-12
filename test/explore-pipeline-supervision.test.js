@@ -8,7 +8,7 @@ const path = require('path');
 const repoRoot = path.join(__dirname, '..');
 const exploreSources = [
   'sai/instructions/explore.md',
-  'sai/commands/sai-explore.md',
+  'sai/commands/explore/body.md',
   'commands/claude/sai-explore.md',
   'commands/opencode/sai-explore.md',
 ];
@@ -615,11 +615,11 @@ test('Claude Code and opencode consume the same shared closure contract', () => 
   const claude = spec('commands/claude/sai-explore.md');
   const opencode = spec('commands/opencode/sai-explore.md');
 
-  assert.match(claude, /Fetch @sai\/commands\/sai-explore\.md/);
-  assert.match(opencode, /Fetch @sai\/commands\/sai-explore\.md/);
+  assert.match(claude, /Fetch @sai\/adapters\/claude\/boot\.md and follow it\./);
+  assert.match(opencode, /Fetch @sai\/adapters\/opencode\/boot\.md and follow it\./);
   assert.equal(
-    claude.match(/Fetch @sai\/commands\/sai-explore\.md/)?.[0],
-    opencode.match(/Fetch @sai\/commands\/sai-explore\.md/)?.[0]
+    claude.match(/command_name:\s*explore/)?.[0],
+    opencode.match(/command_name:\s*explore/)?.[0]
   );
 
   for (const literal of [
@@ -636,7 +636,7 @@ test('Claude Code and opencode consume the same shared closure contract', () => 
 });
 
 test('Step 1 parses an optional overview language before fast-track and defaults to English', () => {
-  const source = spec('sai/commands/sai-explore.md');
+  const source = spec('sai/commands/explore/body.md');
 
   assert.match(source, /## Overview-language parse/);
   assert.match(source, /--overview-lang <language>/);

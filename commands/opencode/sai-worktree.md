@@ -3,6 +3,11 @@ description: Interactive git worktree manager — inventory, Create/Delete/Exit 
 model: opencode-go/deepseek-v4-flash
 ---
 Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.
-Fetch @sai/commands/sai-worktree.md and follow those instructions exactly.
+Fetch @sai/adapters/opencode/boot.md and follow it.
+
+InvocationEnvelope:
+  command_name: worktree
+  wrapper_echo_value: $ARGUMENTS
+  arguments_value: $ARGUMENTS
 
 **Worktree arguments:** $ARGUMENTS

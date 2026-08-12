@@ -6,5 +6,9 @@ model: haiku
 ## Sai PR
 
 Fetch @skills/fetch/SKILL.md
-Fetch @sai/commands/sai-pr.md and follow those instructions exactly.
+Fetch @sai/adapters/claude/boot.md and follow it.
 
+InvocationEnvelope:
+  command_name: pr
+  wrapper_echo_value: ""
+  arguments_value: $ARGUMENTS

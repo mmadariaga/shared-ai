@@ -6,5 +6,9 @@ model: haiku
 ## Sai Archive
 
 Fetch @skills/fetch/SKILL.md
-Fetch @sai/commands/sai-archive.md and follow those instructions exactly.
+Fetch @sai/adapters/claude/boot.md and follow it.
 
+InvocationEnvelope:
+  command_name: archive
+  wrapper_echo_value: ""
+  arguments_value: $ARGUMENTS

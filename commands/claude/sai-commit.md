@@ -6,5 +6,9 @@ model: haiku
 ## Sai Commit
 
 Fetch @skills/fetch/SKILL.md
-Fetch @sai/commands/sai-commit.md and follow those instructions exactly.
+Fetch @sai/adapters/claude/boot.md and follow it.
 
+InvocationEnvelope:
+  command_name: commit
+  wrapper_echo_value: ""
+  arguments_value: $ARGUMENTS

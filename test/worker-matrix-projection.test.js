@@ -33,6 +33,11 @@ const WORKER_NAME = {
   accessibility: 'sai-8-accessibility-worker',
 };
 
+const PHASE_CONTRACT_PATH = Object.freeze(Object.fromEntries(
+  PHASE_ORDER.map(phase =>
+    [phase, `sai/commands/${phase === 'implementation' ? 'implement' : phase}/worker.md`]),
+));
+
 const WORKER_NAMES = Object.values(WORKER_NAME);
 
 function destinationRoots(prefix) {
@@ -55,8 +60,8 @@ function isRetiredPerPhaseSource(source, harness) {
   return new RegExp(`^agents/${harness}/sai-\\d-.*-worker\\.md$`).test(source);
 }
 
-function canonicalWorkerFetch(workerName) {
-  return `Fetch @sai/orchestration/workers/${workerName}.md and follow it exactly.`;
+function canonicalWorkerFetch(phase) {
+  return `Fetch @${PHASE_CONTRACT_PATH[phase]} and follow it exactly.`;
 }
 
 function normalizeDestination(destination, destinationRoot) {
@@ -84,7 +89,7 @@ function matrixEntry(phase) {
   const base = {
     phase,
     workerName,
-    workerContract: `sai/orchestration/workers/${workerName}.md`,
+    workerContract: PHASE_CONTRACT_PATH[phase],
     bindingStem: phase,
     dispatchPrimitive: 'task',
     initialDispatch: `dispatch ${workerName}`,
@@ -186,12 +191,12 @@ test('worker bindings land at identical neutral destinations and preserve the ha
       const claudeText = fs.readFileSync(path.join(claudeBase, relative), 'utf8');
       const opencodeText = fs.readFileSync(path.join(opencodeBase, relative), 'utf8');
       assert.equal(
-        (claudeText.match(new RegExp(`${canonicalWorkerFetch(WORKER_NAME[phase]).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`, 'g')) || []).length,
+        (claudeText.match(new RegExp(`${canonicalWorkerFetch(phase).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`, 'g')) || []).length,
         1,
         `claude ${phase} binding should carry exactly one canonical worker Fetch`
       );
       assert.equal(
-        (opencodeText.match(new RegExp(`${canonicalWorkerFetch(WORKER_NAME[phase]).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`, 'g')) || []).length,
+        (opencodeText.match(new RegExp(`${canonicalWorkerFetch(phase).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`, 'g')) || []).length,
         1,
         `opencode ${phase} binding should carry exactly one canonical worker Fetch`
       );
@@ -211,18 +216,18 @@ test('generated worker agents expose exactly one frontmatter block and one canon
     const base = fs.mkdtempSync(path.join(os.tmpdir(), `sai-matrix-agents-${harness}-`));
     try {
       install(base);
-      for (const workerName of WORKER_NAMES) {
+      for (const [phase, workerName] of Object.entries(WORKER_NAME)) {
         const agentPath = path.join(base, 'agents', `${workerName}.md`);
         assert.equal(fs.existsSync(agentPath), true, `${harness} should install ${workerName} agent`);
         const text = fs.readFileSync(agentPath, 'utf8').replaceAll('\r\n', '\n');
         assert.equal((text.match(/^---\r?\n/gm) || []).length, 2,
           `${harness} ${workerName} agent should contain exactly one frontmatter block`);
         assert.equal(
-          (text.match(/^Fetch @sai\/orchestration\/workers\/[^\s`]+\.md and follow it exactly\.$/gm) || []).length,
+          (text.match(/^Fetch @sai\/commands\/[a-z-]+\/worker\.md and follow it exactly\.$/gm) || []).length,
           1,
           `${harness} ${workerName} agent should contain exactly one canonical worker Fetch`
         );
-        assert.ok(text.includes(canonicalWorkerFetch(workerName)),
+        assert.ok(text.includes(canonicalWorkerFetch(phase)),
           `${harness} ${workerName} agent should target its own worker contract`);
         assert.match(text, /^model:/m,
           `${harness} ${workerName} agent should retain its model tunable`);

@@ -132,7 +132,7 @@ test('grouped design and implementation phase assets preserve their former sourc
   ];
 
   for (const phase of phases) {
-    assert.deepEqual(fs.readdirSync(phase.directory).sort(), ['coordinator.md', 'invocation.md']);
+    assert.deepEqual(fs.readdirSync(phase.directory).sort(), ['coordinator.md', 'invocation.md', 'worker.md']);
     assert.equal(
       fs.readFileSync(path.join(phase.directory, 'coordinator.md'), 'utf8'),
       fs.readFileSync(phase.coordinator, 'utf8')

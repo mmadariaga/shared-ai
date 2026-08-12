@@ -11,7 +11,13 @@ Fetch @skills/fetch/SKILL.md
 Fetch @sai/policies/glossary-format.md
 Fetch @skills/budget/SKILL.md and use it.
 Fetch @skills/safe-operations/SKILL.md and use it.
+Fetch @sai/adapters/claude/boot.md and follow it.
 Fetch @sai/orchestration/workers/bindings/spec-worker.md and use it.
 Fetch @sai/commands/spec/coordinator.md and follow those instructions exactly.
+
+InvocationEnvelope:
+  command_name: spec
+  wrapper_echo_value: ""
+  arguments_value: $ARGUMENTS
 
 **Spec request argument:** $ARGUMENTS

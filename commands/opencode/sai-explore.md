@@ -8,7 +8,12 @@ variant: max
 ## Sai Explore
 
 Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.
+Fetch @sai/adapters/opencode/boot.md and follow it.
 Fetch @sai/orchestration/workers/bindings/spec-worker.md and use it.
 Fetch @sai/orchestration/workers/bindings/design-worker.md and use it.
 Fetch @sai/orchestration/workers/bindings/idea-list-render.md and use it.
-Fetch @sai/commands/sai-explore.md and follow those instructions exactly.
+
+InvocationEnvelope:
+  command_name: explore
+  wrapper_echo_value: $ARGUMENTS
+  arguments_value: $ARGUMENTS

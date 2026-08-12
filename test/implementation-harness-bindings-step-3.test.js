@@ -42,6 +42,16 @@ const MANAGED_WORKER_NAMES = [
   'sai-8-accessibility-worker',
 ];
 
+const WORKER_CONTRACT_DIRS = {
+  'sai-1-spec-proposal-worker': 'spec',
+  'sai-2-design-worker': 'design',
+  'sai-3-implementation-worker': 'implement',
+  'sai-5-review-worker': 'review',
+  'sai-6-security-worker': 'security',
+  'sai-7-performance-worker': 'performance',
+  'sai-8-accessibility-worker': 'accessibility',
+};
+
 function tempDir(prefix) {
   return fs.mkdtempSync(path.join(os.tmpdir(), prefix));
 }
@@ -91,16 +101,16 @@ test('Claude implementation coordinator uses low effort', () => {
 test('Step 3 manifest projects the shared lifecycle and one active harness binding', () => {
   const expected = {
     claude: [
-      'sai/orchestration/coordinator-contract.md',
-      'sai/orchestration/worker-lifecycle.md',
-      'sai/orchestration/workers/sai-3-implementation-worker.md',
+      'sai/command-runner.md',
+      'sai/worker-core.md',
+      'sai/commands/implement/worker.md',
       '.tmp/collapse-sai-worker-matrix/matrix-sources/claude/implementation-worker.md',
       '.tmp/collapse-sai-worker-matrix/matrix-sources/claude/sai-3-implementation-worker.md',
     ],
     opencode: [
-      'sai/orchestration/coordinator-contract.md',
-      'sai/orchestration/worker-lifecycle.md',
-      'sai/orchestration/workers/sai-3-implementation-worker.md',
+      'sai/command-runner.md',
+      'sai/worker-core.md',
+      'sai/commands/implement/worker.md',
       '.tmp/collapse-sai-worker-matrix/matrix-sources/opencode/implementation-worker.md',
     ],
   };
@@ -360,7 +370,7 @@ test('Step 3 opencode agent files install with subagent frontmatter and the cano
       assert.match(content, /^model:/m, `${worker} should declare a model`);
       assert.match(content, /^permission:\s*$/m, `${worker} should declare a permission block`);
       assert.match(content, /^\s*task:/m, `${worker} should declare permission.task`);
-      assert.ok(content.includes(`Fetch @sai/orchestration/workers/${worker}.md and follow it exactly.`),
+      assert.ok(content.includes(`Fetch @sai/commands/${WORKER_CONTRACT_DIRS[worker]}/worker.md and follow it exactly.`),
         `${worker} body should fetch its worker contract`);
     }
   } finally {

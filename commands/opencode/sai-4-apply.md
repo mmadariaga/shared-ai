@@ -7,6 +7,11 @@ variant: max
 ## Sai Apply - 4
 
 Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.
-Fetch @sai/commands/sai-4-apply.md and follow those instructions exactly.
+Fetch @sai/adapters/opencode/boot.md and follow it.
+
+InvocationEnvelope:
+  command_name: apply
+  wrapper_echo_value: $ARGUMENTS
+  arguments_value: $ARGUMENTS
 
 **Change-name argument and and optional flags:** $ARGUMENTS

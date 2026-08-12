@@ -290,7 +290,7 @@ describe('doctor fetch resolution', () => {
             const bindingText = fs.readFileSync(
               path.join(base, 'sai', 'orchestration', 'workers', ...target.split('/')), 'utf8');
             assert.equal(
-              (bindingText.match(/Fetch @sai\/orchestration\/workers\/sai-[^\s`]+\.md and follow it exactly\./g) || []).length,
+              (bindingText.match(/Fetch @sai\/commands\/[a-z-]+\/worker\.md and follow it exactly\./g) || []).length,
               1,
               `${sectionName} ${target} should carry exactly one canonical worker Fetch`
             );
@@ -304,6 +304,47 @@ describe('doctor fetch resolution', () => {
 
         assert.equal(refText.filter(text => /Fetch @skills\/sai-.*worker\/SKILL\.md/.test(text)).length, 0,
           `${sectionName} should contain no active worker skill fetches`);
+      }
+    } finally {
+      fs.rmSync(projectRoot, { recursive: true, force: true });
+      fs.rmSync(claudeBase, { recursive: true, force: true });
+      fs.rmSync(opencodeBase, { recursive: true, force: true });
+    }
+  });
+
+  test('Step 2: installed harness boots and utility body cards resolve with exactly one own adapter', async () => {
+    const projectRoot = makeGoodFixture();
+    const claudeBase = makeTempDir('sai-dr-boot-claude-');
+    const opencodeBase = makeTempDir('sai-dr-boot-opencode-');
+    const utilities = ['apply', 'archive', 'backfill', 'commit', 'explore', 'pr', 'status', 'worktree'];
+    try {
+      installClaude(claudeBase);
+      installOpencode(opencodeBase);
+
+      for (const [base, harness, foreign] of [
+        [claudeBase, 'claude', 'opencode'],
+        [opencodeBase, 'opencode', 'claude'],
+      ]) {
+        assert.ok(fs.existsSync(path.join(base, 'sai', 'adapters', harness, 'boot.md')),
+          `${harness} harness should install its own boot adapter`);
+        assert.equal(fs.existsSync(path.join(base, 'sai', 'adapters', foreign, 'boot.md')), false,
+          `${harness} harness must not install the ${foreign} boot adapter`);
+        for (const utility of utilities) {
+          assert.ok(fs.existsSync(path.join(base, 'sai', 'commands', utility, 'body.md')),
+            `${harness} harness should install the ${utility} utility body card`);
+        }
+        assert.equal(fs.existsSync(path.join(base, 'sai', 'commands', 'sai-4-apply.md')), false,
+          `${harness} harness must not install the flat sai-4-apply.md source`);
+      }
+
+      const { code, parsed } = await runDoctor({ projectRoot, claudeBase, opencodeBase });
+      assert.equal(code, 0);
+      for (const sectionName of ['[Claude Code]', '[Opencode]']) {
+        const section = parsed[sectionName];
+        assert.ok(section, `${sectionName} section should exist`);
+        const refErrors = (section['fetch-ref'] || []).filter(r => r.severity === 'error');
+        assert.equal(refErrors.length, 0,
+          `${sectionName} should resolve every Fetch reference including the boot adapter`);
       }
     } finally {
       fs.rmSync(projectRoot, { recursive: true, force: true });

@@ -6,6 +6,11 @@ model: opencode-go/deepseek-v4-flash
 ## Sai PR
 
 Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.
-Fetch @sai/commands/sai-pr.md and follow those instructions exactly.
+Fetch @sai/adapters/opencode/boot.md and follow it.
+
+InvocationEnvelope:
+  command_name: pr
+  wrapper_echo_value: $ARGUMENTS
+  arguments_value: $ARGUMENTS
 
 **Change-name argument:** $ARGUMENTS

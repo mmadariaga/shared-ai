@@ -4,4 +4,9 @@ model: haiku
 allowed-tools: Read, Glob, Grep, Bash(git:*), AskUserQuestion, Skill
 ---
 Fetch @skills/fetch/SKILL.md
-Fetch @sai/commands/sai-worktree.md and follow those instructions exactly.
+Fetch @sai/adapters/claude/boot.md and follow it.
+
+InvocationEnvelope:
+  command_name: worktree
+  wrapper_echo_value: ""
+  arguments_value: $ARGUMENTS

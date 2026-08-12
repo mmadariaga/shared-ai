@@ -201,10 +201,9 @@ test('standalone policies have one canonical home and active fetches use it', ()
     assert.equal(fs.existsSync(path.join(repoRoot, 'sai', 'instructions', file)), false);
   }
 
+  const utilityCommands = ['apply', 'archive', 'backfill', 'commit', 'explore', 'pr', 'status', 'worktree'];
   const activeSources = [
-    ...fs.readdirSync(path.join(repoRoot, 'sai', 'commands'), { withFileTypes: true })
-      .filter(entry => entry.isFile())
-      .map(entry => artifact(`sai/commands/${entry.name}`)),
+    ...utilityCommands.map(name => artifact(`sai/commands/${name}/body.md`)),
     artifact('sai/instructions/apply.md'),
     artifact('sai/instructions/commit.md'),
     artifact('sai/commands/spec/coordinator.md'),
@@ -733,7 +732,7 @@ test('restore-coordinator-instruction-loading Step 1: explore and status preserv
 
   const status = artifact('commands/claude/sai-status.md');
   assert.match(status, /^allowed-tools: Read, Glob, Grep, Bash\(openspec:\*\), AskUserQuestion, Skill$/m);
-  assert.match(status, /Fetch @sai\/commands\/sai-status\.md/);
+  assert.match(status, /Fetch @sai\/adapters\/claude\/boot\.md and follow it\./);
   assert.doesNotMatch(status, /allowed-tools:[^\n]*(?:Edit|Write|Bash\s*,)/m);
 });
 
