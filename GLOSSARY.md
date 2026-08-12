@@ -198,6 +198,9 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 **Verify-First Marker**: "The optional pinned `(**Verify-first**: Step N)` parenthetical on a `design.md` risk, naming the step whose design depends on that risk being resolved or disproven first."
 *Avoid*: Blocker, Gate, Check First, precondition, dependency marker
 
+**Worker Matrix**: "The harness-specific parameter set that materializes one binding and one managed worker agent for each routed planning or audit phase from canonical templates."
+*Avoid*: worker roster, worker grid, phase-file matrix, worker template set
+
 **Worktree Name Triple**: "The three derived names of one git worktree under the `/sai-worktree` convention — the sibling directory suffix, the branch name, and the counter slot — each derivable from the others: the default `<main-dir>.worktree-<n>` directory maps to the `worktree-<n>` branch, a custom name maps to the branch obtained by stripping a leading `<main-dir>.` prefix (falling back to the whole name when no such prefix is present), and `n` is the first free slot."
 *Avoid*: worktree naming, directory-branch pair, worktree pair, worktree slot naming
 
@@ -268,6 +271,7 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 - An **Ambient Agent** is the audience of an **Orientation Index** and never auto-loads it; it reaches the index only through a pointer in a consumer project's own agent instructions.
 - An **Orientation Index** is installed at the harness root through the `root` **Destination Class** projection of `sai/install-manifest.json`.
 - A **Destination Class** resolves to one base directory for install, doctor, and uninstall expansions of the manifest projections that name it.
+- A **Worker Matrix** preserves one shared worker lifecycle contract while carrying harness, phase, dispatch, continuation, model, and exceptional-option parameters for its materialized workers.
 
 ## Example dialogue
 
