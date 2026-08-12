@@ -64,26 +64,35 @@ test('review worker contract enumerates the five ids and pins the batch semantic
   assert.match(worker, /never[\s\S]{0,160}(?:before resolution|in place of a terminal|needs_input)/i);
 });
 
-test('review bindings render the plan coordinator-only with threshold reference and no stamp', () => {
-  const claude = artifact('sai/orchestration/workers/bindings/claude/review-worker.md');
-  const opencode = artifact('sai/orchestration/workers/bindings/opencode/review-worker.md');
+test('review coordinator and policy render the plan coordinator-only with threshold reference and no stamp', () => {
+  const coordinator = artifact('sai/commands/review/coordinator.md');
+  const policy = artifact('sai/policies/todo-structure.md');
+  const worker = artifact('sai/orchestration/workers/sai-5-review-worker.md');
 
-  assert.match(claude, /task list/i);
-  assert.match(claude, /completed[\s\S]{0,240}in_progress/i);
-  assert.match(claude, /minimum threshold[\s\S]{0,160}todo-structure\.md|todo-structure\.md[\s\S]{0,160}(?:threshold|below)/i);
-  assert.match(claude, /(?:no task list|no todowrite)[\s\S]{0,200}(?:below|threshold)/i);
-  assert.doesNotMatch(claude, /fewer than three|below three/);
-  assert.match(claude, /coordinator session/i);
-  assert.doesNotMatch(claude, /date \+%H:%M/);
+  assert.match(coordinator, /todo-structure\.md/,
+    'the coordinator should reference the neutral todo-structure policy');
+  assert.match(coordinator, /completed[\s\S]{0,240}in_progress|in_progress[\s\S]{0,240}completed/i,
+    'reported ids should render completed and the leading unmarked step in_progress');
+  assert.match(policy, /(?:below|fewer than|less than)[\s\S]{0,120}three|three[\s\S]{0,120}(?:below|fewer than|less than)/i,
+    'the policy should state the declared-step threshold');
+  assert.match(policy, /(?:no|without|never)[\s\S]{0,200}(?:below|threshold)/i,
+    'no task list / todowrite call should be emitted below the threshold');
+  assert.doesNotMatch(coordinator, /fewer than three|below three/,
+    'the coordinator should reference the policy and not restate the threshold constant');
+  assert.match(policy, /coordinator session/i,
+    'the policy should record the coordinator-only emission ownership');
+  assert.doesNotMatch(coordinator, /date \+%H:%M/,
+    'the coordinator should carry no per-harness wall-clock command');
 
-  assert.match(opencode, /todowrite/i);
-  assert.match(opencode, /full[\s\S]{0,120}todos/i);
-  assert.match(opencode, /constant[\s\S]{0,160}priority/i);
-  assert.match(opencode, /disabl[\s\S]{0,200}subagent/i);
-  assert.doesNotMatch(opencode, /Get-Date/);
+  assert.match(policy, /todowrite/i,
+    'the policy should name the opencode todowrite tool');
+  assert.match(policy, /disabl[\s\S]{0,200}subagent/i,
+    'the policy should tie the disabled-by-default tool to the subagent context');
+  assert.doesNotMatch(coordinator, /Get-Date/,
+    'the coordinator should carry no PowerShell wall-clock command');
 
-  for (const binding of [claude, opencode]) {
-    assert.match(binding, /no Milestone Stamp/i);
-    assert.match(binding, /todo-structure\.md/);
-  }
+  assert.match(worker, /no Milestone Stamp/i,
+    'the worker contract should state audit plans carry no Milestone Stamp');
+  assert.match(coordinator, /todo-structure\.md/,
+    'the coordinator should reference the neutral todo-structure policy');
 });

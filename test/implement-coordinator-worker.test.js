@@ -8,7 +8,22 @@ const path = require('path');
 const jsonc = require('jsonc-parser');
 
 const repoRoot = path.join(__dirname, '..');
-const { loadInstallManifest, expandInstallManifest } = require('../bin/install-manifest.js');
+const { loadInstallManifest, expandInstallManifest, matrixRenderFor } = require('../bin/install-manifest.js');
+
+const matrixManifest = loadInstallManifest(path.join(__dirname, '..'));
+function matrixBinding(harness, phase) {
+  const item = matrixRenderFor(matrixManifest, harness, path.join(__dirname, '..'))
+    .find(entry => entry.kind === 'binding' && entry.phase === phase);
+  assert.ok(item, `${harness}/${phase} matrix binding should exist`);
+  return item.text;
+}
+
+function matrixAgent(harness, phase) {
+  const item = matrixRenderFor(matrixManifest, harness, path.join(__dirname, '..'))
+    .find(entry => entry.kind === 'agent' && entry.phase === phase);
+  assert.ok(item, `${harness}/${phase} matrix agent should exist`);
+  return item.text;
+}
 
 function artifact(relativePath) {
   const fullPath = path.join(repoRoot, relativePath);
@@ -81,7 +96,7 @@ test('implementation worker declares the lifecycle and input/output contract', (
 });
 
 test('Claude worker agent is pinned to the required model, effort, and tools', () => {
-  const agent = artifact('agents/claude/sai-3-implementation-worker.md');
+  const agent = matrixAgent('claude', 'implementation');
   assert.match(agent, /^name:\s*sai-3-implementation-worker\s*$/m);
    assert.match(agent, /^model:\s*opus\s*$/m);
    assert.match(agent, /^effort:\s*medium\s*$/m);
@@ -93,16 +108,12 @@ test('Claude worker agent is pinned to the required model, effort, and tools', (
 
 test('Claude and opencode worker bindings own dispatch and continuation mechanics', () => {
   for (const harness of ['claude', 'opencode']) {
-    const binding = artifact(`sai/orchestration/workers/bindings/${harness}/implementation-worker.md`);
-    assert.match(binding, /dispatch/i);
-    assert.match(binding, /binding[- ]owned|coordinator[- ]owned/i);
-    assert.match(binding, /continuation_reference|continuation metadata/i);
-    assert.match(binding, /budget/);
-    assert.match(binding, /explore/);
-    assert.match(binding, /nested helper|helper branches?/i);
-    assert.match(binding, /continuation/i);
-    assert.match(binding, /fresh worker/i);
-    assert.match(binding, /reconstruct/i);
+    const binding = matrixBinding(harness, 'implementation');
+    assert.match(binding, /dispatch/i, `${harness} binding should define the dispatch action`);
+    assert.match(binding, /continuation/i, `${harness} binding should define the continuation action`);
+    assert.match(binding, /reconstruction fields|originating binding context/i,
+      `${harness} binding should carry the reconstruction fields`);
+    assert.match(binding, /replacement/i, `${harness} binding should define the replacement path`);
   }
 });
 
@@ -158,7 +169,7 @@ test('installer collisions overwrite unfamiliar Claude content with notice and p
     assert.equal(claudeResult.error, null, 'Claude install should not throw on a divergent agent');
     assert.deepEqual(
       fs.readFileSync(agentPath),
-      fs.readFileSync(path.join(__dirname, '..', 'agents', 'claude', 'sai-3-implementation-worker.md')),
+      Buffer.from(matrixAgent('claude', 'implementation')),
       'the divergent Claude agent should be overwritten with the managed source bytes');
     assert.match(`${claudeResult.output}\n${claudeResult.error?.message || ''}`, /notice|overwrit/i,
       'the overwrite should be announced in stdout');
@@ -200,9 +211,9 @@ test('uninstall and doctor expose ownership guards and collision status', async 
       'sai/orchestration/coordinator-contract.md',
       'sai/orchestration/worker-lifecycle.md',
       'sai/orchestration/workers/sai-3-implementation-worker.md',
-      'sai/orchestration/workers/bindings/claude/implementation-worker.md',
-      'agents/claude/sai-3-implementation-worker.md',
-      'sai/orchestration/workers/bindings/opencode/implementation-worker.md',
+      '.tmp/collapse-sai-worker-matrix/matrix-sources/claude/implementation-worker.md',
+      '.tmp/collapse-sai-worker-matrix/matrix-sources/claude/sai-3-implementation-worker.md',
+      '.tmp/collapse-sai-worker-matrix/matrix-sources/opencode/implementation-worker.md',
     ]);
     const manifest = loadInstallManifest(repoRoot);
     function expectedSources(harness) {
@@ -310,52 +321,41 @@ test('Step 1 implementation contracts use the routed entrypoints', () => {
 test('routed harness bindings and inline parity', () => {
   const workerName = 'sai-3-implementation-worker';
   const worker = artifact('sai/orchestration/workers/sai-3-implementation-worker.md');
-  const surfaces = [
-    {
-      name: 'Claude Code',
-      binding: artifact('sai/orchestration/workers/bindings/claude/implementation-worker.md'),
-      forwardingSkill: artifact('sai/orchestration/workers/bindings/claude/implementation-worker.md'),
-      wrapper: artifact('commands/claude/sai-3-implement.md'),
-      agent: artifact('agents/claude/sai-3-implementation-worker.md'),
-      assertContract(binding, forwardingSkill, wrapper) {
-        assert.match(binding, new RegExp(`Agent\\(subagent_type: "${workerName}",\\s*run_in_background: true,`));
-        assert.match(binding, /SendMessage/);
-        assert.doesNotMatch(binding, /Agent[\\s\\S]{0,120}resume/);
-        assert.match(forwardingSkill, /worker/i);
-        assert.doesNotMatch(forwardingSkill, /opencode[\\/\\]implementation-worker\.md/);
-        assert.match(wrapper, /^model:\s*opus\s*$/m);
-         assert.match(wrapper, /^effort:\s*low\s*$/m);
-      },
-    },
-    {
-      name: 'opencode',
-      binding: artifact('sai/orchestration/workers/bindings/opencode/implementation-worker.md'),
-      forwardingSkill: artifact('sai/orchestration/workers/bindings/opencode/implementation-worker.md'),
-      wrapper: artifact('commands/opencode/sai-3-implement.md'),
-      assertContract(binding, forwardingSkill, wrapper) {
-        assert.match(binding, new RegExp(`task\\(subagent_type: "${workerName}"`));
-        assert.match(binding, /Capture and bind `task_id`/);
-        assert.match(binding, /task\(task_id: "<captured task ID>"/);
-        assert.match(binding, /nested helper branches use the permitted budget and explore targets/);
-        assert.doesNotMatch(binding, /nested task target(?:s)?[\\s\S]{0,120}(?!budget|explore)[a-z][a-z-]+/i);
-        assert.match(forwardingSkill, /worker/i);
-        assert.doesNotMatch(forwardingSkill, /claude[\\/\\]implementation-worker\.md/);
-         assert.match(wrapper, /^model: opencode-go\/deepseek-v4-flash$/m);
-          assert.match(wrapper, /^variant: max$/m);
-         assert.match(wrapper, /^subtask:\s*false\s*$/m);
-         assert.doesNotMatch(wrapper, /^agent:/m);
-      },
-    },
-  ];
+  const claudeBinding = matrixBinding('claude', 'implementation');
+  const opencodeBinding = matrixBinding('opencode', 'implementation');
+  const claudeAgent = matrixAgent('claude', 'implementation');
+  const claudeWrapper = artifact('commands/claude/sai-3-implement.md');
+  const opencodeWrapper = artifact('commands/opencode/sai-3-implement.md');
 
-  for (const surface of surfaces) {
-    assert.ok(surface.name);
-    surface.assertContract(surface.binding, surface.forwardingSkill, surface.wrapper);
-  }
+  assert.match(
+    claudeBinding,
+    new RegExp(`Agent\\([\\s\\S]{0,120}name: "${workerName}",\\s*run_in_background: true,`),
+    'the Claude binding should dispatch via Agent with the worker name and background flag'
+  );
+  assert.match(claudeBinding, /SendMessage/,
+    'the Claude binding should continue the captured agent via SendMessage');
+  assert.doesNotMatch(claudeBinding, /Agent[\s\S]{0,120}resume/,
+    'the Claude binding should not use an Agent resume parameter');
+  assert.match(claudeBinding, /worker/i);
+  assert.doesNotMatch(claudeBinding, /opencode[\\/\\]implementation-worker\.md/,
+    'the Claude binding should not reference the opencode harness binding');
+  assert.match(claudeWrapper, /^model:\s*opus\s*$/m);
+  assert.match(claudeWrapper, /^effort:\s*low\s*$/m);
 
-  const claudeAgent = surfaces[0].agent;
-   assert.match(claudeAgent, /^model:\s*opus\s*$/m);
-   assert.match(claudeAgent, /^effort:\s*medium\s*$/m);
+  assert.match(opencodeBinding, new RegExp(`task\\(subagent_type: "${workerName}"`),
+    'the opencode binding should dispatch via task with the worker subagent_type');
+  assert.match(opencodeBinding, /task\(task_id: "<captured task ID>"/,
+    'the opencode binding should continue the captured task via task_id');
+  assert.match(opencodeBinding, /worker/i);
+  assert.doesNotMatch(opencodeBinding, /claude[\\/\\]implementation-worker\.md/,
+    'the opencode binding should not reference the Claude harness binding');
+  assert.match(opencodeWrapper, /^model: opencode-go\/deepseek-v4-flash$/m);
+  assert.match(opencodeWrapper, /^variant: max$/m);
+  assert.match(opencodeWrapper, /^subtask:\s*false\s*$/m);
+  assert.doesNotMatch(opencodeWrapper, /^agent:/m);
+
+  assert.match(claudeAgent, /^model:\s*opus\s*$/m);
+  assert.match(claudeAgent, /^effort:\s*medium\s*$/m);
   assert.match(
     claudeAgent,
     /^tools:\s*Read,\s*Glob,\s*Grep,\s*Bash,\s*Edit,\s*Write,\s*Agent,\s*Skill,\s*SendMessage\s*$/m
@@ -447,8 +447,8 @@ test('coordinator owns status transitions, changed-file union, and exact termina
 
 test('needs_input continuation stays on the same worker and uses each harness binding', () => {
    const coordinator = artifact('sai/commands/implement/coordinator.md');
-  const claudeBinding = artifact('sai/orchestration/workers/bindings/claude/implementation-worker.md');
-  const opencodeBinding = artifact('sai/orchestration/workers/bindings/opencode/implementation-worker.md');
+  const claudeBinding = matrixBinding('claude', 'implementation');
+  const opencodeBinding = matrixBinding('opencode', 'implementation');
 
   assert.match(coordinator, /continuation_reference/);
   assert.match(coordinator, /binding-owned `continuation_reference`/);
@@ -463,10 +463,10 @@ test('needs_input continuation stays on the same worker and uses each harness bi
   assert.match(coordinator, /fresh worker[\s\S]*(?:durable|artifact)/i);
 
   assert.match(claudeBinding, /SendMessage/);
-  assert.match(claudeBinding, /Do not use an Agent `resume` parameter/);
-  assert.match(claudeBinding, /fresh worker[\s\S]*reconstruct/i);
+  assert.doesNotMatch(claudeBinding, /Agent[\s\S]{0,120}resume/);
+  assert.match(claudeBinding, /reconstruction fields|originating binding context/i);
   assert.match(opencodeBinding, /task_id/);
-  assert.match(opencodeBinding, /fresh worker|reconstruct/i);
+  assert.match(opencodeBinding, /reconstruction fields|originating binding context/i);
 });
 
 test('worker owns prerequisites and picker while coordinator does not', () => {
@@ -614,7 +614,7 @@ test('implementation install overwrites divergent numbered destination content w
     assert.equal(result.error, null, 'installClaude should not throw on a divergent agent destination');
     assert.deepEqual(
       fs.readFileSync(target),
-      fs.readFileSync(path.join(__dirname, '..', 'agents', 'claude', 'sai-3-implementation-worker.md')),
+      Buffer.from(matrixAgent('claude', 'implementation')),
       'the divergent destination content should be overwritten with the managed source bytes');
     assert.match(`${result.output}\n${result.error?.message || ''}`, /notice|overwrit/i,
       'the overwrite should be announced in stdout');
@@ -717,65 +717,52 @@ test('Step 6: continue_after_progress is protocol-only and the plan survives rec
     'the plan should never be carried in a reconstruction field');
 });
 
-test('Step 6: the implementation bindings emit the harness task list on progress events with the threshold rule', () => {
-  const claude = artifact('sai/orchestration/workers/bindings/claude/implementation-worker.md');
-  const opencode = artifact('sai/orchestration/workers/bindings/opencode/implementation-worker.md');
+test('Step 6: the implementation coordinator and policy drive the harness task list on progress events with the threshold rule', () => {
+  const coordinator = artifact('sai/commands/implement/coordinator.md');
+  const policy = artifact('sai/policies/todo-structure.md');
 
-  assert.match(claude, /progress event/i,
-    'the Claude binding should act on each progress event');
-  assert.match(claude, /task list/i,
-    'the Claude binding should update the harness task list');
-  assert.match(claude, /completed[\s\S]{0,240}in_progress|in_progress[\s\S]{0,240}completed/i,
+  assert.match(coordinator, /progress event/i,
+    'the coordinator should act on each progress event');
+  assert.match(coordinator, /todo-structure\.md/,
+    'the coordinator should reference the neutral todo-structure policy');
+  assert.match(coordinator, /completed[\s\S]{0,240}in_progress|in_progress[\s\S]{0,240}completed/i,
     'reported ids should render completed and the leading unmarked step in_progress');
-  assert.match(claude, /unmarked[\s\S]{0,200}in_progress|in_progress[\s\S]{0,200}unmarked/i,
+  assert.match(coordinator, /unmarked[\s\S]{0,200}in_progress|in_progress[\s\S]{0,200}unmarked/i,
     'the in_progress mark should apply to the leading unmarked step');
-  assert.match(claude, /deriv/i,
-    'the marks should follow the deterministic derivation');
-  assert.match(claude, /mechanism/i,
-    'the update should go through the harness task-list mechanism');
-  assert.match(claude, /incrementality[\s\S]{0,240}(?:non[- ]?normative|not[\s\S]{0,80}(?:normative|a contract)|optimization)/i,
-    'incrementality should be a non-normative binding-level optimization');
-  assert.match(claude, /(?:below|fewer than|less than)[\s\S]{0,120}three|three[\s\S]{0,120}(?:below|fewer than|less than)/i,
-    'the Claude binding should state the three-declared-step threshold');
-  assert.match(claude, /(?:no|without|never)[\s\S]{0,160}task list/i,
-    'no task list should be emitted below the threshold');
+  assert.match(coordinator, /(?:remaining|rest|others?)[\s\S]{0,160}pending|pending[\s\S]{0,160}(?:remaining|rest|others?)/i,
+    'the remaining steps should render pending');
 
-  assert.match(opencode, /todowrite/i,
-    'the opencode binding should use the todowrite tool');
-  assert.match(opencode, /(?:one|a single|exactly one)[\s\S]{0,200}todowrite|todowrite[\s\S]{0,200}(?:one|a single|exactly one)/i,
-    'each progress event should produce exactly one todowrite call');
-  assert.match(opencode, /completed[\s\S]{0,240}in_progress[\s\S]{0,240}pending|pending[\s\S]{0,240}in_progress[\s\S]{0,240}completed/i,
+  assert.match(policy, /todowrite/i,
+    'the opencode harness renders the list via the todowrite tool');
+  assert.match(policy, /pending[\s\S]{0,240}in_progress[\s\S]{0,240}completed/i,
     'the array should map completed, in_progress, and pending states');
-  assert.match(opencode, /constant[\s\S]{0,160}priority|priority[\s\S]{0,160}constant/i,
-    'the priority should be constant on every entry');
-  assert.match(opencode, /(?:no|without|never)[\s\S]{0,160}todowrite/i,
-    'no todowrite call should be emitted below the threshold');
-
-  for (const binding of [claude, opencode]) {
-    assert.match(binding, /todo-structure\.md/,
-      'both bindings should reference the neutral todo-structure policy');
-  }
-  assert.match(opencode, /subagent[\s\S]{0,160}disabl|disabl[\s\S]{0,160}subagent/i,
-    'the opencode binding should tie the disabled-by-default tool to the subagent context');
-  assert.match(opencode, /by default/i,
-    'the opencode binding should state the tool is disabled by default in subagents');
+  assert.match(policy, /(?:below|fewer than|less than)[\s\S]{0,120}three|three[\s\S]{0,120}(?:below|fewer than|less than)/i,
+    'the policy should state the three-declared-step threshold');
+  assert.match(policy, /(?:no|without|never)[\s\S]{0,160}(?:task list|todowrite)/i,
+    'no task list / todowrite call should be emitted below the threshold');
+  assert.match(policy, /coordinator session/i,
+    'the policy should record the coordinator-only emission ownership');
+  assert.match(policy, /subagent[\s\S]{0,160}disabl|disabl[\s\S]{0,160}subagent/i,
+    'the policy should tie the disabled-by-default tool to the subagent context');
 });
 
-// ─── Step 2: todo-list-step-timestamps (implementation bindings) ─────────────
+// ─── Step 2: todo-list-step-timestamps (implementation coordinator) ─────────
 
-test('Step 2: the implementation bindings stamp the task list with HH:mm via per-harness wall-clock commands, acquired coordinator-only (per-harness-time-command / stamp-emission-coordinator-only)', () => {
-  const claude = artifact('sai/orchestration/workers/bindings/claude/implementation-worker.md');
-  const opencode = artifact('sai/orchestration/workers/bindings/opencode/implementation-worker.md');
+test('Step 2: the implementation coordinator renders task-list stamps coordinator-only via the todo-structure policy, with the scoped date shell granted to the wrapper (stamp-emission-coordinator-only)', () => {
+  const coordinator = artifact('sai/commands/implement/coordinator.md');
+  const policy = artifact('sai/policies/todo-structure.md');
+  const claudeWrapper = artifact('commands/claude/sai-3-implement.md');
 
-  assert.match(claude, /date \+%H:%M/,
-    'the Claude implementation binding should name `date +%H:%M` as its wall-clock command');
-  assert.match(opencode, /Get-Date -Format "HH:mm"/,
-    'the opencode implementation binding should name `Get-Date -Format "HH:mm"` as its wall-clock command');
-
-  for (const binding of [claude, opencode]) {
-    assert.match(binding, /Stamping is coordinator-only/,
-      'the binding should state the stamping is coordinator-only');
-    assert.match(binding, /never from the worker subagent/,
-      'the binding should state the wall-clock call never originates from the worker subagent');
-  }
+  assert.match(coordinator, /todo-structure\.md/,
+    'the coordinator should reference the neutral stamping policy');
+  assert.match(policy, /stamp/i,
+    'the policy should govern milestone stamp annotations');
+  assert.match(policy, /coordinator session/i,
+    'the policy should state stamp acquisition is coordinator-only');
+  assert.match(policy, /never from a worker subagent/i,
+    'the policy should state the wall-clock call never originates from the worker subagent');
+  assert.match(claudeWrapper, /Bash\(date:\*\)/,
+    'the Claude wrapper should grant the scoped date shell for coordinator stamp acquisition');
+  assert.doesNotMatch(coordinator, /date \+%H:%M|Get-Date/,
+    'per-harness wall-clock commands no longer live in the coordinator body');
 });

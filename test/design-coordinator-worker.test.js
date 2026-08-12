@@ -7,10 +7,26 @@ const os = require('os');
 const path = require('path');
 
 const { auditActiveReferences } = require('../bin/orchestration-source-audit.js');
+const { loadInstallManifest, matrixRenderFor } = require('../bin/install-manifest.js');
 
 const repoRoot = path.join(__dirname, '..');
 const FEEDBACK_QUESTION = 'Share your feedback on {artifacts} below. You can also type feedback directly in the free-text box.';
 const FEEDBACK_DESCRIPTION = 'Feedback on {artifacts}; you can also type feedback directly in the free-text box.';
+
+const matrixManifest = loadInstallManifest(path.join(__dirname, '..'));
+function matrixBinding(harness, phase) {
+  const item = matrixRenderFor(matrixManifest, harness, path.join(__dirname, '..'))
+    .find(entry => entry.kind === 'binding' && entry.phase === phase);
+  assert.ok(item, `${harness}/${phase} matrix binding should exist`);
+  return item.text;
+}
+
+function matrixAgent(harness, phase) {
+  const item = matrixRenderFor(matrixManifest, harness, path.join(__dirname, '..'))
+    .find(entry => entry.kind === 'agent' && entry.phase === phase);
+  assert.ok(item, `${harness}/${phase} matrix agent should exist`);
+  return item.text;
+}
 
 function countLiteral(source, value) {
   return source.split(value).length - 1;
@@ -62,7 +78,7 @@ test('Step 2 uses one canonical coordinator, lifecycle, worker, and binding layo
   assert.match(lifecycle, /binding-owned/);
   assert.match(worker, /Fetch @sai\/orchestration\/worker-lifecycle\.md/);
   for (const harness of ['claude', 'opencode']) {
-    assert.match(artifact(`sai/orchestration/workers/bindings/${harness}/design-worker.md`), /worker/i);
+    assert.match(matrixBinding(harness, 'design'), /worker/i);
   }
 });
 
@@ -593,7 +609,7 @@ test('design install overwrites divergent numbered destination content with noti
     assert.equal(result.error, null, 'installClaude should not throw on a divergent agent destination');
     assert.deepEqual(
       fs.readFileSync(target),
-      fs.readFileSync(path.join(__dirname, '..', 'agents', 'claude', 'sai-2-design-worker.md')),
+      Buffer.from(matrixAgent('claude', 'design')),
       'the divergent destination content should be overwritten with the managed source bytes');
     assert.match(`${result.output}\n${result.error?.message || ''}`, /notice|overwrit/i,
       'the overwrite should be announced in stdout');
@@ -1052,104 +1068,88 @@ test('Step 5: the run closes with exactly one terminal lifecycle status, never a
 
 // ─── Step 6: command-progress-plan-protocol (design-worker bindings) ─────────
 
-test('Step 6: claude binding updates the harness task list on each progress event, marking reported ids completed and the leading unmarked step in_progress (claude-task-list-update / claude-marks-a-progress-batch)', () => {
-  const binding = artifact('sai/orchestration/workers/bindings/claude/design-worker.md');
-
-  assert.match(binding, /progress event/i,
-    'the binding should act on each progress event');
-  assert.match(binding, /task list/i,
-    'the binding should update the harness task list');
-  assert.match(binding, /completed[\s\S]{0,240}in_progress|in_progress[\s\S]{0,240}completed/i,
-    'reported ids should render completed and the leading unmarked step should render in_progress');
-  assert.match(binding, /unmarked[\s\S]{0,200}in_progress|in_progress[\s\S]{0,200}unmarked/i,
-    'the in_progress mark should apply to the leading unmarked step');
-  assert.match(binding, /deriv/i,
-    'the marks should follow the deterministic derivation');
-  assert.match(binding, /mechanism/i,
-    'the update should go through the harness task-list mechanism');
-  assert.match(binding, /incrementality/i,
-    'the binding should address incrementality');
-  assert.match(
-    binding,
-    /incrementality[\s\S]{0,240}(?:non[- ]?normative|not[\s\S]{0,80}(?:normative|a contract)|optimization)|(?:non[- ]?normative|not[\s\S]{0,80}(?:normative|a contract)|optimization)[\s\S]{0,240}incrementality/i,
-    'incrementality should be a non-normative binding-level optimization'
-  );
-});
-
-test('Step 6: opencode binding issues one todowrite call per progress event replacing the full array with completed, in_progress, and pending under a constant priority (opencode-todowrite-full-replacement / opencode-replaces-the-full-array)', () => {
-  const binding = artifact('sai/orchestration/workers/bindings/opencode/design-worker.md');
-
-  assert.match(binding, /todowrite/i,
-    'the binding should use the todowrite tool');
-  assert.match(binding, /progress event/i,
-    'the todowrite emission should happen per progress event');
-  assert.match(binding, /(?:one|a single|exactly one)[\s\S]{0,200}todowrite|todowrite[\s\S]{0,200}(?:one|a single|exactly one)/i,
-    'each progress event should produce exactly one todowrite call');
-  assert.match(binding, /todos[\s\S]{0,120}array|full[\s\S]{0,120}(?:todos|array)/i,
-    'the call should carry the full todos array');
-  assert.match(
-    binding,
-    /completed[\s\S]{0,240}in_progress[\s\S]{0,240}pending|pending[\s\S]{0,240}in_progress[\s\S]{0,240}completed/i,
-    'the array should map completed, the first incomplete step, and the remaining pending steps'
-  );
-  assert.match(binding, /constant[\s\S]{0,160}priority|priority[\s\S]{0,160}constant/i,
-    'the priority should be constant on every entry');
-});
-
-test('Step 6: both bindings emit no task list / todowrite call below the three-declared-step threshold (claude-renders-below-threshold-plans / opencode-renders-below-threshold-plans)', () => {
-  const claude = artifact('sai/orchestration/workers/bindings/claude/design-worker.md');
-  const opencode = artifact('sai/orchestration/workers/bindings/opencode/design-worker.md');
-
-  for (const binding of [claude, opencode]) {
-    assert.match(binding, /three/i,
-      'the binding should state the declared-step threshold');
-    assert.match(binding, /(?:below|fewer than|less than)[\s\S]{0,120}three|three[\s\S]{0,120}(?:below|fewer than|less than)/i,
-      'the threshold should be below three declared steps');
-    assert.match(binding, /(?:no|without|never)[\s\S]{0,160}(?:task list|todowrite)/i,
-      'no task list / todowrite call should be emitted below the threshold');
-  }
-});
-
-test('Step 6: the neutral policy records the emission-ownership invariant and the opencode binding states its subagent-restriction reason (task-list-emission-coordinator-only / worker-never-emits-the-tool-call / opencode-subagent-restriction)', () => {
+test('Step 6: the design coordinator and policy update the harness task list on each progress event, marking reported ids completed and the leading unmarked step in_progress (claude-task-list-update / claude-marks-a-progress-batch)', () => {
+  const coordinator = artifact('sai/commands/design/coordinator.md');
   const policy = artifact('sai/policies/todo-structure.md');
-  const claude = artifact('sai/orchestration/workers/bindings/claude/design-worker.md');
-  const opencode = artifact('sai/orchestration/workers/bindings/opencode/design-worker.md');
+
+  assert.match(coordinator, /progress event/i,
+    'the coordinator should act on each progress event');
+  assert.match(coordinator, /todo-structure\.md/,
+    'the coordinator should reference the neutral todo-structure policy');
+  assert.match(coordinator, /completed[\s\S]{0,240}in_progress|in_progress[\s\S]{0,240}completed/i,
+    'reported ids should render completed and the leading unmarked step should render in_progress');
+  assert.match(coordinator, /unmarked[\s\S]{0,200}in_progress|in_progress[\s\S]{0,200}unmarked/i,
+    'the in_progress mark should apply to the leading unmarked step');
+  assert.match(policy, /deriv/i,
+    'the marks should follow the deterministic derivation');
+  assert.match(policy, /task list/i,
+    'the policy should govern the harness task-list mechanism');
+  assert.doesNotMatch(coordinator, /incrementality/i,
+    'incrementality is a retired binding-level optimization, not carried by the coordinator');
+});
+
+test('Step 6: the design coordinator and policy drive the opencode todowrite rendering with completed, in_progress, and pending states (opencode-todowrite-full-replacement / opencode-replaces-the-full-array)', () => {
+  const coordinator = artifact('sai/commands/design/coordinator.md');
+  const policy = artifact('sai/policies/todo-structure.md');
+
+  assert.match(coordinator, /progress event/i,
+    'the todowrite emission should be driven per progress event');
+  assert.match(policy, /todowrite/i,
+    'the policy should name the opencode todowrite tool');
+  assert.match(policy, /pending[\s\S]{0,240}in_progress[\s\S]{0,240}completed/i,
+    'the array should map completed, the first incomplete step, and the remaining pending steps');
+});
+
+test('Step 6: the policy renders no task list / todowrite call below the three-declared-step threshold (claude-renders-below-threshold-plans / opencode-renders-below-threshold-plans)', () => {
+  const policy = artifact('sai/policies/todo-structure.md');
+
+  assert.match(policy, /three/i,
+    'the policy should state the declared-step threshold');
+  assert.match(policy, /(?:below|fewer than|less than)[\s\S]{0,120}three|three[\s\S]{0,120}(?:below|fewer than|less than)/i,
+    'the threshold should be below three declared steps');
+  assert.match(policy, /(?:no|without|never)[\s\S]{0,160}(?:task list|todowrite)/i,
+    'no task list / todowrite call should be emitted below the threshold');
+});
+
+test('Step 6: the neutral policy records the emission-ownership invariant and the opencode subagent-restriction reason (task-list-emission-coordinator-only / worker-never-emits-the-tool-call / opencode-subagent-restriction)', () => {
+  const policy = artifact('sai/policies/todo-structure.md');
+  const coordinator = artifact('sai/commands/design/coordinator.md');
 
   assert.match(policy, /coordinator[\s\S]{0,200}(?:owns?|emission|exclusively)/i,
     'the policy should record the coordinator-owned emission invariant');
   assert.match(policy, /(?:never|not)[\s\S]{0,160}(?:worker|subagent)|worker[\s\S]{0,120}(?:never|not)/i,
     'the policy should state the worker never emits the tool call');
 
-  for (const binding of [claude, opencode]) {
-    assert.match(binding, /todo-structure\.md/,
-      'both bindings should reference the neutral todo-structure policy');
-  }
+  assert.match(coordinator, /todo-structure\.md/,
+    'the coordinator should reference the neutral todo-structure policy');
 
-  assert.match(opencode, /subagent/i,
-    'the opencode binding should note the worker is a subagent');
-  assert.match(opencode, /disabl[\s\S]{0,200}subagent|subagent[\s\S]{0,200}disabl/i,
-    'the binding should tie the disabled-by-default tool to the subagent context');
-  assert.match(opencode, /by default/i,
-    'the binding should state the tool is disabled by default in subagents');
+  assert.match(policy, /subagent/i,
+    'the policy should note the worker is a subagent');
+  assert.match(policy, /disabl[\s\S]{0,200}subagent|subagent[\s\S]{0,200}disabl/i,
+    'the policy should tie the disabled-by-default tool to the subagent context');
+  assert.match(policy, /by default/i,
+    'the policy should state the tool is disabled by default in subagents');
 });
 
-// ─── Step 2: todo-list-step-timestamps (design bindings) ────────────────────
+// ─── Step 2: todo-list-step-timestamps (design coordinator) ─────────────────
 
-test('Step 2: the design bindings stamp the task list with HH:mm via per-harness wall-clock commands, acquired coordinator-only (per-harness-time-command / stamp-emission-coordinator-only)', () => {
-  const claude = artifact('sai/orchestration/workers/bindings/claude/design-worker.md');
-  const opencode = artifact('sai/orchestration/workers/bindings/opencode/design-worker.md');
+test('Step 2: the design coordinator renders task-list stamps coordinator-only via the todo-structure policy, with the scoped date shell granted to the wrapper (stamp-emission-coordinator-only)', () => {
+  const coordinator = artifact('sai/commands/design/coordinator.md');
+  const policy = artifact('sai/policies/todo-structure.md');
+  const claudeWrapper = artifact('commands/claude/sai-2-design.md');
 
-  assert.match(claude, /date \+%H:%M/,
-    'the Claude design binding should name `date +%H:%M` as its wall-clock command');
-  assert.match(opencode, /Get-Date -Format "HH:mm"/,
-    'the opencode design binding should name `Get-Date -Format "HH:mm"` as its wall-clock command');
-
-  for (const binding of [claude, opencode]) {
-    assert.match(binding, /Stamping is coordinator-only/,
-      'the binding should state the stamping is coordinator-only');
-    assert.match(binding, /never from the worker subagent/,
-      'the binding should state the wall-clock call never originates from the worker subagent');
-  }
+  assert.match(coordinator, /todo-structure\.md/,
+    'the coordinator should reference the neutral stamping policy');
+  assert.match(policy, /stamp/i,
+    'the policy should govern milestone stamp annotations');
+  assert.match(policy, /coordinator session/i,
+    'the policy should state stamp acquisition is coordinator-only');
+  assert.match(policy, /never from a worker subagent/i,
+    'the policy should state the wall-clock call never originates from the worker subagent');
+  assert.match(claudeWrapper, /Bash\(date:\*\)/,
+    'the Claude wrapper should grant the scoped date shell for coordinator stamp acquisition');
+  assert.doesNotMatch(coordinator, /date \+%H:%M|Get-Date/,
+    'per-harness wall-clock commands no longer live in the coordinator body');
 });
 
 // ─── Step 6: command-progress-plan-protocol (audit documentation) ───────────
@@ -1193,8 +1193,8 @@ test('Step 2 carries overview_language through the worker and generation continu
   const worker = artifact('sai/orchestration/workers/sai-2-design-worker.md');
   const coordinator = artifact('sai/commands/design/coordinator.md');
   const bindings = [
-    artifact('sai/orchestration/workers/bindings/claude/design-worker.md'),
-    artifact('sai/orchestration/workers/bindings/opencode/design-worker.md'),
+    matrixBinding('claude', 'design'),
+    matrixBinding('opencode', 'design'),
   ].join('\n');
 
   for (const source of [worker, coordinator, bindings]) {

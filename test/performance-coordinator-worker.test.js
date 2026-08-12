@@ -7,6 +7,23 @@ const path = require('path');
 
 const repoRoot = path.join(__dirname, '..');
 
+const { loadInstallManifest, matrixRenderFor } = require('../bin/install-manifest.js');
+
+const matrixManifest = loadInstallManifest(path.join(__dirname, '..'));
+function matrixBinding(harness, phase) {
+  const item = matrixRenderFor(matrixManifest, harness, path.join(__dirname, '..'))
+    .find(entry => entry.kind === 'binding' && entry.phase === phase);
+  assert.ok(item, `${harness}/${phase} matrix binding should exist`);
+  return item.text;
+}
+
+function matrixAgent(harness, phase) {
+  const item = matrixRenderFor(matrixManifest, harness, path.join(__dirname, '..'))
+    .find(entry => entry.kind === 'agent' && entry.phase === phase);
+  assert.ok(item, `${harness}/${phase} matrix agent should exist`);
+  return item.text;
+}
+
 function artifact(relativePath) {
   const fullPath = path.join(repoRoot, relativePath);
   return fs.existsSync(fullPath) ? fs.readFileSync(fullPath, 'utf8') : '';
@@ -137,80 +154,67 @@ test('performance lifecycle payloads carry metadata rather than report contents'
 });
 
 test('Step 3 Claude and opencode bindings route only their canonical performance worker', () => {
-  const bindings = [
+  const surfaces = [
     {
       name: 'Claude',
-      path: 'sai/orchestration/workers/bindings/claude/performance-worker.md',
-      identity: 'canonical managed Agent identity',
+      binding: matrixBinding('claude', 'performance'),
       mechanism: 'Agent',
     },
     {
       name: 'opencode',
-       path: 'sai/orchestration/workers/bindings/opencode/performance-worker.md',
-      identity: 'canonical numbered task identity',
+      binding: matrixBinding('opencode', 'performance'),
       mechanism: 'task',
     },
   ];
 
-  for (const binding of bindings) {
-    const source = artifact(binding.path);
-    assert.match(source, new RegExp(`${binding.identity}[\\s\\S]{0,100}sai-7-performance-worker`, 'i'),
-      `${binding.name} binding should declare the canonical worker identity`);
+  for (const binding of surfaces) {
+    const source = binding.binding;
     assert.match(source, new RegExp(`${binding.mechanism}[\\s\\S]{0,100}sai-7-performance-worker`, 'i'),
       `${binding.name} binding should dispatch only its canonical worker`);
-    assert.match(source, /complete original envelope|original_envelope/i,
+    assert.match(source, /original (InvocationEnvelope|envelope)/i,
       `${binding.name} dispatch should preserve the original envelope`);
-    assert.match(source, /same-worker continuation|continue[\s\S]{0,100}same worker/i,
+    assert.match(source, /Continue on the same (?:worker|task)/i,
       `${binding.name} should attempt same-worker continuation first`);
-    assert.match(source, /at most one replacement|one replacement|replacement[\s\S]{0,100}1/i,
+    assert.match(source, /one bounded replacement|replacement/i,
       `${binding.name} should permit at most one replacement`);
     assert.doesNotMatch(source, /sai\/orchestration\/inline-invocation\.md/);
   }
 });
 
-test('Step 3 bindings bound delegated research evidence and reject unauthorized operations', () => {
-  for (const relativePath of [
-      'sai/orchestration/workers/bindings/claude/performance-worker.md',
-      'sai/orchestration/workers/bindings/opencode/performance-worker.md',
-  ]) {
-    const binding = artifact(relativePath);
-    assert.match(binding, /bounded evidence/i, `${relativePath} should bound research evidence`);
-    assert.match(binding, /eight-call cap|8-call cap|cap of 8/i,
-      `${relativePath} should enforce the eight-call audit cap`);
-    assert.match(binding, /authorized read-only diagnostics/i,
-      `${relativePath} should permit only authorized read-only diagnostics`);
-    assert.match(binding, /reject[\s\S]{0,240}(?:write-capable delegation|production|schema|migration|config|dependency)/i,
-      `${relativePath} should reject unauthorized writes and mutations`);
-  }
+test('Step 3 worker contract bounds delegated research evidence and rejects unauthorized operations', () => {
+  const worker = artifact('sai/orchestration/workers/sai-7-performance-worker.md');
+  assert.match(worker, /bounded evidence/i, 'the worker contract should bound research evidence');
+  assert.match(worker, /eight-call cap|8-call cap|cap of 8/i,
+    'the worker contract should enforce the eight-call audit cap');
+  assert.match(worker, /only after explicit user authorization[\s\S]{0,120}read-only/i,
+    'the worker contract should permit only authorized read-only diagnostics');
+  assert.match(worker, /never (?:modify|write)[\s\S]{0,240}(?:production|schema|migration|config|dependenc)/i,
+    'the worker contract should reject unauthorized writes and mutations');
 });
 
-test('Step 3 bindings preserve worker lifecycle results and own continuation metadata', () => {
-  for (const relativePath of [
-      'sai/orchestration/workers/bindings/claude/performance-worker.md',
-      'sai/orchestration/workers/bindings/opencode/performance-worker.md',
-  ]) {
-    const binding = artifact(relativePath);
-    for (const field of ['summary', 'question', 'ordered options', 'paths', 'resolved names']) {
-      assert.match(binding, new RegExp(field, 'i'), `${relativePath} should preserve ${field}`);
-    }
-    assert.match(binding, /continuation metadata[\s\S]{0,100}(?:binding-owned|owned by the binding)/i,
-      `${relativePath} continuation metadata should remain binding-owned`);
+test('Step 3 coordinator preserves worker lifecycle results and owns the continuation operation', () => {
+  const coordinator = artifact('sai/commands/performance/coordinator.md');
+  for (const field of ['summary', 'question', 'options', 'changed_files', 'resolved_change_name']) {
+    assert.match(coordinator, new RegExp(field, 'i'), `the coordinator should preserve ${field}`);
   }
+  assert.match(coordinator, /continuation_operation/i,
+    'the coordinator should route through the binding continuation operation');
 });
 
 test('Step 3 managed-agent identity and binding remain while forwarding skill sources are retired', () => {
   const identity = 'sai-7-performance-worker';
   const surfaces = [
-    'agents/claude/sai-7-performance-worker.md',
-    'sai/orchestration/workers/bindings/claude/performance-worker.md',
-    'sai/orchestration/workers/bindings/opencode/performance-worker.md',
+    matrixAgent('claude', 'performance'),
+    matrixBinding('claude', 'performance'),
+    matrixBinding('opencode', 'performance'),
   ];
 
-  for (const relativePath of surfaces) {
-    assert.match(artifact(relativePath), new RegExp(identity),
-      `${relativePath} should use the canonical performance worker identity`);
+  for (const source of surfaces) {
+    assert.match(source, new RegExp(identity),
+      'the surface should use the canonical performance worker identity');
   }
-  assert.match(artifact('agents/claude/sai-7-performance-worker.md'), /managed agent/i);
+  assert.match(matrixAgent('claude', 'performance'), /returns structured lifecycle metadata|description:/i,
+    'the managed Claude agent should remain a managed agent seed');
   assert.equal(fs.existsSync(path.join(repoRoot, 'skills', 'claude', identity, 'SKILL.md')), false);
   assert.equal(fs.existsSync(path.join(repoRoot, 'skills', 'opencode', identity, 'SKILL.md')), false);
 });
@@ -287,26 +291,35 @@ test('performance worker contract enumerates the five ids and pins the batch sem
   assert.match(worker, /never[\s\S]{0,160}(?:before resolution|in place of a terminal|needs_input)/i);
 });
 
-test('performance bindings render the plan coordinator-only with threshold reference and no stamp', () => {
-  const claude = artifact('sai/orchestration/workers/bindings/claude/performance-worker.md');
-  const opencode = artifact('sai/orchestration/workers/bindings/opencode/performance-worker.md');
+test('performance coordinator and policy render the plan coordinator-only with threshold reference and no stamp', () => {
+  const coordinator = artifact('sai/commands/performance/coordinator.md');
+  const policy = artifact('sai/policies/todo-structure.md');
+  const worker = artifact('sai/orchestration/workers/sai-7-performance-worker.md');
 
-  assert.match(claude, /task list/i);
-  assert.match(claude, /completed[\s\S]{0,240}in_progress/i);
-  assert.match(claude, /minimum threshold[\s\S]{0,160}todo-structure\.md|todo-structure\.md[\s\S]{0,160}(?:threshold|below)/i);
-  assert.match(claude, /(?:no task list|no todowrite)[\s\S]{0,200}(?:below|threshold)/i);
-  assert.doesNotMatch(claude, /fewer than three|below three/);
-  assert.match(claude, /coordinator session/i);
-  assert.doesNotMatch(claude, /date \+%H:%M/);
+  assert.match(coordinator, /todo-structure\.md/,
+    'the coordinator should reference the neutral todo-structure policy');
+  assert.match(coordinator, /completed[\s\S]{0,240}in_progress|in_progress[\s\S]{0,240}completed/i,
+    'reported ids should render completed and the leading unmarked step in_progress');
+  assert.match(policy, /(?:below|fewer than|less than)[\s\S]{0,120}three|three[\s\S]{0,120}(?:below|fewer than|less than)/i,
+    'the policy should state the declared-step threshold');
+  assert.match(policy, /(?:no|without|never)[\s\S]{0,200}(?:below|threshold)/i,
+    'no task list / todowrite call should be emitted below the threshold');
+  assert.doesNotMatch(coordinator, /fewer than three|below three/,
+    'the coordinator should reference the policy and not restate the threshold constant');
+  assert.match(policy, /coordinator session/i,
+    'the policy should record the coordinator-only emission ownership');
+  assert.doesNotMatch(coordinator, /date \+%H:%M/,
+    'the coordinator should carry no per-harness wall-clock command');
 
-  assert.match(opencode, /todowrite/i);
-  assert.match(opencode, /full[\s\S]{0,120}todos/i);
-  assert.match(opencode, /constant[\s\S]{0,160}priority/i);
-  assert.match(opencode, /disabl[\s\S]{0,200}subagent/i);
-  assert.doesNotMatch(opencode, /Get-Date/);
+  assert.match(policy, /todowrite/i,
+    'the policy should name the opencode todowrite tool');
+  assert.match(policy, /disabl[\s\S]{0,200}subagent/i,
+    'the policy should tie the disabled-by-default tool to the subagent context');
+  assert.doesNotMatch(coordinator, /Get-Date/,
+    'the coordinator should carry no PowerShell wall-clock command');
 
-  for (const binding of [claude, opencode]) {
-    assert.match(binding, /no Milestone Stamp/i);
-    assert.match(binding, /todo-structure\.md/);
-  }
+  assert.match(worker, /no Milestone Stamp/i,
+    'the worker contract should state audit plans carry no Milestone Stamp');
+  assert.match(coordinator, /todo-structure\.md/,
+    'the coordinator should reference the neutral todo-structure policy');
 });

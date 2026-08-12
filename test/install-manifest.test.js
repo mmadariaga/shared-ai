@@ -182,7 +182,6 @@ function normalizeWorkerProjection(projection, repoRoot, destinationRoot) {
   return {
     id: projection.id,
     harness: projection.harness,
-    sourcePath: path.relative(repoRoot, projection.sourcePath).split(path.sep).join('/'),
     destinationPath: path.relative(destinationRootEntry[1], projection.destinationPath).split(path.sep).join('/'),
     strategy: projection.strategy,
     ownership: projection.ownership,
@@ -194,12 +193,20 @@ function expectedWorkerProjection(record, harness, metadata) {
   return {
     id: record.id,
     harness,
-    sourcePath: record.sourcePath,
     destinationPath: record.destinationPath,
     strategy: metadata.strategy,
     ownership: metadata.ownership,
     drift: 'content',
   };
+}
+
+function relSource(projection, repoRoot) {
+  return path.relative(repoRoot, projection.sourcePath).split(path.sep).join('/');
+}
+
+function isRetiredPerPhaseSource(source, harness) {
+  if (source.startsWith(`sai/orchestration/workers/bindings/${harness}/`)) return true;
+  return new RegExp(`^agents/${harness}/sai-\\d-.*-worker\\.md$`).test(source);
 }
 
 function workerDestinationClass(id) {
@@ -261,6 +268,13 @@ test('managed worker registry has complete Claude and opencode manifest projecti
       assert.equal(workerRecords.length, harness === 'claude' ? 2 : 1,
         `${harness} should project the expected number of records for ${workerName}`);
     }
+
+    const workerProjections = first.filter(projection =>
+      expected.some(record => record.id === projection.id));
+    for (const projection of workerProjections) {
+      assert.equal(isRetiredPerPhaseSource(relSource(projection, repoRoot), harness), false,
+        `${harness} worker projection must not source from a retired per-phase tree: ${relSource(projection, repoRoot)}`);
+    }
   }
 
   const workerSources = new Set(Object.values(MANAGED_WORKER_PROJECTIONS).flatMap(worker => [
@@ -270,23 +284,27 @@ test('managed worker registry has complete Claude and opencode manifest projecti
   ]));
 });
 
-test('Step 6 security worker exposes binding and worker projections', () => {
+test('Step 6 security worker exposes matrix binding and worker projections', () => {
   const repoRoot = path.join(__dirname, '..');
   const manifest = loadInstallManifest(repoRoot);
   const destinationRoot = workerDestinationRoots(path.join(os.tmpdir(), 'sai-security-worker-projections'));
-  const source = projection => path.relative(repoRoot, projection.sourcePath).split(path.sep).join('/');
   const expected = [
-     ['claude', 'sai/orchestration/workers/bindings/claude/security-worker.md', path.join('orchestration', 'workers', 'bindings', 'security-worker.md')],
-     ['opencode', 'sai/orchestration/workers/bindings/opencode/security-worker.md', path.join('orchestration', 'workers', 'bindings', 'security-worker.md')],
-     ['claude', 'agents/claude/sai-6-security-worker.md', 'sai-6-security-worker.md'],
+     ['claude', 'claude-security-worker-binding', 'orchestration/workers/bindings/security-worker.md'],
+     ['opencode', 'opencode-security-worker-binding', 'orchestration/workers/bindings/security-worker.md'],
+     ['claude', 'claude-sai-6-security-worker', 'sai-6-security-worker.md'],
   ];
 
-  for (const [harness, expectedSource, expectedDestination] of expected) {
+  for (const [harness, expectedId, expectedDestination] of expected) {
     const projection = expandInstallManifest(manifest, { harness, repoRoot, destinationRoot })
-      .find(candidate => source(candidate) === expectedSource);
-    assert.ok(projection, `${harness} should project ${expectedSource}`);
-    assert.equal(projection.destinationPath.endsWith(expectedDestination), true,
-      `${expectedSource} should land at ${expectedDestination}`);
+      .find(candidate => candidate.id === expectedId);
+    assert.ok(projection, `${harness} should project ${expectedId}`);
+    const relative = projection.destinationPath.includes(`${path.sep}agents${path.sep}`)
+      ? path.relative(destinationRoot.agents, projection.destinationPath)
+      : path.relative(destinationRoot.sai, projection.destinationPath);
+    assert.equal(relative.split(path.sep).join('/'), expectedDestination,
+      `${expectedId} should land at ${expectedDestination}`);
+    assert.equal(isRetiredPerPhaseSource(relSource(projection, repoRoot), harness), false,
+      `${expectedId} must not source from a retired per-harness tree`);
   }
 
 });
@@ -348,7 +366,7 @@ test('canonical manifest has no active compatibility ADR-template projection', (
   );
 });
 
-test('canonical manifest keeps implementation projections harness-specific', () => {
+test('canonical manifest projects implementation assets to neutral matrix destinations', () => {
   const repoRoot = path.join(__dirname, '..');
   const manifest = loadInstallManifest(repoRoot);
   const destinationRoot = {
@@ -359,38 +377,43 @@ test('canonical manifest keeps implementation projections harness-specific', () 
     config: path.join(os.tmpdir(), 'sai-matrix-config'),
     root: path.join(os.tmpdir(), 'sai-matrix-config'),
   };
-  const implementationSources = {
-    claude: [
-      'sai/orchestration/coordinator-contract.md',
-      'sai/orchestration/worker-lifecycle.md',
-      'sai/orchestration/workers/sai-3-implementation-worker.md',
-      'sai/orchestration/workers/bindings/claude/implementation-worker.md',
-      'agents/claude/sai-3-implementation-worker.md',
-    ],
-    opencode: [
-      'sai/orchestration/coordinator-contract.md',
-      'sai/orchestration/worker-lifecycle.md',
-      'sai/orchestration/workers/sai-3-implementation-worker.md',
-      'sai/orchestration/workers/bindings/opencode/implementation-worker.md',
-    ],
-  };
+  const retiredImplementationSources = [
+    'sai/orchestration/workers/bindings/claude/implementation-worker.md',
+    'sai/orchestration/workers/bindings/opencode/implementation-worker.md',
+    'agents/claude/sai-3-implementation-worker.md',
+    'agents/opencode/sai-3-implementation-worker.md',
+  ];
 
-  for (const harness of Object.keys(implementationSources)) {
+  for (const harness of ['claude', 'opencode']) {
     const projections = expandInstallManifest(manifest, { harness, repoRoot, destinationRoot });
     const sourceSet = new Set(projections.map(projection => path.relative(repoRoot, projection.sourcePath).split(path.sep).join('/')));
     const destinations = projections.map(projection => projection.destinationPath);
 
     assert.equal(new Set(destinations).size, destinations.length, `${harness} destinations should be unique`);
     assert.deepEqual(destinations, [...destinations].sort((a, b) => a.localeCompare(b)), `${harness} destinations should be ordered`);
-    for (const source of implementationSources[harness]) {
+    for (const source of [
+      'sai/orchestration/coordinator-contract.md',
+      'sai/orchestration/worker-lifecycle.md',
+      'sai/orchestration/workers/sai-3-implementation-worker.md',
+    ]) {
       assert.ok(sourceSet.has(source), `${harness} should include ${source}`);
     }
-
+    const binding = projections.find(projection =>
+      projection.destinationPath.endsWith(path.join('orchestration', 'workers', 'bindings', 'implementation-worker.md')));
+    assert.ok(binding, `${harness} should project the neutral matrix implementation binding`);
+    assert.equal(binding.harness, harness, `${harness} implementation binding should be harness-scoped`);
+    assert.equal(isRetiredPerPhaseSource(relSource(binding, repoRoot), harness), false,
+      `${harness} implementation binding must not source from a retired per-harness tree`);
     if (harness === 'claude') {
-      assert.equal(sourceSet.has('sai/orchestration/workers/bindings/opencode/implementation-worker.md'), false);
-    } else if (harness === 'opencode') {
-      assert.equal(sourceSet.has('sai/orchestration/workers/bindings/claude/implementation-worker.md'), false);
-      assert.equal(sourceSet.has('agents/claude/sai-3-implementation-worker.md'), false);
+      const agent = projections.find(projection =>
+        projection.destinationPath.endsWith(path.join('agents', 'sai-3-implementation-worker.md')));
+      assert.ok(agent, 'claude should project the implementation worker agent');
+      assert.equal(isRetiredPerPhaseSource(relSource(agent, repoRoot), harness), false,
+        'claude implementation agent must not source from a retired per-harness agent tree');
+    }
+    for (const retiredSource of retiredImplementationSources) {
+      assert.equal(sourceSet.has(retiredSource), false,
+        `${harness} must not source from the retired per-harness tree ${retiredSource}`);
     }
   }
 });
@@ -398,19 +421,16 @@ test('canonical manifest keeps implementation projections harness-specific', () 
 test('canonical manifest projects routed spec assets only to Claude Code and opencode', () => {
   const repoRoot = path.join(__dirname, '..');
   const manifest = loadInstallManifest(repoRoot);
-  const expected = {
+  const expectedSources = {
     claude: [
       'sai/orchestration/coordinator-contract.md',
       'sai/orchestration/worker-lifecycle.md',
       'sai/orchestration/workers/sai-1-spec-proposal-worker.md',
-      'sai/orchestration/workers/bindings/claude/spec-worker.md',
-      'agents/claude/sai-1-spec-proposal-worker.md',
     ],
     opencode: [
       'sai/orchestration/coordinator-contract.md',
       'sai/orchestration/worker-lifecycle.md',
       'sai/orchestration/workers/sai-1-spec-proposal-worker.md',
-      'sai/orchestration/workers/bindings/opencode/spec-worker.md',
     ],
   };
   const destinationRoot = {
@@ -421,10 +441,26 @@ test('canonical manifest projects routed spec assets only to Claude Code and ope
     config: path.join(os.tmpdir(), 'sai-spec-config'),
     root: path.join(os.tmpdir(), 'sai-spec-config'),
   };
-  for (const [harness, requiredSources] of Object.entries(expected)) {
-    const sources = new Set(expandInstallManifest(manifest, { harness, repoRoot, destinationRoot })
-      .map(projection => path.relative(repoRoot, projection.sourcePath).split(path.sep).join('/')));
+  for (const [harness, requiredSources] of Object.entries(expectedSources)) {
+    const projections = expandInstallManifest(manifest, { harness, repoRoot, destinationRoot });
+    const sources = new Set(projections.map(projection => path.relative(repoRoot, projection.sourcePath).split(path.sep).join('/')));
     for (const source of requiredSources) assert.ok(sources.has(source), `${harness} should project ${source}`);
+    const binding = projections.find(projection =>
+      projection.destinationPath.endsWith(path.join('orchestration', 'workers', 'bindings', 'spec-worker.md')));
+    assert.ok(binding, `${harness} should project the neutral spec binding destination`);
+    assert.equal(isRetiredPerPhaseSource(relSource(binding, repoRoot), harness), false,
+      `${harness} spec binding must not source from a retired per-harness tree`);
+    if (harness === 'claude') {
+      const agent = projections.find(projection =>
+        projection.destinationPath.endsWith(path.join('agents', 'sai-1-spec-proposal-worker.md')));
+      assert.ok(agent, 'claude should project the spec proposal worker agent destination');
+      assert.equal(isRetiredPerPhaseSource(relSource(agent, repoRoot), harness), false,
+        'claude spec agent must not source from a retired per-harness agent tree');
+      assert.equal(sources.has('sai/orchestration/workers/bindings/opencode/spec-worker.md'), false);
+    } else {
+      assert.equal(sources.has('sai/orchestration/workers/bindings/claude/spec-worker.md'), false);
+      assert.equal(sources.has('agents/claude/sai-1-spec-proposal-worker.md'), false);
+    }
   }
 });
 
@@ -440,9 +476,9 @@ test('Installer projects every routed review surface', () => {
     root: path.join(os.tmpdir(), 'sai-review-config'),
   };
   const expected = [
-     ['claude', 'sai/orchestration/workers/bindings/claude/review-worker.md', path.join('orchestration', 'workers', 'bindings', 'review-worker.md')],
-     ['opencode', 'sai/orchestration/workers/bindings/opencode/review-worker.md', path.join('orchestration', 'workers', 'bindings', 'review-worker.md')],
-     ['claude', 'agents/claude/sai-5-review-worker.md', 'sai-5-review-worker.md'],
+     ['claude', path.join('orchestration', 'workers', 'bindings', 'review-worker.md')],
+     ['opencode', path.join('orchestration', 'workers', 'bindings', 'review-worker.md')],
+     ['claude', path.join('agents', 'sai-5-review-worker.md')],
   ];
 
   for (const harness of ['claude', 'opencode']) {
@@ -454,13 +490,11 @@ test('Installer projects every routed review surface', () => {
     }));
     assert.deepEqual(normalize(first), normalize(second), `${harness} review expansion should be deterministic`);
 
-    for (const [expectedHarness, source, destinationSuffix] of expected.filter(item => item[0] === harness)) {
-      const projection = first.find(item =>
-        path.relative(repoRoot, item.sourcePath).split(path.sep).join('/') === source
-      );
-      assert.ok(projection, `${expectedHarness} should project ${source}`);
-      assert.equal(projection.destinationPath.endsWith(destinationSuffix), true,
-        `${source} should land at ${destinationSuffix}`);
+    for (const [expectedHarness, destinationSuffix] of expected.filter(item => item[0] === harness)) {
+      const projection = first.find(item => item.destinationPath.endsWith(destinationSuffix));
+      assert.ok(projection, `${expectedHarness} should project a matrix review destination ${destinationSuffix}`);
+      assert.equal(isRetiredPerPhaseSource(relSource(projection, repoRoot), harness), false,
+        `${expectedHarness} review destination ${destinationSuffix} must not source from a retired per-harness tree`);
     }
   }
 
@@ -489,25 +523,12 @@ test('Installer projects deterministic routed performance surfaces with ownershi
       strategy: 'copy',
       ownership: 'managed',
     },
-    'sai/orchestration/workers/bindings/claude/performance-worker.md': {
-      harnesses: ['claude'],
-       destination: 'orchestration/workers/bindings/performance-worker.md',
-      strategy: 'copy',
-      ownership: 'managed',
-    },
-    'sai/orchestration/workers/bindings/opencode/performance-worker.md': {
-      harnesses: ['opencode'],
-       destination: 'orchestration/workers/bindings/performance-worker.md',
-      strategy: 'copy',
-      ownership: 'managed',
-    },
-    'agents/claude/sai-7-performance-worker.md': {
-      harnesses: ['claude'],
-      destination: 'sai-7-performance-worker.md',
-      strategy: 'tunable-seed',
-      ownership: 'managed',
-    },
   };
+  const matrixDestinations = [
+    ['claude', 'orchestration/workers/bindings/performance-worker.md', 'copy', 'managed'],
+    ['opencode', 'orchestration/workers/bindings/performance-worker.md', 'copy', 'managed'],
+    ['claude', 'sai-7-performance-worker.md', 'tunable-seed', 'managed'],
+  ];
 
   for (const harness of ['claude', 'opencode']) {
     const normalize = projections => projections.map(projection => ({
@@ -534,6 +555,18 @@ test('Installer projects deterministic routed performance surfaces with ownershi
       assert.equal(projection.ownership, contract.ownership, `${source} ownership should be stable`);
       assert.equal(projection.drift, 'content', `${source} drift should be content`);
     }
+
+    const projections = expandInstallManifest(manifest, { harness, repoRoot, destinationRoot });
+    for (const [expectedHarness, destinationSuffix, strategy, ownership] of matrixDestinations.filter(item => item[0] === harness)) {
+      const projection = projections.find(candidate =>
+        path.relative(destinationRoot.agents, candidate.destinationPath).split(path.sep).join('/') === destinationSuffix ||
+        path.relative(destinationRoot.sai, candidate.destinationPath).split(path.sep).join('/') === destinationSuffix);
+      assert.ok(projection, `${expectedHarness} should project matrix performance destination ${destinationSuffix}`);
+      assert.equal(projection.strategy, strategy, `${expectedHarness} ${destinationSuffix} strategy should be stable`);
+      assert.equal(projection.ownership, ownership, `${expectedHarness} ${destinationSuffix} ownership should be stable`);
+      assert.equal(isRetiredPerPhaseSource(relSource(projection, repoRoot), harness), false,
+        `${expectedHarness} ${destinationSuffix} must not source from a retired per-harness tree`);
+    }
   }
 
 });
@@ -541,11 +574,23 @@ test('Installer projects deterministic routed performance surfaces with ownershi
 test('Routed review bindings remain harness-specific', () => {
   const repoRoot = path.join(__dirname, '..');
   const manifest = loadInstallManifest(repoRoot);
-  const routedReview = manifest.projections.filter(projection =>
-    projection.source.includes('review-worker') || projection.source.includes('sai-5-review')
-  );
-  assert.ok(routedReview.length > 0, 'the manifest should declare routed review surfaces');
-  assert.ok(routedReview.every(projection => projection.harnesses.every(harness => ['claude', 'opencode'].includes(harness))));
+  const destinationRoot = workerDestinationRoots(path.join(os.tmpdir(), 'sai-routed-review-matrix'));
+  for (const harness of ['claude', 'opencode']) {
+    const projections = expandInstallManifest(manifest, { harness, repoRoot, destinationRoot });
+    const binding = projections.find(projection =>
+      path.relative(destinationRoot.sai, projection.destinationPath)
+        .split(path.sep).join('/') === ['orchestration', 'workers', 'bindings', 'review-worker.md'].join('/'));
+    assert.ok(binding, `${harness} should project the matrix review binding at its neutral destination`);
+    assert.equal(binding.harness, harness, `${harness} review binding should be harness-scoped`);
+    assert.equal(isRetiredPerPhaseSource(relSource(binding, repoRoot), harness), false,
+      `${harness} review binding must not source from a retired per-harness tree`);
+    const agent = projections.find(projection =>
+      path.relative(destinationRoot.agents, projection.destinationPath)
+        .split(path.sep).join('/') === 'sai-5-review-worker.md');
+    assert.ok(agent, `${harness} should project the matrix review worker agent`);
+    assert.equal(isRetiredPerPhaseSource(relSource(agent, repoRoot), harness), false,
+      `${harness} review agent must not source from a retired per-harness tree`);
+  }
 });
 
 test('compatibility and policy projections resolve for every supported harness', () => {
@@ -740,8 +785,15 @@ test('STEP1_RETIRE_INLINE: manifest and installer expose only routed harnesses',
     assert.ok(active.every(projection => projection.harness === harness));
     const routedBindings = active
       .map(projection => path.relative(repoRoot, projection.sourcePath).split(path.sep).join('/'))
-      .filter(source => source.startsWith(`sai/orchestration/workers/bindings/${harness}/`));
-    assert.equal(routedBindings.length, 8, `${harness} should retain all routed worker bindings`);
+      .filter(source => source.startsWith(`sai/orchestration/workers/bindings/${harness}/`) &&
+        !source.endsWith('/idea-list-render.md'));
+    assert.equal(routedBindings.length, 0, `${harness} should retain no retired per-harness worker binding sources`);
+    const ideaListSources = active
+      .map(projection => path.relative(repoRoot, projection.sourcePath).split(path.sep).join('/'))
+      .filter(source => source.startsWith(`sai/orchestration/workers/bindings/${harness}/`) &&
+        source.endsWith('/idea-list-render.md'));
+    assert.equal(ideaListSources.length, 1,
+      `${harness} should retain the regular idea-list-render binding source beside the matrix`);
 
     const retirements = expandRetirementManifest(manifest, {
       harness,
@@ -1210,4 +1262,50 @@ test('recursive sai-instructions projection carries the extracted _templates fil
     }
   }
   assert.equal(projectedCount, 14, 'seven templates across two harnesses should project to 14 paths');
+});
+
+test('matrix worker bindings and agents are the sole worker inventory per harness', () => {
+  const repoRoot = path.join(__dirname, '..');
+  const manifest = loadInstallManifest(repoRoot);
+  const phases = ['spec', 'design', 'implementation', 'review', 'security', 'performance', 'accessibility'];
+  const workers = {
+    spec: 'sai-1-spec-proposal-worker',
+    design: 'sai-2-design-worker',
+    implementation: 'sai-3-implementation-worker',
+    review: 'sai-5-review-worker',
+    security: 'sai-6-security-worker',
+    performance: 'sai-7-performance-worker',
+    accessibility: 'sai-8-accessibility-worker',
+  };
+  for (const harness of ['claude', 'opencode']) {
+    const destinationRoot = workerDestinationRoots(path.join(os.tmpdir(), `sai-matrix-inventory-${harness}`));
+    const active = expandInstallManifest(manifest, { harness, repoRoot, destinationRoot });
+    const bindingNames = active
+      .filter(projection => path.relative(destinationRoot.sai, projection.destinationPath)
+        .split(path.sep).join('/').startsWith('orchestration/workers/bindings/') &&
+        phases.includes(path.basename(projection.destinationPath, '-worker.md')))
+      .map(projection => path.basename(projection.destinationPath));
+    assert.equal(bindingNames.length, 7, `${harness} should declare exactly seven worker bindings`);
+    assert.deepEqual(bindingNames.sort(), phases.map(phase => `${phase}-worker.md`).sort(),
+      `${harness} worker bindings should cover exactly the seven phases`);
+    assert.equal(bindingNames.includes('idea-list-render.md'), false,
+      `${harness} must not declare an idea-list-render matrix binding projection`);
+
+    const agentNames = active
+      .filter(projection => projection.destinationPath.startsWith(destinationRoot.agents) &&
+        Object.values(workers).includes(path.basename(projection.destinationPath, '.md')))
+      .map(projection => path.basename(projection.destinationPath, '.md'));
+    assert.equal(agentNames.length, 7, `${harness} should declare exactly seven managed agents`);
+    assert.deepEqual(agentNames.sort(), Object.values(workers).sort(),
+      `${harness} managed agents should be exactly the seven worker identities`);
+    assert.equal(agentNames.some(name => ['budget', 'executor', 'explore'].includes(name)), false,
+      `${harness} must not declare support agents as worker inventory`);
+
+    const workerProjections = active.filter(projection => {
+      const source = path.relative(repoRoot, projection.sourcePath).split(path.sep).join('/');
+      return isRetiredPerPhaseSource(source, harness) && !source.endsWith('/idea-list-render.md');
+    });
+    assert.equal(workerProjections.length, 0,
+      `${harness} must not project any retired per-phase worker source`);
+  }
 });

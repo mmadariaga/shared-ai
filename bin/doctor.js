@@ -173,7 +173,10 @@ function retiredFileRecords(section, entries) {
     });
 }
 
-function inventoryHarness(section, expectedEntries, { projectRoot, harness }) {
+function inventoryHarness(harness, roots) {
+  const section = `[${harness.id}]`;
+  const expectedEntries = roots.entries;
+  const projectRoot = roots.projectRoot;
   const records = [];
   const expected = expectedEntries.filter(e => e.src !== e.dest && e.assetType !== 'retired-managed-file');
   const expectedDests = new Set(expectedEntries.map(e => e.dest));
@@ -183,11 +186,11 @@ function inventoryHarness(section, expectedEntries, { projectRoot, harness }) {
     ? { section, name: 'files', severity: 'ok', message: `${expected.length} expected files present` }
     : { section, name: 'files', severity: 'error', message: `${missing.length} expected file(s) missing: ${missing.map(item => item.path).join(', ')}`, path: missing.map(item => item.path).join(', '), rules: missing.map(item => item.ruleId), recommendation: 'Re-run the installer: npx github:mmadariaga/shared-ai install' });
 
-  const roots = new Set();
-  roots.add(path.join(harness.base, 'commands'));
-  roots.add(path.join(harness.base, 'sai'));
-  roots.add(path.join(harness.base, 'skills'));
-  roots.add(path.join(harness.base, 'agents'));
+  const rootsSet = new Set();
+  rootsSet.add(path.join(harness.base, 'commands'));
+  rootsSet.add(path.join(harness.base, 'sai'));
+  rootsSet.add(path.join(harness.base, 'skills'));
+  rootsSet.add(path.join(harness.base, 'agents'));
   const unexpected = [];
   function visit(dir) {
     if (!fs.existsSync(dir)) return;
@@ -197,7 +200,7 @@ function inventoryHarness(section, expectedEntries, { projectRoot, harness }) {
       else if (entry.isFile() && !expectedDests.has(full)) unexpected.push(shorten(full));
     }
   }
-  for (const root of roots) visit(root);
+  for (const root of rootsSet) visit(root);
   if (unexpected.length > 0) {
     records.push({ section, name: 'unexpected', severity: 'warn', message: `${unexpected.length} unexpected file(s): ${unexpected.join(', ')}`, path: unexpected.join(', '), rules: unexpected.map(() => null) });
   }
@@ -311,8 +314,10 @@ function diffAgainstBundled(expectedEntries) {
   return drift;
 }
 
-function managedBytesMatch(sourcePath, destinationPath, tunableKeys) {
-  const source = fs.readFileSync(sourcePath);
+function managedBytesMatch(projection, destinationPath, tunableKeys) {
+  const source = projection.sourceText !== undefined
+    ? Buffer.from(projection.sourceText, 'utf8')
+    : fs.readFileSync(projection.sourcePath);
   const destination = fs.readFileSync(destinationPath);
   return flow.stripTunableLines(source, tunableKeys).equals(flow.stripTunableLines(destination, tunableKeys));
 }
@@ -332,7 +337,7 @@ function managedClaudeWorkerRecords(harness, repoRoot) {
       root: harness.base,
     };
     projections = expandInstallManifest(manifest, { harness: 'claude', repoRoot, destinationRoot })
-      .filter(projection => projection.strategy === 'tunable-seed');
+      .filter(projection => projection.strategy === 'tunable-seed' && projection.sourceText !== undefined);
   } catch (err) {
     return [{
       section,
@@ -357,7 +362,7 @@ function managedClaudeWorkerRecords(harness, repoRoot) {
       });
       continue;
     }
-    const compatible = managedBytesMatch(source, destination, flow.CLAUDE_TUNABLE_KEYS);
+    const compatible = managedBytesMatch(projection, destination, flow.CLAUDE_TUNABLE_KEYS);
     records.push(compatible
       ? { section, name: label, severity: 'ok', message: `managed Claude worker ${agentName} is compatible` }
       : { section, name: label, severity: 'error', message: `incompatible Claude worker definition ${agentName}` });
@@ -380,7 +385,7 @@ function managedOpencodeAgentRecords(harness, repoRoot) {
       root: harness.base,
     };
     projections = expandInstallManifest(manifest, { harness: 'opencode', repoRoot, destinationRoot })
-      .filter(projection => projection.strategy === 'tunable-seed');
+      .filter(projection => projection.strategy === 'tunable-seed' && projection.sourceText !== undefined);
   } catch (err) {
     return [{
       section,
@@ -405,7 +410,7 @@ function managedOpencodeAgentRecords(harness, repoRoot) {
       });
       continue;
     }
-    const compatible = managedBytesMatch(source, destination, flow.OPENCODE_TUNABLE_KEYS);
+    const compatible = managedBytesMatch(projection, destination, flow.OPENCODE_TUNABLE_KEYS);
     records.push(compatible
       ? { section, name: label, severity: 'ok', message: `managed opencode worker ${agentName} is compatible` }
       : { section, name: label, severity: 'error', message: `incompatible opencode worker definition ${agentName}` });
@@ -460,7 +465,7 @@ async function main(options = {}) {
       continue;
     }
     const entries = h.entries();
-    const sectionRecords = inventoryHarness(`[${h.id}]`, entries, { projectRoot, harness: h });
+    const sectionRecords = inventoryHarness(h, { entries, projectRoot });
     sectionRecords.push(...fetchResolutionRecords(h, entries, { projectRoot }));
     sectionRecords.push(...managedAssetRecords(h, repoRoot));
     sectionRecords.push(...versionSkewRecords(h, entries, latest));

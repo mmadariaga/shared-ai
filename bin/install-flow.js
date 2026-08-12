@@ -8,7 +8,7 @@ const os = require('os');
 const readline = require('readline');
 const childProcess = require('child_process');
 const crypto = require('crypto');
-const { loadInstallManifest, expandInstallManifest, expandRetirementManifest } = require('./install-manifest');
+const { loadInstallManifest, expandInstallManifest, expandRetirementManifest, matrixRenderFor } = require('./install-manifest');
 
 let jsoncParser = null;
 try {
@@ -102,7 +102,9 @@ function deleteSidecarUnderShapeGuard(destinationPath) {
 }
 
 function tunableSeedInstaller(projection) {
-  const sourceBytes = fs.readFileSync(projection.sourcePath);
+  const sourceBytes = projection.sourceText !== undefined
+    ? Buffer.from(projection.sourceText, 'utf8')
+    : fs.readFileSync(projection.sourcePath);
   const destination = projection.destinationPath;
   const tunableKeys = projection.harness === 'claude' ? CLAUDE_TUNABLE_KEYS : OPENCODE_TUNABLE_KEYS;
   ensureDir(path.dirname(destination));
@@ -123,52 +125,49 @@ function tunableSeedInstaller(projection) {
   deleteSidecarUnderShapeGuard(destination);
   return outcome;
 }
-const MANAGED_WORKERS = Object.freeze({
-  'sai-3-implementation-worker': Object.freeze({
-    claude: Object.freeze({
-      agent: 'sai-3-implementation-worker.md',
-    }),
-  }),
-  'sai-2-design-worker': Object.freeze({
-    claude: Object.freeze({
-      agent: 'sai-2-design-worker.md',
-    }),
-  }),
-  'sai-5-review-worker': Object.freeze({
-    claude: Object.freeze({
-      agent: 'sai-5-review-worker.md',
-    }),
-  }),
-  'sai-6-security-worker': Object.freeze({
-    claude: Object.freeze({
-      agent: 'sai-6-security-worker.md',
-    }),
-  }),
-  'sai-7-performance-worker': Object.freeze({
-    claude: Object.freeze({
-      agent: 'sai-7-performance-worker.md',
-    }),
-  }),
-  'sai-8-accessibility-worker': Object.freeze({
-    claude: Object.freeze({
-      agent: 'sai-8-accessibility-worker.md',
-    }),
-  }),
-  'sai-1-spec-proposal-worker': Object.freeze({
-    claude: Object.freeze({
-      agent: 'sai-1-spec-proposal-worker.md',
-    }),
-  }),
-});
-const CLAUDE_IMPLEMENTATION_WORKER_AGENT = MANAGED_WORKERS['sai-3-implementation-worker'].claude.agent;
-const CLAUDE_DESIGN_WORKER_AGENT = MANAGED_WORKERS['sai-2-design-worker'].claude.agent;
-const CLAUDE_SPEC_WORKER_AGENT = MANAGED_WORKERS['sai-1-spec-proposal-worker'].claude.agent;
-const CLAUDE_REVIEW_WORKER_AGENT = MANAGED_WORKERS['sai-5-review-worker'].claude.agent;
 const REPOSITORY_ROOT = path.join(__dirname, '..');
 const PACKAGE_VERSION = require(path.join(REPOSITORY_ROOT, 'package.json')).version;
 
 const OPENCODE_BINDINGS_DIR = path.join(REPOSITORY_ROOT, 'sai', 'orchestration', 'workers', 'bindings', 'opencode');
 const CLAUDE_BINDINGS_DIR = path.join(REPOSITORY_ROOT, 'sai', 'orchestration', 'workers', 'bindings', 'claude');
+
+// The managed-worker census is no longer hand-maintained: it is derived from
+// the validated Worker Matrix phase entries. The canonical key order below is
+// preserved for compatibility with consumers that read MANAGED_WORKERS.
+const MANAGED_WORKER_ORDER = Object.freeze([
+  'sai-3-implementation-worker',
+  'sai-2-design-worker',
+  'sai-5-review-worker',
+  'sai-6-security-worker',
+  'sai-7-performance-worker',
+  'sai-8-accessibility-worker',
+  'sai-1-spec-proposal-worker',
+]);
+
+function matrixRenderings(harness) {
+  return matrixRenderFor(loadInstallManifest(REPOSITORY_ROOT), harness, REPOSITORY_ROOT);
+}
+
+function matrixBindings(harness) {
+  return matrixRenderings(harness).filter(item => item.kind === 'binding');
+}
+
+function matrixWorkerRoster(harness) {
+  const names = [];
+  for (const binding of matrixBindings(harness)) {
+    const name = binding.entry.workerName;
+    if (!names.includes(name)) names.push(name);
+  }
+  return names;
+}
+
+const MANAGED_WORKERS = Object.freeze(Object.fromEntries(
+  MANAGED_WORKER_ORDER.map(name => [name, Object.freeze({ claude: Object.freeze({ agent: `${name}.md` }) })])
+));
+const CLAUDE_IMPLEMENTATION_WORKER_AGENT = MANAGED_WORKERS['sai-3-implementation-worker'].claude.agent;
+const CLAUDE_DESIGN_WORKER_AGENT = MANAGED_WORKERS['sai-2-design-worker'].claude.agent;
+const CLAUDE_SPEC_WORKER_AGENT = MANAGED_WORKERS['sai-1-spec-proposal-worker'].claude.agent;
+const CLAUDE_REVIEW_WORKER_AGENT = MANAGED_WORKERS['sai-5-review-worker'].claude.agent;
 
 function expectedDispatchPrompt(workerName) {
   return `Worker contract: Fetch @sai/orchestration/workers/${workerName}.md and follow it exactly.\n\nInvocationEnvelope:\n<original InvocationEnvelope>`;
@@ -245,36 +244,53 @@ function parseInitialDispatches(text, callName, bindingPath) {
   return dispatches;
 }
 
-function workerBindingPaths(bindingsDir) {
-  // The roster is worker-only: non-worker bindings (e.g. the idea-list render
-  // binding) declare no dispatch and are not part of the derived worker roster.
-  return fs.readdirSync(bindingsDir)
-    .filter(name => name.endsWith('-worker.md'))
-    .map(name => path.join(bindingsDir, name))
-    .sort((left, right) => left.split(path.sep).join('/').localeCompare(right.split(path.sep).join('/')));
+function parseClaudeInitialDispatches(text, bindingPath) {
+  const dispatches = [];
+  for (const argumentsText of collectCallArguments(text, 'Agent', bindingPath)) {
+    const names = quotedFieldValues(argumentsText, 'name');
+    if (names.length === 0) continue;
+    if (names.length !== 1) {
+      throw new Error(`Binding ${bindingPath} must contain exactly one initial Agent(name: "...") declaration but found ${names.length}.`);
+    }
+    const prompts = quotedFieldValues(argumentsText, 'prompt');
+    if (prompts.length !== 1 || prompts[0].includes('\n') || prompts[0].includes('\r')) {
+      throw new Error(`Binding ${bindingPath} initial Agent for "${names[0]}" must contain exactly one double-quoted single-line prompt.`);
+    }
+    let prompt;
+    try {
+      prompt = JSON.parse(`"${prompts[0]}"`);
+    } catch (error) {
+      throw new Error(`Binding ${bindingPath} initial Agent for "${names[0]}" has an invalid escaped prompt: ${error.message}`);
+    }
+    dispatches.push({ name: names[0], prompt });
+  }
+  return dispatches;
 }
 
-function validateClaudeWorkerBindings(bindingsDir = CLAUDE_BINDINGS_DIR) {
+function validateClaudeWorkerBindings() {
+  const roster = matrixWorkerRoster('claude');
+  if (roster.length !== 7) {
+    throw new Error('Claude worker roster cannot be derived from the validated Worker Matrix; expected seven phase entries.');
+  }
   const seenBy = new Map();
-  for (const bindingPath of workerBindingPaths(bindingsDir)) {
-    const text = fs.readFileSync(bindingPath, 'utf8');
-    const dispatches = parseInitialDispatches(text, 'Agent', bindingPath);
+  for (const binding of matrixBindings('claude')) {
+    const dispatches = parseClaudeInitialDispatches(binding.text, binding.destinationName);
     if (dispatches.length !== 1) {
-      throw new Error(`Claude binding ${bindingPath} must contain exactly one initial Agent dispatch but found ${dispatches.length}.`);
+      throw new Error(`Claude binding ${binding.destinationName} must contain exactly one initial Agent dispatch but found ${dispatches.length}.`);
     }
     const { name, prompt } = dispatches[0];
-    if (!MANAGED_WORKERS[name]) {
-      throw new Error(`Claude binding ${bindingPath} declares unknown worker "${name}".`);
+    if (!roster.includes(name)) {
+      throw new Error(`Claude binding ${binding.destinationName} declares unknown worker "${name}".`);
     }
     if (seenBy.has(name)) {
-      throw new Error(`Duplicate Claude worker "${name}" declared by ${seenBy.get(name)} and ${bindingPath}.`);
+      throw new Error(`Duplicate Claude worker "${name}" declared by ${seenBy.get(name)} and ${binding.destinationName}.`);
     }
-    seenBy.set(name, bindingPath);
+    seenBy.set(name, binding.destinationName);
     if (prompt !== expectedDispatchPrompt(name)) {
-      throw new Error(`Claude binding ${bindingPath} has the wrong initial prompt for "${name}"; expected the contract for ${name}.md.`);
+      throw new Error(`Claude binding ${binding.destinationName} has the wrong initial prompt for "${name}"; expected the matrix prompt for ${binding.entry.phase}.`);
     }
   }
-  for (const name of Object.keys(MANAGED_WORKERS)) {
+  for (const name of roster) {
     if (!seenBy.has(name)) {
       throw new Error(`Claude worker "${name}" has no binding with a validated initial Agent dispatch.`);
     }
@@ -282,24 +298,55 @@ function validateClaudeWorkerBindings(bindingsDir = CLAUDE_BINDINGS_DIR) {
 }
 
 function validateOpencodeWorkerBindings(bindingsDir = OPENCODE_BINDINGS_DIR) {
-  const bindingFiles = workerBindingPaths(bindingsDir);
-  if (bindingFiles.length === 0) {
+  const allFiles = fs.readdirSync(bindingsDir);
+  if (allFiles.length === 0) {
     throw new Error(`Opencode bindings directory ${bindingsDir} contains no binding files; the worker roster cannot be derived.`);
   }
+  const rosterByEntry = new Map(matrixBindings('opencode').map(binding => [binding.entry.workerName, binding]));
+  const bindingFiles = allFiles
+    .filter(name => name.endsWith('-worker.md'))
+    .map(name => path.join(bindingsDir, name))
+    .sort((left, right) => left.split(path.sep).join('/').localeCompare(right.split(path.sep).join('/')));
+  if (bindingFiles.length > 0) {
+    const seenBy = new Map();
+    for (const bindingPath of bindingFiles) {
+      const text = fs.readFileSync(bindingPath, 'utf8');
+      const dispatches = parseInitialDispatches(text, 'task', bindingPath);
+      if (dispatches.length !== 1) {
+        throw new Error(`Opencode binding ${bindingPath} must contain exactly one initial task dispatch but found ${dispatches.length}.`);
+      }
+      const { name, prompt } = dispatches[0];
+      const binding = rosterByEntry.get(name);
+      if (!binding) {
+        throw new Error(`Opencode binding ${bindingPath} declares unknown worker "${name}".`);
+      }
+      if (seenBy.has(name)) {
+        throw new Error(`Duplicate opencode worker "${name}" declared by ${seenBy.get(name)} and ${bindingPath}.`);
+      }
+      seenBy.set(name, bindingPath);
+      if (prompt !== expectedDispatchPrompt(name)) {
+        throw new Error(`Opencode binding ${bindingPath} has the wrong initial prompt for "${name}"; expected the matrix prompt for ${binding.entry.phase}.`);
+      }
+    }
+    return [...seenBy.keys()];
+  }
   const seenBy = new Map();
-  for (const bindingPath of bindingFiles) {
-    const text = fs.readFileSync(bindingPath, 'utf8');
-    const dispatches = parseInitialDispatches(text, 'task', bindingPath);
+  for (const binding of matrixBindings('opencode')) {
+    const dispatches = parseInitialDispatches(binding.text, 'task', binding.destinationName);
     if (dispatches.length !== 1) {
-      throw new Error(`Opencode binding ${bindingPath} must contain exactly one initial task dispatch but found ${dispatches.length}.`);
+      throw new Error(`Opencode binding ${binding.destinationName} must contain exactly one initial task dispatch but found ${dispatches.length}.`);
     }
     const { name, prompt } = dispatches[0];
-    if (seenBy.has(name)) {
-      throw new Error(`Duplicate opencode worker "${name}" declared by ${seenBy.get(name)} and ${bindingPath}.`);
+    const expected = rosterByEntry.get(name);
+    if (!expected) {
+      throw new Error(`Opencode binding ${binding.destinationName} declares unknown worker "${name}".`);
     }
-    seenBy.set(name, bindingPath);
+    if (seenBy.has(name)) {
+      throw new Error(`Duplicate opencode worker "${name}" declared by ${seenBy.get(name)} and ${binding.destinationName}.`);
+    }
+    seenBy.set(name, binding.destinationName);
     if (prompt !== expectedDispatchPrompt(name)) {
-      throw new Error(`Opencode binding ${bindingPath} has the wrong initial prompt for "${name}"; expected the contract for ${name}.md.`);
+      throw new Error(`Opencode binding ${binding.destinationName} has the wrong initial prompt for "${name}"; expected the matrix prompt for ${binding.entry.phase}.`);
     }
   }
   return [...seenBy.keys()];
@@ -561,6 +608,11 @@ function installProjection(projection, targetPath) {
   }
   if (projection.strategy === 'owned-copy') {
     throw new Error(`Projection ${projection.id} declares the retired owned-copy strategy; use tunable-seed`);
+  }
+  if (projection.sourceText !== undefined) {
+    ensureDir(path.dirname(projection.destinationPath));
+    fs.writeFileSync(projection.destinationPath, projection.sourceText);
+    return;
   }
   copy(projection.sourcePath, projection.destinationPath);
 }
@@ -955,10 +1007,13 @@ module.exports = {
   tunableSeedInstaller,
   deleteSidecarUnderShapeGuard,
   stripTunableLines,
+  matrixBindings,
+  matrixWorkerRoster,
   __test: {
     mergeOpencodeAgents,
     expectedDispatchPrompt,
     parseInitialDispatches,
+    parseClaudeInitialDispatches,
     validateClaudeWorkerBindings,
     validateOpencodeWorkerBindings,
     createPermissionMatchContext,

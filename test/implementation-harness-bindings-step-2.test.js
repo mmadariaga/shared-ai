@@ -7,8 +7,24 @@ const path = require('path');
 const {
   REQUIRED_OPERATIONS,
 } = require('../fixtures/implementation-harness-bindings.js');
+const { loadInstallManifest, matrixRenderFor } = require('../bin/install-manifest.js');
 
 const repoRoot = path.join(__dirname, '..');
+
+const matrixManifest = loadInstallManifest(path.join(__dirname, '..'));
+function matrixBinding(harness, phase) {
+  const item = matrixRenderFor(matrixManifest, harness, path.join(__dirname, '..'))
+    .find(entry => entry.kind === 'binding' && entry.phase === phase);
+  assert.ok(item, `${harness}/${phase} matrix binding should exist`);
+  return item.text;
+}
+
+function matrixAgent(harness, phase) {
+  const item = matrixRenderFor(matrixManifest, harness, path.join(__dirname, '..'))
+    .find(entry => entry.kind === 'agent' && entry.phase === phase);
+  assert.ok(item, `${harness}/${phase} matrix agent should exist`);
+  return item.text;
+}
 
 function artifact(relativePath) {
   const fullPath = path.join(repoRoot, relativePath);
@@ -26,13 +42,23 @@ const WORKERS = [
   ['sai-8-accessibility-worker', 'accessibility-worker.md'],
 ];
 
+const BINDING_PHASE = Object.fromEntries(WORKERS.map(([worker, filename]) => [
+  filename,
+  filename.replace('-worker.md', ''),
+]));
+
+const OPERATION_PHRASE = {
+  dispatch_worker: /Dispatch the worker once|dispatch\s+/i,
+  continue_same_worker: /Continue on the same (?:worker|task)/i,
+  dispatch_one_replacement_worker: /one bounded replacement|replacement dispatch/i,
+};
+
 test('Step 2 routed harness bindings expose the required lifecycle symbols', () => {
   for (const harness of ['claude', 'opencode']) {
-    const relativePath = `sai/orchestration/workers/bindings/${harness}/implementation-worker.md`;
-    const binding = artifact(relativePath);
+    const binding = matrixBinding(harness, 'implementation');
     for (const operation of REQUIRED_OPERATIONS) {
-      assert.match(binding, new RegExp(`## ${operation}`),
-        `${relativePath} should expose ${operation}`);
+      assert.match(binding, OPERATION_PHRASE[operation],
+        `${harness} binding should expose ${operation}`);
     }
   }
 });
@@ -46,14 +72,13 @@ test('Step 3 removes worker proxy skills while preserving harness-specific bindi
       assert.equal(fs.existsSync(path.join(repoRoot, 'skills', harness, worker, 'SKILL.md')), false,
         `${harness} worker proxy source should be absent`);
 
-      const relativePath = `sai/orchestration/workers/bindings/${harness}/${filename}`;
-      const binding = artifact(relativePath);
+      const binding = matrixBinding(harness, BINDING_PHASE[filename]);
       assert.match(binding, permissionTarget,
         `${harness} binding should use its harness permission target`);
       if (filename === 'implementation-worker.md') {
         for (const operation of REQUIRED_OPERATIONS) {
-          assert.match(binding, new RegExp(`\\b${operation}\\b`),
-            `${relativePath} should define ${operation}`);
+          assert.match(binding, OPERATION_PHRASE[operation],
+            `${harness} binding should define ${operation}`);
         }
       }
     }
@@ -62,30 +87,43 @@ test('Step 3 removes worker proxy skills while preserving harness-specific bindi
 
 test('Step 3 keeps all seven managed Claude agents alongside the neutral binding sources', () => {
   for (const [worker, filename] of WORKERS) {
-    assert.ok(fs.existsSync(path.join(repoRoot, 'sai', 'orchestration', 'workers', 'bindings', 'claude', filename)));
-    assert.ok(fs.existsSync(path.join(repoRoot, 'agents', 'claude', `${worker}.md`)));
+    const phase = BINDING_PHASE[filename];
+    assert.match(matrixAgent('claude', phase), new RegExp(worker),
+      `the Claude matrix agent should seed ${worker}`);
+    assert.match(matrixBinding('claude', phase), /Agent\s*\(/,
+      `the Claude matrix binding should render ${filename}`);
+    assert.equal(fs.existsSync(path.join(repoRoot, 'agents', 'claude', `${worker}.md`)), false,
+      `no per-harness ${worker} agent source should exist`);
+    assert.equal(fs.existsSync(path.join(repoRoot, 'sai', 'orchestration', 'workers', 'bindings', 'claude', filename)), false,
+      `no per-harness ${filename} binding source should exist`);
   }
 });
 
-test('Step 2 routed harness bindings failed needs_input continuation allows one replacement with complete reconstruction state', () => {
-  for (const relativePath of [
-    'sai/orchestration/workers/bindings/claude/implementation-worker.md',
-    'sai/orchestration/workers/bindings/opencode/implementation-worker.md',
-  ]) {
-    const binding = artifact(relativePath);
+test('Step 2 routed coordinator failed needs_input continuation allows one replacement with complete reconstruction state', () => {
+  const coordinator = artifact('sai/commands/implement/coordinator.md');
+  const fields = [
+    'original_envelope',
+    'resolved_change_name',
+    'opaque_input_history',
+    'durable[- ]artifact reconstruction instruction',
+  ];
 
-    assert.match(binding, /failed|failure/i);
-    assert.match(binding, /at most one|one replacement|single replacement/i);
-    assert.match(binding, /dispatch_one_replacement_worker/);
-    for (const field of [
-      'original_envelope',
-      'resolved_change_name',
-      'opaque_input_history',
-      'durable_artifact_reconstruction_instruction',
-    ]) {
-      assert.match(binding, new RegExp(`\\b${field}\\b`),
-        `${relativePath} should reconstruct ${field}`);
-    }
+  assert.match(coordinator, /failed|failure/i,
+    'the coordinator should handle failed continuations');
+  assert.match(coordinator, /at most one replacement|one fresh worker|one replacement/i,
+    'the coordinator should allow one replacement');
+  assert.match(coordinator, /replacement_reconstruction_fields/,
+    'the coordinator should declare the reconstruction field set');
+  for (const field of fields) {
+    assert.match(coordinator, new RegExp(field),
+      `the coordinator should reconstruct ${field}`);
+  }
+  for (const harness of ['claude', 'opencode']) {
+    const binding = matrixBinding(harness, 'implementation');
+    assert.match(binding, /one bounded replacement|replacement/i,
+      `${harness} binding should carry the replacement path`);
+    assert.match(binding, /reconstruction fields|originating binding context/i,
+      `${harness} binding should carry the reconstruction fields`);
   }
 });
 

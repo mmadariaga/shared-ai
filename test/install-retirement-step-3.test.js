@@ -274,3 +274,58 @@ test('STEP1_RETIRE_INLINE: retired routed loaders use exact hashes and preserve 
     }
   }
 });
+
+test('matrix retirement: active projections never source from retired per-phase worker trees', () => {
+  const { expandInstallManifest } = require('../bin/install-manifest.js');
+  const repoRoot = path.join(__dirname, '..');
+  const manifest = loadInstallManifest(repoRoot);
+  const phases = ['spec', 'design', 'implementation', 'review', 'security', 'performance', 'accessibility'];
+  const workers = {
+    spec: 'sai-1-spec-proposal-worker',
+    design: 'sai-2-design-worker',
+    implementation: 'sai-3-implementation-worker',
+    review: 'sai-5-review-worker',
+    security: 'sai-6-security-worker',
+    performance: 'sai-7-performance-worker',
+    accessibility: 'sai-8-accessibility-worker',
+  };
+  for (const harness of ['claude', 'opencode']) {
+    const destinationRoot = {
+      commands: path.join(os.tmpdir(), `sai-matrix-retirement-${harness}-commands`),
+      sai: path.join(os.tmpdir(), `sai-matrix-retirement-${harness}-sai`),
+      skills: path.join(os.tmpdir(), `sai-matrix-retirement-${harness}-skills`),
+      agents: path.join(os.tmpdir(), `sai-matrix-retirement-${harness}-agents`),
+      config: os.tmpdir(),
+      root: os.tmpdir(),
+    };
+    const active = expandInstallManifest(manifest, { harness, repoRoot, destinationRoot });
+    for (const projection of active) {
+      const source = path.relative(repoRoot, projection.sourcePath).split(path.sep).join('/');
+      if (source.endsWith('/idea-list-render.md')) continue;
+      assert.equal(source.startsWith(`sai/orchestration/workers/bindings/${harness}/`), false,
+        `${harness} must not source an active projection from a retired per-harness binding tree: ${source}`);
+      assert.equal(new RegExp(`^agents/${harness}/sai-\\d-.*-worker\\.md$`).test(source), false,
+        `${harness} must not source an active projection from a retired per-harness agent tree: ${source}`);
+    }
+    const ideaListSource = active
+      .map(projection => path.relative(repoRoot, projection.sourcePath).split(path.sep).join('/'))
+      .filter(source => source.endsWith('/idea-list-render.md'));
+    assert.equal(ideaListSource.length, 1,
+      `${harness} should retain the regular idea-list-render binding source`);
+    const bindingNames = active
+      .filter(projection => path.relative(destinationRoot.sai, projection.destinationPath)
+        .split(path.sep).join('/').startsWith('orchestration/workers/bindings/') &&
+        phases.includes(path.basename(projection.destinationPath, '-worker.md')))
+      .map(projection => path.basename(projection.destinationPath));
+    assert.equal(bindingNames.length, 7, `${harness} should declare exactly seven worker bindings`);
+    assert.deepEqual(bindingNames.sort(), phases.map(phase => `${phase}-worker.md`).sort(),
+      `${harness} worker binding names should match the canonical phase matrix`);
+    const agentNames = active
+      .filter(projection => projection.destinationPath.startsWith(destinationRoot.agents) &&
+        Object.values(workers).includes(path.basename(projection.destinationPath, '.md')))
+      .map(projection => path.basename(projection.destinationPath, '.md'));
+    assert.equal(agentNames.length, 7, `${harness} should declare exactly seven managed agents`);
+    assert.deepEqual(agentNames.sort(), Object.values(workers).sort(),
+      `${harness} managed agent names should match the canonical worker matrix`);
+  }
+});

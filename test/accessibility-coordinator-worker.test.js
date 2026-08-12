@@ -8,11 +8,26 @@ const os = require('os');
 const { PassThrough } = require('stream');
 
 const { installClaude, installOpencode } = require('../bin/install-flow.js');
-const { loadInstallManifest, expandInstallManifest } = require('../bin/install-manifest.js');
+const { loadInstallManifest, expandInstallManifest, matrixRenderFor } = require('../bin/install-manifest.js');
 const { enumerateClaude, enumerateOpencode, runDeletion } = require('../bin/uninstall-flow.js');
 const { main: doctorMain } = require('../bin/doctor.js');
 
 const repoRoot = path.join(__dirname, '..');
+
+const matrixManifest = loadInstallManifest(path.join(__dirname, '..'));
+function matrixBinding(harness, phase) {
+  const item = matrixRenderFor(matrixManifest, harness, path.join(__dirname, '..'))
+    .find(entry => entry.kind === 'binding' && entry.phase === phase);
+  assert.ok(item, `${harness}/${phase} matrix binding should exist`);
+  return item.text;
+}
+
+function matrixAgent(harness, phase) {
+  const item = matrixRenderFor(matrixManifest, harness, path.join(__dirname, '..'))
+    .find(entry => entry.kind === 'agent' && entry.phase === phase);
+  assert.ok(item, `${harness}/${phase} matrix agent should exist`);
+  return item.text;
+}
 
 function artifact(relativePath) {
   const fullPath = path.join(repoRoot, relativePath);
@@ -174,26 +189,25 @@ test('Step 2 applicable scanners require one authorize-or-skip question and expl
 
 test('Step 2 Claude and opencode bindings continue the same worker with only the selected value', () => {
   for (const harness of ['claude', 'opencode']) {
-    const binding = artifact(`sai/orchestration/workers/bindings/${harness}/accessibility-worker.md`);
-    assert.match(binding, /continue_same_worker|same-worker continuation/i);
-    assert.match(binding, /selected value|selected_value/);
-    assert.match(binding, /only.*selected|forwards only.*value/i);
-    assert.match(binding, /preserv.*active worker state|active worker state.*preserv/i);
+    const binding = matrixBinding(harness, 'accessibility');
+    assert.match(binding, /Continue on the same (?:worker|task)|same[- ]?(?:worker|task) continuation/i,
+      'the binding should continue the same worker');
+    assert.match(binding, /selected value|selected_value/,
+      'the binding should forward the selected value');
     assert.doesNotMatch(binding, /sai\/orchestration\/inline-invocation\.md/);
   }
 });
 
 test('Step 2 replacement restart excludes prior authorization, results, evidence, journal, and report content', () => {
-  for (const harness of ['claude', 'opencode']) {
-    const binding = artifact(`sai/orchestration/workers/bindings/${harness}/accessibility-worker.md`);
-    assert.match(binding, /dispatch_one_replacement_worker|one replacement/i);
-    for (const item of ['authorization', 'command results', 'evidence', 'journal', 'artifact content']) {
-      assert.match(
-        binding,
-        new RegExp(`replacement[\\s\\S]{0,320}(?:without|exclude|not)[^\\n]{0,120}${item}`, 'i'),
-        `${harness} replacement should exclude ${item}`
-      );
-    }
+  const worker = artifact('sai/orchestration/workers/sai-8-accessibility-worker.md');
+  assert.match(worker, /replacement/i,
+    'the worker contract should define the replacement path');
+  for (const item of ['authorization', 'command results', 'evidence', 'journal', 'artifact contents']) {
+    assert.match(
+      worker,
+      new RegExp(`(?:no|without|never)[^\\n]{0,160}${item}`, 'i'),
+      `the replacement restart should exclude ${item}`
+    );
   }
 });
 
@@ -226,7 +240,7 @@ test('Step 3 Claude Code and opencode wrappers load the coordinator and direct w
       `${harness} should not load the worker forwarding skill`);
     assert.match(wrapper, /\$ARGUMENTS/, `${harness} should preserve complete arguments`);
     assert.match(
-      artifact(`sai/orchestration/workers/bindings/${bindingHarness}/accessibility-worker.md`),
+      matrixBinding(bindingHarness, 'accessibility'),
       /sai-8-accessibility-worker/,
       `${harness} should have the matching accessibility binding`
     );
@@ -239,12 +253,13 @@ test('Step 3 accessibility manifest projections are deterministic, unique, and h
   const expected = {
     claude: [
       'sai/orchestration/workers/sai-8-accessibility-worker.md',
-      'sai/orchestration/workers/bindings/claude/accessibility-worker.md',
-      'agents/claude/sai-8-accessibility-worker.md',
+      '.tmp/collapse-sai-worker-matrix/matrix-sources/claude/accessibility-worker.md',
+      '.tmp/collapse-sai-worker-matrix/matrix-sources/claude/sai-8-accessibility-worker.md',
     ],
     opencode: [
       'sai/orchestration/workers/sai-8-accessibility-worker.md',
-      'sai/orchestration/workers/bindings/opencode/accessibility-worker.md',
+      '.tmp/collapse-sai-worker-matrix/matrix-sources/opencode/accessibility-worker.md',
+      '.tmp/collapse-sai-worker-matrix/matrix-sources/opencode/sai-8-accessibility-worker.md',
     ],
   };
 
@@ -302,7 +317,7 @@ test('Step 3 accessibility installation overwrites a conflicting Claude destinat
   }
   assert.deepEqual(
     fs.readFileSync(agentPath),
-    fs.readFileSync(path.join(__dirname, '..', 'agents', 'claude', 'sai-8-accessibility-worker.md')),
+    Buffer.from(matrixAgent('claude', 'accessibility')),
     'the conflicting content should be overwritten with the managed source bytes');
   assert.equal(fs.existsSync(ownerPath), false, 'install must not create ownership metadata');
   assert.ok(notices.some(message => message.includes(agentPath)),
@@ -348,7 +363,7 @@ test('Step 3 divergent accessibility agents are overwritten, doctor-clean, and u
       'installClaude should not throw on a divergent agent destination');
     assert.deepEqual(
       fs.readFileSync(agentPath),
-      fs.readFileSync(path.join(__dirname, '..', 'agents', 'claude', 'sai-8-accessibility-worker.md')),
+      Buffer.from(matrixAgent('claude', 'accessibility')),
       'the divergent agent should be overwritten with the managed source bytes');
     assert.equal(fs.existsSync(ownerPath), false, 'no owner sidecar should exist after install');
 
@@ -370,20 +385,18 @@ test('Step 3 divergent accessibility agents are overwritten, doctor-clean, and u
   }
 });
 
-test('Step 3 routed accessibility bindings accept only closed lifecycle fields', () => {
-  for (const harness of ['claude', 'opencode']) {
-    const binding = artifact(`sai/orchestration/workers/bindings/${harness}/accessibility-worker.md`);
-    assert.match(binding, /sai-8-accessibility-worker/);
-    const resultContract = binding.match(/(?:closed payload|lifecycle result|result fields)[\s\S]{0,900}/i);
-    assert.ok(resultContract, `${harness} binding should define a closed lifecycle result contract`);
-    for (const field of ['completed', 'needs_input', 'failed', 'cancelled', 'status', 'question', 'options', 'blocking_summary', 'changed_files', 'summary']) {
-      assert.match(resultContract[0], new RegExp(`\\b${field}\\b`, 'i'),
-        `${harness} result should expose only the declared lifecycle field set`);
-    }
-    for (const forbidden of ['continuation identifier', 'runtime command', 'report content', 'binding metadata']) {
-      assert.match(resultContract[0], new RegExp(`(?:must not|shall not|exclude|without|never)[^\\n]{0,180}${forbidden}`, 'i'),
-        `${harness} result should reject ${forbidden}`);
-    }
+test('Step 3 routed accessibility worker contract accepts only closed lifecycle fields', () => {
+  const worker = artifact('sai/orchestration/workers/sai-8-accessibility-worker.md');
+  assert.match(worker, /Accessibility Worker|sai-8-accessibility-worker/);
+  const payloadContract = worker.match(/(?:payload includes|closed payload|lifecycle result)[\s\S]{0,800}/i);
+  assert.ok(payloadContract, 'the worker contract should define a closed lifecycle result contract');
+  for (const field of ['completed', 'needs_input', 'failed', 'cancelled', 'status', 'question', 'options', 'changed_files', 'summary']) {
+    assert.match(worker, new RegExp(`\\b${field}\\b`, 'i'),
+      `the worker result should expose only the declared lifecycle field set`);
+  }
+  for (const forbidden of ['continuation identifier', 'command results', 'report content', 'binding metadata']) {
+    assert.match(worker, new RegExp(`(?:must not|shall not|exclude|without|never|no)[^\\n]{0,180}${forbidden}`, 'i'),
+      `the worker result should reject ${forbidden}`);
   }
 });
 
@@ -428,28 +441,35 @@ test('accessibility worker contract enumerates the five ids and pins the batch s
   assert.match(worker, /never[\s\S]{0,160}(?:before resolution|in place of a terminal|needs_input)/i);
 });
 
-test('accessibility bindings carry a Progress rendering section with threshold reference and no stamp', () => {
-  const claude = artifact('sai/orchestration/workers/bindings/claude/accessibility-worker.md');
-  const opencode = artifact('sai/orchestration/workers/bindings/opencode/accessibility-worker.md');
+test('accessibility coordinator and policy carry a Progress rendering contract with threshold reference and no stamp', () => {
+  const coordinator = artifact('sai/commands/accessibility/coordinator.md');
+  const policy = artifact('sai/policies/todo-structure.md');
+  const worker = artifact('sai/orchestration/workers/sai-8-accessibility-worker.md');
 
-  assert.match(claude, /## Progress rendering/i);
-  assert.match(claude, /task list/i);
-  assert.match(claude, /completed[\s\S]{0,240}in_progress/i);
-  assert.match(claude, /minimum threshold[\s\S]{0,160}todo-structure\.md|todo-structure\.md[\s\S]{0,160}(?:threshold|below)/i);
-  assert.match(claude, /(?:no task list|no todowrite)[\s\S]{0,200}(?:below|threshold)/i);
-  assert.doesNotMatch(claude, /fewer than three|below three/);
-  assert.match(claude, /coordinator session/i);
-  assert.doesNotMatch(claude, /date \+%H:%M/);
+  assert.match(coordinator, /todo-structure\.md/,
+    'the coordinator should reference the neutral todo-structure policy');
+  assert.match(coordinator, /completed[\s\S]{0,240}in_progress|in_progress[\s\S]{0,240}completed/i,
+    'reported ids should render completed and the leading unmarked step in_progress');
+  assert.match(policy, /(?:below|fewer than|less than)[\s\S]{0,120}three|three[\s\S]{0,120}(?:below|fewer than|less than)/i,
+    'the policy should state the declared-step threshold');
+  assert.match(policy, /(?:no|without|never)[\s\S]{0,200}(?:below|threshold)/i,
+    'no task list / todowrite call should be emitted below the threshold');
+  assert.doesNotMatch(coordinator, /fewer than three|below three/,
+    'the coordinator should reference the policy and not restate the threshold constant');
+  assert.match(policy, /coordinator session/i,
+    'the policy should record the coordinator-only emission ownership');
+  assert.doesNotMatch(coordinator, /date \+%H:%M/,
+    'the coordinator should carry no per-harness wall-clock command');
 
-  assert.match(opencode, /## Progress rendering/i);
-  assert.match(opencode, /todowrite/i);
-  assert.match(opencode, /full[\s\S]{0,120}todos/i);
-  assert.match(opencode, /constant[\s\S]{0,160}priority/i);
-  assert.match(opencode, /disabl[\s\S]{0,200}subagent/i);
-  assert.doesNotMatch(opencode, /Get-Date/);
+  assert.match(policy, /todowrite/i,
+    'the policy should name the opencode todowrite tool');
+  assert.match(policy, /disabl[\s\S]{0,200}subagent/i,
+    'the policy should tie the disabled-by-default tool to the subagent context');
+  assert.doesNotMatch(coordinator, /Get-Date/,
+    'the coordinator should carry no PowerShell wall-clock command');
 
-  for (const binding of [claude, opencode]) {
-    assert.match(binding, /no Milestone Stamp/i);
-    assert.match(binding, /todo-structure\.md/);
-  }
+  assert.match(worker, /no Milestone Stamp/i,
+    'the worker contract should state audit plans carry no Milestone Stamp');
+  assert.match(coordinator, /todo-structure\.md/,
+    'the coordinator should reference the neutral todo-structure policy');
 });

@@ -3,13 +3,11 @@
 This binding wires the {{workerName}} worker contract into {{harness}} and performs
 exactly one bounded replacement task per run.
 
-{{canonicalFetch}}
-
 Dispatch the worker once with the harness-native subagent primitive and capture the
 resulting task ID:
 
 ```
-task(subagent_type: "{{workerName}}", prompt: "Execute the {{phase}} worker: {{progressDeclaration}}")
+task(subagent_type: "{{workerName}}", prompt: "Worker contract: Fetch @{{workerContract}} and follow it exactly.\n\nInvocationEnvelope:\n<original InvocationEnvelope>")
 ```
 
 Continue on the same task by sending the selected value back to the captured task:

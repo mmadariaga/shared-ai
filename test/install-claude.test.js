@@ -16,7 +16,7 @@ const {
 } = require('../bin/install-flow.js');
 const { loadInstallManifest, expandInstallManifest } = require('../bin/install-manifest.js');
 
-const STEP_2_SCRATCH_DIR = path.join(__dirname, '..', '.tmp', 'deterministic-worker-contract-delivery');
+const STEP_2_SCRATCH_DIR = path.join(__dirname, '..', '.tmp', 'collapse-sai-worker-matrix', 'deterministic-worker-contract-delivery');
 const WORKER_BINDINGS = [
   ['sai-1-spec-proposal-worker', 'spec-worker.md'],
   ['sai-2-design-worker', 'design-worker.md'],
@@ -236,14 +236,24 @@ test('installClaude projects the routed spec coordinator, neutral binding, and a
 test('installClaude projects every routed binding into neutral destinations', () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-claude-neutral-bindings-'));
   const workers = ['spec', 'design', 'implementation', 'review', 'security', 'performance', 'accessibility'];
+  const bindingWorker = Object.fromEntries(WORKER_BINDINGS.map(([workerName, bindingName]) => [
+    bindingName.replace('-worker.md', ''),
+    workerName,
+  ]));
   try {
     installClaude(tmpDir);
     assert.equal(fs.existsSync(path.join(tmpDir, 'sai', 'orchestration', 'workers', 'bindings', 'claude')), false);
     for (const worker of workers) {
       const destination = path.join(tmpDir, 'sai', 'orchestration', 'workers', 'bindings', `${worker}-worker.md`);
-      const source = path.join(__dirname, '..', 'sai', 'orchestration', 'workers', 'bindings', 'claude', `${worker}-worker.md`);
       assert.equal(fs.existsSync(destination), true, `${worker} binding should use a neutral destination`);
-      assert.deepEqual(fs.readFileSync(destination), fs.readFileSync(source), `${worker} binding should match Claude source`);
+      const text = fs.readFileSync(destination, 'utf8');
+      const workerName = bindingWorker[worker];
+      assert.equal(
+        (text.match(new RegExp(`Fetch @sai/orchestration/workers/${workerName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\.md and follow it exactly\\.`, 'g')) || []).length,
+        1,
+        `${worker} binding should carry exactly one canonical worker Fetch`
+      );
+      assert.match(text, /Agent\s*\(/, `${worker} binding should preserve the Agent dispatch primitive`);
     }
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });
@@ -278,7 +288,7 @@ test('Step 2 initial Claude Agent dispatches deliver matching contracts and pres
   }
 });
 
-test('Claude managed agents are seeded byte-identically from their sources', () => {
+test('Claude managed agents install with one frontmatter block and one canonical worker Fetch', () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-claude-seed-'));
   const repoRoot = path.join(__dirname, '..');
   try {
@@ -301,8 +311,16 @@ test('Claude managed agents are seeded byte-identically from their sources', () 
     for (const projection of tunable) {
       assert.ok(fs.existsSync(projection.destinationPath),
         `managed agent should be installed: ${projection.destinationPath}`);
-      assert.deepEqual(fs.readFileSync(projection.destinationPath), fs.readFileSync(projection.sourcePath),
-        `a fresh install should write the agent source bytes verbatim: ${projection.destinationPath}`);
+      const text = fs.readFileSync(projection.destinationPath, 'utf8').replaceAll('\r\n', '\n');
+      assert.equal((text.match(/^---\r?\n/gm) || []).length, 2,
+        `managed agent should contain exactly one frontmatter block: ${projection.destinationPath}`);
+      assert.equal(
+        (text.match(/^Fetch @sai\/orchestration\/workers\/[^\s`]+\.md and follow it exactly\.$/gm) || []).length,
+        1,
+        `managed agent should carry exactly one canonical worker Fetch: ${projection.destinationPath}`);
+      const source = path.relative(repoRoot, projection.sourcePath).split(path.sep).join('/');
+      assert.equal(/^agents\/claude\/sai-\d-.*-worker\.md$/.test(source), false,
+        `managed agent must not source from a retired per-harness agent tree: ${source}`);
       const ownerPath = path.join(
         path.dirname(projection.destinationPath),
         `.${path.basename(projection.destinationPath, '.md')}.owner.json`
@@ -473,6 +491,44 @@ test('restore-coordinator-instruction-loading Step 3: isolated Claude installati
     const loadedText = [...loaded].map(readInstalled).join('\n');
     assert.match(loadedText, /bindings\/[a-z-]+-worker\.md/);
     assert.doesNotMatch(loadedText, /bindings\/claude\//);
+  } finally {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+});
+
+test('Claude installer consumes exactly the seven matrix worker bindings and agents', () => {
+  const repoRoot = path.join(__dirname, '..');
+  const manifest = loadInstallManifest(repoRoot);
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-claude-matrix-inventory-'));
+  try {
+    const destinationRoot = {
+      commands: path.join(tmpDir, 'commands'),
+      sai: path.join(tmpDir, 'sai'),
+      skills: path.join(tmpDir, 'skills'),
+      agents: path.join(tmpDir, 'agents'),
+      config: tmpDir,
+      root: tmpDir,
+    };
+    const active = expandInstallManifest(manifest, { harness: 'claude', repoRoot, destinationRoot });
+    const phases = ['spec', 'design', 'implementation', 'review', 'security', 'performance', 'accessibility'];
+    const bindingNames = active
+      .filter(projection => path.relative(destinationRoot.sai, projection.destinationPath)
+        .split(path.sep).join('/').startsWith('orchestration/workers/bindings/') &&
+        phases.includes(path.basename(projection.destinationPath, '-worker.md')))
+      .map(projection => path.basename(projection.destinationPath));
+    assert.equal(bindingNames.length, 7, 'Claude should project exactly seven worker bindings');
+    assert.equal(bindingNames.includes('idea-list-render.md'), false,
+      'Claude must not project an idea-list-render matrix binding');
+    const allBindingNames = active
+      .filter(projection => path.relative(destinationRoot.sai, projection.destinationPath)
+        .split(path.sep).join('/').startsWith('orchestration/workers/bindings/'))
+      .map(projection => path.basename(projection.destinationPath));
+    assert.equal(allBindingNames.includes('idea-list-render.md'), true,
+      'Claude should keep the regular idea-list-render binding beside the matrix bindings');
+    const agentNames = active
+      .filter(projection => projection.destinationPath.startsWith(destinationRoot.agents))
+      .map(projection => path.basename(projection.destinationPath, '.md'));
+    assert.equal(agentNames.length, 7, 'Claude should project exactly seven managed agents');
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }

@@ -277,16 +277,25 @@ describe('doctor fetch resolution', () => {
             true,
             `${sectionName} should install ${target}`
           );
-          const sourceHarness = sectionName === '[Claude Code]' ? 'claude' : 'opencode';
-          const sourceTarget = target.replace(/^bindings\//, `bindings/${sourceHarness}/`);
-          assert.deepEqual(
-            fs.readFileSync(path.join(base, 'sai', 'orchestration', 'workers', ...target.split('/'))),
-            fs.readFileSync(path.join(repoRoot, 'sai', 'orchestration', 'workers', ...sourceTarget.split('/'))),
-            `${sectionName} should preserve the neutral binding bytes for ${target}`
-          );
+          if (target === 'bindings/idea-list-render.md') {
+            const sourceHarness = sectionName === '[Claude Code]' ? 'claude' : 'opencode';
+            const sourceTarget = `bindings/${sourceHarness}/idea-list-render.md`;
+            assert.deepEqual(
+              fs.readFileSync(path.join(base, 'sai', 'orchestration', 'workers', ...target.split('/'))),
+              fs.readFileSync(path.join(repoRoot, 'sai', 'orchestration', 'workers', ...sourceTarget.split('/'))),
+              `${sectionName} should preserve the render binding bytes for ${target}`
+            );
+          }
           if (target.endsWith('-worker.md')) {
+            const bindingText = fs.readFileSync(
+              path.join(base, 'sai', 'orchestration', 'workers', ...target.split('/')), 'utf8');
+            assert.equal(
+              (bindingText.match(/Fetch @sai\/orchestration\/workers\/sai-[^\s`]+\.md and follow it exactly\./g) || []).length,
+              1,
+              `${sectionName} ${target} should carry exactly one canonical worker Fetch`
+            );
             assert.match(
-              fs.readFileSync(path.join(base, 'sai', 'orchestration', 'workers', ...target.split('/')), 'utf8'),
+              bindingText,
               sectionName === '[Claude Code]' ? /Agent\(/ : /task\(/,
               `${sectionName} ${target} should preserve its dispatch mechanism`
             );
@@ -424,5 +433,38 @@ test('restore-coordinator-instruction-loading Step 1: both fetch skills reject o
       assert.match(source, new RegExp(prefix, 'i'),
         `${relativePath} guard should name the permitted prefix ${prefix}`);
     }
+  }
+});
+
+test('matrix worker bindings are the sole active binding inventory for both harnesses', () => {
+  const { loadInstallManifest, expandInstallManifest } = require('../bin/install-manifest.js');
+  const manifest = loadInstallManifest(repoRoot);
+  const phases = ['spec', 'design', 'implementation', 'review', 'security', 'performance', 'accessibility'];
+  for (const harness of ['claude', 'opencode']) {
+    const destinationRoot = {
+      commands: path.join(os.tmpdir(), `sai-matrix-fetch-${harness}-commands`),
+      sai: path.join(os.tmpdir(), `sai-matrix-fetch-${harness}-sai`),
+      skills: path.join(os.tmpdir(), `sai-matrix-fetch-${harness}-skills`),
+      agents: path.join(os.tmpdir(), `sai-matrix-fetch-${harness}-agents`),
+      config: os.tmpdir(),
+      root: os.tmpdir(),
+    };
+    const active = expandInstallManifest(manifest, { harness, repoRoot, destinationRoot });
+    const bindingNames = active
+      .filter(projection => path.relative(destinationRoot.sai, projection.destinationPath)
+        .split(path.sep).join('/').startsWith('orchestration/workers/bindings/') &&
+        phases.includes(path.basename(projection.destinationPath, '-worker.md')))
+      .map(projection => path.basename(projection.destinationPath));
+    assert.equal(bindingNames.length, 7, `${harness} should project exactly seven worker bindings`);
+    assert.deepEqual(bindingNames.sort(), phases.map(phase => `${phase}-worker.md`).sort(),
+      `${harness} worker binding names should match the canonical phase matrix`);
+    assert.equal(bindingNames.includes('idea-list-render.md'), false,
+      `${harness} must not project an idea-list-render matrix binding`);
+    const allBindingNames = active
+      .filter(projection => path.relative(destinationRoot.sai, projection.destinationPath)
+        .split(path.sep).join('/').startsWith('orchestration/workers/bindings/'))
+      .map(projection => path.basename(projection.destinationPath));
+    assert.equal(allBindingNames.includes('idea-list-render.md'), true,
+      `${harness} should keep the regular idea-list-render binding beside the matrix bindings`);
   }
 });

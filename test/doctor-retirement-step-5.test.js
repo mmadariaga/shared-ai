@@ -240,3 +240,49 @@ test('human doctor output identifies retired-copy cleanup and remains successful
     fs.rmSync(projectRoot, { recursive: true, force: true });
   }
 });
+
+test('doctor inventory parity: the manifest derives exactly seven worker bindings and seven managed agents per harness', async () => {
+  const { projectRoot, claudeBase, opencodeBase } = fixture();
+  const { expandInstallManifest } = require('../bin/install-manifest.js');
+  const manifest = loadInstallManifest(path.join(__dirname, '..'));
+  const phases = ['spec', 'design', 'implementation', 'review', 'security', 'performance', 'accessibility'];
+  const workers = [
+    'sai-1-spec-proposal-worker',
+    'sai-2-design-worker',
+    'sai-3-implementation-worker',
+    'sai-5-review-worker',
+    'sai-6-security-worker',
+    'sai-7-performance-worker',
+    'sai-8-accessibility-worker',
+  ];
+  try {
+    for (const [harness, base] of [['claude', claudeBase], ['opencode', opencodeBase]]) {
+      const destinationRoot = {
+        commands: path.join(base, 'commands'),
+        sai: path.join(base, 'sai'),
+        skills: path.join(base, 'skills'),
+        agents: path.join(base, 'agents'),
+        config: base,
+        root: base,
+      };
+      const active = expandInstallManifest(manifest, { harness, repoRoot: path.join(__dirname, '..'), destinationRoot });
+      const bindingNames = active
+        .filter(projection => path.relative(destinationRoot.sai, projection.destinationPath)
+          .split(path.sep).join('/').startsWith('orchestration/workers/bindings/') &&
+          phases.includes(path.basename(projection.destinationPath, '-worker.md')))
+        .map(projection => path.basename(projection.destinationPath));
+      assert.equal(bindingNames.length, 7, `${harness} should project exactly seven worker bindings`);
+      assert.deepEqual(bindingNames.sort(), phases.map(phase => `${phase}-worker.md`).sort(),
+        `${harness} worker binding names should match the canonical phase matrix`);
+      const agentNames = active
+        .filter(projection => projection.destinationPath.startsWith(destinationRoot.agents) &&
+          workers.includes(path.basename(projection.destinationPath, '.md')))
+        .map(projection => path.basename(projection.destinationPath, '.md'));
+      assert.equal(agentNames.length, 7, `${harness} should project exactly seven managed agents`);
+      assert.deepEqual(agentNames.sort(), [...workers].sort(),
+        `${harness} managed agent names should match the canonical worker matrix`);
+    }
+  } finally {
+    fs.rmSync(projectRoot, { recursive: true, force: true });
+  }
+});

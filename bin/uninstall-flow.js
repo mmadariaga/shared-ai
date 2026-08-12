@@ -18,8 +18,58 @@ const { loadInstallManifest, expandInstallManifest, expandRetirementManifest } =
 
 const REPOSITORY_ROOT = path.join(__dirname, '..');
 
+function materializeMatrixSource(projection, harness) {
+  if (projection.sourceText === undefined) return projection.sourcePath;
+  const target = projection.sourcePath;
+  flow.ensureDir(path.dirname(target));
+  const expected = Buffer.from(projection.sourceText);
+  try {
+    if (fs.readFileSync(target).equals(expected)) {
+      return target;
+    }
+  } catch (err) {
+    if (err.code !== 'ENOENT' && err.code !== 'EBUSY' && err.code !== 'EPERM' && err.code !== 'EACCES') {
+      throw err;
+    }
+  }
+  const tmp = `${target}.${process.pid}.tmp`;
+  const sleep = (ms) => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+  let lastError;
+  for (let attempt = 0; attempt < 5; attempt++) {
+    try {
+      fs.writeFileSync(tmp, expected);
+      fs.renameSync(tmp, target);
+      return target;
+    } catch (err) {
+      lastError = err;
+      try {
+        fs.unlinkSync(tmp);
+      } catch (cleanupErr) {
+        if (cleanupErr.code !== 'ENOENT') lastError = cleanupErr;
+      }
+      if (err.code !== 'EBUSY' && err.code !== 'EPERM' && err.code !== 'EACCES') {
+        throw err;
+      }
+      if (attempt < 4) sleep(25);
+    }
+  }
+  throw lastError;
+}
+
+function enumerateRetiredFiles(manifest, { harness, repoRoot, destinationRoot, editorBase }) {
+  return expandRetirementManifest(manifest, { harness, repoRoot, destinationRoot }).map(retirement => ({
+    src: retirement.destinationPath,
+    dest: retirement.destinationPath,
+    editorBase,
+    assetType: 'retired-managed-file',
+    acceptedHashes: [...retirement.managedHashes],
+    ruleId: retirement.id,
+  }));
+}
+
 function manifestEntries(harness, destinationRoot, editorBase) {
-  const projections = expandInstallManifest(loadInstallManifest(REPOSITORY_ROOT), {
+  const manifest = loadInstallManifest(REPOSITORY_ROOT);
+  const projections = expandInstallManifest(manifest, {
     harness,
     repoRoot: REPOSITORY_ROOT,
     destinationRoot,
@@ -34,7 +84,7 @@ function manifestEntries(harness, destinationRoot, editorBase) {
       continue;
     }
     const entry = {
-      src: projection.sourcePath,
+      src: materializeMatrixSource(projection, harness),
       dest: projection.destinationPath,
       editorBase,
       ruleId: projection.id,
@@ -47,21 +97,12 @@ function manifestEntries(harness, destinationRoot, editorBase) {
       entries.push(entry);
     }
   }
-  const retirements = expandRetirementManifest(loadInstallManifest(REPOSITORY_ROOT), {
+  entries.push(...enumerateRetiredFiles(manifest, {
     harness,
     repoRoot: REPOSITORY_ROOT,
     destinationRoot,
-  });
-  for (const retirement of retirements) {
-    entries.push({
-      src: retirement.destinationPath,
-      dest: retirement.destinationPath,
-      editorBase,
-      assetType: 'retired-managed-file',
-      acceptedHashes: retirement.managedHashes,
-      ruleId: retirement.id,
-    });
-  }
+    editorBase,
+  }));
   return entries;
 }
 
@@ -268,6 +309,7 @@ module.exports = {
   buildDeletionSet,
   enumerateClaude,
   enumerateOpencode,
+  enumerateRetiredFiles,
   sha256File,
   computeClaudeAgentPlanEntry,
   computeRetiredPlanEntry,

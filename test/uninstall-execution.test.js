@@ -254,3 +254,55 @@ test('claude-managed-agent entries delete on body-and-non-tunable match and keep
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }
 });
+
+test('matrix retirement: the active worker inventory stays exactly seven bindings and seven agents per harness', () => {
+  const { expandInstallManifest } = require('../bin/install-manifest.js');
+  const repoRoot = path.join(__dirname, '..');
+  const manifest = loadInstallManifest(repoRoot);
+  const phases = ['spec', 'design', 'implementation', 'review', 'security', 'performance', 'accessibility'];
+  const workers = [
+    'sai-1-spec-proposal-worker',
+    'sai-2-design-worker',
+    'sai-3-implementation-worker',
+    'sai-5-review-worker',
+    'sai-6-security-worker',
+    'sai-7-performance-worker',
+    'sai-8-accessibility-worker',
+  ];
+  for (const harness of ['claude', 'opencode']) {
+    const destinationRoot = {
+      commands: path.join(os.tmpdir(), `sai-exec-matrix-${harness}-commands`),
+      sai: path.join(os.tmpdir(), `sai-exec-matrix-${harness}-sai`),
+      skills: path.join(os.tmpdir(), `sai-exec-matrix-${harness}-skills`),
+      agents: path.join(os.tmpdir(), `sai-exec-matrix-${harness}-agents`),
+      config: os.tmpdir(),
+      root: os.tmpdir(),
+    };
+    const active = expandInstallManifest(manifest, { harness, repoRoot, destinationRoot });
+    const bindingNames = active
+      .filter(projection => path.relative(destinationRoot.sai, projection.destinationPath)
+        .split(path.sep).join('/').startsWith('orchestration/workers/bindings/') &&
+        phases.includes(path.basename(projection.destinationPath, '-worker.md')))
+      .map(projection => path.basename(projection.destinationPath));
+    assert.equal(bindingNames.length, 7, `${harness} should project exactly seven worker bindings`);
+    assert.deepEqual(bindingNames.sort(), phases.map(phase => `${phase}-worker.md`).sort(),
+      `${harness} worker binding names should match the canonical phase matrix`);
+    assert.equal(bindingNames.includes('idea-list-render.md'), false,
+      `${harness} must not project an idea-list-render matrix binding`);
+    const allBindingNames = active
+      .filter(projection => path.relative(destinationRoot.sai, projection.destinationPath)
+        .split(path.sep).join('/').startsWith('orchestration/workers/bindings/'))
+      .map(projection => path.basename(projection.destinationPath));
+    assert.equal(allBindingNames.includes('idea-list-render.md'), true,
+      `${harness} should keep the regular idea-list-render binding beside the matrix bindings`);
+    const agentNames = active
+      .filter(projection => projection.destinationPath.startsWith(destinationRoot.agents) &&
+        workers.includes(path.basename(projection.destinationPath, '.md')))
+      .map(projection => path.basename(projection.destinationPath, '.md'));
+    assert.equal(agentNames.length, 7, `${harness} should project exactly seven managed agents`);
+    assert.deepEqual(agentNames.sort(), [...workers].sort(),
+      `${harness} managed agent names should match the canonical worker matrix`);
+    assert.equal(agentNames.some(name => ['budget', 'executor', 'explore'].includes(name)), false,
+      `${harness} must not project support agents as matrix worker inventory`);
+  }
+});

@@ -76,16 +76,20 @@ test('STEP1_RETIRE_INLINE: active projections retain both routed inventories and
     projection.source === 'sai/orchestration/inline-invocation.md' ||
     /inline-invocation\.md$/.test(projection.destination.path)), false);
   for (const harness of ['claude', 'opencode']) {
-    const sources = new Set(expandInstallManifest(manifest, {
+    const projections = expandInstallManifest(manifest, {
       harness,
       repoRoot,
       destinationRoot: roots,
-    }).map(projection => path.relative(repoRoot, projection.sourcePath).split(path.sep).join('/')));
+    });
+    const sources = new Set(projections.map(projection =>
+      path.relative(repoRoot, projection.sourcePath).split(path.sep).join('/')));
+    const destinations = new Set(projections.map(projection =>
+      path.relative(roots.sai, projection.destinationPath).split(path.sep).join('/')));
     assert.deepEqual(
-      workers.map(name => `sai/orchestration/workers/bindings/${harness}/${name}-worker.md`)
-        .filter(source => sources.has(source)),
-      workers.map(name => `sai/orchestration/workers/bindings/${harness}/${name}-worker.md`),
-      `${harness} routed inventory should remain complete`,
+      workers.map(name => `orchestration/workers/bindings/${name}-worker.md`)
+        .filter(destination => destinations.has(destination)),
+      workers.map(name => `orchestration/workers/bindings/${name}-worker.md`),
+      `${harness} routed binding inventory should remain complete at the neutral destination`,
     );
     assert.equal([...sources].some(source => source.includes('/copilot/')), false);
   }

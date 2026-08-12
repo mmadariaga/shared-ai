@@ -102,41 +102,51 @@ test('tunable-seed routes to the dedicated installer', () => {
   }
 });
 
-test('the manifest declares 17 tunable-seed managed agent projections', () => {
+test('the manifest declares 14 matrix tunable-seed managed agent projections', () => {
   const repoRoot = path.join(__dirname, '..');
   const manifest = loadInstallManifest(repoRoot);
-  const destinationRoot = agentDestinationRoots(path.join(os.tmpdir(), 'sai-agent-projection-17'));
+  const destinationRoot = agentDestinationRoots(path.join(os.tmpdir(), 'sai-agent-projection-14'));
   const allAgentProjections = [];
-  const opencodeBasenames = [...WORKER_NAMES, 'explore', 'executor', 'budget'];
   for (const harness of ['claude', 'opencode']) {
-    const agentProjections = expandInstallManifest(manifest, { harness, repoRoot, destinationRoot })
+    const allAgents = expandInstallManifest(manifest, { harness, repoRoot, destinationRoot })
       .filter(projection => projection.destinationPath.startsWith(destinationRoot.agents));
-    const expectedCount = harness === 'opencode' ? 10 : 7;
-    const expectedBasenames = harness === 'opencode' ? opencodeBasenames : WORKER_NAMES;
-    assert.equal(agentProjections.length, expectedCount,
-      `the manifest should declare exactly ${expectedCount} agent projections for ${harness}`);
+    const agentProjections = allAgents
+      .filter(projection => WORKER_NAMES.includes(path.basename(projection.destinationPath, '.md')));
+    assert.equal(agentProjections.length, 7,
+      `the manifest should declare exactly 7 matrix agent projections for ${harness}`);
     assert.ok(agentProjections.every(projection => projection.strategy === 'tunable-seed'),
-      `every ${harness} agent projection should use the tunable-seed strategy`);
+      `every ${harness} matrix agent projection should use the tunable-seed strategy`);
     assert.ok(agentProjections.every(projection => projection.ownership === 'managed'),
-      `every ${harness} agent projection should be managed`);
+      `every ${harness} matrix agent projection should be managed`);
     assert.deepEqual(
       agentProjections.map(projection => path.basename(projection.destinationPath, '.md')).sort(),
-      [...expectedBasenames].sort(),
-      harness === 'opencode'
-        ? `${harness} agent projections should cover the seven sai worker filenames plus explore, executor, and budget`
-        : `${harness} agent projections should cover the seven sai worker filenames`);
+      [...WORKER_NAMES].sort(),
+      `${harness} matrix agent projections should cover exactly the seven worker identities`);
+    assert.ok(allAgents.every(projection => projection.strategy === 'tunable-seed'),
+      `every ${harness} agent projection, matrix and support alike, should use the tunable-seed strategy`);
     allAgentProjections.push(...agentProjections);
   }
-  assert.equal(allAgentProjections.length, 17,
-    'the manifest should declare 17 managed agent projections across both harnesses');
+  assert.equal(allAgentProjections.length, 14,
+    'the manifest should declare 14 matrix managed agent projections across both harnesses');
 });
 
 test('no managed agent projection declares owned-copy', () => {
   const manifest = loadInstallManifest(path.join(__dirname, '..'));
   const agentRules = manifest.projections
     .filter(projection => projection.destination && projection.destination.class === 'agents');
-  assert.equal(agentRules.length, 17,
-    'the manifest should declare 17 agent-class projections');
+  const matrixAgentRules = agentRules.filter(projection => projection.matrix);
+  assert.equal(matrixAgentRules.length, 14,
+    'the manifest should declare 14 matrix agent-class projections (seven per harness)');
+  assert.equal(
+    matrixAgentRules.filter(projection => projection.harnesses.includes('claude')).length, 7,
+    'claude should declare exactly seven matrix agent projections');
+  assert.equal(
+    matrixAgentRules.filter(projection => projection.harnesses.includes('opencode')).length, 7,
+    'opencode should declare exactly seven matrix agent projections');
+  for (const name of ['explore', 'executor', 'budget']) {
+    assert.ok(agentRules.some(projection => projection.destination.path.endsWith(`${name}.md`)),
+      `opencode should retain its regular ${name} support agent projection`);
+  }
   assert.ok(agentRules.every(projection => projection.strategy !== 'owned-copy'),
     'no managed agent projection may declare the retired owned-copy strategy');
 });

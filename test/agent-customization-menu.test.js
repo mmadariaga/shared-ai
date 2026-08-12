@@ -53,7 +53,7 @@ const CLAUDE_AGENTS = [
 ];
 
 const CHECKLIST_LEGEND = 'Up/Down move · Space toggle · Enter confirm · q/Ctrl-C cancel';
-const SCRATCH_ROOT = path.join(REPO_ROOT, '.tmp', 'discover-opencode-model-settings');
+const SCRATCH_ROOT = path.join(REPO_ROOT, '.tmp', 'collapse-sai-worker-matrix', 'discover-opencode-model-settings');
 
 function snapshotTree(dir) {
   const snapshot = {};
@@ -1823,7 +1823,7 @@ const CLAUDE_SETTINGS_CATALOG = {
   ],
 };
 
-const PERSIST_SCRATCH_ROOT = path.join(REPO_ROOT, '.tmp', 'persist-project-agent-overrides');
+const PERSIST_SCRATCH_ROOT = path.join(REPO_ROOT, '.tmp', 'collapse-sai-worker-matrix', 'persist-project-agent-overrides');
 const PERSIST_CLAUDE_AGENT = 'sai-1-spec-proposal-worker';
 const PERSIST_CLAUDE_AGENT_2 = 'sai-2-design-worker';
 const PERSIST_OPENCODE_AGENT = 'explore';
@@ -2581,5 +2581,54 @@ test('Step 2 non-empty Claude subsets select settings once and apply the same mo
   } finally {
     restoreClaude();
     restoreOpencode();
+  }
+});
+
+test('customization inventory is matrix-derived: exactly seven worker agents per harness in the manifest', () => {
+  const { loadInstallManifest, expandInstallManifest } = require('../bin/install-manifest.js');
+  const manifest = loadInstallManifest(REPO_ROOT);
+  const workers = [
+    'sai-1-spec-proposal-worker',
+    'sai-2-design-worker',
+    'sai-3-implementation-worker',
+    'sai-5-review-worker',
+    'sai-6-security-worker',
+    'sai-7-performance-worker',
+    'sai-8-accessibility-worker',
+  ];
+  for (const harness of ['claude', 'opencode']) {
+    const destinationRoot = {
+      commands: path.join(REPO_ROOT, '.tmp', 'collapse-sai-worker-matrix', `customization-inventory-${harness}`, 'commands'),
+      sai: path.join(REPO_ROOT, '.tmp', 'collapse-sai-worker-matrix', `customization-inventory-${harness}`, 'sai'),
+      skills: path.join(REPO_ROOT, '.tmp', 'collapse-sai-worker-matrix', `customization-inventory-${harness}`, 'skills'),
+      agents: path.join(REPO_ROOT, '.tmp', 'collapse-sai-worker-matrix', `customization-inventory-${harness}`, 'agents'),
+      config: path.join(REPO_ROOT, '.tmp', 'collapse-sai-worker-matrix', `customization-inventory-${harness}`),
+      root: path.join(REPO_ROOT, '.tmp', 'collapse-sai-worker-matrix', `customization-inventory-${harness}`),
+    };
+    try {
+      const active = expandInstallManifest(manifest, { harness, repoRoot: REPO_ROOT, destinationRoot });
+      const agentNames = active
+        .filter(projection => projection.destinationPath.startsWith(destinationRoot.agents) &&
+          workers.includes(path.basename(projection.destinationPath, '.md')))
+        .map(projection => path.basename(projection.destinationPath, '.md'));
+      assert.equal(agentNames.length, 7,
+        `${harness} customization inventory should contain exactly seven matrix managed agents`);
+      assert.deepEqual(agentNames.sort(), [...workers].sort(),
+        `${harness} customization inventory should be exactly the seven worker identities`);
+      assert.equal(agentNames.some(name => ['budget', 'executor', 'explore'].includes(name)), false,
+        `${harness} customization inventory must not include support agents as matrix worker inventory`);
+      const allAgentNames = active
+        .filter(projection => projection.destinationPath.startsWith(destinationRoot.agents))
+        .map(projection => path.basename(projection.destinationPath, '.md'));
+      if (harness === 'claude') {
+        assert.equal(allAgentNames.some(name => ['budget', 'executor', 'explore'].includes(name)), false,
+          'claude customization inventory should be exactly the seven matrix agents');
+      } else {
+        assert.equal(['budget', 'executor', 'explore'].every(name => allAgentNames.includes(name)), true,
+          'opencode customization inventory should keep its three support agents beside the matrix agents');
+      }
+    } finally {
+      fs.rmSync(destinationRoot.root, { recursive: true, force: true });
+    }
   }
 });

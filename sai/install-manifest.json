@@ -1,5 +1,219 @@
 {
   "version": 1,
+  "worker-matrix": {
+    "templates": {
+      "claudeBinding": "sai/orchestration/workers/bindings/claude/worker-template.md",
+      "opencodeBinding": "sai/orchestration/workers/bindings/opencode/worker-template.md",
+      "claudeAgent": "agents/claude/worker-template.md",
+      "opencodeAgent": "agents/opencode/worker-template.md"
+    },
+    "bindings": {
+      "destination": { "class": "sai", "path": "orchestration/workers/bindings" },
+      "harnesses": ["claude", "opencode"],
+      "strategy": "copy",
+      "ownership": "managed",
+      "drift": "content",
+      "overrides": { "claude": "claude-orchestration", "opencode": "opencode-orchestration" }
+    },
+    "agents": {
+      "destination": { "class": "agents", "path": "." },
+      "harnesses": ["claude", "opencode"],
+      "strategy": "tunable-seed",
+      "ownership": "managed",
+      "drift": "content"
+    },
+    "entries": [
+      {
+        "phase": "spec",
+        "workerName": "sai-1-spec-proposal-worker",
+        "workerContract": "sai/orchestration/workers/sai-1-spec-proposal-worker.md",
+        "bindingStem": "spec",
+        "dispatchPrimitive": "task",
+        "initialDispatch": "dispatch sai-1-spec-proposal-worker",
+        "continuationLiteral": "continue sai-1-spec-proposal-worker",
+        "replacementFields": ["model", "effort"],
+        "helperPermissions": ["Read", "Write", "Agent", "Skill"],
+        "progressDeclaration": "spec proposal milestones",
+        "overviewGeneration": "",
+        "noticeContinuation": "",
+        "claudeAgent": {
+          "agentName": "sai-1-spec-proposal-worker",
+          "description": "Owns the complete technical spec proposal phase and returns structured lifecycle metadata.",
+          "model": "opus",
+          "effort": "medium",
+          "tools": "Read, Glob, Grep, Bash, Edit, Write, Agent, Skill, SendMessage"
+        },
+        "opencodeAgent": {
+          "description": "Owns the complete technical spec proposal phase and returns structured lifecycle metadata.",
+          "model": "opencode-go/deepseek-v4-flash",
+          "variantLine": "variant: max",
+          "permissionBlock": "    budget: allow\n    explore: allow"
+        }
+      },
+      {
+        "phase": "design",
+        "workerName": "sai-2-design-worker",
+        "workerContract": "sai/orchestration/workers/sai-2-design-worker.md",
+        "bindingStem": "design",
+        "dispatchPrimitive": "Agent",
+        "initialDispatch": "dispatch sai-2-design-worker",
+        "continuationLiteral": "continue sai-2-design-worker",
+        "replacementFields": ["model", "effort"],
+        "helperPermissions": ["Read", "Write", "Agent", "Skill"],
+        "progressDeclaration": "design milestones",
+        "overviewGeneration": "## overview_generation\n\nThe worker-owned budget-routed Change Overview dispatch receives overview_language from the current invocation, using English when the flag was absent.",
+        "noticeContinuation": "Forward continue_after_notice exactly for design notices.",
+        "claudeAgent": {
+          "agentName": "sai-2-design-worker",
+          "description": "Owns the complete technical design phase and returns structured lifecycle metadata.",
+          "model": "opus",
+          "effort": "high",
+          "tools": "Read, Glob, Grep, Bash, Edit, Write, Agent, Skill, SendMessage"
+        },
+        "opencodeAgent": {
+          "description": "Owns the complete technical design phase and returns structured lifecycle metadata.",
+          "model": "opencode-go/deepseek-v4-flash",
+          "variantLine": "variant: max",
+          "permissionBlock": "    budget: allow\n    explore: allow"
+        }
+      },
+      {
+        "phase": "implementation",
+        "workerName": "sai-3-implementation-worker",
+        "workerContract": "sai/orchestration/workers/sai-3-implementation-worker.md",
+        "bindingStem": "implementation",
+        "dispatchPrimitive": "task",
+        "initialDispatch": "dispatch sai-3-implementation-worker",
+        "continuationLiteral": "continue sai-3-implementation-worker",
+        "replacementFields": ["model", "effort"],
+        "helperPermissions": ["Read", "Write", "Agent", "Skill"],
+        "progressDeclaration": "implementation milestones",
+        "overviewGeneration": "",
+        "noticeContinuation": "",
+        "claudeAgent": {
+          "agentName": "sai-3-implementation-worker",
+          "description": "Owns the complete technical implementation-planning phase and returns structured lifecycle metadata.",
+          "model": "opus",
+          "effort": "medium",
+          "tools": "Read, Glob, Grep, Bash, Edit, Write, Agent, Skill, SendMessage"
+        },
+        "opencodeAgent": {
+          "description": "Owns the complete technical implementation-planning phase and returns structured lifecycle metadata.",
+          "model": "opencode-go/deepseek-v4-flash",
+          "variantLine": "variant: max",
+          "permissionBlock": "    budget: allow\n    explore: allow"
+        }
+      },
+      {
+        "phase": "review",
+        "workerName": "sai-5-review-worker",
+        "workerContract": "sai/orchestration/workers/sai-5-review-worker.md",
+        "bindingStem": "review",
+        "dispatchPrimitive": "task",
+        "initialDispatch": "dispatch sai-5-review-worker",
+        "continuationLiteral": "continue sai-5-review-worker",
+        "replacementFields": ["model", "effort"],
+        "helperPermissions": ["Read", "Write", "Agent", "Skill"],
+        "progressDeclaration": "review milestones",
+        "overviewGeneration": "",
+        "noticeContinuation": "",
+        "claudeAgent": {
+          "agentName": "sai-5-review-worker",
+          "description": "Owns the complete technical review phase and returns structured lifecycle metadata.",
+          "model": "opus",
+          "effort": "medium",
+          "tools": "Read, Glob, Grep, Bash, Edit, Write, Agent, Skill, SendMessage"
+        },
+        "opencodeAgent": {
+          "description": "Owns the complete technical review phase and returns structured lifecycle metadata.",
+          "model": "opencode-go/qwen3.7-plus",
+          "variantLine": "",
+          "permissionBlock": "    budget: allow\n    explore: allow"
+        }
+      },
+      {
+        "phase": "security",
+        "workerName": "sai-6-security-worker",
+        "workerContract": "sai/orchestration/workers/sai-6-security-worker.md",
+        "bindingStem": "security",
+        "dispatchPrimitive": "task",
+        "initialDispatch": "dispatch sai-6-security-worker",
+        "continuationLiteral": "continue sai-6-security-worker",
+        "replacementFields": ["model", "effort"],
+        "helperPermissions": ["Read", "Write", "Agent", "Skill"],
+        "progressDeclaration": "security milestones",
+        "overviewGeneration": "",
+        "noticeContinuation": "",
+        "claudeAgent": {
+          "agentName": "sai-6-security-worker",
+          "description": "Owns the complete technical security phase and returns structured lifecycle metadata.",
+          "model": "opus",
+          "effort": "xhigh",
+          "tools": "Read, Glob, Grep, Bash, Edit, Write, Agent, Skill, SendMessage"
+        },
+        "opencodeAgent": {
+          "description": "Owns the complete technical security phase and returns structured lifecycle metadata.",
+          "model": "opencode-go/deepseek-v4-flash",
+          "variantLine": "variant: max",
+          "permissionBlock": "    budget: allow\n    explore: allow"
+        }
+      },
+      {
+        "phase": "performance",
+        "workerName": "sai-7-performance-worker",
+        "workerContract": "sai/orchestration/workers/sai-7-performance-worker.md",
+        "bindingStem": "performance",
+        "dispatchPrimitive": "task",
+        "initialDispatch": "dispatch sai-7-performance-worker",
+        "continuationLiteral": "continue sai-7-performance-worker",
+        "replacementFields": ["model", "effort"],
+        "helperPermissions": ["Read", "Write", "Agent", "Skill"],
+        "progressDeclaration": "performance milestones",
+        "overviewGeneration": "",
+        "noticeContinuation": "",
+        "claudeAgent": {
+          "agentName": "sai-7-performance-worker",
+          "description": "Owns the complete technical performance phase and returns structured lifecycle metadata.",
+          "model": "opus",
+          "effort": "medium",
+          "tools": "Read, Glob, Grep, Bash, Edit, Write, Agent, Skill, SendMessage"
+        },
+        "opencodeAgent": {
+          "description": "Owns the complete technical performance phase and returns structured lifecycle metadata.",
+          "model": "opencode-go/deepseek-v4-flash",
+          "variantLine": "variant: max",
+          "permissionBlock": "    budget: allow\n    explore: allow"
+        }
+      },
+      {
+        "phase": "accessibility",
+        "workerName": "sai-8-accessibility-worker",
+        "workerContract": "sai/orchestration/workers/sai-8-accessibility-worker.md",
+        "bindingStem": "accessibility",
+        "dispatchPrimitive": "task",
+        "initialDispatch": "dispatch sai-8-accessibility-worker",
+        "continuationLiteral": "continue sai-8-accessibility-worker",
+        "replacementFields": ["model", "effort"],
+        "helperPermissions": ["Read", "Write", "Agent", "Skill"],
+        "progressDeclaration": "accessibility milestones",
+        "overviewGeneration": "",
+        "noticeContinuation": "",
+        "claudeAgent": {
+          "agentName": "sai-8-accessibility-worker",
+          "description": "Owns the complete technical accessibility phase and returns structured lifecycle metadata.",
+          "model": "opus",
+          "effort": "medium",
+          "tools": "Read, Glob, Grep, Bash, Edit, Write, Agent, Skill, SendMessage"
+        },
+        "opencodeAgent": {
+          "description": "Owns the complete technical accessibility phase and returns structured lifecycle metadata.",
+          "model": "opencode-go/deepseek-v4-flash",
+          "variantLine": "variant: max",
+          "permissionBlock": "    budget: allow\n    explore: allow"
+        }
+      }
+    ]
+  },
   "projections": [
     { "id": "claude-commands", "source": "commands/claude", "destination": { "class": "commands", "path": "." }, "harnesses": ["claude"], "strategy": "copy", "recursive": true, "include": ["*.md"], "ownership": "managed", "drift": "content" },
     { "id": "opencode-commands", "source": "commands/opencode", "destination": { "class": "commands", "path": "." }, "harnesses": ["opencode"], "strategy": "copy", "recursive": true, "include": ["*.md"], "ownership": "managed", "drift": "content" },
@@ -10,39 +224,25 @@
     { "id": "sai-policies", "source": "sai/policies", "destination": { "class": "sai", "path": "policies" }, "harnesses": ["claude", "opencode"], "strategy": "copy", "recursive": true, "include": ["**/*.md"], "ownership": "managed", "drift": "content" },
     { "id": "claude-orchestration", "source": "sai/orchestration", "destination": { "class": "sai", "path": "orchestration" }, "harnesses": ["claude"], "strategy": "copy", "recursive": true, "include": ["coordinator-contract.md", "worker-lifecycle.md", "workers/*.md"], "ownership": "managed", "drift": "content" },
     { "id": "opencode-orchestration", "source": "sai/orchestration", "destination": { "class": "sai", "path": "orchestration" }, "harnesses": ["opencode"], "strategy": "copy", "recursive": true, "include": ["coordinator-contract.md", "worker-lifecycle.md", "workers/*.md"], "ownership": "managed", "drift": "content" },
-    { "id": "claude-design-worker-binding", "source": "sai/orchestration/workers/bindings/claude/design-worker.md", "destination": { "class": "sai", "path": "orchestration/workers/bindings/design-worker.md" }, "harnesses": ["claude"], "strategy": "copy", "recursive": false, "ownership": "managed", "drift": "content" },
-    { "id": "claude-implementation-worker-binding", "source": "sai/orchestration/workers/bindings/claude/implementation-worker.md", "destination": { "class": "sai", "path": "orchestration/workers/bindings/implementation-worker.md" }, "harnesses": ["claude"], "strategy": "copy", "recursive": false, "ownership": "managed", "drift": "content" },
-    { "id": "claude-spec-worker-binding", "source": "sai/orchestration/workers/bindings/claude/spec-worker.md", "destination": { "class": "sai", "path": "orchestration/workers/bindings/spec-worker.md" }, "harnesses": ["claude"], "strategy": "copy", "recursive": false, "ownership": "managed", "drift": "content" },
-    { "id": "claude-review-worker-binding", "source": "sai/orchestration/workers/bindings/claude/review-worker.md", "destination": { "class": "sai", "path": "orchestration/workers/bindings/review-worker.md" }, "harnesses": ["claude"], "strategy": "copy", "recursive": false, "ownership": "managed", "drift": "content" },
-    { "id": "claude-security-worker-binding", "source": "sai/orchestration/workers/bindings/claude/security-worker.md", "destination": { "class": "sai", "path": "orchestration/workers/bindings/security-worker.md" }, "harnesses": ["claude"], "strategy": "copy", "recursive": false, "ownership": "managed", "drift": "content" },
-    { "id": "claude-performance-worker-binding", "source": "sai/orchestration/workers/bindings/claude/performance-worker.md", "destination": { "class": "sai", "path": "orchestration/workers/bindings/performance-worker.md" }, "harnesses": ["claude"], "strategy": "copy", "recursive": false, "ownership": "managed", "drift": "content" },
-    { "id": "claude-accessibility-worker-binding", "source": "sai/orchestration/workers/bindings/claude/accessibility-worker.md", "destination": { "class": "sai", "path": "orchestration/workers/bindings/accessibility-worker.md" }, "harnesses": ["claude"], "strategy": "copy", "recursive": false, "ownership": "managed", "drift": "content" },
     { "id": "claude-idea-list-render-binding", "source": "sai/orchestration/workers/bindings/claude/idea-list-render.md", "destination": { "class": "sai", "path": "orchestration/workers/bindings/idea-list-render.md" }, "harnesses": ["claude"], "strategy": "copy", "recursive": false, "ownership": "managed", "drift": "content" },
-    { "id": "opencode-design-worker-binding", "source": "sai/orchestration/workers/bindings/opencode/design-worker.md", "destination": { "class": "sai", "path": "orchestration/workers/bindings/design-worker.md" }, "harnesses": ["opencode"], "strategy": "copy", "recursive": false, "ownership": "managed", "drift": "content" },
-    { "id": "opencode-implementation-worker-binding", "source": "sai/orchestration/workers/bindings/opencode/implementation-worker.md", "destination": { "class": "sai", "path": "orchestration/workers/bindings/implementation-worker.md" }, "harnesses": ["opencode"], "strategy": "copy", "recursive": false, "ownership": "managed", "drift": "content" },
-    { "id": "opencode-spec-worker-binding", "source": "sai/orchestration/workers/bindings/opencode/spec-worker.md", "destination": { "class": "sai", "path": "orchestration/workers/bindings/spec-worker.md" }, "harnesses": ["opencode"], "strategy": "copy", "recursive": false, "ownership": "managed", "drift": "content" },
-    { "id": "opencode-review-worker-binding", "source": "sai/orchestration/workers/bindings/opencode/review-worker.md", "destination": { "class": "sai", "path": "orchestration/workers/bindings/review-worker.md" }, "harnesses": ["opencode"], "strategy": "copy", "recursive": false, "ownership": "managed", "drift": "content" },
-    { "id": "opencode-security-worker-binding", "source": "sai/orchestration/workers/bindings/opencode/security-worker.md", "destination": { "class": "sai", "path": "orchestration/workers/bindings/security-worker.md" }, "harnesses": ["opencode"], "strategy": "copy", "recursive": false, "ownership": "managed", "drift": "content" },
-    { "id": "opencode-performance-worker-binding", "source": "sai/orchestration/workers/bindings/opencode/performance-worker.md", "destination": { "class": "sai", "path": "orchestration/workers/bindings/performance-worker.md" }, "harnesses": ["opencode"], "strategy": "copy", "recursive": false, "ownership": "managed", "drift": "content" },
-    { "id": "opencode-accessibility-worker-binding", "source": "sai/orchestration/workers/bindings/opencode/accessibility-worker.md", "destination": { "class": "sai", "path": "orchestration/workers/bindings/accessibility-worker.md" }, "harnesses": ["opencode"], "strategy": "copy", "recursive": false, "ownership": "managed", "drift": "content" },
     { "id": "opencode-idea-list-render-binding", "source": "sai/orchestration/workers/bindings/opencode/idea-list-render.md", "destination": { "class": "sai", "path": "orchestration/workers/bindings/idea-list-render.md" }, "harnesses": ["opencode"], "strategy": "copy", "recursive": false, "ownership": "managed", "drift": "content" },
     { "id": "universal-skills", "source": "skills/universal", "destination": { "class": "skills", "path": "." }, "harnesses": ["claude", "opencode"], "strategy": "copy", "recursive": true, "include": ["**/SKILL.md"], "ownership": "managed", "drift": "content" },
     { "id": "claude-skills", "source": "skills/claude", "destination": { "class": "skills", "path": "." }, "harnesses": ["claude"], "strategy": "copy", "recursive": true, "include": ["**/SKILL.md"], "ownership": "managed", "drift": "content" },
     { "id": "opencode-skills", "source": "skills/opencode", "destination": { "class": "skills", "path": "." }, "harnesses": ["opencode"], "strategy": "copy", "recursive": true, "include": ["**/SKILL.md"], "ownership": "managed", "drift": "content" },
-    { "id": "claude-sai-3-implementation-worker", "source": "agents/claude/sai-3-implementation-worker.md", "destination": { "class": "agents", "path": "sai-3-implementation-worker.md" }, "harnesses": ["claude"], "strategy": "tunable-seed", "recursive": false, "ownership": "managed", "drift": "content" },
-    { "id": "claude-sai-2-design-worker", "source": "agents/claude/sai-2-design-worker.md", "destination": { "class": "agents", "path": "sai-2-design-worker.md" }, "harnesses": ["claude"], "strategy": "tunable-seed", "recursive": false, "ownership": "managed", "drift": "content" },
-    { "id": "claude-sai-1-spec-proposal-worker", "source": "agents/claude/sai-1-spec-proposal-worker.md", "destination": { "class": "agents", "path": "sai-1-spec-proposal-worker.md" }, "harnesses": ["claude"], "strategy": "tunable-seed", "recursive": false, "ownership": "managed", "drift": "content" },
-    { "id": "claude-sai-5-review-worker", "source": "agents/claude/sai-5-review-worker.md", "destination": { "class": "agents", "path": "sai-5-review-worker.md" }, "harnesses": ["claude"], "strategy": "tunable-seed", "recursive": false, "ownership": "managed", "drift": "content" },
-    { "id": "claude-sai-6-security-worker", "source": "agents/claude/sai-6-security-worker.md", "destination": { "class": "agents", "path": "sai-6-security-worker.md" }, "harnesses": ["claude"], "strategy": "tunable-seed", "recursive": false, "ownership": "managed", "drift": "content" },
-    { "id": "claude-sai-7-performance-worker", "source": "agents/claude/sai-7-performance-worker.md", "destination": { "class": "agents", "path": "sai-7-performance-worker.md" }, "harnesses": ["claude"], "strategy": "tunable-seed", "recursive": false, "ownership": "managed", "drift": "content" },
-    { "id": "claude-sai-8-accessibility-worker", "source": "agents/claude/sai-8-accessibility-worker.md", "destination": { "class": "agents", "path": "sai-8-accessibility-worker.md" }, "harnesses": ["claude"], "strategy": "tunable-seed", "recursive": false, "ownership": "managed", "drift": "content" },
-    { "id": "opencode-sai-1-spec-proposal-worker", "source": "agents/opencode/sai-1-spec-proposal-worker.md", "destination": { "class": "agents", "path": "sai-1-spec-proposal-worker.md" }, "harnesses": ["opencode"], "strategy": "tunable-seed", "recursive": false, "ownership": "managed", "drift": "content" },
-    { "id": "opencode-sai-2-design-worker", "source": "agents/opencode/sai-2-design-worker.md", "destination": { "class": "agents", "path": "sai-2-design-worker.md" }, "harnesses": ["opencode"], "strategy": "tunable-seed", "recursive": false, "ownership": "managed", "drift": "content" },
-    { "id": "opencode-sai-3-implementation-worker", "source": "agents/opencode/sai-3-implementation-worker.md", "destination": { "class": "agents", "path": "sai-3-implementation-worker.md" }, "harnesses": ["opencode"], "strategy": "tunable-seed", "recursive": false, "ownership": "managed", "drift": "content" },
-    { "id": "opencode-sai-5-review-worker", "source": "agents/opencode/sai-5-review-worker.md", "destination": { "class": "agents", "path": "sai-5-review-worker.md" }, "harnesses": ["opencode"], "strategy": "tunable-seed", "recursive": false, "ownership": "managed", "drift": "content" },
-    { "id": "opencode-sai-6-security-worker", "source": "agents/opencode/sai-6-security-worker.md", "destination": { "class": "agents", "path": "sai-6-security-worker.md" }, "harnesses": ["opencode"], "strategy": "tunable-seed", "recursive": false, "ownership": "managed", "drift": "content" },
-    { "id": "opencode-sai-7-performance-worker", "source": "agents/opencode/sai-7-performance-worker.md", "destination": { "class": "agents", "path": "sai-7-performance-worker.md" }, "harnesses": ["opencode"], "strategy": "tunable-seed", "recursive": false, "ownership": "managed", "drift": "content" },
-    { "id": "opencode-sai-8-accessibility-worker", "source": "agents/opencode/sai-8-accessibility-worker.md", "destination": { "class": "agents", "path": "sai-8-accessibility-worker.md" }, "harnesses": ["opencode"], "strategy": "tunable-seed", "recursive": false, "ownership": "managed", "drift": "content" },
+    { "id": "claude-sai-3-implementation-worker", "source": "agents/claude/worker-template.md", "destination": { "class": "agents", "path": "sai-3-implementation-worker.md" }, "harnesses": ["claude"], "strategy": "tunable-seed", "recursive": false, "ownership": "managed", "drift": "content", "matrix": { "kind": "agent", "phase": "implementation" } },
+    { "id": "claude-sai-2-design-worker", "source": "agents/claude/worker-template.md", "destination": { "class": "agents", "path": "sai-2-design-worker.md" }, "harnesses": ["claude"], "strategy": "tunable-seed", "recursive": false, "ownership": "managed", "drift": "content", "matrix": { "kind": "agent", "phase": "design" } },
+    { "id": "claude-sai-1-spec-proposal-worker", "source": "agents/claude/worker-template.md", "destination": { "class": "agents", "path": "sai-1-spec-proposal-worker.md" }, "harnesses": ["claude"], "strategy": "tunable-seed", "recursive": false, "ownership": "managed", "drift": "content", "matrix": { "kind": "agent", "phase": "spec" } },
+    { "id": "claude-sai-5-review-worker", "source": "agents/claude/worker-template.md", "destination": { "class": "agents", "path": "sai-5-review-worker.md" }, "harnesses": ["claude"], "strategy": "tunable-seed", "recursive": false, "ownership": "managed", "drift": "content", "matrix": { "kind": "agent", "phase": "review" } },
+    { "id": "claude-sai-6-security-worker", "source": "agents/claude/worker-template.md", "destination": { "class": "agents", "path": "sai-6-security-worker.md" }, "harnesses": ["claude"], "strategy": "tunable-seed", "recursive": false, "ownership": "managed", "drift": "content", "matrix": { "kind": "agent", "phase": "security" } },
+    { "id": "claude-sai-7-performance-worker", "source": "agents/claude/worker-template.md", "destination": { "class": "agents", "path": "sai-7-performance-worker.md" }, "harnesses": ["claude"], "strategy": "tunable-seed", "recursive": false, "ownership": "managed", "drift": "content", "matrix": { "kind": "agent", "phase": "performance" } },
+    { "id": "claude-sai-8-accessibility-worker", "source": "agents/claude/worker-template.md", "destination": { "class": "agents", "path": "sai-8-accessibility-worker.md" }, "harnesses": ["claude"], "strategy": "tunable-seed", "recursive": false, "ownership": "managed", "drift": "content", "matrix": { "kind": "agent", "phase": "accessibility" } },
+    { "id": "opencode-sai-1-spec-proposal-worker", "source": "agents/opencode/worker-template.md", "destination": { "class": "agents", "path": "sai-1-spec-proposal-worker.md" }, "harnesses": ["opencode"], "strategy": "tunable-seed", "recursive": false, "ownership": "managed", "drift": "content", "matrix": { "kind": "agent", "phase": "spec" } },
+    { "id": "opencode-sai-2-design-worker", "source": "agents/opencode/worker-template.md", "destination": { "class": "agents", "path": "sai-2-design-worker.md" }, "harnesses": ["opencode"], "strategy": "tunable-seed", "recursive": false, "ownership": "managed", "drift": "content", "matrix": { "kind": "agent", "phase": "design" } },
+    { "id": "opencode-sai-3-implementation-worker", "source": "agents/opencode/worker-template.md", "destination": { "class": "agents", "path": "sai-3-implementation-worker.md" }, "harnesses": ["opencode"], "strategy": "tunable-seed", "recursive": false, "ownership": "managed", "drift": "content", "matrix": { "kind": "agent", "phase": "implementation" } },
+    { "id": "opencode-sai-5-review-worker", "source": "agents/opencode/worker-template.md", "destination": { "class": "agents", "path": "sai-5-review-worker.md" }, "harnesses": ["opencode"], "strategy": "tunable-seed", "recursive": false, "ownership": "managed", "drift": "content", "matrix": { "kind": "agent", "phase": "review" } },
+    { "id": "opencode-sai-6-security-worker", "source": "agents/opencode/worker-template.md", "destination": { "class": "agents", "path": "sai-6-security-worker.md" }, "harnesses": ["opencode"], "strategy": "tunable-seed", "recursive": false, "ownership": "managed", "drift": "content", "matrix": { "kind": "agent", "phase": "security" } },
+    { "id": "opencode-sai-7-performance-worker", "source": "agents/opencode/worker-template.md", "destination": { "class": "agents", "path": "sai-7-performance-worker.md" }, "harnesses": ["opencode"], "strategy": "tunable-seed", "recursive": false, "ownership": "managed", "drift": "content", "matrix": { "kind": "agent", "phase": "performance" } },
+    { "id": "opencode-sai-8-accessibility-worker", "source": "agents/opencode/worker-template.md", "destination": { "class": "agents", "path": "sai-8-accessibility-worker.md" }, "harnesses": ["opencode"], "strategy": "tunable-seed", "recursive": false, "ownership": "managed", "drift": "content", "matrix": { "kind": "agent", "phase": "accessibility" } },
     { "id": "opencode-explore", "source": "agents/opencode/explore.md", "destination": { "class": "agents", "path": "explore.md" }, "harnesses": ["opencode"], "strategy": "tunable-seed", "recursive": false, "ownership": "managed", "drift": "content" },
     { "id": "opencode-executor", "source": "agents/opencode/executor.md", "destination": { "class": "agents", "path": "executor.md" }, "harnesses": ["opencode"], "strategy": "tunable-seed", "recursive": false, "ownership": "managed", "drift": "content" },
     { "id": "opencode-budget", "source": "agents/opencode/budget.md", "destination": { "class": "agents", "path": "budget.md" }, "harnesses": ["opencode"], "strategy": "tunable-seed", "recursive": false, "ownership": "managed", "drift": "content", "overrides": "opencode-commands" },
@@ -154,7 +354,13 @@
       "id": "retired-claude-spec-worker-binding",
       "destination": { "class": "sai", "path": "orchestration/workers/bindings/claude/spec-worker.md" },
       "harnesses": ["claude"],
-      "managedHashes": ["cc1234710fcd3aaee81850173e3902110b25caf7036d5a276a8e32c761817258"]
+      "managedHashes": [
+        "cc1234710fcd3aaee81850173e3902110b25caf7036d5a276a8e32c761817258",
+        "0bb35f9d8a156120966ecf1e97211e12d6dcf9aa3e8d0767ed8b3bf327172fb2",
+        "182f25ea2994e6bd06dc24c699138e1fa426143f5ce5c00e17abb15784e20b76",
+        "24989325253673a0362c3f844ae73b8ea75d9faac27cb1c46f3efaf2cf8aaec0",
+        "f44f6dd7c3af0c54476863f0127a41695a549134db210fc68b5b86d23bdaabaa"
+      ]
     },
     {
       "id": "retired-claude-design-worker-binding",
@@ -162,7 +368,14 @@
       "harnesses": ["claude"],
       "managedHashes": [
         "ce13052eef97c0c64c3b0634dd9297c9c0d9403a06bbe12bcb4c18b104ef529c",
-        "f59bc58934b88f81fe8ee9c2717bbe86701eace201215ecdf22ac02938f0977f"
+        "f59bc58934b88f81fe8ee9c2717bbe86701eace201215ecdf22ac02938f0977f",
+        "152180aa85fc77329d9d32845682234282d13e2af5385e373e6bbd649d505c4f",
+        "69973b1847be1e6fe713534891e01f5f2c1e7a6581c841ca0c8b65be8d0c4269",
+        "c00ec0a4f79cbf114fdd48fac0b89cf8b2f8948e50e8039a9aea0656ea3829fc",
+        "d0a5c0da2b9836afee06bd82d161f86d3254bd09a2b886ded2de1adf826ceb4a",
+        "e33c65df4a9958775b3713df696ca8a2b0ef2c1e57e4b103b26ceb7de289fb2b",
+        "ea4199b6b7b2db2e4ec2bfcf91ff97d9ca575667e150450819775e0e24236a4b",
+        "ec2ffd680d4fb7643f6e66db201f6edf183d2ae2387a18a55bead25a6c8721a3"
       ]
     },
     {
@@ -172,26 +385,47 @@
       "managedHashes": [
         "38f838655ef7eccada7a7a9373dd3bd5a3d3e7cd28af368f25412bad6cb4f7ff",
         "bbc973e4749e488a13c295a15b0e5d593cf20e76e030a66038cbed72a2eb5665",
-        "be263652007b2be2f2b77c9983d5656525ad27dfa0dc89311fa6a0a01f3b955b"
+        "be263652007b2be2f2b77c9983d5656525ad27dfa0dc89311fa6a0a01f3b955b",
+        "03f4a3eca76681dff53938d6d1c98c98ea4e88cad2895d64892756c7f16490fd",
+        "1e9d5bf5a54b2c5dff141f5cc7dd128304eeae2d5bedf6ad89e76632c95733b4",
+        "2af3349fd34969a17442ce82661337094a0eea36456822db0fd0dd95bd9a9fcd",
+        "35d4650874a8f3bd4fbe89767e6d7ec8a133708bf9d6686bce7d9ad32a096dff",
+        "d8fa91ca7e4932f57157672a12befdf267a586a2b7f2178e98c27c20b37e8652",
+        "f40b0b6cfbd4377ab2736fb4f8c3fc13fcf6520e3ff8f99982a8ffdeb7dcb8d7"
       ]
     },
     {
       "id": "retired-claude-review-worker-binding",
       "destination": { "class": "sai", "path": "orchestration/workers/bindings/claude/review-worker.md" },
       "harnesses": ["claude"],
-      "managedHashes": ["54e24207cce8198c9ab9f0bf406aea2340fdb6d598e490d95908b661712b1634"]
+      "managedHashes": [
+        "54e24207cce8198c9ab9f0bf406aea2340fdb6d598e490d95908b661712b1634",
+        "8e8aeac7043154f18af568e3041bba1857222287b279291f93a66f9502d2bdf5",
+        "d3a5dae79a857c01c978100d2c3be653d6dc6d34e994e318a2124ef5d815c4b2",
+        "f44cc35111681da524699ede02fc4272ff68755aa76b22ea2a71dc3e778e8de0"
+      ]
     },
     {
       "id": "retired-claude-security-worker-binding",
       "destination": { "class": "sai", "path": "orchestration/workers/bindings/claude/security-worker.md" },
       "harnesses": ["claude"],
-      "managedHashes": ["c1a9b87dd71d237d196a468dad22e98c3d44396a3d371225e05a742217dbe9e6"]
+      "managedHashes": [
+        "c1a9b87dd71d237d196a468dad22e98c3d44396a3d371225e05a742217dbe9e6",
+        "8122d696a81129043fde8983a969d97ab3e5c2c06346ef65f92944b35696e345",
+        "8ffc7bd808b6491b948ed422cead71d61df5a88b8f0026e7a06124d093fa991a",
+        "bcad0e16954ea6d2dc544ec16e9604032c11316718e60af764dfc1dc3bb81d7b"
+      ]
     },
     {
       "id": "retired-claude-performance-worker-binding",
       "destination": { "class": "sai", "path": "orchestration/workers/bindings/claude/performance-worker.md" },
       "harnesses": ["claude"],
-      "managedHashes": ["f81800d9a7ff68a7abea2dc0e360bf40cabbbc1d51f894846d2df788df18f1bc"]
+      "managedHashes": [
+        "f81800d9a7ff68a7abea2dc0e360bf40cabbbc1d51f894846d2df788df18f1bc",
+        "30a05db20c4a3493d04cbf51d425ed4c0a90ae430efaa891857a3ed5190fe93d",
+        "408f3711e7cec02b0257513ce4b1fc652c20290bf789269caf9fb877f3524284",
+        "5e3f564fc951042f8ca4ba906fd52327e57f0539f3c3c336be728e931b9d8f8d"
+      ]
     },
     {
       "id": "retired-claude-accessibility-worker-binding",
@@ -199,14 +433,24 @@
       "harnesses": ["claude"],
       "managedHashes": [
         "6cf9757559429e2b7f394c5ef1b46a5b860720b17d77d2b3118547d9c3294173",
-        "7c5d22e78aa9d2fff5121d5ebcf1d5e8f4593f383ec853f7b228446f80aa4a10"
+        "7c5d22e78aa9d2fff5121d5ebcf1d5e8f4593f383ec853f7b228446f80aa4a10",
+        "2771b5477bf8c137f19e4c08b096860f5df0510d64a7a8b8c66f6051c8da8bd7",
+        "7956f633886a500d5eb7a162ffe2460cf2e07a5e68feb8b80d7eee020966dac0",
+        "82f288c14e3117498b014487ea63a261e5dbccc9a84795000f367fcf920f99a9",
+        "93feb9d0c1fe0223668b747b0b6f7bd4ffad6c596e86da0a50f0a578640e705a"
       ]
     },
     {
       "id": "retired-opencode-spec-worker-binding",
       "destination": { "class": "sai", "path": "orchestration/workers/bindings/opencode/spec-worker.md" },
       "harnesses": ["opencode"],
-      "managedHashes": ["fb326f086cd42d71268379564ee0674bb5bf0544322ffd9a0a3412e535ee646f"]
+      "managedHashes": [
+        "fb326f086cd42d71268379564ee0674bb5bf0544322ffd9a0a3412e535ee646f",
+        "0ec6b6cfeeda41d5035ae585cf079229de7a7a74d072facc905a5aa3471f1f8e",
+        "9f6d8963d284a7f7439214ea90df1483da8fb0b0078015f709f55cf845091c1c",
+        "bbbd05f533cea5abde54abbf1137ff8e19fe27b53a71acdab5783a6196a62e0b",
+        "d286e92e342b513fe7e141eb9125480107c12bdf438365cd90a7fdab6883b548"
+      ]
     },
     {
       "id": "retired-opencode-design-worker-binding",
@@ -214,7 +458,14 @@
       "harnesses": ["opencode"],
       "managedHashes": [
         "179e9f3169cfdea8164dcd8006fa72de7b00b504adbbac8bcad9cd476244dab5",
-        "57bc263bbc70f56a746186fc157b79befda13566334c85c2d7f2f5e076a7bde3"
+        "57bc263bbc70f56a746186fc157b79befda13566334c85c2d7f2f5e076a7bde3",
+        "4553da4db07bc052bb4cfa71ffad18c275d8d52bff3e23095c71be437901b38b",
+        "bd4cb11541fdcf2a9fa1f299a21b8a6dff2f7a227ab673b413a1fe3bc733fd89",
+        "cd5f2c7acf8b7f37c4008a3bc4fce2f53045863f7619398dd57507211e4d1ae3",
+        "e14424b4f8750eff90f4df75b6caf1d84559cf93bba3d334969945191c621cc2",
+        "f71ac86d45b7d857f92544871f4cf1596ec9dab57fea0e2e7bace535e583c0fc",
+        "f792525d7760d9d1676cfb3eed6e73604b88d19bb2ebd3550e4e0dce5023617b",
+        "fb7d3a2d35d288604d91ee6802bf7c25f52daf75ae73ff51129f2cedfe7b33ab"
       ]
     },
     {
@@ -224,26 +475,47 @@
       "managedHashes": [
         "48537406a68134f525f6b206c1abd678927097a8d7d4bc525f31da0db953b6d9",
         "babd46318eb245472a5eb15ec5abee1ee56397e0443b6e53f3664ee482eba4d0",
-        "bb986c56b074b9d9966ef5219f192313a52e39a0bf86c81008581cbe1b77a109"
+        "bb986c56b074b9d9966ef5219f192313a52e39a0bf86c81008581cbe1b77a109",
+        "48d22b19a3779406f3921ebf7729fb8002202e9f234b1a0d1c705d4e7b2decf6",
+        "508f10f9ab9896378e206b4f577535b600866cd7e2dc96b1f7aaebff2a05b843",
+        "76571a91765ccf0e40170de2d0fc03e984b9f9f65879576aef6116fa2f5113ce",
+        "854037936091f6d27fa5ba602c9b9f020fc22ca0110f2a09199dfa54cbb869cb",
+        "8dda982c952e26988517665d341bc8f0419188169dcb49f18f1093f848e3097f",
+        "c6accafac1a0c0f5ca702c8521652b85ba28e4d0b47feb80e243d9493bea86a1"
       ]
     },
     {
       "id": "retired-opencode-review-worker-binding",
       "destination": { "class": "sai", "path": "orchestration/workers/bindings/opencode/review-worker.md" },
       "harnesses": ["opencode"],
-      "managedHashes": ["977381a05d88569190e709bb6cc9514baf5b072137f07c1980e9e63f58a7ab77"]
+      "managedHashes": [
+        "977381a05d88569190e709bb6cc9514baf5b072137f07c1980e9e63f58a7ab77",
+        "276cdb0b9ba371681c3f91f8e7a9e3781e147ac905a92dc44fd3245d71606fd2",
+        "408c344b045894837099942db6d0a7c239d398447d78a83ff3f80817bdbcfb14",
+        "937d59ee19578a24dd5077180c3067a889d108a88a4aec6c4ea9a28a032bf57b"
+      ]
     },
     {
       "id": "retired-opencode-security-worker-binding",
       "destination": { "class": "sai", "path": "orchestration/workers/bindings/opencode/security-worker.md" },
       "harnesses": ["opencode"],
-      "managedHashes": ["4fe4ef0a90291fc72c58be65096170b3a927b365ac9d1da5db2fe254de4db6c1"]
+      "managedHashes": [
+        "4fe4ef0a90291fc72c58be65096170b3a927b365ac9d1da5db2fe254de4db6c1",
+        "01fa529925ea29fde5fab476993af07b063585e231b50a0ca3f50aeed75c499e",
+        "8697481c0c78097f75a9c6bce38ecb83af24881a1256645800bd2a4d0839f631",
+        "b52b411b54a2726b69c6e8db1eb0fe7f82d5b594a11e5b67f6af2615c937e44e"
+      ]
     },
     {
       "id": "retired-opencode-performance-worker-binding",
       "destination": { "class": "sai", "path": "orchestration/workers/bindings/opencode/performance-worker.md" },
       "harnesses": ["opencode"],
-      "managedHashes": ["a10766cd4ce3263a10c457dc783a881040af44763a65cb1b32bc68b64d120272"]
+      "managedHashes": [
+        "a10766cd4ce3263a10c457dc783a881040af44763a65cb1b32bc68b64d120272",
+        "7ac962d2bc4058d80be9c587b9618c7760dfdc6fbcd4f1ac51dd8e3cd21ed3df",
+        "8aabdfb73709d59fb548059ada8631bbfbe29f7d8857c9712394b10cfb1b3342",
+        "abe5b4d2021f7af2fd69234301193f3bfc6817e06fbfa3d6b3d4f4e189945b37"
+      ]
     },
     {
       "id": "retired-opencode-accessibility-worker-binding",
@@ -251,7 +523,11 @@
       "harnesses": ["opencode"],
       "managedHashes": [
         "272605e01a63a7c423829ba873504daedff28733b2d27e4677d7850d014f826b",
-        "415b56d211cac6394eca3e0d867ae3f927fdbbbe354a6e0daae94af73eb597f3"
+        "415b56d211cac6394eca3e0d867ae3f927fdbbbe354a6e0daae94af73eb597f3",
+        "00d8a7e2d76e8f86b15e1269dd15f2e67cfc081b222e4e393691cb1e539fca87",
+        "3ff987594c9eeb859aef5091dc71dd4194e35070af8852f3e873a1aa29ba1aaf",
+        "ad041cd89e1984ac4a7e59d88e8615a92f49113f1be59982e9bfb1e2546dabc2",
+        "fade2fef66c41739da4bf2fd588dd531602acb2b93f7f6c0243cfeee9dbbf1ee"
       ]
     },
     { "id": "retired-claude-sai-1-spec-proposal-worker-proxy-skill", "destination": { "class": "skills", "path": "sai-1-spec-proposal-worker/SKILL.md" }, "harnesses": ["claude"], "managedHashes": ["a800e2f9bbc14ca8d8f3e42e1f36ae07684bb7275d662d68528b49828c3ad4ee"] },
@@ -330,7 +606,7 @@
         "a903ed3dcc898520500e0e56bfb7617a9d23aed1d42de98f6b3b342db1cd19f6",
         "ab567bed366e371be087ffe55ea89793a959a9bcd9bc48a7858ad48803dcbc97",
         "be1704740fe7b436c441d9c8193910429c1c3cc3549a9877bb7cfbf782d445a5",
-        "c3af1e2f0781dce31a6867a34b4bc5ee49e8fbbc05d22022ccdb5d29b5c49cbe",
+        "c3af1e2f0781dce31a6867a34b4bc5ee49e8fbbc05d22022ccdb2d29b5c49cbe",
         "c6a01f915857bf2b5f45f602330bd0ca9a8d2ff6101af317f386ad73feb94db8",
         "fee67d66fd390171d3bdbd11b775f11b037374be234de25a61981629c58f7f6f"
       ]

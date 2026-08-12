@@ -7,6 +7,16 @@ const path = require('path');
 
 const repoRoot = path.join(__dirname, '..');
 
+const { loadInstallManifest, matrixRenderFor } = require('../bin/install-manifest.js');
+
+const matrixManifest = loadInstallManifest(path.join(__dirname, '..'));
+function matrixItem(harness, phase, kind) {
+  const item = matrixRenderFor(matrixManifest, harness, path.join(__dirname, '..'))
+    .find(entry => entry.kind === kind && entry.phase === phase);
+  assert.ok(item, `${harness}/${phase} matrix ${kind} should exist`);
+  return item.text;
+}
+
 function artifact(relativePath) {
   const fullPath = path.join(repoRoot, relativePath);
   assert.ok(fs.existsSync(fullPath), `${relativePath} should exist`);
@@ -142,12 +152,16 @@ test('no-effective-change transaction verifies the existing overview before rest
 });
 
 test('opencode design worker permits budget dispatch beside explore', () => {
-  const agent = artifact('agents/opencode/sai-2-design-worker.md');
-  const binding = artifact('sai/orchestration/workers/bindings/opencode/design-worker.md');
+  const agent = matrixItem('opencode', 'design', 'agent');
+  const binding = matrixItem('opencode', 'design', 'binding');
 
   assert.match(agent, /explore:\s*allow/, 'permission.task should allow explore');
   assert.match(agent, /budget:\s*allow/, 'permission.task should allow budget dispatch beside explore');
   assert.match(binding, /budget/, 'opencode design worker binding should mention budget dispatch');
+  assert.match(binding, /overview_generation|overview_language/,
+    'the design binding should carry the overview-generation option');
+  assert.match(binding, /continue_after_notice/,
+    'the design binding should carry the notice continuation option');
 });
 
 test('installation projections are mirrored with an explicit override entry', () => {

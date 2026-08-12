@@ -21,6 +21,7 @@ const {
   offerOpencodeInstall,
 } = require('../bin/install-flow.js');
 const jsonc = require('jsonc-parser');
+const { loadInstallManifest, expandInstallManifest } = require('../bin/install-manifest.js');
 
 const AGENT_PLACEHOLDER = { mode: 'subagent', model: 'opencode-go/deepseek-v4-flash' };
 const AGENT_KEYS = ['explore', 'executor', 'budget'];
@@ -36,7 +37,7 @@ const CURRENT_CENSUS = [
 const SAI_EXTERNAL_DIRECTORY = '~/.config/opencode/sai/**';
 const OPENCODE_COMMANDS_EXTERNAL_DIRECTORY = '~/.config/opencode/commands/**';
 const OPENCODE_SKILLS_EXTERNAL_DIRECTORY = '~/.config/opencode/skills/**';
-const CENSUS_SCRATCH_DIR = path.join(__dirname, '..', '.tmp', 'derive-opencode-agent-census-from-bindings');
+const CENSUS_SCRATCH_DIR = path.join(__dirname, '..', '.tmp', 'collapse-sai-worker-matrix', 'derive-opencode-agent-census-from-bindings');
 test.afterEach(() => {
   fs.rmSync(CENSUS_SCRATCH_DIR, { recursive: true, force: true });
 });
@@ -54,7 +55,7 @@ test('STEP1_RETIRE_INLINE: opencode installer has no Copilot path constants or e
   assert.equal(typeof flow.installClaude, 'function');
   assert.deepEqual(Object.keys(flow).filter(name => /copilot/i.test(name)), []);
 });
-const STEP_2_SCRATCH_DIR = path.join(__dirname, '..', '.tmp', 'deterministic-worker-contract-delivery');
+const STEP_2_SCRATCH_DIR = path.join(__dirname, '..', '.tmp', 'collapse-sai-worker-matrix', 'deterministic-worker-contract-delivery');
 const WORKER_CONTRACT_BY_NAME = {
   'sai-1-spec-proposal-worker': 'spec-worker.md',
   'sai-2-design-worker': 'design-worker.md',
@@ -258,14 +259,24 @@ test('installOpencode projects the routed spec coordinator and neutral binding',
 test('installOpencode projects every routed binding into neutral destinations', () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-neutral-bindings-'));
   const workers = ['spec', 'design', 'implementation', 'review', 'security', 'performance', 'accessibility'];
+  const bindingWorker = Object.fromEntries(Object.entries(WORKER_CONTRACT_BY_NAME).map(([workerName, bindingName]) => [
+    bindingName.replace('-worker.md', ''),
+    workerName,
+  ]));
   try {
     installOpencode(tmpDir);
     assert.equal(fs.existsSync(path.join(tmpDir, 'sai', 'orchestration', 'workers', 'bindings', 'opencode')), false);
     for (const worker of workers) {
       const destination = path.join(tmpDir, 'sai', 'orchestration', 'workers', 'bindings', `${worker}-worker.md`);
-      const source = path.join(__dirname, '..', 'sai', 'orchestration', 'workers', 'bindings', 'opencode', `${worker}-worker.md`);
       assert.equal(fs.existsSync(destination), true, `${worker} binding should use a neutral destination`);
-      assert.deepEqual(fs.readFileSync(destination), fs.readFileSync(source), `${worker} binding should match opencode source`);
+      const text = fs.readFileSync(destination, 'utf8');
+      const workerName = bindingWorker[worker];
+      assert.equal(
+        (text.match(new RegExp(`Fetch @sai/orchestration/workers/${workerName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\.md and follow it exactly\\.`, 'g')) || []).length,
+        1,
+        `${worker} binding should carry exactly one canonical worker Fetch`
+      );
+      assert.match(text, /task\s*\(/, `${worker} binding should preserve the task dispatch primitive`);
     }
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });
@@ -977,7 +988,7 @@ test('Step 2 installation guide contains the canonical narrow restriction templa
 
 // --- Step 1: owned-copy installer path harness-neutrality ---
 
-const STEP_1_SCRATCH_DIR = path.join(__dirname, '..', '.tmp', 'opencode-markdown-worker-agents');
+const STEP_1_SCRATCH_DIR = path.join(__dirname, '..', '.tmp', 'collapse-sai-worker-matrix', 'opencode-markdown-worker-agents');
 test.after(() => {
   fs.rmSync(STEP_1_SCRATCH_DIR, { recursive: true, force: true });
 });
@@ -1037,14 +1048,34 @@ test('Step 1 tunable-seed projection seeds the declared opencode source bytes', 
 
 test('Step 1 Claude agent rows remain byte-preserving without ownership sidecars', () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-claude-seed-bytes-'));
+  const repoRoot = path.join(__dirname, '..');
+  const manifest = loadInstallManifest(repoRoot);
   try {
     installClaude(tmpDir);
+    const destinationRoot = {
+      commands: path.join(tmpDir, 'commands'),
+      sai: path.join(tmpDir, 'sai'),
+      skills: path.join(tmpDir, 'skills'),
+      agents: path.join(tmpDir, 'agents'),
+      config: tmpDir,
+      root: tmpDir,
+    };
+    const active = expandInstallManifest(manifest, { harness: 'claude', repoRoot, destinationRoot });
     for (const workerName of CURRENT_CENSUS) {
       const agentPath = path.join(tmpDir, 'agents', `${workerName}.md`);
-      const repoAgentPath = path.join(__dirname, '..', 'agents', 'claude', `${workerName}.md`);
-      assert.ok(fs.existsSync(repoAgentPath), `${workerName} should have a Claude source agent`);
-      assert.deepEqual(fs.readFileSync(agentPath), fs.readFileSync(repoAgentPath),
-        `specs/managed-worker-registry/spec.md: ${workerName} must remain byte-identical to its Claude source`);
+      assert.ok(fs.existsSync(agentPath), `${workerName} should install a managed Claude agent`);
+      const text = fs.readFileSync(agentPath, 'utf8').replaceAll('\r\n', '\n');
+      assert.equal((text.match(/^---\r?\n/gm) || []).length, 2,
+        `specs/managed-worker-registry/spec.md: ${workerName} should contain exactly one frontmatter block`);
+      assert.equal(
+        (text.match(/^Fetch @sai\/orchestration\/workers\/[^\s`]+\.md and follow it exactly\.$/gm) || []).length,
+        1,
+        `specs/managed-worker-registry/spec.md: ${workerName} should carry exactly one canonical worker Fetch`);
+      const projection = active.find(candidate => candidate.destinationPath === agentPath);
+      assert.ok(projection, `${workerName} should be an active Claude projection`);
+      const source = path.relative(repoRoot, projection.sourcePath).split(path.sep).join('/');
+      assert.equal(/^agents\/claude\/sai-\d-.*-worker\.md$/.test(source), false,
+        `specs/managed-worker-registry/spec.md: ${workerName} must not source from a retired per-harness agent tree: ${source}`);
       assert.equal(fs.existsSync(path.join(tmpDir, 'agents', `.${workerName}.owner.json`)), false,
         `specs/managed-worker-registry/spec.md: ${workerName} must not gain an owner sidecar`);
     }
@@ -1094,13 +1125,18 @@ test('Step 3 binding files declare exactly the seven initial worker dispatches',
 });
 
 test('Step 3 roster validation admits dispatch-less render bindings alongside worker bindings', () => {
-  const repoRoot = path.join(__dirname, '..');
   const fixtureDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-render-binding-'));
   try {
-    fs.copyFileSync(
-      path.join(repoRoot, 'sai', 'orchestration', 'workers', 'bindings', 'opencode', 'design-worker.md'),
-      path.join(fixtureDir, 'design-worker.md')
-    );
+    const installDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-render-install-'));
+    try {
+      installOpencode(installDir);
+      fs.copyFileSync(
+        path.join(installDir, 'sai', 'orchestration', 'workers', 'bindings', 'design-worker.md'),
+        path.join(fixtureDir, 'design-worker.md')
+      );
+    } finally {
+      fs.rmSync(installDir, { recursive: true, force: true });
+    }
     fs.writeFileSync(
       path.join(fixtureDir, 'idea-list-render.md'),
       '# Opencode Idea-List Render Binding\n\nThis harness has a native task panel. It declares no worker dispatch.\n',
@@ -1218,22 +1254,88 @@ test('Step 2 retired agent-key merge exports are no longer available from the in
     'specs/opencode-config-install/spec.md: OPENCODE_PLACEHOLDER_MODEL must be retired');
 });
 
-test('Step 3 install seeds the seven managed opencode worker agent files from their sources', () => {
+test('Step 3 install seeds the seven managed opencode worker agent files with their canonical contracts', () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-agents-projected-'));
+  const repoRoot = path.join(__dirname, '..');
+  const manifest = loadInstallManifest(repoRoot);
   try {
     installOpencode(tmpDir);
+    const destinationRoot = {
+      commands: path.join(tmpDir, 'commands'),
+      sai: path.join(tmpDir, 'sai'),
+      skills: path.join(tmpDir, 'skills'),
+      agents: path.join(tmpDir, 'agents'),
+      config: tmpDir,
+      root: tmpDir,
+    };
+    const active = expandInstallManifest(manifest, { harness: 'opencode', repoRoot, destinationRoot });
     for (const worker of CURRENT_CENSUS) {
       const agentPath = path.join(tmpDir, 'agents', `${worker}.md`);
-      const repoAgentPath = path.join(__dirname, '..', 'agents', 'opencode', `${worker}.md`);
-      assert.ok(fs.existsSync(repoAgentPath),
-        `specs/managed-worker-registry/spec.md: ${worker} should have an opencode source agent`);
       assert.ok(fs.existsSync(agentPath),
         `specs/managed-worker-registry/spec.md: ${worker}.md should be projected into the agents directory`);
-      assert.deepEqual(fs.readFileSync(agentPath), fs.readFileSync(repoAgentPath),
-        `specs/managed-worker-registry/spec.md: ${worker} should be byte-identical to its opencode source`);
+      const text = fs.readFileSync(agentPath, 'utf8').replaceAll('\r\n', '\n');
+      assert.equal((text.match(/^---\r?\n/gm) || []).length, 2,
+        `specs/managed-worker-registry/spec.md: ${worker} should contain exactly one frontmatter block`);
+      assert.equal(
+        (text.match(/^Fetch @sai\/orchestration\/workers\/[^\s`]+\.md and follow it exactly\.$/gm) || []).length,
+        1,
+        `specs/managed-worker-registry/spec.md: ${worker} should carry exactly one canonical worker Fetch`);
+      assert.ok(text.includes(`Fetch @sai/orchestration/workers/${worker}.md and follow it exactly.`),
+        `specs/managed-worker-registry/spec.md: ${worker} should target its own worker contract`);
+      const projection = active.find(candidate => candidate.destinationPath === agentPath);
+      assert.ok(projection, `specs/managed-worker-registry/spec.md: ${worker} should be an active opencode projection`);
+      const source = path.relative(repoRoot, projection.sourcePath).split(path.sep).join('/');
+      assert.equal(/^agents\/opencode\/sai-\d-.*-worker\.md$/.test(source), false,
+        `specs/managed-worker-registry/spec.md: ${worker} must not source from a retired per-harness agent tree: ${source}`);
       assert.equal(fs.existsSync(path.join(tmpDir, 'agents', `.${worker}.owner.json`)), false,
         `specs/managed-worker-registry/spec.md: ${worker} must not gain an ownership sidecar`);
     }
+  } finally {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+});
+
+test('opencode installer consumes exactly the seven matrix worker bindings and agents', () => {
+  const repoRoot = path.join(__dirname, '..');
+  const manifest = loadInstallManifest(repoRoot);
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-matrix-inventory-'));
+  try {
+    const destinationRoot = {
+      commands: path.join(tmpDir, 'commands'),
+      sai: path.join(tmpDir, 'sai'),
+      skills: path.join(tmpDir, 'skills'),
+      agents: path.join(tmpDir, 'agents'),
+      config: tmpDir,
+      root: tmpDir,
+    };
+    const active = expandInstallManifest(manifest, { harness: 'opencode', repoRoot, destinationRoot });
+    const phases = ['spec', 'design', 'implementation', 'review', 'security', 'performance', 'accessibility'];
+    const bindingNames = active
+      .filter(projection => path.relative(destinationRoot.sai, projection.destinationPath)
+        .split(path.sep).join('/').startsWith('orchestration/workers/bindings/') &&
+        phases.includes(path.basename(projection.destinationPath, '-worker.md')))
+      .map(projection => path.basename(projection.destinationPath));
+    assert.equal(bindingNames.length, 7, 'opencode should project exactly seven worker bindings');
+    assert.equal(bindingNames.includes('idea-list-render.md'), false,
+      'opencode must not project an idea-list-render matrix binding');
+    const allBindingNames = active
+      .filter(projection => path.relative(destinationRoot.sai, projection.destinationPath)
+        .split(path.sep).join('/').startsWith('orchestration/workers/bindings/'))
+      .map(projection => path.basename(projection.destinationPath));
+    assert.equal(allBindingNames.includes('idea-list-render.md'), true,
+      'opencode should keep the regular idea-list-render binding beside the matrix bindings');
+    const agentNames = active
+      .filter(projection => projection.destinationPath.startsWith(destinationRoot.agents) &&
+        CURRENT_CENSUS.includes(path.basename(projection.destinationPath, '.md')))
+      .map(projection => path.basename(projection.destinationPath, '.md'));
+    assert.equal(agentNames.length, 7, 'opencode should project exactly seven managed agents');
+    assert.equal(agentNames.some(name => ['budget', 'executor', 'explore'].includes(name)), false,
+      'opencode must not project support agents as matrix worker inventory');
+    const allAgentNames = active
+      .filter(projection => projection.destinationPath.startsWith(destinationRoot.agents))
+      .map(projection => path.basename(projection.destinationPath, '.md'));
+    assert.equal(['budget', 'executor', 'explore'].every(name => allAgentNames.includes(name)), true,
+      'opencode should keep its three support agents beside the matrix agents');
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }

@@ -185,6 +185,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0128 — Keep generic OpenCode behavior in canonical SAI policies behind Fetch wrappers](./0128-canonical-generic-opencode-behavior-behind-fetch-wrappers.md)
 - [0129 — Preserve OpenCode agent frontmatter and append-only local extensions](./0129-preserve-opencode-agent-frontmatter-and-local-extensions.md)
 - [0130 — Reuse the recursive SAI policy projection for generic agents](./0130-reuse-recursive-sai-policy-projection-for-generic-agents.md)
+- [0134 — Materialize Worker Matrix projections from the manifest and retire by hash](./0134-materialize-worker-projections-from-the-manifest-and-retire-by-hash.md)
 ### Harness wrappers & the shared instruction layer
 
 - [0001 — Separate per-harness instruction files for the sai subagent resolver](./0001-sai-separate-harness-files.md)
@@ -215,6 +216,8 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0130 — Reuse the recursive SAI policy projection for generic agents](./0130-reuse-recursive-sai-policy-projection-for-generic-agents.md)
 - [0131 — Keep OpenCode budget skills behind canonical behavior policies](./0131-canonicalize-opencode-budget-skill-behavior.md)
 - [0132 — Reconcile the executor capability at the canonical Fetch boundary](./0132-reconcile-executor-capability-at-fetch-boundary.md)
+- [0133 — Keep harness-native worker templates over shared dispatch syntax](./0133-harness-native-worker-templates-over-shared-dispatch-syntax.md)
+- [0134 — Materialize Worker Matrix projections from the manifest and retire by hash](./0134-materialize-worker-projections-from-the-manifest-and-retire-by-hash.md)
 
 ---
 
@@ -270,6 +273,8 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0104 — Remove Copilot from the active installer inventory](./0104-remove-copilot-from-active-installer-inventory.md) — Pair with 0103
 - [0117 — The three planning-phase coordinators receive the scoped `Bash(date:*)` entry as the sole allowed-tools exception](./0117-planning-coordinators-scoped-shell-entry.md)
 - [0118 — Per-harness wall-clock commands live in the harness bindings, never in the neutral policy](./0118-per-harness-wall-clock-commands-in-bindings.md) — Refs 0077
+- [0133 — Keep harness-native worker templates over shared dispatch syntax](./0133-harness-native-worker-templates-over-shared-dispatch-syntax.md)
+- [0134 — Materialize Worker Matrix projections from the manifest and retire by hash](./0134-materialize-worker-projections-from-the-manifest-and-retire-by-hash.md)
 
 ### Argument passing & change-name resolution
 
@@ -373,6 +378,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0088 — Implementation harness projection boundaries](./0088-implementation-harness-projection-boundaries.md) — Refs 0084, Refs 0085, Refs 0074
 - [0096 — Fail closed when dispatching owned worker sidecars](./0096-fail-closed-owned-worker-owner-dispatch.md) — Refs 0084, Refs 0085
 - [0119 — Shared raw-readline navigator engine in `bin/install-flow.js`](./0119-shared-raw-readline-navigator-engine-in-install-flow.md) — Refs 0010
+- [0134 — Materialize Worker Matrix projections from the manifest and retire by hash](./0134-materialize-worker-projections-from-the-manifest-and-retire-by-hash.md)
 
 ---
 

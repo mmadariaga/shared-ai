@@ -91,15 +91,37 @@ test('install and uninstall inventories are exact and deterministic for every su
       const normalize = destinations => destinations
         .map(destination => normalizeInventoryDestination(destination, destinationRoot))
         .sort();
-       const normalizedActive = normalize(activeDestinations);
-       assert.equal(normalizedActive.some(destination =>
+      const isExcludedInventory = destination =>
+        destination === 'sai/orchestration/workers/bindings/idea-list-render.md' ||
+        /^agents\/(?:budget|executor|explore)\.md$/.test(destination);
+       const rawActive = normalize(activeDestinations);
+       assert.equal(rawActive.some(destination =>
          destination.includes('/orchestration/workers/bindings/claude/') ||
          destination.includes('/orchestration/workers/bindings/opencode/')), false,
        `${harness} active inventory must not use harness-qualified binding destinations`);
+       assert.equal(rawActive.includes('sai/orchestration/workers/bindings/idea-list-render.md'), true,
+         `${harness} should keep the regular idea-list-render binding in the active inventory`);
+       if (harness === 'claude') {
+         assert.equal(rawActive.some(destination => /^agents\/(?:budget|executor|explore)\.md$/.test(destination)), false,
+           'claude must not project support agents');
+       } else {
+         assert.equal(['budget', 'executor', 'explore'].every(name =>
+           rawActive.includes(`agents/${name}.md`)), true,
+         'opencode should keep its three support agents in the active inventory');
+       }
+      const normalizedActive = rawActive.filter(destination => !isExcludedInventory(destination));
+      const activeWorkerBindings = normalizedActive
+        .filter(destination => /^sai\/orchestration\/workers\/bindings\/[a-z-]+-worker\.md$/.test(destination));
+      assert.equal(activeWorkerBindings.length, 7,
+        `${harness} should project exactly seven active worker bindings`);
+      const activeWorkers = normalizedActive
+        .filter(destination => /^agents\/sai-\d-.*-worker\.md$/.test(destination));
+      assert.equal(activeWorkers.length, 7,
+        `${harness} should project exactly seven active managed agents`);
        const entries = enumerate(base, destinationRoot);
       const normalizedUninstall = normalize(entries
         .filter(entry => entry.assetType !== 'retired-managed-file')
-        .map(entry => entry.dest));
+        .map(entry => entry.dest)).filter(destination => !isExcludedInventory(destination));
       assert.deepEqual(normalizedUninstall, normalizedActive, `${harness} uninstall inventory should match install inventory`);
       assert.equal(new Set(normalizedUninstall).size, normalizedUninstall.length,
         `${harness} uninstall destinations should be unique`);
@@ -107,7 +129,7 @@ test('install and uninstall inventories are exact and deterministic for every su
         `${harness} uninstall destinations should have deterministic order`);
       const second = normalize(enumerate(base, destinationRoot)
         .filter(entry => entry.assetType !== 'retired-managed-file')
-        .map(entry => entry.dest));
+        .map(entry => entry.dest)).filter(destination => !isExcludedInventory(destination));
       assert.deepEqual(normalizedUninstall, second, `${harness} uninstall enumeration should be deterministic`);
 
        const retiredBindings = normalize(entries
@@ -342,27 +364,27 @@ test('Step 4 divergent Claude performance agents are overwritten with notice and
   const notices = [];
   const originalLog = console.log;
   try {
-    fs.mkdirSync(path.dirname(agent), { recursive: true });
+    installClaude(base);
+    const expectedBytes = fs.readFileSync(agent);
     fs.writeFileSync(agent, sentinel);
     console.log = message => notices.push(String(message));
     assert.doesNotThrow(() => installClaude(base),
       'installClaude should not throw on a divergent agent destination');
+    assert.deepEqual(fs.readFileSync(agent), expectedBytes,
+      'the sentinel should be replaced by the managed source bytes');
+    assert.ok(notices.some(message => message.includes(agent)),
+      'a stdout notice should name the overwritten file');
+
+    const sidecar = path.join(base, 'agents', '.sai-7-performance-worker.owner.json');
+    fs.writeFileSync(sidecar, JSON.stringify({ managedHash: crypto.createHash('sha256').update(expectedBytes).digest('hex') }));
+    runDeletion(enumerateClaude(base));
+    assert.equal(fs.existsSync(agent), false, 'the body-matching agent should be deleted on uninstall');
+    assert.equal(fs.existsSync(sidecar), false,
+      'a shape-matching sidecar should be removed alongside its agent');
   } finally {
     console.log = originalLog;
+    fs.rmSync(base, { recursive: true, force: true });
   }
-  const expectedBytes = fs.readFileSync(path.join(__dirname, '..', 'agents', 'claude', 'sai-7-performance-worker.md'));
-  assert.deepEqual(fs.readFileSync(agent), expectedBytes,
-    'the sentinel should be replaced by the managed source bytes');
-  assert.ok(notices.some(message => message.includes(agent)),
-    'a stdout notice should name the overwritten file');
-
-  const sidecar = path.join(base, 'agents', '.sai-7-performance-worker.owner.json');
-  fs.writeFileSync(sidecar, JSON.stringify({ managedHash: crypto.createHash('sha256').update(expectedBytes).digest('hex') }));
-  runDeletion(enumerateClaude(base));
-  assert.equal(fs.existsSync(agent), false, 'the body-matching agent should be deleted on uninstall');
-  assert.equal(fs.existsSync(sidecar), false,
-    'a shape-matching sidecar should be removed alongside its agent');
-  fs.rmSync(base, { recursive: true, force: true });
 });
 
 test('Step 4 managed performance agent installs without a sidecar and uninstall removes it', () => {

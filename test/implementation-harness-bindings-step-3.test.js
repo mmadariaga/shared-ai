@@ -15,7 +15,7 @@ const {
   installOpencode,
   copyOpencodeConfig,
 } = require('../bin/install-flow.js');
-const { loadInstallManifest, expandInstallManifest } = require('../bin/install-manifest.js');
+const { loadInstallManifest, expandInstallManifest, matrixRenderFor } = require('../bin/install-manifest.js');
 const {
   enumerateClaude,
   buildDeletionSet,
@@ -23,6 +23,14 @@ const {
 } = require('../bin/uninstall-flow.js');
 
 const repoRoot = path.join(__dirname, '..');
+
+const matrixManifest = loadInstallManifest(path.join(__dirname, '..'));
+function matrixAgent(harness, phase) {
+  const item = matrixRenderFor(matrixManifest, harness, path.join(__dirname, '..'))
+    .find(entry => entry.kind === 'agent' && entry.phase === phase);
+  assert.ok(item, `${harness}/${phase} matrix agent should exist`);
+  return item.text;
+}
 
 const MANAGED_WORKER_NAMES = [
   'sai-1-spec-proposal-worker',
@@ -67,7 +75,7 @@ function projectionSources(harness) {
 
 test('canonical manifest keeps implementation projections interface returns the required projection record', () => {
   const projection = projectionSources('claude').find(({ source }) =>
-    source === 'agents/claude/sai-3-implementation-worker.md');
+    source === '.tmp/collapse-sai-worker-matrix/matrix-sources/claude/sai-3-implementation-worker.md');
   assert.ok(projection, 'Claude worker projection should exist');
   for (const field of REQUIRED_PROJECTION_FIELDS) {
     assert.ok(projection[field], `${field} should be populated`);
@@ -86,14 +94,14 @@ test('Step 3 manifest projects the shared lifecycle and one active harness bindi
       'sai/orchestration/coordinator-contract.md',
       'sai/orchestration/worker-lifecycle.md',
       'sai/orchestration/workers/sai-3-implementation-worker.md',
-      'sai/orchestration/workers/bindings/claude/implementation-worker.md',
-      'agents/claude/sai-3-implementation-worker.md',
+      '.tmp/collapse-sai-worker-matrix/matrix-sources/claude/implementation-worker.md',
+      '.tmp/collapse-sai-worker-matrix/matrix-sources/claude/sai-3-implementation-worker.md',
     ],
     opencode: [
       'sai/orchestration/coordinator-contract.md',
       'sai/orchestration/worker-lifecycle.md',
       'sai/orchestration/workers/sai-3-implementation-worker.md',
-      'sai/orchestration/workers/bindings/opencode/implementation-worker.md',
+      '.tmp/collapse-sai-worker-matrix/matrix-sources/opencode/implementation-worker.md',
     ],
   };
 
@@ -105,18 +113,18 @@ test('Step 3 manifest projects the shared lifecycle and one active harness bindi
     }
     assert.equal(new Set(projections.map(projection => projection.destination)).size, projections.length,
       `${harness} destinations should be unique`);
-    const bindingSource = `sai/orchestration/workers/bindings/${harness}/implementation-worker.md`;
+    const bindingSource = `.tmp/collapse-sai-worker-matrix/matrix-sources/${harness}/implementation-worker.md`;
     const bindingProjection = projections.find(({ source }) => source === bindingSource);
-    assert.ok(bindingProjection, `${harness} should project its harness-specific binding source`);
+    assert.ok(bindingProjection, `${harness} should project its matrix binding source`);
     assert.match(bindingProjection.destination.replace(/\\/g, '/'),
       /orchestration\/workers\/bindings\/implementation-worker\.md$/,
       `${harness} binding should project to the neutral relative path`);
     assert.doesNotMatch([...sources].join('\n'), /sai\/orchestration\/inline-invocation\.md/);
     if (harness === 'claude') {
-      assert.equal(sources.has('sai/orchestration/workers/bindings/opencode/implementation-worker.md'), false);
+      assert.equal(sources.has('.tmp/collapse-sai-worker-matrix/matrix-sources/opencode/implementation-worker.md'), false);
     } else {
-      assert.equal(sources.has('sai/orchestration/workers/bindings/claude/implementation-worker.md'), false);
-      assert.equal(sources.has('agents/claude/sai-3-implementation-worker.md'), false);
+      assert.equal(sources.has('.tmp/collapse-sai-worker-matrix/matrix-sources/claude/implementation-worker.md'), false);
+      assert.equal(sources.has('.tmp/collapse-sai-worker-matrix/matrix-sources/claude/sai-3-implementation-worker.md'), false);
     }
   }
 });
@@ -237,7 +245,7 @@ test('Step 3 overwrites incompatible Claude destinations with notice while prese
     }
     assert.deepEqual(
       fs.readFileSync(claudePath),
-      fs.readFileSync(path.join(repoRoot, 'agents', 'claude', 'sai-3-implementation-worker.md')),
+      Buffer.from(matrixAgent('claude', 'implementation')),
       'the incompatible Claude worker should be overwritten with the managed source bytes');
     assert.ok(claudeNotices.some(message => message.includes(claudePath)),
       'stdout should announce the overwrite naming the file');
@@ -331,7 +339,7 @@ test('Step 3 opencode manifest projects the seven managed worker agent files to 
   const projections = projectionSources('opencode');
   const bySource = new Map(projections.map(projection => [projection.source, projection]));
   for (const worker of MANAGED_WORKER_NAMES) {
-    const source = `agents/opencode/${worker}.md`;
+    const source = `.tmp/collapse-sai-worker-matrix/matrix-sources/opencode/${worker}.md`;
     const projection = bySource.get(source);
     assert.ok(projection, `opencode manifest should project ${source}`);
     assert.equal(path.basename(projection.destination), `${worker}.md`,

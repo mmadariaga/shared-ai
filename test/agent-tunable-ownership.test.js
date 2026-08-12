@@ -9,6 +9,7 @@ const Module = require('module');
 
 const flow = require('../bin/install-flow.js');
 const { enumerateClaude, enumerateOpencode, computePlanEntry, runDeletion } = require('../bin/uninstall-flow.js');
+const { loadInstallManifest, matrixRenderFor } = require('../bin/install-manifest.js');
 
 const WORKER_NAMES = [
   'sai-1-spec-proposal-worker',
@@ -20,13 +21,33 @@ const WORKER_NAMES = [
   'sai-8-accessibility-worker',
 ];
 
+const WORKER_PHASE = {
+  'sai-1-spec-proposal-worker': 'spec',
+  'sai-2-design-worker': 'design',
+  'sai-3-implementation-worker': 'implementation',
+  'sai-5-review-worker': 'review',
+  'sai-6-security-worker': 'security',
+  'sai-7-performance-worker': 'performance',
+  'sai-8-accessibility-worker': 'accessibility',
+};
+
+const matrixManifest = loadInstallManifest(path.join(__dirname, '..'));
+function matrixAgent(harness, phase) {
+  const item = matrixRenderFor(matrixManifest, harness, path.join(__dirname, '..'))
+    .find(entry => entry.kind === 'agent' && entry.phase === phase);
+  assert.ok(item, `${harness}/${phase} matrix agent should exist`);
+  return item.text;
+}
+
 function ownerSidecarPath(agentPath) {
   return path.join(path.dirname(agentPath), `.${path.basename(agentPath, '.md')}.owner.json`);
 }
 
 function agentProjection(workerName, dir) {
-  const sourcePath = path.join(__dirname, '..', 'agents', 'claude', `${workerName}.md`);
+  const sourcePath = path.join(dir, 'sources', `${workerName}.md`);
   const destinationPath = path.join(dir, 'agents', `${workerName}.md`);
+  fs.mkdirSync(path.dirname(sourcePath), { recursive: true });
+  fs.writeFileSync(sourcePath, matrixAgent('claude', WORKER_PHASE[workerName]));
   return { sourcePath, destinationPath };
 }
 

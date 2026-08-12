@@ -3,6 +3,11 @@
 const fs = require('fs');
 const path = require('path');
 
+const {
+  defineWorkerMatrix,
+  materializeWorkerMatrix,
+} = require('./worker-matrix');
+
 const STRATEGIES = Object.freeze([
   'copy',
   'tunable-seed',
@@ -12,6 +17,37 @@ const STRATEGIES = Object.freeze([
 const SUPPORTED_HARNESSES = new Set(['claude', 'opencode']);
 const SHA256 = /^[0-9a-f]{64}$/;
 const RETIREMENT_DESTINATION_CLASSES = new Set(['sai', 'skills']);
+const MATRIX_TEMPLATE_NAMES = Object.freeze([
+  'claudeBinding',
+  'opencodeBinding',
+  'claudeAgent',
+  'opencodeAgent',
+]);
+const MATRIX_KINDS = new Set(['binding', 'agent']);
+const MATRIX_SCRATCH_RELATIVE = path.join('.tmp', 'collapse-sai-worker-matrix', 'matrix-sources');
+const PHASE_WORKER_IDENTITIES = Object.freeze({
+  spec: 'sai-1-spec-proposal-worker',
+  design: 'sai-2-design-worker',
+  implementation: 'sai-3-implementation-worker',
+  review: 'sai-5-review-worker',
+  security: 'sai-6-security-worker',
+  performance: 'sai-7-performance-worker',
+  accessibility: 'sai-8-accessibility-worker',
+});
+const MATRIX_ENTRY_REQUIRED_FIELDS = Object.freeze([
+  'phase',
+  'workerName',
+  'workerContract',
+  'bindingStem',
+  'dispatchPrimitive',
+  'initialDispatch',
+  'continuationLiteral',
+  'replacementFields',
+  'helperPermissions',
+  'progressDeclaration',
+  'claudeAgent',
+  'opencodeAgent',
+]);
 
 function normalizeRelative(value) {
   return value.split(path.sep).join('/').replace(/^\.\//, '');
@@ -71,6 +107,98 @@ function validateRule(rule, ids) {
   if (rule.overrides !== undefined && typeof rule.overrides !== 'string') {
     throw new Error(`Projection ${rule.id} overrides must name one rule id`);
   }
+  if (rule.matrix !== undefined) {
+    if (!rule.matrix || !MATRIX_KINDS.has(rule.matrix.kind) || typeof rule.matrix.phase !== 'string') {
+      throw new Error(`Projection ${rule.id} matrix must declare { kind, phase }`);
+    }
+  }
+}
+
+function assertWorkerIdentity(entry, harness) {
+  const prefix = `${harness} worker matrix: `;
+  const canonical = PHASE_WORKER_IDENTITIES[entry.phase];
+  if (canonical && entry.workerName !== canonical) {
+    throw new Error(`${prefix}phase ${entry.phase} has misassigned worker identity ${entry.workerName}`);
+  }
+  const expectedContract = `sai/orchestration/workers/${entry.workerName}.md`;
+  if (entry.workerContract !== expectedContract) {
+    throw new Error(`${prefix}phase ${entry.phase} has mismatched worker contract ${entry.workerContract}`);
+  }
+}
+
+function validateMatrixEntries(entries, harness) {
+  entries.forEach(entry => {
+    if (!entry || typeof entry !== 'object' || typeof entry.phase !== 'string' || entry.phase.length === 0) {
+      return;
+    }
+    for (const field of MATRIX_ENTRY_REQUIRED_FIELDS) {
+      if (entry[field] === undefined || entry[field] === null || entry[field] === '') {
+        throw new Error(`${harness} worker matrix: phase ${entry.phase} is missing required field: ${field}`);
+      }
+    }
+    assertWorkerIdentity(entry, harness);
+  });
+}
+
+function validateMatrixEntriesForInstall(manifest, harness) {
+  const matrix = manifest && manifest['worker-matrix'];
+  if (!matrix || typeof matrix !== 'object' || Array.isArray(matrix) || !Array.isArray(matrix.entries)) {
+    return;
+  }
+  validateMatrixEntries(matrix.entries, harness);
+}
+
+function validateMatrixBlock(matrix) {
+  if (matrix === undefined) return;
+  if (!matrix || typeof matrix !== 'object' || Array.isArray(matrix)) {
+    throw new Error('worker-matrix block must be an object');
+  }
+  if (!matrix.templates || typeof matrix.templates !== 'object' || Array.isArray(matrix.templates)) {
+    throw new Error('worker-matrix block must declare templates');
+  }
+  for (const name of MATRIX_TEMPLATE_NAMES) {
+    if (typeof matrix.templates[name] !== 'string' || matrix.templates[name].length === 0) {
+      throw new Error(`worker-matrix block must declare template source for ${name}`);
+    }
+  }
+  for (const kind of ['bindings', 'agents']) {
+    const section = matrix[kind];
+    if (!section || typeof section !== 'object' || Array.isArray(section)) {
+      throw new Error(`worker-matrix block must declare ${kind}`);
+    }
+    if (!section.destination || typeof section.destination.class !== 'string' || typeof section.destination.path !== 'string') {
+      throw new Error(`worker-matrix ${kind} must declare destination { class, path }`);
+    }
+    if (!Array.isArray(section.harnesses) || section.harnesses.length === 0 || section.harnesses.some(harness => !SUPPORTED_HARNESSES.has(harness))) {
+      throw new Error(`worker-matrix ${kind} has invalid harnesses`);
+    }
+    if (!STRATEGIES.includes(section.strategy) || section.strategy !== (kind === 'bindings' ? 'copy' : 'tunable-seed')) {
+      throw new Error(`worker-matrix ${kind} must use the ${kind === 'bindings' ? 'copy' : 'tunable-seed'} strategy`);
+    }
+    if (typeof section.ownership !== 'string' || typeof section.drift !== 'string') {
+      throw new Error(`worker-matrix ${kind} must declare ownership and drift`);
+    }
+  }
+  if (!Array.isArray(matrix.entries)) {
+    throw new Error('worker-matrix block must declare phase entries');
+  }
+  if (matrix.entries.length === 0) {
+    throw new Error('worker-matrix block must declare at least one phase entry');
+  }
+  const seen = new Set();
+  for (const entry of matrix.entries) {
+    if (!entry || typeof entry !== 'object') {
+      throw new Error('worker-matrix phase entry must be an object');
+    }
+    if (typeof entry.phase !== 'string' || entry.phase.length === 0) {
+      throw new Error('worker-matrix phase entry must declare a phase');
+    }
+    if (seen.has(entry.phase)) {
+      throw new Error(`worker-matrix declares duplicate phase: ${entry.phase}`);
+    }
+    seen.add(entry.phase);
+  }
+  defineWorkerMatrix(matrix.entries);
 }
 
 function validateManifest(manifest) {
@@ -85,6 +213,7 @@ function validateManifest(manifest) {
   for (const rule of manifest.projections) {
     validateRule(rule, ids);
   }
+  validateMatrixBlock(manifest['worker-matrix']);
   validateRetirements(manifest, ids);
 }
 
@@ -165,20 +294,112 @@ function expandRule(rule, { harness, repoRoot, destinationRoot }) {
   }));
 }
 
+function matrixProjectionId(harness, kind, item) {
+  if (kind === 'binding') return `${harness}-${item.phase}-worker-binding`;
+  return `${harness}-${path.basename(item.destinationName, '.md')}`;
+}
+
+function matrixRenderFor(manifest, harness, repoRoot) {
+  const matrix = manifest['worker-matrix'];
+  if (!matrix) return [];
+  const templates = {};
+  for (const name of MATRIX_TEMPLATE_NAMES) {
+    const templatePath = path.resolve(repoRoot, matrix.templates[name]);
+    if (!fs.existsSync(templatePath)) {
+      throw new Error(`${harness} worker matrix: template ${name} does not exist: ${matrix.templates[name]}`);
+    }
+    templates[name] = fs.readFileSync(templatePath, 'utf8');
+  }
+  const rendered = materializeWorkerMatrix(defineWorkerMatrix(matrix.entries), templates);
+  return rendered
+    .filter(item => item.harness === harness)
+    .map(item => ({
+      kind: item.kind,
+      phase: item.phase,
+      destinationName: item.destinationName,
+      text: item.text,
+      entry: matrix.entries.find(entry => entry.phase === item.phase),
+    }));
+}
+
+function expandWorkerMatrix(matrix, { harness, repoRoot, destinationRoot }) {
+  const bindingsSection = matrix.bindings;
+  const agentsSection = matrix.agents;
+  if (!bindingsSection.harnesses.includes(harness) && !agentsSection.harnesses.includes(harness)) {
+    return [];
+  }
+  validateMatrixEntries(matrix.entries, harness);
+  const templates = {};
+  for (const name of MATRIX_TEMPLATE_NAMES) {
+    const templatePath = path.resolve(repoRoot, matrix.templates[name]);
+    if (!fs.existsSync(templatePath)) {
+      throw new Error(`${harness} worker matrix: template ${name} does not exist: ${matrix.templates[name]}`);
+    }
+    templates[name] = fs.readFileSync(templatePath, 'utf8');
+  }
+  let matrixDef;
+  let rendered;
+  try {
+    matrixDef = defineWorkerMatrix(matrix.entries);
+    rendered = materializeWorkerMatrix(matrixDef, templates);
+  } catch (error) {
+    throw new Error(`${harness} worker matrix: ${error.message}`);
+  }
+  const projections = [];
+  for (const item of rendered) {
+    if (item.harness !== harness) continue;
+    const kind = item.kind;
+    const section = kind === 'binding' ? bindingsSection : agentsSection;
+    if (!section.harnesses.includes(harness)) continue;
+    const destinationBase = destinationRoot[section.destination.class];
+    if (typeof destinationBase !== 'string') {
+      throw new Error(`No destination root for class ${section.destination.class} on ${harness}`);
+    }
+    const destinationPath = path.resolve(destinationBase, section.destination.path, item.destinationName);
+    const sourcePath = path.resolve(repoRoot, MATRIX_SCRATCH_RELATIVE, harness, item.destinationName);
+    const projection = {
+      id: matrixProjectionId(harness, kind, item),
+      sourcePath,
+      sourceText: item.text,
+      destinationPath,
+      harness,
+      strategy: section.strategy,
+      ownership: section.ownership,
+      drift: section.drift,
+      overrides: kind === 'binding' && section.overrides && section.overrides[harness]
+        ? section.overrides[harness]
+        : undefined,
+      recursive: false,
+    };
+    projections.push(projection);
+  }
+  return projections;
+}
+
 function expandInstallManifest(manifest, { harness, repoRoot, destinationRoot }) {
+  validateMatrixEntriesForInstall(manifest, harness);
   validateManifest(manifest);
   const destinations = new Map();
+  const addProjection = (projection) => {
+    const key = collisionKey(projection.destinationPath);
+    const existing = destinations.get(key);
+    if (!existing) {
+      destinations.set(key, projection);
+    } else if (!projection.recursive && projection.overrides === existing.id && existing.recursive) {
+      destinations.set(key, projection);
+    } else {
+      throw new Error(`Projection destination collision: ${existing.id} and ${projection.id} -> ${projection.destinationPath}`);
+    }
+  };
   for (const rule of manifest.projections.filter(candidate => candidate.harnesses.includes(harness))) {
+    if (rule.matrix) continue;
     for (const projection of expandRule(rule, { harness, repoRoot, destinationRoot })) {
-      const key = collisionKey(projection.destinationPath);
-      const existing = destinations.get(key);
-      if (!existing) {
-        destinations.set(key, projection);
-      } else if (!projection.recursive && projection.overrides === existing.id && existing.recursive) {
-        destinations.set(key, projection);
-      } else {
-        throw new Error(`Projection destination collision: ${existing.id} and ${projection.id} -> ${projection.destinationPath}`);
-      }
+      addProjection(projection);
+    }
+  }
+  if (manifest['worker-matrix'] !== undefined) {
+    for (const projection of expandWorkerMatrix(manifest['worker-matrix'], { harness, repoRoot, destinationRoot })) {
+      addProjection(projection);
     }
   }
   return [...destinations.values()]
@@ -208,6 +429,8 @@ module.exports = {
   loadInstallManifest,
   expandInstallManifest,
   expandRetirementManifest,
+  matrixRenderFor,
   STRATEGIES,
   validateManifest,
+  validateMatrixBlock,
 };
