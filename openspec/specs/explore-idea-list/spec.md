@@ -134,9 +134,58 @@ When the post-crystallization review loop (item 9 of `sai/commands/explore/instr
 - **WHEN** a supervised spec or design pass completes for a change
 - **THEN** no item renders `in_progress` from that pass
 
+### Requirement: idea-list-render-adapter-placement
+
+The idea-list render binding for each supported harness SHALL be a harness-specific adapter source at `sai/adapters/{harness}/idea-list-render.md` and SHALL be projected to `adapters/{harness}/idea-list-render.md` in that harness's installed SAI root. The binding SHALL remain a non-worker runtime-glue asset: it SHALL NOT define worker lifecycle, dispatch, continuation, an `InvocationEnvelope`, or a routed progress plan, and SHALL NOT be counted among the seven routed worker bindings. No idea-list-render source SHALL remain under `sai/orchestration/workers/bindings/{claude,opencode}/` after the relocation.
+
+#### Scenario: Claude uses its adapter render binding
+
+- **WHEN** the Claude Code installation resolves the idea-list render binding
+- **THEN** it loads `adapters/claude/idea-list-render.md` from the Claude adapter projection
+- **AND** that binding is sourced from `sai/adapters/claude/idea-list-render.md`
+
+#### Scenario: opencode uses its adapter render binding
+
+- **WHEN** the opencode installation resolves the idea-list render binding
+- **THEN** it loads `adapters/opencode/idea-list-render.md` from the opencode adapter projection
+- **AND** that binding is sourced from `sai/adapters/opencode/idea-list-render.md`
+
+#### Scenario: the render binding is outside the worker matrix
+
+- **WHEN** the routed worker matrix is projected or audited
+- **THEN** `idea-list-render.md` is not included in the seven routed worker destinations
+- **AND** `sai/orchestration/workers/bindings/` retains `worker-template.md` and the routed worker binding sources remain unchanged
+
+#### Scenario: wrappers resolve the matching adapter
+
+- **WHEN** `sai-explore` runs under either supported harness
+- **THEN** its wrapper fetches the matching harness-qualified adapter path
+- **AND** the 17 routed-worker Fetch lines continue to target `orchestration/workers/bindings/{phase}-worker.md` unchanged
+
+### Requirement: idea-list-render-retirement
+
+The manifest SHALL recognize the superseded installed path `orchestration/workers/bindings/idea-list-render.md` as retired for both supported harnesses. It SHALL carry one hash-gated retirement record per harness, each containing every exact raw Git-blob SHA-256 digest of a distinct content variant that a shipped manifest revision projected to that path, without line-ending normalization. The records SHALL contain these three Claude digests: `238b0fd7ef14b3f155e4bee008be9883948ad9b17e8a9477e79f0d013e878f23`, `792d0614a8a724ef19364976195ba8f6f0d08e70bc4d5db68eee0343603f54b0`, and `8376ebfd6f8c59709d65a6d79be0dfbf10baaeb6f282bd76442a302c26f30b37`; and these three opencode digests: `af9f1b8915db80210f9595c1adf7568c695401ba059f03e408c99e6273856347`, `5d26dd5bb555d525c4e7658fc021cb70a0dcdf90f248d020c51b2409ddf9a348`, and `74516e0219b92fc12be50b19d411af5031861ced9616e794630f32b1386a7dbf`.
+
+#### Scenario: managed old copies are retired on upgrade
+
+- **WHEN** an existing installation contains the old idea-list-render destination with bytes matching its harness retirement record
+- **THEN** the installer removes the old destination and writes the matching new adapter destination
+
+#### Scenario: edited old copies are preserved
+
+- **WHEN** an existing installation contains the old destination with bytes that match none of that harness's retired managed hashes
+- **THEN** the old file is preserved and reported as a managed-hash mismatch
+- **AND** the new harness-qualified adapter file is still projected
+
+#### Scenario: retirement records cover shipped variants
+
+- **WHEN** the retirement inventory is audited against manifest history
+- **THEN** each supported harness has exactly one record for `orchestration/workers/bindings/idea-list-render.md`
+- **AND** each record contains the three distinct historical variants listed above
+
 ### Requirement: idea-list-rendering
 
-The list SHALL NOT be rendered while it holds only the research item; it SHALL first render when it first carries more than the research item, at the first slice identification, and SHALL re-render whenever an item is added, marked, or cleared, or an item's in-progress state is set or resolved, after that. Rendering SHALL be performed through the per-harness idea-list render binding, and the binding SHALL declare whether its harness has a native task panel — panel availability is declared by the binding, never determined at runtime. The two supported harnesses (Claude Code and opencode) SHALL declare a native task panel, and their bindings SHALL render the list on the panel, replacing plain in-conversation text — the same list state SHALL NOT render on both surfaces. On the panel, a marked item SHALL render `completed`, a cleared item SHALL render back to `pending`, and the slice's active review item SHALL render `in_progress` while the post-crystallization review loop processes that slice — `in_progress` SHALL be carried only by reviewed-sai-1 and reviewed-sai-2 items per `idea-list-review-in-progress-state`, never by the research item or a slice-crystallization item. Each item's slice `**Change name**` key SHALL be carried in a **settable-and-readable** machine-readable panel entry field **distinct from the label** — the concrete per-harness field is resolved at design and pinned by the render binding (opencode `priority`, Claude Code `description`) — for stable item identity, so that the label is not reduced to the raw key. The label SHALL remain visually unambiguous on every rendered surface: a slice's items SHALL be distinguishable from every other slice's items, with the slice's change name rendered in the label. A binding that declares no native task panel SHALL render plain in-conversation Markdown checkbox text — `- [ ]` for an unmarked item, `- [~]` for the active in-progress review item, `- [x]` for a marked item — as the declared fallback; no supported harness exercises that branch today, so it is a declared extension point for a future harness, never a runtime-detected path. The panel update SHALL originate exclusively from the coordinator session, never from a worker subagent. A turn that adds, marks, or clears an item, or that sets or resolves an item's in-progress state, SHALL render the list exactly once, after all of that turn's additions and state changes have been applied.
+The list SHALL NOT be rendered while it holds only the research item; it SHALL first render when it first carries more than the research item, at the first slice identification, and SHALL re-render whenever an item is added, marked, or cleared, or an item's in-progress state is set or resolved, after that. Rendering SHALL be performed through the per-harness idea-list render adapter at `sai/adapters/{harness}/idea-list-render.md`, and the adapter SHALL declare whether its harness has a native task panel — panel availability is declared by the adapter, never determined at runtime. The two supported harnesses (Claude Code and opencode) SHALL declare a native task panel, and their adapters SHALL render the list on the panel, replacing plain in-conversation text — the same list state SHALL NOT render on both surfaces. On the panel, a marked item SHALL render `completed`, a cleared item SHALL render back to `pending`, and the slice's active review item SHALL render `in_progress` while the post-crystallization review loop processes that slice — `in_progress` SHALL be carried only by reviewed-sai-1 and reviewed-sai-2 items per `idea-list-review-in-progress-state`, never by the research item or a slice-crystallization item. Each item's slice `**Change name**` key SHALL be carried in a settable-and-readable machine-readable panel entry field distinct from the label — opencode SHALL use `priority` and Claude Code SHALL use `description` — for stable item identity, so that the label is not reduced to the raw key. The adapter SHALL use the ownership marker `sai-idea-list:<change-name>` in the same machine-readable field. The label SHALL remain visually unambiguous on every rendered surface: a slice's items SHALL be distinguishable from every other slice's items, with the slice's change name rendered in the label. An adapter that declares no native task panel SHALL render plain in-conversation Markdown checkbox text — `- [ ]` for an unmarked item, `- [~]` for the active in-progress review item, `- [x]` for a marked item — as the declared fallback; no supported harness exercises that branch today, so it is a declared extension point for a future harness, never a runtime-detected path. The panel update SHALL originate exclusively from the coordinator session, never from a worker subagent. A turn that adds, marks, or clears an item, or that sets or resolves an item's in-progress state, SHALL render the list exactly once, after all of that turn's additions and state changes have been applied.
 
 #### Scenario: no list while it holds only the research item
 
@@ -164,11 +213,18 @@ The list SHALL NOT be rendered while it holds only the research item; it SHALL f
 - **WHEN** a crystallization turn identifies slices, emits blocks, and marks items
 - **THEN** the list is rendered exactly once, after all of that turn's additions and state changes have been applied
 
-#### Scenario: binding-declared panel harness renders on the panel
+#### Scenario: adapter-declared panel behavior is unchanged
 
-- **WHEN** the idea-list render binding declares a native task panel for its harness and the list first carries more than the research item
-- **THEN** the binding renders the list on the panel
+- **WHEN** a supported harness's adapter declares a native task panel and the list first carries more than the research item
+- **THEN** the adapter renders the list on that panel
 - **AND** no plain in-conversation checkbox list is rendered for the same state
+
+#### Scenario: adapter relocation preserves list state and identity
+
+- **WHEN** a reviewed item is marked, cleared, or becomes the active review item after the adapter relocation
+- **THEN** the panel entry renders `completed`, `pending`, or `in_progress` according to the existing state rules
+- **AND** its machine-readable field continues to carry the ownership marker and slice change name
+- **AND** the label remains unchanged and identifies the slice
 
 #### Scenario: a binding declaring no panel falls back to plain text
 
@@ -205,14 +261,15 @@ The list SHALL NOT be rendered while it holds only the research item; it SHALL f
 - **THEN** each item's label carries its slice's change name
 - **AND** no two slices' items are indistinguishable on the rendered surface
 
-#### Scenario: coordinator session owns emission
+#### Scenario: coordinator remains the sole emitter
 
-- **WHEN** the list state changes on a harness with a native task panel
-- **THEN** the panel update is emitted by the coordinator session, never by a worker subagent
+- **WHEN** the idea-list state changes on a supported harness
+- **THEN** the relocated adapter update is emitted by the coordinator session
+- **AND** no worker subagent emits the panel update
 
 ### Requirement: idea-list-panel-ownership
 
-While a `sai-explore` chat is active, the harness's native task panel's declared owner SHALL be the session's idea progress list — ownership is exclusive in that the list never coexists with entries from any other surface and every one of its renders leaves the panel holding exactly the full idea list with no foreign entries, realized through the render outcome of `idea-list-panel-lifecycle`, and a future surface that needs the panel during an active explore chat SHALL renegotiate the ownership rule rather than write alongside the idea progress list. The ownership rule SHALL be stated in explore's own contract (`sai/commands/explore/instructions.md`) and SHALL NOT be written into any routed worker binding file. The supervised run is the illustrative case: during supervised coordination no adapter-declared progress plan is in force, so dispatched workers' progress events SHALL be received and processed per the coordinator contract (`sai/orchestration/coordinator-contract.md`) for their plan-independent obligations — every path in the event's `changed_files` is added to the supervision report in first-seen order, and the same worker is continued with exactly `continue_after_progress`; step marking has no application, since marking is defined only against an adapter-declared plan and none exists in the supervised flow. No plan-based list renders on the panel, because the neutral task-list policy (`sai/policies/todo-structure.md`) and the worker bindings govern routed phases whose adapters declare a progress plan and the supervised flow declares none. The ownership rule therefore SHALL change no observable supervised-run behavior. Standalone `/sai-1-spec` and `/sai-2-design` progress rendering SHALL remain unchanged, governed by their own phase adapters' declared progress plans.
+While a `sai-explore` chat is active, the harness's native task panel's declared owner SHALL be the session's idea progress list — ownership is exclusive in that the list never coexists with entries from any other surface and every one of its renders leaves the panel holding exactly the full idea list with no foreign entries, realized through the render outcome of `idea-list-panel-lifecycle`, and a future surface that needs the panel during an active explore chat SHALL renegotiate the ownership rule rather than write alongside the idea progress list. The ownership rule SHALL be stated in `sai/commands/explore/instructions.md` and SHALL NOT be written into any routed worker binding file or idea-list adapter file under `sai/adapters/{claude,opencode}/`. The supervised run is the illustrative case: during supervised coordination no adapter-declared progress plan is in force, so dispatched workers' progress events SHALL be received and processed per the shared command-runner contract (`sai/command-runner.md`) for their plan-independent obligations — every path in the event's `changed_files` is added to the supervision report in first-seen order, and the same worker is continued with exactly `continue_after_progress`; step marking has no application, since marking is defined only against an adapter-declared plan and none exists in the supervised flow. No plan-based list renders on the panel, because the neutral task-list policy (`sai/policies/todo-structure.md`) and the worker bindings govern routed phases whose adapters declare a progress plan and the supervised flow declares none. The ownership rule therefore SHALL change no observable supervised-run behavior. Standalone `/sai-1-spec` and `/sai-2-design` progress rendering SHALL remain unchanged, governed by their own phase adapters' declared progress plans.
 
 #### Scenario: ownership excludes other emitters
 
@@ -228,7 +285,7 @@ While a `sai-explore` chat is active, the harness's native task panel's declared
 
 - **WHEN** the ownership rule's location is inspected
 - **THEN** it is stated in `sai/commands/explore/instructions.md`
-- **AND** it is absent from every file under `sai/orchestration/workers/bindings/`
+- **AND** it is absent from every routed worker binding and idea-list adapter file
 
 #### Scenario: progress events are processed, not rendered
 

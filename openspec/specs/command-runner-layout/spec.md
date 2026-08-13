@@ -47,43 +47,72 @@ Each utility `/sai-*` command that is not routed through a coordinator and worke
 - **AND** neither class SHALL be treated as requiring the other class's surfaces
 
 ### Requirement: Harness boot adapters
-The source tree SHALL contain exactly one adapter boot file for each supported harness: `sai/adapters/claude/boot.md` and `sai/adapters/opencode/boot.md`. Adapter boot files SHALL contain harness-specific fetch and dispatch glue only, SHALL invoke the shared root protocol and command card, and SHALL NOT redefine command or worker lifecycle semantics.
 
-#### Scenario: Claude Code projection resolves its adapter
+The source tree SHALL contain exactly one adapter boot file for each supported harness: `sai/adapters/claude/boot.md` and `sai/adapters/opencode/boot.md`. Each harness-qualified adapter tree MAY contain additional harness-specific install-time runtime glue that is paired with that boot entry, including the non-worker idea-list render adapter. Adapter files SHALL contain harness-specific fetch, dispatch, or runtime-glue mechanics only, SHALL invoke or support the shared root protocol and command cards where applicable, and SHALL NOT redefine command or worker lifecycle semantics.
+
+#### Scenario: Claude Code projection resolves its adapter seam
+
 - **WHEN** the Claude Code projection is installed
-- **THEN** it SHALL receive `sai/adapters/claude/boot.md`
-- **AND** it SHALL NOT use `sai/adapters/opencode/boot.md` as its boot entry
+- **THEN** it SHALL receive `sai/adapters/claude/boot.md` and `sai/adapters/claude/idea-list-render.md`
+- **AND** it SHALL NOT use either opencode adapter source
 
-#### Scenario: opencode projection resolves its adapter
+#### Scenario: opencode projection resolves its adapter seam
+
 - **WHEN** the opencode projection is installed
-- **THEN** it SHALL receive `sai/adapters/opencode/boot.md`
-- **AND** it SHALL NOT use `sai/adapters/claude/boot.md` as its boot entry
+- **THEN** it SHALL receive `sai/adapters/opencode/boot.md` and `sai/adapters/opencode/idea-list-render.md`
+- **AND** it SHALL NOT use either Claude Code adapter source
 
-#### Scenario: Harness names remain at the adapter seam
-- **WHEN** newly introduced root protocol files and command-card sources under the new `sai/` layout are audited
-- **THEN** harness-specific source naming SHALL be confined to the two adapter boot paths
-- **AND** command cards and root protocol files SHALL remain harness-neutral
-- **AND** established harness-specific worker binding templates under `sai/orchestration/workers/bindings/{claude,opencode}/` and managed agent source paths under `agents/{claude,opencode}/` SHALL be treated as existing runtime glue explicitly outside this naming constraint
+#### Scenario: shared protocols remain neutral
+
+- **WHEN** the relocated adapter sources and shared protocols are audited
+- **THEN** harness-specific mechanics remain in `sai/adapters/{harness}/`
+- **AND** `sai/command-runner.md` and `sai/worker-core.md` retain harness-neutral lifecycle semantics
+
+### Requirement: Harness names remain at the adapter seam
+
+When newly introduced root protocol files and command-card sources under the new `sai/` layout are audited, harness-specific source naming SHALL be confined to the harness-qualified adapter seam `sai/adapters/{harness}/` and established harness-specific worker or managed-agent runtime glue. Command cards and root protocol files SHALL remain harness-neutral. The idea-list render adapters SHALL be treated as adapter-seam glue rather than as routed worker binding templates.
+
+#### Scenario: non-worker adapter naming is permitted at the seam
+
+- **WHEN** the newly introduced harness-specific source paths are audited
+- **THEN** `sai/adapters/claude/idea-list-render.md` and `sai/adapters/opencode/idea-list-render.md` are accepted as adapter-seam paths
+- **AND** no harness-specific name is introduced into command cards or root protocols
+
+#### Scenario: routed worker and agent carve-outs remain valid
+
+- **WHEN** existing harness-specific worker or managed-agent runtime glue is audited
+- **THEN** the established `sai/orchestration/workers/bindings/{claude,opencode}/` and `agents/{claude,opencode}/` paths remain permitted
+- **AND** the idea-list render adapter is not required to remain in the worker-binding carve-out
 
 ### Requirement: Deterministic two-harness projection
-`sai/install-manifest.json` SHALL be re-projected to describe the new root protocol, command-card, and adapter sources for both Claude Code and opencode. The manifest expansion module, installer, doctor, and uninstall SHALL consume that inventory; they SHALL preserve managed ownership, content-drift detection, collision checks, and the existing modified-file safeguards.
+
+`sai/install-manifest.json` SHALL be re-projected to describe the new root protocol, command-card, and adapter sources for both Claude Code and opencode. The manifest expansion module, installer, doctor, and uninstall SHALL consume that inventory; they SHALL preserve managed ownership, content-drift detection, collision checks, and existing modified-file safeguards across active projections and hash-gated retired destinations.
+
+#### Scenario: relocation is reflected by every inventory consumer
+
+- **WHEN** install, doctor, or uninstall evaluates the moved idea-list render binding
+- **THEN** it derives the active harness-qualified adapter destination and retired old destination from the manifest inventory
+- **AND** it applies the existing managed ownership and modified-file safeguards
 
 #### Scenario: Fresh installation projects the new layout
+
 - **WHEN** a supported harness is installed from the re-projected manifest
 - **THEN** its managed SAI destination SHALL contain the shared root protocol and command cards
-- **AND** it SHALL contain only that harness's adapter boot file
-- **AND** it SHALL not recreate retired or superseded source-layout destinations
+- **AND** it SHALL contain only that harness's adapter boot and idea-list render files
+- **AND** it SHALL not recreate the retired `orchestration/workers/bindings/idea-list-render.md` destination
 
 #### Scenario: Both harnesses are re-projected in one change
+
 - **WHEN** the manifest is expanded for Claude Code and opencode
 - **THEN** both harness inventories SHALL be generated from the same manifest change
-- **AND** their neutral root protocol and command-card content SHALL be equivalent
-- **AND** each inventory SHALL differ only at the adapter boot seam and other already-supported harness runtime glue
+- **AND** their neutral root protocol, command-card, and routed worker content SHALL remain equivalent
+- **AND** each inventory SHALL differ at the adapter seam only by its harness-specific sources
 
 #### Scenario: Doctor and uninstall share the active inventory
+
 - **WHEN** doctor or uninstall evaluates an installed projection
 - **THEN** it SHALL derive expected and removable paths from the same re-projected manifest expansion used by install
-- **AND** doctor SHALL report missing, unexpected, or drifted projections
+- **AND** doctor SHALL report missing, unexpected, or drifted active projections and retired-path mismatches
 - **AND** uninstall SHALL retain locally modified managed files under the existing ownership safeguard
 
 ### Requirement: Shared policy fetch targets are preserved
