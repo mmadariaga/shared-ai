@@ -75,6 +75,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0118 — Per-harness wall-clock commands live in the harness bindings, never in the neutral policy](./0118-per-harness-wall-clock-commands-in-bindings.md) — Refs 0077
 - [0131 — Keep OpenCode budget skills behind canonical behavior policies](./0131-canonicalize-opencode-budget-skill-behavior.md)
 - [0132 — Reconcile the executor capability at the canonical Fetch boundary](./0132-reconcile-executor-capability-at-fetch-boundary.md)
+- [0137 — Change Overview preserves the generation lifecycle and write boundary](./0137-change-overview-preserves-generation-lifecycle-and-write-boundary.md)
 
 ### `/sai-4-apply`
 
@@ -224,6 +225,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0135 — One harness boot seam per supported harness](./0135-one-harness-boot-seam-per-supported-harness.md)
 - [0136 — Opaque boot request and card-selection contract](./0136-opaque-boot-request-and-card-selection-contract.md)
 - [0137 — Put non-worker idea-list glue at the harness adapter seam](./0137-non-worker-idea-list-glue-at-harness-adapter-seam.md) — Refs 0077, Refs 0088, Refs 0116
+- [0137 — Change Overview preserves the generation lifecycle and write boundary](./0137-change-overview-preserves-generation-lifecycle-and-write-boundary.md)
 
 ---
 
@@ -239,6 +241,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0130 — Reuse the recursive SAI policy projection for generic agents](./0130-reuse-recursive-sai-policy-projection-for-generic-agents.md)
 - [0131 — Keep OpenCode budget skills behind canonical behavior policies](./0131-canonicalize-opencode-budget-skill-behavior.md)
 - [0132 — Reconcile the executor capability at the canonical Fetch boundary](./0132-reconcile-executor-capability-at-fetch-boundary.md)
+- [0137 — Change Overview preserves the generation lifecycle and write boundary](./0137-change-overview-preserves-generation-lifecycle-and-write-boundary.md)
 
 ### Fetch resolution & path conventions
 

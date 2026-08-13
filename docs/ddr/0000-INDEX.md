@@ -33,6 +33,9 @@ This index groups the DDRs in `docs/ddr/` by **command** and by **cross-cutting 
 - [0114 — The dispatch envelope is exactly two strings; progress-plan content never travels in it](./0114-progress-plan-never-transported-in-envelope.md)
 - [0117 — Target State relocates into design.md as the persisted authoritative snapshot](./0117-target-state-relocates-into-design-md-as-the-persisted-authoritative-snapshot.md)
 - [0118 — Every generation is a recoverable two-phase transition with a persisted overview.state key](./0118-every-generation-is-a-recoverable-two-phase-transition-with-a-persisted-overview-state-key.md)
+- [0130 — Change Overview uses an exact approval-oriented nine-section surface](./0130-change-overview-exact-approval-section-surface.md)
+- [0131 — Change Overview requirement names and localization anchors remain separately owned](./0131-change-overview-requirement-name-and-localization-ownership.md)
+- [0132 — Change Overview adapts architecture and centralizes the File Manifest](./0132-change-overview-adapts-architecture-and-centralizes-the-file-manifest.md)
 
 ### `/sai-3-implement`
 
