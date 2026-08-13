@@ -40,7 +40,7 @@
   Fetch @skills/budget/SKILL.md and use it
 
   ## Load instructions (in order)
-  Fetch @sai/instructions/explore.md
+  Fetch @sai/commands/explore/instructions.md
   Fetch @skills/openspec-explore/SKILL.md and follow those instructions exactly.
   Fetch @sai/policies/remember.md
 

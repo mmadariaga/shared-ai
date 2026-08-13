@@ -1,8 +1,8 @@
 // test/index-template-parity.test.js
 //
 // Index template parity: the ADR index template under
-// sai/instructions/_templates/adr-index.md and the DDR index template under
-// sai/instructions/_templates/ddr-index.md are project-agnostic section
+// sai/adr-index.template.md and the DDR index template under
+// sai/ddr-index.template.md are project-agnostic section
 // skeletons of the same shape, differing only in the decision-record family
 // vocabulary (ADR/DDR, ADRs/DDRs, adr/ddr, docs/adr/ vs docs/ddr/).
 // This suite pins, family-normalized on both sides:
@@ -122,8 +122,8 @@ function assertParity(dimension, actual, expected) {
 }
 
 test('adr-index and ddr-index template parity', () => {
-  const adr = readUtf8('sai/instructions/_templates/adr-index.md');
-  const ddr = readUtf8('sai/instructions/_templates/ddr-index.md');
+  const adr = readUtf8('sai/adr-index.template.md');
+  const ddr = readUtf8('sai/ddr-index.template.md');
 
   assertParity('top-level heading sequence', normalizeFamily(extractTopHeadings(adr)), normalizeFamily(extractTopHeadings(ddr)));
   assertParity('Conventions bullet sequence', normalizeFamily(extractConventionsBullets(adr)), normalizeFamily(extractConventionsBullets(ddr)));

@@ -6,7 +6,7 @@ const path = require('path');
 const ACTIVE_REFERENCE_EXCLUSIONS = [
   path.join('openspec', 'changes'),
   path.join('docs', 'adr'),
-  path.join('sai', 'instructions', 'explore.md'),
+  path.join('sai', 'commands', 'explore', 'instructions.md'),
 ];
 const RETIRED_SOURCES = [
   'sai/commands/sai-2-design.md',

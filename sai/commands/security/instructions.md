@@ -156,7 +156,7 @@ For each modified manifest:
 
 ## Output Template
 
-Fetch @sai/instructions/_templates/security-report.md
+Fetch @sai/commands/security/security-report.template.md
 
 ## Hard Rules
 

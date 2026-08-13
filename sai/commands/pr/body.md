@@ -15,7 +15,7 @@
 
   ## Load instructions (in order)
   Fetch @sai/policies/change-picker.md and follow it exactly.
-  Fetch @sai/instructions/pr.md and follow those instructions exactly.
+  Fetch @sai/commands/pr/instructions.md and follow those instructions exactly.
   Fetch @sai/policies/remember.md
 
   ## Run

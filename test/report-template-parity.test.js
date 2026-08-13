@@ -2,7 +2,8 @@
 //
 // Report template parity: the per-pair template scaffolds under
 // openspec/schemas/sai-workflow/templates/ and the report contracts under
-// sai/instructions/_templates/ must stay in sync. This suite pins three
+// sai/commands/{accessibility,performance,review,security}/...report.template.md
+// must stay in sync. This suite pins three
 // dimensions per pair:
 //   - top-level "## " heading sequence
 //   - header metadata bolded field-label sequence (before the first heading)
@@ -118,7 +119,7 @@ function assertParity(pairName, dimension, actual, expected) {
 
 test('review pair parity', () => {
   const scaffold = readUtf8('openspec/schemas/sai-workflow/templates/review.md');
-  const contract = readUtf8('sai/instructions/_templates/review-report.md');
+  const contract = readUtf8('sai/commands/review/review-report.template.md');
   assertParity('review pair', 'headings', extractTopHeadings(scaffold), extractTopHeadings(contract));
   assertParity('review pair', 'header labels', extractHeaderLabels(scaffold), extractHeaderLabels(contract));
   assertParity('review pair', 'Mutation Analysis labels', extractMutationBoldLabels(scaffold), extractMutationBoldLabels(contract));
@@ -126,21 +127,21 @@ test('review pair parity', () => {
 
 test('security pair parity', () => {
   const scaffold = readUtf8('openspec/schemas/sai-workflow/templates/security.md');
-  const contract = readUtf8('sai/instructions/_templates/security-report.md');
+  const contract = readUtf8('sai/commands/security/security-report.template.md');
   assertParity('security pair', 'headings', extractTopHeadings(scaffold), extractTopHeadings(contract));
   assertParity('security pair', 'header labels', extractHeaderLabels(scaffold), extractHeaderLabels(contract));
 });
 
 test('performance pair parity', () => {
   const scaffold = readUtf8('openspec/schemas/sai-workflow/templates/performance.md');
-  const contract = readUtf8('sai/instructions/_templates/performance-report.md');
+  const contract = readUtf8('sai/commands/performance/performance-report.template.md');
   assertParity('performance pair', 'headings', extractTopHeadings(scaffold), extractTopHeadings(contract));
   assertParity('performance pair', 'header labels', extractHeaderLabels(scaffold), extractHeaderLabels(contract));
 });
 
 test('accessibility pair parity', () => {
   const scaffold = readUtf8('openspec/schemas/sai-workflow/templates/accessibility.md');
-  const contract = readUtf8('sai/instructions/_templates/accessibility-report.md');
+  const contract = readUtf8('sai/commands/accessibility/accessibility-report.template.md');
   assertParity('accessibility pair', 'headings', extractTopHeadings(scaffold), extractTopHeadings(contract));
   assertParity('accessibility pair', 'header labels', extractHeaderLabels(scaffold), extractHeaderLabels(contract));
 });

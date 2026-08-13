@@ -85,7 +85,7 @@ Present in chat:
 
 ## Output Template
 
-Fetch @sai/instructions/_templates/pr-body.md
+Fetch @sai/commands/pr/pr-body.template.md
 
 ## Hard Rules
 

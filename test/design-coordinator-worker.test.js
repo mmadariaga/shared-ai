@@ -135,7 +135,7 @@ test('design wrappers activate routed Claude/opencode entry and preserve phase b
 
   assert.match(spec, /Claude Code and opencode SHALL invoke the routed design coordinator/i);
   assert.match(spec, /no supported entrypoint SHALL require a legacy loader/i);
-  assert.doesNotMatch(artifact('sai/instructions/design.md'), /sai\/orchestration\/inline-invocation\.md/);
+  assert.doesNotMatch(artifact('sai/commands/design/instructions.md'), /sai\/orchestration\/inline-invocation\.md/);
 });
 
 test('shared feedback gate defines routed design ownership without changing canonical gate rules', () => {
@@ -204,8 +204,8 @@ test('standalone policies have one canonical home and active fetches use it', ()
   const utilityCommands = ['apply', 'archive', 'backfill', 'commit', 'explore', 'pr', 'status', 'worktree'];
   const activeSources = [
     ...utilityCommands.map(name => artifact(`sai/commands/${name}/body.md`)),
-    artifact('sai/instructions/apply.md'),
-    artifact('sai/instructions/commit.md'),
+    artifact('sai/commands/apply/instructions.md'),
+    artifact('sai/commands/commit/instructions.md'),
     artifact('sai/commands/spec/coordinator.md'),
     artifact('sai/commands/design/coordinator.md'),
     artifact('sai/commands/design/worker.md'),
@@ -637,7 +637,7 @@ test('design install overwrites divergent numbered destination content with noti
 });
 
 test('Target State contract lives in the design instruction, schema, and design template', () => {
-  const instruction = artifact('sai/instructions/design.md');
+  const instruction = artifact('sai/commands/design/instructions.md');
   const schema = artifact('openspec/schemas/sai-workflow/schema.yaml');
   const designTemplate = artifact('openspec/schemas/sai-workflow/templates/design.md');
   const interfacesTemplate = artifact('openspec/schemas/sai-workflow/templates/interfaces.md');
@@ -662,7 +662,7 @@ test('Target State contract lives in the design instruction, schema, and design 
 });
 
 test('architecture snapshot display compares the extracted Target State block and defines the no-step-contracts sentinel', () => {
-  const instruction = artifact('sai/instructions/design.md');
+  const instruction = artifact('sai/commands/design/instructions.md');
 
   assert.match(instruction, /extract(?:ed|s)?[\s\S]{0,200}`## Target State`|`## Target State`[\s\S]{0,200}extract(?:ed|s)?/i,
     'the instruction should reference the extracted ## Target State block comparison');

@@ -205,7 +205,7 @@ Cross-reference automated findings with static phase results; runtime tools have
 
 ## Output Template
 
-Fetch @sai/instructions/_templates/accessibility-report.md
+Fetch @sai/commands/accessibility/accessibility-report.template.md
 
 ## Hard Rules
 

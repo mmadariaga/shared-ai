@@ -611,8 +611,8 @@ test('compatibility and policy projections resolve for every supported harness',
       repoRoot: path.join(__dirname, '..'),
       destinationRoot,
     });
-     assert.ok(projections.some(p => p.destinationPath.endsWith(path.join('instructions', '_templates', 'adr-index.md'))));
-     assert.ok(projections.some(p => path.relative(path.join(__dirname, '..'), p.sourcePath).split(path.sep).join('/') === 'sai/instructions/_templates/adr-index.md'));
+     assert.ok(projections.some(p => p.destinationPath.endsWith(path.join('adr-index.template.md'))));
+     assert.ok(projections.some(p => path.relative(path.join(__dirname, '..'), p.sourcePath).split(path.sep).join('/') === 'sai/adr-index.template.md'));
      assert.equal(projections.some(p => p.destinationPath.endsWith(path.join('compat', '_templates', 'adr-index.md'))), false);
     assert.ok(projections.some(p => p.destinationPath.endsWith(path.join('policies', 'glossary-format.md'))));
     assert.ok(projections.some(p => p.destinationPath.endsWith(path.join('policies', 'remember.md'))));
@@ -1221,7 +1221,7 @@ test('retirement expansion resolves sai and skills destination classes independe
   }
 });
 
-test('recursive sai-instructions projection carries the extracted _templates files to every harness', () => {
+test('folded instruction templates project to their co-located and root destinations for every harness', () => {
   const repoRoot = path.join(__dirname, '..');
   const manifest = loadInstallManifest(repoRoot);
   const destinationRoot = {
@@ -1232,38 +1232,45 @@ test('recursive sai-instructions projection carries the extracted _templates fil
     config: path.join(os.tmpdir(), 'sai-templates-config'),
     root: path.join(os.tmpdir(), 'sai-templates-config'),
   };
-  const templateFiles = [
-    'adr-index.md',
-    'implementation-plan.md',
-    'review-report.md',
-    'security-report.md',
-    'performance-report.md',
-    'accessibility-report.md',
-    'pr-body.md',
+  const templateMap = [
+    { source: 'sai/commands/accessibility/accessibility-report.template.md', destination: 'commands/accessibility/accessibility-report.template.md' },
+    { source: 'sai/commands/implement/implementation-plan.template.md', destination: 'commands/implement/implementation-plan.template.md' },
+    { source: 'sai/commands/performance/performance-report.template.md', destination: 'commands/performance/performance-report.template.md' },
+    { source: 'sai/commands/pr/pr-body.template.md', destination: 'commands/pr/pr-body.template.md' },
+    { source: 'sai/commands/review/review-report.template.md', destination: 'commands/review/review-report.template.md' },
+    { source: 'sai/commands/security/security-report.template.md', destination: 'commands/security/security-report.template.md' },
+    { source: 'sai/adr-index.template.md', destination: 'adr-index.template.md' },
+    { source: 'sai/ddr-index.template.md', destination: 'ddr-index.template.md' },
   ];
   let projectedCount = 0;
   for (const harness of ['claude', 'opencode']) {
     const projections = expandInstallManifest(manifest, { harness, repoRoot, destinationRoot });
-    for (const name of templateFiles) {
-      const relativeSource = `sai/instructions/_templates/${name}`;
+    const sourceSet = new Set(projections.map(projection =>
+      path.relative(repoRoot, projection.sourcePath).split(path.sep).join('/')));
+    assert.equal(sourceSet.has('sai/instructions/change-overview.md'), false,
+      `${harness} must not source an active projection from sai/instructions/`);
+    assert.equal(projections.some(projection =>
+      path.relative(destinationRoot.sai, projection.destinationPath).split(path.sep).join('/').startsWith('instructions/')), false,
+      `${harness} must not land an active projection at an instructions/ destination`);
+    for (const { source, destination } of templateMap) {
       const projection = projections.find(
-        p => path.relative(repoRoot, p.sourcePath).split(path.sep).join('/') === relativeSource
+        p => path.relative(repoRoot, p.sourcePath).split(path.sep).join('/') === source
       );
-      assert.ok(projection, `${harness} should project ${relativeSource} via the recursive sai-instructions rule`);
+      assert.ok(projection, `${harness} should project ${source}`);
       assert.equal(
-        projection.destinationPath.endsWith(path.join('instructions', '_templates', name)),
+        projection.destinationPath.endsWith(path.join(...destination.split('/'))),
         true,
-        `${harness} ${name} should land under instructions/_templates`
+        `${harness} ${source} should land at ${destination}`
       );
       assert.equal(
         fs.readFileSync(projection.sourcePath, 'utf8'),
-        fs.readFileSync(path.join(repoRoot, relativeSource), 'utf8'),
-        `${harness} ${name} projected source should equal its repository source`
+        fs.readFileSync(path.join(repoRoot, source), 'utf8'),
+        `${harness} ${source} projected source should equal its repository source`
       );
       projectedCount += 1;
     }
   }
-  assert.equal(projectedCount, 14, 'seven templates across two harnesses should project to 14 paths');
+  assert.equal(projectedCount, 16, 'eight folded templates across two harnesses should project to 16 paths');
 });
 
 test('matrix worker bindings and agents are the sole worker inventory per harness', () => {

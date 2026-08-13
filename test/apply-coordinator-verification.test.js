@@ -41,7 +41,7 @@ const scratchRules = [
 ];
 
 test('Step 1 apply contract contains every normative scope and scratch sentence byte-exactly', () => {
-  const instruction = artifact('sai/instructions/apply.md');
+  const instruction = artifact('sai/commands/apply/instructions.md');
   const normativeSentences = [
     'Every Step-execution prompt MUST include an `Allowed files` list containing exactly that dispatch\'s plan-authorized paths.',
     "Single dispatch Allowed files are exactly the Step's plan-level files.",
@@ -58,7 +58,7 @@ test('Step 1 apply contract contains every normative scope and scratch sentence 
 });
 
 test('Step 1 routing condition pins the three-part selection and both single-dispatch fall-back trace lines byte-exactly', () => {
-  const instruction = artifact('sai/instructions/apply.md');
+  const instruction = artifact('sai/commands/apply/instructions.md');
   const routingSentences = [
     'The two-dispatch flow is selected **if and only if all three** parts hold; if **any** part fails, the Step routes to a single dispatch.',
     "Step {N}: RED block present but no `## Step N` contract in interfaces.md — routing to a single dispatch.",
@@ -71,7 +71,7 @@ test('Step 1 routing condition pins the three-part selection and both single-dis
 });
 
 test('Step 1 dispatch branches carry allowed files and scratch rules without losing scope anchors', () => {
-  const instruction = artifact('sai/instructions/apply.md');
+  const instruction = artifact('sai/commands/apply/instructions.md');
   const branches = [
     {
       name: 'single dispatch',
@@ -100,7 +100,7 @@ test('Step 1 dispatch branches carry allowed files and scratch rules without los
 });
 
 test('Step 1 report field 8 failure is limited to omitted Files modified, not an explicit empty list', () => {
-  const instruction = artifact('sai/instructions/apply.md');
+  const instruction = artifact('sai/commands/apply/instructions.md');
   const message = 'Subagent report missing field 8 (Files modified). Cannot produce a reliable pre-commit report. Review the staged state manually before committing.';
   const escapedMessage = message.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
@@ -112,7 +112,7 @@ test('Step 1 report field 8 failure is limited to omitted Files modified, not an
 });
 
 test('ordinary dispatch captures coordinator-only evidence and derives dispatch-specific scope before report evaluation', () => {
-  const instruction = artifact('sai/instructions/apply.md');
+  const instruction = artifact('sai/commands/apply/instructions.md');
   const dispatch = instruction.search(/dispatch/i);
   const reportEvaluation = instruction.search(/(?:evaluate|assess|classif).*report/i);
 
@@ -132,7 +132,7 @@ test('ordinary dispatch captures coordinator-only evidence and derives dispatch-
 });
 
 test('allowed-file rules distinguish single, blind test-writer, and implementation dispatches', () => {
-  const instruction = artifact('sai/instructions/apply.md');
+  const instruction = artifact('sai/commands/apply/instructions.md');
 
   assert.match(instruction, /single dispatch[\s\S]{0,240}(?:allowed-file|file scope)[\s\S]{0,240}Step.*plan.*scope/i);
   assert.match(instruction, /blind test-writer[\s\S]{0,320}(?:only|exclude|excluding)[\s\S]{0,320}(?:authorized test|RED|interface stub)/i);
@@ -143,7 +143,7 @@ test('allowed-file rules distinguish single, blind test-writer, and implementati
 });
 
 test('clean checklist and path evidence preserve the existing post-verification gates without recovery', () => {
-  const instruction = artifact('sai/instructions/apply.md');
+  const instruction = artifact('sai/commands/apply/instructions.md');
   assert.match(instruction, /checklist.*pass|Verification Checklist.*passes/i);
   assert.match(instruction, /no.*(?:path|file).*discrepancy|path.*comparison.*no discrepancy/i);
   assert.match(instruction, /no Recovery Dispatch|does not dispatch recovery|without.*recovery/i);
@@ -153,7 +153,7 @@ test('clean checklist and path evidence preserve the existing post-verification 
 });
 
 test('confirmed contradictions aggregate into exactly one bounded recovery dispatch before advancement', () => {
-  const instruction = artifact('sai/instructions/apply.md');
+  const instruction = artifact('sai/commands/apply/instructions.md');
   const recovery = recoverySection(instruction);
   assert.match(recovery, /one|at most one|exactly one/i);
   assert.match(recovery, /aggregate|aggregat.*contradict|all.*contradict/i);
@@ -165,7 +165,7 @@ test('confirmed contradictions aggregate into exactly one bounded recovery dispa
 });
 
 test('recovery dispatch retains three ordinary sections and appends the ordered five-heading recovery block', () => {
-  const instruction = artifact('sai/instructions/apply.md');
+  const instruction = artifact('sai/commands/apply/instructions.md');
   const recovery = recoverySection(instruction);
   const headings = ['Reported', 'Evidence', 'Cause', 'Correction', 'Verification'];
   const positions = headings.map((heading) => recovery.search(new RegExp(`\\b${heading}\\b`, 'i')));
@@ -181,7 +181,7 @@ test('recovery dispatch retains three ordinary sections and appends the ordered 
 });
 
 test('ordinary and blind prompts do not receive coordinator-only recovery evidence or forbidden details', () => {
-  const instruction = artifact('sai/instructions/apply.md');
+  const instruction = artifact('sai/commands/apply/instructions.md');
   const recoveryStart = instruction.search(/Known-False Report Recovery|Recovery Dispatch/i);
   assert.ok(recoveryStart >= 0);
   const ordinary = instruction.slice(0, recoveryStart);
@@ -195,7 +195,7 @@ test('ordinary and blind prompts do not receive coordinator-only recovery eviden
 });
 
 test('unsafe or unowned path discrepancies stop for human intervention without recovery', () => {
-  const instruction = artifact('sai/instructions/apply.md');
+  const instruction = artifact('sai/commands/apply/instructions.md');
   assert.match(instruction, /existed.*before|present.*baseline|baseline.*present/i);
   assert.match(instruction, /unknown.*(?:ownership|shared)|shared.*ownership/i);
   assert.match(instruction, /destructive.*(?:cleanup|correction)|unauthorized.*(?:cleanup|correction)/i);
@@ -206,7 +206,7 @@ test('unsafe or unowned path discrepancies stop for human intervention without r
 });
 
 test('successful recovery independently re-verifies and resumes gates; failed recovery halts without retry', () => {
-  const instruction = artifact('sai/instructions/apply.md');
+  const instruction = artifact('sai/commands/apply/instructions.md');
   const recovery = recoverySection(instruction);
   assert.match(recovery, /re-run.*(?:normal )?Verification Checklist|Verification Checklist.*re-run/i);
   assert.match(recovery, /coordinator verification.*authoritative|coordinator.*authoritative/i);
@@ -223,7 +223,7 @@ test('successful recovery independently re-verifies and resumes gates; failed re
 });
 
 test('terminal documentation commit is a sibling after the final sweep and promotion pass', () => {
-  const apply = artifact('sai/instructions/apply.md');
+  const apply = artifact('sai/commands/apply/instructions.md');
   const finalSweep = apply.search(/Final sweep/i);
   const promotion = apply.search(/## Learnings Promotion Pass/i);
   const terminalCommit = apply.search(/## Terminal Documentation Commit/i);
@@ -246,7 +246,7 @@ test('apply directs one gated promotion and documentation commit, including docs
 });
 
 test('terminal eligibility uses terminal working-tree state and supports independent docs changes', () => {
-  const apply = artifact('sai/instructions/apply.md');
+  const apply = artifact('sai/commands/apply/instructions.md');
   const command = artifact('sai/commands/apply/body.md');
 
   assert.match(apply, /changed `docs\/\*\*` paths remain independently eligible/);
@@ -261,7 +261,7 @@ test('terminal eligibility uses terminal working-tree state and supports indepen
 });
 
 test('pre-authorization disclosure lists exact paths and learning promotion details without staging or delete authority', () => {
-  const apply = artifact('sai/instructions/apply.md');
+  const apply = artifact('sai/commands/apply/instructions.md');
 
   assert.match(apply, /before proposing a message or asking for authorization/);
   assert.match(apply, /every exact path in the fixed terminal set/);
@@ -275,7 +275,7 @@ test('pre-authorization disclosure lists exact paths and learning promotion deta
 });
 
 test('terminal message and staging rules remain limited to eligible paths and hunks', () => {
-  const apply = artifact('sai/instructions/apply.md');
+  const apply = artifact('sai/commands/apply/instructions.md');
   const commitRules = artifact('sai/policies/commit-rules.md');
 
   assert.match(apply, /Propose one message for the complete terminal set/);
@@ -291,7 +291,7 @@ test('terminal message and staging rules remain limited to eligible paths and hu
 });
 
 test('ordinary Step commits and halted runs do not enter the terminal documentation operation', () => {
-  const apply = artifact('sai/instructions/apply.md');
+  const apply = artifact('sai/commands/apply/instructions.md');
   const command = artifact('sai/commands/apply/body.md');
 
   assert.match(apply, /ordinary `## Pre-commit File Visibility Report` remains unchanged/);
@@ -303,7 +303,7 @@ test('ordinary Step commits and halted runs do not enter the terminal documentat
 });
 
 test('Step 1 coordinator contract makes scratch sweeps unconditional across dispatch outcomes', () => {
-  const instruction = artifact('sai/instructions/apply.md');
+  const instruction = artifact('sai/commands/apply/instructions.md');
   const requiredOutcomes = ['clean', 'STOP', 'failure', 'crash'];
 
   assert.match(instruction, /sweep exactly `\.tmp\/\{change-name\}\/`/i);
@@ -318,7 +318,7 @@ test('Step 1 coordinator contract makes scratch sweeps unconditional across disp
 });
 
 test('Step 1 coordinator sweeps after every Verification Checklist run before comparison or redispatch', () => {
-  const instruction = artifact('sai/instructions/apply.md');
+  const instruction = artifact('sai/commands/apply/instructions.md');
   const checklistRuns = instruction.match(/Verification Checklist[\s\S]{0,500}/gi) || [];
 
   assert.ok(checklistRuns.length > 0, 'apply instruction must define coordinator Verification Checklist runs');
@@ -330,14 +330,14 @@ test('Step 1 coordinator sweeps after every Verification Checklist run before co
 });
 
 test('Step 1 ordered scratch sweep has exact cleanup traces and no empty-sweep trace', () => {
-  const instruction = artifact('sai/instructions/apply.md');
+  const instruction = artifact('sai/commands/apply/instructions.md');
   assert.match(instruction, /> Scratch cleanup: removed \.tmp\/\{change-name\}\//);
   assert.match(instruction, /> Scratch cleanup: removed \.tmp\/\{change-name\}\/,[ \t]*\.tmp\//);
   assert.match(instruction, /empty sweep[\s\S]{0,180}(?:emits nothing|no output|no message)|(?:emits nothing|no output|no message)[\s\S]{0,180}empty sweep/i);
 });
 
 test('Step 1 scratch cleanup is ordered before comparison without widening recovery or human intervention', () => {
-  const instruction = artifact('sai/instructions/apply.md');
+  const instruction = artifact('sai/commands/apply/instructions.md');
   assert.match(instruction, /ordered sweep[\s\S]{0,320}(?:absent|exclude|excluded)[\s\S]{0,260}(?:report )?comparison/i);
   assert.match(instruction, /unrelated.*out-of-scope|out-of-scope.*unrelated/i);
   assert.match(instruction, /out-of-scope[\s\S]{0,260}(?:recovery|human intervention)|(?:recovery|human intervention)[\s\S]{0,260}out-of-scope/i);
@@ -345,14 +345,14 @@ test('Step 1 scratch cleanup is ordered before comparison without widening recov
 });
 
 test('Step 1 parent cleanup preserves pre-existing and non-empty parents', () => {
-  const instruction = artifact('sai/instructions/apply.md');
+  const instruction = artifact('sai/commands/apply/instructions.md');
   assert.match(instruction, /remove the `\.tmp\/` parent[\s\S]{0,260}(?:absent|not present)[\s\S]{0,260}empty after the per-change sweep/i);
   assert.match(instruction, /pre-existing.*(?:parent|`\.tmp\/`)[\s\S]{0,180}(?:remain|preserve|not remove|not delete)/i);
   assert.match(instruction, /non-empty.*(?:parent|`\.tmp\/`)[\s\S]{0,180}(?:remain|preserve|not remove|not delete)/i);
 });
 
 test('Step 1 worker scratch declaration stays separate from Allowed files and Files modified', () => {
-  const instruction = artifact('sai/instructions/apply.md');
+  const instruction = artifact('sai/commands/apply/instructions.md');
   const allowedFileDeclarations = instruction.match(/`Allowed files`[^\n]*/gi) || [];
 
   assert.ok(allowedFileDeclarations.length > 0, 'worker dispatch contract must declare Allowed files');
@@ -367,7 +367,7 @@ test('Step 1 worker scratch declaration stays separate from Allowed files and Fi
 });
 
 test('Step 1 fast-track uses the sweep and trace contract without preserved-scratch acknowledgement', () => {
-  const instruction = artifact('sai/instructions/apply.md');
+  const instruction = artifact('sai/commands/apply/instructions.md');
   const command = artifact('sai/commands/apply/body.md');
 
   assert.match(instruction, /`--fast-track`[\s\S]{0,500}(?:same|unconditional|every|each)[\s\S]{0,260}sweep/i);
@@ -376,14 +376,14 @@ test('Step 1 fast-track uses the sweep and trace contract without preserved-scra
 });
 
 test('Step 1 keeps the pinned scope and recovery anchors byte-exact after sweep clauses', () => {
-  const instruction = artifact('sai/instructions/apply.md');
+  const instruction = artifact('sai/commands/apply/instructions.md');
   assert.ok(instruction.includes('Cleanup that only undoes the current dispatch\'s own scope violation is corrective scope, not feature work.'));
   assert.ok(instruction.includes('The recovery operation stays within the current Step and existing plan scope, uses the same dispatch kind and budget-subagent binding as the ordinary dispatch'));
   assert.match(instruction, /Scratch cleanup[\s\S]{0,260}(?:MUST NOT|does not|not)[\s\S]{0,180}(?:broaden|authorize|remove).*?(?:recovery|unexpected path)/i);
 });
 
 test('terminal fixed set includes the project-root GLOSSARY.md changed at the terminal pass', () => {
-  const apply = artifact('sai/instructions/apply.md');
+  const apply = artifact('sai/commands/apply/instructions.md');
 
   assert.match(apply, /derive a fixed terminal set from the current working tree/);
   assert.match(apply, /fixed terminal set[\s\S]{0,320}GLOSSARY\.md|GLOSSARY\.md[\s\S]{0,320}fixed terminal set/i);
@@ -393,7 +393,7 @@ test('terminal fixed set includes the project-root GLOSSARY.md changed at the te
 });
 
 test('GLOSSARY.md eligibility uses the docs-style working-tree rule, not the promotion-written learnings rule', () => {
-  const apply = artifact('sai/instructions/apply.md');
+  const apply = artifact('sai/commands/apply/instructions.md');
 
   assert.match(apply, /Evaluate `docs\/\*\*` at terminal time with no run-start baseline/);
   assert.match(apply, /GLOSSARY\.md[\s\S]{0,300}run-start baseline|run-start baseline[\s\S]{0,300}GLOSSARY\.md/i);
@@ -403,7 +403,7 @@ test('GLOSSARY.md eligibility uses the docs-style working-tree rule, not the pro
 });
 
 test('a changed GLOSSARY.md alone triggers the terminal commit when promotion writes no qualifying entry', () => {
-  const apply = artifact('sai/instructions/apply.md');
+  const apply = artifact('sai/commands/apply/instructions.md');
 
   assert.match(apply, /GLOSSARY\.md[\s\S]{0,260}no qualifying entry|no qualifying entry[\s\S]{0,260}GLOSSARY\.md/i);
   assert.match(apply, /GLOSSARY\.md[\s\S]{0,260}no working-tree changes|no working-tree changes[\s\S]{0,260}GLOSSARY\.md/i);
@@ -411,7 +411,7 @@ test('a changed GLOSSARY.md alone triggers the terminal commit when promotion wr
 });
 
 test('an untracked bootstrapped GLOSSARY.md is eligible, listed under Will be committed, and staged', () => {
-  const apply = artifact('sai/instructions/apply.md');
+  const apply = artifact('sai/commands/apply/instructions.md');
 
   assert.match(apply, /GLOSSARY\.md[\s\S]{0,200}untracked|untracked[\s\S]{0,200}GLOSSARY\.md/i);
   assert.match(apply, /bootstrapped|bootstrap/i);
@@ -420,7 +420,7 @@ test('an untracked bootstrapped GLOSSARY.md is eligible, listed under Will be co
 });
 
 test('both authorization paths stage the glossary and still forbid git add -A, broad sweeps, and change-folder paths', () => {
-  const apply = artifact('sai/instructions/apply.md');
+  const apply = artifact('sai/commands/apply/instructions.md');
 
   assert.match(apply, /stage exactly[\s\S]{0,300}GLOSSARY\.md/i);
   assert.match(apply, /skip the ask[\s\S]{0,400}GLOSSARY\.md|GLOSSARY\.md[\s\S]{0,400}skip the ask/i);
@@ -430,7 +430,7 @@ test('both authorization paths stage the glossary and still forbid git add -A, b
 });
 
 test('terminal visibility listing stays set-derived and covers the glossary without member enumeration', () => {
-  const apply = artifact('sai/instructions/apply.md');
+  const apply = artifact('sai/commands/apply/instructions.md');
 
   assert.match(apply, /`Will be committed`[\s\S]{0,200}every exact path in the fixed terminal set/i);
   assert.match(apply, /`Will NOT be committed`[\s\S]{0,200}every working-tree path outside that set/i);
@@ -438,7 +438,7 @@ test('terminal visibility listing stays set-derived and covers the glossary with
 });
 
 test('an unchanged GLOSSARY.md extends the empty-set pins: no terminal commit and no authorization question', () => {
-  const apply = artifact('sai/instructions/apply.md');
+  const apply = artifact('sai/commands/apply/instructions.md');
 
   assert.match(apply, /When the fixed terminal set is empty/);
   assert.match(apply, /propose no message/);
@@ -448,7 +448,7 @@ test('an unchanged GLOSSARY.md extends the empty-set pins: no terminal commit an
 });
 
 test('docs and learnings paths appear in the set-derived listing before authorization when glossary is not eligible', () => {
-  const apply = artifact('sai/instructions/apply.md');
+  const apply = artifact('sai/commands/apply/instructions.md');
 
   assert.match(apply, /before proposing a message or asking for authorization/);
   assert.match(apply, /every exact path in the fixed terminal set/);
@@ -465,7 +465,7 @@ test('sai-4-apply fixed-set summary names the glossary trigger and preserves the
 });
 
 test('per-Step commits stay field-8-only without sweeping the glossary; terminal set never consults field 8', () => {
-  const apply = artifact('sai/instructions/apply.md');
+  const apply = artifact('sai/commands/apply/instructions.md');
 
   assert.match(apply, /Do not derive this set from a Step, `tasks\.md`, an intended add-list, or subagent report field 8/);
   assert.match(apply, /field 8[\s\S]{0,300}(?:not|never)[\s\S]{0,120}widen[\s\S]{0,240}GLOSSARY\.md|GLOSSARY\.md[\s\S]{0,300}field 8/i);

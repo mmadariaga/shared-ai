@@ -7,7 +7,7 @@ Fetch @skills/budget/SKILL.md and use it
 
 ## Load instructions (in order)
 Fetch @sai/policies/glossary-format.md
-Fetch @sai/instructions/spec.propose.md
+Fetch @sai/commands/spec/instructions.md
 Fetch @skills/openspec-propose/SKILL.md and follow those instructions exactly.
 Fetch @sai/policies/remember.md
 

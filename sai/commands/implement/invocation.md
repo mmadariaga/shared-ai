@@ -4,7 +4,7 @@ Shared technical invocation used by the routed implementation-planning worker. T
 
 ## Load instructions (in order)
 Fetch @sai/policies/glossary-format.md
-Fetch @sai/instructions/implement.md and follow those instructions exactly.
+Fetch @sai/commands/implement/instructions.md and follow those instructions exactly.
 Fetch @sai/policies/remember.md
 
 ## Run

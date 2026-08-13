@@ -6,7 +6,7 @@ Shared technical security invocation used by the routed security worker. This fi
 Fetch @skills/budget/SKILL.md and use it
 
 ## Load instructions (in order)
-Fetch @sai/instructions/security.md and follow those instructions exactly.
+Fetch @sai/commands/security/instructions.md and follow those instructions exactly.
 Fetch @sai/policies/remember.md
 
 ## Run

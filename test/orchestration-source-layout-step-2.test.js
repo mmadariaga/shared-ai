@@ -120,19 +120,21 @@ test('grouped design and implementation phase assets preserve their former sourc
       directory: path.join(repoRoot, 'sai', 'commands', 'design'),
        coordinator: path.join(repoRoot, 'sai', 'commands', 'design', 'coordinator.md'),
        invocation: path.join(repoRoot, 'sai', 'commands', 'design', 'invocation.md'),
-      instruction: 'sai/instructions/design.md',
+      instruction: 'sai/commands/design/instructions.md',
+      cardContents: ['coordinator.md', 'instructions.md', 'invocation.md', 'worker.md'],
     },
     {
       name: 'implement',
       directory: path.join(repoRoot, 'sai', 'commands', 'implement'),
        coordinator: path.join(repoRoot, 'sai', 'commands', 'implement', 'coordinator.md'),
        invocation: path.join(repoRoot, 'sai', 'commands', 'implement', 'invocation.md'),
-      instruction: 'sai/instructions/implement.md',
+      instruction: 'sai/commands/implement/instructions.md',
+      cardContents: ['coordinator.md', 'implementation-plan.template.md', 'instructions.md', 'invocation.md', 'worker.md'],
     },
   ];
 
   for (const phase of phases) {
-    assert.deepEqual(fs.readdirSync(phase.directory).sort(), ['coordinator.md', 'invocation.md', 'worker.md']);
+    assert.deepEqual(fs.readdirSync(phase.directory).sort(), phase.cardContents);
     assert.equal(
       fs.readFileSync(path.join(phase.directory, 'coordinator.md'), 'utf8'),
       fs.readFileSync(phase.coordinator, 'utf8')
@@ -142,7 +144,7 @@ test('grouped design and implementation phase assets preserve their former sourc
     assert.match(invocation, new RegExp(`Fetch @${phase.instruction.replaceAll('/', '\\/')}`));
   }
 
-  const adrIndex = path.join(repoRoot, 'sai', 'instructions', '_templates', 'adr-index.md');
+  const adrIndex = path.join(repoRoot, 'sai', 'adr-index.template.md');
   assert.equal(fs.existsSync(adrIndex), true);
   assert.equal(fs.existsSync(path.join(repoRoot, 'sai', 'compat', '_templates', 'adr-index.md')), false);
   assert.equal(fs.existsSync(path.join(repoRoot, 'sai', 'commands', 'design', 'adr-index.md')), false);

@@ -11,7 +11,7 @@
   Fetch @skills/safe-operations/SKILL.md and use it
 
   ## Load instructions (in order)
-  Also fetch @sai/instructions/commit.md and follow those instructions exactly.
+  Also fetch @sai/commands/commit/instructions.md and follow those instructions exactly.
   Also fetch @sai/policies/remember.md
 
   ## Run

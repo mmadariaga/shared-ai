@@ -44,7 +44,7 @@ creating the new commit, check whether the index contains staged changes:
   `[sai-archive] no commit: staging left the index empty`
 
   Then leave the index exactly as it was after staging. For the new-commit
-  path, `sai/instructions/commit.md` steps 1–5 are not applied.
+  path, `sai/commands/commit/instructions.md` steps 1–5 are not applied.
 - **Exit 1** (staged changes present) → proceed with the selected commit
   action.
 
@@ -58,7 +58,7 @@ pushed-HEAD check, then `git add`, then the empty-index check.
 ## Amend the latest commit
 
 1. Run the pushed-HEAD guard BEFORE any staging, per the `--amend` detection
-   idiom in `sai/instructions/commit.md`:
+   idiom in `sai/commands/commit/instructions.md`:
    - Run `git log @{push}..HEAD --oneline`.
    - `@{push}` does not resolve (no configured upstream) → treat HEAD as
      unpushed and proceed without a secondary confirmation.
@@ -90,9 +90,9 @@ pushed-HEAD check, then `git add`, then the empty-index check.
 2. Run the shared empty-index guard (above). When it fires — the two-path
    staging left the index empty — do NOT commit, print the guard's single
    diagnostic line, and run no further git mutation. The guard runs before
-   `sai/instructions/commit.md` steps 1–5 are applied, so step 1's
+   `sai/commands/commit/instructions.md` steps 1–5 are applied, so step 1's
    "No staged changes" stop is never reached on this path.
-3. Compose the commit message by applying `sai/instructions/commit.md` steps
+3. Compose the commit message by applying `sai/commands/commit/instructions.md` steps
    1–5 — inspect staged state, classify the change, determine scope, compose
    the message, and verify faithfulness — with `sai/policies/commit-rules.md`
    as the single source of commit-message rules. Reference those two files; do
@@ -120,7 +120,7 @@ When the fast-track signal is active for this invocation (`sai-archive
 - Run the shared empty-index guard (above). When it fires — the two-path
   staging left the index empty — do NOT create a commit, print the guard's
   single diagnostic line, and run no further git mutation.
-- When the guard passes, apply `sai/instructions/commit.md` steps 1–5 —
+- When the guard passes, apply `sai/commands/commit/instructions.md` steps 1–5 —
   inspect staged state, classify the change, determine scope, compose the
   message, and verify faithfulness — with `sai/policies/commit-rules.md` as
   the single source of commit-message rules, then commit with the composed

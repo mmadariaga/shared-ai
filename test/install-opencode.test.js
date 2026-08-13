@@ -44,6 +44,16 @@ const UTILITY_COMMANDS = {
   'sai-status': 'status',
   'sai-worktree': 'worktree',
 };
+const UTILITY_CARD_CONTENTS = {
+  apply: ['body.md', 'instructions.md'],
+  archive: ['archive-commit-gate.instructions.md', 'body.md', 'instructions.md'],
+  backfill: ['body.md', 'instructions.md'],
+  commit: ['body.md', 'instructions.md'],
+  explore: ['body.md', 'instructions.md'],
+  pr: ['body.md', 'instructions.md', 'pr-body.template.md'],
+  status: ['body.md'],
+  worktree: ['body.md', 'instructions.md'],
+};
 const SAI_EXTERNAL_DIRECTORY = '~/.config/opencode/sai/**';
 const OPENCODE_COMMANDS_EXTERNAL_DIRECTORY = '~/.config/opencode/commands/**';
 const OPENCODE_SKILLS_EXTERNAL_DIRECTORY = '~/.config/opencode/skills/**';
@@ -205,8 +215,9 @@ test('installOpencode copies all standalone policies to dest/sai/policies/', () 
 test('installOpencode projects the canonical ADR template and removes former compatibility destinations', () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-'));
   installOpencode(tmpDir);
-  assert.ok(fs.existsSync(path.join(tmpDir, 'sai', 'instructions', '_templates', 'adr-index.md')));
+  assert.ok(fs.existsSync(path.join(tmpDir, 'sai', 'adr-index.template.md')));
   assert.equal(fs.existsSync(path.join(tmpDir, 'sai', 'compat', '_templates', 'adr-index.md')), false);
+  assert.equal(fs.existsSync(path.join(tmpDir, 'sai', 'instructions')), false);
   for (const file of ['sai-2-design-core.md', 'sai-3-implementation-core.md', 'implement-invocation.md']) {
     assert.equal(fs.existsSync(path.join(tmpDir, 'sai', 'compat', file)), false, `${file} should not be projected`);
   }
@@ -1463,8 +1474,8 @@ test('opencode boot adapter loads command-runner first, selects utility bodies, 
     for (const name of Object.values(UTILITY_COMMANDS)) {
       const cardDir = path.join(tmpDir, 'sai', 'commands', name);
       assert.ok(fs.existsSync(cardDir), `the ${name} utility card directory should exist`);
-      assert.deepEqual(fs.readdirSync(cardDir), ['body.md'],
-        `the ${name} utility card directory should contain only body.md`);
+      assert.deepEqual(fs.readdirSync(cardDir), UTILITY_CARD_CONTENTS[name],
+        `the ${name} utility card directory should contain exactly its folded card inventory`);
     }
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });
@@ -1563,8 +1574,10 @@ test('Step 3 the opencode neutral inventory is equivalent to Claude and differs 
   const neutralSource = source =>
     source === 'sai/command-runner.md' ||
     source === 'sai/worker-core.md' ||
+    source === 'sai/change-overview.md' ||
+    source === 'sai/adr-index.template.md' ||
+    source === 'sai/ddr-index.template.md' ||
     source.startsWith('sai/commands/') ||
-    source.startsWith('sai/instructions/') ||
     source.startsWith('sai/policies/');
   try {
     const projections = {};

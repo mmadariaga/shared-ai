@@ -177,7 +177,7 @@ test('doctor reports a recognized former ADR-template copy through retirement st
   const { projectRoot, claudeBase } = fixture();
   try {
     const destination = path.join(claudeBase, 'sai', 'compat', '_templates', 'adr-index.md');
-    const source = path.join(__dirname, '..', 'sai', 'instructions', '_templates', 'adr-index.md');
+    const source = path.join(__dirname, '..', 'sai', 'adr-index.template.md');
     fs.mkdirSync(path.dirname(destination), { recursive: true });
     fs.copyFileSync(source, destination);
 

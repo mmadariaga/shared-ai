@@ -31,11 +31,11 @@
   1. Remove the token and trim surrounding whitespace.
   2. Use the cleaned remainder as the effective change name for all downstream steps.
 
-  Fetch @sai/instructions/archive.md
+  Fetch @sai/commands/archive/instructions.md
   Fetch @sai/policies/remember.md
 
   Fetch @skills/openspec-archive-change/SKILL.md and follow those instructions exactly.
-  Fetch @sai/instructions/archive-commit-gate.md and follow those instructions exactly.
+  Fetch @sai/commands/archive/archive-commit-gate.instructions.md and follow those instructions exactly.
 
   ## Run
   **User's request:** $ARGUMENTS

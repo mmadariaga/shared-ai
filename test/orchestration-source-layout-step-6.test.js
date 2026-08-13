@@ -34,7 +34,7 @@ test('retired phase sources are absent and grouped callers remain available', ()
     'sai/commands/implement/coordinator.md',
     'sai/commands/implement/invocation.md',
   ]) assert.equal(fs.existsSync(path.join(repoRoot, source)), true);
-  assert.equal(fs.existsSync(path.join(repoRoot, 'sai/instructions/_templates/adr-index.md')), true);
+  assert.equal(fs.existsSync(path.join(repoRoot, 'sai/adr-index.template.md')), true);
   assert.equal(fs.existsSync(path.join(repoRoot, formerAdrTemplateSource)), false);
   const manifest = JSON.parse(fs.readFileSync(path.join(repoRoot, 'sai', 'install-manifest.json'), 'utf8'));
   assert.ok(manifest.retirements.some(retirement => retirement.destination.path === 'compat/_templates/adr-index.md'));

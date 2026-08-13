@@ -55,7 +55,7 @@ test('spec invocation core loads only the technical instruction sequence', () =>
   const required = [
     'Fetch @skills/budget/SKILL.md',
     'Fetch @sai/policies/glossary-format.md',
-    'Fetch @sai/instructions/spec.propose.md',
+    'Fetch @sai/commands/spec/instructions.md',
     'Fetch @skills/openspec-propose/SKILL.md',
     'Fetch @sai/policies/remember.md',
   ];

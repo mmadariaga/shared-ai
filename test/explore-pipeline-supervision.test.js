@@ -7,7 +7,7 @@ const path = require('path');
 
 const repoRoot = path.join(__dirname, '..');
 const exploreSources = [
-  'sai/instructions/explore.md',
+  'sai/commands/explore/instructions.md',
   'sai/commands/explore/body.md',
   'commands/claude/sai-explore.md',
   'commands/opencode/sai-explore.md',
@@ -163,7 +163,7 @@ test('review findings require complete correction data and preserve worker owner
 });
 
 test('machine feedback continues each actionable finding to the same spec worker', () => {
-  const source = fs.readFileSync(path.join(repoRoot, 'sai/instructions/explore.md'), 'utf8');
+  const source = fs.readFileSync(path.join(repoRoot, 'sai/commands/explore/instructions.md'), 'utf8');
   const policy = fs.readFileSync(path.join(repoRoot, 'sai/policies/artifact-feedback-gate.md'), 'utf8');
 
   assert.match(source, /MachineFeedbackAdapter/);
@@ -320,7 +320,7 @@ test('Step 1 preserves artifact-only worker ownership and specific discard reaso
     path.join(repoRoot, 'sai/policies/artifact-feedback-gate.md'),
     'utf8'
   );
-  const supervision = fs.readFileSync(path.join(repoRoot, 'sai/instructions/explore.md'), 'utf8');
+  const supervision = fs.readFileSync(path.join(repoRoot, 'sai/commands/explore/instructions.md'), 'utf8');
 
   assert.match(feedbackGate, /Accepted changes remain worker-owned and may be written only by that worker to `proposal\.md` or `specs\/\*\*` in the selected change directory/i);
   assert.match(feedbackGate, /Report every \*\*discarded\*\* item individually[\s\S]{0,240}specific reason/i);
@@ -596,7 +596,7 @@ test('Step 2 blind supervision rejects duplicate starts until the chained design
 });
 
 test('active exploration closure defines the three conversation-only states and success-only rule', () => {
-  const source = spec('sai/instructions/explore.md');
+  const source = spec('sai/commands/explore/instructions.md');
 
   assert.match(source, /\*\*Pre-crystallization closure \(sai-explore only\):\*\*/);
   assert.match(source, /The state is exactly one of `active-uncrystallized`, `crystallized`, or `discarded`/);
@@ -611,7 +611,7 @@ test('active exploration closure defines the three conversation-only states and 
 });
 
 test('Claude Code and opencode consume the same shared closure contract', () => {
-  const shared = spec('sai/instructions/explore.md');
+  const shared = spec('sai/commands/explore/instructions.md');
   const claude = spec('commands/claude/sai-explore.md');
   const opencode = spec('commands/opencode/sai-explore.md');
 
@@ -649,7 +649,7 @@ test('Step 1 parses an optional overview language before fast-track and defaults
 });
 
 test('Step 1 forwards selected language only through supervised design state', () => {
-  const source = spec('sai/instructions/explore.md');
+  const source = spec('sai/commands/explore/instructions.md');
 
   assert.match(source, /overview_language/);
   assert.match(source, /--overview-lang/);

@@ -78,7 +78,7 @@ describe('doctor fetch resolution', () => {
     }
   });
 
-  test('1: Fetch @sai/instructions/x.md resolved via global fallback — no error', async () => {
+  test('1: Fetch @sai/commands/x.md resolved via global fallback — no error', async () => {
     const projectRoot = makeGoodFixture();
     const claudeBase = makeTempDir('sai-dr-fr-claude-');
     try {
@@ -89,9 +89,9 @@ describe('doctor fetch resolution', () => {
       }
 
       const wrapper = path.join(claudeBase, 'commands', 'sai-1-spec.md');
-      fs.appendFileSync(wrapper, '\nFetch @sai/instructions/fr-test-x.md\n');
+      fs.appendFileSync(wrapper, '\nFetch @sai/commands/fr-test-x.md\n');
 
-      const targetDir = path.join(claudeBase, 'sai', 'instructions');
+      const targetDir = path.join(claudeBase, 'sai', 'commands');
       ensureDir(targetDir);
       fs.writeFileSync(path.join(targetDir, 'fr-test-x.md'), '# x\n');
 
@@ -112,14 +112,14 @@ describe('doctor fetch resolution', () => {
     }
   });
 
-  test('2: Fetch @sai/instructions/missing.md resolvable nowhere — error + exit 1', async () => {
+  test('2: Fetch @sai/commands/missing.md resolvable nowhere — error + exit 1', async () => {
     const projectRoot = makeGoodFixture();
     const claudeBase = makeTempDir('sai-dr-fr-claude-');
     try {
       installClaude(claudeBase);
 
       const wrapper = path.join(claudeBase, 'commands', 'sai-1-spec.md');
-      fs.appendFileSync(wrapper, '\nFetch @sai/instructions/fr-test-missing.md\n');
+      fs.appendFileSync(wrapper, '\nFetch @sai/commands/fr-test-missing.md\n');
 
       const opencodeBase = nonexistentPath('sai-dr-fr-oc-');
       const { code, parsed } = await runDoctor({ projectRoot, claudeBase, opencodeBase });

@@ -37,7 +37,7 @@
 
   ## Load instructions (in order)
   Fetch @sai/policies/sai-learnings-format.md
-  Fetch @sai/instructions/apply.md and follow those instructions exactly.
+  Fetch @sai/commands/apply/instructions.md and follow those instructions exactly.
   Fetch @sai/policies/remember.md
 
   ## Run

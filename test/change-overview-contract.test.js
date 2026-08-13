@@ -78,7 +78,7 @@ test('Target State is the first section of design.md', () => {
 });
 
 test('sentinel emitted when no step admits a contract', () => {
-  const instruction = artifact('sai/instructions/design.md');
+  const instruction = artifact('sai/commands/design/instructions.md');
   const schema = artifact('openspec/schemas/sai-workflow/schema.yaml');
   const interfacesTemplate = artifact('openspec/schemas/sai-workflow/templates/interfaces.md');
 
@@ -89,7 +89,7 @@ test('sentinel emitted when no step admits a contract', () => {
 });
 
 test('Target State present in design surfaces, absent from interfaces template', () => {
-  const instruction = artifact('sai/instructions/design.md');
+  const instruction = artifact('sai/commands/design/instructions.md');
   const schema = artifact('openspec/schemas/sai-workflow/schema.yaml');
   const designTemplate = artifact('openspec/schemas/sai-workflow/templates/design.md');
   const interfacesTemplate = artifact('openspec/schemas/sai-workflow/templates/interfaces.md');
@@ -106,7 +106,7 @@ test('Target State present in design surfaces, absent from interfaces template',
 });
 
 test('shared instruction is the generation contract', () => {
-  const instruction = artifact('sai/instructions/change-overview.md');
+  const instruction = artifact('sai/change-overview.md');
 
   assert.match(instruction, /write scope/i, 'generation contract should declare its single-file write scope');
   assert.match(instruction, /writes ONLY/i, 'generation contract should limit writes to exactly one artifact');
@@ -164,12 +164,21 @@ test('opencode design worker permits budget dispatch beside explore', () => {
     'the design binding should carry the notice continuation option');
 });
 
-test('installation projections are mirrored with an explicit override entry', () => {
+test('installation projects the shared change-overview instruction at the sai root', () => {
   const manifest = artifact('sai/install-manifest.json');
 
-  assert.match(manifest, /change-overview-instruction/, 'manifest should declare the change-overview-instruction projection');
-  assert.match(manifest, /instructions\/change-overview\.md/, 'manifest should project to instructions/change-overview.md');
-  assert.match(manifest, /"overrides"\s*:\s*"sai-instructions"/, 'manifest should override the sai-instructions projection with an explicit entry');
+  assert.match(manifest, /"source"\s*:\s*"sai\/change-overview\.md"/,
+    'manifest should project sai/change-overview.md');
+  assert.match(manifest, /"path"\s*:\s*"change-overview\.md"/,
+    'manifest should project to the root-relative change-overview.md destination');
+  assert.match(manifest, /"destination"\s*:\s*\{\s*"class"\s*:\s*"sai"\s*,\s*"path"\s*:\s*"change-overview\.md"/,
+    'the sai/change-overview.md projection should target the sai root-relative change-overview.md destination');
+  assert.doesNotMatch(manifest, /change-overview-instruction/,
+    'the obsolete change-overview-instruction override projection should be retired');
+  assert.doesNotMatch(manifest, /"sai-instructions"/,
+    'the obsolete recursive sai-instructions projection should be retired');
+  assert.match(manifest, /"destination"\s*:\s*\{\s*"class"\s*:\s*"sai"\s*,\s*"path"\s*:\s*"instructions\/change-overview\.md"/,
+    'the former instructions/change-overview.md destination should be retired');
 });
 
 // ─── Step 4: Continue-triggered overview generation in the design coordinator ─
@@ -210,7 +219,7 @@ test('generation terminal changed_files are forwarded without re-derivation', ()
 // ─── Step 5: Read-only Review change-overview action in the sai-explore loop ─
 
 test('per-change menu still uses the native picker with four options', () => {
-  const explore = artifact('sai/instructions/explore.md');
+  const explore = artifact('sai/commands/explore/instructions.md');
 
   assert.match(explore, /Review change-overview/, 'the picker should offer Review change-overview');
   assert.match(explore, /Review sai-1's artifacts/, 'the picker should offer Review sai-1\'s artifacts');
@@ -220,7 +229,7 @@ test('per-change menu still uses the native picker with four options', () => {
 });
 
 test('non-current overview produces an availability report, not a review', () => {
-  const explore = artifact('sai/instructions/explore.md');
+  const explore = artifact('sai/commands/explore/instructions.md');
 
   assert.match(explore, /overview\.state/, 'the currentness conjunction should read overview.state');
   assert.match(explore, /availability\/integrity|availability and integrity/i,
@@ -230,7 +239,7 @@ test('non-current overview produces an availability report, not a review', () =>
 });
 
 test('review output is a single findings block handed off without acceptance', () => {
-  const explore = artifact('sai/instructions/explore.md');
+  const explore = artifact('sai/commands/explore/instructions.md');
 
   const blockStart = explore.indexOf('When a review transaction surfaces findings');
   assert.ok(blockStart !== -1, 'the loop should define a findings-block paragraph for review transactions');
@@ -266,7 +275,7 @@ test('review output is a single findings block handed off without acceptance', (
 });
 
 test('findings route to the design worker at the feedback gate without a handoff block', () => {
-  const explore = artifact('sai/instructions/explore.md');
+  const explore = artifact('sai/commands/explore/instructions.md');
 
   const blockStart = explore.indexOf('When a review transaction surfaces findings');
   assert.ok(blockStart !== -1, 'the loop should define a findings-block paragraph for review transactions');
@@ -290,7 +299,7 @@ test('findings route to the design worker at the feedback gate without a handoff
 });
 
 test('completed Review change-overview participates in reviewed-sai-2 marking', () => {
-  const explore = artifact('sai/instructions/explore.md');
+  const explore = artifact('sai/commands/explore/instructions.md');
 
   assert.match(explore, /Review change-overview[\s\S]{0,4000}reviewed-sai-2/,
     'the Review change-overview action should participate in reviewed-sai-2 marking');
@@ -303,7 +312,7 @@ test('completed Review change-overview participates in reviewed-sai-2 marking', 
 // ─── Step 6: Eleven-artifact archive classification and status panel ─
 
 test('archive names eleven artifacts with change-overview in AUDIT and interfaces in EXEMPT', () => {
-  const archive = artifact('sai/instructions/archive.md');
+  const archive = artifact('sai/commands/archive/instructions.md');
 
   assert.match(archive, /eleven/, 'archive classification should name eleven artifacts');
   assert.doesNotMatch(archive, /ten[\s-]?(?:`?sai-workflow`?\s+)?artifact/i,
@@ -318,7 +327,7 @@ test('archive names eleven artifacts with change-overview in AUDIT and interface
 });
 
 test('backfilled changes skip change-overview alongside interfaces', () => {
-  const archive = artifact('sai/instructions/archive.md');
+  const archive = artifact('sai/commands/archive/instructions.md');
 
   assert.match(archive, /change-overview/, 'the backfill skip should treat change-overview as done');
   assert.match(archive, /backfill/, 'the skip should live on the backfill path');
@@ -344,7 +353,7 @@ test('status panel lists the 11 artifact ids in order and derives overview state
 });
 
 test('active closure is question-first and repeats the exact crystallize reminder', () => {
-  const explore = artifact('sai/instructions/explore.md');
+  const explore = artifact('sai/commands/explore/instructions.md');
 
   assert.match(explore, /When a genuine unresolved question remains and its answer could change the idea, end with that relevant question/);
   assert.match(explore, /When no genuine unresolved question remains, end with this concise reminder/);
@@ -357,7 +366,7 @@ test('active closure is question-first and repeats the exact crystallize reminde
 });
 
 test('localized Change Overview generation preserves structural anchors, source artifacts, and its result envelope', () => {
-  const instruction = artifact('sai/instructions/change-overview.md');
+  const instruction = artifact('sai/change-overview.md');
 
   assert.match(instruction, /overview_language/);
   assert.match(instruction, /English/);
@@ -378,7 +387,7 @@ test('localized Change Overview generation preserves structural anchors, source 
 });
 
 test('closure stops at crystallization and discard and preserves terminal paths', () => {
-  const explore = artifact('sai/instructions/explore.md');
+  const explore = artifact('sai/commands/explore/instructions.md');
   const prereqs = artifact('sai/policies/prereqs-check.md');
 
   assert.match(explore, /Before a candidate idea exists, no Closure State is active/);

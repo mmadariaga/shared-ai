@@ -6,7 +6,7 @@ Shared technical invocation used by the routed accessibility worker. This file o
 Fetch @skills/budget/SKILL.md and use it.
 
 ## Load instructions (in order)
-Fetch @sai/instructions/accessibility.md and follow those instructions exactly.
+Fetch @sai/commands/accessibility/instructions.md and follow those instructions exactly.
 Fetch @sai/policies/remember.md
 
 ## Run

@@ -2,7 +2,7 @@
 
 This index groups the ADRs in `docs/adr/` by **<domain unit>** and by **cross-cutting category**. An ADR may appear in more than one category: the filesystem already lists them alphabetically; the value here is the relational map (amends, supersedes, sibling pairs, refs).
 
-> Cold-build source for `sai/instructions/implement.md` Step 3's index-maintenance hook. This file is a **project-agnostic section skeleton** — it carries NO baked-in domain-unit or category snapshot. The cold build derives the `### <domain unit reference>` subsection names under `## By <domain unit>` and the `### <category>` subsection names under `## Cross-cutting categories` from the ADRs' own content at cold-build time. A consumer project's cold build therefore produces that project's own domain-unit/category subsections, never another project's snapshot.
+> Cold-build source for `sai/commands/implement/instructions.md` Step 3's index-maintenance hook. This file is a **project-agnostic section skeleton** — it carries NO baked-in domain-unit or category snapshot. The cold build derives the `### <domain unit reference>` subsection names under `## By <domain unit>` and the `### <category>` subsection names under `## Cross-cutting categories` from the ADRs' own content at cold-build time. A consumer project's cold build therefore produces that project's own domain-unit/category subsections, never another project's snapshot.
 
 ## Conventions
 

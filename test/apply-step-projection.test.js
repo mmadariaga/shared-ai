@@ -6,7 +6,7 @@ const fs = require('fs');
 const path = require('path');
 
 const repoRoot = path.join(__dirname, '..');
-const APPLY_PATH = 'sai/instructions/apply.md';
+const APPLY_PATH = 'sai/commands/apply/instructions.md';
 
 function apply() {
   const fullPath = path.join(repoRoot, APPLY_PATH);

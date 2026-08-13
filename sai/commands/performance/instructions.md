@@ -232,7 +232,7 @@ For producer/consumer code in scope (RabbitMQ, Kafka, SQS, Redis Streams, BullMQ
 
 ## Output Template
 
-Fetch @sai/instructions/_templates/performance-report.md
+Fetch @sai/commands/performance/performance-report.template.md
 
 ## Hard Rules
 

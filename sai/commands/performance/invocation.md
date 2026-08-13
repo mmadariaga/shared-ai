@@ -6,7 +6,7 @@ Shared technical invocation used by the routed performance worker. This file own
 Fetch @skills/budget/SKILL.md and use it.
 
 ## Load instructions (in order)
-Fetch @sai/instructions/performance.md and follow those instructions exactly.
+Fetch @sai/commands/performance/instructions.md and follow those instructions exactly.
 Fetch @sai/policies/remember.md
 
 ## Run

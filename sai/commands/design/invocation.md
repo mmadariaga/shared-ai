@@ -8,7 +8,7 @@ Fetch @skills/budget/SKILL.md and use it
 ## Load instructions (in order)
 Fetch @sai/policies/glossary-format.md
 Fetch @sai/policies/sai-learnings-format.md
-Fetch @sai/instructions/design.md and follow those instructions exactly.
+Fetch @sai/commands/design/instructions.md and follow those instructions exactly.
 Fetch @sai/policies/remember.md
 
 ## Run

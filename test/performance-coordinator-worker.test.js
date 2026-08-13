@@ -49,7 +49,7 @@ test('performance invocation core loads the shared audit sequence in order', () 
   const core = artifact('sai/commands/performance/invocation.md');
   const required = [
     'Fetch @skills/budget/SKILL.md',
-    'Fetch @sai/instructions/performance.md',
+    'Fetch @sai/commands/performance/instructions.md',
     'Fetch @sai/policies/remember.md',
   ];
 
@@ -61,9 +61,9 @@ test('performance invocation core loads the shared audit sequence in order', () 
   }
 
   assert.match(core, /\$ARGUMENTS/);
-  assert.equal((core.match(/Fetch @sai\/instructions\/performance\.md/g) || []).length, 1);
+  assert.equal((core.match(/Fetch @sai\/commands\/performance\/instructions\.md/g) || []).length, 1);
   assert.doesNotMatch(core, /InvocationEnvelope|resolved_change_name|terminal navigation|MANDATORY STOP/i);
-  assert.doesNotMatch(core, /Files Affected[\s\S]{0,240}sai\/instructions\/performance\.md/);
+  assert.doesNotMatch(core, /Files Affected[\s\S]{0,240}sai\/commands\/performance\/instructions\.md/);
 });
 
 test('performance coordinator exposes the complete adapter contract', () => {

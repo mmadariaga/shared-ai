@@ -393,3 +393,77 @@ test('STEP3_RETIREMENT: every superseded destination carries a hash-gated claude
     }
   }
 });
+
+const FOLDED_INSTRUCTIONS_RETIREMENT_PATHS = [
+  'accessibility.md',
+  'apply.md',
+  'archive.md',
+  'archive-commit-gate.md',
+  'backfill.md',
+  'change-overview.md',
+  'commit.md',
+  'design.md',
+  'explore.md',
+  'implement.md',
+  'performance.md',
+  'pr.md',
+  'review.md',
+  'security.md',
+  'spec.propose.md',
+  'worktree.md',
+  '_templates/accessibility-report.md',
+  '_templates/adr-index.md',
+  '_templates/ddr-index.md',
+  '_templates/implementation-plan.md',
+  '_templates/performance-report.md',
+  '_templates/pr-body.md',
+  '_templates/review-report.md',
+  '_templates/security-report.md',
+].map(relative => `instructions/${relative}`);
+
+test('FOLD_RETIREMENT: every former sai/instructions destination carries a hash-gated claude/opencode retirement record and no active projection', () => {
+  const repoRoot = path.join(__dirname, '..');
+  const manifest = loadInstallManifest(repoRoot);
+
+  for (const destinationPath of FOLDED_INSTRUCTIONS_RETIREMENT_PATHS) {
+    const records = manifest.retirements.filter(retirement =>
+      retirement.destination.class === 'sai' && retirement.destination.path === destinationPath);
+    assert.equal(records.length, 1,
+      `exactly one retirement record should cover the folded destination ${destinationPath}`);
+    const record = records[0];
+    assert.deepEqual(record.harnesses, ['claude', 'opencode'],
+      `${destinationPath} should carry an explicit claude/opencode allowlist`);
+    assert.ok(record.managedHashes.length > 0,
+      `${destinationPath} should carry a non-empty managed-hash set`);
+    assert.ok(record.managedHashes.every(hash => /^[0-9a-f]{64}$/.test(hash)),
+      `${destinationPath} hashes should be lowercase SHA-256`);
+  }
+
+  for (const harness of ['claude', 'opencode']) {
+    const saiRoot = path.join(os.tmpdir(), `sai-fold-retire-${harness}-sai`);
+    const active = expandInstallManifest(manifest, {
+      harness,
+      repoRoot,
+      destinationRoot: {
+        commands: path.join(os.tmpdir(), `sai-fold-retire-${harness}-commands`),
+        sai: saiRoot,
+        skills: path.join(os.tmpdir(), `sai-fold-retire-${harness}-skills`),
+        agents: path.join(os.tmpdir(), `sai-fold-retire-${harness}-agents`),
+        config: path.join(os.tmpdir(), `sai-fold-retire-${harness}-config`),
+        root: path.join(os.tmpdir(), `sai-fold-retire-${harness}-config`),
+      },
+    });
+    const sources = new Set(active.map(projection =>
+      path.relative(repoRoot, projection.sourcePath).split(path.sep).join('/')));
+    assert.equal(sources.has('sai/instructions/change-overview.md'), false,
+      `${harness} active projections must not source from sai/instructions/`);
+    const activeDestinations = new Set(active
+      .filter(projection => path.dirname(projection.destinationPath) === saiRoot ||
+        path.dirname(projection.destinationPath).startsWith(saiRoot + path.sep))
+      .map(projection => path.relative(saiRoot, projection.destinationPath).split(path.sep).join('/')));
+    for (const destinationPath of FOLDED_INSTRUCTIONS_RETIREMENT_PATHS) {
+      assert.equal(activeDestinations.has(destinationPath), false,
+        `${harness} active projections must not land at the retired destination ${destinationPath}`);
+    }
+  }
+});

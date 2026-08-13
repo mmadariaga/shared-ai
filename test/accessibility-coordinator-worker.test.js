@@ -91,7 +91,7 @@ test('accessibility invocation core loads budget, instruction, and remember in o
   const core = artifact('sai/commands/accessibility/invocation.md');
   const required = [
     'Fetch @skills/budget/SKILL.md',
-    'Fetch @sai/instructions/accessibility.md',
+    'Fetch @sai/commands/accessibility/instructions.md',
     'Fetch @sai/policies/remember.md',
   ];
 
@@ -123,7 +123,7 @@ test('accessibility scope, runtime, and parent arguments reach the shared core u
 });
 
 test('accessibility review defaults to static-only without a runtime scanner', () => {
-  const instruction = artifact('sai/instructions/accessibility.md');
+  const instruction = artifact('sai/commands/accessibility/instructions.md');
 
   assert.match(instruction, /`--runtime` to enable browser-based[\s\S]{0,160}Default:\s*static-only/i);
   assert.match(instruction, /Runtime requires[\s\S]{0,160}explicitly authorize each command/i);

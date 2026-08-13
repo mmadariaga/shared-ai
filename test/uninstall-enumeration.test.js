@@ -29,6 +29,33 @@ const STEP3_SUPERSEDED_DESTINATIONS = [
   ...STEP3_SUPERSEDED_WORKERS.map(name => path.join('sai', 'orchestration', 'workers', `${name}.md`)),
 ];
 
+const FOLDED_INSTRUCTIONS_RETIREMENT_DESTINATIONS = [
+  'accessibility.md',
+  'apply.md',
+  'archive.md',
+  'archive-commit-gate.md',
+  'backfill.md',
+  'change-overview.md',
+  'commit.md',
+  'design.md',
+  'explore.md',
+  'implement.md',
+  'performance.md',
+  'pr.md',
+  'review.md',
+  'security.md',
+  'spec.propose.md',
+  'worktree.md',
+  '_templates/accessibility-report.md',
+  '_templates/adr-index.md',
+  '_templates/ddr-index.md',
+  '_templates/implementation-plan.md',
+  '_templates/performance-report.md',
+  '_templates/pr-body.md',
+  '_templates/review-report.md',
+  '_templates/security-report.md',
+].map(relative => path.join('sai', 'instructions', ...relative.split('/')));
+
 function inventoryRoots(base, harness) {
   return {
     commands: path.join(base, 'commands'),
@@ -344,6 +371,7 @@ test('enumeration includes retirement records but excludes them from active proj
       path.join('sai', 'compat', 'sai-2-design-core.md'),
       path.join('sai', 'compat', 'sai-3-implementation-core.md'),
       path.join('sai', 'instructions', 'prereqs.md'),
+      ...FOLDED_INSTRUCTIONS_RETIREMENT_DESTINATIONS,
     ];
     for (const destination of expected) {
       assert.equal(normalized.includes(destination), true,
@@ -370,6 +398,39 @@ test('buildDeletionSet excludes opencode.json/opencode.jsonc paths', () => {
     e.dest.endsWith('opencode.json') || e.dest.endsWith('opencode.jsonc')
   );
   assert.ok(!hasConfigPath, 'buildDeletionSet should not include opencode config paths');
+});
+
+test('FOLD_RETIREMENT: every folded instructions destination carries a hash-gated retired-managed-file record', () => {
+  const manifest = loadInstallManifest(path.join(__dirname, '..'));
+  for (const destination of FOLDED_INSTRUCTIONS_RETIREMENT_DESTINATIONS) {
+    const records = manifest.retirements.filter(retirement =>
+      retirement.destination.class === 'sai' && retirement.destination.path ===
+        path.relative('sai', destination).split(path.sep).join('/'));
+    assert.equal(records.length, 1,
+      `exactly one retirement record should cover the folded destination ${destination}`);
+    const record = records[0];
+    assert.deepEqual(record.harnesses, ['claude', 'opencode'],
+      `${destination} should carry an explicit claude/opencode allowlist`);
+    assert.ok(record.managedHashes.length > 0,
+      `${destination} should carry a non-empty managed-hash set`);
+    assert.ok(record.managedHashes.every(hash => /^[0-9a-f]{64}$/.test(hash)),
+      `${destination} hashes should be lowercase SHA-256`);
+  }
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-fold-retired-enum-'));
+  try {
+    installOpencode(tmpDir);
+    const retired = enumerateOpencode(tmpDir)
+      .filter(entry => entry.assetType === 'retired-managed-file');
+    const normalized = new Map(retired.map(entry => [path.relative(tmpDir, entry.dest), entry]));
+    for (const destination of FOLDED_INSTRUCTIONS_RETIREMENT_DESTINATIONS) {
+      const entry = normalized.get(destination);
+      assert.ok(entry, `uninstall should enumerate a retired record for ${destination}`);
+      assert.ok(Array.isArray(entry.acceptedHashes) && entry.acceptedHashes.length > 0,
+        `${destination} should enumerate accepted hashes`);
+    }
+  } finally {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
 });
 
 test('enumerateClaude does not error with default paths (no manifest)', () => {
