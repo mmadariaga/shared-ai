@@ -233,9 +233,10 @@ function makeFakeAdapter(agents, ops, settings = { model: 'opencode-go/test-mode
       ops.select.push(label);
       return typeof settings === 'function' ? settings(ops.select.length) : settings;
     },
-    createLocalOverride(agentName, chosen) {
-      ops.create.push({ agentName, settings: chosen });
-      return { status: 'persisted', agent: agentName, destination: `/tmp/${agentName}.md` };
+    createLocalOverride(target, chosen) {
+      const name = typeof target === 'string' ? target : target.name;
+      ops.create.push({ target, settings: chosen });
+      return { status: 'persisted', agent: name, destination: `/tmp/${name}.md` };
     },
   };
 }
@@ -266,8 +267,8 @@ test('back at the harness picker re-opens the main menu instead of cancelling', 
   try {
     const result = await runPostSetupMenu({
       isTTY: true,
-      // menu -> harness (back) -> menu -> harness -> settings
-      promptChoice: scriptedChoice(['Customize models', BACK, 'Customize models', 'OpenCode'], questions),
+      // menu -> harness (back) -> menu -> harness -> scope -> targets
+      promptChoice: scriptedChoice(['Customize models', BACK, 'Customize models', 'OpenCode', 'Workers'], questions),
       promptChecklist: async (items) => ({ status: 'confirmed', items }),
     });
     assert.equal(result.status, 'completed');
@@ -276,13 +277,14 @@ test('back at the harness picker re-opens the main menu instead of cancelling', 
       'Choose a harness:',
       'Post-setup customization:',
       'Choose a harness:',
+      'Choose a customization scope:',
     ], 'stepping back from the harness picker should redisplay the main menu, then the picker again');
   } finally {
     restore();
   }
 });
 
-test('back at the agent checklist re-opens the harness picker and re-enumerates the chosen harness', { timeout: INTERACTION_TIMEOUT }, async () => {
+test('back at the target checklist re-opens the scope screen and then the harness picker, re-enumerating the chosen harness', { timeout: INTERACTION_TIMEOUT }, async () => {
   const opencodeOps = { select: [], create: [], enumerate: 0 };
   const claudeOps = { select: [], create: [], enumerate: 0 };
   const restoreOpencode = patchFactory('createOpencodeAdapter', () => makeFakeAdapter(AGENTS, opencodeOps));
@@ -292,8 +294,8 @@ test('back at the agent checklist re-opens the harness picker and re-enumerates 
   try {
     const result = await runPostSetupMenu({
       isTTY: true,
-      // menu -> OpenCode -> checklist (back) -> harness -> Claude Code -> checklist
-      promptChoice: scriptedChoice(['Customize models', 'OpenCode', 'Claude Code'], questions),
+      // menu -> OpenCode -> Workers -> checklist (back) -> scope (back) -> harness -> Claude Code -> Workers -> checklist
+      promptChoice: scriptedChoice(['Customize models', 'OpenCode', 'Workers', BACK, 'Claude Code', 'Workers'], questions),
       promptChecklist: async (items) => {
         checklistCalls += 1;
         return checklistCalls === 1 ? { status: 'back' } : { status: 'confirmed', items };
@@ -304,8 +306,11 @@ test('back at the agent checklist re-opens the harness picker and re-enumerates 
     assert.deepEqual(questions, [
       'Post-setup customization:',
       'Choose a harness:',
+      'Choose a customization scope:',
+      'Choose a customization scope:',
       'Choose a harness:',
-    ], 'stepping back from the checklist should return to the harness picker');
+      'Choose a customization scope:',
+    ], 'stepping back from the checklist should return to the scope screen, then back to the harness picker');
     assert.equal(claudeOps.create.length, AGENTS.length,
       'the corrected harness should be the one that gets configured');
     assert.equal(opencodeOps.create.length, 0,
@@ -316,7 +321,7 @@ test('back at the agent checklist re-opens the harness picker and re-enumerates 
   }
 });
 
-test('back at the settings screen re-opens the agent checklist without persisting anything', { timeout: INTERACTION_TIMEOUT }, async () => {
+test('back at the settings screen re-opens the target checklist without persisting anything', { timeout: INTERACTION_TIMEOUT }, async () => {
   const ops = { select: [], create: [], enumerate: 0 };
   const restore = patchFactory('createOpencodeAdapter', () => makeFakeAdapter(
     AGENTS,
@@ -327,9 +332,9 @@ test('back at the settings screen re-opens the agent checklist without persistin
   try {
     const result = await runPostSetupMenu({
       isTTY: true,
-      promptChoice: scriptedChoice(['Customize models', 'OpenCode'], []),
+      promptChoice: scriptedChoice(['Customize models', 'OpenCode', 'Workers'], []),
       promptChecklist: async (items) => {
-        // First pass confirms both agents, second pass narrows to one.
+        // First pass confirms both targets, second pass narrows to one.
         const picked = checklistSelections.length === 0 ? items : [items[1]];
         checklistSelections.push(picked);
         return { status: 'confirmed', items: picked };
@@ -340,7 +345,7 @@ test('back at the settings screen re-opens the agent checklist without persistin
       'stepping back from the settings screen should reopen the checklist');
     assert.deepEqual(ops.select, [AGENTS.join(', '), AGENTS[1]],
       'the second settings screen should describe the corrected subset');
-    assert.deepEqual(ops.create.map(entry => entry.agentName), [AGENTS[1]],
+    assert.deepEqual(ops.create.map(entry => entry.target.name), [AGENTS[1]],
       'only the corrected subset should be persisted, exactly once');
   } finally {
     restore();
@@ -354,7 +359,7 @@ test('back at the main menu redraws it rather than exiting the flow', { timeout:
   try {
     const result = await runPostSetupMenu({
       isTTY: true,
-      promptChoice: scriptedChoice([BACK, BACK, 'Customize models', 'OpenCode'], questions),
+      promptChoice: scriptedChoice([BACK, BACK, 'Customize models', 'OpenCode', 'Workers'], questions),
       promptChecklist: async (items) => ({ status: 'confirmed', items }),
     });
     assert.equal(result.status, 'completed',
