@@ -640,9 +640,9 @@ test('full dependent-flow traversal walks menu, harness, checklist, and provider
       const real = originalOpencode({ ...deps, runCommand: runner });
       return {
         ...real,
-        createLocalOverride(agentName, settings) {
-          overrides.push({ agentName, settings });
-          return real.createLocalOverride(agentName, settings);
+        createLocalOverride(target, settings) {
+          overrides.push({ target, settings });
+          return real.createLocalOverride(target, settings);
         },
       };
     });
@@ -2223,6 +2223,8 @@ const PERSIST_SCRATCH_ROOT = path.join(REPO_ROOT, '.tmp', 'customize-command-mod
 const PERSIST_CLAUDE_AGENT = 'sai-1-spec-proposal-worker';
 const PERSIST_CLAUDE_AGENT_2 = 'sai-2-design-worker';
 const PERSIST_OPENCODE_AGENT = 'explore';
+const PERSIST_CLAUDE_COMMAND = 'sai-1-spec';
+const PERSIST_OPENCODE_COMMAND = 'sai-explore';
 
 function makePersistenceFixture() {
   fs.mkdirSync(PERSIST_SCRATCH_ROOT, { recursive: true });
@@ -2231,6 +2233,8 @@ function makePersistenceFixture() {
   const projectPath = path.join(root, 'project');
   const claudeGlobalRoot = path.join(root, 'claude-global');
   const opencodeGlobalRoot = path.join(root, 'opencode-global');
+  const claudeGlobalCommandRoot = path.join(root, 'claude-global-commands');
+  const opencodeGlobalCommandRoot = path.join(root, 'opencode-global-commands');
   fs.mkdirSync(path.join(packageRoot, 'sai'), { recursive: true });
   fs.copyFileSync(
     path.join(REPO_ROOT, 'sai', 'install-manifest.json'),
@@ -2239,7 +2243,17 @@ function makePersistenceFixture() {
   fs.mkdirSync(projectPath, { recursive: true });
   fs.mkdirSync(claudeGlobalRoot, { recursive: true });
   fs.mkdirSync(opencodeGlobalRoot, { recursive: true });
-  return { root, packageRoot, projectPath, claudeGlobalRoot, opencodeGlobalRoot };
+  fs.mkdirSync(claudeGlobalCommandRoot, { recursive: true });
+  fs.mkdirSync(opencodeGlobalCommandRoot, { recursive: true });
+  return {
+    root,
+    packageRoot,
+    projectPath,
+    claudeGlobalRoot,
+    opencodeGlobalRoot,
+    claudeGlobalCommandRoot,
+    opencodeGlobalCommandRoot,
+  };
 }
 
 function writeGlobalAgent(fixture, harness, agent, contents) {
@@ -2254,6 +2268,11 @@ function writePackageAgent(fixture, harness, agent, contents) {
   const root = path.join(fixture.packageRoot, 'agents', harness);
   fs.mkdirSync(root, { recursive: true });
   fs.writeFileSync(path.join(root, `${agent}.md`), contents);
+}
+
+function writeGlobalCommand(fixture, harness, command, contents) {
+  const root = harness === 'claude' ? fixture.claudeGlobalCommandRoot : fixture.opencodeGlobalCommandRoot;
+  fs.writeFileSync(path.join(root, `${command}.md`), contents);
 }
 
 function claudeAgentSource(agent = PERSIST_CLAUDE_AGENT) {
@@ -2284,6 +2303,47 @@ function opencodeAgentSource(agent = PERSIST_OPENCODE_AGENT) {
     '',
     '# Source body',
     'Keep this body byte-identical.',
+    '',
+  ].join('\n');
+}
+
+function claudeCommandSource(command = PERSIST_CLAUDE_COMMAND) {
+  return [
+    '---',
+    `name: ${command}`,
+    'description: command-owned description',
+    'model: opus',
+    'effort: high',
+    '---',
+    '',
+    '# Command body',
+    'Keep this command body byte-identical.',
+    '',
+  ].join('\n');
+}
+
+function opencodeCommandSource(command = PERSIST_OPENCODE_COMMAND) {
+  return [
+    '---',
+    `name: ${command}`,
+    'description: command-owned description',
+    'model: opencode-go/old-model',
+    'variant: high',
+    '---',
+    '',
+    '# Command body',
+    'Keep this command body byte-identical.',
+    '',
+  ].join('\n');
+}
+
+function descriptionOnlyCommandSource(command) {
+  return [
+    '---',
+    'description: fixture command with no tunables',
+    '---',
+    '',
+    `command body of ${command}`,
     '',
   ].join('\n');
 }
@@ -3026,5 +3086,381 @@ test('customization inventory is matrix-derived: exactly seven worker agents per
     } finally {
       fs.rmSync(destinationRoot.root, { recursive: true, force: true });
     }
+  }
+});
+
+// --- Step 5: command-family override persistence ---
+
+// Command targets reach createLocalOverride as { family, name } records; the
+// family value mirrors the type prefix rendered by the Both-scope checklist
+// ('command: <name>' rows -> family 'command', 'worker: <name>' rows -> family
+// 'worker'). Every fixture run injects the scratch command roots so patch
+// sources resolve inside the fixture and never touch the real home command
+// directories.
+
+test('claude command createLocalOverride persists the selected model and effort under .claude/commands', () => {
+  const fixture = makePersistenceFixture();
+  try {
+    writeGlobalCommand(fixture, 'claude', PERSIST_CLAUDE_COMMAND, claudeCommandSource());
+    const adapter = createClaudeAdapter({
+      repoRoot: fixture.packageRoot,
+      projectPath: fixture.projectPath,
+      packageRoot: fixture.packageRoot,
+      globalAgentRoot: fixture.claudeGlobalRoot,
+      globalCommandRoot: fixture.claudeGlobalCommandRoot,
+    });
+    const result = adapter.createLocalOverride(
+      { family: 'command', name: PERSIST_CLAUDE_COMMAND },
+      { model: 'sonnet', effort: 'medium' }
+    );
+    assert.equal(result.status, 'persisted');
+    assert.equal(
+      result.destination,
+      path.join(fixture.projectPath, '.claude', 'commands', `${PERSIST_CLAUDE_COMMAND}.md`),
+      'a claude command override persists under .claude/commands, never the agents directory'
+    );
+    assert.match(
+      fs.readFileSync(result.destination, 'utf8'),
+      /model: sonnet\neffort: medium/
+    );
+  } finally {
+    fs.rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
+
+test('opencode command createLocalOverride persists the selected model and optional variant under .opencode/commands', () => {
+  const fixture = makePersistenceFixture();
+  try {
+    writeGlobalCommand(fixture, 'opencode', PERSIST_OPENCODE_COMMAND, opencodeCommandSource());
+    const adapter = createOpencodeAdapter({
+      repoRoot: fixture.packageRoot,
+      projectPath: fixture.projectPath,
+      packageRoot: fixture.packageRoot,
+      globalAgentRoot: fixture.opencodeGlobalRoot,
+      globalCommandRoot: fixture.opencodeGlobalCommandRoot,
+    });
+    const result = adapter.createLocalOverride(
+      { family: 'command', name: PERSIST_OPENCODE_COMMAND },
+      { model: 'opencode-go/glm-5.2', variant: 'high' }
+    );
+    assert.equal(result.status, 'persisted');
+    assert.equal(
+      result.destination,
+      path.join(fixture.projectPath, '.opencode', 'commands', `${PERSIST_OPENCODE_COMMAND}.md`),
+      'an opencode command override persists under .opencode/commands, never the agents directory'
+    );
+    assert.match(
+      fs.readFileSync(result.destination, 'utf8'),
+      /model: opencode-go\/glm-5\.2\nvariant: high/
+    );
+  } finally {
+    fs.rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
+
+test('a command frontmatter lacking tunable keys gains the selected model and effort or variant', () => {
+  for (const harness of ['claude', 'opencode']) {
+    const fixture = makePersistenceFixture();
+    try {
+      const command = harness === 'claude' ? PERSIST_CLAUDE_COMMAND : PERSIST_OPENCODE_COMMAND;
+      writeGlobalCommand(fixture, harness, command, descriptionOnlyCommandSource(command));
+      const createAdapter = harness === 'claude' ? createClaudeAdapter : createOpencodeAdapter;
+      const adapter = createAdapter({
+        repoRoot: fixture.packageRoot,
+        projectPath: fixture.projectPath,
+        packageRoot: fixture.packageRoot,
+        globalAgentRoot: harness === 'claude' ? fixture.claudeGlobalRoot : fixture.opencodeGlobalRoot,
+        globalCommandRoot: harness === 'claude' ? fixture.claudeGlobalCommandRoot : fixture.opencodeGlobalCommandRoot,
+      });
+      const settings = harness === 'claude'
+        ? { model: 'sonnet', effort: 'medium' }
+        : { model: 'opencode-go/glm-5.2', variant: 'high' };
+      const result = adapter.createLocalOverride({ family: 'command', name: command }, settings);
+      assert.equal(result.status, 'persisted',
+        `${harness}: a description-only command source is persisted`);
+      const written = fs.readFileSync(result.destination, 'utf8');
+      assert.match(written, /^model: (sonnet|opencode-go\/glm-5\.2)$/m,
+        `${harness}: the selected model key is pinned into the command without a tunable key`);
+      if (harness === 'claude') {
+        assert.match(written, /^effort: medium$/m,
+          'claude gains the selected effort key');
+      } else {
+        assert.match(written, /^variant: high$/m,
+          'opencode gains the selected variant key');
+      }
+      assert.match(written, /^description: fixture command with no tunables$/m,
+        `${harness}: the pre-existing description line is preserved`);
+      assert.match(written, new RegExp(`command body of ${command}`),
+        `${harness}: the body is preserved`);
+
+      if (harness === 'opencode') {
+        const modelOnly = adapter.createLocalOverride(
+          { family: 'command', name: command },
+          { model: 'opencode-go/deepseek-v4-flash' }
+        );
+        assert.equal(modelOnly.status, 'persisted');
+        const modelOnlyWritten = fs.readFileSync(modelOnly.destination, 'utf8');
+        assert.match(modelOnlyWritten, /^model: opencode-go\/deepseek-v4-flash$/m);
+        assert.doesNotMatch(modelOnlyWritten, /^variant:/m,
+          'opencode does not fabricate a variant key when none is selected');
+      }
+    } finally {
+      fs.rmSync(fixture.root, { recursive: true, force: true });
+    }
+  }
+});
+
+test('an existing project-local command is read and patched in place, preserving its body and non-tunable frontmatter', () => {
+  const fixture = makePersistenceFixture();
+  try {
+    const destination = path.join(
+      fixture.projectPath,
+      '.claude',
+      'commands',
+      `${PERSIST_CLAUDE_COMMAND}.md`
+    );
+    const existing = claudeCommandSource().replace(
+      '# Command body',
+      '# Command body\nLocal command body line kept verbatim.'
+    );
+    fs.mkdirSync(path.dirname(destination), { recursive: true });
+    fs.writeFileSync(destination, existing);
+    const adapter = createClaudeAdapter({
+      repoRoot: fixture.packageRoot,
+      projectPath: fixture.projectPath,
+      packageRoot: fixture.packageRoot,
+      globalAgentRoot: fixture.claudeGlobalRoot,
+      globalCommandRoot: fixture.claudeGlobalCommandRoot,
+    });
+    const result = adapter.createLocalOverride(
+      { family: 'command', name: PERSIST_CLAUDE_COMMAND },
+      { model: 'sonnet', effort: 'medium' }
+    );
+    assert.equal(result.status, 'persisted');
+    assert.equal(result.destination, destination,
+      'the existing project-local command file is patched in place');
+    assert.equal(
+      fs.readFileSync(destination, 'utf8'),
+      existing.replace('model: opus', 'model: sonnet').replace('effort: high', 'effort: medium'),
+      'only the top-level Claude tunable lines change when the command file is user-owned'
+    );
+    assert.match(fs.readFileSync(destination, 'utf8'), /Local command body line kept verbatim\./);
+  } finally {
+    fs.rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
+
+test('a command declaring a model outside the settings catalog is retuned to the selected catalog value and reported persisted', () => {
+  const fixture = makePersistenceFixture();
+  try {
+    const source = [
+      '---',
+      'description: command with a legacy model pin',
+      'model: legacy-unknown-model',
+      '---',
+      '',
+      'legacy-model command body',
+      '',
+    ].join('\n');
+    writeGlobalCommand(fixture, 'claude', PERSIST_CLAUDE_COMMAND, source);
+    const adapter = createClaudeAdapter({
+      repoRoot: fixture.packageRoot,
+      projectPath: fixture.projectPath,
+      packageRoot: fixture.packageRoot,
+      globalAgentRoot: fixture.claudeGlobalRoot,
+      globalCommandRoot: fixture.claudeGlobalCommandRoot,
+      settingsCatalog: CLAUDE_SETTINGS_CATALOG,
+    });
+    const result = adapter.createLocalOverride(
+      { family: 'command', name: PERSIST_CLAUDE_COMMAND },
+      { model: 'sonnet', effort: 'medium' }
+    );
+    assert.equal(result.status, 'persisted',
+      'a command whose declared model is not in the catalog is still persisted with the selected value');
+    const written = fs.readFileSync(result.destination, 'utf8');
+    assert.match(written, /^model: sonnet$/m,
+      'the declared non-catalog model is replaced by the selected catalog value');
+    assert.match(written, /^effort: medium$/m);
+    assert.match(written, /legacy-model command body/, 'the body is preserved');
+  } finally {
+    fs.rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
+
+test('confirming the haiku catalog entry removes an existing top-level effort line from a command while preserving non-tunable content', () => {
+  const fixture = makePersistenceFixture();
+  try {
+    writeGlobalCommand(fixture, 'claude', PERSIST_CLAUDE_COMMAND, claudeCommandSource());
+    const adapter = createClaudeAdapter({
+      repoRoot: fixture.packageRoot,
+      projectPath: fixture.projectPath,
+      packageRoot: fixture.packageRoot,
+      globalAgentRoot: fixture.claudeGlobalRoot,
+      globalCommandRoot: fixture.claudeGlobalCommandRoot,
+    });
+    const result = adapter.createLocalOverride(
+      { family: 'command', name: PERSIST_CLAUDE_COMMAND },
+      { model: 'haiku' }
+    );
+    assert.equal(result.status, 'persisted');
+    const written = fs.readFileSync(result.destination, 'utf8');
+    assert.doesNotMatch(written, /^effort:/m,
+      'the model-only haiku selection removes the top-level effort line');
+    assert.match(written, /^model: haiku$/m);
+    assert.match(written, /^description: command-owned description$/m,
+      'non-tunable frontmatter is preserved');
+    assert.match(written, /# Command body/, 'the body is preserved');
+  } finally {
+    fs.rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
+
+test('command patch sources resolve through the injected global command roots and never mutate the global directories', () => {
+  for (const harness of ['claude', 'opencode']) {
+    const fixture = makePersistenceFixture();
+    try {
+      const command = harness === 'claude' ? PERSIST_CLAUDE_COMMAND : PERSIST_OPENCODE_COMMAND;
+      const source = harness === 'claude' ? claudeCommandSource() : opencodeCommandSource();
+      writeGlobalCommand(fixture, harness, command, source);
+      const globalCommandRoot = harness === 'claude' ? fixture.claudeGlobalCommandRoot : fixture.opencodeGlobalCommandRoot;
+      const globalAgentRoot = harness === 'claude' ? fixture.claudeGlobalRoot : fixture.opencodeGlobalRoot;
+      const commandRootBefore = snapshotTree(globalCommandRoot);
+      const agentRootBefore = snapshotTree(globalAgentRoot);
+      const createAdapter = harness === 'claude' ? createClaudeAdapter : createOpencodeAdapter;
+      const adapter = createAdapter({
+        repoRoot: fixture.packageRoot,
+        projectPath: fixture.projectPath,
+        packageRoot: fixture.packageRoot,
+        globalAgentRoot,
+        globalCommandRoot,
+      });
+      const settings = harness === 'claude'
+        ? { model: 'sonnet', effort: 'medium' }
+        : { model: 'opencode-go/glm-5.2', variant: 'high' };
+      const result = adapter.createLocalOverride({ family: 'command', name: command }, settings);
+      assert.equal(result.status, 'persisted',
+        `${harness}: the patch source is resolved from the injected global command root`);
+      const written = fs.readFileSync(result.destination, 'utf8');
+      assert.match(written, /description: command-owned description/,
+        `${harness}: the patch source bytes come from the injected global command root`);
+      assert.match(written, /Keep this command body byte-identical\./,
+        `${harness}: the injected source body is preserved`);
+      assert.deepEqual(snapshotTree(globalCommandRoot), commandRootBefore,
+        `${harness}: the global command root is never written by the override`);
+      assert.deepEqual(snapshotTree(globalAgentRoot), agentRootBefore,
+        `${harness}: the global agent root is never written by the override`);
+    } finally {
+      fs.rmSync(fixture.root, { recursive: true, force: true });
+    }
+  }
+});
+
+test('flow: command targets with no source or invalid frontmatter are reported in diagnostics without aborting the remaining commands', async () => {
+  const fixture = makePersistenceFixture();
+  const restoreClaude = patchFactory('createClaudeAdapter', deps => createClaudeAdapter({
+    ...deps,
+    repoRoot: fixture.packageRoot,
+    projectPath: fixture.projectPath,
+    packageRoot: fixture.packageRoot,
+    globalAgentRoot: fixture.claudeGlobalRoot,
+    globalCommandRoot: fixture.claudeGlobalCommandRoot,
+    settingsCatalog: CLAUDE_SETTINGS_CATALOG,
+    promptChoice: deps.promptChoice,
+  }));
+  const restoreOpencode = patchFactory('createOpencodeAdapter', () =>
+    makeFakeAdapter([], { select: [], create: [] }));
+  try {
+    const valid = 'sai-backfill';
+    const missing = 'sai-pr';
+    const invalid = 'sai-status';
+    writeGlobalCommand(fixture, 'claude', valid, claudeCommandSource(valid));
+    writeGlobalCommand(fixture, 'claude', invalid, 'no frontmatter block here\njust a body\n');
+    const answers = ['Customize models', 'Claude Code', 'Commands'];
+    const result = await runPostSetupMenu({
+      projectPath: fixture.projectPath,
+      isTTY: true,
+      promptChoice: async (question, options) => answers.length > 0
+        ? answers.shift()
+        : chooseClaudeSonnetMedium(options),
+      promptChecklist: async () => ({ status: 'confirmed', items: [missing, invalid, valid] }),
+    });
+    const diagnostics = (result.diagnostics || []).map(entry => String(entry)).join('\n');
+    assert.ok(diagnostics.includes(missing),
+      `the command ${missing} with no project-local destination and no installed global source is reported skipped with a diagnostic`);
+    assert.ok(diagnostics.includes(invalid),
+      `the command ${invalid} whose source file has no valid frontmatter block is reported with a persistence failure diagnostic`);
+    const commandsDir = path.join(fixture.projectPath, '.claude', 'commands');
+    assert.equal(fs.existsSync(path.join(commandsDir, `${missing}.md`)), false,
+      'the skipped command writes no destination');
+    assert.equal(fs.existsSync(path.join(commandsDir, `${invalid}.md`)), false,
+      'the invalid-frontmatter command writes no destination');
+    assert.equal(fs.existsSync(path.join(commandsDir, `${valid}.md`)), true,
+      'the remaining valid command is still persisted after the skipped and failed targets');
+    assert.match(
+      fs.readFileSync(path.join(commandsDir, `${valid}.md`), 'utf8'),
+      /model: sonnet\neffort: medium/
+    );
+  } finally {
+    restoreClaude();
+    restoreOpencode();
+    fs.rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
+
+test('the settings selector is invoked exactly once per run for the whole confirmed subset, including Both scope, and never for an empty subset', async () => {
+  const opencodeOps = { select: [], create: [] };
+  const claudeOps = { select: [], create: [] };
+  const restoreOpencode = patchFactory('createOpencodeAdapter', () =>
+    makeFakeAdapter(
+      ['budget', 'explore'],
+      opencodeOps,
+      { model: 'opencode-go/glm-5.2', variant: 'high' },
+      ['budget', 'sai-1-spec']
+    ));
+  const restoreClaude = patchFactory('createClaudeAdapter', () =>
+    makeFakeAdapter(CLAUDE_AGENTS, claudeOps));
+  try {
+    const answers = ['Customize models', 'OpenCode', 'Both'];
+    const both = ['worker: budget', 'worker: explore', 'command: budget', 'command: sai-1-spec'];
+    const bothBare = ['budget', 'explore', 'budget', 'sai-1-spec'];
+    const result = await runPostSetupMenu({
+      projectPath: REPO_ROOT,
+      isTTY: true,
+      promptChoice: async () => answers.shift() ?? '<model>',
+      promptChecklist: async (...args) => ({ status: 'confirmed', items: args[1] }),
+    });
+    assert.equal(result.status, 'completed');
+    assert.deepEqual(opencodeOps.select, [both.join(', ')],
+      'the selector runs exactly once for the whole confirmed Both subset');
+    assert.equal(opencodeOps.select.length, 1,
+      'exactly one settings selection happens for the whole confirmed subset');
+    assert.deepEqual(opencodeOps.create.map(entry => entry.target.name), bothBare,
+      'every confirmed worker and command target is configured once, in the combined row order');
+    const sharedSettings = { model: 'opencode-go/glm-5.2', variant: 'high' };
+    for (const entry of opencodeOps.create) {
+      assert.deepEqual(entry.settings, sharedSettings,
+        'identical settings are applied to every selected target');
+    }
+    assert.equal(claudeOps.select.length, 0, 'claude must never be configured');
+    assert.equal(claudeOps.create.length, 0, 'claude must never create overrides');
+
+    opencodeOps.select.length = 0;
+    opencodeOps.create.length = 0;
+    const emptyAnswers = ['Customize models', 'OpenCode', 'Both'];
+    const emptyResult = await runPostSetupMenu({
+      projectPath: REPO_ROOT,
+      isTTY: true,
+      promptChoice: async () => emptyAnswers.shift() ?? '<model>',
+      promptChecklist: async () => ({ status: 'confirmed', items: [] }),
+    });
+    assert.equal(emptyResult.status, 'skipped');
+    assert.equal(emptyResult.reason, 'empty-selection');
+    assert.deepEqual(opencodeOps.select, [], 'an empty confirmed subset invokes no selector');
+    assert.deepEqual(opencodeOps.create, [], 'an empty confirmed subset configures no target');
+    assert.equal(claudeOps.select.length, 0, 'claude must never be configured');
+    assert.equal(claudeOps.create.length, 0, 'claude must never create overrides');
+  } finally {
+    restoreOpencode();
+    restoreClaude();
   }
 });

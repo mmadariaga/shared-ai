@@ -22,6 +22,8 @@ const COMMAND_PREFIX = 'command: ';
 const DEFAULT_PACKAGE_ROOT = path.join(__dirname, '..');
 const DEFAULT_CLAUDE_GLOBAL_AGENT_ROOT = path.join(os.homedir(), '.claude', 'agents');
 const DEFAULT_OPENCODE_GLOBAL_AGENT_ROOT = path.join(os.homedir(), '.config', 'opencode', 'agents');
+const DEFAULT_CLAUDE_GLOBAL_COMMAND_ROOT = path.join(os.homedir(), '.claude', 'commands');
+const DEFAULT_OPENCODE_GLOBAL_COMMAND_ROOT = path.join(os.homedir(), '.config', 'opencode', 'commands');
 
 const CLAUDE_SETTINGS_CATALOG = Object.freeze({
   models: Object.freeze([
@@ -143,11 +145,14 @@ function materializeLocalOverride({
   settings,
   projectPath,
   globalAgentRoot,
+  globalCommandRoot,
   harness,
+  family = 'worker',
 }) {
+  const familyDirectory = family === 'command' ? 'commands' : 'agents';
   const localDirectory = harness === 'claude'
-    ? path.join(projectPath, '.claude', 'agents')
-    : path.join(projectPath, '.opencode', 'agents');
+    ? path.join(projectPath, '.claude', familyDirectory)
+    : path.join(projectPath, '.opencode', familyDirectory);
   const destination = path.join(localDirectory, `${agentName}.md`);
   const tunableKeys = harness === 'claude' ? ['model', 'effort'] : ['model', 'variant'];
   const destinationExists = fs.existsSync(destination);
@@ -157,7 +162,8 @@ function materializeLocalOverride({
     if (destinationExists) {
       currentText = fs.readFileSync(destination, 'utf8');
     } else {
-      const source = path.join(globalAgentRoot, `${agentName}.md`);
+      const sourceRoot = family === 'command' ? globalCommandRoot : globalAgentRoot;
+      const source = path.join(sourceRoot, `${agentName}.md`);
       if (!fs.existsSync(source)) {
         return { status: 'skipped', agent: agentName, reason: 'missing-source' };
       }
@@ -166,13 +172,13 @@ function materializeLocalOverride({
   } catch (error) {
     return materializationFailure(
       agentName,
-      `Unable to read the ${destinationExists ? 'project-local agent' : 'installed agent'} for ${agentName}: ${error.message}`
+      `Unable to read the ${destinationExists ? 'project-local target' : 'installed target'} for ${agentName}: ${error.message}`
     );
   }
 
   const patchedText = patchFrontmatter(currentText, tunableKeys, settings);
   if (patchedText === null) {
-    return materializationFailure(agentName, `Agent ${agentName} has no valid frontmatter block.`);
+    return materializationFailure(agentName, `Target ${agentName} has no valid frontmatter block.`);
   }
 
   const writeError = atomicReplace(destination, patchedText);
@@ -496,6 +502,7 @@ function createClaudeAdapter({
   projectPath = process.cwd(),
   packageRoot = DEFAULT_PACKAGE_ROOT,
   globalAgentRoot = DEFAULT_CLAUDE_GLOBAL_AGENT_ROOT,
+  globalCommandRoot = DEFAULT_CLAUDE_GLOBAL_COMMAND_ROOT,
   loadManifest: loadManifestOverride = loadInstallManifest,
   promptChoice = promptSelect,
   settingsCatalog = CLAUDE_SETTINGS_CATALOG,
@@ -505,6 +512,7 @@ function createClaudeAdapter({
     enumerateCommands: () => enumerateCommands(packageRoot, loadManifestOverride, 'claude'),
     selectSettings: subsetLabel => selectClaudeSettings(subsetLabel, promptChoice, settingsCatalog),
     createLocalOverride: (target, settings) => {
+      const family = typeof target === 'string' ? 'worker' : target.family;
       const targetName = typeof target === 'string' ? target : target.name;
       if (!isClaudeSettingsPair(settingsCatalog, settings)) {
         return materializationFailure(targetName, 'Selected Claude settings are not present in the settings catalog.');
@@ -514,7 +522,9 @@ function createClaudeAdapter({
         settings,
         projectPath,
         globalAgentRoot,
+        globalCommandRoot,
         harness: 'claude',
+        family,
       });
     },
   };
@@ -524,6 +534,7 @@ function createOpencodeAdapter({
   projectPath = process.cwd(),
   packageRoot = DEFAULT_PACKAGE_ROOT,
   globalAgentRoot = DEFAULT_OPENCODE_GLOBAL_AGENT_ROOT,
+  globalCommandRoot = DEFAULT_OPENCODE_GLOBAL_COMMAND_ROOT,
   loadManifest: loadManifestOverride = loadInstallManifest,
   promptChoice = promptSelect,
   runCommand = defaultRunCommand,
@@ -533,6 +544,7 @@ function createOpencodeAdapter({
     enumerateCommands: () => enumerateCommands(packageRoot, loadManifestOverride, 'opencode'),
     selectSettings: subsetLabel => opencodeSelectSettings(subsetLabel, promptChoice, runCommand),
     createLocalOverride: (target, settings) => {
+      const family = typeof target === 'string' ? 'worker' : target.family;
       const targetName = typeof target === 'string' ? target : target.name;
       if (!settings || typeof settings.model !== 'string' || settings.model === ''
           || (settings.variant !== undefined && typeof settings.variant !== 'string')) {
@@ -543,7 +555,9 @@ function createOpencodeAdapter({
         settings,
         projectPath,
         globalAgentRoot,
+        globalCommandRoot,
         harness: 'opencode',
+        family,
       });
     },
   };
@@ -558,6 +572,8 @@ async function runPostSetupMenu({
   packageRoot = DEFAULT_PACKAGE_ROOT,
   claudeGlobalAgentRoot = DEFAULT_CLAUDE_GLOBAL_AGENT_ROOT,
   opencodeGlobalAgentRoot = DEFAULT_OPENCODE_GLOBAL_AGENT_ROOT,
+  claudeGlobalCommandRoot = DEFAULT_CLAUDE_GLOBAL_COMMAND_ROOT,
+  opencodeGlobalCommandRoot = DEFAULT_OPENCODE_GLOBAL_COMMAND_ROOT,
   isTTY = process.stdin.isTTY,
   promptChoice = promptSelect,
   promptChecklist = installFlowPromptChecklist,
@@ -612,8 +628,8 @@ async function runPostSetupMenu({
 
     if (screen === 'targets') {
       adapter = harness === 'OpenCode'
-        ? module.exports.createOpencodeAdapter({ projectPath, packageRoot, globalAgentRoot: opencodeGlobalAgentRoot, promptChoice })
-        : module.exports.createClaudeAdapter({ projectPath, packageRoot, globalAgentRoot: claudeGlobalAgentRoot, promptChoice });
+        ? module.exports.createOpencodeAdapter({ projectPath, packageRoot, globalAgentRoot: opencodeGlobalAgentRoot, globalCommandRoot: opencodeGlobalCommandRoot, promptChoice })
+        : module.exports.createClaudeAdapter({ projectPath, packageRoot, globalAgentRoot: claudeGlobalAgentRoot, globalCommandRoot: claudeGlobalCommandRoot, promptChoice });
       const workers = adapter.enumerateWorkers();
       const commands = scope === 'Workers' ? [] : adapter.enumerateCommands();
       const targets = buildChecklistTargets(scope, workers, commands);
