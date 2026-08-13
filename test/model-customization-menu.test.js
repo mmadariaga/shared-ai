@@ -7,7 +7,7 @@ const os = require('os');
 const path = require('path');
 const childProcess = require('child_process');
 
-const agentCustomization = require('../bin/agent-customization.js');
+const modelCustomization = require('../bin/model-customization.js');
 const { main } = require('../bin/setup.js');
 
 const {
@@ -25,7 +25,7 @@ const {
   parseModelCatalog,
   parseVerboseModelRecords,
   extractVariants,
-} = agentCustomization;
+} = modelCustomization;
 
 const REPO_ROOT = path.join(__dirname, '..');
 
@@ -53,7 +53,7 @@ const CLAUDE_AGENTS = [
 ];
 
 const CHECKLIST_LEGEND = 'Up/Down move · Space toggle · Enter confirm · ←/Esc back · q/Ctrl-C cancel';
-const SCRATCH_ROOT = path.join(REPO_ROOT, '.tmp', 'collapse-sai-worker-matrix', 'discover-opencode-model-settings');
+const SCRATCH_ROOT = path.join(REPO_ROOT, '.tmp', 'customize-command-models', 'scratch-repos');
 
 function snapshotTree(dir) {
   const snapshot = {};
@@ -75,7 +75,7 @@ function snapshotTree(dir) {
 
 function makeFakeAdapter(agents, ops, settings = { model: 'opencode-go/test-model' }) {
   return {
-    enumerateAgents() {
+    enumerateWorkers() {
       return agents;
     },
     async selectSettings(agentName) {
@@ -94,10 +94,10 @@ function makeFakeAdapter(agents, ops, settings = { model: 'opencode-go/test-mode
 }
 
 function patchFactory(name, replacement) {
-  const original = agentCustomization[name];
-  agentCustomization[name] = replacement;
+  const original = modelCustomization[name];
+  modelCustomization[name] = replacement;
   return function restore() {
-    agentCustomization[name] = original;
+    modelCustomization[name] = original;
   };
 }
 
@@ -340,17 +340,17 @@ test('customize Claude Code flow persists every selected agent, never invokes Op
   }
 });
 
-test('opencode enumerateAgents returns exactly the 10 managed agents', () => {
+test('opencode enumerateWorkers returns exactly the 10 managed workers', () => {
   const adapter = createOpencodeAdapter({ repoRoot: REPO_ROOT });
-  const agents = adapter.enumerateAgents();
+  const agents = adapter.enumerateWorkers();
   assert.equal(agents.length, 10, 'exactly 10 agents should enumerate for opencode');
   assert.deepEqual([...agents].sort(), [...OPENCODE_AGENTS].sort(),
     'opencode agents should be exactly the 10 managed names');
 });
 
-test('claude enumerateAgents returns exactly the 7 routed workers', () => {
+test('claude enumerateWorkers returns exactly the 7 routed workers', () => {
   const adapter = createClaudeAdapter({ repoRoot: REPO_ROOT });
-  const agents = adapter.enumerateAgents();
+  const agents = adapter.enumerateWorkers();
   assert.equal(agents.length, 7, 'exactly 7 agents should enumerate for claude');
   assert.deepEqual([...agents].sort(), [...CLAUDE_AGENTS].sort(),
     'claude agents should be exactly the 7 routed workers');
@@ -402,7 +402,7 @@ test('each claude agent consumes exactly one real combined frame and resolves a 
     return selected;
   };
   const adapter = createClaudeAdapter({ repoRoot: REPO_ROOT, promptChoice: promptSpy });
-  const agents = adapter.enumerateAgents();
+  const agents = adapter.enumerateWorkers();
   assert.equal(agents.length, CLAUDE_AGENTS.length,
     `exactly ${CLAUDE_AGENTS.length} agents should enumerate for claude`);
   assert.deepEqual([...agents].sort(), [...CLAUDE_AGENTS].sort(),
@@ -521,7 +521,7 @@ test('full dependent-flow traversal walks menu, harness, checklist, and provider
 
     const answers = ['Customize models', 'OpenCode'];
     const overrides = [];
-    const originalOpencode = agentCustomization.createOpencodeAdapter;
+    const originalOpencode = modelCustomization.createOpencodeAdapter;
     const restoreOpencode = patchFactory('createOpencodeAdapter', (deps) => {
       const real = originalOpencode({ ...deps, runCommand: runner });
       return {
@@ -597,7 +597,7 @@ test('full dependent-flow traversal walks menu, harness, checklist, and provider
 
 // --- Step 3: checklist seam and retired return tokens ---
 
-test('checklist receives the full enumerateAgents list of the chosen harness as its default selection', async () => {
+test('checklist receives the full enumerateWorkers list of the chosen harness as its default selection', async () => {
   const opencodeOps = { select: [], create: [] };
   const claudeOps = { select: [], create: [] };
   const checklistCalls = [];
@@ -752,7 +752,7 @@ test('promptChoice null at the provider screen aborts via the real opencode adap
       runnerCalls.push(args);
       return { stdout: 'opencode-go/deepseek-v4-flash\nopencode-go/glm-5.2\n', status: 0 };
     };
-    const originalOpencode = agentCustomization.createOpencodeAdapter;
+    const originalOpencode = modelCustomization.createOpencodeAdapter;
     const restoreOpencode = patchFactory('createOpencodeAdapter', (deps) => originalOpencode({ ...deps, runCommand: fakeRunner }));
     try {
       const answers = ['Customize models', 'OpenCode', null];
@@ -1775,7 +1775,7 @@ test('a null selectSettings result returns settings-unavailable without configur
   const opencodeOps = { select: [], create: [] };
   const claudeOps = { select: [], create: [] };
   const fakeAdapter = {
-    enumerateAgents() {
+    enumerateWorkers() {
       return OPENCODE_AGENTS;
     },
     async selectSettings() {
@@ -1823,7 +1823,7 @@ const CLAUDE_SETTINGS_CATALOG = {
   ],
 };
 
-const PERSIST_SCRATCH_ROOT = path.join(REPO_ROOT, '.tmp', 'collapse-sai-worker-matrix', 'persist-project-agent-overrides');
+const PERSIST_SCRATCH_ROOT = path.join(REPO_ROOT, '.tmp', 'customize-command-models', 'persist-overrides');
 const PERSIST_CLAUDE_AGENT = 'sai-1-spec-proposal-worker';
 const PERSIST_CLAUDE_AGENT_2 = 'sai-2-design-worker';
 const PERSIST_OPENCODE_AGENT = 'explore';
@@ -1924,10 +1924,10 @@ test('Step 1 materialize selected harness overrides: manifest roster and harness
       globalAgentRoot: fixture.opencodeGlobalRoot,
     });
 
-    assert.ok(claude.enumerateAgents().includes(PERSIST_CLAUDE_AGENT));
-    assert.ok(opencode.enumerateAgents().includes(PERSIST_OPENCODE_AGENT));
-    assert.equal(claude.enumerateAgents().includes('package-only'), false);
-    assert.equal(opencode.enumerateAgents().includes('package-only'), false);
+    assert.ok(claude.enumerateWorkers().includes(PERSIST_CLAUDE_AGENT));
+    assert.ok(opencode.enumerateWorkers().includes(PERSIST_OPENCODE_AGENT));
+    assert.equal(claude.enumerateWorkers().includes('package-only'), false);
+    assert.equal(opencode.enumerateWorkers().includes('package-only'), false);
 
     const missing = claude.createLocalOverride(PERSIST_CLAUDE_AGENT, {
       model: 'sonnet',
@@ -2119,8 +2119,8 @@ test('Step 1 materialize selected harness overrides: Claude selection honors the
 
 test('Step 1 materialize selected harness overrides: confirmed subsets, empty selections, cancellation, and non-TTY runs constrain writes', async () => {
   const fixture = makePersistenceFixture();
-  const originalClaude = agentCustomization.createClaudeAdapter;
-  const originalOpencode = agentCustomization.createOpencodeAdapter;
+  const originalClaude = modelCustomization.createClaudeAdapter;
+  const originalOpencode = modelCustomization.createOpencodeAdapter;
   try {
     writeGlobalAgent(fixture, 'claude', PERSIST_CLAUDE_AGENT, claudeAgentSource());
     writeGlobalAgent(fixture, 'claude', PERSIST_CLAUDE_AGENT_2, claudeAgentSource(PERSIST_CLAUDE_AGENT_2));

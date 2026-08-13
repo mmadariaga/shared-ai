@@ -14,7 +14,7 @@ const {
 
 const MENU_OPTIONS = Object.freeze(['Customize models', 'Exit']);
 const HARNESS_OPTIONS = Object.freeze(['OpenCode', 'Claude Code']);
-const AGENT_CHECKLIST_LEGEND = 'Up/Down move · Space toggle · Enter confirm · ←/Esc back · q/Ctrl-C cancel';
+const MODEL_CHECKLIST_LEGEND = 'Up/Down move · Space toggle · Enter confirm · ←/Esc back · q/Ctrl-C cancel';
 const COMBINED_ENTRY_DELIMITER = ' | ';
 const DEFAULT_PACKAGE_ROOT = path.join(__dirname, '..');
 const DEFAULT_CLAUDE_GLOBAL_AGENT_ROOT = path.join(os.homedir(), '.claude', 'agents');
@@ -164,7 +164,7 @@ function materializeLocalOverride({
   return { status: 'persisted', agent: agentName, destination };
 }
 
-function enumerateAgents(packageRoot, loadManifest, harness) {
+function enumerateWorkers(packageRoot, loadManifest, harness) {
   const manifest = loadManifest(packageRoot);
   return manifest.projections
     .filter(projection => projection.destination.class === 'agents' && projection.harnesses.includes(harness))
@@ -447,14 +447,15 @@ function createClaudeAdapter({
   settingsCatalog = CLAUDE_SETTINGS_CATALOG,
 } = {}) {
   return {
-    enumerateAgents: () => enumerateAgents(packageRoot, loadManifestOverride, 'claude'),
+    enumerateWorkers: () => enumerateWorkers(packageRoot, loadManifestOverride, 'claude'),
     selectSettings: subsetLabel => selectClaudeSettings(subsetLabel, promptChoice, settingsCatalog),
-    createLocalOverride: (agentName, settings) => {
+    createLocalOverride: (target, settings) => {
+      const targetName = typeof target === 'string' ? target : target.name;
       if (!isClaudeSettingsPair(settingsCatalog, settings)) {
-        return materializationFailure(agentName, 'Selected Claude settings are not present in the settings catalog.');
+        return materializationFailure(targetName, 'Selected Claude settings are not present in the settings catalog.');
       }
       return materializeLocalOverride({
-        agentName,
+        agentName: targetName,
         settings,
         projectPath,
         globalAgentRoot,
@@ -473,15 +474,16 @@ function createOpencodeAdapter({
   runCommand = defaultRunCommand,
 } = {}) {
   return {
-    enumerateAgents: () => enumerateAgents(packageRoot, loadManifestOverride, 'opencode'),
+    enumerateWorkers: () => enumerateWorkers(packageRoot, loadManifestOverride, 'opencode'),
     selectSettings: subsetLabel => opencodeSelectSettings(subsetLabel, promptChoice, runCommand),
-    createLocalOverride: (agentName, settings) => {
+    createLocalOverride: (target, settings) => {
+      const targetName = typeof target === 'string' ? target : target.name;
       if (!settings || typeof settings.model !== 'string' || settings.model === ''
           || (settings.variant !== undefined && typeof settings.variant !== 'string')) {
-        return materializationFailure(agentName, 'Selected OpenCode settings are invalid.');
+        return materializationFailure(targetName, 'Selected OpenCode settings are invalid.');
       }
       return materializeLocalOverride({
-        agentName,
+        agentName: targetName,
         settings,
         projectPath,
         globalAgentRoot,
@@ -507,7 +509,7 @@ async function runPostSetupMenu({
   if (!isTTY) return skippedOutcome('non-tty');
 
   // The four screens form a linear flow the user can walk backwards through:
-  // menu -> harness -> agent checklist -> settings. Each screen resolving
+  // menu -> harness -> worker checklist -> settings. Each screen resolving
   // `back` re-opens its predecessor; the first screen simply redraws.
   let screen = 'menu';
   let adapter = null;
@@ -542,8 +544,8 @@ async function runPostSetupMenu({
       adapter = harness === 'OpenCode'
         ? module.exports.createOpencodeAdapter({ projectPath, packageRoot, globalAgentRoot: opencodeGlobalAgentRoot, promptChoice })
         : module.exports.createClaudeAdapter({ projectPath, packageRoot, globalAgentRoot: claudeGlobalAgentRoot, promptChoice });
-      const agents = adapter.enumerateAgents();
-      const selection = await promptChecklist(agents, agents, undefined, AGENT_CHECKLIST_LEGEND);
+      const agents = adapter.enumerateWorkers();
+      const selection = await promptChecklist(agents, agents, undefined, MODEL_CHECKLIST_LEGEND);
       if (!selection || selection.status === 'cancelled') return skippedOutcome('cancelled');
       if (selection.status === 'non-interactive') return skippedOutcome('non-tty');
       if (selection.status === 'back') {
@@ -591,7 +593,7 @@ async function runPostSetupMenu({
 module.exports = {
   runPostSetupMenu,
   CLAUDE_SETTINGS_CATALOG,
-  AGENT_CHECKLIST_LEGEND,
+  MODEL_CHECKLIST_LEGEND,
   NO_VARIANT,
   BACK,
   createOpencodeAdapter,

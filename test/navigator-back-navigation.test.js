@@ -25,8 +25,8 @@ const {
   BACK,
 } = require('../bin/install-flow.js');
 
-const agentCustomization = require('../bin/agent-customization.js');
-const { runPostSetupMenu, createOpencodeAdapter } = agentCustomization;
+const modelCustomization = require('../bin/model-customization.js');
+const { runPostSetupMenu, createOpencodeAdapter } = modelCustomization;
 
 const INTERACTION_TIMEOUT = 5000;
 const ITEMS = ['Claude Code', 'Opencode'];
@@ -225,7 +225,7 @@ test('a non-TTY input still resolves non-interactive and never back', { timeout:
 
 function makeFakeAdapter(agents, ops, settings = { model: 'opencode-go/test-model' }) {
   return {
-    enumerateAgents() {
+    enumerateWorkers() {
       ops.enumerate += 1;
       return agents;
     },
@@ -241,10 +241,10 @@ function makeFakeAdapter(agents, ops, settings = { model: 'opencode-go/test-mode
 }
 
 function patchFactory(name, replacement) {
-  const original = agentCustomization[name];
-  agentCustomization[name] = replacement;
+  const original = modelCustomization[name];
+  modelCustomization[name] = replacement;
   return function restore() {
-    agentCustomization[name] = original;
+    modelCustomization[name] = original;
   };
 }
 
@@ -434,7 +434,7 @@ test('back at the provider screen hands control back to the caller as BACK', { t
 });
 
 test('back at the Claude combined settings screen propagates BACK to the caller', { timeout: INTERACTION_TIMEOUT }, async () => {
-  const adapter = agentCustomization.createClaudeAdapter({
+  const adapter = modelCustomization.createClaudeAdapter({
     promptChoice: async () => BACK,
   });
 
