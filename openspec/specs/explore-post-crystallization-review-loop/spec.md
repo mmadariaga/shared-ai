@@ -102,7 +102,7 @@ When the user selects Yes, `sai-explore` SHALL iterate only the set of change na
 - **THEN** the tracked set contains change A only once
 - **AND** the global Yes path offers the picker for change A only once in the loop
 
-### Requirement: Review actions read their artifact sets
+### Requirement: Review actions read artifact sets and persisted overview failure diagnostics
 
 For the change currently being iterated, selecting `Review sai-1's artifacts` SHALL produce a read-only review of that change's `proposal.md` and `specs/**`, selecting `Review sai-2's artifacts` SHALL produce a read-only review of that change's `design.md`, `tasks.md`, and `interfaces.md`, and selecting `Review change-overview` SHALL produce a read-only review of that change's `change-overview.md` for human presentation, reading the overview's source artifacts (`proposal.md`, `specs/**`, `design.md`, `tasks.md`, `interfaces.md`) to validate its completeness and consistency against them. When a requested artifact does not exist for the change, the agent SHALL report its absence without treating it as an error and without leaving the loop.
 
@@ -142,6 +142,48 @@ A `Review change-overview` transaction SHALL complete as a review only when the 
 - **AND** it explicitly reports that the sai-1 artifact set is incomplete because the normative specs are missing
 - **AND** it states that behavior review is blocked by the missing specs rather than presenting the artifact set as fully reviewable
 - **AND** it remains in the loop
+
+### Requirement: Review change-overview reports non-current availability with persisted diagnostics
+
+For the change currently being iterated, selecting `Review change-overview` SHALL produce a read-only review of the current `change-overview.md` only when `overview.state` is `current` and the CLI reports `change-overview.md` present/done. When the state is non-`current` — `unmaterialized`, `materializing`, `failed`, or `stale` — or when current metadata is paired with a missing/not-`done` file, the transaction SHALL produce an availability/integrity report naming the state and the mismatch. When `overview.failure_details` is present in `openspec/changes/{name}/.openspec.yaml`, the report SHALL name that exact persisted value and its relevant location. When the non-current state has a persisted failure record, the report SHALL also name the persisted `overview.failure_kind` and non-empty `overview.failure_details`. A failure record SHALL be described as diagnostic state and never as a current overview.
+
+The availability/integrity report SHALL produce no findings and no `Summary:` tally, SHALL leave the loop in place, SHALL not mark or clear review evidence, and SHALL not write `overview.state` or any artifact. For a dispatch or malformed-envelope route where the parent preserved the file state, the report SHALL name the parent-authored diagnostic from the explicitly scoped `overview.failure_details` key; it SHALL never infer success from the presence of a prior overview file. When the state is `materializing` and both `overview.failure_kind` and `overview.failure_details` are absent after a new generation attempt began, the report SHALL state that the attempt was interrupted before failure classification and that no diagnostic is available; it SHALL not infer success, absence of failure, or reuse an older diagnostic. When the state is `stale` with both keys absent after source modification but before a new generation attempt, the report SHALL state that no generation failure diagnostic is recorded for the current stale state without asserting an interruption; it SHALL not infer success, reuse an older diagnostic, or treat the state as a current overview.
+
+#### Scenario: failed first-materialization report names persisted details
+
+- **WHEN** the user selects `Review change-overview` for a change with `overview.state: failed` and a persisted failure record
+- **THEN** the availability/integrity report names `failed`, the record/file mismatch, the persisted `failure_kind`, and the exact non-empty value of `.openspec.yaml:overview.failure_details`
+- **AND** it produces no findings and no `Summary:` tally
+
+#### Scenario: stale regeneration report names persisted details
+
+- **WHEN** the user selects `Review change-overview` for a change with `overview.state: stale` and a stale failure record
+- **THEN** the availability/integrity report names `stale`, explains that the overview is not current, and names the exact persisted `.openspec.yaml:overview.failure_details` value and its relevant location
+- **AND** it remains read-only with no findings or `Summary:` tally
+
+#### Scenario: non-current review does not treat a failure record as an overview
+
+- **WHEN** a failed or stale change contains a diagnostic failure record
+- **THEN** the review transaction reports availability/integrity only
+- **AND** it does not validate the record as a current overview, mark review evidence, or emit a findings summary
+
+#### Scenario: parent-owned process-loss diagnostic is reportable
+
+- **WHEN** the parent records `overview.failure_kind: generation-error` and `overview.failure_details` for a dispatched generator that returned no result
+- **THEN** the availability/integrity report names those persisted keys and the lost generation operation
+- **AND** it produces no findings or `Summary:` tally and remains read-only
+
+#### Scenario: interrupted attempt with absent diagnostics is legible
+
+- **WHEN** the review sees `overview.state: materializing` with neither `overview.failure_kind` nor `overview.failure_details` after a new generation attempt began
+- **THEN** the availability/integrity report says the attempt was interrupted before failure classification and that no diagnostic is available
+- **AND** it does not reuse an older diagnostic, produce findings, or emit a `Summary:` tally
+
+#### Scenario: stale state without a generation diagnostic is not an interruption
+
+- **WHEN** the user selects `Review change-overview` for a change with `overview.state: stale` and neither `overview.failure_kind` nor `overview.failure_details` after source modification before regeneration
+- **THEN** the availability/integrity report says that no generation failure diagnostic is recorded for the current stale state
+- **AND** it does not claim an interrupted attempt, reuse an older diagnostic, produce findings, or emit a `Summary:` tally
 
 ### Requirement: Picker re-entry and loop advancement
 

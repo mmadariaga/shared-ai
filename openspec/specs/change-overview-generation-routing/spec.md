@@ -31,39 +31,69 @@ The generation subagent SHALL write exactly one file: `openspec/changes/{change-
 - **WHEN** the generation subagent runs
 - **THEN** no source artifact and no other project file is created, modified, or deleted by it
 
-### Requirement: Generator returns a closed result contract
+### Requirement: Generator returns a closed result contract with mandatory failure diagnostics
 
-The generation subagent SHALL return a closed, deterministic result envelope that the design worker (the parent) can interpret without ambiguity. The envelope SHALL carry exactly these five fields, all mandatory:
+The generation subagent SHALL return a closed, deterministic result envelope that the design worker (the parent) can interpret without ambiguity. The generator envelope SHALL carry exactly these five fields, all mandatory:
 
 - `status` — one of `success` or `failed`.
-- `changed_files` — the file(s) the generator wrote: exactly `openspec/changes/{change-name}/change-overview.md` on success, the stale record file on a failed regeneration, or an empty list on a failed first materialization that wrote nothing.
-- `validation` — one of `passed` or `failed`, the outcome of the completeness-and-consistency validation against the sources.
-- `contradiction_details` — when validation failed on a blocking source contradiction: both conflicting source locations and the one-line disagreement; the empty string otherwise.
-- `failure_kind` — mandatory nullable: `none` on success; on failure, one of `blocking-contradiction`, `validation-failed`, or `generation-error`. A dispatch failure (the subagent never ran) SHALL be reported by the parent as `failure_kind: dispatch-failed` with no changed files and no stale-record write, because the generator cannot write a file it never executed; the prior `change-overview.md` is left unmodified and the parent sets `overview.state: stale` per the `change-overview-synchronization` capability.
+- `changed_files` — the paths written or potentially affected by this generation attempt: `[openspec/changes/{change-name}/change-overview.md]` when the generator writes the overview or a failure record, `[]` only when dispatch itself failed before the generator was acknowledged as running and therefore no generator write could occur, and `[openspec/changes/{change-name}/change-overview.md]` for a malformed/empty-envelope or process-loss outcome whose file state may have changed before the parent received no trustworthy result. A potentially affected path does not claim that the parent wrote it. A dispatched generator that goes silent is process loss, not the `[]` dispatch-failure case. The `[]` value is never used merely because the generator did not run; it is reserved for dispatch failure before acknowledgement.
+- `validation` — `passed` or `failed` for a generator-run result; `not-performed` for a parent-authored dispatch or contract-violation result where validation did not occur or cannot be trusted.
+- `failure_details` — the empty string on success; a non-empty English diagnostic on failure naming what went wrong and the relevant source, artifact, envelope, dispatch, or file location.
+- `failure_kind` — the consumer-side closed vocabulary is `none`, `blocking-contradiction`, `validation-failed`, `generation-error`, or `dispatch-failed`; `none` is success, the first three failure values are generator-producible, `dispatch-failed` is parent-producible, and `generation-error` is also parent-producible for a malformed or empty envelope.
 
-The parent SHALL map each result deterministically per the `change-overview-synchronization` capability: `success` commits `overview.state: current` (after `materializing` at dispatch); a failed first-materialization dispatch sets `failed` and suppresses the success terminal; a failed regeneration from a generator that ran writes/keeps the stale record and sets `stale`; `dispatch-failed` follows the same state mapping as the failure kind it stands in for, with the parent reporting the dispatch failure and leaving the prior file unmodified. The parent SHALL NOT interpret an envelope with unknown fields, an unknown status, a missing mandatory field, or an empty result as success — it SHALL treat it as an output-contract violation. A malformed or empty envelope is a third failure mode, distinct from a valid failed envelope (the generator ran and returned a coherent failed result) and from dispatch failure (the generator never ran): the generator may have written or replaced `change-overview.md` before returning the malformed envelope, but the parent cannot trust the envelope's `changed_files` and cannot safely modify the file itself (the generator exclusively owns writes to it).
+On every failed generator result, `failure_details` SHALL be non-empty. A blocking contradiction SHALL name both conflicting source locations and the one-line disagreement. A validation or generation failure that is not a blocking contradiction SHALL identify the failed validation or generation operation and its relevant location rather than using an empty or generic detail. `failure_details` SHALL remain English regardless of `overview_language`.
 
-#### Scenario: successful generation returns a closed envelope
+The parent SHALL preserve the same five-field shape when it authors a failure result for a route on which the generator did not return a valid envelope. A dispatch failure SHALL use `status: failed`, `validation: not-performed`, `failure_kind: dispatch-failed`, `changed_files: []`, and a non-empty `failure_details` naming the dispatch operation, the failure reason, and where the dispatch failed; this route is observable because dispatch was not acknowledged as running. A process-loss or no-result route after dispatch was acknowledged SHALL use `status: failed`, `validation: not-performed`, `failure_kind: generation-error`, `changed_files: [openspec/changes/{change-name}/change-overview.md]`, and a non-empty `failure_details` naming the lost generation operation, the worker/continuation location, and the fact that no result was received. A malformed or empty envelope returned by a dispatched generator SHALL use `status: failed`, `validation: not-performed`, `failure_kind: generation-error`, `changed_files: [openspec/changes/{change-name}/change-overview.md]`, and a non-empty `failure_details` naming the contract violation, its location, and the verbatim offending value or `missing` field when applicable. If the invalid envelope supplied a `failure_kind`, the parent-authored `failure_details` SHALL quote that originally reported value verbatim before describing the reclassification. These parent-authored results do not change which failure kinds the generator may produce, but the consumer SHALL accept the full closed vocabulary above.
+
+The parent SHALL map each result deterministically per the `change-overview-synchronization` capability: `success` commits `overview.state: current` after `materializing`; a failed first materialization sets `failed` and suppresses the success terminal; a failed regeneration sets `stale`; and parent-authored dispatch or contract-violation failures use the corresponding first-materialization or regeneration state mapping. The parent SHALL NOT interpret unknown fields, an unknown status, a missing mandatory field, an empty result, or an empty `failure_details` on `status: failed` as success. An invalid envelope SHALL follow the existing output-contract-violation path, and the parent SHALL never write or delete `change-overview.md` itself.
+
+The workflow schema's embedded `change-overview` instruction SHALL enumerate the same closed envelope fields — `status`, `changed_files`, `validation`, `failure_details`, and `failure_kind` — and SHALL not name the retired contradiction-specific field. The schema wording SHALL remain consistent with the shared generation instruction and this capability under both supported harness projections.
+
+#### Scenario: successful generation returns the renamed closed envelope
+
 - **WHEN** the generation subagent completes successfully
-- **THEN** its result envelope carries `status: success`, `changed_files: [openspec/changes/{change-name}/change-overview.md]`, `validation: passed`, empty `contradiction_details`, and `failure_kind: none`
+- **THEN** its result envelope carries exactly `status`, `changed_files`, `validation`, `failure_details`, and `failure_kind`
+- **AND** it carries `status: success`, `changed_files: [openspec/changes/{change-name}/change-overview.md]`, `validation: passed`, `failure_details: ""`, and `failure_kind: none`
 - **AND** the parent commits `overview.state: current`
 
-#### Scenario: blocking-contradiction failure returns the details
+#### Scenario: every generator failure returns non-empty failure details
+
+- **WHEN** the generation subagent returns `status: failed` for a blocking contradiction, validation failure, or generation error
+- **THEN** the envelope carries exactly five fields and a non-empty English `failure_details`
+- **AND** the diagnostic names what failed and the relevant location
+
+#### Scenario: blocking contradiction returns source-located details
+
 - **WHEN** the generation subagent fails validation on a blocking source contradiction
-- **THEN** its result envelope carries `status: failed`, `validation: failed`, `failure_kind: blocking-contradiction`, and `contradiction_details` naming both sources and their locations
-- **AND** the parent maps the failure per the synchronization capability (stale record + `stale` on regeneration; `failed` + suppressed success terminal on first materialization)
+- **THEN** its result envelope carries `status: failed`, `validation: failed`, `failure_kind: blocking-contradiction`, and non-empty `failure_details`
+- **AND** `failure_details` names both conflicting sources and their locations and states the one-line disagreement
 
-#### Scenario: dispatch failure is parent-reported with no file write
-- **WHEN** the budget-routed subagent cannot be dispatched (for example a permission or availability failure) and never runs
-- **THEN** the parent records `failure_kind: dispatch-failed` with no changed files
-- **AND** the prior `change-overview.md` is left unmodified, and the parent applies the same state mapping as the failure kind it stands in for
+#### Scenario: dispatch failure is parent-authored
 
-#### Scenario: malformed envelope preserves file state and requires reconciliation
-- **WHEN** the generation subagent returns an envelope with unknown fields, an unknown status, a missing mandatory field, or no result
-- **THEN** the parent treats it as an output-contract violation with `failure_kind: generation-error` rather than success
-- **AND** whatever file state exists at `change-overview.md` is preserved unmodified (the parent does not write or delete the file, because it cannot trust the malformed envelope's `changed_files` and the generator exclusively owns file writes)
-- **AND** the parent sets `overview.state: stale` (regeneration) or `failed` (first materialization) per the synchronization capability, so the preserved file is not presented as current
-- **AND** no `overview.state: current` commit occurs; the file can become current only through a later writable design-worker reconciliation transaction that verifies or regenerates it
+- **WHEN** the budget-routed subagent cannot be dispatched and never runs
+- **THEN** the parent authors the five-field failed result with `failure_kind: dispatch-failed`, `changed_files: []`, and non-empty `failure_details`
+- **AND** `failure_details` names what dispatch operation failed, where it failed, and the dispatch error
+- **AND** the prior `change-overview.md` is left unmodified
+
+#### Scenario: malformed or empty envelope is parent-authored
+
+- **WHEN** the dispatched generation subagent returns unknown fields, an unknown status, a missing mandatory field, or an empty `failure_details` on `status: failed` after dispatch was acknowledged
+- **THEN** the parent authors the five-field failed result with `validation: not-performed`, `failure_kind: generation-error`, `changed_files: [openspec/changes/{change-name}/change-overview.md]`, and non-empty `failure_details`
+- **AND** the diagnostic names the output-contract violation, where it was detected, and the verbatim offending value or `missing` field
+- **AND** when the offending envelope included a `failure_kind`, the diagnostic quotes that original value verbatim
+- **AND** whatever file state exists at `change-overview.md` is preserved unmodified by the parent
+
+#### Scenario: process loss is parent-authored
+
+- **WHEN** the generator was dispatched but the parent receives no result
+- **THEN** the parent authors the five-field failed result with `validation: not-performed`, `failure_kind: generation-error`, `changed_files: [openspec/changes/{change-name}/change-overview.md]`, and non-empty `failure_details`
+- **AND** the diagnostic names the lost generation operation, the worker or continuation location, and that no result was received
+
+#### Scenario: schema preserves the renamed envelope field
+
+- **WHEN** the workflow schema describes the `change-overview` generation contract
+- **THEN** its embedded instruction names `failure_details` as the fifth envelope field
+- **AND** it does not enumerate the retired contradiction-specific field
 
 ### Requirement: Claude Code and opencode parity
 
