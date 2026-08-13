@@ -200,6 +200,38 @@ function isConcreteClaudeCatalogValue(value) {
     && !/^<[^>]+>$/.test(value);
 }
 
+function matchesIncludePattern(fileName, include) {
+  if (!Array.isArray(include) || include.length === 0) return true;
+  return include.some(pattern => {
+    const expression = pattern
+      .replace(/[.+^${}()|[\]\\]/g, '\\$&')
+      .replace(/\*/g, '.*')
+      .replace(/\?/g, '.');
+    return new RegExp(`^${expression}$`).test(fileName);
+  });
+}
+
+function enumerateCommands(packageRoot, loadManifest, harness) {
+  const names = [];
+  const seen = new Set();
+  const commandSources = loadManifest(packageRoot).projections
+    .filter(projection => projection.destination.class === 'commands' && projection.harnesses.includes(harness))
+    .map(projection => ({ source: projection.source, include: projection.include }));
+  for (const { source, include } of commandSources) {
+    const sourceDir = path.join(packageRoot, source);
+    if (!fs.existsSync(sourceDir)) continue;
+    for (const entry of fs.readdirSync(sourceDir, { withFileTypes: true })) {
+      if (!entry.isFile() || !matchesIncludePattern(entry.name, include)) continue;
+      const name = path.basename(entry.name, '.md');
+      if (!seen.has(name)) {
+        seen.add(name);
+        names.push(name);
+      }
+    }
+  }
+  return names.sort();
+}
+
 function buildClaudeSettingsEntries(settingsCatalog) {
   if (settingsCatalog === null || !Array.isArray(settingsCatalog.models)) return [];
   const entries = [];
@@ -470,7 +502,7 @@ function createClaudeAdapter({
 } = {}) {
   return {
     enumerateWorkers: () => enumerateWorkers(packageRoot, loadManifestOverride, 'claude'),
-    enumerateCommands: () => [],
+    enumerateCommands: () => enumerateCommands(packageRoot, loadManifestOverride, 'claude'),
     selectSettings: subsetLabel => selectClaudeSettings(subsetLabel, promptChoice, settingsCatalog),
     createLocalOverride: (target, settings) => {
       const targetName = typeof target === 'string' ? target : target.name;
@@ -498,7 +530,7 @@ function createOpencodeAdapter({
 } = {}) {
   return {
     enumerateWorkers: () => enumerateWorkers(packageRoot, loadManifestOverride, 'opencode'),
-    enumerateCommands: () => [],
+    enumerateCommands: () => enumerateCommands(packageRoot, loadManifestOverride, 'opencode'),
     selectSettings: subsetLabel => opencodeSelectSettings(subsetLabel, promptChoice, runCommand),
     createLocalOverride: (target, settings) => {
       const targetName = typeof target === 'string' ? target : target.name;

@@ -106,6 +106,37 @@ const COMBINED_BOTH_BARE = [
   'sai-pr',
 ];
 
+// Step 4: command-family names mirrored from the current commands/{harness}
+// basenames. Both harnesses ship the same 16 names. These are current-state
+// fixture assertions, not hardcoded enumerations — production derives the
+// names from the manifest's commands-class projections.
+const OPENCODE_COMMANDS = [
+  'budget',
+  'sai-1-spec',
+  'sai-2-design',
+  'sai-3-implement',
+  'sai-4-apply',
+  'sai-5-review',
+  'sai-6-security',
+  'sai-7-performance',
+  'sai-8-accessibility',
+  'sai-archive',
+  'sai-backfill',
+  'sai-commit',
+  'sai-explore',
+  'sai-pr',
+  'sai-status',
+  'sai-worktree',
+];
+
+// Step 4: full Both-scope row set for the default-selection assertion — every
+// worker and every command of the harness, workers first, each family
+// alphabetical, type-prefixed (the Step 3 flow sorts each family).
+const COMBINED_BOTH_FULL = [
+  ...[...OPENCODE_AGENTS].sort().map(name => `worker: ${name}`),
+  ...[...COMMANDS].sort().map(name => `command: ${name}`),
+];
+
 const CHECKLIST_LEGEND = 'Up/Down move · Space toggle · Enter confirm · ←/Esc back · q/Ctrl-C cancel';
 const SCRATCH_ROOT = path.join(REPO_ROOT, '.tmp', 'customize-command-models', 'scratch-repos');
 
@@ -204,6 +235,31 @@ function makeScratchRepo() {
     );
   }
   return scratch;
+}
+
+// Step 4: fixture manifest helper — scratch package root around a copy of the
+// real manifest plus a command-source tree, and a decoy installed global
+// command directory that must never be read.
+function makeEnumerationFixture(harness, packageSourceNames, decoyNames) {
+  fs.mkdirSync(SCRATCH_ROOT, { recursive: true });
+  const root = fs.mkdtempSync(path.join(SCRATCH_ROOT, 'enumeration-'));
+  const packageRoot = path.join(root, 'package');
+  fs.mkdirSync(path.join(packageRoot, 'sai'), { recursive: true });
+  fs.copyFileSync(
+    path.join(REPO_ROOT, 'sai', 'install-manifest.json'),
+    path.join(packageRoot, 'sai', 'install-manifest.json')
+  );
+  const sourceDir = path.join(packageRoot, 'commands', harness);
+  fs.mkdirSync(sourceDir, { recursive: true });
+  for (const name of packageSourceNames) {
+    fs.writeFileSync(path.join(sourceDir, `${name}.md`), `---\ndescription: fixture\n---\n`);
+  }
+  const decoyDir = path.join(root, 'installed', harness === 'claude' ? 'commands' : 'commands');
+  fs.mkdirSync(decoyDir, { recursive: true });
+  for (const name of decoyNames) {
+    fs.writeFileSync(path.join(decoyDir, `${name}.md`), `---\ndescription: decoy\n---\n`);
+  }
+  return { root, packageRoot, decoyDir };
 }
 
 // Records every invocation (raw arguments) and resolves a checklist outcome.
@@ -655,30 +711,39 @@ test('full dependent-flow traversal walks menu, harness, checklist, and provider
 
 // --- Step 3: checklist seam and retired return tokens ---
 
-test('checklist receives the full enumerateWorkers list of the chosen harness as its default selection', async () => {
-  const opencodeOps = { select: [], create: [] };
-  const claudeOps = { select: [], create: [] };
-  const checklistCalls = [];
-  const restoreOpencode = patchFactory('createOpencodeAdapter', () => makeFakeAdapter(OPENCODE_AGENTS, opencodeOps));
-  const restoreClaude = patchFactory('createClaudeAdapter', () => makeFakeAdapter(CLAUDE_AGENTS, claudeOps));
-  try {
-    const answers = ['Customize models', 'OpenCode', 'Workers'];
-    const promptChoice = async () => answers.shift() ?? '<model>';
-    const result = await runPostSetupMenu({
-      projectPath: REPO_ROOT,
-      isTTY: true,
-      promptChoice,
-      promptChecklist: recordChecklist(checklistCalls),
-    });
-    assert.equal(checklistCalls.length, 1, 'the checklist should be invoked exactly once');
-    assert.deepEqual(checklistCalls[0][0], OPENCODE_AGENTS,
-      'the checklist items should be the full enumerated opencode agent list');
-    assert.deepEqual(checklistCalls[0][1], OPENCODE_AGENTS,
-      'every agent of the chosen harness should be pre-selected by default');
-    assert.equal(result.status, 'completed');
-  } finally {
-    restoreOpencode();
-    restoreClaude();
+test('checklist receives the full enumerated target list of the chosen harness and scope as its default selection', async () => {
+  const cases = [
+    { scope: 'Workers', items: OPENCODE_AGENTS },
+    { scope: 'Commands', items: COMMANDS },
+    { scope: 'Both', items: COMBINED_BOTH_FULL },
+  ];
+  for (const item of cases) {
+    const opencodeOps = { select: [], create: [] };
+    const claudeOps = { select: [], create: [] };
+    const checklistCalls = [];
+    const restoreOpencode = patchFactory('createOpencodeAdapter', () =>
+      makeFakeAdapter(OPENCODE_AGENTS, opencodeOps, { model: 'opencode-go/test-model' }, COMMANDS));
+    const restoreClaude = patchFactory('createClaudeAdapter', () => makeFakeAdapter(CLAUDE_AGENTS, claudeOps));
+    try {
+      const answers = ['Customize models', 'OpenCode', item.scope];
+      const promptChoice = async () => answers.shift() ?? '<model>';
+      const result = await runPostSetupMenu({
+        projectPath: REPO_ROOT,
+        isTTY: true,
+        promptChoice,
+        promptChecklist: recordChecklist(checklistCalls),
+      });
+      assert.equal(checklistCalls.length, 1,
+        `the checklist should be invoked exactly once for the ${item.scope} scope`);
+      assert.deepEqual(checklistCalls[0][0], item.items,
+        `the checklist items should be the full enumerated ${item.scope} target list`);
+      assert.deepEqual(checklistCalls[0][1], item.items,
+        `every target of the ${item.scope} scope should be pre-selected by default`);
+      assert.equal(result.status, 'completed');
+    } finally {
+      restoreOpencode();
+      restoreClaude();
+    }
   }
 });
 
@@ -776,6 +841,109 @@ test('scope Both presents combined worker and command rows type-prefixed, worker
       'confirming the Both scope returns the type-prefixed values into the settings selection');
     assert.deepEqual(opencodeOps.create.map(entry => entry.target.name), COMBINED_BOTH_BARE,
       'each confirmed row configures its bare-name target once, in the combined row order');
+    assert.equal(claudeOps.select.length, 0, 'claude must never be configured');
+    assert.equal(claudeOps.create.length, 0, 'claude must never create overrides');
+  } finally {
+    restoreOpencode();
+    restoreClaude();
+  }
+});
+
+// --- Step 4: command enumeration from the manifest's commands-class projections ---
+
+test('opencode enumerateCommands returns exactly the 16 manifest-declared commands', () => {
+  const adapter = createOpencodeAdapter({ repoRoot: REPO_ROOT });
+  const commands = adapter.enumerateCommands();
+  assert.equal(commands.length, 16, 'exactly 16 commands should enumerate for opencode');
+  assert.deepEqual([...commands].sort(), [...OPENCODE_COMMANDS].sort(),
+    'opencode commands should be exactly the 16 manifest-declared names');
+});
+
+test('claude enumerateCommands returns exactly the same 16 manifest-declared commands', () => {
+  const adapter = createClaudeAdapter({ repoRoot: REPO_ROOT });
+  const commands = adapter.enumerateCommands();
+  assert.equal(commands.length, 16, 'exactly 16 commands should enumerate for claude');
+  assert.deepEqual([...commands].sort(), [...OPENCODE_COMMANDS].sort(),
+    'claude commands should be exactly the same 16 manifest-declared names');
+});
+
+test('command enumeration reads the manifest-declared package source directory, never the installed global command directory', () => {
+  const decoyNames = ['decoy-command', 'decoy-other'];
+  for (const harness of ['opencode', 'claude']) {
+    const fixture = makeEnumerationFixture(harness, OPENCODE_COMMANDS, decoyNames);
+    try {
+      const createAdapter = harness === 'opencode' ? createOpencodeAdapter : createClaudeAdapter;
+      const adapter = createAdapter({
+        repoRoot: fixture.packageRoot,
+        globalCommandRoot: fixture.decoyDir,
+      });
+      const commands = adapter.enumerateCommands();
+      assert.equal(commands.length, OPENCODE_COMMANDS.length,
+        `${harness}: the fixture package source should enumerate every command the fixture manifest declares`);
+      assert.ok(commands.includes('sai-worktree'),
+        `${harness}: a package-source command absent from the decoy installed directory still enumerates`);
+      assert.ok(!commands.includes('decoy-command'),
+        `${harness}: decoy-only names from the installed global command directory never appear`);
+      assert.deepEqual([...commands].sort(), [...OPENCODE_COMMANDS].sort(),
+        `${harness}: the enumerated set should be exactly the fixture package-source command set`);
+    } finally {
+      fs.rmSync(fixture.root, { recursive: true, force: true });
+    }
+  }
+});
+
+test('Both scope presents worker: budget and command: budget as two distinct rows and confirms both as separate type-prefixed targets', async () => {
+  const opencodeOps = { select: [], create: [] };
+  const claudeOps = { select: [], create: [] };
+  const restoreOpencode = patchFactory('createOpencodeAdapter', () =>
+    makeFakeAdapter(['budget'], opencodeOps, { model: 'opencode-go/test-model' }, ['budget']));
+  const restoreClaude = patchFactory('createClaudeAdapter', () => makeFakeAdapter(CLAUDE_AGENTS, claudeOps));
+  try {
+    const answers = ['Customize models', 'OpenCode', 'Both'];
+    const checklistCalls = [];
+    const result = await runPostSetupMenu({
+      projectPath: REPO_ROOT,
+      isTTY: true,
+      promptChoice: async () => answers.shift() ?? '<model>',
+      promptChecklist: recordChecklist(checklistCalls),
+    });
+    assert.equal(result.status, 'completed');
+    assert.equal(checklistCalls.length, 1, 'the checklist should be invoked exactly once for the Both scope');
+    assert.deepEqual(checklistCalls[0][0], ['worker: budget', 'command: budget'],
+      'the Both scope presents worker: budget and command: budget as two distinct rows');
+    assert.deepEqual(checklistCalls[0][1], ['worker: budget', 'command: budget'],
+      'both distinct rows are pre-selected by default');
+    assert.deepEqual(opencodeOps.select, ['worker: budget, command: budget'],
+      'confirming the Both scope returns both distinct rows as separate type-prefixed targets');
+    assert.deepEqual(opencodeOps.create.map(entry => entry.target.name), ['budget', 'budget'],
+      'each distinct row configures its own budget target: the worker and the command');
+    assert.equal(claudeOps.select.length, 0, 'claude must never be configured');
+    assert.equal(claudeOps.create.length, 0, 'claude must never create overrides');
+  } finally {
+    restoreOpencode();
+    restoreClaude();
+  }
+});
+
+test('Both scope rows are independently selectable: confirming only the command row configures exactly that target', async () => {
+  const opencodeOps = { select: [], create: [] };
+  const claudeOps = { select: [], create: [] };
+  const restoreOpencode = patchFactory('createOpencodeAdapter', () =>
+    makeFakeAdapter(['budget'], opencodeOps, { model: 'opencode-go/test-model' }, ['budget']));
+  const restoreClaude = patchFactory('createClaudeAdapter', () => makeFakeAdapter(CLAUDE_AGENTS, claudeOps));
+  try {
+    const answers = ['Customize models', 'OpenCode', 'Both'];
+    const result = await runPostSetupMenu({
+      projectPath: REPO_ROOT,
+      isTTY: true,
+      promptChoice: async () => answers.shift() ?? '<model>',
+      promptChecklist: async () => ({ status: 'confirmed', items: ['command: budget'] }),
+    });
+    assert.equal(result.status, 'completed');
+    assert.deepEqual(opencodeOps.select, ['command: budget'],
+      'confirming only the command row returns exactly that type-prefixed target');
+    assert.deepEqual(opencodeOps.create.map(entry => entry.target.name), ['budget'],
+      'only the confirmed command row configures a target; the unconfirmed worker row does not');
     assert.equal(claudeOps.select.length, 0, 'claude must never be configured');
     assert.equal(claudeOps.create.length, 0, 'claude must never create overrides');
   } finally {
