@@ -8,7 +8,7 @@ const childProcess = require('child_process');
 const { spawnSync } = childProcess;
 const readline = require('readline');
 const { offerCodegraphInstall, probeCodegraph, offerOpenspecInstall } = require('./install-flow.js');
-const agentCustomization = require('./agent-customization.js');
+const modelCustomization = require('./model-customization.js');
 
 function prompt(rl, question) {
   return new Promise(resolve => rl.question(question, resolve));
@@ -125,7 +125,7 @@ async function main(options = {}) {
     argv = process.argv,
     createReadline = () => readline.createInterface({ input: process.stdin, output: process.stdout }),
     postSetupWorkflow = async () => {},
-    postSetupMenu = agentCustomization.runPostSetupMenu,
+    postSetupMenu = modelCustomization.runPostSetupMenu,
   } = options;
 
   const projectPath = resolvePath(argv);

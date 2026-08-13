@@ -132,6 +132,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0123 — Handed-off findings route to the design worker; the loop never applies, forwards, or regenerates](./0123-handed-off-findings-route-to-the-design-worker.md) — Refs 0047, Refs ddr:0060
 - [0127 — Keep one ordered edge-case list and partition it at sliced handoff](./0127-whole-idea-edge-cases-are-partitioned-at-sliced-handoff.md)
 - [0137 — Put non-worker idea-list glue at the harness adapter seam](./0137-non-worker-idea-list-glue-at-harness-adapter-seam.md) — Refs 0077, Refs 0088, Refs 0116
+- [0137 — The stage-advancement token is the literal next-step](./0137-stage-advancement-token-literal-next-step.md)
 
 ### `/sai-backfill`
 
@@ -363,6 +364,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0123 — Handed-off findings route to the design worker; the loop never applies, forwards, or regenerates](./0123-handed-off-findings-route-to-the-design-worker.md) — Refs 0047, Refs ddr:0060
 - [0127 — Keep one ordered edge-case list and partition it at sliced handoff](./0127-whole-idea-edge-cases-are-partitioned-at-sliced-handoff.md)
 - [0137 — Put non-worker idea-list glue at the harness adapter seam](./0137-non-worker-idea-list-glue-at-harness-adapter-seam.md) — Refs 0077, Refs 0088, Refs 0116
+- [0137 — The stage-advancement token is the literal next-step](./0137-stage-advancement-token-literal-next-step.md)
 
 ### Artifact metadata & routing tokens
 

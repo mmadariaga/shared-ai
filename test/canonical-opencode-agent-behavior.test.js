@@ -166,7 +166,7 @@ test('managed OpenCode generic agents are exact Fetch wrappers with preserved id
 test('OpenCode Fetch wrapper propagation preserves local tuning and resolves updated global policy first', () => {
   const os = require('node:os');
   const { installOpencode } = require('../bin/install-flow.js');
-  const { createOpencodeAdapter } = require('../bin/agent-customization.js');
+  const { createOpencodeAdapter } = require('../bin/model-customization.js');
   const scratch = fs.mkdtempSync(path.join(os.tmpdir(), 'canonicalize-opencode-agent-behavior-'));
   const projectPath = path.join(scratch, 'project');
   const globalAgentRoot = path.join(scratch, 'agents');

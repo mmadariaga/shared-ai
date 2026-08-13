@@ -8,12 +8,17 @@ TBD
 
 ### Requirement: Stable ideas trigger one edge-case review
 
-When `sai-explore` judges the current candidate idea solid at the existing qualitative threshold, it SHALL enter an edge-case review in place of the one-line readiness signal and before emitting any pre-crystallization reminder containing the crystallize action. The review SHALL run at most once for that stable idea, retain its state in conversation only, and number each in-scope proposed behavior consecutively as `E1` through `En`. Only behaviors that define a scope boundary for the proposed change are eligible; edge cases unrelated to the change SHALL be excluded and remain Non-Goals.
+When the user advances to the `Review edge cases` stage of the pre-crystallization staged progression (`explore-pre-crystallization-stages`), or explicitly asks to crystallize before the review has reached agreement (`explore-edge-case-gate`), `sai-explore` SHALL enter one edge-case review for the current stable idea. The review SHALL run at most once for that stable idea, retain its state in conversation only, and number each in-scope proposed behavior consecutively as `E1` through `En`. Only behaviors that define a scope boundary for the proposed change are eligible; edge cases unrelated to the change SHALL be excluded and remain Non-Goals. The review SHALL NOT be triggered by `sai-explore`'s own judgment that the idea is solid; the one-line readiness signal remains governed by `explore-crystallization-on-demand` and never starts the review.
 
-#### Scenario: A solid idea starts review before the readiness signal
+#### Scenario: A stage advance starts the review
 
-- **WHEN** the current candidate idea first becomes solid
-- **THEN** `sai-explore` presents the edge-case review instead of emitting a separate one-line readiness signal and before emitting the crystallize reminder
+- **WHEN** the user advances to the `Review edge cases` stage
+- **THEN** `sai-explore` presents the edge-case review before any later stage runs
+
+#### Scenario: A premature crystallize request starts the review with no skip path
+
+- **WHEN** the user explicitly asks to crystallize while the edge-case review has not reached agreement
+- **THEN** `sai-explore` runs the edge-case review with no skip option and emits the requested crystallization only after agreement
 
 #### Scenario: A stable idea does not repeat the review
 

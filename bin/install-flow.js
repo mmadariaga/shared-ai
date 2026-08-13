@@ -501,7 +501,37 @@ async function offerOpenspecInstall({
   return false;
 }
 
-async function runNavigator({ mode, question, options, defaultSelected, input = process.stdin, footer }) {
+// Sentinel resolved by promptSelect when the user steps back out of a screen.
+// A distinct token from `null` (cancel) so callers can tell "go to the previous
+// screen" apart from "abandon the flow".
+const BACK = Symbol('BACK');
+
+const ANSI_SEQUENCE = /\x1B\[[0-9;]*[A-Za-z]/g;
+const DEFAULT_TERMINAL_WIDTH = 80;
+
+function terminalWidth(output) {
+  return typeof output.columns === 'number' && output.columns > 0
+    ? output.columns
+    : DEFAULT_TERMINAL_WIDTH;
+}
+
+// Physical rows one logical line occupies once the terminal wraps it. The
+// frame is redrawn by moving the cursor up a row count, so a wrapped line that
+// counted as 1 would drift the whole frame by one row per keypress.
+function rowsFor(line, width) {
+  const visible = line.replace(ANSI_SEQUENCE, '').length;
+  return visible === 0 ? 1 : Math.ceil(visible / width);
+}
+
+async function runNavigator({
+  mode,
+  question,
+  options,
+  defaultSelected,
+  input = process.stdin,
+  output = process.stdout,
+  footer,
+}) {
   if (!input.isTTY) {
     return { status: 'non-interactive' };
   }
@@ -509,28 +539,37 @@ async function runNavigator({ mode, question, options, defaultSelected, input = 
   return new Promise((resolve) => {
     const selected = options.map(option => defaultSelected.includes(option));
     let cursor = 0;
-    let rendered = false;
-    const lineCount = (question ? 1 : 0) + options.length + (footer ? 1 : 0);
+    let previousRows = 0;
 
-    function render() {
-      if (rendered) {
-        process.stdout.write(`\x1B[${lineCount}A`);
-      }
-      if (question) {
-        process.stdout.write(`${question}\n`);
-      }
+    function frameLines() {
+      const lines = [];
+      if (question) lines.push(question);
       options.forEach((option, i) => {
         const marker = mode === 'multi' ? (selected[i] ? '[x]' : '[ ]') : '  ';
         const arrow = i === cursor ? '>' : ' ';
-        process.stdout.write(`${arrow} ${marker} ${option}\n`);
+        lines.push(`${arrow} ${marker} ${option}`);
       });
-      if (footer) {
-        process.stdout.write(`${footer}\n`);
+      if (footer) lines.push(footer);
+      return lines;
+    }
+
+    function render() {
+      const lines = frameLines();
+      const width = terminalWidth(output);
+      let frame = '';
+      if (previousRows > 0) {
+        // Up to the first row of the previous frame, then erase everything
+        // below the cursor so shorter lines leave no tail behind.
+        frame += `\x1B[${previousRows}A`;
       }
-      rendered = true;
+      frame += '\x1B[0J';
+      frame += `${lines.join('\n')}\n`;
+      output.write(frame);
+      previousRows = lines.reduce((total, line) => total + rowsFor(line, width), 0);
     }
 
     function cleanup() {
+      output.write('\x1B[?25h');
       input.setRawMode(false);
       input.pause();
       input.removeListener('keypress', onKey);
@@ -541,6 +580,11 @@ async function runNavigator({ mode, question, options, defaultSelected, input = 
       if (key.sequence === '\x03' || str === 'q') {
         cleanup();
         resolve({ status: 'cancelled' });
+        return;
+      }
+      if (key.name === 'left' || key.name === 'backspace' || key.name === 'escape') {
+        cleanup();
+        resolve({ status: 'back' });
         return;
       }
       if (key.name === 'up') {
@@ -572,6 +616,7 @@ async function runNavigator({ mode, question, options, defaultSelected, input = 
     input.resume();
     input.on('keypress', onKey);
 
+    output.write('\x1B[?25l');
     render();
   });
 }
@@ -582,6 +627,7 @@ function promptChecklist(items, defaultSelected, input, footer) {
 
 async function promptSelect(question, options, input) {
   const outcome = await runNavigator({ mode: 'single', question, options, defaultSelected: [], input });
+  if (outcome.status === 'back') return BACK;
   return outcome.status === 'confirmed' ? outcome.items[0] : null;
 }
 
@@ -918,10 +964,12 @@ function detectInstalledEditors() {
 async function main() {
   const preselected = detectInstalledEditors();
   const defaults = preselected.length > 0 ? preselected : ['Opencode'];
-  const outcome = await promptChecklist(
-    ['Claude Code', 'Opencode'],
-    defaults
-  );
+  let outcome;
+  do {
+    // This is the first screen of the installer, so stepping back has nowhere
+    // to go: redraw it rather than abandoning the run.
+    outcome = await promptChecklist(['Claude Code', 'Opencode'], defaults);
+  } while (outcome.status === 'back');
 
   if (outcome.status === 'non-interactive') {
     console.error('Error: interactive mode requires a TTY. Run directly in a terminal.');
@@ -982,6 +1030,8 @@ module.exports = {
   main,
   promptChecklist,
   promptSelect,
+  runNavigator,
+  BACK,
   CLAUDE_BASE,
   OPENCODE_BASE,
   OPENCODE_INSTALL_CMD,

@@ -9,15 +9,21 @@ const { loadInstallManifest } = require('./install-manifest.js');
 const {
   promptSelect,
   promptChecklist: installFlowPromptChecklist,
+  BACK,
 } = require('./install-flow.js');
 
 const MENU_OPTIONS = Object.freeze(['Customize models', 'Exit']);
 const HARNESS_OPTIONS = Object.freeze(['OpenCode', 'Claude Code']);
-const AGENT_CHECKLIST_LEGEND = 'Up/Down move · Space toggle · Enter confirm · q/Ctrl-C cancel';
+const SCOPE_OPTIONS = Object.freeze(['Workers', 'Commands', 'Both']);
+const MODEL_CHECKLIST_LEGEND = 'Up/Down move · Space toggle · Enter confirm · ←/Esc back · q/Ctrl-C cancel';
 const COMBINED_ENTRY_DELIMITER = ' | ';
+const WORKER_PREFIX = 'worker: ';
+const COMMAND_PREFIX = 'command: ';
 const DEFAULT_PACKAGE_ROOT = path.join(__dirname, '..');
 const DEFAULT_CLAUDE_GLOBAL_AGENT_ROOT = path.join(os.homedir(), '.claude', 'agents');
 const DEFAULT_OPENCODE_GLOBAL_AGENT_ROOT = path.join(os.homedir(), '.config', 'opencode', 'agents');
+const DEFAULT_CLAUDE_GLOBAL_COMMAND_ROOT = path.join(os.homedir(), '.claude', 'commands');
+const DEFAULT_OPENCODE_GLOBAL_COMMAND_ROOT = path.join(os.homedir(), '.config', 'opencode', 'commands');
 
 const CLAUDE_SETTINGS_CATALOG = Object.freeze({
   models: Object.freeze([
@@ -31,6 +37,25 @@ const CLAUDE_SETTINGS_CATALOG = Object.freeze({
 const NO_VARIANT = Symbol('NO_VARIANT');
 const NO_VARIANT_LABEL = 'Default (no variant)';
 const TOP_LEVEL_SCALAR = /^([A-Za-z0-9_-]+):[ \t]*(.*)$/;
+
+function buildChecklistTargets(scope, workers, commands) {
+  if (scope === 'Workers') return workers;
+  if (scope === 'Commands') return commands;
+  return [
+    ...workers.slice().sort().map(name => `${WORKER_PREFIX}${name}`),
+    ...commands.slice().sort().map(name => `${COMMAND_PREFIX}${name}`),
+  ];
+}
+
+function parseTarget(value, scope) {
+  if (value.startsWith(WORKER_PREFIX)) {
+    return { family: 'worker', name: value.slice(WORKER_PREFIX.length), display: value };
+  }
+  if (value.startsWith(COMMAND_PREFIX)) {
+    return { family: 'command', name: value.slice(COMMAND_PREFIX.length), display: value };
+  }
+  return { family: scope === 'Commands' ? 'command' : 'worker', name: value, display: value };
+}
 
 function splitFrontmatter(text) {
   const firstLineEnding = text.match(/\r\n|\n|\r/);
@@ -120,11 +145,14 @@ function materializeLocalOverride({
   settings,
   projectPath,
   globalAgentRoot,
+  globalCommandRoot,
   harness,
+  family = 'worker',
 }) {
+  const familyDirectory = family === 'command' ? 'commands' : 'agents';
   const localDirectory = harness === 'claude'
-    ? path.join(projectPath, '.claude', 'agents')
-    : path.join(projectPath, '.opencode', 'agents');
+    ? path.join(projectPath, '.claude', familyDirectory)
+    : path.join(projectPath, '.opencode', familyDirectory);
   const destination = path.join(localDirectory, `${agentName}.md`);
   const tunableKeys = harness === 'claude' ? ['model', 'effort'] : ['model', 'variant'];
   const destinationExists = fs.existsSync(destination);
@@ -134,7 +162,8 @@ function materializeLocalOverride({
     if (destinationExists) {
       currentText = fs.readFileSync(destination, 'utf8');
     } else {
-      const source = path.join(globalAgentRoot, `${agentName}.md`);
+      const sourceRoot = family === 'command' ? globalCommandRoot : globalAgentRoot;
+      const source = path.join(sourceRoot, `${agentName}.md`);
       if (!fs.existsSync(source)) {
         return { status: 'skipped', agent: agentName, reason: 'missing-source' };
       }
@@ -143,13 +172,13 @@ function materializeLocalOverride({
   } catch (error) {
     return materializationFailure(
       agentName,
-      `Unable to read the ${destinationExists ? 'project-local agent' : 'installed agent'} for ${agentName}: ${error.message}`
+      `Unable to read the ${destinationExists ? 'project-local target' : 'installed target'} for ${agentName}: ${error.message}`
     );
   }
 
   const patchedText = patchFrontmatter(currentText, tunableKeys, settings);
   if (patchedText === null) {
-    return materializationFailure(agentName, `Agent ${agentName} has no valid frontmatter block.`);
+    return materializationFailure(agentName, `Target ${agentName} has no valid frontmatter block.`);
   }
 
   const writeError = atomicReplace(destination, patchedText);
@@ -163,7 +192,7 @@ function materializeLocalOverride({
   return { status: 'persisted', agent: agentName, destination };
 }
 
-function enumerateAgents(packageRoot, loadManifest, harness) {
+function enumerateWorkers(packageRoot, loadManifest, harness) {
   const manifest = loadManifest(packageRoot);
   return manifest.projections
     .filter(projection => projection.destination.class === 'agents' && projection.harnesses.includes(harness))
@@ -175,6 +204,38 @@ function isConcreteClaudeCatalogValue(value) {
   return typeof value === 'string'
     && value !== ''
     && !/^<[^>]+>$/.test(value);
+}
+
+function matchesIncludePattern(fileName, include) {
+  if (!Array.isArray(include) || include.length === 0) return true;
+  return include.some(pattern => {
+    const expression = pattern
+      .replace(/[.+^${}()|[\]\\]/g, '\\$&')
+      .replace(/\*/g, '.*')
+      .replace(/\?/g, '.');
+    return new RegExp(`^${expression}$`).test(fileName);
+  });
+}
+
+function enumerateCommands(packageRoot, loadManifest, harness) {
+  const names = [];
+  const seen = new Set();
+  const commandSources = loadManifest(packageRoot).projections
+    .filter(projection => projection.destination.class === 'commands' && projection.harnesses.includes(harness))
+    .map(projection => ({ source: projection.source, include: projection.include }));
+  for (const { source, include } of commandSources) {
+    const sourceDir = path.join(packageRoot, source);
+    if (!fs.existsSync(sourceDir)) continue;
+    for (const entry of fs.readdirSync(sourceDir, { withFileTypes: true })) {
+      if (!entry.isFile() || !matchesIncludePattern(entry.name, include)) continue;
+      const name = path.basename(entry.name, '.md');
+      if (!seen.has(name)) {
+        seen.add(name);
+        names.push(name);
+      }
+    }
+  }
+  return names.sort();
 }
 
 function buildClaudeSettingsEntries(settingsCatalog) {
@@ -218,6 +279,7 @@ async function selectClaudeSettings(subsetLabel, promptChoice, settingsCatalog) 
     `Model and effort for ${subsetLabel}:`,
     entries.map(entry => entry.display)
   );
+  if (selectedDisplay === BACK) return BACK;
   const selected = entries.find(entry => entry.display === selectedDisplay);
   if (selected === undefined) return null;
   return selected.effort === undefined
@@ -358,75 +420,111 @@ async function opencodeSelectSettings(subsetLabel, promptChoice, runCommand) {
   for (const entry of catalog) {
     if (!providers.includes(entry.provider)) providers.push(entry.provider);
   }
-  const provider = await promptChoice(`Provider for ${subsetLabel}:`, providers);
-  if (!providers.includes(provider)) return null;
 
-  const models = catalog.filter(entry => entry.provider === provider).map(entry => entry.model);
-  const model = await promptChoice(`Model for ${subsetLabel}:`, models);
-  if (!models.includes(model)) return null;
-  const identity = `${provider}/${model}`;
+  // Provider, model and variant form a dependent chain: stepping back from one
+  // screen re-opens the previous one with the catalog already in hand, and
+  // stepping back off the provider screen hands control to the caller.
+  let screen = 'provider';
+  let provider = null;
+  let model = null;
 
-  let verboseOutcome;
-  try {
-    verboseOutcome = runCommand('opencode', ['models', provider, '--verbose']);
-  } catch (error) {
-    console.error(`Unable to query OpenCode model variants: ${error.message}`);
-    return null;
-  }
-  if (verboseOutcome.status !== 0) {
-    reportCommandFailure('query OpenCode model variants', verboseOutcome);
-    return null;
-  }
+  for (;;) {
+    if (screen === 'provider') {
+      const chosen = await promptChoice(`Provider for ${subsetLabel}:`, providers);
+      if (chosen === BACK) return BACK;
+      if (!providers.includes(chosen)) return null;
+      provider = chosen;
+      screen = 'model';
+      continue;
+    }
 
-  let records;
-  try {
-    records = parseVerboseModelRecords(verboseOutcome.stdout);
-  } catch {
-    return null;
-  }
-  const matched = records.find(record => record.identity === identity);
-  if (!matched) return null;
-  let variants;
-  try {
-    variants = extractVariants(matched.record);
-  } catch {
-    return null;
-  }
-  if (variants.length === 0) return { model: identity };
+    if (screen === 'model') {
+      const models = catalog.filter(entry => entry.provider === provider).map(entry => entry.model);
+      const chosen = await promptChoice(`Model for ${subsetLabel}:`, models);
+      if (chosen === BACK) {
+        screen = 'provider';
+        continue;
+      }
+      if (!models.includes(chosen)) return null;
+      model = chosen;
+      screen = 'variant';
+      continue;
+    }
 
-  const variantOptions = buildVariantDisplayOptions(variants);
-  const selectedDisplay = await promptChoice(
-    `Variant for ${identity}:`,
-    variantOptions.map(option => option.display)
-  );
-  const selected = variantOptions.find(option => option.display === selectedDisplay);
-  if (selected === undefined || selected.value === NO_VARIANT) {
-    return selected === undefined ? null : { model: identity };
+    const identity = `${provider}/${model}`;
+
+    let verboseOutcome;
+    try {
+      verboseOutcome = runCommand('opencode', ['models', provider, '--verbose']);
+    } catch (error) {
+      console.error(`Unable to query OpenCode model variants: ${error.message}`);
+      return null;
+    }
+    if (verboseOutcome.status !== 0) {
+      reportCommandFailure('query OpenCode model variants', verboseOutcome);
+      return null;
+    }
+
+    let records;
+    try {
+      records = parseVerboseModelRecords(verboseOutcome.stdout);
+    } catch {
+      return null;
+    }
+    const matched = records.find(record => record.identity === identity);
+    if (!matched) return null;
+    let variants;
+    try {
+      variants = extractVariants(matched.record);
+    } catch {
+      return null;
+    }
+    if (variants.length === 0) return { model: identity };
+
+    const variantOptions = buildVariantDisplayOptions(variants);
+    const selectedDisplay = await promptChoice(
+      `Variant for ${identity}:`,
+      variantOptions.map(option => option.display)
+    );
+    if (selectedDisplay === BACK) {
+      screen = 'model';
+      continue;
+    }
+    const selected = variantOptions.find(option => option.display === selectedDisplay);
+    if (selected === undefined || selected.value === NO_VARIANT) {
+      return selected === undefined ? null : { model: identity };
+    }
+    return { model: identity, variant: selected.value };
   }
-  return { model: identity, variant: selected.value };
 }
 
 function createClaudeAdapter({
   projectPath = process.cwd(),
   packageRoot = DEFAULT_PACKAGE_ROOT,
   globalAgentRoot = DEFAULT_CLAUDE_GLOBAL_AGENT_ROOT,
+  globalCommandRoot = DEFAULT_CLAUDE_GLOBAL_COMMAND_ROOT,
   loadManifest: loadManifestOverride = loadInstallManifest,
   promptChoice = promptSelect,
   settingsCatalog = CLAUDE_SETTINGS_CATALOG,
 } = {}) {
   return {
-    enumerateAgents: () => enumerateAgents(packageRoot, loadManifestOverride, 'claude'),
+    enumerateWorkers: () => enumerateWorkers(packageRoot, loadManifestOverride, 'claude'),
+    enumerateCommands: () => enumerateCommands(packageRoot, loadManifestOverride, 'claude'),
     selectSettings: subsetLabel => selectClaudeSettings(subsetLabel, promptChoice, settingsCatalog),
-    createLocalOverride: (agentName, settings) => {
+    createLocalOverride: (target, settings) => {
+      const family = typeof target === 'string' ? 'worker' : target.family;
+      const targetName = typeof target === 'string' ? target : target.name;
       if (!isClaudeSettingsPair(settingsCatalog, settings)) {
-        return materializationFailure(agentName, 'Selected Claude settings are not present in the settings catalog.');
+        return materializationFailure(targetName, 'Selected Claude settings are not present in the settings catalog.');
       }
       return materializeLocalOverride({
-        agentName,
+        agentName: targetName,
         settings,
         projectPath,
         globalAgentRoot,
+        globalCommandRoot,
         harness: 'claude',
+        family,
       });
     },
   };
@@ -436,24 +534,30 @@ function createOpencodeAdapter({
   projectPath = process.cwd(),
   packageRoot = DEFAULT_PACKAGE_ROOT,
   globalAgentRoot = DEFAULT_OPENCODE_GLOBAL_AGENT_ROOT,
+  globalCommandRoot = DEFAULT_OPENCODE_GLOBAL_COMMAND_ROOT,
   loadManifest: loadManifestOverride = loadInstallManifest,
   promptChoice = promptSelect,
   runCommand = defaultRunCommand,
 } = {}) {
   return {
-    enumerateAgents: () => enumerateAgents(packageRoot, loadManifestOverride, 'opencode'),
+    enumerateWorkers: () => enumerateWorkers(packageRoot, loadManifestOverride, 'opencode'),
+    enumerateCommands: () => enumerateCommands(packageRoot, loadManifestOverride, 'opencode'),
     selectSettings: subsetLabel => opencodeSelectSettings(subsetLabel, promptChoice, runCommand),
-    createLocalOverride: (agentName, settings) => {
+    createLocalOverride: (target, settings) => {
+      const family = typeof target === 'string' ? 'worker' : target.family;
+      const targetName = typeof target === 'string' ? target : target.name;
       if (!settings || typeof settings.model !== 'string' || settings.model === ''
           || (settings.variant !== undefined && typeof settings.variant !== 'string')) {
-        return materializationFailure(agentName, 'Selected OpenCode settings are invalid.');
+        return materializationFailure(targetName, 'Selected OpenCode settings are invalid.');
       }
       return materializeLocalOverride({
-        agentName,
+        agentName: targetName,
         settings,
         projectPath,
         globalAgentRoot,
+        globalCommandRoot,
         harness: 'opencode',
+        family,
       });
     },
   };
@@ -468,49 +572,107 @@ async function runPostSetupMenu({
   packageRoot = DEFAULT_PACKAGE_ROOT,
   claudeGlobalAgentRoot = DEFAULT_CLAUDE_GLOBAL_AGENT_ROOT,
   opencodeGlobalAgentRoot = DEFAULT_OPENCODE_GLOBAL_AGENT_ROOT,
+  claudeGlobalCommandRoot = DEFAULT_CLAUDE_GLOBAL_COMMAND_ROOT,
+  opencodeGlobalCommandRoot = DEFAULT_OPENCODE_GLOBAL_COMMAND_ROOT,
   isTTY = process.stdin.isTTY,
   promptChoice = promptSelect,
   promptChecklist = installFlowPromptChecklist,
 } = {}) {
   if (!isTTY) return skippedOutcome('non-tty');
 
-  const action = await promptChoice('Post-setup customization:', MENU_OPTIONS);
-  if (action === null || action === 'Exit') return skippedOutcome('cancelled');
-  if (action !== 'Customize models') return skippedOutcome('cancelled');
+  // The five screens form a linear flow the user can walk backwards through:
+  // menu -> harness -> scope -> target checklist -> settings. Each screen
+  // resolving `back` re-opens its predecessor; the first screen simply redraws.
+  let screen = 'menu';
+  let adapter = null;
+  let harness = null;
+  let scope = null;
+  let selectedTargets = null;
+  let settings = null;
 
-  const harness = await promptChoice('Choose a harness:', HARNESS_OPTIONS);
-  if (harness === null) return skippedOutcome('cancelled');
-  if (harness !== 'OpenCode' && harness !== 'Claude Code') return skippedOutcome('cancelled');
+  for (;;) {
+    if (screen === 'menu') {
+      const action = await promptChoice('Post-setup customization:', MENU_OPTIONS);
+      if (action === BACK) continue;
+      if (action === null || action === 'Exit') return skippedOutcome('cancelled');
+      if (action !== 'Customize models') return skippedOutcome('cancelled');
+      screen = 'harness';
+      continue;
+    }
 
-  const adapter = harness === 'OpenCode'
-    ? module.exports.createOpencodeAdapter({ projectPath, packageRoot, globalAgentRoot: opencodeGlobalAgentRoot, promptChoice })
-    : module.exports.createClaudeAdapter({ projectPath, packageRoot, globalAgentRoot: claudeGlobalAgentRoot, promptChoice });
-  const agents = adapter.enumerateAgents();
-  const selection = await promptChecklist(agents, agents, undefined, AGENT_CHECKLIST_LEGEND);
-  if (!selection || selection.status === 'cancelled') return skippedOutcome('cancelled');
-  if (selection.status === 'non-interactive') return skippedOutcome('non-tty');
-  if (selection.status !== 'confirmed') return skippedOutcome('cancelled');
+    if (screen === 'harness') {
+      const chosen = await promptChoice('Choose a harness:', HARNESS_OPTIONS);
+      if (chosen === BACK) {
+        screen = 'menu';
+        continue;
+      }
+      if (chosen === null) return skippedOutcome('cancelled');
+      if (chosen !== 'OpenCode' && chosen !== 'Claude Code') return skippedOutcome('cancelled');
+      harness = chosen;
+      screen = 'scope';
+      continue;
+    }
 
-  const selectedAgents = Array.isArray(selection.items) ? selection.items : [];
-  if (selectedAgents.length === 0) return skippedOutcome('empty-selection');
+    if (screen === 'scope') {
+      const chosen = await promptChoice('Choose a customization scope:', SCOPE_OPTIONS);
+      if (chosen === BACK) {
+        screen = 'harness';
+        continue;
+      }
+      if (chosen === null) return skippedOutcome('cancelled');
+      if (!SCOPE_OPTIONS.includes(chosen)) return skippedOutcome('cancelled');
+      scope = chosen;
+      screen = 'targets';
+      continue;
+    }
 
-  const settings = await adapter.selectSettings(selectedAgents.join(', '));
-  if (!settings || typeof settings.model !== 'string' || settings.model === '') {
-    return skippedOutcome('settings-unavailable');
+    if (screen === 'targets') {
+      adapter = harness === 'OpenCode'
+        ? module.exports.createOpencodeAdapter({ projectPath, packageRoot, globalAgentRoot: opencodeGlobalAgentRoot, globalCommandRoot: opencodeGlobalCommandRoot, promptChoice })
+        : module.exports.createClaudeAdapter({ projectPath, packageRoot, globalAgentRoot: claudeGlobalAgentRoot, globalCommandRoot: claudeGlobalCommandRoot, promptChoice });
+      const workers = adapter.enumerateWorkers();
+      const commands = scope === 'Workers' ? [] : adapter.enumerateCommands();
+      const targets = buildChecklistTargets(scope, workers, commands);
+      const selection = await promptChecklist(targets, targets, undefined, MODEL_CHECKLIST_LEGEND);
+      if (!selection || selection.status === 'cancelled') return skippedOutcome('cancelled');
+      if (selection.status === 'non-interactive') return skippedOutcome('non-tty');
+      if (selection.status === 'back') {
+        screen = 'scope';
+        continue;
+      }
+      if (selection.status !== 'confirmed') return skippedOutcome('cancelled');
+
+      selectedTargets = Array.isArray(selection.items)
+        ? selection.items.map(value => parseTarget(value, scope))
+        : [];
+      if (selectedTargets.length === 0) return skippedOutcome('empty-selection');
+      screen = 'settings';
+      continue;
+    }
+
+    settings = await adapter.selectSettings(selectedTargets.map(target => target.display).join(', '));
+    if (settings === BACK) {
+      screen = 'targets';
+      continue;
+    }
+    if (!settings || typeof settings.model !== 'string' || settings.model === '') {
+      return skippedOutcome('settings-unavailable');
+    }
+    break;
   }
 
   const skippedAgents = [];
   const failedAgents = [];
   const diagnostics = [];
-  for (const agentName of selectedAgents) {
-    const result = adapter.createLocalOverride(agentName, settings);
+  for (const target of selectedTargets) {
+    const result = adapter.createLocalOverride(target, settings);
     if (result.status === 'persisted') continue;
     if (result.status === 'skipped') {
-      skippedAgents.push(agentName);
-      diagnostics.push(`Skipped ${agentName}: installed source is unavailable.`);
+      skippedAgents.push(target.name);
+      diagnostics.push(`Skipped ${target.name}: installed source is unavailable.`);
       continue;
     }
-    failedAgents.push(agentName);
+    failedAgents.push(target.name);
     diagnostics.push(result.diagnostic);
   }
 
@@ -521,7 +683,9 @@ async function runPostSetupMenu({
 module.exports = {
   runPostSetupMenu,
   CLAUDE_SETTINGS_CATALOG,
+  MODEL_CHECKLIST_LEGEND,
   NO_VARIANT,
+  BACK,
   createOpencodeAdapter,
   createClaudeAdapter,
   buildClaudeSettingsEntries,

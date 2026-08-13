@@ -8,12 +8,13 @@ TBD
 
 ### Requirement: Crystallization waits for edge-case agreement
 
-The edge-case review SHALL be the readiness act for a solid idea; `sai-explore` SHALL NOT emit the pre-crystallization crystallize reminder or a `Ready to Propose` block until the current stable idea's edge-case review has reached semantic agreement. After agreement, it SHALL emit the existing crystallize reminder without a separate readiness signal. If the user explicitly asks to crystallize before that review has completed, the request SHALL trigger the review with no skip path; the request remains pending and proceeds through the existing slicing and language gates only after agreement. The mandatory edge-case gate SHALL remain in force under `--fast-track`; fast-track SHALL NOT auto-approve, skip, or weaken this gate and SHALL continue to bypass only the existing language gates.
+`sai-explore` SHALL NOT emit a `Ready to Propose` block until the current stable idea's edge-case review has reached semantic agreement. If the user explicitly asks to crystallize before that review has completed, the request SHALL trigger the review with no skip path; the request remains pending and proceeds through the slicing assessment and language gates only after agreement. The mandatory edge-case gate SHALL remain in force under `--fast-track`; fast-track SHALL NOT auto-approve, skip, or weaken this gate and SHALL continue to bypass only the existing language gates.
 
-#### Scenario: The normal crystallize reminder follows agreement
+#### Scenario: Agreement completes the edge-case stage
 
-- **WHEN** a solid idea has an edge-case review that is not yet agreed
-- **THEN** `sai-explore` continues the review and emits no crystallize reminder until agreement is obtained
+- **WHEN** a solid idea's edge-case review reaches semantic agreement
+- **THEN** the review's list is recorded as agreed, the stage completes, and the user may continue the staged progression
+- **AND** no `Ready to Propose` block is emitted before agreement
 
 #### Scenario: A premature crystallize request cannot bypass review
 
@@ -24,7 +25,7 @@ The edge-case review SHALL be the readiness act for a solid idea; `sai-explore` 
 #### Scenario: Fast-track does not bypass the edge-case gate
 
 - **WHEN** `sai-explore` runs with `--fast-track` and the current idea has not reached edge-case agreement
-- **THEN** it still runs the mandatory edge-case review and blocks the crystallize reminder and crystallization until agreement
+- **THEN** it still runs the mandatory edge-case review and blocks crystallization until agreement
 - **AND** fast-track bypasses only the existing language gates
 
 ### Requirement: Agreement is recognized by semantic intent

@@ -73,13 +73,13 @@ The gate SHALL present exactly two options. The question prompt and the non-Engl
 
 ### Requirement: Translation scoping — prose translated, scaffolding English
 
-When a non-English language is chosen, the chosen language SHALL govern only the block's **free-text prose**: the `What`, `Why`, capability descriptions, `Decisions & Rationale`, `Alternatives`, `Trade-offs`, `Model / Re-framings`, `Key constraints`, and any slice headers. The following **scaffolding** SHALL remain in English regardless of the chosen language: the bold field labels, the kebab-case Change name value, the `/sai-1-spec` command, and the "Open a new chat" line. The gate SHALL NOT alter any OpenSpec artifact file's format or content.
+When a non-English language is chosen, the chosen language SHALL govern only the block's **free-text prose**: the `What`, `Why`, capability descriptions, `Decisions & Rationale`, `Alternatives`, `Trade-offs`, `Model / Re-framings`, `Key constraints`, and any slice headers. The following **scaffolding** SHALL remain in English regardless of the chosen language: the bold field labels — including the `**Implementation Details**` section label and the `**Overview language**` reminder line added by the staged pre-crystallization flow — the kebab-case Change name value, the `/sai-1-spec` command, and the "Open a new chat" line. The gate SHALL NOT alter any OpenSpec artifact file's format or content.
 
 #### Scenario: mixed-language block on a non-English choice
 
 - **WHEN** the user selects a non-English language at the gate
 - **THEN** the block's free-text prose is rendered in that language
-- **AND** the bold field labels, the kebab-case Change name value, the `/sai-1-spec` command, and the "Open a new chat" line remain in English
+- **AND** the bold field labels — including `**Implementation Details**` and the `**Overview language**` line — the kebab-case Change name value, the `/sai-1-spec` command, and the "Open a new chat" line remain in English
 
 #### Scenario: no artifact file is altered
 
