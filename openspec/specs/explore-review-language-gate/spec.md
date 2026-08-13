@@ -44,7 +44,7 @@ When the review turn's input language is not English, the agent SHALL ask a sing
 
 ### Requirement: Input language determination
 
-The agent SHALL treat the **dominant natural language** of the review turn as the user's current language when deciding whether to fire the gate. Incidental code-switching, transliteration, or embedded technical terms SHALL NOT by themselves change the determined language. When the dominant language cannot be determined with reasonable confidence, the agent SHALL NOT ask the gate question and SHALL fall back to the `sai/instructions/remember.md` policy (chat output in the user's input language).
+The agent SHALL treat the **dominant natural language** of the review turn as the user's current language when deciding whether to fire the gate. Incidental code-switching, transliteration, or embedded technical terms SHALL NOT by themselves change the determined language. When the dominant language cannot be determined with reasonable confidence, the agent SHALL NOT ask the gate question and SHALL fall back to the `sai/policies/remember.md` policy (chat output in the user's input language).
 
 #### Scenario: mixed-in technical terms do not flip the language
 
@@ -82,7 +82,7 @@ The gate SHALL fire at the start of each review of a given artifact or set of ar
 
 ### Requirement: Decline or non-committal answer falls back to remember.md
 
-If the user declines to answer or responds non-committally (e.g. "whatever"), the agent SHALL fall back to the existing `sai/instructions/remember.md` language policy — chat output in the user's input language.
+If the user declines to answer or responds non-committally (e.g. "whatever"), the agent SHALL fall back to the existing `sai/policies/remember.md` language policy — chat output in the user's input language.
 
 #### Scenario: non-committal answer uses the default policy
 

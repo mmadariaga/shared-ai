@@ -2,7 +2,7 @@
 
 ### Requirement: Step 5 SHALL classify each prior step as COMPLETO, FALLO MENOR, or INCOMPLETO
 
-On re-run, Step 5 of `sai/instructions/implement.md` SHALL classify every step in the prior `implementation.md` from its checkbox state, distinguishing code-writing checkboxes from verification checkboxes. A **code-writing checkbox** is one whose line introduces or modifies project files (an instruction box, a RED stub/test-creation box, or a GREEN implementation box). A **verification checkbox** is one that only runs or inspects (a Verification Checklist box, a "Verify RED" / GATE box, or a "Verify GREEN" box). The classifications are:
+On re-run, Step 5 of `sai/commands/implement/instructions.md` SHALL classify every step in the prior `implementation.md` from its checkbox state, distinguishing code-writing checkboxes from verification checkboxes. A **code-writing checkbox** is one whose line introduces or modifies project files (an instruction box, a RED stub/test-creation box, or a GREEN implementation box). A **verification checkbox** is one that only runs or inspects (a Verification Checklist box, a "Verify RED" / GATE box, or a "Verify GREEN" box). The classifications are:
 
 - **COMPLETO** — every checkbox in the step is `[x]` (Step 1 will already have collapsed it to `*(already applied)*`).
 - **FALLO MENOR** — every code-writing checkbox is `[x]` but at least one verification checkbox is `[ ]`.

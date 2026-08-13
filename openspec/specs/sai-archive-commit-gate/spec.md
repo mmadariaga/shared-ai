@@ -10,7 +10,7 @@ TBD — purpose to be documented.
 
 After the upstream archive skill completes — the archive move, any delta-spec sync, and the archive summary — `/sai-archive` SHALL present a closed-choice action-selector gate through the harness-native option-picker with exactly three options, in this order:
 
-1. Create a new commit — stages exactly `openspec/specs` and `openspec/changes/archive` and creates a new commit whose message is composed per `sai/instructions/commit.md` steps 1–5 and `sai/policies/commit-rules.md`.
+1. Create a new commit — stages exactly `openspec/specs` and `openspec/changes/archive` and creates a new commit whose message is composed per `sai/commands/commit/instructions.md` steps 1–5 and `sai/policies/commit-rules.md`.
 2. Amend the latest commit — stages exactly `openspec/specs` and `openspec/changes/archive` and runs `git commit --amend --no-edit`.
 3. Do nothing — leaves the index untouched; no staging and no commit.
 
@@ -61,7 +61,7 @@ When the archive skill completes and `git status` shows no changes, `/sai-archiv
 
 ### Requirement: The new-commit message reuses commit.md steps 1–5 and commit-rules.md without duplicating commit rules
 
-For the new-commit option, the agent SHALL compose the commit message by applying `sai/instructions/commit.md` steps 1–5 — inspect staged state, classify the change, determine scope, compose the message, and verify faithfulness — with `sai/policies/commit-rules.md` as the single source of commit-message rules (type classification, subject format, body and footer conventions, repo-style detection rubric, and hard rules). The archive instruction SHALL reference these two files and SHALL NOT restate or duplicate their rule content. The picker selection of the new-commit option SHALL be the per-invocation commit authorization: after selection, the agent SHALL stage the two paths, compose the message from the staged diff, and commit without presenting any further authorization prompt. Steps 1–5 and the commit SHALL run only when the shared empty-index guard passes: when the two-path staging leaves the index with no staged changes, the agent SHALL NOT apply steps 1–5 and SHALL NOT commit, per the empty-index guard requirement.
+For the new-commit option, the agent SHALL compose the commit message by applying `sai/commands/commit/instructions.md` steps 1–5 — inspect staged state, classify the change, determine scope, compose the message, and verify faithfulness — with `sai/policies/commit-rules.md` as the single source of commit-message rules (type classification, subject format, body and footer conventions, repo-style detection rubric, and hard rules). The archive instruction SHALL reference these two files and SHALL NOT restate or duplicate their rule content. The picker selection of the new-commit option SHALL be the per-invocation commit authorization: after selection, the agent SHALL stage the two paths, compose the message from the staged diff, and commit without presenting any further authorization prompt. Steps 1–5 and the commit SHALL run only when the shared empty-index guard passes: when the two-path staging leaves the index with no staged changes, the agent SHALL NOT apply steps 1–5 and SHALL NOT commit, per the empty-index guard requirement.
 
 #### Scenario: Message is composed from the staged diff per commit.md steps 1–5
 
@@ -71,7 +71,7 @@ For the new-commit option, the agent SHALL compose the commit message by applyin
 #### Scenario: Commit rules are referenced, not duplicated
 
 - **WHEN** the archive instruction describes the new-commit message composition
-- **THEN** it names `sai/instructions/commit.md` steps 1–5 and `sai/policies/commit-rules.md` as the rule sources and contains no restated classification, subject-format, body, or footer rules
+- **THEN** it names `sai/commands/commit/instructions.md` steps 1–5 and `sai/policies/commit-rules.md` as the rule sources and contains no restated classification, subject-format, body, or footer rules
 
 #### Scenario: The picker selection is the per-invocation authorization
 
@@ -80,7 +80,7 @@ For the new-commit option, the agent SHALL compose the commit message by applyin
 
 ### Requirement: The amend path applies the pushed-HEAD guard per commit-rules
 
-For the amend option, the agent SHALL run the pushed-HEAD check BEFORE any staging: it SHALL determine whether HEAD is already pushed, per the `--amend` detection idiom in `sai/instructions/commit.md` (`git log @{push}..HEAD --oneline` — empty output with HEAD matching the push target means pushed). When HEAD has no configured upstream, so `@{push}` does not resolve, the agent SHALL treat HEAD as unpushed and proceed without a secondary confirmation. When HEAD is already pushed, the agent SHALL warn explicitly and SHALL NOT amend without a secondary confirmation, per the commit-rules hard rule that a pushed commit is never amended without explicit warning plus secondary confirmation. On decline of the secondary confirmation, the agent SHALL NOT amend, SHALL NOT create any commit, and SHALL leave the index exactly as it was when the gate was reached — because the check runs before staging, no `git add` has occurred. The amend command SHALL run only when the shared empty-index guard passes: after staging the two paths, the agent SHALL NOT run `git commit --amend` when the index contains no staged changes, per the empty-index guard requirement.
+For the amend option, the agent SHALL run the pushed-HEAD check BEFORE any staging: it SHALL determine whether HEAD is already pushed, per the `--amend` detection idiom in `sai/commands/commit/instructions.md` (`git log @{push}..HEAD --oneline` — empty output with HEAD matching the push target means pushed). When HEAD has no configured upstream, so `@{push}` does not resolve, the agent SHALL treat HEAD as unpushed and proceed without a secondary confirmation. When HEAD is already pushed, the agent SHALL warn explicitly and SHALL NOT amend without a secondary confirmation, per the commit-rules hard rule that a pushed commit is never amended without explicit warning plus secondary confirmation. On decline of the secondary confirmation, the agent SHALL NOT amend, SHALL NOT create any commit, and SHALL leave the index exactly as it was when the gate was reached — because the check runs before staging, no `git add` has occurred. The amend command SHALL run only when the shared empty-index guard passes: after staging the two paths, the agent SHALL NOT run `git commit --amend` when the index contains no staged changes, per the empty-index guard requirement.
 
 #### Scenario: Unpushed HEAD amends without extra confirmation
 
@@ -104,12 +104,12 @@ For the amend option, the agent SHALL run the pushed-HEAD check BEFORE any stagi
 
 ### Requirement: Fast-track auto-selects the new-commit option
 
-When `--fast-track` is active for `/sai-archive`, the agent SHALL NOT present the three-option gate; it SHALL auto-select the new-commit option. Because a new commit is never destructive, the pushed-HEAD guard SHALL NOT apply to the fast-track path: there is no pushed-HEAD check, no do-nothing fallback, and no pushed-HEAD explanatory line. The shared empty-index guard SHALL still apply: when staging exactly `openspec/specs` and `openspec/changes/archive` leaves the index with no staged changes, the agent SHALL NOT create a commit and SHALL print the guard's single explanatory line. The empty-index guard SHALL run before `sai/instructions/commit.md` steps 1–5 are applied, so the step-1 "No staged changes" and "Only unstaged changes" stop conditions are never reached. The step-1 secret-file heuristic (for example the `*credentials*` pattern, which a capability named `credentials-rotation` would match) SHALL NOT apply on the fast-track path and SHALL NOT present its confirmation STOP, because the gate fixes the staging scope to exactly the two paths under `openspec/`, so a matching staged path is a capability or archived-change spec, never a secret. When `git status` shows no changes, the gate and its fast-track auto-selection SHALL be skipped, per the skip rule. No other gate SHALL be affected.
+When `--fast-track` is active for `/sai-archive`, the agent SHALL NOT present the three-option gate; it SHALL auto-select the new-commit option. Because a new commit is never destructive, the pushed-HEAD guard SHALL NOT apply to the fast-track path: there is no pushed-HEAD check, no do-nothing fallback, and no pushed-HEAD explanatory line. The shared empty-index guard SHALL still apply: when staging exactly `openspec/specs` and `openspec/changes/archive` leaves the index with no staged changes, the agent SHALL NOT create a commit and SHALL print the guard's single explanatory line. The empty-index guard SHALL run before `sai/commands/commit/instructions.md` steps 1–5 are applied, so the step-1 "No staged changes" and "Only unstaged changes" stop conditions are never reached. The step-1 secret-file heuristic (for example the `*credentials*` pattern, which a capability named `credentials-rotation` would match) SHALL NOT apply on the fast-track path and SHALL NOT present its confirmation STOP, because the gate fixes the staging scope to exactly the two paths under `openspec/`, so a matching staged path is a capability or archived-change spec, never a secret. When `git status` shows no changes, the gate and its fast-track auto-selection SHALL be skipped, per the skip rule. No other gate SHALL be affected.
 
 #### Scenario: Fast-track auto-commits via a new commit
 
 - **WHEN** `/sai-archive {name} --fast-track` completes the archive skill and staging the two paths leaves a non-empty staged diff
-- **THEN** the agent presents no gate prompt, stages exactly `openspec/specs` and `openspec/changes/archive`, composes the message per `sai/instructions/commit.md` steps 1–5, and creates a new commit
+- **THEN** the agent presents no gate prompt, stages exactly `openspec/specs` and `openspec/changes/archive`, composes the message per `sai/commands/commit/instructions.md` steps 1–5, and creates a new commit
 
 #### Scenario: Fast-track commits nothing when staging leaves the index empty
 

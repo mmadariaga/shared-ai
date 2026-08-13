@@ -4,7 +4,7 @@
 
 ### Requirement: design.md opens with a Target State section
 
-`openspec/changes/{name}/design.md` SHALL begin with a `## Target State` section, authored and persisted by the design phase as the authoritative source for the change's finished-shape snapshot. `sai/instructions/design.md` SHALL require that the `## Target State` section is emitted in `design.md` before the other design sections, and SHALL require that `openspec/changes/{name}/interfaces.md` begins directly with its first `## Step N` section — no `## Target State` section and no snapshot or manifest subsection SHALL be emitted in `interfaces.md`. The `change-overview.md` projection SHALL read this section from `design.md`; the overview SHALL NOT author the snapshot content itself.
+`openspec/changes/{name}/design.md` SHALL begin with a `## Target State` section, authored and persisted by the design phase as the authoritative source for the change's finished-shape snapshot. `sai/commands/design/instructions.md` SHALL require that the `## Target State` section is emitted in `design.md` before the other design sections, and SHALL require that `openspec/changes/{name}/interfaces.md` begins directly with its first `## Step N` section — no `## Target State` section and no snapshot or manifest subsection SHALL be emitted in `interfaces.md`. The `change-overview.md` projection SHALL read this section from `design.md`; the overview SHALL NOT author the snapshot content itself.
 
 `## Target State` SHALL present the finished shape the change converges on as **one concrete artifact** — not a per-step narrative and not a restatement of the change's motivation.
 

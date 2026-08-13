@@ -2,7 +2,7 @@
 
 ### Requirement: .openspec.yaml MUST declare backfilled: true
 
-`sai/instructions/backfill.md` Phase 5a MUST write a `backfilled: true` field into `openspec/changes/{name}/.openspec.yaml` alongside the existing `schema` and `created` keys. The `backfilled` field MUST be a boolean literal `true`; the field MUST NOT be omitted, MUST NOT be set to a string or any other type, and MUST NOT be conditionally written.
+`sai/commands/backfill/instructions.md` Phase 5a MUST write a `backfilled: true` field into `openspec/changes/{name}/.openspec.yaml` alongside the existing `schema` and `created` keys. The `backfilled` field MUST be a boolean literal `true`; the field MUST NOT be omitted, MUST NOT be set to a string or any other type, and MUST NOT be conditionally written.
 
 #### Scenario: backfilled key is present and true
 

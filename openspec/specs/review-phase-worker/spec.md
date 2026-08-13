@@ -14,7 +14,7 @@ The review worker SHALL own envelope parsing, prerequisite checks, change resolu
 
 ### Requirement: Technical workflow is loaded through the shared review invocation core
 
-The routed review worker SHALL load and follow `sai/commands/review/invocation.md` as the shared technical core. That core SHALL load the budget skill, glossary format, `sai/instructions/review.md`, and `sai/policies/remember.md`; it SHALL own none of the prerequisite parsing, change selection, coordinator lifecycle, or terminal navigation.
+The routed review worker SHALL load and follow `sai/commands/review/invocation.md` as the shared technical core. That core SHALL load the budget skill, glossary format, `sai/commands/review/instructions.md`, and `sai/policies/remember.md`; it SHALL own none of the prerequisite parsing, change selection, coordinator lifecycle, or terminal navigation.
 
 #### Scenario: Routed worker starts technical review
 - **WHEN** the routed review worker begins technical work

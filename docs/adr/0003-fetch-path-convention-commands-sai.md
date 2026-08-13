@@ -15,11 +15,22 @@ Three path formats were considered:
 
 ## Decision
 
-Use `@sai/commands/<cmd>.md` as the Fetch path in all wrapper files.
+`@sai/commands/<name>.md` remains the canonical Fetch path for command cards: routed cards live under `sai/commands/{phase}/{coordinator,worker,invocation}.md`, utility cards under `sai/commands/{name}/body.md`, and every command card carries its command-local phase content as `sai/commands/{name}/instructions.md` with neighboring `.template.md` files (e.g. `sai/commands/review/review-report.template.md`, `sai/commands/implement/implementation-plan.template.md`, `sai/commands/pr/pr-body.template.md`). Phase content is folded into the command directories; there is no maintained `sai/instructions/` tree. Three root exceptions install at the `sai` destination root: `sai/change-overview.md`, `sai/adr-index.template.md`, and `sai/ddr-index.template.md`.
 
 ## Rationale
 
-The `sai/` root groups all sai-owned payload (command bodies under `sai/commands/`, instructions under `sai/instructions/`) separately from harness wrapper packages (`commands/claude/`, `commands/opencode/`). `@sai/commands/<cmd>.md` mirrors this source layout and aligns with the `sai/commands/` install destination under the harness config root. Consistent with `@sai/instructions/` used by command bodies.
+The `sai/` root groups all sai-owned payload separately from harness wrapper packages (`commands/claude/`, `commands/opencode/`). Folding each phase's instruction and template into its command directory co-locates every surface one `/sai-*` command loads, so fetch resolution, install projection, and documentation all resolve through the single recursive `sai-commands` projection (which installs `sai/commands/**/*.md` for both harnesses). The files that are shared rather than command-owned — the change-overview generation contract and the project-agnostic ADR/DDR index templates — stay at the `sai/` root as explicit root exceptions with their own projections. `@sai/commands/<name>.md` mirrors this source layout and aligns with the `sai/commands/` install destination under the harness config root.
+
+## Amendment 3
+
+**Date:** 2026-08-13
+**Change:** `fold-sai-instructions-templates` — folded `sai/instructions/` into the command directories
+
+**Original decision:** `@sai/commands/<cmd>.md` — each wrapper entered a per-harness boot adapter (`@sai/adapters/claude/boot.md` for Claude Code, `@sai/adapters/opencode/boot.md` for opencode) which loaded the neutral `@sai/command-runner.md` protocol and selected the requested command card; phase content and shared templates lived under a maintained `sai/instructions/` tree, with the canonical project-agnostic index templates at `sai/instructions/_templates/adr-index.md` and `sai/instructions/_templates/ddr-index.md`.
+
+**Original rationale:** The `sai/` root grouped all sai-owned payload (command bodies under `sai/commands/`, instructions under `sai/instructions/`) separately from harness wrapper packages. `@sai/commands/<cmd>.md` mirrored the source layout and aligned with the `sai/commands/` install destination, consistent with `@sai/instructions/` used by command bodies.
+
+**Reason for amendment:** The `sai/instructions/` tree was folded into the command directories it serves. Phase content now lives at `sai/commands/{name}/instructions.md`, report/plan templates are co-located `.template.md` files beside their owning card, and the shared change-overview instruction plus the ADR/DDR index templates moved to the `sai/` root as `sai/change-overview.md`, `sai/adr-index.template.md`, and `sai/ddr-index.template.md`. The former `sai/instructions/` destinations are retired in `sai/install-manifest.json` and remain historical.
 
 ## Consequences
 

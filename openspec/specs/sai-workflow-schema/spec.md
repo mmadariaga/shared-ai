@@ -32,7 +32,7 @@ The schema directory SHALL include a `templates/` subdirectory with a `.md` temp
 - **THEN** it contains a RED block (failing test) section before the GREEN block (minimal implementation) section
 
 ### Requirement: audit report templates always include a Not-Applicable section
-Both template families for the security, performance, and accessibility report artifacts — the schema templates under `openspec/schemas/sai-workflow/templates/` and the write-time contracts under `sai/instructions/_templates/` — SHALL each include a mandatory "Not Applicable" section with a justification field.
+Both template families for the security, performance, and accessibility report artifacts — the schema templates under `openspec/schemas/sai-workflow/templates/` and the write-time contracts under `sai/commands/{security,performance,accessibility}/*-report.template.md` — SHALL each include a mandatory "Not Applicable" section with a justification field.
 
 #### Scenario: security schema template has Not Applicable section
 - **WHEN** `openspec/schemas/sai-workflow/templates/security.md` is read
@@ -47,15 +47,15 @@ Both template families for the security, performance, and accessibility report a
 - **THEN** it contains a "Not Applicable" section with a required justification placeholder
 
 #### Scenario: security write-time contract has Not Applicable section
-- **WHEN** `sai/instructions/_templates/security-report.md` is read
+- **WHEN** `sai/commands/security/security-report.template.md` is read
 - **THEN** it contains a "Not Applicable" section with a required justification field
 
 #### Scenario: performance write-time contract has Not Applicable section
-- **WHEN** `sai/instructions/_templates/performance-report.md` is read
+- **WHEN** `sai/commands/performance/performance-report.template.md` is read
 - **THEN** it contains a "Not Applicable" section with a required justification field
 
 #### Scenario: accessibility write-time contract has Not Applicable section
-- **WHEN** `sai/instructions/_templates/accessibility-report.md` is read
+- **WHEN** `sai/commands/accessibility/accessibility-report.template.md` is read
 - **THEN** it contains a "Not Applicable" section with a required justification field
 
 ### Requirement: openspec/config.yaml uses sai-workflow as active schema
@@ -85,7 +85,7 @@ The schema artifact description for the proposal SHALL document `Additional Note
 
 ### Requirement: sai-workflow schema names the record-family routing in the design artifact
 
-The design artifact's description and instruction in `openspec/schemas/sai-workflow/schema.yaml` SHALL name the record-family routing instead of leaving the ADR-vs-DDR choice open. The design artifact description SHALL state that ADR/DDR evaluation resolves the family via the ordered routing test (replacing the bare "ADR/DDR evaluation" wording), and the design artifact instruction SHALL direct that a decision meeting all three ADR/DDR criteria resolves its record family via the ordered routing test and records it in `design.md` as the `**Record family**` marker, consistent with `sai/instructions/design.md`.
+The design artifact's description and instruction in `openspec/schemas/sai-workflow/schema.yaml` SHALL name the record-family routing instead of leaving the ADR-vs-DDR choice open. The design artifact description SHALL state that ADR/DDR evaluation resolves the family via the ordered routing test (replacing the bare "ADR/DDR evaluation" wording), and the design artifact instruction SHALL direct that a decision meeting all three ADR/DDR criteria resolves its record family via the ordered routing test and records it in `design.md` as the `**Record family**` marker, consistent with `sai/commands/design/instructions.md`.
 
 #### Scenario: Schema description names the family routing
 
@@ -96,4 +96,4 @@ The design artifact's description and instruction in `openspec/schemas/sai-workf
 
 - **WHEN** the design artifact instruction in `openspec/schemas/sai-workflow/schema.yaml` is read
 - **THEN** it directs qualifying decisions to resolve and record the family via the ordered routing test
-- **THEN** the instruction stays consistent with `sai/instructions/design.md`'s Decisions evaluation
+- **THEN** the instruction stays consistent with `sai/commands/design/instructions.md`'s Decisions evaluation

@@ -2,7 +2,7 @@
 
 ### Requirement: Classification Check MUST consult .openspec.yaml
 
-`sai/instructions/archive.md` Classification Check MUST read `openspec/changes/$ARGUMENTS/.openspec.yaml` and look up the `backfilled` field. The lookup MUST happen after step 1 (status JSON parse) and before step 3 (CORE artifact evaluation), so the exemption can short-circuit the missing-CORE check.
+`sai/commands/archive/instructions.md` Classification Check MUST read `openspec/changes/$ARGUMENTS/.openspec.yaml` and look up the `backfilled` field. The lookup MUST happen after step 1 (status JSON parse) and before step 3 (CORE artifact evaluation), so the exemption can short-circuit the missing-CORE check.
 
 #### Scenario: Lookup precedes CORE evaluation
 

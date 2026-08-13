@@ -35,7 +35,7 @@ The `/sai-backfill` command SHALL create or update capability specs at `openspec
 - **THEN** files are written to `openspec/changes/{name}/specs/{capability}/spec.md`
 
 #### Scenario: existing spec path reference is updated
-- **WHEN** `sai/instructions/backfill.md` Phase 5c is read
+- **WHEN** `sai/commands/backfill/instructions.md` Phase 5c is read
 - **THEN** the path references `openspec/changes/{name}/specs/{capability}/spec.md`
 
 ### Requirement: Specs only written after conflict detection confirmed

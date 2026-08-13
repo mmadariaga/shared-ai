@@ -63,7 +63,7 @@ The check SHALL classify the research-tooling state as one of exactly three stat
 
 ### Requirement: Notice is always English
 
-The notice text SHALL always be written in English, regardless of the dominant natural language of the conversation. This English-only rule applies to this notice only and SHALL NOT change the `sai/instructions/remember.md` language policy for any other output.
+The notice text SHALL always be written in English, regardless of the dominant natural language of the conversation. This English-only rule applies to this notice only and SHALL NOT change the `sai/policies/remember.md` language policy for any other output.
 
 #### Scenario: non-English session still gets an English notice
 

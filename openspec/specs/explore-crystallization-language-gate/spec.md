@@ -49,7 +49,7 @@ When the crystallize turn's dominant input language is not English, the agent SH
 
 ### Requirement: Input language determination
 
-The agent SHALL treat the **dominant natural language** of the crystallize turn as the user's current language when deciding whether to fire the gate. Incidental code-switching, transliteration, or embedded technical terms SHALL NOT by themselves change the determined language. When the dominant language cannot be determined with reasonable confidence, the agent SHALL NOT ask the gate question and SHALL fall back to the `sai/instructions/remember.md` policy.
+The agent SHALL treat the **dominant natural language** of the crystallize turn as the user's current language when deciding whether to fire the gate. Incidental code-switching, transliteration, or embedded technical terms SHALL NOT by themselves change the determined language. When the dominant language cannot be determined with reasonable confidence, the agent SHALL NOT ask the gate question and SHALL fall back to the `sai/policies/remember.md` policy.
 
 #### Scenario: mixed-in technical terms do not flip the language
 
@@ -102,7 +102,7 @@ The gate SHALL fire once per crystallized idea (or slice set). The agent SHALL t
 
 ### Requirement: Decline or non-committal answer falls back to remember.md
 
-If the user declines to answer or responds non-committally, the agent SHALL fall back to the existing `sai/instructions/remember.md` language policy for the block's free-text prose.
+If the user declines to answer or responds non-committally, the agent SHALL fall back to the existing `sai/policies/remember.md` language policy for the block's free-text prose.
 
 #### Scenario: non-committal answer uses the default policy
 

@@ -8,7 +8,7 @@ Define the crystallized handoff format and closing behavior for `sai-explore`.
 
 ### Requirement: Three mandatory decision-facet sections in the single-change Ready to Propose block
 
-The single-change `Ready to Propose` block emitted by `sai-explore` (`sai/instructions/explore.md` item 5) SHALL include three new sections, inserted in this exact order between `**Capabilities in scope**` and `**Key constraints**`:
+The single-change `Ready to Propose` block emitted by `sai-explore` (`sai/commands/explore/instructions.md` item 5) SHALL include three new sections, inserted in this exact order between `**Capabilities in scope**` and `**Key constraints**`:
 
 1. `**Decisions & Rationale**`
 2. `**Alternatives Considered**`
@@ -47,9 +47,9 @@ The single-change `Ready to Propose` block emitted by `sai-explore` SHALL includ
 
 ### Requirement: Sliced-feature protocol preserves existing sections while adding Edge Cases
 
-The sliced-feature `Ready to Propose` blocks emitted by `sai-explore` (`sai/instructions/explore.md` item 6) SHALL preserve every existing block section, field, ordering, and language-gate invariant, and SHALL add only the dedicated `**Edge Cases**` section required by the `explore-handoff-edge-cases` capability. The `**Edge Cases**` section SHALL follow `**Key constraints**`, use the one agreed list mechanically partitioned by slice, and emit `- None` when no case is attributed to that slice.
+The sliced-feature `Ready to Propose` blocks emitted by `sai-explore` (`sai/commands/explore/instructions.md` item 6) SHALL preserve every existing block section, field, ordering, and language-gate invariant, and SHALL add only the dedicated `**Edge Cases**` section required by the `explore-handoff-edge-cases` capability. The `**Edge Cases**` section SHALL follow `**Key constraints**`, use the one agreed list mechanically partitioned by slice, and emit `- None` when no case is attributed to that slice.
 
-The companion `explore-handoff-edge-cases` capability governs the same `**Edge Cases**` rendering for the single-change protocol (`sai/instructions/explore.md` item 5). Together, this modified requirement and that companion requirement explicitly cover both single-change and sliced crystallization protocols.
+The companion `explore-handoff-edge-cases` capability governs the same `**Edge Cases**` rendering for the single-change protocol (`sai/commands/explore/instructions.md` item 5). Together, this modified requirement and that companion requirement explicitly cover both single-change and sliced crystallization protocols.
 
 #### Scenario: Per-slice blocks retain their existing fields and add Edge Cases
 
@@ -63,7 +63,7 @@ The companion `explore-handoff-edge-cases` capability governs the same `**Edge C
 
 ### Requirement: Crystallization output closes with a keep-window-open recommendation
 
-Both the single-change crystallization output (`sai/instructions/explore.md` item 5) and the sliced-feature crystallization output (item 6) SHALL close with a recommendation that the user keep the current explore window open and use it to review and refine downstream artifacts. The recommendation SHALL name the literal `review-loop` and `start-pipeline` tokens as user-triggered paths, without presenting either as a picker, auto-offering either path, or auto-firing either token. It SHALL explain that `start-pipeline` supervision is available on Claude Code and opencode and unavailable on GitHub Copilot.
+Both the single-change crystallization output (`sai/commands/explore/instructions.md` item 5) and the sliced-feature crystallization output (item 6) SHALL close with a recommendation that the user keep the current explore window open and use it to review and refine downstream artifacts. The recommendation SHALL name the literal `review-loop` and `start-pipeline` tokens as user-triggered paths, without presenting either as a picker, auto-offering either path, or auto-firing either token. It SHALL explain that `start-pipeline` supervision is available on Claude Code and opencode and unavailable on GitHub Copilot.
 
 The recommendation SHALL NOT alter the `Ready to Propose` block itself, including its field scaffolding and existing language-gate invariants. It is plain conversational text rendered in the user's language, while both literal tokens remain verbatim.
 
@@ -90,14 +90,14 @@ The recommendation SHALL NOT alter the `Ready to Propose` block itself, includin
 - **WHEN** the conversation's ambient language is not English
 - **THEN** the closing recommendation prose is rendered in the user's language per `remember.md`, while the block scaffolding it follows stays governed by the item-8 gate
 
-### Requirement: Sole edit target is sai/instructions/explore.md
+### Requirement: Sole edit target is sai/commands/explore/instructions.md
 
-The change SHALL modify `sai/instructions/explore.md` only. No new files are created; no other shared instruction, command, skill, schema, OpenSpec template, or `sai-*` wrapper is modified. `/sai-1-spec` itself is unchanged because it reads the user's message in the new chat, which carries the block content directly. None of the three `sai-1-spec` wrappers under `commands/claude/`, `commands/opencode/`, or `commands/copilot/` is modified. No harness-specific configuration (opencode.jsonc, Copilot agent definitions, Claude Code skills) is touched.
+The change SHALL modify `sai/commands/explore/instructions.md` only. No new files are created; no other shared instruction, command, skill, schema, OpenSpec template, or `sai-*` wrapper is modified. `/sai-1-spec` itself is unchanged because it reads the user's message in the new chat, which carries the block content directly. None of the three `sai-1-spec` wrappers under `commands/claude/`, `commands/opencode/`, or `commands/copilot/` is modified. No harness-specific configuration (opencode.jsonc, Copilot agent definitions, Claude Code skills) is touched.
 
 #### Scenario: no new files are created
 
 - **WHEN** the change is applied
-- **THEN** no new file appears in the repository and the only modified file is `sai/instructions/explore.md`
+- **THEN** no new file appears in the repository and the only modified file is `sai/commands/explore/instructions.md`
 
 #### Scenario: /sai-1-spec and its wrappers are not modified
 

@@ -43,6 +43,6 @@ The supported Claude Code and opencode design, implementation, accessibility, re
 Shared SAI instructions and policies SHALL describe the supported Claude Code and opencode behavior without GitHub Copilot-specific inline-vs-routed adapter clauses. Their surviving artifact, picker, feedback, phase-boundary, and routed-worker semantics SHALL remain unchanged.
 
 #### Scenario: Shared policy is inspected
-- **WHEN** a maintainer reads `sai/instructions/explore.md`, `sai/instructions/design.md`, `sai/instructions/spec.propose.md`, `sai/policies/remember.md`, `sai/policies/artifact-feedback-gate.md`, or `sai/policies/status-picker.md`
+- **WHEN** a maintainer reads `sai/commands/explore/instructions.md`, `sai/commands/design/instructions.md`, `sai/commands/spec/instructions.md`, `sai/policies/remember.md`, `sai/policies/artifact-feedback-gate.md`, or `sai/policies/status-picker.md`
 - **THEN** no active clause assigns behavior to a Copilot inline consumer or preserves an inline adapter exception
 - **AND** the Claude Code and opencode rules remain explicit and testable

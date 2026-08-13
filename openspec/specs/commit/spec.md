@@ -4,7 +4,7 @@
 TBD - created by archiving change extract-commit-rules-shared-instruction. Update Purpose after archive.
 ## Requirements
 ### Requirement: Rules sourced from shared instruction
-`commit.md` SHALL load commit message format rules from `@sai/instructions/commit-rules.md` via a fetch directive rather than inlining them. The inline rule blocks (subject format, body, footer, hard rules, self-critique checklist) MUST be replaced with a single `Fetch @sai/instructions/commit-rules.md` directive.
+`commit.md` SHALL load commit message format rules from `@sai/policies/commit-rules.md` via a fetch directive rather than inlining them. The inline rule blocks (subject format, body, footer, hard rules, self-critique checklist) MUST be replaced with a single `Fetch @sai/policies/commit-rules.md` directive.
 
 #### Scenario: commit.md edited without changing workflow steps
 - **WHEN** `commit.md` is updated to replace inlined rules with the fetch directive

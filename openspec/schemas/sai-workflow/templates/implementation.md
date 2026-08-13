@@ -30,7 +30,7 @@
 
 ### STOP & COMMIT
 
-Propose the commit message and ask the user for explicit approval before running `git commit`. See `sai/instructions/apply.md` for the full 4-step STOP & COMMIT checklist.
+Propose the commit message and ask the user for explicit approval before running `git commit`. See `sai/commands/apply/instructions.md` for the full 4-step STOP & COMMIT checklist.
 
 ---
 
@@ -56,7 +56,7 @@ Propose the commit message and ask the user for explicit approval before running
 
 ### STOP & COMMIT
 
-Propose the commit message and ask the user for explicit approval before running `git commit`. See `sai/instructions/apply.md` for the full 4-step STOP & COMMIT checklist.
+Propose the commit message and ask the user for explicit approval before running `git commit`. See `sai/commands/apply/instructions.md` for the full 4-step STOP & COMMIT checklist.
 
 ---
 

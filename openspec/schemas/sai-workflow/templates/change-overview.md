@@ -3,7 +3,7 @@
 <!-- The change's `## Target State` review snapshot, projected from openspec/changes/{change-name}/design.md
      as the overview's leading review section — never authored here. The projection rule and the two
      subsections below are defined by specs/change-overview-artifact/spec.md and specs/design-target-state/spec.md.
-     Write-time authority: sai/instructions/change-overview.md. -->
+     Write-time authority: sai/change-overview.md. -->
 
 ### Architecture Snapshot
 
@@ -52,6 +52,6 @@
 <!-- End-to-end links: requirement → scenario → interface → assertion → delivery step, per capability.
      Mappings the sources do not encode are reported as gaps, never synthesized. -->
 
-<!-- Write-time authority: sai/instructions/change-overview.md defines the generation contract, the
+<!-- Write-time authority: sai/change-overview.md defines the generation contract, the
      completeness-and-consistency validation, and the closed result envelope. The overview is a derived
      projection — the five source artifacts remain authoritative and are never modified by generation. -->

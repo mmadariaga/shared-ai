@@ -2,7 +2,7 @@
 
 ### Requirement: Priority Stack Section In Implementation Instructions
 
-The implementation instructions (`sai/instructions/implement.md`) SHALL contain a section titled `## Code Quality Priority Stack`, placed immediately after the `## Hard Rules` section. The section MUST define exactly six code-quality rules in a fixed priority order, where a lower number outranks a higher number:
+The implementation instructions (`sai/commands/implement/instructions.md`) SHALL contain a section titled `## Code Quality Priority Stack`, placed immediately after the `## Hard Rules` section. The section MUST define exactly six code-quality rules in a fixed priority order, where a lower number outranks a higher number:
 
 1. YAGNI — do not build behavior, abstraction, or configurability that is not required by the current change.
 2. SOLID (object-oriented designs only), expressed operationally.
@@ -13,13 +13,13 @@ The implementation instructions (`sai/instructions/implement.md`) SHALL contain 
 
 #### Scenario: Section present and ordered
 
-- **WHEN** a reader inspects `sai/instructions/implement.md`
+- **WHEN** a reader inspects `sai/commands/implement/instructions.md`
 - **THEN** a `## Code Quality Priority Stack` section exists directly after `## Hard Rules`
 - **AND** it lists the six rules in the exact priority order above, numbered so that a lower number outranks a higher one
 
 ### Requirement: SOLID Stated Operationally
 
-Within the priority stack, the SOLID rule MUST be expressed as concrete, checkable behaviors (for example: a unit has one reason to change; new behavior is added by extension without breaking existing callers) and MUST NOT be stated as the bare slogan "follow SOLID". This keeps it consistent with `sai/instructions/design.md`, which rejects generic best-practices such as "follow SOLID" or "write clean code" as project Conventions.
+Within the priority stack, the SOLID rule MUST be expressed as concrete, checkable behaviors (for example: a unit has one reason to change; new behavior is added by extension without breaking existing callers) and MUST NOT be stated as the bare slogan "follow SOLID". This keeps it consistent with `sai/commands/design/instructions.md`, which rejects generic best-practices such as "follow SOLID" or "write clean code" as project Conventions.
 
 #### Scenario: No generic SOLID slogan
 
@@ -67,7 +67,7 @@ The priority order MUST act as a deterministic tie-breaker when two rules pull i
 
 ### Requirement: Review Maintainability Rule References The Stack
 
-The Maintainability review category in `sai/instructions/review.md` SHALL reference the Code Quality Priority Stack as the resolution order for code-quality tensions, in a single added sentence, rather than restating the six rules. The reference MUST NOT duplicate the rule list.
+The Maintainability review category in `sai/commands/review/instructions.md` SHALL reference the Code Quality Priority Stack as the resolution order for code-quality tensions, in a single added sentence, rather than restating the six rules. The reference MUST NOT duplicate the rule list.
 
 #### Scenario: Reviewer cites the stack without duplicating it
 

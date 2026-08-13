@@ -4,7 +4,7 @@
 
 ### Requirement: design.md ends with a Manual Verification section
 
-`sai/instructions/design.md` SHALL require `openspec/changes/{name}/design.md` to close with a `## Manual Verification` section, listing the checks that are cheap to perform by hand and expensive to encode as automated tests.
+`sai/commands/design/instructions.md` SHALL require `openspec/changes/{name}/design.md` to close with a `## Manual Verification` section, listing the checks that are cheap to perform by hand and expensive to encode as automated tests.
 
 The section SHALL be the closing section of `design.md`. When a change genuinely warrants no manual check, the section SHALL still be emitted with an explicit `None` and a one-line reason, so a reader can distinguish "nothing to check" from "not considered".
 
@@ -47,7 +47,7 @@ Each item SHALL name what to check and what a correct result looks like. An item
 
 ### Requirement: Manual Verification is the middle tier, not a substitute for tests or review
 
-`sai/instructions/design.md` SHALL state that `## Manual Verification` names the middle tier of a three-tier verification vocabulary: automated tests, manual checks, and downstream review. It SHALL NOT be used to record work that belongs in an automated test, nor to duplicate what `/sai-5-review` already covers.
+`sai/commands/design/instructions.md` SHALL state that `## Manual Verification` names the middle tier of a three-tier verification vocabulary: automated tests, manual checks, and downstream review. It SHALL NOT be used to record work that belongs in an automated test, nor to duplicate what `/sai-5-review` already covers.
 
 An item SHALL qualify for `## Manual Verification` only when automating the check would cost meaningfully more than performing it by hand.
 

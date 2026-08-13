@@ -82,11 +82,11 @@ Checkbox marking and the deviations appendix in `implementation.md` SHALL be wri
 - **THEN** `implementation.md` shows no edits authored by the subagent; all checkbox and appendix edits trace to the coordinator
 
 ### Requirement: Commit message format at STOP & COMMIT markers
-When the implementation plan reaches a STOP & COMMIT marker, the agent SHALL apply commit message format rules from `@sai/instructions/commit-rules.md` when proposing the commit message. The commit-rules MUST be loaded at or before the point where the agent drafts a commit message proposal.
+When the implementation plan reaches a STOP & COMMIT marker, the agent SHALL apply commit message format rules from `@sai/policies/commit-rules.md` when proposing the commit message. The commit-rules MUST be loaded at or before the point where the agent drafts a commit message proposal.
 
 #### Scenario: Agent reaches STOP & COMMIT without commit-rules loaded
 - **WHEN** `apply.md` is executed and a STOP & COMMIT marker is encountered
-- **THEN** the agent MUST have loaded `@sai/instructions/commit-rules.md` before drafting the commit message, ensuring Conventional Commits format, ≤50-char subject, and self-critique checklist are applied
+- **THEN** the agent MUST have loaded `@sai/policies/commit-rules.md` before drafting the commit message, ensuring Conventional Commits format, ≤50-char subject, and self-critique checklist are applied
 
 #### Scenario: Commit proposed by apply matches commit-rules constraints
 - **WHEN** the agent proposes a commit message at a STOP & COMMIT marker

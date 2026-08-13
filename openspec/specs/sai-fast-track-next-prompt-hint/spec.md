@@ -12,7 +12,7 @@ The hint SHALL be single-sourced in the same shared instruction / body files all
 
 The concrete emitting locations that gain the hint under this requirement, because each recommends a fast-track-set command, are:
 - `sai/commands/sai-1-spec.md` completion → recommends `/sai-2-design {name}`
-- `sai/instructions/implement-invocation.md` completion (printed after `sai-3-implement`) → recommends `/sai-4-apply {name}`
+- `sai/commands/implement/invocation.md` completion (printed after `sai-3-implement`) → recommends `/sai-4-apply {name}`
 - `sai/commands/sai-backfill.md` completion → recommends `/sai-archive {name}`
 
 #### Scenario: sai-1-spec completion appends the hint

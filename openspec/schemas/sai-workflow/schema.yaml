@@ -21,7 +21,7 @@ artifacts:
         Form: `**Complexity**: <token>` where <token> is exactly one of `low`, `medium`, `high`.
         An optional trailing parenthetical may follow for audit, e.g. `medium (3 files, no breaking change)`;
         parsers ignore everything from the first `(` onward.
-        Derive the token using `## Complexity Derivation Rubric` in sai/instructions/spec.propose.md.
+        Derive the token using `## Complexity Derivation Rubric` in sai/commands/spec/instructions.md.
         Because the requirements count is one of the rubric's signals, derive or revise the token AFTER
         specs/**/*.md are written, before reporting completion. Never invent a tier outside the three.
         The line is descriptive metadata: it names no model, vendor, price tier, or harness.
@@ -84,7 +84,7 @@ artifacts:
           2. Surprising without context — would a future reader ask "why did they do it this way"?
           3. Real trade-off — were genuine alternatives available?
         If all three apply, document alternatives-considered and the rationale for the chosen approach.
-        A decision that meets all three criteria resolves its record family via the ordered routing test (a decision encoding a domain invariant is `ddr`; otherwise it is `adr`; the test is ordered, so there is no tie) and records it in design.md as the pinned `**Record family**: adr|ddr` marker, consistent with `sai/instructions/design.md`.
+        A decision that meets all three criteria resolves its record family via the ordered routing test (a decision encoding a domain invariant is `ddr`; otherwise it is `adr`; the test is ordered, so there is no tie) and records it in design.md as the pinned `**Record family**: adr|ddr` marker, consistent with `sai/commands/design/instructions.md`.
         Each decision also carries a pinned `**Provenance**: <token>` marker — one of `user` / `codebase-forced` / `derived` (precedence in that order).
       - **Risks / Trade-offs**: known limitations; format: [Risk] → Mitigation. A risk MAY carry a pinned `(**Verify-first**: Step N)` marker naming a step it gates.
       - **Migration Plan**: deploy steps, rollback strategy (if applicable)
@@ -218,7 +218,7 @@ artifacts:
       overview is a derived projection, not a source of truth: the source artifacts remain
       authoritative and are never modified by generation.
 
-      Generation runs in a budget-routed subagent executing sai/instructions/change-overview.md — the
+      Generation runs in a budget-routed subagent executing sai/change-overview.md — the
       single source of the generation contract — at the sai-2 feedback gate's Continue processing
       (deferred materialization), with exactly one regeneration per later effective source-modifying
       design-worker transaction and a persisted overview.state in the change's .openspec.yaml

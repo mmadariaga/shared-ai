@@ -59,7 +59,7 @@ The test-writer SHALL scope its RED run to the tests it authored, substituting t
 
 #### Scenario: Injected slice no longer promises location and naming
 
-- **WHEN** `sai/instructions/apply.md` enumerates the testing-relevant slice injected into the test-writer
+- **WHEN** `sai/commands/apply/instructions.md` enumerates the testing-relevant slice injected into the test-writer
 - **THEN** the enumeration names the **Stack**-sourced framework and libraries and the **Test Command**, and does not list test file location/naming
 
 ### Requirement: Coordinator guards interfaces.md ↔ implementation.md Step-N key integrity

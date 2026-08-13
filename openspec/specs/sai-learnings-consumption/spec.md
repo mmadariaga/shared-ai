@@ -125,7 +125,7 @@ When `/sai-2-design` finds no such disagreement, it SHALL print nothing.
 
 This is required by `/sai-3-implement`'s existing contract, which restricts it to the documents listed in `## Required Documentation` and forbids additional codebase exploration. Granting it a direct read of the learnings file would contradict that contract.
 
-No instruction file SHALL add `SAI_LEARNINGS.md` to `/sai-3-implement`'s reading list, and `sai/instructions/implement.md` SHALL NOT be modified by this change.
+No instruction file SHALL add `SAI_LEARNINGS.md` to `/sai-3-implement`'s reading list, and `sai/commands/implement/instructions.md` SHALL NOT be modified by this change.
 
 #### Scenario: sai-3-implement plans a change in a repo with a learnings file
 
@@ -152,14 +152,14 @@ The invariant SHALL be stated explicitly wherever the promotion filter and the t
 
 ### Requirement: Wrapper wiring fetches the format file for both consuming commands
 
-`sai/commands/design/coordinator.md` and `sai/commands/sai-4-apply.md` SHALL each fetch `sai/instructions/sai-learnings-format.md` in their instruction-loading block, so the format contract is in context wherever the file is read or written. The fetch SHALL mirror how `sai/instructions/glossary-format.md` is already fetched by `sai/commands/design/coordinator.md`.
+`sai/commands/design/coordinator.md` and `sai/commands/sai-4-apply.md` SHALL each fetch `sai/policies/sai-learnings-format.md` in their instruction-loading block, so the format contract is in context wherever the file is read or written. The fetch SHALL mirror how `sai/policies/glossary-format.md` is already fetched by `sai/commands/design/coordinator.md`.
 
 These two wrapper edits SHALL be the complete set of wrapper changes. Harness parity SHALL ride the shared instruction bodies rather than being duplicated per harness, consistent with how the existing `glossary-format.md` fetch achieves parity today.
 
 #### Scenario: sai-4-apply loads its instructions
 
 - **WHEN** `sai/commands/sai-4-apply.md` runs its instruction-loading block
-- **THEN** it fetches `sai/instructions/sai-learnings-format.md` alongside `sai/instructions/apply.md`
+- **THEN** it fetches `sai/policies/sai-learnings-format.md` alongside `sai/commands/apply/instructions.md`
 
 #### Scenario: Parity across harnesses
 

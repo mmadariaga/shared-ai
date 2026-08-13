@@ -96,7 +96,7 @@ Any parser of the `**Complexity**` line SHALL ignore everything from the first `
 
 ### Requirement: The derivation rubric is static, planning-time, and reproducible
 
-The rubric that derives `<complexity>` SHALL be encoded in `sai/instructions/spec.propose.md` under a section headed `## Complexity Derivation Rubric`, and SHALL depend only on signals available during the spec phase:
+The rubric that derives `<complexity>` SHALL be encoded in `sai/commands/spec/instructions.md` under a section headed `## Complexity Derivation Rubric`, and SHALL depend only on signals available during the spec phase:
 
 - the number of capabilities in the proposal's Capabilities section (new plus modified)
 - the number of requirements across `specs/**/*.md` for this change
@@ -161,7 +161,7 @@ At change level, `layer` and `discipline` collapse to nearly-always `cross-cutti
 
 This change introduces the metadata only. It MUST NOT add a router, dispatcher, wrapper change, or any code or instruction that reads the `**Complexity**` line.
 
-`sai/instructions/design.md` SHALL NOT read the token. The wrappers `commands/{claude,opencode,copilot}/sai-1-spec.*` and `commands/{claude,opencode,copilot}/sai-2-design.*` SHALL NOT be modified. Model selection stays fixed per harness. A future orchestrator MAY read the line, but building one is out of scope here.
+`sai/commands/design/instructions.md` SHALL NOT read the token. The wrappers `commands/{claude,opencode,copilot}/sai-1-spec.*` and `commands/{claude,opencode,copilot}/sai-2-design.*` SHALL NOT be modified. Model selection stays fixed per harness. A future orchestrator MAY read the line, but building one is out of scope here.
 
 #### Scenario: No complexity-aware code is added
 

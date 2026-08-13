@@ -4,7 +4,7 @@
 
 ### Requirement: Each tasks.md step declares the existing tests it breaks
 
-`sai/instructions/design.md` SHALL require every `## Step N` section of `openspec/changes/{name}/tasks.md` to declare which **existing** tests the step's change breaks.
+`sai/commands/design/instructions.md` SHALL require every `## Step N` section of `openspec/changes/{name}/tasks.md` to declare which **existing** tests the step's change breaks.
 
 The declaration SHALL be emitted under the pinned literal label `**Existing Tests Broken**`, as the fifth and last sub-field of the step section, immediately following `**Testing Strategy**`. The label and position are fixed by the `tasks-scaffold-format` capability; this capability defines the field's content.
 

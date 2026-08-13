@@ -24,7 +24,7 @@ npx github:mmadariaga/shared-ai
 npx github:mmadariaga/shared-ai setup /path/to/your/project
 ```
 
-Step 1 expands `sai/install-manifest.json` and copies the opencode projection to `~/.config/opencode/`. It includes opencode commands, the complete recursively projected `sai/instructions/` tree including the canonical project-agnostic `sai/instructions/_templates/adr-index.md`, `sai/policies/`, `sai/compat/`, the shared Orchestration Core contracts, opencode routed worker bindings, opencode skills, managed worker and generic agent files, and the managed configuration projection. Opencode loads routed workers directly from the neutral installed binding paths; Claude Code receives its own harness-selected routed bindings. Step 2 verifies the openspec CLI, runs `openspec init --tools opencode` if needed, sets `schema: sai-workflow` in `openspec/config.yaml`, and copies the schema templates into the project. `doctor` and `uninstall` use the same manifest projection.
+Step 1 expands `sai/install-manifest.json` and copies the opencode projection to `~/.config/opencode/`. It includes opencode commands, the complete recursively projected `sai/commands/` tree — command cards with command-local `instructions.md` and neighboring `.template.md` files — plus the three root exceptions `sai/change-overview.md`, `sai/adr-index.template.md`, and `sai/ddr-index.template.md`, `sai/policies/`, `sai/compat/`, the shared Orchestration Core contracts, opencode routed worker bindings, opencode skills, managed worker and generic agent files, and the managed configuration projection. Opencode loads routed workers directly from the neutral installed binding paths; Claude Code receives its own harness-selected routed bindings. Step 2 verifies the openspec CLI, runs `openspec init --tools opencode` if needed, sets `schema: sai-workflow` in `openspec/config.yaml`, and copies the schema templates into the project. `doctor` and `uninstall` use the same manifest projection.
 
 ## Manual installation
 
@@ -43,12 +43,10 @@ cp commands/opencode/*.md ~/.config/opencode/commands/
 mkdir -p ~/.config/opencode/sai/commands
 cp -r sai/commands/. ~/.config/opencode/sai/commands/
 
-# Copy instructions, including the recursively projected canonical ADR template
-if [ -d ~/.config/opencode/sai/instructions ]; then
-    echo "Overwriting ~/.config/opencode/sai/instructions/"
-fi
-mkdir -p ~/.config/opencode/sai/instructions
-cp -r sai/instructions/. ~/.config/opencode/sai/instructions/
+# Copy the three root exception files
+cp sai/change-overview.md ~/.config/opencode/sai/change-overview.md
+cp sai/adr-index.template.md ~/.config/opencode/sai/adr-index.template.md
+cp sai/ddr-index.template.md ~/.config/opencode/sai/ddr-index.template.md
 
 # Copy shared policies and compatibility assets
 mkdir -p ~/.config/opencode/sai/policies ~/.config/opencode/sai/compat
@@ -128,13 +126,10 @@ Copy-Item commands\opencode\*.md "$configDir\commands\"
 New-Item -ItemType Directory -Force -Path "$configDir\sai\commands"
 Copy-Item sai\commands\* "$configDir\sai\commands\" -Recurse -Force
 
-# Copy instructions, including the recursively projected canonical ADR template
-$instructionsDir = "$configDir\sai\instructions"
-if (Test-Path $instructionsDir) {
-    Write-Host "Overwriting $instructionsDir"
-}
-New-Item -ItemType Directory -Force -Path $instructionsDir | Out-Null
-Copy-Item sai\instructions\* $instructionsDir -Recurse -Force
+# Copy the three root exception files
+Copy-Item sai\change-overview.md "$configDir\sai\change-overview.md"
+Copy-Item sai\adr-index.template.md "$configDir\sai\adr-index.template.md"
+Copy-Item sai\ddr-index.template.md "$configDir\sai\ddr-index.template.md"
 
 # Copy shared policies and compatibility assets
 New-Item -ItemType Directory -Force -Path "$configDir\sai\policies" | Out-Null

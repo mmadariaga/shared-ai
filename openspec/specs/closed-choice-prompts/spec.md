@@ -47,7 +47,7 @@ When presenting closed-choice prompts, the agent MUST use full words for option 
 
 ### Requirement: Closed-choice prompt rule is centralized in remember.md
 
-The closed-choice prompt rule MUST live in exactly one place: `sai/instructions/remember.md`. Every `sai-*` instruction that asks a closed-choice question MUST reference that rule (e.g. "per the 'Closed-choice prompts' rule in `remember.md`, which gives the per-harness option-picker mapping") rather than re-stating the per-harness mapping inline.
+The closed-choice prompt rule MUST live in exactly one place: `sai/policies/remember.md`. Every `sai-*` instruction that asks a closed-choice question MUST reference that rule (e.g. "per the 'Closed-choice prompts' rule in `remember.md`, which gives the per-harness option-picker mapping") rather than re-stating the per-harness mapping inline.
 
 #### Scenario: A new sai-* instruction needs a closed-choice prompt
 - **WHEN** an author writes a new instruction that asks the user a yes/no or numbered-list question
@@ -55,4 +55,4 @@ The closed-choice prompt rule MUST live in exactly one place: `sai/instructions/
 
 #### Scenario: remember.md is the single source of truth
 - **WHEN** the per-harness option-picker mapping needs to be updated (e.g. a new harness is supported, or a harness gains a native option-picker)
-- **THEN** the change is made in `sai/instructions/remember.md` only, and every instruction that references the rule picks up the change without being edited
+- **THEN** the change is made in `sai/policies/remember.md` only, and every instruction that references the rule picks up the change without being edited

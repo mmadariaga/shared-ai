@@ -20,7 +20,7 @@ The change SHALL add `commands/claude/sai-worktree.md` and `commands/opencode/sa
 
 ### Requirement: Shared Isolation-Mode body and instruction
 
-The change SHALL add the shared command body at `sai/commands/sai-worktree.md` — an Isolation Mode block followed by a `<TASK>` block that loads budget and safe-operations as behaviors and the phase instruction plus `sai/policies/remember.md` as instructions — and the instruction body at `sai/instructions/worktree.md`.
+The change SHALL add the shared command body at `sai/commands/sai-worktree.md` — an Isolation Mode block followed by a `<TASK>` block that loads budget and safe-operations as behaviors and the phase instruction plus `sai/policies/remember.md` as instructions — and the instruction body at `sai/commands/worktree/instructions.md`.
 
 #### Scenario: Body starts with the Isolation Mode block
 - **WHEN** `sai/commands/sai-worktree.md` is read
@@ -44,7 +44,7 @@ The existing `claude-commands`, `opencode-commands`, `sai-commands`, and `sai-in
 
 #### Scenario: Installer projects the new files
 - **WHEN** the installer runs against the projections for both harnesses
-- **THEN** `commands/claude/sai-worktree.md`, `commands/opencode/sai-worktree.md`, `sai/commands/sai-worktree.md`, and `sai/instructions/worktree.md` are all installed without any manifest edit
+- **THEN** `commands/claude/sai-worktree.md`, `commands/opencode/sai-worktree.md`, `sai/commands/sai-worktree.md`, and `sai/commands/worktree/instructions.md` are all installed without any manifest edit
 
 ### Requirement: OpenSpec prerequisites omitted and the omission documented
 

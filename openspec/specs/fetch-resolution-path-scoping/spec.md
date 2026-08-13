@@ -10,16 +10,16 @@ Define how the opencode fetch skill resolves `Fetch @<subpath>` directives to ex
 When resolving a `Fetch @<subpath>` directive, the opencode fetch skill SHALL Read `.opencode/<subpath>` first; when that read fails, it SHALL Read `~/.config/opencode/<subpath>` directly; when that read also fails, it SHALL stop and report: "File not found: <subpath> (checked .opencode/ and ~/.config/opencode/)". The resolution SHALL NOT use Glob, LS, or any directory-based existence probe in either branch — a failed Read carries the same existence signal as a probe result, and every user-global filesystem access names an exact file path under an already-permitted subtree.
 
 #### Scenario: project-local file exists
-- **WHEN** `Fetch @sai/instructions/prereqs.md` is executed and `.opencode/sai/instructions/prereqs.md` exists
+- **WHEN** `Fetch @sai/policies/prereqs.md` is executed and `.opencode/sai/policies/prereqs.md` exists
 - **THEN** the project-local file is Read and its content is used without a second read of the user-global path
 
 #### Scenario: project-local file absent, global file exists
-- **WHEN** `Fetch @sai/instructions/prereqs.md` is executed, the project-local read fails, and `~/.config/opencode/sai/instructions/prereqs.md` exists
+- **WHEN** `Fetch @sai/policies/prereqs.md` is executed, the project-local read fails, and `~/.config/opencode/sai/policies/prereqs.md` exists
 - **THEN** the user-global file is Read directly without error
 
 #### Scenario: file missing in both locations
-- **WHEN** `Fetch @sai/instructions/prereqs.md` is executed and both the project-local and user-global reads fail
-- **THEN** the skill stops and reports: "File not found: sai/instructions/prereqs.md (checked .opencode/ and ~/.config/opencode/)"
+- **WHEN** `Fetch @sai/policies/prereqs.md` is executed and both the project-local and user-global reads fail
+- **THEN** the skill stops and reports: "File not found: sai/policies/prereqs.md (checked .opencode/ and ~/.config/opencode/)"
 - **AND** the failure report is the sole signal that both roots were checked
 
 #### Scenario: no directory-based probe is performed in either branch

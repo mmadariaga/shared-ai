@@ -10,7 +10,7 @@ The `sai-archive` command SHALL classify the eleven artifacts defined by the `sa
 - **AUDIT** (informational only): `review`, `security`, `performance`, `accessibility`, `change-overview`.
 - **EXEMPT** (non-blocking, silent when present or absent): `interfaces`.
 
-The classification SHALL be defined natively inside `sai/instructions/archive.md` (no CLI flags, no environment variables, no schema changes). The instruction file SHALL name eleven artifacts in total and SHALL NOT refer to "ten" artifacts anywhere in the Classification Check.
+The classification SHALL be defined natively inside `sai/commands/archive/instructions.md` (no CLI flags, no environment variables, no schema changes). The instruction file SHALL name eleven artifacts in total and SHALL NOT refer to "ten" artifacts anywhere in the Classification Check.
 
 The `sai-archive` Classification Check SHALL evaluate `interfaces` independently of the CORE not-`done` collection and the AUDIT missing collection. The `interfaces` artifact id SHALL NOT appear in either the "Missing CORE artifact(s)" halt message or the "informational: missing AUDIT artifact(s)" message under any input condition. EXEMPT is strictly weaker than AUDIT: it produces no log line, no warning, and no prompt.
 
@@ -76,12 +76,12 @@ The `sai-archive` command SHALL run the classification check BEFORE invoking ste
 #### Scenario: Classification check runs before the upstream skill
 
 - **WHEN** the `sai-archive` command reaches the artifact-completion phase
-- **THEN** the classification logic defined in `sai/instructions/archive.md` MUST be evaluated first
+- **THEN** the classification logic defined in `sai/commands/archive/instructions.md` MUST be evaluated first
 - **THEN** control passes to the upstream skill only after the classification check has produced a decision (halt-on-missing-CORE OR proceed-with-AUDIT-soft-warning)
 
 ### Requirement: Incomplete-tasks soft confirmation gate
 
-The check in `sai/instructions/archive.md` that scans `openspec/changes/{name}/implementation.md` for `- [ ]` items SHALL be a **soft confirmation gate**, not a hard stop. When one or more unchecked items are found, `sai-archive` SHALL list every unchecked item concretely — each item's location as `implementation.md:{line}`, the `#### Step N` heading it falls under, and the checkbox's own text — then ask the user with a closed-choice prompt `Continue archiving with N unchecked items?` with options `yes` / `no` (per the "Closed-choice prompts" rule in `remember.md`, which gives the per-harness option-picker mapping), where `N` is the count. The plain-text fallback reads `Continue archiving with N unchecked items? (yes/no)`. The command SHALL perform the archive move ONLY on an explicit `yes` selection or reply. On `no`, on silence, or on any answer other than `yes`, the command SHALL NOT perform the archive move and SHALL report that archiving was not performed and why.
+The check in `sai/commands/archive/instructions.md` that scans `openspec/changes/{name}/implementation.md` for `- [ ]` items SHALL be a **soft confirmation gate**, not a hard stop. When one or more unchecked items are found, `sai-archive` SHALL list every unchecked item concretely — each item's location as `implementation.md:{line}`, the `#### Step N` heading it falls under, and the checkbox's own text — then ask the user with a closed-choice prompt `Continue archiving with N unchecked items?` with options `yes` / `no` (per the "Closed-choice prompts" rule in `remember.md`, which gives the per-harness option-picker mapping), where `N` is the count. The plain-text fallback reads `Continue archiving with N unchecked items? (yes/no)`. The command SHALL perform the archive move ONLY on an explicit `yes` selection or reply. On `no`, on silence, or on any answer other than `yes`, the command SHALL NOT perform the archive move and SHALL report that archiving was not performed and why.
 
 The prompt is conversational in chat: `sai-archive` SHALL NOT write any approval key to `.openspec.yaml` and SHALL NOT introduce any new formal approval gate. This requirement governs ONLY the unchecked-items rule of the Completion Check; the CORE/AUDIT classification, the AUDIT soft-warning, the missing-main-spec handling, and the spec-sync behavior are unchanged. When `implementation.md` does not exist, this check is skipped entirely.
 
@@ -111,12 +111,12 @@ The prompt is conversational in chat: `sai-archive` SHALL NOT write any approval
 
 ### Requirement: No new flags, no upstream modifications, no schema modifications
 
-The new behavior SHALL be implemented entirely inside `sai/instructions/archive.md`. The change SHALL NOT introduce any new CLI flag, environment variable, or argument to `sai-archive`. The change SHALL NOT modify the upstream `openspec-archive-change` skill files (`.claude/skills/openspec-archive-change/SKILL.md`, `.opencode/skills/openspec-archive-change/SKILL.md`). The change SHALL NOT modify the `sai-workflow` schema (`openspec/schemas/sai-workflow/schema.yaml`). The change SHALL NOT modify the `commands/{claude,opencode}/sai-archive.md` wrapper files (they only fetch and SHALL keep their current content).
+The new behavior SHALL be implemented entirely inside `sai/commands/archive/instructions.md`. The change SHALL NOT introduce any new CLI flag, environment variable, or argument to `sai-archive`. The change SHALL NOT modify the upstream `openspec-archive-change` skill files (`.claude/skills/openspec-archive-change/SKILL.md`, `.opencode/skills/openspec-archive-change/SKILL.md`). The change SHALL NOT modify the `sai-workflow` schema (`openspec/schemas/sai-workflow/schema.yaml`). The change SHALL NOT modify the `commands/{claude,opencode}/sai-archive.md` wrapper files (they only fetch and SHALL keep their current content).
 
-#### Scenario: Diff is scoped to sai/instructions/archive.md
+#### Scenario: Diff is scoped to sai/commands/archive/instructions.md
 
 - **WHEN** the implementation of this change is complete
-- **THEN** `git diff` against the parent commit MUST show changes only inside `sai/instructions/archive.md`
+- **THEN** `git diff` against the parent commit MUST show changes only inside `sai/commands/archive/instructions.md`
 - **THEN** `git diff` MUST show no changes to `.claude/skills/openspec-archive-change/`, `.opencode/skills/openspec-archive-change/`, `openspec/schemas/sai-workflow/`, or `commands/{claude,opencode}/sai-archive.md`
 
 #### Scenario: Non-interactive archive run with AUDIT-only gaps
@@ -168,7 +168,7 @@ When an AUDIT artifact file exists and its content includes a "Not Applicable" h
 
 ### Requirement: Backfilled changes explicitly skip interfaces and change-overview
 
-When the `backfilled` field in `openspec/changes/<name>/.openspec.yaml` resolves to `true` (per the existing resolution rules in `sai/instructions/archive.md`), the `sai-archive` Classification Check MUST treat `interfaces` and `change-overview` as if they were `done` for the purposes of the CORE and AUDIT checks, in addition to `design`, `tasks`, and `implementation`. This is a robustness rule: `interfaces` has `requires: [tasks]` per ADR 0022 and `change-overview` has `requires: [interfaces]`, so a backfilled change cannot produce either; the explicit treatment prevents the backfill path from depending on a transitive absence.
+When the `backfilled` field in `openspec/changes/<name>/.openspec.yaml` resolves to `true` (per the existing resolution rules in `sai/commands/archive/instructions.md`), the `sai-archive` Classification Check MUST treat `interfaces` and `change-overview` as if they were `done` for the purposes of the CORE and AUDIT checks, in addition to `design`, `tasks`, and `implementation`. This is a robustness rule: `interfaces` has `requires: [tasks]` per ADR 0022 and `change-overview` has `requires: [interfaces]`, so a backfilled change cannot produce either; the explicit treatment prevents the backfill path from depending on a transitive absence.
 
 The requirement is at the behavior level, not the implementation level. The implementation MAY satisfy it by extending the backfill skip list to include `interfaces` and `change-overview`, OR by structuring the CORE/AUDIT checks so that both are excluded under the backfilled condition. Both implementations are conformant.
 

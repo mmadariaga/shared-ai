@@ -72,7 +72,7 @@ The section SHALL NOT be omitted or left with placeholder text.
 
 `/sai-3-implement` SHALL read **Stack**, **Conventions**, **Avoid**, and **Test Command** from `tasks.md` as the equivalent of the Expertise Profile. It SHALL NOT require the user to supply a separate Expertise Profile, and SHALL NOT STOP when the Expertise Profile subsections are absent from other artifacts.
 
-`sai/instructions/implement.md` SHALL NOT describe `## Implementation Context` as a three-field contract anywhere it enumerates or characterizes the section, so that the fourth field is not excluded by the instruction text that governs how the section is read.
+`sai/commands/implement/instructions.md` SHALL NOT describe `## Implementation Context` as a three-field contract anywhere it enumerates or characterizes the section, so that the fourth field is not excluded by the instruction text that governs how the section is read.
 
 Generic "Output Quality Bar" and universal standards SHALL remain in `plan.md` as hard rules and SHALL NOT be duplicated into `tasks.md`.
 
@@ -88,7 +88,7 @@ Generic "Output Quality Bar" and universal standards SHALL remain in `plan.md` a
 
 #### Scenario: implement.md enumerates four fields
 
-- **WHEN** `sai/instructions/implement.md` names the fields of `## Implementation Context` or characterizes it as the complete Expertise Profile contract
+- **WHEN** `sai/commands/implement/instructions.md` names the fields of `## Implementation Context` or characterizes it as the complete Expertise Profile contract
 - **THEN** the enumeration includes **Test Command** and no passage describes the section as containing three fields
 
 ### Requirement: tasks-implementation-context-schema

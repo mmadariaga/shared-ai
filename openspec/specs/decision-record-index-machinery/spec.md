@@ -98,7 +98,7 @@ The fallback noun is `domain unit`. The cold build substitutes the fallback noun
 #### Scenario: Framework mapping list is pinned in the spec
 
 - **WHEN** a maintainer reads this requirement's framework mapping list
-- **THEN** the list is normative — it appears in this spec, not in `sai/instructions/implement.md` or in a `bin/` script
+- **THEN** the list is normative — it appears in this spec, not in `sai/commands/implement/instructions.md` or in a `bin/` script
 - **THEN** a future change to a framework value (e.g. adding a sixth pattern-form, changing the precedence order) updates this requirement's framework list, not a code path
 
 ### Requirement: The cross-cutting threshold contract is pinned in the abstract surface
@@ -246,7 +246,7 @@ A future slice MAY add a project-level config block for overriding the framework
 #### Scenario: Framework values are pinned in the spec, not in code
 
 - **WHEN** a maintainer reads the framework mapping list and threshold values
-- **THEN** the values are normative — they appear in this spec, not in `sai/instructions/implement.md` or in a `bin/` script
+- **THEN** the values are normative — they appear in this spec, not in `sai/commands/implement/instructions.md` or in a `bin/` script
 - **THEN** a future change to a framework value (e.g. adding a sixth pattern-form, raising the target to `[10, 15]`) updates this spec, not a code path
 
 ### Requirement: Concrete indexes consume the abstract surface, not duplicate it

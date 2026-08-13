@@ -2,11 +2,11 @@
 
 ### Requirement: Mutation Analysis Pass Exists In The Review Workflow
 
-The review workflow in `sai/instructions/review.md` SHALL include a Mutation Analysis pass, designated pass 11, that runs after the existing ten review passes. The pass MUST perform mutation testing scoped to the diff against the parent branch and emit surviving mutants as findings in `review.md`. The `review` artifact instruction in `openspec/schemas/sai-workflow/schema.yaml` MUST name eleven passes (including Mutation Analysis), not ten.
+The review workflow in `sai/commands/review/instructions.md` SHALL include a Mutation Analysis pass, designated pass 11, that runs after the existing ten review passes. The pass MUST perform mutation testing scoped to the diff against the parent branch and emit surviving mutants as findings in `review.md`. The `review` artifact instruction in `openspec/schemas/sai-workflow/schema.yaml` MUST name eleven passes (including Mutation Analysis), not ten.
 
 #### Scenario: Pass 11 documented after the ten existing passes
 
-- **WHEN** a reader inspects `sai/instructions/review.md`
+- **WHEN** a reader inspects `sai/commands/review/instructions.md`
 - **THEN** a Mutation Analysis pass numbered 11 is present, ordered after the existing passes 1–10
 - **AND** the `review` artifact instruction in `openspec/schemas/sai-workflow/schema.yaml` lists eleven passes including Mutation Analysis
 

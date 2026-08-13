@@ -1,15 +1,15 @@
 ## ADDED Requirements
 
 ### Requirement: sai-payload-directory
-The repository SHALL contain a `sai/` top-level directory with two subdirectories: `sai/commands/` (sai command bodies) and `sai/instructions/` (sai instruction files). These paths replace `commands/sai/` and `instructions/sai/` respectively.
+The repository SHALL contain a `sai/` top-level directory with `sai/commands/` holding command cards — routed cards (`coordinator.md`, `worker.md`, `invocation.md`) and utility cards (`body.md`) — each with command-local phase content folded in as `sai/commands/{name}/instructions.md` and neighboring `.template.md` files (e.g. `sai/commands/review/review-report.template.md`). Three root exceptions live at the `sai/` root: `sai/change-overview.md`, `sai/adr-index.template.md`, and `sai/ddr-index.template.md`. There is no maintained `sai/instructions/` tree; phase content is folded into the command directories.
 
-#### Scenario: sai commands exist at new path
-- **WHEN** the restructure is applied
-- **THEN** all files previously at `commands/sai/*.md` SHALL be present at `sai/commands/*.md` with identical content
+#### Scenario: command cards and folded instructions exist at the folded paths
+- **WHEN** the fold is applied
+- **THEN** command cards exist under `sai/commands/{name}/` and every phase's instruction content is present at `sai/commands/{name}/instructions.md` with its co-located `.template.md` files
 
-#### Scenario: sai instructions exist at new path
-- **WHEN** the restructure is applied
-- **THEN** all files previously at `instructions/sai/*.md` SHALL be present at `sai/instructions/*.md` with identical content
+#### Scenario: no maintained sai/instructions tree remains
+- **WHEN** the fold is applied
+- **THEN** no file lives under a maintained `sai/instructions/` tree; the shared overview-generation instruction is at `sai/change-overview.md` and the index templates at `sai/adr-index.template.md` and `sai/ddr-index.template.md`
 
 ### Requirement: harness-wrappers-directory
 The repository SHALL contain `commands/claude/` (wrappers for Claude Code) and `commands/opencode/` (wrappers for OpenCode), grouping all harness wrapper packages under a single `commands/` root.

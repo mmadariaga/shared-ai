@@ -4,7 +4,7 @@
 
 ### Requirement: A risk may carry a verify-first ordering marker
 
-`sai/instructions/design.md` SHALL permit each entry in the `## Risks / Trade-offs` section of `openspec/changes/{name}/design.md` to carry an optional verify-first marker naming the `## Step N` the risk gates.
+`sai/commands/design/instructions.md` SHALL permit each entry in the `## Risks / Trade-offs` section of `openspec/changes/{name}/design.md` to carry an optional verify-first marker naming the `## Step N` the risk gates.
 
 The marker SHALL name a specific step by its integer key — not "early", "before implementation", or another vague ordering phrase. Its meaning SHALL be: the risk must be resolved or disproven *before* the named step is executed, because that step's design depends on the answer.
 

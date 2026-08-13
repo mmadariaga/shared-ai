@@ -1,18 +1,18 @@
 # Deduplicate sai-2-design Specification
 
 ## Purpose
-Deduplicate shared behavior between Claude Code and opencode wrappers by extracting shared instruction content into `sai/instructions/`, and reinforce artifact-only scope discipline and correct path references.
+Deduplicate shared behavior between Claude Code and opencode wrappers by extracting shared instruction content into `sai/commands/`, and reinforce artifact-only scope discipline and correct path references.
 
 ## Requirements
 
 ### Requirement: artifact-only-scope
-`sai/instructions/spec.propose.md` SHALL contain an "Artifact-Only Scope" section that explicitly lists:
+`sai/commands/spec/instructions.md` SHALL contain an "Artifact-Only Scope" section that explicitly lists:
 - What the spec command must NEVER create, modify, or delete (project source files, configuration files, infrastructure definitions, build artifacts)
 - What commands it must NEVER run (build, test, lint, deploy, migrate)
 - What files it MAY create or modify: only `openspec/changes/{name}/` artifacts, plus `./GLOSSARY.md` at the project root as a named exception
 
 #### Scenario: Artifact-Only Scope section present
-- **WHEN** `sai/instructions/spec.propose.md` is read
+- **WHEN** `sai/commands/spec/instructions.md` is read
 - **THEN** it contains an "Artifact-Only Scope" heading with bullet lists for NEVER-touch categories and MAY-modify files
 
 #### Scenario: scope covers file mutations
@@ -46,11 +46,11 @@ The design workflow SHALL be split into caller-neutral design invocation instruc
 - **AND** it does not load an inline command loader
 
 ### Requirement: opencode-remember-path-fix
-The opencode `sai-1-spec` wrapper SHALL load `remember.md` from `~/.config/opencode/sai/instructions/remember.md`, not from the `~/.claude/` path.
+The opencode `sai-1-spec` wrapper SHALL load `remember.md` from `~/.config/opencode/sai/policies/remember.md`, not from the `~/.claude/` path.
 
 #### Scenario: opencode sai-1-spec uses opencode path
 - **WHEN** `commands/opencode/sai-1-spec.md` is read
-- **THEN** the final `Fetch` line references `@~/.config/opencode/sai/instructions/remember.md`
+- **THEN** the final `Fetch` line references `@~/.config/opencode/sai/policies/remember.md`
 
 #### Scenario: no claude path leak in opencode commands
 - **WHEN** any file under `commands/opencode/` is searched

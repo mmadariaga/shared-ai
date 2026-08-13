@@ -39,7 +39,7 @@ Create `sai/commands/` directory at project root. For each of the 12 sai-* comma
 
 Current `commands/claude/sai-archive.md` body:
 ```
-Fetch @sai/instructions/prereqs.md
+Fetch @sai/policies/prereqs.md
 
 ## Load behaviors (in order)
 
@@ -52,15 +52,15 @@ Fetch @instructions/sai/remember.md
 
 Extracted `sai/commands/sai-archive.md`:
 ```
-Fetch @sai/instructions/prereqs.md
+Fetch @sai/policies/prereqs.md
 
 ## Load behaviors (in order)
 
-Fetch @sai/instructions/archive.md
+Fetch @sai/commands/archive/instructions.md
 
 Then fetch and follow the openspec-archive-change skill at @skills/openspec-archive-change/SKILL.md exactly.
 
-Fetch @sai/instructions/remember.md
+Fetch @sai/policies/remember.md
 ```
 
 Note: "User input: $ARGUMENTS" removed; the sentence ending before it is kept intact (trailing period stays).

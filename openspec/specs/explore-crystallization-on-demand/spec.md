@@ -25,7 +25,7 @@ The one-line readiness signal SHALL remain a once-per-stable-idea signal, while 
 
 ### Requirement: Readiness signal replaces state-triggered auto-emission
 
-When the explored idea becomes solid, `sai-explore` (`sai/instructions/explore.md`) SHALL NOT auto-print the `Ready to Propose` block. Instead it SHALL emit a single one-line readiness signal indicating the idea is solid enough to crystallize on request. "Solid" is judged at the same qualitative threshold as today's "idea is clear" wording in §5/§6; only the reaction changes (a signal instead of the block). This gate applies to both the single-change protocol (§5) and the sliced protocol (§6).
+When the explored idea becomes solid, `sai-explore` (`sai/commands/explore/instructions.md`) SHALL NOT auto-print the `Ready to Propose` block. Instead it SHALL emit a single one-line readiness signal indicating the idea is solid enough to crystallize on request. "Solid" is judged at the same qualitative threshold as today's "idea is clear" wording in §5/§6; only the reaction changes (a signal instead of the block). This gate applies to both the single-change protocol (§5) and the sliced protocol (§6).
 
 #### Scenario: solid idea produces a signal, not the block
 

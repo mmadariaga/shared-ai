@@ -7,7 +7,7 @@ TBD - created by archiving change extract-commit-rules-shared-instruction. Updat
 `commit-rules.md` SHALL contain only commit message format rules. It MUST NOT include git inspection steps, workflow sequences, file-staging instructions, or user interaction flows.
 
 #### Scenario: Downstream consumer reads commit-rules.md
-- **WHEN** any instruction file fetches `@sai/instructions/commit-rules.md`
+- **WHEN** any instruction file fetches `@sai/policies/commit-rules.md`
 - **THEN** the agent receives only format constraints (subject, body, footer, hard rules, self-critique) with no workflow directives mixed in
 
 ### Requirement: Subject line format

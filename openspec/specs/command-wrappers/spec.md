@@ -2,19 +2,19 @@
 
 ## Requirements
 ### Requirement: ai-* commands wrap opsx skills additively
-Each sai-* command that maps to an opsx skill SHALL load the skill content via `Fetch` and prepend shared-AI behaviors (isolation mode, model routing, relevant instructions) from `~/.claude/sai/instructions/` paths. The skill SKILL.md files SHALL NOT be modified.
+Each sai-* command that maps to an opsx skill SHALL load the skill content via `Fetch` and prepend shared-AI behaviors (isolation mode, model routing, relevant instructions) from `~/.claude/sai/` paths. The skill SKILL.md files SHALL NOT be modified.
 
 #### Scenario: sai-1-spec executes with full enrichment but stops before design
 - **WHEN** user invokes `sai-1-spec`
-- **THEN** command loads `~/.claude/sai/instructions/glossary-format.md`, `~/.claude/sai/instructions/spec.propose.md`, then fetches the openspec skill to generate only proposal.md and specs/ — it does NOT proceed to design.md or tasks.md
+- **THEN** command loads `~/.claude/sai/policies/glossary-format.md`, `~/.claude/sai/commands/spec/instructions.md`, then fetches the openspec skill to generate only proposal.md and specs/ — it does NOT proceed to design.md or tasks.md
 
 #### Scenario: sai-2-design executes with enrichment and approval check
 - **WHEN** user invokes `sai-2-design`
-- **THEN** command loads `~/.claude/sai/instructions/glossary-format.md`, verifies specs approval in `.openspec.yaml`, then generates design.md and tasks.md
+- **THEN** command loads `~/.claude/sai/policies/glossary-format.md`, verifies specs approval in `.openspec.yaml`, then generates design.md and tasks.md
 
 #### Scenario: all wrappers use sai/ instruction paths
 - **WHEN** any `commands/claude/sai-*.md` wrapper is executed
-- **THEN** all `Fetch` directives pointing to `~/.claude/sai/instructions/` use the `~/.claude/sai/instructions/` prefix
+- **THEN** all `Fetch` directives pointing to `~/.claude/sai/` use the `~/.claude/sai/` prefix
 
 ### Requirement: opsx commands are never invoked directly by users
 The project documentation and pipeline descriptions SHALL indicate that opsx:* commands are internal — users MUST use sai-* wrappers exclusively.
@@ -83,16 +83,16 @@ Each sai-* wrapper SHALL declare the appropriate model in frontmatter, matching 
 - **THEN** every `Claude Code` cell in the table contains the same model identifier and effort suffix as the corresponding wrapper frontmatter (or its absence for the Haiku wrappers that have no `effort` field)
 
 ### Requirement: spec.propose.md is the sole spec instruction source
-The `sai-1-spec` wrappers SHALL fetch `sai/instructions/spec.propose.md` (installed at `~/.claude/sai/instructions/spec.propose.md`) as their only spec-generation instruction file. The completion-phase gate instruction `sai/instructions/artifact-feedback-gate.md` is NOT a spec-generation instruction and is therefore exempt from this rule: the `sai-1-spec` body file MAY additionally fetch it at its completion phase.
+The `sai-1-spec` wrappers SHALL fetch `sai/commands/spec/instructions.md` (installed at `~/.claude/sai/commands/spec/instructions.md`) as their only spec-generation instruction file. The completion-phase gate instruction `sai/policies/artifact-feedback-gate.md` is NOT a spec-generation instruction and is therefore exempt from this rule: the `sai-1-spec` body file MAY additionally fetch it at its completion phase.
 
 #### Scenario: claude wrapper fetches only spec.propose.md for spec generation
 - **WHEN** `commands/claude/sai-1-spec.md` is executed
-- **THEN** the only fetched spec-generation instruction file is `~/.claude/sai/instructions/spec.propose.md`
-- **AND** the completion-phase fetch of `~/.claude/sai/instructions/artifact-feedback-gate.md` is permitted and does not count as a spec-generation instruction
+- **THEN** the only fetched spec-generation instruction file is `~/.claude/sai/commands/spec/instructions.md`
+- **AND** the completion-phase fetch of `~/.claude/sai/policies/artifact-feedback-gate.md` is permitted and does not count as a spec-generation instruction
 
 #### Scenario: opencode wrapper fetches only spec.propose.md for spec generation
 - **WHEN** `commands/opencode/sai-1-spec.md` is executed
-- **THEN** the only fetched spec-generation instruction file is `~/.config/opencode/sai/instructions/spec.propose.md`
+- **THEN** the only fetched spec-generation instruction file is `~/.config/opencode/sai/commands/spec/instructions.md`
 - **AND** the completion-phase fetch of the artifact-feedback-gate instruction is permitted
 
 ### Requirement: single canonical wrapper per command per harness

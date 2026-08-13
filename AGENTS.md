@@ -31,7 +31,11 @@ Each phase reads from and writes to **`openspec/changes/{change-name}/`** — si
  sai/commands/                    ← command cards — routed cards per phase and utility cards per command (fetched by boot adapters at runtime)
  sai/commands/{spec,design,implement,review,security,performance,accessibility}/  ← routed cards: coordinator.md, worker.md, and invocation.md where retained
  sai/commands/{apply,archive,backfill,commit,explore,pr,status,worktree}/          ← utility cards: body.md only
- sai/instructions/                ← phase content, command contracts, and canonical ADR template
+ sai/commands/{name}/instructions.md   ← command-local phase content (Isolation Mode + TASK block) folded into each command card
+ sai/commands/{name}/*.template.md     ← neighboring co-located report/plan template files beside each card
+ sai/change-overview.md                ← root exception: shared overview-generation instruction
+ sai/adr-index.template.md             ← root exception: canonical project-agnostic ADR index template
+ sai/ddr-index.template.md             ← root exception: canonical project-agnostic DDR index template
  sai/adapters/claude/boot.md      ← Claude Code boot adapter (loads command-runner, selects cards, owns Claude fetch/dispatch)
  sai/adapters/opencode/boot.md    ← opencode boot adapter (loads command-runner, selects cards, owns opencode fetch/dispatch)
  sai/orchestration/               ← matrix worker-binding templates and idea-list-render glue (no flat coordinator/worker contracts)
@@ -60,7 +64,10 @@ The openspec-dependent `sai-*` commands halt with a clear error if either is mis
 
 | Directory | Purpose |
 |-----------|---------|
-| `sai/instructions/` | Phase content (Isolation Mode + TASK block) and the canonical project-agnostic `sai/instructions/_templates/adr-index.md` template. Fetched by wrappers. |
+| `sai/commands/{name}/instructions.md` | Command-local phase content (Isolation Mode + TASK block) folded into each command card, fetched by the card that owns it. |
+| `sai/commands/{name}/*.template.md` | Co-located report/plan templates beside their owning card — e.g. `sai/commands/review/review-report.template.md`, `sai/commands/implement/implementation-plan.template.md`, `sai/commands/pr/pr-body.template.md`. |
+| `sai/change-overview.md` | Root exception — shared overview-generation instruction executed by the budget-routed subagent, the single source of the `change-overview.md` generation contract for every generation and regeneration. |
+| `sai/adr-index.template.md`, `sai/ddr-index.template.md` | Root exceptions — the canonical project-agnostic ADR/DDR index templates consumed by the Step 3 index-maintenance cold build. |
 | `sai/command-runner.md` | Neutral command-runner protocol (result loop, coordinator routing, no phase branches). Loaded by every boot adapter before card selection. |
 | `sai/worker-core.md` | Neutral worker lifecycle protocol (worker journal, envelope, changed-files union, reconstruction). Loaded by the routed worker cards. |
 | `sai/commands/` | Command cards — routed cards per phase and utility cards per command, fetched by boot adapters at runtime. |
@@ -68,8 +75,6 @@ The openspec-dependent `sai-*` commands halt with a clear error if either is mis
 | `sai/commands/{apply,archive,backfill,commit,explore,pr,status,worktree}/` | Utility cards: `body.md` only — the complete command body for utility commands. |
 | `sai/adapters/claude/boot.md` | Claude Code boot adapter — loads `@sai/command-runner.md`, selects the requested card, owns Claude fetch/dispatch. |
 | `sai/adapters/opencode/boot.md` | Opencode boot adapter — loads `@sai/command-runner.md`, selects the requested card, owns opencode fetch/dispatch. |
-| `sai/instructions/` | Phase content, caller contracts, and shared instruction templates fetched by wrappers. |
-| `sai/instructions/change-overview.md` | Shared overview-generation instruction executed by the budget-routed subagent — the single source of the `change-overview.md` generation contract for every generation and regeneration. |
 | `sai/orchestration/` | Matrix worker-binding templates (`bindings/{claude,opencode}/worker-template.md`) and idea-list-render glue (`bindings/{claude,opencode}/idea-list-render.md`); no flat coordinator/worker contracts remain. |
 | `sai/orchestration/workers/bindings/` | Neutral installed routed worker bindings (`spec/design/implementation/review/security/performance/accessibility-worker.md`) projected for both harnesses. |
 | `sai/policies/` | Canonical glossary, prerequisite, picker, commit, status, and feedback policies. `sai/policies/artifact-review-contract.md`: shared artifact review finding contract — closed severity vocabulary and assignment criteria, finding shape, severity-prefixed identifier scheme, and closing `Summary:` tally line — single-sourced and referenced by every artifact review surface. |
@@ -150,7 +155,7 @@ Loaded by 8 sai-* command wrappers (`sai-1-spec`, `sai-4-apply`, `sai-archive`, 
 - **No destructive shortcuts**: agent MUST NOT bypass safety checks (`--no-verify`) or discard unfamiliar files that may be in-progress work.
 
 ### Explore-mode read-only enforcement
-`sai-explore`'s explore-mode "No file writes" guarantee (`sai/instructions/explore.md`) is **enforced**, not merely conventional, in Claude Code via `allowed-tools` (scoped to read/search/dispatch tools — `Edit`, `Write`, and bare `Bash` omitted; shell limited to the prefix-scoped globs `Bash(openspec:*)` and `Bash(git:*)`). **opencode** has no per-command tool-restriction frontmatter field, so `commands/opencode/sai-explore.md` is intentionally left unchanged and its read-only guarantee stays model-discipline-only; routing opencode's `sai-explore` to a read-only sub-agent was rejected because it breaks the main-session interactivity the command requires.
+`sai-explore`'s explore-mode "No file writes" guarantee (`sai/commands/explore/instructions.md`) is **enforced**, not merely conventional, in Claude Code via `allowed-tools` (scoped to read/search/dispatch tools — `Edit`, `Write`, and bare `Bash` omitted; shell limited to the prefix-scoped globs `Bash(openspec:*)` and `Bash(git:*)`). **opencode** has no per-command tool-restriction frontmatter field, so `commands/opencode/sai-explore.md` is intentionally left unchanged and its read-only guarantee stays model-discipline-only; routing opencode's `sai-explore` to a read-only sub-agent was rejected because it breaks the main-session interactivity the command requires.
 
 ### Language Policy
 All agents MUST think and reason internally in English, regardless of the user's input language.
@@ -181,7 +186,7 @@ The only containment layer this change adopts is background dispatch on Claude C
 - Format: `sai/policies/glossary-format.md`, pre-loaded at startup by each wrapper.
 
 ### RED → GREEN
-Integrated in `implementation.md` (loaded by `sai-3-implement`) and `sai/instructions/implement.md` (loaded by `sai-4-apply`):
+Integrated in `implementation.md` (loaded by `sai-3-implement`) and `sai/commands/implement/instructions.md` (loaded by `sai-4-apply`):
 - `implementation.md` includes a RED block (failing test) before GREEN (minimal implementation).
 - `sai-4-apply` runs RED, verifies failure, writes GREEN, verifies pass.
 
@@ -211,7 +216,7 @@ Safe-operations confirmations and all unnamed gates remain in force.
 
 ## Installation
 
-Commands are **user globals**, not per-project. The manifest-driven installer expands `sai/install-manifest.json` into deterministic harness projections, and the same projections are used by `doctor` for missing/drift checks and by `uninstall` for safe removal. Claude Code and opencode receive mirrored routed spec, design, and implementation bindings from the shared Orchestration Core. The canonical project-agnostic ADR index template is `sai/instructions/_templates/adr-index.md`; the recursive `sai-instructions` projection installs it for both supported harnesses.
+Commands are **user globals**, not per-project. The manifest-driven installer expands `sai/install-manifest.json` into deterministic harness projections, and the same projections are used by `doctor` for missing/drift checks and by `uninstall` for safe removal. Claude Code and opencode receive mirrored routed spec, design, and implementation bindings from the shared Orchestration Core. The canonical project-agnostic ADR and DDR index templates are `sai/adr-index.template.md` and `sai/ddr-index.template.md`; the recursive `sai-commands` projection installs command-local instructions and co-located `.template.md` files for both supported harnesses, while the three root exceptions — `sai/change-overview.md`, `sai/adr-index.template.md`, and `sai/ddr-index.template.md` — install through their own `sai` root-class projections.
 
 The `sai-agents-index` root-class projection additionally writes `SAI_AGENTS.md` — the orientation index over the four SAI documentation surfaces — to each harness root, inheriting doctor missing-file detection, drift detection, and uninstall cleanup.
 
@@ -250,7 +255,7 @@ Existing projects with `plans/{feature-name}/` artifacts are **not migrated auto
 ## How to modify this repo
 
 ### Add / modify an instruction
-1. Edit the canonical file in `sai/instructions/`, `sai/policies/`, `sai/compat/`, or `sai/orchestration/` as appropriate. The ADR index template belongs at `sai/instructions/_templates/adr-index.md`; `sai/compat/` remains for compatibility-only assets.
+1. Edit the canonical file in `sai/commands/{name}/`, `sai/policies/`, `sai/compat/`, or `sai/orchestration/` as appropriate. The ADR index template belongs at `sai/adr-index.template.md` (and the DDR index template at `sai/ddr-index.template.md`); `sai/compat/` remains for compatibility-only assets.
 2. If it changes a per-phase artifact path, update the corresponding wrapper REPLACEMENT block (`sai-3-implement.md`, `sai-4-apply.md`) and the AGENTS.md artifact table above.
 3. If it changes an installable surface, update `sai/install-manifest.json` and keep Claude Code and opencode projections explicit. Their routed bindings must remain mirrored.
 4. If the recommended model changes, update the wrappers in `commands/claude/` and `commands/opencode/`.
@@ -265,7 +270,7 @@ Placement depends on command shape:
 When adding a new change-consuming command, check whether it dereferences `{change-name}` inside its own `## Prerequisite checks` before picking a placement.
 
 ### Add a new command
-1. Create the instruction in `sai/instructions/{name}.md` with Isolation Mode + TASK block (or, for openspec-backed commands, write a wrapper that fetches a skill).
+1. Create the instruction in `sai/commands/{name}/instructions.md` with Isolation Mode + TASK block (or, for openspec-backed commands, write a wrapper that fetches a skill).
 2. Create wrappers in `commands/claude/sai-{name}.md` and `commands/opencode/sai-{name}.md`.
 3. Update README.md with the phase in the corresponding table.
 
@@ -278,6 +283,6 @@ Any change to `commands/claude/` MUST be mirrored to `commands/opencode/` in the
 ### Format conventions
 - Never use `any` in TypeScript (even though there is no TS here, it applies to code examples in instructions).
 - Generated artifacts are in English unless the user explicitly requests otherwise.
-- Fetch URLs point to `@~/.claude/sai/{instructions,policies,compat,orchestration}/...` (Claude Code) or `@~/.config/opencode/sai/{instructions,policies,compat,orchestration}/...` (opencode).
+- Fetch URLs point to `@~/.claude/sai/{commands,policies,compat,orchestration}/...` (Claude Code) or `@~/.config/opencode/sai/{commands,policies,compat,orchestration}/...` (opencode).
 - Skill fetches use project-local paths (`.claude/skills/...` or `.opencode/skills/...`).
 - `TODO-ENHANCEMENTS.md` tracks future enhancement ideas (not part of the pipeline).

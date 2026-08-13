@@ -18,14 +18,14 @@ All 24 thin wrapper files at `commands/claude/*.md` and `commands/opencode/*.md`
 - **THEN** zero matches SHALL be found
 
 ### Requirement: command-body-instruction-fetch-paths
-All 12 sai command body files at `sai/commands/*.md` that fetch sai instructions SHALL use `Fetch @sai/instructions/<name>.md`. The path `@instructions/sai/` SHALL NOT appear in any command body file.
+All 12 sai command body files at `sai/commands/*.md` that fetch sai instructions SHALL use the folded fetch vocabulary: command-local instructions at `Fetch @sai/commands/{name}/instructions.md` (and for the archive pair, `Fetch @sai/commands/archive/instructions.md` then `Fetch @sai/commands/archive/archive-commit-gate.instructions.md`), templates at `Fetch @sai/commands/{name}/{artifact}.template.md`, and the root exceptions at `Fetch @sai/change-overview.md`, `Fetch @sai/adr-index.template.md`, and `Fetch @sai/ddr-index.template.md`. The path `@sai/instructions/` SHALL NOT appear in any command body file.
 
 #### Scenario: command body instruction fetch updated
 - **WHEN** any file under `sai/commands/` is read
-- **THEN** any Fetch directive pointing to a sai instruction file SHALL use the pattern `Fetch @sai/instructions/<name>.md`
+- **THEN** any Fetch directive pointing to a sai instruction SHALL use a folded pattern: `Fetch @sai/commands/{name}/instructions.md`, `Fetch @sai/commands/{name}/{artifact}.template.md`, or one of the root exceptions `Fetch @sai/change-overview.md`, `Fetch @sai/adr-index.template.md`, `Fetch @sai/ddr-index.template.md`
 
 #### Scenario: old instruction fetch path absent
-- **WHEN** a grep for `@instructions/sai/` is run across all files under `sai/commands/`
+- **WHEN** a grep for `@sai/instructions/` is run across all files under `sai/commands/`
 - **THEN** zero matches SHALL be found
 
 ### Requirement: non-sai-wrapper-fetch-paths-unchanged

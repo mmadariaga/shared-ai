@@ -8,7 +8,7 @@ Define the user-triggered, read-only post-crystallization review loop in `sai-ex
 
 ### Requirement: Scope limited to sai-explore
 
-The post-crystallization review loop SHALL apply only within `sai-explore`. No other `sai-*` command's behavior SHALL change. The behavior SHALL be documented in `sai/instructions/explore.md` only; this change SHALL NOT modify `AGENTS.md`, the `commands/{claude,opencode,copilot}/sai-explore.*` wrappers, or any other file.
+The post-crystallization review loop SHALL apply only within `sai-explore`. No other `sai-*` command's behavior SHALL change. The behavior SHALL be documented in `sai/commands/explore/instructions.md` only; this change SHALL NOT modify `AGENTS.md`, the `commands/{claude,opencode,copilot}/sai-explore.*` wrappers, or any other file.
 
 #### Scenario: other sai commands are unaffected
 
@@ -18,14 +18,14 @@ The post-crystallization review loop SHALL apply only within `sai-explore`. No o
 #### Scenario: change is confined to explore.md
 
 - **WHEN** this change is implemented
-- **THEN** the new behavior is expressed entirely in `sai/instructions/explore.md`
+- **THEN** the new behavior is expressed entirely in `sai/commands/explore/instructions.md`
 - **AND** no wrapper, `AGENTS.md`, or other `sai-*` instruction file is modified
 
 ### Requirement: Review invitation is a user-triggered plain-text standing invitation
 
 The global review invitation SHALL NOT be auto-offered as a harness option-picker immediately after a `Ready to Propose` block. Instead, `sai-explore` SHALL treat the review as a **user-triggered, plain-text sí/no standing invitation**: the crystallization block closes by recommending the user keep the explore window open (per the `explore-crystallization-block` capability), and the user triggers the review on return — by accepting the standing invitation or by asking to review the downstream artifacts.
 
-When the user triggers the review, `sai-explore` SHALL ask, in **plain conversational text** (never a harness option-picker), a single sí/no question rendered in the conversation's ambient language: whether the user wants to review the downstream artifacts of the changes crystallized in this chat. This plain-text question is a **deliberate exception** to the "Closed-choice prompts" native-picker rule in `sai/instructions/remember.md`; it applies only to this global review invitation. Answering no SHALL be a hard stop on the entire review section. Answering yes SHALL enter the per-change review loop over the chat-crystallized set, unchanged from its existing behavior.
+When the user triggers the review, `sai-explore` SHALL ask, in **plain conversational text** (never a harness option-picker), a single sí/no question rendered in the conversation's ambient language: whether the user wants to review the downstream artifacts of the changes crystallized in this chat. This plain-text question is a **deliberate exception** to the "Closed-choice prompts" native-picker rule in `sai/policies/remember.md`; it applies only to this global review invitation. Answering no SHALL be a hard stop on the entire review section. Answering yes SHALL enter the per-change review loop over the chat-crystallized set, unchanged from its existing behavior.
 
 The invitation carries **no precondition** — it remains available whether or not any downstream artifact exists and whether or not this chat crystallized any change — so the section behaves identically across sessions. When the tracked crystallized set is empty, accepting the invitation SHALL be a no-op that ends the section immediately after the yes.
 
@@ -63,7 +63,7 @@ The invitation carries **no precondition** — it remains available whether or n
 
 ### Requirement: Per-change review picker remains a harness option-picker
 
-While the global review invitation remains plain text, the per-change navigation menu SHALL remain a harness native option-picker. For each change in the tracked crystallized set, `sai-explore` SHALL present the four options `Review sai-1's artifacts`, `Review sai-2's artifacts`, `Review change-overview`, and `Skip` through the harness option-picker per the "Closed-choice prompts" rule in `sai/instructions/remember.md`. The plain-text treatment applies ONLY to the global review invitation and SHALL NOT be extended to this per-change menu.
+While the global review invitation remains plain text, the per-change navigation menu SHALL remain a harness native option-picker. For each change in the tracked crystallized set, `sai-explore` SHALL present the four options `Review sai-1's artifacts`, `Review sai-2's artifacts`, `Review change-overview`, and `Skip` through the harness option-picker per the "Closed-choice prompts" rule in `sai/policies/remember.md`. The plain-text treatment applies ONLY to the global review invitation and SHALL NOT be extended to this per-change menu.
 
 #### Scenario: per-change menu still uses the native picker
 
@@ -188,7 +188,7 @@ When a review transaction surfaces findings, the loop SHALL hand them off direct
 Handed-off corrections SHALL be applied by a worker that can consume the current change, with ownership following the source artifact's writer:
 
 - findings on `design.md`, `tasks.md`, or `interfaces.md` — owned by the **design worker**; they are applied only through a writable design-worker transaction (a re-invoked `/sai-2-design` or the supervised design phase's feedback channel);
-- findings on `proposal.md` or `specs/**` — owned by the **design worker's consent-gated spec-amendment path**: the design phase already holds consent-gated authority to amend `proposal.md` and `specs/**` in place (per `sai/instructions/design.md`), so applying such findings requires explicit user consent and SHALL be executed by a design worker through that path. There is no live spec-proposal worker at review time and `/sai-1-spec` cannot consume an existing change, so the spec-worker continuation is not a supported path.
+- findings on `proposal.md` or `specs/**` — owned by the **design worker's consent-gated spec-amendment path**: the design phase already holds consent-gated authority to amend `proposal.md` and `specs/**` in place (per `sai/commands/design/instructions.md`), so applying such findings requires explicit user consent and SHALL be executed by a design worker through that path. There is no live spec-proposal worker at review time and `/sai-1-spec` cannot consume an existing change, so the spec-worker continuation is not a supported path.
 
 Regeneration after handed-off corrections SHALL be conditioned on the change's persisted `overview.state` (per the `change-overview-synchronization` capability): exactly one regeneration follows the design-worker edits **only when the overview is already materialized** (`overview.state` is `current` or `stale`). Before first materialization — `unmaterialized` or `failed` — handed-off corrections update only their authoritative source artifacts and SHALL NOT regenerate or generate an overview; the overview is generated exactly once later, at the successful sai-2 `Continue` processing. The review loop itself SHALL NOT apply, forward, or regenerate on behalf of the user: it SHALL only print the findings block and hand the payload to the user for the owning-worker path. A user who wants to drop a specific finding removes that line when pasting the block; a contested finding is declined at the downstream design gate instead.
 

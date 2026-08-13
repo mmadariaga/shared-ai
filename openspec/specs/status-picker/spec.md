@@ -8,11 +8,11 @@ The status-picker capability defines the dedicated change-name picker instructio
 
 ### Requirement: sai-status uses a dedicated status-picker
 
-`sai-status` SHALL resolve a missing change name via a dedicated `sai/instructions/status-picker.md` instruction rather than the shared `change-picker.md`. `status-picker.md` SHALL reuse the change-picker resolution machinery — wrapper-echo resolution, the invocation trigger, `openspec list --json` as the sole source of change names, and the resolved-name substitution — unchanged. No other `sai-*` command SHALL fetch `status-picker.md`.
+`sai-status` SHALL resolve a missing change name via a dedicated `sai/policies/status-picker.md` instruction rather than the shared `change-picker.md`. `status-picker.md` SHALL reuse the change-picker resolution machinery — wrapper-echo resolution, the invocation trigger, `openspec list --json` as the sole source of change names, and the resolved-name substitution — unchanged. No other `sai-*` command SHALL fetch `status-picker.md`.
 
 #### Scenario: sai-status fetches status-picker
 - **WHEN** `/sai-status` is invoked
-- **THEN** it fetches `sai/instructions/status-picker.md` to resolve the change name, and does not fetch `change-picker.md`
+- **THEN** it fetches `sai/policies/status-picker.md` to resolve the change name, and does not fetch `change-picker.md`
 
 #### Scenario: change name already provided is a no-op
 - **WHEN** `/sai-status <change-name>` is invoked with a non-empty change name (via `$ARGUMENTS` or a wrapper-echo line)

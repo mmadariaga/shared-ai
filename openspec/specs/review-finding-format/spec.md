@@ -8,7 +8,7 @@ Single source for the shared artifact review finding contract — severity vocab
 
 ### Requirement: Artifact reviews share one finding contract
 
-Every artifact review SHALL draw its finding format from a single shared contract — the severity vocabulary and assignment criteria, the finding shape, the severity-prefixed identifier scheme, and the closing summary line — single-sourced in `sai/policies/artifact-review-contract.md`. The manual review loop in `sai-explore` and the pipeline-driven review phases (spec and design) SHALL reference that contract. Neither `sai/instructions/explore.md` nor any capability spec other than this one SHALL redefine the finding shape, the severity criteria, the identifier scheme, or the summary-line format inline; consuming capabilities and instructions SHALL cite the shared contract by reference.
+Every artifact review SHALL draw its finding format from a single shared contract — the severity vocabulary and assignment criteria, the finding shape, the severity-prefixed identifier scheme, and the closing summary line — single-sourced in `sai/policies/artifact-review-contract.md`. The manual review loop in `sai-explore` and the pipeline-driven review phases (spec and design) SHALL reference that contract. Neither `sai/commands/explore/instructions.md` nor any capability spec other than this one SHALL redefine the finding shape, the severity criteria, the identifier scheme, or the summary-line format inline; consuming capabilities and instructions SHALL cite the shared contract by reference.
 
 #### Scenario: manual loop references the shared contract
 
@@ -23,7 +23,7 @@ Every artifact review SHALL draw its finding format from a single shared contrac
 
 #### Scenario: no inline redefinition remains
 
-- **WHEN** `sai/instructions/explore.md` and every capability spec other than this one are audited
+- **WHEN** `sai/commands/explore/instructions.md` and every capability spec other than this one are audited
 - **THEN** none of them redefines the severity criteria, the finding shape, the identifier scheme, or the summary-line format
 - **AND** each of them references the shared contract instead
 

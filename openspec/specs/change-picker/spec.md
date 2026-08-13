@@ -35,7 +35,7 @@ The change-picker instruction SHALL run only when no change name is available fr
 The shared `change-picker.md` instruction SHALL serve exactly the change-consuming `sai-*` commands that need only single-change resolution — `sai-2-design`, `sai-3-implement`, `sai-4-apply`, `sai-5-review`, `sai-6-security`, `sai-7-performance`, `sai-8-accessibility`, `sai-archive`, and `sai-pr` (9 consumers). `sai-status` SHALL NOT be a consumer of `change-picker.md`; it resolves change names via the dedicated `status-picker` capability instead. This requirement changes no `change-picker.md` resolution logic — the wrapper-echo, invocation-trigger, and 0/1/N steps are unchanged — so the 9 consumers stay behaviorally identical.
 
 #### Scenario: consumer list enumerates 9 commands without sai-status
-- **WHEN** the consumer list in `sai/instructions/change-picker.md` is read
+- **WHEN** the consumer list in `sai/policies/change-picker.md` is read
 - **THEN** it enumerates the 9 change-consuming commands and does not include `sai-status`
 
 #### Scenario: resolution logic unchanged for the 9 consumers

@@ -39,7 +39,7 @@ The implementation plan steps SHALL correspond one-to-one to the implementation-
 
 #### Scenario: workflow steps map to plan steps
 
-- **WHEN** `sai/instructions/implement.md` Step 1 through Step 5 are executed
+- **WHEN** `sai/commands/implement/instructions.md` Step 1 through Step 5 are executed
 - **THEN** each step's completion SHALL be reportable under exactly one of the declared plan step ids
 
 #### Scenario: no approval step in the implementation plan

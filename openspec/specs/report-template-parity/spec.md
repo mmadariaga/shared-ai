@@ -7,26 +7,26 @@ Pin schema scaffolds and write-time contracts to a shared report skeleton and en
 
 ### Requirement: Schema scaffolds and write-time contracts share a pinned report skeleton
 
-For each of the four report artifacts — review, security, performance, accessibility — the schema template at `openspec/schemas/sai-workflow/templates/{artifact}.md` and the write-time contract at `sai/instructions/_templates/{artifact}-report.md` SHALL present the same report structure: identical top-level `##` heading text in identical order, and an identical header metadata block with the same field labels and the same referenced value shapes (e.g. the change directory for the Change field). The two families SHALL diverge only in placeholder syntax (`<!-- -->` versus `{...}`), in the depth of fill-in guidance, and in code-fence wrapping.
+For each of the four report artifacts — review, security, performance, accessibility — the schema template at `openspec/schemas/sai-workflow/templates/{artifact}.md` and the write-time contract at `sai/commands/{phase}/{artifact}-report.template.md` SHALL present the same report structure: identical top-level `##` heading text in identical order, and an identical header metadata block with the same field labels and the same referenced value shapes (e.g. the change directory for the Change field). The two families SHALL diverge only in placeholder syntax (`<!-- -->` versus `{...}`), in the depth of fill-in guidance, and in code-fence wrapping.
 
 #### Scenario: Review pair presents the pinned structure
 
-- **WHEN** `openspec/schemas/sai-workflow/templates/review.md` and `sai/instructions/_templates/review-report.md` are read
+- **WHEN** `openspec/schemas/sai-workflow/templates/review.md` and `sai/commands/review/review-report.template.md` are read
 - **THEN** both expose the same top-level heading sequence — Summary, Domain Alignment Check, Security Surface Triage, Performance Surface Triage, Accessibility Surface Triage, Findings, Mutation Analysis (Pass 11), Coverage Notes, Next Steps — and the same header metadata field labels — Change, Branch reviewed, Parent branch, Commits in scope, Files changed, Date — and their Mutation Analysis sections expose the same bold field set (Strategy, Test command, Mutations decided, Aggregate)
 
 #### Scenario: Security pair presents the pinned structure
 
-- **WHEN** `openspec/schemas/sai-workflow/templates/security.md` and `sai/instructions/_templates/security-report.md` are read
+- **WHEN** `openspec/schemas/sai-workflow/templates/security.md` and `sai/commands/security/security-report.template.md` are read
 - **THEN** both expose the same top-level heading sequence — Not Applicable, Executive Summary, Module Summary, SAST Findings, SCA Findings, Supply Chain Hygiene, License Risk, Policy Compliance, Acknowledged Trade-offs (from change artifacts), Prioritized Remediation Plan, Metrics — and the same header metadata field labels, with the scaffold carrying the Supply Chain Hygiene, License Risk, Policy Compliance, and Acknowledged Trade-offs (from change artifacts) sections it currently lacks
 
 #### Scenario: Performance pair presents the pinned structure
 
-- **WHEN** `openspec/schemas/sai-workflow/templates/performance.md` and `sai/instructions/_templates/performance-report.md` are read
+- **WHEN** `openspec/schemas/sai-workflow/templates/performance.md` and `sai/commands/performance/performance-report.template.md` are read
 - **THEN** both expose the same top-level heading sequence — Not Applicable, Executive Summary, Hot Paths in Scope, Findings, Acknowledged Trade-offs (from change artifacts), Observability Gaps, Prioritized Remediation Plan, Validation Plan — and the same header metadata field labels
 
 #### Scenario: Accessibility pair presents the pinned structure
 
-- **WHEN** `openspec/schemas/sai-workflow/templates/accessibility.md` and `sai/instructions/_templates/accessibility-report.md` are read
+- **WHEN** `openspec/schemas/sai-workflow/templates/accessibility.md` and `sai/commands/accessibility/accessibility-report.template.md` are read
 - **THEN** both expose the same top-level heading sequence — Not Applicable, Executive Summary, Findings, Acknowledged Trade-offs (from change artifacts), Coverage Notes, Prioritized Remediation Plan, Re-Test Checklist — and the same header metadata field labels
 
 #### Scenario: Divergence is limited to the allowed dimensions

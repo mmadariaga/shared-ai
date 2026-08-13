@@ -48,7 +48,7 @@ The resolved branch name SHALL be substituted into the `## Prerequisites` sectio
 ## MODIFIED Requirements
 
 ### Requirement: Branch selection prompt MUST offer custom backlog-linked name as explicit option
-The branch selection prompt in `sai/instructions/implement.md` SHALL present three options:
+The branch selection prompt in `sai/commands/implement/instructions.md` SHALL present three options:
 1. `{feature-name}` (derived from the change name)
 2. Custom branch name (free input — e.g., backlog-linked name like `JIRA-123-feature-name`)
 3. Create the selected branch from the chosen base branch — the dynamically resolved default branch (`main`/`master`) or the current branch, per the base prompt defined in `sai-apply-branch-prompt` — if it does not already exist. The base SHALL NOT be hardcoded to `main`.

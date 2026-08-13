@@ -1,6 +1,6 @@
 # Claude Idea-List Render Binding
 
-This harness has a native task panel (`panel: native`), declared here — never runtime-detected. The binding renders the `sai-explore` idea progress list (item 11 of `sai/instructions/explore.md`) on the harness's task panel through the harness's task tools, by whatever mechanism they provide:
+This harness has a native task panel (`panel: native`), declared here — never runtime-detected. The binding renders the `sai-explore` idea progress list (item 11 of `sai/commands/explore/instructions.md`) on the harness's task panel through the harness's task tools, by whatever mechanism they provide:
 
 - Each idea-list entry's label (`subject`) carries the slice's change name.
 - Status is `pending | in_progress | completed`: a marked item renders `completed`, a cleared item renders back to `pending`, and the slice's active review item (reviewed-sai-1 or reviewed-sai-2, per `idea-list-review-in-progress-state`) renders `in_progress` while the post-crystallization review loop processes that slice — the research item and slice-crystallization items never carry `in_progress`.
@@ -9,4 +9,4 @@ This harness has a native task panel (`panel: native`), declared here — never 
 - The start clear reads the panel's task entries (`TaskList` for ids, `TaskGet` per id), classifies by the description marker only, and removes exactly the marker-bearing entries. The read covers the marker only and never derives list content.
 - Emission originates exclusively from the coordinator session, never from a worker subagent.
 
-The idea-list contract rules (scope, render, ownership, lifecycle, timing) live in `sai/instructions/explore.md`; this binding does not restate them.
+The idea-list contract rules (scope, render, ownership, lifecycle, timing) live in `sai/commands/explore/instructions.md`; this binding does not restate them.

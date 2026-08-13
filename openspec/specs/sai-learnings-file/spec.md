@@ -117,7 +117,7 @@ Invalidation SHALL be expressed only as supersede-by-key. No SAI phase SHALL be 
 
 ### Requirement: Format contract lives in a dedicated instruction file
 
-A new instruction file `sai/instructions/sai-learnings-format.md` SHALL define the canonical format of `SAI_LEARNINGS.md`. It SHALL be structured on the same model as `sai/instructions/glossary-format.md`, carrying at minimum: a scope statement, a canonical-location statement, the file structure, the rules, the append and supersede rules, and a bootstrap section.
+A new instruction file `sai/policies/sai-learnings-format.md` SHALL define the canonical format of `SAI_LEARNINGS.md`. It SHALL be structured on the same model as `sai/policies/glossary-format.md`, carrying at minimum: a scope statement, a canonical-location statement, the file structure, the rules, the append and supersede rules, and a bootstrap section.
 
 The file body SHALL be wrapped in a delimiting block so that it can be quoted into a subagent prompt as a unit, matching how `glossary-format.md` wraps its body in a `<glossary_format>` block.
 
@@ -125,7 +125,7 @@ Every agent that reads, writes, or audits `SAI_LEARNINGS.md` SHALL conform to th
 
 #### Scenario: The format file is read
 
-- **WHEN** `sai/instructions/sai-learnings-format.md` is read
+- **WHEN** `sai/policies/sai-learnings-format.md` is read
 - **THEN** it contains a scope statement, a canonical-location statement naming the project root, the four-section file structure, the per-entry shape, the supersede-by-key rule, and a bootstrap section
 
 #### Scenario: The format body is quoted into a prompt

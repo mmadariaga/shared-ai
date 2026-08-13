@@ -1,6 +1,6 @@
 # Artifact Review Contract (shared finding format)
 
-Single source of the artifact review finding contract. Every artifact review surface — the manual `sai-explore` post-crystallization review loop and the supervised pipeline's independent spec- and design-artifact reviewers — SHALL draw its finding format from this contract by reference. Neither `sai/instructions/explore.md` nor any capability spec other than `review-finding-format` SHALL redefine the severity criteria, the finding shape, the identifier scheme, or the summary-line format inline; consuming instructions and capability specs SHALL cite this contract by reference. These semantics SHALL NOT be restated in explore or reviewer instructions.
+Single source of the artifact review finding contract. Every artifact review surface — the manual `sai-explore` post-crystallization review loop and the supervised pipeline's independent spec- and design-artifact reviewers — SHALL draw its finding format from this contract by reference. Neither `sai/commands/explore/instructions.md` nor any capability spec other than `review-finding-format` SHALL redefine the severity criteria, the finding shape, the identifier scheme, or the summary-line format inline; consuming instructions and capability specs SHALL cite this contract by reference. These semantics SHALL NOT be restated in explore or reviewer instructions.
 
 ## Scope
 

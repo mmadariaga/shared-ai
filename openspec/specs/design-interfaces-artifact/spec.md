@@ -4,7 +4,7 @@
 
 ### Requirement: sai-2-design emits interfaces.md
 
-When `sai/instructions/design.md` generates artifacts for a change, the agent SHALL write a per-change artifact `openspec/changes/{name}/interfaces.md` in addition to `design.md` and `tasks.md`. `interfaces.md` SHALL be a separate file — it SHALL NOT be a section of `tasks.md`, `design.md`, or any other artifact.
+When `sai/commands/design/instructions.md` generates artifacts for a change, the agent SHALL write a per-change artifact `openspec/changes/{name}/interfaces.md` in addition to `design.md` and `tasks.md`. `interfaces.md` SHALL be a separate file — it SHALL NOT be a section of `tasks.md`, `design.md`, or any other artifact.
 
 The concrete public signatures and exact test assertions that `interfaces.md` carries are the "detailed behavior" that `tasks.md`'s conciseness rule excludes; they SHALL live only in `interfaces.md`, never restated into `tasks.md`.
 
@@ -122,7 +122,7 @@ A step that introduces neither a new/modified public interface nor a testable as
 
 ### Requirement: No stage consumes interfaces.md in this slice
 
-This slice SHALL NOT wire any consumer to `interfaces.md`. `sai/instructions/implement.md` (`sai-3-implement`) and `sai/instructions/apply.md` (`sai-4-apply`) SHALL be unchanged with respect to reading or acting on `interfaces.md`.
+This slice SHALL NOT wire any consumer to `interfaces.md`. `sai/commands/implement/instructions.md` (`sai-3-implement`) and `sai/commands/apply/instructions.md` (`sai-4-apply`) SHALL be unchanged with respect to reading or acting on `interfaces.md`.
 
 #### Scenario: implement and apply unchanged
 - **WHEN** `sai-3-implement` or `sai-4-apply` runs after `interfaces.md` exists

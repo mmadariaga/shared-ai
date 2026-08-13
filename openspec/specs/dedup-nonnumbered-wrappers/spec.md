@@ -31,23 +31,23 @@ The Completion Check block (inspect `implementation.md` for unchecked items befo
 - **THEN** it contains the `- [ ]` scan logic and the STOP message for incomplete tasks
 
 ### Requirement: path-resolution-in-pr-instruction
-The path resolution sentence (`Resolve all artifact paths under openspec/changes/{change-name}/`, treating proposal.md + design.md + specs/**/*.md as spec.md equivalent and implementation.md as plan.md equivalent) SHALL reside in `sai/instructions/pr.md`, not inline in either sai-pr wrapper.
+The path resolution sentence (`Resolve all artifact paths under openspec/changes/{change-name}/`, treating proposal.md + design.md + specs/**/*.md as spec.md equivalent and implementation.md as plan.md equivalent) SHALL reside in `sai/commands/pr/instructions.md`, not inline in either sai-pr wrapper.
 
 #### Scenario: path resolution absent from claude pr wrapper
 - **WHEN** `commands/claude/sai-pr.md` is read
 - **THEN** no "Resolve all artifact paths" sentence appears inline in the wrapper body
 
 #### Scenario: path resolution present in pr.md
-- **WHEN** `sai/instructions/pr.md` is read
+- **WHEN** `sai/commands/pr/instructions.md` is read
 - **THEN** it contains the full openspec artifact-path resolution mapping
 
 ### Requirement: no-handoff-for-nonnumbered
 Non-numbered instruction files (the files backing sai-explore, sai-archive, sai-commit, and sai-pr) SHALL NOT receive a STOP+print handoff block as part of this deduplication.
 
 #### Scenario: no handoff in commit instruction
-- **WHEN** `sai/instructions/commit.md` is read
+- **WHEN** `sai/commands/commit/instructions.md` is read
 - **THEN** it contains no STOP+print handoff block of the form used in sai-1 through sai-8
 
 #### Scenario: no handoff in pr instruction
-- **WHEN** `sai/instructions/pr.md` is read
+- **WHEN** `sai/commands/pr/instructions.md` is read
 - **THEN** it contains no "when ready" STOP+print pointing to a next sai step

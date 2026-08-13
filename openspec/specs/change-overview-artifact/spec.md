@@ -145,7 +145,7 @@ This requirement is the named "admitted-section rule" that `design-target-state`
 
 ### Requirement: Overview is not a prerequisite or input for sai-3 or sai-4
 
-`change-overview.md` SHALL NOT be a prerequisite or input for `sai-3-implement` or `sai-4-apply`. `sai/instructions/implement.md` and `sai/instructions/apply.md` SHALL continue to read the authoritative source artifacts — `interfaces.md` step contracts, `tasks.md`, `design.md`, `specs/**`, `proposal.md` — and SHALL NOT read or depend on the overview.
+`change-overview.md` SHALL NOT be a prerequisite or input for `sai-3-implement` or `sai-4-apply`. `sai/commands/implement/instructions.md` and `sai/commands/apply/instructions.md` SHALL continue to read the authoritative source artifacts — `interfaces.md` step contracts, `tasks.md`, `design.md`, `specs/**`, `proposal.md` — and SHALL NOT read or depend on the overview.
 
 #### Scenario: implement ignores the overview
 - **WHEN** `sai-3-implement` runs for a change that has an overview
@@ -170,7 +170,7 @@ This requirement is the named "admitted-section rule" that `design-target-state`
 
 ### Requirement: Backfilled changes require no overview
 
-A change whose `.openspec.yaml` records `backfilled: true` SHALL NOT be expected to produce `change-overview.md` — it has no design-stage source artifacts (`design.md`, `tasks.md`, `interfaces.md`), so the overview cannot be generated, and it SHALL carry no `overview.state` key. For backfilled changes only, the `sai/instructions/archive.md` Classification Check SHALL treat `change-overview` as if it were `done` (the backfill skip treatment, exactly as it treats `interfaces`), and the `sai-status` panel SHALL NOT flag the absent overview as a problem.
+A change whose `.openspec.yaml` records `backfilled: true` SHALL NOT be expected to produce `change-overview.md` — it has no design-stage source artifacts (`design.md`, `tasks.md`, `interfaces.md`), so the overview cannot be generated, and it SHALL carry no `overview.state` key. For backfilled changes only, the `sai/commands/archive/instructions.md` Classification Check SHALL treat `change-overview` as if it were `done` (the backfill skip treatment, exactly as it treats `interfaces`), and the `sai-status` panel SHALL NOT flag the absent overview as a problem.
 
 For ordinary designed changes — those not backfilled — `change-overview.md` SHALL be expected after sai-2 completes: normal sai-2 completion generates and validates it as the sole review surface and commits `overview.state: current`. The archive Classification Check SHALL classify `change-overview` as **AUDIT** (informational only, like `review`) for ordinary changes, so an overview that is missing, not `done`, `overview.state: stale`, `overview.state: failed`, or `overview.state: materializing` at archive time produces the informational missing-AUDIT warning and does not block archive; a missing file warns even when the state key reads `current`, because currentness is the conjunction of the state key and the file's presence. The `sai-status` panel SHALL derive the overview state from the `overview.state` key and the CLI-reported artifact state, flagging `stale`, `failed`, `materializing`, and current-metadata-with-missing-file as problems and treating `unmaterialized` (key absent) as the expected pre-`Continue` state rather than a problem.
 

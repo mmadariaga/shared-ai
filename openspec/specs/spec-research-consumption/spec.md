@@ -71,10 +71,10 @@ The consumption instruction SHALL NOT introduce a target-file, "files to modify"
 
 ### Requirement: Consumption edit surface is the shared spec.propose.md instruction
 
-This capability SHALL be delivered by editing `sai/instructions/spec.propose.md`, the shared instruction fetched by all three `sai-1-spec` wrappers, and SHALL NOT modify any wrapper file under `commands/claude/`, `commands/opencode/`, or `commands/copilot/`, nor `sai/commands/sai-1-spec.md`. Delivering the instruction in the shared file makes the research-lead consumption behavior apply uniformly across Claude Code, opencode, and GitHub Copilot.
+This capability SHALL be delivered by editing `sai/commands/spec/instructions.md`, the shared instruction fetched by all three `sai-1-spec` wrappers, and SHALL NOT modify any wrapper file under `commands/claude/`, `commands/opencode/`, or `commands/copilot/`, nor `sai/commands/sai-1-spec.md`. Delivering the instruction in the shared file makes the research-lead consumption behavior apply uniformly across Claude Code, opencode, and GitHub Copilot.
 
 #### Scenario: shared instruction provides uniform consumption
 
 - **WHEN** the research-lead consumption behavior is applied
-- **THEN** the consumption rule is added to `sai/instructions/spec.propose.md`
+- **THEN** the consumption rule is added to `sai/commands/spec/instructions.md`
 - **AND** the three `sai-1-spec` wrappers and the shared command file remain unchanged

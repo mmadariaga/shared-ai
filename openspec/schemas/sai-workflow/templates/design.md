@@ -5,7 +5,7 @@
      config shape. For prose/instruction/doc changes: the final section + field structure of each document touched.
      Must be readable on its own, without the step sections. Write None + a one-line reason if no finished shape is
      expressible. Projected into change-overview.md by the overview generator — never authored there.
-     Authoritative contract: sai/instructions/design.md `### Target State (authored first in design.md)`. -->
+     Authoritative contract: sai/commands/design/instructions.md `### Target State (authored first in design.md)`. -->
 
 ### Architecture Snapshot
 
@@ -19,7 +19,7 @@
 
 <!-- The flat, git-status-style list of every file the change creates, modifies, deletes, or renames,
      path-sorted with step attribution, derived by the deterministic net fold over the per-step
-     `**Files Affected**` entries of tasks.md (see sai/instructions/design.md). If the fold produces
+     `**Files Affected**` entries of tasks.md (see sai/commands/design/instructions.md). If the fold produces
      no lines, write exactly:
      None — no files affected
      followed by a one-line reason. This persisted manifest is authoritative; the change-overview

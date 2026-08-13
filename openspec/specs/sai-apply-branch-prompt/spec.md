@@ -1,15 +1,15 @@
 ## ADDED Requirements
 
 ### Requirement: Plan template Prerequisites section SHALL use a 3-option branch-selection prompt
-The `## Prerequisites` block inside `<plan_template>` in `sai/instructions/implement.md` SHALL be replaced with a branch-selection prompt that presents exactly three options to the user. The hardcoded instruction "Ensure branch is not master or main" SHALL be removed. No branch name is prohibited — the user has complete opt-out.
+The `## Prerequisites` block inside `<plan_template>` in `sai/commands/implement/instructions.md` SHALL be replaced with a branch-selection prompt that presents exactly three options to the user. The hardcoded instruction "Ensure branch is not master or main" SHALL be removed. No branch name is prohibited — the user has complete opt-out.
 
 #### Scenario: plan template contains 3-option prompt
-- **WHEN** `sai/instructions/implement.md` is read and the `<plan_template>` section is inspected
+- **WHEN** `sai/commands/implement/instructions.md` is read and the `<plan_template>` section is inspected
 - **THEN** the `## Prerequisites` block contains a 3-option branch-selection prompt
 - **THEN** the `## Prerequisites` block does NOT contain the text "Ensure branch is not master or main"
 
 #### Scenario: old 2-option rule is absent
-- **WHEN** `sai/instructions/implement.md` is read
+- **WHEN** `sai/commands/implement/instructions.md` is read
 - **THEN** the `<plan_template>` section does NOT contain the original two-item numbered list (feature-name + custom branch name) as the sole branch-selection mechanism
 - **THEN** the `<plan_template>` section does NOT contain any instruction that prohibits or warns against selecting `main`, `master`, or any other specific branch name
 
@@ -100,10 +100,10 @@ If the selected branch does not exist in the repository, the Prerequisites secti
 - **THEN** no branch creation instruction is included in the Prerequisites section
 
 ### Requirement: Edit scope limited to plan_template Prerequisites
-Only the `## Prerequisites` section inside `<plan_template>` in `sai/instructions/implement.md` SHALL be modified. No other section of `implement.md`, no other instruction file, and no existing `implementation.md` artifact SHALL be changed.
+Only the `## Prerequisites` section inside `<plan_template>` in `sai/commands/implement/instructions.md` SHALL be modified. No other section of `implement.md`, no other instruction file, and no existing `implementation.md` artifact SHALL be changed.
 
 #### Scenario: only Prerequisites section modified
-- **WHEN** the change is applied to `sai/instructions/implement.md`
+- **WHEN** the change is applied to `sai/commands/implement/instructions.md`
 - **THEN** the only diff is within the `## Prerequisites` block inside `<plan_template>`
 - **THEN** all other sections of `implement.md` remain byte-identical
 
@@ -112,7 +112,7 @@ Only the `## Prerequisites` section inside `<plan_template>` in `sai/instruction
 - **THEN** no existing `openspec/changes/*/implementation.md` file is modified or regenerated
 
 ### Requirement: Default branch SHALL be detected dynamically
-The `## Prerequisites` block inside `<plan_template>` in `sai/instructions/implement.md` SHALL instruct the agent to resolve the repository's default branch dynamically rather than assuming `main`. Resolution SHALL prefer the remote head (for example `git symbolic-ref --quiet refs/remotes/origin/HEAD`, taking the trailing segment), falling back to whichever of `main` or `master` exists locally. The resolved name is referred to below as the default branch.
+The `## Prerequisites` block inside `<plan_template>` in `sai/commands/implement/instructions.md` SHALL instruct the agent to resolve the repository's default branch dynamically rather than assuming `main`. Resolution SHALL prefer the remote head (for example `git symbolic-ref --quiet refs/remotes/origin/HEAD`, taking the trailing segment), falling back to whichever of `main` or `master` exists locally. The resolved name is referred to below as the default branch.
 
 #### Scenario: repository default branch is main
 - **WHEN** the agent generates an `implementation.md` in a repository whose default branch is `main`

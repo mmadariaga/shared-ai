@@ -71,7 +71,7 @@ During `/sai-2-design`, every Decision in `design.md`'s `## Decisions` section t
 
 ### Requirement: Every criteria-evaluation surface resolves the family by the routing test
 
-Every instruction surface that evaluates the three ADR/DDR criteria SHALL resolve a qualifying decision's family by the ordered routing test and SHALL NOT leave the ADR-vs-DDR choice open. This covers `sai/instructions/design.md`'s `## Decisions` evaluation (which records the resolved family per the design.md marker requirement), `sai/instructions/spec.propose.md`'s ADR/DDR Proposal Check, and `sai/instructions/implement.md` Step 3. The phrase "ADR/DDR" SHALL name the evaluation surface (the two-family criteria check) and SHALL NOT be used to leave the family unresolved.
+Every instruction surface that evaluates the three ADR/DDR criteria SHALL resolve a qualifying decision's family by the ordered routing test and SHALL NOT leave the ADR-vs-DDR choice open. This covers `sai/commands/design/instructions.md`'s `## Decisions` evaluation (which records the resolved family per the design.md marker requirement), `sai/commands/spec/instructions.md`'s ADR/DDR Proposal Check, and `sai/commands/implement/instructions.md` Step 3. The phrase "ADR/DDR" SHALL name the evaluation surface (the two-family criteria check) and SHALL NOT be used to leave the family unresolved.
 
 #### Scenario: design.md Decisions evaluation resolves the family
 
@@ -80,5 +80,5 @@ Every instruction surface that evaluates the three ADR/DDR criteria SHALL resolv
 
 #### Scenario: spec.propose.md ADR/DDR Proposal Check resolves the family
 
-- **WHEN** `sai/instructions/spec.propose.md`'s ADR/DDR Proposal Check is read
+- **WHEN** `sai/commands/spec/instructions.md`'s ADR/DDR Proposal Check is read
 - **THEN** it directs family resolution by the ordered routing test instead of restating the three criteria without distinguishing the families
