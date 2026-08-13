@@ -785,17 +785,19 @@ test('STEP1_RETIRE_INLINE: manifest and installer expose only routed harnesses',
     });
     assert.ok(active.length > 0, `${harness} should have active projections`);
     assert.ok(active.every(projection => projection.harness === harness));
-    const routedBindings = active
-      .map(projection => path.relative(repoRoot, projection.sourcePath).split(path.sep).join('/'))
-      .filter(source => source.startsWith(`sai/orchestration/workers/bindings/${harness}/`) &&
-        !source.endsWith('/idea-list-render.md'));
-    assert.equal(routedBindings.length, 0, `${harness} should retain no retired per-harness worker binding sources`);
-    const ideaListSources = active
-      .map(projection => path.relative(repoRoot, projection.sourcePath).split(path.sep).join('/'))
-      .filter(source => source.startsWith(`sai/orchestration/workers/bindings/${harness}/`) &&
-        source.endsWith('/idea-list-render.md'));
-    assert.equal(ideaListSources.length, 1,
-      `${harness} should retain the regular idea-list-render binding source beside the matrix`);
+     const routedBindings = active
+       .map(projection => path.relative(repoRoot, projection.sourcePath).split(path.sep).join('/'))
+       .filter(source => source.startsWith(`sai/orchestration/workers/bindings/${harness}/`));
+     assert.equal(routedBindings.length, 0, `${harness} should retain no retired per-harness worker binding sources`);
+     const adapterSource = `sai/adapters/${harness}/idea-list-render.md`;
+     const adapterProjection = active.find(projection =>
+       path.relative(repoRoot, projection.sourcePath).split(path.sep).join('/') === adapterSource);
+     assert.ok(adapterProjection, `${harness} should retain the adapter idea-list-render source`);
+     assert.equal(
+       path.relative(destinationRoot.sai, adapterProjection.destinationPath).split(path.sep).join('/'),
+       `adapters/${harness}/idea-list-render.md`,
+       `${harness} should project the idea-list-render adapter destination`
+     );
 
     const retirements = expandRetirementManifest(manifest, {
       harness,
@@ -1111,7 +1113,30 @@ test('canonical manifest validates all historical retirements and excludes them 
     },
   ];
   assert.deepEqual(manifest.retirements, expected);
-   assert.equal(manifest.retirements.flatMap(retirement => retirement.managedHashes).length, 79);
+   assert.deepEqual(manifest.retirements.filter(retirement =>
+     retirement.destination.path === 'orchestration/workers/bindings/idea-list-render.md'), [
+     {
+       id: 'retired-claude-idea-list-render-binding',
+       destination: { class: 'sai', path: 'orchestration/workers/bindings/idea-list-render.md' },
+       harnesses: ['claude'],
+       managedHashes: [
+         '238b0fd7ef14b3f155e4bee008be9883948ad9b17e8a9477e79f0d013e878f23',
+         '792d0614a8a724ef19364976195ba8f6f0d08e70bc4d5db68eee0343603f54b0',
+         '8376ebfd6f8c59709d65a6d79be0dfbf10baaeb6f282bd76442a302c26f30b37',
+       ],
+     },
+     {
+       id: 'retired-opencode-idea-list-render-binding',
+       destination: { class: 'sai', path: 'orchestration/workers/bindings/idea-list-render.md' },
+       harnesses: ['opencode'],
+       managedHashes: [
+         'af9f1b8915db80210f9595c1adf7568c695401ba059f03e408c99e6273856347',
+         '5d26dd5bb555d525c4e7658fc021cb70a0dcdf90f248d020c51b2409ddf9a348',
+         '74516e0219b92fc12be50b19d411af5031861ced9616e794630f32b1386a7dbf',
+       ],
+     },
+   ]);
+   assert.equal(manifest.retirements.flatMap(retirement => retirement.managedHashes).length, 85);
   assert.ok(manifest.retirements.flatMap(retirement => retirement.managedHashes).every(hash => /^[0-9a-f]{64}$/.test(hash)));
 
   const destinationRoot = {

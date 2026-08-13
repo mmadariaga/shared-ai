@@ -76,7 +76,6 @@ function normalizeDestination(destination, destinationRoot) {
 }
 
 function isExcludedInventoryDestination(normalized) {
-  if (normalized === 'sai/orchestration/workers/bindings/idea-list-render.md') return true;
   return /^agents\/(?:budget|executor|explore)\.md$/.test(normalized);
 }
 
@@ -140,8 +139,15 @@ test('matrix expansion yields exactly seven worker bindings and seven managed ag
       .filter(projection => path.relative(destinationRoot.sai, projection.destinationPath)
         .split(path.sep).join('/').startsWith('orchestration/workers/bindings'))
       .map(projection => path.basename(projection.destinationPath));
-    assert.equal(allBindingNames.includes('idea-list-render.md'), true,
-      `${harness} should keep the regular idea-list-render binding beside the matrix bindings`);
+    assert.equal(allBindingNames.length, 7,
+      `${harness} should keep only the seven routed worker bindings in the matrix destination`);
+    const ideaList = active.find(projection =>
+      relSource(projection) === `sai/adapters/${harness}/idea-list-render.md`);
+    assert.ok(ideaList, `${harness} should project the adapter idea-list render source outside the matrix`);
+    assert.equal(
+      normalizeDestination(ideaList.destinationPath, destinationRoot),
+      `sai/adapters/${harness}/idea-list-render.md`
+    );
 
     const agentProjections = active.filter(isMatrixAgent);
     assert.equal(agentProjections.length, 7,

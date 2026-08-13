@@ -281,6 +281,26 @@ test('installClaude projects every routed binding into neutral destinations', ()
   }
 });
 
+test('installClaude projects the adapter idea-list render glue and resolves it from sai-explore', () => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-claude-idea-list-adapter-'));
+  const repoRoot = path.join(__dirname, '..');
+  try {
+    installClaude(tmpDir);
+    const installed = path.join(tmpDir, 'sai', 'adapters', 'claude', 'idea-list-render.md');
+    const oldDestination = path.join(tmpDir, 'sai', 'orchestration', 'workers', 'bindings', 'idea-list-render.md');
+    const source = path.join(repoRoot, 'sai', 'adapters', 'claude', 'idea-list-render.md');
+    assert.equal(fs.existsSync(installed), true, 'the Claude idea-list adapter should be installed');
+    assert.equal(fs.existsSync(oldDestination), false, 'the old neutral idea-list destination should be absent');
+    assert.deepEqual(fs.readFileSync(installed), fs.readFileSync(source),
+      'the installed Claude idea-list adapter should preserve source bytes');
+    const wrapper = fs.readFileSync(path.join(tmpDir, 'commands', 'sai-explore.md'), 'utf8');
+    assert.match(wrapper, /Fetch @sai\/adapters\/claude\/idea-list-render\.md/,
+      'sai-explore should resolve the Claude idea-list adapter');
+  } finally {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+});
+
 test('Step 2 initial Claude Agent dispatches deliver matching contracts and preserve continuations', () => {
   fs.mkdirSync(STEP_2_SCRATCH_DIR, { recursive: true });
   const scratchDir = fs.mkdtempSync(path.join(STEP_2_SCRATCH_DIR, 'claude-dispatch-'));
@@ -544,8 +564,16 @@ test('Claude installer consumes exactly the seven matrix worker bindings and age
       .filter(projection => path.relative(destinationRoot.sai, projection.destinationPath)
         .split(path.sep).join('/').startsWith('orchestration/workers/bindings/'))
       .map(projection => path.basename(projection.destinationPath));
-    assert.equal(allBindingNames.includes('idea-list-render.md'), true,
-      'Claude should keep the regular idea-list-render binding beside the matrix bindings');
+    assert.equal(allBindingNames.length, 7,
+      'Claude should keep only the seven routed worker bindings in the matrix destination');
+    const ideaList = active.find(projection =>
+      path.relative(repoRoot, projection.sourcePath).split(path.sep).join('/') ===
+      'sai/adapters/claude/idea-list-render.md');
+    assert.ok(ideaList, 'Claude should project the adapter idea-list render source');
+    assert.equal(
+      path.relative(destinationRoot.sai, ideaList.destinationPath).split(path.sep).join('/'),
+      'adapters/claude/idea-list-render.md'
+    );
     const agentNames = active
       .filter(projection => projection.destinationPath.startsWith(destinationRoot.agents))
       .map(projection => path.basename(projection.destinationPath, '.md'));
@@ -739,13 +767,13 @@ test('Step 3 the Claude neutral inventory is equivalent to opencode and differs 
       .filter(source => source.startsWith('sai/')));
     const claudeOnly = [...saiSources('claude')].filter(source => !saiSources('opencode').has(source)).sort();
     const opencodeOnly = [...saiSources('opencode')].filter(source => !saiSources('claude').has(source)).sort();
-    assert.deepEqual(claudeOnly, [
-      'sai/adapters/claude/boot.md',
-      'sai/orchestration/workers/bindings/claude/idea-list-render.md',
+     assert.deepEqual(claudeOnly, [
+       'sai/adapters/claude/boot.md',
+       'sai/adapters/claude/idea-list-render.md',
     ], 'Claude-specific SAI sources should be its boot adapter plus its idea-list-render runtime glue');
-    assert.deepEqual(opencodeOnly, [
-      'sai/adapters/opencode/boot.md',
-      'sai/orchestration/workers/bindings/opencode/idea-list-render.md',
+     assert.deepEqual(opencodeOnly, [
+       'sai/adapters/opencode/boot.md',
+       'sai/adapters/opencode/idea-list-render.md',
     ], 'opencode-specific SAI sources should be its boot adapter plus its idea-list-render runtime glue');
   } finally {
     for (const harness of ['claude', 'opencode']) {

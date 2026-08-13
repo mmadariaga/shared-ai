@@ -137,15 +137,16 @@ test('install and uninstall inventories are exact and deterministic for every su
         .map(destination => normalizeInventoryDestination(destination, destinationRoot))
         .sort();
       const isExcludedInventory = destination =>
-        destination === 'sai/orchestration/workers/bindings/idea-list-render.md' ||
-        /^agents\/(?:budget|executor|explore)\.md$/.test(destination);
+         /^agents\/(?:budget|executor|explore)\.md$/.test(destination);
        const rawActive = normalize(activeDestinations);
        assert.equal(rawActive.some(destination =>
          destination.includes('/orchestration/workers/bindings/claude/') ||
          destination.includes('/orchestration/workers/bindings/opencode/')), false,
        `${harness} active inventory must not use harness-qualified binding destinations`);
-       assert.equal(rawActive.includes('sai/orchestration/workers/bindings/idea-list-render.md'), true,
-         `${harness} should keep the regular idea-list-render binding in the active inventory`);
+        assert.equal(rawActive.includes(`sai/adapters/${harness}/idea-list-render.md`), true,
+          `${harness} should keep the adapter idea-list-render file in the active inventory`);
+        assert.equal(rawActive.includes('sai/orchestration/workers/bindings/idea-list-render.md'), false,
+          `${harness} should not keep the old neutral idea-list-render destination active`);
        if (harness === 'claude') {
          assert.equal(rawActive.some(destination => /^agents\/(?:budget|executor|explore)\.md$/.test(destination)), false,
            'claude must not project support agents');
@@ -508,6 +509,8 @@ test('STEP3_RETIREMENT: uninstall enumerates a retired-managed-file record for e
         assert.equal(normalized.has(destination), true,
           `uninstall should enumerate a retired-managed-file record for ${destination}`);
       }
+      assert.equal(normalized.has(path.join('sai', 'orchestration', 'workers', 'bindings', 'idea-list-render.md')), true,
+        `${harness} should enumerate the retired neutral idea-list-render destination`);
       for (const entry of retired) {
         assert.equal(Array.isArray(entry.acceptedHashes) && entry.acceptedHashes.length > 0, true,
           `retired entry ${entry.dest} should carry accepted hashes`);

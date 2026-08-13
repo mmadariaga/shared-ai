@@ -102,6 +102,73 @@ test('retirement cleanup deletes matching bytes for every accepted historical wo
   }
 });
 
+test('idea-list render retirement records delete every accepted digest and preserve edited or unknown bytes', () => {
+  const repoRoot = path.join(__dirname, '..');
+  const manifest = loadInstallManifest(repoRoot);
+  const retirements = manifest.retirements.filter(retirement =>
+    retirement.destination.class === 'sai' &&
+    retirement.destination.path === 'orchestration/workers/bindings/idea-list-render.md');
+  assert.equal(retirements.length, 2, 'the old neutral idea-list destination should have one record per harness');
+  assert.deepEqual(retirements.flatMap(retirement => retirement.harnesses).sort(), ['claude', 'opencode']);
+  assert.ok(retirements.every(retirement => retirement.managedHashes.length === 3));
+
+  for (const retirement of retirements) {
+    const harness = retirement.harnesses[0];
+    for (const acceptedHash of retirement.managedHashes) {
+      const base = tempDir();
+      try {
+        const target = expandRetirementManifest(manifest, {
+          harness,
+          repoRoot,
+          destinationRoot: { sai: path.join(base, 'sai'), skills: path.join(base, 'skills') },
+        }).find(record => record.id === retirement.id);
+        assert.ok(target, `${retirement.id} should expand for ${harness}`);
+        fs.mkdirSync(path.dirname(target.destinationPath), { recursive: true });
+        fs.writeFileSync(target.destinationPath, `historical idea-list bytes for ${acceptedHash}`);
+
+        const originalCreateHash = crypto.createHash;
+        crypto.createHash = () => ({ update: () => ({ digest: () => acceptedHash }) });
+        let results;
+        try {
+          results = cleanupRetiredProjections(harness, roots(base));
+        } finally {
+          crypto.createHash = originalCreateHash;
+        }
+        assert.equal(results.find(result => result.id === retirement.id).action, 'deleted');
+        assert.equal(fs.existsSync(target.destinationPath), false);
+      } finally {
+        fs.rmSync(base, { recursive: true, force: true });
+      }
+    }
+
+    const base = tempDir();
+    try {
+      const expanded = expandRetirementManifest(manifest, {
+        harness,
+        repoRoot,
+        destinationRoot: { sai: path.join(base, 'sai'), skills: path.join(base, 'skills') },
+      });
+      const target = expanded.find(record => record.id === retirement.id);
+      const modifiedBytes = Buffer.from('edited idea-list bytes');
+      const unknownBytes = Buffer.from('unknown idea-list bytes');
+      fs.mkdirSync(path.dirname(target.destinationPath), { recursive: true });
+      fs.writeFileSync(target.destinationPath, modifiedBytes);
+      const modifiedResult = cleanupRetiredProjections(harness, roots(base))
+        .find(result => result.id === retirement.id);
+      assert.equal(modifiedResult.action, 'preserved');
+      assert.deepEqual(fs.readFileSync(target.destinationPath), modifiedBytes);
+
+      fs.writeFileSync(target.destinationPath, unknownBytes);
+      const unknownResult = cleanupRetiredProjections(harness, roots(base))
+        .find(result => result.id === retirement.id);
+      assert.equal(unknownResult.action, 'preserved');
+      assert.deepEqual(fs.readFileSync(target.destinationPath), unknownBytes);
+    } finally {
+      fs.rmSync(base, { recursive: true, force: true });
+    }
+  }
+});
+
 test('retirement cleanup deletes a destination whose bytes match a registered hash', () => {
   const base = tempDir();
   try {
@@ -325,17 +392,20 @@ test('matrix retirement: active projections never source from retired per-phase 
     const active = expandInstallManifest(manifest, { harness, repoRoot, destinationRoot });
     for (const projection of active) {
       const source = path.relative(repoRoot, projection.sourcePath).split(path.sep).join('/');
-      if (source.endsWith('/idea-list-render.md')) continue;
       assert.equal(source.startsWith(`sai/orchestration/workers/bindings/${harness}/`), false,
         `${harness} must not source an active projection from a retired per-harness binding tree: ${source}`);
       assert.equal(new RegExp(`^agents/${harness}/sai-\\d-.*-worker\\.md$`).test(source), false,
         `${harness} must not source an active projection from a retired per-harness agent tree: ${source}`);
     }
-    const ideaListSource = active
-      .map(projection => path.relative(repoRoot, projection.sourcePath).split(path.sep).join('/'))
-      .filter(source => source.endsWith('/idea-list-render.md'));
-    assert.equal(ideaListSource.length, 1,
-      `${harness} should retain the regular idea-list-render binding source`);
+    const ideaListSource = active.find(projection =>
+      path.relative(repoRoot, projection.sourcePath).split(path.sep).join('/') ===
+      `sai/adapters/${harness}/idea-list-render.md`);
+    assert.ok(ideaListSource, `${harness} should retain the adapter idea-list-render source`);
+    assert.equal(
+      path.relative(destinationRoot.sai, ideaListSource.destinationPath).split(path.sep).join('/'),
+      `adapters/${harness}/idea-list-render.md`,
+      `${harness} should project the adapter idea-list-render destination`
+    );
     const bindingNames = active
       .filter(projection => path.relative(destinationRoot.sai, projection.destinationPath)
         .split(path.sep).join('/').startsWith('orchestration/workers/bindings/') &&
@@ -391,6 +461,21 @@ test('STEP3_RETIREMENT: every superseded destination carries a hash-gated claude
       assert.equal(sources.has(destinationPath), false,
         `${harness} active projections must not source from the superseded destination ${destinationPath}`);
     }
+    const oldIdeaList = expandRetirementManifest(manifest, {
+      harness,
+      repoRoot,
+      destinationRoot: {
+        commands: path.join(os.tmpdir(), `sai-step3-idea-${harness}-commands`),
+        sai: path.join(os.tmpdir(), `sai-step3-idea-${harness}-sai`),
+        skills: path.join(os.tmpdir(), `sai-step3-idea-${harness}-skills`),
+        agents: path.join(os.tmpdir(), `sai-step3-idea-${harness}-agents`),
+        config: path.join(os.tmpdir(), `sai-step3-idea-${harness}-config`),
+        root: path.join(os.tmpdir(), `sai-step3-idea-${harness}-config`),
+      },
+    }).filter(retirement =>
+      retirement.destinationPath.endsWith(path.join('orchestration', 'workers', 'bindings', 'idea-list-render.md')));
+    assert.equal(oldIdeaList.length, 1,
+      `${harness} should retire the old neutral idea-list-render destination exactly once`);
   }
 });
 

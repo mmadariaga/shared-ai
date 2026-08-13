@@ -207,13 +207,13 @@ describe('doctor fetch resolution', () => {
         '[Claude Code]': [
          ...phases.map((binding, index) => [`sai-${index === 0 ? '1-spec' : index === 1 ? '2-design' : index === 2 ? '3-implement' : index === 3 ? '5-review' : index === 4 ? '6-security' : index === 5 ? '7-performance' : '8-accessibility'}.md`, `bindings/${binding}`]),
          ['sai-explore.md', 'bindings/design-worker.md'],
-         ['sai-explore.md', 'bindings/idea-list-render.md'],
+          ['sai-explore.md', 'adapters/claude/idea-list-render.md'],
       ],
         '[Opencode]': [
          ...phases.map((binding, index) => [`sai-${index === 0 ? '1-spec' : index === 1 ? '2-design' : index === 2 ? '3-implement' : index === 3 ? '5-review' : index === 4 ? '6-security' : index === 5 ? '7-performance' : '8-accessibility'}.md`, `bindings/${binding}`]),
          ['sai-explore.md', 'bindings/spec-worker.md'],
          ['sai-explore.md', 'bindings/design-worker.md'],
-         ['sai-explore.md', 'bindings/idea-list-render.md'],
+          ['sai-explore.md', 'adapters/opencode/idea-list-render.md'],
       ],
     };
 
@@ -228,13 +228,13 @@ describe('doctor fetch resolution', () => {
         '[Claude Code]': [
            ...phases.map(binding => `bindings/${binding}`),
            'bindings/design-worker.md',
-           'bindings/idea-list-render.md',
+           'adapters/claude/idea-list-render.md',
          ],
          '[Opencode]': [
            ...phases.map(binding => `bindings/${binding}`),
            'bindings/spec-worker.md',
            'bindings/design-worker.md',
-           'bindings/idea-list-render.md',
+           'adapters/opencode/idea-list-render.md',
          ],
       };
       assert.equal(Object.values(wrapperRefs).flat().length, 19,
@@ -248,18 +248,19 @@ describe('doctor fetch resolution', () => {
             .map(([, target]) => target);
           const source = fs.readFileSync(path.join(base, 'commands', wrapper), 'utf8');
           for (const target of targetsForWrapper) {
-            assert.match(source, new RegExp(`Fetch @sai/orchestration/workers/${target.replace(/[\\/.-]/g, '\\$&')}`),
-              `${sectionName} ${wrapper} should use ${target}`);
+             const fetchRoot = target.startsWith('adapters/') ? 'sai/' : 'sai/orchestration/workers/';
+             assert.match(source, new RegExp(`Fetch @${fetchRoot}${target.replace(/[\\/.-]/g, '\\$&')}`),
+               `${sectionName} ${wrapper} should use ${target}`);
           }
           assert.doesNotMatch(source, /Fetch @skills\/sai-[^\s/]+-worker\/SKILL\.md/,
             `${sectionName} ${wrapper} should not use a worker skill fetch`);
           return source;
         }).join('\n');
-        assert.equal(
-          (wrapperText.match(/Fetch @sai\/orchestration\/workers\/bindings\/[^\s`]+/g) || []).length,
-          refs.length,
-          `${sectionName} should contain exactly its expected direct binding references`
-        );
+         assert.equal(
+           (wrapperText.match(/Fetch @sai\/(?:orchestration\/workers\/bindings\/[^\s`]+|adapters\/(?:claude|opencode)\/idea-list-render\.md)/g) || []).length,
+           refs.length,
+           `${sectionName} should contain exactly its expected direct binding references`
+         );
       }
 
       for (const [sectionName, targets] of Object.entries(expected)) {
@@ -272,19 +273,22 @@ describe('doctor fetch resolution', () => {
             new RegExp(target.replace(/[\\/.-]/g, '\\$&')),
             `${sectionName} should not classify ${target} as fetch-skill`);
           const base = sectionName === '[Claude Code]' ? claudeBase : opencodeBase;
-          assert.equal(
-            fs.existsSync(path.join(base, 'sai', 'orchestration', 'workers', ...target.split('/'))),
-            true,
-            `${sectionName} should install ${target}`
-          );
-          if (target === 'bindings/idea-list-render.md') {
-            const sourceHarness = sectionName === '[Claude Code]' ? 'claude' : 'opencode';
-            const sourceTarget = `bindings/${sourceHarness}/idea-list-render.md`;
-            assert.deepEqual(
-              fs.readFileSync(path.join(base, 'sai', 'orchestration', 'workers', ...target.split('/'))),
-              fs.readFileSync(path.join(repoRoot, 'sai', 'orchestration', 'workers', ...sourceTarget.split('/'))),
-              `${sectionName} should preserve the render binding bytes for ${target}`
-            );
+           const installedTarget = target.startsWith('adapters/')
+             ? path.join(base, 'sai', ...target.split('/'))
+             : path.join(base, 'sai', 'orchestration', 'workers', ...target.split('/'));
+           assert.equal(
+             fs.existsSync(installedTarget),
+             true,
+             `${sectionName} should install ${target}`
+           );
+           if (target.endsWith('/idea-list-render.md')) {
+             const sourceHarness = sectionName === '[Claude Code]' ? 'claude' : 'opencode';
+             const sourceTarget = `sai/adapters/${sourceHarness}/idea-list-render.md`;
+             assert.deepEqual(
+               fs.readFileSync(installedTarget),
+               fs.readFileSync(path.join(repoRoot, ...sourceTarget.split('/'))),
+               `${sectionName} should preserve the render binding bytes for ${target}`
+             );
           }
           if (target.endsWith('-worker.md')) {
             const bindingText = fs.readFileSync(
@@ -505,8 +509,11 @@ test('matrix worker bindings are the sole active binding inventory for both harn
       .filter(projection => path.relative(destinationRoot.sai, projection.destinationPath)
         .split(path.sep).join('/').startsWith('orchestration/workers/bindings/'))
       .map(projection => path.basename(projection.destinationPath));
-    assert.equal(allBindingNames.includes('idea-list-render.md'), true,
-      `${harness} should keep the regular idea-list-render binding beside the matrix bindings`);
+     assert.equal(allBindingNames.length, 7,
+       `${harness} should keep only the seven routed worker bindings in the matrix destination`);
+     assert.ok(active.some(projection =>
+       path.relative(repoRoot, projection.sourcePath).split(path.sep).join('/') ===
+       `sai/adapters/${harness}/idea-list-render.md`));
   }
 });
 

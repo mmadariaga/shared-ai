@@ -293,8 +293,14 @@ test('matrix retirement: the active worker inventory stays exactly seven binding
       .filter(projection => path.relative(destinationRoot.sai, projection.destinationPath)
         .split(path.sep).join('/').startsWith('orchestration/workers/bindings/'))
       .map(projection => path.basename(projection.destinationPath));
-    assert.equal(allBindingNames.includes('idea-list-render.md'), true,
-      `${harness} should keep the regular idea-list-render binding beside the matrix bindings`);
+    assert.equal(allBindingNames.length, 7,
+      `${harness} should keep only the seven routed worker bindings in the matrix destination`);
+    const ideaList = active.find(projection =>
+      path.relative(repoRoot, projection.sourcePath).split(path.sep).join('/') ===
+      `sai/adapters/${harness}/idea-list-render.md`);
+    assert.ok(ideaList, `${harness} should project the adapter idea-list render source outside the matrix`);
+    assert.equal(path.relative(destinationRoot.sai, ideaList.destinationPath).split(path.sep).join('/'),
+      `adapters/${harness}/idea-list-render.md`);
     const agentNames = active
       .filter(projection => projection.destinationPath.startsWith(destinationRoot.agents) &&
         workers.includes(path.basename(projection.destinationPath, '.md')))

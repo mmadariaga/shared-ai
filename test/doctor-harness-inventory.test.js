@@ -324,13 +324,13 @@ test('Step 3 Claude and opencode neutral inventories are equivalent and differ o
       .filter(source => source.startsWith('sai/')));
     const claudeOnly = [...saiSources('claude')].filter(source => !saiSources('opencode').has(source)).sort();
     const opencodeOnly = [...saiSources('opencode')].filter(source => !saiSources('claude').has(source)).sort();
-    assert.deepEqual(claudeOnly, [
-      'sai/adapters/claude/boot.md',
-      'sai/orchestration/workers/bindings/claude/idea-list-render.md',
+     assert.deepEqual(claudeOnly, [
+       'sai/adapters/claude/boot.md',
+       'sai/adapters/claude/idea-list-render.md',
     ], 'claude-specific SAI sources should be its boot adapter plus its idea-list-render runtime glue');
-    assert.deepEqual(opencodeOnly, [
-      'sai/adapters/opencode/boot.md',
-      'sai/orchestration/workers/bindings/opencode/idea-list-render.md',
+     assert.deepEqual(opencodeOnly, [
+       'sai/adapters/opencode/boot.md',
+       'sai/adapters/opencode/idea-list-render.md',
     ], 'opencode-specific SAI sources should be its boot adapter plus its idea-list-render runtime glue');
   } finally {
     for (const harness of ['claude', 'opencode']) {
