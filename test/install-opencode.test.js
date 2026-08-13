@@ -1544,3 +1544,75 @@ test('Step 3 budget skills resolve models from the projected agent files and kee
     }
   }
 });
+
+test('Step 3 the opencode neutral inventory is equivalent to Claude and differs only at the boot adapter seam', () => {
+  const repoRoot = path.join(__dirname, '..');
+  const manifest = loadInstallManifest(repoRoot);
+  const bases = {};
+  for (const harness of ['claude', 'opencode']) {
+    bases[harness] = fs.mkdtempSync(path.join(os.tmpdir(), `sai-step3-opencode-neutral-${harness}-`));
+  }
+  const destinationRootFor = base => ({
+    commands: path.join(base, 'commands'),
+    sai: path.join(base, 'sai'),
+    skills: path.join(base, 'skills'),
+    agents: path.join(base, 'agents'),
+    config: base,
+    root: base,
+  });
+  const neutralSource = source =>
+    source === 'sai/command-runner.md' ||
+    source === 'sai/worker-core.md' ||
+    source.startsWith('sai/commands/') ||
+    source.startsWith('sai/instructions/') ||
+    source.startsWith('sai/policies/');
+  try {
+    const projections = {};
+    for (const harness of ['claude', 'opencode']) {
+      projections[harness] = expandInstallManifest(manifest, {
+        harness,
+        repoRoot,
+        destinationRoot: destinationRootFor(bases[harness]),
+      });
+    }
+    const neutralInventory = harness => {
+      const map = {};
+      for (const projection of projections[harness]) {
+        const source = path.relative(repoRoot, projection.sourcePath).split(path.sep).join('/');
+        if (!neutralSource(source)) continue;
+        const destination = path.relative(destinationRootFor(bases[harness]).sai, projection.destinationPath)
+          .split(path.sep).join('/');
+        map[source] = destination;
+      }
+      return map;
+    };
+    const claude = neutralInventory('claude');
+    const opencode = neutralInventory('opencode');
+    assert.ok(Object.keys(opencode).length > 0, 'the opencode neutral inventory should be non-empty');
+    assert.deepEqual(opencode, claude,
+      'the opencode neutral inventory should equal the Claude neutral inventory');
+    for (const source of Object.keys(opencode)) {
+      const bytes = fs.readFileSync(path.join(repoRoot, ...source.split('/')));
+      assert.deepEqual(fs.readFileSync(path.join(repoRoot, ...source.split('/'))), bytes,
+        `${source} should be shared neutral content for both harnesses`);
+    }
+
+    const saiSources = harness => new Set(projections[harness]
+      .map(projection => path.relative(repoRoot, projection.sourcePath).split(path.sep).join('/'))
+      .filter(source => source.startsWith('sai/')));
+    const opencodeOnly = [...saiSources('opencode')].filter(source => !saiSources('claude').has(source)).sort();
+    const claudeOnly = [...saiSources('claude')].filter(source => !saiSources('opencode').has(source)).sort();
+    assert.deepEqual(opencodeOnly, [
+      'sai/adapters/opencode/boot.md',
+      'sai/orchestration/workers/bindings/opencode/idea-list-render.md',
+    ], 'opencode-specific SAI sources should be its boot adapter plus its idea-list-render runtime glue');
+    assert.deepEqual(claudeOnly, [
+      'sai/adapters/claude/boot.md',
+      'sai/orchestration/workers/bindings/claude/idea-list-render.md',
+    ], 'Claude-specific SAI sources should be its boot adapter plus its idea-list-render runtime glue');
+  } finally {
+    for (const harness of ['claude', 'opencode']) {
+      fs.rmSync(bases[harness], { recursive: true, force: true });
+    }
+  }
+});

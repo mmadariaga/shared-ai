@@ -57,3 +57,10 @@ The repository source layout and installation paths had grown inconsistent:
 - ADR 0001 — Still valid; per-harness separation is now achieved via `skills/claude/` vs `skills/opencode/` rather than via separate instruction files.
 - ADR 0002 — Partially obsolete. The decision to place both harness files under `~/.claude/instructions/sai/` no longer applies because those files no longer exist in that form.
 - ADR 0003 — Amended. The decision (`@sai/commands/<cmd>.md`) is correct, but the Consequences section still mentions the old install path `<config-root>/commands/sai/`. This ADR supersedes that path detail.
+
+## Amendment
+
+**Date:** 2026-08-13
+**Change:** `sai-command-runner-layout` card-class restructure
+
+The `sai/commands/` surface was restructured from flat shared body files into two command-card classes: routed cards at `sai/commands/{spec,design,implement,review,security,performance,accessibility}/{coordinator,worker,invocation}.md` and utility cards at `sai/commands/{apply,archive,backfill,commit,explore,pr,status,worktree}/body.md`. Two neutral root protocols were introduced: `sai/command-runner.md` (the command-runner protocol) and `sai/worker-core.md` (the worker lifecycle protocol). Wrappers now enter a per-harness boot adapter at `sai/adapters/claude/boot.md` (Claude Code) or `sai/adapters/opencode/boot.md` (opencode), which loads `@sai/command-runner.md` first and then selects the requested command card. The former flat `sai/commands/sai-*.md` bodies, the `sai/orchestration/coordinator-contract.md` and `sai/orchestration/worker-lifecycle.md` contracts, and the `sai/orchestration/workers/sai-*-worker.md` sources were retired by manifest hash; the neutral root protocols and command cards are projected by `sai/install-manifest.json` to each harness config root. This amendment records the new root/card/adapter paths; the restructure decisions above and the `<config-root>/sai/commands/` install destination remain in force.

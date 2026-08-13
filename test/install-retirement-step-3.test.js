@@ -8,7 +8,31 @@ const os = require('os');
 const path = require('path');
 
 const { cleanupRetiredProjections } = require('../bin/install-flow.js');
-const { loadInstallManifest, expandRetirementManifest } = require('../bin/install-manifest.js');
+const { loadInstallManifest, expandInstallManifest, expandRetirementManifest } = require('../bin/install-manifest.js');
+
+const STEP3_SUPERSEDED_UTILITIES = ['apply', 'archive', 'backfill', 'commit', 'explore', 'pr', 'status', 'worktree'];
+const STEP3_SUPERSEDED_WORKERS = [
+  'sai-1-spec-proposal-worker',
+  'sai-2-design-worker',
+  'sai-3-implementation-worker',
+  'sai-5-review-worker',
+  'sai-6-security-worker',
+  'sai-7-performance-worker',
+  'sai-8-accessibility-worker',
+];
+const flatUtilityFilename = name => (name === 'apply' ? 'sai-4-apply.md' : `sai-${name}.md`);
+const STEP3_SUPERSEDED_RETIREMENT_PATHS = [
+  ...STEP3_SUPERSEDED_UTILITIES.map(name => `commands/${flatUtilityFilename(name)}`),
+  'orchestration/coordinator-contract.md',
+  'orchestration/worker-lifecycle.md',
+  ...STEP3_SUPERSEDED_WORKERS.map(name => `orchestration/workers/${name}.md`),
+];
+const STEP3_SUPERSEDED_SOURCES = [
+  ...STEP3_SUPERSEDED_UTILITIES.map(name => `sai/commands/${flatUtilityFilename(name)}`),
+  'sai/orchestration/coordinator-contract.md',
+  'sai/orchestration/worker-lifecycle.md',
+  ...STEP3_SUPERSEDED_WORKERS.map(name => `sai/orchestration/workers/${name}.md`),
+];
 
 function tempDir() {
   return fs.mkdtempSync(path.join(os.tmpdir(), 'sai-retirement-step-3-'));
@@ -327,5 +351,45 @@ test('matrix retirement: active projections never source from retired per-phase 
     assert.equal(agentNames.length, 7, `${harness} should declare exactly seven managed agents`);
     assert.deepEqual(agentNames.sort(), Object.values(workers).sort(),
       `${harness} managed agent names should match the canonical worker matrix`);
+  }
+});
+
+test('STEP3_RETIREMENT: every superseded destination carries a hash-gated claude/opencode retirement record', () => {
+  const repoRoot = path.join(__dirname, '..');
+  const manifest = loadInstallManifest(repoRoot);
+
+  for (const destinationPath of STEP3_SUPERSEDED_RETIREMENT_PATHS) {
+    const records = manifest.retirements.filter(retirement =>
+      retirement.destination.class === 'sai' && retirement.destination.path === destinationPath);
+    assert.equal(records.length, 1,
+      `exactly one retirement record should cover the superseded destination ${destinationPath}`);
+    const record = records[0];
+    assert.deepEqual(record.harnesses, ['claude', 'opencode'],
+      `${destinationPath} should carry an explicit claude/opencode allowlist`);
+    assert.ok(record.managedHashes.length > 0,
+      `${destinationPath} should carry a non-empty managed-hash set`);
+    assert.ok(record.managedHashes.every(hash => /^[0-9a-f]{64}$/.test(hash)),
+      `${destinationPath} hashes should be lowercase SHA-256`);
+  }
+
+  for (const harness of ['claude', 'opencode']) {
+    const active = expandInstallManifest(manifest, {
+      harness,
+      repoRoot,
+      destinationRoot: {
+        commands: path.join(os.tmpdir(), `sai-step3-retire-${harness}-commands`),
+        sai: path.join(os.tmpdir(), `sai-step3-retire-${harness}-sai`),
+        skills: path.join(os.tmpdir(), `sai-step3-retire-${harness}-skills`),
+        agents: path.join(os.tmpdir(), `sai-step3-retire-${harness}-agents`),
+        config: path.join(os.tmpdir(), `sai-step3-retire-${harness}-config`),
+        root: path.join(os.tmpdir(), `sai-step3-retire-${harness}-config`),
+      },
+    });
+    const sources = new Set(active.map(projection =>
+      path.relative(repoRoot, projection.sourcePath).split(path.sep).join('/')));
+    for (const destinationPath of STEP3_SUPERSEDED_SOURCES) {
+      assert.equal(sources.has(destinationPath), false,
+        `${harness} active projections must not source from the superseded destination ${destinationPath}`);
+    }
   }
 });

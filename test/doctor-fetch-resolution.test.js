@@ -509,3 +509,73 @@ test('matrix worker bindings are the sole active binding inventory for both harn
       `${harness} should keep the regular idea-list-render binding beside the matrix bindings`);
   }
 });
+
+const STEP3_FLAT_UTILITY_SOURCES = [
+  'sai/commands/sai-4-apply.md',
+  'sai/commands/sai-archive.md',
+  'sai/commands/sai-backfill.md',
+  'sai/commands/sai-commit.md',
+  'sai/commands/sai-explore.md',
+  'sai/commands/sai-pr.md',
+  'sai/commands/sai-status.md',
+  'sai/commands/sai-worktree.md',
+];
+const STEP3_SUPERSEDED_WORKERS = [
+  'sai-1-spec-proposal-worker',
+  'sai-2-design-worker',
+  'sai-3-implementation-worker',
+  'sai-5-review-worker',
+  'sai-6-security-worker',
+  'sai-7-performance-worker',
+  'sai-8-accessibility-worker',
+];
+const STEP3_SUPERSEDED_SOURCES = [
+  ...STEP3_FLAT_UTILITY_SOURCES,
+  'sai/orchestration/coordinator-contract.md',
+  'sai/orchestration/worker-lifecycle.md',
+  ...STEP3_SUPERSEDED_WORKERS.map(name => `sai/orchestration/workers/${name}.md`),
+];
+
+test('Step 3 source audit rejects every superseded active destination and allows historical exclusions', () => {
+  const { auditActiveReferences } = require('../bin/orchestration-source-audit.js');
+  const fixture = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-source-audit-step3-'));
+  const referenceLines = STEP3_SUPERSEDED_SOURCES
+    .map(destination => `# wrapper navigation references @${destination} directly`);
+  const historicalFiles = [
+    path.join('docs', 'adr', '0001-superseded-layout.md'),
+    path.join('openspec', 'changes', 'archive', 'legacy-change', 'proposal.md'),
+  ];
+  try {
+    const activeDir = path.join(fixture, 'sai', 'commands');
+    fs.mkdirSync(activeDir, { recursive: true });
+    fs.writeFileSync(path.join(activeDir, 'legacy.md'), `${referenceLines.join('\n')}\n`);
+
+    for (const relative of historicalFiles) {
+      const fullPath = path.join(fixture, relative);
+      fs.mkdirSync(path.dirname(fullPath), { recursive: true });
+      fs.writeFileSync(fullPath, `${referenceLines.join('\n')}\n`);
+    }
+
+    const references = auditActiveReferences(fixture);
+    const flagged = new Set(references.map(reference => reference.reference));
+    for (const destination of STEP3_SUPERSEDED_SOURCES) {
+      assert.equal(flagged.has(destination), true,
+        `source audit should reject the superseded active path ${destination}`);
+    }
+    for (const relative of historicalFiles) {
+      assert.equal(references.some(reference => reference.file === relative), false,
+        `source audit should allow historical references in ${relative}`);
+    }
+  } finally {
+    fs.rmSync(fixture, { recursive: true, force: true });
+  }
+});
+
+test('Step 3 the repository contains no active reference to any superseded destination', () => {
+  const { auditActiveReferences } = require('../bin/orchestration-source-audit.js');
+  const references = auditActiveReferences(repoRoot);
+  for (const destination of STEP3_SUPERSEDED_SOURCES) {
+    assert.equal(references.some(reference => reference.reference === destination), false,
+      `active repository content must not reference the superseded path ${destination}`);
+  }
+});

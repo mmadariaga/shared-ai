@@ -1366,3 +1366,132 @@ test('canonical manifest projects exactly one harness boot adapter and the utili
     }
   }
 });
+
+const STEP3_SUPERSEDED_UTILITIES = ['apply', 'archive', 'backfill', 'commit', 'explore', 'pr', 'status', 'worktree'];
+const STEP3_SUPERSEDED_WORKERS = [
+  'sai-1-spec-proposal-worker',
+  'sai-2-design-worker',
+  'sai-3-implementation-worker',
+  'sai-5-review-worker',
+  'sai-6-security-worker',
+  'sai-7-performance-worker',
+  'sai-8-accessibility-worker',
+];
+const flatUtilityFilename = name => (name === 'apply' ? 'sai-4-apply.md' : `sai-${name}.md`);
+const STEP3_SUPERSEDED_RETIREMENT_PATHS = [
+  ...STEP3_SUPERSEDED_UTILITIES.map(name => `commands/${flatUtilityFilename(name)}`),
+  'orchestration/coordinator-contract.md',
+  'orchestration/worker-lifecycle.md',
+  ...STEP3_SUPERSEDED_WORKERS.map(name => `orchestration/workers/${name}.md`),
+];
+const STEP3_SUPERSEDED_SOURCES = [
+  ...STEP3_SUPERSEDED_UTILITIES.map(name => `sai/commands/${flatUtilityFilename(name)}`),
+  'sai/orchestration/coordinator-contract.md',
+  'sai/orchestration/worker-lifecycle.md',
+  ...STEP3_SUPERSEDED_WORKERS.map(name => `sai/orchestration/workers/${name}.md`),
+];
+
+test('STEP3_RETIREMENT: superseded flat destinations are retired for both harnesses and never projected', () => {
+  const repoRoot = path.join(__dirname, '..');
+  const manifest = loadInstallManifest(repoRoot);
+
+  for (const destinationPath of STEP3_SUPERSEDED_RETIREMENT_PATHS) {
+    const records = manifest.retirements.filter(retirement =>
+      retirement.destination.class === 'sai' && retirement.destination.path === destinationPath);
+    assert.equal(records.length, 1,
+      `exactly one retirement record should cover the superseded destination ${destinationPath}`);
+    assert.deepEqual(records[0].harnesses, ['claude', 'opencode'],
+      `${destinationPath} should be retired for an explicit claude/opencode allowlist`);
+    assert.ok(records[0].managedHashes.length > 0,
+      `${destinationPath} should carry a non-empty managed-hash set`);
+    assert.ok(records[0].managedHashes.every(hash => /^[0-9a-f]{64}$/.test(hash)),
+      `${destinationPath} should carry lowercase SHA-256 managed hashes`);
+  }
+
+  for (const harness of ['claude', 'opencode']) {
+    const destinationRoot = workerDestinationRoots(path.join(os.tmpdir(), `sai-step3-superseded-${harness}`));
+    const active = expandInstallManifest(manifest, { harness, repoRoot, destinationRoot });
+    const sources = new Set(active.map(projection =>
+      path.relative(repoRoot, projection.sourcePath).split(path.sep).join('/')));
+    const activeDestinations = new Set(active.map(projection =>
+      path.relative(destinationRoot.sai, projection.destinationPath).split(path.sep).join('/')));
+    const retirements = expandRetirementManifest(manifest, { harness, repoRoot, destinationRoot });
+    const retirementDestinations = new Set(retirements.map(record =>
+      path.relative(destinationRoot.sai, record.destinationPath).split(path.sep).join('/')));
+
+    for (const sourcePath of STEP3_SUPERSEDED_SOURCES) {
+      assert.equal(sources.has(sourcePath), false,
+        `${harness} must not source an active projection from ${sourcePath}`);
+    }
+    for (const destinationPath of STEP3_SUPERSEDED_RETIREMENT_PATHS) {
+      assert.equal(activeDestinations.has(destinationPath), false,
+        `${harness} must not land an active projection at ${destinationPath}`);
+      assert.equal(retirementDestinations.has(destinationPath), true,
+        `${harness} should expand a retirement destination for ${destinationPath}`);
+    }
+  }
+});
+
+test('STEP3_AUDIT: source audit rejects the superseded destinations while allowing historical exclusions', () => {
+  const { auditActiveReferences } = require('../bin/orchestration-source-audit.js');
+  const fixture = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-step3-manifest-audit-'));
+  const referenceLines = STEP3_SUPERSEDED_SOURCES
+    .map(destination => `# wrapper navigation references @${destination} directly`);
+  const historicalFiles = [
+    path.join('docs', 'adr', '0001-superseded-layout.md'),
+    path.join('openspec', 'changes', 'archive', 'legacy-change', 'proposal.md'),
+  ];
+  try {
+    const activeDir = path.join(fixture, 'sai', 'commands');
+    fs.mkdirSync(activeDir, { recursive: true });
+    fs.writeFileSync(path.join(activeDir, 'legacy.md'), `${referenceLines.join('\n')}\n`);
+    for (const relative of historicalFiles) {
+      const fullPath = path.join(fixture, relative);
+      fs.mkdirSync(path.dirname(fullPath), { recursive: true });
+      fs.writeFileSync(fullPath, `${referenceLines.join('\n')}\n`);
+    }
+
+    const references = auditActiveReferences(fixture);
+    const flagged = new Set(references.map(reference => reference.reference));
+    for (const destination of STEP3_SUPERSEDED_SOURCES) {
+      assert.equal(flagged.has(destination), true,
+        `source audit should reject the superseded active path ${destination}`);
+    }
+    for (const relative of historicalFiles) {
+      assert.equal(references.some(reference => reference.file === relative), false,
+        `source audit should allow historical references in ${relative}`);
+    }
+  } finally {
+    fs.rmSync(fixture, { recursive: true, force: true });
+  }
+});
+
+test('STEP3_CONTRACT: the complete npm test contract holds with no retirement gaps, collisions, or active references', () => {
+  const repoRoot = path.join(__dirname, '..');
+  const manifest = loadInstallManifest(repoRoot);
+
+  for (const destinationPath of STEP3_SUPERSEDED_RETIREMENT_PATHS) {
+    assert.equal(manifest.retirements.some(retirement =>
+      retirement.destination.class === 'sai' && retirement.destination.path === destinationPath), true,
+    `the manifest must retire ${destinationPath}`);
+  }
+
+  for (const harness of ['claude', 'opencode']) {
+    const destinationRoot = workerDestinationRoots(path.join(os.tmpdir(), `sai-step3-contract-${harness}`));
+    const active = expandInstallManifest(manifest, { harness, repoRoot, destinationRoot });
+    const retirements = expandRetirementManifest(manifest, { harness, repoRoot, destinationRoot });
+    const activeDestinations = new Set(active.map(projection =>
+      path.resolve(projection.destinationPath).toLowerCase()));
+    for (const record of retirements) {
+      assert.equal(activeDestinations.has(path.resolve(record.destinationPath).toLowerCase()), false,
+        `${harness} retirement destination must not collide with an active projection: ${record.destinationPath}`);
+    }
+  }
+
+  const { auditActiveReferences } = require('../bin/orchestration-source-audit.js');
+  const references = auditActiveReferences(repoRoot);
+  for (const destination of STEP3_SUPERSEDED_SOURCES) {
+    assert.equal(references.some(reference => reference.reference === destination), false,
+      `active repository content must not reference ${destination}`);
+  }
+});

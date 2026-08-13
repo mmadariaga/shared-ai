@@ -235,7 +235,7 @@ test('terminal documentation commit is a sibling after the final sweep and promo
 });
 
 test('apply directs one gated promotion and documentation commit, including docs-only eligibility and refusal behavior', () => {
-  const apply = artifact('sai/commands/sai-4-apply.md');
+  const apply = artifact('sai/commands/apply/body.md');
 
   assert.match(apply, /promotion pass/);
   assert.match(apply, /sibling.*terminal documentation commit|terminal documentation commit.*sibling/i);
@@ -247,7 +247,7 @@ test('apply directs one gated promotion and documentation commit, including docs
 
 test('terminal eligibility uses terminal working-tree state and supports independent docs changes', () => {
   const apply = artifact('sai/instructions/apply.md');
-  const command = artifact('sai/commands/sai-4-apply.md');
+  const command = artifact('sai/commands/apply/body.md');
 
   assert.match(apply, /changed `docs\/\*\*` paths remain independently eligible/);
   assert.match(apply, /Evaluate `docs\/\*\*` at terminal time with no run-start baseline/);
@@ -292,7 +292,7 @@ test('terminal message and staging rules remain limited to eligible paths and hu
 
 test('ordinary Step commits and halted runs do not enter the terminal documentation operation', () => {
   const apply = artifact('sai/instructions/apply.md');
-  const command = artifact('sai/commands/sai-4-apply.md');
+  const command = artifact('sai/commands/apply/body.md');
 
   assert.match(apply, /ordinary `## Pre-commit File Visibility Report` remains unchanged/);
   assert.match(apply, /intended add-list.*field 8/);
@@ -368,7 +368,7 @@ test('Step 1 worker scratch declaration stays separate from Allowed files and Fi
 
 test('Step 1 fast-track uses the sweep and trace contract without preserved-scratch acknowledgement', () => {
   const instruction = artifact('sai/instructions/apply.md');
-  const command = artifact('sai/commands/sai-4-apply.md');
+  const command = artifact('sai/commands/apply/body.md');
 
   assert.match(instruction, /`--fast-track`[\s\S]{0,500}(?:same|unconditional|every|each)[\s\S]{0,260}sweep/i);
   assert.match(command, /--fast-track[\s\S]{0,900}(?:sweep|Scratch cleanup)/i);
@@ -457,7 +457,7 @@ test('docs and learnings paths appear in the set-derived listing before authoriz
 });
 
 test('sai-4-apply fixed-set summary names the glossary trigger and preserves the promotion-written learnings clause', () => {
-  const command = artifact('sai/commands/sai-4-apply.md');
+  const command = artifact('sai/commands/apply/body.md');
 
   assert.match(command, /promotion-written `SAI_LEARNINGS\.md` joins the same fixed set and authorization gate/);
   assert.match(command, /fixed set[\s\S]{0,250}GLOSSARY\.md|GLOSSARY\.md[\s\S]{0,250}fixed set/i);

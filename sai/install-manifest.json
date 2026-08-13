@@ -676,6 +676,244 @@
         "d6fa4ca0ffe6b15bca83544704f957897b755cb9a0d0968fd27826cf9ca2339c",
         "dabdbc45ebe7c97eff05b716f9dc0b0759e0bc4bf1f7f043191e20e9b1db0e9c"
       ]
+    },
+    {
+      "id": "retired-sai-4-apply",
+      "destination": { "class": "sai", "path": "commands/sai-4-apply.md" },
+      "harnesses": ["claude", "opencode"],
+      "managedHashes": [
+        "007cb45335c69e09401a5c38080db716c56c2ce5887cc0aae127db9299c34bc7",
+        "289e6a3215435ef70a8e8e9837e7afd41dbb9d993309f05d62d14336d8d02a0c",
+        "2d239c2f81554220d0855ead3a792fbe531624b0fdfcdd75e9255ee1e2a370de",
+        "3f0fb7700a27a7e46b8bcec64a1068ed0a7c879438dfc724eed4250b1b90e6c4",
+        "5260becf8ad1ca713e5631ca2621795374558dddbc2deac1e899f85e1b69f6d7",
+        "5f61fc4cda8b98198aa01862448d979d1d859b2e4a3dfe0fe54eadb87a1aadc4",
+        "64e3c032221541b72a811c5142117b726e455a28ebeded81cad5f9d3b9d54af4",
+        "6aaf205e93dec68eae3ddd203f8f61df421f4482ebe36573501760c8605161db",
+        "7f5614e252787854adb02348d35c5449249225e94da33a07a9e76fae368ff069",
+        "8010bf3bcd2693dd8f45fc581b9b02b701739d1a3ac483ae3a7f320830be1786",
+        "851efc5c36f5578631d0d97678b37a694b57d99d1969a543f73ddcf501b74047",
+        "8a74cc1b38042d05c6aa08fdb6d14703db6088fcea03e7c6c9d51ff035028559",
+        "914c09837b38c1f333c84ddc6626726f4ba8ca13f6e9ed76bd4a204dbc2e5b97",
+        "9579fc482ab5517f5ab4d8a1a0c43b5a6138b3d614d05fa42d771e5fd1734e12",
+        "95d959025b7c91b841cc79dd9cc8bd7bfda104b199027d8276bb519b4c9f9999",
+        "bdd26c29bac9ee67e6bdfb6e9c792f96619c76a8795267440a909316b2b51e57",
+        "c2346d842f0b76b47d511f3ddef407df06b51ed628be6eecf917f7c466f5db54",
+        "c2728dd876c4a0be29e7c9994516da09ebbe6dd19237a9ccd9267c4a55f3621b",
+        "c4caf286cc89b308f4022ef85ce611791f75a299f31c38a5bc4ab615bda2cd1e",
+        "c9390a6d9b8646113c29897cbb0a343d9f1cd2babada30a6ff0080155373c823",
+        "febbd0d486f7fdcdfd9e60607ab7b27971174290a5503df62531cace6d5052a7"
+      ]
+    },
+    {
+      "id": "retired-sai-archive",
+      "destination": { "class": "sai", "path": "commands/sai-archive.md" },
+      "harnesses": ["claude", "opencode"],
+      "managedHashes": [
+        "16628f65255a206cfe1770a25ba1ef131f34d06050e4e90da561ce0d526536fe",
+        "20eeec254816ec17326312fb7d41cf0d290bb4a766dbdeac47f61c73a138a859",
+        "4c775bd51571694090355b895c15f7160edc5182f1877227e541197361e15691",
+        "77721b4b12b0dfaf1c2efa2254b3c169b3a43c42ab4f771dc4528f463d31ef0a",
+        "8b102a87112f3db6403906ae3d79af59fe7a721cec689ea17518c1f5320e6fae",
+        "9512db65004465b79cb1bbdd63fef10c2a726c6dee545ed3995a58f02ebcb831",
+        "a52d88b41efa9c7f69ff0f54697b379f964792ce59a5ecfb39cdf9ce3beae2e9",
+        "aed31e5788539a137040e98f19e9c10ec6470e472da9f32bbf8c603aadba6897",
+        "be3271ebea3d2bc3e316207ad86b19bba9a1059ea9cada0170bf33e7a952804b",
+        "c37fb429833195d10ca876e212cd61ab82d59f666d66ec9832c79eb6dc00762b",
+        "c77a88d46e092fa75ebfe82747c78d1120f5af496eec53669c8bc1b1e00110b7",
+        "f035df0fb16284c6e65434a826f234b1acc35d36b91b65c644678af5fa32e308"
+      ]
+    },
+    {
+      "id": "retired-sai-backfill",
+      "destination": { "class": "sai", "path": "commands/sai-backfill.md" },
+      "harnesses": ["claude", "opencode"],
+      "managedHashes": [
+        "4cc34653dffee8ca1849ac51ec9c525f8eafd67c983a05c54765e267dad3ec4c",
+        "643e377c465ff84cd0285c54b23af231e28103469af3f9b97fea7774c2b09d16",
+        "701c9f1fa5aa72df4434961fd010a95f7bb188e8ed78ef8391d173a046396e7d",
+        "70761d3b2aaad8fe53e39382e4fea50a3e09074ca2330ca99037f6f85fb7f9b5",
+        "947e3ab0bc5bd92d422a2b4b6dd77ca2799e0f63c7446d9c3e87fd0b4f967a1d",
+        "b5eb62d175236be514ea76a2e7b8e1a28f9b41437e74715e35a14567e04fd2bc",
+        "bdcce92e3636f27bea079caa88b4acf3fb216a7cec11ef90ce09e5b782c738b0",
+        "c075cfeb47bf6057c4aa489bda8f95510a49d5110271989320447e0b2098c752",
+        "c279534ca686921da40e92827dd91cb39f98aad7d6b5271169982ba39c7079e0",
+        "c73073ee1c86c840e4ad9d4ef48c8a97b6424ba7bab445f3a340bf83b5173e56",
+        "e5132eec564ff7d8d90116575923255545d63a25f80f25e2f7002928278802d0",
+        "e92a2ec6b30a06753f45371395acde0010f4f1a4f0be5b66e0c3315d941dcd6b",
+        "e951a9d527147ad5622778f9873af929bebf5343d536b7d4ce7ff9867b30e984"
+      ]
+    },
+    {
+      "id": "retired-sai-commit",
+      "destination": { "class": "sai", "path": "commands/sai-commit.md" },
+      "harnesses": ["claude", "opencode"],
+      "managedHashes": [
+        "1bf233c341254820ba9b95739e5725da058fdd39004a9bba1d3389f3f1d49490",
+        "4a3044c77d7d8c4f55e57a40d0783f29c36f5e12d6ee70f4247175331b656ce3",
+        "4df7f6d1716b6c6dbaca7516d4f376fb78186afb4d36835a3cdeb1c67e9f41aa",
+        "5477558e5f02c33788ab93a7df8bf138acf99f88388fb32e7d05aa5478dfcef8",
+        "979b2bf670727b7b776488e52a6f55ef63cd9ec911c5e4d37304b0b0e7d7848c",
+        "9a0a88d50f6c317d93027eb5bd6c129d5456fa714307e4fc5968abed404d48ed",
+        "b80d236e7f6dd8c5f400738dac315ac5087cd0e2329ce1ec430eaee82f9e6435",
+        "bf6d5cf4a238f161715f968eefb9f07cc6c05c4d2509e1d7d1159f61335a7058"
+      ]
+    },
+    {
+      "id": "retired-sai-explore",
+      "destination": { "class": "sai", "path": "commands/sai-explore.md" },
+      "harnesses": ["claude", "opencode"],
+      "managedHashes": [
+        "244c81b71421cbcb06bcd794fed6d09f09b9de9839ee2fc0d1151352006146db",
+        "734c6ba50ec83e18160409814cfe71c29cb15d05a60881ab25b453036b14dac1",
+        "7f5e3fe2d5ead253f532e4bd4089de983d2f6cfd914fab673c7e94ce818790b2",
+        "816acded390d9f3b87fdb3ff02f173544a05af642235602ef95a4c0224d3d914",
+        "8d0bc34771420b8943a6f9fb3c0b19375dbd9567a5cfbad663ac34c55955ebe4",
+        "91d913dc3b5fa8d04665c93579dc06d3580f698c1ca85664b1b8c359861a4281",
+        "b1bbb3bbd5214b621d968e63a1759b2de8fb24f7bfdbe777ac1a4985e6c4b731",
+        "b79a078535b1ce1fae1fc2a3deeceb12685838e250c59f29c14ea035587c23ba",
+        "c576e2ff740f88fab4c5f014026ff6116bc8b2bc171bf06fb59dc42650a1ba84",
+        "d0065f3c1f4ffb54425c9e3a69cc59987f1b65d269b786da9a7992d2475d49ff",
+        "df696887d89060153db1b71586aaeff723cebf708faeb012f0da4b2969865f28",
+        "e633c8fa6e09a3fb888ab5759383a23f613a33c97c6cfe6d055784615a8a8ab7"
+      ]
+    },
+    {
+      "id": "retired-sai-pr",
+      "destination": { "class": "sai", "path": "commands/sai-pr.md" },
+      "harnesses": ["claude", "opencode"],
+      "managedHashes": [
+        "013cbf4605205ff22891130adb611bf2c0ff2a70d1c4fe9fd44f9a78bf29539a",
+        "1c85db8f15c7e889311e713024d130f1a137d74791bacab8c85fcaa31d9d8c5b",
+        "2d735e670f21d808a93eda054ae3ad1069b0d0cd3718f02aaad3c17c0c156fe9",
+        "32c230e81b6d548ce95d3c6dd5068ebbfa4c1519d839935e3189223c94202ed2",
+        "6329143deb2d5d4ba5786e28adcbc7b9171fb2c2765c22bffd82e7e0e8af4b9a",
+        "8bbdc6305eb633fac3f44c19119c649bc98633681f142b86537480f83d35946f",
+        "96efeb83882d8e425d8509c03067201ce6fc21eb6abf94694914be702f37e474",
+        "b2ee9257ccdaf703d6d32fb98371d779b9b0a02785c819dc3283fb21120505e8",
+        "d4798b93b4a1acfd05c7df22b2f2daedad16f4c5d17b4c13f1dd3085e7fa7e55",
+        "e12bf1a29b8a4d9cc9ff98fc1ddb7d008f544ff55d1c41f184fe5627daa0530d",
+        "e386d961d01fe9010cc504c0eb226ab40b889bf6fe3fa500e7d90b9cc4164dbf"
+      ]
+    },
+    {
+      "id": "retired-sai-status",
+      "destination": { "class": "sai", "path": "commands/sai-status.md" },
+      "harnesses": ["claude", "opencode"],
+      "managedHashes": [
+        "079b6e41ad97698cf04864c8ae3e9344006fc8bb601b1aa6203b543757453c4f",
+        "4620131e4f0a2c0646993b1af93f2c584d8aa3013738270833bfa8f9ef309fea",
+        "772f5916186fdd6a6750946a6f6e08f33f107e80a43d40fd857404d0a120f15a",
+        "a2c1f4b6e53dbaa664e3253ec1149c44e71370487d8bc28ec777df25f142c052",
+        "f9edefcf6ea1e27f89caa0dd14006576017b841813277cdd828a4d5310c7c3ef"
+      ]
+    },
+    {
+      "id": "retired-sai-worktree",
+      "destination": { "class": "sai", "path": "commands/sai-worktree.md" },
+      "harnesses": ["claude", "opencode"],
+      "managedHashes": [
+        "d7411f3cdb58ea6667246737130afc1ad461f6b3db8ba92e39bba67ced439dd5"
+      ]
+    },
+    {
+      "id": "retired-coordinator-contract",
+      "destination": { "class": "sai", "path": "orchestration/coordinator-contract.md" },
+      "harnesses": ["claude", "opencode"],
+      "managedHashes": [
+        "6920d0a2153501467cf6d71f6abb0a0ad316feac8010ec14d0756e35d96852e1",
+        "6b8641fb1964726f45a9fdf0791baa8810be1b5c95169174f9da5611849758ff"
+      ]
+    },
+    {
+      "id": "retired-worker-lifecycle",
+      "destination": { "class": "sai", "path": "orchestration/worker-lifecycle.md" },
+      "harnesses": ["claude", "opencode"],
+      "managedHashes": [
+        "15d9b95520f72d5f07a594bba4f48be71709191b3416047adcf78519c11b0e8c",
+        "b56bccbedeccb2e40dd60105ec42658bebb5a9ec7aa8d5a2a7368247dba7a563",
+        "db0655eb47e4ac0fdf080a83a95278e008497c7fb1966a24f43a58fa3c654716",
+        "fb476e3c2ce69222d0740c48832cb61adc09a45f4d64cb0457deab62fe2e791c",
+        "ffc8ce6a6b751781d405b86fbfe1e88cd5d90cff84b3d2acc6b53936c160d84e"
+      ]
+    },
+    {
+      "id": "retired-sai-1-spec-proposal-worker",
+      "destination": { "class": "sai", "path": "orchestration/workers/sai-1-spec-proposal-worker.md" },
+      "harnesses": ["claude", "opencode"],
+      "managedHashes": [
+        "0df5502e83a282981ca57f3fda57addd98d591b9828b115c0a91d8d33eeeec71",
+        "3779d34fcfd702bf4f3126d0d21043c8939b6ead4c880c626643f2dc0c037720",
+        "71126157764717e06eb32b6d8a7f9c88e86c2a1206e7f2603576795b24cd599d",
+        "f4563193c0e6024bcb3b1f2ee78c43a68c0f2d4242dd6b3396985cd80039321f"
+      ]
+    },
+    {
+      "id": "retired-sai-2-design-worker",
+      "destination": { "class": "sai", "path": "orchestration/workers/sai-2-design-worker.md" },
+      "harnesses": ["claude", "opencode"],
+      "managedHashes": [
+        "156d39a2cb7840b6453b99d88d22e7703394821152f6785e29de491f26fcbb00",
+        "492fc82781ba666cf5eca3258cb404a2e9bbde2fefd9412f987ed8be7105e66d",
+        "7ae0e0d44e7561b668842f9e26bd5af8f07e56b0b77fac5b60de728012a3f954",
+        "7cc813ecd245d99e598bba240ec0595957d05d7c1656f1eef8e907c60fb22e3a",
+        "a18a7c16bc7316c5d11ce9b4711d4bd62169628180c5c3c09f0ced84de37074b",
+        "a44f44561ff20c984c0a039b9f397912077ff421af1b99c1157b781b7f76b483",
+        "ca8628101a4781bf42afba34877c624ef88160f6d2e99741c259e2a94d37ca84",
+        "cb915c2b18bf6619c0175e863d7cdbd0deb8081549eddbc83a87bccab6b89061"
+      ]
+    },
+    {
+      "id": "retired-sai-3-implementation-worker",
+      "destination": { "class": "sai", "path": "orchestration/workers/sai-3-implementation-worker.md" },
+      "harnesses": ["claude", "opencode"],
+      "managedHashes": [
+        "1bc117b9d778091ddb96eb7abb08c46365602c78a45998f2a88b916ab135c5a4",
+        "3a7cbbdbf386c852893a1efaf2471ed8c3c2727dccdadc10ae6fe7a6d6885380",
+        "61322aa2a66126a32e5eb35622f9ab667cfcd0ca3d83538e8bccaa16a42db2fa",
+        "8c149660e7b10f8974c259541660525dd90ef0dcb5305caefea593a5e6cdb118",
+        "ee10ca2a679dad0d47d57ea7a4004d83d513e6b859aea7c16771309de01e72c3"
+      ]
+    },
+    {
+      "id": "retired-sai-5-review-worker",
+      "destination": { "class": "sai", "path": "orchestration/workers/sai-5-review-worker.md" },
+      "harnesses": ["claude", "opencode"],
+      "managedHashes": [
+        "8de02b0729f9edb31fdc793584168ab2d4c92d8a0d411f3854dc3b92c647e2df",
+        "b98a9edc366804f5f81756c7fb5f396cb09cebfb564def2a64daf0d4252cadc4",
+        "ca0f682bd281efb8b86a502aac97cae93886e272ddf57cc79a1cb7b5feac6d56"
+      ]
+    },
+    {
+      "id": "retired-sai-6-security-worker",
+      "destination": { "class": "sai", "path": "orchestration/workers/sai-6-security-worker.md" },
+      "harnesses": ["claude", "opencode"],
+      "managedHashes": [
+        "0276d14942fc91c84a9ef3445126b1cac0ff2d1637b3b91cc85897198a30ba96",
+        "1eb67273ef246507fabb30ce0821919d781ef2190afea52587213e1b667c4e3c",
+        "3f43d57b4bcc68ea2bbfb439a0e635d6954e7f12cd0990592d8eb45289f48359"
+      ]
+    },
+    {
+      "id": "retired-sai-7-performance-worker",
+      "destination": { "class": "sai", "path": "orchestration/workers/sai-7-performance-worker.md" },
+      "harnesses": ["claude", "opencode"],
+      "managedHashes": [
+        "74248b403bd29b4445cde23aa021bc30da549e2ae6838ad610bb2baee27fefa3",
+        "7aac595def33c48ab8a320ac3bb0cca9060c573f0a39c5e5e4ab97817d2d2ab9",
+        "e11341046f6bb66db16d8d4fb6d5da7d507a671871f9c8f69c6834be988de9f6"
+      ]
+    },
+    {
+      "id": "retired-sai-8-accessibility-worker",
+      "destination": { "class": "sai", "path": "orchestration/workers/sai-8-accessibility-worker.md" },
+      "harnesses": ["claude", "opencode"],
+      "managedHashes": [
+        "034ade767c6cae41335a149446f5d3811ec13886ef0b2e80b2baaeb270f21512",
+        "3f21a24bfd8423e39a27536585468f0f5577562ed321cbf46fcd1ecb4af4ae45",
+        "de8e9c09e802c9c57ab0bd57f22c4a33d6a271ddf1b160d0109a72e4d1b5b22d"
+      ]
     }
   ]
 }

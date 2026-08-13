@@ -9,7 +9,25 @@ const crypto = require('crypto');
 
 const { installClaude, installOpencode, MANAGED_WORKERS } = require('../bin/install-flow.js');
 const { enumerateClaude, enumerateOpencode, buildDeletionSet, runDeletion } = require('../bin/uninstall-flow.js');
-const { loadInstallManifest, expandInstallManifest } = require('../bin/install-manifest.js');
+const { loadInstallManifest, expandInstallManifest, expandRetirementManifest } = require('../bin/install-manifest.js');
+
+const STEP3_SUPERSEDED_UTILITIES = ['apply', 'archive', 'backfill', 'commit', 'explore', 'pr', 'status', 'worktree'];
+const STEP3_SUPERSEDED_WORKERS = [
+  'sai-1-spec-proposal-worker',
+  'sai-2-design-worker',
+  'sai-3-implementation-worker',
+  'sai-5-review-worker',
+  'sai-6-security-worker',
+  'sai-7-performance-worker',
+  'sai-8-accessibility-worker',
+];
+const STEP3_SUPERSEDED_DESTINATIONS = [
+  ...STEP3_SUPERSEDED_UTILITIES.map(name =>
+    path.join('sai', 'commands', name === 'apply' ? 'sai-4-apply.md' : `sai-${name}.md`)),
+  path.join('sai', 'orchestration', 'coordinator-contract.md'),
+  path.join('sai', 'orchestration', 'worker-lifecycle.md'),
+  ...STEP3_SUPERSEDED_WORKERS.map(name => path.join('sai', 'orchestration', 'workers', `${name}.md`)),
+];
 
 function inventoryRoots(base, harness) {
   return {
@@ -294,7 +312,10 @@ test('enumeration includes retirement records but excludes them from active proj
   try {
     const entries = enumerateOpencode(tmpDir);
     const retired = entries.filter(e => e.assetType === 'retired-managed-file');
-    assert.deepEqual(retired.map(e => path.relative(tmpDir, e.dest)).sort(), [
+    const normalized = retired.map(e => path.relative(tmpDir, e.dest));
+    assert.equal(new Set(normalized).size, normalized.length,
+      'retired-managed-file destinations should be unique');
+    const expected = [
       path.join('sai', 'commands', 'sai-2-design.md'),
       path.join('sai', 'commands', 'sai-2-design-inline.md'),
       path.join('sai', 'commands', 'sai-3-implement.md'),
@@ -304,6 +325,7 @@ test('enumeration includes retirement records but excludes them from active proj
       path.join('sai', 'commands', 'sai-6-security.md'),
       path.join('sai', 'commands', 'sai-7-performance.md'),
       path.join('sai', 'commands', 'sai-8-accessibility.md'),
+      ...STEP3_SUPERSEDED_DESTINATIONS,
        path.join('skills', 'sai-8-accessibility-worker', 'SKILL.md'),
        path.join('skills', 'sai-2-design-worker', 'SKILL.md'),
        path.join('skills', 'sai-3-implementation-worker', 'SKILL.md'),
@@ -322,7 +344,11 @@ test('enumeration includes retirement records but excludes them from active proj
       path.join('sai', 'compat', 'sai-2-design-core.md'),
       path.join('sai', 'compat', 'sai-3-implementation-core.md'),
       path.join('sai', 'instructions', 'prereqs.md'),
-    ].sort());
+    ];
+    for (const destination of expected) {
+      assert.equal(normalized.includes(destination), true,
+        `retirement enumeration should cover ${destination}`);
+    }
     for (const entry of retired) {
       assert.ok(Array.isArray(entry.acceptedHashes));
       assert.ok(entry.acceptedHashes.length > 0);
@@ -330,6 +356,9 @@ test('enumeration includes retirement records but excludes them from active proj
     }
     assert.equal(entries.some(e => e.assetType !== 'retired-managed-file' && e.dest.endsWith('sai-2-design-inline.md')), false);
     assert.equal(entries.some(e => e.assetType !== 'retired-managed-file' && e.dest.endsWith('sai-3-implement-inline.md')), false);
+    assert.equal(entries.some(e => e.assetType !== 'retired-managed-file' && e.dest.endsWith(path.join('sai', 'commands', 'sai-4-apply.md'))), false);
+    assert.equal(entries.some(e => e.assetType !== 'retired-managed-file' && e.dest.endsWith('coordinator-contract.md')), false);
+    assert.equal(entries.some(e => e.assetType !== 'retired-managed-file' && e.dest.endsWith('worker-lifecycle.md')), false);
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }
@@ -400,5 +429,70 @@ test('Step 4 managed performance agent installs without a sidecar and uninstall 
     assert.equal(fs.existsSync(sidecar), false);
   } finally {
     fs.rmSync(base, { recursive: true, force: true });
+  }
+});
+
+test('STEP3_RETIREMENT: uninstall enumerates a retired-managed-file record for every superseded destination on both harnesses', () => {
+  for (const [harness, install, enumerate] of [
+    ['claude', installClaude, enumerateClaude],
+    ['opencode', installOpencode, enumerateOpencode],
+  ]) {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-step3-retired-enum-'));
+    try {
+      install(tmpDir);
+      const retired = enumerate(tmpDir)
+        .filter(entry => entry.assetType === 'retired-managed-file');
+      const normalized = new Set(retired.map(entry => path.relative(tmpDir, entry.dest)));
+      for (const destination of STEP3_SUPERSEDED_DESTINATIONS) {
+        assert.equal(normalized.has(destination), true,
+          `uninstall should enumerate a retired-managed-file record for ${destination}`);
+      }
+      for (const entry of retired) {
+        assert.equal(Array.isArray(entry.acceptedHashes) && entry.acceptedHashes.length > 0, true,
+          `retired entry ${entry.dest} should carry accepted hashes`);
+        assert.match(entry.ruleId, /^retired-/);
+      }
+      assert.equal(retired.some(entry =>
+        entry.ruleId.endsWith('-proxy-skill') && entry.ruleId.includes(`-${harness}-`)), true,
+      `the step-3 additions must not remove the historical ${harness} proxy-skill retirement records`);
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  }
+});
+
+test('STEP3_PARITY: active install inventory equals uninstall active enumeration for both harnesses from one manifest expansion', () => {
+  const repoRoot = path.join(__dirname, '..');
+  const manifest = loadInstallManifest(repoRoot);
+  for (const { harness, install, enumerate } of [
+    { harness: 'claude', install: installClaude, enumerate: enumerateClaude },
+    { harness: 'opencode', install: installOpencode, enumerate: enumerateOpencode },
+  ]) {
+    const base = fs.mkdtempSync(path.join(os.tmpdir(), `sai-step3-parity-${harness}-`));
+    const destinationRoot = inventoryRoots(base, harness);
+    try {
+      install(base, destinationRoot);
+      const active = expandInstallManifest(manifest, { harness, repoRoot, destinationRoot })
+        .map(projection => normalizeInventoryDestination(projection.destinationPath, destinationRoot))
+        .sort();
+      const uninstall = enumerate(base, destinationRoot)
+        .filter(entry => entry.assetType !== 'retired-managed-file')
+        .map(entry => normalizeInventoryDestination(entry.dest, destinationRoot))
+        .sort();
+      assert.deepEqual(uninstall, active,
+        `${harness} active uninstall enumeration should equal the manifest-derived install inventory`);
+
+      const retirementDests = expandRetirementManifest(manifest, { harness, repoRoot, destinationRoot })
+        .map(record => normalizeInventoryDestination(record.destinationPath, destinationRoot))
+        .sort();
+      const retiredDests = enumerate(base, destinationRoot)
+        .filter(entry => entry.assetType === 'retired-managed-file')
+        .map(entry => normalizeInventoryDestination(entry.dest, destinationRoot))
+        .sort();
+      assert.deepEqual(retiredDests, retirementDests,
+        `${harness} retired enumeration should derive from the same manifest retirement expansion with no second path list`);
+    } finally {
+      fs.rmSync(base, { recursive: true, force: true });
+    }
   }
 });

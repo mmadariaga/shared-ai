@@ -114,6 +114,8 @@ This index groups the DDRs in `docs/ddr/` by **command** and by **cross-cutting 
 
 - [0117 — Fetch resolution replaces the Glob existence probe with Read-then-Read exact-path fallback](./0117-fetch-resolution-read-then-read-exact-path-fallback.md)
 - [0118 — Every resolved fetch path begins with `sai/`, `commands/`, or `skills/` and the harness root is never named](./0118-fetch-path-scope-invariant.md)
+- [0128 — Neutral root protocols and command cards](./0128-neutral-root-protocols-and-command-cards.md)
+- [0129 — Routed and utility command-card classes](./0129-routed-and-utility-command-card-classes.md)
 
 ---
 
@@ -130,6 +132,8 @@ This index groups the DDRs in `docs/ddr/` by **command** and by **cross-cutting 
 - [0121 — The post-setup customization result stays in memory and never touches agent files](./0121-in-memory-non-persistent-override-contract.md)
 - [0123 — Retirement records cover every distinct historical content variant, enumerated from git history at implementation time](./0123-retirement-records-cover-every-historical-content-variant.md)
 - [0125 — Existing project-local agent content takes precedence over installed availability](./0125-existing-project-local-agent-content-takes-precedence.md)
+- [0128 — Neutral root protocols and command cards](./0128-neutral-root-protocols-and-command-cards.md)
+- [0129 — Routed and utility command-card classes](./0129-routed-and-utility-command-card-classes.md)
 
 ### Fetch resolution & path conventions
 

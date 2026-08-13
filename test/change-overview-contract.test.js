@@ -123,7 +123,7 @@ test('shared instruction is the generation contract', () => {
 });
 
 test('state key transitions unmaterialized → materializing → current at first Continue', () => {
-  const worker = artifact('sai/orchestration/workers/sai-2-design-worker.md');
+  const worker = artifact('sai/commands/design/worker.md');
 
   assert.match(worker, /unmaterialized/, 'worker contract should know the unmaterialized initial state');
   assert.match(worker, /materializing/, 'worker contract should mark materializing before dispatch');
@@ -132,7 +132,7 @@ test('state key transitions unmaterialized → materializing → current at firs
 });
 
 test('effective source modification marks stale before the first write', () => {
-  const worker = artifact('sai/orchestration/workers/sai-2-design-worker.md');
+  const worker = artifact('sai/commands/design/worker.md');
 
   const staleIndex = worker.search(/stale/);
   assert.ok(staleIndex !== -1, 'worker contract should contain the stale state');
@@ -143,7 +143,7 @@ test('effective source modification marks stale before the first write', () => {
 });
 
 test('no-effective-change transaction verifies the existing overview before restoring current', () => {
-  const worker = artifact('sai/orchestration/workers/sai-2-design-worker.md');
+  const worker = artifact('sai/commands/design/worker.md');
 
   assert.match(worker, /byte-exact/, 'pre-transaction source capture should be byte-exact');
   assert.match(worker, /capture/, 'worker contract should capture sources before any write');
@@ -327,7 +327,7 @@ test('backfilled changes skip change-overview alongside interfaces', () => {
 });
 
 test('status panel lists the 11 artifact ids in order and derives overview state', () => {
-  const status = artifact('sai/commands/sai-status.md');
+  const status = artifact('sai/commands/status/body.md');
 
   assert.match(status, /11\s+sai-workflow|eleven/i, 'the panel should reference the eleven-artifact schema');
 

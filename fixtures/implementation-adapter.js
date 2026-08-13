@@ -2,7 +2,7 @@
 
 const IMPLEMENTATION_ARTIFACTS = {
   coordinator: 'sai/commands/implement/coordinator.md',
-  worker: 'sai/orchestration/workers/sai-3-implementation-worker.md',
+  worker: 'sai/commands/implement/worker.md',
   invocationCore: 'sai/commands/implement/invocation.md',
 };
 

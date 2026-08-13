@@ -257,3 +257,82 @@ describe('doctor harness inventory', () => {
   });
 
 });
+
+function step3DestinationRootFor(base, harness) {
+  return {
+    commands: path.join(base, 'commands'),
+    sai: path.join(base, 'sai'),
+    skills: path.join(base, 'skills'),
+    agents: path.join(base, 'agents'),
+    config: base,
+    root: base,
+  };
+}
+
+function step3NeutralSource(source) {
+  return source === 'sai/command-runner.md' ||
+    source === 'sai/worker-core.md' ||
+    source.startsWith('sai/commands/') ||
+    source.startsWith('sai/instructions/') ||
+    source.startsWith('sai/policies/');
+}
+
+test('Step 3 Claude and opencode neutral inventories are equivalent and differ only at the boot adapter seam', () => {
+  const { loadInstallManifest, expandInstallManifest } = require('../bin/install-manifest.js');
+  const repoRoot = path.join(__dirname, '..');
+  const manifest = loadInstallManifest(repoRoot);
+  const expansions = {};
+  for (const harness of ['claude', 'opencode']) {
+    const base = fs.mkdtempSync(path.join(os.tmpdir(), `sai-step3-equivalence-${harness}-`));
+    expansions[harness] = {
+      base,
+      projections: expandInstallManifest(manifest, {
+        harness,
+        repoRoot,
+        destinationRoot: step3DestinationRootFor(base, harness),
+      }),
+    };
+  }
+  try {
+    const neutralInventory = (harness) => {
+      const { base, projections } = expansions[harness];
+      const map = {};
+      for (const projection of projections) {
+        const source = path.relative(repoRoot, projection.sourcePath).split(path.sep).join('/');
+        if (!step3NeutralSource(source)) continue;
+        const destination = path.relative(step3DestinationRootFor(base, harness).sai, projection.destinationPath)
+          .split(path.sep).join('/');
+        map[source] = destination;
+      }
+      return map;
+    };
+    const claude = neutralInventory('claude');
+    const opencode = neutralInventory('opencode');
+    assert.equal(Object.keys(claude).length > 0, true, 'claude should carry a non-empty neutral inventory');
+    assert.deepEqual(claude, opencode,
+      'claude and opencode should project the same neutral sources to the same relative destinations');
+    for (const source of Object.keys(claude)) {
+      const bytes = fs.readFileSync(path.join(repoRoot, ...source.split('/')));
+      assert.deepEqual(fs.readFileSync(path.join(repoRoot, ...source.split('/'))), bytes,
+        `${source} should be shared neutral content for both harnesses`);
+    }
+
+    const saiSources = (harness) => new Set(expansions[harness].projections
+      .map(projection => path.relative(repoRoot, projection.sourcePath).split(path.sep).join('/'))
+      .filter(source => source.startsWith('sai/')));
+    const claudeOnly = [...saiSources('claude')].filter(source => !saiSources('opencode').has(source)).sort();
+    const opencodeOnly = [...saiSources('opencode')].filter(source => !saiSources('claude').has(source)).sort();
+    assert.deepEqual(claudeOnly, [
+      'sai/adapters/claude/boot.md',
+      'sai/orchestration/workers/bindings/claude/idea-list-render.md',
+    ], 'claude-specific SAI sources should be its boot adapter plus its idea-list-render runtime glue');
+    assert.deepEqual(opencodeOnly, [
+      'sai/adapters/opencode/boot.md',
+      'sai/orchestration/workers/bindings/opencode/idea-list-render.md',
+    ], 'opencode-specific SAI sources should be its boot adapter plus its idea-list-render runtime glue');
+  } finally {
+    for (const harness of ['claude', 'opencode']) {
+      fs.rmSync(expansions[harness].base, { recursive: true, force: true });
+    }
+  }
+});

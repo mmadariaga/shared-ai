@@ -37,3 +37,12 @@ The `sai/` root groups all sai-owned payload (command bodies under `sai/commands
 **Original rationale:** Mirrors the project layout (`commands/sai/` at project root) and is consistent with how other shared paths are structured (`instructions/sai/`, `skills/*/`). The `commands/` prefix namespaces command bodies separately from other config root contents.
 
 **Reason for amendment:** The `restructure-vendor-paths` refactor moved `commands/sai/` to `sai/commands/` and changed the install destination from `<config-root>/commands/sai/` to `<config-root>/sai/commands/`. The new `@sai/commands/<cmd>.md` path mirrors the new source layout.
+
+## Amendment 2
+
+**Date:** 2026-08-13
+**Change:** `sai-command-runner-layout` card-class restructure
+
+**Original decision:** `@sai/commands/<cmd>.md` — each wrapper fetched the shared command body directly.
+
+**Reason for amendment:** Wrappers no longer fetch a shared body directly; they enter a per-harness boot adapter. Each wrapper fetches `@sai/adapters/claude/boot.md` (Claude Code) or `@sai/adapters/opencode/boot.md` (opencode), the boot loads the neutral `@sai/command-runner.md` protocol first, and the boot selects the requested command card. Command content now lives in card folders under `sai/commands/`: routed cards (`{spec,design,implement,review,security,performance,accessibility}/{coordinator,worker,invocation}.md`) and utility cards (`{apply,archive,backfill,commit,explore,pr,status,worktree}/body.md`). Both card classes are installed to the matching `sai/commands/` destination under each harness config root. The direct `@sai/commands/<cmd>.md` body-fetch convention this ADR recorded is historical.

@@ -30,6 +30,16 @@ const WORKER_NAME = {
   accessibility: 'sai-8-accessibility-worker',
 };
 
+const WORKER_DIR = {
+  spec: 'spec',
+  design: 'design',
+  implementation: 'implement',
+  review: 'review',
+  security: 'security',
+  performance: 'performance',
+  accessibility: 'accessibility',
+};
+
 const REQUIRED_FIELDS = [
   'phase',
   'workerName',
@@ -50,7 +60,7 @@ function entry(phase, overrides = {}) {
   const base = {
     phase,
     workerName,
-    workerContract: `sai/orchestration/workers/${workerName}.md`,
+    workerContract: `sai/commands/${WORKER_DIR[phase]}/worker.md`,
     bindingStem: phase,
     dispatchPrimitive: phase === 'design' ? 'Agent' : 'task',
     initialDispatch: `dispatch ${workerName}`,
@@ -73,7 +83,7 @@ function fullEntries() {
 }
 
 function contractFor(phase) {
-  return `sai/orchestration/workers/${WORKER_NAME[phase]}.md`;
+  return `sai/commands/${WORKER_DIR[phase]}/worker.md`;
 }
 
 function bindingParameters(phase, harness) {

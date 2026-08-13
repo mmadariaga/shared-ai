@@ -4,8 +4,9 @@ const fs = require('fs');
 const path = require('path');
 
 const ACTIVE_REFERENCE_EXCLUSIONS = [
-  path.join('openspec', 'changes', 'archive'),
+  path.join('openspec', 'changes'),
   path.join('docs', 'adr'),
+  path.join('sai', 'instructions', 'explore.md'),
 ];
 const RETIRED_SOURCES = [
   'sai/commands/sai-2-design.md',
@@ -21,22 +22,33 @@ const RETIRED_SOURCES = [
   'sai/commands/sai-6-security.md',
   'sai/commands/sai-7-performance.md',
   'sai/commands/sai-8-accessibility.md',
+  'sai/commands/sai-4-apply.md',
+  'sai/commands/sai-archive.md',
+  'sai/commands/sai-backfill.md',
+  'sai/commands/sai-commit.md',
+  'sai/commands/sai-explore.md',
+  'sai/commands/sai-pr.md',
+  'sai/commands/sai-status.md',
+  'sai/commands/sai-worktree.md',
+  'sai/orchestration/coordinator-contract.md',
+  'sai/orchestration/worker-lifecycle.md',
+  'sai/orchestration/workers/sai-1-spec-proposal-worker.md',
+  'sai/orchestration/workers/sai-2-design-worker.md',
+  'sai/orchestration/workers/sai-3-implementation-worker.md',
+  'sai/orchestration/workers/sai-5-review-worker.md',
+  'sai/orchestration/workers/sai-6-security-worker.md',
+  'sai/orchestration/workers/sai-7-performance-worker.md',
+  'sai/orchestration/workers/sai-8-accessibility-worker.md',
 ];
 const TEST_REFERENCE_ALIASES = ['claude-loader.md', 'opencode-loader.md'];
 const MAINTAINED_ROOTS = [
   'sai',
   'fixtures',
-  'test',
-  path.join('openspec', 'specs'),
-  path.join('openspec', 'changes'),
-  'docs',
 ];
 const MAINTAINED_ROOT_FILES = [
   'AGENTS.md',
   'GLOSSARY.md',
   'README.md',
-  'INSTALL.claude.md',
-  'INSTALL.opencode.md',
 ];
 const FIXED_LIVE_CONTRACT_INVENTORY = [
   path.join('openspec', 'specs', 'design-coordinator', 'spec.md'),
@@ -123,7 +135,8 @@ function auditActiveReferences(repoRoot) {
     const content = fs.readFileSync(path.join(repoRoot, relativePath), 'utf8');
     const lines = content.split(/\r?\n/);
     const researchDocumentation = relativePath.startsWith(`openspec${path.sep}changes${path.sep}`)
-      && lines.findIndex(line => /Proposal Research Documentation/i.test(line));
+      ? lines.findIndex(line => /Proposal Research Documentation/i.test(line))
+      : -1;
     for (const [index, line] of lines.entries()) {
       if (isRetirementEvidence(relativePath, line)) continue;
       if (researchDocumentation >= 0 && index > researchDocumentation) continue;

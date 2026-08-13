@@ -218,6 +218,8 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0132 — Reconcile the executor capability at the canonical Fetch boundary](./0132-reconcile-executor-capability-at-fetch-boundary.md)
 - [0133 — Keep harness-native worker templates over shared dispatch syntax](./0133-harness-native-worker-templates-over-shared-dispatch-syntax.md)
 - [0134 — Materialize Worker Matrix projections from the manifest and retire by hash](./0134-materialize-worker-projections-from-the-manifest-and-retire-by-hash.md)
+- [0135 — One harness boot seam per supported harness](./0135-one-harness-boot-seam-per-supported-harness.md)
+- [0136 — Opaque boot request and card-selection contract](./0136-opaque-boot-request-and-card-selection-contract.md)
 
 ---
 
@@ -244,6 +246,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0097 — Route performance by continuation capability](./0097-route-performance-by-continuation-capability.md) — Refs 0082, Refs 0083, Refs 0093
 - [0092 — Group planning assets by phase without changing harness routing](./0092-group-planning-assets-by-phase-without-changing-harness-routing.md) — Refs 0082, Refs 0088, Refs 0090
 - [0099 — Terminal routing failure and explicit fresh dispatch](./0099-terminal-routing-failure-and-explicit-fresh-dispatch.md) — Refs 0075, Refs 0076, Refs 0086
+- [0136 — Opaque boot request and card-selection contract](./0136-opaque-boot-request-and-card-selection-contract.md)
 - [0100 — Neutral installed worker-binding destinations with harness-specific sources](./0100-neutral-installed-worker-binding-destinations.md) — Refs 0077, Refs 0084, Refs 0088
 - [0128 — Keep generic OpenCode behavior in canonical SAI policies behind Fetch wrappers](./0128-canonical-generic-opencode-behavior-behind-fetch-wrappers.md)
 - [0130 — Reuse the recursive SAI policy projection for generic agents](./0130-reuse-recursive-sai-policy-projection-for-generic-agents.md)
