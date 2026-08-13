@@ -134,6 +134,30 @@ Durable execution-observed facts about the shared-ai prompt and installer reposi
 - **bin/install-manifest.js**: `expandInstallManifest` runs `validateManifest` (whose renderer errors are harness-less) before expanding the worker matrix, so harness+phase-named matrix-entry checks (misassigned worker identity, missing required field) must be placed AHEAD of `validateManifest` — the harness token is lost otherwise and the interfaces contract ("harness and phase identity in the failure") is not met.
   *Observed:* collapse-sai-worker-matrix — the C1 completion put the harness-qualified matrix-entry checks before `validateManifest` so misassignment/missing-field errors read `claude worker matrix: phase spec ...`.
 
+- **bin/worker-matrix.js**: The workerContract validation regex (`/^sai\/commands\/[a-z-]+\/worker\.md$/`) and `bin/install-flow.js` `expectedDispatchPrompt` must be updated together whenever the matrix `workerContract` path changes — install validation compares the rendered binding prompt against `expectedDispatchPrompt`, and the matrix validator rejects any contract outside `sai/commands/{phase}/worker.md`.
+  *Observed:* sai-command-runner-layout — changing `workerContract` to `sai/commands/{phase}/worker.md` required updating both consumers in the same slice or install validation threw.
+
+- **sai/orchestration/workers/bindings/*/worker-template.md**: The binding and agent templates render `{{workerContract}}` / `{{canonicalFetch}}` placeholders from the manifest matrix, so changing the manifest `workerContract` re-renders the canonical `Fetch @sai/commands/{phase}/worker.md` fetch with no template text change.
+  *Observed:* sai-command-runner-layout — the four worker-template files needed zero textual edits when the matrix contract path changed.
+
+- **sai/install-manifest.json (orchestration projections)**: The `claude-orchestration` / `opencode-orchestration` projection ids must remain present because the implement coordinator-worker suite asserts them, but they may carry a no-match include (e.g. `["__moved__.md"]`) to project zero candidates; the recursive `sai/commands/**/*.md` projection alone lands `spec/coordinator.md`, so the former `exclude` plus `routed-spec-coordinator` override can be removed.
+  *Observed:* sai-command-runner-layout — retaining the ids with a no-match include satisfied the suite while the recursive projection removed the override.
+
+- **sai/adapters/{claude,opencode}/boot.md**: Card-selection `Fetch @sai/commands/...` lines in a boot are reachable from routed wrappers through the install-claude restore-coordinator resolver, so every such line must resolve to an installed file — use prose `{name}` plus concrete resolvable examples (`Fetch @sai/commands/spec/coordinator.md`, `Fetch @sai/commands/apply/body.md`) instead of a literal `{name}` Fetch.
+  *Observed:* sai-command-runner-layout — a literal `{name}` fetch failed the recursive fetch-resolution test until concrete examples were used.
+
+- **bin/orchestration-source-audit.js**: The `researchDocumentation` guard must be a ternary (`startsWith(...) ? findIndex(...) : -1`); the `startsWith(...) && findIndex(...)` form evaluates `false >= 0` as `true` in JS, scanning only line 0 of non-change files and hiding retired-path references that the corrected scanner surfaces.
+  *Observed:* sai-command-runner-layout — the guard fix surfaced a stale `sai/orchestration/inline-invocation.md` reference in `fixtures/implementation-completion-step-4.js`.
+
+- **fixtures/implementation-completion-step-4.js**: Artifact-map fixture files must keep their referenced paths current with the live layout; a dead `invocation` field pointing at a retired path stays hidden only while the audit scanner's line-0 bug is present, then surfaces once the scanner is corrected.
+  *Observed:* sai-command-runner-layout — the retired `invocation: 'sai/orchestration/inline-invocation.md'` reference was corrected to `sai/commands/implement/invocation.md`.
+
+- **sai/install-manifest.json (retirement destination.path)**: Retirement `destination.path` is relative to the destination root (NO `sai/` prefix), and the retired flat apply command file is `sai/commands/sai-4-apply.md` (numeric prefix), not `sai-apply.md`; tests must compare full relative paths rather than basename suffixes because the active wrapper `commands/sai-4-apply.md` shares the retired body's basename.
+  *Observed:* sai-command-runner-layout — the blind test-writer's `sai/commands/sai-apply.md` / doubled-prefix destinations were corrected to the manifest convention.
+
+- **test/uninstall-enumeration.test.js**: Harness-coupled retirement assertions must be parameterized by the enumeration harness — `enumerateClaude` is harness-filtered and proxy-skill retirement records are single-harness, so an assertion demanding `-opencode-` records within Claude's enumeration is structurally unpassable; assert each harness's own `-${harness}-` records instead.
+  *Observed:* sai-command-runner-layout — the proxy-skill assertion failed for Claude until keyed by the loop's harness.
+
 ## Avoid
 
 - **bin/install-manifest.js**: An explicit non-recursive projection entry with an `overrides` id must be placed AFTER the recursive projection it overrides in the `projections` array — the duplicate-destination override fires only for `!projection.recursive && projection.overrides === existing.id && existing.recursive`, so placing the explicit entry before the recursive one throws `Projection destination collision` across every installer/doctor/agent suite.
@@ -154,6 +178,9 @@ Durable execution-observed facts about the shared-ai prompt and installer reposi
   *Observed:* repair-copilot-contract-prose — the Step 2 edit script's null-end `replaceSection` left three live specification files with a trailing blank line; stripping the blank line made `git diff --check` pass.
 - **bin/uninstall-flow.js**: Matrix-source materialization (`materializeMatrixSource`) writes `sourceText` into the shared `.tmp/collapse-sai-worker-matrix/matrix-sources/{harness}/{name}.md` path that every install/doctor/uninstall-consuming suite touches. It must stay idempotent (read-first byte-equality skip) and atomic (pid-unique temp file + `fs.renameSync` replace, bounded retry), or the parallel default `node --test` (`npm test`) races concurrent writers and fails 809/806/3 with EBUSY every run.
   *Observed:* collapse-sai-worker-matrix — the initial plain `fs.writeFileSync` raced the shared matrix-sources scratch; the idempotent+atomic rewrite made two consecutive `npm test` runs 809/809/0.
+
+- **sai/install-manifest.json (retirement destination.path)**: Do not author retirement `destination.path` with a doubled `sai/` prefix or the wrong flat filename (`sai-apply.md` instead of `sai-4-apply.md`) — the path is relative to the destination root, and a doubled prefix retires a nonexistent path while leaving the real flat file unmanaged.
+  *Observed:* sai-command-runner-layout — the authored assertions matched a nonexistent destination until corrected to the manifest convention.
 
 ## Test Command
 
