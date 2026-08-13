@@ -218,7 +218,7 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 - An **Advisor Skill** is consulted by the phase directly below its model tier: `mid-advisor` by the `/sai-4-apply` coordinator, `senior-advisor` by `/sai-3-implement`.
 - A **Boot Request** is forwarded byte-for-byte by a **Harness Boot Adapter**, which uses only its `command_name` to select a **Command Card**.
 - A **Command Card** belongs to exactly one `/sai-*` command and is either routed, with coordinator and worker surfaces, or utility, with a body-only surface.
-- A **Harness Boot Adapter** is the only newly introduced source seam where a supported harness name and its dispatch mechanics appear.
+- A **Harness Boot Adapter** is the supported-harness boot entry at the **adapter seam**; harness-specific dispatch mechanics live there, and paired non-worker runtime glue may also live under `sai/adapters/{harness}/`.
 - An **Advisor Skill** is the inverse of a budget-* skill (escalates upward to smarter models rather than delegating downward to cheaper ones).
 - An **Architecture Snapshot** belongs to one **Target State** and is displayed before the sai-2 design feedback loop when its effective content is current or changed.
 - A **File Manifest** belongs to one **Target State** and is the file-level sibling of the **Architecture Snapshot** under it — the snapshot answers which public surfaces will exist, the manifest answers which files will change.
