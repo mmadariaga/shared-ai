@@ -280,6 +280,44 @@ test('no-effective-change transaction verifies the existing overview before rest
   assert.match(worker, /verif/i, 'worker contract should verify the existing overview before restoring current');
 });
 
+test('design worker persists diagnostics for generator and parent-owned failure routes', () => {
+  const worker = artifact('sai/commands/design/worker.md');
+
+  assert.match(worker, /overview\.failure_kind/, 'design worker should persist overview.failure_kind');
+  assert.match(worker, /overview\.failure_details/, 'design worker should persist overview.failure_details');
+  assert.match(worker, /clear(?:s|ing)?[\s\S]{0,220}both diagnostic keys/i,
+    'new generation attempts should clear both diagnostic keys');
+  assert.match(worker, /first materialization[\s\S]{0,600}(?:persist|failure_details)/i,
+    'failed first materialization should persist its diagnostic');
+  assert.match(worker, /regeneration[\s\S]{0,260}stale/i,
+    'regeneration failures should map to stale');
+  assert.match(worker, /dispatch-failed/, 'dispatch failures should use dispatch-failed');
+  assert.match(worker, /process loss[\s\S]{0,220}generation-error/i,
+    'process loss should use generation-error');
+  assert.match(worker, /malformed or empty envelopes?[\s\S]{0,260}generation-error/i,
+    'malformed and empty envelopes should use generation-error');
+  assert.match(worker, /validation:\s*not-performed[\s\S]{0,320}failure_kind:\s*dispatch-failed/i,
+    'dispatch failures should carry not-performed validation and dispatch-failed kind');
+  assert.match(worker, /status:\s*failed[\s\S]{0,260}validation:\s*not-performed[\s\S]{0,260}failure_kind:\s*generation-error/i,
+    'process-loss and malformed-envelope routes should carry the parent generation-error shape');
+  assert.match(worker, /changed_files:\s*\[\s*\]/,
+    'unacknowledged dispatch failures should report no affected files');
+  assert.match(worker, /changed_files:\s*\[openspec\/changes\/\{change-name\}\/change-overview\.md\]/,
+    'dispatched uncertain outcomes should report the potentially affected overview path');
+  assert.match(worker, /quote that value before reclassification/i,
+    'malformed envelopes should preserve an offending failure_kind value in diagnostics');
+  assert.match(worker, /\.openspec\.yaml[\s\S]{0,180}changed_files|changed_files[\s\S]{0,180}\.openspec\.yaml/i,
+    'durable metadata writes should enter the changed-file union');
+  assert.match(worker, /successful materialization or reconciliation[\s\S]{0,180}clears both diagnostic keys/i,
+    'successful retries should clear prior diagnostics');
+  for (const state of ['overview.state: materializing', 'overview.state: current', 'overview.state: failed', 'overview.state: stale']) {
+    assert.match(worker, new RegExp(state.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')),
+      `worker should map ${state}`);
+  }
+  assert.match(worker, /failure_details[\s\S]{0,220}(?:user|surface|present)/i,
+    'the design worker should surface the diagnostic at the failure boundary');
+});
+
 test('opencode design worker permits budget dispatch beside explore', () => {
   const agent = matrixItem('opencode', 'design', 'agent');
   const binding = matrixItem('opencode', 'design', 'binding');
@@ -365,6 +403,27 @@ test('non-current overview produces an availability report, not a review', () =>
     'non-current overviews should produce an availability/integrity report');
   assert.match(explore, /no findings tally|no `Summary:`|no findings and no/i,
     'the availability report should carry no findings tally');
+});
+
+test('non-current overview reporting names persisted diagnostics without reviewing them', () => {
+  const explore = artifact('sai/commands/explore/instructions.md');
+
+  assert.match(explore, /persisted `?overview\.failure_kind`?/i,
+    'availability reports should name the persisted failure kind');
+  assert.match(explore, /exact persisted `?overview\.failure_details`?/i,
+    'availability reports should name the exact persisted failure details');
+  assert.match(explore, /materializing[\s\S]{0,260}interrupted before failure classification/i,
+    'materializing without diagnostics should be reported as interrupted before classification');
+  assert.match(explore, /stale[\s\S]{0,260}no generation failure diagnostic is recorded/i,
+    'stale without diagnostics must not be reported as an interruption');
+  assert.match(explore, /failure_details[\s\S]{0,160}even if `?overview\.failure_kind`? is absent/i,
+    'failure details must be reportable even when its classification key is absent');
+  assert.match(explore, /availability[\s\S]{0,260}no findings[\s\S]{0,260}(?:Summary|tally)/i,
+    'non-current reports must remain read-only availability reports');
+  assert.match(explore, /failure record[\s\S]{0,180}never (?:as )?a current overview/i,
+    'failure records must remain diagnostic state');
+  assert.match(explore, /does not mark or clear review evidence[\s\S]{0,120}never write/i,
+    'availability reports must not mutate review evidence or artifacts');
 });
 
 test('review output is a single findings block handed off without acceptance', () => {
