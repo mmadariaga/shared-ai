@@ -79,6 +79,9 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 **Existing Tests Broken**: "The pinned fifth `## Step N` sub-field of `tasks.md` naming the existing tests a step breaks and each one's `compile` or `runtime` failure mode, shared fixtures first, `None` when it breaks none."
 *Avoid*: Tests Affected, Broken Tests, test impact, regressions
 
+**Failure Details**: "The non-empty English diagnostic attached to an overview-generation failure, naming what went wrong, where it occurred, and the durable carrier that preserves it when the failure is parent-authored."
+*Avoid*: contradiction details, failure note, diagnostic text
+
 **File Change Type**: "One of the four tokens (`A`, `M`, `D`, `R`) that prefixes each `**Files Affected**` entry of a `tasks.md` step, declaring what happens to the file in the step's commit — created, modified, deleted, or moved/renamed (an `R` entry carries the source path and the destination path in the form `R <source> -> <destination>`)."
 *Avoid*: change type, change-kind, file verb, action letter
 
@@ -232,6 +235,9 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 - An **Architecture Snapshot** belongs to one **Target State** and is displayed before the sai-2 design feedback loop when its effective content is current or changed.
 - A **File Manifest** belongs to one **Target State** and is the file-level sibling of the **Architecture Snapshot** under it — the snapshot answers which public surfaces will exist, the manifest answers which files will change.
 - A **File Manifest** is derived by a deterministic net fold over the per-step **File Change Type** tokens of a change's `tasks.md`; `tasks.md` remains the authority for per-step tokens and step attribution.
+- A **Failure Details** value belongs to one overview-generation failure and is persisted by the design worker in `.openspec.yaml` as `overview.failure_details` when the parent owns the failure route.
+- A **Failure Details** value is paired with the persisted `overview.failure_kind` classification so read-only consumers can identify the failure route without conversation context.
+- **Failure Details** is paired with the persisted `overview.failure_kind` classification so read-only consumers can identify the failure route without conversation context.
 - An **Orca Environment** hosts Orca and both supported agent command-line interfaces while keeping repositories under persistent workspace storage and credentials outside the image.
 - **Coordinator Verification** may trigger one **Recovery Dispatch** when a **Known-False Report Recovery** is clear, safe, and in scope; a failed or ambiguous recovery returns to human intervention.
 - A **Backfilled Change** is archived via `/sai-archive` (the same command that archives non-backfilled changes).
