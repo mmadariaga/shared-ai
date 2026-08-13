@@ -41,16 +41,122 @@ test('apply is not gated on change-overview.md', () => {
   assert.ok(!applySection.includes('change-overview'), 'apply.requires must not list change-overview');
 });
 
-test('overview Target State contains exactly the two subsections in order', () => {
+test('overview approval surface has exactly the nine top-level sections in order', () => {
   const template = artifact('openspec/schemas/sai-workflow/templates/change-overview.md');
-  const targetStateIndex = template.indexOf('## Target State');
-  assert.ok(targetStateIndex >= 0, 'change-overview.md should contain ## Target State');
-  const targetState = template.substring(targetStateIndex);
-  const snapshotIndex = targetState.indexOf('### Architecture Snapshot');
-  assert.ok(snapshotIndex >= 0, '## Target State should contain ### Architecture Snapshot');
-  const manifestIndex = targetState.indexOf('### File Manifest');
-  assert.ok(manifestIndex >= 0, '## Target State should contain ### File Manifest');
-  assert.ok(snapshotIndex < manifestIndex, '### Architecture Snapshot should precede ### File Manifest');
+  const headings = (template.match(/^## .+$/gm) || []).map(heading => heading.slice(3));
+
+  assert.deepEqual(headings, [
+    'Change Proposal',
+    'Scope',
+    'Capabilities',
+    'Target Architecture',
+    'Key Contracts',
+    'File Manifest',
+    'Review Scenarios',
+    'Implementation Approach',
+    'Approval Summary',
+  ]);
+});
+
+test('overview approval surface excludes the forbidden legacy sections', () => {
+  const template = artifact('openspec/schemas/sai-workflow/templates/change-overview.md');
+
+  for (const heading of [
+    'Target State',
+    'Requirements',
+    'Scenarios',
+    'Interfaces',
+    'Assertions',
+    'File Changes',
+    'Delivery Steps',
+    'Traceability',
+  ]) {
+    assert.doesNotMatch(template, new RegExp(`^## ${heading}$`, 'm'),
+      `change-overview.md should not contain ## ${heading}`);
+  }
+});
+
+test('overview adapts architecture and centralizes the file manifest', () => {
+  const template = artifact('openspec/schemas/sai-workflow/templates/change-overview.md');
+  const architectureIndex = template.indexOf('## Target Architecture');
+  const manifestIndex = template.indexOf('## File Manifest');
+  const nextSectionIndex = template.indexOf('\n## ', architectureIndex + 1);
+  const architecture = template.slice(architectureIndex, nextSectionIndex === -1 ? undefined : nextSectionIndex);
+
+  assert.ok(architectureIndex >= 0, 'overview should contain ## Target Architecture');
+  assert.ok(manifestIndex > architectureIndex, '## File Manifest should follow ## Target Architecture');
+  assert.match(architecture, /^### Snapshot$/m,
+    'architecture content should retain the fixed ### Snapshot subsection');
+  assert.doesNotMatch(architecture, /^### File Manifest$/m,
+    'the manifest should not be nested under ## Target Architecture');
+  assert.match(template, /^## File Manifest$/m, 'overview should contain ## File Manifest');
+});
+
+test('overview generation keeps signatures beside surviving manifest entries and omits net-empty paths', () => {
+  const instruction = artifact('sai/change-overview.md');
+
+  assert.match(instruction, /public signature/i,
+    'generation contract should define public signature rendering');
+  assert.match(instruction, /(?:beside|alongside|next to)[\s\S]{0,180}(?:manifest|file entry)/i,
+    'public signatures should render beside their surviving manifest file entries');
+  assert.match(instruction, /net[- ]empty[\s\S]{0,180}(?:omit|omitted|exclude|excluded|not render)/i,
+    'signatures for net-empty paths should be omitted from the overview');
+});
+
+test('overview generation remains source-grounded and fails atomically on manifest contradiction', () => {
+  const instruction = artifact('sai/change-overview.md');
+
+  assert.match(instruction, /condens/i, 'generation contract should define condensed content');
+  assert.match(instruction, /source[- ]grounded/i,
+    'condensed content should remain source-grounded');
+  assert.match(instruction, /source artifacts.*never modified|never modified.*source artifacts/i,
+    'source artifacts should remain unchanged');
+  assert.match(instruction, /manifest contradiction/i,
+    'generation contract should define manifest contradiction handling');
+  assert.match(instruction, /no partial output|without partial output|partial output.*(?:fail|suppress|none)/i,
+    'a manifest contradiction should not leave partial output');
+});
+
+test('localized overview preserves structural anchors while allowing editorial subsection translation', () => {
+  const instruction = artifact('sai/change-overview.md');
+
+  assert.match(instruction, /overview_language/);
+  assert.match(instruction, /English/);
+  for (const heading of [
+    'Change Proposal',
+    'Scope',
+    'Capabilities',
+    'Target Architecture',
+    'Key Contracts',
+    'File Manifest',
+    'Review Scenarios',
+    'Implementation Approach',
+    'Approval Summary',
+  ]) assert.match(instruction, new RegExp(heading));
+  assert.match(instruction, /### Snapshot/,
+    'the fixed ### Snapshot heading should remain English');
+  for (const anchor of ['paths', 'commands', 'state values', 'source artifact names']) {
+    assert.match(instruction, new RegExp(anchor));
+  }
+  assert.match(instruction, /editorial.*(?:subsection|###).*translat|(?:subsection|###).*translat.*editorial/i,
+    'generator-authored editorial subsection headings may be translated');
+  assert.match(instruction, /## Capabilities[\s\S]{0,500}(?:editorial|###)[\s\S]{0,500}(?:translat|localiz)/i,
+    'localized capability subsections should preserve structural anchors');
+  assert.match(instruction, /## Target Architecture[\s\S]{0,500}(?:editorial|###)[\s\S]{0,500}(?:translat|localiz)/i,
+    'localized architecture subsections should preserve structural anchors');
+  assert.match(instruction, /result keys/);
+  assert.match(instruction, /exactly five mandatory fields|five mandatory fields/);
+  assert.match(instruction, /change-overview\.md/);
+});
+
+test('design target-state specification distinguishes the overview architecture adaptation', () => {
+  const specification = artifact('openspec/specs/design-target-state/spec.md');
+
+  assert.match(specification,
+    /overview[\s\S]{0,240}renders an adapted ## Target Architecture[\s\S]{0,240}rather than[\s\S]{0,120}## Target State/i);
+  assert.match(specification, /Target State subsections remain exact in design\.md only/);
+  assert.match(specification,
+    /Target State remains authoritative in design\.md but is not projected into the overview/);
 });
 
 test('interfaces.md keeps only step contracts', () => {

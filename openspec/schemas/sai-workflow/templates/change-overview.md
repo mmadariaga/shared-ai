@@ -1,57 +1,41 @@
-## Target State
+## Change Proposal
 
-<!-- The change's `## Target State` review snapshot, projected from openspec/changes/{change-name}/design.md
-     as the overview's leading review section — never authored here. The projection rule and the two
-     subsections below are defined by specs/change-overview-artifact/spec.md and specs/design-target-state/spec.md.
-     Write-time authority: sai/change-overview.md. -->
-
-### Architecture Snapshot
-
-<!-- Projected verbatim from design.md's `### Architecture Snapshot`. -->
-
-### File Manifest
-
-<!-- Recomputed by the deterministic net fold over tasks.md and validated against the persisted
-     `### File Manifest` in design.md; a divergence is a blocking source contradiction, never silently
-     preferring either side. -->
+<!-- Motivation narrative from proposal.md's Why; no purpose preamble, scope restatement, or capability restatement. -->
 
 ## Scope
 
-<!-- What the change is in and out of scope for — derived from proposal.md's Why / What Changes and design.md's Goals / Non-Goals. -->
+<!-- In-scope and out-of-scope boundaries derived from proposal.md and design.md. -->
+
+## Capabilities
+
+<!-- Proposal-listed capabilities, corroborated by specs/**/*.md without synthesizing absent capabilities. -->
 
 ## Target Architecture
 
-<!-- The finished shape — the Target State projection plus design.md's Architecture Snapshot detail. -->
+<!-- Adapted review rendering of design.md's Architecture Snapshot and relevant target-shape decisions. -->
 
-## Requirements
+### Snapshot
 
-<!-- One subsection per capability from specs/**/*.md, with normative wording preserved and sources cited. -->
+<!-- Retain concise source ASCII notation here when the Architecture Snapshot contains it. -->
 
-## Scenarios
+## Key Contracts
 
-<!-- The scenarios of each requirement, traceable to their requirement within the capability. -->
+<!-- Approval-relevant behavioral contracts grouped by concern; do not render public signatures or method-level assertions here. -->
 
-## Interfaces
+## File Manifest
 
-<!-- The per-step public signatures from interfaces.md, keyed by Step N. -->
+<!-- Deterministic tasks.md net fold validated against design.md's persisted File Manifest. Thematic subsections and related signatures live here. -->
 
-## Assertions
+## Review Scenarios
 
-<!-- The method-level test assertions from interfaces.md Test assertions, anchored to their requirements/scenarios. -->
+<!-- Approval-relevant scenarios grouped by situation or outcome; condensation is allowed. -->
 
-## File Changes
+## Implementation Approach
 
-<!-- The File Manifest projection. -->
+<!-- Condensed ordered approach from design.md and tasks.md; omit step-level task prose blocks. -->
 
-## Delivery Steps
+## Approval Summary
 
-<!-- The tasks.md steps in order, keyed by Step N. -->
+<!-- Source-grounded decisions, constraints, trade-offs, and review implications needed for approval. -->
 
-## Traceability
-
-<!-- End-to-end links: requirement → scenario → interface → assertion → delivery step, per capability.
-     Mappings the sources do not encode are reported as gaps, never synthesized. -->
-
-<!-- Write-time authority: sai/change-overview.md defines the generation contract, the
-     completeness-and-consistency validation, and the closed result envelope. The overview is a derived
-     projection — the five source artifacts remain authoritative and are never modified by generation. -->
+<!-- Write-time authority: sai/change-overview.md defines generation, validation, localization, and the closed result envelope. -->

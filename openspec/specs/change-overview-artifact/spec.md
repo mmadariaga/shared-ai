@@ -22,126 +22,219 @@ The overview is a derived projection, not a source of truth: it SHALL be generat
 - **THEN** its content is derived from `proposal.md`, `specs/**/*.md`, `design.md`, `tasks.md`, and `interfaces.md` of the same change
 - **AND** no content is drawn from `implementation.md` or any implementation artifact
 
-### Requirement: Overview is organized by capability and behavior
+### Requirement: Overview is organized by approval-relevant capability and behavior
 
-The overview SHALL present the proposed change as a review-oriented projection organized by capability and behavior, not as a concatenation of the source documents. The overview SHALL present, at minimum: scope, target architecture, requirements, scenarios, interfaces, method-level test assertions, file changes, delivery steps, and end-to-end traceability — linking requirements to their scenarios, interfaces, test assertions, and delivery steps by capability and behavior.
+The overview SHALL present the proposed change as an approval-oriented projection organized by approval-relevant concern, situation, capability, and behavior, not as a concatenation of the source documents. Its top-level sections SHALL be exactly these nine headings, in this order, with no additional top-level sections:
 
-The traceability and method-level assertion content SHALL be the content the source artifacts already encode: the shared `Step N` keys of `tasks.md` and `interfaces.md`, the assertion→requirement/scenario anchors in `interfaces.md` Test assertions, and the requirement→scenario structure of `specs/**/*.md`. The overview SHALL NOT synthesize relationships or method-level mappings the sources do not encode; a required element that the sources cannot support SHALL be reported as a gap per the report-not-fabricate requirement, not invented. Introducing a new source-level traceability identifier scheme is out of scope for this change.
+1. `## Change Proposal` — the motivation narrative derived from `proposal.md`'s `## Why`; it SHALL carry no document-purpose preamble and SHALL NOT restate scope or capabilities.
+2. `## Scope` — the in-scope and out-of-scope boundaries supported by the proposal and design artifacts.
+3. `## Capabilities` — the capabilities listed in `proposal.md`'s `## Capabilities`, with `specs/**/*.md` used only to corroborate their behavior; the generator SHALL NOT synthesize a capability absent from the proposal.
+4. `## Target Architecture` — an adapted review rendering of the design Architecture Snapshot and relevant target-shape decisions, retaining concise ASCII notation in a `### Snapshot` subsection when the source contains it.
+5. `## Key Contracts` — approval-relevant behavioral contracts grouped by concern, derived from `design.md` decisions and `specs/**/*.md` requirements; public interface signatures and method-level test assertions are not rendered in this section.
+6. `## File Manifest` — the file-level change inventory, validated against the deterministic fold and persisted manifest rules, with thematic `###` subsections permitted. Related public interface signature blocks from `interfaces.md` SHALL be interleaved beneath their corresponding file entries in this section when those files remain in the folded target-state manifest. A signature whose path folds to ∅ and therefore has no manifest entry SHALL NOT be rendered in the overview.
+7. `## Review Scenarios` — approval-relevant behavioral scenarios derived from the specs and grouped by approval situation or outcome, such as authorized, rejected, failure, substitution, or semantics cases; scenarios need not be reproduced verbatim.
+8. `## Implementation Approach` — a condensed ordered implementation approach derived from design and tasks; it SHALL NOT reproduce per-step `tasks.md` prose blocks such as `**What Will Be Done**`, `**Testing Strategy**`, or `**Existing Tests Broken**`.
+9. `## Approval Summary` — a source-grounded condensation of the decisions, constraints, trade-offs, and review implications needed to approve the change.
 
-#### Scenario: review sections are organized by capability
+Within any of the nine top-level sections, the generator MAY emit `###` subsections for editorial grouping. This permission applies equally to all nine sections, including proposal-derived capability groups, contract concern groups, scenario situation groups, and thematic manifest groups. The structural `### Snapshot` subsection remains required when the source Architecture Snapshot contains concise ASCII notation; other subsection headings are generator-authored editorial headings.
+
+The overview SHALL NOT emit `## Target State`, `## Requirements`, `## Scenarios`, `## Interfaces`, `## Assertions`, `## File Changes`, `## Delivery Steps`, or `## Traceability` as separate top-level sections. The manifest SHALL appear only under `## File Manifest`; it SHALL NOT be repeated inside `## Target Architecture` or another section. Interface signature blocks SHALL appear only beneath their related file entries in `## File Manifest`, never as a standalone interface section or under `## Key Contracts`.
+
+#### Scenario: overview uses the exact approval section set
+
+- **WHEN** `change-overview.md` is generated
+- **THEN** its top-level headings are exactly the nine required headings in the specified order
+- **AND** no `## Target State` projection or former audit-oriented top-level section is emitted
+
+#### Scenario: approval content is grouped without source concatenation
+
 - **WHEN** a reader opens the overview
-- **THEN** the content is grouped by capability and behavior, so a requirement's scenarios, interfaces, and assertions are traceable within its capability
-- **AND** no section is a raw copy of a source document's section
+- **THEN** source facts are grouped under the section that best supports approval of the capability or behavior
+- **AND** the overview does not reproduce each source artifact as a separate document section
 
-#### Scenario: requirements-to-implementation traceability is present
-- **WHEN** a capability in the change has requirements, scenarios, interfaces, and delivery steps
-- **THEN** the overview links each requirement to its scenarios, to the interfaces that realize it, to the method-level test assertions that verify it, and to the delivery steps that implement it
-- **AND** every such link traces to an occurrence in a source artifact
+#### Scenario: subsections are permitted throughout the approval structure
 
-#### Scenario: unencoded traceability is reported, not synthesized
-- **WHEN** the sources do not encode a mapping the overview must present (for example a requirement with no anchored assertion in `interfaces.md`)
-- **THEN** the overview reports the missing relationship as a gap, naming the sources involved
-- **AND** the overview does not invent the mapping
+- **WHEN** editorial grouping improves review of any of the nine top-level sections
+- **THEN** the generator MAY emit `###` subsections in that section
+- **AND** subsection permission is not limited to Target Architecture or File Manifest
 
-### Requirement: Target State is authored in design.md and projected into the overview
+#### Scenario: manifest appears once at the top level
 
-The change's `## Target State` review snapshot SHALL be authored and persisted by the design phase as a dedicated section of `openspec/changes/{change-name}/design.md` — the authoritative source for the snapshot — including its `### Architecture Snapshot` and `### File Manifest` subsections as defined by the `design-target-state` capability. The snapshot SHALL NOT be emitted in `interfaces.md`, and SHALL NOT live only in transient worker context: every element of the snapshot SHALL be reproducible at regeneration time by reading `design.md` and `tasks.md`, never by synthesizing it anew. `interfaces.md` SHALL contain no `## Target State` section and no `### Architecture Snapshot` or `### File Manifest` subsection — every top-level section of `interfaces.md` SHALL be a `## Step N` contract.
+- **WHEN** the change has a non-empty file manifest
+- **THEN** the manifest is rendered under `## File Manifest`
+- **AND** the same manifest is not emitted in `## Target Architecture` or any other section
 
-`change-overview.md` SHALL project the change's `## Target State` from `design.md` as its leading review section: the `### Architecture Snapshot` subsection SHALL be projected verbatim from `design.md`, and the `### File Manifest` subsection SHALL be recomputed by the deterministic net fold over `tasks.md` per the `design-target-state` capability and **validated against the persisted `### File Manifest` in `design.md`**. The persisted manifest remains authoritative: the generator SHALL compare the recomputed fold to the persisted manifest, project the persisted one only when the two are equal, and when they differ SHALL NOT silently prefer either side — it SHALL report the source contradiction per the report-not-fabricate requirement and fail the transactional validation. The overview SHALL NOT author, reword, or synthesize the snapshot content; the per-step `## Step N` sections of `interfaces.md` SHALL remain the authority on step attribution and exact assertions.
+#### Scenario: interface signatures are retained beside manifest file entries
 
-#### Scenario: Target State lives in design.md and is projected
-- **WHEN** a change's design phase completes
-- **THEN** `design.md` contains a `## Target State` section with `### Architecture Snapshot` and `### File Manifest` subsections
-- **AND** `change-overview.md` projects that section as its leading review section without rewriting its content
-- **AND** `interfaces.md` contains no `## Target State` section and no snapshot or manifest subsection
+- **WHEN** `interfaces.md` contains a public interface signature for a file listed in the manifest
+- **THEN** the signature is rendered as a related block beneath that file entry within `## File Manifest`
+- **AND** the signature is not rendered under `## Key Contracts` or a separate `## Interfaces` section
 
-#### Scenario: regeneration reproduces the snapshot from persisted sources
-- **WHEN** the overview is regenerated after source artifacts changed
-- **THEN** the `## Target State` content is read from `design.md` and the `### File Manifest` is recomputed from `tasks.md` by the deterministic net fold
-- **AND** no snapshot element is synthesized or invented by the generator
+#### Scenario: signature for a net-empty path is omitted
 
-#### Scenario: persisted manifest matches the recomputed fold
-- **WHEN** the generator recomputes the `### File Manifest` from `tasks.md` and it equals the persisted manifest in `design.md`
-- **THEN** the persisted manifest is projected into the overview unchanged
+- **WHEN** an `interfaces.md` signature belongs to a path whose `tasks.md` net fold resolves to ∅ because the path is created and deleted within the change
+- **THEN** the signature is not rendered in `## File Manifest` or elsewhere in the overview
+- **AND** the complete signature remains available in authoritative `interfaces.md`
 
-#### Scenario: persisted manifest diverges from the recomputed fold
-- **WHEN** the recomputed `### File Manifest` fold from `tasks.md` differs from the persisted manifest in `design.md`
-- **THEN** the generator does NOT project either side silently
-- **AND** it reports the source contradiction, naming both the `design.md` manifest and the `tasks.md` fold as the diverging sources
-- **AND** the transactional validation fails, so the defective overview is not accepted
+### Requirement: Target State remains authoritative in design.md but is not projected into the overview
 
-#### Scenario: interfaces.md keeps only step contracts
-- **WHEN** a reader scans `interfaces.md` after this change lands
-- **THEN** every top-level section is a `## Step N` contract with Interfaces and Test assertions parts
-- **AND** step attribution and exact assertions remain authoritative in those sections
+The change's `## Target State` SHALL continue to be authored and persisted by the design phase in `openspec/changes/{change-name}/design.md` as the authoritative detailed finished-shape record. `design.md` SHALL continue to contain its `### Architecture Snapshot` and `### File Manifest` subsections, and `interfaces.md` SHALL continue to contain no Target State, Architecture Snapshot, or File Manifest section. The overview SHALL NOT emit a `## Target State` section or project that section verbatim.
 
-### Requirement: Source artifacts remain authoritative and the overview stays faithful
+Instead, `change-overview.md` SHALL render an adapted, approval-oriented `## Target Architecture` section from the design Architecture Snapshot and relevant design decisions. The adaptation MAY condense, regroup, and reorder source details for review, but SHALL retain the Architecture Snapshot's concise ASCII notation in a `### Snapshot` subsection when that notation is present in the source, and SHALL NOT add a fact absent from the design sources. The persisted design manifest SHALL be rendered only in the overview's top-level `## File Manifest` section.
 
-The source artifacts SHALL remain the source of truth for the change. The overview SHALL reproduce normative requirements and scenarios faithfully to their source wording — it SHALL NOT silently reword, strengthen, weaken, or reinterpret normative content. The generator SHALL NOT modify any source artifact and SHALL NOT silently repair or invent source semantics to resolve gaps or contradictions.
+The generator SHALL still recompute the manifest by the deterministic net fold over `tasks.md`, compare it with the persisted `### File Manifest` in `design.md`, and fail transactional validation on divergence without silently preferring either side.
 
-#### Scenario: normative wording is preserved
-- **WHEN** the overview presents a requirement or scenario from `specs/**/*.md`
-- **THEN** the normative wording of that requirement or scenario matches the source
-- **AND** the overview cites the source artifact the content is derived from
+#### Scenario: design Target State remains detailed and authoritative
+
+- **WHEN** the design phase completes for a change
+- **THEN** `design.md` still begins with `## Target State` followed by its existing Architecture Snapshot and File Manifest subsections
+- **AND** `change-overview.md` contains no `## Target State` section
+
+#### Scenario: Architecture Snapshot is adapted for approval
+
+- **WHEN** the overview is generated from a design containing an Architecture Snapshot
+- **THEN** the overview presents the supported architecture facts under `## Target Architecture`
+- **AND** the rendering may condense or regroup them rather than reproducing the design subsection verbatim
+- **AND** the rendering retains the source's concise ASCII notation in a `### Snapshot` subsection when present
+- **AND** every rendered fact remains grounded in the design sources
+
+#### Scenario: implementation approach omits step-level delivery detail
+
+- **WHEN** the overview is generated from tasks containing per-step What Will Be Done, Testing Strategy, or Existing Tests Broken fields
+- **THEN** `## Implementation Approach` presents only a condensed ordered approach
+- **AND** it does not reproduce those step-level prose blocks or their broken-test detail
+
+#### Scenario: manifest fold still blocks contradictory sources
+
+- **WHEN** the recomputed fold from `tasks.md` differs from the persisted File Manifest in `design.md`
+- **THEN** the generator reports both source locations and the one-line disagreement
+- **AND** transactional validation fails without silently projecting either version
+
+#### Scenario: public-surface sentinel is not projected
+
+- **WHEN** a change plans no public classes, interfaces, or methods
+- **THEN** the overview does not emit `None — no planned public surfaces`
+- **AND** `design.md` retains its existing Target State sentinel behavior
+
+### Requirement: Source artifacts remain authoritative and the overview permits editorial condensation
+
+The five source artifacts SHALL remain the source of truth for the change. The overview generator MAY choose section headings, group source entries by approval-relevant concern, situation, capability, or behavior, condense source wording, and select the placement of a source-supported fact. Such editorial grouping and condensation SHALL NOT be treated as newly asserted source relationships.
+
+The generator SHALL NOT state a fact, requirement, scenario outcome, interface contract, file change, implementation step, trade-off, or conclusion that is absent from the source artifacts. It SHALL NOT silently reword normative source content in a way that strengthens, weakens, or changes its meaning. The overview MAY summarize normative requirements and scenarios rather than reproduce them verbatim, and it SHALL cite or identify the source artifact for substantive derived content. The overview SHALL NOT modify any source artifact.
+
+#### Scenario: source-supported condensation is accepted
+
+- **WHEN** the generator combines several source statements into a shorter approval summary without changing their meaning
+- **THEN** the condensed statement is accepted as a derived overview statement
+- **AND** the source artifacts remain authoritative for the complete wording and detail
+
+#### Scenario: editorial grouping does not create a relationship
+
+- **WHEN** the generator places a source entry under a different approval section for readability
+- **THEN** the placement alone is not presented as a new traceability relationship or source fact
+- **AND** no unsupported relationship is stated because of the grouping
+
+#### Scenario: unsourced statement is rejected
+
+- **WHEN** a proposed overview sentence cannot be grounded in `proposal.md`, `specs/**/*.md`, `design.md`, `tasks.md`, or `interfaces.md`
+- **THEN** the generator does not emit that sentence
+- **AND** validation fails if the sentence was already included in the candidate overview
 
 #### Scenario: generation does not modify sources
+
 - **WHEN** the overview is generated or regenerated
-- **THEN** none of `proposal.md`, `specs/**/*.md`, `design.md`, `tasks.md`, or `interfaces.md` is created, modified, or deleted
+- **THEN** none of the five source artifacts is created, modified, or deleted
 
-### Requirement: Contradictions and missing relationships are reported, not fabricated
+### Requirement: Blocking contradictions are reported and missing audit mappings are not required
 
-The generator SHALL distinguish two classes of source problems:
+The generator SHALL report blocking contradictions between source artifacts rather than resolve or fabricate them. A contradiction report SHALL name the conflicting source artifacts and locations and state the one-line disagreement. The persisted `### File Manifest` in `design.md` diverging from the deterministic fold over `tasks.md` remains a blocking contradiction.
 
-- **Non-blocking gaps** — a relationship the overview must present is missing from the sources, or a mapping is ambiguous (for example a requirement with no anchored assertion, or a step with no testable assertion). These SHALL be recorded explicitly in the overview as gap reports naming the missing element and the source artifact involved, and the overview MAY still validate and be accepted.
-- **Blocking source contradictions** — two source artifacts state conflicting facts about the change (for example the persisted `### File Manifest` in `design.md` diverges from the deterministic net fold over `tasks.md`, or two requirements contradict each other). These SHALL NOT be resolved or fabricated: the generator SHALL report the contradiction, naming both sources and their locations, and the transactional validation SHALL fail.
+The overview is not required to carry method-level assertion mappings, end-to-end traceability, or gap reports for relationships that the sources do not encode. It SHALL NOT invent those mappings merely to satisfy an obsolete audit-oriented section. Removing an unreported gap from the overview does not remove or alter the source artifacts that contain the underlying contracts.
 
-When validation fails on a blocking source contradiction, the failure payload SHALL carry the contradiction details: the stale record written to `change-overview.md` on a failed regeneration, or the blocking failure result returned on a failed initial generation, SHALL name the conflicting sources and their locations and state the one-line disagreement — the report is not a generic failure and is never silently swallowed.
+#### Scenario: manifest contradiction fails validation with details
 
-#### Scenario: non-blocking gap is recorded in a valid overview
-- **WHEN** the sources omit a relationship the overview must present (for example a requirement with no scenario, or an interface with no assertion)
-- **THEN** the overview records the gap explicitly, naming the missing element and the source artifact involved
-- **AND** the overview is still accepted if all other validation passes
+- **WHEN** the persisted design manifest diverges from the recomputed tasks fold
+- **THEN** validation fails
+- **AND** the failure details name both sources, their locations, and the disagreement
 
-#### Scenario: blocking contradiction fails validation with details
-- **WHEN** two source artifacts state conflicting facts about the change (for example the persisted File Manifest diverges from the recomputed fold)
-- **THEN** the generator does not pick either side silently and does not fabricate a resolution
-- **AND** the transactional validation fails, and the failure payload names both sources and their locations and states the one-line disagreement
+#### Scenario: absent assertion anchor is not emitted as a gap report
 
-### Requirement: Overview is validated for completeness and consistency
+- **WHEN** an interface assertion has no source-encoded requirement or scenario anchor
+- **THEN** the overview does not invent an anchor or emit a gap report for it
+- **AND** the assertion remains available in the authoritative `interfaces.md` source
 
-At each generation, the generator SHALL validate the produced overview for completeness and consistency against its sources before the overview is considered generated: every section the overview must present is present, every statement in the overview traces to a source, and no statement in the overview contradicts a source. A generated overview that fails validation SHALL NOT be left as the change's overview.
+#### Scenario: source contradiction is never silently preferred
 
-Acceptance SHALL be transactional. The generator SHALL produce the complete new overview content, validate it in full against the sources, and only then write `change-overview.md` in a single atomic write. A failed generation or regeneration SHALL NOT leave partially written or partially validated output in the file.
+- **WHEN** two source artifacts state conflicting facts
+- **THEN** the generator does not choose one silently and does not fabricate a reconciliation
+- **AND** transactional validation fails with contradiction details
 
-#### Scenario: complete and consistent overview passes validation
-- **WHEN** the generated overview presents all required sections and every statement traces to a source without contradiction
-- **THEN** the overview is accepted as the change's review surface
+### Requirement: Overview is validated for the approval structure and source fidelity
 
-#### Scenario: incomplete or inconsistent overview is not accepted
-- **WHEN** validation finds a missing section, an untraceable statement, or a source contradiction
-- **THEN** the generator reports the failure rather than accepting the defective overview as the change's overview
+At each generation, the generator SHALL construct and validate the complete approval-oriented overview before writing it. Validation SHALL confirm that the exact nine required top-level sections are present in order, the manifest fold matches the persisted design manifest, every substantive statement is grounded in one or more source artifacts, and no statement contradicts a source. Validation SHALL NOT require verbatim reproduction of requirement or scenario wording, method-level assertions, an end-to-end traceability block, or a gap report.
+
+Acceptance SHALL remain transactional. The generator SHALL produce the complete new overview content, validate it in full against the sources, and only then write `change-overview.md` in a single atomic write. A failed generation or regeneration SHALL NOT leave partially written or partially validated output in the file.
+
+#### Scenario: complete approval overview passes validation
+
+- **WHEN** the candidate overview has the exact nine sections, a consistent manifest, and only source-grounded statements
+- **THEN** the overview is accepted as the change's approval surface
+
+#### Scenario: obsolete audit content is not a validation failure
+
+- **WHEN** the candidate overview omits verbatim requirement/scenario reproductions, method-level assertions, traceability, and gap reports
+- **THEN** validation does not fail for those omissions
+- **AND** the authoritative source artifacts remain available for detailed audit
+
+#### Scenario: incomplete or unsourced overview is rejected
+
+- **WHEN** validation finds a missing required section, an out-of-order section, an ungrounded statement, a source contradiction, or manifest divergence
+- **THEN** the generator reports failure rather than accepting the defective overview
 - **AND** the file is not left with partially validated content
 
-### Requirement: Target State admits exactly the Architecture Snapshot and File Manifest subsections
+### Requirement: Target State subsections remain exact in design.md only
 
-The `## Target State` section of `change-overview.md` SHALL admit exactly two subsections, in order: `### Architecture Snapshot` followed by `### File Manifest` — the same two subsections admitted by the `design-target-state` capability in `design.md`. No other subsection SHALL be emitted inside `## Target State` in the overview, and the two subsections SHALL NOT be reordered. Both subsections SHALL follow the `None` behavior defined by `design-target-state`: `### Architecture Snapshot` emits `None — no planned public surfaces` with a one-line reason when no public surfaces are planned, and `### File Manifest` emits `None — no files affected` with a one-line reason when the net fold produces no lines. The two `None` sentinels SHALL NOT interact or suppress each other.
+The `## Target State` section of `design.md` SHALL continue to admit exactly two subsections, in order: `### Architecture Snapshot` followed by `### File Manifest`, with the existing `None` behavior defined by the design-target-state capability. This exact subsection rule applies to the authoritative `design.md` Target State record; it does not impose a Target State section or admitted-subsection rule on `change-overview.md`, because the overview no longer projects Target State.
 
-This requirement is the named "admitted-section rule" that `design-target-state` references for the overview's Target State subsection set.
+#### Scenario: design Target State retains its two subsections
 
-#### Scenario: overview Target State contains exactly the two subsections in order
-- **WHEN** `change-overview.md` is generated
+- **WHEN** `design.md` is generated
 - **THEN** `## Target State` contains exactly `### Architecture Snapshot` followed by `### File Manifest`
-- **AND** no other subsection is emitted inside `## Target State`
+- **AND** no other subsection is emitted within that design section
 
-#### Scenario: snapshot None sentinel follows design-target-state
-- **WHEN** a change plans no public classes, interfaces, or methods
-- **THEN** `### Architecture Snapshot` carries `None — no planned public surfaces` with a one-line reason
-- **AND** `### File Manifest` beneath it still carries the full folded list (or its own sentinel) independently
+#### Scenario: overview has no Target State admitted-section rule
 
-#### Scenario: manifest None sentinel follows design-target-state
+- **WHEN** `change-overview.md` is generated
+- **THEN** it contains no `## Target State` section
+- **AND** its architecture content is rendered under `## Target Architecture`
+
+#### Scenario: manifest sentinel moves to the top-level manifest section
+
 - **WHEN** the net fold over `tasks.md` produces no lines
-- **THEN** `### File Manifest` carries `None — no files affected` with a one-line reason
-- **AND** the sentinel is emitted regardless of the Architecture Snapshot's content
+- **THEN** `## File Manifest` carries `None — no files affected` with its existing one-line reason
+- **AND** the overview does not emit the removed public-surface sentinel
+
+### Requirement: Overview rendering preserves structural localization anchors
+
+Under `--overview-lang`, the overview SHALL keep all nine top-level section headings in English and SHALL translate only eligible free-text prose. This requirement owns the structural classification for this nine-section projection; `localized-overview-generation` remains authoritative for invocation language transport, projection-only scope, and language re-selection. Structural literals and source-controlled values — including the `### Snapshot` heading, source artifact names, Architecture Snapshot and File Manifest terminology, paths, commands, state values, and generator result keys — SHALL remain unchanged. Generator-authored editorial `###` subsection headings are eligible free-text prose and MAY be translated. The nine top-level section headings SHALL not be translated.
+
+#### Scenario: localized overview keeps the nine headings in English
+
+- **WHEN** the generator receives a non-English `overview_language`
+- **THEN** all nine required top-level section headings remain in English
+- **AND** eligible free prose may be rendered in the requested language
+
+#### Scenario: localized editorial subsections remain structurally valid
+
+- **WHEN** a localized overview uses editorial `###` subsections for contract concerns, review situations, or manifest themes
+- **THEN** those generator-authored subsection headings may be translated as eligible free-text prose
+- **AND** the fixed `### Snapshot` heading and all nine top-level section headings remain in English
+
+#### Scenario: structural values remain stable under localization
+
+- **WHEN** a localized overview contains paths, commands, state values, or source artifact names
+- **THEN** those structural values remain unchanged
+- **AND** localization does not alter the source-derived contracts
 
 ### Requirement: Overview is not a prerequisite or input for sai-3 or sai-4
 

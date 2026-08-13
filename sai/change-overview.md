@@ -12,36 +12,42 @@ Read in parallel: `openspec/changes/{change-name}/proposal.md`, every file match
 
 ## Rendering language
 
-The parent design invocation supplies one invocation-scoped `overview_language` value to the generator. Use that value for eligible free-text prose and use `English` when the value is absent. Never translate or rewrite section headings, the Architecture Snapshot, requirements, scenarios, paths, commands, state values, generator result keys, or any normative source artifact. Do not persist the value in `.openspec.yaml` or any other artifact. This rendering instruction does not change the five-field closed result envelope or the one-file write scope.
+The parent design invocation supplies one invocation-scoped `overview_language` value to the generator. Use that value for eligible generator-authored free-text prose and use `English` when the value is absent. Keep all nine top-level headings, the fixed `### Snapshot` heading, paths, commands, state values, source artifact names, generator result keys, and other source-controlled structural values unchanged. Source artifacts remain English and authoritative; their content may be summarized in the overview without being rewritten. Do not persist the value in `.openspec.yaml` or any other artifact. This rendering instruction does not change the five-field closed result envelope or the one-file write scope.
 
 ## Output organization
 
-Produce one structured review-oriented document organized by capability and behavior — NOT a concatenation of the source documents. Present, at minimum, these sections in this order:
+Produce one structured approval document organized by capability and behavior, framed by approval-relevant concern and situation ? NOT a concatenation of the source documents. Its top-level sections SHALL be exactly these nine headings, in this order, with no additional top-level sections:
 
-1. `## Target State` — the overview's leading review section, projected from `design.md`:
-   - `### Architecture Snapshot` — projected **verbatim** from `design.md`'s `### Architecture Snapshot` (the persisted authoritative snapshot; never reworded or synthesized).
-   - `### File Manifest` — recomputed by the deterministic net fold over `tasks.md` per the fold contract in `sai/commands/design/instructions.md`, then **validated against the persisted `### File Manifest` in `design.md`**. Project the persisted manifest only when the recomputed fold equals it; on divergence, report the source contradiction (naming both the `design.md` manifest and the `tasks.md` fold, their locations, and the one-line disagreement) and fail the transactional validation — never silently prefer either side.
-   - No other subsection SHALL be emitted inside `## Target State`, and the two subsections SHALL NOT be reordered. Both follow the `design-target-state` `None` behavior, independently: `None — no planned public surfaces` plus a one-line reason, and `None — no files affected` plus a one-line reason.
-2. `## Scope` — the change's in-scope / out-of-scope summary derived from `proposal.md` (Why / What Changes / Non-goals) and `design.md` (Goals / Non-Goals).
-3. `## Target Architecture` — the finished-shape narrative: the Target State projection plus the Architecture Snapshot detail.
-4. `## Requirements` — one subsection per capability from `specs/**/*.md`; normative requirement wording preserved faithfully, each cited to its source artifact.
-5. `## Scenarios` — each requirement's scenarios, traceable within its capability.
-6. `## Interfaces` — the per-step public signatures from `interfaces.md`'s `## Step N` sections, keyed by Step N.
-7. `## Assertions` — the method-level test assertions from `interfaces.md`'s Test assertions, anchored to their requirements/scenarios.
-8. `## File Changes` — the File Manifest projection.
-9. `## Delivery Steps` — the `tasks.md` steps in order, keyed by Step N.
-10. `## Traceability` — end-to-end links per capability: requirement → scenarios → interfaces → assertions → delivery steps. Every link SHALL trace to an occurrence in a source artifact. The traceability SHALL be exactly the content the sources already encode (the shared `Step N` keys of `tasks.md` and `interfaces.md`, the assertion→requirement anchors in `interfaces.md`, the requirement→scenario structure of `specs/**/*.md`) — never synthesized.
+1. `## Change Proposal` ? the motivation narrative derived from `proposal.md`'s `## Why`; it carries no document-purpose preamble and does not restate scope or capabilities.
+2. `## Scope` ? the in-scope and out-of-scope boundaries supported by the proposal and design artifacts.
+3. `## Capabilities` ? the capabilities listed in `proposal.md`'s `## Capabilities`, with the capability specifications used to corroborate behavior; the generator does not synthesize a capability absent from the proposal.
+   Generator-authored editorial `###` subsection headings under `## Capabilities` may be translated or localized; the top-level heading remains unchanged.
+4. `## Target Architecture` ? an adapted, review-oriented rendering of the design Architecture Snapshot and relevant target-shape decisions, retaining concise ASCII notation in a `### Snapshot` subsection when the source contains it.
+   Generator-authored editorial `###` subsection headings under `## Target Architecture` may be translated or localized; the fixed `### Snapshot` heading remains unchanged.
+5. `## Key Contracts` ? approval-relevant behavioral contracts grouped by concern, derived from design decisions and capability requirements; public signatures and method-level test assertions are not rendered here.
+6. `## File Manifest` ? the file-level change inventory, validated against the deterministic fold and persisted design manifest. Thematic `###` subsections may group entries, and related interface signatures appear beside their surviving manifest file entries. Net-empty paths are omitted from the overview, and signatures for those paths are not rendered.
+7. `## Review Scenarios` ? approval-relevant behavioral scenarios grouped by situation or outcome. Scenarios may be condensed and need not be reproduced verbatim.
+8. `## Implementation Approach` ? a condensed ordered approach derived from design and tasks, without reproducing step-level task prose blocks.
+9. `## Approval Summary` ? source-grounded decisions, constraints, trade-offs, and review implications needed to approve the change.
+
+Within any of the nine top-level sections, the generator MAY emit `###` subsections for editorial grouping. The fixed `### Snapshot` subsection remains required when the source Architecture Snapshot contains concise ASCII notation; other generator-authored editorial subsection headings, including headings under `## Capabilities` and `## Target Architecture`, may be translated or localized as eligible prose. The fixed `### Snapshot` heading and all nine top-level headings remain unchanged.
+
+The overview SHALL NOT emit `## Target State`, `## Requirements`, `## Scenarios`, `## Interfaces`, `## Assertions`, `## File Changes`, `## Delivery Steps`, `## Traceability` as separate top-level sections. The manifest appears only under `## File Manifest`; interface signatures appear only beneath their related surviving file entries there.
 
 ## Fidelity rules
 
-- Reproduce normative requirements and scenarios faithfully to their source wording — do NOT silently reword, strengthen, weaken, or reinterpret normative content. Cite the source artifact for derived content.
-- Do NOT modify any source artifact; do NOT silently repair or invent source semantics to resolve gaps or contradictions.
-- **Non-blocking gaps** — a relationship the overview must present that the sources do not encode (for example a requirement with no anchored assertion, or a step with no testable assertion) is recorded explicitly in the overview as a gap report naming the missing element and the source artifact involved. The overview MAY still validate and be accepted.
-- **Blocking source contradictions** — two source artifacts stating conflicting facts about the change (for example the persisted `### File Manifest` in `design.md` diverging from the recomputed fold over `tasks.md`, or two requirements contradicting each other) are NOT resolved or fabricated: report the contradiction naming both sources and their locations with the one-line disagreement, and fail the transactional validation.
+- The five source artifacts remain authoritative. The overview may group and condense their content by approval-relevant concern, situation, capability, or behavior, but editorial placement is not a new source relationship.
+- Do not state a fact, requirement, scenario outcome, interface contract, file change, implementation step, trade-off, or conclusion absent from `proposal.md`, `specs/**/*.md`, `design.md`, `tasks.md`, or `interfaces.md`.
+- Do not silently reword normative source content in a way that strengthens, weakens, or changes its meaning. Summarized substantive content identifies its source artifact; authoritative wording remains in the source.
+- The generator does not invent interface mappings, end-to-end traceability, gap reports, or standalone audit sections merely to preserve the former projection.
+- Do not modify any source artifact; do not silently repair or invent source semantics to resolve gaps or contradictions.
+- Blocking contradictions are reported with both source locations and the one-line disagreement. The deterministic `tasks.md` manifest fold versus the persisted `design.md` File Manifest remains a manifest contradiction and a blocking contradiction; transactional validation fails without partial output.
 
 ## Validation before write
 
-Validate the produced overview against its sources before writing: every required section is present; every statement in the overview traces to a source; no statement in the overview contradicts a source. A generated overview that fails validation SHALL NOT be left as the change's overview. Produce the complete new overview content, validate it in full against the sources, and only then write `change-overview.md` in a single atomic write — never partially written or partially validated output.
+Validate the complete candidate overview before writing: the exact nine required top-level sections are present in order, the manifest fold matches the persisted design manifest, every substantive statement is grounded in one or more source artifacts, and no statement contradicts a source. Validation does not require verbatim requirement or scenario wording, method-level assertions, an end-to-end traceability block, or a gap report.
+
+Acceptance remains transactional. Produce the complete new overview, validate it against the sources, and only then write `change-overview.md` in a single atomic write. A manifest contradiction or other failed generation or regeneration never leaves partially written or partially validated output as the current overview: it fails without partial output.
 
 ## Closed result envelope
 
