@@ -52,7 +52,7 @@ const CLAUDE_AGENTS = [
   'sai-8-accessibility-worker',
 ];
 
-const CHECKLIST_LEGEND = 'Up/Down move · Space toggle · Enter confirm · q/Ctrl-C cancel';
+const CHECKLIST_LEGEND = 'Up/Down move · Space toggle · Enter confirm · ←/Esc back · q/Ctrl-C cancel';
 const SCRATCH_ROOT = path.join(REPO_ROOT, '.tmp', 'collapse-sai-worker-matrix', 'discover-opencode-model-settings');
 
 function snapshotTree(dir) {

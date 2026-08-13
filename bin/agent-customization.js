@@ -9,11 +9,12 @@ const { loadInstallManifest } = require('./install-manifest.js');
 const {
   promptSelect,
   promptChecklist: installFlowPromptChecklist,
+  BACK,
 } = require('./install-flow.js');
 
 const MENU_OPTIONS = Object.freeze(['Customize models', 'Exit']);
 const HARNESS_OPTIONS = Object.freeze(['OpenCode', 'Claude Code']);
-const AGENT_CHECKLIST_LEGEND = 'Up/Down move · Space toggle · Enter confirm · q/Ctrl-C cancel';
+const AGENT_CHECKLIST_LEGEND = 'Up/Down move · Space toggle · Enter confirm · ←/Esc back · q/Ctrl-C cancel';
 const COMBINED_ENTRY_DELIMITER = ' | ';
 const DEFAULT_PACKAGE_ROOT = path.join(__dirname, '..');
 const DEFAULT_CLAUDE_GLOBAL_AGENT_ROOT = path.join(os.homedir(), '.claude', 'agents');
@@ -218,6 +219,7 @@ async function selectClaudeSettings(subsetLabel, promptChoice, settingsCatalog) 
     `Model and effort for ${subsetLabel}:`,
     entries.map(entry => entry.display)
   );
+  if (selectedDisplay === BACK) return BACK;
   const selected = entries.find(entry => entry.display === selectedDisplay);
   if (selected === undefined) return null;
   return selected.effort === undefined
@@ -358,52 +360,82 @@ async function opencodeSelectSettings(subsetLabel, promptChoice, runCommand) {
   for (const entry of catalog) {
     if (!providers.includes(entry.provider)) providers.push(entry.provider);
   }
-  const provider = await promptChoice(`Provider for ${subsetLabel}:`, providers);
-  if (!providers.includes(provider)) return null;
 
-  const models = catalog.filter(entry => entry.provider === provider).map(entry => entry.model);
-  const model = await promptChoice(`Model for ${subsetLabel}:`, models);
-  if (!models.includes(model)) return null;
-  const identity = `${provider}/${model}`;
+  // Provider, model and variant form a dependent chain: stepping back from one
+  // screen re-opens the previous one with the catalog already in hand, and
+  // stepping back off the provider screen hands control to the caller.
+  let screen = 'provider';
+  let provider = null;
+  let model = null;
 
-  let verboseOutcome;
-  try {
-    verboseOutcome = runCommand('opencode', ['models', provider, '--verbose']);
-  } catch (error) {
-    console.error(`Unable to query OpenCode model variants: ${error.message}`);
-    return null;
-  }
-  if (verboseOutcome.status !== 0) {
-    reportCommandFailure('query OpenCode model variants', verboseOutcome);
-    return null;
-  }
+  for (;;) {
+    if (screen === 'provider') {
+      const chosen = await promptChoice(`Provider for ${subsetLabel}:`, providers);
+      if (chosen === BACK) return BACK;
+      if (!providers.includes(chosen)) return null;
+      provider = chosen;
+      screen = 'model';
+      continue;
+    }
 
-  let records;
-  try {
-    records = parseVerboseModelRecords(verboseOutcome.stdout);
-  } catch {
-    return null;
-  }
-  const matched = records.find(record => record.identity === identity);
-  if (!matched) return null;
-  let variants;
-  try {
-    variants = extractVariants(matched.record);
-  } catch {
-    return null;
-  }
-  if (variants.length === 0) return { model: identity };
+    if (screen === 'model') {
+      const models = catalog.filter(entry => entry.provider === provider).map(entry => entry.model);
+      const chosen = await promptChoice(`Model for ${subsetLabel}:`, models);
+      if (chosen === BACK) {
+        screen = 'provider';
+        continue;
+      }
+      if (!models.includes(chosen)) return null;
+      model = chosen;
+      screen = 'variant';
+      continue;
+    }
 
-  const variantOptions = buildVariantDisplayOptions(variants);
-  const selectedDisplay = await promptChoice(
-    `Variant for ${identity}:`,
-    variantOptions.map(option => option.display)
-  );
-  const selected = variantOptions.find(option => option.display === selectedDisplay);
-  if (selected === undefined || selected.value === NO_VARIANT) {
-    return selected === undefined ? null : { model: identity };
+    const identity = `${provider}/${model}`;
+
+    let verboseOutcome;
+    try {
+      verboseOutcome = runCommand('opencode', ['models', provider, '--verbose']);
+    } catch (error) {
+      console.error(`Unable to query OpenCode model variants: ${error.message}`);
+      return null;
+    }
+    if (verboseOutcome.status !== 0) {
+      reportCommandFailure('query OpenCode model variants', verboseOutcome);
+      return null;
+    }
+
+    let records;
+    try {
+      records = parseVerboseModelRecords(verboseOutcome.stdout);
+    } catch {
+      return null;
+    }
+    const matched = records.find(record => record.identity === identity);
+    if (!matched) return null;
+    let variants;
+    try {
+      variants = extractVariants(matched.record);
+    } catch {
+      return null;
+    }
+    if (variants.length === 0) return { model: identity };
+
+    const variantOptions = buildVariantDisplayOptions(variants);
+    const selectedDisplay = await promptChoice(
+      `Variant for ${identity}:`,
+      variantOptions.map(option => option.display)
+    );
+    if (selectedDisplay === BACK) {
+      screen = 'model';
+      continue;
+    }
+    const selected = variantOptions.find(option => option.display === selectedDisplay);
+    if (selected === undefined || selected.value === NO_VARIANT) {
+      return selected === undefined ? null : { model: identity };
+    }
+    return { model: identity, variant: selected.value };
   }
-  return { model: identity, variant: selected.value };
 }
 
 function createClaudeAdapter({
@@ -474,29 +506,67 @@ async function runPostSetupMenu({
 } = {}) {
   if (!isTTY) return skippedOutcome('non-tty');
 
-  const action = await promptChoice('Post-setup customization:', MENU_OPTIONS);
-  if (action === null || action === 'Exit') return skippedOutcome('cancelled');
-  if (action !== 'Customize models') return skippedOutcome('cancelled');
+  // The four screens form a linear flow the user can walk backwards through:
+  // menu -> harness -> agent checklist -> settings. Each screen resolving
+  // `back` re-opens its predecessor; the first screen simply redraws.
+  let screen = 'menu';
+  let adapter = null;
+  let harness = null;
+  let selectedAgents = null;
+  let settings = null;
 
-  const harness = await promptChoice('Choose a harness:', HARNESS_OPTIONS);
-  if (harness === null) return skippedOutcome('cancelled');
-  if (harness !== 'OpenCode' && harness !== 'Claude Code') return skippedOutcome('cancelled');
+  for (;;) {
+    if (screen === 'menu') {
+      const action = await promptChoice('Post-setup customization:', MENU_OPTIONS);
+      if (action === BACK) continue;
+      if (action === null || action === 'Exit') return skippedOutcome('cancelled');
+      if (action !== 'Customize models') return skippedOutcome('cancelled');
+      screen = 'harness';
+      continue;
+    }
 
-  const adapter = harness === 'OpenCode'
-    ? module.exports.createOpencodeAdapter({ projectPath, packageRoot, globalAgentRoot: opencodeGlobalAgentRoot, promptChoice })
-    : module.exports.createClaudeAdapter({ projectPath, packageRoot, globalAgentRoot: claudeGlobalAgentRoot, promptChoice });
-  const agents = adapter.enumerateAgents();
-  const selection = await promptChecklist(agents, agents, undefined, AGENT_CHECKLIST_LEGEND);
-  if (!selection || selection.status === 'cancelled') return skippedOutcome('cancelled');
-  if (selection.status === 'non-interactive') return skippedOutcome('non-tty');
-  if (selection.status !== 'confirmed') return skippedOutcome('cancelled');
+    if (screen === 'harness') {
+      const chosen = await promptChoice('Choose a harness:', HARNESS_OPTIONS);
+      if (chosen === BACK) {
+        screen = 'menu';
+        continue;
+      }
+      if (chosen === null) return skippedOutcome('cancelled');
+      if (chosen !== 'OpenCode' && chosen !== 'Claude Code') return skippedOutcome('cancelled');
+      harness = chosen;
+      screen = 'agents';
+      continue;
+    }
 
-  const selectedAgents = Array.isArray(selection.items) ? selection.items : [];
-  if (selectedAgents.length === 0) return skippedOutcome('empty-selection');
+    if (screen === 'agents') {
+      adapter = harness === 'OpenCode'
+        ? module.exports.createOpencodeAdapter({ projectPath, packageRoot, globalAgentRoot: opencodeGlobalAgentRoot, promptChoice })
+        : module.exports.createClaudeAdapter({ projectPath, packageRoot, globalAgentRoot: claudeGlobalAgentRoot, promptChoice });
+      const agents = adapter.enumerateAgents();
+      const selection = await promptChecklist(agents, agents, undefined, AGENT_CHECKLIST_LEGEND);
+      if (!selection || selection.status === 'cancelled') return skippedOutcome('cancelled');
+      if (selection.status === 'non-interactive') return skippedOutcome('non-tty');
+      if (selection.status === 'back') {
+        screen = 'harness';
+        continue;
+      }
+      if (selection.status !== 'confirmed') return skippedOutcome('cancelled');
 
-  const settings = await adapter.selectSettings(selectedAgents.join(', '));
-  if (!settings || typeof settings.model !== 'string' || settings.model === '') {
-    return skippedOutcome('settings-unavailable');
+      selectedAgents = Array.isArray(selection.items) ? selection.items : [];
+      if (selectedAgents.length === 0) return skippedOutcome('empty-selection');
+      screen = 'settings';
+      continue;
+    }
+
+    settings = await adapter.selectSettings(selectedAgents.join(', '));
+    if (settings === BACK) {
+      screen = 'agents';
+      continue;
+    }
+    if (!settings || typeof settings.model !== 'string' || settings.model === '') {
+      return skippedOutcome('settings-unavailable');
+    }
+    break;
   }
 
   const skippedAgents = [];
@@ -521,7 +591,9 @@ async function runPostSetupMenu({
 module.exports = {
   runPostSetupMenu,
   CLAUDE_SETTINGS_CATALOG,
+  AGENT_CHECKLIST_LEGEND,
   NO_VARIANT,
+  BACK,
   createOpencodeAdapter,
   createClaudeAdapter,
   buildClaudeSettingsEntries,
