@@ -213,6 +213,7 @@ test('Target State present in design surfaces, absent from interfaces template',
 
 test('shared instruction is the generation contract', () => {
   const instruction = artifact('sai/change-overview.md');
+  const schema = artifact('openspec/schemas/sai-workflow/schema.yaml');
 
   assert.match(instruction, /write scope/i, 'generation contract should declare its single-file write scope');
   assert.match(instruction, /writes ONLY/i, 'generation contract should limit writes to exactly one artifact');
@@ -220,12 +221,34 @@ test('shared instruction is the generation contract', () => {
 
   assert.match(instruction, /organized by capability/i, 'generation contract should organize by capability');
   assert.match(instruction, /capability and behavior/i, 'generation contract should organize capability and behavior');
-
   assert.match(instruction, /validat/i, 'generation contract should contain a validation contract');
 
-  assert.match(instruction, /contradiction_details/, 'result envelope should carry contradiction_details');
+  assert.match(instruction, /failure_details/, 'result envelope should carry failure_details');
+  assert.doesNotMatch(instruction, /contradiction_details/, 'retired contradiction_details must not be in the shared contract');
+  assert.match(instruction, /exactly five mandatory fields|five mandatory fields/,
+    'result envelope should remain closed at five mandatory fields');
+  assert.match(instruction, /non-empty English (?:failure_details|diagnostic) on every failure/,
+    'every failed result should require non-empty English failure_details');
+  for (const field of ['status', 'changed_files', 'validation', 'failure_details', 'failure_kind']) {
+    assert.match(instruction, new RegExp('`' + field + '`'), `envelope should enumerate ${field}`);
+  }
+  assert.match(instruction, /validation[\s\S]{0,220}not-performed/,
+    'parent-authored contract violations should use validation: not-performed');
+  assert.match(instruction, /blocking-contradiction[\s\S]{0,160}validation-failed[\s\S]{0,160}generation-error[\s\S]{0,160}dispatch-failed/,
+    'failure_kind should enumerate the full closed vocabulary');
+  assert.match(instruction, /both conflicting source locations and the one-line disagreement/,
+    'blocking contradictions should retain source-located detail');
+  assert.match(instruction, /status:\s*success[\s\S]{0,220}validation:\s*passed[\s\S]{0,180}failure_details:\s*["']{2}[\s\S]{0,120}failure_kind:\s*none/,
+    'success should use the exact five-field values');
+  assert.match(instruction, /status:\s*failed[\s\S]{0,220}failure_details:\s*"[^"]+"[\s\S]{0,120}failure_kind:\s*(?:blocking-contradiction|validation-failed|generation-error)/,
+    'generator failures should use non-empty details and a closed failure kind');
+  assert.match(instruction, /changed_files:\s*\[openspec\/changes\/\{change-name\}\/change-overview\.md\]/,
+    'successful and generator-run failure results should report the overview path');
   assert.match(instruction, /failure_kind/, 'result envelope should carry failure_kind');
   assert.match(instruction, /success\s*\|\s*failed/, 'result envelope should use the success | failed status vocabulary');
+
+  assert.match(schema, /failure_details/, 'schema instruction should carry failure_details');
+  assert.doesNotMatch(schema, /contradiction_details/, 'schema instruction must not enumerate the retired field');
 });
 
 test('state key transitions unmaterialized → materializing → current at first Continue', () => {

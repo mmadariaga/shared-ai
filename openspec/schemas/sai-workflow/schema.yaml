@@ -223,8 +223,13 @@ artifacts:
       (deferred materialization), with exactly one regeneration per later effective source-modifying
       design-worker transaction and a persisted overview.state in the change's .openspec.yaml
       (unmaterialized | materializing | failed | current | stale). The generator writes ONLY
-      change-overview.md and returns the closed result envelope (status, changed_files, validation,
-      contradiction_details, failure_kind) per specs/change-overview-generation-routing/spec.md.
+      change-overview.md and returns exactly five mandatory result fields — status, changed_files,
+      validation, failure_details, and failure_kind — per specs/change-overview-generation-routing/spec.md.
+      failure_details is empty only on success and is non-empty English diagnostic text on every
+      failure; failure_kind uses the closed vocabulary none | blocking-contradiction |
+      validation-failed | generation-error | dispatch-failed. Parent-authored dispatch and
+      contract-violation results use validation: not-performed and preserve the same five-field
+      shape without allowing the parent to write change-overview.md.
 
       The overview SHALL present scope, target architecture, requirements, scenarios, interfaces,
       method-level test assertions, file changes, delivery steps, and end-to-end traceability. Its
