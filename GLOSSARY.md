@@ -52,6 +52,9 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 **Coordinator Verification**: "The `/sai-4-apply` coordinator's independent rerun of a Step's Verification Checklist after a Subagent Report and before checkbox marking or commit gating."
 *Avoid*: trust check, report retest, coordinator retry
 
+**Customization Target**: "A worker or command file with tunable frontmatter — the unit of post-setup model customization, identified within one harness by its family (the `Workers` or `Commands` scope label) plus its bare name, and materialized as a project-local override under the family's destination directory."
+*Avoid*: tunable file, override target, customizable item, bare "target"
+
 **DDR**: "Domain Decision Record — a decision record that documents a qualifying design decision encoding a **Domain Invariant**; lives in `docs/ddr/` and carries `# DDR NNNN:` H1s."
 *Avoid*: domain ADR, domain decision, invariant record, "ADR/DDR" as an undecided family
 
@@ -112,7 +115,7 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 **Milestone Stamp**: "The HH:mm wall-clock annotation the coordinator attaches to a rendered **Progress Step** of a routed phase progress task list — the first render stamps the first step's start, each progress event stamps a closure on the step(s) it marks, the next `in_progress` step inherits the previous closure as its start, and the run-closing reconciliation stamps one shared closure on every remaining step."
 *Avoid*: timestamp, time mark, clock note, HH:mm label, step time
 
-**Model Variant**: "An OpenCode model-specific settings modifier (such as `low`, `high`, or `max`) exposed by a model record's `variants` object in the opencode CLI model catalog and selectable per model through the post-setup agent customizer; carried by the opencode `variant` tunable key, it is the model-specific successor of the retired shared `effort` UI concept."
+**Model Variant**: "An OpenCode model-specific settings modifier (such as `low`, `high`, or `max`) exposed by a model record's `variants` object in the opencode CLI model catalog and selectable per model through the post-setup model customizer; carried by the opencode `variant` tunable key, it is the model-specific successor of the retired shared `effort` UI concept."
 *Avoid*: effort, model effort, global effort list
 
 **Native Task Panel**: "The harness-owned UI surface that renders a live task list during a session — Claude Code's task panel via its task-list tool and opencode's task panel via `todowrite` — a single-slot resource with exactly one declared owner at a time; a harness without one falls back to plain in-conversation text."
@@ -292,6 +295,7 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 - An **Ambient Agent** is the audience of an **Orientation Index** and never auto-loads it; it reaches the index only through a pointer in a consumer project's own agent instructions.
 - An **Orientation Index** is installed at the harness root through the `root` **Destination Class** projection of `sai/install-manifest.json`.
 - A **Destination Class** resolves to one base directory for install, doctor, and uninstall expansions of the manifest projections that name it.
+- A **Customization Target** belongs to exactly one customization family (`Workers` or `Commands`) and is identified within a harness by that family plus its bare name; a worker and a command sharing a name are distinct targets.
 - A **Worker Matrix** preserves one shared worker lifecycle contract while carrying harness, phase, dispatch, continuation, model, and exceptional-option parameters for its materialized workers.
 
 ## Example dialogue
