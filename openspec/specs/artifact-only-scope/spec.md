@@ -26,3 +26,17 @@ The `spec.propose.md` instruction file SHALL contain an "Artifact-Only Scope" se
 ### Requirement: Downstream responsibility clarity
 
 The Artifact-Only Scope section SHALL state that code generation, test writing, and project file modification are the responsibility of `/sai-3-implement` and `/sai-4-apply`, not the spec command.
+
+### Requirement: artifact-only-sai-1-scope
+
+During `/sai-1-spec` for this change, the worker SHALL write only `openspec/changes/fold-sai-instructions-templates/proposal.md`, its `specs/**/*.md` files, and the permitted root `GLOSSARY.md` exception if a domain term is resolved. It SHALL NOT move or edit the `sai/` source tree, `sai/install-manifest.json`, documentation, ADRs, tests, configuration, or any later-phase artifact.
+
+#### Scenario: spec phase does not apply the fold
+
+- **WHEN** the spec proposal worker completes this change
+- **THEN** the folded source files and contract surfaces remain untouched, while proposal/spec artifacts are complete and validated for downstream design
+
+#### Scenario: no later-phase artifacts are created
+
+- **WHEN** the spec-only scope is verified
+- **THEN** `design.md`, `tasks.md`, `interfaces.md`, `implementation.md`, and audit artifacts are absent from the change directory

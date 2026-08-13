@@ -12,26 +12,55 @@
 - **THEN** the structure table SHALL contain entries for `sai/commands/`, the command-local instruction/template pattern, the three root exceptions (`sai/change-overview.md`, `sai/adr-index.template.md`, `sai/ddr-index.template.md`), `commands/claude/`, `commands/opencode/`, and `configs/`
 
 ### Requirement: agents-md-fetch-convention-section
-The Fetch convention section (or equivalent section describing how wrappers load command bodies and instructions) in `AGENTS.md` SHALL reference `@sai/commands/` (command cards, command-local `instructions.md`, and co-located `.template.md` files) as the canonical Fetch paths and SHALL NOT reference a maintained `@sai/instructions/` namespace. References to `@commands/sai/` and `@instructions/sai/` SHALL be removed.
 
-#### Scenario: fetch convention updated
-- **WHEN** the Fetch convention section of `AGENTS.md` is read
-- **THEN** example Fetch paths SHALL use `@sai/commands/` and the root `sai` exception paths, and SHALL NOT use `@sai/instructions/`
+The maintained fetch-convention documentation in `AGENTS.md`, `README.md`, installation guides, and `sai/SAI_AGENTS.md` SHALL describe `@sai/commands/{name}/instructions.md` for command-owned instructions, neighboring command `.template.md` paths for command-owned templates, and the `@sai/` root paths for shared/canonical exceptions. Active references to `@sai/instructions/` for moved content SHALL be removed. Historical ADR/change records MAY retain their original references when they are explicitly historical.
+
+#### Scenario: maintained documentation shows folded paths
+
+- **WHEN** a maintainer reads the maintained source-layout or fetch-convention documentation
+- **THEN** it identifies command-local instruction/template paths and the root exception paths, with no active moved-content reference to `@sai/instructions/`
+
+#### Scenario: historical references remain traceable
+
+- **WHEN** an archived ADR or archived change record contains the former instruction path
+- **THEN** the record is not rewritten solely to erase history, provided active documentation and runtime contracts use the folded paths
 
 ### Requirement: adr-0003-amended
-`docs/adr/0003-fetch-path-convention-commands-sai.md` SHALL be amended to reflect the folded decision: `@sai/commands/<name>.md` is the canonical Fetch path for command cards, command-local instructions and templates are folded into `sai/commands/{name}/`, and the three root exceptions (`sai/change-overview.md`, `sai/adr-index.template.md`, `sai/ddr-index.template.md`) install at the `sai` root. The Decision and Rationale sections SHALL be updated; the original decision and prior amendment history SHALL be preserved in the existing historical sections.
 
-#### Scenario: ADR decision updated
-- **WHEN** `docs/adr/0003-fetch-path-convention-commands-sai.md` is read
-- **THEN** the Decision section SHALL state `@sai/commands/<name>.md` as the canonical path for command cards and SHALL name the folded command-local instruction/template paths and the three root exceptions
+`docs/adr/0003-fetch-path-convention-commands-sai.md` SHALL be amended to state that `@sai/commands/<name>.md` remains the canonical command-card fetch path and that command-owned instructions/templates now use the folded `@sai/commands/<name>/...` paths, while `@sai/change-overview.md` and the root index template paths document the shared/canonical exceptions. The original decision history SHALL remain traceable in an amendment section.
 
-#### Scenario: ADR rationale updated
-- **WHEN** the Rationale section of ADR 0003 is read
-- **THEN** it SHALL explain the `sai/` grouping and the fold: sai payload grouped under `sai/` mirrors the source layout and aligns with the `sai/commands/` install destination, with command-local instructions and templates co-located beside their cards
+#### Scenario: ADR 0003 records the folded decision
 
-#### Scenario: original decision preserved
-- **WHEN** ADR 0003 is read
-- **THEN** the original `@commands/sai/` decision and the prior `sai/instructions/` layout SHALL be documented in the amendment history so the rationale history is traceable
+- **WHEN** ADR 0003 is read after the fold
+- **THEN** its current Decision/Rationale sections describe the command-card and folded instruction/template namespaces, and its historical pre-fold convention remains documented
+
+### Requirement: literal-contract-tests-are-updated
+
+Maintained literal-string tests that assert instruction, template, index, fetch-resolution, installation, or coordinator/worker paths SHALL be updated atomically to the folded paths, while preserving their existing ordering, single-fetch, byte-equivalence, parity, and missing-target assertions.
+
+#### Scenario: coordinator worker test asserts folded spec instruction
+
+- **WHEN** `test/spec-coordinator-worker.test.js` checks the spec invocation load order
+- **THEN** it asserts `@sai/commands/spec/instructions.md` and no stale `@sai/instructions/spec.propose.md` reference
+
+#### Scenario: archive literal paths cover both instruction files
+
+- **WHEN** the archive command fetch-path assertions are read
+- **THEN** they assert the ordered pair `@sai/commands/archive/instructions.md` and `@sai/commands/archive/archive-commit-gate.instructions.md`, with no stale archive instruction paths
+
+#### Scenario: installation and parity tests assert folded destinations
+
+- **WHEN** installation, fetch-resolution, report-template, or index-template tests run
+- **THEN** they inspect the folded source/projection paths and preserve the existing two-harness and content-parity guarantees
+
+### Requirement: no-dangling-maintained-paths
+
+The folded migration SHALL leave no dangling active fetch, documentation, manifest, or test reference to a removed `sai/instructions/` file or `_templates/` path. A repository-wide active-reference check SHALL distinguish historical archived records from maintained runtime and contract surfaces.
+
+#### Scenario: active reference scan is clean
+
+- **WHEN** maintained sources, tests, specifications, and installation guidance are scanned after the migration
+- **THEN** every non-historical folded path resolves to an existing file and no removed instruction/template path is referenced as active
 
 ## MODIFIED Requirements
 

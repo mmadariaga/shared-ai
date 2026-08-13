@@ -51,30 +51,24 @@ Shared coordinator and worker-lifecycle contracts SHALL live under `sai/orchestr
 - **AND** no runtime surface SHALL contain a divergent canonical copy
 
 ### Requirement: Instruction and policy separation
-`sai/instructions/` SHALL contain task-only phase instructions, and reusable behavioral policy SHALL live under `sai/policies/`. A file relocated across this boundary SHALL retain its existing effective content and fetch order unless a normative requirement explicitly changes it.
+Task-only command instructions SHALL live under `sai/commands/{name}/instructions.md`, and reusable behavioral policy SHALL remain under `sai/policies/`. A command instruction relocated from `sai/instructions/` SHALL retain its existing effective content and fetch order unless this change's folded-path requirements explicitly update the path.
 
-#### Scenario: Existing caller moves to a classified source
-- **WHEN** a caller is updated from a mixed instruction location to `sai/instructions/` or `sai/policies/`
-- **THEN** the selected location SHALL reflect whether the source defines a phase task or reusable policy
-- **AND** the caller SHALL observe the same instructions in the same effective order
+#### Scenario: command instruction moves to its classified source
+- **WHEN** a caller is updated from a former `sai/instructions/{name}.md` path
+- **THEN** it resolves `sai/commands/{name}/instructions.md` and observes the same instruction content in the same effective order
 
 ### Requirement: Complete migration inventory
-The extraction SHALL apply the following exhaustive classification to the current `sai/instructions/` tree:
+The maintained source-layout inventory SHALL classify every current file in `sai/instructions/` exactly once into its final canonical path: the primary command instructions SHALL use `sai/commands/{name}/instructions.md`; the archive secondary instruction SHALL use `sai/commands/archive/archive-commit-gate.instructions.md`; command-owned templates SHALL use neighboring `.template.md` files; `change-overview.md` SHALL use `sai/change-overview.md`; and `adr-index.md` and `ddr-index.md` SHALL use `sai/adr-index.template.md` and `sai/ddr-index.template.md`. No unlisted file shall move by implication, and archived records MAY retain historical paths.
 
-- Task instructions remaining under `sai/instructions/`: `accessibility.md`, `archive.md`, `apply.md`, `backfill.md`, `commit.md`, `design.md`, `explore.md`, `implement.md`, `performance.md`, `pr.md`, `review.md`, `security.md`, and `spec.propose.md`.
-- Reusable policies moving to `sai/policies/`: `artifact-feedback-gate.md`, `change-picker.md`, `commit-rules.md`, `glossary-format.md`, `prereqs.md`, `remember.md`, `sai-learnings-format.md`, and `status-picker.md`.
-- Worker contracts moving to `sai/orchestration/workers/`: `design-worker.md` and `implement-worker.md`.
-- Shared instruction templates under `sai/instructions/_templates/`: `adr-index.md` and the existing phase output templates, recursively projected to Claude Code and opencode.
-- Compatibility-only assets retained under `sai/compat/`: the former design and implementation loaders are retired without shims, the former dedicated ADR template projection is absent, and no active caller or projection expects the former ADR template source.
+#### Scenario: migration plan covers every moved source
 
-The design artifact SHALL map every listed source to its final canonical path and every caller that must change. No unlisted file in the current `sai/instructions/` tree SHALL move as part of this change.
+- **WHEN** the design phase defines the folded file moves and caller updates
+- **THEN** it covers every former command instruction and template exactly once, both root exceptions exactly once, and every active caller atomically
 
-#### Scenario: Migration plan is generated
-- **WHEN** the design phase defines file moves and fetch updates
-- **THEN** it SHALL cover every file in the exhaustive classification exactly once
-- **AND** it SHALL update every caller atomically to its corresponding final canonical path
-- **AND** it SHALL classify `adr-index.md` exactly once under `sai/instructions/_templates/`, update every runtime and installation caller to that canonical path, remove the dedicated compatibility projection, and leave archived change records unchanged
-- **AND** it SHALL leave all unlisted instruction files in place
+#### Scenario: archive multi-instruction inventory is collision-free
+
+- **WHEN** the complete migration inventory is read
+- **THEN** it lists `sai/instructions/archive.md` → `sai/commands/archive/instructions.md` and `sai/instructions/archive-commit-gate.md` → `sai/commands/archive/archive-commit-gate.instructions.md` as two distinct moves, with both archive fetch callers updated to the matching destinations
 
 ### Requirement: Thin harness runtime surfaces
 Harness runtime files under `skills/` and `agents/` SHALL remain valid thin forwarding entry points and SHALL NOT duplicate canonical coordinator, lifecycle, worker, or binding contract prose. `agents/claude/` SHALL remain the Claude worker-agent runtime surface, and Claude and opencode bindings SHALL preserve their respective dispatch and continuation mechanisms.
@@ -119,43 +113,17 @@ Compatibility loaders and compatibility-only path-sensitive assets SHALL live un
 - **THEN** every caller SHALL use `sai/instructions/_templates/adr-index.md`, the former compatibility source SHALL be absent, and no compatibility copy or shim SHALL remain
 
 ### Requirement: Managed source-to-runtime projection
-The installer SHALL project only the Claude Code and opencode routed source and runtime surfaces described by `sai/install-manifest.json`. The manifest SHALL contain no Copilot projection, no inline adapter projection, and no Copilot-only source or runtime destination. Doctor and uninstall SHALL consume the same two-harness active inventory, while existing content-drift and modified-file safeguards remain unchanged.
+The installer SHALL project the folded command-local and root canonical source surfaces for Claude Code and opencode as described by `sai/install-manifest.json`. Doctor and uninstall SHALL consume the same folded inventory, and no active projection SHALL create the removed `sai/instructions/` tree or a compatibility duplicate.
 
-The repository copies under `sai/orchestration/`, `sai/instructions/`, `sai/policies/`, and `sai/compat/` SHALL be the editable authorities. Installed copies are managed runtime projections, and forwarding manifests under `skills/` and `agents/` own only runtime resolution metadata. Doctor SHALL compare every allowlisted projection and forwarding manifest with its bundled source and report missing, unexpected, or drifted files. Uninstall SHALL consume the same allowlists and SHALL retain locally modified managed files under the existing hash-based safeguards.
+#### Scenario: fresh projection contains only folded paths
 
-#### Scenario: Installer projects canonical orchestration sources
-- **WHEN** a supported harness is installed or updated
-- **THEN** its managed SAI root SHALL receive exactly the canonical sources allowed for that harness
-- **AND** only the runtime forwarding surfaces allowed for that harness SHALL be projected to skill, agent, command, or prompt locations
-- **AND** neither obsolete inline command loader SHALL be created
-
-#### Scenario: Routed harness projection excludes foreign bindings
-- **WHEN** the Claude Code or opencode projection allowlist is evaluated
-- **THEN** it SHALL include only that harness's routed binding subtree
-- **AND** it SHALL exclude the other routed harness's binding subtree, the Copilot Inline Coordinator Adapter, and both obsolete inline command loaders
-
-#### Scenario: Doctor detects projection drift
-- **WHEN** an installed canonical source or forwarding manifest differs from its bundled source, is missing, or is unexpected
-- **THEN** doctor SHALL report that projection drift against the source-to-runtime mapping
-
-#### Scenario: Uninstall encounters a locally modified projection
-- **WHEN** uninstall enumerates a managed projection whose content no longer matches its managed hash
-- **THEN** it SHALL retain that file under the existing modified-file safeguard
+- **WHEN** a supported harness projection is expanded after the fold
+- **THEN** its managed `sai/` root contains the folded command instructions/templates and root exceptions, with no active old instruction destination
 
 ### Requirement: Single structured installation manifest
-`sai/install-manifest.json` SHALL be the single structured source of truth for active managed source-to-runtime projections and retired managed-destination cleanup records. Each active entry SHALL identify its repository source, destination class or relative destination, harness allowlist, and ownership or drift policy; each top-level `retirements` record SHALL identify its destination, harness allowlist, and accepted historical managed SHA-256 hashes. The shared manifest expansion module, installer, doctor, and uninstall SHALL consume this manifest rather than maintain separate hard-coded active or retired projection inventories. Removing a source covered by a recursive projection SHALL remove it from fresh expanded inventories for every harness without adding a replacement projection or compatibility shim.
+`sai/install-manifest.json` SHALL remain the single structured source of truth for the folded active source-to-runtime projections and any retirement records. Adding, moving, or removing a folded source SHALL be represented once in the manifest and consumed consistently by installer, doctor, and uninstall.
 
-#### Scenario: Managed projection is added or moved
-- **WHEN** a managed canonical source or runtime forwarding surface is added, moved, or removed
-- **THEN** its projection SHALL be changed once in `sai/install-manifest.json`
-- **AND** installer, doctor, and uninstall SHALL derive their behavior from that same entry
+#### Scenario: manifest drives folded inventory
 
-#### Scenario: Retired command loader is absent from expansion
-- **WHEN** the recursive `sai-commands` projection is expanded after either obsolete inline loader source is removed
-- **THEN** the retired destination SHALL be absent from fresh install and doctor-required active inventories
-- **AND** it MAY remain in the top-level `retirements` cleanup inventory only with destination, harness, and historical managed SHA-256 evidence
-- **AND** no harness-specific compatibility projection SHALL recreate it
-
-#### Scenario: Manifest and filesystem disagree
-- **WHEN** doctor finds a managed destination missing, extra, or different from the source selected by the manifest
-- **THEN** it SHALL report the disagreement against the corresponding manifest entry
+- **WHEN** install, doctor, or uninstall enumerates active SAI files
+- **THEN** it derives the same folded source/destination inventory from the manifest without a separate hard-coded `sai/instructions/` mapping

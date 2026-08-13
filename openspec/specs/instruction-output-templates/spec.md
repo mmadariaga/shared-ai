@@ -8,18 +8,12 @@ Provide six independently loadable SAI instruction output templates while preser
 
 ### Requirement: Dedicated template files
 
-The instruction library SHALL contain six independent Markdown template files co-located beside their owning command cards, with the following source-to-destination mappings:
+The instruction library SHALL contain six independently loadable Markdown output-template files next to their owning command instructions under `sai/commands/`, with these mappings: `sai/commands/implement/implementation-plan.template.md`, `sai/commands/review/review-report.template.md`, `sai/commands/security/security-report.template.md`, `sai/commands/performance/performance-report.template.md`, `sai/commands/accessibility/accessibility-report.template.md`, and `sai/commands/pr/pr-body.template.md`. The former `sai/instructions/_templates/` destinations SHALL be absent for these command-owned templates.
 
-- `sai/commands/implement/instructions.md` `<plan_template>` to `sai/commands/implement/implementation-plan.template.md`
-- `sai/commands/review/instructions.md` `<output_template>` to `sai/commands/review/review-report.template.md`
-- `sai/commands/security/instructions.md` `<output_template>` to `sai/commands/security/security-report.template.md`
-- `sai/commands/performance/instructions.md` `<output_template>` to `sai/commands/performance/performance-report.template.md`
-- `sai/commands/accessibility/instructions.md` `<output_template>` to `sai/commands/accessibility/accessibility-report.template.md`
-- `sai/commands/pr/instructions.md` `<output_template>` to `sai/commands/pr/pr-body.template.md`
+#### Scenario: all command templates are independently available
 
-#### Scenario: All six templates are independently available
 - **WHEN** an instruction phase loads its assigned template
-- **THEN** the assigned file exists at the exact co-located path and the other five template contracts remain independently addressable
+- **THEN** the assigned neighboring `.template.md` file exists at the exact command-local destination and the other five template contracts remain independently addressable
 
 ### Requirement: Implementation plan contract is preserved
 
@@ -75,59 +69,35 @@ The pull request body template SHALL preserve its Summary, Goal, Design Decision
 
 ### Requirement: Parent instructions load templates by exact path
 
-Each affected parent instruction SHALL load its template using the following literal harness-neutral directive at the former template-loading site:
+Each affected parent instruction SHALL load its template using the exact neighboring directive: `@sai/commands/implement/implementation-plan.template.md`, `@sai/commands/review/review-report.template.md`, `@sai/commands/security/security-report.template.md`, `@sai/commands/performance/performance-report.template.md`, `@sai/commands/accessibility/accessibility-report.template.md`, or `@sai/commands/pr/pr-body.template.md`. The surrounding instructions SHALL continue to control loading order, output saving, summaries, feedback, and stopping.
 
-- `sai/commands/implement/instructions.md`: `Fetch @sai/commands/implement/implementation-plan.template.md`
-- `sai/commands/review/instructions.md`: `Fetch @sai/commands/review/review-report.template.md`
-- `sai/commands/security/instructions.md`: `Fetch @sai/commands/security/security-report.template.md`
-- `sai/commands/performance/instructions.md`: `Fetch @sai/commands/performance/performance-report.template.md`
-- `sai/commands/accessibility/instructions.md`: `Fetch @sai/commands/accessibility/accessibility-report.template.md`
-- `sai/commands/pr/instructions.md`: `Fetch @sai/commands/pr/pr-body.template.md`
+#### Scenario: parent instruction resolves its assigned neighbor
 
-Claude Code and opencode SHALL resolve these `Fetch @` directives through their existing harness-specific fetch mechanisms with equivalent loaded content. The surrounding instructions SHALL continue to control when the template is loaded, how its output is saved, what summaries are presented, how feedback is handled, and when the phase stops.
-
-#### Scenario: Parent instruction resolves its assigned template
-- **WHEN** a harness executes one of the six affected parent instructions
-- **THEN** the instruction resolves exactly one matching `sai/commands/{phase}/{artifact}.template.md` path and retains the phase-specific surrounding workflow rules
-
-#### Scenario: No inline contract remains in the parent
-- **WHEN** a reviewer inspects the six affected parent instructions
-- **THEN** the former inline template body is absent, the matching literal `Fetch @sai/commands/{phase}/{artifact}.template.md` reference remains in that loading position, and no inline template body is substituted there
-
-#### Scenario: No dangling template markers remain
-- **WHEN** a reviewer searches all six affected parent instructions after extraction
-- **THEN** no `<plan_template>` or `<output_template>` marker remains anywhere, including references outside the former inline body, and every former template-derived reference uses the mapped exact path or the stable name of that dedicated template
+- **WHEN** a harness executes one of the six affected command instructions
+- **THEN** it resolves exactly one matching `sai/commands/{name}/*.template.md` file and retains the phase-specific surrounding workflow rules
 
 ### Requirement: Extraction fidelity and projection verification are explicit
 
-The extraction change SHALL verify that each dedicated file contains the complete template body formerly enclosed by its parent markers, with no omitted, reordered, normalized, or newly authored template content. It SHALL also verify that all six dedicated files are present in the managed `sai/commands/` projection for Claude Code and opencode and that each projected file is content-equivalent to its source file.
+The fold SHALL verify that each command-local template contains the complete former template body byte-for-byte, excluding only removed wrapper marker lines, and that the manifest-driven Claude Code and opencode projections contain equivalent content at the folded destinations.
 
-#### Scenario: Extracted content is equivalent to the former inline body
-- **WHEN** the six extracted files are compared with the pre-extraction contents between their corresponding marker pairs
-- **THEN** each comparison passes byte-for-byte for the template body, excluding only the removed wrapper marker lines
+#### Scenario: extracted content remains equivalent
 
-#### Scenario: All harness projections contain the extracted files
+- **WHEN** each folded template is compared with its pre-fold source body
+- **THEN** the comparison passes byte-for-byte apart from the intentional path and filename change
+
+#### Scenario: both projections contain folded templates
+
 - **WHEN** the manifest-driven projections are inspected for Claude Code and opencode
-- **THEN** each harness contains all six expected `.template.md` files and every file matches its repository source content
+- **THEN** each supported harness contains all six command-local templates with content equivalent to the repository source
 
 ### Requirement: Existing installation projections remain consistent
 
-The recursive `sai-commands` projection in `sai/install-manifest.json` SHALL continue to install every Markdown file beneath `sai/commands/`, including the six co-located report/plan `.template.md` files. The active project-agnostic index templates `sai/adr-index.template.md` and `sai/ddr-index.template.md` install through their own `sai` root-class projections. The former `sai-instructions` recursive projection and the retired `sai/instructions/_templates/` destinations are covered by retirement records only. There SHALL be no separate explicit compatibility projection for the former ADR template destination; `retired-adr-index-template` is the retirement record for cleanup evidence only.
+The manifest SHALL project command-local instructions and templates and the root shared/canonical exceptions for Claude Code and opencode through explicit or recursive rules that produce no active `sai/instructions/` destinations. The former recursive instruction projection SHALL be replaced or retargeted without a compatibility duplicate.
 
-#### Scenario: New templates are projected to all supported harnesses
+#### Scenario: folded files are projected to both harnesses
 
-- **WHEN** the manifest-driven installer projects the `sai-commands` source tree
-- **THEN** the six phase output templates are installed through the recursive `sai-commands` rule and the two index templates `sai/adr-index.template.md` and `sai/ddr-index.template.md` install through their `sai` root-class projections, for each of Claude Code and opencode
-
-#### Scenario: ADR template uses its root-class projection
-
-- **WHEN** installation or projection logic handles `sai/adr-index.template.md`
-- **THEN** each supported harness receives it at `adr-index.template.md` under the `sai` destination root, with source-equivalent content, and no active projection targets the former `sai/instructions/_templates/adr-index.md` or `sai/compat/_templates/adr-index.md` destination
-
-#### Scenario: DDR template uses its root-class projection
-
-- **WHEN** installation or projection logic handles `sai/ddr-index.template.md`
-- **THEN** each supported harness receives it at `ddr-index.template.md` under the `sai` destination root, with source-equivalent content, and no active projection targets the former `sai/instructions/_templates/ddr-index.md` destination
+- **WHEN** the manifest-driven installer expands the active inventory
+- **THEN** each harness receives every command instruction, command-local template, shared overview instruction, and root ADR/DDR template at its folded `sai/` destination
 
 ### Requirement: Maintained installer and documentation references stay aligned
 
@@ -145,15 +115,12 @@ Maintained installer instructions and repository documentation for Claude Code a
 
 ### Requirement: No workflow behavior changes
 
-The extraction SHALL not modify generated artifact names or locations, OpenSpec-owned skills, production code, configuration, audit semantics, phase ordering, or cross-harness behavior. The only intended runtime difference SHALL be loading identical template content from dedicated files instead of inline parent-instruction content. The active project-agnostic ADR template source SHALL be `sai/adr-index.template.md`; the former compatibility destination is represented only by the `retired-adr-index-template` retirement record.
+The extraction SHALL not modify generated artifact names or locations, OpenSpec-owned skills, production code, configuration semantics, audit semantics, phase ordering, or cross-harness behavior. The only intended runtime difference SHALL be loading identical content from folded destinations.
 
-#### Scenario: Generated artifacts remain unchanged
-- **WHEN** any of the six phases completes after the extraction
-- **THEN** it writes the same artifact name under `openspec/changes/{change-name}/` with the same contract and validation expectations as before
+#### Scenario: generated artifacts remain unchanged
 
-#### Scenario: Harness behavior remains equivalent
-- **WHEN** Claude Code and opencode execute the affected instructions from their installed projections
-- **THEN** each harness receives equivalent template content and phase behavior
+- **WHEN** any affected phase completes after the fold
+- **THEN** it writes the same artifact name under `openspec/changes/{change-name}/` with the same contract and validation expectations
 
 ### Requirement: Report template severity content changes preserve the pinned parity
 
@@ -193,20 +160,9 @@ The instruction library SHALL contain a DDR index template at `sai/ddr-index.tem
 
 ### Requirement: The two index template instances stay in parity
 
-The ADR and DDR index template instances SHALL stay in skeleton parity, enforced by an automated test at `test/index-template-parity.test.js` following the `test/report-template-parity.test.js` precedent. The test SHALL read `sai/adr-index.template.md` and `sai/ddr-index.template.md`, normalize the family vocabulary token on both sides (ADR ↔ DDR, ADRs ↔ DDRs, adr ↔ ddr, `docs/adr/` ↔ `docs/ddr/`), and assert:
+The canonical ADR and DDR index template instances SHALL move to `sai/adr-index.template.md` and `sai/ddr-index.template.md` and SHALL remain skeleton-parity checked by the existing index-template test, which SHALL read those exact root paths and retain family normalization and pinned skeleton assertions.
 
-- identical top-level heading sequence — the H1 and the five `## ` headings in canonical order (family-normalized);
-- identical `## Conventions` bullet sequence (family-normalized);
-- identical pinned skeleton forms: the literal `<domain unit>` placeholder in the `## By <domain unit>` H2, the entry-line form `- [NNNN — {Title}](./NNNN-slug.md)`, the correction-table header `| <Family> | Action | Over |`, and the supersede-note form `— *Superseded by [NNNN](./NNNN-slug.md)*`.
+#### Scenario: root index parity holds
 
-The test SHALL fail when a skeleton element appears on one side without the other, identifying the divergent element, and SHALL pass together with the rest of `node --test`.
-
-#### Scenario: Parity holds and the test passes
-
-- **WHEN** the two index template instances are in parity and the test suite runs
-- **THEN** `test/index-template-parity.test.js` passes together with the rest of `node --test`
-
-#### Scenario: Drift on one side fails the test
-
-- **WHEN** a section heading is added to `adr-index.template.md` without the corresponding heading in `ddr-index.template.md` (or vice versa)
-- **THEN** `test/index-template-parity.test.js` fails and identifies the divergent instance and element
+- **WHEN** the ADR/DDR index parity test runs
+- **THEN** it reads the two root template paths and passes when their normalized skeletons match

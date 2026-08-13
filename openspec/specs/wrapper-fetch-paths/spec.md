@@ -18,22 +18,50 @@ All 24 thin wrapper files at `commands/claude/*.md` and `commands/opencode/*.md`
 - **THEN** zero matches SHALL be found
 
 ### Requirement: command-body-instruction-fetch-paths
-All 12 sai command body files at `sai/commands/*.md` that fetch sai instructions SHALL use the folded fetch vocabulary: command-local instructions at `Fetch @sai/commands/{name}/instructions.md` (and for the archive pair, `Fetch @sai/commands/archive/instructions.md` then `Fetch @sai/commands/archive/archive-commit-gate.instructions.md`), templates at `Fetch @sai/commands/{name}/{artifact}.template.md`, and the root exceptions at `Fetch @sai/change-overview.md`, `Fetch @sai/adr-index.template.md`, and `Fetch @sai/ddr-index.template.md`. The path `@sai/instructions/` SHALL NOT appear in any command body file.
+All maintained SAI command cards that load command-owned instructions SHALL use `Fetch @sai/commands/<name>/instructions.md`, and cards that load command-owned templates SHALL use the matching neighboring `Fetch @sai/commands/<name>/<artifact>.template.md` path. Shared and canonical exceptions SHALL use `Fetch @sai/change-overview.md`, `Fetch @sai/adr-index.template.md`, or `Fetch @sai/ddr-index.template.md` as applicable. The obsolete `@sai/instructions/` namespace SHALL NOT appear in active command cards, invocation cores, or maintained instruction/template fetch directives.
+When a command has additional instruction files, each additional file SHALL use its own distinct neighboring `@sai/commands/<name>/<secondary>.instructions.md` path; the archive secondary instruction SHALL use `@sai/commands/archive/archive-commit-gate.instructions.md` and SHALL be fetched after the primary archive instruction.
 
-#### Scenario: command body instruction fetch updated
-- **WHEN** any file under `sai/commands/` is read
-- **THEN** any Fetch directive pointing to a sai instruction SHALL use a folded pattern: `Fetch @sai/commands/{name}/instructions.md`, `Fetch @sai/commands/{name}/{artifact}.template.md`, or one of the root exceptions `Fetch @sai/change-overview.md`, `Fetch @sai/adr-index.template.md`, `Fetch @sai/ddr-index.template.md`
+#### Scenario: routed spec invocation uses the folded instruction path
 
-#### Scenario: old instruction fetch path absent
-- **WHEN** a grep for `@sai/instructions/` is run across all files under `sai/commands/`
-- **THEN** zero matches SHALL be found
+- **WHEN** `sai/commands/spec/invocation.md` is read
+- **THEN** its phase instruction fetch is exactly `Fetch @sai/commands/spec/instructions.md`
+
+#### Scenario: archive invocation preserves ordered multi-instruction fetches
+
+- **WHEN** the archive command card loads its instructions
+- **THEN** it fetches `@sai/commands/archive/instructions.md` followed by `@sai/commands/archive/archive-commit-gate.instructions.md`, with neither path colliding with the other
+
+#### Scenario: command-local template fetches use neighbors
+
+- **WHEN** an implementation or audit command card loads its output template
+- **THEN** it uses the owning command's `.template.md` neighbor and never `@sai/instructions/_templates/`
+
+#### Scenario: root exceptions use root paths
+
+- **WHEN** a maintained caller loads `change-overview.md`, an ADR index template, or a DDR index template
+- **THEN** it uses the corresponding `@sai/` root path and no `@sai/instructions/` alias
 
 ### Requirement: non-sai-wrapper-fetch-paths-unchanged
-Wrapper files that do not fetch sai command bodies (e.g., `budget.md`) SHALL NOT be modified as part of this capability.
+Wrapper files that do not fetch SAI command cards SHALL remain unchanged by this capability; the folded instruction-path update SHALL apply only to active SAI command cards and their maintained callers.
 
-#### Scenario: budget wrapper untouched
-- **WHEN** `commands/claude/budget.md` and `commands/opencode/budget.md` are read
-- **THEN** their content SHALL be identical to the pre-restructure originals
+#### Scenario: unrelated wrapper remains untouched
+
+- **WHEN** a non-SAI wrapper is compared with its pre-fold content
+- **THEN** it is identical, while SAI wrapper fetches continue to use the existing `@sai/commands/<name>.md` command-card namespace
+
+### Requirement: folded-path-resolution-is-harness-neutral
+
+Claude Code and opencode SHALL resolve the folded `@sai/commands/` and `@sai/` paths through their existing harness-specific fetch roots, preserving the distinction between `@sai/commands/...` and `@commands/...` namespaces. The path contract SHALL be documented in both harness fetch mechanisms and represented in their projection tests.
+
+#### Scenario: Claude resolves a folded command instruction
+
+- **WHEN** Claude Code resolves `@sai/commands/spec/instructions.md`
+- **THEN** it reads the installed Claude `sai/commands/spec/instructions.md` projection
+
+#### Scenario: opencode resolves a folded root template
+
+- **WHEN** opencode resolves `@sai/adr-index.template.md`
+- **THEN** it reads the installed opencode `sai/adr-index.template.md` projection and not an unnamespaced command-root file
 
 ### Requirement: The fetch skill SHALL explicitly document that `@sai/commands/` and `@commands/` are different namespaces
 
