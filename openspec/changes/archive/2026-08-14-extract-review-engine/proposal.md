@@ -1,0 +1,57 @@
+**Complexity**: high (11 files, 2 new capability specs, 1 capability retired, no breaking change)
+
+## Why
+
+The supervised pipeline cannot reuse the manual review-loop's review work because item 9 declares the transaction sequence and the picker re-entry invariant as a single unit (`sai/commands/explore/instructions.md:205-224`), leaving no seam to attach to. This change separates the review work from the loop's navigation — a behavior-preserving refactor, not user-facing value.
+
+## What Changes
+
+- Extract the review work from the manual review loop into one independently invocable unit — the **review engine**: the change-directory resolution, existence checks, disk reread, finding formation, finding shape, and summary tally.
+- Keep the loop's navigation outside the engine, owned by the manual path: the five-option picker, `Skip`, `Exit review loop`, the picker re-entry invariant, and the print-for-paste handoff. The manual review-loop behaves exactly as it does today.
+- Re-frame the loop as two things wearing one name: a review engine and a navigation shell. The fused `explore-post-crystallization-review-loop` capability is retired; its requirements are re-homed into the two new capabilities.
+- Update three cross-references that cite the retired capability name (`explore-review-evidence-marking`, `pipeline-review-severity`, `change-overview-synchronization`).
+- No change to the supervised pipeline in this change: `start-pipeline` (item 10) keeps its isolated-reviewer convergence loop exactly as it is today.
+
+## Capabilities
+
+### New Capabilities
+- `review-engine-extraction`: the review work — change-directory resolution, existence checks, disk reread, finding formation, finding shape and summary tally — as one independently invocable unit, invoked per transaction with a change name and an artifact-set designator and free of any picker or navigation dependency.
+- `review-loop-navigation`: the manual navigation shell — the entry paths (standing invitation and `review-loop` token), the chat-scoped tracked-set iteration, the five-option picker, `Skip` / `Exit review loop`, the picker re-entry invariant, the print-for-paste handoff, language-gate reuse, the in-progress state wiring, and the close contract — which drives the engine and performs no review work itself.
+
+### Modified Capabilities
+- `explore-post-crystallization-review-loop`: retired — every requirement is removed; the capability's content is re-homed into `review-engine-extraction` and `review-loop-navigation` (the fused unit is split, so the capability ceases to exist).
+- `explore-review-evidence-marking`: one cross-reference updated — the completed `Review change-overview` transaction is now cited per the `review-loop-navigation` capability.
+- `pipeline-review-severity`: one scenario cross-reference updated — the manual loop's shared vocabulary is now cited per the `review-loop-navigation` capability.
+- `change-overview-synchronization`: one paragraph cross-reference updated — the review loop's handoff-payload origin is now cited per the `review-loop-navigation` capability.
+
+## Impact
+
+- `sai/commands/explore/instructions.md` — item 9 is restructured into the engine unit plus the navigation shell. The restructure preserves every asserted behavior and wording the contract tests check: the five fixed picker labels and order, the re-entry invariant, `Skip` / `Exit review loop`, the single findings-block handoff, and the unconditional close acknowledgment.
+- `openspec/specs/explore-post-crystallization-review-loop/spec.md` — deleted at implementation (all requirements removed by this change's delta; the capability is retired).
+- `openspec/specs/review-engine-extraction/spec.md`, `openspec/specs/review-loop-navigation/spec.md` — new capability specs (synced into main specs at archive).
+- `openspec/specs/explore-review-evidence-marking/spec.md`, `openspec/specs/pipeline-review-severity/spec.md`, `openspec/specs/change-overview-synchronization/spec.md` — cross-reference updates via delta specs.
+- `sai/policies/artifact-review-contract.md` — its References section (line 46) cites the retired capability; at implementation time (the policy is outside spec-phase scope) the entry `explore-post-crystallization-review-loop capability — manual review loop output requirement` becomes a citation of `review-engine-extraction` (finding formation) and `review-loop-navigation` (manual review loop output), with no other change to the policy.
+- `sai/policies/remember.md` — its "Closed-choice prompts" rule gains the capacity clause that authorizes the fallback (a native picker whose declared capacity cannot present the full option set permits the plain-text fallback preserving every option and their order, never while the picker fits) and declares the per-harness picker capacities in the same rule — Claude Code four options, opencode no documented cap — declared per the established declared-not-runtime-detected pattern, never inferred from tool behavior. No other part of the policy changes.
+- `test/change-overview-contract.test.js` — asserts item-9 wording (five picker labels and order, re-entry, Exit, handoff, close acknowledgment, and the native-picker assertions at lines 425 and 684); the native-picker assertions are aligned to the capacity-conditional wording at implementation, and everything else is preserved by the behavior-preserving restructure.
+- `GLOSSARY.md` — two new domain terms: **Review Engine** and **Review Loop Navigation**.
+- Not touched: the supervised pipeline surface (`pipeline-independent-review`, `explore-pipeline-supervision`, `explore-pipeline-token`, `pipeline-convergence-loop`, `pipeline-iteration-bound`, `pipeline-question-autonomy`, `pipeline-question-escalation`, `pipeline-autonomy-audit-log`), `explore-idea-list`, `review-finding-format`, `artifact-feedback-gate`, and the audit commands' severities.
+
+## Proposal Research Documentation
+
+**Local files**: sai/commands/explore/instructions.md:187-232; sai/policies/artifact-review-contract.md; sai/commands/spec/instructions.md; openspec/specs/explore-post-crystallization-review-loop/spec.md; openspec/specs/review-finding-format/spec.md; openspec/specs/pipeline-review-severity/spec.md; openspec/specs/pipeline-independent-review/spec.md; openspec/specs/explore-pipeline-supervision/spec.md; openspec/specs/explore-review-evidence-marking/spec.md; openspec/specs/change-overview-synchronization/spec.md; openspec/specs/explore-idea-list/spec.md; openspec/specs/spec-quality/spec.md; openspec/schemas/sai-workflow/schema.yaml; GLOSSARY.md; openspec/changes/archive/2026-08-06-unify-artifact-review-contract/proposal.md; openspec/changes/archive/2026-08-14-spec-design-review-progress-step/proposal.md; openspec/changes/archive/2026-08-14-spec-design-review-progress-step/specs/planning-artifact-review-loop/spec.md
+
+**External URLs**: None
+
+## Additional Notes
+
+- **Overview language: Español** — the change overview will be generated in Spanish; pass `--overview-lang Español` when invoking `/sai-2-design` on this change.
+- **Slice boundary.** This change is slice 0 of a sliced crystallization: the enabling, behavior-preserving refactor. Implementation details I3–I9 of the crystallized block — the auto-mode self-review rework (no fresh reviewer subagent, engine-driven rounds, retired isolated-reviewer machinery, in-progress marking during auto mode) — belong to the following slice and are explicitly out of scope here under the "No change to the supervised pipeline in this slice" constraint.
+- **Where the engine lives.** Both modes' instructions already share `sai/commands/explore/instructions.md` (item 9 manual loop, item 10 supervised pipeline), so the engine is defined there as a distinct, named unit; the following slice wires item 10 to it. The exact section layout is a design decision, not pinned here.
+- **Drift aligned, not behavior changed.** The retired spec lagged the implemented instruction: it described a three-option picker (`spec.md:66,190`) where the loop has five options, and allowed silent loop close where the instruction requires an unconditional minimal acknowledgment (`instructions.md:232`). The re-homed navigation requirements pin the implemented behavior; no observable change results. The five-option picker's presentation is now **capacity-conditional**: the native picker when the harness's declared picker capacity can present all five options, plain text preserving the fixed labels and their fixed order otherwise. The per-harness capacity is declared in `sai/policies/remember.md`'s Closed-choice prompts mapping (the declared-not-runtime-detected pattern), never inferred at runtime; Claude Code's declared capacity is four options (per the installed CLI's own guidance, "AskUserQuestion caps options at 4"), so on that harness the loop already renders the menu as plain text today; the conditional restates that implemented reality, and the contract-test assertions (`test/change-overview-contract.test.js:425,684`) are aligned to the capacity-conditional wording at implementation.
+- **Caller seam.** This slice adds no engine caller other than the manual review loop; the already-crystallized following slice wires the supervised pipeline (item 10) to the engine as its second caller. The engine spec therefore states only durable invocation properties (a change name plus an artifact-set designator, no navigation dependency), not who invokes it.
+- **In-progress state scope.** The supervised pipeline (item 10) does not set or resolve the review-item in-progress state today; the already-crystallized following slice extends the in-progress rendering to supervised mode. This change's specs therefore state only the navigation shell's own obligation to set and resolve the state.
+- **File-touch scope.** No wrapper (`commands/{claude,opencode}/sai-explore.*`) and no `AGENTS.md` is modified by this change; the shell's behavior documentation remains confined to `sai/commands/explore/instructions.md`. The other files this change touches — GLOSSARY.md, `sai/policies/artifact-review-contract.md`, the contract tests, and the specs themselves — define no shell behavior.
+- **Reference updates are mechanical.** Three main specs and one policy cite the retired capability name; the three main specs are updated in this change, and `sai/policies/artifact-review-contract.md` at implementation (out of spec-phase scope). Historical decision records (`docs/adr/*`, `docs/ddr/*`) are not updated.
+- **Contract tests stay green.** `test/change-overview-contract.test.js` asserts item-9 wording; the behavior-preserving restructure keeps the asserted phrasing (five fixed labels in fixed order, native-picker wording, re-entry exclusion from the single-encoding prohibition, `Exit review loop` termination and acknowledgment wording) so the tests pass unchanged.
+- The finding shape, severity vocabulary, identifier scheme, and tally form are not redefined anywhere in this change: every surface references `sai/policies/artifact-review-contract.md` per the `review-finding-format` capability, retaining only the presentation mechanics the contract does not own — the deterministic output order, the `Finding H1`-style identifier heading rendering, and the tally-only empty-review block.
+- The shared `review-finding-format` and `explore-idea-list` capabilities need no delta: their prose references to "the manual post-crystallization review loop" and "item 9" remain accurate.

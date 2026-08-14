@@ -79,8 +79,8 @@ The `High`, `Medium`, and `Low` vocabulary SHALL apply to artifact review — pi
 - **THEN** it assigns severities from the shared vocabulary per the shared contract
 
 #### Scenario: manual review loop uses the shared vocabulary
-- **WHEN** the manual post-crystallization review loop reviews artifacts
-- **THEN** it uses the same shared `High`, `Medium`, and `Low` vocabulary per the `explore-post-crystallization-review-loop` capability
+- **WHEN** the manual post-crystallization review loop (`review-loop-navigation`) reviews artifacts
+- **THEN** it uses the same shared `High`, `Medium`, and `Low` vocabulary per the shared contract
 
 #### Scenario: audit commands retain their own vocabularies
 - **WHEN** `sai-5-review`, `sai-6-security`, `sai-7-performance`, or `sai-8-accessibility` runs
