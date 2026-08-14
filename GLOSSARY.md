@@ -240,6 +240,9 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 **Unrecoverability Veto**: "The worker-authored boolean on a failed outcome that stops the remaining bounded recovery attempts when worker-side evidence shows continuation cannot safely repair the failure."
 *Avoid*: retry denial, hard failure flag, fatal error
 
+**Verified Precondition Hand-back**: "A protocol-approved user-facing escalation that cites an unmet precondition only after its concrete file and key have been read and the destination command's ownership of that key has been confirmed."
+*Avoid*: unverified hand-back, precondition redirect, backwards hand-off
+
 **Verify-First Marker**: "The optional pinned `(**Verify-first**: Step N)` parenthetical on a `design.md` risk, naming the step whose design depends on that risk being resolved or disproven first."
 *Avoid*: Blocker, Gate, Check First, precondition, dependency marker
 
@@ -302,6 +305,7 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 - An **Artifact Review** produces zero or more **Review Finding**s, each carrying a **Finding Identifier** derived from its severity within that review.
 - A **Review Finding** carries exactly one **Finding Identifier**, derived from its `Severity` field; identifiers never imply identity across reviews.
 - A **Recovery Policy** opts one routed invocation into the shared bounded same-worker recovery loop; it does not name a **Recovery Dispatch** and does not choose the attempt budget.
+- A **Verified Precondition Hand-back** is permitted only after the cited file and key have been read and the destination command has been confirmed as their writer; otherwise the coordinator asks the user instead.
 - A **Report Template Parity** pin covers the four report artifacts — review, security, performance, accessibility — each pairing a schema template scaffold with an instruction output template contract of the same artifact.
 - A **Tracked Crystallized Set** gains a name only when a crystallization turn emits one, ignores duplicate later emissions, and starts empty in every new chat.
 - A **Routing Line** contains exactly one **Routing Layer**, one **Routing Discipline**, and one **Routing Complexity** token, in that order, each emitted as a `key=value` pair separated by middle dots.
