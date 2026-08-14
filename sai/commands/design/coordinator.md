@@ -15,6 +15,7 @@
 
    Construct exactly two strings: `wrapper_echo_value` and `arguments_value` as specified by the active wrapper. Dispatch exactly one worker through the active design-worker binding using `original_envelope`.
    The `arguments_value` string is forwarded unchanged to the worker and may contain a change name followed by `--overview-lang <language>` and `--fast-track` in either order. The coordinator does not parse, validate, remove, default, persist, or reinterpret either option.
+   The design phase adapter declares `recovery_policy: true`; recovery navigation follows only shared-runner rules and adds no phase-specific recovery loop.
 
   Declare the canonical seven-step progress plan for this phase, in order, with exactly these ids and labels — no omissions, reorders, renames, or additions:
 
@@ -41,6 +42,9 @@
   When the artifact-feedback gate proceeds, `Continue` triggers the worker-owned overview-generation pass after the gate closes and all source artifacts (`design.md`, `tasks.md`, `interfaces.md`) verify successfully, via a same-worker continuation (the active binding's continuation mechanism — SendMessage-style / task-id resume — carrying a generation-trigger payload with exactly the resolved change name, the generation scope marker (generate `change-overview.md` only; no source regeneration), and the worker's journal reconstruction fields). Map the generation terminal deterministically: `status: completed` → emit the existing design completion sentence — the ONLY point at which that sentence may be emitted — and stop exactly as today; `status: failed` (a failed result envelope including a parent-reported dispatch failure) → do NOT emit the success terminal, report the blocking failure details, and leave the change incomplete for a later re-invoked `/sai-2-design` retry from `failed`; continuation failure (the worker never resumes, run lost before any state transition) → report the run as ending without materialization (no overview, state absent/`unmaterialized`) for a fresh re-invocation. Forward the generation terminal's `changed_files` (change-overview.md plus .openspec.yaml when a state transition was committed) without re-deriving them. Offer no continuation question, copy no lifecycle state, and do not route work to an implementation worker. Print exactly:
    The generation-trigger continuation also carries the worker-owned `overview_language` value from the current invocation, defaulting to `English`; it carries no persisted language preference, and the generator's result remains the existing five-field envelope.
    `Design done in openspec/changes/{name}/. Run \`/sai-3-implement {name}\` **in a new chat** when ready.`
+
+  ## Design recovery
+  Because the phase adapter declares `recovery_policy: true`, the shared runner owns the bounded, invocation-scoped recovery pool and its immutable three-attempt budget. Before each attempt, announce the triggering failure class and the ordinal attempt (`1 of 3`, `2 of 3`, `3 of 3`); then recovery continues the same worker with exactly `continue_after_recovery`. Forward every worker payload without inspecting artifacts, change data, or recovered files — the worker owns verification and repair. Recovery never dispatches a replacement worker: replacement dispatch is reserved for the ordinary non-recovery continuation fallback. When recovery stops without a completed result, hand back naming the failure class, the attempts spent, and the stopping reason.
 
 </TASK>
 

@@ -272,6 +272,56 @@ test('routed design coordinator has no technical I/O and owns only lifecycle rou
   assert.match(coordinator, /continue_after_notice/);
 });
 
+test('Step 2 design adapter opts into recovery through the same worker and reports bounded attempt metadata', () => {
+  const coordinator = artifact('sai/commands/design/coordinator.md');
+  const worker = artifact('sai/commands/design/worker.md');
+
+  assert.match(coordinator, /recovery_policy\s*:\s*true/,
+    'the design adapter should explicitly opt into recovery');
+  assert.match(coordinator, /continue_after_recovery/,
+    'the design adapter should acknowledge recovery through continue_after_recovery');
+  assert.match(worker, /continue_after_recovery/,
+    'the design worker should consume the recovery continuation');
+  assert.match(coordinator, /(?:failure_class|failure class)[\s\S]{0,260}(?:attempt ordinal|attempts spent|ordinal)/i,
+    'the coordinator should report the failure class together with the attempt ordinal');
+  assert.match(worker, /(?:failure_class|failure class)[\s\S]{0,260}(?:attempt ordinal|attempts spent|ordinal)/i,
+    'the worker contract should preserve the failure class and attempt ordinal');
+  assert.match(coordinator, /recovery[\s\S]{0,360}(?:same[- ]worker|same worker)/i,
+    'design recovery should remain on the same worker');
+  assert.match(coordinator, /recovery[\s\S]{0,420}(?:never|must not|not)[\s\S]{0,160}replacement worker/i,
+    'design recovery must never route through a replacement worker');
+});
+
+const DESIGN_WORKER_CONTRACT_PROMPT =
+  'Worker contract: Fetch @sai/commands/design/worker.md and follow it exactly.';
+
+test('Step 2 both harness design bindings fetch the identical neutral design worker contract', () => {
+  for (const harness of ['claude', 'opencode']) {
+    const binding = matrixBinding(harness, 'design');
+    assert.equal(countLiteral(binding, DESIGN_WORKER_CONTRACT_PROMPT), 1,
+      `${harness} design binding should fetch the shared neutral worker contract exactly once`);
+    assert.match(binding, new RegExp(DESIGN_WORKER_CONTRACT_PROMPT.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')),
+      `${harness} design binding should embed the identical worker-contract prompt substring`);
+  }
+});
+
+test('Step 2 generator instruction, workflow schema, and template preserve the same five-field contract', () => {
+  const fiveFields = ['status', 'changed_files', 'validation', 'failure_details', 'failure_kind'];
+  for (const relativePath of [
+    'sai/change-overview.md',
+    'openspec/schemas/sai-workflow/schema.yaml',
+  ]) {
+    const text = artifact(relativePath);
+    for (const field of fiveFields) {
+      assert.match(text, new RegExp(field.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')),
+        `${relativePath} should preserve the ${field} field`);
+    }
+  }
+  const template = artifact('openspec/schemas/sai-workflow/templates/change-overview.md');
+  assert.match(template, /five generator fields|five[\s\S]{0,20}fields?/,
+    'the change-overview template should preserve the same five-field contract');
+});
+
 // ─── specs/design-planning-worker/spec.md ──────────────────────────────────
 
 test('design planning worker spec covers fast-track, prerequisites, and change resolution', () => {

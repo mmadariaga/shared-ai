@@ -50,3 +50,52 @@ test('active orchestration capability declares the optional recovery seam', () =
   assert.match(spec, /continue_after_recovery/);
   assert.match(spec, /never dispatch a replacement worker from that recovery path/i);
 });
+
+test('design overview recovery keeps generator classification separate from the closed nested envelope', () => {
+  const routing = artifact('openspec/specs/change-overview-generation-routing/spec.md');
+  const worker = artifact('sai/commands/design/worker.md');
+
+  assert.match(routing, /failure_kind[\s\S]{0,260}(?:unchanged|same)[\s\S]{0,220}failure_class/i,
+    'valid failed generator results should propagate failure_kind unchanged to failure_class');
+  assert.match(routing, /status[\s\S]{0,180}changed_files[\s\S]{0,180}validation[\s\S]{0,180}failure_details[\s\S]{0,180}failure_kind/i,
+    'the nested generator result should retain the five-field order');
+  assert.match(worker, /post-resolution[\s\S]{0,300}overview_language[\s\S]{0,300}failure_class[\s\S]{0,300}unrecoverable/i,
+    'post-resolution design failures should retain invocation-scoped overview_language with failure metadata');
+  assert.match(worker, /overview_language[\s\S]{0,260}(?:absent|missing)[\s\S]{0,180}English/i,
+    'the absent overview language flag should default to English');
+});
+
+test('overview soundness vetoes the first envelope violation before any bounded recovery attempt', () => {
+  const worker = artifact('sai/commands/design/worker.md');
+
+  assert.match(worker, /before[\s\S]{0,300}(?:first )?return(?:ing)?[\s\S]{0,180}envelope-contract-violation[\s\S]{0,420}(?:overview|existing overview)[\s\S]{0,160}sound/i,
+    'overview soundness must be verified before returning the first envelope violation');
+  assert.match(worker, /unsound[\s\S]{0,260}unrecoverable:\s*true[\s\S]{0,260}(?:zero|0)[\s\S]{0,120}recovery attempts/i,
+    'an unsound overview must veto recovery with zero attempts');
+});
+
+test('overview recovery re-dispatches eligible failures inside the shared attempt pool', () => {
+  const worker = artifact('sai/commands/design/worker.md');
+
+  assert.match(worker, /validation[\s\S]{0,180}generation[\s\S]{0,180}dispatch[\s\S]{0,240}re-dispatch/i,
+    'validation, generation, and dispatch failures should all permit overview re-dispatch');
+  assert.match(worker, /re-dispatch[\s\S]{0,240}(?:existing|same)[\s\S]{0,100}attempt/i,
+    'overview recovery should stay inside the existing attempt');
+  assert.match(worker, /(?:no|without|never)[\s\S]{0,180}(?:second|additional)[\s\S]{0,160}(?:ordinary )?regeneration allowance/i,
+    'overview recovery must not open a second ordinary regeneration allowance');
+});
+
+test('verified recovery commits current overview state and preserves incomplete-state accounting', () => {
+  const worker = artifact('sai/commands/design/worker.md');
+
+  assert.match(worker, /verified recovery completion[\s\S]{0,300}overview\.state:\s*current/i,
+    'verified recovery completion should commit overview.state: current');
+  assert.match(worker, /current[\s\S]{0,300}(?:clear|clears|cleared)[\s\S]{0,160}(?:both|failure_kind[\s\S]{0,80}failure_details)/i,
+    'verified recovery completion should clear both overview diagnostics');
+  assert.match(worker, /ordered[\s-]+changed[-_]file union[\s\S]{0,240}\.openspec\.yaml/i,
+    'durable metadata should enter the ordered changed-file union');
+  assert.match(worker, /(?:first materialization|first-materialization)[\s\S]{0,300}failed[\s\S]{0,240}(?:regeneration|re-generation)[\s\S]{0,220}stale/i,
+    'incomplete recovery should retain failed versus stale state mapping');
+  assert.match(worker, /(?:failure class|failure_class)[\s\S]{0,220}(?:attempts spent|attempt ordinal|attempts)[\s\S]{0,220}(?:stopping reason|reason for stopping)/i,
+    'incomplete recovery should report class, attempts spent, and stopping reason');
+});

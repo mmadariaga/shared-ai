@@ -251,6 +251,43 @@ test('shared instruction is the generation contract', () => {
   assert.doesNotMatch(schema, /contradiction_details/, 'schema instruction must not enumerate the retired field');
 });
 
+test('overview generator envelope is exactly five fields and excludes recovery metadata', () => {
+  const instruction = artifact('sai/change-overview.md');
+  const schema = artifact('openspec/schemas/sai-workflow/schema.yaml');
+  const fields = ['status', 'changed_files', 'validation', 'failure_details', 'failure_kind'];
+
+  for (const source of [instruction, schema]) {
+    const failureDetailsIndex = source.indexOf('failure_details');
+    assert.ok(failureDetailsIndex >= 0, 'the generator envelope should declare failure_details');
+    const envelope = source.slice(Math.max(0, failureDetailsIndex - 2500), failureDetailsIndex + 2500);
+    for (const field of fields) {
+      assert.match(envelope, new RegExp('`?' + field + '`?'), `generator envelope should include ${field}`);
+    }
+    assert.doesNotMatch(envelope, /failure_class|unrecoverable|attempts_spent|stopping_reason|recovery_attempt/i,
+      'recovery metadata must not enter the nested generator envelope');
+  }
+});
+
+test('valid generator failures propagate failure_kind while malformed envelopes remain parent-owned contract violations', () => {
+  const routing = artifact('openspec/specs/change-overview-generation-routing/spec.md');
+  const worker = artifact('sai/commands/design/worker.md');
+
+  assert.match(routing, /valid[	 ]+failed[	 ]+generator[	 ]+result[	\n ]+propagat(?:es|e)[\s\S]{0,260}failure_kind[\s\S]{0,260}failure_class/i,
+    'a valid failed generator result should preserve failure_kind as outer failure_class');
+  assert.match(routing, /failure_kind[\s\S]{0,220}(?:unchanged|without reclassification)[\s\S]{0,220}failure_class/i,
+    'failure_kind should propagate unchanged to the outer classification');
+  assert.match(routing, /(?:empty|malformed|unknown field|missing field)[\s\S]{0,420}envelope-contract-violation/i,
+    'invalid nested results should be classified as envelope-contract-violation');
+  assert.match(routing, /envelope-contract-violation[\s\S]{0,260}validation:\s*not-performed/i,
+    'parent-owned contract violations should retain validation: not-performed');
+  assert.match(routing, /(?:offending value|missing field|name the offending|quote that value)[\s\S]{0,260}(?:diagnostic|failure_details|details)/i,
+    'contract violations should name the offending value or missing field');
+  assert.match(routing, /(?:potentially affected|affected)[\s\S]{0,240}change-overview\.md/i,
+    'contract violations should preserve the potentially affected overview path');
+  assert.match(worker, /malformed or empty envelopes?[\s\S]{0,320}envelope-contract-violation/i,
+    'the design worker should separate malformed nested envelopes from generator failures');
+});
+
 test('state key transitions unmaterialized → materializing → current at first Continue', () => {
   const worker = artifact('sai/commands/design/worker.md');
 
@@ -294,12 +331,12 @@ test('design worker persists diagnostics for generator and parent-owned failure 
   assert.match(worker, /dispatch-failed/, 'dispatch failures should use dispatch-failed');
   assert.match(worker, /process loss[\s\S]{0,220}generation-error/i,
     'process loss should use generation-error');
-  assert.match(worker, /malformed or empty envelopes?[\s\S]{0,260}generation-error/i,
-    'malformed and empty envelopes should use generation-error');
+  assert.match(worker, /malformed or empty envelopes?[\s\S]{0,320}envelope-contract-violation/i,
+    'malformed and empty envelopes should use envelope-contract-violation');
   assert.match(worker, /validation:\s*not-performed[\s\S]{0,320}failure_kind:\s*dispatch-failed/i,
     'dispatch failures should carry not-performed validation and dispatch-failed kind');
-  assert.match(worker, /status:\s*failed[\s\S]{0,260}validation:\s*not-performed[\s\S]{0,260}failure_kind:\s*generation-error/i,
-    'process-loss and malformed-envelope routes should carry the parent generation-error shape');
+  assert.match(worker, /status:\s*failed[\s\S]{0,260}validation:\s*not-performed[\s\S]{0,260}failure_kind:\s*envelope-contract-violation/i,
+    'malformed-envelope routes should carry the parent envelope-contract-violation shape');
   assert.match(worker, /changed_files:\s*\[\s*\]/,
     'unacknowledged dispatch failures should report no affected files');
   assert.match(worker, /changed_files:\s*\[openspec\/changes\/\{change-name\}\/change-overview\.md\]/,

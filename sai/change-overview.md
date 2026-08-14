@@ -51,19 +51,29 @@ Acceptance remains transactional. Produce the complete new overview, validate it
 
 ## Closed result envelope
 
+The generator envelope is exactly five fields and no others:
+
+    status: success | failed
+    changed_files: string[]
+    validation: passed | failed | not-performed
+    failure_details: string
+    failure_kind: none | blocking-contradiction | validation-failed | generation-error | dispatch-failed
+
 Return exactly five mandatory fields:
 
 - `status` — `success | failed`.
 - `changed_files` — `[openspec/changes/{change-name}/change-overview.md]` when the generator writes the overview or a generator-owned failure record. `[]` is reserved for a parent-authored dispatch failure that occurred before dispatch was acknowledged; it is not a generator-run result. A dispatched process-loss or malformed/empty-envelope route is reported by the parent with the overview path because the file may have been affected before the result became untrustworthy.
 - `validation` — `passed` or `failed` for a generator-run result. A parent-authored dispatch or contract-violation result uses `not-performed` because validation did not occur or cannot be trusted.
 - `failure_details` — the empty string only on success; a non-empty English failure_details on every failure, naming what went wrong and the relevant source, artifact, envelope, dispatch, worker, or file location. A blocking contradiction names both conflicting source locations and the one-line disagreement.
-- `failure_kind` — `none` on success; on failure one of `blocking-contradiction`, `validation-failed`, `generation-error`, or `dispatch-failed`. The generator produces the first three values; the parent produces `dispatch-failed` and may classify malformed or empty envelopes and process loss as `generation-error`.
+- `failure_kind` — `none` on success; on failure one of `blocking-contradiction`, `validation-failed`, `generation-error`, or `dispatch-failed`. The generator produces the first three values; the parent produces `dispatch-failed` and may classify process loss as `generation-error`.
 
 The generator returns the five-field shape for every generator-run success or failure. When a generator-run failure occurs during first materialization or regeneration, it atomically writes a complete failure record to `change-overview.md` before returning the failed envelope. The failure record carries the exact `failure_kind` and non-empty `failure_details`; a first-materialization failure is still diagnostic state and is not a current overview. A failed regeneration record states that regeneration failed and that the overview is not current. The generator never writes any source artifact or any file other than `change-overview.md`.
 
 The parent preserves the same five-field shape when it authors a dispatch, process-loss, or malformed/empty-envelope result. Parent-authored diagnostics remain English regardless of `overview_language` and are persisted by the design worker in the explicitly scoped `.openspec.yaml` keys `overview.failure_kind` and `overview.failure_details`.
 
-The exact success shape is `status: success`, `changed_files: [openspec/changes/{change-name}/change-overview.md]`, `validation: passed`, `failure_details: ""`, and `failure_kind: none`. The exact generator-run failure shape is `status: failed`, an overview path in `changed_files`, `validation: failed`, non-empty English `failure_details`, and one generator failure kind. The exact parent dispatch-failure shape is `status: failed`, `changed_files: []`, `validation: not-performed`, non-empty `failure_details`, and `failure_kind: dispatch-failed`; malformed, empty, and process-loss parent routes use `generation-error` and report the potentially affected overview path.
+The exact success shape is `status: success`, `changed_files: [openspec/changes/{change-name}/change-overview.md]`, `validation: passed`, `failure_details: ""`, and `failure_kind: none`. The exact generator-run failure shape is `status: failed`, an overview path in `changed_files`, `validation: failed`, non-empty English `failure_details`, and one generator failure kind. The exact parent dispatch-failure shape is `status: failed`, `changed_files: []`, `validation: not-performed`, non-empty `failure_details`, and `failure_kind: dispatch-failed`; process-loss parent routes use `generation-error` and report the potentially affected overview path, while malformed or empty parent routes map to the outer worker classification `envelope-contract-violation` and report the potentially affected overview path.
+
+A valid generator failure kind propagates unchanged to the outer worker classification. A malformed or empty nested envelope remains a parent-authored five-field failure and maps to the outer worker classification `envelope-contract-violation`. Recovery metadata belongs only to the outer worker protocol and never enters this envelope.
 
 Result-shape examples:
 

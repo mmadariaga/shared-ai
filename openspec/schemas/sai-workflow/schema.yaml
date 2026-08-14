@@ -229,7 +229,12 @@ artifacts:
       failure; failure_kind uses the closed vocabulary none | blocking-contradiction |
       validation-failed | generation-error | dispatch-failed. Parent-authored dispatch and
       contract-violation results use validation: not-performed and preserve the same five-field
-      shape without allowing the parent to write change-overview.md.
+      shape without allowing the parent to write change-overview.md. A valid generator failure kind
+      is copied unchanged into the outer worker classification, while a malformed or empty nested
+      envelope keeps the parent-authored five-field shape with validation: not-performed and maps to
+      the outer worker envelope-contract-violation classification. A recovered materialization
+      commits overview.state: current and clears both overview diagnostic keys; recovery metadata
+      never enters the generator result.
 
       The overview SHALL present scope, target architecture, requirements, scenarios, interfaces,
       method-level test assertions, file changes, delivery steps, and end-to-end traceability. Its

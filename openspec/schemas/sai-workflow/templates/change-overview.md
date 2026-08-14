@@ -38,4 +38,4 @@
 
 <!-- Source-grounded decisions, constraints, trade-offs, and review implications needed for approval. -->
 
-<!-- Write-time authority: sai/change-overview.md defines generation, validation, localization, and the closed result envelope. -->
+<!-- Write-time authority: sai/change-overview.md defines generation, validation, localization, and the closed result envelope; the write-time contract preserves exactly the five generator fields and maps recovery classification outside that envelope. -->
