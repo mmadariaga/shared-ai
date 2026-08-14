@@ -89,6 +89,7 @@ This index groups the DDRs in `docs/ddr/` by **command** and by **cross-cutting 
 - [0122 — The in-progress state is render-only: setting, advancing, or resolving it never marks or clears an item](./0122-in-progress-state-is-render-only.md)
 - [0123 — Closure State is conversation-only and has exactly three lifecycle values](./0123-closure-state-is-conversation-only-and-has-three-lifecycle-values.md)
 - [0124 — Active exploration uses question-first closure and repeatable reminders without repeating readiness](./0124-question-first-closure-repeats-without-repeating-readiness.md)
+- [0133 — Budget dispatch literals resolve through collision-safe harness-managed roles](./0133-budget-dispatch-literals-resolve-through-collision-safe-harness-managed-roles.md)
 
 ### `/sai-backfill`
 
@@ -119,6 +120,7 @@ This index groups the DDRs in `docs/ddr/` by **command** and by **cross-cutting 
 - [0118 — Every resolved fetch path begins with `sai/`, `commands/`, or `skills/` and the harness root is never named](./0118-fetch-path-scope-invariant.md)
 - [0128 — Neutral root protocols and command cards](./0128-neutral-root-protocols-and-command-cards.md)
 - [0129 — Routed and utility command-card classes](./0129-routed-and-utility-command-card-classes.md)
+- [0133 — Budget dispatch literals resolve through collision-safe harness-managed roles](./0133-budget-dispatch-literals-resolve-through-collision-safe-harness-managed-roles.md)
 
 ---
 
@@ -168,6 +170,7 @@ This index groups the DDRs in `docs/ddr/` by **command** and by **cross-cutting 
 - [0063 — A contract-violating telemetry note is dropped whole, never trimmed](./0063-violating-telemetry-note-dropped-not-cleaned.md)
 - [0109 — The delegation envelope's status is reserved for dispatch outcomes; check verdicts travel only in the output payload](./0109-delegation-envelope-status-reserved-for-dispatch-outcomes.md)
 - [0113 — The task-list tool call originates exclusively from the coordinator session, never from a worker subagent](./0113-todowrite-emission-coordinator-only.md)
+- [0133 — Budget dispatch literals resolve through collision-safe harness-managed roles](./0133-budget-dispatch-literals-resolve-through-collision-safe-harness-managed-roles.md)
 
 ### Testability routing & RED → GREEN
 

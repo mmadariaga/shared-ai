@@ -94,6 +94,9 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 **Fetch Namespace**: "The set of path prefixes (`sai/`, `commands/`, `skills/`) under a harness's project-local or user-global root that `Fetch @<path>` directives resolve to — a directive names exactly one exact file path inside this namespace, and the harness root itself is never named."
 *Avoid*: fetch path space, fetch tree, global fetch paths, allowlist roots
 
+**Generic Agent**: "A managed non-worker subagent definition for one of the three budget delegation roles — `explore`, `executor`, or `budget` — carrying user-owned tunable `model` frontmatter under the tunable-seed lifecycle and a body of exactly one Fetch of its neutral behavior policy; registered as `explore` / `executor` / `budget` under opencode and as `budget-explorer` / `budget-executor` / `budget-subagent` under Claude Code, whose budget-prefixed names avoid colliding with Claude Code's built-in Explore agent."
+*Avoid*: helper agent, cheap agent, delegation agent, bare "budget agent" (names the `budget` role, not the class)
+
 **GREEN Conflict**: "The state where an Implementation Dispatch cannot make the test-writer's tests pass within bounded, test-file-untouching iteration, so it halts and reports to the coordinator for a human to decide whether the fault is the implementation, the test, or the interface."
 *Avoid*: test failure, GREEN failure, broken test, unpassable step
 
@@ -303,6 +306,7 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 - A **Destination Class** resolves to one base directory for install, doctor, and uninstall expansions of the manifest projections that name it.
 - A **Customization Target** belongs to exactly one customization family (`Workers` or `Commands`) and is identified within a harness by that family plus its bare name; a worker and a command sharing a name are distinct targets.
 - A **Worker Matrix** preserves one shared worker lifecycle contract while carrying harness, phase, dispatch, continuation, model, and exceptional-option parameters for its materialized workers.
+- A **Generic Agent** is a **Customization Target** of the `Workers` family and is distinct from a **Managed Worker**: a managed worker is a routed phase worker of the pipeline, while a generic agent serves one of the three budget delegation roles (`explore`, `executor`, or `budget`).
 
 ## Example dialogue
 
