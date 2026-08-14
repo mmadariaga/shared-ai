@@ -22,20 +22,23 @@
   - `replacement_reconstruction_fields`: `resolved_change_name` when already known, ordered `opaque_input_history`, and the fixed durable-artifact reconstruction instruction
   - `terminal_navigation`: implementation completion or unsuccessful-stop behavior
 
-  Declare the canonical five-step progress plan for this phase, in order, with
+  Declare the canonical six-step progress plan for this phase, in order, with
   exactly these ids and labels — no omissions, reorders, renames, or additions:
 
-  - `prereqs-resolution` — "Prerequisites and change resolution"
-  - `plan-simplification` — "Existing plan simplification"
-  - `artifact-analysis` — "Artifact analysis and decision validation"
-  - `documentation-review` — "Required documentation review"
-  - `plan-generation` — "Implementation plan generation and verification"
+  - `prereqs-resolution` — "Check prerequisites and resolve the change"
+  - `collapse-implemented-steps` — "Collapse implemented steps"
+  - `artifact-analysis` — "Analyze artifacts and validate decisions"
+  - `documentation-review` — "Review required documentation"
+  - `plan-generation` — "Write implementation.md"
+  - `validation` — "Validate implementation.md and the audit append"
 
   Render the full plan at dispatch before the first worker result per
   `@sai/policies/todo-structure.md` (first step `in_progress`, rest `pending`);
   mark steps only from worker progress-event `step_ids`; and reconcile at
-  run-closing results: `completed` renders every unmarked step `completed`,
-  `failed` and `cancelled` leave the list exactly as last rendered, and a
+  run-closing results. This implementation plan has no `review` step and no
+  evidence-marked designation, so no reconciliation carve-out applies:
+  `completed` renders every unmarked step `completed`, `validation` included;
+  `failed` and `cancelled` leave the list exactly as last rendered; and a
   `needs_input` result — a terminal lifecycle status that is not run-closing —
   leaves the list exactly as last rendered. The plan is immutable for the
   invocation, held in invocation-scoped state, survives same-worker

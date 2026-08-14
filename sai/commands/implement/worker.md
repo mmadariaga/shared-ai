@@ -49,23 +49,28 @@ research, and `budget-explorer` for ADR-index cold-build reads.
 This phase declares a progress plan with exactly these canonical step ids, in
 order:
 
-- `prereqs-resolution` — "Prerequisites and change resolution"
-- `plan-simplification` — "Existing plan simplification"
-- `artifact-analysis` — "Artifact analysis and decision validation"
-- `documentation-review` — "Required documentation review"
-- `plan-generation` — "Implementation plan generation and verification"
+- `prereqs-resolution` — "Check prerequisites and resolve the change"
+- `collapse-implemented-steps` — "Collapse implemented steps"
+- `artifact-analysis` — "Analyze artifacts and validate decisions"
+- `documentation-review` — "Review required documentation"
+- `plan-generation` — "Write implementation.md"
+- `validation` — "Validate implementation.md and the audit append"
 
 Emit exactly one progress event per completed batch after prerequisite checks
 pass and change resolution completes, whenever one or more plan steps
 complete. The startup act (prerequisite checks + resolution) reports as one
 batch carrying `prereqs-resolution`. Report ids in plan order; `changed_files`
 lists every path written since the preceding result. On a first run the
-simplification step is skipped entirely; the skipped `plan-simplification` id
+collapse step is skipped entirely; the skipped `collapse-implemented-steps` id
 folds into the next completed batch in plan order with no separate `skipped`
-field. On a re-run, `plan-simplification` completes as its own batch. Never
-emit a progress event before resolution, in place of a terminal payload,
-during a `needs_input` pause, or during a feedback turn — the run always
-closes with exactly one terminal lifecycle status.
+field. On a re-run, `collapse-implemented-steps` completes as its own batch.
+The completed Step 5 write reports `plan-generation`; only after the
+pre-delivery durable-artifact verification reports `validation` does planning
+complete. A failed verification does not emit `validation`; return `failed`
+with a concise blocking summary instead. Never emit a progress event before
+resolution, in place of a terminal payload, during a `needs_input` pause, or
+during a feedback turn — the run always closes with exactly one terminal
+lifecycle status.
 
 Before completion, verify the durable `implementation.md` is non-empty,
 contains every task in order, includes verification and STOP markers, has RED

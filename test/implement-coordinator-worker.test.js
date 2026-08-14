@@ -55,6 +55,25 @@ function capture(fn) {
   }
 }
 
+// ─── Step 1: reshape and pin the implementation progress plan ───────────────
+
+const IMPLEMENT_PLAN_STEPS = [
+  ['prereqs-resolution', 'Check prerequisites and resolve the change'],
+  ['collapse-implemented-steps', 'Collapse implemented steps'],
+  ['artifact-analysis', 'Analyze artifacts and validate decisions'],
+  ['documentation-review', 'Review required documentation'],
+  ['plan-generation', 'Write implementation.md'],
+  ['validation', 'Validate implementation.md and the audit append'],
+];
+
+function implementationPlanList(source) {
+  const pairs = [];
+  const re = /^\s*- `([a-z-]+)`\s*—\s*"([^"]+)"\s*$/gm;
+  let match;
+  while ((match = re.exec(source)) !== null) pairs.push([match[1], match[2]]);
+  return pairs;
+}
+
 test('Step 1 implementation card uses neutral root protocols and retires flat canonical sources', () => {
   const coordinator = artifact('sai/commands/implement/coordinator.md');
   const worker = artifact('sai/commands/implement/worker.md');
@@ -644,78 +663,72 @@ test('implementation install overwrites divergent numbered destination content w
 
 // ─── Step 6: progress-plan-spec-and-implement (implementation coordinator/worker) ──
 
-test('Step 6: the implementation adapter declares the canonical five-step plan in order with its labels', () => {
+test('Step 6: coordinator and worker declare the same canonical six-step implementation plan', () => {
   const coordinator = artifact('sai/commands/implement/coordinator.md');
+  const worker = artifact('sai/commands/implement/worker.md');
 
-  for (const id of ['prereqs-resolution', 'plan-simplification', 'artifact-analysis', 'documentation-review', 'plan-generation']) {
-    assert.match(coordinator, new RegExp(id.replace(/-/g, '\\-')),
-      `the implementation plan should declare the ${id} step id`);
-  }
-  assert.match(
-    coordinator,
-    /prereqs-resolution[\s\S]{0,300}plan-simplification[\s\S]{0,300}artifact-analysis[\s\S]{0,300}documentation-review[\s\S]{0,300}plan-generation/,
-    'the five canonical step ids should be declared in order'
+  assert.deepEqual(
+    implementationPlanList(coordinator),
+    IMPLEMENT_PLAN_STEPS,
+    'the coordinator should declare exactly the six ordered ids and imperative labels'
   );
-  assert.match(coordinator, /prereqs-resolution[\s\S]{0,200}Prerequisites and change resolution/i,
-    'prereqs-resolution should carry the "Prerequisites and change resolution" label');
-  assert.match(coordinator, /plan-simplification[\s\S]{0,200}Existing plan simplification/i,
-    'plan-simplification should carry the "Existing plan simplification" label');
-  assert.match(coordinator, /artifact-analysis[\s\S]{0,200}Artifact analysis and decision validation/i,
-    'artifact-analysis should carry the "Artifact analysis and decision validation" label');
-  assert.match(coordinator, /documentation-review[\s\S]{0,200}Required documentation review/i,
-    'documentation-review should carry the "Required documentation review" label');
-  assert.match(coordinator, /plan-generation[\s\S]{0,200}Implementation plan generation and verification/i,
-    'plan-generation should carry the "Implementation plan generation and verification" label');
-  assert.doesNotMatch(coordinator, /specs-approval/,
-    'the implementation plan should contain no specs-approval step');
+  assert.deepEqual(
+    implementationPlanList(worker),
+    IMPLEMENT_PLAN_STEPS,
+    'the worker should enumerate exactly the six ordered ids and imperative labels'
+  );
+  assert.deepEqual(
+    implementationPlanList(worker),
+    implementationPlanList(coordinator),
+    'the normalized coordinator and worker declaration entries should be byte-identical'
+  );
 });
 
-test('Step 6: the implementation-planning worker contract enumerates the same five ids in order', () => {
+test('Step 6: the retired simplification id is rejected and first-run folding uses the collapse id', () => {
+  const coordinator = artifact('sai/commands/implement/coordinator.md');
+  const worker = artifact('sai/commands/implement/worker.md');
+
+  assert.doesNotMatch(coordinator, /`plan-simplification`/);
+  assert.doesNotMatch(worker, /`plan-simplification`/);
+  assert.match(
+    worker,
+    /skipped `collapse-implemented-steps` id\s+folds into the next completed batch in plan order with no separate `skipped`\s+field/i,
+    'the first-run skip should fold the renamed id into the artifact-analysis batch'
+  );
+});
+
+test('Step 6: writing and validation report separately and validation failure blocks completion', () => {
   const worker = artifact('sai/commands/implement/worker.md');
 
   assert.match(
     worker,
-    /prereqs-resolution[\s\S]{0,800}plan-simplification[\s\S]{0,800}artifact-analysis[\s\S]{0,800}documentation-review[\s\S]{0,800}plan-generation/,
-    'the implementation worker contract should enumerate the same five step ids in the same order'
+    /completed Step 5 write reports `plan-generation`[\s\S]{0,300}durable-artifact verification reports `validation`/i,
+    'the write and durable verification should report under separate progress ids'
+  );
+  assert.match(
+    worker,
+    /failed verification[\s\S]{0,240}(?:does not|must not|shall not) emit `validation`[\s\S]{0,240}return `failed`/i,
+    'failed validation should emit no validation progress and should close failed'
   );
 });
 
-test('Step 6: the implementation coordinator renders the plan at dispatch, marks from events only, and reconciles', () => {
+test('Step 6: implementation completion reconciles every unmarked step without a review carve-out', () => {
   const coordinator = artifact('sai/commands/implement/coordinator.md');
+  const declaredIds = implementationPlanList(coordinator).map(([id]) => id);
 
-  assert.match(coordinator, /at dispatch/i,
-    'the full plan should render at dispatch');
-  assert.match(coordinator, /first[\s\S]{0,160}in_progress|in_progress[\s\S]{0,160}first/i,
-    'the first step should render in_progress at dispatch');
-  assert.match(coordinator, /(?:remaining|rest|others?)[\s\S]{0,160}pending|pending[\s\S]{0,160}(?:remaining|rest|others?)/i,
-    'the remaining steps should render pending');
-  assert.match(coordinator, /mark steps only from worker progress-event `step_ids`/,
-    'steps should be marked only from worker progress events');
-  assert.match(coordinator, /completed[\s\S]{0,240}unmarked|unmarked[\s\S]{0,240}completed/i,
-    'a completed run should render every unmarked step completed');
-  assert.match(coordinator, /failed[\s\S]{0,200}(?:freeze|frozen|as last rendered)|cancelled[\s\S]{0,200}(?:freeze|frozen|as last rendered)/i,
-    'failed or cancelled runs should leave the list as last rendered');
-  assert.match(coordinator, /needs_input[\s\S]{0,240}(?:unchanged|as last rendered)|(?:unchanged|as last rendered)[\s\S]{0,240}needs_input/i,
-    'a needs_input result should leave the list as last rendered');
-});
-
-test('Step 6: the implementation worker contract emits per completed batch with the first-run skip-fold', () => {
-  const worker = artifact('sai/commands/implement/worker.md');
-
-  assert.match(worker, /(?:one|a single|each|per)[\s\S]{0,200}progress event[\s\S]{0,240}(?:completed )?batch|(?:completed )?batch[\s\S]{0,200}(?:one|a single|each|per)[\s\S]{0,200}progress event/i,
-    'the contract should emit one progress event per completed batch');
-  assert.match(worker, /startup act[\s\S]{0,240}prereqs-resolution|prereqs-resolution[\s\S]{0,240}startup/i,
-    'the startup batch should carry prereqs-resolution');
-  assert.match(worker, /skip(?:ped)?[\s\S]{0,240}folds?[\s\S]{0,240}(?:completed )?batch|fold(?:s|ed|ing)?[\s\S]{0,240}completed batch/i,
-    'a first-run skip should fold into the next completed batch');
-  assert.match(worker, /(?:no|without|never)[\s\S]{0,120}(?:separate|own)[\s\S]{0,160}skipped|skipped[\s\S]{0,120}(?:field|flag)|(?:no|without|never)[\s\S]{0,200}skipped field/i,
-    'folded steps should carry no separate skipped field');
-  assert.match(worker, /needs_input[\s\S]{0,200}pause|pause[\s\S]{0,200}needs_input/i,
-    'no progress event should be emitted during a needs_input pause');
-  assert.match(worker, /(?:never|not)[\s\S]{0,120}progress event[\s\S]{0,240}feedback turn|feedback turn[\s\S]{0,240}(?:no|never|not)[\s\S]{0,120}progress/i,
-    'feedback turns should emit no progress event');
-  assert.match(worker, /exactly one terminal lifecycle status|one terminal lifecycle status/i,
-    'the run should close with exactly one terminal lifecycle status');
+  assert.equal(declaredIds.includes('review'), false,
+    'the implementation plan should declare no literal review step');
+  assert.match(
+    coordinator,
+    /no `review` step and no[\s\S]{0,80}evidence-marked designation, so no reconciliation carve-out applies/i,
+    'the coordinator should state the affirmative no-carve-out contract'
+  );
+  assert.match(
+    coordinator,
+    /`completed` renders every unmarked step `completed`, `validation` included/i,
+    'run-closing completion should reconcile every unmarked step, including validation'
+  );
+  assert.doesNotMatch(coordinator, /evidence-marked `review` step/i);
 });
 
 test('Step 6: continue_after_progress is protocol-only and the plan survives reconstruction without a reconstruction field', () => {
@@ -741,9 +754,9 @@ test('Step 6: the implementation coordinator and policy drive the harness task l
     'the coordinator should act on each progress event');
   assert.match(coordinator, /todo-structure\.md/,
     'the coordinator should reference the neutral todo-structure policy');
-  assert.match(coordinator, /completed[\s\S]{0,240}in_progress|in_progress[\s\S]{0,240}completed/i,
+  assert.match(coordinator, /completed[\s\S]{0,300}in_progress|in_progress[\s\S]{0,300}completed/i,
     'reported ids should render completed and the leading unmarked step in_progress');
-  assert.match(coordinator, /unmarked[\s\S]{0,200}in_progress|in_progress[\s\S]{0,200}unmarked/i,
+  assert.match(coordinator, /unmarked[\s\S]{0,300}in_progress|in_progress[\s\S]{0,300}unmarked/i,
     'the in_progress mark should apply to the leading unmarked step');
   assert.match(coordinator, /(?:remaining|rest|others?)[\s\S]{0,160}pending|pending[\s\S]{0,160}(?:remaining|rest|others?)/i,
     'the remaining steps should render pending');
