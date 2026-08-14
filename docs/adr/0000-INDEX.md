@@ -138,6 +138,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0127 — Keep one ordered edge-case list and partition it at sliced handoff](./0127-whole-idea-edge-cases-are-partitioned-at-sliced-handoff.md)
 - [0137 — Put non-worker idea-list glue at the harness adapter seam](./0137-non-worker-idea-list-glue-at-harness-adapter-seam.md) — Refs 0077, Refs 0088, Refs 0116
 - [0137 — The stage-advancement token is the literal next-step](./0137-stage-advancement-token-literal-next-step.md)
+- [0140 — Supervised rounds invoke the Review Engine in-session](./0140-supervised-rounds-invoke-review-engine-in-session.md) — Refs ddr:0137
 
 ### `/sai-backfill`
 
@@ -247,6 +248,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0132 — Reconcile the executor capability at the canonical Fetch boundary](./0132-reconcile-executor-capability-at-fetch-boundary.md)
 - [0137 — Change Overview preserves the generation lifecycle and write boundary](./0137-change-overview-preserves-generation-lifecycle-and-write-boundary.md)
 - [0139 — Use a presence-only policy for bounded worker recovery](./0139-presence-only-bounded-recovery-policy.md)
+- [0140 — Supervised rounds invoke the Review Engine in-session](./0140-supervised-rounds-invoke-review-engine-in-session.md) — Refs ddr:0137
 
 ### Fetch resolution & path conventions
 
