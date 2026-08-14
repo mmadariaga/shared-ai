@@ -96,6 +96,8 @@ This index groups the DDRs in `docs/ddr/` by **command** and by **cross-cutting 
 - [0123 — Closure State is conversation-only and has exactly three lifecycle values](./0123-closure-state-is-conversation-only-and-has-three-lifecycle-values.md)
 - [0124 — Active exploration uses question-first closure and repeatable reminders without repeating readiness](./0124-question-first-closure-repeats-without-repeating-readiness.md)
 - [0133 — Budget dispatch literals resolve through collision-safe harness-managed roles](./0133-budget-dispatch-literals-resolve-through-collision-safe-harness-managed-roles.md)
+- [0134 — Every review-loop turn re-enters except for two complementary closing choices](./0134-every-review-loop-turn-reenters-except-two-closing-choices.md)
+- [0135 — Review findings encoding and loop navigation are separate surfaces](./0135-review-findings-encoding-and-loop-navigation-are-separate-surfaces.md)
 
 ### `/sai-backfill`
 
@@ -206,6 +208,8 @@ This index groups the DDRs in `docs/ddr/` by **command** and by **cross-cutting 
 - [0122 — The in-progress state is render-only: setting, advancing, or resolving it never marks or clears an item](./0122-in-progress-state-is-render-only.md)
 - [0123 — Closure State is conversation-only and has exactly three lifecycle values](./0123-closure-state-is-conversation-only-and-has-three-lifecycle-values.md)
 - [0124 — Active exploration uses question-first closure and repeatable reminders without repeating readiness](./0124-question-first-closure-repeats-without-repeating-readiness.md)
+- [0134 — Every review-loop turn re-enters except for two complementary closing choices](./0134-every-review-loop-turn-reenters-except-two-closing-choices.md)
+- [0135 — Review findings encoding and loop navigation are separate surfaces](./0135-review-findings-encoding-and-loop-navigation-are-separate-surfaces.md)
 
 ### Artifact metadata & routing tokens
 
