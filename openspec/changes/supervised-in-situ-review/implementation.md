@@ -126,20 +126,20 @@ test('manual navigation and worker-owned Phase Review Passes remain distinct', (
 
 *(Non-testable declarative cleanup — remove retired active specs and validate the OpenSpec graph.)*
 
-- [ ] Delete `openspec/specs/pipeline-convergence-loop/spec.md`.
-- [ ] Delete `openspec/specs/pipeline-independent-review/spec.md`.
-- [ ] Delete `openspec/specs/pipeline-iteration-bound/spec.md`.
-- [ ] Confirm that Step 2 does not create `openspec/specs/supervised-review-in-session/spec.md`, `openspec/specs/supervised-review-rounds/spec.md`, or `openspec/specs/supervised-review-reporting/spec.md`; archive synchronization owns creation of those active specs.
-- [ ] Preserve all archived specs and historical ADR/DDR records unchanged.
+- [x] Delete `openspec/specs/pipeline-convergence-loop/spec.md`.
+- [x] Delete `openspec/specs/pipeline-independent-review/spec.md`.
+- [x] Delete `openspec/specs/pipeline-iteration-bound/spec.md`.
+- [x] Confirm that Step 2 does not create `openspec/specs/supervised-review-in-session/spec.md`, `openspec/specs/supervised-review-rounds/spec.md`, or `openspec/specs/supervised-review-reporting/spec.md`; archive synchronization owns creation of those active specs.
+- [x] Preserve all archived specs and historical ADR/DDR records unchanged.
 
 ##### Step 2 Verification Checklist
 
 **Automated (agent runs before stopping):**
-- [ ] `openspec validate supervised-in-situ-review` — exits successfully.
-- [ ] `node --test test/explore-pipeline-supervision.test.js` — passes after the retired active specs are absent.
-- [ ] `node --test test/change-overview-contract.test.js` — passes.
-- [ ] `npm test` — completes with no new failures; if the known baseline failures in `test/explore-pre-crystallization-stages.test.js` remain, report their unchanged count and exact attribution rather than treating them as caused by this step.
-- [ ] `git diff --check` — reports no whitespace errors.
+- [x] `openspec validate supervised-in-situ-review` — exits successfully.
+- [x] `node --test test/explore-pipeline-supervision.test.js` — passes after the retired active specs are absent.
+- [x] `node --test test/change-overview-contract.test.js` — passes.
+- [x] `npm test` — completes with no new failures; if the known baseline failures in `test/explore-pre-crystallization-stages.test.js` remain, report their unchanged count and exact attribution rather than treating them as caused by this step.
+- [x] `git diff --check` — reports no whitespace errors.
 
 *(No Human checks — this step deletes retired OpenSpec capability documents and has no browser-rendered behavior.)*
 
@@ -183,3 +183,4 @@ This section documents deviations between the original plan and the code that wa
 |---|---|---|---|---|---|
 | 1 | writer | red | 1 | none | 51 tests, 41 pass, 10 fail, exit 1; all 10 failures are ERR_ASSERTION in the new/updated in-session-contract tests (6 new + 4 updated); remaining 41 tests green; classified valid |
 | 1 | implementation | green | 2 | assertion | fixed both prose pins (missing literal `sai/policies/artifact-feedback-gate.md` in round-contract step 3; "separate from the supervised rounds" vs pinned literal "separate from supervised rounds"); second run 52/52 pass |
+| 2 | single | green | 1 | n/a | declarative delete of three retired active specs; openspec validate exit 0; supervision 52/52, overview 54/54; npm test 950 pass / 3 fail with unchanged idea-list-render baseline |
