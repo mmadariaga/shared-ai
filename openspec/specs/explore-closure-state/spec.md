@@ -21,10 +21,9 @@ The Closure State begins only when the conversation contains a candidate idea un
 #### Scenario: Readiness does not end active exploration
 
 - **WHEN** the idea is solid enough for the existing one-time readiness signal but the user has not explicitly requested crystallization
-- **THEN** the signal SHALL be emitted according to the existing once-per-stable-idea rule
+- **THEN** the readiness statement is carried inside the closure reminder line per the once-per-stable-idea rule — never as a separate closing line — when no genuine unresolved question remains
+- **AND** when a genuine unresolved question remains, the response ends with that question and the statement defers to the next closure reminder
 - **AND** the Closure State remains `active-uncrystallized`
-- **AND** the signal MAY also satisfy the actionable closure when it contains the literal `crystallize` and states that crystallization generates the paste-ready prompt for `/sai-1-spec`
-- **AND** otherwise the response ends with the actionable closure required for that state
 
 #### Scenario: Explicit crystallization ends pre-crystallization closure
 

@@ -8,29 +8,34 @@ Define the on-demand emission mechanism for `sai-explore`'s `Ready to Propose` b
 
 ### Requirement: Pre-crystallization closure is distinct from readiness signaling
 
-The one-line readiness signal SHALL remain a once-per-stable-idea signal, while the actionable closure for an `active-uncrystallized` idea SHALL be evaluated on every successful qualifying turn. When no genuine unresolved question remains, the fallback closure reminder SHALL be emitted and SHALL repeat on each later qualifying turn; when a genuine unresolved question remains, that question takes precedence. The closure reminder SHALL NOT emit the `Ready to Propose` block or weaken the existing explicit-request gate for that block.
+The readiness statement SHALL remain a once-per-stable-idea emission carried inside the closure reminder line, while the actionable closure for an `active-uncrystallized` idea SHALL be evaluated on every successful qualifying turn. When no genuine unresolved question remains, the stage-aware closure reminder SHALL be emitted and SHALL repeat on each later qualifying turn; when a genuine unresolved question remains, that question takes precedence. The closure reminder SHALL NOT emit the `Ready to Propose` block or weaken the existing explicit-request gate for that block.
 
 #### Scenario: Repeated closure does not repeat readiness
 
-- **WHEN** a stable idea has already emitted its one-time readiness signal and a later successful turn has no genuine unresolved question
-- **THEN** `sai-explore` SHALL repeat the actionable `crystallize` reminder
-- **AND** it does not re-emit the readiness signal
+- **WHEN** a stable idea has already emitted its once-per-stable-idea readiness statement and a later successful turn has no genuine unresolved question
+- **THEN** `sai-explore` SHALL repeat the actionable closure reminder for the current stage
+- **AND** it does not re-emit the readiness statement
 - **AND** it does not emit a `Ready to Propose` block without an explicit request
 
 #### Scenario: A question takes precedence over the reminder
 
 - **WHEN** a later successful active-uncrystallized turn has a genuine unresolved question
 - **THEN** the response ends with that question
-- **AND** it does not manufacture or append a fallback reminder solely because readiness tracking suppresses the readiness signal
+- **AND** it does not manufacture or append a fallback reminder solely because readiness tracking suppresses the readiness statement
 
 ### Requirement: Readiness signal replaces state-triggered auto-emission
 
-When the explored idea becomes solid, `sai-explore` (`sai/commands/explore/instructions.md`) SHALL NOT auto-print the `Ready to Propose` block. Instead it SHALL emit a single one-line readiness signal indicating the idea is solid enough to crystallize on request. "Solid" is judged at the same qualitative threshold as today's "idea is clear" wording in §5/§6; only the reaction changes (a signal instead of the block). This gate applies to both the single-change protocol (§5) and the sliced protocol (§6).
+When the explored idea becomes solid, `sai-explore` (`sai/commands/explore/instructions.md`) SHALL NOT auto-print the `Ready to Propose` block. Instead, the first closure reminder emitted after solidification SHALL carry the readiness statement — the one-line maturity judgment that the idea is solid enough to crystallize on request — inside the reminder line, never as a separate closing line and never by itself ending a turn. When the idea crystallizes before any closure reminder has fired (for example, a solidification turn that ended with a genuine question followed by a direct crystallize request), the readiness statement SHALL NOT be emitted: the explicit crystallization request itself conveys the trigger action. "Solid" is judged at the same qualitative threshold as today's "idea is clear" wording in §5/§6; only the reaction changes (a statement inside the reminder instead of the block). This gate applies to both the single-change protocol (§5) and the sliced protocol (§6).
 
-#### Scenario: solid idea produces a signal, not the block
+#### Scenario: solid idea produces the reminder with the statement, not the block
 
 - **WHEN** the idea under discussion becomes solid enough that today's `sai-explore` would have printed the `Ready to Propose` block
-- **THEN** `sai-explore` emits a single one-line readiness signal and does NOT print the `Ready to Propose` block
+- **THEN** `sai-explore` emits the closure reminder carrying the readiness statement and does NOT print the `Ready to Propose` block
+
+#### Scenario: crystallization before any reminder drops the statement
+
+- **WHEN** the idea solidifies on a turn that ends with a genuine question and the user then explicitly requests crystallization before any closure reminder fires
+- **THEN** the readiness statement is not emitted and the explicit request itself is the trigger action
 
 #### Scenario: continued refinement does not re-print the block
 
@@ -39,30 +44,30 @@ When the explored idea becomes solid, `sai-explore` (`sai/commands/explore/instr
 
 ### Requirement: Readiness signal is actionable
 
-The one-line readiness signal SHALL communicate how the user can request the block — it names the action that triggers emission (for example, telling the user to ask to crystallize) — so that under full on-demand emission the mechanism is discoverable and the user does not wait for a block that will never auto-appear. The verbatim signal string remains unpinned by this change; only the requirement that it convey the trigger action is normative.
+The closure reminder carrying the readiness statement SHALL communicate how the user can advance toward the block: it names the token that advances from the user's current stage of the pre-crystallization progression, so that under full on-demand emission the mechanism is discoverable and the user does not wait for a block that will never auto-appear. The verbatim reminder wording remains unpinned by this change; only the requirement that the reminder convey the advancement action is normative.
 
-#### Scenario: signal names how to get the block
+#### Scenario: the reminder names how to advance
 
-- **WHEN** `sai-explore` emits the one-line readiness signal
-- **THEN** the signal communicates how the user can request the `Ready to Propose` block, without pinning a specific verbatim wording
+- **WHEN** `sai-explore` emits the closure reminder carrying the readiness statement
+- **THEN** the reminder communicates how the user can advance toward the `Ready to Propose` block, without pinning a specific verbatim wording
 
 ### Requirement: Readiness signal fires once per stable idea
 
-The one-line readiness signal SHALL fire at most once per stable idea, reusing the in-conversation Persistence pattern of the §3 language gate: the agent tracks the current idea in-conversation, does NOT re-emit the signal on later turns while the idea remains substantially the same, and re-fires the signal only when the idea materially changes into a new stable idea. This tracking state is held in-conversation only and SHALL NOT be written to any file or configuration.
+The readiness statement SHALL be carried by the closure reminder at most once per stable idea, reusing the in-conversation Persistence pattern of the §3 language gate: the agent tracks the current idea in-conversation, does NOT re-emit the statement on later reminder repetitions while the idea remains substantially the same, and re-fires the statement only when the idea materially changes into a new stable idea. This tracking state is held in-conversation only and SHALL NOT be written to any file or configuration.
 
-#### Scenario: signal does not repeat while the idea is stable
+#### Scenario: the statement does not repeat while the idea is stable
 
-- **WHEN** the idea was already judged solid and the readiness signal already fired, and the user continues discussing the same idea
-- **THEN** `sai-explore` does not re-emit the readiness signal on the following turns
+- **WHEN** the idea was already judged solid and the readiness statement already fired inside a closure reminder, and the user continues discussing the same idea
+- **THEN** later closure reminders repeat the stage's token guidance without re-emitting the readiness statement
 
-#### Scenario: signal re-fires for a materially different idea
+#### Scenario: the statement re-fires for a materially different idea
 
 - **WHEN** the discussion shifts to a materially different idea that then becomes solid
-- **THEN** `sai-explore` may emit the readiness signal once for the new stable idea
+- **THEN** `sai-explore` may emit the readiness statement once for the new stable idea, inside its first closure reminder
 
 #### Scenario: tracking state is never persisted
 
-- **WHEN** the readiness signal fires and its per-idea tracking is recorded
+- **WHEN** the readiness statement fires and its per-idea tracking is recorded
 - **THEN** that tracking is held in-conversation only and is not written to any artifact, configuration file, or other on-disk state
 
 ### Requirement: Full block is emitted only on explicit user request

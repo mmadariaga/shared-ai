@@ -22,7 +22,7 @@ While a candidate idea is under active exploration (Closure State `active-uncrys
 
 ### Requirement: Stages advance only on explicit user intent
 
-The stage progression SHALL advance only when the user explicitly requests it: the literal token `next-step` (bare, optionally with trivial punctuation or a greeting, or as the turn's dominant intent — the same recognition machinery as the `review-loop` token), or clear natural-language intent naming the next stage or requesting crystallization. Mere containment of the string `next-step` SHALL NOT fire the token: it fires only when the turn is a bare token or when advancing the progression is the turn's dominant intent, and a turn that negates, defers, quotes, or discusses the token SHALL NOT advance the progression. `sai-explore` SHALL NOT advance a stage on its own judgment that the idea is solid or ready. The sole exception is the deterministic empty-set rule of the implementation-details stage (`explore-implementation-details`), which is a content-based rule, not a readiness judgment. The one-line readiness signal (`explore-crystallization-on-demand`) does not advance the stages.
+The stage progression SHALL advance only when the user explicitly requests it: the literal token `next-step` (bare, optionally with trivial punctuation or a greeting, or as the turn's dominant intent — the same recognition machinery as the `review-loop` token), clear natural-language intent naming the next stage or requesting crystallization, or a semantic confirmation of the proposed list at the `Review edge cases` or `Implementation details` stages (`explore-edge-case-review`, `explore-implementation-details`), which records the agreed list and advances the stage within the same turn. Mere containment of the string `next-step` SHALL NOT fire the token: it fires only when the turn is a bare token or when advancing the progression is the turn's dominant intent, and a turn that negates, defers, quotes, or discusses the token SHALL NOT advance the progression. `sai-explore` SHALL NOT advance a stage on its own judgment that the idea is solid or ready. The sole exceptions are the deterministic empty-set rules of the implementation-details stage (`explore-implementation-details`) and the edge-case review stage (`explore-edge-case-review`), which are content-based rules, not readiness judgments. The one-line readiness signal (`explore-crystallization-on-demand`) does not advance the stages.
 
 #### Scenario: The next token advances the progression
 
@@ -33,6 +33,11 @@ The stage progression SHALL advance only when the user explicitly requests it: t
 
 - **WHEN** the user requests a stage in natural language, such as asking to review edge cases or move on to implementation details
 - **THEN** the progression advances to that stage on that explicit intent
+
+#### Scenario: Semantic confirmation advances the stage in the same turn
+
+- **WHEN** the user semantically confirms the proposed list at the `Review edge cases` or `Implementation details` stage
+- **THEN** the list is recorded as agreed and the progression advances to the next stage within the same turn
 
 #### Scenario: The agent's solidity judgment never advances a stage
 
@@ -46,7 +51,7 @@ The stage progression SHALL advance only when the user explicitly requests it: t
 
 ### Requirement: The edge-case review is the second stage and keeps its mandatory gate
 
-The `Review edge cases` stage SHALL run the existing edge-case review when the user advances into it (`explore-edge-case-review`): numbered `E1`…`En` scope-boundary proposals, one plain conversational semantic agreement question, at most once per substantially unchanged idea. The mandatory gate SHALL be preserved (`explore-edge-case-gate`): `sai-explore` SHALL NOT emit a `Ready to Propose` block before semantic agreement, an explicit premature crystallize request SHALL enter the review with no skip path, and `--fast-track` SHALL NOT auto-approve, skip, or weaken this gate.
+The `Review edge cases` stage SHALL run the existing edge-case review when the user advances into it (`explore-edge-case-review`): numbered `E1`…`En` scope-boundary proposals, one plain conversational semantic agreement question, at most once per substantially unchanged idea. When no in-scope edge case bounds the proposed change, the deterministic empty-set rule of `explore-edge-case-review` SHALL apply instead: the agreed empty list is recorded and the progression advances without the agreement question. The mandatory gate SHALL be preserved (`explore-edge-case-gate`): `sai-explore` SHALL NOT emit a `Ready to Propose` block before semantic agreement, an explicit premature crystallize request SHALL enter the review with no skip path, and `--fast-track` SHALL NOT auto-approve, skip, or weaken this gate.
 
 #### Scenario: Advancing to the stage runs the review
 
@@ -60,12 +65,24 @@ The `Review edge cases` stage SHALL run the existing edge-case review when the u
 
 ### Requirement: The Crystallize stage contains slicing and both language gates
 
-The `Crystallize` stage SHALL contain the slicing assessment (single-vs-sliced routing and integration-point friction, item 4) and both language gates — the crystallization language gate (item 8) and the overview-language gate (`explore-overview-language-gate`) — which run when the user explicitly requests crystallization, before any `Ready to Propose` block prints. `--fast-track` SHALL bypass only the two language gates and SHALL NOT skip, weaken, or auto-complete any stage. An explicit crystallize request made from an earlier stage SHALL first run the mandatory edge-case review when the review has not reached agreement (no skip path), then proceed through the slicing assessment and both language gates.
+The `Crystallize` stage SHALL contain the slicing assessment (single-vs-sliced routing and integration-point friction, item 4) and both language gates — the crystallization language gate (item 8) and the overview-language gate (`explore-overview-language-gate`) — which run when the user explicitly requests crystallization, before any `Ready to Propose` block prints. Advancing into the `Crystallize` stage SHALL itself count as an explicit crystallization request: the slicing assessment and both language gates run on stage entry, making `next-step` and `crystallize` equivalent requests from the `Implementation details` stage. A deterministic empty-set advance that completes the `Review edge cases` or `Implementation details` stage SHALL advance into the following stage within the same turn, and SHALL therefore count as the explicit crystallization request when it advances into the `Crystallize` stage. `--fast-track` SHALL bypass only the two language gates and SHALL NOT skip, weaken, or auto-complete any stage. An explicit crystallize request made from an earlier stage SHALL first run the mandatory edge-case review when the review has not reached agreement (no skip path), then proceed through the slicing assessment and both language gates.
 
 #### Scenario: Crystallization runs slicing then both gates
 
-- **WHEN** the user explicitly requests crystallization while in the `Crystallize` stage
+- **WHEN** the user explicitly requests crystallization, including by advancing into the `Crystallize` stage
 - **THEN** the slicing assessment runs first, then gate 8 and gate 9 fire in order, and only then does the `Ready to Propose` block print
+
+#### Scenario: Natural-language entry into the stage crystallizes
+
+- **WHEN** the user names the `Crystallize` stage in natural language from the `Implementation details` stage, such as asking to move on to the Crystallize stage
+- **THEN** the advance counts as the explicit crystallization request
+- **AND** the slicing assessment and both language gates run before any `Ready to Propose` block prints
+
+#### Scenario: An empty-list chain reaches crystallization in the same turn
+
+- **WHEN** the in-scope edge-case list and the implementation-details list are both empty and the user advances the progression by token, natural language, or confirmation
+- **THEN** the deterministic empty-set rules advance the progression through the `Review edge cases` and `Implementation details` stages within the same turn
+- **AND** the `Crystallize` stage entry counts as the explicit crystallization request, running the slicing assessment and both language gates before any `Ready to Propose` block prints
 
 #### Scenario: Premature crystallize enters the review before slicing
 
@@ -77,6 +94,26 @@ The `Crystallize` stage SHALL contain the slicing assessment (single-vs-sliced r
 - **WHEN** `--fast-track` is active
 - **THEN** both language gates select their defaults without questions
 - **AND** the stages themselves — including the mandatory edge-case review — are neither skipped nor weakened
+
+### Requirement: A materially changed idea resets the stage progression
+
+When the idea under exploration materially changes into a new stable idea, `sai-explore` SHALL reset the stage progression to the `Explore change` stage: the stage TODO re-renders with `Explore change` as the `in_progress` stage and the remaining stages `pending`, completed stages are no longer rendered as completed, and previously agreed lists are discarded for the new idea's progression. The reset SHALL NOT re-run the edge-case review by itself: a fresh review is entered only when the new idea advances into the `Review edge cases` stage or requests crystallization prematurely (`explore-edge-case-review`). The reset SHALL NOT change the Closure State handling of the new idea (a new `active-uncrystallized` lifecycle, `explore-closure-state`).
+
+#### Scenario: A materially changed idea re-renders the TODO from stage 1
+
+- **WHEN** exploration materially changes the current idea into a new stable idea
+- **THEN** the stage progression resets to `Explore change`
+- **AND** the TODO re-renders once with `Explore change` `in_progress` and the other three stages `pending`
+
+#### Scenario: Agreed lists do not carry over the reset
+
+- **WHEN** the progression resets for a materially changed idea
+- **THEN** the previously agreed edge-case list and implementation-details list are discarded and are re-surfaced only when the new idea reaches those stages again
+
+#### Scenario: The reset alone does not start a fresh review
+
+- **WHEN** a materially changed idea resets the progression but the user has not advanced into `Review edge cases` or requested crystallization
+- **THEN** no edge-case review runs for the new idea yet
 
 ### Requirement: The stage TODO clears at crystallization
 

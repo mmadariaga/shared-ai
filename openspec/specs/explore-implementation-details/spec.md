@@ -8,12 +8,17 @@ TBD
 
 ### Requirement: The implementation-details stage surfaces and confirms technical decisions
 
-When the user advances to the `Implementation details` stage of the pre-crystallization staged progression (`explore-pre-crystallization-stages`), `sai-explore` SHALL surface the technical decisions surfaced during exploration as numbered proposed statements `I1` through `In`, followed by one plain conversational confirmation question asking whether the list accurately captures the agreed technical decisions or needs adjustment. The question SHALL follow the `@sai/policies/question-context.md` anatomy, SHALL be understandable in the conversation's ambient language, SHALL NOT depend on a fixed confirmation phrase, and SHALL NOT use a native yes/no option picker. Only technical decisions that direct or constrain the implementation qualify as `I` items — the "what"; the rationale behind a decision and rejected alternatives SHALL NOT be surfaced as `I` items, as they belong in the block's **Decisions & Rationale** and **Alternatives Considered** sections.
+When the user advances to the `Implementation details` stage of the pre-crystallization staged progression (`explore-pre-crystallization-stages`), `sai-explore` SHALL surface the technical decisions surfaced during exploration as numbered proposed statements `I1` through `In`, followed by one plain conversational confirmation question asking whether the list accurately captures the agreed technical decisions or needs adjustment. The question SHALL name the `next-step` token as the advancement action — confirming completes the stage and advances into the `Crystallize` stage, which counts as the explicit crystallization request (`explore-pre-crystallization-stages`). The question SHALL follow the `@sai/policies/question-context.md` anatomy, SHALL be understandable in the conversation's ambient language, SHALL NOT depend on a fixed confirmation phrase, and SHALL NOT use a native yes/no option picker. Only technical decisions that direct or constrain the implementation qualify as `I` items — the "what"; the rationale behind a decision and rejected alternatives SHALL NOT be surfaced as `I` items, as they belong in the block's **Decisions & Rationale** and **Alternatives Considered** sections.
 
 #### Scenario: Advancing to the stage surfaces the decisions
 
 - **WHEN** the user advances into `Implementation details` and exploration surfaced technical decisions
 - **THEN** the decisions are presented as numbered `I1`…`In` statements with one confirmation question in the ambient language
+
+#### Scenario: The question names the advancement action
+
+- **WHEN** the implementation-details confirmation question is asked
+- **THEN** the question names the `next-step` token as the action that advances the progression
 
 #### Scenario: Rationale is not surfaced as an I item
 
@@ -22,12 +27,12 @@ When the user advances to the `Implementation details` stage of the pre-crystall
 
 ### Requirement: Confirmation converges the implementation-details stage
 
-When the user semantically confirms the proposed list, `sai-explore` SHALL record the current ordered list as agreed and complete the stage. A disagreement, removal, addition, or material revision SHALL update and renumber the proposed list consecutively, keep the stage open, and ask the confirmation question again. An ambiguous response SHALL be treated as continued discussion and the question SHALL be clarified and re-asked.
+When the user semantically confirms the proposed list, `sai-explore` SHALL record the current ordered list as agreed, complete the stage, and advance the progression to the `Crystallize` stage within the same turn. A disagreement, removal, addition, or material revision SHALL update and renumber the proposed list consecutively, keep the stage open, and ask the confirmation question again. An ambiguous response SHALL be treated as continued discussion and the question SHALL be clarified and re-asked.
 
-#### Scenario: Semantic confirmation closes the stage
+#### Scenario: Semantic confirmation closes the stage and advances
 
 - **WHEN** the user communicates that the proposed technical-decision list is correct
-- **THEN** the list is recorded as agreed and the stage completes
+- **THEN** the list is recorded as agreed, the stage completes, and the progression advances to the `Crystallize` stage within the same turn
 
 #### Scenario: A requested change iterates the list
 
