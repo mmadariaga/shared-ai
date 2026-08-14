@@ -44,6 +44,9 @@ const OPENCODE_AGENTS = [
 ];
 
 const CLAUDE_AGENTS = [
+  'budget-executor',
+  'budget-explorer',
+  'budget-subagent',
   'sai-1-spec-proposal-worker',
   'sai-2-design-worker',
   'sai-3-implementation-worker',
@@ -462,12 +465,12 @@ test('opencode enumerateWorkers returns exactly the 10 managed workers', () => {
     'opencode agents should be exactly the 10 managed names');
 });
 
-test('claude enumerateWorkers returns exactly the 7 routed workers', () => {
+test('claude enumerateWorkers returns exactly the 10 managed agents', () => {
   const adapter = createClaudeAdapter({ repoRoot: REPO_ROOT });
   const agents = adapter.enumerateWorkers();
-  assert.equal(agents.length, 7, 'exactly 7 agents should enumerate for claude');
+  assert.equal(agents.length, 10, 'exactly 10 agents should enumerate for claude');
   assert.deepEqual([...agents].sort(), [...CLAUDE_AGENTS].sort(),
-    'claude agents should be exactly the 7 routed workers');
+    'claude agents should be exactly the 10 managed names: seven workers plus the three budget agents');
 });
 
 test('Claude settings selection asks one combined frame from the real catalog and resolves the confirmed pair', async () => {
@@ -2920,6 +2923,39 @@ test('Step 2 first Claude materialization clones the source, preserves unrelated
   }
 });
 
+test('Step 2 a Claude budget agent is a customization target: haiku override omits effort and leaves the global seed unchanged', () => {
+  const fixture = makePersistenceFixture();
+  const budgetAgent = 'budget-explorer';
+  try {
+    const source = claudeAgentSource(budgetAgent);
+    writeGlobalAgent(fixture, 'claude', budgetAgent, source);
+    const globalSeedPath = path.join(fixture.claudeGlobalRoot, `${budgetAgent}.md`);
+    const globalBefore = fs.readFileSync(globalSeedPath);
+    const adapter = createClaudeAdapter({
+      repoRoot: fixture.packageRoot,
+      projectPath: fixture.projectPath,
+      packageRoot: fixture.packageRoot,
+      globalAgentRoot: fixture.claudeGlobalRoot,
+    });
+    assert.ok(adapter.enumerateWorkers().includes(budgetAgent),
+      'the customization menu should offer the budget-explorer agent');
+
+    const result = adapter.createLocalOverride(budgetAgent, { model: 'haiku' });
+    const destination = path.join(fixture.projectPath, '.claude', 'agents', `${budgetAgent}.md`);
+    assert.equal(result.status, 'persisted');
+    assert.equal(result.destination, destination);
+    const written = fs.readFileSync(destination, 'utf8');
+    assert.match(written, /^model: haiku$/m,
+      'the project-local override should pin model: haiku');
+    assert.doesNotMatch(written, /^effort:/m,
+      'the project-local override must omit the top-level effort line');
+    assert.deepEqual(fs.readFileSync(globalSeedPath), globalBefore,
+      'the user-global seed must remain byte-unchanged');
+  } finally {
+    fs.rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
+
 test('Step 2 existing Claude customization preserves body and non-tunable frontmatter while removing only top-level effort for haiku', () => {
   const fixture = makePersistenceFixture();
   try {
@@ -3078,7 +3114,11 @@ test('customization inventory is matrix-derived: exactly seven worker agents per
         .map(projection => path.basename(projection.destinationPath, '.md'));
       if (harness === 'claude') {
         assert.equal(allAgentNames.some(name => ['budget', 'executor', 'explore'].includes(name)), false,
-          'claude customization inventory should be exactly the seven matrix agents');
+          'claude customization inventory should not include the opencode-only generic basenames');
+        assert.equal(allAgentNames.length, 10,
+          'claude customization inventory should contain exactly ten managed agents: seven workers plus the three budget agents');
+        assert.ok(['budget-executor', 'budget-explorer', 'budget-subagent'].every(name => allAgentNames.includes(name)),
+          'claude customization inventory should include the three budget agents');
       } else {
         assert.equal(['budget', 'executor', 'explore'].every(name => allAgentNames.includes(name)), true,
           'opencode customization inventory should keep its three support agents beside the matrix agents');

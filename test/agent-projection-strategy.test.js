@@ -19,6 +19,8 @@ const WORKER_NAMES = [
   'sai-8-accessibility-worker',
 ];
 
+const CLAUDE_GENERIC_AGENTS = ['budget-explorer', 'budget-executor', 'budget-subagent'];
+
 function claudeSourceBytes() {
   return '---\ndescription: Source command\nmodel: source-model\neffort: source-effort\n---\n\nSource body.\n';
 }
@@ -128,6 +130,52 @@ test('the manifest declares 14 matrix tunable-seed managed agent projections', (
   }
   assert.equal(allAgentProjections.length, 14,
     'the manifest should declare 14 matrix managed agent projections across both harnesses');
+});
+
+test('the manifest declares exactly 20 tunable-seed agents projections, exactly 10 targeting Claude', () => {
+  const manifest = loadInstallManifest(path.join(__dirname, '..'));
+  const agentRules = manifest.projections
+    .filter(projection => projection.destination && projection.destination.class === 'agents');
+  const tunableAgentRules = agentRules.filter(projection => projection.strategy === 'tunable-seed');
+  assert.equal(tunableAgentRules.length, 20,
+    'the manifest should declare exactly 20 tunable-seed agent-class projections');
+  assert.equal(
+    tunableAgentRules.filter(projection => projection.harnesses.includes('claude')).length, 10,
+    'exactly 10 tunable-seed agent-class projections should target Claude');
+  assert.equal(
+    tunableAgentRules.filter(projection => projection.harnesses.includes('opencode')).length, 10,
+    'exactly 10 tunable-seed agent-class projections should target opencode');
+});
+
+test('the three new Claude generic-agent projections are Claude-only, destination-unique, and tunable-seed', () => {
+  const manifest = loadInstallManifest(path.join(__dirname, '..'));
+  const agentRules = manifest.projections
+    .filter(projection => projection.destination && projection.destination.class === 'agents');
+  const claudeAgentRules = agentRules.filter(projection => projection.harnesses.includes('claude'));
+  const claudeBasenames = claudeAgentRules.map(projection => path.basename(projection.destination.path, '.md'));
+  for (const name of CLAUDE_GENERIC_AGENTS) {
+    assert.equal(
+      agentRules.filter(projection => path.basename(projection.destination.path, '.md') === name).length, 1,
+      `the ${name} Claude destination basename should occur exactly once across the manifest`);
+    assert.ok(claudeBasenames.includes(name), `Claude should declare a ${name} agent projection`);
+  }
+  for (const rule of claudeAgentRules) {
+    assert.equal(rule.strategy, 'tunable-seed',
+      `every Claude agent projection, including ${rule.id}, should use the tunable-seed strategy`);
+  }
+});
+
+test('no Claude agent projection field names a tunable key', () => {
+  const manifest = loadInstallManifest(path.join(__dirname, '..'));
+  const claudeAgentRules = manifest.projections
+    .filter(projection => projection.destination && projection.destination.class === 'agents' &&
+      projection.harnesses.includes('claude'));
+  for (const rule of claudeAgentRules) {
+    for (const key of ['model', 'effort']) {
+      assert.equal(Object.hasOwn(rule, key), false,
+        `the ${rule.id} agent projection must not carry a ${key} field`);
+    }
+  }
 });
 
 test('no managed agent projection declares owned-copy', () => {

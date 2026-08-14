@@ -21,6 +21,8 @@ const WORKER_NAMES = [
   'sai-8-accessibility-worker',
 ];
 
+const CLAUDE_GENERIC_AGENTS = ['budget-explorer', 'budget-executor', 'budget-subagent'];
+
 const WORKER_PHASE = {
   'sai-1-spec-proposal-worker': 'spec',
   'sai-2-design-worker': 'design',
@@ -324,7 +326,7 @@ test('a body-divergent managed destination is kept as a project-local override',
 test('Claude and opencode uninstall enumerate their managed agent destinations', () => {
   const genericNames = ['explore', 'executor', 'budget'];
   for (const [harness, install, enumerate, expectedCount] of [
-    ['claude', flow.installClaude, enumerateClaude, 7],
+    ['claude', flow.installClaude, enumerateClaude, 10],
     ['opencode', flow.installOpencode, enumerateOpencode, 10],
   ]) {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), `sai-tunable-${expectedCount}-${harness}-`));
@@ -344,12 +346,29 @@ test('Claude and opencode uninstall enumerate their managed agent destinations',
         assert.ok(WORKER_NAMES.every(name => basenames.includes(name)),
           'opencode agent destinations should still cover the seven sai worker filenames');
       } else {
-        assert.deepEqual([...basenames].sort(), [...WORKER_NAMES].sort(),
-          `${harness} agent destinations should cover the seven sai worker filenames`);
+        assert.ok(WORKER_NAMES.every(name => basenames.includes(name)),
+          'claude agent destinations should still cover the seven sai worker filenames');
+        assert.ok(CLAUDE_GENERIC_AGENTS.every(name => basenames.includes(name)),
+          'claude agent destinations should include the three budget agent basenames');
       }
     } finally {
       fs.rmSync(dir, { recursive: true, force: true });
     }
+  }
+});
+
+test('Claude uninstall enumerates the three budget-agent destinations as managed agents', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-tunable-claude-budget-'));
+  try {
+    flow.installClaude(dir);
+    const agentEntries = enumerateClaude(dir).filter(entry => entry.assetType === 'claude-managed-agent');
+    const basenames = agentEntries.map(entry => path.basename(entry.dest, '.md'));
+    for (const name of CLAUDE_GENERIC_AGENTS) {
+      assert.ok(basenames.includes(name),
+        `Claude should enumerate the ${name} managed agent destination`);
+    }
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
   }
 });
 

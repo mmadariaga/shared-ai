@@ -27,6 +27,22 @@ const WORKER_BINDINGS = [
   ['accessibility', 'sai-8-accessibility-worker', 'accessibility-worker.md'],
 ];
 
+const WORKER_NAMES = [
+  'sai-1-spec-proposal-worker',
+  'sai-2-design-worker',
+  'sai-3-implementation-worker',
+  'sai-5-review-worker',
+  'sai-6-security-worker',
+  'sai-7-performance-worker',
+  'sai-8-accessibility-worker',
+];
+
+const CLAUDE_GENERIC_AGENTS = {
+  'budget-explorer': 'explore',
+  'budget-executor': 'executor',
+  'budget-subagent': 'budget',
+};
+
 const UTILITY_COMMANDS = {
   'sai-4-apply': 'apply',
   'sai-archive': 'archive',
@@ -343,10 +359,11 @@ test('Claude managed agents install with one frontmatter block and one canonical
       root: tmpDir,
     };
     const tunable = expandInstallManifest(manifest, { harness: 'claude', repoRoot, destinationRoot })
-      .filter(projection => projection.strategy === 'tunable-seed');
-    assert.equal(tunable.length, 7, 'the manifest should declare 7 tunable-seed Claude agent projections');
+      .filter(projection => projection.strategy === 'tunable-seed' &&
+        WORKER_NAMES.includes(path.basename(projection.destinationPath, '.md')));
+    assert.equal(tunable.length, 7, 'the manifest should declare 7 tunable-seed Claude worker agent projections');
     assert.ok(tunable.every(projection => projection.ownership === 'managed'),
-      'every tunable-seed Claude agent projection should be managed');
+      'every tunable-seed Claude worker projection should be managed');
 
     installClaude(tmpDir);
     for (const projection of tunable) {
@@ -369,6 +386,51 @@ test('Claude managed agents install with one frontmatter block and one canonical
       assert.equal(fs.existsSync(ownerPath), false,
         `fresh installs must not create owner sidecars: ${projection.destinationPath}`);
     }
+  } finally {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+});
+
+test('Claude installer projects the three budget-agent destinations with role-matched policy fetches', () => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-claude-budget-roles-'));
+  try {
+    installClaude(tmpDir);
+    for (const [agent, role] of Object.entries(CLAUDE_GENERIC_AGENTS)) {
+      const agentPath = path.join(tmpDir, 'agents', `${agent}.md`);
+      assert.equal(fs.existsSync(agentPath), true,
+        `the ${agent} managed agent should be installed`);
+      const text = fs.readFileSync(agentPath, 'utf8').replaceAll('\r\n', '\n');
+      assert.equal(
+        (text.match(new RegExp(`Fetch @sai/policies/${role}-agent\\.md`, 'g')) || []).length, 1,
+        `${agent} should carry exactly one role-matched policy Fetch for ${role}`
+      );
+      assert.equal((text.match(/Fetch @sai\/commands\//g) || []).length, 0,
+        `${agent} must not carry a routed worker Fetch`);
+    }
+  } finally {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+});
+
+test('installClaude replaces a foreign Claude budget-agent destination while preserving its tunables and emitting a notice', () => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-claude-budget-foreign-'));
+  const agentPath = path.join(tmpDir, 'agents', 'budget-explorer.md');
+  try {
+    fs.mkdirSync(path.dirname(agentPath), { recursive: true });
+    fs.writeFileSync(agentPath, '---\ndescription: foreign budget agent\neffort: foreign-effort\nmodel: foreign-model\n---\n\nforeign body\n');
+    const notices = captureNotices(() => {
+      assert.doesNotThrow(() => installClaude(tmpDir),
+        'installClaude should not throw on a foreign budget-agent destination');
+    });
+    const after = fs.readFileSync(agentPath, 'utf8');
+    assert.ok(after.includes('model: foreign-model'),
+      'the foreign destination model should be preserved across the managed install');
+    assert.ok(after.includes('effort: foreign-effort'),
+      'the foreign destination effort should be preserved across the managed install');
+    assert.ok(!after.includes('foreign body'),
+      'the foreign body should be replaced by the managed source content');
+    assert.ok(notices.some(message => message.includes(agentPath)),
+      'the managed replacement should be announced with a stdout notice naming the file');
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }
@@ -577,7 +639,12 @@ test('Claude installer consumes exactly the seven matrix worker bindings and age
     const agentNames = active
       .filter(projection => projection.destinationPath.startsWith(destinationRoot.agents))
       .map(projection => path.basename(projection.destinationPath, '.md'));
-    assert.equal(agentNames.length, 7, 'Claude should project exactly seven managed agents');
+    assert.equal(agentNames.length, 10, 'Claude should project exactly ten managed agents');
+    for (const name of Object.keys(CLAUDE_GENERIC_AGENTS)) {
+      assert.ok(agentNames.includes(name), `Claude should project the ${name} managed agent`);
+    }
+    assert.ok(WORKER_NAMES.every(name => agentNames.includes(name)),
+      'Claude should still project every routed worker agent');
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }

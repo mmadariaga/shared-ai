@@ -725,6 +725,51 @@
       }
     },
     {
+      "id": "claude-budget-explorer",
+      "source": "agents/claude/budget-explorer.md",
+      "destination": {
+        "class": "agents",
+        "path": "budget-explorer.md"
+      },
+      "harnesses": [
+        "claude"
+      ],
+      "strategy": "tunable-seed",
+      "recursive": false,
+      "ownership": "managed",
+      "drift": "content"
+    },
+    {
+      "id": "claude-budget-executor",
+      "source": "agents/claude/budget-executor.md",
+      "destination": {
+        "class": "agents",
+        "path": "budget-executor.md"
+      },
+      "harnesses": [
+        "claude"
+      ],
+      "strategy": "tunable-seed",
+      "recursive": false,
+      "ownership": "managed",
+      "drift": "content"
+    },
+    {
+      "id": "claude-budget-subagent",
+      "source": "agents/claude/budget-subagent.md",
+      "destination": {
+        "class": "agents",
+        "path": "budget-subagent.md"
+      },
+      "harnesses": [
+        "claude"
+      ],
+      "strategy": "tunable-seed",
+      "recursive": false,
+      "ownership": "managed",
+      "drift": "content"
+    },
+    {
       "id": "opencode-sai-1-spec-proposal-worker",
       "source": "agents/opencode/worker-template.md",
       "destination": {

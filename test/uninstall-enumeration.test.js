@@ -193,13 +193,21 @@ test('install and uninstall inventories are exact and deterministic for every su
 
       if (harness === 'claude') {
         const managedAgents = entries.filter(entry => entry.assetType === 'claude-managed-agent');
-        assert.equal(managedAgents.length, Object.keys(MANAGED_WORKERS).length);
+        assert.equal(managedAgents.length, Object.keys(MANAGED_WORKERS).length + 3,
+          'Claude should enumerate its seven routed workers plus the three budget generic agents');
         for (const worker of Object.values(MANAGED_WORKERS)) {
           const agentPath = path.join(destinationRoot.agents, worker.claude.agent);
           const entry = managedAgents.find(candidate => candidate.dest === agentPath);
           assert.ok(entry, `Claude should enumerate ${worker.claude.agent}`);
           assert.deepEqual(entry.tunableKeys, ['model', 'effort'],
             'Claude managed agent entries should declare their tunable keys');
+        }
+        for (const agent of ['budget-explorer.md', 'budget-executor.md', 'budget-subagent.md']) {
+          const agentPath = path.join(destinationRoot.agents, agent);
+          const entry = managedAgents.find(candidate => candidate.dest === agentPath);
+          assert.ok(entry, `Claude should enumerate ${agent}`);
+          assert.deepEqual(entry.tunableKeys, ['model', 'effort'],
+            'Claude budget generic agent entries should declare their tunable keys');
         }
       }
 

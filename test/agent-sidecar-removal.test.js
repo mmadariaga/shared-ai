@@ -12,6 +12,18 @@ const { enumerateClaude, runDeletion } = require('../bin/uninstall-flow.js');
 
 const HEX64 = /^[0-9a-f]{64}$/;
 
+const WORKER_NAMES = [
+  'sai-1-spec-proposal-worker',
+  'sai-2-design-worker',
+  'sai-3-implementation-worker',
+  'sai-5-review-worker',
+  'sai-6-security-worker',
+  'sai-7-performance-worker',
+  'sai-8-accessibility-worker',
+];
+
+const CLAUDE_GENERIC_AGENTS = ['budget-explorer', 'budget-executor', 'budget-subagent'];
+
 function agentProjection(dir, workerName = 'sai-5-review-worker.md') {
   const sourcePath = path.join(dir, 'sources', workerName);
   const destinationPath = path.join(dir, 'agents', workerName);
@@ -111,9 +123,33 @@ test('enumerateClaude yields managed agent entries without owner sidecar destina
   try {
     flow.installClaude(dir);
     const entries = enumerateClaude(dir).filter(entry => entry.assetType === 'claude-managed-agent');
-    assert.equal(entries.length, 7);
+    assert.equal(entries.length, 10,
+      'Claude uninstall should enumerate 10 managed agent destinations: the seven workers plus the three budget agents');
     assert.ok(entries.every(entry => !/owner\.json$/.test(entry.dest)),
       'no owner sidecar destination may be enumerated as a deletion target');
+    const basenames = entries.map(entry => path.basename(entry.dest, '.md'));
+    for (const name of CLAUDE_GENERIC_AGENTS) {
+      assert.ok(basenames.includes(name),
+        `Claude should enumerate the ${name} managed agent destination`);
+    }
+    assert.ok(WORKER_NAMES.every(name => basenames.includes(name)),
+      'Claude should still enumerate the seven worker destinations');
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('Claude budget-agent destinations install as managed agents with no owner sidecars', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-sidecar-claude-budget-'));
+  try {
+    flow.installClaude(dir);
+    for (const name of CLAUDE_GENERIC_AGENTS) {
+      const agentPath = path.join(dir, 'agents', `${name}.md`);
+      assert.equal(fs.existsSync(agentPath), true,
+        `the ${name} managed agent should be installed`);
+      assert.equal(fs.existsSync(sidecarPath(agentPath)), false,
+        `a fresh install must not create an owner sidecar for ${name}`);
+    }
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }
