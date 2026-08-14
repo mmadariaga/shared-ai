@@ -117,3 +117,28 @@ The routed implementation worker SHALL use the phase-specific identifier `sai-3-
 - **THEN** `/sai-3-implement` SHALL dispatch only `sai-3-implementation-worker`
 - **AND** it SHALL NOT dispatch `sai-2-design-worker`
 - **AND** its invocation SHALL originate from an explicit user command rather than a design-phase continuation
+
+### Requirement: implementation-coordinator-declares-and-reconciles-the-plan
+
+The implementation coordinator SHALL declare the progress plan exactly as `implement-progress-plan` specifies — the six ordered steps `prereqs-resolution`, `collapse-implemented-steps`, `artifact-analysis`, `documentation-review`, `plan-generation`, and `validation` with their imperative labels, content-wise identical to the implementation-planning worker contract's enumeration after normalizing per-line indentation, as defined by `implement-progress-plan` — and SHALL reconcile at the run-closing `completed` result by rendering every unmarked step `completed`. The implementation plan SHALL contain no `review` step and no evidence-marked designation, so no reconciliation carve-out applies: on a successful run-closing result every unmarked step, `validation` included, renders `completed`. `failed` and `cancelled` leave the list exactly as last rendered, and a `needs_input` result — a terminal lifecycle status that is not run-closing — leaves the list exactly as last rendered.
+
+#### Scenario: the six-step plan is declared with no carve-out
+
+- **WHEN** the implementation adapter is read
+- **THEN** it SHALL declare exactly the six canonical steps in order
+- **AND** it SHALL declare no `review` step and no evidence-marked designation
+
+#### Scenario: run-closing completed reconciles every step
+
+- **WHEN** the run-closing worker result is `completed`
+- **THEN** the coordinator SHALL render every unmarked step `completed`, `validation` included, with no carve-out
+
+#### Scenario: failed and cancelled freeze the list
+
+- **WHEN** the worker returns `failed` or `cancelled`
+- **THEN** the coordinator SHALL leave the list exactly as last rendered
+
+#### Scenario: needs_input is not run-closing
+
+- **WHEN** the worker returns `needs_input`
+- **THEN** the coordinator SHALL leave the list exactly as last rendered while the run pauses and resumes

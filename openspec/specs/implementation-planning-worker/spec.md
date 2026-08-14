@@ -84,17 +84,17 @@ The worker SHALL own technical reasoning and artifact decisions, and its respons
 
 ### Requirement: Implementation worker emits progress events
 
-The implementation-planning worker SHALL emit progress events, after prerequisite checks pass and change resolution completes, whenever one or more plan steps complete. Every event SHALL carry only the canonical step ids enumerated by `implement-progress-plan` (`prereqs-resolution`, `plan-simplification`, `artifact-analysis`, `documentation-review`, `plan-generation`), in plan order, plus the files changed since the preceding result. The worker SHALL NOT author, extend, or reorder the plan, SHALL NOT emit a progress event before resolution or in place of a terminal payload, and SHALL NOT emit a progress event during a `needs_input` pause or a feedback turn.
+The implementation-planning worker SHALL emit progress events, after prerequisite checks pass and change resolution completes, whenever one or more plan steps complete. Every event SHALL carry only the canonical step ids enumerated by `implement-progress-plan` (`prereqs-resolution`, `collapse-implemented-steps`, `artifact-analysis`, `documentation-review`, `plan-generation`, `validation`), in plan order, plus the files changed since the preceding result. The worker SHALL NOT author, extend, or reorder the plan, SHALL NOT emit a progress event before resolution or in place of a terminal payload, and SHALL NOT emit a progress event during a `needs_input` pause or a feedback turn.
 
 #### Scenario: startup act is one batch
 
 - **WHEN** the worker completes change resolution and prerequisite checks as one act
 - **THEN** it SHALL emit one progress event carrying `prereqs-resolution`
 
-#### Scenario: simplification batch
+#### Scenario: collapse batch
 
-- **WHEN** the worker completes Step 1 (existing-plan simplification) on a re-run
-- **THEN** it SHALL emit one progress event carrying `plan-simplification`, with `changed_files` listing the simplified `implementation.md` path written since the preceding result
+- **WHEN** the worker completes Step 1 (collapsing every fully applied `#### Step N` of an existing `implementation.md`) on a re-run
+- **THEN** it SHALL emit one progress event carrying `collapse-implemented-steps`, with `changed_files` listing the simplified `implementation.md` path written since the preceding result
 
 #### Scenario: analysis batch
 
@@ -108,8 +108,20 @@ The implementation-planning worker SHALL emit progress events, after prerequisit
 
 #### Scenario: generation batch
 
-- **WHEN** the worker completes Step 5 (first-run generation or re-run preservation plus the audit-derived step append) and the pre-delivery durable-artifact verification
+- **WHEN** the worker completes Step 5's write (first-run generation or re-run preservation plus the audit-derived step append)
 - **THEN** it SHALL emit one progress event carrying `plan-generation`
+
+#### Scenario: validation batch
+
+- **WHEN** the worker completes the pre-delivery durable-artifact verification — the `implementation.md` invariants and the audit-derived step append check
+- **THEN** it SHALL emit one progress event carrying `validation`
+
+#### Scenario: validation failure is a non-completion blocker
+
+- **WHEN** the pre-delivery durable-artifact verification fails on any check
+- **THEN** the worker SHALL NOT emit a `validation` progress event
+- **AND** it SHALL return a non-completed lifecycle result (`failed`) with a concise blocking summary
+- **AND** it SHALL NOT claim planning completion
 
 #### Scenario: terminal payload still closes
 
