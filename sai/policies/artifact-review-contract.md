@@ -43,4 +43,5 @@ Every artifact review SHALL close with a `Summary:` line tallying its severity c
 
 - `review-finding-format` capability — owns this contract's requirements normatively (delta at `openspec/changes/unify-artifact-review-contract/specs/review-finding-format/spec.md`, synced to `openspec/specs/review-finding-format/spec.md` at archive).
 - `pipeline-review-severity` capability — severity criteria requirement (wording authority).
-- `explore-post-crystallization-review-loop` capability — manual review loop output requirement.
+- `review-engine-extraction` capability — owns finding formation for the extracted review engine.
+- `review-loop-navigation` capability — owns manual-loop output presentation.
