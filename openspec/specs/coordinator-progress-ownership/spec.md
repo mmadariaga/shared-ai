@@ -87,16 +87,70 @@ The coordinator SHALL render the full progress plan at dispatch, before the firs
 
 ### Requirement: terminal-reconciliation
 
-At a run-closing result (`completed`, `failed`, `cancelled`) the coordinator SHALL reconcile the rendered list with the outcome: on `completed`, every unmarked step SHALL render `completed`, because the run closed successfully; on `failed` or `cancelled`, the list SHALL remain exactly as last rendered, with no further marks and no clearing. A `needs_input` result SHALL leave the list exactly as last rendered: it is a terminal lifecycle status but not a run-closing result — the run pauses for user input and resumes, so no reconciliation applies. Reconciliation is a rendering action at the run-closing result, not progress marking, and applies only when the plan meets the minimum-threshold rule of `sai/policies/todo-structure.md`.
+Reconciliation SHALL be triggered by an observable **reconciliation trigger**, defined per phase, rather than by a terminal result the coordinator has already received and consumed:
 
-#### Scenario: completed run shows all steps completed
+- for `/sai-1-spec`, the trigger is the artifact feedback gate's proceed selection (`Finish step`), at which the coordinator reconciles against the last terminal `completed` it received;
+- for `/sai-2-design`, the trigger is the overview-generation terminal that follows the gate's `Continue` (`design-phase-navigation`);
+- for a phase whose contract follows its terminal result with no further worker work, the trigger is that terminal result itself.
 
-- **WHEN** the worker returns `completed` with unmarked steps remaining
-- **THEN** the coordinator SHALL render every step as `completed`
+A terminal `completed` that the coordinator answers by presenting the artifact feedback gate SHALL NOT itself trigger reconciliation, because the same worker may still be continued from that gate. A coordinator SHALL NOT reconcile before its phase's trigger.
+
+At the trigger, the coordinator SHALL reconcile the rendered list with the outcome: for a successful outcome, every unmarked step SHALL render `completed` **except** an evidence-marked step, which SHALL be left exactly as last rendered; for a `failed` or `cancelled` outcome, the whole list SHALL remain exactly as last rendered, with no further marks and no clearing. A `needs_input` result SHALL leave the list exactly as last rendered: it is a terminal lifecycle status but never a reconciliation trigger — the run pauses for user input and resumes. Reconciliation is a rendering action, not progress marking, and applies only when the plan meets the minimum-threshold rule of `sai/policies/todo-structure.md`.
+
+An **evidence-marked step** is a step so designated by `review-step-evidence-marking`, which today designates exactly the `review` step of the spec plan (`spec-progress-plan`) and of the design plan (`design-coordinator`). The carve-out SHALL be scoped by that designation and never by a bare step id, so a step merely named `review` in some other declared plan SHALL NOT inherit it. No other declared plan uses that id today — not `implement-progress-plan`, not the four audit plans, and not the apply step projection — so the designation currently covers exactly those two steps.
+
+"Left exactly as last rendered" SHALL be the single freeze formulation for an evidence-marked step: the coordinator SHALL NOT re-derive that step's state at the trigger, and its rendered state SHALL remain whatever the last render produced.
+
+The carve-out exists because an evidence-marked step asserts evidence: rendering `review` `completed` without a review pass reporting `High=0` would assert evidence that does not exist. The carve-out SHALL apply only to reconciliation; it SHALL NOT change the state vocabulary, the deterministic state derivation, the minimum-threshold rule, or the emission-ownership invariant.
+
+#### Scenario: a pre-gate completed does not reconcile
+
+- **WHEN** a worker returns `completed` and the coordinator answers it by presenting the artifact feedback gate
+- **THEN** the coordinator SHALL leave the list exactly as last rendered and SHALL NOT reconcile any unmarked step
+- **AND** it SHALL reconcile only when its phase's reconciliation trigger fires
+
+#### Scenario: sai-1 reconciles at the gate's proceed selection
+
+- **WHEN** the user selects `Finish step` at `/sai-1-spec`'s artifact feedback gate
+- **THEN** that selection SHALL be the reconciliation trigger
+- **AND** the coordinator SHALL reconcile against the last terminal `completed` it received
+
+#### Scenario: sai-2 reconciles at the generation terminal
+
+- **WHEN** `/sai-2-design`'s post-gate overview-generation continuation returns its terminal result
+- **THEN** that terminal SHALL be the reconciliation trigger
+
+#### Scenario: the design overview step is never reconciled before generation runs
+
+- **WHEN** `/sai-2-design`'s worker returns its pre-gate `completed` with `overview` still unmarked
+- **THEN** `overview` SHALL remain unmarked and SHALL NOT render `completed`
+- **AND** it SHALL become `completed` only from the worker's own progress event after a successful `change-overview.md` materialization, or from reconciliation at the post-gate generation terminal
+
+#### Scenario: successful close shows all steps completed except an unmarked evidence-marked step
+
+- **WHEN** the reconciliation trigger fires on a successful outcome with unmarked steps remaining
+- **THEN** the coordinator SHALL render every unmarked step `completed` except the evidence-marked `review` step
+- **AND** the unmarked `review` step SHALL remain exactly as last rendered
+
+#### Scenario: an already-marked review step is unaffected
+
+- **WHEN** the trigger fires and `review` was already marked by a progress event
+- **THEN** `review` SHALL continue to render `completed` and the carve-out SHALL have no effect
+
+#### Scenario: two unmarked steps at close
+
+- **WHEN** the trigger fires on a successful outcome with both `validation` and `review` unmarked, and the list was last rendered with `validation` `in_progress` and `review` `pending`
+- **THEN** `validation` SHALL render `completed`, because it is not evidence-marked
+- **AND** `review` SHALL remain exactly as last rendered — `pending` — because the freeze formulation governs and no state is re-derived for it
+
+#### Scenario: a review step in another plan does not inherit the carve-out
+
+- **WHEN** a declared plan other than the spec or design plan contains a step whose id is `review`
+- **THEN** that step SHALL NOT be treated as evidence-marked and SHALL be reconciled to `completed` like any other step
 
 #### Scenario: failed run freezes the list
 
-- **WHEN** the worker returns `failed` or `cancelled`
+- **WHEN** the outcome at the trigger is `failed` or `cancelled`
 - **THEN** the coordinator SHALL leave the list exactly as last rendered, with no further marks and no clearing
 
 #### Scenario: needs-input leaves the list unchanged

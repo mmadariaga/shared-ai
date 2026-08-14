@@ -168,23 +168,61 @@ The routed design worker SHALL use the phase-specific identifier `sai-2-design-w
 - **THEN** `/sai-2-design` SHALL dispatch only `sai-2-design-worker`
 - **AND** it SHALL NOT dispatch `sai-3-implementation-worker`
 
+### Requirement: design-reconciles-only-at-the-post-gate-terminal
+
+The design coordinator's reconciliation trigger SHALL be the overview-generation terminal that follows the feedback gate's `Continue`, per `coordinator-progress-ownership`. The worker's pre-gate `completed` — the one the coordinator answers by printing the worker summary and presenting the artifact feedback gate — SHALL NOT trigger reconciliation, because the same worker is still continued afterwards for overview generation.
+
+Consequently the `overview` step SHALL NOT be rendered `completed` before overview generation has been dispatched and has succeeded.
+
+#### Scenario: the pre-gate completed leaves the list alone
+
+- **WHEN** the design worker returns `completed` and the coordinator presents the artifact feedback gate
+- **THEN** the coordinator SHALL leave the task list exactly as last rendered, with `overview` still unmarked
+
+#### Scenario: reconciliation happens at the generation terminal
+
+- **WHEN** the gate proceeds through `Continue` and the overview-generation continuation returns `status: completed`
+- **THEN** that terminal SHALL be the reconciliation trigger, and the coordinator SHALL reconcile the list there, rendering every unmarked step `completed` except `review`
+
+#### Scenario: a failed generation terminal freezes the list
+
+- **WHEN** the overview-generation continuation returns `status: failed`, or the continuation is lost before any state transition
+- **THEN** the coordinator SHALL leave the list exactly as last rendered, so `overview` stays unmarked alongside the reported `failure_kind` and `failure_details`
+
 ### Requirement: design-adapter-declares-progress-plan
 
 The design phase adapter (`sai/commands/design/coordinator.md`) SHALL declare a `progress_plan` with exactly the following ordered progress steps:
 
-    prereqs-resolution: "Prerequisites and change resolution"
-    specs-approval: "Specs approval gate"
-    research: "Research and open questions"
-    artifacts: "Artifact generation and verification"
+    prereqs-resolution: "Check prerequisites, resolve the change, and approve specs"
+    research: "Research and resolve open questions"
+    design: "Write design.md"
+    tasks: "Write tasks.md"
+    interfaces: "Write interfaces.md"
+    review: "Review artifacts"
+    overview: "Generate change-overview.md"
 
-The design worker contract SHALL enumerate the same step ids in the same order. The adapter SHALL NOT omit, reorder, or rename these steps, and SHALL NOT add steps.
+The indented block above is illustrative of the ids and labels only; it is not the rendering the instruction files use. The declaration as written in `sai/commands/design/coordinator.md` and in the design worker contract (`sai/commands/design/worker.md`) SHALL use those files' existing list rendering, and byte-identity SHALL be asserted between those two file renderings — not between either of them and this delta's block. The worker contract SHALL enumerate the same step ids with the same labels in the same order. The adapter SHALL NOT omit, reorder, or rename these steps, and SHALL NOT add steps. Every label SHALL be imperative rather than nominal.
+
+The plan SHALL NOT contain a standalone `specs-approval` step: the specs approval gate is folded into `prereqs-resolution`, so that step stays `in_progress` while the user is deciding on the specs rather than falsely showing research under way.
 
 #### Scenario: design plan is declared
 
 - **WHEN** `/sai-2-design` starts in Claude Code or opencode
-- **THEN** the design adapter SHALL declare the four canonical progress steps in order
+- **THEN** the design adapter SHALL declare the seven canonical progress steps in order
 
 #### Scenario: worker contract mirrors the ids
 
 - **WHEN** the design worker contract is read
-- **THEN** it SHALL enumerate exactly `prereqs-resolution`, `specs-approval`, `research`, and `artifacts`
+- **THEN** it SHALL enumerate exactly `prereqs-resolution`, `research`, `design`, `tasks`, `interfaces`, `review`, and `overview`, in that order, with the same labels the adapter declares
+- **AND** its declaration block SHALL be byte-identical to the coordinator file's declaration block, both rendered in those files' existing list form
+
+#### Scenario: the approval gate has no step of its own
+
+- **WHEN** the design plan is inspected
+- **THEN** it SHALL contain no `specs-approval` step
+- **AND** the specs approval gate SHALL be covered by `prereqs-resolution`
+
+#### Scenario: the panel does not advance while the user decides on the specs
+
+- **WHEN** the worker is waiting on the specs approval answer
+- **THEN** `prereqs-resolution` SHALL still render `in_progress` and `research` SHALL still render `pending`

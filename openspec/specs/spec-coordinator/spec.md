@@ -8,7 +8,7 @@ Define the spec coordinator's progress-plan rendering and marking responsibiliti
 
 ### Requirement: Spec coordinator renders and marks the declared plan
 
-The routed spec coordinator SHALL declare the canonical spec progress plan from `spec-progress-plan` at dispatch, render it as a live task list per the neutral policy `sai/policies/todo-structure.md` (first step `in_progress`, rest `pending`), mark steps only from worker progress-event `step_ids`, and reconcile the list at run-closing results: `completed` renders every unmarked step `completed`, `failed` and `cancelled` leave the list exactly as last rendered, and `needs_input` leaves the list exactly as last rendered. It SHALL hold the plan and marked set in invocation-scoped state, never derive, infer, or extend the plan, and SHALL NOT read artifacts or resolve phase data to determine progress.
+The routed spec coordinator SHALL declare the canonical spec progress plan from `spec-progress-plan` at dispatch, render it as a live task list per the neutral policy `sai/policies/todo-structure.md` (first step `in_progress`, rest `pending`), mark steps only from worker progress-event `step_ids`, and reconcile the list at its reconciliation trigger. The trigger for `/sai-1-spec` is the artifact feedback gate's proceed selection (`Finish step`), at which the coordinator reconciles against the last terminal `completed` it received, per `coordinator-progress-ownership`; the pre-gate `completed` itself SHALL NOT trigger reconciliation. At the trigger, a successful outcome renders every unmarked step `completed` **except** the `review` step, which is left exactly as last rendered per `review-step-evidence-marking`; a `failed` or `cancelled` outcome leaves the list exactly as last rendered; and a `needs_input` result, which is never a trigger, also leaves the list exactly as last rendered. It SHALL hold the plan and marked set in invocation-scoped state, never derive, infer, or extend the plan, and SHALL NOT read artifacts or resolve phase data to determine progress.
 
 #### Scenario: spec plan renders at dispatch
 
@@ -20,10 +20,20 @@ The routed spec coordinator SHALL declare the canonical spec progress plan from 
 - **WHEN** the worker returns a progress event listing declared step ids
 - **THEN** the coordinator marks exactly those steps completed and ignores undeclared ids without amending the plan
 
-#### Scenario: terminal reconciliation applies
+#### Scenario: reconciliation applies at the proceed selection
 
-- **WHEN** the worker returns `completed` with unmarked steps remaining
-- **THEN** the coordinator renders every remaining step `completed`
+- **WHEN** the user selects `Finish step` at the artifact feedback gate with unmarked steps remaining
+- **THEN** the coordinator renders every remaining step `completed` except an unmarked `review` step, which it leaves exactly as last rendered
+
+#### Scenario: the pre-gate completed does not reconcile
+
+- **WHEN** the worker returns `completed` and the coordinator presents the artifact feedback gate
+- **THEN** the coordinator leaves the list exactly as last rendered and reconciles nothing
+
+#### Scenario: an unmarked review step survives the close
+
+- **WHEN** the run closes with `review` unmarked because no review pass reported `High=0`
+- **THEN** the rendered list still shows `review` unmarked after reconciliation
 
 ### Requirement: Spec coordinator admits progress events as the sole nonterminal extension
 
