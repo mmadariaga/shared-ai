@@ -6,6 +6,7 @@
 
 <TASK>
 
+  Fetch @sai/policies/verified-precondition-handback.md
   ## Load behaviors (in order)
   Fetch @skills/budget/SKILL.md
   Fetch @skills/safe-operations/SKILL.md and use it

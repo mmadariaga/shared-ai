@@ -1,5 +1,6 @@
 # Implementation Worker
 
+Fetch @sai/policies/verified-precondition-handback.md
 Fetch @sai/worker-core.md and follow it exactly.
 
 Perform the complete technical `/sai-3-implement` phase. The `InvocationEnvelope`

@@ -6,6 +6,7 @@
 
 <TASK>
 
+  Fetch @sai/policies/verified-precondition-handback.md
   Fetch @sai/policies/change-picker.md and follow it exactly.
 
   ## Prerequisite checks

@@ -1,5 +1,6 @@
 # sai-6 security invocation core
 
+Fetch @sai/policies/verified-precondition-handback.md
 Shared technical security invocation used by the routed security worker. This file owns no prerequisite parsing, change selection, coordinator lifecycle, or terminal navigation.
 
 ## Load behaviors (in order)

@@ -1,5 +1,6 @@
 # sai-2 design invocation core
 
+Fetch @sai/policies/verified-precondition-handback.md
 Shared technical design invocation used by the routed design-planning worker. This file owns no prerequisite parsing, change selection, fast-track banner presentation, or terminal navigation message.
 
 ## Load behaviors (in order)

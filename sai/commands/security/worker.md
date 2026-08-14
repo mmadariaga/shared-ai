@@ -1,5 +1,6 @@
 # Security Worker
 
+Fetch @sai/policies/verified-precondition-handback.md
 Fetch @sai/worker-core.md and follow it exactly.
 
 ## Invocation Envelope

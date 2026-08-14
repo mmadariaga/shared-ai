@@ -6,6 +6,7 @@
 
 <TASK>
 
+  Fetch @sai/policies/verified-precondition-handback.md
   ## Prerequisite checks
   Fetch @sai/policies/prereqs.md
 

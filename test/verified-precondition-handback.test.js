@@ -47,3 +47,92 @@ test('glossary defines only the canonical hand-back term and rejected aliases', 
   assert.doesNotMatch(glossary, /\*\*Unverified Hand-back\*\*:/);
   assert.doesNotMatch(glossary, /\*\*Precondition Redirect\*\*:/);
 });
+
+const policyFetch = 'Fetch @sai/policies/verified-precondition-handback.md';
+const routedPhases = ['spec', 'design', 'implement', 'review', 'security', 'performance', 'accessibility'];
+const routedCards = routedPhases.flatMap((phase) =>
+  ['coordinator.md', 'worker.md', 'invocation.md'].map((name) => `sai/commands/${phase}/${name}`)
+);
+const utilityCards = ['apply', 'archive', 'backfill', 'commit', 'explore', 'pr', 'status', 'worktree']
+  .map((name) => `sai/commands/${name}/body.md`);
+const commandCards = [...routedCards, ...utilityCards];
+
+function countLiteral(text, value) {
+  return text.split(value).length - 1;
+}
+
+function nextNonBlankLine(lines, startIndex) {
+  for (let index = startIndex + 1; index < lines.length; index += 1) {
+    if (lines[index].trim() !== '') return lines[index].trim();
+  }
+  return undefined;
+}
+
+function markdownFilesUnder(relativeDirectory) {
+  const root = path.join(repoRoot, relativeDirectory);
+  if (!fs.existsSync(root)) return [];
+  const found = [];
+  for (const entry of fs.readdirSync(root, { withFileTypes: true })) {
+    const child = path.join(root, entry.name);
+    if (entry.isDirectory()) {
+      found.push(...markdownFilesUnder(path.relative(repoRoot, child)));
+    } else if (entry.isFile() && entry.name.endsWith('.md')) {
+      found.push(child);
+    }
+  }
+  return found;
+}
+
+test('all 29 command cards load the policy exactly once at their structural entry point', () => {
+  assert.equal(commandCards.length, 29);
+
+  for (const card of commandCards) {
+    assert.ok(fs.existsSync(path.join(repoRoot, card)), `${card} must exist`);
+    const content = read(card);
+    assert.equal(countLiteral(content, policyFetch), 1, `${card} must fetch the policy exactly once`);
+    const lines = content.split(/\r?\n/);
+
+    if (card.endsWith('/coordinator.md') || card.endsWith('/body.md')) {
+      const taskIndex = lines.findIndex((line) => line.trim() === '<TASK>');
+      assert.notEqual(taskIndex, -1, `${card} must contain <TASK>`);
+      assert.equal(nextNonBlankLine(lines, taskIndex), policyFetch, `${card} fetch must follow <TASK>`);
+    } else {
+      assert.match(lines[0], /^# /, `${card} must start with an H1`);
+      assert.equal(nextNonBlankLine(lines, 0), policyFetch, `${card} fetch must follow its H1`);
+    }
+  }
+});
+
+test('excluded non-card surfaces do not fetch the policy directly', () => {
+  const commandNonCards = markdownFilesUnder('sai/commands').filter((file) =>
+    path.basename(file) === 'instructions.md' || path.basename(file).endsWith('.template.md')
+  );
+  const nonCanonicalPolicies = markdownFilesUnder('sai/policies').filter((file) => file !== policyPath);
+  const projectSkills = [
+    ...markdownFilesUnder('.claude/skills'),
+    ...markdownFilesUnder('.opencode/skills'),
+  ];
+  const excluded = [
+    ...commandNonCards,
+    ...nonCanonicalPolicies,
+    ...projectSkills,
+    path.join(repoRoot, 'sai', 'command-runner.md'),
+    path.join(repoRoot, 'sai', 'worker-core.md'),
+  ];
+
+  for (const file of excluded) {
+    assert.doesNotMatch(fs.readFileSync(file, 'utf8'), /Fetch @sai\/policies\/verified-precondition-handback\.md/,
+      `${path.relative(repoRoot, file)} must not fetch the policy directly`);
+  }
+});
+
+test('representative fixed STOP and contract-authored hand-back text remains unchanged', () => {
+  assert.match(
+    read('sai/commands/apply/body.md'),
+    /implementation\.md not found for '\{change-name\}'\. Run \/sai-3-implement first\./
+  );
+  assert.match(
+    read('sai/commands/design/instructions.md'),
+    /direct the user to re-run `\/sai-1-spec` to make the correction in a fresh spec pass\./
+  );
+});

@@ -1,5 +1,6 @@
 # sai-5 review invocation core
 
+Fetch @sai/policies/verified-precondition-handback.md
 Shared technical review invocation used by the routed review worker. This file owns no prerequisite parsing, change selection, coordinator lifecycle, or terminal navigation.
 
 ## Load behaviors (in order)

@@ -1,5 +1,6 @@
 # sai-3 implementation invocation core
 
+Fetch @sai/policies/verified-precondition-handback.md
 Shared technical invocation used by the routed implementation-planning worker. This file owns no terminal completion message.
 
 ## Load instructions (in order)

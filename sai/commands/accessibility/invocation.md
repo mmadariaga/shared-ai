@@ -1,5 +1,6 @@
 # sai-8 accessibility invocation core
 
+Fetch @sai/policies/verified-precondition-handback.md
 Shared technical invocation used by the routed accessibility worker. This file owns accessibility audit policy only; it does not resolve an invocation envelope or own routed lifecycle state.
 
 ## Load behaviors (in order)

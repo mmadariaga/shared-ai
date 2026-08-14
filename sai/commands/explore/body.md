@@ -6,6 +6,7 @@
 
 <TASK>
 
+  Fetch @sai/policies/verified-precondition-handback.md
   ## Prerequisite checks
   Fetch @sai/policies/prereqs-paths.md and retain the OpenSpec path table in this conversation — local artifact reads use the direct paths from it.
   Fetch @sai/policies/prereqs-check.md and embed its check task into the delegation prompt below.

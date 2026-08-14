@@ -137,7 +137,7 @@ This policy does not rewrite or reinterpret an existing fixed STOP literal, cont
 
 ##### RED phase
 
-- [ ] Append the following complete Step 2 structural contract to `test/verified-precondition-handback.test.js`:
+- [x] Append the following complete Step 2 structural contract to `test/verified-precondition-handback.test.js`:
 
 ```js
 
@@ -231,12 +231,12 @@ test('representative fixed STOP and contract-authored hand-back text remains unc
 });
 ```
 
-- [ ] Verify RED: run `node --test test/verified-precondition-handback.test.js` before editing command cards — expected: an assertion failure because the first inspected card has zero canonical policy fetches.
-- [ ] **GATE — DO NOT PROCEED to GREEN until RED is verified.** The failure must be the missing-card-fetch assertion, not a syntax or setup error.
+- [x] Verify RED: run `node --test test/verified-precondition-handback.test.js` before editing command cards — expected: an assertion failure because the first inspected card has zero canonical policy fetches.
+- [x] **GATE — DO NOT PROCEED to GREEN until RED is verified.** The failure must be the missing-card-fetch assertion, not a syntax or setup error.
 
 ##### GREEN phase (only after RED is verified)
 
-- [ ] In each coordinator card below, insert exactly one indented line `  Fetch @sai/policies/verified-precondition-handback.md` as the first non-blank line after `<TASK>`, preserving every existing byte after the insertion:
+- [x] In each coordinator card below, insert exactly one indented line `  Fetch @sai/policies/verified-precondition-handback.md` as the first non-blank line after `<TASK>`, preserving every existing byte after the insertion:
   - `sai/commands/spec/coordinator.md`
   - `sai/commands/design/coordinator.md`
   - `sai/commands/implement/coordinator.md`
@@ -245,7 +245,7 @@ test('representative fixed STOP and contract-authored hand-back text remains unc
   - `sai/commands/performance/coordinator.md`
   - `sai/commands/accessibility/coordinator.md`
 
-- [ ] In each routed worker and invocation card below, insert exactly one unindented line `Fetch @sai/policies/verified-precondition-handback.md` as the first non-blank line after the H1, preserving all subsequent instruction order and text:
+- [x] In each routed worker and invocation card below, insert exactly one unindented line `Fetch @sai/policies/verified-precondition-handback.md` as the first non-blank line after the H1, preserving all subsequent instruction order and text:
   - `sai/commands/spec/worker.md`
   - `sai/commands/spec/invocation.md`
   - `sai/commands/design/worker.md`
@@ -261,7 +261,7 @@ test('representative fixed STOP and contract-authored hand-back text remains unc
   - `sai/commands/accessibility/worker.md`
   - `sai/commands/accessibility/invocation.md`
 
-- [ ] In each utility card below, insert exactly one indented line `  Fetch @sai/policies/verified-precondition-handback.md` as the first non-blank line after `<TASK>`, preserving every existing prerequisite, behavior, instruction, STOP, and completion line:
+- [x] In each utility card below, insert exactly one indented line `  Fetch @sai/policies/verified-precondition-handback.md` as the first non-blank line after `<TASK>`, preserving every existing prerequisite, behavior, instruction, STOP, and completion line:
   - `sai/commands/apply/body.md`
   - `sai/commands/archive/body.md`
   - `sai/commands/backfill/body.md`
@@ -271,18 +271,18 @@ test('representative fixed STOP and contract-authored hand-back text remains unc
   - `sai/commands/status/body.md`
   - `sai/commands/worktree/body.md`
 
-- [ ] Do not add the fetch to `instructions.md`, templates, other policies, project-local skills, `sai/command-runner.md`, `sai/worker-core.md`, `sai/install-manifest.json`, or any schema. The existing recursive policy projection supplies both supported harnesses.
+- [x] Do not add the fetch to `instructions.md`, templates, other policies, project-local skills, `sai/command-runner.md`, `sai/worker-core.md`, `sai/install-manifest.json`, or any schema. The existing recursive policy projection supplies both supported harnesses.
 
-- [ ] Verify GREEN: run `node --test test/verified-precondition-handback.test.js` — expected: all policy, glossary, 29-card inventory, placement, exclusion, and preserved-literal tests pass.
+- [x] Verify GREEN: run `node --test test/verified-precondition-handback.test.js` — expected: all policy, glossary, 29-card inventory, placement, exclusion, and preserved-literal tests pass.
 
 ##### Step 2 Verification Checklist
 
 **Automated (agent runs before stopping):**
-- [ ] RED verified — the scoped suite fails on a missing card fetch before GREEN.
-- [ ] GREEN verified — `node --test test/verified-precondition-handback.test.js` passes after all 29 insertions.
-- [ ] `npm test` — the repository suite completes; attribute only failures proven pre-existing against untouched files.
-- [ ] `git diff --check` — no whitespace errors.
-- [ ] Inspect the final diff and confirm each command-card change is one inserted policy-fetch line, with no changed STOP literal, approval gate, lifecycle contract, schema, manifest, or generated harness copy.
+- [x] RED verified — the scoped suite fails on a missing card fetch before GREEN.
+- [x] GREEN verified — `node --test test/verified-precondition-handback.test.js` passes after all 29 insertions.
+- [x] `npm test` — the repository suite completes; attribute only failures proven pre-existing against untouched files.
+- [x] `git diff --check` — no whitespace errors.
+- [x] Inspect the final diff and confirm each command-card change is one inserted policy-fetch line, with no changed STOP literal, approval gate, lifecycle contract, schema, manifest, or generated harness copy.
 
 *(No Human checks — structural tests cover the complete instruction-card inventory and there is no browser-visible behavior.)*
 
@@ -298,3 +298,5 @@ test('representative fixed STOP and contract-authored hand-back text remains unc
 |---|---|---|---|---|---|
 | 1 | single | red | 1 | assertion | |
 | 1 | single | green | 1 | n/a | |
+| 2 | single | red | 1 | assertion | |
+| 2 | single | green | 1 | n/a | |
