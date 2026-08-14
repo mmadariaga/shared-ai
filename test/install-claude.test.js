@@ -107,6 +107,8 @@ test('managed worker registry defines every Claude compatibility export', () => 
     'sai-7-performance-worker',
     'sai-8-accessibility-worker',
     'sai-1-spec-proposal-worker',
+    'sai-4-red-worker',
+    'sai-4-green-worker',
   ];
   assert.deepEqual(Object.keys(MANAGED_WORKERS), expectedNames,
     'registry keys should contain each managed worker exactly once');
@@ -132,6 +134,12 @@ test('managed worker registry defines every Claude compatibility export', () => 
     },
     'sai-8-accessibility-worker': {
       agent: 'sai-8-accessibility-worker.md',
+    },
+    'sai-4-red-worker': {
+      agent: 'sai-4-red-worker.md',
+    },
+    'sai-4-green-worker': {
+      agent: 'sai-4-green-worker.md',
     },
   };
 

@@ -70,7 +70,7 @@ This index groups the DDRs in `docs/ddr/` by **command** and by **cross-cutting 
 - [0063 — A contract-violating telemetry note is dropped whole, never trimmed](./0063-violating-telemetry-note-dropped-not-cleaned.md)
 - [0109 — "Testable" (RED block) and "divisible" (production surface) are distinct Step properties](./0109-testable-and-divisible-are-distinct-step-properties.md) — Refs adr:0115
 - [0115 — The implementation plan's step identity is its `#### Step N:` H4-with-colon heading](./0115-implementation-step-identity-is-h4-heading.md)
-- [0116 — The apply phase carries no progress events because it has no coordinator-worker boundary](./0116-apply-phase-carries-no-progress-events.md) — Refs 0110
+- [0137 — The apply routed boundary carries progress events against immutable dispatch-local plans](./0137-apply-routed-boundary-carries-progress-events.md) — Supersedes 0116
 
 ### `/sai-5-review`
 
@@ -145,7 +145,7 @@ This index groups the DDRs in `docs/ddr/` by **command** and by **cross-cutting 
 - [0111 — Rendered progress state is a pure function of the declared plan order plus the marked set](./0111-rendered-progress-state-pure-function.md)
 - [0114 — The dispatch envelope is exactly two strings; progress-plan content never travels in it](./0114-progress-plan-never-transported-in-envelope.md)
 - [0115 — The implementation plan's step identity is its `#### Step N:` H4-with-colon heading](./0115-implementation-step-identity-is-h4-heading.md)
-- [0116 — The apply phase carries no progress events because it has no coordinator-worker boundary](./0116-apply-phase-carries-no-progress-events.md) — Refs 0110
+- [0137 — The apply routed boundary carries progress events against immutable dispatch-local plans](./0137-apply-routed-boundary-carries-progress-events.md) — Supersedes 0116
 - [0119 — Outcome-token completion contract with command-boundary mapping](./0119-outcome-token-completion-contract-with-command-boundary-mapping.md)
 - [0120 — Readline lifecycle owned by setup orchestration, closed once at the settle point](./0120-readline-lifecycle-owned-by-setup-orchestration.md)
 - [0121 — The post-setup customization result stays in memory and never touches agent files](./0121-in-memory-non-persistent-override-contract.md)
@@ -234,5 +234,8 @@ This index groups the DDRs in `docs/ddr/` by **command** and by **cross-cutting 
 | DDR | Action | Over |
 |---|---|---|
 | [0062](./0062-field-9-soft-degradation-stated-at-two-sites.md) | amends | [0026](./0026-stable-eight-field-report.md) |
+| [0137](./0137-apply-routed-boundary-carries-progress-events.md) | supersedes | [0116](./0116-apply-phase-carries-no-progress-events.md) |
 
 ## Superseded DDRs (historical)
+
+- [0116 — The apply phase carries no progress events because it has no coordinator-worker boundary](./0116-apply-phase-carries-no-progress-events.md) — Refs 0110 — *Superseded by [0137](./0137-apply-routed-boundary-carries-progress-events.md)*

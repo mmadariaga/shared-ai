@@ -19,7 +19,7 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 **Artifact Review**: "A read-only review of a change's OpenSpec artifacts — `proposal.md` and `specs/**` for sai-1, `design.md`, `tasks.md`, and `interfaces.md` for sai-2 — that produces structured findings with `High` / `Medium` / `Low` severities, run manually through `sai-explore`'s post-crystallization review loop, by an independent pipeline reviewer, or by the phase worker's own **Phase Review Pass**."
 *Avoid*: artifact audit, artifact check, doc review, artifact review loop
 
-**Attempts Per Phase**: "Field 9 of the `/sai-4-apply` Subagent Report Contract — a list of `{phase, attempts, first_failure, note}` entries, one per verification phase the dispatch actually ran, where `attempts` counts command runs regardless of outcome and `first_failure` draws on a closed vocabulary, and whose absence can never block the workflow."
+**Attempts Per Phase**: "Field 9 of the `/sai-4-apply` worker report contract — a list of `{phase, attempts, first_failure, note}` entries, one per verification phase the dispatch actually ran, where `attempts` counts command runs regardless of outcome and `first_failure` draws on a closed vocabulary, and whose absence can never block the workflow."
 *Avoid*: retries, retry count, field 9 notes, iteration log, attempt log
 
 **Auto-Answer**: "A supervised-pipeline answer that `sai-explore` gives to a spec worker's `needs_input` question on the user's behalf, without escalating, permitted only when its confidence in the answer is clearly above the qualitative **Confidence Threshold**."
@@ -31,8 +31,8 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 **Backfilled Change**: "An OpenSpec change reconstructed post-implementation by `/sai-backfill`, with `backfilled: true` written to `.openspec.yaml` and contractually forbidden from producing `design.md`, `tasks.md`, or `implementation.md`."
 *Avoid*: post-hoc change, retroactive change, reconstructed change
 
-**Blind Test-Writer**: "The first `/sai-4-apply` dispatch of a **Split-Routed Step**, given only that Step's `interfaces.md` section plus injected testing context — never the GREEN implementation body — that writes the tests (and RED stubs) and verifies a valid RED."
-*Avoid*: test dispatch, test agent, RED writer, test-first subagent
+**Blind Test-Writer**: "The split-flow role of the **RED Worker** — the first `/sai-4-apply` dispatch of a **Split-Routed Step**, given only that Step's `interfaces.md` section plus injected testing context — never the GREEN implementation body — that writes the tests (and RED stubs) and verifies a valid RED."
+*Avoid*: test dispatch, test agent, test-first subagent
 
 **Boot Request**: "The opaque adapter input containing a command name, wrapper-echo value, argument value, and optional harness-owned continuation reference."
 *Avoid*: adapter request, boot envelope, parsed request
@@ -49,7 +49,7 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 **Confidence Threshold**: "The qualitative judgment — not a computed number — above which `sai-explore` may **Auto-Answer** a supervised worker question and below or unclear of which it escalates the question to the user."
 *Avoid*: confidence score, threshold value, certainty level, confidence cutoff
 
-**Coordinator Verification**: "The `/sai-4-apply` coordinator's independent rerun of a Step's Verification Checklist after a Subagent Report and before checkbox marking or commit gating."
+**Coordinator Verification**: "The `/sai-4-apply` coordinator's independent rerun of a Step's Verification Checklist after a worker report and before checkbox marking or commit gating."
 *Avoid*: trust check, report retest, coordinator retry
 
 **Customization Target**: "A worker or command file with tunable frontmatter — the unit of post-setup model customization, identified within one harness by its family (the `Workers` or `Commands` scope label) plus its bare name, and materialized as a project-local override under the family's destination directory."
@@ -67,7 +67,7 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 **Destination Class**: "A named key in the installer's destination-class resolution that maps a projection's `destination.class` to a base directory under the harness root — `commands`, `sai`, `skills`, `agents`, `config`, and `root` — with the class-to-path map duplicated in the install flow, uninstall flow, and doctor, where an unknown class is a runtime expansion error."
 *Avoid*: destination root, target class, install class, destination map
 
-**Divisible Step**: "A Step whose plan-level file scope contains at least one production file — the property, distinct from having a RED block, that makes the Step eligible for the two-dispatch split."
+**Divisible Step**: "A Step whose plan-level file scope contains at least one production file — the property, distinct from having a RED block, that makes the Step eligible for the two-worker split (a blind **RED Worker** followed by a **GREEN Worker**)."
 *Avoid*: splittable step, production step, split-eligible step, "testable" (which describes the RED block only)
 
 **Domain Invariant**: "A constraint the pipeline's domain imposes that must hold of the pipeline's artifacts, records, or behavior at all times, stated as a property of the domain rather than as the mechanism that upholds it — the first test of the ordered routing test, which resolves a qualifying decision to the **DDR** family."
@@ -76,7 +76,7 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 **Envelope Contract Violation**: "A result that cannot be accepted under its closed lifecycle envelope because a required field is missing, a value is invalid, or an undeclared field is present."
 *Avoid*: malformed result, output-shape error, protocol typo
 
-**Execution Telemetry Appendix**: "The coordinator-authored `## Appendix: Execution Telemetry` table at the end of `implementation.md`, one row per **Attempts Per Phase** entry, whose `Step` and `dispatch` columns are supplied by the coordinator rather than reported by the subagent."
+**Execution Telemetry Appendix**: "The coordinator-authored `## Appendix: Execution Telemetry` table at the end of `implementation.md`, one row per **Attempts Per Phase** entry, whose `Step` and `dispatch` columns are supplied by the coordinator rather than reported by the worker."
 *Avoid*: telemetry log, retry appendix, metrics table, execution log
 
 **Existing Tests Broken**: "The pinned fifth `## Step N` sub-field of `tasks.md` naming the existing tests a step breaks and each one's `compile` or `runtime` failure mode, shared fixtures first, `None` when it breaks none."
@@ -103,8 +103,11 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 **Generic Agent**: "A managed non-worker subagent definition for one of the three budget delegation roles — `explore`, `executor`, or `budget` — carrying user-owned tunable `model` frontmatter under the tunable-seed lifecycle and a body of exactly one Fetch of its neutral behavior policy; registered as `explore` / `executor` / `budget` under opencode and as `budget-explorer` / `budget-executor` / `budget-subagent` under Claude Code, whose budget-prefixed names avoid colliding with Claude Code's built-in Explore agent."
 *Avoid*: helper agent, cheap agent, delegation agent, bare "budget agent" (names the `budget` role, not the class)
 
-**GREEN Conflict**: "The state where an Implementation Dispatch cannot make the test-writer's tests pass within bounded, test-file-untouching iteration, so it halts and reports to the coordinator for a human to decide whether the fault is the implementation, the test, or the interface."
+**GREEN Conflict**: "The state where a **GREEN Worker** cannot make the RED worker's tests pass within bounded, test-file-untouching iteration, so it halts and reports to the coordinator for a human to decide whether the fault is the implementation, the test, or the interface."
 *Avoid*: test failure, GREEN failure, broken test, unpassable step
+
+**GREEN Worker**: "The `/sai-4-apply` Step-execution managed worker (`sai-4-green-worker`) that executes a Step's implementation body — including the GREEN side of a **Split-Routed Step** — and verifies GREEN, and is forbidden from creating or modifying any test file; dispatched through the worker-matrix on the budget tier."
+*Avoid*: implementation dispatch, impl agent, code worker, build dispatch, GREEN dispatch
 
 **Harness Boot Adapter**: "The single supported-harness entry file that selects a command card and owns harness-specific fetch and dispatch glue without redefining lifecycle semantics."
 *Avoid*: harness loader, phase adapter, command wrapper
@@ -112,11 +115,11 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 **Idea Progress List**: "The chat-scoped, in-session list in a `sai-explore` session that tracks the explored idea rather than the command's own steps, with research, slice-crystallization, and reviewed sai-1 / sai-2 items grown and marked only from in-session evidence; it renders on the harness's **Native Task Panel** where one exists and as plain in-conversation checkbox text elsewhere."
 *Avoid*: task list, todo list, progress list, idea tracker
 
-**Implementation Dispatch**: "The second `/sai-4-apply` dispatch of a **Split-Routed Step**, given the GREEN implementation body, that writes the implementation and verifies GREEN and is forbidden from creating or modifying any test file."
+**Implementation Dispatch**: "The split-flow role of the **GREEN Worker** — the second `/sai-4-apply` dispatch of a **Split-Routed Step**, given the GREEN implementation body, that writes the implementation and verifies GREEN and is forbidden from creating or modifying any test file."
 *Avoid*: GREEN dispatch, impl agent, code writer, build dispatch
 
-**Known-False Report Recovery**: "A bounded `/sai-4-apply` correction path for a Subagent Report that coordinator evidence disproves and whose safe cause and correction are clear."
-*Avoid*: automatic retry, indefinite retry, advisor escalation
+**Known-False Report Recovery**: "A bounded `/sai-4-apply` correction path for a worker report that coordinator evidence disproves and whose safe cause and correction are clear — carried out by continuing the same GREEN worker session with the failing path and evidence, capped at 3 continuations, never a fresh dispatch."
+*Avoid*: automatic retry, indefinite retry, advisor escalation, fresh recovery dispatch
 
 **Managed Worker**: "A phase worker whose agent and harness-specific registration are installed and tracked by the shared-AI installer. The user owns the tunable frontmatter keys (`model` and `effort` for Claude; `model` and `variant` for opencode): the installer preserves their lines on every update while overwriting the managed body and non-tunable frontmatter."
 *Avoid*: worker agent, installer worker, managed agent
@@ -180,11 +183,14 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 **Question Context Contract**: "The mandatory five-element anatomy of every user-facing decision prompt — what is being decided, why it matters, plain-language options, essential state context, and plain wording — single-sourced in `sai/policies/question-context.md` and required of worker `needs_input` questions, design notice messages, and the fixed instruction gates."
 *Avoid*: decision prompt, question anatomy, prompt context, context contract, question template
 
-**Recovery Dispatch**: "The single corrective subagent dispatch permitted by Known-False Report Recovery, constrained to the current Step and existing plan scope."
-*Avoid*: retry dispatch, second opinion, advisor dispatch
+**Recovery Dispatch**: "The retired fresh-dispatch correction mechanism of the pre-routed `/sai-4-apply` — superseded by the shared bounded same-worker recovery pool of **Known-False Report Recovery**, which continues the same GREEN worker session (cap 3) instead of dispatching a fresh corrective worker."
+*Avoid*: retry dispatch, second opinion, advisor dispatch, same-worker continuation (which names the active mechanism)
 
 **Recovery Policy**: "The optional static phase-adapter declaration that opts one routed invocation into the shared bounded same-worker recovery loop without choosing its budget."
 *Avoid*: retry policy, recovery budget, recovery dispatch
+
+**RED Worker**: "The `/sai-4-apply` Step-execution managed worker (`sai-4-red-worker`) that authors the tests (and RED stubs) for a RED-carrying Step — blind to the GREEN implementation body in the **Split-Routed Step** flow, and authoring tests that must end green under the green-exception — dispatched through the worker-matrix on the budget tier."
+*Avoid*: test dispatch, test agent, test-first subagent, RED writer (retired alias of **Blind Test-Writer**)
 
 **Report Template Parity**: "The pinned requirement that a report artifact's two template families — the OpenSpec schema scaffold under `openspec/schemas/sai-workflow/templates/` and the write-time contract under `sai/commands/{phase}/{artifact}-report.template.md` (e.g. `sai/commands/review/review-report.template.md`) — present the same section skeleton and header metadata, diverging only in placeholder syntax, guidance depth, and code-fence wrapping."
 *Avoid*: template equality, template unification, template consistency
@@ -216,19 +222,19 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 **Routing Line**: "The per-step `**Routing**: layer=<layer> · discipline=<discipline> · complexity=<complexity>` keyword line on `tasks.md` (key=value tagged, not positional) that captures descriptive routing metadata at design time so a future orchestrator can dispatch each step without re-deriving routing cues from the step body or binding to a specific agent roster."
 *Avoid*: routing metadata, dispatch hint, step routing, positional routing tuple
 
-**Split-Routed Step**: "A `/sai-4-apply` Step that satisfies all three parts of the routing condition — its body contains a `##### RED phase` block, a **Step Contract** is available for it, AND its plan-level file scope contains at least one production file — and is therefore executed by a **Blind Test-Writer** followed by an **Implementation Dispatch**."
+**Split-Routed Step**: "A `/sai-4-apply` Step that satisfies all three parts of the routing condition — its body contains a `##### RED phase` block, a **Step Contract** is available for it, AND its plan-level file scope contains at least one production file — and is therefore executed by a **RED Worker** followed by a **GREEN Worker**."
 *Avoid*: testable step, two-dispatch step, split step, TDD step
 
 **Step Contract**: "The `## Step N` section of a change's `interfaces.md` carrying that Step's signatures and exact assertions, whose availability is evaluated per Step because `design.md` omits the section for any step with no interface surface."
 *Avoid*: interface contract, interfaces section, Step N block, contract file
 
-**Step Projection**: "The harness task list `/sai-4-apply` renders at run start from the `#### Step N:` headings of `openspec/changes/{name}/implementation.md`, mirroring the on-disk checkboxes rather than replacing them and marked `completed` in the same batched update as the Step's checkbox marking — the apply-side counterpart to a routed **Progress Plan**, derived directly from the artifact with no progress protocol."
+**Step Projection**: "The harness task list `/sai-4-apply` renders at run start from the `#### Step N:` headings of `openspec/changes/{name}/implementation.md`, mirroring the on-disk checkboxes rather than replacing them and marked `completed` in the same batched update as the Step's checkbox marking — distinct from the per-dispatch apply **Progress Plan**, derived directly from the artifact and never marked from worker progress events."
 *Avoid*: task list, todo list, step list, apply progress plan, progress projection
 
 **Target State**: "The single leading review section of `design.md` presenting the change's finished shape as one concrete artifact, readable without any `## Step N` section; authored and persisted by the design phase and projected into `change-overview.md`."
 *Avoid*: end state, final shape, goal state, summary section
 
-**Test Command**: "The mandatory `## Implementation Context` field carrying the directly executable command that runs this project's tests plus its parameterised scoping idiom, derived by `/sai-2-design` from codebase research and injected into a **Blind Test-Writer**, which is otherwise given no way to obtain it."
+**Test Command**: "The mandatory `## Implementation Context` field carrying the directly executable command that runs this project's tests plus its parameterised scoping idiom, derived by `/sai-2-design` from codebase research and injected into a **RED Worker**, which is otherwise given no way to obtain it."
 *Avoid*: run command, test runner, test script, testing command, suite command
 
 **Tool Fence**: "The Claude Code `allowed-tools` frontmatter list on a routed coordinator entrypoint that restricts the entrypoint's tool set to `Read, Glob, Skill, Agent, SendMessage, AskUserQuestion`, turning a coordinator's prose prohibition into a harness-enforced restriction; opencode carries no equivalent and keeps the prose contract."
@@ -243,7 +249,7 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 **Verify-First Marker**: "The optional pinned `(**Verify-first**: Step N)` parenthetical on a `design.md` risk, naming the step whose design depends on that risk being resolved or disproven first."
 *Avoid*: Blocker, Gate, Check First, precondition, dependency marker
 
-**Worker Matrix**: "The harness-specific parameter set that materializes one binding and one managed worker agent for each routed planning or audit phase from canonical templates."
+**Worker Matrix**: "The harness-specific parameter set that materializes one binding and one managed worker agent for each routed planning or audit phase plus the two apply Step-execution workers (RED and GREEN) from canonical templates."
 *Avoid*: worker roster, worker grid, phase-file matrix, worker template set
 
 **Worktree Name Triple**: "The three derived names of one git worktree under the `/sai-worktree` convention — the sibling directory suffix, the branch name, and the counter slot — each derivable from the others: the default `<main-dir>.worktree-<n>` directory maps to the `worktree-<n>` branch, a custom name maps to the branch obtained by stripping a leading `<main-dir>.` prefix (falling back to the whole name when no such prefix is present), and `n` is the first free slot."
@@ -265,12 +271,12 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 - A **Failure Details** value is paired with the persisted `overview.failure_kind` classification so read-only consumers can identify the failure route without conversation context.
 - **Failure Details** is paired with the persisted `overview.failure_kind` classification so read-only consumers can identify the failure route without conversation context.
 - An **Orca Environment** hosts Orca and both supported agent command-line interfaces while keeping repositories under persistent workspace storage and credentials outside the image.
-- **Coordinator Verification** may trigger one **Recovery Dispatch** when a **Known-False Report Recovery** is clear, safe, and in scope; a failed or ambiguous recovery returns to human intervention.
+- **Coordinator Verification** may trigger one same-worker recovery continuation (cap 3, shared pool) when a **Known-False Report Recovery** is clear, safe, and in scope; a failed or exhausted recovery returns to human intervention.
 - A **Backfilled Change** is archived via `/sai-archive` (the same command that archives non-backfilled changes).
 - A **Backfilled Change** is produced only by `/sai-backfill`; no other `sai-*` command writes `backfilled: true`.
-- A **Blind Test-Writer** precedes an **Implementation Dispatch** for every **Split-Routed Step**; the two never communicate directly — only the `/sai-4-apply` coordinator relays learnings between them.
-- A **GREEN Conflict** is raised by an **Implementation Dispatch** and is resolved only by a human via the coordinator, never by the subagent editing the test or interface.
-- An **Attempts Per Phase** entry exists for `red` exactly where the report's RED result is non-`n/a`, and for `green` exactly where the GREEN result is non-`n/a`; a **Blind Test-Writer** therefore emits one entry, an **Implementation Dispatch** one, and a single dispatch two when its body contains a RED block and one otherwise.
+- A **RED Worker** precedes a **GREEN Worker** for every **Split-Routed Step**; the two never communicate directly — only the `/sai-4-apply` coordinator relays learnings between them.
+- A **GREEN Conflict** is raised by a **GREEN Worker** and is resolved only by a human via the coordinator, never by the worker editing the test or interface.
+- An **Attempts Per Phase** entry exists for `red` exactly where the report's RED result is non-`n/a`, and for `green` exactly where the GREEN result is non-`n/a`; a **RED Worker** therefore emits one or two entries (the green-exception RED worker emits both `red` and `green`), a **GREEN Worker** one, and a GREEN-direct dispatch exactly one `green` entry (a RED-carrying Step never routes GREEN direct).
 - An **Attempts Per Phase** entry is retrospective and flows only into the **Execution Telemetry Appendix** — never back into a later dispatch prompt, which is the technical-learnings channel's job.
 - An **Execution Telemetry Appendix** is written only by the `/sai-4-apply` coordinator, in the same per-Step loop slot as the deviations appendix, so it lands in the Step's own commit.
 - A **Phase Policy** extends the **Orchestration Core** for exactly one planning phase without adding that phase's rules to the shared lifecycle contract.
@@ -283,7 +289,7 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 - A **Phase Review Pass** produces zero or more **Review Finding**s and closes with the shared severity tally; only a completed pass reporting `High=0` marks the **Review Step**.
 - A **Phase Review Pass** reviewer receives exactly one reviewed artifact set plus one **Review Reference Set**; every **Review Finding** it returns targets the reviewed set, never the reference set.
 - A **Review Step** is the one **Progress Step** that run-closing reconciliation never marks, so it is marked exclusively by **Phase Review Pass** evidence carried in an ordinary **Progress Event**.
-- A **Step Projection** belongs to one `/sai-4-apply` run and mirrors the on-disk checkbox state of one `implementation.md`; unlike a **Progress Plan** it is never marked from worker progress events, because apply has no coordinator-worker boundary.
+- A **Step Projection** belongs to one `/sai-4-apply` run and mirrors the on-disk checkbox state of one `implementation.md`; unlike the per-dispatch apply **Progress Plan** it is never marked from worker progress events, even though apply now routes Step execution through the managed RED and GREEN workers.
 - An **Idea Progress List** belongs to one `sai-explore` chat and is grown and marked only from in-session evidence; the session never writes it to a file, and it is never derived from repository state.
 - A **Native Task Panel** is a single-slot resource with exactly one declared owner at a time.
 - While a `sai-explore` chat is active, the panel's declared owner is that session's **Idea Progress List** — a supervised run is the illustrative case, during which no plan-based list renders on the panel.
@@ -292,11 +298,11 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 - A **Pre-Crystallization Stage TODO** belongs to one `sai-explore` chat and is cleared at crystallization, when the session's **Idea Progress List** takes the **Native Task Panel**.
 - A **Pre-Crystallization Stage TODO** is distinct from an **Idea Progress List** and a **Progress Plan**: the stage TODO renders the user-paced pre-crystallization progression, the idea list tracks post-crystallization idea evidence, and the plan is adapter-declared and marked from worker progress events.
 - An **Overview Language** value is selected by the overview-language gate at crystallization, rides in the `Ready to Propose` block, and is forwarded by a **Supervised Pipeline** through the chained design envelope; it is never written to any artifact.
-- A **Known-False Report Recovery** permits at most one **Recovery Dispatch** for a single contradicted Subagent Report and never changes the fixed report field set.
-- A **Test Command** belongs to one change's `## Implementation Context` and is consumed by exactly one dispatch — the **Blind Test-Writer**; a single dispatch receives the Step's own verification commands instead.
-- A **Blind Test-Writer** and an **Implementation Dispatch** replace the single per-Step dispatch only for a **Split-Routed Step**; every other Step keeps one dispatch, including a Step with a RED block whose **Step Contract** is unavailable or whose file scope holds no production file.
-- A **Step Contract** that is missing for a Step routes that Step to a single dispatch (announced by a coordinator trace line); a Step that is not a **Divisible Step** routes to a single dispatch the same way, announced by its own trace line; a **Step Contract** that is ambiguous — several `## Step N` matching the same `N` — is a desync and STOPs the run.
-- A **Divisible Step** that carries a `##### RED phase` block and has an available **Step Contract** is a **Split-Routed Step**; a testable Step that is not divisible keeps a single dispatch.
+- A **Known-False Report Recovery** permits at most three continuations of the same GREEN worker session for a single contradicted worker report (the shared bounded recovery pool) and never changes the fixed report field set.
+- A **Test Command** belongs to one change's `## Implementation Context` and is consumed by exactly one dispatch — the **RED Worker**; a GREEN-direct dispatch receives the Step's own verification commands instead.
+- A **RED Worker** and a **GREEN Worker** replace the single per-Step dispatch only for a **Split-Routed Step**; every other Step keeps one dispatch — a GREEN-direct dispatch for a non-testable Step with a production surface, and the **RED Worker**'s green-exception for any production-free Step — while a RED Step with no **Step Contract** halts the run.
+- A **Step Contract** that is missing for a Step halts the run (contract absence is a STOP); a Step that is not a **Divisible Step** routes to the **RED Worker**'s green-exception; a **Step Contract** that is ambiguous — several `## Step N` matching the same `N` — is a desync and STOPs the run.
+- A **Divisible Step** that carries a `##### RED phase` block and has an available **Step Contract** is a **Split-Routed Step**; a testable Step that is not divisible routes to the **RED Worker**'s green-exception.
 - A **Review-Loop Token** firing enters the per-change review loop over the **Tracked Crystallized Set**; when that set is empty the token yields a one-line acknowledgment instead of any iteration.
 - A **Review-Loop Token** fires the post-crystallization loop, and each `Review sai-1's artifacts` / `Review sai-2's artifacts` transaction in it is an **Artifact Review**.
 - An **Artifact Review** produces zero or more **Review Finding**s, each carrying a **Finding Identifier** derived from its severity within that review.
@@ -345,7 +351,7 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 ## Flagged ambiguities
 
 - **Change-level vs step-level complexity** — both **Proposal Complexity** and **Routing Complexity** are spelled `low|medium|high`, so a bare "complexity" is ambiguous about which artifact and which granularity is meant. **Resolution:** the shared vocabulary is deliberate (one mapping table serves both), so the tokens are not renamed; instead the qualified terms are always used — **Proposal Complexity** for the per-change token on `proposal.md`, **Routing Complexity** for the per-step token on `tasks.md`. A divergence between the two is expected and is never reported as an inconsistency.
-- **"Testable Step" vs the dispatch it routes to** — `apply.md` used "testable" to mean both "has a RED block" and "gets two dispatches", which collapsed once a RED-carrying Step with no **Step Contract** was recognised, and again once a production-free Step (test-only or interfaces-only) was recognised: such a Step is testable but not divisible, and an implementation dispatch would have nothing to write. **Resolution:** "testable" describes only the RED block; **Divisible Step** describes the production-surface property; **Split-Routed Step** is the term for the two-dispatch outcome, and the three are no longer synonyms.
+- **"Testable Step" vs the dispatch it routes to** — `apply.md` used "testable" to mean both "has a RED block" and "gets two dispatches", which collapsed once a RED-carrying Step with no **Step Contract** was recognised, and again once a production-free Step (test-only or interfaces-only) was recognised: such a Step is testable but not divisible, and a GREEN dispatch would have nothing to write. **Resolution:** "testable" describes only the RED block; **Divisible Step** describes the production-surface property; **Split-Routed Step** is the term for the two-worker outcome; a RED Step with no **Step Contract** halts the run, and any production-free Step (testable or non-testable) routes to the **RED Worker**'s green-exception — the terms are not synonyms.
 - **"Change type" vs "OpenSpec change"** — "change" already names the OpenSpec change object, so a bare "change type" (e.g. "tipo de cambio") is ambiguous between the file-level token and the change-level object. **Resolution:** the four per-file tokens are always called **File Change Type**; "change" alone always means the OpenSpec change, and the file-level term is never shortened.
 - **"Change Overview" vs the review sections it projects** — the **Change Overview** and the `## Target State` / `### Architecture Snapshot` / `### File Manifest` sections (hosted in `design.md`, projected into `change-overview.md`) all present review-oriented content, so a bare "overview" or "snapshot" is ambiguous about which surface is meant. **Resolution:** **Change Overview** names the whole-change `change-overview.md` projection; **Target State**, **Architecture Snapshot**, and **File Manifest** name the authoritative `design.md` sections it projects as its leading content; the qualified terms are always used, and the overview never becomes a source of truth over the source artifacts.
 - **"Files Affected" vs "File Manifest"** — the per-step `tasks.md` field and the aggregated `design.md` subsection both describe the change's file surface. **Resolution:** **Files Affected** names the per-step field on `tasks.md` (authoritative per step); **File Manifest** names the aggregated, net-folded subsection on `design.md` (derivative target-state view, projected into `change-overview.md`) — the two are never synonyms, and `tasks.md` remains the authority.

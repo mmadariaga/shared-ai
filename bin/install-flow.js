@@ -142,6 +142,8 @@ const MANAGED_WORKER_ORDER = Object.freeze([
   'sai-7-performance-worker',
   'sai-8-accessibility-worker',
   'sai-1-spec-proposal-worker',
+  'sai-4-red-worker',
+  'sai-4-green-worker',
 ]);
 
 function matrixRenderings(harness) {

@@ -160,6 +160,40 @@ const MANAGED_WORKER_PROJECTIONS = {
       destinationPath: 'sai-1-spec-proposal-worker.md',
     },
   },
+  'sai-4-red-worker': {
+    claudeBinding: {
+      id: 'claude-red-worker-binding',
+      sourcePath: 'sai/orchestration/workers/bindings/claude/red-worker.md',
+       destinationPath: 'orchestration/workers/bindings/red-worker.md',
+    },
+    opencodeBinding: {
+      id: 'opencode-red-worker-binding',
+      sourcePath: 'sai/orchestration/workers/bindings/opencode/red-worker.md',
+       destinationPath: 'orchestration/workers/bindings/red-worker.md',
+    },
+    claudeAgent: {
+      id: 'claude-sai-4-red-worker',
+      sourcePath: 'agents/claude/sai-4-red-worker.md',
+      destinationPath: 'sai-4-red-worker.md',
+    },
+  },
+  'sai-4-green-worker': {
+    claudeBinding: {
+      id: 'claude-green-worker-binding',
+      sourcePath: 'sai/orchestration/workers/bindings/claude/green-worker.md',
+       destinationPath: 'orchestration/workers/bindings/green-worker.md',
+    },
+    opencodeBinding: {
+      id: 'opencode-green-worker-binding',
+      sourcePath: 'sai/orchestration/workers/bindings/opencode/green-worker.md',
+       destinationPath: 'orchestration/workers/bindings/green-worker.md',
+    },
+    claudeAgent: {
+      id: 'claude-sai-4-green-worker',
+      sourcePath: 'agents/claude/sai-4-green-worker.md',
+      destinationPath: 'sai-4-green-worker.md',
+    },
+  },
 };
 
 const ROUTED_PHASES = ['spec', 'design', 'implement', 'review', 'security', 'performance', 'accessibility'];
