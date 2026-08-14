@@ -133,45 +133,15 @@ test('supervised autonomy keeps state in conversation and tracks escalations', (
   assert.match(source, /scoped to `?start-pipeline`? supervision/i);
 });
 
-test('independent review is fresh, input-scoped, and returns only the declared outcomes', () => {
-  const source = exploreContract();
-
-  assert.match(source, /IndependentReviewResult/);
-  assert.match(source, /review_complete/);
-  assert.match(source, /review_failed/);
-  assert.match(source, /review_cancelled/);
-  assert.match(source, /exactly one fresh reviewer|one fresh reviewer/i);
-  assert.match(source, /crystallized block.*proposal\.md.*specs|proposal\.md.*specs.*crystallized block/i);
-  assert.match(source, /only.*crystallized.*proposal|receives only.*proposal/i);
-  assert.match(source, /structured findings|IndependentReviewFinding/);
-  assert.match(source, /only.*three|only.*declared outcomes|returns only/i);
-});
-
-test('review findings require complete correction data and preserve worker ownership', () => {
-  const source = exploreContract();
-
-  assert.match(source, /IndependentReviewFinding/);
-  for (const field of [
-    'identifier',
-    'severity',
-    'artifact_location',
-    'issue_statement',
-    'recommended_correction',
-  ]) assert.match(source, new RegExp(`\\b${field}\\b`));
-  assert.match(source, /accepted edits.*worker|worker[- ]owned.*edit/i);
-  assert.match(source, /discarded findings.*specific reasons|specific reasons.*discard/i);
-});
-
-test('machine feedback continues each actionable finding to the same spec worker', () => {
+test('machine feedback continues each actionable finding to the same phase worker', () => {
   const source = fs.readFileSync(path.join(repoRoot, 'sai/commands/explore/instructions.md'), 'utf8');
   const policy = fs.readFileSync(path.join(repoRoot, 'sai/policies/artifact-feedback-gate.md'), 'utf8');
 
   assert.match(source, /MachineFeedbackAdapter/);
   assert.match(source, /sai\/policies\/artifact-feedback-gate\.md/);
   assert.match(source, /needs_input/);
-  assert.match(source, /same spec[- ]proposal worker|same.*spec worker/i);
+  assert.match(source, /same (?:spec[- ]proposal|spec|design|phase)[- ]?worker/i);
 
-  assert.match(policy, /IndependentReviewFinding\[\]/);
   assert.match(policy, /For each finding.*one same-worker continuation/i);
   assert.match(policy, /per-item legitimacy rules/i);
   assert.match(policy, /artifact-only scope/i);
@@ -189,17 +159,17 @@ test('machine feedback cannot enter or advance the user gate or proceed branch',
   assert.match(source, /does not execute.*proceed-label.*next-action/i);
 });
 
-test('iteration zero offers feedback after the supervised review loop settles', () => {
+test('iteration zero offers feedback after the supervised review rounds settle', () => {
   const source = fs.readFileSync(path.join(repoRoot, 'sai/policies/artifact-feedback-gate.md'), 'utf8');
 
   assert.match(source, /empty findings array is a no-op/i);
-  assert.match(source, /Defer the ordinary user-facing gate while another review pass is required/i);
-  assert.match(source, /Present that gate for the first time, unchanged at iteration 0, only after the review loop converges, exhausts its three-pass cap, or is interrupted by `review_failed` or `review_cancelled`\./i);
+  assert.match(source, /Defer the ordinary user-facing gate while another (?:review pass|review round) is required/i);
+  assert.match(source, /Present that gate for the first time, unchanged at iteration 0, only after the review (?:loop converges|rounds converge), exhausts? its three[- ]round cap, or is interrupted by worker failure\./i);
   assert.match(source, /first ordered labels remain.*Give feedback \(Recommended\).*proceed-label/i);
   assert.match(source, /iteration 0/);
 });
 
-test('explore remains read-only and closes with the exact supervised completion contract', () => {
+test('explore remains read-only and closes with the supervised in-session completion contract', () => {
   const source = exploreContract();
 
   assert.match(source, /Explore.*no direct write|no direct write/i);
@@ -212,11 +182,12 @@ test('explore remains read-only and closes with the exact supervised completion 
   }
   assert.match(
     source,
-    /Supervised sai-1 done in openspec\/changes\/\{name\}\/\. Independent review and artifact feedback are complete; sai-2 was not run\./
+    /Supervised sai-1 done in openspec\/changes\/\{name\}\/\./
   );
+  assert.doesNotMatch(source, /sai-2 was not run|Independent review and artifact feedback are complete/i);
   assert.match(
     source,
-    /Supervised sai-1 done in openspec\/changes\/\{name\}\/\. Independent review did not complete; artifact feedback is complete; sai-2 was not run\./
+    /(?:spec convergence|spec.*converg|cap exhaustion)[\s\S]{0,200}(?:chain|proceed|continue)[\s\S]{0,120}(?:design|sai-2)/i
   );
   assert.match(source, /Ready to Propose/);
 });
@@ -304,15 +275,15 @@ test('direct spec and design wrappers retain their existing terminal contracts',
   ]) assert.equal(fs.existsSync(path.join(repoRoot, retiredPath)), false, `${retiredPath} should be absent`);
 });
 
-test('Step 1 continues every completed-pass finding to the same worker', () => {
+test('Step 1 continues every completed-round finding to the same phase worker', () => {
   const feedbackGate = fs.readFileSync(
     path.join(repoRoot, 'sai/policies/artifact-feedback-gate.md'),
     'utf8'
   );
 
-  assert.match(feedbackGate, /For every completed review pass in the bounded convergence loop/i);
-  assert.match(feedbackGate, /For each finding in that pass, in array order, perform one same-worker continuation/i);
-  assert.match(feedbackGate, /Complete all findings for the current pass before supervision evaluates whether another fresh review pass is required/i);
+  assert.match(feedbackGate, /For every completed review pass in the bounded convergence loop|For every completed review round/i);
+  assert.match(feedbackGate, /For each finding in that (?:pass|round), in array order, perform one same-worker continuation/i);
+  assert.match(feedbackGate, /Complete all findings for the current (?:pass|round) before supervision evaluates whether another (?:fresh review pass|review round) is required/i);
 });
 
 test('Step 1 preserves artifact-only worker ownership and specific discard reasons', () => {
@@ -328,14 +299,14 @@ test('Step 1 preserves artifact-only worker ownership and specific discard reaso
   assert.match(supervision, /Explore never writes directly/i);
 });
 
-test('Step 1 defers the ordinary gate until review convergence, cap, or interruption', () => {
+test('Step 1 defers the ordinary gate until review convergence, round cap, or interruption', () => {
   const feedbackGate = fs.readFileSync(
     path.join(repoRoot, 'sai/policies/artifact-feedback-gate.md'),
     'utf8'
   );
 
-  assert.match(feedbackGate, /Defer the ordinary user-facing gate while another review pass is required/i);
-  assert.match(feedbackGate, /Present that gate for the first time, unchanged at iteration 0, only after the review loop converges, exhausts its three-pass cap, or is interrupted by `review_failed` or `review_cancelled`\./i);
+  assert.match(feedbackGate, /Defer the ordinary user-facing gate while another (?:review pass|review round) is required/i);
+  assert.match(feedbackGate, /Present that gate for the first time, unchanged at iteration 0, only after the review (?:loop converges|rounds converge), exhausts? its three[- ]round cap, or is interrupted by worker failure\./i);
   assert.match(feedbackGate, /Its first ordered labels remain `Give feedback \(Recommended\)` followed by `proceed-label`/i);
 });
 
@@ -374,7 +345,7 @@ test('Step 1 preserves the feedback heading, iteration labels, language, selecti
   assert.match(feedbackGate, /`Give feedback \(Recommended\)`[\s\S]{0,180}`Give more feedback`/i);
   assert.match(feedbackGate, /render it in the user's language/i);
   assert.match(feedbackGate, /Apply feedback \*\*selectively per item\*\*/i);
-  assert.match(feedbackGate, /## Machine-feedback adapter \(supervised sai-1 only\)/i);
+  assert.match(feedbackGate, /## Machine-feedback adapter \(supervised (?:sai-1 only|phases)\)/i);
 });
 
 test('Step 1 applies routed ownership to sai-1 and sai-2', () => {
@@ -403,122 +374,11 @@ test('Step 4 synchronizes the normative artifact feedback gate contract', () => 
   assert.doesNotMatch(normative, /\(a\)[\s\S]{0,500}\(b\)[\s\S]{0,500}continuation/i);
 });
 
-test('Step 2 validates severity before processing a completed review result', () => {
-  const source = supervisionContract();
-  const contract = fs.readFileSync(
-    path.join(repoRoot, 'sai/policies/artifact-review-contract.md'),
-    'utf8'
-  );
-
-  assert.match(source, /PipelineReviewFinding/);
-  assert.match(source, /severity\s*=.*High.*Medium.*Low|severity.*(?:High|Medium|Low).*out[- ]of[- ]set/i);
-  assert.match(source, /missing.*severity|severity.*missing/i);
-  assert.match(source, /whole.*completed result.*review_failed|review_failed.*whole.*result/i);
-  assert.match(source, /rejected:\s*output-contract violation/i);
-  assert.match(source, /no automatic retry|does not retry|without retry/i);
-  assert.match(source, /not processed.*reviewer output-contract violation/i);
-  assert.match(source, /rather than crash|not.*cancellation|output-contract violation.*cancellation/i);
-  assert.match(source, /sai\/policies\/artifact-review-contract\.md/);
-  assert.doesNotMatch(source, /could materially authorize/);
-  assert.match(contract, /would allow a materially incorrect/);
-  assert.match(contract, /High.*Medium.*Low/);
-});
-
-test('Step 2 emits the exact ordered pass and rejected-finding history contracts', () => {
-  const source = supervisionContract();
-
-  assert.match(source, /IndependentReviewResult/);
-  for (const outcome of ['review_complete', 'review_failed', 'review_cancelled']) {
-    assert.match(source, new RegExp(outcome));
-  }
-  assert.match(source, /Pass.*positive integer/);
-  assert.match(source, /ascending order/);
-  assert.match(source, /Finding\s+H\d+/);
-  assert.match(source, /Finding\s+M\d+/);
-  assert.match(source, /Finding\s+L\d+/);
-  assert.doesNotMatch(source, /Finding.*pass-local identifier/);
-  for (const field of [
-    'Severity:',
-    'Artifact location:',
-    'Issue:',
-    'Recommended correction:',
-    'Feedback disposition:',
-  ]) assert.match(source, new RegExp(field.replace(':', '\\:')));
-  assert.match(source, /reviewer-returned order|returned order/);
-  assert.match(source, /Findings:\s*None/);
-  assert.match(source, /well-formed siblings|every raw finding|all raw findings/i);
-  assert.match(source, /not processed — reviewer output-contract violation|not processed.*output-contract violation/i);
-  assert.match(source, /does not enter.*machine-feedback|none enters.*feedback/i);
-});
-
-test('Step 2 only starts another isolated review when a completed pass has High findings', () => {
-  const source = supervisionContract();
-
-  assert.match(source, /completed pass.*High|High.*completed pass/i);
-  assert.match(source, /fresh isolated reviewer|isolated.*reviewer.*fresh/i);
-  assert.match(source, /another pass remains|pass remains/i);
-  assert.match(source, /pass with no High.*dispatches none|no High.*no.*dispatch|without High.*does not dispatch/i);
-});
-
-test('Step 2 reports accepted Medium and Low edits without claiming convergence', () => {
-  const source = supervisionContract();
-
-  assert.match(source, /accepted.*(?:Medium|Low)|(?:Medium|Low).*accepted/si);
-  assert.match(source, /not re-reviewed|not.*re[- ]reviewed/i);
-  assert.match(source, /no convergence claim.*edited state|does not claim convergence.*edited state/i);
-});
-
-test('Step 2 keeps per-item continuations outside the bounded review-pass count', () => {
-  const source = supervisionContract();
-
-  assert.match(source, /initial review.*pass 1|pass 1.*initial review/i);
-  assert.match(source, /per-item continuation.*does not increment|continuation.*not increment.*pass|continuations.*do not increment/i);
-  assert.match(source, /pass 3.*High.*no fourth|third pass.*no fourth|three-pass.*no.*fourth/i);
-});
-
-test('Step 2 treats cap exhaustion as non-failure and reports every final High finding', () => {
-  const source = supervisionContract();
-
-  assert.match(source, /cap exhaustion.*non[- ]failure|exhaust.*cap.*not.*failure/i);
-  assert.match(source, /final pass.*High|final-pass.*High/i);
-  assert.match(source, /artifact location.*issue.*recommendation.*disposition/is);
-  assert.match(source, /every.*final[- ]pass.*High|all.*final[- ]pass.*High/i);
-});
-
-test('Step 2 preserves history and unvalidated edits across reviewer failure or cancellation', () => {
-  const source = supervisionContract();
-
-  assert.match(source, /reviewer failure.*cancellation|failure or cancellation/i);
-  assert.match(source, /prior completed-pass history|completed-pass history.*preserv/i);
-  assert.match(source, /unvalidated-edit state|unvalidated edits/i);
-  assert.match(source, /no automatic retry|does not retry|without retry/i);
-  assert.match(source, /ordinary feedback gate|ordinary user-facing gate/i);
-});
-
-test('Step 2 reports deterministic pass summaries and outstanding High identifiers before the outcome', () => {
-  const source = supervisionContract();
-
-  assert.match(source, /deterministic pass blocks|pass blocks.*outcome|pass blocks precede/i);
-  assert.match(source, /opening summary|summary.*opening/i);
-  assert.match(source, /per-pass severity counts|severity counts.*pass/i);
-  assert.match(source, /Outstanding High/);
-  assert.match(source, /Pass.*High=.*Medium=.*Low=.*Contract-violations=/);
-  assert.match(source, /Outstanding High:.*None/);
-});
-
-test('Step 2 starts a fresh three-pass bound on later user retry and preserves standalone spec behavior', () => {
-  const source = supervisionContract();
-
-  assert.match(source, /later user retry.*new.*three-pass|retry.*new.*three-pass bound/i);
-  assert.match(source, /preserved artifacts|preserve.*artifacts/i);
-  assert.match(source, /direct.*\/sai-1-spec.*standalone terminal|standalone.*terminal.*sai-1-spec/i);
-});
-
 test('Step 2 reports auto-answered questions at every terminal outcome with grounding citations', () => {
   const source = exploreContract();
 
   assert.match(source, /Auto-answered questions are reported at every phase ending/i);
-  assert.match(source, /convergence.*cap exhaustion.*reviewer failure.*failed.*cancelled.*worker/is);
+  assert.match(source, /convergence.*cap exhaustion.*(?:worker failure|failed|cancelled).*worker/is);
   assert.match(source, /each.*auto[- ]answer.*grounding citation|grounding citation.*each.*auto[- ]answer/is);
 });
 
@@ -546,7 +406,7 @@ test('Step 2 pins the autonomy audit field order and empty-report form', () => {
   assert.match(source, /no questions were auto-answered this phase/i);
 });
 
-test('Step 2 blind pipeline state extends the start-pipeline interface by phase', () => {
+test('supervised pipeline state extends the start-pipeline interface by phase with separate round counters', () => {
   const source = supervisionContract();
 
   for (const field of [
@@ -557,30 +417,28 @@ test('Step 2 blind pipeline state extends the start-pipeline interface by phase'
     'auto_answered',
     'escalated_count',
     'specs_converged_changes',
-    'review_passes',
-    'finding_history',
+    'review_rounds',
   ]) assert.match(source, new RegExp(`\\b${field}\\b`));
 
   assert.match(source, /auto_answered.*phase-keyed|phase-keyed.*auto_answered/i);
   assert.match(source, /escalated_count.*phase-keyed|phase-keyed.*escalated_count/i);
-  assert.match(source, /review_passes.*phase-keyed|phase-keyed.*review_passes/i);
-  assert.match(source, /finding_history.*phase-keyed|phase-keyed.*finding_history/i);
+  assert.match(source, /review_rounds[\s\S]{0,180}(?:`?spec`?|"spec")[\s\S]{0,180}(?:`?design`?|"design")|(?:`?spec`?|"spec")[\s\S]{0,180}review_rounds[\s\S]{0,180}(?:`?design`?|"design")/i);
+  assert.doesNotMatch(source, /\breview_passes\b/);
+  assert.doesNotMatch(source, /\bfinding_history\b/);
   assert.match(source, /spec-to-design transition adapter|transition adapter.*design/i);
   assert.match(source, /wrapper_echo_value\s*:\s*""/);
   assert.match(source, /arguments_value\s*:\s*"\{name\} --fast-track"/);
 });
 
-test('Step 2 blind supervision reports spec convergence before design dispatch and preserves the token', () => {
+test('supervised review reports spec convergence or cap exhaustion before design dispatch and preserves the token', () => {
   const source = supervisionContract();
 
   assert.match(
     source,
-    /spec phase.*converg[\s\S]{0,360}(?:pass outcome|autonomy audit)[\s\S]{0,360}(?:design worker|design dispatch)/i
+    /spec phase.*converg[\s\S]{0,360}(?:pass outcome|round outcome|autonomy audit)[\s\S]{0,360}(?:design worker|design dispatch)/i
   );
   assert.match(source, /same active token|active token remains in force/i);
-  assert.match(source, /spec cap exhaustion[\s\S]{0,180}(?:no design|design worker.*not|does not dispatch design)/i);
-  assert.match(source, /reviewer failure.*cancellation[\s\S]{0,180}(?:no design|design worker.*not|does not dispatch design)/i);
-  assert.match(source, /severity-contract violation[\s\S]{0,180}(?:no design|design worker.*not|does not dispatch design)/i);
+  assert.match(source, /spec (?:phase )?cap exhaustion[\s\S]{0,200}(?:chain|proceed|continue|dispatch)[\s\S]{0,120}(?:design|sai-2)/i);
   assert.match(source, /failed or cancelled spec-worker[\s\S]{0,180}(?:no design|design worker.*not|does not dispatch design)/i);
 });
 
@@ -590,7 +448,7 @@ test('Step 2 blind supervision rejects duplicate starts until the chained design
   assert.match(source, /active supervision rejects another `?start-pipeline`? token/i);
   assert.match(source, /throughout the chained design phase/i);
   assert.match(source, /ends only at the applicable terminal outcome/i);
-  assert.match(source, /spec and design.*review.*autonomy records remain separate/i);
+  assert.match(source, /spec and design.*(?:review_rounds|review rounds).*autonomy records remain separate|spec and design.*autonomy records remain separate/i);
   assert.match(source, /completed_changes.*applicable terminal worker result/i);
   assert.match(source, /specs_converged_changes.*active_phase.*design/i);
 });
@@ -685,25 +543,6 @@ test('Step 1 rejects malformed language input before dispatch', () => {
 
 // ─── Step 2: spec-design-review-progress-step (worker-owned planning-artifact review loop) ─
 
-test('Step 2: every review pass gives a fresh read-only reviewer exactly the reviewed and reference sets', () => {
-  const worker = spec('sai/commands/spec/worker.md');
-
-  assert.match(worker, /Each pass creates one fresh isolated read-only reviewer/,
-    'every pass should dispatch a fresh read-only reviewer');
-  assert.match(worker, /give it exactly \(1\)[\s\S]{0,60}reviewed set[\s\S]{0,120}\(2\)[\s\S]{0,60}reference set/,
-    'the reviewer should receive exactly the reviewed and reference sets');
-  assert.match(worker, /`proposal\.md` plus every `specs\/\*\*\/\*\.md`/,
-    'the reviewed set should be exactly proposal.md and specs/**/*.md');
-  assert.match(worker, /verbatim resolved request from this worker's original two-string invocation envelope/,
-    'the reference should be the verbatim resolved request');
-  assert.match(worker, /or an empty set when that envelope carries only a change name/,
-    'the reference may be empty');
-  assert.match(worker, /Findings may target only reviewed-set files/,
-    'findings should target only the reviewed set');
-  assert.match(worker, /no conversation, worker reasoning or journal, prior reviewer state, unrelated repository content, lifecycle\/binding metadata, or write capability/,
-    'the reviewer should be isolated from all other context');
-});
-
 test('Step 2: worker edits stay within reviewed artifacts and discards name specific reasons', () => {
   const worker = spec('sai/commands/spec/worker.md');
   const coordinator = spec('sai/commands/spec/coordinator.md');
@@ -727,23 +566,6 @@ test('Step 2: accepted edits re-verify and recompute the decision summary withou
     'the decision summary should be recomputed from current artifacts');
   assert.match(worker, /without re-emitting or reopening `proposal`, `specs`, or `validation`/,
     'earlier progress ids should not be re-emitted');
-});
-
-test('Step 2: failed, cancelled, or invalid-severity attempts consume one attempt and re-dispatch while the cap permits', () => {
-  const worker = spec('sai/commands/spec/worker.md');
-
-  assert.match(worker, /A missing or out-of-set severity rejects the whole attempt/,
-    'an invalid-severity attempt should reject the whole attempt');
-  assert.match(worker, /coerce nothing, process nothing/,
-    'no finding should be processed from a rejected attempt');
-  assert.match(worker, /A failed, cancelled, or output-contract-invalid attempt advances only the total-attempt count/,
-    'failed, cancelled, or invalid-severity attempts should consume one total attempt');
-  assert.match(worker, /the total-attempt count is capped at 6/,
-    'the total-attempt cap should be stated');
-  assert.match(worker, /dispatches a fresh reviewer while the total-attempt cap permits/,
-    'a fresh reviewer should be dispatched while the total-attempt cap permits');
-  assert.match(worker, /classify the cause as a reviewer output-contract violation distinct from failure, cancellation, and outstanding `High` findings/,
-    'the outcome should be reported distinctly');
 });
 
 test('Step 2: the validation progress event precedes any review event', () => {
@@ -783,8 +605,8 @@ test('Step 2: worker review stays active under supervision without a routed task
 
   assert.match(worker, /supervised pipeline/i,
     'the worker contract should cover supervised invocation');
-  assert.match(worker, /coexists with and never replaces the supervised pipeline's independent convergence loop/,
-    'worker review should run in addition to the independent convergence loop');
+  assert.match(worker, /coexists with and never replaces the supervised pipeline's (?:independent convergence loop|supervised review rounds|in[- ]session review rounds)/i,
+    'worker review should run in addition to the supervised rounds');
   assert.match(worker, /`MachineFeedbackAdapter`/,
     'the worker-owned loop should coexist with the MachineFeedbackAdapter');
   assert.match(supervision, /no adapter-declared plan is in force in the supervised flow/,
@@ -797,14 +619,14 @@ test('Step 2: worker review stays active under supervision without a routed task
 
 // ─── Step 3: spec-design-review-progress-step (supervised design review) ────
 
-test('Step 3: supervised design keeps the worker-owned review and the independent convergence loop both active without routed-list marking', () => {
+test('Step 3: supervised design keeps the worker-owned review and the supervised review rounds both active without routed-list marking', () => {
   const worker = spec('sai/commands/design/worker.md');
   const supervision = spec('sai/commands/explore/instructions.md');
 
   assert.match(worker, /supervised pipeline/i,
     'the design worker contract should cover supervised invocation');
-  assert.match(worker, /coexists with and never replaces the supervised pipeline's independent convergence loop/i,
-    'the design worker-owned review should coexist with the independent convergence loop');
+  assert.match(worker, /coexists with and never replaces the supervised pipeline's (?:independent convergence loop|supervised review rounds|in[- ]session review rounds)/i,
+    'the design worker-owned review should coexist with the supervised rounds');
   assert.match(worker, /(?:no|without|never)[\s\S]{0,160}(?:adapter-declared plan|routed list|plan-based list|step marking)/i,
     'the design worker should not mark routed list steps under supervision');
   assert.match(
@@ -817,4 +639,68 @@ test('Step 3: supervised design keeps the worker-owned review and the independen
     /(?:design|sai-2)[\s\S]{0,240}no plan-based list renders|no plan-based list renders[\s\S]{0,240}(?:design|sai-2)/i,
     'no plan-based list should render in the supervised design flow'
   );
+});
+
+// ─── Step 1: supervised-review-in-session (in-session review rounds) ─
+
+test('supervised review rounds invoke the Review Engine in-session without a reviewer subagent', () => {
+  const source = supervisionContract();
+
+  assert.match(source, /supervised review round|review rounds|in[- ]session review/i);
+  assert.match(source, /Review[\s-]?Engine\(changeName[\s\S]{0,120}artifactSet|Review[\s-]?Engine\(\s*changeName\s*,\s*artifactSet/i);
+  assert.match(source, /artifactSet[\s\S]{0,160}sai-1\|sai-2|sai-1\|sai-2[\s\S]{0,160}artifactSet/i);
+  assert.match(source, /spec[\s\S]{0,160}design[\s\S]{0,160}(?:pair|chain|phase pairing|same phase)/i);
+  assert.match(source, /in[- ]session/i);
+  assert.match(source, /no reviewer subagent|does not dispatch a reviewer subagent/i);
+  assert.doesNotMatch(source, /IndependentReviewResult|IndependentReviewFinding/);
+});
+
+test('supervised review state uses separate phase round counters without findings history', () => {
+  const source = spec('sai/commands/explore/instructions.md');
+
+  assert.match(source, /review_rounds/);
+  assert.match(source, /review_rounds[\s\S]{0,180}(?:`?spec`?|"spec")[\s\S]{0,180}(?:`?design`?|"design")|(?:`?spec`?|"spec")[\s\S]{0,180}review_rounds[\s\S]{0,180}(?:`?design`?|"design")/i);
+  assert.doesNotMatch(source, /\breview_passes\b/);
+  assert.doesNotMatch(source, /\bfinding_history\b/);
+  assert.match(source, /at most three review rounds|three[- ]round cap|three-round cap/i);
+  assert.match(source, /manual (?:review|counters)[\s\S]{0,160}(?:separate|do not count|does not count|does not increment)|separate from supervised rounds/i);
+});
+
+test('supervised rounds preserve worker-owned edits and fresh disk evidence', () => {
+  const source = supervisionContract();
+
+  assert.match(source, /fresh disk (?:re[- ]?read|read)|re[- ]?read[s]? (?:from|the) disk|fresh[\s\S]{0,120}disk/i);
+  assert.match(source, /same (?:spec|design|phase)[- ]?worker/i);
+  assert.match(source, /Explore never writes directly/i);
+  assert.match(source, /read[- ]only/i);
+  assert.match(source, /per-item legitimacy/i);
+  assert.match(source, /specific discard|discard[\s\S]{0,80}specific reason/i);
+});
+
+test('cap exhaustion reports one tally line and continues the supervised run', () => {
+  const source = supervisionContract();
+
+  assert.match(source, /cap exhaustion[\s\S]{0,200}(?:one|single)[\s\S]{0,60}line|(?:one|single)[\s\S]{0,60}line[\s\S]{0,200}cap exhaustion/i);
+  assert.match(source, /Summary:\s*High=<count>\s*Medium=<count>\s*Low=<count>/i);
+  assert.match(source, /(?:spec|sai-1)[\s\S]{0,120}cap exhaustion[\s\S]{0,240}(?:chain|proceed|continue|dispatch)[\s\S]{0,160}(?:design|sai-2)/i);
+  assert.match(source, /(?:design|sai-2)[\s\S]{0,120}cap exhaustion[\s\S]{0,240}(?:complet|terminal|end|finish)/i);
+  assert.doesNotMatch(source, /Outstanding High:|Contract-violations=/);
+});
+
+test('supervised review rounds drive the phase review item in-progress state', () => {
+  const source = supervisionContract();
+
+  assert.match(source, /reviewed-sai-1[\s\S]{0,200}in_progress|in_progress[\s\S]{0,200}reviewed-sai-1/i);
+  assert.match(source, /reviewed-sai-2[\s\S]{0,200}in_progress|in_progress[\s\S]{0,200}reviewed-sai-2/i);
+  assert.match(source, /cap exhaustion[\s\S]{0,160}(?:resolv|pending)/i);
+  assert.match(source, /render[- ]only/i);
+});
+
+test('manual navigation and worker-owned Phase Review Passes remain distinct', () => {
+  const source = supervisionContract();
+
+  assert.match(source, /Review Loop Navigation/i);
+  assert.match(source, /five[- ]option|five options|5[- ]option/i);
+  assert.match(source, /Phase Review Pass/i);
+  assert.match(source, /worker[- ]owned/i);
 });
