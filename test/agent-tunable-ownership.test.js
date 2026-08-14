@@ -325,9 +325,10 @@ test('a body-divergent managed destination is kept as a project-local override',
 
 test('Claude and opencode uninstall enumerate their managed agent destinations', () => {
   const genericNames = ['explore', 'executor', 'budget'];
+  const applyNames = ['sai-4-red-worker', 'sai-4-green-worker'];
   for (const [harness, install, enumerate, expectedCount] of [
-    ['claude', flow.installClaude, enumerateClaude, 10],
-    ['opencode', flow.installOpencode, enumerateOpencode, 10],
+    ['claude', flow.installClaude, enumerateClaude, 12],
+    ['opencode', flow.installOpencode, enumerateOpencode, 12],
   ]) {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), `sai-tunable-${expectedCount}-${harness}-`));
     try {
@@ -351,6 +352,8 @@ test('Claude and opencode uninstall enumerate their managed agent destinations',
         assert.ok(CLAUDE_GENERIC_AGENTS.every(name => basenames.includes(name)),
           'claude agent destinations should include the three budget agent basenames');
       }
+      assert.ok(applyNames.every(name => basenames.includes(name)),
+        `${harness} agent destinations should include the two apply-role worker filenames`);
     } finally {
       fs.rmSync(dir, { recursive: true, force: true });
     }

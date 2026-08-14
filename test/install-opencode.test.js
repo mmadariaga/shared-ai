@@ -45,7 +45,7 @@ const UTILITY_COMMANDS = {
   'sai-worktree': 'worktree',
 };
 const UTILITY_CARD_CONTENTS = {
-  apply: ['body.md', 'instructions.md'],
+  apply: ['coordinator.md', 'green-worker.md', 'invocation.md', 'red-worker.md', 'runner.md'],
   archive: ['archive-commit-gate.instructions.md', 'body.md', 'instructions.md'],
   backfill: ['body.md', 'instructions.md'],
   commit: ['body.md', 'instructions.md'],
@@ -1122,8 +1122,9 @@ test('Step 1 Claude agent rows remain byte-preserving without ownership sidecars
 
 // --- Step 3: binding-derived roster replaces the retired registration surface ---
 
-test('Step 3 binding roster validation yields exactly the seven managed workers', () => {
+test('Step 3 binding roster validation yields exactly the nine managed workers', () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-roster-'));
+  const NINE_WORKERS = [...CURRENT_CENSUS, 'sai-4-red-worker', 'sai-4-green-worker'];
   try {
     installOpencode(tmpDir);
     const bindingsDir = path.join(tmpDir, 'sai', 'orchestration', 'workers', 'bindings');
@@ -1131,15 +1132,16 @@ test('Step 3 binding roster validation yields exactly the seven managed workers'
     const names = (Array.isArray(roster) ? roster : Object.keys(roster || {}))
       .map(entry => (typeof entry === 'string' ? entry : entry && entry.name))
       .sort();
-    assert.deepEqual(names, [...CURRENT_CENSUS].sort(),
-      'specs/opencode-agent-census/spec.md: the binding roster must contain exactly the seven managed workers with no extra or missing worker');
+    assert.deepEqual(names, [...NINE_WORKERS].sort(),
+      'specs/opencode-agent-census/spec.md: the binding roster must contain exactly the nine managed workers with no extra or missing worker');
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }
 });
 
-test('Step 3 binding files declare exactly the seven initial worker dispatches', () => {
+test('Step 3 binding files declare exactly the nine initial worker dispatches', () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-bindings-scan-'));
+  const NINE_WORKERS = [...CURRENT_CENSUS, 'sai-4-red-worker', 'sai-4-green-worker'];
   try {
     installOpencode(tmpDir);
     const bindingsDir = path.join(tmpDir, 'sai', 'orchestration', 'workers', 'bindings');
@@ -1153,7 +1155,7 @@ test('Step 3 binding files declare exactly the seven initial worker dispatches',
         declared.push(match[1]);
       }
     }
-    assert.deepEqual(declared.sort(), [...CURRENT_CENSUS].sort(),
+    assert.deepEqual(declared.sort(), [...NINE_WORKERS].sort(),
       'specs/opencode-agent-census/spec.md: initial binding dispatches must define exactly the managed roster');
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });
@@ -1162,14 +1164,18 @@ test('Step 3 binding files declare exactly the seven initial worker dispatches',
 
 test('Step 3 roster validation admits dispatch-less render bindings alongside worker bindings', () => {
   const fixtureDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-render-binding-'));
+  const NINE_WORKERS = [...CURRENT_CENSUS, 'sai-4-red-worker', 'sai-4-green-worker'];
   try {
     const installDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-render-install-'));
     try {
       installOpencode(installDir);
-      fs.copyFileSync(
-        path.join(installDir, 'sai', 'orchestration', 'workers', 'bindings', 'design-worker.md'),
-        path.join(fixtureDir, 'design-worker.md')
-      );
+      for (const file of fs.readdirSync(path.join(installDir, 'sai', 'orchestration', 'workers', 'bindings'))) {
+        if (!file.endsWith('-worker.md')) continue;
+        fs.copyFileSync(
+          path.join(installDir, 'sai', 'orchestration', 'workers', 'bindings', file),
+          path.join(fixtureDir, file)
+        );
+      }
     } finally {
       fs.rmSync(installDir, { recursive: true, force: true });
     }
@@ -1188,8 +1194,8 @@ test('Step 3 roster validation admits dispatch-less render bindings alongside wo
     assert.equal(validationError, null,
       `a dispatch-less render binding must not fail roster validation: ${validationError}`);
     const names = (Array.isArray(roster) ? roster : Object.keys(roster || {})).sort();
-    assert.deepEqual(names, ['sai-2-design-worker'],
-      'the roster should contain exactly the validated worker and ignore the render binding');
+    assert.deepEqual(names, [...NINE_WORKERS].sort(),
+      'the roster should contain exactly the validated nine workers and ignore the render binding');
   } finally {
     fs.rmSync(fixtureDir, { recursive: true, force: true });
   }
@@ -1331,7 +1337,7 @@ test('Step 3 install seeds the seven managed opencode worker agent files with th
   }
 });
 
-test('opencode installer consumes exactly the seven matrix worker bindings and agents', () => {
+test('opencode installer consumes exactly the nine matrix worker bindings and agents', () => {
   const repoRoot = path.join(__dirname, '..');
   const manifest = loadInstallManifest(repoRoot);
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-matrix-inventory-'));
@@ -1351,15 +1357,15 @@ test('opencode installer consumes exactly the seven matrix worker bindings and a
         .split(path.sep).join('/').startsWith('orchestration/workers/bindings/') &&
         phases.includes(path.basename(projection.destinationPath, '-worker.md')))
       .map(projection => path.basename(projection.destinationPath));
-    assert.equal(bindingNames.length, 7, 'opencode should project exactly seven worker bindings');
+    assert.equal(bindingNames.length, 7, 'opencode should project exactly seven phase worker bindings');
     assert.equal(bindingNames.includes('idea-list-render.md'), false,
       'opencode must not project an idea-list-render matrix binding');
     const allBindingNames = active
       .filter(projection => path.relative(destinationRoot.sai, projection.destinationPath)
         .split(path.sep).join('/').startsWith('orchestration/workers/bindings/'))
       .map(projection => path.basename(projection.destinationPath));
-    assert.equal(allBindingNames.length, 7,
-      'opencode should keep only the seven routed worker bindings in the matrix destination');
+    assert.equal(allBindingNames.length, 9,
+      'opencode should keep only the nine routed worker bindings in the matrix destination');
     const ideaList = active.find(projection =>
       path.relative(repoRoot, projection.sourcePath).split(path.sep).join('/') ===
       'sai/adapters/opencode/idea-list-render.md');
@@ -1424,9 +1430,18 @@ test('installOpencode active projection carries the neutral root protocols, rout
     assert.equal(sourceSet.has('sai/adapters/claude/boot.md'), false,
       'opencode must not project the Claude boot adapter');
     for (const utility of Object.values(UTILITY_COMMANDS)) {
+      if (utility === 'apply') continue;
       assert.ok(sourceSet.has(`sai/commands/${utility}/body.md`),
         `opencode should project the utility card sai/commands/${utility}/body.md`);
     }
+    for (const card of ['coordinator.md', 'red-worker.md', 'green-worker.md', 'runner.md', 'invocation.md']) {
+      assert.ok(sourceSet.has(`sai/commands/apply/${card}`),
+        `opencode should project the routed apply card sai/commands/apply/${card}`);
+    }
+    assert.equal(sourceSet.has('sai/commands/apply/body.md'), false,
+      'opencode must not project the retired apply body card');
+    assert.equal(sourceSet.has('sai/commands/apply/instructions.md'), false,
+      'opencode must not project the retired monolithic apply instruction');
     for (const flat of Object.keys(UTILITY_COMMANDS).map(name => `sai/commands/${name}.md`)) {
       assert.equal(sourceSet.has(flat), false, `${flat} must be absent from the active source layout`);
     }
@@ -1493,9 +1508,14 @@ test('opencode boot adapter loads command-runner first, selects utility bodies, 
     assert.match(boot, /Fetch @sai\/commands\/(?:\{name\}|[a-z-]+)\/body\.md/,
       'utility selection should target the matching body card');
     for (const name of Object.values(UTILITY_COMMANDS)) {
+      if (name === 'apply') continue;
       assert.doesNotMatch(boot, new RegExp(`@sai/commands/${name}/coordinator\\.md`),
         `the opencode boot must not select a coordinator card for the ${name} utility`);
     }
+    assert.match(boot, /@sai\/commands\/apply\/coordinator\.md/,
+      'the opencode boot must select the routed coordinator card for apply');
+    assert.doesNotMatch(boot, /@sai\/commands\/apply\/body\.md/,
+      'the opencode boot must no longer select the apply utility body card');
 
     assert.doesNotMatch(boot, /\bAgent\s*\(/,
       'the opencode boot adapter must not mention the Claude Agent dispatch primitive');

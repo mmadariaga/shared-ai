@@ -160,6 +160,40 @@ const MANAGED_WORKER_PROJECTIONS = {
       destinationPath: 'sai-1-spec-proposal-worker.md',
     },
   },
+  'sai-4-red-worker': {
+    claudeBinding: {
+      id: 'claude-red-worker-binding',
+      sourcePath: 'sai/orchestration/workers/bindings/claude/red-worker.md',
+       destinationPath: 'orchestration/workers/bindings/red-worker.md',
+    },
+    opencodeBinding: {
+      id: 'opencode-red-worker-binding',
+      sourcePath: 'sai/orchestration/workers/bindings/opencode/red-worker.md',
+       destinationPath: 'orchestration/workers/bindings/red-worker.md',
+    },
+    claudeAgent: {
+      id: 'claude-sai-4-red-worker',
+      sourcePath: 'agents/claude/sai-4-red-worker.md',
+      destinationPath: 'sai-4-red-worker.md',
+    },
+  },
+  'sai-4-green-worker': {
+    claudeBinding: {
+      id: 'claude-green-worker-binding',
+      sourcePath: 'sai/orchestration/workers/bindings/claude/green-worker.md',
+       destinationPath: 'orchestration/workers/bindings/green-worker.md',
+    },
+    opencodeBinding: {
+      id: 'opencode-green-worker-binding',
+      sourcePath: 'sai/orchestration/workers/bindings/opencode/green-worker.md',
+       destinationPath: 'orchestration/workers/bindings/green-worker.md',
+    },
+    claudeAgent: {
+      id: 'claude-sai-4-green-worker',
+      sourcePath: 'agents/claude/sai-4-green-worker.md',
+      destinationPath: 'sai-4-green-worker.md',
+    },
+  },
 };
 
 const ROUTED_PHASES = ['spec', 'design', 'implement', 'review', 'security', 'performance', 'accessibility'];
@@ -1355,7 +1389,8 @@ test('canonical manifest projects exactly one harness boot adapter and the utili
     config: path.join(os.tmpdir(), 'sai-adapter-config'),
     root: path.join(os.tmpdir(), 'sai-adapter-config'),
   };
-  const utilities = ['apply', 'archive', 'backfill', 'commit', 'explore', 'pr', 'status', 'worktree'];
+  const utilities = ['archive', 'backfill', 'commit', 'explore', 'pr', 'status', 'worktree'];
+  const applyCards = ['coordinator.md', 'red-worker.md', 'green-worker.md', 'runner.md', 'invocation.md'];
   const flatSources = [
     'sai/commands/sai-4-apply.md',
     'sai/commands/sai-archive.md',
@@ -1382,6 +1417,14 @@ test('canonical manifest projects exactly one harness boot adapter and the utili
       assert.ok(sourceSet.has(`sai/commands/${utility}/body.md`),
         `${harness} should project the utility card sai/commands/${utility}/body.md`);
     }
+    for (const card of applyCards) {
+      assert.ok(sourceSet.has(`sai/commands/apply/${card}`),
+        `${harness} should project the routed apply card sai/commands/apply/${card}`);
+    }
+    assert.equal(sourceSet.has('sai/commands/apply/body.md'), false,
+      `${harness} must not project the retired apply body card`);
+    assert.equal(sourceSet.has('sai/commands/apply/instructions.md'), false,
+      `${harness} must not project the retired monolithic apply instruction`);
     for (const flat of flatSources) {
       assert.equal(sourceSet.has(flat), false,
         `${harness} must not project the flat utility source ${flat}`);
@@ -1396,6 +1439,17 @@ test('canonical manifest projects exactly one harness boot adapter and the utili
         projection.destinationPath.endsWith(path.join('commands', utility, 'body.md')));
       assert.ok(card, `${harness} should land the ${utility} utility card at sai/commands/${utility}/body.md`);
     }
+    for (const card of applyCards) {
+      const applyCard = projections.find(projection =>
+        projection.destinationPath.endsWith(path.join('commands', 'apply', card)));
+      assert.ok(applyCard, `${harness} should land the routed apply card at sai/commands/apply/${card}`);
+    }
+    assert.equal(projections.some(projection =>
+      projection.destinationPath.endsWith(path.join('commands', 'apply', 'body.md'))), false,
+    `${harness} must not land the retired apply body card`);
+    assert.equal(projections.some(projection =>
+      projection.destinationPath.endsWith(path.join('commands', 'apply', 'instructions.md'))), false,
+    `${harness} must not land the retired monolithic apply instruction`);
   }
 });
 

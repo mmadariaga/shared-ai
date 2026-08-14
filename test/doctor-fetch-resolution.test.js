@@ -320,7 +320,7 @@ describe('doctor fetch resolution', () => {
     const projectRoot = makeGoodFixture();
     const claudeBase = makeTempDir('sai-dr-boot-claude-');
     const opencodeBase = makeTempDir('sai-dr-boot-opencode-');
-    const utilities = ['apply', 'archive', 'backfill', 'commit', 'explore', 'pr', 'status', 'worktree'];
+    const utilities = ['archive', 'backfill', 'commit', 'explore', 'pr', 'status', 'worktree'];
     try {
       installClaude(claudeBase);
       installOpencode(opencodeBase);
@@ -337,6 +337,14 @@ describe('doctor fetch resolution', () => {
           assert.ok(fs.existsSync(path.join(base, 'sai', 'commands', utility, 'body.md')),
             `${harness} harness should install the ${utility} utility body card`);
         }
+        for (const card of ['coordinator.md', 'red-worker.md', 'green-worker.md', 'runner.md', 'invocation.md']) {
+          assert.ok(fs.existsSync(path.join(base, 'sai', 'commands', 'apply', card)),
+            `${harness} harness should install the routed apply card ${card}`);
+        }
+        assert.equal(fs.existsSync(path.join(base, 'sai', 'commands', 'apply', 'body.md')), false,
+          `${harness} harness must not install the retired apply body card`);
+        assert.equal(fs.existsSync(path.join(base, 'sai', 'commands', 'apply', 'instructions.md')), false,
+          `${harness} harness must not install the retired monolithic apply instruction`);
         assert.equal(fs.existsSync(path.join(base, 'sai', 'commands', 'sai-4-apply.md')), false,
           `${harness} harness must not install the flat sai-4-apply.md source`);
       }
@@ -348,7 +356,7 @@ describe('doctor fetch resolution', () => {
         assert.ok(section, `${sectionName} section should exist`);
         const refErrors = (section['fetch-ref'] || []).filter(r => r.severity === 'error');
         assert.equal(refErrors.length, 0,
-          `${sectionName} should resolve every Fetch reference including the boot adapter`);
+          `${sectionName} should resolve every Fetch reference including the boot adapter and the routed apply cards`);
       }
     } finally {
       fs.rmSync(projectRoot, { recursive: true, force: true });
@@ -497,20 +505,20 @@ test('matrix worker bindings are the sole active binding inventory for both harn
     const active = expandInstallManifest(manifest, { harness, repoRoot, destinationRoot });
     const bindingNames = active
       .filter(projection => path.relative(destinationRoot.sai, projection.destinationPath)
-        .split(path.sep).join('/').startsWith('orchestration/workers/bindings/') &&
-        phases.includes(path.basename(projection.destinationPath, '-worker.md')))
+        .split(path.sep).join('/').startsWith('orchestration/workers/bindings/'))
       .map(projection => path.basename(projection.destinationPath));
-    assert.equal(bindingNames.length, 7, `${harness} should project exactly seven worker bindings`);
-    assert.deepEqual(bindingNames.sort(), phases.map(phase => `${phase}-worker.md`).sort(),
-      `${harness} worker binding names should match the canonical phase matrix`);
+    assert.equal(bindingNames.length, 9, `${harness} should project exactly nine worker bindings`);
+    const phaseBindingNames = bindingNames.filter(name => phases.includes(name.replace(/-worker\.md$/, '')));
+    assert.deepEqual(phaseBindingNames.sort(), phases.map(phase => `${phase}-worker.md`).sort(),
+      `${harness} phase worker binding names should match the canonical phase matrix`);
     assert.equal(bindingNames.includes('idea-list-render.md'), false,
       `${harness} must not project an idea-list-render matrix binding`);
     const allBindingNames = active
       .filter(projection => path.relative(destinationRoot.sai, projection.destinationPath)
         .split(path.sep).join('/').startsWith('orchestration/workers/bindings/'))
       .map(projection => path.basename(projection.destinationPath));
-     assert.equal(allBindingNames.length, 7,
-       `${harness} should keep only the seven routed worker bindings in the matrix destination`);
+     assert.equal(allBindingNames.length, 9,
+       `${harness} should keep only the nine routed worker bindings in the matrix destination`);
      assert.ok(active.some(projection =>
        path.relative(repoRoot, projection.sourcePath).split(path.sep).join('/') ===
        `sai/adapters/${harness}/idea-list-render.md`));

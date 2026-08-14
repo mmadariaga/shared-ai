@@ -64,14 +64,14 @@ The projection SHALL apply the minimum-threshold rule of `sai/policies/todo-stru
 
 ### Requirement: no-progress-protocol
 
-The projection SHALL NOT introduce progress events, a `progress_plan` declaration, or any change to the worker lifecycle or coordinator contract: `/sai-4-apply` has no coordinator-worker boundary, so the list is derived by the coordinator directly from the artifact. The task-list tool call SHALL originate from the coordinator session only, never from a Step-execution subagent.
+The projection SHALL NOT introduce progress events, a `progress_plan` declaration, or any change to the worker lifecycle or coordinator contract. `/sai-4-apply` now has a coordinator-worker boundary — the RED and GREEN workers emit lifecycle progress events per the shared worker lifecycle — but the run-start step list is NOT the apply progress plan declared in `apply-routed-card-set`: it is derived by the coordinator directly from the artifact and is never marked from worker progress events. The task-list tool call SHALL originate from the coordinator session only, never from a RED or GREEN Step-execution worker.
 
-#### Scenario: apply run emits no progress event
+#### Scenario: apply run emits no projection progress event
 
 - **WHEN** `/sai-4-apply` renders and marks the projected list
-- **THEN** no `event: progress` payload is emitted and no `continue_after_progress` acknowledgement is used; the worker lifecycle and coordinator contract are unchanged
+- **THEN** no `event: progress` payload is emitted for the projection and no `continue_after_progress` acknowledgement is used for it; the projection remains coordinator-derived even though the Step loop itself is worker-driven
 
-#### Scenario: subagent never emits the tool call
+#### Scenario: Step-execution worker never emits the tool call
 
-- **WHEN** a Step-execution subagent runs during an apply run
-- **THEN** the subagent does not emit the task-list tool call; only the coordinator session does
+- **WHEN** a RED or GREEN Step-execution worker runs during an apply run
+- **THEN** the worker does not emit the task-list tool call; only the coordinator session does

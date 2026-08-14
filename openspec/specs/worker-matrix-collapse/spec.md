@@ -8,16 +8,16 @@ TBD
 
 ### Requirement: Harness templates materialize the routed worker matrix
 
-The installer SHALL define one parameterized worker-binding template and one parameterized managed-worker-agent template for each supported harness. The templates SHALL materialize the seven routed phases — spec, design, implementation, review, security, performance, and accessibility — with phase parameters for worker identity, subagent type, model or tuning, worker-contract Fetch target, continuation literal, and any phase-specific options. The separate `idea-list-render` binding and non-worker support agents SHALL remain outside this matrix.
+The installer SHALL define one parameterized worker-binding template and one parameterized managed-worker-agent template for each supported harness. The templates SHALL materialize the seven routed phases — spec, design, implementation, review, security, performance, and accessibility — plus the two apply Step-execution workers (RED and GREEN), with parameters for worker identity, subagent type, model or tuning, worker-contract Fetch target, continuation literal, and any phase-specific options. The separate `idea-list-render` binding and non-worker support agents SHALL remain outside this matrix.
 
 #### Scenario: Every phase receives a deterministic binding and agent
 
 - **WHEN** the manifest is expanded for either supported harness
-- **THEN** exactly one materialized binding and one materialized managed worker agent exist for each of the seven routed phases, with the expected destination names and no unresolved template tokens
+- **THEN** exactly one materialized binding and one materialized managed worker agent exist for each of the seven routed phases and for each of the two apply workers, with the expected destination names and no unresolved template tokens
 
 #### Scenario: Phase-specific behavior is isolated
 
-- **WHEN** a matrix entry is rendered for spec, design, implementation, or an audit phase
+- **WHEN** a matrix entry is rendered for spec, design, implementation, an audit phase, or an apply worker
 - **THEN** it contains only that phase's continuation, helper permissions, reconstruction fields, progress behavior, and exceptional options, and design-only overview or notice options do not appear in other phases
 
 ### Requirement: Materialized worker behavior preserves canonical lifecycle contracts
@@ -36,11 +36,11 @@ Each materialized worker agent SHALL preserve its harness-specific frontmatter i
 
 ### Requirement: Projection lifecycle integrity covers matrix replacement and retirements
 
-The manifest and expansion layer SHALL represent the parameterized templates as deterministic managed projections whose materialized bytes remain available to install, doctor, and uninstall. The change SHALL retire every removed per-phase binding and managed-agent source destination with a complete `managedHashes` record in the same manifest revision, while preserving existing retirement records and excluding unrelated `idea-list-render` and support-agent projections from retirement.
+The manifest and expansion layer SHALL represent the parameterized templates as deterministic managed projections whose materialized bytes remain available to install, doctor, and uninstall. The change SHALL retire every removed per-phase binding and managed-agent source destination with a complete `managedHashes` record in the same manifest revision, while preserving existing retirement records and excluding unrelated `idea-list-render` and support-agent projections from retirement. The retired `sai/commands/apply/body.md` utility-card destination SHALL be covered by the same retirement machinery.
 
 #### Scenario: Re-projection removes obsolete managed files safely
 
-- **WHEN** install is run against a prior installation containing a removed per-phase source file
+- **WHEN** install is run against a prior installation containing a removed per-phase source file or the retired apply body destination
 - **THEN** the obsolete file is recognized through its retirement record and removed only when its bytes match a permitted managed hash, while user-modified content is preserved and reported as drift
 
 #### Scenario: Doctor and uninstall agree with installation
@@ -50,14 +50,14 @@ The manifest and expansion layer SHALL represent the parameterized templates as 
 
 ### Requirement: Canonical tests enforce cross-harness matrix parity
 
-The test suite SHALL verify every routed phase across both harnesses, including parameter substitution, exact worker-contract Fetch targets, frontmatter and tuning preservation, phase-flag isolation, absence of unresolved placeholders, and install/doctor/uninstall retirement integrity. The tests SHALL retain the established thin-agent Fetch-wrapper behavior precedent rather than accepting duplicated worker contract bodies.
+The test suite SHALL verify every routed phase and both apply workers across both harnesses, including parameter substitution, exact worker-contract Fetch targets, frontmatter and tuning preservation, phase-flag isolation, absence of unresolved placeholders, and install/doctor/uninstall retirement integrity. The tests SHALL retain the established thin-agent Fetch-wrapper behavior precedent rather than accepting duplicated worker contract bodies.
 
 #### Scenario: Matrix regression is detected before installation
 
-- **WHEN** a phase parameter, continuation literal, model, or Fetch target is missing, duplicated, or assigned to the wrong phase
-- **THEN** the canonical matrix tests fail with the phase and harness identified
+- **WHEN** a phase parameter, continuation literal, model, or Fetch target is missing, duplicated, or assigned to the wrong phase or worker
+- **THEN** the canonical matrix tests fail with the phase, worker, and harness identified
 
 #### Scenario: Historical files remain covered
 
-- **WHEN** a removed binding or managed-agent destination has any previously managed byte variant
+- **WHEN** a removed binding, managed-agent destination, or retired apply body destination has any previously managed byte variant
 - **THEN** the retirement-integrity tests require every known hash to remain registered and reject incomplete retirement or a duplicate active destination

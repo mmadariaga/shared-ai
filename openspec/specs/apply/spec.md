@@ -3,22 +3,22 @@
 ## Purpose
 TBD - created by archiving change extract-commit-rules-shared-instruction. Update Purpose after archive.
 ## Requirements
-### Requirement: Coordinator dispatches each Step to a subagent on every iteration
-During `sai-4-apply`, the main thread SHALL act as a coordinator: for each Step in `implementation.md` it SHALL identify the next unchecked Step and dispatch a subagent to execute that Step's implementation body. The coordinator itself SHALL NOT perform the read-before-write reads, RED-test runs, or GREEN iteration of the Step — those happen inside the subagent so their output never enters the coordinator's context. The subagent SHALL continue executing Steps sequentially until the plan is finished, without returning control to the coordinator between Steps. Each subagent invocation SHALL be self-contained: the prompt SHALL include all necessary context (Step text, RED→GREEN rules, read-before-write rule, relevant technical learnings) so the subagent does not need to refer back to prior conversation.
+### Requirement: Coordinator dispatches each Step to a worker on every iteration
+During `sai-4-apply`, the main thread SHALL act as a coordinator: for each Step in `implementation.md` it SHALL identify the next unchecked Step and dispatch a managed Step-execution worker (the RED or GREEN worker, per the routing decision tree) to execute that Step's implementation body. The coordinator itself SHALL NOT perform the read-before-write reads, RED-test runs, or GREEN iteration of the Step — those happen inside the dispatched worker(s) so their output never enters the coordinator's context. Each worker invocation SHALL be self-contained: the dispatch SHALL include all necessary context (Step text, RED→GREEN rules, read-before-write rule, allowed-file list, relevant technical learnings) so the worker does not need to refer back to prior conversation.
 
-The no-self-execution rule holds on every iteration, not just the first. After a Step's STOP & COMMIT checklist finishes (commit created, or the user declined and was told how to commit themselves), the first action of the new iteration MUST be the same: dispatch a NEW Step-execution subagent for the next unchecked Step (per `## Step-Execution Subagent Dispatch` in `apply.md`). The coordinator SHALL NOT edit code, run tests, or perform the next Step's body itself, no matter how small or familiar the next Step looks after the ones already done.
+The no-self-execution rule holds on every iteration, not just the first. After a Step's STOP & COMMIT checklist finishes (commit created, or the user declined and was told how to commit themselves), the first action of the new iteration MUST be the same: dispatch a NEW Step-execution worker for the next unchecked Step (per the Step routing decision tree in `sai/commands/apply/runner.md` and the managed RED/GREEN worker bindings). The coordinator SHALL NOT edit code, run tests, or perform the next Step's body itself, no matter how small or familiar the next Step looks after the ones already done.
 
 #### Scenario: Coordinator reaches the next unchecked Step
 - **WHEN** the coordinator finishes one Step and looks for the next work
-- **THEN** it locates the next Step in `implementation.md` whose checkboxes are not all `[x]` and dispatches a subagent to execute that Step's implementation body
+- **THEN** it locates the next Step in `implementation.md` whose checkboxes are not all `[x]` and dispatches a managed Step-execution worker to execute that Step's implementation body
 
 #### Scenario: Coordinator reaches the next unchecked Step on a later iteration
 - **WHEN** the coordinator finishes a Step's STOP & COMMIT checklist (commit authorized or declined) and an unchecked Step remains
-- **THEN** the coordinator dispatches a NEW Step-execution subagent for the next unchecked Step — it does not execute the next Step's body itself, even when the next Step is small or familiar
+- **THEN** the coordinator dispatches a NEW Step-execution worker for the next unchecked Step — it does not execute the next Step's body itself, even when the next Step is small or familiar
 
 #### Scenario: Coordinator does not absorb execution noise
 - **WHEN** a Step requires reading files before writing, running a RED test, or iterating on GREEN
-- **THEN** those operations are performed by the subagent, and only the subagent's compact report (not the raw file dumps, tracebacks, or iteration logs) returns to the coordinator
+- **THEN** those operations are performed by the dispatched worker(s), and only the compact worker report (not the raw file dumps, tracebacks, or iteration logs) returns to the coordinator
 
 ### Requirement: Sequential, no-skip Step processing
 The coordinator SHALL process Steps strictly in order and SHALL NOT skip any Step. On resume, it SHALL pick up at the next unchecked Step.
@@ -34,23 +34,23 @@ When dispatching a subagent, the coordinator SHALL provide the full text of the 
 - **WHEN** the coordinator dispatches a Step that contains a RED block
 - **THEN** the subagent's instructions include the full Step text and the RED→GREEN rules, and the subagent writes the test first, runs the RED verification, then writes and iterates the GREEN implementation until it passes
 
-### Requirement: Step-execution subagent is dispatched via the per-harness budget-subagent skill binding
+### Requirement: Step-execution work is dispatched via the managed RED/GREEN worker bindings
 
-The Step-execution subagent SHALL be dispatched via the per-harness **`budget-subagent`** skill, resolved at runtime from `skills/{claude,opencode,copilot}/budget-subagent/`. The skill binding provides write-capable tool access (Bash, Read, Write, Edit, Glob, Grep) — required for RED→GREEN execution — and resolves the model via the opencode `budget` agent file's `model` frontmatter (`~/.config/opencode/agents/budget.md`, opencode), via `subagent_type: General` + a model tier (Claude Code), or via the Copilot `budget-subagent` custom agent (GPT-5 mini). The standard cheap tier applies; the model is **not** forced to match the coordinator's model.
+The Step-execution work SHALL be dispatched through the managed apply worker bindings (`sai-4-red-worker` and `sai-4-green-worker`), projected from the worker-matrix on the budget tier for both harnesses. The RED worker authors tests (blind in the split flow; green-exception in the production-free flow) and the GREEN worker implements with an absolute test-file prohibition. The previous dispatch through the per-harness `budget-subagent` skill binding is superseded: the write-capable cheap-tier Step-execution role is now the managed apply worker bindings, whose model tier is the budget tier, not the coordinator's model.
 
-The subagent SHALL NOT be dispatched to `budget-explorer` (which is read-only and lacks the write access required for RED→GREEN execution). The previous "no `model:` param" carve-out that forced model inheritance from the coordinator, and the `docs/adr/0017-same-model-dispatch-via-omitted-model-param.md` reference, are superseded by this requirement.
+The workers SHALL NOT be dispatched to `budget-explorer` (read-only) and SHALL NOT be replaced by direct coordinator execution of the Step body.
 
-#### Scenario: budget-subagent skill binding used for step dispatch
-- **WHEN** the coordinator dispatches a Step-execution subagent for a Step in `implementation.md`
-- **THEN** the dispatch uses the per-harness `budget-subagent` skill binding (write-capable, cheap tier model)
+#### Scenario: managed worker bindings used for Step dispatch
+- **WHEN** the coordinator dispatches a Step-execution worker for a Step in `implementation.md`
+- **THEN** the dispatch uses the active `sai-4-red-worker` or `sai-4-green-worker` binding (budget tier), never a raw `budget-subagent` skill dispatch
 
 #### Scenario: budget-explorer is NOT used for step dispatch
-- **WHEN** the coordinator needs a write-capable subagent for a Step's RED→GREEN execution
-- **THEN** it dispatches via `budget-subagent`, NOT `budget-explorer` (which is read-only)
+- **WHEN** the coordinator needs a write-capable Step-execution worker
+- **THEN** it dispatches the RED or GREEN worker binding, NOT `budget-explorer` (which is read-only)
 
-#### Scenario: Step-execution subagent model is the cheap tier, not the coordinator's model
-- **WHEN** the per-harness `budget-subagent` skill binding resolves a model
-- **THEN** the resolved model is the standard cheap tier — the coordinator does NOT force the subagent to inherit its own model
+#### Scenario: Step-execution worker model is the budget tier, not the coordinator's model
+- **WHEN** the managed apply worker bindings resolve a model
+- **THEN** the resolved model is the budget tier — the coordinator does NOT force the worker to inherit its own model
 
 ### Requirement: Checkboxes are marked per Step, not per item
 The coordinator SHALL mark a Step's checkboxes after it receives the subagent's report and verifies the Step (per `apply-coordinator-verification`). This per-Step granularity supersedes the prior "mark each item immediately, do not batch" rule for the `sai-4-apply` phase.

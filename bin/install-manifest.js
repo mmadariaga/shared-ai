@@ -123,8 +123,23 @@ function validateRule(rule, ids) {
   }
 }
 
+const APPLY_CONTRACT_BY_WORKER = Object.freeze({
+  'sai-4-red-worker': 'sai/commands/apply/red-worker.md',
+  'sai-4-green-worker': 'sai/commands/apply/green-worker.md',
+});
+
 function assertWorkerIdentity(entry, harness) {
   const prefix = `${harness} worker matrix: `;
+  if (entry.phase === 'apply') {
+    const expectedContract = APPLY_CONTRACT_BY_WORKER[entry.workerName];
+    if (expectedContract === undefined) {
+      throw new Error(`${prefix}unknown apply worker identity ${entry.workerName}`);
+    }
+    if (entry.workerContract !== expectedContract) {
+      throw new Error(`${prefix}apply worker ${entry.workerName} has mismatched worker contract ${entry.workerContract}`);
+    }
+    return;
+  }
   const canonical = PHASE_WORKER_IDENTITIES[entry.phase];
   if (canonical && entry.workerName !== canonical) {
     throw new Error(`${prefix}phase ${entry.phase} has misassigned worker identity ${entry.workerName}`);
@@ -196,6 +211,7 @@ function validateMatrixBlock(matrix) {
     throw new Error('worker-matrix block must declare at least one phase entry');
   }
   const seen = new Set();
+  let applySeen = 0;
   for (const entry of matrix.entries) {
     if (!entry || typeof entry !== 'object') {
       throw new Error('worker-matrix phase entry must be an object');
@@ -203,10 +219,17 @@ function validateMatrixBlock(matrix) {
     if (typeof entry.phase !== 'string' || entry.phase.length === 0) {
       throw new Error('worker-matrix phase entry must declare a phase');
     }
-    if (seen.has(entry.phase)) {
-      throw new Error(`worker-matrix declares duplicate phase: ${entry.phase}`);
+    if (entry.phase === 'apply') {
+      applySeen += 1;
+      if (applySeen > 2) {
+        throw new Error(`worker-matrix declares duplicate phase: ${entry.phase}`);
+      }
+    } else {
+      if (seen.has(entry.phase)) {
+        throw new Error(`worker-matrix declares duplicate phase: ${entry.phase}`);
+      }
+      seen.add(entry.phase);
     }
-    seen.add(entry.phase);
   }
   defineWorkerMatrix(matrix.entries);
 }
@@ -305,7 +328,7 @@ function expandRule(rule, { harness, repoRoot, destinationRoot }) {
 }
 
 function matrixProjectionId(harness, kind, item) {
-  if (kind === 'binding') return `${harness}-${item.phase}-worker-binding`;
+  if (kind === 'binding') return `${harness}-${path.basename(item.destinationName, '.md')}-binding`;
   return `${harness}-${path.basename(item.destinationName, '.md')}`;
 }
 
@@ -328,7 +351,7 @@ function matrixRenderFor(manifest, harness, repoRoot) {
       phase: item.phase,
       destinationName: item.destinationName,
       text: item.text,
-      entry: matrix.entries.find(entry => entry.phase === item.phase),
+      entry: matrix.entries.find(entry => entry.workerName === item.workerName),
     }));
 }
 

@@ -6,6 +6,7 @@
 
 <TASK>
 
+  Fetch @sai/policies/verified-precondition-handback.md
   Fetch @sai/command-runner.md and follow it exactly.
   Fetch @sai/worker-core.md and follow it exactly.
   Fetch @sai/policies/artifact-feedback-gate.md before applying the completion gate. Supply `artifacts = proposal.md, specs/**`, `proceed-label = Finish step`, and `next-action = the existing mandatory stop`.

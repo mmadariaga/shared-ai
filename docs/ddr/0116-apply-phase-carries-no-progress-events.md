@@ -4,7 +4,7 @@
 
 ## Status
 
-Accepted
+Superseded by [DDR 0137](./0137-apply-routed-boundary-carries-progress-events.md)
 
 ## Context
 

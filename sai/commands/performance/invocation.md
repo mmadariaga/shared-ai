@@ -1,5 +1,6 @@
 # sai-7 performance invocation core
 
+Fetch @sai/policies/verified-precondition-handback.md
 Shared technical invocation used by the routed performance worker. This file owns performance audit policy only; it does not resolve an invocation envelope or own routed lifecycle state.
 
 ## Load behaviors (in order)

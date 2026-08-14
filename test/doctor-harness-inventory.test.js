@@ -219,7 +219,7 @@ describe('doctor harness inventory', () => {
     const projectRoot = makeGoodFixture();
     const claudeBase = makeTempDir('sai-harness-boot-claude-');
     const opencodeBase = makeTempDir('sai-harness-boot-opencode-');
-    const utilities = ['apply', 'archive', 'backfill', 'commit', 'explore', 'pr', 'status', 'worktree'];
+    const utilities = ['archive', 'backfill', 'commit', 'explore', 'pr', 'status', 'worktree'];
     try {
       installClaude(claudeBase);
       installOpencode(opencodeBase);
@@ -236,6 +236,14 @@ describe('doctor harness inventory', () => {
           assert.ok(fs.existsSync(path.join(base, 'sai', 'commands', utility, 'body.md')),
             `${harness} should install the ${utility} utility body card`);
         }
+        for (const card of ['coordinator.md', 'red-worker.md', 'green-worker.md', 'runner.md', 'invocation.md']) {
+          assert.ok(fs.existsSync(path.join(base, 'sai', 'commands', 'apply', card)),
+            `${harness} should install the routed apply card ${card}`);
+        }
+        assert.equal(fs.existsSync(path.join(base, 'sai', 'commands', 'apply', 'body.md')), false,
+          `${harness} must not install the retired apply body card`);
+        assert.equal(fs.existsSync(path.join(base, 'sai', 'commands', 'apply', 'instructions.md')), false,
+          `${harness} must not install the retired monolithic apply instruction`);
         assert.equal(fs.existsSync(path.join(base, 'sai', 'commands', 'sai-4-apply.md')), false,
           `${harness} must not install the flat sai-4-apply.md utility source`);
       }

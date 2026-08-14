@@ -18,6 +18,8 @@ const WORKER_NAMES = [
   'sai-6-security-worker',
   'sai-7-performance-worker',
   'sai-8-accessibility-worker',
+  'sai-4-red-worker',
+  'sai-4-green-worker',
 ];
 
 function makeProjectRoot() {
@@ -246,7 +248,7 @@ test('doctor reports every managed agent projection for both harnesses', async (
         .map(record => record.name)
         .filter(name => WORKER_NAMES.includes(name));
       assert.deepEqual(names.sort(), [...WORKER_NAMES].sort(),
-        `doctor should report all 7 managed agent projections in ${section}`);
+        `doctor should report all 9 managed agent projections in ${section}`);
     }
   } finally {
     fs.rmSync(projectRoot, { recursive: true, force: true });

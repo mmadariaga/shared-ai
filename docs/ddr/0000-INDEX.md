@@ -70,7 +70,7 @@ This index groups the DDRs in `docs/ddr/` by **command** and by **cross-cutting 
 - [0063 — A contract-violating telemetry note is dropped whole, never trimmed](./0063-violating-telemetry-note-dropped-not-cleaned.md)
 - [0109 — "Testable" (RED block) and "divisible" (production surface) are distinct Step properties](./0109-testable-and-divisible-are-distinct-step-properties.md) — Refs adr:0115
 - [0115 — The implementation plan's step identity is its `#### Step N:` H4-with-colon heading](./0115-implementation-step-identity-is-h4-heading.md)
-- [0116 — The apply phase carries no progress events because it has no coordinator-worker boundary](./0116-apply-phase-carries-no-progress-events.md) — Refs 0110
+- [0137 — The apply routed boundary carries progress events against immutable dispatch-local plans](./0137-apply-routed-boundary-carries-progress-events.md) — Supersedes 0116
 
 ### `/sai-5-review`
 
@@ -101,6 +101,7 @@ This index groups the DDRs in `docs/ddr/` by **command** and by **cross-cutting 
 - [0133 — Budget dispatch literals resolve through collision-safe harness-managed roles](./0133-budget-dispatch-literals-resolve-through-collision-safe-harness-managed-roles.md)
 - [0134 — Every review-loop turn re-enters except for two complementary closing choices](./0134-every-review-loop-turn-reenters-except-two-closing-choices.md)
 - [0135 — Review findings encoding and loop navigation are separate surfaces](./0135-review-findings-encoding-and-loop-navigation-are-separate-surfaces.md)
+- [0137 — The Review Engine input boundary is navigation-free](./0137-review-engine-input-boundary-is-navigation-free.md)
 
 ### `/sai-backfill`
 
@@ -145,7 +146,7 @@ This index groups the DDRs in `docs/ddr/` by **command** and by **cross-cutting 
 - [0111 — Rendered progress state is a pure function of the declared plan order plus the marked set](./0111-rendered-progress-state-pure-function.md)
 - [0114 — The dispatch envelope is exactly two strings; progress-plan content never travels in it](./0114-progress-plan-never-transported-in-envelope.md)
 - [0115 — The implementation plan's step identity is its `#### Step N:` H4-with-colon heading](./0115-implementation-step-identity-is-h4-heading.md)
-- [0116 — The apply phase carries no progress events because it has no coordinator-worker boundary](./0116-apply-phase-carries-no-progress-events.md) — Refs 0110
+- [0137 — The apply routed boundary carries progress events against immutable dispatch-local plans](./0137-apply-routed-boundary-carries-progress-events.md) — Supersedes 0116
 - [0119 — Outcome-token completion contract with command-boundary mapping](./0119-outcome-token-completion-contract-with-command-boundary-mapping.md)
 - [0120 — Readline lifecycle owned by setup orchestration, closed once at the settle point](./0120-readline-lifecycle-owned-by-setup-orchestration.md)
 - [0121 — The post-setup customization result stays in memory and never touches agent files](./0121-in-memory-non-persistent-override-contract.md)
@@ -216,6 +217,7 @@ This index groups the DDRs in `docs/ddr/` by **command** and by **cross-cutting 
 - [0124 — Active exploration uses question-first closure and repeatable reminders without repeating readiness](./0124-question-first-closure-repeats-without-repeating-readiness.md)
 - [0134 — Every review-loop turn re-enters except for two complementary closing choices](./0134-every-review-loop-turn-reenters-except-two-closing-choices.md)
 - [0135 — Review findings encoding and loop navigation are separate surfaces](./0135-review-findings-encoding-and-loop-navigation-are-separate-surfaces.md)
+- [0137 — The Review Engine input boundary is navigation-free](./0137-review-engine-input-boundary-is-navigation-free.md)
 
 ### Artifact metadata & routing tokens
 
@@ -234,5 +236,8 @@ This index groups the DDRs in `docs/ddr/` by **command** and by **cross-cutting 
 | DDR | Action | Over |
 |---|---|---|
 | [0062](./0062-field-9-soft-degradation-stated-at-two-sites.md) | amends | [0026](./0026-stable-eight-field-report.md) |
+| [0137](./0137-apply-routed-boundary-carries-progress-events.md) | supersedes | [0116](./0116-apply-phase-carries-no-progress-events.md) |
 
 ## Superseded DDRs (historical)
+
+- [0116 — The apply phase carries no progress events because it has no coordinator-worker boundary](./0116-apply-phase-carries-no-progress-events.md) — Refs 0110 — *Superseded by [0137](./0137-apply-routed-boundary-carries-progress-events.md)*

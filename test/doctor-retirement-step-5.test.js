@@ -241,7 +241,7 @@ test('human doctor output identifies retired-copy cleanup and remains successful
   }
 });
 
-test('doctor inventory parity: the manifest derives exactly seven worker bindings and seven managed agents per harness', async () => {
+test('doctor inventory parity: the manifest derives exactly nine worker bindings and nine managed agents per harness', async () => {
   const { projectRoot, claudeBase, opencodeBase } = fixture();
   const { expandInstallManifest } = require('../bin/install-manifest.js');
   const manifest = loadInstallManifest(path.join(__dirname, '..'));
@@ -254,6 +254,8 @@ test('doctor inventory parity: the manifest derives exactly seven worker binding
     'sai-6-security-worker',
     'sai-7-performance-worker',
     'sai-8-accessibility-worker',
+    'sai-4-red-worker',
+    'sai-4-green-worker',
   ];
   try {
     for (const [harness, base] of [['claude', claudeBase], ['opencode', opencodeBase]]) {
@@ -268,20 +270,56 @@ test('doctor inventory parity: the manifest derives exactly seven worker binding
       const active = expandInstallManifest(manifest, { harness, repoRoot: path.join(__dirname, '..'), destinationRoot });
       const bindingNames = active
         .filter(projection => path.relative(destinationRoot.sai, projection.destinationPath)
-          .split(path.sep).join('/').startsWith('orchestration/workers/bindings/') &&
-          phases.includes(path.basename(projection.destinationPath, '-worker.md')))
+          .split(path.sep).join('/').startsWith('orchestration/workers/bindings/'))
         .map(projection => path.basename(projection.destinationPath));
-      assert.equal(bindingNames.length, 7, `${harness} should project exactly seven worker bindings`);
-      assert.deepEqual(bindingNames.sort(), phases.map(phase => `${phase}-worker.md`).sort(),
-        `${harness} worker binding names should match the canonical phase matrix`);
+      assert.equal(bindingNames.length, 9, `${harness} should project exactly nine worker bindings`);
+      const phaseBindingNames = bindingNames.filter(name => phases.includes(name.replace(/-worker\.md$/, '')));
+      assert.deepEqual(phaseBindingNames.sort(), phases.map(phase => `${phase}-worker.md`).sort(),
+        `${harness} phase worker binding names should match the canonical phase matrix`);
       const agentNames = active
         .filter(projection => projection.destinationPath.startsWith(destinationRoot.agents) &&
           workers.includes(path.basename(projection.destinationPath, '.md')))
         .map(projection => path.basename(projection.destinationPath, '.md'));
-      assert.equal(agentNames.length, 7, `${harness} should project exactly seven managed agents`);
+      assert.equal(agentNames.length, 9, `${harness} should project exactly nine managed agents`);
       assert.deepEqual(agentNames.sort(), [...workers].sort(),
         `${harness} managed agent names should match the canonical worker matrix`);
     }
+  } finally {
+    fs.rmSync(projectRoot, { recursive: true, force: true });
+  }
+});
+
+test('doctor reports an unrecognized retired apply body copy without deleting it', async () => {
+  const { projectRoot, claudeBase, opencodeBase } = fixture();
+  const { loadInstallManifest } = require('../bin/install-manifest.js');
+  const manifest = loadInstallManifest(path.join(__dirname, '..'));
+  try {
+    for (const destinationPath of ['commands/apply/body.md', 'commands/apply/instructions.md']) {
+      const records = manifest.retirements.filter(record =>
+        record.destination.class === 'sai' && record.destination.path === destinationPath);
+      assert.equal(records.length, 1,
+        `specs/apply-routed-card-set/spec.md: exactly one retirement record should cover ${destinationPath}`);
+      assert.deepEqual(records[0].harnesses.sort(), ['claude', 'opencode'],
+        `specs/apply-routed-card-set/spec.md: ${destinationPath} should be retired for both harnesses`);
+      assert.ok(records[0].managedHashes.length > 0,
+        `specs/apply-routed-card-set/spec.md: ${destinationPath} should carry managed hashes`);
+    }
+    assert.equal(fs.existsSync(path.join(claudeBase, 'sai', 'commands', 'apply', 'body.md')), false,
+      'specs/apply-routed-card-set/spec.md: a fresh install must not project the retired apply body card');
+
+    const destination = path.join(claudeBase, 'sai', 'commands', 'apply', 'body.md');
+    fs.mkdirSync(path.dirname(destination), { recursive: true });
+    fs.writeFileSync(destination, 'user-owned apply body copy\n');
+    const before = fs.readFileSync(destination, 'utf8');
+    const { code, report } = await runJson(projectRoot, claudeBase, opencodeBase);
+
+    assert.equal(code, 0);
+    const warning = retirementWarning(report, destination);
+    assert.equal(warning.severity, 'warn');
+    assert.equal(warning.recognized, false);
+    assert.match(warning.recommendation, /manually/i);
+    assert.equal(fs.readFileSync(destination, 'utf8'), before,
+      'specs/apply-routed-card-set/spec.md: the user-modified retired copy must survive doctor untouched');
   } finally {
     fs.rmSync(projectRoot, { recursive: true, force: true });
   }

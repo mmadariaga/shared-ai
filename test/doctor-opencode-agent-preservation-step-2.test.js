@@ -18,6 +18,8 @@ const MANAGED_NAMES = [
   'sai-6-security-worker',
   'sai-7-performance-worker',
   'sai-8-accessibility-worker',
+  'sai-4-red-worker',
+  'sai-4-green-worker',
 ];
 
 function makeProjectRoot() {
@@ -95,6 +97,8 @@ test('customized managed agents are accepted by name presence', async () => {
       'sai-1-spec-proposal-worker',
       'sai-2-design-worker',
       'sai-3-implementation-worker',
+      'sai-4-green-worker',
+      'sai-4-red-worker',
       'sai-5-review-worker',
       'sai-6-security-worker',
       'sai-7-performance-worker',

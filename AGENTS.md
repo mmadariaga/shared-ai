@@ -29,8 +29,8 @@ Each phase reads from and writes to **`openspec/changes/{change-name}/`** — si
  sai/command-runner.md            ← neutral command-runner protocol (loaded by every boot adapter before card selection)
  sai/worker-core.md               ← neutral worker lifecycle protocol (loaded by the routed worker cards)
  sai/commands/                    ← command cards — routed cards per phase and utility cards per command (fetched by boot adapters at runtime)
- sai/commands/{spec,design,implement,review,security,performance,accessibility}/  ← routed cards: coordinator.md, worker.md, and invocation.md where retained
- sai/commands/{apply,archive,backfill,commit,explore,pr,status,worktree}/          ← utility cards: body.md only
+ sai/commands/{spec,design,implement,apply,review,security,performance,accessibility}/  ← routed cards: coordinator.md, worker.md, and invocation.md where retained
+ sai/commands/{archive,backfill,commit,explore,pr,status,worktree}/          ← utility cards: body.md only
  sai/commands/{name}/instructions.md   ← command-local phase content (Isolation Mode + TASK block) folded into each command card
  sai/commands/{name}/*.template.md     ← neighboring co-located report/plan template files beside each card
  sai/change-overview.md                ← root exception: shared overview-generation instruction
@@ -39,13 +39,13 @@ Each phase reads from and writes to **`openspec/changes/{change-name}/`** — si
   sai/adapters/claude/             ← Claude Code boot adapter and paired non-worker idea-list runtime glue
   sai/adapters/opencode/           ← opencode boot adapter and paired non-worker idea-list runtime glue
   sai/orchestration/               ← matrix worker-binding templates (no flat coordinator/worker contracts)
-  sai/orchestration/workers/bindings/ ← neutral installed routed worker bindings (seven phases only)
+  sai/orchestration/workers/bindings/ ← neutral installed routed worker bindings (seven phases plus the two apply Step-execution workers)
  sai/policies/                    ← canonical reusable policies and prerequisite rules
  sai/compat/                      ← caller-neutral compatibility-only assets
  sai/install-manifest.json        ← deterministic harness projection manifest for install, doctor, and uninstall
  commands/claude/                 ← Claude Code wrappers (model + effort + fetch to sai/adapters/claude/boot.md)
  commands/opencode/               ← opencode wrappers (model + fetch to sai/adapters/opencode/boot.md)
- agents/claude/                   ← Claude Code managed agents (seven routed Managed Workers + three Generic Agents)
+ agents/claude/                   ← Claude Code managed agents (nine routed Managed Workers + three Generic Agents)
  skills/claude/                   ← Claude Code harness skills
  skills/opencode/                 ← opencode harness skills
  configs/                         ← config samples (opencode.jsonc)
@@ -71,18 +71,18 @@ The openspec-dependent `sai-*` commands halt with a clear error if either is mis
 | `sai/command-runner.md` | Neutral command-runner protocol (result loop, coordinator routing, no phase branches). Loaded by every boot adapter before card selection. |
 | `sai/worker-core.md` | Neutral worker lifecycle protocol (worker journal, envelope, changed-files union, reconstruction). Loaded by the routed worker cards. |
 | `sai/commands/` | Command cards — routed cards per phase and utility cards per command, fetched by boot adapters at runtime. |
-| `sai/commands/{spec,design,implement,review,security,performance,accessibility}/` | Routed cards: `coordinator.md`, `worker.md`, and `invocation.md` where retained. |
-| `sai/commands/{apply,archive,backfill,commit,explore,pr,status,worktree}/` | Utility cards: `body.md` only — the complete command body for utility commands. |
+| `sai/commands/{spec,design,implement,apply,review,security,performance,accessibility}/` | Routed cards: `coordinator.md`, `worker.md`, and `invocation.md` where retained. |
+| `sai/commands/{archive,backfill,commit,explore,pr,status,worktree}/` | Utility cards: `body.md` only — the complete command body for utility commands. |
 | `sai/adapters/claude/boot.md` | Claude Code boot adapter — loads `@sai/command-runner.md`, selects the requested card, owns Claude fetch/dispatch; paired non-worker runtime glue also lives under `sai/adapters/claude/`, including `idea-list-render.md`. |
 | `sai/adapters/opencode/boot.md` | Opencode boot adapter — loads `@sai/command-runner.md`, selects the requested card, owns opencode fetch/dispatch; paired non-worker runtime glue also lives under `sai/adapters/opencode/`, including `idea-list-render.md`. |
 | `sai/orchestration/` | Matrix worker-binding templates (`bindings/{claude,opencode}/worker-template.md`); no flat coordinator/worker contracts remain. |
-| `sai/orchestration/workers/bindings/` | Neutral installed routed worker bindings for the seven phases (`spec/design/implementation/review/security/performance/accessibility-worker.md`) projected for both harnesses; non-worker idea-list runtime glue is owned by the adapter seam. |
+| `sai/orchestration/workers/bindings/` | Neutral installed routed worker bindings for the seven phases (`spec/design/implementation/review/security/performance/accessibility-worker.md`) plus the two apply Step-execution worker bindings (`red-worker.md`/`green-worker.md`) projected for both harnesses; non-worker idea-list runtime glue is owned by the adapter seam. |
 | `sai/policies/` | Canonical glossary, prerequisite, picker, commit, status, and feedback policies. `sai/policies/artifact-review-contract.md`: shared artifact review finding contract — closed severity vocabulary and assignment criteria, finding shape, severity-prefixed identifier scheme, and closing `Summary:` tally line — single-sourced and referenced by every artifact review surface. |
 | `sai/compat/` | Caller-neutral spec/design/implementation invocation cores and shared compatibility assets. The ADR index template is not owned here. |
-| `sai/commands/spec/invocation.md`, `sai/commands/design/invocation.md`, and `sai/commands/implement/invocation.md` | Caller-neutral invocation bodies shared by the routed paths; `review`, `security`, `performance`, and `accessibility` keep equivalent invocation bodies. |
+| `sai/commands/spec/invocation.md`, `sai/commands/design/invocation.md`, `sai/commands/implement/invocation.md`, and `sai/commands/apply/invocation.md` | Caller-neutral invocation bodies shared by the routed paths; `review`, `security`, `performance`, and `accessibility` keep equivalent invocation bodies. |
 | `sai/install-manifest.json` | Deterministic source-to-destination projection rules consumed by installer, doctor, and uninstall. |
 | `sai/SAI_AGENTS.md` | Project-agnostic orientation index over the SAI documentation surfaces; installed at each harness root (`SAI_AGENTS.md`) by the `sai-agents-index` root-class projection. |
-| `agents/claude/` | Claude Code managed agents — seven routed Managed Workers (`sai-1-spec-proposal-worker`, `sai-2-design-worker`, `sai-3-implementation-worker`, `sai-5-review-worker`, `sai-6-security-worker`, `sai-7-performance-worker`, `sai-8-accessibility-worker`) plus the three Generic Agents (`budget-explorer`, `budget-executor`, `budget-subagent`). |
+| `agents/claude/` | Claude Code managed agents — nine routed Managed Workers (`sai-1-spec-proposal-worker`, `sai-2-design-worker`, `sai-3-implementation-worker`, `sai-4-red-worker`, `sai-4-green-worker`, `sai-5-review-worker`, `sai-6-security-worker`, `sai-7-performance-worker`, `sai-8-accessibility-worker`) plus the three Generic Agents (`budget-explorer`, `budget-executor`, `budget-subagent`). |
 | `agents/claude/sai-1-spec-proposal-worker.md` | Claude Code custom agent for the medium-effort spec proposal worker. |
 | `agents/claude/sai-3-implementation-worker.md` | Claude Code custom agent for the high-effort implementation-planning worker. |
 | `agents/claude/sai-2-design-worker.md` | Claude Code custom agent for the high-effort design-planning worker. |
@@ -122,6 +122,9 @@ The pipeline supports two harnesses: **Claude Code** and **opencode**. Every cha
 
 ### Implementation coordinator and worker
 Claude Code and opencode route `/sai-3-implement` through the shared orchestration core and their respective worker binding. Both preserve the same `implementation.md` artifact contract and MANDATORY STOP. The routed coordinator performs no technical I/O and only the worker owns routed planning writes.
+
+### Apply coordinator and worker
+Claude Code and opencode route `/sai-4-apply` through the routed apply card set (`sai/commands/apply/coordinator.md`, `runner.md`, `invocation.md`, and the RED and GREEN worker contracts) and dispatch the `sai-4-red-worker` / `sai-4-green-worker` managed workers on the budget tier. The coordinator remains the executing main-session driver: it owns change resolution, the run-start Step Projection, coordinator verification, human gates, appendices, and commits, while the RED worker authors the tests (blind to the GREEN implementation body in the split flow, and authoring green tests under the green-exception) and the GREEN worker implements with an absolute test-file prohibition. Both harnesses preserve the same `implementation.md` artifact contract and MANDATORY STOP.
 
 ### Design coordinator and worker
 Claude Code and opencode route `/sai-2-design` through the shared orchestration core and their respective design-worker binding; Claude uses a low-effort coordinator and high-effort worker, while opencode declares `model: opencode-go/glm-5.2` and `variant: high` on the wrapper and uses `sai-2-design-worker`. Fixed notices are acknowledged with `continue_after_notice`; `/sai-2-design` ends at design completion, and `/sai-3-implement {name}` is separate in a new chat. The opencode routed phases run under your active primary agent; it must permit native question and task dispatch to the numbered SAI workers. The stock build agent satisfies this. If a restrictive primary agent is active, switch to a permissive one (e.g. build) — do not reintroduce a managed coordinator profile. Both paths preserve `openspec/changes/{change-name}/design.md`, `tasks.md`, and `interfaces.md`; Proposal Complexity remains descriptive.

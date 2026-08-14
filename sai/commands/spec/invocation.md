@@ -1,5 +1,6 @@
 # sai-1 spec invocation core
 
+Fetch @sai/policies/verified-precondition-handback.md
 Shared technical spec invocation used by the routed spec-proposal worker. This file owns no prerequisite parsing, change selection, coordinator lifecycle, feedback-gate control, decision-summary presentation, or terminal navigation message.
 
 ## Load behaviors (in order)

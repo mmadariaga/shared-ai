@@ -250,10 +250,14 @@ test('standalone policies have one canonical home and active fetches use it', ()
     assert.equal(fs.existsSync(path.join(repoRoot, 'sai', 'instructions', file)), false);
   }
 
-  const utilityCommands = ['apply', 'archive', 'backfill', 'commit', 'explore', 'pr', 'status', 'worktree'];
+  const utilityCommands = ['archive', 'backfill', 'commit', 'explore', 'pr', 'status', 'worktree'];
   const activeSources = [
     ...utilityCommands.map(name => artifact(`sai/commands/${name}/body.md`)),
-    artifact('sai/commands/apply/instructions.md'),
+    artifact('sai/commands/apply/coordinator.md'),
+    artifact('sai/commands/apply/invocation.md'),
+    artifact('sai/commands/apply/runner.md'),
+    artifact('sai/commands/apply/red-worker.md'),
+    artifact('sai/commands/apply/green-worker.md'),
     artifact('sai/commands/commit/instructions.md'),
     artifact('sai/commands/spec/coordinator.md'),
     artifact('sai/commands/design/coordinator.md'),

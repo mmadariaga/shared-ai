@@ -422,16 +422,29 @@ test('generation terminal changed_files are forwarded without re-derivation', ()
 
 // ─── Step 5: Read-only Review change-overview action in the sai-explore loop ─
 
-test('per-change menu is a native picker with five options', () => {
+test('per-change menu is a five-option native picker only when declared capacity permits', () => {
   const explore = artifact('sai/commands/explore/instructions.md');
+  const remember = artifact('sai/policies/remember.md');
 
   assert.match(explore, /Review change-overview/, 'the picker should offer Review change-overview');
   assert.match(explore, /Review sai-1's artifacts/, 'the picker should offer Review sai-1\'s artifacts');
   assert.match(explore, /Review sai-2's artifacts/, 'the picker should offer Review sai-2\'s artifacts');
   assert.match(explore, /Skip/, 'the picker should offer Skip');
   assert.match(explore, /Exit review loop/, 'the picker should offer Exit review loop');
-  assert.match(explore, /five[\s-]?option/i, 'the picker should be a five-option native picker');
-  assert.doesNotMatch(explore, /four[\s-]?option/i, 'the retired four-option wording must not survive');
+  assert.match(explore, /five[\s-]?option/i, 'the per-change menu should present five options');
+  assert.match(explore, /(?:native (?:option[- ])?picker)[\s\S]{0,260}(?:capacity|can present all five)|(?:capacity|can present all five)[\s\S]{0,260}(?:native (?:option[- ])?picker)/i,
+    'native-picker presentation should be conditioned on the declared picker capacity');
+  assert.match(explore, /(?:declared)[\s\S]{0,260}(?:capacity)|(?:capacity)[\s\S]{0,260}(?:declared)/i,
+    'capacity should come from a declared value, never from runtime probing');
+  assert.match(explore, /plain[\s-]?text[\s\S]{0,200}(?:below five|capacity|fallback)|(?:below five|capacity|fallback)[\s\S]{0,200}plain[\s-]?text/i,
+    'a capacity below five should fall back to fixed-order plain text');
+  assert.doesNotMatch(explore, /four[\s-]?option/i, 'the retired four-option menu wording must not survive');
+  assert.match(remember, /picker[\s\S]{0,40}capacity/i,
+    'remember.md should declare per-harness picker capacity in the Closed-choice prompts mapping');
+  assert.match(remember, /Claude Code[\s\S]{0,160}(?:four|\b4\b)|(?:four|\b4\b)[\s\S]{0,160}Claude Code/i,
+    'remember.md should declare the Claude Code picker capacity as four');
+  assert.match(remember, /opencode[\s\S]{0,200}(?:no documented cap|no cap|uncapped|unlimited)/i,
+    'remember.md should declare opencode as having no documented picker cap');
 });
 
 test('non-current overview produces an availability report, not a review', () => {
@@ -681,8 +694,9 @@ test('Step 3: any overview generation failure emits no overview progress event a
 
 // ─── Step 1: Explicit review-loop exit and closure contract (explore) ─
 
-test('per-change picker declares the five labels in fixed order as a harness-native menu', () => {
+test('per-change picker declares the five labels in fixed order and selects presentation by declared capacity', () => {
   const explore = artifact('sai/commands/explore/instructions.md');
+  const remember = artifact('sai/policies/remember.md');
 
   const labels = [
     "Review sai-1's artifacts",
@@ -700,8 +714,18 @@ test('per-change picker declares the five labels in fixed order as a harness-nat
     assert.ok(at > cursor, `the picker should list ${label} after the previous option`);
     cursor = at;
   }
-  assert.match(explore, /harness[\s-]?native|native picker/i,
-    'the menu should be identified as harness-native rather than free text');
+  assert.match(explore, /native (?:option[- ])?picker[\s\S]{0,260}(?:capacity|all five)|(?:capacity|all five)[\s\S]{0,260}native (?:option[- ])?picker/i,
+    'the native picker should be used only when the declared capacity can present all five options');
+  assert.match(explore, /plain[\s-]?text[\s\S]{0,220}(?:fixed labels|fixed order)|(?:fixed labels|fixed order)[\s\S]{0,220}plain[\s-]?text/i,
+    'the below-five fallback should preserve the fixed labels in their fixed order');
+  assert.match(explore, /(?:declared[- ]not[- ]runtime[- ]detected|never runtime[- ]detected|not (?:inferred|detected) at run[\s-]?time|declared,? (?:and )?never (?:inferred|detected))/i,
+    'capacity should come from the declared policy, never from runtime probing');
+  assert.match(remember, /picker[\s\S]{0,40}capacity/i,
+    'the per-harness picker capacity should live in the remember.md mapping');
+  assert.match(remember, /Claude Code[\s\S]{0,160}(?:four|\b4\b)|(?:four|\b4\b)[\s\S]{0,160}Claude Code/i,
+    'remember.md should declare the Claude Code picker capacity as four');
+  assert.match(remember, /opencode[\s\S]{0,200}(?:no documented cap|no cap|uncapped|unlimited)/i,
+    'remember.md should declare opencode as having no documented picker cap');
 });
 
 test('every review and non-completing transaction re-presents the same change picker; Skip alone advances and Exit review loop terminates the set', () => {
@@ -788,4 +812,103 @@ test('contract coverage names both close paths including zero-review exit with i
     'closure behavior should be named for both Claude Code and opencode');
   assert.match(explore, /identical[\s\S]{0,120}(?:behavior|closure|close)|(?:behavior|closure|close)[\s\S]{0,120}identical/i,
     'closure behavior should be declared identical across harnesses');
+});
+
+// ─── extract-review-engine Step 1: Review engine extraction and manual navigation ─
+
+test('review engine is defined once and takes exactly a change name and an artifact-set designator', () => {
+  const explore = artifact('sai/commands/explore/instructions.md');
+
+  const engineDefs = explore.match(/Review Engine\(changeName,\s*artifactSetDesignator\)/g) || [];
+  assert.equal(engineDefs.length, 1,
+    'the Review Engine(changeName, artifactSetDesignator) invocation contract should appear exactly once');
+  assert.match(explore, /(?:exactly (?:the|a) (?:authoritative )?change name|the authoritative change name)/i,
+    'the engine should accept exactly the authoritative change name');
+  assert.match(explore, /sai-1[\s\S]{0,80}sai-2[\s\S]{0,80}change[- ]overview[\s\S]{0,120}(?:artifact[- ]set designator|designator)/i,
+    'the artifact-set designator should be one of sai-1, sai-2, or change-overview');
+  assert.match(explore, /(?:without|independent of|does not (?:require|depend on))[\s\S]{0,180}(?:picker|navigation state|tracked set)/i,
+    'the engine should depend on no picker, tracked set, or navigation state');
+});
+
+test('review engine resolves only the exact change directory and checks children only after existence', () => {
+  const explore = artifact('sai/commands/explore/instructions.md');
+
+  const dirIndex = explore.indexOf('openspec/changes/{change-name}/');
+  assert.ok(dirIndex !== -1, 'the engine should resolve the exact openspec/changes/{change-name}/ directory');
+  const existenceIndex = explore.search(/directory (?:does not exist|is missing)|missing (?:change )?directory/);
+  assert.ok(existenceIndex > dirIndex, 'the engine should check directory existence only after resolution');
+  const childIndex = explore.indexOf('specs/**/*.md', existenceIndex);
+  assert.ok(childIndex > existenceIndex, 'the engine should check child artifact paths only after the directory exists');
+  assert.match(explore, /without repository[- ]wide change discovery|no repository[- ]wide change discovery/i,
+    'resolution should run no repository-wide change discovery');
+  assert.match(explore, /(?:without presenting|not present|does not present)[\s\S]{0,160}(?:child|artifact path)[\s\S]{0,80}(?:independently checked|as independently)/i,
+    'a missing directory should not present child paths as independently checked');
+});
+
+test('review engine rereads every available requested artifact from disk each transaction', () => {
+  const explore = artifact('sai/commands/explore/instructions.md');
+
+  assert.match(explore, /re[- ]?read/i, 'the engine should reread requested artifacts from disk');
+  assert.match(explore, /re[- ]?read[\s\S]{0,200}(?:every (?:currently )?available|each (?:currently )?available)/i,
+    'the engine should reread every available requested artifact');
+  assert.match(explore, /(?:fresh|freshly)[\s\S]{0,120}(?:read|disk)|read[\s\S]{0,120}(?:from disk)/i,
+    'findings should derive only from fresh disk reads');
+  assert.match(explore, /(?:prior findings?|cached|stale absence|stale existence)[\s\S]{0,200}(?:invalid evidence|not reuse|does not reuse|never reuse)/i,
+    'prior or cached evidence should be invalid for the current transaction');
+  assert.match(explore, /(?:not|never|without)[\s\S]{0,80}(?:conclude|assume)[\s\S]{0,120}(?:unchanged|no change)/i,
+    'the engine should not conclude contents are unchanged without rereading');
+});
+
+test('review engine cites the shared finding contract without redefining it', () => {
+  const explore = artifact('sai/commands/explore/instructions.md');
+
+  assert.match(explore, /artifact[- ]review[- ]contract|artifact-review-contract\.md/i,
+    'the engine should cite the shared artifact review finding contract');
+  assert.match(explore, /cite[\s\S]{0,80}(?:by reference|shared)|(?:by reference|shared)[\s\S]{0,80}cite/i,
+    'the engine should cite the shared contract by reference');
+  assert.match(explore, /(?:does not|shall not|without) (?:redefine|restate)[\s\S]{0,140}(?:severity|finding shape|identifier|summary[- ]line|criteria)/i,
+    'the engine should not redefine the contract details inline');
+});
+
+test('review engine emits deterministic base-form review output and performs no writes', () => {
+  const explore = artifact('sai/commands/explore/instructions.md');
+
+  assert.match(explore, /base[- ]?form[\s\S]{0,200}(?:summary tally|tally)/i,
+    'the engine should close completed reviews with the contract base-form summary tally');
+  assert.match(explore, /deterministic order/i, 'the engine should emit findings in deterministic order');
+  assert.match(explore, /High[\s\S]{0,200}Medium[\s\S]{0,200}Low[\s\S]{0,200}ascending numeric/i,
+    'findings should order by severity and then ascending numeric identifier');
+  assert.match(explore, /(?:no writes|writes? nothing|never writes?|strictly read[- ]only)/i,
+    'the engine should perform no writes');
+  assert.match(explore, /(?:does not|never|without)[\s\S]{0,80}(?:write|writing)[\s\S]{0,80}overview\.state/i,
+    'the engine should never write overview.state');
+});
+
+test('navigation shell owns the fixed five-option picker and invokes the engine for every review selection', () => {
+  const explore = artifact('sai/commands/explore/instructions.md');
+
+  assert.match(explore, /(?:shell|navigation|manual path)[\s\S]{0,200}(?:owned by|owns?|ownership)/i,
+    'the picker and navigation should remain owned by the manual path');
+  assert.match(explore, /five[\s-]?option/i, 'the picker should be the fixed five-option menu');
+  assert.match(explore, /Review sai-1's artifacts[\s\S]{0,300}Review sai-2's artifacts[\s\S]{0,300}Review change-overview[\s\S]{0,300}Skip[\s\S]{0,300}Exit review loop/,
+    'the shell should own the five options in their fixed order');
+  assert.match(explore, /(?:every|each|all)[\s\S]{0,160}(?:review )?(?:selection|review action)[\s\S]{0,200}(?:invoke|invokes?|calls?)/i,
+    'every review selection should invoke the engine');
+  assert.match(explore, /(?:no review work|performs? no review work|does not (?:resolve|check|re[- ]?read|form findings?))/i,
+    'the navigation shell should perform no review work itself');
+});
+
+test('navigation re-enters the same picker after every non-closing turn and keeps the single-block handoff and close', () => {
+  const explore = artifact('sai/commands/explore/instructions.md');
+
+  assert.match(explore, /non-?closing[\s\S]{0,200}(?:re[- ]?enter|re[- ]?present)|(?:re[- ]?enter|re[- ]?present)[\s\S]{0,200}non-?closing/i,
+    'every non-closing turn should re-enter the same picker');
+  assert.match(explore, /(?:only closing action|the only closing)[\s\S]{0,160}(?:picker|re[- ]?present)/i,
+    're-presenting the picker should be the only closing action');
+  assert.match(explore, /print[- ]for[- ]paste|single[\s-]?block (?:handoff|hand-off)/i,
+    'the shell should keep the single-block print-for-paste handoff');
+  assert.match(explore, /exactly one findings block|one findings block per/i,
+    'the handoff should remain exactly one findings block');
+  assert.match(explore, /minimal close (?:acknowledgment|acknowledgement)|Loop closed/i,
+    'loop termination should emit a minimal close acknowledgment');
 });

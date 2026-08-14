@@ -282,6 +282,74 @@
           "variantLine": "variant: max",
           "permissionBlock": "    budget: allow\n    explore: allow"
         }
+      },
+      {
+        "phase": "apply",
+        "workerName": "sai-4-red-worker",
+        "workerContract": "sai/commands/apply/red-worker.md",
+        "bindingStem": "red",
+        "tier": "budget",
+        "dispatchPrimitive": "task",
+        "initialDispatch": "dispatch sai-4-red-worker",
+        "continuationLiteral": "continue sai-4-red-worker",
+        "replacementFields": [
+          "model",
+          "effort"
+        ],
+        "helperPermissions": [
+          "Read",
+          "Write"
+        ],
+        "progressDeclaration": "apply milestones",
+        "overviewGeneration": "",
+        "noticeContinuation": "",
+        "claudeAgent": {
+          "agentName": "sai-4-red-worker",
+          "description": "Owns the RED apply phase and returns structured lifecycle metadata.",
+          "model": "haiku",
+          "effort": "low",
+          "tools": "Read, Glob, Grep, Bash, Edit, Write, Agent, Skill, SendMessage"
+        },
+        "opencodeAgent": {
+          "description": "Owns the RED apply phase and returns structured lifecycle metadata.",
+          "model": "opencode-go/qwen3.7-plus",
+          "variantLine": "",
+          "permissionBlock": "    budget: allow\n    explore: allow"
+        }
+      },
+      {
+        "phase": "apply",
+        "workerName": "sai-4-green-worker",
+        "workerContract": "sai/commands/apply/green-worker.md",
+        "bindingStem": "green",
+        "tier": "budget",
+        "dispatchPrimitive": "task",
+        "initialDispatch": "dispatch sai-4-green-worker",
+        "continuationLiteral": "continue sai-4-green-worker",
+        "replacementFields": [
+          "model",
+          "effort"
+        ],
+        "helperPermissions": [
+          "Read",
+          "Write"
+        ],
+        "progressDeclaration": "apply milestones",
+        "overviewGeneration": "",
+        "noticeContinuation": "",
+        "claudeAgent": {
+          "agentName": "sai-4-green-worker",
+          "description": "Owns the GREEN apply phase and returns structured lifecycle metadata.",
+          "model": "haiku",
+          "effort": "low",
+          "tools": "Read, Glob, Grep, Bash, Edit, Write, Agent, Skill, SendMessage"
+        },
+        "opencodeAgent": {
+          "description": "Owns the GREEN apply phase and returns structured lifecycle metadata.",
+          "model": "opencode-go/qwen3.7-plus",
+          "variantLine": "",
+          "permissionBlock": "    budget: allow\n    explore: allow"
+        }
       }
     ]
   },
@@ -725,6 +793,44 @@
       }
     },
     {
+      "id": "claude-sai-4-red-worker",
+      "source": "agents/claude/worker-template.md",
+      "destination": {
+        "class": "agents",
+        "path": "sai-4-red-worker.md"
+      },
+      "harnesses": [
+        "claude"
+      ],
+      "strategy": "tunable-seed",
+      "recursive": false,
+      "ownership": "managed",
+      "drift": "content",
+      "matrix": {
+        "kind": "agent",
+        "phase": "apply"
+      }
+    },
+    {
+      "id": "claude-sai-4-green-worker",
+      "source": "agents/claude/worker-template.md",
+      "destination": {
+        "class": "agents",
+        "path": "sai-4-green-worker.md"
+      },
+      "harnesses": [
+        "claude"
+      ],
+      "strategy": "tunable-seed",
+      "recursive": false,
+      "ownership": "managed",
+      "drift": "content",
+      "matrix": {
+        "kind": "agent",
+        "phase": "apply"
+      }
+    },
+    {
       "id": "claude-budget-explorer",
       "source": "agents/claude/budget-explorer.md",
       "destination": {
@@ -900,6 +1006,44 @@
       "matrix": {
         "kind": "agent",
         "phase": "accessibility"
+      }
+    },
+    {
+      "id": "opencode-sai-4-red-worker",
+      "source": "agents/opencode/worker-template.md",
+      "destination": {
+        "class": "agents",
+        "path": "sai-4-red-worker.md"
+      },
+      "harnesses": [
+        "opencode"
+      ],
+      "strategy": "tunable-seed",
+      "recursive": false,
+      "ownership": "managed",
+      "drift": "content",
+      "matrix": {
+        "kind": "agent",
+        "phase": "apply"
+      }
+    },
+    {
+      "id": "opencode-sai-4-green-worker",
+      "source": "agents/opencode/worker-template.md",
+      "destination": {
+        "class": "agents",
+        "path": "sai-4-green-worker.md"
+      },
+      "harnesses": [
+        "opencode"
+      ],
+      "strategy": "tunable-seed",
+      "recursive": false,
+      "ownership": "managed",
+      "drift": "content",
+      "matrix": {
+        "kind": "agent",
+        "phase": "apply"
       }
     },
     {
@@ -1758,6 +1902,34 @@
         "c4caf286cc89b308f4022ef85ce611791f75a299f31c38a5bc4ab615bda2cd1e",
         "c9390a6d9b8646113c29897cbb0a343d9f1cd2babada30a6ff0080155373c823",
         "febbd0d486f7fdcdfd9e60607ab7b27971174290a5503df62531cace6d5052a7"
+      ]
+    },
+    {
+      "id": "retired-apply-body",
+      "destination": {
+        "class": "sai",
+        "path": "commands/apply/body.md"
+      },
+      "harnesses": [
+        "claude",
+        "opencode"
+      ],
+      "managedHashes": [
+        "584644eb2505622c8ecf5f09321d8852711cf96990bb43cb0893625e4a86d26f"
+      ]
+    },
+    {
+      "id": "retired-apply-instructions",
+      "destination": {
+        "class": "sai",
+        "path": "commands/apply/instructions.md"
+      },
+      "harnesses": [
+        "claude",
+        "opencode"
+      ],
+      "managedHashes": [
+        "0e2356b07ff98bab99f352672381c53fe4a581f98cdbd7209128b5eae7a73326"
       ]
     },
     {
