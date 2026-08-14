@@ -41,7 +41,8 @@ state. If any required field is unavailable, return a failed restart request
 and do not dispatch a replacement.
 
 The coordinator invokes only these phase-adapter fields, plus the optional
-static, ordered `progress_plan` declaration:
+static, ordered `progress_plan` declaration and the optional static
+`recovery_policy` declaration:
 
 - `original_envelope`
 - `dispatch_operation`
@@ -51,6 +52,7 @@ static, ordered `progress_plan` declaration:
 - `replacement_reconstruction_fields`
 - `terminal_navigation`
 - `progress_plan` (optional — static, ordered, fully known at dispatch, immutable for the invocation)
+- `recovery_policy` (optional — static boolean, fully known at dispatch, immutable for the invocation)
 
 The dispatch passes exactly `wrapper_echo_value` and `arguments_value`; the
 progress plan is declared by the phase adapter, is never carried in the
@@ -60,3 +62,46 @@ state.
 
 Terminal behavior is supplied by `terminal_navigation`. The coordinator never
 reads artifacts, resolves phase data, or invents phase-specific payload fields.
+
+## Bounded Recovery
+
+The shared runner owns the bounded same-worker recovery pool. When the phase
+adapter declares the optional static `recovery_policy: true`, the runner
+creates one invocation-scoped pool of exactly three attempts, immutable for the
+invocation. The fixed recovery acknowledgement `continue_after_recovery` is
+runner-owned and is not an additional phase-adapter field.
+
+1. Validate every resolved failed outcome against the worker class vocabulary
+   — `blocking-contradiction`, `validation-failed`, `generation-error`,
+   `dispatch-failed`, `envelope-contract-violation`, and
+   `unclassified-worker-fault` — and the boolean veto. Missing or unknown
+   failure metadata, or a worker-authored `outer-envelope-violation`, becomes
+   a coordinator-authored `outer-envelope-violation`: it spends zero attempts,
+   dispatches no replacement, and hands back naming the offending value or the
+   missing field.
+2. Create the pool only when the adapter declares `recovery_policy: true`;
+   otherwise no recovery pool exists and failed outcomes fall through to the
+   terminal result path.
+3. Eligible classes are only `validation-failed`, `generation-error`,
+   `dispatch-failed`, and `envelope-contract-violation`.
+   `blocking-contradiction`, `outer-envelope-violation`, and
+   `unclassified-worker-fault` spend zero attempts. Blocking contradiction
+   takes precedence over a simultaneous veto.
+4. Before each attempt, emit conversation text naming the triggering
+   failure class and the ordinal attempt (`1 of 3`, `2 of 3`, `3 of 3`);
+   then continue the same live worker with `continue_after_recovery`.
+   Recovery never dispatches a replacement worker.
+5. Deduct each failed recovery continuation from the same pool even when the
+   class changes. Continuation loss stops recovery immediately. `needs_input`
+   exits recovery without charging that result and resumes the normal input
+   loop. `cancelled` never enters recovery. Ordinary continuation loss
+   outside recovery retains the existing at-most-one replacement fallback.
+6. Preserve one first-seen ordered `changed_files` union and one spent-attempt
+   count across initial results, progress, notices, input, normal continuation,
+   and recovery. `--fast-track` changes neither the recovery budget nor its
+   reporting.
+7. Hand-backs name the failure class, attempts spent, and the stopping reason
+   (blocking contradiction, worker veto, exhaustion, continuation failure,
+   input, or cancellation). Recovery announcements and hand-backs are
+   conversation text and never mark, extend, rename, or add progress-plan
+   steps.

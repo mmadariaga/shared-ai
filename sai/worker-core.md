@@ -48,6 +48,28 @@ changed_files: string[]
 After change resolution, unsuccessful outcomes also carry
 `resolved_change_name`; pre-resolution outcomes omit it.
 
+The post-resolution `failed` outcome additionally carries the closed failure
+classification, exactly:
+
+```yaml
+status: failed
+summary: string
+changed_files: string[]
+resolved_change_name: string
+failure_class: blocking-contradiction|validation-failed|generation-error|dispatch-failed|envelope-contract-violation|unclassified-worker-fault
+unrecoverable: boolean
+```
+
+The failure-class vocabulary is worker-authored and closed: `blocking-contradiction`,
+`validation-failed`, `generation-error`, `dispatch-failed`,
+`envelope-contract-violation`, and `unclassified-worker-fault`. The
+`outer-envelope-violation` class is reserved for coordinator-authored validation
+failures and is never a worker-authorable value. Pre-resolution failures omit
+`failure_class` and `unrecoverable`, keeping only `status`, `summary`, and
+`changed_files`. `cancelled`, `completed`, and `needs_input` omit the
+failure-only fields. A worker SHALL set `unrecoverable: true` only when its own
+evidence establishes that continuation is unsafe.
+
 The design-only notice is exactly:
 
 ```yaml
