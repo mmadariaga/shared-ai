@@ -190,6 +190,18 @@ Durable execution-observed facts about the shared-ai prompt and installer reposi
 - **test/explore-pre-crystallization-stages.test.js**: The suite fails 3 tests at HEAD because `sai/orchestration/workers/bindings/opencode/idea-list-render.md` was removed by commit `aa95c31` (the binding was moved to the adapter seam) while the test still asserts it exists — the file is byte-identical to HEAD, so these are pre-existing baseline failures, not change-caused; any apply run's full-suite gate must attribute them to the untouched test file.
   *Observed:* spec-design-review-progress-step — the Step 3 full-suite `npm test` reported 922 tests / 919 pass / 3 fail, all 3 in `explore-pre-crystallization-stages.test.js` with no Step 3 file implicated.
 
+- **bin/doctor.js (fetch-resolution over matrix bindings)**: Doctor's `fetchResolutionRecords` resolves every `Fetch @sai/...` inside installed matrix bindings AND agent projections against the installed tree. A matrix change that renders bindings/agents whose worker-contract file does not yet exist fails every `assert.equal(code, 0)` doctor assertion until that contract file lands — so a multi-step change must either land the contract files in the same step as the matrix rows or defer the doctor-resolution assertions to the later step; the doctor tests cannot pass in between.
+  *Observed:* sai-4-apply-routed-architecture — Step 1 materialized the apply bindings referencing `sai/commands/apply/{red,green}-worker.md` (Step 2 files), failing 15 doctor tests until Step 2 created the files.
+
+- **bin/install-flow.js (MANAGED_WORKERS compatibility constant)**: `MANAGED_WORKER_ORDER` / `MANAGED_WORKERS` is a compatibility surface read by registry/inventory tests (`install-claude`, `install-manifest`, `uninstall-enumeration`, `model-customization-menu`, `uninstall-execution`). Extending the worker matrix requires extending this constant in the same boundary, or those roster-count assertions fail with stale 7/10-worker expectations.
+  *Observed:* sai-4-apply-routed-architecture — the nine-worker matrix expansion left `MANAGED_WORKER_ORDER` at seven workers, causing 7 full-suite failures in five test files until the constant and the roster-count assertions were corrected.
+
+- **bin/worker-matrix.js (binding destination composition)**: Binding destinations are template-composed as `${bindingStem}-worker.md`. A literal `bindingStem` of `red-worker` would produce `red-worker-worker.md`; the apply bindings therefore use stems `red`/`green` to land at `red-worker.md`/`green-worker.md`. Plan code blocks that pin binding stems must use the pre-composition value.
+  *Observed:* sai-4-apply-routed-architecture — the plan's literal `red-worker`/`green-worker` stems contradicted the template composition and the tests' expected destinations.
+
+- **bin/doctor.js (project-health openspec fixture)**: Doctor's `checkProjectHealth` unconditionally emits `openspec/ not found` and missing-schema errors (exit code 1) when the temp `projectRoot` lacks `openspec/` + `config.yaml` with `schema: sai-workflow`. Every doctor test must create that fixture in its temp project root; an omitted fixture fails `assert.equal(code, 0)` even when the change under test is correct.
+  *Observed:* sai-4-apply-routed-architecture — two new doctor tests in `apply-routed-architecture.test.js` omitted the fixture and failed until it was added.
+
 ## Avoid
 
 - **bin/install-manifest.js**: An explicit non-recursive projection entry with an `overrides` id must be placed AFTER the recursive projection it overrides in the `projections` array — the duplicate-destination override fires only for `!projection.recursive && projection.overrides === existing.id && existing.recursive`, so placing the explicit entry before the recursive one throws `Projection destination collision` across every installer/doctor/agent suite.
@@ -213,6 +225,9 @@ Durable execution-observed facts about the shared-ai prompt and installer reposi
 
 - **sai/install-manifest.json (retirement destination.path)**: Do not author retirement `destination.path` with a doubled `sai/` prefix or the wrong flat filename (`sai-apply.md` instead of `sai-4-apply.md`) — the path is relative to the destination root, and a doubled prefix retires a nonexistent path while leaving the real flat file unmanaged.
   *Observed:* sai-command-runner-layout — the authored assertions matched a nonexistent destination until corrected to the manifest convention.
+
+- **bin/install-manifest.js (active-projection id uniqueness)**: Never assert id-uniqueness over `expandInstallManifest`'s active projections — active projection ids are destination-class keys (`claude-commands`, `sai-commands`, …) legitimately repeated across many projections. The collision guarantee lives in the retirement records and the matrix destination set; assert uniqueness there instead.
+  *Observed:* sai-4-apply-routed-architecture — an active-projection id-uniqueness assertion was a pre-existing false positive (115 projections sharing 30 class ids); the test was re-scoped to retirement-id + matrix-destination uniqueness.
 
 ## Test Command
 
