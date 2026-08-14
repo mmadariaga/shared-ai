@@ -385,14 +385,16 @@ test('generation terminal changed_files are forwarded without re-derivation', ()
 
 // ─── Step 5: Read-only Review change-overview action in the sai-explore loop ─
 
-test('per-change menu still uses the native picker with four options', () => {
+test('per-change menu is a native picker with five options', () => {
   const explore = artifact('sai/commands/explore/instructions.md');
 
   assert.match(explore, /Review change-overview/, 'the picker should offer Review change-overview');
   assert.match(explore, /Review sai-1's artifacts/, 'the picker should offer Review sai-1\'s artifacts');
   assert.match(explore, /Review sai-2's artifacts/, 'the picker should offer Review sai-2\'s artifacts');
   assert.match(explore, /Skip/, 'the picker should offer Skip');
-  assert.match(explore, /four[\s-]?option/i, 'the picker should be a four-option native picker');
+  assert.match(explore, /Exit review loop/, 'the picker should offer Exit review loop');
+  assert.match(explore, /five[\s-]?option/i, 'the picker should be a five-option native picker');
+  assert.doesNotMatch(explore, /four[\s-]?option/i, 'the retired four-option wording must not survive');
 });
 
 test('non-current overview produces an availability report, not a review', () => {
@@ -585,9 +587,122 @@ test('closure stops at crystallization and discard and preserves terminal paths'
   assert.match(explore, /subsequent successful responses about that discarded idea receive no pre-crystallization closure/);
   assert.match(explore, /Do not apply this successful-response closure to prerequisite halts, failures, cancellations/);
   assert.match(explore, /completed post-crystallization review-loop closes/);
-  assert.match(explore, /preserve their existing remediation literals, terminal behavior, and review-loop silent-close allowance/);
+  assert.doesNotMatch(explore, /review-loop silent-close allowance/, 'the silent-close allowance is retired by the explicit-exit contract');
+  assert.match(explore, /review-loop[\s\S]{0,160}(?:close|closing)[\s\S]{0,160}(?:acknowledg|confirm)|(?:acknowledg|confirm)[\s\S]{0,160}(?:close|closing)[\s\S]{0,160}review-loop/i,
+    'the review-loop close should be an explicit acknowledgment');
   assert.match(prereqs, /openspec CLI not found\. Install it first: https:\/\/github\.com\/Fission-AI\/OpenSpec/);
   assert.match(prereqs, /OpenSpec not initialized in this project\. Run: openspec init/);
   assert.match(prereqs, /openspec\/config\.yaml does not declare `schema: sai-workflow`/);
   assert.match(explore, /full `Ready to Propose` block\(s\) are printed only when the user explicitly asks to crystallize/);
+});
+
+// ─── Step 1: Explicit review-loop exit and closure contract (explore) ─
+
+test('per-change picker declares the five labels in fixed order as a harness-native menu', () => {
+  const explore = artifact('sai/commands/explore/instructions.md');
+
+  const labels = [
+    "Review sai-1's artifacts",
+    "Review sai-2's artifacts",
+    'Review change-overview',
+    'Skip',
+    'Exit review loop',
+  ];
+  for (const label of labels) {
+    assert.ok(explore.includes(label), `the picker should offer ${label}`);
+  }
+  let cursor = -1;
+  for (const label of labels) {
+    const at = explore.indexOf(label);
+    assert.ok(at > cursor, `the picker should list ${label} after the previous option`);
+    cursor = at;
+  }
+  assert.match(explore, /harness[\s-]?native|native picker/i,
+    'the menu should be identified as harness-native rather than free text');
+});
+
+test('every review and non-completing transaction re-presents the same change picker; Skip alone advances and Exit review loop terminates the set', () => {
+  const explore = artifact('sai/commands/explore/instructions.md');
+
+  assert.match(explore, /Exit review loop/, 'the re-presentation contract should name the explicit exit option');
+  assert.match(explore, /Exit review loop[\s\S]{0,260}(?:terminates?|ends?|exits?|closes? the)[\s\S]{0,160}(?:loop|set|remaining)/i,
+    'Exit review loop should terminate the set of changes');
+  assert.match(explore, /(?:every|each|all) review[\s\S]{0,220}re-?present/i,
+    'every review should re-present the same change picker');
+  assert.match(explore, /non-?completing[\s\S]{0,200}re-?present|re-?present[\s\S]{0,200}non-?completing/i,
+    'non-completing transactions should re-present the same change picker');
+  assert.match(explore, /same[\s\S]{0,140}(?:change'?s? picker|picker)/i,
+    'the re-presented picker should belong to the same change');
+  assert.match(explore, /Skip[\s\S]{0,200}(?:advance|advances|next change)/i,
+    'Skip should advance to the next change');
+  assert.match(explore, /Skip[\s\S]{0,160}(?:alone|only)|(?:alone|only)[\s\S]{0,60}Skip/i,
+    'Skip alone should advance');
+});
+
+test('correction handoff permits exactly one findings encoding', () => {
+  const explore = artifact('sai/commands/explore/instructions.md');
+
+  assert.match(explore, /Exit review loop/, 'the handoff contract should sit beside the explicit exit option');
+  assert.match(explore, /exactly one[\s\S]{0,140}(?:findings block|encoding|encode)/i,
+    'the correction handoff should permit exactly one findings encoding');
+  assert.match(explore, /(?:encoding|encode)[\s\S]{0,160}once|once[\s\S]{0,160}(?:encoding|encode)/i,
+    'the findings should be encoded exactly once');
+  assert.doesNotMatch(explore, /more than one (?:findings block|encoding)/i,
+    'the handoff must not permit multiple findings encodings');
+});
+
+test('picker re-entry is excluded from the single-encoding prohibition and from acceptance semantics', () => {
+  const explore = artifact('sai/commands/explore/instructions.md');
+
+  assert.match(explore, /(?:re-?entering the picker|picker re-?entry)/i,
+    'the handoff contract should name picker re-entry explicitly');
+  assert.match(explore,
+    /(?:re-?entering the picker|picker re-?entry)[\s\S]{0,240}(?:prohibition|prohibited|does not count|not (?:covered|an encoding)|allowed|excluded)|(?:prohibition|prohibited)[\s\S]{0,240}(?:re-?entering the picker|picker re-?entry)/i,
+    'picker re-entry should be excluded from the single-encoding prohibition');
+  assert.match(explore,
+    /(?:re-?entering the picker|picker re-?entry)[\s\S]{0,240}(?:acceptance|not (?:an?|a) acceptance)|acceptance[\s\S]{0,240}(?:re-?entering the picker|picker re-?entry)/i,
+    'picker re-entry should be excluded from acceptance semantics');
+});
+
+test('set exhaustion and explicit exit both emit a minimal close acknowledgment with no next-command prompt, including zero reviews', () => {
+  const explore = artifact('sai/commands/explore/instructions.md');
+
+  assert.match(explore, /Exit review loop/, 'the close contract should name the explicit exit option');
+  assert.match(explore,
+    /(?:exhaust(?:ion|ed)|no (?:more|further) changes|no changes remain)[\s\S]{0,240}(?:acknowledg|confirm)|(?:acknowledg|confirm)[\s\S]{0,240}(?:exhaust(?:ion|ed)|no (?:more|further) changes)/i,
+    'set exhaustion should emit a minimal close acknowledgment');
+  assert.match(explore, /Exit review loop[\s\S]{0,240}(?:acknowledg|confirm)|(?:acknowledg|confirm)[\s\S]{0,240}Exit review loop/i,
+    'explicit exit should emit the same close acknowledgment');
+  assert.match(explore, /no next[\s-]?command (?:prompt|suggestion)/i,
+    'the close acknowledgment should emit no next-command prompt');
+  assert.match(explore, /zero reviews|no reviews (?:occurred|were (?:performed|made))|without (?:any|a single) review/i,
+    'the close contract should cover zero-review exits');
+});
+
+test('Exit review loop resolves the active review item to pending exactly as Skip does, without marking or clearing evidence', () => {
+  const explore = artifact('sai/commands/explore/instructions.md');
+
+  assert.match(explore, /Exit review loop/, 'the pending-resolution contract should name the explicit exit option');
+  assert.match(explore, /Exit review loop[\s\S]{0,300}`?pending`?|`?pending`?[\s\S]{0,300}Exit review loop/i,
+    'Exit review loop should resolve the active review item to pending');
+  assert.match(explore, /Skip[\s\S]{0,240}`?pending`?|`?pending`?[\s\S]{0,240}Skip/i,
+    'Skip should resolve the active review item to pending');
+  assert.match(explore, /(?:same as|exactly as|identical to)[\s\S]{0,160}(?:Skip|Exit review loop)/i,
+    'both close paths should resolve to pending identically');
+  assert.match(explore, /(?:Exit review loop|Skip)[\s\S]{0,280}(?:does not mark|without marking|does not clear|without clearing)/i,
+    'neither close path should mark or clear review evidence');
+});
+
+test('contract coverage names both close paths including zero-review exit with identical closure across harnesses', () => {
+  const explore = artifact('sai/commands/explore/instructions.md');
+
+  assert.match(explore, /Exit review loop/, 'the coverage should name the explicit exit close path');
+  assert.match(explore, /both[\s\S]{0,140}(?:close paths?|closing paths?|exit paths?)/i,
+    'the coverage should name both close paths');
+  assert.match(explore, /zero reviews|no reviews/i,
+    'the coverage should include the zero-review exit');
+  assert.match(explore, /Claude Code[\s\S]{0,200}opencode|opencode[\s\S]{0,200}Claude Code/i,
+    'closure behavior should be named for both Claude Code and opencode');
+  assert.match(explore, /identical[\s\S]{0,120}(?:behavior|closure|close)|(?:behavior|closure|close)[\s\S]{0,120}identical/i,
+    'closure behavior should be declared identical across harnesses');
 });
