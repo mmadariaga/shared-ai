@@ -1,7 +1,7 @@
 ---
 name: budget-executor
 description: >
-  Binds "executor subagent" to concrete Claude Code subagent spawn parameters — subagent_type: General, model: haiku, no tool-call cap. Enforces execute-only, minimal-output, structured-failure-report discipline. Claude Code only — NOT compatible with opencode.
+  Binds "executor subagent" to Claude Code subagent dispatch routed through the budget-executor agent file. Enforces execute-only, minimal-output, structured-failure-report discipline. Claude Code only — NOT compatible with opencode.
   TRIGGER when: "budget executor", "cheap executor", "budget mode", "cheap mode", "low-cost mode", "low cost mode", "economy mode"
 license: MIT
 compatibility: claude
@@ -10,40 +10,20 @@ metadata:
   version: "1.0"
 ---
 
-## Universal Behavior
+## Subagent binding
 
-1. **Execute only what was requested.** Run the exact command(s) from the prompt. Do NOT suggest improvements, refactor code, fix unrelated issues, or expand scope beyond the explicit request.
+"executor subagent" → `Agent(subagent_type: budget-executor, run_in_background: true, prompt: <prompt>)`.
 
-2. **No self-correction on failure.** Do NOT retry a failed command, attempt workarounds, or modify files to make a command succeed. Report the failure as-is.
+## Model resolution
 
-3. **Minimize output verbosity.** Prefer flags that reduce output (`--quiet`, `--format json`, `--reporter dot`, or equivalent) when available. Do NOT dump full file contents or unfiltered log streams into the response.
-
-4. **Narrowest command first.** Run the most targeted command available before expanding to broader scope. Broad sweeps (e.g., full repo test run) require explicit instruction.
-
-5. **Batch independent commands.** When the prompt contains multiple independent commands, issue them in parallel (single message with parallel tool calls). Use `&&` only for dependent steps.
-
-6. **Structured failure report.** For every failed command, report exactly:
-   - Exit code
-   - Key failure reason (one line)
-   - Exact files and line numbers involved (if applicable)
-
-   For test/build runs: also include pass/fail tallies and per-failure details (test name + error message + file:line).
-
-## Claude Code Binding
-
-- **Subagent type**: `subagent_type: "General"` (capital G — required for Bash access; `Explore` is read-only and cannot run shell commands)
-- **Model**: `model: "haiku"` — must be set explicitly on every spawn
-- **Tool-call cap**: none
-- **Raw output**: allowed — executor responses may include verbatim command output (error strings, compiler messages)
+The subagent model is controlled by the `model` frontmatter of the resolved `budget-executor.md` agent file: `.claude/agents/budget-executor.md` takes precedence over `~/.claude/agents/budget-executor.md`. Do not pass a per-spawn model parameter.
 
 ## Dispatch mode
 
-This binding is declared `run_in_background: true`, mirroring the parameter the seven routed workers already declare at `sai/orchestration/workers/bindings/claude/design-worker.md:5`. It may be invoked only by a dispatcher whose own lifetime outlives the child: the main agent, a routed SAI coordinator, or a routed SAI worker — each of which captures the continuation reference and awaits the child's structured payload on its own turn, per the dispatch-safety invariant in `openspec/specs/dispatch-safety-invariant/spec.md`.
+Dispatch in the background only from a main agent, routed SAI coordinator, or routed SAI worker whose lifetime outlives the child. Capture and await the continuation on the dispatcher's own turn.
 
-## Cost model
+## Execution contract
 
-This subagent runs on a commodity model. Its tier is enforced via the explicit `model: "haiku"` parameter set on every `Agent()` spawn call — that parameter is the only lever to change the cost of delegation.
+The agent fetches `@sai/policies/executor-agent.md`, which owns exact-command execution, narrow low-output behavior, parallel independent commands, no self-correction, and structured failure reporting. There is no tool-call cap.
 
-**Why delegate:**
-- **Cost:** Bulk I/O (reads, searches, diffs) is processed at a cheaper per-token rate than the main agent's model.
-- **Context hygiene:** The subagent starts with a clean context — no task instructions, no conversation history — and returns only a structured summary, keeping the main agent's reasoning context uncontaminated.
+Fetch @sai/policies/executor-agent.md

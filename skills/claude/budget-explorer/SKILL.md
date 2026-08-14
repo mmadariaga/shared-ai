@@ -1,7 +1,7 @@
 ---
 name: budget-explorer
 description: >
-  Binds "cheap research subagent" to concrete Claude Code subagent spawn parameters — model tiers (haiku/sonnet), task classification (lookup/synthesis/audit), tool-call caps, and output contract rules. Claude Code only — NOT compatible with opencode.
+  Binds "cheap research subagent" to Claude Code subagent dispatch routed through the budget-explorer agent file. Read-only research and lookup with a 30 tool calls ceiling and output-contract discipline; multi-step synthesis stays with the main agent.
   TRIGGER when: "budget explorer", "cheap explorer", "budget mode", "cheap mode", "low-cost mode", "low cost mode", "economy mode"
 license: MIT
 compatibility: claude
@@ -12,52 +12,26 @@ metadata:
 
 ## Subagent binding
 
-"cheap research subagent" → `subagent_type: Explore` (capital E). Every spawn MUST include an explicit `model:` parameter.
+"cheap research subagent" → `Agent(subagent_type: budget-explorer, run_in_background: true, prompt: <prompt>)`.
+
+## Model resolution
+
+The subagent model is controlled by the `model` frontmatter of the resolved `budget-explorer.md` agent file: `.claude/agents/budget-explorer.md` takes precedence over `~/.claude/agents/budget-explorer.md`. Do not pass a per-spawn model parameter.
 
 ## Dispatch mode
 
-This binding is declared `run_in_background: true`, mirroring the parameter the seven routed workers already declare at `sai/orchestration/workers/bindings/claude/design-worker.md:5`. It may be invoked only by a dispatcher whose own lifetime outlives the child: the main agent, a routed SAI coordinator, or a routed SAI worker — each of which captures the continuation reference and awaits the child's structured payload on its own turn, per the dispatch-safety invariant in `openspec/specs/dispatch-safety-invariant/spec.md`.
+Dispatch in the background only from a main agent, routed SAI coordinator, or routed SAI worker whose lifetime outlives the child. Capture and await the continuation on the dispatcher's own turn.
 
-## Model tiers
+## Task boundary
 
-- **Lookup tasks**: `model: haiku`
-- **Multi-step synthesis or cross-file reasoning beyond haiku capability**: `model: sonnet`
-- **Frontier-tier**: `opus` is reserved for the main agent ONLY. NEVER pass `model: opus` to a subagent.
+Use this agent for bounded read-only lookup, research, and documentation reads. Multi-step synthesis and cross-file reasoning remain with the main agent.
 
-## NEVER omit model
+## Tool-call ceiling
 
-Omitting `model:` causes the Explore subagent to inherit the parent's Opus model, defeating cost discipline. Every spawn MUST set `model:` explicitly.
-
-## Cost model
-
-This subagent runs on a commodity model. Its tier is enforced via the explicit `model: "haiku"` parameter set on every `Agent()` spawn call — that parameter is the only lever to change the cost of delegation.
-
-**Why delegate:**
-- **Cost:** Bulk I/O (reads, searches, diffs) is processed at a cheaper per-token rate than the main agent's model.
-- **Context hygiene:** The subagent starts with a clean context — no task instructions, no conversation history — and returns only a structured summary, keeping the main agent's reasoning context uncontaminated.
-
-## Task classification
-
-Three classes govern delegation and cap rules:
-
-- **`lookup`** — find a known fact (version, file path, symbol). Strict delegation: spawn Explore+haiku with output contract.
-- **`synthesis`** — design decisions, trade-off reasoning, architecture proposals. Reserved for the main agent. Do NOT delegate synthesis to subagents.
-- **`audit`** — drift detection, doc-vs-code divergence, dead-link scans. Main agent MAY read target artifacts directly (up to ≤15 reads + ≤30 Grep/Glob per audit pass). Subagent prompts MUST require verbatim excerpts (`file:line` + literal strings) for every divergence.
-
-If a task mixes modes, run audit phase first then synthesis under strict rules.
-
-## Tool-call caps
-
-Per-spawn caps for Explore subagents:
-
-- **Lookup spawn**: ≤10 tool calls
-- **Audit spawn**: ≤30 tool calls
-
-If a task exceeds the cap, spawn an additional subagent rather than raising the cap. Declare the bound explicitly in every spawn prompt.
+The default maximum is 30 tool calls per spawn. A caller may declare a smaller cap for one dispatch. Spawn another bounded agent rather than raising the maximum.
 
 ## Output contract
 
-Every subagent spawn MUST declare in its prompt:
-- Exact fields expected in the response
-- A hard length cap (word or line count)
-- Explicit "no raw file contents" (or "verbatim excerpts required" for audit mode)
+Every spawn prompt must declare exact response fields, a hard word-or-line limit, and `no raw file contents` (or require bounded verbatim excerpts for an audit).
+
+Fetch @sai/policies/explore-agent.md

@@ -163,6 +163,69 @@ test('managed OpenCode generic agents are exact Fetch wrappers with preserved id
   }
 });
 
+const CLAUDE_GENERIC_AGENTS = [
+  {
+    fileName: 'budget-explorer',
+    name: 'budget-explorer',
+    description: 'Binds cheap read-only research and lookup delegation to the Claude Code budget-explorer agent.',
+    fetchTarget: '@sai/policies/explore-agent.md',
+    tools: 'tools: Read, Glob, Grep, WebFetch, WebSearch',
+  },
+  {
+    fileName: 'budget-executor',
+    name: 'budget-executor',
+    description: 'Binds low-cost execute-only command delegation to the Claude Code budget-executor agent.',
+    fetchTarget: '@sai/policies/executor-agent.md',
+    tools: null,
+  },
+  {
+    fileName: 'budget-subagent',
+    name: 'budget-subagent',
+    description: 'Binds cost-controlled general-purpose task delegation to the Claude Code budget-subagent agent.',
+    fetchTarget: '@sai/policies/budget-agent.md',
+    tools: null,
+  },
+];
+
+test('managed Claude generic agents are exact Fetch wrappers with preserved identities', () => {
+  for (const agent of CLAUDE_GENERIC_AGENTS) {
+    const sourcePath = path.join(REPO_ROOT, 'agents', 'claude', `${agent.fileName}.md`);
+    assert.ok(fs.existsSync(sourcePath),
+      `${agent.fileName} should have a managed Claude agent source at agents/claude/${agent.fileName}.md`);
+    const source = fs.readFileSync(sourcePath, 'utf8').replaceAll('\r\n', '\n');
+    const frontmatter = source.match(/^---\n([\s\S]*?)\n---\n/);
+    assert.ok(frontmatter, `${agent.fileName} should contain one YAML frontmatter block`);
+    assert.equal((source.match(/^---\n/gm) || []).length, 2,
+      `${agent.fileName} should contain exactly one YAML frontmatter block`);
+
+    const fields = frontmatter[1].split('\n');
+    for (const field of [
+      `name: ${agent.name}`,
+      `description: ${agent.description}`,
+      'model: haiku',
+      'effort: low',
+    ]) {
+      assert.equal(fields.filter(line => line === field).length, 1,
+        `${agent.fileName} frontmatter should contain exactly ${field}`);
+    }
+
+    if (agent.tools) {
+      assert.equal(fields.filter(line => line === agent.tools).length, 1,
+        `${agent.fileName} frontmatter should contain exactly ${agent.tools}`);
+      const toolsLine = fields.find(line => line.startsWith('tools:'));
+      assert.doesNotMatch(toolsLine || '', /\b(?:Write|Edit|Bash|Patch|Delete|NotebookEdit)\b/,
+        `${agent.fileName} tools declaration must expose only read/search capabilities`);
+    }
+
+    const body = source.slice(frontmatter[0].length).trim();
+    assert.equal(body, `Fetch ${agent.fetchTarget}`,
+      `${agent.fileName} post-frontmatter body should be exactly its canonical policy Fetch`);
+    assert.doesNotMatch(source,
+      /(?:import|require)\s+(?:[^\n]*\b)?(?:open\s*code|opencode)\b|from\s+['"](?:open\s*code|opencode)/i,
+      `${agent.fileName} wrapper must not contain a native OpenCode import`);
+  }
+});
+
 test('OpenCode Fetch wrapper propagation preserves local tuning and resolves updated global policy first', () => {
   const os = require('node:os');
   const { installOpencode } = require('../bin/install-flow.js');
@@ -306,6 +369,68 @@ test('OpenCode budget skills match their generic-agent policy targets and local 
     for (const marker of contract.markers) {
       assert.match(skill, marker,
         `${contract.skillName} must retain its skill-specific OpenCode contract marker ${marker}`);
+    }
+  }
+});
+
+const CLAUDE_BUDGET_SKILL_CONTRACTS = [
+  {
+    skillName: 'budget-explorer',
+    subagentType: 'budget-explorer',
+    fetchTarget: '@sai/policies/explore-agent.md',
+    markers: [
+      /Agent\s*\(\s*subagent_type:\s*budget-explorer\s*,\s*run_in_background:\s*true\s*,/i,
+      /read[- ]only/i,
+      /30\s+tool\s+calls/i,
+      /main\s+agent/i,
+      /output\s+contract/i,
+    ],
+  },
+  {
+    skillName: 'budget-executor',
+    subagentType: 'budget-executor',
+    fetchTarget: '@sai/policies/executor-agent.md',
+    markers: [
+      /Agent\s*\(\s*subagent_type:\s*budget-executor\s*,\s*run_in_background:\s*true\s*,/i,
+      /execute[- ]only/i,
+      /minimal\s+output|low[- ]output/i,
+      /structured\s+failure/i,
+    ],
+  },
+  {
+    skillName: 'budget-subagent',
+    subagentType: 'budget-subagent',
+    fetchTarget: '@sai/policies/budget-agent.md',
+    markers: [
+      /Agent\s*\(\s*subagent_type:\s*budget-subagent\s*,\s*run_in_background:\s*true\s*,/i,
+      /general[- ]purpose/i,
+      /structured\s+completion\s+report/i,
+      /cost[- ]controlled|cost[- ]discipline|cost\s+model/i,
+    ],
+  },
+];
+
+test('Claude budget skills route dispatch through their agent basenames with no per-spawn model or hardcoded model tier', () => {
+  for (const contract of CLAUDE_BUDGET_SKILL_CONTRACTS) {
+    const skillPath = path.join(REPO_ROOT, 'skills', 'claude', contract.skillName, 'SKILL.md');
+    assert.ok(fs.existsSync(skillPath),
+      `${contract.skillName} should have a Claude skill at ${skillPath}`);
+    const skill = fs.readFileSync(skillPath, 'utf8');
+
+    assert.doesNotMatch(skill, /\b(?:haiku|sonnet)\b/i,
+      `${contract.skillName} must not hardcode a Claude model identifier`);
+    assert.doesNotMatch(skill, /\bmodel\s*:/i,
+      `${contract.skillName} must pass no per-spawn model:`);
+    assert.doesNotMatch(skill, /\bescalat/i,
+      `${contract.skillName} must not retain a retired explorer escalation tier`);
+
+    const skillTargets = extractSkillFetchTargets(skill);
+    assert.deepEqual(skillTargets, [`Fetch ${contract.fetchTarget}`],
+      `${contract.skillName} must contain exactly one matching canonical Fetch target`);
+
+    for (const marker of contract.markers) {
+      assert.match(skill, marker,
+        `${contract.skillName} must retain its skill-specific Claude contract marker ${marker}`);
     }
   }
 });
