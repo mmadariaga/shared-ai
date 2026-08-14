@@ -1905,6 +1905,34 @@
       ]
     },
     {
+      "id": "retired-apply-body",
+      "destination": {
+        "class": "sai",
+        "path": "commands/apply/body.md"
+      },
+      "harnesses": [
+        "claude",
+        "opencode"
+      ],
+      "managedHashes": [
+        "584644eb2505622c8ecf5f09321d8852711cf96990bb43cb0893625e4a86d26f"
+      ]
+    },
+    {
+      "id": "retired-apply-instructions",
+      "destination": {
+        "class": "sai",
+        "path": "commands/apply/instructions.md"
+      },
+      "harnesses": [
+        "claude",
+        "opencode"
+      ],
+      "managedHashes": [
+        "0e2356b07ff98bab99f352672381c53fe4a581f98cdbd7209128b5eae7a73326"
+      ]
+    },
+    {
       "id": "retired-sai-archive",
       "destination": {
         "class": "sai",

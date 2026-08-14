@@ -104,6 +104,31 @@ handling, opaque interaction history, and pending feedback; it is never
 recorded as user input. No progress event contains a continuation identifier,
 binding dispatch metadata, or artifact contents.
 
+## Phase-Defined Report Extension
+
+A phase adapter MAY declare an ordered report extension carried inside the
+terminal lifecycle envelope. The extension is phase-defined: the coordinator
+validates every reported value against the phase's declared field list and
+never invents, reorders, or drops a field. The apply phase declares exactly
+nine ordered report fields:
+
+1. `Step executed`
+2. `Per-item status`
+3. `RED result`
+4. `GREEN result`
+5. `Deviations`
+6. `Technical learnings/friction`
+7. `STOP reached?`
+8. `Files modified`
+9. `Attempts per phase`
+
+Field 8 is required in every apply report: an explicitly present empty list is
+valid, while an omitted field 8 makes the report malformed. Field 9 is the sole
+soft-degradation exception — an absent or empty field 9 never makes a report
+malformed and never blocks checkbox marking, the pre-commit report, or the
+commit gate. No report field carries a continuation identifier, binding
+dispatch metadata, or artifact contents.
+
 ## Question Content
 
 Every `needs_input` question SHALL comply with

@@ -55,7 +55,7 @@ const UTILITY_COMMANDS = {
 };
 
 const UTILITY_CARD_CONTENTS = {
-  apply: ['body.md', 'instructions.md'],
+  apply: ['coordinator.md', 'green-worker.md', 'invocation.md', 'red-worker.md', 'runner.md'],
   archive: ['archive-commit-gate.instructions.md', 'body.md', 'instructions.md'],
   backfill: ['body.md', 'instructions.md'],
   commit: ['body.md', 'instructions.md'],
@@ -181,7 +181,13 @@ test('installClaude copies sai/commands/*.md to dest/sai/commands/', () => {
   const saiCmdDir = path.join(tmpDir, 'sai', 'commands');
   assert.ok(fs.existsSync(saiCmdDir), 'sai/commands/ dir should exist');
   const files = fs.readdirSync(saiCmdDir);
-  assert.ok(fs.existsSync(path.join(saiCmdDir, 'apply', 'body.md')), 'apply/body.md should be in sai/commands/');
+  assert.ok(fs.existsSync(path.join(saiCmdDir, 'apply', 'coordinator.md')), 'apply/coordinator.md should be in sai/commands/');
+  assert.ok(fs.existsSync(path.join(saiCmdDir, 'apply', 'red-worker.md')), 'apply/red-worker.md should be in sai/commands/');
+  assert.ok(fs.existsSync(path.join(saiCmdDir, 'apply', 'green-worker.md')), 'apply/green-worker.md should be in sai/commands/');
+  assert.ok(fs.existsSync(path.join(saiCmdDir, 'apply', 'runner.md')), 'apply/runner.md should be in sai/commands/');
+  assert.ok(fs.existsSync(path.join(saiCmdDir, 'apply', 'invocation.md')), 'apply/invocation.md should be in sai/commands/');
+  assert.equal(fs.existsSync(path.join(saiCmdDir, 'apply', 'body.md')), false, 'apply/body.md should be retired from sai/commands/');
+  assert.equal(fs.existsSync(path.join(saiCmdDir, 'apply', 'instructions.md')), false, 'apply/instructions.md should be retired from sai/commands/');
   assert.equal(files.includes('sai-4-apply.md'), false, 'sai-4-apply.md should not be projected as a flat command');
   for (const file of [path.join('design', 'coordinator.md'), path.join('design', 'invocation.md'), path.join('implement', 'coordinator.md'), path.join('implement', 'invocation.md')]) {
     assert.ok(fs.existsSync(path.join(saiCmdDir, file)), `${file} should be projected`);
@@ -599,7 +605,7 @@ test('restore-coordinator-instruction-loading Step 3: isolated Claude installati
   }
 });
 
-test('Claude installer consumes exactly the seven matrix worker bindings and agents', () => {
+test('Claude installer consumes exactly the nine matrix worker bindings and agents', () => {
   const repoRoot = path.join(__dirname, '..');
   const manifest = loadInstallManifest(repoRoot);
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-claude-matrix-inventory-'));
@@ -619,15 +625,15 @@ test('Claude installer consumes exactly the seven matrix worker bindings and age
         .split(path.sep).join('/').startsWith('orchestration/workers/bindings/') &&
         phases.includes(path.basename(projection.destinationPath, '-worker.md')))
       .map(projection => path.basename(projection.destinationPath));
-    assert.equal(bindingNames.length, 7, 'Claude should project exactly seven worker bindings');
+    assert.equal(bindingNames.length, 7, 'Claude should project exactly seven phase worker bindings');
     assert.equal(bindingNames.includes('idea-list-render.md'), false,
       'Claude must not project an idea-list-render matrix binding');
     const allBindingNames = active
       .filter(projection => path.relative(destinationRoot.sai, projection.destinationPath)
         .split(path.sep).join('/').startsWith('orchestration/workers/bindings/'))
       .map(projection => path.basename(projection.destinationPath));
-    assert.equal(allBindingNames.length, 7,
-      'Claude should keep only the seven routed worker bindings in the matrix destination');
+    assert.equal(allBindingNames.length, 9,
+      'Claude should keep only the nine routed worker bindings in the matrix destination');
     const ideaList = active.find(projection =>
       path.relative(repoRoot, projection.sourcePath).split(path.sep).join('/') ===
       'sai/adapters/claude/idea-list-render.md');
@@ -639,12 +645,14 @@ test('Claude installer consumes exactly the seven matrix worker bindings and age
     const agentNames = active
       .filter(projection => projection.destinationPath.startsWith(destinationRoot.agents))
       .map(projection => path.basename(projection.destinationPath, '.md'));
-    assert.equal(agentNames.length, 10, 'Claude should project exactly ten managed agents');
+    assert.equal(agentNames.length, 12, 'Claude should project exactly twelve managed agents');
     for (const name of Object.keys(CLAUDE_GENERIC_AGENTS)) {
       assert.ok(agentNames.includes(name), `Claude should project the ${name} managed agent`);
     }
     assert.ok(WORKER_NAMES.every(name => agentNames.includes(name)),
       'Claude should still project every routed worker agent');
+    assert.ok(['sai-4-red-worker', 'sai-4-green-worker'].every(name => agentNames.includes(name)),
+      'Claude should project the RED and GREEN apply worker agents');
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }
@@ -689,9 +697,18 @@ test('installClaude active projection carries the neutral root protocols, routed
     assert.equal(sourceSet.has('sai/adapters/opencode/boot.md'), false,
       'Claude must not project the opencode boot adapter');
     for (const utility of Object.values(UTILITY_COMMANDS)) {
+      if (utility === 'apply') continue;
       assert.ok(sourceSet.has(`sai/commands/${utility}/body.md`),
         `Claude should project the utility card sai/commands/${utility}/body.md`);
     }
+    for (const card of ['coordinator.md', 'red-worker.md', 'green-worker.md', 'runner.md', 'invocation.md']) {
+      assert.ok(sourceSet.has(`sai/commands/apply/${card}`),
+        `Claude should project the routed apply card sai/commands/apply/${card}`);
+    }
+    assert.equal(sourceSet.has('sai/commands/apply/body.md'), false,
+      'Claude must not project the retired apply body card');
+    assert.equal(sourceSet.has('sai/commands/apply/instructions.md'), false,
+      'Claude must not project the retired monolithic apply instruction');
     for (const flat of Object.keys(UTILITY_COMMANDS).map(name => `sai/commands/${name}.md`)) {
       assert.equal(sourceSet.has(flat), false, `${flat} must be absent from the active source layout`);
     }
@@ -758,9 +775,14 @@ test('Claude boot adapter loads command-runner first, selects utility bodies, ke
     assert.match(boot, /Fetch @sai\/commands\/(?:\{name\}|[a-z-]+)\/body\.md/,
       'utility selection should target the matching body card');
     for (const name of Object.values(UTILITY_COMMANDS)) {
+      if (name === 'apply') continue;
       assert.doesNotMatch(boot, new RegExp(`@sai/commands/${name}/coordinator\\.md`),
         `the Claude boot must not select a coordinator card for the ${name} utility`);
     }
+    assert.match(boot, /@sai\/commands\/apply\/coordinator\.md/,
+      'the Claude boot must select the routed coordinator card for apply');
+    assert.doesNotMatch(boot, /@sai\/commands\/apply\/body\.md/,
+      'the Claude boot must no longer select the apply utility body card');
 
     assert.doesNotMatch(boot, /\btask\s*\(/,
       'the Claude boot adapter must not mention the opencode task dispatch primitive');
