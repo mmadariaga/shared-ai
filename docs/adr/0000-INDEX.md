@@ -21,6 +21,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0093 — Route spec through workers while Copilot remains inline](./0093-route-spec-through-workers-while-copilot-remains-inline.md) — Refs 0082, Refs 0083, Refs 0090, Refs 0092
 - [0117 — The three planning-phase coordinators receive the scoped `Bash(date:*)` entry as the sole allowed-tools exception](./0117-planning-coordinators-scoped-shell-entry.md)
 - [0118 — Per-harness wall-clock commands live in the harness bindings, never in the neutral policy](./0118-per-harness-wall-clock-commands-in-bindings.md) — Refs 0077
+- [0139 — Use fresh read-only reviewers with worker-owned artifact edits](./0139-fresh-read-only-reviewers-with-worker-owned-edits.md) — Refs ddr:0105
 ### `/sai-2-design`
 
 - [0015 — Decision summary precedes the completion sentinel](./0015-decision-summary-precedes-completion-sentinel.md) — **Amends** ddr:0014
@@ -45,6 +46,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0111 — design.md records the resolved record family as a pinned marker that Step 3 reads](./0111-record-family-marker-in-design.md)
 - [0117 — The three planning-phase coordinators receive the scoped `Bash(date:*)` entry as the sole allowed-tools exception](./0117-planning-coordinators-scoped-shell-entry.md)
 - [0118 — Per-harness wall-clock commands live in the harness bindings, never in the neutral policy](./0118-per-harness-wall-clock-commands-in-bindings.md) — Refs 0077
+- [0139 — Use fresh read-only reviewers with worker-owned artifact edits](./0139-fresh-read-only-reviewers-with-worker-owned-edits.md) — Refs ddr:0105
 
 ### `/sai-3-implement`
 
@@ -76,6 +78,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0131 — Keep OpenCode budget skills behind canonical behavior policies](./0131-canonicalize-opencode-budget-skill-behavior.md)
 - [0132 — Reconcile the executor capability at the canonical Fetch boundary](./0132-reconcile-executor-capability-at-fetch-boundary.md)
 - [0137 — Change Overview preserves the generation lifecycle and write boundary](./0137-change-overview-preserves-generation-lifecycle-and-write-boundary.md)
+- [0139 — Use fresh read-only reviewers with worker-owned artifact edits](./0139-fresh-read-only-reviewers-with-worker-owned-edits.md) — Refs ddr:0105
 
 ### `/sai-4-apply`
 

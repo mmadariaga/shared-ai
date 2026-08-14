@@ -16,7 +16,7 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 **Architecture Snapshot**: "The concise `design.md` subsection under **Target State** that inventories planned public surfaces, project-root-relative paths, and portable ASCII relationships or execution flows for design review; projected into `change-overview.md`."
 *Avoid*: architecture summary, architecture diagram, interface overview
 
-**Artifact Review**: "A read-only review of a change's OpenSpec artifacts — `proposal.md` and `specs/**` for sai-1, `design.md`, `tasks.md`, and `interfaces.md` for sai-2 — that produces structured findings with `High` / `Medium` / `Low` severities, run either manually through `sai-explore`'s post-crystallization review loop or by an independent pipeline reviewer."
+**Artifact Review**: "A read-only review of a change's OpenSpec artifacts — `proposal.md` and `specs/**` for sai-1, `design.md`, `tasks.md`, and `interfaces.md` for sai-2 — that produces structured findings with `High` / `Medium` / `Low` severities, run manually through `sai-explore`'s post-crystallization review loop, by an independent pipeline reviewer, or by the phase worker's own **Phase Review Pass**."
 *Avoid*: artifact audit, artifact check, doc review, artifact review loop
 
 **Attempts Per Phase**: "Field 9 of the `/sai-4-apply` Subagent Report Contract — a list of `{phase, attempts, first_failure, note}` entries, one per verification phase the dispatch actually ran, where `attempts` counts command runs regardless of outcome and `first_failure` draws on a closed vocabulary, and whose absence can never block the workflow."
@@ -144,6 +144,9 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 **Phase Policy**: "The design-only or implementation-only rules layered by a separate phase worker contract over the shared **Orchestration Core** lifecycle."
 *Avoid*: lifecycle core, shared phase logic, conditional worker branch
 
+**Phase Review Pass**: "One complete worker-owned **Artifact Review** of a routed planning phase — a single fresh isolated reviewer run over the freshly read artifacts plus the phase worker's processing of every finding it returns — counted once however many per-finding steps it takes, and producing evidence only when it completes."
+*Avoid*: review round, review iteration, review cycle, reviewer call
+
 **Phase Transition**: "The supervised pipeline report that records the completed outcome of one phase before the next phase begins."
 *Avoid*: phase handoff, phase switch, transition notice
 
@@ -179,6 +182,12 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 
 **Review Finding**: "A single structured issue identified by an **Artifact Review**, carrying a severity-prefixed identifier, a `High`, `Medium`, or `Low` severity, artifact location, issue statement, and recommended correction."
 *Avoid*: review issue, review comment, audit finding
+
+**Review Reference Set**: "The read-only intent-and-constraint context a **Phase Review Pass** reviewer is given alongside the artifacts it judges — the verbatim resolved request for sai-1, `proposal.md` plus `specs/**` for sai-2 — which the reviewer measures the reviewed artifacts against but never reports a **Review Finding** on."
+*Avoid*: reviewer context, background files, input set, supporting docs
+
+**Review Step**: "The final-position **Progress Step** of the sai-1 **Progress Plan** and the sixth of the sai-2 one, marked only by evidence of a **Phase Review Pass** reporting `High=0` and exempt from run-closing reconciliation — so it is the one step a closed run can leave not rendered `completed`."
+*Avoid*: review gate, review task, review checkpoint, feedback step
 
 **Review-Loop Token**: "The literal, English-invariant string `review-loop` that a user types in a `sai-explore` turn to enter the post-crystallization review loop directly, skipping the plain-text global sí/no invitation."
 *Avoid*: review keyword, review trigger, `/review-loop`, revisar, review command
@@ -256,6 +265,10 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 - A **Progress Event** reports completed **Progress Step** ids from a worker to the coordinator, which marks them in the **Progress Plan**, whose render threshold is single-sourced in the neutral task-list policy.
 - A **Milestone Stamp** belongs to one **Progress Step** of a routed phase progress task list and is attached by the coordinator as a decorative rendering action, never by a worker.
 - A **Progress Step** of a routed phase progress task list carries a start **Milestone Stamp** and, once completed, a closure **Milestone Stamp**; every step after the first inherits its start from the preceding step's closure.
+- A **Phase Review Pass** belongs to one routed planning phase invocation and is owned by that phase's worker; it creates exactly one fresh read-only reviewer, which never edits an artifact.
+- A **Phase Review Pass** produces zero or more **Review Finding**s and closes with the shared severity tally; only a completed pass reporting `High=0` marks the **Review Step**.
+- A **Phase Review Pass** reviewer receives exactly one reviewed artifact set plus one **Review Reference Set**; every **Review Finding** it returns targets the reviewed set, never the reference set.
+- A **Review Step** is the one **Progress Step** that run-closing reconciliation never marks, so it is marked exclusively by **Phase Review Pass** evidence carried in an ordinary **Progress Event**.
 - A **Step Projection** belongs to one `/sai-4-apply` run and mirrors the on-disk checkbox state of one `implementation.md`; unlike a **Progress Plan** it is never marked from worker progress events, because apply has no coordinator-worker boundary.
 - An **Idea Progress List** belongs to one `sai-explore` chat and is grown and marked only from in-session evidence; the session never writes it to a file, and it is never derived from repository state.
 - A **Native Task Panel** is a single-slot resource with exactly one declared owner at a time.

@@ -19,6 +19,9 @@ This index groups the DDRs in `docs/ddr/` by **command** and by **cross-cutting 
 - [0067 — Handoff provenance consumption as "premise to confirm and extend"](./0067-confirm-extend-consumption-framing.md)
 - [0072 — Numeric complexity thresholds calibrated from an archive survey](./0072-complexity-thresholds-calibrated-from-archive-survey.md) — Refs adr:0069, Refs adr:0070
 - [0106 — The ordered routing test resolves a qualifying decision's record family, DDR first, with no tie](./0106-ordered-routing-test-family-resolution.md)
+- [0133 — Review progress is marked only by no-High pass evidence](./0133-review-progress-is-evidence-only.md) — Refs 0109, Refs 0110, Refs 0111
+- [0134 — Automatic planning review has two distinct bounded counters](./0134-automatic-review-has-two-distinct-counters.md) — Refs 0133
+- [0135 — An empty spec reference set still yields a full review pass](./0135-empty-spec-reference-set-is-a-full-review-pass.md) — Refs 0133, Refs 0134
 
 ### `/sai-2-design`
 
@@ -36,6 +39,9 @@ This index groups the DDRs in `docs/ddr/` by **command** and by **cross-cutting 
 - [0130 — Change Overview uses an exact approval-oriented nine-section surface](./0130-change-overview-exact-approval-section-surface.md)
 - [0131 — Change Overview requirement names and localization anchors remain separately owned](./0131-change-overview-requirement-name-and-localization-ownership.md)
 - [0132 — Change Overview adapts architecture and centralizes the File Manifest](./0132-change-overview-adapts-architecture-and-centralizes-the-file-manifest.md)
+- [0133 — Review progress is marked only by no-High pass evidence](./0133-review-progress-is-evidence-only.md) — Refs 0109, Refs 0110, Refs 0111
+- [0134 — Automatic planning review has two distinct bounded counters](./0134-automatic-review-has-two-distinct-counters.md) — Refs 0133
+- [0135 — An empty spec reference set still yields a full review pass](./0135-empty-spec-reference-set-is-a-full-review-pass.md) — Refs 0133, Refs 0134
 
 ### `/sai-3-implement`
 
@@ -121,6 +127,9 @@ This index groups the DDRs in `docs/ddr/` by **command** and by **cross-cutting 
 - [0128 — Neutral root protocols and command cards](./0128-neutral-root-protocols-and-command-cards.md)
 - [0129 — Routed and utility command-card classes](./0129-routed-and-utility-command-card-classes.md)
 - [0133 — Budget dispatch literals resolve through collision-safe harness-managed roles](./0133-budget-dispatch-literals-resolve-through-collision-safe-harness-managed-roles.md)
+- [0133 — Review progress is marked only by no-High pass evidence](./0133-review-progress-is-evidence-only.md) — Refs 0109, Refs 0110, Refs 0111
+- [0134 — Automatic planning review has two distinct bounded counters](./0134-automatic-review-has-two-distinct-counters.md) — Refs 0133
+- [0135 — An empty spec reference set still yields a full review pass](./0135-empty-spec-reference-set-is-a-full-review-pass.md) — Refs 0133, Refs 0134
 
 ---
 
