@@ -682,3 +682,115 @@ test('Step 1 rejects malformed language input before dispatch', () => {
   assert.match(source, /no.*resolution|before.*change.*resolution/i);
   assert.match(source, /no.*dispatch|without.*dispatch/i);
 });
+
+// ─── Step 2: spec-design-review-progress-step (worker-owned planning-artifact review loop) ─
+
+test('Step 2: every review pass gives a fresh read-only reviewer exactly the reviewed and reference sets', () => {
+  const worker = spec('sai/commands/spec/worker.md');
+
+  assert.match(worker, /Each pass creates one fresh isolated read-only reviewer/,
+    'every pass should dispatch a fresh read-only reviewer');
+  assert.match(worker, /give it exactly \(1\)[\s\S]{0,60}reviewed set[\s\S]{0,120}\(2\)[\s\S]{0,60}reference set/,
+    'the reviewer should receive exactly the reviewed and reference sets');
+  assert.match(worker, /`proposal\.md` plus every `specs\/\*\*\/\*\.md`/,
+    'the reviewed set should be exactly proposal.md and specs/**/*.md');
+  assert.match(worker, /verbatim resolved request from this worker's original two-string invocation envelope/,
+    'the reference should be the verbatim resolved request');
+  assert.match(worker, /or an empty set when that envelope carries only a change name/,
+    'the reference may be empty');
+  assert.match(worker, /Findings may target only reviewed-set files/,
+    'findings should target only the reviewed set');
+  assert.match(worker, /no conversation, worker reasoning or journal, prior reviewer state, unrelated repository content, lifecycle\/binding metadata, or write capability/,
+    'the reviewer should be isolated from all other context');
+});
+
+test('Step 2: worker edits stay within reviewed artifacts and discards name specific reasons', () => {
+  const worker = spec('sai/commands/spec/worker.md');
+  const coordinator = spec('sai/commands/spec/coordinator.md');
+
+  assert.match(worker, /The worker alone applies legitimate corrections within the reviewed set/,
+    'a legitimate finding should be corrected by the worker');
+  assert.match(worker, /Findings may target only reviewed-set files/,
+    'worker edits should be limited to the reviewed artifacts');
+  assert.match(worker, /reports every discard with its specific reason/,
+    'a discarded finding should carry a specific rejection reason');
+  assert.match(coordinator, /Report worker-authored discards/,
+    'the coordinator should surface worker-authored discards');
+});
+
+test('Step 2: accepted edits re-verify and recompute the decision summary without re-emitting earlier progress ids', () => {
+  const worker = spec('sai/commands/spec/worker.md');
+
+  assert.match(worker, /If any correction is accepted, re-run pre-completion artifact verification/,
+    'accepted edits should trigger re-verification of the artifacts');
+  assert.match(worker, /recompute the decision summary from current artifacts/,
+    'the decision summary should be recomputed from current artifacts');
+  assert.match(worker, /without re-emitting or reopening `proposal`, `specs`, or `validation`/,
+    'earlier progress ids should not be re-emitted');
+});
+
+test('Step 2: failed, cancelled, or invalid-severity attempts consume one attempt and re-dispatch while the cap permits', () => {
+  const worker = spec('sai/commands/spec/worker.md');
+
+  assert.match(worker, /A missing or out-of-set severity rejects the whole attempt/,
+    'an invalid-severity attempt should reject the whole attempt');
+  assert.match(worker, /coerce nothing, process nothing/,
+    'no finding should be processed from a rejected attempt');
+  assert.match(worker, /A failed, cancelled, or output-contract-invalid attempt advances only the total-attempt count/,
+    'failed, cancelled, or invalid-severity attempts should consume one total attempt');
+  assert.match(worker, /the total-attempt count is capped at 6/,
+    'the total-attempt cap should be stated');
+  assert.match(worker, /dispatches a fresh reviewer while the total-attempt cap permits/,
+    'a fresh reviewer should be dispatched while the total-attempt cap permits');
+  assert.match(worker, /classify the cause as a reviewer output-contract violation distinct from failure, cancellation, and outstanding `High` findings/,
+    'the outcome should be reported distinctly');
+});
+
+test('Step 2: the validation progress event precedes any review event', () => {
+  const worker = spec('sai/commands/spec/worker.md');
+  const coordinator = spec('sai/commands/spec/coordinator.md');
+
+  assert.match(worker, /the `validation` progress event has been emitted[\s\S]{0,160}run the automatic review loop/,
+    'the validation progress event should precede the review loop');
+  assert.match(worker, /decision-summary derivation report `validation`/,
+    'validation should be reported as a progress event');
+  assert.match(worker, /a completed worker-owned review pass reporting `High=0` reports `review`/,
+    'review should be reported as a progress event');
+  assert.match(coordinator, /`validation`[\s\S]{0,120}`review`/,
+    'the plan should order validation before review');
+});
+
+test('Step 2: an empty reference skips intent coverage but keeps the remaining axes and the High=0 review mark', () => {
+  const worker = spec('sai/commands/spec/worker.md');
+
+  assert.match(worker, /or an empty set when that envelope carries only a change name/,
+    'the contract should cover an empty reference');
+  assert.match(worker, /An empty reference set makes intent coverage inapplicable/,
+    'intent coverage should be skipped when the reference is empty');
+  assert.match(worker, /The reviewer evaluates reviewed-set consistency, requirement\/scenario testability, and unsupported assumptions/,
+    'the remaining axes should still be evaluated');
+  assert.match(worker, /it also evaluates intent coverage when the reference set is non-empty/,
+    'intent coverage should apply only for a non-empty reference');
+  assert.match(worker, /but still permits a full completed pass/,
+    'an empty reference should still permit a full completed pass');
+  assert.match(worker, /A completed pass with `High=0` converges, emits `review` once when still unmarked/,
+    'review may be marked when High=0 even with an empty reference');
+});
+
+test('Step 2: worker review stays active under supervision without a routed task list', () => {
+  const worker = spec('sai/commands/spec/worker.md');
+  const supervision = spec('sai/commands/explore/instructions.md');
+
+  assert.match(worker, /supervised pipeline/i,
+    'the worker contract should cover supervised invocation');
+  assert.match(worker, /coexists with and never replaces the supervised pipeline's independent convergence loop/,
+    'worker review should run in addition to the independent convergence loop');
+  assert.match(worker, /`MachineFeedbackAdapter`/,
+    'the worker-owned loop should coexist with the MachineFeedbackAdapter');
+  assert.match(supervision, /no adapter-declared plan is in force in the supervised flow/,
+    'no routed progress plan should be in force under supervision');
+  assert.match(supervision, /no plan-based list renders/,
+    'no routed task list should render under supervision');
+  assert.match(supervision, /Step marking has no application/,
+    'step marking should have no application in the supervised flow');
+});

@@ -17,13 +17,15 @@
 
   Initialize an ordered duplicate-free changed-file union, opaque input history, pending feedback, and feedback iteration `0`.
 
-  Declare the canonical three-step progress plan for this phase, in order, with exactly these ids and labels — no omissions, reorders, renames, or additions:
+  Declare the canonical five-step progress plan for this phase, in order, with exactly these ids and labels — no omissions, reorders, renames, or additions:
 
-  - `prereqs-resolution` — "Prerequisites and change resolution"
-  - `proposal-and-specs` — "Proposal and specs authoring"
-  - `verification-summary` — "Verification and decision summary"
+  - `prereqs-and-change` — "Check prerequisites and resolve the change"
+  - `proposal` — "Write proposal.md"
+  - `specs` — "Write specs/**"
+  - `validation` — "Validate artifacts and derive the decision summary"
+  - `review` — "Review artifacts"
 
-  Render the full plan at dispatch before the first worker result per `@sai/policies/todo-structure.md` (first step `in_progress`, rest `pending`); mark steps only from worker progress-event `step_ids`; and reconcile at run-closing results: `completed` renders every unmarked step `completed`, `failed` and `cancelled` leave the list exactly as last rendered, and a `needs_input` result — a terminal lifecycle status that is not run-closing — leaves the list exactly as last rendered.
+  Render the full plan at dispatch before the first worker result per `@sai/policies/todo-structure.md` (first step `in_progress`, rest `pending`); mark steps only from worker progress-event `step_ids`. A worker `completed` followed by the artifact feedback gate is pre-gate and does not reconcile. The gate's `Finish step` proceed selection is the spec phase's reconciliation trigger, at which the coordinator reconciles against the last terminal `completed`: every eligible unmarked step renders `completed`, while an unmarked evidence-marked `review` step is left exactly as last rendered. `failed`, `cancelled`, and `needs_input` leave the list exactly as last rendered. The carve-out is the evidence-marked designation from `@sai/policies/todo-structure.md`, never the bare `review` id.
 
   Progress events are the only allowed nonterminal extension. Set `allowed_nonterminal_extensions` to admit the progress event shape `{event: "progress", step_ids: string[], changed_files: string[]}` as the sole nonterminal extension, and `extension_handlers` to empty. Validate the four closed lifecycle statuses plus the progress event shape. There is no design notice state.
 

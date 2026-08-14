@@ -27,6 +27,27 @@ function countLiteral(source, value) {
   return source.split(value).length - 1;
 }
 
+// The canonical five-step spec progress plan shared by the coordinator declaration and
+// the worker enumeration (sai/commands/spec/coordinator.md and worker.md).
+const SPEC_PLAN_STEPS = [
+  ['prereqs-and-change', 'Check prerequisites and resolve the change'],
+  ['proposal', 'Write proposal.md'],
+  ['specs', 'Write specs/**'],
+  ['validation', 'Validate artifacts and derive the decision summary'],
+  ['review', 'Review artifacts'],
+];
+const SPEC_PLAN_IDS = SPEC_PLAN_STEPS.map(([id]) => id);
+
+// Extract the `id` — "label" plan-list entries, normalizing per-line indentation so the
+// coordinator declaration and the worker enumeration compare content-wise.
+function planList(source) {
+  const pairs = [];
+  const re = /^\s*- `([a-z-]+)`\s*—\s*"([^"]+)"\s*$/gm;
+  let match;
+  while ((match = re.exec(source)) !== null) pairs.push([match[1], match[2]]);
+  return pairs;
+}
+
 test('Step 1 spec card uses neutral root protocols and retires flat canonical sources', () => {
   const coordinator = artifact('sai/commands/spec/coordinator.md');
   const worker = artifact('sai/commands/spec/worker.md');
@@ -269,35 +290,44 @@ test('sai-1 feedback gate advertises and accepts direct free-text replies', () =
 
 // ─── Step 5: progress-plan-spec-and-implement (spec coordinator/worker) ───────
 
-test('Step 5: the spec adapter declares the canonical three-step plan in order with its labels', () => {
+test('Step 5: the spec adapter declares the canonical five-step plan in order with its labels', () => {
   const coordinator = artifact(SPEC_COORDINATOR_ARTIFACTS.coordinator);
 
-  for (const id of ['prereqs-resolution', 'proposal-and-specs', 'verification-summary']) {
-    assert.match(coordinator, new RegExp(id.replace(/-/g, '\\-')),
+  for (const id of SPEC_PLAN_IDS) {
+    assert.match(coordinator, new RegExp(`\`${id}\``),
       `the spec plan should declare the ${id} step id`);
   }
   assert.match(
     coordinator,
-    /prereqs-resolution[\s\S]{0,300}proposal-and-specs[\s\S]{0,300}verification-summary/,
-    'the three canonical step ids should be declared in order'
+    /`prereqs-and-change`[\s\S]{0,300}`proposal`[\s\S]{0,300}`specs`[\s\S]{0,300}`validation`[\s\S]{0,300}`review`/,
+    'the five canonical step ids should be declared in order'
   );
-  assert.match(coordinator, /prereqs-resolution[\s\S]{0,200}Prerequisites and change resolution/i,
-    'prereqs-resolution should carry the "Prerequisites and change resolution" label');
-  assert.match(coordinator, /proposal-and-specs[\s\S]{0,200}Proposal and specs authoring/i,
-    'proposal-and-specs should carry the "Proposal and specs authoring" label');
-  assert.match(coordinator, /verification-summary[\s\S]{0,200}Verification and decision summary/i,
-    'verification-summary should carry the "Verification and decision summary" label');
-  assert.doesNotMatch(coordinator, /specs-approval/,
-    'the spec plan should contain no specs-approval step');
+  assert.match(coordinator, /`prereqs-and-change`[\s\S]{0,200}Check prerequisites and resolve the change/,
+    'prereqs-and-change should carry the "Check prerequisites and resolve the change" label');
+  assert.match(coordinator, /`proposal`[\s\S]{0,200}Write proposal\.md/,
+    'proposal should carry the "Write proposal.md" label');
+  assert.match(coordinator, /`specs`[\s\S]{0,200}Write specs\/\*\*/,
+    'specs should carry the "Write specs/**" label');
+  assert.match(coordinator, /`validation`[\s\S]{0,200}Validate artifacts and derive the decision summary/,
+    'validation should carry the "Validate artifacts and derive the decision summary" label');
+  assert.match(coordinator, /`review`[\s\S]{0,200}Review artifacts/,
+    'review should carry the "Review artifacts" label');
+  assert.doesNotMatch(coordinator, /prereqs-resolution|proposal-and-specs|verification-summary|specs-approval/,
+    'the spec plan should contain no retired three-step ids and no specs-approval step');
 });
 
-test('Step 5: the spec-proposal worker contract enumerates the same three ids in order', () => {
+test('Step 5: the spec-proposal worker contract enumerates the same five ids in order', () => {
   const worker = artifact(SPEC_COORDINATOR_ARTIFACTS.worker);
 
   assert.match(
     worker,
-    /prereqs-resolution[\s\S]{0,800}proposal-and-specs[\s\S]{0,800}verification-summary/,
-    'the spec worker contract should enumerate the same three step ids in the same order'
+    /exactly these canonical step ids, in[\s\S]{0,60}order:/,
+    'the spec worker contract should enumerate the canonical ids in order'
+  );
+  assert.deepEqual(
+    planList(worker),
+    SPEC_PLAN_STEPS,
+    'the spec worker contract should enumerate exactly the five ordered id/label pairs'
   );
 });
 
@@ -332,19 +362,25 @@ test('Step 5: the spec coordinator reconciles the list at run-closing results', 
 test('Step 5: the spec worker contract emits one progress event per completed batch with the canonical batch ids', () => {
   const worker = artifact(SPEC_COORDINATOR_ARTIFACTS.worker);
 
-  assert.match(worker, /(?:one|a single|each|per)[\s\S]{0,200}progress event[\s\S]{0,240}(?:completed )?batch|(?:completed )?batch[\s\S]{0,200}(?:one|a single|each|per)[\s\S]{0,200}progress event/i,
+  assert.match(worker, /Emit exactly one progress event per completed batch/,
     'the contract should emit one progress event per completed batch');
-  assert.match(worker, /startup act[\s\S]{0,240}prereqs-resolution|prereqs-resolution[\s\S]{0,240}startup/i,
-    'the startup batch should carry prereqs-resolution');
-  assert.match(worker, /proposal-and-specs[\s\S]{0,240}changed_files|changed_files[\s\S]{0,240}proposal-and-specs/i,
-    'the authoring batch should carry proposal-and-specs with changed_files since the preceding result');
-  assert.match(worker, /verification-summary/,
-    'the verification batch should carry verification-summary');
-  assert.match(worker, /never[\s\S]{0,120}progress event[\s\S]{0,240}feedback turn|feedback turn[\s\S]{0,240}(?:no|never|not)[\s\S]{0,120}progress/i,
+  assert.match(worker, /The startup act reports `prereqs-and-change`/,
+    'the startup batch should carry prereqs-and-change');
+  assert.match(worker, /the completed `proposal\.md` write reports `proposal`/,
+    'the proposal batch should carry proposal');
+  assert.match(worker, /the completed `specs\/\*\*` write reports `specs`/,
+    'the specs batch should carry specs');
+  assert.match(worker, /decision-summary derivation report `validation`/,
+    'the verification batch should carry validation');
+  assert.match(worker, /a completed worker-owned review pass reporting `High=0` reports `review`/,
+    'a completed review pass should carry review');
+  assert.match(worker, /in that batch's `changed_files`/,
+    'the batch should carry changed_files since the preceding result');
+  assert.match(worker, /feedback turn[\s\S]{0,240}(?:no|never|not)[\s\S]{0,120}progress/i,
     'feedback turns should emit no progress event');
-  assert.match(worker, /never[\s\S]{0,120}before[\s\S]{0,120}resolution|before[\s\S]{0,120}resolution[\s\S]{0,120}never/i,
+  assert.match(worker, /Never emit before resolution/,
     'no progress event should be emitted before resolution');
-  assert.match(worker, /exactly one terminal lifecycle status|one terminal lifecycle status/i,
+  assert.match(worker, /one terminal lifecycle status/i,
     'the run should close with exactly one terminal lifecycle status');
 });
 
@@ -402,4 +438,106 @@ test('Step 2: the spec coordinator renders task-list stamps coordinator-only via
     'the policy should state the wall-clock call never originates from the worker subagent');
   assert.doesNotMatch(coordinator, /date \+%H:%M|Get-Date/,
     'per-harness wall-clock commands no longer live in the coordinator body');
+});
+
+// ─── Step 2: spec-design-review-progress-step (spec coordinator/worker) ───────
+
+test('Step 2: the spec coordinator declares exactly the five ordered plan ids with their labels', () => {
+  const coordinator = artifact(SPEC_COORDINATOR_ARTIFACTS.coordinator);
+
+  assert.match(coordinator, /canonical five-step progress plan[\s\S]{0,200}in order, with exactly these ids and labels/,
+    'the coordinator should declare the canonical five-step plan with the exactness clause');
+  for (const id of SPEC_PLAN_IDS) {
+    assert.match(coordinator, new RegExp(`\`${id}\``),
+      `the coordinator should declare the ${id} step id`);
+  }
+  assert.match(
+    coordinator,
+    /`prereqs-and-change`[\s\S]{0,300}`proposal`[\s\S]{0,300}`specs`[\s\S]{0,300}`validation`[\s\S]{0,300}`review`/,
+    'the five canonical step ids should be declared in order'
+  );
+  assert.match(coordinator, /`prereqs-and-change`[\s\S]{0,200}Check prerequisites and resolve the change/,
+    'prereqs-and-change should carry the "Check prerequisites and resolve the change" label');
+  assert.match(coordinator, /`proposal`[\s\S]{0,200}Write proposal\.md/,
+    'proposal should carry the "Write proposal.md" label');
+  assert.match(coordinator, /`specs`[\s\S]{0,200}Write specs\/\*\*/,
+    'specs should carry the "Write specs/**" label');
+  assert.match(coordinator, /`validation`[\s\S]{0,200}Validate artifacts and derive the decision summary/,
+    'validation should carry the "Validate artifacts and derive the decision summary" label');
+  assert.match(coordinator, /`review`[\s\S]{0,200}Review artifacts/,
+    'review should carry the "Review artifacts" label');
+  assert.doesNotMatch(coordinator, /prereqs-resolution|proposal-and-specs|verification-summary/,
+    'the coordinator should contain no step ids beyond the declared five');
+});
+
+test('Step 2: the coordinator plan declaration and the worker enumeration are byte-identical lists', () => {
+  const coordinator = artifact(SPEC_COORDINATOR_ARTIFACTS.coordinator);
+  const worker = artifact(SPEC_COORDINATOR_ARTIFACTS.worker);
+
+  assert.deepEqual(planList(coordinator), SPEC_PLAN_STEPS,
+    'the coordinator plan declaration should be exactly the five ordered id/label pairs');
+  assert.deepEqual(planList(worker), SPEC_PLAN_STEPS,
+    'the worker enumeration should be exactly the five ordered id/label pairs');
+  assert.deepEqual(planList(coordinator), planList(worker),
+    'the coordinator declaration and the worker enumeration should be byte-identical lists (content-wise)');
+});
+
+test('Step 2: the spec worker emits one progress event per act carrying the canonical id and newly changed paths', () => {
+  const worker = artifact(SPEC_COORDINATOR_ARTIFACTS.worker);
+
+  assert.match(worker, /Emit exactly one progress event per completed batch/,
+    'each act should emit exactly one progress event');
+  assert.match(worker, /The startup act reports `prereqs-and-change`/,
+    'the startup act should emit one progress event carrying prereqs-and-change');
+  assert.match(worker, /the completed `proposal\.md` write reports `proposal`/,
+    'the proposal act should emit one progress event carrying proposal');
+  assert.match(worker, /the completed `specs\/\*\*` write reports `specs`/,
+    'the specs act should emit one progress event carrying specs');
+  assert.match(worker, /decision-summary derivation report `validation`/,
+    'the validation act should emit one progress event carrying validation');
+  assert.match(worker, /list every path written since the preceding result/,
+    'each progress event should carry the newly changed paths');
+  assert.match(worker, /changed_files/,
+    'the worker contract should keep the changed_files field');
+  assert.match(worker, /Report ids in plan order/,
+    'progress event ids should be reported in plan order');
+});
+
+test('Step 2: a completed worker-owned review pass emits review once for High=0 only', () => {
+  const worker = artifact(SPEC_COORDINATOR_ARTIFACTS.worker);
+  const coordinator = artifact(SPEC_COORDINATOR_ARTIFACTS.coordinator);
+
+  assert.match(worker, /A completed pass with `High=0` converges/,
+    'the marking rule should apply to a completed pass');
+  assert.match(worker, /`Medium` and `Low` do not extend the loop/,
+    'Medium/Low-only findings should still permit the review mark');
+  assert.match(worker, /including an empty finding set/,
+    'an empty-findings pass should still permit the review mark');
+  assert.match(worker, /emits `review` once when still unmarked/,
+    'the review mark should be emitted exactly once on convergence');
+  assert.equal((worker.match(/emits `review`/g) || []).length, 1,
+    'review should be emitted exactly once, only by the High=0 convergence clause');
+  assert.match(worker, /A completed pass with `High>0` dispatches a fresh reviewer while both caps permit/,
+    'a completed pass with High>0 should not emit the review mark');
+  assert.match(worker, /leave `review` unmarked/,
+    'cap-exhaustion outcomes should leave the review mark unmarked');
+  assert.match(coordinator, /an unmarked evidence-marked `review` step is left exactly as last rendered/,
+    'an unmarked review step stays unmarked through reconciliation');
+});
+
+test('Step 2: the spec coordinator skips reconciliation for pre-gate completion and reconciles at Finish-step close except unmarked review', () => {
+  const coordinator = artifact(SPEC_COORDINATOR_ARTIFACTS.coordinator);
+
+  assert.match(coordinator, /pre-gate and does not reconcile/,
+    'a pre-gate completed result should trigger no reconciliation');
+  assert.match(coordinator, /`Finish step` proceed selection is the spec phase's reconciliation trigger/,
+    'reconciliation should apply at the Finish step close');
+  assert.match(coordinator, /every eligible unmarked step renders `completed`/,
+    'every eligible unmarked step should render completed');
+  assert.match(coordinator, /an unmarked evidence-marked `review` step is left exactly as last rendered/,
+    'an unmarked review step should be excluded from reconciliation');
+  assert.match(coordinator, /never the bare `review` id/,
+    'the carve-out is the evidence-marked designation, never the bare review id');
+  assert.match(coordinator, /`failed`, `cancelled`, and `needs_input` leave the list exactly as last rendered/,
+    'failed, cancelled, and needs_input should leave the list as last rendered');
 });
