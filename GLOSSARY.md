@@ -189,8 +189,14 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 **Report Template Parity**: "The pinned requirement that a report artifact's two template families — the OpenSpec schema scaffold under `openspec/schemas/sai-workflow/templates/` and the write-time contract under `sai/commands/{phase}/{artifact}-report.template.md` (e.g. `sai/commands/review/review-report.template.md`) — present the same section skeleton and header metadata, diverging only in placeholder syntax, guidance depth, and code-fence wrapping."
 *Avoid*: template equality, template unification, template consistency
 
+**Review Engine**: "The independently invocable unit of an **Artifact Review** that performs the review work — resolving the change directory, checking artifact existence, rereading artifacts from disk, and forming findings with the shared contract's shape and tally — without depending on any picker or navigation state."
+*Avoid*: reviewer, review subagent, review transaction, review loop body
+
 **Review Finding**: "A single structured issue identified by an **Artifact Review**, carrying a severity-prefixed identifier, a `High`, `Medium`, or `Low` severity, artifact location, issue statement, and recommended correction."
 *Avoid*: review issue, review comment, audit finding
+
+**Review Loop Navigation**: "The manual-mode-only shell of the post-crystallization review loop — the entry paths, the chat-scoped iteration, the five-option picker, `Skip` / `Exit review loop`, the picker re-entry invariant, and the print-for-paste handoff — which drives the **Review Engine** once per review transaction and performs no review work itself."
+*Avoid*: review menu, loop shell, review picker, review navigation
 
 **Review Reference Set**: "The read-only intent-and-constraint context a **Phase Review Pass** reviewer is given alongside the artifacts it judges — the verbatim resolved request for sai-1, `proposal.md` plus `specs/**` for sai-2 — which the reviewer measures the reviewed artifacts against but never reports a **Review Finding** on."
 *Avoid*: reviewer context, background files, input set, supporting docs
@@ -301,6 +307,8 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 - A **Review-Loop Token** fires the post-crystallization loop, and each `Review sai-1's artifacts` / `Review sai-2's artifacts` transaction in it is an **Artifact Review**.
 - An **Artifact Review** produces zero or more **Review Finding**s, each carrying a **Finding Identifier** derived from its severity within that review.
 - A **Review Finding** carries exactly one **Finding Identifier**, derived from its `Severity` field; identifiers never imply identity across reviews.
+- A **Review Engine** performs the review work of an **Artifact Review** and is invocable independently of **Review Loop Navigation**.
+- A **Review Loop Navigation** drives the **Review Engine** once per review transaction and performs no review work itself.
 - A **Recovery Policy** opts one routed invocation into the shared bounded same-worker recovery loop; it does not name a **Recovery Dispatch** and does not choose the attempt budget.
 - A **Report Template Parity** pin covers the four report artifacts — review, security, performance, accessibility — each pairing a schema template scaffold with an instruction output template contract of the same artifact.
 - A **Tracked Crystallized Set** gains a name only when a crystallization turn emits one, ignores duplicate later emissions, and starts empty in every new chat.

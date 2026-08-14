@@ -101,6 +101,7 @@ This index groups the DDRs in `docs/ddr/` by **command** and by **cross-cutting 
 - [0133 — Budget dispatch literals resolve through collision-safe harness-managed roles](./0133-budget-dispatch-literals-resolve-through-collision-safe-harness-managed-roles.md)
 - [0134 — Every review-loop turn re-enters except for two complementary closing choices](./0134-every-review-loop-turn-reenters-except-two-closing-choices.md)
 - [0135 — Review findings encoding and loop navigation are separate surfaces](./0135-review-findings-encoding-and-loop-navigation-are-separate-surfaces.md)
+- [0137 — The Review Engine input boundary is navigation-free](./0137-review-engine-input-boundary-is-navigation-free.md)
 
 ### `/sai-backfill`
 
@@ -216,6 +217,7 @@ This index groups the DDRs in `docs/ddr/` by **command** and by **cross-cutting 
 - [0124 — Active exploration uses question-first closure and repeatable reminders without repeating readiness](./0124-question-first-closure-repeats-without-repeating-readiness.md)
 - [0134 — Every review-loop turn re-enters except for two complementary closing choices](./0134-every-review-loop-turn-reenters-except-two-closing-choices.md)
 - [0135 — Review findings encoding and loop navigation are separate surfaces](./0135-review-findings-encoding-and-loop-navigation-are-separate-surfaces.md)
+- [0137 — The Review Engine input boundary is navigation-free](./0137-review-engine-input-boundary-is-navigation-free.md)
 
 ### Artifact metadata & routing tokens
 

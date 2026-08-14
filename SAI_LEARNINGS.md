@@ -190,6 +190,15 @@ Durable execution-observed facts about the shared-ai prompt and installer reposi
 - **test/explore-pre-crystallization-stages.test.js**: The suite fails 3 tests at HEAD because `sai/orchestration/workers/bindings/opencode/idea-list-render.md` was removed by commit `aa95c31` (the binding was moved to the adapter seam) while the test still asserts it exists — the file is byte-identical to HEAD, so these are pre-existing baseline failures, not change-caused; any apply run's full-suite gate must attribute them to the untouched test file.
   *Observed:* spec-design-review-progress-step — the Step 3 full-suite `npm test` reported 922 tests / 919 pass / 3 fail, all 3 in `explore-pre-crystallization-stages.test.js` with no Step 3 file implicated.
 
+- **test/change-overview-contract.test.js (findings-block slicing)**: The findings-block tests slice from `blockStart` to the next `\n    - When` bullet with a 1600-char cap when no later `- When` bullet exists, so restructuring item 9 of `sai/commands/explore/instructions.md` must keep a `- When` bullet after the findings block or the `/sai-2-design`/`apply in place`/`not offered` content (~1800 chars in) gets cut.
+  *Observed:* extract-review-engine — moving the missing-specs bullet into the Review Engine required adding a shell `- When` re-entry bullet to keep the handoff content within the slice.
+
+- **test/change-overview-contract.test.js (pinned regex alternations)**: The suite's pinned regexes match at literal word level — `restate` does not match "restating", `no documented cap`/`no cap` does not match "no documented option cap", and `print-for-paste|single[\s-]?block (?:handoff|hand-off)` and `only closing action` require the exact pinned forms; a GREEN rewrite must supply the pinned literal verbs and phrases rather than the plan's paraphrase.
+  *Observed:* extract-review-engine — three GREEN fixes were required (opencode "no cap" phrasing, "does not restate" verb, "print-for-paste" handoff) before the focused suite passed 54/54.
+
+- **sai/policies/remember.md (line-range citations)**: Do not cite the remember.md Closed-choice prompts rule (or any rewritten policy rule) by line range (e.g. `(L10–15)`) in `sai/commands/explore/instructions.md` — the rule's line numbers shift whenever the policy is rewritten, leaving the citation stale; cite by rule name instead.
+  *Observed:* extract-review-engine — the remember.md capacity-aware rewrite shifted the rule's line numbers, requiring the `(L10–15)` citation to be dropped.
+
 ## Avoid
 
 - **bin/install-manifest.js**: An explicit non-recursive projection entry with an `overrides` id must be placed AFTER the recursive projection it overrides in the `projections` array — the duplicate-destination override fires only for `!projection.recursive && projection.overrides === existing.id && existing.recursive`, so placing the explicit entry before the recursive one throws `Projection destination collision` across every installer/doctor/agent suite.
