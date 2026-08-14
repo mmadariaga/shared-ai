@@ -46,6 +46,55 @@ function removeTempDir(dir) {
   fs.rmSync(dir, { recursive: true, force: true });
 }
 
+// ─── Step 3: spec-design-review-progress-step — interface stubs ────────────
+// The Step 3 interface stubs expose the required contract symbols (the
+// seven-step design progress plan, the design review-pass input sets, and the
+// retired step ids) as pure data with no production logic. The assertions
+// below compare the production instruction surface against these stubs, so a
+// RED run fails until the GREEN body lands the contract.
+
+const DESIGN_PROGRESS_PLAN = [
+  ['prereqs-resolution', 'Check prerequisites, resolve the change, and approve specs'],
+  ['research', 'Research and resolve open questions'],
+  ['design', 'Write design.md'],
+  ['tasks', 'Write tasks.md'],
+  ['interfaces', 'Write interfaces.md'],
+  ['review', 'Review artifacts'],
+  ['overview', 'Generate change-overview.md'],
+];
+const DESIGN_PROGRESS_PLAN_LINES = DESIGN_PROGRESS_PLAN.map(([id, label]) => `${id}: "${label}"`);
+const DESIGN_PROGRESS_PLAN_IDS = DESIGN_PROGRESS_PLAN.map(([id]) => id);
+const RETIRED_DESIGN_PLAN_IDS = ['specs-approval', 'artifacts'];
+
+function declaredStepLines(source) {
+  const known = new Set([...DESIGN_PROGRESS_PLAN_IDS, ...RETIRED_DESIGN_PLAN_IDS]);
+  const lines = [];
+  for (const rawLine of source.split('\n')) {
+    const line = rawLine.trim().replace(/^[-*]\s*/, '').replace(/\s+/g, ' ');
+    let id = null;
+    let label = null;
+    let match = line.match(/^([a-z][a-z0-9-]*):\s*(.+)$/);
+    if (match && known.has(match[1])) {
+      id = match[1];
+      label = match[2].trim();
+    } else {
+      match = line.match(/^`([a-z][a-z0-9-]*)`\s*[—:\-]\s*(.+)$/);
+      if (match && known.has(match[1])) {
+        id = match[1];
+        label = match[2].trim();
+      }
+    }
+    if (id === null) continue;
+    if ((label.startsWith('"') && label.endsWith('"'))
+      || (label.startsWith("'") && label.endsWith("'"))
+      || (label.startsWith('`') && label.endsWith('`'))) {
+      label = label.slice(1, -1);
+    }
+    lines.push(`${id}: "${label}"`);
+  }
+  return lines;
+}
+
 test('Step 1 design card uses neutral root protocols and retires flat canonical sources', () => {
   const coordinator = artifact('sai/commands/design/coordinator.md');
   const worker = artifact('sai/commands/design/worker.md');
@@ -874,36 +923,33 @@ test('the lifecycle obliges planned workers to emit progress and keeps payload v
 
 // ─── Step 4: command-progress-plan-protocol (design coordinator.md) ─────────
 
-test('Step 4: design coordinator declares the plan with the four canonical steps in order', () => {
+test('Step 3: the design coordinator declares exactly the seven ordered progress-plan step ids and labels', () => {
   const coordinator = artifact('sai/commands/design/coordinator.md');
 
-  for (const id of ['prereqs-resolution', 'specs-approval', 'research', 'artifacts']) {
-    assert.match(coordinator, new RegExp(id.replace(/-/g, '\\-')),
-      `the plan should declare the ${id} step id`);
-  }
-  assert.match(
-    coordinator,
-    /prereqs-resolution[\s\S]{0,300}specs-approval[\s\S]{0,300}research[\s\S]{0,300}artifacts/,
-    'the four canonical step ids should be declared in order'
-  );
-  assert.match(coordinator, /prereqs-resolution[\s\S]{0,200}Prerequisites and change resolution/i,
-    'prereqs-resolution should carry the "Prerequisites and change resolution" label');
-  assert.match(coordinator, /specs-approval[\s\S]{0,200}Specs approval gate/i,
-    'specs-approval should carry the "Specs approval gate" label');
-  assert.match(coordinator, /research[\s\S]{0,200}Research and open questions/i,
-    'research should carry the "Research and open questions" label');
-  assert.match(coordinator, /artifacts[\s\S]{0,200}Artifact generation and verification/i,
-    'artifacts should carry the "Artifact generation and verification" label');
+  assert.deepEqual(declaredStepLines(coordinator), DESIGN_PROGRESS_PLAN_LINES,
+    'the coordinator plan declaration should be exactly the seven canonical id/label lines in order');
 });
 
-test('Step 4: the design worker contract enumerates the same four step ids in the same order', () => {
+test('Step 3: the design worker enumerates the same seven step ids and labels byte-for-byte as the coordinator', () => {
+  const coordinator = artifact('sai/commands/design/coordinator.md');
   const worker = artifact('sai/commands/design/worker.md');
 
-  assert.match(
-    worker,
-    /prereqs-resolution[\s\S]{0,800}specs-approval[\s\S]{0,800}research[\s\S]{0,800}artifacts/,
-    'the design worker contract should enumerate the same four step ids in the same order'
-  );
+  assert.deepEqual(declaredStepLines(worker), DESIGN_PROGRESS_PLAN_LINES,
+    'the worker should enumerate exactly the same seven canonical id/label lines in order');
+  assert.deepEqual(declaredStepLines(worker), declaredStepLines(coordinator),
+    'the worker enumeration should equal the coordinator plan declaration byte-for-byte');
+});
+
+test('Step 3: no standalone specs-approval or artifacts step id remains declared in the design plan', () => {
+  const coordinator = artifact('sai/commands/design/coordinator.md');
+  const worker = artifact('sai/commands/design/worker.md');
+
+  for (const retired of RETIRED_DESIGN_PLAN_IDS) {
+    assert.equal(declaredStepLines(coordinator).some(line => line.startsWith(`${retired}:`)), false,
+      `the coordinator plan should declare no ${retired} step`);
+    assert.equal(declaredStepLines(worker).some(line => line.startsWith(`${retired}:`)), false,
+      `the worker enumeration should declare no ${retired} step`);
+  }
 });
 
 test('Step 4: the coordinator nonterminal-extensions line admits progress events resumed with continue_after_progress', () => {
@@ -1037,22 +1083,30 @@ test('Step 5: the startup act is one batch and emits one event carrying every st
   );
 });
 
-test('Step 5: fast-track-skipped gate steps fold into the completed batch with no separate skipped field (skipped-steps-fold-into-the-batch)', () => {
+test('Step 3: the startup act emits exactly one progress event carrying only prereqs-resolution', () => {
   const worker = artifact('sai/commands/design/worker.md');
 
-  assert.match(worker, /fast[- ]track/i,
-    'the contract should address fast-track handling');
-  assert.match(worker, /skip/i,
-    'the contract should address skipped steps');
+  assert.match(worker, /startup act|startup[- ]act/i,
+    'the contract should name the startup act');
   assert.match(
     worker,
-    /fold(?:s|ed|ing)?[\s\S]{0,240}completed batch|completed batch[\s\S]{0,240}fold/i,
-    'fast-track-skipped gate steps should fold into the completed batch'
+    /(?:fast[- ]track|prereqs?|prerequisites)[\s\S]{0,320}(?:approv|gate)[\s\S]{0,320}(?:resolution|startup)|(?:resolution|startup)[\s\S]{0,320}(?:approv|gate)[\s\S]{0,320}(?:fast[- ]track|prereqs?|prerequisites)/i,
+    'the startup act should bundle fast-track parsing, prerequisites, the specs approval gate, and resolution'
   );
   assert.match(
     worker,
-    /(?:no|without|never)[\s\S]{0,120}(?:separate|own)[\s\S]{0,160}skipped|skipped[\s\S]{0,120}(?:field|flag)|(?:no|without|never)[\s\S]{0,200}skipped field/i,
-    'folded steps should carry no separate skipped field'
+    /(?:one|single)[\s\S]{0,200}(?:startup|event)[\s\S]{0,160}progress|progress[\s\S]{0,160}(?:one|single)[\s\S]{0,200}(?:startup|event)/i,
+    'the startup act should emit exactly one progress event'
+  );
+  assert.match(
+    worker,
+    /carri(?:es|ed|ing)?[\s\S]{0,160}only[\s\S]{0,120}["'`]?prereqs-resolution["'`]?/i,
+    'the startup event should carry only prereqs-resolution'
+  );
+  assert.doesNotMatch(
+    worker,
+    /step_?ids?:[\s\S]{0,120}["'`]?specs-approval["'`]?/i,
+    'no progress event should carry specs-approval as a step id'
   );
 });
 
@@ -1309,4 +1363,129 @@ test('Step 3: the shared retired-party guard covers every invocation core and li
   } finally {
     removeTempDir(root);
   }
+});
+
+// ─── Step 3: spec-design-review-progress-step (design granular progress) ────
+
+test('Step 3: research, design, tasks, and interfaces writes emit separate ordered progress batches with only newly changed paths', () => {
+  const worker = artifact('sai/commands/design/worker.md');
+
+  assert.match(
+    worker,
+    /separate[\s\S]{0,60}ordered[\s\S]{0,60}(?:progress )?batches?/i,
+    'the progress batches should be separate and ordered'
+  );
+  assert.match(
+    worker,
+    /only[\s\S]{0,160}newly[\s\S]{0,80}changed|newly[\s\S]{0,80}changed[\s\S]{0,160}only/i,
+    'each progress batch should carry only newly changed paths'
+  );
+  for (const id of ['research', 'design', 'tasks', 'interfaces']) {
+    assert.match(
+      worker,
+      new RegExp(`${id.replace(/-/g, '\\-')}[\\s\\S]{0,60}(?:write|writing|batch)[\\s\\S]{0,160}(?:own|separate|progress|event)|(?:own|separate|progress|event)[\\s\\S]{0,160}${id.replace(/-/g, '\\-')}[\\s\\S]{0,60}(?:write|writing|batch)`, 'i'),
+      `the ${id} write act should emit its own progress batch`
+    );
+  }
+});
+
+test('Step 3: the design reviewer receives only the three reviewed artifacts and freshly read reference artifacts; findings never target a reference artifact', () => {
+  const worker = artifact('sai/commands/design/worker.md');
+
+  assert.match(
+    worker,
+    /reviewer[\s\S]{0,160}(?:receive|given|gets?|read)[\s\S]{0,200}design\.md[\s\S]{0,120}tasks\.md[\s\S]{0,120}interfaces\.md/i,
+    'the reviewer should receive exactly design.md, tasks.md, and interfaces.md'
+  );
+  assert.match(
+    worker,
+    /fresh(?:ly)?[\s\S]{0,160}(?:read|re-?read)[\s\S]{0,200}(?:proposal|specs\/|reference)|(?:proposal|specs\/|reference)[\s\S]{0,160}fresh(?:ly)?[\s\S]{0,160}(?:read|re-?read)/i,
+    'the reference artifacts should be freshly read proposal/spec files'
+  );
+  assert.match(
+    worker,
+    /(?:reference set|reference artifacts)[\s\S]{0,240}(?:proposal\.md|specs\/\*\*)|(?:proposal\.md|specs\/\*\*)[\s\S]{0,240}(?:reference set|reference artifacts)/i,
+    'the reference set should be proposal.md and specs/**'
+  );
+  assert.match(
+    worker,
+    /findings?[\s\S]{0,120}(?:never|must not|may not)[\s\S]{0,160}(?:target|name|cite)[\s\S]{0,120}(?:reference|proposal)/i,
+    'findings should never target a reference artifact'
+  );
+});
+
+test('Step 3: a completed design review pass with High=0 emits the review progress event once and later feedback or High findings never clear it', () => {
+  const worker = artifact('sai/commands/design/worker.md');
+
+  assert.match(worker, /High=0|no High|High 0/i,
+    'the completed-pass convergence condition should be High=0');
+  assert.match(
+    worker,
+    /High=0[\s\S]{0,300}(?:emit|report)[\s\S]{0,160}`?review`?|(?:emit|report)[\s\S]{0,160}`?review`?[\s\S]{0,300}High=0/i,
+    'a completed design pass with High=0 should emit the review step'
+  );
+  assert.match(worker, /`?review`?[\s\S]{0,120}(?:once|only once|a single time)/i,
+    'the review event should be emitted at most once');
+  assert.match(
+    worker,
+    /(?:later|subsequent|new)[\s\S]{0,160}(?:feedback|High finding|High)[\s\S]{0,240}(?:never|not|does not)[\s\S]{0,160}(?:clear|unmark|reopen|reset)/i,
+    'later feedback edits or High findings should never clear the review mark'
+  );
+});
+
+test('Step 3: a pre-gate completed design result leaves the overview step unmarked and performs no reconciliation', () => {
+  const coordinator = artifact('sai/commands/design/coordinator.md');
+
+  assert.match(
+    coordinator,
+    /(?:pre-?gate|before the gate|ahead of the gate)[\s\S]{0,240}(?:completed|terminal|result)/i,
+    'the coordinator should address pre-gate completed results'
+  );
+  assert.match(
+    coordinator,
+    /overview[\s\S]{0,200}(?:remains|stay)[\s\S]{0,120}(?:unmarked|unmark|not marked)/i,
+    'the overview step should remain unmarked before the gate closes'
+  );
+  assert.match(
+    coordinator,
+    /(?:pre-?gate|before the gate)[\s\S]{0,300}(?:no|never|without)[\s\S]{0,120}reconcil|(?:no|never|without)[\s\S]{0,120}reconcil[\s\S]{0,300}(?:pre-?gate|before the gate)/i,
+    'no reconciliation should occur on a pre-gate completed result'
+  );
+});
+
+test('Step 3: a post-gate successful overview terminal reconciles every eligible unmarked step except review', () => {
+  const coordinator = artifact('sai/commands/design/coordinator.md');
+
+  assert.match(
+    coordinator,
+    /(?:post-?gate|after the gate)[\s\S]{0,300}(?:overview|generation)[\s\S]{0,160}(?:terminal|success)/i,
+    'the reconciliation rule should apply to the post-gate successful overview terminal'
+  );
+  assert.match(coordinator, /reconcil/i,
+    'the coordinator should own the terminal reconciliation');
+  assert.match(
+    coordinator,
+    /reconcil[\s\S]{0,300}(?:eligible[\s\S]{0,120}unmarked|unmarked)[\s\S]{0,160}except[\s\S]{0,80}`?review`?/i,
+    'reconciliation should cover every eligible unmarked step except review'
+  );
+});
+
+test('Step 3: a failed overview terminal leaves the plan list unchanged and reconciles nothing', () => {
+  const coordinator = artifact('sai/commands/design/coordinator.md');
+
+  assert.match(
+    coordinator,
+    /failed[\s\S]{0,300}(?:overview|generation)[\s\S]{0,300}(?:terminal|result|outcome)/i,
+    'the coordinator should address a failed overview terminal'
+  );
+  assert.match(
+    coordinator,
+    /(?:list|plan)[\s\S]{0,160}unchanged|unchanged[\s\S]{0,160}(?:list|plan)/i,
+    'a failed overview terminal should leave the list unchanged'
+  );
+  assert.match(
+    coordinator,
+    /failed[\s\S]{0,400}(?:no|without|never)[\s\S]{0,160}reconcil|(?:no|without|never)[\s\S]{0,160}reconcil[\s\S]{0,400}failed/i,
+    'a failed overview terminal should reconcile nothing'
+  );
 });

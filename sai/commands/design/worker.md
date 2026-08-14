@@ -39,20 +39,15 @@ spec approval, write the approval metadata, and handle amendments per
 This phase declares a progress plan with exactly these canonical step ids, in
 order:
 
-- `prereqs-resolution` — "Prerequisites and change resolution"
-- `specs-approval` — "Specs approval gate"
-- `research` — "Research and open questions"
-- `artifacts` — "Artifact generation and verification"
+- `prereqs-resolution` — "Check prerequisites, resolve the change, and approve specs"
+- `research` — "Research and resolve open questions"
+- `design` — "Write design.md"
+- `tasks` — "Write tasks.md"
+- `interfaces` — "Write interfaces.md"
+- `review` — "Review artifacts"
+- `overview` — "Generate change-overview.md"
 
-Emit exactly one progress event per completed batch after prerequisite checks
-pass and change resolution completes, whenever one or more plan steps
-complete. The startup act (fast-track parsing + prerequisites + resolution)
-reports as one batch carrying every step id that act completed; a
-fast-track-skipped gate step folds into the completed batch with no separate
-`skipped` field. Report ids in plan order; `changed_files` lists every path
-written since the preceding result. Never emit a progress event before
-resolution, and never in place of a terminal payload — the run always closes
-with exactly one terminal lifecycle status.
+Emit exactly one progress event per completed act after prerequisite checks pass and change resolution completes. The startup act — fast-track parsing, prerequisites, resolution, and either completing or fast-track-skipping the specs approval gate — reports as one batch carrying every step id that act completed and carries only `prereqs-resolution`; the gate has no standalone step or `skipped` field. Codebase research and Open Question resolution report `research`; writing `design.md` reports `design`; writing `tasks.md` reports `tasks`; writing and verifying `interfaces.md` reports `interfaces`; a completed worker-owned review pass reporting `High=0` reports `review`; and successful overview materialization or regeneration that commits `overview.state: current` reports `overview`. Report ids in plan order and list every path written since the preceding result. Progress marks are monotonic. Never emit before resolution or in place of the one terminal lifecycle status. A feedback turn emits no progress event except when a user-requested review pass reports `High=0` while `review` remains unmarked; that turn emits exactly one event carrying only `review`. Emit one progress event per completed batch; the research, design, tasks, and interfaces writes are separate ordered progress batches with only newly changed paths. Each progress event's `changed_files` lists every path written since the preceding result. The run always closes with exactly one terminal lifecycle status.
 
 ## Planning
 
@@ -72,6 +67,20 @@ text; MUST NOT emit, re-present, or duplicate the feedback-text prompt.
 
 For Architecture Snapshot presentation, retain the previous `interfaces.md` text in invocation-scoped state before worker-owned feedback edits. Apply the normalization and complete-effective-artifact comparison defined by `sai/commands/design/instructions.md`. The existing terminal `summary` includes the current Architecture Snapshot on the initial iteration and after a later normalized interface change, and omits it after identical regeneration or `design.md`/`tasks.md`-only changes. Do not add a payload field; generation, comparison, and summary composition remain worker-owned.
 
+### Worker-owned planning-artifact review
+
+After `design.md`, `tasks.md`, and `interfaces.md` are non-empty and verified, the decision summary is derived, and the `interfaces` progress event has been emitted, run the automatic review loop before returning the pre-gate terminal `completed`.
+
+Each pass creates one fresh isolated read-only reviewer. At pass start, give it exactly (1) the freshly read reviewed set — `design.md`, `tasks.md`, and `interfaces.md` — and (2) the freshly read read-only reference set — `proposal.md` plus every `specs/**/*.md` of the resolved change. Give it no conversation, worker reasoning or journal, prior reviewer state, unrelated repository content, lifecycle/binding metadata, or write capability. Findings may target only reviewed-set files and must never target a reference artifact. The reviewer evaluates reviewed-set consistency, requirement coverage against the reference set, step/scenario testability, and unsupported assumptions.
+
+Require every valid pass to follow `@sai/policies/artifact-review-contract.md`. Validate every finding's `Severity` before processing any finding. A missing or out-of-set severity rejects the whole attempt: coerce nothing, process nothing, preserve the reviewer-supplied identifier and offending severity value (or `missing`) in the report, and classify the cause as a reviewer output-contract violation distinct from failure, cancellation, and outstanding `High` findings.
+
+Process every finding from a valid pass under `@sai/policies/artifact-feedback-gate.md`'s existing per-item legitimacy rules. The worker alone applies legitimate corrections within `design.md`, `tasks.md`, or `interfaces.md` and reports every discard with its specific reason. If any correction is accepted, re-run design-artifact verification and recompute the decision summary from current artifacts without re-emitting or reopening `design`, `tasks`, or `interfaces`.
+
+Govern the automatic loop with two distinctly named counters: the completed-pass count is capped at 3 and advances only for a valid completed pass (including an empty finding set); the total-attempt count is capped at 6 and advances for every reviewer dispatch. A completed pass with `High=0` converges, emits `review` once when still unmarked, and dispatches no further automatic reviewer; `Medium` and `Low` do not extend the loop. A completed pass with `High>0` dispatches a fresh reviewer while both caps permit. A failed, cancelled, or output-contract-invalid attempt advances only the total-attempt count and dispatches a fresh reviewer while the total-attempt cap permits. Either cap may exhaust without failing the phase: leave `review` unmarked and report outstanding `High` findings separately from reviewer failures, cancellations, and contract violations.
+
+After the automatic loop settles, retain the coordinator-owned prose feedback gate unchanged. A user-requested pass from that gate uses the same isolation, finding, processing, and evidence rules without either automatic-loop cap. Later feedback edits or High findings never clear or reopen an emitted `review` mark. The worker-owned loop coexists with and never replaces the supervised pipeline's independent convergence loop or its `MachineFeedbackAdapter`. Under supervision the design worker marks no routed-list steps: no adapter-declared plan, no plan-based list, no step marking.
+
 ### Overview generation (design-worker-owned lifecycle)
 
 The worker owns the change's overview lifecycle for `change-overview.md` per `specs/change-overview-synchronization/spec.md` and `specs/change-overview-generation-routing/spec.md`:
@@ -86,6 +95,7 @@ The worker owns the change's overview lifecycle for `change-overview.md` per `sp
 - **No-effective-change protocol** — capture the exact persisted bytes of the five source sets (`proposal.md`, `specs/**/*.md`, `design.md`, `tasks.md`, `interfaces.md`) at run start, before any write; compare the final source set byte-for-byte after edits. This byte-exact comparison is the effective-change gate. Byte-identical sources mean no effective change and do not dispatch generation: verify the existing overview against the captured sources and restore `overview.state: current` only when complete and consistent, clearing both diagnostics. Verification failure regenerates. Pre-transaction `unmaterialized`/absent and `failed` states always materialize at `Continue`; pre-transaction `materializing` uses interrupted reconciliation.
 - **Interrupted reconciliation and backfilled changes** — a pre-existing `materializing` state is reconciled only by a writable design-worker transaction: verify the overview against current sources, commit `current` when complete and consistent, or mark `failed`/regenerate otherwise. A materializing state with absent diagnostic keys means the attempt was interrupted before failure classification; it is never success and never reuses an older diagnostic. Backfilled changes carry no `overview.state` key and have no overview lifecycle.
 - **Closed result envelope mapping** — generator-run results carry exactly `status` (`success|failed`), `changed_files`, `validation` (`passed|failed`), `failure_details`, and `failure_kind` (`none|blocking-contradiction|validation-failed|generation-error`). Parent-authored dispatch and contract-violation results preserve the same five fields with `validation: not-performed` and the closed `failure_kind` vocabulary. Treat unknown fields, unknown status, missing mandatory fields, an empty result, or empty `failure_details` on `status: failed` as an output-contract violation, never as success. Persist the parent-authored diagnostic and set the materialization-history-dependent state without modifying `change-overview.md`.
+- **Overview progress evidence** — emit one progress event carrying only `overview` after a generator success: a successful first materialization, regeneration, or interrupted reconciliation has written/verified `change-overview.md` and committed `overview.state: current`. That event's `changed_files` includes `openspec/changes/{change-name}/change-overview.md` and `openspec/changes/{change-name}/.openspec.yaml`. A dispatch failure, process loss, malformed or empty envelope, blocking contradiction, validation failure, generation error, or any other path that does not commit `overview.state: current` emits no `overview` progress event. The existing non-empty failure classification and details remain authoritative.
 
 On `continue_after_notice`, resume from the notice without asking for input.
 For reconstruction, use `opaque_input_history`, `pending_feedback`,

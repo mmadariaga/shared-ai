@@ -794,3 +794,27 @@ test('Step 2: worker review stays active under supervision without a routed task
   assert.match(supervision, /Step marking has no application/,
     'step marking should have no application in the supervised flow');
 });
+
+// ─── Step 3: spec-design-review-progress-step (supervised design review) ────
+
+test('Step 3: supervised design keeps the worker-owned review and the independent convergence loop both active without routed-list marking', () => {
+  const worker = spec('sai/commands/design/worker.md');
+  const supervision = spec('sai/commands/explore/instructions.md');
+
+  assert.match(worker, /supervised pipeline/i,
+    'the design worker contract should cover supervised invocation');
+  assert.match(worker, /coexists with and never replaces the supervised pipeline's independent convergence loop/i,
+    'the design worker-owned review should coexist with the independent convergence loop');
+  assert.match(worker, /(?:no|without|never)[\s\S]{0,160}(?:adapter-declared plan|routed list|plan-based list|step marking)/i,
+    'the design worker should not mark routed list steps under supervision');
+  assert.match(
+    worker,
+    /under supervision[\s\S]{0,120}no routed[- ]list[\s\S]{0,200}(?:adapter-declared plan|plan-based list|step marking)/i,
+    'the supervised design worker should mark no routed-list steps'
+  );
+  assert.match(
+    supervision,
+    /(?:design|sai-2)[\s\S]{0,240}no plan-based list renders|no plan-based list renders[\s\S]{0,240}(?:design|sai-2)/i,
+    'no plan-based list should render in the supervised design flow'
+  );
+});

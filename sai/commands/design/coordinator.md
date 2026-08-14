@@ -16,14 +16,17 @@
    Construct exactly two strings: `wrapper_echo_value` and `arguments_value` as specified by the active wrapper. Dispatch exactly one worker through the active design-worker binding using `original_envelope`.
    The `arguments_value` string is forwarded unchanged to the worker and may contain a change name followed by `--overview-lang <language>` and `--fast-track` in either order. The coordinator does not parse, validate, remove, default, persist, or reinterpret either option.
 
-  Declare the canonical four-step progress plan for this phase, in order, with exactly these ids and labels — no omissions, reorders, renames, or additions:
+  Declare the canonical seven-step progress plan for this phase, in order, with exactly these ids and labels — no omissions, reorders, renames, or additions:
 
-  - `prereqs-resolution` — "Prerequisites and change resolution"
-  - `specs-approval` — "Specs approval gate"
-  - `research` — "Research and open questions"
-  - `artifacts` — "Artifact generation and verification"
+  - `prereqs-resolution` — "Check prerequisites, resolve the change, and approve specs"
+  - `research` — "Research and resolve open questions"
+  - `design` — "Write design.md"
+  - `tasks` — "Write tasks.md"
+  - `interfaces` — "Write interfaces.md"
+  - `review` — "Review artifacts"
+  - `overview` — "Generate change-overview.md"
 
-  Render the full plan at dispatch before the first worker result per `@sai/policies/todo-structure.md` (first step `in_progress`, rest `pending`); mark steps only from worker progress-event `step_ids`; and reconcile at run-closing results: `completed` renders every unmarked step `completed`, `failed` and `cancelled` leave the list exactly as last rendered, and a `needs_input` result — a terminal lifecycle status that is not run-closing — leaves the list exactly as last rendered.
+  Render the full plan at dispatch before the first worker result per `@sai/policies/todo-structure.md` (first step `in_progress`, rest `pending`); mark steps only from worker progress-event `step_ids`. The worker's pre-gate `completed` does not reconcile and `overview` remains unmarked. The post-gate overview-generation terminal is the design phase's reconciliation trigger: on `completed`, reconcile every eligible unmarked step to `completed` except an unmarked evidence-marked `review`, which is left exactly as last rendered; on `failed` — a failed overview-generation terminal — or `cancelled`, leave the whole list unchanged and exactly as last rendered. A `needs_input` result — a terminal lifecycle status that is not run-closing — is not a reconciliation trigger and leaves the list exactly as last rendered. The carve-out is scoped by the evidence-marked designation from `@sai/policies/todo-structure.md`, never by the bare `review` id.
 
   Initialize an ordered duplicate-free changed-file union, empty opaque input history, empty pending feedback, `fast_track_banner_emitted: false`, and feedback iteration `0`. Validate the closed terminal payloads and the design-only notice shape. Add every reported path to the union in first-seen order.
 

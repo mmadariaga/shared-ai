@@ -591,3 +591,49 @@ test('closure stops at crystallization and discard and preserves terminal paths'
   assert.match(prereqs, /openspec\/config\.yaml does not declare `schema: sai-workflow`/);
   assert.match(explore, /full `Ready to Propose` block\(s\) are printed only when the user explicitly asks to crystallize/);
 });
+
+// ─── Step 3: spec-design-review-progress-step (overview progress evidence) ──
+
+test('Step 3: successful overview materialization or regeneration emits a progress event carrying the overview step id with both changed files', () => {
+  const worker = artifact('sai/commands/design/worker.md');
+
+  assert.match(
+    worker,
+    /generator success[\s\S]{0,240}(?:emit|progress)|(?:emit|progress)[\s\S]{0,240}generator success/i,
+    'generator success should emit the overview progress event'
+  );
+  assert.match(
+    worker,
+    /overview\.state[\s\S]{0,160}current[\s\S]{0,240}(?:emit|progress)|(?:emit|progress)[\s\S]{0,240}overview\.state[\s\S]{0,160}current/i,
+    'the overview progress event should follow overview.state current'
+  );
+  assert.match(
+    worker,
+    /(?:emit|reports?)[\s\S]{0,120}progress[\s\S]{0,160}\[?["'`]?overview["'`]?\]?|step_?ids?:[\s\S]{0,120}\[?["'`]?overview["'`]?\]?/i,
+    'the progress event should carry the overview step id'
+  );
+  assert.match(
+    worker,
+    /progress[\s\S]{0,400}change-overview\.md[\s\S]{0,400}\.openspec\.yaml|progress[\s\S]{0,400}\.openspec\.yaml[\s\S]{0,400}change-overview\.md/i,
+    'the overview progress event should report change-overview.md and .openspec.yaml in changed_files'
+  );
+});
+
+test('Step 3: any overview generation failure emits no overview progress event and preserves existing diagnostics', () => {
+  const worker = artifact('sai/commands/design/worker.md');
+
+  for (const failure of ['dispatch', 'process loss', 'malformed', 'empty envelope', 'validation', 'contradiction', 'generation']) {
+    assert.match(worker, new RegExp(failure.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i'),
+      `the worker should cover the ${failure} failure route`);
+  }
+  assert.match(
+    worker,
+    /(?:dispatch|process loss|malformed|empty envelope|validation|contradiction|generation fail)[\s\S]{0,400}(?:no|without|never)[\s\S]{0,160}`?overview`?[\s\S]{0,160}(?:progress event|step_?ids?)/i,
+    'every failure route should emit no overview progress event'
+  );
+  assert.match(
+    worker,
+    /(?:existing|prior|current)[\s\S]{0,160}(?:non-?empty)[\s\S]{0,240}(?:failure_classification|failure_kind|failure_details|diagnostic)[\s\S]{0,200}(?:intact|remain|stays?|unchanged|preserv)/i,
+    'existing non-empty failure classification and details should remain intact'
+  );
+});
