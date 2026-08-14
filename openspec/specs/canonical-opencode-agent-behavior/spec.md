@@ -5,11 +5,11 @@ TBD - created by syncing change canonicalize-opencode-agent-behavior. Update Pur
 
 ## Requirements
 
-### Requirement: Canonical OpenCode behavior policies
-The repository SHALL provide behavior-only policy files at `sai/policies/budget-agent.md`, `sai/policies/executor-agent.md`, and `sai/policies/explore-agent.md`. Each file SHALL be the canonical source for the behavior of the correspondingly named generic OpenCode agent, SHALL be independently fetchable through the `sai/policies/` namespace, and SHALL contain no agent frontmatter, model selection, installer logic, native OpenCode import, or harness-specific registration.
+### Requirement: Canonical generic-agent behavior policies
+The repository SHALL provide behavior-only policy files at `sai/policies/budget-agent.md`, `sai/policies/executor-agent.md`, and `sai/policies/explore-agent.md`. Each file SHALL be the canonical source for the behavior of the correspondingly named generic-agent role of either supported harness — the opencode agents `agents/opencode/{explore,executor,budget}.md` and the Claude agents `agents/claude/{budget-explorer,budget-executor,budget-subagent}.md` — SHALL be independently fetchable through the `sai/policies/` namespace, and SHALL contain no agent frontmatter, model selection, installer logic, native harness import, or harness-specific registration.
 
 #### Scenario: all three policy targets are available
-- **WHEN** the three generic OpenCode agent behaviors are resolved
+- **WHEN** the three generic-agent behavior policies are resolved
 - **THEN** `Fetch @sai/policies/budget-agent.md` supplies the budget behavior
 - **AND** `Fetch @sai/policies/executor-agent.md` supplies the executor behavior
 - **AND** `Fetch @sai/policies/explore-agent.md` supplies the explore behavior
@@ -18,6 +18,10 @@ The repository SHALL provide behavior-only policy files at `sai/policies/budget-
 - **WHEN** the repository's existing recursive SAI-policy projection is installed for either supported harness
 - **THEN** each of the three policy files is available at its corresponding `sai/policies/` path
 - **AND** no additional agent or installer projection is required
+
+#### Scenario: Claude generic agents consume the same policies
+- **WHEN** the Claude generic agent `agents/claude/budget-explorer.md` (or `budget-executor.md` or `budget-subagent.md`) is dispatched
+- **THEN** it resolves its behavior from the same-named `sai/policies/` policy that the corresponding opencode role resolves
 
 ### Requirement: Budget behavior remains canonical
 The budget policy SHALL preserve the cost-controlled single-task contract: execute exactly one requested task, do not expand scope or self-correct after failure, minimize output, return the structured completion fields `status`, `actions_taken`, optional `failures`, and optional `output`, abort on an interactive permission block with a failed result, and stop after approximately 30 tool calls rather than expanding the task.
@@ -67,14 +71,14 @@ The explore policy SHALL preserve the read-only research contract: use a clean c
 - **THEN** the explore behavior stops at the cap
 - **AND** the caller is told to spawn an additional explore agent rather than raising the cap
 
-### Requirement: Generic OpenCode agents delegate behavior through Fetch
-Each generic OpenCode agent source SHALL retain its managed frontmatter and SHALL have a body consisting of exactly one established Fetch directive: `budget.md` SHALL fetch `@sai/policies/budget-agent.md`, `executor.md` SHALL fetch `@sai/policies/executor-agent.md`, and `explore.md` SHALL fetch `@sai/policies/explore-agent.md`. The wrappers SHALL use the Fetch mechanism rather than a native OpenCode import and SHALL not duplicate the canonical behavior body.
+### Requirement: Generic agents of both harnesses delegate behavior through Fetch
+Each generic agent source of both harnesses SHALL retain its managed frontmatter and SHALL have a body consisting of exactly one established Fetch directive: under `agents/opencode/`, `explore.md` SHALL fetch `@sai/policies/explore-agent.md`, `executor.md` SHALL fetch `@sai/policies/executor-agent.md`, and `budget.md` SHALL fetch `@sai/policies/budget-agent.md`; under `agents/claude/`, `budget-explorer.md` SHALL fetch `@sai/policies/explore-agent.md`, `budget-executor.md` SHALL fetch `@sai/policies/executor-agent.md`, and `budget-subagent.md` SHALL fetch `@sai/policies/budget-agent.md`. The wrappers SHALL use the Fetch mechanism rather than a native harness import and SHALL not duplicate the canonical behavior body.
 
 #### Scenario: each wrapper resolves its matching policy
-- **WHEN** `agents/opencode/budget.md`, `agents/opencode/executor.md`, and `agents/opencode/explore.md` are read
-- **THEN** each has one body Fetch line targeting the same-named policy contract
-- **AND** the three lines use the `Fetch @sai/policies/<name>-agent.md` form
-- **AND** no wrapper uses a native OpenCode import
+- **WHEN** `agents/opencode/budget.md`, `agents/opencode/executor.md`, `agents/opencode/explore.md`, `agents/claude/budget-subagent.md`, `agents/claude/budget-executor.md`, and `agents/claude/budget-explorer.md` are read
+- **THEN** each has one body Fetch line targeting the policy of its role
+- **AND** the lines use the `Fetch @sai/policies/<name>-agent.md` form
+- **AND** no wrapper uses a native harness import
 
 #### Scenario: project-local agent instructions extend the fetched policy
 - **WHEN** the existing `bin/install` setup materializes a user-owned `.opencode/agents/<name>.md` from the managed wrapper and appends project-specific instructions after its Fetch line
@@ -82,6 +86,13 @@ Each generic OpenCode agent source SHALL retain its managed frontmatter and SHAL
 - **THEN** the wrapper first resolves the global canonical `sai/policies/<name>-agent.md` policy
 - **AND** the appended project-specific instructions remain available after the fetched policy
 - **AND** the wrapper's managed frontmatter, agent name, and selected model or variant remain unchanged
+
+#### Scenario: project-local Claude agent instructions extend the fetched policy
+- **WHEN** the existing setup materializes a user-owned `.claude/agents/<name>.md` from the managed Claude wrapper and appends project-specific instructions after its Fetch line
+- **AND** no project-local `.claude/sai/policies/<name>-agent.md` shadows the canonical Fetch target
+- **THEN** the wrapper first resolves the global canonical `sai/policies/<name>-agent.md` policy
+- **AND** the appended project-specific instructions remain available after the fetched policy
+- **AND** the wrapper's managed frontmatter, agent name, and selected `model` and `effort` remain unchanged
 
 #### Scenario: a global policy update reaches a project-local agent extension
 - **WHEN** the existing `bin/install` setup has materialized a user-owned `.opencode/agents/<name>.md` from the managed wrapper
@@ -93,9 +104,26 @@ Each generic OpenCode agent source SHALL retain its managed frontmatter and SHAL
 - **AND** the appended project-specific instructions remain intact
 - **AND** a project-local policy file is not required or treated as the extension mechanism
 
+#### Scenario: a global policy update reaches a project-local Claude agent extension
+- **WHEN** the existing setup has materialized a user-owned `.claude/agents/<name>.md` from the managed Claude wrapper
+- **AND** the project-local agent file retains its Fetch line and appended instructions
+- **AND** no project-local `.claude/sai/policies/<name>-agent.md` shadows the canonical Fetch target
+- **AND** the global canonical `sai/policies/<name>-agent.md` is updated
+- **THEN** a subsequent resolution uses the updated global policy before the appended instructions
+- **AND** the selected `model` and `effort` remain the values held by the project-local agent
+- **AND** the appended project-specific instructions remain intact
+- **AND** a project-local policy file is not required or treated as the extension mechanism
+
 #### Scenario: rerunning setup preserves the local extension and tunables
 - **WHEN** the existing `bin/install` setup is rerun against an existing `.opencode/agents/<name>.md`
 - **AND** that agent file already contains its canonical Fetch line, appended project-specific instructions, and selected `model` or `variant` values
 - **THEN** the Fetch line remains present and still targets the canonical `sai/policies/<name>-agent.md` policy
 - **AND** the appended project-specific instructions remain intact after the Fetch line
 - **AND** the selected `model` and `variant` values remain unchanged
+
+#### Scenario: rerunning setup preserves the Claude local extension and tunables
+- **WHEN** the existing setup is rerun against an existing `.claude/agents/<name>.md`
+- **AND** that agent file already contains its canonical Fetch line, appended project-specific instructions, and selected `model` and `effort` values
+- **THEN** the Fetch line remains present and still targets the canonical `sai/policies/<name>-agent.md` policy
+- **AND** the appended project-specific instructions remain intact after the Fetch line
+- **AND** the selected `model` and `effort` values remain unchanged

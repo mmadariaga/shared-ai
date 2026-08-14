@@ -7,15 +7,15 @@ User-owned tunable frontmatter lines survive managed agent installs: `model` + `
 
 ### Requirement: Claude tunable keys
 
-The Claude installer MUST declare the user-owned tunable keys as exactly the two strings `model` and `effort`. The declaration MUST be a single per-harness constant, not a per-projection annotation; the 7 Claude agent projections MUST NOT carry any tunable-key metadata in the manifest.
+The Claude installer MUST declare the user-owned tunable keys as exactly the two strings `model` and `effort`. The declaration MUST be a single per-harness constant, not a per-projection annotation; the 10 Claude agent projections MUST NOT carry any tunable-key metadata in the manifest.
 
 #### Scenario: claude tunable set is model and effort
 - **WHEN** the Claude installer's tunable-keys constant is read
-- **THEN** it contains exactly the strings `model` and `effort` and no others
+- **THEN** it contains exactly the two keys `model` and `effort`
 
 #### Scenario: no Claude projection carries tunable metadata
-- **WHEN** the install manifest is loaded
-- **THEN** no Claude agent projection rule has any field that names a tunable key
+- **WHEN** each Claude agent projection rule in the manifest is inspected
+- **THEN** no rule has any field that names a tunable key
 
 ### Requirement: opencode tunable keys
 
