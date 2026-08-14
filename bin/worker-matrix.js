@@ -10,6 +10,30 @@ const PHASE_ORDER = Object.freeze([
   'accessibility',
 ]);
 
+// Closed RED/GREEN apply role identities appended after the seven canonical
+// phase entries. Each role pins its workerName to a role-specific apply worker
+// contract and a unique binding stem so the shared apply phase never resolves
+// through a sibling entry.
+const APPLY_ROLES = Object.freeze([
+  Object.freeze({
+    phase: 'apply',
+    workerName: 'sai-4-red-worker',
+    workerContract: 'sai/commands/apply/red-worker.md',
+    bindingStem: 'red',
+    tier: 'budget',
+  }),
+  Object.freeze({
+    phase: 'apply',
+    workerName: 'sai-4-green-worker',
+    workerContract: 'sai/commands/apply/green-worker.md',
+    bindingStem: 'green',
+    tier: 'budget',
+  }),
+]);
+
+const APPLY_PHASE = 'apply';
+const EXPECTED_ENTRY_COUNT = PHASE_ORDER.length + APPLY_ROLES.length;
+
 const REQUIRED_FIELDS = Object.freeze([
   'phase',
   'workerName',
@@ -27,6 +51,32 @@ const REQUIRED_FIELDS = Object.freeze([
 
 const TOKEN = /\{\{([A-Za-z0-9_.-]+)\}\}/g;
 
+const PHASE_WORKER_NAME = Object.freeze({
+  spec: 'sai-1-spec-proposal-worker',
+  design: 'sai-2-design-worker',
+  implementation: 'sai-3-implementation-worker',
+  review: 'sai-5-review-worker',
+  security: 'sai-6-security-worker',
+  performance: 'sai-7-performance-worker',
+  accessibility: 'sai-8-accessibility-worker',
+});
+
+const PHASE_CONTRACT_DIR = Object.freeze({
+  spec: 'spec',
+  design: 'design',
+  implementation: 'implement',
+  review: 'review',
+  security: 'security',
+  performance: 'performance',
+  accessibility: 'accessibility',
+});
+
+const PHASE_WORKER_IDENTITY = /^sai-[1278]-[a-z-]+-worker$|^sai-3-implementation-worker$|^sai-5-review-worker$|^sai-6-security-worker$/;
+
+const APPLY_CONTRACT_BY_WORKER = Object.freeze(Object.fromEntries(
+  APPLY_ROLES.map(role => [role.workerName, role.workerContract]),
+));
+
 function clone(value) {
   if (Array.isArray(value)) return value.map(clone);
   if (value && typeof value === 'object') {
@@ -41,15 +91,24 @@ function invalidEntry(index, field) {
 
 function validateEntry(entry, index) {
   if (!entry || typeof entry !== 'object') throw new Error(`Worker Matrix entry ${index} must be an object`);
+  if (entry.phase === APPLY_PHASE && APPLY_CONTRACT_BY_WORKER[entry.workerName] === undefined) {
+    throw new Error(`Invalid Worker Matrix worker identity for ${entry.phase}: ${entry.workerName}`);
+  }
   for (const field of REQUIRED_FIELDS) {
     if (entry[field] === undefined || entry[field] === null || entry[field] === '') invalidEntry(index, field);
   }
-  if (!PHASE_ORDER.includes(entry.phase)) throw new Error(`Unknown Worker Matrix phase: ${entry.phase}`);
-  if (!/^sai-[1278]-[a-z-]+-worker$|^sai-3-implementation-worker$|^sai-5-review-worker$|^sai-6-security-worker$/.test(entry.workerName)) {
-    throw new Error(`Invalid Worker Matrix worker identity for ${entry.phase}: ${entry.workerName}`);
-  }
-  if (!/^sai\/commands\/[a-z-]+\/worker\.md$/.test(entry.workerContract)) {
-    throw new Error(`Invalid Worker Matrix contract path for ${entry.phase}: ${entry.workerContract}`);
+  if (entry.phase === APPLY_PHASE) {
+    if (!/^sai\/commands\/apply\/(?:red|green)-worker\.md$/.test(entry.workerContract)) {
+      throw new Error(`Invalid Worker Matrix contract path for ${entry.phase}: ${entry.workerContract}`);
+    }
+  } else {
+    if (!PHASE_ORDER.includes(entry.phase)) throw new Error(`Unknown Worker Matrix phase: ${entry.phase}`);
+    if (!PHASE_WORKER_IDENTITY.test(entry.workerName)) {
+      throw new Error(`Invalid Worker Matrix worker identity for ${entry.phase}: ${entry.workerName}`);
+    }
+    if (entry.workerContract !== `sai/commands/${PHASE_CONTRACT_DIR[entry.phase]}/worker.md`) {
+      throw new Error(`Invalid Worker Matrix contract path for ${entry.phase}: ${entry.workerContract}`);
+    }
   }
   if (!['Agent', 'task'].includes(entry.dispatchPrimitive)) {
     throw new Error(`Invalid Worker Matrix dispatch primitive for ${entry.phase}: ${entry.dispatchPrimitive}`);
@@ -69,16 +128,37 @@ function validateEntry(entry, index) {
 }
 
 function defineWorkerMatrix(entries) {
-  if (!Array.isArray(entries) || entries.length !== PHASE_ORDER.length) {
-    throw new Error(`Worker Matrix requires exactly ${PHASE_ORDER.length} phase entries`);
+  if (!Array.isArray(entries) || entries.length !== EXPECTED_ENTRY_COUNT) {
+    throw new Error(`Worker Matrix requires exactly ${EXPECTED_ENTRY_COUNT} entries`);
   }
-  const seen = new Set();
+  const seenPhases = new Set();
+  const seenWorkers = new Set();
+  let applySeen = 0;
   entries.forEach((entry, index) => {
     validateEntry(entry, index);
-    if (seen.has(entry.phase)) throw new Error(`Duplicate Worker Matrix phase: ${entry.phase}`);
-    seen.add(entry.phase);
-    if (entry.phase !== PHASE_ORDER[index]) {
-      throw new Error(`Worker Matrix phase ${entry.phase} is out of order; expected ${PHASE_ORDER[index]}`);
+    if (seenWorkers.has(entry.workerName)) {
+      throw new Error(`Duplicate Worker Matrix worker name: ${entry.workerName}`);
+    }
+    seenWorkers.add(entry.workerName);
+    if (entry.phase === APPLY_PHASE) {
+      applySeen += 1;
+      if (applySeen > APPLY_ROLES.length) {
+        throw new Error(`Duplicate Worker Matrix phase: ${entry.phase}`);
+      }
+      const expected = APPLY_ROLES[applySeen - 1];
+      if (entry.workerName !== expected.workerName) {
+        throw new Error(
+          `Worker Matrix apply role out of order; expected ${expected.workerName} before ${APPLY_ROLES[applySeen].workerName}`
+        );
+      }
+    } else {
+      if (seenPhases.has(entry.phase)) {
+        throw new Error(`Duplicate Worker Matrix phase: ${entry.phase}`);
+      }
+      seenPhases.add(entry.phase);
+      if (entry.phase !== PHASE_ORDER[index]) {
+        throw new Error(`Worker Matrix phase ${entry.phase} is out of order; expected ${PHASE_ORDER[index]}`);
+      }
     }
   });
   return Object.freeze({
@@ -115,6 +195,7 @@ function materializeWorkerMatrix(matrix, templates) {
         kind: 'binding',
         harness: 'claude',
         phase: entry.phase,
+        workerName: entry.workerName,
         destinationName: `${entry.bindingStem}-worker.md`,
         templateName: 'claudeBinding',
         text: renderWorkerTemplate(templates.claudeBinding, { ...common, harness: 'Claude Code' }),
@@ -123,6 +204,7 @@ function materializeWorkerMatrix(matrix, templates) {
         kind: 'binding',
         harness: 'opencode',
         phase: entry.phase,
+        workerName: entry.workerName,
         destinationName: `${entry.bindingStem}-worker.md`,
         templateName: 'opencodeBinding',
         text: renderWorkerTemplate(templates.opencodeBinding, { ...common, harness: 'opencode' }),
@@ -131,6 +213,7 @@ function materializeWorkerMatrix(matrix, templates) {
         kind: 'agent',
         harness: 'claude',
         phase: entry.phase,
+        workerName: entry.workerName,
         destinationName: `${entry.workerName}.md`,
         templateName: 'claudeAgent',
         text: renderWorkerTemplate(templates.claudeAgent, { ...common, ...entry.claudeAgent }),
@@ -139,6 +222,7 @@ function materializeWorkerMatrix(matrix, templates) {
         kind: 'agent',
         harness: 'opencode',
         phase: entry.phase,
+        workerName: entry.workerName,
         destinationName: `${entry.workerName}.md`,
         templateName: 'opencodeAgent',
         text: renderWorkerTemplate(templates.opencodeAgent, { ...common, ...entry.opencodeAgent }),
@@ -147,9 +231,38 @@ function materializeWorkerMatrix(matrix, templates) {
   });
 }
 
+function assertWorkerIdentity(entry) {
+  if (!entry || typeof entry !== 'object') {
+    throw new Error('Worker Matrix identity requires an entry object');
+  }
+  if (entry.phase === APPLY_PHASE) {
+    const expectedContract = APPLY_CONTRACT_BY_WORKER[entry.workerName];
+    if (expectedContract === undefined) {
+      throw new Error(`Unknown apply worker identity: ${entry.workerName}`);
+    }
+    if (entry.workerContract !== expectedContract) {
+      throw new Error(
+        `Apply worker ${entry.workerName} must pin its role-specific contract ${expectedContract}; found ${entry.workerContract}`
+      );
+    }
+    return;
+  }
+  const canonical = PHASE_WORKER_NAME[entry.phase];
+  if (canonical !== undefined && entry.workerName !== canonical) {
+    throw new Error(`Worker Matrix phase ${entry.phase} has misassigned worker identity ${entry.workerName}`);
+  }
+  const contractDir = PHASE_CONTRACT_DIR[entry.phase] || entry.phase;
+  const expectedContract = `sai/commands/${contractDir}/worker.md`;
+  if (entry.workerContract !== expectedContract) {
+    throw new Error(`Worker Matrix phase ${entry.phase} has mismatched worker contract ${entry.workerContract}`);
+  }
+}
+
 module.exports = {
   PHASE_ORDER,
+  APPLY_ROLES,
   defineWorkerMatrix,
   renderWorkerTemplate,
   materializeWorkerMatrix,
+  assertWorkerIdentity,
 };
