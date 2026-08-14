@@ -45,7 +45,7 @@ Each phase reads from and writes to **`openspec/changes/{change-name}/`** — si
  sai/install-manifest.json        ← deterministic harness projection manifest for install, doctor, and uninstall
  commands/claude/                 ← Claude Code wrappers (model + effort + fetch to sai/adapters/claude/boot.md)
  commands/opencode/               ← opencode wrappers (model + fetch to sai/adapters/opencode/boot.md)
- agents/claude/                   ← Claude Code managed worker agents
+ agents/claude/                   ← Claude Code managed agents (seven routed Managed Workers + three Generic Agents)
  skills/claude/                   ← Claude Code harness skills
  skills/opencode/                 ← opencode harness skills
  configs/                         ← config samples (opencode.jsonc)
@@ -82,10 +82,13 @@ The openspec-dependent `sai-*` commands halt with a clear error if either is mis
 | `sai/commands/spec/invocation.md`, `sai/commands/design/invocation.md`, and `sai/commands/implement/invocation.md` | Caller-neutral invocation bodies shared by the routed paths; `review`, `security`, `performance`, and `accessibility` keep equivalent invocation bodies. |
 | `sai/install-manifest.json` | Deterministic source-to-destination projection rules consumed by installer, doctor, and uninstall. |
 | `sai/SAI_AGENTS.md` | Project-agnostic orientation index over the SAI documentation surfaces; installed at each harness root (`SAI_AGENTS.md`) by the `sai-agents-index` root-class projection. |
-| `agents/claude/` | Claude Code managed worker agents. |
+| `agents/claude/` | Claude Code managed agents — seven routed Managed Workers (`sai-1-spec-proposal-worker`, `sai-2-design-worker`, `sai-3-implementation-worker`, `sai-5-review-worker`, `sai-6-security-worker`, `sai-7-performance-worker`, `sai-8-accessibility-worker`) plus the three Generic Agents (`budget-explorer`, `budget-executor`, `budget-subagent`). |
 | `agents/claude/sai-1-spec-proposal-worker.md` | Claude Code custom agent for the medium-effort spec proposal worker. |
 | `agents/claude/sai-3-implementation-worker.md` | Claude Code custom agent for the high-effort implementation-planning worker. |
 | `agents/claude/sai-2-design-worker.md` | Claude Code custom agent for the high-effort design-planning worker. |
+| `agents/claude/budget-explorer.md` | Claude Code Generic Agent for read-only research and doc lookup — installed as a user-global seed at `~/.claude/agents/budget-explorer.md`; `model` and `effort` frontmatter is user-owned (shipped seed `model: haiku` + `effort: low`). |
+| `agents/claude/budget-executor.md` | Claude Code Generic Agent for execute-only command delegation — installed as a user-global seed at `~/.claude/agents/budget-executor.md`; `model` and `effort` frontmatter is user-owned (shipped seed `model: haiku` + `effort: low`). |
+| `agents/claude/budget-subagent.md` | Claude Code Generic Agent for general-purpose task delegation — installed as a user-global seed at `~/.claude/agents/budget-subagent.md`; `model` and `effort` frontmatter is user-owned (shipped seed `model: haiku` + `effort: low`). |
 | `skills/claude/` | Claude Code harness skills. |
 | `skills/opencode/` | opencode harness skills. |
 | `skills/` | Universal skills installed globally (not project-local). Fetched by wrappers via `~/.claude/skills/` or `~/.config/opencode/skills/`. |
@@ -94,8 +97,9 @@ The openspec-dependent `sai-*` commands halt with a clear error if either is mis
 | `skills/universal/` | Universal skills (no vendor). Fetched by all wrappers. |
 | `skills/claude/` | Claude Code-specific skills (subagent dispatch rules, etc.). Fetched by wrappers that spawn subagents. Routed workers load neutral bindings directly from installed `sai/orchestration/workers/bindings/` paths. |
 | `skills/opencode/` | Opencode-specific skills (subagent dispatch rules, etc.). Fetched by wrappers that spawn subagents. Routed workers load neutral bindings directly from installed `sai/orchestration/workers/bindings/` paths. |
-| `skills/claude/budget-explorer/SKILL.md` | Subagent dispatch rules for Claude Code — model tiers, task classification, tool-call caps, output contracts. Fetched by wrappers that spawn subagents. |
-| `skills/claude/budget-executor/SKILL.md` | Executor subagent rules for Claude Code — subagent_type: General, model: haiku, execute-only discipline. Fetched by wrappers that spawn executor subagents. |
+| `skills/claude/budget-explorer/SKILL.md` | Subagent dispatch rules for Claude Code — dispatch uses the matching `budget-explorer` agent file, whose `model` and `effort` frontmatter is user-owned; task classification, a 30-call maximum, and output contracts. Fetched by wrappers that spawn subagents. |
+| `skills/claude/budget-executor/SKILL.md` | Executor subagent rules for Claude Code — dispatch uses the matching `budget-executor` agent file, whose `model` and `effort` frontmatter is user-owned; execute-only discipline. Fetched by wrappers that spawn executor subagents. |
+| `skills/claude/budget-subagent/SKILL.md` | Task subagent rules for Claude Code — dispatch uses the matching `budget-subagent` agent file, whose `model` and `effort` frontmatter is user-owned; single-task scope with an approximate 30-call soft limit. Fetched by wrappers that spawn task subagents. |
 | `skills/opencode/budget-explorer/SKILL.md` | Subagent dispatch rules for opencode — explore keyword binding, cap rules, output contracts. Model resolved from the explore agent file's `model` frontmatter (`~/.config/opencode/agents/explore.md`). |
 | `skills/opencode/budget-executor/SKILL.md` | Executor subagent rules for opencode — executor keyword binding, execute-only discipline. Model resolved from the executor agent file's `model` frontmatter (`~/.config/opencode/agents/executor.md`). |
 | `skills/opencode/fetch/SKILL.md` | Fetch @ path resolver for opencode — replicates Claude Code's built-in Fetch @ mechanism. Loaded first by all opencode wrappers to enable `@sai/` and `@skills/` path resolution. |
@@ -165,11 +169,11 @@ All agents MUST think and reason internally in English, regardless of the user's
 
 ### Cost Discipline (research subagents)
 Wrappers that spawn subagents fetch `skills/claude/budget-explorer/SKILL.md` (Claude) or `skills/opencode/budget-explorer/SKILL.md` (opencode). The main agent reasons and synthesizes. Subagents do I/O. Key rules:
-- Default research subagent is the **cheap** tier — Claude Code (`subagent_type: Explore`, model haiku/sonnet) or opencode (`explore` keyword, model from the explore agent file's `model` frontmatter). Escalated tier only for multi-step synthesis.
+- Claude Code dispatches a single explorer tier through the matching `budget-explorer` agent file — `Agent(subagent_type: budget-explorer, run_in_background: true, prompt: <prompt>)` with no per-spawn model; the resolved `budget-explorer.md` agent file's `model` and `effort` frontmatter (user-owned) selects the model, and the tool-call ceiling is 30 per spawn.
+- Multi-step synthesis stays with the main agent; speculative exploration ("look around") is allowed only in the explorer tier.
+- Opencode retains its own mechanism: the `explore` keyword binds the explore agent, and the model comes from the explore agent file's `model` frontmatter (`~/.config/opencode/agents/explore.md`).
 - Every subagent call declares an **output contract** (exact fields, length cap, no raw content).
 - Main agent never calls WebFetch directly.
-- Speculative exploration ("look around") allowed only in the cheap tier.
-- Tool-call caps per tier: cheap ≤30, escalated ≤15, fallback/general ≤10.
 
 ### Budget-subagent hang containment
 

@@ -23,7 +23,7 @@ npx github:mmadariaga/shared-ai
 npx github:mmadariaga/shared-ai setup /path/to/your/project
 ```
 
-Step 1 expands `sai/install-manifest.json` and copies the Claude Code projection to `~/.claude/`. It includes Claude commands, the complete recursively projected `sai/commands/` tree — command cards with command-local `instructions.md` and neighboring `.template.md` files — plus the three root exceptions `sai/change-overview.md`, `sai/adr-index.template.md`, and `sai/ddr-index.template.md`, `sai/policies/`, `sai/compat/`, the shared Orchestration Core contracts, Claude routed worker bindings, Claude skills, and managed worker agents. Claude Code loads routed workers directly from the neutral installed binding paths; opencode receives its own harness-selected routed bindings. Step 2 verifies the openspec CLI, runs `openspec init --tools claude` if needed, sets `schema: sai-workflow` in `openspec/config.yaml`, and copies the schema templates into the project. `doctor` and `uninstall` use the same manifest projection.
+Step 1 expands `sai/install-manifest.json` and copies the Claude Code projection to `~/.claude/`. It includes Claude commands, the complete recursively projected `sai/commands/` tree — command cards with command-local `instructions.md` and neighboring `.template.md` files — plus the three root exceptions `sai/change-overview.md`, `sai/adr-index.template.md`, and `sai/ddr-index.template.md`, `sai/policies/`, `sai/compat/`, the shared Orchestration Core contracts, Claude routed worker bindings, Claude skills, managed worker agents, and the three Generic Agents (`budget-explorer`, `budget-executor`, `budget-subagent`). Claude Code loads routed workers directly from the neutral installed binding paths; opencode receives its own harness-selected routed bindings. Step 2 verifies the openspec CLI, runs `openspec init --tools claude` if needed, sets `schema: sai-workflow` in `openspec/config.yaml`, and copies the schema templates into the project. `doctor` and `uninstall` use the same manifest projection.
 
 ## Manual installation
 
@@ -75,6 +75,9 @@ cp skills/universal/safe-operations/SKILL.md ~/.claude/skills/safe-operations/SK
 mkdir -p ~/.claude/agents
 cp agents/claude/sai-3-implementation-worker.md ~/.claude/agents/sai-3-implementation-worker.md
 cp agents/claude/sai-2-design-worker.md ~/.claude/agents/sai-2-design-worker.md
+cp agents/claude/budget-explorer.md ~/.claude/agents/budget-explorer.md
+cp agents/claude/budget-executor.md ~/.claude/agents/budget-executor.md
+cp agents/claude/budget-subagent.md ~/.claude/agents/budget-subagent.md
 ```
 
 ### Windows (PowerShell)
@@ -122,6 +125,9 @@ Copy-Item skills\universal\safe-operations\SKILL.md "$env:USERPROFILE\.claude\sk
 New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\.claude\agents" | Out-Null
 Copy-Item agents\claude\sai-3-implementation-worker.md "$env:USERPROFILE\.claude\agents\sai-3-implementation-worker.md"
 Copy-Item agents\claude\sai-2-design-worker.md "$env:USERPROFILE\.claude\agents\sai-2-design-worker.md"
+Copy-Item agents\claude\budget-explorer.md "$env:USERPROFILE\.claude\agents\budget-explorer.md"
+Copy-Item agents\claude\budget-executor.md "$env:USERPROFILE\.claude\agents\budget-executor.md"
+Copy-Item agents\claude\budget-subagent.md "$env:USERPROFILE\.claude\agents\budget-subagent.md"
 ```
 
 ### Managed implementation-planning worker
@@ -133,6 +139,10 @@ The Claude Code uninstall path uses the body-and-non-tunable identity rule: it r
 ### Managed design-planning worker
 
 Claude Code routes `/sai-2-design` through the low-effort coordinator and high-effort `sai-2-design-worker`. It preserves `openspec/changes/{change-name}/design.md`, `tasks.md`, and `interfaces.md`. The worker is managed under the tunable-seed lifecycle (user tunables preserved, managed body overwritten with notice on divergence). An exact-compatible existing agent is reused; a divergent collision is overwritten with a console notice. Uninstall removes a managed worker only when its body and non-tunable frontmatter match the source, and preserves edited agents as project-local overrides. Restart Claude Code after changing definitions; reinstall after upgrades to synchronize the command, skill, and agent files.
+
+### Managed Generic Agents
+
+Claude Code installs three managed Generic Agents as user-global seeds under `~/.claude/agents/`: `budget-explorer.md`, `budget-executor.md`, and `budget-subagent.md`. They follow the same tunable-seed lifecycle as the routed workers: the installer preserves the destination's `model` and `effort` lines, and the shipped seed is `model: haiku` plus `effort: low`. A project-local `.claude/agents/<name>.md` wins over the user-global seed by filename; selecting haiku in the post-setup customizer produces a model-only project-local override. Opencode names its counterpart agent files differently for parity: `explore.md`, `executor.md`, and `budget.md` under `~/.config/opencode/agents/`.
 
 ### Post-install
 
