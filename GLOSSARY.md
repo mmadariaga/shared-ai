@@ -43,6 +43,9 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 **Command Card**: "The self-contained source folder for one `/sai-*` command, shaped as a routed card or a utility card and extending shared root protocols without duplicating them."
 *Avoid*: command bundle, command package, command body tree
 
+**Closure Reminder**: "The concise, stage-aware actionable closure line that a successful `sai-explore` turn appends while the current idea's **Closure State** is `active-uncrystallized` and no genuine unresolved question remains — naming the token that advances from the user's current stage of the **Pre-Crystallization Stage TODO** (`next-step` at stages 1–2, `next-step` and `crystallize` at stage 3) and never emitted at the `Crystallize` stage, whose entry is the crystallization itself."
+*Avoid*: fallback reminder, crystallize reminder, closing line, closure message
+
 **Closure State**: "The chat-scoped lifecycle classification of an explored idea as active-uncrystallized, crystallized, or discarded, used to determine whether a successful `sai-explore` response requires an actionable ending."
 *Avoid*: response state, closure status, idea status
 
@@ -179,6 +182,9 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 
 **Question Context Contract**: "The mandatory five-element anatomy of every user-facing decision prompt — what is being decided, why it matters, plain-language options, essential state context, and plain wording — single-sourced in `sai/policies/question-context.md` and required of worker `needs_input` questions, design notice messages, and the fixed instruction gates."
 *Avoid*: decision prompt, question anatomy, prompt context, context contract, question template
+
+**Readiness Statement**: "The one-line maturity judgment that an explored idea is solid enough to crystallize on request — emitted at most once per stable idea, folded into the **Closure Reminder** line rather than emitted separately, and never satisfying the actionable closure on its own."
+*Avoid*: readiness signal, solidity line, maturity notice
 
 **Recovery Dispatch**: "The single corrective subagent dispatch permitted by Known-False Report Recovery, constrained to the current Step and existing plan scope."
 *Avoid*: retry dispatch, second opinion, advisor dispatch
@@ -336,6 +342,8 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 - A **Customization Target** belongs to exactly one customization family (`Workers` or `Commands`) and is identified within a harness by that family plus its bare name; a worker and a command sharing a name are distinct targets.
 - A **Worker Matrix** preserves one shared worker lifecycle contract while carrying harness, phase, dispatch, continuation, model, and exceptional-option parameters for its materialized workers.
 - A **Generic Agent** is a **Customization Target** of the `Workers` family and is distinct from a **Managed Worker**: a managed worker is a routed phase worker of the pipeline, while a generic agent serves one of the three budget delegation roles (`explore`, `executor`, or `budget`).
+- A **Closure Reminder** belongs to one **Closure State** and is emitted only while the state is `active-uncrystallized`, naming the token that advances the **Pre-Crystallization Stage TODO** from the user's current stage.
+- A **Readiness Statement** is folded into a **Closure Reminder** at most once per stable idea and is never emitted as a separate closing line.
 
 ## Example dialogue
 
@@ -360,3 +368,4 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 - **Overview State vs Overview Language** — both are "overview"-prefixed pipeline values: `overview.state` is the persisted `.openspec.yaml` materialization key, while the overview language is the conversation-only gate-9 selection for the change's overview. **Resolution:** **Overview State** names the persisted `overview.state` key (`unmaterialized` / `materializing` / `failed` / `current` / `stale`); **Overview Language** names the gate-9 selected language that rides in the `Ready to Propose` block and forwards only in supervised `start-pipeline`; the qualified terms are always used and the two never share a surface.
 - **Failure Class vs generator failure_kind** — both are machine-readable failure labels, but they belong to different nested result envelopes. **Resolution:** **Failure Class** names the outer routed-worker repair boundary, while the overview generator's `failure_kind` remains its inner five-field result value; valid inner kinds propagate unchanged, and an untrusted inner envelope becomes the outer **Envelope Contract Violation** class.
 - **Recovery Policy vs Recovery Dispatch** — both name a corrective path, but they are owned by different lifecycle surfaces. **Resolution:** **Recovery Policy** names an optional routed phase-adapter opt-in to same-worker continuation; **Recovery Dispatch** remains the single apply-side subagent dispatch permitted by **Known-False Report Recovery**.
+- **Readiness Signal vs Readiness Statement** — the old wording "readiness signal" described the once-per-stable-idea one-liner naming the crystallize action; the stage-aware reframing folds the maturity judgment into the **Closure Reminder** and stops treating it as navigation. **Resolution:** **Readiness Statement** names the folded maturity judgment carried inside the reminder line; "readiness signal" survives only in test-pinned source sentences that must keep the old noun, and new writing uses the qualified term.
