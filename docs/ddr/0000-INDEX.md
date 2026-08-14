@@ -42,6 +42,9 @@ This index groups the DDRs in `docs/ddr/` by **command** and by **cross-cutting 
 - [0133 — Review progress is marked only by no-High pass evidence](./0133-review-progress-is-evidence-only.md) — Refs 0109, Refs 0110, Refs 0111
 - [0134 — Automatic planning review has two distinct bounded counters](./0134-automatic-review-has-two-distinct-counters.md) — Refs 0133
 - [0135 — An empty spec reference set still yields a full review pass](./0135-empty-spec-reference-set-is-a-full-review-pass.md) — Refs 0133, Refs 0134
+- [0134 — Recovery retains the live worker and one shared attempt pool](./0134-recovery-retains-live-worker-and-one-shared-pool.md)
+- [0135 — Failure classification identifies the repair boundary](./0135-failure-classification-identifies-the-repair-boundary.md)
+- [0136 — The overview generator envelope remains a closed five-field contract](./0136-overview-generator-envelope-remains-five-field.md)
 
 ### `/sai-3-implement`
 
@@ -150,6 +153,9 @@ This index groups the DDRs in `docs/ddr/` by **command** and by **cross-cutting 
 - [0125 — Existing project-local agent content takes precedence over installed availability](./0125-existing-project-local-agent-content-takes-precedence.md)
 - [0128 — Neutral root protocols and command cards](./0128-neutral-root-protocols-and-command-cards.md)
 - [0129 — Routed and utility command-card classes](./0129-routed-and-utility-command-card-classes.md)
+- [0134 — Recovery retains the live worker and one shared attempt pool](./0134-recovery-retains-live-worker-and-one-shared-pool.md)
+- [0135 — Failure classification identifies the repair boundary](./0135-failure-classification-identifies-the-repair-boundary.md)
+- [0136 — The overview generator envelope remains a closed five-field contract](./0136-overview-generator-envelope-remains-five-field.md)
 
 ### Fetch resolution & path conventions
 

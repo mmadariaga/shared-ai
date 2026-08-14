@@ -73,11 +73,17 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 **Domain Invariant**: "A constraint the pipeline's domain imposes that must hold of the pipeline's artifacts, records, or behavior at all times, stated as a property of the domain rather than as the mechanism that upholds it — the first test of the ordered routing test, which resolves a qualifying decision to the **DDR** family."
 *Avoid*: business rule, hard constraint, invariant check, domain rule
 
+**Envelope Contract Violation**: "A result that cannot be accepted under its closed lifecycle envelope because a required field is missing, a value is invalid, or an undeclared field is present."
+*Avoid*: malformed result, output-shape error, protocol typo
+
 **Execution Telemetry Appendix**: "The coordinator-authored `## Appendix: Execution Telemetry` table at the end of `implementation.md`, one row per **Attempts Per Phase** entry, whose `Step` and `dispatch` columns are supplied by the coordinator rather than reported by the subagent."
 *Avoid*: telemetry log, retry appendix, metrics table, execution log
 
 **Existing Tests Broken**: "The pinned fifth `## Step N` sub-field of `tasks.md` naming the existing tests a step breaks and each one's `compile` or `runtime` failure mode, shared fixtures first, `None` when it breaks none."
 *Avoid*: Tests Affected, Broken Tests, test impact, regressions
+
+**Failure Class**: "The closed machine-readable classification on a failed routed-worker outcome that identifies the repair boundary without relying on summary prose."
+*Avoid*: failure kind, failure reason, error category
 
 **Failure Details**: "The non-empty English diagnostic attached to an overview-generation failure, naming what went wrong, where it occurred, and the durable carrier that preserves it when the failure is parent-authored."
 *Avoid*: contradiction details, failure note, diagnostic text
@@ -177,6 +183,9 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 **Recovery Dispatch**: "The single corrective subagent dispatch permitted by Known-False Report Recovery, constrained to the current Step and existing plan scope."
 *Avoid*: retry dispatch, second opinion, advisor dispatch
 
+**Recovery Policy**: "The optional static phase-adapter declaration that opts one routed invocation into the shared bounded same-worker recovery loop without choosing its budget."
+*Avoid*: retry policy, recovery budget, recovery dispatch
+
 **Report Template Parity**: "The pinned requirement that a report artifact's two template families — the OpenSpec schema scaffold under `openspec/schemas/sai-workflow/templates/` and the write-time contract under `sai/commands/{phase}/{artifact}-report.template.md` (e.g. `sai/commands/review/review-report.template.md`) — present the same section skeleton and header metadata, diverging only in placeholder syntax, guidance depth, and code-fence wrapping."
 *Avoid*: template equality, template unification, template consistency
 
@@ -228,6 +237,9 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 **Tracked Crystallized Set**: "The chat-scoped, in-conversation-only list of every `**Change name**` value that this `sai-explore` chat's crystallization turns emitted, held in first-emission order and never derived from repository state."
 *Avoid*: crystallized changes, change list, session changes, active changes
 
+**Unrecoverability Veto**: "The worker-authored boolean on a failed outcome that stops the remaining bounded recovery attempts when worker-side evidence shows continuation cannot safely repair the failure."
+*Avoid*: retry denial, hard failure flag, fatal error
+
 **Verify-First Marker**: "The optional pinned `(**Verify-first**: Step N)` parenthetical on a `design.md` risk, naming the step whose design depends on that risk being resolved or disproven first."
 *Avoid*: Blocker, Gate, Check First, precondition, dependency marker
 
@@ -247,6 +259,8 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 - An **Architecture Snapshot** belongs to one **Target State** and is displayed before the sai-2 design feedback loop when its effective content is current or changed.
 - A **File Manifest** belongs to one **Target State** and is the file-level sibling of the **Architecture Snapshot** under it — the snapshot answers which public surfaces will exist, the manifest answers which files will change.
 - A **File Manifest** is derived by a deterministic net fold over the per-step **File Change Type** tokens of a change's `tasks.md`; `tasks.md` remains the authority for per-step tokens and step attribution.
+- An **Envelope Contract Violation** is a **Failure Class** when a nested result cannot be trusted under its closed output shape.
+- A **Failure Class** belongs to one failed routed-worker outcome and is distinct from the overview generator's inner `failure_kind` field.
 - A **Failure Details** value belongs to one overview-generation failure and is persisted by the design worker in `.openspec.yaml` as `overview.failure_details` when the parent owns the failure route.
 - A **Failure Details** value is paired with the persisted `overview.failure_kind` classification so read-only consumers can identify the failure route without conversation context.
 - **Failure Details** is paired with the persisted `overview.failure_kind` classification so read-only consumers can identify the failure route without conversation context.
@@ -287,9 +301,11 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 - A **Review-Loop Token** fires the post-crystallization loop, and each `Review sai-1's artifacts` / `Review sai-2's artifacts` transaction in it is an **Artifact Review**.
 - An **Artifact Review** produces zero or more **Review Finding**s, each carrying a **Finding Identifier** derived from its severity within that review.
 - A **Review Finding** carries exactly one **Finding Identifier**, derived from its `Severity` field; identifiers never imply identity across reviews.
+- A **Recovery Policy** opts one routed invocation into the shared bounded same-worker recovery loop; it does not name a **Recovery Dispatch** and does not choose the attempt budget.
 - A **Report Template Parity** pin covers the four report artifacts — review, security, performance, accessibility — each pairing a schema template scaffold with an instruction output template contract of the same artifact.
 - A **Tracked Crystallized Set** gains a name only when a crystallization turn emits one, ignores duplicate later emissions, and starts empty in every new chat.
 - A **Routing Line** contains exactly one **Routing Layer**, one **Routing Discipline**, and one **Routing Complexity** token, in that order, each emitted as a `key=value` pair separated by middle dots.
+- An **Unrecoverability Veto** belongs to one failed outcome and stops the remaining bounded recovery attempts without changing the failure's **Failure Class**.
 - A **File Change Type** prefixes every `**Files Affected**` entry of a step; the paths of those entries also derive the step's **Routing Layer** and **Routing Discipline** (an `R` entry contributes its destination path), with the change-type token ignored by the derivation.
 - A **Routing Layer** is derived from the step's `**Files Affected**` paths; **Routing Discipline** is derived from the same paths against a parallel pattern set, and is orthogonal to **Routing Layer** (e.g. `(frontend, ui-ux)` vs `(frontend, app-code)` discriminate agents within the same layer); **Routing Complexity** is a coarse design-time judgment.
 - A **Routing Line** is descriptive, not prescriptive — a future orchestrator maps the three tokens to its own agent roster at dispatch time, and `sai-3-implement` may refine the **Routing Complexity** (or split the step) without re-tagging `tasks.md`.
@@ -342,3 +358,5 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 - **"Timestamp" vs "Milestone Stamp"** — a bare "timestamp" is a general programming concept (excluded from glossary scope) and also names ISO-8601 metadata such as `approval.specs.approved_at`, so it must not name the progress-list annotation. **Resolution:** **Milestone Stamp** is the qualified term for the HH:mm progress-list annotation on routed phase progress task lists; bare "timestamp" is never used for it.
 - **"Effort" vs "Model Variant"** — the retired combined-frame customizer treated `effort` as a shared UI concept mapped to opencode's `variant` key, while the real opencode CLI exposes model-specific variants; a bare "effort" is ambiguous between Claude Code's tunable key and opencode's per-model variant. **Resolution:** **Model Variant** names the opencode model-specific settings modifier selected per model through the dependent provider → model → variant flow; `effort` remains Claude Code's tunable key; the shared UI concept is retired and the two harnesses use separate selector sequences.
 - **Overview State vs Overview Language** — both are "overview"-prefixed pipeline values: `overview.state` is the persisted `.openspec.yaml` materialization key, while the overview language is the conversation-only gate-9 selection for the change's overview. **Resolution:** **Overview State** names the persisted `overview.state` key (`unmaterialized` / `materializing` / `failed` / `current` / `stale`); **Overview Language** names the gate-9 selected language that rides in the `Ready to Propose` block and forwards only in supervised `start-pipeline`; the qualified terms are always used and the two never share a surface.
+- **Failure Class vs generator failure_kind** — both are machine-readable failure labels, but they belong to different nested result envelopes. **Resolution:** **Failure Class** names the outer routed-worker repair boundary, while the overview generator's `failure_kind` remains its inner five-field result value; valid inner kinds propagate unchanged, and an untrusted inner envelope becomes the outer **Envelope Contract Violation** class.
+- **Recovery Policy vs Recovery Dispatch** — both name a corrective path, but they are owned by different lifecycle surfaces. **Resolution:** **Recovery Policy** names an optional routed phase-adapter opt-in to same-worker continuation; **Recovery Dispatch** remains the single apply-side subagent dispatch permitted by **Known-False Report Recovery**.
