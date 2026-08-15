@@ -102,6 +102,8 @@ This index groups the DDRs in `docs/ddr/` by **command** and by **cross-cutting 
 - [0134 — Every review-loop turn re-enters except for two complementary closing choices](./0134-every-review-loop-turn-reenters-except-two-closing-choices.md)
 - [0135 — Review findings encoding and loop navigation are separate surfaces](./0135-review-findings-encoding-and-loop-navigation-are-separate-surfaces.md)
 - [0137 — The Review Engine input boundary is navigation-free](./0137-review-engine-input-boundary-is-navigation-free.md)
+- [0138 — Cap exhaustion continues after the last round's findings](./0138-cap-exhaustion-continues-after-last-round-findings.md)
+- [0139 — Supervised review edits remain worker-owned](./0139-supervised-review-edits-remain-worker-owned.md) — Refs adr:0139
 
 ### `/sai-backfill`
 
@@ -157,6 +159,8 @@ This index groups the DDRs in `docs/ddr/` by **command** and by **cross-cutting 
 - [0134 — Recovery retains the live worker and one shared attempt pool](./0134-recovery-retains-live-worker-and-one-shared-pool.md)
 - [0135 — Failure classification identifies the repair boundary](./0135-failure-classification-identifies-the-repair-boundary.md)
 - [0136 — The overview generator envelope remains a closed five-field contract](./0136-overview-generator-envelope-remains-five-field.md)
+- [0138 — Cap exhaustion continues after the last round's findings](./0138-cap-exhaustion-continues-after-last-round-findings.md)
+- [0139 — Supervised review edits remain worker-owned](./0139-supervised-review-edits-remain-worker-owned.md) — Refs adr:0139
 
 ### Fetch resolution & path conventions
 

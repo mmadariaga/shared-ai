@@ -8,7 +8,7 @@ TBD - seeded from delta spec `explore-review-evidence-marking` in change `explor
 
 ### Requirement: review-item-no-high-pass-marks
 
-A reviewed-sai-1 item SHALL be marked exactly when the most recent completed review over that slice's available sai-1 artifact set reports no High findings, and SHALL be cleared exactly when the most recent completed review reports at least one High finding. A reviewed-sai-2 item SHALL follow the same rule for that slice's sai-2 artifact set. A review transaction that ends without a completed review — an absence report for a missing change directory or missing artifact set, a review blocked by missing specs (absence reports and blocked-review reports are engine behavior per `review-engine-extraction`), or a failed or cancelled pipeline reviewer — SHALL leave the item unchanged. The marking evidence SHALL come from either entry path: the manual post-crystallization review loop (per `review-loop-navigation`), whose completed reviews close with the shared contract's base-form tally (per `review-engine-extraction`), and the supervised pipeline (item 10), whose pass converges on a pass with no High findings. The severity vocabulary, finding shape, and tally form SHALL be applied by reference to `@sai/policies/artifact-review-contract.md` and SHALL NOT be restated.
+A reviewed-sai-1 item SHALL be marked exactly when the most recent completed review over that slice's available sai-1 artifact set reports no High findings, and SHALL be cleared exactly when the most recent completed review reports at least one High finding. A reviewed-sai-2 item SHALL follow the same rule for that slice's sai-2 artifact set. A review transaction that ends without a completed review — an absence report for a missing change directory or missing artifact set, a review blocked by missing specs (absence reports and blocked-review reports are engine behavior per `review-engine-extraction`), or a failed or cancelled phase worker ending the review cycle mid-flight (per `supervised-review-rounds` requirement `worker-failure-ends-cycle`) — SHALL leave the item unchanged. The marking evidence SHALL come from either entry path: the manual post-crystallization review loop (per `review-loop-navigation`), whose completed reviews close with the shared contract's base-form tally (per `review-engine-extraction`), and the supervised pipeline (item 10), whose completed rounds close with the same base-form tally (per `supervised-review-in-session` and `supervised-review-rounds`). The severity vocabulary, finding shape, and tally form SHALL be applied by reference to `@sai/policies/artifact-review-contract.md` and SHALL NOT be restated.
 
 A completed `Review change-overview` transaction (per the `review-loop-navigation` capability) SHALL participate in reviewed-sai-2 marking on the same evidence rule: a completed `Review change-overview` closing with `High=0` SHALL mark the slice's reviewed-sai-2 item, and a completed `Review change-overview` reporting at least one High finding SHALL clear it. Precedence SHALL be by the most recent completed review over the sai-2 slice: when both a `Review sai-2's artifacts` transaction and a `Review change-overview` transaction complete, the most recent one's High-finding outcome decides the reviewed-sai-2 item's marked state. A `Review change-overview` over an overview that does not exist produces an availability/integrity report (the overview's absence) and SHALL leave the item unchanged.
 
@@ -19,18 +19,18 @@ A completed `Review change-overview` transaction (per the `review-loop-navigatio
 
 #### Scenario: medium and low findings do not block marking
 
-- **WHEN** a completed review pass reports only Medium and/or Low findings
+- **WHEN** a completed review round reports only Medium and/or Low findings
 - **THEN** the corresponding review item is marked
-- **AND** the item is not cleared by that pass
+- **AND** the item is not cleared by that round
 
 #### Scenario: supervised spec convergence marks the sai-1 item
 
-- **WHEN** a supervised spec pass completes with no High findings
+- **WHEN** a supervised spec-phase round completes with no High findings
 - **THEN** the slice's reviewed-sai-1 item is marked
 
 #### Scenario: supervised design convergence marks the sai-2 item
 
-- **WHEN** a supervised design pass completes with no High findings
+- **WHEN** a supervised design-phase round completes with no High findings
 - **THEN** the slice's reviewed-sai-2 item is marked
 
 #### Scenario: completed Review change-overview with no High findings marks reviewed-sai-2
@@ -58,17 +58,17 @@ A completed `Review change-overview` transaction (per the `review-loop-navigatio
 - **WHEN** a `Review change-overview` transaction produces an availability/integrity report because `overview.state` is `materializing`, `failed`, `stale`, or `unmaterialized` (or current metadata is paired with a missing/not-`done` file), rather than a completed review
 - **THEN** the slice's reviewed-sai-2 item is neither marked nor cleared, because the transaction produced no findings tally
 
-#### Scenario: an empty completed pass marks
+#### Scenario: an empty completed round marks
 
-- **WHEN** a supervised pass completes over available artifacts with no findings at all
+- **WHEN** a supervised round completes over available artifacts with no findings at all
 - **THEN** the corresponding review item is marked
 
-#### Scenario: a later pass with High findings clears the item
+#### Scenario: a later round with High findings clears the item
 
 - **WHEN** a completed review over an already-marked item's slice reports at least one High finding
 - **THEN** the corresponding review item is cleared
 
-#### Scenario: a later no-High pass re-marks a cleared item
+#### Scenario: a later no-High round re-marks a cleared item
 
 - **WHEN** a completed review over a cleared item's slice reports no High findings
 - **THEN** the corresponding review item is marked again
@@ -83,9 +83,9 @@ A completed `Review change-overview` transaction (per the `review-loop-navigatio
 - **WHEN** a sai-1 review is blocked because the normative specs are missing
 - **THEN** the slice's reviewed-sai-1 item is neither marked nor cleared
 
-#### Scenario: a failed or cancelled reviewer leaves the item unchanged
+#### Scenario: a failed or cancelled phase worker leaves the item unchanged
 
-- **WHEN** a supervised reviewer returns `review_failed` or `review_cancelled`
+- **WHEN** the supervised phase worker returns `failed` or `cancelled` mid-cycle and the review cycle ends with that worker result
 - **THEN** the corresponding review item is neither marked nor cleared
 
 ### Requirement: review-item-per-slice-targeting

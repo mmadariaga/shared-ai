@@ -54,7 +54,9 @@ The idea progress list SHALL contain exactly these item kinds: one research item
 
 ### Requirement: idea-list-review-in-progress-state
 
-When the post-crystallization review loop (item 9 of `sai/commands/explore/instructions.md`) begins processing a change, the active review check SHALL be selected once as the first review item of that slice in fixed order — reviewed-sai-1 if not marked completed, otherwise reviewed-sai-2 — that is not marked completed; when both review items are marked completed, no item of the slice SHALL render `in_progress`. While the loop processes the change, the selected active review check SHALL render `in_progress`. The active SHALL be a sticky reference: it SHALL NOT be recomputed from any later mark or clear of a review item, and it SHALL move only forward, and only when it is itself marked completed. The active item SHALL persist across review transactions and per-change picker re-shows while the loop processes the change, until it is marked completed. When the active item is marked completed by a tally reporting `High=0` — from a `Review sai-1's artifacts`, `Review sai-2's artifacts`, or `Review change-overview` transaction — the active SHALL advance to the slice's next review item not marked completed, and when none remains no item of the slice SHALL render `in_progress`. A completed review over the active item that reports at least one High finding SHALL leave the item not marked completed, SHALL keep it the active item, and SHALL keep it rendering `in_progress`; marking-clear wording applies only to previously marked items. A review that clears a review item other than the active one SHALL NOT move the active. Selecting `Skip` for the change, or closing the loop, SHALL resolve the change's in-progress item to render `pending`. The state is render-only: setting, advancing, or resolving it SHALL NOT mark or clear any item, and the evidence-based marking hooks (`explore-review-evidence-marking` requirements `review-item-no-high-pass-marks`, `review-item-per-slice-targeting`, and `review-item-evidence-only-marking`) SHALL remain unchanged. The research item and slice-crystallization items SHALL never render `in_progress`. The supervised pipeline (item 10 of `sai/commands/explore/instructions.md`) SHALL NOT set or resolve the state.
+When the post-crystallization review loop (item 9 of `sai/commands/explore/instructions.md`) begins processing a change, the active review check SHALL be selected once as the first review item of that slice in fixed order — reviewed-sai-1 if not marked completed, otherwise reviewed-sai-2 — that is not marked completed; when both review items are marked completed, no item of the slice SHALL render `in_progress`. While the loop processes the change, the selected active review check SHALL render `in_progress`. The active SHALL be a sticky reference: it SHALL NOT be recomputed from any later mark or clear of a review item, and it SHALL move only forward, and only when it is itself marked completed. The active item SHALL persist across review transactions and per-change picker re-shows while the loop processes the change, until it is marked completed. When the active item is marked completed by a tally reporting `High=0` — from a `Review sai-1's artifacts`, `Review sai-2's artifacts`, or `Review change-overview` transaction — the active SHALL advance to the slice's next review item not marked completed, and when none remains no item of the slice SHALL render `in_progress`. A completed review over the active item that reports at least one High finding SHALL leave the item not marked completed, SHALL keep it the active item, and SHALL keep it rendering `in_progress`; marking-clear wording applies only to previously marked items. A review that clears a review item other than the active one SHALL NOT move the active. Selecting `Skip` for the change, selecting `Exit review loop`, or closing the loop, SHALL resolve the change's in-progress item to render `pending`. The state is render-only: setting, advancing, or resolving it SHALL NOT mark or clear any item, and the evidence-based marking hooks (`explore-review-evidence-marking` requirements `review-item-no-high-pass-marks`, `review-item-per-slice-targeting`, and `review-item-evidence-only-marking`) SHALL remain unchanged. The research item and slice-crystallization items SHALL never render `in_progress`.
+
+While the supervised pipeline (item 10 of `sai/commands/explore/instructions.md`) processes a change, the supervised review rounds SHALL set and resolve the in-progress state by phase: during spec-phase review rounds, the change's reviewed-sai-1 item SHALL render `in_progress`; during design-phase review rounds, the change's reviewed-sai-2 item SHALL render `in_progress`, regardless of reviewed-sai-1's mark state, because the design phase reviews the sai-2 artifact set. A completed supervised round reporting `High=0` SHALL mark the corresponding item per the evidence rules. When the supervised pipeline's review rounds end without that item being marked — cap exhaustion, a `failed` worker, or a `cancelled` worker — the in-progress item SHALL resolve to render `pending`. The state remains render-only: setting, advancing, or resolving it SHALL NOT mark or clear any item, and the evidence-based marking hooks apply unchanged.
 
 #### Scenario: loop start sets the first uncompleted review check in progress
 
@@ -113,26 +115,48 @@ When the post-crystallization review loop (item 9 of `sai/commands/explore/instr
 - **WHEN** the user selects `Skip` for the change
 - **THEN** the change's in-progress item resolves to render `pending`
 
+#### Scenario: Exit review loop resolves the in-progress state
+
+- **WHEN** the user selects `Exit review loop`
+- **THEN** the change's in-progress item resolves to render `pending`
+
 #### Scenario: closing the loop leaves no item in progress
 
 - **WHEN** the review loop terminates after processing every tracked change
 - **THEN** no item of any processed slice renders `in_progress`
 
-#### Scenario: the state is render-only
+#### Scenario: supervised spec rounds render reviewed-sai-1 in progress
 
-- **WHEN** the active item renders `in_progress` or resolves to `pending`
-- **THEN** no item is marked or cleared by that render change
-- **AND** the evidence-based marking hooks apply unchanged
+- **WHEN** the supervised pipeline begins its spec-phase review rounds over a change whose reviewed-sai-1 item is not marked completed
+- **THEN** the change's reviewed-sai-1 item renders `in_progress`
 
-#### Scenario: only review items carry in_progress
+#### Scenario: supervised design rounds render reviewed-sai-2 in progress
 
-- **WHEN** the research item or a slice-crystallization item renders while the review loop is active
-- **THEN** it renders `pending` or `completed`, never `in_progress`
+- **WHEN** the supervised pipeline begins its design-phase review rounds over a change
+- **THEN** the change's reviewed-sai-2 item renders `in_progress` regardless of reviewed-sai-1's mark state
 
-#### Scenario: supervised passes never set the state
+#### Scenario: design rounds after spec cap exhaustion render reviewed-sai-2 in progress
 
-- **WHEN** a supervised spec or design pass completes for a change
-- **THEN** no item renders `in_progress` from that pass
+- **WHEN** the spec phase ended by cap exhaustion with reviewed-sai-1 left unmarked and the run continues to the chained design phase
+- **THEN** the change's reviewed-sai-2 item renders `in_progress` while the design-phase rounds process it
+
+#### Scenario: a converging supervised round marks the reviewed item
+
+- **WHEN** a supervised spec-phase round reports `High=0`
+- **THEN** the change's reviewed-sai-1 item is marked per the evidence rules
+- **AND** the design-phase rounds then render reviewed-sai-2 `in_progress` while they process it
+
+#### Scenario: supervised cap exhaustion resolves the in-progress item
+
+- **WHEN** the supervised pipeline's review rounds end by cap exhaustion without the active item being marked
+- **THEN** the in-progress item resolves to render `pending`
+- **AND** no item is marked or cleared by that resolution
+
+#### Scenario: failed or cancelled worker resolves the in-progress item
+
+- **WHEN** the phase worker returns `failed` or `cancelled` while the supervised pipeline's review rounds are in progress
+- **THEN** the in-progress item resolves to render `pending`
+- **AND** no review round is launched over the half-finished state
 
 ### Requirement: idea-list-render-adapter-placement
 

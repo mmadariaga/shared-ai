@@ -202,3 +202,25 @@ The engine SHALL be strictly read-only: it SHALL NOT create, modify, or delete `
 
 - **WHEN** the engine runs a change-overview transaction
 - **THEN** it does not write `overview.state` in the change's `.openspec.yaml` or any other file
+
+### Requirement: supervised-caller-invocation
+
+The supervised pipeline (item 10 of `sai/commands/explore/instructions.md`) SHALL invoke the engine for each of its review rounds with the authoritative change name and the phase's artifact-set designator — `sai-1` for spec-phase rounds, `sai-2` for design-phase rounds — and the engine SHALL run the same transaction sequence for the supervised caller as for the manual loop: exact directory resolution, existence checks, per-path checks, fresh disk reread, and finding formation from those reads only. The supervised invocation SHALL depend on no navigation state, no prior review output, and no cached artifact contents, and the engine SHALL remain strictly read-only for the supervised caller.
+
+#### Scenario: supervised spec rounds invoke the engine
+
+- **WHEN** the supervised pipeline runs a spec-phase review round
+- **THEN** it invokes the engine with the change name and the `sai-1` artifact-set designator
+- **AND** the engine performs its ordered transaction sequence over `proposal.md` and every `specs/**/*.md` of that exact change
+
+#### Scenario: supervised design rounds invoke the engine
+
+- **WHEN** the supervised pipeline runs a design-phase review round
+- **THEN** it invokes the engine with the change name and the `sai-2` artifact-set designator
+- **AND** the engine performs its ordered transaction sequence over `design.md`, `tasks.md`, and `interfaces.md` of that exact change
+
+#### Scenario: the engine stays read-only for the supervised caller
+
+- **WHEN** the supervised pipeline invokes the engine for a review round
+- **THEN** the engine creates, modifies, or deletes no file under any change directory and writes no `overview.state`
+- **AND** corrections arising from the round's findings are applied by the phase worker, never by the engine or explore

@@ -8,32 +8,32 @@ TBD - created by archiving change extend-pipeline-supervision-to-sai-2. Update P
 
 ### Requirement: The spec-phase outcome is reported before the design phase begins
 
-Before the chained design phase is dispatched, the pipeline SHALL emit a phase-transition report of the completed spec-phase outcome. The report SHALL state that the spec phase converged, the number of spec review passes used, and that the last completed spec review found no `High` findings, carrying the non-blocking-edit qualification when applicable per the spec-phase convergence reporting. Spec convergence remains a spec-phase ending that triggers the spec-phase autonomy audit log the `pipeline-autonomy-audit-log` capability produces, and the transition report SHALL surface that log at this transition even though the supervised run continues into the design phase. This report is the user's visibility checkpoint between the two phases of the long-lived single-token run and SHALL be presented before any design worker is dispatched.
+Before the chained design phase is dispatched, the pipeline SHALL emit a phase-transition report of the completed spec-phase outcome. On convergence, the report SHALL state that the spec phase converged, the number of spec review rounds used, and that the last completed round found no `High` findings, carrying the non-blocking-edit qualification when applicable per the spec-phase convergence reporting. On cap exhaustion, the phase-transition report is the one-line cap-exhaustion report carrying the last round's finding counts, per the `supervised-review-reporting` capability. Both transition endings trigger the spec-phase autonomy audit log the `pipeline-autonomy-audit-log` capability produces, and the transition report SHALL surface that log at this transition even though the supervised run continues into the design phase. This report is the user's visibility checkpoint between the two phases of the long-lived single-token run and SHALL be presented before any design worker is dispatched.
 
 #### Scenario: transition report precedes design dispatch
 - **WHEN** the supervised spec phase converges and the pipeline is about to enter the design phase
 - **THEN** explore emits the phase-transition report of the completed spec-phase outcome before dispatching the design worker
-- **AND** the report states the number of spec review passes used and that the last completed spec review found no `High` findings
-- **AND** when the converging pass accepted `Medium` or `Low` edits, the report states that the resulting artifact state was not re-reviewed rather than claiming the edited state is free of `High` findings
+- **AND** the report states the number of spec review rounds used and that the last completed round found no `High` findings
+- **AND** when the converging round accepted `Medium` or `Low` edits, the report states that the resulting artifact state was not re-reviewed rather than claiming the edited state is free of `High` findings
+
+#### Scenario: cap-exhausted transition report precedes design dispatch
+- **WHEN** the supervised spec phase ends by cap exhaustion and the pipeline is about to enter the design phase
+- **THEN** explore emits the one-line cap-exhaustion report carrying the last round's finding counts before dispatching the design worker
+- **AND** it does not classify the ending as failure and does not assert that `High` findings remain in the current state
 
 #### Scenario: transition report carries the spec-phase audit log
 - **WHEN** explore emits the phase-transition report after auto-answering one or more spec-phase questions
 - **THEN** the report presents the spec-phase autonomy audit log with each auto-answer, its answer, and its grounding citation
 - **AND** it states the auto-answered and escalated counts for the spec phase
 
-### Requirement: Design chaining occurs only on spec-phase convergence
+### Requirement: Design chaining occurs on spec-phase convergence or cap exhaustion
 
-The pipeline SHALL dispatch the design worker only when the spec phase converged. When the spec phase ends by cap exhaustion with outstanding `High` findings, reviewer failure, reviewer cancellation, a severity-contract violation, or a `failed` or `cancelled` spec worker, the pipeline SHALL report that spec-phase outcome — including the spec-phase autonomy audit log — and SHALL NOT enter the design phase, so design never consumes specs that still carry high-severity findings. On such a non-convergent ending the change's tracked-set state follows the completion rule of the `explore-pipeline-supervision` capability: a `failed` or `cancelled` spec worker leaves the change uncompleted and retryable by a later `start-pipeline`, while cap exhaustion, reviewer failure, reviewer cancellation, or a severity-contract violation leave the spec worker `completed`, so the change reaches supervised completion and its follow-up is an independently invoked `/sai-2-design` on the existing specs or a user-initiated revision rather than an automatic re-run.
+The pipeline SHALL dispatch the design worker when the spec phase converged or ended by cap exhaustion. When the spec phase ends with a `failed` or `cancelled` spec worker, the pipeline SHALL report that spec-phase outcome — including the spec-phase autonomy audit log — and SHALL NOT enter the design phase. Reviewer failure, reviewer cancellation, and severity-contract violation are not possible spec-phase endings in the in-session model and have no design-chaining consequence. On a `failed` or `cancelled` spec worker the change's tracked-set state follows the completion rule of the `explore-pipeline-supervision` capability: the change remains uncompleted and retryable by a later `start-pipeline`, which resumes at the spec phase since it never converged.
 
-#### Scenario: spec cap exhaustion does not transition to design
-- **WHEN** the spec phase terminates as cap exhaustion with at least one outstanding `High` finding
-- **THEN** explore reports the cap-exhausted spec outcome and its audit log
-- **AND** it does not dispatch the design worker
-- **AND** the spec worker having returned `completed`, the change reaches supervised completion and is not re-offered by a later `start-pipeline`
-
-#### Scenario: spec reviewer failure does not transition to design
-- **WHEN** the spec phase ends because a reviewer returned `review_failed`, `review_cancelled`, or a severity-contract violation
-- **THEN** explore reports that independent review did not complete and does not enter the design phase
+#### Scenario: spec cap exhaustion transitions to design
+- **WHEN** the spec phase terminates as cap exhaustion after the last round's findings were applied
+- **THEN** explore reports the cap-exhausted spec outcome with its one-line count report and audit log
+- **AND** it dispatches the design worker, because the run continues after cap exhaustion
 
 #### Scenario: failed or cancelled spec worker does not transition to design
 - **WHEN** the supervised spec worker returns `failed` or `cancelled`
@@ -42,9 +42,9 @@ The pipeline SHALL dispatch the design worker only when the spec phase converged
 
 ### Requirement: A single start-pipeline run spans both phases
 
-A single `start-pipeline` invocation SHALL cover the spec phase and, on spec convergence, the chained design phase, without a second token. The phase-transition report SHALL mark the boundary between the two phases within that one run, and the design phase SHALL execute under the same active-supervision interval as the spec phase.
+A single `start-pipeline` invocation SHALL cover the spec phase and, on spec-phase convergence or cap exhaustion, the chained design phase, without a second token. The phase-transition report SHALL mark the boundary between the two phases within that one run, and the design phase SHALL execute under the same active-supervision interval as the spec phase.
 
 #### Scenario: one token drives both phases
-- **WHEN** the user sends `start-pipeline` and the selected change's spec phase converges
+- **WHEN** the user sends `start-pipeline` and the selected change's spec phase converges or ends by cap exhaustion
 - **THEN** the same invocation proceeds through the phase transition into the design phase
 - **AND** the user is not required to send `start-pipeline` again to begin design
