@@ -232,6 +232,9 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0136 — Opaque boot request and card-selection contract](./0136-opaque-boot-request-and-card-selection-contract.md)
 - [0137 — Put non-worker idea-list glue at the harness adapter seam](./0137-non-worker-idea-list-glue-at-harness-adapter-seam.md) — Refs 0077, Refs 0088, Refs 0116
 - [0137 — Change Overview preserves the generation lifecycle and write boundary](./0137-change-overview-preserves-generation-lifecycle-and-write-boundary.md)
+- [0141 — Use one shared launcher card per in-scope command](./0141-use-one-shared-launcher-card-per-in-scope-command.md)
+- [0142 — Add near-empty launchers as extension points](./0142-add-near-empty-launchers-as-extension-points.md)
+- [0143 — Load the boot adapter before the launcher](./0143-load-the-boot-adapter-before-the-launcher.md)
 
 ---
 
@@ -269,6 +272,9 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0132 — Reconcile the executor capability at the canonical Fetch boundary](./0132-reconcile-executor-capability-at-fetch-boundary.md)
 - [0137 — Put non-worker idea-list glue at the harness adapter seam](./0137-non-worker-idea-list-glue-at-harness-adapter-seam.md) — Refs 0077, Refs 0088, Refs 0116
 - [0138 — Use manifest projections plus hash-gated retirement records](./0138-manifest-projections-and-hash-gated-retirement-records.md) — Refs 0091, Refs 0101, Refs 0134, Refs ddr:0123
+- [0141 — Use one shared launcher card per in-scope command](./0141-use-one-shared-launcher-card-per-in-scope-command.md)
+- [0142 — Add near-empty launchers as extension points](./0142-add-near-empty-launchers-as-extension-points.md)
+- [0143 — Load the boot adapter before the launcher](./0143-load-the-boot-adapter-before-the-launcher.md)
 
 ### Harness portability & mirror discipline
 
@@ -297,6 +303,9 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0134 — Materialize Worker Matrix projections from the manifest and retire by hash](./0134-materialize-worker-projections-from-the-manifest-and-retire-by-hash.md)
 - [0137 — Put non-worker idea-list glue at the harness adapter seam](./0137-non-worker-idea-list-glue-at-harness-adapter-seam.md) — Refs 0077, Refs 0088, Refs 0116
 - [0138 — Use manifest projections plus hash-gated retirement records](./0138-manifest-projections-and-hash-gated-retirement-records.md) — Refs 0091, Refs 0101, Refs 0134, Refs ddr:0123
+- [0141 — Use one shared launcher card per in-scope command](./0141-use-one-shared-launcher-card-per-in-scope-command.md)
+- [0142 — Add near-empty launchers as extension points](./0142-add-near-empty-launchers-as-extension-points.md)
+- [0143 — Load the boot adapter before the launcher](./0143-load-the-boot-adapter-before-the-launcher.md)
 
 ### Argument passing & change-name resolution
 

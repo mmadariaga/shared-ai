@@ -45,14 +45,14 @@ const UTILITY_COMMANDS = {
   'sai-worktree': 'worktree',
 };
 const UTILITY_CARD_CONTENTS = {
-  apply: ['coordinator.md', 'green-worker.md', 'invocation.md', 'red-worker.md', 'runner.md'],
-  archive: ['archive-commit-gate.instructions.md', 'body.md', 'instructions.md'],
-  backfill: ['body.md', 'instructions.md'],
-  commit: ['body.md', 'instructions.md'],
-  explore: ['body.md', 'instructions.md'],
-  pr: ['body.md', 'instructions.md', 'pr-body.template.md'],
-  status: ['body.md'],
-  worktree: ['body.md', 'instructions.md'],
+  apply: ['coordinator.md', 'green-worker.md', 'invocation.md', 'launcher.md', 'red-worker.md', 'runner.md'],
+  archive: ['archive-commit-gate.instructions.md', 'body.md', 'instructions.md', 'launcher.md'],
+  backfill: ['body.md', 'instructions.md', 'launcher.md'],
+  commit: ['body.md', 'instructions.md', 'launcher.md'],
+  explore: ['body.md', 'instructions.md', 'launcher.md'],
+  pr: ['body.md', 'instructions.md', 'launcher.md', 'pr-body.template.md'],
+  status: ['body.md', 'launcher.md'],
+  worktree: ['body.md', 'instructions.md', 'launcher.md'],
 };
 const SAI_EXTERNAL_DIRECTORY = '~/.config/opencode/sai/**';
 const OPENCODE_COMMANDS_EXTERNAL_DIRECTORY = '~/.config/opencode/commands/**';

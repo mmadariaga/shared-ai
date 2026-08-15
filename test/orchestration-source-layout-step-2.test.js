@@ -121,7 +121,7 @@ test('grouped design and implementation phase assets preserve their former sourc
        coordinator: path.join(repoRoot, 'sai', 'commands', 'design', 'coordinator.md'),
        invocation: path.join(repoRoot, 'sai', 'commands', 'design', 'invocation.md'),
       instruction: 'sai/commands/design/instructions.md',
-      cardContents: ['coordinator.md', 'instructions.md', 'invocation.md', 'worker.md'],
+      cardContents: ['coordinator.md', 'instructions.md', 'invocation.md', 'launcher.md', 'worker.md'],
     },
     {
       name: 'implement',
@@ -129,7 +129,7 @@ test('grouped design and implementation phase assets preserve their former sourc
        coordinator: path.join(repoRoot, 'sai', 'commands', 'implement', 'coordinator.md'),
        invocation: path.join(repoRoot, 'sai', 'commands', 'implement', 'invocation.md'),
       instruction: 'sai/commands/implement/instructions.md',
-      cardContents: ['coordinator.md', 'implementation-plan.template.md', 'instructions.md', 'invocation.md', 'worker.md'],
+      cardContents: ['coordinator.md', 'implementation-plan.template.md', 'instructions.md', 'invocation.md', 'launcher.md', 'worker.md'],
     },
   ];
 
