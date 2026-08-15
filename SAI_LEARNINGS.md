@@ -211,6 +211,8 @@ Durable execution-observed facts about the shared-ai prompt and installer reposi
 
 - **bin/doctor.js (project-health openspec fixture)**: Doctor's `checkProjectHealth` unconditionally emits `openspec/ not found` and missing-schema errors (exit code 1) when the temp `projectRoot` lacks `openspec/` + `config.yaml` with `schema: sai-workflow`. Every doctor test must create that fixture in its temp project root; an omitted fixture fails `assert.equal(code, 0)` even when the change under test is correct.
   *Observed:* sai-4-apply-routed-architecture — two new doctor tests in `apply-routed-architecture.test.js` omitted the fixture and failed until it was added.
+- **Set-Content -Encoding UTF8 (PowerShell 5.1)**: Staging plan text through `Set-Content -Encoding UTF8` writes a UTF-8 BOM and double-encodes existing UTF-8 characters (em-dash, `sí`) read from an implementation plan, because the console read layer decodes the source file through the system codepage; the working alternative is writing the transfer script to a scratch file and running `node <file>` (which reads and writes UTF-8 byte-exact), or reading the source with an explicit UTF-8 encoding before re-writing.
+  *Observed:* review-loop-exit-token — the coordinator staged the item-9 replacement block with `Set-Content -Encoding UTF8`, adding a BOM and double-encoding the em-dash/sí sequences; the implementation subagent un-mojibaked the content before splicing, and the corrected item-9 text passed the focused 47-test suite.
 
 ## Avoid
 
