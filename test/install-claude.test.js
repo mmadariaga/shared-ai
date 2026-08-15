@@ -556,7 +556,7 @@ test('installClaude re-install preserves tuned values and never recreates owners
   }
 });
 
-test('restore-coordinator-instruction-loading Step 3: isolated Claude installation resolves routed coordinator and neutral binding references', () => {
+test('restore-coordinator-instruction-loading Step 3: isolated Claude installation resolves routed launcher and neutral binding references', () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-claude-coordinator-loading-'));
   const wrappers = [
     ['commands/sai-2-design.md', 'design', 'design-worker.md'],
@@ -597,11 +597,15 @@ test('restore-coordinator-instruction-loading Step 3: isolated Claude installati
     const available = new Set(globInstalledFiles().map(file => path.normalize(file)));
     const loaded = new Set();
 
-     for (const [wrapperPath, coordinator, binding] of wrappers) {
+     for (const [wrapperPath, folder, binding] of wrappers) {
        const wrapper = readInstalled(wrapperPath);
-       assert.match(wrapper, new RegExp(`Fetch @sai/commands/${coordinator}/coordinator\\.md`));
-       assert.match(wrapper, new RegExp(`Fetch @sai/orchestration/workers/bindings/${binding.replace('.', '\\.')}`));
+       assert.match(wrapper, new RegExp(`Fetch @sai/commands/${folder}/launcher\\.md`));
+       const launcherPath = path.join('sai', 'commands', folder, 'launcher.md');
+       const launcher = readInstalled(launcherPath);
+       assert.match(launcher, new RegExp(`Fetch @sai/commands/${folder}/coordinator\\.md`));
+       assert.match(launcher, new RegExp(`Fetch @sai/orchestration/workers/bindings/${binding.replace('.', '\\.')}`));
        resolveFetches(wrapperPath, available, loaded);
+       resolveFetches(launcherPath, available, loaded);
        resolveFetches(path.join('sai', 'orchestration', 'workers', 'bindings', binding), available, loaded);
     }
 

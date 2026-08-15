@@ -5,12 +5,10 @@ model: sonnet
 effort: medium
 allowed-tools: Read, Glob, Grep, Bash(openspec:*), Bash(git:*), AskUserQuestion, Skill, Task, Agent, SendMessage, TodoWrite, TaskCreate, TaskUpdate, TaskGet, TaskList, WebFetch, WebSearch, mcp__codegraph__codegraph_explore
 ---
-## Sai Explore
-
 Fetch @skills/fetch/SKILL.md
 Fetch @sai/adapters/claude/boot.md and follow it.
-Fetch @sai/orchestration/workers/bindings/design-worker.md and use it.
 Fetch @sai/adapters/claude/idea-list-render.md and use it.
+Fetch @sai/commands/explore/launcher.md and follow those instructions exactly, forwarding the InvocationEnvelope block below.
 
 InvocationEnvelope:
   command_name: explore

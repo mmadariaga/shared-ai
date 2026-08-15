@@ -3,10 +3,9 @@ description: Conventional Commits message author from staged changes — generat
 argument-hint: "[optional: --scope X --type Y --no-body --amend]"
 model: haiku
 ---
-## Sai Commit
-
 Fetch @skills/fetch/SKILL.md
 Fetch @sai/adapters/claude/boot.md and follow it.
+Fetch @sai/commands/commit/launcher.md and follow those instructions exactly, forwarding the InvocationEnvelope block below.
 
 InvocationEnvelope:
   command_name: commit

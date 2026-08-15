@@ -196,29 +196,33 @@ test('Claude and opencode bindings mirror envelope and continuation mechanics', 
   assert.match(opencode, /task|session|continu/i);
 });
 
-test('Claude spec invocation routes through the coordinator and neutral worker binding', () => {
+test('Claude spec invocation routes through the launcher and neutral worker binding', () => {
   const wrapper = artifact('commands/claude/sai-1-spec.md');
+  const launcher = artifact('sai/commands/spec/launcher.md');
   const claudeBinding = matrixBinding('claude', 'spec');
   const manifest = artifact('sai/install-manifest.json');
   assert.match(wrapper, /^model:\s*opus\s*$/m);
   assert.match(wrapper, /^effort:\s*medium\s*$/m);
-  assert.match(wrapper, /spec[\\/]coordinator\.md/);
+  assert.match(wrapper, /spec[\\/]launcher\.md/);
     assert.doesNotMatch(wrapper, /sai-1-spec-proposal-worker/);
   assert.match(claudeBinding, /name:\s*"sai-1-spec-proposal-worker"/);
    assert.match(manifest, /agents[\\/]claude[\\/]worker-template\.md/);
     assert.match(manifest, /"path":\s*"sai-1-spec-proposal-worker\.md"/);
-     assert.match(wrapper, /Fetch @sai\/orchestration\/workers\/bindings\/spec-worker\.md/);
-   assert.doesNotMatch(wrapper, /Fetch @skills\/sai-1-spec-proposal-worker\/SKILL\.md/);
+  assert.match(launcher, /Fetch @sai\/orchestration\/workers\/bindings\/spec-worker\.md/);
+  assert.match(launcher, /Fetch @sai\/commands\/spec\/coordinator\.md/);
+    assert.doesNotMatch(wrapper, /Fetch @skills\/sai-1-spec-proposal-worker\/SKILL\.md/);
   assert.match(wrapper, /\$ARGUMENTS/);
 });
 
-test('opencode spec invocation routes through the coordinator and neutral worker binding', () => {
+test('opencode spec invocation routes through the launcher and neutral worker binding', () => {
   const wrapper = artifact('commands/opencode/sai-1-spec.md');
+  const launcher = artifact('sai/commands/spec/launcher.md');
    assert.match(wrapper, /^model:\s*opencode-go\/deepseek-v4-flash\s*$/m);
-  assert.match(wrapper, /spec[\\/]coordinator\.md/);
+  assert.match(wrapper, /spec[\\/]launcher\.md/);
    assert.doesNotMatch(wrapper, /sai-1-spec-proposal-worker/);
-    assert.match(wrapper, /Fetch @sai\/orchestration\/workers\/bindings\/spec-worker\.md/);
-   assert.doesNotMatch(wrapper, /Fetch @skills\/sai-1-spec-proposal-worker\/SKILL\.md/);
+  assert.match(launcher, /Fetch @sai\/orchestration\/workers\/bindings\/spec-worker\.md/);
+  assert.match(launcher, /Fetch @sai\/commands\/spec\/coordinator\.md/);
+    assert.doesNotMatch(wrapper, /Fetch @skills\/sai-1-spec-proposal-worker\/SKILL\.md/);
   assert.match(wrapper, /\$ARGUMENTS/);
 });
 

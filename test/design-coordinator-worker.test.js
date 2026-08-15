@@ -152,26 +152,28 @@ test('Step 2 uses one canonical coordinator, lifecycle, worker, and binding layo
 test('design wrappers activate routed Claude/opencode entry and preserve phase boundary', () => {
   const claude = artifact('commands/claude/sai-2-design.md');
   const opencode = artifact('commands/opencode/sai-2-design.md');
+  const launcher = artifact('sai/commands/design/launcher.md');
 
-   assert.match(claude, /^model: claude-opus-4-8$/m);
-  assert.match(claude, /^effort: low$/m);
-   assert.match(claude, /^allowed-tools: Read, Glob, Skill, Agent, SendMessage, AskUserQuestion, Bash\(date:\*\)$/m);
-   assert.doesNotMatch(claude, /sai-2-design-worker/);
-  assert.doesNotMatch(claude, /sai-3-implementation-worker/);
-    assert.match(claude, /sai\/commands\/design\/coordinator\.md/);
-    assert.match(claude, /Fetch @sai\/orchestration\/workers\/bindings\/design-worker\.md/);
-   assert.doesNotMatch(claude, /Fetch @skills\/sai-2-design-worker\/SKILL\.md/);
+    assert.match(claude, /^model: claude-opus-4-8$/m);
+   assert.match(claude, /^effort: low$/m);
+    assert.match(claude, /^allowed-tools: Read, Glob, Skill, Agent, SendMessage, AskUserQuestion, Bash\(date:\*\)$/m);
+    assert.doesNotMatch(claude, /sai-2-design-worker/);
+   assert.doesNotMatch(claude, /sai-3-implementation-worker/);
+     assert.match(claude, /sai\/commands\/design\/launcher\.md/);
+    assert.doesNotMatch(claude, /Fetch @skills\/sai-2-design-worker\/SKILL\.md/);
 
     assert.match(opencode, /^model: opencode-go\/deepseek-v4-flash$/m);
    assert.match(opencode, /^variant: max$/m);
-   assert.match(opencode, /^subtask: false$/m);
-   assert.doesNotMatch(opencode, /^agent:/m);
-   assert.doesNotMatch(opencode, /sai-2-design-worker/);
-  assert.doesNotMatch(opencode, /sai-3-implementation-worker/);
-    assert.match(opencode, /sai\/commands\/design\/coordinator\.md/);
-    assert.match(opencode, /Fetch @sai\/orchestration\/workers\/bindings\/design-worker\.md/);
-   assert.doesNotMatch(opencode, /Fetch @skills\/sai-2-design-worker\/SKILL\.md/);
-  assert.ok(opencode.includes('**Change-name argument and and optional flags:** $ARGUMENTS'));
+    assert.match(opencode, /^subtask: false$/m);
+    assert.doesNotMatch(opencode, /^agent:/m);
+    assert.doesNotMatch(opencode, /sai-2-design-worker/);
+   assert.doesNotMatch(opencode, /sai-3-implementation-worker/);
+     assert.match(opencode, /sai\/commands\/design\/launcher\.md/);
+    assert.doesNotMatch(opencode, /Fetch @skills\/sai-2-design-worker\/SKILL\.md/);
+   assert.ok(opencode.includes('**Change-name argument and and optional flags:** $ARGUMENTS'));
+
+   assert.match(launcher, /sai\/commands\/design\/coordinator\.md/, 'launcher should load the design coordinator');
+   assert.match(launcher, /Fetch @sai\/orchestration\/workers\/bindings\/design-worker\.md/, 'launcher should load the design worker binding');
 
   for (const relativePath of [
     'sai/commands/design/coordinator.md',

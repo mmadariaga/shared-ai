@@ -3,10 +3,9 @@ description: Archive a completed change — wraps opsx:archive skill. Moves open
 argument-hint: "[change-name] [--fast-track]"
 model: haiku
 ---
-## Sai Archive
-
 Fetch @skills/fetch/SKILL.md
 Fetch @sai/adapters/claude/boot.md and follow it.
+Fetch @sai/commands/archive/launcher.md and follow those instructions exactly, forwarding the InvocationEnvelope block below.
 
 InvocationEnvelope:
   command_name: archive

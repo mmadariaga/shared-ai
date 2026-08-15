@@ -4,10 +4,9 @@ argument-hint: "[change-name] [--fast-track]"
 model: sonnet
 effort: low
 ---
-## Sai Apply - 4
-
 Fetch @skills/fetch/SKILL.md
 Fetch @sai/adapters/claude/boot.md and follow it.
+Fetch @sai/commands/apply/launcher.md and follow those instructions exactly, forwarding the InvocationEnvelope block below.
 
 InvocationEnvelope:
   command_name: apply

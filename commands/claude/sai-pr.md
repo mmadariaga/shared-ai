@@ -3,10 +3,9 @@ description: Pull Request Author — synthesizes title and body from the OpenSpe
 argument-hint: "[change-name] [optional: parent branch]"
 model: haiku
 ---
-## Sai PR
-
 Fetch @skills/fetch/SKILL.md
 Fetch @sai/adapters/claude/boot.md and follow it.
+Fetch @sai/commands/pr/launcher.md and follow those instructions exactly, forwarding the InvocationEnvelope block below.
 
 InvocationEnvelope:
   command_name: pr

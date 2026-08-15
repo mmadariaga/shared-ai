@@ -3,13 +3,9 @@ description: Structured Accessibility Audit Prompt — WCAG 2.2 AA static review
 model: opencode-go/qwen3.7-plus
 variant: high
 ---
-
-## Sai Accessibility - 8
-
 Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.
 Fetch @sai/adapters/opencode/boot.md and follow it.
-Fetch @sai/orchestration/workers/bindings/accessibility-worker.md and use it.
-Fetch @sai/commands/accessibility/coordinator.md and follow those instructions exactly.
+Fetch @sai/commands/accessibility/launcher.md and follow those instructions exactly, forwarding the InvocationEnvelope block below.
 
 InvocationEnvelope:
   command_name: accessibility

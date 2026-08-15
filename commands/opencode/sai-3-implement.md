@@ -4,13 +4,9 @@ model: opencode-go/deepseek-v4-flash
 variant: max
 subtask: false
 ---
-
-## Sai Implement - 3
-
 Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.
 Fetch @sai/adapters/opencode/boot.md and follow it.
-Fetch @sai/orchestration/workers/bindings/implementation-worker.md and use it.
-Fetch @sai/commands/implement/coordinator.md and follow those instructions exactly.
+Fetch @sai/commands/implement/launcher.md and follow those instructions exactly, forwarding the InvocationEnvelope block below.
 
 InvocationEnvelope:
   command_name: implement

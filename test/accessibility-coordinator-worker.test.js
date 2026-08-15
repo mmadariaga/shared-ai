@@ -240,21 +240,25 @@ test('Step 2 completion writes only accessibility.md and prints the exact comple
 
 // ─── Step 3: installation and inventory projections ─────────────────────────
 
-test('Step 3 Claude Code and opencode wrappers load the coordinator and direct worker binding', () => {
+test('Step 3 Claude Code and opencode wrappers load the launcher and the launcher loads the coordinator and direct worker binding', () => {
+  const launcher = artifact('sai/commands/accessibility/launcher.md');
+  assert.match(launcher, /sai[\\/]commands[\\/]accessibility[\\/]coordinator\.md/,
+    'launcher should load the accessibility coordinator');
+  assert.match(launcher, /Fetch @sai\/orchestration\/workers\/bindings\/accessibility-worker\.md/,
+    'launcher should load the neutral accessibility binding');
+
   const wrappers = [
-    ['claude', 'commands/claude/sai-8-accessibility.md', 'sai/orchestration/workers/bindings/accessibility-worker.md', 'claude'],
-    ['opencode', 'commands/opencode/sai-8-accessibility.md', 'sai/orchestration/workers/bindings/accessibility-worker.md', 'opencode'],
+    ['claude', 'commands/claude/sai-8-accessibility.md', 'claude'],
+    ['opencode', 'commands/opencode/sai-8-accessibility.md', 'opencode'],
   ];
 
-  for (const [harness, wrapperPath, bindingPath, bindingHarness] of wrappers) {
+  for (const [harness, wrapperPath, bindingHarness] of wrappers) {
     const wrapper = artifact(wrapperPath);
-    assert.match(wrapper, /sai[\\/]commands[\\/]accessibility[\\/]coordinator\.md/,
-      `${harness} should load the accessibility coordinator`);
-    assert.match(wrapper, new RegExp(`Fetch @${bindingPath.replaceAll('/', '[\\\\/]')}`),
-      `${harness} should load its neutral accessibility binding`);
+    assert.match(wrapper, /sai[\\/]commands[\\/]accessibility[\\/]launcher\.md/,
+      `${harness} should load the accessibility launcher`);
+    assert.match(wrapper, /\$ARGUMENTS/, `${harness} should preserve complete arguments`);
     assert.doesNotMatch(wrapper, /Fetch @skills\/sai-8-accessibility-worker\/SKILL\.md/,
       `${harness} should not load the worker forwarding skill`);
-    assert.match(wrapper, /\$ARGUMENTS/, `${harness} should preserve complete arguments`);
     assert.match(
       matrixBinding(bindingHarness, 'accessibility'),
       /sai-8-accessibility-worker/,

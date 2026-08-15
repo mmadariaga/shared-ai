@@ -3,13 +3,9 @@ description: Structured Performance Audit Prompt - backend / frontend / database
 model: opencode-go/qwen3.7-plus
 variant: high
 ---
-
-## Sai Performance - 7
-
 Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.
 Fetch @sai/adapters/opencode/boot.md and follow it.
-Fetch @sai/orchestration/workers/bindings/performance-worker.md and use it.
-Fetch @sai/commands/performance/coordinator.md and follow those instructions exactly.
+Fetch @sai/commands/performance/launcher.md and follow those instructions exactly, forwarding the InvocationEnvelope block below.
 
 InvocationEnvelope:
   command_name: performance

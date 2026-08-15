@@ -5,12 +5,9 @@ model: opus
 effort: medium
 allowed-tools: Read, Glob, Skill, Agent, SendMessage, AskUserQuestion
 ---
-## Sai Accessibility - 8
-
 Fetch @skills/fetch/SKILL.md
 Fetch @sai/adapters/claude/boot.md and follow it.
-Fetch @sai/orchestration/workers/bindings/accessibility-worker.md and use it.
-Fetch @sai/commands/accessibility/coordinator.md and follow those instructions exactly.
+Fetch @sai/commands/accessibility/launcher.md and follow those instructions exactly, forwarding the InvocationEnvelope block below.
 
 InvocationEnvelope:
   command_name: accessibility

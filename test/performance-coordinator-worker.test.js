@@ -235,7 +235,13 @@ test('Step 3 managed-agent identity and binding remain while forwarding skill so
   assert.equal(fs.existsSync(path.join(repoRoot, 'skills', 'opencode', identity, 'SKILL.md')), false);
 });
 
-test('Step 4 routed performance wrappers fetch only their matching binding and coordinator surfaces', () => {
+test('Step 4 routed performance wrappers fetch only their matching launcher and the launcher fetches binding and coordinator', () => {
+  const launcher = artifact('sai/commands/performance/launcher.md');
+  assert.match(launcher, /sai[\\/]commands[\\/]performance[\\/]coordinator\.md/,
+    'launcher should fetch the performance coordinator');
+  assert.match(launcher, /sai[\\/]orchestration[\\/]workers[\\/]bindings[\\/]performance-worker\.md/,
+    'launcher should fetch the matching neutral binding');
+
   const wrappers = [
     {
       name: 'Claude',
@@ -257,10 +263,8 @@ test('Step 4 routed performance wrappers fetch only their matching binding and c
     const source = artifact(wrapper.path);
     assert.match(source, wrapper.model, `${wrapper.name} wrapper should declare its model`);
     assert.match(source, wrapper.setting, `${wrapper.name} wrapper should declare its harness setting`);
-    assert.match(source, /sai[\\/]commands[\\/]performance[\\/]coordinator\.md/,
-      `${wrapper.name} wrapper should fetch the performance coordinator`);
-    assert.match(source, /sai[\\/]orchestration[\\/]workers[\\/]bindings[\\/]performance-worker\.md/,
-      `${wrapper.name} wrapper should fetch the matching neutral binding`);
+    assert.match(source, /sai[\\/]commands[\\/]performance[\\/]launcher\.md/,
+      `${wrapper.name} wrapper should fetch the performance launcher`);
     assert.doesNotMatch(source, /Fetch @skills\/sai-7-performance-worker\/SKILL\.md/,
       `${wrapper.name} wrapper should not fetch the worker forwarding skill`);
     assert.match(source, /\$ARGUMENTS/, `${wrapper.name} wrapper should preserve complete arguments`);

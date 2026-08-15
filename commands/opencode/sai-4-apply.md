@@ -3,11 +3,9 @@ description: Apply the granular implementation plan mechanically — reads opens
 model: opencode-go/deepseek-v4-flash
 variant: max
 ---
-
-## Sai Apply - 4
-
 Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.
 Fetch @sai/adapters/opencode/boot.md and follow it.
+Fetch @sai/commands/apply/launcher.md and follow those instructions exactly, forwarding the InvocationEnvelope block below.
 
 InvocationEnvelope:
   command_name: apply

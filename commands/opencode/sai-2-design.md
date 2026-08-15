@@ -5,13 +5,9 @@ model: opencode-go/deepseek-v4-flash
 variant: max
 subtask: false
 ---
-
-## Sai Design - 2
-
 Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.
 Fetch @sai/adapters/opencode/boot.md and follow it.
-Fetch @sai/orchestration/workers/bindings/design-worker.md and use it.
-Fetch @sai/commands/design/coordinator.md and follow those instructions exactly.
+Fetch @sai/commands/design/launcher.md and follow those instructions exactly, forwarding the InvocationEnvelope block below.
 
 InvocationEnvelope:
   command_name: design

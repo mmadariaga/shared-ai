@@ -5,12 +5,9 @@ model: opus
 effort: low
 allowed-tools: Read, Glob, Skill, Agent, SendMessage, AskUserQuestion, Bash(date:*)
 ---
-## Sai Implement - 3
-
 Fetch @skills/fetch/SKILL.md
 Fetch @sai/adapters/claude/boot.md and follow it.
-Fetch @sai/orchestration/workers/bindings/implementation-worker.md and use it.
-Fetch @sai/commands/implement/coordinator.md and follow those instructions exactly.
+Fetch @sai/commands/implement/launcher.md and follow those instructions exactly, forwarding the InvocationEnvelope block below.
 
 InvocationEnvelope:
   command_name: implement

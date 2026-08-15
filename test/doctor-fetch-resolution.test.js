@@ -78,7 +78,7 @@ describe('doctor fetch resolution', () => {
     }
   });
 
-  test('1: Fetch @sai/commands/x.md resolved via global fallback — no error', async () => {
+  test('1: Fetch @sai/commands/x/launcher.md resolved via global fallback — no error', async () => {
     const projectRoot = makeGoodFixture();
     const claudeBase = makeTempDir('sai-dr-fr-claude-');
     try {
@@ -89,11 +89,11 @@ describe('doctor fetch resolution', () => {
       }
 
       const wrapper = path.join(claudeBase, 'commands', 'sai-1-spec.md');
-      fs.appendFileSync(wrapper, '\nFetch @sai/commands/fr-test-x.md\n');
+      fs.appendFileSync(wrapper, '\nFetch @sai/commands/fr-test-x/launcher.md\n');
 
-      const targetDir = path.join(claudeBase, 'sai', 'commands');
+      const targetDir = path.join(claudeBase, 'sai', 'commands', 'fr-test-x');
       ensureDir(targetDir);
-      fs.writeFileSync(path.join(targetDir, 'fr-test-x.md'), '# x\n');
+      fs.writeFileSync(path.join(targetDir, 'launcher.md'), '# x\n');
 
       const opencodeBase = nonexistentPath('sai-dr-fr-oc-');
       const { code, parsed } = await runDoctor({ projectRoot, claudeBase, opencodeBase });
@@ -112,14 +112,14 @@ describe('doctor fetch resolution', () => {
     }
   });
 
-  test('2: Fetch @sai/commands/missing.md resolvable nowhere — error + exit 1', async () => {
+  test('2: Fetch @sai/commands/missing/launcher.md resolvable nowhere — error + exit 1', async () => {
     const projectRoot = makeGoodFixture();
     const claudeBase = makeTempDir('sai-dr-fr-claude-');
     try {
       installClaude(claudeBase);
 
       const wrapper = path.join(claudeBase, 'commands', 'sai-1-spec.md');
-      fs.appendFileSync(wrapper, '\nFetch @sai/commands/fr-test-missing.md\n');
+      fs.appendFileSync(wrapper, '\nFetch @sai/commands/fr-test-missing/launcher.md\n');
 
       const opencodeBase = nonexistentPath('sai-dr-fr-oc-');
       const { code, parsed } = await runDoctor({ projectRoot, claudeBase, opencodeBase });
@@ -131,7 +131,7 @@ describe('doctor fetch resolution', () => {
       const fetchRefErrors = (claude['fetch-ref'] || []).filter(r => r.severity === 'error');
       assert.ok(fetchRefErrors.length >= 1, 'should have at least one fetch-ref error');
       assert.ok(
-        fetchRefErrors.some(r => r.message.includes('fr-test-missing.md')),
+        fetchRefErrors.some(r => r.message.includes('fr-test-missing')),
         'error message should reference the missing target'
       );
     } finally {
@@ -190,10 +190,11 @@ describe('doctor fetch resolution', () => {
     }
   });
 
-  test('Step 2: installed routed wrappers classify all direct worker bindings as non-skill fetches', async () => {
+  test('Step 2: installed routed launchers and wrappers classify all direct worker bindings as non-skill fetches', async () => {
     const projectRoot = makeGoodFixture();
     const claudeBase = makeTempDir('sai-dr-fr-claude-');
     const opencodeBase = makeTempDir('sai-dr-fr-opencode-');
+    const phaseFolders = ['spec', 'design', 'implement', 'review', 'security', 'performance', 'accessibility'];
     const phases = [
       'spec-worker.md',
       'design-worker.md',
@@ -203,18 +204,14 @@ describe('doctor fetch resolution', () => {
       'performance-worker.md',
       'accessibility-worker.md',
     ];
-    const wrapperRefs = {
+    const wrapperExploreRefs = {
         '[Claude Code]': [
-         ...phases.map((binding, index) => [`sai-${index === 0 ? '1-spec' : index === 1 ? '2-design' : index === 2 ? '3-implement' : index === 3 ? '5-review' : index === 4 ? '6-security' : index === 5 ? '7-performance' : '8-accessibility'}.md`, `bindings/${binding}`]),
-         ['sai-explore.md', 'bindings/design-worker.md'],
           ['sai-explore.md', 'adapters/claude/idea-list-render.md'],
-      ],
+       ],
         '[Opencode]': [
-         ...phases.map((binding, index) => [`sai-${index === 0 ? '1-spec' : index === 1 ? '2-design' : index === 2 ? '3-implement' : index === 3 ? '5-review' : index === 4 ? '6-security' : index === 5 ? '7-performance' : '8-accessibility'}.md`, `bindings/${binding}`]),
-         ['sai-explore.md', 'bindings/spec-worker.md'],
-         ['sai-explore.md', 'bindings/design-worker.md'],
-          ['sai-explore.md', 'adapters/opencode/idea-list-render.md'],
-      ],
+          ['sai-explore.md', 'bindings/spec-worker.md'],
+           ['sai-explore.md', 'adapters/opencode/idea-list-render.md'],
+       ],
     };
 
     try {
@@ -228,42 +225,30 @@ describe('doctor fetch resolution', () => {
         '[Claude Code]': [
            ...phases.map(binding => `bindings/${binding}`),
            'bindings/design-worker.md',
-           'adapters/claude/idea-list-render.md',
-         ],
-         '[Opencode]': [
-           ...phases.map(binding => `bindings/${binding}`),
-           'bindings/spec-worker.md',
-           'bindings/design-worker.md',
-           'adapters/opencode/idea-list-render.md',
-         ],
-      };
-      assert.equal(Object.values(wrapperRefs).flat().length, 19,
-        'wrapper mapping should cover exactly 19 direct binding references');
+            'adapters/claude/idea-list-render.md',
+          ],
+          '[Opencode]': [
+            ...phases.map(binding => `bindings/${binding}`),
+            'bindings/spec-worker.md',
+            'bindings/design-worker.md',
+            'adapters/opencode/idea-list-render.md',
+          ],
+       };
 
-      for (const [sectionName, refs] of Object.entries(wrapperRefs)) {
+      for (const [sectionName, refs] of Object.entries(wrapperExploreRefs)) {
         const base = sectionName === '[Claude Code]' ? claudeBase : opencodeBase;
-        const wrapperText = [...new Set(refs.map(([wrapper]) => wrapper))].map(wrapper => {
-          const targetsForWrapper = refs
-            .filter(([candidate]) => candidate === wrapper)
-            .map(([, target]) => target);
+        for (const [wrapper, target] of refs) {
           const source = fs.readFileSync(path.join(base, 'commands', wrapper), 'utf8');
-          for (const target of targetsForWrapper) {
-             const fetchRoot = target.startsWith('adapters/') ? 'sai/' : 'sai/orchestration/workers/';
-             assert.match(source, new RegExp(`Fetch @${fetchRoot}${target.replace(/[\\/.-]/g, '\\$&')}`),
-               `${sectionName} ${wrapper} should use ${target}`);
-          }
+           const fetchRoot = target.startsWith('adapters/') ? 'sai/' : 'sai/orchestration/workers/';
+           assert.match(source, new RegExp(`Fetch @${fetchRoot}${target.replace(/[\\/.-]/g, '\\$&')}`),
+             `${sectionName} ${wrapper} should use ${target}`);
           assert.doesNotMatch(source, /Fetch @skills\/sai-[^\s/]+-worker\/SKILL\.md/,
             `${sectionName} ${wrapper} should not use a worker skill fetch`);
-          return source;
-        }).join('\n');
-         assert.equal(
-           (wrapperText.match(/Fetch @sai\/(?:orchestration\/workers\/bindings\/[^\s`]+|adapters\/(?:claude|opencode)\/idea-list-render\.md)/g) || []).length,
-           refs.length,
-           `${sectionName} should contain exactly its expected direct binding references`
-         );
+        }
       }
 
       for (const [sectionName, targets] of Object.entries(expected)) {
+        const base = sectionName === '[Claude Code]' ? claudeBase : opencodeBase;
         const section = parsed[sectionName];
         assert.ok(section, `${sectionName} section should exist`);
         const refs = section['fetch-ref'] || [];
@@ -272,42 +257,48 @@ describe('doctor fetch resolution', () => {
           assert.doesNotMatch(JSON.stringify(section['fetch-skill'] || []),
             new RegExp(target.replace(/[\\/.-]/g, '\\$&')),
             `${sectionName} should not classify ${target} as fetch-skill`);
-          const base = sectionName === '[Claude Code]' ? claudeBase : opencodeBase;
            const installedTarget = target.startsWith('adapters/')
-             ? path.join(base, 'sai', ...target.split('/'))
-             : path.join(base, 'sai', 'orchestration', 'workers', ...target.split('/'));
+              ? path.join(base, 'sai', ...target.split('/'))
+              : path.join(base, 'sai', 'orchestration', 'workers', ...target.split('/'));
            assert.equal(
-             fs.existsSync(installedTarget),
-             true,
-             `${sectionName} should install ${target}`
-           );
+              fs.existsSync(installedTarget),
+              true,
+              `${sectionName} should install ${target}`
+            );
            if (target.endsWith('/idea-list-render.md')) {
-             const sourceHarness = sectionName === '[Claude Code]' ? 'claude' : 'opencode';
-             const sourceTarget = `sai/adapters/${sourceHarness}/idea-list-render.md`;
-             assert.deepEqual(
-               fs.readFileSync(installedTarget),
-               fs.readFileSync(path.join(repoRoot, ...sourceTarget.split('/'))),
-               `${sectionName} should preserve the render binding bytes for ${target}`
+              const sourceHarness = sectionName === '[Claude Code]' ? 'claude' : 'opencode';
+              const sourceTarget = `sai/adapters/${sourceHarness}/idea-list-render.md`;
+              assert.deepEqual(
+                fs.readFileSync(installedTarget),
+                fs.readFileSync(path.join(repoRoot, ...sourceTarget.split('/'))),
+                `${sectionName} should preserve the render binding bytes for ${target}`
+              );
+           }
+           if (target.endsWith('-worker.md')) {
+             const bindingText = fs.readFileSync(
+               path.join(base, 'sai', 'orchestration', 'workers', ...target.split('/')), 'utf8');
+             assert.equal(
+               (bindingText.match(/Fetch @sai\/commands\/[a-z-]+\/worker\.md and follow it exactly\./g) || []).length,
+               1,
+               `${sectionName} ${target} should carry exactly one canonical worker Fetch`
              );
-          }
-          if (target.endsWith('-worker.md')) {
-            const bindingText = fs.readFileSync(
-              path.join(base, 'sai', 'orchestration', 'workers', ...target.split('/')), 'utf8');
-            assert.equal(
-              (bindingText.match(/Fetch @sai\/commands\/[a-z-]+\/worker\.md and follow it exactly\./g) || []).length,
-              1,
-              `${sectionName} ${target} should carry exactly one canonical worker Fetch`
-            );
-            assert.match(
-              bindingText,
-              sectionName === '[Claude Code]' ? /Agent\(/ : /task\(/,
-              `${sectionName} ${target} should preserve its dispatch mechanism`
-            );
-          }
-        }
+             assert.match(
+               bindingText,
+               sectionName === '[Claude Code]' ? /Agent\(/ : /task\(/,
+               `${sectionName} ${target} should preserve its dispatch mechanism`
+             );
+           }
+         }
 
         assert.equal(refText.filter(text => /Fetch @skills\/sai-.*worker\/SKILL\.md/.test(text)).length, 0,
           `${sectionName} should contain no active worker skill fetches`);
+      }
+
+      for (const [index, folder] of phaseFolders.entries()) {
+        for (const base of [claudeBase, opencodeBase]) {
+          const launcherPath = path.join(base, 'sai', 'commands', folder, 'launcher.md');
+          assert.ok(fs.existsSync(launcherPath), `launcher for ${folder} should be installed`);
+        }
       }
     } finally {
       fs.rmSync(projectRoot, { recursive: true, force: true });

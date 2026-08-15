@@ -4,10 +4,9 @@ argument-hint: "[change-name]"
 model: haiku
 allowed-tools: Read, Glob, Grep, Bash(openspec:*), AskUserQuestion, Skill
 ---
-## Sai Status
-
 Fetch @skills/fetch/SKILL.md
 Fetch @sai/adapters/claude/boot.md and follow it.
+Fetch @sai/commands/status/launcher.md and follow those instructions exactly, forwarding the InvocationEnvelope block below.
 
 InvocationEnvelope:
   command_name: status
