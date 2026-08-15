@@ -62,7 +62,7 @@ When `start-pipeline` is sent while the tracked crystallized set is empty or con
 
 ### Requirement: Active supervision rejects duplicate starts
 
-An active `start-pipeline` run SHALL begin when the user confirms a picker selection, or when explore identifies the sole uncompleted change immediately before dispatch. It SHALL remain active through spec-worker execution and continuation, independent review, machine-feedback processing, the user-facing artifact feedback gate, the phase transition, and — when the spec phase converges — the chained design phase including its worker execution and continuation, independent review, machine-feedback processing, and user-facing artifact feedback gate. The interval SHALL end only when the chained design phase terminates, or, when a non-convergent spec ending stops the run before design, when that spec attempt completes, fails, or is cancelled. While that interval is active, another `start-pipeline` token SHALL receive an explicit already-running acknowledgement and SHALL NOT create a concurrent or queued duplicate run.
+An active `start-pipeline` run SHALL begin when the user confirms a picker selection, or when explore identifies the sole uncompleted change immediately before dispatch. It SHALL remain active through spec-worker execution and continuation, the in-session review rounds, machine-feedback processing, the user-facing artifact feedback gate, the phase transition, and — when the spec phase converges or ends by cap exhaustion — the chained design phase including its worker execution and continuation, its in-session review rounds, machine-feedback processing, and user-facing artifact feedback gate. The interval SHALL end only when the chained design phase terminates, or, when a failed or cancelled spec worker stops the run before design, when that spec attempt completes, fails, or is cancelled. While that interval is active, another `start-pipeline` token SHALL receive an explicit already-running acknowledgement and SHALL NOT create a concurrent or queued duplicate run.
 
 #### Scenario: token is sent during an active run
 - **WHEN** the user sends `start-pipeline` while supervision is already active
@@ -75,7 +75,7 @@ An active `start-pipeline` run SHALL begin when the user confirms a picker selec
 - **AND** it creates no additional dispatch or queue entry
 
 #### Scenario: interval ends after the design phase terminates
-- **WHEN** the spec phase converged and the chained design phase reaches its terminal outcome
+- **WHEN** the spec phase converged or ended by cap exhaustion and the chained design phase reaches its terminal outcome
 - **THEN** the active-supervision interval ends
 - **AND** a later `start-pipeline` token is eligible to begin a new run
 
