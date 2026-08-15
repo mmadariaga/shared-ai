@@ -61,19 +61,97 @@ The invitation carries **no precondition** — it remains available whether or n
 - **WHEN** the global review invitation is presented on a harness that has a native option-picker (for example Claude Code)
 - **THEN** it is still presented as plain conversational text, as a deliberate documented exception to the "Closed-choice prompts" rule, and is not "corrected" back into an option-picker
 
+### Requirement: Active per-change exit window
+
+The post-crystallization per-change review loop SHALL use the existing chat-scoped, duplicate-free tracked crystallized set in first-emission order. Every member is an eligible tracked change, and the active per-change processing window SHALL begin when the loop enters the current member, before its picker is displayed. The window SHALL end when that member is skipped, the loop closes, or the exit token terminates the loop. A "tracked change" and an "eligible change" SHALL refer to the current member of that same set.
+
+#### Scenario: E1 — exit is not armed outside the active window
+
+- **WHEN** the user enters `exit` before the loop enters a tracked change, after the loop closes, or in an ordinary `sai-explore` turn that is not processing a tracked change
+- **THEN** the post-crystallization exit behavior does not fire
+- **AND** no review-loop active item is created, resolved, or changed by that token
+
+#### Scenario: E7 — an empty tracked set never opens the window
+
+- **WHEN** the user fires `review-loop` while the tracked crystallized set is empty
+- **THEN** the loop emits its existing one-line empty-set acknowledgment
+- **AND** it presents no per-change picker
+- **AND** no active per-change window or review item is created, and `exit` is not armed
+
+### Requirement: Exit token recognition and picker precedence
+
+While the active per-change window is open, `sai-explore` SHALL inspect the picker interaction's free-text field for the exit token before mapping the turn as an unmatched picker response. The existing item-9 Token trigger and Firing condition is the baseline, modified here by this token's deliberate English-spelling-variant narrowing: a bare spelling variant of the English token `exit`, including `Exit`, `EXIT`, surrounding whitespace, and allowed trailing punctuation or greeting, SHALL fire; a turn whose dominant intent is to exit the review loop SHALL fire only when it contains an English spelling variant of `exit`. A negated, quoted, deferred, discussed, incidental, or localized equivalent without an English spelling variant SHALL NOT fire, including a localized turn whose dominant intent is to exit. Free text that does not fire SHALL be handled as an unmatched picker response and SHALL re-present the same current-change picker. The four declared picker options SHALL remain native-picker choices.
+
+#### Scenario: E3 — trivial spelling variants fire
+
+- **WHEN** the active per-change window is open and the user enters `Exit`, `EXIT`, ` exit `, or `exit!` in the picker interaction's free-text field
+- **THEN** the existing token matcher recognizes the input as `exit`
+- **AND** it proceeds with exactly the same termination behavior as bare `exit`
+
+#### Scenario: negated or incidental exit text does not fire
+
+- **WHEN** the active per-change window is open and the user merely contains, negates, quotes, defers, or discusses `exit`, or enters a localized equivalent without an English spelling variant, without making exit the turn's dominant intent
+- **THEN** the exit token does not fire
+- **AND** the active review loop remains open for ordinary navigation
+- **AND** a localized turn whose dominant intent is to exit also does not fire when it contains no English spelling variant
+
+### Requirement: Exit token termination effects
+
+When the recognized exit token fires for the current tracked change, `sai-explore` SHALL terminate the loop immediately, leave later members of the tracked set unprocessed, resolve the current change's active review item from `in_progress` to `pending` when one exists, preserve all review-evidence marks and clears, and use the existing `Closing the loop` rule's acknowledgment and no-next-command behavior.
+
+#### Scenario: bare exit closes the active loop
+
+- **WHEN** the active per-change window is open and the user enters bare `exit` in the picker interaction's free-text field
+- **THEN** the loop terminates immediately
+- **AND**, when the current change has an active review item, that item renders `pending`
+- **AND** the token takes precedence over treating the free-text turn as an unmatched picker response
+- **AND** later tracked changes are not processed
+
+#### Scenario: dominant exit intent closes the active loop
+
+- **WHEN** the active per-change window is open and the user's free-text turn makes exiting the review loop its dominant intent while containing an English spelling variant of `exit`
+- **THEN** the existing dominant-intent matcher recognizes the exit token
+- **AND** the loop terminates using the same state and close behavior as bare `exit`
+
+#### Scenario: exit preserves evidence and uses the ordinary close
+
+- **WHEN** the user fires `exit` after any completed or non-completing review transaction for the current change
+- **THEN** the token does not mark or clear any review-evidence item
+- **AND** it resolves the active review item to `pending` when one exists
+- **AND** it emits the existing `Closing the loop` minimal acknowledgment with no next-command prompt
+
+#### Scenario: unmatched free text re-presents the current picker
+
+- **WHEN** the active per-change window is open and free text matches neither the exit token nor a declared picker option
+- **THEN** it is handled as an unmatched picker response
+- **AND** the same current-change four-option picker is re-presented
+
 ### Requirement: Per-change review picker remains a harness option-picker
 
-While the global review invitation remains plain text, the per-change navigation menu SHALL remain a harness native option-picker. For each change in the tracked crystallized set, `sai-explore` SHALL present the four options `Review sai-1's artifacts`, `Review sai-2's artifacts`, `Review change-overview`, and `Skip` through the harness option-picker per the "Closed-choice prompts" rule in `sai/policies/remember.md`. The plain-text treatment applies ONLY to the global review invitation and SHALL NOT be extended to this per-change menu.
+While the global review invitation remains plain text, the per-change navigation menu SHALL remain a harness native option-picker. For each change in the tracked crystallized set, `sai-explore` SHALL present exactly four options, in this fixed order: `Review sai-1's artifacts`, `Review sai-2's artifacts`, `Review change-overview`, and `Skip`, through the harness option-picker per the "Closed-choice prompts" rule in `sai/policies/remember.md`. The question text presented with those four options SHALL follow the conversation's ambient language while naming the literal `exit` token verbatim and untranslated as the way to terminate the review loop. The option labels are fixed English literals and are not localized. `Exit review loop` SHALL NOT appear as a picker option; loop termination is provided by the active-loop `exit` free-text token instead. The plain-text treatment applies ONLY to the global review invitation and SHALL NOT be extended to this per-change menu.
+
+#### Scenario: per-change picker has exactly four options
+
+- **WHEN** the per-change loop iterates a tracked change
+- **THEN** the native picker contains exactly `Review sai-1's artifacts`, `Review sai-2's artifacts`, `Review change-overview`, and `Skip`, in that order
+- **AND** it contains no `Exit review loop` option
+- **AND** the free-text field remains the separate input path for the active-loop `exit` token
+- **AND** the picker question text names `exit` as the way to terminate the loop
 
 #### Scenario: per-change menu still uses the native picker
 
 - **WHEN** the user answers yes to the global invitation and the per-change loop iterates a change
-- **THEN** the four-option per-change menu (`Review sai-1's artifacts`, `Review sai-2's artifacts`, `Review change-overview`, `Skip`) is presented through the harness option-picker
+- **THEN** the four-option per-change menu is presented through the harness option-picker
 
 #### Scenario: plain-text exception does not extend to the per-change menu
 
 - **WHEN** the global review invitation is presented as plain text
 - **THEN** the per-change picker is unaffected and continues to honor the native-picker rule
+
+#### Scenario: picker question advertises exit on every presentation
+
+- **WHEN** the per-change picker is presented for the first time or re-presented after a review transaction, an unmatched response, or a change transition
+- **THEN** its question text names the literal `exit` token as the way to terminate the review loop
 
 ### Requirement: Per-change review loop over chat-crystallized changes
 
@@ -187,26 +265,33 @@ The availability/integrity report SHALL produce no findings and no `Summary:` ta
 
 ### Requirement: Picker re-entry and loop advancement
 
-After a `Review sai-1's artifacts` or `Review sai-2's artifacts` selection for a change, the agent SHALL re-show the same three-option picker for that same change, so the user can review both artifact sets or repeat a review. Only `Skip` SHALL advance the loop to the next eligible change. The loop SHALL terminate when every eligible change in the tracked chat-scoped set has been processed.
+After any review transaction that does not advance to another change or terminate the loop, including completed and non-completing transactions, the agent SHALL re-show the same four-option picker for that same change, so the user can review both artifact sets or repeat a review. Only `Skip` SHALL advance the loop to the next eligible change. The active-loop `exit` free-text token SHALL terminate the loop instead of re-showing the picker. The loop SHALL terminate when every member of the tracked crystallized set has been processed through `Skip`, or immediately when `exit` fires.
 
-#### Scenario: review re-shows the picker for the same change
+#### Scenario: review re-shows the four-option picker for the same change
 
 - **WHEN** the user selects `Review sai-1's artifacts` or `Review sai-2's artifacts` for a change
-- **THEN** after the review the agent re-shows the same picker for that same change
+- **THEN** after the review the agent re-shows the same four-option picker for that same change
 
-#### Scenario: both sets reviewable for one change
+#### Scenario: both sets remain reviewable for one change
 
 - **WHEN** the user selects `Review sai-1's artifacts`, and then on the re-shown picker selects `Review sai-2's artifacts` for the same change
-- **THEN** the agent produces both reviews and re-shows the picker after each
+- **THEN** the agent produces both reviews and re-shows the four-option picker after each
+- **AND** each picker presentation names `exit` in its question text as the way to terminate the loop
 
 #### Scenario: only Skip advances to the next change
 
 - **WHEN** the user selects `Skip` for the current change
-- **THEN** the loop advances to the next eligible change in the tracked set (or terminates if none remain)
+- **THEN** the loop advances to the next eligible change in the tracked set, or terminates if none remain
+
+#### Scenario: ordinary navigation is unchanged when exit does not fire
+
+- **WHEN** a review transaction completes or reports a non-completing outcome and the user's turn does not fire the `exit` token
+- **THEN** the same current-change four-option picker is re-presented
+- **AND** the existing review, evidence, read-only, and `Skip` advancement behavior remains unchanged
 
 #### Scenario: loop terminates when eligible changes are exhausted
 
-- **WHEN** the user has processed every eligible change in the tracked chat-scoped set (by `Skip`)
+- **WHEN** the user has processed every eligible change in the tracked chat-scoped set by selecting `Skip`
 - **THEN** the loop terminates and the section ends
 
 ### Requirement: Read-only constraint
