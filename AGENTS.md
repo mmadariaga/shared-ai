@@ -36,8 +36,8 @@ Each phase reads from and writes to **`openspec/changes/{change-name}/`** — si
  sai/change-overview.md                ← root exception: shared overview-generation instruction
  sai/adr-index.template.md             ← root exception: canonical project-agnostic ADR index template
  sai/ddr-index.template.md             ← root exception: canonical project-agnostic DDR index template
-  sai/adapters/claude/             ← Claude Code boot adapter and paired non-worker idea-list runtime glue
-  sai/adapters/opencode/           ← opencode boot adapter and paired non-worker idea-list runtime glue
+  sai/adapters/claude/             ← Claude Code boot adapter and paired non-worker panel/idea-list runtime glue
+  sai/adapters/opencode/           ← opencode boot adapter and paired non-worker panel/idea-list runtime glue
   sai/orchestration/               ← matrix worker-binding templates (no flat coordinator/worker contracts)
   sai/orchestration/workers/bindings/ ← neutral installed routed worker bindings (seven phases plus the two apply Step-execution workers)
  sai/policies/                    ← canonical reusable policies and prerequisite rules
@@ -73,10 +73,10 @@ The openspec-dependent `sai-*` commands halt with a clear error if either is mis
 | `sai/commands/` | Command cards — routed cards per phase and utility cards per command, fetched by boot adapters at runtime. |
 | `sai/commands/{spec,design,implement,apply,review,security,performance,accessibility}/` | Routed cards: `coordinator.md`, `worker.md`, and `invocation.md` where retained. |
 | `sai/commands/{archive,backfill,commit,explore,pr,status,worktree}/` | Utility cards: `body.md` only — the complete command body for utility commands. |
-| `sai/adapters/claude/boot.md` | Claude Code boot adapter — loads `@sai/command-runner.md`, selects the requested card, owns Claude fetch/dispatch; paired non-worker runtime glue also lives under `sai/adapters/claude/`, including `idea-list-render.md`. |
-| `sai/adapters/opencode/boot.md` | Opencode boot adapter — loads `@sai/command-runner.md`, selects the requested card, owns opencode fetch/dispatch; paired non-worker runtime glue also lives under `sai/adapters/opencode/`, including `idea-list-render.md`. |
+| `sai/adapters/claude/boot.md` | Claude Code boot adapter — loads `@sai/command-runner.md`, selects the requested card, owns Claude fetch/dispatch; paired non-worker panel runtime glue also lives under `sai/adapters/claude/`, including `panel-render.md` and `idea-list-render.md`. |
+| `sai/adapters/opencode/boot.md` | Opencode boot adapter — loads `@sai/command-runner.md`, selects the requested card, owns opencode fetch/dispatch; paired non-worker panel runtime glue also lives under `sai/adapters/opencode/`, including `panel-render.md` and `idea-list-render.md`. |
 | `sai/orchestration/` | Matrix worker-binding templates (`bindings/{claude,opencode}/worker-template.md`); no flat coordinator/worker contracts remain. |
-| `sai/orchestration/workers/bindings/` | Neutral installed routed worker bindings for the seven phases (`spec/design/implementation/review/security/performance/accessibility-worker.md`) plus the two apply Step-execution worker bindings (`red-worker.md`/`green-worker.md`) projected for both harnesses; non-worker idea-list runtime glue is owned by the adapter seam. |
+| `sai/orchestration/workers/bindings/` | Neutral installed routed worker bindings for the seven phases (`spec/design/implementation/review/security/performance/accessibility-worker.md`) plus the two apply Step-execution worker bindings (`red-worker.md`/`green-worker.md`) projected for both harnesses; non-worker panel and idea-list runtime glue is owned by the adapter seam. |
 | `sai/policies/` | Canonical glossary, prerequisite, picker, commit, status, and feedback policies. `sai/policies/artifact-review-contract.md`: shared artifact review finding contract — closed severity vocabulary and assignment criteria, finding shape, severity-prefixed identifier scheme, and closing `Summary:` tally line — single-sourced and referenced by every artifact review surface. |
 | `sai/compat/` | Caller-neutral spec/design/implementation invocation cores and shared compatibility assets. The ADR index template is not owned here. |
 | `sai/commands/spec/invocation.md`, `sai/commands/design/invocation.md`, `sai/commands/implement/invocation.md`, and `sai/commands/apply/invocation.md` | Caller-neutral invocation bodies shared by the routed paths; `review`, `security`, `performance`, and `accessibility` keep equivalent invocation bodies. |

@@ -1,0 +1,7 @@
+# Claude Panel Render Binding
+
+This harness has a native task panel (`panel: native`), declared here — never runtime-detected. A consuming surface uses Claude Code's task tools for panel rendering:
+
+- The machine-readable marker carrier is the task's `description` field. The consuming surface supplies the marker value; the task `metadata` field is not used because it is invisible to `TaskList` and `TaskGet`.
+- Each render converges the panel to the consuming surface's full list: update existing entries in place with `TaskUpdate`, create new entries, and delete entries absent from the list with `TaskUpdate` `{"status": "deleted"}`. Existing task ids stay stable when entries are updated, preserving the carrier's stable item identity; foreign entries are displaced by the first full render.
+- A surface start clear reads task entries with `TaskList` for ids and `TaskGet` per id, classifies entries by the carrier only, and removes the entries bearing that surface's marker with `TaskUpdate`. The read never derives list content.

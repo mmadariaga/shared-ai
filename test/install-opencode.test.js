@@ -305,12 +305,17 @@ test('installOpencode projects the adapter idea-list render glue and resolves it
   try {
     installOpencode(tmpDir);
     const installed = path.join(tmpDir, 'sai', 'adapters', 'opencode', 'idea-list-render.md');
+    const installedPanel = path.join(tmpDir, 'sai', 'adapters', 'opencode', 'panel-render.md');
     const oldDestination = path.join(tmpDir, 'sai', 'orchestration', 'workers', 'bindings', 'idea-list-render.md');
     const source = path.join(repoRoot, 'sai', 'adapters', 'opencode', 'idea-list-render.md');
+    const panelSource = path.join(repoRoot, 'sai', 'adapters', 'opencode', 'panel-render.md');
     assert.equal(fs.existsSync(installed), true, 'the opencode idea-list adapter should be installed');
+    assert.equal(fs.existsSync(installedPanel), true, 'the opencode panel adapter should be installed');
     assert.equal(fs.existsSync(oldDestination), false, 'the old neutral idea-list destination should be absent');
     assert.deepEqual(fs.readFileSync(installed), fs.readFileSync(source),
       'the installed opencode idea-list adapter should preserve source bytes');
+    assert.deepEqual(fs.readFileSync(installedPanel), fs.readFileSync(panelSource),
+      'the installed opencode panel adapter should preserve source bytes');
     const wrapper = fs.readFileSync(path.join(tmpDir, 'commands', 'sai-explore.md'), 'utf8');
     assert.match(wrapper, /Fetch @sai\/adapters\/opencode\/idea-list-render\.md/,
       'sai-explore should resolve the opencode idea-list adapter');
@@ -1666,11 +1671,13 @@ test('Step 3 the opencode neutral inventory is equivalent to Claude and differs 
      assert.deepEqual(opencodeOnly, [
        'sai/adapters/opencode/boot.md',
        'sai/adapters/opencode/idea-list-render.md',
-    ], 'opencode-specific SAI sources should be its boot adapter plus its idea-list-render runtime glue');
+       'sai/adapters/opencode/panel-render.md',
+     ], 'opencode-specific SAI sources should be its boot adapter plus its panel and idea-list runtime glue');
      assert.deepEqual(claudeOnly, [
        'sai/adapters/claude/boot.md',
        'sai/adapters/claude/idea-list-render.md',
-    ], 'Claude-specific SAI sources should be its boot adapter plus its idea-list-render runtime glue');
+       'sai/adapters/claude/panel-render.md',
+     ], 'Claude-specific SAI sources should be its boot adapter plus its panel and idea-list runtime glue');
   } finally {
     for (const harness of ['claude', 'opencode']) {
       fs.rmSync(bases[harness], { recursive: true, force: true });

@@ -605,6 +605,36 @@
       "drift": "content"
     },
     {
+      "id": "claude-panel-render-adapter",
+      "source": "sai/adapters/claude/panel-render.md",
+      "destination": {
+        "class": "sai",
+        "path": "adapters/claude/panel-render.md"
+      },
+      "harnesses": [
+        "claude"
+      ],
+      "strategy": "copy",
+      "recursive": false,
+      "ownership": "managed",
+      "drift": "content"
+    },
+    {
+      "id": "opencode-panel-render-adapter",
+      "source": "sai/adapters/opencode/panel-render.md",
+      "destination": {
+        "class": "sai",
+        "path": "adapters/opencode/panel-render.md"
+      },
+      "harnesses": [
+        "opencode"
+      ],
+      "strategy": "copy",
+      "recursive": false,
+      "ownership": "managed",
+      "drift": "content"
+    },
+    {
       "id": "universal-skills",
       "source": "skills/universal",
       "destination": {
