@@ -30,8 +30,11 @@ A progress event is the separate closed shape
 reported step ids in the adapter-declared plan, ignore undeclared ids not
 declared in the plan — the plan is never extended or amended for them — add
 every path in `changed_files` to the invocation-scoped union in first-seen
-order, and continue the same worker with exactly `continue_after_progress`.
-Progress events are not a worker status.
+order, re-render the task list from the updated marked set per
+`@sai/policies/todo-structure.md`, and only then continue the same worker with
+exactly `continue_after_progress`. Render before resuming, so the user sees the
+mark before the next stretch of worker work begins. Progress events are not a
+worker status.
 
 Attempt same-worker continuation first. If it fails, preserve the union and
 dispatch at most one replacement worker with the original envelope, exact

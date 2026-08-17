@@ -57,10 +57,15 @@ order:
 - `plan-generation` — "Write implementation.md"
 - `validation` — "Validate implementation.md and the audit append"
 
-Emit exactly one progress event per completed batch after prerequisite checks
+Return exactly one progress event per completed batch after prerequisite checks
 pass and change resolution completes, whenever one or more plan steps
-complete. The startup act (prerequisite checks + resolution) reports as one
-batch carrying `prereqs-resolution`. Report ids in plan order; `changed_files`
+complete, per `@sai/worker-core.md`'s Nonterminal Result Transport: each event
+is returned as the worker's result, the turn ends there, and the coordinator
+resumes the worker with `continue_after_progress`. Composing the event as text
+inside this session marks nothing. The startup act (prerequisite checks +
+resolution) reports as one batch carrying `prereqs-resolution` and is the
+Startup Handshake — return it before dispatching any `budget-subagent` or
+`budget-explorer`, writing `implementation.md`, or beginning artifact analysis. Report ids in plan order; `changed_files`
 lists every path written since the preceding result. On a first run the
 collapse step is skipped entirely; the skipped `collapse-implemented-steps` id
 folds into the next completed batch in plan order with no separate `skipped`

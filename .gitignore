@@ -1,4 +1,7 @@
 .opencode/agents
+.opencode/commands/budget.md
+.opencode/commands/sai-*.md
+
 .claude/settings.local.json
 
 node_modules/
@@ -10,3 +13,5 @@ openspec/changes/**
 # Orca Environment — local runtime state and operator-supplied credentials
 docker/orca/.env
 docker/orca/credentials/
+
+

@@ -33,10 +33,11 @@
   - `plan-generation` — "Write implementation.md"
   - `validation` — "Validate implementation.md and the audit append"
 
-  Render the full plan at dispatch before the first worker result per
-  `@sai/policies/todo-structure.md` (first step `in_progress`, rest `pending`);
-  mark steps only from worker progress-event `step_ids`; and reconcile at
-  run-closing results. This implementation plan has no `review` step and no
+  Render the full plan per `@sai/policies/todo-structure.md` (first step
+  `in_progress`, rest `pending`) **before** dispatching the worker — the render
+  is a prerequisite of the dispatch, not a step that follows it. Re-render the
+  list on every progress event, before resuming the worker. Mark steps only
+  from worker progress-event `step_ids`; and reconcile at run-closing results. This implementation plan has no `review` step and no
   evidence-marked designation, so no reconciliation carve-out applies:
   `completed` renders every unmarked step `completed`, `validation` included;
   `failed` and `cancelled` leave the list exactly as last rendered; and a
