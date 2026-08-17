@@ -1,4 +1,4 @@
-## ADDED Requirements
+## Requirements
 
 ### Requirement: Interview questions asked sequentially
 
@@ -15,3 +15,11 @@ The backfill command SHALL ask the two fixed interview questions one at a time, 
 #### Scenario: No merged questions
 - **WHEN** the interview begins
 - **THEN** the two fixed questions are never combined into a single message regardless of diff complexity
+
+### Requirement: Sequential interview keeps pinned free-text delivery
+
+The backfill command SHALL preserve one-at-a-time ordering and the response wait between the two fixed questions while emitting each question once as ordinary free text, without native option-picker routing.
+
+#### Scenario: Question delivery remains sequential
+- **WHEN** Question 1 is emitted
+- **THEN** the command waits for the user's full response before emitting Question 2, and neither question is duplicated through a question tool

@@ -36,6 +36,8 @@ The diff source MUST be selected before any question is asked, before any spec i
 
 Ask the following two questions **one at a time, sequentially**. After each question, **wait for the user's full response** before proceeding to the next. Do NOT ask both questions in the same message. Do NOT skip, rephrase, or merge them regardless of how self-explanatory the diff appears:
 
+**Delivery (fixed and adaptive interview questions alike).** Every question in this phase is open-ended free text, not a closed set — the "Closed-choice prompts" rule in `remember.md` does NOT apply here. Emit the question string **exactly once**, as ordinary conversation text, and end the turn there. Do NOT also route it through the harness option-picker / question tool (`AskUserQuestion` on Claude Code, `question` on opencode), and do NOT echo, restate, or re-print the question in the same turn — a question rendered both as text and through a tool reaches the user duplicated.
+
 **Question 1:** "What problem does this solve?"
 
 **Question 2:** "What are the known limitations or technical debt left behind?"

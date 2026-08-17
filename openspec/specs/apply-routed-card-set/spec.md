@@ -127,3 +127,11 @@ The apply coordinator SHALL remain the executing main-session driver: it perform
 
 - **WHEN** a RED or GREEN worker is dispatched
 - **THEN** it receives the Step execution task (and its dispatch-kind scope) and returns lifecycle payloads; it never receives coordinator authority over gates, appendices, or commits
+
+### Requirement: Apply invocation preserves fast-track gate contracts
+
+The routed `sai/commands/apply/invocation.md` SHALL contain the apply-time session commit authorization and fast-track branch auto-stay contracts that were previously documented in the retired apply instruction surface. Cross-file references SHALL point to the current implementation plan template.
+
+#### Scenario: Routed invocation exposes both restored behaviors
+- **WHEN** the routed apply invocation is loaded
+- **THEN** it defines session flag activation, reset, scope, and reporting, plus non-detached branch auto-stay and detached-HEAD fallback

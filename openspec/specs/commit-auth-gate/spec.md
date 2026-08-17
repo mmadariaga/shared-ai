@@ -78,3 +78,15 @@ This session grant is a deliberate, scoped exception to the general "ask every t
 
 - **WHEN** a session with an active flag ends and a new chat or new `/sai-*` invocation begins
 - **THEN** the flag is inactive, no file on disk records it, and the per-commit gate applies again until the user opts in anew
+
+### Requirement: Apply invocation defines session-scoped commit authorization
+
+The routed apply invocation SHALL define the in-memory `session_commit_authorized` lifecycle, including activation from `Allow on this session`, fast-track pre-activation, reset at a new chat or `/sai-*` invocation, and scope limited to the per-Step and terminal documentation commit gates.
+
+#### Scenario: Fast-track pre-activates the session flag
+- **WHEN** apply starts with the fast-track signal active
+- **THEN** the coordinator treats `session_commit_authorized` as active before either apply commit gate while still printing each required visibility report and proposed message
+
+#### Scenario: Session flag does not bypass other gates
+- **WHEN** the session flag is active and apply reaches a GREEN-conflict STOP or Human Verification gate
+- **THEN** the workflow still stops at that gate

@@ -74,3 +74,11 @@ The apply coordinator SHALL retain task-list, verification, union, gate, and com
 #### Scenario: Apply receives a timestamped result
 - **WHEN** a RED or GREEN worker returns progress or a terminal result
 - **THEN** the coordinator uses the payload timestamp for progress rendering without taking over its composition.
+
+### Requirement: Coordinator-owned commit gates honor the session flag
+
+The apply coordinator SHALL retain ownership of both commit gates and SHALL use the in-memory session authorization flag only to skip the authorization ask. It SHALL still print the pre-commit visibility report and proposed message and SHALL not bypass unrelated stops or operations.
+
+#### Scenario: Active session flag skips only authorization
+- **WHEN** the flag is active at a per-Step or terminal documentation commit gate
+- **THEN** the coordinator prints the required report and message, then performs the authorized commit without presenting the authorization prompt

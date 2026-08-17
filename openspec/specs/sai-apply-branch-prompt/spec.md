@@ -1,4 +1,4 @@
-## ADDED Requirements
+## Requirements
 
 ### Requirement: Plan template Prerequisites section SHALL use a 3-option branch-selection prompt
 The `## Prerequisites` block inside `<plan_template>` in `sai/commands/implement/instructions.md` SHALL be replaced with a branch-selection prompt that presents exactly three options to the user. The hardcoded instruction "Ensure branch is not master or main" SHALL be removed. No branch name is prohibited — the user has complete opt-out.
@@ -171,3 +171,15 @@ In case 3, the new branch SHALL be created from the default branch without promp
 - **WHEN** the current branch is the resolved default branch (for example `main`) and the user selects a new branch via option 1 or 3
 - **THEN** no base prompt is presented
 - **THEN** the Prerequisites section instructs the agent to create the new branch from the default branch
+
+### Requirement: Apply fast-track may resolve the branch prompt at runtime
+
+The apply invocation SHALL identify the three-option branch-selection prompt in `sai/commands/implement/implementation-plan.template.md` as the apply-time trigger. Fast-track SHALL select option 2 only for a non-empty current branch; detached HEAD SHALL retain the interactive prompt and its existing branch-base rules.
+
+#### Scenario: Option-two auto-selection skips branch-base handling
+- **WHEN** fast-track selects stay on the current branch
+- **THEN** no branch-base sub-prompt is presented because no new branch is created
+
+#### Scenario: Detached HEAD uses the existing prompt
+- **WHEN** fast-track reaches the branch-selection prompt with detached HEAD
+- **THEN** the three options remain available and the existing branch-base behavior is unchanged

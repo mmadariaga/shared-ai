@@ -1,3 +1,5 @@
+.tmp
+
 .opencode/agents
 .opencode/commands/budget.md
 .opencode/commands/sai-*.md

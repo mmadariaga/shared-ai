@@ -1,4 +1,4 @@
-## MODIFIED Requirements
+## Requirements
 
 ### Requirement: Two fixed questions always asked
 
@@ -48,3 +48,15 @@ The command SHALL collect answers to all questions (fixed + adaptive) before wri
 #### Scenario: Artifact generation gated on interview completion
 - **WHEN** the user answers the last question
 - **THEN** conflict detection runs and artifact writing begins; no artifact is written mid-interview
+
+### Requirement: Interview questions use single free-text delivery
+
+The backfill command SHALL emit each fixed or adaptive interview question exactly once as ordinary conversation text and SHALL end the turn there. These open-ended questions SHALL not be routed through the harness option-picker or question tool and SHALL not be echoed or restated in the same turn.
+
+#### Scenario: Fixed question is emitted once
+- **WHEN** a fixed interview question is asked
+- **THEN** the user sees one ordinary conversation question and no duplicate picker rendering
+
+#### Scenario: Adaptive question uses the same delivery
+- **WHEN** a genuine gap requires an adaptive question
+- **THEN** it uses the same single free-text delivery mechanism as the fixed questions

@@ -98,7 +98,7 @@ Explicit user flags SHALL always win over detected style: `--type` and `--scope`
 ### Requirement: Hard rules
 The following MUST be enforced unconditionally:
 - Never stage or unstage files — operate only on what is already staged.
-- Never run `git commit` without explicit per-invocation user authorization.
+- Never run `git commit` without explicit per-invocation user authorization, except for the in-memory session-scoped authorization defined by the routed apply invocation at its documented apply commit gates.
 - Never amend a commit already pushed without explicit warning and secondary confirmation.
 - Never use `--no-verify` to skip hooks — surface failures, do not bypass.
 - Never include unstaged content in the message — describe only `git diff --cached`.
@@ -135,3 +135,10 @@ Before presenting a commit message, the agent SHALL internally verify all seven 
 - **WHEN** the agent performs self-critique point 6 on a draft message
 - **THEN** it MUST verify the draft applied the correct rubric branch (adoption or fallback) rather than judging "consistent with recent commits" informally
 
+### Requirement: Session-scoped authorization has an explicit apply owner
+
+The session-scoped commit authorization referenced by the commit rules SHALL be owned by the routed apply invocation contract, kept in conversation memory only, and limited to the documented apply commit gates.
+
+#### Scenario: Commit rules reference a defined session grant
+- **WHEN** an apply run uses session-scoped commit authorization
+- **THEN** the apply invocation defines its lifecycle and the grant does not authorize push, force operations, branch changes, rebase, merge, tag, or pull-request actions
