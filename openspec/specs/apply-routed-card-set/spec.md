@@ -52,6 +52,14 @@ The apply runner deviates from the neutral single-dispatch rule by design: `sai/
 - **WHEN** workers return results across dispatches and retries
 - **THEN** the coordinator adds every `changed_files` path once in first-seen order and never resets the union during the run
 
+### Requirement: Timestamped apply progress validation
+
+The apply adapter SHALL validate `emitted_on` in every RED, GREEN, and green-exception progress event while preserving each immutable dispatch-local plan, ordered union, and same-worker continuation.
+
+#### Scenario: Apply dispatch reports progress
+- **WHEN** a dispatched apply worker returns a progress event
+- **THEN** the coordinator validates its timestamp, marks declared ids, unions paths, and continues the same worker.
+
 ### Requirement: apply-invocation-core-preserves-loading
 
 The apply `invocation.md` SHALL preserve the utility body's loading behavior: the change picker, the prerequisite checks (including the `implementation.md` existence check), the fast-track parse of `$ARGUMENTS`, the `budget` skill, the `safe-operations` skill, the `sai-learnings-format` policy, the runner.md loop contract, and the `remember` policy. The invocation core SHALL be shared by both harnesses and SHALL NOT re-implement coordinator lifecycle mechanics.

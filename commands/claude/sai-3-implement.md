@@ -3,7 +3,7 @@ description: Granular implementation plan through the canonical coordinator cont
 argument-hint: "[change-name]"
 model: opus
 effort: low
-allowed-tools: Read, Glob, Skill, Agent, SendMessage, AskUserQuestion, Bash(date:*)
+allowed-tools: Read, Glob, Skill, Agent, SendMessage, AskUserQuestion
 ---
 Fetch @skills/fetch/SKILL.md
 Fetch @sai/adapters/claude/boot.md and follow it.

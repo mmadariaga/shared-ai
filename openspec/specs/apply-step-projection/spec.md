@@ -75,3 +75,11 @@ The projection SHALL NOT introduce progress events, a `progress_plan` declaratio
 
 - **WHEN** a RED or GREEN Step-execution worker runs during an apply run
 - **THEN** the worker does not emit the task-list tool call; only the coordinator session does
+
+### Requirement: Apply projection stays unstamped
+
+The apply run-start projection SHALL remain separate from dispatch-local progress plans and SHALL receive no milestone stamps from RED or GREEN worker events.
+
+#### Scenario: Timestamped apply results do not stamp projection
+- **WHEN** RED or GREEN returns a progress or terminal result with `emitted_on`
+- **THEN** the implementation step projection remains unstamped.

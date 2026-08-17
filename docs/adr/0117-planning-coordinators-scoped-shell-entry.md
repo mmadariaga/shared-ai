@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted
+Superseded by [ADR 0144](./0144-planning-coordinators-drop-the-scoped-date-shell-entry.md)
 
 ## Context
 

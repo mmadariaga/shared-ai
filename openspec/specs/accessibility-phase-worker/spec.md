@@ -101,6 +101,14 @@ The worker SHALL write and verify only `openspec/changes/{change-name}/accessibi
 - **THEN** `accessibility.md` exists, is non-empty, and contains only evidence-backed findings or explicit clean outcomes in the selected scope
 - **AND** the worker returns `completed` with `accessibility.md` as its only changed file
 
+### Requirement: Accessibility lifecycle results carry emission time
+
+The accessibility worker SHALL emit worker-authored `emitted_on` through progress and terminal lifecycle results while retaining static review, runtime authorization, and report-only write boundaries.
+
+#### Scenario: Accessibility reports a milestone
+- **WHEN** an accessibility milestone completes
+- **THEN** its lifecycle payload includes `emitted_on` and the changed paths for that result.
+
 #### Scenario: Report generation would modify production files
 - **WHEN** a proposed audit action would modify production code, components, styles, configuration, or runtime state
 - **THEN** the worker rejects that action

@@ -59,3 +59,11 @@ The coordinator SHALL validate every worker result against the closed worker lif
 - **WHEN** the worker returns `failed` or `cancelled`
 - **THEN** the coordinator prints the supplied blocking or clean-stop summary and changed-file union
 - **AND** it stops without performing technical recovery
+
+### Requirement: Accessibility progress uses payload-derived stamps
+
+The accessibility coordinator SHALL validate `emitted_on`-bearing lifecycle results and render completed-step stamps from worker payloads without executing UI, runtime, scanner, artifact, or wall-clock operations.
+
+#### Scenario: Accessibility progress returns
+- **WHEN** the accessibility worker reports progress
+- **THEN** the coordinator renders the payload-derived stamp and forwards only protocol continuation.

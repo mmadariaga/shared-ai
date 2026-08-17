@@ -11,7 +11,7 @@ Workers SHALL return progress events and design notices as closed nonterminal re
 
 #### Scenario: progress event pauses the worker
 - **WHEN** a worker completes one or more newly completed progress-plan steps
-- **THEN** it SHALL return a progress event containing `event: "progress"`, `step_ids`, and `changed_files`
+- **THEN** it SHALL return a progress event containing `event: "progress"`, `emitted_on`, `step_ids`, and `changed_files`
 - **AND** its turn SHALL end until the coordinator resumes it
 
 #### Scenario: coordinator resumes progress

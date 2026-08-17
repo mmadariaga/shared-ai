@@ -3,7 +3,7 @@ description: Generate design.md and tasks.md through the canonical coordinator c
 argument-hint: "[change-name] [--overview-lang <language>] [--fast-track]"
 model: claude-opus-4-8
 effort: low
-allowed-tools: Read, Glob, Skill, Agent, SendMessage, AskUserQuestion, Bash(date:*)
+allowed-tools: Read, Glob, Skill, Agent, SendMessage, AskUserQuestion
 ---
 Fetch @skills/fetch/SKILL.md
 Fetch @sai/adapters/claude/boot.md and follow it.

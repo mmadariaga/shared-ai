@@ -148,6 +148,14 @@ The worker SHALL write `openspec/changes/{change-name}/review.md` using the exis
 - **THEN** the worker returns `completed` with severity counts, top three Critical findings when present, report path, the complete worker-authored `## Recommended Audits` block, and parent-branch statement
 - **AND** it returns no report contents in the lifecycle payload
 
+### Requirement: Review lifecycle results carry emission time
+
+The review worker SHALL emit worker-authored `emitted_on` through progress and terminal lifecycle results while retaining review passes, mutation analysis, report generation, and triage ownership.
+
+#### Scenario: Review reports a milestone
+- **WHEN** a review milestone completes
+- **THEN** its progress result includes `emitted_on` and changed paths.
+
 ### Requirement: Review findings use the shared audit severity vocabulary
 
 The review instruction and worker contract SHALL classify every finding with one of the shared severities `Critical`, `High`, `Medium`, or `Low`, or with the review-only `Question` category. `Critical` SHALL mean must-fix-before-merge (bugs, security holes, broken builds, contract violations, contradictions of the change artifacts); `High` SHALL mean should-fix-before-merge (significant maintainability, performance, or test-coverage issues that will hurt soon); `Medium` SHALL mean a moderate maintainability, performance, or test-coverage concern that does not threaten merge-readiness but should be addressed soon; `Low` SHALL mean nice-to-fix (naming, small refactors, low-impact polish); `Question` SHALL mean genuine uncertainty needing user input, used sparingly. The retired terms `Blocker`, `Major`, and `Minor` SHALL NOT be emitted by the review instruction, the review worker contract, or the review report. Every triage escalation in the review instruction SHALL reference the new levels: blatant security findings SHALL be raised as `Critical`, blatant performance and accessibility findings as `High` or `Critical`, and glossary deviations as `Low`.
@@ -185,4 +193,3 @@ The review instruction SHALL assign every finding a severity-prefixed identifier
 - **WHEN** the review report is complete
 - **THEN** it closes with a `Summary:` line tallying `Critical`, `High`, `Medium`, `Low`, and `Questions` counts that match the listed findings
 - **AND** the worker completion verification names the top three `Critical` findings when present
-

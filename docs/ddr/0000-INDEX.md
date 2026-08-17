@@ -161,6 +161,8 @@ This index groups the DDRs in `docs/ddr/` by **command** and by **cross-cutting 
 - [0136 — The overview generator envelope remains a closed five-field contract](./0136-overview-generator-envelope-remains-five-field.md)
 - [0138 — Cap exhaustion continues after the last round's findings](./0138-cap-exhaustion-continues-after-last-round-findings.md)
 - [0139 — Supervised review edits remain worker-owned](./0139-supervised-review-edits-remain-worker-owned.md) — Refs adr:0139
+- [0140 — Every closed worker payload carries a worker-authored `emitted_on`](./0140-closed-worker-payloads-carry-result-emission-time.md) — Refs 0110
+- [0141 — The milestone stamp is closure-only and derived from `emitted_on`, never from a coordinator clock](./0141-milestone-stamp-is-closure-only-and-derived-from-emitted-on.md) — Refs 0140, Refs 0112, Refs adr:0144
 
 ### Fetch resolution & path conventions
 
@@ -241,6 +243,7 @@ This index groups the DDRs in `docs/ddr/` by **command** and by **cross-cutting 
 |---|---|---|
 | [0062](./0062-field-9-soft-degradation-stated-at-two-sites.md) | amends | [0026](./0026-stable-eight-field-report.md) |
 | [0137](./0137-apply-routed-boundary-carries-progress-events.md) | supersedes | [0116](./0116-apply-phase-carries-no-progress-events.md) |
+| [0141](./0141-milestone-stamp-is-closure-only-and-derived-from-emitted-on.md) | supersedes | [adr:0118](../adr/0118-per-harness-wall-clock-commands-in-bindings.md) |
 
 ## Superseded DDRs (historical)
 

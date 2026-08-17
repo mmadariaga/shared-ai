@@ -77,6 +77,14 @@ The GREEN worker contract (`sai/commands/apply/green-worker.md`) SHALL define th
 - **WHEN** a Step's plan-level file scope contains no production file
 - **THEN** it is never dispatched to the GREEN worker; it routes to the RED worker under the green-exception
 
+### Requirement: Apply worker lifecycle payloads carry emission time
+
+RED and GREEN workers SHALL include worker-authored `emitted_on` in every progress and terminal payload while preserving their scope boundaries, test-file prohibition, and green-exception routing.
+
+#### Scenario: Apply worker reports a milestone
+- **WHEN** a RED or GREEN worker completes a declared milestone
+- **THEN** its lifecycle result includes `emitted_on` and the existing changed-file data.
+
 ### Requirement: apply-worker-lifecycle
 
 Both apply workers SHALL follow the shared worker lifecycle: each returns exactly one terminal lifecycle status (`completed`, `needs_input`, `failed`, or `cancelled`) with a string `summary` and a string-list `changed_files`; each post-resolution payload SHALL include `resolved_change_name`. Workers SHALL NOT run git operations, create commits, or edit `implementation.md`. The `changed_files` payload SHALL exclude every path below the declared scratch path `.tmp/{change-name}/` — the same scratch-free rule that governs report field 8 — so scratch never enters the coordinator's `changed_files` union or the pre-commit add-list.

@@ -66,3 +66,11 @@ The commit SHALL be executed by the coordinator in the main session only: the ST
 
 - **WHEN** the final sweep passes and the Learnings Promotion Pass completes
 - **THEN** the coordinator evaluates the fixed terminal set and commits it through the terminal gate, never a worker
+
+### Requirement: Worker payloads author emission time
+
+The apply coordinator SHALL retain task-list, verification, union, gate, and commit ownership while RED and GREEN workers author `emitted_on` in their lifecycle payloads.
+
+#### Scenario: Apply receives a timestamped result
+- **WHEN** a RED or GREEN worker returns progress or a terminal result
+- **THEN** the coordinator uses the payload timestamp for progress rendering without taking over its composition.

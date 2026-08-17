@@ -59,3 +59,11 @@ The coordinator SHALL validate every worker result before acting on it. A termin
 - **WHEN** the worker returns `failed` or `cancelled`
 - **THEN** the coordinator prints the supplied blocking or clean-stop summary and changed-file union
 - **AND** it stops without performing technical recovery
+
+### Requirement: Security progress uses payload-derived stamps
+
+The security coordinator SHALL validate `emitted_on`-bearing lifecycle results and render completed-step stamps from worker payloads without moving security analysis or artifact writes into the coordinator.
+
+#### Scenario: Security progress returns
+- **WHEN** the security worker reports progress
+- **THEN** the coordinator renders the payload-derived stamp and forwards only protocol continuation.

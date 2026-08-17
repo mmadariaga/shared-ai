@@ -15,10 +15,22 @@ artifact contents.
 
 ## Closed Outcomes
 
+Every closed payload — terminal status, design notice, and progress event alike —
+carries `emitted_on` immediately after its `status` or `event` discriminator. It
+is the worker-authored ISO-8601 instant at which the worker composed that
+result, in the exact form `YYYY-MM-DDTHH:MM:SS±HH:MM` (for example
+`2026-08-17T14:32:05+02:00`): local wall-clock time followed by the session's
+numeric UTC offset, colon-separated, never the `Z` designator, and never
+omitted. A machine running on UTC writes `+00:00`. It is mandatory in every
+payload below; a result missing it, or carrying a non-ISO-8601 or
+offset-less value, is malformed.
+See [Result Emission Time](#result-emission-time).
+
 Completion is exactly:
 
 ```yaml
 status: completed
+emitted_on: string
 summary: string
 changed_files: string[]
 resolved_change_name: string
@@ -28,6 +40,7 @@ Input is exactly:
 
 ```yaml
 status: needs_input
+emitted_on: string
 summary: string
 changed_files: string[]
 question: string
@@ -41,6 +54,7 @@ Unsuccessful outcomes are exactly:
 
 ```yaml
 status: failed|cancelled
+emitted_on: string
 summary: string
 changed_files: string[]
 ```
@@ -53,6 +67,7 @@ classification, exactly:
 
 ```yaml
 status: failed
+emitted_on: string
 summary: string
 changed_files: string[]
 resolved_change_name: string
@@ -74,6 +89,7 @@ The design-only notice is exactly:
 
 ```yaml
 event: notice
+emitted_on: string
 message: string
 changed_files: string[]
 ```
@@ -86,6 +102,7 @@ The progress event is the routed-phase additive extension, exactly:
 
 ```yaml
 event: progress
+emitted_on: string
 step_ids: string[]
 changed_files: string[]
 ```
@@ -104,6 +121,47 @@ retains its existing payload validation and lifecycle behavior. Its acknowledgem
 handling, opaque interaction history, and pending feedback; it is never
 recorded as user input. No progress event contains a continuation identifier,
 binding dispatch metadata, or artifact contents.
+
+## Result Emission Time
+
+`emitted_on` is worker-authored and describes one result, not the run. The
+worker reads the clock at the moment it composes the payload it is about to
+return, and it never reuses, back-dates, forward-dates, or copies the value from
+an earlier result. The value SHALL come from an actual clock read; a worker
+SHALL NOT estimate, infer, or carry forward a time it did not read. Across one
+run the values are therefore non-decreasing in return order, and the terminal
+result carries the latest one.
+
+The instant is written in the session's local zone with its numeric offset
+attached, so the wall-clock reading and the absolute instant travel together:
+characters 12–16 are the local `HH:MM` a reader recognises, and the trailing
+offset keeps the value an unambiguous instant, exactly as comparable as a UTC
+one. The offset is the worker's own at composition time. A run that crosses a
+daylight-saving transition therefore carries two different offsets, and its
+values remain correct instants while ceasing to sort lexicographically — an
+accepted trade for local readability the rest of the year.
+
+The field is present in every closed payload and in every phase, including a
+phase whose adapter declares no progress plan and a pre-resolution result that
+omits `resolved_change_name`. Unlike `resolved_change_name`, `failure_class`,
+and `unrecoverable`, it is never conditional.
+
+It is worker state, not binding state: it is not a continuation identifier, not
+binding dispatch metadata, and not artifact contents, so it stays worker-authored
+under the same rules as `summary` and `changed_files`. A coordinator forwards or
+records it verbatim and SHALL NOT invent, correct, re-derive, or reformat it.
+A replacement worker authors its own `emitted_on` for its own results and never
+reconstructs the prior worker's values.
+
+`emitted_on` is the sole source of the Milestone Stamp. The stamp is the
+coordinator-rendered `HH:mm` annotation a progress task list attaches to a step
+when it renders `completed` per `@sai/policies/todo-structure.md`, and its value
+is the `emitted_on` of the result that marked that step — a progress event for a
+step it marks, the terminal `completed` payload for a step closed by run-closing
+reconciliation. The coordinator never reads a clock to produce a stamp. A worker
+that authors an inaccurate `emitted_on` therefore renders an inaccurate stamp,
+which is why the value is read at composition time and never reconstructed
+afterwards. The worker still never renders, attaches, or formats a stamp itself.
 
 ## Nonterminal Result Transport
 

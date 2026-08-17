@@ -4,7 +4,7 @@
 
 ## Status
 
-Accepted
+Superseded by [DDR 0141](../ddr/0141-milestone-stamp-is-closure-only-and-derived-from-emitted-on.md)
 
 ## Context
 

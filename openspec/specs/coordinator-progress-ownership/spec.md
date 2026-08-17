@@ -166,3 +166,11 @@ The coordinator's progress behavior SHALL be limited to rendering the declared p
 
 - **WHEN** the coordinator renders or updates the task list
 - **THEN** it SHALL use only the declared plan and the accumulated marked set, and SHALL NOT read OpenSpec artifacts or git state
+
+### Requirement: Completed-step stamps use marking payloads
+
+The coordinator SHALL source each completed-step milestone stamp from the `emitted_on` of the progress or terminal result that marks the step, while retaining the invocation-scoped marked set and changed-file union.
+
+#### Scenario: A result marks a step
+- **WHEN** a progress event or successful reconciliation marks a step completed
+- **THEN** the coordinator attaches that result's `HH:mm` value and makes no wall-clock call.

@@ -37,7 +37,7 @@ The routed spec coordinator SHALL declare the canonical spec progress plan from 
 
 ### Requirement: Spec coordinator admits progress events as the sole nonterminal extension
 
-The spec coordinator SHALL accept progress events as the only allowed nonterminal extension. `extension_handlers` SHALL remain empty, there is no design notice state, and validation SHALL cover the four closed lifecycle statuses plus the progress event shape `{event: "progress", step_ids: string[], changed_files: string[]}`. On a progress event the coordinator SHALL union the event's `changed_files` in first-seen order and continue the same worker with exactly `continue_after_progress`; the acknowledgement SHALL be protocol-only and SHALL NOT be recorded as user input, opaque input history, or pending feedback.
+The spec coordinator SHALL accept progress events as the only allowed nonterminal extension. `extension_handlers` SHALL remain empty, there is no design notice state, and validation SHALL cover the four closed lifecycle statuses plus the progress event shape `{event: "progress", emitted_on: string, step_ids: string[], changed_files: string[]}`. On a progress event the coordinator SHALL validate and forward `emitted_on` verbatim, union the event's `changed_files` in first-seen order, and continue the same worker with exactly `continue_after_progress`; the acknowledgement SHALL be protocol-only and SHALL NOT be recorded as user input, opaque input history, or pending feedback.
 
 #### Scenario: progress is acknowledged without history
 

@@ -11,14 +11,28 @@ every returned result before acting on it.
 
 Worker results are closed payloads. A terminal result has exactly one of these
 statuses: `completed`, `needs_input`, `failed`, or `cancelled`. Validate the
-status, string `summary`, and string-list `changed_files`; `needs_input` also
-requires its question, ordered options where applicable, and binding-owned
-continuation metadata. A design notice is the separate closed shape
-`{event: "notice", message: string, changed_files: string[]}`.
+status, the offset-bearing ISO-8601 `emitted_on`, string `summary`, and string-list
+`changed_files`; `needs_input` also requires its question, ordered options where
+applicable, and binding-owned continuation metadata. A design notice is the
+separate closed shape
+`{event: "notice", emitted_on: string, message: string, changed_files: string[]}`.
 
 Add every reported path to the invocation-scoped union in first-seen order.
 The non-reset enumeration spans input, feedback, notice, progress,
 continuation, and recovery, and is never reset.
+
+Every closed payload — terminal status, notice, and progress event alike —
+carries the worker-authored `emitted_on` immediately after its `status` or
+`event` discriminator, in the exact form `YYYY-MM-DDTHH:MM:SS±HH:MM` — local
+wall-clock time with the session's numeric UTC offset, never the `Z` designator.
+It is mandatory in every result and in every phase; a missing, non-ISO-8601, or
+offset-less value is a malformed payload, handled through the same route as any
+other closed-shape violation. Forward or record the value verbatim and never
+invent, correct, re-derive, or reformat it. It is also the sole source of the
+Milestone Stamp: the `HH:mm` a progress task list attaches to a step it renders
+`completed` is that step's marking result's `emitted_on` per
+`@sai/policies/todo-structure.md`, read straight off the value with no
+conversion, so the coordinator issues no wall-clock call and resolves no zone.
 
 For `needs_input`, present the exact question and options, forward the exact
 answer through the active binding, and process the next result through this
@@ -26,7 +40,7 @@ loop. For a notice, invoke the design adapter's notice extension and forward
 its fixed acknowledgement. Notices are not a worker status.
 
 A progress event is the separate closed shape
-`{event: "progress", step_ids: string[], changed_files: string[]}`: mark the
+`{event: "progress", emitted_on: string, step_ids: string[], changed_files: string[]}`: mark the
 reported step ids in the adapter-declared plan, ignore undeclared ids not
 declared in the plan — the plan is never extended or amended for them — add
 every path in `changed_files` to the invocation-scoped union in first-seen

@@ -39,3 +39,11 @@ Every research subagent spawned by the design worker or the Copilot inline desig
 #### Scenario: Design worker delegates codebase research
 - **WHEN** the design worker launches a research subagent
 - **THEN** the prompt SHALL define exact fields, a hard cap, and no-raw-content discipline, and the design worker SHALL retain responsibility for technical decisions and artifact writes
+
+### Requirement: Payload-sourced stamps remove coordinator clock access
+
+The routed design coordinator SHALL source milestone stamps from worker-authored `emitted_on` and SHALL perform no wall-clock shell call; source discovery remains delegated to the design worker.
+
+#### Scenario: Design renders a completed step
+- **WHEN** a design result marks a progress step completed
+- **THEN** the coordinator reads the result's `emitted_on` and performs no shell operation.

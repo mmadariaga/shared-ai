@@ -92,3 +92,10 @@ After a completed worker result, the coordinator SHALL print the worker-authored
 - **THEN** the coordinator prints the supplied blocking or clean-stop summary and changed-file union
 - **AND** it stops without technical recovery
 
+### Requirement: Review progress uses payload-derived stamps
+
+The review coordinator SHALL validate `emitted_on`-bearing lifecycle results and render completed-step stamps from worker payloads without taking ownership of review analysis or report I/O.
+
+#### Scenario: Review progress returns
+- **WHEN** the review worker reports progress
+- **THEN** the coordinator renders the payload-derived stamp and resumes the worker unchanged.

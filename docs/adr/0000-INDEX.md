@@ -19,8 +19,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0028 — The feedback gate takes three named parameters supplied inline at the fetch site](./0028-gate-parameters-inline-at-fetch-site.md)
 - [0066 — Provenance as inline citations on existing Why / Decisions & Rationale fields — no new field](./0066-inline-provenance-no-new-field.md)
 - [0093 — Route spec through workers while Copilot remains inline](./0093-route-spec-through-workers-while-copilot-remains-inline.md) — Refs 0082, Refs 0083, Refs 0090, Refs 0092
-- [0117 — The three planning-phase coordinators receive the scoped `Bash(date:*)` entry as the sole allowed-tools exception](./0117-planning-coordinators-scoped-shell-entry.md)
-- [0118 — Per-harness wall-clock commands live in the harness bindings, never in the neutral policy](./0118-per-harness-wall-clock-commands-in-bindings.md) — Refs 0077
+- [0144 — The three planning-phase coordinators drop the scoped `Bash(date:*)` entry](./0144-planning-coordinators-drop-the-scoped-date-shell-entry.md) — Supersedes 0117, Refs 0118, Refs ddr:0141
 - [0139 — Use fresh read-only reviewers with worker-owned artifact edits](./0139-fresh-read-only-reviewers-with-worker-owned-edits.md) — Refs ddr:0105
 ### `/sai-2-design`
 
@@ -44,8 +43,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0108 — Tasks files-affected entries carry a closed four-letter change-type vocabulary](./0108-tasks-files-affected-change-type-vocabulary.md)
 - [0109 — R change-type entry is a single move entry, never a delete-plus-add pair](./0109-r-change-type-single-move-entry.md) — Refs 0108
 - [0111 — design.md records the resolved record family as a pinned marker that Step 3 reads](./0111-record-family-marker-in-design.md)
-- [0117 — The three planning-phase coordinators receive the scoped `Bash(date:*)` entry as the sole allowed-tools exception](./0117-planning-coordinators-scoped-shell-entry.md)
-- [0118 — Per-harness wall-clock commands live in the harness bindings, never in the neutral policy](./0118-per-harness-wall-clock-commands-in-bindings.md) — Refs 0077
+- [0144 — The three planning-phase coordinators drop the scoped `Bash(date:*)` entry](./0144-planning-coordinators-drop-the-scoped-date-shell-entry.md) — Supersedes 0117, Refs 0118, Refs ddr:0141
 - [0139 — Use fresh read-only reviewers with worker-owned artifact edits](./0139-fresh-read-only-reviewers-with-worker-owned-edits.md) — Refs ddr:0105
 
 ### `/sai-3-implement`
@@ -73,8 +71,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0112 — DDR is instantiated as a first-class family with the five per-index bindings](./0112-ddr-family-first-class-instantiation.md)
 - [0113 — Index maintenance runs one cycle per family that received records in the run](./0113-per-family-index-maintenance-cycles.md)
 - [0114 — A sibling DDR index template mirrors the ADR index template instance for instance](./0114-sibling-ddr-index-template.md)
-- [0117 — The three planning-phase coordinators receive the scoped `Bash(date:*)` entry as the sole allowed-tools exception](./0117-planning-coordinators-scoped-shell-entry.md)
-- [0118 — Per-harness wall-clock commands live in the harness bindings, never in the neutral policy](./0118-per-harness-wall-clock-commands-in-bindings.md) — Refs 0077
+- [0144 — The three planning-phase coordinators drop the scoped `Bash(date:*)` entry](./0144-planning-coordinators-drop-the-scoped-date-shell-entry.md) — Supersedes 0117, Refs 0118, Refs ddr:0141
 - [0131 — Keep OpenCode budget skills behind canonical behavior policies](./0131-canonicalize-opencode-budget-skill-behavior.md)
 - [0132 — Reconcile the executor capability at the canonical Fetch boundary](./0132-reconcile-executor-capability-at-fetch-boundary.md)
 - [0137 — Change Overview preserves the generation lifecycle and write boundary](./0137-change-overview-preserves-generation-lifecycle-and-write-boundary.md)
@@ -297,8 +294,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0102 — Consumer-scoped preflight for routed worker contract assets](./0102-consumer-scoped-preflight-for-routed-worker-contract-assets.md) — Refs 0100
 - [0103 — Retire the inline harness model in favor of two routed harnesses](./0103-retire-inline-harness-model-in-favor-of-routed-harnesses.md)
 - [0104 — Remove Copilot from the active installer inventory](./0104-remove-copilot-from-active-installer-inventory.md) — Pair with 0103
-- [0117 — The three planning-phase coordinators receive the scoped `Bash(date:*)` entry as the sole allowed-tools exception](./0117-planning-coordinators-scoped-shell-entry.md)
-- [0118 — Per-harness wall-clock commands live in the harness bindings, never in the neutral policy](./0118-per-harness-wall-clock-commands-in-bindings.md) — Refs 0077
+- [0144 — The three planning-phase coordinators drop the scoped `Bash(date:*)` entry](./0144-planning-coordinators-drop-the-scoped-date-shell-entry.md) — Supersedes 0117, Refs 0118, Refs ddr:0141
 - [0133 — Keep harness-native worker templates over shared dispatch syntax](./0133-harness-native-worker-templates-over-shared-dispatch-syntax.md)
 - [0134 — Materialize Worker Matrix projections from the manifest and retire by hash](./0134-materialize-worker-projections-from-the-manifest-and-retire-by-hash.md)
 - [0137 — Put non-worker idea-list glue at the harness adapter seam](./0137-non-worker-idea-list-glue-at-harness-adapter-seam.md) — Refs 0077, Refs 0088, Refs 0116
@@ -432,6 +428,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 | [0073](./0073-durable-channel-is-the-deviations-appendix.md) | reframes | [0020](./0020-ephemeral-in-context-technical-learnings-memory.md) |
 | [0107](./0107-unified-audit-severity-vocabulary.md) | supersedes | [0013](./0013-mmut-n-finding-namespace-for-mutation-analysis.md) |
 | [0115](./0115-three-part-dispatch-routing-condition.md) | supersedes | [0071](./0071-two-part-dispatch-routing-condition.md) |
+| [0144](./0144-planning-coordinators-drop-the-scoped-date-shell-entry.md) | supersedes | [0117](./0117-planning-coordinators-scoped-shell-entry.md) |
 
 ## Superseded ADRs (historical)
 
@@ -442,4 +439,6 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0080 — Design-to-implementation lifecycle boundary](./0080-design-to-implementation-lifecycle-boundary.md) — Refs 0075, Refs 0076 — *Superseded by simplify-routed-phase-coordination*
 - [0089 — Share one routed SAI coordinator profile across planning phases](./0089-shared-sai-coordinator-profile.md) — Refs 0083, Refs 0074, Refs 0078 — *Superseded by simplify-routed-phase-coordination*
 - [0013 — Dedicated mMUT-N finding namespace and Mutation Analysis output section](./0013-mmut-n-finding-namespace-for-mutation-analysis.md) — *Superseded by [0107](./0107-unified-audit-severity-vocabulary.md)*
+- [0117 — The three planning-phase coordinators receive the scoped `Bash(date:*)` entry as the sole allowed-tools exception](./0117-planning-coordinators-scoped-shell-entry.md) — *Superseded by [0144](./0144-planning-coordinators-drop-the-scoped-date-shell-entry.md)*
+- [0118 — Per-harness wall-clock commands live in the harness bindings, never in the neutral policy](./0118-per-harness-wall-clock-commands-in-bindings.md) — Refs 0077 — *Superseded by [ddr:0141](../ddr/0141-milestone-stamp-is-closure-only-and-derived-from-emitted-on.md)*
 - [0029 — Surgical merge of the opencode `agent` block via jsonc-parser](./0029-jsonc-parser-surgical-merge-for-opencode-agent-block.md) — Refs 0031 — *Historical: the agent-block merge is retired*

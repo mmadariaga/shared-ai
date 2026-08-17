@@ -8,7 +8,7 @@ The worker receives the dispatch-local prompt assembled from the matching `## St
 
 ## Dispatch-Local Progress Plan
 
-The RED dispatch declares exactly one immutable plan: `test-authoring → red-verification`. Emit progress events marking only the dispatch-local plan's step ids via the closed shape `{event: progress, step_ids: string[], changed_files: string[]}`, and close the run with exactly one terminal lifecycle status.
+The RED dispatch declares exactly one immutable plan: `test-authoring → red-verification`. Emit progress events marking only the dispatch-local plan's step ids via the closed shape `{event: progress, emitted_on: string, step_ids: string[], changed_files: string[]}`, and close the run with exactly one terminal lifecycle status.
 
 ## Scope
 

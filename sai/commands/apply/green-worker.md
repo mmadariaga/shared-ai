@@ -8,7 +8,7 @@ The worker receives the Step's GREEN body and the dispatch-local rules; it recei
 
 ## Dispatch-Local Progress Plan
 
-The GREEN dispatch declares exactly one immutable plan: `implementation → green-verification`. Emit progress events marking only the dispatch-local plan's step ids via the closed shape `{event: progress, step_ids: string[], changed_files: string[]}`, and close the run with exactly one terminal lifecycle status.
+The GREEN dispatch declares exactly one immutable plan: `implementation → green-verification`. Emit progress events marking only the dispatch-local plan's step ids via the closed shape `{event: progress, emitted_on: string, step_ids: string[], changed_files: string[]}`, and close the run with exactly one terminal lifecycle status.
 
 ## Scope
 

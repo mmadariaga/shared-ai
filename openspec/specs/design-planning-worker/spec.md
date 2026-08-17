@@ -10,6 +10,7 @@ Define the design planning worker lifecycle: change resolution, prerequisite che
 
 ```yaml
 status: "completed" | "needs_input" | "failed" | "cancelled"
+emitted_on: string
 summary: string
 changed_files: string[]
 resolved_change_name?: string
@@ -21,6 +22,7 @@ options?: Array<{ label: string, value: string }>
 
 ```yaml
 event: "notice"
+emitted_on: string
 message: string
 changed_files: string[]
 ```
@@ -121,6 +123,14 @@ Completion follows disk verification of `design.md`, `tasks.md`, and `interfaces
 ### Requirement: three-artifact-completion
 
 Completion SHALL verify `design.md`, `tasks.md`, AND `interfaces.md` before claiming completion.
+
+### Requirement: Design lifecycle payloads carry emission time
+
+The design worker SHALL include worker-authored `emitted_on` in notices, progress events, and terminal payloads while preserving worker-owned design workflow and continuation.
+
+#### Scenario: Design composes a closed result
+- **WHEN** the design worker emits a notice, progress event, or terminal result
+- **THEN** the payload includes its actual composition instant in `emitted_on`.
 
 ### Requirement: The design worker owns the complete technical design workflow
 The design worker SHALL own prerequisite checks, fast-track parsing, change selection, proposal and spec validation, specs approval state, codebase research, technical question resolution, design decisions, artifact generation, and artifact verification. The coordinator SHALL not share ownership of any of these activities. The worker SHALL complete universal prerequisites before parsing fast-track or emitting any fast-track notice.

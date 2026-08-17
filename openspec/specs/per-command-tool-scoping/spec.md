@@ -2,19 +2,19 @@
 
 ### Requirement: Routed coordinator read scope is sufficient but non-writing
 
-The Claude Code allowed-tools list for each routed spec, design, implementation, review, security, performance, and accessibility coordinator SHALL be exactly `Read, Glob, Skill, Agent, SendMessage, AskUserQuestion`, with the sole exception granted by `coordinator-wall-clock-permission-grant` of `sai-todo-timestamps`: the spec, design, and implementation planning-phase coordinators SHALL additionally declare the scoped shell entry `Bash(date:*)` for milestone-stamp wall-clock acquisition, limited to at most one call per render act and to no other shell use. `Read` and `Glob` SHALL be available for resolving the coordinator's own fetched instruction chain, while `Edit`, `Write`, and bare unrestricted `Bash` SHALL remain unavailable.
+The Claude Code allowed-tools list for each routed spec, design, implementation, review, security, performance, and accessibility coordinator SHALL be exactly `Read, Glob, Skill, Agent, SendMessage, AskUserQuestion`. `Read` and `Glob` SHALL be available for resolving the coordinator's own fetched instruction chain, while `Edit`, `Write`, and bare unrestricted `Bash` SHALL remain unavailable.
 
 #### Scenario: All seven routed coordinators receive the restored read tools
 
 - **WHEN** the frontmatter of `commands/claude/sai-1-spec.md`, `commands/claude/sai-2-design.md`, `commands/claude/sai-3-implement.md`, `commands/claude/sai-5-review.md`, `commands/claude/sai-6-security.md`, `commands/claude/sai-7-performance.md`, and `commands/claude/sai-8-accessibility.md` is inspected
 - **THEN** each file declares an `allowed-tools` list whose base sequence is `Read, Glob, Skill, Agent, SendMessage, AskUserQuestion`
-- **AND** the spec, design, and implementation coordinators additionally declare `Bash(date:*)` per `coordinator-wall-clock-permission-grant` of `sai-todo-timestamps`
+- **AND** no planning coordinator declares a shell entry for milestone-stamp acquisition
 
 #### Scenario: Write-capable tools remain absent
 
 - **WHEN** any routed coordinator allowed-tools list is inspected
 - **THEN** it does not contain `Edit`, `Write`, or a bare `Bash` entry
-- **AND** the only scoped shell entry permitted on the planning-phase coordinators is `Bash(date:*)` for milestone-stamp acquisition per `coordinator-wall-clock-permission-grant` of `sai-todo-timestamps`
+- **AND** no scoped shell entry is required for milestone-stamp acquisition
 
 #### Scenario: Existing read-scoped commands do not change
 

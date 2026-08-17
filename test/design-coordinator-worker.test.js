@@ -156,7 +156,7 @@ test('design wrappers activate routed Claude/opencode entry and preserve phase b
 
     assert.match(claude, /^model: claude-opus-4-8$/m);
    assert.match(claude, /^effort: low$/m);
-    assert.match(claude, /^allowed-tools: Read, Glob, Skill, Agent, SendMessage, AskUserQuestion, Bash\(date:\*\)$/m);
+    assert.match(claude, /^allowed-tools: Read, Glob, Skill, Agent, SendMessage, AskUserQuestion$/m);
     assert.doesNotMatch(claude, /sai-2-design-worker/);
    assert.doesNotMatch(claude, /sai-3-implementation-worker/);
      assert.match(claude, /sai\/commands\/design\/launcher\.md/);
@@ -779,42 +779,26 @@ test('architecture snapshot display compares the extracted Target State block an
     'the instruction should define the exact None — no step contracts sentinel');
 });
 
-test('restore-coordinator-instruction-loading Step 1: routed Claude wrappers expose the exact read-only tool scope (planning grants the scoped date shell)', () => {
-  const planningWrappers = [
+test('restore-coordinator-instruction-loading Step 1: every routed Claude wrapper exposes the same exact read-only tool scope, with no shell anywhere', () => {
+  // ADR 0144 retired the planning-phase `Bash(date:*)` carve-out: the milestone
+  // stamp now comes from the payload's `emitted_on`, so planning and audit
+  // wrappers share one unbroken read-only scope.
+  const routedWrappers = [
     'commands/claude/sai-2-design.md',
     'commands/claude/sai-3-implement.md',
-  ];
-  const planningTools = ['Read', 'Glob', 'Skill', 'Agent', 'SendMessage', 'AskUserQuestion', 'Bash(date:*)'];
-
-  const auditWrappers = [
     'commands/claude/sai-5-review.md',
     'commands/claude/sai-6-security.md',
     'commands/claude/sai-7-performance.md',
     'commands/claude/sai-8-accessibility.md',
   ];
-  const auditTools = ['Read', 'Glob', 'Skill', 'Agent', 'SendMessage', 'AskUserQuestion'];
+  const routedTools = ['Read', 'Glob', 'Skill', 'Agent', 'SendMessage', 'AskUserQuestion'];
 
-  for (const relativePath of planningWrappers) {
+  for (const relativePath of routedWrappers) {
     const source = artifact(relativePath);
     const match = source.match(/^allowed-tools:\s*(.+)$/m);
     assert.ok(match, `${relativePath} should declare allowed-tools`);
     const toolNames = match[1].split(',').map(tool => tool.trim());
-    assert.deepEqual(toolNames, planningTools,
-      `${relativePath} should use the exact read-only routed scope with the scoped date shell grant`);
-    for (const forbidden of ['Edit', 'Write', 'Grep']) {
-      assert.equal(match[1].includes(forbidden), false,
-        `${relativePath} must not expose ${forbidden}`);
-    }
-    assert.equal(toolNames.includes('Bash'), false,
-      `${relativePath} must not expose a bare Bash entry`);
-  }
-
-  for (const relativePath of auditWrappers) {
-    const source = artifact(relativePath);
-    const match = source.match(/^allowed-tools:\s*(.+)$/m);
-    assert.ok(match, `${relativePath} should declare allowed-tools`);
-    const toolNames = match[1].split(',').map(tool => tool.trim());
-    assert.deepEqual(toolNames, auditTools,
+    assert.deepEqual(toolNames, routedTools,
       `${relativePath} should keep the exact read-only routed scope without any shell`);
     for (const forbidden of ['Edit', 'Write', 'Grep', 'Bash']) {
       assert.equal(match[1].includes(forbidden), false,
@@ -1258,7 +1242,7 @@ test('Step 6: the neutral policy records the emission-ownership invariant and th
 
 // ─── Step 2: todo-list-step-timestamps (design coordinator) ─────────────────
 
-test('Step 2: the design coordinator renders task-list stamps coordinator-only via the todo-structure policy, with the scoped date shell granted to the wrapper (stamp-emission-coordinator-only)', () => {
+test('Step 2: the design coordinator renders task-list stamps coordinator-only via the todo-structure policy, with no shell grant on the wrapper (stamp-emission-coordinator-only)', () => {
   const coordinator = artifact('sai/commands/design/coordinator.md');
   const policy = artifact('sai/policies/todo-structure.md');
   const claudeWrapper = artifact('commands/claude/sai-2-design.md');
@@ -1268,11 +1252,11 @@ test('Step 2: the design coordinator renders task-list stamps coordinator-only v
   assert.match(policy, /stamp/i,
     'the policy should govern milestone stamp annotations');
   assert.match(policy, /coordinator session/i,
-    'the policy should state stamp acquisition is coordinator-only');
+    'the policy should state stamp attachment is coordinator-only');
   assert.match(policy, /never from a worker subagent/i,
-    'the policy should state the wall-clock call never originates from the worker subagent');
-  assert.match(claudeWrapper, /Bash\(date:\*\)/,
-    'the Claude wrapper should grant the scoped date shell for coordinator stamp acquisition');
+    'the policy should state attachment never originates from the worker subagent');
+  assert.doesNotMatch(claudeWrapper, /Bash\(/,
+    'the wrapper should carry no shell grant now that stamps come from emitted_on');
   assert.doesNotMatch(coordinator, /date \+%H:%M|Get-Date/,
     'per-harness wall-clock commands no longer live in the coordinator body');
 });

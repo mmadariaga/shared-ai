@@ -19,7 +19,7 @@
   - `original_envelope`: exactly `wrapper_echo_value` and `arguments_value` from the active wrapper, preserving the complete argument string.
   - `dispatch_operation`: dispatch exactly one worker through the active security-worker binding.
   - `continuation_operation`: continue the captured worker with the exact selected answer value.
-  - `allowed_nonterminal_extensions`: progress events — `{event: "progress", step_ids: string[], changed_files: string[]}` as the sole nonterminal extension.
+  - `allowed_nonterminal_extensions`: progress events — `{event: "progress", emitted_on: string, step_ids: string[], changed_files: string[]}` as the sole nonterminal extension.
   - `extension_handlers`: empty.
   - `replacement_reconstruction_fields`: original envelope, ordered duplicate-free changed-files union, exact opaque input history, and `resolved_change_name` when available.
   - `terminal_navigation`: the security navigation below.

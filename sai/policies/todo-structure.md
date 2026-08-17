@@ -47,13 +47,26 @@ The task-list tool call originates exclusively from the coordinator session, nev
 
 ## Milestone stamp annotation
 
-The milestone stamp is a decorative rendering action: an HH:mm wall-clock annotation that decorates a rendered step of a progress task list without changing its stable id, user-facing label, plan order, or derived state. The annotation carve-out does not weaken the no-re-labelling rule for any other surface — no step of any progress task list is added, removed, renamed, reordered, or re-labelled by rendering, stamp annotation included. Stamps attach only to the progress task lists of the three routed planning phases whose adapters declare a progress plan (spec, design, implement); the review, security, performance, and accessibility audit progress plans, the `sai-explore` Idea Progress List, and the apply step projection carry no stamps.
+The milestone stamp is a decorative rendering action: an HH:mm annotation that decorates a rendered step of a progress task list without changing its stable id, user-facing label, plan order, or derived state. The annotation carve-out does not weaken the no-re-labelling rule for any other surface — no step of any progress task list is added, removed, renamed, reordered, or re-labelled by rendering, stamp annotation included.
 
-Stamping follows the render acts. The first render (render at dispatch) attaches the current wall-clock time as the start stamp of the first `in_progress` step; each progress-event update attaches one shared closure stamp to every step the event marks `completed` and inherits that same value as the start stamp of the leading unmarked step; the run-closing `completed` reconciliation attaches one shared closure stamp to every step it marks. `needs_input`, `failed`, and `cancelled` leave the list and its stamps exactly as last rendered, with no stamping call; pause time is absorbed into the next closure stamp.
+**Closure-only.** A step carries a stamp exactly when it renders `completed`, and it carries exactly one. A `pending` step and the `in_progress` step carry none: no start stamp, no inherited stamp, no placeholder. A step that gains its stamp keeps it unchanged for the rest of the invocation.
 
-The coordinator acquires each stamp with at most one wall-clock shell call per render act — the first render, each progress-event update, and the run-closing `completed` reconciliation — and never with per-step calls; a reconciliation that stamps nothing issues no call. Transitive start inheritance covers the whole list, so a plan of N steps is fully annotated in at most N+1 shell calls.
+**Sourced from the payload, never from a clock.** The stamp value is the `emitted_on` of the worker result that marked the step, rendered as HH:mm. A progress-event update stamps every step that event marks `completed` with that event's `emitted_on`; the run-closing `completed` reconciliation stamps every step it marks with the terminal payload's `emitted_on`. The coordinator therefore issues **no wall-clock call of any kind** — not per step, not per render act, not per run — and never substitutes its own reading of the time for the value the worker authored. Each stamp reports when the worker finished the work, not when the coordinator got around to rendering it.
 
-Stamp acquisition and attachment originate exclusively from the coordinator session, never from a worker subagent, extending the emission-ownership invariant to stamp acquisition. Per-harness wall-clock commands are named by the harness bindings, never by this policy.
+`emitted_on` already carries local wall-clock time with its numeric offset attached, so the stamp is the value's own `HH:MM` field read straight off it — no timezone resolution, no conversion, no fallback. The coordinator renders what the worker wrote and never alters the payload value, which is forwarded and recorded verbatim.
+
+**Rendered form.** The stamp follows the step's user-facing label, separated by ` - `:
+
+    [x] Check prerequisites and resolve the change - 10:51
+    [x] Collapse implemented steps - 10:54
+    [~] Analyze artifacts and validate decisions
+    [ ] Review required documentation
+
+**Scope.** Stamps attach to every routed phase progress task list whose steps are marked from worker progress events — the spec, design, and implement planning plans and the review, security, performance, and accessibility audit plans alike. The `sai-explore` Idea Progress List and the apply step projection carry no stamps: neither is marked from worker progress events, so neither has a payload to take a stamp value from. A plan suppressed by the minimum-threshold rule renders no list and therefore no stamps.
+
+**Freeze.** `needs_input`, `failed`, and `cancelled` leave the list and its stamps exactly as last rendered: they add no stamp, change none, and clear none. Pause time is absorbed into the next stamp a step receives, because that stamp is the emitting worker's own instant.
+
+Stamp attachment originates exclusively from the coordinator session, never from a worker subagent, extending the emission-ownership invariant to stamp attachment. The worker authors `emitted_on` as part of its closed payload; it never renders, attaches, or formats a stamp.
 
 ## Apply step projection
 

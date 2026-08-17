@@ -79,6 +79,14 @@ The security instruction and report contract SHALL assign every finding a severi
 - **THEN** it closes with a `Summary:` line tallying `Critical`, `High`, `Medium`, and `Low` counts that match the listed findings
 - **AND** the tally does not include an `Informational` counter
 
+### Requirement: Security lifecycle results carry emission time
+
+The security worker SHALL emit worker-authored `emitted_on` through progress and terminal lifecycle results while retaining SAST, SCA, report, and no-production-write boundaries.
+
+#### Scenario: Security reports a milestone
+- **WHEN** a security milestone completes
+- **THEN** its progress result includes `emitted_on` and changed paths.
+
 #### Scenario: Severity floor is unchanged
 
 - **WHEN** a candidate observation falls below the `Low` severity

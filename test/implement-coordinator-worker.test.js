@@ -781,7 +781,7 @@ test('Step 6: the implementation coordinator and policy drive the harness task l
 
 // ─── Step 2: todo-list-step-timestamps (implementation coordinator) ─────────
 
-test('Step 2: the implementation coordinator renders task-list stamps coordinator-only via the todo-structure policy, with the scoped date shell granted to the wrapper (stamp-emission-coordinator-only)', () => {
+test('Step 2: the implementation coordinator renders task-list stamps coordinator-only via the todo-structure policy, with no shell grant on the wrapper (stamp-emission-coordinator-only)', () => {
   const coordinator = artifact('sai/commands/implement/coordinator.md');
   const policy = artifact('sai/policies/todo-structure.md');
   const claudeWrapper = artifact('commands/claude/sai-3-implement.md');
@@ -791,11 +791,11 @@ test('Step 2: the implementation coordinator renders task-list stamps coordinato
   assert.match(policy, /stamp/i,
     'the policy should govern milestone stamp annotations');
   assert.match(policy, /coordinator session/i,
-    'the policy should state stamp acquisition is coordinator-only');
+    'the policy should state stamp attachment is coordinator-only');
   assert.match(policy, /never from a worker subagent/i,
-    'the policy should state the wall-clock call never originates from the worker subagent');
-  assert.match(claudeWrapper, /Bash\(date:\*\)/,
-    'the Claude wrapper should grant the scoped date shell for coordinator stamp acquisition');
+    'the policy should state attachment never originates from the worker subagent');
+  assert.doesNotMatch(claudeWrapper, /Bash\(/,
+    'the wrapper should carry no shell grant now that stamps come from emitted_on');
   assert.doesNotMatch(coordinator, /date \+%H:%M|Get-Date/,
     'per-harness wall-clock commands no longer live in the coordinator body');
 });

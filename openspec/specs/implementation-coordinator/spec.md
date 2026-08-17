@@ -94,6 +94,14 @@ After the worker resolves a change, every `completed`, `needs_input`, `failed`, 
 - **THEN** the payload SHALL contain `resolved_change_name: {name}`
 - **AND** terminal navigation SHALL receive that value and use it in the exact completion message
 
+### Requirement: Implementation stamps are payload-sourced
+
+The implementation coordinator SHALL render completed-step stamps from worker lifecycle payloads and SHALL not acquire wall-clock time itself.
+
+#### Scenario: Implementation progress renders
+- **WHEN** an implementation result marks a plan step completed
+- **THEN** the coordinator uses that result's `emitted_on` and performs no shell clock call.
+
 ### Requirement: numbered-implementation-worker-identity
 The routed implementation worker SHALL use the phase-specific identifier `sai-3-implementation-worker` across opencode agent configuration, Claude Code managed worker definitions, direct wrapper binding fetch references, harness bindings, installer projections, and verification/documentation surfaces. Its reusable technical core SHALL be named `sai-3-implementation-core` in `sai/compat/` and SHALL remain separate from the design worker contract. The Claude Code and opencode routed workers SHALL fetch the renamed core wherever they consume the implementation invocation core.
 

@@ -17,7 +17,7 @@ The `sai-5-review`, `sai-6-security`, `sai-7-performance`, and `sai-8-accessibil
 | `sai-7-performance` | `resolve-performance-scope` - Resolve performance scope and tier: prerequisites, change selection, scope grammar, tier filter, and parent complete; `map-stack-hot-paths` - Map stack and hot paths: stack detection, baseline, hot-path mapping, and 500-LOC cutover complete; `audit-performance-tiers` - Resolve performance tier analysis: applicable backend, frontend, database, queue, and cross-cutting checks complete; `resolve-diagnostics` - Resolve diagnostics gate: diagnostics authorization or applicability is resolved, with diagnostics run only when authorized; `close-performance-outcome` - Close performance outcome: the performance result and any applicable artifact verification are complete |
 | `sai-8-accessibility` | `resolve-accessibility-scope` - Resolve accessibility scope and runtime mode: prerequisites, change selection, UI-scope/no-UI decision, runtime flag, and parent complete; `map-ui-framework` - Map UI components and framework: UI filtering, framework detection, component mapping, and delegation choice complete; `resolve-static-audit` - Resolve static accessibility audit: semantics, ARIA, keyboard/focus, forms, visual, media, and dynamic checks complete; `resolve-runtime-audit` - Resolve runtime-audit gate: runtime request, server confirmation, and per-command authorization are resolved, with checks run only when applicable; `close-accessibility-outcome` - Close accessibility outcome: the accessibility result and any applicable artifact verification are complete |
 
-The adapters SHALL render these plans through the shared progress policy and SHALL NOT add audit passes, tool names, severity categories, or internal delegation units as additional progress steps. Audit plans SHALL NOT receive `Milestone Stamp` annotations; the shared policy's existing stamp scope remains limited to the sai-1, sai-2, and sai-3 progress plans.
+The adapters SHALL render these plans through the shared progress policy and SHALL NOT add audit passes, tool names, severity categories, or internal delegation units as additional progress steps. Audit plans SHALL receive closure-only `Milestone Stamp` annotations sourced from the `emitted_on` of the result that marks each step; the `sai-explore` Idea Progress List remains outside this scope.
 
 #### Scenario: review declares its canonical plan
 
@@ -43,10 +43,10 @@ The adapters SHALL render these plans through the shared progress policy and SHA
 - **THEN** its adapter SHALL declare the five accessibility steps in the specified order with the specified labels
 - **AND** the worker contract SHALL enumerate the same five ids
 
-#### Scenario: audit plans omit milestone stamps
+#### Scenario: audit plans receive payload-derived milestone stamps
 
 - **WHEN** any audit adapter renders its declared progress plan
-- **THEN** the Claude Code and opencode bindings SHALL render no `Milestone Stamp` annotation and make no stamp-acquisition call
+- **THEN** the Claude Code and opencode bindings SHALL render each completed step's `Milestone Stamp` from the marking payload's `emitted_on` and make no coordinator clock call
 - **AND** the plan's ids, labels, order, and derived states SHALL remain governed by `sai/policies/todo-structure.md`
 
 ### Requirement: audit-workers-report-completed-milestones

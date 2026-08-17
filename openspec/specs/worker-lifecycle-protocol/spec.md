@@ -105,6 +105,22 @@ Every routed SAI planning worker SHALL author a structured payload with exactly 
 - **WHEN** the coordinator forwards an answer other than `yes` to the one-change selection question
 - **THEN** the worker SHALL return `cancelled` with a concise clean-stop summary and SHALL not request the same selection again
 
+### Requirement: Every closed payload carries worker emission time
+
+Every terminal status, design notice, and progress event SHALL carry worker-authored `emitted_on` immediately after its `status` or `event` discriminator in `YYYY-MM-DDTHH:MM:SS±HH:MM` form. The value SHALL be validated and forwarded verbatim, including for pre-resolution and no-plan results.
+
+#### Scenario: Lifecycle stream is timestamped
+- **WHEN** any worker returns a terminal result, notice, or progress event
+- **THEN** the coordinator validates its offset-bearing `emitted_on` value and preserves it without recomputing or formatting it.
+
+### Requirement: Audit workers share the timestamped progress extension
+
+Review, security, performance, and accessibility workers SHALL use the same timestamped progress-event lifecycle as planning workers when their adapters declare a progress plan. The extension SHALL remain additive and SHALL not change terminal status semantics.
+
+#### Scenario: An audit worker reports progress
+- **WHEN** an audit worker completes one or more declared plan steps
+- **THEN** it returns `event: "progress"` with `emitted_on`, `step_ids`, and `changed_files` before continuing the same worker.
+
 ### Requirement: Resumable worker sessions
 The coordinator SHALL support continuing an existing implementation planning or design planning worker session using harness dispatch metadata captured by the binding while keeping durable OpenSpec artifacts as the authoritative workflow state.
 

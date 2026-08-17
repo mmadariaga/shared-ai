@@ -18,7 +18,7 @@
   - `original_envelope`: `{wrapper_echo_value: string, arguments_value: string}`
   - `dispatch_operation`: the active implementation-worker binding dispatch
   - `continuation_operation`: the active binding's same-worker continuation
-  - `allowed_nonterminal_extensions`: progress events — `{event: "progress", step_ids: string[], changed_files: string[]}` as the sole nonterminal extension
+  - `allowed_nonterminal_extensions`: progress events — `{event: "progress", emitted_on: string, step_ids: string[], changed_files: string[]}` as the sole nonterminal extension
   - `extension_handlers`: empty
   - `replacement_reconstruction_fields`: `resolved_change_name` when already known, ordered `opaque_input_history`, and the fixed durable-artifact reconstruction instruction
   - `terminal_navigation`: implementation completion or unsuccessful-stop behavior

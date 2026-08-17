@@ -18,7 +18,7 @@ Each separate RED, GREEN, or green-exception dispatch is a separate worker invoc
 
 ## Progress Events
 
-A progress event is the closed shape `{event: progress, step_ids: string[], changed_files: string[]}`: mark the reported step ids only in that dispatch's declared plan (the dispatch-local plan), ignore undeclared ids — the plan is never extended or amended — add every path to the changed-files union in first-seen order, and continue the same worker with exactly `continue_after_progress`. Progress events are nonterminal and never replace the single terminal lifecycle status.
+A progress event is the closed shape `{event: progress, emitted_on: string, step_ids: string[], changed_files: string[]}`: mark the reported step ids only in that dispatch's declared plan (the dispatch-local plan), ignore undeclared ids — the plan is never extended or amended — add every path to the changed-files union in first-seen order, and continue the same worker with exactly `continue_after_progress`. Progress events are nonterminal and never replace the single terminal lifecycle status.
 
 ## Coordinator Checklist Execution
 

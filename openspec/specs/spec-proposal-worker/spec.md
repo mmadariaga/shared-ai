@@ -8,7 +8,7 @@ Define the spec-proposal worker's progress-event emission: carrying only the can
 
 ### Requirement: Spec worker emits progress events
 
-The spec-proposal worker SHALL emit progress events, after prerequisite checks pass and change resolution completes, whenever one or more plan steps complete. Every event SHALL carry only the canonical step ids enumerated by `spec-progress-plan` (`prereqs-and-change`, `proposal`, `specs`, `validation`, `review`), in plan order, plus the files changed since the preceding result. The worker SHALL NOT author, extend, or reorder the plan, and SHALL NOT emit a progress event before resolution or in place of a terminal payload.
+The spec-proposal worker SHALL emit progress events, after prerequisite checks pass and change resolution completes, whenever one or more plan steps complete. Every event SHALL carry worker-authored `emitted_on`, only the canonical step ids enumerated by `spec-progress-plan` (`prereqs-and-change`, `proposal`, `specs`, `validation`, `review`), in plan order, plus the files changed since the preceding result. The worker SHALL NOT author, extend, or reorder the plan, and SHALL NOT emit a progress event before resolution or in place of a terminal payload.
 
 The worker SHALL report one batch per completed act: the startup act (prerequisite checks plus change resolution) carries `prereqs-and-change`; writing `proposal.md` carries `proposal`; writing the change's `specs/**/*.md` carries `specs`; artifact verification, the self-consistency and source-grounding checks, and decision-summary derivation carry `validation`; a completed review pass reporting `High=0` carries `review` per `review-step-evidence-marking`.
 

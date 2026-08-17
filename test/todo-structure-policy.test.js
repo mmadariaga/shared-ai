@@ -98,14 +98,19 @@ test('todo-structure policy defines the milestone stamp as a decorative renderin
   assert.match(source, /deriv(?:ed|es|ation)|derived state/i);
 });
 
-test('todo-structure policy restricts milestone stamps to the three routed planning-phase task lists, never the Idea Progress List or apply step projection', () => {
+test('todo-structure policy extends milestone stamps to every list marked from progress events, never the Idea Progress List or apply step projection', () => {
   const source = policy();
 
   assert.match(source, /milestone stamp/i);
-  assert.match(source, /three routed/i);
+  assert.match(source, /marked from worker progress events/i,
+    'the scope should be keyed on progress-event marking, not on a fixed phase count');
+  assert.match(source, /audit plans/i,
+    'the four audit plans should be inside the stamped scope');
   assert.match(source, /Idea Progress List/i);
   assert.match(source, /apply step projection/i);
   assert.match(source, /(?:never|not|no stamp).*(?:Idea Progress List|apply step projection)|(?:Idea Progress List|apply step projection).*(?:never|not|no stamp)/i);
+  assert.doesNotMatch(source, /three routed/i,
+    'the retired three-phase carve-out should be gone');
 });
 
 test('todo-structure policy names no per-harness time command in the milestone stamp surface', () => {
@@ -116,11 +121,41 @@ test('todo-structure policy names no per-harness time command in the milestone s
   assert.doesNotMatch(source, /\bdate\b/i);
 });
 
-test('todo-structure policy names the four audit progress plans as unstamped alongside the Idea Progress List', () => {
+test('todo-structure policy makes the stamp closure-only, sourced from emitted_on, with no wall-clock call', () => {
   const source = policy();
 
-  assert.match(source, /audit progress plans[\s\S]{0,160}(?:carry no stamps|no stamps)/i);
-  assert.match(source, /three routed/i);
+  assert.match(source, /closure-only/i,
+    'the stamp should be declared closure-only');
+  assert.match(source, /carries a stamp exactly when it renders `completed`/i,
+    'a step should be stamped exactly when it renders completed');
+  assert.match(source, /`pending` step and the `in_progress` step carry none/i,
+    'pending and in_progress steps should carry no stamp');
+  assert.match(source, /`emitted_on` of the worker result that marked the step/i,
+    'the value should come from the marking result');
+  assert.match(source, /terminal payload's `emitted_on`/i,
+    'bulk close should use the terminal payload value');
+  assert.match(source, /no wall-clock call of any kind/i,
+    'the coordinator should issue no wall-clock call');
+  assert.match(source, /no timezone resolution, no conversion, no fallback/i,
+    'the stamp should be read straight off the offset-bearing value');
+
+  const stampSection = source.slice(source.indexOf('## Milestone stamp annotation'));
+  assert.ok(stampSection, 'the stamp section should exist');
+  assert.doesNotMatch(stampSection, /shell call/i,
+    'the retired per-render-act shell-call budget should be gone');
+  assert.doesNotMatch(stampSection, /inherits|inherited start|start stamp of/i,
+    'start-stamp inheritance should be gone');
+});
+
+test('todo-structure policy fixes the rendered stamp form and the freeze behavior', () => {
+  const source = policy();
+
+  assert.match(source, /- 10:51/,
+    'the policy should show the rendered form');
+  assert.match(source, /separated by ` - `/,
+    'the separator should be fixed');
+  assert.match(source, /`needs_input`, `failed`, and `cancelled` leave the list and its stamps exactly as last rendered/i,
+    'unsuccessful and input results should freeze the stamps');
 });
 
 // ---- Step 1 (spec-design-review-progress-step): evidence-only review policy ----
