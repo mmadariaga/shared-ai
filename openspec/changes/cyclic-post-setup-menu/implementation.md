@@ -218,15 +218,15 @@ const action = await promptChoice(
 
 ##### RED phase
 
-- [ ] Update `test/model-customization-menu.test.js` with failing assertion-based coverage for fresh later-pass state, successful re-entry, later cancellation without rollback, empty target enumeration, one settings selection per non-empty pass, all selected-target attempts after a persistence failure, skipped/failed outcome-array invariants, mixed diagnostic order, exactly-once diagnostic rendering, persisted-only zero output, settings unavailability, non-TTY early return, and unexpected exception propagation. Update the existing successful-pass fixtures so they explicitly select `Exit` on the fresh menu after the pass.
-- [ ] Update `test/navigator-back-navigation.test.js` with failing cycle-aware coverage for menu re-entry, back from each predecessor chain, cancellation from every navigable screen, fresh cursor/selection state, and no materialization on abandoned paths. Keep the input seam and raw-mode lifecycle assertions intact.
-- [ ] Update the setup assertions in `test/model-customization-menu.test.js` so injected `persistence-failed` outcomes are non-success and diagnostics are rendered by `runPostSetupMenu`, not by `bin/setup.js`; preserve the existing `post-setup-failure` assertion for unexpected exceptions.
-- [ ] Verify RED: run `node --test test/model-customization-menu.test.js test/navigator-back-navigation.test.js` — expected: assertion failures attributable to missing re-entry, missing diagnostic ownership, missing empty-target recovery, or incorrect persistence-failure exit mapping, with no setup/import/compilation failure.
-- [ ] **GATE — DO NOT PROCEED to GREEN until RED is verified.** If the tests pass or fail for an unrelated setup/import/compilation reason, stop and report the RED result instead of applying the production code.
+- [x] Update `test/model-customization-menu.test.js` with failing assertion-based coverage for fresh later-pass state, successful re-entry, later cancellation without rollback, empty target enumeration, one settings selection per non-empty pass, all selected-target attempts after a persistence failure, skipped/failed outcome-array invariants, mixed diagnostic order, exactly-once diagnostic rendering, persisted-only zero output, settings unavailability, non-TTY early return, and unexpected exception propagation. Update the existing successful-pass fixtures so they explicitly select `Exit` on the fresh menu after the pass.
+- [x] Update `test/navigator-back-navigation.test.js` with failing cycle-aware coverage for menu re-entry, back from each predecessor chain, cancellation from every navigable screen, fresh cursor/selection state, and no materialization on abandoned paths. Keep the input seam and raw-mode lifecycle assertions intact.
+- [x] Update the setup assertions in `test/model-customization-menu.test.js` so injected `persistence-failed` outcomes are non-success and diagnostics are rendered by `runPostSetupMenu`, not by `bin/setup.js`; preserve the existing `post-setup-failure` assertion for unexpected exceptions.
+- [x] Verify RED: run `node --test test/model-customization-menu.test.js test/navigator-back-navigation.test.js` — expected: assertion failures attributable to missing re-entry, missing diagnostic ownership, missing empty-target recovery, or incorrect persistence-failure exit mapping, with no setup/import/compilation failure.
+- [x] **GATE — DO NOT PROCEED to GREEN until RED is verified.** If the tests pass or fail for an unrelated setup/import/compilation reason, stop and report the RED result instead of applying the production code.
 
 ##### GREEN phase (only after RED is verified)
 
-- [ ] Replace `buildChecklistTargets` in `bin/model-customization.js` so single-family and combined inventories are sorted at the checklist boundary while preserving worker/command prefixes and family grouping:
+- [x] Replace `buildChecklistTargets` in `bin/model-customization.js` so single-family and combined inventories are sorted at the checklist boundary while preserving worker/command prefixes and family grouping:
 
 ```javascript
 function buildChecklistTargets(scope, workers, commands) {
@@ -239,7 +239,7 @@ function buildChecklistTargets(scope, workers, commands) {
 }
 ```
 
-- [ ] Replace `materializeLocalOverride` in `bin/model-customization.js` with this complete implementation. It preserves the independent harness roots, atomic replacement, frontmatter validation, and existing `missing-source` reason while attaching the required ordered skip diagnostic:
+- [x] Replace `materializeLocalOverride` in `bin/model-customization.js` with this complete implementation. It preserves the independent harness roots, atomic replacement, frontmatter validation, and existing `missing-source` reason while attaching the required ordered skip diagnostic:
 
 ```javascript
 function materializeLocalOverride({
@@ -300,7 +300,7 @@ function materializeLocalOverride({
 }
 ```
 
-- [ ] Replace `runPostSetupMenu` in `bin/model-customization.js` with this complete outer-pass implementation. A new inner navigation record and new result arrays are created on every outer iteration, so a completed pass prints its diagnostics once and then re-enters the menu with no adapter, harness, scope, target, settings, outcome, or diagnostic state carried forward. Back and cancellation remain local to the current unmaterialized path; a persistence failure exhausts the selected targets, prints diagnostics, and terminates the loop.
+- [x] Replace `runPostSetupMenu` in `bin/model-customization.js` with this complete outer-pass implementation. A new inner navigation record and new result arrays are created on every outer iteration, so a completed pass prints its diagnostics once and then re-enters the menu with no adapter, harness, scope, target, settings, outcome, or diagnostic state carried forward. Back and cancellation remain local to the current unmaterialized path; a persistence failure exhausts the selected targets, prints diagnostics, and terminates the loop.
 
 ```javascript
 async function runPostSetupMenu({
@@ -459,7 +459,7 @@ async function runPostSetupMenu({
 }
 ```
 
-- [ ] Replace `main` in `bin/setup.js` with this complete outcome-mapping implementation. It retains the existing prerequisite/setup workflow and exception path, but removes target-diagnostic rendering and returns `persistence-failed` so the CLI's existing success-only zero-status mapping produces a non-zero process exit.
+- [x] Replace `main` in `bin/setup.js` with this complete outcome-mapping implementation. It retains the existing prerequisite/setup workflow and exception path, but removes target-diagnostic rendering and returns `persistence-failed` so the CLI's existing success-only zero-status mapping produces a non-zero process exit.
 
 ```javascript
 async function main(options = {}) {
@@ -535,24 +535,24 @@ async function main(options = {}) {
 }
 ```
 
-- [ ] Update all cycle-sensitive tests in `test/model-customization-menu.test.js` and `test/navigator-back-navigation.test.js` to use the final `skipped`/`cancelled` result after a scripted `Exit`, while asserting the completed pass through its writes, adapter calls, diagnostics, and next-menu prompt. Do not aggregate a completed pass into the final cancellation result.
-- [ ] Verify GREEN: run `node --test test/model-customization-menu.test.js test/navigator-back-navigation.test.js test/install-flow-navigator.test.js test/navigator-raw-input-session.test.js` — expected: PASS, including the fresh outer loop, exact notice, diagnostic ownership, persistence-failure termination, setup status mapping, navigator compatibility, and raw-input behavior.
+- [x] Update all cycle-sensitive tests in `test/model-customization-menu.test.js` and `test/navigator-back-navigation.test.js` to use the final `skipped`/`cancelled` result after a scripted `Exit`, while asserting the completed pass through its writes, adapter calls, diagnostics, and next-menu prompt. Do not aggregate a completed pass into the final cancellation result.
+- [x] Verify GREEN: run `node --test test/model-customization-menu.test.js test/navigator-back-navigation.test.js test/install-flow-navigator.test.js test/navigator-raw-input-session.test.js` — expected: PASS, including the fresh outer loop, exact notice, diagnostic ownership, persistence-failure termination, setup status mapping, navigator compatibility, and raw-input behavior.
 
 ##### Step 2 Verification Checklist
 
 **Automated (agent runs before stopping):**
 
-- [ ] RED verified — `node --test test/model-customization-menu.test.js test/navigator-back-navigation.test.js` fails with assertion failures attributable to the missing Step 2 behavior.
-- [ ] GREEN verified — `node --test test/model-customization-menu.test.js test/navigator-back-navigation.test.js test/install-flow-navigator.test.js test/navigator-raw-input-session.test.js` passes.
-- [ ] `npm test` — the complete Node built-in test suite passes, including `test/canonical-opencode-agent-behavior.test.js` and `test/install-codegraph.test.js`.
-- [ ] Inspect `bin/setup.js` and the model-customization tests to confirm `bin/setup.js` contains no `Post-setup customization:` diagnostic renderer and that the only renderer is the per-pass loop in `runPostSetupMenu`.
-- [ ] Inspect the durable plan and source contracts to confirm the final outcome uses only `completed`, `skipped` with `cancelled|settings-unavailable|non-tty`, and `persistence-failed`, and that skipped names are omitted from `failedAgents` on a failed pass.
+- [x] RED verified — `node --test test/model-customization-menu.test.js test/navigator-back-navigation.test.js` fails with assertion failures attributable to the missing Step 2 behavior.
+- [x] GREEN verified — `node --test test/model-customization-menu.test.js test/navigator-back-navigation.test.js test/install-flow-navigator.test.js test/navigator-raw-input-session.test.js` passes.
+- [x] `npm test` — the complete Node built-in test suite passes, including `test/canonical-opencode-agent-behavior.test.js` and `test/install-codegraph.test.js`.
+- [x] Inspect `bin/setup.js` and the model-customization tests to confirm `bin/setup.js` contains no `Post-setup customization:` diagnostic renderer and that the only renderer is the per-pass loop in `runPostSetupMenu`.
+- [x] Inspect the durable plan and source contracts to confirm the final outcome uses only `completed`, `skipped` with `cancelled|settings-unavailable|non-tty`, and `persistence-failed`, and that skipped names are omitted from `failedAgents` on a failed pass.
 
 **Human (verify in an interactive terminal before committing):**
 
-- [ ] Complete one customization pass, confirm its diagnostic appears once, confirm the post-setup menu reopens with the first cursor position and all newly enumerated targets selected, then choose `Exit` and confirm process exit code 0 with earlier overrides preserved.
-- [ ] Trigger a later persistence failure, confirm remaining selected targets are still attempted, each produced diagnostic appears once in selection order, the menu does not reopen, and the process exits non-zero.
-- [ ] Select a scope with no targets and confirm the exact notice appears, the scope selector reopens, no zero-row checklist is rendered, and settings are never requested. Exercise Back and cancellation from harness, scope, target, and settings screens and confirm no abandoned path writes an override.
+- [x] Complete one customization pass, confirm its diagnostic appears once, confirm the post-setup menu reopens with the first cursor position and all newly enumerated targets selected, then choose `Exit` and confirm process exit code 0 with earlier overrides preserved.
+- [x] Trigger a later persistence failure, confirm remaining selected targets are still attempted, each produced diagnostic appears once in selection order, the menu does not reopen, and the process exits non-zero.
+- [x] Select a scope with no targets and confirm the exact notice appears, the scope selector reopens, no zero-row checklist is rendered, and settings are never requested. Exercise Back and cancellation from harness, scope, target, and settings screens and confirm no abandoned path writes an override.
 
 #### Step 2 STOP & COMMIT
 

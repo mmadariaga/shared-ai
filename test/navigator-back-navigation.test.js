@@ -268,16 +268,18 @@ test('back at the harness picker re-opens the main menu instead of cancelling', 
     const result = await runPostSetupMenu({
       isTTY: true,
       // menu -> harness (back) -> menu -> harness -> scope -> targets
-      promptChoice: scriptedChoice(['Customize models', BACK, 'Customize models', 'OpenCode', 'Workers'], questions),
+      promptChoice: scriptedChoice(['Customize models', BACK, 'Customize models', 'OpenCode', 'Workers', 'Exit'], questions),
       promptChecklist: async (items) => ({ status: 'confirmed', items }),
     });
-    assert.equal(result.status, 'completed');
+    assert.equal(result.status, 'skipped');
+    assert.equal(result.reason, 'cancelled');
     assert.deepEqual(questions, [
       'Post-setup customization:',
       'Choose a harness:',
       'Post-setup customization:',
       'Choose a harness:',
       'Choose a customization scope:',
+      'Post-setup customization:',
     ], 'stepping back from the harness picker should redisplay the main menu, then the picker again');
   } finally {
     restore();
@@ -295,13 +297,14 @@ test('back at the target checklist re-opens the scope screen and then the harnes
     const result = await runPostSetupMenu({
       isTTY: true,
       // menu -> OpenCode -> Workers -> checklist (back) -> scope (back) -> harness -> Claude Code -> Workers -> checklist
-      promptChoice: scriptedChoice(['Customize models', 'OpenCode', 'Workers', BACK, 'Claude Code', 'Workers'], questions),
+      promptChoice: scriptedChoice(['Customize models', 'OpenCode', 'Workers', BACK, 'Claude Code', 'Workers', 'Exit'], questions),
       promptChecklist: async (items) => {
         checklistCalls += 1;
         return checklistCalls === 1 ? { status: 'back' } : { status: 'confirmed', items };
       },
     });
-    assert.equal(result.status, 'completed');
+    assert.equal(result.status, 'skipped');
+    assert.equal(result.reason, 'cancelled');
     assert.equal(checklistCalls, 2, 'the checklist should be reopened after the harness is re-picked');
     assert.deepEqual(questions, [
       'Post-setup customization:',
@@ -310,6 +313,7 @@ test('back at the target checklist re-opens the scope screen and then the harnes
       'Choose a customization scope:',
       'Choose a harness:',
       'Choose a customization scope:',
+      'Post-setup customization:',
     ], 'stepping back from the checklist should return to the scope screen, then back to the harness picker');
     assert.equal(claudeOps.create.length, AGENTS.length,
       'the corrected harness should be the one that gets configured');
@@ -332,7 +336,7 @@ test('back at the settings screen re-opens the target checklist without persisti
   try {
     const result = await runPostSetupMenu({
       isTTY: true,
-      promptChoice: scriptedChoice(['Customize models', 'OpenCode', 'Workers'], []),
+      promptChoice: scriptedChoice(['Customize models', 'OpenCode', 'Workers', 'Exit'], []),
       promptChecklist: async (items) => {
         // First pass confirms both targets, second pass narrows to one.
         const picked = checklistSelections.length === 0 ? items : [items[1]];
@@ -340,7 +344,8 @@ test('back at the settings screen re-opens the target checklist without persisti
         return { status: 'confirmed', items: picked };
       },
     });
-    assert.equal(result.status, 'completed');
+    assert.equal(result.status, 'skipped');
+    assert.equal(result.reason, 'cancelled');
     assert.equal(checklistSelections.length, 2,
       'stepping back from the settings screen should reopen the checklist');
     assert.deepEqual(ops.select, [AGENTS.join(', '), AGENTS[1]],
@@ -359,11 +364,12 @@ test('back at the main menu redraws it rather than exiting the flow', { timeout:
   try {
     const result = await runPostSetupMenu({
       isTTY: true,
-      promptChoice: scriptedChoice([BACK, BACK, 'Customize models', 'OpenCode', 'Workers'], questions),
+      promptChoice: scriptedChoice([BACK, BACK, 'Customize models', 'OpenCode', 'Workers', 'Exit'], questions),
       promptChecklist: async (items) => ({ status: 'confirmed', items }),
     });
-    assert.equal(result.status, 'completed',
+    assert.equal(result.status, 'skipped',
       'the first screen has no predecessor, so back must not abandon the flow');
+    assert.equal(result.reason, 'cancelled');
     assert.deepEqual(questions.slice(0, 3), [
       'Post-setup customization:',
       'Post-setup customization:',

@@ -175,17 +175,13 @@ async function main(options = {}) {
     return 'post-setup-failure';
   }
 
-  if (customizationOutcome === undefined) {
+  if (customizationOutcome === undefined) return 'success';
+  if (customizationOutcome.status === 'completed'
+      || customizationOutcome.status === 'skipped') {
     return 'success';
   }
-
-  if (customizationOutcome.status === 'completed'
-      || customizationOutcome.status === 'skipped'
-      || customizationOutcome.status === 'persistence-failed') {
-    for (const diagnostic of customizationOutcome.diagnostics || []) {
-      console.error(`Post-setup customization: ${diagnostic}`);
-    }
-    return 'success';
+  if (customizationOutcome.status === 'persistence-failed') {
+    return 'persistence-failed';
   }
 
   console.error(`Unexpected post-setup customization outcome: ${customizationOutcome.status}`);

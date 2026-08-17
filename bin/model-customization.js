@@ -39,8 +39,8 @@ const NO_VARIANT_LABEL = 'Default (no variant)';
 const TOP_LEVEL_SCALAR = /^([A-Za-z0-9_-]+):[ \t]*(.*)$/;
 
 function buildChecklistTargets(scope, workers, commands) {
-  if (scope === 'Workers') return workers;
-  if (scope === 'Commands') return commands;
+  if (scope === 'Workers') return workers.slice().sort();
+  if (scope === 'Commands') return commands.slice().sort();
   return [
     ...workers.slice().sort().map(name => `${WORKER_PREFIX}${name}`),
     ...commands.slice().sort().map(name => `${COMMAND_PREFIX}${name}`),
@@ -165,7 +165,12 @@ function materializeLocalOverride({
       const sourceRoot = family === 'command' ? globalCommandRoot : globalAgentRoot;
       const source = path.join(sourceRoot, `${agentName}.md`);
       if (!fs.existsSync(source)) {
-        return { status: 'skipped', agent: agentName, reason: 'missing-source' };
+        return {
+          status: 'skipped',
+          agent: agentName,
+          reason: 'missing-source',
+          diagnostic: `Skipped ${agentName}: installed source is unavailable.`,
+        };
       }
       currentText = fs.readFileSync(source, 'utf8');
     }
@@ -567,23 +572,6 @@ function skippedOutcome(reason, diagnostics = []) {
   return { status: 'skipped', reason, skippedAgents: [], diagnostics };
 }
 
-function promptPostSetupMenu(promptChoice) {
-  if (promptChoice === promptSelect) {
-    return promptSelect(
-      'Post-setup customization:',
-      MENU_OPTIONS,
-      undefined,
-      null
-    );
-  }
-  return promptChoice(
-    'Post-setup customization:',
-    MENU_OPTIONS,
-    undefined,
-    null
-  );
-}
-
 async function runPostSetupMenu({
   projectPath = process.cwd(),
   packageRoot = DEFAULT_PACKAGE_ROOT,
@@ -597,110 +585,146 @@ async function runPostSetupMenu({
 } = {}) {
   if (!isTTY) return skippedOutcome('non-tty');
 
-  // The five screens form a linear flow the user can walk backwards through:
-  // menu -> harness -> scope -> target checklist -> settings. Each screen
-  // resolving `back` re-opens its predecessor; the first screen simply redraws.
-  let screen = 'menu';
-  let adapter = null;
-  let harness = null;
-  let scope = null;
-  let selectedTargets = null;
+  for (;;) {
+    let screen = 'menu';
+    let adapter = null;
+    let harness = null;
+    let scope = null;
+    let selectedTargets = null;
     let settings = null;
 
-  for (;;) {
-    if (screen === 'menu') {
-      const action = await promptPostSetupMenu(promptChoice);
-      if (action === BACK) continue;
-      if (action === null || action === 'Exit') return skippedOutcome('cancelled');
-      if (action !== 'Customize models') return skippedOutcome('cancelled');
-      screen = 'harness';
-      continue;
-    }
-
-    if (screen === 'harness') {
-      const chosen = await promptChoice('Choose a harness:', HARNESS_OPTIONS);
-      if (chosen === BACK) {
-        screen = 'menu';
-        continue;
-      }
-      if (chosen === null) return skippedOutcome('cancelled');
-      if (chosen !== 'OpenCode' && chosen !== 'Claude Code') return skippedOutcome('cancelled');
-      harness = chosen;
-      screen = 'scope';
-      continue;
-    }
-
-    if (screen === 'scope') {
-      const chosen = await promptChoice('Choose a customization scope:', SCOPE_OPTIONS);
-      if (chosen === BACK) {
+    for (;;) {
+      if (screen === 'menu') {
+        const action = await promptChoice(
+          'Post-setup customization:',
+          MENU_OPTIONS,
+          undefined,
+          null,
+        );
+        if (action === BACK) continue;
+        if (action === null || action === 'Exit') return skippedOutcome('cancelled');
+        if (action !== 'Customize models') return skippedOutcome('cancelled');
         screen = 'harness';
         continue;
       }
-      if (chosen === null) return skippedOutcome('cancelled');
-      if (!SCOPE_OPTIONS.includes(chosen)) return skippedOutcome('cancelled');
-      scope = chosen;
-      screen = 'targets';
-      continue;
-    }
 
-    if (screen === 'targets') {
-      adapter = harness === 'OpenCode'
-        ? module.exports.createOpencodeAdapter({ projectPath, packageRoot, globalAgentRoot: opencodeGlobalAgentRoot, globalCommandRoot: opencodeGlobalCommandRoot, promptChoice })
-        : module.exports.createClaudeAdapter({ projectPath, packageRoot, globalAgentRoot: claudeGlobalAgentRoot, globalCommandRoot: claudeGlobalCommandRoot, promptChoice });
-      const workers = adapter.enumerateWorkers();
-      const commands = scope === 'Workers' ? [] : adapter.enumerateCommands();
-      const targets = buildChecklistTargets(scope, workers, commands);
-      const selection = await promptChecklist(
-        targets,
-        targets,
-        undefined,
-        MODEL_CHECKLIST_LEGEND,
-        { preventEmptyConfirm: true },
-      );
-      if (!selection || selection.status === 'cancelled') return skippedOutcome('cancelled');
-      if (selection.status === 'non-interactive') return skippedOutcome('non-tty');
-      if (selection.status === 'back') {
+      if (screen === 'harness') {
+        const chosen = await promptChoice('Choose a harness:', HARNESS_OPTIONS);
+        if (chosen === BACK) {
+          screen = 'menu';
+          continue;
+        }
+        if (chosen === null) return skippedOutcome('cancelled');
+        if (chosen !== 'OpenCode' && chosen !== 'Claude Code') return skippedOutcome('cancelled');
+        harness = chosen;
         screen = 'scope';
         continue;
       }
-      if (selection.status !== 'confirmed') return skippedOutcome('cancelled');
 
-      selectedTargets = Array.isArray(selection.items)
-        ? selection.items.map(value => parseTarget(value, scope))
-        : [];
-      if (selectedTargets.length === 0) return skippedOutcome('empty-selection');
-      screen = 'settings';
-      continue;
+      if (screen === 'scope') {
+        const chosen = await promptChoice('Choose a customization scope:', SCOPE_OPTIONS);
+        if (chosen === BACK) {
+          screen = 'harness';
+          continue;
+        }
+        if (chosen === null) return skippedOutcome('cancelled');
+        if (!SCOPE_OPTIONS.includes(chosen)) return skippedOutcome('cancelled');
+        scope = chosen;
+        screen = 'targets';
+        continue;
+      }
+
+      if (screen === 'targets') {
+        adapter = harness === 'OpenCode'
+          ? module.exports.createOpencodeAdapter({
+            projectPath,
+            packageRoot,
+            globalAgentRoot: opencodeGlobalAgentRoot,
+            globalCommandRoot: opencodeGlobalCommandRoot,
+            promptChoice,
+          })
+          : module.exports.createClaudeAdapter({
+            projectPath,
+            packageRoot,
+            globalAgentRoot: claudeGlobalAgentRoot,
+            globalCommandRoot: claudeGlobalCommandRoot,
+            promptChoice,
+          });
+        const workers = adapter.enumerateWorkers();
+        const commands = scope === 'Workers' ? [] : adapter.enumerateCommands();
+        const targets = buildChecklistTargets(scope, workers, commands);
+        if (targets.length === 0) {
+          console.log('No customization targets are available for the selected scope.');
+          screen = 'scope';
+          continue;
+        }
+
+        const selection = await promptChecklist(
+          targets,
+          targets,
+          undefined,
+          MODEL_CHECKLIST_LEGEND,
+          { preventEmptyConfirm: true },
+        );
+        if (!selection || selection.status === 'cancelled') return skippedOutcome('cancelled');
+        if (selection.status === 'non-interactive') return skippedOutcome('non-tty');
+        if (selection.status === 'back') {
+          screen = 'scope';
+          continue;
+        }
+        if (selection.status !== 'confirmed') return skippedOutcome('cancelled');
+
+        selectedTargets = Array.isArray(selection.items)
+          ? selection.items.map(value => parseTarget(value, scope))
+          : [];
+        if (selectedTargets.length === 0) {
+          screen = 'targets';
+          continue;
+        }
+        screen = 'settings';
+        continue;
+      }
+
+      settings = await adapter.selectSettings(selectedTargets.map(target => target.display).join(', '));
+      if (settings === BACK) {
+        screen = 'targets';
+        continue;
+      }
+      if (!settings || typeof settings.model !== 'string' || settings.model === '') {
+        return skippedOutcome('settings-unavailable');
+      }
+      break;
     }
 
-    settings = await adapter.selectSettings(selectedTargets.map(target => target.display).join(', '));
-    if (settings === BACK) {
-      screen = 'targets';
-      continue;
+    const skippedAgents = [];
+    const failedAgents = [];
+    const diagnostics = [];
+    for (const target of selectedTargets) {
+      const result = adapter.createLocalOverride(target, settings);
+      if (result.status === 'persisted') continue;
+      if (result.status === 'skipped') {
+        skippedAgents.push(target.name);
+        diagnostics.push(result.diagnostic || `Skipped ${target.name}: installed source is unavailable.`);
+        continue;
+      }
+      if (result.status !== 'persistence-failed') {
+        throw new Error(`Unexpected local override outcome for ${target.name}: ${result.status}`);
+      }
+      if (typeof result.diagnostic !== 'string' || result.diagnostic === '') {
+        throw new Error(`Persistence failure for ${target.name} did not include a diagnostic.`);
+      }
+      failedAgents.push(target.name);
+      diagnostics.push(result.diagnostic);
     }
-    if (!settings || typeof settings.model !== 'string' || settings.model === '') {
-      return skippedOutcome('settings-unavailable');
+
+    for (const diagnostic of diagnostics) {
+      console.error(`Post-setup customization: ${diagnostic}`);
     }
-    break;
+
+    if (failedAgents.length > 0) {
+      return { status: 'persistence-failed', failedAgents, diagnostics };
+    }
   }
-
-  const skippedAgents = [];
-  const failedAgents = [];
-  const diagnostics = [];
-  for (const target of selectedTargets) {
-    const result = adapter.createLocalOverride(target, settings);
-    if (result.status === 'persisted') continue;
-    if (result.status === 'skipped') {
-      skippedAgents.push(target.name);
-      diagnostics.push(`Skipped ${target.name}: installed source is unavailable.`);
-      continue;
-    }
-    failedAgents.push(target.name);
-    diagnostics.push(result.diagnostic);
-  }
-
-  if (failedAgents.length > 0) return { status: 'persistence-failed', failedAgents, diagnostics };
-  return { status: 'completed', skippedAgents, diagnostics };
 }
 
 module.exports = {

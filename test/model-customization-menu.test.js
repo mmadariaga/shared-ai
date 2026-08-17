@@ -37,8 +37,8 @@ const OPENCODE_AGENTS = [
   'sai-1-spec-proposal-worker',
   'sai-2-design-worker',
   'sai-3-implementation-worker',
-  'sai-4-red-worker',
   'sai-4-green-worker',
+  'sai-4-red-worker',
   'sai-5-review-worker',
   'sai-6-security-worker',
   'sai-7-performance-worker',
@@ -52,8 +52,8 @@ const CLAUDE_AGENTS = [
   'sai-1-spec-proposal-worker',
   'sai-2-design-worker',
   'sai-3-implementation-worker',
-  'sai-4-red-worker',
   'sai-4-green-worker',
+  'sai-4-red-worker',
   'sai-5-review-worker',
   'sai-6-security-worker',
   'sai-7-performance-worker',
@@ -145,6 +145,7 @@ const COMBINED_BOTH_FULL = [
 ];
 
 const CHECKLIST_LEGEND = 'Up/Down move · Space toggle · Enter confirm · ←/Esc back · q/Ctrl-C cancel';
+const SELECT_LEGEND = 'Up/Down move · Space/Enter confirm · ←/Esc back · q/Ctrl-C cancel';
 const SCRATCH_ROOT = path.join(REPO_ROOT, '.tmp', 'customize-command-models', 'scratch-repos');
 
 function snapshotTree(dir) {
@@ -378,7 +379,7 @@ test('customize OpenCode flow persists every selected agent, never invokes Claud
     return makeFakeAdapter(CLAUDE_AGENTS, claudeOps);
   });
   try {
-    const answers = ['Customize models', 'OpenCode', 'Workers'];
+    const answers = ['Customize models', 'OpenCode', 'Workers', 'Exit'];
     const promptChoice = async () => answers.shift() ?? '<model>';
     const result = await runPostSetupMenu({
       projectPath: REPO_ROOT,
@@ -390,7 +391,8 @@ test('customize OpenCode flow persists every selected agent, never invokes Claud
       },
     });
     assert.deepEqual(result, {
-      status: 'completed',
+      status: 'skipped',
+      reason: 'cancelled',
       skippedAgents: [],
       diagnostics: [],
     });
@@ -427,7 +429,7 @@ test('customize Claude Code flow persists every selected agent, never invokes Op
      return makeFakeAdapter(CLAUDE_AGENTS, claudeOps, { model: 'sonnet', effort: 'medium' });
   });
   try {
-    const answers = ['Customize models', 'Claude Code', 'Workers'];
+    const answers = ['Customize models', 'Claude Code', 'Workers', 'Exit'];
     const promptChoice = async () => answers.shift() ?? '<model>';
     const result = await runPostSetupMenu({
       projectPath: REPO_ROOT,
@@ -439,7 +441,8 @@ test('customize Claude Code flow persists every selected agent, never invokes Op
       },
     });
     assert.deepEqual(result, {
-      status: 'completed',
+      status: 'skipped',
+      reason: 'cancelled',
       skippedAgents: [],
       diagnostics: [],
     });
@@ -659,6 +662,7 @@ test('full dependent-flow traversal walks menu, harness, checklist, and provider
       if (answers.length > 0) {
         return answers.shift();
       }
+      if (options.includes('Exit')) return 'Exit';
       if (screenIndex === 0) {
         screenIndex += 1;
         assert.ok(options.includes('opencode-go'),
@@ -689,7 +693,8 @@ test('full dependent-flow traversal walks menu, harness, checklist, and provider
         },
       });
       assert.deepEqual(result, {
-        status: 'completed',
+        status: 'skipped',
+        reason: 'cancelled',
         skippedAgents: [],
         diagnostics: [],
       }, 'the dependent-flow traversal should complete the opencode customization flow');
@@ -732,7 +737,7 @@ test('checklist receives the full enumerated target list of the chosen harness a
       makeFakeAdapter(OPENCODE_AGENTS, opencodeOps, { model: 'opencode-go/test-model' }, COMMANDS));
     const restoreClaude = patchFactory('createClaudeAdapter', () => makeFakeAdapter(CLAUDE_AGENTS, claudeOps));
     try {
-      const answers = ['Customize models', 'OpenCode', item.scope];
+      const answers = ['Customize models', 'OpenCode', item.scope, 'Exit'];
       const promptChoice = async () => answers.shift() ?? '<model>';
       const result = await runPostSetupMenu({
         projectPath: REPO_ROOT,
@@ -746,7 +751,8 @@ test('checklist receives the full enumerated target list of the chosen harness a
         `the checklist items should be the full enumerated ${item.scope} target list`);
       assert.deepEqual(checklistCalls[0][1], item.items,
         `every target of the ${item.scope} scope should be pre-selected by default`);
-      assert.equal(result.status, 'completed');
+      assert.equal(result.status, 'skipped');
+      assert.equal(result.reason, 'cancelled');
     } finally {
       restoreOpencode();
       restoreClaude();
@@ -761,7 +767,7 @@ test('checklist receives the canonical legend string as its footer argument', as
   const restoreOpencode = patchFactory('createOpencodeAdapter', () => makeFakeAdapter(OPENCODE_AGENTS, opencodeOps));
   const restoreClaude = patchFactory('createClaudeAdapter', () => makeFakeAdapter(CLAUDE_AGENTS, claudeOps));
   try {
-    const answers = ['Customize models', 'OpenCode', 'Workers'];
+    const answers = ['Customize models', 'OpenCode', 'Workers', 'Exit'];
     const promptChoice = async () => answers.shift() ?? '<model>';
     const result = await runPostSetupMenu({
       projectPath: REPO_ROOT,
@@ -772,7 +778,8 @@ test('checklist receives the canonical legend string as its footer argument', as
     assert.equal(checklistCalls.length, 1, 'the checklist should be invoked exactly once');
     assert.ok(checklistCalls[0].includes(CHECKLIST_LEGEND),
       'the checklist should be invoked with the canonical legend as its footer argument');
-    assert.equal(result.status, 'completed');
+    assert.equal(result.status, 'skipped');
+    assert.equal(result.reason, 'cancelled');
   } finally {
     restoreOpencode();
     restoreClaude();
@@ -795,7 +802,7 @@ test('production prompt bindings retain the expected shared-selector surface and
 
   const promptChoiceInvocations = customizationSource.match(/\bpromptChoice\s*\(/g) || [];
   const defaultPromptSelectBindings = customizationSource.match(/\bpromptChoice\s*=\s*promptSelect\b/g) || [];
-  const noFooterOverrides = customizationSource.match(/\bpromptSelect\s*\([^)]*\bnull\b[^)]*\)/g) || [];
+  const noFooterOverrides = customizationSource.match(/\bpromptChoice\s*\([^)]*\bnull\b[^)]*\)/g) || [];
 
   assert.equal(promptChoiceInvocations.length, 7,
     'the model-customization flow should have exactly seven promptChoice invocations');
@@ -814,7 +821,7 @@ test('scope Workers presents the worker-family checklist and scope Commands pres
     makeFakeAdapter(OPENCODE_AGENTS, opencodeOps, { model: 'opencode-go/test-model' }, COMMANDS));
   const restoreClaude = patchFactory('createClaudeAdapter', () => makeFakeAdapter(CLAUDE_AGENTS, claudeOps));
   try {
-    const workerAnswers = ['Customize models', 'OpenCode', 'Workers'];
+    const workerAnswers = ['Customize models', 'OpenCode', 'Workers', 'Exit'];
     const workerChecklist = [];
     const workersResult = await runPostSetupMenu({
       projectPath: REPO_ROOT,
@@ -822,14 +829,15 @@ test('scope Workers presents the worker-family checklist and scope Commands pres
       promptChoice: async () => workerAnswers.shift() ?? '<model>',
       promptChecklist: recordChecklist(workerChecklist),
     });
-    assert.equal(workersResult.status, 'completed');
+    assert.equal(workersResult.status, 'skipped');
+    assert.equal(workersResult.reason, 'cancelled');
     assert.equal(workerChecklist.length, 1, 'the checklist should be invoked exactly once for the Workers scope');
     assert.deepEqual(workerChecklist[0][0], OPENCODE_AGENTS,
       'the Workers scope checklist items are the worker-family targets with bare names');
     assert.deepEqual(workerChecklist[0][1], OPENCODE_AGENTS,
       'every worker is pre-selected by default in the Workers scope');
 
-    const commandAnswers = ['Customize models', 'OpenCode', 'Commands'];
+    const commandAnswers = ['Customize models', 'OpenCode', 'Commands', 'Exit'];
     const commandChecklist = [];
     const commandsResult = await runPostSetupMenu({
       projectPath: REPO_ROOT,
@@ -837,7 +845,8 @@ test('scope Workers presents the worker-family checklist and scope Commands pres
       promptChoice: async () => commandAnswers.shift() ?? '<model>',
       promptChecklist: recordChecklist(commandChecklist),
     });
-    assert.equal(commandsResult.status, 'completed');
+    assert.equal(commandsResult.status, 'skipped');
+    assert.equal(commandsResult.reason, 'cancelled');
     assert.equal(commandChecklist.length, 1, 'the checklist should be invoked exactly once for the Commands scope');
     assert.deepEqual(commandChecklist[0][0], COMMANDS,
       'the Commands scope checklist items are the command-family targets with bare names');
@@ -856,7 +865,7 @@ test('scope Both presents combined worker and command rows type-prefixed, worker
     makeFakeAdapter(SCRAMBLED_WORKERS, opencodeOps, { model: 'opencode-go/test-model' }, SCRAMBLED_COMMANDS));
   const restoreClaude = patchFactory('createClaudeAdapter', () => makeFakeAdapter(CLAUDE_AGENTS, claudeOps));
   try {
-    const answers = ['Customize models', 'OpenCode', 'Both'];
+    const answers = ['Customize models', 'OpenCode', 'Both', 'Exit'];
     const checklistCalls = [];
     const result = await runPostSetupMenu({
       projectPath: REPO_ROOT,
@@ -864,7 +873,8 @@ test('scope Both presents combined worker and command rows type-prefixed, worker
       promptChoice: async () => answers.shift() ?? '<model>',
       promptChecklist: recordChecklist(checklistCalls),
     });
-    assert.equal(result.status, 'completed');
+    assert.equal(result.status, 'skipped');
+    assert.equal(result.reason, 'cancelled');
     assert.equal(checklistCalls.length, 1, 'the checklist should be invoked exactly once for the Both scope');
     assert.deepEqual(checklistCalls[0][0], COMBINED_BOTH,
       'the Both scope checklist items are worker: <name> rows followed by command: <name> rows, each family alphabetical');
@@ -932,7 +942,7 @@ test('Both scope presents worker: budget and command: budget as two distinct row
     makeFakeAdapter(['budget'], opencodeOps, { model: 'opencode-go/test-model' }, ['budget']));
   const restoreClaude = patchFactory('createClaudeAdapter', () => makeFakeAdapter(CLAUDE_AGENTS, claudeOps));
   try {
-    const answers = ['Customize models', 'OpenCode', 'Both'];
+    const answers = ['Customize models', 'OpenCode', 'Both', 'Exit'];
     const checklistCalls = [];
     const result = await runPostSetupMenu({
       projectPath: REPO_ROOT,
@@ -940,7 +950,8 @@ test('Both scope presents worker: budget and command: budget as two distinct row
       promptChoice: async () => answers.shift() ?? '<model>',
       promptChecklist: recordChecklist(checklistCalls),
     });
-    assert.equal(result.status, 'completed');
+    assert.equal(result.status, 'skipped');
+    assert.equal(result.reason, 'cancelled');
     assert.equal(checklistCalls.length, 1, 'the checklist should be invoked exactly once for the Both scope');
     assert.deepEqual(checklistCalls[0][0], ['worker: budget', 'command: budget'],
       'the Both scope presents worker: budget and command: budget as two distinct rows');
@@ -965,14 +976,15 @@ test('Both scope rows are independently selectable: confirming only the command 
     makeFakeAdapter(['budget'], opencodeOps, { model: 'opencode-go/test-model' }, ['budget']));
   const restoreClaude = patchFactory('createClaudeAdapter', () => makeFakeAdapter(CLAUDE_AGENTS, claudeOps));
   try {
-    const answers = ['Customize models', 'OpenCode', 'Both'];
+    const answers = ['Customize models', 'OpenCode', 'Both', 'Exit'];
     const result = await runPostSetupMenu({
       projectPath: REPO_ROOT,
       isTTY: true,
       promptChoice: async () => answers.shift() ?? '<model>',
       promptChecklist: async () => ({ status: 'confirmed', items: ['command: budget'] }),
     });
-    assert.equal(result.status, 'completed');
+    assert.equal(result.status, 'skipped');
+    assert.equal(result.reason, 'cancelled');
     assert.deepEqual(opencodeOps.select, ['command: budget'],
       'confirming only the command row returns exactly that type-prefixed target');
     assert.deepEqual(opencodeOps.create.map(entry => entry.target.name), ['budget'],
@@ -995,7 +1007,7 @@ test('back at the scope screen re-opens the harness selector and persists no sel
   const prompts = [];
   const checklistCalls = [];
   try {
-    const answers = ['Customize models', 'OpenCode', BACK, 'Claude Code', 'Workers'];
+    const answers = ['Customize models', 'OpenCode', BACK, 'Claude Code', 'Workers', 'Exit'];
     const result = await runPostSetupMenu({
       projectPath: REPO_ROOT,
       isTTY: true,
@@ -1005,7 +1017,8 @@ test('back at the scope screen re-opens the harness selector and persists no sel
       },
       promptChecklist: recordChecklist(checklistCalls),
     });
-    assert.equal(result.status, 'completed');
+    assert.equal(result.status, 'skipped');
+    assert.equal(result.reason, 'cancelled');
     const scopePrompts = prompts.filter(prompt =>
       prompt.options.length === 3
       && prompt.options.includes('Workers')
@@ -1042,7 +1055,7 @@ test('back at the target checklist re-opens the scope screen and persists no sel
   const questions = [];
   const checklistCalls = [];
   try {
-    const answers = ['Customize models', 'OpenCode', 'Workers', 'Commands'];
+    const answers = ['Customize models', 'OpenCode', 'Workers', 'Commands', 'Exit'];
     const result = await runPostSetupMenu({
       projectPath: REPO_ROOT,
       isTTY: true,
@@ -1055,14 +1068,16 @@ test('back at the target checklist re-opens the scope screen and persists no sel
         return checklistCalls.length === 1 ? { status: 'back' } : { status: 'confirmed', items: args[1] };
       },
     });
-    assert.equal(result.status, 'completed');
+    assert.equal(result.status, 'skipped');
+    assert.equal(result.reason, 'cancelled');
     assert.equal(checklistCalls.length, 2,
       'back at the target checklist should re-open the scope screen and then the checklist again');
     assert.deepEqual(checklistCalls[0][0], OPENCODE_AGENTS,
       'the first checklist pass presents the Workers scope targets with bare names');
     assert.deepEqual(checklistCalls[1][0], COMMANDS,
       'after back the re-picked Commands scope presents the command-family targets with bare names');
-    assert.equal(questions.length, 4, 'menu, harness, scope, and the re-presented scope are prompted');
+    assert.equal(questions.length, 5,
+      'menu, harness, scope, the re-presented scope, and the fresh menu are prompted');
     assert.equal(questions[1], 'Choose a harness:', 'the harness selector precedes the first scope screen');
     assert.equal(questions[2], questions[3],
       'back at the checklist re-presents the same scope screen');
@@ -1085,7 +1100,7 @@ test('subset selection configures exactly the selected agents: one selectSetting
   const restoreOpencode = patchFactory('createOpencodeAdapter', () => makeFakeAdapter(OPENCODE_AGENTS, opencodeOps));
   const restoreClaude = patchFactory('createClaudeAdapter', () => makeFakeAdapter(CLAUDE_AGENTS, claudeOps));
   try {
-    const answers = ['Customize models', 'OpenCode', 'Workers'];
+    const answers = ['Customize models', 'OpenCode', 'Workers', 'Exit'];
     const promptChoice = async () => answers.shift() ?? '<model>';
     const result = await runPostSetupMenu({
       projectPath: REPO_ROOT,
@@ -1093,7 +1108,8 @@ test('subset selection configures exactly the selected agents: one selectSetting
       promptChoice,
       promptChecklist: async () => ({ status: 'confirmed', items: subset }),
     });
-    assert.equal(result.status, 'completed');
+    assert.equal(result.status, 'skipped');
+    assert.equal(result.reason, 'cancelled');
     assert.deepEqual(opencodeOps.select, [subset.join(', ')],
       'selectSettings should run exactly once for the confirmed subset and never for deselected agents');
     assert.deepEqual(opencodeOps.create.map(entry => entry.target.name), subset,
@@ -1113,15 +1129,22 @@ test('empty checklist selection completes with zero per-agent configuration', as
   const restoreClaude = patchFactory('createClaudeAdapter', () => makeFakeAdapter(CLAUDE_AGENTS, claudeOps));
   try {
     const answers = ['Customize models', 'OpenCode', 'Workers'];
+    let checklistCalls = 0;
     const promptChoice = async () => answers.shift() ?? '<model>';
     const result = await runPostSetupMenu({
       projectPath: REPO_ROOT,
       isTTY: true,
       promptChoice,
-      promptChecklist: async () => ({ status: 'confirmed', items: [] }),
+      promptChecklist: async () => {
+        checklistCalls += 1;
+        return checklistCalls === 1
+          ? { status: 'confirmed', items: [] }
+          : { status: 'cancelled' };
+      },
     });
     assert.equal(result.status, 'skipped');
-    assert.equal(result.reason, 'empty-selection');
+    assert.equal(result.reason, 'cancelled');
+    assert.equal(checklistCalls, 2, 'an empty confirmation keeps the checklist open');
     assert.deepEqual(opencodeOps.select, [], 'an empty selection must produce zero selectSettings calls');
     assert.deepEqual(opencodeOps.create, [], 'an empty selection must produce zero createLocalOverride calls');
     assert.equal(claudeOps.select.length, 0, 'claude must never be configured');
@@ -1504,15 +1527,17 @@ test('postSetupMenu rejection resolves post-setup-failure with the readline clos
   }
 });
 
-test('Step 2 closed customization outcomes preserve required setup success and expose aggregate diagnostics without changing unrelated files', async () => {
+test('Step 2 closed customization outcomes preserve setup success except persistence failure without changing unrelated files', async () => {
   const cases = [
     {
       name: 'completed',
       outcome: { status: 'completed', skippedAgents: [], diagnostics: [] },
+      setupResult: 'success',
     },
     {
       name: 'skipped',
       outcome: { status: 'skipped', reason: 'cancelled', skippedAgents: [], diagnostics: [] },
+      setupResult: 'success',
     },
     {
       name: 'persistence-failed',
@@ -1521,6 +1546,7 @@ test('Step 2 closed customization outcomes preserve required setup success and e
         status: 'persistence-failed',
         diagnostics: ['aggregate persistence diagnostic'],
       },
+      setupResult: 'persistence-failed',
     },
   ];
 
@@ -1549,14 +1575,14 @@ test('Step 2 closed customization outcomes preserve required setup success and e
         },
       });
 
-      assert.equal(result, 'success',
-        `${item.name} customization outcome is non-fatal after required setup success`);
+      assert.equal(result, item.setupResult,
+        `${item.name} customization maps to its declared setup exit status`);
       assert.equal(menuCalls, 1, 'the post-setup customization menu remains reachable');
       assert.deepEqual(fs.readFileSync(unrelatedFile), before,
         'unrelated project files remain byte-identical');
       if (item.diagnostic) {
-        assert.ok(cap.logs.some(message => message.includes(item.diagnostic)),
-          'the aggregate persistence diagnostic is exposed');
+        assert.equal(cap.logs.some(message => message.includes(item.diagnostic)), false,
+          'bin/setup.js must not render diagnostics owned by runPostSetupMenu');
       }
     } finally {
       cap.restore();
@@ -2631,9 +2657,11 @@ test('Step 1 materialize selected harness overrides: confirmed subsets, empty se
     }));
     try {
       const answers = ['Customize models', 'Claude Code', 'Workers'];
-      const promptChoice = async (question, options) => answers.length > 0
-        ? answers.shift()
-        : chooseClaudeSonnetMedium(options);
+      const promptChoice = async (question, options) => {
+        if (answers.length > 0) return answers.shift();
+        if (question === 'Post-setup customization:') return 'Exit';
+        return chooseClaudeSonnetMedium(options);
+      };
       const selectedBefore = snapshotTree(fixture.projectPath);
       const completed = await runPostSetupMenu({
         projectPath: fixture.projectPath,
@@ -2641,7 +2669,8 @@ test('Step 1 materialize selected harness overrides: confirmed subsets, empty se
         promptChoice,
         promptChecklist: async () => ({ status: 'confirmed', items: [PERSIST_CLAUDE_AGENT] }),
       });
-       assert.equal(completed && completed.status, 'completed');
+       assert.equal(completed && completed.status, 'skipped');
+       assert.equal(completed && completed.reason, 'cancelled');
       assert.equal(
         fs.existsSync(path.join(fixture.projectPath, '.claude', 'agents', `${PERSIST_CLAUDE_AGENT}.md`)),
         true
@@ -2655,14 +2684,21 @@ test('Step 1 materialize selected harness overrides: confirmed subsets, empty se
 
       const emptyBefore = snapshotTree(fixture.projectPath);
       const emptyAnswers = ['Customize models', 'Claude Code', 'Workers'];
+      let emptyChecklistCalls = 0;
       const empty = await runPostSetupMenu({
         projectPath: fixture.projectPath,
         isTTY: true,
         promptChoice: async () => emptyAnswers.shift(),
-        promptChecklist: async () => ({ status: 'confirmed', items: [] }),
+        promptChecklist: async () => {
+          emptyChecklistCalls += 1;
+          return emptyChecklistCalls === 1
+            ? { status: 'confirmed', items: [] }
+            : { status: 'cancelled' };
+        },
       });
       assert.equal(empty.status, 'skipped');
-      assert.equal(empty.reason, 'empty-selection');
+      assert.equal(empty.reason, 'cancelled');
+      assert.equal(emptyChecklistCalls, 2, 'an empty confirmation keeps the checklist open');
       assert.deepEqual(snapshotTree(fixture.projectPath), emptyBefore);
 
       const cancelledBefore = snapshotTree(fixture.projectPath);
@@ -2735,6 +2771,7 @@ test('Step 1 materialize selected harness overrides: missing sources are per-age
       status: 'skipped',
       agent: PERSIST_CLAUDE_AGENT,
       reason: 'missing-source',
+      diagnostic: `Skipped ${PERSIST_CLAUDE_AGENT}: installed source is unavailable.`,
     });
     assert.equal(persisted.status, 'persisted');
     assert.equal(repeated.status, 'persisted');
@@ -3083,7 +3120,7 @@ test('Step 2 non-empty Claude subsets select settings once and apply the same mo
     makeFakeAdapter(OPENCODE_AGENTS, opencodeOps));
   const selected = [CLAUDE_AGENTS[0], CLAUDE_AGENTS[2]];
   try {
-    const answers = ['Customize models', 'Claude Code', 'Workers'];
+    const answers = ['Customize models', 'Claude Code', 'Workers', 'Exit'];
     const result = await runPostSetupMenu({
       projectPath: REPO_ROOT,
       isTTY: true,
@@ -3091,7 +3128,8 @@ test('Step 2 non-empty Claude subsets select settings once and apply the same mo
       promptChecklist: async () => ({ status: 'confirmed', items: selected }),
     });
 
-    assert.equal(result.status, 'completed');
+    assert.equal(result.status, 'skipped');
+    assert.equal(result.reason, 'cancelled');
     assert.deepEqual(claudeOps.select, [selected.join(', ')]);
     assert.deepEqual(claudeOps.create.map(entry => entry.target.name), selected);
     assert.deepEqual(claudeOps.create.map(entry => entry.settings), [
@@ -3445,6 +3483,11 @@ test('flow: command targets with no source or invalid frontmatter are reported i
     const valid = 'sai-backfill';
     const missing = 'sai-pr';
     const invalid = 'sai-status';
+    const commandSourceDir = path.join(fixture.packageRoot, 'commands', 'claude');
+    fs.mkdirSync(commandSourceDir, { recursive: true });
+    for (const command of [missing, invalid, valid]) {
+      fs.writeFileSync(path.join(commandSourceDir, `${command}.md`), '');
+    }
     writeGlobalCommand(fixture, 'claude', valid, claudeCommandSource(valid));
     writeGlobalCommand(fixture, 'claude', invalid, 'no frontmatter block here\njust a body\n');
     const answers = ['Customize models', 'Claude Code', 'Commands'];
@@ -3457,6 +3500,9 @@ test('flow: command targets with no source or invalid frontmatter are reported i
       promptChecklist: async () => ({ status: 'confirmed', items: [missing, invalid, valid] }),
     });
     const diagnostics = (result.diagnostics || []).map(entry => String(entry)).join('\n');
+    assert.equal(result.status, 'persistence-failed',
+      'a persistence-failed target makes the pass non-successful');
+    assert.deepEqual(result.failedAgents, [invalid]);
     assert.ok(diagnostics.includes(missing),
       `the command ${missing} with no project-local destination and no installed global source is reported skipped with a diagnostic`);
     assert.ok(diagnostics.includes(invalid),
@@ -3492,7 +3538,7 @@ test('the settings selector is invoked exactly once per run for the whole confir
   const restoreClaude = patchFactory('createClaudeAdapter', () =>
     makeFakeAdapter(CLAUDE_AGENTS, claudeOps));
   try {
-    const answers = ['Customize models', 'OpenCode', 'Both'];
+    const answers = ['Customize models', 'OpenCode', 'Both', 'Exit'];
     const both = ['worker: budget', 'worker: explore', 'command: budget', 'command: sai-1-spec'];
     const bothBare = ['budget', 'explore', 'budget', 'sai-1-spec'];
     const result = await runPostSetupMenu({
@@ -3501,7 +3547,8 @@ test('the settings selector is invoked exactly once per run for the whole confir
       promptChoice: async () => answers.shift() ?? '<model>',
       promptChecklist: async (...args) => ({ status: 'confirmed', items: args[1] }),
     });
-    assert.equal(result.status, 'completed');
+    assert.equal(result.status, 'skipped');
+    assert.equal(result.reason, 'cancelled');
     assert.deepEqual(opencodeOps.select, [both.join(', ')],
       'the selector runs exactly once for the whole confirmed Both subset');
     assert.equal(opencodeOps.select.length, 1,
@@ -3519,14 +3566,21 @@ test('the settings selector is invoked exactly once per run for the whole confir
     opencodeOps.select.length = 0;
     opencodeOps.create.length = 0;
     const emptyAnswers = ['Customize models', 'OpenCode', 'Both'];
+    let emptyChecklistCalls = 0;
     const emptyResult = await runPostSetupMenu({
       projectPath: REPO_ROOT,
       isTTY: true,
       promptChoice: async () => emptyAnswers.shift() ?? '<model>',
-      promptChecklist: async () => ({ status: 'confirmed', items: [] }),
+      promptChecklist: async () => {
+        emptyChecklistCalls += 1;
+        return emptyChecklistCalls === 1
+          ? { status: 'confirmed', items: [] }
+          : { status: 'cancelled' };
+      },
     });
     assert.equal(emptyResult.status, 'skipped');
-    assert.equal(emptyResult.reason, 'empty-selection');
+    assert.equal(emptyResult.reason, 'cancelled');
+    assert.equal(emptyChecklistCalls, 2, 'an empty confirmation keeps the checklist open');
     assert.deepEqual(opencodeOps.select, [], 'an empty confirmed subset invokes no selector');
     assert.deepEqual(opencodeOps.create, [], 'an empty confirmed subset configures no target');
     assert.equal(claudeOps.select.length, 0, 'claude must never be configured');
@@ -3534,5 +3588,397 @@ test('the settings selector is invoked exactly once per run for the whole confir
   } finally {
     restoreOpencode();
     restoreClaude();
+  }
+});
+
+// --- Step 2: cyclic post-setup passes, diagnostics, and exit policy ---------
+
+function makeOutcomeAdapter({ targets, settings, outcomes, ops }) {
+  return {
+    enumerateWorkers() {
+      ops.enumerate += 1;
+      return [...targets];
+    },
+    enumerateCommands() {
+      ops.enumerateCommands = (ops.enumerateCommands || 0) + 1;
+      return [];
+    },
+    async selectSettings(label) {
+      ops.select.push({ label });
+      return typeof settings === 'function' ? settings(ops.select.length) : settings;
+    },
+    createLocalOverride(target, chosen) {
+      const name = typeof target === 'string' ? target : target.name;
+      const index = ops.create.length;
+      ops.create.push({ name, target, settings: chosen });
+      const selected = typeof outcomes === 'function'
+        ? outcomes(name, index)
+        : outcomes[index];
+      if (selected instanceof Error) throw selected;
+      return { agent: name, ...(selected || { status: 'persisted' }) };
+    },
+  };
+}
+
+function captureTerminalEvents() {
+  const events = [];
+  const original = {
+    log: console.log,
+    error: console.error,
+    warn: console.warn,
+  };
+  console.log = message => events.push({ kind: 'log', message: String(message) });
+  console.error = message => events.push({ kind: 'error', message: String(message) });
+  console.warn = message => events.push({ kind: 'warn', message: String(message) });
+  return {
+    events,
+    restore() {
+      console.log = original.log;
+      console.error = original.error;
+      console.warn = original.warn;
+    },
+  };
+}
+
+test('completed passes re-enter with fresh adapters and selections, render prior diagnostics once, and preserve earlier overrides on later Exit', async () => {
+  const firstDiagnostic = 'Skipped first-unavailable: installed source is unavailable.';
+  const states = [
+    {
+      targets: ['first-persisted', 'first-unavailable'],
+      settings: { model: 'opencode-go/first' },
+      outcomes: [
+        { status: 'persisted' },
+        { status: 'skipped', reason: 'missing-source' },
+      ],
+    },
+    {
+      targets: ['second-persisted'],
+      settings: { model: 'opencode-go/second' },
+      outcomes: [{ status: 'persisted' }],
+    },
+  ];
+  const adapterOps = states.map(() => ({ enumerate: 0, select: [], create: [] }));
+  const adapters = states.map((state, index) => makeOutcomeAdapter({
+    ...state,
+    ops: adapterOps[index],
+  }));
+  let factoryCalls = 0;
+  const restore = patchFactory('createOpencodeAdapter', () => adapters[factoryCalls++]);
+  const checklistCalls = [];
+  const eventsCapture = captureTerminalEvents();
+  const answers = [
+    'Customize models', 'OpenCode', 'Workers',
+    'Customize models', 'OpenCode', 'Workers', 'Exit',
+  ];
+  const promptCalls = [];
+  try {
+    const result = await runPostSetupMenu({
+      projectPath: REPO_ROOT,
+      isTTY: true,
+      promptChoice: async (question, options) => {
+        eventsCapture.events.push({ kind: 'prompt', question });
+        promptCalls.push({ question, options });
+        const answer = answers.shift();
+        assert.notEqual(answer, undefined, `unexpected prompt: ${question}`);
+        return answer;
+      },
+      promptChecklist: async (...args) => {
+        checklistCalls.push(args);
+        return { status: 'confirmed', items: args[1] };
+      },
+    });
+
+    assert.deepEqual(result, {
+      status: 'skipped',
+      reason: 'cancelled',
+      skippedAgents: [],
+      diagnostics: [],
+    });
+    assert.equal(factoryCalls, 2, 'the next completed pass creates a fresh adapter');
+    assert.deepEqual(adapterOps.map(ops => ops.enumerate), [1, 1],
+      'each pass enumerates its own target set exactly once');
+    assert.deepEqual(checklistCalls.map(call => [call[0], call[1]]), [
+      [states[0].targets, states[0].targets],
+      [states[1].targets, states[1].targets],
+    ], 'every newly enumerated target is selected in a fresh checklist');
+    assert.deepEqual(adapterOps[0].select, [{ label: states[0].targets.join(', ') }]);
+    assert.deepEqual(adapterOps[1].select, [{ label: states[1].targets.join(', ') }]);
+    assert.deepEqual(adapterOps[0].create.map(entry => entry.name), states[0].targets);
+    assert.deepEqual(adapterOps[1].create.map(entry => entry.name), states[1].targets);
+    assert.deepEqual(adapterOps[0].create.map(entry => entry.settings), [states[0].settings, states[0].settings]);
+    assert.deepEqual(adapterOps[1].create.map(entry => entry.settings), [states[1].settings]);
+
+    const diagnosticEvents = eventsCapture.events.filter(event =>
+      event.message === `Post-setup customization: ${firstDiagnostic}`);
+    assert.equal(diagnosticEvents.length, 1,
+      'a skipped-target diagnostic is emitted exactly once across later passes');
+    const diagnosticIndex = eventsCapture.events.indexOf(diagnosticEvents[0]);
+    const menuEvents = eventsCapture.events.filter(event =>
+      event.kind === 'prompt' && event.question === 'Post-setup customization:');
+    assert.equal(menuEvents.length, 3, 'the fresh menu is shown before the second pass and before Exit');
+    const secondMenuIndex = eventsCapture.events.findIndex((event, index) =>
+      event.kind === 'prompt'
+      && event.question === 'Post-setup customization:'
+      && index > eventsCapture.events.findIndex(candidate =>
+        candidate.kind === 'prompt' && candidate.question === 'Post-setup customization:'));
+    assert.ok(diagnosticIndex < secondMenuIndex,
+      'completed-pass diagnostics are emitted before the next menu prompt');
+    assert.deepEqual(answers, [], 'the later cancellation consumes only the fresh menu choice');
+  } finally {
+    eventsCapture.restore();
+    restore();
+  }
+});
+
+test('persistence failure attempts every selected target, returns failedAgents and diagnostics, and does not re-enter the menu', async () => {
+  const failureDiagnostic = 'Failed cannot-write: destination could not be persisted.';
+  const ops = { enumerate: 0, select: [], create: [] };
+    const targets = ['after-failure', 'cannot-write', 'missing-source'];
+  const restore = patchFactory('createOpencodeAdapter', () => makeOutcomeAdapter({
+    targets,
+    settings: { model: 'opencode-go/test-model', variant: 'high' },
+      outcomes: [
+        { status: 'persisted' },
+        { status: 'persistence-failed', diagnostic: failureDiagnostic },
+        { status: 'skipped', reason: 'missing-source' },
+      ],
+    ops,
+  }));
+  const answers = ['Customize models', 'OpenCode', 'Workers'];
+  let menuPrompts = 0;
+  try {
+    const result = await runPostSetupMenu({
+      projectPath: REPO_ROOT,
+      isTTY: true,
+      promptChoice: async question => {
+        if (question === 'Post-setup customization:') menuPrompts += 1;
+        const answer = answers.shift();
+        assert.notEqual(answer, undefined, `the failed pass must not prompt again: ${question}`);
+        return answer;
+      },
+      promptChecklist: async (items, defaultSelected) => {
+        assert.deepEqual(defaultSelected, items);
+        return { status: 'confirmed', items };
+      },
+    });
+
+    assert.equal(menuPrompts, 1, 'a persistence-failed pass terminates without another menu');
+    assert.equal(result.status, 'persistence-failed');
+    assert.deepEqual(result.failedAgents, ['cannot-write'],
+      'skipped targets are omitted from failedAgents');
+    assert.deepEqual(result.diagnostics, [
+      failureDiagnostic,
+      'Skipped missing-source: installed source is unavailable.',
+    ]);
+    assert.deepEqual(ops.select, [{ label: targets.join(', ') }],
+      'non-empty confirmation invokes settings exactly once');
+    assert.deepEqual(ops.create.map(entry => entry.name), targets,
+      'remaining selected targets are attempted once after persistence failure');
+    assert.deepEqual(ops.create.map(entry => entry.settings), [
+      { model: 'opencode-go/test-model', variant: 'high' },
+      { model: 'opencode-go/test-model', variant: 'high' },
+      { model: 'opencode-go/test-model', variant: 'high' },
+    ], 'identical settings are forwarded to every selected target');
+  } finally {
+    restore();
+  }
+});
+
+test('empty target enumeration notices the user, returns to scope, and never opens a zero-row checklist or settings', async () => {
+  const ops = { enumerate: 0, select: [], create: [] };
+  const restore = patchFactory('createOpencodeAdapter', () => makeOutcomeAdapter({
+    targets: [],
+    settings: { model: 'opencode-go/unused' },
+    outcomes: [],
+    ops,
+  }));
+  const answers = ['Customize models', 'OpenCode', 'Workers', BACK, BACK, 'Exit'];
+  const scopeQuestions = [];
+  const terminal = captureTerminalEvents();
+  let checklistCalls = 0;
+  try {
+    const result = await runPostSetupMenu({
+      projectPath: REPO_ROOT,
+      isTTY: true,
+      promptChoice: async (question, options) => {
+        if (question === 'Choose a customization scope:') scopeQuestions.push(options);
+        const answer = answers.shift();
+        assert.notEqual(answer, undefined, `unexpected prompt: ${question}`);
+        return answer;
+      },
+      promptChecklist: async () => {
+        checklistCalls += 1;
+        assert.fail('empty target enumeration must not render a checklist');
+      },
+    });
+    assert.equal(result.status, 'skipped');
+    assert.equal(result.reason, 'cancelled');
+    assert.equal(ops.select.length, 0, 'empty target enumeration must not request settings');
+    assert.equal(checklistCalls, 0, 'empty target enumeration must not request a zero-row checklist');
+    assert.equal(scopeQuestions.length, 2,
+      'empty target enumeration returns to the scope screen for another choice');
+    assert.ok(terminal.events.some(event => /no .*target|target.*available/i.test(event.message)),
+      'empty target enumeration emits its documented notice');
+  } finally {
+    terminal.restore();
+    restore();
+  }
+});
+
+test('post-setup selectors use the default single-select legend while the menu suppresses its footer', async () => {
+  const ops = { enumerate: 0, select: [], create: [] };
+  const restore = patchFactory('createOpencodeAdapter', () => makeOutcomeAdapter({
+    targets: ['target'],
+    settings: { model: 'opencode-go/test-model' },
+    outcomes: [{ status: 'persisted' }],
+    ops,
+  }));
+  const calls = [];
+  const answers = ['Customize models', 'OpenCode', 'Workers', 'Exit'];
+  try {
+    const result = await runPostSetupMenu({
+      projectPath: REPO_ROOT,
+      isTTY: true,
+      promptChoice: async (...args) => {
+        calls.push(args);
+        return answers.shift();
+      },
+      promptChecklist: async (...args) => ({ status: 'confirmed', items: args[1] }),
+    });
+    assert.equal(result.status, 'skipped');
+    assert.equal(result.reason, 'cancelled');
+    assert.equal(calls[0][0], 'Post-setup customization:');
+    assert.equal(calls[0][3], null, 'the post-setup menu explicitly suppresses its footer');
+    assert.equal(calls[1][0], 'Choose a harness:');
+    assert.equal(calls[1].length, 2,
+      'the harness selector receives its default footer through promptSelect');
+    assert.equal(calls[2][0], 'Choose a customization scope:');
+    assert.equal(calls[2].length, 2,
+      'the scope selector receives its default footer through promptSelect');
+  } finally {
+    restore();
+  }
+
+  const claudeFrames = [];
+  const claude = createClaudeAdapter({
+    repoRoot: REPO_ROOT,
+    promptChoice: async (...args) => {
+      claudeFrames.push(args);
+      return chooseClaudeSonnetMedium(args[1]);
+    },
+  });
+  await claude.selectSettings('target');
+  assert.ok(claudeFrames.length > 0);
+    assert.ok(claudeFrames.every(args => args.length === 2),
+      'Claude settings use promptSelect defaults without overriding the footer');
+
+  const opencodeFrames = [];
+  let screen = 0;
+  const opencode = createOpencodeAdapter({
+    repoRoot: REPO_ROOT,
+    promptChoice: async (...args) => {
+      opencodeFrames.push(args);
+      if (screen === 0) {
+        screen += 1;
+        return 'opencode-go';
+      }
+      if (screen === 1) {
+        screen += 1;
+        return 'deepseek-v4-flash';
+      }
+      screen += 1;
+      return 'high';
+    },
+    runCommand: makeCatalogRunner(
+      'opencode-go/deepseek-v4-flash\n',
+      'opencode-go/deepseek-v4-flash\n{\n  "variants": { "high": {} }\n}\n'
+    ),
+  });
+  await opencode.selectSettings('target');
+  assert.equal(opencodeFrames.length, 3);
+    assert.ok(opencodeFrames.every(args => args.length === 2),
+      'OpenCode selectors use promptSelect defaults without overriding the footer');
+});
+
+test('scope cancellation stops the cycle without reaching targets, settings, or another screen', async () => {
+  const ops = { enumerate: 0, select: [], create: [] };
+  const restore = patchFactory('createOpencodeAdapter', () => makeOutcomeAdapter({
+    targets: ['target'],
+    settings: { model: 'opencode-go/test-model' },
+    outcomes: [{ status: 'persisted' }],
+    ops,
+  }));
+  const questions = [];
+  try {
+    const result = await runPostSetupMenu({
+      isTTY: true,
+      promptChoice: async question => {
+        questions.push(question);
+        return ['Customize models', 'OpenCode', null][questions.length - 1];
+      },
+      promptChecklist: async () => assert.fail('scope cancellation must not reach targets'),
+    });
+    assert.deepEqual(result, {
+      status: 'skipped',
+      reason: 'cancelled',
+      skippedAgents: [],
+      diagnostics: [],
+    });
+    assert.deepEqual(questions, [
+      'Post-setup customization:',
+      'Choose a harness:',
+      'Choose a customization scope:',
+    ]);
+    assert.equal(ops.select.length, 0);
+    assert.equal(ops.create.length, 0);
+  } finally {
+    restore();
+  }
+});
+
+test('runPostSetupMenu renders target diagnostics, while setup keeps unexpected exceptions on post-setup-failure', async () => {
+  const diagnostic = 'Failed broken-target: invalid frontmatter.';
+  const ops = { enumerate: 0, select: [], create: [] };
+  const restore = patchFactory('createOpencodeAdapter', () => makeOutcomeAdapter({
+    targets: ['broken-target'],
+    settings: { model: 'opencode-go/test-model' },
+    outcomes: [{ status: 'persistence-failed', diagnostic }],
+    ops,
+  }));
+  const terminal = captureTerminalEvents();
+  try {
+    const result = await runPostSetupMenu({
+      isTTY: true,
+      promptChoice: async question => ({
+        'Post-setup customization:': 'Customize models',
+        'Choose a harness:': 'OpenCode',
+        'Choose a customization scope:': 'Workers',
+      }[question]),
+      promptChecklist: async (items) => ({ status: 'confirmed', items }),
+    });
+    assert.equal(result.status, 'persistence-failed');
+    assert.deepEqual(result.diagnostics, [diagnostic]);
+    assert.equal(terminal.events.filter(event =>
+      event.message === `Post-setup customization: ${diagnostic}`).length, 1,
+      'the runPostSetupMenu owner renders each failure diagnostic once');
+  } finally {
+    terminal.restore();
+    restore();
+  }
+
+  const restoreSpawn = stubSpawnSync();
+  const projectDir = makeProjectDir();
+  const defect = new Error('unexpected materialization exception');
+  try {
+    const outcome = await main({
+      argv: ['node', 'bin/setup.js', projectDir],
+      createReadline: () => fakeReadline(),
+      postSetupWorkflow: async () => {},
+      postSetupMenu: async () => { throw defect; },
+    });
+    assert.equal(outcome, 'post-setup-failure');
+  } finally {
+    restoreSpawn();
+    fs.rmSync(projectDir, { recursive: true, force: true });
   }
 });
