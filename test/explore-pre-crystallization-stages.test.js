@@ -14,8 +14,8 @@ function readArtifact(relativePath) {
 }
 
 const explore = () => readArtifact('sai/commands/explore/instructions.md');
-const opencodeBinding = () => readArtifact('sai/orchestration/workers/bindings/opencode/idea-list-render.md');
-const claudeBinding = () => readArtifact('sai/orchestration/workers/bindings/claude/idea-list-render.md');
+const opencodeBinding = () => readArtifact('sai/adapters/opencode/idea-list-render.md');
+const claudeBinding = () => readArtifact('sai/adapters/claude/idea-list-render.md');
 
 test('the explore instructions render the four stage labels in order', () => {
   const source = explore();
@@ -51,28 +51,22 @@ test('gate 9 offers the ambient language first with the Recommended marker and E
   assert.match(source, /emitted second, carrying no marker/);
 });
 
-test('both bindings carry the stage and idea-list markers in their pinned machine-readable field', () => {
+test('both bindings carry the idea-list marker in their pinned machine-readable field', () => {
   const opencode = opencodeBinding();
   const claude = claudeBinding();
 
-  assert.match(opencode, /`priority` field, value `sai-explore-stage:<stage-id>`/);
-  assert.match(claude, /`description` field, value `sai-explore-stage:<stage-id>`/);
   assert.match(opencode, /`priority` field, value `sai-idea-list:<change-name>`/);
   assert.match(claude, /`description` field, value `sai-idea-list:<change-name>`/);
 });
 
-test('both render bindings mirror the phase-A/phase-B lifecycle with identical contract fragments', () => {
+test('both render bindings mirror the idea-list lifecycle with shared contract fragments', () => {
   const opencode = opencodeBinding();
   const claude = claudeBinding();
 
   const sharedFragments = [
-    'Phase A (pre-crystallization)',
-    'Phase B (from the idea list\'s first render)',
-    'sai-explore-stage:<stage-id>',
     'sai-idea-list:<change-name>',
-    'The phase-B first render replaces the phase-A stage TODO wholesale — the two never coexist.',
-    '(`sai-explore-stage:` and `sai-idea-list:`)',
-    'The read covers the markers only and never derives list content.',
+    'full idea list',
+    'coordinator session',
   ];
   for (const fragment of sharedFragments) {
     assert.ok(opencode.includes(fragment), `opencode binding should carry: ${fragment}`);
@@ -86,6 +80,6 @@ test('the chat-start clear removes exactly entries bearing either marker prefix'
 
   for (const binding of [opencode, claude]) {
     assert.match(binding, /removes exactly the marker-bearing entries/);
-    assert.match(binding, /The read covers the markers only and never derives list content\./);
+    assert.match(binding, /The read covers the marker only and never derives list content\./);
   }
 });
