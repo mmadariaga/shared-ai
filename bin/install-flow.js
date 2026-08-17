@@ -519,6 +519,7 @@ const BACK = Symbol('BACK');
 
 const ANSI_SEQUENCE = /\x1B\[[0-9;]*[A-Za-z]/g;
 const DEFAULT_TERMINAL_WIDTH = 80;
+const DEFAULT_SINGLE_SELECT_LEGEND = 'Up/Down move · Space/Enter confirm · ←/Esc back · q/Ctrl-C cancel';
 
 function terminalWidth(output) {
   return typeof output.columns === 'number' && output.columns > 0
@@ -534,6 +535,43 @@ function rowsFor(line, width) {
   return visible === 0 ? 1 : Math.ceil(visible / width);
 }
 
+// Consecutive navigator screens share one raw-input session. Tearing raw mode
+// down and back up in the same tick leaves the Windows console in line mode:
+// no keypress reaches the next screen until a line completes, which the user
+// experiences as a swallowed Enter. Releasing on a setImmediate lets the next
+// screen — which starts in the await continuation, a microtask earlier —
+// cancel the release so stdin never leaves raw mode mid-flow.
+let pendingRelease = null;
+let pendingReleaseInput = null;
+
+function runRelease(input) {
+  input.setRawMode(false);
+  input.pause();
+}
+
+function acquireRawInput(input) {
+  if (pendingRelease !== null) {
+    clearImmediate(pendingRelease);
+    const previous = pendingReleaseInput;
+    pendingRelease = null;
+    pendingReleaseInput = null;
+    if (previous !== input) runRelease(previous);
+  }
+  readline.emitKeypressEvents(input);
+  input.setRawMode(true);
+  input.resume();
+}
+
+function releaseRawInput(input) {
+  pendingReleaseInput = input;
+  pendingRelease = setImmediate(() => {
+    pendingRelease = null;
+    pendingReleaseInput = null;
+    runRelease(input);
+  });
+  if (typeof pendingRelease.unref === 'function') pendingRelease.unref();
+}
+
 async function runNavigator({
   mode,
   question,
@@ -542,6 +580,7 @@ async function runNavigator({
   input = process.stdin,
   output = process.stdout,
   footer,
+  preventEmptyConfirm = false,
 }) {
   if (!input.isTTY) {
     return { status: 'non-interactive' };
@@ -581,9 +620,11 @@ async function runNavigator({
 
     function cleanup() {
       output.write('\x1B[?25h');
-      input.setRawMode(false);
-      input.pause();
+      // Detaching the listener stays synchronous so a closed screen never
+      // consumes a key meant for its successor; only the raw-mode teardown is
+      // deferred.
       input.removeListener('keypress', onKey);
+      releaseRawInput(input);
     }
 
     function onKey(str, key) {
@@ -604,27 +645,25 @@ async function runNavigator({
       } else if (key.name === 'down') {
         cursor = Math.min(options.length - 1, cursor + 1);
         render();
-      } else if (str === ' ') {
-        if (mode === 'multi') {
-          selected[cursor] = !selected[cursor];
+        } else if (str === ' ') {
+          if (mode === 'multi') {
+            selected[cursor] = !selected[cursor];
           render();
         } else {
           cleanup();
           resolve({ status: 'confirmed', items: [options[cursor]] });
-        }
-      } else if (key.name === 'return') {
-        cleanup();
-        if (mode === 'multi') {
-          resolve({ status: 'confirmed', items: options.filter((_, i) => selected[i]) });
-        } else {
-          resolve({ status: 'confirmed', items: [options[cursor]] });
+          }
+        } else if (key.name === 'return') {
+          if (mode === 'multi' && preventEmptyConfirm && !selected.some(Boolean)) return;
+          cleanup();
+          resolve({
+            status: 'confirmed',
+            items: mode === 'multi' ? options.filter((_, i) => selected[i]) : [options[cursor]],
+          });
         }
       }
-    }
 
-    readline.emitKeypressEvents(input);
-    input.setRawMode(true);
-    input.resume();
+    acquireRawInput(input);
     input.on('keypress', onKey);
 
     output.write('\x1B[?25l');
@@ -632,12 +671,17 @@ async function runNavigator({
   });
 }
 
-function promptChecklist(items, defaultSelected, input, footer) {
-  return runNavigator({ mode: 'multi', options: items, defaultSelected, input, footer });
+function promptChecklist(items, defaultSelected, input, footer, navigatorOptions) {
+  return runNavigator({
+    mode: 'multi', options: items, defaultSelected, input, footer,
+    preventEmptyConfirm: navigatorOptions?.preventEmptyConfirm === true,
+  });
 }
 
-async function promptSelect(question, options, input) {
-  const outcome = await runNavigator({ mode: 'single', question, options, defaultSelected: [], input });
+async function promptSelect(question, options, input, footer = DEFAULT_SINGLE_SELECT_LEGEND) {
+  const outcome = await runNavigator({
+    mode: 'single', question, options, defaultSelected: [], input, footer,
+  });
   if (outcome.status === 'back') return BACK;
   return outcome.status === 'confirmed' ? outcome.items[0] : null;
 }

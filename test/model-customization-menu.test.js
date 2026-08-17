@@ -779,6 +779,32 @@ test('checklist receives the canonical legend string as its footer argument', as
   }
 });
 
+test('model customization is the sole enabled empty-confirm checklist call', () => {
+  const source = fs.readFileSync(path.join(REPO_ROOT, 'bin', 'model-customization.js'), 'utf8');
+  const enabledGuards = source.match(/preventEmptyConfirm\s*:\s*true\b/g) || [];
+
+  assert.equal(enabledGuards.length, 1,
+    'exactly the model-customization checklist call should enable preventEmptyConfirm');
+});
+
+test('production prompt bindings retain the expected shared-selector surface and one no-footer post-setup override', () => {
+  const customizationSource = fs.readFileSync(
+    path.join(REPO_ROOT, 'bin', 'model-customization.js'),
+    'utf8'
+  );
+
+  const promptChoiceInvocations = customizationSource.match(/\bpromptChoice\s*\(/g) || [];
+  const defaultPromptSelectBindings = customizationSource.match(/\bpromptChoice\s*=\s*promptSelect\b/g) || [];
+  const noFooterOverrides = customizationSource.match(/\bpromptSelect\s*\([^)]*\bnull\b[^)]*\)/g) || [];
+
+  assert.equal(promptChoiceInvocations.length, 7,
+    'the model-customization flow should have exactly seven promptChoice invocations');
+  assert.equal(defaultPromptSelectBindings.length, 3,
+    'the three selector-owning surfaces should retain default promptSelect bindings');
+  assert.equal(noFooterOverrides.length, 1,
+    'model customization should provide exactly one explicit no-footer post-setup menu override');
+});
+
 // --- Step 3: customization scope screen ---
 
 test('scope Workers presents the worker-family checklist and scope Commands presents the command-family checklist, each with bare names', async () => {

@@ -567,6 +567,23 @@ function skippedOutcome(reason, diagnostics = []) {
   return { status: 'skipped', reason, skippedAgents: [], diagnostics };
 }
 
+function promptPostSetupMenu(promptChoice) {
+  if (promptChoice === promptSelect) {
+    return promptSelect(
+      'Post-setup customization:',
+      MENU_OPTIONS,
+      undefined,
+      null
+    );
+  }
+  return promptChoice(
+    'Post-setup customization:',
+    MENU_OPTIONS,
+    undefined,
+    null
+  );
+}
+
 async function runPostSetupMenu({
   projectPath = process.cwd(),
   packageRoot = DEFAULT_PACKAGE_ROOT,
@@ -588,11 +605,11 @@ async function runPostSetupMenu({
   let harness = null;
   let scope = null;
   let selectedTargets = null;
-  let settings = null;
+    let settings = null;
 
   for (;;) {
     if (screen === 'menu') {
-      const action = await promptChoice('Post-setup customization:', MENU_OPTIONS);
+      const action = await promptPostSetupMenu(promptChoice);
       if (action === BACK) continue;
       if (action === null || action === 'Exit') return skippedOutcome('cancelled');
       if (action !== 'Customize models') return skippedOutcome('cancelled');
@@ -633,7 +650,13 @@ async function runPostSetupMenu({
       const workers = adapter.enumerateWorkers();
       const commands = scope === 'Workers' ? [] : adapter.enumerateCommands();
       const targets = buildChecklistTargets(scope, workers, commands);
-      const selection = await promptChecklist(targets, targets, undefined, MODEL_CHECKLIST_LEGEND);
+      const selection = await promptChecklist(
+        targets,
+        targets,
+        undefined,
+        MODEL_CHECKLIST_LEGEND,
+        { preventEmptyConfirm: true },
+      );
       if (!selection || selection.status === 'cancelled') return skippedOutcome('cancelled');
       if (selection.status === 'non-interactive') return skippedOutcome('non-tty');
       if (selection.status === 'back') {

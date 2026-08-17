@@ -22,11 +22,12 @@ const { EventEmitter } = require('node:events');
 const fs = require('node:fs');
 const path = require('node:path');
 
-const { promptChecklist, promptSelect } = require('../bin/install-flow.js');
+const { promptChecklist, promptSelect, runNavigator } = require('../bin/install-flow.js');
 
 const INSTALLER_ITEMS = ['Claude Code', 'Opencode'];
 const TTY_MESSAGE = 'Error: interactive mode requires a TTY. Run directly in a terminal.';
 const FOOTER_SENTINEL = 'use arrow keys to move, space to toggle, enter to confirm';
+const SELECT_LEGEND = 'Up/Down move · Space/Enter confirm · ←/Esc back · q/Ctrl-C cancel';
 const INTERACTION_TIMEOUT = 5000;
 
 // --- seams ---------------------------------------------------------------
@@ -64,8 +65,10 @@ async function runChecklist({ items, defaultSelected, input, footer, presses }) 
   return await promise;
 }
 
-async function runSelect({ question, options, input, presses }) {
-  const promise = promptSelect(question, options, input);
+async function runSelect({ question, options, input, footer, presses }) {
+  const promise = footer === undefined
+    ? promptSelect(question, options, input)
+    : promptSelect(question, options, input, footer);
   schedulePresses(input, presses || []);
   return await promise;
 }
@@ -201,6 +204,45 @@ test('Enter with every item deselected resolves confirmed with an empty item lis
   });
   assert.deepEqual(outcome, { status: 'confirmed', items: [] });
 });
+
+test('preventEmptyConfirm keeps a multi-select navigator open after Enter with no marked items', { timeout: INTERACTION_TIMEOUT }, async () => {
+  const input = createFakeInput(true);
+  const promise = runNavigator({
+    mode: 'multi',
+    question: 'Pick:',
+    options: INSTALLER_ITEMS,
+    defaultSelected: [],
+    input,
+    preventEmptyConfirm: true,
+  });
+  schedulePresses(input, [
+    ['\r', keyInfo('return', '\r')],
+    ['q', keyInfo('q', 'q')],
+  ]);
+
+  assert.deepEqual(await promise, { status: 'cancelled' },
+    'Enter must not confirm an empty selection when the guard is enabled');
+});
+
+for (const [label, extra] of [
+  ['omitted', {}],
+  ['false', { preventEmptyConfirm: false }],
+]) {
+  test(`multi-select empty confirmation remains unchanged when preventEmptyConfirm is ${label}`, { timeout: INTERACTION_TIMEOUT }, async () => {
+    const input = createFakeInput(true);
+    const promise = runNavigator({
+      mode: 'multi',
+      question: 'Pick:',
+      options: INSTALLER_ITEMS,
+      defaultSelected: [],
+      input,
+      ...extra,
+    });
+    schedulePresses(input, [['\r', keyInfo('return', '\r')]]);
+
+    assert.deepEqual(await promise, { status: 'confirmed', items: [] });
+  });
+}
 
 // --- footer (installer parity) --------------------------------------------
 
@@ -389,6 +431,52 @@ test('promptSelect: non-TTY input resolves null', { timeout: INTERACTION_TIMEOUT
     input,
   });
   assert.equal(result, null);
+});
+
+test('promptSelect without a footer forwards the default single-select legend', { timeout: INTERACTION_TIMEOUT }, async () => {
+  const capture = captureStdout();
+  try {
+    const input = createFakeInput(true);
+    await runSelect({
+      question: 'Select a model:',
+      options: INSTALLER_ITEMS,
+      input,
+      presses: [['q', keyInfo('q', 'q')]],
+    });
+    assert.ok(capture.output().includes(SELECT_LEGEND),
+      'promptSelect should pass the default legend through to the shared navigator');
+  } finally {
+    capture.restore();
+  }
+});
+
+test('promptSelect with an explicit null footer forwards no footer', { timeout: INTERACTION_TIMEOUT }, async () => {
+  const capture = captureStdout();
+  try {
+    const input = createFakeInput(true);
+    await runSelect({
+      question: 'Select a model:',
+      options: INSTALLER_ITEMS,
+      input,
+      footer: null,
+      presses: [['q', keyInfo('q', 'q')]],
+    });
+    assert.equal(capture.output().includes(SELECT_LEGEND), false,
+      'an explicit null footer should suppress the default legend');
+  } finally {
+    capture.restore();
+  }
+});
+
+test('installer main() omits the empty-confirm guard from its promptChecklist call', () => {
+  const source = fs.readFileSync(path.join(__dirname, '..', 'bin', 'install-flow.js'), 'utf8');
+  const mainSection = functionSection(source, /function\s+main\s*\(/);
+  const calls = [...mainSection.matchAll(/promptChecklist\s*\(/g)];
+
+  assert.equal(calls.length, 1, 'installer main() should have one promptChecklist call');
+  const callWindow = mainSection.slice(calls[0].index, calls[0].index + 600);
+  assert.doesNotMatch(callWindow, /preventEmptyConfirm\s*:/,
+    'the installer call must preserve empty-confirm behavior by omitting the guard');
 });
 
 // --- helpers ---------------------------------------------------------------
