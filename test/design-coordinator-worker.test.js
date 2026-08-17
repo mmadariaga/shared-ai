@@ -951,7 +951,7 @@ test('the lifecycle obliges planned workers to emit progress and keeps payload v
 
   assert.match(lifecycle, /design[\s\S]{0,200}spec[- ]proposal[\s\S]{0,200}implementation[- ]planning[\s\S]{0,200}review[\s\S]{0,200}security[\s\S]{0,200}performance[\s\S]{0,200}accessibility/i,
     'the emitter set should name all seven routed workers in order');
-  assert.match(lifecycle, /SHALL[\s\S]{0,160}emit[\s\S]{0,240}(?:one progress event|new plan steps?)/i,
+  assert.match(lifecycle, /SHALL[\s\S]{0,160}(?:return|emit)[\s\S]{0,240}(?:one progress event|new plan steps?)/i,
     'emission should be a SHALL obligation for planned workers with newly completed steps');
   assert.match(lifecycle, /emit[\s\S]{0,240}after[\s\S]{0,160}resolution|after[\s\S]{0,160}resolution[\s\S]{0,240}emit/i,
     'emission should be gated after prerequisite checks and scope resolution');
@@ -1011,12 +1011,13 @@ test('Step 4: the coordinator nonterminal-extensions line admits progress events
 
 test('Step 4: the full plan renders at dispatch before the first worker result with an empty marked set', () => {
   const coordinator = artifact('sai/commands/design/coordinator.md');
+  const policy = artifact('sai/policies/todo-structure.md');
 
   assert.match(coordinator, /at dispatch/i,
     'the full plan should render at dispatch');
   assert.match(
-    coordinator,
-    /before[\s\S]{0,100}first[\s\S]{0,100}worker result|first[\s\S]{0,100}worker result[\s\S]{0,160}before/i,
+    policy,
+    /render precedes the dispatch call itself, not merely the first worker result/i,
     'the render should occur before the first worker result'
   );
   assert.match(coordinator, /in_progress/,
@@ -1185,9 +1186,9 @@ test('Step 6: the design coordinator and policy update the harness task list on 
     'the coordinator should act on each progress event');
   assert.match(coordinator, /todo-structure\.md/,
     'the coordinator should reference the neutral todo-structure policy');
-  assert.match(coordinator, /completed[\s\S]{0,240}in_progress|in_progress[\s\S]{0,240}completed/i,
+  assert.match(policy, /completed[\s\S]{0,240}in_progress|in_progress[\s\S]{0,240}completed/i,
     'reported ids should render completed and the leading unmarked step should render in_progress');
-  assert.match(coordinator, /unmarked[\s\S]{0,200}in_progress|in_progress[\s\S]{0,200}unmarked/i,
+  assert.match(policy, /first step in plan order[\s\S]{0,160}not in the marked set renders `in_progress`/i,
     'the in_progress mark should apply to the leading unmarked step');
   assert.match(policy, /deriv/i,
     'the marks should follow the deterministic derivation');

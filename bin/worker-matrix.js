@@ -190,6 +190,14 @@ function materializeWorkerMatrix(matrix, templates) {
   }
   return matrix.entries.flatMap(entry => {
     const common = { ...entry, canonicalFetch: `Fetch @${entry.workerContract} and follow it exactly.` };
+    const panelRenderBinding = harness => entry.phase === APPLY_PHASE
+      ? ''
+      : [
+        'When the coordinator adapter declares a `progress_plan`,',
+        `Fetch @sai/adapters/${harness}/panel-render.md and use it for coordinator-owned routed progress task-list rendering.`,
+        'Render actions and deterministic state derivation come from @sai/policies/todo-structure.md; the worker never emits panel tool calls.',
+        'When no `progress_plan` is declared, no plan-based list is rendered.',
+      ].join('\n') + '\n\n';
     return [
       {
         kind: 'binding',
@@ -198,7 +206,11 @@ function materializeWorkerMatrix(matrix, templates) {
         workerName: entry.workerName,
         destinationName: `${entry.bindingStem}-worker.md`,
         templateName: 'claudeBinding',
-        text: renderWorkerTemplate(templates.claudeBinding, { ...common, harness: 'Claude Code' }),
+        text: renderWorkerTemplate(templates.claudeBinding, {
+          ...common,
+          harness: 'Claude Code',
+          panelRenderBinding: panelRenderBinding('claude'),
+        }),
       },
       {
         kind: 'binding',
@@ -207,7 +219,11 @@ function materializeWorkerMatrix(matrix, templates) {
         workerName: entry.workerName,
         destinationName: `${entry.bindingStem}-worker.md`,
         templateName: 'opencodeBinding',
-        text: renderWorkerTemplate(templates.opencodeBinding, { ...common, harness: 'opencode' }),
+        text: renderWorkerTemplate(templates.opencodeBinding, {
+          ...common,
+          harness: 'opencode',
+          panelRenderBinding: panelRenderBinding('opencode'),
+        }),
       },
       {
         kind: 'agent',

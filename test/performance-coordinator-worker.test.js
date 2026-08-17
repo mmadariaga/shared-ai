@@ -318,7 +318,7 @@ test('performance coordinator and policy render the plan coordinator-only with t
 
   assert.match(coordinator, /todo-structure\.md/,
     'the coordinator should reference the neutral todo-structure policy');
-  assert.match(coordinator, /completed[\s\S]{0,240}in_progress|in_progress[\s\S]{0,240}completed/i,
+  assert.match(policy, /completed[\s\S]{0,240}in_progress|in_progress[\s\S]{0,240}completed/i,
     'reported ids should render completed and the leading unmarked step in_progress');
   assert.match(policy, /(?:below|fewer than|less than)[\s\S]{0,120}three|three[\s\S]{0,120}(?:below|fewer than|less than)/i,
     'the policy should state the declared-step threshold');

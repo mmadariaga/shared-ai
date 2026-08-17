@@ -3,7 +3,7 @@
 This binding wires the {{workerName}} worker contract into {{harness}} and performs
 exactly one bounded replacement dispatch per run.
 
-Dispatch the worker once with the harness-native background primitive and capture the
+{{panelRenderBinding}}Dispatch the worker once with the harness-native background primitive and capture the
 resulting agent ID:
 
 ```

@@ -41,14 +41,17 @@ its fixed acknowledgement. Notices are not a worker status.
 
 A progress event is the separate closed shape
 `{event: "progress", emitted_on: string, step_ids: string[], changed_files: string[]}`: mark the
-reported step ids in the adapter-declared plan, ignore undeclared ids not
-declared in the plan — the plan is never extended or amended for them — add
-every path in `changed_files` to the invocation-scoped union in first-seen
-order, re-render the task list from the updated marked set per
-`@sai/policies/todo-structure.md`, and only then continue the same worker with
-exactly `continue_after_progress`. Render before resuming, so the user sees the
-mark before the next stretch of worker work begins. Progress events are not a
-worker status.
+reported step ids in the adapter-declared plan, recording whether the event
+added at least one previously unmarked declared id; ignore undeclared ids not
+declared in the plan — the plan is never extended or amended for them — and
+add every path in `changed_files` to the invocation-scoped union in first-seen
+order. When the adapter declares a `progress_plan` and the event changed the
+marked set, apply the progress-event render act from
+`@sai/policies/todo-structure.md` before continuing the same worker. A
+progress event that changed no marked state performs no render and stamps
+nothing. Then continue the same worker with exactly `continue_after_progress`.
+Render before resuming, so the user sees the mark before the next stretch of
+worker work begins. Progress events are not a worker status.
 
 Attempt same-worker continuation first. If it fails, preserve the union and
 dispatch at most one replacement worker with the original envelope, exact

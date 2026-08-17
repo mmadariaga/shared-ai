@@ -3,7 +3,7 @@
 This binding wires the {{workerName}} worker contract into {{harness}} and performs
 exactly one bounded replacement task per run.
 
-Dispatch the worker once with the harness-native subagent primitive and capture the
+{{panelRenderBinding}}Dispatch the worker once with the harness-native subagent primitive and capture the
 resulting task ID:
 
 ```

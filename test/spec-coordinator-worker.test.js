@@ -346,7 +346,7 @@ test('Step 5: the spec coordinator renders the plan at dispatch and marks steps 
     'the plan should use the pending mark value');
   assert.match(coordinator, /first[\s\S]{0,160}in_progress|in_progress[\s\S]{0,160}first/i,
     'the first step should render in_progress at dispatch');
-  assert.match(coordinator, /mark steps only from worker progress-event `step_ids`/,
+  assert.match(coordinator, /mark steps only from worker progress-event `step_ids`/i,
     'steps should be marked only from worker progress events');
   assert.match(coordinator, /(?:remaining|rest|others?)[\s\S]{0,160}pending|pending[\s\S]{0,160}(?:remaining|rest|others?)/i,
     'the remaining steps should render pending');
@@ -366,7 +366,7 @@ test('Step 5: the spec coordinator reconciles the list at run-closing results', 
 test('Step 5: the spec worker contract emits one progress event per completed batch with the canonical batch ids', () => {
   const worker = artifact(SPEC_COORDINATOR_ARTIFACTS.worker);
 
-  assert.match(worker, /Emit exactly one progress event per completed batch/,
+  assert.match(worker, /Return exactly one progress event per completed batch/,
     'the contract should emit one progress event per completed batch');
   assert.match(worker, /The startup act reports `prereqs-and-change`/,
     'the startup batch should carry prereqs-and-change');
@@ -407,9 +407,11 @@ test('Step 5: the spec coordinator and policy drive the harness task list on pro
     'the coordinator should act on each progress event');
   assert.match(coordinator, /todo-structure\.md/,
     'the coordinator should reference the neutral todo-structure policy');
-  assert.match(coordinator, /completed[\s\S]{0,240}in_progress|in_progress[\s\S]{0,240}completed/i,
+  assert.match(coordinator, /Progress-event panel updates follow/i,
+    'the shared runner should own the policy-governed progress render act');
+  assert.match(policy, /completed[\s\S]{0,240}in_progress|in_progress[\s\S]{0,240}completed/i,
     'reported ids should render completed and the leading unmarked step in_progress');
-  assert.match(coordinator, /(?:remaining|rest|others?)[\s\S]{0,160}pending|pending[\s\S]{0,160}(?:remaining|rest|others?)/i,
+  assert.match(policy, /(?:remaining|rest|others?)[\s\S]{0,160}pending|pending[\s\S]{0,160}(?:remaining|rest|others?)/i,
     'the remaining steps should render pending');
 
   assert.match(policy, /todowrite/i,
@@ -489,7 +491,7 @@ test('Step 2: the coordinator plan declaration and the worker enumeration are by
 test('Step 2: the spec worker emits one progress event per act carrying the canonical id and newly changed paths', () => {
   const worker = artifact(SPEC_COORDINATOR_ARTIFACTS.worker);
 
-  assert.match(worker, /Emit exactly one progress event per completed batch/,
+  assert.match(worker, /Return exactly one progress event per completed batch/,
     'each act should emit exactly one progress event');
   assert.match(worker, /The startup act reports `prereqs-and-change`/,
     'the startup act should emit one progress event carrying prereqs-and-change');

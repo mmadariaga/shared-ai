@@ -758,11 +758,11 @@ test('Step 6: the implementation coordinator and policy drive the harness task l
     'the coordinator should act on each progress event');
   assert.match(coordinator, /todo-structure\.md/,
     'the coordinator should reference the neutral todo-structure policy');
-  assert.match(coordinator, /completed[\s\S]{0,300}in_progress|in_progress[\s\S]{0,300}completed/i,
+  assert.match(policy, /completed[\s\S]{0,300}in_progress|in_progress[\s\S]{0,300}completed/i,
     'reported ids should render completed and the leading unmarked step in_progress');
-  assert.match(coordinator, /unmarked[\s\S]{0,300}in_progress|in_progress[\s\S]{0,300}unmarked/i,
+  assert.match(policy, /first step in plan order[\s\S]{0,160}not in the marked set renders `in_progress`/i,
     'the in_progress mark should apply to the leading unmarked step');
-  assert.match(coordinator, /(?:remaining|rest|others?)[\s\S]{0,160}pending|pending[\s\S]{0,160}(?:remaining|rest|others?)/i,
+  assert.match(policy, /(?:remaining|rest|others?)[\s\S]{0,160}pending|pending[\s\S]{0,160}(?:remaining|rest|others?)/i,
     'the remaining steps should render pending');
 
   assert.match(policy, /todowrite/i,
