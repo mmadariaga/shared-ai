@@ -1,11 +1,11 @@
 ## ADDED Requirements
 
 ### Requirement: sai-payload-directory
-The repository SHALL contain a `sai/` top-level directory with `sai/commands/` holding command cards — routed cards (`coordinator.md`, `worker.md`, `invocation.md`) and utility cards (`body.md`) — each with command-local phase content folded in as `sai/commands/{name}/instructions.md` and neighboring `.template.md` files (e.g. `sai/commands/review/review-report.template.md`). Three root exceptions live at the `sai/` root: `sai/change-overview.md`, `sai/adr-index.template.md`, and `sai/ddr-index.template.md`. There is no maintained `sai/instructions/` tree; phase content is folded into the command directories.
+The repository SHALL contain a `sai/` top-level directory with `sai/commands/` holding command cards — routed cards (`coordinator.md`, `worker.md`, `invocation.md`), utility cards (`body.md`), a per-command launcher card (`launcher.md`) loaded by the command wrapper after the harness boot adapter, and command-local phase content folded in as `sai/commands/{name}/instructions.md` and neighboring `.template.md` files (e.g. `sai/commands/review/review-report.template.md`). Three root exceptions live at the `sai/` root: `sai/change-overview.md`, `sai/adr-index.template.md`, and `sai/ddr-index.template.md`. There is no maintained `sai/instructions/` tree; phase content is folded into the command directories.
 
 #### Scenario: command cards and folded instructions exist at the folded paths
 - **WHEN** the fold is applied
-- **THEN** command cards exist under `sai/commands/{name}/` and every phase's instruction content is present at `sai/commands/{name}/instructions.md` with its co-located `.template.md` files
+- **THEN** command cards exist under `sai/commands/{name}/` — including a `launcher.md` for each of the 15 in-scope commands — and every phase's instruction content is present at `sai/commands/{name}/instructions.md` with its co-located `.template.md` files
 
 #### Scenario: no maintained sai/instructions tree remains
 - **WHEN** the fold is applied

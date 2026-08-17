@@ -3,18 +3,22 @@
 Define the standard fetch path patterns for sai command wrappers and instructions, and document the namespace distinction between `@sai/commands/` and `@commands/` paths.
 ## Requirements
 ### Requirement: wrapper-sai-commands-fetch-path
-All 24 thin wrapper files at `commands/claude/*.md` and `commands/opencode/*.md` that fetch a sai command body SHALL use `Fetch @sai/commands/<name>.md`. The path `@commands/sai/` SHALL NOT appear in any wrapper file.
+All 15 thin `sai-*` wrapper files at `commands/claude/` and `commands/opencode/` that fetch a sai command card SHALL use `Fetch @sai/commands/{name}/launcher.md`. The flat path `@sai/commands/<name>.md` and the legacy namespace `@commands/sai/` SHALL NOT appear in any wrapper file. This requirement covers only `sai-*.md` files; `budget.md` is out of scope (it fetches no sai command card and SHALL remain byte-identical per `command-wrapper-body`'s `wrapper-directory-shape-unchanged`).
 
 #### Scenario: claude wrapper fetch path updated
-- **WHEN** any file under `commands/claude/` is read
-- **THEN** any Fetch directive pointing to a sai command body SHALL use the pattern `Fetch @sai/commands/<name>.md`
+- **WHEN** any file matching `commands/claude/sai-*.md` is read
+- **THEN** any Fetch directive pointing to a sai command card SHALL use the pattern `Fetch @sai/commands/{name}/launcher.md`
 
 #### Scenario: opencode wrapper fetch path updated
-- **WHEN** any file under `commands/opencode/` is read
-- **THEN** any Fetch directive pointing to a sai command body SHALL use the pattern `Fetch @sai/commands/<name>.md`
+- **WHEN** any file matching `commands/opencode/sai-*.md` is read
+- **THEN** any Fetch directive pointing to a sai command card SHALL use the pattern `Fetch @sai/commands/{name}/launcher.md`
 
 #### Scenario: old fetch path absent
 - **WHEN** a grep for `@commands/sai/` is run across all wrapper files
+- **THEN** zero matches SHALL be found
+
+#### Scenario: flat body path absent
+- **WHEN** a grep for `@sai/commands/<name>.md` (a sai-commands fetch not ending in `/launcher.md`) is run across all wrapper files
 - **THEN** zero matches SHALL be found
 
 ### Requirement: command-body-instruction-fetch-paths
