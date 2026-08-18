@@ -11,24 +11,31 @@ After generating `proposal.md` and all `specs/**/*.md` files, `sai-1-spec` SHALL
 - **WHEN** `/sai-1-spec <change-name>` completes
 - **THEN** the final output includes a message of the form: "Specs ready in openspec/changes/{name}/. Review them and run /sai-2-design {name} when ready."
 
+### Requirement: invoking sai-2-design is the specs approval
+Invoking `/sai-2-design <change-name>` SHALL itself constitute approval of the change's specs. The command SHALL NOT ask the user to confirm that the specs were reviewed, and SHALL offer no interactive decline path at this gate. The review checkpoint lives in `sai-1-spec`'s closing feedback loop and its mandatory stop; not invoking `/sai-2-design` is the only decline.
+
+#### Scenario: no approval question is asked
+- **WHEN** `/sai-2-design <change-name>` is invoked on a change with `proposal.md` and at least one `specs/**/*.md`
+- **THEN** the command asks no specs-approval question and proceeds directly to stamping the approval and generating design artifacts
+
 ### Requirement: specs approval is recorded in .openspec.yaml
-After the user confirms they have reviewed the specs, the approval SHALL be recorded in the change's `.openspec.yaml` under `approval.specs` with fields `approved_at` (ISO 8601 timestamp) and `notes` (optional string).
+Once the existence precondition passes, `sai-2-design` SHALL record the approval in the change's `.openspec.yaml` under `approval.specs`, MERGING into the existing file content and preserving all other keys verbatim. `approved_at` (ISO 8601 UTC timestamp) SHALL be written only when the key is absent or empty; `notes` SHALL be written unconditionally as an empty string.
 
-#### Scenario: .openspec.yaml updated with approval after confirmation
-- **WHEN** the user confirms spec approval (either via explicit command or flag)
-- **THEN** `openspec/changes/<change-name>/.openspec.yaml` contains an `approval.specs.approved_at` field with a valid ISO 8601 timestamp
+#### Scenario: .openspec.yaml stamped on first design invocation
+- **WHEN** `/sai-2-design <change-name>` runs on a change whose `.openspec.yaml` has no `approval.specs.approved_at`
+- **THEN** `openspec/changes/<change-name>/.openspec.yaml` contains an `approval.specs.approved_at` field with a valid ISO 8601 timestamp and an `approval.specs.notes` field holding an empty string, with all pre-existing keys preserved
 
-#### Scenario: approval notes captured when provided
-- **WHEN** the user provides notes during spec approval
-- **THEN** `openspec/changes/<change-name>/.openspec.yaml` contains `approval.specs.notes` with the user's text
+#### Scenario: existing timestamp is never overwritten
+- **WHEN** `/sai-2-design <change-name>` is re-invoked on a change whose `.openspec.yaml` already has a non-empty `approval.specs.approved_at`
+- **THEN** the original timestamp is left untouched and only `approval.specs.notes` is (re)written as an empty string
 
-### Requirement: sai-2-design verifies specs approval before proceeding
-Before generating `design.md` or `tasks.md`, `sai-2-design` SHALL read `.openspec.yaml` and verify that `approval.specs.approved_at` is present.
+#### Scenario: a failed stamp is a blocking failure
+- **WHEN** writing `approval.specs.*` to `.openspec.yaml` fails
+- **THEN** `sai-2-design` stops with an explicit failure message naming the file and the error, and does not generate `design.md` or `tasks.md`
 
-#### Scenario: sai-2-design proceeds when approval is present
-- **WHEN** `/sai-2-design <change-name>` is run and `.openspec.yaml` contains `approval.specs.approved_at`
-- **THEN** the command proceeds to generate design.md and tasks.md
+### Requirement: sai-2-design requires proposal and specs to exist
+Before stamping the approval or generating any artifact, `sai-2-design` SHALL confirm that `openspec/changes/<change-name>/proposal.md` exists AND at least one file matching `openspec/changes/<change-name>/specs/**/*.md` exists.
 
-#### Scenario: sai-2-design halts when approval is missing
-- **WHEN** `/sai-2-design <change-name>` is run and `.openspec.yaml` does not contain `approval.specs.approved_at`
-- **THEN** the command halts and prints: "Specs not yet approved for '<change-name>'. Review openspec/changes/<change-name>/specs/ and confirm approval before running /sai-2-design."
+#### Scenario: sai-2-design halts when the change has no specs
+- **WHEN** `/sai-2-design <change-name>` is run and `proposal.md` or every `specs/**/*.md` is missing
+- **THEN** the command halts and prints: "Change '<change-name>' not found or has no specs. Run /sai-1-spec to create it first."

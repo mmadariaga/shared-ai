@@ -282,7 +282,7 @@ When adding a new change-consuming command, check whether it dereferences `{chan
 3. Update README.md with the phase in the corresponding table.
 
 ### Specs approval gate
-`sai-1-spec` stops after generating `proposal.md` and `specs/`. It asks the user to review and confirm approval, then writes `approval.specs.approved_at` + `approval.specs.notes` to `.openspec.yaml`. `sai-2-design` reads this key before proceeding. Bypassing `sai-2-design` (e.g. calling `opsx:continue` directly) skips this check — `opsx:*` commands are internal, document this accordingly.
+`sai-1-spec` stops after generating `proposal.md` and `specs/`, telling the user to review them and run `/sai-2-design` when ready. Invoking `/sai-2-design` IS the approval: it asks nothing and automatically stamps `approval.specs.approved_at` (only when absent or empty) + `approval.specs.notes` (always empty string) into `.openspec.yaml` before generating anything. Bypassing `sai-2-design` (e.g. calling `opsx:continue` directly) skips this check — `opsx:*` commands are internal, document this accordingly.
 
 ### Mirror discipline
 Any change to `commands/claude/` MUST be mirrored to `commands/opencode/` in the same commit (and vice versa — both stay in sync). Enforce via PR checklist. This is one consequence of the "Harness universality" convention above, which also covers shared instructions, installers, and docs.

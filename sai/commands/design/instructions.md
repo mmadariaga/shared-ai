@@ -2,20 +2,14 @@
 
 Confirm `openspec/changes/$ARGUMENTS/proposal.md` exists AND at least one file matching `openspec/changes/$ARGUMENTS/specs/**/*.md` exists. If either is missing, STOP and print: "Change '$ARGUMENTS' not found or has no specs. Run /sai-1-spec to create it first."
 
-If the fast-track signal is active, skip the ask below and proceed as if the user answered `yes` with no notes.
+Invoking `/sai-2-design` IS the approval: `sai-1-spec` closes with a feedback loop over `proposal.md` and `specs/**` and a mandatory stop instructing the user to review them before running this command. Do NOT ask the user to confirm the approval; there is no interactive decline path at this gate.
 
-Ask exactly: "**Have you reviewed the specs in openspec/changes/$ARGUMENTS/specs/** and are ready to **approve** them for design? (yes/no, and any notes)" — present as a closed-choice prompt with `yes (Recommended)` first, then `no`.
+Once the precondition above passes, stamp the approval automatically by writing the following fields to `openspec/changes/$ARGUMENTS/.openspec.yaml`, MERGING into the existing file content (preserve any existing top-level keys such as `schema:` and `created:` verbatim — do NOT truncate or rewrite the whole file):
 
-The ask SHALL reference `@sai/policies/question-context.md` and comply with its anatomy: it states what is being decided (whether the specs are approved for design), why it matters (design artifacts are generated from these specs, so an unapproved spec set propagates defects downstream), the plain-language options (`yes` — approve and continue to design; `no` — stop without writing any file; notes are carried alongside either answer), and the essential state context (the change `$ARGUMENTS`, and the artifacts under review: `openspec/changes/$ARGUMENTS/proposal.md` and `openspec/changes/$ARGUMENTS/specs/**`). The exact question wording, the `yes (Recommended)` first / `no` second ordering, and the notes semantics SHALL be preserved.
+- `approval.specs.approved_at`: current UTC timestamp in ISO 8601 format (e.g. `2026-05-17T14:30:00Z`) — written ONLY when the key is absent or its value is empty. When it is already present and non-empty, leave the existing timestamp untouched, so re-invoking `/sai-2-design` on an already designed change never overwrites the original stamp.
+- `approval.specs.notes`: the empty string, written unconditionally on every invocation, so the block shape is stable for any reader.
 
-If the user's response is "no" or any clearly negative answer, STOP without writing any file.
-
-If the user's response is "yes" (with or without notes), write the following fields to `openspec/changes/$ARGUMENTS/.openspec.yaml`, MERGING into the existing file content (preserve any existing top-level keys such as `schema:` and `created:` verbatim — do NOT truncate or rewrite the whole file):
-
-- `approval.specs.approved_at`: current UTC timestamp in ISO 8601 format (e.g. `2026-05-17T14:30:00Z`).
-- `approval.specs.notes`: the user's notes verbatim, or empty string if none provided.
-
-Do not create or modify any other files if the user declines.
+If the write to `.openspec.yaml` fails, STOP with an explicit failure message naming the file and the error. Never continue to generation with the stamp unwritten.
 
 ## Collaboration Style
 
