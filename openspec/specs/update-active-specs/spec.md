@@ -1,4 +1,7 @@
-## ADDED Requirements
+## Purpose
+TBD - created by archiving change remove-caveman. Update Purpose after archive.
+
+## Requirements
 
 ### Requirement: explore-crystal-full-output spec is deleted
 `openspec/specs/explore-crystal-full-output/spec.md` SHALL be deleted. The entire spec is dedicated to caveman suspension during crystallization output — it becomes vestigial once caveman is removed.
