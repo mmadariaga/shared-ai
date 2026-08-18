@@ -118,3 +118,12 @@ When crystallization is sliced into multiple `Ready to Propose` blocks, the gate
 - **WHEN** the user issues an explicit crystallize request that resolves to a sliced set of `Ready to Propose` blocks in a non-English language
 - **THEN** the agent asks the gate question once for the whole set
 - **AND** applies the chosen language to the free-text prose of every emitted block while keeping each block's scaffolding in English
+
+### Requirement: Localize selector controls
+
+The selector question and `Auto`/`Manual` labels SHALL follow crystallization language selection, while `review-loop`, `/sai-1-spec`, and `/sai-2-design` MUST remain English.
+
+#### Scenario: non-English crystallization reaches selector presentation
+
+- **WHEN** a non-English crystallization reaches selector presentation
+- **THEN** selector prose is localized and required command literals remain unchanged

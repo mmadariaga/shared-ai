@@ -400,3 +400,12 @@ When the slicing assessment (item 4 of `sai/commands/explore/instructions.md`) i
 - **WHEN** a slice's `Ready to Propose` block is emitted
 - **THEN** its slice-crystallization item is marked
 - **AND** its review items remain unmarked
+
+### Requirement: Separate dispatch state
+
+The idea list SHALL retain `tracked_changes` for review-loop iteration and SHALL maintain separate `last_crystallization_set` selector state, replacing it per crystallization turn without persistence.
+
+#### Scenario: a crystallization emits change names
+
+- **WHEN** a crystallization turn emits one or more change names
+- **THEN** selector dispatch uses only the latest emitted set while review navigation retains its tracked set

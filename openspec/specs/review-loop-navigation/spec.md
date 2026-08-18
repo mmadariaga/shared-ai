@@ -335,6 +335,15 @@ The navigation shell SHALL be strictly read-only: it SHALL NOT create, modify, o
 - **WHEN** the review loop runs after a `Ready to Propose` block was printed
 - **THEN** the loop does not alter that block's content or language
 
+### Requirement: Separate review navigation
+
+The manual review loop SHALL remain picker-free at crystallization. The `Auto`/`Manual` selector MUST govern delegated execution only and MUST NOT offer, start, or replace `review-loop`.
+
+#### Scenario: selector follows crystallization
+
+- **WHEN** crystallization closes and the selector is presented
+- **THEN** the review invitation remains a standing user-triggered reminder separate from the execution choice
+
 ### Requirement: close-and-re-crystallization
 
 When the loop terminates — the tracked set is exhausted through `Skip` or `Exit review loop` is selected — the loop SHALL print a minimal close acknowledgment (for example, `Loop closed`), unconditionally, whether or not any review happened during the loop; pure silence is NOT acceptable. The close SHALL NOT propose a new command prompt, including `/sai-1-spec`, `/sai-2-design`, `/sai-3-implement`, or any templated next-step prompt. This close rule applies only after the loop actually ran; the `review-loop` token fired against an empty tracked set keeps its distinct one-line acknowledgment.

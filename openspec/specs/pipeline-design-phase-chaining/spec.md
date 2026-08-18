@@ -6,19 +6,19 @@ TBD - created by archiving change extend-pipeline-supervision-to-sai-2. Update P
 
 ## Requirements
 
-### Requirement: The design phase is chained after spec-phase convergence or cap exhaustion
+### Requirement: Chain design under Auto
 
-When `start-pipeline` supervision is active on Claude Code or opencode and the supervised spec phase converges or ends by cap exhaustion, the pipeline SHALL dispatch the existing sai-2 design-planning worker for the same selected change under the same `start-pipeline` invocation, without requiring a second token. The design phase SHALL run only after the phase-transition report defined by the `pipeline-phase-transition` capability, and SHALL be entered on spec-phase convergence or cap exhaustion — never on a `failed` or `cancelled` spec worker. Reviewer failure, reviewer cancellation, and severity-contract violation are not possible spec-phase endings in the in-session model. The design worker, its harness binding, and its design-notice protocol SHALL be consumed unchanged; the design-notice extension and its fixed acknowledgement SHALL be handled per the coordinator contract.
+The existing chained design worker SHALL run under the same Auto invocation, with review, escalation, failure, retry, and no-later-phase rules unchanged.
 
-#### Scenario: spec phase converges and design is chained
-- **WHEN** the supervised spec phase converges under a single `start-pipeline` invocation on Claude Code or opencode
+#### Scenario: spec phase permits chaining
+- **WHEN** an Auto-supervised spec phase converges or exhausts its cap
 - **THEN** the pipeline dispatches the existing sai-2 design-planning worker for the same change through its existing binding
-- **AND** it does so without requiring a second `start-pipeline` token
+- **AND** the design worker runs through its existing binding without requiring another selector action
 
 #### Scenario: cap-exhausted spec phase chains design
 - **WHEN** the supervised spec phase ends by cap exhaustion after the last round's findings were applied
 - **THEN** the pipeline dispatches the existing sai-2 design-planning worker for the same change
-- **AND** it does so without a second token and without classifying the spec ending as failure
+- **AND** it does so without another selector action and without classifying the spec ending as failure
 
 #### Scenario: design worker and notice protocol are unchanged
 - **WHEN** the chained design worker emits a design notice

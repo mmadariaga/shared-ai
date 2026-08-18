@@ -61,34 +61,34 @@ The companion `explore-handoff-edge-cases` capability governs the same `**Edge C
 - **WHEN** a sliced-feature block has no edge case attributed to its slice
 - **THEN** its `**Edge Cases**` section contains exactly `- None`
 
-### Requirement: Crystallization output closes with a keep-window-open recommendation
+### Requirement: Close crystallization with selector
 
-Both the single-change crystallization output (`sai/commands/explore/instructions.md` item 5) and the sliced-feature crystallization output (item 6) SHALL close with a recommendation that the user keep the current explore window open and use it to review and refine downstream artifacts. The recommendation SHALL name the literal `review-loop` and `start-pipeline` tokens as user-triggered paths, without presenting either as a picker, auto-offering either path, or auto-firing either token. It SHALL explain that `start-pipeline` supervision is available on Claude Code and opencode and unavailable on GitHub Copilot.
+Both the single-change crystallization output (`sai/commands/explore/instructions.md` item 5) and the sliced-feature crystallization output (item 6) SHALL close with a keep-window reminder naming only `review-loop`, followed exactly once by the pipeline selector. The selector MUST remain distinct from review navigation and SHALL offer `Auto` before `Manual`; `Auto` is the only supervised pipeline entry.
 
 The recommendation SHALL NOT alter the `Ready to Propose` block itself, including its field scaffolding and existing language-gate invariants. It is plain conversational text rendered in the user's language, while both literal tokens remain verbatim.
 
-#### Scenario: single-change block closes with the recommendation
+#### Scenario: final handoff is emitted
 
 - **WHEN** `sai-explore` emits the single-change `Ready to Propose` block (item 5)
-- **THEN** it follows the block with a recommendation to keep the explore window open and review/refine downstream artifacts there, naming `review-loop` and `start-pipeline` as user-triggered paths
-- **AND** the recommendation explains that `start-pipeline` supervision is available on Claude Code and opencode and unavailable on GitHub Copilot
+- **THEN** it follows the block with one keep-window reminder naming `review-loop`
+- **AND** the turn ends with one pipeline selector offering `Auto` before `Manual`
 
 #### Scenario: sliced output emits the recommendation once after the final block
 
 - **WHEN** `sai-explore` emits the sliced-feature protocol with one `Ready to Propose` block per slice (item 6)
-- **THEN** the keep-window-open recommendation is emitted once, after the final slice block, and not repeated per slice
+- **THEN** the keep-window reminder and pipeline selector are emitted once, after the final slice block, and not repeated per slice
 
 #### Scenario: recommendation does not alter the block or the item-8 gate
 
 - **WHEN** the closing recommendation is emitted
 - **THEN** the `Ready to Propose` block's scaffolding and the item-8 crystallization language-gate invariants are unchanged
 - **AND** the recommendation itself is plain conversational text rendered in the user's language
-- **AND** neither token is presented through a picker or started automatically
+- **AND** `review-loop` remains a standing user-triggered path while the selector governs only delegated execution
 
 #### Scenario: recommendation renders in the user's language
 
 - **WHEN** the conversation's ambient language is not English
-- **THEN** the closing recommendation prose is rendered in the user's language per `remember.md`, while the block scaffolding it follows stays governed by the item-8 gate
+- **THEN** the closing reminder and selector prose are rendered in the user's language per `remember.md`, while the block scaffolding they follow stays governed by the item-8 gate
 
 ### Requirement: Sole edit target is sai/commands/explore/instructions.md
 

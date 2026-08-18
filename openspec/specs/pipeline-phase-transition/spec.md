@@ -40,11 +40,11 @@ The pipeline SHALL dispatch the design worker when the spec phase converged or e
 - **THEN** explore reports that outcome and its audit log and dispatches no design worker
 - **AND** the change remains uncompleted and retryable by a later `start-pipeline`, which resumes at the spec phase since it never converged
 
-### Requirement: A single start-pipeline run spans both phases
+### Requirement: A single Auto run spans both phases
 
-A single `start-pipeline` invocation SHALL cover the spec phase and, on spec-phase convergence or cap exhaustion, the chained design phase, without a second token. The phase-transition report SHALL mark the boundary between the two phases within that one run, and the design phase SHALL execute under the same active-supervision interval as the spec phase.
+A single selector-dispatched `Auto` invocation SHALL cover the spec phase and, on spec-phase convergence or cap exhaustion, the chained design phase, without another selector action. The phase-transition report SHALL mark the boundary between the two phases within that one run, and the design phase SHALL execute under the same active-supervision interval as the spec phase.
 
 #### Scenario: one token drives both phases
-- **WHEN** the user sends `start-pipeline` and the selected change's spec phase converges or ends by cap exhaustion
+- **WHEN** the user selects `Auto` and the selected change's spec phase converges or ends by cap exhaustion
 - **THEN** the same invocation proceeds through the phase transition into the design phase
-- **AND** the user is not required to send `start-pipeline` again to begin design
+- **AND** the user is not required to select `Auto` again to begin design

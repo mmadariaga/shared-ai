@@ -5,16 +5,16 @@ TBD - created by archiving change tasks-as-scaffold. Update Purpose after archiv
 ## Requirements
 ### Requirement: explore-no-inline-proposal
 
-`sai-explore` SHALL NOT create or modify proposal/spec artifacts itself. When an idea becomes solid, it SHALL continue to emit the readiness signal and, only on explicit crystallization, the existing `Ready to Propose` block. If the user later sends `start-pipeline`, explore MAY coordinate an isolated routed `/sai-1-spec` worker on supported harnesses; this dispatch is not inline spec execution because the worker receives only the crystallized handoff and owns every write. Without the token, no spec worker SHALL be dispatched.
+`sai-explore` SHALL NOT create or modify proposal/spec artifacts itself. When an idea becomes solid, it SHALL continue to emit the readiness signal and, only on explicit crystallization, the existing `Ready to Propose` block. After crystallization, explore SHALL dispatch an isolated routed worker only when the user explicitly selects `Auto` in the crystallization-close selector. `Manual` or no selection MUST dispatch none, while Auto retains isolated worker ownership.
 
 #### Scenario: idea crystallizes without pipeline consent
 
-- **WHEN** explore emits a `Ready to Propose` block and the user has not sent `start-pipeline`
+- **WHEN** explore emits a `Ready to Propose` block and the user has not selected `Auto`
 - **THEN** explore creates no proposal/spec artifact and dispatches no spec worker
 
 #### Scenario: user explicitly starts the isolated pipeline
 
-- **WHEN** the user sends `start-pipeline` for a change in the tracked crystallized set on a supported harness
+- **WHEN** the user selects `Auto` for a change in the latest crystallized set on a supported harness
 - **THEN** explore coordinates an isolated spec-proposal worker using the crystallized block
 - **AND** explore itself performs no file write
 

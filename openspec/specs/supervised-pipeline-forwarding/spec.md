@@ -6,18 +6,18 @@
 
 ## Requirements
 
-### Requirement: Forward language through supervised start-pipeline
+### Requirement: Preserve chained forwarding
 
-When `sai-explore` runs a supervised `start-pipeline` invocation with `--overview-lang <language>`, it SHALL retain the value only in invocation-scoped supervised state and SHALL include the same flag and value in the chained `sai-2-design` worker request. The existing chained fast-track behavior SHALL remain active.
+When `sai-explore` runs selector-dispatched `Auto` supervision with `--overview-lang <language>`, it SHALL retain the value only in invocation-scoped supervised state and SHALL include the same flag and value in the chained `sai-2-design` worker request. `Manual` SHALL forward nothing. The existing chained fast-track behavior SHALL remain active.
 
 #### Scenario: Selected language reaches chained design
 
-- **WHEN** a supervised explore run starts the pipeline with `--overview-lang spanish`
+- **WHEN** Auto starts a supervised run with an overview-language value
 - **THEN** the chained design request includes `--overview-lang spanish` alongside its existing `--fast-track` behavior and the design worker generates the overview in `spanish`
 
 #### Scenario: Unselected language preserves the existing chain
 
-- **WHEN** a supervised explore run starts the pipeline without `--overview-lang`
+- **WHEN** Manual starts or Auto starts a supervised run without `--overview-lang`
 - **THEN** the chained design request contains no language flag, retains existing chaining behavior, and the design worker defaults overview generation to English
 
 ### Requirement: Do not persist language across isolated chats

@@ -19,7 +19,7 @@ The permitted grounding sources for an auto-answer are exactly: the worker's own
 
 ### Requirement: Confident supervised questions are auto-answered
 
-When acting as the `start-pipeline` supervisor on Claude Code or opencode and the routed spec-proposal worker returns `needs_input`, `sai-explore` MAY answer the question itself and forward that answer to the same worker through the existing routed worker lifecycle, WITHOUT escalating to the user, but ONLY when its confidence in the answer is clearly above the qualitative confidence threshold. The answer explore forwards SHALL be grounded in the selected change's crystallized block and the supervised context; for a closed-choice question it SHALL be one of the worker's own offered option values, and explore SHALL NOT invent an option the worker did not offer. Every question answered this way SHALL be recorded for the autonomy audit log.
+When acting as the selector-dispatched `Auto` supervisor on Claude Code or opencode and the routed spec-proposal worker returns `needs_input`, `sai-explore` MAY answer the question itself and forward that answer to the same worker through the existing routed worker lifecycle, WITHOUT escalating to the user, but ONLY when its confidence in the answer is clearly above the qualitative confidence threshold. The answer explore forwards SHALL be grounded in the selected change's crystallized block and the supervised context; for a closed-choice question it SHALL be one of the worker's own offered option values, and explore SHALL NOT invent an option the worker did not offer. Every question answered this way SHALL be recorded for the autonomy audit log.
 
 #### Scenario: high-confidence closed-choice question is auto-answered
 - **WHEN** the supervised spec-proposal worker returns `needs_input` with a closed-choice question and explore is clearly above the confidence threshold on the answer
@@ -68,17 +68,10 @@ The confidence threshold is a qualitative model judgment, not a computed number;
 - **THEN** it makes a qualitative judgment about the threshold
 - **AND** it does not require or emit a numeric confidence score to gate the decision
 
-### Requirement: Autonomy is scoped to supervised spec execution
+### Requirement: Scope question autonomy to Auto
 
-Auto-answering SHALL apply only to spec-proposal worker `needs_input` questions raised during `start-pipeline` supervision on a harness where supervision is available. It SHALL NOT change the behavior of independently invoked `/sai-1-spec`, the standalone spec coordinator that escalates every `needs_input` question, or any harness where `start-pipeline` supervision is unavailable.
+Question autonomy SHALL apply only to Auto selector supervision. Standalone `/sai-1-spec`, `/sai-2-design`, and non-Auto paths MUST retain existing escalation behavior.
 
-#### Scenario: direct sai-1 is unaffected
-- **WHEN** `/sai-1-spec` is invoked outside `start-pipeline` supervision and its worker returns `needs_input`
-- **THEN** the question is escalated to the user as before
-- **AND** no autonomous answering occurs
-
-#### Scenario: supervision-unavailable harness never auto-answers
-- **WHEN** a harness does not support `start-pipeline` supervision
-- **THEN** explore does not auto-answer worker questions there
-- **AND** its existing behavior is preserved
-
+#### Scenario: supervised worker needs input
+- **WHEN** a supervised worker returns `needs_input`
+- **THEN** explore auto-answers only under the existing grounding and confidence gate and otherwise escalates unchanged

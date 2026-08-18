@@ -111,9 +111,9 @@ When the user declines or answers non-committally, `sai-explore` SHALL fall back
 - **WHEN** the user answers the gate non-committally
 - **THEN** the overview language falls back to the user's input language per `sai/policies/remember.md`
 
-### Requirement: The value rides in the block and forwards only in supervised start-pipeline
+### Requirement: The value rides in the block and forwards only in selector-dispatched Auto
 
-The chosen overview language SHALL be carried in every emitted `Ready to Propose` block as a durable reminder — a `**Overview language**: <value>` line with the English scaffold label and the chosen language value — and SHALL be held in conversation-only state. `sai-1-spec` SHALL NOT parse or forward `--overview-lang` or the block's reminder. Supervised `start-pipeline` SHALL forward the value through the existing chained design envelope (`arguments_value: "{name} --fast-track --overview-lang {overview_language}"`). The value SHALL be cleared when the active supervised invocation ends and SHALL never be written to any file, artifact, or configuration.
+The chosen overview language SHALL be carried in every emitted `Ready to Propose` block as a durable reminder — a `**Overview language**: <value>` line with the English scaffold label and the chosen language value — and SHALL be held in conversation-only state. `sai-1-spec` SHALL NOT parse or forward `--overview-lang` or the block's reminder. Selector-dispatched `Auto` SHALL forward the value through the existing chained design envelope (`arguments_value: "{name} --fast-track --overview-lang {overview_language}"`); `Manual` SHALL forward nothing. The value SHALL be cleared when the active supervised invocation ends and SHALL never be written to any file, artifact, or configuration.
 
 #### Scenario: the block carries the durable reminder
 
@@ -125,7 +125,7 @@ The chosen overview language SHALL be carried in every emitted `Ready to Propose
 - **WHEN** the block is handed to `/sai-1-spec`
 - **THEN** the spec phase neither parses nor forwards the reminder or any `--overview-lang` flag
 
-#### Scenario: supervised start-pipeline forwards the value
+#### Scenario: Auto chains design
 
-- **WHEN** a supervised `start-pipeline` run chains from the spec phase to the design phase
+- **WHEN** Auto chains the supervised spec phase into design
 - **THEN** the chosen overview language is forwarded to the design worker through the existing chained design envelope and is cleared at the run's terminal outcome

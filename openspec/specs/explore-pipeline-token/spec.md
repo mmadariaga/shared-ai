@@ -6,25 +6,13 @@ Define explicit `start-pipeline` triggering, tracked-change selection, and super
 
 ## Requirements
 
-### Requirement: Literal start-pipeline token is the sole supervision trigger
+### Requirement: Remove token triggering
 
-`sai-explore` SHALL recognize the literal `start-pipeline` using the same trigger machinery as `review-loop`: the token fires when it is bare (alone with optional trivial punctuation or greeting) or when starting the supervised pipeline is the turn's dominant intent. The recognized token is explicit consent to enter change selection. Explore SHALL NOT auto-start supervision, auto-offer a supervision picker after crystallization, or treat the closing recommendation itself as consent.
+The obsolete `start-pipeline` trigger SHALL be removed. No token or dominant-intent form MUST dispatch supervision, and the replacement selector SHALL be the sole entry.
 
-#### Scenario: token is sent
-- **WHEN** the user sends the literal `start-pipeline` token after one or more changes were crystallized in the current explore chat
-- **THEN** explore enters harness-appropriate selection of one uncompleted change from the tracked crystallized set
-
-#### Scenario: crystallization completes without the token
-- **WHEN** explore emits its crystallization output and the user has not sent `start-pipeline`
-- **THEN** no spec worker is dispatched and no supervision picker is auto-offered
-
-#### Scenario: token carries trivial conversational text
-- **WHEN** the user sends `start-pipeline!`, `ok, start-pipeline`, or another form accepted by the existing `review-loop` trigger machinery
-- **THEN** explore recognizes the token and enters change selection
-
-#### Scenario: token is incidental rather than dominant intent
-- **WHEN** a user message merely discusses `start-pipeline` and starting supervision is not the turn's dominant intent
-- **THEN** the message does not trigger pipeline supervision
+#### Scenario: obsolete token is sent
+- **WHEN** a user sends or discusses `start-pipeline` after crystallization
+- **THEN** explore performs no token-based dispatch and requires selector re-emission or manual continuation
 
 ### Requirement: Pipeline source is the chat-scoped tracked crystallized set
 
