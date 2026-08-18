@@ -124,6 +124,9 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 **Implementation Dispatch**: "The split-flow role of the **GREEN Worker** — the second `/sai-4-apply` dispatch of a **Split-Routed Step**, given the GREEN implementation body, that writes the implementation and verifies GREEN and is forbidden from creating or modifying any test file."
 *Avoid*: GREEN dispatch, impl agent, code writer, build dispatch
 
+**Intent Reconciliation**: "The comparison of a **Backfilled Change**'s verified diff evidence with an optional user statement of capabilities and constraints, classified as matched, stated-but-unevidenced, or evidenced-but-unstated."
+*Avoid*: intent merge, intent diff, blind backfill
+
 **Known-False Report Recovery**: "A bounded `/sai-4-apply` correction path for a worker report that coordinator evidence disproves and whose safe cause and correction are clear — carried out by continuing the same GREEN worker session with the failing path and evidence, capped at 3 continuations, never a fresh dispatch."
 *Avoid*: automatic retry, indefinite retry, advisor escalation, fresh recovery dispatch
 
@@ -243,6 +246,9 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 **Routing Line**: "The per-step `**Routing**: layer=<layer> · discipline=<discipline> · complexity=<complexity>` keyword line on `tasks.md` (key=value tagged, not positional) that captures descriptive routing metadata at design time so a future orchestrator can dispatch each step without re-deriving routing cues from the step body or binding to a specific agent roster."
 *Avoid*: routing metadata, dispatch hint, step routing, positional routing tuple
 
+**Scope Drift**: "Work evidenced by a selected diff that is absent from the user's supplied statement of intent during **Intent Reconciliation**."
+*Avoid*: unplanned work, scope mismatch, scope creep
+
 **Split-Routed Step**: "A `/sai-4-apply` Step that satisfies all three parts of the routing condition — its body contains a `##### RED phase` block, a **Step Contract** is available for it, AND its plan-level file scope contains at least one production file — and is therefore executed by a **RED Worker** followed by a **GREEN Worker**."
 *Avoid*: testable step, two-dispatch step, split step, TDD step
 
@@ -325,6 +331,8 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 - An **Overview Language** value is selected by the overview-language gate at crystallization, rides in the `Ready to Propose` block, and is forwarded by a **Supervised Pipeline** through the chained design envelope; it is never written to any artifact.
 - A **Known-False Report Recovery** permits at most three continuations of the same GREEN worker session for a single contradicted worker report (the shared bounded recovery pool) and never changes the fixed report field set.
 - A **Test Command** belongs to one change's `## Implementation Context` and is consumed by exactly one dispatch — the **RED Worker**; a GREEN-direct dispatch receives the Step's own verification commands instead.
+- An **Intent Reconciliation** compares a **Backfilled Change**'s verified diff with its optional intent statement and never treats the two sources as interchangeable evidence.
+- An **Intent Reconciliation** reports **Scope Drift** for evidenced work that the intent statement does not name, while still allowing the evidence-backed behavior to be specced.
 - A **RED Worker** and a **GREEN Worker** replace the single per-Step dispatch only for a **Split-Routed Step**; every other Step keeps one dispatch — a GREEN-direct dispatch for a non-testable Step with a production surface, and the **RED Worker**'s green-exception for any production-free Step — while a RED Step with no **Step Contract** halts the run.
 - A **Step Contract** that is missing for a Step halts the run (contract absence is a STOP); a Step that is not a **Divisible Step** routes to the **RED Worker**'s green-exception; a **Step Contract** that is ambiguous — several `## Step N` matching the same `N` — is a desync and STOPs the run.
 - A **Divisible Step** that carries a `##### RED phase` block and has an available **Step Contract** is a **Split-Routed Step**; a testable Step that is not divisible routes to the **RED Worker**'s green-exception.

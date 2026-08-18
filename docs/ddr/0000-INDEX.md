@@ -108,6 +108,10 @@ This index groups the DDRs in `docs/ddr/` by **command** and by **cross-cutting 
 ### `/sai-backfill`
 
 - [0008 — sai-backfill Does Not Generate design.md, tasks.md, or implementation.md](./0008-backfill-prohibited-design-artifacts.md) — Refs adr:0007
+- [0142 — Backfill intent remains ephemeral and subordinate to verified diff evidence](./0142-intent-remains-ephemeral-and-subordinate-to-diff-evidence.md)
+- [0143 — Intent reconciliation uses ordered classification and bounded gap questions](./0143-ordered-intent-classification-and-bounded-gap-questions.md)
+- [0144 — Backfill conflict scanning receives intent context only when usable](./0144-conditional-intent-context-for-backfill-conflict-scanning.md)
+- [0145 — Backfill `created` metadata uses a date-only value](./0145-backfill-created-metadata-is-date-only.md)
 
 ### `/sai-commit`
 
@@ -195,6 +199,7 @@ This index groups the DDRs in `docs/ddr/` by **command** and by **cross-cutting 
 - [0109 — The delegation envelope's status is reserved for dispatch outcomes; check verdicts travel only in the output payload](./0109-delegation-envelope-status-reserved-for-dispatch-outcomes.md)
 - [0113 — The task-list tool call originates exclusively from the coordinator session, never from a worker subagent](./0113-todowrite-emission-coordinator-only.md)
 - [0133 — Budget dispatch literals resolve through collision-safe harness-managed roles](./0133-budget-dispatch-literals-resolve-through-collision-safe-harness-managed-roles.md)
+- [0144 — Backfill conflict scanning receives intent context only when usable](./0144-conditional-intent-context-for-backfill-conflict-scanning.md)
 
 ### Testability routing & RED → GREEN
 
@@ -207,6 +212,7 @@ This index groups the DDRs in `docs/ddr/` by **command** and by **cross-cutting 
 ### Gates, decision summaries & feedback loops
 
 - [0014 — Decision summary derived exclusively from written artifacts](./0014-decision-summary-derived-from-artifacts-only.md)
+- [0143 — Intent reconciliation uses ordered classification and bounded gap questions](./0143-ordered-intent-classification-and-bounded-gap-questions.md)
 
 ### Explore crystallization & the review loop
 
@@ -230,6 +236,8 @@ This index groups the DDRs in `docs/ddr/` by **command** and by **cross-cutting 
 - [0067 — Handoff provenance consumption as "premise to confirm and extend"](./0067-confirm-extend-consumption-framing.md)
 - [0072 — Numeric complexity thresholds calibrated from an archive survey](./0072-complexity-thresholds-calibrated-from-archive-survey.md) — Refs adr:0069, Refs adr:0070
 - [0118 — Every generation is a recoverable two-phase transition with a persisted overview.state key](./0118-every-generation-is-a-recoverable-two-phase-transition-with-a-persisted-overview-state-key.md)
+- [0142 — Backfill intent remains ephemeral and subordinate to verified diff evidence](./0142-intent-remains-ephemeral-and-subordinate-to-diff-evidence.md)
+- [0145 — Backfill `created` metadata uses a date-only value](./0145-backfill-created-metadata-is-date-only.md)
 
 ### Installer dependency policy & external tooling
 
