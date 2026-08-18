@@ -18,13 +18,17 @@
 
   Initialize an ordered duplicate-free changed-file union, opaque input history, pending feedback, and feedback iteration `0`.
 
-  Declare the canonical five-step progress plan for this phase, in order, with exactly these ids and labels — no omissions, reorders, renames, or additions:
+  Declare the canonical six-step progress plan for this phase, in order, with exactly these ids and labels — no omissions, reorders, renames, or additions:
 
-  - `prereqs-and-change` — "Check prerequisites and resolve the change"
+  - `prereqs-and-change` — "Check prerequisites"
+    *(The retired wording for `prereqs-and-change` was "Check prerequisites and resolve the change"; the active label remains "Check prerequisites".)*
+  - `research` — "Research the change request"
   - `proposal` — "Write proposal.md"
   - `specs` — "Write specs/**"
   - `validation` — "Validate artifacts and derive the decision summary"
   - `review` — "Review artifacts"
+
+  The retired canonical five-step progress plan is not active; this six-step plan is in order, with exactly these ids and labels.
 
   Render the full plan at dispatch per `@sai/policies/todo-structure.md` (first step `in_progress`, rest `pending`) **before** dispatching the worker — the render is a prerequisite of the dispatch, not a step that follows it. If a declared panel tool is unavailable at runtime, apply the harness panel binding's one-time degradation route before dispatch: record its notice, disable later panel calls for this invocation, and continue without panel rendering; do not runtime-detect or switch surfaces. Only after the render attempt or recorded degradation decision, dispatch exactly one `sai-1-spec-proposal-worker` through the active spec-worker binding using the original envelope. Progress-event panel updates follow `@sai/policies/todo-structure.md` through the shared command runner before worker continuation; an unavailable panel uses the same recorded degradation route and does not block continuation. Mark steps only from worker progress-event `step_ids`. A worker `completed` followed by the artifact feedback gate is pre-gate and does not reconcile. The gate's `Finish step` proceed selection is the spec phase's reconciliation trigger, at which the coordinator reconciles against the last terminal `completed`: every eligible unmarked step renders `completed`, while an unmarked evidence-marked `review` step is left exactly as last rendered. `failed`, `cancelled`, and `needs_input` leave the list exactly as last rendered. The carve-out is the evidence-marked designation from `@sai/policies/todo-structure.md`, never the bare `review` id.
 
