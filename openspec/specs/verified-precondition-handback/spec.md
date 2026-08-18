@@ -51,13 +51,18 @@ When any of the file-and-key naming, current-read, or destination-writer checks 
 
 ### Requirement: Separate canonical policy from written STOP contracts
 
-The verified-precondition rule SHALL live in its own policy file. Every routed command card (`coordinator.md`, `worker.md`, and `invocation.md`) and every utility command card (`body.md`) under `sai/commands/` SHALL reference that policy unconditionally. Non-card policy files, templates, and project-local skill files are excluded from the reference location; command-local `instructions.md` content loaded by a referencing card remains governed by the policy. The rule SHALL govern only improvised, off-contract hand-backs; it SHALL NOT be copied into `sai/command-runner.md`, treated as a lifecycle terminal, or used to rewrite any existing fixed STOP literal, contract-authored hand-back, approval gate, or file-existence check.
+The verified-precondition rule SHALL live in its own policy file. Every routed command card (`coordinator.md`, `worker.md`, and `invocation.md`) and every utility command card (`body.md`) under `sai/commands/` SHALL reference that policy unconditionally. Non-card policy files, templates, and project-local skill files are excluded from the reference location; command-local `instructions.md` content loaded by a referencing card remains governed by the policy. The rule SHALL govern only improvised, off-contract hand-backs; it SHALL NOT be copied into `sai/orchestration/command-runner.md` or `sai/orchestration/worker-core.md`, treated as a lifecycle terminal, or used to rewrite any existing fixed STOP literal, contract-authored hand-back, approval gate, or file-existence check.
 
 #### Scenario: Existing file-existence STOP remains unchanged
 
 - **WHEN** a command reaches an existing written STOP that checks for a required artifact file
 - **THEN** the command SHALL retain that STOP's exact wording and behavior
 - **AND** the verified-precondition policy SHALL not convert the STOP into a question or add a hand-back requirement to its happy path
+
+#### Scenario: Canonical lifecycle files remain separate
+
+- **WHEN** the verified-precondition policy's lifecycle exclusions are audited
+- **THEN** it identifies `sai/orchestration/command-runner.md` and `sai/orchestration/worker-core.md` as the canonical neutral contracts and does not name their retired root paths
 
 #### Scenario: Contract-authored hand-back remains outside the improvised rule
 

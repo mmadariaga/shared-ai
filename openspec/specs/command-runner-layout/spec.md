@@ -6,18 +6,27 @@ TBD
 
 ## Requirements
 
-### Requirement: Shared root protocol
-The repository SHALL place the harness-neutral command protocol in `sai/command-runner.md` and the harness-neutral worker lifecycle protocol in `sai/worker-core.md`. These files SHALL define reusable mechanics only; phase-specific behavior SHALL be selected through command-card flags rather than harness or phase branches in either root file.
+### Requirement: Shared protocols use the canonical orchestration location
+The repository SHALL place the harness-neutral command protocol in `sai/orchestration/command-runner.md` and the harness-neutral worker lifecycle protocol in `sai/orchestration/worker-core.md`. These files SHALL define reusable mechanics only; phase-specific behavior SHALL be selected through command-card flags rather than harness or phase branches in either protocol.
 
-#### Scenario: Shared protocol is located at the sai root
+#### Scenario: Maintainer locates a shared protocol
 - **WHEN** a maintainer needs to change command-runner or worker lifecycle mechanics
-- **THEN** the authoritative source SHALL be discoverable at `sai/command-runner.md` or `sai/worker-core.md`
+- **THEN** the authoritative source SHALL be discoverable at `sai/orchestration/command-runner.md` or `sai/orchestration/worker-core.md`
 - **AND** no second harness-specific canonical copy of either protocol SHALL exist
 
 #### Scenario: Phase behavior is selected by card flags
 - **WHEN** two command cards require different phase behavior
 - **THEN** the cards SHALL express that difference through their declared flags
-- **AND** `sai/command-runner.md` and `sai/worker-core.md` SHALL remain branch-free with respect to those phase differences
+- **AND** `sai/orchestration/command-runner.md` and `sai/orchestration/worker-core.md` SHALL remain branch-free with respect to those phase differences
+
+### Requirement: Consumers reference relocated protocols
+
+Boot adapters and routed command cards SHALL reference `@sai/orchestration/command-runner.md` and `@sai/orchestration/worker-core.md` wherever they load the shared contracts.
+
+#### Scenario: Routed command starts under either harness
+
+- **WHEN** Claude Code or opencode starts a routed command
+- **THEN** its boot adapter and selected cards fetch shared lifecycle mechanics from the orchestration paths
 
 ### Requirement: Routed command cards
 Each routed `/sai-*` invocation SHALL have a self-contained source folder at `sai/commands/{name}/` containing its `coordinator.md` and `worker.md` surfaces, plus its retained `invocation.md` source when the routed phase uses a separate invocation card. The routed card SHALL identify the shared root protocol and the policies or instructions it fetches, and a new routed invocation SHALL be addable by adding its card without copying the shared protocol. Routed cards SHALL NOT require a `body.md` surface.
@@ -25,7 +34,7 @@ Each routed `/sai-*` invocation SHALL have a self-contained source folder at `sa
 #### Scenario: Maintainer locates one invocation
 - **WHEN** a maintainer selects a routed command name
 - **THEN** its coordinator and worker sources SHALL be discoverable under the same `sai/commands/{name}/` folder
-- **AND** the folder SHALL reference `sai/command-runner.md` and `sai/worker-core.md` rather than duplicate their protocol prose
+- **AND** the folder SHALL reference `sai/orchestration/command-runner.md` and `sai/orchestration/worker-core.md` rather than duplicate their protocol prose
 
 #### Scenario: New command uses the extension seam
 - **WHEN** a new routed `/sai-*` command is introduced
@@ -66,7 +75,7 @@ The source tree SHALL contain exactly one adapter boot file for each supported h
 
 - **WHEN** the relocated adapter sources and shared protocols are audited
 - **THEN** harness-specific mechanics remain in `sai/adapters/{harness}/`
-- **AND** `sai/command-runner.md` and `sai/worker-core.md` retain harness-neutral lifecycle semantics
+- **AND** `sai/orchestration/command-runner.md` and `sai/orchestration/worker-core.md` retain harness-neutral lifecycle semantics
 
 ### Requirement: Harness names remain at the adapter seam
 

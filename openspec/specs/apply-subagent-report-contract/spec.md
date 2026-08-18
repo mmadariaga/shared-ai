@@ -89,11 +89,11 @@ Field 8 is required in every report kind (an empty list is a valid value but an 
 
 ### Requirement: Apply report rides a phase-defined payload extension
 
-The shared worker lifecycle payloads (`sai/worker-core.md` closed outcomes: `completed`, `needs_input`, `failed`, `cancelled`, plus notice and progress) carry only `status`, `summary`, `changed_files`, and post-resolution `resolved_change_name` — they have no slot for the 9 report fields. The apply phase adapter SHALL therefore define a phase-specific report extension to the worker lifecycle payload: the `completed` and `failed` outcomes of the RED and GREEN Step-execution workers SHALL carry the apply report (the 9 fields of `apply-subagent-report-contract`) as phase-defined payload data alongside the closed lifecycle fields. `sai/worker-core.md` SHALL be amended to admit this phase-adapter-defined apply report extension — the same additive-extension mechanism the progress event already uses — and the report data SHALL be defined only in the apply phase adapter, never in the neutral protocol. The coordinator SHALL read the report from that payload extension and SHALL NOT read it from artifact contents.
+The shared worker lifecycle payloads (`sai/orchestration/worker-core.md` closed outcomes: `completed`, `needs_input`, `failed`, `cancelled`, plus notice and progress) carry only `status`, `summary`, `changed_files`, and post-resolution `resolved_change_name` — they have no slot for the 9 report fields. The apply phase adapter SHALL therefore define a phase-specific report extension to the worker lifecycle payload: the `completed` and `failed` outcomes of the RED and GREEN Step-execution workers SHALL carry the apply report (the 9 fields of `apply-subagent-report-contract`) as phase-defined payload data alongside the closed lifecycle fields. `sai/orchestration/worker-core.md` SHALL be amended to admit this phase-adapter-defined apply report extension — the same additive-extension mechanism the progress event already uses — and the report data SHALL be defined only in the apply phase adapter, never in the neutral protocol. The coordinator SHALL read the report from that payload extension and SHALL NOT read it from artifact contents.
 
 #### Scenario: worker-core admits the apply report extension
 
-- **WHEN** `sai/worker-core.md` is read after this change lands
+- **WHEN** `sai/orchestration/worker-core.md` is read after this change lands
 - **THEN** it admits phase-adapter-defined payload extensions such as the apply report, without giving the neutral protocol any apply-specific field names
 
 #### Scenario: completed outcome carries the report data
