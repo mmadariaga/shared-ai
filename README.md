@@ -342,22 +342,23 @@ See [INSTALL.opencode.md](INSTALL.opencode.md#post-install) for post-install ste
 
 We set these defaults to models that have worked best for us, you may find better alternatives for your specific needs though.
 
-| Command | Opencode | Claude Code |
-|-------|----------|-------------|
-| explore | `opencode-go/minimax-m3` | `sonnet` - medium |
-| spec (1) | `opencode-go/minimax-m3` | `opus` - medium |
-| design (2) | wrapper-declared `opencode-go/glm-5.2`, `variant: high`; worker `sai-2-design-worker` | coordinator `opus` - low; worker `opus` - high |
-| implement (3) | `opencode-go/kimi-k2.6` | coordinator `opus` - low; worker `opus` - medium |
-| apply (4) | `opencode-go/deepseek-v4-flash` | `sonnet` - low |
-| review (5) | `opencode-go/qwen3.7-plus` | `opus` - medium |
-| security (6) | `opencode-go/qwen3.7-plus` | `opus` - xhigh |
-| performance (7) | `opencode-go/qwen3.7-plus` | `opus` - medium |
-| accessibility (8) | `opencode-go/qwen3.7-plus` | `opus` - medium |
-| backfill | `opencode-go/minimax-m3` | `sonnet` - medium |
-| commit | `opencode-go/deepseek-v4-flash` | `haiku` |
-| pr | `opencode-go/deepseek-v4-flash` | `haiku` |
-| archive | `opencode-go/deepseek-v4-flash` | `haiku` |
-| status | `opencode-go/deepseek-v4-flash` | `haiku` |
+| Command | Opencode | Variant | Claude Code |
+|-------|----------|---------|-------------|
+| explore | `opencode-go/deepseek-v4-flash` | `max` | `sonnet` - medium |
+| spec (1) | `opencode-go/deepseek-v4-flash` | `max` | `opus` - medium |
+| design (2) | wrapper-declared `opencode-go/deepseek-v4-flash`; worker `sai-2-design-worker` | `max` | coordinator `claude-opus-4-8` - low; worker `opus` - high |
+| implement (3) | `opencode-go/deepseek-v4-flash` | `max` | coordinator `opus` - low; worker `opus` - medium |
+| apply (4) | `opencode-go/deepseek-v4-flash` | `max` | `sonnet` - low |
+| review (5) | `opencode-go/qwen3.7-plus` | | `opus` - medium |
+| security (6) | `opencode-go/qwen3.7-plus` | | `opus` - xhigh |
+| performance (7) | `opencode-go/qwen3.7-plus` | `high` | `opus` - medium |
+| accessibility (8) | `opencode-go/qwen3.7-plus` | `high` | `opus` - medium |
+| backfill | `opencode-go/minimax-m3` | | `sonnet` - medium |
+| commit | `opencode-go/deepseek-v4-flash` | `default` | `haiku` |
+| pr | `opencode-go/deepseek-v4-flash` | | `haiku` |
+| archive | `opencode-go/deepseek-v4-flash` | | `haiku` |
+| status | `opencode-go/deepseek-v4-flash` | | `haiku` |
+| worktree | `opencode-go/deepseek-v4-flash` | | `haiku` |
 
 ### Choosing a model
 

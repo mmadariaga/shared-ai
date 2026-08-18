@@ -182,10 +182,11 @@ test('final wrappers: no ## Sai heading, User input, @commands/sai/, flat @sai/c
   }
 });
 
-test('final wrappers: sai-explore keeps idea-list-render and opencode keeps spec-worker; neither carries design-worker', () => {
+test('final wrappers: both sai-explore wrappers keep idea-list-render and spec-worker; neither carries design-worker', () => {
   const claudeExplore = read('commands/claude/sai-explore.md');
   const opencodeExplore = read('commands/opencode/sai-explore.md');
   assert.match(claudeExplore, /Fetch @sai\/adapters\/claude\/idea-list-render\.md/, 'Claude explore should keep idea-list-render');
+  assert.match(claudeExplore, /Fetch @sai\/orchestration\/workers\/bindings\/spec-worker\.md/, 'Claude explore should carry spec-worker binding');
   assert.match(opencodeExplore, /Fetch @sai\/orchestration\/workers\/bindings\/spec-worker\.md/, 'opencode explore should keep spec-worker binding');
   assert.match(opencodeExplore, /Fetch @sai\/adapters\/opencode\/idea-list-render\.md/, 'opencode explore should keep idea-list-render');
   assert.doesNotMatch(claudeExplore, /bindings\/design-worker\.md/, 'Claude explore wrapper should not carry design-worker binding');

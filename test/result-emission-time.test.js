@@ -53,7 +53,7 @@ test('worker-core fixes emitted_on as a mandatory offset-bearing ISO-8601 instan
 test('worker-core requires a real clock read and accepts the DST sorting trade', () => {
   const core = artifact('sai/orchestration/worker-core.md');
 
-  assert.match(core, /SHALL NOT estimate, infer, or carry forward a time it did not read/i,
+  assert.match(core, /SHALL NOT estimate,\s+infer,[\s\S]{0,120}carry forward a time it did not read/i,
     'the worker should not invent the value');
   assert.match(core, /daylight-saving transition/i,
     'the DST caveat should be recorded');
@@ -70,7 +70,7 @@ test('worker-core makes emitted_on worker-authored and forbids coordinator rewri
     'worker-core should define the field in its own section');
   assert.match(core, /worker-authored/i,
     'the field should be worker-authored');
-  assert.match(core, /never reuses, back-dates, forward-dates, or copies/i,
+  assert.match(core, /SHALL NOT[\s\S]{0,80}reuse, back-date, forward-date, or copy a value from an earlier result/i,
     'reuse and back-dating should be forbidden');
   assert.match(core, /non-decreasing/i,
     'values should be non-decreasing across one run');

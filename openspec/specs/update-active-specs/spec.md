@@ -28,15 +28,6 @@ Specific change: Line 14 THEN clause currently reads "...behavior fetches (explo
 - **WHEN** `openspec/specs/design-instruction/spec.md` is read
 - **THEN** no line contains "caveman"
 
-### Requirement: extract-bodies spec examples contain no caveman fetch line
-`openspec/specs/extract-bodies/spec.md` SHALL be updated so that the example code blocks (both "before" at line 46 and "extracted" at line 60) do not include `Fetch @skills/caveman/SKILL.md`.
-
-Both example blocks show the body of `sai-archive.md`. The caveman fetch line must be removed from both the "Current body" example and the "Extracted body" example to match the post-remove-caveman state.
-
-#### Scenario: extract-bodies spec read
-- **WHEN** `openspec/specs/extract-bodies/spec.md` is read
-- **THEN** no line contains "Fetch @skills/caveman/SKILL.md"
-
 ### Requirement: install-command-overwrite spec has no caveman skill copy
 `openspec/specs/install-command-overwrite/spec.md` SHALL be updated to remove `caveman/SKILL.md` from the universal skill copy list and ordering requirements.
 

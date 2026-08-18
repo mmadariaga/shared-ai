@@ -316,7 +316,7 @@ test('Step 5: the spec-proposal worker mirrors the six ordered plan entries', ()
 test('Step 5: structured research is an unconditional boundary before proposal generation', () => {
   const worker = artifact(SPEC_COORDINATOR_ARTIFACTS.worker);
   const researchSpec = artifact(
-    'openspec/changes/progress-plan-step-legibility/specs/spec-research-consumption/spec.md',
+    'openspec/specs/spec-research-consumption/spec.md',
   );
 
   assert.match(
