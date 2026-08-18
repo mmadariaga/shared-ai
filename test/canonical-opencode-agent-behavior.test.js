@@ -6,6 +6,8 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const REPO_ROOT = path.join(__dirname, '..');
+const CLAUDE_FETCH_BOOTSTRAP = 'Fetch @skills/fetch/SKILL.md';
+const OPENCODE_FETCH_BOOTSTRAP = 'Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.';
 
 const POLICIES = [
   { name: 'budget', fetchTarget: '@sai/policies/budget-agent.md' },
@@ -155,8 +157,8 @@ test('managed OpenCode generic agents are exact Fetch wrappers with preserved id
     }
 
     const body = source.slice(frontmatter[0].length).trim();
-    assert.equal(body, `Fetch @sai/policies/${name}-agent.md`,
-      `${name} post-frontmatter body should be exactly its canonical policy Fetch`);
+    assert.equal(body, `${OPENCODE_FETCH_BOOTSTRAP}\nFetch @sai/policies/${name}-agent.md`,
+      `${name} post-frontmatter body should bootstrap fetch resolution before its canonical policy Fetch`);
     assert.doesNotMatch(source,
       /(?:import|require)\s+(?:[^\n]*\b)?(?:open\s*code|opencode)\b|from\s+['"](?:open\s*code|opencode)/i,
       `${name} wrapper must not contain a native OpenCode import`);
@@ -169,7 +171,7 @@ const CLAUDE_GENERIC_AGENTS = [
     name: 'budget-explorer',
     description: 'Binds cheap read-only research and lookup delegation to the Claude Code budget-explorer agent.',
     fetchTarget: '@sai/policies/explore-agent.md',
-    tools: 'tools: Read, Glob, Grep, WebFetch, WebSearch',
+    tools: 'tools: Read, Glob, Grep, WebFetch, WebSearch, Skill',
   },
   {
     fileName: 'budget-executor',
@@ -218,8 +220,8 @@ test('managed Claude generic agents are exact Fetch wrappers with preserved iden
     }
 
     const body = source.slice(frontmatter[0].length).trim();
-    assert.equal(body, `Fetch ${agent.fetchTarget}`,
-      `${agent.fileName} post-frontmatter body should be exactly its canonical policy Fetch`);
+    assert.equal(body, `${CLAUDE_FETCH_BOOTSTRAP}\nFetch ${agent.fetchTarget}`,
+      `${agent.fileName} post-frontmatter body should bootstrap fetch resolution before its canonical policy Fetch`);
     assert.doesNotMatch(source,
       /(?:import|require)\s+(?:[^\n]*\b)?(?:open\s*code|opencode)\b|from\s+['"](?:open\s*code|opencode)/i,
       `${agent.fileName} wrapper must not contain a native OpenCode import`);

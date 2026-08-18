@@ -306,6 +306,12 @@ test('generated worker agents expose exactly one frontmatter block and one canon
         const agentPath = path.join(base, 'agents', `${workerName}.md`);
         assert.equal(fs.existsSync(agentPath), true, `${harness} should install ${workerName} agent`);
         const text = fs.readFileSync(agentPath, 'utf8').replaceAll('\r\n', '\n');
+        const bootstrap = harness === 'claude'
+          ? 'Fetch @skills/fetch/SKILL.md'
+          : 'Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.';
+        const body = text.slice(text.indexOf('\n---\n') + '\n---\n'.length).trim();
+        assert.equal(body.split('\n')[0], bootstrap,
+          `${harness} ${workerName} agent should bootstrap fetch resolution before its worker contract`);
         assert.equal((text.match(/^---\r?\n/gm) || []).length, 2,
           `${harness} ${workerName} agent should contain exactly one frontmatter block`);
         assert.equal(

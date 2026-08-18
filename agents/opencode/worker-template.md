@@ -9,4 +9,5 @@ permission:
 {{permissionBlock}}
 ---
 
+Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.
 {{canonicalFetch}}

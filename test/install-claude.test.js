@@ -419,6 +419,13 @@ test('Claude installer projects the three budget-agent destinations with role-ma
       assert.equal(fs.existsSync(agentPath), true,
         `the ${agent} managed agent should be installed`);
       const text = fs.readFileSync(agentPath, 'utf8').replaceAll('\r\n', '\n');
+      const frontmatterEnd = text.indexOf('\n---\n');
+      assert.notEqual(frontmatterEnd, -1, `${agent} should contain a frontmatter terminator`);
+      assert.equal(
+        text.slice(frontmatterEnd + '\n---\n'.length).trim().split('\n')[0],
+        'Fetch @skills/fetch/SKILL.md',
+        `${agent} should bootstrap Claude fetch resolution before its policy Fetch`
+      );
       assert.equal(
         (text.match(new RegExp(`Fetch @sai/policies/${role}-agent\\.md`, 'g')) || []).length, 1,
         `${agent} should carry exactly one role-matched policy Fetch for ${role}`

@@ -6,4 +6,5 @@ effort: {{effort}}
 tools: {{tools}}
 ---
 
+Fetch @skills/fetch/SKILL.md
 {{canonicalFetch}}

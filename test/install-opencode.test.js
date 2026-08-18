@@ -1283,6 +1283,15 @@ test('Step 2 fresh install seeds the generic opencode agent files from their sou
         `specs/opencode-generic-agent-files/spec.md: ${name} should have an opencode source agent`);
       assert.ok(fs.existsSync(agentPath),
         `specs/opencode-generic-agent-files/spec.md: ${name}.md should be projected into the agents directory`);
+      const text = fs.readFileSync(agentPath, 'utf8').replaceAll('\r\n', '\n');
+      const frontmatterEnd = text.indexOf('\n---\n');
+      assert.notEqual(frontmatterEnd, -1,
+        `specs/opencode-generic-agent-files/spec.md: ${name} should contain a frontmatter terminator`);
+      assert.equal(
+        text.slice(frontmatterEnd + '\n---\n'.length).trim().split('\n')[0],
+        'Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.',
+        `specs/opencode-generic-agent-files/spec.md: ${name} should bootstrap opencode fetch resolution before its policy Fetch`
+      );
       assert.deepEqual(fs.readFileSync(agentPath), fs.readFileSync(repoAgentPath),
         `specs/opencode-generic-agent-files/spec.md: ${name} should be byte-identical to its opencode source`);
       assert.equal(fs.existsSync(path.join(tmpDir, 'agents', `.${name}.owner.json`)), false,

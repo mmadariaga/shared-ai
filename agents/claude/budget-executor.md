@@ -5,4 +5,5 @@ model: haiku
 effort: low
 ---
 
+Fetch @skills/fetch/SKILL.md
 Fetch @sai/policies/executor-agent.md
