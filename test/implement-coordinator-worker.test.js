@@ -58,7 +58,7 @@ function capture(fn) {
 // ─── Step 1: reshape and pin the implementation progress plan ───────────────
 
 const IMPLEMENT_PLAN_STEPS = [
-  ['prereqs-resolution', 'Check prerequisites and resolve the change'],
+  ['prereqs-resolution', 'Check prerequisites'],
   ['collapse-implemented-steps', 'Collapse implemented steps'],
   ['artifact-analysis', 'Analyze artifacts and validate decisions'],
   ['documentation-review', 'Review required documentation'],

@@ -23,10 +23,9 @@
   - `replacement_reconstruction_fields`: `resolved_change_name` when already known, ordered `opaque_input_history`, and the fixed durable-artifact reconstruction instruction
   - `terminal_navigation`: implementation completion or unsuccessful-stop behavior
 
-  Declare the canonical six-step progress plan for this phase, in order, with
-  exactly these ids and labels — no omissions, reorders, renames, or additions:
+  Declare the canonical six-step progress plan for this phase, in order, with exactly these ids and labels — no omissions, reorders, renames, or additions:
 
-  - `prereqs-resolution` — "Check prerequisites and resolve the change"
+  - `prereqs-resolution` — "Check prerequisites"
   - `collapse-implemented-steps` — "Collapse implemented steps"
   - `artifact-analysis` — "Analyze artifacts and validate decisions"
   - `documentation-review` — "Review required documentation"

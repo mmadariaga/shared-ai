@@ -50,7 +50,7 @@ research, and `budget-explorer` for ADR-index cold-build reads.
 This phase declares a progress plan with exactly these canonical step ids, in
 order:
 
-- `prereqs-resolution` — "Check prerequisites and resolve the change"
+ - `prereqs-resolution` — "Check prerequisites"
 - `collapse-implemented-steps` — "Collapse implemented steps"
 - `artifact-analysis` — "Analyze artifacts and validate decisions"
 - `documentation-review` — "Review required documentation"
