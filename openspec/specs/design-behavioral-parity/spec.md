@@ -14,19 +14,19 @@ The routed Claude Code and opencode paths and the inline Copilot path SHALL prod
 - **THEN** both paths SHALL satisfy the same artifact schemas and design-quality constraints without coordinator-specific content in the artifacts
 
 ### Requirement: Approval and amendment semantics remain unchanged
-The migration SHALL preserve required source-artifact checks, specs approval metadata merge behavior, fast-track auto-approval, explicit amendment consent, amendment audit metadata, and the route back to `/sai-1-spec` when a correction is not clear. Moving these operations into the worker SHALL not add or remove an approval gate.
+The migration SHALL preserve required source-artifact checks, specs approval metadata merge behavior, explicit amendment consent, amendment audit metadata, and the route back to `/sai-1-spec` when a correction is not clear. The specs approval gate is no longer an interactive gate on either path: it is an automatic stamp, so there is no auto-approval branch to distinguish under `--fast-track` and no decline answer on the non-fast-track path.
 
-#### Scenario: Fast-track design starts
+#### Scenario: fast-track ordering preserved without an approval branch
 - **WHEN** `/sai-2-design {name} --fast-track` runs on any harness
-- **THEN** universal prerequisites SHALL run first; only after they pass SHALL the existing fast-track banner print exactly once, specs auto-approval behavior occur, and every unnamed gate remain in force
+- **THEN** universal prerequisites SHALL run first; only after they pass SHALL the existing fast-track banner print exactly once, the specs approval SHALL be stamped exactly as it is without `--fast-track`, and every unnamed gate SHALL remain in force
 
 #### Scenario: Fast-track design fails prerequisites
 - **WHEN** `/sai-2-design {name} --fast-track` fails a universal prerequisite
 - **THEN** the existing prerequisite error SHALL print without any fast-track banner, matching the inline ordering
 
-#### Scenario: User declines specs approval
-- **WHEN** fast-track is inactive and the user answers `no` to specs approval
-- **THEN** the workflow SHALL stop without generating design artifacts, regardless of whether the path is routed or inline
+#### Scenario: no decline path at the specs approval gate
+- **WHEN** `/sai-2-design {name}` runs with fast-track inactive
+- **THEN** no specs approval question is presented, no answer can stop the command at that gate, and the approval is stamped before generation on both the routed and inline paths
 
 ### Requirement: Questions, summaries, and artifact feedback remain behaviorally equivalent
 The migration SHALL preserve Open Questions resolution, the artifact-derived decision summary, the shared feedback gate's option order and iteration behavior, selective per-item feedback application, discard reporting, and summary recomputation. Routed coordinators SHALL relay these interactions without changing their semantics.

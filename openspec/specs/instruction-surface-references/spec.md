@@ -8,12 +8,12 @@ Requires the fixed decision surfaces in the shared instructions (`design.md`, `a
 
 ### Requirement: design-gate-surfaces-reference-policy
 
-`sai/commands/design/instructions.md` SHALL reference the question-context policy (`@sai/policies/question-context.md`) at its two fixed decision surfaces: the specs approval gate question and the Open Questions gate presentation. Both prompts SHALL comply with the anatomy — stating what is being decided, why it matters, the plain-language options, and the essential state context — while preserving the gates' pinned option labels, ordering, and semantics (for the approval gate: `yes` first, then `no`, with notes; for Open Questions: the unresolved question with its context).
+`sai/commands/design/instructions.md` SHALL reference the question-context policy (`@sai/policies/question-context.md`) at its fixed decision surfaces. The specs approval gate is no longer such a surface: it presents no question, so it SHALL NOT reference the policy and SHALL NOT carry question anatomy. The Open Questions gate presentation remains a fixed decision surface and SHALL continue to reference the policy and comply with its anatomy — stating what is being decided, why it matters, the plain-language options, and the essential state context — preserving the unresolved question with its context.
 
-#### Scenario: specs approval gate complies
+#### Scenario: specs approval gate presents no question
 
-- **WHEN** `sai/commands/design/instructions.md` asks the user to approve the specs
-- **THEN** the gate references the question-context policy and the prompt states the decision, why it matters, the options, and the artifacts under review, preserving the `yes`/`no` ordering and notes semantics
+- **WHEN** `sai/commands/design/instructions.md` is read at its `## Approval gate` section
+- **THEN** the section contains no approval question, no `yes`/`no` option ordering, no notes semantics, and no reference to the question-context policy
 
 #### Scenario: Open Questions gate complies
 

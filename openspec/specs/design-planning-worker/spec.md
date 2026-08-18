@@ -133,7 +133,15 @@ The design worker SHALL include worker-authored `emitted_on` in notices, progres
 - **THEN** the payload includes its actual composition instant in `emitted_on`.
 
 ### Requirement: The design worker owns the complete technical design workflow
-The design worker SHALL own prerequisite checks, fast-track parsing, change selection, proposal and spec validation, specs approval state, codebase research, technical question resolution, design decisions, artifact generation, and artifact verification. The coordinator SHALL not share ownership of any of these activities. The worker SHALL complete universal prerequisites before parsing fast-track or emitting any fast-track notice.
+The design worker SHALL own prerequisite checks, fast-track parsing, change selection, proposal and spec validation, specs approval state, codebase research, technical question resolution, design decisions, artifact generation, and artifact verification. The coordinator SHALL not share ownership of any of these activities. Ownership of specs approval state means stamping it, never asking for it: after verifying `proposal.md` and at least one `specs/**/*.md`, the worker SHALL write `approval.specs.approved_at` only when that key is absent or empty and `approval.specs.notes` as an empty string, then handle amendments per the design instructions.
+
+#### Scenario: worker stamps the approval without asking
+- **WHEN** the design worker has verified `proposal.md` and at least one `specs/**/*.md` for the resolved change
+- **THEN** it SHALL stamp `approval.specs.approved_at` (skipping the write when the key is already present and non-empty) and `approval.specs.notes` as an empty string, and SHALL NOT return a `needs_input` result for specs approval
+
+#### Scenario: startup act reports the stamp
+- **WHEN** the worker completes its startup act
+- **THEN** the act — fast-track parsing, prerequisites, resolution, and stamping the specs approval — SHALL report as one progress batch carrying only `prereqs-resolution`, with no standalone step and no `skipped` field for the gate
 
 #### Scenario: Worker starts from an invocation envelope
 - **WHEN** a design worker receives `wrapper_echo_value` and `arguments_value`
@@ -201,10 +209,6 @@ The design worker SHALL own prerequisite checks, fast-track parsing, change sele
 
 ### Requirement: The design worker owns interactive technical decisions
 Whenever the design workflow needs user approval, clarification, amendment consent, an Open Question answer, or another user decision, the worker SHALL author a `needs_input` payload with the exact question and ordered options. After the binding forwards an answer, the same worker SHALL continue the workflow from its current context and durable artifacts.
-
-#### Scenario: Specs approval is required
-- **WHEN** specs are not approved and fast-track is inactive
-- **THEN** the worker SHALL request the existing yes/no specs approval through `needs_input` and SHALL write approval metadata only after receiving `yes`
 
 #### Scenario: Spec problem has a clear amendment
 - **WHEN** design research finds a spec problem whose correction is clear

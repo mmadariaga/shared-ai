@@ -14,6 +14,19 @@ The set of commands that accept `--fast-track` SHALL be exactly `sai-explore`, `
 - **WHEN** any requirement in this capability, or the next-prompt-hint capability, needs to decide whether a command supports `--fast-track`
 - **THEN** it resolves membership against this canonical four-command list, so a future addition or removal is a single-point edit here rather than parallel edits across specs
 
+### Requirement: sai-2-design under fast-track has no specs approval gate to opt out of
+
+`--fast-track` remains accepted by `sai-2-design`, and its parsing, preflight ordering, and `> FAST-TRACK MODE ACTIVE` banner are unchanged. The specs approval gate is no longer part of any opt-out set for `sai-2-design`, because that gate is an automatic stamp presented to nobody: the flag has no approval question to auto-answer, and the approval metadata is written identically with and without the flag.
+
+#### Scenario: fast-track does not change approval behavior
+
+- **WHEN** `/sai-2-design {name} --fast-track` runs and `/sai-2-design {name}` runs on an otherwise identical change
+- **THEN** both invocations stamp `approval.specs.approved_at` (only when absent or empty) and `approval.specs.notes` as an empty string, with no question presented in either case
+
+#### Scenario: fast-track membership and banner unchanged
+- **WHEN** the fast-track command membership list or the `sai-2-design` banner behavior is evaluated
+- **THEN** `sai-2-design` SHALL remain in the membership list and SHALL still emit the fast-track banner exactly once per session after universal prerequisites pass
+
 ### Requirement: sai-archive under fast-track auto-proceeds the unchecked-items gate and conditionally the delta-spec sync gate
 
 When `sai-archive` runs with `--fast-track`, its opt-out set SHALL be exactly three gates:
@@ -89,7 +102,7 @@ The parse SHALL be single-sourced in the body file so that all harness thin wrap
 #### Scenario: Absent flag leaves behavior identical to today
 
 - **WHEN** a user runs `/sai-2-design oauth2-auth` with no `--fast-track` token
-- **THEN** fast-track mode is inactive and every gate (language, approval, commit, human verification, archive soft gates) behaves exactly as it did before this capability existed
+- **THEN** fast-track mode is inactive and every gate (language, commit, human verification, archive soft gates) behaves exactly as it did before this capability existed, while specs approval is stamped automatically as defined by the design workflow
 
 #### Scenario: The flag is confined to the four named commands
 
@@ -143,7 +156,7 @@ For each of the four commands, `--fast-track` SHALL opt out of exactly the named
 
 #### Scenario: The opt-out set is fixed per command
 
-- **WHEN** fast-track is active for `sai-explore` (two language gates), `sai-2-design` (specs approval gate only), `sai-4-apply` (both commit-authorization gates — the per-Step STOP & COMMIT gate and the terminal documentation commit gate — + Human Verification deferral + Prerequisites branch-selection prompt auto-stay only), or `sai-archive` (unchecked-items gate always + delta-spec sync gate conditional only + archive commit gate auto-select-new-commit only)
+- **WHEN** fast-track is active for `sai-explore` (two language gates), `sai-2-design` (no opt-out gate; specs approval is an automatic stamp), `sai-4-apply` (both commit-authorization gates — the per-Step STOP & COMMIT gate and the terminal documentation commit gate — + Human Verification deferral + Prerequisites branch-selection prompt auto-stay only), or `sai-archive` (unchecked-items gate always + delta-spec sync gate conditional only + archive commit gate auto-select-new-commit only)
 - **THEN** no gate beyond that command's named set changes behavior
 
 ### Requirement: Fast-track behavior is harness-agnostic and documented
