@@ -104,6 +104,10 @@ This index groups the DDRs in `docs/ddr/` by **command** and by **cross-cutting 
 - [0137 — The Review Engine input boundary is navigation-free](./0137-review-engine-input-boundary-is-navigation-free.md)
 - [0138 — Cap exhaustion continues after the last round's findings](./0138-cap-exhaustion-continues-after-last-round-findings.md)
 - [0139 — Supervised review edits remain worker-owned](./0139-supervised-review-edits-remain-worker-owned.md) — Refs adr:0139
+- [0142 — The budget-explorer filesystem boundary starts at the harness project root](./0142-budget-explorer-filesystem-boundary-starts-at-project-root.md)
+- [0143 — Out-of-root budget-explorer access is concrete and purpose-bound](./0143-budget-explorer-out-of-root-access-is-purpose-bound.md)
+- [0144 — Self-discovered external needs use structured escalation records](./0144-budget-explorer-self-discovered-needs-use-structured-escalation.md)
+- [0145 — The budget-explorer tool-call ceiling resets for each execution segment](./0145-budget-explorer-tool-call-ceiling-resets-per-segment.md)
 
 ### `/sai-backfill`
 
@@ -142,6 +146,10 @@ This index groups the DDRs in `docs/ddr/` by **command** and by **cross-cutting 
 - [0133 — Review progress is marked only by no-High pass evidence](./0133-review-progress-is-evidence-only.md) — Refs 0109, Refs 0110, Refs 0111
 - [0134 — Automatic planning review has two distinct bounded counters](./0134-automatic-review-has-two-distinct-counters.md) — Refs 0133
 - [0135 — An empty spec reference set still yields a full review pass](./0135-empty-spec-reference-set-is-a-full-review-pass.md) — Refs 0133, Refs 0134
+- [0142 — The budget-explorer filesystem boundary starts at the harness project root](./0142-budget-explorer-filesystem-boundary-starts-at-project-root.md)
+- [0143 — Out-of-root budget-explorer access is concrete and purpose-bound](./0143-budget-explorer-out-of-root-access-is-purpose-bound.md)
+- [0144 — Self-discovered external needs use structured escalation records](./0144-budget-explorer-self-discovered-needs-use-structured-escalation.md)
+- [0145 — The budget-explorer tool-call ceiling resets for each execution segment](./0145-budget-explorer-tool-call-ceiling-resets-per-segment.md)
 
 ---
 
@@ -176,6 +184,10 @@ This index groups the DDRs in `docs/ddr/` by **command** and by **cross-cutting 
 ### Harness portability & mirror discipline
 
 - [0112 — Task-list semantics are harness-neutral and single-sourced; below three declared steps no list renders](./0112-neutral-task-list-policy-single-source.md)
+- [0142 — The budget-explorer filesystem boundary starts at the harness project root](./0142-budget-explorer-filesystem-boundary-starts-at-project-root.md)
+- [0143 — Out-of-root budget-explorer access is concrete and purpose-bound](./0143-budget-explorer-out-of-root-access-is-purpose-bound.md)
+- [0144 — Self-discovered external needs use structured escalation records](./0144-budget-explorer-self-discovered-needs-use-structured-escalation.md)
+- [0145 — The budget-explorer tool-call ceiling resets for each execution segment](./0145-budget-explorer-tool-call-ceiling-resets-per-segment.md)
 
 
 ### Argument passing & change-name resolution
@@ -200,6 +212,10 @@ This index groups the DDRs in `docs/ddr/` by **command** and by **cross-cutting 
 - [0113 — The task-list tool call originates exclusively from the coordinator session, never from a worker subagent](./0113-todowrite-emission-coordinator-only.md)
 - [0133 — Budget dispatch literals resolve through collision-safe harness-managed roles](./0133-budget-dispatch-literals-resolve-through-collision-safe-harness-managed-roles.md)
 - [0144 — Backfill conflict scanning receives intent context only when usable](./0144-conditional-intent-context-for-backfill-conflict-scanning.md)
+- [0142 — The budget-explorer filesystem boundary starts at the harness project root](./0142-budget-explorer-filesystem-boundary-starts-at-project-root.md)
+- [0143 — Out-of-root budget-explorer access is concrete and purpose-bound](./0143-budget-explorer-out-of-root-access-is-purpose-bound.md)
+- [0144 — Self-discovered external needs use structured escalation records](./0144-self-discovered-external-needs-use-structured-escalation.md)
+- [0145 — The budget-explorer tool-call ceiling resets for each execution segment](./0145-budget-explorer-tool-call-ceiling-resets-per-segment.md)
 
 ### Testability routing & RED → GREEN
 

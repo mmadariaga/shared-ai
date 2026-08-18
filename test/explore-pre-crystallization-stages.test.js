@@ -16,6 +16,8 @@ function readArtifact(relativePath) {
 const explore = () => readArtifact('sai/commands/explore/instructions.md');
 const opencodeBinding = () => readArtifact('sai/adapters/opencode/idea-list-render.md');
 const claudeBinding = () => readArtifact('sai/adapters/claude/idea-list-render.md');
+const opencodePanel = () => readArtifact('sai/adapters/opencode/panel-render.md');
+const claudePanel = () => readArtifact('sai/adapters/claude/panel-render.md');
 
 test('the explore instructions render the four stage labels in order', () => {
   const source = explore();
@@ -55,17 +57,18 @@ test('both bindings carry the idea-list marker in their pinned machine-readable 
   const opencode = opencodeBinding();
   const claude = claudeBinding();
 
-  assert.match(opencode, /`priority` field, value `sai-idea-list:<change-name>`/);
-  assert.match(claude, /`description` field, value `sai-idea-list:<change-name>`/);
+  assert.match(opencode, /`priority` field, with value `sai-idea-list:<change-name>`/);
+  assert.match(claude, /`description` field, with value `sai-idea-list:<change-name>`/);
 });
 
-test('both render bindings mirror the idea-list lifecycle with shared contract fragments', () => {
+test('both render bindings retain the shared idea-list surface policy', () => {
   const opencode = opencodeBinding();
   const claude = claudeBinding();
 
   const sharedFragments = [
     'sai-idea-list:<change-name>',
-    'full idea list',
+    'pending | in_progress | completed',
+    'active review item',
     'coordinator session',
   ];
   for (const fragment of sharedFragments) {
@@ -75,11 +78,15 @@ test('both render bindings mirror the idea-list lifecycle with shared contract f
 });
 
 test('the chat-start clear removes exactly entries bearing either marker prefix', () => {
-  const opencode = opencodeBinding();
-  const claude = claudeBinding();
+  const exploreSource = explore();
+  const opencode = opencodePanel();
+  const claude = claudePanel();
 
+  assert.match(exploreSource, /start clear removes entries bearing either marker prefix/);
+  assert.match(exploreSource, /read covers the markers only and never derives list content/);
   for (const binding of [opencode, claude]) {
-    assert.match(binding, /removes exactly the marker-bearing entries/);
-    assert.match(binding, /The read covers the marker only and never derives list content\./);
+    assert.match(binding, /start clear/);
+    assert.match(binding, /removes the entries bearing that surface's marker/);
+    assert.match(binding, /read never derives list content/);
   }
 });

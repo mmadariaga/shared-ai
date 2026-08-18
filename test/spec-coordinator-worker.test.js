@@ -366,7 +366,7 @@ test('Step 5: the spec coordinator reconciles the list at run-closing results', 
 test('Step 5: the spec worker contract emits one progress event per completed batch with the canonical batch ids', () => {
   const worker = artifact(SPEC_COORDINATOR_ARTIFACTS.worker);
 
-  assert.match(worker, /Return exactly one progress event per completed batch/,
+  assert.match(worker, /Emit exactly one progress event per completed batch/,
     'the contract should emit one progress event per completed batch');
   assert.match(worker, /The startup act reports `prereqs-and-change`/,
     'the startup batch should carry prereqs-and-change');
@@ -491,7 +491,7 @@ test('Step 2: the coordinator plan declaration and the worker enumeration are by
 test('Step 2: the spec worker emits one progress event per act carrying the canonical id and newly changed paths', () => {
   const worker = artifact(SPEC_COORDINATOR_ARTIFACTS.worker);
 
-  assert.match(worker, /Return exactly one progress event per completed batch/,
+  assert.match(worker, /Emit exactly one progress event per completed batch/,
     'each act should emit exactly one progress event');
   assert.match(worker, /The startup act reports `prereqs-and-change`/,
     'the startup act should emit one progress event carrying prereqs-and-change');
