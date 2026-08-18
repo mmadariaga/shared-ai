@@ -125,12 +125,28 @@ binding dispatch metadata, or artifact contents.
 ## Result Emission Time
 
 `emitted_on` is worker-authored and describes one result, not the run. The
-worker reads the clock at the moment it composes the payload it is about to
-return, and it never reuses, back-dates, forward-dates, or copies the value from
-an earlier result. The value SHALL come from an actual clock read; a worker
-SHALL NOT estimate, infer, or carry forward a time it did not read. Across one
-run the values are therefore non-decreasing in return order, and the terminal
-result carries the latest one.
+field order shown in [Closed Outcomes](#closed-outcomes) is serialization order,
+not composition order. The worker SHALL decide every other field and complete
+the payload before reading the clock. For each payload it returns, the worker
+SHALL read the clock exactly once, as its last action before returning. After
+that read it SHALL return the payload without another clock read; a second read
+for the same payload is prohibited. If anything about the payload changes after
+the read, the value stands and is never re-read. A composition abandoned without
+returning a payload discards its read and cannot carry it into a later payload.
+
+The value SHALL come from that one clock read; a worker SHALL NOT estimate,
+infer, reuse, back-date, forward-date, or copy a value from an earlier result,
+or carry forward a time it did not read. If the clock read is unavailable or
+fails, the worker SHALL return the payload with the literal sentinel
+`1970-01-01T00:00:00+00:00` in `emitted_on`; the unavailable read still counts as
+that payload's one read, and it is not a failure path. The sentinel is an
+explicit exception to the run's non-decreasing-values property: it may occur
+in any result position and neither invalidates the run nor requires a later
+payload to be re-read or changed. Excluding sentinel values, actual clock
+values remain non-decreasing in return order, and a terminal result with an
+available clock carries the latest actual value. A payload following
+`continue_after_progress` or `continue_after_notice` is a new payload with its
+own one-read bound.
 
 The instant is written in the session's local zone with its numeric offset
 attached, so the wall-clock reading and the absolute instant travel together:
@@ -159,9 +175,10 @@ when it renders `completed` per `@sai/policies/todo-structure.md`, and its value
 is the `emitted_on` of the result that marked that step — a progress event for a
 step it marks, the terminal `completed` payload for a step closed by run-closing
 reconciliation. The coordinator never reads a clock to produce a stamp. A worker
-that authors an inaccurate `emitted_on` therefore renders an inaccurate stamp,
-which is why the value is read at composition time and never reconstructed
-afterwards. The worker still never renders, attaches, or formats a stamp itself.
+that authors an inaccurate `emitted_on` therefore renders an inaccurate stamp.
+The single clock read as the final action before return is what supplies its
+accuracy; the worker never reconstructs that value afterwards. The worker still
+never renders, attaches, or formats a stamp itself.
 
 ## Nonterminal Result Transport
 
