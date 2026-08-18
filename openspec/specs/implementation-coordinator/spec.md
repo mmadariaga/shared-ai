@@ -128,12 +128,13 @@ The routed implementation worker SHALL use the phase-specific identifier `sai-3-
 
 ### Requirement: implementation-coordinator-declares-and-reconciles-the-plan
 
-The implementation coordinator SHALL declare the progress plan exactly as `implement-progress-plan` specifies — the six ordered steps `prereqs-resolution`, `collapse-implemented-steps`, `artifact-analysis`, `documentation-review`, `plan-generation`, and `validation` with their imperative labels, content-wise identical to the implementation-planning worker contract's enumeration after normalizing per-line indentation, as defined by `implement-progress-plan` — and SHALL reconcile at the run-closing `completed` result by rendering every unmarked step `completed`. The implementation plan SHALL contain no `review` step and no evidence-marked designation, so no reconciliation carve-out applies: on a successful run-closing result every unmarked step, `validation` included, renders `completed`. `failed` and `cancelled` leave the list exactly as last rendered, and a `needs_input` result — a terminal lifecycle status that is not run-closing — leaves the list exactly as last rendered.
+The implementation coordinator SHALL declare the progress plan exactly as `implement-progress-plan` specifies — the six ordered steps `prereqs-resolution`, `collapse-implemented-steps`, `artifact-analysis`, `documentation-review`, `plan-generation`, and `validation`, with labels `Check prerequisites`, `Collapse implemented steps`, `Analyze artifacts and validate decisions`, `Review required documentation`, `Write implementation.md`, and `Validate implementation.md and the audit append` respectively, content-wise identical to the implementation-planning worker contract's enumeration after normalizing per-line indentation, as defined by `implement-progress-plan` — and SHALL reconcile at the run-closing `completed` result by rendering every unmarked step `completed`. The implementation plan SHALL contain no `review` step and no evidence-marked designation, so no reconciliation carve-out applies: on a successful run-closing result every unmarked step, `validation` included, renders `completed`. `failed` and `cancelled` leave the list exactly as last rendered, and a `needs_input` result — a terminal lifecycle status that is not run-closing — leaves the list exactly as last rendered.
 
 #### Scenario: the six-step plan is declared with no carve-out
 
 - **WHEN** the implementation adapter is read
 - **THEN** it SHALL declare exactly the six canonical steps in order
+- **AND** the first step SHALL be labeled `Check prerequisites`
 - **AND** it SHALL declare no `review` step and no evidence-marked designation
 
 #### Scenario: run-closing completed reconciles every step

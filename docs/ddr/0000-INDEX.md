@@ -22,6 +22,8 @@ This index groups the DDRs in `docs/ddr/` by **command** and by **cross-cutting 
 - [0133 — Review progress is marked only by no-High pass evidence](./0133-review-progress-is-evidence-only.md) — Refs 0109, Refs 0110, Refs 0111
 - [0134 — Automatic planning review has two distinct bounded counters](./0134-automatic-review-has-two-distinct-counters.md) — Refs 0133
 - [0135 — An empty spec reference set still yields a full review pass](./0135-empty-spec-reference-set-is-a-full-review-pass.md) — Refs 0133, Refs 0134
+- [0146 — Stable planning progress ids remain compatibility keys while labels become user-facing](./0146-stable-planning-progress-ids-preserve-compatibility.md)
+- [0147 — Structured spec research closes at the shared confidence boundary before proposal generation](./0147-spec-research-closes-at-confidence-boundary.md)
 
 ### `/sai-2-design`
 
@@ -45,6 +47,8 @@ This index groups the DDRs in `docs/ddr/` by **command** and by **cross-cutting 
 - [0134 — Recovery retains the live worker and one shared attempt pool](./0134-recovery-retains-live-worker-and-one-shared-pool.md)
 - [0135 — Failure classification identifies the repair boundary](./0135-failure-classification-identifies-the-repair-boundary.md)
 - [0136 — The overview generator envelope remains a closed five-field contract](./0136-overview-generator-envelope-remains-five-field.md)
+- [0146 — Stable planning progress ids remain compatibility keys while labels become user-facing](./0146-stable-planning-progress-ids-preserve-compatibility.md)
+- [0148 — Specs approval remains folded into design prerequisite resolution](./0148-specs-approval-remains-folded-into-design-prerequisites.md)
 
 ### `/sai-3-implement`
 
@@ -57,6 +61,7 @@ This index groups the DDRs in `docs/ddr/` by **command** and by **cross-cutting 
 - [0115 — The implementation plan's step identity is its `#### Step N:` H4-with-colon heading](./0115-implementation-step-identity-is-h4-heading.md)
 - [0126 — Archive only after requirement-level survival review](./0126-archive-only-after-requirement-level-survival-review.md)
 - [0127 — Archived specs preserve their pre-archival bytes](./0127-archived-specs-preserve-pre-archival-bytes.md)
+- [0146 — Stable planning progress ids remain compatibility keys while labels become user-facing](./0146-stable-planning-progress-ids-preserve-compatibility.md)
 
 ### `/sai-4-apply`
 
@@ -171,6 +176,8 @@ This index groups the DDRs in `docs/ddr/` by **command** and by **cross-cutting 
 - [0134 — Recovery retains the live worker and one shared attempt pool](./0134-recovery-retains-live-worker-and-one-shared-pool.md)
 - [0135 — Failure classification identifies the repair boundary](./0135-failure-classification-identifies-the-repair-boundary.md)
 - [0136 — The overview generator envelope remains a closed five-field contract](./0136-overview-generator-envelope-remains-five-field.md)
+- [0146 — Stable planning progress ids remain compatibility keys while labels become user-facing](./0146-stable-planning-progress-ids-preserve-compatibility.md)
+- [0147 — Structured spec research closes at the shared confidence boundary before proposal generation](./0147-spec-research-closes-at-confidence-boundary.md)
 - [0138 — Cap exhaustion continues after the last round's findings](./0138-cap-exhaustion-continues-after-last-round-findings.md)
 - [0139 — Supervised review edits remain worker-owned](./0139-supervised-review-edits-remain-worker-owned.md) — Refs adr:0139
 - [0140 — Every closed worker payload carries a worker-authored `emitted_on`](./0140-closed-worker-payloads-carry-result-emission-time.md) — Refs 0110
@@ -229,6 +236,7 @@ This index groups the DDRs in `docs/ddr/` by **command** and by **cross-cutting 
 
 - [0014 — Decision summary derived exclusively from written artifacts](./0014-decision-summary-derived-from-artifacts-only.md)
 - [0143 — Intent reconciliation uses ordered classification and bounded gap questions](./0143-ordered-intent-classification-and-bounded-gap-questions.md)
+- [0148 — Specs approval remains folded into design prerequisite resolution](./0148-specs-approval-remains-folded-into-design-prerequisites.md)
 
 ### Explore crystallization & the review loop
 

@@ -191,9 +191,9 @@ Consequently the `overview` step SHALL NOT be rendered `completed` before overvi
 
 ### Requirement: design-adapter-declares-progress-plan
 
-The design phase adapter (`sai/commands/design/coordinator.md`) SHALL declare a `progress_plan` with exactly the following ordered progress steps:
+The design phase adapter (`sai/commands/design/coordinator.md`) SHALL declare a progress plan with exactly the following ordered progress steps:
 
-    prereqs-resolution: "Check prerequisites, resolve the change, and approve specs"
+    prereqs-resolution: "Check prerequisites"
     research: "Research and resolve open questions"
     design: "Write design.md"
     tasks: "Write tasks.md"
@@ -201,7 +201,7 @@ The design phase adapter (`sai/commands/design/coordinator.md`) SHALL declare a 
     review: "Review artifacts"
     overview: "Generate change-overview.md"
 
-The indented block above is illustrative of the ids and labels only; it is not the rendering the instruction files use. The declaration as written in `sai/commands/design/coordinator.md` and in the design worker contract (`sai/commands/design/worker.md`) SHALL use those files' existing list rendering, and byte-identity SHALL be asserted between those two file renderings — not between either of them and this delta's block. The worker contract SHALL enumerate the same step ids with the same labels in the same order. The adapter SHALL NOT omit, reorder, or rename these steps, and SHALL NOT add steps. Every label SHALL be imperative rather than nominal.
+The indented block above is illustrative of the ids and labels only; it is not the rendering the instruction files use. The declaration as written in `sai/commands/design/coordinator.md` and in the design worker contract (`sai/commands/design/worker.md`) SHALL use those files' existing list rendering, and the two rendered lists SHALL compare equal by ordered id/label content after per-line indentation normalization — not by comparing either file with this delta's block. The worker contract SHALL enumerate the same step ids with the same labels in the same order. The adapter SHALL NOT omit, reorder, or rename these steps, and SHALL NOT add steps. Every label SHALL be imperative rather than nominal.
 
 The plan SHALL NOT contain a standalone `specs-approval` step: the specs approval gate is folded into `prereqs-resolution`, so that step stays `in_progress` while the user is deciding on the specs rather than falsely showing research under way.
 
@@ -209,18 +209,25 @@ The plan SHALL NOT contain a standalone `specs-approval` step: the specs approva
 
 - **WHEN** `/sai-2-design` starts in Claude Code or opencode
 - **THEN** the design adapter SHALL declare the seven canonical progress steps in order
+- **AND** the first step SHALL be labeled `Check prerequisites`
 
 #### Scenario: worker contract mirrors the ids
 
 - **WHEN** the design worker contract is read
 - **THEN** it SHALL enumerate exactly `prereqs-resolution`, `research`, `design`, `tasks`, `interfaces`, `review`, and `overview`, in that order, with the same labels the adapter declares
-- **AND** its declaration block SHALL be byte-identical to the coordinator file's declaration block, both rendered in those files' existing list form
+- **AND** its declaration block SHALL compare equal to the coordinator file's declaration block by ordered id/label content after per-line indentation normalization, both rendered in those files' existing list form
+
+#### Scenario: design contract test pins the relabeled first step
+
+- **WHEN** `test/design-coordinator-worker.test.js` extracts the design coordinator and worker declarations
+- **THEN** it SHALL assert the seven ordered id/label pairs, including `prereqs-resolution: "Check prerequisites"`
+- **AND** it SHALL fail when either declaration retains the former first-step label
 
 #### Scenario: the approval gate has no step of its own
 
 - **WHEN** the design plan is inspected
 - **THEN** it SHALL contain no `specs-approval` step
-- **AND** the specs approval gate SHALL be covered by `prereqs-resolution`
+- **AND** the specs approval gate SHALL be covered by `prereqs-resolution` without changing its approval mechanics
 
 #### Scenario: the panel does not advance while the user decides on the specs
 

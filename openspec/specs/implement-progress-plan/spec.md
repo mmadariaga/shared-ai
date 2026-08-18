@@ -10,14 +10,14 @@ Define the canonical implementation progress plan: its five ordered steps, their
 
 The implementation phase adapter (`sai/commands/implement/coordinator.md`) SHALL declare a `progress_plan` with exactly the following ordered progress steps:
 
-    prereqs-resolution: "Check prerequisites and resolve the change"
+    prereqs-resolution: "Check prerequisites"
     collapse-implemented-steps: "Collapse implemented steps"
     artifact-analysis: "Analyze artifacts and validate decisions"
     documentation-review: "Review required documentation"
     plan-generation: "Write implementation.md"
     validation: "Validate implementation.md and the audit append"
 
-The indented block above is illustrative of the ids and labels only; it is not the rendering the instruction files use. The declaration as written in `sai/commands/implement/coordinator.md` and in the implementation-planning worker contract (`sai/commands/implement/worker.md`) SHALL use those files' existing list rendering, and byte-identity SHALL be asserted between those two file renderings — not between either of them and this delta's block. Byte-identity is the content-wise equality of the rendered `id — "label"` list entries, with per-line indentation normalized, exactly as the spec/design precedent's tests enforce it. The worker contract SHALL enumerate the same step ids with the same labels in the same order. The adapter SHALL NOT omit, reorder, or rename these steps, and SHALL NOT add steps. The plan SHALL be fully known at dispatch and immutable for the invocation, per `progress-plan-declaration`.
+The indented block above is illustrative of the ids and labels only; it is not the rendering the instruction files use. The declaration as written in `sai/commands/implement/coordinator.md` and in the implementation-planning worker contract (`sai/commands/implement/worker.md`) SHALL use those files' existing list rendering, and the two rendered lists SHALL compare equal by ordered id/label content after per-line indentation normalization — not by comparing either file with this delta's block. The worker contract SHALL enumerate the same step ids with the same labels in the same order. The adapter SHALL NOT omit, reorder, or rename these steps, and SHALL NOT add steps. The plan SHALL be fully known at dispatch and immutable for the invocation, per `progress-plan-declaration`.
 
 Every step label SHALL be imperative (an instruction naming the act, e.g. `Write implementation.md`), not nominal.
 
@@ -25,12 +25,13 @@ Every step label SHALL be imperative (an instruction naming the act, e.g. `Write
 
 - **WHEN** `/sai-3-implement` starts in Claude Code or opencode through the routed coordinator
 - **THEN** the implementation adapter SHALL declare the six canonical progress steps in order and SHALL render them as a live task list before the first worker result, per the neutral policy `sai/policies/todo-structure.md`
+- **AND** the first step SHALL be labeled `Check prerequisites`
 
 #### Scenario: implementation worker contract mirrors the ids
 
 - **WHEN** the implementation-planning worker contract is read
 - **THEN** it SHALL enumerate exactly `prereqs-resolution`, `collapse-implemented-steps`, `artifact-analysis`, `documentation-review`, `plan-generation`, and `validation`, in that order, with the same labels the adapter declares
-- **AND** its declaration block SHALL be byte-identical to the coordinator file's declaration block, both rendered in those files' existing list form
+- **AND** its declaration block SHALL compare equal to the coordinator file's declaration block by ordered id/label content after per-line indentation normalization, both rendered in those files' existing list form
 
 #### Scenario: envelope stays closed
 

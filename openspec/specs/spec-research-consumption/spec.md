@@ -1,4 +1,10 @@
-## ADDED Requirements
+# Spec Research Consumption Specification
+
+## Purpose
+
+Define how `sai-1` consumes handoff research evidence and reaches the established confidence boundary for structured research.
+
+## Requirements
 
 ### Requirement: sai-1 validates and extends research leads as open-ended starting points
 
@@ -21,7 +27,20 @@ The `sai-1` Research Guide SHALL instruct the agent that each **Research Leads**
 - **WHEN** the pasted handoff has no useful Research Leads entries or contains `- None`
 - **THEN** `sai-1` proceeds with its normal independent research without behavioral change
 
-## MODIFIED Requirements
+### Requirement: sai-1 structured research confidence boundary
+
+The `sai-1` Research Guide's existing approximately 80% confidence stop criterion SHALL govern completion of the structured research progress step for every resolved spec request, whether or not the request carries a `Ready to Propose` handoff. Research Leads consumption remains additive guidance and SHALL NOT be required for the threshold to apply.
+
+#### Scenario: ordinary request reaches the research boundary
+
+- **WHEN** a resolved spec request has no `Ready to Propose` handoff
+- **THEN** structured research SHALL close and mark the `research` progress step when the existing approximately 80% confidence threshold is reached
+
+#### Scenario: handoff request reaches the same boundary
+
+- **WHEN** a resolved spec request carries a `Ready to Propose` handoff with Research Leads
+- **THEN** structured research SHALL still continue until the same approximately 80% confidence threshold is reached
+- **AND** the handoff leads SHALL remain additive starting points rather than replacing independent research
 
 ### Requirement: sai-1 reads handoff guidance as a premise to confirm and extend
 
