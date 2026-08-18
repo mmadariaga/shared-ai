@@ -198,12 +198,12 @@ Integrated in `implementation.md` (loaded by `sai-3-implement`) and `sai/command
 - `sai-4-apply` runs RED, verifies failure, writes GREEN, verifies pass.
 
 ### ADR/DDR Proposal Check
-Evaluated by `sai-3-implement` against three criteria:
+The three criteria, the ordered routing test that resolves `adr` vs `ddr`, and the never-offer-a-choice rule are single-sourced in `sai/policies/adr-ddr-criteria.md`, fetched by `sai-2-design` (which records `**Record family**: adr|ddr` in `design.md`) and `sai-3-implement` Step 3 (which acts on it). The criteria are:
 1. **Hard to reverse**
 2. **Surprising without context**
 3. **Real trade-off**
 
-Only proposes creating an ADR/DDR if the project already has an ADR culture or the user explicitly approves.
+`sai-3-implement` only proposes creating an ADR/DDR if the project already has an ADR culture or the user explicitly approves.
 
 ### Triage in review
 `sai-5-review` does not perform SAST/profiling/axe. It detects the touched surface and recommends audits:

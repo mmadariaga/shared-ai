@@ -75,20 +75,9 @@ When the pasted `Ready to Propose` handoff carries `file:line` evidence-provenan
 - This instruction does not mandate whether reclaimed effort is banked as speed or reinvested as quality; that trade-off remains open.
 - Provenance remains a citation for intent and Research Leads remain investigative guidance. Neither introduces a target-file, files-to-modify, or "where to modify" field; implementation targeting remains downstream.
 
-## ADR/DDR Proposal Check
-
-When `design.md` is being authored, evaluate whether each design decision meets all three criteria:
-1. **Hard to reverse** — cost of changing later is meaningful.
-2. **Surprising without context** — a future reader would wonder "why did they do it this way?"
-3. **Real trade-off** — genuine alternatives existed.
-
-Resolve the record family by the ordered routing test: a qualifying decision that encodes a **domain invariant** — a constraint the pipeline's domain imposes that must hold of the pipeline's artifacts, records, or behavior at all times, stated as a property of the domain rather than as the mechanism that upholds it — is a `ddr`; otherwise it is an `adr`. The test is ordered, so a decision readable both ways resolves to `ddr`; the ADR-vs-DDR choice is never left open.
-
-Only propose creating a decision record if the project already has an ADR culture or the user explicitly approves.
-
 ## Complexity Derivation Rubric
 
-This section governs the `**Complexity**` line of `proposal.md` only, and is applied during `/sai-1-spec`. It is unrelated to the `## ADR/DDR Proposal Check` above, which is scoped to `design.md`.
+This section governs the `**Complexity**` line of `proposal.md` only, and is applied during `/sai-1-spec`.
 
 Derive the token from these five signals, all read from the finished `proposal.md` and the change's `specs/**/*.md`:
 
