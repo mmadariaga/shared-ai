@@ -26,7 +26,7 @@ The normal non-supervised explore flow SHALL not persist or inject an overview l
 
 #### Scenario: Normal explore transition does not carry language
 
-- **WHEN** an explore invocation uses `--overview-lang spanish` without `start-pipeline` and the user later starts `sai-2-design` in a new isolated chat without the flag
+- **WHEN** an explore invocation uses `--overview-lang spanish` without an `Auto` selection and the user later starts `sai-2-design` in a new isolated chat without the flag
 - **THEN** the later design invocation has no Spanish language state and defaults overview generation to English
 
 #### Scenario: No persisted language field is created

@@ -73,14 +73,14 @@ When the fast-track signal is active, `sai-explore` SHALL ask neither the crysta
 
 ### Requirement: An explicit --overview-lang option suppresses the gate
 
-When the user invoked `sai-explore` with the explicit `--overview-lang <language>` option, the overview-language gate SHALL NOT be asked; the option's value SHALL be the overview language for the whole exploration session, SHALL feed the same conversation-only `overview_language` state that the supervised `start-pipeline` chain forwards, and SHALL be carried in every emitted block's `**Overview language**` line. The suppression SHALL apply even when the crystallize turn's dominant language is not English. The explicit option SHALL NOT suppress, alter, or pre-select the crystallization language gate (gate 8), which keeps its own fast-track and English-skip rules.
+When the user invoked `sai-explore` with the explicit `--overview-lang <language>` option, the overview-language gate SHALL NOT be asked; the option's value SHALL be the overview language for the whole exploration session, SHALL feed the same conversation-only `overview_language` state that the selector-dispatched supervised chain forwards, and SHALL be carried in every emitted block's `**Overview language**` line. The suppression SHALL apply even when the crystallize turn's dominant language is not English. The explicit option SHALL NOT suppress, alter, or pre-select the crystallization language gate (gate 8), which keeps its own fast-track and English-skip rules.
 
 #### Scenario: an explicit option skips the gate
 
 - **WHEN** the user invoked `sai-explore` with `--overview-lang <language>` and then explicitly requests crystallization
 - **THEN** no overview-language question is asked
 - **AND** every emitted block carries the option's value in its `**Overview language**` line
-- **AND** the same value feeds the conversation-only state that supervised `start-pipeline` forwards
+- **AND** the same value feeds the conversation-only state that the selector-dispatched supervised run forwards
 
 #### Scenario: the option never affects gate 8
 

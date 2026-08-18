@@ -198,6 +198,17 @@ Returning a nonterminal result is a pause, never an abandonment of remaining
 work and never a substitute for the one terminal lifecycle status that closes
 the run.
 
+A terminal status closes one bounded stretch of work, not the worker's
+usefulness: a coordinator-driven continuation issued after a terminal status
+— an artifact-feedback turn, a machine-feedback item, or the design
+generation-trigger continuation — reopens the same worker for one further
+bounded stretch, and each stretch again closes with exactly one terminal
+lifecycle status of its own. The one-terminal rule counts per closed stretch
+(dispatch-to-terminal, or continuation-to-terminal), never per worker
+lifetime: the design worker's pre-gate `completed` and its post-gate
+overview-generation terminal are two stretches, not two terminals of one
+stretch.
+
 ## Startup Handshake
 
 The first nonterminal return is a handshake and SHALL come early. A worker with

@@ -20,7 +20,7 @@ The Claude Code and opencode `/sai-6-security` entrypoints SHALL invoke a securi
 
 ### Requirement: Coordinator supplies the shared phase adapter fields
 
-The security coordinator SHALL reuse `sai/orchestration/coordinator-contract.md` unchanged and SHALL supply the seven adapter fields `original_envelope`, `dispatch_operation`, `continuation_operation`, `allowed_nonterminal_extensions`, `extension_handlers`, `replacement_reconstruction_fields`, and `terminal_navigation`. It SHALL preserve the complete invocation argument string for worker-owned parsing, including any change name and scope or parent-branch values.
+The security coordinator SHALL reuse `sai/orchestration/command-runner.md` unchanged and SHALL supply the seven adapter fields `original_envelope`, `dispatch_operation`, `continuation_operation`, `allowed_nonterminal_extensions`, `extension_handlers`, `replacement_reconstruction_fields`, and `terminal_navigation`. It SHALL preserve the complete invocation argument string for worker-owned parsing, including any change name and scope or parent-branch values.
 
 #### Scenario: Routed security receives explicit arguments
 - **WHEN** a routed invocation supplies a change name and additional supported security arguments

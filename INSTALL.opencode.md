@@ -24,7 +24,7 @@ npx github:mmadariaga/shared-ai
 npx github:mmadariaga/shared-ai setup /path/to/your/project
 ```
 
-Step 1 expands `sai/install-manifest.json` and copies the opencode projection to `~/.config/opencode/`. It includes opencode commands, the complete recursively projected `sai/commands/` tree — command cards with command-local `instructions.md` and neighboring `.template.md` files — including the shared overview-generation instruction `sai/commands/design/change-overview.md` and the index templates `sai/commands/implement/adr-index.template.md` and `sai/commands/implement/ddr-index.template.md` — plus `sai/policies/`, `sai/compat/`, the shared Orchestration Core contracts, opencode routed worker bindings, opencode skills, managed worker and generic agent files, and the managed configuration projection. Opencode loads routed workers directly from the neutral installed binding paths; Claude Code receives its own harness-selected routed bindings. Step 2 verifies the openspec CLI, runs `openspec init --tools opencode` if needed, sets `schema: sai-workflow` in `openspec/config.yaml`, and copies the schema templates into the project. `doctor` and `uninstall` use the same manifest projection.
+Step 1 expands `sai/install-manifest.json` and copies the opencode projection to `~/.config/opencode/`. It includes opencode commands, the complete recursively projected `sai/commands/` tree — command cards with command-local `instructions.md` and neighboring `.template.md` files — including the shared overview-generation instruction `sai/commands/design/change-overview.md` and the index templates `sai/commands/implement/adr-index.template.md` and `sai/commands/implement/ddr-index.template.md` — plus `sai/policies/`, the shared Orchestration Core contracts, opencode routed worker bindings, opencode skills, managed worker and generic agent files, and the managed configuration projection. Opencode loads routed workers directly from the neutral installed binding paths; Claude Code receives its own harness-selected routed bindings. Step 2 verifies the openspec CLI, runs `openspec init --tools opencode` if needed, sets `schema: sai-workflow` in `openspec/config.yaml`, and copies the schema templates into the project. `doctor` and `uninstall` use the same manifest projection.
 
 ## Manual installation
 
@@ -43,15 +43,14 @@ cp commands/opencode/*.md ~/.config/opencode/commands/
 mkdir -p ~/.config/opencode/sai/commands
 cp -r sai/commands/. ~/.config/opencode/sai/commands/
 
-# Copy shared policies and compatibility assets
-mkdir -p ~/.config/opencode/sai/policies ~/.config/opencode/sai/compat
+# Copy shared policies
+mkdir -p ~/.config/opencode/sai/policies
 cp sai/policies/*.md ~/.config/opencode/sai/policies/
-cp -r sai/compat/. ~/.config/opencode/sai/compat/
 
 # Copy the shared Orchestration Core and opencode-only routed bindings
 mkdir -p ~/.config/opencode/sai/orchestration
-cp sai/orchestration/coordinator-contract.md ~/.config/opencode/sai/orchestration/
-cp sai/orchestration/worker-lifecycle.md ~/.config/opencode/sai/orchestration/
+cp sai/orchestration/command-runner.md ~/.config/opencode/sai/orchestration/
+cp sai/orchestration/worker-core.md ~/.config/opencode/sai/orchestration/
 cp -r sai/orchestration/workers/. ~/.config/opencode/sai/orchestration/workers/
 
 # Copy skills (skip if already installed)
@@ -121,16 +120,14 @@ Copy-Item commands\opencode\*.md "$configDir\commands\"
 New-Item -ItemType Directory -Force -Path "$configDir\sai\commands"
 Copy-Item sai\commands\* "$configDir\sai\commands\" -Recurse -Force
 
-# Copy shared policies and compatibility assets
+# Copy shared policies
 New-Item -ItemType Directory -Force -Path "$configDir\sai\policies" | Out-Null
 Copy-Item sai\policies\*.md "$configDir\sai\policies\"
-New-Item -ItemType Directory -Force -Path "$configDir\sai\compat" | Out-Null
-Copy-Item sai\compat\* "$configDir\sai\compat\" -Recurse -Force
 
 # Copy the shared Orchestration Core and opencode-only routed bindings
 New-Item -ItemType Directory -Force -Path "$configDir\sai\orchestration" | Out-Null
-Copy-Item sai\orchestration\coordinator-contract.md "$configDir\sai\orchestration\"
-Copy-Item sai\orchestration\worker-lifecycle.md "$configDir\sai\orchestration\"
+Copy-Item sai\orchestration\command-runner.md "$configDir\sai\orchestration\"
+Copy-Item sai\orchestration\worker-core.md "$configDir\sai\orchestration\"
 Copy-Item sai\orchestration\workers\ "$configDir\sai\orchestration\workers" -Recurse -Force
 
 # Copy skills

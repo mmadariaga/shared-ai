@@ -28,7 +28,7 @@ Before the chained design phase is dispatched, the pipeline SHALL emit a phase-t
 
 ### Requirement: Design chaining occurs on spec-phase convergence or cap exhaustion
 
-The pipeline SHALL dispatch the design worker when the spec phase converged or ended by cap exhaustion. When the spec phase ends with a `failed` or `cancelled` spec worker, the pipeline SHALL report that spec-phase outcome — including the spec-phase autonomy audit log — and SHALL NOT enter the design phase. Reviewer failure, reviewer cancellation, and severity-contract violation are not possible spec-phase endings in the in-session model and have no design-chaining consequence. On a `failed` or `cancelled` spec worker the change's tracked-set state follows the completion rule of the `explore-pipeline-supervision` capability: the change remains uncompleted and retryable by a later `start-pipeline`, which resumes at the spec phase since it never converged.
+The pipeline SHALL dispatch the design worker when the spec phase converged or ended by cap exhaustion. When the spec phase ends with a `failed` or `cancelled` spec worker, the pipeline SHALL report that spec-phase outcome — including the spec-phase autonomy audit log — and SHALL NOT enter the design phase. Reviewer failure, reviewer cancellation, and severity-contract violation are not possible spec-phase endings in the in-session model and have no design-chaining consequence. On a `failed` or `cancelled` spec worker the change's tracked-set state follows the completion rule of the `explore-pipeline-supervision` capability: the change remains uncompleted and retryable by a later `Auto` selection, which resumes at the spec phase since it never converged.
 
 #### Scenario: spec cap exhaustion transitions to design
 - **WHEN** the spec phase terminates as cap exhaustion after the last round's findings were applied
@@ -38,7 +38,7 @@ The pipeline SHALL dispatch the design worker when the spec phase converged or e
 #### Scenario: failed or cancelled spec worker does not transition to design
 - **WHEN** the supervised spec worker returns `failed` or `cancelled`
 - **THEN** explore reports that outcome and its audit log and dispatches no design worker
-- **AND** the change remains uncompleted and retryable by a later `start-pipeline`, which resumes at the spec phase since it never converged
+- **AND** the change remains uncompleted and retryable by a later `Auto` selection, which resumes at the spec phase since it never converged
 
 ### Requirement: A single Auto run spans both phases
 

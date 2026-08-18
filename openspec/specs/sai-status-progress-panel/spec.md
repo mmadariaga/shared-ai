@@ -4,7 +4,7 @@
 
 ### Requirement: sai-status command and wrappers exist across all three harnesses
 
-A `sai-status` command SHALL exist as a body file at `sai/commands/sai-status.md` with one wrapper per harness: `commands/claude/sai-status.md`, `commands/opencode/sai-status.md`, and `commands/copilot/sai-status.prompt.md`. All four files SHALL be created and edited together in a single commit (mirror discipline).
+A `sai-status` command SHALL exist as a body file at `sai/commands/status/body.md` with one wrapper per harness: `commands/claude/sai-status.md`, `commands/opencode/sai-status.md`, and `commands/copilot/sai-status.prompt.md`. All four files SHALL be created and edited together in a single commit (mirror discipline).
 
 #### Scenario: body file present
 - **WHEN** `sai/commands/` is listed

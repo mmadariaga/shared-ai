@@ -8,7 +8,7 @@ Define the phase-adapter progress plan declaration, the canonical per-phase step
 
 ### Requirement: phase-adapter-declares-progress-plan
 
-A routed phase adapter MAY declare a static, ordered progress plan as a new phase-adapter field `progress_plan`, alongside the closed phase-adapter field set at `sai/orchestration/coordinator-contract.md:34-42`. The plan SHALL be a fixed, ordered array of progress steps, each carrying a stable `id` and a user-facing `label`. The plan SHALL be fully known at dispatch time and SHALL NOT change during the invocation.
+A routed phase adapter MAY declare a static, ordered progress plan as a new phase-adapter field `progress_plan`, alongside the closed phase-adapter field set in `sai/orchestration/command-runner.md`. The plan SHALL be a fixed, ordered array of progress steps, each carrying a stable `id` and a user-facing `label`. The plan SHALL be fully known at dispatch time and SHALL NOT change during the invocation.
 
 #### Scenario: adapter declares a plan
 

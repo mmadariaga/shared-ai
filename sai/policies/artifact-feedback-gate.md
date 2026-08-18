@@ -1,6 +1,6 @@
 # Artifact Feedback Gate (shared parameterized instruction)
 
-Shared completion-phase gate fetched by `sai/commands/spec/coordinator.md` and `sai/commands/design/coordinator.md`. It offers an in-context review loop over the artifacts a step just wrote, then hands control to the step's proceed action. The gate logic lives ONLY here — neither body file restates it inline.
+Shared completion-phase gate fetched by `sai/commands/spec/coordinator.md`, `sai/commands/design/coordinator.md`, and — at **Auto** dispatch — by `sai-explore`'s supervised pipeline (`sai/commands/explore/instructions.md` item 10). It offers an in-context review loop over the artifacts a step just wrote, then hands control to the step's proceed action. The gate logic lives ONLY here — neither body file restates it inline.
 
 ## Parameters (supplied inline by the fetching body)
 
@@ -44,7 +44,7 @@ Machine processing is not a feedback-option selection: it emits neither the pick
 
 If finding processing returns `needs_input`, the supervising coordinator must present the exact question and ordered options to the user, then continue the same worker with only the selected answer. Complete all findings for the current round before supervision evaluates whether another review round is required.
 
-Defer the ordinary user-facing gate while another review round is required. Present that gate for the first time, unchanged at iteration 0, only after the review rounds converge, exhausts its three-round cap, or is interrupted by worker failure. Its first ordered labels remain `Give feedback (Recommended)` followed by `proceed-label` (for sai-1, `Finish step`).
+Defer the ordinary user-facing gate while another review round is required. Present that gate for the first time, unchanged at iteration 0, only after the review round converges, exhausts its one-round cap, or is interrupted by worker failure. Its first ordered labels remain `Give feedback (Recommended)` followed by `proceed-label` (for sai-1, `Finish step`).
 
 ## Present the gate
 

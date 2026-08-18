@@ -8,11 +8,11 @@ TBD - seeded from delta spec `supervised-review-reporting` in change `supervised
 
 ### Requirement: cap-exhaustion-one-line-report
 
-When a phase's three-round cap is exhausted, the pipeline SHALL report cap exhaustion as one line carrying the last round's finding counts (the shared contract's base-form tally `Summary: High=<count> Medium=<count> Low=<count>` of the last completed round), and the run SHALL continue. The one-line report SHALL NOT assert that `High` findings remain in the current artifact state, SHALL NOT classify the outcome as failure, and SHALL NOT present remediation or retry prompts for it; the run simply continues to the next phase.
+When a phase's one-round cap is exhausted, the pipeline SHALL report cap exhaustion as one line carrying the last round's finding counts (the shared contract's base-form tally `Summary: High=<count> Medium=<count> Low=<count>` of the last completed round), and the run SHALL continue. The one-line report SHALL NOT assert that `High` findings remain in the current artifact state, SHALL NOT classify the outcome as failure, and SHALL NOT present remediation or retry prompts for it; the run simply continues to the next phase.
 
 #### Scenario: cap exhaustion is reported as one line
 
-- **WHEN** a phase's three-round cap is exhausted after the last round's findings were applied
+- **WHEN** a phase's one-round cap is exhausted after the last round's findings were applied
 - **THEN** the pipeline reports one line carrying the last round's finding counts
 - **AND** the run continues without a failure classification or remediation prompt
 

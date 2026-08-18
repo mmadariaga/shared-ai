@@ -8,7 +8,7 @@ Define the single-sourced lifecycle and result-loop protocol consumed by the sev
 
 ### Requirement: routed coordinators consume the shared lifecycle protocol
 
-The seven routed phase coordinators SHALL consume the phase-neutral result-loop and lifecycle mechanics from `sai/orchestration/coordinator-contract.md` and `sai/orchestration/worker-lifecycle.md` instead of restating those mechanics locally. The shared mechanics include closed lifecycle outcomes, changed-file unioning, continuation and replacement reconstruction, and progress-event handling.
+The seven routed phase coordinators SHALL consume the phase-neutral result-loop and lifecycle mechanics from `sai/orchestration/command-runner.md` and `sai/orchestration/worker-core.md` instead of restating those mechanics locally. The shared mechanics include closed lifecycle outcomes, changed-file unioning, continuation and replacement reconstruction, and progress-event handling.
 
 #### Scenario: shared protocol is the single source
 
@@ -18,7 +18,7 @@ The seven routed phase coordinators SHALL consume the phase-neutral result-loop 
 #### Scenario: all routed phase coordinators reference the contract
 
 - **WHEN** the seven routed coordinator bodies are inspected
-- **THEN** each body SHALL reference `sai/orchestration/coordinator-contract.md` and `sai/orchestration/worker-lifecycle.md` for its common protocol
+- **THEN** each body SHALL reference `sai/orchestration/command-runner.md` and `sai/orchestration/worker-core.md` for its common protocol
 - **AND** no body SHALL locally redefine the common closed-outcome, changed-file, reconstruction, or progress-event mechanics
 
 ### Requirement: phase adapters retain phase-specific behavior

@@ -5,7 +5,7 @@ Fetch @sai/orchestration/worker-core.md and follow it exactly.
 
 ## Invocation Envelope
 
-The worker receives exactly two strings:
+The worker receives exactly two strings, and derives one invocation-scoped value from them:
 
 - `wrapper_echo_value`: the value after the exact opencode line `**Change-name argument and and optional flags:** <value>`, or empty when absent
 - `arguments_value`: `$ARGUMENTS` exactly as received from the coordinator

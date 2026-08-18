@@ -8,7 +8,7 @@ Run this instruction only when no change name is available from the wrapper-echo
 
 ## Wrapper-Echo Resolution
 
-When the conversation history contains a line matching exactly `**Change-name argument:** <value>` (two literal asterisks, the literal text `Change-name argument:`, a single space, and the change name; the value extends to the end of that line) with non-empty `<value>`, treat `<value>` as the resolved change name and skip the picker entirely. The scan covers the user message that invoked the command (the wrapper), so the line is reliably found even if tool results or model turns have appeared afterward. If the line is absent, or present with an empty or whitespace-only value, fall through to the existing `$ARGUMENTS` check and the 0/1/N picker logic.
+When the conversation history contains a line matching exactly one of the two accepted opencode wrapper-echo forms: `**Change-name argument:** <value>` or `**Change-name argument and and optional flags:** <value>` (two literal asterisks, the literal label text, a single space, and the change name; the value extends to the end of that line) with non-empty `<value>`, treat `<value>` as the resolved change name and skip the picker entirely. The scan covers the user message that invoked the command (the wrapper), so the line is reliably found even if tool results or model turns have appeared afterward. If the line is absent, or present with an empty or whitespace-only value, fall through to the existing `$ARGUMENTS` check and the 0/1/N picker logic.
 
 ## Resolution (when `$ARGUMENTS` is empty)
 

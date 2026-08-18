@@ -2,11 +2,11 @@
 
 ### Requirement: Wrapper MUST NOT fetch the change-picker
 
-The `sai/commands/sai-backfill.md` wrapper body MUST NOT contain a `Fetch @sai/instructions/change-picker.md` directive. Removing the fetch detaches `sai-backfill` from the picker so that the wrapper no longer queries `openspec list --json` or prompts the user with a numbered change list.
+The `sai/commands/backfill/body.md` wrapper body MUST NOT contain a `Fetch @sai/instructions/change-picker.md` directive. Removing the fetch detaches `sai-backfill` from the picker so that the wrapper no longer queries `openspec list --json` or prompts the user with a numbered change list.
 
 #### Scenario: Wrapper has no change-picker fetch
 
-    - **WHEN** the agent reads `sai/commands/sai-backfill.md` after this change is applied
+    - **WHEN** the agent reads `sai/commands/backfill/body.md` after this change is applied
     - **THEN** the file MUST NOT contain any `Fetch @sai/instructions/change-picker.md` line, and MUST NOT contain any other directive that resolves to `sai/instructions/change-picker.md`
 
 ### Requirement: Empty-arguments resolution delegates to backfill.md

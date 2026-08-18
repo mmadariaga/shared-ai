@@ -28,7 +28,7 @@ The block is a minimal handoff, NOT a recap of the proposal. The `## Ready to Pr
 
 ### Requirement: Block is a handoff, not an auto-execution
 
-The `## Ready to Archive` block is paste-ready text for the user to carry into a new chat. The agent MUST NOT invoke `/sai-archive` itself, MUST NOT run any archive-skill step, and MUST NOT prefetch `sai/commands/archive/instructions.md` or `sai/commands/sai-archive.md` as part of backfill's completion. Isolation Mode discipline requires the next-phase command to start with no inherited context.
+The `## Ready to Archive` block is paste-ready text for the user to carry into a new chat. The agent MUST NOT invoke `/sai-archive` itself, MUST NOT run any archive-skill step, and MUST NOT prefetch `sai/commands/archive/instructions.md` or `sai/commands/archive/body.md` as part of backfill's completion. Isolation Mode discipline requires the next-phase command to start with no inherited context.
 
 #### Scenario: No archive skill prefetched
 

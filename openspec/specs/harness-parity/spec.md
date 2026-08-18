@@ -8,7 +8,7 @@
 
 ### Requirement: Expose equivalent wrapper behavior
 
-The Claude Code and opencode `sai-explore` and `sai-2-design` wrappers SHALL document and transport the same optional `--overview-lang <language>` flag. Parity documentation SHALL cover the four wrapper argument hints and forwarding surfaces plus the shared `sai/commands/sai-explore.md` and `sai/commands/design/coordinator.md` flag and envelope contracts. Claude Code argument handling and opencode argument forwarding SHALL both reach the shared parsing and worker contracts without changing the language of normative artifacts.
+The Claude Code and opencode `sai-explore` and `sai-2-design` wrappers SHALL document and transport the same optional `--overview-lang <language>` flag. Parity documentation SHALL cover the four wrapper argument hints and forwarding surfaces plus the shared `sai/commands/explore/body.md` and `sai/commands/design/coordinator.md` flag and envelope contracts. Claude Code argument handling and opencode argument forwarding SHALL both reach the shared parsing and worker contracts without changing the language of normative artifacts.
 
 #### Scenario: Both harnesses select the same language
 

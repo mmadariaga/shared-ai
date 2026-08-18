@@ -10,7 +10,10 @@ Dispatch one worker with the phase adapter's `original_envelope` and validate
 every returned result before acting on it.
 
 Worker results are closed payloads. A terminal result has exactly one of these
-statuses: `completed`, `needs_input`, `failed`, or `cancelled`. Validate the
+statuses: `completed`, `needs_input`, `failed`, or `cancelled`. `completed`,
+`failed`, and `cancelled` are run-closing; `needs_input` is a terminal
+lifecycle status that is not run-closing — it pauses the run for the
+forwarded answer, and the loop processes the next result. Validate the
 status, the offset-bearing ISO-8601 `emitted_on`, string `summary`, and string-list
 `changed_files`; `needs_input` also requires its question, ordered options where
 applicable, and binding-owned continuation metadata. A design notice is the

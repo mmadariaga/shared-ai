@@ -19,7 +19,7 @@ The Claude Code and opencode `/sai-5-review` entrypoints SHALL invoke a review c
 
 ### Requirement: Coordinator supplies the shared phase adapter fields
 
-The review coordinator SHALL reuse `sai/orchestration/coordinator-contract.md` unchanged and SHALL supply the seven adapter fields `original_envelope`, `dispatch_operation`, `continuation_operation`, `allowed_nonterminal_extensions`, `extension_handlers`, `replacement_reconstruction_fields`, and `terminal_navigation`.
+The review coordinator SHALL reuse `sai/orchestration/command-runner.md` unchanged and SHALL supply the seven adapter fields `original_envelope`, `dispatch_operation`, `continuation_operation`, `allowed_nonterminal_extensions`, `extension_handlers`, `replacement_reconstruction_fields`, and `terminal_navigation`.
 
 #### Scenario: Coordinator initializes a review invocation
 - **WHEN** a routed review command starts

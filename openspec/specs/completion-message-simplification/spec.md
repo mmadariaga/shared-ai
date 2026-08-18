@@ -5,7 +5,7 @@ TBD - created by archiving change simplify-existing-implementation. Update Purpo
 ## Requirements
 ### Requirement: sai-5 through sai-8 completion stop messages SHALL NOT include a change path suffix
 
-The MANDATORY STOP completion message in `sai/commands/sai-5-review.md`, `sai/commands/sai-6-security.md`, `sai/commands/sai-7-performance.md`, and `sai/commands/sai-8-accessibility.md` SHALL end with the command result noun only (e.g., `"Review done."`) and SHALL NOT append `in openspec/changes/{name}/` or any path reference.
+The MANDATORY STOP completion message in `sai/commands/review/coordinator.md`, `sai/commands/security/coordinator.md`, `sai/commands/performance/coordinator.md`, and `sai/commands/accessibility/coordinator.md` SHALL end with the command result noun only (e.g., `"Review done."`) and SHALL NOT append `in openspec/changes/{name}/` or any path reference.
 
 #### Scenario: sai-5-review completion message
 - **WHEN** `/sai-5-review` completes

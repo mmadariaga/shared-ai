@@ -11,9 +11,9 @@ The hint SHALL be evaluated on the **recommended** command, not the emitting com
 The hint SHALL be single-sourced in the same shared instruction / body files all three harnesses fetch, so Claude Code, opencode, and GitHub Copilot print identical completion strings.
 
 The concrete emitting locations that gain the hint under this requirement, because each recommends a fast-track-set command, are:
-- `sai/commands/sai-1-spec.md` completion → recommends `/sai-2-design {name}`
+- `sai/commands/spec/coordinator.md` completion → recommends `/sai-2-design {name}`
 - `sai/commands/implement/invocation.md` completion (printed after `sai-3-implement`) → recommends `/sai-4-apply {name}`
-- `sai/commands/sai-backfill.md` completion → recommends `/sai-archive {name}`
+- `sai/commands/backfill/body.md` completion → recommends `/sai-archive {name}`
 
 #### Scenario: sai-1-spec completion appends the hint
 

@@ -8,25 +8,25 @@ TBD — purpose to be documented.
 
 ### Requirement: Delegated prerequisite check in the shared explore body
 
-The `## Prerequisite checks` section of `sai/commands/sai-explore.md` SHALL delegate the execution of the three OpenSpec prerequisite checks — the `openspec` binary availability check, the `openspec/` directory existence check, and the `openspec/config.yaml` `schema: sai-workflow` check, as defined in `sai/policies/prereqs-check.md` — to exactly one budget subagent per invocation, instead of running them inline in the main agent. The delegation SHALL live in the shared body file so that both the Claude Code and opencode harness projections inherit it. The subagent SHALL be spawned under the budget-subagent binding (`skills/claude/budget-subagent/SKILL.md` on Claude Code, `skills/opencode/budget-subagent/SKILL.md` on opencode), and the main agent is a permitted dispatcher per the dispatch-safety invariant.
+The `## Prerequisite checks` section of `sai/commands/explore/body.md` SHALL delegate the execution of the three OpenSpec prerequisite checks — the `openspec` binary availability check, the `openspec/` directory existence check, and the `openspec/config.yaml` `schema: sai-workflow` check, as defined in `sai/policies/prereqs-check.md` — to exactly one budget subagent per invocation, instead of running them inline in the main agent. The delegation SHALL live in the shared body file so that both the Claude Code and opencode harness projections inherit it. The subagent SHALL be spawned under the budget-subagent binding (`skills/claude/budget-subagent/SKILL.md` on Claude Code, `skills/opencode/budget-subagent/SKILL.md` on opencode), and the main agent is a permitted dispatcher per the dispatch-safety invariant.
 
 The `commands/claude/sai-explore.md` wrapper's tool list SHALL NOT be altered by this change.
 
 #### Scenario: the check runs in a budget subagent, not the main agent
 
-- **WHEN** `sai/commands/sai-explore.md` is read after the change
+- **WHEN** `sai/commands/explore/body.md` is read after the change
 - **THEN** its `## Prerequisite checks` section contains a delegation directive that spawns the budget subagent
 - **AND** the section contains no inline instruction to run `openspec --version`, probe for the `openspec/` directory, or inspect `openspec/config.yaml` for the schema line
 
 #### Scenario: both harness projections inherit the delegation
 
-- **WHEN** the shared body `sai/commands/sai-explore.md` is read
+- **WHEN** the shared body `sai/commands/explore/body.md` is read
 - **THEN** its `## Prerequisite checks` section contains the delegation directive
 - **AND** no per-harness copy of the check execution exists in either wrapper
 
 #### Scenario: exactly one unconditional spawn per invocation
 
-- **WHEN** `sai/commands/sai-explore.md` is read after the change
+- **WHEN** `sai/commands/explore/body.md` is read after the change
 - **THEN** its `## Prerequisite checks` section spawns exactly one budget subagent on every invocation
 - **AND** the section contains no condition deferring the check to first use of an openspec path
 

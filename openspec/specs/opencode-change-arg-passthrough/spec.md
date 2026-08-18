@@ -35,7 +35,7 @@ Opencode wrappers for `sai-*` commands that do NOT consume a change name (`sai-1
 
 #### Scenario: sai-explore body does not actually consume a change name
 
-- **WHEN** the `sai/commands/sai-explore.md` body file (fetched by the `sai-explore` wrapper) is read
+- **WHEN** the `sai/commands/explore/body.md` body file (fetched by the `sai-explore` wrapper) is read
 - **THEN** it does not include `Fetch @sai/instructions/change-picker.md` and does not validate `$ARGUMENTS` as an OpenSpec change name — even though the `commands/opencode/sai-explore.md` description frontmatter says "Optionally pass a change name to explore an existing change", the actual behavior is that `sai-explore` does not consume a change name. The description text is a known inconsistency deferred to a follow-up change.
 
 ### Requirement: convention is opencode-specific and is not mirrored to Claude Code or Copilot
