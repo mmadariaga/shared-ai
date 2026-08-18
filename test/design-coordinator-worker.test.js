@@ -54,7 +54,7 @@ function removeTempDir(dir) {
 // RED run fails until the GREEN body lands the contract.
 
 const DESIGN_PROGRESS_PLAN = [
-  ['prereqs-resolution', 'Check prerequisites, resolve the change, and approve specs'],
+  ['prereqs-resolution', 'Check prerequisites'],
   ['research', 'Research and resolve open questions'],
   ['design', 'Write design.md'],
   ['tasks', 'Write tasks.md'],

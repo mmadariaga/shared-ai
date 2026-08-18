@@ -20,7 +20,7 @@
 
   Declare the canonical seven-step progress plan for this phase, in order, with exactly these ids and labels — no omissions, reorders, renames, or additions:
 
-  - `prereqs-resolution` — "Check prerequisites, resolve the change, and approve specs"
+  - `prereqs-resolution` — "Check prerequisites"
   - `research` — "Research and resolve open questions"
   - `design` — "Write design.md"
   - `tasks` — "Write tasks.md"

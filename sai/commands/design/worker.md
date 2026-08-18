@@ -40,7 +40,7 @@ spec approval, write the approval metadata, and handle amendments per
 This phase declares a progress plan with exactly these canonical step ids, in
 order:
 
-- `prereqs-resolution` — "Check prerequisites, resolve the change, and approve specs"
+- `prereqs-resolution` — "Check prerequisites"
 - `research` — "Research and resolve open questions"
 - `design` — "Write design.md"
 - `tasks` — "Write tasks.md"
