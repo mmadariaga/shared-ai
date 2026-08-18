@@ -34,13 +34,65 @@ function supervisionContract() {
   ].join('\n');
 }
 
-test('supervision recognizes start-pipeline only from explicit user intent', () => {
+test('supervision is entered only through the crystallization-close selector', () => {
   const source = exploreContract();
 
-  assert.match(source, /start-pipeline/);
-  assert.match(source, /bare|trivial|dominant[- ]intent/i);
-  assert.match(source, /never.*auto[- ]start|not.*auto[- ]start/i);
-  assert.match(source, /crystallization recommendation|crystallization.*recommendation/i);
+  assert.doesNotMatch(source, /start-pipeline/);
+  assert.match(source, /There is no literal pipeline token/i);
+  assert.match(source, /entered \*\*only\*\* through this selector/i);
+  assert.match(source, /no token form is recognized/i);
+  assert.match(source, /Crystallization-close selector/);
+});
+
+test('the selector closes every crystallization emission with exactly two options', () => {
+  const source = exploreContract();
+
+  assert.match(source, /items 5, 6, and 7 \u2014 closes its turn with exactly one selector/i);
+  assert.match(source, /after the final `Ready to Propose` block and after the keep-window-open recommendation/i);
+  assert.match(source, /exactly two options, in this fixed order/i);
+  assert.match(source, /\*\*Auto\*\* \u2014 delegate supervised `sai-1` \+ `sai-2` execution/);
+  assert.match(source, /\*\*Manual\*\* \u2014 exit the pipeline path and continue by hand/);
+  assert.match(source, /AskUserQuestion on Claude Code|`AskUserQuestion` on Claude Code/i);
+  assert.match(source, /`question` tool on opencode/i);
+  assert.match(source, /remember\.md`? \(L10\u201315\)/);
+});
+
+test('Manual is non-terminal, unmapped free text is Manual, and fast-track auto-selects nothing', () => {
+  const source = exploreContract();
+
+  assert.match(source, /Selecting \*\*Manual\*\* dispatches nothing, changes no state value/i);
+  assert.match(source, /closes the turn with the keep-window-open recommendation naming `review-loop`/i);
+  assert.match(source, /maps to neither option is treated as \*\*Manual\*\*/i);
+  assert.match(source, /\*\*Manual is not terminal\*\*/);
+  assert.match(source, /no cap on re-emissions/i);
+  assert.match(source, /`--fast-track` auto-selects nothing/i);
+  assert.match(source, /one gate to delegated writes that fast-track never skips/i);
+});
+
+test('the selector authorizes the delegated-write exception and is not the removed review picker', () => {
+  const source = exploreContract();
+
+  assert.match(source, /the user's explicit selection of the \*\*Auto\*\* option on the crystallization-close pipeline selector/i);
+  assert.match(source, /explicit user act that authorizes item 1's delegated-write exception/i);
+  assert.match(source, /consent to selection and dispatch only/i);
+  assert.match(source, /is \*\*not\*\* the removed global Yes\/No review picker/i);
+  assert.match(source, /this review loop stays picker-free at crystallization/i);
+});
+
+test('the crystallization closing recommendation names review-loop and no pipeline token', () => {
+  const source = exploreContract();
+
+  assert.match(source, /The recommendation names no pipeline token/);
+  assert.match(source, /names the literal token `review-loop` exactly once/);
+  assert.match(source, /emit the crystallization-close pipeline selector \(item 10\) exactly once as the final step of the turn/);
+  assert.match(source, /an inline refusal is a crystallization emission and closes exactly like items 5 and 6/i);
+});
+
+test('the selector prompt and labels localize while the command literals stay English', () => {
+  const source = exploreContract();
+
+  assert.match(source, /question text and both option labels render in the user's language/i);
+  assert.match(source, /`review-loop`, `\/sai-1-spec`, and `\/sai-2-design` strings stay verbatim English/);
 });
 
 test('supervision tracks ordered unique changes and dispatches only eligible work', () => {
@@ -105,11 +157,11 @@ test('below-threshold questions preserve exact worker wording and continue the s
   assert.match(source, /same-worker continuation|same worker continuation/i);
 });
 
-test('question autonomy is limited to start-pipeline supervision', () => {
+test('question autonomy is limited to selector-dispatched supervision', () => {
   const source = exploreContract();
 
   assert.match(source, /Autonomy is scoped to supervised spec execution/i);
-  assert.match(source, /start-pipeline supervision/i);
+  assert.match(source, /selector-dispatched supervision only/i);
   assert.match(source, /independent `?\/sai-1-spec`?/i);
   assert.match(source, /standalone coordinator.*unchanged|unchanged.*standalone coordinator/i);
 });
@@ -130,7 +182,7 @@ test('supervised autonomy keeps state in conversation and tracks escalations', (
   assert.match(source, /per-auto-answer record|auto-answer record/i);
   assert.match(source, /question.*answer.*grounding citation/is);
   assert.match(source, /running escalated count/i);
-  assert.match(source, /scoped to `?start-pipeline`? supervision/i);
+  assert.match(source, /scoped to this selector-dispatched supervision only/i);
 });
 
 test('machine feedback continues each actionable finding to the same phase worker', () => {
@@ -175,8 +227,8 @@ test('explore remains read-only and closes with the supervised in-session comple
   assert.match(source, /Explore.*no direct write|no direct write/i);
   assert.match(source, /owned change directory|limited to.*change directory/i);
   assert.match(source, /review-loop/);
-  assert.match(source, /start-pipeline/);
-  assert.match(source, /user[- ]triggered|user triggered/i);
+  assert.match(source, /Crystallization-close selector/);
+  assert.match(source, /user[- ]triggered|user triggered|user-selected/i);
   for (const harness of ['Claude Code', 'opencode']) {
     assert.match(source, new RegExp(harness.replace(/[.*+?^${}()|[\\]\\]/g, '\\$&'), 'i'));
   }
@@ -272,7 +324,7 @@ test('direct spec and design wrappers retain their existing terminal contracts',
     'commands/opencode/sai-2-design.md',
   ].map(relativePath => fs.readFileSync(path.join(repoRoot, relativePath), 'utf8')).join('\n');
 
-  assert.doesNotMatch(source, /start-pipeline.*adapter|explore.*adapter/i);
+  assert.doesNotMatch(source, /start-pipeline|pipeline selector.*adapter|explore.*adapter/i);
   assert.doesNotMatch(source, /independent[- ]reviewer|reviewer[- ]binding/i);
   for (const retiredPath of [
     'commands/copilot/sai-1-spec.prompt.md',
@@ -411,11 +463,12 @@ test('Step 2 pins the autonomy audit field order and empty-report form', () => {
   assert.match(source, /no questions were auto-answered this phase/i);
 });
 
-test('supervised pipeline state extends the start-pipeline interface by phase with separate round counters', () => {
+test('supervised pipeline state extends the selector interface by phase with separate round counters', () => {
   const source = supervisionContract();
 
   for (const field of [
     'tracked_changes',
+    'last_crystallization_set',
     'completed_changes',
     'active_change',
     'active_phase',
@@ -431,6 +484,10 @@ test('supervised pipeline state extends the start-pipeline interface by phase wi
   assert.doesNotMatch(source, /\breview_passes\b/);
   assert.doesNotMatch(source, /\bfinding_history\b/);
   assert.match(source, /spec-to-design transition adapter|transition adapter.*design/i);
+  assert.match(source, /On an \*\*Auto\*\* selection, use only `last_crystallization_set` and `completed_changes`/);
+  assert.match(source, /review loop's \(item 9\) source only, and is never the selector's dispatch source/i);
+  assert.match(source, /replaces `last_crystallization_set` with that turn's emitted names/i);
+  assert.match(source, /assumed applied or discarded/i);
   assert.match(source, /wrapper_echo_value\s*:\s*""/);
   assert.match(source, /arguments_value\s*:\s*"\{name\} --fast-track"/);
 });
@@ -442,7 +499,7 @@ test('supervised review reports spec convergence or cap exhaustion before design
     source,
     /spec phase.*converg[\s\S]{0,360}(?:pass outcome|round outcome|autonomy audit)[\s\S]{0,360}(?:design worker|design dispatch)/i
   );
-  assert.match(source, /same active token|active token remains in force/i);
+  assert.match(source, /same active supervised invocation and `active_change` remain in force/i);
   assert.match(source, /spec (?:phase )?cap exhaustion[\s\S]{0,200}(?:chain|proceed|continue|dispatch)[\s\S]{0,120}(?:design|sai-2)/i);
   assert.match(source, /failed or cancelled spec-worker[\s\S]{0,180}(?:no design|design worker.*not|does not dispatch design)/i);
 });
@@ -450,7 +507,7 @@ test('supervised review reports spec convergence or cap exhaustion before design
 test('Step 2 blind supervision rejects duplicate starts until the chained design outcome', () => {
   const source = supervisionContract();
 
-  assert.match(source, /active supervision rejects another `?start-pipeline`? token/i);
+  assert.match(source, /Active supervision rejects another \*\*Auto\*\* selection/i);
   assert.match(source, /throughout the chained design phase/i);
   assert.match(source, /ends only at the applicable terminal outcome/i);
   assert.match(source, /spec and design.*(?:review_rounds|review rounds).*autonomy records remain separate|spec and design.*autonomy records remain separate/i);

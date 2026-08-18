@@ -143,6 +143,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0140 — Active review-loop exit reuses the existing token matcher](./0140-active-review-loop-exit-reuses-existing-token-matcher.md)
 - [0140 — Supervised rounds invoke the Review Engine in-session](./0140-supervised-rounds-invoke-review-engine-in-session.md) — Refs ddr:0137
 - [0145 — Routed coordinators receive panel tools with non-blocking runtime degradation](./0145-routed-coordinators-receive-panel-tools-with-non-blocking-runtime-degradation.md) — Refs 0117, Refs 0144
+- [0146 — A two-option crystallization-close selector replaces the literal `start-pipeline` token](./0146-crystallization-close-selector-replaces-the-pipeline-token.md) — **Reverses** ddr:0053, **Reverses** 0058, Refs 0140
 
 ### `/sai-backfill`
 
@@ -390,6 +391,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0137 — Put non-worker idea-list glue at the harness adapter seam](./0137-non-worker-idea-list-glue-at-harness-adapter-seam.md) — Refs 0077, Refs 0088, Refs 0116
 - [0137 — The stage-advancement token is the literal next-step](./0137-stage-advancement-token-literal-next-step.md)
 - [0140 — Active review-loop exit reuses the existing token matcher](./0140-active-review-loop-exit-reuses-existing-token-matcher.md)
+- [0146 — A two-option crystallization-close selector replaces the literal `start-pipeline` token](./0146-crystallization-close-selector-replaces-the-pipeline-token.md) — **Reverses** ddr:0053, **Reverses** 0058, Refs 0140
 
 ### Artifact metadata & routing tokens
 
@@ -438,6 +440,8 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 | [0115](./0115-three-part-dispatch-routing-condition.md) | supersedes | [0071](./0071-two-part-dispatch-routing-condition.md) |
 | [0144](./0144-planning-coordinators-drop-the-scoped-date-shell-entry.md) | supersedes | [0117](./0117-planning-coordinators-scoped-shell-entry.md) |
 | [0146](./0146-command-owned-files-live-in-their-consuming-command-directory.md) | supersedes | [0003](./0003-fetch-path-convention-commands-sai.md) |
+| [0146](./0146-crystallization-close-selector-replaces-the-pipeline-token.md) | reverses | [0053](../ddr/0053-post-crystallization-review-once-per-turn.md) |
+| [0146](./0146-crystallization-close-selector-replaces-the-pipeline-token.md) | reverses | [0058](./0058-gate-ux-tweaks-as-deltas-against-existing-capabilities.md) |
 
 ## Superseded ADRs (historical)
 
