@@ -62,6 +62,9 @@ test('routed coordinators delegate progress rendering to the shared policy', () 
   for (const relativePath of coordinatorPaths) {
     const coordinator = read(relativePath);
     assert.match(coordinator, /Progress-event\s+panel updates follow/);
+    assert.match(coordinator, /panel tool is unavailable at runtime|declared panel tool is unavailable at runtime/);
+    assert.match(coordinator, /record its notice/);
+    assert.match(coordinator, /disable later[\s\S]{0,40}panel calls/);
     assert.doesNotMatch(coordinator, /Re-render the list on every progress event/);
   }
 });
@@ -104,4 +107,21 @@ test('supervised explore runs keep plan-based rendering disabled without an adap
 
   assert.match(explore, /no adapter-declared plan is in force/);
   assert.match(explore, /no plan-based list renders on the panel/);
+});
+
+test('panel degradation is declared for routed phases, apply projection, and explore', () => {
+  for (const relativePath of [
+    'sai/commands/spec/coordinator.md',
+    'sai/commands/design/coordinator.md',
+    'sai/commands/implement/coordinator.md',
+    'sai/commands/review/coordinator.md',
+    'sai/commands/security/coordinator.md',
+    'sai/commands/performance/coordinator.md',
+    'sai/commands/accessibility/coordinator.md',
+    'sai/commands/apply/coordinator.md',
+    'sai/commands/explore/instructions.md',
+  ]) {
+    assert.match(read(relativePath), /unavailable at runtime/,
+      `${relativePath} should define the runtime panel degradation route`);
+  }
 });

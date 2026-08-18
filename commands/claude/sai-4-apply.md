@@ -3,6 +3,7 @@ description: Apply the granular implementation plan mechanically — reads opens
 argument-hint: "[change-name] [--fast-track]"
 model: sonnet
 effort: low
+allowed-tools: Read, Glob, Grep, Edit, Write, Bash, Skill, Agent, SendMessage, AskUserQuestion, TaskCreate, TaskUpdate, TaskGet, TaskList
 ---
 Fetch @skills/fetch/SKILL.md
 Fetch @sai/adapters/claude/boot.md and follow it.

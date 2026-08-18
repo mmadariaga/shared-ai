@@ -3,7 +3,7 @@ description: Structured Security Audit Prompt — SAST + SCA on the diff vs pare
 argument-hint: "[change-name] [optional: --full | --path {dir}] [optional: parent branch]"
 model: opus
 effort: xhigh
-allowed-tools: Read, Glob, Skill, Agent, SendMessage, AskUserQuestion
+allowed-tools: Read, Glob, Skill, Agent, SendMessage, AskUserQuestion, TaskCreate, TaskUpdate, TaskGet, TaskList
 ---
 Fetch @skills/fetch/SKILL.md
 Fetch @sai/adapters/claude/boot.md and follow it.

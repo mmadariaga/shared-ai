@@ -3,7 +3,7 @@ description: Structured Code Review Prompt — diffs current branch against pare
 argument-hint: "[change-name] [optional: parent branch]"
 model: opus
 effort: medium
-allowed-tools: Read, Glob, Skill, Agent, SendMessage, AskUserQuestion
+allowed-tools: Read, Glob, Skill, Agent, SendMessage, AskUserQuestion, TaskCreate, TaskUpdate, TaskGet, TaskList
 ---
 Fetch @skills/fetch/SKILL.md
 Fetch @sai/adapters/claude/boot.md and follow it.

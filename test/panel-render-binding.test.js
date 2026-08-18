@@ -24,6 +24,13 @@ test('Claude and opencode expose symmetric surface-neutral panel bindings', () =
   }
   assert.match(claude, /TaskList|TaskGet|TaskUpdate/);
   assert.match(opencode, /todowrite|todos/);
+  for (const binding of [claude, opencode]) {
+    assert.match(binding, /unavailable at runtime/);
+    assert.match(binding, /exactly one visible notice/);
+    assert.match(binding, /continuing without task-panel updates/);
+    assert.match(binding, /does not activate a plain-text fallback/);
+    assert.match(binding, /does not retry or runtime-detect/);
+  }
 });
 
 test('explore bindings delegate mechanics while retaining their idea-list policy', () => {

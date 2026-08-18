@@ -3,7 +3,7 @@ description: Structured Accessibility Audit Prompt — WCAG 2.2 AA static review
 argument-hint: "[change-name] [optional: --full | --path {dir}] [optional: --runtime] [optional: parent branch]"
 model: opus
 effort: medium
-allowed-tools: Read, Glob, Skill, Agent, SendMessage, AskUserQuestion
+allowed-tools: Read, Glob, Skill, Agent, SendMessage, AskUserQuestion, TaskCreate, TaskUpdate, TaskGet, TaskList
 ---
 Fetch @skills/fetch/SKILL.md
 Fetch @sai/adapters/claude/boot.md and follow it.

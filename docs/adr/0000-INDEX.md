@@ -20,6 +20,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0066 — Provenance as inline citations on existing Why / Decisions & Rationale fields — no new field](./0066-inline-provenance-no-new-field.md)
 - [0093 — Route spec through workers while Copilot remains inline](./0093-route-spec-through-workers-while-copilot-remains-inline.md) — Refs 0082, Refs 0083, Refs 0090, Refs 0092
 - [0144 — The three planning-phase coordinators drop the scoped `Bash(date:*)` entry](./0144-planning-coordinators-drop-the-scoped-date-shell-entry.md) — Supersedes 0117, Refs 0118, Refs ddr:0141
+- [0145 — Routed coordinators receive panel tools with non-blocking runtime degradation](./0145-routed-coordinators-receive-panel-tools-with-non-blocking-runtime-degradation.md) — Refs 0117, Refs 0144
 - [0139 — Use fresh read-only reviewers with worker-owned artifact edits](./0139-fresh-read-only-reviewers-with-worker-owned-edits.md) — Refs ddr:0105
 ### `/sai-2-design`
 
@@ -44,6 +45,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0109 — R change-type entry is a single move entry, never a delete-plus-add pair](./0109-r-change-type-single-move-entry.md) — Refs 0108
 - [0111 — design.md records the resolved record family as a pinned marker that Step 3 reads](./0111-record-family-marker-in-design.md)
 - [0144 — The three planning-phase coordinators drop the scoped `Bash(date:*)` entry](./0144-planning-coordinators-drop-the-scoped-date-shell-entry.md) — Supersedes 0117, Refs 0118, Refs ddr:0141
+- [0145 — Routed coordinators receive panel tools with non-blocking runtime degradation](./0145-routed-coordinators-receive-panel-tools-with-non-blocking-runtime-degradation.md) — Refs 0117, Refs 0144
 - [0139 — Use fresh read-only reviewers with worker-owned artifact edits](./0139-fresh-read-only-reviewers-with-worker-owned-edits.md) — Refs ddr:0105
 
 ### `/sai-3-implement`
@@ -97,6 +99,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0108 — Tasks files-affected entries carry a closed four-letter change-type vocabulary](./0108-tasks-files-affected-change-type-vocabulary.md)
 - [0109 — R change-type entry is a single move entry, never a delete-plus-add pair](./0109-r-change-type-single-move-entry.md) — Refs 0108
 - [0115 — Three-part dispatch-routing condition (RED block, Step Contract, AND production surface)](./0115-three-part-dispatch-routing-condition.md) — Supersedes 0071
+- [0145 — Routed coordinators receive panel tools with non-blocking runtime degradation](./0145-routed-coordinators-receive-panel-tools-with-non-blocking-runtime-degradation.md) — Refs 0117, Refs 0144
 
 ### `/sai-5-review`
 
@@ -137,6 +140,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0137 — The stage-advancement token is the literal next-step](./0137-stage-advancement-token-literal-next-step.md)
 - [0140 — Active review-loop exit reuses the existing token matcher](./0140-active-review-loop-exit-reuses-existing-token-matcher.md)
 - [0140 — Supervised rounds invoke the Review Engine in-session](./0140-supervised-rounds-invoke-review-engine-in-session.md) — Refs ddr:0137
+- [0145 — Routed coordinators receive panel tools with non-blocking runtime degradation](./0145-routed-coordinators-receive-panel-tools-with-non-blocking-runtime-degradation.md) — Refs 0117, Refs 0144
 
 ### `/sai-backfill`
 

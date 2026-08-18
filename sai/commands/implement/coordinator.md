@@ -35,9 +35,15 @@
 
   Render the full plan at dispatch per `@sai/policies/todo-structure.md` (first step
   `in_progress`, rest `pending`) **before** dispatching the worker — the render
-  is a prerequisite of the dispatch, not a step that follows it. Progress-event
-  panel updates follow `@sai/policies/todo-structure.md` through the shared
-  command runner before worker continuation. Mark steps only
+  is a prerequisite of the dispatch, not a step that follows it. If a declared
+  panel tool is unavailable at runtime, apply the harness panel binding's
+  one-time degradation route before dispatch: record its notice, disable later
+  panel calls for this invocation, and continue without panel rendering; do not
+  runtime-detect or switch surfaces. Only after the render attempt or recorded
+  degradation decision, dispatch the worker. Progress-event panel updates follow
+  `@sai/policies/todo-structure.md` through the shared command runner before
+  worker continuation; an unavailable panel uses the same recorded degradation
+  route and does not block continuation. Mark steps only
   from worker progress-event `step_ids`; and reconcile at run-closing results. This implementation plan has no `review` step and no
   evidence-marked designation, so no reconciliation carve-out applies:
   `completed` renders every unmarked step `completed`, `validation` included;

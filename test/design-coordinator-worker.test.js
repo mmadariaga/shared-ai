@@ -156,7 +156,7 @@ test('design wrappers activate routed Claude/opencode entry and preserve phase b
 
     assert.match(claude, /^model: claude-opus-4-8$/m);
    assert.match(claude, /^effort: low$/m);
-    assert.match(claude, /^allowed-tools: Read, Glob, Skill, Agent, SendMessage, AskUserQuestion$/m);
+     assert.match(claude, /^allowed-tools: Read, Glob, Skill, Agent, SendMessage, AskUserQuestion, TaskCreate, TaskUpdate, TaskGet, TaskList$/m);
     assert.doesNotMatch(claude, /sai-2-design-worker/);
    assert.doesNotMatch(claude, /sai-3-implementation-worker/);
      assert.match(claude, /sai\/commands\/design\/launcher\.md/);
@@ -779,10 +779,7 @@ test('architecture snapshot display compares the extracted Target State block an
     'the instruction should define the exact None — no step contracts sentinel');
 });
 
-test('restore-coordinator-instruction-loading Step 1: every routed Claude wrapper exposes the same exact read-only tool scope, with no shell anywhere', () => {
-  // ADR 0144 retired the planning-phase `Bash(date:*)` carve-out: the milestone
-  // stamp now comes from the payload's `emitted_on`, so planning and audit
-  // wrappers share one unbroken read-only scope.
+test('routed Claude wrappers expose the exact coordinator and panel tool scope', () => {
   const routedWrappers = [
     'commands/claude/sai-2-design.md',
     'commands/claude/sai-3-implement.md',
@@ -791,7 +788,7 @@ test('restore-coordinator-instruction-loading Step 1: every routed Claude wrappe
     'commands/claude/sai-7-performance.md',
     'commands/claude/sai-8-accessibility.md',
   ];
-  const routedTools = ['Read', 'Glob', 'Skill', 'Agent', 'SendMessage', 'AskUserQuestion'];
+  const routedTools = ['Read', 'Glob', 'Skill', 'Agent', 'SendMessage', 'AskUserQuestion', 'TaskCreate', 'TaskUpdate', 'TaskGet', 'TaskList'];
 
   for (const relativePath of routedWrappers) {
     const source = artifact(relativePath);
@@ -799,12 +796,18 @@ test('restore-coordinator-instruction-loading Step 1: every routed Claude wrappe
     assert.ok(match, `${relativePath} should declare allowed-tools`);
     const toolNames = match[1].split(',').map(tool => tool.trim());
     assert.deepEqual(toolNames, routedTools,
-      `${relativePath} should keep the exact read-only routed scope without any shell`);
+      `${relativePath} should keep the exact routed scope with panel tools`);
     for (const forbidden of ['Edit', 'Write', 'Grep', 'Bash']) {
       assert.equal(match[1].includes(forbidden), false,
         `${relativePath} must not expose ${forbidden}`);
     }
   }
+});
+
+test('Claude apply declares its existing execution capabilities and panel tools explicitly', () => {
+  const source = artifact('commands/claude/sai-4-apply.md');
+  assert.match(source, /^allowed-tools: Read, Glob, Grep, Edit, Write, Bash, Skill, Agent, SendMessage, AskUserQuestion, TaskCreate, TaskUpdate, TaskGet, TaskList$/m);
+  assert.doesNotMatch(source, /^allowed-tools:[^\n]*\bTask\b/m);
 });
 
 test('restore-coordinator-instruction-loading Step 1: explore and status preserve their current adapter behavior', () => {

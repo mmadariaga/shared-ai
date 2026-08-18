@@ -179,7 +179,7 @@ test('installClaude copies commands/claude/*.md to dest/commands/', () => {
   const design = fs.readFileSync(path.join(cmdDir, 'sai-2-design.md'), 'utf8');
   assert.match(design, /^model: claude-opus-4-8$/m);
   assert.match(design, /^effort: low$/m);
-   assert.match(design, /^allowed-tools: Read, Glob, Skill, Agent, SendMessage, AskUserQuestion$/m);
+   assert.match(design, /^allowed-tools: Read, Glob, Skill, Agent, SendMessage, AskUserQuestion, TaskCreate, TaskUpdate, TaskGet, TaskList$/m);
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });
 

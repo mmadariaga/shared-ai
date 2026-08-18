@@ -264,7 +264,7 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 **Test Command**: "The mandatory `## Implementation Context` field carrying the directly executable command that runs this project's tests plus its parameterised scoping idiom, derived by `/sai-2-design` from codebase research and injected into a **RED Worker**, which is otherwise given no way to obtain it."
 *Avoid*: run command, test runner, test script, testing command, suite command
 
-**Tool Fence**: "The Claude Code `allowed-tools` frontmatter list on a routed coordinator entrypoint that restricts the entrypoint's tool set to `Read, Glob, Skill, Agent, SendMessage, AskUserQuestion`, turning a coordinator's prose prohibition into a harness-enforced restriction; opencode carries no equivalent and keeps the prose contract."
+**Tool Fence**: "The Claude Code `allowed-tools` frontmatter list on a routed coordinator entrypoint that grants the coordinator's declared lifecycle and panel tools while excluding capabilities outside that entrypoint's contract; the seven routed progress coordinators include `TaskCreate`, `TaskUpdate`, `TaskGet`, and `TaskList`, while opencode carries no equivalent and keeps the prose contract."
 *Avoid*: allowed-tools list, tool scoping, tool restriction, bare "fence", opencode fence
 
 **Tracked Crystallized Set**: "The chat-scoped, in-conversation-only list of every `**Change name**` value that this `sai-explore` chat's crystallization turns emitted, held in first-emission order and never derived from repository state."
@@ -362,7 +362,7 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 - A **Question Context Contract** governs every user-facing decision prompt: worker `needs_input` questions, design notice messages, and the fixed instruction gates.
 - A **Question Context Contract** is satisfied at the prompt's authoring surface — the worker or the instruction — and the coordinator forwards the question verbatim without rephrasing or adding context.
 - A **Question Context Contract** prompt carries its own essential state context, which is one of the permitted grounding sources for an **Auto-Answer**.
-- A **Tool Fence** belongs to a routed coordinator entrypoint (`commands/claude/sai-{1,2,3,5,6,7,8}-*.md`) and converts the coordinator's prose prohibition into a harness-enforced restriction; it is Claude Code frontmatter only.
+- A **Tool Fence** belongs to a routed coordinator entrypoint (`commands/claude/sai-{1,2,3,5,6,7,8}-*.md`) and converts the coordinator's prose prohibition plus declared panel capability into a harness-enforced restriction; it is Claude Code frontmatter only.
 - A **Prerequisite Verdict** is returned by the delegated prerequisite-check budget subagent to the `sai-explore` main agent; on `halt` it carries the verbatim remediation literal.
 - A **Supervised Pipeline** emits a **Phase Transition** after one phase converges and before dispatching the next phase.
 - A **Phase Transition** belongs to one completed phase and precedes one downstream phase in a **Supervised Pipeline**.

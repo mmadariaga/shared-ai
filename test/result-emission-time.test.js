@@ -104,8 +104,8 @@ test('the three planning wrappers carry no shell grant now that stamps need no c
     const wrapper = artifact(relativePath);
     const line = wrapper.match(/^allowed-tools:\s*(.+)$/m);
     assert.ok(line, `${relativePath} should declare allowed-tools`);
-    assert.equal(line[1].trim(), 'Read, Glob, Skill, Agent, SendMessage, AskUserQuestion',
-      `${relativePath} should carry the plain read-only list with no Bash entry`);
+    assert.equal(line[1].trim(), 'Read, Glob, Skill, Agent, SendMessage, AskUserQuestion, TaskCreate, TaskUpdate, TaskGet, TaskList',
+      `${relativePath} should carry the routed coordinator list with panel tools and no Bash entry`);
   }
 });
 
