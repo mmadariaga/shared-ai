@@ -25,7 +25,7 @@ If this file exists, it means execution-observed repository facts are recorded h
 - **Canonical location**: `docs/adr/0000-INDEX.md`
 - **Purpose**: the relational map of the project's architecture decision records.
 - **Writer**: the implementation phase's Step 3 index maintenance.
-- **Format**: sai/adr-index.template.md
+- **Format**: sai/commands/implement/adr-index.template.md
 
 If this file exists, it means the project maintains architecture decision records.
 
@@ -34,6 +34,6 @@ If this file exists, it means the project maintains architecture decision record
 - **Canonical location**: `docs/ddr/0000-INDEX.md`
 - **Purpose**: the relational map of the project's domain decision records.
 - **Writer**: the implementation phase's Step 3 index maintenance.
-- **Format**: sai/ddr-index.template.md
+- **Format**: sai/commands/implement/ddr-index.template.md
 
 If this file exists, it means the project maintains domain decision records.

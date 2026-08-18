@@ -440,54 +440,6 @@
       "drift": "content"
     },
     {
-      "id": "sai-change-overview",
-      "source": "sai/change-overview.md",
-      "destination": {
-        "class": "sai",
-        "path": "change-overview.md"
-      },
-      "harnesses": [
-        "claude",
-        "opencode"
-      ],
-      "strategy": "copy",
-      "recursive": false,
-      "ownership": "managed",
-      "drift": "content"
-    },
-    {
-      "id": "sai-adr-index-template",
-      "source": "sai/adr-index.template.md",
-      "destination": {
-        "class": "sai",
-        "path": "adr-index.template.md"
-      },
-      "harnesses": [
-        "claude",
-        "opencode"
-      ],
-      "strategy": "copy",
-      "recursive": false,
-      "ownership": "managed",
-      "drift": "content"
-    },
-    {
-      "id": "sai-ddr-index-template",
-      "source": "sai/ddr-index.template.md",
-      "destination": {
-        "class": "sai",
-        "path": "ddr-index.template.md"
-      },
-      "harnesses": [
-        "claude",
-        "opencode"
-      ],
-      "strategy": "copy",
-      "recursive": false,
-      "ownership": "managed",
-      "drift": "content"
-    },
-    {
       "id": "sai-policies",
       "source": "sai/policies",
       "destination": {
@@ -2672,6 +2624,51 @@
         "cc164252fc052bfc53706c7951a999b6e72560e895bcb4b09083e09cd50f0607",
         "cfbaaa28774a2a52f0a5865affe3e07ace727b60b8180bf539c2435be41ee86d",
         "eb1d4fe14dc47ecdfdf180374f1aa8936f9e11dac3400c0bb6b42eb4e9dbf008"
+      ]
+    },
+    {
+      "id": "retired-sai-change-overview-root",
+      "destination": {
+        "class": "sai",
+        "path": "change-overview.md"
+      },
+      "harnesses": [
+        "claude",
+        "opencode"
+      ],
+      "managedHashes": [
+        "2f85f117574d5f0f6f0aa9a11d97594a7bba64bde214401d1f9c195618f968f1",
+        "5d33331feff109927bca5ab8615f00db87297cf57fcfdad364b7e9aed9c65357",
+        "68822e1c8a264709a7ffd338f846f9f4de133986c33a7bf7d5300207a3d9bdfa",
+        "8552dab4da4373c58eaa98dbd4f68c7eb00a9b06255f408308afd96ec0581b99"
+      ]
+    },
+    {
+      "id": "retired-sai-adr-index-template-root",
+      "destination": {
+        "class": "sai",
+        "path": "adr-index.template.md"
+      },
+      "harnesses": [
+        "claude",
+        "opencode"
+      ],
+      "managedHashes": [
+        "23f11664acdffd5d626503fe412a5f6011fdf4a63d35b0ae0d6536c7f09a1e14"
+      ]
+    },
+    {
+      "id": "retired-sai-ddr-index-template-root",
+      "destination": {
+        "class": "sai",
+        "path": "ddr-index.template.md"
+      },
+      "harnesses": [
+        "claude",
+        "opencode"
+      ],
+      "managedHashes": [
+        "591f36d59db2dafe328ab99288dbea26d9700fe2bc488d17d3faa9acbf5ecccc"
       ]
     }
   ]

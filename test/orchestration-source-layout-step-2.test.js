@@ -121,7 +121,7 @@ test('grouped design and implementation phase assets preserve their former sourc
        coordinator: path.join(repoRoot, 'sai', 'commands', 'design', 'coordinator.md'),
        invocation: path.join(repoRoot, 'sai', 'commands', 'design', 'invocation.md'),
       instruction: 'sai/commands/design/instructions.md',
-      cardContents: ['coordinator.md', 'instructions.md', 'invocation.md', 'launcher.md', 'worker.md'],
+      cardContents: ['change-overview.md', 'coordinator.md', 'instructions.md', 'invocation.md', 'launcher.md', 'worker.md'],
     },
     {
       name: 'implement',
@@ -129,7 +129,7 @@ test('grouped design and implementation phase assets preserve their former sourc
        coordinator: path.join(repoRoot, 'sai', 'commands', 'implement', 'coordinator.md'),
        invocation: path.join(repoRoot, 'sai', 'commands', 'implement', 'invocation.md'),
       instruction: 'sai/commands/implement/instructions.md',
-      cardContents: ['coordinator.md', 'implementation-plan.template.md', 'instructions.md', 'invocation.md', 'launcher.md', 'worker.md'],
+      cardContents: ['adr-index.template.md', 'coordinator.md', 'ddr-index.template.md', 'implementation-plan.template.md', 'instructions.md', 'invocation.md', 'launcher.md', 'worker.md'],
     },
   ];
 
@@ -144,7 +144,7 @@ test('grouped design and implementation phase assets preserve their former sourc
     assert.match(invocation, new RegExp(`Fetch @${phase.instruction.replaceAll('/', '\\/')}`));
   }
 
-  const adrIndex = path.join(repoRoot, 'sai', 'adr-index.template.md');
+  const adrIndex = path.join(repoRoot, 'sai', 'commands', 'implement', 'adr-index.template.md');
   assert.equal(fs.existsSync(adrIndex), true);
   assert.equal(fs.existsSync(path.join(repoRoot, 'sai', 'compat', '_templates', 'adr-index.md')), false);
   assert.equal(fs.existsSync(path.join(repoRoot, 'sai', 'commands', 'design', 'adr-index.md')), false);

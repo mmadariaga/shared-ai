@@ -314,7 +314,7 @@ test('Step 2 both harness design bindings fetch the identical neutral design wor
 test('Step 2 generator instruction, workflow schema, and template preserve the same five-field contract', () => {
   const fiveFields = ['status', 'changed_files', 'validation', 'failure_details', 'failure_kind'];
   for (const relativePath of [
-    'sai/change-overview.md',
+    'sai/commands/design/change-overview.md',
     'openspec/schemas/sai-workflow/schema.yaml',
   ]) {
     const text = artifact(relativePath);

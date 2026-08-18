@@ -33,9 +33,9 @@ Each phase reads from and writes to **`openspec/changes/{change-name}/`** — si
  sai/commands/{archive,backfill,commit,explore,pr,status,worktree}/          ← utility cards: body.md only
  sai/commands/{name}/instructions.md   ← command-local phase content (Isolation Mode + TASK block) folded into each command card
  sai/commands/{name}/*.template.md     ← neighboring co-located report/plan template files beside each card
- sai/change-overview.md                ← root exception: shared overview-generation instruction
- sai/adr-index.template.md             ← root exception: canonical project-agnostic ADR index template
- sai/ddr-index.template.md             ← root exception: canonical project-agnostic DDR index template
+ sai/commands/design/change-overview.md      ← shared overview-generation instruction, owned by the design command
+ sai/commands/implement/adr-index.template.md ← canonical project-agnostic ADR index template, owned by the implement command
+ sai/commands/implement/ddr-index.template.md ← canonical project-agnostic DDR index template, owned by the implement command
   sai/adapters/claude/             ← Claude Code boot adapter and paired non-worker panel/idea-list runtime glue
   sai/adapters/opencode/           ← opencode boot adapter and paired non-worker panel/idea-list runtime glue
   sai/orchestration/               ← matrix worker-binding templates (no flat coordinator/worker contracts)
@@ -66,8 +66,8 @@ The openspec-dependent `sai-*` commands halt with a clear error if either is mis
 |-----------|---------|
 | `sai/commands/{name}/instructions.md` | Command-local phase content (Isolation Mode + TASK block) folded into each command card, fetched by the card that owns it. |
 | `sai/commands/{name}/*.template.md` | Co-located report/plan templates beside their owning card — e.g. `sai/commands/review/review-report.template.md`, `sai/commands/implement/implementation-plan.template.md`, `sai/commands/pr/pr-body.template.md`. |
-| `sai/change-overview.md` | Root exception — shared overview-generation instruction executed by the budget-routed subagent, the single source of the `change-overview.md` generation contract for every generation and regeneration. |
-| `sai/adr-index.template.md`, `sai/ddr-index.template.md` | Root exceptions — the canonical project-agnostic ADR/DDR index templates consumed by the Step 3 index-maintenance cold build. |
+| `sai/commands/design/change-overview.md` | Shared overview-generation instruction executed by the budget-routed subagent, the single source of the `change-overview.md` generation contract for every generation and regeneration. Owned by the design command, its only consumer. |
+| `sai/commands/implement/adr-index.template.md`, `sai/commands/implement/ddr-index.template.md` | The canonical project-agnostic ADR/DDR index templates consumed by the Step 3 index-maintenance cold build. Owned by the implement command, their only consumer. |
 | `sai/orchestration/command-runner.md` | Neutral command-runner protocol (result loop, coordinator routing, no phase branches). Loaded by every boot adapter before card selection. |
 | `sai/orchestration/worker-core.md` | Neutral worker lifecycle protocol (worker journal, envelope, changed-files union, reconstruction). Loaded by the routed worker cards. |
 | `sai/commands/` | Command cards — routed cards per phase and utility cards per command, fetched by boot adapters at runtime. |
@@ -223,7 +223,7 @@ Safe-operations confirmations and all unnamed gates remain in force.
 
 ## Installation
 
-Commands are **user globals**, not per-project. The manifest-driven installer expands `sai/install-manifest.json` into deterministic harness projections, and the same projections are used by `doctor` for missing/drift checks and by `uninstall` for safe removal. Claude Code and opencode receive mirrored routed spec, design, and implementation bindings from the shared Orchestration Core. The canonical project-agnostic ADR and DDR index templates are `sai/adr-index.template.md` and `sai/ddr-index.template.md`; the recursive `sai-commands` projection installs command-local instructions and co-located `.template.md` files for both supported harnesses, while the three root exceptions — `sai/change-overview.md`, `sai/adr-index.template.md`, and `sai/ddr-index.template.md` — install through their own `sai` root-class projections.
+Commands are **user globals**, not per-project. The manifest-driven installer expands `sai/install-manifest.json` into deterministic harness projections, and the same projections are used by `doctor` for missing/drift checks and by `uninstall` for safe removal. Claude Code and opencode receive mirrored routed spec, design, and implementation bindings from the shared Orchestration Core. The canonical project-agnostic ADR and DDR index templates are `sai/commands/implement/adr-index.template.md` and `sai/commands/implement/ddr-index.template.md`; the recursive `sai-commands` projection installs command-local instructions and co-located `.template.md` files for both supported harnesses, and it also covers the shared overview-generation instruction at `sai/commands/design/change-overview.md` and both index templates, which are owned by the single command that consumes each.
 
 The `sai-agents-index` root-class projection additionally writes `SAI_AGENTS.md` — the orientation index over the four SAI documentation surfaces — to each harness root, inheriting doctor missing-file detection, drift detection, and uninstall cleanup.
 
@@ -262,7 +262,7 @@ Existing projects with `plans/{feature-name}/` artifacts are **not migrated auto
 ## How to modify this repo
 
 ### Add / modify an instruction
-1. Edit the canonical file in `sai/commands/{name}/`, `sai/policies/`, `sai/compat/`, or `sai/orchestration/` as appropriate. The ADR index template belongs at `sai/adr-index.template.md` (and the DDR index template at `sai/ddr-index.template.md`); `sai/compat/` remains for compatibility-only assets.
+1. Edit the canonical file in `sai/commands/{name}/`, `sai/policies/`, `sai/compat/`, or `sai/orchestration/` as appropriate. The ADR index template belongs at `sai/commands/implement/adr-index.template.md` (and the DDR index template at `sai/commands/implement/ddr-index.template.md`); `sai/compat/` remains for compatibility-only assets.
 2. If it changes a per-phase artifact path, update the corresponding wrapper REPLACEMENT block (`sai-3-implement.md`, `sai-4-apply.md`) and the AGENTS.md artifact table above.
 3. If it changes an installable surface, update `sai/install-manifest.json` and keep Claude Code and opencode projections explicit. Their routed bindings must remain mirrored.
 4. If the recommended model changes, update the wrappers in `commands/claude/` and `commands/opencode/`.

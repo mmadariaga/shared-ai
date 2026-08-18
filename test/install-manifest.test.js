@@ -646,7 +646,7 @@ test('compatibility and policy projections resolve for every supported harness',
       destinationRoot,
     });
      assert.ok(projections.some(p => p.destinationPath.endsWith(path.join('adr-index.template.md'))));
-     assert.ok(projections.some(p => path.relative(path.join(__dirname, '..'), p.sourcePath).split(path.sep).join('/') === 'sai/adr-index.template.md'));
+     assert.ok(projections.some(p => path.relative(path.join(__dirname, '..'), p.sourcePath).split(path.sep).join('/') === 'sai/commands/implement/adr-index.template.md'));
      assert.equal(projections.some(p => p.destinationPath.endsWith(path.join('compat', '_templates', 'adr-index.md'))), false);
     assert.ok(projections.some(p => p.destinationPath.endsWith(path.join('policies', 'glossary-format.md'))));
     assert.ok(projections.some(p => p.destinationPath.endsWith(path.join('policies', 'remember.md'))));
@@ -1298,8 +1298,8 @@ test('folded instruction templates project to their co-located and root destinat
     { source: 'sai/commands/pr/pr-body.template.md', destination: 'commands/pr/pr-body.template.md' },
     { source: 'sai/commands/review/review-report.template.md', destination: 'commands/review/review-report.template.md' },
     { source: 'sai/commands/security/security-report.template.md', destination: 'commands/security/security-report.template.md' },
-    { source: 'sai/adr-index.template.md', destination: 'adr-index.template.md' },
-    { source: 'sai/ddr-index.template.md', destination: 'ddr-index.template.md' },
+    { source: 'sai/commands/implement/adr-index.template.md', destination: 'commands/implement/adr-index.template.md' },
+    { source: 'sai/commands/implement/ddr-index.template.md', destination: 'commands/implement/ddr-index.template.md' },
   ];
   let projectedCount = 0;
   for (const harness of ['claude', 'opencode']) {

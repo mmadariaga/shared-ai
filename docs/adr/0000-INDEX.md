@@ -47,6 +47,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0144 — The three planning-phase coordinators drop the scoped `Bash(date:*)` entry](./0144-planning-coordinators-drop-the-scoped-date-shell-entry.md) — Supersedes 0117, Refs 0118, Refs ddr:0141
 - [0145 — Routed coordinators receive panel tools with non-blocking runtime degradation](./0145-routed-coordinators-receive-panel-tools-with-non-blocking-runtime-degradation.md) — Refs 0117, Refs 0144
 - [0139 — Use fresh read-only reviewers with worker-owned artifact edits](./0139-fresh-read-only-reviewers-with-worker-owned-edits.md) — Refs ddr:0105
+- [0146 — Command-owned files live in their consuming command's directory](./0146-command-owned-files-live-in-their-consuming-command-directory.md) — Supersedes 0003, Refs 0004, Refs 0138, Refs ddr:0123, Refs ddr:0149
 
 ### `/sai-3-implement`
 
@@ -79,6 +80,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0137 — Change Overview preserves the generation lifecycle and write boundary](./0137-change-overview-preserves-generation-lifecycle-and-write-boundary.md)
 - [0139 — Use fresh read-only reviewers with worker-owned artifact edits](./0139-fresh-read-only-reviewers-with-worker-owned-edits.md) — Refs ddr:0105
 - [0139 — Use a presence-only policy for bounded worker recovery](./0139-presence-only-bounded-recovery-policy.md)
+- [0146 — Command-owned files live in their consuming command's directory](./0146-command-owned-files-live-in-their-consuming-command-directory.md) — Supersedes 0003, Refs 0004, Refs 0138, Refs ddr:0123, Refs ddr:0149
 
 ### `/sai-4-apply`
 
@@ -197,6 +199,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0130 — Reuse the recursive SAI policy projection for generic agents](./0130-reuse-recursive-sai-policy-projection-for-generic-agents.md)
 - [0134 — Materialize Worker Matrix projections from the manifest and retire by hash](./0134-materialize-worker-projections-from-the-manifest-and-retire-by-hash.md)
 - [0138 — Use manifest projections plus hash-gated retirement records](./0138-manifest-projections-and-hash-gated-retirement-records.md) — Refs 0091, Refs 0101, Refs 0134, Refs ddr:0123
+- [0146 — Command-owned files live in their consuming command's directory](./0146-command-owned-files-live-in-their-consuming-command-directory.md) — Supersedes 0003, Refs 0004, Refs 0138, Refs ddr:0123, Refs ddr:0149
 ### Harness wrappers & the shared instruction layer
 
 - [0001 — Separate per-harness instruction files for the sai subagent resolver](./0001-sai-separate-harness-files.md)
@@ -276,6 +279,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0141 — Use one shared launcher card per in-scope command](./0141-use-one-shared-launcher-card-per-in-scope-command.md)
 - [0142 — Add near-empty launchers as extension points](./0142-add-near-empty-launchers-as-extension-points.md)
 - [0143 — Load the boot adapter before the launcher](./0143-load-the-boot-adapter-before-the-launcher.md)
+- [0146 — Command-owned files live in their consuming command's directory](./0146-command-owned-files-live-in-their-consuming-command-directory.md) — Supersedes 0003, Refs 0004, Refs 0138, Refs ddr:0123, Refs ddr:0149
 
 ### Harness portability & mirror discipline
 
@@ -433,11 +437,12 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 | [0107](./0107-unified-audit-severity-vocabulary.md) | supersedes | [0013](./0013-mmut-n-finding-namespace-for-mutation-analysis.md) |
 | [0115](./0115-three-part-dispatch-routing-condition.md) | supersedes | [0071](./0071-two-part-dispatch-routing-condition.md) |
 | [0144](./0144-planning-coordinators-drop-the-scoped-date-shell-entry.md) | supersedes | [0117](./0117-planning-coordinators-scoped-shell-entry.md) |
+| [0146](./0146-command-owned-files-live-in-their-consuming-command-directory.md) | supersedes | [0003](./0003-fetch-path-convention-commands-sai.md) |
 
 ## Superseded ADRs (historical)
 
 - [0002 — Both harness resolver files live under ~/.claude/instructions/sai/](./0002-sai-harness-files-under-claude-instructions.md) — *Superseded by [0004](./0004-source-layout-and-install-path-restructure.md)*
-- [0003 — Fetch Path Convention for Shared Command Bodies](./0003-fetch-path-convention-commands-sai.md) — *Superseded by [0004](./0004-source-layout-and-install-path-restructure.md)*
+- [0003 — Fetch Path Convention for Shared Command Bodies](./0003-fetch-path-convention-commands-sai.md) — *Superseded by [0004](./0004-source-layout-and-install-path-restructure.md), root-exception rule superseded by [0146](./0146-command-owned-files-live-in-their-consuming-command-directory.md)*
 - [0024 — Split into two dispatches ONLY for testable Steps, keyed by the already-authored RED block](./0024-split-only-testable-steps.md) — *Superseded by [0071](./0071-two-part-dispatch-routing-condition.md)*
 - [0071 — Two-part dispatch-routing condition (RED block AND Step Contract)](./0071-two-part-dispatch-routing-condition.md) — Supersedes 0024, Refs 0064 — *Superseded by [0115](./0115-three-part-dispatch-routing-condition.md)*
 - [0080 — Design-to-implementation lifecycle boundary](./0080-design-to-implementation-lifecycle-boundary.md) — Refs 0075, Refs 0076 — *Superseded by simplify-routed-phase-coordination*

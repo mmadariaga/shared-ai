@@ -93,7 +93,7 @@ test('overview adapts architecture and centralizes the file manifest', () => {
 });
 
 test('overview generation keeps signatures beside surviving manifest entries and omits net-empty paths', () => {
-  const instruction = artifact('sai/change-overview.md');
+  const instruction = artifact('sai/commands/design/change-overview.md');
 
   assert.match(instruction, /public signature/i,
     'generation contract should define public signature rendering');
@@ -104,7 +104,7 @@ test('overview generation keeps signatures beside surviving manifest entries and
 });
 
 test('overview generation remains source-grounded and fails atomically on manifest contradiction', () => {
-  const instruction = artifact('sai/change-overview.md');
+  const instruction = artifact('sai/commands/design/change-overview.md');
 
   assert.match(instruction, /condens/i, 'generation contract should define condensed content');
   assert.match(instruction, /source[- ]grounded/i,
@@ -118,7 +118,7 @@ test('overview generation remains source-grounded and fails atomically on manife
 });
 
 test('localized overview preserves structural anchors while allowing editorial subsection translation', () => {
-  const instruction = artifact('sai/change-overview.md');
+  const instruction = artifact('sai/commands/design/change-overview.md');
 
   assert.match(instruction, /overview_language/);
   assert.match(instruction, /English/);
@@ -212,7 +212,7 @@ test('Target State present in design surfaces, absent from interfaces template',
 });
 
 test('shared instruction is the generation contract', () => {
-  const instruction = artifact('sai/change-overview.md');
+  const instruction = artifact('sai/commands/design/change-overview.md');
   const schema = artifact('openspec/schemas/sai-workflow/schema.yaml');
 
   assert.match(instruction, /write scope/i, 'generation contract should declare its single-file write scope');
@@ -252,7 +252,7 @@ test('shared instruction is the generation contract', () => {
 });
 
 test('overview generator envelope is exactly five fields and excludes recovery metadata', () => {
-  const instruction = artifact('sai/change-overview.md');
+  const instruction = artifact('sai/commands/design/change-overview.md');
   const schema = artifact('openspec/schemas/sai-workflow/schema.yaml');
   const fields = ['status', 'changed_files', 'validation', 'failure_details', 'failure_kind'];
 
@@ -368,15 +368,15 @@ test('opencode design worker permits budget dispatch beside explore', () => {
     'the design binding should carry the notice continuation option');
 });
 
-test('installation projects the shared change-overview instruction at the sai root', () => {
+test('installation projects the shared change-overview instruction through the recursive commands projection', () => {
   const manifest = artifact('sai/install-manifest.json');
 
-  assert.match(manifest, /"source"\s*:\s*"sai\/change-overview\.md"/,
-    'manifest should project sai/change-overview.md');
-  assert.match(manifest, /"path"\s*:\s*"change-overview\.md"/,
-    'manifest should project to the root-relative change-overview.md destination');
-  assert.match(manifest, /"destination"\s*:\s*\{\s*"class"\s*:\s*"sai"\s*,\s*"path"\s*:\s*"change-overview\.md"/,
-    'the sai/change-overview.md projection should target the sai root-relative change-overview.md destination');
+  assert.doesNotMatch(manifest, /"source"\s*:\s*"sai\/change-overview\.md"/,
+    'the dedicated root projection for the change-overview instruction should be gone');
+  assert.match(manifest, /"source"\s*:\s*"sai\/commands"/,
+    'the recursive sai-commands projection should carry the command-owned instruction');
+  assert.match(manifest, /"destination"\s*:\s*\{\s*"class"\s*:\s*"sai"\s*,\s*"path"\s*:\s*"change-overview\.md"\s*\}[\s\S]*?"managedHashes"/,
+    'the former sai root change-overview.md destination should carry a retirement record');
   assert.doesNotMatch(manifest, /change-overview-instruction/,
     'the obsolete change-overview-instruction override projection should be retired');
   assert.doesNotMatch(manifest, /"sai-instructions"/,
@@ -605,7 +605,7 @@ test('active closure is question-first and repeats the exact crystallize reminde
 });
 
 test('localized Change Overview generation preserves structural anchors, source artifacts, and its result envelope', () => {
-  const instruction = artifact('sai/change-overview.md');
+  const instruction = artifact('sai/commands/design/change-overview.md');
 
   assert.match(instruction, /overview_language/);
   assert.match(instruction, /English/);

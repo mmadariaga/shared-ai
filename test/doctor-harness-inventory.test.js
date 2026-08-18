@@ -280,9 +280,6 @@ function step3DestinationRootFor(base, harness) {
 function step3NeutralSource(source) {
   return source === 'sai/orchestration/command-runner.md' ||
     source === 'sai/orchestration/worker-core.md' ||
-    source === 'sai/change-overview.md' ||
-    source === 'sai/adr-index.template.md' ||
-    source === 'sai/ddr-index.template.md' ||
     source.startsWith('sai/commands/') ||
     source.startsWith('sai/policies/');
 }

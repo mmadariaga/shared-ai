@@ -215,7 +215,8 @@ test('installOpencode copies all standalone policies to dest/sai/policies/', () 
 test('installOpencode projects the canonical ADR template and removes former compatibility destinations', () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-'));
   installOpencode(tmpDir);
-  assert.ok(fs.existsSync(path.join(tmpDir, 'sai', 'adr-index.template.md')));
+  assert.ok(fs.existsSync(path.join(tmpDir, 'sai', 'commands', 'implement', 'adr-index.template.md')));
+  assert.equal(fs.existsSync(path.join(tmpDir, 'sai', 'adr-index.template.md')), false);
   assert.equal(fs.existsSync(path.join(tmpDir, 'sai', 'compat', '_templates', 'adr-index.md')), false);
   assert.equal(fs.existsSync(path.join(tmpDir, 'sai', 'instructions')), false);
   for (const file of ['sai-2-design-core.md', 'sai-3-implementation-core.md', 'implement-invocation.md']) {
@@ -1636,9 +1637,6 @@ test('Step 3 the opencode neutral inventory is equivalent to Claude and differs 
   const neutralSource = source =>
     source === 'sai/orchestration/command-runner.md' ||
     source === 'sai/orchestration/worker-core.md' ||
-    source === 'sai/change-overview.md' ||
-    source === 'sai/adr-index.template.md' ||
-    source === 'sai/ddr-index.template.md' ||
     source.startsWith('sai/commands/') ||
     source.startsWith('sai/policies/');
   try {
