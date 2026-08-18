@@ -109,7 +109,7 @@ changed_files: string[]
 
 It carries `changed_files` like the notice. It is nonterminal and not a
 lifecycle status: a design, spec-proposal, implementation-planning, review, security,
-performance, or accessibility worker SHALL return one progress event for each
+performance, or accessibility worker SHALL emit one progress event for each
 result that makes one or more new plan steps complete after prerequisite
 checks pass and its required change or scope resolution completes, and the
 run still closes with exactly one terminal lifecycle status preceded by zero
