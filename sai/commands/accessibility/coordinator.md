@@ -7,8 +7,8 @@
 <TASK>
 
   Fetch @sai/policies/verified-precondition-handback.md
-  Fetch @sai/command-runner.md and follow it exactly.
-  Fetch @sai/worker-core.md and follow it exactly.
+  Fetch @sai/orchestration/command-runner.md and follow it exactly.
+  Fetch @sai/orchestration/worker-core.md and follow it exactly.
 
   ## Accessibility phase adapter (`accessibility_coordinator_adapter`)
 

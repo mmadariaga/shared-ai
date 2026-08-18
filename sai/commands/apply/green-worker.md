@@ -1,6 +1,6 @@
 # Apply GREEN Worker
 
-Fetch @sai/worker-core.md and follow it exactly.
+Fetch @sai/orchestration/worker-core.md and follow it exactly.
 
 ## Invocation Envelope
 

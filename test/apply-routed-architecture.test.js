@@ -524,7 +524,7 @@ test('Step 2 the routed invocation loads the change picker before prerequisite d
     'specs/apply-routed-card-set/spec.md: the invocation must load the safe-operations skill');
   assert.match(combined, /@sai\/policies\/sai-learnings-format\.md/,
     'specs/apply-routed-card-set/spec.md: the invocation must load the learnings format');
-  assert.match(combined, /@sai\/command-runner\.md/,
+  assert.match(combined, /@sai\/orchestration\/command-runner\.md/,
     'specs/apply-routed-card-set/spec.md: the invocation must load the runner contract');
   assert.match(combined, /@sai\/policies\/remember\.md/,
     'specs/apply-routed-card-set/spec.md: the invocation must load the remember policy');

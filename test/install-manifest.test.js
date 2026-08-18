@@ -428,8 +428,8 @@ test('canonical manifest projects implementation assets to neutral matrix destin
     assert.equal(new Set(destinations).size, destinations.length, `${harness} destinations should be unique`);
     assert.deepEqual(destinations, [...destinations].sort((a, b) => a.localeCompare(b)), `${harness} destinations should be ordered`);
     for (const source of [
-      'sai/command-runner.md',
-      'sai/worker-core.md',
+      'sai/orchestration/command-runner.md',
+      'sai/orchestration/worker-core.md',
       'sai/commands/implement/worker.md',
     ]) {
       assert.ok(sourceSet.has(source), `${harness} should include ${source}`);
@@ -459,13 +459,13 @@ test('canonical manifest projects routed spec assets only to Claude Code and ope
   const manifest = loadInstallManifest(repoRoot);
   const expectedSources = {
     claude: [
-      'sai/command-runner.md',
-      'sai/worker-core.md',
+      'sai/orchestration/command-runner.md',
+      'sai/orchestration/worker-core.md',
       'sai/commands/spec/worker.md',
     ],
     opencode: [
-      'sai/command-runner.md',
-      'sai/worker-core.md',
+      'sai/orchestration/command-runner.md',
+      'sai/orchestration/worker-core.md',
       'sai/commands/spec/worker.md',
     ],
   };

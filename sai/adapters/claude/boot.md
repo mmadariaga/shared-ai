@@ -2,7 +2,7 @@
 
 Accept the four-field boot request from the wrapper: `command_name`, `wrapper_echo_value`, `arguments_value`, and the optional opaque `continuation_reference`.
 
-Fetch @sai/command-runner.md and follow it first.
+Fetch @sai/orchestration/command-runner.md and follow it first.
 
 Use `command_name` only for card selection. Routed names (`spec`, `design`, `implement`, `review`, `security`, `performance`, `accessibility`, `apply`) select the matching coordinator card — `@sai/commands/{name}/coordinator.md`, for example `Fetch @sai/commands/spec/coordinator.md` and `Fetch @sai/commands/apply/coordinator.md`. Utility names (`archive`, `backfill`, `commit`, `explore`, `pr`, `status`, `worktree`) select the matching utility body card — `@sai/commands/{name}/body.md`, for example `Fetch @sai/commands/archive/body.md`.
 

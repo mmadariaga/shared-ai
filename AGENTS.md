@@ -26,8 +26,8 @@ Each phase reads from and writes to **`openspec/changes/{change-name}/`** — si
 ## Repo structure
 
 ```
- sai/command-runner.md            ← neutral command-runner protocol (loaded by every boot adapter before card selection)
- sai/worker-core.md               ← neutral worker lifecycle protocol (loaded by the routed worker cards)
+ sai/orchestration/command-runner.md            ← neutral command-runner protocol (loaded by every boot adapter before card selection)
+ sai/orchestration/worker-core.md               ← neutral worker lifecycle protocol (loaded by the routed worker cards)
  sai/commands/                    ← command cards — routed cards per phase and utility cards per command (fetched by boot adapters at runtime)
  sai/commands/{spec,design,implement,apply,review,security,performance,accessibility}/  ← routed cards: coordinator.md, worker.md, and invocation.md where retained
  sai/commands/{archive,backfill,commit,explore,pr,status,worktree}/          ← utility cards: body.md only
@@ -68,13 +68,13 @@ The openspec-dependent `sai-*` commands halt with a clear error if either is mis
 | `sai/commands/{name}/*.template.md` | Co-located report/plan templates beside their owning card — e.g. `sai/commands/review/review-report.template.md`, `sai/commands/implement/implementation-plan.template.md`, `sai/commands/pr/pr-body.template.md`. |
 | `sai/change-overview.md` | Root exception — shared overview-generation instruction executed by the budget-routed subagent, the single source of the `change-overview.md` generation contract for every generation and regeneration. |
 | `sai/adr-index.template.md`, `sai/ddr-index.template.md` | Root exceptions — the canonical project-agnostic ADR/DDR index templates consumed by the Step 3 index-maintenance cold build. |
-| `sai/command-runner.md` | Neutral command-runner protocol (result loop, coordinator routing, no phase branches). Loaded by every boot adapter before card selection. |
-| `sai/worker-core.md` | Neutral worker lifecycle protocol (worker journal, envelope, changed-files union, reconstruction). Loaded by the routed worker cards. |
+| `sai/orchestration/command-runner.md` | Neutral command-runner protocol (result loop, coordinator routing, no phase branches). Loaded by every boot adapter before card selection. |
+| `sai/orchestration/worker-core.md` | Neutral worker lifecycle protocol (worker journal, envelope, changed-files union, reconstruction). Loaded by the routed worker cards. |
 | `sai/commands/` | Command cards — routed cards per phase and utility cards per command, fetched by boot adapters at runtime. |
 | `sai/commands/{spec,design,implement,apply,review,security,performance,accessibility}/` | Routed cards: `coordinator.md`, `worker.md`, and `invocation.md` where retained. |
 | `sai/commands/{archive,backfill,commit,explore,pr,status,worktree}/` | Utility cards: `body.md` only — the complete command body for utility commands. |
-| `sai/adapters/claude/boot.md` | Claude Code boot adapter — loads `@sai/command-runner.md`, selects the requested card, owns Claude fetch/dispatch; paired non-worker panel runtime glue also lives under `sai/adapters/claude/`, including `panel-render.md` and `idea-list-render.md`. |
-| `sai/adapters/opencode/boot.md` | Opencode boot adapter — loads `@sai/command-runner.md`, selects the requested card, owns opencode fetch/dispatch; paired non-worker panel runtime glue also lives under `sai/adapters/opencode/`, including `panel-render.md` and `idea-list-render.md`. |
+| `sai/adapters/claude/boot.md` | Claude Code boot adapter — loads `@sai/orchestration/command-runner.md`, selects the requested card, owns Claude fetch/dispatch; paired non-worker panel runtime glue also lives under `sai/adapters/claude/`, including `panel-render.md` and `idea-list-render.md`. |
+| `sai/adapters/opencode/boot.md` | Opencode boot adapter — loads `@sai/orchestration/command-runner.md`, selects the requested card, owns opencode fetch/dispatch; paired non-worker panel runtime glue also lives under `sai/adapters/opencode/`, including `panel-render.md` and `idea-list-render.md`. |
 | `sai/orchestration/` | Matrix worker-binding templates (`bindings/{claude,opencode}/worker-template.md`); no flat coordinator/worker contracts remain. |
 | `sai/orchestration/workers/bindings/` | Neutral installed routed worker bindings for the seven phases (`spec/design/implementation/review/security/performance/accessibility-worker.md`) plus the two apply Step-execution worker bindings (`red-worker.md`/`green-worker.md`) projected for both harnesses; non-worker panel and idea-list runtime glue is owned by the adapter seam. |
 | `sai/policies/` | Canonical glossary, prerequisite, picker, commit, status, and feedback policies. `sai/policies/artifact-review-contract.md`: shared artifact review finding contract — closed severity vocabulary and assignment criteria, finding shape, severity-prefixed identifier scheme, and closing `Summary:` tally line — single-sourced and referenced by every artifact review surface. |
@@ -110,7 +110,7 @@ The openspec-dependent `sai-*` commands halt with a clear error if either is mis
 | `commands/opencode/` | Wrappers for opencode. YAML frontmatter (`description`, `model`) + fetch to `sai/adapters/opencode/boot.md` + fetch to project-local skill files. |
 | `configs/` | Config samples. `opencode.jsonc`: `$schema` + `subagent_depth` + the SAI external-directory permission; no agent definitions (the agents ship as managed agent files). |
 
-Wrappers are **thin** — they specify the model, route through their harness boot adapter, and (for openspec-dependent commands) fetch policies, compatibility assets, and relevant project-local skills. Each wrapper enters its own `sai/adapters/{claude,opencode}/boot.md`; the boot loads `@sai/command-runner.md`, selects the requested command card, and owns only the harness-specific fetch and dispatch mechanics. Claude Code and opencode load harness-selected routed bindings directly from the neutral installed SAI paths. The manifest determines which source files are installed for both harnesses.
+Wrappers are **thin** — they specify the model, route through their harness boot adapter, and (for openspec-dependent commands) fetch policies, compatibility assets, and relevant project-local skills. Each wrapper enters its own `sai/adapters/{claude,opencode}/boot.md`; the boot loads `@sai/orchestration/command-runner.md`, selects the requested command card, and owns only the harness-specific fetch and dispatch mechanics. Claude Code and opencode load harness-selected routed bindings directly from the neutral installed SAI paths. The manifest determines which source files are installed for both harnesses.
 
 ## Critical conventions
 

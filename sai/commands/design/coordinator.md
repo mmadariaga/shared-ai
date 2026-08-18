@@ -7,8 +7,8 @@
 <TASK>
 
   Fetch @sai/policies/verified-precondition-handback.md
-  Fetch @sai/command-runner.md and follow it exactly.
-  Fetch @sai/worker-core.md and follow it exactly.
+  Fetch @sai/orchestration/command-runner.md and follow it exactly.
+  Fetch @sai/orchestration/worker-core.md and follow it exactly.
   Fetch @sai/policies/artifact-feedback-gate.md before applying the completion gate. Supply `artifacts = design.md, tasks.md, interfaces.md`, `proceed-label = Continue`, and `next-action = the existing design completion sentence and stop`.
 
   ## Design phase adapter

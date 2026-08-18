@@ -77,9 +77,9 @@ function implementationPlanList(source) {
 test('Step 1 implementation card uses neutral root protocols and retires flat canonical sources', () => {
   const coordinator = artifact('sai/commands/implement/coordinator.md');
   const worker = artifact('sai/commands/implement/worker.md');
-  assert.match(coordinator, /@sai\/command-runner\.md/);
-  assert.match(coordinator, /@sai\/worker-core\.md/);
-  assert.match(worker, /@sai\/worker-core\.md/);
+  assert.match(coordinator, /@sai\/orchestration\/command-runner\.md/);
+  assert.match(coordinator, /@sai\/orchestration\/worker-core\.md/);
+  assert.match(worker, /@sai\/orchestration\/worker-core\.md/);
   for (const relativePath of [
     'sai/orchestration/coordinator-contract.md',
     'sai/orchestration/worker-lifecycle.md',

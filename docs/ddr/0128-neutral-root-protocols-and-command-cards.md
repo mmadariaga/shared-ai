@@ -2,7 +2,9 @@
 
 ## Status
 
-Accepted
+Superseded
+
+The placement rule is superseded by `docs/ddr/0149-orchestration-core-contracts-live-under-orchestration.md`. The harness-neutral, phase-agnostic protocol decision recorded below remains in force; only the two file locations changed.
 
 ## Context
 

@@ -145,7 +145,6 @@ This index groups the DDRs in `docs/ddr/` by **command** and by **cross-cutting 
 
 - [0117 — Fetch resolution replaces the Glob existence probe with Read-then-Read exact-path fallback](./0117-fetch-resolution-read-then-read-exact-path-fallback.md)
 - [0118 — Every resolved fetch path begins with `sai/`, `commands/`, or `skills/` and the harness root is never named](./0118-fetch-path-scope-invariant.md)
-- [0128 — Neutral root protocols and command cards](./0128-neutral-root-protocols-and-command-cards.md)
 - [0129 — Routed and utility command-card classes](./0129-routed-and-utility-command-card-classes.md)
 - [0133 — Budget dispatch literals resolve through collision-safe harness-managed roles](./0133-budget-dispatch-literals-resolve-through-collision-safe-harness-managed-roles.md)
 - [0133 — Review progress is marked only by no-High pass evidence](./0133-review-progress-is-evidence-only.md) — Refs 0109, Refs 0110, Refs 0111
@@ -155,6 +154,7 @@ This index groups the DDRs in `docs/ddr/` by **command** and by **cross-cutting 
 - [0143 — Out-of-root budget-explorer access is concrete and purpose-bound](./0143-budget-explorer-out-of-root-access-is-purpose-bound.md)
 - [0144 — Self-discovered external needs use structured escalation records](./0144-budget-explorer-self-discovered-needs-use-structured-escalation.md)
 - [0145 — The budget-explorer tool-call ceiling resets for each execution segment](./0145-budget-explorer-tool-call-ceiling-resets-per-segment.md)
+- [0149 — The Orchestration Core contracts live under `sai/orchestration/`](./0149-orchestration-core-contracts-live-under-orchestration.md) — Supersedes 0128
 
 ---
 
@@ -171,7 +171,6 @@ This index groups the DDRs in `docs/ddr/` by **command** and by **cross-cutting 
 - [0121 — The post-setup customization result stays in memory and never touches agent files](./0121-in-memory-non-persistent-override-contract.md)
 - [0123 — Retirement records cover every distinct historical content variant, enumerated from git history at implementation time](./0123-retirement-records-cover-every-historical-content-variant.md)
 - [0125 — Existing project-local agent content takes precedence over installed availability](./0125-existing-project-local-agent-content-takes-precedence.md)
-- [0128 — Neutral root protocols and command cards](./0128-neutral-root-protocols-and-command-cards.md)
 - [0129 — Routed and utility command-card classes](./0129-routed-and-utility-command-card-classes.md)
 - [0134 — Recovery retains the live worker and one shared attempt pool](./0134-recovery-retains-live-worker-and-one-shared-pool.md)
 - [0135 — Failure classification identifies the repair boundary](./0135-failure-classification-identifies-the-repair-boundary.md)
@@ -182,6 +181,7 @@ This index groups the DDRs in `docs/ddr/` by **command** and by **cross-cutting 
 - [0139 — Supervised review edits remain worker-owned](./0139-supervised-review-edits-remain-worker-owned.md) — Refs adr:0139
 - [0140 — Every closed worker payload carries a worker-authored `emitted_on`](./0140-closed-worker-payloads-carry-result-emission-time.md) — Refs 0110
 - [0141 — The milestone stamp is closure-only and derived from `emitted_on`, never from a coordinator clock](./0141-milestone-stamp-is-closure-only-and-derived-from-emitted-on.md) — Refs 0140, Refs 0112, Refs adr:0144
+- [0149 — The Orchestration Core contracts live under `sai/orchestration/`](./0149-orchestration-core-contracts-live-under-orchestration.md) — Supersedes 0128
 
 ### Fetch resolution & path conventions
 
@@ -276,7 +276,9 @@ This index groups the DDRs in `docs/ddr/` by **command** and by **cross-cutting 
 | [0062](./0062-field-9-soft-degradation-stated-at-two-sites.md) | amends | [0026](./0026-stable-eight-field-report.md) |
 | [0137](./0137-apply-routed-boundary-carries-progress-events.md) | supersedes | [0116](./0116-apply-phase-carries-no-progress-events.md) |
 | [0141](./0141-milestone-stamp-is-closure-only-and-derived-from-emitted-on.md) | supersedes | [adr:0118](../adr/0118-per-harness-wall-clock-commands-in-bindings.md) |
+| [0149](./0149-orchestration-core-contracts-live-under-orchestration.md) | supersedes | [0128](./0128-neutral-root-protocols-and-command-cards.md) |
 
 ## Superseded DDRs (historical)
 
 - [0116 — The apply phase carries no progress events because it has no coordinator-worker boundary](./0116-apply-phase-carries-no-progress-events.md) — Refs 0110 — *Superseded by [0137](./0137-apply-routed-boundary-carries-progress-events.md)*
+- [0128 — Neutral root protocols and command cards](./0128-neutral-root-protocols-and-command-cards.md) — *Superseded by [0149](./0149-orchestration-core-contracts-live-under-orchestration.md)* — placement rule only; its harness-neutral, phase-agnostic protocol decision remains in force

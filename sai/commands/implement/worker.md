@@ -1,7 +1,7 @@
 # Implementation Worker
 
 Fetch @sai/policies/verified-precondition-handback.md
-Fetch @sai/worker-core.md and follow it exactly.
+Fetch @sai/orchestration/worker-core.md and follow it exactly.
 
 Perform the complete technical `/sai-3-implement` phase. The `InvocationEnvelope`
 contains exactly two fields. Write authorized
@@ -59,7 +59,7 @@ order:
 
 Return exactly one progress event per completed batch after prerequisite checks
 pass and change resolution completes, whenever one or more plan steps
-complete, per `@sai/worker-core.md`'s Nonterminal Result Transport: each event
+complete, per `@sai/orchestration/worker-core.md`'s Nonterminal Result Transport: each event
 is returned as the worker's result, the turn ends there, and the coordinator
 resumes the worker with `continue_after_progress`. Composing the event as text
 inside this session marks nothing. The startup act (prerequisite checks +

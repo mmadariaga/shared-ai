@@ -16,7 +16,7 @@ function artifact(relativePath) {
 // ─── worker-core: emitted_on is in every closed payload ─────────────────────
 
 test('worker-core carries emitted_on immediately after the discriminator of every closed payload', () => {
-  const core = artifact('sai/worker-core.md');
+  const core = artifact('sai/orchestration/worker-core.md');
 
   const blocks = [
     ['completed', /status:\s*completed\s*\n\s*emitted_on:\s*string/],
@@ -34,7 +34,7 @@ test('worker-core carries emitted_on immediately after the discriminator of ever
 });
 
 test('worker-core fixes emitted_on as a mandatory offset-bearing ISO-8601 instant', () => {
-  const core = artifact('sai/worker-core.md');
+  const core = artifact('sai/orchestration/worker-core.md');
 
   assert.match(core, /ISO-8601 instant/,
     'emitted_on should be specified as an ISO-8601 instant');
@@ -51,7 +51,7 @@ test('worker-core fixes emitted_on as a mandatory offset-bearing ISO-8601 instan
 });
 
 test('worker-core requires a real clock read and accepts the DST sorting trade', () => {
-  const core = artifact('sai/worker-core.md');
+  const core = artifact('sai/orchestration/worker-core.md');
 
   assert.match(core, /SHALL NOT estimate, infer, or carry forward a time it did not read/i,
     'the worker should not invent the value');
@@ -64,7 +64,7 @@ test('worker-core requires a real clock read and accepts the DST sorting trade',
 });
 
 test('worker-core makes emitted_on worker-authored and forbids coordinator rewriting', () => {
-  const core = artifact('sai/worker-core.md');
+  const core = artifact('sai/orchestration/worker-core.md');
 
   assert.match(core, /## Result Emission Time/,
     'worker-core should define the field in its own section');
@@ -81,7 +81,7 @@ test('worker-core makes emitted_on worker-authored and forbids coordinator rewri
 });
 
 test('worker-core names emitted_on as the sole source of the Milestone Stamp', () => {
-  const core = artifact('sai/worker-core.md');
+  const core = artifact('sai/orchestration/worker-core.md');
 
   assert.match(core, /emitted_on` is the sole source of the Milestone Stamp/i,
     'the stamp should be sourced from the payload value');
@@ -112,8 +112,8 @@ test('the three planning wrappers carry no shell grant now that stamps need no c
 test('no production surface asks a coordinator to acquire a wall-clock time', () => {
   for (const relativePath of [
     'sai/policies/todo-structure.md',
-    'sai/command-runner.md',
-    'sai/worker-core.md',
+    'sai/orchestration/command-runner.md',
+    'sai/orchestration/worker-core.md',
     'sai/commands/spec/coordinator.md',
     'sai/commands/design/coordinator.md',
     'sai/commands/implement/coordinator.md'
@@ -157,7 +157,7 @@ test('both decision indexes carry the new records', () => {
 // ─── command-runner: the coordinator validates the field ────────────────────
 
 test('the command runner validates emitted_on on every closed payload', () => {
-  const runner = artifact('sai/command-runner.md');
+  const runner = artifact('sai/orchestration/command-runner.md');
 
   assert.match(runner, /offset-bearing ISO-8601 `emitted_on`/,
     'terminal-result validation should include emitted_on');
@@ -181,7 +181,7 @@ test('the command runner validates emitted_on on every closed payload', () => {
 
 test('every routed surface restating the progress shape carries emitted_on after the discriminator', () => {
   const surfaces = [
-    'sai/command-runner.md',
+    'sai/orchestration/command-runner.md',
     'sai/commands/spec/coordinator.md',
     'sai/commands/design/coordinator.md',
     'sai/commands/implement/coordinator.md',

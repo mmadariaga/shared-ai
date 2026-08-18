@@ -1422,7 +1422,7 @@ test('installOpencode active projection carries the neutral root protocols, rout
     const sources = active.map(projection => path.relative(repoRoot, projection.sourcePath).split(path.sep).join('/'));
     const sourceSet = new Set(sources);
 
-    for (const protocol of ['sai/command-runner.md', 'sai/worker-core.md']) {
+    for (const protocol of ['sai/orchestration/command-runner.md', 'sai/orchestration/worker-core.md']) {
       assert.ok(sourceSet.has(protocol), `opencode should project the neutral root protocol ${protocol}`);
     }
     for (const { phase } of Object.values(WORKER_CONTRACT_BY_NAME)) {
@@ -1502,14 +1502,14 @@ test('opencode boot adapter loads command-runner first, selects utility bodies, 
     assert.ok(fs.existsSync(bootPath), 'the opencode boot adapter should be installed');
     const boot = fs.readFileSync(bootPath, 'utf8');
 
-    const runner = boot.indexOf('Fetch @sai/command-runner.md');
-    assert.ok(runner !== -1, 'the opencode boot should load @sai/command-runner.md');
+    const runner = boot.indexOf('Fetch @sai/orchestration/command-runner.md');
+    assert.ok(runner !== -1, 'the opencode boot should load @sai/orchestration/command-runner.md');
     const cardIndexes = ['coordinator\\.md', 'body\\.md'].map(pattern => {
       const index = boot.search(new RegExp(pattern));
       return index === -1 ? Infinity : index;
     });
     assert.ok(runner < Math.min(...cardIndexes),
-      'the opencode boot should load @sai/command-runner.md before any card selection');
+      'the opencode boot should load @sai/orchestration/command-runner.md before any card selection');
 
     assert.match(boot, /command_name/, 'the opencode boot should route on command_name');
     assert.match(boot, /wrapper_echo_value/, 'the opencode boot should carry wrapper_echo_value');
@@ -1634,8 +1634,8 @@ test('Step 3 the opencode neutral inventory is equivalent to Claude and differs 
     root: base,
   });
   const neutralSource = source =>
-    source === 'sai/command-runner.md' ||
-    source === 'sai/worker-core.md' ||
+    source === 'sai/orchestration/command-runner.md' ||
+    source === 'sai/orchestration/worker-core.md' ||
     source === 'sai/change-overview.md' ||
     source === 'sai/adr-index.template.md' ||
     source === 'sai/ddr-index.template.md' ||

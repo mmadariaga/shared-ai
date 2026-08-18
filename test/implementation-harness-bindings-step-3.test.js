@@ -101,15 +101,15 @@ test('Claude implementation coordinator uses low effort', () => {
 test('Step 3 manifest projects the shared lifecycle and one active harness binding', () => {
   const expected = {
     claude: [
-      'sai/command-runner.md',
-      'sai/worker-core.md',
+      'sai/orchestration/command-runner.md',
+      'sai/orchestration/worker-core.md',
       'sai/commands/implement/worker.md',
       '.tmp/collapse-sai-worker-matrix/matrix-sources/claude/implementation-worker.md',
       '.tmp/collapse-sai-worker-matrix/matrix-sources/claude/sai-3-implementation-worker.md',
     ],
     opencode: [
-      'sai/command-runner.md',
-      'sai/worker-core.md',
+      'sai/orchestration/command-runner.md',
+      'sai/orchestration/worker-core.md',
       'sai/commands/implement/worker.md',
       '.tmp/collapse-sai-worker-matrix/matrix-sources/opencode/implementation-worker.md',
     ],

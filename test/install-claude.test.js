@@ -280,8 +280,8 @@ test('installClaude projects the routed spec coordinator, neutral worker binding
     for (const file of [
        path.join('sai', 'commands', 'spec', 'coordinator.md'),
        path.join('sai', 'commands', 'spec', 'worker.md'),
-       path.join('sai', 'command-runner.md'),
-       path.join('sai', 'worker-core.md'),
+       path.join('sai', 'orchestration', 'command-runner.md'),
+       path.join('sai', 'orchestration', 'worker-core.md'),
        path.join('sai', 'orchestration', 'workers', 'bindings', 'spec-worker.md'),
       path.join('agents', 'sai-1-spec-proposal-worker.md'),
     ]) assert.ok(fs.existsSync(path.join(tmpDir, file)), `${file} should be projected`);
@@ -699,7 +699,7 @@ test('installClaude active projection carries the neutral root protocols, routed
     const sources = active.map(projection => path.relative(repoRoot, projection.sourcePath).split(path.sep).join('/'));
     const sourceSet = new Set(sources);
 
-    for (const protocol of ['sai/command-runner.md', 'sai/worker-core.md']) {
+    for (const protocol of ['sai/orchestration/command-runner.md', 'sai/orchestration/worker-core.md']) {
       assert.ok(sourceSet.has(protocol), `Claude should project the neutral root protocol ${protocol}`);
     }
     for (const [phase] of WORKER_BINDINGS) {
@@ -779,14 +779,14 @@ test('Claude boot adapter loads command-runner first, selects utility bodies, ke
     assert.ok(fs.existsSync(bootPath), 'the Claude boot adapter should be installed');
     const boot = fs.readFileSync(bootPath, 'utf8');
 
-    const runner = boot.indexOf('Fetch @sai/command-runner.md');
-    assert.ok(runner !== -1, 'the Claude boot should load @sai/command-runner.md');
+    const runner = boot.indexOf('Fetch @sai/orchestration/command-runner.md');
+    assert.ok(runner !== -1, 'the Claude boot should load @sai/orchestration/command-runner.md');
     const cardIndexes = ['coordinator\\.md', 'body\\.md'].map(pattern => {
       const index = boot.search(new RegExp(pattern));
       return index === -1 ? Infinity : index;
     });
     assert.ok(runner < Math.min(...cardIndexes),
-      'the Claude boot should load @sai/command-runner.md before any card selection');
+      'the Claude boot should load @sai/orchestration/command-runner.md before any card selection');
 
     assert.match(boot, /command_name/, 'the Claude boot should route on command_name');
     assert.match(boot, /wrapper_echo_value/, 'the Claude boot should carry wrapper_echo_value');
@@ -837,8 +837,8 @@ test('Step 3 the Claude neutral inventory is equivalent to opencode and differs 
     root: base,
   });
   const neutralSource = source =>
-    source === 'sai/command-runner.md' ||
-    source === 'sai/worker-core.md' ||
+    source === 'sai/orchestration/command-runner.md' ||
+    source === 'sai/orchestration/worker-core.md' ||
     source === 'sai/change-overview.md' ||
     source === 'sai/adr-index.template.md' ||
     source === 'sai/ddr-index.template.md' ||

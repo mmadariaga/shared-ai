@@ -38,7 +38,7 @@ test('todo policy defines a conditional progress-event render act', () => {
 });
 
 test('shared runner renders only after a progress event changes the marked set', () => {
-  const runner = read('sai/command-runner.md');
+  const runner = read('sai/orchestration/command-runner.md');
 
   assert.match(runner, /recording whether the event[\s\S]{0,120}previously unmarked declared id/);
   assert.match(runner, /adapter declares a `progress_plan`[\s\S]{0,180}changed the\nmarked set/);
