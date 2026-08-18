@@ -45,6 +45,10 @@ Both the Claude Code and opencode fetch skills SHALL encode the positive invaria
 - **THEN** its resolved path begins with `skills/` under the user-global root
 - **AND** the directive is not treated as a path-scope violation
 
+#### Scenario: managed opencode agent bootstraps within the skills namespace
+- **WHEN** an opencode managed agent projection starts in a cold context
+- **THEN** its first post-frontmatter directive is `Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.` before the canonical contract is resolved
+
 ### Requirement: Out-of-namespace resolution stops before any filesystem access
 
 When a `Fetch @` directive resolves to a path that does not begin with `sai/`, `commands/`, or `skills/` under the project-local or user-global root — or that names a root directory rather than an exact file — the fetch skill SHALL stop and report a path-scope violation BEFORE performing any Read, in both branches. The resolution SHALL NOT attempt the read, so no external-directory permission request can be triggered by directive content. The report SHALL name the directive and the three permitted prefixes.

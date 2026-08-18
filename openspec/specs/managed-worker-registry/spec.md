@@ -67,11 +67,15 @@ The installer test harness MUST verify registry completeness, the derived Claude
 - **THEN** their existing behavior-preservation assertions pass and additional coverage detects missing manifest rows, projection drift, opencode agent-file content drift, and tunable-line mis-handling
 
 ### Requirement: Opencode workers are projected as managed markdown agent files
-The install manifest SHALL declare one `tunable-seed` projection per opencode worker agent, mirroring the Claude agent rows: source `agents/opencode/<worker>.md`, destination class `agents`, harness `opencode`, ownership `managed`. Each projected file SHALL carry the worker's mode, model, optional variant, and `permission.task` in YAML frontmatter and the canonical worker-contract fetch in its body, and SHALL NOT rely on the opencode configuration agent map for registration. Existing workers MUST retain their model, `mode: "subagent"`, variant when present, `permission.task` shape, and registration identity. The installer SHALL overwrite the body and non-tunable frontmatter on update while preserving the destination's `model` and `variant` lines; a destination whose body or non-tunable frontmatter differs from source is overwritten with a console notice.
+The install manifest SHALL declare one `tunable-seed` projection per opencode worker agent, mirroring the Claude agent rows: source `agents/opencode/<worker>.md`, destination class `agents`, harness `opencode`, ownership `managed`. Each projected file SHALL carry the worker's mode, model, optional variant, and `permission.task` in YAML frontmatter and the harness-specific fetch-skill bootstrap followed by the canonical worker-contract fetch in its body, and SHALL NOT rely on the opencode configuration agent map for registration. Existing workers MUST retain their model, `mode: "subagent"`, variant when present, `permission.task` shape, and registration identity. The installer SHALL overwrite the body and non-tunable frontmatter on update while preserving the destination's `model` and `variant` lines; a destination whose body or non-tunable frontmatter differs from source is overwritten with a console notice.
 
 #### Scenario: Fresh opencode installation projects every worker file
 - **WHEN** a fresh opencode installation expands the manifest
 - **THEN** all seven worker agent files are created under `~/.config/opencode/agents/` with their canonical frontmatter and body
+
+#### Scenario: projected worker bodies bootstrap fetch resolution
+- **WHEN** installer and worker-matrix regression tests inspect generated managed worker agents
+- **THEN** each supported-harness worker contains its expected first body bootstrap before the canonical contract Fetch
 
 #### Scenario: A projected worker file already exists with a different body
 - **WHEN** a worker agent file already exists at the projected destination and its body or non-tunable frontmatter differs from source

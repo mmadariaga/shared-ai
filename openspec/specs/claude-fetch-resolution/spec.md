@@ -35,6 +35,10 @@ If the instruction also says "and follow those instructions exactly", Claude MUS
 - **WHEN** instruction says `Fetch @skills/openspec-propose/SKILL.md and follow those instructions exactly.`
 - **THEN** Claude calls `Skill("openspec-propose")` then follows the returned instructions
 
+#### Scenario: managed agent bootstraps the fetch skill
+- **WHEN** a Claude Code managed agent projection is dispatched
+- **THEN** its first post-frontmatter directive is `Fetch @skills/fetch/SKILL.md` before the canonical policy or worker-contract Fetch
+
 ### Requirement: Recursive resolution
 The fetch resolution rules SHALL apply recursively. If a loaded skill or fetched file itself contains `Fetch @` directives, Claude MUST resolve them using the same rules.
 
@@ -56,4 +60,3 @@ The disambiguation table MUST document that these two patterns resolve to differ
 #### Scenario: Agent encounters both @sai/commands/ and @commands/ references
 - **WHEN** an instruction contains `@sai/commands/X.md` and `@commands/X.md`
 - **THEN** the agent SHALL resolve them to `~/.claude/sai/commands/X.md` and `~/.claude/commands/X.md` respectively, treating them as distinct files
-

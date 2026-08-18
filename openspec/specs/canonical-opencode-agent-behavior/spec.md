@@ -72,13 +72,17 @@ The explore policy SHALL preserve the read-only research contract: use a clean c
 - **AND** the caller is told to spawn an additional explore agent rather than raising the cap
 
 ### Requirement: Generic agents of both harnesses delegate behavior through Fetch
-Each generic agent source of both harnesses SHALL retain its managed frontmatter and SHALL have a body consisting of exactly one established Fetch directive: under `agents/opencode/`, `explore.md` SHALL fetch `@sai/policies/explore-agent.md`, `executor.md` SHALL fetch `@sai/policies/executor-agent.md`, and `budget.md` SHALL fetch `@sai/policies/budget-agent.md`; under `agents/claude/`, `budget-explorer.md` SHALL fetch `@sai/policies/explore-agent.md`, `budget-executor.md` SHALL fetch `@sai/policies/executor-agent.md`, and `budget-subagent.md` SHALL fetch `@sai/policies/budget-agent.md`. The wrappers SHALL use the Fetch mechanism rather than a native harness import and SHALL not duplicate the canonical behavior body.
+Each generic agent source of both harnesses SHALL retain its managed frontmatter and SHALL have a body beginning with its harness-specific fetch-skill bootstrap followed by exactly one established Fetch directive: under `agents/opencode/`, `explore.md` SHALL fetch `@sai/policies/explore-agent.md`, `executor.md` SHALL fetch `@sai/policies/executor-agent.md`, and `budget.md` SHALL fetch `@sai/policies/budget-agent.md`; under `agents/claude/`, `budget-explorer.md` SHALL fetch `@sai/policies/explore-agent.md`, `budget-executor.md` SHALL fetch `@sai/policies/executor-agent.md`, and `budget-subagent.md` SHALL fetch `@sai/policies/budget-agent.md`. The wrappers SHALL use the Fetch mechanism rather than a native harness import and SHALL not duplicate the canonical behavior body.
 
 #### Scenario: each wrapper resolves its matching policy
 - **WHEN** `agents/opencode/budget.md`, `agents/opencode/executor.md`, `agents/opencode/explore.md`, `agents/claude/budget-subagent.md`, `agents/claude/budget-executor.md`, and `agents/claude/budget-explorer.md` are read
-- **THEN** each has one body Fetch line targeting the policy of its role
-- **AND** the lines use the `Fetch @sai/policies/<name>-agent.md` form
+- **THEN** each has its harness-specific fetch-skill bootstrap as the first body line followed by one body Fetch line targeting the policy of its role
+- **AND** the policy lines use the `Fetch @sai/policies/<name>-agent.md` form
 - **AND** no wrapper uses a native harness import
+
+#### Scenario: generic wrappers bootstrap fetch resolution
+- **WHEN** any managed generic agent source is read after projection
+- **THEN** its body begins with the harness bootstrap and then fetches only the matching canonical `sai/policies/<role>-agent.md` policy
 
 #### Scenario: project-local agent instructions extend the fetched policy
 - **WHEN** the existing `bin/install` setup materializes a user-owned `.opencode/agents/<name>.md` from the managed wrapper and appends project-specific instructions after its Fetch line

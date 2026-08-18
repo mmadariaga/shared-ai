@@ -22,12 +22,16 @@ The installer SHALL define one parameterized worker-binding template and one par
 
 ### Requirement: Materialized worker behavior preserves canonical lifecycle contracts
 
-Each materialized worker agent SHALL preserve its harness-specific frontmatter identity and user-tunable fields while its managed body remains a thin Fetch wrapper for the canonical worker contract. Each materialized binding SHALL preserve the shared two-string invocation envelope, same-worker continuation before bounded replacement reconstruction, closed lifecycle payloads, progress-plan rules, and the harness-specific dispatch primitive. No worker template or generated worker payload SHALL expose continuation identifiers, dispatch metadata, or artifact contents.
+Each materialized worker agent SHALL preserve its harness-specific frontmatter identity and user-tunable fields while its managed body begins with the harness-specific fetch-skill bootstrap and remains a thin Fetch wrapper for the canonical worker contract. Each materialized binding SHALL preserve the shared two-string invocation envelope, same-worker continuation before bounded replacement reconstruction, closed lifecycle payloads, progress-plan rules, and the harness-specific dispatch primitive. No worker template or generated worker payload SHALL expose continuation identifiers, dispatch metadata, or artifact contents.
 
 #### Scenario: Thin agent wrappers resolve the canonical contract
 
 - **WHEN** a managed worker agent is inspected after matrix materialization
-- **THEN** it has exactly one harness-valid frontmatter block and its managed body fetches exactly the canonical phase worker contract without duplicating the contract text or leaving a placeholder
+- **THEN** it has exactly one harness-valid frontmatter block, its managed body begins with the harness fetch bootstrap, and it fetches exactly the canonical phase worker contract without duplicating the contract text or leaving a placeholder
+
+#### Scenario: worker matrix renders the harness bootstrap
+- **WHEN** the worker matrix materializes a managed worker for either supported harness
+- **THEN** the generated body begins with that harness's fetch bootstrap and then fetches exactly the canonical worker contract
 
 #### Scenario: Worker continuation and replacement remain bounded
 

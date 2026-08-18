@@ -7,7 +7,7 @@ TBD - created by syncing change claude-budget-agent-model-tunables. Update Purpo
 
 ### Requirement: Managed Claude generic agent sources
 
-The repository SHALL provide managed Claude generic agent sources at `agents/claude/budget-explorer.md`, `agents/claude/budget-executor.md`, and `agents/claude/budget-subagent.md`, mirroring the three opencode roles. Each file SHALL declare a `name` matching its basename, a role description, and tunable `model` and `effort` frontmatter lines. The shipped seed values SHALL be `model: haiku` and `effort: low`; because the customization catalog's `haiku` entry carries no efforts array, the seed effort is the shipped constant, preserved and hand-editable under the tunable-seed lifecycle. The `budget-explorer` source SHALL additionally declare a capability that reproduces the read-only profile — no file writes, read and search tools only — so the harness enforces the explorer's read-only guarantee instead of prose. The body of each source SHALL consist of exactly one established Fetch directive — the exactly-one-Fetch rule constrains the body, never the frontmatter — targeting the corresponding neutral behavior policy: `budget-explorer.md` SHALL fetch `@sai/policies/explore-agent.md`, `budget-executor.md` SHALL fetch `@sai/policies/executor-agent.md`, and `budget-subagent.md` SHALL fetch `@sai/policies/budget-agent.md`. The sources SHALL NOT contain hardcoded model tiers, per-spawn model parameters, or harness-specific registration.
+The repository SHALL provide managed Claude generic agent sources at `agents/claude/budget-explorer.md`, `agents/claude/budget-executor.md`, and `agents/claude/budget-subagent.md`, mirroring the three opencode roles. Each file SHALL declare a `name` matching its basename, a role description, and tunable `model` and `effort` frontmatter lines. The shipped seed values SHALL be `model: haiku` and `effort: low`; because the customization catalog's `haiku` entry carries no efforts array, the seed effort is the shipped constant, preserved and hand-editable under the tunable-seed lifecycle. The `budget-explorer` source SHALL additionally declare a capability that reproduces the read-only profile — no file writes, read and search tools only, plus `Skill` to execute its fetch bootstrap — so the harness enforces the explorer's read-only guarantee instead of prose. The body of each source SHALL begin with `Fetch @skills/fetch/SKILL.md` followed by exactly one established Fetch directive targeting the corresponding neutral behavior policy: `budget-explorer.md` SHALL fetch `@sai/policies/explore-agent.md`, `budget-executor.md` SHALL fetch `@sai/policies/executor-agent.md`, and `budget-subagent.md` SHALL fetch `@sai/policies/budget-agent.md`. The sources SHALL NOT contain hardcoded model tiers, per-spawn model parameters, or harness-specific registration.
 
 #### Scenario: three Claude generic agent sources exist
 
@@ -23,8 +23,12 @@ The repository SHALL provide managed Claude generic agent sources at `agents/cla
 #### Scenario: each Claude source fetches its matching policy
 
 - **WHEN** the bodies of `agents/claude/budget-explorer.md`, `agents/claude/budget-executor.md`, and `agents/claude/budget-subagent.md` are read
-- **THEN** each body is exactly one Fetch line targeting the policy of the corresponding role (`explore-agent`, `executor-agent`, or `budget-agent`)
+- **THEN** each body begins with `Fetch @skills/fetch/SKILL.md` and then contains one Fetch line targeting the policy of the corresponding role (`explore-agent`, `executor-agent`, or `budget-agent`)
 - **AND** no body duplicates the policy content
+
+#### Scenario: budget explorer loads the fetch skill
+- **WHEN** the Claude Code `budget-explorer` agent starts and processes its first body directive
+- **THEN** its declared tool set includes `Skill` and it can load the fetch skill before its explorer policy
 
 ### Requirement: Claude generic agent projections are tunable-seed managed
 
