@@ -28,8 +28,8 @@ test('GLOSSARY.md Progress Plan definition is declared by the phase adapter, nev
   const definition = progressPlanDefinition();
 
   assert.doesNotMatch(definition, /transported through dispatch/i);
-  assert.match(definition, /declared by the phase adapter/i);
-  assert.match(definition, /invocation-scoped state/i);
+  assert.match(definition, /declared by a \*\*Phase Adapter\*\*/i);
+  assert.match(definition, /active adapter segment|invocation-scoped state/i);
   assert.match(definition, /never carried in the dispatch envelope/i);
 });
 

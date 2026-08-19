@@ -102,6 +102,8 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0109 — R change-type entry is a single move entry, never a delete-plus-add pair](./0109-r-change-type-single-move-entry.md) — Refs 0108
 - [0115 — Three-part dispatch-routing condition (RED block, Step Contract, AND production surface)](./0115-three-part-dispatch-routing-condition.md) — Supersedes 0071
 - [0145 — Routed coordinators receive panel tools with non-blocking runtime degradation](./0145-routed-coordinators-receive-panel-tools-with-non-blocking-runtime-degradation.md) — Refs 0117, Refs 0144
+- [0148 — Keep the three-file apply layout; redefine normative homes](./0148-keep-three-file-apply-layout-redefine-normative-homes.md) — Refs 0083
+- [0149 — Parameterized terminal_navigation binds two actions; no phase fork](./0149-parameterized-terminal-navigation-two-actions.md) — Refs 0083, Refs 0148
 
 ### `/sai-5-review`
 
@@ -240,6 +242,9 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0141 — Use one shared launcher card per in-scope command](./0141-use-one-shared-launcher-card-per-in-scope-command.md)
 - [0142 — Add near-empty launchers as extension points](./0142-add-near-empty-launchers-as-extension-points.md)
 - [0143 — Load the boot adapter before the launcher](./0143-load-the-boot-adapter-before-the-launcher.md)
+- [0147 — Three-rule composition delta lives only in command-runner.md Result Loop](./0147-three-rule-composition-delta-in-command-runner.md) — Refs 0083, Refs 0081
+- [0150 — Recovery pool is segment-scoped under composition](./0150-recovery-pool-segment-scoped-under-composition.md) — **Amends** 0139, Refs 0147
+- [0151 — Composition constructs successor envelopes directly (no boot adapter)](./0151-composition-constructs-successor-envelopes-directly.md) — Refs 0136, Refs 0075, Refs 0147
 
 ---
 
@@ -258,6 +263,9 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0137 — Change Overview preserves the generation lifecycle and write boundary](./0137-change-overview-preserves-generation-lifecycle-and-write-boundary.md)
 - [0139 — Use a presence-only policy for bounded worker recovery](./0139-presence-only-bounded-recovery-policy.md)
 - [0140 — Supervised rounds invoke the Review Engine in-session](./0140-supervised-rounds-invoke-review-engine-in-session.md) — Refs ddr:0137
+- [0147 — Three-rule composition delta lives only in command-runner.md Result Loop](./0147-three-rule-composition-delta-in-command-runner.md) — Refs 0083, Refs 0081
+- [0150 — Recovery pool is segment-scoped under composition](./0150-recovery-pool-segment-scoped-under-composition.md) — **Amends** 0139, Refs 0147
+- [0151 — Composition constructs successor envelopes directly (no boot adapter)](./0151-composition-constructs-successor-envelopes-directly.md) — Refs 0136, Refs 0075, Refs 0147
 
 ### Fetch resolution & path conventions
 
@@ -329,6 +337,8 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0050 — Respect each harness's native argument-surface convention for `--fast-track`](./0050-respect-harness-native-argument-surface.md)
 - [0051 — Model `--fast-track` as ephemeral in-conversation state only](./0051-ephemeral-in-conversation-fast-track-state.md) — Refs 0040
 - [0059 — The fast-track branch auto-stay rule lives in `apply.md`, not in the `implement.md` Prerequisites template](./0059-fast-track-auto-stay-branch-rule-in-apply.md) — Pair with 0052
+- [0148 — Keep the three-file apply layout; redefine normative homes](./0148-keep-three-file-apply-layout-redefine-normative-homes.md) — Refs 0083
+- [0149 — Parameterized terminal_navigation binds two actions; no phase fork](./0149-parameterized-terminal-navigation-two-actions.md) — Refs 0083, Refs 0148
 
 ### Commit authorization, staging & message rules
 
@@ -354,6 +364,11 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0089 — Share one routed SAI coordinator profile across planning phases](./0089-shared-sai-coordinator-profile.md) — Refs 0083, Refs 0074, Refs 0078
 - [0099 — Terminal routing failure and explicit fresh dispatch](./0099-terminal-routing-failure-and-explicit-fresh-dispatch.md) — Refs 0075, Refs 0076, Refs 0086
 - [0105 — Two-stage verification for the audit-derived-step append](./0105-two-stage-audit-append-verification.md) — Refs ddr:0021, Refs 0087
+- [0147 — Three-rule composition delta lives only in command-runner.md Result Loop](./0147-three-rule-composition-delta-in-command-runner.md) — Refs 0083, Refs 0081
+- [0148 — Keep the three-file apply layout; redefine normative homes](./0148-keep-three-file-apply-layout-redefine-normative-homes.md) — Refs 0083
+- [0149 — Parameterized terminal_navigation binds two actions; no phase fork](./0149-parameterized-terminal-navigation-two-actions.md) — Refs 0083, Refs 0148
+- [0150 — Recovery pool is segment-scoped under composition](./0150-recovery-pool-segment-scoped-under-composition.md) — **Amends** 0139, Refs 0147
+- [0151 — Composition constructs successor envelopes directly (no boot adapter)](./0151-composition-constructs-successor-envelopes-directly.md) — Refs 0136, Refs 0075, Refs 0147
 
 ### Testability routing & RED → GREEN
 
@@ -442,6 +457,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 | [0146](./0146-command-owned-files-live-in-their-consuming-command-directory.md) | supersedes | [0003](./0003-fetch-path-convention-commands-sai.md) |
 | [0146](./0146-crystallization-close-selector-replaces-the-pipeline-token.md) | reverses | [0053](../ddr/0053-post-crystallization-review-once-per-turn.md) |
 | [0146](./0146-crystallization-close-selector-replaces-the-pipeline-token.md) | reverses | [0058](./0058-gate-ux-tweaks-as-deltas-against-existing-capabilities.md) |
+| [0150](./0150-recovery-pool-segment-scoped-under-composition.md) | amends | [0139](./0139-presence-only-bounded-recovery-policy.md) |
 
 ## Superseded ADRs (historical)
 
