@@ -74,8 +74,8 @@ static, ordered `progress_plan` declaration and the optional static
 - `extension_handlers`
 - `replacement_reconstruction_fields`
 - `terminal_navigation`
-- `progress_plan` (optional — static, ordered, fully known at dispatch, immutable for the invocation)
-- `recovery_policy` (optional — static boolean, fully known at dispatch, immutable for the invocation)
+- `progress_plan` (optional — static, ordered, fully known at dispatch, immutable for the active adapter segment; under composition the pre-delta phrase "immutable for the invocation" means immutable for the active adapter segment, and a one-adapter invocation keeps segment scope identical to today's invocation scope)
+- `recovery_policy` (optional — static boolean, fully known at dispatch, immutable for the active adapter segment under the same segment reading as `progress_plan`)
 
 The dispatch passes exactly `wrapper_echo_value` and `arguments_value`; the
 progress plan is declared by the phase adapter, is never carried in the
@@ -86,13 +86,100 @@ state.
 Terminal behavior is supplied by `terminal_navigation`. The coordinator never
 reads artifacts, resolves phase data, or invents phase-specific payload fields.
 
+## Chained phase composition
+
+The shared coordinator contract permits one invocation to execute an ordered
+sequence of phase adapters without introducing a new orchestration file and
+without relocating this file. Composition obeys exactly three rules:
+
+1. **Ordered multi-adapter invocation** — A single supervising invocation MAY
+   declare an ordered sequence of phase adapters as an indexable list and SHALL
+   execute them strictly in list order through this Result Loop. The composition
+   retains a zero-based position into that list. Activating a segment SHALL
+   rebind that segment's adapter fields (including that segment's `progress_plan`
+   and `recovery_policy` when declared). When the active segment declares
+   `recovery_policy: true`, the shared runner SHALL create one segment-scoped
+   recovery pool of exactly three attempts that is immutable for that segment and
+   is discarded when the segment ends; a later segment that also declares
+   `recovery_policy: true` receives a fresh three-attempt pool and SHALL NOT
+   inherit a depleted budget from an earlier segment. The invocation-scoped
+   changed-files union initialized by this runner SHALL continue across segment
+   activations in first-seen order and SHALL NOT reset at a transition.
+   Intra-segment multi-dispatch behavior a phase already owns (for example apply's
+   per-dispatch plan selection) remains phase-owned inside the active segment and
+   is not a second composition axis.
+
+2. **Non-final terminal navigation resolves to transition** — When a non-final
+   phase adapter (position `i` where `i + 1` is still in range) reaches an
+   adapter-authorized successful phase completion, its `terminal_navigation`
+   SHALL resolve to the composition's authorized transition rather than to that
+   phase's standalone pinned completion literal or run-ending stop. The
+   authorized transition SHALL name exactly the successor at position `i + 1` and
+   that successor's `original_envelope` values the composition authorizes for the
+   next segment (including any composition-injected session signals such as
+   apply's fast-track boolean). The shared contract SHALL activate only that
+   consecutive successor with that envelope. It SHALL NOT infer the next phase
+   from worker summary text, artifact contents, `changed_files` text, or
+   undeclared side channels, and SHALL NOT skip ahead to a later list entry. Only
+   the final adapter's `terminal_navigation` (or the sole adapter in a
+   one-adapter invocation) SHALL emit the user-facing invocation-closing
+   completion presentation on a successful run. `failed`, `cancelled`, malformed
+   worker terminal payloads, and malformed transitions SHALL close the
+   supervising invocation without advancing.
+
+3. **Chained Isolation Mode does not reset supervisor state** — Entering a
+   chained phase adapter's Isolation Mode preamble SHALL isolate that phase's
+   worker-facing input as the phase already requires and SHALL NOT clear
+   supervisor session state retained by the supervising invocation (including the
+   resolved change identity, composition position, invocation-scoped
+   changed-files union, and other supervisor-owned session signals the
+   composition carries). Worker isolation and supervisor continuity remain
+   distinct.
+
+A transition is malformed when it omits the successor identity, names any adapter
+other than position `i + 1`, omits an envelope field the successor adapter's
+contract requires for dispatch, or duplicates a segment already completed in this
+invocation. Handoff of supervisor-retained state is by continuity of the
+supervising invocation — not by copying artifact bodies into the transition. The
+composition constructs each successor's `original_envelope` directly; it does not
+invoke a harness boot adapter or wrapper to produce that envelope. For a chained
+apply segment the composition-authorized envelope SHALL carry exactly:
+`command_name` set to the apply command identity for shape compatibility with the
+apply adapter's existing four-field envelope type (it is not a routing or
+card-selection input on the chained path — the composition already selected the
+apply adapter), `wrapper_echo_value` set to the empty string (matching the
+established opaque-echo convention used by supervised chained design dispatch and
+other composition-built envelopes; consumers SHALL NOT parse or reinterpret it),
+`arguments_value` set to the already-resolved change name, and
+`continuation_reference` absent or empty at segment start. Worker dispatch inside
+the apply segment continues to use the runner's two-string worker envelope
+(`wrapper_echo_value`, `arguments_value`) as today. Apply's normalized fast-track
+boolean and other supervisor-retained session signals are set by the composition
+as session state for that segment and are not required to appear as additional
+envelope keys. The historical apply boot-envelope versus worker-dispatch-envelope
+seam remains for standalone wrapper boots and is not reopened as a redesign
+target by this delta.
+
+The three rules are a delta on the existing shared contract. They do not
+authorize explore-supervisor semantics (selector gates, chat-scoped autonomy, or
+explore's inline item-10 transition) as the default composition pattern. A
+composition with a single phase adapter retains today's one-phase behavior
+unchanged. Do not edit baseline `openspec/specs/orchestration-core/spec.md` in
+this change — the change delta under
+`openspec/changes/chainable-apply-phase-adapter/specs/orchestration-core/spec.md`
+is the sole authored composition/spec source until archive/sync.
+
 ## Bounded Recovery
 
 The shared runner owns the bounded same-worker recovery pool. When the phase
 adapter declares the optional static `recovery_policy: true`, the runner
-creates one invocation-scoped pool of exactly three attempts, immutable for the
-invocation. The fixed recovery acknowledgement `continue_after_recovery` is
-runner-owned and is not an additional phase-adapter field.
+creates one segment-scoped pool of exactly three attempts, immutable for the
+active adapter segment and discarded when the segment ends. Under composition, a
+later segment that also declares `recovery_policy: true` receives a fresh
+three-attempt pool and does not inherit a depleted budget. A one-adapter
+invocation keeps segment scope identical to today's invocation scope. The fixed
+recovery acknowledgement `continue_after_recovery` is runner-owned and is not an
+additional phase-adapter field.
 
 1. Validate every resolved failed outcome against the worker class vocabulary
    — `blocking-contradiction`, `validation-failed`, `generation-error`,

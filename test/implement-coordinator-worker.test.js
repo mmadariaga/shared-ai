@@ -799,3 +799,19 @@ test('Step 2: the implementation coordinator renders task-list stamps coordinato
   assert.doesNotMatch(coordinator, /date \+%H:%M|Get-Date/,
     'per-harness wall-clock commands no longer live in the coordinator body');
 });
+
+test('composition delta does not alter one-adapter implement path and forbids successor inference from worker text', () => {
+  const runner = artifact('sai/orchestration/command-runner.md');
+  assert.match(runner, /single phase adapter[\s\S]{0,200}(?:unchanged|one-phase)|one-adapter[\s\S]{0,200}(?:unchanged|identical)/i,
+    'one-adapter path must stay observationally unchanged');
+  assert.match(runner, /(?:shall not|must not|never)[\s\S]{0,120}infer[\s\S]{0,120}(?:next phase|successor)[\s\S]{0,200}(?:summary|artifact|changed_files)/i,
+    'successor must never be inferred from worker summary, artifacts, or changed_files text');
+  assert.match(runner, /wrapper_echo_value[\s\S]{0,120}empty string|empty string[\s\S]{0,120}wrapper_echo_value/i,
+    'chained apply envelope must use empty wrapper_echo_value');
+  assert.match(runner, /arguments_value[\s\S]{0,160}(?:resolved change name|already-resolved)/i,
+    'chained apply envelope must carry the resolved change name in arguments_value');
+  assert.match(runner, /(?:does not|shall not|must not)[\s\S]{0,120}(?:harness boot|boot adapter)|without[\s\S]{0,80}(?:harness boot|boot adapter)/i,
+    'composition must construct the envelope without a harness boot adapter');
+  assert.match(runner, /(?:not|never)[\s\S]{0,120}(?:card[- ]selection|routing)[\s\S]{0,120}command_name|command_name[\s\S]{0,160}(?:not|never)[\s\S]{0,120}(?:card[- ]selection|routing)/i,
+    'command_name on the chained path is shape compatibility only, not card selection');
+});

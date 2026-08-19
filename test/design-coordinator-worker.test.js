@@ -879,7 +879,27 @@ test('Step 2: progress_plan is an optional static ordered adapter field, fully k
   assert.match(coordinator, /static[\s\S]{0,200}(?:ordered|order)|(?:ordered|order)[\s\S]{0,200}progress_plan|progress_plan[\s\S]{0,200}(?:static|ordered)/i,
     'progress_plan should be static and ordered');
   assert.match(coordinator, /(?:fully known|known) at dispatch[\s\S]{0,160}progress_plan|progress_plan[\s\S]{0,240}(?:immutable|never changes|fixed at dispatch)/i,
-    'progress_plan should be fully known at dispatch and immutable for the invocation');
+    'progress_plan should be fully known at dispatch and immutable for the invocation or active adapter segment');
+  assert.match(coordinator, /immutable[\s\S]{0,80}(?:invocation|active adapter segment)/i,
+    'progress_plan immutability accepts invocation or active-adapter-segment scope');
+});
+
+test('chained phase composition: consecutive-only activation, malformed close, isolation continuity, final-only terminal', () => {
+  const runner = artifact('sai/orchestration/command-runner.md');
+  assert.match(runner, /ordered[\s\S]{0,80}(?:sequence|list)[\s\S]{0,80}phase adapter/i,
+    'composition must declare ordered multi-adapter execution');
+  assert.match(runner, /(?:only|exactly)[\s\S]{0,80}(?:successor|adapter)[\s\S]{0,80}i\s*\+\s*1|position `?i\s*\+\s*1`?/i,
+    'only the consecutive successor at i+1 may activate');
+  assert.match(runner, /malformed[\s\S]{0,200}(?:close|without advancing)|without advancing/i,
+    'malformed transitions and failed/cancelled outcomes close without advancing');
+  assert.match(runner, /Isolation Mode[\s\S]{0,200}(?:shall not|must not|does not)[\s\S]{0,120}(?:clear|reset)[\s\S]{0,120}supervisor/i,
+    'chained Isolation Mode must preserve supervisor state');
+  assert.match(runner, /(?:final|sole)[\s\S]{0,120}terminal_navigation|only the final adapter/i,
+    'only the final (or sole) adapter emits the closing terminal');
+  assert.match(runner, /single phase adapter[\s\S]{0,160}(?:unchanged|one-phase)|one-adapter[\s\S]{0,160}(?:unchanged|identical)/i,
+    'single-phase invocation must remain unchanged');
+  assert.match(runner, /progress_plan[\s\S]{0,240}(?:active adapter segment|immutable for the active)/i,
+    'progress_plan immutability is per active adapter segment under composition');
 });
 
 test('Step 2: a progress event reporting an undeclared step id is ignored; the plan is never extended or amended', () => {

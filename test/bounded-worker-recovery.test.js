@@ -99,3 +99,17 @@ test('verified recovery commits current overview state and preserves incomplete-
   assert.match(worker, /(?:failure class|failure_class)[\s\S]{0,220}(?:attempts spent|attempt ordinal|attempts)[\s\S]{0,220}(?:stopping reason|reason for stopping)/i,
     'incomplete recovery should report class, attempts spent, and stopping reason');
 });
+
+test('composition scopes the recovery pool per adapter segment and keeps the changed-files union across transitions', () => {
+  const runner = artifact('sai/orchestration/command-runner.md');
+  assert.match(runner, /segment-scoped|active adapter segment/i,
+    'recovery pool must be segment-scoped under composition');
+  assert.match(runner, /fresh[\s\S]{0,80}three[- ]attempt|fresh[\s\S]{0,80}pool/i,
+    'a later recovery_policy: true segment must receive a fresh three-attempt pool');
+  assert.match(runner, /(?:shall not|must not|does not|never)[\s\S]{0,120}inherit[\s\S]{0,120}(?:depleted|exhausted|remaining)/i,
+    'a later segment must not inherit a depleted budget');
+  assert.match(runner, /changed[-_ ]files[\s\S]{0,200}(?:across|span)[\s\S]{0,120}(?:transition|segment)/i,
+    'the changed-files union must continue across segment transitions');
+  assert.match(runner, /(?:shall not|must not|never)[\s\S]{0,80}reset[\s\S]{0,80}(?:at a )?transition/i,
+    'the union must not reset at a transition');
+});
