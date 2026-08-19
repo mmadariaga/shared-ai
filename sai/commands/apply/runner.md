@@ -22,7 +22,21 @@ A progress event is the closed shape `{event: progress, emitted_on: string, step
 
 ## Coordinator Checklist Execution
 
-The coordinator runs the Step's Verification Checklist after every dispatch returns, then sweeps the exact per-change scratch path, then compares — the ordering is checklist → scratch cleanup → comparison, and the same ordering holds before any redispatch. After each coordinator-owned run of the Step's Verification Checklist, the coordinator SHALL sweep exactly `.tmp/{change-name}/` again before the final path comparison or any subsequent dispatch. Clean, STOP, failure, or crash returns all trigger the sweep. When a sweep removes one or more paths, emit one trace line in the form `> Scratch cleanup: removed <paths>`; when only the per-change directory is removed, the line SHALL be exactly `> Scratch cleanup: removed .tmp/{change-name}/`; when both the per-change directory and its newly created empty parent are removed, the line SHALL be exactly `> Scratch cleanup: removed .tmp/{change-name}/, .tmp/`. An empty sweep emits no message. Scratch paths removed by the ordered sweep SHALL be excluded from observed changed paths, the plan cross-check, the `Subagent <-> git` comparison, the field-8 add-list, and line-count totals; every non-scratch path remains subject to the existing comparison and scope-drift rules. Scratch cleanup MUST NOT broaden recovery eligibility or authorize removal of another unexpected path; an unrelated out-of-scope path keeps its existing recovery or human-intervention handling.
+The coordinator runs the Step's Verification Checklist after every dispatch
+returns, then sweeps the exact per-change scratch path per coordinator
+§ Coordinator-Owned Scratch Cleanup (sole normative home for sweep rules and
+exact non-empty trace forms), then compares — the ordering is checklist →
+scratch cleanup → comparison, and the same ordering holds before any redispatch.
+After each coordinator-owned run of the Step's Verification Checklist, the
+coordinator SHALL sweep exactly `.tmp/{change-name}/` again before the final path
+comparison or any subsequent dispatch. Clean, STOP, failure, or crash returns all
+trigger the sweep. Scratch paths removed by the ordered sweep SHALL be excluded
+from observed changed paths, the plan cross-check, the `Subagent <-> git`
+comparison, the field-8 add-list, and line-count totals; every non-scratch path
+remains subject to the existing comparison and scope-drift rules. Scratch cleanup
+MUST NOT broaden recovery eligibility or authorize removal of another unexpected
+path; an unrelated out-of-scope path keeps its existing recovery or
+human-intervention handling.
 
 ## Dispatch-Kind Report Table
 

@@ -82,7 +82,7 @@ test('Step 2 the apply coordinator adapter declares the full phase-adapter field
   assert.match(coordinator, /recovery_policy\s*:\s*true/,
     'specs/apply-routed-card-set/spec.md: the apply adapter should declare recovery_policy: true');
   assert.match(coordinator, /recovery_policy[\s\S]{0,220}immutable|immutable[\s\S]{0,220}recovery_policy/i,
-    'specs/apply-routed-card-set/spec.md: recovery_policy should be immutable for the invocation');
+    'specs/apply-routed-card-set/spec.md: recovery_policy should be immutable (segment-scoped under composition)');
 });
 
 test('Step 2 the coordinator is fetched through the routed coordinator path, not a utility body card', () => {
@@ -473,10 +473,13 @@ test('Step 2 every dispatch, continuation, and checklist run is followed by scra
   const coordinator = artifact(APPLY_CARDS.coordinator);
   const runner = artifact(APPLY_CARDS.runner);
   const combined = `${coordinator}\n${runner}`;
-  assert.match(combined, /> Scratch cleanup: removed \.tmp\/\{change-name\}\//,
-    'specs/apply-coordinator-verification/spec.md: the per-change cleanup trace must be pinned');
-  assert.match(combined, /> Scratch cleanup: removed \.tmp\/\{change-name\}\/,[ \t]*\.tmp\//,
-    'specs/apply-coordinator-verification/spec.md: the parent cleanup trace must end with ", .tmp/"');
+  // Exact non-empty trace forms live solely on the coordinator.
+  assert.match(coordinator, /> Scratch cleanup: removed \.tmp\/\{change-name\}\//,
+    'specs/apply-coordinator-verification/spec.md: the per-change cleanup trace must be pinned on the coordinator');
+  assert.match(coordinator, /> Scratch cleanup: removed \.tmp\/\{change-name\}\/,[ \t]*\.tmp\//,
+    'specs/apply-coordinator-verification/spec.md: the parent cleanup trace must end with ", .tmp/" on the coordinator');
+  assert.doesNotMatch(runner, /> Scratch cleanup: removed \.tmp\/\{change-name\}\//,
+    'specs/apply-coordinator-verification/spec.md: runner must not restate the exact per-change trace form');
   assert.match(combined, /every dispatch|each dispatch|after each dispatch/i,
     'specs/apply-coordinator-verification/spec.md: cleanup must follow every dispatch');
   assert.match(combined, /continuation/i,
@@ -535,14 +538,49 @@ test('Step 2 full completion emits exactly the pinned completion literal; fast t
   const runner = artifact(APPLY_CARDS.runner);
   const invocation = artifact(APPLY_CARDS.invocation);
   const combined = `${coordinator}\n${runner}\n${invocation}`;
-  assert.match(combined, /Implementation applied\. Run `\/sai-5-review \{name\}` in a new chat when ready\./,
-    'specs/apply-routed-card-set/spec.md: the full successful completion literal must be pinned');
-  assert.match(combined, /> FAST-TRACK MODE ACTIVE/,
+  assert.match(invocation, /Implementation applied\. Run `\/sai-5-review \{name\}` in a new chat when ready\./,
+    'specs/apply-routed-card-set/spec.md: the full successful completion literal must be pinned on invocation Completion');
+  assert.match(invocation, /> FAST-TRACK MODE ACTIVE/,
     'specs/apply-routed-card-set/spec.md: the fast-track banner must be emitted exactly once');
   assert.match(combined, /exactly once|once per run|once/i,
     'specs/apply-routed-card-set/spec.md: the banner must not repeat');
   assert.match(combined, /safe[- ]operations/i,
     'specs/apply-routed-card-set/spec.md: fast track must not bypass safe-operations confirmations');
+});
+
+test('routing STOP has one normative home on the runner Step Routing Tree', () => {
+  const runner = artifact(APPLY_CARDS.runner);
+  const coordinator = artifact(APPLY_CARDS.coordinator);
+  assert.match(runner, /Step Routing Tree/,
+    'runner must own the Step Routing Tree heading');
+  assert.match(runner, /RED block present[\s\S]{0,200}STOP|STOP before any dispatch/i,
+    'runner must carry the RED-without-contract STOP rule');
+  // Coordinator may reference the runner home but must not keep a second full five-shape tree
+  // with equal STOP authority. If coordinator still mentions STOP, it must point at runner.
+  if (/STOP before any dispatch/i.test(coordinator)) {
+    assert.match(coordinator, /runner\.md|Step Routing Tree/i,
+      'any coordinator STOP mention must reference the runner normative home');
+  }
+});
+
+test('chained activation skips shell prereq/picker/fast-track parse but keeps Completion binding', () => {
+  const invocation = artifact(APPLY_CARDS.invocation);
+  assert.match(invocation, /Chained activation|chained segment/i,
+    'invocation must document the chained activation path');
+  assert.match(invocation, /(?:does not|do not|skip)[\s\S]{0,120}(?:Prerequisite|change-picker|Fast-track parse)/i,
+    'chained path must skip shell prereq/picker/fast-track parse');
+  assert.match(invocation, /## Completion/,
+    'Completion section remains for the standalone completion action binding');
+});
+
+test('terminal_navigation is parameterized for sole/final completion vs non-final transition', () => {
+  const coordinator = artifact(APPLY_CARDS.coordinator);
+  assert.match(coordinator, /terminal_navigation/,
+    'coordinator declares terminal_navigation');
+  assert.match(coordinator, /non-final|parameterized/i,
+    'terminal_navigation must be parameterized for non-final transition');
+  assert.match(coordinator, /Implementation applied\. Run `\/sai-5-review \{name\}` in a new chat when ready\.|standalone completion/i,
+    'sole/final path still binds the shell completion action');
 });
 
 // ─── specs/apply-boot-rerouting/spec.md — boot adapters ─────────────────────

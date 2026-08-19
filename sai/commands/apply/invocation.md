@@ -19,17 +19,22 @@
   ## Fast-track parse
   Before proceeding, inspect `$ARGUMENTS` for the positional token `--fast-track`:
   - If the token is present anywhere in `$ARGUMENTS`:
-    1. Set the in-conversation fast-track signal to active.
+    1. Set the normalized boolean session signal (fast-track signal) to active.
     2. Remove the `--fast-track` token from `$ARGUMENTS` and trim surrounding whitespace.
     3. Print the exact line `> FAST-TRACK MODE ACTIVE` exactly once per run as ordinary conversation text (do not write it to any file); the banner never repeats within the run.
     4. Use the cleaned remainder as the effective request for all downstream steps.
   - If the token is absent:
-    1. Leave the fast-track signal inactive.
+    1. Leave the normalized boolean session signal (fast-track signal) inactive.
     2. Use `$ARGUMENTS` verbatim.
 
   After the change-picker resolves a change name, if the resolved value still contains `--fast-track`:
   1. Remove the token and trim surrounding whitespace.
   2. Use the cleaned remainder as the effective change name for all downstream steps.
+
+  This section is the sole authority that detects `--fast-track`, removes the token
+  from the argument stream before picker/dispatch, and sets the normalized boolean
+  session signal on the standalone path. Do not move detect/remove/set into the
+  coordinator or runner.
 
   ## Load behaviors (in order)
   Fetch @skills/budget/SKILL.md and use it
@@ -46,6 +51,9 @@
   - **Reset:** the flag is inactive at the start of every new chat or new `/sai-*` invocation (Isolation Mode clears inherited context). It is NEVER written to `.openspec.yaml`, config, or any file on disk.
   - **Scope boundary:** the grant covers `git add` + `git commit` at exactly the two commit-authorization gates of an apply run — the per-Step STOP & COMMIT gate and the terminal documentation commit gate — and covers nothing else. It does NOT authorize `push`, `--force`, branch create/switch, rebase, merge, tag, or `gh pr`; those operations still require their own per-operation approval regardless of the flag. The grant does NOT bypass the GREEN-conflict STOP or the apply Human Verification gate; those still halt the workflow regardless of the flag.
 
+  Phase-owned fast-track behaviors read only the normalized boolean session signal
+  and SHALL NOT re-parse wrapper arguments for `--fast-track`.
+
   ## Fast-track branch auto-stay
   This behavior is triggered at apply time when the running plan reaches the implementation.md **Prerequisites branch-selection prompt** — the three-option closed choice authored in `sai/commands/implement/implementation-plan.template.md:16-18` (`Suggest branch "{feature-name}"`, `Stay on current branch "{current-branch}"`, `Enter branch name manually`). The rule lives here on the apply side rather than in the plan template because the fast-track signal is resolvable only at apply time; naming the template trigger keeps that cross-file coupling explicit (see `docs/adr/0059-fast-track-auto-stay-branch-rule-in-apply.md`).
 
@@ -56,6 +64,9 @@
 
   The branch-base sub-prompt needs no separate handling: it is surfaced only for new branches and is already skipped whenever option 2 is chosen (`sai/commands/implement/implementation-plan.template.md:20-23`). This auto-selection is a git no-op and opts out of the branch prompt only — every other gate stays in force (safe-operations confirmations, the commit-authorization gate's pre-commit file visibility report and proposed message, and the GREEN-conflict STOP). See `openspec/specs/sai-fast-track-flag/spec.md` for the exact behavior, announcement string, and scope guarantees.
 
+  Phase-owned fast-track behaviors read only the normalized boolean session signal
+  and SHALL NOT re-parse wrapper arguments for `--fast-track`.
+
   ## Load instructions (in order)
   Fetch @sai/policies/sai-learnings-format.md
   Fetch @sai/commands/apply/runner.md and follow those instructions exactly.
@@ -63,6 +74,17 @@
 
   ## Run
   **User's request:** $ARGUMENTS
+
+  ## Chained activation (composition path)
+
+  When apply is activated as a chained segment, the supervising composition already
+  holds the resolved change name and sets the normalized fast-track boolean
+  explicitly true|false. Chained activation loads (1) the coordinator phase-adapter
+  declaration, (2) the phase-owned runner body, and (3) this file's `## Completion`
+  section only for the shell-owned standalone completion action binding. It does not
+  enter Prerequisite checks, change-picker resolution, or Fast-track parse.
+  Entry is composition segment activation with the composition-built envelope and
+  session signals — not a harness boot or wrapper re-entry.
 
   ## Completion
   "Done" means ALL of the following, together — a single Step finishing (or its commit landing) is NOT completion:
@@ -74,10 +96,15 @@
 
   If any Step remains unchecked, your work is NOT complete: do not print the completion message, do not mention `/sai-5-review`, and do not end — dispatch the next unchecked Step instead.
 
-  ## Scratch cleanup contract
-  After every dispatch, continuation, and coordinator-owned checklist run, sweep the exact per-change scratch path before comparison or redispatch. When a sweep removes one or more paths, emit one trace line in the form `> Scratch cleanup: removed <paths>`. When only the per-change directory is removed, the line SHALL be exactly `> Scratch cleanup: removed .tmp/{change-name}/`; when both the per-change directory and its newly created empty parent are removed, the line SHALL be exactly `> Scratch cleanup: removed .tmp/{change-name}/, .tmp/`. An empty sweep emits no message.
+  This section is the sole authority for the standalone completion action. "Done" requires every Step checked, human verification reviewed, and all commits done (including the fast-track deferred human-check rules above).
 
   MANDATORY STOP: Only once all the conditions above hold, your work is COMPLETE, STOP and print exactly: "Implementation applied. Run `/sai-5-review {name}` in a new chat when ready."
+
+  ## Scratch cleanup (non-normative)
+
+  Scratch sweep and exact non-empty trace forms are owned solely by
+  `sai/commands/apply/coordinator.md` § Coordinator-Owned Scratch Cleanup.
+  This shell card does not redefine those traces.
 </TASK>
 
 Follow instruction on <TASK> step by step

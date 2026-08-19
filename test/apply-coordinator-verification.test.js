@@ -78,12 +78,14 @@ test('Step 2 the coordinator surface sweeps scratch after every dispatch and che
 test('Step 2 scratch cleanup has the exact pinned trace lines and no empty-sweep trace', () => {
   const coordinator = artifact(APPLY_CARDS.coordinator);
   const runner = artifact(APPLY_CARDS.runner);
-  const combined = `${coordinator}\n${runner}`;
-  assert.match(combined, /> Scratch cleanup: removed \.tmp\/\{change-name\}\//,
-    'specs/apply-coordinator-verification/spec.md: the per-change trace line must be pinned');
-  assert.match(combined, /> Scratch cleanup: removed \.tmp\/\{change-name\}\/,[ \t]*\.tmp\//,
-    'specs/apply-coordinator-verification/spec.md: the parent trace line must end with ", .tmp/"');
-  assert.match(combined, /empty sweep[\s\S]{0,180}(?:emits nothing|no output|no message)|(?:emits nothing|no output|no message)[\s\S]{0,180}empty sweep/i,
+  // Exact non-empty trace forms are sole-homed on the coordinator.
+  assert.match(coordinator, /> Scratch cleanup: removed \.tmp\/\{change-name\}\//,
+    'specs/apply-coordinator-verification/spec.md: the per-change trace line must be pinned on the coordinator');
+  assert.match(coordinator, /> Scratch cleanup: removed \.tmp\/\{change-name\}\/,[ \t]*\.tmp\//,
+    'specs/apply-coordinator-verification/spec.md: the parent trace line must end with ", .tmp/" on the coordinator');
+  assert.doesNotMatch(runner, /> Scratch cleanup: removed \.tmp\/\{change-name\}\//,
+    'specs/apply-coordinator-verification/spec.md: runner must not equal-authority restate the exact per-change trace');
+  assert.match(coordinator, /empty sweep[\s\S]{0,180}(?:emits nothing|no output|no message)|(?:emits nothing|no output|no message)[\s\S]{0,180}empty sweep/i,
     'specs/apply-coordinator-verification/spec.md: an empty sweep must emit no trace line');
 });
 
