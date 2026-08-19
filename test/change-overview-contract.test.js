@@ -385,6 +385,46 @@ test('installation projects the shared change-overview instruction through the r
     'the former instructions/change-overview.md destination should be retired');
 });
 
+// ─── overview-generator-contract-transport ───────────────────────────────
+// RED phase: these assertions fail against the pre-edit production surfaces.
+// The GREEN versions (with the full assertion suite) are authored in Step 2.
+
+test('RED: worker.md transports the contract by Fetch and names both harness bindings', () => {
+  const worker = artifact('sai/commands/design/worker.md');
+  assert.match(worker, /Fetch @sai\/commands\/design\/change-overview\.md/,
+    'worker.md should instruct the subagent to Fetch @sai/commands/design/change-overview.md');
+  assert.match(worker, /Agent\(subagent_type: budget-subagent\)/,
+    'worker.md should name the Claude Code budget-subagent binding');
+  assert.match(worker, /task\(subagent_type: budget\)/,
+    'worker.md should name the opencode budget binding');
+});
+
+test('RED: worker.md contract-load failure route is parent-authored generation-error', () => {
+  const worker = artifact('sai/commands/design/worker.md');
+  assert.match(worker, /generation-error/,
+    'worker.md should classify contract-load failure as generation-error');
+  assert.match(worker, /validation: not-performed/,
+    'the parent-authored route should use validation: not-performed');
+  assert.doesNotMatch(worker, /dispatch-failed[\s\S]{0,220}contract-load failure/,
+    'contract-load failure must not use failure_kind: dispatch-failed');
+});
+
+test('RED: schema change-overview instruction is a non-empty informative reference only', () => {
+  const schema = artifact('openspec/schemas/sai-workflow/schema.yaml');
+  const overviewInstruction = schema.slice(
+    schema.indexOf('id: change-overview'),
+    schema.indexOf('id: implementation'),
+  );
+  assert.match(overviewInstruction, /sai\/commands\/design\/change-overview\.md/,
+    'instruction should name the command-owned contract path');
+  assert.doesNotMatch(overviewInstruction, /sai\/change-overview\.md/,
+    'instruction must not name the retired sai/change-overview.md path');
+  for (const forbidden of ['Target State', 'Requirements', 'Scenarios', 'Interfaces', 'Assertions', 'File Changes', 'Delivery Steps', 'Traceability']) {
+    assert.doesNotMatch(overviewInstruction, new RegExp(forbidden),
+      `instruction must not enumerate ${forbidden} as required content`);
+  }
+});
+
 // ─── Step 4: Continue-triggered overview generation in the design coordinator ─
 
 test('Continue triggers the worker-owned generation after the gate closes', () => {
