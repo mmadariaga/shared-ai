@@ -228,6 +228,8 @@ artifacts:
       generator result envelope, and failure-handling — Fetch and follow
       sai/commands/design/change-overview.md exactly. This instruction is an informative reference
       only; it does not restate the generation contract.
+      The closed generator result contains exactly these five fields: status, changed_files,
+      validation, failure_details, and failure_kind.
     requires: [interfaces]
 
   - id: implementation

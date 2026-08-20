@@ -767,3 +767,117 @@ test('manual navigation and worker-owned Phase Review Passes remain distinct', (
   assert.match(source, /Phase Review Pass/i);
   assert.match(source, /worker[- ]owned/i);
 });
+
+test('Step 1: artifact feedback gate declares an explicit interactive or supervised mode', () => {
+  const gate = fs.readFileSync(
+    path.join(repoRoot, 'sai/policies/artifact-feedback-gate.md'),
+    'utf8'
+  );
+
+  assert.match(gate, /`mode`[\s\S]{0,180}optional|optional[\s\S]{0,180}`mode`/i);
+  assert.match(gate, /interactive/);
+  assert.match(gate, /supervised/);
+  assert.match(gate, /(?:omitted|missing)[\s\S]{0,140}interactive|default(?:s|ing)?[\s\S]{0,100}interactive/i);
+  assert.match(gate, /invalid[\s\S]{0,180}(?:non-empty[\s\S]{0,80})?mode[\s\S]{0,180}STOP|mode[\s\S]{0,180}invalid[\s\S]{0,180}STOP/i);
+  assert.match(
+    gate,
+    /(?:must not|never|do not)[\s\S]{0,180}(?:detect|infer|derive)[\s\S]{0,180}(?:invocation[- ]context|caller|conversation)[\s\S]{0,180}mode/i
+  );
+});
+
+test('Step 1: supervised mode auto-proceeds without the interactive feedback surfaces', () => {
+  const gate = fs.readFileSync(
+    path.join(repoRoot, 'sai/policies/artifact-feedback-gate.md'),
+    'utf8'
+  );
+
+  assert.match(gate, /supervised[\s\S]{0,320}(?:auto[- ]proceed|automatically)[\s\S]{0,220}`?next-action`?/i);
+  assert.match(gate, /supervised[\s\S]{0,420}`?next-action`?[\s\S]{0,180}(?:exactly once|once)/i);
+  assert.match(gate, /supervised[\s\S]{0,420}(?:does not|never|no)[\s\S]{0,100}(?:present|emit)[\s\S]{0,100}(?:picker|free-text)/i);
+  assert.match(gate, /supervised[\s\S]{0,520}(?:does not|never|no)[\s\S]{0,100}(?:increment|change)[\s\S]{0,100}iteration/i);
+  assert.match(gate, /supervised[\s\S]{0,520}(?:does not|never|must not)[\s\S]{0,120}(?:write|modify)[\s\S]{0,100}`?\.openspec\.yaml`?/i);
+  assert.match(gate, /failed[\s\S]{0,220}(?:or|and)[\s\S]{0,80}cancelled[\s\S]{0,220}(?:never|not|no)[\s\S]{0,180}(?:auto[- ]proceed|next-action)/i);
+});
+
+test('Step 1: supervised placement follows the decision summary and reports follow proceed', () => {
+  const gate = fs.readFileSync(
+    path.join(repoRoot, 'sai/policies/artifact-feedback-gate.md'),
+    'utf8'
+  );
+
+  assert.match(gate, /supervised[\s\S]{0,420}(?:after|following)[\s\S]{0,120}decision summary/i);
+  assert.match(gate, /(?:after|following)[\s\S]{0,120}(?:proceed|`?next-action`?)[\s\S]{0,260}(?:report|reporting|summary)/i);
+});
+
+test('Step 1: interactive mode keeps Give feedback Recommended before proceed', () => {
+  const gate = fs.readFileSync(
+    path.join(repoRoot, 'sai/policies/artifact-feedback-gate.md'),
+    'utf8'
+  );
+  const feedback = gate.indexOf('Give feedback (Recommended)');
+  const proceed = gate.indexOf('proceed-label');
+
+  assert.match(gate, /interactive[\s\S]{0,320}Give feedback \(Recommended\)[\s\S]{0,240}proceed/i);
+  assert.ok(feedback >= 0, 'interactive feedback option should be present');
+  assert.ok(proceed >= 0, 'proceed option should be present');
+  assert.ok(feedback < proceed, 'interactive feedback should precede proceed');
+});
+
+test('Step 2: the supervised spec artifact gate binds mode, Finish, and the phase transition', () => {
+  const source = spec('sai/commands/explore/instructions.md');
+  const specArtifacts = source.match(/proposal\.md[\s\S]{0,1800}specs\/\*\*/i);
+
+  assert.ok(specArtifacts, 'the supervised spec artifact gate should retain proposal.md and specs/**');
+  const specGate = source.slice(
+    Math.max(0, specArtifacts.index - 700),
+    Math.min(source.length, specArtifacts.index + specArtifacts[0].length + 700)
+  );
+  assert.match(
+    specGate,
+    /mode\s*(?:=|:)\s*[`"']?supervised[`"']?/i,
+    'the supervised spec artifact gate should explicitly supply mode = supervised'
+  );
+  assert.match(specGate, /Finish/i,
+    'the supervised spec gate should use Finish as its proceed label');
+  assert.match(specGate, /next-action[\s\S]{0,160}phase-transition|phase-transition[\s\S]{0,160}next-action/i,
+    'the supervised spec gate should use the phase-transition next-action');
+});
+
+test('Step 2: the supervised design artifact gate binds mode, Continue, and overview generation', () => {
+  const source = spec('sai/commands/explore/instructions.md');
+  const designArtifacts = source.match(/design\.md[\s\S]{0,1200}tasks\.md[\s\S]{0,1200}interfaces\.md/i);
+
+  assert.ok(designArtifacts, 'the supervised design artifact gate should retain design.md, tasks.md, and interfaces.md');
+  const designGate = source.slice(
+    Math.max(0, designArtifacts.index - 700),
+    Math.min(source.length, designArtifacts.index + designArtifacts[0].length + 700)
+  );
+  assert.match(
+    designGate,
+    /mode\s*(?:=|:)\s*[`"']?supervised[`"']?/i,
+    'the supervised design artifact gate should explicitly supply mode = supervised'
+  );
+  assert.match(designGate, /Continue/i,
+    'the supervised design gate should use Continue as its proceed label');
+  assert.match(designGate, /next-action[\s\S]{0,180}(?:overview-generation|supervised-terminal)|(?:overview-generation|supervised-terminal)[\s\S]{0,180}next-action/i,
+    'the supervised design gate should use the overview-generation/supervised-terminal next-action');
+});
+
+test('Step 2: post-proceed report ordering remains after supervised gates without active-supervision interval stage enumeration', () => {
+  const source = spec('sai/commands/explore/instructions.md');
+  const gate = source.match(
+    /(?:proposal\.md[\s\S]{0,500}specs\/\*\*[\s\S]{0,700}(?:Finish|phase-transition)[\s\S]{0,300}(?:phase-transition|Finish)|design\.md[\s\S]{0,350}tasks\.md[\s\S]{0,350}interfaces\.md[\s\S]{0,900}(?:Continue|overview-generation|supervised-terminal)[\s\S]{0,300}(?:overview-generation|supervised-terminal|Continue))/i
+  );
+
+  assert.ok(gate, 'a supervised artifact gate should exist before post-proceed reporting');
+  const afterGate = source.slice(gate.index + gate[0].length);
+  assert.match(afterGate, /Auto-answered:[\s\S]{0,220}Escalated:/i,
+    'post-proceed reporting should retain Auto-answered before Escalated');
+  assert.match(afterGate, /Q:[\s\S]{0,160}A:[\s\S]{0,160}Grounding:/i,
+    'post-proceed reporting should retain question, answer, and grounding order');
+  assert.doesNotMatch(
+    source,
+    /active[- ]supervision\s+interval[\s\S]{0,360}(?:stage|step)[\s\S]{0,180}(?:enumerat|\b1\.[\s\S]{0,80}\b2\.)/i,
+    'the supervised contract must not add interval stage-enumeration prose'
+  );
+});

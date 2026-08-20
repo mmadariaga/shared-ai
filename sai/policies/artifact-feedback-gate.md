@@ -2,15 +2,19 @@
 
 Shared completion-phase gate fetched by `sai/commands/spec/coordinator.md`, `sai/commands/design/coordinator.md`, and — at **Auto** dispatch — by `sai-explore`'s supervised pipeline (`sai/commands/explore/instructions.md` item 10). It offers an in-context review loop over the artifacts a step just wrote, then hands control to the step's proceed action. The gate logic lives ONLY here — neither body file restates it inline.
 
+Interactive mode, including an omitted `mode`, preserves the existing choice order: `Give feedback (Recommended)` first, followed by `proceed-label`.
+
 ## Parameters (supplied inline by the fetching body)
 
-The fetching body MUST supply all three at the fetch site:
+The fetching body MUST supply all three required parameters at the fetch site:
 
 - `artifacts` — the list of artifact names/globs written in this step, open to feedback.
 - `proceed-label` — the full-word label for the proceed option (e.g. `Finish step`, `Continue`).
-- `next-action` — the action to perform when the user selects the proceed option.
+- `next-action` — the action to perform when the user selects the proceed option, or when supervised mode auto-proceeds.
 
-If any parameter is missing, STOP and ask for it — do not assume a default (Isolation Mode: "if required information is missing, ask for it").
+The fetching body MAY also supply the optional `mode` parameter. Its closed vocabulary is exactly `interactive` or `supervised`. When `mode` is omitted, the gate MUST behave as `interactive`; this omitted-mode default is the only exception to the missing-parameter STOP rule. When an invalid non-empty `mode` value other than `interactive` or `supervised` is supplied, STOP and ask for a valid `mode` — do not silently default it to `interactive`, and do not auto-proceed.
+
+If any required parameter is missing, STOP and ask for it — do not assume a default (Isolation Mode: "if required information is missing, ask for it"). The gate MUST NOT detect invocation context at runtime to choose a mode: mode is selected only by the supplied parameter, never by the caller, phase, harness, available channel, or any other runtime context.
 
 ## Not an approval gate
 
@@ -40,13 +44,21 @@ The gate tracks the feedback-option iteration with a single integer counter held
 
 Accepted changes remain worker-owned and may be written only by that worker to `proposal.md` or `specs/**` in the selected change directory. Explore and the supervised rounds remain read-only. Preserve every round-local finding occurrence and the worker's accepted or specifically reasoned discarded feedback disposition; do not infer cross-round finding identity or suppress repeated findings.
 
-Machine processing is not a feedback-option selection: it emits neither the picker nor the empty-turn prompt, does not consume a user feedback turn, does not increment the in-conversation iteration counter, and does not execute `proceed-label`/`next-action`. An empty findings array is a no-op. Per-item continuations remain part of the current review round and never increment the round counter.
+When `mode` is `interactive` or omitted (and therefore interactive), machine processing is not a feedback-option selection: it emits neither the picker nor the empty-turn prompt, does not consume a user feedback turn, does not increment the in-conversation iteration counter, and does not execute `proceed-label`/`next-action`. An empty findings array is a no-op. Per-item continuations remain part of the current review round and never increment the round counter.
+
+When `mode` is `supervised`, machine processing likewise emits neither the picker nor the empty-turn prompt, does not consume a user feedback turn, does not offer or accept the direct free-text path, and does not increment the in-conversation iteration counter. It SHALL execute the supplied `next-action` only through the supervised sequencing rule below, and only on a live path whose result is neither `failed` nor `cancelled`.
 
 If finding processing returns `needs_input`, the supervising coordinator must present the exact question and ordered options to the user, then continue the same worker with only the selected answer. Complete all findings for the current round before supervision evaluates whether another review round is required.
 
-Defer the ordinary user-facing gate while another review round is required. Present that gate for the first time, unchanged at iteration 0, only after the review round converges, exhausts its one-round cap, or is interrupted by worker failure. Its first ordered labels remain `Give feedback (Recommended)` followed by `proceed-label` (for sai-1, `Finish step`).
+Defer the ordinary user-facing gate while another review round is required. When `mode` is `interactive` or omitted, **Present that gate for the first time, unchanged at iteration 0, only after the review loop converges, exhausts its three-round cap, or is interrupted by worker failure.** Its first ordered labels remain `Give feedback (Recommended)` followed by `proceed-label` (for sai-1, `Finish step`). When `mode` is `supervised`, keep the gate deferred through the same review-round resolution, then apply the supervised sequencing rule instead of presenting the ordinary gate; a failed or cancelled result never advances by that rule.
 
-## Present the gate
+## Present the gate (interactive mode)
+
+The following presentation applies only when `mode` is `interactive` or omitted (omitted mode defaults to interactive). In supervised mode, do not present the option-picker or this user-facing gate; follow [Supervised mode is a sequencing auto-proceed, not gate removal](#supervised-mode-is-a-sequencing-auto-proceed-not-gate-removal) instead.
+
+### Interactive mode (`mode = interactive` or omitted)
+
+The interactive gate keeps the existing picker mapping and ordering: `Give feedback (Recommended)` is emitted before `proceed-label` on iteration 0 (`Finish step` for sai-1 and `Continue` for sai-2), with the exact labels and descriptions below.
 
 Present exactly two choices through the harness's native option-picker per the "Closed-choice prompts" rule in `sai/policies/remember.md`. The question text is:
 
@@ -60,7 +72,9 @@ The question text, feedback option description, proceed option label, proceed op
 
 2. **`proceed-label`** — the step-specific proceed option.
 
-## On a direct free-text reply
+## On a direct free-text reply (interactive mode)
+
+This section applies only when `mode` is `interactive` or omitted (omitted mode defaults to interactive). In `mode = supervised`, do not emit a free-text channel advertisement, do not accept a direct free-text reply, and do not process feedback through this path.
 
 A non-empty reply supplied through the harness-provided free-text channel that selects neither declared option is potential feedback, not an option selection. Pass that text directly to `## On "Give feedback"` below and apply the existing per-item split, legitimacy judgment, artifact-only edits, discard reporting, summary recomputation, iteration increment, and gate re-offer behavior; directly, no additional clean feedback-text prompt is emitted for this direct free-text path.
 
@@ -99,6 +113,18 @@ Apply feedback **selectively per item** — never as an all-or-nothing turn:
 
 Repeat this loop until the user selects the proceed option.
 
-## On proceed (`proceed-label`)
+## On proceed (`proceed-label`) (interactive mode)
 
-Stop the loop and perform `next-action` exactly once.
+When `mode` is `interactive` or omitted (omitted mode defaults to interactive), stop the loop. Stop the loop and perform `next-action` exactly once. Preserve the existing fetch-site-specific proceed behavior and use the supplied `next-action`.
+
+When `mode = supervised`, do not wait for a user selection and do not execute this interactive branch; follow the supervised sequencing rule below.
+
+## Supervised mode is a sequencing auto-proceed, not gate removal
+
+When `mode = supervised` and the deferred-gate condition resolves (review-round convergence, one-round cap exhaustion, or an empty findings array), the gate remains after the existing decision summary and applies the following sequence:
+
+1. Require the `next-action` supplied by the current fetching body. Execute that supplied action exactly once — do not substitute a standalone coordinator action, infer a different action, or execute it again.
+2. Do not present the option-picker, feedback option, proceed option, empty-turn prompt, or direct free-text channel. Do not accept a free-text reply and do not increment the in-conversation iteration counter; it remains 0 for the supervised run.
+3. Do not ask for approval and do not write approval state or any other value to `.openspec.yaml`. This remains a sequencing action, not an approval gate.
+4. Auto-proceed only on a live phase path whose result is neither `failed` nor `cancelled`. A `failed` or `cancelled` result SHALL never auto-proceed and SHALL NOT execute `next-action`; it SHALL stop the supervised path without advancing to the next phase or creating an advance path around that result.
+5. Preserve the fetching body's existing report order: the decision summary remains first, the supplied `next-action` runs next, and any existing post-proceed report is emitted after that action. The gate MUST NOT move a post-proceed report before auto-proceed and MUST NOT add suppression chatter of its own.

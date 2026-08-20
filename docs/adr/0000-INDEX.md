@@ -22,6 +22,9 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0144 — The three planning-phase coordinators drop the scoped `Bash(date:*)` entry](./0144-planning-coordinators-drop-the-scoped-date-shell-entry.md) — Supersedes 0117, Refs 0118, Refs ddr:0141
 - [0145 — Routed coordinators receive panel tools with non-blocking runtime degradation](./0145-routed-coordinators-receive-panel-tools-with-non-blocking-runtime-degradation.md) — Refs 0117, Refs 0144
 - [0139 — Use fresh read-only reviewers with worker-owned artifact edits](./0139-fresh-read-only-reviewers-with-worker-owned-edits.md) — Refs ddr:0105
+- [0147 — Supervised mode auto-executes next-action exactly once](./0147-supervised-mode-auto-executes-next-action-once.md) — Refs ddr:0150, Refs 0028
+- [0148 — Mode-qualify every user-facing gate surface; leave standalone fetch sites untouched](./0148-mode-qualify-every-user-facing-gate-surface.md) — Refs ddr:0150, Refs 0028, Refs 0147
+- [0150 — Supervised visible reports stay post-proceed (fetching-body order)](./0150-supervised-visible-reports-stay-post-proceed.md) — Refs 0147, Refs ddr:0150
 ### `/sai-2-design`
 
 - [0015 — Decision summary precedes the completion sentinel](./0015-decision-summary-precedes-completion-sentinel.md) — **Amends** ddr:0014
@@ -48,6 +51,9 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0145 — Routed coordinators receive panel tools with non-blocking runtime degradation](./0145-routed-coordinators-receive-panel-tools-with-non-blocking-runtime-degradation.md) — Refs 0117, Refs 0144
 - [0139 — Use fresh read-only reviewers with worker-owned artifact edits](./0139-fresh-read-only-reviewers-with-worker-owned-edits.md) — Refs ddr:0105
 - [0146 — Command-owned files live in their consuming command's directory](./0146-command-owned-files-live-in-their-consuming-command-directory.md) — Supersedes 0003, Refs 0004, Refs 0138, Refs ddr:0123, Refs ddr:0149
+- [0147 — Supervised mode auto-executes next-action exactly once](./0147-supervised-mode-auto-executes-next-action-once.md) — Refs ddr:0150, Refs 0028
+- [0148 — Mode-qualify every user-facing gate surface; leave standalone fetch sites untouched](./0148-mode-qualify-every-user-facing-gate-surface.md) — Refs ddr:0150, Refs 0028, Refs 0147
+- [0150 — Supervised visible reports stay post-proceed (fetching-body order)](./0150-supervised-visible-reports-stay-post-proceed.md) — Refs 0147, Refs ddr:0150
 
 ### `/sai-3-implement`
 
@@ -149,6 +155,10 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0140 — Supervised rounds invoke the Review Engine in-session](./0140-supervised-rounds-invoke-review-engine-in-session.md) — Refs ddr:0137
 - [0145 — Routed coordinators receive panel tools with non-blocking runtime degradation](./0145-routed-coordinators-receive-panel-tools-with-non-blocking-runtime-degradation.md) — Refs 0117, Refs 0144
 - [0146 — A two-option crystallization-close selector replaces the literal `start-pipeline` token](./0146-crystallization-close-selector-replaces-the-pipeline-token.md) — **Reverses** ddr:0053, **Reverses** 0058, Refs 0140
+- [0147 — Supervised mode auto-executes next-action exactly once](./0147-supervised-mode-auto-executes-next-action-once.md) — Refs ddr:0150, Refs 0028
+- [0148 — Mode-qualify every user-facing gate surface; leave standalone fetch sites untouched](./0148-mode-qualify-every-user-facing-gate-surface.md) — Refs ddr:0150, Refs 0028, Refs 0147
+- [0149 — Structural tests co-land with the instruction sources they pin](./0149-structural-tests-co-land-with-instruction-sources.md) — Refs 0070
+- [0150 — Supervised visible reports stay post-proceed (fetching-body order)](./0150-supervised-visible-reports-stay-post-proceed.md) — Refs 0147, Refs ddr:0150
 
 ### `/sai-backfill`
 
@@ -404,6 +414,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0064 — Instruction-file-only Steps are classified non-testable](./0064-instruction-only-steps-classified-non-testable.md)
 - [0070 — Test Command carries the project's parameterised scoping idiom, not a bare suite command](./0070-test-command-carries-parameterised-scoping-idiom.md)
 - [0115 — Three-part dispatch-routing condition (RED block, Step Contract, AND production surface)](./0115-three-part-dispatch-routing-condition.md) — Supersedes 0071
+- [0149 — Structural tests co-land with the instruction sources they pin](./0149-structural-tests-co-land-with-instruction-sources.md) — Refs 0070
 
 ### The `interfaces.md` contract
 
@@ -419,6 +430,9 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0047 — Keep the amendment path distinct from the artifact-feedback-gate](./0047-amendment-path-distinct-from-feedback-gate.md) — Refs 0028
 - [0058 — The explore/feedback gate UX tweaks are expressed as deltas against the existing capabilities, not a new combined capability](./0058-gate-ux-tweaks-as-deltas-against-existing-capabilities.md) — **Reframes** ddr:0053
 - [0090 — Centralize Copilot inline planning lifecycle in one adapter](./0090-centralize-copilot-inline-planning-lifecycle.md) — Refs 0089, Refs 0083, Refs 0078, Refs 0074
+- [0147 — Supervised mode auto-executes next-action exactly once](./0147-supervised-mode-auto-executes-next-action-once.md) — Refs ddr:0150, Refs 0028
+- [0148 — Mode-qualify every user-facing gate surface; leave standalone fetch sites untouched](./0148-mode-qualify-every-user-facing-gate-surface.md) — Refs ddr:0150, Refs 0028, Refs 0147
+- [0150 — Supervised visible reports stay post-proceed (fetching-body order)](./0150-supervised-visible-reports-stay-post-proceed.md) — Refs 0147, Refs ddr:0150
 
 ### Explore crystallization & the review loop
 

@@ -6,9 +6,9 @@ Define routed supervision of the isolated sai-1 spec-proposal worker from `sai-e
 ## Requirements
 ### Requirement: Reuse supervised lifecycle
 
-On Claude Code and opencode, `sai-explore` SHALL act only as the lifecycle coordinator when `Auto` selects one uncompleted change from the latest crystallized set. For a selected change whose spec phase has not yet converged or ended by cap exhaustion in this chat, it SHALL dispatch the existing `sai-1` spec-proposal worker with that change's emitted `Ready to Propose` block as the isolated request envelope; the worker SHALL retain ownership of prerequisites, research, change resolution, `proposal.md`, `specs/**`, decision summaries, consistency checks, feedback edits, and spec-phase completion. For a selected change whose spec phase already reached convergence or cap exhaustion in this chat — its `proposal.md` and `specs/**` were reviewed in-session and the user-facing feedback gate was passed — but whose chained design phase did not complete, a later `Auto` selection SHALL resume at the design phase by re-dispatching the design worker over the existing reviewed spec artifacts, and SHALL NOT re-dispatch the sai-1 spec-proposal worker or regenerate `proposal.md` and `specs/**`, so a design-phase retry never discards reviewed, user-approved spec work.
+On Claude Code and opencode, `sai-explore` SHALL act only as the lifecycle coordinator when `Auto` selects one uncompleted change from the latest crystallized set. For a selected change whose spec phase has not yet converged or ended by cap exhaustion in this chat, it SHALL dispatch the existing `sai-1` spec-proposal worker with that change's emitted `Ready to Propose` block as the isolated request envelope; the worker SHALL retain ownership of prerequisites, research, change resolution, `proposal.md`, `specs/**`, decision summaries, consistency checks, feedback edits, and spec-phase completion. For a selected change whose spec phase already reached convergence or cap exhaustion in this chat — its `proposal.md` and `specs/**` were reviewed in-session and the supervised spec gate auto-proceeded — but whose chained design phase did not complete, a later `Auto` selection SHALL resume at the design phase by re-dispatching the design worker over the existing reviewed spec artifacts, and SHALL NOT re-dispatch the sai-1 spec-proposal worker or regenerate `proposal.md` and `specs/**`, so a design-phase retry never discards reviewed spec work. A design-phase retry SHALL also run under supervised gate mode (no user-facing design gate; auto-Continue to overview generation).
 
-An uncompleted change is a tracked name whose supervised run has not reached supervised completion in this explore chat. Two independent state machines govern the run's ending: the phase's review loop ends by convergence or cap exhaustion, and the phase worker returns its own terminal result (`completed`, `failed`, or `cancelled`) independently of how the review rounds ended. The review-loop ending governs chaining — a spec phase that converged or exhausted its cap chains design, so the spec worker never terminates a run without design being chained — while supervised completion is decided by the design worker's terminal result alone: a design phase that ended by cap exhaustion still proceeds to the user-facing gate, and the design worker's own `completed` result is what marks the change completed. A `failed` or `cancelled` spec or design worker does not reach supervised completion: the change remains uncompleted and retryable by a later `Auto` selection, which resumes at the phase whose worker did not complete, regardless of the review-loop ending. Reviewer failure, reviewer cancellation, and severity-contract violation do not exist as supervised outcomes in the in-session model.
+An uncompleted change is a tracked name whose supervised run has not reached supervised completion in this explore chat. Two independent state machines govern the run's ending: the phase's review loop ends by convergence or cap exhaustion, and the phase worker returns its own terminal result (`completed`, `failed`, or `cancelled`) independently of how the review rounds ended. The review-loop ending governs chaining — a spec phase that converged or exhausted its cap chains design, so the spec worker never terminates a run without design being chained — while supervised completion is decided by the design worker's terminal result alone: a design phase that ended by cap exhaustion still auto-proceeds the supervised design gate to overview generation, and the design worker's own `completed` result is what marks the change completed. A `failed` or `cancelled` spec or design worker does not reach supervised completion: the change remains uncompleted and retryable by a later `Auto` selection, which resumes at the phase whose worker did not complete, regardless of the review-loop ending. Reviewer failure, reviewer cancellation, and severity-contract violation do not exist as supervised outcomes in the in-session model.
 
 #### Scenario: routed harness starts a tracked change whose spec phase has not converged
 - **WHEN** the user selects `Auto` for an uncompleted latest-turn change in a Claude Code or opencode explore chat
@@ -16,9 +16,10 @@ An uncompleted change is a tracked name whose supervised run has not reached sup
 - **AND** the worker receives the emitted crystallized block rather than the surrounding explore conversation
 
 #### Scenario: design-phase retry resumes at design without re-running sai-1
-- **WHEN** a change whose spec phase already converged or ended by cap exhaustion and passed the user-facing gate had its chained design worker return `failed` or `cancelled`, and the user later selects `Auto` for it
+- **WHEN** a change whose spec phase already converged or ended by cap exhaustion and whose supervised spec gate auto-proceeded had its chained design worker return `failed` or `cancelled`, and the user later selects `Auto` for it
 - **THEN** explore re-dispatches the design worker over the existing reviewed spec artifacts
 - **AND** it does not re-dispatch the sai-1 spec-proposal worker or regenerate `proposal.md` and `specs/**`
+- **AND** the design-phase retry runs without presenting the design user gate and auto-Continues to overview generation on convergence or cap exhaustion
 
 #### Scenario: cap-exhausted spec phase continues into design
 - **WHEN** the spec phase ends by cap exhaustion with the worker returning `completed`
@@ -78,3 +79,35 @@ When the supervised spec-proposal worker completes after the in-session review r
 #### Scenario: direct sai-1 retains its terminal line
 - **WHEN** `/sai-1-spec` completes outside explore supervision
 - **THEN** its existing mandatory-stop message remains unchanged
+
+### Requirement: Supervised gate fetch sites supply mode supervised
+
+Before the first dispatch of an Auto run, explore SHALL fetch `sai/policies/artifact-feedback-gate.md` once and use it for both supervised phases. At the two item-10 gate application sites — after the supervised spec review round converges, exhausts its cap, or returns empty findings, and after the supervised design review round converges, exhausts its cap, or returns empty findings — explore SHALL supply `mode = supervised` together with the existing artifacts, proceed-label, and next-action parameters. Those two sites are the only explore-owned suppliers of `mode = supervised`. The standalone fetch sites in `sai/commands/spec/coordinator.md` and `sai/commands/design/coordinator.md` SHALL NOT supply `mode`, retaining the interactive default.
+
+#### Scenario: spec-phase gate site supplies supervised mode
+- **WHEN** a supervised spec review round converges, exhausts its cap, or returns empty findings
+- **THEN** explore applies the shared gate with `mode = supervised`, artifacts `proposal.md, specs/**`, proceed-label `Finish step`, and next-action equal to the spec-to-design phase transition
+- **AND** the gate auto-executes that next-action without presenting the picker
+
+#### Scenario: design-phase gate site supplies supervised mode
+- **WHEN** a supervised design review round converges, exhausts its cap, or returns empty findings
+- **THEN** explore applies the shared gate with `mode = supervised`, artifacts `design.md, tasks.md, interfaces.md`, proceed-label `Continue`, and next-action equal to overview generation plus the supervised design terminal
+- **AND** the gate auto-executes that next-action without presenting the picker
+
+#### Scenario: standalone coordinators stay interactive
+- **WHEN** `/sai-1-spec` or `/sai-2-design` is invoked directly
+- **THEN** the corresponding coordinator fetches the shared gate without supplying `mode`
+- **AND** the gate presents at iteration 0 with `Give feedback (Recommended)` first and the proceed option second
+
+### Requirement: Gate suppression does not weaken force-majeure interruptions
+
+Supervised gate auto-proceed SHALL NOT create any advance path over a phase worker `failed` or `cancelled` result, and SHALL NOT alter the question-autonomy policy. A `needs_input` that fails the confidence threshold or grounding floor SHALL still escalate to the user and interrupt the run. An invalid non-empty `mode` value that causes the shared gate to STOP is an authoring-fault path at the fetch site, distinct from normal supervised runtime interruptions. Explore SHALL remain read-only under Auto supervision: it SHALL NOT create, modify, or delete files, artifacts, or configuration; the only writes remain those the already-authorized phase workers perform within their owned change-directory scope.
+
+#### Scenario: failed worker skips gate and auto-proceed
+- **WHEN** the supervised spec or design worker returns `failed` or `cancelled`
+- **THEN** explore reports the outcome and autonomy audit and neither presents the ordinary gate nor auto-executes next-action
+
+#### Scenario: below-threshold needs_input still escalates
+- **WHEN** a supervised worker returns `needs_input` whose answer is ungrounded or below the confidence threshold
+- **THEN** explore escalates the exact question and options to the user
+- **AND** gate suppression does not answer, swallow, or bypass that escalation

@@ -26,6 +26,8 @@ npx github:mmadariaga/shared-ai setup /path/to/your/project
 
 Step 1 expands `sai/install-manifest.json` and copies the opencode projection to `~/.config/opencode/`. It includes opencode commands, the complete recursively projected `sai/commands/` tree — command cards with command-local `instructions.md` and neighboring `.template.md` files — including the shared overview-generation instruction `sai/commands/design/change-overview.md` and the index templates `sai/commands/implement/adr-index.template.md` and `sai/commands/implement/ddr-index.template.md` — plus `sai/policies/`, the shared Orchestration Core contracts, opencode routed worker bindings, opencode skills, managed worker and generic agent files, and the managed configuration projection. Opencode loads routed workers directly from the neutral installed binding paths; Claude Code receives its own harness-selected routed bindings. Step 2 verifies the openspec CLI, runs `openspec init --tools opencode` if needed, sets `schema: sai-workflow` in `openspec/config.yaml`, and copies the schema templates into the project. `doctor` and `uninstall` use the same manifest projection.
 
+The projection also includes `sai/compat/` alongside `sai/policies/`.
+
 ## Manual installation
 
 | OS | Destination |
