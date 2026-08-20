@@ -339,30 +339,30 @@ For each capability below, merge ADDED/MODIFIED/RENAMED content from
 `openspec/changes/suppress-worker-review-under-supervision/specs/<capability>/spec.md`
 into `openspec/specs/<capability>/spec.md`. Prefer structured merge over free rewrite. Do not modify `review-finding-format` or other out-of-scope capabilities.
 
-- [ ] **`planning-artifact-review-loop`**: Insert ADDED requirements `supervised-marker-suppresses-automatic-loop` and `supervised-flag-prefix-grammar` near the top of Requirements. Replace MODIFIED bodies for `worker-owned-review-pass`, `automatic-loop-caps`, `user-requested-additional-passes`, `the-shared-contract-enumerates-this-surface`, and `coexistence-with-existing-review-surfaces` with the delta text (supervision-conditional automatic loop; caps only on non-suppressed path; coexistence no longer accepts duplication under supervision).
+- [x] **`planning-artifact-review-loop`**: Insert ADDED requirements `supervised-marker-suppresses-automatic-loop` and `supervised-flag-prefix-grammar` near the top of Requirements. Replace MODIFIED bodies for `worker-owned-review-pass`, `automatic-loop-caps`, `user-requested-additional-passes`, `the-shared-contract-enumerates-this-surface`, and `coexistence-with-existing-review-surfaces` with the delta text (supervision-conditional automatic loop; caps only on non-suppressed path; coexistence no longer accepts duplication under supervision).
 
-- [ ] **`supervised-pipeline-forwarding`**: Add `Forward supervised marker on Auto dispatches` from delta. Modify `Preserve chained forwarding` so language-bearing chained design carries `--fast-track`, `--supervised`, and `--overview-lang` together.
+- [x] **`supervised-pipeline-forwarding`**: Add `Forward supervised marker on Auto dispatches` from delta. Modify `Preserve chained forwarding` so language-bearing chained design carries `--fast-track`, `--supervised`, and `--overview-lang` together.
 
-- [ ] **`supervised-review-rounds`**: RENAMED — replace requirement title `one-round-cap-per-phase` with `three-round-cap-per-phase` and body/scenarios from delta (three rounds per phase per Auto attempt; counter reset; sole automatic convergence under supervision). Update related MODIFIED requirements (`round-closes-the-bound`, `cap-exhaustion-applies-last-round-findings`, `worker-failure-ends-cycle`, `manual-loop-counts-are-separate`) to three-round wording. Ensure no current requirement title remains `one-round-cap-per-phase`.
+- [x] **`supervised-review-rounds`**: RENAMED — replace requirement title `one-round-cap-per-phase` with `three-round-cap-per-phase` and body/scenarios from delta (three rounds per phase per Auto attempt; counter reset; sole automatic convergence under supervision). Update related MODIFIED requirements (`round-closes-the-bound`, `cap-exhaustion-applies-last-round-findings`, `worker-failure-ends-cycle`, `manual-loop-counts-are-separate`) to three-round wording. Ensure no current requirement title remains `one-round-cap-per-phase`.
 
-- [ ] **`explore-pipeline-supervision`**: Apply MODIFIED requirements from delta (marker on lifecycle/retry; three-round bounds; no automatic worker-owned reviewer under supervision; Manual injects nothing).
+- [x] **`explore-pipeline-supervision`**: Apply MODIFIED requirements from delta (marker on lifecycle/retry; three-round bounds; no automatic worker-owned reviewer under supervision; Manual injects nothing).
 
-- [ ] **`pipeline-design-phase-chaining`**: Apply MODIFIED design-loop and deferred-gate requirements to three-round extend-while-cap-permits and deferred gate after three-round exhaustion.
+- [x] **`pipeline-design-phase-chaining`**: Apply MODIFIED design-loop and deferred-gate requirements to three-round extend-while-cap-permits and deferred gate after three-round exhaustion.
 
-- [ ] **`supervised-review-reporting`**: Update `cap-exhaustion-one-line-report` so the trigger is three-round exhaustion (report shape unchanged).
+- [x] **`supervised-review-reporting`**: Update `cap-exhaustion-one-line-report` so the trigger is three-round exhaustion (report shape unchanged).
 
-- [ ] **`artifact-feedback-gate`**: Update machine-feedback deferred-gate trigger to three-round exhaustion; leave ownership/labels/counter/interruption unchanged.
+- [x] **`artifact-feedback-gate`**: Update machine-feedback deferred-gate trigger to three-round exhaustion; leave ownership/labels/counter/interruption unchanged.
 
 ##### Step 6 Verification Checklist
 
 **Automated (agent runs before stopping):**
-- [ ] `rg -n "supervised-marker-suppresses-automatic-loop|supervised-flag-prefix-grammar" openspec/specs/planning-artifact-review-loop/spec.md` — both present
-- [ ] `rg -n "Forward supervised marker on Auto dispatches" openspec/specs/supervised-pipeline-forwarding/spec.md` — present
-- [ ] `rg -n "three-round-cap-per-phase" openspec/specs/supervised-review-rounds/spec.md` — present
-- [ ] `rg -n "one-round-cap-per-phase" openspec/specs/supervised-review-rounds/spec.md` — **no** current requirement title (historical mentions in Purpose only if any must not remain as live title)
-- [ ] `rg -n "--supervised|three-round" openspec/specs/explore-pipeline-supervision/spec.md` — marker/three-round lifecycle wording
-- [ ] `rg -n "three-round" openspec/specs/pipeline-design-phase-chaining/spec.md openspec/specs/supervised-review-reporting/spec.md openspec/specs/artifact-feedback-gate/spec.md` — present
-- [ ] Confirm `openspec/specs/review-finding-format/spec.md` untouched (`git diff -- openspec/specs/review-finding-format/spec.md` empty)
+- [x] `rg -n "supervised-marker-suppresses-automatic-loop|supervised-flag-prefix-grammar" openspec/specs/planning-artifact-review-loop/spec.md` — both present
+- [x] `rg -n "Forward supervised marker on Auto dispatches" openspec/specs/supervised-pipeline-forwarding/spec.md` — present
+- [x] `rg -n "three-round-cap-per-phase" openspec/specs/supervised-review-rounds/spec.md` — present
+- [x] `rg -n "one-round-cap-per-phase" openspec/specs/supervised-review-rounds/spec.md` — **no** current requirement title (historical mentions in Purpose only if any must not remain as live title)
+- [x] `rg -n "--supervised|three-round" openspec/specs/explore-pipeline-supervision/spec.md` — marker/three-round lifecycle wording
+- [x] `rg -n "three-round" openspec/specs/pipeline-design-phase-chaining/spec.md openspec/specs/supervised-review-reporting/spec.md openspec/specs/artifact-feedback-gate/spec.md` — present
+- [x] Confirm `openspec/specs/review-finding-format/spec.md` untouched (`git diff -- openspec/specs/review-finding-format/spec.md` empty)
 
 *(No Human checks — service-side step with no observable browser behavior.)*
 
