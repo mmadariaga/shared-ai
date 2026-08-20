@@ -163,6 +163,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0148 — Mode-qualify every user-facing gate surface; leave standalone fetch sites untouched](./0148-mode-qualify-every-user-facing-gate-surface.md) — Refs ddr:0150, Refs 0028, Refs 0147
 - [0149 — Structural tests co-land with the instruction sources they pin](./0149-structural-tests-co-land-with-instruction-sources.md) — Refs 0070
 - [0150 — Supervised visible reports stay post-proceed (fetching-body order)](./0150-supervised-visible-reports-stay-post-proceed.md) — Refs 0147, Refs ddr:0150
+- [0158 — Single shared crystallization-turn close definition consumed by items 5, 6, and 7](./0158-single-shared-crystallization-turn-close.md) — Refs 0146
 
 ### `/sai-backfill`
 
