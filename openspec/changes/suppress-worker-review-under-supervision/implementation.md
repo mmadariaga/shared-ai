@@ -213,13 +213,13 @@ test('design-phase retry carries --supervised and does not re-run sai-1', () => 
 
 *(Service-side / non-UI step — instruction markdown only. No RED/GREEN. Turns Step 3 pins green.)*
 
-- [ ] Edit `sai/commands/explore/instructions.md` item 10 state: extend the `review_rounds` bullet (~line 254) so counters reset per Auto attempt:
+- [x] Edit `sai/commands/explore/instructions.md` item 10 state: extend the `review_rounds` bullet (~line 254) so counters reset per Auto attempt:
 
 ```markdown
 - `review_rounds`: one conversation-only object with separate `spec` and `design` counters for the supervised in-session review rounds; manual-loop reviews (item 9) are separate from supervised rounds and do not count toward either counter. Reset both `review_rounds.spec` and `review_rounds.design` to `0` at the start of each new Auto attempt for the selected change. Rounds from an earlier failed or cancelled attempt do not count against the new three-round bound.
 ```
 
-- [ ] Replace the routed spec supervision envelope (~lines 279–282) with:
+- [x] Replace the routed spec supervision envelope (~lines 279–282) with:
 
 ```yaml
     wrapper_echo_value: ""
@@ -230,7 +230,7 @@ test('design-phase retry carries --supervised and does not re-run sai-1', () => 
 
 And update the prose immediately below so it states: `arguments_value` is the line `--supervised`, a newline, then the complete Ready-to-Propose block; after the spec worker's line-wise flag strip the verbatim request is still that full block; empty wrapper echo is mandatory so echo precedence never discards the body.
 
-- [ ] Replace the in-session supervised review rounds (spec phase) paragraph (~line 305) and step 5–6 wording (~311–313, 319) so that:
+- [x] Replace the in-session supervised review rounds (spec phase) paragraph (~line 305) and step 5–6 wording (~311–313, 319) so that:
   - Cap is **at most three** completed in-session rounds per phase per Auto attempt (not one).
   - Remove any "heavy convergence work already ran inside the worker-owned isolated review loop" / "single in-session cross-check" justification.
   - High findings **extend** while fewer than three rounds have completed; third-round High is non-failure cap exhaustion.
@@ -255,7 +255,7 @@ Replace step 6 trigger language: `one-round cap` → `three-round cap`.
 
 Replace failed-worker retry sentence: `new one-round bound` → `new three-round bound with phase counters reset to zero`.
 
-- [ ] Replace chained design envelopes (~lines 337–347) with:
+- [x] Replace chained design envelopes (~lines 337–347) with:
 
 ```yaml
         wrapper_echo_value: ""
@@ -269,21 +269,21 @@ and language-bearing:
         arguments_value: "{name} --fast-track --supervised --overview-lang {overview_language}"
 ```
 
-- [ ] In **Phase-aware dispatch** design-phase retry prose (~line 275), state explicitly that design-phase retry uses the same design envelope shape including `--supervised` (never omits the marker), resumes design only over existing reviewed `proposal.md`/`specs/**`, and never re-dispatches sai-1 or regenerates proposal/specs that would overwrite accepted corrections.
+- [x] In **Phase-aware dispatch** design-phase retry prose (~line 275), state explicitly that design-phase retry uses the same design envelope shape including `--supervised` (never omits the marker), resumes design only over existing reviewed `proposal.md`/`specs/**`, and never re-dispatches sai-1 or regenerates proposal/specs that would overwrite accepted corrections.
 
-- [ ] Align design-phase in-session rounds (~359–363) to the same three-round extend-while-cap-permits model and remove one-round wording.
+- [x] Align design-phase in-session rounds (~359–363) to the same three-round extend-while-cap-permits model and remove one-round wording.
 
-- [ ] Manual path: confirm Manual still injects no `--supervised`, no `--fast-track`, no `--overview-lang` from the supervised path.
+- [x] Manual path: confirm Manual still injects no `--supervised`, no `--fast-track`, no `--overview-lang` from the supervised path.
 
-- [ ] Re-run Step 3 suite: `node --test test/explore-pipeline-selector.test.js` — Step 3 envelope/retry pins must pass.
+- [x] Re-run Step 3 suite: `node --test test/explore-pipeline-selector.test.js` — Step 3 envelope/retry pins must pass.
 
 ##### Step 4 Verification Checklist
 
 **Automated (agent runs before stopping):**
-- [ ] `node --test test/explore-pipeline-selector.test.js` — Step 3 envelope/retry pins green
-- [ ] `rg -n "heavy convergence|at most one review round|one-round cap" sai/commands/explore/instructions.md` — no live one-round supervised-cap pins remain in item 10
-- [ ] `rg -n "--supervised" sai/commands/explore/instructions.md` — present on spec, chained design, and retry paths
-- [ ] `rg -n "reset.*review_rounds|review_rounds.*reset" sai/commands/explore/instructions.md` — attempt reset documented
+- [x] `node --test test/explore-pipeline-selector.test.js` — Step 3 envelope/retry pins green
+- [x] `rg -n "heavy convergence|at most one review round|one-round cap" sai/commands/explore/instructions.md` — no live one-round supervised-cap pins remain in item 10
+- [x] `rg -n "--supervised" sai/commands/explore/instructions.md` — present on spec, chained design, and retry paths
+- [x] `rg -n "reset.*review_rounds|review_rounds.*reset" sai/commands/explore/instructions.md` — attempt reset documented
 
 *(No Human checks — service-side step with no observable browser behavior.)*
 
