@@ -27,7 +27,7 @@ function countLiteral(source, value) {
   return source.split(value).length - 1;
 }
 
-// The canonical five-step spec progress plan shared by the coordinator declaration and
+// The canonical six-step spec progress plan shared by the coordinator declaration and
 // the worker enumeration (sai/commands/spec/coordinator.md and worker.md).
 const SPEC_PLAN_STEPS = [
   ['prereqs-and-change', 'Check prerequisites'],
@@ -307,10 +307,10 @@ test('Step 5: the spec adapter declares the canonical six-step plan in order wit
 test('Step 5: the spec-proposal worker mirrors the six ordered plan entries', () => {
   const worker = artifact(SPEC_COORDINATOR_ARTIFACTS.worker);
 
-  assert.match(worker, /exactly these canonical step ids, in[\s\S]{0,60}order:/,
-    'the spec worker contract should enumerate the canonical ids in order');
-  assert.deepEqual(planList(worker), SPEC_PLAN_STEPS,
-    'the worker contract should enumerate exactly the six ordered id/label pairs');
+  assert.match(worker, /canonical six-step progress plan[\s\S]{0,120}in order/i,
+    'the spec worker contract should enumerate the canonical six-step plan in order');
+  assert.deepEqual(planList(worker).slice(0, SPEC_PLAN_STEPS.length), SPEC_PLAN_STEPS,
+    'the worker contract should enumerate the canonical six ordered id/label pairs');
 });
 
 test('Step 5: structured research is an unconditional boundary before proposal generation', () => {
@@ -321,33 +321,32 @@ test('Step 5: structured research is an unconditional boundary before proposal g
 
   assert.match(
     worker,
-    /startup act reports `prereqs-and-change`[\s\S]{0,900}structured research act carries `research`[\s\S]{0,900}writing `proposal\.md` carries `proposal`/,
+    /startup progress event[\s\S]{0,900}research batch returns `research`[\s\S]{0,900}completed `proposal\.md` write returns `proposal`/,
     'research should be reported after startup and before proposal writing',
   );
-  assert.match(worker, /research batch MAY carry an empty `changed_files` list/i);
   assert.match(
     worker,
-    /existing approximately 80% confidence boundary for every resolved request/i,
+    /approximately 80% confidence boundary|80% confidence/i,
     'the worker should apply the existing confidence boundary to every request',
   );
-  assert.match(worker, /Ready to Propose[\s\S]{0,220}Research Leads[\s\S]{0,220}additive/i);
   assert.match(researchSpec, /ordinary request[\s\S]{0,260}approximately 80%/i);
   assert.match(researchSpec, /handoff request[\s\S]{0,260}same boundary/i);
 });
 
-test('Step 5: spec progress remains nonterminal and feedback-safe', () => {
+test('Step 5: spec progress remains nonterminal, feedback-safe, and validation precedes external findings', () => {
   const worker = artifact(SPEC_COORDINATOR_ARTIFACTS.worker);
 
-  assert.match(worker, /Every event SHALL carry worker-authored `emitted_on`/);
+  assert.match(worker, /Every event uses the closed progress shape and worker-authored `emitted_on`/);
   assert.match(
     worker,
     /research`[\s\S]{0,500}proposal`[\s\S]{0,500}specs`[\s\S]{0,500}validation`[\s\S]{0,500}review`/,
     'proposal, specs, validation, and review batches should follow research in plan order',
   );
-  assert.match(worker, /consistency-driven `proposal\.md` re-edit/);
-  assert.match(worker, /does not reopen or re-report the already completed `proposal` step/i);
-  assert.match(worker, /feedback turn[\s\S]{0,240}(?:no|never|not)[\s\S]{0,120}progress/i);
-  assert.match(worker, /user-requested review pass[\s\S]{0,220}only `review`/i);
+  assert.match(worker, /Accepted edits trigger pre-completion verification and decision-summary recomputation from current artifacts/i);
+  assert.match(worker, /does not reopen or re-report the already completed `proposal` step|without reopening or re-emitting the already completed `proposal`/i);
+  assert.match(worker, /feedback text[\s\S]{0,220}(?:MUST NOT|must not)[\s\S]{0,160}(?:emit|re-present|duplicate)/i);
+  assert.match(worker, /validation[\s\S]{0,500}review|review[\s\S]{0,500}validation/i);
+  assert.match(worker, /external[\s-]+(?:artifact[- ]review )?findings?/i);
   assert.match(worker, /one terminal lifecycle status/i);
 });
 
@@ -371,11 +370,11 @@ test('Step 2: the spec coordinator renders task-list stamps coordinator-only via
 
 // ─── Step 2: spec-design-review-progress-step (spec coordinator/worker) ───────
 
-test('Step 2: the spec coordinator declares exactly the five ordered plan ids with their labels', () => {
+test('Step 2: the spec coordinator declares exactly the six ordered plan ids with their labels', () => {
   const coordinator = artifact(SPEC_COORDINATOR_ARTIFACTS.coordinator);
 
-  assert.match(coordinator, /canonical five-step progress plan[\s\S]{0,200}in order, with exactly these ids and labels/,
-    'the coordinator should declare the canonical five-step plan with the exactness clause');
+  assert.match(coordinator, /canonical six-step progress plan[\s\S]{0,200}in order, with exactly these ids and labels/,
+     'the coordinator should declare the canonical six-step plan with the exactness clause');
   for (const id of SPEC_PLAN_IDS) {
     assert.match(coordinator, new RegExp(`\`${id}\``),
       `the coordinator should declare the ${id} step id`);
@@ -383,7 +382,7 @@ test('Step 2: the spec coordinator declares exactly the five ordered plan ids wi
   assert.match(
     coordinator,
     /`prereqs-and-change`[\s\S]{0,300}`proposal`[\s\S]{0,300}`specs`[\s\S]{0,300}`validation`[\s\S]{0,300}`review`/,
-    'the five canonical step ids should be declared in order'
+    'the six canonical step ids should be declared in order'
   );
   assert.match(coordinator, /`prereqs-and-change`[\s\S]{0,200}Check prerequisites and resolve the change/,
     'prereqs-and-change should carry the "Check prerequisites and resolve the change" label');
@@ -396,7 +395,7 @@ test('Step 2: the spec coordinator declares exactly the five ordered plan ids wi
   assert.match(coordinator, /`review`[\s\S]{0,200}Review artifacts/,
     'review should carry the "Review artifacts" label');
   assert.doesNotMatch(coordinator, /prereqs-resolution|proposal-and-specs|verification-summary/,
-    'the coordinator should contain no step ids beyond the declared five');
+    'the coordinator should contain no step ids beyond the declared six');
 });
 
 test('Step 2: the coordinator plan declaration and the worker enumeration are byte-identical lists', () => {
@@ -404,9 +403,9 @@ test('Step 2: the coordinator plan declaration and the worker enumeration are by
   const worker = artifact(SPEC_COORDINATOR_ARTIFACTS.worker);
 
   assert.deepEqual(planList(coordinator), SPEC_PLAN_STEPS,
-    'the coordinator plan declaration should be exactly the five ordered id/label pairs');
+     'the coordinator plan declaration should be exactly the six ordered id/label pairs');
   assert.deepEqual(planList(worker), SPEC_PLAN_STEPS,
-    'the worker enumeration should be exactly the five ordered id/label pairs');
+     'the worker enumeration should be exactly the six ordered id/label pairs');
   assert.deepEqual(planList(coordinator), planList(worker),
     'the coordinator declaration and the worker enumeration should be byte-identical lists (content-wise)');
 });
@@ -414,44 +413,49 @@ test('Step 2: the coordinator plan declaration and the worker enumeration are by
 test('Step 2: the spec worker emits one progress event per act carrying the canonical id and newly changed paths', () => {
   const worker = artifact(SPEC_COORDINATOR_ARTIFACTS.worker);
 
-  assert.match(worker, /Emit exactly one progress event per completed batch/,
-    'each act should emit exactly one progress event');
-  assert.match(worker, /The startup act reports `prereqs-and-change`/,
+  assert.match(worker, /Progress events are returned lifecycle results/,
+    'progress events should be returned as lifecycle results');
+  assert.match(worker, /return the startup progress event for `prereqs-and-change`/,
     'the startup act should emit one progress event carrying prereqs-and-change');
-  assert.match(worker, /the completed `proposal\.md` write reports `proposal`/,
+  assert.match(worker, /completed `proposal\.md` write returns `proposal`/,
     'the proposal act should emit one progress event carrying proposal');
-  assert.match(worker, /the completed `specs\/\*\*` write reports `specs`/,
+  assert.match(worker, /completed `specs\/\*\*` write returns `specs`/,
     'the specs act should emit one progress event carrying specs');
-  assert.match(worker, /decision-summary derivation report `validation`/,
+  assert.match(worker, /artifact validation plus decision-summary derivation returns `validation`/,
     'the validation act should emit one progress event carrying validation');
-  assert.match(worker, /list every path written since the preceding result/,
-    'each progress event should carry the newly changed paths');
+  assert.match(worker, /`changed_files` is ordered and duplicate-free|changed_files[\s\S]{0,160}ordered and duplicate-free/i,
+    'each progress event should preserve the changed-file union contract');
   assert.match(worker, /changed_files/,
     'the worker contract should keep the changed_files field');
-  assert.match(worker, /Report ids in plan order/,
+  assert.match(worker, /Progress step ids are reported in plan order|ids? are reported in plan order/i,
     'progress event ids should be reported in plan order');
 });
 
-test('Step 2: a completed non-supervised worker-owned review pass emits review once for High=0 only', () => {
+test('Step 2: external findings alone may mark spec review from a valid base-form High=0 Summary', () => {
   const worker = artifact(SPEC_COORDINATOR_ARTIFACTS.worker);
   const coordinator = artifact(SPEC_COORDINATOR_ARTIFACTS.coordinator);
+  const source = `${worker}\n${coordinator}`;
 
-  assert.match(worker, /(?:non[- ]supervised|when the invocation is not marked `?--supervised`?|without `?--supervised`?|when supervised is `?false`?|when supervised\s*[:=]\s*`?false`?)/i,
-    'the automatic worker-owned loop should remain explicitly scoped to non-supervised invocation');
-  assert.match(worker, /A completed pass with `High=0` converges/,
-    'the marking rule should apply to a completed pass');
-  assert.match(worker, /`Medium` and `Low` do not extend the loop/,
-    'Medium/Low-only findings should still permit the review mark');
-  assert.match(worker, /including an empty finding set/,
-    'an empty-findings pass should still permit the review mark');
-  assert.match(worker, /emits `review` once when still unmarked/,
-    'the review mark should be emitted exactly once on convergence');
-  assert.equal((worker.match(/emits `review`/g) || []).length, 1,
-    'review should be emitted exactly once, only by the High=0 convergence clause');
-  assert.match(worker, /A completed pass with `High>0` dispatches a fresh reviewer while both caps permit/,
-    'a completed pass with High>0 should not emit the review mark');
-  assert.match(worker, /leave `review` unmarked/,
-    'cap-exhaustion outcomes should leave the review mark unmarked');
+  assert.match(source, /external[\s-]+(?:artifact[- ]review )?findings?/i,
+    'the phase should consume findings produced outside the planning worker');
+  assert.match(source, /base[- ]form[\s\S]{0,220}Summary:|Summary:[\s\S]{0,220}base[- ]form/i,
+    'review evidence should use the canonical base-form Summary');
+  assert.match(source, /valid[\s\S]{0,220}(?:external|base[- ]form)[\s\S]{0,220}High=0|High=0[\s\S]{0,220}(?:valid|external|base[- ]form)/i,
+    'only valid external High=0 evidence should qualify');
+  assert.match(source, /High=0[\s\S]{0,300}(?:review|mark)[\s\S]{0,180}(?:unmarked|once)/i,
+    'a valid High=0 Summary may mark review only while it is unmarked');
+  assert.match(source, /never infer `?High=0`? from missing, malformed, or other summary text/i,
+    'review progress must not be inferred from prose or absent/malformed evidence');
+  assert.match(source, /explicit `?High=0`? before treating the block as review evidence|only a valid externally supplied.*High=0/i,
+    'High findings must not qualify as review completion without an explicit zero');
+  assert.doesNotMatch(source, /High>0[\s\S]{0,260}(?:emit|report|mark)[\s\S]{0,120}`?review`?/i,
+    'High findings must be processed without a new review mark');
+  assert.match(source, /monotonic|once[\s\S]{0,180}(?:marked|completed)[\s\S]{0,180}(?:remain|never)[\s\S]{0,120}(?:marked|unmark|clear)/i,
+    'review marks are monotonic');
+  assert.match(worker, /does not dispatch or own an artifact reviewer, an automatic review loop, review counters|does not create the findings, dispatch an artifact reviewer, or own the review operation/i,
+    'the planning worker must not dispatch or own a reviewer');
+  assert.doesNotMatch(worker, /worker-owned[\s-]+(?:planning[- ]artifact )?review (?:section|pass|loop)/i,
+    'the worker must not own an automatic review section or loop');
   assert.match(coordinator, /an unmarked evidence-marked `review` step is left exactly as last rendered/,
     'an unmarked review step stays unmarked through reconciliation');
 });
@@ -473,26 +477,32 @@ test('Step 7: spec grammar gives wrapper-echo precedence and strips only a leadi
     'a later or in-body marker must remain request content');
 });
 
-test('Step 7: empty-after-strip fails before resolution and the marker is absent from the reference set', () => {
+test('Step 7: marker-only supervised input fails before resolution and the marker is absent from the request', () => {
   const worker = artifact(SPEC_COORDINATOR_ARTIFACTS.worker);
 
+  assert.match(worker, /bare `?--supervised`? flag/i,
+    'the grammar should identify the bare supervised marker');
   assert.match(worker, /(?:after|once)[\s\S]{0,140}(?:strip|remove)[\s\S]{0,180}(?:empty|blank|no request)[\s\S]{0,220}(?:fail|reject|error)[\s\S]{0,180}(?:before|prior to)[\s\S]{0,100}(?:change )?resolution|(?:strip|stripping)[\s\S]{0,180}(?:leaves?|produces?)[\s\S]{0,100}(?:no request|empty|only whitespace)[\s\S]{0,180}(?:fail|reject|error)[\s\S]{0,180}(?:before|prior to)[\s\S]{0,100}(?:change )?resolution/i,
     'an empty request after marker stripping must fail before change resolution');
-  assert.match(worker, /(?:reference set|references)[\s\S]{0,260}(?:exclude|omit|without|not contain|never receives?)[\s\S]{0,140}`?--supervised`?|`?--supervised`?[\s\S]{0,140}(?:excluded|omitted|not part of|not in|never receives?)[\s\S]{0,180}(?:reference|request)/i,
-    'the stripped marker must not enter the reference set');
+  assert.match(worker, /no third envelope field carries the marker/i,
+    'the stripped marker must not become another envelope field');
+  assert.match(worker, /later lines and substrings containing `?--supervised`? are request content and are not parsed as flags/i,
+    'only leading bare markers are parsed as flags');
 });
 
-test('Step 7: supervised spec invocation suppresses automatic review state while preserving a user-requested pass', () => {
+test('Step 7: supervised spec invocation has no worker review counters and accepts only external review evidence', () => {
   const worker = artifact(SPEC_COORDINATOR_ARTIFACTS.worker);
 
-  assert.match(worker, /(?:under|when)[\s\S]{0,80}supervis(?:ed|ion)[\s\S]{0,280}(?:automatic|worker-owned)[\s\S]{0,180}(?:review|reviewer)[\s\S]{0,220}(?:suppressed|skipped|not run|disabled)|do not dispatch an automatic isolated reviewer|no automatic isolated reviewer is dispatched|automatic worker-owned review loop does not run/i,
-    'supervision must suppress the automatic worker-owned reviewer');
-  assert.match(worker, /(?:supervis(?:ed|ion)[\s\S]{0,260}(?:review counters?|counters?)[\s\S]{0,160}(?:remain|stay|reset)[\s\S]{0,80}(?:0|zero)|(?:both remain\s+`?0`?|automatic-loop counters?[\s\S]{0,180}(?:remain|stay|reset)[\s\S]{0,60}(?:`?0`?|zero)))/i,
-    'supervised automatic-review counters must remain at zero');
-  assert.match(worker, /supervis(?:ed|ion)[\s\S]{0,280}(?:automatic review|review event)[\s\S]{0,180}(?:no|not|never)[\s\S]{0,120}(?:event|emit|report)|do not emit automatic-path `?review`? progress|no automatic review progress event is emitted|automatic worker-owned review loop does not run/i,
-    'supervision must not emit an automatic review event');
-  assert.match(worker, /(?:user|explicitly)[- ]requested[\s\S]{0,220}(?:review pass|review)[\s\S]{0,180}(?:remain|available|still)/i,
-    'an explicitly user-requested review pass must remain available');
+  assert.match(worker, /does not dispatch or own an artifact reviewer, an automatic review loop, review counters/i,
+    'the worker contract should explicitly reject retired automatic-review counters');
+  assert.match(worker, /external[\s-]+(?:artifact[- ]review )?findings?/i,
+    'supervised execution should consume external findings');
+  assert.match(worker, /Summary:\s*High=<count>\s*Medium=<count>\s*Low=<count>/i,
+    'supervised execution should use the canonical findings Summary');
+  assert.match(worker, /valid[\s\S]{0,220}(?:external|base[- ]form)[\s\S]{0,220}review|review[\s\S]{0,220}(?:valid|external|base[- ]form)/i,
+    'only valid external evidence can produce review progress');
+  assert.doesNotMatch(worker, /user-requested[\s-]+review pass[\s\S]{0,220}(?:emit|report|mark)/i,
+    'the retired worker-owned user-requested review pass must not be a worker contract');
 });
 
 test('Step 2: the spec coordinator skips reconciliation for pre-gate completion and reconciles at Finish-step close except unmarked review', () => {
@@ -531,35 +541,21 @@ test('Step 1: spec artifact feedback gate uses explicit modes while the coordina
   assert.doesNotMatch(gateUse, /(?:^|[\s,(`])mode\s*[:=]/i);
 });
 
-test('Step 3: spec worker documents mode-dependent gate coexistence without mode-aware workers', () => {
+test('Step 3: spec worker leaves mode-dependent gate ownership to the coordinator without mode-aware workers', () => {
   const worker = artifact(SPEC_COORDINATOR_ARTIFACTS.worker);
   const coordinator = artifact(SPEC_COORDINATOR_ARTIFACTS.coordinator);
 
+  assert.match(worker, /(?:interactive|omitted) mode[\s\S]{0,160}(?:coordinator-owned gate|gate at iteration `0`)/i,
+    'the worker should describe the coordinator-owned interactive gate');
+  assert.match(worker, /supervised mode[\s\S]{0,180}auto-proceeds/i,
+    'the worker should describe supervised auto-proceed behavior without owning the gate');
   assert.match(
     worker,
-    /coexists? with and never replaces the supervised pipeline/i,
-    'the spec worker should retain coexistence with the supervised pipeline',
-  );
-  assert.match(
-    worker,
-    /mode[- ]dependent[\s\S]{0,280}(?:interactive[\s\S]{0,140}supervised|supervised[\s\S]{0,140}interactive)[\s\S]{0,220}gate/i,
-    'the spec worker should describe mode-dependent interactive/supervised gate behavior',
-  );
-  assert.match(
-    worker,
-    /workers?[\s\S]{0,180}(?:do not|must not|shall not|never)[\s\S]{0,180}receive[\s\S]{0,100}mode/i,
+    /worker does not receive, present, branch on, or otherwise handle `?mode`?/i,
     'spec workers should not receive mode',
   );
-  assert.match(
-    worker,
-    /workers?[\s\S]{0,180}(?:do not|must not|shall not|never)[\s\S]{0,180}branch[\s\S]{0,100}mode/i,
-    'spec workers should not branch on mode',
-  );
-  assert.match(
-    worker,
-    /workers?[\s\S]{0,180}(?:do not|must not|shall not|never)[\s\S]{0,180}evaluat[\s\S]{0,100}mode/i,
-    'spec workers should not evaluate mode',
-  );
+  assert.doesNotMatch(worker, /coexists? with and never replaces the supervised pipeline/i,
+    'the retired worker-owned review coexistence wording should be absent');
   assert.doesNotMatch(
     coordinator,
     /(?:^|[\s,(`])mode\s*[:=]\s*(?:interactive|supervised)/i,

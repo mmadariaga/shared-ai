@@ -45,3 +45,29 @@ test('GLOSSARY.md Progress Plan relationship lines carry no numeric restatement 
     );
   }
 });
+
+test('GLOSSARY.md narrows review terminology to external findings, manual navigation, and supervised Review Engine rounds', () => {
+  const source = glossary();
+
+  const phaseReviewPass = source.match(/\*\*Phase Review Pass\*\*:[\s\S]{0,420}/i)?.[0] || '';
+  const referenceSet = source.match(/\*\*Review Reference Set\*\*:[\s\S]{0,420}/i)?.[0] || '';
+  const artifactReview = source.match(/\*\*Artifact Review\*\*:[\s\S]{0,420}/i)?.[0] || '';
+
+  assert.notEqual(phaseReviewPass, '', 'Phase Review Pass should retain a glossary definition');
+  assert.notEqual(referenceSet, '', 'Review Reference Set should retain a glossary definition');
+  assert.notEqual(artifactReview, '', 'Artifact Review should retain a glossary definition');
+
+  assert.match(phaseReviewPass, /(?:manual|supervis(?:ed|ion)|Review Engine|round)/i,
+    'Phase Review Pass should be narrowed to a manual or supervised round surface');
+  assert.match(referenceSet, /(?:bounded|selected|artifact|external|Review Engine)/i,
+    'Review Reference Set should name its bounded artifact/evidence context');
+  assert.match(artifactReview, /(?:external|finding|five[- ]field|Summary|manual|Review Engine)/i,
+    'Artifact Review should describe the current external/manual/supervised review surface');
+
+  assert.match(phaseReviewPass, /Retired term|No live/i,
+    'Phase Review Pass should be explicitly retired rather than treated as a live worker surface');
+  for (const definition of [referenceSet, artifactReview]) {
+    assert.doesNotMatch(definition, /automatic (?:isolated )?reviewer|dispatch(?:es|ing)? a reviewer/i,
+      'retired automatic reviewer dispatch semantics must not remain in a narrowed definition');
+  }
+});

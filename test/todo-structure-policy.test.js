@@ -205,18 +205,32 @@ test('step 1 the review carve-out covers only the spec and design plans; a revie
   assert.match(source, /reconcil(?:es|ed)[\s\S]{0,160}completed|completed[\s\S]{0,160}normally/i);
 });
 
-test('step 7 todo policy conditionally enumerates the worker-owned loop and omits it under --supervised while retaining the finding contract', () => {
+test('step 7 todo policy keeps Explore-only manual review, supervised Review Engine surfaces, and worker consumption without worker-owned loop semantics', () => {
   const source = findingContract();
   const todo = policy();
+  const explore = fs.readFileSync(
+    path.join(repoRoot, 'sai/commands/explore/instructions.md'),
+    'utf8',
+  );
+  const combined = `${source}\n${explore}`;
 
   assert.doesNotMatch(todo, /worker[- ]owned[\s\S]{0,220}(?:review loop|review pass)/i,
     'the todo policy should remain limited to progress-list semantics');
-  assert.match(source, /automatic worker-owned planning-artifact review loop[\s\S]{0,260}--supervised/i,
-    'the artifact review contract should enumerate the supervised conditional surface');
+  assert.doesNotMatch(source, /automatic worker-owned planning-artifact review loop|worker[- ]owned[\s-]+(?:planning[- ]artifact )?review (?:loop|pass)/i,
+    'the finding contract must not retain the retired worker-owned loop');
+  assert.match(combined, /(?:manual|interactive)[\s\S]{0,220}(?:only|solely|exclusively)[\s\S]{0,180}(?:Explore|sai-explore)|(?:Explore|sai-explore)[\s\S]{0,180}(?:manual|interactive)[\s\S]{0,220}(?:only|solely|exclusively)/i,
+    'manual review must be an Explore-only surface');
+  assert.match(combined, /supervis(?:ed|ion)[\s\S]{0,320}Review Engine|Review Engine[\s\S]{0,320}supervis(?:ed|ion)/i,
+    'supervised review must use the Review Engine surface');
+  assert.match(combined, /workers?[\s\S]{0,220}(?:consume|consumers?|receive|apply)[\s\S]{0,220}(?:external )?(?:findings?|review evidence)/i,
+    'phase workers should consume external review findings rather than own review');
 
   assert.match(source, /artifact review/i);
   assert.match(source, /(?:spec|design)[\s\S]{0,120}(?:artifact )?review|(?:artifact )?review[\s\S]{0,120}(?:spec|design)/i);
-  assert.match(source, /worker[- ]owned|owned by the worker/i);
   assert.match(source, /five[- ]field|five fields/i);
   assert.match(source, /base tally|Summary:/i);
+  assert.match(todo, /evidence/i,
+    'the todo policy should retain the evidence-marked review carve-out');
+  assert.match(todo, /(?:spec and design|spec[\s\S]{0,100}design)[\s\S]{0,260}review|review[\s\S]{0,260}(?:spec and design|spec[\s\S]{0,100}design)/i,
+    'the evidence carve-out should remain scoped to the planning review steps');
 });
