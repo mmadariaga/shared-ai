@@ -30,39 +30,61 @@ The shared phase-adapter contract SHALL accept an optional static `recovery_poli
 - **AND** the adapter SHALL use the existing terminal and replacement-worker behavior
 
 ### Requirement: Bounded same-worker recovery
-For an opted-in adapter, the coordinator SHALL use one invocation-scoped pool of at most three recovery attempts. An eligible failed worker result SHALL be continued only on the still-live worker, using the active binding's normal continuation operation and the fixed shared protocol acknowledgement `continue_after_recovery`. That acknowledgement is owned by the shared runner and is not an additional phase-adapter field. Recovery SHALL never dispatch a replacement worker; this prohibition is scoped to the recovery path, while ordinary non-recovery continuation failures SHALL retain the existing replacement-worker fallback. Recovery SHALL never reset the changed-file union, and SHALL return to the existing terminal hand-back when the recovery path stops without a completed result.
+
+For an opted-in adapter, the coordinator SHALL use one segment-scoped ledger of at most three distinct diagnosis slots. The three-attempt cap is a derived consequence of one attempt per slot, not a separate counter. An eligible in-scope non-clean closure SHALL be continued only on the still-live worker, using the active binding's normal continuation operation and the fixed shared protocol acknowledgement `continue_after_recovery`. The route SHALL carry exactly one of the shared routing diagnoses — `worker-authored failure`, `coordinator rejection`, or `continuation/transport loss` — together with the coordinator's `Cause Locus`. Recovery SHALL never dispatch a replacement worker; this prohibition is scoped to the recovery path, while ordinary non-recovery continuation failures SHALL retain the existing replacement-worker fallback. An out-of-scope cause SHALL spend zero attempts and SHALL not be made recoverable by rewriting its worker failure class. Recovery SHALL never reset the changed-file union, and SHALL return to the existing terminal hand-back when the recovery path stops without a completed result.
 
 #### Scenario: A recoverable failure gets a same-worker continuation
+
 - **WHEN** an opted-in worker returns `status: failed` with a recoverable failure class, `unrecoverable: false`, and remaining budget
 - **THEN** the coordinator SHALL announce the recovery attempt
 - **AND** SHALL continue the same worker using the fixed shared protocol acknowledgement `continue_after_recovery`
 - **AND** SHALL not dispatch a replacement worker
 
+#### Scenario: A recoverable in-scope failure gets a same-worker continuation
+
+- **WHEN** an opted-in worker returns `status: failed` with any valid worker class, `unrecoverable: false`, coordinator evidence places a clear safe cause and correction inside the worker's authorized scope, and the diagnosis key is new
+- **THEN** the coordinator SHALL announce the selected routing diagnosis and cause locus
+- **AND** SHALL continue the same worker using the fixed shared protocol acknowledgement `continue_after_recovery`
+- **AND** SHALL not dispatch a replacement worker
+
 #### Scenario: The shared pool caps recovery
+
 - **WHEN** successive recovery failures remain eligible and the worker does not veto recovery
-- **THEN** the coordinator SHALL spend no more than three recovery attempts in the invocation
-- **AND** SHALL hand back after the third spent attempt if no completed result is returned
+- **THEN** the coordinator SHALL spend no more than one attempt for each of three distinct diagnosis keys in the active segment
+- **AND** SHALL hand back after the third distinct slot if no coordinator-verified clean result is returned
+
+#### Scenario: An out-of-scope cause spends zero attempts
+
+- **WHEN** coordinator inspection establishes that the cause names an artifact and concrete point outside the worker's authorized scope
+- **THEN** the coordinator SHALL spend zero recovery attempts
+- **AND** SHALL not send a worker correction through `continue_after_recovery`
+- **AND** SHALL hand back or invoke only the explicitly authorized owner repair route
 
 #### Scenario: A recovery continuation fails
+
 - **WHEN** the same-worker continuation operation fails while a recovery attempt is running
-- **THEN** the coordinator SHALL abort recovery immediately
+- **THEN** the routing diagnosis SHALL be `continuation/transport loss`
+- **AND** the coordinator SHALL abort recovery immediately
 - **AND** SHALL not dispatch a replacement worker
 - **AND** SHALL fall through to the existing hand-back with the attempts already spent
 
 #### Scenario: Ordinary continuation failure keeps replacement fallback
+
 - **WHEN** an opted-in invocation encounters a continuation failure outside the bounded recovery path
 - **THEN** the coordinator SHALL retain the existing at-most-one replacement-worker fallback and reconstruction rules
 - **AND** the recovery-only prohibition on replacement dispatch SHALL not apply to that ordinary path
 
 #### Scenario: A recovery result returns needs_input
+
 - **WHEN** a recovery continuation returns `needs_input`
 - **THEN** the coordinator SHALL consume no recovery attempt for that result
 - **AND** SHALL exit recovery and resume the normal needs-input loop with the same worker
 
 #### Scenario: A later failure changes class
+
 - **WHEN** a recovery continuation returns a failed result whose class differs from the original class
-- **THEN** the coordinator SHALL deduct the attempt from the same shared pool
-- **AND** SHALL not create a new class-specific budget
+- **THEN** the coordinator SHALL compare the coordinator-owned diagnosis key rather than the class alone
+- **AND** it SHALL spend one remaining slot only when the concrete diagnosis is new, without creating a class-specific budget
 
 ### Requirement: Recovery may re-dispatch overview generation within the pool
 For an eligible overview-generation `validation-failed`, `generation-error`, or `dispatch-failed`, the same worker MAY re-dispatch the overview generator during a recovery continuation when worker-side diagnosis establishes that retry is safe. Such a nested generation dispatch SHALL be part of the existing recovery attempt, SHALL not start a new source-modifying transaction, and SHALL be exempt from the ordinary one-regeneration-per-effective-transaction limit. For `envelope-contract-violation`, the worker SHALL verify overview soundness before its first failed return: a sound overview SHALL remain eligible only for in-place reporting repair, while an unsound overview SHALL set `unrecoverable: true` and receive zero recovery attempts. The three-attempt invocation pool SHALL be the only retry bound; a recovery re-dispatch SHALL not create an additional regeneration budget or replacement worker.
@@ -86,28 +108,164 @@ For an eligible overview-generation `validation-failed`, `generation-error`, or 
 - **AND** the terminal hand-back SHALL report zero attempts spent and the worker veto
 
 ### Requirement: Recovery eligibility and worker veto
-For this change, the shared runner SHALL make only overview-generation `validation-failed`, `generation-error`, `dispatch-failed`, and `envelope-contract-violation` results eligible for the common pool. `blocking-contradiction`, `outer-envelope-violation`, and `unclassified-worker-fault` SHALL receive zero attempts and hand back immediately. A failed result carrying `unrecoverable: true` SHALL veto all remaining recovery attempts. The worker SHALL set that veto only when worker-side inspection establishes that continuation cannot safely repair the failure; the coordinator SHALL not override it or attempt blind verification. When `failure_class: blocking-contradiction` and `unrecoverable: true` occur together, the blocking contradiction SHALL take precedence as the reported stopping reason.
+
+For an opted-in adapter, the shared runner SHALL make a valid worker result eligible when the worker has not set `unrecoverable: true`, coordinator inspection establishes a clear safe correction inside the active worker's authorized scope, and the coordinator-derived `diagnosis_key` is new. The worker-authored `failure_class` SHALL be treated as a prior that can focus diagnosis, but SHALL not be the eligibility gate: `blocking-contradiction` and `unclassified-worker-fault` MAY enter recovery when their established Cause Locus is `in-scope`, while an otherwise eligible class SHALL receive zero when its Cause Locus is out-of-scope or unresolved. A coordinator rejection of a usable completed report SHALL use the phase's validation-failure accounting when the coordinator identifies a clear in-scope correction; its routing diagnosis SHALL remain `coordinator rejection`, and its unique diagnosis key SHALL consume one ledger slot. A malformed result, including a malformed continuation result, SHALL be `coordinator rejection` with coordinator-authored `failure_class: outer-envelope-violation`, `Cause Locus: out-of-scope`, and zero additional attempts. A continuation operation that cannot be delivered or produces no result SHALL be `continuation/transport loss` with `Cause Locus: out-of-scope`; it SHALL stop recovery without charging an additional attempt. A worker result that emits the coordinator-reserved `outer-envelope-violation` SHALL be rejected as an output-contract violation and SHALL receive zero attempts. Any out-of-scope or unresolved cause SHALL receive zero attempts regardless of its failure class. A failed result carrying `unrecoverable: true` SHALL veto all remaining recovery attempts. The worker SHALL set that veto only when worker-side evidence establishes that continuation cannot safely repair the failure; the coordinator SHALL not override it. When `failure_class: blocking-contradiction` and `unrecoverable: true` occur together, the blocking contradiction SHALL take precedence as the reported stopping reason.
+
+Coordinator inspection that establishes Cause Locus SHALL use exactly one of two evidence channels, selected by the active phase adapter's authority model — never by parsing worker `summary` prose:
 
 #### Scenario: Blocking contradiction bypasses recovery
+
 - **WHEN** an opted-in worker returns `failure_class: blocking-contradiction`
 - **THEN** the coordinator SHALL spend zero recovery attempts
 - **AND** SHALL hand back immediately for human judgment over the conflicting sources
 
 #### Scenario: Worker veto stops the remaining pool
+
 - **WHEN** a failed worker result sets `unrecoverable: true`
 - **THEN** the coordinator SHALL abort the remaining recovery attempts without spending them
 - **AND** SHALL report vetoed recovery rather than budget exhaustion
 
 #### Scenario: Blocking contradiction takes precedence over veto
+
 - **WHEN** a failed result carries both `failure_class: blocking-contradiction` and `unrecoverable: true`
 - **THEN** the coordinator SHALL spend zero recovery attempts
 - **AND** SHALL report blocking contradiction as the stopping reason
 - **AND** SHALL not report the veto as the primary cause
 
+1. **Independent verification channel** (verifying adapters, including Apply): the coordinator establishes locus from its own Verification Checklist, baseline, allowed-file set, report comparison, and other phase-owned verification evidence. Worker `failure_class` and `summary` are diagnostic priors only and SHALL NOT replace that verification.
+2. **Phase-static repair-surface channel** (blind opted-in adapters that are contractually forbidden from reading change artifacts, including design today): the coordinator SHALL NOT read change artifacts and SHALL NOT infer locus from `summary` prose. It establishes locus solely by matching closed machine-readable worker fields against a **registered phase-static authorized repair surface** — a fixed record that does not depend on free-form summary text and that is listed in this capability (or a later delta that adds surfaces) rather than only in command-card prose.
+
+A registered surface SHALL define exactly:
+- `surface_id` (stable token)
+- `artifact_path_template` (primary path; `{change-name}` placeholder allowed)
+- `optional_path_templates` (zero or more additional allowed paths, same placeholder rules)
+- `concrete_lifecycle_point` (stable token used as the diagnosis_key concrete point)
+- `authorized_correction_boundary` (stable token used as the diagnosis_key correction boundary)
+- `accepted_failure_classes` (non-empty subset of the closed worker failure-class vocabulary)
+
+**Phase-static match algorithm** (deterministic; no judgment calls):
+1. If `unrecoverable` is not the boolean `false`, the result matches no surface.
+2. Else select the unique registered surface for the active phase whose `accepted_failure_classes` contains the worker's `failure_class`. If none or more than one surface accepts that class for the phase, the result matches no surface (phases SHALL register disjoint accepted-class sets).
+3. **`changed_files` rule** — path evidence is **mandatory positive evidence**, not optional corroboration:
+   - If `changed_files` is missing or empty, the result matches no surface (unresolved). Class+veto alone SHALL NOT authorize an overview (or any) surface match.
+   - If `changed_files` is non-empty, it SHALL be non-empty after path normalization, every listed path SHALL normalize to one of the surface's primary or optional path templates after `{change-name}` substitution, and at least one listed path SHALL normalize to the surface's **primary** `artifact_path_template`. If any path falls outside the allowed set, or the primary path is absent from the list, the result matches no surface (unresolved — not a guessed out-of-scope locus).
+4. On success: Cause Locus is `in-scope`; `diagnosis_key` is `(substituted primary artifact path, concrete_lifecycle_point, authorized_correction_boundary)` without placing `failure_class` or routing labels in the tuple.
+5. On no match: unresolved cause, zero attempts, no out-of-scope claim.
+
+**Registered surface for design (this change)** — the only blind opted-in surface introduced here. This capability defines the required initial row; the **sole runtime registry listing** that agents execute SHALL live in `sai/orchestration/command-runner.md` (single home). Delta specs and design artifacts MAY cite the row for requirements traceability but SHALL NOT create a second maintained table that can drift from the runner. Future surfaces are added by a delta that updates this requirement and the runner registry in the same change.
+
+| Field | Value |
+| --- | --- |
+| `surface_id` | `design-overview-repair` |
+| `artifact_path_template` | `openspec/changes/{change-name}/change-overview.md` |
+| `optional_path_templates` | `openspec/changes/{change-name}/.openspec.yaml` |
+| `concrete_lifecycle_point` | `overview-generation-repair` |
+| `authorized_correction_boundary` | `design-worker-overview-repair` |
+| `accepted_failure_classes` | `validation-failed`, `generation-error`, `dispatch-failed`, `envelope-contract-violation`, `blocking-contradiction` |
+
+No other design or planning surface is registered by this change. Unregistered phases match nothing and resolve unmatched failures to unresolved.
+
+Both channels produce coordinator-owned Cause Locus and `diagnosis_key` values. The shared runner still transports the closed diagnosis without inspecting artifacts itself. Expanding the closed worker lifecycle payload is not required for the phase-static channel. Command-runner prose SHALL host the sole runtime registry table (including the design row above), state the match algorithm, and forbid inventing surfaces from design-card prose or from this requirement text alone without updating the runner registry.
+
+#### Scenario: Verifying adapter establishes locus from independent verification
+
+- **WHEN** an opted-in verifying adapter (Apply) receives a non-clean worker result and the coordinator's Verification Checklist, baseline, allowed-file, or report comparison locates a clear safe correction inside the active worker's authorized scope
+- **THEN** the coordinator SHALL assign `Cause Locus: in-scope` from that independent verification evidence
+- **AND** SHALL derive `diagnosis_key` from the verified artifact path, concrete point, and correction boundary
+- **AND** SHALL NOT treat worker `summary` prose as sufficient locus evidence
+
+#### Scenario: Design overview failure matches the registered phase-static surface
+
+- **WHEN** a design invocation with `recovery_policy: true` returns a valid failed result with `unrecoverable: false`, `failure_class` in `{validation-failed, generation-error, dispatch-failed, envelope-contract-violation, blocking-contradiction}`, and `changed_files` non-empty containing the substituted primary overview path and only surface-allowed paths
+- **THEN** the coordinator SHALL match surface `design-overview-repair` without reading change artifacts and without parsing `summary` prose
+- **AND** SHALL assign `Cause Locus: in-scope` with `diagnosis_key` equal to `(openspec/changes/{change-name}/change-overview.md, overview-generation-repair, design-worker-overview-repair)` after change-name substitution
+- **AND** SHALL permit one new ledger slot and one same-worker `continue_after_recovery` when the key is new
+
+#### Scenario: Empty or missing changed_files does not match any surface
+
+- **WHEN** a design failed result satisfies the class and `unrecoverable: false` criteria for `design-overview-repair` but `changed_files` is missing or empty
+- **THEN** the coordinator SHALL record an explicitly unresolved cause with no Cause Locus claim
+- **AND** SHALL spend zero recovery attempts
+- **AND** SHALL NOT authorize overview recovery solely from class and veto
+
+#### Scenario: Non-overview design failure with empty changed_files stays unresolved
+
+- **WHEN** a design worker fails while authoring `tasks.md` or another non-overview artifact, returns an accepted overview class with `unrecoverable: false`, and reports empty or missing `changed_files`
+- **THEN** the coordinator SHALL NOT match `design-overview-repair`
+- **AND** SHALL leave the cause unresolved with zero recovery attempts
+
+#### Scenario: Design overview match succeeds with primary path and optional state carrier only
+
+- **WHEN** a design failed result satisfies the class and `unrecoverable: false` criteria and `changed_files` lists the substituted primary `change-overview.md` path and optionally `openspec/changes/{change-name}/.openspec.yaml` only
+- **THEN** the coordinator SHALL treat the surface match as successful
+- **AND** the diagnosis_key primary path remains the overview path even when `.openspec.yaml` is also listed
+
+#### Scenario: Non-empty changed_files outside the surface prevents a match
+
+- **WHEN** a design failed result would otherwise match `design-overview-repair` by class and veto, but `changed_files` contains any path outside the surface's primary and optional templates
+- **THEN** the coordinator SHALL record an explicitly unresolved cause with no Cause Locus claim
+- **AND** SHALL spend zero recovery attempts
+
+#### Scenario: changed_files omits the primary overview path
+
+- **WHEN** a design failed result lists only `openspec/changes/{change-name}/.openspec.yaml` in `changed_files` (no primary overview path) with an accepted class and `unrecoverable: false`
+- **THEN** the coordinator SHALL record an explicitly unresolved cause
+- **AND** SHALL spend zero recovery attempts
+
+#### Scenario: Design failure with a non-accepted class is unmatched
+
+- **WHEN** a design failed result carries `unrecoverable: false` and a `failure_class` outside `design-overview-repair`'s accepted set (for example `unclassified-worker-fault`)
+- **THEN** the coordinator SHALL record an explicitly unresolved cause
+- **AND** SHALL spend zero recovery attempts and SHALL NOT invent a surface match from `summary` prose
+
+#### Scenario: Blind opted-in adapter leaves unmatched failures unresolved
+
+- **WHEN** a blind opted-in adapter receives a failed worker result whose closed fields do not match any registered phase-static authorized repair surface
+- **THEN** the coordinator SHALL record an explicitly unresolved cause with no Cause Locus claim
+- **AND** SHALL spend zero recovery attempts and SHALL NOT invent an out-of-scope claim from `summary` prose
+
+#### Scenario: E8 worker veto stops the remaining pool
+
+- **WHEN** a failed worker result sets `unrecoverable: true`
+- **THEN** the coordinator SHALL abort the remaining recovery attempts without spending them
+- **AND** SHALL report the worker veto rather than budget exhaustion
+
+#### Scenario: E9 blocking contradiction takes precedence
+
+- **WHEN** a failed result carries both `failure_class: blocking-contradiction` and `unrecoverable: true`
+- **THEN** the coordinator SHALL spend zero recovery attempts
+- **AND** SHALL report blocking contradiction as the stopping reason
+- **AND** SHALL not report the veto as the primary cause
+
+#### Scenario: In-scope blocking contradiction is not an eligibility veto
+
+- **WHEN** a failed result carries `failure_class: blocking-contradiction`, `unrecoverable: false`, and coordinator evidence proves a clear safe cause and correction inside the worker's authorized scope
+- **THEN** the coordinator SHALL retain the worker class and route diagnosis separately
+- **AND** it SHALL permit one new diagnosis-key ledger slot and one same-worker recovery continuation
+
+#### Scenario: In-scope unclassified fault uses coordinator diagnosis
+
+- **WHEN** a failed result carries `failure_class: unclassified-worker-fault`, `unrecoverable: false`, and coordinator evidence locates a clear safe cause and correction inside the worker's authorized scope
+- **THEN** the coordinator SHALL use its Cause Locus and diagnosis key to determine eligibility
+- **AND** it SHALL permit one new ledger slot rather than handing back solely because the worker class is unclassified
+
+#### Scenario: Out-of-scope validation is not reclassified as recoverable
+
+- **WHEN** coordinator evidence identifies a plan, verification, fixture, or other artifact outside the worker's authorized scope as the cause
+- **THEN** the coordinator SHALL name that artifact and concrete point in the hand-back
+- **AND** SHALL spend zero recovery attempts even if the worker class is `validation-failed`
+
+#### Scenario: Continuation loss has a fixed locus and accounting
+
+- **WHEN** the recovery continuation cannot be delivered or produces no result
+- **THEN** the shared runner SHALL select `continuation/transport loss` with `Cause Locus: out-of-scope`
+- **AND** SHALL spend zero additional attempts, dispatch no replacement from recovery, and hand back with the attempts already spent
+
 #### Scenario: Worker verifies its own repair
-- **WHEN** a worker continues after a recovery announcement
+
+- **WHEN** a worker continues after an in-scope recovery announcement
 - **THEN** the worker SHALL inspect and verify the relevant artifact or lifecycle state before returning `completed`
-- **AND** the coordinator SHALL remain artifact-blind and SHALL not re-derive the repair or changed files
+- **AND** the phase coordinator MAY perform its independent verification without delegating that verification back to the worker
 
 ### Requirement: Recovered overview state is committed
 When a design-worker recovery continuation repairs an overview-generation failure and returns `status: completed`, the worker SHALL commit `overview.state: current`, clear both `overview.failure_kind` and `overview.failure_details`, and include `openspec/changes/{change-name}/.openspec.yaml` in the invocation's ordered changed-file union. This successful recovery commit SHALL occur only after the worker verifies the overview and its source relationship; it supersedes the prior `failed` or `stale` diagnostic state for that attempt. A recovery that does not return `completed` SHALL retain the existing failure-state mapping for its terminal route.
@@ -125,52 +283,128 @@ When a design-worker recovery continuation repairs an overview-generation failur
 - **AND** SHALL report `.openspec.yaml` in the changed-file union
 
 ### Requirement: Recovery reporting is visible but not plan state
-Before every recovery attempt, the coordinator SHALL emit a conversation-text announcement containing the failure class that triggered the attempt and its ordinal against the fixed pool, formatted as attempt `1`, `2`, or `3` of `3`. If recovery stops without completion, the terminal hand-back SHALL name the failure class, the number of attempts spent, and the reason recovery stopped, distinguishing an exhausted pool, a worker veto, blocking contradiction, continuation failure, and a normal `needs_input` or cancellation exit. These messages SHALL follow the ambient language policy and SHALL not be treated as protocol literals.
+
+Before every recovery attempt, the coordinator SHALL validate one coordinator-only closure-diagnosis record containing exactly one routing diagnosis from the shared closed set, a coordinator-owned `diagnosis_key`, an optional worker `failure_class`, a known `Cause Locus` or an unresolved-cause marker, attempts spent, and evidence references. It SHALL then emit conversation text containing the selected routing diagnosis, the `Cause Locus` when established, the failure class when one exists, and the key's ordinal against the fixed ledger, formatted as attempt `1`, `2`, or `3` of `3`. An out-of-scope hand-back SHALL name the artifact and concrete point supporting the boundary when an artifact cause exists, SHALL report zero additional attempts, and SHALL use `continuation failure` for a transport-only boundary with no fabricated artifact claim. If recovery stops without completion, the terminal hand-back SHALL separately report the number of slots spent, the number of ledger slots remaining, and the reason recovery stopped; it SHALL name the diagnosis, Cause Locus when established, and failure class when applicable, distinguishing duplicate diagnosis from an exhausted ledger, worker veto, blocking contradiction, continuation failure, ordinary input, cancellation, and out-of-scope cause. A duplicate-diagnosis hand-back SHALL preserve a positive remaining-slot count when applicable and SHALL never report ledger exhaustion. These messages SHALL follow the ambient language policy and SHALL not be treated as protocol literals.
 
 #### Scenario: Attempt spend is announced
-- **WHEN** the coordinator is about to invoke a recovery continuation
-- **THEN** it SHALL announce that attempt before invoking it
-- **AND** the announcement SHALL name the triggering failure class and the attempt ordinal against the pool of `3`
+
+- **WHEN** the coordinator is about to invoke an in-scope recovery continuation
+- **THEN** it SHALL announce the selected diagnosis and cause locus before invoking it
+- **AND** the announcement SHALL name the failure class when applicable and the attempt ordinal against the pool of `3`
 - **AND** the announcement SHALL be conversation text rather than a progress event
 
+#### Scenario: E10 exhausted recovery explains the hand-back
+
+- **WHEN** the third distinct in-scope diagnosis slot fails without a coordinator-verified clean result
+- **THEN** the terminal hand-back SHALL name the diagnosis, failure class when applicable, `3` slots spent, and ledger exhaustion
+
 #### Scenario: Exhausted recovery explains the hand-back
+
 - **WHEN** the third recovery attempt fails without a completed result
 - **THEN** the terminal hand-back SHALL name the failure class, `3` attempts spent, and budget exhaustion
 
 #### Scenario: Vetoed recovery explains the hand-back
+
 - **WHEN** a worker vetoes the remaining recovery pool
 - **THEN** the terminal hand-back SHALL name the failure class, the attempts spent before the veto, and the worker veto as the stopping reason
 
+#### Scenario: Out-of-scope hand-back identifies its boundary
+
+- **WHEN** an out-of-scope cause is found before a recovery continuation
+- **THEN** the hand-back SHALL name the artifact and concrete point that place the cause outside worker scope
+- **AND** SHALL report zero attempts spent
+
+#### Scenario: Duplicate hand-back reports remaining ledger capacity
+
+- **WHEN** recovery stops because a later closure repeats an existing diagnosis key before all three slots are spent
+- **THEN** the hand-back SHALL report the slots spent, the positive slots remaining, and duplicate diagnosis as the stopping reason
+- **AND** it SHALL not report ledger exhaustion or spend another slot
+
 #### Scenario: Recovery does not mutate the progress plan
+
 - **WHEN** a recovery announcement or terminal hand-back is emitted
 - **THEN** it SHALL not mark, extend, rename, or add any progress-plan step
 - **AND** undeclared recovery identifiers SHALL not be invented
 
 ### Requirement: Invocation-scoped accounting and lifecycle boundaries
-The coordinator SHALL add every `changed_files` path reported by the original result, progress event, normal continuation, recovery continuation, and terminal result to one ordered, duplicate-free union that is never reset by recovery. The recovery budget SHALL belong to the invocation: notices, progress events, and normal `needs_input` turns SHALL not reset it. A `cancelled` result SHALL be treated as a clean user-requested stop and SHALL never enter recovery. The `--fast-track` signal SHALL alter neither the recovery budget nor its visibility.
+
+The coordinator SHALL add every `changed_files` path reported by the original result, progress event, normal continuation, recovery continuation, and terminal result to one ordered, duplicate-free union that is never reset by recovery. The recovery budget SHALL belong to the active invocation segment: notices, progress events, and normal `needs_input` turns SHALL not reset it. A pre-resolution outer-envelope failure SHALL spend zero attempts and SHALL retain its pre-resolution payload shape. A `cancelled` result SHALL be treated as a clean user-requested stop and SHALL never enter diagnosis or recovery. The `--fast-track` signal SHALL alter neither the recovery budget nor its visibility.
 
 #### Scenario: Changed files survive recovery
+
 - **WHEN** a worker reports paths before and during recovery
 - **THEN** the coordinator SHALL preserve their first-seen order in the final union
 - **AND** SHALL include later paths only once
 
 #### Scenario: Intervening events do not reset budget
+
 - **WHEN** notices, progress events, or normal input turns occur between failed results
 - **THEN** the coordinator SHALL retain the number of recovery attempts already spent
 - **AND** SHALL retain the same remaining budget
 
+#### Scenario: E2 cancellation bypasses diagnosis
+
+- **WHEN** a worker returns `status: cancelled` after a prior non-clean result or during a recovery continuation
+- **THEN** the coordinator SHALL stop cleanly without assigning a new diagnosis
+- **AND** SHALL spend no additional recovery attempt
+
 #### Scenario: Cancellation bypasses recovery
+
 - **WHEN** a worker returns `status: cancelled`
 - **THEN** the coordinator SHALL stop cleanly without announcing or spending a recovery attempt
 
 #### Scenario: Fast-track does not change recovery
+
 - **WHEN** an opted-in invocation includes `--fast-track`
-- **THEN** the coordinator SHALL apply the same three-attempt pool and reporting rules as a normal invocation
+- **THEN** the coordinator SHALL apply the same cause-locus, zero-attempt, three-slot-ledger, and reporting rules as a normal invocation
 
 ### Requirement: Same-harness lifecycle parity
-Claude Code and opencode routed adapters that declare `recovery_policy` SHALL expose identical recovery semantics, and neither harness SHALL dispatch a replacement worker for the recovery path. The exact budget, continuation acknowledgement, event and cancellation boundaries, changed-file union, and terminal reporting requirements are owned by the preceding requirements in this capability and SHALL not be redefined by the parity requirement. Harness-specific binding mechanics MAY differ.
+
+Claude Code and opencode routed adapters that declare `recovery_policy` SHALL expose identical non-clean-closure diagnosis categories, cause-locus semantics, zero-attempt exceptions, recovery budget, continuation acknowledgement, event and cancellation boundaries, changed-file union, and terminal reporting. Neither harness SHALL dispatch a replacement worker for the recovery path. Harness-specific binding mechanics MAY differ.
 
 #### Scenario: Both supported harnesses recover identically
-- **WHEN** equivalent opted-in invocations encounter the same failed worker classification
-- **THEN** both harnesses SHALL spend the same bounded recovery pool and reach the same protocol outcome
-- **AND** each SHALL use only its own binding's same-worker continuation mechanism
+
+- **WHEN** equivalent opted-in invocations encounter the same worker classification, coordinator rejection, or continuation loss
+- **THEN** both harnesses SHALL select the same routing diagnosis and cause-locus result
+- **AND** both SHALL spend the same bounded recovery pool and reach the same protocol outcome
+
+### Requirement: Recovery budget is a distinct-diagnosis ledger
+
+The shared three-slot recovery budget SHALL be represented as three mutually distinct diagnosis slots for the active adapter segment. A coordinator SHALL derive a stable `diagnosis_key` before spending a slot as the exact ordered tuple `(artifact path, concrete point, authorized correction boundary)`. `artifact path` SHALL be a normalized repo-relative path or `<none>` when the cause has no artifact; `concrete point` SHALL identify the Step and the exact field, command, assertion, or lifecycle boundary implicated by the evidence; and `authorized correction boundary` SHALL identify the worker scope and permitted correction surface. Cause Locus SHALL remain beside the key in the closure-diagnosis record and SHALL not participate in key identity. Path normalization SHALL use `/`, remove a leading `./`, reject `..` traversal, and collapse only non-semantic whitespace; it SHALL preserve command arguments, selectors, operators, targets, and pass/fail polarity. Two keys SHALL be equal only when every tuple field is exactly equal after that normalization. A coordinator SHALL derive the key from its evidence, not worker prose, and SHALL not include the worker class or routing label in the tuple. Each new eligible in-scope key SHALL consume exactly one slot and receive at most one same-worker continuation. A later result with the same key SHALL be treated as a duplicate diagnosis and SHALL stop recovery before dispatch, without consuming a remaining slot or being reported as exhaustion. Out-of-scope, unresolved, malformed, vetoed, and continuation-transport-loss cases SHALL consume zero recovery slots; a `blocking-contradiction` or `unclassified-worker-fault` MAY consume one only when `unrecoverable: false`, the coordinator proves an in-scope cause and safe correction, and the key is new.
+
+#### Scenario: Three distinct diagnoses are the maximum
+
+- **WHEN** an active apply segment encounters three eligible in-scope closures with three different coordinator diagnosis keys
+- **THEN** it SHALL permit no more than one recovery continuation for each key
+- **AND** it SHALL not create a fourth slot or reset the ledger at a new Step
+
+#### Scenario: Duplicate diagnosis stops with budget remaining
+
+- **WHEN** a recovery continuation returns a non-clean closure whose normalized diagnosis key matches an earlier key
+- **THEN** the coordinator SHALL stop before another continuation
+- **AND** it SHALL report duplicate diagnosis with the unused slot count preserved rather than reporting pool exhaustion
+
+#### Scenario: A changed failure class does not evade duplicate detection
+
+- **WHEN** a later result changes from one eligible worker `failure_class` to another but coordinator evidence identifies the same concrete cause and correction boundary
+- **THEN** the coordinator SHALL treat it as the existing diagnosis key
+- **AND** SHALL stop without spending another recovery slot
+
+#### Scenario: Worker prose does not change diagnosis-key equality
+
+- **WHEN** two non-clean closures have the same artifact path, concrete Step point, and authorized correction boundary but different worker summaries or failure-class prose
+- **THEN** the coordinator SHALL derive equal `diagnosis_key` tuples
+- **AND** the second closure SHALL stop as a duplicate before spending a slot
+
+#### Scenario: A different concrete point creates a new diagnosis key
+
+- **WHEN** two otherwise similar non-clean closures identify different concrete fields, commands, assertions, or lifecycle points
+- **THEN** the coordinator SHALL derive unequal `diagnosis_key` tuples
+- **AND** the later closure MAY spend one remaining slot only if its locus is in-scope, its correction is safe, and its worker veto is false
+
+#### Scenario: Locus reassessment does not change diagnosis-key equality
+
+- **WHEN** two closures identify the same normalized artifact path, concrete point, and authorized correction boundary but carry different Cause Locus values — the first unresolved and the later `in-scope`
+- **THEN** the coordinator SHALL derive equal `diagnosis_key` tuples
+- **AND** the later closure SHALL stop as a duplicate and SHALL not consume a second slot for the unchanged concrete cause
+
