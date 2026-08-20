@@ -62,7 +62,10 @@ const movedDirectives = {
     'Fetch @sai/orchestration/workers/bindings/accessibility-worker.md and use it.',
     'Fetch @sai/commands/accessibility/coordinator.md and follow those instructions exactly.',
   ],
-  explore: ['Fetch @sai/orchestration/workers/bindings/design-worker.md and use it.'],
+  explore: [
+    'Fetch @sai/orchestration/workers/bindings/spec-worker.md and use it.',
+    'Fetch @sai/orchestration/workers/bindings/design-worker.md and use it.',
+  ],
 };
 
 function read(relativePath) {
@@ -193,16 +196,13 @@ test('final wrappers: no ## Sai heading, User input, @commands/sai/, flat @sai/c
   }
 });
 
-test('final wrappers: both sai-explore wrappers keep idea-list-render and spec-worker; neither carries design-worker', () => {
+test('final wrappers: both sai-explore wrappers keep idea-list-render while launcher owns both workers', () => {
   const claudeExplore = read('commands/claude/sai-explore.md');
   const opencodeExplore = read('commands/opencode/sai-explore.md');
   assert.match(claudeExplore, /Fetch @sai\/adapters\/claude\/idea-list-render\.md/, 'Claude explore should keep idea-list-render');
-  assert.match(claudeExplore, /Fetch @sai\/orchestration\/workers\/bindings\/spec-worker\.md/, 'Claude explore should carry spec-worker binding');
-  assert.match(opencodeExplore, /Fetch @sai\/orchestration\/workers\/bindings\/spec-worker\.md/, 'opencode explore should keep spec-worker binding');
   assert.match(opencodeExplore, /Fetch @sai\/adapters\/opencode\/idea-list-render\.md/, 'opencode explore should keep idea-list-render');
-  assert.doesNotMatch(claudeExplore, /bindings\/design-worker\.md/, 'Claude explore wrapper should not carry design-worker binding');
-  assert.doesNotMatch(opencodeExplore, /bindings\/design-worker\.md/, 'opencode explore wrapper should not carry design-worker binding');
   const exploreLauncher = read('sai/commands/explore/launcher.md');
+  assert.match(exploreLauncher, /Fetch @sai\/orchestration\/workers\/bindings\/spec-worker\.md/);
   assert.match(exploreLauncher, /Fetch @sai\/orchestration\/workers\/bindings\/design-worker\.md/, 'explore launcher should carry design-worker binding');
 });
 

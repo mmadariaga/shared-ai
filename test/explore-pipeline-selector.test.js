@@ -115,9 +115,9 @@ test('supervised spec dispatch preserves the selected block and branches between
   const source = exploreContract();
 
   assert.match(source, /SpecWorkerRequest/);
-  assert.match(source, /crystallized_block/);
+  assert.match(source, /complete emitted Ready to Propose block/);
   assert.match(source, /selected change.*complete.*Ready to Propose|complete.*emitted Ready to Propose/i);
-  assert.match(source, /only.*selected.*block|receives only.*block/i);
+  assert.match(source, /only that complete emitted Ready to Propose block|receives only.*block/i);
   assert.match(source, /needs_input/);
   assert.match(source, /ordered option|options.*order|order.*option/i);
   assert.match(source, /auto[- ]answer/i);
@@ -216,7 +216,7 @@ test('iteration zero offers feedback after the supervised review rounds settle',
 
   assert.match(source, /empty findings array is a no-op/i);
   assert.match(source, /Defer the ordinary user-facing gate while another (?:review pass|review round) is required/i);
-  assert.match(source, /Present that gate for the first time, unchanged at iteration 0, only after the review (?:loop converges|rounds converge), exhausts? its three[- ]round cap, or is interrupted by worker failure\./i);
+  assert.match(source, /Present that gate for the first time, unchanged at iteration 0, only after the review round converges, exhausts? its one-round cap, or is interrupted by worker failure\./i);
   assert.match(source, /first ordered labels remain.*Give feedback \(Recommended\).*proceed-label/i);
   assert.match(source, /iteration 0/);
 });
@@ -273,7 +273,7 @@ test('Step 1 explore adapters route only the permitted planning workers', () => 
    assert.doesNotMatch(claude, /allowed-tools:[^\n]*(?:^|,\s*)Write(?:,|\s|$)/m);
    assert.doesNotMatch(claude, /allowed-tools:[^\n]*(?:^|,\s*)Bash(?:,|\s|$)/m);
 
-    assert.match(opencode, /Fetch @sai\/orchestration\/workers\/bindings\/spec-worker\.md/);
+     assert.match(launcher, /Fetch @sai\/orchestration\/workers\/bindings\/spec-worker\.md/);
     assert.match(opencode, /Fetch @sai\/commands\/explore\/launcher\.md/);
    assert.doesNotMatch(opencode, /Fetch @skills\/sai-1-spec-proposal-worker\/SKILL\.md/);
     assert.doesNotMatch(opencode, /Fetch @skills\/sai-2-design-worker\/SKILL\.md/);
@@ -289,7 +289,7 @@ test('opencode explore adapter enables native task dispatch with both numbered p
   const source = fs.readFileSync(path.join(repoRoot, 'commands/opencode/sai-explore.md'), 'utf8');
   const launcher = fs.readFileSync(path.join(repoRoot, 'sai/commands/explore/launcher.md'), 'utf8');
 
-    assert.match(source, /Fetch @sai\/orchestration\/workers\/bindings\/spec-worker\.md/);
+     assert.match(launcher, /Fetch @sai\/orchestration\/workers\/bindings\/spec-worker\.md/);
     assert.match(source, /Fetch @sai\/commands\/explore\/launcher\.md/);
     assert.match(launcher, /Fetch @sai\/orchestration\/workers\/bindings\/design-worker\.md/);
    assert.doesNotMatch(source, /Fetch @skills\/sai-1-spec-proposal-worker\/SKILL\.md/);
@@ -352,7 +352,7 @@ test('Step 1 preserves artifact-only worker ownership and specific discard reaso
 
   assert.match(feedbackGate, /Accepted changes remain worker-owned and may be written only by that worker to `proposal\.md` or `specs\/\*\*` in the selected change directory/i);
   assert.match(feedbackGate, /Report every \*\*discarded\*\* item individually[\s\S]{0,240}specific reason/i);
-  assert.match(supervision, /The spec worker is the only delegated writer: its write scope is limited to `proposal\.md`, `specs\/\*\*`, and permitted metadata in its selected change directory/i);
+  assert.match(supervision, /The spec worker is the spec phase's only delegated writer: its write scope is limited to `proposal\.md`, `specs\/\*\*`, and permitted metadata in its selected change directory/i);
   assert.match(supervision, /Explore never writes directly/i);
 });
 
@@ -363,7 +363,7 @@ test('Step 1 defers the ordinary gate until review convergence, round cap, or in
   );
 
   assert.match(feedbackGate, /Defer the ordinary user-facing gate while another (?:review pass|review round) is required/i);
-  assert.match(feedbackGate, /Present that gate for the first time, unchanged at iteration 0, only after the review (?:loop converges|rounds converge), exhausts? its three[- ]round cap, or is interrupted by worker failure\./i);
+  assert.match(feedbackGate, /Present that gate for the first time, unchanged at iteration 0, only after the review round converges, exhausts? its one-round cap, or is interrupted by worker failure\./i);
   assert.match(feedbackGate, /Its first ordered labels remain `Give feedback \(Recommended\)` followed by `proceed-label`/i);
 });
 
@@ -724,7 +724,7 @@ test('supervised review state uses separate phase round counters without finding
   assert.match(source, /review_rounds[\s\S]{0,180}(?:`?spec`?|"spec")[\s\S]{0,180}(?:`?design`?|"design")|(?:`?spec`?|"spec")[\s\S]{0,180}review_rounds[\s\S]{0,180}(?:`?design`?|"design")/i);
   assert.doesNotMatch(source, /\breview_passes\b/);
   assert.doesNotMatch(source, /\bfinding_history\b/);
-  assert.match(source, /at most three review rounds|three[- ]round cap|three-round cap/i);
+  assert.match(source, /review rounds? (?:at most once|once while)|runs at most once/i);
   assert.match(source, /manual (?:review|counters)[\s\S]{0,160}(?:separate|do not count|does not count|does not increment)|separate from supervised rounds/i);
 });
 

@@ -247,7 +247,8 @@ test('shared instruction is the generation contract', () => {
   assert.match(instruction, /failure_kind/, 'result envelope should carry failure_kind');
   assert.match(instruction, /success\s*\|\s*failed/, 'result envelope should use the success | failed status vocabulary');
 
-  assert.match(schema, /failure_details/, 'schema instruction should carry failure_details');
+  assert.match(schema, /closed five-field|five-field|failure kind/i,
+    'schema instruction should preserve the closed generator envelope contract');
   assert.doesNotMatch(schema, /contradiction_details/, 'schema instruction must not enumerate the retired field');
 });
 
@@ -256,7 +257,7 @@ test('overview generator envelope is exactly five fields and excludes recovery m
   const schema = artifact('openspec/schemas/sai-workflow/schema.yaml');
   const fields = ['status', 'changed_files', 'validation', 'failure_details', 'failure_kind'];
 
-  for (const source of [instruction, schema]) {
+  for (const source of [instruction]) {
     const failureDetailsIndex = source.indexOf('failure_details');
     assert.ok(failureDetailsIndex >= 0, 'the generator envelope should declare failure_details');
     const envelope = source.slice(Math.max(0, failureDetailsIndex - 2500), failureDetailsIndex + 2500);

@@ -24,6 +24,7 @@ This prevents the LLM from skipping command loading and making free interpretati
 | `/sai-2-design` | `@commands/sai-2-design.md` | Generate design.md and tasks.md for an approved change — gated on specs approval. |
 | `/sai-3-implement` | `@commands/sai-3-implement.md` | Granular implementation plan — reads OpenSpec change artifacts, writes implementation.md with code, RED→GREEN, STOP & COMMIT markers. |
 | `/sai-4-apply` | `@commands/sai-4-apply.md` | Apply the granular implementation plan mechanically — reads implementation.md and executes step-by-step with a cheap model. |
+| `/sai-build` | `@commands/sai-build.md` | User-invoked routed composition — chains implementation planning and apply in one command. It is not an `opsx:*` skill. |
 | `/sai-5-review` | `@commands/sai-5-review.md` | Structured Code Review — diffs current branch against parent, contrasts with OpenSpec change artifacts, produces review.md. |
 | `/sai-6-security` | `@commands/sai-6-security.md` | Structured Security Audit — SAST + SCA on the diff vs parent branch, produces security.md. |
 | `/sai-7-performance` | `@commands/sai-7-performance.md` | Structured Performance Audit — backend/frontend/database/queue tiers, produces performance.md. |

@@ -11,12 +11,14 @@ The `sai-*` commands are **wrappers over OpenSpec skills**. OpenSpec owns the ch
 ## Main pipeline
 
 ```
-explore (optional) → spec(1) → design(2) → implement(3) → apply(4) → review(5) → [security(6) | performance(7) | accessibility(8)]
-                                    ↑                                    ↓
+ explore (optional) → spec(1) → design(2) → implement(3) → apply(4) → review(5) → [security(6) | performance(7) | accessibility(8)]
+                                     ↑                                    ↓
                              approval gate                       commit / pr (on-demand)
                           (specs → .openspec.yaml)                       ↓
                                                                      archive
 ```
+
+`/sai-build` is the user-invoked shortcut that chains implement(3) → apply(4) in one routed composition.
 
 Each phase reads from and writes to **`openspec/changes/{change-name}/`** — single source of truth per change. Runs in **Isolation Mode**: every command starts with no inherited context, reading only the artifacts it needs.
 
@@ -29,7 +31,7 @@ Each phase reads from and writes to **`openspec/changes/{change-name}/`** — si
  sai/orchestration/command-runner.md            ← neutral command-runner protocol (loaded by every boot adapter before card selection)
  sai/orchestration/worker-core.md               ← neutral worker lifecycle protocol (loaded by the routed worker cards)
  sai/commands/                    ← command cards — routed cards per phase and utility cards per command (fetched by boot adapters at runtime)
- sai/commands/{spec,design,implement,apply,review,security,performance,accessibility}/  ← routed cards: coordinator.md, worker.md, and invocation.md where retained
+ sai/commands/{spec,design,implement,apply,build,review,security,performance,accessibility}/  ← routed cards: coordinator.md, worker.md, and invocation.md where retained
  sai/commands/{archive,backfill,commit,explore,pr,status,worktree}/          ← utility cards: body.md only
  sai/commands/{name}/instructions.md   ← command-local phase content (Isolation Mode + TASK block) folded into each command card
  sai/commands/{name}/*.template.md     ← neighboring co-located report/plan template files beside each card
@@ -71,7 +73,7 @@ The openspec-dependent `sai-*` commands halt with a clear error if either is mis
 | `sai/orchestration/command-runner.md` | Neutral command-runner protocol (result loop, coordinator routing, no phase branches). Loaded by every boot adapter before card selection. |
 | `sai/orchestration/worker-core.md` | Neutral worker lifecycle protocol (worker journal, envelope, changed-files union, reconstruction). Loaded by the routed worker cards. |
 | `sai/commands/` | Command cards — routed cards per phase and utility cards per command, fetched by boot adapters at runtime. |
-| `sai/commands/{spec,design,implement,apply,review,security,performance,accessibility}/` | Routed cards: `coordinator.md`, `worker.md`, and `invocation.md` where retained. |
+| `sai/commands/{spec,design,implement,apply,build,review,security,performance,accessibility}/` | Routed cards: `coordinator.md`, `worker.md`, and `invocation.md` where retained. The build route uses `launcher.md` plus `coordinator.md` and adds no build-specific worker. |
 | `sai/commands/{archive,backfill,commit,explore,pr,status,worktree}/` | Utility cards: `body.md` only — the complete command body for utility commands. |
 | `sai/adapters/claude/boot.md` | Claude Code boot adapter — loads `@sai/orchestration/command-runner.md`, selects the requested card, owns Claude fetch/dispatch; paired non-worker panel runtime glue also lives under `sai/adapters/claude/`, including `panel-render.md` and `idea-list-render.md`. |
 | `sai/adapters/opencode/boot.md` | Opencode boot adapter — loads `@sai/orchestration/command-runner.md`, selects the requested card, owns opencode fetch/dispatch; paired non-worker panel runtime glue also lives under `sai/adapters/opencode/`, including `panel-render.md` and `idea-list-render.md`. |
@@ -79,7 +81,7 @@ The openspec-dependent `sai-*` commands halt with a clear error if either is mis
 | `sai/orchestration/workers/bindings/` | Neutral installed routed worker bindings for the seven phases (`spec/design/implementation/review/security/performance/accessibility-worker.md`) plus the two apply Step-execution worker bindings (`red-worker.md`/`green-worker.md`) projected for both harnesses; non-worker panel and idea-list runtime glue is owned by the adapter seam. |
 | `sai/policies/` | Canonical glossary, prerequisite, picker, commit, status, and feedback policies. `sai/policies/artifact-review-contract.md`: shared artifact review finding contract — closed severity vocabulary and assignment criteria, finding shape, severity-prefixed identifier scheme, and closing `Summary:` tally line — single-sourced and referenced by every artifact review surface. |
 | `sai/compat/` | Caller-neutral spec/design/implementation invocation cores and shared compatibility assets. The ADR index template is not owned here. |
-| `sai/commands/spec/invocation.md`, `sai/commands/design/invocation.md`, `sai/commands/implement/invocation.md`, and `sai/commands/apply/invocation.md` | Caller-neutral invocation bodies shared by the routed paths; `review`, `security`, `performance`, and `accessibility` keep equivalent invocation bodies. |
+| `sai/commands/spec/invocation.md`, `sai/commands/design/invocation.md`, `sai/commands/implement/invocation.md`, and `sai/commands/apply/invocation.md` | Caller-neutral invocation bodies shared by the routed paths; `review`, `security`, and `accessibility` keep equivalent invocation bodies. The build composition uses `sai/commands/build/launcher.md` and `coordinator.md`. |
 | `sai/install-manifest.json` | Deterministic source-to-destination projection rules consumed by installer, doctor, and uninstall. |
 | `sai/SAI_AGENTS.md` | Project-agnostic orientation index over the SAI documentation surfaces; installed at each harness root (`SAI_AGENTS.md`) by the `sai-agents-index` root-class projection. |
 | `agents/claude/` | Claude Code managed agents — nine routed Managed Workers (`sai-1-spec-proposal-worker`, `sai-2-design-worker`, `sai-3-implementation-worker`, `sai-4-red-worker`, `sai-4-green-worker`, `sai-5-review-worker`, `sai-6-security-worker`, `sai-7-performance-worker`, `sai-8-accessibility-worker`) plus the three Generic Agents (`budget-explorer`, `budget-executor`, `budget-subagent`). |
@@ -126,6 +128,10 @@ Claude Code and opencode route `/sai-3-implement` through the shared orchestrati
 ### Apply coordinator and worker
 Claude Code and opencode route `/sai-4-apply` through the routed apply card set (`sai/commands/apply/coordinator.md`, `runner.md`, `invocation.md`, and the RED and GREEN worker contracts) and dispatch the `sai-4-red-worker` / `sai-4-green-worker` managed workers on the budget tier. The coordinator remains the executing main-session driver: it owns change resolution, the run-start Step Projection, coordinator verification, human gates, appendices, and commits, while the RED worker authors the tests (blind to the GREEN implementation body in the split flow, and authoring green tests under the green-exception) and the GREEN worker implements with an absolute test-file prohibition. Both harnesses preserve the same `implementation.md` artifact contract and MANDATORY STOP.
 
+### Build coordinator and worker
+
+`/sai-build` is a user-invoked routed composition command, not an `opsx:*` skill. Claude Code and opencode use `sai/commands/build/launcher.md` followed by `sai/commands/build/coordinator.md`. The ordinary composition coordinator runs exactly two phase adapters in list order: the existing implementation adapter, then the existing apply adapter. It resolves the change once, strips an explicit `--fast-track` token before resolution, does not re-enter either wrapper, and does not add an intermediate approval gate. Build does not declare a managed worker, worker binding, or worker matrix entry; apply remains the sole owner of RED/GREEN selection. Apply fast-track is always injected at activation and the build coordinator owns its single banner. Claude Code uses `opus` with low effort; opencode uses `opencode-go/deepseek-v4-flash` with `variant: max`. Both harnesses preserve the same phase order, artifacts, changed-files union, worker ownership, and terminal behavior.
+
 ### Design coordinator and worker
 Claude Code and opencode route `/sai-2-design` through the shared orchestration core and their respective design-worker binding; Claude uses a low-effort coordinator and high-effort worker, while opencode declares `model: opencode-go/glm-5.2` and `variant: high` on the wrapper and uses `sai-2-design-worker`. Fixed notices are acknowledged with `continue_after_notice`; `/sai-2-design` ends at design completion, and `/sai-3-implement {name}` is separate in a new chat. The opencode routed phases run under your active primary agent; it must permit native question and task dispatch to the numbered SAI workers. The stock build agent satisfies this. If a restrictive primary agent is active, switch to a permissive one (e.g. build) — do not reintroduce a managed coordinator profile. Both paths preserve `openspec/changes/{change-name}/design.md`, `tasks.md`, and `interfaces.md`; Proposal Complexity remains descriptive.
 
@@ -142,7 +148,7 @@ All sai-* artifacts (`implementation.md`, `review.md`, `security.md`, `performan
 In `implementation.md`, a **checkbox** (`- [ ]`) is an **action** — something `/sai-4-apply` runs or the user verifies, then marks `[x]`; every `- [ ]` is a task a downstream consumer (`sai-4-apply`, `sai-archive`, `sai-pr`) acts on. An **italic note** (`*(...)*`) is an **explanation** — context for the reader that is never marked or acted on. A step with no observable human check therefore encodes that absence as an italic note, never as a placeholder `- [ ] No human check required` checkbox.
 
 ### Prerequisite check
-All openspec-dependent sai-* commands (`sai-explore`, `sai-1-spec`, `sai-2-design`, `sai-3-implement`, `sai-4-apply`, `sai-archive`, `sai-5-review`, `sai-6-security`, `sai-7-performance`, `sai-8-accessibility`, `sai-pr`) perform three checks by fetching `@sai/policies/prereqs.md` (resolved per harness: Claude Code via `~/.claude/sai/`, opencode via `~/.config/opencode/sai/`): (1) `openspec` binary in PATH, (2) `openspec/` directory exists, (3) `openspec/config.yaml` declares `schema: sai-workflow`. `sai-commit` and `/sai-worktree` are the only exceptions — they operate on git state only and work in projects without openspec.
+All openspec-dependent sai-* commands (`sai-explore`, `sai-1-spec`, `sai-2-design`, `sai-3-implement`, `sai-4-apply`, `sai-build`, `sai-archive`, `sai-5-review`, `sai-6-security`, `sai-7-performance`, `sai-8-accessibility`, `sai-pr`) perform three checks by fetching `@sai/policies/prereqs.md` (resolved per harness: Claude Code via `~/.claude/sai/`, opencode via `~/.config/opencode/sai/`): (1) `openspec` binary in PATH, (2) `openspec/` directory exists, (3) `openspec/config.yaml` declares `schema: sai-workflow`. `/sai-build` performs resolution and prerequisite checks once for the composition; its apply segment does not repeat them. `sai-commit` and `/sai-worktree` are the only exceptions — they operate on git state only and work in projects without openspec.
 
 ### Isolation Mode
 Every `sai/commands/` command card (routed `coordinator.md`/`invocation.md` and utility `body.md`) starts with:
@@ -213,7 +219,7 @@ The three criteria, the ordered routing test that resolves `adr` vs `ddr`, and t
 
 ### Fast-track flag (`--fast-track`)
 
-A per-invocation opt-in on `sai-explore`, `sai-2-design`, `sai-4-apply`, and `sai-archive` that trades a fixed, audited set of gates for a single end-of-run checkpoint. Parsed in the shared body file (not the wrappers) so behavior is identical across Claude Code and opencode. Each command's opt-out set is fixed:
+A per-invocation opt-in on `sai-explore`, `sai-2-design`, `sai-4-apply`, and `sai-archive` that trades a fixed, audited set of gates for a single end-of-run checkpoint. Parsed in the shared body file (not the wrappers) so behavior is identical across Claude Code and opencode. `/sai-build` is not a fifth opt-in: it strips an explicit `--fast-track` token as a behavioral no-op and unconditionally injects fast-track for the chained apply segment. Each command's opt-out set is fixed:
 - `sai-explore` — skips both language gates (artifact review and crystallization).
 - `sai-2-design` — auto-approves the specs approval gate.
 - `sai-4-apply` — pre-activates session commit authorization and defers Human Verification to end-of-run.
@@ -268,11 +274,12 @@ Existing projects with `plans/{feature-name}/` artifacts are **not migrated auto
 4. If the recommended model changes, update the wrappers in `commands/claude/` and `commands/opencode/`.
 
 ### Change picker
-Ten `sai-*` commands consume an OpenSpec change name via `$ARGUMENTS`: `sai-2-design`, `sai-3-implement`, `sai-4-apply`, `sai-5-review`, `sai-6-security`, `sai-7-performance`, `sai-8-accessibility`, `sai-archive`, `sai-pr`, `sai-status`. Resolution follows a two-step precedence: (1) scan the conversation history for a wrapper-echo line emitted by the 10 opencode change-consuming wrappers; when present and non-empty, treat its value as the resolved change name. (2) If the echo line is absent or empty, fall back to the existing `$ARGUMENTS` check and the 0/1/N picker logic. The echo line is an opencode-only harness-specific adapter and is not mirrored to Claude Code, where `$ARGUMENTS` is substituted into the body file directly. `sai-1-spec` is excluded (it creates a new change, not consumes one).
+Eleven `sai-*` commands consume an OpenSpec change name via `$ARGUMENTS`: `sai-2-design`, `sai-3-implement`, `sai-4-apply`, `sai-build`, `sai-5-review`, `sai-6-security`, `sai-7-performance`, `sai-8-accessibility`, `sai-archive`, `sai-pr`, `sai-status`. Resolution follows a two-step precedence: (1) scan the conversation history for a wrapper-echo line emitted by the 11 opencode change-consuming wrappers; when present and non-empty, treat its value as the resolved change name. (2) If the echo line is absent or empty, fall back to the existing `$ARGUMENTS` check and the 0/1/N picker logic. The echo line is an opencode-only harness-specific adapter and is not mirrored to Claude Code, where `$ARGUMENTS` is substituted into the body file directly. `sai-1-spec` is excluded (it creates a new change, not consumes one). `/sai-build` strips any `--fast-track` tokens before applying this standard resolution and retains one resolved name across both segments.
 
 Placement depends on command shape:
 - **7 commands** (`sai-2-design`, `sai-5-review`, `sai-6-security`, `sai-7-performance`, `sai-8-accessibility`, `sai-archive`, `sai-pr`): fetch it as the first line under `## Load instructions (in order)`, before the first existing fetch.
 - **2 commands** (`sai-3-implement`, `sai-4-apply`): fetch it at the very top of the `<TASK>` block, before `## Prerequisite checks` — because their own "Also verify" block dereferences `{change-name}` inside `## Prerequisite checks`, which runs before `## Load instructions`.
+- **1 composition command** (`sai-build`): resolve from its invocation envelope through the standard change-consuming picker after normalizing `--fast-track`; it is not a fifth body-file parse member and neither segment re-enters a harness wrapper or re-runs resolution.
 
 When adding a new change-consuming command, check whether it dereferences `{change-name}` inside its own `## Prerequisite checks` before picking a placement.
 

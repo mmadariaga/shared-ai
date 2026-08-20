@@ -111,6 +111,7 @@ Use this Result-loop structure (adapt surrounding prose only if required for gra
 | 2 | green | green | 1 | validation-failed | Recovery exhausted after three attempts; Step 2 boundary was corrected before resuming. |
 | 3 | red | red | 1 | assertion | Registration assertions failed only for missing build surfaces; existing explore drift was also reported. |
 | 3 | green | green | 2 | assertion | Build registration passed; four pre-existing non-build assertions remain outside this step. |
+| 4 | green-direct | green | 2 | other | Focused build tests passed; full npm test retained 16 unrelated failures. |
 
 #### Step 2: Author build coordinator and launcher cards
 
@@ -444,7 +445,7 @@ InvocationEnvelope:
 
 *(Non-testable step — docs + skill table only)*
 
-- [ ] Edit `skills/universal/sai-commands/SKILL.md` Command Registry table: add a row for `/sai-build` → `@commands/sai-build.md` with a one-line description that identifies chained implementation planning and apply. Place it with the other un-numbered commands (e.g. after `/sai-backfill` or near `/sai-commit`). Ensure the table covers the full 16-command `sai-*.md` set plus `budget`.
+- [x] Edit `skills/universal/sai-commands/SKILL.md` Command Registry table: add a row for `/sai-build` → `@commands/sai-build.md` with a one-line description that identifies chained implementation planning and apply. Place it with the other un-numbered commands (e.g. after `/sai-backfill` or near `/sai-commit`). Ensure the table covers the full 16-command `sai-*.md` set plus `budget`.
 
 Suggested row:
 
@@ -452,9 +453,9 @@ Suggested row:
 | `/sai-build` | `@commands/sai-build.md` | Build composition — runs implementation planning and apply back-to-back for one change with injected apply fast-track. |
 ```
 
-- [ ] Edit `README.md` user-invoked command inventories / model tables so both harnesses document `/sai-build` (implement-tier coordinator models: Claude `opus`/low; opencode `opencode-go/deepseek-v4-flash`/`max`). Do not describe build as an internal `opsx:*` skill. When one harness is named, name both.
+- [x] Edit `README.md` user-invoked command inventories / model tables so both harnesses document `/sai-build` (implement-tier coordinator models: Claude `opus`/low; opencode `opencode-go/deepseek-v4-flash`/`max`). Do not describe build as an internal `opsx:*` skill. When one harness is named, name both.
 
-- [ ] Edit `AGENTS.md` similarly:
+- [x] Edit `AGENTS.md` similarly:
   - Main pipeline diagram / prose may note `/sai-build` as the short implement→apply composition path (optional short pipeline `explore → build → review`) without removing standalone `/sai-3-implement` and `/sai-4-apply`
   - Repo structure / routed cards line should admit `build` under routed cards (`coordinator.md` + `launcher.md`; no `worker.md`)
   - Critical conventions: add a short **Build coordinator** subsection stating Claude Code and opencode route `/sai-build` through the build composition card, reuse implement + RED/GREEN workers, inject apply fast-track, and end at apply's `/sai-5-review` completion
@@ -462,22 +463,22 @@ Suggested row:
   - Prerequisite-dependent command list: include `sai-build` (openspec-dependent)
   - Fast-track section: note `/sai-build` is outside the four parse members; apply fast-track is composition-injected; banner once at apply activation
 
-- [ ] Do not invent new registry-row snapshot tests unless a failing test requires it. If `test/install-manifest.test.js` fails on retired-name patterns after prose edits, fix only the tripping prose.
+- [x] Do not invent new registry-row snapshot tests unless a failing test requires it. If `test/install-manifest.test.js` fails on retired-name patterns after prose edits, fix only the tripping prose.
 
-- [ ] Verify: run full `npm test` — expected: PASS
-- [ ] Manually confirm skill table row and both docs mention `/sai-build` as a user-invoked command
+- [x] Verify: run full `npm test` — expected: PASS
+- [x] Manually confirm skill table row and both docs mention `/sai-build` as a user-invoked command
 
 ##### Step 4 Verification Checklist
 
 **Automated (agent runs before stopping):**
-- [ ] `npm test` — exit 0
-- [ ] `skills/universal/sai-commands/SKILL.md` contains `/sai-build` → `@commands/sai-build.md` with chained implement-then-apply description
-- [ ] `README.md` and `AGENTS.md` reference `/sai-build` and do not call it an `opsx:*` skill
+- [x] `npm test` — exit 0
+- [x] `skills/universal/sai-commands/SKILL.md` contains `/sai-build` → `@commands/sai-build.md` with chained implement-then-apply description
+- [x] `README.md` and `AGENTS.md` reference `/sai-build` and do not call it an `opsx:*` skill
 
 **Human (operator smoke — documentation only):**
-- [ ] Registration smoke: after install/projection, both harness command lists show `/sai-build`, boot routed-name lists include `build`, and `sai/commands/build/{coordinator,launcher}.md` resolve under the installed SAI root
-- [ ] Standalone regression smoke: direct `/sai-3-implement` completion text still names `/sai-4-apply` in a new chat (automated tests own the pin; human confirms no accidental doc drift in README model tables)
-- [ ] Composition happy-path mental walkthrough: `/sai-build {name}` → implement plan → FAST-TRACK banner at apply start → apply completion → `/sai-5-review {name}` prompt, with no mid-run plan approval gate
+- [x] Registration smoke: after install/projection, both harness command lists show `/sai-build`, boot routed-name lists include `build`, and `sai/commands/build/{coordinator,launcher}.md` resolve under the installed SAI root
+- [x] Standalone regression smoke: direct `/sai-3-implement` completion text still names `/sai-4-apply` in a new chat (automated tests own the pin; human confirms no accidental doc drift in README model tables)
+- [x] Composition happy-path mental walkthrough: `/sai-build {name}` → implement plan → FAST-TRACK banner at apply start → apply completion → `/sai-5-review {name}` prompt, with no mid-run plan approval gate
 
 #### Step 4 STOP & COMMIT
 

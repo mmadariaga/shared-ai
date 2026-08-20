@@ -209,7 +209,6 @@ describe('doctor fetch resolution', () => {
           ['sai-explore.md', 'adapters/claude/idea-list-render.md'],
        ],
         '[Opencode]': [
-          ['sai-explore.md', 'bindings/spec-worker.md'],
            ['sai-explore.md', 'adapters/opencode/idea-list-render.md'],
        ],
     };
@@ -224,6 +223,7 @@ describe('doctor fetch resolution', () => {
       const expected = {
         '[Claude Code]': [
            ...phases.map(binding => `bindings/${binding}`),
+           'bindings/spec-worker.md',
            'bindings/design-worker.md',
             'adapters/claude/idea-list-render.md',
           ],

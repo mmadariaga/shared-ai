@@ -5,7 +5,7 @@ Software development oriented AI commands for a cost-efficient, spec-first, stru
 | Phase | Steps |
 |-------|-------|
 | Idea | explore → spec → validation |
-| Code | design → implement → apply |
+| Code | design → implement → apply *(or build)* |
 | Quality | review → audits *(security · performance · accessibility, per review triage)* |
 | Ship | archive → PR |
 
@@ -48,7 +48,9 @@ The supported harness roster is **Claude Code** and **opencode**. Both use route
 
 /sai-3-implement oauth2-auth    # "On-paper" implementation
 /sai-4-apply oauth2-auth        # Real implementation. 
-                                # → Asks for permission to commit as it completes each step
+                                 # → Asks for permission to commit as it completes each step
+/sai-build oauth2-auth           # User-invoked implement → apply composition
+                                 # → Resolves once, then applies with fast-track enabled
 
 ###########################################################################################
 # Review
@@ -95,6 +97,7 @@ All artifact paths below resolve under `openspec/changes/{change-name}/` (referr
 | `/sai-2-design` | {change-name} | `{c}/design.md`, `tasks.md`, `interfaces.md` | Turns approved specs into a technical plan: architecture decisions, trade-offs, a concrete task list, and a per-step interface contract (`interfaces.md`) listing the new/modified public signatures and exact test assertions for each step. Claude Code routes through a low-effort Opus 4.8 coordinator and high-effort Opus 4.8 design worker; opencode uses the wrapper-declared GLM 5.2 model ID `opencode-go/glm-5.2`, `variant: high`, and worker `sai-2-design-worker`. The fixed notice is acknowledged with `continue_after_notice`, and `/sai-2-design` ends at design completion. Run `/sai-3-implement {name}` separately in a new chat. Proposal Complexity remains descriptive, not a routing gate. Supports `--fast-track` to auto-approve specs. |
 | `/sai-3-implement` | {change-name} | `{c}/implementation.md` | Claude Code uses a low-effort Opus 4.8 coordinator and a medium-effort Opus 4.8 background planning worker; opencode uses the wrapper-declared GLM 5.2 model and the `sai-3-implementation-worker` planning worker. Both paths preserve `openspec/changes/{change-name}/implementation.md` and the MANDATORY STOP. The worker writes the full coding playbook, while `/sai-4-apply` follows it and copies each step's code verbatim, adjusting only for compilation errors or test failures. |
 | `/sai-4-apply` | {change-name} | code | Routed command: Claude Code and opencode run the coordinator in the main session (a **coordinator** that never edits code itself) and dispatch the **RED** and **GREEN** managed workers on the budget tier — one Step-execution worker per dispatch, with a testable step split across two dispatches: the RED worker authors the test (from the assertions in `interfaces.md`, blind to the implementation body) and confirms it fails by assertion, then the GREEN worker copies the playbook code into the project and makes the test pass **without permission to modify the tests**, adjusting code only for compilation errors or test failures. The coordinator re-verifies each result, prints a pre-commit files-modified report cross-checked against `tasks.md`, and asks for your approval before each commit. Supports `--fast-track` to auto-commit and defer human checks to end-of-run. |
+| `/sai-build` | {change-name} | code | User-invoked routed composition that runs `/sai-3-implement` and then `/sai-4-apply` in exactly that order. It resolves the change once, has no intermediate approval gate, and reuses the existing apply adapter rather than re-declaring RED/GREEN or adding a build worker. The chained apply segment is always fast-tracked; an explicit `--fast-track` token is accepted only as a no-op. Claude Code and opencode preserve the same phase order, artifacts, worker ownership, and terminal behavior. |
 | `/sai-5-review` | {change-name} + diff | `{c}/review.md` | Reviews the finished code across 11 dimensions (correctness, maintainability, tests, etc.). Also tells you which specialized audits to run next based on what changed. |
 | `/sai-6-security` | {change-name} + diff | `{c}/security.md` | Finds security vulnerabilities in the diff — points to exact file and line, explains the risk, and maps findings to known standards (OWASP, CVE). |
 | `/sai-7-performance` | {change-name} + diff | `{c}/performance.md` | Flags real performance bottlenecks (slow queries, heavy renders, unbounded loops). Evidence-based — no guesswork. |
@@ -112,6 +115,10 @@ Claude Code also manages the worker agent under the tunable-seed lifecycle: the 
 
 Claude Code and opencode route `/sai-4-apply` through the routed apply card set — `sai/commands/apply/coordinator.md`, `runner.md`, `invocation.md`, and the RED/GREEN worker contracts — and dispatch the `sai-4-red-worker` / `sai-4-green-worker` managed workers on the budget tier. The coordinator stays the executing main-session driver: it performs change resolution, the run-start Step Projection, coordinator verification, human gates, appendices, and commits itself, while the RED worker authors the tests (blind to the GREEN implementation body in the split flow, and authoring green tests under the green-exception) and the GREEN worker implements with an absolute test-file prohibition. Both harnesses preserve the same `openspec/changes/{change-name}/implementation.md` artifact contract and the MANDATORY STOP completion boundary.
 
+### Build coordinator and worker
+
+`/sai-build` is a user-invoked routed composition command, not an `opsx:*` skill. Claude Code and opencode use the routed build cards `sai/commands/build/launcher.md` and `sai/commands/build/coordinator.md`. The build coordinator is an ordinary composition supervisor that runs exactly two adapters in order: the existing implementation coordinator, then the existing apply adapter. It resolves the change once, does not re-enter either harness wrapper, and transitions immediately without an intermediate approval gate. Build does not declare a build-specific worker or re-declare RED/GREEN; after activation, the apply adapter remains the sole owner of `sai-4-red-worker` / `sai-4-green-worker` selection. The coordinator always injects apply fast-track, owns the single activation banner, and treats an explicit `/sai-build --fast-track` token as a no-op. Claude Code uses `opus` with low effort; opencode uses `opencode-go/deepseek-v4-flash` with `variant: max`. Both harnesses preserve the same phase order, changed-files union, durable artifacts, worker ownership, and terminal navigation.
+
 ### Spec coordinator and worker
 
 Claude Code and opencode route `/sai-1-spec` through the shared spec core in `sai/commands/spec/invocation.md` and their respective coordinator/worker bindings. Claude Code preserves the `opus`/medium wrapper and uses a medium-effort Opus 4.8 worker; opencode uses `opencode-go/minimax-m3` and `sai-1-spec-proposal-worker`. The shared path creates only `proposal.md` and `specs/**`, plus permitted glossary updates, and preserves the summary, feedback, and MANDATORY STOP behavior. Same-harness parity evidence is required across the supported harnesses.
@@ -125,6 +132,7 @@ The routed `/sai-2-design` paths use a low-effort Opus 4.8 coordinator and high-
 | Command | Purpose |
 |---------|---------|
 | `/sai-explore` | Open-ended thinking session before committing to anything — good for fuzzy requirements, unclear trade-offs, or when you just want to think out loud with the AI. When a feature is too big for one reviewable change, it slices the idea into a Walking Skeleton plus a dependency-ordered backlog, each ready to enter the pipeline as its own change; when it detects friction at the integration point (mixed responsibilities, no clean extension seam), it prepends a behavior-preserving SOLID refactor as *slice 0* so the feature attaches by extension. After crystallizing, it offers a review loop over your active changes — pick a change, review its `sai-1` or `sai-2` artifacts. Supports `--fast-track` to skip language gate. |
+| `/sai-build` | User-invoked shortcut for a complete implementation run — chains `/sai-3-implement` into `/sai-4-apply` with one change resolution and no intermediate approval. Apply fast-track is always injected; an explicit `--fast-track` token is a no-op. |
 | `/sai-commit` | Reads your staged changes and detects the repo's commit style from the last 20 commits (Conventional Commits shape, type/scope vocabulary, body conventions). Adopts the detected vocabulary when it fits, falls back to hard-coded rules otherwise. Shows a pre-commit file report and runs `git commit` only after you explicitly approve. |
 | `/sai-pr` | Drafts a complete PR description using everything produced during the change (proposal, design, review findings, etc.). Opens the PR on GitHub after you approve. |
 | `/sai-archive` | Moves a completed change to the archive, keeping your active changes folder clean. Supports `--fast-track` to auto-proceed the archive soft gates. |
@@ -187,7 +195,7 @@ Every phase in this pipeline is optimized to minimize token consumption without 
 All agents think and reason internally in English, regardless of the user's input language. English tokenizers produce fewer tokens per unit of meaning than most other languages [—non-English languages can cost 2–3× more tokens for the same meaning](https://x.com/arankomatsuzaki/status/2049125048792006965). This keeps reasoning efficient while user-facing chat always responds in the user's own language (Spanish, French, German, etc.). All generated artifacts (`proposal.md`, `design.md`, `implementation.md`, `review.md`, code, commit messages, PRs) are written in English.
 
 ### Task-Matched Model Selection
-Each phase uses a model chosen for its specific strengths: the design and security phases use the strongest model; spec, implement, review, performance, and accessibility use balanced mid-range models; apply, commit, PR, and archive use fast, cost-efficient models. See the [Recommended models by command](#recommended-models-by-command-and-provider) table below.
+Each phase uses a model chosen for its specific strengths: the design and security phases use the strongest model; spec, implement, review, performance, and accessibility use balanced mid-range models; apply, build, commit, PR, and archive use fast, cost-efficient models. See the [Recommended models by command](#recommended-models-by-command-and-provider) table below.
 
 ### Explore Sub-Agent
 Research or exploratory tasks are delegated to **sub-agents running cost-effective models** matched to the subtask complexity. By default, sub-agents do not inherit the main session's token window, keeping costs predictable. Each subagent call declares an **output contract** (exact fields, length cap, no raw content) so only distilled signal enters the main context. The main agent never calls WebFetch directly — all external doc lookups go through the cheap explore subagent. Caps: ≤8 research-subagent invocations per audit; in audit mode, ≤15 main-agent reads + ≤30 main-agent `Grep`/`Glob` calls per pass.
@@ -242,7 +250,7 @@ Every command starts with zero inherited context —it reads only the `<TASK>` b
 Domain terms are captured in a living `GLOSSARY.md` at the project root. Spec reads and appends new terms inline (no batching), Plan uses canonical terms for all new identifiers, and Review validates language consistency in the diff. This enforces a DDD-style ubiquitous language across the entire pipeline —every agent and every artifact speaks the same vocabulary.
 
 ### Fast-track mode (`--fast-track`)
-For low-risk or high-trust runs, four commands accept a `--fast-track` argument that auto-advances their approval gates instead of stopping to ask. A `> FAST-TRACK MODE ACTIVE` banner prints at the start of the run so the relaxed gating is never silent.
+For low-risk or high-trust runs, four commands accept a `--fast-track` argument that auto-advances their approval gates instead of stopping to ask. A `> FAST-TRACK MODE ACTIVE` banner prints at the start of the run so the relaxed gating is never silent. `/sai-build` is not a fifth fast-track mode: it strips an explicit `--fast-track` token as a no-op and always injects fast-track for its chained apply segment.
 
 | Command | What `--fast-track` skips |
 |---------|---------------------------|
@@ -259,11 +267,11 @@ Everything else stays intact.
 
 ## Global installation (multi-project)
 
-Commands are designed as **user globals**, not per project. A single copy in the CLI's global directory makes them available in any repo. Maintained phase bodies use the grouped `sai/commands/{spec,design,implement,apply}/{coordinator,invocation}.md` assets.
+Commands are designed as **user globals**, not per project. A single copy in the CLI's global directory makes them available in any repo. Maintained phase bodies use the grouped `sai/commands/{spec,design,implement,apply}/{coordinator,invocation}.md` assets; the `/sai-build` composition uses `sai/commands/build/launcher.md` and `coordinator.md`.
 
 ### Shared Orchestration Core
 
-Claude Code and opencode use the shared Orchestration Core under `sai/orchestration/`: common coordinator and worker lifecycle contracts plus mirrored harness bindings for spec, design, and implement. Their grouped phase coordinator/invocation bodies live under `sai/commands/{spec,design,implement}/`, their reusable policies live under `sai/policies/`, shared compatibility assets live under `sai/compat/`, and their bindings are installed as separate projections. Both harnesses preserve the same durable artifacts and command contracts.
+Claude Code and opencode use the shared Orchestration Core under `sai/orchestration/`: common coordinator and worker lifecycle contracts plus mirrored harness bindings for spec, design, and implement. Their grouped phase coordinator/invocation bodies live under `sai/commands/{spec,design,implement}/`, the build composition cards live under `sai/commands/build/`, their reusable policies live under `sai/policies/`, shared compatibility assets live under `sai/compat/`, and their bindings are installed as separate projections. Both harnesses preserve the same durable artifacts and command contracts.
 
 The installer expands `sai/install-manifest.json` deterministically. Install, `doctor`, and uninstall consume that same manifest, so the allowlisted files, destination projections, content-drift checks, and safe removal behavior stay aligned across Claude Code and opencode. The canonical project-agnostic ADR and DDR index templates are `sai/commands/implement/adr-index.template.md` and `sai/commands/implement/ddr-index.template.md`; the recursive `sai-commands` projection installs command-local instructions and co-located `.template.md` files for both supported harnesses, and it also covers the shared overview-generation instruction at `sai/commands/design/change-overview.md` and both index templates, each owned by the single command that consumes it. The manifest also owns retirement records for removed managed destinations, including `retired-adr-index-template`: historical copies are deleted only on a registered SHA-256 hash match, while modified or unrecognized copies remain untouched and are reported for manual cleanup. Retired records are cleanup evidence, not active dependencies. The `sai-agents-index` root-class projection additionally writes `SAI_AGENTS.md` — a project-agnostic orientation index over the four SAI documentation surfaces — to each harness root, inheriting doctor missing-file detection, drift detection, and uninstall cleanup.
 
@@ -349,6 +357,7 @@ We set these defaults to models that have worked best for us, you may find bette
 | design (2) | wrapper-declared `opencode-go/deepseek-v4-flash`; worker `sai-2-design-worker` | `max` | coordinator `claude-opus-4-8` - low; worker `opus` - high |
 | implement (3) | `opencode-go/deepseek-v4-flash` | `max` | coordinator `opus` - low; worker `opus` - medium |
 | apply (4) | `opencode-go/deepseek-v4-flash` | `max` | `sonnet` - low |
+| build | `opencode-go/deepseek-v4-flash` | `max` | `opus` - low |
 | review (5) | `opencode-go/qwen3.7-plus` | | `opus` - medium |
 | security (6) | `opencode-go/qwen3.7-plus` | | `opus` - xhigh |
 | performance (7) | `opencode-go/qwen3.7-plus` | `high` | `opus` - medium |
