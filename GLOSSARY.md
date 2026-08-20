@@ -16,7 +16,7 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 **Architecture Snapshot**: "The concise `design.md` subsection under **Target State** that inventories planned public surfaces, project-root-relative paths, and portable ASCII relationships or execution flows for design review; projected into `change-overview.md`."
 *Avoid*: architecture summary, architecture diagram, interface overview
 
-**Artifact Review**: "A read-only review of a change's OpenSpec artifacts — `proposal.md` and `specs/**` for sai-1, `design.md`, `tasks.md`, and `interfaces.md` for sai-2 — that produces structured findings with `High` / `Medium` / `Low` severities, run manually through `sai-explore`'s post-crystallization review loop, in-session through the **Review Engine** by the supervised pipeline's **Supervised Review Round**s, or by the phase worker's own **Phase Review Pass**."
+**Artifact Review**: "A read-only review of a change's OpenSpec artifacts — `proposal.md` and `specs/**` for sai-1, `design.md`, `tasks.md`, and `interfaces.md` for sai-2 — that produces structured findings with `High` / `Medium` / `Low` severities only through the manual `sai-explore` post-crystallization **Review Engine** or the supervised pipeline's in-session **Explore Review Engine** rounds; spec-proposal and design workers consume the resulting external findings and are not review surfaces."
 *Avoid*: artifact audit, artifact check, doc review, artifact review loop
 
 **Attempts Per Phase**: "Field 9 of the `/sai-4-apply` worker report contract — a list of `{phase, attempts, first_failure, note}` entries, one per verification phase the dispatch actually ran, where `attempts` counts command runs regardless of outcome and `first_failure` draws on a closed vocabulary, and whose absence can never block the workflow."
@@ -171,7 +171,7 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 **Phase Policy**: "The design-only or implementation-only rules layered by a separate phase worker contract over the shared **Orchestration Core** lifecycle."
 *Avoid*: lifecycle core, shared phase logic, conditional worker branch
 
-**Phase Review Pass**: "One complete worker-owned **Artifact Review** of a routed planning phase — a single fresh isolated reviewer run over the freshly read artifacts plus the phase worker's processing of every finding it returns — counted once however many per-finding steps it takes, and producing evidence only when it completes."
+**Phase Review Pass**: "Retired term. No live worker-owned review surface uses this concept; use **Artifact Review** for the manual or supervised **Explore Review Engine** surfaces."
 *Avoid*: review round, review iteration, review cycle, reviewer call
 
 **Phase Transition**: "The supervised pipeline report that records the completed outcome of one phase before the next phase begins."
@@ -231,10 +231,10 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 **Review Loop Navigation**: "The manual-mode-only shell of the post-crystallization review loop — the entry paths, the chat-scoped iteration, the five-option picker, `Skip` / `Exit review loop`, the picker re-entry invariant, and the print-for-paste handoff — which drives the **Review Engine** once per review transaction and performs no review work itself."
 *Avoid*: review menu, loop shell, review picker, review navigation
 
-**Review Reference Set**: "The read-only intent-and-constraint context a **Phase Review Pass** reviewer is given alongside the artifacts it judges — the verbatim resolved request for sai-1, `proposal.md` plus `specs/**` for sai-2 — which the reviewer measures the reviewed artifacts against but never reports a **Review Finding** on."
+**Review Reference Set**: "Retired term. The former worker-owned reviewer context is no longer a live concept; the manual and supervised **Explore Review Engine** surfaces consume their resolved artifact context without creating a worker-owned review surface."
 *Avoid*: reviewer context, background files, input set, supporting docs
 
-**Review Step**: "The final-position **Progress Step** of the sai-1 **Progress Plan** and the sixth of the sai-2 one, marked only by evidence of a **Phase Review Pass** reporting `High=0` and exempt from run-closing reconciliation — so it is the one step a closed run can leave not rendered `completed`."
+**Review Step**: "The final-position **Progress Step** of the sai-1 **Progress Plan** and the sixth of the sai-2 one, marked only by a valid external Explore **Review Engine** findings block whose base-form `Summary: High=0 Medium=<count> Low=<count>` has `High=0`, and exempt from run-closing reconciliation — so it is the one step a closed run can leave not rendered `completed`."
 *Avoid*: review gate, review task, review checkpoint, feedback step
 
 **Review-Loop Token**: "The literal, English-invariant string `review-loop` that a user types in a `sai-explore` turn to enter the post-crystallization review loop directly, skipping the plain-text global sí/no invitation."
@@ -243,7 +243,7 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 **Supervised Pipeline**: "A single-invocation workflow that dispatches phase workers, reviews their artifacts in-session through the **Review Engine**, and converges each phase before continuing to the next."
 *Avoid*: automatic pipeline, chained workflow, phase automation
 
-**Supervised Review Round**: "One complete in-session **Artifact Review** of a supervised phase's artifacts — the explore coordinator invoking the **Review Engine** once over the phase's freshly read artifact set, plus the phase worker's processing of every finding that invocation returns — counted once however many per-finding steps it takes, with at most three rounds per phase."
+**Supervised Review Round**: "One complete in-session **Artifact Review** of a supervised phase's artifacts — the explore coordinator invoking the **Explore Review Engine** once over the phase's freshly read artifact set, plus the phase worker's consuming and applying every external finding that invocation returns — counted once however many per-finding steps it takes, with at most three rounds per phase."
 *Avoid*: supervised review pass, auto review round, pipeline review pass
 
 **Routing Complexity**: "One of the three tokens (`low`, `medium`, `high`) on a step's `**Routing**` line that describes the coarse effort or risk of the step as judged at design time — refined freely by `sai-3-implement` without re-tagging `tasks.md`."
@@ -335,10 +335,9 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 - A **Progress Event** reports completed **Progress Step** ids from a worker to the coordinator, which marks them in the **Progress Plan**, whose render threshold is single-sourced in the neutral task-list policy.
 - A **Milestone Stamp** belongs to one **Progress Step** of a routed phase progress task list and is attached by the coordinator as a decorative rendering action, never by a worker.
 - A **Progress Step** of a routed phase progress task list carries exactly one **Milestone Stamp** once it renders `completed`, and none before; the stamp's value is the **Result Emission Time** of the result that marked it.
-- A **Phase Review Pass** belongs to one routed planning phase invocation and is owned by that phase's worker; it creates exactly one fresh read-only reviewer, which never edits an artifact.
-- A **Phase Review Pass** produces zero or more **Review Finding**s and closes with the shared severity tally; only a completed pass reporting `High=0` marks the **Review Step**.
-- A **Phase Review Pass** reviewer receives exactly one reviewed artifact set plus one **Review Reference Set**; every **Review Finding** it returns targets the reviewed set, never the reference set.
-- A **Review Step** is the one **Progress Step** that run-closing reconciliation never marks, so it is marked exclusively by **Phase Review Pass** evidence carried in an ordinary **Progress Event**.
+- An **Artifact Review** is performed only by the manual `sai-explore` post-crystallization **Review Engine** or a supervised **Supervised Review Round** through the in-session **Explore Review Engine**; workers consume its external findings and never form a second review surface.
+- A **Supervised Review Round** passes the **Explore Review Engine**'s external findings to the phase worker, which applies them without forming findings or emitting another review format.
+- A **Review Step** is the one **Progress Step** that run-closing reconciliation never marks, so it is marked only by a valid external Explore findings block whose base-form `Summary` reports `High=0`, carried in an ordinary **Progress Event**.
 - A **Step Projection** belongs to one `/sai-4-apply` run and mirrors the on-disk checkbox state of one `implementation.md`; unlike the per-dispatch apply **Progress Plan** it is never marked from worker progress events, even though apply now routes Step execution through the managed RED and GREEN workers.
 - An **Idea Progress List** belongs to one `sai-explore` chat and is grown and marked only from in-session evidence; the session never writes it to a file, and it is never derived from repository state.
 - A **Native Task Panel** is a single-slot resource with exactly one declared owner at a time.
