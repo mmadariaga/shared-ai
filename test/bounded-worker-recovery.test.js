@@ -17,15 +17,44 @@ test('worker failures expose closed classification metadata after resolution onl
   assert.match(lifecycle, /pre-resolution[\s\S]*(?:omit|only)[\s\S]*(?:failure_class|classification)/i);
 });
 
-test('shared runner owns the immutable three-attempt same-worker recovery pool', () => {
+test('shared runner owns a three-slot ledger of distinct diagnosis keys', () => {
   const runner = artifact('sai/orchestration/command-runner.md');
   assert.match(runner, /recovery_policy/);
   assert.match(runner, /continue_after_recovery/);
-  assert.match(runner, /three|3/);
+  assert.match(runner, /(?:three|3)[\s-]+(?:slot|diagnosis)/i,
+    'recovery must expose three diagnosis slots');
+  assert.match(runner, /distinct[- ]diagnos(?:is|es)/i,
+    'the recovery budget must be consumed by distinct diagnoses');
+  assert.match(runner, /ledger/i,
+    'recovery must retain a diagnosis ledger');
+  assert.match(runner, /diagnosis[_ ]key[\s:=`]*[\s\S]{0,220}(?:tuple|\([^)]*failure[_ ]class[^)]*cause[_ ]locus[^)]*\))/i,
+    'each diagnosis must have a tuple key containing failure_class and Cause Locus');
+  assert.match(runner, /(?:(?:duplicate|already[- ]seen)[\s\S]{0,180}(?:before|prior to)[\s\S]{0,100}dispatch|(?:before|prior to)[\s\S]{0,100}dispatch[\s\S]{0,180}(?:duplicate|already[- ]seen))/i,
+    'duplicate diagnoses must be rejected before dispatch');
+  assert.match(runner, /failure[_ ]class[\s\S]{0,220}(?:(?:prior)[\s\S]{0,120}(?:not|never)[\s\S]{0,80}gate|(?:not|never)[\s\S]{0,80}gate[\s\S]{0,120}prior)/i,
+    'failure_class is a prior, not the recovery gate');
   assert.match(runner, /same[- ]worker/i);
   assert.match(runner, /recovery[\s\S]{0,400}(?:never|no)[\s\S]{0,120}replacement/i);
-  assert.match(runner, /blocking-contradiction[\s\S]*validation-failed[\s\S]*generation-error[\s\S]*dispatch-failed[\s\S]*envelope-contract-violation[\s\S]*unclassified-worker-fault/);
   assert.match(runner, /outer-envelope-violation/);
+});
+
+test('recovery routes Cause Locus diagnoses through dual inspection channels', () => {
+  const runner = artifact('sai/orchestration/command-runner.md');
+  const orchestrationSpec = artifact('openspec/specs/orchestration-core/spec.md');
+  const contract = `${runner}\n${orchestrationSpec}`;
+
+  assert.match(contract, /(?:diagnos(?:is|es)[\s\S]{0,220}(?:route|routing)|(?:route|routing)[\s\S]{0,220}diagnos(?:is|es))/i,
+    'recovery routing must be diagnosis-driven');
+  assert.match(contract, /Cause[\s_-]+Locus/i,
+    'the diagnosis must name Cause Locus');
+  assert.match(contract, /in[- ]scope/i,
+    'Cause Locus must distinguish in-scope failures');
+  assert.match(contract, /out[- ]of[- ]scope/i,
+    'Cause Locus must distinguish out-of-scope failures');
+  assert.match(contract, /unresolved/i,
+    'Cause Locus must retain an unresolved state');
+  assert.match(contract, /(?:dual|two)[\s\S]{0,140}inspection[\s\S]{0,140}(?:channel|path)/i,
+    'diagnosis must use dual inspection channels');
 });
 
 test('recovery preserves ordinary continuation fallback and invocation accounting', () => {
@@ -104,6 +133,8 @@ test('composition scopes the recovery pool per adapter segment and keeps the cha
   const runner = artifact('sai/orchestration/command-runner.md');
   assert.match(runner, /segment-scoped|active adapter segment/i,
     'recovery pool must be segment-scoped under composition');
+  assert.match(runner, /(?:segment-scoped|per[- ]segment)[\s\S]{0,220}(?:diagnos(?:is|es)|ledger)/i,
+    'the distinct-diagnosis ledger must be scoped to the active segment');
   assert.match(runner, /fresh[\s\S]{0,80}three[- ]attempt|fresh[\s\S]{0,80}pool/i,
     'a later recovery_policy: true segment must receive a fresh three-attempt pool');
   assert.match(runner, /(?:shall not|must not|does not|never)[\s\S]{0,120}inherit[\s\S]{0,120}(?:depleted|exhausted|remaining)/i,

@@ -117,6 +117,13 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0145 — Routed coordinators receive panel tools with non-blocking runtime degradation](./0145-routed-coordinators-receive-panel-tools-with-non-blocking-runtime-degradation.md) — Refs 0117, Refs 0144
 - [0148 — Keep the three-file apply layout; redefine normative homes](./0148-keep-three-file-apply-layout-redefine-normative-homes.md) — Refs 0083
 - [0149 — Parameterized terminal_navigation binds two actions; no phase fork](./0149-parameterized-terminal-navigation-two-actions.md) — Refs 0083, Refs 0148
+- [0158 — Shared non-clean-closure diagnosis lives in the command runner](./0158-shared-non-clean-closure-diagnosis-in-command-runner.md) — Refs 0150, Refs 0083
+- [0159 — Recovery budget is a three-slot distinct-diagnosis ledger](./0159-three-slot-distinct-diagnosis-ledger.md) — **Amends** 0150
+- [0160 — Apply Known-False Report Recovery branches by locus with five-part recovery content](./0160-known-false-report-recovery-branches-by-locus.md) — Refs 0159, Refs 0161
+- [0161 — Bounded coordinator-owned plan-artifact repair with Coverage Signature](./0161-bounded-plan-artifact-repair-coverage-signature.md) — Refs 0160
+- [0162 — Unpassable RED/GREEN STOP maps to failed blocking-contradiction with evidence-backed veto](./0162-unpassable-stop-failed-blocking-contradiction.md) — Refs ddr:0151, Refs ddr:0152
+- [0164 — Self-verifiable Steps — prose and pinning tests land together](./0164-self-verifiable-steps-prose-and-tests-together.md)
+- [0165 — Dual coordinator inspection channels — verifying vs phase-static](./0165-dual-coordinator-inspection-channels.md) — Refs ddr:0151, Refs ddr:0152
 
 ### `/sai-5-review`
 
@@ -185,6 +192,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0155 — Implement terminal_navigation is positional (apply-pattern match)](./0155-implement-positional-terminal-navigation.md) — Refs 0149, Refs 0083, Refs 0152
 - [0156 — Build injects apply fast-track unconditionally; composition owns the banner](./0156-build-unconditional-apply-fast-track-banner-ownership.md) — Refs 0153, Refs 0048, Refs 0051, Refs ddr:0052
 - [0157 — Build launcher mirrors implement (not near-empty)](./0157-build-launcher-mirrors-implement.md) — Refs 0141, Refs 0142, Refs 0154
+- [0163 — Build inherits shared recovery only through the apply phase adapter](./0163-build-inherits-recovery-via-apply-adapter.md) — Refs 0154
 
 ### docker/orca
 
@@ -277,6 +285,10 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0155 — Implement terminal_navigation is positional (apply-pattern match)](./0155-implement-positional-terminal-navigation.md) — Refs 0149, Refs 0083, Refs 0152
 - [0156 — Build injects apply fast-track unconditionally; composition owns the banner](./0156-build-unconditional-apply-fast-track-banner-ownership.md) — Refs 0153, Refs 0048, Refs 0051, Refs ddr:0052
 - [0157 — Build launcher mirrors implement (not near-empty)](./0157-build-launcher-mirrors-implement.md) — Refs 0141, Refs 0142, Refs 0154
+- [0158 — Shared non-clean-closure diagnosis lives in the command runner](./0158-shared-non-clean-closure-diagnosis-in-command-runner.md) — Refs 0150, Refs 0083
+- [0159 — Recovery budget is a three-slot distinct-diagnosis ledger](./0159-three-slot-distinct-diagnosis-ledger.md) — **Amends** 0150
+- [0163 — Build inherits shared recovery only through the apply phase adapter](./0163-build-inherits-recovery-via-apply-adapter.md) — Refs 0154
+- [0165 — Dual coordinator inspection channels — verifying vs phase-static](./0165-dual-coordinator-inspection-channels.md) — Refs ddr:0151, Refs ddr:0152
 
 ---
 
@@ -304,6 +316,11 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0155 — Implement terminal_navigation is positional (apply-pattern match)](./0155-implement-positional-terminal-navigation.md) — Refs 0149, Refs 0083, Refs 0152
 - [0156 — Build injects apply fast-track unconditionally; composition owns the banner](./0156-build-unconditional-apply-fast-track-banner-ownership.md) — Refs 0153, Refs 0048, Refs 0051, Refs ddr:0052
 - [0157 — Build launcher mirrors implement (not near-empty)](./0157-build-launcher-mirrors-implement.md) — Refs 0141, Refs 0142, Refs 0154
+- [0158 — Shared non-clean-closure diagnosis lives in the command runner](./0158-shared-non-clean-closure-diagnosis-in-command-runner.md) — Refs 0150, Refs 0083
+- [0159 — Recovery budget is a three-slot distinct-diagnosis ledger](./0159-three-slot-distinct-diagnosis-ledger.md) — **Amends** 0150
+- [0163 — Build inherits shared recovery only through the apply phase adapter](./0163-build-inherits-recovery-via-apply-adapter.md) — Refs 0154
+- [0164 — Self-verifiable Steps — prose and pinning tests land together](./0164-self-verifiable-steps-prose-and-tests-together.md)
+- [0165 — Dual coordinator inspection channels — verifying vs phase-static](./0165-dual-coordinator-inspection-channels.md) — Refs ddr:0151, Refs ddr:0152
 
 ### Fetch resolution & path conventions
 
@@ -415,6 +432,12 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0153 — Build mints segment envelopes without boot or wrapper re-entry](./0153-build-composition-minted-segment-envelopes.md) — Refs 0151, Refs 0152, Refs 0075
 - [0155 — Implement terminal_navigation is positional (apply-pattern match)](./0155-implement-positional-terminal-navigation.md) — Refs 0149, Refs 0083, Refs 0152
 - [0154 — Contract-load failure is parent-authored generation-error](./0154-contract-load-failure-is-parent-authored-generation-error.md)
+- [0158 — Shared non-clean-closure diagnosis lives in the command runner](./0158-shared-non-clean-closure-diagnosis-in-command-runner.md) — Refs 0150, Refs 0083
+- [0159 — Recovery budget is a three-slot distinct-diagnosis ledger](./0159-three-slot-distinct-diagnosis-ledger.md) — **Amends** 0150
+- [0160 — Apply Known-False Report Recovery branches by locus with five-part recovery content](./0160-known-false-report-recovery-branches-by-locus.md) — Refs 0159, Refs 0161
+- [0161 — Bounded coordinator-owned plan-artifact repair with Coverage Signature](./0161-bounded-plan-artifact-repair-coverage-signature.md) — Refs 0160
+- [0162 — Unpassable RED/GREEN STOP maps to failed blocking-contradiction with evidence-backed veto](./0162-unpassable-stop-failed-blocking-contradiction.md) — Refs ddr:0151, Refs ddr:0152
+- [0165 — Dual coordinator inspection channels — verifying vs phase-static](./0165-dual-coordinator-inspection-channels.md) — Refs ddr:0151, Refs ddr:0152
 
 ### Testability routing & RED → GREEN
 
@@ -508,6 +531,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 | [0146](./0146-crystallization-close-selector-replaces-the-pipeline-token.md) | reverses | [0053](../ddr/0053-post-crystallization-review-once-per-turn.md) |
 | [0146](./0146-crystallization-close-selector-replaces-the-pipeline-token.md) | reverses | [0058](./0058-gate-ux-tweaks-as-deltas-against-existing-capabilities.md) |
 | [0150](./0150-recovery-pool-segment-scoped-under-composition.md) | amends | [0139](./0139-presence-only-bounded-recovery-policy.md) |
+| [0159](./0159-three-slot-distinct-diagnosis-ledger.md) | amends | [0150](./0150-recovery-pool-segment-scoped-under-composition.md) |
 
 ## Superseded ADRs (historical)
 

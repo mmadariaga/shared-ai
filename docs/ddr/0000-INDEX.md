@@ -51,6 +51,8 @@ This index groups the DDRs in `docs/ddr/` by **command** and by **cross-cutting 
 - [0146 — Stable planning progress ids remain compatibility keys while labels become user-facing](./0146-stable-planning-progress-ids-preserve-compatibility.md)
 - [0148 — Specs approval remains folded into design prerequisite resolution](./0148-specs-approval-remains-folded-into-design-prerequisites.md)
 - [0150 — Gate mode is parameterized at the fetch site, never detected from invocation context](./0150-mode-parameterized-at-fetch-site-not-detected.md) — **Amends** adr:0028
+- [0151 — Three mutually exclusive routing diagnoses, separate from worker failure classes](./0151-three-mutually-exclusive-routing-diagnoses.md) — Refs 0152
+- [0152 — Cause Locus gates eligibility; unresolved is not out-of-scope](./0152-cause-locus-gates-eligibility.md) — Refs 0151
 
 ### `/sai-3-implement`
 
@@ -78,6 +80,8 @@ This index groups the DDRs in `docs/ddr/` by **command** and by **cross-cutting 
 - [0109 — "Testable" (RED block) and "divisible" (production surface) are distinct Step properties](./0109-testable-and-divisible-are-distinct-step-properties.md) — Refs adr:0115
 - [0115 — The implementation plan's step identity is its `#### Step N:` H4-with-colon heading](./0115-implementation-step-identity-is-h4-heading.md)
 - [0137 — The apply routed boundary carries progress events against immutable dispatch-local plans](./0137-apply-routed-boundary-carries-progress-events.md) — Supersedes 0116
+- [0151 — Three mutually exclusive routing diagnoses, separate from worker failure classes](./0151-three-mutually-exclusive-routing-diagnoses.md) — Refs 0152
+- [0152 — Cause Locus gates eligibility; unresolved is not out-of-scope](./0152-cause-locus-gates-eligibility.md) — Refs 0151
 
 ### `/sai-5-review`
 
@@ -185,6 +189,8 @@ This index groups the DDRs in `docs/ddr/` by **command** and by **cross-cutting 
 - [0140 — Every closed worker payload carries a worker-authored `emitted_on`](./0140-closed-worker-payloads-carry-result-emission-time.md) — Refs 0110
 - [0141 — The milestone stamp is closure-only and derived from `emitted_on`, never from a coordinator clock](./0141-milestone-stamp-is-closure-only-and-derived-from-emitted-on.md) — Refs 0140, Refs 0112, Refs adr:0144
 - [0149 — The Orchestration Core contracts live under `sai/orchestration/`](./0149-orchestration-core-contracts-live-under-orchestration.md) — Supersedes 0128
+- [0151 — Three mutually exclusive routing diagnoses, separate from worker failure classes](./0151-three-mutually-exclusive-routing-diagnoses.md) — Refs 0152
+- [0152 — Cause Locus gates eligibility; unresolved is not out-of-scope](./0152-cause-locus-gates-eligibility.md) — Refs 0151
 
 ### Fetch resolution & path conventions
 

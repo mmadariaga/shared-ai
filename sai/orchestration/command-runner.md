@@ -98,13 +98,16 @@ without relocating this file. Composition obeys exactly three rules:
    retains a zero-based position into that list. Activating a segment SHALL
    rebind that segment's adapter fields (including that segment's `progress_plan`
    and `recovery_policy` when declared). When the active segment declares
-   `recovery_policy: true`, the shared runner SHALL create one segment-scoped
-   recovery pool of exactly three attempts that is immutable for that segment and
-   is discarded when the segment ends; a later segment that also declares
-   `recovery_policy: true` receives a fresh three-attempt pool and SHALL NOT
-   inherit a depleted budget from an earlier segment. The invocation-scoped
-   changed-files union initialized by this runner SHALL continue across segment
-   activations in first-seen order and SHALL NOT reset at a transition.
+    `recovery_policy: true`, the shared runner SHALL create one segment-scoped
+    three-slot distinct-diagnosis ledger. The ledger permits at most one
+    recovery attempt for each new normalized diagnosis key, is bounded to three
+    slots for that segment, and is discarded when the segment ends. Each
+    eligible composition segment whose active adapter declares
+    `recovery_policy: true` receives a fresh three-attempt distinct-diagnosis
+    ledger and SHALL NOT inherit a
+    depleted ledger from an earlier segment. The invocation-scoped changed-files
+    union initialized by this runner SHALL continue across segment activations
+    in first-seen order and SHALL NOT reset at a transition.
    Intra-segment multi-dispatch behavior a phase already owns (for example apply's
    per-dispatch plan selection) remains phase-owned inside the active segment and
    is not a second composition axis.
@@ -171,47 +174,138 @@ is the sole authored composition/spec source until archive/sync.
 
 ## Bounded Recovery
 
-The shared runner owns the bounded same-worker recovery pool. When the phase
-adapter declares the optional static `recovery_policy: true`, the runner
-creates one segment-scoped pool of exactly three attempts, immutable for the
-active adapter segment and discarded when the segment ends. Under composition, a
-later segment that also declares `recovery_policy: true` receives a fresh
-three-attempt pool and does not inherit a depleted budget. A one-adapter
-invocation keeps segment scope identical to today's invocation scope. The fixed
-recovery acknowledgement `continue_after_recovery` is runner-owned and is not an
+The shared runner owns diagnosis-driven, bounded same-worker recovery. A static
+`recovery_policy: true` enables recovery evaluation for the active adapter
+segment; it does not make a result eligible by itself. The fixed
+`continue_after_recovery` acknowledgement is runner-owned and is not an
 additional phase-adapter field.
 
-1. Validate every resolved failed outcome against the worker class vocabulary
-   — `blocking-contradiction`, `validation-failed`, `generation-error`,
+1. **Segment-scoped ledger.** For every recovery-eligible composition segment,
+   create a fresh ledger with exactly three slots. A slot is consumed only when
+   the runner dispatches recovery for a new normalized diagnosis key. A
+   diagnosis key can consume at most one slot, the ledger is scoped to the
+   active segment, and the ledger is discarded at the segment boundary. A
+   one-adapter invocation keeps segment scope identical to the invocation.
+   A later eligible segment gets a fresh three-slot ledger and never inherits
+   an earlier segment's spent slots.
+
+2. **Post-resolution diagnosis precedes eligibility.** The runner SHALL first
+   establish the resolved change identity and validate the closed result. Only
+   after that resolution may it diagnose the result, inspect both channels,
+   determine Cause Locus, normalize a diagnosis key, and evaluate recovery
+   eligibility. A pre-resolution result cannot spend a slot or dispatch
+   recovery.
+
+3. **Exactly three routing diagnoses.** The post-resolution diagnosis SHALL
+   select exactly one of these routing diagnoses and no other:
+
+   - `continuation/transport loss` — the coordinator cannot receive or resume
+     the same worker through the expected transport or continuation path.
+   - `coordinator rejection` — the coordinator rejects the received result or
+     continuation because its envelope, routing, or coordinator-owned
+     contract evidence is invalid.
+   - `worker-authored failure` — the worker returned a closed failure outcome
+     or otherwise reported an execution failure through its worker-authored
+     channel.
+
+   A routing diagnosis is distinct from the worker's `failure_class`. The
+   closed worker failure-class vocabulary remains
+   `blocking-contradiction`, `validation-failed`, `generation-error`,
    `dispatch-failed`, `envelope-contract-violation`, and
-   `unclassified-worker-fault` — and the boolean veto. Missing or unknown
-   failure metadata, or a worker-authored `outer-envelope-violation`, becomes
-   a coordinator-authored `outer-envelope-violation`: it spends zero attempts,
-   dispatches no replacement, and hands back naming the offending value or the
-   missing field.
-2. Create the pool only when the adapter declares `recovery_policy: true`;
-   otherwise no recovery pool exists and failed outcomes fall through to the
-   terminal result path.
-3. Eligible classes are only `validation-failed`, `generation-error`,
-   `dispatch-failed`, and `envelope-contract-violation`.
-   `blocking-contradiction`, `outer-envelope-violation`, and
-   `unclassified-worker-fault` spend zero attempts. Blocking contradiction
-   takes precedence over a simultaneous veto.
-4. Before each attempt, emit conversation text naming the triggering
-   failure class and the ordinal attempt (`1 of 3`, `2 of 3`, `3 of 3`);
-   then continue the same live worker with `continue_after_recovery`.
-   Recovery never dispatches a replacement worker.
-5. Deduct each failed recovery continuation from the same pool even when the
-   class changes. Continuation loss stops recovery immediately. `needs_input`
-   exits recovery without charging that result and resumes the normal input
-   loop. `cancelled` never enters recovery. Ordinary continuation loss
-   outside recovery retains the existing at-most-one replacement fallback.
-6. Preserve one first-seen ordered `changed_files` union and one spent-attempt
-   count across initial results, progress, notices, input, normal continuation,
-   and recovery. `--fast-track` changes neither the recovery budget nor its
-   reporting.
-7. Hand-backs name the failure class, attempts spent, and the stopping reason
-   (blocking contradiction, worker veto, exhaustion, continuation failure,
-   input, or cancellation). Recovery announcements and hand-backs are
-   conversation text and never mark, extend, rename, or add progress-plan
-   steps.
+   `unclassified-worker-fault`; a worker-authored `outer-envelope-violation`
+   is still a coordinator-owned rejection, never a worker-authorable class.
+
+4. **Cause Locus and dual inspection channels.** Every diagnosis SHALL assign
+   exactly one Cause Locus: `in-scope`, `out-of-scope`, or `unresolved`.
+   `in-scope` means that the evidence identifies a concrete point in an
+   authorized production artifact and the authorized correction boundary
+   permits this worker to correct it. `out-of-scope` means that the cause is
+   in a test, declared interface, forbidden artifact, external/shared system,
+   or any other boundary this Step does not authorize. `unresolved` means the
+   evidence cannot establish a concrete point and correction boundary, or the
+   two inspection channels do not agree.
+
+   Diagnosis uses both inspection channels before eligibility is evaluated:
+   (a) the worker-authored result channel, including its status, failure
+   metadata, summary, and reported evidence; and (b) the coordinator-observed
+   channel, including transport/continuation state, envelope validation,
+   routing state, and the authorized production-scope inspection. Neither
+   channel may be omitted or silently substituted for the other. Missing or
+   conflicting evidence produces `unresolved` and therefore no recovery
+   attempt.
+
+5. **Diagnosis key and normalization.** The diagnosis key is the ordered tuple
+   `(artifact path, concrete point, authorized correction boundary)`. It has
+   exactly those three components; routing diagnosis, `failure_class`,
+   attempt ordinal, timestamps, summaries, and `changed_files` are not key
+   components. Before comparison, normalize the tuple deterministically:
+   canonicalize the artifact path as a repository-relative path with `/`
+   separators and redundant `.` segments removed, trim and collapse
+   whitespace in the concrete point, and use the canonical spelling for the
+   authorized correction boundary. Preserve component order and repository
+   case semantics, and do not infer or reorder missing values. A missing or
+   non-concrete component normalizes to no usable key and leaves Cause Locus
+   `unresolved`; it must not accidentally match a different diagnosis.
+
+6. **Eligibility is diagnosis-driven.** `failure_class` is a diagnostic prior
+   used to focus and order inspection; it is not an eligibility gate. No
+   failure-class value alone grants recovery or forces a zero-attempt branch.
+   After resolution, both inspection channels, Cause Locus, normalized key,
+   worker veto, and ledger state are known, recovery is eligible only when all
+   of the following hold: the active segment has `recovery_policy: true`, the
+   Cause Locus is `in-scope`, the key is new in that segment's ledger, a slot
+   remains, the worker has not set `unrecoverable: true`, and the hand-back
+   diagnosis has sufficient evidence for an authorized correction and its
+   verification. The coordinator SHALL validate any present `failure_class`
+   against the closed vocabulary, but SHALL use that value as a prior rather
+   than as the eligibility decision.
+
+7. **Zero-attempt branches and duplicate check.** Spend zero slots and do not
+   dispatch recovery when recovery is not enabled, resolution has not
+   completed, the closed outcome or its required metadata is rejected, Cause
+   Locus is `out-of-scope` or `unresolved`, the worker vetoes continuation,
+   the ledger is exhausted, or the result is cancelled. A duplicate normalized
+   diagnosis key is checked before dispatch: it spends zero slots, does not
+   invoke `continue_after_recovery`, and hands back the existing diagnosis
+   rather than creating a second attempt. A coordinator-owned rejection with
+   no concrete in-scope correction likewise spends zero slots. These branches
+   do not alter the unchanged `changed_files` union.
+
+8. **Dispatch and continuation.** Before an eligible attempt, announce the
+   routing diagnosis, failure class, Cause Locus, normalized diagnosis key, and
+   the slot ordinal (`1 of 3`, `2 of 3`, or `3 of 3`) in conversation text.
+   Atomically
+   record the new key and consume its one slot, then resume the same live worker
+   with exactly `continue_after_recovery`. Recovery SHALL never dispatch a
+   replacement worker. If that recovery continuation loses transport, is
+   rejected, or otherwise cannot resume the same worker, stop recovery and
+   hand back the diagnosis; do not turn the loss into a replacement dispatch.
+   Ordinary continuation loss outside recovery retains the existing at-most-one
+   replacement fallback.
+   A subsequent diagnosis may be considered only from a successfully resumed
+   same-worker result and only if it has a new key and a remaining slot.
+
+9. **Input, cancellation, and hand-back.** If recovery returns `needs_input`,
+   exit recovery without charging that result, forward its exact question and
+   options through the normal input loop, and retain the segment ledger and
+   changed-files union. `cancelled` never enters or re-enters recovery and
+   closes as cancelled without a recovery charge. Every recovery continuation
+   carries the coordinator diagnosis fields exactly as `Reported`, `Evidence`,
+   `Cause`, `Correction`, and `Verification`. A recovery hand-back also names
+   the routing diagnosis, `failure_class` when present, Cause Locus,
+   `diagnosis_key` (or that it is unresolved), `attempts_spent` (the number of
+   attempts spent), and the stopping reason. Stopping reasons are limited to no policy, unresolved or
+   out-of-scope cause, duplicate diagnosis, worker veto, exhaustion,
+   continuation/transport loss, coordinator rejection, input, or cancellation.
+   Recovery announcements and hand-backs are conversation text only; they
+   never mark, extend, rename, or add progress-plan steps.
+
+10. **Union and fast-track invariants.** Maintain one first-seen, ordered,
+    duplicate-free `changed_files` union across initial results, progress,
+    notices, input, normal continuation, segment transitions, and recovery.
+    Reset the diagnosis ledger only at an eligible composition-segment
+    boundary; never reset the changed-files union. `--fast-track` is unchanged:
+    it changes neither the three-slot ledger, distinct-diagnosis accounting,
+    eligibility, duplicate handling, same-worker/no-replacement rule,
+    changed-files union, nor recovery reporting; its existing fast-track gates
+    remain in force.
