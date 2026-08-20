@@ -51,6 +51,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 
 ### `/sai-3-implement`
 
+- [0155 — Implement terminal_navigation is positional (apply-pattern match)](./0155-implement-positional-terminal-navigation.md) — Refs 0149, Refs 0083, Refs 0152
 - [0023 — interfaces.md is an optional soft dependency, not a schema hard requirement](./0023-interfaces-soft-dependency.md)
 - [0064 — Instruction-file-only Steps are classified non-testable](./0064-instruction-only-steps-classified-non-testable.md)
 - [0074 — Harness wrappers select coordinator or inline implementation planning](./0074-harness-wrappers-select-coordinator-or-inline-implementation-planning.md) — Refs 0035
@@ -84,6 +85,8 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 
 ### `/sai-4-apply`
 
+- [0154 — Build apply segment loads through the existing apply phase adapter](./0154-build-apply-segment-uses-existing-apply-adapter.md) — Refs 0152, Refs 0148, Refs 0149
+- [0156 — Build injects apply fast-track unconditionally; composition owns the banner](./0156-build-unconditional-apply-fast-track-banner-ownership.md) — Refs 0153, Refs 0048, Refs 0051, Refs ddr:0052
 - [0005 — Verbatim Extraction of Commit Rules into commit-rules.md](./0005-verbatim-extraction-of-commit-rules.md) — Refs 0006
 - [0006 — Load commit-rules at Git Operations Section Header in apply.md](./0006-commit-rules-fetch-placement-in-apply.md) — Refs 0005
 - [0017 — Same-model Step-execution dispatch via omitted `model:` parameter](./0017-same-model-dispatch-via-omitted-model-param.md)
@@ -159,6 +162,15 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 ### `/sai-status`
 
 - [0065 — Fork `status-picker.md` from `change-picker.md` rather than parameterize the shared picker](./0065-fork-status-picker-from-change-picker.md)
+
+### `/sai-build`
+
+- [0152 — Build is an ordinary composition coordinator, not explore supervision](./0152-build-ordinary-composition-coordinator-not-explore-supervision.md) — Refs 0147, Refs 0151, Refs 0083
+- [0153 — Build mints segment envelopes without boot or wrapper re-entry](./0153-build-composition-minted-segment-envelopes.md) — Refs 0151, Refs 0152, Refs 0075
+- [0154 — Build apply segment loads through the existing apply phase adapter](./0154-build-apply-segment-uses-existing-apply-adapter.md) — Refs 0152, Refs 0148, Refs 0149
+- [0155 — Implement terminal_navigation is positional (apply-pattern match)](./0155-implement-positional-terminal-navigation.md) — Refs 0149, Refs 0083, Refs 0152
+- [0156 — Build injects apply fast-track unconditionally; composition owns the banner](./0156-build-unconditional-apply-fast-track-banner-ownership.md) — Refs 0153, Refs 0048, Refs 0051, Refs ddr:0052
+- [0157 — Build launcher mirrors implement (not near-empty)](./0157-build-launcher-mirrors-implement.md) — Refs 0141, Refs 0142, Refs 0154
 
 ### docker/orca
 
@@ -245,6 +257,12 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0147 — Three-rule composition delta lives only in command-runner.md Result Loop](./0147-three-rule-composition-delta-in-command-runner.md) — Refs 0083, Refs 0081
 - [0150 — Recovery pool is segment-scoped under composition](./0150-recovery-pool-segment-scoped-under-composition.md) — **Amends** 0139, Refs 0147
 - [0151 — Composition constructs successor envelopes directly (no boot adapter)](./0151-composition-constructs-successor-envelopes-directly.md) — Refs 0136, Refs 0075, Refs 0147
+- [0152 — Build is an ordinary composition coordinator, not explore supervision](./0152-build-ordinary-composition-coordinator-not-explore-supervision.md) — Refs 0147, Refs 0151, Refs 0083
+- [0153 — Build mints segment envelopes without boot or wrapper re-entry](./0153-build-composition-minted-segment-envelopes.md) — Refs 0151, Refs 0152, Refs 0075
+- [0154 — Build apply segment loads through the existing apply phase adapter](./0154-build-apply-segment-uses-existing-apply-adapter.md) — Refs 0152, Refs 0148, Refs 0149
+- [0155 — Implement terminal_navigation is positional (apply-pattern match)](./0155-implement-positional-terminal-navigation.md) — Refs 0149, Refs 0083, Refs 0152
+- [0156 — Build injects apply fast-track unconditionally; composition owns the banner](./0156-build-unconditional-apply-fast-track-banner-ownership.md) — Refs 0153, Refs 0048, Refs 0051, Refs ddr:0052
+- [0157 — Build launcher mirrors implement (not near-empty)](./0157-build-launcher-mirrors-implement.md) — Refs 0141, Refs 0142, Refs 0154
 
 ---
 
@@ -266,6 +284,12 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0147 — Three-rule composition delta lives only in command-runner.md Result Loop](./0147-three-rule-composition-delta-in-command-runner.md) — Refs 0083, Refs 0081
 - [0150 — Recovery pool is segment-scoped under composition](./0150-recovery-pool-segment-scoped-under-composition.md) — **Amends** 0139, Refs 0147
 - [0151 — Composition constructs successor envelopes directly (no boot adapter)](./0151-composition-constructs-successor-envelopes-directly.md) — Refs 0136, Refs 0075, Refs 0147
+- [0152 — Build is an ordinary composition coordinator, not explore supervision](./0152-build-ordinary-composition-coordinator-not-explore-supervision.md) — Refs 0147, Refs 0151, Refs 0083
+- [0153 — Build mints segment envelopes without boot or wrapper re-entry](./0153-build-composition-minted-segment-envelopes.md) — Refs 0151, Refs 0152, Refs 0075
+- [0154 — Build apply segment loads through the existing apply phase adapter](./0154-build-apply-segment-uses-existing-apply-adapter.md) — Refs 0152, Refs 0148, Refs 0149
+- [0155 — Implement terminal_navigation is positional (apply-pattern match)](./0155-implement-positional-terminal-navigation.md) — Refs 0149, Refs 0083, Refs 0152
+- [0156 — Build injects apply fast-track unconditionally; composition owns the banner](./0156-build-unconditional-apply-fast-track-banner-ownership.md) — Refs 0153, Refs 0048, Refs 0051, Refs ddr:0052
+- [0157 — Build launcher mirrors implement (not near-empty)](./0157-build-launcher-mirrors-implement.md) — Refs 0141, Refs 0142, Refs 0154
 
 ### Fetch resolution & path conventions
 
@@ -339,6 +363,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0059 — The fast-track branch auto-stay rule lives in `apply.md`, not in the `implement.md` Prerequisites template](./0059-fast-track-auto-stay-branch-rule-in-apply.md) — Pair with 0052
 - [0148 — Keep the three-file apply layout; redefine normative homes](./0148-keep-three-file-apply-layout-redefine-normative-homes.md) — Refs 0083
 - [0149 — Parameterized terminal_navigation binds two actions; no phase fork](./0149-parameterized-terminal-navigation-two-actions.md) — Refs 0083, Refs 0148
+- [0156 — Build injects apply fast-track unconditionally; composition owns the banner](./0156-build-unconditional-apply-fast-track-banner-ownership.md) — Refs 0153, Refs 0048, Refs 0051, Refs ddr:0052
 
 ### Commit authorization, staging & message rules
 
@@ -369,6 +394,9 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0149 — Parameterized terminal_navigation binds two actions; no phase fork](./0149-parameterized-terminal-navigation-two-actions.md) — Refs 0083, Refs 0148
 - [0150 — Recovery pool is segment-scoped under composition](./0150-recovery-pool-segment-scoped-under-composition.md) — **Amends** 0139, Refs 0147
 - [0151 — Composition constructs successor envelopes directly (no boot adapter)](./0151-composition-constructs-successor-envelopes-directly.md) — Refs 0136, Refs 0075, Refs 0147
+- [0152 — Build is an ordinary composition coordinator, not explore supervision](./0152-build-ordinary-composition-coordinator-not-explore-supervision.md) — Refs 0147, Refs 0151, Refs 0083
+- [0153 — Build mints segment envelopes without boot or wrapper re-entry](./0153-build-composition-minted-segment-envelopes.md) — Refs 0151, Refs 0152, Refs 0075
+- [0155 — Implement terminal_navigation is positional (apply-pattern match)](./0155-implement-positional-terminal-navigation.md) — Refs 0149, Refs 0083, Refs 0152
 
 ### Testability routing & RED → GREEN
 

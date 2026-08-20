@@ -18,21 +18,26 @@
 
 ### Requirement: wrapper-file-list
 
-The full set of sai-* wrapper files in `commands/claude/` and `commands/opencode/` SHALL be 15 files each: `sai-1-spec.md`, `sai-2-design.md`, `sai-3-implement.md`, `sai-4-apply.md`, `sai-5-review.md`, `sai-6-security.md`, `sai-7-performance.md`, `sai-8-accessibility.md`, `sai-archive.md`, `sai-backfill.md`, `sai-commit.md`, `sai-explore.md`, `sai-pr.md`, `sai-status.md`, `sai-worktree.md`. The count applies to `sai-*.md` files only; other files in the directory (such as `commands/claude/budget.md` and `commands/opencode/budget.md`) are out of scope for this requirement.
+The full set of sai-* wrapper files in `commands/claude/` and `commands/opencode/` SHALL be 16 files each: `sai-1-spec.md`, `sai-2-design.md`, `sai-3-implement.md`, `sai-4-apply.md`, `sai-5-review.md`, `sai-6-security.md`, `sai-7-performance.md`, `sai-8-accessibility.md`, `sai-archive.md`, `sai-backfill.md`, `sai-build.md`, `sai-commit.md`, `sai-explore.md`, `sai-pr.md`, `sai-status.md`, `sai-worktree.md`. The count applies to `sai-*.md` files only; other files in the directory (such as `commands/claude/budget.md` and `commands/opencode/budget.md`) are out of scope for this requirement.
 
 #### Scenario: sai-* wrapper count in Claude Code directory
 
 - **WHEN** `commands/claude/sai-*.md` is listed
-- **THEN** exactly the 15 files named above are present (no extra `sai-*.md` files, no missing `sai-*.md` entries)
+ - **THEN** exactly the 16 files named above are present (no extra `sai-*.md` files, no missing `sai-*.md` entries)
 
 #### Scenario: sai-* wrapper count in OpenCode directory
 
 - **WHEN** `commands/opencode/sai-*.md` is listed
-- **THEN** exactly the 15 files named above are present (no extra `sai-*.md` files, no missing `sai-*.md` entries)
+ - **THEN** exactly the 16 files named above are present (no extra `sai-*.md` files, no missing `sai-*.md` entries)
 
 ### Requirement: wrapper-template
 
-The wrapper template SHALL be the same for all 15 wrappers in each harness, sharing the skeleton defined by `command-wrapper-body`'s `three-directive-wrapper-body` — this requirement SHALL NOT restate the skeleton — with exactly these permitted per-file variances: the `{name}` token in the launcher-call line, the envelope's `command_name` value, the envelope's `wrapper_echo_value` (empty or echoed per the command's change-consumer status), opencode wrapper-echo lines required by the change-picker contract, and `sai-explore`'s additional harness-specific card and divergent binding loads, per `command-wrapper-body`'s `explore-harness-specific-loads`. No wrapper SHALL use an old path like `@commands/sai/<cmd>.md` (the legacy `commands/sai/` source layout is forbidden by `source-layout`) or a flat `@sai/commands/<cmd>.md` body path (the folded per-command card namespace is governed by `wrapper-fetch-paths`).
+The wrapper template SHALL be the same for all 16 wrappers in each harness, sharing the skeleton defined by `command-wrapper-body`'s `three-directive-wrapper-body` — this requirement SHALL NOT restate the skeleton — with exactly these permitted per-file variances: the `{name}` token in the launcher-call line, the envelope's `command_name` value, the envelope's `wrapper_echo_value` (empty or echoed per the command's change-consumer status), opencode wrapper-echo lines required by the change-picker contract, and `sai-explore`'s additional harness-specific card and divergent binding loads, per `command-wrapper-body`'s `explore-harness-specific-loads`. No wrapper SHALL use an old path like `@commands/sai/<cmd>.md` (the legacy `commands/sai/` source layout is forbidden by `source-layout`) or a flat `@sai/commands/<cmd>.md` body path (the folded per-command card namespace is governed by `wrapper-fetch-paths`).
+
+#### Scenario: sai-build follows the shared template
+- **WHEN** `commands/claude/sai-build.md` is read in its canonical form
+- **THEN** it uses the same three-directive skeleton with launcher `@sai/commands/build/launcher.md` and `command_name: build`
+- **AND** it does not embed phase logic inline
 
 #### Scenario: example wrapper after rewrite
 

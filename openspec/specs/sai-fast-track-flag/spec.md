@@ -7,7 +7,7 @@ Enables the `--fast-track` per-invocation flag on `sai-explore`, `sai-2-design`,
 ## Requirements
 ### Requirement: The fast-track command set is the single canonical membership list
 
-The set of commands that accept `--fast-track` SHALL be exactly `sai-explore`, `sai-2-design`, `sai-4-apply`, and `sai-archive`. This requirement is the single source of truth for fast-track membership. Every other requirement in this capability, and the `sai-fast-track-next-prompt-hint` capability (`openspec/specs/sai-fast-track-next-prompt-hint/spec.md`), SHALL derive membership from this list rather than maintaining an independent copy. Adding or removing a fast-track command SHALL be a single-point edit to this list, after which dependent requirements follow.
+The set of commands that parse `--fast-track` in their body files SHALL be exactly `sai-explore`, `sai-2-design`, `sai-4-apply`, and `sai-archive`. This requirement is the single source of truth for body-file parser membership. A composition command outside this set MAY inject apply fast-track without becoming a parser member.
 
 #### Scenario: Membership is resolved against the canonical list
 
@@ -88,7 +88,7 @@ The following gates SHALL remain in force under `sai-archive --fast-track` and S
 
 ### Requirement: The --fast-track flag is parsed in the shared body file and never reaches the picker
 
-Exactly four commands — `sai-explore`, `sai-2-design`, `sai-4-apply`, and `sai-archive` — SHALL accept a `--fast-track` token in their arguments. The token SHALL be parsed by the command's shared body files (`sai/commands/explore/body.md`, `sai/commands/design/worker.md`, `sai/commands/apply/invocation.md`, `sai/commands/archive/body.md`) out of `$ARGUMENTS`. After extraction the token SHALL be removed from the argument string, and the cleaned remainder (the change-name for `sai-2-design`/`sai-4-apply`/`sai-archive`, or the free-form request for `sai-explore`) SHALL be passed to the change-picker / run step exactly as if the flag had not been typed. The flag SHALL be a single positional token, not a session flag, environment variable, or `.openspec.yaml` key.
+Exactly four commands — `sai-explore`, `sai-2-design`, `sai-4-apply`, and `sai-archive` — SHALL accept a `--fast-track` token in their arguments. The token SHALL be parsed by the command's shared body files (`sai/commands/explore/body.md`, `sai/commands/design/worker.md`, `sai/commands/apply/invocation.md`, `sai/commands/archive/body.md`) out of `$ARGUMENTS`. After extraction the token SHALL be removed from the argument string, and the cleaned remainder SHALL be passed downstream. `/sai-build` is outside this parser membership; it may inject apply fast-track through composition.
 
 For commands that resolve a change name through the shared change-picker (`sai-2-design`, `sai-4-apply`, `sai-archive`), the body file SHALL additionally strip any residual `--fast-track` token from the picker's resolved value (the post-picker cleanup that handles the opencode wrapper-echo case) before passing the change name downstream.
 
@@ -111,7 +111,25 @@ The parse SHALL be single-sourced in the body file so that all harness thin wrap
 
 ### Requirement: Fast-track mode announces itself with a single-line banner at run start
 
-When `--fast-track` is active, the command's body file SHALL emit the single line `> FAST-TRACK MODE ACTIVE` at run start, as ordinary in-conversation text. The banner SHALL NOT be written to any file, `.openspec.yaml` key, environment variable, or config, so it remains compatible with Isolation Mode.
+When `--fast-track` is active through body-file parsing, the command's body file SHALL emit the single line `> FAST-TRACK MODE ACTIVE` at run start. When apply receives fast-track only through a chained composition, the supervising composition coordinator owns the banner at apply activation. The banner SHALL NOT be written to disk.
+
+### Requirement: Composition-injected apply fast-track under sai-build
+`/sai-build` SHALL always inject normalized apply fast-track true when activating its chained apply segment without becoming a fifth body-file parser. Explicit `--fast-track` on build SHALL not change phase order, injection, gates, or banner behavior; safe-operations and other non-opted-out gates remain in force.
+
+#### Scenario: Build injects apply fast-track
+- **WHEN** build activates apply
+- **THEN** apply receives fast-track true while build remains outside the four parser members
+
+### Requirement: Composition owns the chained banner
+When chained apply receives composition-injected fast-track true, the supervising coordinator SHALL emit `> FAST-TRACK MODE ACTIVE` exactly once at activation and zero times if apply never activates. Standalone parser-member behavior remains unchanged.
+
+#### Scenario: Build banner is activation-scoped
+- **WHEN** build transitions successfully to apply
+- **THEN** the coordinator prints one banner and the skipped apply shell does not print another
+
+#### Scenario: Failed build has no banner
+- **WHEN** implement fails or is cancelled before apply
+- **THEN** no composition banner is printed
 
 #### Scenario: Banner prints once when the flag is present
 

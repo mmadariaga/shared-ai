@@ -8,12 +8,12 @@ TBD placeholder — purpose to be written when the change completes.
 
 ### Requirement: launcher-per-in-scope-command
 
-Every in-scope command SHALL have exactly one launcher card at `sai/commands/{name}/launcher.md`, and that one shared card SHALL serve both harnesses. The in-scope set is the 15 `sai-*` commands: `sai-1-spec`, `sai-2-design`, `sai-3-implement`, `sai-4-apply`, `sai-5-review`, `sai-6-security`, `sai-7-performance`, `sai-8-accessibility`, `sai-archive`, `sai-backfill`, `sai-commit`, `sai-explore`, `sai-pr`, `sai-status`, and `sai-worktree`. `budget` SHALL NOT have a launcher and SHALL NOT be loaded through one.
+Every in-scope command SHALL have exactly one launcher card at `sai/commands/{name}/launcher.md`, and that one shared card SHALL serve both harnesses. The in-scope set is the 16 `sai-*` commands: `sai-1-spec`, `sai-2-design`, `sai-3-implement`, `sai-4-apply`, `sai-5-review`, `sai-6-security`, `sai-7-performance`, `sai-8-accessibility`, `sai-archive`, `sai-backfill`, `sai-build`, `sai-commit`, `sai-explore`, `sai-pr`, `sai-status`, and `sai-worktree`. `budget` SHALL NOT have a launcher and SHALL NOT be loaded through one.
 
-#### Scenario: 15 launchers exist
+#### Scenario: 16 launchers exist
 
 - **WHEN** `sai/commands/` is walked after the change
-- **THEN** exactly 15 files named `launcher.md` exist, one per in-scope command
+- **THEN** exactly 16 files named `launcher.md` exist, one per in-scope command
 
 #### Scenario: one shared card per command
 
@@ -41,7 +41,12 @@ Each launcher SHALL hold the glossary/behaviour skill loads, worker binding, and
 
 ### Requirement: near-empty-launchers
 
-A command whose wrapper carried nothing beyond the fetch-skill and boot-adapter loads before the change SHALL still ship a `launcher.md`, near-empty at creation, because a uniform shape across all commands is worth more than the saved files and the card is the extension point that keeps future additions out of the user-owned wrapper. A near-empty launcher SHALL contain no behaviour-skill load, no binding, and no card fetch.
+A command whose wrapper carried nothing beyond the fetch-skill and boot-adapter loads before the change SHALL still ship a `launcher.md`, near-empty at creation, because a uniform shape across all commands is worth more than the saved files and the card is the extension point that keeps future additions out of the user-owned wrapper. A near-empty launcher SHALL contain no behaviour-skill load, no binding, and no card fetch. After this change the near-empty set remains `sai-4-apply`, `sai-archive`, `sai-backfill`, `sai-commit`, `sai-pr`, `sai-status`, and `sai-worktree`. `sai-build` is NOT near-empty: its launcher loads the implement-worker binding and the build coordinator card per `sai-build-registration`.
+
+#### Scenario: sai-build launcher is not near-empty
+- **WHEN** `sai/commands/build/launcher.md` is read
+- **THEN** it SHALL contain the implement-worker binding fetch and the build coordinator card fetch
+- **AND** it SHALL NOT be counted among the seven near-empty launchers
 
 #### Scenario: seven near-empty launchers exist
 

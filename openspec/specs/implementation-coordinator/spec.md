@@ -39,11 +39,17 @@ The coordinator SHALL NOT run prerequisite checks or change-picker queries, read
 - **THEN** the coordinator SHALL leave that operation to the worker rather than performing it directly
 
 ### Requirement: User-facing result handling
-The coordinator SHALL preserve the existing user communication and MANDATORY STOP behavior while reporting the worker's concise structured summary and handling completed, needs_input, failed, and cancelled outcomes. The harness binding SHALL augment `needs_input` with coordinator-owned continuation metadata captured at dispatch. The coordinator SHALL present the worker's question through the harness-native picker, forward the selected answer to the same worker using that metadata, asynchronously await the next structured payload when the worker runs in the background, and re-present the request when the worker rejects an invalid response.
+The coordinator SHALL preserve the existing user communication while reporting the worker's concise structured summary and handling completed, needs_input, failed, and cancelled outcomes. Implement `terminal_navigation` SHALL bind positionally: for a sole or final implement adapter, successful completion SHALL fire the existing standalone MANDATORY STOP completion message that directs the user to run `/sai-4-apply {name}` (--fast-track) in a new chat; for a non-final implement adapter under chained composition, successful completion SHALL invoke only the composition-owned authorized transition to the consecutive successor and SHALL NOT print that standalone completion message. Failed and cancelled outcomes SHALL stop without the standalone completion message in every position. The harness binding SHALL augment `needs_input` with coordinator-owned continuation metadata captured at dispatch. The coordinator SHALL present the worker's question through the harness-native picker, forward the selected answer to the same worker using that metadata, asynchronously await the next structured payload when the worker runs in the background, and re-present the request when the worker rejects an invalid response.
 
 #### Scenario: Worker reports completion
 - **WHEN** the worker returns `completed`
 - **THEN** the coordinator SHALL communicate the summary, identify changed files, and fire the existing MANDATORY STOP without adding technical planning content
+
+#### Scenario: Worker reports completion as non-final composition segment
+- **WHEN** the worker returns `completed` while implement is a non-final adapter in an ordered composition such as `/sai-build`
+- **THEN** the coordinator SHALL communicate the summary and identify changed files
+- **AND** SHALL invoke only the authorized composition transition
+- **AND** SHALL NOT print the standalone message that invites `/sai-4-apply {name}` in a new chat
 
 #### Scenario: Worker requests input
 - **WHEN** the binding delivers `needs_input` with a worker-authored question and closed option set plus coordinator-owned continuation metadata
@@ -58,7 +64,7 @@ The coordinator SHALL preserve the existing user communication and MANDATORY STO
 - **THEN** the coordinator SHALL report a clean stop without claiming planning completion, SHALL identify changed files, and SHALL not fire the completed-planning MANDATORY STOP path
 
 ### Requirement: Shared lifecycle adapter integration
-The routed `/sai-3-implement` coordinator SHALL consume the canonical shared coordinator contract through an implementation phase adapter. The adapter SHALL provide the original two-field invocation envelope, harness binding dispatch and continuation operations, progress events as the sole allowed nonterminal extension, no extension handlers, the enumerated implementation replacement-reconstruction fields below, and implementation terminal navigation. The adapter SHALL NOT duplicate lifecycle payload validation, ordered changed-file aggregation, continuation-first recovery, replacement-worker limits, or terminal routing, and SHALL NOT import design feedback, notice, or continue-now behavior.
+The routed `/sai-3-implement` coordinator SHALL consume the canonical shared coordinator contract through an implementation phase adapter. The adapter SHALL provide the original two-field invocation envelope, harness binding dispatch and continuation operations, progress events as the sole allowed nonterminal extension, no extension handlers, the enumerated implementation replacement-reconstruction fields below, and parameterized implementation terminal navigation that selects standalone completion or the composition-owned authorized transition by adapter position. The adapter SHALL NOT duplicate lifecycle payload validation, ordered changed-file aggregation, continuation-first recovery, replacement-worker limits, or terminal routing, and SHALL NOT import design feedback, notice, or continue-now behavior.
 
 The replacement-reconstruction fields SHALL be exactly:
 

@@ -39,7 +39,7 @@ The numbered sai-* commands SHALL use the following mapping, with `sai-2-design`
 | 7 | sai-7-performance | performance.md |
 | 8 | sai-8-accessibility | accessibility.md |
 
-Un-numbered commands (sai-commit, sai-pr, sai-archive, sai-explore, sai-backfill) retain their names unchanged.
+Un-numbered commands (sai-commit, sai-pr, sai-archive, sai-explore, sai-backfill, sai-status, sai-worktree, sai-build) retain their names unchanged. `sai-build` is the un-numbered composition command that runs implementation planning and apply back-to-back; it does not receive a phase number and does not renumber `sai-3-implement` or `sai-4-apply`.
 
 #### Scenario: sai-2-design command exists
 - **WHEN** `commands/claude/` is listed
@@ -60,3 +60,12 @@ Un-numbered commands (sai-commit, sai-pr, sai-archive, sai-explore, sai-backfill
 #### Scenario: sai-backfill command exists as un-numbered auxiliary
 - **WHEN** `commands/claude/` is listed
 - **THEN** `sai-backfill.md` is present alongside other un-numbered commands (`sai-commit.md`, `sai-pr.md`, `sai-archive.md`, `sai-explore.md`)
+
+#### Scenario: sai-build command exists as un-numbered auxiliary
+- **WHEN** `commands/claude/` is listed
+- **THEN** `sai-build.md` is present alongside other un-numbered commands
+- **AND** no numbered wrapper such as `sai-9-build.md` is required for the composition command
+
+#### Scenario: opencode includes sai-build
+- **WHEN** `commands/opencode/` is listed
+- **THEN** `sai-build.md` is present with the same un-numbered status as in Claude Code
