@@ -967,3 +967,141 @@ test('Step 2: post-proceed report ordering remains after supervised gates withou
     'the supervised contract must not add interval stage-enumeration prose'
   );
 });
+
+// ─── Step 4: manual-branch-next-step-after-selector (green-exception tests) ─
+
+test('Step 4: the shared close puts every path-specific sai-1 handoff after the selector', () => {
+  const source = exploreContract();
+  const close = source.indexOf('after the final `Ready to Propose` block and after the keep-window-open recommendation');
+  const selector = source.indexOf('exactly two options, in this fixed order', close);
+  const separator = source.lastIndexOf('---', close);
+
+  assert.ok(close >= 0, 'the shared close ordering contract should be present');
+  assert.ok(separator >= 0 && separator < close, 'the shared close should follow the payload separator');
+  assert.ok(selector > close, 'the selector should be the final emission of the shared close');
+
+  const beforeClose = source.slice(separator, close);
+  const beforeSelector = source.slice(close, selector);
+  const nextStepToSpec = /(?:next[- ]step|handoff)[\s\S]{0,240}`?\/sai-1-spec`?/i;
+
+  assert.doesNotMatch(beforeClose, nextStepToSpec,
+    'a path-specific /sai-1-spec next-step must not occur between the separator and shared close');
+  assert.doesNotMatch(beforeSelector, nextStepToSpec,
+    'a path-specific /sai-1-spec next-step must not precede the selector');
+  assert.match(source.slice(selector), /After the selector response,[\s\S]{0,1200}path-specific Manual\/unmapped next-step handoff[\s\S]{0,420}\/sai-1-spec/i,
+    'the path-specific handoff should be post-selector prose');
+});
+
+test('Step 4: E8 keeps the Ready-to-Propose payload fields and separator bounded before post-selector prose', () => {
+  const source = exploreContract();
+  const payloadStart = source.indexOf('**Capabilities in scope**');
+  const ready = source.lastIndexOf('Ready to Propose', payloadStart);
+  const edgeCases = source.indexOf('**Edge Cases**', payloadStart);
+  const implementationDetails = source.indexOf('**Implementation Details**', edgeCases);
+  const overviewLanguage = source.indexOf('**Overview language**', implementationDetails);
+  const separator = source.indexOf('---', overviewLanguage);
+  const selector = source.indexOf('exactly two options, in this fixed order', separator);
+
+  assert.ok(payloadStart >= 0 && ready >= 0 && edgeCases > payloadStart,
+    'the E8 payload should retain its Ready-to-Propose heading and fields');
+  assert.ok(implementationDetails > edgeCases, 'Implementation Details should remain after Edge Cases');
+  assert.ok(overviewLanguage > implementationDetails, 'Overview language should remain after Implementation Details');
+  assert.ok(separator > overviewLanguage, 'the Ready-to-Propose payload should retain its separator');
+  assert.ok(selector > separator, 'the selector should be outside the Ready-to-Propose payload');
+
+  const payload = source.slice(payloadStart, separator);
+  assert.match(payload, /\*\*Capabilities in scope\*\*/);
+  assert.match(payload, /\*\*Edge Cases\*\*/);
+  assert.match(payload, /\*\*Implementation Details\*\*/);
+  assert.match(payload, /\*\*Overview language\*\*:\s*<value>/);
+  assert.doesNotMatch(payload, /(?:next[- ]step|handoff)[\s\S]{0,240}`?\/sai-1-spec`?/i,
+    'the E8 payload must not contain a path-specific next-step');
+  assert.match(source.slice(selector), /After the selector response,[\s\S]{0,1200}path-specific Manual\/unmapped next-step handoff[\s\S]{0,420}\/sai-1-spec/i,
+    'E8 must place the path-specific next-step outside the payload after the selector');
+});
+
+test('Step 4: Manual and unmapped answers give one handoff for each crystallization path without dispatch or a second close', () => {
+  const source = exploreContract();
+  const selectorSpec = spec('openspec/specs/explore-pipeline-selector/spec.md');
+  const handoff = source.indexOf('After the selector response, the surrounding prose of the path-specific Manual/unmapped next-step handoff');
+  const deterministic = source.indexOf('**Deterministic selection**', handoff);
+  const selectorStart = source.lastIndexOf('Selecting **Manual**', handoff);
+  const manual = source.slice(selectorStart, deterministic);
+
+  assert.ok(selectorStart >= 0 && handoff > selectorStart && deterministic > handoff,
+    'the shared Manual branch should precede deterministic Auto selection');
+  assert.match(manual, /emit that handoff \*\*exactly once\*\*/i);
+  assert.match(manual, /path-specific next-step handoff is emitted exactly once after the selector response for every Manual\/unmapped answer/i);
+  assert.match(manual, /Selecting \*\*Manual\*\* dispatches nothing/i);
+  assert.match(manual, /A free-text answer that maps to neither option is treated as \*\*Manual\*\*/i);
+  assert.match(manual, /It MUST NOT emit a second recommendation or selector for the same answer/i);
+  assert.match(manual, /no-second-recommendation, and no-second-selector rules/i);
+  assert.match(selectorSpec, /Selecting `Manual` SHALL dispatch nothing and SHALL NOT change supervision state/i);
+  assert.match(selectorSpec, /An unmapped free-text answer MUST be treated as (?:\*\*|`)Manual(?:\*\*|`)/i);
+
+  for (const [label, branch] of [
+    ['Single-change path', /\*\*Open a new chat\*\*[\s\S]{0,120}\/sai-1-spec/],
+    ['Sliced path', /\*\*first\*\*[\s\S]{0,160}\/sai-1-spec[\s\S]{0,220}each later slice/],
+    ['Inline-refusal path', /Creating a proposal opens a new context[\s\S]{0,260}\/sai-1-spec[\s\S]{0,160}Do not dispatch a proposal in-session/],
+  ]) {
+    assert.equal((manual.match(new RegExp(`\\*\\*${label}\\*\\*`, 'g')) || []).length, 1,
+      `${label} should have exactly one path-specific branch`);
+    assert.match(manual, new RegExp(`\\*\\*${label}\\*\\*[\\s\\S]{0,520}${branch.source}`, 'i'),
+      `${label} should preserve its single Manual handoff`);
+  }
+});
+
+test('Step 4: Manual remains uncapped and each later Manual answer emits one handoff', () => {
+  const source = exploreContract();
+  const selectorSpec = spec('openspec/specs/explore-pipeline-selector/spec.md');
+  const handoff = source.indexOf('path-specific next-step handoff is emitted exactly once after the selector response for every Manual/unmapped answer');
+  const reinvocation = source.indexOf('**Manual is not terminal**', handoff);
+
+  assert.match(selectorSpec, /[`*]*Manual[`*]* SHALL remain re-invocable without a cap[\s\S]{0,180}selector/i);
+  assert.ok(handoff >= 0 && reinvocation > handoff,
+    'the one-handoff rule should precede uncapped Manual re-invocation');
+  assert.match(source, /path-specific next-step handoff is emitted exactly once after the selector response for every Manual\/unmapped answer/i);
+  assert.match(source, /\*\*Manual is not terminal\*\*[^\n]*re-emit the selector[\s\S]{0,260}no cap on re-emissions/i);
+});
+
+test('Step 4: successful Auto is silent after selection and never dispatches implementation', () => {
+  const source = exploreContract();
+  const success = 'successful Auto run emits no next-step handoff and performs no implementation-phase dispatch';
+  const successIndex = source.indexOf(success);
+
+  assert.ok(successIndex >= 0, 'the successful Auto outcome should be specified');
+  assert.match(source.slice(successIndex, successIndex + 320), /`sai-3 was not run\.`/i,
+    'successful Auto should end without implementation dispatch');
+});
+
+test('Step 4: failed or cancelled Auto maps retry guidance from phase state without changing retry state', () => {
+  const source = exploreContract();
+  const selectorSpec = spec('openspec/specs/explore-pipeline-selector/spec.md');
+  const contract = [source, selectorSpec].join('\n');
+
+  assert.match(contract, /(?:failed|cancelled)[\s\S]{0,500}(?:absent|not present|missing)[\s\S]{0,220}specs_converged_changes[\s\S]{0,260}`?\/sai-1-spec`?/i,
+    'a failed/cancelled Auto phase absent from specs_converged_changes should point to /sai-1-spec');
+  assert.match(contract, /specs_converged_changes[\s\S]{0,500}(?:present|contains)[\s\S]{0,260}(?:absent|not present|missing)[\s\S]{0,220}completed_changes[\s\S]{0,260}`?\/sai-2-design`?/i,
+    'a converged but incomplete Auto phase should point to /sai-2-design');
+  assert.match(contract, /(?:retry state|retry)[\s\S]{0,220}(?:unchanged|preserv|does not change)/i,
+    'failed/cancelled guidance must preserve retry state');
+  assert.match(contract, /(?:failed|cancelled)[\s\S]{0,700}(?:no|not|never|without)[\s\S]{0,180}(?:implementation|sai-3)[\s\S]{0,120}(?:dispatch|start|run)/i,
+    'failed/cancelled Auto must not dispatch implementation');
+});
+
+test('Step 4: post-selector prose localizes while command and review-loop literals remain verbatim English', () => {
+  const source = exploreContract();
+  const selector = source.indexOf('exactly two options, in this fixed order');
+  const deterministic = source.indexOf('**Deterministic selection**', selector);
+  assert.ok(selector >= 0, 'the selector anchor should be present');
+  assert.ok(deterministic > selector, 'deterministic Auto selection should follow the selector prose');
+  const postSelector = source.slice(selector, deterministic);
+
+  assert.match(postSelector, /question text and both option labels render in the user's language/i);
+  assert.match(postSelector, /After the selector response, the surrounding prose[\s\S]{0,220}follows the selected crystallization language, while its command and standing-path literals remain verbatim English/i);
+  assert.match(postSelector, /`review-loop`, `\/sai-1-spec`, and `\/sai-2-design` strings stay verbatim English/i);
+  for (const literal of ['`/sai-1-spec`', '`/sai-2-design`', '`review-loop`']) {
+    assert.match(postSelector, new RegExp(literal.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')),
+      `${literal} should remain verbatim in post-selector prose`);
+  }
+});
