@@ -38,8 +38,28 @@ test('Step 4 Claude Code and opencode wrappers use the routed implementation lif
 });
 
 test('Step 4 non-completed outcomes do not emit the completion sentence', () => {
-  const coordinator = artifact(COMPLETION_ARTIFACTS.coordinator);
+   const coordinator = artifact(COMPLETION_ARTIFACTS.coordinator);
   assert.match(coordinator, /On `failed`[\s\S]*without the completion message/);
   assert.match(coordinator, /On `cancelled`[\s\S]*without claiming completion/);
   assert.match(coordinator, /For `needs_input`[\s\S]*same worker/);
+});
+
+test('Step 1 keeps the standalone completion pin while allowing positional non-final navigation', () => {
+  const coordinator = artifact(COMPLETION_ARTIFACTS.coordinator);
+  assert.ok(
+    coordinator.includes(
+      'then print exactly: `Implementation plan done in openspec/changes/{name}/. Review and run \\`/sai-4-apply {name}\\` (--fast-track) **in a new chat** when ready.` Stop immediately.'
+    ),
+    'sole/final implement completion must retain the exact standalone pin'
+  );
+  assert.match(
+    coordinator,
+    /`terminal_navigation`[\s\S]{0,240}selection is positional/i,
+    'implement terminal_navigation must be positional under composition'
+  );
+  assert.match(
+    coordinator,
+    /non-final[\s\S]{0,220}composition-owned authorized transition only[\s\S]{0,220}do not print the standalone MANDATORY STOP message/i,
+    'non-final composition must not emit the standalone apply invitation'
+  );
 });

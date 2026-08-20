@@ -21,7 +21,11 @@
   - `allowed_nonterminal_extensions`: progress events — `{event: "progress", emitted_on: string, step_ids: string[], changed_files: string[]}` as the sole nonterminal extension
   - `extension_handlers`: empty
   - `replacement_reconstruction_fields`: `resolved_change_name` when already known, ordered `opaque_input_history`, and the fixed durable-artifact reconstruction instruction
-  - `terminal_navigation`: implementation completion or unsuccessful-stop behavior
+  - `terminal_navigation` — parameterized binding over two terminal actions; selection is positional:
+    - sole adapter (direct `/sai-3-implement`) → shell-owned standalone completion action (exact pinned literal + stop)
+    - final adapter in a multi-adapter sequence → same shell-owned standalone completion action
+    - non-final adapter → composition-owned authorized transition only (do not print the standalone MANDATORY STOP message)
+    Completion gates that decide whether the phase may finish remain unchanged; only which bound action runs after those gates succeed is parameterized.
 
   Declare the canonical six-step progress plan for this phase, in order, with exactly these ids and labels — no omissions, reorders, renames, or additions:
 
@@ -77,7 +81,9 @@
   protocol-only, never recorded as user input, opaque input history, or
   pending feedback. For `needs_input`, present the worker's question and ordered labels through the active harness's native option picker, forward the selected value through `continuation_operation`, await the same worker's next payload, and re-present repeated requests without dispatching a second worker. On continuation failure, preserve the union and dispatch one fresh worker only after the original envelope and reconstruction instruction are available; never package artifact context yourself.
 
-  On `failed`, print the blocking summary and accumulated changed-file list, then stop without the completion message. On `cancelled`, print the clean-stop summary and accumulated changed-file list, then stop without claiming completion. On `completed`, print the concise summary and accumulated changed-file list, then print exactly: `Implementation plan done in openspec/changes/{name}/. Review and run \`/sai-4-apply {name}\` (--fast-track) **in a new chat** when ready.` Stop immediately.
+  On `failed`, print the blocking summary and accumulated changed-file list, then stop without the completion message and without a composition transition. On `cancelled`, print the clean-stop summary and accumulated changed-file list, then stop without claiming completion and without a composition transition. On `completed`, print the concise summary and accumulated changed-file list, then invoke the bound `terminal_navigation` action:
+  - sole or final implement → then print exactly: `Implementation plan done in openspec/changes/{name}/. Review and run \`/sai-4-apply {name}\` (--fast-track) **in a new chat** when ready.` Stop immediately.
+  - non-final chained implement → invoke only the composition-owned authorized transition to the consecutive successor; do not print the standalone MANDATORY STOP message.
 
 </TASK>
 

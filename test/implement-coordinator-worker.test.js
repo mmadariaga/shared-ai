@@ -484,6 +484,56 @@ test('coordinator owns status transitions, changed-file union, and exact termina
   );
 });
 
+test('Step 1 parameterizes implement terminal_navigation by adapter position', () => {
+   const coordinator = artifact('sai/commands/implement/coordinator.md');
+
+  assert.match(
+    coordinator,
+    /`terminal_navigation`[\s\S]{0,240}parameterized binding over two terminal actions; selection is positional:/i,
+    'terminal_navigation should be selected positionally rather than being one unconditional action'
+  );
+  assert.match(
+    coordinator,
+    /sole adapter \(direct `\/sai-3-implement`\)[\s\S]{0,180}shell-owned standalone completion action[\s\S]{0,120}exact pinned literal \+ stop/i,
+    'the sole implement adapter should retain the standalone completion action'
+  );
+  assert.match(
+    coordinator,
+    /final adapter in a multi-adapter sequence[\s\S]{0,140}same shell-owned standalone completion action/i,
+    'the final implement adapter should retain the standalone completion action'
+  );
+  assert.match(
+    coordinator,
+    /non-final adapter[\s\S]{0,180}composition-owned authorized transition only[\s\S]{0,180}do not print the standalone MANDATORY STOP message/i,
+    'a non-final implement adapter should use only the authorized composition transition'
+  );
+});
+
+test('Step 1 completed navigation is bound while failed and cancelled paths suppress both transitions', () => {
+   const coordinator = artifact('sai/commands/implement/coordinator.md');
+
+  assert.match(
+    coordinator,
+    /On `completed`[\s\S]{0,360}invoke the bound `terminal_navigation` action/i,
+    'completed results should invoke the positional terminal_navigation binding'
+  );
+  assert.match(
+    coordinator,
+    /non-final chained implement[\s\S]{0,220}(?:invoke only|composition-owned authorized transition)[\s\S]{0,220}do not print the standalone MANDATORY STOP message/i,
+    'non-final completion should communicate through the composition transition only'
+  );
+  assert.match(
+    coordinator,
+    /On `failed`[\s\S]{0,260}without the completion message and without a composition transition/i,
+    'failed results must not navigate'
+  );
+  assert.match(
+    coordinator,
+    /On `cancelled`[\s\S]{0,260}without claiming completion and without a composition transition/i,
+    'cancelled results must not navigate'
+  );
+});
+
 test('needs_input continuation stays on the same worker and uses each harness binding', () => {
    const coordinator = artifact('sai/commands/implement/coordinator.md');
   const claudeBinding = matrixBinding('claude', 'implementation');
