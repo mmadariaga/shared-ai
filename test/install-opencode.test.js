@@ -182,6 +182,7 @@ test('installOpencode copies commands/opencode/*.md to dest/commands/', () => {
   assert.ok(fs.existsSync(cmdDir), 'commands/ dir should exist');
   const files = fs.readdirSync(cmdDir);
   assert.ok(files.includes('sai-1-spec.md'), 'sai-1-spec.md should be in commands/');
+  assert.ok(files.includes('sai-build.md'), 'sai-build.md should be in commands/');
   const design = fs.readFileSync(path.join(cmdDir, 'sai-2-design.md'), 'utf8');
    assert.match(design, /^model: opencode-go\/deepseek-v4-flash$/m);
    assert.match(design, /^variant: max$/m);
@@ -195,6 +196,9 @@ test('installOpencode projects grouped SAI command assets and excludes former co
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-'));
   installOpencode(tmpDir);
   for (const file of [path.join('design', 'coordinator.md'), path.join('design', 'invocation.md'), path.join('implement', 'coordinator.md'), path.join('implement', 'invocation.md')]) {
+    assert.ok(fs.existsSync(path.join(tmpDir, 'sai', 'commands', file)), `${file} should be projected`);
+  }
+  for (const file of [path.join('build', 'coordinator.md'), path.join('build', 'launcher.md')]) {
     assert.ok(fs.existsSync(path.join(tmpDir, 'sai', 'commands', file)), `${file} should be projected`);
   }
   for (const file of ['sai-2-design.md', 'sai-3-implement.md']) {
@@ -1469,6 +1473,7 @@ test('opencode wrappers route through the opencode boot adapter and never the Cl
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-boot-routing-'));
   const wrappers = [
     ...Object.keys(UTILITY_COMMANDS),
+    'sai-build',
     'sai-1-spec',
     'sai-2-design',
     'sai-3-implement',
@@ -1480,7 +1485,9 @@ test('opencode wrappers route through the opencode boot adapter and never the Cl
   try {
     installOpencode(tmpDir);
     for (const name of wrappers) {
-      const wrapper = fs.readFileSync(path.join(tmpDir, 'commands', `${name}.md`), 'utf8');
+      const wrapperPath = path.join(tmpDir, 'commands', `${name}.md`);
+      assert.ok(fs.existsSync(wrapperPath), `${name}.md should be installed`);
+      const wrapper = fs.readFileSync(wrapperPath, 'utf8');
       assert.match(wrapper, /Fetch @sai\/adapters\/opencode\/boot\.md/,
         `${name} should route through the opencode boot adapter`);
       assert.doesNotMatch(wrapper, /Fetch @sai\/adapters\/claude\/boot\.md/,

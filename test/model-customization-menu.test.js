@@ -74,6 +74,7 @@ const COMMANDS = [
   'sai-8-accessibility',
   'sai-archive',
   'sai-backfill',
+  'sai-build',
   'sai-commit',
   'sai-explore',
   'sai-pr',
@@ -114,7 +115,7 @@ const COMBINED_BOTH_BARE = [
 ];
 
 // Step 4: command-family names mirrored from the current commands/{harness}
-// basenames. Both harnesses ship the same 16 names. These are current-state
+// basenames. Both harnesses ship the same 17 names. These are current-state
 // fixture assertions, not hardcoded enumerations — production derives the
 // names from the manifest's commands-class projections.
 const OPENCODE_COMMANDS = [
@@ -129,6 +130,7 @@ const OPENCODE_COMMANDS = [
   'sai-8-accessibility',
   'sai-archive',
   'sai-backfill',
+  'sai-build',
   'sai-commit',
   'sai-explore',
   'sai-pr',
@@ -894,20 +896,20 @@ test('scope Both presents combined worker and command rows type-prefixed, worker
 
 // --- Step 4: command enumeration from the manifest's commands-class projections ---
 
-test('opencode enumerateCommands returns exactly the 16 manifest-declared commands', () => {
+test('opencode enumerateCommands returns exactly the 17 manifest-declared commands', () => {
   const adapter = createOpencodeAdapter({ repoRoot: REPO_ROOT });
   const commands = adapter.enumerateCommands();
-  assert.equal(commands.length, 16, 'exactly 16 commands should enumerate for opencode');
+  assert.equal(commands.length, 17, 'exactly 17 commands should enumerate for opencode');
   assert.deepEqual([...commands].sort(), [...OPENCODE_COMMANDS].sort(),
-    'opencode commands should be exactly the 16 manifest-declared names');
+    'opencode commands should be exactly the 17 manifest-declared names');
 });
 
-test('claude enumerateCommands returns exactly the same 16 manifest-declared commands', () => {
+test('claude enumerateCommands returns exactly the same 17 manifest-declared commands', () => {
   const adapter = createClaudeAdapter({ repoRoot: REPO_ROOT });
   const commands = adapter.enumerateCommands();
-  assert.equal(commands.length, 16, 'exactly 16 commands should enumerate for claude');
+  assert.equal(commands.length, 17, 'exactly 17 commands should enumerate for claude');
   assert.deepEqual([...commands].sort(), [...OPENCODE_COMMANDS].sort(),
-    'claude commands should be exactly the same 16 manifest-declared names');
+    'claude commands should be exactly the same 17 manifest-declared names');
 });
 
 test('command enumeration reads the manifest-declared package source directory, never the installed global command directory', () => {

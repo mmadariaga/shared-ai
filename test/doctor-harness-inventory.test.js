@@ -236,6 +236,12 @@ describe('doctor harness inventory', () => {
           assert.ok(fs.existsSync(path.join(base, 'sai', 'commands', utility, 'body.md')),
             `${harness} should install the ${utility} utility body card`);
         }
+        for (const card of ['coordinator.md', 'launcher.md']) {
+          assert.ok(fs.existsSync(path.join(base, 'sai', 'commands', 'build', card)),
+            `${harness} should install the build ${card} card`);
+        }
+        assert.ok(fs.existsSync(path.join(base, 'commands', 'sai-build.md')),
+          `${harness} should install sai-build.md`);
         for (const card of ['coordinator.md', 'red-worker.md', 'green-worker.md', 'runner.md', 'invocation.md']) {
           assert.ok(fs.existsSync(path.join(base, 'sai', 'commands', 'apply', card)),
             `${harness} should install the routed apply card ${card}`);
@@ -318,6 +324,12 @@ test('Step 3 Claude and opencode neutral inventories are equivalent and differ o
     assert.equal(Object.keys(claude).length > 0, true, 'claude should carry a non-empty neutral inventory');
     assert.deepEqual(claude, opencode,
       'claude and opencode should project the same neutral sources to the same relative destinations');
+    for (const source of ['sai/commands/build/coordinator.md', 'sai/commands/build/launcher.md']) {
+      assert.equal(Object.hasOwn(claude, source), true,
+        `claude should project the neutral build source ${source}`);
+      assert.equal(Object.hasOwn(opencode, source), true,
+        `opencode should project the neutral build source ${source}`);
+    }
     for (const source of Object.keys(claude)) {
       const bytes = fs.readFileSync(path.join(repoRoot, ...source.split('/')));
       assert.deepEqual(fs.readFileSync(path.join(repoRoot, ...source.split('/'))), bytes,

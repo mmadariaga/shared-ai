@@ -591,8 +591,12 @@ test('Step 2 both boot adapters select the apply coordinator, exclude apply from
   for (const boot of [claude, opencode]) {
     assert.match(boot, /@sai\/commands\/apply\/coordinator\.md/,
       'specs/apply-boot-rerouting/spec.md: apply must select the routed coordinator card');
+    assert.match(boot, /@sai\/commands\/build\/coordinator\.md/,
+      'specs/build-command/spec.md: build must select the routed coordinator card');
     assert.doesNotMatch(boot, /@sai\/commands\/apply\/body\.md/,
       'specs/apply-boot-rerouting/spec.md: apply must no longer select the utility body card');
+    assert.doesNotMatch(boot, /Utility names[\s\S]{0,80}`build`/,
+      'specs/build-command/spec.md: build must not be selected as a utility body card');
     assert.match(boot, /Routed names[\s\S]{0,200}`apply`|`apply`[\s\S]{0,80}routed/i,
       'specs/apply-boot-rerouting/spec.md: apply must join the routed name set');
     assert.doesNotMatch(boot, /Utility names[\s\S]{0,80}`apply`/,

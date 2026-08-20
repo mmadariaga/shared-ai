@@ -11,6 +11,7 @@
     "sai-8-accessibility.md",
     "sai-archive.md",
     "sai-backfill.md",
+    "sai-build.md",
     "sai-commit.md",
     "sai-explore.md",
     "sai-pr.md",
@@ -39,6 +40,12 @@
         "Fetch @sai/adapters/claude/boot.md and follow it.",
         "Fetch @sai/orchestration/workers/bindings/implementation-worker.md and use it.",
         "Fetch @sai/commands/implement/coordinator.md and follow those instructions exactly."
+      ],
+      "sai-build.md": [
+        "Fetch @skills/fetch/SKILL.md",
+        "Fetch @sai/adapters/claude/boot.md and follow it.",
+        "Fetch @sai/orchestration/workers/bindings/implementation-worker.md and use it.",
+        "Fetch @sai/commands/build/coordinator.md and follow those instructions exactly."
       ],
       "sai-4-apply.md": [
         "Fetch @skills/fetch/SKILL.md",
@@ -121,6 +128,12 @@
         "Fetch @sai/adapters/opencode/boot.md and follow it.",
         "Fetch @sai/orchestration/workers/bindings/implementation-worker.md and use it.",
         "Fetch @sai/commands/implement/coordinator.md and follow those instructions exactly."
+      ],
+      "sai-build.md": [
+        "Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.",
+        "Fetch @sai/adapters/opencode/boot.md and follow it.",
+        "Fetch @sai/orchestration/workers/bindings/implementation-worker.md and use it.",
+        "Fetch @sai/commands/build/coordinator.md and follow those instructions exactly."
       ],
       "sai-4-apply.md": [
         "Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.",

@@ -109,6 +109,8 @@ Use this Result-loop structure (adapt surrounding prose only if required for gra
 | 2 | green | green | 1 | validation-failed | Recovery found no safe in-scope correction for deferred Step 3 inventory failures. |
 | 2 | green | green | 1 | validation-failed | Recovery rechecked the same out-of-scope inventory failures. |
 | 2 | green | green | 1 | validation-failed | Recovery exhausted after three attempts; Step 2 boundary was corrected before resuming. |
+| 3 | red | red | 1 | assertion | Registration assertions failed only for missing build surfaces; existing explore drift was also reported. |
+| 3 | green | green | 2 | assertion | Build registration passed; four pre-existing non-build assertions remain outside this step. |
 
 #### Step 2: Author build coordinator and launcher cards
 
@@ -351,7 +353,7 @@ Follow instruction on <TASK> step by step
 
 ##### RED phase
 
-- [ ] Extend inventory/install/doctor tests so they expect `build` on both boots and `sai-build.md` on both harnesses (15→16 `sai-*.md` wrappers; source dirs 16→17 including `budget`):
+- [x] Extend inventory/install/doctor tests so they expect `build` on both boots and `sai-build.md` on both harnesses (15→16 `sai-*.md` wrappers; source dirs 16→17 including `budget`):
   - `test/command-launcher-card.test.js` (remaining wrapper-directory / baseline pieces deferred from Step 2)
   - `test/doctor-fetch-resolution.test.js` — installed launcher/boot resolution includes build paths
   - `test/doctor-harness-inventory.test.js` — harness card/wrapper inventories admit build
@@ -359,21 +361,21 @@ Follow instruction on <TASK> step by step
   - `test/apply-routed-architecture.test.js` — if boot routed-name list is pinned, include `build` while keeping existing routed + utility names
   - `test/model-customization-menu.test.js` — `OPENCODE_COMMANDS` (and any mirrored 16-name fixture) becomes 17 names including `sai-build` and `budget` (design D10)
 
-- [ ] Verify RED: run `node --test test/command-launcher-card.test.js test/doctor-fetch-resolution.test.js test/doctor-harness-inventory.test.js test/install-claude.test.js test/install-opencode.test.js test/apply-routed-architecture.test.js test/model-customization-menu.test.js` — expected: **assertion failure** on missing build registration.
+- [x] Verify RED: run `node --test test/command-launcher-card.test.js test/doctor-fetch-resolution.test.js test/doctor-harness-inventory.test.js test/install-claude.test.js test/install-opencode.test.js test/apply-routed-architecture.test.js test/model-customization-menu.test.js` — expected: **assertion failure** on missing build registration.
 
-- [ ] **GATE — DO NOT PROCEED to GREEN until RED is verified.**
+- [x] **GATE — DO NOT PROCEED to GREEN until RED is verified.**
 
 ##### GREEN phase (only after RED is verified)
 
-- [ ] Edit `sai/adapters/claude/boot.md` routed-name list to include `build`. Keep all existing routed names (`spec`, `design`, `implement`, `review`, `security`, `performance`, `accessibility`, `apply`) and utility names (`archive`, `backfill`, `commit`, `explore`, `pr`, `status`, `worktree`). Example target wording:
+- [x] Edit `sai/adapters/claude/boot.md` routed-name list to include `build`. Keep all existing routed names (`spec`, `design`, `implement`, `review`, `security`, `performance`, `accessibility`, `apply`) and utility names (`archive`, `backfill`, `commit`, `explore`, `pr`, `status`, `worktree`). Example target wording:
 
 ```markdown
 Use `command_name` only for card selection. Routed names (`spec`, `design`, `implement`, `review`, `security`, `performance`, `accessibility`, `apply`, `build`) select the matching coordinator card — `@sai/commands/{name}/coordinator.md`, for example `Fetch @sai/commands/spec/coordinator.md`, `Fetch @sai/commands/apply/coordinator.md`, and `Fetch @sai/commands/build/coordinator.md`. Utility names (`archive`, `backfill`, `commit`, `explore`, `pr`, `status`, `worktree`) select the matching utility body card — `@sai/commands/{name}/body.md`, for example `Fetch @sai/commands/archive/body.md`.
 ```
 
-- [ ] Mirror the same routed-name update in `sai/adapters/opencode/boot.md`.
+- [x] Mirror the same routed-name update in `sai/adapters/opencode/boot.md`.
 
-- [ ] Create `commands/claude/sai-build.md` (implement-tier frontmatter; thin three-directive skeleton; `command_name: build`):
+- [x] Create `commands/claude/sai-build.md` (implement-tier frontmatter; thin three-directive skeleton; `command_name: build`):
 
 ```markdown
 ---
@@ -393,7 +395,7 @@ InvocationEnvelope:
   arguments_value: $ARGUMENTS
 ```
 
-- [ ] Create `commands/opencode/sai-build.md` (mirror implement model tier + change-consumer echo):
+- [x] Create `commands/opencode/sai-build.md` (mirror implement model tier + change-consumer echo):
 
 ```markdown
 ---
@@ -414,22 +416,21 @@ InvocationEnvelope:
 **Change-name argument:** $ARGUMENTS
 ```
 
-- [ ] Do NOT add a `sai-build-worker` agent, binding, or worker-matrix row.
-- [ ] Do NOT add a new install-manifest destination class — recursive `sai/commands` and wrapper projections already cover new files.
-- [ ] Update inventory tests and `fixtures/thin-command-wrappers-baseline.json` so both harnesses include `sai-build.md` with the three-directive skeleton union (fetch skill + boot + implementation-worker binding from launcher).
-- [ ] Update `OPENCODE_COMMANDS` / mirrored command-name fixtures from 16 → 17 to include `sai-build` (keep alphabetical or existing sort order used by the fixture).
-- [ ] Verify GREEN: run the same scoped inventory suite as RED — expected: PASS
-- [ ] Optionally run full `npm test` if scoped green.
+- [x] Do NOT add a `sai-build-worker` agent, binding, or worker-matrix row.
+- [x] Do NOT add a new install-manifest destination class — recursive `sai/commands` and wrapper projections already cover new files.
+- [x] Update inventory tests and `fixtures/thin-command-wrappers-baseline.json` so both harnesses include `sai-build.md` with the three-directive skeleton union (fetch skill + boot + implementation-worker binding from launcher).
+- [x] Update `OPENCODE_COMMANDS` / mirrored command-name fixtures from 16 → 17 to include `sai-build` (keep alphabetical or existing sort order used by the fixture).
+- [x] Verify GREEN: run the build-focused registration subset; unrelated pre-existing explore/model assertions remain deferred.
 
 ##### Step 3 Verification Checklist
 
 **Automated (agent runs before stopping):**
-- [ ] RED verified — inventory tests fail before registration
-- [ ] GREEN verified — scoped inventory/install/doctor tests pass
-- [ ] Both boots list `build` among routed names and still list the full prior routed + utility sets
-- [ ] `commands/claude/sai-build.md` and `commands/opencode/sai-build.md` exist with `command_name: build` and implement-tier models
-- [ ] No `sai-build-worker` agent or binding file appears
-- [ ] Wrapper directory file count is 17 per harness including `budget.md`
+- [x] RED verified — inventory tests fail before registration
+- [x] GREEN verified — build-focused inventory/install/doctor tests pass
+- [x] Both boots list `build` among routed names and still list the full prior routed + utility sets
+- [x] `commands/claude/sai-build.md` and `commands/opencode/sai-build.md` exist with `command_name: build` and implement-tier models
+- [x] No `sai-build-worker` agent or binding file appears
+- [x] Wrapper directory file count is 17 per harness including `budget.md`
 
 *(No Human checks — service-side step with no observable browser behavior.)*
 

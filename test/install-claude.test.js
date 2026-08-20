@@ -175,6 +175,7 @@ test('installClaude copies commands/claude/*.md to dest/commands/', () => {
   assert.ok(fs.existsSync(cmdDir), 'commands/ dir should exist');
   const files = fs.readdirSync(cmdDir);
   assert.ok(files.includes('sai-1-spec.md'), 'sai-1-spec.md should be in commands/');
+  assert.ok(files.includes('sai-build.md'), 'sai-build.md should be in commands/');
   assert.ok(files.includes('budget.md'), 'budget.md should be in commands/');
   const design = fs.readFileSync(path.join(cmdDir, 'sai-2-design.md'), 'utf8');
   assert.match(design, /^model: claude-opus-4-8$/m);
@@ -194,6 +195,8 @@ test('installClaude copies sai/commands/*.md to dest/sai/commands/', () => {
   assert.ok(fs.existsSync(path.join(saiCmdDir, 'apply', 'green-worker.md')), 'apply/green-worker.md should be in sai/commands/');
   assert.ok(fs.existsSync(path.join(saiCmdDir, 'apply', 'runner.md')), 'apply/runner.md should be in sai/commands/');
   assert.ok(fs.existsSync(path.join(saiCmdDir, 'apply', 'invocation.md')), 'apply/invocation.md should be in sai/commands/');
+  assert.ok(fs.existsSync(path.join(saiCmdDir, 'build', 'coordinator.md')), 'build/coordinator.md should be in sai/commands/');
+  assert.ok(fs.existsSync(path.join(saiCmdDir, 'build', 'launcher.md')), 'build/launcher.md should be in sai/commands/');
   assert.equal(fs.existsSync(path.join(saiCmdDir, 'apply', 'body.md')), false, 'apply/body.md should be retired from sai/commands/');
   assert.equal(fs.existsSync(path.join(saiCmdDir, 'apply', 'instructions.md')), false, 'apply/instructions.md should be retired from sai/commands/');
   assert.equal(files.includes('sai-4-apply.md'), false, 'sai-4-apply.md should not be projected as a flat command');
@@ -746,6 +749,7 @@ test('Claude wrappers route through the Claude boot adapter and never the openco
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-claude-boot-routing-'));
   const wrappers = [
     ...Object.keys(UTILITY_COMMANDS),
+    'sai-build',
     'sai-1-spec',
     'sai-2-design',
     'sai-3-implement',
@@ -757,7 +761,9 @@ test('Claude wrappers route through the Claude boot adapter and never the openco
   try {
     installClaude(tmpDir);
     for (const name of wrappers) {
-      const wrapper = fs.readFileSync(path.join(tmpDir, 'commands', `${name}.md`), 'utf8');
+      const wrapperPath = path.join(tmpDir, 'commands', `${name}.md`);
+      assert.ok(fs.existsSync(wrapperPath), `${name}.md should be installed`);
+      const wrapper = fs.readFileSync(wrapperPath, 'utf8');
       assert.match(wrapper, /Fetch @sai\/adapters\/claude\/boot\.md/,
         `${name} should route through the Claude boot adapter`);
       assert.doesNotMatch(wrapper, /Fetch @sai\/adapters\/opencode\/boot\.md/,

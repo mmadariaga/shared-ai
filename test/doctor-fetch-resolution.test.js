@@ -328,6 +328,17 @@ describe('doctor fetch resolution', () => {
           assert.ok(fs.existsSync(path.join(base, 'sai', 'commands', utility, 'body.md')),
             `${harness} harness should install the ${utility} utility body card`);
         }
+        for (const card of ['coordinator.md', 'launcher.md']) {
+          assert.ok(fs.existsSync(path.join(base, 'sai', 'commands', 'build', card)),
+            `${harness} harness should install the build ${card} card`);
+        }
+        const buildWrapper = path.join(base, 'commands', 'sai-build.md');
+        assert.ok(fs.existsSync(buildWrapper), `${harness} harness should install sai-build.md`);
+        assert.match(
+          fs.readFileSync(buildWrapper, 'utf8'),
+          /Fetch @sai\/commands\/build\/launcher\.md/,
+          `${harness} sai-build wrapper should resolve the build launcher`
+        );
         for (const card of ['coordinator.md', 'red-worker.md', 'green-worker.md', 'runner.md', 'invocation.md']) {
           assert.ok(fs.existsSync(path.join(base, 'sai', 'commands', 'apply', card)),
             `${harness} harness should install the routed apply card ${card}`);

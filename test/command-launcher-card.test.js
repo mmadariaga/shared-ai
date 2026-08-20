@@ -25,7 +25,7 @@ const commands = [
   ['sai-worktree.md', 'worktree'],
 ];
 const emptyLaunchers = new Set(['apply', 'archive', 'backfill', 'commit', 'pr', 'status', 'worktree']);
-const wrapperCommands = commands.filter(([, folder]) => folder !== 'build');
+const wrapperCommands = commands;
 const movedDirectives = {
   spec: [
     'Fetch @sai/policies/glossary-format.md',
@@ -66,7 +66,9 @@ const movedDirectives = {
 };
 
 function read(relativePath) {
-  return fs.readFileSync(path.join(repoRoot, relativePath), 'utf8');
+  const fullPath = path.join(repoRoot, relativePath);
+  assert.ok(fs.existsSync(fullPath), `${relativePath} should exist`);
+  return fs.readFileSync(fullPath, 'utf8');
 }
 
 function fetchLines(source) {
@@ -242,11 +244,11 @@ test('final wrappers: every launcher has no envelope fields and remains harness-
   }
 });
 
-test('final wrappers: source wrapper directories contain exactly 16 files including budget.md; no launcher.md under commands/', () => {
+test('final wrappers: source wrapper directories contain exactly 17 files including budget.md; no launcher.md under commands/', () => {
   for (const harness of ['claude', 'opencode']) {
     const dir = path.join(repoRoot, 'commands', harness);
     const files = fs.readdirSync(dir);
-    assert.equal(files.length, 16, `${harness} wrapper directory should contain exactly 16 files`);
+    assert.equal(files.length, 17, `${harness} wrapper directory should contain exactly 17 files`);
     assert.ok(files.includes('budget.md'), `${harness} should include budget.md`);
     for (const file of files) {
       assert.notEqual(file, 'launcher.md', `${harness} should not contain launcher.md`);
