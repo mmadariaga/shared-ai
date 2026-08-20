@@ -1533,3 +1533,21 @@ test('Step 3: a failed overview terminal leaves the plan list unchanged and reco
     'a failed overview terminal should reconcile nothing'
   );
 });
+
+test('Step 1: design artifact feedback gate uses explicit modes while the coordinator supplies only interactive parameters', () => {
+  const gate = artifact('sai/policies/artifact-feedback-gate.md');
+  const coordinator = artifact('sai/commands/design/coordinator.md');
+
+  assert.match(gate, /`mode`[\s\S]{0,180}optional|optional[\s\S]{0,180}`mode`/i);
+  assert.match(gate, /interactive/);
+  assert.match(gate, /supervised/);
+  assert.match(gate, /##[^\n]*supervised/i);
+  assert.match(coordinator, /artifacts\s*=\s*design\.md,\s*tasks\.md,\s*interfaces\.md/);
+  assert.match(coordinator, /proceed-label\s*=\s*Continue/);
+
+  const gateUse = coordinator.slice(
+    coordinator.indexOf('Fetch @sai/policies/artifact-feedback-gate.md'),
+    coordinator.indexOf('Fetch @sai/policies/artifact-feedback-gate.md') + 700,
+  );
+  assert.doesNotMatch(gateUse, /(?:^|[\s,(`])mode\s*[:=]/i);
+});

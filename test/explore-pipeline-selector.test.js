@@ -767,3 +767,58 @@ test('manual navigation and worker-owned Phase Review Passes remain distinct', (
   assert.match(source, /Phase Review Pass/i);
   assert.match(source, /worker[- ]owned/i);
 });
+
+test('Step 1: artifact feedback gate declares an explicit interactive or supervised mode', () => {
+  const gate = fs.readFileSync(
+    path.join(repoRoot, 'sai/policies/artifact-feedback-gate.md'),
+    'utf8'
+  );
+
+  assert.match(gate, /`mode`[\s\S]{0,180}optional|optional[\s\S]{0,180}`mode`/i);
+  assert.match(gate, /interactive/);
+  assert.match(gate, /supervised/);
+  assert.match(gate, /(?:omitted|missing)[\s\S]{0,140}interactive|default(?:s|ing)?[\s\S]{0,100}interactive/i);
+  assert.match(gate, /invalid[\s\S]{0,180}(?:non-empty[\s\S]{0,80})?mode[\s\S]{0,180}STOP|mode[\s\S]{0,180}invalid[\s\S]{0,180}STOP/i);
+  assert.match(
+    gate,
+    /(?:must not|never|do not)[\s\S]{0,180}(?:detect|infer|derive)[\s\S]{0,180}(?:invocation[- ]context|caller|conversation)[\s\S]{0,180}mode/i
+  );
+});
+
+test('Step 1: supervised mode auto-proceeds without the interactive feedback surfaces', () => {
+  const gate = fs.readFileSync(
+    path.join(repoRoot, 'sai/policies/artifact-feedback-gate.md'),
+    'utf8'
+  );
+
+  assert.match(gate, /supervised[\s\S]{0,320}(?:auto[- ]proceed|automatically)[\s\S]{0,220}`?next-action`?/i);
+  assert.match(gate, /supervised[\s\S]{0,420}`?next-action`?[\s\S]{0,180}(?:exactly once|once)/i);
+  assert.match(gate, /supervised[\s\S]{0,420}(?:does not|never|no)[\s\S]{0,100}(?:present|emit)[\s\S]{0,100}(?:picker|free-text)/i);
+  assert.match(gate, /supervised[\s\S]{0,520}(?:does not|never|no)[\s\S]{0,100}(?:increment|change)[\s\S]{0,100}iteration/i);
+  assert.match(gate, /supervised[\s\S]{0,520}(?:does not|never|must not)[\s\S]{0,120}(?:write|modify)[\s\S]{0,100}`?\.openspec\.yaml`?/i);
+  assert.match(gate, /failed[\s\S]{0,220}(?:or|and)[\s\S]{0,80}cancelled[\s\S]{0,220}(?:never|not|no)[\s\S]{0,180}(?:auto[- ]proceed|next-action)/i);
+});
+
+test('Step 1: supervised placement follows the decision summary and reports follow proceed', () => {
+  const gate = fs.readFileSync(
+    path.join(repoRoot, 'sai/policies/artifact-feedback-gate.md'),
+    'utf8'
+  );
+
+  assert.match(gate, /supervised[\s\S]{0,420}(?:after|following)[\s\S]{0,120}decision summary/i);
+  assert.match(gate, /(?:after|following)[\s\S]{0,120}(?:proceed|`?next-action`?)[\s\S]{0,260}(?:report|reporting|summary)/i);
+});
+
+test('Step 1: interactive mode keeps Give feedback Recommended before proceed', () => {
+  const gate = fs.readFileSync(
+    path.join(repoRoot, 'sai/policies/artifact-feedback-gate.md'),
+    'utf8'
+  );
+  const feedback = gate.indexOf('Give feedback (Recommended)');
+  const proceed = gate.indexOf('proceed-label');
+
+  assert.match(gate, /interactive[\s\S]{0,320}Give feedback \(Recommended\)[\s\S]{0,240}proceed/i);
+  assert.ok(feedback >= 0, 'interactive feedback option should be present');
+  assert.ok(proceed >= 0, 'proceed option should be present');
+  assert.ok(feedback < proceed, 'interactive feedback should precede proceed');
+});

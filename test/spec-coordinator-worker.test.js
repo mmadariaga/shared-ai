@@ -470,3 +470,22 @@ test('Step 2: the spec coordinator skips reconciliation for pre-gate completion 
   assert.match(coordinator, /`failed`, `cancelled`, and `needs_input` leave the list exactly as last rendered/,
     'failed, cancelled, and needs_input should leave the list as last rendered');
 });
+
+test('Step 1: spec artifact feedback gate uses explicit modes while the coordinator supplies only interactive parameters', () => {
+  const gate = artifact('sai/policies/artifact-feedback-gate.md');
+  const coordinator = artifact(SPEC_COORDINATOR_ARTIFACTS.coordinator);
+
+  assert.match(gate, /`mode`[\s\S]{0,180}optional|optional[\s\S]{0,180}`mode`/i);
+  assert.match(gate, /interactive/);
+  assert.match(gate, /supervised/);
+  assert.match(gate, /##[^\n]*supervised/i);
+  assert.match(coordinator, /artifacts\s*=\s*proposal\.md,\s*specs\/\*\*/);
+  assert.match(coordinator, /proceed-label\s*=\s*Finish step/);
+  assert.match(coordinator, /next-action[\s\S]{0,260}MANDATORY STOP|MANDATORY STOP[\s\S]{0,260}next-action/i);
+
+  const gateUse = coordinator.slice(
+    coordinator.indexOf('Fetch @sai/policies/artifact-feedback-gate.md'),
+    coordinator.indexOf('Fetch @sai/policies/artifact-feedback-gate.md') + 700,
+  );
+  assert.doesNotMatch(gateUse, /(?:^|[\s,(`])mode\s*[:=]/i);
+});
