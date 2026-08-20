@@ -123,19 +123,28 @@ test('grouped design and implementation phase assets preserve their former sourc
       instruction: 'sai/commands/design/instructions.md',
       cardContents: ['change-overview.md', 'coordinator.md', 'instructions.md', 'invocation.md', 'launcher.md', 'worker.md'],
     },
-    {
-      name: 'implement',
-      directory: path.join(repoRoot, 'sai', 'commands', 'implement'),
+     {
+       name: 'implement',
+       directory: path.join(repoRoot, 'sai', 'commands', 'implement'),
        coordinator: path.join(repoRoot, 'sai', 'commands', 'implement', 'coordinator.md'),
        invocation: path.join(repoRoot, 'sai', 'commands', 'implement', 'invocation.md'),
-      instruction: 'sai/commands/implement/instructions.md',
-      cardContents: ['adr-index.template.md', 'coordinator.md', 'ddr-index.template.md', 'implementation-plan.template.md', 'instructions.md', 'invocation.md', 'launcher.md', 'worker.md'],
-    },
-  ];
+       instruction: 'sai/commands/implement/instructions.md',
+       cardContents: ['adr-index.template.md', 'coordinator.md', 'ddr-index.template.md', 'implementation-plan.template.md', 'instructions.md', 'invocation.md', 'launcher.md', 'worker.md'],
+     },
+     {
+       name: 'build',
+       directory: path.join(repoRoot, 'sai', 'commands', 'build'),
+       cardContents: ['coordinator.md', 'launcher.md'],
+     },
+   ];
 
-  for (const phase of phases) {
-    assert.deepEqual(fs.readdirSync(phase.directory).sort(), phase.cardContents);
-    assert.equal(
+   for (const phase of phases) {
+     const directoryExists = fs.existsSync(phase.directory);
+     assert.equal(directoryExists, true, `${phase.name} source directory should exist`);
+     if (!directoryExists) continue;
+     assert.deepEqual(fs.readdirSync(phase.directory).sort(), phase.cardContents);
+     if (phase.name === 'build') continue;
+     assert.equal(
       fs.readFileSync(path.join(phase.directory, 'coordinator.md'), 'utf8'),
       fs.readFileSync(phase.coordinator, 'utf8')
     );

@@ -1,0 +1,97 @@
+'use strict';
+
+const { test } = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+
+const repoRoot = path.join(__dirname, '..');
+const coordinatorPath = 'sai/commands/build/coordinator.md';
+const launcherPath = 'sai/commands/build/launcher.md';
+
+function readRequired(relativePath) {
+  const absolutePath = path.join(repoRoot, relativePath);
+  assert.equal(fs.existsSync(absolutePath), true, `${relativePath} should exist`);
+  return fs.readFileSync(absolutePath, 'utf8');
+}
+
+function assertContains(source, text, message = `expected card to contain ${text}`) {
+  assert.ok(source.includes(text), message);
+}
+
+test('build source layout contains only the coordinator and launcher cards', () => {
+  assert.equal(fs.existsSync(path.join(repoRoot, coordinatorPath)), true, `${coordinatorPath} should exist`);
+  assert.equal(fs.existsSync(path.join(repoRoot, launcherPath)), true, `${launcherPath} should exist`);
+  assert.equal(fs.existsSync(path.join(repoRoot, 'sai/commands/build/worker.md')), false,
+    'build must not introduce a worker card');
+});
+
+test('build launcher fetches only the implementation worker binding and build coordinator', () => {
+  const source = readRequired(launcherPath).trim().split(/\r?\n/);
+  assert.deepEqual(source, [
+    'Fetch @sai/orchestration/workers/bindings/implementation-worker.md and use it.',
+    'Fetch @sai/commands/build/coordinator.md and follow those instructions exactly.',
+  ]);
+  assert.doesNotMatch(source.join('\n'), /claude|opencode|red-worker|green-worker/i);
+});
+
+test('build coordinator declares the implement-to-apply composition and envelopes', () => {
+  const source = readRequired(coordinatorPath);
+  assert.match(source, /position 0\s*[—-]\s*implementation phase adapter/);
+  assertContains(source, 'sai/commands/implement/coordinator.md');
+  assert.match(source, /position 1\s*[—-]\s*existing apply phase adapter/);
+  assertContains(source, 'sai/commands/apply/coordinator.md');
+  assertContains(source, '{wrapper_echo_value: "", arguments_value: "{name}"}');
+  assertContains(source, 'command_name: apply');
+  assertContains(source, 'continuation_reference` absent or empty');
+  assertContains(source, 'fast-track true is supervisor session state');
+  assertContains(source, 'does not re-declare RED/GREEN dispatch');
+  assert.doesNotMatch(source, /sai\/commands\/build\/worker\.md/);
+  assert.doesNotMatch(source, /build-specific managed worker|build-specific worker matrix/i);
+});
+
+test('build coordinator normalizes fast-track and resolves one change without an intermediate gate', () => {
+  const source = readRequired(coordinatorPath);
+  assertContains(source, 'strip every `--fast-track` token');
+  assertContains(source, 'in any token order');
+  assertContains(source, 'does NOT make `/sai-build` a fifth body-file parse member');
+  assertContains(source, 'does NOT activate a build-local fast-track mode');
+  assertContains(source, 'Resolve the target OpenSpec change name exactly once');
+  assertContains(source, 'Neither segment re-enters a harness boot adapter or command wrapper');
+  assertContains(source, 'No intermediate approval gate');
+  assertContains(source, 'transitions immediately to the apply segment');
+  assertContains(source, 'Do NOT print the standalone implement completion literal');
+  assertContains(source, 'not the `sai-explore` supervision pattern');
+  assertContains(source, 'Do not require Auto crystallization authorization');
+});
+
+test('build coordinator owns fast-track activation and blocks apply after phase-one failure', () => {
+  const source = readRequired(coordinatorPath);
+  assertContains(source, '> FAST-TRACK MODE ACTIVE');
+  assertContains(source, 'exactly one line');
+  assertContains(source, 'Print the banner zero times when apply never activates');
+  assertContains(source, 'commit pre-authorization');
+  assertContains(source, 'non-detached branch auto-stay');
+  assertContains(source, 'deferred combined Human Verification as a post-commit report');
+  assertContains(source, 'Detached HEAD still presents the existing three-option branch prompt');
+  assertContains(source, 'Safe-operations confirmations remain required');
+  assertContains(source, 'If the implement segment returns `failed` or `cancelled`');
+  assertContains(source, 'without activating apply');
+  assertContains(source, 'without printing the FAST-TRACK banner');
+  assertContains(source, 'without claiming apply completion');
+});
+
+test('build coordinator preserves re-entry, stops, completion, and changed-files union', () => {
+  const source = readRequired(coordinatorPath);
+  assertContains(source, 'Re-entry after interruption or partial apply goes through the implement segment again');
+  assertContains(source, 'Non-removable stops');
+  assertContains(source, 'routing-tree STOP');
+  assertContains(source, 'GREEN-conflict STOP');
+  assertContains(source, 'recovery-pool exhaustion after three same-GREEN-worker attempts');
+  assertContains(source, 'Implementation applied. Run `/sai-5-review {name}` in a new chat when ready.');
+  assertContains(source, 'Do not declare a maximum Step count');
+  assertContains(source, 'Large plans are accepted');
+  assertContains(source, 'ordered, duplicate-free changed-files union');
+  assertContains(source, 'without resetting the union on segment activation');
+  assertContains(source, 'Phase 2 dispatches existing `sai-4-red-worker` / `sai-4-green-worker` only through the apply adapter');
+});

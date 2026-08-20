@@ -17,6 +17,7 @@ const commands = [
   ['sai-8-accessibility.md', 'accessibility'],
   ['sai-archive.md', 'archive'],
   ['sai-backfill.md', 'backfill'],
+  ['sai-build.md', 'build'],
   ['sai-commit.md', 'commit'],
   ['sai-explore.md', 'explore'],
   ['sai-pr.md', 'pr'],
@@ -24,6 +25,7 @@ const commands = [
   ['sai-worktree.md', 'worktree'],
 ];
 const emptyLaunchers = new Set(['apply', 'archive', 'backfill', 'commit', 'pr', 'status', 'worktree']);
+const wrapperCommands = commands.filter(([, folder]) => folder !== 'build');
 const movedDirectives = {
   spec: [
     'Fetch @sai/policies/glossary-format.md',
@@ -39,6 +41,10 @@ const movedDirectives = {
   implement: [
     'Fetch @sai/orchestration/workers/bindings/implementation-worker.md and use it.',
     'Fetch @sai/commands/implement/coordinator.md and follow those instructions exactly.',
+  ],
+  build: [
+    'Fetch @sai/orchestration/workers/bindings/implementation-worker.md and use it.',
+    'Fetch @sai/commands/build/coordinator.md and follow those instructions exactly.',
   ],
   review: [
     'Fetch @sai/orchestration/workers/bindings/review-worker.md and use it.',
@@ -70,19 +76,21 @@ function fetchLines(source) {
     .filter(line => line.startsWith('Fetch @'));
 }
 
-test('exactly 15 harness-neutral launcher cards exist and budget has none', () => {
+test('exactly 16 harness-neutral launcher cards exist and budget has none', () => {
   const actual = [];
   for (const [, folder] of commands) {
     const relative = `sai/commands/${folder}/launcher.md`;
     assert.equal(fs.existsSync(path.join(repoRoot, relative)), true, `${relative} should exist`);
     actual.push(relative);
   }
-  assert.equal(actual.length, 15);
+  assert.equal(actual.length, 16);
   assert.equal(fs.existsSync(path.join(repoRoot, 'sai', 'commands', 'budget', 'launcher.md')), false);
 });
 
 test('launcher content is exact, ordered, and harness-neutral', () => {
   for (const [, folder] of commands) {
+    const relative = `sai/commands/${folder}/launcher.md`;
+    assert.equal(fs.existsSync(path.join(repoRoot, relative)), true, `${relative} should exist`);
     const source = read(`sai/commands/${folder}/launcher.md`);
     assert.doesNotMatch(source, /claude|opencode/i, `${folder} launcher must be harness-neutral`);
     assert.doesNotMatch(source, /@sai\/adapters\//, `${folder} launcher must not fetch an adapter`);
@@ -127,6 +135,7 @@ const OPENCODE_LABELS = {
   'sai-7-performance.md': '**Performance arguments:** $ARGUMENTS',
   'sai-8-accessibility.md': '**Change-name argument:** $ARGUMENTS',
   'sai-archive.md': '**Change-name argument and and optional flags:** $ARGUMENTS',
+  'sai-build.md': '**Change-name argument:** $ARGUMENTS',
   'sai-status.md': '**Change-name argument and and optional flags:** $ARGUMENTS',
   'sai-worktree.md': '**Worktree arguments:** $ARGUMENTS',
   'sai-pr.md': '**Change-name argument:** $ARGUMENTS',
@@ -138,7 +147,7 @@ function launcherCallDirective(folder) {
 
 test('final wrappers: first fetch is harness skill, second is boot adapter, launcher fetch appears exactly once', () => {
   for (const harness of ['claude', 'opencode']) {
-    for (const [file, folder] of commands) {
+    for (const [file, folder] of wrapperCommands) {
       const lines = fetchLines(read(`commands/${harness}/${file}`));
       assert.equal(lines[0], HARNESS_FETCH[harness], `${harness}/${file} first fetch should be the harness fetch skill`);
       assert.equal(lines[1], BOOT_ADAPTER[harness], `${harness}/${file} second fetch should be the boot adapter`);
@@ -151,7 +160,7 @@ test('final wrappers: first fetch is harness skill, second is boot adapter, laun
 
 test('final wrappers: InvocationEnvelope block follows launcher fetch with exactly three fields', () => {
   for (const harness of ['claude', 'opencode']) {
-    for (const [file, folder] of commands) {
+    for (const [file, folder] of wrapperCommands) {
       const source = read(`commands/${harness}/${file}`);
       assert.match(source, /InvocationEnvelope:/, `${harness}/${file} should contain InvocationEnvelope:`);
       assert.match(source, new RegExp(`command_name:\\s*${folder}`), `${harness}/${file} should set command_name to ${folder}`);
@@ -169,7 +178,7 @@ test('final wrappers: InvocationEnvelope block follows launcher fetch with exact
 
 test('final wrappers: no ## Sai heading, User input, @commands/sai/, flat @sai/commands/<name>.md, isolation block, prerequisite section, or behavior-skill fetch', () => {
   for (const harness of ['claude', 'opencode']) {
-    for (const [file, folder] of commands) {
+    for (const [file, folder] of wrapperCommands) {
       const source = read(`commands/${harness}/${file}`);
       assert.doesNotMatch(source, /^## Sai/m, `${harness}/${file} should have no ## Sai heading`);
       assert.doesNotMatch(source, /User input:\s*\$ARGUMENTS/, `${harness}/${file} should have no User input line`);
@@ -196,7 +205,7 @@ test('final wrappers: both sai-explore wrappers keep idea-list-render and spec-w
 });
 
 test('final wrappers: opencode label lines remain after envelope; Claude wrappers have no label line', () => {
-  for (const [file, folder] of commands) {
+  for (const [file, folder] of wrapperCommands) {
     const opencodeSource = read(`commands/opencode/${file}`);
     const claudeSource = read(`commands/claude/${file}`);
     if (OPENCODE_LABELS[file]) {
@@ -210,7 +219,7 @@ test('final wrappers: opencode label lines remain after envelope; Claude wrapper
 test('final wrappers: wrapper + launcher sorted Fetch set matches baseline', () => {
   const fixture = JSON.parse(read('fixtures/thin-command-wrappers-baseline.json'));
   for (const harness of ['claude', 'opencode']) {
-    for (const [file, folder] of commands) {
+    for (const [file, folder] of wrapperCommands) {
       const wrapperFetch = fetchLines(read(`commands/${harness}/${file}`));
       const launcherFetch = fetchLines(read(`sai/commands/${folder}/launcher.md`));
       const launcherCall = launcherCallDirective(folder);
@@ -226,7 +235,7 @@ test('final wrappers: wrapper + launcher sorted Fetch set matches baseline', () 
 });
 
 test('final wrappers: every launcher has no envelope fields and remains harness-neutral', () => {
-  for (const [, folder] of commands) {
+  for (const [, folder] of wrapperCommands) {
     const source = read(`sai/commands/${folder}/launcher.md`);
     assert.doesNotMatch(source, /InvocationEnvelope|command_name|wrapper_echo_value|arguments_value/,
       `${folder} launcher should have no envelope fields`);
