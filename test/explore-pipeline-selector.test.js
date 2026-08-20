@@ -44,8 +44,10 @@ test('supervision is entered only through the crystallization-close selector', (
   assert.match(source, /Crystallization-close selector/);
 });
 
-test('the selector closes every crystallization emission with exactly two options', () => {
+test('the selector closes every crystallization emission through the authoritative shared close', () => {
   const source = exploreContract();
+  const sharedCloseSpec = spec('openspec/specs/explore-crystallization-block/spec.md');
+  const selectorSpec = spec('openspec/specs/explore-pipeline-selector/spec.md');
 
   assert.match(source, /items 5, 6, and 7 \u2014 closes its turn with exactly one selector/i);
   assert.match(source, /after the final `Ready to Propose` block and after the keep-window-open recommendation/i);
@@ -55,18 +57,25 @@ test('the selector closes every crystallization emission with exactly two option
   assert.match(source, /AskUserQuestion on Claude Code|`AskUserQuestion` on Claude Code/i);
   assert.match(source, /`question` tool on opencode/i);
   assert.match(source, /remember\.md`? \(L10\u201315\)/);
+
+  assert.match(sharedCloseSpec, /one authoritative crystallization-turn close/i);
+  assert.match(sharedCloseSpec, /Items 5 \(single change\), 6 \(sliced feature\), and 7 \(inline proposal refusal\)[\s\S]{0,180}reference that definition/i);
+  assert.match(selectorSpec, /Selecting `Manual` SHALL dispatch nothing and SHALL NOT change supervision state/i);
+  assert.match(selectorSpec, /An unmapped free-text answer MUST be treated as (?:\*\*|`)Manual(?:\*\*|`)/i);
+  assert.match(selectorSpec, /[`*]*Manual[`*]* SHALL remain re-invocable without a cap[\s\S]{0,120}selector/i);
+  assert.match(selectorSpec, /`--fast-track` SHALL NOT auto-select Auto or suppress the selector/i);
 });
 
-test('Manual is non-terminal, unmapped free text is Manual, and fast-track auto-selects nothing', () => {
+test('Manual and unmapped answers preserve the shared close without suppressing re-emission', () => {
   const source = exploreContract();
+  const selectorSpec = spec('openspec/specs/explore-pipeline-selector/spec.md');
 
-  assert.match(source, /Selecting \*\*Manual\*\* dispatches nothing, changes no state value/i);
-  assert.match(source, /closes the turn with the keep-window-open recommendation naming `review-loop`/i);
-  assert.match(source, /maps to neither option is treated as \*\*Manual\*\*/i);
-  assert.match(source, /\*\*Manual is not terminal\*\*/);
-  assert.match(source, /no cap on re-emissions/i);
-  assert.match(source, /`--fast-track` auto-selects nothing/i);
-  assert.match(source, /one gate to delegated writes that fast-track never skips/i);
+  assert.match(source, /Selecting \*\*Manual\*\* dispatches nothing[\s\S]{0,180}(?:changes no state value|does not change supervision state)/i);
+  assert.match(source, /Manual[\s\S]{0,260}(?:already[- ]emitted|already emitted)[\s\S]{0,180}(?:shared close|keep-window-open recommendation|recommendation)/i);
+  assert.match(source, /(?:no|not|without|does not|shall not)[\s\S]{0,80}second recommendation[\s\S]{0,80}(?:and|or)[\s\S]{0,50}selector/i);
+  assert.match(selectorSpec, /An unmapped free-text answer MUST be treated as (?:\*\*|`)Manual(?:\*\*|`)/i);
+  assert.match(selectorSpec, /[`*]*Manual[`*]* SHALL remain re-invocable without a cap[\s\S]{0,120}selector/i);
+  assert.match(selectorSpec, /`--fast-track` SHALL NOT auto-select Auto or suppress the selector/i);
 });
 
 test('the selector authorizes the delegated-write exception and is not the removed review picker', () => {
@@ -84,7 +93,7 @@ test('the crystallization closing recommendation names review-loop and no pipeli
 
   assert.match(source, /The recommendation names no pipeline token/);
   assert.match(source, /names the literal token `review-loop` exactly once/);
-  assert.match(source, /emit the crystallization-close pipeline selector \(item 10\) exactly once as the final step of the turn/);
+  assert.match(source, /after the final `Ready to Propose` block and after the keep-window-open recommendation/i);
   assert.match(source, /an inline refusal is a crystallization emission and closes exactly like items 5 and 6/i);
 });
 

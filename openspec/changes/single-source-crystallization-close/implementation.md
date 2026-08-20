@@ -72,7 +72,7 @@ After the final slice block only, apply the **Crystallization-turn close (shared
 Selecting **Manual** dispatches nothing, changes no state value, injects no `--supervised`, `--fast-track`, or `--overview-lang` marker from the supervised path, and refers to the one keep-window-open recommendation already emitted by the **Crystallization-turn close (shared)** before the selector (naming `review-loop` exactly once). It MUST NOT emit a second recommendation or selector for the same answer. A free-text answer that maps to neither option is treated as **Manual**: nothing is dispatched, no supervision state is changed, and no second recommendation or selector is emitted. **Manual is not terminal** — re-emit the selector whenever the user asks for it (a turn whose dominant intent is to run the supervised pipeline or to see the selector again; no token form exists and none is recognized), with no cap on re-emissions. `--fast-track` auto-selects nothing: the selector is always asked, and it is the one gate to delegated writes that fast-track never skips.
 ```
 
-- [ ] Preserve pinned literals and payload boundary: `review-loop` remains verbatim; `Ready to Propose` / `---` block scaffolding unchanged; Auto success still emits no next-step/implement handoff; no edits to wrappers, body, launcher, or adapters.
+- [x] Preserve pinned literals and payload boundary: `review-loop` remains verbatim; `Ready to Propose` / `---` block scaffolding unchanged; Auto success still emits no next-step/implement handoff; no edits to wrappers, body, launcher, or adapters.
 
 ##### Step 1 Verification Checklist
 
@@ -82,7 +82,7 @@ Selecting **Manual** dispatches nothing, changes no state value, injects no `--s
 - [x] Confirm item 10 Manual/unmapped text does not instruct emitting a second recommendation or selector.
 - [x] Confirm item 9 does not restate a competing full close sequence and still treats `review-loop` as a standing user-triggered path.
 - [x] Confirm `Ready to Propose` template and `---` separator are unchanged.
-- [ ] Note: existing pins in `test/explore-pipeline-selector.test.js` that require Manual to "close with the keep-window-open recommendation" will fail until Step 4 rewrites them — that is expected.
+- [x] Note: existing pins in `test/explore-pipeline-selector.test.js` that require Manual to "close with the keep-window-open recommendation" will fail until Step 4 rewrites them — that is expected.
 
 *(No Human checks — service-side instruction edit with no observable browser behavior.)*
 
@@ -134,6 +134,7 @@ When a genuine unresolved question remains and its answer could change the idea,
 | 1 | green-direct | green | 2 | other | Corrected the shared-close wording after coordinator validation failed. |
 | 2 | green-direct | green | 1 | n/a | Completed without recovery. |
 | 3 | green-exception | green | 1 | n/a | Completed without recovery. |
+| 4 | green-exception | green | 1 | n/a | Completed without recovery. |
 
 #### Step 3: Plain-fold main capability specs from complete change-local deltas
 
@@ -178,7 +179,7 @@ When a genuine unresolved question remains and its answer could change the idea,
 
 *(Lexical contract tests — standard format. Production surfaces already updated in Steps 1–3; this step only rewrites/adds assertions. No separate application runtime.)*
 
-- [ ] Update `test/explore-pipeline-selector.test.js`:
+- [x] Update `test/explore-pipeline-selector.test.js`:
 
   1. **Rewrite** the existing Manual / unmapped pin that currently requires Manual to close by emitting the keep-window recommendation. Replace it so Manual/unmapped pins assert:
      - Manual dispatches nothing / changes no state
@@ -201,21 +202,21 @@ When a genuine unresolved question remains and its answer could change the idea,
 
   4. Do **not** delete unrelated supervision / Auto / harness adapter tests in this file.
 
-- [ ] Update `test/explore-pre-crystallization-stages.test.js` **only** for phase-navigation:
+- [x] Update `test/explore-pre-crystallization-stages.test.js` **only** for phase-navigation:
 
   1. **Add** a test that `sai/commands/explore/instructions.md` states navigation-only / phase-navigation questions fall through to the stage-aware reminder (match dominant-purpose / navigate / fall through language from Step 2).
   2. **Add** a test that substantive uncertainty capable of changing the idea remains a genuine unresolved question even when navigation wording is present.
   3. Preserve existing stage-label, `next-step`, Ready-to-Propose ordering, and binding tests.
   4. Do **not** modify `test/change-overview-contract.test.js`.
 
-- [ ] Follow project conventions: assert production instruction and main-spec surfaces; preserve exact pinned phrases; use explicit `node --test` file paths.
+- [x] Follow project conventions: assert production instruction and main-spec surfaces; preserve exact pinned phrases; use explicit `node --test` file paths.
 
 ##### Step 4 Verification Checklist
 
 **Automated (agent runs before stopping):**
-- [ ] Run `node --test test/explore-pipeline-selector.test.js test/explore-pre-crystallization-stages.test.js` — expected: exit 0, all new and updated assertions pass against Steps 1–3 artifacts.
-- [ ] Confirm `test/change-overview-contract.test.js` is unmodified (`git diff -- test/change-overview-contract.test.js` empty for this step's intent).
-- [ ] Confirm phase-navigation pins live only in `test/explore-pre-crystallization-stages.test.js` (no duplicate navigation-only case added to `test/explore-pipeline-selector.test.js` or `test/change-overview-contract.test.js`).
+- [x] Run `node --test test/explore-pipeline-selector.test.js test/explore-pre-crystallization-stages.test.js` — expected: exit 0, all new and updated assertions pass against Steps 1–3 artifacts.
+- [x] Confirm `test/change-overview-contract.test.js` is unmodified (`git diff -- test/change-overview-contract.test.js` empty for this step's intent).
+- [x] Confirm phase-navigation pins live only in `test/explore-pre-crystallization-stages.test.js` (no duplicate navigation-only case added to `test/explore-pipeline-selector.test.js` or `test/change-overview-contract.test.js`).
 
 *(No Human checks — service-side lexical tests with no observable browser behavior.)*
 

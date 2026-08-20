@@ -37,6 +37,12 @@ test('stage advancement fires only on the literal next-step token with intent re
   assert.match(source, /dominant intent/);
 });
 
+test('phase-navigation questions fall through while substantive uncertainty remains genuine', () => {
+  const source = explore();
+  assert.match(source, /question whose dominant purpose is only to navigate[\s\S]{0,500}fall through to the stage-aware reminder/i);
+  assert.match(source, /question that contains substantive uncertainty capable of changing the idea remains a genuine unresolved question/i);
+});
+
 test('the Ready to Propose block template orders Edge Cases, Implementation Details, Overview language', () => {
   const source = explore();
   const edgeCases = source.indexOf('**Edge Cases**');
