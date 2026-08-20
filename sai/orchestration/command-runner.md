@@ -301,11 +301,58 @@ additional phase-adapter field.
    never mark, extend, rename, or add progress-plan steps.
 
 10. **Union and fast-track invariants.** Maintain one first-seen, ordered,
-    duplicate-free `changed_files` union across initial results, progress,
-    notices, input, normal continuation, segment transitions, and recovery.
-    Reset the diagnosis ledger only at an eligible composition-segment
-    boundary; never reset the changed-files union. `--fast-track` is unchanged:
-    it changes neither the three-slot ledger, distinct-diagnosis accounting,
-    eligibility, duplicate handling, same-worker/no-replacement rule,
-    changed-files union, nor recovery reporting; its existing fast-track gates
-    remain in force.
+     duplicate-free `changed_files` union across initial results, progress,
+     notices, input, normal continuation, segment transitions, and recovery.
+     Reset the diagnosis ledger only at an eligible composition-segment
+     boundary; never reset the changed-files union. `--fast-track` is unchanged:
+     it changes neither the three-slot ledger, distinct-diagnosis accounting,
+     eligibility, duplicate handling, same-worker/no-replacement rule,
+     changed-files union, nor recovery reporting; its existing fast-track gates
+     remain in force.
+
+11. **Step 2 GREEN contract for blind opted-in adapters.** A blind opted-in
+    adapter SHALL use the following deterministic, phase-static registry and
+    match matrix algorithm. This is the matching algorithm for the registered
+    surface.
+    The algorithm has no dynamic registration and never reads test-file content.
+
+    1. Require the post-resolution result to carry `unrecoverable` as the
+       boolean value `false` exactly. A missing, null, string, numeric, or
+       `true` value is not a match.
+    2. Read the structured worker-authored `failure_class` and select a
+       registered surface only when it is an exact member of that surface's
+       `accepted_failure_classes`. The selection MUST resolve to exactly one
+       registered surface; zero candidates or more than one candidate is no
+       match. A non-accepted, unsupported, or ineligible failure class remains
+       unresolved with zero attempts.
+    3. A missing or absent `changed_files`, or an empty `changed_files` list,
+       remains unresolved with zero attempts. Otherwise require `changed_files`
+       to be present as a non-empty string list. Replace `{change-name}` in the
+       selected surface's primary and optional path templates with the already
+       resolved change name. Every reported path MUST exactly match one of those
+       substituted primary or optional templates. Primary-path evidence is
+       mandatory: `changed_files` MUST contain at least one substituted primary
+       path. If primary-path evidence is omitted or missing, the match remains
+       unresolved with zero attempts. No extra or unrelated path is accepted.
+    4. A successful match returns `diagnosis_key`: `design-overview-repair` is
+       the selected surface label, not a fourth key component. When all checks
+       succeed, set Cause Locus to `in-scope` and construct
+       `diagnosis_key` from exactly the ordered tuple of the substituted primary
+       path, the surface's `concrete_lifecycle_point`, and its
+       `authorized_correction_boundary`. The key is not taken from
+       `changed_files` ordering or any prose.
+    5. When no surface matches, or any match check fails, the result is
+       `unresolved`, Cause Locus is `unresolved`, and recovery has zero
+       attempts: consume no ledger slot and do not dispatch
+       `continue_after_recovery`.
+
+    Summary prose must not supply Cause Locus or `diagnosis_key`. The algorithm
+    SHALL never infer a failure class, surface, path, lifecycle point,
+    correction boundary, Cause Locus, or `diagnosis_key` from summary prose.
+    The sole runtime registry for this algorithm is:
+
+    | surface_id | artifact_path_template | optional_path_templates | concrete_lifecycle_point | authorized_correction_boundary | accepted_failure_classes |
+    |---|---|---|---|---|---|
+    | design-overview-repair | openspec/changes/{change-name}/change-overview.md | openspec/changes/{change-name}/.openspec.yaml | overview-generation-repair | design-worker-overview-repair | validation-failed, generation-error, dispatch-failed, envelope-contract-violation, blocking-contradiction |
+
+    No other blind surface is registered.

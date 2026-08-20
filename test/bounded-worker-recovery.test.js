@@ -144,3 +144,62 @@ test('composition scopes the recovery pool per adapter segment and keeps the cha
   assert.match(runner, /(?:shall not|must not|never)[\s\S]{0,80}reset[\s\S]{0,80}(?:at a )?transition/i,
     'the union must not reset at a transition');
 });
+
+test('design overview repair has one phase-static registry and deterministic match matrix', () => {
+  const runner = artifact('sai/orchestration/command-runner.md');
+
+  assert.match(runner, /design-overview-repair/,
+    'the command runner must register the design-overview-repair diagnosis');
+  assert.match(runner, /phase[- ]static[\s\S]{0,260}(?:registry|match matrix)|(?:registry|match matrix)[\s\S]{0,260}phase[- ]static/i,
+    'the repair registry must be phase-static');
+  assert.match(runner, /(?:dual|two)[\s\S]{0,180}(?:inspection|evidence)[\s\S]{0,180}(?:channel|path)/i,
+    'matching must inspect both diagnosis channels');
+  assert.match(runner, /determin(?:istic|istically)/i,
+    'the phase-static match algorithm must be deterministic');
+  assert.match(runner, /(?:match|matching)[\s-]+algorithm/i,
+    'the registry must define a match algorithm');
+  assert.match(runner, /(?:mandatory|required)[\s\S]{0,180}primary[- ]path[\s\S]{0,180}(?:evidence|changed_files)|primary[- ]path[\s\S]{0,180}(?:evidence|changed_files)[\s\S]{0,180}(?:mandatory|required)/i,
+    'a successful match must require primary-path evidence');
+  assert.match(runner, /openspec\/changes\/\{change-name\}\/change-overview\.md/,
+    'the registry must use the change overview as its primary path');
+  assert.match(runner, /(?:optional|secondary)[\s\S]{0,260}\.openspec\.yaml|\.openspec\.yaml[\s\S]{0,260}(?:optional|secondary)/i,
+    'the durable metadata path must be optional');
+  assert.match(runner, /overview-generation-repair/,
+    'the registry must name the overview-generation-repair lifecycle point');
+  assert.match(runner, /design-worker-overview-repair/,
+    'the registry must name the design-worker-overview-repair boundary');
+  assert.match(runner, /(?:accepted|allowed|eligible)[\s\S]{0,260}validation[\s\S]{0,260}generation[\s\S]{0,260}dispatch/i,
+    'the registry must enumerate validation, generation, and dispatch as accepted classes');
+  assert.match(runner, /(?:successful|success)[\s\S]{0,300}(?:diagnosis[-_ ]key)[\s:=`]*design-overview-repair|diagnosis[-_ ]key[\s:=`]*design-overview-repair[\s\S]{0,300}(?:successful|success)/i,
+    'a successful match must return the registered diagnosis key');
+});
+
+test('design overview repair rejects incomplete or prose-derived matches and has no duplicate registry table', () => {
+  const runner = artifact('sai/orchestration/command-runner.md');
+
+  assert.match(runner, /(?:(?:missing|absent)[\s\S]{0,160}changed_files|changed_files[\s\S]{0,160}(?:missing|absent))[\s\S]{0,180}unresolved/i,
+    'missing changed_files must remain unresolved');
+  assert.match(runner, /(?:empty[\s\S]{0,160}changed_files|changed_files[\s\S]{0,160}empty)[\s\S]{0,180}unresolved/i,
+    'empty changed_files must remain unresolved');
+  assert.match(runner, /out[- ]of[- ](?:surface|scope)[\s\S]{0,240}unresolved/i,
+    'out-of-surface evidence must remain unresolved');
+  assert.match(runner, /(?:(?:omitted|missing)[\s\S]{0,180}primary[- ]path|primary[- ]path[\s\S]{0,180}(?:omitted|missing))[\s\S]{0,240}unresolved/i,
+    'omitted primary-path evidence must remain unresolved');
+  assert.match(runner, /(?:(?:non[- ]accepted|unaccepted|unsupported|ineligible)[\s\S]{0,180}(?:failure[_ -]?class|class)|(?:failure[_ -]?class|class)[\s\S]{0,180}(?:non[- ]accepted|unaccepted|unsupported|ineligible))[\s\S]{0,240}unresolved/i,
+    'a non-accepted failure class must remain unresolved');
+  assert.match(runner, /(?:summary[\s_-]+prose|prose[\s\S]{0,80}summary)[\s\S]{0,220}(?:not|never|cannot|must not)[\s\S]{0,180}(?:cause[\s_-]*locus|locus)/i,
+    'summary prose must never supply a Cause Locus');
+
+  const walkMarkdown = directory => fs.readdirSync(directory, { withFileTypes: true }).flatMap(entry => {
+    const entryPath = path.join(directory, entry.name);
+    if (entry.isDirectory()) return walkMarkdown(entryPath);
+    return entry.isFile() && entry.name.endsWith('.md') ? [entryPath] : [];
+  });
+  const runnerPath = path.join(repoRoot, 'sai', 'orchestration', 'command-runner.md');
+  for (const markdownPath of walkMarkdown(path.join(repoRoot, 'sai'))) {
+    if (markdownPath === runnerPath) continue;
+    const contents = fs.readFileSync(markdownPath, 'utf8');
+    assert.doesNotMatch(contents, /^\s*\|[^\n]*design-overview-repair[^\n]*\|/im,
+      `no duplicate design-overview-repair registry table is allowed outside command-runner: ${path.relative(repoRoot, markdownPath)}`);
+  }
+});
