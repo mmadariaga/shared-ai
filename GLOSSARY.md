@@ -64,6 +64,9 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 **Confidence Threshold**: "The qualitative judgment — not a computed number — above which `sai-explore` may **Auto-Answer** a supervised worker question and below or unclear of which it escalates the question to the user."
 *Avoid*: confidence score, threshold value, certainty level, confidence cutoff
 
+**Continuation/Transport Loss**: "The routing diagnosis that a recovery or ordinary continuation operation could not be delivered or produced no result at all."
+*Avoid*: lost continuation, transport failure, missing worker result
+
 **Coordinator Verification**: "The `/sai-4-apply` coordinator's independent rerun of a Step's Verification Checklist after a worker report and before checkbox marking or commit gating."
 *Avoid*: trust check, report retest, coordinator retry
 
@@ -82,11 +85,17 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 **Destination Class**: "A named key in the installer's destination-class resolution that maps a projection's `destination.class` to a base directory under the harness root — `commands`, `sai`, `skills`, `agents`, `config`, and `root` — with the class-to-path map duplicated in the install flow, uninstall flow, and doctor, where an unknown class is a runtime expansion error."
 *Avoid*: destination root, target class, install class, destination map
 
+**Diagnosis Key**: "The coordinator-owned normalized identity of one concrete recovery diagnosis as the ordered tuple `(artifact path, concrete point, authorized correction boundary)`."
+*Avoid*: diagnosis ID, recovery key, cause key
+
 **Divisible Step**: "A Step whose plan-level file scope contains at least one production file — the property, distinct from having a RED block, that makes the Step eligible for the two-worker split (a blind **RED Worker** followed by a **GREEN Worker**)."
 *Avoid*: splittable step, production step, split-eligible step, "testable" (which describes the RED block only)
 
 **Domain Invariant**: "A constraint the pipeline's domain imposes that must hold of the pipeline's artifacts, records, or behavior at all times, stated as a property of the domain rather than as the mechanism that upholds it — the first test of the ordered routing test, which resolves a qualifying decision to the **DDR** family."
 *Avoid*: business rule, hard constraint, invariant check, domain rule
+
+**Duplicate Diagnosis**: "A later non-clean closure whose normalized **Diagnosis Key** already occupies a slot in the active segment ledger, stopping recovery before dispatch without spending another slot."
+*Avoid*: repeated diagnosis, duplicate recovery, retry duplicate
 
 **Envelope Contract Violation**: "A result that cannot be accepted under its closed lifecycle envelope because a required field is missing, a value is invalid, or an undeclared field is present."
 *Avoid*: malformed result, output-shape error, protocol typo
@@ -136,7 +145,7 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 **Intent Reconciliation**: "The comparison of a **Backfilled Change**'s verified diff evidence with an optional user statement of capabilities and constraints, classified as matched, stated-but-unevidenced, or evidenced-but-unstated."
 *Avoid*: intent merge, intent diff, blind backfill
 
-**Known-False Report Recovery**: "A bounded `/sai-4-apply` correction path for a worker report that coordinator evidence disproves and whose safe cause and correction are clear — carried out by continuing the same GREEN worker session with the failing path and evidence, capped at 3 continuations, never a fresh dispatch."
+**Known-False Report Recovery**: "A bounded `/sai-4-apply` correction path for a non-clean worker result that coordinator evidence diagnoses — branching on **Cause Locus** to continue the same authorized RED or GREEN worker via `continue_after_recovery` for a new in-scope **Diagnosis Key** (shared three-slot ledger), or to spend zero attempts for out-of-scope/unresolved causes (with at most one coordinator-owned current-Step `implementation.md` plan-artifact repair when applicable)."
 *Avoid*: automatic retry, indefinite retry, advisor escalation, fresh recovery dispatch
 
 **Managed Worker**: "A phase worker whose agent and harness-specific registration are installed and tracked by the shared-AI installer. The user owns the tunable frontmatter keys (`model` and `effort` for Claude; `model` and `variant` for opencode): the installer preserves their lines on every update while overwriting the managed body and non-tunable frontmatter."
@@ -213,7 +222,7 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 **Readiness Statement**: "The one-line maturity judgment that an explored idea is solid enough to crystallize on request — emitted at most once per stable idea, folded into the **Closure Reminder** line rather than emitted separately, and never satisfying the actionable closure on its own."
 *Avoid*: readiness signal, solidity line, maturity notice
 
-**Recovery Dispatch**: "The retired fresh-dispatch correction mechanism of the pre-routed `/sai-4-apply` — superseded by the shared bounded same-worker recovery pool of **Known-False Report Recovery**, which continues the same GREEN worker session (cap 3) instead of dispatching a fresh corrective worker."
+**Recovery Dispatch**: "The retired fresh-dispatch correction mechanism of the pre-routed `/sai-4-apply` — superseded by **Known-False Report Recovery**, which continues the same authorized RED or GREEN worker via `continue_after_recovery` instead of dispatching a fresh corrective worker."
 *Avoid*: retry dispatch, second opinion, advisor dispatch, same-worker continuation (which names the active mechanism)
 
 **Recovery Policy**: "The optional static phase-adapter declaration that opts one routed invocation into the shared bounded same-worker recovery loop without choosing its budget."
@@ -251,6 +260,9 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 
 **Routing Complexity**: "One of the three tokens (`low`, `medium`, `high`) on a step's `**Routing**` line that describes the coarse effort or risk of the step as judged at design time — refined freely by `sai-3-implement` without re-tagging `tasks.md`."
 *Avoid*: routing tier, effort estimate, step complexity
+
+**Routing Diagnosis**: "Exactly one of the three coordinator routing labels for a non-clean closure — `worker-authored failure`, `coordinator rejection`, or `continuation/transport loss` — distinct from worker **Failure Class**."
+*Avoid*: routing cause, diagnosis class, failure class
 
 **Routing Discipline**: "One of the five tokens (`ui-ux`, `app-code`, `service`, `data`, `config`) on a step's `**Routing**` line that describes the type of thinking or agent specialty the step requires, orthogonal to its layer and derived from `**Files Affected**` path patterns."
 *Avoid*: routing kind, work type, step discipline, commit-verb (e.g. add/modify/refactor/fix)
@@ -291,6 +303,9 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 **Unrecoverability Veto**: "The worker-authored boolean on a failed outcome that stops the remaining bounded recovery attempts when worker-side evidence shows continuation cannot safely repair the failure."
 *Avoid*: retry denial, hard failure flag, fatal error
 
+**Unresolved Cause**: "A non-clean closure for which coordinator evidence cannot locate the cause inside or outside the active worker boundary, carrying no **Cause Locus** claim and spending zero recovery attempts."
+*Avoid*: unknown cause, ambiguous cause, unresolved failure
+
 **Verified Precondition Hand-back**: "A protocol-approved user-facing escalation that cites an unmet precondition only after its concrete file and key have been read and the destination command's ownership of that key has been confirmed."
 *Avoid*: unverified hand-back, precondition redirect, backwards hand-off
 
@@ -324,8 +339,10 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 - A **Failure Details** value is paired with the persisted `overview.failure_kind` classification so read-only consumers can identify the failure route without conversation context.
 - **Failure Details** is paired with the persisted `overview.failure_kind` classification so read-only consumers can identify the failure route without conversation context.
 - An **Orca Environment** hosts Orca and both supported agent command-line interfaces while keeping repositories under persistent workspace storage and credentials outside the image.
-- A **Cause Locus** is established by **Coordinator Verification** before **Known-False Report Recovery** decides whether a same-worker continuation may spend an attempt or an out-of-scope defect must be handed back or repaired by its owner.
-- **Coordinator Verification** may trigger one same-worker recovery continuation (cap 3, shared pool) when a **Known-False Report Recovery** is clear, safe, and in scope; a failed or exhausted recovery returns to human intervention.
+- A **Cause Locus** is established by **Coordinator Verification** before **Known-False Report Recovery** decides whether a same-worker **RED Worker** or **GREEN Worker** continuation may spend a **Diagnosis Key** slot, while an out-of-scope diagnosis or **Unresolved Cause** spends zero attempts and is handed back or repaired by its owner.
+- **Coordinator Verification** may trigger a same-worker recovery continuation only for a new in-scope **Diagnosis Key** in the shared three-slot ledger and the authorized **RED Worker** or **GREEN Worker**; duplicate, out-of-scope, unresolved, or vetoed diagnoses spend zero, while failed or exhausted recovery returns to human intervention.
+- A **Routing Diagnosis** is assigned for every post-resolution non-clean closure before recovery eligibility; a **Duplicate Diagnosis** stops before ledger exhaustion because its normalized **Diagnosis Key** already occupies a slot in the active segment ledger.
+- **Continuation/Transport Loss** spends zero additional recovery attempts and never dispatches a replacement from the recovery path.
 - A **Backfilled Change** is archived via `/sai-archive` (the same command that archives non-backfilled changes).
 - A **Backfilled Change** is produced only by `/sai-backfill`; no other `sai-*` command writes `backfilled: true`.
 - A **RED Worker** precedes a **GREEN Worker** for every **Split-Routed Step**; the two never communicate directly — only the `/sai-4-apply` coordinator relays learnings between them.
@@ -353,7 +370,7 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 - A **Pre-Crystallization Stage TODO** is distinct from an **Idea Progress List** and a **Progress Plan**: the stage TODO renders the user-paced pre-crystallization progression, the idea list tracks post-crystallization idea evidence, and the plan is adapter-declared and marked from worker progress events.
 - An **Overview Language** value is selected by the overview-language gate at crystallization, rides in the `Ready to Propose` block, and is forwarded by a **Supervised Pipeline** through the chained design envelope; it is never written to any artifact.
 - A **Pipeline Selector** closes every crystallization turn and, on `Auto`, starts exactly one **Supervised Pipeline**; on `Manual` it starts none and stays re-invocable on request.
-- A **Known-False Report Recovery** permits at most three continuations of the same GREEN worker session for a single contradicted worker report (the shared bounded recovery pool) and never changes the fixed report field set.
+- A **Known-False Report Recovery** uses the shared three-slot distinct-**Diagnosis Key** ledger, permits at most one `continue_after_recovery` continuation of the same authorized **RED Worker** or **GREEN Worker** per new in-scope diagnosis, spends zero for duplicate, out-of-scope, unresolved, or vetoed causes, and permits at most one current-Step `implementation.md` plan-artifact repair without changing the fixed report field set.
 - A **Test Command** belongs to one change's `## Implementation Context` and is consumed by exactly one dispatch — the **RED Worker**; a GREEN-direct dispatch receives the Step's own verification commands instead.
 - An **Intent Reconciliation** compares a **Backfilled Change**'s verified diff with its optional intent statement and never treats the two sources as interchangeable evidence.
 - An **Intent Reconciliation** reports **Scope Drift** for evidenced work that the intent statement does not name, while still allowing the evidence-backed behavior to be specced.
@@ -366,7 +383,7 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 - A **Review Finding** carries exactly one **Finding Identifier**, derived from its `Severity` field; identifiers never imply identity across reviews.
 - A **Review Engine** performs the review work of an **Artifact Review** and is invocable independently of **Review Loop Navigation**.
 - A **Review Loop Navigation** drives the **Review Engine** once per review transaction and performs no review work itself.
-- A **Recovery Policy** opts one routed invocation into the shared bounded same-worker recovery loop; it does not name a **Recovery Dispatch** and does not choose the attempt budget.
+- A **Recovery Policy** opts one routed invocation into the shared bounded distinct-diagnosis same-worker recovery loop; it does not name a **Recovery Dispatch** and does not choose the attempt budget.
 - A **Verified Precondition Hand-back** is permitted only after the cited file and key have been read and the destination command has been confirmed as their writer; otherwise the coordinator asks the user instead.
 - A **Report Template Parity** pin covers the four report artifacts — review, security, performance, accessibility — each pairing a schema template scaffold with an instruction output template contract of the same artifact.
 - A **Tracked Crystallized Set** gains a name only when a crystallization turn emits one, ignores duplicate later emissions, and starts empty in every new chat.
@@ -430,5 +447,5 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 - **Overview State vs Overview Language** — both are "overview"-prefixed pipeline values: `overview.state` is the persisted `.openspec.yaml` materialization key, while the overview language is the conversation-only gate-9 selection for the change's overview. **Resolution:** **Overview State** names the persisted `overview.state` key (`unmaterialized` / `materializing` / `failed` / `current` / `stale`); **Overview Language** names the gate-9 selected language that rides in the `Ready to Propose` block and forwards only in a **Pipeline Selector** `Auto` run; the qualified terms are always used and the two never share a surface.
 - **Failure Class vs generator failure_kind** — both are machine-readable failure labels, but they belong to different nested result envelopes. **Resolution:** **Failure Class** names the outer routed-worker repair boundary, while the overview generator's `failure_kind` remains its inner five-field result value; valid inner kinds propagate unchanged, and an untrusted inner envelope becomes the outer **Envelope Contract Violation** class.
 - **Supervised Review Round vs Phase Review Pass** — both are complete review units with a worker-processing half and a three-attempt/cap flavor, but they are owned by different surfaces: the **Phase Review Pass** is the routed worker's own review of its phase artifacts, while the **Supervised Review Round** is the explore coordinator's in-session review of a supervised phase's artifacts through the **Review Engine**. **Resolution:** **Phase Review Pass** names the worker-owned unit of the routed planning phase; **Supervised Review Round** names the coordinator-owned in-session unit of the supervised pipeline; the two terms are never synonyms and a bare "pass" or "round" is ambiguous.
-- **Recovery Policy vs Recovery Dispatch** — both name a corrective path, but they are owned by different lifecycle surfaces. **Resolution:** **Recovery Policy** names an optional routed phase-adapter opt-in to same-worker continuation; **Recovery Dispatch** remains the single apply-side subagent dispatch permitted by **Known-False Report Recovery**.
+- **Recovery Policy vs Recovery Dispatch** — both name a corrective path, but they are owned by different lifecycle surfaces. **Resolution:** **Recovery Policy** names an optional routed phase-adapter opt-in to the bounded shared same-worker continuation pool; **Recovery Dispatch** names only the retired fresh-dispatch mechanism, while **Known-False Report Recovery** branches by **Cause Locus** and may continue the same authorized **RED Worker** or **GREEN Worker** via `continue_after_recovery` for a new **Diagnosis Key**, never a fresh corrective worker.
 - **Readiness Signal vs Readiness Statement** — the old wording "readiness signal" described the once-per-stable-idea one-liner naming the crystallize action; the stage-aware reframing folds the maturity judgment into the **Closure Reminder** and stops treating it as navigation. **Resolution:** **Readiness Statement** names the folded maturity judgment carried inside the reminder line; "readiness signal" survives only in test-pinned source sentences that must keep the old noun, and new writing uses the qualified term.
