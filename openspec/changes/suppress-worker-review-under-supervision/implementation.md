@@ -297,7 +297,7 @@ and language-bearing:
 
 *(Service-side / non-UI step — two confined policy sentence edits. No RED/GREEN.)*
 
-- [ ] Edit only the opening surface enumeration of `sai/policies/artifact-review-contract.md` line 3. Replace the current sentence that lists surfaces unconditionally with conditional automatic worker-owned loop wording. Severity body, finding shape, identifier scheme, and tally form must remain byte-identical.
+- [x] Edit only the opening surface enumeration of `sai/policies/artifact-review-contract.md` line 3. Replace the current sentence that lists surfaces unconditionally with conditional automatic worker-owned loop wording. Severity body, finding shape, identifier scheme, and tally form must remain byte-identical.
 
 Replace line 3 with:
 
@@ -305,7 +305,7 @@ Replace line 3 with:
 Single source of the artifact review finding contract. Every artifact review surface — the manual `sai-explore` post-crystallization review loop, the supervised pipeline's in-session review rounds (Review Engine-driven), and the automatic worker-owned planning-artifact review loop on the spec and design workers when the invocation does **not** carry the `--supervised` marker (user-requested worker-owned passes at the prose feedback gate remain bound even when the marker is present) — SHALL draw its finding format from this contract by reference. Neither `sai/commands/explore/instructions.md` nor any capability spec other than `review-finding-format` SHALL redefine the severity criteria, the finding shape, the identifier scheme, or the summary-line format inline; consuming instructions and capability specs SHALL cite this contract by reference. These semantics SHALL NOT be restated in explore or reviewer instructions.
 ```
 
-- [ ] Edit only the deferred-gate exhaustion trigger sentence in `sai/policies/artifact-feedback-gate.md` (~line 47). Change `exhausts its one-round cap` to three-round language. Leave ownership, labels, iteration counter, and interruption branch untouched.
+- [x] Edit only the deferred-gate exhaustion trigger sentence in `sai/policies/artifact-feedback-gate.md` (~line 47). Change `exhausts its one-round cap` to three-round language. Leave ownership, labels, iteration counter, and interruption branch untouched.
 
 Replace that sentence with:
 
@@ -313,15 +313,15 @@ Replace that sentence with:
 Defer the ordinary user-facing gate while another review round is required. Present that gate for the first time, unchanged at iteration 0, only after the review rounds converge, exhaust the three-round cap, or are interrupted by worker failure. Its first ordered labels remain `Give feedback (Recommended)` followed by `proceed-label` (for sai-1, `Finish step`).
 ```
 
-- [ ] Confirm `rg -n "exhausts its one-round cap" sai/policies/artifact-feedback-gate.md` returns no matches.
-- [ ] Confirm severity criteria headings and `Summary:` tally form still present unchanged in `artifact-review-contract.md`.
+- [x] Confirm `rg -n "exhausts its one-round cap" sai/policies/artifact-feedback-gate.md` returns no matches.
+- [x] Confirm severity criteria headings and `Summary:` tally form still present unchanged in `artifact-review-contract.md`.
 
 ##### Step 5 Verification Checklist
 
 **Automated (agent runs before stopping):**
-- [ ] `rg -n "one-round cap|exhausts its one-round" sai/policies/artifact-feedback-gate.md` — no matches
-- [ ] `rg -n "conditional|--supervised|automatic worker-owned" sai/policies/artifact-review-contract.md` — enumeration conditional
-- [ ] `rg -n "High|Medium|Low|five fields|Summary:" sai/policies/artifact-review-contract.md` — normative body intact
+- [x] `rg -n "one-round cap|exhausts its one-round" sai/policies/artifact-feedback-gate.md` — no matches
+- [x] `rg -n "conditional|--supervised|automatic worker-owned" sai/policies/artifact-review-contract.md` — enumeration conditional
+- [x] `rg -n "High|Medium|Low|five fields|Summary:" sai/policies/artifact-review-contract.md` — normative body intact
 
 *(No Human checks — service-side step with no observable browser behavior.)*
 

@@ -44,7 +44,7 @@ Machine processing is not a feedback-option selection: it emits neither the pick
 
 If finding processing returns `needs_input`, the supervising coordinator must present the exact question and ordered options to the user, then continue the same worker with only the selected answer. Complete all findings for the current round before supervision evaluates whether another review round is required.
 
-Defer the ordinary user-facing gate while another review round is required. Present that gate for the first time, unchanged at iteration 0, only after the review round converges, exhausts its one-round cap, or is interrupted by worker failure. Its first ordered labels remain `Give feedback (Recommended)` followed by `proceed-label` (for sai-1, `Finish step`).
+Defer the ordinary user-facing gate while another review round is required. Present that gate for the first time, unchanged at iteration 0, only after the review round converges, exhausts its three-round cap, or is interrupted by worker failure. Its first ordered labels remain `Give feedback (Recommended)` followed by `proceed-label` (for sai-1, `Finish step`).
 
 ## Present the gate
 
