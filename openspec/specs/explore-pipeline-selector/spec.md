@@ -82,7 +82,7 @@ When `Auto` is selected while `last_crystallization_set` is empty or contains no
 
 ### Requirement: Active supervision rejects duplicate starts
 
-An active supervised run SHALL begin when the user confirms a picker selection, or when explore identifies the sole uncompleted change immediately before dispatch. It SHALL remain active through spec-worker execution and continuation, the in-session review rounds, machine-feedback processing, the user-facing artifact feedback gate, the phase transition, and — when the spec phase converges or ends by cap exhaustion — the chained design phase including its worker execution and continuation, its in-session review rounds, machine-feedback processing, user-facing artifact feedback gate, and post-gate overview generation. The interval SHALL end only when the chained design phase terminates, or, when a failed or cancelled spec worker stops the run before design, when that spec attempt completes, fails, or is cancelled. While that interval is active, another `Auto` selection SHALL receive an explicit already-running acknowledgement and SHALL NOT create a concurrent or queued duplicate run.
+An active supervised run SHALL begin when the user confirms a picker selection, or when explore identifies the sole uncompleted change immediately before dispatch. It SHALL remain active through spec-worker execution and continuation, the in-session review rounds, machine-feedback processing, the supervised gate application point (shared gate with `mode = supervised`, which auto-executes next-action without a user-facing picker), the phase transition, and — when the spec phase converges or ends by cap exhaustion — the chained design phase including its worker execution and continuation, its in-session review rounds, machine-feedback processing, the supervised design gate application point (same shared gate with `mode = supervised`), and post-gate overview generation. The interval SHALL end only when the chained design phase terminates, or, when a failed or cancelled spec worker stops the run before design, when that spec attempt completes, fails, or is cancelled. While that interval is active, another `Auto` selection SHALL receive an explicit already-running acknowledgement and SHALL NOT create a concurrent or queued duplicate run.
 
 #### Scenario: Auto is selected during an active run
 - **WHEN** the user selects `Auto` while supervision is already active
@@ -98,6 +98,12 @@ An active supervised run SHALL begin when the user confirms a picker selection, 
 - **WHEN** the spec phase converged or ended by cap exhaustion and the chained design phase reaches its terminal outcome
 - **THEN** the active-supervision interval ends
 - **AND** a later `Auto` selection is eligible to begin a new run
+
+#### Scenario: active interval includes supervised gate application, not a user-facing picker
+
+- **WHEN** a supervised spec or design review round resolves the deferred-gate condition while a run is active
+- **THEN** the active-supervision interval remains active across the supervised gate application point
+- **AND** no user-facing artifact feedback picker is presented
 
 ### Requirement: Copilot acknowledges unavailable supervision
 

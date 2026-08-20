@@ -32,7 +32,7 @@ Exactly one routed coordinator prompt is emitted for each feedback selection.
 
 ### Requirement: Shared parameterized gate instruction
 
-The gate logic SHALL live in exactly one shared instruction file, `sai/policies/artifact-feedback-gate.md`, parameterized by three inputs supplied by the fetching body or coordinator: the list of artifacts written in the step (by name), the proceed-option label, and the next action to take when proceed is chosen. The gate behavior MUST NOT be duplicated inline in either body file or worker contract.
+The gate logic SHALL live in exactly one shared instruction file, `sai/policies/artifact-feedback-gate.md`, parameterized by three required inputs supplied by the fetching body or coordinator — the list of artifacts written in the step (by name), the proceed-option label, and the next action to take when proceed is chosen — plus one optional input, `mode`, whose closed vocabulary is exactly `interactive` and `supervised`. When `mode` is omitted, the gate SHALL behave as `interactive`. When a non-empty `mode` value other than `interactive` or `supervised` is supplied, the gate SHALL STOP and ask for a valid `mode` — it SHALL NOT default that invalid value to `interactive` and SHALL NOT execute supervised auto-proceed. The gate behavior MUST NOT be duplicated inline in either body file or worker contract. The gate SHALL NOT detect invocation context at runtime to choose a mode. The `next-action` value is always the one supplied by the current fetch site; different fetch sites MAY supply different next-actions for the same proceed-label.
 
 #### Scenario: single shared source
 
@@ -52,6 +52,8 @@ The gate logic SHALL live in exactly one shared instruction file, `sai/policies/
 - **AND** sai-2 passes artifacts `design.md`, `tasks.md`, and `interfaces.md`, proceed-label `Continue`, and next-action "emit the existing design completion sentence and stop" as the terminal design navigation action
 
 ### Requirement: Gate presentation via the harness option-picker
+
+When `mode` is `supervised`, the gate SHALL NOT present the option-picker and SHALL NOT offer feedback or proceed choices to the user; supervised next-action execution is owned solely by `Supervised mode is a sequencing auto-proceed, not gate removal`.
 
 The gate SHALL present its two choices through the harness's native option-picker per the "Closed-choice prompts" rule in `sai/policies/remember.md` (on Claude Code, the `AskUserQuestion` tool). Option labels SHALL be full words. The two options are a feedback option and the step-specific proceed option (`Finish step` for sai-1, `Continue` for sai-2).
 
@@ -108,6 +110,8 @@ When offering the feedback option, the gate SHALL list the artifacts written in 
 - **THEN** the feedback option names `design.md`, `tasks.md`, and `interfaces.md` as the artifacts open to feedback
 
 ### Requirement: Gate advertises the free-text feedback channel
+
+When `mode` is `supervised`, the gate SHALL NOT emit the free-text question, free-text option description, or free-text channel advertisement, and SHALL NOT accept a free-text feedback path.
 
 The artifact feedback gate SHALL use the canonical question `Share your feedback on {artifacts} below. You can also type feedback directly in the free-text box.` and the canonical `Give feedback` option description `Feedback on {artifacts}; you can also type feedback directly in the free-text box.`, replacing `{artifacts}` with the supplied artifact list and rendering both strings in the user's language per `sai/policies/remember.md`. The shared instruction SHALL use this harness-neutral wording rather than substitute harness-specific labels. The gate SHALL continue to present exactly two declared choices in the existing order: `Give feedback (Recommended)` on the first presentation or `Give more feedback` thereafter, followed by the supplied proceed option. The option labels, ordering, `Recommended` marker, iteration counter, proceed-label values, artifact list, and proceed semantics SHALL remain unchanged.
 
@@ -356,6 +360,21 @@ Machine-feedback processing is not a user feedback-selection turn. It SHALL NOT 
 - **WHEN** machine-feedback processing completes for a third review round that contained `High` findings
 - **THEN** no later review round is dispatched
 - **AND** the ordinary user-facing gate is presented at iteration 0
+
+### Requirement: Supervised mode is a sequencing auto-proceed, not gate removal
+
+When `mode` is `supervised`, the gate SHALL keep its role as a phase sequencer: it SHALL perform the supplied `next-action` exactly once after the deferred-gate condition resolves (convergence, one-round cap exhaustion, or empty findings). Supervised mode SHALL NOT delete the gate call, invent a combined post-sai-2 gate, write `.openspec.yaml`, or act as an approval gate. Supervised mode SHALL add no new conversation text of its own; visibility remains the reports the fetching body already emits at those points. Execution of `next-action` under supervised mode is owned by the shared gate policy, not reimplemented inline by the fetching body.
+
+#### Scenario: supervised proceed executes the fetch site's supplied next-action
+- **WHEN** `mode` is `supervised` and the deferred-gate condition resolves
+- **THEN** the gate performs exactly the `next-action` supplied by that fetch site
+- **AND** it performs that action exactly once
+- **AND** it does not substitute a different fetch site's next-action
+
+#### Scenario: supervised mode never writes approval state
+- **WHEN** `mode` is `supervised` and the gate auto-proceeds
+- **THEN** the gate does not write `.openspec.yaml`
+- **AND** the gate does not ask for or record approval
 
 #### Scenario: empty findings converge
 

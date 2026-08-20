@@ -286,10 +286,18 @@ This duplication is an explicitly accepted trade-off. Per phase, the worst case 
 
 The worker-owned loop SHALL NOT use, alter, or depend on the `MachineFeedbackAdapter` of `sai/policies/artifact-feedback-gate.md`, which remains owned by the supervised pipeline.
 
-#### Scenario: the prose feedback gate still runs
+When the worker-owned automatic loop ends by convergence, completed-pass-cap exhaustion, or total-attempt-cap exhaustion under an interactive fetch site (standalone `/sai-1-spec` or `/sai-2-design`, `mode` omitted or `interactive`), the coordinator SHALL still present the prose feedback gate at iteration 0, unchanged. When that loop ends under a supervised fetch site (`mode = supervised`), the coordinator SHALL NOT present the prose feedback gate at iteration 0; the supervised gate application point SHALL auto-proceed per `artifact-feedback-gate` instead.
 
-- **WHEN** the worker-owned automatic loop ends by convergence, completed-pass-cap exhaustion, or total-attempt-cap exhaustion
+#### Scenario: the prose feedback gate still runs interactively
+
+- **WHEN** the worker-owned automatic loop ends by convergence, completed-pass-cap exhaustion, or total-attempt-cap exhaustion under an interactive fetch site
 - **THEN** the coordinator SHALL still present the prose feedback gate at iteration 0, unchanged
+
+#### Scenario: supervised ending auto-proceeds without iteration-0 presentation
+
+- **WHEN** the worker-owned automatic loop ends by convergence, completed-pass-cap exhaustion, or total-attempt-cap exhaustion under a supervised fetch site (`mode = supervised`)
+- **THEN** the coordinator SHALL NOT present the prose feedback gate at iteration 0
+- **AND** the supervised gate application point auto-proceeds per the shared gate's supervised rules
 
 #### Scenario: the supervised pipeline keeps its own rounds
 
