@@ -27,6 +27,28 @@ Use only the matching Step interface contract and the injected testing slice (fr
 
 Run the injected test command scoped to the tests you authored and classify the failure type: a valid RED fails by assertion on the behaviour under test; a RED that passes is reported as `passes`; a setup/import/compilation failure is reported as `wrong-failure` with the error type. The test-writer does NOT verify GREEN and reports GREEN result = `n/a`.
 
+## Recovery Continuation
+
+On `continue_after_recovery`, resume the same RED worker without re-resolution or replacement dispatch. Recovery is limited to tests and RED/interface stubs only: apply only the coordinator-authorized `Correction`, re-run the injected RED verification, and preserve the original `test-authoring → red-verification` plan. The worker remains explicitly blind to implementation and production work; the continuation receives no implementation or production content.
+
+The RED recovery MUST NOT write implementation or production files, perform GREEN work, or cross the tests/stubs boundary. It remains blind to the implementation and may use only the ordered `Reported`, `Evidence`, `Cause`, `Correction`, and `Verification` diagnosis; no raw output or change-artifact content is accepted. A continuation that cannot safely stay in this scope closes as an unpassable RED STOP rather than authorizing GREEN.
+
+## Unpassable RED STOP
+
+When bounded RED attempts cannot produce a valid RED result without a forbidden production change, an interface or test contradiction, or another unsafe correction, close the post-resolution worker result with this failed envelope:
+
+```yaml
+status: failed
+emitted_on: string
+summary: string
+changed_files: string[]
+resolved_change_name: string
+failure_class: blocking-contradiction
+unrecoverable: boolean
+```
+
+The failed STOP must contain concrete, non-raw evidence: summarize the observed contradiction, affected test or stub path, and why the authorized tests/stubs-only boundary cannot safely continue; never return raw output, logs, tracebacks, or file contents. Set the worker's boolean `unrecoverable` to `true` only when that evidence establishes that continuation is unsafe. Report `STOP reached?: yes` with the exact marker message, RED result not valid, GREEN result = `n/a`, and **no GREEN authorization**; this worker never dispatches or permits GREEN after an unpassable RED.
+
 ## Report Contract
 
 The worker returns a compact report containing exactly these 9 fields, and nothing else (no raw output, no file contents, no tracebacks, no iteration logs):
@@ -43,8 +65,8 @@ The worker returns a compact report containing exactly these 9 fields, and nothi
 
 ## Prohibitions
 
-- Run any git operation or create any commit.
-- Mark any checkbox or otherwise edit `implementation.md`.
+- MUST NOT run any git operation or create any commit.
+- MUST NOT edit or modify `implementation.md` or mark any checkbox.
 - Act on a STOP & COMMIT marker — halt and report the STOP instead.
 - Run any `openspec` command, load any skill, or read change artifacts.
 - Read any production source file outside the blindness fallback.

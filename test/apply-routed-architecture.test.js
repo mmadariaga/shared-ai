@@ -749,3 +749,137 @@ test('Step 2 with the apply contract files present, install and doctor derive th
     fs.rmSync(projectRoot, { recursive: true, force: true });
   }
 });
+
+// ─── specs/diagnosis-driven-recovery-apply/spec.md — Step 5 RED/GREEN recovery ─
+
+test('Step 5 a non-clean RED intermediate continues on the same RED worker before GREEN', () => {
+  const runner = artifact(APPLY_CARDS.runner);
+  assert.match(runner,
+    /RED[\s\S]{0,260}(?:non[- ]clean|intermediate)[\s\S]{0,260}continue_after_recovery/i,
+    'specs/diagnosis-driven-recovery-apply/spec.md: a non-clean RED intermediate must enter recovery');
+  assert.match(runner,
+    /continue_after_recovery[\s\S]{0,220}(?:same[\s\S]{0,80}RED worker|RED worker[\s\S]{0,80}same)|(?:same[\s\S]{0,80}RED worker|RED worker[\s\S]{0,80}same)[\s\S]{0,220}continue_after_recovery/i,
+    'specs/diagnosis-driven-recovery-apply/spec.md: RED recovery must continue the same RED worker');
+  assert.match(runner,
+    /(?:non[- ]clean|intermediate)[\s\S]{0,300}(?:diagnos|recover|continue_after_recovery)/i,
+    'specs/diagnosis-driven-recovery-apply/spec.md: the runner must diagnose the non-clean RED result');
+
+  const validRed = runner.search(/valid RED|RED[\s\S]{0,80}(?:result|outcome)[\s\S]{0,80}valid/i);
+  const greenDispatch = runner.search(/(?:dispatch|dispatches|dispatching)[\s\S]{0,60}GREEN/i);
+  assert.ok(validRed >= 0 && greenDispatch >= 0 && validRed < greenDispatch,
+    'specs/diagnosis-driven-recovery-apply/spec.md: GREEN must not dispatch before RED is valid');
+});
+
+test('Step 5 RED recovery stays inside tests and stubs and remains blind to the implementation body', () => {
+  const red = artifact(APPLY_CARDS.redWorker);
+  assert.match(red, /continue_after_recovery/,
+    'specs/diagnosis-driven-recovery-apply/spec.md: RED must support same-worker recovery continuation');
+  assert.match(red,
+    /continue_after_recovery[\s\S]{0,260}(?:only|limited|restricted)[\s\S]{0,140}(?:test|stub)|(?:test|stub)[\s\S]{0,140}(?:only|limited|restricted)[\s\S]{0,260}continue_after_recovery/i,
+    'specs/diagnosis-driven-recovery-apply/spec.md: RED recovery may change only tests and interface stubs');
+  assert.match(red, /blind(?:ness|ly|[ -]writer)?/i,
+    'specs/diagnosis-driven-recovery-apply/spec.md: RED must remain explicitly blind');
+  assert.match(red,
+    /(?:recovery|continue_after_recovery)[\s\S]{0,360}(?:MUST NOT|never|forbidden|prohibited)[\s\S]{0,160}(?:implementation|production|GREEN)/i,
+    'specs/diagnosis-driven-recovery-apply/spec.md: RED recovery must not cross into implementation or production work');
+  assert.doesNotMatch(red, /GREEN implementation body|implementation body[\s\S]{0,100}(?:provided|included|received)/i,
+    'specs/diagnosis-driven-recovery-apply/spec.md: the RED prompt must not expose the GREEN implementation body');
+});
+
+test('Step 5 an unpassable RED closes with the failed blocking-contradiction STOP envelope', () => {
+  const red = artifact(APPLY_CARDS.redWorker);
+  const runner = artifact(APPLY_CARDS.runner);
+  const coordinator = artifact(APPLY_CARDS.coordinator);
+  const routing = `${runner}\n${coordinator}`;
+
+  assert.match(red, /status:\s*failed/i,
+    'specs/diagnosis-driven-recovery-apply/spec.md: unpassable RED must return status: failed');
+  assert.match(red, /failure_class:\s*blocking-contradiction/i,
+    'specs/diagnosis-driven-recovery-apply/spec.md: unpassable RED must classify blocking-contradiction');
+  assert.match(red, /unrecoverable:\s*boolean/i,
+    'specs/diagnosis-driven-recovery-apply/spec.md: RED unrecoverable must be a boolean envelope field');
+  assert.match(red, /evidence/i,
+    'specs/diagnosis-driven-recovery-apply/spec.md: RED STOP must require evidence');
+  assert.match(routing,
+    /RED[\s\S]{0,280}(?:failed|blocking-contradiction)[\s\S]{0,280}STOP/i,
+    'specs/diagnosis-driven-recovery-apply/spec.md: unpassable RED must route to STOP');
+  assert.match(routing,
+    /STOP reached\?[\s\S]{0,120}yes|STOP[\s\S]{0,120}reached\?[\s\S]{0,120}yes/i,
+    'specs/diagnosis-driven-recovery-apply/spec.md: the unpassable RED report must set STOP reached? to yes');
+  assert.match(routing,
+    /evidence[\s\S]{0,180}STOP|STOP[\s\S]{0,180}evidence/i,
+    'specs/diagnosis-driven-recovery-apply/spec.md: the RED STOP must be evidence-backed');
+});
+
+test('Step 5 a GREEN failed outcome has a STOP envelope while a false veto remains recovery-eligible', () => {
+  const green = artifact(APPLY_CARDS.greenWorker);
+  const runner = artifact(APPLY_CARDS.runner);
+
+  assert.match(green, /status:\s*failed/i,
+    'specs/diagnosis-driven-recovery-apply/spec.md: GREEN must define the failed lifecycle envelope');
+  assert.match(green, /failure_class/i,
+    'specs/diagnosis-driven-recovery-apply/spec.md: GREEN failed must carry failure classification');
+  assert.match(green, /unrecoverable:\s*boolean/i,
+    'specs/diagnosis-driven-recovery-apply/spec.md: GREEN failed must carry boolean unrecoverable');
+  assert.match(runner,
+    /GREEN[\s\S]{0,280}(?:status:\s*failed|failed outcome|failed result)[\s\S]{0,280}STOP/i,
+    'specs/diagnosis-driven-recovery-apply/spec.md: a GREEN failed envelope must be a STOP-capable outcome');
+  assert.match(runner,
+    /false[- ]veto[\s\S]{0,180}(?:eligible|recovery|continue_after_recovery)|(?:eligible|recovery|continue_after_recovery)[\s\S]{0,180}false[- ]veto/i,
+    'specs/diagnosis-driven-recovery-apply/spec.md: a false veto must remain eligible for recovery');
+});
+
+test('Step 5 GREEN recovery has an absolute prohibition on test files and interfaces.md', () => {
+  const green = artifact(APPLY_CARDS.greenWorker);
+  assert.match(green, /continue_after_recovery/,
+    'specs/diagnosis-driven-recovery-apply/spec.md: GREEN recovery must use the same continuation protocol');
+  assert.match(green,
+    /(?:recovery|continue_after_recovery)[\s\S]{0,320}(?:MUST NOT|never|forbidden|prohibited)[\s\S]{0,160}test file/i,
+    'specs/diagnosis-driven-recovery-apply/spec.md: GREEN recovery must never create or modify tests');
+  assert.match(green,
+    /(?:recovery|continue_after_recovery)[\s\S]{0,320}(?:MUST NOT|never|forbidden|prohibited)[\s\S]{0,160}interfaces?\.md/i,
+    'specs/diagnosis-driven-recovery-apply/spec.md: GREEN recovery must never create or modify interfaces.md');
+  assert.match(green, /(?:absolute|without exception|under no circumstances|no exceptions|ever)/i,
+    'specs/diagnosis-driven-recovery-apply/spec.md: the GREEN test/interface prohibition must be absolute');
+});
+
+test('Step 5 a GREEN result of fail is reported with STOP reached? yes', () => {
+  const green = artifact(APPLY_CARDS.greenWorker);
+  const runner = artifact(APPLY_CARDS.runner);
+  const coordinator = artifact(APPLY_CARDS.coordinator);
+  const combined = `${green}\n${runner}\n${coordinator}`;
+
+  assert.match(combined, /GREEN result\s*[:=]\s*fail/i,
+    'specs/diagnosis-driven-recovery-apply/spec.md: GREEN must expose result: fail');
+  assert.match(combined,
+    /GREEN result\s*[:=]\s*fail[\s\S]{0,220}STOP|STOP[\s\S]{0,220}GREEN result\s*[:=]\s*fail/i,
+    'specs/diagnosis-driven-recovery-apply/spec.md: GREEN result fail must stop the step');
+  assert.match(combined,
+    /STOP reached\?[\s\S]{0,120}yes|STOP[\s\S]{0,120}reached\?[\s\S]{0,120}yes/i,
+    'specs/diagnosis-driven-recovery-apply/spec.md: GREEN result fail must report STOP reached? yes');
+});
+
+test('Step 5 split-flow GREEN is gated exclusively on a valid RED result', () => {
+  const runner = artifact(APPLY_CARDS.runner);
+  assert.match(runner, /split[- ]flow/i,
+    'specs/diagnosis-driven-recovery-apply/spec.md: the RED/GREEN route must be identified as split-flow');
+  assert.match(runner,
+    /valid RED[\s\S]{0,240}(?:only|before|then)[\s\S]{0,180}GREEN|GREEN[\s\S]{0,240}(?:only after|after|gated on)[\s\S]{0,180}valid RED/i,
+    'specs/diagnosis-driven-recovery-apply/spec.md: split-flow GREEN must run only after valid RED');
+  assert.match(runner,
+    /(?:passes|wrong[- ]failure|non[- ]clean)[\s\S]{0,220}(?:must not|never|do not|cannot)[\s\S]{0,140}GREEN|GREEN[\s\S]{0,220}(?:must not|never|do not|cannot)[\s\S]{0,140}(?:passes|wrong[- ]failure|non[- ]clean)/i,
+    'specs/diagnosis-driven-recovery-apply/spec.md: non-valid RED outcomes must not unlock GREEN');
+});
+
+test('Step 5 neither worker edits implementation.md or runs git', () => {
+  const red = artifact(APPLY_CARDS.redWorker);
+  const green = artifact(APPLY_CARDS.greenWorker);
+  for (const [name, worker] of [['RED', red], ['GREEN', green]]) {
+    assert.match(worker,
+      /(?:MUST NOT|never|forbidden|prohibited)[\s\S]{0,80}(?:edit|modify|mark)[\s\S]{0,80}implementation\.md|implementation\.md[\s\S]{0,80}(?:MUST NOT|never|forbidden|prohibited)/i,
+      `specs/diagnosis-driven-recovery-apply/spec.md: ${name} must never edit implementation.md`);
+    assert.match(worker,
+      /(?:MUST NOT|never|forbidden|prohibited)[\s\S]{0,80}(?:run|execute|invoke)?[\s\S]{0,40}git|git[\s\S]{0,100}(?:MUST NOT|never|forbidden|prohibited)/i,
+      `specs/diagnosis-driven-recovery-apply/spec.md: ${name} must never run git`);
+  }
+});

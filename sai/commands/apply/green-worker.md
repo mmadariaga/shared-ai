@@ -25,7 +25,25 @@ The worker MAY edit production files only. Creating or modifying any test file i
 
 ## Recovery Continuation
 
-On `continue_after_recovery`, resume the same worker session without re-resolution: the coordinator's diagnosis carries exactly `Reported`, `Evidence`, `Cause`, `Correction`, and `Verification`. Apply the authorized `Correction`, re-run the dispatch's own GREEN verification, and close with a completed or failed result carrying the failure metadata and the same `resolved_change_name`.
+On `continue_after_recovery`, resume the same GREEN worker session without re-resolution or replacement dispatch. Recovery is implementation-only and limited to authorized production files: apply the coordinator's `Correction`, re-run the dispatch's own GREEN verification, and preserve the `implementation → green-verification` plan. The coordinator's diagnosis carries exactly `Reported`, `Evidence`, `Cause`, `Correction`, and `Verification`.
+
+During recovery the worker MUST NOT create or modify any test file, test, or `interfaces.md`, ever or under any circumstances. This absolute prohibition has no exceptions: the GREEN continuation remains implementation-only, leaves tests and declared interfaces untouched, and may not widen its allowed files. It receives no raw output or change-artifact content and closes with a completed or failed result carrying the failure metadata and the same `resolved_change_name`.
+
+## Unpassable GREEN STOP
+
+If the GREEN verification remains unpassable after bounded implementation-only attempts, or a pass would require a test, `interfaces.md`, or another forbidden file change, close the post-resolution worker result with this failed envelope:
+
+```yaml
+status: failed
+emitted_on: string
+summary: string
+changed_files: string[]
+resolved_change_name: string
+failure_class: blocking-contradiction
+unrecoverable: boolean
+```
+
+The failed result must carry concrete, non-raw evidence: summarize the failing behavior, affected authorized production path, and the exact scope contradiction; never return raw output, logs, tracebacks, or file contents. Set boolean `unrecoverable` to `true` only when that evidence establishes that continuation is unsafe. Report `GREEN result: fail` and `STOP reached?: yes` with the exact marker message. Leave every test file and `interfaces.md` untouched, and do not authorize work outside the implementation-only scope.
 
 ## Report Contract
 
@@ -43,8 +61,8 @@ The worker returns a compact report containing exactly these 9 fields, and nothi
 
 ## Prohibitions
 
-- Run any git operation or create any commit.
-- Mark any checkbox or otherwise edit `implementation.md`.
+- MUST NOT run any git operation or create any commit.
+- MUST NOT edit or modify `implementation.md` or mark any checkbox.
 - Act on a STOP & COMMIT marker — halt and report the STOP instead.
 - Run any `openspec` command, load any skill, or read change artifacts.
 - Create or modify any test file — this prohibition is absolute, even when this worker believes the test is wrong.

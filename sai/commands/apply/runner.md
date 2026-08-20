@@ -2,6 +2,21 @@
 
 Coordinator-owned checklist execution for `/sai-4-apply`. This card is fetched by the apply coordinator; it owns no change resolution, no worker dispatch, and no worker technical writes.
 
+## Split-flow RED Gate
+
+When a Step has a RED block, an exact unambiguous interface contract, and at least one production file, the RED→GREEN route is **split-flow**. Only a valid RED result permits the subsequent GREEN dispatch. The direct GREEN route remains available only when no RED block is present; it does not weaken this split-flow gate.
+
+## RED Intermediate and Recovery Hooks
+
+In split-flow, every RED return is an intermediate result until the coordinator has independently established `RED result: valid`. A RED non-clean intermediate enters the shared diagnosis and, when eligible, uses `continue_after_recovery` on the same RED worker before GREEN. The coordinator completes the normal checklist, scratch sweep, baseline, allowed-file, changed-path, and report comparisons first, then diagnoses the worker and coordinator channels with the ordered `Reported`, `Evidence`, `Cause`, `Correction`, and `Verification` payload; raw output is never recovery input.
+
+- If the diagnosis proves a concrete, safe **in-scope** RED correction, with a remaining recovery slot and no duplicate key, continue the **same RED worker** with exactly `continue_after_recovery`. The continuation occurs before GREEN and preserves the blind test-authoring plan; it never creates a fresh or replacement RED worker.
+- An out-of-scope, unresolved, vetoed (`unrecoverable: true`), duplicate, transport-loss, coordinator-rejection, or exhausted diagnosis does **not** dispatch GREEN. It hands the Step back or stops for human intervention with the concrete artifact and point when available.
+- A coordinator-proven **false veto** remains recovery-eligible when the evidence establishes a safe in-scope correction; a veto is not converted into a GREEN authorization by itself.
+- A RED return with `STOP reached? yes`, including an unpassable RED failure, is diagnosed before any recovery continuation or GREEN dispatch. An unpassable RED closes with `status: failed`, `failure_class: blocking-contradiction`, boolean `unrecoverable`, concrete non-raw evidence, and STOP; it grants no GREEN authorization.
+
+Only a valid RED result — from the initial blind dispatch or from an eligible same-worker recovery continuation — unlocks the split-flow GREEN dispatch. `passes`, `wrong-failure`, non-clean, failed, vetoed, unresolved, out-of-scope, duplicate, and STOP results never unlock GREEN.
+
 ## Step Routing Tree
 
 The coordinator routes each Step to exactly one of five exclusive shapes before any dispatch:
@@ -9,7 +24,7 @@ The coordinator routes each Step to exactly one of five exclusive shapes before 
 1. **RED block absent + at least one production file** → dispatch GREEN directly (green-direct): one GREEN worker invocation with the `implementation → green-verification` plan. No RED dispatch is issued.
 2. **RED block absent + no production file** → dispatch exactly one RED green-exception: a test-authoring worker invocation with the `test-authoring → green-verification` plan.
 3. **RED block present + no exact, unambiguous matching `## Step N` contract in `interfaces.md`** → STOP before any dispatch or write. A clean absence and an ambiguous match — more than one `## Step N` for the same integer — stop identically; no dispatch is issued and no fallback line is emitted.
-4. **RED block present + exact unambiguous `## Step N` contract + at least one production file** → dispatch blind RED (`test-authoring → red-verification`), then GREEN (`implementation → green-verification`).
+4. **RED block present + exact unambiguous `## Step N` contract + at least one production file** → split-flow: dispatch blind RED (`test-authoring → red-verification`); dispatch GREEN (`implementation → green-verification`) only after a valid RED result and after the RED recovery hooks above permit it.
 5. **RED block present + exact unambiguous `## Step N` contract + no production file** → dispatch exactly one RED green-exception (`test-authoring → green-verification`) that terminates with GREEN = pass.
 
 ## Dispatch Plan Selection
