@@ -8,6 +8,8 @@ const path = require('node:path');
 const repoRoot = path.join(__dirname, '..');
 const coordinatorPath = 'sai/commands/build/coordinator.md';
 const launcherPath = 'sai/commands/build/launcher.md';
+const applyCoordinatorPath = 'sai/commands/apply/coordinator.md';
+const runnerPath = 'sai/orchestration/command-runner.md';
 
 function readRequired(relativePath) {
   const absolutePath = path.join(repoRoot, relativePath);
@@ -94,4 +96,30 @@ test('build coordinator preserves re-entry, stops, completion, and changed-files
   assertContains(source, 'ordered, duplicate-free changed-files union');
   assertContains(source, 'without resetting the union on segment activation');
   assertContains(source, 'Phase 2 dispatches existing `sai-4-red-worker` / `sai-4-green-worker` only through the apply adapter');
+});
+
+test('Step 6 compatibility inherits diagnosis-driven recovery through apply and the shared runner', () => {
+  const buildSources = [
+    ['coordinator', readRequired(coordinatorPath)],
+    ['launcher', readRequired(launcherPath)],
+  ];
+  const apply = readRequired(applyCoordinatorPath);
+  const runner = readRequired(runnerPath);
+  const build = buildSources.map(([, source]) => source).join('\n');
+  const diagnosisRecovery = /diagnosis[- ]driven recovery|distinct[- ]diagnosis|diagnosis[_ -]?key/i;
+
+  assert.match(runner, diagnosisRecovery,
+    'the shared runner should own diagnosis-driven recovery');
+  assert.match(apply, diagnosisRecovery,
+    'the apply route should inherit diagnosis-driven recovery');
+  assert.match(apply, /@sai\/orchestration\/command-runner\.md/,
+    'the apply route should load the shared runner');
+  assert.match(apply, /recovery_policy\s*:\s*true/,
+    'the apply route should opt into the shared recovery policy');
+
+  assert.match(build, /sai\/commands\/apply\/coordinator\.md/,
+    'build must continue to reference the existing apply coordinator');
+  assert.doesNotMatch(build,
+    /(?:recovery_policy|continue_after_recovery|diagnosis_key|design-overview-repair|Coverage Signature|Known-False Report Recovery|sole runtime registry|surface_id\s*\|)/i,
+    'build must not rewrite or register recovery behavior');
 });

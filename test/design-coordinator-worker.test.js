@@ -1641,3 +1641,40 @@ test('Step 3: design worker documents mode-dependent gate coexistence without mo
     'standalone design should not couple supervised mode to overview generation',
   );
 });
+
+test('Step 6 compatibility keeps diagnosis-driven recovery shared, apply-owned, and out of the design registry', () => {
+  const runner = artifact('sai/orchestration/command-runner.md');
+  const apply = [
+    artifact('sai/commands/apply/coordinator.md'),
+    artifact('sai/commands/apply/runner.md'),
+    artifact('sai/commands/apply/invocation.md'),
+  ].join('\n');
+  const design = artifact('sai/commands/design/coordinator.md');
+  const diagnosisRecovery = /diagnosis[- ]driven recovery|distinct[- ]diagnosis|diagnosis[_ -]?key/i;
+
+  assert.match(runner, diagnosisRecovery,
+    'the shared command runner should carry diagnosis-driven recovery');
+  assert.match(apply, diagnosisRecovery,
+    'the apply route should carry diagnosis-driven recovery');
+
+  assert.match(design, /recovery_policy\s*:\s*true/,
+    'the design adapter should retain its recovery policy opt-in');
+
+  const registryDeclaration = /The sole runtime registry for this algorithm is:/i;
+  const registryRow = /\|\s*design-overview-repair\s*\|/i;
+  assert.match(runner, registryDeclaration,
+    'the shared command runner should declare the sole recovery registry');
+  assert.equal(countLiteral(runner, '| design-overview-repair |'), 1,
+    'the shared command runner should contain exactly one registered recovery surface');
+  assert.match(runner, registryRow,
+    'the shared command runner should contain the registered recovery surface');
+  for (const [surface, source] of [
+    ['design coordinator', design],
+    ['apply route', apply],
+  ]) {
+    assert.doesNotMatch(source, registryDeclaration,
+      `${surface} must not redeclare the recovery registry`);
+    assert.doesNotMatch(source, registryRow,
+      `${surface} must not contain a recovery registry row`);
+  }
+});
