@@ -21,10 +21,12 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0093 — Route spec through workers while Copilot remains inline](./0093-route-spec-through-workers-while-copilot-remains-inline.md) — Refs 0082, Refs 0083, Refs 0090, Refs 0092
 - [0144 — The three planning-phase coordinators drop the scoped `Bash(date:*)` entry](./0144-planning-coordinators-drop-the-scoped-date-shell-entry.md) — Supersedes 0117, Refs 0118, Refs ddr:0141
 - [0145 — Routed coordinators receive panel tools with non-blocking runtime degradation](./0145-routed-coordinators-receive-panel-tools-with-non-blocking-runtime-degradation.md) — Refs 0117, Refs 0144
-- [0139 — Use fresh read-only reviewers with worker-owned artifact edits](./0139-fresh-read-only-reviewers-with-worker-owned-edits.md) — Refs ddr:0105
 - [0147 — Supervised mode auto-executes next-action exactly once](./0147-supervised-mode-auto-executes-next-action-once.md) — Refs ddr:0150, Refs 0028
 - [0148 — Mode-qualify every user-facing gate surface; leave standalone fetch sites untouched](./0148-mode-qualify-every-user-facing-gate-surface.md) — Refs ddr:0150, Refs 0028, Refs 0147
 - [0150 — Supervised visible reports stay post-proceed (fetching-body order)](./0150-supervised-visible-reports-stay-post-proceed.md) — Refs 0147, Refs ddr:0150
+- [0158 — Delete the worker-owned planning-artifact review loop](./0158-delete-worker-owned-planning-artifact-review-loop.md) — Supersedes 0139, Refs ddr:0133, Refs ddr:0134
+- [0159 — Supervised marker grammar stays on the two-string envelope; Explore owns the capability](./0159-marker-grammar-stays-on-two-string-envelope.md) — Refs 0158, Refs ddr:0114
+- [0160 — Interactive artifact feedback gate gains a non-option review-loop note only](./0160-interactive-gate-review-loop-note-only.md) — Refs 0028, Refs ddr:0150, Refs 0158
 ### `/sai-2-design`
 
 - [0015 — Decision summary precedes the completion sentinel](./0015-decision-summary-precedes-completion-sentinel.md) — **Amends** ddr:0014
@@ -49,7 +51,6 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0111 — design.md records the resolved record family as a pinned marker that Step 3 reads](./0111-record-family-marker-in-design.md)
 - [0144 — The three planning-phase coordinators drop the scoped `Bash(date:*)` entry](./0144-planning-coordinators-drop-the-scoped-date-shell-entry.md) — Supersedes 0117, Refs 0118, Refs ddr:0141
 - [0145 — Routed coordinators receive panel tools with non-blocking runtime degradation](./0145-routed-coordinators-receive-panel-tools-with-non-blocking-runtime-degradation.md) — Refs 0117, Refs 0144
-- [0139 — Use fresh read-only reviewers with worker-owned artifact edits](./0139-fresh-read-only-reviewers-with-worker-owned-edits.md) — Refs ddr:0105
 - [0146 — Command-owned files live in their consuming command's directory](./0146-command-owned-files-live-in-their-consuming-command-directory.md) — Supersedes 0003, Refs 0004, Refs 0138, Refs ddr:0123, Refs ddr:0149
 - [0147 — Supervised mode auto-executes next-action exactly once](./0147-supervised-mode-auto-executes-next-action-once.md) — Refs ddr:0150, Refs 0028
 - [0148 — Mode-qualify every user-facing gate surface; leave standalone fetch sites untouched](./0148-mode-qualify-every-user-facing-gate-surface.md) — Refs ddr:0150, Refs 0028, Refs 0147
@@ -58,6 +59,9 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0153 — Overview dispatch names the budget-subagent binding per harness](./0153-overview-dispatch-names-the-budget-subagent-binding-per-harness.md)
 - [0154 — Contract-load failure is parent-authored generation-error](./0154-contract-load-failure-is-parent-authored-generation-error.md)
 - [0155 — Schema change-overview instruction is an informative reference only](./0155-schema-change-overview-instruction-is-an-informative-reference-only.md) — Refs 0146
+- [0158 — Delete the worker-owned planning-artifact review loop](./0158-delete-worker-owned-planning-artifact-review-loop.md) — Supersedes 0139, Refs ddr:0133, Refs ddr:0134
+- [0159 — Supervised marker grammar stays on the two-string envelope; Explore owns the capability](./0159-marker-grammar-stays-on-two-string-envelope.md) — Refs 0158, Refs ddr:0114
+- [0160 — Interactive artifact feedback gate gains a non-option review-loop note only](./0160-interactive-gate-review-loop-note-only.md) — Refs 0028, Refs ddr:0150, Refs 0158
 
 ### `/sai-3-implement`
 
@@ -89,9 +93,10 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0131 — Keep OpenCode budget skills behind canonical behavior policies](./0131-canonicalize-opencode-budget-skill-behavior.md)
 - [0132 — Reconcile the executor capability at the canonical Fetch boundary](./0132-reconcile-executor-capability-at-fetch-boundary.md)
 - [0137 — Change Overview preserves the generation lifecycle and write boundary](./0137-change-overview-preserves-generation-lifecycle-and-write-boundary.md)
-- [0139 — Use fresh read-only reviewers with worker-owned artifact edits](./0139-fresh-read-only-reviewers-with-worker-owned-edits.md) — Refs ddr:0105
 - [0139 — Use a presence-only policy for bounded worker recovery](./0139-presence-only-bounded-recovery-policy.md)
 - [0146 — Command-owned files live in their consuming command's directory](./0146-command-owned-files-live-in-their-consuming-command-directory.md) — Supersedes 0003, Refs 0004, Refs 0138, Refs ddr:0123, Refs ddr:0149
+- [0158 — Delete the worker-owned planning-artifact review loop](./0158-delete-worker-owned-planning-artifact-review-loop.md) — Supersedes 0139, Refs ddr:0133, Refs ddr:0134
+- [0161 — Capability deltas stay change-local until archive sync](./0161-capability-deltas-stay-change-local-until-archive.md) — Refs 0158
 
 ### `/sai-4-apply`
 
@@ -163,6 +168,9 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0148 — Mode-qualify every user-facing gate surface; leave standalone fetch sites untouched](./0148-mode-qualify-every-user-facing-gate-surface.md) — Refs ddr:0150, Refs 0028, Refs 0147
 - [0149 — Structural tests co-land with the instruction sources they pin](./0149-structural-tests-co-land-with-instruction-sources.md) — Refs 0070
 - [0150 — Supervised visible reports stay post-proceed (fetching-body order)](./0150-supervised-visible-reports-stay-post-proceed.md) — Refs 0147, Refs ddr:0150
+- [0158 — Delete the worker-owned planning-artifact review loop](./0158-delete-worker-owned-planning-artifact-review-loop.md) — Supersedes 0139, Refs ddr:0133, Refs ddr:0134
+- [0159 — Supervised marker grammar stays on the two-string envelope; Explore owns the capability](./0159-marker-grammar-stays-on-two-string-envelope.md) — Refs 0158, Refs ddr:0114
+- [0160 — Interactive artifact feedback gate gains a non-option review-loop note only](./0160-interactive-gate-review-loop-note-only.md) — Refs 0028, Refs ddr:0150, Refs 0158
 
 ### `/sai-backfill`
 
@@ -441,6 +449,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0147 — Supervised mode auto-executes next-action exactly once](./0147-supervised-mode-auto-executes-next-action-once.md) — Refs ddr:0150, Refs 0028
 - [0148 — Mode-qualify every user-facing gate surface; leave standalone fetch sites untouched](./0148-mode-qualify-every-user-facing-gate-surface.md) — Refs ddr:0150, Refs 0028, Refs 0147
 - [0150 — Supervised visible reports stay post-proceed (fetching-body order)](./0150-supervised-visible-reports-stay-post-proceed.md) — Refs 0147, Refs ddr:0150
+- [0160 — Interactive artifact feedback gate gains a non-option review-loop note only](./0160-interactive-gate-review-loop-note-only.md) — Refs 0028, Refs ddr:0150, Refs 0158
 
 ### Explore crystallization & the review loop
 
@@ -457,6 +466,10 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0137 — The stage-advancement token is the literal next-step](./0137-stage-advancement-token-literal-next-step.md)
 - [0140 — Active review-loop exit reuses the existing token matcher](./0140-active-review-loop-exit-reuses-existing-token-matcher.md)
 - [0146 — A two-option crystallization-close selector replaces the literal `start-pipeline` token](./0146-crystallization-close-selector-replaces-the-pipeline-token.md) — **Reverses** ddr:0053, **Reverses** 0058, Refs 0140
+- [0158 — Delete the worker-owned planning-artifact review loop](./0158-delete-worker-owned-planning-artifact-review-loop.md) — Supersedes 0139, Refs ddr:0133, Refs ddr:0134
+- [0159 — Supervised marker grammar stays on the two-string envelope; Explore owns the capability](./0159-marker-grammar-stays-on-two-string-envelope.md) — Refs 0158, Refs ddr:0114
+- [0160 — Interactive artifact feedback gate gains a non-option review-loop note only](./0160-interactive-gate-review-loop-note-only.md) — Refs 0028, Refs ddr:0150, Refs 0158
+- [0161 — Capability deltas stay change-local until archive sync](./0161-capability-deltas-stay-change-local-until-archive.md) — Refs 0158
 
 ### Artifact metadata & routing tokens
 
@@ -508,6 +521,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 | [0146](./0146-crystallization-close-selector-replaces-the-pipeline-token.md) | reverses | [0053](../ddr/0053-post-crystallization-review-once-per-turn.md) |
 | [0146](./0146-crystallization-close-selector-replaces-the-pipeline-token.md) | reverses | [0058](./0058-gate-ux-tweaks-as-deltas-against-existing-capabilities.md) |
 | [0150](./0150-recovery-pool-segment-scoped-under-composition.md) | amends | [0139](./0139-presence-only-bounded-recovery-policy.md) |
+| [0158](./0158-delete-worker-owned-planning-artifact-review-loop.md) | supersedes | [0139](./0139-fresh-read-only-reviewers-with-worker-owned-edits.md) |
 
 ## Superseded ADRs (historical)
 
@@ -521,3 +535,4 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0117 — The three planning-phase coordinators receive the scoped `Bash(date:*)` entry as the sole allowed-tools exception](./0117-planning-coordinators-scoped-shell-entry.md) — *Superseded by [0144](./0144-planning-coordinators-drop-the-scoped-date-shell-entry.md)*
 - [0118 — Per-harness wall-clock commands live in the harness bindings, never in the neutral policy](./0118-per-harness-wall-clock-commands-in-bindings.md) — Refs 0077 — *Superseded by [ddr:0141](../ddr/0141-milestone-stamp-is-closure-only-and-derived-from-emitted-on.md)*
 - [0029 — Surgical merge of the opencode `agent` block via jsonc-parser](./0029-jsonc-parser-surgical-merge-for-opencode-agent-block.md) — Refs 0031 — *Historical: the agent-block merge is retired*
+- [0139 — Use fresh read-only reviewers with worker-owned artifact edits](./0139-fresh-read-only-reviewers-with-worker-owned-edits.md) — Refs ddr:0105 — *Superseded by [0158](./0158-delete-worker-owned-planning-artifact-review-loop.md)*
