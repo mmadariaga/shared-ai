@@ -96,9 +96,9 @@ Selecting **Manual** dispatches nothing, changes no state value, injects no `--s
 
 *(Instruction-only / non-UI step — standard format, no RED/GREEN.)*
 
-- [ ] In `sai/commands/explore/instructions.md`, edit only the pre-crystallization genuine-question / stage-aware-reminder rule (the bullet under **Pre-crystallization closure** that begins `On every successful turn while the state is `active-uncrystallized`...`). Do **not** edit the shared close or items 5/6/7/9/10 in this step.
+- [x] In `sai/commands/explore/instructions.md`, edit only the pre-crystallization genuine-question / stage-aware-reminder rule (the bullet under **Pre-crystallization closure** that begins `On every successful turn while the state is `active-uncrystallized`...`). Do **not** edit the shared close or items 5/6/7/9/10 in this step.
 
-- [ ] Insert the phase-navigation disqualifier so the genuine-question branch excludes navigation-only questions. Replace the two sentences:
+- [x] Insert the phase-navigation disqualifier so the genuine-question branch excludes navigation-only questions. Replace the two sentences:
 
   - `When a genuine unresolved question remains and its answer could change the idea, end with that relevant question and do not append a reminder. When no genuine unresolved question remains, end with this concise reminder selected from the current stage.`
 
@@ -108,16 +108,16 @@ Selecting **Manual** dispatches nothing, changes no state value, injects no `--s
 When a genuine unresolved question remains and its answer could change the idea, end with that relevant question and do not append a reminder. A question whose dominant purpose is only to navigate the exploration stages — for example, asking whether to use `next-step` or whether to move to the next phase without raising substantive uncertainty about the idea — does NOT count as a genuine unresolved question; fall through to the stage-aware reminder. A question that contains substantive uncertainty capable of changing the idea remains a genuine unresolved question even when navigation wording is also present. When no genuine unresolved question remains, including when the only apparent question is phase navigation, end with this concise reminder selected from the current stage.
 ```
 
-- [ ] Preserve the existing stage-1/2 `next-step` naming, stage-3 dual-token reminder, and the exact literal: `Say `crystallize` when ready; crystallization generates the paste-ready prompt for `/sai-1-spec``.
-- [ ] At stage 4 completion wording, if it still says the response ends only with the `Ready to Propose` block, extend it to `Ready to Propose` block(s) followed by the shared crystallization-turn close (behavior-preserving alignment with the shared close; do not invent new emissions).
+- [x] Preserve the existing stage-1/2 `next-step` naming, stage-3 dual-token reminder, and the exact literal: `Say `crystallize` when ready; crystallization generates the paste-ready prompt for `/sai-1-spec``.
+- [x] At stage 4 completion wording, if it still says the response ends only with the `Ready to Propose` block, extend it to `Ready to Propose` block(s) followed by the shared crystallization-turn close (behavior-preserving alignment with the shared close; do not invent new emissions).
 
 ##### Step 2 Verification Checklist
 
 **Automated (agent runs before stopping):**
-- [ ] Confirm the pre-crystallization closure section contains the phase-navigation disqualifier (dominant purpose / navigate / fall through to stage-aware reminder).
-- [ ] Confirm substantive-uncertainty-despite-navigation wording is present.
-- [ ] Confirm the crystallize readiness literal remains byte-identical where required: `Say `crystallize` when ready; crystallization generates the paste-ready prompt for `/sai-1-spec``.
-- [ ] Confirm items 5/6/7/9/10 and the shared close subsection were not regressively rewritten in this step.
+- [x] Confirm the pre-crystallization closure section contains the phase-navigation disqualifier (dominant purpose / navigate / fall through to stage-aware reminder).
+- [x] Confirm substantive-uncertainty-despite-navigation wording is present.
+- [x] Confirm the crystallize readiness literal remains byte-identical where required: `Say `crystallize` when ready; crystallization generates the paste-ready prompt for `/sai-1-spec``.
+- [x] Confirm items 5/6/7/9/10 and the shared close subsection were not regressively rewritten in this step.
 
 *(No Human checks — service-side instruction edit with no observable browser behavior.)*
 
@@ -132,6 +132,7 @@ When a genuine unresolved question remains and its answer could change the idea,
 | Step | dispatch | phase | attempts | first_failure | note |
 |---|---|---|---|---|---|
 | 1 | green-direct | green | 2 | other | Corrected the shared-close wording after coordinator validation failed. |
+| 2 | green-direct | green | 1 | n/a | Completed without recovery. |
 
 #### Step 3: Plain-fold main capability specs from complete change-local deltas
 
