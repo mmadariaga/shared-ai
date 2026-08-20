@@ -13,7 +13,7 @@ When `sai-explore` runs selector-dispatched `Auto` supervision, it SHALL include
 Phase-specific placement (two grammars, one marker token):
 
 - The initial `sai-1` spec-proposal dispatch SHALL set `wrapper_echo_value` empty and set `arguments_value` to the leading flag line `--supervised`, a newline, then the complete `Ready to Propose` block, so after the spec worker's line-wise flag strip the verbatim request is still that full block.
-- The chained `sai-2` design dispatch SHALL set `wrapper_echo_value` empty and SHALL reuse the existing name-first flag mechanism, forming `arguments_value` of the shape `{name} --fast-track --supervised` and, when an overview language was selected, additionally `--overview-lang {overview_language}`. The design worker does not require `--supervised` to be the first token.
+- The chained `sai-2` design dispatch SHALL set `wrapper_echo_value` empty and SHALL reuse the existing name-first flag mechanism, forming `arguments_value` of the shape `{name} --fast-track --supervised` and, when an overview language was selected, additionally `--overview-lang {overview_language}`. The equivalent inverse order `{name} --supervised --fast-track` is also valid, including the language-bearing form; the design worker does not require `--supervised` to be the first token.
 - A design-phase retry that re-dispatches only the design worker SHALL carry `--supervised` exactly as the normal chained design dispatch does (empty echo, same `arguments_value` shape), and SHALL still supply `--overview-lang {overview_language}` again when localization is required (language non-persistence is unchanged).
 
 `Manual` SHALL forward nothing: no `--supervised`, no `--fast-track` injection, and no `--overview-lang` injection from the supervised path. Independently invoked `/sai-1-spec` and `/sai-2-design` outside Auto SHALL not receive the marker from explore.
@@ -27,7 +27,7 @@ Phase-specific placement (two grammars, one marker token):
 #### Scenario: Auto chained design dispatch carries the marker
 
 - **WHEN** Auto chains design after a non-`failed`/`cancelled` spec ending
-- **THEN** `wrapper_echo_value` is empty and `arguments_value` is of the shape `{name} --fast-track --supervised` (plus `--overview-lang {overview_language}` when selected)
+- **THEN** `wrapper_echo_value` is empty and `arguments_value` is of the shape `{name} --fast-track --supervised` or `{name} --supervised --fast-track` (plus `--overview-lang {overview_language}` when selected)
 - **AND** `--supervised` need not be the first token
 
 #### Scenario: design-phase retry carries the marker

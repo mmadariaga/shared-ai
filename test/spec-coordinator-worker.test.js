@@ -432,10 +432,12 @@ test('Step 2: the spec worker emits one progress event per act carrying the cano
     'progress event ids should be reported in plan order');
 });
 
-test('Step 2: a completed worker-owned review pass emits review once for High=0 only', () => {
+test('Step 2: a completed non-supervised worker-owned review pass emits review once for High=0 only', () => {
   const worker = artifact(SPEC_COORDINATOR_ARTIFACTS.worker);
   const coordinator = artifact(SPEC_COORDINATOR_ARTIFACTS.coordinator);
 
+  assert.match(worker, /(?:non[- ]supervised|when the invocation is not marked `?--supervised`?|without `?--supervised`?|when supervised is `?false`?|when supervised\s*[:=]\s*`?false`?)/i,
+    'the automatic worker-owned loop should remain explicitly scoped to non-supervised invocation');
   assert.match(worker, /A completed pass with `High=0` converges/,
     'the marking rule should apply to a completed pass');
   assert.match(worker, /`Medium` and `Low` do not extend the loop/,
@@ -452,6 +454,45 @@ test('Step 2: a completed worker-owned review pass emits review once for High=0 
     'cap-exhaustion outcomes should leave the review mark unmarked');
   assert.match(coordinator, /an unmarked evidence-marked `review` step is left exactly as last rendered/,
     'an unmarked review step stays unmarked through reconciliation');
+});
+
+// ─── Step 7: suppress-worker-review-under-supervision (spec grammar) ────────
+
+test('Step 7: spec grammar gives wrapper-echo precedence and strips only a leading bare --supervised marker', () => {
+  const worker = artifact(SPEC_COORDINATOR_ARTIFACTS.worker);
+  const coordinator = artifact(SPEC_COORDINATOR_ARTIFACTS.coordinator);
+  const source = `${worker}\n${coordinator}`;
+
+  assert.match(source, /wrapper_echo_value[\s\S]{0,320}(?:takes precedence|has precedence|is authoritative|wins|non-empty)[\s\S]{0,320}(?:arguments_value|otherwise select)/i,
+    'a non-empty wrapper echo should win over arguments_value');
+  assert.match(source, /(?:leading|first)[\s\S]{0,180}(?:bare|standalone)[\s\S]{0,180}`?--supervised`?/i,
+    'the supervised marker should be recognized only as a leading bare token');
+  assert.match(source, /(?:strip|remove)[\s\S]{0,180}(?:only|exactly)[\s\S]{0,180}(?:leading|first)[\s\S]{0,180}`?--supervised`?/i,
+    'only the exact leading marker should be stripped');
+  assert.match(source, /(?:later|embedded|in[- ]body|inside)[\s\S]{0,180}`?--supervised`?[\s\S]{0,180}(?:request|content)|`?--supervised`?[\s\S]{0,180}(?:later|embedded|in[- ]body|inside)[\s\S]{0,180}(?:request|content)/i,
+    'a later or in-body marker must remain request content');
+});
+
+test('Step 7: empty-after-strip fails before resolution and the marker is absent from the reference set', () => {
+  const worker = artifact(SPEC_COORDINATOR_ARTIFACTS.worker);
+
+  assert.match(worker, /(?:after|once)[\s\S]{0,140}(?:strip|remove)[\s\S]{0,180}(?:empty|blank|no request)[\s\S]{0,220}(?:fail|reject|error)[\s\S]{0,180}(?:before|prior to)[\s\S]{0,100}(?:change )?resolution|(?:strip|stripping)[\s\S]{0,180}(?:leaves?|produces?)[\s\S]{0,100}(?:no request|empty|only whitespace)[\s\S]{0,180}(?:fail|reject|error)[\s\S]{0,180}(?:before|prior to)[\s\S]{0,100}(?:change )?resolution/i,
+    'an empty request after marker stripping must fail before change resolution');
+  assert.match(worker, /(?:reference set|references)[\s\S]{0,260}(?:exclude|omit|without|not contain|never receives?)[\s\S]{0,140}`?--supervised`?|`?--supervised`?[\s\S]{0,140}(?:excluded|omitted|not part of|not in|never receives?)[\s\S]{0,180}(?:reference|request)/i,
+    'the stripped marker must not enter the reference set');
+});
+
+test('Step 7: supervised spec invocation suppresses automatic review state while preserving a user-requested pass', () => {
+  const worker = artifact(SPEC_COORDINATOR_ARTIFACTS.worker);
+
+  assert.match(worker, /(?:under|when)[\s\S]{0,80}supervis(?:ed|ion)[\s\S]{0,280}(?:automatic|worker-owned)[\s\S]{0,180}(?:review|reviewer)[\s\S]{0,220}(?:suppressed|skipped|not run|disabled)|do not dispatch an automatic isolated reviewer|no automatic isolated reviewer is dispatched|automatic worker-owned review loop does not run/i,
+    'supervision must suppress the automatic worker-owned reviewer');
+  assert.match(worker, /(?:supervis(?:ed|ion)[\s\S]{0,260}(?:review counters?|counters?)[\s\S]{0,160}(?:remain|stay|reset)[\s\S]{0,80}(?:0|zero)|(?:both remain\s+`?0`?|automatic-loop counters?[\s\S]{0,180}(?:remain|stay|reset)[\s\S]{0,60}(?:`?0`?|zero)))/i,
+    'supervised automatic-review counters must remain at zero');
+  assert.match(worker, /supervis(?:ed|ion)[\s\S]{0,280}(?:automatic review|review event)[\s\S]{0,180}(?:no|not|never)[\s\S]{0,120}(?:event|emit|report)|do not emit automatic-path `?review`? progress|no automatic review progress event is emitted|automatic worker-owned review loop does not run/i,
+    'supervision must not emit an automatic review event');
+  assert.match(worker, /(?:user|explicitly)[- ]requested[\s\S]{0,220}(?:review pass|review)[\s\S]{0,180}(?:remain|available|still)/i,
+    'an explicitly user-requested review pass must remain available');
 });
 
 test('Step 2: the spec coordinator skips reconciliation for pre-gate completion and reconciles at Finish-step close except unmarked review', () => {
