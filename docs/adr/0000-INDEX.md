@@ -54,6 +54,10 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0147 — Supervised mode auto-executes next-action exactly once](./0147-supervised-mode-auto-executes-next-action-once.md) — Refs ddr:0150, Refs 0028
 - [0148 — Mode-qualify every user-facing gate surface; leave standalone fetch sites untouched](./0148-mode-qualify-every-user-facing-gate-surface.md) — Refs ddr:0150, Refs 0028, Refs 0147
 - [0150 — Supervised visible reports stay post-proceed (fetching-body order)](./0150-supervised-visible-reports-stay-post-proceed.md) — Refs 0147, Refs ddr:0150
+- [0152 — Overview generation contract is transported by Fetch on dispatch](./0152-overview-generation-contract-is-transported-by-fetch-on-dispatch.md) — Refs 0146
+- [0153 — Overview dispatch names the budget-subagent binding per harness](./0153-overview-dispatch-names-the-budget-subagent-binding-per-harness.md)
+- [0154 — Contract-load failure is parent-authored generation-error](./0154-contract-load-failure-is-parent-authored-generation-error.md)
+- [0155 — Schema change-overview instruction is an informative reference only](./0155-schema-change-overview-instruction-is-an-informative-reference-only.md) — Refs 0146
 
 ### `/sai-3-implement`
 
@@ -323,6 +327,8 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0142 — Add near-empty launchers as extension points](./0142-add-near-empty-launchers-as-extension-points.md)
 - [0143 — Load the boot adapter before the launcher](./0143-load-the-boot-adapter-before-the-launcher.md)
 - [0146 — Command-owned files live in their consuming command's directory](./0146-command-owned-files-live-in-their-consuming-command-directory.md) — Supersedes 0003, Refs 0004, Refs 0138, Refs ddr:0123, Refs ddr:0149
+- [0152 — Overview generation contract is transported by Fetch on dispatch](./0152-overview-generation-contract-is-transported-by-fetch-on-dispatch.md) — Refs 0146
+- [0155 — Schema change-overview instruction is an informative reference only](./0155-schema-change-overview-instruction-is-an-informative-reference-only.md) — Refs 0146
 
 ### Harness portability & mirror discipline
 
@@ -353,6 +359,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0141 — Use one shared launcher card per in-scope command](./0141-use-one-shared-launcher-card-per-in-scope-command.md)
 - [0142 — Add near-empty launchers as extension points](./0142-add-near-empty-launchers-as-extension-points.md)
 - [0143 — Load the boot adapter before the launcher](./0143-load-the-boot-adapter-before-the-launcher.md)
+- [0153 — Overview dispatch names the budget-subagent binding per harness](./0153-overview-dispatch-names-the-budget-subagent-binding-per-harness.md)
 
 ### Argument passing & change-name resolution
 
@@ -407,6 +414,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0152 — Build is an ordinary composition coordinator, not explore supervision](./0152-build-ordinary-composition-coordinator-not-explore-supervision.md) — Refs 0147, Refs 0151, Refs 0083
 - [0153 — Build mints segment envelopes without boot or wrapper re-entry](./0153-build-composition-minted-segment-envelopes.md) — Refs 0151, Refs 0152, Refs 0075
 - [0155 — Implement terminal_navigation is positional (apply-pattern match)](./0155-implement-positional-terminal-navigation.md) — Refs 0149, Refs 0083, Refs 0152
+- [0154 — Contract-load failure is parent-authored generation-error](./0154-contract-load-failure-is-parent-authored-generation-error.md)
 
 ### Testability routing & RED → GREEN
 

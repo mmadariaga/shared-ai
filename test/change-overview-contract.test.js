@@ -386,6 +386,143 @@ test('installation projects the shared change-overview instruction through the r
     'the former instructions/change-overview.md destination should be retired');
 });
 
+// ─── overview-generator-contract-transport — transport & schema-instruction assertions ──
+
+test('overview dispatch transports the contract by Fetch and names both harness bindings', () => {
+  const worker = artifact('sai/commands/design/worker.md');
+
+  assert.match(worker, /Fetch @sai\/commands\/design\/change-overview\.md/,
+    'worker.md should instruct the subagent to Fetch @sai/commands/design/change-overview.md');
+  assert.match(worker, /follow it exactly/i,
+    'worker.md should instruct the subagent to follow the fetched contract exactly');
+  assert.match(worker, /Agent\(subagent_type: budget-subagent\)/,
+    'worker.md should name the Claude Code budget-subagent binding');
+  assert.match(worker, /task\(subagent_type: budget\)/,
+    'worker.md should name the opencode budget binding');
+});
+
+test('overview dispatch prompt stays minimal', () => {
+  const worker = artifact('sai/commands/design/worker.md');
+
+  // The prompt carries the change name, overview_language, and the Fetch directive.
+  const dispatchIndex = worker.indexOf('First materialization');
+  assert.ok(dispatchIndex >= 0, 'worker.md should carry the First materialization bullet');
+  const dispatchBlock = worker.slice(dispatchIndex, dispatchIndex + 3000);
+
+  assert.match(dispatchBlock, /change name/i,
+    'the dispatch prompt should carry the resolved change name');
+  assert.match(dispatchBlock, /overview_language/,
+    'the dispatch prompt should carry the overview_language value');
+  assert.match(dispatchBlock, /Fetch @sai\/commands\/design\/change-overview\.md/,
+    'the dispatch prompt should carry the Fetch directive');
+
+  // The prompt does not enumerate the nine required sections or the forbidden sections.
+  // Section names are Proper-Noun titles (e.g. `## Requirements`); case-sensitive
+  // matching detects the actual titles and excludes generic prose nouns such as
+  // "content requirements", which the case-insensitive flag would false-match after "enumerate".
+  for (const section of [
+    'Change Proposal', 'Scope', 'Capabilities', 'Target Architecture',
+    'Key Contracts', 'File Manifest', 'Review Scenarios',
+    'Implementation Approach', 'Approval Summary',
+  ]) {
+    assert.doesNotMatch(dispatchBlock, new RegExp('enumerate.*' + section),
+      `the dispatch prompt must not enumerate the ${section} section`);
+  }
+  for (const forbidden of [
+    'Target State', 'Requirements', 'Scenarios', 'Interfaces',
+    'Assertions', 'File Changes', 'Delivery Steps', 'Traceability',
+  ]) {
+    assert.doesNotMatch(dispatchBlock, new RegExp('enumerate.*' + forbidden),
+      `the dispatch prompt must not enumerate the forbidden ${forbidden} section`);
+  }
+});
+
+test('overview contract-load failure route is parent-authored generation-error', () => {
+  const worker = artifact('sai/commands/design/worker.md');
+
+  assert.match(worker, /contract-load failure|cannot load the shared contract|cannot load the shared generation contract/i,
+    'worker.md should describe the contract-load failure route');
+  assert.match(worker, /generation-error/,
+    'contract-load failure should be classified as generation-error');
+  assert.match(worker, /validation: not-performed/,
+    'the parent-authored route should use validation: not-performed');
+  assert.match(worker, /status: failed/,
+    'the parent-authored route should use status: failed');
+  assert.match(worker, /changed_files: \[openspec\/changes\/\{change-name\}\/change-overview\.md\]/,
+    'the parent-authored route should report the overview path');
+
+  // The subagent does not self-classify or produce a five-field envelope.
+  assert.match(worker, /does not self-classify|does not improvise/i,
+    'the subagent should not self-classify or improvise on contract-load failure');
+
+  // The parent does not use dispatch-failed for this route.
+  const loadFailureIndex = worker.search(/contract-load failure|cannot load the shared/i);
+  assert.ok(loadFailureIndex >= 0, 'worker.md should name the contract-load failure route');
+  const loadFailureBlock = worker.slice(loadFailureIndex, loadFailureIndex + 400);
+  assert.doesNotMatch(loadFailureBlock, /failure_kind: dispatch-failed/,
+    'the contract-load failure route must not use failure_kind: dispatch-failed');
+});
+
+test('overview first materialization and regeneration share the same transport', () => {
+  const worker = artifact('sai/commands/design/worker.md');
+
+  assert.match(worker, /first materialization and regeneration use the same transport/i,
+    'worker.md should state that first materialization and regeneration share the same transport');
+  assert.match(worker, /no regeneration-specific prompt variant/i,
+    'worker.md should state there is no regeneration-specific prompt variant');
+});
+
+test('schema change-overview instruction is a non-empty informative reference only', () => {
+  const schema = artifact('openspec/schemas/sai-workflow/schema.yaml');
+  const overviewInstruction = schema.slice(
+    schema.indexOf('id: change-overview'),
+    schema.indexOf('id: implementation'),
+  );
+
+  // Non-empty and names the command-owned contract path.
+  assert.ok(overviewInstruction.trim().length > 0,
+    'the change-overview instruction must be non-empty');
+  assert.match(overviewInstruction, /sai\/commands\/design\/change-overview\.md/,
+    'the instruction should name the command-owned contract path');
+
+  // Does not name the retired root path as the live contract.
+  assert.doesNotMatch(overviewInstruction, /sai\/change-overview\.md/,
+    'the instruction must not name the retired sai/change-overview.md path as the live contract');
+
+  // Does not enumerate any of the eight forbidden top-level sections as required content.
+  for (const forbidden of [
+    'Target State', 'Requirements', 'Scenarios', 'Interfaces',
+    'Assertions', 'File Changes', 'Delivery Steps', 'Traceability',
+  ]) {
+    assert.doesNotMatch(overviewInstruction, new RegExp(forbidden),
+      `the instruction must not enumerate ${forbidden} as required content`);
+  }
+
+  // Does not restate the five-field generator envelope, the failure_kind vocabulary,
+  // the parent-versus-generator split, or the outer classification mapping.
+  for (const field of ['status', 'changed_files', 'validation', 'failure_details', 'failure_kind']) {
+    assert.doesNotMatch(overviewInstruction, new RegExp('`' + field + '`'),
+      `the instruction must not restate the ${field} envelope field`);
+  }
+  assert.doesNotMatch(overviewInstruction, /envelope-contract-violation/i,
+    'the instruction must not restate the outer classification mapping');
+  assert.doesNotMatch(overviewInstruction, /parent-versus-generator|parent-vs-generator/i,
+    'the instruction must not restate the parent-versus-generator split');
+});
+
+test('schema and worker transport coverage is not satisfied by template-only section checks', () => {
+  // The overview template carries the nine-section shape, but that shape does not
+  // substitute for transport or schema-instruction coverage. This test asserts the
+  // two production surfaces independently carry the coverage.
+  const worker = artifact('sai/commands/design/worker.md');
+  const schema = artifact('openspec/schemas/sai-workflow/schema.yaml');
+
+  assert.match(worker, /Fetch @sai\/commands\/design\/change-overview\.md/,
+    'worker.md should carry the Fetch transport independently of the template');
+  assert.match(schema, /sai\/commands\/design\/change-overview\.md/,
+    'schema.yaml should name the command-owned contract path independently of the template');
+});
+
 // ─── Step 4: Continue-triggered overview generation in the design coordinator ─
 
 test('Continue triggers the worker-owned generation after the gate closes', () => {

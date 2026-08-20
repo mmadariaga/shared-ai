@@ -311,19 +311,33 @@ test('Step 2 both harness design bindings fetch the identical neutral design wor
   }
 });
 
-test('Step 2 generator instruction, workflow schema, and template preserve the same five-field contract', () => {
+test('Step 2 the shared contract and template preserve the same five-field contract; the schema instruction does not restate it', () => {
   const fiveFields = ['status', 'changed_files', 'validation', 'failure_details', 'failure_kind'];
+
+  // The shared generation contract carries the closed five-field envelope.
   const instruction = artifact('sai/commands/design/change-overview.md');
   for (const field of fiveFields) {
-    assert.match(instruction, new RegExp(field.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')),
+    assert.match(instruction, new RegExp('`' + field + '`'),
       `sai/commands/design/change-overview.md should preserve the ${field} field`);
   }
+
+  // The schema change-overview instruction is an informative reference only and
+  // MUST NOT restate the five-field envelope.
   const schema = artifact('openspec/schemas/sai-workflow/schema.yaml');
   assert.match(schema, /sai\/commands\/design\/change-overview\.md/);
-  assert.match(schema, /closed five-field[\s\S]{0,80}generator result envelope/);
+  const overviewInstruction = schema.slice(
+    schema.indexOf('id: change-overview'),
+    schema.indexOf('id: implementation'),
+  );
+  for (const field of fiveFields) {
+    assert.doesNotMatch(overviewInstruction, new RegExp('`' + field + '`'),
+      `schema change-overview instruction must not restate the ${field} field`);
+  }
+
+  // The change-overview template continues to reference the five-field contract.
   const template = artifact('openspec/schemas/sai-workflow/templates/change-overview.md');
   assert.match(template, /five generator fields|five[\s\S]{0,20}fields?/,
-    'the change-overview template should preserve the same five-field contract');
+    'the change-overview template should preserve the same five-field contract reference');
 });
 
 // ─── specs/design-planning-worker/spec.md ──────────────────────────────────
