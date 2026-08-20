@@ -80,7 +80,7 @@ After the automatic loop settles — or when it was suppressed without running �
 
 *(Service-side / non-UI step — instruction markdown only. No RED/GREEN.)*
 
-- [ ] Edit `sai/commands/design/worker.md` **Prerequisites and Resolution** flag parsing (line 18 region). Extend recognized flags to include bare `--supervised` alongside `--fast-track` and `--overview-lang <language>`.
+- [x] Edit `sai/commands/design/worker.md` **Prerequisites and Resolution** flag parsing (line 18 region). Extend recognized flags to include bare `--supervised` alongside `--fast-track` and `--overview-lang <language>`.
 
 After the existing `--overview-lang` / `--fast-track` parse rules, ensure this behavior is stated explicitly (merge into the parse paragraph, do not duplicate conflicting rules):
 
@@ -88,7 +88,7 @@ After the existing `--overview-lang` / `--fast-track` parse rules, ensure this b
 Also scan the selected envelope source for the bare flag `--supervised` (no value). If present once or more, set invocation-scoped `supervised: true` and remove every bare `--supervised` token before change-name resolution; if absent, `supervised: false`. The flag is order-independent among flags after the change name (accept `{name} --fast-track --supervised`, `{name} --supervised --fast-track`, and compositions with `--overview-lang <language>`). Never persist `supervised`. Do not require `--supervised` to be the first token. Do not verify dispatcher provenance.
 ```
 
-- [ ] Condition `### Worker-owned planning-artifact review` exactly parallel to Step 1. Replace the opening paragraph with:
+- [x] Condition `### Worker-owned planning-artifact review` exactly parallel to Step 1. Replace the opening paragraph with:
 
 ```markdown
 ### Worker-owned planning-artifact review
@@ -98,7 +98,7 @@ Also scan the selected envelope source for the bare flag `--supervised` (no valu
 When `supervised` is false, after `design.md`, `tasks.md`, and `interfaces.md` are non-empty and verified, the decision summary is derived, and the `interfaces` progress event has been emitted, run the automatic review loop before returning the pre-gate terminal `completed`.
 ```
 
-- [ ] Replace the final coexistence paragraph of that section with:
+- [x] Replace the final coexistence paragraph of that section with:
 
 ```markdown
 After the automatic loop settles — or when it was suppressed without running — retain the coordinator-owned prose feedback gate unchanged. A user-requested pass from that gate uses the same isolation, finding, processing, and evidence rules without either automatic-loop cap; the marker does not condition it. Later feedback edits or High findings never clear or reopen an emitted `review` mark. On the non-supervised path the worker-owned loop coexists with and never replaces the supervised pipeline's in-session rounds or its `MachineFeedbackAdapter`. On the supervised path the automatic worker-owned loop does not run. Under supervision the design worker marks no routed-list steps: no adapter-declared plan, no plan-based list, no step marking.
@@ -109,9 +109,9 @@ After the automatic loop settles — or when it was suppressed without running �
 ##### Step 2 Verification Checklist
 
 **Automated (agent runs before stopping):**
-- [ ] `rg -n "--supervised|supervised:" sai/commands/design/worker.md` — flag recognized and gate present
-- [ ] Confirm overview lifecycle paragraphs and `overview_language` transport are unchanged
-- [ ] Manual shapes: `{name} --fast-track --supervised` and with `--overview-lang {lang}` both valid
+- [x] `rg -n "--supervised|supervised:" sai/commands/design/worker.md` — flag recognized and gate present
+- [x] Confirm overview lifecycle paragraphs and `overview_language` transport are unchanged
+- [x] Manual shapes: `{name} --fast-track --supervised` and with `--overview-lang {lang}` both valid
 
 *(No Human checks — service-side step with no observable browser behavior.)*
 

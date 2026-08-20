@@ -10,6 +10,7 @@ The worker receives exactly two strings, and derives one invocation-scoped value
 - `wrapper_echo_value`: the value after the exact opencode line `**Change-name argument and and optional flags:** <value>`, or empty when absent
 - `arguments_value`: `$ARGUMENTS` exactly as received from the coordinator
 - `overview_language`: worker-owned invocation state derived from the optional flag after parsing; when the flag is absent, default to `English`, and never write the value to an artifact or configuration file.
+- `supervised`: worker-owned invocation state derived from the bare `--supervised` flag after parsing; when the flag is absent, set it to `false`, and never write the value to an artifact or configuration file.
 
 Every post-resolution worker result carries the current `overview_language` alongside its normal lifecycle metadata; the generator result envelope remains separate and unchanged. Every post-resolution `failed` result also carries the current `overview_language`, a worker-authored `failure_class`, and boolean `unrecoverable`; `completed`, `needs_input`, and `cancelled` results carry none of the failure-only fields.
 
@@ -17,13 +18,15 @@ Every post-resolution worker result carries the current `overview_language` alon
 
 Parse invocation-scoped options before change resolution. Scan the selected envelope source (wrapper echo when non-empty, otherwise `arguments_value`) for the option syntax `--overview-lang <language>` and consume exactly one following non-empty token. If the option is absent, set `overview_language: English`; if its value is missing, is another option, or the option occurs more than once, return a clear `failed` validation result before change resolution or dispatch. Remove only the option and its value before resolving the change name. A change-consuming invocation requires the change name before the option; if parsing leaves no change name, return a clear missing-change-name validation result and never treat the language value as the change name. `--fast-track` is recognized independently and remains active in either order. The cleaned arguments and `overview_language` are invocation-scoped and never persisted.
 
+After these existing parse rules, recognize bare `--supervised` alongside `--fast-track` and `--overview-lang <language>`. It is order-independent among flags after the change name: `{name} --fast-track --supervised` and `{name} --supervised --fast-track` are both accepted, as are `{name} --overview-lang <language> --supervised` and `{name} --supervised --overview-lang <language>`. Strip `--supervised` before change-name finalization, set invocation-scoped `supervised: true` when it is present and `supervised: false` when it is absent, never persist it, and do not verify dispatcher provenance.
+
 If `--fast-track` is present in the combined envelope, activate the signal, remove the token from its source value, and return the design notice carrying `message: > FAST-TRACK MODE ACTIVE` once per session unless reconstruction says `fast_track_banner_emitted: true`. The notice is a returned nonterminal result, not a line printed inside this session; the coordinator prints it and resumes the worker with `continue_after_notice`.
 Then run universal prerequisite checks via `Fetch @sai/policies/prereqs.md`.
 Return `failed` with the missing-prerequisite summary when a check fails.
 
 When both envelope values are non-empty, wrapper echo takes precedence. When
 both are empty, run the change picker; when one is non-empty, use it directly.
-Strip a remaining `--fast-track` from the resolved name and trim it.
+Strip any remaining `--fast-track` or `--supervised` from the resolved name and trim it.
 
 For zero changes return the established no-active-changes failure. For one,
 ask `Use change '{name}'?` with ordered yes/no options; yes resolves and no
@@ -71,7 +74,7 @@ For Architecture Snapshot presentation, retain the previous `interfaces.md` text
 
 ### Worker-owned planning-artifact review
 
-After `design.md`, `tasks.md`, and `interfaces.md` are non-empty and verified, the decision summary is derived, and the `interfaces` progress event has been emitted, run the automatic review loop before returning the pre-gate terminal `completed`.
+After `design.md`, `tasks.md`, and `interfaces.md` are non-empty and verified, the decision summary is derived, and the `interfaces` progress event has been emitted, `supervised: true` means no automatic isolated reviewer is dispatched, no automatic-loop counters advance, no automatic review progress event is emitted, and `review` remains unmarked; proceed to the ordinary pre-gate terminal after interfaces verification and decision summary. When `supervised: false`, retain the existing automatic review loop below before returning the pre-gate terminal `completed`.
 
 Each pass creates one fresh isolated read-only reviewer. At pass start, give it exactly (1) the freshly read reviewed set — `design.md`, `tasks.md`, and `interfaces.md` — and (2) the freshly read read-only reference set — `proposal.md` plus every `specs/**/*.md` of the resolved change. Give it no conversation, worker reasoning or journal, prior reviewer state, unrelated repository content, lifecycle/binding metadata, or write capability. Findings may target only reviewed-set files and must never target a reference artifact. The reviewer evaluates reviewed-set consistency, requirement coverage against the reference set, step/scenario testability, and unsupported assumptions.
 
@@ -81,7 +84,7 @@ Process every finding from a valid pass under `@sai/policies/artifact-feedback-g
 
 Govern the automatic loop with two distinctly named counters: the completed-pass count is capped at 3 and advances only for a valid completed pass (including an empty finding set); the total-attempt count is capped at 6 and advances for every reviewer dispatch. A completed pass with `High=0` converges, emits `review` once when still unmarked, and dispatches no further automatic reviewer; `Medium` and `Low` do not extend the loop. A completed pass with `High>0` dispatches a fresh reviewer while both caps permit. A failed, cancelled, or output-contract-invalid attempt advances only the total-attempt count and dispatches a fresh reviewer while the total-attempt cap permits. Either cap may exhaust without failing the phase: leave `review` unmarked and report outstanding `High` findings separately from reviewer failures, cancellations, and contract violations.
 
-After the automatic loop settles, retain the coordinator-owned prose feedback gate unchanged. A user-requested pass from that gate uses the same isolation, finding, processing, and evidence rules without either automatic-loop cap. Later feedback edits or High findings never clear or reopen an emitted `review` mark. The worker-owned loop coexists with and never replaces the supervised pipeline's independent convergence loop or its `MachineFeedbackAdapter`. Under supervision the design worker marks no routed-list steps: no adapter-declared plan, no plan-based list, no step marking.
+After the automatic loop settles, retain the prose feedback gate unchanged; a user-requested pass from that gate remains available and uses the same isolation, finding, processing, and evidence rules without either automatic-loop cap. Later feedback edits or High findings do not clear or reopen an emitted `review` mark. The non-supervised worker loop coexists with the supervised pipeline's independent convergence loop and its `MachineFeedbackAdapter`; the supervised path has no worker-owned automatic loop. Under supervision, the design worker marks no routed-list steps and has no adapter plan: no adapter-declared plan, no plan-based list, and no step marking.
 
 ### Overview generation (design-worker-owned lifecycle)
 
