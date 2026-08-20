@@ -85,6 +85,21 @@ failures and is never a worker-authorable value. Pre-resolution failures omit
 failure-only fields. A worker SHALL set `unrecoverable: true` only when its own
 evidence establishes that continuation is unsafe.
 
+### Step 3 GREEN contract
+
+Worker-authored `failure_class` and `unrecoverable` remain on failed outcomes
+only. The routing diagnosis is coordinator-only and coordinator-owned. Its
+diagnoses — `worker-authored failure`, `coordinator rejection`, and
+`continuation/transport loss` — together with `Cause Locus` and `diagnosis_key`,
+are never worker payload fields and MUST NOT enter the closed lifecycle shape.
+
+For an unpassable apply RED/GREEN STOP, the worker returns `status: failed` with
+`failure_class: blocking-contradiction`, a boolean `unrecoverable`, and concrete
+non-raw evidence in `summary`. The worker sets `unrecoverable: true` only when
+its evidence establishes that continuation is unsafe. The nine-field apply
+extension remains unchanged and carries `STOP reached? = yes`; the coordinator
+supplies the routing diagnosis, `Cause Locus`, and recovery eligibility.
+
 The design-only notice is exactly:
 
 ```yaml

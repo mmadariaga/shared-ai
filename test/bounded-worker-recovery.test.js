@@ -203,3 +203,40 @@ test('design overview repair rejects incomplete or prose-derived matches and has
       `no duplicate design-overview-repair registry table is allowed outside command-runner: ${path.relative(repoRoot, markdownPath)}`);
   }
 });
+
+test('worker-core keeps routing diagnosis coordinator-only and closes an unpassable apply RED/GREEN STOP as a worker failure', () => {
+  const lifecycle = artifact('sai/orchestration/worker-core.md');
+  const failureStart = lifecycle.indexOf('The post-resolution');
+  const failureEnd = lifecycle.indexOf('The design-only notice', failureStart);
+  assert.ok(failureStart >= 0 && failureEnd > failureStart,
+    'worker-core should expose the post-resolution worker failure envelope');
+  const workerFailure = lifecycle.slice(failureStart, failureEnd);
+
+  const escapeRegExp = value => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const coordinatorOwnership = '(?:coordinator[- ]only|coordinator[- ]owned|coordinator[- ]authored|only the coordinator)';
+  for (const field of ['routing diagnosis', 'Cause Locus', 'diagnosis_key']) {
+    const escapedField = escapeRegExp(field);
+    assert.match(lifecycle,
+      new RegExp(`(?:${escapedField}[\\s\\S]{0,260}${coordinatorOwnership}|${coordinatorOwnership}[\\s\\S]{0,260}${escapedField})`, 'i'),
+      `${field} must be coordinator-only`);
+  }
+
+  assert.match(workerFailure, /failure_class/, 'worker failures must retain failure_class');
+  assert.match(workerFailure, /unrecoverable:\s*boolean/, 'worker failures must retain boolean unrecoverable');
+  assert.doesNotMatch(workerFailure, /^\s*(?:routing[_ -]?diagnosis|cause[_ -]?locus|diagnosis[_ ]key)\s*:/im,
+    'the worker-authored failure envelope must not add a routing diagnosis field');
+
+  assert.match(lifecycle,
+    /(?:unpassable[\s\S]{0,260}(?:RED[\s\S]{0,120}GREEN|GREEN[\s\S]{0,120}RED)[\s\S]{0,260}STOP|(?:RED[\s\S]{0,120}GREEN|GREEN[\s\S]{0,120}RED)[\s\S]{0,260}unpassable[\s\S]{0,260}STOP)/i,
+    'an unpassable RED/GREEN run must reach the STOP path');
+  assert.match(lifecycle, /status:\s*failed/i,
+    'the unpassable STOP must return status failed');
+  assert.match(lifecycle, /failure_class:\s*blocking-contradiction/i,
+    'the unpassable STOP must return failure_class blocking-contradiction');
+  assert.match(lifecycle, /unrecoverable:\s*boolean/i,
+    'the unpassable STOP must return boolean unrecoverable');
+  assert.match(lifecycle, /(?:concrete[\s\S]{0,100}evidence|evidence[\s\S]{0,100}concrete)/i,
+    'the unpassable STOP must retain concrete evidence');
+  assert.match(lifecycle, /(?:STOP reached\?[\s\S]{0,120}\byes\b|\byes\b[\s\S]{0,120}STOP reached\?)/i,
+    'the apply report must mark STOP reached as yes');
+});
