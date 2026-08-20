@@ -24,6 +24,7 @@ This index groups the DDRs in `docs/ddr/` by **command** and by **cross-cutting 
 - [0135 — An empty spec reference set still yields a full review pass](./0135-empty-spec-reference-set-is-a-full-review-pass.md) — Refs 0133, Refs 0134
 - [0146 — Stable planning progress ids remain compatibility keys while labels become user-facing](./0146-stable-planning-progress-ids-preserve-compatibility.md)
 - [0147 — Structured spec research closes at the shared confidence boundary before proposal generation](./0147-spec-research-closes-at-confidence-boundary.md)
+- [0150 — Gate mode is parameterized at the fetch site, never detected from invocation context](./0150-mode-parameterized-at-fetch-site-not-detected.md) — **Amends** adr:0028
 
 ### `/sai-2-design`
 
@@ -49,6 +50,7 @@ This index groups the DDRs in `docs/ddr/` by **command** and by **cross-cutting 
 - [0136 — The overview generator envelope remains a closed five-field contract](./0136-overview-generator-envelope-remains-five-field.md)
 - [0146 — Stable planning progress ids remain compatibility keys while labels become user-facing](./0146-stable-planning-progress-ids-preserve-compatibility.md)
 - [0148 — Specs approval remains folded into design prerequisite resolution](./0148-specs-approval-remains-folded-into-design-prerequisites.md)
+- [0150 — Gate mode is parameterized at the fetch site, never detected from invocation context](./0150-mode-parameterized-at-fetch-site-not-detected.md) — **Amends** adr:0028
 
 ### `/sai-3-implement`
 
@@ -113,6 +115,7 @@ This index groups the DDRs in `docs/ddr/` by **command** and by **cross-cutting 
 - [0143 — Out-of-root budget-explorer access is concrete and purpose-bound](./0143-budget-explorer-out-of-root-access-is-purpose-bound.md)
 - [0144 — Self-discovered external needs use structured escalation records](./0144-budget-explorer-self-discovered-needs-use-structured-escalation.md)
 - [0145 — The budget-explorer tool-call ceiling resets for each execution segment](./0145-budget-explorer-tool-call-ceiling-resets-per-segment.md)
+- [0150 — Gate mode is parameterized at the fetch site, never detected from invocation context](./0150-mode-parameterized-at-fetch-site-not-detected.md) — **Amends** adr:0028
 
 ### `/sai-backfill`
 
@@ -277,6 +280,7 @@ This index groups the DDRs in `docs/ddr/` by **command** and by **cross-cutting 
 | [0137](./0137-apply-routed-boundary-carries-progress-events.md) | supersedes | [0116](./0116-apply-phase-carries-no-progress-events.md) |
 | [0141](./0141-milestone-stamp-is-closure-only-and-derived-from-emitted-on.md) | supersedes | [adr:0118](../adr/0118-per-harness-wall-clock-commands-in-bindings.md) |
 | [0149](./0149-orchestration-core-contracts-live-under-orchestration.md) | supersedes | [0128](./0128-neutral-root-protocols-and-command-cards.md) |
+| [0150](./0150-mode-parameterized-at-fetch-site-not-detected.md) | amends | [0028](../adr/0028-gate-parameters-inline-at-fetch-site.md) |
 
 ## Superseded DDRs (historical)
 

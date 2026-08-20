@@ -218,33 +218,18 @@ artifacts:
       overview is a derived projection, not a source of truth: the source artifacts remain
       authoritative and are never modified by generation.
 
-      Generation runs in a budget-routed subagent executing sai/change-overview.md — the
-      single source of the generation contract — at the sai-2 feedback gate's Continue processing
-      (deferred materialization), with exactly one regeneration per later effective source-modifying
-      design-worker transaction and a persisted overview.state in the change's .openspec.yaml
-      (unmaterialized | materializing | failed | current | stale). The generator writes ONLY
-      change-overview.md and returns exactly five mandatory result fields — status, changed_files,
-      validation, failure_details, and failure_kind — per specs/change-overview-generation-routing/spec.md.
-      failure_details is empty only on success and is non-empty English diagnostic text on every
-      failure; failure_kind uses the closed vocabulary none | blocking-contradiction |
-      validation-failed | generation-error | dispatch-failed. Parent-authored dispatch and
-      contract-violation results use validation: not-performed and preserve the same five-field
-      shape without allowing the parent to write change-overview.md. A valid generator failure kind
-      is copied unchanged into the outer worker classification, while a malformed or empty nested
-      envelope keeps the parent-authored five-field shape with validation: not-performed and maps to
-      the outer worker envelope-contract-violation classification. A recovered materialization
-      commits overview.state: current and clears both overview diagnostic keys; recovery metadata
-      never enters the generator result.
-
-      The overview SHALL present scope, target architecture, requirements, scenarios, interfaces,
-      method-level test assertions, file changes, delivery steps, and end-to-end traceability. Its
-      leading `## Target State` section SHALL be projected from design.md — `### Architecture Snapshot`
-      verbatim, `### File Manifest` recomputed by the deterministic net fold over tasks.md and
-      validated against the persisted design.md manifest (divergence is a blocking contradiction,
-      never silently preferring either side). Normative content is reproduced faithfully with sources
-      cited; gaps are reported; blocking contradictions fail validation naming both sources and their
-      locations. The overview is validated for completeness and consistency before its single atomic
-      write.
+      Generation runs in a budget-routed subagent executing the shared overview-generation
+      instruction at sai/commands/design/change-overview.md — the single source of the generation
+      contract — at the sai-2 feedback gate's Continue processing (deferred materialization), with
+      exactly one regeneration per later effective source-modifying design-worker transaction and a
+      persisted overview.state in the change's .openspec.yaml
+      (unmaterialized | materializing | failed | current | stale). For the normative generation
+      contract — section organization, fidelity rules, pre-write validation, the closed five-field
+      generator result envelope, and failure-handling — Fetch and follow
+       sai/commands/design/change-overview.md exactly. This instruction is an informative reference
+       only; it does not restate the generation contract.
+       The closed generator result contains exactly these five fields: status, changed_files,
+       validation, failure_details, and failure_kind.
     requires: [interfaces]
 
   - id: implementation

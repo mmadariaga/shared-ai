@@ -481,3 +481,14 @@ After the automatic loop settles, the coordinator-owned prose feedback gate rema
 
 **STOP & COMMIT:** Stage and commit after Automated checks pass. No browser verification required at this step.
 )
+
+## Appendix: Execution Telemetry
+
+| Step | dispatch | phase | attempts | first_failure | note |
+|---|---|---|---|---|---|
+| 1 | red | red | 1 | n/a | RED tests authored and verified as an assertion failure |
+| 1 | green | green | 1 | n/a | GREEN policy implementation passed after bounded recovery |
+| 2 | red | red | 1 | n/a | RED site-pin tests authored and verified as an assertion failure |
+| 2 | green | green | 1 | other | Explicit parameter pins resolved structural extraction mismatch |
+| 3 | red | red | 1 | n/a | RED coexistence tests authored and verified as an assertion failure |
+| 3 | green | green | 1 | n/a | Worker prose and full suite passed |
