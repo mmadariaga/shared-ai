@@ -54,13 +54,15 @@ Defer the ordinary user-facing gate while another review round is required. When
 
 ## Present the gate (interactive mode)
 
-The following presentation applies only when `mode` is `interactive` or omitted (omitted mode defaults to interactive). In supervised mode, do not present the option-picker or this user-facing gate; follow [Supervised mode is a sequencing auto-proceed, not gate removal](#supervised-mode-is-a-sequencing-auto-proceed-not-gate-removal) instead.
+The following presentation applies only when `mode` is `interactive` or omitted (omitted mode defaults to interactive). In `mode = supervised`, neither the review-loop note nor the interactive question is emitted or presented; do not present the option-picker or this user-facing gate; follow [Supervised mode is a sequencing auto-proceed, not gate removal](#supervised-mode-is-a-sequencing-auto-proceed-not-gate-removal) instead.
 
 ### Interactive mode (`mode = interactive` or omitted)
 
 The interactive gate keeps the existing picker mapping and ordering: `Give feedback (Recommended)` is emitted before `proceed-label` on iteration 0 (`Finish step` for sai-1 and `Continue` for sai-2), with the exact labels and descriptions below.
 
 Present exactly two choices through the harness's native option-picker per the "Closed-choice prompts" rule in `sai/policies/remember.md`. The question text is:
+
+Immediately before the question below, emit one non-option informational note explaining that the user can use the literal command `sai-explore` with the literal `review-loop` token to obtain an artifact review and paste the findings here. This note is not a third picker option, feedback input, approval, or progress event. Render the surrounding prose in the user's language per `sai/policies/remember.md`; keep only the literal command `sai-explore` and token `review-loop` verbatim in English.
 
 > Share your feedback on {artifacts} below. You can also type feedback directly in the free-text box.
 
@@ -124,7 +126,7 @@ When `mode = supervised`, do not wait for a user selection and do not execute th
 When `mode = supervised` and the deferred-gate condition resolves (review-round convergence, three-round cap exhaustion, or an empty findings array), the gate remains after the existing decision summary and applies the following sequence:
 
 1. Require the `next-action` supplied by the current fetching body. Execute that supplied action exactly once — do not substitute a standalone coordinator action, infer a different action, or execute it again.
-2. Do not present the option-picker, feedback option, proceed option, empty-turn prompt, or direct free-text channel. Do not accept a free-text reply and do not increment the in-conversation iteration counter; it remains 0 for the supervised run.
+2. Do not present the option-picker, review-loop note, interactive question, feedback option, proceed option, empty-turn prompt, or direct free-text channel. Do not accept a free-text reply and do not increment the in-conversation iteration counter; it remains 0 for the supervised run.
 3. Do not ask for approval and do not write approval state or any other value to `.openspec.yaml`. This remains a sequencing action, not an approval gate.
 4. Auto-proceed only on a live phase path whose result is neither `failed` nor `cancelled`. A `failed` or `cancelled` result SHALL never auto-proceed and SHALL NOT execute `next-action`; it SHALL stop the supervised path without advancing to the next phase or creating an advance path around that result.
 5. Preserve the fetching body's existing report order: the decision summary remains first, the supplied `next-action` runs next, and any existing post-proceed report is emitted after that action. The gate MUST NOT move a post-proceed report before auto-proceed and MUST NOT add suppression chatter of its own.
