@@ -70,13 +70,13 @@ The shared close SHALL emit, in this order and exactly once per crystallization 
 1. One keep-window-open recommendation outside the handoff block, rendered under the existing language-gate rule and naming the literal `review-loop` exactly once.
 2. One harness-native two-option crystallization-close selector offering `Auto` before `Manual`.
 
-The recommendation SHALL be plain conversational text rendered in the user's language under the existing language-gate rule, while both literal tokens remain verbatim; this delta SHALL NOT change the language-gate behavior. `review-loop` remains a standing user-triggered path while the selector governs only delegated execution. The recommendation SHALL remain before the selector, and the selector SHALL remain the final emission of this slice's turn. Selecting `Manual`, or giving an answer that maps to neither selector option, SHALL refer to this already-emitted recommendation and SHALL NOT re-emit a second recommendation or selector. Item 10 SHALL describe that branch by reference to this shared rule. The separate next-step instruction (including `Open a new chat and run /sai-1-spec` and the sliced first-block instruction) remains in its existing pre-selector position in this slice; relocating it to a post-answer `Manual` slot is deferred to a later slice. The recommendation SHALL NOT alter any `Ready to Propose` block, its `---` payload boundary, or its language-gate invariants.
+The recommendation SHALL be plain conversational text rendered in the user's language under the existing language-gate rule, while the agreed literals remain verbatim. `review-loop` remains a standing user-triggered path while the selector governs only delegated execution. The recommendation SHALL remain before the selector. The selector SHALL be the final emission of the shared close and the crystallization turn; a later answer is a separate response turn. Selecting `Manual`, or giving an answer that maps to neither selector option, SHALL refer to this already-emitted recommendation, SHALL dispatch nothing, and SHALL receive the path-specific existing next-step instruction exactly once after the selector response. The path-specific instruction SHALL NOT be emitted before the selector or re-emit the recommendation or selector. Item 10 SHALL describe that branch by reference to this shared rule. Only `/sai-1-spec`, `/sai-2-design`, and `review-loop` remain verbatim English; surrounding next-step prose follows the crystallization language gate. The recommendation SHALL NOT alter any `Ready to Propose` block, its `---` payload boundary, or its language-gate invariants.
 
 #### Scenario: single-change handoff uses the shared close
 
 - **WHEN** `sai-explore` emits the single-change `Ready to Propose` block
 - **THEN** item 5 uses the shared close definition
-- **AND** the existing `Open a new chat` next-step instruction remains after the `---` separator and before the close sequence
+- **AND** the existing `Open a new chat` next-step instruction is not emitted between the `---` separator and the selector
 - **AND** one keep-window recommendation using the existing language rule and naming `review-loop` exactly once precedes one selector offering `Auto` before `Manual`
 - **AND** the selector is the final emission of this slice's turn
 
@@ -87,22 +87,23 @@ The recommendation SHALL be plain conversational text rendered in the user's lan
 - **AND** one keep-window recommendation using the existing language rule precedes one selector after the final block
 - **AND** the selector is emitted once for the whole slice set and is the final emission of this slice's turn
 - **AND** the recommendation and selector are not repeated for an earlier slice
-- **AND** the existing instruction to take the first block to a new chat with `/sai-1-spec` remains unchanged in this slice
+- **AND** the instruction to take the first block to a new chat with `/sai-1-spec` is emitted exactly once after a `Manual` or unmapped selector response, while later slices remain separate follow-up changes
 
 #### Scenario: inline proposal refusal uses the shared close
 
 - **WHEN** the user asks to create a proposal or run `/sai-1-spec` inline and the paste-ready block(s) are emitted
 - **THEN** item 7 uses the shared close definition
-- **AND** the existing isolation rationale and next-step wording remain unchanged in this slice
-- **AND** no post-`Manual` relocation or new in-session proposal dispatch is introduced by this slice
+- **AND** the copy/start-new-chat next-step clause with `/sai-1-spec` is emitted exactly once after a `Manual` or unmapped selector response
+- **AND** no in-session proposal dispatch is introduced
 - **AND** the existing recommendation precedes the selector, which remains the final emission of this slice's turn
 
-#### Scenario: Manual refers to the existing recommendation once
+#### Scenario: Manual refers to the existing recommendation once and moves the handoff after the selector
 
 - **WHEN** the user selects `Manual` or gives an unmapped answer to the selector
 - **THEN** no worker is dispatched
 - **AND** the recommendation was already emitted once before the selector
 - **AND** no second recommendation or selector is emitted as part of that answer
+- **AND** the existing path-specific next-step instruction is emitted once after the selector response
 - **AND** the existing selector re-invocation behavior remains available on a later explicit request
 
 #### Scenario: the close does not alter the handoff payload

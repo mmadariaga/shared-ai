@@ -8,7 +8,7 @@ Define the crystallization-close selector that explicitly authorizes supervised 
 
 ### Requirement: Emit the crystallization-close selector
 
-`sai-explore` SHALL emit exactly one harness-native two-option selector after the shared close's one keep-window-open recommendation, as the final emission of the crystallization turn defined by `explore-crystallization-block`. The selector SHALL be emitted after every single-change, sliced-final, and inline-refusal crystallization handoff; `Auto` MUST precede `Manual`, and `Auto` SHALL be the sole supervised pipeline entry.
+`sai-explore` SHALL emit exactly one harness-native two-option selector after the shared close's one keep-window-open recommendation, as the final emission of the shared close and crystallization turn defined by `explore-crystallization-block`. The selector SHALL be emitted after every single-change, sliced-final, and inline-refusal crystallization handoff; `Auto` MUST precede `Manual`, and `Auto` SHALL be the sole supervised pipeline entry. A response to the selector is a separate turn; only the Manual/unmapped branch may emit its path-specific next-step handoff after that response, and that handoff is not part of the crystallization close.
 
 #### Scenario: crystallization closes
 
@@ -25,7 +25,7 @@ Define the crystallization-close selector that explicitly authorizes supervised 
 
 ### Requirement: Authorize Auto dispatch
 
-Selecting `Auto` SHALL authorize the existing supervised `sai-1` and `sai-2` lifecycle using `last_crystallization_set` while preserving worker-owned writes, review rounds, chaining, retries, and the existing terminal behavior. Successful Auto completion SHALL emit no next-step line and SHALL NOT dispatch a later implementation phase; the existing silence after the applicable terminal report remains intentional in this slice.
+Selecting `Auto` SHALL authorize the existing supervised `sai-1` and `sai-2` lifecycle using `last_crystallization_set` while preserving worker-owned writes, review rounds, chaining, retries, and the existing terminal behavior. Successful Auto completion SHALL emit no next-step line and SHALL NOT dispatch a later implementation phase. When a selected Auto run returns `failed` or `cancelled`, explore SHALL emit exactly one localized user-facing guidance line naming the phase at which the run stopped: `/sai-1-spec` when the selected name was routed to the spec phase because it was absent from `specs_converged_changes`, or `/sai-2-design` when it was routed to a design-phase retry because it was present in `specs_converged_changes` and absent from `completed_changes`. The phase-specific line SHALL not dispatch a later implementation phase, change the retry state, or introduce another state key.
 
 #### Scenario: Auto is selected
 
@@ -43,12 +43,12 @@ Selecting `Auto` SHALL authorize the existing supervised `sai-1` and `sai-2` lif
 
 - **WHEN** the selected Auto run returns `failed` or `cancelled`
 - **THEN** explore does not facilitate a later implementation phase
-- **AND** it emits no new user-facing guidance or later-phase handoff in this slice
+- **AND** it emits exactly one localized guidance line naming the applicable stopped phase
 - **AND** the change remains retryable under the existing Auto state rules
 
 ### Requirement: Define Manual behavior
 
-Selecting `Manual` SHALL dispatch nothing and SHALL NOT change supervision state. An unmapped free-text answer MUST be treated as `Manual`. The `Manual` branch SHALL refer to the one existing keep-window recommendation already emitted before the selector, naming `review-loop` exactly once; it SHALL not emit a second recommendation or selector for the same answer. `Manual` SHALL remain re-invocable without a cap when the user later asks to see or run the supervised pipeline selector.
+Selecting `Manual` SHALL dispatch nothing and SHALL NOT change supervision state. An unmapped free-text answer MUST be treated as `Manual`. The `Manual` branch SHALL refer to the one existing keep-window recommendation already emitted before the selector, naming `review-loop` exactly once; it SHALL not emit a second recommendation or selector for the same answer. After the selector response, the branch SHALL emit the path-specific existing next-step handoff exactly once. The literals `/sai-1-spec`, `/sai-2-design`, and `review-loop` SHALL remain verbatim English; surrounding handoff prose SHALL follow the selected crystallization language. `Manual` SHALL remain re-invocable without a cap when the user later asks to see or run the supervised pipeline selector; each such later Manual/unmapped response SHALL receive its own one-time path-specific handoff.
 
 #### Scenario: Manual is selected
 
@@ -57,6 +57,7 @@ Selecting `Manual` SHALL dispatch nothing and SHALL NOT change supervision state
 - **AND** no supervision state is changed
 - **AND** the already-emitted keep-window recommendation remains the sole recommendation naming `review-loop` exactly once
 - **AND** no second recommendation or selector is emitted for the same answer
+- **AND** the applicable path-specific `/sai-1-spec` next-step handoff is emitted exactly once after the selector response
 
 #### Scenario: free text maps to Manual
 
@@ -65,6 +66,7 @@ Selecting `Manual` SHALL dispatch nothing and SHALL NOT change supervision state
 - **AND** no worker is dispatched
 - **AND** the already-emitted keep-window recommendation remains the sole recommendation naming `review-loop` exactly once
 - **AND** no second recommendation or selector is emitted for the same answer
+- **AND** the applicable path-specific `/sai-1-spec` next-step handoff is emitted exactly once after the selector response
 
 #### Scenario: Manual is requested again later
 

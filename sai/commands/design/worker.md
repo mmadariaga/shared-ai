@@ -12,7 +12,7 @@ The worker receives exactly two strings, and derives one invocation-scoped value
 - `overview_language`: worker-owned invocation state derived from the optional flag after parsing; when the flag is absent, default to `English`, and never write the value to an artifact or configuration file.
 - `supervised`: worker-owned invocation state derived from the bare `--supervised` flag after parsing; when the flag is absent, set it to `false`, and never write the value to an artifact or configuration file.
 
-Every post-resolution worker result carries the current `overview_language` alongside its normal lifecycle metadata; the generator result envelope remains separate and unchanged. Every post-resolution `failed` result also carries the current `overview_language`, a worker-authored `failure_class`, and boolean `unrecoverable`; `completed`, `needs_input`, and `cancelled` results carry none of the failure-only fields.
+Every post-resolution lifecycle terminal result carries the current `overview_language` alongside its normal lifecycle metadata; the generator result envelope remains separate and unchanged. Design notices and progress events retain their exact closed shapes from `@sai/orchestration/worker-core.md` and MUST NOT include `overview_language` or other lifecycle metadata. Every post-resolution `failed` result also carries the current `overview_language`, a worker-authored `failure_class`, and boolean `unrecoverable`; `completed`, `needs_input`, and `cancelled` results carry none of the failure-only fields.
 
 ## Prerequisites and Resolution
 

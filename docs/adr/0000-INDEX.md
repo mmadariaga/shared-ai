@@ -164,6 +164,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0149 — Structural tests co-land with the instruction sources they pin](./0149-structural-tests-co-land-with-instruction-sources.md) — Refs 0070
 - [0150 — Supervised visible reports stay post-proceed (fetching-body order)](./0150-supervised-visible-reports-stay-post-proceed.md) — Refs 0147, Refs ddr:0150
 - [0158 — Single shared crystallization-turn close definition consumed by items 5, 6, and 7](./0158-single-shared-crystallization-turn-close.md) — Refs 0146
+- [0159 — Path-specific next-step lives only on Manual/unmapped after the selector](./0159-path-specific-next-step-after-manual-selector.md) — **Amends** 0158, Refs 0146
 
 ### `/sai-backfill`
 
@@ -458,6 +459,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0137 — The stage-advancement token is the literal next-step](./0137-stage-advancement-token-literal-next-step.md)
 - [0140 — Active review-loop exit reuses the existing token matcher](./0140-active-review-loop-exit-reuses-existing-token-matcher.md)
 - [0146 — A two-option crystallization-close selector replaces the literal `start-pipeline` token](./0146-crystallization-close-selector-replaces-the-pipeline-token.md) — **Reverses** ddr:0053, **Reverses** 0058, Refs 0140
+- [0159 — Path-specific next-step lives only on Manual/unmapped after the selector](./0159-path-specific-next-step-after-manual-selector.md) — **Amends** 0158, Refs 0146
 
 ### Artifact metadata & routing tokens
 
@@ -509,6 +511,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 | [0146](./0146-crystallization-close-selector-replaces-the-pipeline-token.md) | reverses | [0053](../ddr/0053-post-crystallization-review-once-per-turn.md) |
 | [0146](./0146-crystallization-close-selector-replaces-the-pipeline-token.md) | reverses | [0058](./0058-gate-ux-tweaks-as-deltas-against-existing-capabilities.md) |
 | [0150](./0150-recovery-pool-segment-scoped-under-composition.md) | amends | [0139](./0139-presence-only-bounded-recovery-policy.md) |
+| [0159](./0159-path-specific-next-step-after-manual-selector.md) | amends | [0158](./0158-single-shared-crystallization-turn-close.md) |
 
 ## Superseded ADRs (historical)
 
