@@ -468,10 +468,10 @@ After the automatic loop settles, the coordinator-owned prose feedback gate rema
 ##### Step 3 Verification Checklist
 
 **Automated (agent runs before stopping):**
-- [ ] RED verified — worker coexistence mode pins fail against pre-edit workers
-- [ ] GREEN verified — three structural suites pass
-- [ ] Full `npm test` passes
-- [ ] Spec and design workers cross-reference mode-dependent gate behavior; coordinators still omit `mode`; standalone design next-action remains completion sentence (not explore overview generation)
+- [x] RED verified — worker coexistence mode pins fail against pre-edit workers
+- [x] GREEN verified — three structural suites pass
+- [x] Full `npm test` passes
+- [x] Spec and design workers cross-reference mode-dependent gate behavior; coordinators still omit `mode`; standalone design next-action remains completion sentence (not explore overview generation)
 
 *(No Human checks — service-side documentation step with no observable browser behavior.)*
 

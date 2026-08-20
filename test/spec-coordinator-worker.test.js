@@ -489,3 +489,39 @@ test('Step 1: spec artifact feedback gate uses explicit modes while the coordina
   );
   assert.doesNotMatch(gateUse, /(?:^|[\s,(`])mode\s*[:=]/i);
 });
+
+test('Step 3: spec worker documents mode-dependent gate coexistence without mode-aware workers', () => {
+  const worker = artifact(SPEC_COORDINATOR_ARTIFACTS.worker);
+  const coordinator = artifact(SPEC_COORDINATOR_ARTIFACTS.coordinator);
+
+  assert.match(
+    worker,
+    /coexists? with and never replaces the supervised pipeline/i,
+    'the spec worker should retain coexistence with the supervised pipeline',
+  );
+  assert.match(
+    worker,
+    /mode[- ]dependent[\s\S]{0,280}(?:interactive[\s\S]{0,140}supervised|supervised[\s\S]{0,140}interactive)[\s\S]{0,220}gate/i,
+    'the spec worker should describe mode-dependent interactive/supervised gate behavior',
+  );
+  assert.match(
+    worker,
+    /workers?[\s\S]{0,180}(?:do not|must not|shall not|never)[\s\S]{0,180}receive[\s\S]{0,100}mode/i,
+    'spec workers should not receive mode',
+  );
+  assert.match(
+    worker,
+    /workers?[\s\S]{0,180}(?:do not|must not|shall not|never)[\s\S]{0,180}branch[\s\S]{0,100}mode/i,
+    'spec workers should not branch on mode',
+  );
+  assert.match(
+    worker,
+    /workers?[\s\S]{0,180}(?:do not|must not|shall not|never)[\s\S]{0,180}evaluat[\s\S]{0,100}mode/i,
+    'spec workers should not evaluate mode',
+  );
+  assert.doesNotMatch(
+    coordinator,
+    /(?:^|[\s,(`])mode\s*[:=]\s*(?:interactive|supervised)/i,
+    'the standalone spec coordinator should omit mode from its gate invocation',
+  );
+});

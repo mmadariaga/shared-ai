@@ -1551,3 +1551,49 @@ test('Step 1: design artifact feedback gate uses explicit modes while the coordi
   );
   assert.doesNotMatch(gateUse, /(?:^|[\s,(`])mode\s*[:=]/i);
 });
+
+test('Step 3: design worker documents mode-dependent gate coexistence without mode-aware workers', () => {
+  const worker = artifact('sai/commands/design/worker.md');
+  const coordinator = artifact('sai/commands/design/coordinator.md');
+
+  assert.match(
+    worker,
+    /coexists? with and never replaces the supervised pipeline/i,
+    'the design worker should retain coexistence with the supervised pipeline',
+  );
+  assert.match(
+    worker,
+    /mode[- ]dependent[\s\S]{0,280}(?:interactive[\s\S]{0,140}supervised|supervised[\s\S]{0,140}interactive)[\s\S]{0,220}gate/i,
+    'the design worker should describe mode-dependent interactive/supervised gate behavior',
+  );
+  assert.match(
+    worker,
+    /workers?[\s\S]{0,180}(?:do not|must not|shall not|never)[\s\S]{0,180}receive[\s\S]{0,100}mode/i,
+    'design workers should not receive mode',
+  );
+  assert.match(
+    worker,
+    /workers?[\s\S]{0,180}(?:do not|must not|shall not|never)[\s\S]{0,180}branch[\s\S]{0,100}mode/i,
+    'design workers should not branch on mode',
+  );
+  assert.match(
+    worker,
+    /workers?[\s\S]{0,180}(?:do not|must not|shall not|never)[\s\S]{0,180}evaluat[\s\S]{0,100}mode/i,
+    'design workers should not evaluate mode',
+  );
+  assert.doesNotMatch(
+    coordinator,
+    /(?:^|[\s,(`])mode\s*[:=]\s*(?:interactive|supervised)/i,
+    'the standalone design coordinator should omit mode from its gate invocation',
+  );
+  assert.match(
+    coordinator,
+    /Design done in openspec\/changes\/\{name\}\/\. Run \\?`\/sai-3-implement \{name\}\\?` \*\*in a new chat\*\* when ready\./i,
+    'standalone design completion should end with the Continue handoff sentence',
+  );
+  assert.doesNotMatch(
+    coordinator,
+    /(?:mode\s*[:=]\s*supervised[\s\S]{0,360}(?:overview-generation|change-overview)|(?:overview-generation|change-overview)[\s\S]{0,360}mode\s*[:=]\s*supervised)/i,
+    'standalone design should not couple supervised mode to overview generation',
+  );
+});
