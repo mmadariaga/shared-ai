@@ -205,11 +205,17 @@ test('step 1 the review carve-out covers only the spec and design plans; a revie
   assert.match(source, /reconcil(?:es|ed)[\s\S]{0,160}completed|completed[\s\S]{0,160}normally/i);
 });
 
-test('step 1 the shared finding contract surface lists worker-owned spec and design artifact reviewers and keeps the five-field finding shape with base tally', () => {
+test('step 7 todo policy conditionally enumerates the worker-owned loop and omits it under --supervised while retaining the finding contract', () => {
   const source = findingContract();
+  const todo = policy();
 
-  assert.match(source, /artifact reviewer/i);
-  assert.match(source, /(?:spec|design)[\s\S]{0,80}(?:artifact )?reviewer|(?:artifact )?reviewer[\s\S]{0,80}(?:spec|design)/i);
+  assert.doesNotMatch(todo, /worker[- ]owned[\s\S]{0,220}(?:review loop|review pass)/i,
+    'the todo policy should remain limited to progress-list semantics');
+  assert.match(source, /automatic worker-owned planning-artifact review loop[\s\S]{0,260}--supervised/i,
+    'the artifact review contract should enumerate the supervised conditional surface');
+
+  assert.match(source, /artifact review/i);
+  assert.match(source, /(?:spec|design)[\s\S]{0,120}(?:artifact )?review|(?:artifact )?review[\s\S]{0,120}(?:spec|design)/i);
   assert.match(source, /worker[- ]owned|owned by the worker/i);
   assert.match(source, /five[- ]field|five fields/i);
   assert.match(source, /base tally|Summary:/i);

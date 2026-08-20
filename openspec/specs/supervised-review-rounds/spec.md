@@ -6,27 +6,33 @@ TBD - seeded from delta spec `supervised-review-rounds` in change `supervised-in
 
 ## Requirements
 
-### Requirement: one-round-cap-per-phase
+### Requirement: three-round-cap-per-phase
 
-The supervised pipeline SHALL run at most one review round per phase. The cap SHALL be per phase: the spec phase's round and the design phase's round are counted separately under distinct phase counters. The heavy convergence work belongs to the worker-owned isolated review loop; the supervised round is a single in-session cross-check. The initial round is round one; a round consists of one in-session engine review plus the phase worker's processing of every finding that review returns. Per-finding processing SHALL NOT increment the round count; a round SHALL be counted once however many per-finding continuation steps it takes.
+The supervised pipeline SHALL run at most three rounds per phase per Auto attempt. This is a three-round budget for each phase on each Auto attempt: the spec phase's rounds and the design phase's rounds are counted separately under distinct phase counters, and those counters SHALL reset to zero at the start of each new Auto attempt for that phase. Rounds consumed in an earlier failed or cancelled attempt SHALL NOT count against a later attempt's three-round bound. Under selector-dispatched supervision the worker-owned automatic review loop is suppressed, so these in-session rounds are the sole automatic convergence mechanism for the phase; they are not a single cross-check layered on top of a co-running worker-owned loop. The initial round of an attempt is round one; a round consists of one in-session engine review plus the phase worker's processing of every finding that review returns. Per-finding processing SHALL NOT increment the round count; a round SHALL be counted once however many per-finding continuation steps it takes.
 
-#### Scenario: spec phase has its own one-round cap
+#### Scenario: spec phase has its own three-round cap
 
 - **WHEN** the supervised spec phase runs review rounds
-- **THEN** at most one round runs for the spec phase
+- **THEN** at most three rounds run for the spec phase
 - **AND** the spec phase's round counter is separate from the design phase's counter
 
-#### Scenario: design phase has its own one-round cap
+#### Scenario: design phase has its own three-round cap
 
 - **WHEN** the supervised design phase runs review rounds
-- **THEN** at most one round runs for the design phase
+- **THEN** at most three rounds run for the design phase
 - **AND** the design phase's round counter is separate from the spec phase's counter
 
 #### Scenario: per-finding continuations count once
 
 - **WHEN** one review round returns multiple findings that require separate worker continuations
 - **THEN** all of those continuations belong to the same round
-- **AND** they consume only the phase's single allowed round
+- **AND** they consume only one of the phase's allowed rounds
+
+#### Scenario: a second round runs after High findings while the cap permits
+
+- **WHEN** the first completed supervised round of a phase contains at least one `High` finding and fewer than three rounds have completed for that phase
+- **THEN** the pipeline SHALL dispatch a further round for that phase after machine-feedback processing
+- **AND** the phase counter SHALL still be bounded by three
 
 ### Requirement: each-round-rereads-from-disk
 
@@ -46,11 +52,17 @@ Every review round SHALL reread the phase's artifacts from disk through the engi
 
 ### Requirement: round-closes-the-bound
 
-A completed round containing at least one `High` finding SHALL NOT dispatch another round: under the one-round cap it closes the phase's bound as cap exhaustion after its findings are processed through the machine-feedback path. A completed round containing no `High` finding SHALL declare convergence: its `Medium` and `Low` findings SHALL still be processed through the machine-feedback path and SHALL remain visible, but they SHALL NOT dispatch another round. Each round's stop condition SHALL be judged only from that round's own fresh reads: a `High` finding freshly re-formed from the current round's disk reread — even when equivalent to a finding of an earlier round — SHALL count for the current round's stop condition, because earlier rounds' findings are not evidence and the coordinator does not carry findings forward as already handled.
+A completed round containing at least one `High` finding SHALL cause another round while the phase's three-round cap still permits one; when the third completed round still contains at least one `High` finding, the phase's bound closes as cap exhaustion after that round's findings are processed through the machine-feedback path. A completed round containing no `High` finding SHALL declare convergence at any round number within the cap: its `Medium` and `Low` findings SHALL still be processed through the machine-feedback path and SHALL remain visible, but they SHALL NOT dispatch another round. Each round's stop condition SHALL be judged only from that round's own fresh reads: a `High` finding freshly re-formed from the current round's disk reread — even when equivalent to a finding of an earlier round — SHALL count for the current round's stop condition, because earlier rounds' findings are not evidence and the coordinator does not carry findings forward as already handled.
 
-#### Scenario: High findings close the bound as cap exhaustion
+#### Scenario: High findings extend the loop while the cap permits
 
-- **WHEN** a completed review round contains at least one `High` finding
+- **WHEN** a completed review round contains at least one `High` finding and fewer than three rounds have completed for the phase
+- **THEN** the pipeline processes the round's findings through the machine-feedback path
+- **AND** it SHALL dispatch a further round while the three-round cap permits
+
+#### Scenario: High findings on the third round close the bound as cap exhaustion
+
+- **WHEN** the third completed review round contains at least one `High` finding
 - **THEN** the pipeline processes the round's findings through the machine-feedback path and dispatches no further round
 - **AND** the phase closes as non-failure cap exhaustion
 
@@ -74,17 +86,17 @@ A completed round containing at least one `High` finding SHALL NOT dispatch anot
 
 ### Requirement: cap-exhaustion-applies-last-round-findings
 
-When the phase's capped round still contains `High` findings, the pipeline SHALL process that round's findings through the machine-feedback path, SHALL NOT dispatch another round, and SHALL continue the run either way: a spec-phase cap exhaustion proceeds to the chained design phase, and a design-phase cap exhaustion proceeds to supervised completion. Cap exhaustion SHALL NOT be classified as a failure, SHALL NOT stop the run, and SHALL NOT assert that `High` findings remain in the resulting artifact state, because the last round's findings were applied and the resulting state was not re-read by a later round.
+When the phase's third capped round still contains `High` findings, the pipeline SHALL process that round's findings through the machine-feedback path, SHALL NOT dispatch another round, and SHALL continue the run either way: a spec-phase cap exhaustion proceeds to the chained design phase, and a design-phase cap exhaustion proceeds to supervised completion. Cap exhaustion SHALL NOT be classified as a failure, SHALL NOT stop the run, and SHALL NOT assert that `High` findings remain in the resulting artifact state, because the last round's findings were applied and the resulting state was not re-read by a later round.
 
 #### Scenario: spec cap exhaustion continues to design
 
-- **WHEN** the spec phase's capped round still contains `High` findings and its findings have been applied
+- **WHEN** the spec phase's third capped round still contains `High` findings and its findings have been applied
 - **THEN** the pipeline reports cap exhaustion and proceeds to the chained design phase
 - **AND** it does not classify the ending as failure and does not stop the run
 
 #### Scenario: design cap exhaustion continues to completion
 
-- **WHEN** the design phase's capped round still contains `High` findings and its findings have been applied
+- **WHEN** the design phase's third capped round still contains `High` findings and its findings have been applied
 - **THEN** the pipeline reports cap exhaustion and proceeds to supervised completion
 - **AND** it does not classify the ending as failure
 
@@ -96,7 +108,7 @@ When the phase's capped round still contains `High` findings, the pipeline SHALL
 
 ### Requirement: worker-failure-ends-cycle
 
-If the phase worker returns `failed` or `cancelled` mid-cycle, the review cycle SHALL end with that worker result, SHALL preserve the already-applied fixes, and SHALL NOT launch a review round over the half-finished state. A later `Auto` attempt SHALL begin a new one-round bound over the preserved artifact state rather than regenerate over accepted corrections.
+If the phase worker returns `failed` or `cancelled` mid-cycle, the review cycle SHALL end with that worker result, SHALL preserve the already-applied fixes, and SHALL NOT launch a review round over the half-finished state. Because the worker-owned automatic loop is suppressed under supervision, no automatic isolated-reviewer retry absorbs the failure. A later `Auto` attempt SHALL begin a new three-round bound over the preserved artifact state rather than regenerate over accepted corrections.
 
 #### Scenario: worker fails mid-cycle
 
@@ -104,11 +116,12 @@ If the phase worker returns `failed` or `cancelled` mid-cycle, the review cycle 
 - **THEN** the review cycle ends with that worker result
 - **AND** no review round is launched over the half-finished artifacts
 - **AND** the already-applied fixes are preserved
+- **AND** no automatic worker-owned reviewer is dispatched to absorb the failure
 
-#### Scenario: retry starts a new one-round bound
+#### Scenario: retry starts a new three-round bound
 
 - **WHEN** the user later selects the uncompleted change in a new `Auto` attempt
-- **THEN** the new attempt starts a new one-round bound over the preserved artifact state
+- **THEN** the new attempt starts a new three-round bound over the preserved artifact state with phase counters reset to zero
 - **AND** it does not regenerate in a way that overwrites accepted corrections from the interrupted attempt
 
 ### Requirement: manual-loop-counts-are-separate
@@ -119,7 +132,7 @@ Reviews run through the manual post-crystallization review loop (the `review-loo
 
 - **WHEN** the user reviews a change's artifacts through the manual review loop while the supervised pipeline also has round counters for that change
 - **THEN** the manual review does not increment the supervised pipeline's round counters
-- **AND** the supervised pipeline's one-round cap is unaffected by the manual review
+- **AND** the supervised pipeline's three-round cap is unaffected by the manual review
 
 #### Scenario: auto rounds do not consume manual-loop state
 

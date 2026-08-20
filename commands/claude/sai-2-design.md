@@ -1,8 +1,8 @@
 ---
 description: Generate design.md and tasks.md through the canonical coordinator contract and a routed design worker.
 argument-hint: "[change-name] [--overview-lang <language>] [--fast-track]"
-model: claude-opus-4-8
-effort: low
+model: opus
+effort: medium
 allowed-tools: Read, Glob, Skill, Agent, SendMessage, AskUserQuestion, TaskCreate, TaskUpdate, TaskGet, TaskList
 ---
 Fetch @skills/fetch/SKILL.md

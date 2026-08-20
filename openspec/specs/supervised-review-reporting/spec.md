@@ -8,23 +8,23 @@ TBD - seeded from delta spec `supervised-review-reporting` in change `supervised
 
 ### Requirement: cap-exhaustion-one-line-report
 
-When a phase's one-round cap is exhausted, the pipeline SHALL report cap exhaustion as one line carrying the last round's finding counts (the shared contract's base-form tally `Summary: High=<count> Medium=<count> Low=<count>` of the last completed round), and the run SHALL continue. The one-line report SHALL NOT assert that `High` findings remain in the current artifact state, SHALL NOT classify the outcome as failure, and SHALL NOT present remediation or retry prompts for it; the run simply continues to the next phase.
+When a phase's three-round cap is exhausted, the pipeline SHALL report cap exhaustion as one line carrying the last round's finding counts (the shared contract's base-form tally `Summary: High=<count> Medium=<count> Low=<count>` of the last completed round), and the run SHALL continue. The one-line report SHALL NOT assert that `High` findings remain in the current artifact state, SHALL NOT classify the outcome as failure, and SHALL NOT present remediation or retry prompts for it; the run simply continues to the next phase. Exhaustion is the third completed round of the phase's Auto attempt still containing at least one `High` finding after findings were applied, per `supervised-review-rounds`; this requirement owns only the report shape and continuation, not the counting rule.
 
 #### Scenario: cap exhaustion is reported as one line
 
-- **WHEN** a phase's one-round cap is exhausted after the last round's findings were applied
+- **WHEN** a phase's three-round cap is exhausted after the last round's findings were applied
 - **THEN** the pipeline reports one line carrying the last round's finding counts
 - **AND** the run continues without a failure classification or remediation prompt
 
 #### Scenario: spec cap exhaustion report precedes the design phase
 
-- **WHEN** the spec phase ends by cap exhaustion
+- **WHEN** the spec phase ends by three-round cap exhaustion
 - **THEN** the one-line report is emitted before the chained design phase proceeds
 - **AND** the run continues to design as if the review loop had not stopped
 
 #### Scenario: design cap exhaustion report precedes completion
 
-- **WHEN** the design phase ends by cap exhaustion
+- **WHEN** the design phase ends by three-round cap exhaustion
 - **THEN** the one-line report is emitted before supervised completion
 - **AND** the run ends through the ordinary terminal lifecycle
 

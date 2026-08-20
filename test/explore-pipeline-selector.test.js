@@ -216,7 +216,7 @@ test('iteration zero offers feedback after the supervised review rounds settle',
 
   assert.match(source, /empty findings array is a no-op/i);
   assert.match(source, /Defer the ordinary user-facing gate while another (?:review pass|review round) is required/i);
-  assert.match(source, /Present that gate for the first time, unchanged at iteration 0, only after the review round converges, exhausts? its one-round cap, or is interrupted by worker failure\./i);
+  assert.match(source, /Present that gate for the first time, unchanged at iteration 0, only after the review (?:round|loop) converges, exhausts? (?:its )?three-round cap, or is interrupted by worker failure\./i);
   assert.match(source, /first ordered labels remain.*Give feedback \(Recommended\).*proceed-label/i);
   assert.match(source, /iteration 0/);
 });
@@ -273,8 +273,8 @@ test('Step 1 explore adapters route only the permitted planning workers', () => 
    assert.doesNotMatch(claude, /allowed-tools:[^\n]*(?:^|,\s*)Write(?:,|\s|$)/m);
    assert.doesNotMatch(claude, /allowed-tools:[^\n]*(?:^|,\s*)Bash(?:,|\s|$)/m);
 
+     assert.match(opencode, /Fetch @sai\/commands\/explore\/launcher\.md/);
      assert.match(launcher, /Fetch @sai\/orchestration\/workers\/bindings\/spec-worker\.md/);
-    assert.match(opencode, /Fetch @sai\/commands\/explore\/launcher\.md/);
    assert.doesNotMatch(opencode, /Fetch @skills\/sai-1-spec-proposal-worker\/SKILL\.md/);
     assert.doesNotMatch(opencode, /Fetch @skills\/sai-2-design-worker\/SKILL\.md/);
     assert.doesNotMatch(opencode, /managed coordinator|reviewer[- ](?:binding|skill|agent)/i);
@@ -289,8 +289,8 @@ test('opencode explore adapter enables native task dispatch with both numbered p
   const source = fs.readFileSync(path.join(repoRoot, 'commands/opencode/sai-explore.md'), 'utf8');
   const launcher = fs.readFileSync(path.join(repoRoot, 'sai/commands/explore/launcher.md'), 'utf8');
 
-     assert.match(launcher, /Fetch @sai\/orchestration\/workers\/bindings\/spec-worker\.md/);
     assert.match(source, /Fetch @sai\/commands\/explore\/launcher\.md/);
+    assert.match(launcher, /Fetch @sai\/orchestration\/workers\/bindings\/spec-worker\.md/);
     assert.match(launcher, /Fetch @sai\/orchestration\/workers\/bindings\/design-worker\.md/);
    assert.doesNotMatch(source, /Fetch @skills\/sai-1-spec-proposal-worker\/SKILL\.md/);
    assert.doesNotMatch(source, /Fetch @skills\/sai-2-design-worker\/SKILL\.md/);
@@ -363,7 +363,7 @@ test('Step 1 defers the ordinary gate until review convergence, round cap, or in
   );
 
   assert.match(feedbackGate, /Defer the ordinary user-facing gate while another (?:review pass|review round) is required/i);
-  assert.match(feedbackGate, /Present that gate for the first time, unchanged at iteration 0, only after the review round converges, exhausts? its one-round cap, or is interrupted by worker failure\./i);
+  assert.match(feedbackGate, /Present that gate for the first time, unchanged at iteration 0, only after the review (?:round|loop) converges, exhausts? (?:its )?three-round cap, or is interrupted by worker failure\./i);
   assert.match(feedbackGate, /Its first ordered labels remain `Give feedback \(Recommended\)` followed by `proceed-label`/i);
 });
 
@@ -661,16 +661,18 @@ test('Step 2: an empty reference skips intent coverage but keeps the remaining a
     'review may be marked when High=0 even with an empty reference');
 });
 
-test('Step 2: worker review stays active under supervision without a routed task list', () => {
+test('Step 2: supervision suppresses automatic worker review without a routed task list or dual layer', () => {
   const worker = spec('sai/commands/spec/worker.md');
   const supervision = spec('sai/commands/explore/instructions.md');
 
-  assert.match(worker, /supervised pipeline/i,
+  assert.match(worker, /\bsupervised\b/i,
     'the worker contract should cover supervised invocation');
-  assert.match(worker, /coexists with and never replaces the supervised pipeline's (?:independent convergence loop|supervised review rounds|in[- ]session review rounds)/i,
-    'worker review should run in addition to the supervised rounds');
-  assert.match(worker, /`MachineFeedbackAdapter`/,
-    'the worker-owned loop should coexist with the MachineFeedbackAdapter');
+  assert.match(worker, /supervis(?:ed|ion)[\s\S]{0,280}(?:automatic|worker-owned)[\s\S]{0,180}(?:review|reviewer)[\s\S]{0,220}(?:suppressed|skipped|not run|disabled)|do not dispatch an automatic isolated reviewer|no automatic isolated reviewer is dispatched|automatic worker-owned review loop does not run/i,
+    'automatic worker review should be suppressed under supervision');
+  assert.doesNotMatch(worker, /coexists with and never replaces the supervised pipeline's (?:independent convergence loop|supervised review rounds|in[- ]session review rounds)/i,
+    'supervision must not retain a second worker-owned review layer');
+  assert.doesNotMatch(worker, /`MachineFeedbackAdapter`[\s\S]{0,180}(?:coexist|automatic review)/i,
+    'the automatic worker-owned loop must not coexist with the supervised loop');
   assert.match(supervision, /no adapter-declared plan is in force in the supervised flow/,
     'no routed progress plan should be in force under supervision');
   assert.match(supervision, /no plan-based list renders/,
@@ -681,14 +683,16 @@ test('Step 2: worker review stays active under supervision without a routed task
 
 // ─── Step 3: spec-design-review-progress-step (supervised design review) ────
 
-test('Step 3: supervised design keeps the worker-owned review and the supervised review rounds both active without routed-list marking', () => {
+test('Step 3: supervision suppresses automatic design review and keeps the supervised flow without routed-list marking', () => {
   const worker = spec('sai/commands/design/worker.md');
   const supervision = spec('sai/commands/explore/instructions.md');
 
-  assert.match(worker, /supervised pipeline/i,
+  assert.match(worker, /\bsupervised\b/i,
     'the design worker contract should cover supervised invocation');
-  assert.match(worker, /coexists with and never replaces the supervised pipeline's (?:independent convergence loop|supervised review rounds|in[- ]session review rounds)/i,
-    'the design worker-owned review should coexist with the supervised rounds');
+  assert.match(worker, /supervis(?:ed|ion)[\s\S]{0,280}(?:automatic|worker-owned)[\s\S]{0,180}(?:review|reviewer)[\s\S]{0,220}(?:suppressed|skipped|not run|disabled)|do not dispatch an automatic isolated reviewer|no automatic isolated reviewer is dispatched|automatic worker-owned review loop does not run/i,
+    'automatic design review should be suppressed under supervision');
+  assert.doesNotMatch(worker, /coexists with and never replaces the supervised pipeline's (?:independent convergence loop|supervised review rounds|in[- ]session review rounds)/i,
+    'supervision must not retain a second design-worker review layer');
   assert.match(worker, /(?:no|without|never)[\s\S]{0,160}(?:adapter-declared plan|routed list|plan-based list|step marking)/i,
     'the design worker should not mark routed list steps under supervision');
   assert.match(
@@ -701,6 +705,44 @@ test('Step 3: supervised design keeps the worker-owned review and the supervised
     /(?:design|sai-2)[\s\S]{0,240}no plan-based list renders|no plan-based list renders[\s\S]{0,240}(?:design|sai-2)/i,
     'no plan-based list should render in the supervised design flow'
   );
+});
+
+// ─── suppress-worker-review-under-supervision: Auto envelope pins (verify-first) ─
+test('Auto spec envelope carries leading --supervised with empty wrapper echo', () => {
+  const source = spec('sai/commands/explore/instructions.md');
+  assert.match(source, /wrapper_echo_value:\s*""\s*\n\s*arguments_value:[\s\S]{0,80}--supervised/, 'spec Auto dispatch should leave wrapper_echo_value empty and put --supervised on arguments_value');
+  assert.match(source, /arguments_value:[\s\S]{0,200}--supervised[\s\S]{0,200}Ready to Propose|arguments_value[\s\S]{0,120}line `--supervised`[\s\S]{0,200}Ready to Propose/i, 'spec arguments_value should begin with --supervised ahead of the Ready-to-Propose body');
+  assert.doesNotMatch(source, /wrapper_echo_value:\s*"--supervised"/, 'explore must not carry the marker as a bare non-empty wrapper echo');
+});
+
+test('Auto chained design envelope carries --fast-track and --supervised', () => {
+  const source = spec('sai/commands/explore/instructions.md');
+  assert.match(source, /arguments_value:\s*"\{name\} --fast-track --supervised"/, 'chained design Auto envelope should be {name} --fast-track --supervised');
+  assert.match(source, /arguments_value:\s*"\{name\} --supervised --fast-track"/, 'chained design Auto envelope should also permit {name} --supervised --fast-track');
+  assert.match(source, /arguments_value:\s*"\{name\} --fast-track --supervised --overview-lang \{overview_language\}"/, 'language-bearing chained design should compose --supervised with --overview-lang');
+});
+
+test('Step 7: design grammar is name-first, accepts a bare supervised flag, and is order-independent after the name', () => {
+  const worker = spec('sai/commands/design/worker.md');
+
+  assert.match(worker, /(?:change[- ]name|name)[\s\S]{0,180}(?:first|required before|requires?[\s\S]{0,60}before|must precede)[\s\S]{0,180}(?:flag|option|--supervised)/i,
+    'the design grammar should require the change name before flags');
+  assert.match(worker, /bare[\s\S]{0,100}`?--supervised`?|`?--supervised`?[\s\S]{0,100}bare/i,
+    'the design grammar should recognize the bare --supervised flag');
+  assert.match(worker, /(?:either order|order[- ]independent|in any order|regardless of order)[\s\S]{0,180}(?:--fast-track|--supervised)|(?:--fast-track|--supervised)[\s\S]{0,180}(?:either order|order[- ]independent|in any order|regardless of order)/i,
+    'the design flags should be order-independent after the name');
+  assert.match(worker, /\{name\} --fast-track --supervised/,
+    'the design grammar should accept fast-track before supervised');
+  assert.match(worker, /\{name\} --supervised --fast-track/,
+    'the design grammar should accept supervised before fast-track');
+  assert.match(worker, /(?:under|when)[\s\S]{0,80}supervis(?:ed|ion)[\s\S]{0,280}(?:automatic|worker-owned)[\s\S]{0,180}(?:review|reviewer)[\s\S]{0,220}(?:suppressed|skipped|not run|disabled)|do not dispatch an automatic isolated reviewer|no automatic isolated reviewer is dispatched|automatic worker-owned review loop does not run/i,
+    'the design supervised gate should suppress automatic review');
+});
+
+test('design-phase retry carries --supervised and does not re-run sai-1', () => {
+  const source = spec('sai/commands/explore/instructions.md');
+  assert.match(source, /design-phase retry[\s\S]{0,800}--supervised|retry[\s\S]{0,400}--supervised[\s\S]{0,400}design/i, 'design-phase retry must carry --supervised');
+  assert.match(source, /design-phase retry[\s\S]{0,500}never dispatch sai-1|never[\s\S]{0,80}regenerate `proposal\.md`|does not re-dispatch the sai-1/i, 'design-phase retry must not re-dispatch sai-1 or regenerate proposal/specs');
 });
 
 // ─── Step 1: supervised-review-in-session (in-session review rounds) ─
@@ -717,15 +759,50 @@ test('supervised review rounds invoke the Review Engine in-session without a rev
   assert.doesNotMatch(source, /IndependentReviewResult|IndependentReviewFinding/);
 });
 
-test('supervised review state uses separate phase round counters without findings history', () => {
+test('Step 7: supervised rounds allow three rounds per attempt, High extension under cap, third-High exhaustion, and reset on a new attempt', () => {
   const source = spec('sai/commands/explore/instructions.md');
 
   assert.match(source, /review_rounds/);
   assert.match(source, /review_rounds[\s\S]{0,180}(?:`?spec`?|"spec")[\s\S]{0,180}(?:`?design`?|"design")|(?:`?spec`?|"spec")[\s\S]{0,180}review_rounds[\s\S]{0,180}(?:`?design`?|"design")/i);
   assert.doesNotMatch(source, /\breview_passes\b/);
   assert.doesNotMatch(source, /\bfinding_history\b/);
-  assert.match(source, /review rounds? (?:at most once|once while)|runs at most once/i);
+  assert.match(source, /three[- ]rounds?(?:[\s\S]{0,180}(?:per|each) attempt)|(?:per|each) attempt[\s\S]{0,180}(?:three|3)[\s\S]{0,100}round/i,
+    'each supervised attempt should have a three-round budget');
+  assert.match(source, /High[\s\S]{0,300}(?:extends?|continues?|requires another|next)[\s\S]{0,260}(?:round|pass)[\s\S]{0,220}(?:cap|third|three|permit)/i,
+    'High findings should extend the loop while the attempt cap permits');
+  assert.match(source, /(?:third|3rd|round 3|third round)[\s\S]{0,300}High[\s\S]{0,300}(?:exhaust|cap|stop)|High[\s\S]{0,300}(?:third|3rd|round 3|third round)[\s\S]{0,300}(?:exhaust|cap|stop)/i,
+    'a High finding on the third round should exhaust the attempt');
+  assert.match(source, /(?:new|next) attempt[\s\S]{0,260}(?:reset|starts?)[\s\S]{0,180}(?:review_rounds|round counter)[\s\S]{0,120}(?:`?0`?|zero)|(?:review_rounds|round counter)[\s\S]{0,140}(?:`?0`?|zero)[\s\S]{0,260}(?:new|next) attempt/i,
+    'a new attempt should reset phase round counters to zero');
+  assert.doesNotMatch(source, /at most one[\s\S]{0,80}(?:supervised )?(?:review|round)/i,
+    'the live supervised contract must not impose an at-most-one review cap');
   assert.match(source, /manual (?:review|counters)[\s\S]{0,160}(?:separate|do not count|does not count|does not increment)|separate from supervised rounds/i);
+});
+
+test('Step 7: supervised spec and design counters remain zero and emit no automatic review event', () => {
+  const phases = [
+    spec('sai/commands/spec/worker.md'),
+    spec('sai/commands/design/worker.md'),
+  ];
+
+  for (const worker of phases) {
+    assert.match(worker, /(?:supervis(?:ed|ion)[\s\S]{0,260}(?:review counters?|counters?)[\s\S]{0,160}(?:remain|stay|reset)[\s\S]{0,80}(?:0|zero)|(?:both remain\s+`?0`?|automatic-loop counters?[\s\S]{0,180}(?:remain|stay|reset)[\s\S]{0,60}(?:`?0`?|zero)))/i,
+      'automatic-review counters should remain zero under supervision for both phase workers');
+    assert.match(worker, /supervis(?:ed|ion)[\s\S]{0,280}(?:automatic review|review event)[\s\S]{0,180}(?:no|not|never)[\s\S]{0,120}(?:event|emit|report)|do not emit automatic-path `?review`? progress|no automatic review progress event is emitted|automatic worker-owned review loop does not run/i,
+      'neither phase should emit an automatic review event under supervision');
+  }
+});
+
+test('non-supervised phase workers keep the automatic review loop and High=0 review mark', () => {
+  for (const worker of [
+    spec('sai/commands/spec/worker.md'),
+    spec('sai/commands/design/worker.md'),
+  ]) {
+    assert.match(worker, /(?:non[- ]supervised|when the invocation is not marked `?--supervised`?|without `?--supervised`?|when supervised is `?false`?|when\s+`?supervised\s*:\s*`?false`?)[\s\S]{0,280}(?:automatic review loop|worker-owned (?:review )?loop)/i,
+      'the automatic loop must remain available outside supervised invocation');
+    assert.match(worker, /High=0[\s\S]{0,300}(?:emit|report)[\s\S]{0,160}`?review`?/i,
+      'the non-supervised loop must retain its High=0 review mark');
+  }
 });
 
 test('supervised rounds preserve worker-owned edits and fresh disk evidence', () => {

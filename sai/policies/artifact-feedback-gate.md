@@ -50,7 +50,7 @@ When `mode` is `supervised`, machine processing likewise emits neither the picke
 
 If finding processing returns `needs_input`, the supervising coordinator must present the exact question and ordered options to the user, then continue the same worker with only the selected answer. Complete all findings for the current round before supervision evaluates whether another review round is required.
 
-Defer the ordinary user-facing gate while another review round is required. When `mode` is `interactive` or omitted, **Present that gate for the first time, unchanged at iteration 0, only after the review loop converges, exhausts its three-round cap, or is interrupted by worker failure.** Its first ordered labels remain `Give feedback (Recommended)` followed by `proceed-label` (for sai-1, `Finish step`). When `mode` is `supervised`, keep the gate deferred through the same review-round resolution, then apply the supervised sequencing rule instead of presenting the ordinary gate; a failed or cancelled result never advances by that rule.
+Defer the ordinary user-facing gate while another review round is required. When `mode` is `interactive` or omitted, **Present that gate for the first time, unchanged at iteration 0, only after the review loop converges, exhausts its three-round cap, or is interrupted by worker failure.** Its first ordered labels remain `Give feedback (Recommended)` followed by `proceed-label` (for sai-1, `Finish step`). When `mode` is `supervised`, keep the gate deferred through the same review-round resolution, then apply the supervised sequencing rule instead of presenting the ordinary gate; a failed or cancelled result never advances by that rule. The supervised bound is at most three rounds per phase per Auto attempt and resets for each new Auto attempt.
 
 ## Present the gate (interactive mode)
 
@@ -121,7 +121,7 @@ When `mode = supervised`, do not wait for a user selection and do not execute th
 
 ## Supervised mode is a sequencing auto-proceed, not gate removal
 
-When `mode = supervised` and the deferred-gate condition resolves (review-round convergence, one-round cap exhaustion, or an empty findings array), the gate remains after the existing decision summary and applies the following sequence:
+When `mode = supervised` and the deferred-gate condition resolves (review-round convergence, three-round cap exhaustion, or an empty findings array), the gate remains after the existing decision summary and applies the following sequence:
 
 1. Require the `next-action` supplied by the current fetching body. Execute that supplied action exactly once — do not substitute a standalone coordinator action, infer a different action, or execute it again.
 2. Do not present the option-picker, feedback option, proceed option, empty-turn prompt, or direct free-text channel. Do not accept a free-text reply and do not increment the in-conversation iteration counter; it remains 0 for the supervised run.
