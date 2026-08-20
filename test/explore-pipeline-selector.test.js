@@ -703,6 +703,26 @@ test('Step 3: supervised design keeps the worker-owned review and the supervised
   );
 });
 
+// ─── suppress-worker-review-under-supervision: Auto envelope pins (verify-first) ─
+test('Auto spec envelope carries leading --supervised with empty wrapper echo', () => {
+  const source = spec('sai/commands/explore/instructions.md');
+  assert.match(source, /wrapper_echo_value:\s*""\s*\n\s*arguments_value:[\s\S]{0,80}--supervised/, 'spec Auto dispatch should leave wrapper_echo_value empty and put --supervised on arguments_value');
+  assert.match(source, /arguments_value:[\s\S]{0,200}--supervised[\s\S]{0,200}Ready to Propose|arguments_value[\s\S]{0,120}line `--supervised`[\s\S]{0,200}Ready to Propose/i, 'spec arguments_value should begin with --supervised ahead of the Ready-to-Propose body');
+  assert.doesNotMatch(source, /wrapper_echo_value:\s*"--supervised"/, 'explore must not carry the marker as a bare non-empty wrapper echo');
+});
+
+test('Auto chained design envelope carries --fast-track and --supervised', () => {
+  const source = spec('sai/commands/explore/instructions.md');
+  assert.match(source, /arguments_value:\s*"\{name\} --fast-track --supervised"/, 'chained design Auto envelope should be {name} --fast-track --supervised');
+  assert.match(source, /arguments_value:\s*"\{name\} --fast-track --supervised --overview-lang \{overview_language\}"/, 'language-bearing chained design should compose --supervised with --overview-lang');
+});
+
+test('design-phase retry carries --supervised and does not re-run sai-1', () => {
+  const source = spec('sai/commands/explore/instructions.md');
+  assert.match(source, /design-phase retry[\s\S]{0,800}--supervised|retry[\s\S]{0,400}--supervised[\s\S]{0,400}design/i, 'design-phase retry must carry --supervised');
+  assert.match(source, /design-phase retry[\s\S]{0,500}never dispatch sai-1|never[\s\S]{0,80}regenerate `proposal\.md`|does not re-dispatch the sai-1/i, 'design-phase retry must not re-dispatch sai-1 or regenerate proposal/specs');
+});
+
 // ─── Step 1: supervised-review-in-session (in-session review rounds) ─
 
 test('supervised review rounds invoke the Review Engine in-session without a reviewer subagent', () => {

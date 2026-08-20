@@ -129,7 +129,7 @@ After the automatic loop settles — or when it was suppressed without running �
 
 - **Rule:** RED may only contain the failing test + minimal stubs/imports. Do NOT paste production explore instruction edits here.
 
-- [ ] Append the following new tests to `test/explore-pipeline-selector.test.js` (after the existing supervised-design worker-owned review tests ~line 704, before the in-session review rounds section). Do not edit `sai/commands/explore/instructions.md` in this step.
+- [x] Append the following new tests to `test/explore-pipeline-selector.test.js` (after the existing supervised-design worker-owned review tests ~line 704, before the in-session review rounds section). Do not edit `sai/commands/explore/instructions.md` in this step.
 
 ```javascript
 // ─── suppress-worker-review-under-supervision: Auto envelope pins (verify-first) ─
@@ -185,21 +185,21 @@ test('design-phase retry carries --supervised and does not re-run sai-1', () => 
 });
 ```
 
-- [ ] Verify RED: run `node --test test/explore-pipeline-selector.test.js` — expected: **assertion failure** on at least one of the three new pins against current production (which still uses `arguments_value: "<Ready to Propose block>"` without `--supervised` and design `{name} --fast-track` without `--supervised`). Failure must be assertion mismatch, not a syntax/import error.
-- [ ] **GATE — DO NOT PROCEED to GREEN until RED is verified.** If all three new pins already pass against production, stop and report: production already matches envelope shapes — Step 4 must still not drop them.
+- [x] Verify RED: run `node --test test/explore-pipeline-selector.test.js` — expected: **assertion failure** on at least one of the three new pins against current production (which still uses `arguments_value: "<Ready to Propose block>"` without `--supervised` and design `{name} --fast-track` without `--supervised`). Failure must be assertion mismatch, not a syntax/import error.
+- [x] **GATE — DO NOT PROCEED to GREEN until RED is verified.** If all three new pins already pass against production, stop and report: production already matches envelope shapes — Step 4 must still not drop them.
 
 ##### GREEN phase (only after RED is verified)
 
-- [ ] No additional production code in this step. GREEN is the committed pin file. Confirm the three tests remain in the suite and fail for the intended assertion reasons (or all pass only if production already matches).
+- [x] No additional production code in this step. GREEN is the committed pin file. Confirm the three tests remain in the suite and fail for the intended assertion reasons (or all pass only if production already matches).
 
-- [ ] Verify GREEN intent: `node --test test/explore-pipeline-selector.test.js` still documents the verify-first gate (RED failures are expected until Step 4). Record which pins failed.
+- [x] Verify GREEN intent: `node --test test/explore-pipeline-selector.test.js` still documents the verify-first gate (RED failures are expected until Step 4). Record which pins failed.
 
 ##### Step 3 Verification Checklist
 
 **Automated (agent runs before stopping):**
-- [ ] RED verified — new pins fail (or already green with note) against pre-Step-4 production
-- [ ] Pin file has no syntax errors (`node --check test/explore-pipeline-selector.test.js`)
-- [ ] `sai/commands/explore/instructions.md` is **unchanged** in this step (`git diff -- sai/commands/explore/instructions.md` empty for this step's commit)
+- [x] RED verified — new pins fail (or already green with note) against pre-Step-4 production
+- [x] Pin file has no syntax errors (`node --check test/explore-pipeline-selector.test.js`)
+- [x] `sai/commands/explore/instructions.md` is **unchanged** in this step (`git diff -- sai/commands/explore/instructions.md` empty for this step's commit)
 
 *(No Human checks — service-side step with no observable browser behavior.)*
 
