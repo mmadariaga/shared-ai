@@ -133,18 +133,19 @@ When a genuine unresolved question remains and its answer could change the idea,
 |---|---|---|---|---|---|
 | 1 | green-direct | green | 2 | other | Corrected the shared-close wording after coordinator validation failed. |
 | 2 | green-direct | green | 1 | n/a | Completed without recovery. |
+| 3 | green-exception | green | 1 | n/a | Completed without recovery. |
 
 #### Step 3: Plain-fold main capability specs from complete change-local deltas
 
 *(Declarative OpenSpec fold — non-UI, no RED/GREEN.)*
 
-- [ ] Replace the main-spec requirement body for **Close crystallization with selector** in `openspec/specs/explore-crystallization-block/spec.md` with the complete MODIFIED requirement text from `openspec/changes/single-source-crystallization-close/specs/explore-crystallization-block/spec.md` (the entire `### Requirement: Close crystallization with selector` section including all scenarios). Keep the main file's `#` title, `## Purpose`, and all **other** requirements untouched.
+- [x] Replace the main-spec requirement body for **Close crystallization with selector** in `openspec/specs/explore-crystallization-block/spec.md` with the complete MODIFIED requirement text from `openspec/changes/single-source-crystallization-close/specs/explore-crystallization-block/spec.md` (the entire `### Requirement: Close crystallization with selector` section including all scenarios). Keep the main file's `#` title, `## Purpose`, and all **other** requirements untouched.
 
-- [ ] Ensure the folded requirement still contains both fragile guarantees as complete replacement text:
+- [x] Ensure the folded requirement still contains both fragile guarantees as complete replacement text:
   1. Plain conversational localization with the exact phrase `both literal tokens remain verbatim`
   2. `review-loop` remains a standing user-triggered path while the selector governs only delegated execution
 
-- [ ] In `openspec/specs/explore-pipeline-selector/spec.md`, plain-replace each matching MODIFIED requirement from `openspec/changes/single-source-crystallization-close/specs/explore-pipeline-selector/spec.md`:
+- [x] In `openspec/specs/explore-pipeline-selector/spec.md`, plain-replace each matching MODIFIED requirement from `openspec/changes/single-source-crystallization-close/specs/explore-pipeline-selector/spec.md`:
   - `### Requirement: Emit the crystallization-close selector` (and scenarios)
   - `### Requirement: Authorize Auto dispatch` (and scenarios)
   - `### Requirement: Auto dispatch source is the last crystallization set` (and scenarios)
@@ -152,18 +153,18 @@ When a genuine unresolved question remains and its answer could change the idea,
 
   Leave unrelated main-spec requirements (e.g. Preserve explicit gating, Obsolete token forms, Empty or completed selection set, Active supervision) untouched unless the change-local delta also modifies them (it does not).
 
-- [ ] In `openspec/specs/explore-pre-crystallization-closure/spec.md`, plain-replace `### Requirement: Successful active exploration ends with an actionable closure` (full body + all scenarios) with the complete MODIFIED text from `openspec/changes/single-source-crystallization-close/specs/explore-pre-crystallization-closure/spec.md`, including the phase-navigation disqualifier scenarios.
+- [x] In `openspec/specs/explore-pre-crystallization-closure/spec.md`, plain-replace `### Requirement: Successful active exploration ends with an actionable closure` (full body + all scenarios) with the complete MODIFIED text from `openspec/changes/single-source-crystallization-close/specs/explore-pre-crystallization-closure/spec.md`, including the phase-navigation disqualifier scenarios.
 
-- [ ] After the three folds, archive delta-spec sync re-applying the same deltas must be a no-op with respect to the two fragile `explore-crystallization-block` guarantees and the Manual no-re-emission / phase-navigation clauses.
+- [x] After the three folds, archive delta-spec sync re-applying the same deltas must be a no-op with respect to the two fragile `explore-crystallization-block` guarantees and the Manual no-re-emission / phase-navigation clauses.
 
 ##### Step 3 Verification Checklist
 
 **Automated (agent runs before stopping):**
-- [ ] `openspec/specs/explore-crystallization-block/spec.md` contains `both literal tokens remain verbatim`.
-- [ ] Same file contains standing-path wording: `review-loop` remains a standing user-triggered path while the selector governs only delegated execution (or equivalent complete-delta clause from the change-local file).
-- [ ] `openspec/specs/explore-pipeline-selector/spec.md` Manual requirement states no second recommendation or selector on Manual/unmapped.
-- [ ] `openspec/specs/explore-pre-crystallization-closure/spec.md` contains scenario titles `Phase-navigation question falls through to the stage reminder` and `Substantive uncertainty remains despite navigation wording`.
-- [ ] Unrelated requirements in the three main specs remain present.
+- [x] `openspec/specs/explore-crystallization-block/spec.md` contains `both literal tokens remain verbatim`.
+- [x] Same file contains standing-path wording: `review-loop` remains a standing user-triggered path while the selector governs only delegated execution (or equivalent complete-delta clause from the change-local file).
+- [x] `openspec/specs/explore-pipeline-selector/spec.md` Manual requirement states no second recommendation or selector on Manual/unmapped.
+- [x] `openspec/specs/explore-pre-crystallization-closure/spec.md` contains scenario titles `Phase-navigation question falls through to the stage reminder` and `Substantive uncertainty remains despite navigation wording`.
+- [x] Unrelated requirements in the three main specs remain present.
 
 *(No Human checks — service-side declarative fold with no observable browser behavior.)*
 

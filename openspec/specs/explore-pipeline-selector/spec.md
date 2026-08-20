@@ -8,30 +8,69 @@ Define the crystallization-close selector that explicitly authorizes supervised 
 
 ### Requirement: Emit the crystallization-close selector
 
-`sai-explore` SHALL emit exactly one native two-option selector after every crystallization handoff and keep-window reminder. `Auto` MUST precede `Manual` and SHALL be the sole supervised pipeline entry.
+`sai-explore` SHALL emit exactly one harness-native two-option selector after the shared close's one keep-window-open recommendation, as the final emission of the crystallization turn defined by `explore-crystallization-block`. The selector SHALL be emitted after every single-change, sliced-final, and inline-refusal crystallization handoff; `Auto` MUST precede `Manual`, and `Auto` SHALL be the sole supervised pipeline entry.
 
 #### Scenario: crystallization closes
 
 - **WHEN** single, sliced, or inline-refusal crystallization emits its final handoff block
-- **THEN** the turn ends with one localized selector offering Auto delegation or Manual continuation without a literal pipeline-token trigger
+- **THEN** the shared close emits the existing keep-window recommendation naming `review-loop` exactly once
+- **AND** it emits exactly one selector offering Auto delegation before Manual continuation
+- **AND** the selector is the final emission of the turn
+
+#### Scenario: sliced crystallization does not repeat the selector
+
+- **WHEN** a sliced crystallization emits multiple handoff blocks
+- **THEN** the selector is emitted only once after the final block
+- **AND** no per-slice selector is presented
 
 ### Requirement: Authorize Auto dispatch
 
-Selecting `Auto` SHALL authorize the existing supervised `sai-1` and `sai-2` lifecycle using `last_crystallization_set` while preserving worker-owned writes, review rounds, chaining, and retries.
+Selecting `Auto` SHALL authorize the existing supervised `sai-1` and `sai-2` lifecycle using `last_crystallization_set` while preserving worker-owned writes, review rounds, chaining, retries, and the existing terminal behavior. Successful Auto completion SHALL emit no next-step line and SHALL NOT dispatch a later implementation phase; the existing silence after the applicable terminal report remains intentional in this slice.
 
 #### Scenario: Auto is selected
 
 - **WHEN** the user selects Auto from the crystallization-close selector
 - **THEN** the supervisor selects at most one eligible latest-turn change and dispatches the existing phase machinery without expanding write scope
 
+#### Scenario: Auto reaches a successful terminal state
+
+- **WHEN** the selected Auto run completes its applicable supervised `sai-1` and `sai-2` lifecycle successfully
+- **THEN** explore reports the completed supervised run
+- **AND** it emits no next-step line
+- **AND** it does not dispatch a later implementation phase
+
+#### Scenario: Auto fails or is cancelled
+
+- **WHEN** the selected Auto run returns `failed` or `cancelled`
+- **THEN** explore does not facilitate a later implementation phase
+- **AND** it emits no new user-facing guidance or later-phase handoff in this slice
+- **AND** the change remains retryable under the existing Auto state rules
+
 ### Requirement: Define Manual behavior
 
-Selecting `Manual` SHALL dispatch nothing or change supervision state. An unmapped free-text answer MUST be treated as Manual, and Manual SHALL remain re-invocable without a cap.
+Selecting `Manual` SHALL dispatch nothing and SHALL NOT change supervision state. An unmapped free-text answer MUST be treated as `Manual`. The `Manual` branch SHALL refer to the one existing keep-window recommendation already emitted before the selector, naming `review-loop` exactly once; it SHALL not emit a second recommendation or selector for the same answer. `Manual` SHALL remain re-invocable without a cap when the user later asks to see or run the supervised pipeline selector.
 
 #### Scenario: Manual is selected
 
-- **WHEN** the user selects Manual or provides an answer that maps to neither option
-- **THEN** the turn closes with the keep-window reminder naming `review-loop` and no pipeline worker is dispatched
+- **WHEN** the user selects `Manual`
+- **THEN** no pipeline worker is dispatched
+- **AND** no supervision state is changed
+- **AND** the already-emitted keep-window recommendation remains the sole recommendation naming `review-loop` exactly once
+- **AND** no second recommendation or selector is emitted for the same answer
+
+#### Scenario: free text maps to Manual
+
+- **WHEN** the user's answer maps to neither selector option
+- **THEN** it is treated as `Manual`
+- **AND** no worker is dispatched
+- **AND** the already-emitted keep-window recommendation remains the sole recommendation naming `review-loop` exactly once
+- **AND** no second recommendation or selector is emitted for the same answer
+
+#### Scenario: Manual is requested again later
+
+- **WHEN** the user later asks to see or run the supervised pipeline selector
+- **THEN** `sai-explore` re-emits the selector through the existing rule
+- **AND** there is no cap on such re-emissions
 
 ### Requirement: Preserve explicit gating
 
@@ -52,7 +91,7 @@ No token or dominant-intent form SHALL dispatch supervision. When a user sends o
 
 ### Requirement: Auto dispatch source is the last crystallization set
 
-An `Auto` selection SHALL operate only on uncompleted change names in `last_crystallization_set` — the ordered, duplicate-free `**Change name**` values emitted by the most recent crystallization turn, in emission order. It SHALL NOT discover active changes from the repository, infer a change from unrelated files, or add a change that was not crystallized in the current chat; a duplicate emission of an already-listed name adds no entry. Each `Auto` selection SHALL select and dispatch at most one change.
+An `Auto` selection SHALL operate only on uncompleted change names in `last_crystallization_set` — the ordered, duplicate-free `**Change name**` values emitted by the most recent crystallization turn, in emission order. It SHALL use the existing `completed_changes` and `specs_converged_changes` values to determine whether the selected name starts at the spec phase or retries the design phase. It SHALL NOT discover active changes from the repository, infer a change from unrelated files, add a change that was not crystallized in the current chat, or introduce another state key. Each `Auto` selection SHALL select and dispatch at most one change.
 
 #### Scenario: multiple uncompleted changes remain
 - **WHEN** `last_crystallization_set` contains multiple uncompleted changes and the user selects `Auto`
@@ -67,6 +106,13 @@ An `Auto` selection SHALL operate only on uncompleted change names in `last_crys
 #### Scenario: user cancels selection
 - **WHEN** the user selects `Cancel` from the multi-change picker
 - **THEN** explore dispatches no worker and leaves every state value unchanged
+
+#### Scenario: failed Auto remains retryable from existing state
+
+- **WHEN** an Auto attempt fails or is cancelled before its applicable terminal worker completes
+- **THEN** the name remains absent from `completed_changes`
+- **AND** a later Auto selection reuses `last_crystallization_set` and the existing `specs_converged_changes` membership to route the retry
+- **AND** no new state key or repository discovery is used
 
 ### Requirement: Empty or completed selection set receives an explicit acknowledgement
 
