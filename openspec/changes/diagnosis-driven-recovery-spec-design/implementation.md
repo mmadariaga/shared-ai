@@ -363,7 +363,7 @@ test('design worker classifies main-path failures and recovery without collapsin
 
 ##### RED phase
 
-- [ ] Add cross-cutting cases (prefer one combined test per suite file, or a single new test in `test/bounded-worker-recovery.test.js` that reads both coordinator cards):
+- [x] Add cross-cutting cases (prefer one combined test per suite file, or a single new test in `test/bounded-worker-recovery.test.js` that reads both coordinator cards):
 
 ```js
 test('planning clean path stays blind while non-clean path names class artifact and cause locus', () => {
@@ -389,32 +389,32 @@ test('planning clean path stays blind while non-clean path names class artifact 
 
 If harness-parity smoke is not already covered by existing Claude/opencode binding tests in the two coordinator suites, add a light pin that both harness bindings still fetch the same neutral worker contracts (existing binding tests often already cover this — do not duplicate).
 
-- [ ] Verify RED: `node --test test/bounded-worker-recovery.test.js test/spec-coordinator-worker.test.js test/design-coordinator-worker.test.js` — expected: new cross-cutting pin fails until coordinator prose already added in Steps 3–4 is complete. If Steps 3–4 already satisfy the pin, RED may pass immediately — still run it; if it passes, skip GREEN prose edits and only keep the additive test.
+- [x] Verify RED: `node --test test/bounded-worker-recovery.test.js test/spec-coordinator-worker.test.js test/design-coordinator-worker.test.js` — expected: new cross-cutting pin fails until coordinator prose already added in Steps 3–4 is complete. If Steps 3–4 already satisfy the pin, RED may pass immediately — still run it; if it passes, skip GREEN prose edits and only keep the additive test.
 
-- [ ] **GATE — If RED fails because Step 3–4 prose is incomplete, STOP and repair those steps first (do not paper over with Step 5). If RED fails only because the pin is new and prose is already correct, proceed to GREEN by landing the test only.**
+- [x] **GATE — If RED fails because Step 3–4 prose is incomplete, STOP and repair those steps first (do not paper over with Step 5). If RED fails only because the pin is new and prose is already correct, proceed to GREEN by landing the test only.**
 
 ##### GREEN phase
 
-- [ ] Land the additive cross-cutting test(s). Do **not** rewrite Steps 1–4 contracts here unless a tiny wording widen is required for a legitimate phrase the pin already expects from Steps 3–4.
-- [ ] Do **not** edit baseline `openspec/specs/**`.
-- [ ] Do **not** edit Explore or Build command cards.
-- [ ] Verify focused: `node --test test/bounded-worker-recovery.test.js test/spec-coordinator-worker.test.js test/design-coordinator-worker.test.js` — expected: PASS.
-- [ ] Verify full: `npm test` — expected: PASS relative to the pre-existing suite baseline. Ignore only failures documented in `SAI_LEARNINGS.md` as pre-existing and unrelated (e.g. missing idea-list-render bindings). Any new failure in the three focused files or in files this change touched is a hard fail — fix before commit.
+- [x] Land the additive cross-cutting test(s). Do **not** rewrite Steps 1–4 contracts here unless a tiny wording widen is required for a legitimate phrase the pin already expects from Steps 3–4.
+- [x] Do **not** edit baseline `openspec/specs/**`.
+- [x] Do **not** edit Explore or Build command cards.
+- [x] Verify focused: `node --test test/bounded-worker-recovery.test.js test/spec-coordinator-worker.test.js test/design-coordinator-worker.test.js` — expected: PASS.
+- [x] Verify full: `npm test` — expected: PASS relative to the pre-existing suite baseline. Ignore only failures documented in `SAI_LEARNINGS.md` as pre-existing and unrelated (e.g. missing idea-list-render bindings). Any new failure in the three focused files or in files this change touched is a hard fail — fix before commit.
 
 ##### Step 5 Verification Checklist
 
 **Automated (agent runs before stopping):**
-- [ ] Focused triple-file suite passes
-- [ ] `npm test` introduces no new failures attributable to this change
-- [ ] No baseline `openspec/specs/**` edits
-- [ ] No Explore/Build card edits
-- [ ] Exactly one `| design-overview-repair |` row remains in the runner
-- [ ] ADR 0166 exists at `docs/adr/0166-per-cause-surface-dual-channel-exclusivity.md` (created during implement planning) and is indexed in `docs/adr/0000-INDEX.md`
+- [x] Focused triple-file suite passes
+- [x] `npm test` introduces no new failures attributable to this change
+- [x] No baseline `openspec/specs/**` edits
+- [x] No Explore/Build card edits
+- [x] Exactly one `| design-overview-repair |` row remains in the runner
+- [x] ADR 0166 exists at `docs/adr/0166-per-cause-surface-dual-channel-exclusivity.md` (created during implement planning) and is indexed in `docs/adr/0000-INDEX.md`
 
 **Human (read-through smoke after automated checks — Manual Verification from design.md):**
-- [ ] Open `sai/orchestration/command-runner.md` Bounded Recovery and confirm planning non-clean triggers, dual-channel exclusivity, and adapter surface declaration language are present once and not restated on phase cards
-- [ ] Confirm `sai/commands/spec/coordinator.md` and `sai/commands/design/coordinator.md` still prohibit artifact reads on clean completed / progress / notice / needs_input paths
-- [ ] Confirm exactly one phase-static registry row (`design-overview-repair`) remains in the runner and design coordinator does not inspect `change-overview.md` for main-path diagnosis
+- [x] Open `sai/orchestration/command-runner.md` Bounded Recovery and confirm planning non-clean triggers, dual-channel exclusivity, and adapter surface declaration language are present once and not restated on phase cards
+- [x] Confirm `sai/commands/spec/coordinator.md` and `sai/commands/design/coordinator.md` still prohibit artifact reads on clean completed / progress / notice / needs_input paths
+- [x] Confirm exactly one phase-static registry row (`design-overview-repair`) remains in the runner and design coordinator does not inspect `change-overview.md` for main-path diagnosis
 
 #### Step 5 STOP & COMMIT
 
@@ -441,5 +441,7 @@ If harness-parity smoke is not already covered by existing Claude/opencode bindi
 | 3 | green | green | 1 | assertion | Coordinator contract wording was corrected within authorized files. |
 | 4 | red | red | 1 | assertion | Worker classification and continuation pins failed as intended. |
 | 4 | green | green | 1 | n/a | Both planning workers passed the triple-file focused suite. |
+| 5 | red | red | 1 | assertion | The cross-cutting pin failed before the Step 3 wording correction. |
+| 5 | green-exception | green | 1 | assertion | Focused verification passed after the bounded Step 3 wording correction. |
 
 )

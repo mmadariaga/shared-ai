@@ -289,3 +289,23 @@ test('worker-core states failure_class is evidence not an eligibility gate and s
   assert.match(lifecycle, /outer-envelope-violation[\s\S]{0,200}(?:coordinator|never a worker)/i,
     'outer-envelope-violation remains coordinator-only');
 });
+
+test('planning clean path stays blind while non-clean path names class artifact and cause locus', () => {
+  const runner = artifact('sai/orchestration/command-runner.md');
+  const specCoord = artifact('sai/commands/spec/coordinator.md');
+  const designCoord = artifact('sai/commands/design/coordinator.md');
+  const contract = `${runner}\n${specCoord}\n${designCoord}`;
+
+  assert.match(specCoord, /(?:clean|happy path|progress|needs_input)[\s\S]{0,300}(?:not|never|do not)[\s\S]{0,120}(?:read|open|inspect)[\s\S]{0,120}artifact/i,
+    'spec clean path never opens artifacts');
+  assert.match(designCoord, /(?:clean)[\s\S]{0,300}(?:not|never|do not|shall not)[\s\S]{0,120}(?:read|inspect)[\s\S]{0,120}artifact/i,
+    'design clean path never opens artifacts');
+  assert.match(specCoord, /non[- ]clean[\s\S]{0,400}(?:failure_class|class)[\s\S]{0,400}(?:artifact|cause locus|Cause Locus)/i,
+    'spec non-clean diagnosis names class/artifact/locus when evidence permits');
+  assert.match(designCoord, /non[- ]clean[\s\S]{0,400}(?:failure_class|class)[\s\S]{0,400}(?:artifact|cause locus|Cause Locus)/i,
+    'design non-clean diagnosis names class/artifact/locus when evidence permits');
+  assert.match(contract, /(?:never|not|shall not)[\s\S]{0,120}(?:write|repair)[\s\S]{0,200}(?:proposal|design\.md|artifact)/i,
+    'planning coordinators never become artifact writers');
+  assert.equal((runner.match(/\| design-overview-repair \|/g) || []).length, 1,
+    'sole design-overview-repair registry row');
+});
