@@ -25,6 +25,7 @@ This index groups the DDRs in `docs/ddr/` by **command** and by **cross-cutting 
 - [0146 — Stable planning progress ids remain compatibility keys while labels become user-facing](./0146-stable-planning-progress-ids-preserve-compatibility.md)
 - [0147 — Structured spec research closes at the shared confidence boundary before proposal generation](./0147-spec-research-closes-at-confidence-boundary.md)
 - [0150 — Gate mode is parameterized at the fetch site, never detected from invocation context](./0150-mode-parameterized-at-fetch-site-not-detected.md) — **Amends** adr:0028
+- [0151 — External Explore findings block is the only `review` progress evidence](./0151-external-findings-block-is-only-review-evidence.md) — **Amends** 0133, Refs adr:0158
 
 ### `/sai-2-design`
 
@@ -52,6 +53,7 @@ This index groups the DDRs in `docs/ddr/` by **command** and by **cross-cutting 
 - [0148 — Specs approval remains folded into design prerequisite resolution](./0148-specs-approval-remains-folded-into-design-prerequisites.md)
 - [0150 — Gate mode is parameterized at the fetch site, never detected from invocation context](./0150-mode-parameterized-at-fetch-site-not-detected.md) — **Amends** adr:0028
 - [0151 — Three mutually exclusive routing diagnoses, separate from worker failure classes](./0151-three-mutually-exclusive-routing-diagnoses.md) — Refs 0152
+- [0151 — External Explore findings block is the only `review` progress evidence](./0151-external-findings-block-is-only-review-evidence.md) — **Amends** 0133, Refs adr:0158
 - [0152 — Cause Locus gates eligibility; unresolved is not out-of-scope](./0152-cause-locus-gates-eligibility.md) — Refs 0151
 
 ### `/sai-3-implement`
@@ -120,6 +122,7 @@ This index groups the DDRs in `docs/ddr/` by **command** and by **cross-cutting 
 - [0144 — Self-discovered external needs use structured escalation records](./0144-budget-explorer-self-discovered-needs-use-structured-escalation.md)
 - [0145 — The budget-explorer tool-call ceiling resets for each execution segment](./0145-budget-explorer-tool-call-ceiling-resets-per-segment.md)
 - [0150 — Gate mode is parameterized at the fetch site, never detected from invocation context](./0150-mode-parameterized-at-fetch-site-not-detected.md) — **Amends** adr:0028
+- [0151 — External Explore findings block is the only `review` progress evidence](./0151-external-findings-block-is-only-review-evidence.md) — **Amends** 0133, Refs adr:0158
 
 ### `/sai-backfill`
 
@@ -263,6 +266,7 @@ This index groups the DDRs in `docs/ddr/` by **command** and by **cross-cutting 
 - [0134 — Every review-loop turn re-enters except for two complementary closing choices](./0134-every-review-loop-turn-reenters-except-two-closing-choices.md)
 - [0135 — Review findings encoding and loop navigation are separate surfaces](./0135-review-findings-encoding-and-loop-navigation-are-separate-surfaces.md)
 - [0137 — The Review Engine input boundary is navigation-free](./0137-review-engine-input-boundary-is-navigation-free.md)
+- [0151 — External Explore findings block is the only `review` progress evidence](./0151-external-findings-block-is-only-review-evidence.md) — **Amends** 0133, Refs adr:0158
 
 ### Artifact metadata & routing tokens
 
@@ -287,6 +291,7 @@ This index groups the DDRs in `docs/ddr/` by **command** and by **cross-cutting 
 | [0141](./0141-milestone-stamp-is-closure-only-and-derived-from-emitted-on.md) | supersedes | [adr:0118](../adr/0118-per-harness-wall-clock-commands-in-bindings.md) |
 | [0149](./0149-orchestration-core-contracts-live-under-orchestration.md) | supersedes | [0128](./0128-neutral-root-protocols-and-command-cards.md) |
 | [0150](./0150-mode-parameterized-at-fetch-site-not-detected.md) | amends | [0028](../adr/0028-gate-parameters-inline-at-fetch-site.md) |
+| [0151](./0151-external-findings-block-is-only-review-evidence.md) | amends | [0133](./0133-review-progress-is-evidence-only.md) |
 
 ## Superseded DDRs (historical)
 

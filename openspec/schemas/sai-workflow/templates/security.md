@@ -9,136 +9,37 @@
 **Date:** <!-- YYYY-MM-DD -->
 
 ## Not Applicable
-
-<!-- REQUIRED: Fill this section even when security audit is not applicable.
-     If this change has no security surface (no auth/input/crypto/HTTP/deps touched),
-     explain why here and leave the findings sections empty. -->
-
-**Justification:** <!-- Why this change has no security surface, OR leave blank and fill findings below -->
-
----
+<!-- Explain whether the security audit applies to this change. -->
 
 ## Executive Summary
-
-| Severity | Count |
-|----------|-------|
-| Critical | <!-- n --> |
-| High | <!-- n --> |
-| Medium | <!-- n --> |
-| Low | <!-- n --> |
-| **Total** | **<!-- n -->** |
-
-**Risk posture:** <!-- one-sentence overall assessment -->
-
-**Verdict:** <!-- Block release | Release after Critical/High fixed | Acceptable risk -->
-
----
+<!-- Summarize {the security posture} and overall audit outcome. -->
 
 ## Module Summary
-
-| Module | Files | Highest Severity |
-|--------|-------|------------------|
-| <!-- module --> | <!-- n --> | <!-- severity --> |
-
----
+<!-- Summarize the modules covered by the audit. -->
 
 ## SAST Findings
-
-### C1 [SEVERITY] CWE-XXX — <!-- short title -->
-
-- **Module:** `<module>`
-- **File:** `<path>:<line>`
-- **Flaw category:** <!-- category -->
-- **CWE:** CWE-XXX — <!-- name --> (omit if mapping is not direct)
-- **OWASP 2025:** <!-- A0X — name -->
-- **Taint flow:** `<source>` → `<propagation>` → `<sink>`
-- **Evidence:**
-  ```
-  <!-- offending snippet -->
-  ```
-- **Exploit scenario:** <!-- one concrete attack sentence -->
-- **Remediation:**
-  ```
-  <!-- fixed snippet or one-line action -->
-  ```
-- **Spec note:** <!-- "Acknowledged in spec.md §X" / — -->
-
----
+<!-- Capture findings from static application security analysis. -->
 
 ## SCA Findings
-
-> Include only if dependency manifests were modified in the diff.
-
-### H1 [SEVERITY] <!-- CVE-ID --> — <!-- package@version -->
-
-- **Package:** `<name>@<version>`
-- **Ecosystem:** <!-- npm/PyPI/Maven/NuGet/Go/... -->
-- **CVE:** <!-- CVE-XXXX-XXXXX -->
-- **CVSS:** <!-- score (vector) -->
-- **Vulnerability:** <!-- brief description -->
-- **Fix version:** `<version>` (available: yes/no)
-- **Remediation:** <!-- upgrade to / replace with / pin override -->
-
----
+<!-- Capture dependency findings when dependency manifests are in scope. -->
 
 ## Supply Chain Hygiene
-
-> Include this section only if dependency manifests were modified in the diff.
-
-- **Lock files present:** <!-- yes/no — list missing -->
-- **GitHub Actions pinned to SHA:** <!-- yes/no — list violations -->
-- **Typosquatting / dependency confusion suspects:** <!-- none / list -->
-- **Abandoned dependencies:** <!-- none / list -->
-
----
+<!-- Record dependency and automation hygiene observations relevant to the audit. -->
 
 ## License Risk
-
-> Include this section only if dependency manifests were modified in the diff.
-
-| Package | License | Risk | Commercial Use |
-|---------|---------|------|----------------|
-| <!-- name --> | <!-- SPDX --> | <!-- Low/Medium/High --> | <!-- Permitted/Restricted/Prohibited --> |
-
----
+<!-- Record license observations for dependencies in scope. -->
 
 ## Policy Compliance
-
-> Include this section only if dependency manifests were modified in the diff OR if SAST findings map directly to a policy control.
-
-| Policy | Status | Notes |
-|--------|--------|-------|
-| OWASP Top 10 2025 | <!-- PASS/FAIL --> | <!-- categories --> |
-| PCI-DSS v4.0 | <!-- PASS/FAIL/N/A --> | <!-- requirements --> |
-| SANS/CWE Top 25 | <!-- PASS/FAIL --> | <!-- CWEs --> |
-| GDPR | <!-- PASS/FAIL/N/A --> | <!-- gaps --> |
-
----
+<!-- Summarize applicable policy-control observations. -->
 
 ## Acknowledged Trade-offs (from change artifacts)
-
-> Optional. Include only if `proposal.md` or `design.md` contain explicit security decisions you evaluated and accepted.
-
-- <!-- Item with artifact and section reference -->
-
----
+<!-- Record security trade-offs explicitly accepted in the change artifacts. -->
 
 ## Prioritized Remediation Plan
-
-### Block release (Critical / High)
-1. **<!-- flaw -->** (`<file>:<line>`) — <!-- one-line fix action -->
-
-### Next sprint (Medium)
-1. **<!-- flaw -->** (`<file>:<line>`) — <!-- one-line fix action -->
-
-### Backlog (Low)
-1. **<!-- flaw -->** (`<file>:<line>`) — <!-- one-line fix action -->
-
----
+<!-- Order remediation work by release urgency. -->
 
 ## Metrics
+<!-- Summarize audit coverage and remediation estimates. -->
 
-- **Files scanned:** <!-- n -->
-- **Flaw density:** <!-- flaws per 1000 LOC -->
-- **Est. remediation effort:** <!-- hours -->
-Summary: Critical=<!-- n --> High=<!-- n --> Medium=<!-- n --> Low=<!-- n -->
+<!-- Summary: use the command-owned tally line from the write-time authority; do not restate severity levels here. -->
+<!-- Write-time authority: severity vocabulary, evidence rules, finding shape, and tally line are defined in sai/commands/security/security-report.template.md -->

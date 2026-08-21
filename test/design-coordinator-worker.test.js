@@ -1477,48 +1477,53 @@ test('Step 3: research, design, tasks, and interfaces writes emit separate order
   }
 });
 
-test('Step 3: the design reviewer receives only the three reviewed artifacts and freshly read reference artifacts; findings never target a reference artifact', () => {
+test('Step 3: external findings cover exactly the three design artifacts without a worker reviewer dispatch', () => {
   const worker = artifact('sai/commands/design/worker.md');
+  const coordinator = artifact('sai/commands/design/coordinator.md');
+  const source = `${worker}\n${coordinator}`;
 
-  assert.match(
-    worker,
-    /reviewer[\s\S]{0,160}(?:receive|given|gets?|read)[\s\S]{0,200}design\.md[\s\S]{0,120}tasks\.md[\s\S]{0,120}interfaces\.md/i,
-    'the reviewer should receive exactly design.md, tasks.md, and interfaces.md'
-  );
-  assert.match(
-    worker,
-    /fresh(?:ly)?[\s\S]{0,160}(?:read|re-?read)[\s\S]{0,200}(?:proposal|specs\/|reference)|(?:proposal|specs\/|reference)[\s\S]{0,160}fresh(?:ly)?[\s\S]{0,160}(?:read|re-?read)/i,
-    'the reference artifacts should be freshly read proposal/spec files'
-  );
-  assert.match(
-    worker,
-    /(?:reference set|reference artifacts)[\s\S]{0,240}(?:proposal\.md|specs\/\*\*)|(?:proposal\.md|specs\/\*\*)[\s\S]{0,240}(?:reference set|reference artifacts)/i,
-    'the reference set should be proposal.md and specs/**'
-  );
-  assert.match(
-    worker,
-    /findings?[\s\S]{0,120}(?:never|must not|may not)[\s\S]{0,160}(?:target|name|cite)[\s\S]{0,120}(?:reference|proposal)/i,
-    'findings should never target a reference artifact'
-  );
+  assert.match(source, /external[\s-]+(?:artifact[- ]review )?findings?/i,
+    'design review evidence should be supplied externally');
+  for (const artifactName of ['design\.md', 'tasks\.md', 'interfaces\.md']) {
+    assert.match(source, new RegExp(`external[\\s\\S]{0,500}${artifactName}|${artifactName}[\\s\\S]{0,500}external`, 'i'),
+      `${artifactName} should be part of the external findings surface`);
+  }
+  assert.match(source, /findings?[\s\S]{0,220}(?:only|limited|restricted)[\s\S]{0,180}(?:design\.md|tasks\.md|interfaces\.md)|(?:design\.md|tasks\.md|interfaces\.md)[\s\S]{0,220}(?:only|limited|restricted)[\s\S]{0,180}findings?/i,
+    'external findings should be restricted to the three design artifacts');
+  assert.match(worker, /does not create the findings, dispatch an artifact reviewer, or own the review operation/i,
+    'the design worker must not dispatch or own a reviewer');
+  assert.doesNotMatch(worker, /reviewer[\s\S]{0,160}(?:receive|given|gets?|read)/i,
+    'the worker must not contain the retired reviewer isolation section');
 });
 
-test('Step 3: a completed design review pass with High=0 emits the review progress event once and later feedback or High findings never clear it', () => {
+test('Step 3: a valid external design Summary marks review once, rejects missing or malformed evidence, and stays monotonic', () => {
+  const worker = artifact('sai/commands/design/worker.md');
+  const coordinator = artifact('sai/commands/design/coordinator.md');
+  const source = `${worker}\n${coordinator}`;
+
+  assert.match(source, /base[- ]form[\s\S]{0,220}Summary:|Summary:[\s\S]{0,220}base[- ]form/i,
+    'design review evidence should use the canonical base-form Summary');
+  assert.match(source, /Summary:\s*High=<count>\s*Medium=<count>\s*Low=<count>/i,
+    'the design findings contract should preserve the base-form tally');
+  assert.match(source, /High=0[\s\S]{0,300}(?:emit|report|mark)[\s\S]{0,180}`?review`?|(?:emit|report|mark)[\s\S]{0,180}`?review`?[\s\S]{0,300}High=0/i,
+    'a valid external High=0 Summary should mark the review step');
+  assert.match(source, /missing or malformed base-form `?Summary:?[`"']?[\s\S]{0,220}(?:not review completion|does not mark|no `?review`?)/i,
+    'missing or malformed Summary evidence must not mark review');
+  assert.match(source, /High>0/,
+    'High findings should be handled as a distinct non-converged outcome');
+  assert.match(source, /High>0[\s\S]{0,120}emits no `?review`?|(?:emits no `?review`?)[\s\S]{0,120}High>0/i,
+    'High findings should be processed without a new review mark');
+  assert.match(source, /monotonic|once[\s\S]{0,180}(?:marked|completed)[\s\S]{0,180}(?:remain|never)[\s\S]{0,120}(?:marked|unmark|clear)/i,
+    'review marks should be monotonic');
+});
+
+test('Step 3: after interfaces the design worker proceeds without an automatic reviewer', () => {
   const worker = artifact('sai/commands/design/worker.md');
 
-  assert.match(worker, /High=0|no High|High 0/i,
-    'the completed-pass convergence condition should be High=0');
-  assert.match(
-    worker,
-    /High=0[\s\S]{0,300}(?:emit|report)[\s\S]{0,160}`?review`?|(?:emit|report)[\s\S]{0,160}`?review`?[\s\S]{0,300}High=0/i,
-    'a completed design pass with High=0 should emit the review step'
-  );
-  assert.match(worker, /`?review`?[\s\S]{0,120}(?:once|only once|a single time)/i,
-    'the review event should be emitted at most once');
-  assert.match(
-    worker,
-    /(?:later|subsequent|new)[\s\S]{0,160}(?:feedback|High finding|High)[\s\S]{0,240}(?:never|not|does not)[\s\S]{0,160}(?:clear|unmark|reopen|reset)/i,
-    'later feedback edits or High findings should never clear the review mark'
-  );
+  assert.match(worker, /interfaces\.md[\s\S]{0,500}(?:overview|next|proceed|complete)|(?:overview|next|proceed|complete)[\s\S]{0,500}interfaces\.md/i,
+    'the post-interfaces path should proceed to the next design outcome');
+  assert.match(worker, /does not create the findings, dispatch an artifact reviewer, or own the review operation/i,
+    'the worker must not start an automatic reviewer after interfaces');
 });
 
 test('Step 3: a pre-gate completed design result leaves the overview step unmarked and performs no reconciliation', () => {
@@ -1596,35 +1601,16 @@ test('Step 1: design artifact feedback gate uses explicit modes while the coordi
   assert.doesNotMatch(gateUse, /(?:^|[\s,(`])mode\s*[:=]/i);
 });
 
-test('Step 3: design worker documents mode-dependent gate coexistence without mode-aware workers', () => {
+test('Step 3: design worker leaves mode-dependent gate ownership to the coordinator without mode-aware workers', () => {
   const worker = artifact('sai/commands/design/worker.md');
   const coordinator = artifact('sai/commands/design/coordinator.md');
 
-  assert.match(
-    worker,
-    /coexists? with and never replaces the supervised pipeline/i,
-    'the design worker should retain coexistence with the supervised pipeline',
-  );
-  assert.match(
-    worker,
-    /mode[- ]dependent[\s\S]{0,280}(?:interactive[\s\S]{0,140}supervised|supervised[\s\S]{0,140}interactive)[\s\S]{0,220}gate/i,
-    'the design worker should describe mode-dependent interactive/supervised gate behavior',
-  );
-  assert.match(
-    worker,
-    /workers?[\s\S]{0,180}(?:do not|must not|shall not|never)[\s\S]{0,180}receive[\s\S]{0,100}mode/i,
-    'design workers should not receive mode',
-  );
-  assert.match(
-    worker,
-    /workers?[\s\S]{0,180}(?:do not|must not|shall not|never)[\s\S]{0,180}branch[\s\S]{0,100}mode/i,
-    'design workers should not branch on mode',
-  );
-  assert.match(
-    worker,
-    /workers?[\s\S]{0,180}(?:do not|must not|shall not|never)[\s\S]{0,180}evaluat[\s\S]{0,100}mode/i,
-    'design workers should not evaluate mode',
-  );
+  assert.match(worker, /External findings consumption|findings MUST be supplied by an external `?sai-explore`?/i,
+    'the design worker should consume external findings rather than own review mode');
+  assert.match(worker, /does not create the findings, dispatch an artifact reviewer, or own the review operation/i,
+    'the design worker should not own a reviewer or review mode');
+  assert.doesNotMatch(worker, /coexists? with and never replaces the supervised pipeline/i,
+    'the retired worker-owned review coexistence wording should be absent');
   assert.doesNotMatch(
     coordinator,
     /(?:^|[\s,(`])mode\s*[:=]\s*(?:interactive|supervised)/i,

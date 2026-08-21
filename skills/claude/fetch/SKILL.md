@@ -17,6 +17,15 @@ Active harness identity: `claude`.
 
 Resolve project-local `.claude/` before user-global `~/.claude/`. This identity and root order are established before interpreting any fetch directive.
 
+### Path composition
+
+Every agent that loads fetch inherits this rule, on both harnesses. It governs how a path is written, not where an agent may go.
+
+- Inside the project: write paths relative to the working directory. Never compose an absolute path from the project-root string.
+- Outside the project: use the path exactly as supplied. Never derive it by string manipulation.
+
+Observed: composed absolute paths have dropped a path segment — a worker whose working directory was `C:\Projects\mine\shared-ai.worktree-1` produced `C:\Projects\mine\bin` and `C:\Projects\mine\sai\commands` for directories that exist inside the repository. Relative paths and literal absolute paths resolved correctly in every observed run; composed absolute paths failed in two of three.
+
 ## Fetch @ resolution rules (apply to EVERY instruction)
 
 When you encounter `"Fetch @<path>"` or `"Also fetch @<path>"` in any instruction text, resolve it using these rules:

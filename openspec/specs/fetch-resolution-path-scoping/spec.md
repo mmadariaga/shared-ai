@@ -5,6 +5,22 @@ Define how the opencode fetch skill resolves `Fetch @<subpath>` directives to ex
 
 ## Requirements
 
+### Requirement: Active harness and roots includes path composition without changing resolution or namespace scope
+Both the Claude Code and opencode fetch skills SHALL include the path-composition rule in `## Active harness and roots` as part of the shared fetch path contract. Existing requirements in this capability — Read-project-first then Read-global-second resolution, the `sai/` / `commands/` / `skills/` namespace invariant, out-of-namespace stop-before-read, harness mirroring, and skills-path `skill` tool mapping — SHALL remain unchanged.
+
+The composition rule SHALL distinguish derived versus literal paths: in-project paths relative to the working directory with no absolute path composed from the project-root string, and out-of-project paths used exactly as supplied with no string-manipulation derivation. A literal absolute path that was supplied as such (for example `~/.config/opencode/skills/fetch/SKILL.md`) SHALL remain valid.
+
+#### Scenario: composition is stated beside the existing root order
+- **WHEN** either fetch skill is read at `## Active harness and roots`
+- **THEN** the section still establishes harness identity and project-local-before-user-global root order
+- **AND** it also states the in-project relative and out-of-project literal composition cases
+
+#### Scenario: existing resolution and namespace rules are untouched
+- **WHEN** a `Fetch @<subpath>` directive is resolved after the composition rule is present
+- **THEN** resolution remains Read-project-first then Read-global-second with no directory probe
+- **AND** every resolved fetch-directive path still begins with `sai/`, `commands/`, or `skills/`
+- **AND** an out-of-namespace directive still stops before any filesystem access
+
 ### Requirement: Opencode fetch resolution reads the project-local exact path first, then the user-global exact path
 
 When resolving a `Fetch @<subpath>` directive, the opencode fetch skill SHALL Read `.opencode/<subpath>` first; when that read fails, it SHALL Read `~/.config/opencode/<subpath>` directly; when that read also fails, it SHALL stop and report: "File not found: <subpath> (checked .opencode/ and ~/.config/opencode/)". The resolution SHALL NOT use Glob, LS, or any directory-based existence probe in either branch — a failed Read carries the same existence signal as a probe result, and every user-global filesystem access names an exact file path under an already-permitted subtree.

@@ -111,9 +111,11 @@ When offering the feedback option, the gate SHALL list the artifacts written in 
 
 ### Requirement: Gate advertises the free-text feedback channel
 
-When `mode` is `supervised`, the gate SHALL NOT emit the free-text question, free-text option description, or free-text channel advertisement, and SHALL NOT accept a free-text feedback path.
+When `mode` is `supervised`, the gate SHALL NOT emit the free-text question, free-text option description, review-loop note, or free-text channel advertisement, and SHALL NOT accept a free-text feedback path.
 
-The artifact feedback gate SHALL use the canonical question `Share your feedback on {artifacts} below. You can also type feedback directly in the free-text box.` and the canonical `Give feedback` option description `Feedback on {artifacts}; you can also type feedback directly in the free-text box.`, replacing `{artifacts}` with the supplied artifact list and rendering both strings in the user's language per `sai/policies/remember.md`. The shared instruction SHALL use this harness-neutral wording rather than substitute harness-specific labels. The gate SHALL continue to present exactly two declared choices in the existing order: `Give feedback (Recommended)` on the first presentation or `Give more feedback` thereafter, followed by the supplied proceed option. The option labels, ordering, `Recommended` marker, iteration counter, proceed-label values, artifact list, and proceed semantics SHALL remain unchanged.
+In interactive mode, the artifact feedback gate SHALL add a non-option presentation note immediately before the existing canonical question. The note's prose SHALL be rendered in the user's language per `sai/policies/remember.md` and SHALL explain that the user can use `sai-explore`'s literal `review-loop` token to obtain an artifact review and paste its findings here. Only the command identifier `sai-explore` and the token `review-loop` SHALL remain verbatim English.
+
+The artifact feedback gate SHALL use the canonical question `Share your feedback on {artifacts} below. You can also type feedback directly in the free-text box.` and the canonical `Give feedback` option description `Feedback on {artifacts}; you can also type feedback directly in the free-text box.`, replacing `{artifacts}` with the supplied artifact list and rendering both strings in the user's language per `sai/policies/remember.md`. The shared instruction SHALL use this harness-neutral wording rather than substitute harness-specific labels. The gate SHALL continue to present exactly two declared choices in the existing order: `Give feedback (Recommended)` on the first presentation or `Give more feedback` thereafter, followed by the supplied proceed option. The note is informational presentation text, not a third option, feedback input, approval, or progress event. The option labels, ordering, `Recommended` marker, iteration counter, proceed-label values, artifact list, and proceed semantics SHALL remain unchanged.
 
 #### Scenario: initial gate advertises free-text feedback
 
@@ -127,6 +129,18 @@ The artifact feedback gate SHALL use the canonical question `Share your feedback
 - **WHEN** the gate is re-presented after a feedback turn completes
 - **THEN** its question and feedback option description continue to use the same canonical wording, with the current artifact list and language rendering
 - **AND** the feedback label is `Give more feedback`, the `Recommended` marker is absent, the option order is unchanged, and the iteration counter follows the existing in-conversation rules
+
+#### Scenario: review-loop note is not a third choice
+
+- **WHEN** the interactive gate renders its presentation
+- **THEN** the review-loop note SHALL not be emitted as an option or interpreted as feedback
+- **AND** exactly two clickable options SHALL remain available
+
+#### Scenario: supervised mode remains picker-free
+
+- **WHEN** the gate is applied with `mode = supervised`
+- **THEN** it SHALL emit neither the review-loop note nor the interactive question
+- **AND** it SHALL retain the existing supervised sequencing auto-proceed rules
 
 ### Requirement: Free-text replies enter existing feedback processing
 

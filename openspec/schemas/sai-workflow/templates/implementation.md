@@ -1,63 +1,53 @@
-# Implementation Plan — <!-- change name -->
+# {FEATURE_NAME}
 
-**Source:** `openspec/changes/<change-name>/`  
-**Tasks ref:** `tasks.md`  
-**Design ref:** `design.md`
+## Goal
+<!-- State exactly what this implementation accomplishes. -->
 
----
+## Prerequisites
+<!-- Establish the branch and other prerequisites before implementation. -->
 
-## Step 1 — <!-- step title (from tasks.md X.Y) -->
+### Step-by-Step Instructions
 
-**Task ref:** <!-- tasks.md item, e.g. 1.1 -->
+#### Step 1: {Action}
+<!-- Testable step: use RED → GREEN when the behavior has an executable test. -->
 
-### RED — Failing Test
+##### RED phase
+<!-- Add the minimal stub and failing test, then verify an assertion failure before GREEN. -->
 
-```
-<!-- Write the failing test first. Run it and confirm it fails with a valid
-     assertion error (not a setup error). Paste the failure output here. -->
-```
+##### GREEN phase (only after RED is verified)
+<!-- After RED is verified, add the minimal implementation and verify the test passes. -->
 
-**Expected failure:** <!-- what error/assertion failure you expect to see -->
+##### Step 1 Verification Checklist
+<!-- List automated checks and any required human checks before stopping. -->
 
-### GREEN — Minimal Implementation
+#### Step 1 STOP & COMMIT
+<!-- Follow sai/commands/apply/invocation.md at the per-Step STOP & COMMIT gate and the terminal documentation commit gate; apply its commit-authorization checklist before either commit. -->
 
-```
-<!-- Write the minimal code that makes the RED test pass.
-     Do not implement more than needed to make this specific test green. -->
-```
+#### Step 2: {Action — creates component not yet integrated into any page}
+<!-- Non-testable/deferred variant: use the standard step format without RED/GREEN when behavior is not yet rendered; defer human checks to the first integration step. -->
 
-**Verify:** run the test — it must pass now.
+##### Step 2 Verification Checklist
+<!-- List automated checks for the non-testable or deferred step. -->
 
-### STOP & COMMIT
+#### Step 2 STOP & COMMIT
+<!-- Follow the per-Step STOP & COMMIT gate and the terminal documentation commit gate described by sai/commands/apply/invocation.md. -->
 
-Propose the commit message and ask the user for explicit approval before running `git commit`. See `sai/commands/apply/instructions.md` for the full 4-step STOP & COMMIT checklist.
+#### Step 3: {Action — service-side / non-UI step with no observable browser behavior}
+<!-- Service-side variant: use automated verification without a human check when no browser-observable behavior exists. -->
 
----
+##### Step 3 Verification Checklist
+<!-- List automated checks for the service-side step. -->
 
-## Step 2 — <!-- step title -->
+#### Step 3 STOP & COMMIT
+<!-- Follow the per-Step STOP & COMMIT gate and the terminal documentation commit gate described by sai/commands/apply/invocation.md. -->
 
-**Task ref:** <!-- tasks.md item -->
+#### Step N: {Integration step — first step where deferred components are rendered}
+<!-- Integration variant: include deferred human checks when the component first becomes observable. -->
 
-### RED — Failing Test
+##### Step N Verification Checklist
+<!-- List automated checks and the human checks for this integration step. -->
 
-```
-<!-- failing test -->
-```
+#### Step N STOP & COMMIT
+<!-- Follow the per-Step STOP & COMMIT gate and the terminal documentation commit gate described by sai/commands/apply/invocation.md. -->
 
-**Expected failure:** <!-- assertion error expected -->
-
-### GREEN — Minimal Implementation
-
-```
-<!-- minimal implementation -->
-```
-
-**Verify:** run the test — it must pass now.
-
-### STOP & COMMIT
-
-Propose the commit message and ask the user for explicit approval before running `git commit`. See `sai/commands/apply/instructions.md` for the full 4-step STOP & COMMIT checklist.
-
----
-
-<!-- Repeat the Step N / RED / GREEN / STOP & COMMIT pattern for every task. -->
+<!-- Write-time authority: planning, conditional RED/GREEN, verification, STOP & COMMIT, and commit-authorization checklist are defined in sai/commands/implement/implementation-plan.template.md -->

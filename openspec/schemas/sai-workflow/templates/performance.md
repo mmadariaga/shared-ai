@@ -8,89 +8,28 @@
 **Date:** <!-- YYYY-MM-DD -->
 
 ## Not Applicable
-
-<!-- REQUIRED: Fill this section even when performance audit is not applicable.
-     If this change has no performance surface (no new queries, endpoints, consumers,
-     hot components, deps, loops over unbounded input, or caching changes),
-     explain why here and leave the findings sections empty. -->
-
-**Justification:** <!-- Why this change has no performance surface, OR leave blank and fill findings below -->
-
----
+<!-- Explain whether the performance audit applies to this change. -->
 
 ## Executive Summary
-
-| Severity | Backend | Frontend | DB | Queue | Total |
-|----------|---------|----------|----|-------|-------|
-| Critical | | | | | |
-| High | | | | | |
-| Medium | | | | | |
-| Low | | | | | |
-| Informational | | | | | |
-| **Total** | | | | | |
-
-**Verdict:** <!-- Block release | Release after Critical/High fixed | Acceptable -->
-
-**Risk posture:** <!-- one-sentence assessment of user-visible impact -->
-
----
+<!-- Summarize {the performance posture} and overall audit outcome. -->
 
 ## Hot Paths in Scope
-
-| Path | Tier | Why it matters |
-|------|------|----------------|
-| `<endpoint / route / consumer / query>` | <!-- tier --> | <!-- brief reason --> |
-
----
+<!-- Identify the important execution paths covered by the audit. -->
 
 ## Findings
-
-### C1 [SEVERITY] <!-- Tier -->: <!-- short title -->
-
-- **Location:** `<file>:<line>` (or `<endpoint>` / `<query id>` / `<component>`)
-- **Category:** <!-- Concurrency / Caching / N+1 / Bundle / CWV / Backpressure / ... -->
-- **Symptom:** <!-- observable behavior — latency, throughput, bundle delta, query rows examined -->
-- **Evidence:**
-  ```
-  <!-- trace excerpt / EXPLAIN output / profiler frame / bundle stat / code snippet — quote exactly -->
-  ```
-- **Root cause:** <!-- one or two sentences -->
-- **Expected impact if unfixed:** <!-- user-visible consequence at expected load -->
-- **Remediation:** <!-- specific change; up to 3 options with trade-offs -->
-- **Expected gain:** <!-- measured if validated, otherwise "estimated X% — verify with {method}" -->
-- **Validation method:** <!-- how to confirm the fix worked -->
-- **Spec note:** <!-- "Acknowledged in spec.md §X" / — -->
-
----
+<!-- Capture the measured performance observations for the audited change. -->
 
 ## Acknowledged Trade-offs (from change artifacts)
-
-- <!-- Item explicitly accepted in spec.md, with spec section reference -->
-
----
+<!-- Record performance trade-offs explicitly accepted in the change artifacts. -->
 
 ## Observability Gaps
-
-- <!-- Hot path lacking timing/metric/trace span -->
-
----
+<!-- Record missing measurements or instrumentation for important paths. -->
 
 ## Prioritized Remediation Plan
-
-### Block release (Critical / High)
-1. **<!-- finding -->** (`<location>`) — <!-- one-line action --> — est. <!-- gain -->
-
-### Next sprint (Medium)
-1. **<!-- finding -->** (`<location>`) — <!-- one-line action -->
-
-### Backlog (Low / Informational)
-1. **<!-- finding -->** (`<location>`) — <!-- one-line action -->
-
----
+<!-- Order remediation work by release urgency and expected benefit. -->
 
 ## Validation Plan
+<!-- Describe the measurements to repeat before merging. -->
 
-Before merging, re-measure:
-- [ ] <!-- metric --> via <!-- tool/command --> — target: <!-- threshold -->
-- [ ] <!-- metric --> via <!-- tool/command --> — target: <!-- threshold -->
-Summary: Critical=<!-- n --> High=<!-- n --> Medium=<!-- n --> Low=<!-- n --> Informational=<!-- n -->
+<!-- Summary: use the command-owned tally line from the write-time authority; do not restate severity levels here. -->
+<!-- Write-time authority: severity vocabulary, evidence rules, finding shape, and tally line are defined in sai/commands/performance/performance-report.template.md -->
