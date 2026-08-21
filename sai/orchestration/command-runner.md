@@ -301,17 +301,66 @@ additional phase-adapter field.
    never mark, extend, rename, or add progress-plan steps.
 
 10. **Union and fast-track invariants.** Maintain one first-seen, ordered,
-     duplicate-free `changed_files` union across initial results, progress,
-     notices, input, normal continuation, segment transitions, and recovery.
-     Reset the diagnosis ledger only at an eligible composition-segment
-     boundary; never reset the changed-files union. `--fast-track` is unchanged:
-     it changes neither the three-slot ledger, distinct-diagnosis accounting,
-     eligibility, duplicate handling, same-worker/no-replacement rule,
-     changed-files union, nor recovery reporting; its existing fast-track gates
-     remain in force.
+      duplicate-free `changed_files` union across initial results, progress,
+       notices, input, normal continuation, segment transitions, and recovery.
+      Reset the diagnosis ledger only at an eligible composition-segment
+      boundary; never reset the changed-files union. `--fast-track` is unchanged:
+      it changes neither the three-slot ledger, distinct-diagnosis accounting,
+      eligibility, duplicate handling, same-worker/no-replacement rule,
+      changed-files union, nor recovery reporting; its existing fast-track gates
+      remain in force.
+
+    **Planning-adapter recovery surface and channel selection.** A planning
+    adapter that opts into bounded recovery SHALL declare both (a) its
+    worker-owned, authorized production surface and authorized read set for
+    non-clean inspection and (b) the same-worker correction operation and its authorized correction
+    boundary. The declaration SHALL be the source of truth for that adapter's
+    authorized non-clean read surface. Phase cards SHALL consume this shared
+    declaration and SHALL NOT duplicate the runner's ledger, budget, key,
+    eligibility, zero-attempt, continuation, or no-replacement rules.
+
+    After resolution, the only results that may trigger planning inspection are
+    a structurally valid `failed` result, a `completed` result disproved by
+    coordinator evidence, or a `completed` result carrying STOP. These are
+    after-resolution non-clean triggers and no other result may authorize
+    inspection of the adapter-declared worker-owned surface. A structurally
+    valid failed result is one that passes closed-result validation; a malformed
+    failed result follows the existing coordinator-rejection path instead.
+
+    The clean route remains artifact-blind. Clean `completed`, `needs_input`,
+    `cancelled`, `progress`, and `notice` results, together with every
+    pre-resolution result, SHALL NOT inspect artifacts, the adapter-declared
+    surface, or the static recovery registry. A `completed` result is clean for
+    this purpose only when it is not coordinator-disproved and does not carry
+    STOP.
+
+    For each cause surface, channel selection precedes diagnosis-key derivation
+    and the two recovery channels SHALL be exclusive. The selected
+    planning channel SHALL use both existing inspection channels — the
+    worker-authored result channel and the coordinator-observed channel — to
+    inspect an in-scope surface within the adapter's authorized worker-owned
+    declaration, without also matching any static registry row. The static
+    channel SHALL use the existing `design-overview-repair` registry/match
+    algorithm only for an outside surface. If an adapter-declared surface is
+    authorized but the evidence does not resolve a concrete point and
+    correction boundary, Cause Locus SHALL remain `unresolved`, recovery SHALL
+    spend zero attempts, and the runner SHALL NOT fall through to a static
+    row or use a static fallback.
+
+    Diagnosis is ephemeral conversation state. The runner SHALL NOT persist the
+    diagnosis, selected channel, repair markers, attempt counters, or diagnosis
+    history in artifacts, worker payloads, worker journals, change metadata, or
+    any other durable store. Only the existing invocation/segment runtime state
+    needed for the ledger and recovery loop may be retained, and it is discarded
+    under the existing segment-boundary rules.
+
+    These planning-surface rules preserve all existing routing, ledger,
+    zero-attempt, continuation, registry, and no-replacement invariants. They
+    do not alter the static registry/match algorithm below or authorize a second
+    registry row.
 
 11. **Step 2 GREEN contract for blind opted-in adapters.** A blind opted-in
-    adapter SHALL use the following deterministic, phase-static registry and
+     adapter SHALL use the following deterministic, phase-static registry and
     match matrix algorithm. This is the matching algorithm for the registered
     surface.
     The algorithm has no dynamic registration and never reads test-file content.

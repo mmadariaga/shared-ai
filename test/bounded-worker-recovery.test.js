@@ -57,6 +57,45 @@ test('recovery routes Cause Locus diagnoses through dual inspection channels', (
     'diagnosis must use dual inspection channels');
 });
 
+test('planning non-clean inspection boundary and adapter surface declaration live in the runner', () => {
+  const runner = artifact('sai/orchestration/command-runner.md');
+
+  assert.match(runner, /non[- ]clean[\s\S]{0,200}(?:failed|closure)/i,
+    'runner must name the non-clean closure route');
+  assert.match(runner, /(?:standalone|planning)[\s\S]{0,200}(?:adapter|inspection)/i,
+    'runner must address standalone/planning adapters');
+  assert.match(runner, /(?:worker[- ]owned|artifact surface|authorized read set)/i,
+    'adapters must declare a worker-owned artifact surface / authorized read set');
+  assert.match(runner, /same[- ]worker/i,
+    'same-worker correction must remain named');
+  assert.match(runner, /(?:clean[\s\S]{0,120}(?:completed|needs_input|cancelled|progress|notice)|artifact[- ]blind)/i,
+    'clean-route blindness must be retained');
+  assert.match(runner, /(?:ephemeral|conversation state|not[\s\S]{0,80}(?:written|persisted)[\s\S]{0,80}(?:artifact|metadata))/i,
+    'diagnosis must remain ephemeral — no durable recovery markers');
+});
+
+test('dual-channel exclusivity is per cause surface with no unresolved static fallback', () => {
+  const runner = artifact('sai/orchestration/command-runner.md');
+
+  assert.match(runner, /(?:per[- ](?:cause[- ])?surface|cause surface)/i,
+    'channel selection must be per cause surface');
+  assert.match(runner, /(?:authorized read set|read set)[\s\S]{0,300}(?:inspection|inspect)/i,
+    'inspection applies when the cause surface is in the authorized read set');
+  assert.match(runner, /(?:phase[- ]static|design-overview-repair)[\s\S]{0,300}(?:outside|not[\s\S]{0,40}(?:in|within)|∉|blind)/i,
+    'phase-static matching applies when the surface is outside the read set');
+  assert.match(runner, /(?:no|not|never)[\s\S]{0,120}fall[\s-]?back[\s\S]{0,200}(?:phase[- ]static|static|design-overview-repair)|(?:unresolved)[\s\S]{0,200}(?:no|not|never)[\s\S]{0,120}(?:phase[- ]static|static|fall[\s-]?back)/i,
+    'authorized-but-unresolved inspection must not fall back to a static row');
+  assert.match(runner, /channel selection[\s\S]{0,200}(?:before|precedes)[\s\S]{0,120}(?:key|diagnosis)/i,
+    'channel selection must precede key derivation');
+  assert.match(runner, /design-overview-repair/,
+    'sole overview registry identity must remain');
+  assert.equal(
+    (runner.match(/\| design-overview-repair \|/g) || []).length,
+    1,
+    'exactly one design-overview-repair registry row'
+  );
+});
+
 test('recovery preserves ordinary continuation fallback and invocation accounting', () => {
   const runner = artifact('sai/orchestration/command-runner.md');
   assert.match(runner, /outside recovery[\s\S]{0,260}(?:replacement|fallback)/i);
