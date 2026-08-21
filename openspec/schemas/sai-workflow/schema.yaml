@@ -235,15 +235,7 @@ artifacts:
     description: Granular implementation plan — code-level steps with RED→GREEN and STOP & COMMIT markers, with Discarded findings sub-blocks inside audit steps derived from review.md / security.md / performance.md / accessibility.md
     template: implementation.md
     instruction: |
-      Create implementation.md — a step-by-step plan ready for cheap-model execution.
-
-      Structure for each step:
-      1. RED block: write the failing test first; confirm it fails with a valid assertion error
-      2. GREEN block: write the minimal implementation to make it pass
-      3. STOP & COMMIT marker: explicit checkpoint after each logical unit
-
-      Pull from: proposal.md (what & why), design.md (decisions), tasks.md (high-level steps), specs/**/*.md (acceptance criteria).
-      Every step must reference its source task from tasks.md.
+      Fetch and follow sai/commands/implement/implementation-plan.template.md exactly. This instruction is an informative reference only; it does not restate the implementation plan contract.
     requires:
       - tasks
 
@@ -252,14 +244,7 @@ artifacts:
     description: Code review report — correctness, maintainability, testing, surface triage
     template: review.md
     instruction: |
-      Create review.md — a structured review of the implementation against the proposal and specs.
-
-      Perform eleven review passes: Domain Alignment, Correctness & Bugs, Security triage, Performance triage,
-      Accessibility triage, Maintainability, Testing, Consistency with Codebase, Domain Language Consistency,
-      Documentation & Migrations, Mutation Analysis.
-
-      Classify each finding: Blocker | Major | Minor | Question.
-      Every finding needs a precise file:line location.
+      Fetch and follow sai/commands/review/review-report.template.md exactly. This instruction is an informative reference only; it does not restate the review report contract.
     requires:
       - implementation
 
@@ -268,11 +253,7 @@ artifacts:
     description: Security audit — SAST + SCA, CWE/CVE mapping, OWASP compliance
     template: security.md
     instruction: |
-      Create security.md — SAST and (if dependency manifests changed) SCA on the diff.
-
-      For each finding: file:line + taint flow (injection-class) or location + evidence (misconfig/crypto).
-      Map to CWE ID only when the mapping is direct and obvious.
-      If the change has no security surface, fill in the Not Applicable section with justification.
+      Fetch and follow sai/commands/security/security-report.template.md exactly. This instruction is an informative reference only; it does not restate the security report contract.
     requires:
       - implementation
 
@@ -281,11 +262,7 @@ artifacts:
     description: Performance audit — backend / frontend / db / queue tiers, evidence-based
     template: performance.md
     instruction: |
-      Create performance.md — performance audit across all tiers touched by the diff.
-
-      Every finding needs: location, measured symptom, evidence, remediation, validation method.
-      No speculation — if a number was not measured, mark it "estimated — verify with X".
-      If the change has no performance surface, fill in the Not Applicable section with justification.
+      Fetch and follow sai/commands/performance/performance-report.template.md exactly. This instruction is an informative reference only; it does not restate the performance report contract.
     requires:
       - implementation
 
@@ -294,10 +271,7 @@ artifacts:
     description: Accessibility audit — WCAG 2.2 AA static review, optional runtime axe/Lighthouse
     template: accessibility.md
     instruction: |
-      Create accessibility.md — WCAG 2.2 AA audit of UI changes in the diff.
-
-      Every finding needs: file:line, WCAG SC code + name + level, evidence, remediation.
-      If the diff contains no UI files (.tsx/.jsx/.astro/.html/.vue/.svelte/.css), fill in the Not Applicable section.
+      Fetch and follow sai/commands/accessibility/accessibility-report.template.md exactly. This instruction is an informative reference only; it does not restate the accessibility report contract.
     requires:
       - implementation
 
