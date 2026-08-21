@@ -62,6 +62,8 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0158 — Delete the worker-owned planning-artifact review loop](./0158-delete-worker-owned-planning-artifact-review-loop.md) — Supersedes 0139, Refs ddr:0133, Refs ddr:0134
 - [0159 — Supervised marker grammar stays on the two-string envelope; Explore owns the capability](./0159-marker-grammar-stays-on-two-string-envelope.md) — Refs 0158, Refs ddr:0114
 - [0160 — Interactive artifact feedback gate gains a non-option review-loop note only](./0160-interactive-gate-review-loop-note-only.md) — Refs 0028, Refs ddr:0150, Refs 0158
+- [0166 — Schema design/tasks/interfaces instructions are authority pointers](./0166-schema-design-tasks-interfaces-instructions-are-authority-pointers.md) — Pair with 0167, Refs 0155, Refs 0162
+- [0167 — Design/tasks/interfaces templates are structural skeletons](./0167-design-tasks-interfaces-templates-are-structural-skeletons.md) — Pair with 0166, Refs 0162
 
 ### `/sai-3-implement`
 
@@ -356,6 +358,8 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0146 — Command-owned files live in their consuming command's directory](./0146-command-owned-files-live-in-their-consuming-command-directory.md) — Supersedes 0003, Refs 0004, Refs 0138, Refs ddr:0123, Refs ddr:0149
 - [0152 — Overview generation contract is transported by Fetch on dispatch](./0152-overview-generation-contract-is-transported-by-fetch-on-dispatch.md) — Refs 0146
 - [0155 — Schema change-overview instruction is an informative reference only](./0155-schema-change-overview-instruction-is-an-informative-reference-only.md) — Refs 0146
+- [0166 — Schema design/tasks/interfaces instructions are authority pointers](./0166-schema-design-tasks-interfaces-instructions-are-authority-pointers.md) — Pair with 0167, Refs 0155, Refs 0162
+- [0167 — Design/tasks/interfaces templates are structural skeletons](./0167-design-tasks-interfaces-templates-are-structural-skeletons.md) — Pair with 0166, Refs 0162
 
 ### Harness portability & mirror discipline
 
