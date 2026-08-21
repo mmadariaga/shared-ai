@@ -8,7 +8,7 @@ Define the canonical spec progress plan: its three ordered steps, their one-to-o
 
 ### Requirement: spec-adapter-declares-progress-plan
 
-The spec phase adapter (`sai/commands/spec/coordinator.md`) SHALL declare a `progress_plan` with exactly the following ordered progress steps:
+The spec phase adapter SHALL declare the existing six ordered progress steps and the worker contract SHALL enumerate the same ids and labels. The plan SHALL be fully known at dispatch and immutable for the invocation. A worker dispatch SHALL pass only `arguments_value`; the plan SHALL remain coordinator state.
 
     prereqs-and-change: "Check prerequisites"
     research: "Research the change request"

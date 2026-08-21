@@ -42,7 +42,7 @@ Before review analysis, the worker SHALL enforce the existing OpenSpec CLI, `ope
 
 ### Requirement: Change resolution parses positional arguments
 
-The worker SHALL parse `arguments_value` as up to two positional values: the first token is the change name and the remaining token is the optional parent branch. It SHALL resolve a non-empty value before invoking the active-change picker; when no name is supplied, it SHALL preserve the existing zero/one/multiple active-change picker behavior and CLI order.
+The worker SHALL parse the resolved `arguments_value` as up to two positional values: the first token is the change name and the remaining token is the optional parent branch. It SHALL resolve a non-empty value before invoking the active-change picker; when no name is supplied, it SHALL preserve the existing zero/one/multiple picker behavior and CLI order. No wrapper-echo source or wrapper precedence exists.
 
 #### Scenario: Explicit change and parent branch are supplied
 - **WHEN** the resolved argument string is `my-change develop`

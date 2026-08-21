@@ -8,7 +8,7 @@ The status-picker capability defines the dedicated change-name picker instructio
 
 ### Requirement: sai-status uses a dedicated status-picker
 
-`sai-status` SHALL resolve a missing change name via a dedicated `sai/policies/status-picker.md` instruction rather than the shared `change-picker.md`. `status-picker.md` SHALL use the invocation envelope's only request field: a trimmed, non-empty `arguments_value` is authoritative and the 0/1/N fallback runs only when it is empty. `openspec list --json` SHALL be the sole source of change names for that fallback, followed by resolved-name substitution. Resolution SHALL NOT scan conversation history or require a labelled line. No other `sai-*` command SHALL fetch `status-picker.md`.
+`sai-status` SHALL resolve a missing change name via the dedicated `sai/policies/status-picker.md` instruction rather than the shared `change-picker.md`. `status-picker.md` SHALL use the invocation envelope's only request field: a trimmed, non-empty `arguments_value` is authoritative and the 0/1/N fallback runs only when it is empty. `openspec list --json` SHALL remain the sole source for that fallback, followed by resolved-name substitution. Resolution SHALL NOT scan conversation history or require a labelled line. No other `sai-*` command SHALL fetch `status-picker.md`.
 
 #### Scenario: sai-status fetches status-picker
 - **WHEN** `/sai-status` is invoked

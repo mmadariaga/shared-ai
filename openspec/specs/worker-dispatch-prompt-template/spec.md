@@ -7,11 +7,11 @@ TBD: Define the encoded literal contract-aware dispatch template for routed work
 
 ### Requirement: Routed worker bindings use an encoded literal contract-aware dispatch template
 
-Each of the seven Claude Code and seven opencode worker bindings SHALL use a literal, worker-specific initial dispatch prompt template encoded as one double-quoted string on the dispatch line. After substituting the binding's canonical worker contract filename, the prompt string SHALL contain literal `\n` escape sequences (backslash followed by `n`, not physical line breaks) and SHALL decode to exactly these two sections in this order:
+Each of the seven Claude Code and seven opencode worker bindings SHALL use a literal, worker-specific initial dispatch prompt template encoded as one double-quoted string on the dispatch line. After substituting the binding's canonical worker contract filename, the prompt string SHALL contain literal `\\n` escape sequences and SHALL decode to the worker contract section followed by an opaque slot containing only the coordinator-supplied `arguments_value`.
 
     Worker contract: Fetch @sai/orchestration/workers/<worker-contract>.md and follow it exactly.\n\nInvocationEnvelope:\n<original InvocationEnvelope>
 
-`<worker-contract>` SHALL be the matching canonical contract filename. `<original InvocationEnvelope>` SHALL remain an opaque slot for the coordinator-supplied `arguments_value` string. This change SHALL NOT define, serialize, concatenate, or reinterpret that string; phase-specific parsing and `--fast-track` handling remain owned by the phase-specific coordinator and worker contract. The template SHALL not contain the former free-text placeholder or permit the coordinator to invent replacement contract-loading wording.
+`<worker-contract>` SHALL be the matching canonical contract filename. The template SHALL not define, serialize, concatenate, or reinterpret a wrapper-echo field; phase-specific parsing remains owned by the coordinator and worker contract.
 
 #### Scenario: Every current binding carries the matching template
 

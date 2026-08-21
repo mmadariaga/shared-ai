@@ -8,18 +8,18 @@ TBD placeholder — purpose to be written when the change completes.
 
 ### Requirement: three-directive-wrapper-body
 
-The body of every in-scope `commands/claude/sai-*.md` and `commands/opencode/sai-*.md` wrapper SHALL consist of exactly three directives, in order: (1) the harness fetch-skill load, (2) the harness boot-adapter load, and (3) the launcher call to `@sai/commands/{name}/launcher.md` — plus the standalone invocation envelope block, rendered directly after the launcher-call directive, and no other content. The rewrite SHALL drop the legacy `## Sai <Phase>` section heading: the wrapper body SHALL NOT carry any heading, because the envelope's `command_name` already identifies the command. `sai-explore` is the sole exception to the three-directive shape: its harness-specific card load and divergent binding loads are governed by `explore-harness-specific-loads`. All other content the wrapper carries today — behaviour-skill loads, worker bindings, and card fetches — SHALL move to the command's launcher. The wrapper body SHALL NOT contain isolation-mode blocks, prerequisite checks, or any other sai behaviour, and SHALL NOT contain any `## Load behaviors`, `## Load instructions`, `## Run`, `## Completion`, or `## Prerequisite checks` section. The wrapper's frontmatter SHALL remain byte-identical. This requirement is the single normative owner of the wrapper body shape: `thin-wrappers`' `wrapper-shape` references it and SHALL NOT restate the shape, its scenarios, or its forbidden-content rules.
+The body of every in-scope `commands/claude/sai-*.md` and `commands/opencode/sai-*.md` wrapper SHALL consist of exactly three directives, in order: (1) the harness fetch-skill load, (2) the harness boot-adapter load, and (3) the launcher call to `@sai/commands/{name}/launcher.md` — plus a standalone two-key invocation envelope block rendered directly after the launcher-call directive, and no other content. The legacy `## Sai <Phase>` heading SHALL remain absent. `sai-explore` remains the sole load-set exception. All other wrapper content, isolation blocks, prerequisite checks, and behavior sections remain forbidden, and frontmatter remains byte-identical. This requirement remains the single normative owner of wrapper body shape.
 
 #### Scenario: Claude Code wrapper body shape
 
 - **WHEN** any `commands/claude/sai-*.md` wrapper other than `sai-explore.md` is read
-- **THEN** its directive set is exactly `Fetch @skills/fetch/SKILL.md`, the boot-adapter load, and the launcher call — no other Fetch directive appears in the body
+- **THEN** its directive set is exactly the harness fetch-skill, boot-adapter, launcher call, and the two-key envelope
 - **THEN** `sai-explore.md`'s directive set is governed by `explore-harness-specific-loads`
 
 #### Scenario: opencode wrapper body shape
 
 - **WHEN** any `commands/opencode/sai-*.md` wrapper other than `sai-explore.md` is read
-- **THEN** its directive set is exactly the fetch-skill line (`Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.`), the boot-adapter load, and the launcher call — no other Fetch directive appears in the body
+- **THEN** its directive set is exactly the opencode fetch-skill, boot-adapter, launcher call, and the two-key envelope
 - **THEN** `sai-explore.md`'s directive set is governed by `explore-harness-specific-loads`
 
 #### Scenario: behaviour loads absent from the wrapper
@@ -45,12 +45,12 @@ The body of every in-scope `commands/claude/sai-*.md` and `commands/opencode/sai
 
 ### Requirement: envelope-lives-in-the-wrapper
 
-The invocation envelope — `command_name`, `arguments_value` — SHALL ride in the command file, not in the launcher: the standalone `InvocationEnvelope:` block SHALL be rendered in the wrapper directly after the launcher-call directive, because `$ARGUMENTS` is substituted only in the command file. The envelope SHALL NOT be defined inside the launcher, and the launcher SHALL NOT define, parse, or require an envelope of its own. A trimmed, non-empty `arguments_value` SHALL be authoritative for change-name resolution. When `arguments_value` is empty after trimming, the established zero/one/multiple picker SHALL run. No transcript scan or labelled wrapper line is part of the envelope contract.
+The invocation envelope SHALL remain in the command file, directly after the launcher-call directive, because `$ARGUMENTS` is substituted only in the command file. It SHALL contain exactly `command_name` and `arguments_value`, in that order. The launcher SHALL not define, parse, or require an envelope. A trimmed, non-empty `arguments_value` SHALL be authoritative for change-name resolution; an empty value SHALL enter the established picker. No wrapper-echo field, transcript scan, or labelled wrapper line is part of the contract.
 
-#### Scenario: envelope fields unchanged
+#### Scenario: envelope fields are narrowed
 
 - **WHEN** a wrapper is read
-- **THEN** the `InvocationEnvelope:` block appears in the wrapper directly after the launcher-call directive and carries exactly `command_name` followed by `arguments_value`, with `$ARGUMENTS` substituted in the wrapper, not in the launcher
+- **THEN** the `InvocationEnvelope:` block carries exactly `command_name` and `arguments_value`
 
 #### Scenario: launcher carries no envelope
 

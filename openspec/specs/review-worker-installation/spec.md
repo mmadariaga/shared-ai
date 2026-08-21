@@ -47,7 +47,7 @@ The installer SHALL register the numbered opencode review worker using the estab
 
 ### Requirement: Routed wrappers load the coordinator and matching binding
 
-The Claude Code and opencode `/sai-5-review` wrappers SHALL be rewritten as thin routed wrappers that load the shared review coordinator and only their matching review-worker binding, while preserving each harness's model, argument, and prerequisite behavior. The Copilot review prompt SHALL remain pointed at the inline review instruction.
+The Claude Code and opencode `/sai-5-review` wrappers SHALL be thin routed wrappers that load the shared review coordinator and only their matching review-worker binding, preserving each harness's model, argument, and prerequisite behavior. Their standalone envelope SHALL carry the complete substituted request only in `arguments_value`; no wrapper label or wrapper-echo field is emitted. The Copilot review prompt SHALL remain pointed at the inline review instruction.
 
 #### Scenario: Claude wrapper is inspected
 - **WHEN** the Claude Code review wrapper is loaded

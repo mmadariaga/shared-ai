@@ -88,7 +88,7 @@ The following gates SHALL remain in force under `sai-archive --fast-track` and S
 
 ### Requirement: The --fast-track flag is parsed from arguments_value before the picker
 
-Exactly four commands — `sai-explore`, `sai-2-design`, `sai-4-apply`, and `sai-archive` — SHALL accept a `--fast-track` token in their arguments. The token SHALL be parsed by the command's shared body files (`sai/commands/explore/body.md`, `sai/commands/design/worker.md`, `sai/commands/apply/invocation.md`, `sai/commands/archive/body.md`) from the invocation envelope's `arguments_value` before change-name picking. After extraction the token SHALL be removed from `arguments_value`, and the cleaned remainder SHALL remain the authoritative `arguments_value` passed downstream. `/sai-build` is outside this parser membership; it may inject apply fast-track through composition.
+Exactly four commands — `sai-explore`, `sai-2-design`, `sai-4-apply`, and `sai-archive` — SHALL accept a `--fast-track` token in their arguments. The token SHALL be parsed by the command's shared body files from `arguments_value` before change-name picking. After extraction the token SHALL be removed from `arguments_value`, and the cleaned remainder SHALL remain authoritative downstream. `/sai-build` remains outside this parser membership and may inject apply fast-track through composition. No wrapper-echo field is forwarded or used to find or clean a change name.
 
 For `sai-2-design`, `sai-4-apply`, and `sai-archive`, the cleaned `arguments_value` SHALL reach the shared change-picker before it resolves a name. `sai-4-apply` and `sai-archive` SHALL NOT strip a residual `--fast-track` token from the picker's resolved value or perform a second flag-removal pass after picking.
 

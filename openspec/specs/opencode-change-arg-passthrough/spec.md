@@ -7,7 +7,7 @@ Define the opencode wrapper contract that forwards command arguments through the
 ## Requirements
 ### Requirement: opencode change-consuming wrappers forward an envelope
 
-Every opencode wrapper for a change-consuming `sai-*` command (`sai-2-design`, `sai-3-implement`, `sai-4-apply`, `sai-5-review`, `sai-6-security`, `sai-7-performance`, `sai-8-accessibility`, `sai-archive`, `sai-pr`) SHALL contain one standalone `InvocationEnvelope:` block directly after the launcher-call directive. The block SHALL contain exactly these two keys, in this order: `command_name` and `arguments_value`. Opencode SHALL substitute `$ARGUMENTS` into `arguments_value`; a trimmed, non-empty `arguments_value` SHALL be authoritative. The wrapper SHALL be label-free, SHALL have no trailing content after the envelope block, and SHALL preserve its frontmatter byte-for-byte.
+Every opencode wrapper for a change-consuming `sai-*` command SHALL contain one standalone `InvocationEnvelope:` block directly after the launcher-call directive. The block SHALL contain exactly `command_name` and `arguments_value`, in that order. Opencode SHALL substitute `$ARGUMENTS` into `arguments_value`; a trimmed, non-empty value SHALL be authoritative. The wrapper SHALL be label-free, have no trailing content after the envelope block, and preserve its frontmatter byte-for-byte.
 
 #### Scenario: sai-archive wrapper forwards the envelope
 - **WHEN** the opencode `sai-archive` wrapper is read

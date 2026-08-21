@@ -76,7 +76,7 @@ Each missing prerequisite SHALL return its pinned actionable failure text.
 
 ### Requirement: change-resolution
 
-A provided name bypasses `openspec list --json`. Zero changes returns the pinned failure. One change requests yes/no then continues or cancels. Multiple changes preserve CLI order and re-request options without retry cap.
+A provided `arguments_value` name SHALL bypass `openspec list --json`. Zero changes SHALL return the pinned failure. One change SHALL request yes/no then continue or cancel. Multiple changes SHALL preserve CLI order and re-request options without a retry cap. No wrapper-echo source SHALL be consulted.
 
 #### Scenario: provided name bypasses list
 - **WHEN** `arguments_value` is non-empty after trimming
@@ -133,7 +133,7 @@ The design worker SHALL include worker-authored `emitted_on` in notices, progres
 - **THEN** the payload includes its actual composition instant in `emitted_on`.
 
 ### Requirement: The design worker owns the complete technical design workflow
-The design worker SHALL own prerequisite checks, fast-track parsing, change selection, proposal and spec validation, specs approval state, codebase research, technical question resolution, design decisions, artifact generation, and artifact verification. The coordinator SHALL not share ownership of any of these activities. Ownership of specs approval state means stamping it, never asking for it: after verifying `proposal.md` and at least one `specs/**/*.md`, the worker SHALL write `approval.specs.approved_at` only when that key is absent or empty and `approval.specs.notes` as an empty string, then handle amendments per the design instructions. The worker SHALL parse only the sole `arguments_value` request; no alternate request source or wrapper-label extraction exists.
+The design worker SHALL own prerequisite checks, fast-track parsing, change selection, proposal and spec validation, specs approval state, codebase research, technical question resolution, design decisions, artifact generation, and artifact verification. The coordinator SHALL not share ownership. The worker SHALL parse the sole `arguments_value` request; wrapper-echo precedence and wrapper-label extraction do not exist.
 
 #### Scenario: worker stamps the approval without asking
 - **WHEN** the design worker has verified `proposal.md` and at least one `specs/**/*.md` for the resolved change
@@ -145,7 +145,7 @@ The design worker SHALL own prerequisite checks, fast-track parsing, change sele
 
 #### Scenario: Worker starts from an invocation envelope
 - **WHEN** a design worker receives `arguments_value`
-- **THEN** it SHALL run universal prerequisites first, parse and strip `--fast-track`, resolve the change, and continue from durable OpenSpec state without printing user-visible text directly
+- **THEN** it runs universal prerequisites, parses its supported flags, resolves the change, and continues from durable OpenSpec state
 
 #### Scenario: Fast-track prerequisites succeed
 - **WHEN** universal prerequisites pass and worker-owned parsing finds the discrete `--fast-track` token while `fast_track_banner_emitted` is false

@@ -5,25 +5,6 @@
 Define envelope-owned input resolution for the apply, archive, PR, and status cards.
 
 ## Requirements
-### Requirement: Four fetched cards consume the invocation envelope
-
-The fetched `apply`, `archive`, `pr`, and `status` cards SHALL read their request from the boot-provided `arguments_value` field under either supported harness rather than relying on `$ARGUMENTS` substitution inside the fetched card. They SHALL preserve the existing command-local parsing and downstream instruction order after replacing the input reference.
-
-#### Scenario: Apply and archive receive arguments from any supported harness
-
-- **WHEN** a supported harness boot adapter selects the apply or archive card with a non-empty `arguments_value`
-- **THEN** the selected card uses that value for its prerequisite, fast-track, picker, and downstream request handling without scanning conversation history or requiring a substituted `$ARGUMENTS` token
-
-#### Scenario: Claude archive uses arguments_value instead of card substitution
-
-- **WHEN** Claude Code invokes `/sai-archive oauth2-auth --fast-track`
-- **THEN** the archive card consumes the forwarded `arguments_value`, parses the flag from that value, and does not depend on `$ARGUMENTS` substitution inside the fetched card
-
-#### Scenario: PR and status receive arguments from any supported harness
-
-- **WHEN** a supported harness boot adapter selects the PR or status card with a non-empty `arguments_value`
-- **THEN** the selected card uses that value for change-name resolution and preserves the existing PR parent-branch behavior or status panel behavior respectively
-
 ### Requirement: Empty envelope arguments retain picker behavior
 
 When `arguments_value` is empty, the four cards SHALL fall through to their existing picker path. The shared 0/1/N behavior, prompt wording, CLI-order options, confirmation and decline semantics, and unbounded invalid-input re-prompt behavior SHALL remain unchanged. The status card SHALL retain its dedicated 2+ "See all" branch and its `> BULK-MODE ACTIVE` signal.

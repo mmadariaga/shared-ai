@@ -8,7 +8,7 @@ Define the canonical implementation progress plan: its five ordered steps, their
 
 ### Requirement: implement-adapter-declares-progress-plan
 
-The implementation phase adapter (`sai/commands/implement/coordinator.md`) SHALL declare a `progress_plan` with exactly the following ordered progress steps:
+The implementation phase adapter SHALL declare the existing ordered progress steps and the implementation worker contract SHALL enumerate the same ids and labels. The plan SHALL be fully known at dispatch and immutable for the invocation. A worker dispatch SHALL pass only `arguments_value`; the plan SHALL remain coordinator state.
 
     prereqs-resolution: "Check prerequisites"
     collapse-implemented-steps: "Collapse implemented steps"
@@ -17,9 +17,7 @@ The implementation phase adapter (`sai/commands/implement/coordinator.md`) SHALL
     plan-generation: "Write implementation.md"
     validation: "Validate implementation.md and the audit append"
 
-The indented block above is illustrative of the ids and labels only; it is not the rendering the instruction files use. The declaration as written in `sai/commands/implement/coordinator.md` and in the implementation-planning worker contract (`sai/commands/implement/worker.md`) SHALL use those files' existing list rendering, and the two rendered lists SHALL compare equal by ordered id/label content after per-line indentation normalization — not by comparing either file with this delta's block. The worker contract SHALL enumerate the same step ids with the same labels in the same order. The adapter SHALL NOT omit, reorder, or rename these steps, and SHALL NOT add steps. The plan SHALL be fully known at dispatch and immutable for the invocation, per `progress-plan-declaration`.
-
-Every step label SHALL be imperative (an instruction naming the act, e.g. `Write implementation.md`), not nominal.
+The adapter and worker SHALL enumerate the same ids and labels in the same order. Every step label SHALL be imperative.
 
 #### Scenario: implementation plan is declared
 

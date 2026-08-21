@@ -27,14 +27,14 @@ Both `sai/adapters/claude/boot.md` and `sai/adapters/opencode/boot.md` SHALL cla
 
 ### Requirement: routed-apply-enters-the-worker-lifecycle
 
-Because `apply` becomes a routed card, the boot adapters' statement that "utility cards never enter a worker lifecycle" SHALL no longer apply to `apply`: the routed apply coordinator SHALL dispatch the RED and GREEN workers through their bindings, per the neutral `command-runner.md` protocol. The boot adapters SHALL use `command_name` for card selection and forward `arguments_value` byte-for-byte to the apply coordinator.
+Because `apply` is a routed card, the boot adapters' statement that utility cards never enter a worker lifecycle SHALL not apply to `apply`: the routed apply coordinator SHALL dispatch RED and GREEN workers through their bindings, per the neutral command-runner protocol. The boot adapters SHALL forward `command_name` for card selection and `arguments_value` byte-for-byte to the apply coordinator.
 
 #### Scenario: apply dispatches managed workers
 
 - **WHEN** the apply coordinator routes a Step
 - **THEN** it dispatches the RED and/or GREEN worker through the active apply worker binding, entering the worker lifecycle
 
-#### Scenario: envelope forwarding is unchanged
+#### Scenario: envelope forwarding is narrowed
 
 - **WHEN** the boot adapter selects the apply coordinator
-- **THEN** it forwards `arguments_value` byte-for-byte, keeping continuation and dispatch metadata adapter-owned
+- **THEN** it forwards `arguments_value` byte-for-byte and keeps continuation and dispatch metadata adapter-owned

@@ -1,6 +1,6 @@
 # Spec: Glossary canonical location at project root
 
-## ADDED Requirements
+## Requirements
 
 ### Requirement: Canonical single-root location
 
@@ -61,3 +61,13 @@ The SAI tooling SHALL look only at the project-root `GLOSSARY.md` going forward.
 - **WHEN** a `GLOSSARY.md` exists only inside `openspec/changes/{name}/` and none exists at the project root
 - **THEN** the SAI phases treat the glossary as absent
 - **AND** no instruction directs the agent to fall back to the change-folder copy
+
+### Requirement: Boot Request vocabulary tracks the active envelope
+
+The canonical project-root `GLOSSARY.md` SHALL define **Boot Request** using the active envelope vocabulary: `command_name`, `arguments_value`, and any optional harness-owned continuation reference, without a wrapper-echo value. The spec phase SHALL record this as a downstream documentation consequence; this change run SHALL not edit `GLOSSARY.md`.
+
+#### Scenario: glossary update is verifiable downstream
+
+- **WHEN** the implementation updates the canonical glossary
+- **THEN** the **Boot Request** definition no longer names `wrapper_echo_value`
+- **AND** it names the remaining command, argument, and continuation concepts consistently with the active envelope requirements

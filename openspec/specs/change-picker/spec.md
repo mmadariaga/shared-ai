@@ -7,7 +7,7 @@ The change-picker capability resolves a missing change name from the invocation 
 ## Requirements
 ### Requirement: Invocation envelope provides change-name authority
 
-The change-picker SHALL use only the invocation envelope's `arguments_value` for direct change-name resolution. After trimming, a non-empty `arguments_value` SHALL be authoritative and SHALL pass through as the resolved change name without an OpenSpec query or user prompt. The change-picker SHALL NOT resolve a name from conversation history or require a labelled line.
+The change-picker SHALL use only the invocation envelope's `arguments_value` for direct change-name resolution. After trimming, a non-empty `arguments_value` SHALL be authoritative and SHALL pass through as the resolved change name without an OpenSpec query or user prompt. No wrapper-echo field exists in the active envelope, and the change-picker SHALL NOT resolve a name from conversation history or require a labelled line.
 
 #### Scenario: trimmed arguments value is authoritative
 - **WHEN** a change-consuming `sai-*` command supplies an `arguments_value` whose trimmed value is non-empty
@@ -20,7 +20,7 @@ The change-picker SHALL use only the invocation envelope's `arguments_value` for
 
 ### Requirement: Invocation Trigger
 
-The change-picker SHALL use the 0/1/N active-change picker only when `arguments_value` is empty after trimming. If `arguments_value` is empty or whitespace-only, the change-picker SHALL activate before any other command processing.
+The change-picker SHALL use the 0/1/N active-change picker only when `arguments_value` is empty after trimming. If it is empty or whitespace-only, the change-picker SHALL activate before any other command processing. There is no alternate wrapper-echo source that can suppress this fallback.
 
 #### Scenario: arguments value is missing
 - **WHEN** a change-consuming `sai-*` command supplies an empty or whitespace-only `arguments_value`

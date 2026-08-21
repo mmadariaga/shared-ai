@@ -52,7 +52,7 @@ The verbatim request that forms the reviewer's reference set (when a pass runs) 
 
 ### Requirement: supervised-flag-prefix-grammar
 
-The supervision marker SHALL travel as flag content inside the single `arguments_value` request. No third envelope field SHALL be introduced. Boot adapters SHALL remain opaque forwarders of `command_name` and `arguments_value`.
+The supervision marker SHALL travel as flag content inside the single `arguments_value` request. No wrapper-echo or third envelope field SHALL be introduced. Boot adapters SHALL remain opaque forwarders of `command_name` and `arguments_value`.
 
 For Auto-supervised explore dispatches, explore SHALL place the marker and the phase request or change name in `arguments_value`.
 

@@ -6,7 +6,7 @@
 ## Requirements
 ### Requirement: Forward supervised marker on Auto dispatches
 
-When `sai-explore` runs selector-dispatched `Auto` supervision, it SHALL include the literal flag `--supervised` in every phase-worker dispatch request it constructs for that supervised run. The marker SHALL ride as flag content on the sole `arguments_value` request. No third envelope field SHALL be introduced.
+When `sai-explore` runs selector-dispatched `Auto` supervision, it SHALL include the literal flag `--supervised` in every phase-worker request it constructs. The marker SHALL ride as flag content on `arguments_value`, which is the sole request field. No wrapper-echo or third envelope field SHALL be introduced.
 
 Phase-specific placement (two grammars, one marker token):
 

@@ -23,7 +23,7 @@ A routed phase adapter MAY declare a static, ordered progress plan as a new phas
 
 ### Requirement: plan-ids-canonical-in-phase-contracts
 
-The step ids of a progress plan SHALL be canonical per phase: every phase's worker contract whose adapter declares a `progress_plan`, including the review, security, performance, and accessibility audit workers, SHALL enumerate the step ids the worker may report, and the phase adapter's `progress_plan` SHALL declare exactly those ids in the same order. Neither side learns the plan through the dispatch envelope, which SHALL contain only `arguments_value`. The worker SHALL NOT add, remove, reorder, or rename steps; an adapter whose ids diverge from the worker contract's enumeration produces unknown ids that the coordinator SHALL ignore.
+The step ids of a progress plan SHALL be canonical per phase: every phase worker whose adapter declares a `progress_plan` SHALL enumerate the ids it may report, and the adapter SHALL declare the same ids in the same order. Neither side learns the plan through the dispatch envelope, which SHALL contain only `arguments_value`. The worker SHALL not add, remove, reorder, or rename steps; unknown ids SHALL be ignored.
 
 #### Scenario: audit worker reports canonical ids
 

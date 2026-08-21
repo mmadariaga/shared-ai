@@ -13,11 +13,12 @@ The `/sai-build` command SHALL use one ordinary routed coordinator card and the 
 - **THEN** the shared runner executes implementation before apply
 
 ### Requirement: Change resolution and envelopes are shared
-The coordinator SHALL resolve the change exactly once using the sole non-empty `arguments_value` source and the standard picker, retain the resolved name, and mint the implement and apply segment arguments from that resolved value. Neither segment SHALL re-enter boot, wrappers, change-picker, or already-satisfied prerequisites.
+The coordinator SHALL resolve the change exactly once using the sole non-empty `arguments_value` source and the standard picker, retain the resolved name, and mint the implement and apply segment arguments without a wrapper-echo field. Neither segment SHALL re-enter boot, wrappers, change-picker, or already-satisfied prerequisites.
 
 #### Scenario: Both phases receive one resolved name
 - **WHEN** resolution yields `{name}`
 - **THEN** both phase requests carry `{name}` and apply carries fast-track true
+- **AND** neither phase request contains a wrapper-echo field
 
 ### Requirement: Build strips residual fast-track tokens before resolution
 Before resolution, every `--fast-track` token SHALL be removed from the selected `arguments_value` source in any order. This SHALL not make build a fifth parser or create build-local fast-track state.
