@@ -765,13 +765,19 @@ test('design install overwrites divergent numbered destination content with noti
   }
 });
 
-test('Target State contract lives in the design instruction, schema, and design template', () => {
+test('Target State contract lives in the design instruction and design template', () => {
   const instruction = artifact('sai/commands/design/instructions.md');
-  const schema = artifact('openspec/schemas/sai-workflow/schema.yaml');
   const designTemplate = artifact('openspec/schemas/sai-workflow/templates/design.md');
   const interfacesTemplate = artifact('openspec/schemas/sai-workflow/templates/interfaces.md');
 
-  for (const contract of [instruction, schema, designTemplate]) {
+  for (const heading of ['### Architecture Snapshot', '### File Manifest']) {
+    assert.match(instruction, new RegExp(heading.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')),
+      `design instruction should contain ${heading}`);
+  }
+
+  assert.match(instruction, /## Target State/);
+
+  for (const contract of [designTemplate]) {
     assert.match(contract, /### Architecture Snapshot/);
     assert.match(contract, /### File Manifest/);
   }

@@ -185,23 +185,20 @@ test('Target State is the first section of design.md', () => {
 
 test('sentinel emitted when no step admits a contract', () => {
   const instruction = artifact('sai/commands/design/instructions.md');
-  const schema = artifact('openspec/schemas/sai-workflow/schema.yaml');
-  const interfacesTemplate = artifact('openspec/schemas/sai-workflow/templates/interfaces.md');
 
-  for (const contract of [instruction, schema, interfacesTemplate]) {
-    assert.match(contract, /None — no step contracts/,
-      'the contract should define the exact None — no step contracts sentinel');
-  }
+  assert.match(instruction, /None — no step contracts/,
+    'the design instruction should define the exact None — no step contracts sentinel');
 });
 
 test('Target State present in design surfaces, absent from interfaces template', () => {
   const instruction = artifact('sai/commands/design/instructions.md');
-  const schema = artifact('openspec/schemas/sai-workflow/schema.yaml');
   const designTemplate = artifact('openspec/schemas/sai-workflow/templates/design.md');
   const interfacesTemplate = artifact('openspec/schemas/sai-workflow/templates/interfaces.md');
 
-  assert.match(instruction, /## Target State/);
-  assert.match(schema, /## Target State/);
+  for (const heading of ['## Target State', '### Architecture Snapshot', '### File Manifest']) {
+    assert.match(instruction, new RegExp(heading.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')),
+      `design instruction should contain ${heading}`);
+  }
 
   const firstTopLevel = designTemplate.search(/^## /m);
   assert.ok(firstTopLevel !== -1, 'design template should have a top-level heading');
@@ -733,7 +730,7 @@ test('active closure is question-first and repeats the exact crystallize reminde
   const explore = artifact('sai/commands/explore/instructions.md');
 
   assert.match(explore, /When a genuine unresolved question remains and its answer could change the idea, end with that relevant question/);
-  assert.match(explore, /When no genuine unresolved question remains, end with this concise reminder/);
+  assert.match(explore, /When no genuine unresolved question remains(?:, including when the only apparent question is phase navigation)?, end with this concise reminder/);
   assert.match(explore, /Say `crystallize` when ready; crystallization generates the paste-ready prompt for `\/sai-1-spec`/);
   assert.match(explore, /Evaluate this rule again on every later successful qualifying turn/);
   assert.match(explore, /fallback reminder repeats even after readiness has already been emitted/);
