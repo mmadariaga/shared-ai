@@ -100,6 +100,16 @@ its evidence establishes that continuation is unsafe. The nine-field apply
 extension remains unchanged and carries `STOP reached? = yes`; the coordinator
 supplies the routing diagnosis, `Cause Locus`, and recovery eligibility.
 
+Planning-only boundary: the closed `failure_class` and boolean `unrecoverable`
+remain worker-authored only on post-resolution `failed` outcomes; they are
+worker-authored evidence and a diagnostic prior, not an eligibility gate—eligibility
+remains in Bounded Recovery and is coordinator-owned. Routing diagnosis, `Cause
+Locus`, and `diagnosis_key` remain coordinator-owned and never worker payload fields;
+`outer-envelope-violation` remains coordinator-only and never worker-authorable.
+Planning workers MUST NOT persist `failure_class`, `unrecoverable`, diagnosis keys,
+attempt counts, or repair history into proposal/spec/design/tasks/interfaces/overview/
+glossary/`.openspec.yaml` artifacts; these are lifecycle-only.
+
 The design-only notice is exactly:
 
 ```yaml

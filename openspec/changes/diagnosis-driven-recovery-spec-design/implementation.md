@@ -127,7 +127,7 @@ Cross-link ADR 0166 (`docs/adr/0166-per-cause-surface-dual-channel-exclusivity.m
 
 ##### RED phase
 
-- [ ] Add (or extend) a pin in `test/bounded-worker-recovery.test.js` that fails until worker-core states classification is not an eligibility gate and remains lifecycle-only for planning:
+- [x] Add (or extend) a pin in `test/bounded-worker-recovery.test.js` that fails until worker-core states classification is not an eligibility gate and remains lifecycle-only for planning:
 
 ```js
 test('worker-core states failure_class is evidence not an eligibility gate and stays lifecycle-only', () => {
@@ -143,13 +143,13 @@ test('worker-core states failure_class is evidence not an eligibility gate and s
 
 If `worker failures expose closed classification metadata after resolution only` already covers vocabulary and pre-resolution omission, leave it unchanged. If GREEN only needs a single cross-reference sentence and the new test would be redundant with existing runner pins, keep the new test but allow the GREEN sentence to satisfy both worker-core and a runner cross-ref.
 
-- [ ] Verify RED: `node --test test/bounded-worker-recovery.test.js` — expected: assertion failure on the new pin.
+- [x] Verify RED: `node --test test/bounded-worker-recovery.test.js` — expected: assertion failure on the new pin.
 
-- [ ] **GATE — DO NOT PROCEED to GREEN until RED is verified.**
+- [x] **GATE — DO NOT PROCEED to GREEN until RED is verified.**
 
 ##### GREEN phase
 
-- [ ] Edit `sai/orchestration/worker-core.md` post-resolution failure section. Prefer a **single** planning-facing clarification paragraph (or one cross-reference sentence) rather than duplicating Bounded Recovery. Required concepts:
+- [x] Edit `sai/orchestration/worker-core.md` post-resolution failure section. Prefer a **single** planning-facing clarification paragraph (or one cross-reference sentence) rather than duplicating Bounded Recovery. Required concepts:
 
   - Closed `failure_class` + boolean `unrecoverable` remain worker-authored on post-resolution `failed` only.
   - Classification is **worker-authored evidence / a diagnostic prior**, not an eligibility gate (eligibility stays in Bounded Recovery / coordinator).
@@ -158,14 +158,14 @@ If `worker failures expose closed classification metadata after resolution only`
   - Planning workers MUST NOT persist `failure_class`, `unrecoverable`, diagnosis keys, attempt counts, or repair history into proposal/spec/design/task/interface/overview/glossary/`.openspec.yaml` artifacts (lifecycle-only).
   - If worker-core already states these verbatim, add only a one-line cross-reference to Bounded Recovery for planning consumers — do not duplicate the ledger rules.
 
-- [ ] Verify GREEN: `node --test test/bounded-worker-recovery.test.js` — expected: PASS.
+- [x] Verify GREEN: `node --test test/bounded-worker-recovery.test.js` — expected: PASS.
 
 ##### Step 2 Verification Checklist
 
 **Automated (agent runs before stopping):**
-- [ ] RED verified — new pin fails against pre-GREEN worker-core
-- [ ] GREEN verified — `node --test test/bounded-worker-recovery.test.js` passes
-- [ ] Pre-resolution omission and closed vocabulary pins remain green
+- [x] RED verified — new pin fails against pre-GREEN worker-core
+- [x] GREEN verified — `node --test test/bounded-worker-recovery.test.js` passes
+- [x] Pre-resolution omission and closed vocabulary pins remain green
 
 *(No Human checks — service-side step with no observable browser behavior.)*
 
@@ -435,5 +435,7 @@ If harness-parity smoke is not already covered by existing Claude/opencode bindi
 |---|---|---|---|---|---|
 | 1 | red | red | 1 | assertion | The two new planning and exclusivity pins failed as intended. |
 | 1 | green | green | 3 | assertion | Corrected the contract wording within the authorized runner file. |
+| 2 | red | red | 1 | assertion | The worker-core lifecycle-only pin failed as intended. |
+| 2 | green | green | 1 | n/a | Worker-core clarification passed the focused suite. |
 
 )

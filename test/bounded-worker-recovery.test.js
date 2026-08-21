@@ -279,3 +279,13 @@ test('worker-core keeps routing diagnosis coordinator-only and closes an unpassa
   assert.match(lifecycle, /(?:STOP reached\?[\s\S]{0,120}\byes\b|\byes\b[\s\S]{0,120}STOP reached\?)/i,
     'the apply report must mark STOP reached as yes');
 });
+
+test('worker-core states failure_class is evidence not an eligibility gate and stays lifecycle-only', () => {
+  const lifecycle = artifact('sai/orchestration/worker-core.md');
+  assert.match(lifecycle, /failure_class[\s\S]{0,260}(?:not[\s\S]{0,80}(?:eligibility|gate)|prior|diagnostic)/i,
+    'failure_class must be diagnostic evidence, not the recovery eligibility gate');
+  assert.match(lifecycle, /(?:not[\s\S]{0,120}persist|lifecycle[- ]only|not[\s\S]{0,80}(?:written|write)[\s\S]{0,80}artifact)[\s\S]{0,200}(?:failure_class|unrecoverable|diagnosis)/i,
+    'classification and recovery metadata must not be persisted into artifacts');
+  assert.match(lifecycle, /outer-envelope-violation[\s\S]{0,200}(?:coordinator|never a worker)/i,
+    'outer-envelope-violation remains coordinator-only');
+});
