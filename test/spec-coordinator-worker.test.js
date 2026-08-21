@@ -52,8 +52,10 @@ function planList(source) {
 test('Step 1 spec card uses neutral root protocols and retires flat canonical sources', () => {
   const coordinator = artifact('sai/commands/spec/coordinator.md');
   const worker = artifact('sai/commands/spec/worker.md');
-  assert.match(coordinator, /@sai\/orchestration\/command-runner\.md/);
-  assert.match(coordinator, /@sai\/orchestration\/worker-core\.md/);
+  assert.doesNotMatch(coordinator, /@sai\/orchestration\/command-runner\.md/,
+    'the runner is loaded once per session by the boot adapter, not by the coordinator card');
+  assert.doesNotMatch(coordinator, /@sai\/orchestration\/worker-core\.md/,
+    'worker-core is loaded by the worker card, not by the coordinator card');
   assert.match(worker, /@sai\/orchestration\/worker-core\.md/);
   for (const relativePath of [
     'sai/orchestration/coordinator-contract.md',
@@ -268,7 +270,8 @@ test('Claude spec invocation routes through the launcher and neutral worker bind
    assert.match(manifest, /agents[\\/]claude[\\/]worker-template\.md/);
     assert.match(manifest, /"path":\s*"sai-1-spec-proposal-worker\.md"/);
   assert.match(launcher, /Fetch @sai\/orchestration\/workers\/bindings\/spec-worker\.md/);
-  assert.match(launcher, /Fetch @sai\/commands\/spec\/coordinator\.md/);
+  assert.doesNotMatch(launcher, /Fetch @sai\/commands\/spec\/coordinator\.md/,
+    'the boot adapter owns coordinator-card selection; the launcher must not duplicate it');
     assert.doesNotMatch(wrapper, /Fetch @skills\/sai-1-spec-proposal-worker\/SKILL\.md/);
   assert.match(wrapper, /\$ARGUMENTS/);
 });
@@ -280,7 +283,8 @@ test('opencode spec invocation routes through the launcher and neutral worker bi
   assert.match(wrapper, /spec[\\/]launcher\.md/);
    assert.doesNotMatch(wrapper, /sai-1-spec-proposal-worker/);
   assert.match(launcher, /Fetch @sai\/orchestration\/workers\/bindings\/spec-worker\.md/);
-  assert.match(launcher, /Fetch @sai\/commands\/spec\/coordinator\.md/);
+  assert.doesNotMatch(launcher, /Fetch @sai\/commands\/spec\/coordinator\.md/,
+    'the boot adapter owns coordinator-card selection; the launcher must not duplicate it');
     assert.doesNotMatch(wrapper, /Fetch @skills\/sai-1-spec-proposal-worker\/SKILL\.md/);
   assert.match(wrapper, /\$ARGUMENTS/);
 });

@@ -41,35 +41,27 @@ const movedDirectives = {
     'Fetch @skills/budget/SKILL.md and use it.',
     'Fetch @skills/safe-operations/SKILL.md and use it.',
     'Fetch @sai/orchestration/workers/bindings/spec-worker.md and use it.',
-    'Fetch @sai/commands/spec/coordinator.md and follow those instructions exactly.',
   ],
   design: [
     'Fetch @sai/orchestration/workers/bindings/design-worker.md and use it.',
-    'Fetch @sai/commands/design/coordinator.md and follow those instructions exactly.',
   ],
   implement: [
     'Fetch @sai/orchestration/workers/bindings/implementation-worker.md and use it.',
-    'Fetch @sai/commands/implement/coordinator.md and follow those instructions exactly.',
   ],
   build: [
     'Fetch @sai/orchestration/workers/bindings/implementation-worker.md and use it.',
-    'Fetch @sai/commands/build/coordinator.md and follow those instructions exactly.',
   ],
   review: [
     'Fetch @sai/orchestration/workers/bindings/review-worker.md and use it.',
-    'Fetch @sai/commands/review/coordinator.md and follow those instructions exactly.',
   ],
   security: [
     'Fetch @sai/orchestration/workers/bindings/security-worker.md and use it.',
-    'Fetch @sai/commands/security/coordinator.md and follow those instructions exactly.',
   ],
   performance: [
     'Fetch @sai/orchestration/workers/bindings/performance-worker.md and use it.',
-    'Fetch @sai/commands/performance/coordinator.md and follow those instructions exactly.',
   ],
   accessibility: [
     'Fetch @sai/orchestration/workers/bindings/accessibility-worker.md and use it.',
-    'Fetch @sai/commands/accessibility/coordinator.md and follow those instructions exactly.',
   ],
   explore: [
     'Fetch @sai/orchestration/workers/bindings/spec-worker.md and use it.',

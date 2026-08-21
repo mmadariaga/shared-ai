@@ -24,8 +24,10 @@ function matrixBinding(harness, phase) {
 test('Step 1 security card uses neutral root protocols and retires flat canonical sources', () => {
   const coordinator = artifact('sai/commands/security/coordinator.md');
   const worker = artifact('sai/commands/security/worker.md');
-  assert.match(coordinator, /@sai\/orchestration\/command-runner\.md/);
-  assert.match(coordinator, /@sai\/orchestration\/worker-core\.md/);
+  assert.doesNotMatch(coordinator, /@sai\/orchestration\/command-runner\.md/,
+    'the runner is loaded once per session by the boot adapter, not by the coordinator card');
+  assert.doesNotMatch(coordinator, /@sai\/orchestration\/worker-core\.md/,
+    'worker-core is loaded by the worker card, not by the coordinator card');
   assert.match(worker, /@sai\/orchestration\/worker-core\.md/);
   for (const relativePath of [
     'sai/orchestration/coordinator-contract.md',

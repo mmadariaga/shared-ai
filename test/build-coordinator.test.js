@@ -28,13 +28,12 @@ test('build source layout contains only the coordinator and launcher cards', () 
     'build must not introduce a worker card');
 });
 
-test('build launcher fetches only the implementation worker binding and build coordinator', () => {
+test('build launcher fetches only the implementation worker binding', () => {
   const source = readRequired(launcherPath).trim().split(/\r?\n/);
   assert.deepEqual(source, [
     'Fetch @sai/orchestration/workers/bindings/implementation-worker.md and use it.',
-    'Fetch @sai/commands/build/coordinator.md and follow those instructions exactly.',
   ]);
-  assert.doesNotMatch(source.join('\n'), /claude|opencode|red-worker|green-worker/i);
+  assert.doesNotMatch(source.join('\n'), /claude|opencode|red-worker|green-worker|coordinator\.md/i);
 });
 
 test('build coordinator declares the implement-to-apply composition and envelopes', () => {
@@ -116,8 +115,14 @@ test('Step 6 compatibility inherits diagnosis-driven recovery through apply and 
     'the shared runner should own diagnosis-driven recovery');
   assert.match(apply, diagnosisRecovery,
     'the apply route should inherit diagnosis-driven recovery');
-  assert.match(apply, /@sai\/orchestration\/command-runner\.md/,
-    'the apply route should load the shared runner');
+  const claudeBoot = readRequired('sai/adapters/claude/boot.md');
+  const opencodeBoot = readRequired('sai/adapters/opencode/boot.md');
+  for (const boot of [claudeBoot, opencodeBoot]) {
+    assert.match(boot, /@sai\/orchestration\/command-runner\.md/,
+      'the harness boot loads the shared runner once per session, covering the apply route');
+  }
+  assert.doesNotMatch(apply, /@sai\/orchestration\/command-runner\.md/,
+    'the apply route must not re-fetch the runner the boot already loaded');
   assert.match(apply, /recovery_policy\s*:\s*true/,
     'the apply route should opt into the shared recovery policy');
 

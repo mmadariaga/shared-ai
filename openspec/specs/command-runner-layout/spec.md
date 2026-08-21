@@ -136,3 +136,22 @@ The layout migration SHALL leave `sai/policies/` as the shared policy projection
 - **WHEN** a wrapper or adapter references a new root, command-card, or adapter source
 - **THEN** it SHALL use the `@sai/...` path convention documented by ADR 0003
 - **AND** the referenced installed path SHALL match the corresponding manifest projection
+
+### Requirement: Clean-session preamble precedes protocol loading
+
+Both harness boot adapters SHALL open every invocation with the single clean-session preamble line — "This invocation starts clean: disregard prior conversational context except where a fetched contract explicitly directs otherwise." — inserted immediately before the `@sai/orchestration/command-runner.md` fetch and therefore before any card selection. The preamble SHALL be byte-identical in `sai/adapters/claude/boot.md` and `sai/adapters/opencode/boot.md` and SHALL be loaded exactly once per invocation by the boot adapter. It is the standing mechanism that discards prior conversational context at invocation start; routed coordinator cards (the seven phase coordinators plus apply and build) and routed invocation cards carry no isolation block of their own. The preamble governs session hygiene only and SHALL NOT redefine command or worker lifecycle semantics.
+
+#### Scenario: preamble precedes protocol load in both boots
+
+- **WHEN** either `sai/adapters/claude/boot.md` or `sai/adapters/opencode/boot.md` is read
+- **THEN** the byte-identical clean-session preamble line appears immediately before the command-runner fetch
+
+#### Scenario: preamble loads once per invocation before cards
+
+- **WHEN** a routed or utility command starts under either supported harness
+- **THEN** the boot preamble takes effect before `@sai/orchestration/command-runner.md` is loaded and before any coordinator or body card is selected
+
+#### Scenario: routed cards carry no isolation block
+
+- **WHEN** any routed coordinator card or the apply invocation card is read after this change
+- **THEN** it contains no `# Isolation Mode` block and no duplicated clean-session preamble line

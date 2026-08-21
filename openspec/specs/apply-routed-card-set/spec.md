@@ -108,7 +108,7 @@ The apply adapter SHALL validate `emitted_on` in every RED, GREEN, and green-exc
 
 ### Requirement: apply-invocation-core-preserves-loading
 
-The apply `invocation.md` SHALL preserve the utility body's loading behavior: the change picker, the prerequisite checks (including the `implementation.md` existence check), the fast-track parse of `$ARGUMENTS`, the `budget` skill, the `safe-operations` skill, the `sai-learnings-format` policy, the runner.md loop contract, and the `remember` policy. The invocation core SHALL be shared by both harnesses and SHALL NOT re-implement coordinator lifecycle mechanics.
+The apply `invocation.md` SHALL preserve the utility body's loading behavior minus its retired isolation block: the change picker, the prerequisite checks (including the `implementation.md` existence check), the fast-track parse of `$ARGUMENTS`, the `budget` skill, the `safe-operations` skill, the `sai-learnings-format` policy, the runner.md loop contract, and the `remember` policy. The invocation core SHALL be shared by both harnesses, SHALL NOT re-implement coordinator lifecycle mechanics, and SHALL NOT carry a `# Isolation Mode` block: inherited context is discarded by the session-start boot preamble, which is also the cited rationale for the per-invocation reset of `session_commit_authorized`.
 
 #### Scenario: invocation core loads the phase content
 
@@ -119,6 +119,12 @@ The apply `invocation.md` SHALL preserve the utility body's loading behavior: th
 
 - **WHEN** `--fast-track` appears in `$ARGUMENTS`
 - **THEN** the routed card set parses it in the shared invocation/coordinator surface (not the wrappers), prints the exact `> FAST-TRACK MODE ACTIVE` line, and behaves identically across Claude Code and opencode
+
+#### Scenario: invocation core carries no isolation block
+
+- **WHEN** `sai/commands/apply/invocation.md` is read after this change
+- **THEN** it opens directly with its TASK block and contains no `# Isolation Mode` heading or bullets
+- **AND** its session-flag reset rationale cites the session-start boot preamble rather than a per-card isolation block
 
 ### Requirement: apply-mandatory-stop-preserved
 

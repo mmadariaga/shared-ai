@@ -96,8 +96,15 @@ test('Step 2 the apply coordinator adapter declares the full phase-adapter field
 
 test('Step 2 the coordinator is fetched through the routed coordinator path, not a utility body card', () => {
   const coordinator = artifact(APPLY_CARDS.coordinator);
-  assert.match(coordinator, /# Isolation Mode/,
-    'specs/apply-routed-card-set/spec.md: the coordinator card must keep the Isolation Mode block');
+  assert.doesNotMatch(coordinator, /# Isolation Mode/,
+    'specs/apply-routed-card-set/spec.md: isolation lives in the boot preamble, not in the coordinator card');
+  const claudeBoot = artifact('sai/adapters/claude/boot.md');
+  const opencodeBoot = artifact('sai/adapters/opencode/boot.md');
+  for (const boot of [claudeBoot, opencodeBoot]) {
+    assert.ok(boot.includes(
+      'This invocation starts clean: disregard prior conversational context except where a fetched contract explicitly directs otherwise.'),
+      'both boot adapters must carry the session-clean preamble before card selection');
+  }
   assert.doesNotMatch(coordinator, /@sai\/commands\/apply\/instructions\.md/,
     'specs/apply-routed-card-set/spec.md: the coordinator must not load the monolithic instruction');
   const claudeWrapper = artifact('commands/claude/sai-4-apply.md');
@@ -578,8 +585,14 @@ test('Step 2 the routed invocation parses arguments before the change picker and
     'specs/apply-routed-card-set/spec.md: the invocation must load the safe-operations skill');
   assert.match(combined, /@sai\/policies\/sai-learnings-format\.md/,
     'specs/apply-routed-card-set/spec.md: the invocation must load the learnings format');
-  assert.match(combined, /@sai\/orchestration\/command-runner\.md/,
-    'specs/apply-routed-card-set/spec.md: the invocation must load the runner contract');
+  const claudeBoot = artifact('sai/adapters/claude/boot.md');
+  const opencodeBoot = artifact('sai/adapters/opencode/boot.md');
+  for (const boot of [claudeBoot, opencodeBoot]) {
+    assert.match(boot, /@sai\/orchestration\/command-runner\.md/,
+      'specs/apply-routed-card-set/spec.md: the boot loads the runner contract once per session for the apply route');
+  }
+  assert.doesNotMatch(combined, /@sai\/orchestration\/command-runner\.md/,
+    'specs/apply-routed-card-set/spec.md: cards must not re-fetch the runner the boot already loaded');
   assert.match(combined, /@sai\/policies\/remember\.md/,
     'specs/apply-routed-card-set/spec.md: the invocation must load the remember policy');
 });

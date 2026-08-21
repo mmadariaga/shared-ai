@@ -28,7 +28,7 @@ Define the terminal boundary between design completion and explicit implementati
 
 Implementation planning SHALL begin only through an explicit `/sai-3-implement {name}` invocation. The durable OpenSpec artifacts under `openspec/changes/{name}/` SHALL be the sole handoff between the design phase and the implementation-planning phase.
 
-Two levels of isolation SHALL be distinguished. **Enforceable:** no design-phase invocation state — changed-file union, continuation reference, opaque input history, pending feedback, fast-track banner flag, feedback iteration counter, or worker session — SHALL be forwarded into the implementation invocation, and the implementation worker SHALL receive its change name only through its own wrapper envelope. **Not enforceable:** whether the user types `/sai-3-implement` in a new chat or the same one is the user's choice; the command SHALL NOT claim to prevent same-chat invocation. Same-chat conversational carryover SHALL be addressed by the existing Isolation Mode block, and the new-chat instruction SHALL be stated as the recommended workflow in the completion message rather than as an enforced constraint.
+Two levels of isolation SHALL be distinguished. **Enforceable:** no design-phase invocation state — changed-file union, continuation reference, opaque input history, pending feedback, fast-track banner flag, feedback iteration counter, or worker session — SHALL be forwarded into the implementation invocation, and the implementation worker SHALL receive its change name only through its own wrapper envelope. **Not enforceable:** whether the user types `/sai-3-implement` in a new chat or the same one is the user's choice; the command SHALL NOT claim to prevent same-chat invocation. Same-chat conversational carryover SHALL be addressed by the harness boot adapters' clean-session preamble — loaded once per invocation before any card selection — and the new-chat instruction SHALL be stated as the recommended workflow in the completion message rather than as an enforced constraint.
 
 #### Scenario: sai-3 reconstructs context from artifacts
 
@@ -40,10 +40,10 @@ Two levels of isolation SHALL be distinguished. **Enforceable:** no design-phase
 - **WHEN** `/sai-2-design` stops
 - **THEN** it SHALL NOT persist or forward its changed-file union, continuation reference, opaque input history, pending feedback, fast-track banner flag, or feedback iteration counter to any later phase
 
-#### Scenario: same-chat invocation relies on Isolation Mode
+#### Scenario: same-chat invocation relies on the clean-session preamble
 
 - **WHEN** the user invokes `/sai-3-implement {name}` in the same chat rather than a new one
-- **THEN** the command SHALL still run, and its existing Isolation Mode block SHALL be the mechanism that discards prior conversational context
+- **THEN** the command SHALL still run, and the harness boot preamble SHALL be the mechanism that discards prior conversational context
 
 ### Requirement: sai-2 wrappers no longer preload the implementation worker binding
 

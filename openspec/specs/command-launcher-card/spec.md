@@ -27,25 +27,31 @@ Every in-scope command SHALL have exactly one launcher card at `sai/commands/{na
 
 ### Requirement: launcher-content
 
-Each launcher SHALL hold the glossary/behaviour skill loads, worker binding, and card fetches that its command's wrapper carries today beyond the fetch-skill and boot-adapter loads: the `glossary-format` and `budget` loads where the wrapper carries them, `safe-operations` where the wrapper carries it, the routed worker binding (`@sai/orchestration/workers/bindings/{phase}-worker.md`) where the wrapper carries it, and the routed card fetch (`@sai/commands/{name}/coordinator.md`) where the wrapper carries it. Every directive moved from the wrapper SHALL land in the launcher in the same relative order.
+Each launcher SHALL hold the glossary/behaviour skill loads and the routed worker binding that its command's wrapper carries beyond the fetch-skill and boot-adapter loads: the `glossary-format` and `budget` loads where the wrapper carries them, `safe-operations` where the wrapper carries it, and the routed worker binding (`@sai/orchestration/workers/bindings/{phase}-worker.md`) where the wrapper carries it. Launchers SHALL NOT carry a routed card fetch (`@sai/commands/{name}/coordinator.md`): card selection is owned by the harness boot adapter, which performs it before the launcher loads, so a launcher-level card fetch would duplicate it. Every directive in the launcher SHALL keep its established relative order.
 
 #### Scenario: worst-case launcher
 
 - **WHEN** `sai/commands/spec/launcher.md` is read
-- **THEN** it contains the `glossary-format` load, the `budget` load, the `safe-operations` load, the `spec-worker` binding, and the coordinator-card fetch — the five directives the `sai-1-spec` wrappers carry today beyond fetch-skill and boot
+- **THEN** it contains exactly four directives — the `glossary-format` load, the `budget` load, the `safe-operations` load, and the `spec-worker` binding — and no coordinator-card fetch
+
+#### Scenario: no coordinator-card fetch in any launcher
+
+- **WHEN** any of the eight routed launchers (`spec`, `design`, `implement`, `build`, `review`, `security`, `performance`, `accessibility`) is read
+- **THEN** it contains no `Fetch @sai/commands/{name}/coordinator.md` line
 
 #### Scenario: same relative order
 
-- **WHEN** a launcher's directives are compared with the moved directives of its wrapper
-- **THEN** the relative order of the moved directives is unchanged
+- **WHEN** a launcher's directives are compared with their previous order
+- **THEN** the relative order of the remaining directives is unchanged
 
 ### Requirement: near-empty-launchers
 
-A command whose wrapper carried nothing beyond the fetch-skill and boot-adapter loads before the change SHALL still ship a `launcher.md`, near-empty at creation, because a uniform shape across all commands is worth more than the saved files and the card is the extension point that keeps future additions out of the user-owned wrapper. A near-empty launcher SHALL contain no behaviour-skill load, no binding, and no card fetch. After this change the near-empty set remains `sai-4-apply`, `sai-archive`, `sai-backfill`, `sai-commit`, `sai-pr`, `sai-status`, and `sai-worktree`. `sai-build` is NOT near-empty: its launcher loads the implement-worker binding and the build coordinator card per `sai-build-registration`.
+A command whose wrapper carried nothing beyond the fetch-skill and boot-adapter loads before the change SHALL still ship a `launcher.md`, near-empty at creation, because a uniform shape across all commands is worth more than the saved files and the card is the extension point that keeps future additions out of the user-owned wrapper. A near-empty launcher SHALL contain no behaviour-skill load, no binding, and no card fetch. After this change the near-empty set remains `sai-4-apply`, `sai-archive`, `sai-backfill`, `sai-commit`, `sai-pr`, `sai-status`, and `sai-worktree`. `sai-build` is NOT near-empty: its launcher loads the implement-worker binding; like every launcher it carries no card fetch, because the boot adapter selects the build coordinator card.
 
 #### Scenario: sai-build launcher is not near-empty
+
 - **WHEN** `sai/commands/build/launcher.md` is read
-- **THEN** it SHALL contain the implement-worker binding fetch and the build coordinator card fetch
+- **THEN** it SHALL contain the implement-worker binding fetch and no coordinator-card fetch
 - **AND** it SHALL NOT be counted among the seven near-empty launchers
 
 #### Scenario: seven near-empty launchers exist
@@ -79,12 +85,13 @@ The launcher SHALL contain no harness-conditional logic: no `claude` or `opencod
 
 ### Requirement: load-parity
 
-Each command SHALL still load exactly what it loads today: the union of the directives in its wrapper and its launcher — excluding the launcher-call directive itself, which is newly introduced by `command-wrapper-body` — SHALL equal the directive set its wrapper carries today (fetch-skill and boot-adapter each once, plus every moved directive exactly once). Only the load order changes — the boot adapter now loads before the behaviour skills — and that SHALL NOT change the command's outcome.
+Each command SHALL still load exactly what it loads today: the union of the directives in its wrapper and its launcher — excluding the launcher-call directive itself — SHALL equal the command's directive set (fetch-skill and boot-adapter each once, plus every moved behaviour or binding directive exactly once) and SHALL include no routed card fetch, because the boot adapter performs card selection exactly once per invocation. Only the load order changes — the boot adapter loads before the behaviour skills — and that SHALL NOT change the command's outcome.
 
 #### Scenario: directive-set parity per command
 
 - **WHEN** the directive sets of a command's wrapper and launcher are collected after the change
-- **THEN** the union, excluding the launcher-call directive, equals the directive set the wrapper carried before the change, with no moved directive added or dropped
+- **THEN** the union, excluding the launcher-call directive, equals the command's current directive set with no moved directive added or dropped
+- **AND** no coordinator-card fetch appears anywhere in the union
 
 #### Scenario: order change is bounded
 

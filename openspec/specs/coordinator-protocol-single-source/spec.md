@@ -8,7 +8,7 @@ Define the single-sourced lifecycle and result-loop protocol consumed by the sev
 
 ### Requirement: routed coordinators consume the shared lifecycle protocol
 
-The seven routed phase coordinators SHALL consume the phase-neutral result-loop and lifecycle mechanics from `sai/orchestration/command-runner.md` and `sai/orchestration/worker-core.md` instead of restating those mechanics locally. The shared mechanics include closed lifecycle outcomes, changed-file unioning, continuation and replacement reconstruction, and progress-event handling.
+The seven routed phase coordinators SHALL consume the phase-neutral result-loop and lifecycle mechanics from `sai/orchestration/command-runner.md` and `sai/orchestration/worker-core.md` instead of restating those mechanics locally. The shared mechanics include closed lifecycle outcomes, changed-file unioning, continuation and replacement reconstruction, and progress-event handling. The routed coordinator bodies themselves SHALL NOT carry a Fetch directive for either orchestration contract: the harness boot adapter loads `@sai/orchestration/command-runner.md` once before card selection, and worker-authored lifecycle content is loaded by the routed workers through their bindings, keeping coordinator bodies artifact-blind dispatch routers.
 
 #### Scenario: shared protocol is the single source
 
@@ -17,9 +17,14 @@ The seven routed phase coordinators SHALL consume the phase-neutral result-loop 
 
 #### Scenario: all routed phase coordinators reference the contract
 
-- **WHEN** the seven routed coordinator bodies are inspected
-- **THEN** each body SHALL reference `sai/orchestration/command-runner.md` and `sai/orchestration/worker-core.md` for its common protocol
+- **WHEN** any of the nine routed coordinator bodies is inspected (the seven phase coordinators plus apply and build)
+- **THEN** no body SHALL contain its own Fetch directive for `sai/orchestration/command-runner.md` or `sai/orchestration/worker-core.md`
 - **AND** no body SHALL locally redefine the common closed-outcome, changed-file, reconstruction, or progress-event mechanics
+
+#### Scenario: boot owns the runner fetch
+
+- **WHEN** a routed invocation boots under either supported harness
+- **THEN** the boot adapter loads `@sai/orchestration/command-runner.md` exactly once, before card selection, and the selected coordinator card adds no second fetch of it
 
 ### Requirement: phase adapters retain phase-specific behavior
 
@@ -56,13 +61,18 @@ The single-sourced protocol SHALL preserve the existing lifecycle semantics: ter
 
 ### Requirement: coordinator safety literals remain unchanged
 
-The single-sourcing refactor SHALL preserve the Isolation Mode block and each routed coordinator's MANDATORY STOP literal byte-for-byte. Removing duplicated protocol prose SHALL NOT alter, relocate, or reword either safety surface in any of the seven routed coordinator bodies.
+Each routed coordinator's MANDATORY STOP literal SHALL remain byte-for-byte identical. Clean-session enforcement SHALL NOT live in the coordinator bodies: the per-card `# Isolation Mode` block is retired from every routed coordinator body (the seven phase coordinators plus apply and build), including the spec coordinator's inline "Preserve Isolation Mode." sentence, and each harness boot adapter's clean-session preamble is the sole mechanism that discards prior conversational context at invocation start.
 
-#### Scenario: safety surfaces survive protocol extraction
+#### Scenario: safety literals survive protocol extraction
 
 - **WHEN** the common protocol prose is replaced with references to the shared contracts
-- **THEN** the Isolation Mode block in each routed coordinator SHALL remain byte-identical to its pre-refactor content
-- **AND** the MANDATORY STOP literal in each routed coordinator SHALL remain byte-identical to its pre-refactor content
+- **THEN** the MANDATORY STOP literal in each routed coordinator SHALL remain byte-identical to its pre-refactor content
+
+#### Scenario: isolation enforcement lives in the boot preamble only
+
+- **WHEN** any routed coordinator card under `sai/commands/` is read after this change
+- **THEN** it contains no `# Isolation Mode` block and no inline clean-session sentence
+- **AND** both harness boot adapters carry the byte-identical clean-session preamble line immediately before the command-runner fetch
 
 ### Requirement: routed behavior remains harness-parity safe
 

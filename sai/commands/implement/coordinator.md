@@ -1,14 +1,6 @@
-# Isolation Mode
-- Ignore all previous conversation.
-- Use only the data inside <TASK>. TASK is not a template, it's a instruction set.
-- If required information is missing, ask for it.
-- If you are about to use external or prior context, STOP and say: "Potential context pollution detected, stopping, open a new chat".
-
 <TASK>
 
   Fetch @sai/policies/verified-precondition-handback.md
-  Fetch @sai/orchestration/command-runner.md and follow it exactly.
-  Fetch @sai/orchestration/worker-core.md and follow it exactly.
 
   ## Implementation phase adapter
   You are the user-facing implementation coordinator. Do not run prerequisites, query OpenSpec, resolve a change, read git, code, change artifacts, audit artifacts, or `implementation.md`, and do not write any planning file. Technical work belongs exclusively to the implementation-planning worker.

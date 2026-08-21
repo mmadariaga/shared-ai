@@ -1,20 +1,12 @@
-# Isolation Mode
-- Ignore all previous conversation.
-- Use only the data inside <TASK>. TASK is not a template, it's a instruction set.
-- If required information is missing, ask for it.
-- If you are about to use external or prior context, STOP and say: "Potential context pollution detected, stopping, open a new chat".
-
 <TASK>
 
   Fetch @sai/policies/verified-precondition-handback.md
-  Fetch @sai/orchestration/command-runner.md and follow it exactly.
-  Fetch @sai/orchestration/worker-core.md and follow it exactly.
   Fetch @sai/policies/artifact-feedback-gate.md before applying the completion gate. Supply `artifacts = proposal.md, specs/**`, `proceed-label = Finish step`, and `next-action = the existing mandatory stop`.
 
   ## Spec phase adapter
   The phase adapter declares `recovery_policy: true` and the worker-owned, authorized, path-bounded non-clean read set is only `proposal.md`, `specs/**`, and the permitted root `GLOSSARY.md`. Same-worker correction on that surface is worker-owned; the coordinator has zero write or repair authority on any of those paths. The coordinator must never write or repair `proposal.md`, `specs/**`, or `GLOSSARY.md`.
 
-  You are the user-facing spec coordinator. Preserve Isolation Mode. The clean route — `progress`, `needs_input`, `completed` without a coordinator-disproved result or STOP, and `cancelled` — remains artifact-blind. On that route, do not run prerequisites, resolve arguments, query OpenSpec, read or write git, code, configuration, documentation, change artifacts, or artifacts, and do not make technical spec decisions. Do not reconstruct summaries or edit artifact feedback. These responsibilities belong exclusively to the spec-proposal worker.
+  You are the user-facing spec coordinator. The clean route — `progress`, `needs_input`, `completed` without a coordinator-disproved result or STOP, and `cancelled` — remains artifact-blind. On that route, do not run prerequisites, resolve arguments, query OpenSpec, read or write git, code, configuration, documentation, change artifacts, or artifacts, and do not make technical spec decisions. Do not reconstruct summaries or edit artifact feedback. These responsibilities belong exclusively to the spec-proposal worker.
 
   Only after resolution may a structurally valid `failed` result, a `completed` result disproved by coordinator evidence, or a `completed` result carrying STOP authorize inspection of the declared surface to establish cause and select shared recovery. No other result may authorize that inspection. The coordinator never writes or repairs the declared paths. The shared runner forwards the ordered `Reported`, `Evidence`, `Cause`, `Correction`, and `Verification` diagnosis to the same worker with exactly `continue_after_recovery`; diagnosis is conversation text only and does not affect progress. Use the shared runner for recovery ownership and do not restate its ledger or budget rules.
   On the non-clean route, when establishing Cause Locus, use the worker-authored `failure_class` as evidence and inspect only the authorized proposal/spec artifact surface: `proposal.md`, `specs/**`, and the permitted root `GLOSSARY.md`.

@@ -75,7 +75,7 @@ The supported harness roster is **Claude Code** and **opencode**. Both use route
 
 > **Important:** open a new chat between commands:
 > - **Token savings** — each phase only inherits the artifact it needs, not the full history.
-> - **Clean, replicable context** — each phase starts from scratch (Isolation Mode), making it easy to debug and replay steps in isolation.
+> - **Clean, replicable context** — each phase starts from scratch (the harness boot preamble clears inherited context at every invocation), making it easy to debug and replay steps in isolation.
 > - **Cost efficiency** — each phase uses the most cost-effective model for its task.
 
 ## Index
@@ -244,7 +244,7 @@ Proposes creating an ADR/DDR if all 3 criteria below are met:
 3. **Real trade-off** — genuine alternatives existed and one was chosen for specific reasons.
 
 ### Isolation Mode
-Every command starts with zero inherited context —it reads only the `<TASK>` block and the artifacts it needs. This prevents context pollution across phases, makes each run replicable, and enables safe model switching between phases.
+Every command starts with zero inherited context — the boot adapter opens each invocation with a clean-session preamble, so a command reads only its instruction cards and the artifacts it needs. This prevents context pollution across phases, makes each run replicable, and enables safe model switching between phases.
 
 ### Ubiquitous Language via GLOSSARY.md
 Domain terms are captured in a living `GLOSSARY.md` at the project root. Spec reads and appends new terms inline (no batching), Plan uses canonical terms for all new identifiers, and Review validates language consistency in the diff. This enforces a DDD-style ubiquitous language across the entire pipeline —every agent and every artifact speaks the same vocabulary.

@@ -1,9 +1,3 @@
-# Isolation Mode
-- Ignore all previous conversation.
-- Use only the data inside <TASK>. TASK is not a template, it's a instruction set.
-- If required information is missing, ask for it.
-- If you are about to use external or prior context, STOP and say: "Potential context pollution detected, stopping, open a new chat".
-
 <TASK>
 
   ## Prerequisite checks
@@ -45,7 +39,7 @@
   - **Set active:** when the user selects `Allow on this session` at the commit-authorization gate. The flag remains active for the remainder of the in-conversation session.
   - **Read:** at every subsequent entry to either of the two commit-authorization gates of an apply run — the per-Step STOP & COMMIT gate and the terminal documentation commit gate. If active, the coordinator skips the ask and proceeds to `git add` + `git commit` after printing the file-visibility report and proposed message.
   - **Fast-track pre-activation**: If the fast-track signal is active at the start of the run, pre-activate `session_commit_authorized` immediately. The pre-commit file visibility report and proposed commit message still print unconditionally before each commit.
-  - **Reset:** the flag is inactive at the start of every new chat or new `/sai-*` invocation (Isolation Mode clears inherited context). It is NEVER written to `.openspec.yaml`, config, or any file on disk.
+  - **Reset:** the flag is inactive at the start of every new chat or new `/sai-*` invocation (the session-start boot preamble clears inherited context). It is NEVER written to `.openspec.yaml`, config, or any file on disk.
    - **Scope boundary:** the grant covers `git add` + `git commit` at exactly the two commit-authorization gates of an apply run — the per-Step STOP & COMMIT gate and the terminal documentation commit gate — and covers nothing else. It does NOT authorize `push`, `--force`, branch create/switch, rebase, merge, tag, or `gh pr`; those operations still require their own per-operation approval regardless of the flag. The grant does NOT bypass the GREEN-conflict STOP or the apply Human Verification gate; those still halt the workflow regardless of the flag.
 
    The terminal documentation gate is runner-owned and follows the Final sweep and once-per-run promotion pass. It uses the same in-memory `session_commit_authorized` flag to skip only its authorization ask, always retains the terminal visibility listing and proposed message, offers no `Allow on this session` option, and leaves eligible files uncommitted on decline before the existing Completion binding is reached.

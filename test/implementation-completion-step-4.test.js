@@ -30,7 +30,7 @@ test('Step 4 Claude Code and opencode wrappers use the routed implementation lif
     assert.doesNotMatch(wrapper, /inline-invocation|copilot/i);
   }
   assert.match(launcher, /sai\/orchestration\/workers\/bindings\/implementation-worker\.md/);
-  assert.match(launcher, /sai\/commands\/implement\/coordinator\.md/);
+  assert.doesNotMatch(launcher, /sai\/commands\/implement\/coordinator\.md/);
   for (const retiredPath of [
     'commands/copilot/sai-3-implement.prompt.md',
     'sai/orchestration/inline-invocation.md',

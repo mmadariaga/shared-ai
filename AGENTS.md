@@ -33,7 +33,7 @@ Each phase reads from and writes to **`openspec/changes/{change-name}/`** — si
  sai/commands/                    ← command cards — routed cards per phase and utility cards per command (fetched by boot adapters at runtime)
  sai/commands/{spec,design,implement,apply,build,review,security,performance,accessibility}/  ← routed cards: coordinator.md, worker.md, and invocation.md where retained
  sai/commands/{archive,backfill,commit,explore,pr,status,worktree}/          ← utility cards: body.md only
- sai/commands/{name}/instructions.md   ← command-local phase content (Isolation Mode + TASK block) folded into each command card
+ sai/commands/{name}/instructions.md   ← command-local phase content (TASK block) folded into each command card
  sai/commands/{name}/*.template.md     ← neighboring co-located report/plan template files beside each card
  sai/commands/design/change-overview.md      ← shared overview-generation instruction, owned by the design command
  sai/commands/implement/adr-index.template.md ← canonical project-agnostic ADR index template, owned by the implement command
@@ -66,7 +66,7 @@ The openspec-dependent `sai-*` commands halt with a clear error if either is mis
 
 | Directory | Purpose |
 |-----------|---------|
-| `sai/commands/{name}/instructions.md` | Command-local phase content (Isolation Mode + TASK block) folded into each command card, fetched by the card that owns it. |
+| `sai/commands/{name}/instructions.md` | Command-local phase content (TASK block) folded into each command card, fetched by the card that owns it. |
 | `sai/commands/{name}/*.template.md` | Co-located report/plan templates beside their owning card — e.g. `sai/commands/review/review-report.template.md`, `sai/commands/implement/implementation-plan.template.md`, `sai/commands/pr/pr-body.template.md`. |
 | `sai/commands/design/change-overview.md` | Shared overview-generation instruction executed by the budget-routed subagent, the single source of the `change-overview.md` generation contract for every generation and regeneration. Owned by the design command, its only consumer. |
 | `sai/commands/implement/adr-index.template.md`, `sai/commands/implement/ddr-index.template.md` | The canonical project-agnostic ADR/DDR index templates consumed by the Step 3 index-maintenance cold build. Owned by the implement command, their only consumer. |
@@ -151,15 +151,13 @@ In `implementation.md`, a **checkbox** (`- [ ]`) is an **action** — something 
 All openspec-dependent sai-* commands (`sai-explore`, `sai-1-spec`, `sai-2-design`, `sai-3-implement`, `sai-4-apply`, `sai-build`, `sai-archive`, `sai-5-review`, `sai-6-security`, `sai-7-performance`, `sai-8-accessibility`, `sai-pr`) perform three checks by fetching `@sai/policies/prereqs.md` (resolved per harness: Claude Code via `~/.claude/sai/`, opencode via `~/.config/opencode/sai/`): (1) `openspec` binary in PATH, (2) `openspec/` directory exists, (3) `openspec/config.yaml` declares `schema: sai-workflow`. `/sai-build` performs resolution and prerequisite checks once for the composition; its apply segment does not repeat them. `sai-commit` and `/sai-worktree` are the only exceptions — they operate on git state only and work in projects without openspec.
 
 ### Isolation Mode
-Every `sai/commands/` command card (routed `coordinator.md`/`invocation.md` and utility `body.md`) starts with:
+Isolation is enforced by a single preamble line carried in **both** harness boot adapters (`sai/adapters/claude/boot.md` and `sai/adapters/opencode/boot.md`), identical word-for-word:
+
 ```
-# Isolation Mode
-- Ignore all previous conversation.
-- Use only the data inside <TASK>.
-- If required information is missing, ask for it.
-- If you are about to use external or prior context, STOP and say: "Potential context pollution detected, stopping, open a new chat".
+This invocation starts clean: disregard prior conversational context except where a fetched contract explicitly directs otherwise.
 ```
-Never remove or modify this block.
+
+The boot loads this preamble once per invocation, before `@sai/orchestration/command-runner.md` and before any card selection. Per-command cards (`coordinator.md`, `invocation.md`, launcher cards) carry **no** isolation block of their own. Never remove or modify the boot preamble line, and keep it byte-identical across both harnesses.
 
 ### Safe Operations
 Loaded by 8 sai-* command wrappers (`sai-1-spec`, `sai-4-apply`, `sai-archive`, `sai-backfill`, `sai-commit`, `sai-explore`, `sai-pr`, `sai-worktree`) via `Fetch @skills/safe-operations/SKILL.md`. The skill enforces:
@@ -284,7 +282,7 @@ Placement depends on command shape:
 When adding a new change-consuming command, check whether it dereferences `{change-name}` inside its own `## Prerequisite checks` before picking a placement.
 
 ### Add a new command
-1. Create the instruction in `sai/commands/{name}/instructions.md` with Isolation Mode + TASK block (or, for openspec-backed commands, write a wrapper that fetches a skill).
+1. Create the instruction in `sai/commands/{name}/instructions.md` with a TASK block (or, for openspec-backed commands, write a wrapper that fetches a skill). Isolation comes from the harness boot preamble — do not add an isolation block to the card.
 2. Create wrappers in `commands/claude/sai-{name}.md` and `commands/opencode/sai-{name}.md`.
 3. Update README.md with the phase in the corresponding table.
 

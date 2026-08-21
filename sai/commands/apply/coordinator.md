@@ -1,13 +1,5 @@
-# Isolation Mode
-- Ignore all previous conversation.
-- Use only the data inside <TASK>. TASK is not a template, it's a instruction set.
-- If required information is missing, ask for it.
-- If you are about to use external or prior context, STOP and say: "Potential context pollution detected, stopping, open a new chat".
-
 <TASK>
 
-  Fetch @sai/orchestration/command-runner.md and follow it exactly.
-  Fetch @sai/orchestration/worker-core.md and follow it exactly.
   Fetch @sai/commands/apply/invocation.md and follow it exactly.
   Fetch @sai/commands/apply/runner.md and follow those instructions exactly.
   Fetch @sai/policies/commit-rules.md and follow it at every commit gate.

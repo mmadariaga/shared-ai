@@ -66,6 +66,20 @@ human-intervention handling.
 
 ## Dispatch-Kind Report Table
 
+The apply phase declares an ordered report extension carried inside the terminal lifecycle envelope, with exactly nine report fields:
+
+1. `Step executed`
+2. `Per-item status`
+3. `RED result`
+4. `GREEN result`
+5. `Deviations`
+6. `Technical learnings/friction`
+7. `STOP reached?`
+8. `Files modified`
+9. `Attempts per phase`
+
+The coordinator validates every reported value against this declared field list and never invents, reorders, or drops a field.
+
 Field values follow the dispatch kind, keyed on the dispatch:
 
 - **green-direct** — field 3 (`RED result`) = `n/a`; field 4 (`GREEN result`) carries the real value.

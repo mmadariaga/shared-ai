@@ -2,6 +2,7 @@
 
 Accept the two-key boot request from the wrapper: `command_name` and `arguments_value`.
 
+This invocation starts clean: disregard prior conversational context except where a fetched contract explicitly directs otherwise.
 Fetch @sai/orchestration/command-runner.md and follow it first.
 
 Use `command_name` only for card selection. Routed names (`spec`, `design`, `implement`, `review`, `security`, `performance`, `accessibility`, `apply`, `build`) select the matching coordinator card — `@sai/commands/{name}/coordinator.md`, for example `Fetch @sai/commands/spec/coordinator.md`, `Fetch @sai/commands/apply/coordinator.md`, and `Fetch @sai/commands/build/coordinator.md`. Utility names (`archive`, `backfill`, `commit`, `explore`, `pr`, `status`, `worktree`) select the matching utility body card — `@sai/commands/{name}/body.md`, for example `Fetch @sai/commands/archive/body.md`.
