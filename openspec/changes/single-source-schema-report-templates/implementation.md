@@ -58,7 +58,7 @@ Scenarios (concrete expected values are single-sourced in `interfaces.md` Step 1
 
 ##### GREEN phase (only after RED is verified)
 
-- [ ] Overwrite `openspec/schemas/sai-workflow/templates/review.md` with:
+- [x] Overwrite `openspec/schemas/sai-workflow/templates/review.md` with:
 
 ```markdown
 # Code Review — <!-- Feature Name -->
@@ -110,7 +110,7 @@ Scenarios (concrete expected values are single-sourced in `interfaces.md` Step 1
 <!-- Write-time authority: severity vocabulary, evidence rules, finding shape, and tally line are defined in sai/commands/review/review-report.template.md -->
 ```
 
-- [ ] Overwrite `openspec/schemas/sai-workflow/templates/security.md` with:
+- [x] Overwrite `openspec/schemas/sai-workflow/templates/security.md` with:
 
 ```markdown
 # Security Report — <!-- Feature Name -->
@@ -171,7 +171,7 @@ Scenarios (concrete expected values are single-sourced in `interfaces.md` Step 1
 <!-- Write-time authority: severity vocabulary, evidence rules, finding shape, and tally line are defined in sai/commands/security/security-report.template.md -->
 ```
 
-- [ ] Overwrite `openspec/schemas/sai-workflow/templates/performance.md` with:
+- [x] Overwrite `openspec/schemas/sai-workflow/templates/performance.md` with:
 
 ```markdown
 # Performance Report — <!-- Feature Name -->
@@ -219,7 +219,7 @@ Scenarios (concrete expected values are single-sourced in `interfaces.md` Step 1
 <!-- Write-time authority: severity vocabulary, evidence rules, finding shape, and tally line are defined in sai/commands/performance/performance-report.template.md -->
 ```
 
-- [ ] Overwrite `openspec/schemas/sai-workflow/templates/accessibility.md` with:
+- [x] Overwrite `openspec/schemas/sai-workflow/templates/accessibility.md` with:
 
 ```markdown
 # Accessibility Report — <!-- Feature Name -->
@@ -265,7 +265,7 @@ Scenarios (concrete expected values are single-sourced in `interfaces.md` Step 1
 <!-- Write-time authority: severity vocabulary, evidence rules, finding shape, and tally line are defined in sai/commands/accessibility/accessibility-report.template.md -->
 ```
 
-- [ ] Overwrite `openspec/schemas/sai-workflow/templates/implementation.md` with:
+- [x] Overwrite `openspec/schemas/sai-workflow/templates/implementation.md` with:
 
 ```markdown
 # {FEATURE_NAME}
@@ -323,7 +323,7 @@ Scenarios (concrete expected values are single-sourced in `interfaces.md` Step 1
 <!-- Write-time authority: planning, conditional RED/GREEN, verification, STOP & COMMIT, and commit-authorization checklist are defined in sai/commands/implement/implementation-plan.template.md -->
 ```
 
-- [ ] In `openspec/schemas/sai-workflow/schema.yaml`, replace **only** the five artifact-level `instruction` blocks for `implementation`, `review`, `security`, `performance`, and `accessibility` with the exact two-sentence strings below. Leave `generates`, `requires`, `description`, `template`, `apply.requires`, `apply.tracks`, and top-level `apply.instruction` byte-identical.
+- [x] In `openspec/schemas/sai-workflow/schema.yaml`, replace **only** the five artifact-level `instruction` blocks for `implementation`, `review`, `security`, `performance`, and `accessibility` with the exact two-sentence strings below. Leave `generates`, `requires`, `description`, `template`, `apply.requires`, `apply.tracks`, and top-level `apply.instruction` byte-identical.
 
 Implementation `instruction` value (YAML block scalar body — two lines ending with single newline as other blocks):
 
