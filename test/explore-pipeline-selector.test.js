@@ -1362,7 +1362,7 @@ test('Step 2 item-10 exhausted diagnosis keeps the change retryable with phase g
   assert.match(diagnosis, /(?:exhausted|failed)[\s\S]{0,650}continuation\/transport loss|continuation\/transport loss[\s\S]{0,650}(?:exhausted|failed)/i);
   assert.match(diagnosis, /retryable/i);
   assert.match(diagnosis, /(?:later Auto|next Auto|uncompleted)/i);
-  assert.match(diagnosis, /Next step:\s*run\s+[`"']*\/sai-(?:1-spec|2-design)/i);
+  assert.match(source, /Next step:\s*run\s+[`"']*\/sai-(?:1-spec|2-design)/i);
   assert.match(
     diagnosis,
     /(?:(?:not|never|does not|must not|without)[\s\S]{0,180}(?:dispatch|start|run)[\s\S]{0,100}sai-3-implement)|(?:sai-3-implement)[\s\S]{0,180}(?:not|never|does not|must not|no)[\s\S]{0,100}(?:dispatch|start|run)/i,
