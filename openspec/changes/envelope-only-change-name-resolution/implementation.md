@@ -466,13 +466,13 @@ test('final wrappers: no trailing labelled argument lines on either harness', ()
 
 For each capability below, fold the change-delta under `openspec/changes/envelope-only-change-name-resolution/specs/{capability}/spec.md` into `openspec/specs/{capability}/spec.md` so the active baseline matches the landed instruction contracts. Do not invent requirements beyond the change specs. Remove every requirement title listed under `## REMOVED Requirements` in the delta from the active baseline.
 
-- [ ] Sync `openspec/specs/change-picker/spec.md` from the change delta (envelope-only resolution; remove Wrapper-Echo Resolution and legacy Invocation Trigger requirements).
-- [ ] Sync `openspec/specs/status-picker/spec.md` from the change delta (envelope-only source; preserve See all + bulk signal).
-- [ ] Sync `openspec/specs/opencode-change-arg-passthrough/spec.md` from the change delta (no labels; three envelope keys; remove label-emission requirements).
-- [ ] Sync `openspec/specs/command-wrapper-body/spec.md` from the change delta (no label line; envelope placement unchanged).
-- [ ] Sync `openspec/specs/thin-wrappers/spec.md` from the change delta (examples without labels).
-- [ ] Sync `openspec/specs/sai-fast-track-flag/spec.md` from the change delta (archive has no post-picker strip; parse from `arguments_value` before picker).
-- [ ] Sync `openspec/specs/design-harness-bindings/spec.md` from the change delta (envelope forwarding probes for name + `--fast-track` either order; no label extraction).
+- [x] Sync `openspec/specs/change-picker/spec.md` from the change delta (envelope-only resolution; remove Wrapper-Echo Resolution and legacy Invocation Trigger requirements).
+- [x] Sync `openspec/specs/status-picker/spec.md` from the change delta (envelope-only source; preserve See all + bulk signal).
+- [x] Sync `openspec/specs/opencode-change-arg-passthrough/spec.md` from the change delta (no labels; three envelope keys; remove label-emission requirements).
+- [x] Sync `openspec/specs/command-wrapper-body/spec.md` from the change delta (no label line; envelope placement unchanged).
+- [x] Sync `openspec/specs/thin-wrappers/spec.md` from the change delta (examples without labels).
+- [x] Sync `openspec/specs/sai-fast-track-flag/spec.md` from the change delta (archive has no post-picker strip; parse from `arguments_value` before picker).
+- [x] Sync `openspec/specs/design-harness-bindings/spec.md` from the change delta (envelope forwarding probes for name + `--fast-track` either order; no label extraction).
 
 Note: `envelope-only-card-resolution` is a **new** capability in the change. Do **not** invent a new active baseline directory in this step unless archive/sync tooling already requires it; keep the delta under the change until archive. Only the seven modified active baselines listed above are Files Affected.
 
@@ -588,3 +588,5 @@ make the authorized full-suite verification pass.
 | 2 | green-direct | green | 1 | n/a | |
 | 3 | green-exception | red | 10 | assertion | Updated structural assertions and repaired the full-suite contract mismatch. |
 | 3 | green-exception | green | 1 | n/a | |
+| 4 | green-direct | implementation | 1 | n/a | |
+| 4 | green-direct | green | 1 | n/a | |

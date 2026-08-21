@@ -2,60 +2,57 @@
 
 ## Purpose
 
-TBD - created by archiving change minor-bugfixes. Update Purpose after archive.
+Define the opencode wrapper contract that forwards command arguments through the invocation envelope without relying on transcript text or labelled wrapper lines.
+
 ## Requirements
-### Requirement: opencode change-consuming wrappers emit a Change-name argument line
-Every opencode wrapper for a change-consuming `sai-*` command (`sai-2-design`, `sai-3-implement`, `sai-4-apply`, `sai-5-review`, `sai-6-security`, `sai-7-performance`, `sai-8-accessibility`, `sai-archive`, `sai-pr`) SHALL emit exactly one line at the end of the wrapper body, formatted as either `**Change-name argument:** $ARGUMENTS` (two literal asterisks, the literal text `Change-name argument:`, a single space, and the literal token `$ARGUMENTS` substituted by opencode at invocation time) or `**Change-name argument and and optional flags:** $ARGUMENTS` (the same shape with the literal text `Change-name argument and and optional flags:` substituted for `Change-name argument:`). The line SHALL be the last line of the wrapper body, SHALL appear after the existing `Fetch @sai/commands/sai-X.md and follow those instructions exactly.` line, and SHALL NOT be modified in any other way (no extra surrounding whitespace, no Markdown link, no code fence). The line exists to bridge the opencode-specific gap where `$ARGUMENTS` is substituted only into the wrapper template, not into the body file that the model reads separately.
+### Requirement: opencode change-consuming wrappers forward an envelope
 
-#### Scenario: sai-archive wrapper emits the line
-- **WHEN** `~/.config/opencode/commands/sai-archive.md` is read
-- **THEN** the final line of the wrapper body is exactly one of `**Change-name argument:** $ARGUMENTS` or `**Change-name argument and and optional flags:** $ARGUMENTS`
+Every opencode wrapper for a change-consuming `sai-*` command (`sai-2-design`, `sai-3-implement`, `sai-4-apply`, `sai-5-review`, `sai-6-security`, `sai-7-performance`, `sai-8-accessibility`, `sai-archive`, `sai-pr`) SHALL contain one standalone `InvocationEnvelope:` block directly after the launcher-call directive. The block SHALL contain exactly these three keys, in this order: `command_name`, `wrapper_echo_value`, and `arguments_value`. Opencode SHALL substitute `$ARGUMENTS` into `arguments_value`; a trimmed, non-empty `arguments_value` SHALL be authoritative, while `wrapper_echo_value` SHALL be forwarded as opaque data and SHALL NOT be used to resolve a change name. The wrapper SHALL be label-free, SHALL have no trailing content after the envelope block, and SHALL preserve its frontmatter byte-for-byte.
 
-#### Scenario: all nine change-consuming wrappers emit the line
+#### Scenario: sai-archive wrapper forwards the envelope
+- **WHEN** the opencode `sai-archive` wrapper is read
+- **THEN** its body ends with exactly one `InvocationEnvelope:` block containing only `command_name`, `wrapper_echo_value`, and `arguments_value`, with no trailing labelled line
+
+#### Scenario: all nine change-consuming wrappers use the same label-free shape
 - **WHEN** the nine opencode change-consuming wrapper files are listed (`commands/opencode/sai-2-design.md`, `sai-3-implement.md`, `sai-4-apply.md`, `sai-5-review.md`, `sai-6-security.md`, `sai-7-performance.md`, `sai-8-accessibility.md`, `sai-archive.md`, `sai-pr.md`)
-- **THEN** each one ends with exactly one of the two accepted forms and no other trailing content
+- **THEN** each one has exactly the three envelope keys, forwards `$ARGUMENTS` through `arguments_value`, and contains no labelled change-name line or other trailing content
 
-#### Scenario: change-picker resolves the value from the emitted line
+#### Scenario: change-picker uses arguments value
 - **WHEN** a user runs `/sai-archive installer-offer-opencode-cli` in opencode
-- **THEN** opencode substitutes `$ARGUMENTS` in the wrapper to `installer-offer-opencode-cli`, the body file (fetched separately) sees the same value via the emitted echo line in either accepted form, and the change-picker instruction resolves `installer-offer-opencode-cli` as the change name without showing the picker
+- **THEN** opencode substitutes the value into `arguments_value`, the invocation envelope reaches the change-picker, and the trimmed `arguments_value` resolves `installer-offer-opencode-cli` without showing the picker
 
-### Requirement: non-change-consuming opencode wrappers do not emit the line
+### Requirement: non-change-consuming opencode wrappers do not provide a change name
 
-Opencode wrappers for `sai-*` commands that do NOT consume a change name (`sai-1-spec` creates a change, `sai-backfill` has its own name-resolution flow, `sai-commit` operates on git state, `sai-explore` is non-change-scoped, `budget` is a mode toggle) SHALL NOT emit the `**Change-name argument:** $ARGUMENTS` line. The line is meaningful only for change-consuming commands; emitting it elsewhere would be noise that no instruction currently consumes.
+Opencode wrappers for `sai-*` commands that do NOT consume a change name (`sai-1-spec`, `sai-backfill`, `sai-commit`, `sai-explore`, and `budget`) SHALL NOT provide a change-name source to the change-picker. Their behavior SHALL remain independent of opaque wrapper data, transcript text, and labelled wrapper lines.
 
-#### Scenario: sai-1-spec wrapper does not emit the line
+#### Scenario: sai-1-spec wrapper does not provide a change name
 
 - **WHEN** `~/.config/opencode/commands/sai-1-spec.md` is read
-- **THEN** the wrapper body does not contain a `**Change-name argument:**` line
+- **THEN** the wrapper body does not provide a change-name value for the picker
 
-#### Scenario: sai-backfill wrapper does not emit the line
+#### Scenario: sai-backfill wrapper does not provide a change name
 
 - **WHEN** `~/.config/opencode/commands/sai-backfill.md` is read
-- **THEN** the wrapper body does not contain a `**Change-name argument:**` line
+- **THEN** the wrapper body does not provide a change-name value for the picker
 
-#### Scenario: sai-explore body does not actually consume a change name
+#### Scenario: sai-explore body does not consume a change name
 
 - **WHEN** the `sai/commands/explore/body.md` body file (fetched by the `sai-explore` wrapper) is read
 - **THEN** it does not include `Fetch @sai/instructions/change-picker.md` and does not validate `$ARGUMENTS` as an OpenSpec change name — even though the `commands/opencode/sai-explore.md` description frontmatter says "Optionally pass a change name to explore an existing change", the actual behavior is that `sai-explore` does not consume a change name. The description text is a known inconsistency deferred to a follow-up change.
 
-### Requirement: convention is opencode-specific and is not mirrored to Claude Code or Copilot
+### Requirement: the envelope contract is opencode-specific and is not transcript-dependent
 
-The `**Change-name argument:** $ARGUMENTS` line is an opencode-specific adapter for the opencode-specific gap where `$ARGUMENTS` is substituted only into the wrapper template. Claude Code and GitHub Copilot substitute `$ARGUMENTS` directly into the body file, so the change-picker's existing `$ARGUMENTS` check works in those harnesses and the wrapper-echo line is unnecessary there. The `commands/claude/` and `commands/copilot/` wrappers for the same nine change-consuming `sai-*` commands SHALL NOT emit the line. This is a "harness-specific adapter" per the `harness-universality` spec: the change fills a gap in exactly one harness's wrapper set, and the fix has no meaning (would be actively wrong noise) in the other harnesses. No harness-agnostic content is touched; the line is a harness-specific adapter confined to `commands/opencode/`.
+The opencode invocation-envelope adapter addresses opencode's wrapper substitution boundary. Other harnesses may substitute arguments directly into their body or use their own envelope path, but no supported harness SHALL depend on a transcript line or labelled wrapper text for change-name resolution. The shared change-picker contract remains authoritative: trimmed non-empty `arguments_value` wins, and the 0/1/N fallback runs only when it is empty.
 
-#### Scenario: Claude Code wrappers do not emit the line
+#### Scenario: Claude Code and Copilot remain independent of wrapper labels
 
-- **WHEN** any of the nine `commands/claude/sai-{2-design,3-implement,4-apply,5-review,6-security,7-performance,8-accessibility,archive,pr}.md` wrappers is read
-- **THEN** the wrapper body does not contain a `**Change-name argument:**` line
+- **WHEN** the corresponding Claude Code or GitHub Copilot change-consuming command is invoked
+- **THEN** its change-name behavior does not require a labelled wrapper line and remains governed by that harness's argument substitution and the shared envelope semantics
 
-#### Scenario: Copilot wrappers do not emit the line
+### Requirement: future change-consuming opencode wrappers forward the envelope
 
-- **WHEN** any of the nine `commands/copilot/sai-{2-design,3-implement,4-apply,5-review,6-security,7-performance,8-accessibility,archive,pr}.prompt.md` wrappers is read
-- **THEN** the wrapper body does not contain a `**Change-name argument:**` line
+Any new opencode wrapper for a change-consuming `sai-*` command introduced in the future SHALL use the same standalone `InvocationEnvelope:` block directly after its launcher call, with exactly `command_name`, `wrapper_echo_value`, and `arguments_value`. It SHALL forward `$ARGUMENTS` through `arguments_value`, preserve frontmatter, and SHALL NOT add a labelled wrapper line.
 
-### Requirement: future change-consuming opencode wrappers must emit the line
-Any new opencode wrapper for a change-consuming `sai-*` command introduced in the future SHALL emit the wrapper-echo line at the end of the wrapper body, formatted as one of the two accepted forms defined in the parent requirement above (`**Change-name argument:** $ARGUMENTS` or `**Change-name argument and and optional flags:** $ARGUMENTS`). The line is a string contract between the wrapper and the change-picker instruction; omitting it from a future change-consuming opencode wrapper would silently regress the change-name pass-through.
-
-#### Scenario: new change-consuming opencode wrapper follows the convention
-- **WHEN** a new change-consuming `sai-*` command (e.g. `sai-9-something`) is added and its `commands/opencode/sai-9-something.md` wrapper is written
-- **THEN** the wrapper body ends with exactly one of the two accepted echo-line forms so the change-picker resolves the name without showing the picker
-
+#### Scenario: new change-consuming opencode wrapper follows the envelope convention
+- **WHEN** a new change-consuming `sai-*` command (for example `sai-9-something`) is added and its opencode wrapper is written
+- **THEN** the wrapper supplies the exact three-key envelope and the change-picker can resolve a trimmed non-empty `arguments_value` without transcript or label extraction
