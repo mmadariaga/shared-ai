@@ -96,6 +96,7 @@ Both appendices live at the end of `implementation.md` in this fixed order — `
 ## Final sweep and terminal lifecycle
 
 The coordinator enters this section only after the Step loop, every applicable Human Verification gate, every required per-Step commit gate, and the existing appendices have completed. A run that halts before this Final sweep performs neither learnings promotion nor terminal documentation evaluation.
+The retired monolithic apply instruction is not an executable source.
 
 ### Final sweep
 
@@ -115,15 +116,16 @@ Immediately after the single promotion pass, evaluate the terminal documentation
 - root `SAI_LEARNINGS.md` only when this run's promotion pass wrote it; and
 - changed root `GLOSSARY.md`, whether tracked-modified or untracked.
 
-The terminal set is proposed whenever at least one eligible path exists, even when promotion produced no qualifying entry. When none of these conditions holds, propose no terminal documentation commit and ask no terminal authorization question. Never resolve `GLOSSARY.md` from `openspec/changes/{change-name}/`. `openspec/changes/**`, `implementation.md`, unrelated working-tree paths, the changed-files union, and every per-Step field-8 add-list remain outside this set.
+The terminal set is proposed whenever at least one eligible path exists, even when promotion produced no qualifying entry. When none of these conditions holds, propose no terminal documentation commit and ask no terminal authorization question. never resolve `GLOSSARY.md` from `openspec/changes/{change-name}`. `openspec/changes/**`, `implementation.md`, unrelated working-tree paths, the changed-files union, and every per-Step field-8 add-list remain outside this set.
 
 ### Terminal visibility listing
 
 Before proposing a terminal documentation commit message and before authorization, print a non-mutating visibility listing. Show the exact eligible paths under `Will be committed` and every working-tree path outside the closed set under `Will NOT be committed`. The preview does not stage, unstage, or otherwise mutate the Git index, does not depend on a Step number or worker report, and does not use a broad working-tree sweep.
+The visibility listing is followed by the proposed commit message and then authorization; the preview remains non-mutating.
 
 ### Terminal authorization and commit
 
-Apply `sai/policies/commit-rules.md` before composing the message. The proposed message describes only the terminal documentation paths and staged hunks. Keep terminal staging separate from per-Step field-8 add-lists and, after authorization, stage exactly the closed terminal set; SHALL NOT use `git add -A`, a broad staging fallback, or any path under `openspec/changes/{change-name}/`.
+Apply `sai/policies/commit-rules.md` before composing the message. The proposed message describes only the terminal documentation paths and staged hunks. Keep terminal staging separate from per-Step field-8 staging and add-lists. After authorization, stage exactly the closed terminal set; SHALL NOT use `git add -A`, a broad staging fallback, or any path under `openspec/changes/{change-name}/`.
 
 When `session_commit_authorized` is inactive, present only the native closed-choice options `yes` and `no` for this final gate, with yes-only execute semantics: only explicit `yes` authorizes `git add` and `git commit`; silence or any other response is a decline. The terminal gate does not offer `Allow on this session`. When the session flag is already active, including fast-track pre-activation, skip only this authorization ask; still print the visibility listing and proposed message before staging and committing. On decline, leave eligible files in the working tree, describe what remains uncommitted, and continue to MANDATORY STOP without retrying.
 
