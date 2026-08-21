@@ -178,6 +178,7 @@ test('design wrappers activate routed Claude/opencode entry and preserve phase b
   const claude = artifact('commands/claude/sai-2-design.md');
   const opencode = artifact('commands/opencode/sai-2-design.md');
   const launcher = artifact('sai/commands/design/launcher.md');
+  const coordinator = artifact('sai/commands/design/coordinator.md');
 
     assert.match(claude, /^model: opus$/m);
     assert.match(claude, /^effort: medium$/m);
@@ -195,7 +196,32 @@ test('design wrappers activate routed Claude/opencode entry and preserve phase b
    assert.doesNotMatch(opencode, /sai-3-implementation-worker/);
      assert.match(opencode, /sai\/commands\/design\/launcher\.md/);
     assert.doesNotMatch(opencode, /Fetch @skills\/sai-2-design-worker\/SKILL\.md/);
-   assert.ok(opencode.includes('**Change-name argument and and optional flags:** $ARGUMENTS'));
+   for (const [harness, source] of [['claude', claude], ['opencode', opencode]]) {
+     assert.match(source, /InvocationEnvelope:/,
+       `${harness} design wrapper should forward an InvocationEnvelope`);
+     assert.match(source, /command_name:\s*design/,
+       `${harness} design wrapper should forward command_name: design`);
+     assert.match(source, /arguments_value:\s*\$ARGUMENTS/,
+       `${harness} design wrapper should forward the complete arguments_value`);
+     assert.doesNotMatch(source, /^\s*\*\*[^*\r\n]*(?:argument|arguments)[^*\r\n]*\*\*\s*\$ARGUMENTS\s*$/m,
+       `${harness} design wrapper should not use transcript-labelled argument extraction`);
+   }
+   assert.match(claude, /wrapper_echo_value:\s*""/,
+     'Claude design should preserve the empty wrapper_echo_value');
+   assert.match(opencode, /wrapper_echo_value:\s*\$ARGUMENTS/,
+     'opencode design should preserve the opaque wrapper_echo_value');
+
+   assert.match(coordinator, /arguments_value/,
+      'the design coordinator should consume the forwarded arguments_value');
+    for (const argumentsValue of [
+      'envelope-only-change-name-resolution --fast-track',
+      '--fast-track envelope-only-change-name-resolution',
+    ]) {
+      assert.match(opencode, /arguments_value:\s*\$ARGUMENTS/,
+        `opencode design should forward the complete argument order: ${argumentsValue}`);
+      assert.match(claude, /arguments_value:\s*\$ARGUMENTS/,
+        `Claude design should forward the complete argument order: ${argumentsValue}`);
+    }
 
    assert.match(launcher, /sai\/commands\/design\/coordinator\.md/, 'launcher should load the design coordinator');
    assert.match(launcher, /Fetch @sai\/orchestration\/workers\/bindings\/design-worker\.md/, 'launcher should load the design worker binding');

@@ -130,21 +130,19 @@ const BOOT_ADAPTER = {
   opencode: 'Fetch @sai/adapters/opencode/boot.md and follow it.',
 };
 
-const OPENCODE_LABELS = {
-  'sai-1-spec.md': '**Spec request argument:** $ARGUMENTS',
-  'sai-2-design.md': '**Change-name argument and and optional flags:** $ARGUMENTS',
-  'sai-3-implement.md': '**Change-name argument:** $ARGUMENTS',
-  'sai-4-apply.md': '**Change-name argument and and optional flags:** $ARGUMENTS',
-  'sai-5-review.md': '**Change-name and optional parent-branch argument:** $ARGUMENTS',
-  'sai-6-security.md': '**Security arguments:** $ARGUMENTS',
-  'sai-7-performance.md': '**Performance arguments:** $ARGUMENTS',
-  'sai-8-accessibility.md': '**Change-name argument:** $ARGUMENTS',
-  'sai-archive.md': '**Change-name argument and and optional flags:** $ARGUMENTS',
-  'sai-build.md': '**Change-name argument:** $ARGUMENTS',
-  'sai-status.md': '**Change-name argument and and optional flags:** $ARGUMENTS',
-  'sai-worktree.md': '**Worktree arguments:** $ARGUMENTS',
-  'sai-pr.md': '**Change-name argument:** $ARGUMENTS',
-};
+const OPENCODE_LABEL_PREFIXES = [
+  '**Spec request argument:**',
+  '**Change-name argument and and optional flags:**',
+  '**Change-name argument:**',
+  '**Change-name and optional parent-branch argument:**',
+  '**Security arguments:**',
+  '**Performance arguments:**',
+  '**Worktree arguments:**',
+];
+
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
 
 function launcherCallDirective(folder) {
   return `Fetch @sai/commands/${folder}/launcher.md and follow those instructions exactly, forwarding the InvocationEnvelope block below.`;
@@ -169,8 +167,8 @@ test('final wrappers: InvocationEnvelope block follows launcher fetch with exact
       const source = read(`commands/${harness}/${file}`);
       assert.match(source, /InvocationEnvelope:/, `${harness}/${file} should contain InvocationEnvelope:`);
       assert.match(source, new RegExp(`command_name:\\s*${folder}`), `${harness}/${file} should set command_name to ${folder}`);
-      if (harness === 'claude') {
-        assert.match(source, /wrapper_echo_value:\s*""/, `${harness}/${file} should use empty wrapper_echo_value`);
+       if (harness === 'claude' || folder === 'explore') {
+         assert.match(source, /wrapper_echo_value:\s*""/, `${harness}/${file} should use empty wrapper_echo_value`);
       } else {
         assert.match(source, /wrapper_echo_value:\s*\$ARGUMENTS/, `${harness}/${file} should use $ARGUMENTS wrapper_echo_value`);
       }
@@ -206,15 +204,21 @@ test('final wrappers: both sai-explore wrappers keep idea-list-render while laun
   assert.match(exploreLauncher, /Fetch @sai\/orchestration\/workers\/bindings\/design-worker\.md/, 'explore launcher should carry design-worker binding');
 });
 
-test('final wrappers: opencode label lines remain after envelope; Claude wrappers have no label line', () => {
-  for (const [file, folder] of wrapperCommands) {
-    const opencodeSource = read(`commands/opencode/${file}`);
-    const claudeSource = read(`commands/claude/${file}`);
-    if (OPENCODE_LABELS[file]) {
-      assert.ok(opencodeSource.includes(OPENCODE_LABELS[file]),
-        `opencode/${file} should retain its label line: ${OPENCODE_LABELS[file]}`);
+test('final wrappers: all known labelled argument lines are absent after the envelope in both harnesses', () => {
+  const trailingLabel = /^\s*\*\*[^*\r\n]*(?:argument|arguments)[^*\r\n]*\*\*\s*\$ARGUMENTS\s*$/m;
+  for (const harness of ['claude', 'opencode']) {
+    for (const [file] of wrapperCommands) {
+      const source = read(`commands/${harness}/${file}`);
+      for (const prefix of OPENCODE_LABEL_PREFIXES) {
+        assert.doesNotMatch(
+          source,
+          new RegExp(`^\\s*${escapeRegExp(prefix)}\\s*\\$ARGUMENTS\\s*$`, 'm'),
+          `${harness}/${file} should not retain the labelled argument prefix: ${prefix}`,
+        );
+      }
+      assert.doesNotMatch(source, trailingLabel,
+        `${harness}/${file} should not retain a trailing labelled argument line`);
     }
-    assert.doesNotMatch(claudeSource, /\*\*.*argument.*\*\*.*\$ARGUMENTS/, `claude/${file} should have no label line`);
   }
 });
 

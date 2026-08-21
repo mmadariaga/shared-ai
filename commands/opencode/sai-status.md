@@ -10,5 +10,3 @@ InvocationEnvelope:
   command_name: status
   wrapper_echo_value: $ARGUMENTS
   arguments_value: $ARGUMENTS
-
-**Change-name argument and and optional flags:** $ARGUMENTS

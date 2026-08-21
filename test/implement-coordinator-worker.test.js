@@ -342,7 +342,20 @@ test('Step 2 routes Claude and opencode through the coordinator', () => {
     assert.match(opencode, /^variant: max$/m);
    assert.match(opencode, /^subtask:\s*false\s*$/m);
    assert.doesNotMatch(opencode, /^agent:/m);
-  assert.match(opencode, /\*\*Change-name argument:\*\* \$ARGUMENTS/);
+   for (const [harness, source] of [['claude', claude], ['opencode', opencode]]) {
+     assert.match(source, /InvocationEnvelope:/,
+       `${harness} implementation wrapper should forward an InvocationEnvelope`);
+     assert.match(source, /command_name:\s*implement/,
+       `${harness} implementation wrapper should forward command_name: implement`);
+     assert.match(source, /arguments_value:\s*\$ARGUMENTS/,
+       `${harness} implementation wrapper should forward the complete arguments_value`);
+     assert.doesNotMatch(source, /^\s*\*\*[^*\r\n]*(?:argument|arguments)[^*\r\n]*\*\*\s*\$ARGUMENTS\s*$/m,
+       `${harness} implementation wrapper should not retain a labelled argument line`);
+   }
+   assert.match(claude, /wrapper_echo_value:\s*""/,
+     'Claude implementation should preserve the empty wrapper_echo_value');
+   assert.match(opencode, /wrapper_echo_value:\s*\$ARGUMENTS/,
+     'opencode implementation should preserve the opaque wrapper_echo_value');
 
   assert.match(launcher, /Fetch @sai\/orchestration\/workers\/bindings\/implementation-worker\.md/, 'launcher should load the implementation binding');
   assert.match(launcher, /Fetch @sai\/commands\/implement\/coordinator\.md/, 'launcher should load the implement coordinator');

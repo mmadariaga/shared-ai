@@ -267,12 +267,9 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0001 — Separate per-harness instruction files for the sai subagent resolver](./0001-sai-separate-harness-files.md)
 - [0004 — Source Layout and Install Path Restructure for sai-* Commands and Skills](./0004-source-layout-and-install-path-restructure.md) — Supersedes 0002, Supersedes 0003, Refs 0001
 - [0009 — Claude-Specific Fetch Skill at skills/claude/fetch/](./0009-claude-specific-fetch-skill.md) — Refs 0003
-- [0033 — Echo line format and placement](./0033-echo-line-format-and-placement.md)
-- [0034 — Resolution precedence — wrapper-echo check runs first](./0034-resolution-precedence-wrapper-echo-first.md) — Pair with 0033
-- [0035 — Harness-specific adapter carve-out](./0035-harness-specific-adapter-carve-out.md) — Pair with 0033
 - [0048 — Single-source the `--fast-track` parse in each command's body file](./0048-single-source-fast-track-parse-in-body-file.md)
-- [0049 — Fast-track flag-strip precedes change-picker; cleaned change-name is authoritative](./0049-fast-track-flag-strip-before-change-picker.md)
 - [0050 — Respect each harness's native argument-surface convention for `--fast-track`](./0050-respect-harness-native-argument-surface.md)
+- [0166 — Envelope-only change-name resolution for shared pickers and four cards](./0166-envelope-only-change-name-resolution.md) — Supersedes 0033, Supersedes 0034, Supersedes 0035, Supersedes 0049, Refs 0075, Refs 0136
 - [0051 — Model `--fast-track` as ephemeral in-conversation state only](./0051-ephemeral-in-conversation-fast-track-state.md) — Refs 0040
 - [0074 — Harness wrappers select coordinator or inline implementation planning](./0074-harness-wrappers-select-coordinator-or-inline-implementation-planning.md) — Refs 0035
 - [0077 — Keep model and continuation mechanics in harness-specific worker bindings](./0077-harness-specific-worker-bindings.md) — Refs 0074, Refs 0075, Refs 0076
@@ -382,11 +379,11 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 ### Harness portability & mirror discipline
 
 - [0001 — Separate per-harness instruction files for the sai subagent resolver](./0001-sai-separate-harness-files.md)
-- [0035 — Harness-specific adapter carve-out](./0035-harness-specific-adapter-carve-out.md) — Pair with 0033
 - [0050 — Respect each harness's native argument-surface convention for `--fast-track`](./0050-respect-harness-native-argument-surface.md)
 - [0074 — Harness wrappers select coordinator or inline implementation planning](./0074-harness-wrappers-select-coordinator-or-inline-implementation-planning.md) — Refs 0035
 - [0077 — Keep model and continuation mechanics in harness-specific worker bindings](./0077-harness-specific-worker-bindings.md) — Refs 0074, Refs 0075, Refs 0076
 - [0078 — Design workflow selects routed or inline entry](./0078-design-workflow-selects-routed-or-inline-entry.md) — Refs 0074, Refs 0035
+- [0166 — Envelope-only change-name resolution for shared pickers and four cards](./0166-envelope-only-change-name-resolution.md) — Supersedes 0033, Supersedes 0034, Supersedes 0035, Supersedes 0049, Refs 0075, Refs 0136
 - [0082 — Keep canonical phase workers and bindings in mirrored orchestration subtrees](./0082-canonical-phase-workers-and-mirrored-bindings.md) — Refs 0077, Refs 0078
 - [0090 — Centralize Copilot inline planning lifecycle in one adapter](./0090-centralize-copilot-inline-planning-lifecycle.md) — Refs 0089, Refs 0083, Refs 0078, Refs 0074
 - [0091 — Manifest hash evidence for retired managed destinations](./0091-manifest-hash-evidence-for-retired-managed-destinations.md) — Refs 0084, Refs 0085, Refs 0055, Refs 0057
@@ -412,19 +409,17 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 
 ### Argument passing & change-name resolution
 
-- [0033 — Echo line format and placement](./0033-echo-line-format-and-placement.md)
-- [0034 — Resolution precedence — wrapper-echo check runs first](./0034-resolution-precedence-wrapper-echo-first.md) — Pair with 0033
-- [0049 — Fast-track flag-strip precedes change-picker; cleaned change-name is authoritative](./0049-fast-track-flag-strip-before-change-picker.md)
 - [0065 — Fork `status-picker.md` from `change-picker.md` rather than parameterize the shared picker](./0065-fork-status-picker-from-change-picker.md)
 - [0075 — Normalize coordinator-worker exchange around an invocation envelope and lifecycle payload](./0075-normalized-invocation-envelope-and-lifecycle-payload.md) — Pair with 0076
 - [0080 — Design-to-implementation lifecycle boundary](./0080-design-to-implementation-lifecycle-boundary.md) — Refs 0075, Refs 0076
 - [0099 — Terminal routing failure and explicit fresh dispatch](./0099-terminal-routing-failure-and-explicit-fresh-dispatch.md) — Refs 0075, Refs 0076, Refs 0086
+- [0166 — Envelope-only change-name resolution for shared pickers and four cards](./0166-envelope-only-change-name-resolution.md) — Supersedes 0033, Supersedes 0034, Supersedes 0035, Supersedes 0049, Refs 0075, Refs 0136
 
 ### Fast-track mode
 
 - [0048 — Single-source the `--fast-track` parse in each command's body file](./0048-single-source-fast-track-parse-in-body-file.md)
-- [0049 — Fast-track flag-strip precedes change-picker; cleaned change-name is authoritative](./0049-fast-track-flag-strip-before-change-picker.md)
 - [0050 — Respect each harness's native argument-surface convention for `--fast-track`](./0050-respect-harness-native-argument-surface.md)
+- [0166 — Envelope-only change-name resolution for shared pickers and four cards](./0166-envelope-only-change-name-resolution.md) — Supersedes 0033, Supersedes 0034, Supersedes 0035, Supersedes 0049, Refs 0075, Refs 0136
 - [0051 — Model `--fast-track` as ephemeral in-conversation state only](./0051-ephemeral-in-conversation-fast-track-state.md) — Refs 0040
 - [0059 — The fast-track branch auto-stay rule lives in `apply.md`, not in the `implement.md` Prerequisites template](./0059-fast-track-auto-stay-branch-rule-in-apply.md) — Pair with 0052
 - [0148 — Keep the three-file apply layout; redefine normative homes](./0148-keep-three-file-apply-layout-redefine-normative-homes.md) — Refs 0083
@@ -577,6 +572,10 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 | [0159](./0159-path-specific-next-step-after-manual-selector.md) | amends | [0158](./0158-single-shared-crystallization-turn-close.md) |
 | [0166](./0166-per-cause-surface-dual-channel-exclusivity.md) | amends | [0165](./0165-dual-coordinator-inspection-channels.md) |
 | [0167](./0167-explore-auto-cancellation-exception-in-bounded-recovery.md) | amends | [0158](./0158-shared-non-clean-closure-diagnosis-in-command-runner.md) |
+| [0166](./0166-envelope-only-change-name-resolution.md) | supersedes | [0033](./0033-echo-line-format-and-placement.md) |
+| [0166](./0166-envelope-only-change-name-resolution.md) | supersedes | [0034](./0034-resolution-precedence-wrapper-echo-first.md) |
+| [0166](./0166-envelope-only-change-name-resolution.md) | supersedes | [0035](./0035-harness-specific-adapter-carve-out.md) |
+| [0166](./0166-envelope-only-change-name-resolution.md) | supersedes | [0049](./0049-fast-track-flag-strip-before-change-picker.md) |
 
 ## Superseded ADRs (historical)
 
@@ -592,3 +591,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0029 — Surgical merge of the opencode `agent` block via jsonc-parser](./0029-jsonc-parser-surgical-merge-for-opencode-agent-block.md) — Refs 0031 — *Historical: the agent-block merge is retired*
 - [0139 — Use fresh read-only reviewers with worker-owned artifact edits](./0139-fresh-read-only-reviewers-with-worker-owned-edits.md) — Refs ddr:0105 — *Superseded by [0158](./0158-delete-worker-owned-planning-artifact-review-loop.md)*
 - [0106 — Keep both report template families with pinned skeleton parity](./0106-keep-both-report-template-families-pinned-parity.md) — *Superseded by [0162](./0162-schema-report-templates-point-to-write-time-authority.md)*
+- [0033 — Echo line format and placement](./0033-echo-line-format-and-placement.md) — *Superseded by [0166](./0166-envelope-only-change-name-resolution.md)*
+- [0034 — Resolution precedence — wrapper-echo check runs first](./0034-resolution-precedence-wrapper-echo-first.md) — Pair with 0033 — *Superseded by [0166](./0166-envelope-only-change-name-resolution.md)*
+- [0035 — Harness-specific adapter carve-out](./0035-harness-specific-adapter-carve-out.md) — Pair with 0033 — *Superseded by [0166](./0166-envelope-only-change-name-resolution.md)*
+- [0049 — Fast-track flag-strip precedes change-picker; cleaned change-name is authoritative](./0049-fast-track-flag-strip-before-change-picker.md) — *Superseded by [0166](./0166-envelope-only-change-name-resolution.md)*

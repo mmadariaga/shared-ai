@@ -38,24 +38,24 @@ The body of every in-scope `commands/claude/sai-*.md` and `commands/opencode/sai
 - **WHEN** any wrapper is read
 - **THEN** its body contains no `## Sai ...` heading line — the legacy `## Sai <Phase>` heading is dropped by the rewrite
 
-#### Scenario: maximum body shape with a wrapper-echo line
+#### Scenario: maximum body shape with a label-free envelope
 
 - **WHEN** `commands/opencode/sai-status.md` — an opencode change-consuming wrapper — is read
-- **THEN** its body is the fetch-skill line, the boot-adapter load, the launcher call, the standalone `InvocationEnvelope:` block (four lines), and the change-picker wrapper-echo line — and nothing else
+- **THEN** its body is the fetch-skill line, the boot-adapter load, the launcher call, the standalone `InvocationEnvelope:` block with exactly `command_name`, `wrapper_echo_value`, and `arguments_value`, and nothing else
 
 ### Requirement: envelope-lives-in-the-wrapper
 
-The invocation envelope — `command_name`, `wrapper_echo_value`, `arguments_value` — SHALL ride in the command file, not in the launcher: the standalone `InvocationEnvelope:` block SHALL be rendered in the wrapper directly after the launcher-call directive, because `$ARGUMENTS` is substituted only in the command file. The envelope SHALL NOT be defined inside the launcher, and the launcher SHALL NOT define, parse, or require an envelope of its own. The envelope's field set and semantics SHALL remain unchanged: trimmed non-empty wrapper echo before arguments, and the established zero/one/multiple picker when both are empty. Wrapper-echo lines the change-picker contract requires (opencode's `**Change-name argument:** <value>` and `**Change-name argument and and optional flags:** <value>` forms) and any other `$ARGUMENTS`-bearing label line SHALL remain in the wrapper.
+The invocation envelope — `command_name`, `wrapper_echo_value`, `arguments_value` — SHALL ride in the command file, not in the launcher: the standalone `InvocationEnvelope:` block SHALL be rendered in the wrapper directly after the launcher-call directive, because `$ARGUMENTS` is substituted only in the command file. The envelope SHALL NOT be defined inside the launcher, and the launcher SHALL NOT define, parse, or require an envelope of its own. A trimmed, non-empty `arguments_value` SHALL be authoritative for change-name resolution. When `arguments_value` is empty after trimming, the established zero/one/multiple picker SHALL run. `wrapper_echo_value` SHALL be forwarded opaquely and unchanged, but SHALL be ignored for name selection. No transcript scan or labelled wrapper line is part of the envelope contract.
 
 #### Scenario: envelope fields unchanged
 
 - **WHEN** a wrapper is read
 - **THEN** the `InvocationEnvelope:` block appears in the wrapper directly after the launcher-call directive and carries exactly `command_name`, `wrapper_echo_value`, and `arguments_value`, with `$ARGUMENTS` substituted in the wrapper, not in the launcher
 
-#### Scenario: wrapper-echo retained
+#### Scenario: opaque wrapper value is retained
 
-- **WHEN** an opencode change-consuming wrapper is read
-- **THEN** it still emits the wrapper-echo line required by the change-picker contract, with `$ARGUMENTS` substituted
+- **WHEN** an invocation envelope contains a `wrapper_echo_value`
+- **THEN** that value is forwarded unchanged as opaque data and is not inspected as a change-name source
 
 #### Scenario: launcher carries no envelope
 

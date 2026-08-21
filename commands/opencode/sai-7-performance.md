@@ -11,5 +11,3 @@ InvocationEnvelope:
   command_name: performance
   wrapper_echo_value: $ARGUMENTS
   arguments_value: $ARGUMENTS
-
-**Performance arguments:** $ARGUMENTS

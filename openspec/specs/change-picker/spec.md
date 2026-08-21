@@ -2,43 +2,45 @@
 
 ## Purpose
 
-TBD - created by archiving change minor-bugfixes. Update Purpose after archive.
+The change-picker capability resolves a missing change name from the invocation envelope. A trimmed, non-empty `arguments_value` is authoritative; when it is empty, the capability uses the existing 0/1/N active-change picker.
+
 ## Requirements
-### Requirement: Wrapper-Echo Resolution
-The change-picker instruction SHALL resolve a change name by scanning the conversation history for a line matching exactly one of the two accepted opencode wrapper-echo forms: `**Change-name argument:** <value>` or `**Change-name argument and and optional flags:** <value>` (two literal asterisks, the literal text `Change-name argument:` or `Change-name argument and and optional flags:`, a single space, and the change name; the value extends to the end of that line). The scan covers the user message that invoked the command (the wrapper), so the line is reliably found even if tool results or model turns have appeared afterward. If a matching line is present anywhere in the conversation history with a non-empty `<value>`, the change-picker SHALL treat `<value>` as the resolved change name and SHALL be a no-op (no OpenSpec query, no user prompt). If no matching line is present, or every matching line has an empty or whitespace-only value, the change-picker SHALL fall through to the existing `$ARGUMENTS` check and the 0/1/N picker logic.
+### Requirement: Invocation envelope provides change-name authority
 
-#### Scenario: Wrapper-echo line present with non-empty value
-- **WHEN** the change-picker is reached by a change-consuming `sai-*` command AND the conversation history contains a line matching exactly one of the two accepted echo-line forms with non-empty `<value>` (regardless of any tool results or model turns that appear after the user message)
-- **THEN** the change-picker treats `<value>` as the resolved change name and the consuming command proceeds using that name, with no OpenSpec query and no user prompt
+The change-picker SHALL use only the invocation envelope's `arguments_value` for direct change-name resolution. After trimming, a non-empty `arguments_value` SHALL be authoritative and SHALL pass through as the resolved change name without an OpenSpec query or user prompt. The `wrapper_echo_value` SHALL remain opaque invocation data, SHALL be forwarded unchanged with the envelope, and SHALL NOT be inspected as a change-name source. The change-picker SHALL NOT resolve a name from conversation history or require a labelled line.
 
-#### Scenario: Wrapper-echo line absent or value empty
-- **WHEN** the change-picker is reached by a change-consuming `sai-*` command AND the conversation history contains no matching echo-line OR the only matching line has an empty or whitespace-only value
-- **THEN** the change-picker falls through to the existing `$ARGUMENTS` check and the 0/1/N picker logic
+#### Scenario: trimmed arguments value is authoritative
+- **WHEN** a change-consuming `sai-*` command supplies an `arguments_value` whose trimmed value is non-empty
+- **THEN** the change-picker resolves the trimmed value as the change name, performs no OpenSpec query or user prompt, and forwards the opaque `wrapper_echo_value` unchanged
+
+#### Scenario: opaque wrapper value does not override arguments value
+- **WHEN** both `arguments_value` and `wrapper_echo_value` are present
+- **THEN** the trimmed `arguments_value` is selected and the `wrapper_echo_value` is not inspected for resolution
+
+#### Scenario: no transcript or label is required
+- **WHEN** a change-consuming `sai-*` command reaches the change-picker
+- **THEN** resolution does not scan conversation history and does not require a labelled value
 
 ### Requirement: Invocation Trigger
-The change-picker instruction SHALL run only when no change name is available from a wrapper-echo line (in either accepted form) and the consuming command's `$ARGUMENTS` is empty at the point the command's `## Load instructions` step reaches it. When any of those two sources provides a non-empty change name, the change-picker SHALL be a no-op (no OpenSpec query, no user prompt) and the provided value SHALL pass through unchanged. The wrapper-echo line check runs first; the `$ARGUMENTS` check is the fall-through path.
 
-#### Scenario: Change name already provided via wrapper-echo
-- **WHEN** a change-consuming `sai-*` command is invoked AND the conversation history contains a matching wrapper-echo line with non-empty `<value>` (regardless of any tool results or model turns that appear after the user message)
-- **THEN** the change-picker instruction does not query OpenSpec or prompt the user, and the command proceeds using the wrapper-echo value exactly as if the user had typed it
+The change-picker SHALL use the 0/1/N active-change picker only when `arguments_value` is empty after trimming. If `arguments_value` is empty or whitespace-only, the change-picker SHALL activate before any other command processing; the opaque `wrapper_echo_value` SHALL not suppress this fallback.
 
-#### Scenario: Change name already provided via $ARGUMENTS
-- **WHEN** a change-consuming `sai-*` command is invoked AND no matching wrapper-echo line is present AND `$ARGUMENTS` is non-empty
-- **THEN** the change-picker instruction does not query OpenSpec or prompt the user, and the command proceeds using the provided name exactly as before this change existed
+#### Scenario: arguments value is missing
+- **WHEN** a change-consuming `sai-*` command supplies an empty or whitespace-only `arguments_value`
+- **THEN** the change-picker activates and runs the existing 0/1/N active-change resolution
 
-#### Scenario: Change name missing
-- **WHEN** a change-consuming `sai-*` command is invoked AND no matching wrapper-echo line is present (or it has an empty value) AND `$ARGUMENTS` is empty
-- **THEN** the change-picker instruction activates before any other command processing
+#### Scenario: empty arguments value with opaque wrapper data
+- **WHEN** `arguments_value` is empty after trimming and `wrapper_echo_value` is non-empty
+- **THEN** the change-picker still runs the existing 0/1/N resolution and forwards the opaque wrapper value unchanged
 
 ### Requirement: Consumer scope excludes sai-status
 
-The shared `change-picker.md` instruction SHALL serve exactly the change-consuming `sai-*` commands that need only single-change resolution — `sai-2-design`, `sai-3-implement`, `sai-4-apply`, `sai-5-review`, `sai-6-security`, `sai-7-performance`, `sai-8-accessibility`, `sai-archive`, and `sai-pr` (9 consumers). `sai-status` SHALL NOT be a consumer of `change-picker.md`; it resolves change names via the dedicated `status-picker` capability instead. This requirement changes no `change-picker.md` resolution logic — the wrapper-echo, invocation-trigger, and 0/1/N steps are unchanged — so the 9 consumers stay behaviorally identical.
+The shared `change-picker.md` instruction SHALL serve exactly the change-consuming `sai-*` commands that need only single-change resolution — `sai-2-design`, `sai-3-implement`, `sai-4-apply`, `sai-5-review`, `sai-6-security`, `sai-7-performance`, `sai-8-accessibility`, `sai-archive`, and `sai-pr` (9 consumers). `sai-status` SHALL NOT be a consumer of `change-picker.md`; it resolves change names via the dedicated `status-picker` capability instead. This requirement changes no invocation-envelope precedence or 0/1/N fallback logic, so the 9 consumers stay behaviorally identical.
 
 #### Scenario: consumer list enumerates 9 commands without sai-status
 - **WHEN** the consumer list in `sai/policies/change-picker.md` is read
 - **THEN** it enumerates the 9 change-consuming commands and does not include `sai-status`
 
 #### Scenario: resolution logic unchanged for the 9 consumers
-- **WHEN** the `change-picker.md` wrapper-echo, invocation-trigger, and 0/1/N resolution steps are compared before and after this change
+- **WHEN** the `change-picker.md` invocation-envelope and 0/1/N resolution steps are compared before and after this change
 - **THEN** they are identical, and only the consumer enumeration differs
-

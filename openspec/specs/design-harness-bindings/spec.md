@@ -86,12 +86,8 @@ The canonical projected opencode design-worker agent file SHALL define the numbe
 - **WHEN** a design worker notice is returned with a binding-captured task ID
 - **THEN** the coordinator SHALL call `task(task_id: "<captured task ID>", prompt: "continue_after_notice")` and await the same worker's next result
 
-#### Scenario: opencode wrapper maps the legacy echo label
-- **WHEN** `commands/opencode/sai-2-design.md` emits the exact line `**Change-name argument and and optional flags:** $ARGUMENTS`
-- **THEN** the coordinator SHALL copy only the substituted value after that exact label into `wrapper_echo_value`, preserving token order for worker-owned change-name and `--fast-track` extraction
-
 ### Requirement: Routed bindings are structurally tested and live-probed
-Activation SHALL include structural tests for Claude Code and opencode coordinator tool denial, design-worker artifact I/O, design-worker budget-explorer or `explore` access, lifecycle metadata, same-worker continuation, prerequisite-failure suppression of the fast-track notice, successful notice continuation, duplicate-notice suppression after fallback, opencode legacy wrapper-echo extraction with change name plus `--fast-track` in both token orders, and Continue-now dispatch through the existing implementation-worker binding with a fresh lifecycle namespace. Before routed wrappers are activated, Claude Code and opencode SHALL each be smoke-tested for design-worker dispatch, mandatory nested source-research dispatch, input relay, nonterminal notice relay, continuation, complete changed-file reporting, fresh-worker reconstruction with opaque input history and pending feedback, and the explicit resolved-change implementation handoff without design-state leakage. These routed-binding tests SHALL NOT be applied to Copilot's inline path. A failed required probe SHALL block activation rather than weaken delegation or persistence rules.
+Activation SHALL include structural tests for Claude Code and opencode coordinator tool denial, design-worker artifact I/O, design-worker budget-explorer or `explore` access, lifecycle metadata, same-worker continuation, prerequisite-failure suppression of the fast-track notice, successful notice continuation, duplicate-notice suppression after fallback, opencode invocation-envelope forwarding of the change name plus `--fast-track` in both token orders, and Continue-now dispatch through the existing implementation-worker binding with a fresh lifecycle namespace. The envelope-forwarding test SHALL verify `arguments_value` authority and opaque `wrapper_echo_value` forwarding without extracting a name from a transcript or label. Before routed wrappers are activated, Claude Code and opencode SHALL each be smoke-tested for design-worker dispatch, mandatory nested source-research dispatch, input relay, nonterminal notice relay, continuation, complete changed-file reporting, fresh-worker reconstruction with opaque input history and pending feedback, and the explicit resolved-change implementation handoff without design-state leakage. These routed-binding tests SHALL NOT be applied to Copilot's inline path. A failed required probe SHALL block activation rather than weaken delegation or persistence rules.
 
 #### Scenario: opencode permission probe runs
 - **WHEN** the opencode routed definitions are ready for activation
@@ -100,6 +96,10 @@ Activation SHALL include structural tests for Claude Code and opencode coordinat
 #### Scenario: Claude routed smoke runs
 - **WHEN** the Claude routed definitions are ready for activation
 - **THEN** a live smoke SHALL verify low-effort coordinator isolation, high-effort design-worker dispatch, budget-explorer source discovery, agent-ID continuation, reconstruction with interaction history, and explicit-envelope implementation-worker dispatch
+
+#### Scenario: opencode forwards envelope values in either token order
+- **WHEN** opencode invokes routed design with `arguments_value` containing `change-name --fast-track` or `--fast-track change-name`
+- **THEN** the coordinator forwards the exact three-key invocation envelope, the downstream parser removes `--fast-track` from `arguments_value` before picking, and no transcript or label extraction is required
 
 ### Requirement: Copilot preserves the inline compatibility path
 The GitHub Copilot `/sai-2-design` wrapper SHALL retain the existing inline design workflow and observable behavior. Documentation SHALL state precisely that supported Copilot surfaces do not expose one portable harness-owned contract for capturing a worker identifier and continuing that same worker across coordinator turns; it SHALL NOT claim that Copilot lacks subagent support.

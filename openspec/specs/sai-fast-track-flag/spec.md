@@ -86,18 +86,23 @@ The following gates SHALL remain in force under `sai-archive --fast-track` and S
 - **WHEN** `sai-archive {name} --fast-track` completes the archive skill and staging the two paths leaves the index with no staged changes
 - **THEN** the agent does not create a commit and prints the guard's explanatory line
 
-### Requirement: The --fast-track flag is parsed in the shared body file and never reaches the picker
+### Requirement: The --fast-track flag is parsed from arguments_value before the picker
 
-Exactly four commands — `sai-explore`, `sai-2-design`, `sai-4-apply`, and `sai-archive` — SHALL accept a `--fast-track` token in their arguments. The token SHALL be parsed by the command's shared body files (`sai/commands/explore/body.md`, `sai/commands/design/worker.md`, `sai/commands/apply/invocation.md`, `sai/commands/archive/body.md`) out of `$ARGUMENTS`. After extraction the token SHALL be removed from the argument string, and the cleaned remainder SHALL be passed downstream. `/sai-build` is outside this parser membership; it may inject apply fast-track through composition.
+Exactly four commands — `sai-explore`, `sai-2-design`, `sai-4-apply`, and `sai-archive` — SHALL accept a `--fast-track` token in their arguments. The token SHALL be parsed by the command's shared body files (`sai/commands/explore/body.md`, `sai/commands/design/worker.md`, `sai/commands/apply/invocation.md`, `sai/commands/archive/body.md`) from the invocation envelope's `arguments_value` before change-name picking. After extraction the token SHALL be removed from `arguments_value`, and the cleaned remainder SHALL remain the authoritative `arguments_value` passed downstream. `/sai-build` is outside this parser membership; it may inject apply fast-track through composition.
 
-For commands that resolve a change name through the shared change-picker (`sai-2-design`, `sai-4-apply`, `sai-archive`), the body file SHALL additionally strip any residual `--fast-track` token from the picker's resolved value (the post-picker cleanup that handles the opencode wrapper-echo case) before passing the change name downstream.
+For `sai-2-design`, `sai-4-apply`, and `sai-archive`, the cleaned `arguments_value` SHALL reach the shared change-picker before it resolves a name. `sai-4-apply` and `sai-archive` SHALL NOT strip a residual `--fast-track` token from the picker's resolved value or perform a second flag-removal pass after picking. The opaque `wrapper_echo_value` SHALL be forwarded unchanged and SHALL NOT be used to find or clean a change name.
 
 The parse SHALL be single-sourced in the body file so that all harness thin wrappers (`commands/claude/`, `commands/opencode/`, `commands/copilot/`) inherit identical behavior; the wrappers carry only an updated `argument-hint` (except where a wrapper shape does not support one — see the harness-agnostic requirement).
 
 #### Scenario: Flag is stripped and the change-name passes through cleanly
 
 - **WHEN** a user runs `/sai-4-apply oauth2-auth --fast-track` (in any token order)
-- **THEN** the body file activates fast-track mode, removes the `--fast-track` token, and the change-picker receives `oauth2-auth` with no residual flag text
+- **THEN** the body file activates fast-track mode, removes the `--fast-track` token from `arguments_value` before picking, and the change-picker receives `oauth2-auth` with no residual flag text
+
+#### Scenario: archive parses before picking without a second flag pass
+
+- **WHEN** a user runs `/sai-archive --fast-track oauth2-auth` or `/sai-archive oauth2-auth --fast-track`
+- **THEN** the body file removes `--fast-track` from `arguments_value` before picking, the change-picker resolves `oauth2-auth`, and archive performs no second flag-removal pass
 
 #### Scenario: Absent flag leaves behavior identical to today
 
@@ -178,8 +183,8 @@ For each of the four commands, `--fast-track` SHALL opt out of exactly the named
 - **THEN** no gate beyond that command's named set changes behavior
 
 ### Requirement: Fast-track behavior is harness-agnostic and documented
-The `--fast-track` behavior SHALL be identical under Claude Code, opencode, and GitHub Copilot, achieved by single-sourcing the parse and gate branches in the shared body files and shared instructions. Any wrapper-level `argument-hint` change SHALL be mirrored across `commands/claude/`, `commands/opencode/`, and `commands/copilot/` in the same commit (Mirror discipline). Where a wrapper shape does not carry an `argument-hint` — specifically the opencode `sai-archive` wrapper, whose shape is echo-line-driven — no separate consistency marker is required on the echo line; the wrapper's echo-line shape matches every other opencode change-consuming wrapper, and the Claude Code and Copilot `sai-archive` wrappers SHALL carry the real `argument-hint`. `AGENTS.md` SHALL name `--fast-track` and its four affected commands under "Critical conventions", and `README.md` SHALL document the flag in the commands table.
+The `--fast-track` behavior SHALL be identical under Claude Code, opencode, and GitHub Copilot, achieved by single-sourcing the parse and gate branches in the shared body files and shared instructions. Any wrapper-level `argument-hint` change SHALL be mirrored across `commands/claude/`, `commands/opencode/`, and `commands/copilot/` in the same commit (Mirror discipline). Where a wrapper shape does not carry an `argument-hint` — specifically the opencode `sai-archive` wrapper, whose shape is envelope-only — no separate consistency marker is required in the envelope; its label-free three-key envelope matches every other opencode change-consuming wrapper, and the Claude Code and Copilot `sai-archive` wrappers SHALL carry the real `argument-hint`. `AGENTS.md` SHALL name `--fast-track` and its four affected commands under "Critical conventions", and `README.md` SHALL document the flag in the commands table.
 
-#### Scenario: opencode sai-archive wrapper keeps its echo-line shape
+#### Scenario: opencode sai-archive wrapper keeps its envelope shape
 - **WHEN** the `sai-archive` `argument-hint` is added to the Claude Code and Copilot wrappers
-- **THEN** the opencode `sai-archive` wrapper does NOT gain a real `argument-hint`; no HTML comment consistency marker is required on the echo line, and this does not count as a Mirror-discipline violation
+- **THEN** the opencode `sai-archive` wrapper does NOT gain a real `argument-hint`; no HTML comment consistency marker is required in its label-free three-key envelope, and this does not count as a Mirror-discipline violation

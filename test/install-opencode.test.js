@@ -188,7 +188,8 @@ test('installOpencode copies commands/opencode/*.md to dest/commands/', () => {
    assert.match(design, /^variant: max$/m);
    assert.match(design, /^subtask: false$/m);
    assert.doesNotMatch(design, /^agent:/m);
-  assert.ok(design.includes('**Change-name argument and and optional flags:** $ARGUMENTS'));
+   assert.doesNotMatch(design, /^\*\*Change-name argument and and optional flags:\*\*\s*\$ARGUMENTS\s*$/m,
+     'the installed design wrapper should not retain a labelled argument line');
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });
 

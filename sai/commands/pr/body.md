@@ -20,7 +20,7 @@
   Fetch @sai/policies/remember.md
 
   ## Run
-  **User's request:** $ARGUMENTS
+  **User's request:** boot-provided `arguments_value` after change-picker resolution when empty
 </TASK>
 
 Follow instruction on <TASK> step by step
