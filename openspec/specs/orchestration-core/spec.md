@@ -3,6 +3,55 @@
 ## Purpose
 TBD - created by archiving change extract-sai-orchestration-core. Update Purpose after archive.
 ## Requirements
+### Requirement: Planning adapters inspect artifacts only for non-clean closure
+
+The shared orchestration contract SHALL define the diagnosis boundary for opted-in standalone planning adapters. After resolution, a `failed` result of any worker class, a `completed` result disproven by coordinator verification, or a `completed` result carrying a STOP SHALL be a non-clean closure. Only that route may authorize the active coordinator to read the phase-owned artifacts needed to establish cause. A clean `completed` result, `needs_input`, `cancelled`, progress event, notice, and every pre-resolution result SHALL retain the adapter's existing artifact-blind routing behavior. The phase adapter SHALL declare the worker-owned artifact surface and whether a diagnosed correction is a same-worker re-dispatch; it SHALL not restate the shared diagnosis or budget rules.
+
+#### Scenario: Clean standalone completion remains artifact-blind
+- **WHEN** a standalone spec or design coordinator receives a clean result
+- **THEN** it SHALL forward and present the result without opening change artifacts
+- **AND** it SHALL preserve the existing clean-route blindness clause verbatim in effect
+
+#### Scenario: Failed result opens the diagnosis route
+- **WHEN** a resolved standalone planning worker returns a structurally valid `failed` result
+- **THEN** the coordinator SHALL enter shared non-clean diagnosis before deciding whether to continue
+- **AND** it MAY read only the declared phase-owned artifact surface for that diagnosis
+
+#### Scenario: Disproved completion is diagnosed
+- **WHEN** coordinator evidence disproves a `completed` result or a completed result carries a STOP
+- **THEN** the coordinator SHALL treat the closure as non-clean and inspect the declared artifact surface
+- **AND** it SHALL not mark the phase clean or advance its terminal action before diagnosis resolves
+
+#### Scenario: Non-clean diagnosis remains ephemeral
+- **WHEN** a planning coordinator records a diagnosis or starts a same-worker correction
+- **THEN** the diagnosis, cause locus, and ledger state SHALL remain coordinator conversation state
+- **AND** no diagnosis, repair marker, or recovery counter SHALL be written to an artifact or metadata file
+
+### Requirement: Planning recovery preserves worker ownership
+
+For an eligible in-scope planning diagnosis, the shared runner SHALL re-dispatch the same live worker with the existing bounded-recovery acknowledgement and the coordinator-authored diagnosis. The coordinator SHALL never write or repair the worker-owned proposal, spec, design, task, interface, glossary, or overview artifacts. An out-of-scope or unresolved cause SHALL spend zero recovery slots and SHALL stop through the phase-owned hand-back. The worker remains responsible for applying the correction and verifying the artifacts before returning `completed`.
+
+#### Scenario: An in-scope planning cause continues the same worker
+- **WHEN** coordinator artifact inspection identifies a concrete safe correction inside the active worker's declared artifact boundary and the diagnosis key is new
+- **THEN** the runner SHALL spend one distinct recovery slot
+- **AND** SHALL continue the same worker with the diagnosis
+- **AND** SHALL not dispatch a replacement worker
+
+#### Scenario: A prior-phase artifact stops design recovery
+- **WHEN** design inspection shows that contradictory `proposal.md` or `specs/**` content is the cause of a design failure
+- **THEN** the coordinator SHALL name that prior-phase artifact and concrete point as out of scope
+- **AND** SHALL spend zero recovery slots and SHALL not edit the spec artifact
+
+#### Scenario: Coordinator and worker judgments disagree
+- **WHEN** a worker reports a correction as safe, `unrecoverable: false`, and coordinator artifact verification disproves that claim
+- **THEN** the coordinator's independently verified evidence SHALL control the cause locus and recovery decision
+- **AND** the coordinator SHALL not continue solely on the worker's classification or summary
+
+#### Scenario: Coordinator cannot override a worker veto
+- **WHEN** a worker returns `unrecoverable: true` and coordinator inspection appears to identify a safe in-scope correction
+- **THEN** the coordinator SHALL retain the worker veto as non-overridable
+- **AND** SHALL spend zero recovery slots and SHALL not continue the worker
+
 ### Requirement: Shared coordinator contract
 The canonical orchestration source SHALL define one shared coordinator contract for lifecycle result validation, progress-event handling, changed-file aggregation — including every path reported on progress events, added in first-seen order and never reset by them — same-worker continuation, bounded same-worker recovery, replacement-worker fallback, and terminal result reporting. Routed phase coordinators SHALL apply that contract rather than maintain independent copies of those mechanics. Each routed phase SHALL supply a phase adapter containing its initial worker envelope, binding dispatch and continuation operations, permitted nonterminal extensions and handlers, an optional static ordered progress plan declaration, an optional static `recovery_policy` declaration, replacement-worker reconstruction fields, and terminal navigation action. The shared runner SHALL own the fixed recovery acknowledgement `continue_after_recovery`; it SHALL not be an additional phase-adapter field. Recovery eligibility SHALL be limited by the `Recovery eligibility and worker veto` requirement in the `bounded-worker-recovery` capability, rather than by the mere presence of `recovery_policy`. The adapter SHALL NOT reimplement payload validation, progress marking, changed-file union, recovery budgeting, continuation-first ordering, or fallback control flow. When a supervising invocation declares an ordered sequence of phase adapters, the shared contract SHALL execute that sequence under the three rules of `Chained phase composition`; optional `progress_plan` and `recovery_policy` declarations are immutable for the active adapter segment and are rebound when the next adapter activates. A one-adapter invocation keeps segment scope identical to the pre-composition contract.
 
@@ -74,7 +123,7 @@ The orchestration source SHALL retain separate design-worker and implementation-
 
 ### Requirement: Behavior-preserving extraction
 
-Consuming the shared orchestration contracts SHALL preserve existing command inputs, lifecycle payload fields, terminal statuses, notices, continuation and fallback semantics, changed-file ordering, user gates, artifact writes, and completion messages except for the explicitly bounded recovery routing defined by this change. The extraction SHALL NOT change an OpenSpec artifact schema, add recovery behavior to an adapter that omits `recovery_policy`, or modify the spec, design, or explore command card surfaces. Spec and design workers SHALL continue to author their own closed `failure_class` outcomes and worker-side repair evidence; the shared runner SHALL inspect closure state and route without reinterpreting those worker contracts. Design-phase recovery behavior remains opted-in through the existing `recovery_policy: true` adapter and is preserved by the phase-static repair-surface locus channel in `bounded-worker-recovery` without editing design command cards and without expanding the closed worker lifecycle payload.
+Consuming the shared orchestration contracts SHALL preserve existing command inputs, lifecycle payload fields, terminal statuses, notices, continuation and fallback semantics, changed-file ordering, user gates, artifact writes, and completion messages except for the explicitly bounded recovery routing defined by this change. The extraction SHALL NOT change an OpenSpec artifact schema, add recovery behavior to an adapter that omits `recovery_policy`, or change Explore Auto's delegated-write boundary or Build's composition rules. Standalone spec and design adapters MAY opt into the shared non-clean-closure route; their existing clean path remains artifact-blind and their workers remain the sole artifact writers. Spec and design workers SHALL continue to author their own closed `failure_class` outcomes and worker-side repair evidence; the shared runner SHALL transport routing diagnosis and coordinator evidence without inventing worker fields. Design overview recovery remains available through its existing route, and main planning-artifact recovery is added only through the declared non-clean inspection boundary.
 
 #### Scenario: Existing planning invocation crosses the new seam
 
@@ -184,4 +233,3 @@ The ledger SHALL be coordinator-only state, ordered by first diagnosis, and SHAL
 - **WHEN** concrete evidence proves that a non-clean cause is outside the active worker's authorized scope
 - **THEN** the coordinator SHALL hand back or use the explicitly authorized owner-repair route
 - **AND** it SHALL record no recovery key and spend zero recovery slots
-

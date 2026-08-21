@@ -311,3 +311,50 @@ A feedback turn SHALL NOT emit a progress event, except that a feedback turn whi
 
 - **WHEN** the design worker finishes the phase
 - **THEN** it SHALL still return exactly one terminal lifecycle status and SHALL NOT close with a progress event
+
+### Requirement: Main design failures use the closed classification
+
+The design-planning worker SHALL apply the shared `failure_class` rule to failures on the main design path (`design.md`, `tasks.md`, and `interfaces.md`) as well as its existing overview-generation path. Every post-resolution failed design result SHALL carry `failure_class` and boolean `unrecoverable`; a completed, needs-input, or cancelled result SHALL not carry failure-only fields. The worker's authorized main-path artifact surface SHALL remain `design.md`, `tasks.md`, and `interfaces.md`; proposal/spec inputs are read-only prerequisites and are outside that repair boundary.
+
+#### Scenario: Main design validation failure is classified
+- **WHEN** verification of `design.md`, `tasks.md`, or `interfaces.md` fails after resolution
+- **THEN** the worker SHALL return `validation-failed` with concrete non-raw evidence
+- **AND** SHALL include `unrecoverable` without adding coordinator routing fields
+
+#### Scenario: Contradictory specs are outside the design repair surface
+- **WHEN** design research establishes that contradictory `proposal.md` or `specs/**` prevents a correct design
+- **THEN** the worker SHALL report `blocking-contradiction` with evidence naming the dependency
+- **AND** the coordinator SHALL be able to classify the cause as out-of-scope without authorizing a spec edit
+
+#### Scenario: Overview classification remains compatible
+- **WHEN** the overview generator returns a valid failure kind or the parent detects a malformed nested envelope
+- **THEN** the existing overview mapping to `failure_class` SHALL remain authoritative
+- **AND** the new main-path rule SHALL not collapse an envelope-contract violation into `generation-error`
+
+### Requirement: Design recovery continuation verifies only worker-owned artifacts
+
+On `continue_after_recovery`, the same design worker SHALL use the ordered coordinator diagnosis, repair only its authorized main design artifacts or the existing overview surface as applicable, and re-run the phase's artifact verification before returning `completed`. The worker SHALL not edit `proposal.md`, `specs/**`, or `.openspec.yaml` for a diagnosis repair except for the existing overview lifecycle state transitions. Classification, Cause Locus, diagnosis keys, and attempt counts SHALL remain non-durable.
+
+#### Scenario: In-scope main-path correction completes
+- **WHEN** coordinator evidence identifies a safe correction in `design.md`, `tasks.md`, or `interfaces.md`
+- **THEN** the same worker SHALL apply that correction and verify all three main artifacts
+- **AND** it SHALL return `completed` only after verification
+
+#### Scenario: Recovery cannot repair a prior-phase contradiction
+- **WHEN** the coordinator identifies `proposal.md` or `specs/**` as the cause of a design failure
+- **THEN** the design worker SHALL not edit that artifact during recovery
+- **AND** the phase SHALL stop with the cause named and zero recovery attempts
+
+### Requirement: Main-path recovery preserves the design workflow
+
+The classification rule SHALL preserve the design progress plan, specs-approval behavior, feedback gate, architecture-snapshot summary, overview-generation lifecycle, and ordinary replacement fallback outside the bounded recovery path. A recovery failure SHALL suppress the success completion sentence exactly as the existing design failure boundary requires.
+
+#### Scenario: Clean design path is unchanged
+- **WHEN** the worker completes the main design path and later overview lifecycle without a non-clean closure
+- **THEN** the existing progress, feedback, overview, and terminal behavior SHALL remain unchanged
+- **AND** no main-path diagnosis inspection SHALL occur
+
+#### Scenario: Recovery failure leaves overview incomplete
+- **WHEN** a non-clean main design recovery does not return a verified completion
+- **THEN** the coordinator SHALL leave the design phase incomplete
+- **AND** it SHALL not emit the existing design completion sentence

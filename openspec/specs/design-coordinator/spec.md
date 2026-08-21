@@ -22,6 +22,49 @@ arguments_value: "placeholder-change-name"
 ## Requirements
 
 The routed design coordinator and invocation bodies are grouped at `sai/commands/design/coordinator.md` and `sai/commands/design/invocation.md`.
+### Requirement: Design coordinator diagnoses the main path only after non-clean closure
+
+The routed design coordinator SHALL declare the existing recovery policy together with the design worker's main artifact ownership and SHALL preserve the existing overview-generation recovery path. Its clean route remains a thin router: it SHALL not read code, configuration, change artifacts, or design artifacts and SHALL forward worker payloads without inspecting them. A failed result, a coordinator-disproved completed result, or a completed result carrying a STOP opens a narrowly scoped exception under which the coordinator MAY inspect only `design.md`, `tasks.md`, and `interfaces.md`, plus the read-only proposal/spec inputs needed to establish whether a prior-phase cause is out of scope. The coordinator SHALL never write an artifact; it SHALL either re-dispatch the same worker with a diagnosis or stop with zero attempts.
+
+#### Scenario: Clean design forwarding remains blind
+- **WHEN** the design worker returns a clean progress event, notice, input request, completed result, or cancellation
+- **THEN** the coordinator SHALL forward or render it under the existing lifecycle contract
+- **AND** SHALL not inspect artifacts or change data
+
+#### Scenario: Main design failure is diagnosed from artifacts
+- **WHEN** a resolved design worker returns a failed result on the main design path
+- **THEN** the coordinator SHALL inspect the declared design surface before deciding recovery or hand-back
+- **AND** SHALL report the named class, artifact, concrete point, and cause locus when evidence permits
+
+#### Scenario: Previous-phase contradiction is not repaired by design
+- **WHEN** coordinator inspection shows that contradictory `proposal.md` or `specs/**` caused the design failure
+- **THEN** the coordinator SHALL identify the prior-phase artifact as out of scope
+- **AND** SHALL spend zero recovery slots and SHALL not edit or forward a correction that changes the spec
+
+#### Scenario: Coordinator verification wins
+- **WHEN** the design worker reports a safe completed or recoverable result but coordinator artifact verification contradicts it
+- **THEN** the coordinator SHALL use its own evidence as authoritative
+- **AND** SHALL not emit the design completion sentence until a later worker result is independently clean
+
+#### Scenario: Design coordinator never writes
+- **WHEN** a diagnosis is eligible for same-worker recovery
+- **THEN** the coordinator SHALL send the ordered diagnosis to the same design worker
+- **AND** SHALL not edit `design.md`, `tasks.md`, `interfaces.md`, `proposal.md`, `specs/**`, `.openspec.yaml`, or the overview
+
+### Requirement: Design non-clean diagnosis preserves overview and gate boundaries
+
+Main-path artifact diagnosis SHALL be distinct from the existing post-gate overview-generation lifecycle. It SHALL not change the artifact-feedback gate, overview language transport, overview state machine, architecture-snapshot presentation, progress-plan reconciliation, or the existing design completion sentence boundary. A failed diagnosis or recovery SHALL leave the design phase incomplete.
+
+#### Scenario: Main-path recovery does not generate an overview early
+- **WHEN** a main design artifact diagnosis is selected before the feedback gate proceeds
+- **THEN** the coordinator SHALL continue only the design worker's main planning route
+- **AND** SHALL not dispatch overview generation or emit the design completion sentence
+
+#### Scenario: Overview recovery remains separate
+- **WHEN** the feedback gate has proceeded and overview generation fails
+- **THEN** the existing overview-generation recovery route SHALL remain authoritative
+- **AND** the new main-path artifact inspection rule SHALL not create a second overview loop
+
 ### Requirement: Current design harness entrypoints
 Claude Code and opencode SHALL invoke the routed design coordinator and their respective design-worker bindings. No supported wrapper SHALL invoke a retired inline loader.
 
@@ -41,13 +84,18 @@ Claude Code and opencode SHALL invoke the routed design coordinator and their re
 
 ### Requirement: coordinator-has-no-file-search-shell-git-web-openspec-access
 
-The design coordinator SHALL NOT have file, search, shell, git, web, or OpenSpec access. All technical I/O SHALL be delegated to the design planning worker. Completed-step stamps SHALL derive from worker-authored `emitted_on`; the coordinator SHALL perform no wall-clock shell call.
+The design coordinator SHALL NOT have file, search, shell, git, web, or OpenSpec access on the clean lifecycle route. All technical I/O SHALL be delegated to the design planning worker, and completed-step stamps SHALL derive from worker-authored `emitted_on` without a wall-clock shell call. The sole additional authority is a non-clean-closure diagnosis route: after resolution, and only for a failed result, a coordinator-disproved completed result, or a completed result carrying a STOP, the coordinator MAY read the declared planning artifacts and read-only prior-phase inputs needed to establish cause. It SHALL not write those artifacts or perform source-code discovery through this exception.
 
-#### Scenario: coordinator restricted to coordination
-- **WHEN** the design coordinator is active
-- **THEN** it SHALL NOT perform file reads, globs, grep, shell commands, git operations, web fetches, or OpenSpec commands
+#### Scenario: coordinator restricted to clean coordination
+- **WHEN** the design coordinator is active on a clean route
+- **THEN** it SHALL not perform file reads, globs, grep, shell commands, git operations, web fetches, or OpenSpec commands
 - **AND** it SHALL delegate all such operations to the design planning worker
 - **AND** completed-step stamps SHALL be read from worker payloads without a shell clock call
+
+#### Scenario: non-clean exception is narrow
+- **WHEN** a post-resolution non-clean closure is received
+- **THEN** the coordinator MAY read only the declared planning artifacts and the named prior-phase artifacts needed for diagnosis
+- **AND** it SHALL not use the exception on progress, notice, input, cancellation, or clean completion
 
 ### Requirement: worker-delegates-explore-only
 
@@ -78,7 +126,7 @@ The Continue-now envelope SHALL carry `wrapper_echo_value` and `arguments_value`
 
 ### Requirement: The design coordinator is a conversational control plane
 
-For routed `/sai-2-design` invocations, the coordinator SHALL preserve slash-command invocation and interactive navigation while performing no OpenSpec command execution, argument parsing, change resolution, prerequisite checking, codebase inspection, artifact reading, artifact writing, or technical design reasoning. It SHALL delegate the technical workflow to the design worker through the harness binding. It SHALL print user-visible worker notices exactly as authored and resume the same worker, without deriving or interpreting the notice. The design adapter declares a progress plan, so the coordinator SHALL render it as a live task list per the neutral policy, mark steps only from worker progress events, and resume the same worker with `continue_after_progress`; the plan and marked set SHALL be held in invocation-scoped state, rendered at dispatch, and reconciled at terminal results, and SHALL NOT be derived from artifacts.
+For routed `/sai-2-design` invocations, the coordinator SHALL preserve slash-command invocation and interactive navigation while performing no OpenSpec command execution, argument parsing, change resolution, prerequisite checking, codebase inspection, artifact reading, artifact writing, or technical design reasoning on the clean route. It SHALL delegate the technical workflow to the design worker through the harness binding. It SHALL print user-visible worker notices exactly as authored and resume the same worker, without deriving or interpreting the notice. The design adapter declares a progress plan, so the coordinator SHALL render it as a live task list per the neutral policy, mark steps only from worker progress events, and resume the same worker with `continue_after_progress`; the plan and marked set SHALL be held in invocation-scoped state, rendered at dispatch, and reconciled at terminal results, and SHALL not be derived from artifacts. The only exception is the shared non-clean diagnosis route, where the coordinator may inspect the declared artifact surface to establish cause but still may not write or repair any artifact.
 
 #### Scenario: Routed design invocation begins
 - **WHEN** Claude Code or opencode invokes `/sai-2-design` with arguments
@@ -87,6 +135,11 @@ For routed `/sai-2-design` invocations, the coordinator SHALL preserve slash-com
 #### Scenario: Technical work is required
 - **WHEN** the design workflow requires codebase facts, artifact validation, a design decision, or an artifact edit
 - **THEN** the coordinator SHALL leave that work to the design worker and SHALL NOT perform or duplicate it
+
+#### Scenario: Non-clean diagnosis is not technical ownership
+- **WHEN** a non-clean closure triggers the coordinator's permitted artifact inspection
+- **THEN** the coordinator SHALL use the evidence only to choose routing, cause locus, and hand-back or same-worker continuation
+- **AND** the worker SHALL remain the owner of correction and verification
 
 #### Scenario: Fast-track invocation begins
 - **WHEN** the worker returns a nonterminal fast-track notice after successful prerequisite checks
@@ -132,7 +185,8 @@ The coordinator SHALL process `completed`, `needs_input`, `failed`, and `cancell
 
 #### Scenario: Worker fails or cancels
 - **WHEN** the worker returns `failed` or `cancelled`
-- **THEN** the coordinator SHALL report the supplied blocking or clean-stop summary with the aggregated changed files and SHALL stop without attempting technical recovery itself
+- **THEN** a cancelled result SHALL stop cleanly without diagnosis, while a resolved failed result SHALL enter the shared non-clean diagnosis route
+- **AND** the coordinator SHALL not attempt an artifact repair or fabricate a successful terminal
 
 ### Requirement: The coordinator owns post-design navigation only as protocol relay
 After design artifacts and feedback are complete, the coordinator SHALL emit the existing design completion stop and SHALL stop. It SHALL NOT present a post-feedback navigation choice, SHALL NOT begin an implementation lifecycle namespace, and SHALL NOT dispatch the implementation planning worker. The stop SHALL not cause the design coordinator to resolve the change, read design artifacts, or perform implementation planning.

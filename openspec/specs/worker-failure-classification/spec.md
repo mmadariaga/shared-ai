@@ -3,6 +3,39 @@
 ## Purpose
 TBD - created by archiving change bounded-worker-recovery. Update Purpose after archive.
 ## Requirements
+### Requirement: Standalone planning workers apply the shared failure-class rule
+
+The standalone spec-proposal and design-planning workers SHALL classify every post-resolution `failed` result using the shared closed worker-failure rule in `sai/orchestration/command-runner.md` § Bounded Recovery. `blocking-contradiction` SHALL identify conflicting authoritative inputs or an unsafe worker boundary; `validation-failed` a failed phase validation; `generation-error` an artifact-generation failure; `dispatch-failed` a failed nested dispatch; `envelope-contract-violation` an untrusted nested result shape; and `unclassified-worker-fault` an ordinary failure that cannot be placed more specifically. The worker SHALL include concrete non-raw evidence in `summary`, set `unrecoverable: true` only when its own evidence establishes that continuation is unsafe, and SHALL leave routing diagnosis and Cause Locus to the coordinator.
+
+#### Scenario: Spec worker classifies a validation failure
+- **WHEN** spec artifact verification fails after resolution
+- **THEN** the spec worker SHALL return `failure_class: validation-failed` with `unrecoverable` and concrete non-raw evidence
+- **AND** it SHALL not encode a routing diagnosis in the worker payload
+
+#### Scenario: Design worker classifies a main-path contradiction
+- **WHEN** design work cannot proceed because authoritative planning inputs contradict one another
+- **THEN** the design worker SHALL return `failure_class: blocking-contradiction` with evidence naming the relevant boundary
+- **AND** the coordinator SHALL still determine whether the cause is in-scope or out-of-scope
+
+#### Scenario: Worker cannot safely continue
+- **WHEN** worker-side evidence establishes that no same-worker continuation can safely repair the failure
+- **THEN** the worker SHALL set `unrecoverable: true`
+- **AND** the coordinator SHALL not override that veto
+
+#### Scenario: Failure class does not decide recovery
+- **WHEN** a worker returns any valid closed failure class
+- **THEN** the coordinator SHALL inspect the applicable non-clean evidence before selecting recovery
+- **AND** SHALL not infer Cause Locus from `failure_class` or summary prose alone
+
+### Requirement: Planning failure evidence remains lifecycle-only
+
+The worker-authored classification and evidence SHALL be returned only in the closed lifecycle result. The worker SHALL not persist `failure_class`, `unrecoverable`, routing diagnosis, Cause Locus, diagnosis keys, attempt counts, or repair history in proposal, spec, design, task, interface, overview, glossary, or `.openspec.yaml` artifacts.
+
+#### Scenario: A failed planning result has no durable recovery trace
+- **WHEN** a standalone planning worker returns a classified failure
+- **THEN** only its existing artifact writes and ordered `changed_files` union SHALL be durable
+- **AND** no failure or recovery metadata SHALL be added to project artifacts
+
 ### Requirement: Failed outcomes carry a closed classification channel
 
 After change resolution, the protocol's closed worker failure-class vocabulary SHALL be `blocking-contradiction`, `validation-failed`, `generation-error`, `dispatch-failed`, `envelope-contract-violation`, and `unclassified-worker-fault`. A valid worker-authored `status: failed` outcome SHALL add exactly two machine-readable fields to the existing closed shape: `failure_class` and `unrecoverable`, with `failure_class` restricted to those six worker-authored values. The coordinator-authored `outer-envelope-violation` classification SHALL remain reserved for a pre-resolution outer-envelope failure or a worker result rejected by coordinator payload validation; it SHALL not become a worker class. Every failed outcome SHALL also carry worker-authored `emitted_on` in the required offset-bearing ISO-8601 form. The existing `summary`, ordered `changed_files`, and `resolved_change_name` fields remain required. A `completed`, `needs_input`, or `cancelled` outcome SHALL not carry these failure-only fields. The shared runner's three routing diagnoses and `Cause Locus` SHALL be coordinator routing metadata, not additional worker payload fields or new failure classes.
@@ -119,4 +152,3 @@ The worker SHALL own verification of a worker-side recovery repair and SHALL ret
 - **WHEN** a recovery result is returned
 - **THEN** the coordinator SHALL use only the closed lifecycle metadata and binding result
 - **AND** SHALL not independently inspect the change or design artifacts
-

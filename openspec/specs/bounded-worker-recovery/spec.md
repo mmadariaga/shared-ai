@@ -4,12 +4,17 @@
 TBD - created by archiving change bounded-worker-recovery. Update Purpose after archive.
 ## Requirements
 ### Requirement: Optional recovery policy declaration
-The shared phase-adapter contract SHALL accept an optional static `recovery_policy` declaration alongside the optional `progress_plan`. The declaration SHALL be fully known at dispatch, immutable for the invocation, and presence-only for opt-in: the shared contract SHALL own the fixed recovery budget and failure rules rather than allowing a phase to multiply or retune them. For this change, the declaration is a reusable seam, but only the design overview lifecycle has eligible failure classes; another adapter MAY declare it, yet its non-overview failures SHALL remain ineligible and receive no recovery attempts until a later change extends the eligibility contract. An adapter that omits `recovery_policy` SHALL retain the current continuation and replacement-worker behavior and SHALL emit no recovery-specific terminal lines.
+The shared phase-adapter contract SHALL accept an optional static `recovery_policy` declaration alongside the optional `progress_plan`. The declaration SHALL be fully known at dispatch, immutable for the invocation segment, and presence-only for opt-in: the shared contract SHALL own the fixed recovery budget, non-clean-closure trigger, routing diagnoses, cause-locus rules, and failure rules. For this change, the design overview lifecycle, the standalone spec adapter, and the standalone design adapter MAY declare the policy; the spec and design adapters SHALL additionally declare their worker-owned artifact surface and whether correction is a same-worker re-dispatch. An adapter that omits `recovery_policy` SHALL retain the current continuation and replacement-worker behavior and SHALL emit no recovery-specific terminal lines. The presence of the policy SHALL not make an out-of-scope, unresolved, vetoed, malformed, duplicate, cancelled, or transport-lost result recoverable.
 
-#### Scenario: An opted-in adapter enables recovery
-- **WHEN** a coordinator dispatches a phase adapter that declares `recovery_policy`
-- **THEN** the shared runner SHALL make the three-attempt recovery pool available for eligible failed results in that invocation
-- **AND** the coordinator SHALL not add a second phase-specific recovery loop
+#### Scenario: Standalone spec opts into the shared route
+- **WHEN** the spec coordinator dispatches its phase adapter with `recovery_policy: true`
+- **THEN** the shared runner SHALL make the three-slot diagnosis ledger available only after non-clean closure inspection establishes an eligible in-scope cause
+- **AND** the spec coordinator SHALL not define a second recovery loop
+
+#### Scenario: Standalone design opts into the shared route
+- **WHEN** the design coordinator dispatches its phase adapter with `recovery_policy: true`
+- **THEN** the shared runner SHALL apply the same planning diagnosis route to main design artifacts and preserve the existing overview-generation route
+- **AND** the design coordinator SHALL not define a second recovery loop
 
 #### Scenario: An adapter without policy is unchanged
 - **WHEN** a coordinator dispatches an adapter that does not declare `recovery_policy`
@@ -17,17 +22,82 @@ The shared phase-adapter contract SHALL accept an optional static `recovery_poli
 - **AND** it SHALL preserve the existing terminal hand-back and replacement-worker rules
 - **AND** it SHALL emit no recovery announcement or recovery-specific terminal line
 
-#### Scenario: Design overview lifecycle opts in
-- **WHEN** the design coordinator enters its worker-owned overview-generation lifecycle
-- **THEN** its phase adapter SHALL declare `recovery_policy`
-- **AND** overview-generation failures SHALL be eligible for the shared same-worker recovery rules
-- **AND** the audit, review, security, performance, and accessibility adapters SHALL remain unchanged when they omit the declaration
+#### Scenario: Explore and Build do not opt into planning recovery
+- **WHEN** Explore Auto or Build runs without a standalone spec/design adapter segment
+- **THEN** this capability SHALL add no recovery write or new phase-specific recovery loop to either surface
+- **AND** Build SHALL inherit only the behavior of the existing adapter it activates
 
-#### Scenario: A non-overview opt-in is inert
-- **WHEN** a non-design adapter declares `recovery_policy` but returns an `unclassified-worker-fault`
-- **THEN** the declaration SHALL be accepted as a forward-compatible seam
-- **AND** the shared runner SHALL spend zero recovery attempts
-- **AND** the adapter SHALL use the existing terminal and replacement-worker behavior
+#### Scenario: An adapter without policy remains unchanged
+- **WHEN** a routed adapter omits `recovery_policy`
+- **THEN** the shared runner SHALL perform zero recovery attempts
+- **AND** it SHALL preserve that adapter's existing terminal hand-back and replacement-worker rules
+
+### Requirement: Standalone planning artifacts are recovery surfaces
+
+The bounded-recovery capability SHALL support the following worker-owned planning surfaces when their standalone phase adapter opts into recovery: the spec worker owns `proposal.md`, `specs/**`, and permitted root `GLOSSARY.md` updates; the design worker owns `design.md`, `tasks.md`, and `interfaces.md`; the existing design overview surface remains governed by its current overview-generation contract. The coordinator SHALL inspect these surfaces only after a non-clean closure, SHALL never repair them, and SHALL send any in-scope correction back through the same worker.
+
+#### Scenario: Spec surface identifies an in-scope cause
+- **WHEN** a failed spec result is followed by coordinator evidence locating a safe correction in `proposal.md` or `specs/**`
+- **THEN** the coordinator SHALL assign `Cause Locus: in-scope` when the diagnosis key is new
+- **AND** SHALL permit one same-worker recovery continuation
+
+#### Scenario: Design surface identifies an in-scope cause
+- **WHEN** a failed main design result is followed by coordinator evidence locating a safe correction in `design.md`, `tasks.md`, or `interfaces.md`
+- **THEN** the coordinator SHALL assign `Cause Locus: in-scope` when the diagnosis key is new
+- **AND** SHALL permit one same-worker recovery continuation
+
+#### Scenario: Previous-phase cause is out of scope
+- **WHEN** coordinator inspection proves that a design failure is caused by contradictory `proposal.md` or `specs/**`
+- **THEN** the coordinator SHALL name the prior-phase artifact and concrete point
+- **AND** SHALL spend zero recovery slots and SHALL not repair that artifact
+
+#### Scenario: Planning coordinator never becomes the artifact writer
+- **WHEN** an in-scope planning diagnosis is selected
+- **THEN** the coordinator SHALL send the diagnosis and correction boundary to the same worker
+- **AND** SHALL not write any phase artifact, glossary entry, `.openspec.yaml` value, or recovery marker
+
+### Requirement: Inspection and phase-static recovery channels are mutually exclusive
+
+The bounded-recovery capability SHALL keep its independent-verification and phase-static repair-surface channels distinct on a per-surface basis. When the suspected cause surface is within the coordinator's authorized artifact-read set for the active closure, the coordinator SHALL use the inspection-derived Cause Locus and diagnosis key and SHALL not also match a phase-static surface for that cause surface. When the suspected cause surface is outside that read set, an opted-in adapter that remains blind to that surface SHALL use the registered phase-static repair-surface row when its closed-field and path criteria match. A single adapter MAY therefore use inspection for its main planning artifacts and phase-static matching for a separate overview surface it is not authorized to read. If inspection is authorized for the suspected surface but cannot establish a concrete safe cause, the result SHALL be unresolved with zero attempts and SHALL not fall back to the phase-static row. Channel selection SHALL occur before key derivation, so one closure has at most one diagnosis key.
+
+#### Scenario: Standalone design overview failure uses the phase-static key
+- **WHEN** the standalone design coordinator receives a non-clean overview-generation result whose `changed_files` includes `change-overview.md`, while its authorized planning-artifact read set does not include that overview surface
+- **THEN** it SHALL use the registered `design-overview-repair` row and its fixed `overview-generation-repair` diagnosis key
+- **AND** it SHALL not attempt inspection-derived keying for that overview closure
+
+#### Scenario: The same design adapter inspects its main artifacts
+- **WHEN** the same standalone design adapter receives a non-clean result whose suspected cause is in `design.md`, `tasks.md`, or `interfaces.md`
+- **THEN** it SHALL use coordinator inspection to derive the Cause Locus and diagnosis key
+- **AND** it SHALL not match `design-overview-repair` for that main-artifact closure
+
+#### Scenario: Authorized inspection does not fall back to blind matching
+- **WHEN** standalone design inspection is authorized but cannot establish a concrete cause or safe correction
+- **THEN** the coordinator SHALL record an unresolved cause and spend zero attempts
+- **AND** SHALL not use the `design-overview-repair` row as a fallback
+
+### Requirement: Planning recovery keeps the shared ledger and tiebreak
+
+Standalone spec and design recovery SHALL use the shared segment-scoped ledger of exactly three mutually distinct normalized diagnosis keys. `failure_class` SHALL be a worker-authored diagnostic prior, not an eligibility gate. Coordinator artifact evidence SHALL be authoritative when it disagrees with worker `failure_class` or `summary`, but SHALL not override `unrecoverable: true`, which remains a worker-authored veto on continuation. Duplicate, unresolved, out-of-scope, vetoed, malformed, cancelled, and continuation/transport-loss outcomes SHALL spend zero additional slots; a new clear in-scope diagnosis with `unrecoverable: false` SHALL spend one slot and receive at most one same-worker continuation.
+
+#### Scenario: Three distinct diagnoses remain the maximum
+- **WHEN** a standalone planning segment reaches three distinct eligible diagnosis keys
+- **THEN** it SHALL not dispatch a fourth recovery continuation
+- **AND** it SHALL hand back with the diagnoses and slots spent
+
+#### Scenario: A changed class does not evade a duplicate
+- **WHEN** a later planning failure changes `failure_class` but identifies the same artifact, concrete point, and correction boundary
+- **THEN** the coordinator SHALL treat it as a duplicate diagnosis
+- **AND** SHALL spend no additional slot even when capacity remains
+
+#### Scenario: Worker and coordinator disagree on safety
+- **WHEN** the worker reports `unrecoverable: false` but coordinator inspection cannot prove a safe in-scope correction
+- **THEN** the coordinator SHALL use an unresolved or out-of-scope hand-back
+- **AND** SHALL spend zero recovery slots without overriding the evidence
+
+#### Scenario: Worker veto remains non-overridable
+- **WHEN** the worker returns `unrecoverable: true` but coordinator inspection appears to identify a clear safe in-scope correction
+- **THEN** the coordinator SHALL retain the worker veto
+- **AND** SHALL spend zero recovery slots and SHALL not continue the worker
 
 ### Requirement: Bounded same-worker recovery
 
@@ -407,4 +477,3 @@ The shared three-slot recovery budget SHALL be represented as three mutually dis
 - **WHEN** two closures identify the same normalized artifact path, concrete point, and authorized correction boundary but carry different Cause Locus values — the first unresolved and the later `in-scope`
 - **THEN** the coordinator SHALL derive equal `diagnosis_key` tuples
 - **AND** the later closure SHALL stop as a duplicate and SHALL not consume a second slot for the unchanged concrete cause
-

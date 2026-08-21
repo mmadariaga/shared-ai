@@ -27,6 +27,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0158 — Delete the worker-owned planning-artifact review loop](./0158-delete-worker-owned-planning-artifact-review-loop.md) — Supersedes 0139, Refs ddr:0133, Refs ddr:0134
 - [0159 — Supervised marker grammar stays on the two-string envelope; Explore owns the capability](./0159-marker-grammar-stays-on-two-string-envelope.md) — Refs 0158, Refs ddr:0114
 - [0160 — Interactive artifact feedback gate gains a non-option review-loop note only](./0160-interactive-gate-review-loop-note-only.md) — Refs 0028, Refs ddr:0150, Refs 0158
+- [0166 — Dual-channel exclusivity is per cause surface](./0166-per-cause-surface-dual-channel-exclusivity.md) — **Amends** 0165
 ### `/sai-2-design`
 
 - [0015 — Decision summary precedes the completion sentinel](./0015-decision-summary-precedes-completion-sentinel.md) — **Amends** ddr:0014
@@ -62,6 +63,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0158 — Delete the worker-owned planning-artifact review loop](./0158-delete-worker-owned-planning-artifact-review-loop.md) — Supersedes 0139, Refs ddr:0133, Refs ddr:0134
 - [0159 — Supervised marker grammar stays on the two-string envelope; Explore owns the capability](./0159-marker-grammar-stays-on-two-string-envelope.md) — Refs 0158, Refs ddr:0114
 - [0160 — Interactive artifact feedback gate gains a non-option review-loop note only](./0160-interactive-gate-review-loop-note-only.md) — Refs 0028, Refs ddr:0150, Refs 0158
+- [0166 — Dual-channel exclusivity is per cause surface](./0166-per-cause-surface-dual-channel-exclusivity.md) — **Amends** 0165
 
 ### `/sai-3-implement`
 
@@ -129,6 +131,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0162 — Unpassable RED/GREEN STOP maps to failed blocking-contradiction with evidence-backed veto](./0162-unpassable-stop-failed-blocking-contradiction.md) — Refs ddr:0151, Refs ddr:0152
 - [0164 — Self-verifiable Steps — prose and pinning tests land together](./0164-self-verifiable-steps-prose-and-tests-together.md)
 - [0165 — Dual coordinator inspection channels — verifying vs phase-static](./0165-dual-coordinator-inspection-channels.md) — Refs ddr:0151, Refs ddr:0152
+- [0166 — Dual-channel exclusivity is per cause surface](./0166-per-cause-surface-dual-channel-exclusivity.md) — **Amends** 0165
 
 ### `/sai-5-review`
 
@@ -299,6 +302,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0159 — Recovery budget is a three-slot distinct-diagnosis ledger](./0159-three-slot-distinct-diagnosis-ledger.md) — **Amends** 0150
 - [0163 — Build inherits shared recovery only through the apply phase adapter](./0163-build-inherits-recovery-via-apply-adapter.md) — Refs 0154
 - [0165 — Dual coordinator inspection channels — verifying vs phase-static](./0165-dual-coordinator-inspection-channels.md) — Refs ddr:0151, Refs ddr:0152
+- [0166 — Dual-channel exclusivity is per cause surface](./0166-per-cause-surface-dual-channel-exclusivity.md) — **Amends** 0165
 
 ---
 
@@ -331,6 +335,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0163 — Build inherits shared recovery only through the apply phase adapter](./0163-build-inherits-recovery-via-apply-adapter.md) — Refs 0154
 - [0164 — Self-verifiable Steps — prose and pinning tests land together](./0164-self-verifiable-steps-prose-and-tests-together.md)
 - [0165 — Dual coordinator inspection channels — verifying vs phase-static](./0165-dual-coordinator-inspection-channels.md) — Refs ddr:0151, Refs ddr:0152
+- [0166 — Dual-channel exclusivity is per cause surface](./0166-per-cause-surface-dual-channel-exclusivity.md) — **Amends** 0165
 
 ### Fetch resolution & path conventions
 
@@ -448,6 +453,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0161 — Bounded coordinator-owned plan-artifact repair with Coverage Signature](./0161-bounded-plan-artifact-repair-coverage-signature.md) — Refs 0160
 - [0162 — Unpassable RED/GREEN STOP maps to failed blocking-contradiction with evidence-backed veto](./0162-unpassable-stop-failed-blocking-contradiction.md) — Refs ddr:0151, Refs ddr:0152
 - [0165 — Dual coordinator inspection channels — verifying vs phase-static](./0165-dual-coordinator-inspection-channels.md) — Refs ddr:0151, Refs ddr:0152
+- [0166 — Dual-channel exclusivity is per cause surface](./0166-per-cause-surface-dual-channel-exclusivity.md) — **Amends** 0165
 
 ### Testability routing & RED → GREEN
 
@@ -551,6 +557,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 | [0159](./0159-three-slot-distinct-diagnosis-ledger.md) | amends | [0150](./0150-recovery-pool-segment-scoped-under-composition.md) |
 | [0162](./0162-schema-report-templates-point-to-write-time-authority.md) | supersedes | [0106](./0106-keep-both-report-template-families-pinned-parity.md) |
 | [0159](./0159-path-specific-next-step-after-manual-selector.md) | amends | [0158](./0158-single-shared-crystallization-turn-close.md) |
+| [0166](./0166-per-cause-surface-dual-channel-exclusivity.md) | amends | [0165](./0165-dual-coordinator-inspection-channels.md) |
 
 ## Superseded ADRs (historical)
 
