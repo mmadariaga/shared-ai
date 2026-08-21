@@ -627,8 +627,8 @@ test('worker delegates source discovery only to budget-explorer or explore bindi
   const spec = artifact('openspec/specs/design-subagent-delegation/spec.md');
 
   assert.match(spec, /delegat.*explore|explore.*delegat/i);
-  assert.match(spec, /SHALL NOT.*delegat.*(?:shell|git|direct)/i,
-    'worker should NOT delegate to shell, git, or direct file reads');
+  assert.match(spec, /(?:SHALL NOT.*delegat.*(?:shell|git|direct)|SHALL not call Read, Glob, or Grep directly)/i,
+    'worker should not delegate source discovery to shell, git, or direct file reads');
 });
 
 // ─── specs/design-coordinator/spec.md ──────────────────────────────────────

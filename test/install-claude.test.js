@@ -84,6 +84,44 @@ function decodePrompt(call) {
   return JSON.parse(`"${match[1]}"`);
 }
 
+function assertInstalledSelectorContract(source) {
+  const textQuestion = source.indexOf('After the unchanged existing maturity text question has been emitted');
+  const maturitySelector = source.indexOf('a supported capability may present one maturity selector', textQuestion);
+  const edgeCaseQuestion = source.indexOf('established edge-case text question');
+  const implementationQuestion = source.indexOf('implementation-detail text question');
+  const laterSelector = source.indexOf('one later selector', implementationQuestion);
+
+  assert.ok(textQuestion >= 0, 'the installed contract must retain the maturity text question');
+  assert.ok(maturitySelector > textQuestion, 'the installed maturity selector must follow the text question');
+  assert.match(source, /NativeStageSelectorCapability\s*=\s*\{ available: boolean, supportsFreeText: boolean, present\(selector, orderedOptions\) -> SelectorResponse \}/);
+  assert.match(source, /SelectorResponse\s*=\s*\{ selector: maturity\|later, kind: option\|free-text, value: review-edge-cases\|keep-iterating\|next-step\|discuss-ideas-feedback\|null, text: string\|null \}/);
+  assert.match(source, /missing capability response, `available: false`, or `supportsFreeText: false`[\s\S]{0,180}text-only fallback[\s\S]{0,120}cannot advance/i);
+  assert.match(source, /Revisar edge cases[\s\S]{0,180}Seguir iterando/);
+  assert.match(source, /Selecting `review-edge-cases` enters the existing edge-case writing prompt/);
+  assert.match(source, /records `ask_mode: false` for that interaction/);
+  assert.match(source, /Selecting `keep-iterating` or submitting maturity-selector free text keeps `ask_mode: true`/);
+  assert.match(source, /does not agree the proposed list, run implementation details, crystallize, or advance beyond that prompt/);
+  assert.ok(edgeCaseQuestion >= 0, 'the installed contract must retain the edge-case text question');
+  assert.ok(implementationQuestion > edgeCaseQuestion, 'implementation details must follow edge cases');
+  assert.ok(laterSelector > implementationQuestion, 'the later selector must follow both list questions');
+  assert.match(source, /Ir al siguiente step/);
+  assert.match(source, /Discutir ideas \/ dar feedback/);
+  assert.match(source, /The discussion value and later-selector free text remain in ask mode and do not advance, agree a list, or crystallize/);
+  assert.match(source, /The later response value `next-step` follows the existing literal `next-step` intent-recognition path exactly/);
+  assert.match(source, /non-empty and empty edge-case branches/);
+  assert.match(source, /non-empty and empty implementation-detail branches/);
+  assert.match(source, /entry into `Crystallize`/);
+  assert.match(source, /Material-change detection runs before selector-response classification/);
+  assert.match(source, /reset wins: clear the pending maturity or later selector response, staged progression, pending crystallization request, and both agreed lists/);
+  assert.match(source, /return the new active-uncrystallized lifecycle to `Explore change`/);
+  assert.match(source, /literal `\*\*Overview language\*\*: None`/);
+  assert.match(source, /dispatches no overview generation/);
+  assert.match(source, /Contract tests may observe the harness-neutral trace vocabulary[\s\S]{0,320}crystallization-requested/);
+  for (const event of ['text-question-emitted', 'selector-presented', 'selector-option-received', 'selector-free-text-received', 'edge-case-writing-prompt-emitted', 'explicit-advancement-received', 'stage-advanced', 'material-reset', 'crystallization-requested']) {
+    assert.match(source, new RegExp(`\\b${event}\\b`));
+  }
+}
+
 function captureNotices(fn) {
   const notices = [];
   const originalLog = console.log;
@@ -898,5 +936,25 @@ test('Step 3 the Claude neutral inventory is equivalent to opencode and differs 
     for (const harness of ['claude', 'opencode']) {
       fs.rmSync(bases[harness], { recursive: true, force: true });
     }
+  }
+});
+
+test('Step 2 Claude installation preserves the shared selector contract without harness-specific selector semantics', () => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-claude-selector-contract-'));
+  try {
+    installClaude(tmpDir);
+    const installed = fs.readFileSync(path.join(tmpDir, 'sai', 'commands', 'explore', 'instructions.md'), 'utf8');
+    assertInstalledSelectorContract(installed);
+
+    const panel = fs.readFileSync(path.join(tmpDir, 'sai', 'adapters', 'claude', 'panel-render.md'), 'utf8');
+    const ideaList = fs.readFileSync(path.join(tmpDir, 'sai', 'adapters', 'claude', 'idea-list-render.md'), 'utf8');
+    const bindingsDir = path.join(tmpDir, 'sai', 'orchestration', 'workers', 'bindings');
+    assert.doesNotMatch(panel, /NativeStageSelectorCapability|keep-iterating|discuss-ideas-feedback|selector-presented|selector-option-received|selector-free-text-received/);
+    assert.doesNotMatch(ideaList, /NativeStageSelectorCapability|keep-iterating|discuss-ideas-feedback|selector-presented|selector-option-received|selector-free-text-received/);
+    for (const binding of fs.readdirSync(bindingsDir)) {
+      assert.doesNotMatch(fs.readFileSync(path.join(bindingsDir, binding), 'utf8'), /NativeStageSelectorCapability|keep-iterating|discuss-ideas-feedback|selector-presented|selector-option-received|selector-free-text-received/);
+    }
+  } finally {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
   }
 });

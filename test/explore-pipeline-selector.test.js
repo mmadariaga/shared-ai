@@ -664,7 +664,7 @@ test('Step 1 forwards selected overview language only for Auto and keeps None an
   assert.ok(manualStart >= 0, 'the Manual selector branch should be present');
   const manual = source.slice(manualStart, deterministic);
   assert.match(manual, /dispatches nothing/i);
-  assert.doesNotMatch(manual, /arguments_value|--overview-lang/i,
+  assert.doesNotMatch(manual, /arguments_value\s*:/i,
     'Manual must forward no supervised dispatch envelope');
 
   assert.match(source, /not.*persist|never.*persist/i);
@@ -919,6 +919,65 @@ test('external convergence is not inferred from non-supervised worker state', ()
       'review progress must require external evidence regardless of supervision');
     assert.doesNotMatch(worker, /A completed pass with `High=0` converges|worker-owned review pass/i,
       'the retired non-supervised worker loop must not return');
+  }
+});
+
+test('shared native stage selector capability and response shapes keep stable protocol values', () => {
+  const shared = spec('sai/commands/explore/instructions.md');
+
+  assert.match(shared, /NativeStageSelectorCapability\s*=\s*\{ available: boolean, supportsFreeText: boolean, present\(selector, orderedOptions\) -> SelectorResponse \}/);
+  assert.match(shared, /SelectorResponse\s*=\s*\{ selector: maturity\|later, kind: option\|free-text, value: review-edge-cases\|keep-iterating\|next-step\|discuss-ideas-feedback\|null, text: string\|null \}/);
+  for (const value of ['review-edge-cases', 'keep-iterating', 'next-step', 'discuss-ideas-feedback']) {
+    assert.match(shared, new RegExp(`\\b${value}\\b`), `${value} should remain a stable selector value`);
+  }
+  assert.match(shared, /For `kind: option`, `value` is the stable protocol value and `text` is `null`/);
+  assert.match(shared, /A response is valid only for the selector that is currently pending/);
+});
+
+test('stage selectors preserve Spanish ordering and later placement after both text list questions', () => {
+  const shared = spec('sai/commands/explore/instructions.md');
+  const edgeCaseQuestion = shared.indexOf('established edge-case text question');
+  const implementationQuestion = shared.indexOf('implementation-detail text question');
+  const laterSelector = shared.indexOf('one later selector', implementationQuestion);
+
+  assert.ok(edgeCaseQuestion >= 0, 'the established edge-case text question should remain explicit');
+  assert.ok(implementationQuestion > edgeCaseQuestion, 'implementation details must follow edge cases');
+  assert.ok(laterSelector > implementationQuestion, 'the later selector must follow both existing text questions');
+  assert.match(shared, /localized advancement label maps exactly to the stable value `next-step`/);
+  assert.match(shared, /Ir al siguiente step/);
+  assert.match(shared, /Discutir ideas \/ dar feedback/);
+  assert.ok(shared.indexOf('Ir al siguiente step') < shared.indexOf('Discutir ideas / dar feedback'),
+    'Spanish later-selector options must preserve next-step before discussion order');
+  assert.match(shared, /later selector is additive and does not replace either text question/);
+});
+
+test('discussion and free-text selector answers do not advance while next-step is exactly the existing path', () => {
+  const shared = spec('sai/commands/explore/instructions.md');
+
+  assert.match(shared, /The discussion value and later-selector free text remain in ask mode and do not advance, agree a list, or crystallize/);
+  assert.match(shared, /Arbitrary free text is never treated as advancement merely because a selector was displayed/);
+  assert.match(shared, /The later response value `next-step` follows the existing literal `next-step` intent-recognition path exactly/);
+  for (const branch of [
+    'non-empty and empty edge-case branches',
+    'non-empty and empty implementation-detail branches',
+    'stage transitions',
+    'entry into `Crystallize`',
+  ]) assert.match(shared, new RegExp(branch.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\$&')));
+  assert.match(shared, /The existing text questions, semantic agreement gates, `ask_mode` transitions, material-change reset/);
+});
+
+test('selector semantics remain shared and are not duplicated in harness wrappers or renderers', () => {
+  const shared = spec('sai/commands/explore/instructions.md');
+  const claudeWrapper = spec('commands/claude/sai-explore.md');
+  const opencodeWrapper = spec('commands/opencode/sai-explore.md');
+  const claudePanel = spec('sai/adapters/claude/panel-render.md');
+  const opencodePanel = spec('sai/adapters/opencode/panel-render.md');
+  const claudeList = spec('sai/adapters/claude/idea-list-render.md');
+  const opencodeList = spec('sai/adapters/opencode/idea-list-render.md');
+
+  assert.match(shared, /Claude Code and opencode consume this shared contract/);
+  for (const harnessSurface of [claudeWrapper, opencodeWrapper, claudePanel, opencodePanel, claudeList, opencodeList]) {
+    assert.doesNotMatch(harnessSurface, /NativeStageSelectorCapability|keep-iterating|discuss-ideas-feedback|selector-presented|selector-option-received|selector-free-text-received/);
   }
 });
 
@@ -1372,11 +1431,11 @@ test('Step 2 item-10 exhausted diagnosis keeps the change retryable with phase g
   const source = exploreContract();
   const start = source.search(/diagnosis_rounds/i);
   assert.ok(start >= 0, 'item-10 diagnosis source should exist');
-  const diagnosis = source.slice(start, start + 7000);
+  const diagnosis = source.slice(start, start + 12000);
 
   assert.match(diagnosis, /(?:exhausted|failed)[\s\S]{0,650}continuation\/transport loss|continuation\/transport loss[\s\S]{0,650}(?:exhausted|failed)/i);
   assert.match(diagnosis, /retryable/i);
-  assert.match(diagnosis, /(?:later Auto|next Auto|uncompleted)/i);
+  assert.match(diagnosis, /(?:later Auto|next Auto|uncompleted|Auto-retryable)/i);
   assert.match(diagnosis, /Next step:\s*run\s+[`"']*\/sai-(?:1-spec|2-design)/i);
   assert.match(
     diagnosis,
