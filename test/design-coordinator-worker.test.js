@@ -48,12 +48,13 @@ function removeTempDir(dir) {
 
 // ─── Step 3: spec-design-review-progress-step — interface stubs ────────────
 // The Step 3 interface stubs expose the required contract symbols (the
-// seven-step design progress plan, the design review-pass input sets, and the
-// retired step ids) as pure data with no production logic. The assertions
-// below compare the production instruction surface against these stubs, so a
-// RED run fails until the GREEN body lands the contract.
+// opted-in seven-step and unopted six-step design progress plans, the design
+// review-pass input sets, and the retired step ids) as pure data with no
+// production logic. The assertions below compare the production instruction
+// surface against these stubs, so a RED run fails until the GREEN body lands
+// the contract.
 
-const DESIGN_PROGRESS_PLAN = [
+const OPTED_IN_DESIGN_PROGRESS_PLAN = [
   ['prereqs-resolution', 'Check prerequisites'],
   ['research', 'Research and resolve open questions'],
   ['design', 'Write design.md'],
@@ -62,8 +63,12 @@ const DESIGN_PROGRESS_PLAN = [
   ['review', 'Review artifacts'],
   ['overview', 'Generate change-overview.md'],
 ];
-const DESIGN_PROGRESS_PLAN_LINES = DESIGN_PROGRESS_PLAN.map(([id, label]) => `${id}: "${label}"`);
-const DESIGN_PROGRESS_PLAN_IDS = DESIGN_PROGRESS_PLAN.map(([id]) => id);
+const UNOPTED_DESIGN_PROGRESS_PLAN = OPTED_IN_DESIGN_PROGRESS_PLAN.slice(0, -1);
+const OPTED_IN_DESIGN_PROGRESS_PLAN_LINES = OPTED_IN_DESIGN_PROGRESS_PLAN
+  .map(([id, label]) => `${id}: "${label}"`);
+const UNOPTED_DESIGN_PROGRESS_PLAN_LINES = UNOPTED_DESIGN_PROGRESS_PLAN
+  .map(([id, label]) => `${id}: "${label}"`);
+const DESIGN_PROGRESS_PLAN_IDS = OPTED_IN_DESIGN_PROGRESS_PLAN.map(([id]) => id);
 const RETIRED_DESIGN_PLAN_IDS = ['specs-approval', 'artifacts'];
 
 function declaredStepLines(source) {
@@ -93,6 +98,26 @@ function declaredStepLines(source) {
     lines.push(`${id}: "${label}"`);
   }
   return lines;
+}
+
+function countPlanOccurrences(lines, plan) {
+  let count = 0;
+  for (let start = 0; start <= lines.length - plan.length; start += 1) {
+    if (plan.every((line, index) => lines[start + index] === line)) count += 1;
+  }
+  return count;
+}
+
+function assertPlanVariants(source, owner) {
+  const lines = declaredStepLines(source);
+  assert.ok(
+    countPlanOccurrences(lines, OPTED_IN_DESIGN_PROGRESS_PLAN_LINES) >= 1,
+    `${owner} should declare the opted-in seven-step plan`,
+  );
+  assert.ok(
+    countPlanOccurrences(lines, UNOPTED_DESIGN_PROGRESS_PLAN_LINES) >= 2,
+    `${owner} should declare the unopted six-step plan separately from the opted-in prefix`,
+  );
 }
 
 test('Step 1 design card uses neutral root protocols and retires flat canonical sources', () => {
@@ -1010,21 +1035,43 @@ test('the lifecycle obliges planned workers to emit progress and keeps payload v
 
 // ─── Step 4: command-progress-plan-protocol (design coordinator.md) ─────────
 
-test('Step 3: the design coordinator declares exactly the seven ordered progress-plan step ids and labels', () => {
+test('Step 3: the design coordinator declares the opted-in seven-step and unopted six-step progress plans', () => {
   const coordinator = artifact('sai/commands/design/coordinator.md');
 
-  assert.deepEqual(declaredStepLines(coordinator), DESIGN_PROGRESS_PLAN_LINES,
-    'the coordinator plan declaration should be exactly the seven canonical id/label lines in order');
+  assertPlanVariants(coordinator, 'the coordinator');
 });
 
-test('Step 3: the design worker enumerates the same seven step ids and labels byte-for-byte as the coordinator', () => {
+test('Step 3: the design worker enumerates both plan variants byte-for-byte as the coordinator', () => {
   const coordinator = artifact('sai/commands/design/coordinator.md');
   const worker = artifact('sai/commands/design/worker.md');
 
-  assert.deepEqual(declaredStepLines(worker), DESIGN_PROGRESS_PLAN_LINES,
-    'the worker should enumerate exactly the same seven canonical id/label lines in order');
+  assertPlanVariants(worker, 'the worker');
   assert.deepEqual(declaredStepLines(worker), declaredStepLines(coordinator),
-    'the worker enumeration should equal the coordinator plan declaration byte-for-byte');
+    'the worker plan variants should equal the coordinator plan declarations byte-for-byte');
+});
+
+test('Step 3: coordinator plan selection is presence-only and preserves opt-in shape for malformed, missing-value, and duplicate flags', () => {
+  const coordinator = artifact('sai/commands/design/coordinator.md');
+  const worker = artifact('sai/commands/design/worker.md');
+  const source = `${coordinator}\n${worker}`;
+
+  assert.match(
+    coordinator,
+    /(?:only|solely|based)[\s\S]{0,180}(?:presence|present)[\s\S]{0,220}`?--overview-lang`?|`?--overview-lang`?[\s\S]{0,220}(?:presence|present)[\s\S]{0,180}(?:only|solely|based)/i,
+    'the coordinator should choose the plan from flag presence only',
+  );
+  for (const form of ['malformed', 'missing', 'duplicate']) {
+    assert.match(
+      source,
+      new RegExp(`(?:${form}(?: value)?)[\\s\\S]{0,300}(?:presence|present|still|regardless)|(?:presence|present|still|regardless)[\\s\\S]{0,300}${form}`, 'i'),
+      `${form} flag forms should retain presence-based plan selection`,
+    );
+  }
+  assert.match(
+    coordinator,
+    /(?:does not|must not|never)[\s\S]{0,180}(?:parse|validat|interpret)[\s\S]{0,260}`?--overview-lang`?/i,
+    'the coordinator must not validate the language value while selecting the plan',
+  );
 });
 
 test('Step 3: no standalone specs-approval or artifacts step id remains declared in the design plan', () => {
@@ -1171,30 +1218,26 @@ test('Step 5: the startup act is one batch and emits one event carrying every st
   );
 });
 
-test('Step 3: the startup act emits exactly one progress event carrying only prereqs-resolution', () => {
+test('Step 3: the startup act selects the six- or seven-step plan from overview-language flag presence', () => {
   const worker = artifact('sai/commands/design/worker.md');
 
   assert.match(worker, /startup act|startup[- ]act/i,
     'the contract should name the startup act');
   assert.match(
     worker,
-    /(?:fast[- ]track|prereqs?|prerequisites)[\s\S]{0,320}(?:approv|gate)[\s\S]{0,320}(?:resolution|startup)|(?:resolution|startup)[\s\S]{0,320}(?:approv|gate)[\s\S]{0,320}(?:fast[- ]track|prereqs?|prerequisites)/i,
-    'the startup act should bundle fast-track parsing, prerequisites, the specs approval gate, and resolution'
+    /startup[\s\S]{0,500}`?--overview-lang`?[\s\S]{0,500}(?:present|absent|missing|duplicate|malformed)/i,
+    'the startup act should retain raw overview-language flag presence before validation',
   );
+  assertPlanVariants(worker, 'the startup worker');
   assert.match(
     worker,
-    /(?:one|single)[\s\S]{0,200}(?:startup|event)[\s\S]{0,160}progress|progress[\s\S]{0,160}(?:one|single)[\s\S]{0,200}(?:startup|event)/i,
-    'the startup act should emit exactly one progress event'
-  );
-  assert.match(
-    worker,
-    /carri(?:es|ed|ing)?[\s\S]{0,160}only[\s\S]{0,120}["'`]?prereqs-resolution["'`]?/i,
-    'the startup event should carry only prereqs-resolution'
+    /(?:absent|without|missing)[\s\S]{0,320}(?:no|never|not)[\s\S]{0,180}(?:overview|generation)[\s\S]{0,160}(?:progress|terminal)/i,
+    'an unopted startup must not schedule overview generation or overview progress',
   );
   assert.doesNotMatch(
     worker,
-    /step_?ids?:[\s\S]{0,120}["'`]?specs-approval["'`]?/i,
-    'no progress event should carry specs-approval as a step id'
+    /(?:absent|without|missing)[\s\S]{0,320}(?:default|defaults|fallback)[\s\S]{0,180}English/i,
+    'an absent overview-language flag must not synthesize an English default',
   );
 });
 
@@ -1334,16 +1377,26 @@ test('Step 2 design wrappers document the same overview language option', () => 
   }
 });
 
-test('Step 2 design worker validates and defaults the invocation language before resolution', () => {
+test('Step 2 design worker validates a selected invocation language before resolution without defaulting an absent flag', () => {
   const worker = artifact('sai/commands/design/worker.md');
 
   assert.match(worker, /--overview-lang <language>/);
-  assert.match(worker, /English/);
   assert.match(worker, /missing.*value|value.*missing/i);
   assert.match(worker, /duplicate/i);
+  assert.match(worker, /malformed/i);
   assert.match(worker, /before.*resolution|resolution.*before/i);
   assert.match(worker, /change name.*before|before.*change name/i);
   assert.match(worker, /fast-track.*(?:either|regardless)|(?:either|regardless).*fast-track/i);
+  assert.match(
+    worker,
+    /(?:absent|missing)[\s\S]{0,320}(?:unresolved|no synthesis|no generation|does not synthesize)|--overview-lang[\s\S]{0,320}(?:absent|missing)[\s\S]{0,320}(?:unresolved|no synthesis|no generation|does not synthesize)/i,
+    'an absent overview-language flag should remain unresolved and skip synthesis',
+  );
+  assert.doesNotMatch(
+    worker,
+    /(?:absent|missing)[\s\S]{0,320}(?:default|defaults|fallback)[\s\S]{0,180}English|--overview-lang[\s\S]{0,320}(?:absent|missing)[\s\S]{0,320}(?:default|defaults|fallback)[\s\S]{0,180}English/i,
+    'an absent overview-language flag must not default to English',
+  );
 });
 
 test('Step 2 carries overview_language through the worker and generation continuation', () => {
@@ -1360,6 +1413,12 @@ test('Step 2 carries overview_language through the worker and generation continu
   }
   assert.match(coordinator, /continuation[\s\S]{0,300}overview_language/i);
   assert.match(worker, /worker result|result[\s\S]{0,180}overview_language/i);
+  assert.match(coordinator, /(?:selected|current invocation|provided)[\s\S]{0,260}overview_language[\s\S]{0,360}(?:generation|continuation)|overview_language[\s\S]{0,360}(?:selected|current invocation|provided)[\s\S]{0,360}(?:generation|continuation)/i,
+    'the generation continuation should carry the selected overview_language');
+  assert.match(worker, /(?:selected|current invocation|provided)[\s\S]{0,260}overview_language[\s\S]{0,360}(?:generation|continuation)|overview_language[\s\S]{0,360}(?:selected|current invocation|provided)[\s\S]{0,360}(?:generation|continuation)/i,
+    'the worker should carry the selected overview_language into generation');
+  assert.doesNotMatch(coordinator, /overview_language[\s\S]{0,220}(?:default|defaults|fallback)[\s\S]{0,120}English|(?:default|defaults|fallback)[\s\S]{0,220}English[\s\S]{0,220}overview_language/i,
+    'the generation continuation must not synthesize an English selection when the flag is absent');
   assert.match(worker, /not persisted|never.*persist/i);
 });
 
@@ -1526,7 +1585,7 @@ test('Step 3: after interfaces the design worker proceeds without an automatic r
     'the worker must not start an automatic reviewer after interfaces');
 });
 
-test('Step 3: a pre-gate completed design result leaves the overview step unmarked and performs no reconciliation', () => {
+test('Step 3: pre-gate completion reconciles only the unopted terminal path and preserves the opted-in overview continuation', () => {
   const coordinator = artifact('sai/commands/design/coordinator.md');
 
   assert.match(
@@ -1536,13 +1595,18 @@ test('Step 3: a pre-gate completed design result leaves the overview step unmark
   );
   assert.match(
     coordinator,
-    /overview[\s\S]{0,200}(?:remains|stay)[\s\S]{0,120}(?:unmarked|unmark|not marked)/i,
-    'the overview step should remain unmarked before the gate closes'
+    /(?:(?:present|provided|opted[- ]in)[\s\S]{0,260}`?--overview-lang`?|`?--overview-lang`?[\s\S]{0,260}(?:present|provided|opted[- ]in))[\s\S]{0,360}overview[\s\S]{0,180}(?:unmarked|unmark|not marked)/i,
+    'the opted-in overview step should remain unmarked before its generation continuation'
   );
   assert.match(
     coordinator,
-    /(?:pre-?gate|before the gate)[\s\S]{0,300}(?:no|never|without)[\s\S]{0,120}reconcil|(?:no|never|without)[\s\S]{0,120}reconcil[\s\S]{0,300}(?:pre-?gate|before the gate)/i,
-    'no reconciliation should occur on a pre-gate completed result'
+    /(?:(?:absent|without|missing|unopted)[\s\S]{0,260}`?--overview-lang`?|`?--overview-lang`?[\s\S]{0,260}(?:absent|without|missing|unopted))[\s\S]{0,420}(?:reconcil|mark)[\s\S]{0,180}(?:eligible|unmarked|all)/i,
+    'the unopted pre-gate terminal should reconcile its complete six-step plan'
+  );
+  assert.match(
+    coordinator,
+    /(?:pre-?gate|before the gate)[\s\S]{0,320}(?:present|absent|unopted|opted[- ]in)[\s\S]{0,320}(?:reconcil|unmarked)/i,
+    'pre-gate completion must use the selected plan rather than one fixed seven-step policy'
   );
 });
 
@@ -1558,7 +1622,7 @@ test('Step 3: a post-gate successful overview terminal reconciles every eligible
     'the coordinator should own the terminal reconciliation');
   assert.match(
     coordinator,
-    /reconcil[\s\S]{0,300}(?:eligible[\s\S]{0,120}unmarked|unmarked)[\s\S]{0,160}except[\s\S]{0,80}`?review`?/i,
+    /(?:(?:present|provided|opted[- ]in)[\s\S]{0,260}`?--overview-lang`?|`?--overview-lang`?[\s\S]{0,260}(?:present|provided|opted[- ]in))[\s\S]{0,360}reconcil[\s\S]{0,300}(?:eligible[\s\S]{0,120}unmarked|unmarked)[\s\S]{0,160}except[\s\S]{0,80}`?review`?/i,
     'reconciliation should cover every eligible unmarked step except review'
   );
 });
@@ -1580,6 +1644,36 @@ test('Step 3: a failed overview terminal leaves the plan list unchanged and reco
     coordinator,
     /failed[\s\S]{0,400}(?:no|without|never)[\s\S]{0,160}reconcil|(?:no|without|never)[\s\S]{0,160}reconcil[\s\S]{0,400}failed/i,
     'a failed overview terminal should reconcile nothing'
+  );
+});
+
+test('Step 3: an unopted Continue closes without a generation continuation or overview terminal', () => {
+  const coordinator = artifact('sai/commands/design/coordinator.md');
+
+  assert.match(
+    coordinator,
+    /(?:(?:absent|without|missing|unopted)[\s\S]{0,260}`?--overview-lang`?|`?--overview-lang`?[\s\S]{0,260}(?:absent|without|missing|unopted))[\s\S]{0,500}(?:no|skip|does not|without)[\s\S]{0,160}(?:generation|generator)[\s\S]{0,240}(?:terminal|close|complete)/i,
+    'an unopted Continue should close directly without generation',
+  );
+  assert.doesNotMatch(
+    coordinator,
+    /(?:(?:absent|without|missing|unopted)[\s\S]{0,300}`?--overview-lang`?|`?--overview-lang`?[\s\S]{0,300}(?:absent|without|missing|unopted))[\s\S]{0,300}(?:dispatch|continue)[\s\S]{0,220}(?:overview generation|generation pass)/i,
+    'an unopted Continue must not dispatch the overview-generation continuation',
+  );
+});
+
+test('Step 3: an unopted worker emits no overview progress event and performs no English synthesis', () => {
+  const worker = artifact('sai/commands/design/worker.md');
+
+  assert.match(
+    worker,
+    /(?:(?:absent|without|missing|unopted)[\s\S]{0,320}`?--overview-lang`?|`?--overview-lang`?[\s\S]{0,320}(?:absent|without|missing|unopted))[\s\S]{0,420}(?:no|never|not|does not)[\s\S]{0,180}(?:overview)[\s\S]{0,160}(?:progress|event|synthes)/i,
+    'the unopted worker must not emit overview progress or synthesize an overview',
+  );
+  assert.doesNotMatch(
+    worker,
+    /(?:(?:absent|without|missing|unopted)[\s\S]{0,320}`?--overview-lang`?|`?--overview-lang`?[\s\S]{0,320}(?:absent|without|missing|unopted))[\s\S]{0,220}(?:default|defaults|fallback)[\s\S]{0,180}English/i,
+    'the unopted worker must not synthesize English by default',
   );
 });
 

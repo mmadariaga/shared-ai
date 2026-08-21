@@ -80,7 +80,7 @@ test('active orchestration capability declares the optional recovery seam', () =
   assert.match(spec, /never dispatch a replacement worker from that recovery path/i);
 });
 
-test('design overview recovery keeps generator classification separate from the closed nested envelope', () => {
+test('design overview recovery keeps selected-language metadata and leaves an absent language unresolved', () => {
   const routing = artifact('openspec/specs/change-overview-generation-routing/spec.md');
   const worker = artifact('sai/commands/design/worker.md');
 
@@ -90,8 +90,12 @@ test('design overview recovery keeps generator classification separate from the 
     'the nested generator result should retain the five-field order');
   assert.match(worker, /post-resolution[\s\S]{0,300}overview_language[\s\S]{0,300}failure_class[\s\S]{0,300}unrecoverable/i,
     'post-resolution design failures should retain invocation-scoped overview_language with failure metadata');
-  assert.match(worker, /overview_language[\s\S]{0,260}(?:absent|missing)[\s\S]{0,180}English/i,
-    'the absent overview language flag should default to English');
+  assert.match(worker, /(?:selected|provided|present)[\s\S]{0,240}overview_language[\s\S]{0,320}(?:failure_class|unrecoverable|failure metadata)|overview_language[\s\S]{0,320}(?:selected|provided|present)[\s\S]{0,320}(?:failure_class|unrecoverable|failure metadata)/i,
+    'selected-language failures should retain the selected overview_language with failure metadata');
+  assert.match(worker, /(?:absent|missing)[\s\S]{0,320}(?:unresolved|no synthesis|no generation|does not synthesize)|--overview-lang[\s\S]{0,320}(?:absent|missing)[\s\S]{0,320}(?:unresolved|no synthesis|no generation|does not synthesize)/i,
+    'an absent overview language must remain unresolved and perform no synthesis');
+  assert.doesNotMatch(worker, /(?:absent|missing)[\s\S]{0,260}(?:default|defaults|fallback)[\s\S]{0,180}English|--overview-lang[\s\S]{0,320}(?:absent|missing)[\s\S]{0,320}(?:default|defaults|fallback)[\s\S]{0,180}English/i,
+    'an absent overview language must not default to English');
 });
 
 test('overview soundness vetoes the first envelope violation before any bounded recovery attempt', () => {

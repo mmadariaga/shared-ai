@@ -565,27 +565,108 @@ test('Claude Code and opencode consume the same shared closure contract', () => 
   }
 });
 
-test('Step 1 parses an optional overview language before fast-track and defaults to English', () => {
+test('Step 1 parses an optional overview language before fast-track and leaves absent language unresolved', () => {
   const source = spec('sai/commands/explore/body.md');
 
   assert.match(source, /## Overview-language parse/);
   assert.match(source, /--overview-lang <language>/);
-  assert.match(source, /English/);
+  assert.match(
+    source,
+    /(?:extract(?:s|ed|ing)?|consume|set)[\s\S]{0,320}(?:language value|overview[_ -]?language)|(?:language value|overview[_ -]?language)[\s\S]{0,320}(?:extract|consume|set)/i
+  );
   assert.match(source, /non-empty/);
   assert.match(source, /duplicate/i);
   assert.match(source, /missing.*value|value.*missing/i);
+  assert.match(source, /(?:validation error|invalid|reject(?:s|ed|ion)?)[\s\S]{0,240}(?:duplicate|missing)|(?:duplicate|missing)[\s\S]{0,240}(?:validation error|invalid|reject)/i);
   assert.match(source, /before.*resolution|resolution.*before/i);
   assert.match(source, /--fast-track/);
+  assert.match(
+    source,
+    /(?:absent|omitted|not provided)[\s\S]{0,220}(?:unresolved|no effective (?:overview )?language)|(?:unresolved|no effective (?:overview )?language)[\s\S]{0,220}(?:absent|omitted|not provided)/i
+  );
 });
 
-test('Step 1 forwards selected language only through supervised design state', () => {
+test('Step 1 gate 9 uses the opt-in overview-language selector and deterministic option sets', () => {
+  const contract = [
+    spec('sai/commands/explore/instructions.md'),
+    spec('sai/commands/explore/body.md'),
+  ].join('\n');
+  const selectorStart = contract.search(/(?:Gate 9|gate-9|overview[- ]language selector)/i);
+
+  assert.ok(selectorStart >= 0, 'the opt-in overview-language selector should be specified');
+  const selector = contract.slice(selectorStart);
+
+  assert.match(selector, /(?:None\s*(?:—|-)\s*do[- ]not[- ]create|do[- ]not[- ]create[\s\S]{0,120}None)/i);
+  assert.doesNotMatch(contract, /emitted first and carrying the `Recommended` marker/);
+  assert.doesNotMatch(contract, /emitted second, carrying no marker/);
+  assert.match(
+    selector,
+    /(?:English[\s\S]{0,120}undetermined|undetermined[\s\S]{0,120}English)[\s\S]{0,700}(?:two|2) options[\s\S]{0,700}None[\s\S]{0,400}English/i
+  );
+  assert.match(
+    selector,
+    /(?:non[- ]English|not English)[\s\S]{0,700}(?:three|3) options[\s\S]{0,700}None[\s\S]{0,400}English[\s\S]{0,500}endonym/i
+  );
+});
+
+test('Step 1 gate 9 defaults to None for absent fast-track or noncommittal input and honors an explicit flag', () => {
+  const contract = [
+    spec('sai/commands/explore/instructions.md'),
+    spec('sai/commands/explore/body.md'),
+  ].join('\n');
+  const selectorStart = contract.search(/(?:Gate 9|gate-9|overview[- ]language selector)/i);
+
+  assert.ok(selectorStart >= 0, 'the opt-in overview-language selector should be specified');
+  const selector = contract.slice(selectorStart);
+
+  assert.match(
+    selector,
+    /(?:--fast-track[\s\S]{0,260}(?:absent|omitted|not present)|(?:absent|omitted|not present)[\s\S]{0,260}--fast-track)[\s\S]{0,700}None/i
+  );
+  assert.match(selector, /(?:declin\w*|non[- ]committal|noncommittal)[\s\S]{0,500}(?:None|do[- ]not[- ]create)/i);
+  assert.match(
+    selector,
+    /(?:explicit(?:ly)?[\s\S]{0,220}`?--overview-lang`?|`?--overview-lang`?[\s\S]{0,220}explicit)[\s\S]{0,700}(?:suppress|skip|bypass|omit|not present|does not present|without)[\s\S]{0,180}(?:gate|selector)/i
+  );
+});
+
+test('Step 1 forwards selected overview language only for Auto and keeps None and Manual free of overview dispatch', () => {
   const source = spec('sai/commands/explore/instructions.md');
 
   assert.match(source, /overview_language/);
   assert.match(source, /--overview-lang/);
   assert.match(source, /selected.*language|language.*selected/i);
-  assert.match(source, /arguments_value:\s*"\{name\} --fast-track"/);
-  assert.match(source, /arguments_value:\s*"\{name\} --fast-track --overview-lang \{overview_language\}"/);
+  assert.match(source, /arguments_value:\s*"\{name\} --fast-track --supervised --overview-lang \{overview_language\}"/);
+
+  const deterministic = source.indexOf('**Deterministic selection**');
+  assert.ok(deterministic >= 0, 'the deterministic Auto selection contract should be present');
+  const auto = source.slice(deterministic);
+  const noOverview = auto.match(
+    /(?:do[- ]not[- ]create|None)[\s\S]{0,5000}?arguments_value:\s*"\{name\} --fast-track --supervised"/i
+  );
+  assert.ok(
+    noOverview,
+    'do-not-create/None Auto should forward exactly {name} --fast-track --supervised'
+  );
+  const noOverviewEnvelope = noOverview[0].match(/arguments_value:\s*"[^"]+"/i)?.[0] || '';
+  assert.equal(
+    noOverviewEnvelope,
+    'arguments_value: "{name} --fast-track --supervised"',
+    'the do-not-create/None Auto envelope should contain no overview flag or value'
+  );
+  assert.doesNotMatch(
+    noOverviewEnvelope,
+    /--overview-lang(?:\s|`|"|$)/i,
+    'the do-not-create/None Auto envelope must not carry an overview flag or value'
+  );
+
+  const manualStart = source.lastIndexOf('Selecting **Manual**');
+  assert.ok(manualStart >= 0, 'the Manual selector branch should be present');
+  const manual = source.slice(manualStart, deterministic);
+  assert.match(manual, /dispatches nothing/i);
+  assert.doesNotMatch(manual, /arguments_value|--overview-lang/i,
+    'Manual must forward no supervised dispatch envelope');
+
   assert.match(source, /not.*persist|never.*persist/i);
   assert.match(source, /failed\/cancelled retry|failed or cancelled retry|retry/i);
 });
@@ -725,11 +806,35 @@ test('Auto spec envelope carries leading --supervised with empty wrapper echo', 
   assert.doesNotMatch(source, /wrapper_echo_value:\s*"--supervised"/, 'explore must not carry the marker as a bare non-empty wrapper echo');
 });
 
-test('Auto chained design envelope carries --fast-track and --supervised', () => {
+test('Auto chained design envelope forwards overview generation conditionally', () => {
   const source = spec('sai/commands/explore/instructions.md');
-  assert.match(source, /arguments_value:\s*"\{name\} --fast-track --supervised"/, 'chained design Auto envelope should be {name} --fast-track --supervised');
-  assert.match(source, /arguments_value:\s*"\{name\} --supervised --fast-track"/, 'chained design Auto envelope should also permit {name} --supervised --fast-track');
-  assert.match(source, /arguments_value:\s*"\{name\} --fast-track --supervised --overview-lang \{overview_language\}"/, 'language-bearing chained design should compose --supervised with --overview-lang');
+  const deterministic = source.indexOf('**Deterministic selection**');
+  assert.ok(deterministic >= 0, 'the deterministic Auto selection contract should be present');
+  const auto = source.slice(deterministic);
+
+  assert.ok(
+    auto.match(
+      /(?:selected|provided|chosen|overview_language)[\s\S]{0,5000}arguments_value:\s*"\{name\} --fast-track --supervised --overview-lang \{overview_language\}"|arguments_value:\s*"\{name\} --fast-track --supervised --overview-lang \{overview_language\}"[\s\S]{0,5000}(?:selected|provided|chosen|overview_language)/i
+    ),
+    'selected language should be forwarded as --overview-lang'
+  );
+  const noOverview = auto.match(
+    /(?:do[- ]not[- ]create|None)[\s\S]{0,5000}?arguments_value:\s*"\{name\} --fast-track --supervised"/i
+  );
+  assert.ok(
+    noOverview,
+    'do-not-create/None should forward exactly {name} --fast-track --supervised'
+  );
+  assert.doesNotMatch(
+    noOverview[0].match(/arguments_value:\s*"[^"]+"/i)?.[0] || '',
+    /--overview-lang(?:\s|`|"|$)/i,
+    'do-not-create/None should not forward an overview flag or value'
+  );
+  assert.doesNotMatch(
+    auto,
+    /arguments_value:\s*"\{name\} --supervised --fast-track"/,
+    'the supervised Auto envelope should remain name-first and fast-track-first'
+  );
 });
 
 test('Step 7: design grammar is name-first, accepts a bare supervised flag, and is order-independent after the name', () => {
@@ -950,7 +1055,7 @@ test('Step 2: the supervised spec artifact gate binds mode, Finish, and the phas
     'the supervised spec gate should use the phase-transition next-action');
 });
 
-test('Step 2: the supervised design artifact gate binds mode, Continue, and overview generation', () => {
+test('Step 2: supervised Continue conditionally selects overview generation or a no-generation terminal', () => {
   const source = spec('sai/commands/explore/instructions.md');
   const designArtifacts = source.match(/design\.md[\s\S]{0,1200}tasks\.md[\s\S]{0,1200}interfaces\.md/i);
 
@@ -966,8 +1071,16 @@ test('Step 2: the supervised design artifact gate binds mode, Continue, and over
   );
   assert.match(designGate, /Continue/i,
     'the supervised design gate should use Continue as its proceed label');
-  assert.match(designGate, /next-action[\s\S]{0,180}(?:overview-generation|supervised-terminal)|(?:overview-generation|supervised-terminal)[\s\S]{0,180}next-action/i,
-    'the supervised design gate should use the overview-generation/supervised-terminal next-action');
+  assert.match(
+    designGate,
+    /(?:overview_language|selected overview language)[\s\S]{0,360}(?:next-action[\s\S]{0,180}overview-generation|overview-generation[\s\S]{0,180}next-action)|(?:next-action[\s\S]{0,180}overview-generation|overview-generation[\s\S]{0,180}next-action)[\s\S]{0,360}(?:overview_language|selected overview language)/i,
+    'a selected overview language should select the overview-generation next-action'
+  );
+  assert.match(
+    designGate,
+    /(?:None|do[- ]not[- ]create|no overview language|without an overview)[\s\S]{0,420}(?:next-action[\s\S]{0,180}(?:supervised-terminal|no-generation)|(?:supervised-terminal|no-generation)[\s\S]{0,180}next-action)|(?:next-action[\s\S]{0,180}(?:supervised-terminal|no-generation)|(?:supervised-terminal|no-generation)[\s\S]{0,180}next-action)[\s\S]{0,420}(?:None|do[- ]not[- ]create|no overview language|without an overview)/i,
+    'None/do-not-create should select a no-generation supervised terminal'
+  );
 });
 
 test('Step 2: post-proceed report ordering remains after supervised gates without active-supervision interval stage enumeration', () => {
@@ -1034,7 +1147,10 @@ test('Step 4: E8 keeps the Ready-to-Propose payload fields and separator bounded
   assert.match(payload, /\*\*Capabilities in scope\*\*/);
   assert.match(payload, /\*\*Edge Cases\*\*/);
   assert.match(payload, /\*\*Implementation Details\*\*/);
-  assert.match(payload, /\*\*Overview language\*\*:\s*<value>/);
+  assert.match(
+    payload,
+    /\*\*Overview language\*\*:\s*(?:None|<[^>\n]*(?:selected|overview language|language)[^>\n]*>)/i
+  );
   assert.doesNotMatch(payload, /(?:next[- ]step|handoff)[\s\S]{0,240}`?\/sai-1-spec`?/i,
     'the E8 payload must not contain a path-specific next-step');
   assert.match(source.slice(selector), /After the selector response,[\s\S]{0,1200}path-specific Manual\/unmapped next-step handoff[\s\S]{0,420}\/sai-1-spec/i,
