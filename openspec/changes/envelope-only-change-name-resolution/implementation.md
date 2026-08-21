@@ -383,7 +383,7 @@ InvocationEnvelope:
 
 *(Non-testable RED/GREEN production path — this step updates structural tests that pin instruction sources. Existing tests broken by Steps 1–2 are repaired here.)*
 
-- [ ] In `test/command-launcher-card.test.js`:
+- [x] In `test/command-launcher-card.test.js`:
   1. Remove or stop requiring the `OPENCODE_LABELS` map as positive assertions.
   2. Replace the test `final wrappers: opencode label lines remain after envelope; Claude wrappers have no label line` so that **both** harnesses assert absence of any trailing labelled argument line matching `/\*\*[^*].*:\*\*.*\$ARGUMENTS/` (or equivalent), and so each of the seven known prefixes is explicitly asserted absent on every `commands/opencode/sai-*.md` file (including the three already-clean wrappers).
   3. Keep envelope three-field assertions and Claude empty `wrapper_echo_value` / opencode `$ARGUMENTS` envelope field assertions unchanged.
@@ -425,17 +425,17 @@ test('final wrappers: no trailing labelled argument lines on either harness', ()
 });
 ```
 
-- [ ] In `test/install-opencode.test.js`, replace the positive label assertion on the installed `sai-2-design.md` (currently `assert.ok(design.includes('**Change-name argument and and optional flags:** $ARGUMENTS'))`) with an absence assertion, e.g. `assert.doesNotMatch(design, /\*\*[^*\n]+:\*\*[^\n]*\$ARGUMENTS/)`, while keeping model/variant/subtask frontmatter checks.
+- [x] In `test/install-opencode.test.js`, replace the positive label assertion on the installed `sai-2-design.md` (currently `assert.ok(design.includes('**Change-name argument and and optional flags:** $ARGUMENTS'))`) with an absence assertion, e.g. `assert.doesNotMatch(design, /\*\*[^*\n]+:\*\*[^\n]*\$ARGUMENTS/)`, while keeping model/variant/subtask frontmatter checks.
 
-- [ ] In `test/design-coordinator-worker.test.js`, replace `assert.ok(opencode.includes('**Change-name argument and and optional flags:** $ARGUMENTS'))` with absence of that label and presence of envelope forwarding (`wrapper_echo_value` / `arguments_value`). Add or keep structural checks that design input with name + `--fast-track` in either token order is described as envelope-carried (no transcript-label extraction helper required).
+- [x] In `test/design-coordinator-worker.test.js`, replace `assert.ok(opencode.includes('**Change-name argument and and optional flags:** $ARGUMENTS'))` with absence of that label and presence of envelope forwarding (`wrapper_echo_value` / `arguments_value`). Add or keep structural checks that design input with name + `--fast-track` in either token order is described as envelope-carried (no transcript-label extraction helper required).
 
-- [ ] In `test/implement-coordinator-worker.test.js`, replace `assert.match(opencode, /\*\*Change-name argument:\*\* \$ARGUMENTS/)` with an absence assertion for that label while keeping launcher/coordinator/envelope assertions.
+- [x] In `test/implement-coordinator-worker.test.js`, replace `assert.match(opencode, /\*\*Change-name argument:\*\* \$ARGUMENTS/)` with an absence assertion for that label while keeping launcher/coordinator/envelope assertions.
 
-- [ ] In `test/apply-routed-architecture.test.js`, pin apply invocation consumption of `arguments_value` and parse-before-picker ordering (fast-track section before change-picker Fetch). Assert archive has no post-picker strip language if this file covers archive; otherwise rely on picker/card greps above. Do not reintroduce label requirements.
+- [x] In `test/apply-routed-architecture.test.js`, pin apply invocation consumption of `arguments_value` and parse-before-picker ordering (fast-track section before change-picker Fetch). Assert archive has no post-picker strip language if this file covers archive; otherwise rely on picker/card greps above. Do not reintroduce label requirements.
 
-- [ ] In `test/build-coordinator.test.js` and `test/explore-pipeline-selector.test.js`, ensure composition-minted envelope assertions still pass and no new labelled-line requirement is introduced. Only edit if a test currently requires an opencode label line (grep first).
+- [x] In `test/build-coordinator.test.js` and `test/explore-pipeline-selector.test.js`, ensure composition-minted envelope assertions still pass and no new labelled-line requirement is introduced. Only edit if a test currently requires an opencode label line (grep first).
 
-- [ ] Run scoped then full suite:
+- [x] Run scoped then full suite:
   - `node --test test/command-launcher-card.test.js`
   - `node --test test/install-opencode.test.js`
   - `node --test test/design-coordinator-worker.test.js`
@@ -448,9 +448,9 @@ test('final wrappers: no trailing labelled argument lines on either harness', ()
 ##### Step 3 Verification Checklist
 
 **Automated (agent runs before stopping):**
-- [ ] Each scoped `node --test test/<file>.test.js` above exits 0
-- [ ] `npm test` exits 0
-- [ ] Grep of tests no longer positively requires any of the seven known label prefixes on opencode wrappers
+- [x] Each scoped `node --test test/<file>.test.js` above exits 0
+- [x] `npm test` exits 0
+- [x] Grep of tests no longer positively requires any of the seven known label prefixes on opencode wrappers
 
 *(No Human checks — service-side structural tests with no observable browser behavior.)*
 
@@ -567,6 +567,17 @@ Both harness boot adapters already forward `wrapper_echo_value` and `arguments_v
 
 **STOP & COMMIT:** Stage and commit after Automated checks pass. Commit message suggestion: `docs(adr): add 0166 envelope-only change-name resolution superseding 0033-0035 and 0049`.
 
+## Appendix: Plan vs Final Implementation
+
+### Step 3 — Restore the existing explore closure contract
+
+**Plan:** Update the listed structural tests and keep the full suite passing.
+**Final:** Also adjusted the existing explore closure reminder wording so the
+full-suite contract assertion and the instruction use the same sentence shape.
+**Reason:** The full suite exposed a pre-existing wording mismatch outside the
+Step 3 test-file scope; the minimal instruction-only correction was required to
+make the authorized full-suite verification pass.
+
 ## Appendix: Execution Telemetry
 
 | Step | dispatch | phase | attempts | first_failure | note |
@@ -575,3 +586,5 @@ Both harness boot adapters already forward `wrapper_echo_value` and `arguments_v
 | 1 | green-direct | green | 1 | n/a | |
 | 2 | green-direct | implementation | 1 | n/a | |
 | 2 | green-direct | green | 1 | n/a | |
+| 3 | green-exception | red | 10 | assertion | Updated structural assertions and repaired the full-suite contract mismatch. |
+| 3 | green-exception | green | 1 | n/a | |

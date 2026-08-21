@@ -503,16 +503,21 @@ test('Step 2 worker contracts do not claim coordinator checklist authority', () 
 
 // ─── specs/apply-routed-card-set/spec.md — invocation loads and completion ──
 
-test('Step 2 the routed invocation loads the change picker before prerequisite dereferences and the full behavior set', () => {
+test('Step 2 the routed invocation parses arguments before the change picker and loads the full behavior set', () => {
   const invocation = artifact(APPLY_CARDS.invocation);
   const coordinator = artifact(APPLY_CARDS.coordinator);
   const combined = `${invocation}\n${coordinator}`;
+  assert.match(invocation, /arguments_value/,
+    'specs/apply-routed-card-set/spec.md: invocation must consume arguments_value');
+  assert.match(coordinator, /arguments_value/,
+    'specs/apply-routed-card-set/spec.md: apply coordinator must consume arguments_value');
+  const parse = combined.search(/(?:parse|parsing)[\s\S]{0,180}(?:arguments_value|--fast-track)|(?:arguments_value|--fast-track)[\s\S]{0,180}(?:parse|parsing)/i);
   const picker = combined.search(/change[- ]picker/i);
   const prereq = combined.search(/prereqs|prerequisite/i);
-  assert.ok(picker >= 0 && prereq >= 0,
-    'specs/apply-routed-card-set/spec.md: the picker and prerequisite loading must both exist');
-  assert.ok(picker < prereq,
-    'specs/apply-routed-card-set/spec.md: the change picker must load before prerequisite dereferences');
+  assert.ok(parse >= 0 && picker >= 0 && prereq >= 0,
+    'specs/apply-routed-card-set/spec.md: argument parsing, picker, and prerequisite loading must all exist');
+  assert.ok(parse < picker,
+    'specs/apply-routed-card-set/spec.md: arguments_value/fast-track parsing must occur before the change picker');
   assert.match(combined, /implementation\.md/,
     'specs/apply-routed-card-set/spec.md: the invocation must check implementation.md');
   assert.match(combined, /openspec/,
