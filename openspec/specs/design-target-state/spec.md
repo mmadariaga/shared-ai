@@ -1,7 +1,9 @@
 # design-target-state Specification
 
-## Requirements
+## Purpose
 
+Define the target-state design artifact and its derived Architecture Snapshot and File Manifest contracts.
+## Requirements
 ### Requirement: design.md opens with a Target State section
 
 `openspec/changes/{name}/design.md` SHALL begin with a `## Target State` section, authored and persisted by the design phase as the authoritative source for the change's finished-shape snapshot. `sai/commands/design/instructions.md` SHALL require that the `## Target State` section is emitted in `design.md` before the other design sections, and SHALL require that `openspec/changes/{name}/interfaces.md` begins directly with its first `## Step N` section — no `## Target State` section and no snapshot or manifest subsection SHALL be emitted in `interfaces.md`. The `change-overview.md` projection SHALL read the authoritative snapshot details from `design.md`; it SHALL render them under an adapted approval-oriented `## Target Architecture` section rather than project `## Target State`, and SHALL NOT author or synthesize source snapshot facts independently. The overview renders an adapted ## Target Architecture rather than ## Target State.
@@ -17,7 +19,7 @@ The section SHALL be written so a reader who reads only `## Target State` knows 
 
 When a change genuinely produces no finished shape expressible under either interpretation, `## Target State` SHALL still be emitted with an explicit `None` and a one-line reason, matching the `None` provisions of `design-manual-verification` and `design-deferred-decisions`. Silent omission of the section SHALL NOT occur.
 
-Directly beneath `## Target State`, `design.md` SHALL emit exactly the subsections required by the `Target State subsections remain exact in design.md only` requirement of the `change-overview-artifact` capability — the named subsection rule: `### Architecture Snapshot` followed by `### File Manifest`, with the `None` behavior that requirement defines. The `### File Manifest` subsection and its `None` sentinel are defined by the `File Manifest is a deterministic net fold over Files Affected` and `File Manifest has an independent None sentinel` requirements of this capability; the persisted manifest in `design.md` is authoritative, and the overview validates it against the recomputed fold per the `change-overview-artifact` capability's `Target State remains authoritative in design.md but is not projected into the overview` requirement.
+Directly beneath `## Target State`, `design.md` SHALL emit exactly the two sibling subsections required by the `Target State subsections remain exact in design.md only` requirement of the `change-overview-artifact` capability, in order: `### Architecture Snapshot` followed by `### File Manifest`. The `### Architecture Snapshot` subsection MAY contain the nested boundary blocks defined by the Architecture Snapshot requirements; those blocks are internal structure and SHALL NOT count as additional `###` siblings. No third `###` subsection SHALL be emitted inside `## Target State`. The `### File Manifest` subsection and its `None` sentinel are defined by the `File Manifest is a deterministic net fold over Files Affected` and `File Manifest has an independent None sentinel` requirements of this capability; the persisted manifest in `design.md` is authoritative, and the overview validates it against the recomputed fold per the `change-overview-artifact` capability's `Target State remains authoritative in design.md but is not projected into the overview` requirement.
 
 #### Scenario: Target State is the first section of design.md
 
@@ -49,9 +51,15 @@ Directly beneath `## Target State`, `design.md` SHALL emit exactly the subsectio
 - **THEN** the finished shape is fully determined from that section
 - **AND** no `## Step N` section is required to interpret it
 
+#### Scenario: nested snapshot structure does not add a Target State sibling
+
+- **WHEN** `design.md` contains both Architecture Snapshot boundary blocks
+- **THEN** `## Target State` contains exactly `### Architecture Snapshot` followed by `### File Manifest`
+- **AND** the nested external-first/internal-second blocks do not become a third `###` subsection
+
 ### Requirement: Target State does not replace or duplicate per-step interfaces
 
-`## Target State` SHALL NOT remove the obligation to emit per-step `## Interfaces` and `## Test assertions` content for each step that introduces an interface surface. The per-step sections remain the authoritative record of *which step* introduces *which* signature; `## Target State` is the destination view.
+`## Target State` SHALL NOT remove the obligation to emit per-step `## Interfaces` and `## Test assertions` content for each step that introduces an interface surface. The per-step sections remain the authoritative record of *which step* introduces *which* signature; `## Target State` is the destination view. The external/internal grouping in `### Architecture Snapshot` is a review classification only and SHALL NOT change step attribution, detailed signatures, or exact test assertions.
 
 Where a signature appears in both `## Target State` and a `## Step N` section, the `## Step N` section SHALL remain the authority on step attribution.
 
@@ -65,6 +73,12 @@ Where a signature appears in both `## Target State` and a `## Step N` section, t
 - **WHEN** a step introduces neither a new/modified public interface nor a testable assertion
 - **THEN** that step is still omitted from `interfaces.md` entirely
 - **AND** the presence of `## Target State` in `design.md` does not cause an empty `## Step N` section to be emitted for it
+
+#### Scenario: snapshot grouping does not replace step authority
+
+- **WHEN** a public method is listed in either Architecture Snapshot boundary block and introduced by a particular step
+- **THEN** the matching `interfaces.md` step remains authoritative for that method's signature, attribution, and test assertions
+- **AND** the snapshot's block classification does not create a second per-step contract
 
 ### Requirement: File Manifest is a deterministic net fold over Files Affected
 
@@ -183,13 +197,14 @@ The manifest SHALL be a concise derivative review surface, not a replacement for
 
 ### Requirement: File Manifest has an independent None sentinel
 
-When the net fold produces no lines, `### File Manifest` SHALL carry the exact sentinel `None — no files affected` followed by a one-line reason. The empty fold is reachable only when the change nets to nothing: every `**Files Affected**` entry cancels to ∅ — each path the change touches is created and later deleted within the same change. A conforming reason line is `None — no files affected (every touched path is created and deleted within the change, so nothing remains at target state)`. The sentinel SHALL be independent of the `### Architecture Snapshot`'s `None — no planned public surfaces` sentinel: a change that plans no public surfaces SHALL still emit its full manifest beneath the snapshot's `None`, and the two subsections' sentinels SHALL NOT interact or suppress each other.
+When the net fold produces no lines, `### File Manifest` SHALL carry the exact sentinel `None — no files affected` followed by a one-line reason. The empty fold is reachable only when the change nets to nothing: every `**Files Affected**` entry cancels to ∅ — each path the change touches is created and later deleted within the same change. A conforming reason line is `None — no files affected (every touched path is created and deleted within the change, so nothing remains at target state)`. The sentinel SHALL be independent of the whole `### Architecture Snapshot` inventory's shared `None — no planned public surfaces` sentinel and of either boundary block's empty rendering: a change that plans no public surfaces SHALL still emit its full manifest beneath the snapshot's shared sentinel, and the two subsections' sentinels SHALL NOT interact or suppress each other.
 
 #### Scenario: docs-only change emits snapshot None and a full manifest
 
-- **WHEN** a change touches only documentation files and plans no public classes, interfaces, or methods
-- **THEN** `### Architecture Snapshot` carries `None — no planned public surfaces`
+- **WHEN** a change touches only documentation files and plans no externally consumable or internal public surfaces
+- **THEN** `### Architecture Snapshot` carries the shared `None — no planned public surfaces` sentinel
 - **AND** `### File Manifest` directly beneath it still carries the full folded list of the change's files
+- **AND** no empty boundary-block rendering is emitted when the whole snapshot inventory is empty
 
 #### Scenario: empty fold emits the manifest sentinel
 
@@ -222,3 +237,124 @@ The `## Flagged ambiguities` section of `GLOSSARY.md` SHALL contain an entry res
 - **WHEN** `GLOSSARY.md` is read after the change lands
 - **THEN** `## Flagged ambiguities` contains an entry resolving the per-step field vs the aggregated subsection overload
 - **AND** a rationale for the split is stated
+
+### Requirement: Architecture Snapshot is partitioned by caller boundary
+
+When `### Architecture Snapshot` contains at least one planned public surface, it SHALL contain exactly two ordered nested blocks: `#### External Surfaces` first and `#### Internal Public Surfaces` second. A surface SHALL be classified as external when callers, users, or integrations outside the repository's controlled caller boundary may consume or depend on it. A surface SHALL be classified as internal public when it is intentionally public but its callers are constrained to the repository or another explicitly controlled part of the change. When classification is unclear, the surface SHALL default to `External Surfaces`.
+
+The external block SHALL inventory externally consumable typed commands, produced artifact formats, installed file layout, and other public promises that the change plans, including public classes, interfaces, and methods when their callers are uncontrolled. The internal block SHALL inventory internal public classes, interfaces, methods, and other public surfaces that the change plans when their callers are controlled. Each surface SHALL be listed once with its project-root-relative path or owning location and concise portable-ASCII relationships or execution flow where relevant. The snapshot SHALL remain surface-oriented: it MAY identify an installed layout or produced format as a public surface, but SHALL NOT duplicate every `File Manifest` entry as a surface merely because a file is touched. The snapshot SHALL NOT introduce or author a separate Endpoint Map block, endpoint-map table, or endpoint-map announcement; endpoint-like public promises belong in the external block.
+
+#### Scenario: external surfaces precede internal public surfaces
+
+- **WHEN** a change exposes a typed command and produced artifact format to uncontrolled consumers and also changes a public helper used only by repository code
+- **THEN** the typed command and artifact format appear under `#### External Surfaces`
+- **AND** the helper appears under `#### Internal Public Surfaces`
+- **AND** the external block is rendered before the internal block
+
+#### Scenario: installed layout is an external surface without replacing the manifest
+
+- **WHEN** a change changes the installed file layout that consumers locate or load
+- **THEN** the layout promise appears once under `#### External Surfaces` with its owning path
+- **AND** the individual changed files remain represented by `### File Manifest` rather than being copied into the snapshot as substitute entries
+
+#### Scenario: unclear boundary classification is conservative
+
+- **WHEN** the available evidence does not establish whether callers of a planned public method are controlled
+- **THEN** the method appears under `#### External Surfaces`
+- **AND** it is not silently treated as internal
+
+#### Scenario: endpoint-map structure is not reintroduced
+
+- **WHEN** a design author writes the Architecture Snapshot
+- **THEN** no Endpoint Map heading, endpoint-map block, endpoint table, or endpoint-map announcement is authored
+- **AND** any endpoint-like public promise is reviewed as an external surface
+
+### Requirement: Architecture Snapshot has one shared empty-inventory sentence
+
+When neither boundary has a planned public surface, `### Architecture Snapshot` SHALL emit no nested boundary-block headings and SHALL carry exactly one shared emptiness sentence, `None — no planned public surfaces`, followed by one line explaining why the complete inventory is empty. This shared sentence describes the whole inventory and SHALL NOT be repeated once either block has an entry. When one boundary has no entries but the other has at least one, both nested blocks SHALL still be emitted in their required order; the empty block SHALL use its own block-specific rendering, `None — no planned externally consumable surfaces` for `#### External Surfaces` or `None — no planned internal public surfaces` for `#### Internal Public Surfaces`, followed by a one-line reason. A block-specific rendering SHALL NOT use or be substituted for the shared `None — no planned public surfaces` sentence. These snapshot renderings SHALL remain independent from the File Manifest sentinel.
+
+#### Scenario: both boundary blocks are empty
+
+- **WHEN** a change plans no externally consumable surfaces and no internal public surfaces
+- **THEN** `### Architecture Snapshot` contains one `None — no planned public surfaces` sentence and one explanatory reason line
+- **AND** it contains neither `#### External Surfaces` nor `#### Internal Public Surfaces`
+
+#### Scenario: only the external block is empty
+
+- **WHEN** a change plans internal public surfaces but no externally consumable surfaces
+- **THEN** `#### External Surfaces` appears first with `None — no planned externally consumable surfaces` and its one-line reason
+- **AND** `#### Internal Public Surfaces` follows with the planned internal entries
+- **AND** the shared `None — no planned public surfaces` sentence is not emitted
+
+#### Scenario: only the internal block is empty
+
+- **WHEN** a change plans externally consumable surfaces but no internal public surfaces
+- **THEN** `#### External Surfaces` appears with the planned external entries
+- **AND** `#### Internal Public Surfaces` follows with `None — no planned internal public surfaces` and its one-line reason
+- **AND** the shared `None — no planned public surfaces` sentence is not emitted
+
+#### Scenario: snapshot emptiness does not suppress the manifest
+
+- **WHEN** the complete Architecture Snapshot inventory is empty but the change has files that remain at target state
+- **THEN** the shared snapshot sentence is emitted
+- **AND** the full deterministic `### File Manifest` is still emitted independently
+
+### Requirement: Derived change-overview rendering preserves snapshot boundary order
+
+The `change-overview.md` generator SHALL derive Architecture Snapshot content only from `design.md` and, when it renders the snapshot under `## Target Architecture` and its fixed `### Snapshot` subsection, SHALL render exactly two nested headings when the source inventory has at least one surface: `#### External Surfaces` followed by `#### Internal Public Surfaces`. These two nested headings are structural anchors, not editorial subsections: they SHALL remain in English regardless of the invocation-scoped `overview_language` and SHALL NOT be translated. The external entries and their source-grounded prose SHALL appear under the first heading, and the internal entries and their source-grounded prose SHALL appear under the second. It MAY condense source prose under the existing overview fidelity rules, but it SHALL NOT flatten the two groups into an undifferentiated list, reverse their order, or invent a surface. When the source snapshot is entirely empty, the overview SHALL continue the existing projection rule that it does not emit the source public-surface `None — no planned public surfaces` sentinel or either nested boundary heading. When the source has one empty boundary block, the overview SHALL render both nested headings in the same order and SHALL retain the corresponding source-grounded block-specific empty sentinel under the correct heading rather than turning it into a public-surface sentinel.
+
+#### Scenario: non-empty division propagates to the overview
+
+- **WHEN** `design.md` contains external and internal Architecture Snapshot blocks
+- **THEN** the derived overview's `### Snapshot` contains `#### External Surfaces` followed by `#### Internal Public Surfaces`
+- **AND** the external surfaces are rendered under the first nested heading before the internal public surfaces under the second
+- **AND** both nested headings remain in English even when `overview_language` is non-English
+- **AND** the overview does not merge the groups or reverse their order
+
+#### Scenario: whole-inventory sentinel remains source-only
+
+- **WHEN** `design.md` contains only the shared `None — no planned public surfaces` sentence
+- **THEN** the overview's `### Snapshot` contains neither `#### External Surfaces` nor `#### Internal Public Surfaces`
+- **AND** the overview does not copy the shared sentinel as a rendered public-surface promise
+- **AND** it does not synthesize snapshot facts from the proposal, specs, tasks, or interfaces
+
+#### Scenario: one empty block remains distinguishable when projected
+
+- **WHEN** `design.md` contains one non-empty boundary block and one block-specific empty rendering
+- **THEN** the overview's `### Snapshot` contains `#### External Surfaces` followed by `#### Internal Public Surfaces`
+- **AND** the correct nested heading carries the source-grounded block-specific empty sentinel while external content remains before internal content
+- **AND** both nested headings remain in English even when `overview_language` is non-English
+- **AND** it does not replace the block-specific state with the shared whole-inventory sentinel
+
+### Requirement: Architecture Snapshot boundary terms are defined in the glossary
+
+The project-root `GLOSSARY.md` SHALL contain exactly one `**External Surface**` entry defining an externally consumable public promise whose callers, users, or integrations may be outside the repository's controlled caller boundary, and exactly one `**Internal Public Surface**` entry defining a public promise whose callers are constrained to the repository or another explicitly controlled part of the change. Each entry SHALL carry an `*Avoid*` line that rejects ambiguous endpoint/API or private-surface aliases. The `## Relationships` section SHALL link **Architecture Snapshot** to an external-first **External Surface** block and an **Internal Public Surface** block. The `## Flagged ambiguities` section SHALL distinguish the terms by caller boundary: **External Surface** names uncontrolled callers and **Internal Public Surface** names controlled callers.
+
+#### Scenario: boundary terms have canonical glossary entries
+
+- **WHEN** `GLOSSARY.md` is read after the change's terminology update
+- **THEN** `## Language` contains exactly one `**External Surface**` entry and exactly one `**Internal Public Surface**` entry
+- **AND** each entry carries an `*Avoid*` line
+
+#### Scenario: Architecture Snapshot relationships name both blocks
+
+- **WHEN** the glossary relationships are read
+- **THEN** an entry links **Architecture Snapshot** to the external-first **External Surface** block and the **Internal Public Surface** block
+- **AND** the external block is named before the internal block
+
+#### Scenario: caller-boundary terms are distinguished
+
+- **WHEN** a glossary reader encounters the distinction between the two boundary terms
+- **THEN** `## Flagged ambiguities` states that **External Surface** names uncontrolled callers and **Internal Public Surface** names controlled callers
+- **AND** the terms are not treated as synonyms
+
+### Requirement: Snapshot boundary changes are prospective and preserve existing artifacts
+
+The boundary split SHALL apply to future design authoring and to derived rendering of source artifacts that are generated or regenerated under the updated contract. The spec change SHALL NOT rewrite existing `openspec/changes/{name}/design.md` documents solely to introduce the two boundary blocks. The Architecture Snapshot remains a derivative review surface and SHALL NOT become a new source of truth for per-step contracts or a reason to rewrite an existing design document.
+
+#### Scenario: existing design documents are not rewritten
+
+- **WHEN** the updated design contract is installed while an existing change already has a `design.md`
+- **THEN** that existing `design.md` is not rewritten solely because the Architecture Snapshot contract changed
+- **AND** future authoring follows the external-first/internal-second contract
+

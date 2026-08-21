@@ -185,23 +185,20 @@ test('Target State is the first section of design.md', () => {
 
 test('sentinel emitted when no step admits a contract', () => {
   const instruction = artifact('sai/commands/design/instructions.md');
-  const schema = artifact('openspec/schemas/sai-workflow/schema.yaml');
-  const interfacesTemplate = artifact('openspec/schemas/sai-workflow/templates/interfaces.md');
 
-  for (const contract of [instruction, schema, interfacesTemplate]) {
-    assert.match(contract, /None — no step contracts/,
-      'the contract should define the exact None — no step contracts sentinel');
-  }
+  assert.match(instruction, /None — no step contracts/,
+    'the design instruction should define the exact None — no step contracts sentinel');
 });
 
 test('Target State present in design surfaces, absent from interfaces template', () => {
   const instruction = artifact('sai/commands/design/instructions.md');
-  const schema = artifact('openspec/schemas/sai-workflow/schema.yaml');
   const designTemplate = artifact('openspec/schemas/sai-workflow/templates/design.md');
   const interfacesTemplate = artifact('openspec/schemas/sai-workflow/templates/interfaces.md');
 
-  assert.match(instruction, /## Target State/);
-  assert.match(schema, /## Target State/);
+  for (const heading of ['## Target State', '### Architecture Snapshot', '### File Manifest']) {
+    assert.match(instruction, new RegExp(heading.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')),
+      `design instruction should contain ${heading}`);
+  }
 
   const firstTopLevel = designTemplate.search(/^## /m);
   assert.ok(firstTopLevel !== -1, 'design template should have a top-level heading');
@@ -774,7 +771,7 @@ test('active closure is question-first and repeats the exact crystallize reminde
   const explore = artifact('sai/commands/explore/instructions.md');
 
   assert.match(explore, /When a genuine unresolved question remains and its answer could change the idea, end with that relevant question/);
-  assert.match(explore, /When no genuine unresolved question remains, end with this concise reminder/);
+  assert.match(explore, /When no genuine unresolved question remains(?:, including when the only apparent question is phase navigation)?, end with this concise reminder/);
   assert.match(explore, /Say `crystallize` when ready; crystallization generates the paste-ready prompt for `\/sai-1-spec`/);
   assert.match(explore, /Evaluate this rule again on every later successful qualifying turn/);
   assert.match(explore, /fallback reminder repeats even after readiness has already been emitted/);
@@ -1063,4 +1060,439 @@ test('navigation re-enters the same picker after every non-closing turn and keep
     'the handoff should remain exactly one findings block');
   assert.match(explore, /minimal close (?:acknowledgment|acknowledgement)|Loop closed/i,
     'loop termination should emit a minimal close acknowledgment');
+});
+
+// ─── RED slice: single-source design artifact contract pointers ─────────────
+
+const DESIGN_ARTIFACT_POINTERS = [
+  { id: 'design', anchor: '### Generate design.md' },
+  { id: 'tasks', anchor: '### Generate tasks.md' },
+  { id: 'interfaces', anchor: '### Generate interfaces.md' },
+];
+
+const DESIGN_INSTRUCTION_FORBIDDEN_SUBSTRINGS = [
+  'ADR/DDR',
+  'Record family',
+  'Provenance',
+  'Verify-first',
+  'Architecture Snapshot',
+  'File Manifest',
+  'None — no step contracts',
+  'Endpoint Map',
+  '**Routing**',
+  '**Files Affected**',
+  '**Testing Strategy**',
+];
+
+const PRE_CHANGE_DESIGN_GRAPH = Object.freeze({
+  design: { generates: 'design.md', requires: ['proposal', 'specs'] },
+  tasks: { generates: 'tasks.md', requires: ['specs', 'design'] },
+  interfaces: { generates: 'interfaces.md', requires: ['tasks'] },
+  apply: { requires: ['tasks', 'implementation'], tracks: ['implementation.md'] },
+});
+
+function escapeSchemaContractRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function schemaIdHeader(line) {
+  return line.match(/^(\s*)(?:-\s*)?id:\s*([A-Za-z0-9_-]+)\s*(?:#.*)?$/);
+}
+
+function schemaEntryForContract(schema, id) {
+  const lines = schema.split(/\r?\n/);
+  const start = lines.findIndex(line => {
+    const match = schemaIdHeader(line);
+    return match && match[2] === id;
+  });
+  assert.ok(start >= 0, `schema.yaml should contain the ${id} artifact entry`);
+
+  const header = schemaIdHeader(lines[start]);
+  const headerIndent = header[1].length;
+  let end = lines.length;
+  for (let index = start + 1; index < lines.length; index += 1) {
+    const match = schemaIdHeader(lines[index]);
+    if (match && match[1].length <= headerIndent) {
+      end = index;
+      break;
+    }
+  }
+  return lines.slice(start, end).join('\n');
+}
+
+function schemaLiteralBlockForContract(section, field) {
+  const lines = section.split(/\r?\n/);
+  const markerPattern = new RegExp(`^(\\s*)${field}:\\s*\\|[+-]?\\s*$`);
+  const markerIndex = lines.findIndex(line => markerPattern.test(line));
+  assert.ok(markerIndex >= 0, `${field} should be a literal block`);
+
+  const markerIndent = lines[markerIndex].match(/^\s*/)[0].length;
+  let end = lines.length;
+  for (let index = markerIndex + 1; index < lines.length; index += 1) {
+    const line = lines[index];
+    if (line.trim() && line.match(/^\s*/)[0].length <= markerIndent) {
+      end = index;
+      break;
+    }
+  }
+
+  const body = lines.slice(markerIndex + 1, end);
+  const nonEmpty = body.filter(line => line.trim());
+  assert.ok(nonEmpty.length > 0, `${field} literal block should not be empty`);
+  const contentIndent = Math.min(...nonEmpty.map(line => line.match(/^\s*/)[0].length));
+  return body.map(line => line.trim() ? line.slice(contentIndent) : '').join('\n').trim();
+}
+
+function schemaFieldForContract(section, field) {
+  const lines = section.split(/\r?\n/);
+  const fieldPattern = new RegExp(`^([ \\t]*)${field}:[ \\t]*(.*)$`);
+  const fieldIndex = lines.findIndex(line => fieldPattern.test(line));
+  assert.ok(fieldIndex >= 0, `schema section should contain ${field}`);
+  const match = lines[fieldIndex].match(fieldPattern);
+  if (/^\|[+-]?\s*$/.test(match[2].trim())) {
+    return schemaLiteralBlockForContract(section, field);
+  }
+  if (match[2].trim() === '') {
+    const fieldIndent = match[1].length;
+    const items = [];
+    for (let index = fieldIndex + 1; index < lines.length; index += 1) {
+      const line = lines[index];
+      if (!line.trim()) continue;
+      const indent = line.match(/^[ \\t]*/)[0].length;
+      if (indent < fieldIndent || (indent === fieldIndent && !line.trim().startsWith('-'))) break;
+      if (line.trim().startsWith('-')) items.push(line.trim().slice(1).trim());
+    }
+    if (items.length > 0) return `[${items.join(', ')}]`;
+  }
+  return match[2].trim().replace(/^(['"])(.*)\1$/, '$2');
+}
+
+function schemaTopLevelSectionForContract(schema, name) {
+  const lines = schema.split(/\r?\n/);
+  const headerPattern = new RegExp(`^(\\s*)${name}:\\s*$`);
+  const start = lines.findIndex(line => headerPattern.test(line));
+  assert.ok(start >= 0, `schema.yaml should contain the ${name} section`);
+
+  const headerIndent = lines[start].match(/^\s*/)[0].length;
+  let end = lines.length;
+  for (let index = start + 1; index < lines.length; index += 1) {
+    const line = lines[index];
+    if (line.trim() && line.match(/^\s*/)[0].length <= headerIndent) {
+      end = index;
+      break;
+    }
+  }
+  return lines.slice(start, end).join('\n');
+}
+
+function schemaListForContract(value) {
+  const normalized = value.trim();
+  const content = normalized.startsWith('[')
+    ? normalized.slice(1, normalized.lastIndexOf(']'))
+    : normalized;
+  if (!content.trim()) return [];
+  return content.split(',').map(item => item.trim().replace(/^-\s*/, '').replace(/^(['"])(.*)\1$/, '$2'));
+}
+
+test('design artifact schema instructions are non-empty command-owned pointers with no duplicated contract detail', () => {
+  const schema = artifact('openspec/schemas/sai-workflow/schema.yaml');
+
+  for (const { id, anchor } of DESIGN_ARTIFACT_POINTERS) {
+    const entry = schemaEntryForContract(schema, id);
+    const instruction = schemaLiteralBlockForContract(entry, 'instruction');
+
+    assert.ok(instruction.trim().length > 0, `${id} instruction should be non-empty`);
+    assert.match(instruction, /sai\/commands\/design\/instructions\.md/,
+      `${id} instruction should point to the shared design instruction`);
+    assert.match(instruction, new RegExp(escapeSchemaContractRegExp(anchor)),
+      `${id} instruction should name its generation anchor`);
+    for (const forbidden of DESIGN_INSTRUCTION_FORBIDDEN_SUBSTRINGS) {
+      assert.doesNotMatch(instruction, new RegExp(escapeSchemaContractRegExp(forbidden)),
+        `${id} instruction should not duplicate ${forbidden}`);
+    }
+  }
+});
+
+test('design artifact schema preserves the fixed pre-change graph baseline and does not advertise Endpoint Map', () => {
+  const schema = artifact('openspec/schemas/sai-workflow/schema.yaml');
+  const design = schemaEntryForContract(schema, 'design');
+  const description = schemaFieldForContract(design, 'description');
+  assert.doesNotMatch(description, /Endpoint Map/,
+    'the design description should not advertise Endpoint Map');
+
+  for (const id of ['design', 'tasks', 'interfaces']) {
+    const entry = schemaEntryForContract(schema, id);
+    const expected = PRE_CHANGE_DESIGN_GRAPH[id];
+    assert.equal(schemaFieldForContract(entry, 'generates'), expected.generates,
+      `${id} should preserve its pre-change generated artifact`);
+    assert.deepEqual(schemaListForContract(schemaFieldForContract(entry, 'requires')), expected.requires,
+      `${id} should preserve its pre-change requirements`);
+  }
+
+  const apply = schemaTopLevelSectionForContract(schema, 'apply');
+  assert.deepEqual(schemaListForContract(schemaFieldForContract(apply, 'requires')),
+    PRE_CHANGE_DESIGN_GRAPH.apply.requires,
+    'apply should preserve its pre-change requirements');
+  assert.deepEqual(schemaListForContract(schemaFieldForContract(apply, 'tracks')),
+    PRE_CHANGE_DESIGN_GRAPH.apply.tracks,
+    'apply should preserve tracking of implementation.md');
+});
+
+// ─── RED slice: single-source design artifact skeleton oracle ───────────────
+
+const DESIGN_SKELETON_TEMPLATES = [
+  {
+    id: 'design',
+    path: 'openspec/schemas/sai-workflow/templates/design.md',
+    anchor: '### Generate design.md',
+  },
+  {
+    id: 'tasks',
+    path: 'openspec/schemas/sai-workflow/templates/tasks.md',
+    anchor: '### Generate tasks.md',
+  },
+  {
+    id: 'interfaces',
+    path: 'openspec/schemas/sai-workflow/templates/interfaces.md',
+    anchor: '### Generate interfaces.md',
+  },
+];
+
+const DESIGN_SKELETON_AUTHORITY = 'sai/commands/design/instructions.md';
+const DESIGN_SKELETON_FORBIDDEN = [
+  'Endpoint Map',
+  'None — no step contracts',
+  'Hard to reverse',
+  'Surprising without context',
+  'Real trade-off',
+  'domain invariant',
+  'ordered routing test',
+];
+
+const DESIGN_TOP_LEVEL_SKELETON = [
+  '## Target State',
+  '## Context',
+  '## Goals / Non-Goals',
+  '## Decisions',
+  '## Risks / Trade-offs',
+  '## Migration Plan',
+  '## Open Questions',
+  '## Deferred',
+  '## Manual Verification',
+];
+
+const TASKS_SKELETON_MARKERS = [
+  '**Routing**',
+  '**Files Affected**',
+  '**What Will Be Done**',
+  '**Testing Strategy**',
+  '**Existing Tests Broken**',
+  '## Required Documentation',
+  '### Local files',
+  '### Spec files',
+  '### External URLs',
+  '## Implementation Context',
+];
+
+function countSkeletonLiteral(source, value) {
+  return source.split(value).length - 1;
+}
+
+function assertSkeletonOrder(source, markers, label) {
+  let cursor = -1;
+  for (const marker of markers) {
+    const position = source.indexOf(marker);
+    assert.ok(position > cursor,
+      `${label} should contain ${marker} after the preceding skeleton marker`);
+    cursor = position;
+  }
+}
+
+test('RED skeleton oracle pins the single-source design artifact contracts', () => {
+  const templates = Object.fromEntries(
+    DESIGN_SKELETON_TEMPLATES.map(({ id, path: templatePath }) => [id, artifact(templatePath)]),
+  );
+  const design = templates.design;
+  const tasks = templates.tasks;
+  const interfaces = templates.interfaces;
+
+  assertSkeletonOrder(design, DESIGN_TOP_LEVEL_SKELETON, 'design.md');
+
+  const targetStateStart = design.indexOf('## Target State');
+  const nextTopLevel = design.indexOf('\n## ', targetStateStart + '## Target State'.length);
+  const targetState = design.slice(targetStateStart, nextTopLevel === -1 ? undefined : nextTopLevel);
+  assertSkeletonOrder(targetState, [
+    '### Architecture Snapshot',
+    '### File Manifest',
+  ], 'design.md ## Target State');
+  assert.doesNotMatch(design, /^## Endpoint Map\s*$/m,
+    'design.md must not contain an ## Endpoint Map section');
+
+  assert.match(design, /^\*\*Provenance\*\*:\s*(?:<!--.*-->)?\s*$/m,
+    'design.md must contain a **Provenance**: marker with an optional inline placeholder');
+  assert.match(design, /^\*\*Record family\*\*:\s*(?:<!--.*-->)?\s*$/m,
+    'design.md must contain a **Record family**: marker with an optional inline placeholder');
+
+  assertSkeletonOrder(tasks, TASKS_SKELETON_MARKERS, 'tasks.md');
+
+  assert.match(interfaces, /^\*\*Interfaces\*\*/m,
+    'interfaces.md must contain the **Interfaces** marker');
+  assert.match(interfaces, /^\*\*Test assertions\*\*/m,
+    'interfaces.md must contain the **Test assertions** marker');
+  assert.match(interfaces, /^## Step (?:N|\d+)(?:\b|\s|:|—|-)/m,
+    'interfaces.md must contain a ## Step N heading');
+
+  for (const { id, anchor } of DESIGN_SKELETON_TEMPLATES) {
+    const template = templates[id];
+    assert.equal(countSkeletonLiteral(template, DESIGN_SKELETON_AUTHORITY), 1,
+      `${id}.md must have exactly one shared design-instruction authority path`);
+    assert.equal(countSkeletonLiteral(template, anchor), 1,
+      `${id}.md must have exactly one ${anchor} generation anchor`);
+
+    for (const forbidden of DESIGN_SKELETON_FORBIDDEN) {
+      assert.equal(template.includes(forbidden), false,
+        `${id}.md must not retain the forbidden ${forbidden} substring`);
+    }
+  }
+
+  assert.doesNotMatch(design, /^\s*\|\s*Method\s*\|/m,
+    'design.md must not retain an endpoint Method table header');
+  assert.doesNotMatch(design, /^\s*\|\s*Path\s*\|/m,
+    'design.md must not retain an endpoint Path table header');
+});
+
+// ─── Step 5: split architecture snapshot by boundary ───────────────────────
+
+const ARCHITECTURE_BOUNDARY_HEADINGS = [
+  '#### External Surfaces',
+  '#### Internal Public Surfaces',
+];
+const ARCHITECTURE_SECTION_HEADINGS = [
+  '### Architecture Snapshot',
+  '### File Manifest',
+];
+const WHOLE_INVENTORY_EMPTY_SENTINEL = 'None — no planned public surfaces';
+const FILE_MANIFEST_EMPTY_SENTINEL = 'None';
+
+function escapeArchitectureLiteral(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function assertExternalFirstBoundaryHeadings(source, label) {
+  let cursor = source.indexOf('### Architecture Snapshot');
+  if (cursor === -1) cursor = source.indexOf('### Snapshot');
+  assert.ok(cursor >= 0, `${label} should declare its architecture snapshot heading`);
+
+  const nextSiblingOffset = source.slice(cursor + 4).search(/\n### (?!#)/);
+  const nextSibling = nextSiblingOffset === -1 ? -1 : cursor + 4 + nextSiblingOffset;
+  const architecture = source.slice(cursor, nextSibling === -1 ? undefined : nextSibling);
+  for (const heading of ARCHITECTURE_BOUNDARY_HEADINGS) {
+    const position = architecture.indexOf(heading);
+    assert.ok(position >= 0,
+      `${label} should contain ${heading} after its architecture snapshot heading`);
+    assert.ok(position > 0,
+      `${label} should nest ${heading} below its architecture snapshot heading`);
+    cursor = position;
+  }
+}
+
+function assertArchitectureEmptinessContract(source, label) {
+  const wholeInventory = escapeArchitectureLiteral(WHOLE_INVENTORY_EMPTY_SENTINEL);
+  assert.match(source, new RegExp(`(?:whole|entire|shared)[\\s\\-]*inventory[\\s\\S]{0,260}${wholeInventory}|${wholeInventory}[\\s\\S]{0,260}(?:whole|entire|shared)[\\s\\-]*inventory`, 'i'),
+    `${label} should define a shared whole-inventory empty form`);
+  assert.match(source, /(?:External|external)[\s\S]{0,260}None|None[\s\S]{0,260}(?:External|external)/,
+    `${label} should define an external block-specific empty form`);
+  assert.match(source, /(?:Internal|internal)[\s\S]{0,260}None|None[\s\S]{0,260}(?:Internal|internal)/,
+    `${label} should define an internal block-specific empty form`);
+  if (label === 'live design instructions') {
+    assert.match(source, new RegExp(`File Manifest[\\s\\S]{0,320}${escapeArchitectureLiteral(FILE_MANIFEST_EMPTY_SENTINEL)}`, 'i'),
+      `${label} should keep File Manifest emptiness independently representable`);
+    assert.match(source, /(?:independent|separate|own|regardless)[\s\S]{0,180}(?:File Manifest|manifest)|(?:File Manifest|manifest)[\s\S]{0,180}(?:independent|separate|own|regardless)/i,
+      `${label} should keep File Manifest None independent of architecture emptiness`);
+  }
+}
+
+test('Step 5: live design instructions and the overview contract use external-first nested boundary headings', () => {
+  for (const [label, relativePath] of [
+    ['live design instructions', 'sai/commands/design/instructions.md'],
+    ['overview contract', 'sai/commands/design/change-overview.md'],
+  ]) {
+    assertExternalFirstBoundaryHeadings(artifact(relativePath), label);
+  }
+});
+
+test('Step 5: live design and overview contracts distinguish shared, block-specific, and File Manifest empty forms', () => {
+  for (const [label, relativePath] of [
+    ['live design instructions', 'sai/commands/design/instructions.md'],
+    ['overview contract', 'sai/commands/design/change-overview.md'],
+  ]) {
+    assertArchitectureEmptinessContract(artifact(relativePath), label);
+  }
+  assert.equal(FILE_MANIFEST_EMPTY_SENTINEL, 'None', 'File Manifest should retain its plain None sentinel literal');
+  assert.match(WHOLE_INVENTORY_EMPTY_SENTINEL, /^None\s+[—-]\s+no planned public surfaces$/,
+    'the shared whole-inventory sentinel should remain a fixed English literal');
+});
+
+test('Step 5: overview generation omits a source-only whole-inventory sentinel but retains one empty boundary block', () => {
+  const overview = artifact('sai/commands/design/change-overview.md');
+
+  assert.match(overview,
+    new RegExp(`source Architecture Snapshot[\\s\\S]{0,320}${escapeArchitectureLiteral(WHOLE_INVENTORY_EMPTY_SENTINEL)}[\\s\\S]{0,260}(?:omit|suppress|not render)`, 'i'),
+    'the overview contract should omit the source-only whole-inventory sentinel');
+  assert.match(overview,
+    /exactly one boundary is empty[\s\S]{0,320}retain the source-grounded block-specific sentinel[\s\S]{0,320}never replace it with the shared whole-inventory sentence/i,
+    'the overview contract should retain a block-specific sentinel when one boundary block is empty');
+});
+
+test('Step 5: overview structural boundary headings remain English regardless of overview_language', () => {
+  const overview = artifact('sai/commands/design/change-overview.md');
+
+  assert.match(overview, /overview_language/);
+  assert.match(overview,
+    /(?:nested|boundary|structural)[\s\S]{0,220}heading(?:s| labels?)[\s\S]{0,260}(?:always|remain|stay)[\s\S]{0,120}English|(?:always|remain|stay)[\s\S]{0,120}English[\s\S]{0,260}(?:nested|boundary|structural)[\s\S]{0,220}heading/i,
+    'nested boundary headings should remain English');
+  assert.match(overview,
+    /(?:regardless|independent|irrespective|does not depend)[\s\S]{0,180}overview_language|overview_language[\s\S]{0,180}(?:regardless|independent|irrespective|does not change)/i,
+    'overview_language should not translate structural boundary headings');
+});
+
+test('Step 5: unclear boundary classification falls back to external and File Manifest is a direct inventory', () => {
+  const instructions = artifact('sai/commands/design/instructions.md');
+  assert.match(instructions,
+    /unclear[\s\S]{0,220}external|external[\s\S]{0,220}unclear/i,
+    'live design instructions should route unclear boundary classification to external');
+  assert.match(instructions,
+    /(?:direct(?:ly)?|explicit(?:ly)?)[\s\S]{0,240}(?:inventory|File Manifest|source artifacts?|files?|paths?)|(?:inventory|File Manifest|source artifacts?|files?|paths?)[\s\S]{0,240}(?:direct(?:ly)?|explicit(?:ly)?)/i,
+    'live design instructions should require a direct source inventory');
+});
+
+test('Step 5: design templates keep exactly two Target State siblings, retain their order, and have no nested boundary headings', () => {
+  const design = artifact('openspec/schemas/sai-workflow/templates/design.md');
+  const targetStateStart = design.indexOf('## Target State');
+  const nextTopLevel = design.indexOf('\n## ', targetStateStart + '## Target State'.length);
+  const targetState = design.slice(targetStateStart, nextTopLevel === -1 ? undefined : nextTopLevel);
+  const headings = (targetState.match(/^### (?!#).+$/gm) || []);
+
+  assert.deepEqual(headings, ARCHITECTURE_SECTION_HEADINGS,
+    'design.md should keep exactly the Architecture Snapshot and File Manifest siblings');
+  assertSkeletonOrder(targetState, ARCHITECTURE_SECTION_HEADINGS, 'design.md ## Target State');
+  assert.doesNotMatch(targetState, /^#### (?:External Surfaces|Internal Public Surfaces)\s*$/m,
+    'design.md templates must not embed boundary headings in the Target State skeleton');
+  assert.doesNotMatch(design, /^## Endpoint Map\s*$/m,
+    'design.md templates must not contain an Endpoint Map section');
+});
+
+test('Step 5: schema keeps the pre-change design graph and does not advertise Endpoint Map', () => {
+  const schema = artifact('openspec/schemas/sai-workflow/schema.yaml');
+  assert.doesNotMatch(schema, /Endpoint Map/,
+    'schema.yaml must not advertise Endpoint Map');
+
+  for (const id of ['design', 'tasks', 'interfaces']) {
+    const entry = schemaEntryForContract(schema, id);
+    const expected = PRE_CHANGE_DESIGN_GRAPH[id];
+    assert.equal(schemaFieldForContract(entry, 'generates'), expected.generates,
+      `${id} should preserve its pre-change generated artifact`);
+    assert.deepEqual(schemaListForContract(schemaFieldForContract(entry, 'requires')), expected.requires,
+      `${id} should preserve its pre-change requirements`);
+  }
 });

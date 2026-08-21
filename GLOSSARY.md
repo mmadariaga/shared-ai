@@ -13,7 +13,7 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 **Ambient Agent**: "An agent session that is not running a SAI command — the audience for the **Orientation Index**, which it never auto-loads and reaches only through a pointer in a consumer project's own agent instructions."
 *Avoid*: background agent, idle agent, non-SAI agent, ambient session
 
-**Architecture Snapshot**: "The concise `design.md` subsection under **Target State** that inventories planned public surfaces, project-root-relative paths, and portable ASCII relationships or execution flows for design review; projected into `change-overview.md`."
+**Architecture Snapshot**: "The concise `design.md` subsection under **Target State** that inventories planned public surfaces in external-first and internal-public boundary blocks, with project-root-relative paths and portable ASCII relationships or execution flows for design review; projected into `change-overview.md`."
 *Avoid*: architecture summary, architecture diagram, interface overview
 
 **Artifact Review**: "A read-only review of a change's OpenSpec artifacts — `proposal.md` and `specs/**` for sai-1, `design.md`, `tasks.md`, and `interfaces.md` for sai-2 — that produces structured findings with `High` / `Medium` / `Low` severities only through the manual `sai-explore` post-crystallization **Review Engine** or the supervised pipeline's in-session **Explore Review Engine** rounds; spec-proposal and design workers consume the resulting external findings and are not review surfaces."
@@ -109,6 +109,9 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 **Existing Tests Broken**: "The pinned fifth `## Step N` sub-field of `tasks.md` naming the existing tests a step breaks and each one's `compile` or `runtime` failure mode, shared fixtures first, `None` when it breaks none."
 *Avoid*: Tests Affected, Broken Tests, test impact, regressions
 
+**External Surface**: "A planned public promise available to uncontrolled callers, users, or integrations outside the repository's controlled caller boundary, including a typed command, produced artifact format, installed file layout, or public code surface."
+*Avoid*: endpoint map, external API (when the promise is not an API), public surface (when the caller boundary matters)
+
 **Failure Class**: "The closed machine-readable classification on a failed routed-worker outcome that identifies the repair boundary without relying on summary prose."
 *Avoid*: failure kind, failure reason, error category
 
@@ -147,6 +150,9 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 
 **Intent Reconciliation**: "The comparison of a **Backfilled Change**'s verified diff evidence with an optional user statement of capabilities and constraints, classified as matched, stated-but-unevidenced, or evidenced-but-unstated."
 *Avoid*: intent merge, intent diff, blind backfill
+
+**Internal Public Surface**: "A planned public promise available only to controlled callers within the repository or another explicitly controlled part of the change, even though the surface is intentionally public within that boundary."
+*Avoid*: private surface, internal API (when the surface is not an API), external surface
 
 **Known-False Report Recovery**: "A bounded `/sai-4-apply` correction path for a non-clean worker result that coordinator evidence diagnoses — branching on **Cause Locus** to continue the same authorized RED or GREEN worker via `continue_after_recovery` for a new in-scope **Diagnosis Key** (shared three-slot ledger), or to spend zero attempts for out-of-scope/unresolved causes (with at most one coordinator-owned current-Step `implementation.md` plan-artifact repair when applicable)."
 *Avoid*: automatic retry, indefinite retry, advisor escalation, fresh recovery dispatch
@@ -335,6 +341,7 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 - The **Build Command** is a consumer of **Chained Phase Composition** that orders the implement then apply **Phase Adapter**s in one invocation; it is not a distinct worker identity.
 - An **Advisor Skill** is the inverse of a budget-* skill (escalates upward to smarter models rather than delegating downward to cheaper ones).
 - An **Architecture Snapshot** belongs to one **Target State** and is displayed before the sai-2 design feedback loop when its effective content is current or changed.
+- An **Architecture Snapshot** relates to an external-first **External Surface** block and an **Internal Public Surface** block.
 - A **File Manifest** belongs to one **Target State** and is the file-level sibling of the **Architecture Snapshot** under it — the snapshot answers which public surfaces will exist, the manifest answers which files will change.
 - A **File Manifest** is derived by a deterministic net fold over the per-step **File Change Type** tokens of a change's `tasks.md`; `tasks.md` remains the authority for per-step tokens and step attribution.
 - An **Envelope Contract Violation** is a **Failure Class** when a nested result cannot be trusted under its closed output shape.
@@ -434,6 +441,7 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 
 ## Flagged ambiguities
 
+- **External Surface vs Internal Public Surface** — both are planned public promises, but they differ by caller boundary. **Resolution:** **External Surface** names a promise available to uncontrolled callers and is listed first; **Internal Public Surface** names a promise available only to controlled callers within the repository or change; unclear cases use the external classification.
 - **Change-level vs step-level complexity** — both **Proposal Complexity** and **Routing Complexity** are spelled `low|medium|high`, so a bare "complexity" is ambiguous about which artifact and which granularity is meant. **Resolution:** the shared vocabulary is deliberate (one mapping table serves both), so the tokens are not renamed; instead the qualified terms are always used — **Proposal Complexity** for the per-change token on `proposal.md`, **Routing Complexity** for the per-step token on `tasks.md`. A divergence between the two is expected and is never reported as an inconsistency.
 - **"Testable Step" vs the dispatch it routes to** — `apply.md` used "testable" to mean both "has a RED block" and "gets two dispatches", which collapsed once a RED-carrying Step with no **Step Contract** was recognised, and again once a production-free Step (test-only or interfaces-only) was recognised: such a Step is testable but not divisible, and a GREEN dispatch would have nothing to write. **Resolution:** "testable" describes only the RED block; **Divisible Step** describes the production-surface property; **Split-Routed Step** is the term for the two-worker outcome; a RED Step with no **Step Contract** halts the run, and any production-free Step (testable or non-testable) routes to the **RED Worker**'s green-exception — the terms are not synonyms.
 - **"Change type" vs "OpenSpec change"** — "change" already names the OpenSpec change object, so a bare "change type" (e.g. "tipo de cambio") is ambiguous between the file-level token and the change-level object. **Resolution:** the four per-file tokens are always called **File Change Type**; "change" alone always means the OpenSpec change, and the file-level term is never shortened.

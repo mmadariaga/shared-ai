@@ -67,32 +67,10 @@ artifacts:
 
   - id: design
     generates: design.md
-    description: Technical design — decisions, trade-offs, endpoint map, ADR/DDR evaluation with the record family resolved by the ordered routing test
+    description: Technical design — decisions, trade-offs, Target State, and ADR/DDR evaluation with the record family resolved by the ordered routing test
     template: design.md
     instruction: |
-      Create design.md explaining HOW to implement the change.
-
-      Required sections:
-      - **Target State**: the finished shape the change converges on as one concrete artifact, the FIRST
-        section of design.md, with exactly two subsections in order — `### Architecture Snapshot` then
-        `### File Manifest` — per the `design-target-state` and `change-overview-artifact` capabilities;
-        the review snapshot is projected into change-overview.md and never emitted in interfaces.md
-      - **Context**: background, current state, constraints
-      - **Goals / Non-Goals**: what this design achieves and explicitly excludes
-      - **Decisions**: key technical choices. For each decision, evaluate the three ADR/DDR criteria:
-          1. Hard to reverse — would changing later be costly?
-          2. Surprising without context — would a future reader ask "why did they do it this way"?
-          3. Real trade-off — were genuine alternatives available?
-        If all three apply, document alternatives-considered and the rationale for the chosen approach.
-        A decision that meets all three criteria resolves its record family via the ordered routing test (a decision encoding a domain invariant is `ddr`; otherwise it is `adr`; the test is ordered, so there is no tie) and records it in design.md as the pinned `**Record family**: adr|ddr` marker, consistent with `sai/commands/design/instructions.md`.
-        Each decision also carries a pinned `**Provenance**: <token>` marker — one of `user` / `codebase-forced` / `derived` (precedence in that order).
-      - **Risks / Trade-offs**: known limitations; format: [Risk] → Mitigation. A risk MAY carry a pinned `(**Verify-first**: Step N)` marker naming a step it gates.
-      - **Migration Plan**: deploy steps, rollback strategy (if applicable)
-      - **Open Questions**: outstanding unknowns to resolve
-      - **Deferred**: decisions deliberately postponed, each with a concrete cost-of-postponing and a recommendation; `None` when empty. Non-blocking — not routed through the Open Questions gate.
-      - **Manual Verification**: closing section — hand-cheap / automation-expensive checks (generated-artifact drift, end-to-end smoke); `None` with a one-line reason when empty.
-
-      Reference proposal for motivation, specs for requirements.
+      Fetch and follow sai/commands/design/instructions.md section ### Generate design.md exactly. This instruction is an informative reference only; it does not restate the design generation contract.
     requires:
       - proposal
       - specs
@@ -102,78 +80,7 @@ artifacts:
     description: Implementation planning scaffold — narrative steps for human review and sai-3-implement to expand
     template: tasks.md
     instruction: |
-      Create tasks.md breaking down the implementation work as a narrative planning scaffold.
-
-      IMPORTANT: Do NOT use checkbox markers (- [ ] or - [x]). This file is a planning scaffold,
-      not a progress tracker. Implementation progress is tracked in implementation.md.
-
-      Structure — one numbered section per implementation step:
-
-      ## Step N: <title>
-
-      **Routing**: layer=<layer> · discipline=<discipline> · complexity=<complexity>
-
-      The three keys are mandatory and in the order shown above. Values are drawn from the
-      enumerations in the `tasks-routing-metadata` capability spec, and the derivation rubric
-      is encoded in the design instructions. An optional one-line parenthetical justification
-      MAY follow the three key=value pairs (e.g. `layer=frontend · discipline=ui-ux ·
-      complexity=medium (Next.js component)`). Any parser MUST ignore everything from the first
-      `(` onward on the line.
-
-      **Files Affected**: one entry per line, each starting with exactly one change-type token
-      from the closed vocabulary `A` (created), `M` (modified), `D` (deleted), `R` (moved/renamed,
-      source path and destination path separated by ` -> `), followed by one space and the
-      project-root-relative path; not a comma-separated list.
-
-      **What Will Be Done**: <prose description of the work in this step>
-
-      **Testing Strategy**: <how correctness will be verified for this step>
-
-      **Existing Tests Broken**: <existing tests this step breaks, each with failure mode `compile` or `runtime`, shared fixtures first; `None` when the step breaks none — fifth and last sub-field, label pinned>
-
-      Order steps by dependency (what must be done first). Steps should be small enough to
-      expand into a single implementation.md step group.
-
-      Reference specs for what to build, design for how to build it.
-
-      After all implementation steps, end the file with these two mandatory sections in order:
-
-      ## Required Documentation
-
-      List every file read and every external URL consulted during design-phase codebase research.
-      Prefer specific file paths with line ranges over whole-file references when only a portion applies.
-
-      ### Local files
-      One path per line. Use line ranges (e.g., path/to/file.md:10-50) when only a portion applies.
-      If nothing to list, write: None
-
-      ### External URLs
-      One URL per line. If nothing to list, write: None
-
-      Do NOT leave either subsection empty or omit it. Both subsections are mandatory.
-
-      ## Implementation Context
-
-      Derived from codebase research performed during design. Contains exactly four fields:
-
-      **Stack**: primary language/framework + key versions relevant to this change
-
-      **Conventions**: 2-5 project-specific, non-obvious bullets derived from observed code
-      (naming conventions, file organization, error handling, testing idioms).
-      Generic best-practices such as "follow SOLID principles" or "write clean code" are NOT acceptable.
-
-      **Avoid**: anti-patterns the implementation agent might default to given the declared stack.
-
-      **Test Command**: the exact command that runs this project's test suite, executable from the
-      project root by a subagent that has read neither implementation.md nor design.md. Where the
-      runner supports scoping a run to a subset of tests, also carry the project's scoping idiom in
-      parameterised form — the concrete flag and the concrete test-project/path argument with a
-      substitutable placeholder for the test identifier (e.g. dotnet test tests/<Project> --filter
-      FullyQualifiedName~<TestName>) — not a bare suite command and not one Step's resolved filter.
-      When the project has no test runner at all, write the sentinel: None — no test runner in this project.
-
-      IMPORTANT: Stack, Conventions, Avoid, and Test Command MUST be derived from the actual codebase.
-      Generic or placeholder content is not acceptable.
+      Fetch and follow sai/commands/design/instructions.md section ### Generate tasks.md exactly. This instruction is an informative reference only; it does not restate the task generation contract.
     requires:
       - specs
       - design
@@ -183,27 +90,7 @@ artifacts:
     description: Per-step interface contract — new/modified public signatures plus exact spec-anchored test assertions, keyed by Step N to tasks.md; consumable without the implementation body
     template: interfaces.md
     instruction: |
-      Create interfaces.md — the per-step contract of public signatures and exact test assertions,
-      consumable without the implementation body.
-
-      The file admits NO leading non-`Step N` top-level section: no `## Target State` section and no
-      `### Architecture Snapshot` or `### File Manifest` subsection appears anywhere in the file — the
-      review snapshot is authored in design.md (as its first section) and projected into
-      change-overview.md. Every top-level section is a `## Step N` section; when every step would be
-      omitted, the file carries exactly the sentinel `None — no step contracts` plus a one-line reason
-      naming why no step admits a contract.
-
-      Keyed by ## Step N using the same integer keys as tasks.md. Emit one section per step that
-      introduces a new/modified public interface or a testable assertion; each section has two parts:
-      - **Interfaces**: new/modified public signatures only (function/method signatures, exported
-        types, public surface) — no implementation body.
-      - **Test assertions**: exact expected input → output/behavior assertions, each anchored to a
-        specs/**/*.md requirement or scenario by path.
-
-      Omit any step that introduces no new/modified interface and no testable assertion — do NOT emit
-      an empty section. Do NOT add a testing-stack, setup, or ## Implementation Context section: the
-      testing stack stays single-sourced in tasks.md. Regenerate wholesale each run from the same step
-      decomposition as tasks.md; there is no cross-run preservation path at the design stage.
+      Fetch and follow sai/commands/design/instructions.md section ### Generate interfaces.md exactly. This instruction is an informative reference only; it does not restate the interface generation contract.
     requires:
       - tasks
 
