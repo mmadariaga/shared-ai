@@ -6,9 +6,55 @@ Defines the routed card set for `/sai-4-apply` — coordinator.md + runner.md + 
 
 ## Requirements
 
+### Requirement: apply-terminal-lifecycle-contract-coverage
+
+The repository SHALL contain focused contract tests for the active routed apply source that assert the coordinator-owned terminal lifecycle is present in `sai/commands/apply/runner.md`: Final sweep, exactly one learnings promotion pass, terminal documentation-set evaluation, visibility disclosure, authorization/commit behavior, and MANDATORY STOP in that order. The tests SHALL cover the no-op path, decline path, active session-flag and `--fast-track` paths, and the boundary that halts before the Final sweep.
+
+The tests SHALL protect the routed source as the authority and SHALL fail if the behavior is moved only into the retired monolithic `sai/commands/apply/instructions.md` or omitted from the active card set.
+
+#### Scenario: Routed runner loses the terminal lifecycle
+
+- **WHEN** a future edit removes promotion, terminal evaluation, or terminal navigation ordering from `runner.md`
+- **THEN** the contract suite fails with a focused assertion identifying the missing routed lifecycle behavior
+
+#### Scenario: Halt and no-op semantics regress
+
+- **WHEN** a future edit allows promotion before the Final sweep, proposes a terminal gate for an empty set, or retries after a decline
+- **THEN** the contract suite fails the corresponding halted-run, no-op, or decline assertion
+
+### Requirement: apply-terminal-path-contract-coverage
+
+The contract tests SHALL assert that terminal path selection is explicit and closed: changed `docs/**`, root `SAI_LEARNINGS.md` only when written by the current promotion pass, and changed root `GLOSSARY.md` are eligible; `openspec/changes/**`, `implementation.md`, and unrelated working-tree paths are excluded; and `git add -A` or an equivalent broad staging fallback is forbidden. The tests SHALL also assert that the terminal visibility listing occurs before the proposed commit message and authorization.
+
+The tests SHALL keep the terminal set distinct from the coordinator's changed-files union and from ordinary per-Step field-8 staging.
+
+#### Scenario: Terminal path boundaries regress
+
+- **WHEN** a future edit widens staging to OpenSpec artifacts, unrelated paths, or a broad working-tree sweep
+- **THEN** the contract suite fails the exact path-boundary assertion
+
+#### Scenario: Preview ordering regresses
+
+- **WHEN** a future edit stages before visibility disclosure or asks for authorization before the proposed message
+- **THEN** the contract suite fails the terminal preview-order assertion
+
+### Requirement: apply-harness-parity-contract-coverage
+
+The contract suite SHALL verify parity across Claude Code and opencode for the routed apply source: both boot adapters select `sai/commands/apply/coordinator.md`, both use the shared runner contract, and neither RED nor GREEN worker contract grants Git commit authority. The parity assertions SHALL not introduce harness-specific terminal behavior.
+
+#### Scenario: One harness bypasses the routed coordinator
+
+- **WHEN** either supported harness boot adapter selects a retired apply body or a harness-specific terminal implementation
+- **THEN** the contract suite fails the parity assertion
+
+#### Scenario: A worker gains commit authority
+
+- **WHEN** a RED or GREEN worker contract loses its Git prohibition or gains staging/commit instructions
+- **THEN** the contract suite fails the worker-boundary assertion
+
 ### Requirement: apply-card-set-is-routed
 
-The `sai/commands/apply/` folder SHALL contain the routed card set: `coordinator.md`, `runner.md`, `invocation.md`, and the RED and GREEN worker contracts. The utility `body.md` surface SHALL be retired and SHALL NOT be selected by any boot adapter. The runner.md SHALL be extracted from the current `instructions.md` — it carries the Step loop contract (dispatch routing, coordinator verification, scratch sweeps, human gates, checkbox marking, appendices, pre-commit report, STOP & COMMIT checklist, learnings memory, promotion pass, terminal documentation commit, final sweep) — and the remaining instructions.md content is redistributed into the coordinator, invocation, and worker contracts.
+The `sai/commands/apply/` folder SHALL contain the routed card set: `coordinator.md`, `runner.md`, `invocation.md`, and the RED and GREEN worker contracts. The utility `body.md` surface SHALL be retired and SHALL NOT be selected by any boot adapter. The active `runner.md` SHALL carry the Step loop contract — dispatch routing, coordinator verification, scratch sweeps, human gates, checkbox marking, appendices, pre-commit report, STOP & COMMIT checklist, learnings memory, the once-per-run learnings promotion, terminal documentation commit, and final sweep. The retired monolithic `instructions.md` SHALL NOT be required as an executable authority for these operations.
 
 #### Scenario: apply folder holds the routed surfaces
 
@@ -16,10 +62,10 @@ The `sai/commands/apply/` folder SHALL contain the routed card set: `coordinator
 - **THEN** `sai/commands/apply/` contains `coordinator.md`, `runner.md`, `invocation.md`, and the RED/GREEN worker contracts
 - **AND** `body.md` no longer exists in the apply folder
 
-#### Scenario: runner.md carries the loop contract
+#### Scenario: runner.md carries the complete loop contract
 
-- **WHEN** a maintainer reads `sai/commands/apply/runner.md`
-- **THEN** it contains the Step loop contract extracted from the current `instructions.md` — dispatch, verification, gates, appendices, and terminal operations
+- **WHEN** a maintainer reads `sai/commands/apply/runner.md` after this change lands
+- **THEN** it contains the Step loop, promotion pass, terminal documentation-set evaluation, terminal visibility, authorization, commit boundaries, final sweep, and terminal navigation contracts
 
 #### Scenario: boot adapter never selects apply body.md
 
@@ -116,12 +162,12 @@ This per-dispatch plan reconciles with `sai/orchestration/command-runner.md`'s `
 
 ### Requirement: apply-coordinator-centric-execution
 
-The apply coordinator SHALL remain the executing main-session driver: it performs the change resolution, the run-start step projection, scratch sweeps, coordinator verification, checkbox marking, appendices, learnings memory, gates, and commits itself. It SHALL NOT delegate those coordinator responsibilities to a worker. The thin-coordinator routed model (coordinator as pure dispatcher) SHALL NOT be adopted for apply.
+The apply coordinator SHALL remain the executing main-session driver: it performs change resolution, the run-start step projection, scratch sweeps, coordinator verification, checkbox marking, appendices, learnings memory, per-Step and terminal human gates, terminal visibility reporting, exact-path staging, and commits itself. It SHALL perform the once-per-run learnings promotion after the Final sweep and SHALL evaluate the terminal documentation commit immediately afterward. It SHALL NOT delegate these coordinator responsibilities to a worker. The thin-coordinator routed model SHALL NOT be adopted for apply.
 
-#### Scenario: coordinator executes its own responsibilities
+#### Scenario: coordinator executes the terminal responsibilities
 
-- **WHEN** a Step completes
-- **THEN** the coordinator (main session) sweeps scratch, re-runs the Step's Verification Checklist, gates on human confirmation, marks checkboxes, writes appendices, and owns the commit — never a worker
+- **WHEN** all Steps complete and the Final sweep passes
+- **THEN** the coordinator promotes learnings once, computes and discloses the terminal documentation set, obtains or observes the existing authorization state, stages only eligible terminal paths, and owns the terminal commit
 
 #### Scenario: workers receive only Step execution
 
