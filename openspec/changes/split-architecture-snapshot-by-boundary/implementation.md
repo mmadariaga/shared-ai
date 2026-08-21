@@ -96,7 +96,7 @@ Update independence wording so the File Manifest sentinel is independent of the 
 
 *(Non-testable step — normative command instruction rewrite. Existing structure tests may go red until Step 5.)*
 
-- [ ] In `sai/commands/design/instructions.md`, under `### Target State (authored first in design.md)`, replace the undifferentiated Architecture Snapshot inventory paragraph (the paragraph that begins `` `### Architecture Snapshot` is a concise derivative review surface`` and inventories “every planned public class, interface, and method”) with the split contract below. Keep the two-subsection emission rule (`### Architecture Snapshot` then `### File Manifest`) and the entire File Manifest net-fold block unchanged except the File Manifest independent-None sentence if it still couples only to “public classes/interfaces/methods”.
+- [x] In `sai/commands/design/instructions.md`, under `### Target State (authored first in design.md)`, replace the undifferentiated Architecture Snapshot inventory paragraph (the paragraph that begins `` `### Architecture Snapshot` is a concise derivative review surface`` and inventories “every planned public class, interface, and method”) with the split contract below. Keep the two-subsection emission rule (`### Architecture Snapshot` then `### File Manifest`) and the entire File Manifest net-fold block unchanged except the File Manifest independent-None sentence if it still couples only to “public classes/interfaces/methods”.
 
 Replace the Architecture Snapshot inventory rules with:
 
@@ -114,19 +114,19 @@ When neither boundary has a planned public surface, emit no nested boundary-bloc
 The matching `## Step N` sections in `interfaces.md` remain authoritative for step attribution, detailed signatures, and exact test assertions; the snapshot's external/internal grouping is a review classification only and must not override or silently replace them.
 ```
 
-- [ ] Update the File Manifest independent-None sentence in the same file so it references independence from the shared whole-inventory snapshot sentinel and from either boundary block's empty rendering (not only from a class/interface/method inventory).
-- [ ] Leave all non-snapshot instruction sections (approval gate, collaboration, decisions, tasks generation, interfaces generation, feedback presentation, cost discipline) unchanged.
+- [x] Update the File Manifest independent-None sentence in the same file so it references independence from the shared whole-inventory snapshot sentinel and from either boundary block's empty rendering (not only from a class/interface/method inventory).
+- [x] Leave all non-snapshot instruction sections (approval gate, collaboration, decisions, tasks generation, interfaces generation, feedback presentation, cost discipline) unchanged.
 
 ##### Step 2 Verification Checklist
 
 **Automated (agent runs before stopping):**
-- [ ] `sai/commands/design/instructions.md` contains `#### External Surfaces` before `#### Internal Public Surfaces` in the Architecture Snapshot authoring rules
-- [ ] Instructions use direct inventory obligation language (not “able to inventory”)
-- [ ] Instructions contain `None — no planned public surfaces`, `None — no planned externally consumable surfaces`, and `None — no planned internal public surfaces`
-- [ ] Instructions state unclear classification defaults to External Surfaces
-- [ ] Instructions do not introduce Endpoint Map as an authored block
-- [ ] Nested blocks are stated not to be additional `###` Target State siblings
-- [ ] `node --test test/design-coordinator-worker.test.js` — may FAIL on structure/snapshot wording until Step 5; record failures; do not revert Step 2 to silence them
+- [x] `sai/commands/design/instructions.md` contains `#### External Surfaces` before `#### Internal Public Surfaces` in the Architecture Snapshot authoring rules
+- [x] Instructions use direct inventory obligation language (not “able to inventory”)
+- [x] Instructions contain `None — no planned public surfaces`, `None — no planned externally consumable surfaces`, and `None — no planned internal public surfaces`
+- [x] Instructions state unclear classification defaults to External Surfaces
+- [x] Instructions do not introduce Endpoint Map as an authored block
+- [x] Nested blocks are stated not to be additional `###` Target State siblings
+- [x] `node --test test/design-coordinator-worker.test.js` — may FAIL on structure/snapshot wording until Step 5; record failures; do not revert Step 2 to silence them
 
 *(No Human checks — service-side step with no observable browser behavior.)*
 
