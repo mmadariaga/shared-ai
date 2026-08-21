@@ -12,5 +12,5 @@ Fetch @sai/commands/explore/launcher.md and follow those instructions exactly, f
 
 InvocationEnvelope:
   command_name: explore
-  wrapper_echo_value: $ARGUMENTS
+  wrapper_echo_value: ""
   arguments_value: $ARGUMENTS
