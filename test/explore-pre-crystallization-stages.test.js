@@ -53,10 +53,25 @@ test('the Ready to Propose block template orders Edge Cases, Implementation Deta
   assert.ok(overviewLanguage > implementationDetails, '**Overview language** should follow **Implementation Details**');
 });
 
-test('gate 9 offers the ambient language first with the Recommended marker and English second', () => {
+test('gate 9 is opt-in, puts the do-not-create choice first, and has no Recommended marker', () => {
   const source = explore();
-  assert.match(source, /emitted first and carrying the `Recommended` marker/);
-  assert.match(source, /emitted second, carrying no marker/);
+  const selectorStart = source.search(/(?:Gate 9|gate-9|overview[- ]language selector)/i);
+  assert.ok(selectorStart >= 0, 'the opt-in overview-language selector should be specified');
+
+  const selector = source.slice(selectorStart);
+  assert.match(selector, /(?:None\s*(?:—|-)\s*do[- ]not[- ]create|do[- ]not[- ]create[\s\S]{0,120}None)/i);
+  assert.doesNotMatch(source, /emitted first and carrying the `Recommended` marker/);
+  assert.doesNotMatch(source, /emitted second, carrying no marker/);
+});
+
+test('Ready to Propose records the selected overview language or literal None', () => {
+  const source = explore();
+  const fields = source.match(/\*\*Overview language\*\*:\s*[^\n]*/g) || [];
+
+  assert.ok(fields.length > 0, 'Ready to Propose should include an Overview language field');
+  for (const field of fields) {
+    assert.match(field, /(?:None|<[^>\n]*(?:selected|overview language|language)[^>\n]*>)/i);
+  }
 });
 
 test('both bindings carry the idea-list marker in their pinned machine-readable field', () => {

@@ -472,6 +472,26 @@ test('overview first materialization and regeneration share the same transport',
     'worker.md should state there is no regeneration-specific prompt variant');
 });
 
+test('opted-in Continue preserves the fetched single-file generator contract and English diagnostics', () => {
+  const worker = artifact('sai/commands/design/worker.md');
+  const instruction = artifact('sai/commands/design/change-overview.md');
+
+  assert.match(worker, /Fetch @sai\/commands\/design\/change-overview\.md/,
+    'the generation continuation must still fetch the shared overview contract');
+  assert.match(worker, /follow it exactly/i,
+    'the generation continuation must follow the fetched contract exactly');
+  assert.match(instruction, /English (?:failure_details|diagnostic)/i,
+    'generator diagnostics must remain non-empty English');
+  assert.match(instruction, /writes ONLY/i,
+    'the generator must retain its write restriction');
+  assert.match(instruction, /single-file/i,
+    'the generator must retain its single-file scope');
+  for (const field of ['status', 'changed_files', 'validation', 'failure_details', 'failure_kind']) {
+    assert.match(instruction, new RegExp('`' + field + '`'),
+      `the opted-in generator contract must retain ${field}`);
+  }
+});
+
 test('schema change-overview instruction is a non-empty informative reference only', () => {
   const schema = artifact('openspec/schemas/sai-workflow/schema.yaml');
   const overviewInstruction = schema.slice(
@@ -525,35 +545,56 @@ test('schema and worker transport coverage is not satisfied by template-only sec
 
 // ─── Step 4: Continue-triggered overview generation in the design coordinator ─
 
-test('Continue triggers the worker-owned generation after the gate closes', () => {
+test('Continue triggers worker-owned generation only when --overview-lang is present', () => {
   const coordinator = artifact('sai/commands/design/coordinator.md');
 
   assert.match(coordinator, /Continue/, 'the gate-closed next action should be Continue');
   assert.match(coordinator, /generation[\s-]?(?:pass|trigger|terminal)/i,
     'Continue should trigger the worker-owned generation pass');
   assert.match(coordinator, /same[\s-]?worker/i, 'generation should run via a same-worker continuation');
+  assert.match(
+    coordinator,
+    /(?:only|when|if)[\s\S]{0,220}`?--overview-lang`?[\s\S]{0,220}(?:present|provided|supplied)[\s\S]{0,500}(?:generation|generator)/i,
+    'Continue generation should be conditional on an explicitly present overview-language flag',
+  );
+  assert.match(
+    coordinator,
+    /(?:(?:absent|without|missing)[\s\S]{0,260}`?--overview-lang`?|`?--overview-lang`?[\s\S]{0,260}(?:absent|without|missing))[\s\S]{0,500}(?:no|skip|does not|without)[\s\S]{0,160}(?:generation|generator)/i,
+    'an absent overview-language flag should suppress generation',
+  );
 });
 
 test('failed first materialization suppresses the success terminal', () => {
   const coordinator = artifact('sai/commands/design/coordinator.md');
 
+  assert.match(coordinator, /`?--overview-lang`?/, 'materialization failure applies to the opted-in path');
   assert.match(coordinator, /failed/i, 'coordinator should map a failed first materialization');
   assert.match(coordinator, /completion sentence/i, 'coordinator should reference the design completion sentence');
   assert.match(coordinator, /suppress|do\s*not\s*emit|does\s*not\s*emit/i,
     'coordinator should suppress the design completion sentence on a failed materialization');
 });
 
-test('run exits before Continue processing materializes nothing', () => {
+test('unopted Continue materializes nothing while permitting an existing stale overview', () => {
   const coordinator = artifact('sai/commands/design/coordinator.md');
+  const worker = artifact('sai/commands/design/worker.md');
 
   assert.match(coordinator, /materializ/i, 'coordinator should reference materialization');
-  assert.match(coordinator, /without\s+materialization|no\s+overview|unmaterialized/i,
-    'a continuation failure should end the run without materialization');
+  assert.match(
+    coordinator,
+    /(?:(?:absent|without|missing)[\s\S]{0,260}`?--overview-lang`?|`?--overview-lang`?[\s\S]{0,260}(?:absent|without|missing))[\s\S]{0,500}(?:without\s+materialization|no\s+overview|unmaterialized|no generation)/i,
+    'an unopted path should end without materializing an overview',
+  );
+  assert.match(
+    worker,
+    /(?:(?:absent|without|missing)[\s\S]{0,320}`?--overview-lang`?|`?--overview-lang`?[\s\S]{0,320}(?:absent|without|missing))[\s\S]{0,420}(?:stale|permitted|allowed|leave)[\s\S]{0,180}(?:overview|state)/i,
+    'an unopted path should permit an existing stale overview rather than regenerating it',
+  );
 });
 
 test('generation terminal changed_files are forwarded without re-derivation', () => {
   const coordinator = artifact('sai/commands/design/coordinator.md');
 
+  assert.match(coordinator, /`?--overview-lang`?/, 'changed_files forwarding applies to opted-in generation');
   assert.match(coordinator, /changed_files/, 'coordinator should forward the generation terminal changed_files');
   assert.match(coordinator, /forward/i, 'coordinator should forward changed_files unchanged');
 });

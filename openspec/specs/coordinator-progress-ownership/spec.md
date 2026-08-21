@@ -3,9 +3,7 @@
 ## Purpose
 
 Define the coordinator's ownership of the invocation-scoped progress plan: plan state, marking rules, survival across continuation and replacement, changed-file union integration, deterministic rendering, and terminal reconciliation.
-
 ## Requirements
-
 ### Requirement: plan-held-invocation-scoped
 
 The coordinator SHALL hold the authoritative progress plan in invocation-scoped state, initialized at invocation start from the phase adapter's declaration, and SHALL keep the marked set (the step ids reported by progress events) alongside it.
@@ -90,8 +88,12 @@ The coordinator SHALL render the full progress plan at dispatch, before the firs
 Reconciliation SHALL be triggered by an observable **reconciliation trigger**, defined per phase, rather than by a terminal result the coordinator has already received and consumed:
 
 - for `/sai-1-spec`, the trigger is the artifact feedback gate's proceed selection (`Finish step`), at which the coordinator reconciles against the last terminal `completed` it received;
-- for `/sai-2-design`, the trigger is the overview-generation terminal that follows the gate's `Continue` (`design-phase-navigation`);
+- for `/sai-2-design`, the trigger is selected solely by whether the active invocation carries explicit `--overview-lang` opt-in:
+  - **opted-in**: the overview-generation terminal that follows the gate's `Continue` (`design-phase-navigation`);
+  - **unopted-in**: the no-generation design terminal that follows the gate's `Continue` without overview dispatch;
 - for a phase whose contract follows its terminal result with no further worker work, the trigger is that terminal result itself.
+
+Exactly one of the two `/sai-2-design` triggers SHALL apply per invocation. A coordinator SHALL NOT reconcile at the pre-gate `completed`, SHALL NOT invent a third design trigger, and SHALL NOT use worker summary text or artifact contents to choose the route.
 
 A terminal `completed` that the coordinator answers by presenting the artifact feedback gate SHALL NOT itself trigger reconciliation, because the same worker may still be continued from that gate. A coordinator SHALL NOT reconcile before its phase's trigger.
 
@@ -115,14 +117,20 @@ The carve-out exists because an evidence-marked step asserts evidence: rendering
 - **THEN** that selection SHALL be the reconciliation trigger
 - **AND** the coordinator SHALL reconcile against the last terminal `completed` it received
 
-#### Scenario: sai-2 reconciles at the generation terminal
+#### Scenario: sai-2 reconciles at the generation terminal when opted in
 
-- **WHEN** `/sai-2-design`'s post-gate overview-generation continuation returns its terminal result
-- **THEN** that terminal SHALL be the reconciliation trigger
+- **WHEN** `/sai-2-design` was invoked with `--overview-lang <language>` and the post-gate overview-generation continuation returns its terminal result
+- **THEN** that generation terminal SHALL be the reconciliation trigger
+
+#### Scenario: sai-2 reconciles at the no-generation terminal when unopted
+
+- **WHEN** `/sai-2-design` was invoked without `--overview-lang` and the gate's `Continue` closes through the no-generation design terminal
+- **THEN** that no-generation terminal SHALL be the reconciliation trigger
+- **AND** no overview-generation continuation is required for reconciliation to fire
 
 #### Scenario: the design overview step is never reconciled before generation runs
 
-- **WHEN** `/sai-2-design`'s worker returns its pre-gate `completed` with `overview` still unmarked
+- **WHEN** an opted-in `/sai-2-design` worker returns its pre-gate `completed` with `overview` still unmarked
 - **THEN** `overview` SHALL remain unmarked and SHALL NOT render `completed`
 - **AND** it SHALL become `completed` only from the worker's own progress event after a successful `change-overview.md` materialization, or from reconciliation at the post-gate generation terminal
 
@@ -132,31 +140,30 @@ The carve-out exists because an evidence-marked step asserts evidence: rendering
 - **THEN** the coordinator SHALL render every unmarked step `completed` except the evidence-marked `review` step
 - **AND** the unmarked `review` step SHALL remain exactly as last rendered
 
-#### Scenario: an already-marked review step is unaffected
+#### Scenario: sai-2 reconciles at the generation terminal
+- **WHEN** an opted-in design generation continuation returns its terminal result
+- **THEN** that terminal is the reconciliation trigger
 
+#### Scenario: an already-marked review step is unaffected
 - **WHEN** the trigger fires and `review` was already marked by a progress event
-- **THEN** `review` SHALL continue to render `completed` and the carve-out SHALL have no effect
+- **THEN** `review` continues to render `completed`
 
 #### Scenario: two unmarked steps at close
-
-- **WHEN** the trigger fires on a successful outcome with both `validation` and `review` unmarked, and the list was last rendered with `validation` `in_progress` and `review` `pending`
-- **THEN** `validation` SHALL render `completed`, because it is not evidence-marked
-- **AND** `review` SHALL remain exactly as last rendered — `pending` — because the freeze formulation governs and no state is re-derived for it
+- **WHEN** the trigger fires on a successful outcome with both a regular step and `review` unmarked
+- **THEN** the regular step renders `completed`
+- **AND** `review` remains exactly as last rendered
 
 #### Scenario: a review step in another plan does not inherit the carve-out
-
 - **WHEN** a declared plan other than the spec or design plan contains a step whose id is `review`
-- **THEN** that step SHALL NOT be treated as evidence-marked and SHALL be reconciled to `completed` like any other step
+- **THEN** that step is reconciled to `completed` like any other step
 
 #### Scenario: failed run freezes the list
-
 - **WHEN** the outcome at the trigger is `failed` or `cancelled`
-- **THEN** the coordinator SHALL leave the list exactly as last rendered, with no further marks and no clearing
+- **THEN** the coordinator leaves the list exactly as last rendered
 
 #### Scenario: needs-input leaves the list unchanged
-
 - **WHEN** the worker returns `needs_input` with the list rendered
-- **THEN** the coordinator SHALL leave the list exactly as last rendered, with no further marks and no clearing, because the run pauses for user input and resumes
+- **THEN** the coordinator leaves the list exactly as last rendered because the run pauses and resumes
 
 ### Requirement: render-and-mark-only
 
@@ -174,3 +181,4 @@ The coordinator SHALL source each completed-step milestone stamp from the `emitt
 #### Scenario: A result marks a step
 - **WHEN** a progress event or successful reconciliation marks a step completed
 - **THEN** the coordinator attaches that result's `HH:mm` value and makes no wall-clock call.
+

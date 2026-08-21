@@ -64,6 +64,11 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0159 — Supervised marker grammar stays on the two-string envelope; Explore owns the capability](./0159-marker-grammar-stays-on-two-string-envelope.md) — Refs 0158, Refs ddr:0114
 - [0160 — Interactive artifact feedback gate gains a non-option review-loop note only](./0160-interactive-gate-review-loop-note-only.md) — Refs 0028, Refs ddr:0150, Refs 0158
 - [0166 — Dual-channel exclusivity is per cause surface](./0166-per-cause-surface-dual-channel-exclusivity.md) — **Amends** 0165
+- [0166 — Overview opt-in is flag presence or gate language selection; omission never synthesizes English](./0166-overview-opt-in-is-flag-or-gate-selection.md)
+- [0167 — Gate 9 is an always-evaluated opt-in selector with explicit None](./0167-gate-9-always-evaluated-opt-in-selector.md)
+- [0168 — Coordinator selects plan by token presence; worker validates and owns generation](./0168-coordinator-plan-by-token-presence.md)
+- [0169 — Mutually exclusive Continue routes by flag presence](./0169-mutually-exclusive-design-continue-routes.md)
+- [0170 — Unopted source edits may leave overview stale; never fake current](./0170-unopted-source-edits-may-leave-overview-stale.md)
 
 ### `/sai-3-implement`
 
@@ -182,6 +187,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0158 — Delete the worker-owned planning-artifact review loop](./0158-delete-worker-owned-planning-artifact-review-loop.md) — Supersedes 0139, Refs ddr:0133, Refs ddr:0134
 - [0159 — Supervised marker grammar stays on the two-string envelope; Explore owns the capability](./0159-marker-grammar-stays-on-two-string-envelope.md) — Refs 0158, Refs ddr:0114
 - [0160 — Interactive artifact feedback gate gains a non-option review-loop note only](./0160-interactive-gate-review-loop-note-only.md) — Refs 0028, Refs ddr:0150, Refs 0158
+- [0167 — Gate 9 is an always-evaluated opt-in selector with explicit None](./0167-gate-9-always-evaluated-opt-in-selector.md)
 - [0158 — Single shared crystallization-turn close definition consumed by items 5, 6, and 7](./0158-single-shared-crystallization-turn-close.md) — Refs 0146
 - [0159 — Path-specific next-step lives only on Manual/unmapped after the selector](./0159-path-specific-next-step-after-manual-selector.md) — **Amends** 0158, Refs 0146
 - [0167 — Named Explore Auto cancellation exception in Bounded Recovery](./0167-explore-auto-cancellation-exception-in-bounded-recovery.md) — **Amends** 0158, Refs 0159
@@ -582,4 +588,3 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0029 — Surgical merge of the opencode `agent` block via jsonc-parser](./0029-jsonc-parser-surgical-merge-for-opencode-agent-block.md) — Refs 0031 — *Historical: the agent-block merge is retired*
 - [0139 — Use fresh read-only reviewers with worker-owned artifact edits](./0139-fresh-read-only-reviewers-with-worker-owned-edits.md) — Refs ddr:0105 — *Superseded by [0158](./0158-delete-worker-owned-planning-artifact-review-loop.md)*
 - [0106 — Keep both report template families with pinned skeleton parity](./0106-keep-both-report-template-families-pinned-parity.md) — *Superseded by [0162](./0162-schema-report-templates-point-to-write-time-authority.md)*
-

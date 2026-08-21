@@ -19,7 +19,7 @@
 
   ## Overview-language parse
   Before the fast-track parse, inspect `$ARGUMENTS` for the optional `--overview-lang <language>` option. Parse and validate it before change-name resolution and before overview dispatch:
-  - If the option is absent, set the invocation-scoped effective `overview_language` to `English`.
+  - If the option is absent, leave the invocation-scoped overview-language unresolved: produce no effective `overview_language` and do not synthesize `English`; gate 9 may later resolve it during crystallization.
   - If the option appears once, require exactly one following non-empty token that is not another option, consume that token as the free-form language value, remove only the option and its value from `$ARGUMENTS`, and set `overview_language` to that value.
   - If the option is final or its next token begins with `--`, stop with the clear validation error `Missing value for --overview-lang; provide one non-empty language token before continuing.` Do not resolve a change, perform any dispatch, or continue to the fast-track parse.
   - If the option appears more than once, stop with the clear validation error `Duplicate --overview-lang is not allowed; provide the option once.` Do not resolve a change or perform any dispatch.

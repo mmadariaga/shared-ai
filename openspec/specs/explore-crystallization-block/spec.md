@@ -3,9 +3,7 @@
 ## Purpose
 
 Define the crystallized handoff format and closing behavior for `sai-explore`.
-
 ## Requirements
-
 ### Requirement: Three mandatory decision-facet sections in the single-change Ready to Propose block
 
 The single-change `Ready to Propose` block emitted by `sai-explore` (`sai/commands/explore/instructions.md` item 5) SHALL include three new sections, inserted in this exact order between `**Capabilities in scope**` and `**Key constraints**`:
@@ -210,3 +208,26 @@ The `file:line` provenance citations permitted in the **Why** and **Decisions & 
 - **WHEN** the crystallization language gate renders a single-change block in a non-English language and the block carries provenance or Research Leads
 - **THEN** the surrounding free-text prose is rendered in the user's language while every path and line-range literal is reproduced verbatim
 - **AND** the **Research Leads** heading remains the dedicated English section label defined by the handoff format
+
+### Requirement: Overview language reminder records the gate decision
+
+The single-change and sliced `Ready to Propose` blocks SHALL always include `**Overview language**: <value>`. When the user selected or supplied a language, `<value>` SHALL be reproduced exactly; when gate 9 resolved do not create, `<value>` SHALL be the literal `None`. The English scaffold label SHALL remain unchanged, and neither the label nor the `None` marker or selected value SHALL be localized. The line SHALL not alter the existing block sections, language-gate rules, selector close, or two-string handoff envelope.
+
+#### Scenario: Single-change block records do not create
+
+- **WHEN** a single-change crystallization resolves gate 9 to do not create
+- **THEN** the block contains `**Overview language**: None`
+- **AND** its other required sections and closing separator remain unchanged
+
+#### Scenario: Sliced blocks record do not create
+
+- **WHEN** a sliced crystallization resolves gate 9 to do not create
+- **THEN** every per-slice block contains `**Overview language**: None`
+- **AND** the shared selector is emitted once after the final block as before
+
+#### Scenario: Selected language is repeated in every block
+
+- **WHEN** a single or sliced crystallization supplies or selects `spanish`
+- **THEN** every emitted block contains `**Overview language**: spanish`
+- **AND** the value is not localized or persisted
+
