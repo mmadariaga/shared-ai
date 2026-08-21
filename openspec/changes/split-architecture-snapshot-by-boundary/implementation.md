@@ -215,10 +215,10 @@ Keep the separate File Manifest / Target State relationship lines unchanged.
 
 *(Non-testable step — contract-test alignment after sources landed; suite green only after this step. No RED/GREEN: the step rewrites existing lexical oracles, not production functions with assertion-first TDD.)*
 
-- [ ] Update `test/change-overview-contract.test.js` and `test/design-coordinator-worker.test.js` in the **same step** so duplicated structure oracles stay byte-aligned on shared literals (heading strings, sentinels, Endpoint Map absence).
-- [ ] Preserve existing `node:test` + `assert.match` / `assert.doesNotMatch` / index-order style and the shared `artifact()` helper. Do not introduce a renderer harness.
-- [ ] Keep all existing Endpoint Map absence / schema non-advertisement assertions green.
-- [ ] Keep design template skeleton assertions: templates still have `### Architecture Snapshot` then `### File Manifest` and still lack nested `#### External Surfaces` / `#### Internal Public Surfaces` headings.
+- [x] Update `test/change-overview-contract.test.js` and `test/design-coordinator-worker.test.js` in the **same step** so duplicated structure oracles stay byte-aligned on shared literals (heading strings, sentinels, Endpoint Map absence).
+- [x] Preserve existing `node:test` + `assert.match` / `assert.doesNotMatch` / index-order style and the shared `artifact()` helper. Do not introduce a renderer harness.
+- [x] Keep all existing Endpoint Map absence / schema non-advertisement assertions green.
+- [x] Keep design template skeleton assertions: templates still have `### Architecture Snapshot` then `### File Manifest` and still lack nested `#### External Surfaces` / `#### Internal Public Surfaces` headings.
 
 **Add (or extend) tests in both files covering:**
 
@@ -291,23 +291,23 @@ test('schema templates remain skeletons without nested boundary headings', () =>
 });
 ```
 
-- [ ] Prefer placing the shared assertions in both files when the suite historically duplicates design/overview structure checks; if one file already owns a given oracle exclusively, keep that ownership and only add the missing half.
-- [ ] After edits, run the focused suites then the full suite.
+- [x] Prefer placing the shared assertions in both files when the suite historically duplicates design/overview structure checks; if one file already owns a given oracle exclusively, keep that ownership and only add the missing half.
+- [x] After edits, run the focused suites then the full suite.
 
 ##### Step 5 Verification Checklist
 
 **Automated (agent runs before stopping):**
-- [ ] `node --test test/change-overview-contract.test.js` — expected: PASS
-- [ ] `node --test test/design-coordinator-worker.test.js` — expected: PASS
-- [ ] `npm test` — expected: PASS
-- [ ] Both test files assert `#### External Surfaces` before `#### Internal Public Surfaces` in the relevant live instruction/overview sources
-- [ ] Both retain Endpoint Map absence assertions
-- [ ] Schema templates still lack nested boundary headings
-- [ ] Design structure still requires exactly `### Architecture Snapshot` then `### File Manifest` under Target State
+- [x] `node --test test/change-overview-contract.test.js` — expected: PASS
+- [x] `node --test test/design-coordinator-worker.test.js` — expected: PASS
+- [x] `npm test` — expected: PASS
+- [x] Both test files assert `#### External Surfaces` before `#### Internal Public Surfaces` in the relevant live instruction/overview sources
+- [x] Both retain Endpoint Map absence assertions
+- [x] Schema templates still lack nested boundary headings
+- [x] Design structure still requires exactly `### Architecture Snapshot` then `### File Manifest` under Target State
 
 **Human (manual verification from design.md — no browser UI):**
-- [ ] Open `openspec/schemas/sai-workflow/templates/design.md` and `openspec/schemas/sai-workflow/templates/change-overview.md` and confirm they still lack nested `#### External Surfaces` / `#### Internal Public Surfaces` headings (skeletons unchanged).
-- [ ] Open `sai/commands/design/instructions.md` Target State section and confirm a reader sees external-first/internal-second nested blocks, the three emptiness forms, File Manifest independence, and no Endpoint Map heading.
+- [x] Open `openspec/schemas/sai-workflow/templates/design.md` and `openspec/schemas/sai-workflow/templates/change-overview.md` and confirm they still lack nested `#### External Surfaces` / `#### Internal Public Surfaces` headings (skeletons unchanged).
+- [x] Open `sai/commands/design/instructions.md` Target State section and confirm a reader sees external-first/internal-second nested blocks, the three emptiness forms, File Manifest independence, and no Endpoint Map heading.
 
 #### Step 5 STOP & COMMIT
 

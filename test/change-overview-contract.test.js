@@ -1319,3 +1319,139 @@ test('RED skeleton oracle pins the single-source design artifact contracts', () 
   assert.doesNotMatch(design, /^\s*\|\s*Path\s*\|/m,
     'design.md must not retain an endpoint Path table header');
 });
+
+// ─── Step 5: split architecture snapshot by boundary ───────────────────────
+
+const ARCHITECTURE_BOUNDARY_HEADINGS = [
+  '#### External Surfaces',
+  '#### Internal Public Surfaces',
+];
+const ARCHITECTURE_SECTION_HEADINGS = [
+  '### Architecture Snapshot',
+  '### File Manifest',
+];
+const WHOLE_INVENTORY_EMPTY_SENTINEL = 'None — no planned public surfaces';
+const FILE_MANIFEST_EMPTY_SENTINEL = 'None';
+
+function escapeArchitectureLiteral(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function assertExternalFirstBoundaryHeadings(source, label) {
+  let cursor = source.indexOf('### Architecture Snapshot');
+  if (cursor === -1) cursor = source.indexOf('### Snapshot');
+  assert.ok(cursor >= 0, `${label} should declare its architecture snapshot heading`);
+
+  const nextSiblingOffset = source.slice(cursor + 4).search(/\n### (?!#)/);
+  const nextSibling = nextSiblingOffset === -1 ? -1 : cursor + 4 + nextSiblingOffset;
+  const architecture = source.slice(cursor, nextSibling === -1 ? undefined : nextSibling);
+  for (const heading of ARCHITECTURE_BOUNDARY_HEADINGS) {
+    const position = architecture.indexOf(heading);
+    assert.ok(position >= 0,
+      `${label} should contain ${heading} after its architecture snapshot heading`);
+    assert.ok(position > 0,
+      `${label} should nest ${heading} below its architecture snapshot heading`);
+    cursor = position;
+  }
+}
+
+function assertArchitectureEmptinessContract(source, label) {
+  const wholeInventory = escapeArchitectureLiteral(WHOLE_INVENTORY_EMPTY_SENTINEL);
+  assert.match(source, new RegExp(`(?:whole|entire|shared)[\\s\\-]*inventory[\\s\\S]{0,260}${wholeInventory}|${wholeInventory}[\\s\\S]{0,260}(?:whole|entire|shared)[\\s\\-]*inventory`, 'i'),
+    `${label} should define a shared whole-inventory empty form`);
+  assert.match(source, /(?:External|external)[\s\S]{0,260}None|None[\s\S]{0,260}(?:External|external)/,
+    `${label} should define an external block-specific empty form`);
+  assert.match(source, /(?:Internal|internal)[\s\S]{0,260}None|None[\s\S]{0,260}(?:Internal|internal)/,
+    `${label} should define an internal block-specific empty form`);
+  if (label === 'live design instructions') {
+    assert.match(source, new RegExp(`File Manifest[\\s\\S]{0,320}${escapeArchitectureLiteral(FILE_MANIFEST_EMPTY_SENTINEL)}`, 'i'),
+      `${label} should keep File Manifest emptiness independently representable`);
+    assert.match(source, /(?:independent|separate|own|regardless)[\s\S]{0,180}(?:File Manifest|manifest)|(?:File Manifest|manifest)[\s\S]{0,180}(?:independent|separate|own|regardless)/i,
+      `${label} should keep File Manifest None independent of architecture emptiness`);
+  }
+}
+
+test('Step 5: live design instructions and the overview contract use external-first nested boundary headings', () => {
+  for (const [label, relativePath] of [
+    ['live design instructions', 'sai/commands/design/instructions.md'],
+    ['overview contract', 'sai/commands/design/change-overview.md'],
+  ]) {
+    assertExternalFirstBoundaryHeadings(artifact(relativePath), label);
+  }
+});
+
+test('Step 5: live design and overview contracts distinguish shared, block-specific, and File Manifest empty forms', () => {
+  for (const [label, relativePath] of [
+    ['live design instructions', 'sai/commands/design/instructions.md'],
+    ['overview contract', 'sai/commands/design/change-overview.md'],
+  ]) {
+    assertArchitectureEmptinessContract(artifact(relativePath), label);
+  }
+  assert.equal(FILE_MANIFEST_EMPTY_SENTINEL, 'None', 'File Manifest should retain its plain None sentinel literal');
+  assert.match(WHOLE_INVENTORY_EMPTY_SENTINEL, /^None\s+[—-]\s+no planned public surfaces$/,
+    'the shared whole-inventory sentinel should remain a fixed English literal');
+});
+
+test('Step 5: overview generation omits a source-only whole-inventory sentinel but retains one empty boundary block', () => {
+  const overview = artifact('sai/commands/design/change-overview.md');
+
+  assert.match(overview,
+    new RegExp(`source Architecture Snapshot[\\s\\S]{0,320}${escapeArchitectureLiteral(WHOLE_INVENTORY_EMPTY_SENTINEL)}[\\s\\S]{0,260}(?:omit|suppress|not render)`, 'i'),
+    'the overview contract should omit the source-only whole-inventory sentinel');
+  assert.match(overview,
+    /exactly one boundary is empty[\s\S]{0,320}retain the source-grounded block-specific sentinel[\s\S]{0,320}never replace it with the shared whole-inventory sentence/i,
+    'the overview contract should retain a block-specific sentinel when one boundary block is empty');
+});
+
+test('Step 5: overview structural boundary headings remain English regardless of overview_language', () => {
+  const overview = artifact('sai/commands/design/change-overview.md');
+
+  assert.match(overview, /overview_language/);
+  assert.match(overview,
+    /(?:nested|boundary|structural)[\s\S]{0,220}heading(?:s| labels?)[\s\S]{0,260}(?:always|remain|stay)[\s\S]{0,120}English|(?:always|remain|stay)[\s\S]{0,120}English[\s\S]{0,260}(?:nested|boundary|structural)[\s\S]{0,220}heading/i,
+    'nested boundary headings should remain English');
+  assert.match(overview,
+    /(?:regardless|independent|irrespective|does not depend)[\s\S]{0,180}overview_language|overview_language[\s\S]{0,180}(?:regardless|independent|irrespective|does not change)/i,
+    'overview_language should not translate structural boundary headings');
+});
+
+test('Step 5: unclear boundary classification falls back to external and File Manifest is a direct inventory', () => {
+  const instructions = artifact('sai/commands/design/instructions.md');
+  assert.match(instructions,
+    /unclear[\s\S]{0,220}external|external[\s\S]{0,220}unclear/i,
+    'live design instructions should route unclear boundary classification to external');
+  assert.match(instructions,
+    /(?:direct(?:ly)?|explicit(?:ly)?)[\s\S]{0,240}(?:inventory|File Manifest|source artifacts?|files?|paths?)|(?:inventory|File Manifest|source artifacts?|files?|paths?)[\s\S]{0,240}(?:direct(?:ly)?|explicit(?:ly)?)/i,
+    'live design instructions should require a direct source inventory');
+});
+
+test('Step 5: design templates keep exactly two Target State siblings, retain their order, and have no nested boundary headings', () => {
+  const design = artifact('openspec/schemas/sai-workflow/templates/design.md');
+  const targetStateStart = design.indexOf('## Target State');
+  const nextTopLevel = design.indexOf('\n## ', targetStateStart + '## Target State'.length);
+  const targetState = design.slice(targetStateStart, nextTopLevel === -1 ? undefined : nextTopLevel);
+  const headings = (targetState.match(/^### (?!#).+$/gm) || []);
+
+  assert.deepEqual(headings, ARCHITECTURE_SECTION_HEADINGS,
+    'design.md should keep exactly the Architecture Snapshot and File Manifest siblings');
+  assertSkeletonOrder(targetState, ARCHITECTURE_SECTION_HEADINGS, 'design.md ## Target State');
+  assert.doesNotMatch(targetState, /^#### (?:External Surfaces|Internal Public Surfaces)\s*$/m,
+    'design.md templates must not embed boundary headings in the Target State skeleton');
+  assert.doesNotMatch(design, /^## Endpoint Map\s*$/m,
+    'design.md templates must not contain an Endpoint Map section');
+});
+
+test('Step 5: schema keeps the pre-change design graph and does not advertise Endpoint Map', () => {
+  const schema = artifact('openspec/schemas/sai-workflow/schema.yaml');
+  assert.doesNotMatch(schema, /Endpoint Map/,
+    'schema.yaml must not advertise Endpoint Map');
+
+  for (const id of ['design', 'tasks', 'interfaces']) {
+    const entry = schemaEntryForContract(schema, id);
+    const expected = PRE_CHANGE_DESIGN_GRAPH[id];
+    assert.equal(schemaFieldForContract(entry, 'generates'), expected.generates,
+      `${id} should preserve its pre-change generated artifact`);
+    assert.deepEqual(schemaListForContract(schemaFieldForContract(entry, 'requires')), expected.requires,
+      `${id} should preserve its pre-change requirements`);
+  }
+});
