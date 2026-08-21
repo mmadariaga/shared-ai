@@ -348,7 +348,7 @@ test('item-10 exhausted or failed diagnosis leaves change retryable with phase g
 
 ##### RED phase
 
-- [ ] Append the following tests to `test/explore-pipeline-selector.test.js`:
+- [x] Append the following tests to `test/explore-pipeline-selector.test.js`:
 
 ```js
 test('item-10 diagnosis resolves active review item to pending before diagnosis', () => {
@@ -441,13 +441,13 @@ test('item-10 diagnosis render rules live in explore instructions only', () => {
 });
 ```
 
-- [ ] Verify RED: `node --test test/explore-pipeline-selector.test.js` — expected: assertion failure on new idea-list diagnosis pins.
+- [x] Verify RED: `node --test test/explore-pipeline-selector.test.js` — expected: assertion failure on new idea-list diagnosis pins.
 
-- [ ] **GATE — DO NOT PROCEED to GREEN until RED is verified.**
+- [x] **GATE — DO NOT PROCEED to GREEN until RED is verified.**
 
 ##### GREEN phase (only after RED is verified)
 
-- [ ] Edit only `sai/commands/explore/instructions.md` idea-list / review-in-progress rules (item 11 **Review-in-progress state** and any cross-reference from the item-10 Diagnosis Round subsection). **Do not** edit `sai/adapters/claude/idea-list-render.md` or `sai/adapters/opencode/idea-list-render.md`.
+- [x] Edit only `sai/commands/explore/instructions.md` idea-list / review-in-progress rules (item 11 **Review-in-progress state** and any cross-reference from the item-10 Diagnosis Round subsection). **Do not** edit `sai/adapters/claude/idea-list-render.md` or `sai/adapters/opencode/idea-list-render.md`.
 
 **Required normative content:**
 
@@ -458,15 +458,15 @@ test('item-10 diagnosis render rules live in explore instructions only', () => {
 5. Diagnosis counters, findings, and render state are never written to any file, artifact, change directory, configuration, or `.openspec.yaml`.
 6. Panel ownership, machine-readable identities, and no-persistence rules remain unchanged.
 
-- [ ] Verify GREEN: `node --test test/explore-pipeline-selector.test.js` — expected: PASS.
+- [x] Verify GREEN: `node --test test/explore-pipeline-selector.test.js` — expected: PASS.
 
 ##### Step 3 Verification Checklist
 
 **Automated (agent runs before stopping):**
-- [ ] RED verified — idea-list diagnosis pins fail before GREEN
-- [ ] GREEN verified — `node --test test/explore-pipeline-selector.test.js` passes
-- [ ] `sai/adapters/claude/idea-list-render.md` and `sai/adapters/opencode/idea-list-render.md` unchanged
-- [ ] No dedicated `explore-idea-list` test file was created
+- [x] RED verified — idea-list diagnosis pins fail before GREEN
+- [x] GREEN verified — `node --test test/explore-pipeline-selector.test.js` passes
+- [x] `sai/adapters/claude/idea-list-render.md` and `sai/adapters/opencode/idea-list-render.md` unchanged
+- [x] No dedicated `explore-idea-list` test file was created
 
 *(No Human checks — service-side step with no observable browser behavior.)*
 
@@ -590,3 +590,5 @@ After all steps are applied, optional smoke (from design Manual Verification) ma
 | 1 | green | green | 2 | assertion | Cancellation exception wording was incomplete; the production-only correction then passed. |
 | 2 | red | red | 2 | assertion | Initial diagnosis-window anchor was corrected; existing tests remained green. |
 | 2 | green | green | 6 | assertion | Bounded-diagnosis contract wording was refined until the required verification passed. |
+| 3 | red | red | 1 | assertion | New idea-list diagnosis pins failed while existing tests passed. |
+| 3 | green | green | 4 | assertion | Targeted render-rule wording was refined until the required verification passed. |

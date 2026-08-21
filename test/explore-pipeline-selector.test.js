@@ -1253,3 +1253,105 @@ test('Step 2 item-10 exhausted diagnosis keeps the change retryable with phase g
     'diagnosis exhaustion must not dispatch sai-3-implement'
   );
 });
+
+test('Step 3: failed or cancelled item-10 work settles the active phase review item before Diagnosis Round', () => {
+  const source = spec('sai/commands/explore/instructions.md');
+
+  assert.match(
+    source,
+    /(?:item[- ]?10[\s\S]{0,1000}(?:failed|cancelled)|(?:failed|cancelled)[\s\S]{0,1000}item[- ]?10)[\s\S]{0,1000}(?:active phase|phase review|reviewed-sai-[12])[\s\S]{0,700}(?:resolv\w*|set\w*|becom\w*)?[\s\S]{0,120}`pending`[\s\S]{0,700}Diagnosis Round/i,
+    'item-10 failure must resolve the active phase review item to pending before diagnosis'
+  );
+});
+
+test('Step 3: Diagnosis Round does not mark review items in progress or add a diagnosis list item', () => {
+  const source = spec('sai/commands/explore/instructions.md');
+  const start = source.search(/Diagnosis Round/);
+  assert.ok(start >= 0, 'Explore instructions should define Diagnosis Round');
+  const diagnosis = source.slice(start, start + 7000);
+
+  assert.match(
+    diagnosis,
+    /(?:neither|not|never|must not|does not)[\s\S]{0,260}(?:reviewed-sai-1|reviewed-sai-2)[\s\S]{0,260}(?:reviewed-sai-1|reviewed-sai-2)[\s\S]{0,260}(?:in_progress|in progress)|(?:reviewed-sai-1|reviewed-sai-2)[\s\S]{0,260}(?:in_progress|in progress)[\s\S]{0,260}(?:reviewed-sai-1|reviewed-sai-2)[\s\S]{0,260}(?:not|never|must not|does not)/i,
+    'diagnosis must not set either phase review item in_progress'
+  );
+  assert.match(
+    diagnosis,
+    /(?:no|not|never|does not|must not)[\s\S]{0,180}diagnosis[- ]specific[\s\-]?list item|diagnosis[- ]specific[\s\-]?list item[\s\S]{0,180}(?:is not|does not|never|must not)[\s\S]{0,120}(?:add|appear|exist)/i,
+    'diagnosis must not add a diagnosis-specific list item'
+  );
+});
+
+test('Step 3: diagnosis findings do not change review evidence or count as a Supervised Review Round', () => {
+  const source = spec('sai/commands/explore/instructions.md');
+  const start = source.search(/Diagnosis Round/);
+  assert.ok(start >= 0, 'Explore instructions should define Diagnosis Round');
+  const diagnosis = source.slice(start, start + 7000);
+
+  assert.match(
+    diagnosis,
+    /(?:diagnosis|diagnosis round)[\s\S]{0,500}(?:finding|findings)[\s\S]{0,300}(?:do not|does not|never|must not)[\s\S]{0,220}(?:mark|set|change|alter)[\s\S]{0,180}review evidence/i,
+    'diagnosis findings must not mark or change review evidence'
+  );
+  assert.match(
+    diagnosis,
+    /(?:diagnosis|diagnosis round)[\s\S]{0,500}(?:finding|findings)[\s\S]{0,300}(?:do not|does not|never|must not)[\s\S]{0,220}clear[\s\S]{0,180}review evidence/i,
+    'diagnosis findings must not clear review evidence'
+  );
+  assert.match(
+    diagnosis,
+    /(?:diagnosis|diagnosis round)[\s\S]{0,700}(?:not|never|does not|must not)[\s\S]{0,180}(?:count|increment)[\s\S]{0,180}Supervised Review Round/i,
+    'diagnosis must not count as a Supervised Review Round'
+  );
+});
+
+test('Step 3: successful same-worker re-dispatch resumes ordinary review and only ordinary review enters in_progress', () => {
+  const source = spec('sai/commands/explore/instructions.md');
+
+  assert.match(
+    source,
+    /successful[\s\S]{0,500}same[- ]worker[\s\S]{0,500}re[- ]dispatch[\s\S]{0,500}(?:resume|return)[\s\S]{0,300}ordinary review|same[- ]worker[\s\S]{0,500}re[- ]dispatch[\s\S]{0,500}(?:ordinary review)[\s\S]{0,300}(?:resume|return)/i,
+    'successful same-worker re-dispatch must resume ordinary review'
+  );
+  assert.match(
+    source,
+    /only[\s\S]{0,220}ordinary review[\s\S]{0,220}(?:entry|start|transition)[\s\S]{0,220}(?:set|mark|resolve)[\s\S]{0,120}(?:`?in_progress`?|in progress)|(?:ordinary review)[\s\S]{0,300}(?:is the only|only)[\s\S]{0,220}(?:set|mark|resolve)[\s\S]{0,120}(?:`?in_progress`?|in progress)/i,
+    'only ordinary review entry may set in_progress'
+  );
+});
+
+test('Step 3: stopped diagnosis leaves the phase item pending and keeps diagnosis state conversation-only', () => {
+  const source = spec('sai/commands/explore/instructions.md');
+  const start = source.search(/Diagnosis Round/);
+  assert.ok(start >= 0, 'Explore instructions should define Diagnosis Round');
+  const diagnosis = source.slice(start, start + 7000);
+
+  assert.match(
+    diagnosis,
+    /(?:stopped|stop(?:ping|ped)?|interrupted)[\s\S]{0,600}(?:phase item|phase review|reviewed-sai-[12])[\s\S]{0,300}`pending`/i,
+    'stopped diagnosis must leave the phase item pending'
+  );
+  assert.match(diagnosis, /diagnosis[\s\S]{0,500}conversation-only/i,
+    'diagnosis state must be conversation-only');
+  assert.match(
+    diagnosis,
+    /diagnosis[\s\S]{0,700}(?:not|never|must not|does not)[\s\S]{0,180}(?:persist|write)[\s\S]{0,180}(?:file|\.openspec\.yaml)|(?:file|\.openspec\.yaml)[\s\S]{0,180}(?:not|never|must not|does not)[\s\S]{0,180}(?:persist|write)[\s\S]{0,700}diagnosis/i,
+    'diagnosis state must not persist to files or .openspec.yaml'
+  );
+});
+
+test('Step 3: Diagnosis Round render rules live in Explore instructions, not either idea-list renderer', () => {
+  const explore = spec('sai/commands/explore/instructions.md');
+  const claudeRenderer = spec('sai/adapters/claude/idea-list-render.md');
+  const opencodeRenderer = spec('sai/adapters/opencode/idea-list-render.md');
+
+  assert.match(explore, /Diagnosis Round/,
+    'Explore instructions should own the Diagnosis Round render rules');
+  for (const [name, renderer] of [
+    ['Claude Code', claudeRenderer],
+    ['opencode', opencodeRenderer],
+  ]) {
+    assert.doesNotMatch(renderer, /Diagnosis Round|diagnosis_rounds/,
+      `${name} idea-list renderer must not contain diagnosis render rules`);
+  }
+});
