@@ -8,16 +8,19 @@ Defines the once-per-run learnings promotion pass of `/sai-4-apply`: the deviati
 
 ### Requirement: Promotion runs once per run, after the Final sweep and before the MANDATORY STOP
 
-The `/sai-4-apply` coordinator SHALL perform exactly one promotion pass per run. The pass SHALL be positioned after the Final sweep — the scan that verifies every checkbox in `implementation.md` is marked — and before the MANDATORY STOP that prints the completion message. This is the same slot the fast-track combined Human Verification list already occupies.
+The `/sai-4-apply` coordinator SHALL perform exactly one promotion pass per run. The pass SHALL be implemented and executed by the active routed `sai/commands/apply/runner.md` after the Final sweep — the scan that verifies every checkbox in `implementation.md` is marked — and before the MANDATORY STOP that prints the completion message. This is the same slot the fast-track combined Human Verification list already occupies.
 
-The pass SHALL NOT be performed per Step, and SHALL NOT be performed more than once in a run. Because the whole `## Appendix: Plan vs Final Implementation` is on disk by the time the pass runs, supersede-by-key SHALL be applied as a single pass over the complete appendix rather than incrementally.
+The pass SHALL NOT be performed per Step, SHALL NOT be delegated to a Step-execution worker, and SHALL NOT be performed more than once in a run. Because the whole `## Appendix: Plan vs Final Implementation` is on disk by the time the pass runs, supersede-by-key SHALL be applied as a single pass over the complete appendix rather than incrementally.
 
-The promotion pass SHALL be performed by the coordinator itself. It SHALL NOT be delegated to a Step-execution subagent, and SHALL NOT introduce a new subagent type or a new dispatch kind.
-
-#### Scenario: A run completes all Steps
+#### Scenario: A routed run completes all Steps
 
 - **WHEN** the coordinator finishes the Final sweep and every Step is checked
-- **THEN** it runs the promotion pass once, over the complete deviations appendix, before printing the completion message
+- **THEN** `runner.md` executes the promotion pass once over the complete deviations appendix before terminal documentation evaluation and the completion message
+
+#### Scenario: A run halts before the Final sweep
+
+- **WHEN** a GREEN conflict, user stop, or declined per-Step commit ends the run before the Final sweep
+- **THEN** the routed runner performs neither promotion nor terminal documentation-commit evaluation
 
 #### Scenario: The coordinator is tempted to promote per Step
 
@@ -77,7 +80,7 @@ No additional rubric, scoring, weighting, or multi-criteria judgement SHALL be i
 
 ### Requirement: Promotion is committed separately behind its own authorization gate
 
-After the Final sweep and the once-per-run promotion pass, `/sai-4-apply` SHALL treat the terminal commit as the run's documentation commit rather than as a commit owned exclusively by learnings promotion. The terminal documentation commit SHALL be a sibling subsection of `## Learnings Promotion Pass` in the apply instructions and SHALL be governed by one authorization gate for the complete terminal set.
+After the Final sweep and the once-per-run promotion pass, the active routed runner SHALL treat the terminal commit as the run's documentation commit rather than as a commit owned exclusively by learnings promotion. The terminal documentation commit SHALL be a sibling operation to the learnings promotion operation in `sai/commands/apply/runner.md` and SHALL be governed by one authorization gate for the complete terminal set.
 
 When the promotion pass writes `SAI_LEARNINGS.md`, the coordinator SHALL include that file in the terminal documentation commit. The same commit SHALL include eligible documentation changes under `docs/**` and SHALL include the project-root `GLOSSARY.md` when it is changed in the working tree at the terminal pass — tracked-modified or untracked; it SHALL NOT include any other path, including OpenSpec change artifacts. `GLOSSARY.md` SHALL be resolved at the project root only, per `openspec/specs/glossary-location/spec.md`; no change-folder fallback exists.
 
@@ -87,7 +90,7 @@ When the promotion pass writes `SAI_LEARNINGS.md`, before proposing the terminal
 
 Before proposing the terminal documentation commit message, the coordinator SHALL apply `sai/policies/commit-rules.md`. The message SHALL use the policy's commit-type classification, subject/body/footer limits, and faithfulness rules, and SHALL describe only the terminal documentation commit's staged paths and hunks.
 
-The terminal authorization gate SHALL be session-flag-aware. On both authorization paths — the inactive-flag `yes` path and the active-flag skip path — the coordinator SHALL stage exactly the fixed terminal set — the changed `docs/**` paths plus root `SAI_LEARNINGS.md` when the promotion pass wrote it plus root `GLOSSARY.md` when it is changed in the working tree, tracked-modified or untracked — and SHALL NOT use `git add -A`, a broad sweep, or a path that includes `openspec/changes/{change-name}/`. When the session-scoped commit-authorization flag is inactive, the authorization SHALL be a closed-choice `yes` / `no` prompt presented through the harness's native option-picker where one exists, with yes-only execute semantics: anything other than an explicit `yes` SHALL be treated as a decline. When the flag is active for the current in-conversation session (set by a prior `Allow on this session` selection at an earlier Step's commit gate or pre-activated by `--fast-track`), the coordinator SHALL skip the ask and proceed directly to staging and committing the terminal set, exactly as a per-Step commit under the flag does. In both paths, the promotion disclosure, the terminal file visibility listing, and the proposed commit message SHALL print before the commit; only the authorization ask and wait are removed. The terminal gate SHALL NOT offer an `Allow on this session` option: it is the run's last commit gate, so there is nothing further to grant. On decline, the coordinator SHALL leave the eligible files in the working tree, describe what remains uncommitted, and proceed to the MANDATORY STOP without halting or retrying.
+The terminal authorization gate SHALL be session-flag-aware. On both authorization paths — the inactive-flag `yes` path and the active-flag skip path — the coordinator SHALL stage exactly the fixed terminal set — the changed `docs/**` paths plus root `SAI_LEARNINGS.md` when the promotion pass wrote it plus root `GLOSSARY.md` when it is changed in the working tree, tracked-modified or untracked — and SHALL NOT use `git add -A`, a broad sweep, or a path that includes `openspec/changes/{change-name}/`. When the session-scoped commit-authorization flag is inactive, the authorization SHALL be a closed-choice `yes` / `no` prompt presented through the harness's native option-picker where one exists, with yes-only execute semantics: anything other than an explicit `yes` SHALL be treated as a decline. When the flag is active for the current in-conversation session (set by a prior `Allow on this session` selection at an earlier Step's commit gate or pre-activated by `--fast-track`), the coordinator SHALL skip the ask and proceed directly to staging and committing the terminal set, exactly as a per-Step commit under the flag does. In both paths, the promotion disclosure, the terminal file visibility listing, and the proposed commit message SHALL print before the commit; only the authorization ask and wait are removed. The terminal gate SHALL NOT offer an `Allow on this session` option. On decline, the coordinator SHALL leave the eligible files in the working tree, describe what remains uncommitted, and proceed to the MANDATORY STOP without halting or retrying.
 
 #### Scenario: Documentation exists but no learning is promoted
 

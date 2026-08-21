@@ -112,7 +112,11 @@
 
   After each recovery continuation, re-diagnose only a successfully resumed same-worker result. A subsequent recovery continuation requires a new normalized diagnosis key and a remaining ledger slot. Exhaustion is terminal only after the duplicate check and after three distinct failed continuations have consumed the three distinct slots: it blocks checkbox changes, commit, and Step advance, and stops for human intervention naming the routing diagnosis, failure class when present, Cause Locus or unresolved state, distinct keys and ordinals spent, and the stopping reason. Duplicate, out-of-scope, unresolved, veto, transport-loss, coordinator-rejection, and repair hand-backs stop before exhaustion and do not fabricate a third attempt. Recovery hand-backs and announcements are conversation text only and never alter the progress plan.
 
-  ## Terminal Navigation
+   ## Terminal lifecycle handoff
+
+   After the runner's Final sweep passes, the coordinator performs the single learnings promotion pass and immediately evaluates the terminal documentation set. It owns the visibility listing, commit-policy application, session-aware terminal authorization, exact-path staging, terminal documentation commit, and the no-op/decline handoff. RED and GREEN workers receive none of these responsibilities, and the retired monolithic apply instruction is not an executable source.
+
+   ## Terminal Navigation
 
   After Final sweep passes, human verification gates are satisfied under the active
   fast-track or non-fast-track rules, and all commits are done, invoke the bound

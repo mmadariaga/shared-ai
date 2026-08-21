@@ -109,6 +109,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 
 ### `/sai-4-apply`
 
+- [0171 — Routed runner owns the terminal documentation lifecycle](./0171-routed-runner-owns-terminal-documentation-lifecycle.md)
 - [0154 — Build apply segment loads through the existing apply phase adapter](./0154-build-apply-segment-uses-existing-apply-adapter.md) — Refs 0152, Refs 0148, Refs 0149
 - [0156 — Build injects apply fast-track unconditionally; composition owns the banner](./0156-build-unconditional-apply-fast-track-banner-ownership.md) — Refs 0153, Refs 0048, Refs 0051, Refs ddr:0052
 - [0005 — Verbatim Extraction of Commit Rules into commit-rules.md](./0005-verbatim-extraction-of-commit-rules.md) — Refs 0006
@@ -317,6 +318,8 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 ---
 
 ## Cross-cutting categories
+
+- [0171 — Routed runner owns the terminal documentation lifecycle](./0171-routed-runner-owns-terminal-documentation-lifecycle.md)
 
 - [0107 — Unified audit severity vocabulary across the four report surfaces](./0107-unified-audit-severity-vocabulary.md) — Supersedes 0013
 - [0110 — Additive-then-retire decomposition for the tunable-seed strategy switch](./0110-additive-then-retire-decomposition-tunable-seed.md)

@@ -888,3 +888,57 @@ test('Step 5 neither worker edits implementation.md or runs git', () => {
       `specs/diagnosis-driven-recovery-apply/spec.md: ${name} must never run git`);
   }
 });
+
+test('Step 2 the active runner owns the ordered terminal documentation lifecycle', () => {
+  const runner = artifact(APPLY_CARDS.runner);
+  const start = runner.indexOf('## Final sweep and terminal lifecycle');
+  assert.ok(start >= 0, 'the active runner must own the terminal lifecycle');
+  const section = runner.slice(start);
+  const markers = [
+    '### Final sweep',
+    '### Learnings Promotion Pass',
+    '### Terminal documentation evaluation',
+    '### Terminal visibility listing',
+    '### Terminal authorization and commit',
+    '### MANDATORY STOP',
+  ];
+  const positions = markers.map(marker => section.indexOf(marker));
+  assert.ok(positions.every(position => position >= 0), 'every terminal lifecycle segment must be present');
+  assert.deepEqual([...positions].sort((left, right) => left - right), positions,
+    'Final sweep, promotion, evaluation, visibility, authorization, and STOP must stay ordered');
+  assert.match(section, /exactly one learnings promotion pass/);
+  assert.match(section, /retired monolithic apply instruction is not an executable source|retired monolithic/i);
+});
+
+test('Step 2 the terminal path contract is explicit and separate from Step staging', () => {
+  const runner = artifact(APPLY_CARDS.runner);
+  const start = runner.indexOf('## Final sweep and terminal lifecycle');
+  assert.ok(start >= 0, 'the active runner must own terminal path selection');
+  const section = runner.slice(start);
+  assert.match(section, /changed paths under `docs\/\*\*`/);
+  assert.match(section, /root `SAI_LEARNINGS\.md` only when this run's promotion pass wrote it/);
+  assert.match(section, /changed root `GLOSSARY\.md`/);
+  assert.match(section, /`openspec\/changes\/\*\*`, `implementation\.md`, unrelated working-tree paths/);
+  assert.match(section, /per-Step field-8 add-list/);
+  assert.match(section, /does not stage, unstage, or otherwise mutate the Git index/);
+  assert.match(section, /SHALL NOT use `git add -A`/);
+});
+
+test('Step 2 both harnesses keep the routed coordinator and workers keep Git authority prohibited', () => {
+  const claude = artifact('sai/adapters/claude/boot.md');
+  const opencode = artifact('sai/adapters/opencode/boot.md');
+  const coordinator = artifact(APPLY_CARDS.coordinator);
+  const red = artifact(APPLY_CARDS.redWorker);
+  const green = artifact(APPLY_CARDS.greenWorker);
+  for (const boot of [claude, opencode]) {
+    assert.match(boot, /@sai\/commands\/apply\/coordinator\.md/);
+    assert.doesNotMatch(boot, /@sai\/commands\/apply\/body\.md/);
+    assert.doesNotMatch(boot, /Learnings Promotion Pass|Terminal documentation evaluation/);
+  }
+  assert.match(coordinator, /runner\.md/);
+  for (const worker of [red, green]) {
+    assert.match(worker, /MUST NOT run any git operation/);
+    assert.match(worker, /MUST NOT edit or modify `implementation\.md`/);
+    assert.doesNotMatch(worker, /git add|git commit/);
+  }
+});

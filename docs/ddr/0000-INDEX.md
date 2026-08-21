@@ -71,6 +71,7 @@ This index groups the DDRs in `docs/ddr/` by **command** and by **cross-cutting 
 
 ### `/sai-4-apply`
 
+- [0155 — Terminal documentation set is explicit and root-aware](./0155-terminal-documentation-set-is-explicit-and-root-aware.md)
 - [0016 — Accept double branch-selection prompt with the sibling spec](./0016-accept-double-prompt-with-sibling-spec.md)
 - [0026 — Stable 8-field report shape with per-dispatch n/a for the unowned field](./0026-stable-eight-field-report.md)
 - [0027 — A failing GREEN is a human decision, reached via bounded iteration](./0027-failing-green-human-decision.md)
@@ -170,6 +171,8 @@ This index groups the DDRs in `docs/ddr/` by **command** and by **cross-cutting 
 ---
 
 ## Cross-cutting categories
+
+- [0155 — Terminal documentation set is explicit and root-aware](./0155-terminal-documentation-set-is-explicit-and-root-aware.md)
 
 - [0109 — Progress plans are declared, canonical, and immutable; the coordinator renders and marks only](./0109-declared-canonical-immutable-progress-plan.md)
 - [0110 — Progress reporting is additive and nonterminal; a run closes with exactly one terminal status](./0110-additive-nonterminal-progress-event.md)
