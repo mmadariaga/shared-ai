@@ -140,7 +140,7 @@ The matching `## Step N` sections in `interfaces.md` remain authoritative for st
 
 *(Non-testable step — derived projection rules. Overview contract tests may go red until Step 5.)*
 
-- [ ] In `sai/commands/design/change-overview.md`, extend the rendering language / output organization rules for `## Target Architecture` / `### Snapshot` as follows (integrate into existing prose; do not add a tenth top-level section or change the five-field result envelope):
+- [x] In `sai/commands/design/change-overview.md`, extend the rendering language / output organization rules for `## Target Architecture` / `### Snapshot` as follows (integrate into existing prose; do not add a tenth top-level section or change the five-field result envelope):
 
 1. **Source-only derivation** remains: Architecture Snapshot content is derived only from `design.md`.
 2. **Non-empty inventory projection:** When the source Architecture Snapshot inventory has at least one surface, under the fixed `### Snapshot` subsection render exactly two nested headings in order: `#### External Surfaces` then `#### Internal Public Surfaces`. External entries and source-grounded prose under the first; internal under the second. MAY condense prose under existing fidelity rules; MUST NOT flatten the two groups into an undifferentiated list, reverse their order, or invent a surface.
@@ -156,16 +156,16 @@ When projecting a non-empty Architecture Snapshot from `design.md` under `## Tar
 When the source snapshot is entirely empty, omit both nested boundary headings and do not copy the source shared `None — no planned public surfaces` sentinel into the overview as a rendered public-surface promise. When the source has one empty boundary block, still render both nested headings in order and retain the corresponding source-grounded block-specific empty sentinel under the correct heading rather than substituting the shared whole-inventory sentence.
 ```
 
-- [ ] Do not change schema templates, the nine-section overview shape, or the closed result envelope.
+- [x] Do not change schema templates, the nine-section overview shape, or the closed result envelope.
 
 ##### Step 3 Verification Checklist
 
 **Automated (agent runs before stopping):**
-- [ ] `sai/commands/design/change-overview.md` requires external-first then internal-second nested Snapshot headings for a non-empty source inventory
-- [ ] Overview contract lists the two nested boundary headings among English structural anchors that stay English regardless of `overview_language`
-- [ ] Overview contract omits whole-inventory public-surface None projection
-- [ ] One-empty-block projection retains block-specific sentinel under the correct heading
-- [ ] `node --test test/change-overview-contract.test.js` — may FAIL until Step 5 if new boundary assertions are not yet present; existing Endpoint Map absence checks should remain green
+- [x] `sai/commands/design/change-overview.md` requires external-first then internal-second nested Snapshot headings for a non-empty source inventory
+- [x] Overview contract lists the two nested boundary headings among English structural anchors that stay English regardless of `overview_language`
+- [x] Overview contract omits whole-inventory public-surface None projection
+- [x] One-empty-block projection retains block-specific sentinel under the correct heading
+- [x] `node --test test/change-overview-contract.test.js` — may FAIL until Step 5 if new boundary assertions are not yet present; existing Endpoint Map absence checks should remain green
 
 *(No Human checks — service-side step with no observable browser behavior.)*
 
