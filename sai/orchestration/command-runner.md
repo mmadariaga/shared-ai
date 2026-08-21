@@ -264,8 +264,12 @@ additional phase-adapter field.
    dispatch recovery when recovery is not enabled, resolution has not
    completed, the closed outcome or its required metadata is rejected, Cause
    Locus is `out-of-scope` or `unresolved`, the worker vetoes continuation,
-   the ledger is exhausted, or the result is cancelled. A duplicate normalized
-   diagnosis key is checked before dispatch: it spends zero slots, does not
+    the ledger is exhausted, or the result is cancelled, except as specified for
+    the named Explore Auto item-10 route below. Ordinary/generic adapters
+    preserve a cancelled result as a clean stop; outside the selector-dispatched
+    Explore Auto item 10 exception, cancellation closes as cancelled without a
+    recovery charge. A duplicate normalized diagnosis key is checked before
+    dispatch: it spends zero slots, does not
    invoke `continue_after_recovery`, and hands back the existing diagnosis
    rather than creating a second attempt. A coordinator-owned rejection with
    no concrete in-scope correction likewise spends zero slots. These branches
@@ -298,17 +302,37 @@ additional phase-adapter field.
    out-of-scope cause, duplicate diagnosis, worker veto, exhaustion,
    continuation/transport loss, coordinator rejection, input, or cancellation.
    Recovery announcements and hand-backs are conversation text only; they
-   never mark, extend, rename, or add progress-plan steps.
+    never mark, extend, rename, or add progress-plan steps.
 
-10. **Union and fast-track invariants.** Maintain one first-seen, ordered,
+     **Explore Auto item-10 cancellation exception.** Only a selector-dispatched
+     Explore Auto item 10 may enter an Explore Diagnosis Round; it does not spend
+     the shared diagnosis ledger. This applies only after a post-resolution
+     supervised phase-worker `status: cancelled`, and only when the phase-keyed,
+     conversation-only `diagnosis_rounds.<phase>` is unused.
+    On an actionable diagnosis where same-worker continuation cannot be
+    delivered, use `continuation/transport loss`, consume the diagnosis round,
+    do not use ordinary replacement fallback, close this route as terminal, and
+    leave the change retryable for later Auto selection. The round is read-only
+    and permits at most one diagnosis and at most one same-worker re-dispatch;
+     it never uses a replacement worker and never spends the shared three-slot
+     ledger. Use only
+    `diagnosis_rounds.spec` / `diagnosis_rounds.design`; no other phase key is
+    valid. Standalone
+    spec/design, Build, manual item-9 review, adapters without the named route,
+    and outer user cancellation receive no cancellation recovery.
+
+  10. **Union and fast-track invariants.** Maintain one first-seen, ordered,
       duplicate-free `changed_files` union across initial results, progress,
        notices, input, normal continuation, segment transitions, and recovery.
       Reset the diagnosis ledger only at an eligible composition-segment
       boundary; never reset the changed-files union. `--fast-track` is unchanged:
       it changes neither the three-slot ledger, distinct-diagnosis accounting,
       eligibility, duplicate handling, same-worker/no-replacement rule,
-      changed-files union, nor recovery reporting; its existing fast-track gates
-      remain in force.
+       changed-files union, nor recovery reporting; its existing fast-track gates
+       remain in force. Fast-track does not widen the Explore Auto item-10 bound:
+       it still permits at most one diagnosis round and at most one same-worker
+       re-dispatch, never a replacement worker and never a charge to the shared
+       three-slot ledger.
 
     **Planning-adapter recovery surface and channel selection.** A planning
     adapter that opts into bounded recovery SHALL declare both (a) its
