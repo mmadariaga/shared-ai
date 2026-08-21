@@ -378,36 +378,46 @@ function validateOpencodeWorkerBindings(bindingsDir = OPENCODE_BINDINGS_DIR) {
     }
     const rosterByEntry = new Map(canonicalBindings.map(binding => [binding.entry.workerName, binding]));
     const canonicalBindingText = (binding) => {
-    const bindingPath = path.join(bindingsDir, binding.destinationName);
-    let materialized = false;
-    if (bindingsDir === OPENCODE_BINDINGS_DIR) {
+      const bindingPath = path.join(bindingsDir, binding.destinationName);
+      let materialized = false;
+      let temporaryPath = null;
       try {
-        const descriptor = fs.openSync(bindingPath, 'wx');
-        fs.closeSync(descriptor);
-        materialized = true;
-        fs.writeFileSync(bindingPath, binding.text, 'utf8');
-      } catch (error) {
-        if (error.code !== 'EEXIST') throw error;
-      }
-    }
-    try {
-      return fs.readFileSync(bindingPath, 'utf8');
-    } catch (error) {
-      // Matrix rendering has already validated this generated source.  The
-      // canonical opencode tree intentionally need not contain materialized
-      // per-worker files, so an absent entry falls back to the validated
-      // matrix text.  Other read failures remain validation failures.
-      if (error.code === 'ENOENT') return binding.text;
-      throw error;
-    } finally {
-      if (materialized) {
+        if (bindingsDir === OPENCODE_BINDINGS_DIR && !fs.existsSync(bindingPath)) {
+          temporaryPath = `${bindingPath}.${process.pid}.${crypto.randomUUID()}.tmp`;
+          fs.writeFileSync(temporaryPath, binding.text, 'utf8');
+          try {
+            fs.renameSync(temporaryPath, bindingPath);
+            materialized = true;
+            temporaryPath = null;
+          } catch (error) {
+            if (error.code !== 'EEXIST') throw error;
+          }
+        }
         try {
-          fs.unlinkSync(bindingPath);
+          return fs.readFileSync(bindingPath, 'utf8');
         } catch (error) {
-          if (error.code !== 'ENOENT') throw error;
+          // Matrix rendering has already validated this generated source. The
+          // canonical opencode tree intentionally need not contain materialized
+          // per-worker files, so an absent entry falls back to matrix text.
+          if (error.code === 'ENOENT') return binding.text;
+          throw error;
+        }
+      } finally {
+        if (temporaryPath) {
+          try {
+            fs.unlinkSync(temporaryPath);
+          } catch (error) {
+            if (error.code !== 'ENOENT') throw error;
+          }
+        }
+        if (materialized) {
+          try {
+            fs.unlinkSync(bindingPath);
+          } catch (error) {
+            if (error.code !== 'ENOENT') throw error;
+          }
         }
       }
-    }
     };
     const bindingFiles = allFiles
     .filter(name => name.endsWith('-worker.md'))
