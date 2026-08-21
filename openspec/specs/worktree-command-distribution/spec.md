@@ -18,17 +18,19 @@ The change SHALL add `commands/claude/sai-worktree.md` and `commands/opencode/sa
 - **WHEN** `commands/opencode/sai-worktree.md` is read
 - **THEN** it fetches the shared body via the opencode fetch path and places `$ARGUMENTS` in the opencode wrapper position
 
-### Requirement: Shared Isolation-Mode body and instruction
+### Requirement: Shared slimmed body and instruction
 
-The change SHALL add the shared command body at `sai/commands/worktree/body.md` — an Isolation Mode block followed by a `<TASK>` block that loads budget and safe-operations as behaviors and the phase instruction plus `sai/policies/remember.md` as instructions — and the instruction body at `sai/commands/worktree/instructions.md`.
+The shared command body lives at `sai/commands/worktree/body.md` — opening directly with a `<TASK>` block (no Isolation Mode block; clean-session enforcement belongs to the harness boot adapters' preamble) that loads safe-operations as its sole behaviour and the phase instruction plus `sai/policies/remember.md` as instructions — alongside the instruction body at `sai/commands/worktree/instructions.md`. The body carries no budget fetch because the worktree flow dispatches no subagents.
 
-#### Scenario: Body starts with the Isolation Mode block
-- **WHEN** `sai/commands/worktree/body.md` is read
-- **THEN** it begins with the Isolation Mode block listing the three rules and the context-pollution stop line, exactly as the other command bodies do
+#### Scenario: Body starts with the TASK block
 
-#### Scenario: Body loads the safety layers
+- **WHEN** `sai/commands/worktree/body.md` is read after the change
+- **THEN** it begins with the `<TASK>` block and contains no `# Isolation Mode` heading or bullets
+
+#### Scenario: Body loads the safety layer only
+
 - **WHEN** the shared body's `<TASK>` block is read
-- **THEN** it loads `@skills/budget/SKILL.md` and `@skills/safe-operations/SKILL.md` as behaviors and the worktree instruction plus `@sai/policies/remember.md` as instructions
+- **THEN** it loads `@skills/safe-operations/SKILL.md` as its only behaviour and the worktree instruction plus `@sai/policies/remember.md` as instructions, with no `@skills/budget/SKILL.md` fetch
 
 ### Requirement: Registry table registration
 

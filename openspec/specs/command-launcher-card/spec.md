@@ -27,12 +27,12 @@ Every in-scope command SHALL have exactly one launcher card at `sai/commands/{na
 
 ### Requirement: launcher-content
 
-Each launcher SHALL hold the glossary/behaviour skill loads and the routed worker binding that its command's wrapper carries beyond the fetch-skill and boot-adapter loads: the `glossary-format` and `budget` loads where the wrapper carries them, `safe-operations` where the wrapper carries it, and the routed worker binding (`@sai/orchestration/workers/bindings/{phase}-worker.md`) where the wrapper carries it. Launchers SHALL NOT carry a routed card fetch (`@sai/commands/{name}/coordinator.md`): card selection is owned by the harness boot adapter, which performs it before the launcher loads, so a launcher-level card fetch would duplicate it. Every directive in the launcher SHALL keep its established relative order.
+Each launcher SHALL hold the behaviour-skill loads and the routed worker binding that its command's wrapper carries beyond the fetch-skill and boot-adapter loads: `safe-operations` where the wrapper carries it and the routed worker binding (`@sai/orchestration/workers/bindings/{phase}-worker.md`) where the wrapper carries it. A directive a command no longer carries — such as the retired `glossary-format` and `budget` launcher loads, which reach worker sessions through their invocation cores instead — SHALL NOT remain in a launcher. Launchers SHALL NOT carry a routed card fetch (`@sai/commands/{name}/coordinator.md`): card selection is owned by the harness boot adapter, which performs it before the launcher loads, so a launcher-level card fetch would duplicate it. Every directive in the launcher SHALL keep its established relative order.
 
 #### Scenario: worst-case launcher
 
 - **WHEN** `sai/commands/spec/launcher.md` is read
-- **THEN** it contains exactly four directives — the `glossary-format` load, the `budget` load, the `safe-operations` load, and the `spec-worker` binding — and no coordinator-card fetch
+- **THEN** it contains exactly two directives — the `safe-operations` load and the `spec-worker` binding — and no coordinator-card fetch
 
 #### Scenario: no coordinator-card fetch in any launcher
 

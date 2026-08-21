@@ -139,7 +139,7 @@ The layout migration SHALL leave `sai/policies/` as the shared policy projection
 
 ### Requirement: Clean-session preamble precedes protocol loading
 
-Both harness boot adapters SHALL open every invocation with the single clean-session preamble line — "This invocation starts clean: disregard prior conversational context except where a fetched contract explicitly directs otherwise." — inserted immediately before the `@sai/orchestration/command-runner.md` fetch and therefore before any card selection. The preamble SHALL be byte-identical in `sai/adapters/claude/boot.md` and `sai/adapters/opencode/boot.md` and SHALL be loaded exactly once per invocation by the boot adapter. It is the standing mechanism that discards prior conversational context at invocation start; routed coordinator cards (the seven phase coordinators plus apply and build) and routed invocation cards carry no isolation block of their own. The preamble governs session hygiene only and SHALL NOT redefine command or worker lifecycle semantics.
+Both harness boot adapters SHALL open every invocation with the single clean-session preamble line — "This invocation starts clean: disregard prior conversational context except where a fetched contract explicitly directs otherwise." — inserted immediately before the `@sai/orchestration/command-runner.md` fetch and therefore before any card selection. The preamble SHALL be byte-identical in `sai/adapters/claude/boot.md` and `sai/adapters/opencode/boot.md` and SHALL be loaded exactly once per invocation by the boot adapter. It is the standing mechanism that discards prior conversational context at invocation start; routed coordinator cards (the seven phase coordinators plus apply and build), routed invocation cards, and every utility body card carry no isolation block of their own. The preamble governs session hygiene only and SHALL NOT redefine command or worker lifecycle semantics.
 
 #### Scenario: preamble precedes protocol load in both boots
 
@@ -154,4 +154,9 @@ Both harness boot adapters SHALL open every invocation with the single clean-ses
 #### Scenario: routed cards carry no isolation block
 
 - **WHEN** any routed coordinator card or the apply invocation card is read after this change
+- **THEN** it contains no `# Isolation Mode` block and no duplicated clean-session preamble line
+
+#### Scenario: utility bodies carry no isolation block
+
+- **WHEN** any utility body card (`sai/commands/{archive,backfill,commit,explore,pr,status,worktree}/body.md`) is read after this change
 - **THEN** it contains no `# Isolation Mode` block and no duplicated clean-session preamble line

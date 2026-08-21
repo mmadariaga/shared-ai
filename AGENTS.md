@@ -194,7 +194,7 @@ The only containment layer this change adopts is background dispatch on Claude C
 - `sai-1-spec` reads `GLOSSARY.md`, updates it inline, challenges ambiguous terms.
 - `sai-3-implement` uses canonical glossary terms for identifiers.
 - `sai-5-review` validates language consistency in new code.
-- Format: `sai/policies/glossary-format.md`, pre-loaded at startup by each wrapper.
+- Format: `sai/policies/glossary-format.md`, pre-loaded by each glossary-consuming command via its invocation core (`spec`, `design`, `implement`, `review`).
 
 ### RED → GREEN
 Integrated in `implementation.md` (loaded by `sai-3-implement`) and `sai/commands/implement/instructions.md` (loaded by `sai-4-apply`):
