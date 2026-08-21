@@ -329,7 +329,7 @@ test('design schema description does not advertise Endpoint Map; graph fields un
 
 - **Rule:** RED may only contain the failing test + minimal stubs/imports. Do NOT paste the full implementation here.
 
-- [ ] Append skeleton-oracle tests to both `test/change-overview-contract.test.js` and `test/design-coordinator-worker.test.js`. These MUST fail against the current full templates (Endpoint Map present, forbidden ADR criteria prose, missing Spec files subsection, `None — no step contracts` retained on interfaces template):
+- [x] Append skeleton-oracle tests to both `test/change-overview-contract.test.js` and `test/design-coordinator-worker.test.js`. These MUST fail against the current full templates (Endpoint Map present, forbidden ADR criteria prose, missing Spec files subsection, `None — no step contracts` retained on interfaces template):
 
 ```js
 const DESIGN_HEADINGS = [
@@ -434,12 +434,12 @@ test('design/tasks/interfaces templates are structural skeletons with authority 
 });
 ```
 
-- [ ] Verify RED: run `node --test test/change-overview-contract.test.js test/design-coordinator-worker.test.js` — expected: **assertion failure** on skeleton oracle (Endpoint Map still present; Spec files missing; forbidden prose still present).
-- [ ] **GATE — DO NOT PROCEED to GREEN until RED is verified.**
+- [x] Verify RED: run `node --test test/change-overview-contract.test.js test/design-coordinator-worker.test.js` — expected: **assertion failure** on skeleton oracle (Endpoint Map still present; Spec files missing; forbidden prose still present).
+- [x] **GATE — DO NOT PROCEED to GREEN until RED is verified.**
 
 ##### GREEN phase (only after RED is verified)
 
-- [ ] Replace `openspec/schemas/sai-workflow/templates/design.md` entirely with this heading-preserving skeleton (exactly one authority pointer pair; no Endpoint Map; bare Provenance/Record family labels only):
+- [x] Replace `openspec/schemas/sai-workflow/templates/design.md` entirely with this heading-preserving skeleton (exactly one authority pointer pair; no Endpoint Map; bare Provenance/Record family labels only):
 
 ```markdown
 ## Target State
@@ -497,7 +497,7 @@ test('design/tasks/interfaces templates are structural skeletons with authority 
 <!-- Write-time authority: sai/commands/design/instructions.md ### Generate design.md -->
 ```
 
-- [ ] Replace `openspec/schemas/sai-workflow/templates/tasks.md` entirely with this skeleton (five ordered step fields; Required Documentation with Local files → Spec files → External URLs; Implementation Context; exactly one authority pointer):
+- [x] Replace `openspec/schemas/sai-workflow/templates/tasks.md` entirely with this skeleton (five ordered step fields; Required Documentation with Local files → Spec files → External URLs; Implementation Context; exactly one authority pointer):
 
 ```markdown
 ## Step 1: <!-- Title -->
@@ -543,7 +543,7 @@ test('design/tasks/interfaces templates are structural skeletons with authority 
 <!-- Write-time authority: sai/commands/design/instructions.md ### Generate tasks.md -->
 ```
 
-- [ ] Replace `openspec/schemas/sai-workflow/templates/interfaces.md` entirely with this skeleton (no semantic `None — no step contracts` literal; exactly one authority pointer):
+- [x] Replace `openspec/schemas/sai-workflow/templates/interfaces.md` entirely with this skeleton (no semantic `None — no step contracts` literal; exactly one authority pointer):
 
 ```markdown
 ## Step 1: <!-- Title (mirror tasks.md Step N) -->
@@ -555,17 +555,17 @@ test('design/tasks/interfaces templates are structural skeletons with authority 
 <!-- Write-time authority: sai/commands/design/instructions.md ### Generate interfaces.md -->
 ```
 
-- [ ] Adjust any remaining template prose assertions in the two test files that still require normative body text (ADR criteria paragraphs, endpoint tables, long instruction comments). Keep structural heading/order/pointer checks and the Step 1 instruction-only semantic checks.
-- [ ] Verify GREEN: run `node --test test/change-overview-contract.test.js test/design-coordinator-worker.test.js` — expected: PASS
+- [x] Adjust any remaining template prose assertions in the two test files that still require normative body text (ADR criteria paragraphs, endpoint tables, long instruction comments). Keep structural heading/order/pointer checks and the Step 1 instruction-only semantic checks.
+- [x] Verify GREEN: run `node --test test/change-overview-contract.test.js test/design-coordinator-worker.test.js` — expected: PASS
 - [ ] Optional full suite: `npm test` — expected: PASS (or only pre-existing unrelated failures)
 
 ##### Step 3 Verification Checklist
 
 **Automated (agent runs before stopping):**
-- [ ] RED verified — skeleton oracle fails against pre-reduction templates with assertion failures
-- [ ] GREEN verified — `node --test test/change-overview-contract.test.js test/design-coordinator-worker.test.js` passes
-- [ ] `openspec/schemas/sai-workflow/templates/design.md` has no `## Endpoint Map` and retains ordered live headings
-- [ ] Each of the three templates contains exactly one `sai/commands/design/instructions.md` and exactly one matching `### Generate …` anchor
+- [x] RED verified — skeleton oracle fails against pre-reduction templates with assertion failures
+- [x] GREEN verified — `node --test test/change-overview-contract.test.js test/design-coordinator-worker.test.js` passes
+- [x] `openspec/schemas/sai-workflow/templates/design.md` has no `## Endpoint Map` and retains ordered live headings
+- [x] Each of the three templates contains exactly one `sai/commands/design/instructions.md` and exactly one matching `### Generate …` anchor
 
 *(No Human checks — service-side step with no observable browser behavior. Manual spot-checks from design.md Manual Verification are optional human follow-up after apply, not plan checkboxes.)*
 
@@ -585,3 +585,20 @@ test('design/tasks/interfaces templates are structural skeletons with authority 
 
 - D3 (semantic tests assert command instruction) — does not meet all three ADR criteria
 - D4 (remove Endpoint Map) — straightforward cleanup; does not meet all three ADR criteria
+
+## Appendix: Execution Telemetry
+
+| Step | dispatch | phase | attempts | first_failure | note |
+|---|---|---|---|---|---|
+| 1 | green-exception | red | 1 | n/a | Initial test-authoring result was blocked before the contract was supplied. |
+| 1 | green-exception | green | 1 | assertion | Corrected test slice passed; the combined command initially exposed an unrelated active-closure assertion. |
+| 1 | green-exception | red | 1 | n/a | Same-worker recovery supplied the missing Step 1 contract. |
+| 1 | green-exception | green | 1 | assertion | Updated active-closure oracle; all 156 tests passed. |
+| 2 | red | red | 1 | n/a | Pointer and graph RED tests authored in both contract files. |
+| 2 | red | red | 1 | assertion | Expected pointer-shape assertion failures observed. |
+| 2 | green | green | 1 | n/a | Schema pointers and graph baseline passed with 160 tests. |
+| 2 | green | green | 1 | n/a | Schema-only GREEN verification completed. |
+| 3 | red | red | 1 | n/a | Skeleton oracles authored in both contract files. |
+| 3 | red | red | 1 | assertion | Expected skeleton assertion failures observed. |
+| 3 | green | green | 1 | assertion | Template skeletons were correct; RED marker assertions required placeholder support. |
+| 3 | red | red | 1 | n/a | Same-worker recovery corrected the two marker assertions; all 162 tests passed. |

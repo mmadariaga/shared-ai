@@ -1196,3 +1196,126 @@ test('design artifact schema preserves the fixed pre-change graph baseline and d
     PRE_CHANGE_DESIGN_GRAPH.apply.tracks,
     'apply should preserve tracking of implementation.md');
 });
+
+// ─── RED slice: single-source design artifact skeleton oracle ───────────────
+
+const DESIGN_SKELETON_TEMPLATES = [
+  {
+    id: 'design',
+    path: 'openspec/schemas/sai-workflow/templates/design.md',
+    anchor: '### Generate design.md',
+  },
+  {
+    id: 'tasks',
+    path: 'openspec/schemas/sai-workflow/templates/tasks.md',
+    anchor: '### Generate tasks.md',
+  },
+  {
+    id: 'interfaces',
+    path: 'openspec/schemas/sai-workflow/templates/interfaces.md',
+    anchor: '### Generate interfaces.md',
+  },
+];
+
+const DESIGN_SKELETON_AUTHORITY = 'sai/commands/design/instructions.md';
+const DESIGN_SKELETON_FORBIDDEN = [
+  'Endpoint Map',
+  'None — no step contracts',
+  'Hard to reverse',
+  'Surprising without context',
+  'Real trade-off',
+  'domain invariant',
+  'ordered routing test',
+];
+
+const DESIGN_TOP_LEVEL_SKELETON = [
+  '## Target State',
+  '## Context',
+  '## Goals / Non-Goals',
+  '## Decisions',
+  '## Risks / Trade-offs',
+  '## Migration Plan',
+  '## Open Questions',
+  '## Deferred',
+  '## Manual Verification',
+];
+
+const TASKS_SKELETON_MARKERS = [
+  '**Routing**',
+  '**Files Affected**',
+  '**What Will Be Done**',
+  '**Testing Strategy**',
+  '**Existing Tests Broken**',
+  '## Required Documentation',
+  '### Local files',
+  '### Spec files',
+  '### External URLs',
+  '## Implementation Context',
+];
+
+function countSkeletonLiteral(source, value) {
+  return source.split(value).length - 1;
+}
+
+function assertSkeletonOrder(source, markers, label) {
+  let cursor = -1;
+  for (const marker of markers) {
+    const position = source.indexOf(marker);
+    assert.ok(position > cursor,
+      `${label} should contain ${marker} after the preceding skeleton marker`);
+    cursor = position;
+  }
+}
+
+test('RED skeleton oracle pins the single-source design artifact contracts', () => {
+  const templates = Object.fromEntries(
+    DESIGN_SKELETON_TEMPLATES.map(({ id, path: templatePath }) => [id, artifact(templatePath)]),
+  );
+  const design = templates.design;
+  const tasks = templates.tasks;
+  const interfaces = templates.interfaces;
+
+  assertSkeletonOrder(design, DESIGN_TOP_LEVEL_SKELETON, 'design.md');
+
+  const targetStateStart = design.indexOf('## Target State');
+  const nextTopLevel = design.indexOf('\n## ', targetStateStart + '## Target State'.length);
+  const targetState = design.slice(targetStateStart, nextTopLevel === -1 ? undefined : nextTopLevel);
+  assertSkeletonOrder(targetState, [
+    '### Architecture Snapshot',
+    '### File Manifest',
+  ], 'design.md ## Target State');
+  assert.doesNotMatch(design, /^## Endpoint Map\s*$/m,
+    'design.md must not contain an ## Endpoint Map section');
+
+  assert.match(design, /^\*\*Provenance\*\*:\s*(?:<!--.*-->)?\s*$/m,
+    'design.md must contain a **Provenance**: marker with an optional inline placeholder');
+  assert.match(design, /^\*\*Record family\*\*:\s*(?:<!--.*-->)?\s*$/m,
+    'design.md must contain a **Record family**: marker with an optional inline placeholder');
+
+  assertSkeletonOrder(tasks, TASKS_SKELETON_MARKERS, 'tasks.md');
+
+  assert.match(interfaces, /^\*\*Interfaces\*\*/m,
+    'interfaces.md must contain the **Interfaces** marker');
+  assert.match(interfaces, /^\*\*Test assertions\*\*/m,
+    'interfaces.md must contain the **Test assertions** marker');
+  assert.match(interfaces, /^## Step (?:N|\d+)(?:\b|\s|:|—|-)/m,
+    'interfaces.md must contain a ## Step N heading');
+
+  for (const { id, anchor } of DESIGN_SKELETON_TEMPLATES) {
+    const template = templates[id];
+    assert.equal(countSkeletonLiteral(template, DESIGN_SKELETON_AUTHORITY), 1,
+      `${id}.md must have exactly one shared design-instruction authority path`);
+    assert.equal(countSkeletonLiteral(template, anchor), 1,
+      `${id}.md must have exactly one ${anchor} generation anchor`);
+
+    for (const forbidden of DESIGN_SKELETON_FORBIDDEN) {
+      assert.equal(template.includes(forbidden), false,
+        `${id}.md must not retain the forbidden ${forbidden} substring`);
+    }
+  }
+
+  assert.doesNotMatch(design, /^\s*\|\s*Method\s*\|/m,
+    'design.md must not retain an endpoint Method table header');
+  assert.doesNotMatch(design, /^\s*\|\s*Path\s*\|/m,
+    'design.md must not retain an endpoint Path table header');
+});
