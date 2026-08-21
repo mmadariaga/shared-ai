@@ -1020,3 +1020,179 @@ test('navigation re-enters the same picker after every non-closing turn and keep
   assert.match(explore, /minimal close (?:acknowledgment|acknowledgement)|Loop closed/i,
     'loop termination should emit a minimal close acknowledgment');
 });
+
+// ─── RED slice: single-source design artifact contract pointers ─────────────
+
+const DESIGN_ARTIFACT_POINTERS = [
+  { id: 'design', anchor: '### Generate design.md' },
+  { id: 'tasks', anchor: '### Generate tasks.md' },
+  { id: 'interfaces', anchor: '### Generate interfaces.md' },
+];
+
+const DESIGN_INSTRUCTION_FORBIDDEN_SUBSTRINGS = [
+  'ADR/DDR',
+  'Record family',
+  'Provenance',
+  'Verify-first',
+  'Architecture Snapshot',
+  'File Manifest',
+  'None — no step contracts',
+  'Endpoint Map',
+  '**Routing**',
+  '**Files Affected**',
+  '**Testing Strategy**',
+];
+
+const PRE_CHANGE_DESIGN_GRAPH = Object.freeze({
+  design: { generates: 'design.md', requires: ['proposal', 'specs'] },
+  tasks: { generates: 'tasks.md', requires: ['specs', 'design'] },
+  interfaces: { generates: 'interfaces.md', requires: ['tasks'] },
+  apply: { requires: ['tasks', 'implementation'], tracks: ['implementation.md'] },
+});
+
+function escapeSchemaContractRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function schemaIdHeader(line) {
+  return line.match(/^(\s*)(?:-\s*)?id:\s*([A-Za-z0-9_-]+)\s*(?:#.*)?$/);
+}
+
+function schemaEntryForContract(schema, id) {
+  const lines = schema.split(/\r?\n/);
+  const start = lines.findIndex(line => {
+    const match = schemaIdHeader(line);
+    return match && match[2] === id;
+  });
+  assert.ok(start >= 0, `schema.yaml should contain the ${id} artifact entry`);
+
+  const header = schemaIdHeader(lines[start]);
+  const headerIndent = header[1].length;
+  let end = lines.length;
+  for (let index = start + 1; index < lines.length; index += 1) {
+    const match = schemaIdHeader(lines[index]);
+    if (match && match[1].length <= headerIndent) {
+      end = index;
+      break;
+    }
+  }
+  return lines.slice(start, end).join('\n');
+}
+
+function schemaLiteralBlockForContract(section, field) {
+  const lines = section.split(/\r?\n/);
+  const markerPattern = new RegExp(`^(\\s*)${field}:\\s*\\|[+-]?\\s*$`);
+  const markerIndex = lines.findIndex(line => markerPattern.test(line));
+  assert.ok(markerIndex >= 0, `${field} should be a literal block`);
+
+  const markerIndent = lines[markerIndex].match(/^\s*/)[0].length;
+  let end = lines.length;
+  for (let index = markerIndex + 1; index < lines.length; index += 1) {
+    const line = lines[index];
+    if (line.trim() && line.match(/^\s*/)[0].length <= markerIndent) {
+      end = index;
+      break;
+    }
+  }
+
+  const body = lines.slice(markerIndex + 1, end);
+  const nonEmpty = body.filter(line => line.trim());
+  assert.ok(nonEmpty.length > 0, `${field} literal block should not be empty`);
+  const contentIndent = Math.min(...nonEmpty.map(line => line.match(/^\s*/)[0].length));
+  return body.map(line => line.trim() ? line.slice(contentIndent) : '').join('\n').trim();
+}
+
+function schemaFieldForContract(section, field) {
+  const lines = section.split(/\r?\n/);
+  const fieldPattern = new RegExp(`^([ \\t]*)${field}:[ \\t]*(.*)$`);
+  const fieldIndex = lines.findIndex(line => fieldPattern.test(line));
+  assert.ok(fieldIndex >= 0, `schema section should contain ${field}`);
+  const match = lines[fieldIndex].match(fieldPattern);
+  if (/^\|[+-]?\s*$/.test(match[2].trim())) {
+    return schemaLiteralBlockForContract(section, field);
+  }
+  if (match[2].trim() === '') {
+    const fieldIndent = match[1].length;
+    const items = [];
+    for (let index = fieldIndex + 1; index < lines.length; index += 1) {
+      const line = lines[index];
+      if (!line.trim()) continue;
+      const indent = line.match(/^[ \\t]*/)[0].length;
+      if (indent < fieldIndent || (indent === fieldIndent && !line.trim().startsWith('-'))) break;
+      if (line.trim().startsWith('-')) items.push(line.trim().slice(1).trim());
+    }
+    if (items.length > 0) return `[${items.join(', ')}]`;
+  }
+  return match[2].trim().replace(/^(['"])(.*)\1$/, '$2');
+}
+
+function schemaTopLevelSectionForContract(schema, name) {
+  const lines = schema.split(/\r?\n/);
+  const headerPattern = new RegExp(`^(\\s*)${name}:\\s*$`);
+  const start = lines.findIndex(line => headerPattern.test(line));
+  assert.ok(start >= 0, `schema.yaml should contain the ${name} section`);
+
+  const headerIndent = lines[start].match(/^\s*/)[0].length;
+  let end = lines.length;
+  for (let index = start + 1; index < lines.length; index += 1) {
+    const line = lines[index];
+    if (line.trim() && line.match(/^\s*/)[0].length <= headerIndent) {
+      end = index;
+      break;
+    }
+  }
+  return lines.slice(start, end).join('\n');
+}
+
+function schemaListForContract(value) {
+  const normalized = value.trim();
+  const content = normalized.startsWith('[')
+    ? normalized.slice(1, normalized.lastIndexOf(']'))
+    : normalized;
+  if (!content.trim()) return [];
+  return content.split(',').map(item => item.trim().replace(/^-\s*/, '').replace(/^(['"])(.*)\1$/, '$2'));
+}
+
+test('design artifact schema instructions are non-empty command-owned pointers with no duplicated contract detail', () => {
+  const schema = artifact('openspec/schemas/sai-workflow/schema.yaml');
+
+  for (const { id, anchor } of DESIGN_ARTIFACT_POINTERS) {
+    const entry = schemaEntryForContract(schema, id);
+    const instruction = schemaLiteralBlockForContract(entry, 'instruction');
+
+    assert.ok(instruction.trim().length > 0, `${id} instruction should be non-empty`);
+    assert.match(instruction, /sai\/commands\/design\/instructions\.md/,
+      `${id} instruction should point to the shared design instruction`);
+    assert.match(instruction, new RegExp(escapeSchemaContractRegExp(anchor)),
+      `${id} instruction should name its generation anchor`);
+    for (const forbidden of DESIGN_INSTRUCTION_FORBIDDEN_SUBSTRINGS) {
+      assert.doesNotMatch(instruction, new RegExp(escapeSchemaContractRegExp(forbidden)),
+        `${id} instruction should not duplicate ${forbidden}`);
+    }
+  }
+});
+
+test('design artifact schema preserves the fixed pre-change graph baseline and does not advertise Endpoint Map', () => {
+  const schema = artifact('openspec/schemas/sai-workflow/schema.yaml');
+  const design = schemaEntryForContract(schema, 'design');
+  const description = schemaFieldForContract(design, 'description');
+  assert.doesNotMatch(description, /Endpoint Map/,
+    'the design description should not advertise Endpoint Map');
+
+  for (const id of ['design', 'tasks', 'interfaces']) {
+    const entry = schemaEntryForContract(schema, id);
+    const expected = PRE_CHANGE_DESIGN_GRAPH[id];
+    assert.equal(schemaFieldForContract(entry, 'generates'), expected.generates,
+      `${id} should preserve its pre-change generated artifact`);
+    assert.deepEqual(schemaListForContract(schemaFieldForContract(entry, 'requires')), expected.requires,
+      `${id} should preserve its pre-change requirements`);
+  }
+
+  const apply = schemaTopLevelSectionForContract(schema, 'apply');
+  assert.deepEqual(schemaListForContract(schemaFieldForContract(apply, 'requires')),
+    PRE_CHANGE_DESIGN_GRAPH.apply.requires,
+    'apply should preserve its pre-change requirements');
+  assert.deepEqual(schemaListForContract(schemaFieldForContract(apply, 'tracks')),
+    PRE_CHANGE_DESIGN_GRAPH.apply.tracks,
+    'apply should preserve tracking of implementation.md');
+});

@@ -121,7 +121,7 @@ test('Target State contract lives in the design instruction; templates keep stru
 
 - **Rule:** RED may only contain the failing test + minimal stubs/imports. Do NOT paste the full implementation here.
 
-- [ ] Append the following new tests to `test/change-overview-contract.test.js` (place after the Step 1 retargeted tests). These MUST fail against the current full schema instruction bodies:
+- [x] Append the following new tests to `test/change-overview-contract.test.js` (place after the Step 1 retargeted tests). These MUST fail against the current full schema instruction bodies:
 
 ```js
 function schemaEntryBlock(schema, id) {
@@ -267,14 +267,14 @@ test('design schema description does not advertise Endpoint Map; graph fields un
 });
 ```
 
-- [ ] Mirror the same two tests (helpers may be local or duplicated) into `test/design-coordinator-worker.test.js` so both contract files pin the pointer-shape and graph-field baseline oracles.
+- [x] Mirror the same two tests (helpers may be local or duplicated) into `test/design-coordinator-worker.test.js` so both contract files pin the pointer-shape and graph-field baseline oracles.
 
-- [ ] Verify RED: run `node --test test/change-overview-contract.test.js test/design-coordinator-worker.test.js` — expected: **assertion failure** on the new pointer-shape tests (current schema instructions still restate full generation rules and lack the short pointer form). Failure must be assertion mismatch, not import/syntax error.
-- [ ] **GATE — DO NOT PROCEED to GREEN until RED is verified.**
+- [x] Verify RED: run `node --test test/change-overview-contract.test.js test/design-coordinator-worker.test.js` — expected: **assertion failure** on the new pointer-shape tests (current schema instructions still restate full generation rules and lack the short pointer form). Failure must be assertion mismatch, not import/syntax error.
+- [x] **GATE — DO NOT PROCEED to GREEN until RED is verified.**
 
 ##### GREEN phase (only after RED is verified)
 
-- [ ] In `openspec/schemas/sai-workflow/schema.yaml`, replace the `design` artifact `description` and `instruction:` body. Preserve YAML block-scalar indentation (two spaces under `instruction: |`). Keep `generates`, `requires`, `template` unchanged:
+- [x] In `openspec/schemas/sai-workflow/schema.yaml`, replace the `design` artifact `description` and `instruction:` body. Preserve YAML block-scalar indentation (two spaces under `instruction: |`). Keep `generates`, `requires`, `template` unchanged:
 
 ```yaml
   - id: design
@@ -288,30 +288,30 @@ test('design schema description does not advertise Endpoint Map; graph fields un
       - specs
 ```
 
-- [ ] Replace the `tasks` artifact `instruction:` body only (leave `description`, `generates`, `requires`, `template` unchanged):
+- [x] Replace the `tasks` artifact `instruction:` body only (leave `description`, `generates`, `requires`, `template` unchanged):
 
 ```yaml
     instruction: |
       Fetch and follow sai/commands/design/instructions.md section ### Generate tasks.md exactly. This instruction is an informative reference only; it does not restate the task generation contract.
 ```
 
-- [ ] Replace the `interfaces` artifact `instruction:` body only (leave `description`, `generates`, `requires`, `template` unchanged):
+- [x] Replace the `interfaces` artifact `instruction:` body only (leave `description`, `generates`, `requires`, `template` unchanged):
 
 ```yaml
     instruction: |
       Fetch and follow sai/commands/design/instructions.md section ### Generate interfaces.md exactly. This instruction is an informative reference only; it does not restate the interface generation contract.
 ```
 
-- [ ] Remove or update any residual assertions in the two test files that still expect long design/tasks/interfaces schema instruction prose (ADR criteria lists, full Required Documentation rules, endpoint-map promises inside instruction bodies). Do **not** weaken graph-field or pointer-shape checks added in RED.
-- [ ] If `schemaFieldList` for `generates` is awkward with inline scalars, simplify the graph assertion to read `generates:` via a direct regex on `schemaEntryBlock` while keeping `requires` deep-equal to `GRAPH_BASELINE`.
-- [ ] Verify GREEN: run `node --test test/change-overview-contract.test.js test/design-coordinator-worker.test.js` — expected: PASS
+- [x] Remove or update any residual assertions in the two test files that still expect long design/tasks/interfaces schema instruction prose (ADR criteria lists, full Required Documentation rules, endpoint-map promises inside instruction bodies). Do **not** weaken graph-field or pointer-shape checks added in RED.
+- [x] If `schemaFieldList` for `generates` is awkward with inline scalars, simplify the graph assertion to read `generates:` via a direct regex on `schemaEntryBlock` while keeping `requires` deep-equal to `GRAPH_BASELINE`.
+- [x] Verify GREEN: run `node --test test/change-overview-contract.test.js test/design-coordinator-worker.test.js` — expected: PASS
 
 ##### Step 2 Verification Checklist
 
 **Automated (agent runs before stopping):**
-- [ ] RED verified — pointer-shape tests fail against pre-edit schema with assertion failures
-- [ ] GREEN verified — `node --test test/change-overview-contract.test.js test/design-coordinator-worker.test.js` passes
-- [ ] Confirm by inspection that `design.description` has no case-insensitive `endpoint map` and each of the three `instruction` bodies contains path + matching `### Generate …` anchor only
+- [x] RED verified — pointer-shape tests fail against pre-edit schema with assertion failures
+- [x] GREEN verified — `node --test test/change-overview-contract.test.js test/design-coordinator-worker.test.js` passes
+- [x] Confirm by inspection that `design.description` has no case-insensitive `endpoint map` and each of the three `instruction` bodies contains path + matching `### Generate …` anchor only
 
 *(No Human checks — service-side step with no observable browser behavior.)*
 
