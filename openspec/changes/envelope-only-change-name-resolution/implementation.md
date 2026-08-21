@@ -497,7 +497,7 @@ Note: `envelope-only-card-resolution` is a **new** capability in the change. Do 
 
 *(Non-testable step — decision record. Planning may have already created these files; apply MUST verify and create/repair to match the content below. Do not edit historical ADR bodies. Do not modify `AGENTS.md`.)*
 
-- [ ] Ensure `docs/adr/0166-envelope-only-change-name-resolution.md` exists with content equivalent to:
+- [x] Ensure `docs/adr/0166-envelope-only-change-name-resolution.md` exists with content equivalent to:
 
 ```markdown
 # ADR 0166: Envelope-only change-name resolution for shared pickers and four cards
@@ -543,21 +543,21 @@ Both harness boot adapters already forward `wrapper_echo_value` and `arguments_v
 - `docs/adr/0136-opaque-boot-request-and-card-selection-contract.md`
 ```
 
-- [ ] Ensure `docs/adr/0000-INDEX.md` warm-splice is complete:
+- [x] Ensure `docs/adr/0000-INDEX.md` warm-splice is complete:
   - Entry for 0166 under `## By command` / cross-cutting placements used for harness wrappers, argument passing, and fast-track (as applicable).
   - Correction-table rows: 0166 supersedes 0033, 0034, 0035, 0049.
   - Historical section moves 0033, 0034, 0035, 0049 with `*Superseded by [0166]*`.
   - Do not edit bodies of `docs/adr/0033-*.md`, `0034-*.md`, `0035-*.md`, `0049-*.md`.
-- [ ] Do not modify `AGENTS.md` in this step (design D8 MAY is out-of-band only).
+- [x] Do not modify `AGENTS.md` in this step (design D8 MAY is out-of-band only).
 
 ##### Step 5 Verification Checklist
 
 **Automated (agent runs before stopping):**
-- [ ] `Test-Path docs/adr/0166-envelope-only-change-name-resolution.md` is true
-- [ ] `rg -n "0166" docs/adr/0000-INDEX.md` matches index entry and correction-table rows
-- [ ] `rg -n "Superseded by \[0166\]" docs/adr/0000-INDEX.md` matches the four historical entries
-- [ ] `git diff -- docs/adr/0033-echo-line-format-and-placement.md docs/adr/0034-resolution-precedence-wrapper-echo-first.md docs/adr/0035-harness-specific-adapter-carve-out.md docs/adr/0049-fast-track-flag-strip-before-change-picker.md` — expected: empty
-- [ ] `git diff -- AGENTS.md` — expected: empty for this step's work
+- [x] `Test-Path docs/adr/0166-envelope-only-change-name-resolution.md` is true
+- [x] `rg -n "0166" docs/adr/0000-INDEX.md` matches index entry and correction-table rows
+- [x] `rg -n "Superseded by \[0166\]" docs/adr/0000-INDEX.md` matches the four historical entries
+- [x] `git diff -- docs/adr/0033-echo-line-format-and-placement.md docs/adr/0034-resolution-precedence-wrapper-echo-first.md docs/adr/0035-harness-specific-adapter-carve-out.md docs/adr/0049-fast-track-flag-strip-before-change-picker.md` — expected: empty
+- [x] `git diff -- AGENTS.md` — expected: empty for this step's work
 
 *(No Human checks — service-side documentation with no observable browser behavior.)*
 
@@ -590,3 +590,5 @@ make the authorized full-suite verification pass.
 | 3 | green-exception | green | 1 | n/a | |
 | 4 | green-direct | implementation | 1 | n/a | |
 | 4 | green-direct | green | 1 | n/a | |
+| 5 | green-direct | implementation | 1 | n/a | |
+| 5 | green-direct | green | 1 | n/a | |
