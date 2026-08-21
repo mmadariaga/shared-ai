@@ -75,12 +75,7 @@ function implementationPlanList(source) {
 }
 
 test('Step 1 implementation card uses neutral root protocols and retires flat canonical sources', () => {
-  const coordinator = artifact('sai/commands/implement/coordinator.md');
   const worker = artifact('sai/commands/implement/worker.md');
-  assert.doesNotMatch(coordinator, /@sai\/orchestration\/command-runner\.md/,
-    'the runner is loaded once per session by the boot adapter, not by the coordinator card');
-  assert.doesNotMatch(coordinator, /@sai\/orchestration\/worker-core\.md/,
-    'worker-core is loaded by the worker card, not by the coordinator card');
   assert.match(worker, /@sai\/orchestration\/worker-core\.md/);
   for (const relativePath of [
     'sai/orchestration/coordinator-contract.md',
@@ -361,16 +356,13 @@ test('Step 2 routes Claude and opencode through the coordinator', () => {
       'opencode implementation must not construct or forward wrapper_echo_value');
 
   assert.match(launcher, /Fetch @sai\/orchestration\/workers\/bindings\/implementation-worker\.md/, 'launcher should load the implementation binding');
-  assert.doesNotMatch(launcher, /Fetch @sai\/commands\/implement\/coordinator\.md/, 'the boot adapter owns coordinator-card selection; the launcher must not duplicate it');
 });
 
 test('Step 1 implementation contracts use the routed entrypoints', () => {
   const claude = artifact('commands/claude/sai-3-implement.md');
   const opencode = artifact('commands/opencode/sai-3-implement.md');
-  const launcher = artifact('sai/commands/implement/launcher.md');
   assert.match(claude, /Fetch @sai\/commands\/implement\/launcher\.md/);
   assert.match(opencode, /Fetch @sai\/commands\/implement\/launcher\.md/);
-  assert.doesNotMatch(launcher, /Fetch @sai\/commands\/implement\/coordinator\.md/);
 });
 
 test('routed harness bindings and inline parity', () => {

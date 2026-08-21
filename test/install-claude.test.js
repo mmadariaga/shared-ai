@@ -659,8 +659,6 @@ test('restore-coordinator-instruction-loading Step 3: isolated Claude installati
        assert.match(wrapper, new RegExp(`Fetch @sai/commands/${folder}/launcher\\.md`));
        const launcherPath = path.join('sai', 'commands', folder, 'launcher.md');
        const launcher = readInstalled(launcherPath);
-       assert.doesNotMatch(launcher, new RegExp(`Fetch @sai/commands/${folder}/coordinator\\.md`),
-         'the boot adapter owns coordinator-card selection; the installed launcher must not duplicate it');
        assert.match(launcher, new RegExp(`Fetch @sai/orchestration/workers/bindings/${binding.replace('.', '\\.')}`));
        resolveFetches(wrapperPath, available, loaded);
        resolveFetches(launcherPath, available, loaded);

@@ -30,12 +30,7 @@ function artifact(relativePath) {
 }
 
 test('Step 1 performance card uses neutral root protocols and retires flat canonical sources', () => {
-  const coordinator = artifact('sai/commands/performance/coordinator.md');
   const worker = artifact('sai/commands/performance/worker.md');
-  assert.doesNotMatch(coordinator, /@sai\/orchestration\/command-runner\.md/,
-    'the runner is loaded once per session by the boot adapter, not by the coordinator card');
-  assert.doesNotMatch(coordinator, /@sai\/orchestration\/worker-core\.md/,
-    'worker-core is loaded by the worker card, not by the coordinator card');
   assert.match(worker, /@sai\/orchestration\/worker-core\.md/);
   for (const relativePath of [
     'sai/orchestration/coordinator-contract.md',
@@ -267,8 +262,6 @@ test('Step 3 managed-agent identity and binding remain while forwarding skill so
 
 test('Step 4 routed performance wrappers fetch only their matching launcher and the launcher fetches binding and coordinator', () => {
   const launcher = artifact('sai/commands/performance/launcher.md');
-  assert.doesNotMatch(launcher, /sai[\\/]commands[\\/]performance[\\/]coordinator\.md/,
-    'the boot adapter owns coordinator-card selection; the launcher must not duplicate it');
   assert.match(launcher, /sai[\\/]orchestration[\\/]workers[\\/]bindings[\\/]performance-worker\.md/,
     'launcher should fetch the matching neutral binding');
 

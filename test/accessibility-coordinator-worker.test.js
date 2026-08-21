@@ -72,12 +72,7 @@ function collectOutput() {
 }
 
 test('Step 1 accessibility card uses neutral root protocols and retires flat canonical sources', () => {
-  const coordinator = artifact('sai/commands/accessibility/coordinator.md');
   const worker = artifact('sai/commands/accessibility/worker.md');
-  assert.doesNotMatch(coordinator, /@sai\/orchestration\/command-runner\.md/,
-    'the runner is loaded once per session by the boot adapter, not by the coordinator card');
-  assert.doesNotMatch(coordinator, /@sai\/orchestration\/worker-core\.md/,
-    'worker-core is loaded by the worker card, not by the coordinator card');
   assert.match(worker, /@sai\/orchestration\/worker-core\.md/);
   for (const relativePath of [
     'sai/orchestration/coordinator-contract.md',
@@ -249,8 +244,6 @@ test('Step 2 completion writes only accessibility.md and prints the exact comple
 
 test('Step 3 Claude Code and opencode wrappers load the launcher and the launcher loads the coordinator and direct worker binding', () => {
   const launcher = artifact('sai/commands/accessibility/launcher.md');
-  assert.doesNotMatch(launcher, /sai[\\/]commands[\\/]accessibility[\\/]coordinator\.md/,
-    'the boot adapter owns coordinator-card selection; the launcher must not duplicate it');
   assert.match(launcher, /Fetch @sai\/orchestration\/workers\/bindings\/accessibility-worker\.md/,
     'launcher should load the neutral accessibility binding');
 

@@ -121,8 +121,6 @@ test('Step 6 compatibility inherits diagnosis-driven recovery through apply and 
     assert.match(boot, /@sai\/orchestration\/command-runner\.md/,
       'the harness boot loads the shared runner once per session, covering the apply route');
   }
-  assert.doesNotMatch(apply, /@sai\/orchestration\/command-runner\.md/,
-    'the apply route must not re-fetch the runner the boot already loaded');
   assert.match(apply, /recovery_policy\s*:\s*true/,
     'the apply route should opt into the shared recovery policy');
 

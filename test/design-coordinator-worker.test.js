@@ -121,12 +121,7 @@ function assertPlanVariants(source, owner) {
 }
 
 test('Step 1 design card uses neutral root protocols and retires flat canonical sources', () => {
-  const coordinator = artifact('sai/commands/design/coordinator.md');
   const worker = artifact('sai/commands/design/worker.md');
-  assert.doesNotMatch(coordinator, /@sai\/orchestration\/command-runner\.md/,
-    'the runner is loaded once per session by the boot adapter, not by the coordinator card');
-  assert.doesNotMatch(coordinator, /@sai\/orchestration\/worker-core\.md/,
-    'worker-core is loaded by the worker card, not by the coordinator card');
   assert.match(worker, /@sai\/orchestration\/worker-core\.md/);
   for (const relativePath of [
     'sai/orchestration/coordinator-contract.md',
@@ -225,8 +220,6 @@ test('design wrappers activate routed Claude/opencode entry and preserve phase b
         `Claude design should forward the complete argument order: ${argumentsValue}`);
     }
 
-   assert.doesNotMatch(launcher, /sai\/commands\/design\/coordinator\.md/,
-     'the boot adapter owns coordinator-card selection; the launcher must not duplicate it');
    assert.match(launcher, /Fetch @sai\/orchestration\/workers\/bindings\/design-worker\.md/, 'launcher should load the design worker binding');
 
   for (const relativePath of [

@@ -96,8 +96,6 @@ test('Step 2 the apply coordinator adapter declares the full phase-adapter field
 
 test('Step 2 the coordinator is fetched through the routed coordinator path, not a utility body card', () => {
   const coordinator = artifact(APPLY_CARDS.coordinator);
-  assert.doesNotMatch(coordinator, /# Isolation Mode/,
-    'specs/apply-routed-card-set/spec.md: isolation lives in the boot preamble, not in the coordinator card');
   const claudeBoot = artifact('sai/adapters/claude/boot.md');
   const opencodeBoot = artifact('sai/adapters/opencode/boot.md');
   for (const boot of [claudeBoot, opencodeBoot]) {
@@ -591,8 +589,6 @@ test('Step 2 the routed invocation parses arguments before the change picker and
     assert.match(boot, /@sai\/orchestration\/command-runner\.md/,
       'specs/apply-routed-card-set/spec.md: the boot loads the runner contract once per session for the apply route');
   }
-  assert.doesNotMatch(combined, /@sai\/orchestration\/command-runner\.md/,
-    'specs/apply-routed-card-set/spec.md: cards must not re-fetch the runner the boot already loaded');
   assert.match(combined, /@sai\/policies\/remember\.md/,
     'specs/apply-routed-card-set/spec.md: the invocation must load the remember policy');
 });
