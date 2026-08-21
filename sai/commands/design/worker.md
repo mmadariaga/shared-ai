@@ -112,3 +112,53 @@ payloads omit it. A design notice contains only `event`, `message`, and
 
 The implementation-worker fallback is outside this worker; the coordinator
 handles that lifecycle boundary.
+
+### Main-path failure classification and recovery boundary
+
+The existing post-resolution outer result mapping is mandatory and unchanged:
+every failed terminal result carries `overview_language`, a closed
+`failure_class`, and boolean `unrecoverable`; completed, needs-input, and
+cancelled results do not carry failure-only fields. The nested overview
+generator/parent envelope remains its existing five-field mapping
+(`status`, `changed_files`, `validation`, `failure_details`, and
+`failure_kind`) and is never replaced by the outer lifecycle envelope.
+
+On the ordinary design path, failure to write, read back, or verify any member
+of the authorized main trio — `design.md`, `tasks.md`, or `interfaces.md` —
+is a `validation-failed` result. Its non-raw evidence names the specific trio
+artifact, the verification or consistency condition that failed, and the
+resulting incomplete design state. A contradictory dependency in
+`proposal.md` or `specs/**` is a `blocking-contradiction` result with evidence
+that names the proposal/spec dependency and the affected design decision;
+repairing proposal/specs is out of scope for this worker and is not a recovery
+correction. These classifications apply on the main path as well as after
+feedback, and never collapse into a generic generation failure.
+
+For overview handling, an invalid, empty, or otherwise malformed generator
+result is always outer `failure_class: envelope-contract-violation` with a
+non-empty evidence summary naming the contract violation and location. An
+overview `envelope-contract-violation` never becomes `generation-error`, even
+when the malformed result followed a generation dispatch. Preserve the
+existing nested five-field `failure_kind: envelope-contract-violation`, the
+overview diagnostics, and the lifecycle state rules already defined above.
+
+On `continue_after_recovery`, resume the same worker and apply only the
+coordinator's ordered diagnosis (`Reported`, `Evidence`, `Cause`, `Correction`,
+and `Verification`). A recovery correction may touch only the authorized main
+design trio and/or the existing `change-overview.md` surface (including its
+existing state carrier where the overview lifecycle already permits it). It
+must never edit `proposal.md` or `specs/**` to repair a diagnosis. Re-run the
+existing design-artifact verification and, for overview recovery, the existing
+overview/source relationship verification before returning `completed`.
+Recovery has no second overview-regeneration allowance: an eligible overview
+re-dispatch remains inside the current bounded attempt pool and cannot open a
+new transaction. Do not emit a recovery progress id, persist recovery counters,
+or persist diagnosis metadata in artifacts. A failed recovery returns the
+existing post-resolution failed envelope with concrete evidence and suppresses
+the success completion sentence at the existing design failure boundary.
+
+Outside recovery, preserve the canonical progress plan, external-findings and
+feedback behavior, overview lifecycle, and ordinary replacement fallback
+unchanged. Replacement dispatch remains coordinator-owned and is not a
+recovery repair path; no recovery rule widens the worker's authorized files or
+changes the existing terminal rules.

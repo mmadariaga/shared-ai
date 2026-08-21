@@ -39,3 +39,41 @@ Before completion verify non-empty `proposal.md`, at least one non-empty `specs/
 For proposal/spec review, consume only an externally supplied `sai-explore` findings block; this worker does not dispatch or own a reviewer. Process every finding under `@sai/policies/artifact-review-contract.md` and `@sai/policies/artifact-feedback-gate.md`. Require the shared contract's base-form `Summary: High=<count> Medium=<count> Low=<count>` and an explicit `High=0` before treating the block as review evidence; never infer `High=0` from missing, malformed, or other summary text. Findings may edit only `proposal.md` and `specs/**`. Report every discarded item with a specific reason. Accepted edits trigger pre-completion verification and decision-summary recomputation from current artifacts without reopening or re-emitting the already completed `proposal`, `specs`, or `validation` progress ids.
 
 Never create a reviewer, a worker-owned findings loop, or any automatic review/retry machinery, and never process a user-requested reviewer pass. With no external findings block, proceed to the ordinary pre-gate terminal. Interactive or omitted mode leaves the coordinator-owned gate at iteration `0`, while supervised mode auto-proceeds through the deferred gate; the worker does not receive, present, branch on, or otherwise handle `mode`. Preserve the existing terminal payload rules.
+
+### Post-resolution failure classification and recovery
+
+After change resolution, every `status: failed` result is worker-authored and
+closed: it includes exactly one `failure_class` from
+`blocking-contradiction|validation-failed|generation-error|dispatch-failed|envelope-contract-violation|unclassified-worker-fault`, a boolean `unrecoverable`, and a concrete English `summary` describing the observed evidence. The summary is evidence, not raw output: identify the affected artifact or operation, the failed condition, and the consequence without returning logs, tracebacks, command output, or file contents. Pre-resolution failures keep the pre-resolution envelope and therefore do not receive these fields.
+
+Classify a proposal/spec generation or write failure as `generation-error`
+unless a more specific closed class applies. Classify validation, consistency,
+requirement-scenario, or artifact-verification failures as
+`validation-failed`, with the failed check and affected `proposal.md` or
+`specs/**` named in the evidence. A contradiction with the requested
+spec-only scope, including an attempted write to `design.md`, `tasks.md`,
+`interfaces.md`, `implementation.md`, tests, or another forbidden artifact, is
+`blocking-contradiction`; set `unrecoverable: true` only when the evidence
+shows that continuing would be unsafe. `dispatch-failed`,
+`envelope-contract-violation`, and `unclassified-worker-fault` retain their
+closed worker-core meanings and still require concrete non-raw evidence.
+
+The authorized write surface is unchanged and closed: `proposal.md`,
+`specs/**`, and the permitted repository-root `GLOSSARY.md` only. The worker
+never writes `design.md`, `tasks.md`, `interfaces.md`, `implementation.md`,
+tests, recovery metadata, recovery counters, or any other artifact. A
+coordinator diagnosis does not widen this surface, and the coordinator writes
+nothing during worker recovery.
+
+On `continue_after_recovery`, resume the same worker without re-resolution or
+replacement dispatch. Apply only the coordinator's ordered diagnosis —
+`Reported`, `Evidence`, `Cause`, `Correction`, and `Verification` — and make
+only the authorized proposal/spec or permitted glossary correction it names.
+Do not infer a new repair, edit a forbidden artifact, or persist the diagnosis,
+an attempt count, or other recovery metadata. Re-run the existing spec
+verification after the correction; return `completed` only when that
+verification passes. If verification still fails, return a post-resolution
+`failed` result with the closed classification, boolean `unrecoverable`, and
+concrete evidence. Recovery never emits a recovery progress id or recovery
+progress event; the canonical six-step progress plan, external-findings
+handling, feedback flow, and ordinary terminal rules remain unchanged.

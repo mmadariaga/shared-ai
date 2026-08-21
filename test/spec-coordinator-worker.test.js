@@ -588,3 +588,15 @@ test('Step 3: spec worker leaves mode-dependent gate ownership to the coordinato
     'the standalone spec coordinator should omit mode from its gate invocation',
   );
 });
+
+test('spec worker classifies post-resolution failures and owns recovery continuation', () => {
+  const worker = artifact('sai/commands/spec/worker.md');
+  assert.match(worker, /failure_class/, 'spec worker must name failure_class');
+  assert.match(worker, /unrecoverable/, 'spec worker must name unrecoverable');
+  assert.match(worker, /continue_after_recovery/, 'spec worker must handle continue_after_recovery');
+  assert.match(worker, /(?:validation-failed|generation-error)/, 'spec worker must map validation/generation failures specifically');
+  assert.match(worker, /proposal\.md[\s\S]{0,200}specs/, 'authorized repair surface remains proposal/specs');
+  assert.doesNotMatch(worker, /artifact_contents/);
+  assert.match(worker, /(?:no|not|never)[\s\S]{0,120}(?:recovery progress|progress id).*recovery|recovery[\s\S]{0,200}(?:not|never)[\s\S]{0,120}progress/i,
+    'recovery must not add progress step ids');
+});

@@ -894,6 +894,17 @@ test('sai-2 feedback gate advertises and accepts direct free-text replies', () =
   assert.match(coordinator, /proceed-label\s*=\s*Continue/);
 });
 
+test('design worker classifies main-path failures and recovery without collapsing overview envelope violations', () => {
+  const worker = artifact('sai/commands/design/worker.md');
+  assert.match(worker, /failure_class/);
+  assert.match(worker, /unrecoverable/);
+  assert.match(worker, /continue_after_recovery/);
+  assert.match(worker, /design\.md[\s\S]{0,120}tasks\.md[\s\S]{0,120}interfaces\.md/);
+  assert.match(worker, /blocking-contradiction[\s\S]{0,300}(?:proposal|specs)/i, 'prior-phase contradiction maps to blocking-contradiction');
+  assert.match(worker, /envelope-contract-violation[\s\S]{0,200}(?:not|never)[\s\S]{0,120}generation-error|never[\s\S]{0,80}collapse[\s\S]{0,120}generation-error/i, 'overview envelope-contract-violation must not collapse to generation-error');
+  assert.match(worker, /(?:not|never|shall not)[\s\S]{0,120}(?:edit|write|repair)[\s\S]{0,200}(?:proposal\.md|specs\/\*\*)/i, 'recovery must not edit proposal/specs');
+});
+
 // ─── Step 2: command-progress-plan-protocol (coordinator-contract.md) ───────
 
 test('Step 2: dispatch passes exactly wrapper_echo_value and arguments_value; the plan is not carried in the envelope or any reconstruction field', () => {

@@ -274,7 +274,7 @@ test('routed design coordinator has no technical I/O and owns only lifecycle rou
 
 ##### RED phase
 
-- [ ] Add pins to `test/spec-coordinator-worker.test.js`:
+- [x] Add pins to `test/spec-coordinator-worker.test.js`:
 
 ```js
 test('spec worker classifies post-resolution failures and owns recovery continuation', () => {
@@ -295,7 +295,7 @@ test('spec worker classifies post-resolution failures and owns recovery continua
 });
 ```
 
-- [ ] Add pins to `test/design-coordinator-worker.test.js`:
+- [x] Add pins to `test/design-coordinator-worker.test.js`:
 
 ```js
 test('design worker classifies main-path failures and recovery without collapsing overview envelope violations', () => {
@@ -313,15 +313,15 @@ test('design worker classifies main-path failures and recovery without collapsin
 });
 ```
 
-- [ ] Keep `overview recovery re-dispatches eligible failures...` green; widen only if adjacent main-path prose breaks its regex windows.
+- [x] Keep `overview recovery re-dispatches eligible failures...` green; widen only if adjacent main-path prose breaks its regex windows.
 
-- [ ] Verify RED: `node --test test/spec-coordinator-worker.test.js test/design-coordinator-worker.test.js test/bounded-worker-recovery.test.js` — expected: new pins fail.
+- [x] Verify RED: `node --test test/spec-coordinator-worker.test.js test/design-coordinator-worker.test.js test/bounded-worker-recovery.test.js` — expected: new pins fail.
 
-- [ ] **GATE — DO NOT PROCEED to GREEN until RED is verified.**
+- [x] **GATE — DO NOT PROCEED to GREEN until RED is verified.**
 
 ##### GREEN phase
 
-- [ ] Edit `sai/commands/spec/worker.md`:
+- [x] Edit `sai/commands/spec/worker.md`:
 
   1. Replace generic "failed for blockers" / unguided blocker language with the shared closed `failure_class` rule for every post-resolution `failed` result, plus boolean `unrecoverable` and concrete non-raw evidence in `summary`.
   2. Map: generation failures → `generation-error` (unless a more specific class applies); validation / consistency / scenario failures → `validation-failed`; unsafe continuation requiring forbidden artifacts → `unrecoverable: true` with applicable class.
@@ -330,7 +330,7 @@ test('design worker classifies main-path failures and recovery without collapsin
   5. Do not emit recovery progress ids; do not persist recovery counters/metadata into artifacts.
   6. Preserve progress plan, external findings consumption, feedback, and terminal payload rules.
 
-- [ ] Edit `sai/commands/design/worker.md`:
+- [x] Edit `sai/commands/design/worker.md`:
 
   1. Keep existing post-resolution `failure_class` / `unrecoverable` / overview five-field mapping.
   2. Make **main-path** classification explicit for `design.md` / `tasks.md` / `interfaces.md` failures (`validation-failed` with evidence; contradictory proposal/specs → `blocking-contradiction` with dependency evidence — repair still out of surface).
@@ -339,15 +339,15 @@ test('design worker classifies main-path failures and recovery without collapsin
   5. Suppress success completion sentence on failed recovery per existing design failure boundary (coordinator-side; worker must not claim completed overview/main path when verification fails).
   6. Preserve progress plan, feedback, overview lifecycle, and ordinary replacement fallback outside recovery.
 
-- [ ] Verify GREEN: `node --test test/spec-coordinator-worker.test.js test/design-coordinator-worker.test.js test/bounded-worker-recovery.test.js` — expected: PASS.
+- [x] Verify GREEN: `node --test test/spec-coordinator-worker.test.js test/design-coordinator-worker.test.js test/bounded-worker-recovery.test.js` — expected: PASS.
 
 ##### Step 4 Verification Checklist
 
 **Automated (agent runs before stopping):**
-- [ ] RED verified — worker classification pins fail pre-GREEN
-- [ ] GREEN verified — triple-file focused suite passes
-- [ ] Overview recovery re-dispatch cases still pass
-- [ ] No `artifact_contents` field introduced on either worker
+- [x] RED verified — worker classification pins fail pre-GREEN
+- [x] GREEN verified — triple-file focused suite passes
+- [x] Overview recovery re-dispatch cases still pass
+- [x] No `artifact_contents` field introduced on either worker
 
 *(No Human checks — service-side step with no observable browser behavior.)*
 
@@ -439,5 +439,7 @@ If harness-parity smoke is not already covered by existing Claude/opencode bindi
 | 2 | green | green | 1 | n/a | Worker-core clarification passed the focused suite. |
 | 3 | red | red | 1 | assertion | Coordinator clean/non-clean boundary pins failed as intended. |
 | 3 | green | green | 1 | assertion | Coordinator contract wording was corrected within authorized files. |
+| 4 | red | red | 1 | assertion | Worker classification and continuation pins failed as intended. |
+| 4 | green | green | 1 | n/a | Both planning workers passed the triple-file focused suite. |
 
 )
