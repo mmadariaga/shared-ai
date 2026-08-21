@@ -8,6 +8,7 @@ const path = require('path');
 const repoRoot = path.join(__dirname, '..');
 const GLOSSARY_PATH = 'GLOSSARY.md';
 const DIAGNOSIS_TERMS = [
+  'Diagnosis Round',
   'Routing Diagnosis',
   'Diagnosis Key',
   'Duplicate Diagnosis',
@@ -65,5 +66,30 @@ test('Known-False Report Recovery is locus-aware and not GREEN-only', () => {
     definition,
     /(?:\b(?:only|solely|exclusively|just)\b[^.\n]*\bGREEN\b|\bGREEN\b[^.\n]*\b(?:only|solely|exclusively|just)\b)/i,
     'Known-False Report Recovery must not be defined as GREEN-only'
+  );
+});
+
+test('Diagnosis Round names Review Engine recovery feedback without aliasing review_rounds', () => {
+  const definition = definitionFor('Diagnosis Round');
+
+  assert.match(
+    definition,
+    /\bReview Engine\b/i,
+    'Diagnosis Round should name Review Engine'
+  );
+  assert.match(
+    definition,
+    /\b(?:recovery|correction)\b[\s\S]*\bfeedback\b|\bfeedback\b[\s\S]*\b(?:recovery|correction)\b/i,
+    'Diagnosis Round should describe recovery or correction feedback'
+  );
+  assert.match(
+    definition,
+    /\bnot\b[^.\n]*\bSupervised Review Round\b/i,
+    'Diagnosis Round should distinguish itself from a Supervised Review Round'
+  );
+  assert.doesNotMatch(
+    definition,
+    /\breview_rounds\b/i,
+    'Diagnosis Round must not alias review_rounds'
   );
 });

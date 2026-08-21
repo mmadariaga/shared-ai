@@ -482,7 +482,7 @@ test('item-10 diagnosis render rules live in explore instructions only', () => {
 
 ##### RED phase
 
-- [ ] Edit `test/glossary-diagnosis-terms.test.js` only. Add `'Diagnosis Round'` to the `DIAGNOSIS_TERMS` array (keep existing terms). Optionally add a focused relationship pin:
+- [x] Edit `test/glossary-diagnosis-terms.test.js` only. Add `'Diagnosis Round'` to the `DIAGNOSIS_TERMS` array (keep existing terms). Optionally add a focused relationship pin:
 
 ```js
 const DIAGNOSIS_TERMS = [
@@ -518,25 +518,25 @@ test('Diagnosis Round is recovery feedback and not a Supervised Review Round', (
 });
 ```
 
-- [ ] Verify RED: run `node --test test/glossary-diagnosis-terms.test.js` — if `GLOSSARY.md` already defines **Diagnosis Round** (it does), the required-term loop may already pass once the term is added; the focused relationship test should still pass against the existing definition. If the term were missing, the loop would fail — that is the intended lock. Expected: **PASS** against current glossary once the term is required, or fail only if definition drifts. If the suite is already green after adding the term (definition present), treat RED as: temporarily rename the expected term in the test to prove failure, then restore — OR accept that this step's RED is "add required-term pin that would fail if glossary lost the definition" and document that the live glossary already satisfies it. Preferred: run the test after adding the term; if green immediately because the definition exists, that is acceptable for a lock-only step — still run the suite and treat GREEN as "no glossary edit; tests require the term."
+- [x] Verify RED: run `node --test test/glossary-diagnosis-terms.test.js` — if `GLOSSARY.md` already defines **Diagnosis Round** (it does), the required-term loop may already pass once the term is added; the focused relationship test should still pass against the existing definition. If the term were missing, the loop would fail — that is the intended lock. Expected: **PASS** against current glossary once the term is required, or fail only if definition drifts. If the suite is already green after adding the term (definition present), treat RED as: temporarily rename the expected term in the test to prove failure, then restore — OR accept that this step's RED is "add required-term pin that would fail if glossary lost the definition" and document that the live glossary already satisfies it. Preferred: run the test after adding the term; if green immediately because the definition exists, that is acceptable for a lock-only step — still run the suite and treat GREEN as "no glossary edit; tests require the term."
 
   **Practical RED for lock-only:** After adding the term to the array, briefly assert a wrong substring in a throwaway local check is unnecessary — instead verify that removing the glossary definition would fail. Operational procedure for apply: (1) add term + relationship test, (2) run suite — expected PASS with existing glossary (definition already correct). If PASS without any glossary edit, mark RED gate as satisfied by the lock's negative property (suite fails when definition absent — spot-check by temporarily commenting the glossary line is optional and not required if risky). Proceed to GREEN with **no `GLOSSARY.md` write**.
 
-- [ ] **GATE — Do not edit `GLOSSARY.md`.**
+- [x] **GATE — Do not edit `GLOSSARY.md`.**
 
 ##### GREEN phase
 
-- [ ] Confirm `GLOSSARY.md` already defines **Diagnosis Round** consistently (read-only). **Do not modify `GLOSSARY.md`.**
-- [ ] Leave only the test file changes from RED.
-- [ ] Verify GREEN: `node --test test/glossary-diagnosis-terms.test.js` — expected: **PASS**.
+- [x] Confirm `GLOSSARY.md` already defines **Diagnosis Round** consistently (read-only). **Do not modify `GLOSSARY.md`.**
+- [x] Leave only the test file changes from RED.
+- [x] Verify GREEN: `node --test test/glossary-diagnosis-terms.test.js` — expected: **PASS**.
 
 ##### Step 4 Verification Checklist
 
 **Automated (agent runs before stopping):**
-- [ ] `Diagnosis Round` is in the required-term list
-- [ ] `node --test test/glossary-diagnosis-terms.test.js` passes
-- [ ] `GLOSSARY.md` was not modified
-- [ ] Relationship pin (if added) still matches Review Engine / not-a-Supervised-Review-Round
+- [x] `Diagnosis Round` is in the required-term list
+- [x] `node --test test/glossary-diagnosis-terms.test.js` passes
+- [x] `GLOSSARY.md` was not modified
+- [x] Relationship pin (if added) still matches Review Engine / not-a-Supervised-Review-Round
 
 *(No Human checks — service-side step with no observable browser behavior.)*
 
@@ -592,3 +592,5 @@ After all steps are applied, optional smoke (from design Manual Verification) ma
 | 2 | green | green | 6 | assertion | Bounded-diagnosis contract wording was refined until the required verification passed. |
 | 3 | red | red | 1 | assertion | New idea-list diagnosis pins failed while existing tests passed. |
 | 3 | green | green | 4 | assertion | Targeted render-rule wording was refined until the required verification passed. |
+| 4 | green-exception | red | 2 | assertion | Relationship assertion pattern was corrected within the test-only boundary. |
+| 4 | green-exception | green | 1 | n/a | |
