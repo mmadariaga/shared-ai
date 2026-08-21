@@ -179,11 +179,11 @@ When the source snapshot is entirely empty, omit both nested boundary headings a
 
 *(Non-testable step — glossary compliance check and minimal wording normalization.)*
 
-- [ ] Verify project-root `GLOSSARY.md` against the glossary requirement:
+- [x] Verify project-root `GLOSSARY.md` against the glossary requirement:
   - Exactly one `**External Surface**` and one `**Internal Public Surface**` entry under `## Language`, each with an `*Avoid*` line (already present — keep definitions aligned with uncontrolled vs controlled callers).
   - `## Flagged ambiguities` distinguishes uncontrolled vs controlled callers (already present — keep).
   - Do **not** add Endpoint Map as a positive glossary term.
-- [ ] Normalize the Architecture Snapshot relationship line so it is **terminology-only**: link **Architecture Snapshot** to an external-first **External Surface** block and an **Internal Public Surface** block. Remove nonempty-inventory conditions and the unclear→external default from that relationship line (those authoring rules live only in design-target-state / instructions).
+- [x] Normalize the Architecture Snapshot relationship line so it is **terminology-only**: link **Architecture Snapshot** to an external-first **External Surface** block and an **Internal Public Surface** block. Remove nonempty-inventory conditions and the unclear→external default from that relationship line (those authoring rules live only in design-target-state / instructions).
 
 Replace the current relationship line that includes inventory/default authoring conditions with:
 
@@ -193,15 +193,15 @@ Replace the current relationship line that includes inventory/default authoring 
 
 Keep the separate File Manifest / Target State relationship lines unchanged.
 
-- [ ] Confirm `**Architecture Snapshot**` language entry still describes boundary blocks at the term level without restating emptiness/default authoring procedures as normative authoring steps.
+- [x] Confirm `**Architecture Snapshot**` language entry still describes boundary blocks at the term level without restating emptiness/default authoring procedures as normative authoring steps.
 
 ##### Step 4 Verification Checklist
 
 **Automated (agent runs before stopping):**
-- [ ] `GLOSSARY.md` `## Language` contains exactly one `**External Surface**` and one `**Internal Public Surface**` entry, each with `*Avoid*`
-- [ ] Relationships name Architecture Snapshot → External Surface then Internal Public Surface (external first) without nonempty/default authoring conditions on that line
-- [ ] Flagged ambiguities still distinguish uncontrolled vs controlled callers
-- [ ] No new positive Endpoint Map glossary term
+- [x] `GLOSSARY.md` `## Language` contains exactly one `**External Surface**` and one `**Internal Public Surface**` entry, each with `*Avoid*`
+- [x] Relationships name Architecture Snapshot → External Surface then Internal Public Surface (external first) without nonempty/default authoring conditions on that line
+- [x] Flagged ambiguities still distinguish uncontrolled vs controlled callers
+- [x] No new positive Endpoint Map glossary term
 
 *(No Human checks — service-side step with no observable browser behavior. Manual glossary-format compliance is the automated checklist above.)*
 
