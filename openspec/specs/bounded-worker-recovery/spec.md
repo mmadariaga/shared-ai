@@ -477,3 +477,23 @@ The shared three-slot recovery budget SHALL be represented as three mutually dis
 - **WHEN** two closures identify the same normalized artifact path, concrete point, and authorized correction boundary but carry different Cause Locus values — the first unresolved and the later `in-scope`
 - **THEN** the coordinator SHALL derive equal `diagnosis_key` tuples
 - **AND** the later closure SHALL stop as a duplicate and SHALL not consume a second slot for the unchanged concrete cause
+
+### Requirement: Explore Auto cancellation exception is named and one-shot
+
+The shared bounded-recovery contract SHALL name selector-dispatched Explore Auto item 10 as the sole exception to the default clean-cancellation prohibition. In that route only, a post-resolution supervised phase-worker `cancelled` result MAY enter the Explore Diagnosis Round, using a phase-keyed conversation-only `diagnosis_rounds` counter, with at most one read-only diagnosis and at most one same-worker re-dispatch. It SHALL never use a replacement worker and SHALL not make cancellation recoverable for standalone spec or design adapters, Build, the manual item-9 review loop, adapters without the named Explore route, or outer user cancellation.
+
+#### Scenario: Explore Auto cancellation is diagnosable after Auto authorization
+
+- **WHEN** the user has selected `Auto`, item 10 supervision is active, and its resolved phase worker returns `cancelled`
+- **THEN** the route permits the named Explore Diagnosis Round when that phase counter is unused
+- **AND** it may forward one actionable diagnosis to the same worker without treating the result as a new user cancellation decision
+
+#### Scenario: ordinary cancellation remains a clean stop
+
+- **WHEN** a standalone adapter, Build, the manual review loop, or an outer user action returns or produces `cancelled`
+- **THEN** the result enters no diagnosis or recovery route and consumes no recovery budget
+
+#### Scenario: Explore continuation loss is terminal and retryable
+
+- **WHEN** an Explore Diagnosis Round establishes an actionable correction but same-worker continuation cannot be delivered
+- **THEN** the route records `continuation/transport loss`, consumes the diagnosis round, dispatches no replacement worker, and leaves the change retryable

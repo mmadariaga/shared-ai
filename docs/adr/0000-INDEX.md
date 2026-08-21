@@ -132,6 +132,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0164 — Self-verifiable Steps — prose and pinning tests land together](./0164-self-verifiable-steps-prose-and-tests-together.md)
 - [0165 — Dual coordinator inspection channels — verifying vs phase-static](./0165-dual-coordinator-inspection-channels.md) — Refs ddr:0151, Refs ddr:0152
 - [0166 — Dual-channel exclusivity is per cause surface](./0166-per-cause-surface-dual-channel-exclusivity.md) — **Amends** 0165
+- [0167 — Named Explore Auto cancellation exception in Bounded Recovery](./0167-explore-auto-cancellation-exception-in-bounded-recovery.md) — **Amends** 0158, Refs 0159
 
 ### `/sai-5-review`
 
@@ -183,6 +184,9 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0160 — Interactive artifact feedback gate gains a non-option review-loop note only](./0160-interactive-gate-review-loop-note-only.md) — Refs 0028, Refs ddr:0150, Refs 0158
 - [0158 — Single shared crystallization-turn close definition consumed by items 5, 6, and 7](./0158-single-shared-crystallization-turn-close.md) — Refs 0146
 - [0159 — Path-specific next-step lives only on Manual/unmapped after the selector](./0159-path-specific-next-step-after-manual-selector.md) — **Amends** 0158, Refs 0146
+- [0167 — Named Explore Auto cancellation exception in Bounded Recovery](./0167-explore-auto-cancellation-exception-in-bounded-recovery.md) — **Amends** 0158, Refs 0159
+- [0168 — Explore item-10 diagnosis uses Review Engine and same-worker continue_after_recovery](./0168-explore-item-10-diagnosis-review-engine-same-worker.md) — Refs 0140, Refs 0158, Refs 0167
+- [0169 — Idea-list treats Diagnosis Round as recovery, not review](./0169-idea-list-diagnosis-round-is-recovery-not-review.md) — Refs 0116, Refs 0137, Refs 0168
 
 ### `/sai-backfill`
 
@@ -336,6 +340,9 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0164 — Self-verifiable Steps — prose and pinning tests land together](./0164-self-verifiable-steps-prose-and-tests-together.md)
 - [0165 — Dual coordinator inspection channels — verifying vs phase-static](./0165-dual-coordinator-inspection-channels.md) — Refs ddr:0151, Refs ddr:0152
 - [0166 — Dual-channel exclusivity is per cause surface](./0166-per-cause-surface-dual-channel-exclusivity.md) — **Amends** 0165
+- [0167 — Named Explore Auto cancellation exception in Bounded Recovery](./0167-explore-auto-cancellation-exception-in-bounded-recovery.md) — **Amends** 0158, Refs 0159
+- [0168 — Explore item-10 diagnosis uses Review Engine and same-worker continue_after_recovery](./0168-explore-item-10-diagnosis-review-engine-same-worker.md) — Refs 0140, Refs 0158, Refs 0167
+- [0169 — Idea-list treats Diagnosis Round as recovery, not review](./0169-idea-list-diagnosis-round-is-recovery-not-review.md) — Refs 0116, Refs 0137, Refs 0168
 
 ### Fetch resolution & path conventions
 
@@ -454,6 +461,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0162 — Unpassable RED/GREEN STOP maps to failed blocking-contradiction with evidence-backed veto](./0162-unpassable-stop-failed-blocking-contradiction.md) — Refs ddr:0151, Refs ddr:0152
 - [0165 — Dual coordinator inspection channels — verifying vs phase-static](./0165-dual-coordinator-inspection-channels.md) — Refs ddr:0151, Refs ddr:0152
 - [0166 — Dual-channel exclusivity is per cause surface](./0166-per-cause-surface-dual-channel-exclusivity.md) — **Amends** 0165
+- [0167 — Named Explore Auto cancellation exception in Bounded Recovery](./0167-explore-auto-cancellation-exception-in-bounded-recovery.md) — **Amends** 0158, Refs 0159
 
 ### Testability routing & RED → GREEN
 
@@ -558,6 +566,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 | [0162](./0162-schema-report-templates-point-to-write-time-authority.md) | supersedes | [0106](./0106-keep-both-report-template-families-pinned-parity.md) |
 | [0159](./0159-path-specific-next-step-after-manual-selector.md) | amends | [0158](./0158-single-shared-crystallization-turn-close.md) |
 | [0166](./0166-per-cause-surface-dual-channel-exclusivity.md) | amends | [0165](./0165-dual-coordinator-inspection-channels.md) |
+| [0167](./0167-explore-auto-cancellation-exception-in-bounded-recovery.md) | amends | [0158](./0158-shared-non-clean-closure-diagnosis-in-command-runner.md) |
 
 ## Superseded ADRs (historical)
 

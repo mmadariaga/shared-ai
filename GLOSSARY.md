@@ -88,6 +88,9 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 **Diagnosis Key**: "The coordinator-owned normalized identity of one concrete recovery diagnosis as the ordered tuple `(artifact path, concrete point, authorized correction boundary)`."
 *Avoid*: diagnosis ID, recovery key, cause key
 
+**Diagnosis Round**: "A single conversation-scoped, read-only **Review Engine** transaction over active supervised phase artifacts after a non-clean worker closure, whose findings are forwarded once as correction feedback and are not counted as a **Supervised Review Round**."
+*Avoid*: recovery review, diagnostic review pass, worker retry review
+
 **Divisible Step**: "A Step whose plan-level file scope contains at least one production file — the property, distinct from having a RED block, that makes the Step eligible for the two-worker split (a blind **RED Worker** followed by a **GREEN Worker**)."
 *Avoid*: splittable step, production step, split-eligible step, "testable" (which describes the RED block only)
 
@@ -358,6 +361,7 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 - A **Milestone Stamp** belongs to one **Progress Step** of a routed phase progress task list and is attached by the coordinator as a decorative rendering action, never by a worker.
 - A **Progress Step** of a routed phase progress task list carries exactly one **Milestone Stamp** once it renders `completed`, and none before; the stamp's value is the **Result Emission Time** of the result that marked it.
 - An **Artifact Review** is performed only by the manual `sai-explore` post-crystallization **Review Engine** or a supervised **Supervised Review Round** through the in-session **Explore Review Engine**; workers consume its external findings and never form a second review surface.
+- A **Diagnosis Round** uses the **Review Engine** after a non-clean supervised worker closure, forwards its findings once as worker correction feedback, and never marks or clears **Artifact Review** evidence.
 - A **Supervised Review Round** passes the **Explore Review Engine**'s external findings to the phase worker, which applies them without forming findings or emitting another review format.
 - A **Review Step** is the one **Progress Step** that run-closing reconciliation never marks, so it is marked only by a valid external Explore findings block whose base-form `Summary` reports `High=0`, carried in an ordinary **Progress Event**.
 - A **Step Projection** belongs to one `/sai-4-apply` run and mirrors the on-disk checkbox state of one `implementation.md`; unlike the per-dispatch apply **Progress Plan** it is never marked from worker progress events, even though apply now routes Step execution through the managed RED and GREEN workers.

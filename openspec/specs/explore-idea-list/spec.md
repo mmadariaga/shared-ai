@@ -158,6 +158,30 @@ While the supervised pipeline (item 10 of `sai/commands/explore/instructions.md`
 - **THEN** the in-progress item resolves to render `pending`
 - **AND** no review round is launched over the half-finished state
 
+### Requirement: diagnosis rounds do not masquerade as review progress
+
+The idea progress list SHALL treat an item-10 Diagnosis Round as recovery feedback, not as a supervised review round. When a supervised worker failure or cancellation occurs while a phase review item is `in_progress`, Explore SHALL resolve it to `pending` and render that change once before diagnosis. During diagnosis and its possible same-worker re-dispatch, neither phase review item SHALL be set `in_progress`, no diagnosis-specific item SHALL be created, and findings SHALL mark or clear no review evidence. The phase-keyed `diagnosis_rounds` counters SHALL not affect review-round list state. If re-dispatch succeeds, normal phase review entry may set `in_progress`; otherwise the phase remains `pending`. These counters, findings, and render state SHALL never be persisted.
+
+#### Scenario: failed or cancelled worker resolves the active item before diagnosis
+
+- **WHEN** a supervised spec or design worker fails or is cancelled while its review item is `in_progress`
+- **THEN** the item renders `pending` before diagnosis and no ordinary review round runs over the half-finished state
+
+#### Scenario: diagnosis does not create review progress
+
+- **WHEN** an item-10 Diagnosis Round is active
+- **THEN** neither review item renders `in_progress`, no diagnosis item is added, and findings leave review evidence unchanged
+
+#### Scenario: successful re-dispatch resumes ordinary rendering
+
+- **WHEN** diagnosis re-dispatch succeeds and the phase reaches its ordinary review entry point
+- **THEN** the phase item becomes `in_progress` under the existing phase rule, not because of diagnosis
+
+#### Scenario: diagnosis state is not persisted
+
+- **WHEN** the item-10 diagnosis route enters, renders, or exits
+- **THEN** no diagnosis counter, finding, render state, or recovery metadata is written to any file or configuration
+
 ### Requirement: idea-list-render-adapter-placement
 
 The idea-list render binding for each supported harness SHALL be a harness-specific adapter source at `sai/adapters/{harness}/idea-list-render.md` and SHALL be projected to `adapters/{harness}/idea-list-render.md` in that harness's installed SAI root. The binding SHALL remain a non-worker runtime-glue asset: it SHALL NOT define worker lifecycle, dispatch, continuation, an `InvocationEnvelope`, or a routed progress plan, and SHALL NOT be counted among the seven routed worker bindings. No idea-list-render source SHALL remain under `sai/orchestration/workers/bindings/{claude,opencode}/` after the relocation.

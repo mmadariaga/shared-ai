@@ -122,3 +122,23 @@ Supervised gate auto-proceed SHALL NOT create any advance path over a phase work
 - **WHEN** a supervised worker returns `needs_input` whose answer is ungrounded or below the confidence threshold
 - **THEN** explore escalates the exact question and options to the user
 - **AND** gate suppression does not answer, swallow, or bypass that escalation
+
+### Requirement: item-10 diagnosis feedback is bounded and read-only
+
+The item-10 supervised Auto route SHALL use the shared `sai/orchestration/command-runner.md` Bounded Recovery section as the single source for post-resolution non-clean diagnosis. For a selected spec or design phase, a resolved worker `failed` or `cancelled` result with an unused phase counter SHALL invoke the existing read-only Review Engine exactly once with `sai-1` or `sai-2`, form feedback in the order `Reported`, `Evidence`, `Cause`, `Correction`, `Verification`, and attempt at most one same-worker `continue_after_recovery`. Explore SHALL never apply corrections directly or dispatch a replacement worker. Unactionable diagnosis, veto, failed re-dispatch, or undeliverable continuation leaves the change retryable; continuation loss uses the shared `continuation/transport loss` diagnosis.
+
+#### Scenario: failed or cancelled worker starts one diagnosis round
+
+- **WHEN** a resolved supervised spec or design worker returns `failed` or `cancelled` and its phase counter is zero
+- **THEN** Explore invokes the phase-selected Review Engine once, rereads artifacts without writing, and produces the five ordered feedback sections
+- **AND** an actionable correction is forwarded only to the same worker once
+
+#### Scenario: diagnosis remains read-only and retryable
+
+- **WHEN** diagnosis has no actionable correction, continuation fails, or the worker fails or cancels again
+- **THEN** Explore performs no direct repair or replacement dispatch and leaves the selected change eligible for a later `Auto` attempt
+
+#### Scenario: diagnosis counter is separate from review rounds
+
+- **WHEN** the item-10 diagnosis route runs
+- **THEN** only `diagnosis_rounds.spec` or `diagnosis_rounds.design` increments, independently of `review_rounds`, and both counters reset on a new Auto attempt without persistence
