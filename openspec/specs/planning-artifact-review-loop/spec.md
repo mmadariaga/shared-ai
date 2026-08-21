@@ -8,7 +8,7 @@ TBD — placeholder purpose. Define the worker-owned automated artifact review l
 
 ### Requirement: supervised-marker-suppresses-automatic-loop
 
-The automatic worker-owned review loop SHALL run if and only if the phase worker's invocation does not carry the supervision marker. The marker is the literal token `--supervised` present on the worker's selected envelope source (the value chosen after existing wrapper-echo precedence over `arguments_value`), consumed by that worker's flag grammar before the verbatim request or change name is finalized.
+The automatic worker-owned review loop SHALL run if and only if the phase worker's invocation does not carry the supervision marker. The marker is the literal token `--supervised` present in the worker's `arguments_value` request, consumed by that worker's flag grammar before the verbatim request or change name is finalized.
 
 When the marker is present, the worker SHALL NOT dispatch any automatic isolated reviewer, SHALL NOT advance either automatic-loop counter (the completed-pass count and total-attempt count both remain `0` for the suppressed automatic path), and SHALL proceed to the ordinary pre-gate terminal lifecycle without emitting a `review` progress event from the automatic path. The declared progress plan is not amended: the `review` step remains in the plan. The automatic path supplies no `review` evidence under suppression; a user-requested pass at the prose feedback gate retains its ordinary evidence value per `user-requested-additional-passes`.
 
@@ -52,9 +52,9 @@ The verbatim request that forms the reviewer's reference set (when a pass runs) 
 
 ### Requirement: supervised-flag-prefix-grammar
 
-The supervision marker SHALL travel as flag content inside the existing two-string invocation envelope (`wrapper_echo_value`, `arguments_value`). No third envelope field SHALL be introduced. Boot adapters SHALL remain untouched.
+The supervision marker SHALL travel as flag content inside the single `arguments_value` request. No third envelope field SHALL be introduced. Boot adapters SHALL remain opaque forwarders of `command_name` and `arguments_value`.
 
-For Auto-supervised explore dispatches, explore SHALL leave `wrapper_echo_value` empty so `arguments_value` remains the selected source, SHALL place the marker and the phase request or change name on that `arguments_value`, and SHALL NOT supply the marker as a bare non-empty `wrapper_echo_value` that would supersede and discard a crystallized request body under wrapper-echo precedence.
+For Auto-supervised explore dispatches, explore SHALL place the marker and the phase request or change name in `arguments_value`.
 
 Phase grammars differ and SHALL NOT be collapsed into one ordering rule:
 
@@ -63,18 +63,11 @@ Phase grammars differ and SHALL NOT be collapsed into one ordering rule:
 
 A malformed envelope that the worker cannot parse under its declared grammar SHALL fail under the worker's existing validation failure path before change resolution where the design worker already fails flag validation; the bare `--supervised` token requires no value and is never value-shaped.
 
-#### Scenario: envelope stays two strings
+#### Scenario: envelope has one request string
 
 - **WHEN** explore or any other dispatcher forwards a supervised invocation
-- **THEN** the worker still receives exactly `wrapper_echo_value` and `arguments_value`
-- **AND** no third envelope field carries the marker
-
-#### Scenario: explore Auto leaves wrapper echo empty
-
-- **WHEN** explore constructs an Auto-supervised spec or design dispatch
-- **THEN** `wrapper_echo_value` SHALL be empty
-- **AND** `arguments_value` SHALL be the selected source carrying both the marker and the phase request or change name
-- **AND** the marker SHALL NOT be supplied as a bare non-empty echo value
+- **THEN** the worker receives exactly `arguments_value` as invocation input
+- **AND** no additional envelope field carries the marker
 
 #### Scenario: spec worker first non-flag line opens the verbatim request
 

@@ -9,14 +9,12 @@ Define the design coordinator: its lifecycle management, notice emission, feedba
 ### DesignInvocationEnvelope
 
 ```yaml
-wrapper_echo_value: string
 arguments_value: string
 ```
 
 ### ContinueNowEnvelope
 
 ```yaml
-wrapper_echo_value: "placeholder-value"
 arguments_value: "placeholder-change-name"
 ```
 ## Requirements
@@ -117,16 +115,15 @@ Continue now SHALL clear the design lifecycle state and dispatch the established
 
 ### Requirement: continue-now-envelope-contract
 
-The Continue-now envelope SHALL carry `wrapper_echo_value` and `arguments_value`.
+The Continue-now envelope SHALL carry the resolved change name in `arguments_value`.
 
 #### Scenario: envelope fields present
 - **WHEN** continue-now is triggered
-- **THEN** the envelope SHALL contain `wrapper_echo_value` set to the empty string
-- **AND** `arguments_value` set to the resolved change name
+- **THEN** the envelope SHALL contain `arguments_value` set to the resolved change name
 
 ### Requirement: The design coordinator is a conversational control plane
 
-For routed `/sai-2-design` invocations, the coordinator SHALL preserve slash-command invocation and interactive navigation while performing no OpenSpec command execution, change resolution, prerequisite checking, codebase inspection, artifact reading, artifact writing, or technical design reasoning on the clean route. It SHALL delegate technical workflow to the design worker through the harness binding. The coordinator MAY perform the narrow presence check needed to choose the active static progress-plan variant from the original two-string envelope before dispatch; it SHALL not consume a language value, validate option syntax, default a language, or reinterpret the request. The envelope SHALL remain exactly `wrapper_echo_value` and `arguments_value` with no new field. It SHALL print user-visible worker notices exactly as authored and resume the same worker, without deriving or interpreting the notice. The design adapter declares a progress plan, so the coordinator SHALL render the selected static plan as a live task list per the neutral policy, mark steps only from worker progress events, and resume the same worker with `continue_after_progress`; the plan and marked set SHALL be held in invocation-scoped state, rendered at dispatch, reconciled at the applicable terminal route, and SHALL not be derived from artifacts. The only exception is the shared non-clean diagnosis route, where the coordinator may inspect the declared artifact surface to establish cause but still may not write or repair any artifact.
+For routed `/sai-2-design` invocations, the coordinator SHALL preserve slash-command invocation and interactive navigation while performing no OpenSpec command execution, change resolution, prerequisite checking, codebase inspection, artifact reading, artifact writing, or technical design reasoning on the clean route. It SHALL delegate technical workflow to the design worker through the harness binding. The coordinator MAY perform the narrow presence check needed to choose the active static progress-plan variant from the original `arguments_value` request before dispatch; it SHALL not consume a language value, validate option syntax, default a language, or reinterpret the request. The request SHALL remain `arguments_value` only. It SHALL print user-visible worker notices exactly as authored and resume the same worker, without deriving or interpreting the notice. The design adapter declares a progress plan, so the coordinator SHALL render the selected static plan as a live task list per the neutral policy, mark steps only from worker progress events, and resume the same worker with `continue_after_progress`; the plan and marked set SHALL be held in invocation-scoped state, rendered at dispatch, reconciled at the applicable terminal route, and SHALL not be derived from artifacts. The only exception is the shared non-clean diagnosis route, where the coordinator may inspect the declared artifact surface to establish cause but still may not write or repair any artifact.
 
 #### Scenario: Routed design invocation begins
 

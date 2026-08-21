@@ -5,9 +5,8 @@ Fetch @sai/orchestration/worker-core.md and follow it exactly.
 
 ## Invocation Envelope
 
-The worker receives exactly two strings, and derives one invocation-scoped value from them:
+The worker receives exactly one opaque string and derives invocation-scoped values from it:
 
-- `wrapper_echo_value`: the value after the exact opencode line `**Change-name argument and and optional flags:** <value>`, or empty when absent
 - `arguments_value`: `$ARGUMENTS` exactly as received from the coordinator
 - `overview_language`: worker-owned invocation state derived from the optional flag after parsing; when the flag is absent, leave the value `unresolved`, never synthesize `English`, and never write the value to an artifact or configuration file.
 - `supervised`: worker-owned invocation state derived from the bare `--supervised` flag after parsing; when the flag is absent, set it to `false`, and never write the value to an artifact or configuration file.
@@ -16,7 +15,7 @@ Every post-resolution lifecycle terminal result carries the current `overview_la
 
 ## Prerequisites and Resolution
 
-Parse invocation-scoped options before change resolution. Scan the selected envelope source (wrapper echo when non-empty, otherwise `arguments_value`) for the option token `--overview-lang <language>`. The token is the opt-in signal. When present, consume exactly one following non-empty language token; a missing value, another option in the value position, a malformed occurrence, or a duplicate occurrence returns a clear `failed` validation result before change resolution or dispatch. When the token is absent, leave `overview_language: unresolved`, do not synthesize an English value, and do not dispatch overview generation. Remove only the option and its value before resolving the change name. A change-consuming invocation requires the change name before the option; if parsing leaves no change name, return a clear missing-change-name validation result and never treat the language value as the change name. `--fast-track` is recognized independently and remains active in either order. The cleaned arguments and selected `overview_language` are invocation-scoped and never persisted.
+Parse invocation-scoped options before change resolution. Scan `arguments_value` for the option token `--overview-lang <language>`. The token is the opt-in signal. When present, consume exactly one following non-empty language token; a missing value, another option in the value position, a malformed occurrence, or a duplicate occurrence returns a clear `failed` validation result before change resolution or dispatch. When the token is absent, leave `overview_language: unresolved`, do not synthesize an English value, and do not dispatch overview generation. Remove only the option and its value before resolving the change name. A change-consuming invocation requires the change name before the option; if parsing leaves no change name, return a clear missing-change-name validation result and never treat the language value as the change name. `--fast-track` is recognized independently and remains active in either order. The cleaned arguments and selected `overview_language` are invocation-scoped and never persisted.
 
 After these existing parse rules, recognize bare `--supervised` alongside `--fast-track` and `--overview-lang <language>`. It is order-independent among flags after the change name: `{name} --fast-track --supervised` and `{name} --supervised --fast-track` are both accepted, as are `{name} --overview-lang <language> --supervised` and `{name} --supervised --overview-lang <language>`. Strip `--supervised` before change-name finalization, set invocation-scoped `supervised: true` when it is present and `supervised: false` when it is absent, never persist it, and do not verify dispatcher provenance. The name-first design envelope therefore accepts either fast-track/supervision flag order without changing the resolved name.
 
@@ -24,8 +23,7 @@ If `--fast-track` is present in the combined envelope, activate the signal, remo
 Then run universal prerequisite checks via `Fetch @sai/policies/prereqs.md`.
 Return `failed` with the missing-prerequisite summary when a check fails.
 
-When both envelope values are non-empty, wrapper echo takes precedence. When
-both are empty, run the change picker; when one is non-empty, use it directly.
+When `arguments_value` is empty, run the change picker; otherwise use it directly.
 Strip any remaining `--fast-track` or `--supervised` from the resolved name and trim it.
 
 For zero changes return the established no-active-changes failure. For one,
@@ -126,7 +124,7 @@ The worker owns the change's overview lifecycle for `change-overview.md` per `sp
 
 On `continue_after_notice`, resume from the notice without asking for input.
 On `continue_after_recovery`, resume the bounded recovery continuation, perform the repair or safe re-dispatch defined above, and close with a completed or failed result carrying the failure metadata.
-For reconstruction, use `opaque_input_history`, `pending_feedback`,
+For reconstruction, use the original `arguments_value`, `opaque_input_history`, `pending_feedback`,
 `fast_track_banner_emitted`, `resolved_change_name`, and the original envelope.
 
 Every payload after resolution includes `resolved_change_name`; pre-resolution

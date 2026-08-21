@@ -6,8 +6,10 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { PassThrough } = require('stream');
+const { loadInstallManifest, matrixRenderFor } = require('../bin/install-manifest.js');
 
 const repoRoot = path.join(__dirname, '..');
+const matrixManifest = loadInstallManifest(repoRoot);
 
 // ─── interface stubs (RED phase) ────────────────────────────────────────────
 // The Step 2 routed apply cards do not exist yet. Every artifact() read below
@@ -61,6 +63,13 @@ function collectOut() {
   const chunks = [];
   stream.on('data', chunk => chunks.push(chunk));
   return { stream, text: () => Buffer.concat(chunks).toString() };
+}
+
+function applyBindings() {
+  return matrixRenderFor(matrixManifest, 'claude', repoRoot)
+    .concat(matrixRenderFor(matrixManifest, 'opencode', repoRoot))
+    .filter(entry => entry.kind === 'binding' && /sai-4-(?:red|green)-worker/.test(entry.text))
+    .map(entry => entry.text);
 }
 
 // ─── specs/apply-routed-card-set/spec.md — adapter field set ────────────────
@@ -205,6 +214,43 @@ test('Step 2 the coordinator injects the resolved change name and the workers ec
       'specs/apply-red-green-worker-model/spec.md: RED and GREEN must return the identical resolved_change_name');
     assert.doesNotMatch(worker, /change[- ]picker|openspec list|Which change\?|Use change '\{name\}'/,
       'specs/apply-red-green-worker-model/spec.md: workers must never execute change selection');
+  }
+});
+
+test('Step 3 Apply RED/GREEN transport carries only arguments_value plus contract-defined metadata', () => {
+  const coordinator = artifact(APPLY_CARDS.coordinator);
+  const runner = artifact(APPLY_CARDS.runner);
+  const red = artifact(APPLY_CARDS.redWorker);
+  const green = artifact(APPLY_CARDS.greenWorker);
+  const bindings = applyBindings();
+  const transport = [coordinator, runner, red, green, ...bindings];
+
+  assert.match(coordinator, /original[_ ]envelope|original envelope/i,
+    'initial Apply dispatch must retain the original envelope as coordinator state');
+  assert.match(coordinator, /dispatch[_ ]operation|dispatch.*(?:RED|GREEN)/i,
+    'initial Apply dispatch must use the routed worker operation');
+  assert.match(coordinator, /continuation[_ ]operation|continue.*same worker/i,
+    'Apply continuation must use the binding-owned operation');
+  assert.match(coordinator, /replacement[_ ]reconstruction|replacement worker/i,
+    'Apply replacement must use the reconstruction contract');
+  assert.match(runner, /RED[\s\S]{0,260}arguments_value|arguments_value[\s\S]{0,260}RED/i,
+    'Apply RED routing must carry arguments_value');
+  assert.match(runner, /GREEN[\s\S]{0,260}arguments_value|arguments_value[\s\S]{0,260}GREEN/i,
+    'Apply GREEN routing must carry arguments_value');
+  assert.match(coordinator, /progress[\s\S]{0,160}coordinator|coordinator[\s\S]{0,160}progress/i,
+    'Apply progress ownership must remain with the coordinator');
+
+  assert.equal(bindings.length, 4,
+    'both harnesses must retain distinct RED and GREEN binding identities');
+  for (const source of transport) {
+    assert.match(source, /arguments_value/,
+      'each Apply transport surface must carry arguments_value');
+    assert.doesNotMatch(source, /wrapper_echo_value/,
+      'no Apply transport surface may carry wrapper_echo_value');
+  }
+  for (const source of bindings) {
+    assert.match(source, /sai-4-(?:red|green)-worker/,
+      'Apply binding templates must retain their worker identity');
   }
 });
 
@@ -606,12 +652,12 @@ test('Step 2 both boot adapters select the apply coordinator, exclude apply from
       'specs/apply-boot-rerouting/spec.md: apply must join the routed name set');
     assert.doesNotMatch(boot, /Utility names[\s\S]{0,80}`apply`/,
       'specs/apply-boot-rerouting/spec.md: apply must be excluded from utility selection');
-    assert.match(boot, /wrapper_echo_value/,
-      'specs/apply-boot-rerouting/spec.md: the boot must forward wrapper_echo_value');
+    assert.doesNotMatch(boot, /wrapper_echo_value/,
+      'specs/apply-boot-rerouting/spec.md: the boot must not construct or forward wrapper_echo_value');
     assert.match(boot, /arguments_value/,
       'specs/apply-boot-rerouting/spec.md: the boot must forward arguments_value');
     assert.match(boot, /byte-for-byte|verbatim|unchanged|without modification/i,
-      'specs/apply-boot-rerouting/spec.md: the boot must forward wrapper echo and arguments byte-for-byte');
+      'specs/apply-boot-rerouting/spec.md: the boot must forward arguments_value byte-for-byte');
   }
 });
 

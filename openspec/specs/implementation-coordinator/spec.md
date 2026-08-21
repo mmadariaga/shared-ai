@@ -21,15 +21,12 @@ The Claude Code and opencode command wrappers SHALL select the grouped `sai/comm
 - **AND** they SHALL NOT invoke a retired adapter or removed inline command loader
 
 ### Requirement: Coordinator dispatch boundary
-The `/sai-3-implement` coordinator SHALL construct a normalized invocation envelope containing both `wrapper_echo_value` (the non-empty `**Change-name argument:** <value>` wrapper-echo value, or empty when absent) and `arguments_value` (the raw `$ARGUMENTS` value, including flags). It SHALL pass that envelope unchanged to one implementation-planning worker, SHALL preserve wrapper-echo precedence for the worker, and SHALL NOT run prerequisite checks, query OpenSpec, execute change-picker logic, resolve the change name, or perform technical planning itself.
+The `/sai-3-implement` coordinator SHALL construct a normalized invocation request containing only `arguments_value` (the raw `$ARGUMENTS` value, including flags). It SHALL pass that request unchanged to one implementation-planning worker and SHALL NOT run prerequisite checks, query OpenSpec, execute change-picker logic, resolve the change name, or perform technical planning itself.
 
 #### Scenario: Raw implementation invocation
 - **WHEN** a user invokes `/sai-3-implement` with a change name, no change name, or supported flags
-- **THEN** the coordinator SHALL dispatch one implementation-planning worker with both invocation sources in the normalized envelope, the harness binding SHALL capture the dispatch identifier outside the worker-authored payload, and the coordinator SHALL await the binding-augmented result
+- **THEN** the coordinator SHALL dispatch one implementation-planning worker with the complete `arguments_value` request, the harness binding SHALL capture the dispatch identifier outside the worker-authored payload, and the coordinator SHALL await the binding-augmented result
 
-#### Scenario: Opencode wrapper-echo precedence
-- **WHEN** the opencode wrapper-echo value is non-empty and `$ARGUMENTS` is empty or contains a different value
-- **THEN** the coordinator SHALL forward both values and the worker SHALL treat `wrapper_echo_value` as the resolved change-name source without scanning the parent conversation
 
 ### Requirement: Coordinator I/O isolation
 The coordinator SHALL NOT run prerequisite checks or change-picker queries, read the codebase, OpenSpec artifacts, or implementation audit files, or write `implementation.md` or any other planning artifact.
@@ -64,7 +61,7 @@ The coordinator SHALL preserve the existing user communication while reporting t
 - **THEN** the coordinator SHALL report a clean stop without claiming planning completion, SHALL identify changed files, and SHALL not fire the completed-planning MANDATORY STOP path
 
 ### Requirement: Shared lifecycle adapter integration
-The routed `/sai-3-implement` coordinator SHALL consume the canonical shared coordinator contract through an implementation phase adapter. The adapter SHALL provide the original two-field invocation envelope, harness binding dispatch and continuation operations, progress events as the sole allowed nonterminal extension, no extension handlers, the enumerated implementation replacement-reconstruction fields below, and parameterized implementation terminal navigation that selects standalone completion or the composition-owned authorized transition by adapter position. The adapter SHALL NOT duplicate lifecycle payload validation, ordered changed-file aggregation, continuation-first recovery, replacement-worker limits, or terminal routing, and SHALL NOT import design feedback, notice, or continue-now behavior.
+The routed `/sai-3-implement` coordinator SHALL consume the canonical shared coordinator contract through an implementation phase adapter. The adapter SHALL provide the original `arguments_value` request, harness binding dispatch and continuation operations, progress events as the sole allowed nonterminal extension, no extension handlers, the enumerated implementation replacement-reconstruction fields below, and parameterized implementation terminal navigation that selects standalone completion or the composition-owned authorized transition by adapter position. The adapter SHALL NOT duplicate lifecycle payload validation, ordered changed-file aggregation, continuation-first recovery, replacement-worker limits, or terminal routing, and SHALL NOT import design feedback, notice, or continue-now behavior.
 
 The replacement-reconstruction fields SHALL be exactly:
 

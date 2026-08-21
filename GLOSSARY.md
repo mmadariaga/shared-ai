@@ -34,7 +34,7 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 **Blind Test-Writer**: "The split-flow role of the **RED Worker** — the first `/sai-4-apply` dispatch of a **Split-Routed Step**, given only that Step's `interfaces.md` section plus injected testing context — never the GREEN implementation body — that writes the tests (and RED stubs) and verifies a valid RED."
 *Avoid*: test dispatch, test agent, test-first subagent
 
-**Boot Request**: "The opaque adapter input containing a command name, wrapper-echo value, argument value, and optional harness-owned continuation reference."
+**Boot Request**: "The opaque adapter input containing `command_name` as card-selection metadata, the complete opaque `arguments_value` request, and an optional harness-owned continuation reference."
 *Avoid*: adapter request, boot envelope, parsed request
 
 **Build Command**: "The un-numbered `/sai-build` routed composition command that runs the implement phase adapter then the apply phase adapter in one supervising invocation for a disk-resolved change name, with no intermediate approval gate."

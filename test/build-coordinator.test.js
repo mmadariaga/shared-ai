@@ -43,7 +43,11 @@ test('build coordinator declares the implement-to-apply composition and envelope
   assertContains(source, 'sai/commands/implement/coordinator.md');
   assert.match(source, /position 1\s*[—-]\s*existing apply phase adapter/);
   assertContains(source, 'sai/commands/apply/coordinator.md');
-  assertContains(source, '{wrapper_echo_value: "", arguments_value: "{name}"}');
+  assert.doesNotMatch(source, /\bwrapper_echo_value\s*:/,
+    'build successor envelopes must not construct or forward the wrapper echo field');
+  assert.match(source, /command_name:\s*apply/);
+  assert.match(source, /arguments_value:\s*(?:\{name\}|resolved_change_name)/,
+    'the build successor must carry the resolved change in arguments_value');
   assertContains(source, 'command_name: apply');
   assertContains(source, 'continuation_reference` absent or empty');
   assertContains(source, 'fast-track true is supervisor session state');

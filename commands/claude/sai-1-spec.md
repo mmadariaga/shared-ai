@@ -11,5 +11,4 @@ Fetch @sai/commands/spec/launcher.md and follow those instructions exactly, forw
 
 InvocationEnvelope:
   command_name: spec
-  wrapper_echo_value: ""
   arguments_value: $ARGUMENTS

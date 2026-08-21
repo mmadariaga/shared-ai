@@ -2,6 +2,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const { loadInstallManifest, matrixRenderFor } = require('./install-manifest');
 
 const ACTIVE_REFERENCE_EXCLUSIONS = [
   path.join('openspec', 'changes'),
@@ -91,6 +92,22 @@ function filesUnder(root, relativeRoot) {
   });
 }
 
+function validatedOpencodeGeneratedSourcePaths(repoRoot) {
+  const manifestPath = path.join(repoRoot, 'sai', 'install-manifest.json');
+  if (!fs.existsSync(manifestPath)) return new Set();
+  const manifest = loadInstallManifest(repoRoot);
+  return new Set(matrixRenderFor(manifest, 'opencode', repoRoot)
+    .filter(item => item.kind === 'binding')
+    .map(item => toPosix(path.join(
+      'sai',
+      'orchestration',
+      'workers',
+      'bindings',
+      'opencode',
+      item.destinationName,
+    ))));
+}
+
 function toPosix(relativePath) {
   return relativePath.split(path.sep).join('/');
 }
@@ -129,10 +146,20 @@ function auditActiveReferences(repoRoot) {
     ...MAINTAINED_ROOT_FILES.filter(relativePath => fs.existsSync(path.join(repoRoot, relativePath))),
     ...MAINTAINED_ROOTS.flatMap(relativeRoot => filesUnder(path.join(repoRoot, relativeRoot), relativeRoot)),
   ];
+  const validatedGeneratedSources = validatedOpencodeGeneratedSourcePaths(repoRoot);
   const references = [];
   for (const relativePath of [...new Set(relativePaths)].sort()) {
     if (isHistoricalReference(relativePath)) continue;
-    const content = fs.readFileSync(path.join(repoRoot, relativePath), 'utf8');
+    let content;
+    try {
+      content = fs.readFileSync(path.join(repoRoot, relativePath), 'utf8');
+    } catch (error) {
+      // Matrix rendering validated the generated source before this audit.
+      // A transient source that vanishes between inventory and read is absent,
+      // not an active reference; all other read failures remain fatal.
+      if (error.code === 'ENOENT' && validatedGeneratedSources.has(toPosix(relativePath))) continue;
+      throw error;
+    }
     const lines = content.split(/\r?\n/);
     const researchDocumentation = relativePath.startsWith(`openspec${path.sep}changes${path.sep}`)
       ? lines.findIndex(line => /Proposal Research Documentation/i.test(line))

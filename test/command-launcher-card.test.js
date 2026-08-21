@@ -25,7 +25,16 @@ const commands = [
   ['sai-worktree.md', 'worktree'],
 ];
 const emptyLaunchers = new Set(['apply', 'archive', 'backfill', 'commit', 'pr', 'status', 'worktree']);
-const wrapperCommands = commands;
+function activeWrapperCommands(harness) {
+  const directory = path.join(repoRoot, 'commands', harness);
+  const foldersByFile = new Map(commands);
+  return fs.readdirSync(directory)
+    .filter(file => /^sai-.*\.md$/.test(file))
+    .sort()
+    .map(file => [file, foldersByFile.get(file)]);
+}
+
+const wrapperCommands = activeWrapperCommands('claude');
 const movedDirectives = {
   spec: [
     'Fetch @sai/policies/glossary-format.md',
@@ -72,6 +81,40 @@ function read(relativePath) {
   const fullPath = path.join(repoRoot, relativePath);
   assert.ok(fs.existsSync(fullPath), `${relativePath} should exist`);
   return fs.readFileSync(fullPath, 'utf8');
+}
+
+const IMMUTABLE_HISTORY = [
+  /^docs\/(?:adr|ddr)\//,
+  /^openspec\/changes\//,
+  /^openspec\/specs\/_archived\//,
+];
+
+function activeSurfaceFiles(root) {
+  const files = [];
+  const visit = directory => {
+    for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+      const fullPath = path.join(directory, entry.name);
+      const relativePath = path.relative(root, fullPath).split(path.sep).join('/');
+      if (IMMUTABLE_HISTORY.some(pattern => pattern.test(relativePath))) continue;
+      if (entry.isDirectory()) {
+        if (['.git', 'node_modules', '.tmp', 'test', 'fixtures'].includes(entry.name)) continue;
+        visit(fullPath);
+      } else if (entry.isFile() && /\.(?:md|js|cjs|mjs|json|jsonc|ya?ml|sh|ps1|cmd|bat|txt)$/.test(entry.name)) {
+        files.push({ relativePath, contents: fs.readFileSync(fullPath, 'utf8') });
+      }
+    }
+  };
+  visit(root);
+  return files;
+}
+
+function activeWrapperEchoReferences(root) {
+  return activeSurfaceFiles(root).flatMap(({ relativePath, contents }) => contents
+    .split(/\r?\n/)
+    .map((line, index) => line.includes('wrapper_echo_value')
+      ? { file: relativePath, line: index + 1 }
+      : null)
+    .filter(Boolean));
 }
 
 function fetchLines(source) {
@@ -121,6 +164,42 @@ test('baseline fixture captures the pre-change directive inventory', () => {
   }
 });
 
+test('wrapper census covers every active wrapper in both harnesses', () => {
+  const expectedFiles = commands.map(([file]) => file).sort();
+  const claudeWrappers = activeWrapperCommands('claude');
+  const opencodeWrappers = activeWrapperCommands('opencode');
+
+  assert.deepEqual(claudeWrappers.map(([file]) => file), expectedFiles,
+    'Claude wrapper census should match the active command inventory');
+  assert.deepEqual(opencodeWrappers.map(([file]) => file), expectedFiles,
+    'opencode wrapper census should match the active command inventory');
+});
+
+test('active contract prose rejects wrapper_echo_value while excluding immutable ADR/DDR and archived change records', () => {
+  const fixture = fs.mkdtempSync(path.join(require('node:os').tmpdir(), 'sai-wrapper-echo-active-surface-'));
+  try {
+    fs.writeFileSync(path.join(fixture, 'README.md'), 'wrapper_echo_value: ""\n');
+    for (const relativePath of [
+      'docs/adr/0001-immutable.md',
+      'docs/ddr/0001-immutable.md',
+      'openspec/changes/archive/legacy/proposal.md',
+      'openspec/specs/_archived/legacy/spec.md',
+    ]) {
+      const fullPath = path.join(fixture, relativePath);
+      fs.mkdirSync(path.dirname(fullPath), { recursive: true });
+      fs.writeFileSync(fullPath, 'wrapper_echo_value: ""\n');
+    }
+    assert.deepEqual(activeWrapperEchoReferences(fixture), [
+      { file: 'README.md', line: 1 },
+    ]);
+  } finally {
+    fs.rmSync(fixture, { recursive: true, force: true });
+  }
+
+  assert.deepEqual(activeWrapperEchoReferences(repoRoot), [],
+    'active production and contract surfaces must not define wrapper_echo_value');
+});
+
 const HARNESS_FETCH = {
   claude: 'Fetch @skills/fetch/SKILL.md',
   opencode: 'Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.',
@@ -161,21 +240,47 @@ test('final wrappers: first fetch is harness skill, second is boot adapter, laun
   }
 });
 
-test('final wrappers: InvocationEnvelope block follows launcher fetch with exactly three fields', () => {
+test('final wrappers: InvocationEnvelope block follows launcher fetch with exactly command_name and arguments_value', () => {
   for (const harness of ['claude', 'opencode']) {
     for (const [file, folder] of wrapperCommands) {
       const source = read(`commands/${harness}/${file}`);
       assert.match(source, /InvocationEnvelope:/, `${harness}/${file} should contain InvocationEnvelope:`);
       assert.match(source, new RegExp(`command_name:\\s*${folder}`), `${harness}/${file} should set command_name to ${folder}`);
-       if (harness === 'claude' || folder === 'explore') {
-         assert.match(source, /wrapper_echo_value:\s*""/, `${harness}/${file} should use empty wrapper_echo_value`);
-      } else {
-        assert.match(source, /wrapper_echo_value:\s*\$ARGUMENTS/, `${harness}/${file} should use $ARGUMENTS wrapper_echo_value`);
-      }
-      assert.match(source, /arguments_value:\s*\$ARGUMENTS/, `${harness}/${file} should use $ARGUMENTS arguments_value`);
-      const envelopeFields = source.match(/(?:command_name|wrapper_echo_value|arguments_value):/g) || [];
-      assert.equal(envelopeFields.length, 3, `${harness}/${file} should have exactly three envelope fields`);
+       assert.doesNotMatch(source, /wrapper_echo_value/,
+         `${harness}/${file} must not construct or forward wrapper_echo_value`);
+       assert.match(source, /arguments_value:\s*\$ARGUMENTS/, `${harness}/${file} should use $ARGUMENTS arguments_value`);
+        const envelopeStart = source.indexOf('InvocationEnvelope:') + 'InvocationEnvelope:'.length;
+        const envelopeLines = source
+          .slice(envelopeStart)
+          .trim()
+          .split(/\r?\n/)
+          .map(line => line.trim());
+        assert.deepEqual(envelopeLines, [
+          `command_name: ${folder}`,
+          'arguments_value: $ARGUMENTS',
+        ], `${harness}/${file} should have exactly the ordered two-key envelope with no trailing content`);
+
+        const argumentLines = source
+          .split(/\r?\n/)
+          .filter(line => line.includes('$ARGUMENTS'))
+          .map(line => line.trim());
+        assert.deepEqual(argumentLines, ['arguments_value: $ARGUMENTS'],
+          `${harness}/${file} should use $ARGUMENTS only on arguments_value`);
+        assert.doesNotMatch(source, /^\s*\*\*[^*\r\n]*(?:argument|arguments)[^*\r\n]*\*\*\s*\$ARGUMENTS\s*$/im,
+          `${harness}/${file} should reject labelled argument lines`);
     }
+  }
+});
+
+test('change and status pickers use only arguments_value and preserve the empty-input picker path', () => {
+  const changePicker = read('sai/policies/change-picker.md');
+  const statusPicker = read('sai/policies/status-picker.md');
+  for (const [name, source] of [['change', changePicker], ['status', statusPicker]]) {
+    assert.match(source, /arguments_value/, `${name} picker should consume arguments_value`);
+    assert.doesNotMatch(source, /wrapper_echo_value/,
+      `${name} picker must not construct or forward wrapper_echo_value`);
+    assert.match(source, /empty[\s\S]{0,240}(?:picker|0\/1\/N|zero[/-]one[/-]multiple)|(?:picker|0\/1\/N|zero[/-]one[/-]multiple)[\s\S]{0,240}empty/i,
+      `${name} picker should retain the empty-input picker path`);
   }
 });
 

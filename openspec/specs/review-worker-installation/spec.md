@@ -57,7 +57,7 @@ The Claude Code and opencode `/sai-5-review` wrappers SHALL be rewritten as thin
 #### Scenario: opencode wrapper is inspected
 - **WHEN** the opencode review wrapper is loaded
 - **THEN** it fetches the review coordinator and opencode review-worker binding
-- **AND** it places the complete substituted argument string after its change-name label into `wrapper_echo_value`, preserving the optional parent branch for worker-owned parsing
+- **AND** it forwards the complete substituted argument string through `arguments_value`, preserving the optional parent branch for worker-owned parsing
 
 ### Requirement: Installer cleanup does not remove unrelated user workers
 

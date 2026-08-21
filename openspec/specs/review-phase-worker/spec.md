@@ -8,8 +8,8 @@ TBD - created by archiving change sai-5-review-coordinator-worker-split. Update 
 The review worker SHALL own envelope parsing, prerequisite checks, change resolution, parent-branch detection, diff scoping, review passes 1–10, Pass 11 mutation analysis, report generation, report verification, and the lifecycle summary. The coordinator SHALL not share ownership of these activities.
 
 #### Scenario: Worker starts from an invocation envelope
-- **WHEN** a review worker receives `wrapper_echo_value` and `arguments_value`
-- **THEN** it performs the complete review workflow from those values and durable repository state
+- **WHEN** a review worker receives `arguments_value`
+- **THEN** it performs the complete review workflow from that value and durable repository state
 - **AND** it returns paths and summaries rather than artifact contents through its lifecycle payload
 
 ### Requirement: Technical workflow is loaded through the shared review invocation core
@@ -40,14 +40,9 @@ Before review analysis, the worker SHALL enforce the existing OpenSpec CLI, `ope
 - **THEN** the worker returns a failed lifecycle result with exactly `openspec/changes/{change-name}/proposal.md not found. Ensure the change name is correct and that /sai-1-spec has been run for this change.`
 - **AND** it performs no review analysis or mutation pass
 
-### Requirement: Change resolution preserves wrapper precedence
+### Requirement: Change resolution parses positional arguments
 
-The worker SHALL parse the resolved argument string as up to two positional values: the first token is the change name and the remaining token is the optional parent branch. It SHALL resolve a non-empty wrapper-echo value before `$ARGUMENTS`; when neither supplies a name, it SHALL preserve the existing zero/one/multiple active-change picker behavior and CLI order. Empty or whitespace-only wrapper-echo values SHALL fall through to normal argument or picker resolution.
-
-#### Scenario: Wrapper echo contains a change name
-- **WHEN** the wrapper echo is non-empty after trimming
-- **THEN** the worker parses its first token as the change name and an optional second token as the parent branch
-- **AND** it uses that change name without running the active-change picker
+The worker SHALL parse `arguments_value` as up to two positional values: the first token is the change name and the remaining token is the optional parent branch. It SHALL resolve a non-empty value before invoking the active-change picker; when no name is supplied, it SHALL preserve the existing zero/one/multiple active-change picker behavior and CLI order.
 
 #### Scenario: Explicit change and parent branch are supplied
 - **WHEN** the resolved argument string is `my-change develop`

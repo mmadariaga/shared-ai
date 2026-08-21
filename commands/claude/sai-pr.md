@@ -9,5 +9,4 @@ Fetch @sai/commands/pr/launcher.md and follow those instructions exactly, forwar
 
 InvocationEnvelope:
   command_name: pr
-  wrapper_echo_value: ""
   arguments_value: $ARGUMENTS

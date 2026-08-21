@@ -134,7 +134,7 @@ test('Step 1 design card uses neutral root protocols and retires flat canonical 
     assert.equal(fs.existsSync(path.join(repoRoot, relativePath)), false,
       `${relativePath} should be absent from the active source layout`);
   }
-});
+  });
 
 function writeFixture(root, relativePath, content) {
   const filePath = path.join(root, relativePath);
@@ -206,10 +206,10 @@ test('design wrappers activate routed Claude/opencode entry and preserve phase b
      assert.doesNotMatch(source, /^\s*\*\*[^*\r\n]*(?:argument|arguments)[^*\r\n]*\*\*\s*\$ARGUMENTS\s*$/m,
        `${harness} design wrapper should not use transcript-labelled argument extraction`);
    }
-   assert.match(claude, /wrapper_echo_value:\s*""/,
-     'Claude design should preserve the empty wrapper_echo_value');
-   assert.match(opencode, /wrapper_echo_value:\s*\$ARGUMENTS/,
-     'opencode design should preserve the opaque wrapper_echo_value');
+    assert.doesNotMatch(claude, /wrapper_echo_value/,
+      'Claude design must not construct or forward wrapper_echo_value');
+    assert.doesNotMatch(opencode, /wrapper_echo_value/,
+      'opencode design must not construct or forward wrapper_echo_value');
 
    assert.match(coordinator, /arguments_value/,
       'the design coordinator should consume the forwarded arguments_value');
@@ -627,8 +627,8 @@ test('worker delegates source discovery only to budget-explorer or explore bindi
   const spec = artifact('openspec/specs/design-subagent-delegation/spec.md');
 
   assert.match(spec, /delegat.*explore|explore.*delegat/i);
-  assert.match(spec, /(?:SHALL NOT.*delegat.*(?:shell|git|direct)|SHALL not call Read, Glob, or Grep directly)/i,
-    'worker should not delegate source discovery to shell, git, or direct file reads');
+  assert.match(spec, /MUST delegate.*source[- ]code discovery.*explore[\s\S]*SHALL not call Read, Glob, or Grep directly/i,
+    'worker should delegate source discovery and forbid direct file reads');
 });
 
 // ─── specs/design-coordinator/spec.md ──────────────────────────────────────
@@ -637,8 +637,9 @@ test('design coordinator spec defines DesignInvocationEnvelope', () => {
   const spec = artifact('openspec/specs/design-coordinator/spec.md');
 
   assert.match(spec, /DesignInvocationEnvelope/);
-  assert.match(spec, /wrapper_echo_value/);
   assert.match(spec, /arguments_value/);
+  assert.doesNotMatch(spec, /wrapper_echo_value/,
+    'the design invocation envelope must not define wrapper_echo_value');
 });
 
 test('Continue now clears design lifecycle state and dispatches implementation binding', () => {
@@ -649,13 +650,67 @@ test('Continue now clears design lifecycle state and dispatches implementation b
   assert.match(spec, /implementation.*binding|dispatch.*implementation/i);
 });
 
-test('Continue now envelope carries empty wrapper_echo_value and resolved arguments_value', () => {
+test('Continue now envelope carries only resolved arguments_value', () => {
   const spec = artifact('openspec/specs/design-coordinator/spec.md');
 
   assert.match(spec, /ContinueNowEnvelope/);
-  assert.match(spec, /wrapper_echo_value.*""|wrapper_echo_value.*empty/i);
   assert.match(spec, /arguments_value.*resolved/i);
+  assert.doesNotMatch(spec, /wrapper_echo_value/,
+    'Continue now must not construct or forward wrapper_echo_value');
 });
+
+test('design transport keeps arguments_value as the only request source and keeps answer-only continuations envelope-free', () => {
+  const coordinator = artifact('sai/commands/design/coordinator.md');
+  const worker = artifact('sai/commands/design/worker.md');
+  const spec = artifact('openspec/specs/design-coordinator/spec.md');
+  const bindings = [matrixBinding('claude', 'design'), matrixBinding('opencode', 'design')];
+
+  assert.match(coordinator, /original[_ ]envelope|original envelope/i,
+    'initial design dispatch must retain the original envelope as coordinator state');
+  assert.match(coordinator, /dispatch[_ ]operation|dispatch.*worker/i,
+    'initial design dispatch must use the routed worker operation');
+  assert.match(coordinator, /continuation[_ ]operation|continue.*same worker/i,
+    'design continuation must use the binding-owned operation');
+  assert.match(coordinator, /replacement[_ ]reconstruction|replacement worker/i,
+    'design replacement must use the reconstruction contract');
+  /*
+  assert.match(coordinator, /progress[
+\n ]+events?[
+\n ]+.*coordinator|coordinator.*progress/i,
+    'design progress rendering must remain coordinator-owned');
+
+  */
+  assert.match(coordinator, /progress.{0,120}coordinator|coordinator.{0,120}progress/i,
+    'design progress rendering must remain coordinator-owned');
+
+  const continueNow = spec.slice(
+    spec.indexOf('### ContinueNowEnvelope'),
+    spec.indexOf('## Requirements'),
+  );
+  assert.match(continueNow, /arguments_value/,
+    'an answer-only continuation must retain the resolved arguments_value');
+  assert.doesNotMatch(continueNow, /DesignInvocationEnvelope|InvocationEnvelope|wrapper_echo_value/,
+    'an answer-only continuation must not reconstruct an invocation envelope');
+
+  for (const source of [coordinator, worker, spec, ...bindings]) {
+    assert.match(source, /arguments_value/,
+      'each design transport surface must carry arguments_value');
+    assert.doesNotMatch(source, /wrapper_echo_value/,
+      'no design transport surface may carry wrapper_echo_value');
+  }
+  /*
+  assert.match(bindings[0], /Agent[
+\n (]/,
+    'the Claude binding must retain Claude-specific dispatch identity');
+  assert.match(bindings[1], /task[
+\n (]/i,
+    'the opencode binding must retain opencode-specific dispatch identity');
+  */
+  assert.match(bindings[0], /Agent/,
+    'the Claude binding must retain Claude-specific dispatch identity');
+  assert.match(bindings[1], /task/i,
+    'the opencode binding must retain opencode-specific dispatch identity');
+ });
 
 // ─── DesignWorkerPayload and Notice interfaces exist as stubs ──────────────
 
@@ -964,13 +1019,13 @@ test('design worker classifies main-path failures and recovery without collapsin
 
 // ─── Step 2: command-progress-plan-protocol (coordinator-contract.md) ───────
 
-test('Step 2: dispatch passes exactly wrapper_echo_value and arguments_value; the plan is not carried in the envelope or any reconstruction field', () => {
+test('Step 2: dispatch passes exactly arguments_value; the plan is not carried in the envelope or any reconstruction field', () => {
   const coordinator = artifact('sai/orchestration/command-runner.md');
 
-  assert.match(coordinator, /exactly[\s\S]{0,120}wrapper_echo_value/,
-    'the contract should state the dispatch passes exactly wrapper_echo_value');
   assert.match(coordinator, /exactly[\s\S]{0,120}arguments_value/,
     'the contract should state the dispatch passes exactly arguments_value');
+  assert.doesNotMatch(coordinator, /wrapper_echo_value/,
+    'the runner must not construct or forward wrapper_echo_value');
   assert.match(
     coordinator,
     /(?:envelope|reconstruction)[\s\S]{0,240}(?:never|not)[\s\S]{0,160}plan|plan[\s\S]{0,240}(?:never|not)[\s\S]{0,160}(?:envelope|reconstruction)/i,

@@ -4,7 +4,7 @@ Dedicated instruction that resolves a missing OpenSpec change name for `sai-stat
 
 ## Envelope-only resolution source
 
-The boot envelope provides `arguments_value` and `wrapper_echo_value`. After trimming surrounding whitespace, a non-empty `arguments_value` is the sole authoritative supplied change-name source. `wrapper_echo_value` is retained and forwarded unchanged in the envelope but is ignored for resolution. No other source may supply or override a change name.
+The boot envelope provides `arguments_value`. After trimming surrounding whitespace, a non-empty `arguments_value` is the sole authoritative supplied change-name source. No other source may supply or override a change name.
 
 When trimmed `arguments_value` is non-empty, use it as the resolved change name and skip the picker. When trimmed `arguments_value` is empty, run the existing 0/1/N picker below.
 

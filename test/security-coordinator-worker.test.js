@@ -4,12 +4,21 @@ const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('fs');
 const path = require('path');
+const { loadInstallManifest, matrixRenderFor } = require('../bin/install-manifest.js');
 
 const repoRoot = path.join(__dirname, '..');
+const matrixManifest = loadInstallManifest(repoRoot);
 
 function artifact(relativePath) {
   const fullPath = path.join(repoRoot, relativePath);
   return fs.existsSync(fullPath) ? fs.readFileSync(fullPath, 'utf8') : '';
+}
+
+function matrixBinding(harness, phase) {
+  const item = matrixRenderFor(matrixManifest, harness, repoRoot)
+    .find(entry => entry.kind === 'binding' && entry.phase === phase);
+  assert.ok(item, `${harness}/${phase} matrix binding should exist`);
+  return item.text;
 }
 
 test('Step 1 security card uses neutral root protocols and retires flat canonical sources', () => {
@@ -52,6 +61,34 @@ test('security coordinator admits the progress shape as the sole nonterminal ext
 
   assert.match(coordinator, /allowed_nonterminal_extensions[\s\S]{0,240}(?:progress|sole nonterminal)/i);
   assert.match(coordinator, /extension_handlers[\s\S]{0,120}(?:empty|\{\})/i);
+});
+
+test('security transport carries only arguments_value and contract metadata across dispatch, continuation, reconstruction, and progress', () => {
+  const coordinator = artifact('sai/commands/security/coordinator.md');
+  const worker = artifact('sai/commands/security/worker.md');
+  const bindings = [matrixBinding('claude', 'security'), matrixBinding('opencode', 'security')];
+
+  assert.match(coordinator, /original[_ ]envelope|original envelope/i,
+    'initial security dispatch must retain the original envelope as coordinator state');
+  assert.match(coordinator, /dispatch[_ ]operation|dispatch.*worker/i,
+    'initial security dispatch must use the routed worker operation');
+  assert.match(coordinator, /continuation[_ ]operation|continue.*same worker/i,
+    'security continuation must use the binding-owned operation');
+  assert.match(coordinator, /replacement[_ ]reconstruction|replacement worker/i,
+    'security replacement must use the reconstruction contract');
+  assert.match(coordinator, /Mark steps only from worker progress-event|coordinator[\s\S]{0,120}renders? the (?:full )?plan/i,
+    'security progress ownership must remain with the coordinator');
+
+  for (const source of [coordinator, worker, ...bindings]) {
+    assert.match(source, /arguments_value/,
+      'each security transport surface must carry arguments_value');
+    assert.doesNotMatch(source, /wrapper_echo_value/,
+      'no security transport surface may carry wrapper_echo_value');
+  }
+  assert.match(bindings[0], /sai-6-security-worker/);
+  assert.match(bindings[0], /Agent/);
+  assert.match(bindings[1], /sai-6-security-worker/);
+  assert.match(bindings[1], /task/i);
 });
 
 test('security coordinator renders at dispatch and reconciles at run-closing results', () => {

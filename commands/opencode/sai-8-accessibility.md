@@ -9,5 +9,4 @@ Fetch @sai/commands/accessibility/launcher.md and follow those instructions exac
 
 InvocationEnvelope:
   command_name: accessibility
-  wrapper_echo_value: $ARGUMENTS
   arguments_value: $ARGUMENTS

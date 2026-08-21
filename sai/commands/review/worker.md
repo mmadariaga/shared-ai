@@ -5,16 +5,15 @@ Fetch @sai/orchestration/worker-core.md and follow it exactly.
 
 ## Invocation Envelope
 
-The worker receives exactly two strings:
+The worker receives exactly one opaque string:
 
-- `wrapper_echo_value`: the complete value after the opencode change-name-and-optional-parent-branch label, or empty when absent
 - `arguments_value`: `$ARGUMENTS` exactly as received from the coordinator
 
 Binding identifiers and continuation references are not worker input and must never be written to artifacts or returned.
 
 ## Prerequisites and Resolution
 
-Use trimmed non-empty `wrapper_echo_value` before `arguments_value`. Parse the selected string as at most two positional values: change name, then optional parent branch. When neither value supplies a name, run `openspec list --json`. For zero changes, return the established no-active-changes failure. For one, ask `Use change '{name}'?` with ordered `yes` and `no` options; `yes` resolves and `no` returns `cancelled`. For multiple, ask `Which change?` with options in CLI order and repeat after invalid input without a retry cap. Do not scan parent conversation history.
+Parse `arguments_value` as at most two positional values: change name, then optional parent branch. When it supplies no name, run `openspec list --json`. For zero changes, return the established no-active-changes failure. For one, ask `Use change '{name}'?` with ordered `yes` and `no` options; `yes` resolves and `no` returns `cancelled`. For multiple, ask `Which change?` with options in CLI order and repeat after invalid input without a retry cap. Do not scan parent conversation history.
 
 After resolution, fetch `@sai/policies/prereqs.md` and enforce the OpenSpec CLI, `openspec/`, and `schema: sai-workflow` checks. Then verify `proposal.md`. If it is missing, return `failed` with exactly `openspec/changes/{change-name}/proposal.md not found. Ensure the change name is correct and that /sai-1-spec has been run for this change.` Perform no review analysis, mutation, or durable write after a prerequisite failure.
 

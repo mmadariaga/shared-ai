@@ -8,5 +8,4 @@ Fetch @sai/commands/security/launcher.md and follow those instructions exactly, 
 
 InvocationEnvelope:
   command_name: security
-  wrapper_echo_value: $ARGUMENTS
   arguments_value: $ARGUMENTS

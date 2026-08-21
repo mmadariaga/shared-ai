@@ -26,7 +26,7 @@ The fetched `apply`, `archive`, `pr`, and `status` cards SHALL read their reques
 
 ### Requirement: Empty envelope arguments retain picker behavior
 
-When `arguments_value` is empty, the four cards SHALL fall through to their existing picker path; `wrapper_echo_value` alone SHALL not suppress that fallback. The shared 0/1/N behavior, prompt wording, CLI-order options, confirmation and decline semantics, and unbounded invalid-input re-prompt behavior SHALL remain unchanged. The status card SHALL retain its dedicated 2+ "See all" branch and its `> BULK-MODE ACTIVE` signal.
+When `arguments_value` is empty, the four cards SHALL fall through to their existing picker path. The shared 0/1/N behavior, prompt wording, CLI-order options, confirmation and decline semantics, and unbounded invalid-input re-prompt behavior SHALL remain unchanged. The status card SHALL retain its dedicated 2+ "See all" branch and its `> BULK-MODE ACTIVE` signal.
 
 #### Scenario: Empty arguments select through the standard picker
 
@@ -51,17 +51,3 @@ The apply and archive cards SHALL continue to parse and remove their supported `
 
 - **WHEN** apply receives `--fast-track` through `arguments_value`
 - **THEN** apply preserves its existing normalized signal, banner, authorization, branch, and human-verification behavior while using the cleaned request downstream
-
-### Requirement: The supported boot envelopes remain two-source and opaque
-
-The supported harness boot adapters SHALL continue to forward `wrapper_echo_value` and `arguments_value` byte-for-byte, and this change SHALL NOT remove either field. The four cards and picker policies SHALL use `arguments_value` authoritatively and SHALL not recover a change name by scanning parent conversation history or by depending on a trailing wrapper label line.
-
-#### Scenario: Opencode fields remain available without a label line
-
-- **WHEN** an opencode wrapper invokes one of the four cards after the wrapper-label removal
-- **THEN** the `InvocationEnvelope` still contains `wrapper_echo_value` and `arguments_value`, the card receives both unchanged, and the picker resolves from the cleaned `arguments_value` rather than the wrapper field
-
-#### Scenario: Claude fields remain available without card interpolation
-
-- **WHEN** a Claude Code wrapper invokes one of the four cards
-- **THEN** the `InvocationEnvelope` still contains `wrapper_echo_value` and `arguments_value`, the card consumes `arguments_value`, and no fetched-card `$ARGUMENTS` substitution is required

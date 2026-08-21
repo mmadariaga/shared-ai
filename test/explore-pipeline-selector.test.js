@@ -498,7 +498,8 @@ test('supervised pipeline state extends the selector interface by phase with sep
   assert.match(source, /review loop's \(item 9\) source only, and is never the selector's dispatch source/i);
   assert.match(source, /replaces `last_crystallization_set` with that turn's emitted names/i);
   assert.match(source, /assumed applied or discarded/i);
-  assert.match(source, /wrapper_echo_value\s*:\s*""/);
+  assert.doesNotMatch(source, /\bwrapper_echo_value\s*:/,
+    'supervised chained requests must not construct or forward the wrapper echo field');
   assert.match(source, /arguments_value\s*:\s*"\{name\} --fast-track"/);
 });
 
@@ -664,7 +665,7 @@ test('Step 1 forwards selected overview language only for Auto and keeps None an
   assert.ok(manualStart >= 0, 'the Manual selector branch should be present');
   const manual = source.slice(manualStart, deterministic);
   assert.match(manual, /dispatches nothing/i);
-  assert.doesNotMatch(manual, /arguments_value\s*:/i,
+  assert.doesNotMatch(manual, /(?:command_name|arguments_value)\s*:/i,
     'Manual must forward no supervised dispatch envelope');
 
   assert.match(source, /not.*persist|never.*persist/i);
@@ -799,11 +800,14 @@ test('Step 3: design workers have no automatic reviewer loop under supervision a
 });
 
 // ─── suppress-worker-review-under-supervision: Auto envelope pins (verify-first) ─
-test('Auto spec envelope carries leading --supervised with empty wrapper echo', () => {
+test('Auto spec envelope carries leading --supervised only in arguments_value', () => {
   const source = spec('sai/commands/explore/instructions.md');
-  assert.match(source, /wrapper_echo_value:\s*""\s*\n\s*arguments_value:[\s\S]{0,80}--supervised/, 'spec Auto dispatch should leave wrapper_echo_value empty and put --supervised on arguments_value');
+  assert.doesNotMatch(source, /\bwrapper_echo_value\s*:/,
+    'spec Auto dispatch must not construct or forward the wrapper echo field');
+  assert.match(source, /arguments_value:[\s\S]{0,200}--supervised/, 'spec Auto dispatch should put --supervised on arguments_value');
   assert.match(source, /arguments_value:[\s\S]{0,200}--supervised[\s\S]{0,200}Ready to Propose|arguments_value[\s\S]{0,120}line `--supervised`[\s\S]{0,200}Ready to Propose/i, 'spec arguments_value should begin with --supervised ahead of the Ready-to-Propose body');
-  assert.doesNotMatch(source, /wrapper_echo_value:\s*"--supervised"/, 'explore must not carry the marker as a bare non-empty wrapper echo');
+  assert.doesNotMatch(source, /\bwrapper_echo_value\s*:\s*"--supervised"/,
+    'explore must not carry the marker as a bare non-empty wrapper echo');
 });
 
 test('Auto chained design envelope forwards overview generation conditionally', () => {
@@ -1436,7 +1440,10 @@ test('Step 2 item-10 exhausted diagnosis keeps the change retryable with phase g
   assert.match(diagnosis, /(?:exhausted|failed)[\s\S]{0,650}continuation\/transport loss|continuation\/transport loss[\s\S]{0,650}(?:exhausted|failed)/i);
   assert.match(diagnosis, /retryable/i);
   assert.match(diagnosis, /(?:later Auto|next Auto|uncompleted|Auto-retryable)/i);
-  assert.match(diagnosis, /Next step:\s*run\s+[`"']*\/sai-(?:1-spec|2-design)/i);
+  assert.match(
+    diagnosis,
+    /Next step:\s*run\s+[`"']*\/sai-(?:1-spec|2-design)|applicable existing phase guidance/i
+  );
   assert.match(
     diagnosis,
     /(?:(?:not|never|does not|must not|without)[\s\S]{0,180}(?:dispatch|start|run)[\s\S]{0,100}sai-3-implement)|(?:sai-3-implement)[\s\S]{0,180}(?:not|never|does not|must not|no)[\s\S]{0,100}(?:dispatch|start|run)/i,

@@ -34,7 +34,7 @@ The indented block above is illustrative of the ids and labels only; it is not t
 #### Scenario: envelope stays closed
 
 - **WHEN** the spec adapter dispatches its worker with a declared plan
-- **THEN** the dispatch SHALL pass only `wrapper_echo_value` and `arguments_value`, and SHALL NOT carry the plan
+- **THEN** the dispatch SHALL pass only `arguments_value`, and SHALL NOT carry the plan
 
 ### Requirement: spec-plan-steps-match-phase-sequence
 

@@ -21,6 +21,8 @@ const CLAUDE_TUNABLE_KEYS = Object.freeze(['model', 'effort']);
 const OPENCODE_TUNABLE_KEYS = Object.freeze(['model', 'variant']);
 
 const TUNABLE_SCALAR = /^([A-Za-z0-9_-]+):\s*(.*)$/;
+const INVOCATION_ENVELOPE_FIELD = 'arguments_value';
+const RETIRED_INVOCATION_ENVELOPE_FIELD = ['wrapper', 'echo', 'value'].join('_');
 
 function splitFrontmatter(text) {
   const lines = text.split('\n');
@@ -130,6 +132,12 @@ const PACKAGE_VERSION = require(path.join(REPOSITORY_ROOT, 'package.json')).vers
 
 const OPENCODE_BINDINGS_DIR = path.join(REPOSITORY_ROOT, 'sai', 'orchestration', 'workers', 'bindings', 'opencode');
 const CLAUDE_BINDINGS_DIR = path.join(REPOSITORY_ROOT, 'sai', 'orchestration', 'workers', 'bindings', 'claude');
+const OPENCODE_BINDING_VALIDATION_LOCK = path.join(
+  REPOSITORY_ROOT,
+  '.tmp',
+  'collapse-sai-worker-matrix',
+  'opencode-binding-validation.lock',
+);
 
 // The managed-worker census is no longer hand-maintained: it is derived from
 // the validated Worker Matrix phase entries. The canonical key order below is
@@ -163,6 +171,33 @@ function matrixWorkerRoster(harness) {
   return names;
 }
 
+function withOpencodeBindingValidationLock(operation) {
+  ensureDir(path.dirname(OPENCODE_BINDING_VALIDATION_LOCK));
+  const started = Date.now();
+  const waitBuffer = new Int32Array(new SharedArrayBuffer(4));
+  let acquired = false;
+  while (!acquired) {
+    try {
+      fs.mkdirSync(OPENCODE_BINDING_VALIDATION_LOCK);
+      acquired = true;
+    } catch (error) {
+      // Windows can report EPERM briefly while another process releases the
+      // same transient lock directory. Treat it as contention, not as a
+      // validation result; all other filesystem failures remain fatal.
+      if (error.code !== 'EEXIST' && error.code !== 'EPERM') throw error;
+      if (Date.now() - started >= 30000) {
+        throw new Error(`Timed out waiting for opencode binding validation lock ${OPENCODE_BINDING_VALIDATION_LOCK}`);
+      }
+      Atomics.wait(waitBuffer, 0, 0, 10);
+    }
+  }
+  try {
+    return operation();
+  } finally {
+    fs.rmdirSync(OPENCODE_BINDING_VALIDATION_LOCK);
+  }
+}
+
 const MANAGED_WORKERS = Object.freeze(Object.fromEntries(
   MANAGED_WORKER_ORDER.map(name => [name, Object.freeze({ claude: Object.freeze({ agent: `${name}.md` }) })])
 ));
@@ -178,6 +213,32 @@ const MANAGED_WORKER_CONTRACTS = Object.freeze(Object.fromEntries(
 function expectedDispatchPrompt(workerName) {
   const contract = MANAGED_WORKER_CONTRACTS[workerName];
   return `Worker contract: Fetch @${contract} and follow it exactly.\n\nInvocationEnvelope:\n<original InvocationEnvelope>`;
+}
+
+function assertOneStringInvocationEnvelope(text, bindingPath) {
+  if (text.includes(RETIRED_INVOCATION_ENVELOPE_FIELD)) {
+    throw new Error(
+      `Binding ${bindingPath} declares retired ${RETIRED_INVOCATION_ENVELOPE_FIELD}; `
+      + `the InvocationEnvelope contains only ${INVOCATION_ENVELOPE_FIELD}`
+    );
+  }
+}
+
+function isGeneratedOpencodeBindingPath(candidatePath) {
+  return path.basename(candidatePath).endsWith('-worker.md');
+}
+
+function assertBindingDirectoryUsesOneStringEnvelope(bindingsDir, { allowAbsentGenerated = false } = {}) {
+  for (const name of fs.readdirSync(bindingsDir)) {
+    if (!name.endsWith('.md')) continue;
+    const bindingPath = path.join(bindingsDir, name);
+    try {
+      assertOneStringInvocationEnvelope(fs.readFileSync(bindingPath, 'utf8'), bindingPath);
+    } catch (error) {
+      if (allowAbsentGenerated && error.code === 'ENOENT' && isGeneratedOpencodeBindingPath(bindingPath)) continue;
+      throw error;
+    }
+  }
 }
 
 function collectCallArguments(text, callName, bindingPath) {
@@ -229,6 +290,7 @@ function quotedFieldValues(argumentsText, fieldName) {
 }
 
 function parseInitialDispatches(text, callName, bindingPath) {
+  assertOneStringInvocationEnvelope(text, bindingPath);
   const dispatches = [];
   for (const argumentsText of collectCallArguments(text, callName, bindingPath)) {
     const names = quotedFieldValues(argumentsText, 'subagent_type');
@@ -252,6 +314,7 @@ function parseInitialDispatches(text, callName, bindingPath) {
 }
 
 function parseClaudeInitialDispatches(text, bindingPath) {
+  assertOneStringInvocationEnvelope(text, bindingPath);
   const dispatches = [];
   for (const argumentsText of collectCallArguments(text, 'Agent', bindingPath)) {
     const names = quotedFieldValues(argumentsText, 'name');
@@ -275,6 +338,7 @@ function parseClaudeInitialDispatches(text, bindingPath) {
 }
 
 function validateClaudeWorkerBindings() {
+  assertBindingDirectoryUsesOneStringEnvelope(CLAUDE_BINDINGS_DIR);
   const roster = matrixWorkerRoster('claude');
   if (roster.length !== 9) {
     throw new Error('Claude worker roster cannot be derived from the validated Worker Matrix; expected the ordered nine-worker roster.');
@@ -305,16 +369,51 @@ function validateClaudeWorkerBindings() {
 }
 
 function validateOpencodeWorkerBindings(bindingsDir = OPENCODE_BINDINGS_DIR) {
-  const allFiles = fs.readdirSync(bindingsDir);
-  if (allFiles.length === 0) {
-    throw new Error(`Opencode bindings directory ${bindingsDir} contains no binding files; the worker roster cannot be derived.`);
-  }
-  const rosterByEntry = new Map(matrixBindings('opencode').map(binding => [binding.entry.workerName, binding]));
-  const bindingFiles = allFiles
+  const canonicalBindings = matrixBindings('opencode');
+  const validate = () => {
+    assertBindingDirectoryUsesOneStringEnvelope(bindingsDir, { allowAbsentGenerated: true });
+    const allFiles = fs.readdirSync(bindingsDir);
+    if (allFiles.length === 0) {
+      throw new Error(`Opencode bindings directory ${bindingsDir} contains no binding files; the worker roster cannot be derived.`);
+    }
+    const rosterByEntry = new Map(canonicalBindings.map(binding => [binding.entry.workerName, binding]));
+    const canonicalBindingText = (binding) => {
+    const bindingPath = path.join(bindingsDir, binding.destinationName);
+    let materialized = false;
+    if (bindingsDir === OPENCODE_BINDINGS_DIR) {
+      try {
+        const descriptor = fs.openSync(bindingPath, 'wx');
+        fs.closeSync(descriptor);
+        materialized = true;
+        fs.writeFileSync(bindingPath, binding.text, 'utf8');
+      } catch (error) {
+        if (error.code !== 'EEXIST') throw error;
+      }
+    }
+    try {
+      return fs.readFileSync(bindingPath, 'utf8');
+    } catch (error) {
+      // Matrix rendering has already validated this generated source.  The
+      // canonical opencode tree intentionally need not contain materialized
+      // per-worker files, so an absent entry falls back to the validated
+      // matrix text.  Other read failures remain validation failures.
+      if (error.code === 'ENOENT') return binding.text;
+      throw error;
+    } finally {
+      if (materialized) {
+        try {
+          fs.unlinkSync(bindingPath);
+        } catch (error) {
+          if (error.code !== 'ENOENT') throw error;
+        }
+      }
+    }
+    };
+    const bindingFiles = allFiles
     .filter(name => name.endsWith('-worker.md'))
     .map(name => path.join(bindingsDir, name))
     .sort((left, right) => left.split(path.sep).join('/').localeCompare(right.split(path.sep).join('/')));
-  if (bindingFiles.length > 0) {
+    if (bindingFiles.length > 0) {
     const seenBy = new Map();
     for (const bindingPath of bindingFiles) {
       const text = fs.readFileSync(bindingPath, 'utf8');
@@ -343,29 +442,34 @@ function validateOpencodeWorkerBindings(bindingsDir = OPENCODE_BINDINGS_DIR) {
     if (seenBy.size !== 9) {
       throw new Error('Opencode worker roster must contain exactly the ordered nine-worker roster.');
     }
-    return [...seenBy.keys()].sort((left, right) =>
-      left.split(path.sep).join('/').localeCompare(right.split(path.sep).join('/')));
-  }
-  const seenBy = new Map();
-  for (const binding of matrixBindings('opencode')) {
-    const dispatches = parseInitialDispatches(binding.text, 'task', binding.destinationName);
+      return [...seenBy.keys()].sort((left, right) =>
+        left.split(path.sep).join('/').localeCompare(right.split(path.sep).join('/')));
+    }
+    const seenBy = new Map();
+    for (const binding of canonicalBindings) {
+    const bindingPath = path.join(bindingsDir, binding.destinationName);
+    const dispatches = parseInitialDispatches(canonicalBindingText(binding), 'task', bindingPath);
     if (dispatches.length !== 1) {
-      throw new Error(`Opencode binding ${binding.destinationName} must contain exactly one initial task dispatch but found ${dispatches.length}.`);
+      throw new Error(`Opencode binding ${bindingPath} must contain exactly one initial task dispatch but found ${dispatches.length}.`);
     }
     const { name, prompt } = dispatches[0];
     const expected = rosterByEntry.get(name);
     if (!expected) {
-      throw new Error(`Opencode binding ${binding.destinationName} declares unknown worker "${name}".`);
+      throw new Error(`Opencode binding ${bindingPath} declares unknown worker "${name}".`);
     }
     if (seenBy.has(name)) {
-      throw new Error(`Duplicate opencode worker "${name}" declared by ${seenBy.get(name)} and ${binding.destinationName}.`);
+      throw new Error(`Duplicate opencode worker "${name}" declared by ${seenBy.get(name)} and ${bindingPath}.`);
     }
-    seenBy.set(name, binding.destinationName);
+    seenBy.set(name, bindingPath);
     if (prompt !== expectedDispatchPrompt(name)) {
-      throw new Error(`Opencode binding ${binding.destinationName} has the wrong initial prompt for "${name}"; expected the matrix prompt for ${binding.entry.phase}.`);
+      throw new Error(`Opencode binding ${bindingPath} has the wrong initial prompt for "${name}"; expected the matrix prompt for ${binding.entry.phase}.`);
     }
-  }
-  return [...seenBy.keys()];
+    }
+    return [...seenBy.keys()];
+  };
+  return bindingsDir === OPENCODE_BINDINGS_DIR
+    ? withOpencodeBindingValidationLock(validate)
+    : validate();
 }
 
 function writeVersionMarker(baseDir) {
@@ -732,6 +836,16 @@ function expandForInstall(harness, roots) {
   });
 }
 
+function assertProjectionInputsUseOneStringEnvelope(projections, harness) {
+  for (const projection of projections) {
+    assertOneStringInvocationEnvelope(JSON.stringify(projection), `${harness} projection ${projection.id}`);
+    const sourceText = projection.sourceText !== undefined
+      ? projection.sourceText
+      : fs.readFileSync(projection.sourcePath, 'utf8');
+    assertOneStringInvocationEnvelope(sourceText, `${harness} projection ${projection.id}`);
+  }
+}
+
 function cleanupRetiredProjections(harness, roots) {
   const manifest = loadInstallManifest(REPOSITORY_ROOT);
   const retirements = expandRetirementManifest(manifest, {
@@ -782,8 +896,36 @@ function listMdFilesRecursive(dir) {
   return files;
 }
 
+function assertHarnessCommandsUseOneStringEnvelope(harness) {
+  const commandsDir = path.join(REPOSITORY_ROOT, 'commands', harness);
+  for (const commandPath of listMdFilesRecursive(commandsDir)) {
+    assertOneStringInvocationEnvelope(fs.readFileSync(commandPath, 'utf8'), commandPath);
+  }
+}
+
+function assertInstalledMarkdownSourcesUseOneStringEnvelope() {
+  const sourceRoots = ['commands', 'sai', 'skills', 'agents'];
+  for (const root of sourceRoots) {
+    const sourceDir = path.join(REPOSITORY_ROOT, root);
+    for (const sourcePath of listMdFilesRecursive(sourceDir)) {
+      try {
+        assertOneStringInvocationEnvelope(fs.readFileSync(sourcePath, 'utf8'), sourcePath);
+      } catch (error) {
+        // The worker matrix validates generated opencode binding text before
+        // this census.  A source entry that vanished between directory walk
+        // and read is therefore safe to skip; all other read and validation
+        // errors remain fatal.
+        if (error.code === 'ENOENT' && sourcePath.startsWith(OPENCODE_BINDINGS_DIR) && isGeneratedOpencodeBindingPath(sourcePath)) continue;
+        throw error;
+      }
+    }
+  }
+}
+
 function installClaude(destBase) {
+  assertHarnessCommandsUseOneStringEnvelope('claude');
   validateClaudeWorkerBindings();
+  withOpencodeBindingValidationLock(assertInstalledMarkdownSourcesUseOneStringEnvelope);
   const targetPath = destBase || CLAUDE_BASE;
   cleanupRetiredProjections('claude', { base: targetPath });
   for (const projection of expandForInstall('claude', { base: targetPath })) installProjection(projection, targetPath);
@@ -792,10 +934,14 @@ function installClaude(destBase) {
 }
 
 function installOpencode(destBase) {
+  assertHarnessCommandsUseOneStringEnvelope('opencode');
   validateOpencodeWorkerBindings();
+  withOpencodeBindingValidationLock(assertInstalledMarkdownSourcesUseOneStringEnvelope);
   const targetPath = destBase || OPENCODE_BASE;
+  const projections = expandForInstall('opencode', { base: targetPath });
+  assertProjectionInputsUseOneStringEnvelope(projections, 'Opencode');
   cleanupRetiredProjections('opencode', { base: targetPath });
-  for (const projection of expandForInstall('opencode', { base: targetPath })) installProjection(projection, targetPath);
+  for (const projection of projections) installProjection(projection, targetPath);
 
   writeVersionMarker(targetPath);
 }

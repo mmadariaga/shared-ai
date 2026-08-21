@@ -11,5 +11,4 @@ Fetch @sai/commands/design/launcher.md and follow those instructions exactly, fo
 
 InvocationEnvelope:
   command_name: design
-  wrapper_echo_value: ""
   arguments_value: $ARGUMENTS

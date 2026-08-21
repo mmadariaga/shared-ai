@@ -23,7 +23,7 @@ A routed phase adapter MAY declare a static, ordered progress plan as a new phas
 
 ### Requirement: plan-ids-canonical-in-phase-contracts
 
-The step ids of a progress plan SHALL be canonical per phase: every phase's worker contract whose adapter declares a `progress_plan`, including the review, security, performance, and accessibility audit workers, SHALL enumerate the step ids the worker may report, and the phase adapter's `progress_plan` SHALL declare exactly those ids in the same order. Neither side learns the plan through the dispatch envelope, which SHALL remain the closed two-string envelope (`wrapper_echo_value`, `arguments_value`). The worker SHALL NOT add, remove, reorder, or rename steps; an adapter whose ids diverge from the worker contract's enumeration produces unknown ids that the coordinator SHALL ignore.
+The step ids of a progress plan SHALL be canonical per phase: every phase's worker contract whose adapter declares a `progress_plan`, including the review, security, performance, and accessibility audit workers, SHALL enumerate the step ids the worker may report, and the phase adapter's `progress_plan` SHALL declare exactly those ids in the same order. Neither side learns the plan through the dispatch envelope, which SHALL contain only `arguments_value`. The worker SHALL NOT add, remove, reorder, or rename steps; an adapter whose ids diverge from the worker contract's enumeration produces unknown ids that the coordinator SHALL ignore.
 
 #### Scenario: audit worker reports canonical ids
 
@@ -34,7 +34,7 @@ The step ids of a progress plan SHALL be canonical per phase: every phase's work
 #### Scenario: planning and audit envelopes stay closed
 
 - **WHEN** any phase with a declared plan dispatches its worker
-- **THEN** the dispatch SHALL pass only `wrapper_echo_value` and `arguments_value`
+- **THEN** the dispatch SHALL pass only `arguments_value`
 - **AND** the plan SHALL NOT be carried in the envelope
 
 #### Scenario: any worker invents a step

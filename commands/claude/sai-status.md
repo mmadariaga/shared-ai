@@ -10,5 +10,4 @@ Fetch @sai/commands/status/launcher.md and follow those instructions exactly, fo
 
 InvocationEnvelope:
   command_name: status
-  wrapper_echo_value: ""
   arguments_value: $ARGUMENTS

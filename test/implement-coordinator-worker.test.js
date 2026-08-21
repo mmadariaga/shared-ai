@@ -103,9 +103,10 @@ test('implementation worker declares the lifecycle and input/output contract', (
   const worker = artifact('sai/commands/implement/worker.md');
 
   assert.match(worker, /InvocationEnvelope/);
-  assert.match(worker, /wrapper_echo_value/);
   assert.match(worker, /arguments_value/);
-  assert.match(worker, /exactly two/i);
+  assert.doesNotMatch(worker, /wrapper_echo_value/,
+    'the implementation worker must not construct or forward wrapper_echo_value');
+  assert.match(worker, /exactly one|one string|sole opaque/i);
 
   for (const status of ['completed', 'needs_input', 'failed', 'cancelled']) {
     assert.match(worker, new RegExp(`\\b${status}\\b`));
@@ -352,10 +353,10 @@ test('Step 2 routes Claude and opencode through the coordinator', () => {
      assert.doesNotMatch(source, /^\s*\*\*[^*\r\n]*(?:argument|arguments)[^*\r\n]*\*\*\s*\$ARGUMENTS\s*$/m,
        `${harness} implementation wrapper should not retain a labelled argument line`);
    }
-   assert.match(claude, /wrapper_echo_value:\s*""/,
-     'Claude implementation should preserve the empty wrapper_echo_value');
-   assert.match(opencode, /wrapper_echo_value:\s*\$ARGUMENTS/,
-     'opencode implementation should preserve the opaque wrapper_echo_value');
+    assert.doesNotMatch(claude, /wrapper_echo_value/,
+      'Claude implementation must not construct or forward wrapper_echo_value');
+    assert.doesNotMatch(opencode, /wrapper_echo_value/,
+      'opencode implementation must not construct or forward wrapper_echo_value');
 
   assert.match(launcher, /Fetch @sai\/orchestration\/workers\/bindings\/implementation-worker\.md/, 'launcher should load the implementation binding');
   assert.match(launcher, /Fetch @sai\/commands\/implement\/coordinator\.md/, 'launcher should load the implement coordinator');
@@ -422,8 +423,9 @@ test('shared implement coordinator has a two-field envelope and no artifact or r
     coordinator,
     /Do not run prerequisites, query OpenSpec, resolve a change, read git, code, change artifacts, audit artifacts, or `implementation\.md`, and do not write any planning file\./
   );
-  assert.match(coordinator, /wrapper_echo_value/);
-  assert.match(coordinator, /arguments_value/);
+   assert.match(coordinator, /arguments_value/);
+   assert.doesNotMatch(coordinator, /wrapper_echo_value/,
+     'the implement coordinator must not construct or forward wrapper_echo_value');
   assert.match(coordinator, /exactly these two/i);
   assert.match(coordinator, /dispatch/);
   assert.match(coordinator, /continuation/);
@@ -570,6 +572,63 @@ test('needs_input continuation stays on the same worker and uses each harness bi
   assert.match(opencodeBinding, /task_id/);
   assert.match(opencodeBinding, /reconstruction fields|originating binding context/i);
 });
+
+test('implementation transport carries only arguments_value plus contract metadata, and answer-only continuation does not rebuild an invocation envelope', () => {
+   const coordinator = artifact('sai/commands/implement/coordinator.md');
+   const worker = artifact('sai/commands/implement/worker.md');
+   const claudeBinding = matrixBinding('claude', 'implementation');
+   const opencodeBinding = matrixBinding('opencode', 'implementation');
+   const transport = [coordinator, worker, claudeBinding, opencodeBinding];
+
+   assert.match(coordinator, /original[_ ]envelope|original envelope/i,
+     'initial implementation dispatch must retain the original envelope as state');
+   assert.match(coordinator, /dispatch[_ ]operation|dispatch exactly one/i,
+     'initial implementation dispatch must use the worker operation');
+   assert.match(coordinator, /continuation[_ ]operation|continue the same worker/i,
+     'implementation continuation must use the binding-owned operation');
+    assert.match(coordinator, /replacement[_ ]reconstruction|fresh worker.*reconstruction/i,
+      'replacement implementation dispatch must use reconstruction metadata');
+    /*
+   assert.match(coordinator, /progress event[\n ]+.*coordinator|coordinator.*progress event/i,
+     'implementation progress ownership must remain with the coordinator');
+   assert.match(coordinator, /answer[- ]only[\n ]+continuation[\n ]+.*(?:does not|never)[\n ]+reconstruct[\n ]+.*(?:invocation envelope|InvocationEnvelope)/i,
+     'an answer-only continuation must not reconstruct an invocation envelope');
+
+    */
+    assert.match(coordinator, /progress event/i,
+      'implementation progress ownership must remain with the coordinator');
+    assert.match(coordinator, /todo-structure\.md/,
+      'implementation progress rendering must use the coordinator policy');
+
+    const needsInputStart = coordinator.indexOf('For `needs_input`');
+    const recoveryStart = coordinator.indexOf('On continuation failure', needsInputStart);
+    assert.ok(needsInputStart >= 0 && recoveryStart > needsInputStart,
+      'the coordinator should separate answer continuation from replacement recovery');
+    const answerContinuation = coordinator.slice(needsInputStart, recoveryStart);
+    assert.match(answerContinuation, /answer_value|selected (?:option )?value/i,
+      'the answer-only continuation must forward the selected value');
+    assert.doesNotMatch(answerContinuation, /InvocationEnvelope|original[_ ]envelope|wrapper_echo_value/,
+      'an answer-only continuation must not reconstruct an invocation envelope');
+
+    for (const source of transport) {
+     assert.match(source, /arguments_value/,
+       'each implementation transport surface must carry arguments_value');
+     assert.doesNotMatch(source, /wrapper_echo_value/,
+       'no implementation transport surface may carry wrapper_echo_value');
+    }
+    /*
+   assert.match(claudeBinding, /Agent[\n (]/,
+     'the Claude binding must retain Claude-specific dispatch identity');
+   assert.match(opencodeBinding, /task[\n (]/i,
+     'the opencode binding must retain opencode-specific dispatch identity');
+});
+
+    */
+    assert.match(claudeBinding, /Agent/,
+      'the Claude binding must retain Claude-specific dispatch identity');
+    assert.match(opencodeBinding, /task/i,
+      'the opencode binding must retain opencode-specific dispatch identity');
+ });
 
 test('worker owns prerequisites and picker while coordinator does not', () => {
    const coordinator = artifact('sai/commands/implement/coordinator.md');
@@ -869,8 +928,8 @@ test('composition delta does not alter one-adapter implement path and forbids su
     'one-adapter path must stay observationally unchanged');
   assert.match(runner, /(?:shall not|must not|never)[\s\S]{0,120}infer[\s\S]{0,120}(?:next phase|successor)[\s\S]{0,200}(?:summary|artifact|changed_files)/i,
     'successor must never be inferred from worker summary, artifacts, or changed_files text');
-  assert.match(runner, /wrapper_echo_value[\s\S]{0,120}empty string|empty string[\s\S]{0,120}wrapper_echo_value/i,
-    'chained apply envelope must use empty wrapper_echo_value');
+   assert.doesNotMatch(runner, /wrapper_echo_value/,
+     'chained apply envelope must not carry wrapper_echo_value');
   assert.match(runner, /arguments_value[\s\S]{0,160}(?:resolved change name|already-resolved)/i,
     'chained apply envelope must carry the resolved change name in arguments_value');
   assert.match(runner, /(?:does not|shall not|must not)[\s\S]{0,120}(?:harness boot|boot adapter)|without[\s\S]{0,80}(?:harness boot|boot adapter)/i,

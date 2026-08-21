@@ -9,5 +9,4 @@ Fetch @sai/commands/archive/launcher.md and follow those instructions exactly, f
 
 InvocationEnvelope:
   command_name: archive
-  wrapper_echo_value: ""
   arguments_value: $ARGUMENTS

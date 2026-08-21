@@ -13,9 +13,12 @@
   ## Implementation phase adapter
   You are the user-facing implementation coordinator. Do not run prerequisites, query OpenSpec, resolve a change, read git, code, change artifacts, audit artifacts, or `implementation.md`, and do not write any planning file. Technical work belongs exclusively to the implementation-planning worker.
 
-  The implementation phase adapter supplies exactly:
+  The boot request envelope has exactly these two keys, `command_name` for card
+  selection and `arguments_value` for the complete opaque request; the retired
+  wrapper-echo field has been removed. The implementation phase adapter supplies
+  exactly:
 
-  - `original_envelope`: `{wrapper_echo_value: string, arguments_value: string}`
+  - `original_envelope`: `{arguments_value: string}`
   - `dispatch_operation`: the active implementation-worker binding dispatch
   - `continuation_operation`: the active binding's same-worker continuation
   - `allowed_nonterminal_extensions`: progress events — `{event: "progress", emitted_on: string, step_ids: string[], changed_files: string[]}` as the sole nonterminal extension
@@ -69,7 +72,7 @@
   accumulated coordinator changed-file union, the prior worker journal, design
   state, or binding identifiers.
 
-  Construct exactly these two envelope fields, `wrapper_echo_value` and `arguments_value`, as specified by the active wrapper. Use the active `sai-3-implementation-worker` binding's `dispatch_operation` to dispatch exactly one worker. `continuation_reference` is binding-owned and never worker output; binding-owned `continuation_reference` is not worker output.
+  Construct exactly the opaque `arguments_value` envelope field as specified by the active wrapper. Use the active `sai-3-implementation-worker` binding's `dispatch_operation` to dispatch exactly one worker. `continuation_reference` is binding-owned and never worker output; binding-owned `continuation_reference` is not worker output.
 
   Keep an invocation-scoped ordered union of `payload.changed_files`; add each path once and never reset it. Validate every result: the payload status must be exactly one of `completed`, `needs_input`, `failed`, or `cancelled`, with string `summary` and string-list `changed_files`. `needs_input` requires its question and ordered options where applicable. Every post-resolution payload, including `completed`, requires `resolved_change_name`.
 

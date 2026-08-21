@@ -18,7 +18,7 @@
   ## Run
   > **Scope reminder (read before every response):** Your only deliverable is the proposed commit message and — only with explicit authorization — the `git commit` invocation. Do not stage, do not unstage, do not push, do not modify code.
 
-  **User's commit request:** $ARGUMENTS
+  **User's commit request:** boot-provided `arguments_value`
 </TASK>
 
 Follow instruction on <TASK> step by step

@@ -7,15 +7,15 @@ Define the opencode wrapper contract that forwards command arguments through the
 ## Requirements
 ### Requirement: opencode change-consuming wrappers forward an envelope
 
-Every opencode wrapper for a change-consuming `sai-*` command (`sai-2-design`, `sai-3-implement`, `sai-4-apply`, `sai-5-review`, `sai-6-security`, `sai-7-performance`, `sai-8-accessibility`, `sai-archive`, `sai-pr`) SHALL contain one standalone `InvocationEnvelope:` block directly after the launcher-call directive. The block SHALL contain exactly these three keys, in this order: `command_name`, `wrapper_echo_value`, and `arguments_value`. Opencode SHALL substitute `$ARGUMENTS` into `arguments_value`; a trimmed, non-empty `arguments_value` SHALL be authoritative, while `wrapper_echo_value` SHALL be forwarded as opaque data and SHALL NOT be used to resolve a change name. The wrapper SHALL be label-free, SHALL have no trailing content after the envelope block, and SHALL preserve its frontmatter byte-for-byte.
+Every opencode wrapper for a change-consuming `sai-*` command (`sai-2-design`, `sai-3-implement`, `sai-4-apply`, `sai-5-review`, `sai-6-security`, `sai-7-performance`, `sai-8-accessibility`, `sai-archive`, `sai-pr`) SHALL contain one standalone `InvocationEnvelope:` block directly after the launcher-call directive. The block SHALL contain exactly these two keys, in this order: `command_name` and `arguments_value`. Opencode SHALL substitute `$ARGUMENTS` into `arguments_value`; a trimmed, non-empty `arguments_value` SHALL be authoritative. The wrapper SHALL be label-free, SHALL have no trailing content after the envelope block, and SHALL preserve its frontmatter byte-for-byte.
 
 #### Scenario: sai-archive wrapper forwards the envelope
 - **WHEN** the opencode `sai-archive` wrapper is read
-- **THEN** its body ends with exactly one `InvocationEnvelope:` block containing only `command_name`, `wrapper_echo_value`, and `arguments_value`, with no trailing labelled line
+- **THEN** its body ends with exactly one `InvocationEnvelope:` block containing only `command_name` and `arguments_value`, with no trailing labelled line
 
 #### Scenario: all nine change-consuming wrappers use the same label-free shape
 - **WHEN** the nine opencode change-consuming wrapper files are listed (`commands/opencode/sai-2-design.md`, `sai-3-implement.md`, `sai-4-apply.md`, `sai-5-review.md`, `sai-6-security.md`, `sai-7-performance.md`, `sai-8-accessibility.md`, `sai-archive.md`, `sai-pr.md`)
-- **THEN** each one has exactly the three envelope keys, forwards `$ARGUMENTS` through `arguments_value`, and contains no labelled change-name line or other trailing content
+- **THEN** each one has exactly the two envelope keys, forwards `$ARGUMENTS` through `arguments_value`, and contains no labelled change-name line or other trailing content
 
 #### Scenario: change-picker uses arguments value
 - **WHEN** a user runs `/sai-archive installer-offer-opencode-cli` in opencode
@@ -51,8 +51,8 @@ The opencode invocation-envelope adapter addresses opencode's wrapper substituti
 
 ### Requirement: future change-consuming opencode wrappers forward the envelope
 
-Any new opencode wrapper for a change-consuming `sai-*` command introduced in the future SHALL use the same standalone `InvocationEnvelope:` block directly after its launcher call, with exactly `command_name`, `wrapper_echo_value`, and `arguments_value`. It SHALL forward `$ARGUMENTS` through `arguments_value`, preserve frontmatter, and SHALL NOT add a labelled wrapper line.
+Any new opencode wrapper for a change-consuming `sai-*` command introduced in the future SHALL use the same standalone `InvocationEnvelope:` block directly after its launcher call, with exactly `command_name` and `arguments_value`. It SHALL forward `$ARGUMENTS` through `arguments_value`, preserve frontmatter, and SHALL NOT add a labelled wrapper line.
 
 #### Scenario: new change-consuming opencode wrapper follows the envelope convention
 - **WHEN** a new change-consuming `sai-*` command (for example `sai-9-something`) is added and its opencode wrapper is written
-- **THEN** the wrapper supplies the exact three-key envelope and the change-picker can resolve a trimmed non-empty `arguments_value` without transcript or label extraction
+- **THEN** the wrapper supplies the exact two-key envelope and the change-picker can resolve a trimmed non-empty `arguments_value` without transcript or label extraction

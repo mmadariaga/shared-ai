@@ -28,7 +28,7 @@ The review coordinator SHALL reuse `sai/orchestration/command-runner.md` unchang
 
 ### Requirement: Review invocation envelope preserves both positional arguments
 
-The coordinator SHALL construct `original_envelope` with the complete argument string preserved. Claude Code SHALL carry the full command argument string in `arguments_value`; opencode SHALL copy the complete substituted value after its change-name argument label into `wrapper_echo_value`, preserving both the change name and optional parent branch for worker-owned parsing.
+The coordinator SHALL construct `original_envelope` with the complete argument string preserved in `arguments_value`. Both Claude Code and opencode SHALL carry the change name and optional parent branch in that one field for worker-owned parsing.
 
 #### Scenario: Routed review receives a parent branch
 - **WHEN** the user invokes `/sai-5-review my-change develop`

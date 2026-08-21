@@ -8,5 +8,4 @@ Fetch @sai/commands/backfill/launcher.md and follow those instructions exactly, 
 
 InvocationEnvelope:
   command_name: backfill
-  wrapper_echo_value: $ARGUMENTS
   arguments_value: $ARGUMENTS

@@ -11,7 +11,7 @@ Each of the seven Claude Code and seven opencode worker bindings SHALL use a lit
 
     Worker contract: Fetch @sai/orchestration/workers/<worker-contract>.md and follow it exactly.\n\nInvocationEnvelope:\n<original InvocationEnvelope>
 
-`<worker-contract>` SHALL be the matching canonical contract filename. `<original InvocationEnvelope>` SHALL remain an opaque slot for the existing coordinator-supplied envelope, which currently contains the two strings owned by the phase coordinator and worker contract. This change SHALL NOT define, serialize, concatenate, or reinterpret those two strings; their field labels, ordering, precedence, and `--fast-track` parsing remain owned by the phase-specific coordinator and worker contract. The template SHALL not contain the former free-text placeholder or permit the coordinator to invent replacement contract-loading wording.
+`<worker-contract>` SHALL be the matching canonical contract filename. `<original InvocationEnvelope>` SHALL remain an opaque slot for the coordinator-supplied `arguments_value` string. This change SHALL NOT define, serialize, concatenate, or reinterpret that string; phase-specific parsing and `--fast-track` handling remain owned by the phase-specific coordinator and worker contract. The template SHALL not contain the former free-text placeholder or permit the coordinator to invent replacement contract-loading wording.
 
 #### Scenario: Every current binding carries the matching template
 
@@ -22,7 +22,7 @@ Each of the seven Claude Code and seven opencode worker bindings SHALL use a lit
 #### Scenario: The existing invocation envelope passes through unchanged
 
 - **WHEN** a coordinator performs the initial dispatch
-- **THEN** the binding SHALL place the existing opaque two-string `InvocationEnvelope` into the template slot without changing its serialization or field order
+- **THEN** the binding SHALL place the complete opaque `arguments_value` request into the template slot without changing its bytes
 - **AND** phase-specific worker resolution SHALL continue to own interpretation of the envelope
 
 #### Scenario: The encoded template remains parseable on one dispatch line

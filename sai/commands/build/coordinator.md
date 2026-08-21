@@ -29,8 +29,7 @@
 
   ## Pre-resolution envelope normalization
   Before change resolution, strip every `--fast-track` token from the selected
-  envelope source (trimmed non-empty `wrapper_echo_value`, otherwise
-  `arguments_value`) in any token order. The cleaned remainder is the change-name
+  `arguments_value` in any token order. The cleaned remainder is the change-name
   input to the standard change-consuming resolution order. Stripping does NOT make `/sai-build` a fifth body-file parse member, does NOT activate a build-local fast-track mode, and does NOT write session state from the token.
   Explicit `--fast-track` on `/sai-build` is a behavioral no-op for phase order,
   injection, and gates.
@@ -38,8 +37,8 @@
   ## Single change resolution
   Resolve the target OpenSpec change name exactly once at the start of the
   invocation using the established change-consuming resolution order (trimmed
-  non-empty wrapper echo before arguments, then the zero/one/multiple picker when
-  both are empty). Retain the resolved name as supervisor-owned invocation state.
+  non-empty `arguments_value`, then the zero/one/multiple picker when it is
+  empty). Retain the resolved name as supervisor-owned invocation state.
   Neither segment re-enters a harness boot adapter or command wrapper. After a
   successful phase 1, the apply segment does not re-run change-picker or
   prerequisite checks that implement already satisfied for `implementation.md`
@@ -53,11 +52,11 @@
   ## Composition-minted segment envelopes
   After resolution of `{name}`:
 
-  - **Implement envelope** (original two-field worker envelope):
-    `{wrapper_echo_value: "", arguments_value: "{name}"}`
+  - **Implement envelope**:
+    `{arguments_value: {name}}`
+    The resolved segment value is `arguments_value: {name}`.
   - **Apply envelope** (composition-built chained-apply shape):
     `command_name: apply` (shape compatibility only — not boot/card selection),
-    `wrapper_echo_value: ""`,
     `arguments_value: "{name}"`,
     `continuation_reference` absent or empty at segment start.
     Normalized fast-track true is supervisor session state injected alongside the

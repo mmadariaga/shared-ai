@@ -79,7 +79,7 @@ Each missing prerequisite SHALL return its pinned actionable failure text.
 A provided name bypasses `openspec list --json`. Zero changes returns the pinned failure. One change requests yes/no then continues or cancels. Multiple changes preserve CLI order and re-request options without retry cap.
 
 #### Scenario: provided name bypasses list
-- **WHEN** the wrapper-echo or arguments value is non-empty after trimming
+- **WHEN** `arguments_value` is non-empty after trimming
 - **THEN** the worker uses it directly and does NOT run `openspec list --json`
 
 #### Scenario: zero changes returns failure
@@ -133,7 +133,7 @@ The design worker SHALL include worker-authored `emitted_on` in notices, progres
 - **THEN** the payload includes its actual composition instant in `emitted_on`.
 
 ### Requirement: The design worker owns the complete technical design workflow
-The design worker SHALL own prerequisite checks, fast-track parsing, change selection, proposal and spec validation, specs approval state, codebase research, technical question resolution, design decisions, artifact generation, and artifact verification. The coordinator SHALL not share ownership of any of these activities. Ownership of specs approval state means stamping it, never asking for it: after verifying `proposal.md` and at least one `specs/**/*.md`, the worker SHALL write `approval.specs.approved_at` only when that key is absent or empty and `approval.specs.notes` as an empty string, then handle amendments per the design instructions.
+The design worker SHALL own prerequisite checks, fast-track parsing, change selection, proposal and spec validation, specs approval state, codebase research, technical question resolution, design decisions, artifact generation, and artifact verification. The coordinator SHALL not share ownership of any of these activities. Ownership of specs approval state means stamping it, never asking for it: after verifying `proposal.md` and at least one `specs/**/*.md`, the worker SHALL write `approval.specs.approved_at` only when that key is absent or empty and `approval.specs.notes` as an empty string, then handle amendments per the design instructions. The worker SHALL parse only the sole `arguments_value` request; no alternate request source or wrapper-label extraction exists.
 
 #### Scenario: worker stamps the approval without asking
 - **WHEN** the design worker has verified `proposal.md` and at least one `specs/**/*.md` for the resolved change
@@ -144,8 +144,8 @@ The design worker SHALL own prerequisite checks, fast-track parsing, change sele
 - **THEN** the act — fast-track parsing, prerequisites, resolution, and stamping the specs approval — SHALL report as one progress batch carrying only `prereqs-resolution`, with no standalone step and no `skipped` field for the gate
 
 #### Scenario: Worker starts from an invocation envelope
-- **WHEN** a design worker receives `wrapper_echo_value` and `arguments_value`
-- **THEN** it SHALL run universal prerequisites first, then apply wrapper-echo precedence, parse and strip `--fast-track`, resolve the change, and continue from durable OpenSpec state without printing user-visible text directly
+- **WHEN** a design worker receives `arguments_value`
+- **THEN** it SHALL run universal prerequisites first, parse and strip `--fast-track`, resolve the change, and continue from durable OpenSpec state without printing user-visible text directly
 
 #### Scenario: Fast-track prerequisites succeed
 - **WHEN** universal prerequisites pass and worker-owned parsing finds the discrete `--fast-track` token while `fast_track_banner_emitted` is false
@@ -159,9 +159,6 @@ The design worker SHALL own prerequisite checks, fast-track parsing, change sele
 - **WHEN** a fresh design worker receives reconstruction metadata with `fast_track_banner_emitted` true
 - **THEN** it SHALL preserve fast-track semantics but SHALL NOT return the banner notice again
 
-#### Scenario: opencode legacy wrapper echo carries a name and flag
-- **WHEN** the routed opencode wrapper emits `**Change-name argument and and optional flags:** my-change --fast-track`
-- **THEN** the coordinator SHALL place the exact text after the label in `wrapper_echo_value`, and the worker SHALL resolve `my-change` while activating and stripping the discrete `--fast-track` token
 
 #### Scenario: Prerequisite or source artifact is missing
 - **WHEN** a prerequisite fails or required `proposal.md` or `specs/**/*.md` is absent
@@ -180,7 +177,7 @@ The design worker SHALL own prerequisite checks, fast-track parsing, change sele
 - **THEN** the worker SHALL return `failed` with exactly "openspec/config.yaml does not declare `schema: sai-workflow`. The sai commands require this schema. Add `schema: sai-workflow` to the top of openspec/config.yaml." and SHALL NOT parse fast-track or emit a notice
 
 #### Scenario: Provided change name bypasses the picker
-- **WHEN** wrapper-echo precedence or the cleaned explicit arguments produce a non-empty change name
+- **WHEN** the cleaned explicit `arguments_value` produces a non-empty change name
 - **THEN** the worker SHALL use that name without running `openspec list --json` or requesting picker input
 
 #### Scenario: No active changes exist

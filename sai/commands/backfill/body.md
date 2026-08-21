@@ -19,7 +19,7 @@
   Fetch @sai/policies/remember.md
 
   ## Run
-  **User's request:** $ARGUMENTS
+  **User's request:** boot-provided `arguments_value`
 
   ## Completion
   MANDATORY STOP: Once all backfill artifacts are written your work is COMPLETE. Do NOT run reviews, security audits, or any other command. STOP and print exactly: "Backfill complete in openspec/changes/{name}/."

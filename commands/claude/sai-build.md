@@ -11,5 +11,4 @@ Fetch @sai/commands/build/launcher.md and follow those instructions exactly, for
 
 InvocationEnvelope:
   command_name: build
-  wrapper_echo_value: ""
   arguments_value: $ARGUMENTS

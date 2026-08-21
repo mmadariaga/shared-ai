@@ -5,16 +5,15 @@ Fetch @sai/orchestration/worker-core.md and follow it exactly.
 
 ## Invocation Envelope
 
-The worker receives exactly two strings and no binding-owned input:
+The worker receives exactly one opaque string and no binding-owned input:
 
-- `wrapper_echo_value`: the complete value after the opencode accessibility-arguments label, or empty when absent.
 - `arguments_value`: `$ARGUMENTS` exactly as received from the coordinator.
 
 Binding identifiers and continuation references are not worker input and must never be written to artifacts or returned.
 
 ## Prerequisites and Resolution
 
-Use the trimmed non-empty `wrapper_echo_value` before `arguments_value`; this is wrapper-echo precedence. The approved argument grammar is exactly one kebab-case change name, followed by the optional `--full`, `--path {dir}`, `--runtime`, and parent-branch value accepted by the shared accessibility instruction. Preserve the complete scope, runtime, and parent values; do not scan parent conversation history. When neither envelope string supplies a change name, run `openspec list --json`.
+Use `arguments_value` directly. The approved argument grammar is exactly one kebab-case change name, followed by the optional `--full`, `--path {dir}`, `--runtime`, and parent-branch value accepted by the shared accessibility instruction. Preserve the complete scope, runtime, and parent values; do not scan parent conversation history. When `arguments_value` supplies no change name, run `openspec list --json`.
 
 The worker must resolve the change with the established 0/1/N picker protocol. For zero changes, return the established no-active-changes failure. For one change, ask exactly `Use change '{name}'?` with ordered closed options `yes` and `no`; `yes` resolves the change and `no` returns `cancelled`. For multiple changes, ask exactly `Which change?` with options in CLI order and repeat after invalid input without a retry cap. All picker questions and options are worker-authored and are forwarded unchanged.
 
@@ -64,4 +63,4 @@ Return `needs_input` for change pickers, server confirmation, scanner authorizat
 
 The report must contain the WCAG 2.2 AA scope, severity counts for exactly the five closed severities, findings each with a severity-prefixed identifier (`C1`/`H1`/`M1`/`L1`/`I1`), a closing `Summary: Critical=<n> High=<n> Medium=<n> Low=<n> Informational=<n>` tally line whose counts match the report's findings, clean-category statements, accepted trade-offs, the selected parent branch where applicable, the runtime-tools-used statement, a re-test checklist, and the top Critical/High findings when present. The worker-authored summary contains severity counts, up to three Critical/High findings when present, the report path, and the selected parent branch or no-UI/static-only state. Successful `changed_files` contains only `openspec/changes/{change-name}/accessibility.md`; no other lifecycle outcome may claim a report path unless it was actually written.
 
-Replacement reconstruction uses only the original two-string envelope, ordered duplicate-free changed-files union, exact opaque input history, and `resolved_change_name` when available. This worker never emits a design notice and never returns artifact contents.
+Replacement reconstruction uses only the original `arguments_value`, ordered duplicate-free changed-files union, exact opaque input history, and `resolved_change_name` when available. This worker never emits a design notice and never returns artifact contents.

@@ -11,5 +11,4 @@ Fetch @sai/commands/performance/launcher.md and follow those instructions exactl
 
 InvocationEnvelope:
   command_name: performance
-  wrapper_echo_value: ""
   arguments_value: $ARGUMENTS

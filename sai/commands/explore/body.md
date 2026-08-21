@@ -46,7 +46,7 @@
   Fetch @sai/policies/remember.md
 
   ## Run
-  **User's request:** the cleaned effective request — `$ARGUMENTS` after the overview-language and fast-track parses above removed their options.
+  **User's request:** the cleaned effective request — `arguments_value` after the overview-language and fast-track parses above removed their options.
 </TASK>
 
 Follow instruction on <TASK> step by step

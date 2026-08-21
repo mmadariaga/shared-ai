@@ -105,7 +105,7 @@ All artifact paths below resolve under `openspec/changes/{change-name}/` (referr
 
 ### Implementation coordinator and worker
 
-The routed Claude Code and opencode paths pass a two-field `InvocationEnvelope`: `wrapper_echo_value` and `arguments_value`. The coordinator and worker have independent model roles: the coordinator owns dispatch and lifecycle aggregation, while the worker receives that envelope, owns technical I/O and planning writes, and returns metadata-only lifecycle payloads (`status`, `summary`, and `changed_files`, plus the input fields required for `needs_input`). Payloads never contain `implementation.md` contents.
+The routed Claude Code and opencode paths pass a two-field `InvocationEnvelope`: `command_name` as card-selection metadata and `arguments_value` as the complete opaque request. The coordinator and worker have independent model roles: the coordinator owns dispatch and lifecycle aggregation, while the worker receives that request, owns technical I/O and planning writes, and returns metadata-only lifecycle payloads (`status`, `summary`, and `changed_files`, plus the input fields required for `needs_input`). Payloads never contain `implementation.md` contents.
 
 For `needs_input`, the active harness binding forwards the selected value through `continuation_reference` to the same worker. If same-worker continuation fails, the binding starts one fresh worker with the original envelope and a reconstruction instruction so the worker can rebuild from current durable artifacts. Every routed path preserves the durable artifact at `openspec/changes/{change-name}/implementation.md` and the explicit MANDATORY STOP completion boundary.
 

@@ -392,10 +392,13 @@ test('Step 2 initial Claude Agent dispatches deliver matching contracts and pres
       const continuations = calls.filter(call => /\btask_id\s*[:=]/.test(call));
 
       assert.equal(initial.length, 1, `${workerName} should have one initial Agent dispatch`);
-       assert.equal(decodePrompt(initial[0]), expectedWorkerPrompt(phase),
-        `specs/worker-dispatch-prompt-template/spec.md: ${workerName} should receive its matching worker contract`);
-      assert.match(decodePrompt(initial[0]), /InvocationEnvelope:\n<original InvocationEnvelope>$/,
-        `${workerName} should preserve the opaque InvocationEnvelope slot`);
+       const prompt = decodePrompt(initial[0]);
+       assert.equal(prompt, expectedWorkerPrompt(phase),
+         `specs/worker-dispatch-prompt-template/spec.md: ${workerName} should receive its matching worker contract`);
+       assert.doesNotMatch(prompt, /\bwrapper_echo_value\s*:/,
+         `${workerName} manifest-rendered worker prompt must not construct the wrapper echo field`);
+       assert.match(prompt, /InvocationEnvelope:\n<original InvocationEnvelope>$/,
+         `${workerName} should preserve the opaque InvocationEnvelope slot`);
        for (const continuation of continuations) {
          assert.doesNotMatch(continuation, /\bprompt\s*[:=]/,
           `${workerName} continuation dispatch should remain unchanged`);
@@ -834,8 +837,9 @@ test('Claude boot adapter loads command-runner first, selects utility bodies, ke
       'the Claude boot should load @sai/orchestration/command-runner.md before any card selection');
 
     assert.match(boot, /command_name/, 'the Claude boot should route on command_name');
-    assert.match(boot, /wrapper_echo_value/, 'the Claude boot should carry wrapper_echo_value');
     assert.match(boot, /arguments_value/, 'the Claude boot should carry arguments_value');
+     assert.doesNotMatch(boot, /\bwrapper_echo_value\s*:/,
+       'the Claude boot must not construct or forward the wrapper echo field');
     assert.match(boot, /byte-for-byte|verbatim|unchanged|without modification/i,
       'the Claude boot should forward envelope values byte-for-byte');
 

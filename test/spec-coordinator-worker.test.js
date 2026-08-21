@@ -136,12 +136,13 @@ test('feedback selection routes text through the coordinator once and preserves 
   assert.doesNotMatch(coordinator, /sai\/orchestration\/inline-invocation\.md/);
 });
 
-test('coordinator declares lifecycle-only ownership and the exact two-string envelope', () => {
+test('coordinator declares lifecycle-only ownership and the sole opaque arguments envelope', () => {
   const coordinator = artifact(SPEC_COORDINATOR_ARTIFACTS.coordinator);
   assert.match(coordinator, /only metadata|user-facing spec coordinator/i);
-  assert.match(coordinator, /wrapper_echo_value/);
   assert.match(coordinator, /arguments_value/);
-  assert.match(coordinator, /exactly two|two strings/i);
+  assert.doesNotMatch(coordinator, /wrapper_echo_value/,
+    'the spec coordinator must not construct or forward wrapper_echo_value');
+  assert.match(coordinator, /exactly one|one string|sole opaque/i);
   assert.match(coordinator, /allowed_nonterminal_extensions|extensions.*empty/i);
   assert.match(coordinator, /extension_handlers|handlers.*empty/i);
   assert.match(coordinator, /no design notice state/i);
@@ -177,6 +178,37 @@ test('coordinator declares lifecycle-only ownership and the exact two-string env
     /continue_after_recovery|recovery[\s\S]{0,260}same[- ]worker|same[- ]worker[\s\S]{0,260}recovery/i,
     'recovery should continue on the same worker',
   );
+});
+
+test('spec transport keeps arguments_value as the only request source across dispatch, supervision, continuation, reconstruction, and progress', () => {
+  const coordinator = artifact(SPEC_COORDINATOR_ARTIFACTS.coordinator);
+  const worker = artifact(SPEC_COORDINATOR_ARTIFACTS.worker);
+  const bindings = [matrixBinding('claude', 'spec'), matrixBinding('opencode', 'spec')];
+
+  assert.match(coordinator, /original[_ ]envelope|original envelope/i,
+    'initial dispatch must retain the original envelope as coordinator state');
+  assert.match(coordinator, /dispatch[_ ]worker|dispatch exactly one/i,
+    'initial dispatch must use the routed worker operation');
+  assert.match(coordinator, /continuation[_ ]operation|continue the same worker/i,
+    'continuation must use the binding-owned operation');
+  assert.match(coordinator, /replacement[_ ]reconstruction|replacement worker/i,
+    'replacement dispatch must use the reconstruction contract');
+  assert.match(worker, /--supervised|supervised/i,
+    'supervision must remain part of the arguments request grammar');
+  /*
+  assert.match(coordinator, /coordinator alone renders|coordinator[- ]owned[\n ]+progress|progress[\n ]+events?[\n ]+.*coordinator/i,
+    'progress rendering must remain coordinator-owned');
+
+  */
+  assert.match(coordinator, /coordinator alone renders|coordinator.{0,80}progress|progress.{0,80}coordinator/i,
+    'progress rendering must remain coordinator-owned');
+
+  for (const source of [coordinator, worker, ...bindings]) {
+    assert.match(source, /arguments_value/,
+      'each transport surface must carry arguments_value');
+    assert.doesNotMatch(source, /wrapper_echo_value/,
+      'no spec transport surface may carry wrapper_echo_value');
+  }
 });
 
 test('coordinator preserves closed statuses, ordered picker forwarding, and opaque history', () => {
@@ -488,13 +520,15 @@ test('Step 2: external findings alone may mark spec review from a valid base-for
 
 // ─── Step 7: suppress-worker-review-under-supervision (spec grammar) ────────
 
-test('Step 7: spec grammar gives wrapper-echo precedence and strips only a leading bare --supervised marker', () => {
+test('Step 7: spec grammar uses arguments_value as the sole request and strips only a leading bare --supervised marker', () => {
   const worker = artifact(SPEC_COORDINATOR_ARTIFACTS.worker);
   const coordinator = artifact(SPEC_COORDINATOR_ARTIFACTS.coordinator);
   const source = `${worker}\n${coordinator}`;
 
-  assert.match(source, /wrapper_echo_value[\s\S]{0,320}(?:takes precedence|has precedence|is authoritative|wins|non-empty)[\s\S]{0,320}(?:arguments_value|otherwise select)/i,
-    'a non-empty wrapper echo should win over arguments_value');
+  assert.match(source, /arguments_value/,
+    'the sole request source should be arguments_value');
+  assert.doesNotMatch(source, /wrapper_echo_value/,
+    'no wrapper label may override arguments_value');
   assert.match(source, /(?:leading|first)[\s\S]{0,180}(?:bare|standalone)[\s\S]{0,180}`?--supervised`?/i,
     'the supervised marker should be recognized only as a leading bare token');
   assert.match(source, /(?:strip|remove)[\s\S]{0,180}(?:only|exactly)[\s\S]{0,180}(?:leading|first)[\s\S]{0,180}`?--supervised`?/i,

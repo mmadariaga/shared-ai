@@ -36,7 +36,7 @@ Every step label SHALL be imperative (an instruction naming the act, e.g. `Write
 #### Scenario: envelope stays closed
 
 - **WHEN** the implementation adapter dispatches its worker with a declared plan
-- **THEN** the dispatch SHALL pass only `wrapper_echo_value` and `arguments_value`, and SHALL NOT carry the plan
+- **THEN** the dispatch SHALL pass only `arguments_value`, and SHALL NOT carry the plan
 
 #### Scenario: labels are imperative
 

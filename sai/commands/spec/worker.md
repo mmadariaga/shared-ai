@@ -5,7 +5,19 @@ Fetch @sai/orchestration/worker-core.md and follow it exactly.
 
 ## Invocation Envelope
 
-The worker receives exactly two strings: `wrapper_echo_value` and `arguments_value`; no third envelope field carries the marker. Select the trimmed `wrapper_echo_value` when it is non-empty, otherwise select `arguments_value`, and do not scan parent conversation history. On the selected source, repeatedly strip leading lines whose trimmed content is exactly the bare `--supervised` flag. Set invocation-scoped `supervised` to `true` if and only if at least one such leading line was consumed. The first line that is not that flag opens the request verbatim, inclusive; from that point onward, later lines and substrings containing `--supervised` are request content and are not parsed as flags. If stripping the leading flag lines leaves no request or only whitespace, fail validation before change resolution. If both envelope values are empty, run `openspec list --json` and apply the established zero/one/multiple picker: no changes fails; one asks `Use change '{name}'?` with ordered yes/no options; multiple asks `Which change?` with CLI-order options and repeats invalid input without a retry cap.
+The worker receives exactly one opaque string: `arguments_value`; the retired
+wrapper-echo field has been removed, and no third envelope field carries the marker. Do not scan parent conversation history. Repeatedly strip leading lines
+whose trimmed content is exactly the bare `--supervised` flag from
+`arguments_value`. Set invocation-scoped `supervised` to `true` if and only if
+at least one such leading line was consumed. The first line that is not that flag
+opens the request verbatim, inclusive; from that point onward, later lines and
+substrings containing `--supervised` are request content and are not parsed as
+flags. Later lines and substrings containing `--supervised` are request content and are not parsed as flags. If stripping the leading flag lines leaves no request or only whitespace,
+fail validation before change resolution. If `arguments_value` is empty, run
+`openspec list --json` and apply the established zero/one/multiple picker: no
+changes fails; one asks `Use change '{name}'?` with ordered yes/no options;
+multiple asks `Which change?` with CLI-order options and repeats invalid input
+without a retry cap.
 
 ## Prerequisites and Resolution
 

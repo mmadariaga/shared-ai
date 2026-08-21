@@ -112,11 +112,15 @@ test('accessibility scope, runtime, and parent arguments reach the shared core u
   const opencodeWrapper = artifact('commands/opencode/sai-8-accessibility.md');
   const argumentsValue = '--full --path src/components --runtime feature-branch';
 
-  assert.match(coordinator, /wrapper_echo_value/);
   assert.match(coordinator, /arguments_value/);
+  assert.doesNotMatch(coordinator, /wrapper_echo_value/,
+    'the accessibility coordinator must not construct or forward wrapper_echo_value');
   assert.match(coordinator, /preserving the complete argument string/);
+  assert.match(claudeWrapper, /command_name:\s*accessibility/);
   assert.match(claudeWrapper, /arguments_value:\s*\$ARGUMENTS/);
-  assert.match(opencodeWrapper, /wrapper_echo_value:\s*\$ARGUMENTS/);
+  assert.match(opencodeWrapper, /command_name:\s*accessibility/);
+  assert.doesNotMatch(opencodeWrapper, /wrapper_echo_value/,
+    'the opencode accessibility wrapper must not construct or forward wrapper_echo_value');
   assert.match(opencodeWrapper, /arguments_value:\s*\$ARGUMENTS/);
   assert.match(core, /arguments:\s*\$ARGUMENTS/);
   assert.ok(core.includes('$ARGUMENTS'), `complete arguments should reach the core: ${argumentsValue}`);
@@ -148,8 +152,9 @@ test('Step 2 accessibility coordinator dispatches one worker and performs no tec
 test('Step 2 accessibility worker preserves input precedence, grammar, change resolution, and scope ownership', () => {
   const worker = artifact('sai/commands/accessibility/worker.md');
 
-  assert.match(worker, /wrapper_echo_value[\s\S]{0,240}precedence/i);
   assert.match(worker, /arguments_value/);
+  assert.doesNotMatch(worker, /wrapper_echo_value/,
+    'the accessibility worker must use arguments_value as its sole request source');
   assert.match(worker, /--full/);
   assert.match(worker, /--path/);
   assert.match(worker, /--runtime/);

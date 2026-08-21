@@ -28,6 +28,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0159 — Supervised marker grammar stays on the two-string envelope; Explore owns the capability](./0159-marker-grammar-stays-on-two-string-envelope.md) — Refs 0158, Refs ddr:0114
 - [0160 — Interactive artifact feedback gate gains a non-option review-loop note only](./0160-interactive-gate-review-loop-note-only.md) — Refs 0028, Refs ddr:0150, Refs 0158
 - [0166 — Dual-channel exclusivity is per cause surface](./0166-per-cause-surface-dual-channel-exclusivity.md) — **Amends** 0165
+- [0171 — Single-string invocation envelope across active SAI surfaces](./0171-single-string-invocation-envelope.md) — Supersedes 0166, **Reframes** 0159, Refs 0136, Refs ddr:0114
 ### `/sai-2-design`
 
 - [0015 — Decision summary precedes the completion sentinel](./0015-decision-summary-precedes-completion-sentinel.md) — **Amends** ddr:0014
@@ -71,6 +72,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0168 — Coordinator selects plan by token presence; worker validates and owns generation](./0168-coordinator-plan-by-token-presence.md)
 - [0169 — Mutually exclusive Continue routes by flag presence](./0169-mutually-exclusive-design-continue-routes.md)
 - [0170 — Unopted source edits may leave overview stale; never fake current](./0170-unopted-source-edits-may-leave-overview-stale.md)
+- [0171 — Single-string invocation envelope across active SAI surfaces](./0171-single-string-invocation-envelope.md) — Supersedes 0166, **Reframes** 0159, Refs 0136, Refs ddr:0114
 
 ### `/sai-3-implement`
 
@@ -106,6 +108,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0146 — Command-owned files live in their consuming command's directory](./0146-command-owned-files-live-in-their-consuming-command-directory.md) — Supersedes 0003, Refs 0004, Refs 0138, Refs ddr:0123, Refs ddr:0149
 - [0158 — Delete the worker-owned planning-artifact review loop](./0158-delete-worker-owned-planning-artifact-review-loop.md) — Supersedes 0139, Refs ddr:0133, Refs ddr:0134
 - [0161 — Capability deltas stay change-local until archive sync](./0161-capability-deltas-stay-change-local-until-archive.md) — Refs 0158
+- [0171 — Single-string invocation envelope across active SAI surfaces](./0171-single-string-invocation-envelope.md) — Supersedes 0166, **Reframes** 0159, Refs 0136, Refs ddr:0114
 
 ### `/sai-4-apply`
 
@@ -141,6 +144,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0165 — Dual coordinator inspection channels — verifying vs phase-static](./0165-dual-coordinator-inspection-channels.md) — Refs ddr:0151, Refs ddr:0152
 - [0166 — Dual-channel exclusivity is per cause surface](./0166-per-cause-surface-dual-channel-exclusivity.md) — **Amends** 0165
 - [0167 — Named Explore Auto cancellation exception in Bounded Recovery](./0167-explore-auto-cancellation-exception-in-bounded-recovery.md) — **Amends** 0158, Refs 0159
+- [0171 — Single-string invocation envelope across active SAI surfaces](./0171-single-string-invocation-envelope.md) — Supersedes 0166, **Reframes** 0159, Refs 0136, Refs ddr:0114
 
 ### `/sai-5-review`
 
@@ -148,22 +152,26 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0096 — Fail closed when dispatching owned worker sidecars](./0096-fail-closed-owned-worker-owner-dispatch.md) — Refs 0084, Refs 0085
 - [0107 — Unified audit severity vocabulary across the four report surfaces](./0107-unified-audit-severity-vocabulary.md) — Supersedes 0013
 - [0162 — Schema report templates point to write-time authority](./0162-schema-report-templates-point-to-write-time-authority.md) — Supersedes 0106
+- [0171 — Single-string invocation envelope across active SAI surfaces](./0171-single-string-invocation-envelope.md) — Supersedes 0166, **Reframes** 0159, Refs 0136, Refs ddr:0114
 
 ### `/sai-6-security`
 
 - [0107 — Unified audit severity vocabulary across the four report surfaces](./0107-unified-audit-severity-vocabulary.md) — Supersedes 0013
 - [0162 — Schema report templates point to write-time authority](./0162-schema-report-templates-point-to-write-time-authority.md) — Supersedes 0106
+- [0171 — Single-string invocation envelope across active SAI surfaces](./0171-single-string-invocation-envelope.md) — Supersedes 0166, **Reframes** 0159, Refs 0136, Refs ddr:0114
 
 ### `/sai-7-performance`
 
 - [0097 — Route performance by continuation capability](./0097-route-performance-by-continuation-capability.md) — Refs 0082, Refs 0083, Refs 0093
 - [0107 — Unified audit severity vocabulary across the four report surfaces](./0107-unified-audit-severity-vocabulary.md) — Supersedes 0013
 - [0162 — Schema report templates point to write-time authority](./0162-schema-report-templates-point-to-write-time-authority.md) — Supersedes 0106
+- [0171 — Single-string invocation envelope across active SAI surfaces](./0171-single-string-invocation-envelope.md) — Supersedes 0166, **Reframes** 0159, Refs 0136, Refs ddr:0114
 
 ### `/sai-8-accessibility`
 
 - [0107 — Unified audit severity vocabulary across the four report surfaces](./0107-unified-audit-severity-vocabulary.md) — Supersedes 0013
 - [0162 — Schema report templates point to write-time authority](./0162-schema-report-templates-point-to-write-time-authority.md) — Supersedes 0106
+- [0171 — Single-string invocation envelope across active SAI surfaces](./0171-single-string-invocation-envelope.md) — Supersedes 0166, **Reframes** 0159, Refs 0136, Refs ddr:0114
 
 ### `/sai-explore`
 
@@ -220,6 +228,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0156 — Build injects apply fast-track unconditionally; composition owns the banner](./0156-build-unconditional-apply-fast-track-banner-ownership.md) — Refs 0153, Refs 0048, Refs 0051, Refs ddr:0052
 - [0157 — Build launcher mirrors implement (not near-empty)](./0157-build-launcher-mirrors-implement.md) — Refs 0141, Refs 0142, Refs 0154
 - [0163 — Build inherits shared recovery only through the apply phase adapter](./0163-build-inherits-recovery-via-apply-adapter.md) — Refs 0154
+- [0171 — Single-string invocation envelope across active SAI surfaces](./0171-single-string-invocation-envelope.md) — Supersedes 0166, **Reframes** 0159, Refs 0136, Refs ddr:0114
 
 ### docker/orca
 
@@ -271,7 +280,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0009 — Claude-Specific Fetch Skill at skills/claude/fetch/](./0009-claude-specific-fetch-skill.md) — Refs 0003
 - [0048 — Single-source the `--fast-track` parse in each command's body file](./0048-single-source-fast-track-parse-in-body-file.md)
 - [0050 — Respect each harness's native argument-surface convention for `--fast-track`](./0050-respect-harness-native-argument-surface.md)
-- [0166 — Envelope-only change-name resolution for shared pickers and four cards](./0166-envelope-only-change-name-resolution.md) — Supersedes 0033, Supersedes 0034, Supersedes 0035, Supersedes 0049, Refs 0075, Refs 0136
+- [0171 — Single-string invocation envelope across active SAI surfaces](./0171-single-string-invocation-envelope.md) — Supersedes 0166, **Reframes** 0159, Refs 0136, Refs ddr:0114
 - [0051 — Model `--fast-track` as ephemeral in-conversation state only](./0051-ephemeral-in-conversation-fast-track-state.md) — Refs 0040
 - [0074 — Harness wrappers select coordinator or inline implementation planning](./0074-harness-wrappers-select-coordinator-or-inline-implementation-planning.md) — Refs 0035
 - [0077 — Keep model and continuation mechanics in harness-specific worker bindings](./0077-harness-specific-worker-bindings.md) — Refs 0074, Refs 0075, Refs 0076
@@ -350,6 +359,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0165 — Dual coordinator inspection channels — verifying vs phase-static](./0165-dual-coordinator-inspection-channels.md) — Refs ddr:0151, Refs ddr:0152
 - [0166 — Dual-channel exclusivity is per cause surface](./0166-per-cause-surface-dual-channel-exclusivity.md) — **Amends** 0165
 - [0167 — Named Explore Auto cancellation exception in Bounded Recovery](./0167-explore-auto-cancellation-exception-in-bounded-recovery.md) — **Amends** 0158, Refs 0159
+- [0171 — Single-string invocation envelope across active SAI surfaces](./0171-single-string-invocation-envelope.md) — Supersedes 0166, **Reframes** 0159, Refs 0136, Refs ddr:0114
 - [0168 — Explore item-10 diagnosis uses Review Engine and same-worker continue_after_recovery](./0168-explore-item-10-diagnosis-review-engine-same-worker.md) — Refs 0140, Refs 0158, Refs 0167
 - [0169 — Idea-list treats Diagnosis Round as recovery, not review](./0169-idea-list-diagnosis-round-is-recovery-not-review.md) — Refs 0116, Refs 0137, Refs 0168
 - [0171 — Item-10 diagnosis entry is shared non-clean set plus Explore cancellation exception](./0171-item-10-diagnosis-entry-shared-non-clean-plus-cancelled.md) — **Amends** 0168, Refs 0167, Refs 0158
@@ -388,7 +398,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0074 — Harness wrappers select coordinator or inline implementation planning](./0074-harness-wrappers-select-coordinator-or-inline-implementation-planning.md) — Refs 0035
 - [0077 — Keep model and continuation mechanics in harness-specific worker bindings](./0077-harness-specific-worker-bindings.md) — Refs 0074, Refs 0075, Refs 0076
 - [0078 — Design workflow selects routed or inline entry](./0078-design-workflow-selects-routed-or-inline-entry.md) — Refs 0074, Refs 0035
-- [0166 — Envelope-only change-name resolution for shared pickers and four cards](./0166-envelope-only-change-name-resolution.md) — Supersedes 0033, Supersedes 0034, Supersedes 0035, Supersedes 0049, Refs 0075, Refs 0136
+- [0171 — Single-string invocation envelope across active SAI surfaces](./0171-single-string-invocation-envelope.md) — Supersedes 0166, **Reframes** 0159, Refs 0136, Refs ddr:0114
 - [0082 — Keep canonical phase workers and bindings in mirrored orchestration subtrees](./0082-canonical-phase-workers-and-mirrored-bindings.md) — Refs 0077, Refs 0078
 - [0090 — Centralize Copilot inline planning lifecycle in one adapter](./0090-centralize-copilot-inline-planning-lifecycle.md) — Refs 0089, Refs 0083, Refs 0078, Refs 0074
 - [0091 — Manifest hash evidence for retired managed destinations](./0091-manifest-hash-evidence-for-retired-managed-destinations.md) — Refs 0084, Refs 0085, Refs 0055, Refs 0057
@@ -418,13 +428,13 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0075 — Normalize coordinator-worker exchange around an invocation envelope and lifecycle payload](./0075-normalized-invocation-envelope-and-lifecycle-payload.md) — Pair with 0076
 - [0080 — Design-to-implementation lifecycle boundary](./0080-design-to-implementation-lifecycle-boundary.md) — Refs 0075, Refs 0076
 - [0099 — Terminal routing failure and explicit fresh dispatch](./0099-terminal-routing-failure-and-explicit-fresh-dispatch.md) — Refs 0075, Refs 0076, Refs 0086
-- [0166 — Envelope-only change-name resolution for shared pickers and four cards](./0166-envelope-only-change-name-resolution.md) — Supersedes 0033, Supersedes 0034, Supersedes 0035, Supersedes 0049, Refs 0075, Refs 0136
+- [0171 — Single-string invocation envelope across active SAI surfaces](./0171-single-string-invocation-envelope.md) — Supersedes 0166, **Reframes** 0159, Refs 0136, Refs ddr:0114
 
 ### Fast-track mode
 
 - [0048 — Single-source the `--fast-track` parse in each command's body file](./0048-single-source-fast-track-parse-in-body-file.md)
 - [0050 — Respect each harness's native argument-surface convention for `--fast-track`](./0050-respect-harness-native-argument-surface.md)
-- [0166 — Envelope-only change-name resolution for shared pickers and four cards](./0166-envelope-only-change-name-resolution.md) — Supersedes 0033, Supersedes 0034, Supersedes 0035, Supersedes 0049, Refs 0075, Refs 0136
+- [0171 — Single-string invocation envelope across active SAI surfaces](./0171-single-string-invocation-envelope.md) — Supersedes 0166, **Reframes** 0159, Refs 0136, Refs ddr:0114
 - [0051 — Model `--fast-track` as ephemeral in-conversation state only](./0051-ephemeral-in-conversation-fast-track-state.md) — Refs 0040
 - [0059 — The fast-track branch auto-stay rule lives in `apply.md`, not in the `implement.md` Prerequisites template](./0059-fast-track-auto-stay-branch-rule-in-apply.md) — Pair with 0052
 - [0148 — Keep the three-file apply layout; redefine normative homes](./0148-keep-three-file-apply-layout-redefine-normative-homes.md) — Refs 0083
@@ -472,6 +482,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0165 — Dual coordinator inspection channels — verifying vs phase-static](./0165-dual-coordinator-inspection-channels.md) — Refs ddr:0151, Refs ddr:0152
 - [0166 — Dual-channel exclusivity is per cause surface](./0166-per-cause-surface-dual-channel-exclusivity.md) — **Amends** 0165
 - [0167 — Named Explore Auto cancellation exception in Bounded Recovery](./0167-explore-auto-cancellation-exception-in-bounded-recovery.md) — **Amends** 0158, Refs 0159
+- [0171 — Single-string invocation envelope across active SAI surfaces](./0171-single-string-invocation-envelope.md) — Supersedes 0166, **Reframes** 0159, Refs 0136, Refs ddr:0114
 
 ### Testability routing & RED → GREEN
 
@@ -578,6 +589,8 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 | [0166](./0166-per-cause-surface-dual-channel-exclusivity.md) | amends | [0165](./0165-dual-coordinator-inspection-channels.md) |
 | [0167](./0167-explore-auto-cancellation-exception-in-bounded-recovery.md) | amends | [0158](./0158-shared-non-clean-closure-diagnosis-in-command-runner.md) |
 | [0171](./0171-item-10-diagnosis-entry-shared-non-clean-plus-cancelled.md) | amends | [0168](./0168-explore-item-10-diagnosis-review-engine-same-worker.md) |
+| [0171](./0171-single-string-invocation-envelope.md) | supersedes | [0166](./0166-envelope-only-change-name-resolution.md) |
+| [0171](./0171-single-string-invocation-envelope.md) | reframes | [0159](./0159-marker-grammar-stays-on-two-string-envelope.md) |
 | [0166](./0166-envelope-only-change-name-resolution.md) | supersedes | [0033](./0033-echo-line-format-and-placement.md) |
 | [0166](./0166-envelope-only-change-name-resolution.md) | supersedes | [0034](./0034-resolution-precedence-wrapper-echo-first.md) |
 | [0166](./0166-envelope-only-change-name-resolution.md) | supersedes | [0035](./0035-harness-specific-adapter-carve-out.md) |
@@ -601,3 +614,4 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0034 — Resolution precedence — wrapper-echo check runs first](./0034-resolution-precedence-wrapper-echo-first.md) — Pair with 0033 — *Superseded by [0166](./0166-envelope-only-change-name-resolution.md)*
 - [0035 — Harness-specific adapter carve-out](./0035-harness-specific-adapter-carve-out.md) — Pair with 0033 — *Superseded by [0166](./0166-envelope-only-change-name-resolution.md)*
 - [0049 — Fast-track flag-strip precedes change-picker; cleaned change-name is authoritative](./0049-fast-track-flag-strip-before-change-picker.md) — *Superseded by [0166](./0166-envelope-only-change-name-resolution.md)*
+- [0166 — Envelope-only change-name resolution for shared pickers and four cards](./0166-envelope-only-change-name-resolution.md) — Supersedes 0033, Supersedes 0034, Supersedes 0035, Supersedes 0049, Refs 0075, Refs 0136 — *Superseded by [0171](./0171-single-string-invocation-envelope.md)*

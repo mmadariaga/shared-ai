@@ -72,6 +72,8 @@ const PHASE_CONTRACT_DIR = Object.freeze({
 });
 
 const PHASE_WORKER_IDENTITY = /^sai-[1278]-[a-z-]+-worker$|^sai-3-implementation-worker$|^sai-5-review-worker$|^sai-6-security-worker$/;
+const INVOCATION_ENVELOPE_FIELD = 'arguments_value';
+const RETIRED_INVOCATION_ENVELOPE_FIELD = ['wrapper', 'echo', 'value'].join('_');
 
 const APPLY_CONTRACT_BY_WORKER = Object.freeze(Object.fromEntries(
   APPLY_ROLES.map(role => [role.workerName, role.workerContract]),
@@ -89,8 +91,19 @@ function invalidEntry(index, field) {
   throw new Error(`Worker Matrix entry ${index} is missing required field: ${field}`);
 }
 
+function assertOneStringInvocationEnvelope(entry, index) {
+  const serialized = JSON.stringify(entry);
+  if (serialized.includes(RETIRED_INVOCATION_ENVELOPE_FIELD)) {
+    throw new Error(
+      `Worker Matrix entry ${index} declares retired ${RETIRED_INVOCATION_ENVELOPE_FIELD}; `
+      + `the InvocationEnvelope contains only ${INVOCATION_ENVELOPE_FIELD}`
+    );
+  }
+}
+
 function validateEntry(entry, index) {
   if (!entry || typeof entry !== 'object') throw new Error(`Worker Matrix entry ${index} must be an object`);
+  assertOneStringInvocationEnvelope(entry, index);
   if (entry.phase === APPLY_PHASE && APPLY_CONTRACT_BY_WORKER[entry.workerName] === undefined) {
     throw new Error(`Invalid Worker Matrix worker identity for ${entry.phase}: ${entry.workerName}`);
   }
@@ -179,6 +192,12 @@ function renderWorkerTemplate(template, parameters) {
   const rendered = template.replace(TOKEN, (_, token) => lookup(parameters, token));
   if (TOKEN.test(rendered)) throw new Error('Worker Matrix rendering left an unresolved template token');
   TOKEN.lastIndex = 0;
+  if (rendered.includes(RETIRED_INVOCATION_ENVELOPE_FIELD)) {
+    throw new Error(
+      `Worker Matrix rendering declares retired ${RETIRED_INVOCATION_ENVELOPE_FIELD}; `
+      + `the InvocationEnvelope contains only ${INVOCATION_ENVELOPE_FIELD}`
+    );
+  }
   return rendered;
 }
 

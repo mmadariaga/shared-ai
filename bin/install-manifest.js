@@ -25,6 +25,8 @@ const MATRIX_TEMPLATE_NAMES = Object.freeze([
 ]);
 const MATRIX_KINDS = new Set(['binding', 'agent']);
 const MATRIX_SCRATCH_RELATIVE = path.join('.tmp', 'collapse-sai-worker-matrix', 'matrix-sources');
+const INVOCATION_ENVELOPE_FIELD = 'arguments_value';
+const RETIRED_INVOCATION_ENVELOPE_FIELD = ['wrapper', 'echo', 'value'].join('_');
 const PHASE_WORKER_IDENTITIES = Object.freeze({
   spec: 'sai-1-spec-proposal-worker',
   design: 'sai-2-design-worker',
@@ -90,6 +92,30 @@ function patternToRegExp(pattern) {
 
 function matchesAny(relativePath, patterns) {
   return patterns.some(pattern => patternToRegExp(pattern).test(relativePath));
+}
+
+function assertOneStringInvocationEnvelope(value, location, seen = new Set()) {
+  if (typeof value === 'string') {
+    if (value.includes(RETIRED_INVOCATION_ENVELOPE_FIELD)) {
+      throw new Error(
+        `${location} declares retired ${RETIRED_INVOCATION_ENVELOPE_FIELD}; `
+        + `the InvocationEnvelope contains only ${INVOCATION_ENVELOPE_FIELD}`
+      );
+    }
+    return;
+  }
+  if (!value || typeof value !== 'object') return;
+  if (seen.has(value)) return;
+  seen.add(value);
+  if (Object.prototype.hasOwnProperty.call(value, RETIRED_INVOCATION_ENVELOPE_FIELD)) {
+    throw new Error(
+      `${location} declares retired ${RETIRED_INVOCATION_ENVELOPE_FIELD}; `
+      + `the InvocationEnvelope contains only ${INVOCATION_ENVELOPE_FIELD}`
+    );
+  }
+  for (const [key, child] of Object.entries(value)) {
+    assertOneStringInvocationEnvelope(child, `${location}.${key}`, seen);
+  }
 }
 
 function walkFiles(root) {
@@ -173,6 +199,19 @@ function validateMatrixEntriesForInstall(manifest, harness) {
   validateMatrixEntries(matrix.entries, harness);
 }
 
+function assertWorkerContractsUseOneStringEnvelope(matrix, { harness, repoRoot }) {
+  if (!matrix || !Array.isArray(matrix.entries)) return;
+  for (const entry of matrix.entries) {
+    if (!entry || typeof entry.workerContract !== 'string') continue;
+    const contractPath = path.resolve(repoRoot, entry.workerContract);
+    if (!fs.existsSync(contractPath) || !fs.statSync(contractPath).isFile()) continue;
+    assertOneStringInvocationEnvelope(
+      fs.readFileSync(contractPath, 'utf8'),
+      `${harness} worker contract ${entry.workerContract}`,
+    );
+  }
+}
+
 function validateMatrixBlock(matrix) {
   if (matrix === undefined) return;
   if (!matrix || typeof matrix !== 'object' || Array.isArray(matrix)) {
@@ -235,6 +274,7 @@ function validateMatrixBlock(matrix) {
 }
 
 function validateManifest(manifest) {
+  assertOneStringInvocationEnvelope(manifest, 'sai/install-manifest.json');
   if (manifest && !Array.isArray(manifest.projections) && typeof manifest.id === 'string') {
     validateRule(manifest);
     return;
@@ -335,6 +375,7 @@ function matrixProjectionId(harness, kind, item) {
 function matrixRenderFor(manifest, harness, repoRoot) {
   const matrix = manifest['worker-matrix'];
   if (!matrix) return [];
+  assertWorkerContractsUseOneStringEnvelope(matrix, { harness, repoRoot });
   const templates = {};
   for (const name of MATRIX_TEMPLATE_NAMES) {
     const templatePath = path.resolve(repoRoot, matrix.templates[name]);
@@ -342,6 +383,7 @@ function matrixRenderFor(manifest, harness, repoRoot) {
       throw new Error(`${harness} worker matrix: template ${name} does not exist: ${matrix.templates[name]}`);
     }
     templates[name] = fs.readFileSync(templatePath, 'utf8');
+    assertOneStringInvocationEnvelope(templates[name], `${harness} worker matrix template ${name}`);
   }
   const rendered = materializeWorkerMatrix(defineWorkerMatrix(matrix.entries), templates);
   return rendered
@@ -358,6 +400,7 @@ function matrixRenderFor(manifest, harness, repoRoot) {
 function expandWorkerMatrix(matrix, { harness, repoRoot, destinationRoot }) {
   const bindingsSection = matrix.bindings;
   const agentsSection = matrix.agents;
+  assertWorkerContractsUseOneStringEnvelope(matrix, { harness, repoRoot });
   if (!bindingsSection.harnesses.includes(harness) && !agentsSection.harnesses.includes(harness)) {
     return [];
   }
@@ -369,6 +412,7 @@ function expandWorkerMatrix(matrix, { harness, repoRoot, destinationRoot }) {
       throw new Error(`${harness} worker matrix: template ${name} does not exist: ${matrix.templates[name]}`);
     }
     templates[name] = fs.readFileSync(templatePath, 'utf8');
+    assertOneStringInvocationEnvelope(templates[name], `${harness} worker matrix template ${name}`);
   }
   let matrixDef;
   let rendered;

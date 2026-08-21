@@ -7,15 +7,12 @@ The change-picker capability resolves a missing change name from the invocation 
 ## Requirements
 ### Requirement: Invocation envelope provides change-name authority
 
-The change-picker SHALL use only the invocation envelope's `arguments_value` for direct change-name resolution. After trimming, a non-empty `arguments_value` SHALL be authoritative and SHALL pass through as the resolved change name without an OpenSpec query or user prompt. The `wrapper_echo_value` SHALL remain opaque invocation data, SHALL be forwarded unchanged with the envelope, and SHALL NOT be inspected as a change-name source. The change-picker SHALL NOT resolve a name from conversation history or require a labelled line.
+The change-picker SHALL use only the invocation envelope's `arguments_value` for direct change-name resolution. After trimming, a non-empty `arguments_value` SHALL be authoritative and SHALL pass through as the resolved change name without an OpenSpec query or user prompt. The change-picker SHALL NOT resolve a name from conversation history or require a labelled line.
 
 #### Scenario: trimmed arguments value is authoritative
 - **WHEN** a change-consuming `sai-*` command supplies an `arguments_value` whose trimmed value is non-empty
-- **THEN** the change-picker resolves the trimmed value as the change name, performs no OpenSpec query or user prompt, and forwards the opaque `wrapper_echo_value` unchanged
+- **THEN** the change-picker resolves the trimmed value as the change name and performs no OpenSpec query or user prompt
 
-#### Scenario: opaque wrapper value does not override arguments value
-- **WHEN** both `arguments_value` and `wrapper_echo_value` are present
-- **THEN** the trimmed `arguments_value` is selected and the `wrapper_echo_value` is not inspected for resolution
 
 #### Scenario: no transcript or label is required
 - **WHEN** a change-consuming `sai-*` command reaches the change-picker
@@ -23,15 +20,12 @@ The change-picker SHALL use only the invocation envelope's `arguments_value` for
 
 ### Requirement: Invocation Trigger
 
-The change-picker SHALL use the 0/1/N active-change picker only when `arguments_value` is empty after trimming. If `arguments_value` is empty or whitespace-only, the change-picker SHALL activate before any other command processing; the opaque `wrapper_echo_value` SHALL not suppress this fallback.
+The change-picker SHALL use the 0/1/N active-change picker only when `arguments_value` is empty after trimming. If `arguments_value` is empty or whitespace-only, the change-picker SHALL activate before any other command processing.
 
 #### Scenario: arguments value is missing
 - **WHEN** a change-consuming `sai-*` command supplies an empty or whitespace-only `arguments_value`
 - **THEN** the change-picker activates and runs the existing 0/1/N active-change resolution
 
-#### Scenario: empty arguments value with opaque wrapper data
-- **WHEN** `arguments_value` is empty after trimming and `wrapper_echo_value` is non-empty
-- **THEN** the change-picker still runs the existing 0/1/N resolution and forwards the opaque wrapper value unchanged
 
 ### Requirement: Consumer scope excludes sai-status
 

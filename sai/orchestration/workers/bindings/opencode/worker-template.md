@@ -6,6 +6,9 @@ exactly one bounded replacement task per run.
 {{panelRenderBinding}}Dispatch the worker once with the harness-native subagent primitive and capture the
 resulting task ID:
 
+The original InvocationEnvelope slot contains only the opaque `arguments_value`;
+binding metadata remains outside the worker request.
+
 ```
 task(subagent_type: "{{workerName}}", prompt: "Worker contract: Fetch @{{workerContract}} and follow it exactly.\n\nInvocationEnvelope:\n<original InvocationEnvelope>")
 ```

@@ -20,7 +20,7 @@
   On the non-clean route, when establishing Cause Locus, use the worker-authored `failure_class` as evidence and inspect only the authorized proposal/spec artifact surface: `proposal.md`, `specs/**`, and the permitted root `GLOSSARY.md`.
   The non-clean route may inspect only this authorized read set after resolution; it never gains write or repair authority.
 
-  Construct only two strings: `wrapper_echo_value` and `arguments_value`.
+  Construct only the opaque `arguments_value` string supplied by the active wrapper.
 
   Initialize an ordered duplicate-free changed-file union, opaque input history, pending feedback, and feedback iteration `0`.
 

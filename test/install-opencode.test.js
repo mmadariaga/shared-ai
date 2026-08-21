@@ -183,6 +183,53 @@ test('Step 3 roster validation is isolated to opencode consumers and fails befor
   assert.deepEqual(observation.entries, [], 'Opencode installation should fail before destination mutation');
 });
 
+test('Step 4 wrapper echo fields are rejected before Opencode destination mutation', () => {
+  const destination = path.join(CENSUS_SCRATCH_DIR, 'wrapper-echo-failure-destination');
+  const script = `
+    'use strict';
+    const fs = require('fs');
+    const path = require('path');
+    const bindingsDir = path.join(process.cwd(), 'sai', 'orchestration', 'workers', 'bindings', 'opencode');
+    const originalReadFileSync = fs.readFileSync;
+    let poisoned = false;
+    fs.readFileSync = (target, ...args) => {
+      const isBinding = typeof target === 'string' &&
+        path.resolve(path.dirname(target)) === path.resolve(bindingsDir) &&
+        /-worker\\.md$/.test(target);
+      const value = originalReadFileSync(target, ...args);
+      if (!isBinding || poisoned) return value;
+      poisoned = true;
+      const text = Buffer.isBuffer(value) ? value.toString('utf8') : String(value);
+      const injected = text.replace(/\\btask\\s*\\(\\s*\\{/,
+        match => match + '\\n  wrapper_echo_value: "",');
+      return injected === text ? text + '\\nwrapper_echo_value: ""\\n' : injected;
+    };
+    const flow = require(${JSON.stringify(path.join(__dirname, '..', 'bin', 'install-flow.js'))});
+    const destination = ${JSON.stringify(destination)};
+    fs.rmSync(destination, { recursive: true, force: true });
+    fs.mkdirSync(destination, { recursive: true });
+    const silence = console.log;
+    console.log = () => {};
+    let opencodeError = null;
+    try {
+      try { flow.installOpencode(destination); } catch (error) { opencodeError = error.message; }
+    } finally {
+      console.log = silence;
+    }
+    process.stdout.write(JSON.stringify({ opencodeError, entries: fs.readdirSync(destination) }));
+  `;
+  const result = childProcess.spawnSync(process.execPath, ['-e', script], {
+    cwd: path.join(__dirname, '..'),
+    encoding: 'utf8',
+  });
+  assert.equal(result.status, 0, result.stderr || 'wrapper echo validation probe should run');
+  const observation = JSON.parse(result.stdout);
+  assert.match(observation.opencodeError || '', /wrapper|echo|envelope|binding|dispatch|roster|worker/i,
+    'Opencode installation should reject a wrapper echo field during pre-mutation validation');
+  assert.deepEqual(observation.entries, [],
+    'Opencode installation must reject the wrapper echo field before destination mutation');
+});
+
 test('Step 2 initial Opencode task dispatches deliver the matching contract and preserve continuations', () => {
   fs.mkdirSync(STEP_2_SCRATCH_DIR, { recursive: true });
   const scratchDir = fs.mkdtempSync(path.join(STEP_2_SCRATCH_DIR, 'opencode-dispatch-'));
@@ -198,10 +245,13 @@ test('Step 2 initial Opencode task dispatches deliver the matching contract and 
       const continuations = calls.filter(call => /\btask_id\s*[:=]/.test(call));
 
       assert.equal(initial.length, 1, `${workerName} should have one initial task dispatch`);
-      assert.equal(decodePrompt(initial[0]), expectedWorkerPrompt(phase),
-        `specs/worker-dispatch-prompt-template/spec.md: ${workerName} should receive its matching worker contract`);
-      assert.match(decodePrompt(initial[0]), /InvocationEnvelope:\n<original InvocationEnvelope>$/,
-        `${workerName} should preserve the opaque InvocationEnvelope slot`);
+       const prompt = decodePrompt(initial[0]);
+       assert.equal(prompt, expectedWorkerPrompt(phase),
+         `specs/worker-dispatch-prompt-template/spec.md: ${workerName} should receive its matching worker contract`);
+       assert.doesNotMatch(prompt, /\bwrapper_echo_value\s*:/,
+         `${workerName} manifest-rendered worker prompt must not construct the wrapper echo field`);
+       assert.match(prompt, /InvocationEnvelope:\n<original InvocationEnvelope>$/,
+         `${workerName} should preserve the opaque InvocationEnvelope slot`);
       assert.ok(continuations.length > 0, `${workerName} should retain a continuation task dispatch`);
        for (const continuation of continuations) {
          assert.match(continuation, /\bprompt\s*[:=]\s*"<selected value>"/,
@@ -1579,8 +1629,9 @@ test('opencode boot adapter loads command-runner first, selects utility bodies, 
       'the opencode boot should load @sai/orchestration/command-runner.md before any card selection');
 
     assert.match(boot, /command_name/, 'the opencode boot should route on command_name');
-    assert.match(boot, /wrapper_echo_value/, 'the opencode boot should carry wrapper_echo_value');
     assert.match(boot, /arguments_value/, 'the opencode boot should carry arguments_value');
+     assert.doesNotMatch(boot, /\bwrapper_echo_value\s*:/,
+       'the opencode boot must not construct or forward the wrapper echo field');
     assert.match(boot, /byte-for-byte|verbatim|unchanged|without modification/i,
       'the opencode boot should forward envelope values byte-for-byte');
 

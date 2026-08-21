@@ -4,7 +4,16 @@ Fetch @sai/orchestration/worker-core.md and follow it exactly.
 
 ## Invocation Envelope
 
-The worker receives the Step's GREEN body and the dispatch-local rules; it receives no test-file content — the tests authored by the RED dispatch are never injected into the GREEN prompt. Every post-resolution lifecycle payload — `completed`, `needs_input`, `failed`, or `cancelled` — carries the worker-core closed envelope (`status`, `summary`, `changed_files`) and echoes the identical `resolved_change_name` supplied by the coordinator; pre-resolution payloads omit it. The worker never resolves a change: resolution is coordinator-owned and this worker SHALL NOT run any change-selection or change-listing query.
+The worker request carries only `arguments_value`, set to the resolved change
+name. The worker receives the Step's GREEN body and the dispatch-local rules as
+prompt content; it receives no test-file content — the tests authored by the
+RED dispatch are never injected into the GREEN prompt. Every post-resolution
+lifecycle payload — `completed`, `needs_input`, `failed`, or `cancelled` —
+carries the worker-core closed envelope (`status`, `summary`, `changed_files`)
+and echoes the identical `resolved_change_name` supplied by the coordinator;
+pre-resolution payloads omit it. The worker never resolves a change:
+resolution is coordinator-owned and this worker SHALL NOT run any
+change-selection or change-listing query.
 
 ## Dispatch-Local Progress Plan
 

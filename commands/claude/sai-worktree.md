@@ -9,5 +9,4 @@ Fetch @sai/commands/worktree/launcher.md and follow those instructions exactly, 
 
 InvocationEnvelope:
   command_name: worktree
-  wrapper_echo_value: ""
   arguments_value: $ARGUMENTS

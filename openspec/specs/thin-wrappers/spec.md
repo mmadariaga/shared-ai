@@ -4,7 +4,7 @@
 
 ### Requirement: wrapper-shape
 
-`commands/claude/sai-*.md` and `commands/opencode/sai-*.md` wrappers MUST be thin. The normative wrapper body shape — the three directives (harness fetch-skill load, harness boot-adapter load, launcher call to `@sai/commands/{name}/launcher.md`), the three-key invocation envelope placement, frontmatter preservation, forbidden sections, and the `sai-explore` load-set exception — is owned by `command-wrapper-body`'s `three-directive-wrapper-body`, `envelope-lives-in-the-wrapper`, and `explore-harness-specific-loads` requirements; this requirement SHALL NOT restate those rules. Within that envelope, a trimmed, non-empty `arguments_value` is authoritative and `wrapper_echo_value` is opaque forwarding data. The `sai-commands` skill (`skills/universal/sai-commands/SKILL.md`) and the `fetch` skill (`skills/fetch/SKILL.md`) are fetched only when explicitly required by the body contract, never inlined into the wrapper.
+`commands/claude/sai-*.md` and `commands/opencode/sai-*.md` wrappers MUST be thin. The normative wrapper body shape — the three directives (harness fetch-skill load, harness boot-adapter load, launcher call to `@sai/commands/{name}/launcher.md`), the two-key invocation envelope placement, frontmatter preservation, forbidden sections, and the `sai-explore` load-set exception — is owned by `command-wrapper-body`'s `three-directive-wrapper-body`, `envelope-lives-in-the-wrapper`, and `explore-harness-specific-loads` requirements; this requirement SHALL NOT restate those rules. Within that envelope, a trimmed, non-empty `arguments_value` is authoritative. The `sai-commands` skill (`skills/universal/sai-commands/SKILL.md`) and the `fetch` skill (`skills/fetch/SKILL.md`) are fetched only when explicitly required by the body contract, never inlined into the wrapper.
 
 #### Scenario: fetch-skill is allowed in wrappers
 
@@ -14,7 +14,7 @@
 #### Scenario: body shape verified at the owned contract
 
 - **WHEN** the wrapper body shape is verified
-- **THEN** the normative checks (directive set, three-key envelope placement, frontmatter preservation, forbidden sections) resolve to `command-wrapper-body`'s requirements, and no shape rule is duplicated anywhere in this capability
+- **THEN** the normative checks (directive set, two-key envelope placement, frontmatter preservation, forbidden sections) resolve to `command-wrapper-body`'s requirements, and no shape rule is duplicated anywhere in this capability
 
 ### Requirement: wrapper-file-list
 
@@ -32,7 +32,7 @@ The full set of sai-* wrapper files in `commands/claude/` and `commands/opencode
 
 ### Requirement: wrapper-template
 
-The wrapper template SHALL be the same for all 16 wrappers in each harness, sharing the skeleton defined by `command-wrapper-body`'s `three-directive-wrapper-body` — this requirement SHALL NOT restate the skeleton — with exactly these permitted per-file variances: the `{name}` token in the launcher-call line, the envelope's `command_name` value, the opaque `wrapper_echo_value`, and `sai-explore`'s additional harness-specific card and divergent binding loads, per `command-wrapper-body`'s `explore-harness-specific-loads`. Every wrapper SHALL remain label-free, and no wrapper SHALL use an old path like `@commands/sai/<cmd>.md` (the legacy `commands/sai/` source layout is forbidden by `source-layout`) or a flat `@sai/commands/<cmd>.md` body path (the folded per-command card namespace is governed by `wrapper-fetch-paths`).
+The wrapper template SHALL be the same for all 16 wrappers in each harness, sharing the skeleton defined by `command-wrapper-body`'s `three-directive-wrapper-body` — this requirement SHALL NOT restate the skeleton — with exactly these permitted per-file variances: the `{name}` token in the launcher-call line, the envelope's `command_name` value, and `sai-explore`'s additional harness-specific card and divergent binding loads, per `command-wrapper-body`'s `explore-harness-specific-loads`. Every wrapper SHALL remain label-free, and no wrapper SHALL use an old path like `@commands/sai/<cmd>.md` (the legacy `commands/sai/` source layout is forbidden by `source-layout`) or a flat `@sai/commands/<cmd>.md` body path (the folded per-command card namespace is governed by `wrapper-fetch-paths`).
 
 #### Scenario: sai-build follows the shared template
 
@@ -51,7 +51,6 @@ The wrapper template SHALL be the same for all 16 wrappers in each harness, shar
 
     InvocationEnvelope:
       command_name: archive
-      wrapper_echo_value: ""
       arguments_value: $ARGUMENTS
 
 - **THEN** it does NOT contain a `## Sai Archive` heading (the rewrite drops the legacy section heading)
@@ -63,7 +62,7 @@ The wrapper template SHALL be the same for all 16 wrappers in each harness, shar
 #### Scenario: opencode example mirrors the shape
 
 - **WHEN** `commands/opencode/sai-status.md` is read in its canonical form
-- **THEN** it contains the fetch-skill line, the opencode boot-adapter load, the launcher call to `@sai/commands/status/launcher.md`, and the standalone `InvocationEnvelope:` block with exactly `command_name`, `wrapper_echo_value`, and `arguments_value` — and no other content
+- **THEN** it contains the fetch-skill line, the opencode boot-adapter load, the launcher call to `@sai/commands/status/launcher.md`, and the standalone `InvocationEnvelope:` block with exactly `command_name` and `arguments_value` — and no other content
 
 ### Requirement: active-spec-uses-requirement-format
 

@@ -2,7 +2,18 @@
 
 Coordinator-owned checklist execution for `/sai-4-apply`. This card is fetched by the apply coordinator; it owns no change resolution, no worker dispatch, and no worker technical writes.
 
+## Worker Request Shape
+
+Each RED, GREEN, or green-exception dispatch carries only the opaque
+`arguments_value` request, set by the coordinator to the resolved change name.
+The matching Step contract, testing slice, and dispatch-local plan are
+contract-defined prompt content, not additional request fields; binding-owned
+metadata remains outside the worker request.
+
 ## Split-flow RED Gate
+
+In split-flow, both RED and GREEN worker requests carry only
+`arguments_value` plus the contract-defined prompt content.
 
 When a Step has a RED block, an exact unambiguous interface contract, and at least one production file, the RED→GREEN route is **split-flow**. Only a valid RED result permits the subsequent GREEN dispatch. The direct GREEN route remains available only when no RED block is present; it does not weaken this split-flow gate.
 

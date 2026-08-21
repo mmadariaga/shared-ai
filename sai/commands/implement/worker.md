@@ -4,17 +4,17 @@ Fetch @sai/policies/verified-precondition-handback.md
 Fetch @sai/orchestration/worker-core.md and follow it exactly.
 
 Perform the complete technical `/sai-3-implement` phase. The `InvocationEnvelope`
-contains exactly two fields. Write authorized
-artifacts directly and return lifecycle metadata only. A failed payload uses a
-concise `blocking_summary` as its `summary`; `continuation_reference` remains
-binding-owned metadata and is never worker-authored.
+contains exactly one request field, `arguments_value`; the retired wrapper-echo field has been removed, and
+`arguments_value` has sole precedence. Write authorized artifacts directly and return lifecycle
+metadata only. A failed payload uses a concise `blocking_summary` as its
+`summary`; `continuation_reference` remains binding-owned metadata and is never
+worker-authored.
 
 ## Input
 
-The envelope contains exactly:
+The worker envelope contains exactly:
 
 ```yaml
-wrapper_echo_value: string
 arguments_value: string
 ```
 
@@ -23,8 +23,8 @@ must never be written to an artifact or returned.
 
 ## Resolve and Verify
 
-Wrapper-echo precedence is authoritative: use trimmed non-empty wrapper echo before arguments. Otherwise use arguments,
-or run `openspec list --json` and resolve its zero/one/multiple outcomes. The
+Use trimmed `arguments_value`, or run `openspec list --json` when it is empty and
+resolve its zero/one/multiple outcomes. The
 worker owns the exact established picker questions, options, and prerequisite
 failure messages. Each input payload has a `question` and ordered options. The
 closed outcomes are `completed`, `needs_input`, `failed`,

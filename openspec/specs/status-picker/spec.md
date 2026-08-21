@@ -8,7 +8,7 @@ The status-picker capability defines the dedicated change-name picker instructio
 
 ### Requirement: sai-status uses a dedicated status-picker
 
-`sai-status` SHALL resolve a missing change name via a dedicated `sai/policies/status-picker.md` instruction rather than the shared `change-picker.md`. `status-picker.md` SHALL use the invocation-envelope machinery: a trimmed, non-empty `arguments_value` is authoritative, the opaque `wrapper_echo_value` is forwarded unchanged and ignored for name selection, and the 0/1/N fallback runs only when `arguments_value` is empty. `openspec list --json` SHALL be the sole source of change names for that fallback, followed by resolved-name substitution. Resolution SHALL NOT scan conversation history or require a labelled line. No other `sai-*` command SHALL fetch `status-picker.md`.
+`sai-status` SHALL resolve a missing change name via a dedicated `sai/policies/status-picker.md` instruction rather than the shared `change-picker.md`. `status-picker.md` SHALL use the invocation envelope's only request field: a trimmed, non-empty `arguments_value` is authoritative and the 0/1/N fallback runs only when it is empty. `openspec list --json` SHALL be the sole source of change names for that fallback, followed by resolved-name substitution. Resolution SHALL NOT scan conversation history or require a labelled line. No other `sai-*` command SHALL fetch `status-picker.md`.
 
 #### Scenario: sai-status fetches status-picker
 - **WHEN** `/sai-status` is invoked
@@ -16,11 +16,8 @@ The status-picker capability defines the dedicated change-name picker instructio
 
 #### Scenario: change name already provided is a no-op
 - **WHEN** `/sai-status` is invoked with a non-empty trimmed `arguments_value`
-- **THEN** `status-picker.md` is a no-op — no `openspec list --json` call and no user prompt — and the single-change panel is rendered for the provided change while forwarding `wrapper_echo_value` unchanged
+- **THEN** `status-picker.md` is a no-op — no `openspec list --json` call or user prompt is made, and the single-change panel is rendered for the provided change
 
-#### Scenario: opaque wrapper value is not a name source
-- **WHEN** `/sai-status` is invoked with an empty `arguments_value` and a non-empty `wrapper_echo_value`
-- **THEN** the wrapper value is forwarded opaquely and the status-picker uses its 0/1/N fallback instead of resolving the wrapper value as a change name
 
 ### Requirement: status-picker 0-change and 1-change branches match change-picker
 

@@ -197,6 +197,34 @@ test('Step 3 Claude and opencode bindings route only their canonical performance
   }
 });
 
+test('performance transport carries only arguments_value and contract metadata across dispatch, continuation, reconstruction, and progress', () => {
+  const coordinator = artifact('sai/commands/performance/coordinator.md');
+  const worker = artifact('sai/commands/performance/worker.md');
+  const bindings = [matrixBinding('claude', 'performance'), matrixBinding('opencode', 'performance')];
+
+  assert.match(coordinator, /original[_ ]envelope|original envelope/i,
+    'initial performance dispatch must retain the original envelope as coordinator state');
+  assert.match(coordinator, /dispatch[_ ]operation|dispatch.*worker/i,
+    'initial performance dispatch must use the routed worker operation');
+  assert.match(coordinator, /continuation[_ ]operation|continue.*same worker/i,
+    'performance continuation must use the binding-owned operation');
+  assert.match(coordinator, /replacement[_ ]reconstruction|replacement worker/i,
+    'performance replacement must use the reconstruction contract');
+  assert.match(coordinator, /Mark steps only from worker progress-event|coordinator[\s\S]{0,120}renders? the (?:full )?plan/i,
+    'performance progress ownership must remain with the coordinator');
+
+  for (const source of [coordinator, worker, ...bindings]) {
+    assert.match(source, /arguments_value/,
+      'each performance transport surface must carry arguments_value');
+    assert.doesNotMatch(source, /wrapper_echo_value/,
+      'no performance transport surface may carry wrapper_echo_value');
+  }
+  assert.match(bindings[0], /sai-7-performance-worker/);
+  assert.match(bindings[0], /Agent/);
+  assert.match(bindings[1], /sai-7-performance-worker/);
+  assert.match(bindings[1], /task/i);
+});
+
 test('Step 3 worker contract bounds delegated research evidence and rejects unauthorized operations', () => {
   const worker = artifact('sai/commands/performance/worker.md');
   assert.match(worker, /bounded evidence/i, 'the worker contract should bound research evidence');

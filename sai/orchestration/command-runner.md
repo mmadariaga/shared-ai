@@ -77,7 +77,7 @@ static, ordered `progress_plan` declaration and the optional static
 - `progress_plan` (optional — static, ordered, fully known at dispatch, immutable for the active adapter segment; under composition the pre-delta phrase "immutable for the invocation" means immutable for the active adapter segment, and a one-adapter invocation keeps segment scope identical to today's invocation scope)
 - `recovery_policy` (optional — static boolean, fully known at dispatch, immutable for the active adapter segment under the same segment reading as `progress_plan`)
 
-The dispatch passes exactly `wrapper_echo_value` and `arguments_value`; the
+The dispatch passes exactly `arguments_value`; the
 progress plan is declared by the phase adapter, is never carried in the
 dispatch envelope or in any reconstruction field, and survives same-worker
 continuation and replacement-worker reconstruction in invocation-scoped
@@ -147,16 +147,11 @@ supervising invocation — not by copying artifact bodies into the transition. T
 composition constructs each successor's `original_envelope` directly; it does not
 invoke a harness boot adapter or wrapper to produce that envelope. For a chained
 apply segment the composition-authorized envelope SHALL carry exactly:
-`command_name` set to the apply command identity for shape compatibility with the
-apply adapter's existing four-field envelope type (it is not a routing or
+`command_name` set to the apply command identity (it is not a routing or
 card-selection input on the chained path — the composition already selected the
-apply adapter), `wrapper_echo_value` set to the empty string (matching the
-established opaque-echo convention used by supervised chained design dispatch and
-other composition-built envelopes; consumers SHALL NOT parse or reinterpret it),
-`arguments_value` set to the already-resolved change name, and
-`continuation_reference` absent or empty at segment start. Worker dispatch inside
-the apply segment continues to use the runner's two-string worker envelope
-(`wrapper_echo_value`, `arguments_value`) as today. Apply's normalized fast-track
+apply adapter), and `arguments_value` set to the already-resolved change name.
+Worker dispatch inside the apply segment continues to use the runner's
+`arguments_value` worker envelope as today. Apply's normalized fast-track
 boolean and other supervisor-retained session signals are set by the composition
 as session state for that segment and are not required to appear as additional
 envelope keys. The historical apply boot-envelope versus worker-dispatch-envelope

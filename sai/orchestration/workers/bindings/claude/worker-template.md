@@ -6,6 +6,9 @@ exactly one bounded replacement dispatch per run.
 {{panelRenderBinding}}Dispatch the worker once with the harness-native background primitive and capture the
 resulting agent ID:
 
+The original InvocationEnvelope slot contains only the opaque `arguments_value`;
+binding metadata remains outside the worker request.
+
 ```
 Agent(
   name: "{{workerName}}",
