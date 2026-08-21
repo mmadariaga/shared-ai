@@ -6,8 +6,6 @@
 
 <TASK>
 
-  Fetch @sai/policies/change-picker.md and follow it exactly.
-
   ## Prerequisite checks
   Fetch @sai/policies/prereqs.md
 
@@ -17,24 +15,23 @@
   Do not create or modify any files if this check fails.
 
   ## Fast-track parse
-  Before proceeding, inspect `$ARGUMENTS` for the positional token `--fast-track`:
-  - If the token is present anywhere in `$ARGUMENTS`:
+  Before proceeding, inspect the boot-provided `arguments_value` for the positional token `--fast-track`:
+  - If the token is present anywhere in `arguments_value`:
     1. Set the normalized boolean session signal (fast-track signal) to active.
-    2. Remove the `--fast-track` token from `$ARGUMENTS` and trim surrounding whitespace.
+    2. Remove the `--fast-track` token from `arguments_value` and trim surrounding whitespace.
     3. Print the exact line `> FAST-TRACK MODE ACTIVE` exactly once per run as ordinary conversation text (do not write it to any file); the banner never repeats within the run.
     4. Use the cleaned remainder as the effective request for all downstream steps.
   - If the token is absent:
     1. Leave the normalized boolean session signal (fast-track signal) inactive.
-    2. Use `$ARGUMENTS` verbatim.
-
-  After the change-picker resolves a change name, if the resolved value still contains `--fast-track`:
-  1. Remove the token and trim surrounding whitespace.
-  2. Use the cleaned remainder as the effective change name for all downstream steps.
+    2. Use `arguments_value` verbatim.
 
   This section is the sole authority that detects `--fast-track`, removes the token
   from the argument stream before picker/dispatch, and sets the normalized boolean
   session signal on the standalone path. Do not move detect/remove/set into the
   coordinator or runner.
+
+  ## Change resolution
+  Fetch @sai/policies/change-picker.md and follow it exactly.
 
   ## Load behaviors (in order)
   Fetch @skills/budget/SKILL.md and use it
@@ -73,7 +70,7 @@
   Fetch @sai/policies/remember.md
 
   ## Run
-  **User's request:** $ARGUMENTS
+  **User's request:** cleaned boot-provided `arguments_value` after fast-track parse and change-picker resolution
 
   ## Chained activation (composition path)
 

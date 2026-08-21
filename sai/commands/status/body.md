@@ -16,11 +16,11 @@
   Fetch @sai/policies/remember.md
 
   ## Run
-  **User's request:** $ARGUMENTS
+  **User's request:** non-empty trimmed boot-provided `arguments_value`, or status-picker resolution when empty
 
   `sai-status` is a **read-only** progress panel for one OpenSpec change. It creates, modifies, or deletes NOTHING — not under `openspec/changes/{name}/`, not `openspec/specs/`, not `.openspec.yaml`. It dispatches no `budget-explorer` / `budget-executor` subagent and accepts no `--fast-track` flag. Run entirely in the main session: at most one `openspec status` CLI call plus a handful of local file reads.
 
-  After the change name is resolved (from `$ARGUMENTS`, or by `status-picker.md` when no name was given), render the panel with the algorithm below.
+  After the change name is resolved (from boot-provided `arguments_value`, or by `status-picker.md` when no name was given), render the panel with the algorithm below.
 
   ### Bulk mode — "See all" (all-changes table)
   If `status-picker.md` emitted the `> BULK-MODE ACTIVE` signal line (the user chose "See all" on the 2+ branch), render the bulk table below INSTEAD of the single-change panel, then STOP — do not run Steps A–E for any single change.

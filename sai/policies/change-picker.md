@@ -2,15 +2,17 @@
 
 Shared instruction that resolves a missing OpenSpec change name for change-consuming `sai-*` commands (`sai-2-design`, `sai-3-implement`, `sai-4-apply`, `sai-5-review`, `sai-6-security`, `sai-7-performance`, `sai-8-accessibility`, `sai-archive`, `sai-pr`). Fetched identically by every consumer — do not duplicate this logic inline in any command body. `sai-status` is deliberately NOT a consumer — it resolves change names via `sai/policies/status-picker.md` instead.
 
+## Envelope-only resolution source
+
+The boot envelope provides `arguments_value` and `wrapper_echo_value`. After trimming surrounding whitespace, a non-empty `arguments_value` is the sole authoritative supplied change-name source. `wrapper_echo_value` is retained and forwarded unchanged in the envelope but is ignored for resolution. No other source may supply or override a change name.
+
+When trimmed `arguments_value` is non-empty, use it as the resolved change name and skip the picker. When trimmed `arguments_value` is empty, run the existing 0/1/N picker below.
+
 ## Invocation trigger
 
-Run this instruction only when no change name is available from the wrapper-echo line and the consuming command's `$ARGUMENTS` is empty at the point the consuming command's fetch reaches it. If either source provides a non-empty change name, this instruction is a no-op: do not query OpenSpec, do not prompt the user, and proceed using the provided value exactly as before this capability existed. The wrapper-echo line check runs first; the `$ARGUMENTS` check is the fall-through path.
+The boot adapter provides `arguments_value`. Trim its surrounding whitespace before resolution. A non-empty trimmed `arguments_value` is the sole authoritative supplied change-name source: use it as the resolved change name and skip this picker. Run this instruction only when the trimmed `arguments_value` is empty. Do not use any other input source to resolve or override a change name.
 
-## Wrapper-Echo Resolution
-
-When the conversation history contains a line matching exactly one of the two accepted opencode wrapper-echo forms: `**Change-name argument:** <value>` or `**Change-name argument and and optional flags:** <value>` (two literal asterisks, the literal label text, a single space, and the change name; the value extends to the end of that line) with non-empty `<value>`, treat `<value>` as the resolved change name and skip the picker entirely. The scan covers the user message that invoked the command (the wrapper), so the line is reliably found even if tool results or model turns have appeared afterward. If the line is absent, or present with an empty or whitespace-only value, fall through to the existing `$ARGUMENTS` check and the 0/1/N picker logic.
-
-## Resolution (when `$ARGUMENTS` is empty)
+## Resolution (when trimmed `arguments_value` is empty)
 
 1. Run `openspec list --json` and parse the `changes` array. Use only `changes[].name` — no filesystem globbing of `openspec/changes/`, no additional CLI flags or dependencies.
 
@@ -28,4 +30,4 @@ Both prompts below are closed-choice: present the choices through the harness's 
 
 ## Resolved name substitution
 
-Once a change name is resolved (via step 3 or step 4 above), it becomes `$ARGUMENTS` for the remainder of the consuming command: every subsequent step (remaining prerequisite checks, instruction fetches, completion messages) uses the resolved name exactly as if the user had typed it.
+Once a change name is resolved (via step 3 or step 4 above), it becomes the effective `arguments_value` for the remainder of the consuming command: every subsequent step (remaining prerequisite checks, instruction fetches, completion messages) uses the resolved name exactly as if the user had typed it.
