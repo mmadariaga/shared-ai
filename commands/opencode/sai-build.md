@@ -12,5 +12,3 @@ InvocationEnvelope:
   command_name: build
   wrapper_echo_value: $ARGUMENTS
   arguments_value: $ARGUMENTS
-
-**Change-name argument:** $ARGUMENTS

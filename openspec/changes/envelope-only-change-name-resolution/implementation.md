@@ -326,19 +326,19 @@ Follow instruction on <TASK> step by step
 
 For each of the 13 files below, delete the trailing labelled argument line only. Leave YAML frontmatter byte-identical. Leave `InvocationEnvelope` with `command_name`, `wrapper_echo_value`, and `arguments_value` intact. After the envelope block, the file ends (no blank labelled line).
 
-- [ ] `commands/opencode/sai-1-spec.md` — delete line `**Spec request argument:** $ARGUMENTS`
-- [ ] `commands/opencode/sai-2-design.md` — delete line `**Change-name argument and and optional flags:** $ARGUMENTS`
-- [ ] `commands/opencode/sai-3-implement.md` — delete line `**Change-name argument:** $ARGUMENTS`
-- [ ] `commands/opencode/sai-4-apply.md` — delete line `**Change-name argument and and optional flags:** $ARGUMENTS`
-- [ ] `commands/opencode/sai-5-review.md` — delete line `**Change-name and optional parent-branch argument:** $ARGUMENTS`
-- [ ] `commands/opencode/sai-6-security.md` — delete line `**Security arguments:** $ARGUMENTS`
-- [ ] `commands/opencode/sai-7-performance.md` — delete line `**Performance arguments:** $ARGUMENTS`
-- [ ] `commands/opencode/sai-8-accessibility.md` — delete line `**Change-name argument:** $ARGUMENTS`
-- [ ] `commands/opencode/sai-archive.md` — delete line `**Change-name argument and and optional flags:** $ARGUMENTS`
-- [ ] `commands/opencode/sai-build.md` — delete line `**Change-name argument:** $ARGUMENTS`
-- [ ] `commands/opencode/sai-pr.md` — delete line `**Change-name argument:** $ARGUMENTS`
-- [ ] `commands/opencode/sai-status.md` — delete line `**Change-name argument and and optional flags:** $ARGUMENTS`
-- [ ] `commands/opencode/sai-worktree.md` — delete line `**Worktree arguments:** $ARGUMENTS`
+- [x] `commands/opencode/sai-1-spec.md` — delete line `**Spec request argument:** $ARGUMENTS`
+- [x] `commands/opencode/sai-2-design.md` — delete line `**Change-name argument and and optional flags:** $ARGUMENTS`
+- [x] `commands/opencode/sai-3-implement.md` — delete line `**Change-name argument:** $ARGUMENTS`
+- [x] `commands/opencode/sai-4-apply.md` — delete line `**Change-name argument and and optional flags:** $ARGUMENTS`
+- [x] `commands/opencode/sai-5-review.md` — delete line `**Change-name and optional parent-branch argument:** $ARGUMENTS`
+- [x] `commands/opencode/sai-6-security.md` — delete line `**Security arguments:** $ARGUMENTS`
+- [x] `commands/opencode/sai-7-performance.md` — delete line `**Performance arguments:** $ARGUMENTS`
+- [x] `commands/opencode/sai-8-accessibility.md` — delete line `**Change-name argument:** $ARGUMENTS`
+- [x] `commands/opencode/sai-archive.md` — delete line `**Change-name argument and and optional flags:** $ARGUMENTS`
+- [x] `commands/opencode/sai-build.md` — delete line `**Change-name argument:** $ARGUMENTS`
+- [x] `commands/opencode/sai-pr.md` — delete line `**Change-name argument:** $ARGUMENTS`
+- [x] `commands/opencode/sai-status.md` — delete line `**Change-name argument and and optional flags:** $ARGUMENTS`
+- [x] `commands/opencode/sai-worktree.md` — delete line `**Worktree arguments:** $ARGUMENTS`
 
 Canonical post-edit shape for a labelled wrapper (example `sai-3-implement.md` body after frontmatter):
 
@@ -353,14 +353,14 @@ InvocationEnvelope:
   arguments_value: $ARGUMENTS
 ```
 
-- [ ] Verify-only (no edit): `commands/opencode/sai-backfill.md`, `commands/opencode/sai-commit.md`, and `commands/opencode/sai-explore.md` contain no trailing labelled `**…:** $ARGUMENTS` line. If any of the three unexpectedly contains one, STOP and surface the finding — do not silently expand Files Affected.
-- [ ] Do not modify any file under `commands/claude/`.
+- [x] Verify-only (no edit): `commands/opencode/sai-backfill.md`, `commands/opencode/sai-commit.md`, and `commands/opencode/sai-explore.md` contain no trailing labelled `**…:** $ARGUMENTS` line. If any of the three unexpectedly contains one, STOP and surface the finding — do not silently expand Files Affected.
+- [x] Do not modify any file under `commands/claude/`.
 
 ##### Step 2 Verification Checklist
 
 **Automated (agent runs before stopping):**
-- [ ] `rg -n "^\*\*.*:\*\* \$ARGUMENTS" commands/opencode` — expected: no matches
-- [ ] Explicit absence of each known prefix across `commands/opencode/sai-*.md`:
+- [x] `rg -n "^\*\*.*:\*\* \$ARGUMENTS" commands/opencode` — expected: no matches
+- [x] Explicit absence of each known prefix across `commands/opencode/sai-*.md`:
   - `**Change-name argument:**`
   - `**Change-name argument and and optional flags:**`
   - `**Spec request argument:**`
@@ -368,8 +368,8 @@ InvocationEnvelope:
   - `**Security arguments:**`
   - `**Performance arguments:**`
   - `**Worktree arguments:**`
-- [ ] Every envelope-bearing opencode wrapper still matches `command_name:`, `wrapper_echo_value:`, and `arguments_value:`
-- [ ] `git diff -- commands/claude` — expected: empty (no Claude wrapper edits)
+- [x] Every envelope-bearing opencode wrapper still matches `command_name:`, `wrapper_echo_value:`, and `arguments_value:`
+- [x] `git diff -- commands/claude` — expected: empty (no Claude wrapper edits)
 
 *(No Human checks — service-side wrapper edits with no observable browser behavior.)*
 
@@ -573,3 +573,5 @@ Both harness boot adapters already forward `wrapper_echo_value` and `arguments_v
 |---|---|---|---|---|---|
 | 1 | green-direct | implementation | 1 | n/a | |
 | 1 | green-direct | green | 1 | n/a | |
+| 2 | green-direct | implementation | 1 | n/a | |
+| 2 | green-direct | green | 1 | n/a | |

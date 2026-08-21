@@ -10,5 +10,3 @@ InvocationEnvelope:
   command_name: security
   wrapper_echo_value: $ARGUMENTS
   arguments_value: $ARGUMENTS
-
-**Security arguments:** $ARGUMENTS

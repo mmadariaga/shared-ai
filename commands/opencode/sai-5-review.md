@@ -10,5 +10,3 @@ InvocationEnvelope:
   command_name: review
   wrapper_echo_value: $ARGUMENTS
   arguments_value: $ARGUMENTS
-
-**Change-name and optional parent-branch argument:** $ARGUMENTS

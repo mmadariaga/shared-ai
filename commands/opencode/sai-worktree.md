@@ -10,5 +10,3 @@ InvocationEnvelope:
   command_name: worktree
   wrapper_echo_value: $ARGUMENTS
   arguments_value: $ARGUMENTS
-
-**Worktree arguments:** $ARGUMENTS

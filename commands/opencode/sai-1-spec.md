@@ -11,5 +11,3 @@ InvocationEnvelope:
   command_name: spec
   wrapper_echo_value: $ARGUMENTS
   arguments_value: $ARGUMENTS
-
-**Spec request argument:** $ARGUMENTS
