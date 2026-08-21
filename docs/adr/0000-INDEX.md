@@ -589,12 +589,12 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 | [0166](./0166-per-cause-surface-dual-channel-exclusivity.md) | amends | [0165](./0165-dual-coordinator-inspection-channels.md) |
 | [0167](./0167-explore-auto-cancellation-exception-in-bounded-recovery.md) | amends | [0158](./0158-shared-non-clean-closure-diagnosis-in-command-runner.md) |
 | [0171](./0171-item-10-diagnosis-entry-shared-non-clean-plus-cancelled.md) | amends | [0168](./0168-explore-item-10-diagnosis-review-engine-same-worker.md) |
-| [0171](./0171-single-string-invocation-envelope.md) | supersedes | [0166](./0166-envelope-only-change-name-resolution.md) |
+| [0171](./0171-single-string-invocation-envelope.md) | supersedes | [0166](./archive/0166-envelope-only-change-name-resolution.md) |
 | [0171](./0171-single-string-invocation-envelope.md) | reframes | [0159](./0159-marker-grammar-stays-on-two-string-envelope.md) |
-| [0166](./0166-envelope-only-change-name-resolution.md) | supersedes | [0033](./0033-echo-line-format-and-placement.md) |
-| [0166](./0166-envelope-only-change-name-resolution.md) | supersedes | [0034](./0034-resolution-precedence-wrapper-echo-first.md) |
-| [0166](./0166-envelope-only-change-name-resolution.md) | supersedes | [0035](./0035-harness-specific-adapter-carve-out.md) |
-| [0166](./0166-envelope-only-change-name-resolution.md) | supersedes | [0049](./0049-fast-track-flag-strip-before-change-picker.md) |
+| [0166](./archive/0166-envelope-only-change-name-resolution.md) | supersedes | [0033](./archive/0033-echo-line-format-and-placement.md) |
+| [0166](./archive/0166-envelope-only-change-name-resolution.md) | supersedes | [0034](./archive/0034-resolution-precedence-wrapper-echo-first.md) |
+| [0166](./archive/0166-envelope-only-change-name-resolution.md) | supersedes | [0035](./archive/0035-harness-specific-adapter-carve-out.md) |
+| [0166](./archive/0166-envelope-only-change-name-resolution.md) | supersedes | [0049](./archive/0049-fast-track-flag-strip-before-change-picker.md) |
 
 ## Superseded ADRs (historical)
 
@@ -610,8 +610,8 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0029 — Surgical merge of the opencode `agent` block via jsonc-parser](./0029-jsonc-parser-surgical-merge-for-opencode-agent-block.md) — Refs 0031 — *Historical: the agent-block merge is retired*
 - [0139 — Use fresh read-only reviewers with worker-owned artifact edits](./0139-fresh-read-only-reviewers-with-worker-owned-edits.md) — Refs ddr:0105 — *Superseded by [0158](./0158-delete-worker-owned-planning-artifact-review-loop.md)*
 - [0106 — Keep both report template families with pinned skeleton parity](./0106-keep-both-report-template-families-pinned-parity.md) — *Superseded by [0162](./0162-schema-report-templates-point-to-write-time-authority.md)*
-- [0033 — Echo line format and placement](./0033-echo-line-format-and-placement.md) — *Superseded by [0166](./0166-envelope-only-change-name-resolution.md)*
-- [0034 — Resolution precedence — wrapper-echo check runs first](./0034-resolution-precedence-wrapper-echo-first.md) — Pair with 0033 — *Superseded by [0166](./0166-envelope-only-change-name-resolution.md)*
-- [0035 — Harness-specific adapter carve-out](./0035-harness-specific-adapter-carve-out.md) — Pair with 0033 — *Superseded by [0166](./0166-envelope-only-change-name-resolution.md)*
-- [0049 — Fast-track flag-strip precedes change-picker; cleaned change-name is authoritative](./0049-fast-track-flag-strip-before-change-picker.md) — *Superseded by [0166](./0166-envelope-only-change-name-resolution.md)*
-- [0166 — Envelope-only change-name resolution for shared pickers and four cards](./0166-envelope-only-change-name-resolution.md) — Supersedes 0033, Supersedes 0034, Supersedes 0035, Supersedes 0049, Refs 0075, Refs 0136 — *Superseded by [0171](./0171-single-string-invocation-envelope.md)*
+- [0033 — Echo line format and placement](./archive/0033-echo-line-format-and-placement.md) — *ARCHIVED to ./archive/ — the labelled wrapper-echo transport it mandates no longer exists; superseded by [0166](./archive/0166-envelope-only-change-name-resolution.md), retired by [0171](./0171-single-string-invocation-envelope.md)*
+- [0034 — Resolution precedence — wrapper-echo check runs first](./archive/0034-resolution-precedence-wrapper-echo-first.md) — Pair with 0033 — *ARCHIVED to ./archive/ — wrapper-echo resolution precedence no longer exists under the single-string envelope; superseded by [0166](./archive/0166-envelope-only-change-name-resolution.md), retired by [0171](./0171-single-string-invocation-envelope.md)*
+- [0035 — Harness-specific adapter carve-out](./archive/0035-harness-specific-adapter-carve-out.md) — Pair with 0033 — *ARCHIVED to ./archive/ — carve-out existed solely for the retired echo-line asymmetry; superseded by [0166](./archive/0166-envelope-only-change-name-resolution.md)*
+- [0049 — Fast-track flag-strip precedes change-picker; cleaned change-name is authoritative](./archive/0049-fast-track-flag-strip-before-change-picker.md) — *ARCHIVED to ./archive/ — built on wrapper-echo resolution, which no longer exists; superseded by [0166](./archive/0166-envelope-only-change-name-resolution.md), retired by [0171](./0171-single-string-invocation-envelope.md)*
+- [0166 — Envelope-only change-name resolution for shared pickers and four cards](./archive/0166-envelope-only-change-name-resolution.md) — Supersedes 0033, Supersedes 0034, Supersedes 0035, Supersedes 0049, Refs 0075, Refs 0136 — *ARCHIVED to ./archive/ — retains and forwards `wrapper_echo_value`, which the single-string envelope removed; superseded by [0171](./0171-single-string-invocation-envelope.md)*
