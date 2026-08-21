@@ -127,24 +127,24 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 
 - [0012 — Mutation Analysis (pass 11) as a dedicated protocol section in review.md](./0012-mutation-analysis-as-dedicated-protocol-section.md)
 - [0096 — Fail closed when dispatching owned worker sidecars](./0096-fail-closed-owned-worker-owner-dispatch.md) — Refs 0084, Refs 0085
-- [0106 — Keep both report template families with pinned skeleton parity](./0106-keep-both-report-template-families-pinned-parity.md)
 - [0107 — Unified audit severity vocabulary across the four report surfaces](./0107-unified-audit-severity-vocabulary.md) — Supersedes 0013
+- [0162 — Schema report templates point to write-time authority](./0162-schema-report-templates-point-to-write-time-authority.md) — Supersedes 0106
 
 ### `/sai-6-security`
 
-- [0106 — Keep both report template families with pinned skeleton parity](./0106-keep-both-report-template-families-pinned-parity.md)
 - [0107 — Unified audit severity vocabulary across the four report surfaces](./0107-unified-audit-severity-vocabulary.md) — Supersedes 0013
+- [0162 — Schema report templates point to write-time authority](./0162-schema-report-templates-point-to-write-time-authority.md) — Supersedes 0106
 
 ### `/sai-7-performance`
 
 - [0097 — Route performance by continuation capability](./0097-route-performance-by-continuation-capability.md) — Refs 0082, Refs 0083, Refs 0093
-- [0106 — Keep both report template families with pinned skeleton parity](./0106-keep-both-report-template-families-pinned-parity.md)
 - [0107 — Unified audit severity vocabulary across the four report surfaces](./0107-unified-audit-severity-vocabulary.md) — Supersedes 0013
+- [0162 — Schema report templates point to write-time authority](./0162-schema-report-templates-point-to-write-time-authority.md) — Supersedes 0106
 
 ### `/sai-8-accessibility`
 
-- [0106 — Keep both report template families with pinned skeleton parity](./0106-keep-both-report-template-families-pinned-parity.md)
 - [0107 — Unified audit severity vocabulary across the four report surfaces](./0107-unified-audit-severity-vocabulary.md) — Supersedes 0013
+- [0162 — Schema report templates point to write-time authority](./0162-schema-report-templates-point-to-write-time-authority.md) — Supersedes 0106
 
 ### `/sai-explore`
 
@@ -262,8 +262,8 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0098 — Register the performance worker through managed projections](./0098-register-performance-worker-through-managed-projections.md) — Refs 0084, Refs 0085, Refs 0096
 - [0099 — Terminal routing failure and explicit fresh dispatch](./0099-terminal-routing-failure-and-explicit-fresh-dispatch.md) — Refs 0075, Refs 0076, Refs 0086
 - [0100 — Neutral installed worker-binding destinations with harness-specific sources](./0100-neutral-installed-worker-binding-destinations.md) — Refs 0077, Refs 0084, Refs 0088
-- [0106 — Keep both report template families with pinned skeleton parity](./0106-keep-both-report-template-families-pinned-parity.md)
 - [0128 — Keep generic OpenCode behavior in canonical SAI policies behind Fetch wrappers](./0128-canonical-generic-opencode-behavior-behind-fetch-wrappers.md)
+- [0162 — Schema report templates point to write-time authority](./0162-schema-report-templates-point-to-write-time-authority.md) — Supersedes 0106
 - [0130 — Reuse the recursive SAI policy projection for generic agents](./0130-reuse-recursive-sai-policy-projection-for-generic-agents.md)
 - [0131 — Keep OpenCode budget skills behind canonical behavior policies](./0131-canonicalize-opencode-budget-skill-behavior.md)
 - [0132 — Reconcile the executor capability at the canonical Fetch boundary](./0132-reconcile-executor-capability-at-fetch-boundary.md)
@@ -522,6 +522,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 | [0146](./0146-crystallization-close-selector-replaces-the-pipeline-token.md) | reverses | [0058](./0058-gate-ux-tweaks-as-deltas-against-existing-capabilities.md) |
 | [0150](./0150-recovery-pool-segment-scoped-under-composition.md) | amends | [0139](./0139-presence-only-bounded-recovery-policy.md) |
 | [0158](./0158-delete-worker-owned-planning-artifact-review-loop.md) | supersedes | [0139](./0139-fresh-read-only-reviewers-with-worker-owned-edits.md) |
+| [0162](./0162-schema-report-templates-point-to-write-time-authority.md) | supersedes | [0106](./0106-keep-both-report-template-families-pinned-parity.md) |
 
 ## Superseded ADRs (historical)
 
@@ -536,3 +537,5 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0118 — Per-harness wall-clock commands live in the harness bindings, never in the neutral policy](./0118-per-harness-wall-clock-commands-in-bindings.md) — Refs 0077 — *Superseded by [ddr:0141](../ddr/0141-milestone-stamp-is-closure-only-and-derived-from-emitted-on.md)*
 - [0029 — Surgical merge of the opencode `agent` block via jsonc-parser](./0029-jsonc-parser-surgical-merge-for-opencode-agent-block.md) — Refs 0031 — *Historical: the agent-block merge is retired*
 - [0139 — Use fresh read-only reviewers with worker-owned artifact edits](./0139-fresh-read-only-reviewers-with-worker-owned-edits.md) — Refs ddr:0105 — *Superseded by [0158](./0158-delete-worker-owned-planning-artifact-review-loop.md)*
+- [0106 — Keep both report template families with pinned skeleton parity](./0106-keep-both-report-template-families-pinned-parity.md) — *Superseded by [0162](./0162-schema-report-templates-point-to-write-time-authority.md)*
+
