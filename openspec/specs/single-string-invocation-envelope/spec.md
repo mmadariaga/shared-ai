@@ -8,13 +8,13 @@ Define the canonical two-key wrapper envelope and one-string worker dispatch use
 
 ### Requirement: canonical wrapper envelope has one argument field
 
-Every supported Claude Code and opencode wrapper SHALL retain its `command_name` card-selection field and SHALL carry the complete invocation request only in `arguments_value`. Its standalone `InvocationEnvelope:` block SHALL contain exactly those two keys, in that order, with `$ARGUMENTS` substituted only into `arguments_value`. `wrapper_echo_value` SHALL NOT appear in any active wrapper, adapter, or card envelope.
+Every supported Claude Code and opencode wrapper SHALL retain its `command_name` card-selection field and SHALL carry the complete invocation request only in `arguments_value`. Its standalone `InvocationEnvelope:` block SHALL contain exactly those two keys, in that order, with `$ARGUMENTS` substituted only into `arguments_value`. The retired wrapper-echo field SHALL NOT appear in any active wrapper, adapter, or card envelope.
 
 #### Scenario: both harnesses use the same two-key wrapper shape
 
 - **WHEN** a routed or utility wrapper is read
 - **THEN** its envelope contains `command_name` followed by `arguments_value`
-- **AND** it contains no `wrapper_echo_value`, labelled argument line, or trailing envelope content
+- **AND** it contains no retired wrapper-echo field, labelled argument line, or trailing envelope content
 
 #### Scenario: empty arguments remain meaningful
 
@@ -60,7 +60,7 @@ Active instructions, policies, specifications, installer projections, and struct
 #### Scenario: stale field assertions are removed
 
 - **WHEN** the active contract and projection checks are run
-- **THEN** they reject reintroduction of `wrapper_echo_value` into the active envelope
+- **THEN** they reject reintroduction of the retired wrapper-echo field into the active envelope
 - **AND** they continue to verify Claude Code and opencode parity
 
 ### Requirement: modified delta titles match live capabilities

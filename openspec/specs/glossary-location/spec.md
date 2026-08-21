@@ -64,10 +64,10 @@ The SAI tooling SHALL look only at the project-root `GLOSSARY.md` going forward.
 
 ### Requirement: Boot Request vocabulary tracks the active envelope
 
-The canonical project-root `GLOSSARY.md` SHALL define **Boot Request** using the active envelope vocabulary: `command_name`, `arguments_value`, and any optional harness-owned continuation reference, without a wrapper-echo value. The spec phase SHALL record this as a downstream documentation consequence; this change run SHALL not edit `GLOSSARY.md`.
+The canonical project-root `GLOSSARY.md` SHALL define **Boot Request** using the active envelope vocabulary: `command_name`, `arguments_value`, and any optional harness-owned continuation reference, without the retired wrapper-echo value. The spec phase SHALL record this as a downstream documentation consequence; this change run SHALL not edit `GLOSSARY.md`.
 
 #### Scenario: glossary update is verifiable downstream
 
 - **WHEN** the implementation updates the canonical glossary
-- **THEN** the **Boot Request** definition no longer names `wrapper_echo_value`
+- **THEN** the **Boot Request** definition no longer names the retired wrapper-echo value
 - **AND** it names the remaining command, argument, and continuation concepts consistently with the active envelope requirements
