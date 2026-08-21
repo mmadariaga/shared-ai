@@ -550,20 +550,20 @@ test('Diagnosis Round is recovery feedback and not a Supervised Review Round', (
 
 *(Non-testable verification-only step — no path creates, modifies, deletes, or renames. No new assertions.)*
 
-- [ ] From repo root, run exactly:
+- [x] From repo root, run exactly:
 
 ```bash
 node --test test/bounded-worker-recovery.test.js test/explore-pipeline-selector.test.js test/glossary-diagnosis-terms.test.js
 ```
 
-- [ ] Expected: exit 0. If any failure occurs, fix it in the owning Step 1–4 files (do not add Step-5-only assertions). Re-run until green.
+- [x] Expected: exit 0. If any failure occurs, fix it in the owning Step 1–4 files (do not add Step-5-only assertions). Re-run until green.
 
 ##### Step 5 Verification Checklist
 
 **Automated (agent runs before stopping):**
-- [ ] Focused three-file suite exits 0
-- [ ] No further source or test edits were introduced solely in this step
-- [ ] Combined run still encodes Step 1–4 pins without a second recovery implementation or Explore write authority
+- [x] Focused three-file suite exits 0
+- [x] No further source or test edits were introduced solely in this step
+- [x] Combined run still encodes Step 1–4 pins without a second recovery implementation or Explore write authority
 
 *(No Human checks — service-side step with no observable browser behavior.)*
 
