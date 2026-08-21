@@ -166,7 +166,7 @@ Cross-link ADR 0167 only if a Related-style note already exists in the runner; d
 
 ##### RED phase
 
-- [ ] Append the following new tests to `test/explore-pipeline-selector.test.js` (end of file is fine). Reuse existing helpers (`exploreContract`, `supervisionContract`, `spec`, `artifact`) already defined in the file.
+- [x] Append the following new tests to `test/explore-pipeline-selector.test.js` (end of file is fine). Reuse existing helpers (`exploreContract`, `supervisionContract`, `spec`, `artifact`) already defined in the file.
 
 ```js
 test('item-10 failed worker starts one phase-selected Review Engine diagnosis round', () => {
@@ -290,13 +290,13 @@ test('item-10 exhausted or failed diagnosis leaves change retryable with phase g
 });
 ```
 
-- [ ] Verify RED: run `node --test test/explore-pipeline-selector.test.js` — expected: **assertion failure** on the new item-10 diagnosis pins. If an existing test asserts immediate-stop-only failed/cancelled behavior (e.g. wording that forbids any diagnosis after fail/cancel), **rewrite that conflicting assertion in RED** so it pins the new bounded route instead — the suite must be green after GREEN of this step.
+- [x] Verify RED: run `node --test test/explore-pipeline-selector.test.js` — expected: **assertion failure** on the new item-10 diagnosis pins. If an existing test asserts immediate-stop-only failed/cancelled behavior (e.g. wording that forbids any diagnosis after fail/cancel), **rewrite that conflicting assertion in RED** so it pins the new bounded route instead — the suite must be green after GREEN of this step.
 
-- [ ] **GATE — DO NOT PROCEED to GREEN until RED is verified.**
+- [x] **GATE — DO NOT PROCEED to GREEN until RED is verified.**
 
 ##### GREEN phase (only after RED is verified)
 
-- [ ] Edit `sai/commands/explore/instructions.md` item 10. Replace the **immediate** failed/cancelled stop (currently around the paragraphs that say report outcome, clear `active_change`, keep retryable, perform no repair — and the parallel in-session round interruption paragraphs that stop without diagnosis) with the bounded diagnosis route below. Preserve:
+- [x] Edit `sai/commands/explore/instructions.md` item 10. Replace the **immediate** failed/cancelled stop (currently around the paragraphs that say report outcome, clear `active_change`, keep retryable, perform no repair — and the parallel in-session round interruption paragraphs that stop without diagnosis) with the bounded diagnosis route below. Preserve:
   - Existing phase-guidance lines (`Next step: run /sai-1-spec…` / `/sai-2-design…`)
   - Autonomy audit at failed/cancelled endings
   - Clean completed / needs_input / progress / notice / pre-resolution behavior
@@ -323,16 +323,16 @@ test('item-10 exhausted or failed diagnosis leaves change retryable with phase g
 
 5. **Build boundary:** Do not modify `sai/commands/build/coordinator.md`; Build receives no Explore diagnosis counter or delegated-write exception from this route.
 
-- [ ] Verify GREEN: run `node --test test/explore-pipeline-selector.test.js` — expected: **PASS**.
+- [x] Verify GREEN: run `node --test test/explore-pipeline-selector.test.js` — expected: **PASS**.
 
 ##### Step 2 Verification Checklist
 
 **Automated (agent runs before stopping):**
-- [ ] RED verified — new item-10 diagnosis pins fail before GREEN
-- [ ] GREEN verified — `node --test test/explore-pipeline-selector.test.js` passes
-- [ ] Existing selector / supervised-round / phase-guidance pins remain green
-- [ ] `sai/commands/build/coordinator.md` unchanged
-- [ ] No harness idea-list binding files edited
+- [x] RED verified — new item-10 diagnosis pins fail before GREEN
+- [x] GREEN verified — `node --test test/explore-pipeline-selector.test.js` passes
+- [x] Existing selector / supervised-round / phase-guidance pins remain green
+- [x] `sai/commands/build/coordinator.md` unchanged
+- [x] No harness idea-list binding files edited
 
 *(No Human checks — service-side step with no observable browser behavior.)*
 
@@ -588,3 +588,5 @@ After all steps are applied, optional smoke (from design Manual Verification) ma
 |---|---|---|---|---|---|
 | 1 | red | red | 1 | n/a | |
 | 1 | green | green | 2 | assertion | Cancellation exception wording was incomplete; the production-only correction then passed. |
+| 2 | red | red | 2 | assertion | Initial diagnosis-window anchor was corrected; existing tests remained green. |
+| 2 | green | green | 6 | assertion | Bounded-diagnosis contract wording was refined until the required verification passed. |

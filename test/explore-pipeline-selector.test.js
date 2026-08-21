@@ -1126,3 +1126,130 @@ test('Step 4: post-selector prose localizes while command and review-loop litera
       `${literal} should remain verbatim in post-selector prose`);
   }
 });
+
+const artifact = relativePath => spec(relativePath);
+
+test('Step 2 item-10 starts one phase-selected Review Engine diagnosis round after worker failure', () => {
+  const source = supervisionContract();
+  const start = source.search(/diagnosis_rounds/i);
+  assert.ok(start >= 0, 'item-10 diagnosis source should exist');
+  const diagnosis = source.slice(start, start + 7000);
+
+  assert.match(source, /diagnosis_rounds/);
+  assert.match(
+    diagnosis,
+    /(?:failed|cancelled)[\s\S]{0,900}Review\s+Engine\s*\(\s*changeName\s*,\s*["'`]sai-(?:1|2)["'`]\s*\)|Review\s+Engine\s*\(\s*changeName\s*,\s*["'`]sai-(?:1|2)["'`]\s*\)[\s\S]{0,900}(?:failed|cancelled)/i,
+    'failed or cancelled workers should enter a phase-selected Review Engine diagnosis'
+  );
+
+  let previous = -1;
+  for (const label of ['Reported', 'Evidence', 'Cause', 'Correction', 'Verification']) {
+    const index = diagnosis.indexOf(label);
+    assert.ok(index >= 0, `diagnosis should include ${label}`);
+    assert.ok(index > previous, `diagnosis labels should remain ordered through ${label}`);
+    previous = index;
+  }
+
+  assert.match(diagnosis, /continue_after_recovery/);
+  assert.match(
+    diagnosis,
+    /(?:at most one[\s\S]{0,220}(?:same[- ]worker[\s\S]{0,120}(?:re[- ]?dispatch|dispatch)|(?:re[- ]?dispatch|dispatch)[\s\S]{0,120}same[- ]worker)|same[- ]worker[\s\S]{0,220}(?:re[- ]?dispatch|dispatch)[\s\S]{0,120}at most one)/i,
+    'diagnosis permits at most one same-worker re-dispatch'
+  );
+});
+
+test('Step 2 item-10 cancelled workers use the Explore-specific diagnosis path', () => {
+  const source = exploreContract();
+  const start = source.search(/diagnosis_rounds/i);
+  assert.ok(start >= 0, 'item-10 diagnosis source should exist');
+  const diagnosis = source.slice(start, start + 7000);
+
+  assert.match(diagnosis, /item[- ]?10[\s\S]{0,500}(?:cancelled|cancellation)|(?:cancelled|cancellation)[\s\S]{0,500}item[- ]?10/i);
+  assert.match(
+    diagnosis,
+    /(?:cancelled|cancellation)[\s\S]{0,900}(?:Diagnosis\s+Round|diagnosis_rounds|Review\s+Engine)|(?:Diagnosis\s+Round|diagnosis_rounds|Review\s+Engine)[\s\S]{0,900}(?:cancelled|cancellation)/i,
+    'cancellation should remain on the Explore diagnosis path'
+  );
+  assert.match(
+    diagnosis,
+    /(?:(?:not|never|does not|must not)[\s\S]{0,180}(?:a\s+)?(?:standalone|manual)[\s\S]{0,180}(?:recover|recovery))|(?:(?:standalone|manual)[\s\S]{0,180}(?:recover|recovery)[\s\S]{0,180}(?:not|never|excluded|item[- ]?10))/i,
+    'cancelled item-10 work must not become a standalone or manual recovery path'
+  );
+});
+
+test('Step 2 item-10 diagnosis forwards findings without direct Explore repair or replacement workers', () => {
+  const source = exploreContract();
+  const start = source.search(/diagnosis_rounds/i);
+  assert.ok(start >= 0, 'item-10 diagnosis source should exist');
+  const diagnosis = source.slice(start, start + 7000);
+
+  assert.match(
+    diagnosis,
+    /(?:(?:diagnosis|Review\s+Engine)\s+findings?[\s\S]{0,260}(?:forward|pass|return)[\s\S]{0,220}(?:same[- ]worker|phase worker|worker))|(?:(?:forward|pass|return)[\s\S]{0,220}(?:diagnosis|Review\s+Engine)\s+findings?[\s\S]{0,220}worker)/i,
+    'diagnosis findings should be forwarded to the existing phase worker'
+  );
+  assert.match(
+    diagnosis,
+    /(?:Explore|explore|diagnosis)[\s\S]{0,260}(?:never|does not|must not|no direct)[\s\S]{0,220}(?:apply|write|edit|repair)/i,
+    'Explore must not directly apply, write, edit, or repair the diagnosis correction'
+  );
+  assert.match(
+    diagnosis,
+    /(?:(?:never|does not|must not|no)[\s\S]{0,180}(?:dispatch|create|select|use)[\s\S]{0,120}replacement worker)|(?:replacement worker)[\s\S]{0,160}(?:is|gets?)?[\s\S]{0,80}(?:never|not|no)[\s\S]{0,100}(?:dispatch|create|select)/i,
+    'diagnosis must not dispatch a replacement worker'
+  );
+});
+
+test('Step 2 item-10 diagnosis rounds are phase-keyed, separate from review rounds, and reset per Auto attempt', () => {
+  const source = supervisionContract();
+
+  assert.match(source, /diagnosis_rounds[\s\S]{0,180}\bspec\b/i, 'diagnosis_rounds.spec should be named');
+  assert.match(source, /diagnosis_rounds[\s\S]{0,260}\bdesign\b/i, 'diagnosis_rounds.design should be named');
+
+  const counterPair = source.match(/diagnosis_rounds[\s\S]{0,700}review_rounds|review_rounds[\s\S]{0,700}diagnosis_rounds/i);
+  assert.ok(counterPair, 'diagnosis_rounds and review_rounds should be discussed together');
+  assert.match(counterPair[0], /independent|separate|distinct/i, 'diagnosis rounds must be independent of review rounds');
+  assert.match(
+    source,
+    /(?:(?:new|next)\s+Auto\s+attempt[\s\S]{0,320}(?:reset|zero|starts?\s+at\s+(?:0|zero))[\s\S]{0,180}diagnosis_rounds)|(?:diagnosis_rounds[\s\S]{0,320}(?:reset|zero|starts?\s+at\s+(?:0|zero))[\s\S]{0,180}(?:new|next)\s+Auto\s+attempt)/i,
+    'a new Auto attempt should reset diagnosis rounds'
+  );
+});
+
+test('Step 2 item-10 diagnosis references Bounded Recovery without restating the generic recovery contract', () => {
+  const source = supervisionContract();
+  const start = source.search(/diagnosis_rounds/i);
+  assert.ok(start >= 0, 'item-10 diagnosis source should exist');
+  const diagnosis = source.slice(start, start + 7000);
+  const recovery = artifact('sai/orchestration/command-runner.md');
+
+  assert.match(recovery, /Bounded Recovery/i, 'the shared Bounded Recovery contract should exist');
+  assert.match(diagnosis, /Bounded Recovery/i, 'item-10 should reference Bounded Recovery');
+  assert.match(
+    diagnosis,
+    /(?:(?:single|sole|shared)[\s\S]{0,180}(?:Bounded Recovery|contract))|(?:Bounded Recovery|contract)[\s\S]{0,180}(?:single|sole|shared)/i,
+    'Bounded Recovery should remain the single shared contract'
+  );
+  assert.match(
+    diagnosis,
+    /(?:does not|never|must not)[\s\S]{0,220}(?:restate|repeat|duplicate|reproduce)[\s\S]{0,220}(?:full|generic)[\s\S]{0,180}(?:ledger|routing)/i,
+    'item-10 should not restate the full generic ledger or routing contract'
+  );
+});
+
+test('Step 2 item-10 exhausted diagnosis keeps the change retryable with phase guidance only', () => {
+  const source = exploreContract();
+  const start = source.search(/diagnosis_rounds/i);
+  assert.ok(start >= 0, 'item-10 diagnosis source should exist');
+  const diagnosis = source.slice(start, start + 7000);
+
+  assert.match(diagnosis, /(?:exhausted|failed)[\s\S]{0,650}continuation\/transport loss|continuation\/transport loss[\s\S]{0,650}(?:exhausted|failed)/i);
+  assert.match(diagnosis, /retryable/i);
+  assert.match(diagnosis, /(?:later Auto|next Auto|uncompleted)/i);
+  assert.match(diagnosis, /Next step:\s*run\s+[`"']*\/sai-(?:1-spec|2-design)/i);
+  assert.match(
+    diagnosis,
+    /(?:(?:not|never|does not|must not|without)[\s\S]{0,180}(?:dispatch|start|run)[\s\S]{0,100}sai-3-implement)|(?:sai-3-implement)[\s\S]{0,180}(?:not|never|does not|must not|no)[\s\S]{0,100}(?:dispatch|start|run)/i,
+    'diagnosis exhaustion must not dispatch sai-3-implement'
+  );
+});
