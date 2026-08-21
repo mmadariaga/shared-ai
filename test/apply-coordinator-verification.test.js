@@ -312,3 +312,51 @@ test('Step 4 the execution telemetry row shape is pinned with the green-direct d
   assert.match(combined, /first_failure/,
     'specs/apply-execution-telemetry-appendix/spec.md: the first_failure column must be pinned');
 });
+
+function terminalLifecycleSection(text) {
+  const start = text.indexOf('## Final sweep and terminal lifecycle');
+  assert.ok(start >= 0, 'the routed runner must expose the terminal lifecycle');
+  return text.slice(start);
+}
+
+test('Step 2 terminal no-op and decline paths do not create or retry a documentation commit', () => {
+  const section = terminalLifecycleSection(artifact(APPLY_CARDS.runner));
+  assert.match(section, /When none of these conditions holds, propose no terminal documentation commit and ask no terminal authorization question/);
+  assert.match(section, /only explicit `yes` authorizes `git add` and `git commit`/);
+  assert.match(section, /silence or any other response is a decline/);
+  assert.match(section, /On decline, leave eligible files in the working tree/);
+  assert.match(section, /without retrying/);
+  assert.match(section, /continue to MANDATORY STOP/);
+});
+
+test('Step 2 terminal preview precedes message and authorization and remains non-mutating', () => {
+  const section = terminalLifecycleSection(artifact(APPLY_CARDS.runner));
+  const visibility = section.indexOf('### Terminal visibility listing');
+  const message = section.indexOf('proposed commit message', visibility);
+  const authorization = section.indexOf('### Terminal authorization and commit');
+  assert.ok(visibility >= 0 && message > visibility && authorization > message,
+    'visibility must precede the proposed message and authorization');
+  assert.match(section, /Before proposing a terminal documentation commit message and before authorization/);
+  assert.match(section, /does not stage, unstage, or otherwise mutate the Git index/);
+});
+
+test('Step 2 active session authorization and fast-track skip only the terminal ask', () => {
+  const runner = artifact(APPLY_CARDS.runner);
+  const invocation = artifact('sai/commands/apply/invocation.md');
+  const coordinator = artifact(APPLY_CARDS.coordinator);
+  const combined = `${runner}\n${invocation}\n${coordinator}`;
+  assert.match(combined, /session_commit_authorized/);
+  assert.match(invocation, /fast-track.*pre-activate|pre-activate.*fast-track/i);
+  assert.match(runner, /When the session flag is already active.*skip only this authorization ask/s);
+  assert.match(runner, /still print the visibility listing and proposed message before staging and committing/s);
+  assert.match(runner, /does not offer `Allow on this session`/);
+});
+
+test('Step 2 terminal documentation preserves the pre-Final-sweep halt and field-8 boundaries', () => {
+  const section = terminalLifecycleSection(artifact(APPLY_CARDS.runner));
+  assert.match(section, /run that halts before this Final sweep performs neither learnings promotion nor terminal documentation evaluation/);
+  assert.match(section, /Keep terminal staging separate from per-Step field-8 staging/);
+  assert.match(section, /does not depend on a Step number or worker report/);
+  assert.match(section, /changed-files union.*outside this set/);
+  assert.match(section, /never resolve `GLOSSARY\.md` from `openspec\/changes\/\{change-name\}`/);
+});
