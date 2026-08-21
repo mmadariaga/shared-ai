@@ -125,13 +125,25 @@ Supervised gate auto-proceed SHALL NOT create any advance path over a phase work
 
 ### Requirement: item-10 diagnosis feedback is bounded and read-only
 
-The item-10 supervised Auto route SHALL use the shared `sai/orchestration/command-runner.md` Bounded Recovery section as the single source for post-resolution non-clean diagnosis. For a selected spec or design phase, a resolved worker `failed` or `cancelled` result with an unused phase counter SHALL invoke the existing read-only Review Engine exactly once with `sai-1` or `sai-2`, form feedback in the order `Reported`, `Evidence`, `Cause`, `Correction`, `Verification`, and attempt at most one same-worker `continue_after_recovery`. Explore SHALL never apply corrections directly or dispatch a replacement worker. Unactionable diagnosis, veto, failed re-dispatch, or undeliverable continuation leaves the change retryable; continuation loss uses the shared `continuation/transport loss` diagnosis.
+The item-10 supervised Auto route SHALL use the shared `sai/orchestration/command-runner.md` Bounded Recovery section as the single source for post-resolution non-clean diagnosis. That shared trigger set SHALL be a structurally valid `failed` result of any closed worker failure class, a `completed` result disproved by coordinator verification, or a `completed` result carrying STOP. The Explore item-10 failure route SHALL additionally activate this one-shot diagnosis path for a post-resolution supervised worker `cancelled` result; this Explore-specific cancellation activation SHALL NOT change generic clean-cancellation behavior for other adapters or the manual review loop. For a selected spec or design phase, any such result with an unused phase counter SHALL invoke the existing read-only Review Engine exactly once with `sai-1` or `sai-2`, form feedback in the order `Reported`, `Evidence`, `Cause`, `Correction`, `Verification`, and attempt at most one same-worker `continue_after_recovery`. Explore SHALL never apply corrections directly or dispatch a replacement worker. Unactionable diagnosis, veto, failed re-dispatch, or undeliverable continuation leaves the change retryable; continuation loss uses the shared `continuation/transport loss` diagnosis. Clean `completed` without disproof and without STOP does not start diagnosis.
 
 #### Scenario: failed or cancelled worker starts one diagnosis round
 
 - **WHEN** a resolved supervised spec or design worker returns `failed` or `cancelled` and its phase counter is zero
 - **THEN** Explore invokes the phase-selected Review Engine once, rereads artifacts without writing, and produces the five ordered feedback sections
 - **AND** an actionable correction is forwarded only to the same worker once
+
+#### Scenario: A coordinator-disproved completed result starts one diagnosis round
+
+- **WHEN** a resolved supervised spec or design worker returns `completed` that coordinator verification disproves and its phase diagnosis counter is zero
+- **THEN** Explore invokes the same phase-selected Review Engine Diagnosis Round as for `failed`
+- **AND** the entry uses the shared Bounded Recovery non-clean set rather than a failed-only Explore special case
+
+#### Scenario: A STOP-bearing completed result starts one diagnosis round
+
+- **WHEN** a resolved supervised spec or design worker returns `completed` carrying STOP and its phase diagnosis counter is zero
+- **THEN** Explore invokes the same phase-selected Review Engine Diagnosis Round as for `failed`
+- **AND** clean `completed` without STOP and without coordinator disproof does not start diagnosis
 
 #### Scenario: diagnosis remains read-only and retryable
 

@@ -418,6 +418,17 @@ The coordinator SHALL add every `changed_files` path reported by the original re
 - **THEN** the coordinator SHALL stop cleanly without assigning a new diagnosis
 - **AND** SHALL spend no additional recovery attempt
 
+#### Scenario: Explore diagnosis entry for non-clean completed uses only diagnosis_rounds
+
+- **WHEN** Explore item 10 runs a Diagnosis Round after coordinator-disproved `completed` or STOP-bearing `completed`
+- **THEN** only `diagnosis_rounds.spec` or `diagnosis_rounds.design` increments
+- **AND** the route does not spend a shared three-slot recovery-ledger slot or create a replacement worker
+
+#### Scenario: Fast-track does not widen non-clean completed diagnosis bounds
+
+- **WHEN** an opted-in invocation includes `--fast-track`
+- **THEN** Explore item-10 diagnosis entry for disproved or STOP-bearing `completed`, when applicable, retains the one diagnosis-round and one same-worker re-dispatch bound
+
 #### Scenario: Cancellation bypasses recovery
 
 - **WHEN** a worker returns `status: cancelled`

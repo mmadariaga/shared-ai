@@ -195,6 +195,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0167 — Named Explore Auto cancellation exception in Bounded Recovery](./0167-explore-auto-cancellation-exception-in-bounded-recovery.md) — **Amends** 0158, Refs 0159
 - [0168 — Explore item-10 diagnosis uses Review Engine and same-worker continue_after_recovery](./0168-explore-item-10-diagnosis-review-engine-same-worker.md) — Refs 0140, Refs 0158, Refs 0167
 - [0169 — Idea-list treats Diagnosis Round as recovery, not review](./0169-idea-list-diagnosis-round-is-recovery-not-review.md) — Refs 0116, Refs 0137, Refs 0168
+- [0171 — Item-10 diagnosis entry is shared non-clean set plus Explore cancellation exception](./0171-item-10-diagnosis-entry-shared-non-clean-plus-cancelled.md) — **Amends** 0168, Refs 0167, Refs 0158
 
 ### `/sai-backfill`
 
@@ -348,6 +349,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0167 — Named Explore Auto cancellation exception in Bounded Recovery](./0167-explore-auto-cancellation-exception-in-bounded-recovery.md) — **Amends** 0158, Refs 0159
 - [0168 — Explore item-10 diagnosis uses Review Engine and same-worker continue_after_recovery](./0168-explore-item-10-diagnosis-review-engine-same-worker.md) — Refs 0140, Refs 0158, Refs 0167
 - [0169 — Idea-list treats Diagnosis Round as recovery, not review](./0169-idea-list-diagnosis-round-is-recovery-not-review.md) — Refs 0116, Refs 0137, Refs 0168
+- [0171 — Item-10 diagnosis entry is shared non-clean set plus Explore cancellation exception](./0171-item-10-diagnosis-entry-shared-non-clean-plus-cancelled.md) — **Amends** 0168, Refs 0167, Refs 0158
 
 ### Fetch resolution & path conventions
 
@@ -572,6 +574,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 | [0159](./0159-path-specific-next-step-after-manual-selector.md) | amends | [0158](./0158-single-shared-crystallization-turn-close.md) |
 | [0166](./0166-per-cause-surface-dual-channel-exclusivity.md) | amends | [0165](./0165-dual-coordinator-inspection-channels.md) |
 | [0167](./0167-explore-auto-cancellation-exception-in-bounded-recovery.md) | amends | [0158](./0158-shared-non-clean-closure-diagnosis-in-command-runner.md) |
+| [0171](./0171-item-10-diagnosis-entry-shared-non-clean-plus-cancelled.md) | amends | [0168](./0168-explore-item-10-diagnosis-review-engine-same-worker.md) |
 | [0166](./0166-envelope-only-change-name-resolution.md) | supersedes | [0033](./0033-echo-line-format-and-placement.md) |
 | [0166](./0166-envelope-only-change-name-resolution.md) | supersedes | [0034](./0034-resolution-precedence-wrapper-echo-first.md) |
 | [0166](./0166-envelope-only-change-name-resolution.md) | supersedes | [0035](./0035-harness-specific-adapter-carve-out.md) |

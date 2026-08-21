@@ -1252,11 +1252,26 @@ test('Step 2 item-10 starts one phase-selected Review Engine diagnosis round aft
   const diagnosis = source.slice(start, start + 7000);
 
   assert.match(source, /diagnosis_rounds/);
-  assert.match(
-    diagnosis,
-    /(?:failed|cancelled)[\s\S]{0,900}Review\s+Engine\s*\(\s*changeName\s*,\s*["'`]sai-(?:1|2)["'`]\s*\)|Review\s+Engine\s*\(\s*changeName\s*,\s*["'`]sai-(?:1|2)["'`]\s*\)[\s\S]{0,900}(?:failed|cancelled)/i,
-    'failed or cancelled workers should enter a phase-selected Review Engine diagnosis'
+  const reviewEngineCall = String.raw`Review\s+Engine\s*\(\s*changeName\s*,\s*["'\x60]sai-(?:1|2)["'\x60]\s*\)`;
+  const coordinatorDisproved = String.raw`(?:coordinator[\s\S]{0,180}disprov\w*|disprov\w*[\s\S]{0,180}coordinator)`;
+  const completedCoordinatorDisproved = String.raw`(?:completed[\s\S]{0,900}${coordinatorDisproved}|${coordinatorDisproved}[\s\S]{0,900}completed)`;
+  const completedStop = String.raw`(?:completed[\s\S]{0,900}STOP|STOP[\s\S]{0,900}completed)`;
+  const diagnosisEntry = trigger => new RegExp(
+    String.raw`(?:${trigger}[\s\S]{0,900}${reviewEngineCall}|${reviewEngineCall}[\s\S]{0,900}${trigger})`,
+    'i'
   );
+
+  for (const [trigger, entry] of [
+    ['failed or cancelled', diagnosisEntry(String.raw`(?:failed|cancelled)`)],
+    ['completed and coordinator-disproved', diagnosisEntry(completedCoordinatorDisproved)],
+    ['completed and STOP-bearing', diagnosisEntry(completedStop)],
+  ]) {
+    assert.match(
+      diagnosis,
+      entry,
+      `${trigger} workers should enter a phase-selected Review Engine diagnosis`
+    );
+  }
 
   let previous = -1;
   for (const label of ['Reported', 'Evidence', 'Cause', 'Correction', 'Verification']) {
@@ -1375,7 +1390,7 @@ test('Step 3: failed or cancelled item-10 work settles the active phase review i
 
   assert.match(
     source,
-    /(?:item[- ]?10[\s\S]{0,1000}(?:failed|cancelled)|(?:failed|cancelled)[\s\S]{0,1000}item[- ]?10)[\s\S]{0,1000}(?:active phase|phase review|reviewed-sai-[12])[\s\S]{0,700}(?:resolv\w*|set\w*|becom\w*)?[\s\S]{0,120}`pending`[\s\S]{0,700}Diagnosis Round/i,
+    /(?:item[- ]?10[\s\S]{0,1000}(?:failed|cancelled)|(?:failed|cancelled)[\s\S]{0,1000}item[- ]?10)[\s\S]{0,1000}(?:active phase|phase review|reviewed-sai-[12])[\s\S]{0,700}(?:resolv\w*|set\w*|becom\w*)?[\s\S]{0,120}`pending`[\s\S]{0,700}(?:Diagnosis Round|diagnosis[- ]entry|Review\s+Engine\s+diagnosis)/i,
     'item-10 failure must resolve the active phase review item to pending before diagnosis'
   );
 });
@@ -1469,5 +1484,80 @@ test('Step 3: Diagnosis Round render rules live in Explore instructions, not eit
   ]) {
     assert.doesNotMatch(renderer, /Diagnosis Round|diagnosis_rounds/,
       `${name} idea-list renderer must not contain diagnosis render rules`);
+  }
+});
+
+test('Step 2: item-10 diagnosis includes coordinator-disproved completed worker results', () => {
+  const source = supervisionContract();
+  const start = source.search(/diagnosis_rounds/i);
+  assert.ok(start >= 0, 'item-10 diagnosis source should exist');
+  const diagnosis = source.slice(start, start + 7000);
+  const disproved = String.raw`(?:coordinator[- ]disproved|coordinator[\s\S]{0,180}disprov\w*|disprov\w*[\s\S]{0,180}coordinator)`;
+  const completedDisproved = String.raw`(?:completed[\s\S]{0,900}${disproved}|${disproved}[\s\S]{0,900}completed)`;
+
+  assert.match(
+    diagnosis,
+    new RegExp(
+      String.raw`(?:${completedDisproved}[\s\S]{0,900}(?:Review\s+Engine|Diagnosis\s+Round|diagnosis_rounds)|(?:Review\s+Engine|Diagnosis\s+Round|diagnosis_rounds)[\s\S]{0,900}${completedDisproved})`,
+      'i'
+    ),
+    'a coordinator-disproved completed result should enter item-10 diagnosis'
+  );
+});
+
+test('Step 2: item-10 diagnosis includes STOP-bearing completed worker results', () => {
+  const source = supervisionContract();
+  const start = source.search(/diagnosis_rounds/i);
+  assert.ok(start >= 0, 'item-10 diagnosis source should exist');
+  const diagnosis = source.slice(start, start + 7000);
+  const stopBearing = String.raw`(?:STOP[- ]bearing|carrying[\s\S]{0,120}STOP)`;
+  const completedStop = String.raw`(?:completed[\s\S]{0,900}${stopBearing}|${stopBearing}[\s\S]{0,900}completed)`;
+
+  assert.match(
+    diagnosis,
+    new RegExp(
+      String.raw`(?:${completedStop}[\s\S]{0,900}(?:Review\s+Engine|Diagnosis\s+Round|diagnosis_rounds)|(?:Review\s+Engine|Diagnosis\s+Round|diagnosis_rounds)[\s\S]{0,900}${completedStop})`,
+      'i'
+    ),
+    'a STOP-bearing completed result should enter item-10 diagnosis'
+  );
+});
+
+test('Step 2: clean completed workers never start item-10 diagnosis', () => {
+  const source = supervisionContract();
+  const start = source.search(/diagnosis_rounds/i);
+  assert.ok(start >= 0, 'item-10 diagnosis source should exist');
+  const diagnosis = source.slice(start, start + 7000);
+  const notDisproved = String.raw`(?:not[\s\S]{0,120}disprov\w*|without[\s\S]{0,120}disprov\w*|no[\s\S]{0,120}disprov\w*)`;
+  const noStop = String.raw`(?:no[\s\S]{0,120}STOP|without[\s\S]{0,120}STOP|not[\s\S]{0,120}STOP[- ]bearing|not[\s\S]{0,120}carrying[\s\S]{0,80}STOP)`;
+
+  assert.match(
+    diagnosis,
+    new RegExp(
+      String.raw`completed[\s\S]{0,900}${notDisproved}[\s\S]{0,900}${noStop}[\s\S]{0,900}(?:never|does not|must not)[\s\S]{0,260}(?:start|enter|trigger)[\s\S]{0,260}(?:item[- ]?10[\s\S]{0,120})?(?:diagnosis|Review\s+Engine|Diagnosis\s+Round|diagnosis_rounds)`,
+      'i'
+    ),
+    'a clean completed result must be explicitly excluded by both its non-disproved and no-STOP state'
+  );
+});
+
+test('Step 2: pending-before-diagnosis applies to disproved or STOP-bearing completed workers', () => {
+  const source = spec('sai/commands/explore/instructions.md');
+  const completedDisproved = String.raw`(?:completed[\s\S]{0,900}(?:coordinator[- ]disproved|coordinator[\s\S]{0,180}disprov\w*|disprov\w*[\s\S]{0,180}coordinator)|(?:coordinator[- ]disproved|coordinator[\s\S]{0,180}disprov\w*|disprov\w*[\s\S]{0,180}coordinator)[\s\S]{0,900}completed)`;
+  const completedStop = String.raw`(?:completed[\s\S]{0,900}(?:STOP[- ]bearing|carrying[\s\S]{0,120}STOP)|(?:STOP[- ]bearing|carrying[\s\S]{0,120}STOP)[\s\S]{0,900}completed)`;
+
+  for (const [label, trigger] of [
+    ['coordinator-disproved completed', completedDisproved],
+    ['STOP-bearing completed', completedStop],
+  ]) {
+    assert.match(
+      source,
+      new RegExp(
+        String.raw`${trigger}[\s\S]{0,1200}(?:active phase review|phase review|reviewed-sai-[12])[\s\S]{0,700}(?:resolv\w*|set\w*|becom\w*|leave\w*)?[\s\S]{0,160}` +
+          String.raw`pending[\s\S]{0,900}(?:before|prior to|then|followed by)[\s\S]{0,220}(?:Diagnosis\s+Round|diagnosis_rounds|Review\s+Engine)`,
+        'i'
+      ),
+      `${label} work must settle the active phase review item to pending before diagnosis`
+    );
   }
 });
