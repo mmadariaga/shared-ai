@@ -3,9 +3,7 @@
 ## Purpose
 
 TBD - created by archiving change extend-pipeline-supervision-to-sai-2. Update Purpose after archive.
-
 ## Requirements
-
 ### Requirement: Chain design under Auto
 
 The existing chained design worker SHALL run under the same Auto invocation, with review, escalation, failure, retry, and no-later-phase rules unchanged.
@@ -59,46 +57,80 @@ The design phase has a separate budget of at most three rounds per phase per Aut
 
 ### Requirement: Design review findings use a design-phase machine-feedback adapter with a deferred user gate
 
-The chained design phase SHALL own a machine-feedback adapter that continues each completed design round's structured findings to the same design worker, rather than reusing the sai-1 machine-feedback adapter, which is textually scoped to supervised sai-1 findings and continues to the spec-proposal worker. For every completed round the design-phase adapter SHALL apply the shared artifact-feedback-gate's canonical per-item semantics — per-item split, legitimacy judgment, artifact-only edits confined to `design.md`, `tasks.md`, and `interfaces.md`, specific discard reasons, and design-summary recomputation — reusing those single-sourced semantics without restating them. Machine-feedback processing is not a user feedback turn: it SHALL NOT present the gate picker, emit the empty-turn user-feedback prompt, increment the iteration counter, or execute the proceed branch. The design-phase fetch of the shared artifact feedback gate SHALL supply `artifacts = design.md, tasks.md, interfaces.md`, `proceed-label = Continue`, `next-action = the post-gate overview generation and supervised design terminal`, and `mode = supervised`. While the design round's machine-feedback processing is still in progress, the user-facing design feedback gate SHALL remain deferred. After the design review rounds converge or exhaust the three-round cap, because `mode` is `supervised`, the gate SHALL NOT present the picker, free-text prompt, or free-text path and SHALL NOT increment the iteration counter; it SHALL execute `next-action` exactly once — the worker-owned `change-overview.md` generation pass over the same design worker with the current invocation's `overview_language`. The interactive presentation of that gate (iteration 0, `Give feedback (Recommended)` then `Continue`) remains the contract of a directly invoked `/sai-2-design` fetch site that omits `mode`.
+The chained design phase SHALL own a machine-feedback adapter that continues each completed design round's structured findings to the same design worker, rather than reusing the sai-1 machine-feedback adapter. For every completed round the adapter SHALL apply the shared artifact-feedback-gate's canonical per-item semantics — per-item split, legitimacy judgment, artifact-only edits confined to `design.md`, `tasks.md`, and `interfaces.md`, specific discard reasons, and design-summary recomputation — reusing those single-sourced semantics without restating them. Machine-feedback processing SHALL not present the user gate, emit the empty-turn prompt, increment the iteration counter, or execute the proceed branch. The design-phase fetch SHALL supply `artifacts = design.md, tasks.md, interfaces.md`, `proceed-label = Continue`, and `mode = supervised`.
 
-#### Scenario: design machine findings continue to the design worker
+After the design rounds converge or exhaust their cap, the deferred gate SHALL branch on the same explicit overview opt-in used by the design adapter. With `--overview-lang <language>`, it SHALL execute the existing post-gate overview-generation action exactly once using the current invocation's language. Without the flag, it SHALL execute a no-generation design terminal exactly once, with no overview progress step or overview-state write caused by the skip. The user-facing gate remains deferred in supervised mode; direct `/sai-2-design` remains interactive when it omits supervised mode, while its Continue route still follows the flag-presence rule.
+
+#### Scenario: Design machine findings continue to the design worker
+
 - **WHEN** a completed design review round returns one or more structured findings
-- **THEN** the design-phase machine-feedback adapter continues each finding to the same design worker for canonical per-item evaluation
+- **THEN** the design-phase adapter continues each finding to the same design worker
 - **AND** accepted edits stay within `design.md`, `tasks.md`, and `interfaces.md`
 - **AND** every discarded finding is reported with its specific reason
 
-#### Scenario: user design gate is deferred while the round is processed
+#### Scenario: User design gate is deferred while the round is processed
+
 - **WHEN** a design round's machine-feedback processing is still in progress
-- **THEN** the processing completes without presenting or advancing the user-facing design gate
-- **AND** the iteration counter remains 0
+- **THEN** processing completes without presenting or advancing the user-facing design gate
+- **AND** the iteration counter remains `0`
 
-#### Scenario: supervised design convergence auto-continues to overview generation
+#### Scenario: Opted-in supervised convergence continues to overview
 
-- **WHEN** the supervised design review round converges (no `High` findings) after machine-feedback processing
+- **WHEN** an opted-in supervised design review round converges after machine-feedback processing
 - **THEN** the design artifact gate is not presented
-- **AND** the iteration counter remains 0
-- **AND** the gate executes the Continue next-action exactly once — the overview-generation pass on the same design worker with the current `overview_language`
+- **AND** the iteration counter remains `0`
+- **AND** the gate executes the overview-generation action exactly once with the selected language
 
-#### Scenario: supervised design cap exhaustion auto-continues to overview generation
+#### Scenario: Opted-in supervised cap exhaustion continues to overview
 
-- **WHEN** the supervised design review rounds exhaust their three-round cap after applying findings
+- **WHEN** an opted-in supervised design review exhausts its three-round cap after applying findings
+- **THEN** cap exhaustion remains a non-failure outcome
+- **AND** the gate executes the overview-generation action exactly once
+
+#### Scenario: Unopted-in supervised convergence skips overview
+
+- **WHEN** a supervised design review converges and the invocation contains no `--overview-lang`
 - **THEN** the design artifact gate is not presented
-- **AND** cap exhaustion remains a non-failure outcome
-- **AND** the gate executes the Continue next-action exactly once — the overview-generation pass on the same design worker
+- **AND** no overview generator is dispatched and no overview progress event is emitted
+- **AND** the no-generation design terminal closes the phase
 
-#### Scenario: supervised design empty findings auto-continues to overview generation
+#### Scenario: Unopted-in empty findings skip overview
 
-- **WHEN** a supervised design review round returns an empty findings array
-- **THEN** the design-phase machine-feedback adapter makes no artifact edit
+- **WHEN** an unopted-in supervised design review round returns an empty findings array
+- **THEN** no artifact edit is made by the machine-feedback adapter
 - **AND** the design artifact gate is not presented
-- **AND** the iteration counter remains 0
-- **AND** the gate executes the Continue next-action exactly once — the overview-generation pass on the same design worker
+- **AND** the no-generation design terminal executes exactly once
 
-#### Scenario: interactive design gate remains for direct sai-2
+#### Scenario: Interactive design gate remains for direct sai-2
+
 - **WHEN** `/sai-2-design` is invoked directly and its coordinator fetches the shared gate without supplying `mode`
-- **THEN** after design convergence or cap exhaustion the user-facing design feedback gate is presented at iteration 0
+- **THEN** after design convergence or cap exhaustion the user-facing design feedback gate is presented at iteration `0`
 - **AND** it names `design.md`, `tasks.md`, and `interfaces.md` with proceed-label `Continue`
 - **AND** the first option remains `Give feedback (Recommended)`
+
+#### Scenario: design machine findings continue to the design worker
+- **WHEN** a completed design review round returns structured findings
+- **THEN** the design-phase adapter continues each finding to the same design worker
+
+#### Scenario: user design gate is deferred while the round is processed
+- **WHEN** machine-feedback processing is still in progress
+- **THEN** processing completes without presenting the user-facing design gate and the iteration counter remains `0`
+
+#### Scenario: supervised design convergence auto-continues to overview generation
+- **WHEN** a supervised design review converges after machine-feedback processing
+- **THEN** the gate executes overview generation exactly once
+
+#### Scenario: supervised design cap exhaustion auto-continues to overview generation
+- **WHEN** a supervised design review exhausts its three-round cap
+- **THEN** cap exhaustion remains non-failure and overview generation executes exactly once
+
+#### Scenario: supervised design empty findings auto-continues to overview generation
+- **WHEN** a supervised design review returns an empty findings array
+- **THEN** no artifact edit is made and the supervised terminal executes without presenting the user gate
+
+#### Scenario: interactive design gate remains for direct sai-2
+- **WHEN** `/sai-2-design` is invoked directly without supervised mode
+- **THEN** the user-facing design feedback gate is presented at iteration `0`
 
 ### Requirement: Design-worker questions are auto-answered or escalated under the same gate
 
@@ -120,20 +152,41 @@ A design worker `needs_input` question raised during the chained design phase SH
 
 ### Requirement: Chained design phase ends with supervised completion and chains no later phase
 
-When the chained design phase reaches convergence or cap exhaustion, explore SHALL apply the shared artifact feedback gate with `mode = supervised`, and the gate SHALL execute the Continue next-action (overview generation) exactly once; explore SHALL then emit design-phase supervised completion, suppressing the standalone `/sai-2-design` navigation sentence for this supervised run. On design convergence, the design-phase convergence report SHALL state that the design phase converged, the number of design review rounds used, and that the last completed round found no `High` findings, carrying the not-re-reviewed qualification when that round accepted `Medium` or `Low` edits — mirroring the spec-phase convergence report wording. At every design-phase ending — convergence, cap exhaustion, or a `failed` or `cancelled` design worker — explore SHALL present a design-phase autonomy audit log in the conversation that lists every design-phase auto-answer with its answer and grounding citation identifying which permitted source and what within it determined the answer, states the count of escalated design-phase questions as the calibration denominator, and is written to no file, artifact, or configuration. A design cap exhaustion SHALL be reported as the one-line count report of the last round, SHALL NOT be classified as failure, and SHALL NOT assert that `High` findings remain in the current state. A `failed` or `cancelled` design worker SHALL end the supervised run under its lifecycle result without auto-proceeding the gate, leave the change uncompleted and retryable, and keep the name in `specs_converged_changes`, with a later `Auto` selection resuming at the design phase. The supervised run SHALL NOT dispatch `/sai-3-implement` or any later-phase worker, and SHALL report that sai-3 was not run.
+When the chained design phase reaches convergence or cap exhaustion, explore SHALL apply the shared artifact feedback gate with `mode = supervised`. If the invocation explicitly supplied `--overview-lang <language>`, the gate SHALL execute the Continue next-action (overview generation) exactly once; if the flag is absent, it SHALL execute the no-generation design terminal exactly once. These routes are mutually exclusive and exactly one SHALL execute per invocation, selected solely by the active design envelope's flag presence. Explore SHALL then emit design-phase supervised completion at most once, emit the design completion sentence at most once, suppress the standalone `/sai-2-design` navigation sentence for this supervised run, and dispatch no later phase. A failed or cancelled design worker SHALL end the supervised run under its lifecycle result without auto-proceeding either route, leave the change retryable, and keep the existing autonomy reporting behavior.
+
+#### Scenario: Chained opted-in design converges
+
+- **WHEN** an opted-in chained design phase converges after its review rounds and feedback handling
+- **THEN** overview generation runs once with the explicit language
+- **AND** explore emits design-phase supervised completion and does not relay the standalone `/sai-2-design` navigation sentence
+- **AND** explore reports that sai-3 was not run
+
+#### Scenario: Chained unopted-in design converges
+
+- **WHEN** a chained design phase converges without `--overview-lang`
+- **THEN** no overview generator is dispatched and no new overview lifecycle state is written
+- **AND** explore emits design-phase supervised completion and dispatches no later-phase worker
+
+#### Scenario: Chained unopted-in design exhausts the cap
+
+- **WHEN** an unopted-in chained design phase exhausts its three-round cap
+- **THEN** cap exhaustion remains a non-failure outcome
+- **AND** the no-generation design terminal closes the phase without an overview progress step or later-phase dispatch
 
 #### Scenario: chained design converges
-- **WHEN** the chained design phase converges after its review rounds and user-facing artifact feedback gate
-- **THEN** explore emits design-phase supervised completion and does not relay the standalone `/sai-2-design` navigation sentence
-- **AND** the convergence report states the number of design review rounds used and that the last completed round found no `High` findings
-- **AND** when the converging round accepted `Medium` or `Low` edits, the report states that the resulting artifact state was not re-reviewed rather than claiming the edited state is free of `High` findings
-- **AND** it presents the design-phase autonomy audit log and reports that sai-3 was not run
+- **WHEN** the chained design phase reaches convergence after its review rounds
+- **THEN** explore emits design-phase supervised completion and does not relay the standalone navigation sentence
 
 #### Scenario: chained design exhausts the cap
-- **WHEN** the third design review round still contains a `High` finding and its findings have been applied
-- **THEN** the design review loop terminates as non-failure cap exhaustion reported as the one-line count report of the last round
-- **AND** explore emits design-phase supervised completion and dispatches no later-phase worker
+- **WHEN** the chained design phase exhausts its three-round cap
+- **THEN** cap exhaustion remains a non-failure outcome and the phase closes
 
 #### Scenario: no later phase is ever chained
 - **WHEN** the chained design phase reaches any terminal outcome
+- **THEN** the supervised run never dispatches implementation or any phase after design
+
+#### Scenario: No later phase is ever chained
+
+- **WHEN** the chained design phase reaches any terminal outcome
 - **THEN** the supervised run never dispatches `/sai-3-implement` or any phase after design
+

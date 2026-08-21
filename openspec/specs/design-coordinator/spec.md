@@ -22,6 +22,7 @@ arguments_value: "placeholder-change-name"
 ## Requirements
 
 The routed design coordinator and invocation bodies are grouped at `sai/commands/design/coordinator.md` and `sai/commands/design/invocation.md`.
+
 ### Requirement: Current design harness entrypoints
 Claude Code and opencode SHALL invoke the routed design coordinator and their respective design-worker bindings. No supported wrapper SHALL invoke a retired inline loader.
 
@@ -78,28 +79,38 @@ The Continue-now envelope SHALL carry `wrapper_echo_value` and `arguments_value`
 
 ### Requirement: The design coordinator is a conversational control plane
 
-For routed `/sai-2-design` invocations, the coordinator SHALL preserve slash-command invocation and interactive navigation while performing no OpenSpec command execution, argument parsing, change resolution, prerequisite checking, codebase inspection, artifact reading, artifact writing, or technical design reasoning. It SHALL delegate the technical workflow to the design worker through the harness binding. It SHALL print user-visible worker notices exactly as authored and resume the same worker, without deriving or interpreting the notice. The design adapter declares a progress plan, so the coordinator SHALL render it as a live task list per the neutral policy, mark steps only from worker progress events, and resume the same worker with `continue_after_progress`; the plan and marked set SHALL be held in invocation-scoped state, rendered at dispatch, and reconciled at terminal results, and SHALL NOT be derived from artifacts.
+For routed `/sai-2-design` invocations, the coordinator SHALL preserve slash-command invocation and interactive navigation while performing no OpenSpec command execution, change resolution, prerequisite checking, codebase inspection, artifact reading, artifact writing, or technical design reasoning. It SHALL delegate technical workflow to the design worker through the harness binding. The coordinator MAY perform the narrow presence check needed to choose the active static progress-plan variant from the original two-string envelope before dispatch; it SHALL not consume a language value, validate option syntax, default a language, or reinterpret the request. The envelope SHALL remain exactly `wrapper_echo_value` and `arguments_value` with no new field. The coordinator SHALL print worker notices exactly as authored and resume the same worker, render the selected static plan before dispatch, mark steps only from worker progress events, and reconcile only at the applicable terminal route.
 
 #### Scenario: Routed design invocation begins
+
 - **WHEN** Claude Code or opencode invokes `/sai-2-design` with arguments
-- **THEN** the coordinator SHALL construct the shared invocation envelope and dispatch a design worker without resolving the change, reading an artifact, or inspecting the codebase
+- **THEN** its coordinator selects the six-step plan when no `--overview-lang` token is present or the seven-step plan when the token is present
+- **AND** it dispatches a design worker without resolving the change, reading an artifact, or inspecting the codebase
+
+#### Scenario: Presence selection does not replace worker validation
+
+- **WHEN** the raw envelope contains an invalid, missing-value, or duplicate `--overview-lang` form
+- **THEN** the coordinator still only selects the presence-based plan
+- **AND** the worker owns validation and returns the pre-resolution failure without overview dispatch
 
 #### Scenario: Technical work is required
-- **WHEN** the design workflow requires codebase facts, artifact validation, a design decision, or an artifact edit
-- **THEN** the coordinator SHALL leave that work to the design worker and SHALL NOT perform or duplicate it
 
-#### Scenario: Fast-track invocation begins
-- **WHEN** the worker returns a nonterminal fast-track notice after successful prerequisite checks
-- **THEN** the coordinator SHALL print the notice exactly once, set its design-scoped banner-emitted flag, and acknowledge the same worker with the fixed protocol value `continue_after_notice` without resolving the change or deciding which gates are skipped
+- **WHEN** the design workflow requires codebase facts, artifact validation, a design decision, or an artifact edit
+- **THEN** the coordinator leaves that work to the design worker and does not perform or duplicate it
 
 #### Scenario: Progress event is rendered and marked
 
 - **WHEN** the worker returns a nonterminal progress event
-- **THEN** the coordinator SHALL mark the reported step ids in the invocation-scoped plan, update the rendered task list, and continue the same worker with `continue_after_progress` without resolving the change or interpreting the event
+- **THEN** the coordinator marks only declared step ids in the invocation-scoped selected plan, updates the rendered task list, and continues the same worker with `continue_after_progress`
+
+#### Scenario: Fast-track invocation begins
+- **WHEN** the worker returns a nonterminal fast-track notice after successful prerequisite checks
+- **THEN** the coordinator prints the notice exactly once and acknowledges the same worker with `continue_after_notice`
 
 #### Scenario: Notice acknowledgement is protocol-only
+
 - **WHEN** the coordinator sends `continue_after_notice` after presenting a worker notice
-- **THEN** it SHALL NOT record that acknowledgement as a user answer, opaque input history, pending feedback, or coordinator-authored interaction state beyond the banner-emitted flag
+- **THEN** it does not record that acknowledgement as a user answer, opaque input history, pending feedback, or coordinator-authored interaction state beyond the banner-emitted flag
 
 ### Requirement: The coordinator relays worker input requests
 The coordinator SHALL handle a worker `needs_input` result by presenting the worker-authored question and options through the harness-native picker, forwarding the selected value to the same worker through the binding-owned continuation reference, and awaiting the next lifecycle result. For each such exchange it SHALL append one opaque protocol entry containing the exact worker-authored `question`, exact ordered `options`, and exact user-selected or free-text `answer_value`. It SHALL record no coordinator-authored picker labels, feedback-gate prompts, summaries, or inferred conversation content in this history and SHALL not interpret or edit an entry. The coordinator SHALL NOT answer, rewrite, or technically adjudicate the question.
@@ -170,66 +181,114 @@ The routed design worker SHALL use the phase-specific identifier `sai-2-design-w
 
 ### Requirement: design-reconciles-only-at-the-post-gate-terminal
 
-The design coordinator's reconciliation trigger SHALL be the overview-generation terminal that follows the feedback gate's `Continue`, per `coordinator-progress-ownership`. The worker's pre-gate `completed` — the one the coordinator answers by printing the worker summary and presenting the artifact feedback gate — SHALL NOT trigger reconciliation, because the same worker is still continued afterwards for overview generation.
+For an invocation with explicit `--overview-lang`, the design coordinator's reconciliation trigger SHALL be the successful overview-generation terminal that follows the feedback gate's `Continue`; the worker's pre-gate `completed` SHALL leave the `overview` step unmarked. For an invocation without the flag, the selected plan SHALL contain no `overview` step, `Continue` SHALL use the no-generation terminal route, and that successful terminal SHALL reconcile every eligible unmarked step except an unmarked evidence-marked `review`, if one exists. Exactly one of the generation route or no-generation route SHALL execute per invocation, selected solely by flag presence, and the design completion sentence SHALL be emitted at most once. A failed or cancelled route SHALL leave the selected list exactly as last rendered. The coordinator SHALL never infer the route from worker summary text or artifact contents.
 
-Consequently the `overview` step SHALL NOT be rendered `completed` before overview generation has been dispatched and has succeeded.
+#### Scenario: The opted-in pre-gate result leaves overview pending
+
+- **WHEN** an opted-in design worker returns `completed` and the coordinator presents the artifact feedback gate
+- **THEN** the coordinator leaves the task list exactly as last rendered with `overview` still unmarked
 
 #### Scenario: the pre-gate completed leaves the list alone
-
 - **WHEN** the design worker returns `completed` and the coordinator presents the artifact feedback gate
-- **THEN** the coordinator SHALL leave the task list exactly as last rendered, with `overview` still unmarked
+- **THEN** the coordinator leaves the task list exactly as last rendered with `overview` still unmarked
 
 #### Scenario: reconciliation happens at the generation terminal
-
 - **WHEN** the gate proceeds through `Continue` and the overview-generation continuation returns `status: completed`
-- **THEN** that terminal SHALL be the reconciliation trigger, and the coordinator SHALL reconcile the list there, rendering every unmarked step `completed` except `review`
+- **THEN** that terminal is the reconciliation trigger and the coordinator reconciles the list there
 
 #### Scenario: a failed generation terminal freezes the list
+- **WHEN** the overview-generation continuation returns `status: failed`, or the continuation is lost before a state transition
+- **THEN** the coordinator leaves the list exactly as last rendered and reports the failure
 
-- **WHEN** the overview-generation continuation returns `status: failed`, or the continuation is lost before any state transition
-- **THEN** the coordinator SHALL leave the list exactly as last rendered, so `overview` stays unmarked alongside the reported `failure_kind` and `failure_details`
+#### Scenario: Opted-in generation reconciles at success
+
+- **WHEN** the gate proceeds through `Continue` and the opted-in overview-generation continuation returns `status: completed`
+- **THEN** that terminal reconciles every eligible unmarked step to `completed` except `review`
+
+#### Scenario: Unopted-in Continue closes without overview
+
+- **WHEN** the gate proceeds through `Continue` for an invocation without `--overview-lang`
+- **THEN** no overview-generation continuation is dispatched
+- **AND** the six-step plan is reconciled at the no-generation completion terminal, leaving an unmarked evidence-marked `review` incomplete only if one exists
+- **AND** no `overview` progress event is emitted
+
+#### Scenario: Failed opted-in generation freezes the list
+
+- **WHEN** an opted-in overview-generation continuation returns `status: failed`, or the continuation is lost before a state transition
+- **THEN** the coordinator leaves the list exactly as last rendered and reports the worker-authored failure route
 
 ### Requirement: design-adapter-declares-progress-plan
 
-The design phase adapter (`sai/commands/design/coordinator.md`) SHALL declare a progress plan with exactly the following ordered progress steps:
+The design phase adapter and the design worker contract SHALL declare one of two static, ordered progress plans selected solely by explicit `--overview-lang` token presence in the active invocation. The opted-in plan SHALL contain exactly these seven steps:
 
-    prereqs-resolution: "Check prerequisites"
-    research: "Research and resolve open questions"
-    design: "Write design.md"
-    tasks: "Write tasks.md"
-    interfaces: "Write interfaces.md"
-    review: "Review artifacts"
-    overview: "Generate change-overview.md"
+- `prereqs-resolution` — "Check prerequisites"
+- `research` — "Research and resolve open questions"
+- `design` — "Write design.md"
+- `tasks` — "Write tasks.md"
+- `interfaces` — "Write interfaces.md"
+- `review` — "Review artifacts"
+- `overview` — "Generate change-overview.md"
 
-The indented block above is illustrative of the ids and labels only; it is not the rendering the instruction files use. The declaration as written in `sai/commands/design/coordinator.md` and in the design worker contract (`sai/commands/design/worker.md`) SHALL use those files' existing list rendering, and the two rendered lists SHALL compare equal by ordered id/label content after per-line indentation normalization — not by comparing either file with this delta's block. The worker contract SHALL enumerate the same step ids with the same labels in the same order. The adapter SHALL NOT omit, reorder, or rename these steps, and SHALL NOT add steps. Every label SHALL be imperative rather than nominal.
+The unopted-in plan SHALL contain exactly the first six steps in the same order and labels and SHALL contain no `overview` or replacement `skipped` step. Both declarations SHALL compare equal for the selected variant. The plan is static and fully known before worker dispatch; it is not carried in the envelope, emitted as a lifecycle field, or inferred from a worker result. The plan SHALL NOT contain a standalone `specs-approval` step.
 
-The plan SHALL NOT contain a standalone `specs-approval` step: the specs approval gate is folded into `prereqs-resolution`, so that step stays `in_progress` while the user is deciding on the specs rather than falsely showing research under way.
+#### Scenario: Opted-in design plan is declared
+
+- **WHEN** `/sai-2-design` starts with `--overview-lang spanish`
+- **THEN** the coordinator and worker declare the seven canonical steps in order
+- **AND** the final step is `overview: "Generate change-overview.md"`
 
 #### Scenario: design plan is declared
-
 - **WHEN** `/sai-2-design` starts in Claude Code or opencode
-- **THEN** the design adapter SHALL declare the seven canonical progress steps in order
-- **AND** the first step SHALL be labeled `Check prerequisites`
+- **THEN** the design adapter declares the canonical progress steps in order
+- **AND** the first step is labeled `Check prerequisites`
 
 #### Scenario: worker contract mirrors the ids
-
 - **WHEN** the design worker contract is read
-- **THEN** it SHALL enumerate exactly `prereqs-resolution`, `research`, `design`, `tasks`, `interfaces`, `review`, and `overview`, in that order, with the same labels the adapter declares
-- **AND** its declaration block SHALL compare equal to the coordinator file's declaration block by ordered id/label content after per-line indentation normalization, both rendered in those files' existing list form
+- **THEN** it enumerates the same selected ids and labels in the same order as the coordinator
 
 #### Scenario: design contract test pins the relabeled first step
-
-- **WHEN** `test/design-coordinator-worker.test.js` extracts the design coordinator and worker declarations
-- **THEN** it SHALL assert the seven ordered id/label pairs, including `prereqs-resolution: "Check prerequisites"`
-- **AND** it SHALL fail when either declaration retains the former first-step label
+- **WHEN** the design coordinator and worker declarations are extracted
+- **THEN** the ordered pairs include `prereqs-resolution: "Check prerequisites"`
 
 #### Scenario: the approval gate has no step of its own
-
 - **WHEN** the design plan is inspected
-- **THEN** it SHALL contain no `specs-approval` step
-- **AND** the specs approval gate SHALL be covered by `prereqs-resolution` without changing its approval mechanics
+- **THEN** it contains no `specs-approval` step
+- **AND** the specs approval gate is covered by `prereqs-resolution`
 
 #### Scenario: the panel does not advance while the user decides on the specs
-
 - **WHEN** the worker is waiting on the specs approval answer
-- **THEN** `prereqs-resolution` SHALL still render `in_progress` and `research` SHALL still render `pending`
+- **THEN** `prereqs-resolution` remains `in_progress` and `research` remains `pending`
+
+#### Scenario: Unopted-in design plan omits overview
+
+- **WHEN** `/sai-2-design` starts without `--overview-lang`
+- **THEN** the coordinator and worker declare exactly six canonical steps through `review`
+- **AND** neither declaration contains an `overview` or `skipped` step
+
+#### Scenario: Worker and coordinator variants mirror
+
+- **WHEN** the active design worker contract is read for either invocation form
+- **THEN** its selected id/label list matches the coordinator's selected list in order
+
+#### Scenario: Approval remains folded into prerequisites
+
+- **WHEN** the design plan is inspected in either variant
+- **THEN** it contains no `specs-approval` step
+- **AND** the specs approval gate remains covered by `prereqs-resolution` without changing its approval mechanics
+
+### Requirement: Continue uses a conditional design terminal route
+
+After design artifacts and the feedback gate are complete, an opted-in invocation SHALL trigger the existing same-worker overview-generation route with the explicitly selected language and existing generator contract. An unopted-in invocation SHALL close through the existing design completion sentence after source-artifact verification without dispatching the generator, writing overview lifecycle metadata, or offering a new navigation choice. Exactly one of these mutually exclusive routes SHALL execute per invocation, selected solely by the presence of `--overview-lang`, and the design completion sentence SHALL be emitted at most once. Both routes SHALL stop after design and SHALL not dispatch implementation planning.
+
+#### Scenario: Opted-in Continue carries generation scope
+
+- **WHEN** `Continue` is selected for a design invocation with `--overview-lang spanish`
+- **THEN** the same worker receives the existing generation-trigger continuation with the resolved change name, generation scope, and `spanish`
+- **AND** the existing overview terminal behavior is preserved
+
+#### Scenario: Unopted-in Continue is terminal without generation
+
+- **WHEN** `Continue` is selected for a design invocation without `--overview-lang`
+- **THEN** the coordinator emits the existing design completion sentence at the no-generation terminal
+- **AND** it does not dispatch a generator, write a new overview state, or dispatch `/sai-3-implement`
+
