@@ -122,7 +122,8 @@ This index groups the DDRs in `docs/ddr/` by **command** and by **cross-cutting 
 - [0144 — Self-discovered external needs use structured escalation records](./0144-budget-explorer-self-discovered-needs-use-structured-escalation.md)
 - [0145 — The budget-explorer tool-call ceiling resets for each execution segment](./0145-budget-explorer-tool-call-ceiling-resets-per-segment.md)
 - [0150 — Gate mode is parameterized at the fetch site, never detected from invocation context](./0150-mode-parameterized-at-fetch-site-not-detected.md) — **Amends** adr:0028
-- [0151 — External Explore findings block is the only `review` progress evidence](./0151-external-findings-block-is-only-review-evidence.md) — **Amends** 0133, Refs adr:0158
+| [0151 — External Explore findings block is the only `review` progress evidence](./0151-external-findings-block-is-only-review-evidence.md) — **Amends** 0133, Refs adr:0158
+| [0151 — Phase-navigation-only questions are not genuine idea uncertainty](./0151-phase-navigation-only-questions-are-not-genuine-idea-uncertainty.md) — Refs 0124
 
 ### `/sai-backfill`
 

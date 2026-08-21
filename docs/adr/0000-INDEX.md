@@ -178,6 +178,8 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0158 — Delete the worker-owned planning-artifact review loop](./0158-delete-worker-owned-planning-artifact-review-loop.md) — Supersedes 0139, Refs ddr:0133, Refs ddr:0134
 - [0159 — Supervised marker grammar stays on the two-string envelope; Explore owns the capability](./0159-marker-grammar-stays-on-two-string-envelope.md) — Refs 0158, Refs ddr:0114
 - [0160 — Interactive artifact feedback gate gains a non-option review-loop note only](./0160-interactive-gate-review-loop-note-only.md) — Refs 0028, Refs ddr:0150, Refs 0158
+- [0158 — Single shared crystallization-turn close definition consumed by items 5, 6, and 7](./0158-single-shared-crystallization-turn-close.md) — Refs 0146
+- [0159 — Path-specific next-step lives only on Manual/unmapped after the selector](./0159-path-specific-next-step-after-manual-selector.md) — **Amends** 0158, Refs 0146
 
 ### `/sai-backfill`
 
@@ -493,6 +495,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0159 — Supervised marker grammar stays on the two-string envelope; Explore owns the capability](./0159-marker-grammar-stays-on-two-string-envelope.md) — Refs 0158, Refs ddr:0114
 - [0160 — Interactive artifact feedback gate gains a non-option review-loop note only](./0160-interactive-gate-review-loop-note-only.md) — Refs 0028, Refs ddr:0150, Refs 0158
 - [0161 — Capability deltas stay change-local until archive sync](./0161-capability-deltas-stay-change-local-until-archive.md) — Refs 0158
+- [0159 — Path-specific next-step lives only on Manual/unmapped after the selector](./0159-path-specific-next-step-after-manual-selector.md) — **Amends** 0158, Refs 0146
 
 ### Artifact metadata & routing tokens
 
@@ -547,6 +550,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 | [0158](./0158-delete-worker-owned-planning-artifact-review-loop.md) | supersedes | [0139](./0139-fresh-read-only-reviewers-with-worker-owned-edits.md) |
 | [0159](./0159-three-slot-distinct-diagnosis-ledger.md) | amends | [0150](./0150-recovery-pool-segment-scoped-under-composition.md) |
 | [0162](./0162-schema-report-templates-point-to-write-time-authority.md) | supersedes | [0106](./0106-keep-both-report-template-families-pinned-parity.md) |
+| [0159](./0159-path-specific-next-step-after-manual-selector.md) | amends | [0158](./0158-single-shared-crystallization-turn-close.md) |
 
 ## Superseded ADRs (historical)
 
