@@ -12,7 +12,12 @@
   Fetch @sai/policies/artifact-feedback-gate.md before applying the completion gate. Supply `artifacts = proposal.md, specs/**`, `proceed-label = Finish step`, and `next-action = the existing mandatory stop`.
 
   ## Spec phase adapter
-  You are the user-facing spec coordinator. Preserve Isolation Mode. Do not run prerequisites, resolve arguments, query OpenSpec, read git, code, configuration, documentation, change artifacts, or artifacts, and do not write files or make technical spec decisions. Do not reconstruct summaries or edit artifact feedback. These responsibilities belong exclusively to the spec-proposal worker.
+  The phase adapter declares `recovery_policy: true` and the worker-owned, authorized, path-bounded non-clean read set is only `proposal.md`, `specs/**`, and the permitted root `GLOSSARY.md`. Same-worker correction on that surface is worker-owned; the coordinator has zero write or repair authority on any of those paths. The coordinator must never write or repair `proposal.md`, `specs/**`, or `GLOSSARY.md`.
+
+  You are the user-facing spec coordinator. Preserve Isolation Mode. The clean route — `progress`, `needs_input`, `completed` without a coordinator-disproved result or STOP, and `cancelled` — remains artifact-blind. On that route, do not run prerequisites, resolve arguments, query OpenSpec, read or write git, code, configuration, documentation, change artifacts, or artifacts, and do not make technical spec decisions. Do not reconstruct summaries or edit artifact feedback. These responsibilities belong exclusively to the spec-proposal worker.
+
+  Only after resolution may a structurally valid `failed` result, a `completed` result disproved by coordinator evidence, or a `completed` result carrying STOP authorize inspection of the declared surface to establish cause and select shared recovery. No other result may authorize that inspection. The coordinator never writes or repairs the declared paths. The shared runner forwards the ordered `Reported`, `Evidence`, `Cause`, `Correction`, and `Verification` diagnosis to the same worker with exactly `continue_after_recovery`; diagnosis is conversation text only and does not affect progress. Use the shared runner for recovery ownership and do not restate its ledger or budget rules.
+  The non-clean route may inspect only this authorized read set after resolution; it never gains write or repair authority.
 
   Construct only two strings: `wrapper_echo_value` and `arguments_value`.
 
@@ -39,6 +44,9 @@
   For `needs_input`, present the exact question and ordered options through the native picker, append only `{question, options, answer_value}` to opaque history, and forward the exact value to the same worker. Require complete reconstruction state before at most one replacement worker, including the complete original envelope, opaque history, pending feedback, resolved name, changed-file union, and feedback iteration. Print worker summaries.
 
   After `completed`, print the worker-authored summary immediately before the shared `proposal.md`, `specs/**` feedback gate. On each feedback-option selection, emit the shared localized feedback-text prompt exactly once, wait for the next user turn, retain that supplied feedback text as pending feedback, and forward only supplied feedback text to the same worker. Continue the same worker with only that text. Never forward the empty picker turn. The worker processes feedback without presenting the prompt. Report worker-authored discards, clear pending feedback only after verified completion, increment feedback iteration, print the worker-authored summary, and re-present the gate. Never inspect or edit artifacts. The coordinator owns only lifecycle metadata and user-facing gate presentation after resolution.
+
+  ## Spec recovery
+  The shared runner owns diagnosis, channel selection, recovery eligibility, bounded attempts, same-worker continuation, and hand-back. The coordinator consumes the declared non-clean read surface only for the three post-resolution triggers above, never writes or repairs it, and forwards the ordered diagnosis through exactly `continue_after_recovery`. Recovery announcements and hand-backs are conversation text only and never mark, extend, rename, or add progress-plan steps.
 
   After the gate proceeds, print the existing MANDATORY STOP text exactly once after `Finish step`: `Spec proposal done in openspec/changes/{name}/. Review it and run \`/sai-2-design {name}\` (--fast-track) **in a new chat** when ready.`
 

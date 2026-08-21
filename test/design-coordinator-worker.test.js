@@ -272,9 +272,26 @@ test('standalone policies have one canonical home and active fetches use it', ()
 });
 
 test('routed design coordinator has no technical I/O and owns only lifecycle routing', () => {
-   const coordinator = artifact('sai/commands/design/coordinator.md');
-  assert.match(coordinator, /Do not run prerequisites, parse arguments.*read git, code, configuration, documentation, change artifacts, or design artifacts/i);
+  const coordinator = artifact('sai/commands/design/coordinator.md');
+  assert.match(
+    coordinator,
+    /clean (?:route|path)[\s\S]{0,300}(?:does not|must not|shall not|never|artifact[- ]blind)[\s\S]{0,180}(?:read|inspect)[\s\S]{0,180}(?:artifact|design\.md|tasks\.md|interfaces\.md)/i,
+    'the clean route should remain artifact-blind',
+  );
+  assert.match(
+    coordinator,
+    /non-clean[\s\S]{0,600}(?=(?:[\s\S]{0,600})(?:design\.md|tasks\.md|interfaces\.md))(?=[\s\S]{0,600}(?:read|inspect))(?=[\s\S]{0,600}(?:only|bounded|authorized|exception))/i,
+    'the non-clean route should permit only a path-bounded design-artifact exception',
+  );
+  for (const artifactName of ['design\\.md', 'tasks\\.md', 'interfaces\\.md']) {
+    assert.match(
+      coordinator,
+      new RegExp(`non-clean[\\s\\S]{0,600}${artifactName}`, 'i'),
+      `the non-clean exception should name ${artifactName.replace('\\\\.', '.')}`,
+    );
+  }
   assert.match(coordinator, /do not write any file.*technical design decisions/i);
+  assert.match(coordinator, /recovery_policy\s*:\s*true/);
   assert.match(coordinator, /continue_after_notice/);
 });
 

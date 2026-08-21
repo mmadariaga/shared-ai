@@ -151,6 +151,32 @@ test('coordinator declares lifecycle-only ownership and the exact two-string env
   assert.match(coordinator, /dispatch exactly one|start exactly one/i);
   assert.match(coordinator, /continue the same worker/i);
   assert.match(coordinator, /at most one replacement/i);
+  assert.match(coordinator, /recovery_policy\s*:\s*true/);
+  assert.match(
+    coordinator,
+    /non-clean[\s\S]{0,600}(?=[\s\S]{0,600}proposal\.md)(?=[\s\S]{0,600}specs\/\*\*)(?=[\s\S]{0,600}(?:read|inspect))(?=[\s\S]{0,600}(?:only|bounded|authorized|allowed))/i,
+    'the non-clean route should use an authorized path-bounded artifact read set',
+  );
+  assert.match(
+    coordinator,
+    /(?:never|must not|shall not|does not)[\s\S]{0,180}(?:write|repair)[\s\S]{0,220}(?:proposal\.md|specs\/\*\*)/i,
+    'the coordinator must never write or repair proposal/spec artifacts',
+  );
+  assert.match(
+    coordinator,
+    /clean (?:route|path)[\s\S]{0,300}(?:artifact[- ]blind|(?:does not|must not|shall not|never)[\s\S]{0,180}(?:read|inspect))[\s\S]{0,180}(?:artifact|proposal\.md|specs\/\*\*)/i,
+    'the clean route should remain artifact-blind',
+  );
+  assert.match(
+    coordinator,
+    /non-clean (?:route|path)[\s\S]{0,300}(?:may|can|authorized|allowed)[\s\S]{0,180}(?:read|inspect)/i,
+    'the non-clean route may inspect within its authorized set',
+  );
+  assert.match(
+    coordinator,
+    /continue_after_recovery|recovery[\s\S]{0,260}same[- ]worker|same[- ]worker[\s\S]{0,260}recovery/i,
+    'recovery should continue on the same worker',
+  );
 });
 
 test('coordinator preserves closed statuses, ordered picker forwarding, and opaque history', () => {

@@ -181,7 +181,7 @@ If `worker failures expose closed classification metadata after resolution only`
 
 ##### RED phase
 
-- [ ] Update `test/design-coordinator-worker.test.js` test `routed design coordinator has no technical I/O and owns only lifecycle routing`:
+- [x] Update `test/design-coordinator-worker.test.js` test `routed design coordinator has no technical I/O and owns only lifecycle routing`:
 
   - Replace the absolute ban expectation with a **clean-route** ban plus an explicit **non-clean** path-bounded exception.
   - Keep no-write / no technical-design-decision pins.
@@ -201,7 +201,7 @@ test('routed design coordinator has no technical I/O and owns only lifecycle rou
 });
 ```
 
-- [ ] Update `test/spec-coordinator-worker.test.js` test `coordinator declares lifecycle-only ownership and the exact two-string envelope`:
+- [x] Update `test/spec-coordinator-worker.test.js` test `coordinator declares lifecycle-only ownership and the exact two-string envelope`:
 
   - Keep envelope / lifecycle / two-string pins.
   - Widen so lifecycle-only ownership is **clean-route** qualified and a **non-clean diagnosis** exception is allowed.
@@ -222,13 +222,13 @@ test('routed design coordinator has no technical I/O and owns only lifecycle rou
     'in-scope correction is same-worker recovery');
 ```
 
-- [ ] Verify RED: `node --test test/spec-coordinator-worker.test.js test/design-coordinator-worker.test.js` — expected: failures on the new/widened pins against current cards.
+- [x] Verify RED: `node --test test/spec-coordinator-worker.test.js test/design-coordinator-worker.test.js` — expected: failures on the new/widened pins against current cards.
 
-- [ ] **GATE — DO NOT PROCEED to GREEN until RED is verified.**
+- [x] **GATE — DO NOT PROCEED to GREEN until RED is verified.**
 
 ##### GREEN phase
 
-- [ ] Edit `sai/commands/spec/coordinator.md`:
+- [x] Edit `sai/commands/spec/coordinator.md`:
 
   1. Declare `recovery_policy: true` on the spec phase adapter (static, dispatch-time).
   2. Declare the worker-owned / authorized non-clean read set: `proposal.md`, `specs/**`, and permitted root `GLOSSARY.md`.
@@ -238,7 +238,7 @@ test('routed design coordinator has no technical I/O and owns only lifecycle rou
   6. Preserve six-step progress plan, feedback gate, changed-file union, mandatory stop. Diagnosis is conversation text only — never progress evidence; non-clean reads do not mark/reconcile progress steps.
   7. Do **not** restate shared ledger/budget rules — reference shared runner ownership.
 
-- [ ] Edit `sai/commands/design/coordinator.md`:
+- [x] Edit `sai/commands/design/coordinator.md`:
 
   1. Keep `recovery_policy: true` and existing overview-generation recovery path.
   2. Qualify **Design phase adapter** / no-I/O language for the **clean route** only: no prerequisites, no OpenSpec, no git/code/config/docs, no design-artifact reads, no writes, no technical design decisions.
@@ -248,17 +248,17 @@ test('routed design coordinator has no technical I/O and owns only lifecycle rou
   6. Replace absolute "Forward every worker payload without inspecting artifacts" recovery wording so it applies to the **clean route** / overview path as appropriate, while non-clean main-path inspection is explicitly allowed under the exception.
   7. Preserve feedback gate, progress plan, notices, and completion-sentence boundary.
 
-- [ ] Preserve sole overview registry exclusivity tests (`Step 6 compatibility keeps diagnosis-driven recovery...`) — design coordinator must still NOT contain a `| design-overview-repair |` table.
+- [x] Preserve sole overview registry exclusivity tests (`Step 6 compatibility keeps diagnosis-driven recovery...`) — design coordinator must still NOT contain a `| design-overview-repair |` table.
 
-- [ ] Verify GREEN: `node --test test/spec-coordinator-worker.test.js test/design-coordinator-worker.test.js` — expected: PASS.
+- [x] Verify GREEN: `node --test test/spec-coordinator-worker.test.js test/design-coordinator-worker.test.js` — expected: PASS.
 
 ##### Step 3 Verification Checklist
 
 **Automated (agent runs before stopping):**
-- [ ] RED verified — coordinator suite fails on new clean/non-clean pins
-- [ ] GREEN verified — `node --test test/spec-coordinator-worker.test.js test/design-coordinator-worker.test.js` passes
-- [ ] Spec and design both declare `recovery_policy: true`
-- [ ] Design coordinator still has no registry table row for `design-overview-repair`
+- [x] RED verified — coordinator suite fails on new clean/non-clean pins
+- [x] GREEN verified — `node --test test/spec-coordinator-worker.test.js test/design-coordinator-worker.test.js` passes
+- [x] Spec and design both declare `recovery_policy: true`
+- [x] Design coordinator still has no registry table row for `design-overview-repair`
 
 *(No Human checks — service-side step with no observable browser behavior.)*
 
@@ -437,5 +437,7 @@ If harness-parity smoke is not already covered by existing Claude/opencode bindi
 | 1 | green | green | 3 | assertion | Corrected the contract wording within the authorized runner file. |
 | 2 | red | red | 1 | assertion | The worker-core lifecycle-only pin failed as intended. |
 | 2 | green | green | 1 | n/a | Worker-core clarification passed the focused suite. |
+| 3 | red | red | 1 | assertion | Coordinator clean/non-clean boundary pins failed as intended. |
+| 3 | green | green | 1 | assertion | Coordinator contract wording was corrected within authorized files. |
 
 )
