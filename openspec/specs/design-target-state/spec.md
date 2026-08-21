@@ -1,7 +1,9 @@
 # design-target-state Specification
 
-## Requirements
+## Purpose
 
+Define the target-state design artifact and its derived Architecture Snapshot and File Manifest contracts.
+## Requirements
 ### Requirement: design.md opens with a Target State section
 
 `openspec/changes/{name}/design.md` SHALL begin with a `## Target State` section, authored and persisted by the design phase as the authoritative source for the change's finished-shape snapshot. `sai/commands/design/instructions.md` SHALL require that the `## Target State` section is emitted in `design.md` before the other design sections, and SHALL require that `openspec/changes/{name}/interfaces.md` begins directly with its first `## Step N` section — no `## Target State` section and no snapshot or manifest subsection SHALL be emitted in `interfaces.md`. The `change-overview.md` projection SHALL read the authoritative snapshot details from `design.md`; it SHALL render them under an adapted approval-oriented `## Target Architecture` section rather than project `## Target State`, and SHALL NOT author or synthesize source snapshot facts independently. The overview renders an adapted ## Target Architecture rather than ## Target State.
@@ -200,7 +202,7 @@ When the net fold produces no lines, `### File Manifest` SHALL carry the exact s
 #### Scenario: docs-only change emits snapshot None and a full manifest
 
 - **WHEN** a change touches only documentation files and plans no externally consumable or internal public surfaces
-- **THEN** `### Architecture Snapshot` carries `None — no planned public surfaces`
+- **THEN** `### Architecture Snapshot` carries the shared `None — no planned public surfaces` sentinel
 - **AND** `### File Manifest` directly beneath it still carries the full folded list of the change's files
 - **AND** no empty boundary-block rendering is emitted when the whole snapshot inventory is empty
 
@@ -355,3 +357,4 @@ The boundary split SHALL apply to future design authoring and to derived renderi
 - **WHEN** the updated design contract is installed while an existing change already has a `design.md`
 - **THEN** that existing `design.md` is not rewritten solely because the Architecture Snapshot contract changed
 - **AND** future authoring follows the external-first/internal-second contract
+
