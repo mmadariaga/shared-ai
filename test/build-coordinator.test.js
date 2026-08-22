@@ -9,7 +9,7 @@ const repoRoot = path.join(__dirname, '..');
 const coordinatorPath = 'sai/commands/build/coordinator.md';
 const launcherPath = 'sai/commands/build/launcher.md';
 const applyCoordinatorPath = 'sai/commands/apply/coordinator.md';
-const runnerPath = 'sai/orchestration/command-runner.md';
+const boundedRecoveryPath = 'sai/policies/bounded-recovery.md';
 
 function readRequired(relativePath) {
   const absolutePath = path.join(repoRoot, relativePath);
@@ -107,12 +107,12 @@ test('Step 6 compatibility inherits diagnosis-driven recovery through apply and 
     ['launcher', readRequired(launcherPath)],
   ];
   const apply = readRequired(applyCoordinatorPath);
-  const runner = readRequired(runnerPath);
+  const recoveryPolicy = readRequired(boundedRecoveryPath);
   const build = buildSources.map(([, source]) => source).join('\n');
   const diagnosisRecovery = /diagnosis[- ]driven recovery|distinct[- ]diagnosis|diagnosis[_ -]?key/i;
 
-  assert.match(runner, diagnosisRecovery,
-    'the shared runner should own diagnosis-driven recovery');
+  assert.match(recoveryPolicy, diagnosisRecovery,
+    'the shared bounded-recovery policy should own diagnosis-driven recovery');
   assert.match(apply, diagnosisRecovery,
     'the apply route should inherit diagnosis-driven recovery');
   const claudeBoot = readRequired('sai/adapters/claude/boot.md');

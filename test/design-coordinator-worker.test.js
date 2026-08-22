@@ -1834,7 +1834,7 @@ test('Step 3: design worker leaves mode-dependent gate ownership to the coordina
 });
 
 test('Step 6 compatibility keeps diagnosis-driven recovery shared, apply-owned, and out of the design registry', () => {
-  const runner = artifact('sai/orchestration/command-runner.md');
+  const recoveryPolicy = artifact('sai/policies/bounded-recovery.md');
   const apply = [
     artifact('sai/commands/apply/coordinator.md'),
     artifact('sai/commands/apply/runner.md'),
@@ -1843,8 +1843,8 @@ test('Step 6 compatibility keeps diagnosis-driven recovery shared, apply-owned, 
   const design = artifact('sai/commands/design/coordinator.md');
   const diagnosisRecovery = /diagnosis[- ]driven recovery|distinct[- ]diagnosis|diagnosis[_ -]?key/i;
 
-  assert.match(runner, diagnosisRecovery,
-    'the shared command runner should carry diagnosis-driven recovery');
+  assert.match(recoveryPolicy, diagnosisRecovery,
+    'the shared bounded-recovery policy should carry diagnosis-driven recovery');
   assert.match(apply, diagnosisRecovery,
     'the apply route should carry diagnosis-driven recovery');
 
@@ -1853,12 +1853,12 @@ test('Step 6 compatibility keeps diagnosis-driven recovery shared, apply-owned, 
 
   const registryDeclaration = /The sole runtime registry for this algorithm is:/i;
   const registryRow = /\|\s*design-overview-repair\s*\|/i;
-  assert.match(runner, registryDeclaration,
-    'the shared command runner should declare the sole recovery registry');
-  assert.equal(countLiteral(runner, '| design-overview-repair |'), 1,
-    'the shared command runner should contain exactly one registered recovery surface');
-  assert.match(runner, registryRow,
-    'the shared command runner should contain the registered recovery surface');
+  assert.match(recoveryPolicy, registryDeclaration,
+    'the shared bounded-recovery policy should declare the sole recovery registry');
+  assert.equal(countLiteral(recoveryPolicy, '| design-overview-repair |'), 1,
+    'the shared bounded-recovery policy should contain exactly one registered recovery surface');
+  assert.match(recoveryPolicy, registryRow,
+    'the shared bounded-recovery policy should contain the registered recovery surface');
   for (const [surface, source] of [
     ['design coordinator', design],
     ['apply route', apply],

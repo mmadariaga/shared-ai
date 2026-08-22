@@ -1,6 +1,7 @@
 <TASK>
 
   Fetch @sai/commands/apply/invocation.md and follow it exactly.
+  Fetch @sai/policies/bounded-recovery.md and follow it as part of the shared runner.
   Fetch @sai/commands/apply/runner.md and follow those instructions exactly.
   Fetch @sai/policies/commit-rules.md and follow it at every commit gate.
 

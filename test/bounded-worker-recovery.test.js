@@ -17,31 +17,31 @@ test('worker failures expose closed classification metadata after resolution onl
   assert.match(lifecycle, /pre-resolution[\s\S]*(?:omit|only)[\s\S]*(?:failure_class|classification)/i);
 });
 
-test('shared runner owns a three-slot ledger of distinct diagnosis keys', () => {
-  const runner = artifact('sai/orchestration/command-runner.md');
-  assert.match(runner, /recovery_policy/);
-  assert.match(runner, /continue_after_recovery/);
-  assert.match(runner, /(?:three|3)[\s-]+(?:slot|diagnosis)/i,
+test('shared recovery policy owns a three-slot ledger of distinct diagnosis keys', () => {
+  const policy = artifact('sai/policies/bounded-recovery.md');
+  assert.match(policy, /recovery_policy/);
+  assert.match(policy, /continue_after_recovery/);
+  assert.match(policy, /(?:three|3)[\s-]+(?:slot|diagnosis)/i,
     'recovery must expose three diagnosis slots');
-  assert.match(runner, /distinct[- ]diagnos(?:is|es)/i,
+  assert.match(policy, /distinct[- ]diagnos(?:is|es)/i,
     'the recovery budget must be consumed by distinct diagnoses');
-  assert.match(runner, /ledger/i,
+  assert.match(policy, /ledger/i,
     'recovery must retain a diagnosis ledger');
-  assert.match(runner, /diagnosis[_ ]key[\s:=`]*[\s\S]{0,220}(?:tuple|\([^)]*failure[_ ]class[^)]*cause[_ ]locus[^)]*\))/i,
+  assert.match(policy, /diagnosis[_ ]key[\s:=`]*[\s\S]{0,220}(?:tuple|\([^)]*failure[_ ]class[^)]*cause[_ ]locus[^)]*\))/i,
     'each diagnosis must have a tuple key containing failure_class and Cause Locus');
-  assert.match(runner, /(?:(?:duplicate|already[- ]seen)[\s\S]{0,180}(?:before|prior to)[\s\S]{0,100}dispatch|(?:before|prior to)[\s\S]{0,100}dispatch[\s\S]{0,180}(?:duplicate|already[- ]seen))/i,
+  assert.match(policy, /(?:(?:duplicate|already[- ]seen)[\s\S]{0,180}(?:before|prior to)[\s\S]{0,100}dispatch|(?:before|prior to)[\s\S]{0,100}dispatch[\s\S]{0,180}(?:duplicate|already[- ]seen))/i,
     'duplicate diagnoses must be rejected before dispatch');
-  assert.match(runner, /failure[_ ]class[\s\S]{0,220}(?:(?:prior)[\s\S]{0,120}(?:not|never)[\s\S]{0,80}gate|(?:not|never)[\s\S]{0,80}gate[\s\S]{0,120}prior)/i,
+  assert.match(policy, /failure[_ ]class[\s\S]{0,220}(?:(?:prior)[\s\S]{0,120}(?:not|never)[\s\S]{0,80}gate|(?:not|never)[\s\S]{0,80}gate[\s\S]{0,120}prior)/i,
     'failure_class is a prior, not the recovery gate');
-  assert.match(runner, /same[- ]worker/i);
-  assert.match(runner, /recovery[\s\S]{0,400}(?:never|no)[\s\S]{0,120}replacement/i);
-  assert.match(runner, /outer-envelope-violation/);
+  assert.match(policy, /same[- ]worker/i);
+  assert.match(policy, /recovery[\s\S]{0,400}(?:never|no)[\s\S]{0,120}replacement/i);
+  assert.match(policy, /outer-envelope-violation/);
 });
 
 test('recovery routes Cause Locus diagnoses through dual inspection channels', () => {
-  const runner = artifact('sai/orchestration/command-runner.md');
+  const policy = artifact('sai/policies/bounded-recovery.md');
   const orchestrationSpec = artifact('openspec/specs/orchestration-core/spec.md');
-  const contract = `${runner}\n${orchestrationSpec}`;
+  const contract = `${policy}\n${orchestrationSpec}`;
 
   assert.match(contract, /(?:diagnos(?:is|es)[\s\S]{0,220}(?:route|routing)|(?:route|routing)[\s\S]{0,220}diagnos(?:is|es))/i,
     'recovery routing must be diagnosis-driven');
@@ -57,40 +57,40 @@ test('recovery routes Cause Locus diagnoses through dual inspection channels', (
     'diagnosis must use dual inspection channels');
 });
 
-test('planning non-clean inspection boundary and adapter surface declaration live in the runner', () => {
-  const runner = artifact('sai/orchestration/command-runner.md');
+test('planning non-clean inspection boundary and adapter surface declaration live in the recovery policy', () => {
+  const policy = artifact('sai/policies/bounded-recovery.md');
 
-  assert.match(runner, /non[- ]clean[\s\S]{0,200}(?:failed|closure)/i,
+  assert.match(policy, /non[- ]clean[\s\S]{0,200}(?:failed|closure)/i,
     'runner must name the non-clean closure route');
-  assert.match(runner, /(?:standalone|planning)[\s\S]{0,200}(?:adapter|inspection)/i,
+  assert.match(policy, /(?:standalone|planning)[\s\S]{0,200}(?:adapter|inspection)/i,
     'runner must address standalone/planning adapters');
-  assert.match(runner, /(?:worker[- ]owned|artifact surface|authorized read set)/i,
+  assert.match(policy, /(?:worker[- ]owned|artifact surface|authorized read set)/i,
     'adapters must declare a worker-owned artifact surface / authorized read set');
-  assert.match(runner, /same[- ]worker/i,
+  assert.match(policy, /same[- ]worker/i,
     'same-worker correction must remain named');
-  assert.match(runner, /(?:clean[\s\S]{0,120}(?:completed|needs_input|cancelled|progress|notice)|artifact[- ]blind)/i,
+  assert.match(policy, /(?:clean[\s\S]{0,120}(?:completed|needs_input|cancelled|progress|notice)|artifact[- ]blind)/i,
     'clean-route blindness must be retained');
-  assert.match(runner, /(?:ephemeral|conversation state|not[\s\S]{0,80}(?:written|persisted)[\s\S]{0,80}(?:artifact|metadata))/i,
+  assert.match(policy, /(?:ephemeral|conversation state|not[\s\S]{0,80}(?:written|persisted)[\s\S]{0,80}(?:artifact|metadata))/i,
     'diagnosis must remain ephemeral — no durable recovery markers');
 });
 
 test('dual-channel exclusivity is per cause surface with no unresolved static fallback', () => {
-  const runner = artifact('sai/orchestration/command-runner.md');
+  const policy = artifact('sai/policies/bounded-recovery.md');
 
-  assert.match(runner, /(?:per[- ](?:cause[- ])?surface|cause surface)/i,
+  assert.match(policy, /(?:per[- ](?:cause[- ])?surface|cause surface)/i,
     'channel selection must be per cause surface');
-  assert.match(runner, /(?:authorized read set|read set)[\s\S]{0,300}(?:inspection|inspect)/i,
+  assert.match(policy, /(?:authorized read set|read set)[\s\S]{0,300}(?:inspection|inspect)/i,
     'inspection applies when the cause surface is in the authorized read set');
-  assert.match(runner, /(?:phase[- ]static|design-overview-repair)[\s\S]{0,300}(?:outside|not[\s\S]{0,40}(?:in|within)|∉|blind)/i,
+  assert.match(policy, /(?:phase[- ]static|design-overview-repair)[\s\S]{0,300}(?:outside|not[\s\S]{0,40}(?:in|within)|∉|blind)/i,
     'phase-static matching applies when the surface is outside the read set');
-  assert.match(runner, /(?:no|not|never)[\s\S]{0,120}fall[\s-]?back[\s\S]{0,200}(?:phase[- ]static|static|design-overview-repair)|(?:unresolved)[\s\S]{0,200}(?:no|not|never)[\s\S]{0,120}(?:phase[- ]static|static|fall[\s-]?back)/i,
+  assert.match(policy, /(?:no|not|never)[\s\S]{0,120}fall[\s-]?back[\s\S]{0,200}(?:phase[- ]static|static|design-overview-repair)|(?:unresolved)[\s\S]{0,200}(?:no|not|never)[\s\S]{0,120}(?:phase[- ]static|static|fall[\s-]?back)/i,
     'authorized-but-unresolved inspection must not fall back to a static row');
-  assert.match(runner, /channel selection[\s\S]{0,200}(?:before|precedes)[\s\S]{0,120}(?:key|diagnosis)/i,
+  assert.match(policy, /channel selection[\s\S]{0,200}(?:before|precedes)[\s\S]{0,120}(?:key|diagnosis)/i,
     'channel selection must precede key derivation');
-  assert.match(runner, /design-overview-repair/,
+  assert.match(policy, /design-overview-repair/,
     'sole overview registry identity must remain');
   assert.equal(
-    (runner.match(/\| design-overview-repair \|/g) || []).length,
+    (policy.match(/\| design-overview-repair \|/g) || []).length,
     1,
     'exactly one design-overview-repair registry row'
   );
@@ -98,18 +98,19 @@ test('dual-channel exclusivity is per cause surface with no unresolved static fa
 
 test('recovery preserves ordinary continuation fallback and invocation accounting', () => {
   const runner = artifact('sai/orchestration/command-runner.md');
-  assert.match(runner, /outside recovery[\s\S]{0,260}(?:replacement|fallback)/i);
+  const policy = artifact('sai/policies/bounded-recovery.md');
+  assert.match(policy, /outside recovery[\s\S]{0,260}(?:replacement|fallback)/i);
   assert.match(runner, /changed_files[\s\S]{0,260}(?:first-seen|ordered)[\s\S]{0,260}(?:never|not)[\s\S]{0,80}reset/i);
-  assert.match(runner, /needs_input[\s\S]{0,300}(?:exit|resume)[\s\S]{0,180}(?:normal|input)/i);
-  assert.match(runner, /cancelled[\s\S]{0,180}(?:never|no)[\s\S]{0,120}recovery/i);
-  assert.match(runner, /--fast-track[\s\S]{0,180}(?:neither|not|same)[\s\S]{0,180}(?:pool|recovery)/i);
+  assert.match(policy, /needs_input[\s\S]{0,300}(?:exit|resume)[\s\S]{0,180}(?:normal|input)/i);
+  assert.match(policy, /cancelled[\s\S]{0,180}(?:never|no)[\s\S]{0,120}recovery/i);
+  assert.match(policy, /--fast-track[\s\S]{0,180}(?:neither|not|same)[\s\S]{0,180}(?:pool|recovery)/i);
 });
 
 test('recovery reporting is conversational and never mutates progress plan state', () => {
-  const runner = artifact('sai/orchestration/command-runner.md');
-  assert.match(runner, /failure class[\s\S]{0,220}(?:1|2|3)[\s\S]{0,100}of 3/i);
-  assert.match(runner, /attempts spent|attempt count/i);
-  assert.match(runner, /recovery[\s\S]{0,260}(?:does not|never)[\s\S]{0,180}(?:mark|extend|rename|add)[\s\S]{0,120}progress/i);
+  const policy = artifact('sai/policies/bounded-recovery.md');
+  assert.match(policy, /failure class[\s\S]{0,220}(?:1|2|3)[\s\S]{0,100}of 3/i);
+  assert.match(policy, /attempts spent|attempt count/i);
+  assert.match(policy, /recovery[\s\S]{0,260}(?:does not|never)[\s\S]{0,180}(?:mark|extend|rename|add)[\s\S]{0,120}progress/i);
 });
 
 test('active orchestration capability declares the optional recovery seam', () => {
@@ -174,63 +175,65 @@ test('verified recovery commits current overview state and preserves incomplete-
 
 test('composition scopes the recovery pool per adapter segment and keeps the changed-files union across transitions', () => {
   const runner = artifact('sai/orchestration/command-runner.md');
-  assert.match(runner, /segment-scoped|active adapter segment/i,
+  const policy = artifact('sai/policies/bounded-recovery.md');
+  const composed = `${runner}\n${policy}`;
+  assert.match(composed, /segment-scoped|active adapter segment/i,
     'recovery pool must be segment-scoped under composition');
-  assert.match(runner, /(?:segment-scoped|per[- ]segment)[\s\S]{0,220}(?:diagnos(?:is|es)|ledger)/i,
+  assert.match(composed, /(?:segment-scoped|per[- ]segment)[\s\S]{0,220}(?:diagnos(?:is|es)|ledger)/i,
     'the distinct-diagnosis ledger must be scoped to the active segment');
-  assert.match(runner, /fresh[\s\S]{0,80}three[- ]attempt|fresh[\s\S]{0,80}pool/i,
+  assert.match(composed, /fresh[\s\S]{0,80}three[- ](?:attempt|slot)|fresh[\s\S]{0,80}pool/i,
     'a later recovery_policy: true segment must receive a fresh three-attempt pool');
-  assert.match(runner, /(?:shall not|must not|does not|never)[\s\S]{0,120}inherit[\s\S]{0,120}(?:depleted|exhausted|remaining)/i,
+  assert.match(composed, /(?:shall not|must not|does not|never)[\s\S]{0,120}inherit[\s\S]{0,120}(?:depleted|exhausted|remaining|spent)/i,
     'a later segment must not inherit a depleted budget');
-  assert.match(runner, /changed[-_ ]files[\s\S]{0,200}(?:across|span)[\s\S]{0,120}(?:transition|segment)/i,
+  assert.match(composed, /changed[-_ ]files[\s\S]{0,200}(?:across|span)[\s\S]{0,120}(?:transition|segment)/i,
     'the changed-files union must continue across segment transitions');
-  assert.match(runner, /(?:shall not|must not|never)[\s\S]{0,80}reset[\s\S]{0,80}(?:at a )?transition/i,
+  assert.match(composed, /(?:shall not|must not|never)[\s\S]{0,80}reset[\s\S]{0,80}(?:at a )?transition/i,
     'the union must not reset at a transition');
 });
 
 test('design overview repair has one phase-static registry and deterministic match matrix', () => {
-  const runner = artifact('sai/orchestration/command-runner.md');
+  const policy = artifact('sai/policies/bounded-recovery.md');
 
-  assert.match(runner, /design-overview-repair/,
-    'the command runner must register the design-overview-repair diagnosis');
-  assert.match(runner, /phase[- ]static[\s\S]{0,260}(?:registry|match matrix)|(?:registry|match matrix)[\s\S]{0,260}phase[- ]static/i,
+  assert.match(policy, /design-overview-repair/,
+    'the recovery policy must register the design-overview-repair diagnosis');
+  assert.match(policy, /phase[- ]static[\s\S]{0,260}(?:registry|match matrix)|(?:registry|match matrix)[\s\S]{0,260}phase[- ]static/i,
     'the repair registry must be phase-static');
-  assert.match(runner, /(?:dual|two)[\s\S]{0,180}(?:inspection|evidence)[\s\S]{0,180}(?:channel|path)/i,
+  assert.match(policy, /(?:dual|two)[\s\S]{0,180}(?:inspection|evidence)[\s\S]{0,180}(?:channel|path)/i,
     'matching must inspect both diagnosis channels');
-  assert.match(runner, /determin(?:istic|istically)/i,
+  assert.match(policy, /determin(?:istic|istically)/i,
     'the phase-static match algorithm must be deterministic');
-  assert.match(runner, /(?:match|matching)[\s-]+algorithm/i,
+  assert.match(policy, /(?:match|matching)[\s-]+algorithm/i,
     'the registry must define a match algorithm');
-  assert.match(runner, /(?:mandatory|required)[\s\S]{0,180}primary[- ]path[\s\S]{0,180}(?:evidence|changed_files)|primary[- ]path[\s\S]{0,180}(?:evidence|changed_files)[\s\S]{0,180}(?:mandatory|required)/i,
+  assert.match(policy, /(?:mandatory|required)[\s\S]{0,180}primary[- ]path[\s\S]{0,180}(?:evidence|changed_files)|primary[- ]path[\s\S]{0,180}(?:evidence|changed_files)[\s\S]{0,180}(?:mandatory|required)/i,
     'a successful match must require primary-path evidence');
-  assert.match(runner, /openspec\/changes\/\{change-name\}\/change-overview\.md/,
+  assert.match(policy, /openspec\/changes\/\{change-name\}\/change-overview\.md/,
     'the registry must use the change overview as its primary path');
-  assert.match(runner, /(?:optional|secondary)[\s\S]{0,260}\.openspec\.yaml|\.openspec\.yaml[\s\S]{0,260}(?:optional|secondary)/i,
+  assert.match(policy, /(?:optional|secondary)[\s\S]{0,260}\.openspec\.yaml|\.openspec\.yaml[\s\S]{0,260}(?:optional|secondary)/i,
     'the durable metadata path must be optional');
-  assert.match(runner, /overview-generation-repair/,
+  assert.match(policy, /overview-generation-repair/,
     'the registry must name the overview-generation-repair lifecycle point');
-  assert.match(runner, /design-worker-overview-repair/,
+  assert.match(policy, /design-worker-overview-repair/,
     'the registry must name the design-worker-overview-repair boundary');
-  assert.match(runner, /(?:accepted|allowed|eligible)[\s\S]{0,260}validation[\s\S]{0,260}generation[\s\S]{0,260}dispatch/i,
+  assert.match(policy, /(?:accepted|allowed|eligible)[\s\S]{0,260}validation[\s\S]{0,260}generation[\s\S]{0,260}dispatch/i,
     'the registry must enumerate validation, generation, and dispatch as accepted classes');
-  assert.match(runner, /(?:successful|success)[\s\S]{0,300}(?:diagnosis[-_ ]key)[\s:=`]*design-overview-repair|diagnosis[-_ ]key[\s:=`]*design-overview-repair[\s\S]{0,300}(?:successful|success)/i,
+  assert.match(policy, /(?:successful|success)[\s\S]{0,300}(?:diagnosis[-_ ]key)[\s:=`]*design-overview-repair|diagnosis[-_ ]key[\s:=`]*design-overview-repair[\s\S]{0,300}(?:successful|success)/i,
     'a successful match must return the registered diagnosis key');
 });
 
 test('design overview repair rejects incomplete or prose-derived matches and has no duplicate registry table', () => {
-  const runner = artifact('sai/orchestration/command-runner.md');
+  const policy = artifact('sai/policies/bounded-recovery.md');
 
-  assert.match(runner, /(?:(?:missing|absent)[\s\S]{0,160}changed_files|changed_files[\s\S]{0,160}(?:missing|absent))[\s\S]{0,180}unresolved/i,
+  assert.match(policy, /(?:(?:missing|absent)[\s\S]{0,160}changed_files|changed_files[\s\S]{0,160}(?:missing|absent))[\s\S]{0,180}unresolved/i,
     'missing changed_files must remain unresolved');
-  assert.match(runner, /(?:empty[\s\S]{0,160}changed_files|changed_files[\s\S]{0,160}empty)[\s\S]{0,180}unresolved/i,
+  assert.match(policy, /(?:empty[\s\S]{0,160}changed_files|changed_files[\s\S]{0,160}empty)[\s\S]{0,180}unresolved/i,
     'empty changed_files must remain unresolved');
-  assert.match(runner, /out[- ]of[- ](?:surface|scope)[\s\S]{0,240}unresolved/i,
+  assert.match(policy, /out[- ]of[- ](?:surface|scope)[\s\S]{0,240}unresolved/i,
     'out-of-surface evidence must remain unresolved');
-  assert.match(runner, /(?:(?:omitted|missing)[\s\S]{0,180}primary[- ]path|primary[- ]path[\s\S]{0,180}(?:omitted|missing))[\s\S]{0,240}unresolved/i,
+  assert.match(policy, /(?:(?:omitted|missing)[\s\S]{0,180}primary[- ]path|primary[- ]path[\s\S]{0,180}(?:omitted|missing))[\s\S]{0,240}unresolved/i,
     'omitted primary-path evidence must remain unresolved');
-  assert.match(runner, /(?:(?:non[- ]accepted|unaccepted|unsupported|ineligible)[\s\S]{0,180}(?:failure[_ -]?class|class)|(?:failure[_ -]?class|class)[\s\S]{0,180}(?:non[- ]accepted|unaccepted|unsupported|ineligible))[\s\S]{0,240}unresolved/i,
+  assert.match(policy, /(?:(?:non[- ]accepted|unaccepted|unsupported|ineligible)[\s\S]{0,180}(?:failure[_ -]?class|class)|(?:failure[_ -]?class|class)[\s\S]{0,180}(?:non[- ]accepted|unaccepted|unsupported|ineligible))[\s\S]{0,240}unresolved/i,
     'a non-accepted failure class must remain unresolved');
-  assert.match(runner, /(?:summary[\s_-]+prose|prose[\s\S]{0,80}summary)[\s\S]{0,220}(?:not|never|cannot|must not)[\s\S]{0,180}(?:cause[\s_-]*locus|locus)/i,
+  assert.match(policy, /(?:summary[\s_-]+prose|prose[\s\S]{0,80}summary)[\s\S]{0,220}(?:not|never|cannot|must not)[\s\S]{0,180}(?:cause[\s_-]*locus|locus)/i,
     'summary prose must never supply a Cause Locus');
 
   const walkMarkdown = directory => fs.readdirSync(directory, { withFileTypes: true }).flatMap(entry => {
@@ -238,12 +241,12 @@ test('design overview repair rejects incomplete or prose-derived matches and has
     if (entry.isDirectory()) return walkMarkdown(entryPath);
     return entry.isFile() && entry.name.endsWith('.md') ? [entryPath] : [];
   });
-  const runnerPath = path.join(repoRoot, 'sai', 'orchestration', 'command-runner.md');
+  const policyPath = path.join(repoRoot, 'sai', 'policies', 'bounded-recovery.md');
   for (const markdownPath of walkMarkdown(path.join(repoRoot, 'sai'))) {
-    if (markdownPath === runnerPath) continue;
+    if (markdownPath === policyPath) continue;
     const contents = fs.readFileSync(markdownPath, 'utf8');
     assert.doesNotMatch(contents, /^\s*\|[^\n]*design-overview-repair[^\n]*\|/im,
-      `no duplicate design-overview-repair registry table is allowed outside command-runner: ${path.relative(repoRoot, markdownPath)}`);
+      `no duplicate design-overview-repair registry table is allowed outside the bounded-recovery policy: ${path.relative(repoRoot, markdownPath)}`);
   }
 });
 
@@ -295,10 +298,10 @@ test('worker-core states failure_class is evidence not an eligibility gate and s
 });
 
 test('planning clean path stays blind while non-clean path names class artifact and cause locus', () => {
-  const runner = artifact('sai/orchestration/command-runner.md');
+  const policy = artifact('sai/policies/bounded-recovery.md');
   const specCoord = artifact('sai/commands/spec/coordinator.md');
   const designCoord = artifact('sai/commands/design/coordinator.md');
-  const contract = `${runner}\n${specCoord}\n${designCoord}`;
+  const contract = `${policy}\n${specCoord}\n${designCoord}`;
 
   assert.match(specCoord, /(?:clean|happy path|progress|needs_input)[\s\S]{0,300}(?:not|never|do not)[\s\S]{0,120}(?:read|open|inspect)[\s\S]{0,120}artifact/i,
     'spec clean path never opens artifacts');
@@ -310,53 +313,53 @@ test('planning clean path stays blind while non-clean path names class artifact 
     'design non-clean diagnosis names class/artifact/locus when evidence permits');
   assert.match(contract, /(?:never|not|shall not)[\s\S]{0,120}(?:write|repair)[\s\S]{0,200}(?:proposal|design\.md|artifact)/i,
     'planning coordinators never become artifact writers');
-  assert.equal((runner.match(/\| design-overview-repair \|/g) || []).length, 1,
+  assert.equal((policy.match(/\| design-overview-repair \|/g) || []).length, 1,
     'sole design-overview-repair registry row');
 });
 
 test('ordinary cancellation remains a clean stop outside Explore Auto item 10', () => {
-  const runner = artifact('sai/orchestration/command-runner.md');
+  const policy = artifact('sai/policies/bounded-recovery.md');
 
-  assert.match(runner, /cancelled[\s\S]{0,180}(?:never|no)[\s\S]{0,120}recovery/i,
+  assert.match(policy, /cancelled[\s\S]{0,180}(?:never|no)[\s\S]{0,120}recovery/i,
     'ordinary cancellation must retain the existing clean-stop/no-recovery pin');
-  assert.match(runner,
+  assert.match(policy,
     /(?:ordinary|normal)[\s\S]{0,220}cancelled[\s\S]{0,260}(?:clean[- ]stop|clean stop)[\s\S]{0,220}(?:outside|except)[\s\S]{0,220}Explore Auto item[- ]?10/i,
     'ordinary cancellation must remain a clean stop outside the Explore Auto item-10 exception');
-  assert.match(runner,
+  assert.match(policy,
     /Explore Auto item[- ]?10[\s\S]{0,320}(?:does not|never|must not)[\s\S]{0,140}(?:spend|consume|count against|draw from|debit)[\s\S]{0,140}(?:the )?(?:shared )?(?:diagnosis|recovery) ledger/i,
     'the Explore Auto item-10 exception must not spend the shared recovery ledger');
 });
 
 test('Explore Auto item-10 cancellation is a named one-shot diagnosable exception', () => {
-  const runner = artifact('sai/orchestration/command-runner.md');
+  const policy = artifact('sai/policies/bounded-recovery.md');
 
-  assert.match(runner, /selector[- ]dispatched[\s\S]{0,180}Explore Auto item[- ]?10/i,
+  assert.match(policy, /selector[- ]dispatched[\s\S]{0,180}Explore Auto item[- ]?10/i,
     'the exception must name selector-dispatched Explore Auto item-10');
-  assert.match(runner,
+  assert.match(policy,
     /Explore Auto item[- ]?10[\s\S]{0,420}(?:cancelled|cancellation)[\s\S]{0,240}(?:may|can|eligible)[\s\S]{0,120}Diagnosis Round/i,
     'cancelled Explore Auto item-10 may enter Diagnosis Round');
-  assert.match(runner, /diagnosis_rounds/,
+  assert.match(policy, /diagnosis_rounds/,
     'the Explore exception must reference diagnosis_rounds');
-  assert.match(runner,
+  assert.match(policy,
     /(?:at most one|one[- ]shot|single)[\s\S]{0,180}same[- ]worker[\s\S]{0,180}(?:re[- ]dispatch|redispatch)/i,
     'the exception permits at most one same-worker re-dispatch');
-  assert.match(runner,
+  assert.match(policy,
     /Explore Auto item[- ]?10[\s\S]{0,520}(?:never|no|must not|shall not)[\s\S]{0,180}replacement worker/i,
     'the exception must never dispatch a replacement worker');
 });
 
 test('Explore continuation loss after diagnosis is terminal without replacement', () => {
-  const runner = artifact('sai/orchestration/command-runner.md');
+  const policy = artifact('sai/policies/bounded-recovery.md');
 
-  assert.match(runner, /continuation\/transport loss/i,
+  assert.match(policy, /continuation\/transport loss/i,
     'continuation/transport loss must remain a named diagnosis');
-  assert.match(runner,
+  assert.match(policy,
     /Explore[\s\S]{0,360}(?:Diagnosis Round|diagnosis)[\s\S]{0,300}continuation\/transport loss[\s\S]{0,240}(?:terminal|terminate|closed)/i,
     'Explore diagnosis continuation loss must be terminal');
-  assert.match(runner,
+  assert.match(policy,
     /Explore[\s\S]{0,520}(?:Diagnosis Round|diagnosis)[\s\S]{0,360}continuation\/transport loss[\s\S]{0,220}(?:never|no|must not|shall not)[\s\S]{0,180}replacement/i,
     'Explore diagnosis continuation loss must never use a replacement worker');
-  assert.match(runner,
+  assert.match(policy,
     /(?:retryable|can be retried|remains retryable)[\s\S]{0,240}(?:later|next)[\s\S]{0,180}(?:Auto|automatic)[\s\S]{0,120}selection/i,
     'the change must remain retryable for later Auto selection');
 });

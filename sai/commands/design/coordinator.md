@@ -1,6 +1,7 @@
 <TASK>
 
   Fetch @sai/policies/verified-precondition-handback.md
+  Fetch @sai/policies/bounded-recovery.md and follow it as part of the shared runner.
   Fetch @sai/policies/artifact-feedback-gate.md before applying the completion gate. Supply `artifacts = design.md, tasks.md, interfaces.md`, `proceed-label = Continue`, and `next-action = the existing design completion sentence and stop`.
 
   ## Design phase adapter

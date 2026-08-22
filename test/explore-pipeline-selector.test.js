@@ -1415,10 +1415,22 @@ test('Step 2 item-10 diagnosis references Bounded Recovery without restating the
   const start = source.search(/diagnosis_rounds/i);
   assert.ok(start >= 0, 'item-10 diagnosis source should exist');
   const diagnosis = source.slice(start, start + 7000);
-  const recovery = artifact('sai/orchestration/command-runner.md');
+  const recovery = artifact('sai/policies/bounded-recovery.md');
 
   assert.match(recovery, /Bounded Recovery/i, 'the shared Bounded Recovery contract should exist');
   assert.match(diagnosis, /Bounded Recovery/i, 'item-10 should reference Bounded Recovery');
+  for (const coordinatorPath of [
+    'sai/commands/spec/coordinator.md',
+    'sai/commands/design/coordinator.md',
+    'sai/commands/apply/coordinator.md',
+    'sai/commands/build/coordinator.md',
+  ]) {
+    assert.match(
+      artifact(coordinatorPath),
+      /Fetch @sai\/policies\/bounded-recovery\.md and follow it as part of the shared runner\./,
+      `${coordinatorPath} should statically load the bounded-recovery policy`
+    );
+  }
   assert.match(
     diagnosis,
     /(?:(?:single|sole|shared)[\s\S]{0,180}(?:Bounded Recovery|contract))|(?:Bounded Recovery|contract)[\s\S]{0,180}(?:single|sole|shared)/i,

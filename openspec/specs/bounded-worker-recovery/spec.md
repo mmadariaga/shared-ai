@@ -222,7 +222,7 @@ A registered surface SHALL define exactly:
 4. On success: Cause Locus is `in-scope`; `diagnosis_key` is `(substituted primary artifact path, concrete_lifecycle_point, authorized_correction_boundary)` without placing `failure_class` or routing labels in the tuple.
 5. On no match: unresolved cause, zero attempts, no out-of-scope claim.
 
-**Registered surface for design (this change)** — the only blind opted-in surface introduced here. This capability defines the required initial row; the **sole runtime registry listing** that agents execute SHALL live in `sai/orchestration/command-runner.md` (single home). Delta specs and design artifacts MAY cite the row for requirements traceability but SHALL NOT create a second maintained table that can drift from the runner. Future surfaces are added by a delta that updates this requirement and the runner registry in the same change.
+**Registered surface for design (this change)** — the only blind opted-in surface introduced here. This capability defines the required initial row; the **sole runtime registry listing** that agents execute SHALL live in `sai/policies/bounded-recovery.md` (single home). Delta specs and design artifacts MAY cite the row for requirements traceability but SHALL NOT create a second maintained table that can drift from the policy. Future surfaces are added by a delta that updates this requirement and the policy registry in the same change.
 
 | Field | Value |
 | --- | --- |
@@ -235,7 +235,7 @@ A registered surface SHALL define exactly:
 
 No other design or planning surface is registered by this change. Unregistered phases match nothing and resolve unmatched failures to unresolved.
 
-Both channels produce coordinator-owned Cause Locus and `diagnosis_key` values. The shared runner still transports the closed diagnosis without inspecting artifacts itself. Expanding the closed worker lifecycle payload is not required for the phase-static channel. Command-runner prose SHALL host the sole runtime registry table (including the design row above), state the match algorithm, and forbid inventing surfaces from design-card prose or from this requirement text alone without updating the runner registry.
+Both channels produce coordinator-owned Cause Locus and `diagnosis_key` values. The shared runner still transports the closed diagnosis without inspecting artifacts itself. Expanding the closed worker lifecycle payload is not required for the phase-static channel. The bounded-recovery policy (`sai/policies/bounded-recovery.md`) SHALL host the sole runtime registry table (including the design row above), state the match algorithm, and forbid inventing surfaces from design-card prose or from this requirement text alone without updating the policy registry.
 
 #### Scenario: Verifying adapter establishes locus from independent verification
 
@@ -336,6 +336,7 @@ Both channels produce coordinator-owned Cause Locus and `diagnosis_key` values. 
 - **WHEN** a worker continues after an in-scope recovery announcement
 - **THEN** the worker SHALL inspect and verify the relevant artifact or lifecycle state before returning `completed`
 - **AND** the phase coordinator MAY perform its independent verification without delegating that verification back to the worker
+
 
 ### Requirement: Recovered overview state is committed
 When a design-worker recovery continuation repairs an overview-generation failure and returns `status: completed`, the worker SHALL commit `overview.state: current`, clear both `overview.failure_kind` and `overview.failure_details`, and include `openspec/changes/{change-name}/.openspec.yaml` in the invocation's ordered changed-file union. This successful recovery commit SHALL occur only after the worker verifies the overview and its source relationship; it supersedes the prior `failed` or `stale` diagnostic state for that attempt. A recovery that does not return `completed` SHALL retain the existing failure-state mapping for its terminal route.
