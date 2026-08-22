@@ -30,32 +30,39 @@ An uncompleted change is a tracked name whose supervised run has not reached sup
 
 ### Requirement: Supervision preserves worker terminal behavior
 
-Explore SHALL handle `completed`, `failed`, and `cancelled` worker results using the shared coordinator and worker lifecycle contracts. A failed or cancelled spec-proposal worker SHALL stop the active attempt with a concise status while leaving that selected change uncompleted and eligible for a later user-initiated `Auto` selection; explore SHALL NOT repair artifacts directly or silently replace a terminal result with success. If failure or cancellation occurs during machine-feedback processing, the review cycle SHALL end with that worker result per the `supervised-review-rounds` capability: the current artifacts and the already-applied fixes SHALL be preserved, and no review round SHALL be launched over the half-finished state. Because the worker-owned automatic loop is suppressed under supervision, no automatic isolated-reviewer retry absorbs the failure. A later retry SHALL begin a new three-round bound over the preserved artifact state rather than overwrite accepted corrections from the interrupted attempt.
+Explore SHALL handle `completed`, `failed`, and `cancelled` worker results using the shared coordinator and worker lifecycle contracts. A diagnosis-entry result — structurally valid `failed`, coordinator-disproved `completed`, STOP-bearing `completed`, or Explore-route `cancelled` — from a supervised spec-proposal or design worker SHALL enter the bounded item-10 diagnosis route when its phase diagnosis counter is unused, as defined by `Item-10 diagnosis feedback is bounded and read-only`; after that one diagnosis/re-dispatch opportunity is unavailable or ends, Explore SHALL stop the active attempt with concise phase guidance while leaving the selected change uncompleted and eligible for a later user-initiated Auto selection. Explore SHALL NOT repair artifacts directly, silently replace a terminal result with success, or dispatch a replacement worker from diagnosis. If a diagnosis-entry result occurs during machine-feedback processing, the current review cycle SHALL end with that worker result, the diagnosis round SHALL reread the current state only after the worker result closes, and no ordinary review round SHALL be launched over the half-finished state. The current artifacts and already-applied fixes SHALL be preserved. Clean `completed`, `needs_input`, progress, notice, and pre-resolution results SHALL retain their existing handling and SHALL NOT start diagnosis.
 
-#### Scenario: worker fails before review
-- **WHEN** the supervised spec-proposal worker returns `failed`
-- **THEN** explore reports the failure concisely and stops the supervised run for that change
-- **AND** explore performs no artifact write or repair
+#### Scenario: Worker fails before review
 
-#### Scenario: worker fails while applying review feedback
+- **WHEN** the supervised spec-proposal or design worker returns `failed` before ordinary review rounds begin
+- **THEN** Explore runs the one available item-10 diagnosis round for that phase
+- **AND** it re-dispatches the same phase worker at most once when the diagnosis supplies an actionable correction
+- **AND** it performs no direct artifact write or repair
 
-- **WHEN** the spec-proposal worker returns `failed` or `cancelled` while processing a finding after one or more review rounds completed
-- **THEN** explore stops the active attempt without direct artifact repair
-- **AND** it preserves the current artifacts and the already-applied fixes
-- **AND** it does not launch a review round over the half-finished state
-- **AND** it does not dispatch an automatic worker-owned reviewer to absorb the failure
+#### Scenario: Disproved or STOP-bearing completed before review starts diagnosis
 
-#### Scenario: failed change remains retryable
-- **WHEN** a selected change's worker fails or is cancelled
-- **THEN** that change remains uncompleted and appears in the next `Auto` selection
-- **AND** no other tracked change is dispatched by the failed attempt
+- **WHEN** the supervised spec-proposal or design worker returns coordinator-disproved `completed` or STOP-bearing `completed` before ordinary review rounds begin and the phase diagnosis counter is zero
+- **THEN** Explore runs the one available item-10 diagnosis round for that phase
+- **AND** clean `completed` without disproof and without STOP does not start diagnosis
 
-#### Scenario: interrupted change is retried
+#### Scenario: Worker fails while applying review feedback
 
-- **WHEN** the user later selects `Auto` for the uncompleted change in a new attempt
-- **THEN** the new attempt starts a new three-round bound over the preserved artifact state
-- **AND** it does not regenerate from the original crystallized block in a way that overwrites accepted corrections from the interrupted attempt
-- **AND** the retry dispatch again carries `--supervised`
+- **WHEN** the spec-proposal or design worker returns a diagnosis-entry result while processing a finding after one or more ordinary review rounds completed
+- **THEN** Explore stops the interrupted ordinary review transaction and does not launch another ordinary review round over the half-finished state
+- **AND** it runs at most one separate diagnosis round over freshly reread current artifacts
+- **AND** it preserves current artifacts and already-applied fixes
+
+#### Scenario: Failed change remains retryable after the bounded route
+
+- **WHEN** the one diagnosis/re-dispatch opportunity is unavailable, produces no actionable correction, or the re-dispatched worker returns another diagnosis-entry result
+- **THEN** the selected change remains absent from `completed_changes` and eligible for a later Auto selection
+- **AND** Explore emits only the existing applicable phase guidance rather than a second diagnosis or replacement-success message
+
+#### Scenario: Clean lifecycle results remain unchanged
+
+- **WHEN** a supervised worker returns clean `completed`, `needs_input`, a progress event, or a notice, or when a result is pre-resolution
+- **THEN** Explore follows the existing lifecycle and autonomy rules
+- **AND** it does not start an item-10 diagnosis round or inspect artifacts solely because the result was received
 
 ### Requirement: Independent commands remain independently invocable
 
@@ -125,13 +132,20 @@ Supervised gate auto-proceed SHALL NOT create any advance path over a phase work
 
 ### Requirement: item-10 diagnosis feedback is bounded and read-only
 
-The item-10 supervised Auto route SHALL use the shared `sai/orchestration/command-runner.md` Bounded Recovery section as the single source for post-resolution non-clean diagnosis. That shared trigger set SHALL be a structurally valid `failed` result of any closed worker failure class, a `completed` result disproved by coordinator verification, or a `completed` result carrying STOP. The Explore item-10 failure route SHALL additionally activate this one-shot diagnosis path for a post-resolution supervised worker `cancelled` result; this Explore-specific cancellation activation SHALL NOT change generic clean-cancellation behavior for other adapters or the manual review loop. For a selected spec or design phase, any such result with an unused phase counter SHALL invoke the existing read-only Review Engine exactly once with `sai-1` or `sai-2`, form feedback in the order `Reported`, `Evidence`, `Cause`, `Correction`, `Verification`, and attempt at most one same-worker `continue_after_recovery`. Explore SHALL never apply corrections directly or dispatch a replacement worker. Unactionable diagnosis, veto, failed re-dispatch, or undeliverable continuation leaves the change retryable; continuation loss uses the shared `continuation/transport loss` diagnosis. Clean `completed` without disproof and without STOP does not start diagnosis.
+The item-10 supervised Auto route SHALL use the shared `sai/orchestration/command-runner.md` Bounded Recovery section as the single source for post-resolution non-clean diagnosis. That shared trigger set SHALL be a structurally valid post-resolution `failed` result of any closed worker failure class, a `completed` result disproved by coordinator verification, or a `completed` result carrying STOP. The Explore item-10 failure route SHALL additionally activate this one-shot diagnosis path for a post-resolution supervised worker `cancelled` result; this Explore-specific cancellation activation SHALL NOT change generic clean-cancellation behavior for other adapters or the manual review loop.
 
-#### Scenario: failed or cancelled worker starts one diagnosis round
+For a selected spec or design phase, when the phase worker returns any of those diagnosis-entry results and the phase's conversation-only diagnosis counter is unused, Explore SHALL invoke the existing Review Engine exactly once with the authoritative change name and the phase artifact-set designator (`sai-1` for `proposal.md` plus `specs/**`, or `sai-2` for `design.md`, `tasks.md`, and `interfaces.md`). The engine SHALL reread the current available artifacts and SHALL remain read-only. Explore SHALL form diagnosis feedback in this exact order: `Reported`, `Evidence`, `Cause`, `Correction`, and `Verification`. The feedback SHALL preserve the engine's severity-rated findings and base-form summary when findings are available, and SHALL describe missing or unavailable evidence when the engine cannot form findings.
 
-- **WHEN** a resolved supervised spec or design worker returns `failed` or `cancelled` and its phase counter is zero
-- **THEN** Explore invokes the phase-selected Review Engine once, rereads artifacts without writing, and produces the five ordered feedback sections
-- **AND** an actionable correction is forwarded only to the same worker once
+After the diagnosis round, Explore SHALL attempt at most one re-dispatch of the same phase worker with that diagnosis as feedback through the existing recovery continuation operation. Explore SHALL never apply a correction directly and SHALL never dispatch a replacement worker from this route. A diagnosis that cannot establish an actionable correction, a worker veto, or a failed or undeliverable re-dispatch SHALL close the active attempt without another diagnosis, leaving the change retryable. An actionable diagnosis whose same-worker continuation cannot be delivered SHALL use the shared `continuation/transport loss` stopping diagnosis. A successful re-dispatch returns to the ordinary lifecycle for that phase and does not count the diagnosis as a supervised review round.
+
+Clean `completed` without disproof and without STOP does not start diagnosis.
+
+#### Scenario: A failed worker starts one diagnosis round
+
+- **WHEN** a resolved supervised spec or design worker returns a structurally valid `failed` result with any closed worker failure class and its phase diagnosis counter is zero
+- **THEN** Explore invokes `Review Engine(changeName, sai-1)` or `Review Engine(changeName, sai-2)` according to the active phase
+- **AND** the engine rereads the current phase artifacts without writing them
+- **AND** Explore produces the ordered `Reported`, `Evidence`, `Cause`, `Correction`, and `Verification` diagnosis feedback
 
 #### Scenario: A coordinator-disproved completed result starts one diagnosis round
 
@@ -144,6 +158,40 @@ The item-10 supervised Auto route SHALL use the shared `sai/orchestration/comman
 - **WHEN** a resolved supervised spec or design worker returns `completed` carrying STOP and its phase diagnosis counter is zero
 - **THEN** Explore invokes the same phase-selected Review Engine Diagnosis Round as for `failed`
 - **AND** clean `completed` without STOP and without coordinator disproof does not start diagnosis
+
+#### Scenario: A cancelled worker starts the Explore-specific diagnosis round
+
+- **WHEN** a resolved supervised spec or design worker returns `cancelled` and its phase diagnosis counter is zero
+- **THEN** Explore invokes the same phase-selected Review Engine transaction and forms the same five ordered diagnosis sections
+- **AND** the cancellation route remains item-10-specific and does not make cancellation recoverable for unrelated adapters or the manual review loop
+
+#### Scenario: Findings are forwarded without direct repair
+
+- **WHEN** the diagnosis round produces one or more `High`, `Medium`, or `Low` Review Engine findings
+- **THEN** Explore preserves the shared finding shape, severity, identifiers, and base-form summary as diagnosis evidence
+- **AND** it forwards the diagnosis as feedback to the same phase worker through the existing recovery continuation operation
+- **AND** Explore creates, modifies, or deletes no artifact, configuration, metadata, or test file
+
+#### Scenario: Diagnosis re-dispatch is single and same-worker
+
+- **WHEN** the diagnosis round establishes an actionable correction and the active worker can be resumed
+- **THEN** Explore re-dispatches that same phase worker exactly once with the diagnosis feedback
+- **AND** it does not dispatch a replacement worker
+- **AND** a later failed, cancelled, disproved-completed, or STOP-bearing completed result from that re-dispatch does not start a second diagnosis round in the same phase attempt
+
+#### Scenario: Actionable diagnosis cannot resume the worker
+
+- **WHEN** the Diagnosis Round establishes an actionable correction but the same-worker continuation cannot be delivered or the worker cannot be resumed
+- **THEN** Explore consumes the phase's one diagnosis-round counter and selects `continuation/transport loss` as the stopping diagnosis
+- **AND** it does not dispatch the ordinary replacement-worker fallback
+- **AND** it closes the active attempt with the selected change still uncompleted and retryable for a later Auto selection
+
+#### Scenario: Diagnosis has no actionable correction
+
+- **WHEN** the Review Engine reports only missing or unavailable evidence, or the diagnosis cannot establish a safe actionable correction boundary
+- **THEN** Explore consumes the one diagnosis round without inventing a cause or correction
+- **AND** it does not perform a direct artifact repair or an ungrounded re-dispatch
+- **AND** the selected change remains uncompleted and retryable
 
 #### Scenario: diagnosis remains read-only and retryable
 

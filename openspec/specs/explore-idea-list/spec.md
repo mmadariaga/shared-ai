@@ -165,29 +165,72 @@ While the supervised pipeline (item 10 of `sai/commands/explore/instructions.md`
 - **AND** no ordinary review round is launched over the half-finished state
 - **AND** diagnosis findings do not mark or clear the item
 
+#### Scenario: Successful recovery returns to ordinary review state
+
+- **WHEN** diagnosis re-dispatch succeeds and the phase worker reaches ordinary supervised review entry
+- **THEN** the corresponding phase item becomes `in_progress` under the existing spec or design rule
+- **AND** the diagnosis transaction itself has not marked or cleared any item
+
+#### Scenario: Stopped diagnosis leaves no active review state
+
+- **WHEN** diagnosis has no actionable correction, the re-dispatch fails, or the worker returns another diagnosis-entry result after re-dispatch
+- **THEN** no item of that phase renders `in_progress`
+- **AND** the phase item renders `pending` and no item is marked or cleared by diagnosis
+
 ### Requirement: diagnosis rounds do not masquerade as review progress
 
-The idea progress list SHALL treat an item-10 Diagnosis Round as recovery feedback, not as a supervised review round. When a supervised worker failure or cancellation occurs while a phase review item is `in_progress`, Explore SHALL resolve it to `pending` and render that change once before diagnosis. During diagnosis and its possible same-worker re-dispatch, neither phase review item SHALL be set `in_progress`, no diagnosis-specific item SHALL be created, and findings SHALL mark or clear no review evidence. The phase-keyed `diagnosis_rounds` counters SHALL not affect review-round list state. If re-dispatch succeeds, normal phase review entry may set `in_progress`; otherwise the phase remains `pending`. These counters, findings, and render state SHALL never be persisted.
+The idea progress list SHALL treat an item-10 Diagnosis Round as recovery feedback, not as a supervised review round. When a supervised worker returns any item-10 diagnosis-entry result — structurally valid `failed`, coordinator-disproved `completed`, STOP-bearing `completed`, or Explore-route `cancelled` — while a phase review item is `in_progress`, Explore SHALL resolve that item to render `pending` before starting diagnosis and SHALL render the state change once. While the Diagnosis Round and its possible same-worker re-dispatch are active, neither `reviewed-sai-1` nor `reviewed-sai-2` SHALL be set to `in_progress`; no diagnosis-specific list item SHALL be created. Diagnosis findings SHALL mark or clear no review evidence, and `diagnosis_rounds.spec` / `diagnosis_rounds.design` SHALL not affect review-round list state.
 
-#### Scenario: failed or cancelled worker resolves the active item before diagnosis
+If the re-dispatch succeeds and the phase reaches the existing ordinary supervised review entry point, the phase's normal review item SHALL become `in_progress` under the existing phase rules. If diagnosis stops, the re-dispatch fails, or the worker returns another diagnosis-entry result, the phase item SHALL remain or resolve to `pending`. The render adapter, panel ownership, machine-readable identity fields, and no-persistence rules SHALL remain unchanged.
 
-- **WHEN** a supervised spec or design worker fails or is cancelled while its review item is `in_progress`
-- **THEN** the item renders `pending` before diagnosis and no ordinary review round runs over the half-finished state
+#### Scenario: Failed worker resolves the active review item before diagnosis
 
-#### Scenario: diagnosis does not create review progress
+- **WHEN** a supervised spec or design worker fails while its phase review item is `in_progress`
+- **THEN** Explore resolves that item to `pending` before invoking the Diagnosis Round
+- **AND** the list renders the pending state after the resolution
+- **AND** no review evidence mark or clear is caused by the failure
 
-- **WHEN** an item-10 Diagnosis Round is active
-- **THEN** neither review item renders `in_progress`, no diagnosis item is added, and findings leave review evidence unchanged
+#### Scenario: Disproved or STOP-bearing completed resolves the active review item before diagnosis
 
-#### Scenario: successful re-dispatch resumes ordinary rendering
+- **WHEN** a supervised spec or design worker returns coordinator-disproved `completed` or STOP-bearing `completed` while its phase review item is `in_progress`
+- **THEN** Explore resolves that item to `pending` before invoking the Diagnosis Round
+- **AND** no review evidence mark or clear is caused by that result
 
-- **WHEN** diagnosis re-dispatch succeeds and the phase reaches its ordinary review entry point
-- **THEN** the phase item becomes `in_progress` under the existing phase rule, not because of diagnosis
+#### Scenario: Cancellation resolves the active review item before diagnosis
 
-#### Scenario: diagnosis state is not persisted
+- **WHEN** a supervised spec or design worker is cancelled while its phase review item is `in_progress`
+- **THEN** Explore resolves that item to `pending` before invoking the item-10 Diagnosis Round
+- **AND** cancellation does not leave a review item falsely showing `in_progress`
 
-- **WHEN** the item-10 diagnosis route enters, renders, or exits
-- **THEN** no diagnosis counter, finding, render state, or recovery metadata is written to any file or configuration
+#### Scenario: Diagnosis does not set a review item in progress
+
+- **WHEN** an item-10 Diagnosis Round is reading artifacts and forming feedback
+- **THEN** no `reviewed-sai-1` or `reviewed-sai-2` item renders `in_progress` because of that diagnosis
+- **AND** no diagnosis-specific item is added and the panel remains exclusively owned by the full idea progress list
+
+#### Scenario: Diagnosis findings do not change review evidence
+
+- **WHEN** the Diagnosis Round returns High, Medium, or Low findings or an availability/integrity report
+- **THEN** the diagnosis leaves every reviewed-sai-1 and reviewed-sai-2 mark and clear unchanged
+- **AND** the result is not counted as a completed supervised review round
+
+#### Scenario: Successful re-dispatch resumes ordinary review rendering
+
+- **WHEN** the same-worker diagnosis re-dispatch succeeds and the active phase reaches its existing ordinary supervised review entry point
+- **THEN** Explore sets the phase item in progress using the existing spec or design phase rule
+- **AND** the diagnosis transaction itself has not marked or cleared any item
+
+#### Scenario: Stopped diagnosis leaves the item pending
+
+- **WHEN** the Diagnosis Round has no actionable correction, the re-dispatch cannot be performed, or the re-dispatched worker returns another diagnosis-entry result
+- **THEN** no review item renders `in_progress` for that stopped phase
+- **AND** the phase item renders `pending` and no item is marked or cleared by diagnosis
+
+#### Scenario: Diagnosis state is not persisted
+
+- **WHEN** the list enters, renders, or leaves the item-10 Diagnosis Round
+- **THEN** Explore writes no diagnosis counter, diagnosis finding, render state, list state, or recovery metadata to any file, artifact, change directory, configuration, or `.openspec.yaml`
+- **AND** harness-internal panel state remains the only permitted render-session carrier
 
 ### Requirement: idea-list-render-adapter-placement
 
