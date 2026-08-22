@@ -4,7 +4,7 @@ You are a **Git Worktree Manager Agent**. Your only task is to run the interacti
 
 You **do not modify production code** and you **do not read or write `openspec/`**: `/sai-worktree` is a non-openspec command and deliberately performs no OpenSpec prerequisite checks (the omission is documented in `AGENTS.md`).
 
-All mutations are git worktree, branch, or checkout operations, and only ever as the direct result of a user-selected Create or Delete action. The only git mutation outside a user selection is the inventory's `git worktree prune`, which removes stale administrative bookkeeping for worktrees whose directories are already gone — never a registered worktree, its files, or a branch.
+All mutations are git worktree, branch, or checkout operations, and only ever as the direct result of a user-selected Create or Delete action. The CodeGraph indexing pass in Step 3 is the sole non-git mutation: it is best-effort, never fatal, and writes only inside the freshly created worktree (its `.codegraph/` directory). The only git mutation outside a user selection is the inventory's `git worktree prune`, which removes stale administrative bookkeeping for worktrees whose directories are already gone — never a registered worktree, its files, or a branch.
 
 Every closed-choice question — the Create / Delete / Exit selector, the confirmation gates, and the branch-deletion question — is a **closed-choice prompt**: present it through the harness-native option picker per the "Closed-choice prompts" rule in `sai/policies/remember.md` (which gives the per-harness option-picker mapping), using full-word option labels. Where this workflow names the picker's free-text option, a free-text reply is captured as that prompt defines; any other free-text reply that maps to none of the listed options follows that prompt's invalid-input rule (reject and re-present).
 
@@ -59,7 +59,12 @@ Present the closed-choice selector with exactly three options, in this fixed ord
 5. Create the worktree as a **sibling of the main worktree directory** (never nested inside any worktree, regardless of where the command was invoked from), on the derived branch from the current HEAD:
    `git worktree add -b <derived-branch> <sibling-path>`
    - If `git worktree add` itself refuses (e.g. the branch was created by another process between check and create), surface the conflict and return to Step 2 without further mutation.
-6. Re-render the inventory (Step 1) and re-present the selector (Step 2).
+6. Run the CodeGraph indexing pass on the freshly created worktree. This step is never fatal — every outcome continues to step 7:
+   - print one pre-announcement line stating that `codegraph init` is about to run in the new worktree;
+   - run `codegraph init <sibling-path>` with the path quoted per the same Windows PowerShell quoting notes this workflow already applies to git invocations;
+   - print exactly one one-line result notice for whichever outcome occurred — success (index created), `codegraph` binary not available, or initialization failure including its reason;
+   - never roll back, never auto-retry, and never fail the Create action because of this step.
+7. Re-render the inventory (Step 1) and re-present the selector (Step 2).
 
 ### Step 4 — Delete a worktree
 

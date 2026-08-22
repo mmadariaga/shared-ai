@@ -50,7 +50,7 @@ The existing `claude-commands`, `opencode-commands`, `sai-commands`, and `sai-in
 
 ### Requirement: OpenSpec prerequisites omitted and the omission documented
 
-The `/sai-worktree` command SHALL NOT perform the OpenSpec prerequisite checks (the `openspec` binary in PATH, the `openspec/` directory, and `schema: sai-workflow` in `openspec/config.yaml`), because it neither reads nor writes `openspec/`, and the omission SHALL be documented in `AGENTS.md` so it is not later re-added.
+The `/sai-worktree` command SHALL NOT perform the OpenSpec prerequisite checks (the `openspec` binary in PATH, the `openspec/` directory, and `schema: sai-workflow` in `openspec/config.yaml`), because it neither reads nor writes `openspec/`, and the omission SHALL be documented in `AGENTS.md` so it is not later re-added. The same documentation SHALL also record the command's one additional best-effort, non-fatal post-creation `codegraph init <worktree-path>` indexing pass, which likewise requires no OpenSpec prerequisites.
 
 #### Scenario: Runs in a project without openspec
 - **WHEN** the command is invoked in a repository with no `openspec/` directory
@@ -58,4 +58,4 @@ The `/sai-worktree` command SHALL NOT perform the OpenSpec prerequisite checks (
 
 #### Scenario: The exception is documented
 - **WHEN** `AGENTS.md` is read
-- **THEN** it names `/sai-worktree` alongside `sai-commit` as a command that works without the OpenSpec prerequisites, and its safe-operations wrapper count includes the new wrapper
+- **THEN** it names `/sai-worktree` alongside `sai-commit` as a command that works without the OpenSpec prerequisites, records its safe-operations wrapper count including the new wrapper, and additionally documents the best-effort non-fatal `codegraph init <worktree-path>` step announced before running and reported by exactly one one-line result notice whether it succeeds, the binary is absent, or it fails
