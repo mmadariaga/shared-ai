@@ -58,7 +58,7 @@ The blind RED worker dispatch's prompt SHALL contain the `interfaces.md` section
 
 The injected slice SHALL name its source fields explicitly rather than paraphrasing them. It SHALL include the **Test Command** field verbatim, because the RED worker is required to run the test command during RED verification and is forbidden from reading `implementation.md`, where the command otherwise lives. The framework and assertion/mock libraries SHALL be taken from the **Stack** field. Test file location and naming SHALL NOT be mandated as `## Implementation Context` fields; the RED worker recovers them under its existing permission to read existing test files and test infrastructure. The coordinator's own enumeration of the injected slice SHALL therefore drop test file location/naming, so that it no longer promises an injection whose source is guaranteed not to exist.
 
-The RED worker SHALL scope its RED run to the tests it authored, substituting the test identifier into the scoping idiom the **Test Command** field carries. Where the field carries the no-runner sentinel, or the project's runner offers no scoping, the RED worker SHALL attribute the RED classification only to failures originating in the tests it authored, and SHALL NOT classify a pre-existing unrelated failure elsewhere in the suite as either a valid RED or a `wrong-failure` for this Step. A same-worker RED recovery continuation SHALL retain this blindness, injected slice, test scope, and authorized test/stub file boundary; it SHALL never receive the GREEN implementation body.
+The RED worker SHALL scope its RED run to the tests it authored, substituting the test identifier into the scoping idiom the **Test Command** field carries. Where the field carries the no-runner sentinel, or the project's runner offers no scoping, the RED worker SHALL attribute the RED classification only to failures originating in the tests it authored, and SHALL NOT classify a pre-existing unrelated failure elsewhere in the suite as either a valid RED or a `wrong-failure` for this Step. A same-worker RED recovery continuation SHALL retain this blindness, injected slice, test scope, and authorized test/stub file boundary; it SHALL never receive the GREEN implementation body. The authorized test/stub file boundary carries one bounded exception: when the plan names obsolete test files as retired, each with its exact repository-relative path inside the RED block, the RED worker MAY remove exactly those plan-named retired files and nothing else; the exception grants no read access, and a recovery continuation inherits it for exactly the same named files only.
 
 #### Scenario: Coordinator assembles the RED worker prompt
 
@@ -90,6 +90,11 @@ The RED worker SHALL scope its RED run to the tests it authored, substituting th
 
 - **WHEN** the apply instructions enumerate the testing-relevant slice injected into the RED worker
 - **THEN** the enumeration names the **Stack**-sourced framework and libraries and the **Test Command**, and does not list test file location/naming
+
+#### Scenario: Retirement removal rides the blind dispatch
+
+- **WHEN** the plan names an obsolete guard test as retired inside the Step's RED block
+- **THEN** the blind RED worker removes exactly that named file without gaining any read access to production files or change artifacts, and a same-worker recovery continuation inherits the removal authorization for exactly that named file only
 
 ### Requirement: Coordinator guards interfaces.md ↔ implementation.md Step-N key integrity
 

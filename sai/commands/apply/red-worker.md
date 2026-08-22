@@ -22,6 +22,7 @@ The RED dispatch declares exactly one immutable plan: `test-authoring → red-ve
 
 - *Scope*: Write ONLY the interface stubs and the tests for this Step. Do NOT write the implementation.
 - Blind Test-Writer Allowed files contain only plan-authorized test and RED/interface-stub files and exclude production files.
+- Bounded retirement exception: when the plan names obsolete test files as retired, each with its exact repository-relative path, a worker MAY remove exactly those plan-named retired files and nothing else. This exception grants no read access — removal MUST NOT require reading production files or change artifacts — and every path not named as retired remains forbidden to write, modify, or remove.
 - Scratch path: `.tmp/{change-name}/` (separate from and excluded from `Allowed files`).
 - A worker MAY create temporary files only below `.tmp/{change-name}/`, MAY remove all contents of exactly that directory and the directory itself before a clean return, and has no preservation obligation on STOP or failure. A non-clean return has no preservation obligation.
 - A worker MUST NOT remove the `.tmp/` parent.
@@ -39,7 +40,7 @@ Run the injected test command scoped to the tests you authored and classify the 
 
 On `continue_after_recovery`, resume the same RED worker without re-resolution or replacement dispatch. Recovery is limited to tests and RED/interface stubs only: apply only the coordinator-authorized `Correction`, re-run the injected RED verification, and preserve the original `test-authoring → red-verification` plan. The worker remains explicitly blind to implementation and production work; the continuation receives no implementation or production content.
 
-The RED recovery MUST NOT write implementation or production files, perform GREEN work, or cross the tests/stubs boundary. It remains blind to the implementation and may use only the ordered `Reported`, `Evidence`, `Cause`, `Correction`, and `Verification` diagnosis; no raw output or change-artifact content is accepted. A continuation that cannot safely stay in this scope closes as an unpassable RED STOP rather than authorizing GREEN.
+The RED recovery MUST NOT write implementation or production files, perform GREEN work, or cross the tests/stubs boundary. It remains blind to the implementation and may use only the ordered `Reported`, `Evidence`, `Cause`, `Correction`, and `Verification` diagnosis; no raw output or change-artifact content is accepted. A continuation that cannot safely stay in this scope closes as an unpassable RED STOP rather than authorizing GREEN. A recovery continuation inherits the bounded retirement removal authorization for exactly the same plan-named retired test files and no others.
 
 ## Unpassable RED STOP
 
@@ -68,7 +69,7 @@ The worker returns a compact report containing exactly these 9 fields, and nothi
 5. **Deviations** — a list of `{plan, final, reason}` entries; empty if none.
 6. **Technical learnings/friction** — self-contained, actionable facts; empty if none.
 7. **STOP reached?** — yes/no, with the exact marker message when yes.
-8. **Files modified** — non-scratch paths modified or created, relative to the repo root, one path per entry; empty list if none. An explicitly present empty `Files modified` list is valid; an omitted field 8 is malformed.
+8. **Files modified** — non-scratch paths written, created, or removed, relative to the repo root, one path per entry; a plan-named retired test file removed under the bounded retirement exception is declared here by its exact repository-relative path; empty list if none. An explicitly present empty `Files modified` list is valid; an omitted field 8 is malformed.
 9. **Attempts per phase** — a list of `{phase, attempts, first_failure, note}` entries; field 9 is expected but optional and its absence soft-degrades.
 
 ## Prohibitions
@@ -78,4 +79,4 @@ The worker returns a compact report containing exactly these 9 fields, and nothi
 - Act on a STOP & COMMIT marker — halt and report the STOP instead.
 - Run any `openspec` command, load any skill, or read change artifacts.
 - Read any production source file outside the blindness fallback.
-- **Report completeness**: populate field 8 with the test/stub files written. An empty list is valid; omitting the field produces a malformed report.
+- **Report completeness**: populate field 8 with the test/stub files written and any plan-named retired files removed. An empty list is valid; omitting the field produces a malformed report.

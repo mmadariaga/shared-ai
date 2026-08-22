@@ -215,6 +215,8 @@ Integrated in `implementation.md` (loaded by `sai-3-implement`) and `sai/command
 - `implementation.md` includes a RED block (failing test) before GREEN (minimal implementation).
 - `sai-4-apply` runs RED, verifies failure, writes GREEN, verifies pass.
 
+Retirement of obsolete guard tests is owned by the RED dispatch (or the green-exception flow), never by GREEN: the plan names retired test files only inside RED blocks by exact repository-relative path, and the RED worker may remove exactly those plan-named files. Tests assert the absence of retired files; they never encode routing vocabulary such as "must be removed in GREEN".
+
 ### ADR/DDR Proposal Check
 The three criteria, the ordered routing test that resolves `adr` vs `ddr`, and the never-offer-a-choice rule are single-sourced in `sai/policies/adr-ddr-criteria.md`, fetched by `sai-2-design` (which records `**Record family**: adr|ddr` in `design.md`) and `sai-3-implement` Step 3 (which acts on it). The criteria are:
 1. **Hard to reverse**

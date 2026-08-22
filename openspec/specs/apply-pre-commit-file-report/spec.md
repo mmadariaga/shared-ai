@@ -2,9 +2,7 @@
 
 ## Purpose
 Defines the coordinator's pre-commit file visibility and staging report.
-
 ## Requirements
-
 ### Requirement: Staged set equals the previewed add-list
 
 The report's truthfulness depends on the commit staging exactly what the report previewed. The coordinator SHALL therefore stage exactly the add-list shown in the report's `Will be committed` block — the same subagent field-8 set (union of both dispatches for a testable Step) — when it proceeds to commit on `yes` / `Allow on this session`. The previewed set and the staged set SHALL share one definition (the field-8 add-list), so the preview cannot diverge from the resulting commit.
@@ -27,8 +25,8 @@ Because staging is deferred to commit-time (the `git add` runs only on the `yes`
 
 The report SHALL be sourced from these inputs:
 
-    1. `git status` (full, with untracked files) — to know which paths exist in the working tree (tracked-modified + untracked).
-    2. The **intended add-list** — the exact paths the coordinator will `git add` on `yes`, taken from the subagent report field 8 (`Files modified`). For a **non-testable** Step this is the single dispatch's field 8. For a **testable** Step (split into a test-writer dispatch and an implementation dispatch) the coordinator SHALL use the **union** of field 8 from BOTH reports, because the commit is per-Step and includes the files written by both dispatches.
+    1. `git status` (full, with untracked files) — to know which paths exist in the working tree (tracked-modified + untracked + deleted).
+    2. The **intended add-list** — the exact paths the coordinator will `git add` on `yes`, taken from the subagent report field 8 (`Files modified`), which includes removed plan-named retired files declared by the test-authoring dispatch; staging a declared removal stages the deletion. For a **non-testable** Step this is the single dispatch's field 8. For a **testable** Step (split into a test-writer dispatch and an implementation dispatch) the coordinator SHALL use the **union** of field 8 from BOTH reports, because the commit is per-Step and includes the files written (or removed) by both dispatches.
     3. Per-file `+N -M` line counts computed from the **working tree vs `HEAD`** for the add-list paths (e.g. `git diff --stat HEAD -- <paths>`), NOT from `git diff --cached` (which is empty before staging). Untracked add-list paths have no `HEAD` baseline, so their counts SHALL be computed explicitly as all-insertions (e.g. via `git diff --no-index --stat -- /dev/null <path>` on POSIX, or an equivalent cross-platform line count — the apply flow runs on Windows as well).
 
 The report SHALL contain, in this order:
@@ -69,6 +67,10 @@ The report SHALL NOT include a diff preview, full file contents, or tracebacks.
 - **WHEN** a testable Step's test-writer reports `Files modified` = `{test/foo.test.ts, src/foo.ts}` (test + stub) and the implementation dispatch reports `Files modified` = `{src/foo.ts}`, and both files are modified in the working tree
 - **THEN** the coordinator uses the union `{test/foo.test.ts, src/foo.ts}` as both the add-list (for the `Will be committed` block) and the subagent-claimed set, and the `Subagent ↔ git` block prints `In sync`
 
+#### Scenario: Removed retired file enters the add-list
+- **WHEN** the test-authoring dispatch declares `test/obsolete-guard.test.js` as removed under the bounded retirement exception, and `git status` shows the deletion
+- **THEN** the `Will be committed` block lists `test/obsolete-guard.test.js` as part of the add-list, the `Subagent ↔ git` block prints `In sync`, and on authorization the coordinator stages the deletion by exact path
+
 #### Scenario: STOP & COMMIT with subagent/git mismatch
 - **WHEN** the subagent-claimed set (add-list) is `{src/foo.ts}` and `git status` shows `src/foo.ts` and `src/baz.ts` both changed in the working tree
 - **THEN** the report sets status letter `MISMATCH`, the `Will be committed` block lists only `src/foo.ts`, the `Will NOT be committed` block lists `src/baz.ts`, and the `Subagent ↔ git` block lists `only-in-git: src/baz.ts` so the user can decide whether to proceed
@@ -92,3 +94,4 @@ If a subagent report omits field 8 (`Files modified`), the coordinator SHALL tre
 #### Scenario: One of a testable Step's two dispatches omits field 8
 - **WHEN** a testable Step's implementation dispatch returns a report with field 8 missing while the test-writer's field 8 is present
 - **THEN** the coordinator still treats the Step's pre-commit report as unreliable, surfaces which dispatch omitted field 8, and pauses for the user before proposing the commit message
+
