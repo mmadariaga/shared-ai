@@ -7,6 +7,16 @@ Every spawn MUST declare an output contract in its prompt:
 
 Summaries are caller-owned: the caller performs the final synthesis, and the explore agent must never return raw output.
 
+## Tool-preference ladder
+
+When researching the project, prefer research tools in this fixed order:
+
+1. **Codegraph first**: when `codegraph_*` MCP tools are present in the session, structural questions — where something is defined, what calls it, what a change would affect — go to codegraph before any text search.
+2. **git grep second**: textual searches run through `git grep` via shell when shell and git are available.
+3. **Direct disk tools last**: Glob, Grep, and direct file reads are the final fallback when neither earlier level is available or neither answered the question.
+
+Each level is conditional: when `codegraph_*` tools are absent from the session, that level is skipped without any attempt; when shell or git is unavailable, `git grep` is skipped and research falls directly to Glob/Grep/Read. The ladder governs only the choice of research tools: it does not modify the directed out-of-root access rules, structured scope escalation, or the per-segment tool-call ceiling defined elsewhere in this policy.
+
 ## Filesystem research scope
 
 The project working directory is the project root for the invocation. The active worktree is included in that root when the session starts in a worktree. Every unqualified or speculative filesystem search, discovery, and read MUST start in the project root and remain confined to it. The explorer MUST NOT broaden an initial search to the parent repository or sibling worktrees.
