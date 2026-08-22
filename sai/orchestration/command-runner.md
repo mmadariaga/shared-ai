@@ -64,8 +64,9 @@ state. If any required field is unavailable, return a failed restart request
 and do not dispatch a replacement.
 
 The coordinator invokes only these phase-adapter fields, plus the optional
-static, ordered `progress_plan` declaration and the optional static
-`recovery_policy` declaration:
+static, ordered `progress_plan` declaration, the optional static
+`recovery_policy` declaration, and the optional static `step_pointer_map`
+declaration:
 
 - `original_envelope`
 - `dispatch_operation`
@@ -76,6 +77,7 @@ static, ordered `progress_plan` declaration and the optional static
 - `terminal_navigation`
 - `progress_plan` (optional — static, ordered, fully known at dispatch, immutable for the active adapter segment; under composition the pre-delta phrase "immutable for the invocation" means immutable for the active adapter segment, and a one-adapter invocation keeps segment scope identical to today's invocation scope)
 - `recovery_policy` (optional — static boolean, fully known at dispatch, immutable for the active adapter segment under the same segment reading as `progress_plan`) (recovery semantics: @sai/policies/bounded-recovery.md)
+- `step_pointer_map` (optional — static map from declared progress-plan ids to just-in-time step instruction paths, fully known at dispatch, immutable for the active adapter segment under the same segment reading as `progress_plan`)
 
 The dispatch passes exactly `arguments_value`; the
 progress plan is declared by the phase adapter, is never carried in the
@@ -85,6 +87,28 @@ state.
 
 Terminal behavior is supplied by `terminal_navigation`. The coordinator never
 reads artifacts, resolves phase data, or invents phase-specific payload fields.
+
+## Step-gated pointer delivery
+
+When the active adapter declares an optional static `step_pointer_map`, each
+progress-event continuation payload sent to the same worker is exactly two
+lines: today's protocol continuation line first, then one pointer line derived
+deterministically from the declared plan and map — apply the just-processed
+event's marks and take the first declared step still unmarked in plan order;
+that second line reads `Active step: <id> — follow <path>` with that step's id
+and its mapped path from the static map. With every declared step marked, the
+second line reads exactly `Active step: none — complete remaining work and return your terminal result.` The pointer travels only in this continuation
+payload: the materialized binding literal is untouched, and no dispatch
+envelope or reconstruction field carries step paths. Continuations that are not
+progress continuations — feedback turns, notices, and `continue_after_recovery`
+— carry no pointer line, so the worker's active step file persists across them
+in its continuous session. When the declaring adapter also requires replacement
+reconstruction, that reconstruction state additionally includes the worker's
+`active_step_id`, and the replacement's first continuation carries the pointer
+line for that step. Render-before-resume ordering is unchanged: the coordinator
+renders the progress mark before sending the two-line continuation. Without a
+declared `step_pointer_map`, progress continuations keep today's exact-literal
+behavior and no other phase surface changes.
 
 ## Chained phase composition
 
