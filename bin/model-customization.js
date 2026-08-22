@@ -14,11 +14,11 @@ const {
 
 const MENU_OPTIONS = Object.freeze(['Customize models', 'Exit']);
 const HARNESS_OPTIONS = Object.freeze(['OpenCode', 'Claude Code']);
-const SCOPE_OPTIONS = Object.freeze(['Workers', 'Commands', 'Both']);
+const SCOPE_OPTIONS = Object.freeze(['Workers', 'Agents', 'Commands', 'Utilities', 'All']);
 const MODEL_CHECKLIST_LEGEND = 'Up/Down move · Space toggle · Enter confirm · ←/Esc back · q/Ctrl-C cancel';
 const COMBINED_ENTRY_DELIMITER = ' | ';
-const WORKER_PREFIX = 'worker: ';
-const COMMAND_PREFIX = 'command: ';
+const TARGET_PREFIXES = Object.freeze({ worker: 'worker:', agent: 'agent:', command: 'command:', utility: 'utility:' });
+const UTILITY_NAMES = Object.freeze(['sai-commit', 'sai-pr', 'sai-status', 'sai-worktree']);
 const DEFAULT_PACKAGE_ROOT = path.join(__dirname, '..');
 const DEFAULT_CLAUDE_GLOBAL_AGENT_ROOT = path.join(os.homedir(), '.claude', 'agents');
 const DEFAULT_OPENCODE_GLOBAL_AGENT_ROOT = path.join(os.homedir(), '.config', 'opencode', 'agents');
@@ -38,23 +38,23 @@ const NO_VARIANT = Symbol('NO_VARIANT');
 const NO_VARIANT_LABEL = 'Default (no variant)';
 const TOP_LEVEL_SCALAR = /^([A-Za-z0-9_-]+):[ \t]*(.*)$/;
 
-function buildChecklistTargets(scope, workers, commands) {
-  if (scope === 'Workers') return workers.slice().sort();
-  if (scope === 'Commands') return commands.slice().sort();
-  return [
-    ...workers.slice().sort().map(name => `${WORKER_PREFIX}${name}`),
-    ...commands.slice().sort().map(name => `${COMMAND_PREFIX}${name}`),
-  ];
+function target(family, name, label = name) {
+  return { value: `${TARGET_PREFIXES[family]}${name}`, family, name, label };
 }
 
-function parseTarget(value, scope) {
-  if (value.startsWith(WORKER_PREFIX)) {
-    return { family: 'worker', name: value.slice(WORKER_PREFIX.length), display: value };
+function buildChecklistTargets(scope, families) {
+  const selectedFamilies = scope === 'All'
+    ? ['worker', 'agent', 'command', 'utility']
+    : ({ Workers: ['worker'], Agents: ['agent'], Commands: ['command'], Utilities: ['utility'] }[scope] || []);
+  return selectedFamilies.flatMap(family => (families[family] || []).slice().sort()
+    .map(entry => typeof entry === 'string' ? target(family, entry) : entry));
+}
+
+function parseTarget(value) {
+  for (const [family, prefix] of Object.entries(TARGET_PREFIXES)) {
+    if (value.startsWith(prefix)) return target(family, value.slice(prefix.length), value);
   }
-  if (value.startsWith(COMMAND_PREFIX)) {
-    return { family: 'command', name: value.slice(COMMAND_PREFIX.length), display: value };
-  }
-  return { family: scope === 'Commands' ? 'command' : 'worker', name: value, display: value };
+  return null;
 }
 
 function splitFrontmatter(text) {
@@ -149,7 +149,7 @@ function materializeLocalOverride({
   harness,
   family = 'worker',
 }) {
-  const familyDirectory = family === 'command' ? 'commands' : 'agents';
+  const familyDirectory = family === 'command' || family === 'utility' ? 'commands' : 'agents';
   const localDirectory = harness === 'claude'
     ? path.join(projectPath, '.claude', familyDirectory)
     : path.join(projectPath, '.opencode', familyDirectory);
@@ -197,12 +197,52 @@ function materializeLocalOverride({
   return { status: 'persisted', agent: agentName, destination };
 }
 
-function enumerateWorkers(packageRoot, loadManifest, harness) {
+function enumerateProjectionTargets(packageRoot, loadManifest, harness) {
   const manifest = loadManifest(packageRoot);
-  return manifest.projections
-    .filter(projection => projection.destination.class === 'agents' && projection.harnesses.includes(harness))
-    .map(projection => path.basename(projection.destination.path, '.md'))
-    .sort();
+  const families = { worker: [], agent: [], command: [], utility: [] };
+  for (const projection of manifest.projections) {
+    if (!projection.harnesses.includes(harness)) continue;
+    const name = path.basename(projection.destination.path, '.md');
+    if (projection.destination.class === 'agents') {
+      families[projection.matrix && projection.matrix.kind === 'agent' ? 'worker' : 'agent'].push(name);
+    }
+  }
+  for (const name of enumerateCommands(packageRoot, loadManifest, harness)) {
+    families[UTILITY_NAMES.includes(name) ? 'utility' : 'command'].push(name);
+  }
+  for (const family of Object.keys(families)) families[family] = [...new Set(families[family])].sort();
+  return families;
+}
+
+function enumerateWorkers(packageRoot, loadManifest, harness) {
+  return enumerateProjectionTargets(packageRoot, loadManifest, harness).worker;
+}
+
+function readFrontmatterSettings(filePath, harness) {
+  try {
+    if (!fs.existsSync(filePath)) return null;
+    const split = splitFrontmatter(fs.readFileSync(filePath, 'utf8'));
+    if (!split) return null;
+    const values = {};
+    for (const line of split.lines.slice(1, split.endIndex)) {
+      const match = TOP_LEVEL_SCALAR.exec(line);
+      if (match && ['model', 'effort', 'variant'].includes(match[1])) values[match[1]] = match[2].trim();
+    }
+    if (!values.model) return null;
+    const tuning = values[harness === 'claude' ? 'effort' : 'variant'];
+    return `${harness === 'claude' ? `anthropic/${values.model}` : values.model}${tuning ? ` (${tuning})` : ''}`;
+  } catch {
+    return null;
+  }
+}
+
+function effectiveSetting(targetEntry, projectPath, globalAgentRoot, globalCommandRoot, harness) {
+  const directory = targetEntry.family === 'command' || targetEntry.family === 'utility' ? 'commands' : 'agents';
+  const localRoot = harness === 'claude' ? path.join(projectPath, '.claude', directory) : path.join(projectPath, '.opencode', directory);
+  const globalRoot = directory === 'commands' ? globalCommandRoot : globalAgentRoot;
+  return readFrontmatterSettings(path.join(localRoot, `${targetEntry.name}.md`), harness)
+    || readFrontmatterSettings(path.join(globalRoot, `${targetEntry.name}.md`), harness)
+    || 'unavailable';
 }
 
 function isConcreteClaudeCatalogValue(value) {
@@ -515,6 +555,8 @@ function createClaudeAdapter({
   return {
     enumerateWorkers: () => enumerateWorkers(packageRoot, loadManifestOverride, 'claude'),
     enumerateCommands: () => enumerateCommands(packageRoot, loadManifestOverride, 'claude'),
+    enumerateTargets: () => enumerateProjectionTargets(packageRoot, loadManifestOverride, 'claude'),
+    effectiveSetting: (targetEntry) => effectiveSetting(targetEntry, projectPath, globalAgentRoot, globalCommandRoot, 'claude'),
     selectSettings: subsetLabel => selectClaudeSettings(subsetLabel, promptChoice, settingsCatalog),
     createLocalOverride: (target, settings) => {
       const family = typeof target === 'string' ? 'worker' : target.family;
@@ -547,6 +589,8 @@ function createOpencodeAdapter({
   return {
     enumerateWorkers: () => enumerateWorkers(packageRoot, loadManifestOverride, 'opencode'),
     enumerateCommands: () => enumerateCommands(packageRoot, loadManifestOverride, 'opencode'),
+    enumerateTargets: () => enumerateProjectionTargets(packageRoot, loadManifestOverride, 'opencode'),
+    effectiveSetting: (targetEntry) => effectiveSetting(targetEntry, projectPath, globalAgentRoot, globalCommandRoot, 'opencode'),
     selectSettings: subsetLabel => opencodeSelectSettings(subsetLabel, promptChoice, runCommand),
     createLocalOverride: (target, settings) => {
       const family = typeof target === 'string' ? 'worker' : target.family;
@@ -650,9 +694,19 @@ async function runPostSetupMenu({
             globalCommandRoot: claudeGlobalCommandRoot,
             promptChoice,
           });
-        const workers = adapter.enumerateWorkers();
-        const commands = scope === 'Workers' ? [] : adapter.enumerateCommands();
-        const targets = buildChecklistTargets(scope, workers, commands);
+        const families = typeof adapter.enumerateTargets === 'function'
+          ? adapter.enumerateTargets()
+          : {
+            worker: typeof adapter.enumerateWorkers === 'function' ? adapter.enumerateWorkers() : [],
+            agent: [],
+            command: typeof adapter.enumerateCommands === 'function' ? adapter.enumerateCommands() : [],
+            utility: [],
+          };
+        const targetEntries = buildChecklistTargets(scope, families);
+        const targets = targetEntries.map(entry => entry.value);
+        const labels = targetEntries.map(entry => `${entry.value} \x1b[90m[${typeof adapter.effectiveSetting === 'function'
+          ? adapter.effectiveSetting(entry)
+          : 'unavailable'}]\x1b[0m`);
         if (targets.length === 0) {
           console.log('No customization targets are available for the selected scope.');
           screen = 'scope';
@@ -664,7 +718,7 @@ async function runPostSetupMenu({
           targets,
           undefined,
           MODEL_CHECKLIST_LEGEND,
-          { preventEmptyConfirm: true },
+          { preventEmptyConfirm: true, displayOptions: labels },
         );
         if (!selection || selection.status === 'cancelled') return skippedOutcome('cancelled');
         if (selection.status === 'non-interactive') return skippedOutcome('non-tty');
@@ -675,7 +729,7 @@ async function runPostSetupMenu({
         if (selection.status !== 'confirmed') return skippedOutcome('cancelled');
 
         selectedTargets = Array.isArray(selection.items)
-          ? selection.items.map(value => parseTarget(value, scope))
+          ? selection.items.map(value => parseTarget(value)).filter(Boolean)
           : [];
         if (selectedTargets.length === 0) {
           screen = 'targets';
@@ -685,7 +739,7 @@ async function runPostSetupMenu({
         continue;
       }
 
-      settings = await adapter.selectSettings(selectedTargets.map(target => target.display).join(', '));
+      settings = await adapter.selectSettings(selectedTargets.map(target => target.value).join(', '));
       if (settings === BACK) {
         screen = 'targets';
         continue;
@@ -730,6 +784,8 @@ async function runPostSetupMenu({
 module.exports = {
   runPostSetupMenu,
   CLAUDE_SETTINGS_CATALOG,
+  SCOPE_OPTIONS,
+  TARGET_PREFIXES,
   MODEL_CHECKLIST_LEGEND,
   NO_VARIANT,
   BACK,
@@ -743,6 +799,10 @@ module.exports = {
   parseVerboseModelRecords,
   extractVariants,
   buildVariantDisplayOptions,
+  buildChecklistTargets,
+  parseTarget,
+  enumerateProjectionTargets,
+  effectiveSetting,
   patchFrontmatter,
   materializeLocalOverride,
   atomicReplace,
