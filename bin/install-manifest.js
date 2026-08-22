@@ -36,6 +36,7 @@ const PHASE_WORKER_IDENTITIES = Object.freeze({
   performance: 'sai-7-performance-worker',
   accessibility: 'sai-8-accessibility-worker',
   commit: 'sai-commit-worker',
+  archive: 'sai-archive-worker',
 });
 const PHASE_CONTRACT_DIRS = Object.freeze({
   spec: 'spec',
@@ -46,6 +47,7 @@ const PHASE_CONTRACT_DIRS = Object.freeze({
   performance: 'performance',
   accessibility: 'accessibility',
   commit: 'commit',
+  archive: 'archive',
 });
 const MATRIX_ENTRY_REQUIRED_FIELDS = Object.freeze([
   'phase',

@@ -20,6 +20,7 @@ const WORKER_NAMES = [
   'sai-7-performance-worker',
   'sai-8-accessibility-worker',
   'sai-commit-worker',
+  'sai-archive-worker',
 ];
 
 const CLAUDE_GENERIC_AGENTS = ['budget-explorer', 'budget-executor', 'budget-subagent'];
@@ -33,6 +34,7 @@ const WORKER_PHASE = {
   'sai-7-performance-worker': 'performance',
   'sai-8-accessibility-worker': 'accessibility',
   'sai-commit-worker': 'commit',
+  'sai-archive-worker': 'archive',
 };
 
 const matrixManifest = loadInstallManifest(path.join(__dirname, '..'));
@@ -329,8 +331,8 @@ test('Claude and opencode uninstall enumerate their managed agent destinations',
   const genericNames = ['explore', 'executor', 'budget'];
   const applyNames = ['sai-4-red-worker', 'sai-4-green-worker'];
   for (const [harness, install, enumerate, expectedCount] of [
-    ['claude', flow.installClaude, enumerateClaude, 13],
-    ['opencode', flow.installOpencode, enumerateOpencode, 13],
+    ['claude', flow.installClaude, enumerateClaude, 14],
+    ['opencode', flow.installOpencode, enumerateOpencode, 14],
   ]) {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), `sai-tunable-${expectedCount}-${harness}-`));
     try {
@@ -347,10 +349,10 @@ test('Claude and opencode uninstall enumerate their managed agent destinations',
         assert.ok(genericNames.every(name => basenames.includes(name)),
           'opencode agent destinations should include explore, executor, and budget');
         assert.ok(WORKER_NAMES.every(name => basenames.includes(name)),
-          'opencode agent destinations should still cover the ten sai worker filenames');
+          'opencode agent destinations should still cover the eleven sai worker filenames');
       } else {
         assert.ok(WORKER_NAMES.every(name => basenames.includes(name)),
-          'claude agent destinations should still cover the ten sai worker filenames');
+          'claude agent destinations should still cover the eleven sai worker filenames');
         assert.ok(CLAUDE_GENERIC_AGENTS.every(name => basenames.includes(name)),
           'claude agent destinations should include the three budget agent basenames');
       }

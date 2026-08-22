@@ -1,0 +1,150 @@
+<TASK>
+
+  Fetch @sai/policies/verified-precondition-handback.md
+  Fetch @skills/safe-operations/SKILL.md and use it
+  Fetch @skills/openspec-archive-change/SKILL.md and follow those instructions
+  exactly for the mutating steps assigned to you below (the delta-spec sync
+  write, the step-5 archive move, and the step-6 completion summary); its
+  assessment steps are replaced by the worker pre-flight.
+
+  ## Prerequisite checks
+
+  `sai-archive` REQUIRES the openspec project — unlike `sai-commit`, there is no
+  exemption. Perform the full prerequisite checks by fetching
+  @sai/policies/prereqs.md and applying them exactly:
+  1. The `openspec` binary is in PATH.
+  2. The `openspec/` directory exists.
+  3. `openspec/config.yaml` declares `schema: sai-workflow`.
+  On a failed check, halt with the check's own message and stop.
+
+  ## Fast-track parse
+
+  Before resolution, inspect the boot-provided `arguments_value` for the
+  positional token `--fast-track`:
+  - If the token is present anywhere in `arguments_value`:
+    1. Set the in-conversation boolean `fast_track_active` to true.
+    2. Remove the `--fast-track` token from `arguments_value` and trim
+       surrounding whitespace.
+    3. Print the exact line `> FAST-TRACK MODE ACTIVE` as ordinary conversation
+       text (do not write it to any file).
+    4. Use the cleaned remainder as the effective request for all downstream
+       steps.
+  - If the token is absent:
+    1. Leave `fast_track_active` false.
+    2. Use `arguments_value` verbatim.
+
+  ## Change resolution
+
+  Resolve the OpenSpec change name before dispatching the worker: fetch
+  @sai/policies/change-picker.md and follow it exactly against the cleaned
+  request. On the picker's stop paths (no active changes, declined
+  confirmation), print its exact stop text and stop without dispatching. The
+  resolved name becomes the effective request for the remainder of the run.
+
+  ## Archive phase adapter
+
+  You are the user-facing archive coordinator. The worker owns every read-only
+  procedure of the technical phase: artifact classification, checkbox-state
+  scanning, delta-sync diffing against main specs, target-name collision
+  checking, and the authoring of the two pre-mutation gate questions. You own
+  lifecycle routing, gate presentation, and ALL mutating execution: the
+  delta-spec sync writes, the archive directory move, and every git operation
+  of the post-archive commit gate. Never perform the worker's read-only analysis
+  on its behalf; never let the worker move a directory, write a main spec, or
+  run git.
+
+  Declare the minimal phase-adapter field set:
+  - `original_envelope` — the opaque single-string fast-track-cleaned request
+    forwarded to the dispatch (the boot's `arguments_value` after the parse
+    above; the stripped token survives only in `fast_track_active`).
+  - `dispatch_operation` — dispatch exactly one `sai-archive-worker` through
+    the active archive-worker binding
+    (`Fetch @sai/orchestration/workers/bindings/archive-worker.md`) using the
+    original envelope with the resolved change name as `arguments_value`, and
+    declare `fast_track_active` alongside the envelope as coordinator-owned
+    session state (never an additional envelope key). The worker uses that
+    signal for the documented fast-track auto-proceed branches.
+  - `continuation_operation` — continue the same worker through the binding's
+    continuation mechanism, forwarding the selected answer value or the
+    post-sync verification request.
+  - `allowed_nonterminal_extensions` — none; `extension_handlers` empty. This
+    adapter declares NO `progress_plan`: no progress event exists in this
+    lifecycle, no panel plan renders, and no acknowledgement literal is defined.
+  - `replacement_reconstruction_fields` — the complete original envelope, the
+    opaque input history (including forwarded gate answers), the resolved
+    change name, `fast_track_active`, and the ordered duplicate-free
+    changed-files union; a replacement worker reconstructs only from these.
+  - `terminal_navigation` — on a run whose archive move executed: print the
+    worker-authored summary verbatim, print exactly `Archive done.`, stop.
+    Every other closure prints the worker-authored summary verbatim and stops
+    without the completion literal and without any mutation.
+  - NO `recovery_policy` is declared: this adapter runs a minimal lifecycle
+    without bounded recovery. Do not fetch `@sai/policies/bounded-recovery.md`,
+    keep no recovery ledger, and perform no recovery continuations.
+
+  Initialize one invocation-scoped ordered, duplicate-free changed-files union
+  and an opaque input history; add the worker-reported paths in first-seen
+  order. Validate every returned result against the shared runner's
+  closed-payload rules before acting on it.
+
+  ## Needs-input routing
+
+  On a worker `needs_input` result — the unchecked-items gate or the delta-spec
+  sync gate — present the exact question and ordered options through the native
+  option-picker per the "Closed-choice prompts" rule in `@sai/policies/remember.md`,
+  append only `{question, options, answer_value}` to the opaque input history,
+  and forward the exact answer value to the same worker through the binding's
+  continuation mechanism. Present any worker-authored payload content (the
+  combined delta-sync summary, the unchecked-item list) alongside the ask,
+  unaltered.
+
+  ## Coordinator-owned execution
+
+  After the gates resolve through forwarded answers, execute the mutations in
+  this order, each guarded by safe-operations:
+
+  - **Sync execution** — on a forwarded `Sync now` / `Sync anyway` answer:
+    execute the upstream skill's step-4 sync sub-procedure yourself: fetch
+    `openspec instructions specs --change "<name>" --json` once (halt before
+    any write if it fails), run the `openspec-sync-specs` workflow inline
+    synchronously, then resume the same worker with a post-sync verification
+    request. The worker re-runs its read-only comparison and either confirms
+    every capability synced or reports what differs — on a mismatch report,
+    print the worker-authored summary verbatim and stop without moving
+    anything. Add written spec paths to the union.
+  - **The archive move** — only after the gates authorize archiving: create the
+    archive directory (`mkdir -p openspec/changes/archive`), derive the target
+    name per the date-prefix rule (use the change name as-is when it already
+    starts with `YYYY-MM-DD-`; otherwise prepend today's date as
+    `YYYY-MM-DD-<change-name>`; never stack a second date), fail with the
+    pre-flight collision error if the target exists, else move the change
+    directory into `openspec/changes/archive/<target-name>`. Never delegate the
+    move to the worker. Add the realized archive path to the union.
+  - **Post-archive commit gate** — fetch
+    @sai/commands/archive/archive-commit-gate.instructions.md and apply its
+    coordinator-owned surface exactly as written: the skip-rule `git
+    status` check, the three-option selector presentation (suppressed under
+    `fast_track_active`, which auto-selects the new-commit option), staging of
+    exactly the two literal paths, the shared empty-index guard, the
+    pushed-HEAD guard with its secondary confirmation, and the authorized
+    commit or amend. Compose messages by applying
+    `sai/commands/commit/instructions.md` steps 1–5 with
+    `@sai/policies/commit-rules.md` as the single source of commit-message
+    rules, exactly as that instruction directs.
+
+  Then run `terminal_navigation`.
+
+  ## Content assignment
+
+  The split of today's technical content is fixed: `@sai/commands/archive/
+  instructions.md` (Classification Check, Completion Check scan, missing-main-
+  spec handling, fast-track sync-gate handling) belongs to the WORKER as
+  read-only verification, completeness, and diffing procedure plus the two
+  pre-mutation gate questions. `@skills/openspec-archive-change/SKILL.md` and
+  `@sai/commands/archive/archive-commit-gate.instructions.md` belong HERE: the
+  skill's mutating steps (sync write, step-5 move, completion summary) and the
+  commit gate's presentation-and-execution surface are coordinator-only.
+
+</TASK>
+
+Follow instruction on <TASK> step by step

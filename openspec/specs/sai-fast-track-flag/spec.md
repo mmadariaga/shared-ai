@@ -7,7 +7,7 @@ Enables the `--fast-track` per-invocation flag on `sai-explore`, `sai-2-design`,
 ## Requirements
 ### Requirement: The fast-track command set is the single canonical membership list
 
-The set of commands that parse `--fast-track` in their body files SHALL be exactly `sai-explore`, `sai-2-design`, `sai-4-apply`, and `sai-archive`. This requirement is the single source of truth for body-file parser membership. A composition command outside this set MAY inject apply fast-track without becoming a parser member.
+The set of commands that accept and parse `--fast-track` SHALL be exactly `sai-explore`, `sai-2-design`, `sai-4-apply`, and `sai-archive`. `sai-explore`, `sai-2-design`, and `sai-4-apply` parse the token in their shared body files; routed-shaped `sai-archive` parses it in its coordinator card (`sai/commands/archive/coordinator.md`) because its utility body card was retired. This requirement is the single source of truth for parser membership. A composition command outside this set MAY inject apply fast-track without becoming a parser member.
 
 #### Scenario: Membership is resolved against the canonical list
 
@@ -88,11 +88,11 @@ The following gates SHALL remain in force under `sai-archive --fast-track` and S
 
 ### Requirement: The --fast-track flag is parsed from arguments_value before the picker
 
-Exactly four commands — `sai-explore`, `sai-2-design`, `sai-4-apply`, and `sai-archive` — SHALL accept a `--fast-track` token in their arguments. The token SHALL be parsed by the command's shared body files from `arguments_value` before change-name picking. After extraction the token SHALL be removed from `arguments_value`, and the cleaned remainder SHALL remain authoritative downstream. `/sai-build` remains outside this parser membership and may inject apply fast-track through composition. No wrapper-echo field is forwarded or used to find or clean a change name.
+Exactly four commands — `sai-explore`, `sai-2-design`, `sai-4-apply`, and `sai-archive` — SHALL accept a `--fast-track` token in their arguments. The token SHALL be parsed from `arguments_value` before change-name picking: in the command's shared body file for `sai-explore`, `sai-2-design`, and `sai-4-apply`, and in the `sai-archive` coordinator card for `sai-archive`. After extraction the token SHALL be removed from `arguments_value`, and the cleaned remainder SHALL remain authoritative downstream. `/sai-build` remains outside this parser membership and may inject apply fast-track through composition. No wrapper-echo field is forwarded or used to find or clean a change name.
 
 For `sai-2-design`, `sai-4-apply`, and `sai-archive`, the cleaned `arguments_value` SHALL reach the shared change-picker before it resolves a name. `sai-4-apply` and `sai-archive` SHALL NOT strip a residual `--fast-track` token from the picker's resolved value or perform a second flag-removal pass after picking.
 
-The parse SHALL be single-sourced in the body file so that all harness thin wrappers (`commands/claude/`, `commands/opencode/`, `commands/copilot/`) inherit identical behavior; the wrappers carry only an updated `argument-hint` (except where a wrapper shape does not support one — see the harness-agnostic requirement).
+The parse SHALL be single-sourced in one location per command — the shared body file, or the coordinator card for `sai-archive` — so that all harness thin wrappers (`commands/claude/`, `commands/opencode/`, `commands/copilot/`) inherit identical behavior; the wrappers carry only an updated `argument-hint` (except where a wrapper shape does not support one — see the harness-agnostic requirement).
 
 #### Scenario: Flag is stripped and the change-name passes through cleanly
 
@@ -102,7 +102,7 @@ The parse SHALL be single-sourced in the body file so that all harness thin wrap
 #### Scenario: archive parses before picking without a second flag pass
 
 - **WHEN** a user runs `/sai-archive --fast-track oauth2-auth` or `/sai-archive oauth2-auth --fast-track`
-- **THEN** the body file removes `--fast-track` from `arguments_value` before picking, the change-picker resolves `oauth2-auth`, and archive performs no second flag-removal pass
+- **THEN** the sai-archive coordinator card removes `--fast-track` from `arguments_value` before picking, the change-picker resolves `oauth2-auth`, and archive performs no second flag-removal pass
 
 #### Scenario: Absent flag leaves behavior identical to today
 
@@ -116,7 +116,12 @@ The parse SHALL be single-sourced in the body file so that all harness thin wrap
 
 ### Requirement: Fast-track mode announces itself with a single-line banner at run start
 
-When `--fast-track` is active through body-file parsing, the command's body file SHALL emit the single line `> FAST-TRACK MODE ACTIVE` at run start. When apply receives fast-track only through a chained composition, the supervising composition coordinator owns the banner at apply activation. The banner SHALL NOT be written to disk.
+When `--fast-track` is active through body-file parsing, the command's body file SHALL emit the single line `> FAST-TRACK MODE ACTIVE` at run start; when active through `sai-archive`'s coordinator-card parsing, the coordinator card owns the same banner at run start. When apply receives fast-track only through a chained composition, the supervising composition coordinator owns the banner at apply activation. The banner SHALL NOT be written to disk.
+
+#### Scenario: Archive banner prints from the coordinator
+
+- **WHEN** `/sai-archive {name} --fast-track` runs
+- **THEN** the coordinator prints the exact line `> FAST-TRACK MODE ACTIVE` once at run start, after the prerequisite checks and before change resolution, and writes nothing to disk to record it
 
 ### Requirement: Composition-injected apply fast-track under sai-build
 `/sai-build` SHALL always inject normalized apply fast-track true when activating its chained apply segment without becoming a fifth body-file parser. Explicit `--fast-track` on build SHALL not change phase order, injection, gates, or banner behavior; safe-operations and other non-opted-out gates remain in force.

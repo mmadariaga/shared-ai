@@ -43,6 +43,7 @@ const OPENCODE_AGENTS = [
   'sai-6-security-worker',
   'sai-7-performance-worker',
   'sai-8-accessibility-worker',
+  'sai-archive-worker',
   'sai-commit-worker',
 ];
 
@@ -59,6 +60,7 @@ const CLAUDE_AGENTS = [
   'sai-6-security-worker',
   'sai-7-performance-worker',
   'sai-8-accessibility-worker',
+  'sai-archive-worker',
   'sai-commit-worker',
 ];
 const OPENCODE_WORKERS = OPENCODE_AGENTS.filter(name => name.startsWith('sai-'));
@@ -484,18 +486,18 @@ test('customize Claude Code flow persists every selected agent, never invokes Op
   }
 });
 
-test('opencode enumerateWorkers returns only the ten routed workers', () => {
+test('opencode enumerateWorkers returns only the eleven routed workers', () => {
   const adapter = createOpencodeAdapter({ repoRoot: REPO_ROOT });
   const agents = adapter.enumerateWorkers();
-  assert.equal(agents.length, 10, 'exactly ten routed workers should enumerate for opencode');
+  assert.equal(agents.length, 11, 'exactly eleven routed workers should enumerate for opencode');
   assert.deepEqual([...agents].sort(), [...OPENCODE_WORKERS].sort(),
     'opencode workers should exclude generic delegation agents');
 });
 
-test('claude enumerateWorkers returns only the ten routed workers', () => {
+test('claude enumerateWorkers returns only the eleven routed workers', () => {
   const adapter = createClaudeAdapter({ repoRoot: REPO_ROOT });
   const agents = adapter.enumerateWorkers();
-  assert.equal(agents.length, 10, 'exactly ten routed workers should enumerate for claude');
+  assert.equal(agents.length, 11, 'exactly eleven routed workers should enumerate for claude');
   assert.deepEqual([...agents].sort(), [...CLAUDE_WORKERS].sort(),
     'claude workers should exclude generic delegation agents');
 });
@@ -505,8 +507,8 @@ test('both adapters classify generic delegation agents separately from Worker Ma
   const opencode = createOpencodeAdapter({ repoRoot: REPO_ROOT }).enumerateTargets();
   assert.deepEqual(claude.agent, ['budget-executor', 'budget-explorer', 'budget-subagent']);
   assert.deepEqual(opencode.agent, ['budget', 'executor', 'explore']);
-  assert.equal(claude.worker.length, 10);
-  assert.equal(opencode.worker.length, 10);
+  assert.equal(claude.worker.length, 11);
+  assert.equal(opencode.worker.length, 11);
 });
 
 test('Claude settings selection asks one combined frame from the real catalog and resolves the confirmed pair', async () => {
@@ -3209,7 +3211,7 @@ test('Step 2 non-empty Claude subsets select settings once and apply the same mo
   }
 });
 
-test('customization inventory is matrix-derived: exactly ten worker agents per harness in the manifest', () => {
+test('customization inventory is matrix-derived: exactly eleven worker agents per harness in the manifest', () => {
   const { loadInstallManifest, expandInstallManifest } = require('../bin/install-manifest.js');
   const manifest = loadInstallManifest(REPO_ROOT);
   const workers = [
@@ -3222,6 +3224,7 @@ test('customization inventory is matrix-derived: exactly ten worker agents per h
     'sai-6-security-worker',
     'sai-7-performance-worker',
     'sai-8-accessibility-worker',
+    'sai-archive-worker',
     'sai-commit-worker',
   ];
   for (const harness of ['claude', 'opencode']) {
@@ -3239,10 +3242,10 @@ test('customization inventory is matrix-derived: exactly ten worker agents per h
         .filter(projection => projection.destinationPath.startsWith(destinationRoot.agents) &&
           workers.includes(path.basename(projection.destinationPath, '.md')))
         .map(projection => path.basename(projection.destinationPath, '.md'));
-      assert.equal(agentNames.length, 10,
-        `${harness} customization inventory should contain exactly ten matrix managed agents`);
+      assert.equal(agentNames.length, 11,
+        `${harness} customization inventory should contain exactly eleven matrix managed agents`);
       assert.deepEqual(agentNames.sort(), [...workers].sort(),
-        `${harness} customization inventory should be exactly the ten worker identities`);
+        `${harness} customization inventory should be exactly the eleven worker identities`);
       assert.equal(agentNames.some(name => ['budget', 'executor', 'explore'].includes(name)), false,
         `${harness} customization inventory must not include support agents as matrix worker inventory`);
       const allAgentNames = active
@@ -3251,8 +3254,8 @@ test('customization inventory is matrix-derived: exactly ten worker agents per h
       if (harness === 'claude') {
         assert.equal(allAgentNames.some(name => ['budget', 'executor', 'explore'].includes(name)), false,
           'claude customization inventory should not include the opencode-only generic basenames');
-        assert.equal(allAgentNames.length, 13,
-          'claude customization inventory should contain exactly thirteen managed agents: ten workers plus the three budget agents');
+        assert.equal(allAgentNames.length, 14,
+          'claude customization inventory should contain exactly fourteen managed agents: eleven workers plus the three budget agents');
         assert.ok(['budget-executor', 'budget-explorer', 'budget-subagent'].every(name => allAgentNames.includes(name)),
           'claude customization inventory should include the three budget agents');
       } else {

@@ -318,6 +318,40 @@
         }
       },
       {
+        "phase": "archive",
+        "workerName": "sai-archive-worker",
+        "workerContract": "sai/commands/archive/worker.md",
+        "bindingStem": "archive",
+        "dispatchPrimitive": "task",
+        "initialDispatch": "dispatch sai-archive-worker",
+        "continuationLiteral": "continue sai-archive-worker",
+        "replacementFields": [
+          "model",
+          "effort"
+        ],
+        "helperPermissions": [
+          "Read",
+          "Bash",
+          "Skill"
+        ],
+        "progressDeclaration": "none — the archive adapter declares no progress_plan",
+        "overviewGeneration": "",
+        "noticeContinuation": "",
+        "claudeAgent": {
+          "agentName": "sai-archive-worker",
+          "description": "Owns the read-only archive pre-flight and gate authoring phase and returns structured lifecycle metadata.",
+          "model": "haiku",
+          "effort": "low",
+          "tools": "Read, Glob, Grep, Bash, Skill, SendMessage"
+        },
+        "opencodeAgent": {
+          "description": "Owns the read-only archive pre-flight and gate authoring phase and returns structured lifecycle metadata.",
+          "model": "opencode-go/deepseek-v4-flash",
+          "variantLine": "variant: default",
+          "permissionBlock": "    budget: allow\n    explore: allow"
+        }
+      },
+      {
         "phase": "apply",
         "workerName": "sai-4-red-worker",
         "workerContract": "sai/commands/apply/red-worker.md",
@@ -866,6 +900,25 @@
       }
     },
     {
+      "id": "claude-sai-archive-worker",
+      "source": "agents/claude/worker-template.md",
+      "destination": {
+        "class": "agents",
+        "path": "sai-archive-worker.md"
+      },
+      "harnesses": [
+        "claude"
+      ],
+      "strategy": "tunable-seed",
+      "recursive": false,
+      "ownership": "managed",
+      "drift": "content",
+      "matrix": {
+        "kind": "agent",
+        "phase": "archive"
+      }
+    },
+    {
       "id": "claude-budget-explorer",
       "source": "agents/claude/budget-explorer.md",
       "destination": {
@@ -1098,6 +1151,25 @@
       "matrix": {
         "kind": "agent",
         "phase": "commit"
+      }
+    },
+    {
+      "id": "opencode-sai-archive-worker",
+      "source": "agents/opencode/worker-template.md",
+      "destination": {
+        "class": "agents",
+        "path": "sai-archive-worker.md"
+      },
+      "harnesses": [
+        "opencode"
+      ],
+      "strategy": "tunable-seed",
+      "recursive": false,
+      "ownership": "managed",
+      "drift": "content",
+      "matrix": {
+        "kind": "agent",
+        "phase": "archive"
       }
     },
     {

@@ -33,7 +33,8 @@ Each phase reads from and writes to **`openspec/changes/{change-name}/`** — si
  sai/commands/                    ← command cards — routed cards per phase and utility cards per command (fetched by boot adapters at runtime)
  sai/commands/{spec,design,implement,apply,build,review,security,performance,accessibility}/  ← routed cards: coordinator.md, worker.md, and invocation.md where retained
  sai/commands/commit/             ← routed-shaped cards: coordinator.md + worker.md (no invocation.md; no openspec dependency)
- sai/commands/{archive,backfill,explore,pr,status,worktree}/          ← utility cards: body.md only
+ sai/commands/archive/            ← routed-shaped cards: coordinator.md + worker.md (no invocation.md)
+ sai/commands/{backfill,explore,pr,status,worktree}/          ← utility cards: body.md only
  sai/commands/{name}/instructions.md   ← command-local phase content (TASK block) folded into each command card
  sai/commands/{name}/*.template.md     ← neighboring co-located report/plan template files beside each card
  sai/commands/design/change-overview.md      ← shared overview-generation instruction, owned by the design command
@@ -42,13 +43,13 @@ Each phase reads from and writes to **`openspec/changes/{change-name}/`** — si
   sai/adapters/claude/             ← Claude Code boot adapter and paired non-worker panel/idea-list runtime glue
   sai/adapters/opencode/           ← opencode boot adapter and paired non-worker panel/idea-list runtime glue
   sai/orchestration/               ← matrix worker-binding templates (no flat coordinator/worker contracts)
-  sai/orchestration/workers/bindings/ ← neutral installed routed worker bindings (eight phases plus the two apply Step-execution workers)
+  sai/orchestration/workers/bindings/ ← neutral installed routed worker bindings (nine phases plus the two apply Step-execution workers)
  sai/policies/                    ← canonical reusable policies and prerequisite rules
  sai/compat/                      ← caller-neutral compatibility-only assets
  sai/install-manifest.json        ← deterministic harness projection manifest for install, doctor, and uninstall
  commands/claude/                 ← Claude Code wrappers (model + effort + fetch to sai/adapters/claude/boot.md)
  commands/opencode/               ← opencode wrappers (model + fetch to sai/adapters/opencode/boot.md)
- agents/claude/                   ← Claude Code managed agents (ten routed Managed Workers + three Generic Agents)
+ agents/claude/                   ← Claude Code managed agents (eleven routed Managed Workers + three Generic Agents)
  skills/claude/                   ← Claude Code harness skills
  skills/opencode/                 ← opencode harness skills
  configs/                         ← config samples (opencode.jsonc)
@@ -76,17 +77,18 @@ The openspec-dependent `sai-*` commands halt with a clear error if either is mis
 | `sai/commands/` | Command cards — routed cards per phase and utility cards per command, fetched by boot adapters at runtime. |
 | `sai/commands/{spec,design,implement,apply,build,review,security,performance,accessibility}/` | Routed cards: `coordinator.md`, `worker.md`, and `invocation.md` where retained. The build route uses `command-bootstrap.md` plus `coordinator.md` and adds no build-specific worker. |
 | `sai/commands/commit/` | Routed-shaped commit cards: `coordinator.md` + `worker.md` (no `invocation.md`; no openspec dependency — the documented exemption). The coordinator owns the destructive surface (safe-operations) and executes the authorized `git commit`; the worker authors the message and never runs git mutations. |
-| `sai/commands/{archive,backfill,explore,pr,status,worktree}/` | Utility cards: `body.md` only — the complete command body for utility commands. |
+| `sai/commands/archive/` | Routed-shaped archive cards: `coordinator.md` + `worker.md` (no `invocation.md`). The worker owns the read-only pre-flight (classification, checkbox scan, delta-sync diffing, collision check) and returns the two pre-mutation gates as `needs_input`; the coordinator owns every mutation — the sync writes, the archive directory move, and the post-archive commit gate. |
+| `sai/commands/{backfill,explore,pr,status,worktree}/` | Utility cards: `body.md` only — the complete command body for utility commands. |
 | `sai/adapters/claude/boot.md` | Claude Code boot adapter — loads `@sai/orchestration/command-runner.md`, selects the requested card, owns Claude fetch/dispatch; paired non-worker panel runtime glue also lives under `sai/adapters/claude/`, including `panel-render.md` and `idea-list-render.md`. |
 | `sai/adapters/opencode/boot.md` | Opencode boot adapter — loads `@sai/orchestration/command-runner.md`, selects the requested card, owns opencode fetch/dispatch; paired non-worker panel runtime glue also lives under `sai/adapters/opencode/`, including `panel-render.md` and `idea-list-render.md`. |
 | `sai/orchestration/` | Matrix worker-binding templates (`bindings/{claude,opencode}/worker-template.md`); no flat coordinator/worker contracts remain. |
-| `sai/orchestration/workers/bindings/` | Neutral installed routed worker bindings for the eight phases (`spec/design/implementation/review/security/performance/accessibility/commit-worker.md`) plus the two apply Step-execution worker bindings (`red-worker.md`/`green-worker.md`) projected for both harnesses; non-worker panel and idea-list runtime glue is owned by the adapter seam. |
+| `sai/orchestration/workers/bindings/` | Neutral installed routed worker bindings for the nine phases (`spec/design/implementation/review/security/performance/accessibility/commit/archive-worker.md`) plus the two apply Step-execution worker bindings (`red-worker.md`/`green-worker.md`) projected for both harnesses; non-worker panel and idea-list runtime glue is owned by the adapter seam. |
 | `sai/policies/` | Canonical glossary, prerequisite, picker, commit, status, and feedback policies. `sai/policies/artifact-review-contract.md`: shared artifact review finding contract — closed severity vocabulary and assignment criteria, finding shape, severity-prefixed identifier scheme, and closing `Summary:` tally line — single-sourced and referenced by every artifact review surface. |
 | `sai/compat/` | Caller-neutral spec/design/implementation invocation cores and shared compatibility assets. The ADR index template is not owned here. |
 | `sai/commands/spec/invocation.md`, `sai/commands/design/invocation.md`, `sai/commands/implement/invocation.md`, and `sai/commands/apply/invocation.md` | Caller-neutral invocation bodies shared by the routed paths; `review`, `security`, and `accessibility` keep equivalent invocation bodies. The build composition uses `sai/commands/build/command-bootstrap.md` and `coordinator.md`. |
 | `sai/install-manifest.json` | Deterministic source-to-destination projection rules consumed by installer, doctor, and uninstall. |
 | `sai/SAI_AGENTS.md` | Project-agnostic orientation index over the SAI documentation surfaces; installed at each harness root (`SAI_AGENTS.md`) by the `sai-agents-index` root-class projection. |
-| `agents/claude/` | Claude Code managed agents — ten routed Managed Workers (`sai-1-spec-proposal-worker`, `sai-2-design-worker`, `sai-3-implementation-worker`, `sai-4-red-worker`, `sai-4-green-worker`, `sai-5-review-worker`, `sai-6-security-worker`, `sai-7-performance-worker`, `sai-8-accessibility-worker`, `sai-commit-worker`) plus the three Generic Agents (`budget-explorer`, `budget-executor`, `budget-subagent`). |
+| `agents/claude/` | Claude Code managed agents — eleven routed Managed Workers (`sai-1-spec-proposal-worker`, `sai-2-design-worker`, `sai-3-implementation-worker`, `sai-4-red-worker`, `sai-4-green-worker`, `sai-5-review-worker`, `sai-6-security-worker`, `sai-7-performance-worker`, `sai-8-accessibility-worker`, `sai-commit-worker`, `sai-archive-worker`) plus the three Generic Agents (`budget-explorer`, `budget-executor`, `budget-subagent`). |
 | `agents/claude/sai-1-spec-proposal-worker.md` | Claude Code custom agent for the medium-effort spec proposal worker. |
 | `agents/claude/sai-3-implementation-worker.md` | Claude Code custom agent for the high-effort implementation-planning worker. |
 | `agents/claude/sai-2-design-worker.md` | Claude Code custom agent for the high-effort design-planning worker. |
@@ -146,6 +148,9 @@ Claude Code and opencode route `/sai-5-review`, `/sai-6-security`, `/sai-7-perfo
 ### Commit coordinator and worker
 Claude Code and opencode route `/sai-commit` through the routed-shaped commit card set (`sai/commands/commit/coordinator.md` + `worker.md`) and dispatch the `sai-commit-worker` managed worker through the `commit-worker.md` binding. The adapter declares a minimal lifecycle: no `progress_plan`, no `recovery_policy`, no progress events, and no feedback gate; `original_envelope` is exactly `arguments_value`. The worker authors the proposed message from staged state (faithfulness rule, repo-style rubric via `commit-rules.md`, Status/Staged/Totals/Unstaged blocks) and returns it as payload content; the authorization ask is a `needs_input` result that the coordinator presents through the native picker and forwards verbatim. On authorization YES (or an active session grant), the COORDINATOR alone executes the git mutation — today's exact surface (`git commit -m`/`--amend` HEREDOC form); the worker never runs `git add` or `git commit`. Terminal navigation prints the worker-authored summary verbatim and closes with exactly `Commit done.` on an executed commit. Both harnesses preserve the same payloads, stop texts, and git surface.
 
+### Archive coordinator and worker
+Claude Code and opencode route `/sai-archive` through the routed-shaped archive card set (`sai/commands/archive/coordinator.md` + `worker.md`) and dispatch the `sai-archive-worker` managed worker through the `archive-worker.md` binding. The adapter declares the same minimal lifecycle shape as commit: no `progress_plan`, no `recovery_policy`, no progress events, no feedback gate, and closed adapter fields. The coordinator keeps full openspec prerequisite checks (no exemption), parses `--fast-track` itself (banner + cleaned remainder), resolves the change via the shared change-picker before dispatch, and declares `fast_track_active` to the worker as session state alongside the envelope — never an envelope key. The worker owns the read-only pre-flight (Classification Check, checkbox scan, delta-sync diffing vs main specs, target-name collision check) by following `sai/commands/archive/instructions.md`, returns findings as payload content, and carries both pre-mutation gates — unchecked-items and delta-spec sync — as `needs_input` results that the coordinator presents through the native picker and forwards verbatim. The coordinator owns every mutation: the upstream skill's sync execution (with worker post-sync re-verification), the archive directory move into `openspec/changes/archive/YYYY-MM-DD-{name}/`, and the post-archive commit gate per `archive-commit-gate.instructions.md` (skip rule, three-option selector, fast-track new-commit auto-select, two-path staging, empty-index guard, pushed-HEAD guard). Terminal navigation prints the worker-authored summary verbatim and closes with exactly `Archive done.` only when the move executed. All stop texts, gate question wordings, checkbox-threshold semantics, delta-sync behaviour, date-prefix naming rules, and the change-picker integration are preserved byte-for-byte; the command operates on OTHER changes mid-migration without recursion hazards.
+
 ### Single artifact home
 All sai-* artifacts (`implementation.md`, `review.md`, `security.md`, `performance.md`, `accessibility.md`, `pr.md`) write to `openspec/changes/{change-name}/`. The legacy `plans/` directory is **not used** by the new pipeline.
 
@@ -165,7 +170,7 @@ This invocation starts clean: disregard prior conversational context except wher
 The boot loads this preamble once per invocation, before `@sai/orchestration/command-runner.md` and before any card selection. Per-command cards (`coordinator.md`, `invocation.md`, launcher cards) carry **no** isolation block of their own. Never remove or modify the boot preamble line, and keep it byte-identical across both harnesses.
 
 ### Safe Operations
-Loaded by 8 sai-* command wrappers (`sai-1-spec`, `sai-4-apply`, `sai-archive`, `sai-backfill`, `sai-commit`, `sai-explore`, `sai-pr`, `sai-worktree`) via `Fetch @skills/safe-operations/SKILL.md`. The skill enforces:
+Loaded by 8 sai-* commands (`sai-1-spec`, `sai-4-apply`, `sai-archive`, `sai-backfill`, `sai-commit`, `sai-explore`, `sai-pr`, `sai-worktree`) via `Fetch @skills/safe-operations/SKILL.md` — on the wrapper where the command still carries one, otherwise on the routed coordinator card (`sai-archive` and `sai-commit` load it in their coordinator cards). The skill enforces:
 - **Reversibility assessment**: agent MUST evaluate whether an operation is hard to reverse, destructive, or affects shared systems before executing.
 - **Confirmation gate**: agent MUST ask user before: deleting files/branches, `rm -rf`, `git push --force`, `git reset --hard`, amending published commits, pushing code, commenting on PRs/issues, modifying shared infrastructure.
 - **No destructive shortcuts**: agent MUST NOT bypass safety checks (`--no-verify`) or discard unfamiliar files that may be in-progress work.
@@ -222,7 +227,7 @@ The three criteria, the ordered routing test that resolves `adr` vs `ddr`, and t
 
 ### Fast-track flag (`--fast-track`)
 
-A per-invocation opt-in on `sai-explore`, `sai-2-design`, `sai-4-apply`, and `sai-archive` that trades a fixed, audited set of gates for a single end-of-run checkpoint. Parsed in the shared body file (not the wrappers) so behavior is identical across Claude Code and opencode. `/sai-build` is not a fifth opt-in: it strips an explicit `--fast-track` token as a behavioral no-op and unconditionally injects fast-track for the chained apply segment. Each command's opt-out set is fixed:
+A per-invocation opt-in on `sai-explore`, `sai-2-design`, `sai-4-apply`, and `sai-archive` that trades a fixed, audited set of gates for a single end-of-run checkpoint. Parsed in the shared body file (not the wrappers) so behavior is identical across Claude Code and opencode — for routed-shaped `sai-archive`, in its coordinator card, which owns the banner and forwards the cleaned remainder plus the `fast_track_active` session state to its worker. `/sai-build` is not a fifth opt-in: it strips an explicit `--fast-track` token as a behavioral no-op and unconditionally injects fast-track for the chained apply segment. Each command's opt-out set is fixed:
 - `sai-explore` — skips both language gates (artifact review and crystallization).
 - `sai-2-design` — auto-approves the specs approval gate.
 - `sai-4-apply` — pre-activates session commit authorization and defers Human Verification to end-of-run.
@@ -280,8 +285,9 @@ Existing projects with `plans/{feature-name}/` artifacts are **not migrated auto
 Eleven `sai-*` commands consume an OpenSpec change name via `$ARGUMENTS`: `sai-2-design`, `sai-3-implement`, `sai-4-apply`, `sai-build`, `sai-5-review`, `sai-6-security`, `sai-7-performance`, `sai-8-accessibility`, `sai-archive`, `sai-pr`, `sai-status`. Resolution begins with the two-key invocation envelope: `command_name` is card-selection metadata and `arguments_value` is the complete opaque request. A trimmed, non-empty `arguments_value` is authoritative for direct change-name resolution; when it is empty, the existing `$ARGUMENTS` check and 0/1/N picker logic applies. `sai-1-spec` is excluded (it creates a new change, not consumes one). `/sai-build` strips any `--fast-track` tokens before applying this standard resolution and retains one resolved name across both segments.
 
 Placement depends on command shape:
-- **7 commands** (`sai-2-design`, `sai-5-review`, `sai-6-security`, `sai-7-performance`, `sai-8-accessibility`, `sai-archive`, `sai-pr`): fetch it as the first line under `## Load instructions (in order)`, before the first existing fetch.
+- **6 body commands** (`sai-2-design`, `sai-5-review`, `sai-6-security`, `sai-7-performance`, `sai-8-accessibility`, `sai-pr`): fetch it as the first line under `## Load instructions (in order)`, before the first existing fetch.
 - **2 commands** (`sai-3-implement`, `sai-4-apply`): fetch it at the very top of the `<TASK>` block, before `## Prerequisite checks` — because their own "Also verify" block dereferences `{change-name}` inside `## Prerequisite checks`, which runs before `## Load instructions`.
+- **1 routed-shaped command** (`sai-archive`): the coordinator fetches it after the prerequisite checks and fast-track parse, resolving the change BEFORE dispatching its worker; the resolved name becomes the worker's `arguments_value`.
 - **1 composition command** (`sai-build`): resolve from its invocation envelope through the standard change-consuming picker after normalizing `--fast-track`; it is not a fifth body-file parse member and neither segment re-enters a harness wrapper or re-runs resolution.
 
 When adding a new change-consuming command, check whether it dereferences `{change-name}` inside its own `## Prerequisite checks` before picking a placement.

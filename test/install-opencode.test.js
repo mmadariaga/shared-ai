@@ -34,6 +34,7 @@ const CURRENT_CENSUS = [
   'sai-7-performance-worker',
   'sai-8-accessibility-worker',
   'sai-commit-worker',
+  'sai-archive-worker',
 ];
 const UTILITY_COMMANDS = {
   'sai-4-apply': 'apply',
@@ -46,7 +47,7 @@ const UTILITY_COMMANDS = {
 };
 const UTILITY_CARD_CONTENTS = {
   apply: ['command-bootstrap.md', 'coordinator.md', 'green-worker.md', 'invocation.md', 'red-worker.md', 'runner.md'],
-  archive: ['archive-commit-gate.instructions.md', 'body.md', 'command-bootstrap.md', 'instructions.md'],
+  archive: ['archive-commit-gate.instructions.md', 'command-bootstrap.md', 'coordinator.md', 'instructions.md', 'worker.md'],
   backfill: ['body.md', 'command-bootstrap.md', 'instructions.md'],
   commit: ['command-bootstrap.md', 'coordinator.md', 'instructions.md', 'worker.md'],
   explore: ['body.md', 'command-bootstrap.md', 'instructions.md'],
@@ -85,6 +86,7 @@ const WORKER_CONTRACT_BY_NAME = {
   'sai-7-performance-worker': { phase: 'performance', binding: 'performance-worker.md' },
   'sai-8-accessibility-worker': { phase: 'accessibility', binding: 'accessibility-worker.md' },
   'sai-commit-worker': { phase: 'commit', binding: 'commit-worker.md' },
+  'sai-archive-worker': { phase: 'archive', binding: 'archive-worker.md' },
 };
 
 function expectedWorkerPrompt(phase) {
@@ -353,7 +355,8 @@ test('Step 3 fresh opencode install omits all routed worker proxy skills and pro
         .replace('sai-6-security-worker', 'security-worker')
         .replace('sai-7-performance-worker', 'performance-worker')
         .replace('sai-8-accessibility-worker', 'accessibility-worker')
-        .replace('sai-commit-worker', 'commit-worker')}.md`)));
+        .replace('sai-commit-worker', 'commit-worker')
+        .replace('sai-archive-worker', 'archive-worker')}.md`)));
     }
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });
@@ -1467,7 +1470,7 @@ test('Step 3 install seeds the seven managed opencode worker agent files with th
   }
 });
 
-test('opencode installer consumes exactly the ten matrix worker bindings and agents', () => {
+test('opencode installer consumes exactly the eleven matrix worker bindings and agents', () => {
   const repoRoot = path.join(__dirname, '..');
   const manifest = loadInstallManifest(repoRoot);
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-matrix-inventory-'));
@@ -1481,21 +1484,21 @@ test('opencode installer consumes exactly the ten matrix worker bindings and age
       root: tmpDir,
     };
     const active = expandInstallManifest(manifest, { harness: 'opencode', repoRoot, destinationRoot });
-    const phases = ['spec', 'design', 'implementation', 'review', 'security', 'performance', 'accessibility', 'commit'];
+    const phases = ['spec', 'design', 'implementation', 'review', 'security', 'performance', 'accessibility', 'commit', 'archive'];
     const bindingNames = active
       .filter(projection => path.relative(destinationRoot.sai, projection.destinationPath)
         .split(path.sep).join('/').startsWith('orchestration/workers/bindings/') &&
         phases.includes(path.basename(projection.destinationPath, '-worker.md')))
       .map(projection => path.basename(projection.destinationPath));
-    assert.equal(bindingNames.length, 8, 'opencode should project exactly eight phase worker bindings');
+    assert.equal(bindingNames.length, 9, 'opencode should project exactly nine phase worker bindings');
     assert.equal(bindingNames.includes('idea-list-render.md'), false,
       'opencode must not project an idea-list-render matrix binding');
     const allBindingNames = active
       .filter(projection => path.relative(destinationRoot.sai, projection.destinationPath)
         .split(path.sep).join('/').startsWith('orchestration/workers/bindings/'))
       .map(projection => path.basename(projection.destinationPath));
-    assert.equal(allBindingNames.length, 10,
-      'opencode should keep only the ten routed worker bindings in the matrix destination');
+    assert.equal(allBindingNames.length, 11,
+      'opencode should keep only the eleven routed worker bindings in the matrix destination');
     const ideaList = active.find(projection =>
       path.relative(repoRoot, projection.sourcePath).split(path.sep).join('/') ===
       'sai/adapters/opencode/idea-list-render.md');
@@ -1508,7 +1511,7 @@ test('opencode installer consumes exactly the ten matrix worker bindings and age
       .filter(projection => projection.destinationPath.startsWith(destinationRoot.agents) &&
         CURRENT_CENSUS.includes(path.basename(projection.destinationPath, '.md')))
       .map(projection => path.basename(projection.destinationPath, '.md'));
-    assert.equal(agentNames.length, 8, 'opencode should project exactly eight managed agents');
+    assert.equal(agentNames.length, 9, 'opencode should project exactly nine managed agents');
     assert.equal(agentNames.some(name => ['budget', 'executor', 'explore'].includes(name)), false,
       'opencode must not project support agents as matrix worker inventory');
     const allAgentNames = active
@@ -1560,10 +1563,18 @@ test('installOpencode active projection carries the neutral root protocols, rout
     assert.equal(sourceSet.has('sai/adapters/claude/boot.md'), false,
       'opencode must not project the Claude boot adapter');
     for (const utility of Object.values(UTILITY_COMMANDS)) {
-      if (utility === 'apply') continue;
+      if (utility === 'apply' || utility === 'archive') continue;
       assert.ok(sourceSet.has(`sai/commands/${utility}/body.md`),
         `opencode should project the utility card sai/commands/${utility}/body.md`);
     }
+    for (const card of ['command-bootstrap.md', 'coordinator.md', 'worker.md', 'instructions.md']) {
+      assert.ok(sourceSet.has(`sai/commands/archive/${card}`),
+        `opencode should project the routed archive card sai/commands/archive/${card}`);
+    }
+    assert.ok(sourceSet.has('sai/commands/archive/archive-commit-gate.instructions.md'),
+      'opencode should project the archive commit-gate instruction');
+    assert.equal(sourceSet.has('sai/commands/archive/body.md'), false,
+      'opencode must not project the retired archive body card');
     for (const card of ['coordinator.md', 'red-worker.md', 'green-worker.md', 'runner.md', 'invocation.md']) {
       assert.ok(sourceSet.has(`sai/commands/apply/${card}`),
         `opencode should project the routed apply card sai/commands/apply/${card}`);

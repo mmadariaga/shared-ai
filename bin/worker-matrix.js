@@ -9,9 +9,10 @@ const PHASE_ORDER = Object.freeze([
   'performance',
   'accessibility',
   'commit',
+  'archive',
 ]);
 
-// Closed RED/GREEN apply role identities appended after the seven canonical
+// Closed RED/GREEN apply role identities appended after the eight canonical
 // phase entries. Each role pins its workerName to a role-specific apply worker
 // contract and a unique binding stem so the shared apply phase never resolves
 // through a sibling entry.
@@ -61,6 +62,7 @@ const PHASE_WORKER_NAME = Object.freeze({
   performance: 'sai-7-performance-worker',
   accessibility: 'sai-8-accessibility-worker',
   commit: 'sai-commit-worker',
+  archive: 'sai-archive-worker',
 });
 
 const PHASE_CONTRACT_DIR = Object.freeze({
@@ -72,9 +74,10 @@ const PHASE_CONTRACT_DIR = Object.freeze({
   performance: 'performance',
   accessibility: 'accessibility',
   commit: 'commit',
+  archive: 'archive',
 });
 
-const PHASE_WORKER_IDENTITY = /^sai-[1278]-[a-z-]+-worker$|^sai-3-implementation-worker$|^sai-5-review-worker$|^sai-6-security-worker$|^sai-commit-worker$/;
+const PHASE_WORKER_IDENTITY = /^sai-[1278]-[a-z-]+-worker$|^sai-3-implementation-worker$|^sai-5-review-worker$|^sai-6-security-worker$|^sai-commit-worker$|^sai-archive-worker$/;
 const INVOCATION_ENVELOPE_FIELD = 'arguments_value';
 const RETIRED_INVOCATION_ENVELOPE_FIELD = ['wrapper', 'echo', 'value'].join('_');
 

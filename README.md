@@ -131,6 +131,10 @@ The routed `/sai-2-design` paths use a low-effort Opus 4.8 coordinator and high-
 
 `/sai-commit` uses the same coordinator/worker shape without an openspec dependency: the `sai-commit-worker` managed worker authors the proposed message from your staged changes (faithfulness to `git diff --cached`, repo-style detection, pre-commit file report) and returns it as payload content, while the authorization ask travels as a structured question the coordinator presents through the native picker. On approval, the coordinator alone executes the `git commit` (`--amend` supported); the worker never runs `git add` or `git commit`. Both harnesses preserve the same payloads, stop texts, and git surface.
 
+### Archive coordinator and worker
+
+`/sai-archive` uses the same coordinator/worker shape with full openspec prerequisite checks intact: the `sai-archive-worker` managed worker performs the read-only pre-flight (artifact classification, checkbox scan, delta-sync diffing against main specs, target-name collision check) and returns the unchecked-items and delta-spec sync gates as structured questions the coordinator presents through the native picker. On confirmation, the coordinator alone executes every mutation - the delta-spec sync write, the archive directory move into `openspec/changes/archive/YYYY-MM-DD-{name}/`, and the post-archive commit gate (`git add` of exactly `openspec/specs` + `openspec/changes/archive`, empty-index guard, pushed-HEAD guard); the worker never moves directories, writes specs, or runs git. Both harnesses preserve the same payloads, gate wordings, stop texts, and fast-track auto-proceed semantics.
+
 ## On-demand commands (unnumbered)
 
 | Command | Purpose |
@@ -139,7 +143,7 @@ The routed `/sai-2-design` paths use a low-effort Opus 4.8 coordinator and high-
 | `/sai-build` | User-invoked shortcut for a complete implementation run — chains `/sai-3-implement` into `/sai-4-apply` with one change resolution and no intermediate approval. Apply fast-track is always injected; an explicit `--fast-track` token is a no-op. |
 | `/sai-commit` | Reads your staged changes and detects the repo's commit style from the last 20 commits (Conventional Commits shape, type/scope vocabulary, body conventions). Adopts the detected vocabulary when it fits, falls back to hard-coded rules otherwise. Shows a pre-commit file report and runs `git commit` only after you explicitly approve. |
 | `/sai-pr` | Drafts a complete PR description using everything produced during the change (proposal, design, review findings, etc.). Opens the PR on GitHub after you approve. |
-| `/sai-archive` | Moves a completed change to the archive, keeping your active changes folder clean. Supports `--fast-track` to auto-proceed the archive soft gates. |
+| `/sai-archive` | Routed command: the coordinator runs in the main session and dispatches the `sai-archive-worker` managed worker for the read-only pre-flight, then executes every mutation itself - delta-spec sync, the archive move into `openspec/changes/archive/YYYY-MM-DD-{name}/`, and the post-archive commit gate. Moves a completed change to the archive, keeping your active changes folder clean. Supports `--fast-track` to auto-proceed the archive soft gates. |
 | `/sai-status` | Read-only progress panel for one OpenSpec change — shows which of the 10 sai-workflow artifacts exist, the specs approval state, implementation progress, the archive location if archived, and a `Next:` hint suggesting the appropriate `/sai-N` command. Never writes anything. |
 | `/sai-backfill` | Made a quick fix directly in code without going through the pipeline? This reconstructs the missing documentation after the fact — interviewing you about intent and writing only what can be reliably derived from the diff. |
 
