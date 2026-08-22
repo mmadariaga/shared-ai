@@ -2,9 +2,7 @@
 
 ## Purpose
 TBD — shared raw-readline navigator engine backing the interactive tool-selection checklist and single-select prompts in `bin/install-flow.js`.
-
 ## Requirements
-
 ### Requirement: Shared raw-readline navigator engine
 
 `bin/install-flow.js` SHALL back the interactive tool-selection checklist (`promptChecklist`) and a new navigable single-select `promptSelect` with ONE shared raw-readline keypress engine. The engine SHALL use only Node.js built-in modules (`readline`, `process.stdin` raw mode, keypress events) per ADR 0010, and SHALL NOT introduce a runtime npm dependency. `promptChecklist`'s externally observable interaction — arrow-key navigation, space toggling, Enter confirmation, the `>` cursor, and `[x]` selection markers — SHALL remain unchanged when moved onto the shared engine. The engine SHALL separate list selection from process-exit policy: non-interactive-stdin and cancellation outcomes SHALL be surfaced to the caller (e.g. a sentinel result) rather than embedded as `process.exit` calls, so the installer's hard-exit behavior stays caller-owned and no caller — in particular the configurator, whose TTY-only contract MUST NOT hard-exit — is forced to terminate the process through the shared functions.
@@ -51,3 +49,19 @@ The shared engine SHALL accept an injectable input source (a DI'd stdin/keypress
 
 - **WHEN** a test injects a keypress sequence through the engine's input seam
 - **THEN** the engine SHALL process the injected keys exactly as it would process real raw-mode keypresses, without a TTY or user input
+
+### Requirement: Optional non-selectable frame header
+The shared navigator engine SHALL accept an optional header supplied as a string or an array of strings and render its lines inside the frame between the question and the option rows. Header lines SHALL be pure decoration: the cursor and selection index SHALL continue to address only `options`, so header lines MUST NOT consume arrow-key movement, space toggles, or Enter confirmation. Header lines SHALL be included in the redraw cursor-up accounting so multi-line repaint stays correct. `promptChecklist` SHALL forward a header supplied through its navigator options into the shared frame. When the input source is not interactive, the engine SHALL resolve non-interactive before painting anything, including the header.
+
+#### Scenario: Header renders above the options without affecting selection
+- **WHEN** a multi-select navigator runs with a two-line header, a default-selected item, a down-arrow press, and Enter confirmation
+- **THEN** the outcome SHALL match the same interaction without a header, the cursor arrow SHALL land on the second option skipping the non-selectable header rows, and the redraw SHALL move up by the full physical row count including the header lines
+
+#### Scenario: Checklist forwards the caller-supplied header
+- **WHEN** `promptChecklist` is invoked with a header in its navigator options
+- **THEN** the rendered frame SHALL contain those header lines between the question and the option rows
+
+#### Scenario: Non-TTY input paints nothing
+- **WHEN** the input source is not a TTY and a header is supplied
+- **THEN** the navigator SHALL resolve non-interactive with no frame content painted, header included
+
