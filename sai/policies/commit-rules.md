@@ -119,6 +119,22 @@ or body style.
 - **No speculation.** Every claim must map to a staged hunk.
 - **Match the repo's commit style** per the Repo Commit-Style Detection Rubric above — apply the adoption branch (match rate ≥ 70%) or the fallback branch (match rate < 70%) rather than treating this as advisory only.
 
+## Authorization Scope
+
+A session-scoped commit authorization (`Allow on this session`) covers exactly
+`git add` + `git commit` at the granted commit gates of the consuming command,
+for the remainder of the in-conversation session. The grant is in-memory only:
+never written to `.openspec.yaml`, config, or any file, and inactive at every
+new chat or new `/sai-*` invocation.
+
+The grant never authorizes `push`, `--force`, branch create/switch, rebase,
+merge, tag, or `gh pr`; those operations always require their own
+per-operation approval, regardless of the flag. Any git mutation not covered by
+a granted gate likewise requires its own per-operation approval. A consuming
+command whose contract never stages files (for example `sai-commit`) keeps
+that narrower surface: the grant widens nothing beyond what the command's own
+contract authorizes.
+
 ## Self-Critique Checklist
 
 Verify:

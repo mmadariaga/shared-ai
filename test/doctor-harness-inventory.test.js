@@ -219,7 +219,7 @@ describe('doctor harness inventory', () => {
     const projectRoot = makeGoodFixture();
     const claudeBase = makeTempDir('sai-harness-boot-claude-');
     const opencodeBase = makeTempDir('sai-harness-boot-opencode-');
-    const utilities = ['archive', 'backfill', 'commit', 'explore', 'pr', 'status', 'worktree'];
+    const utilities = ['archive', 'backfill', 'explore', 'pr', 'status', 'worktree'];
     try {
       installClaude(claudeBase);
       installOpencode(opencodeBase);
@@ -240,6 +240,12 @@ describe('doctor harness inventory', () => {
           assert.ok(fs.existsSync(path.join(base, 'sai', 'commands', 'build', card)),
             `${harness} should install the build ${card} card`);
         }
+        for (const card of ['coordinator.md', 'worker.md', 'launcher.md']) {
+          assert.ok(fs.existsSync(path.join(base, 'sai', 'commands', 'commit', card)),
+            `${harness} should install the routed commit ${card} card`);
+        }
+        assert.equal(fs.existsSync(path.join(base, 'sai', 'commands', 'commit', 'body.md')), false,
+          `${harness} must not install the retired commit body card`);
         assert.ok(fs.existsSync(path.join(base, 'commands', 'sai-build.md')),
           `${harness} should install sai-build.md`);
         for (const card of ['coordinator.md', 'red-worker.md', 'green-worker.md', 'runner.md', 'invocation.md']) {

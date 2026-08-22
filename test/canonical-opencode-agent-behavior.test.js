@@ -437,11 +437,11 @@ test('Claude budget skills route dispatch through their agent basenames with no 
   }
 });
 
-test('worker-count parity: every harness projects exactly nine matrix bindings and nine managed agents', () => {
+test('worker-count parity: every harness projects exactly ten matrix bindings and ten managed agents', () => {
   const os = require('node:os');
   const { loadInstallManifest, expandInstallManifest } = require('../bin/install-manifest.js');
   const manifest = loadInstallManifest(REPO_ROOT);
-  const phases = ['spec', 'design', 'implementation', 'review', 'security', 'performance', 'accessibility'];
+  const phases = ['spec', 'design', 'implementation', 'review', 'security', 'performance', 'accessibility', 'commit'];
   const workers = [
     'sai-1-spec-proposal-worker',
     'sai-2-design-worker',
@@ -450,6 +450,7 @@ test('worker-count parity: every harness projects exactly nine matrix bindings a
     'sai-6-security-worker',
     'sai-7-performance-worker',
     'sai-8-accessibility-worker',
+    'sai-commit-worker',
     'sai-4-red-worker',
     'sai-4-green-worker',
   ];
@@ -467,7 +468,7 @@ test('worker-count parity: every harness projects exactly nine matrix bindings a
       .filter(projection => path.relative(destinationRoot.sai, projection.destinationPath)
         .split(path.sep).join('/').startsWith('orchestration/workers/bindings/'))
       .map(projection => path.basename(projection.destinationPath));
-    assert.equal(bindingNames.length, 9, `${harness} should project exactly nine worker bindings`);
+    assert.equal(bindingNames.length, 10, `${harness} should project exactly ten worker bindings`);
     const phaseBindingNames = bindingNames.filter(name => phases.includes(name.replace(/-worker\.md$/, '')));
     assert.deepEqual(phaseBindingNames.sort(), phases.map(phase => `${phase}-worker.md`).sort(),
       `${harness} phase worker binding names should match the canonical phase matrix`);
@@ -475,7 +476,7 @@ test('worker-count parity: every harness projects exactly nine matrix bindings a
       .filter(projection => projection.destinationPath.startsWith(destinationRoot.agents) &&
         workers.includes(path.basename(projection.destinationPath, '.md')))
       .map(projection => path.basename(projection.destinationPath, '.md'));
-    assert.equal(agentNames.length, 9, `${harness} should project exactly nine managed agents`);
+    assert.equal(agentNames.length, 10, `${harness} should project exactly ten managed agents`);
     assert.deepEqual(agentNames.sort(), [...workers].sort(),
       `${harness} managed agent names should match the canonical worker matrix`);
   }

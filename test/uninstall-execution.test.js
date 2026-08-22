@@ -255,11 +255,11 @@ test('claude-managed-agent entries delete on body-and-non-tunable match and keep
   }
 });
 
-test('matrix retirement: the active worker inventory stays exactly nine bindings and nine agents per harness', () => {
+test('matrix retirement: the active worker inventory stays exactly ten bindings and ten agents per harness', () => {
   const { expandInstallManifest } = require('../bin/install-manifest.js');
   const repoRoot = path.join(__dirname, '..');
   const manifest = loadInstallManifest(repoRoot);
-  const phases = ['spec', 'design', 'implementation', 'review', 'security', 'performance', 'accessibility'];
+  const phases = ['spec', 'design', 'implementation', 'review', 'security', 'performance', 'accessibility', 'commit'];
   const applyBindings = ['red-worker.md', 'green-worker.md'];
   const workers = [
     'sai-1-spec-proposal-worker',
@@ -271,6 +271,7 @@ test('matrix retirement: the active worker inventory stays exactly nine bindings
     'sai-6-security-worker',
     'sai-7-performance-worker',
     'sai-8-accessibility-worker',
+    'sai-commit-worker',
   ];
   for (const harness of ['claude', 'opencode']) {
     const destinationRoot = {
@@ -288,7 +289,7 @@ test('matrix retirement: the active worker inventory stays exactly nine bindings
         (phases.includes(path.basename(projection.destinationPath, '-worker.md')) ||
          applyBindings.includes(path.basename(projection.destinationPath))))
       .map(projection => path.basename(projection.destinationPath));
-    assert.equal(bindingNames.length, 9, `${harness} should project exactly nine worker bindings`);
+    assert.equal(bindingNames.length, 10, `${harness} should project exactly ten worker bindings`);
     assert.deepEqual(bindingNames.sort(), [...phases.map(phase => `${phase}-worker.md`), ...applyBindings].sort(),
       `${harness} worker binding names should match the canonical phase matrix plus the apply RED/GREEN bindings`);
     assert.equal(bindingNames.includes('idea-list-render.md'), false,
@@ -297,8 +298,8 @@ test('matrix retirement: the active worker inventory stays exactly nine bindings
       .filter(projection => path.relative(destinationRoot.sai, projection.destinationPath)
         .split(path.sep).join('/').startsWith('orchestration/workers/bindings/'))
       .map(projection => path.basename(projection.destinationPath));
-    assert.equal(allBindingNames.length, 9,
-      `${harness} should keep only the nine routed worker bindings in the matrix destination`);
+    assert.equal(allBindingNames.length, 10,
+      `${harness} should keep only the ten routed worker bindings in the matrix destination`);
     const ideaList = active.find(projection =>
       path.relative(repoRoot, projection.sourcePath).split(path.sep).join('/') ===
       `sai/adapters/${harness}/idea-list-render.md`);
@@ -309,7 +310,7 @@ test('matrix retirement: the active worker inventory stays exactly nine bindings
       .filter(projection => projection.destinationPath.startsWith(destinationRoot.agents) &&
         workers.includes(path.basename(projection.destinationPath, '.md')))
       .map(projection => path.basename(projection.destinationPath, '.md'));
-    assert.equal(agentNames.length, 9, `${harness} should project exactly nine managed agents`);
+    assert.equal(agentNames.length, 10, `${harness} should project exactly ten managed agents`);
     assert.deepEqual(agentNames.sort(), [...workers].sort(),
       `${harness} managed agent names should match the canonical worker matrix`);
     assert.equal(agentNames.some(name => ['budget', 'executor', 'explore'].includes(name)), false,

@@ -24,7 +24,7 @@ const commands = [
   ['sai-status.md', 'status'],
   ['sai-worktree.md', 'worktree'],
 ];
-const emptyBootstraps = new Set(['apply', 'archive', 'backfill', 'commit', 'pr', 'status', 'worktree']);
+const emptyBootstraps = new Set(['apply', 'archive', 'backfill', 'pr', 'status', 'worktree']);
 function activeWrapperCommands(harness) {
   const directory = path.join(repoRoot, 'commands', harness);
   const foldersByFile = new Map(commands);
@@ -60,6 +60,9 @@ const movedDirectives = {
   ],
   accessibility: [
     'Fetch @sai/orchestration/workers/bindings/accessibility-worker.md and use it.',
+  ],
+  commit: [
+    'Fetch @sai/orchestration/workers/bindings/commit-worker.md and use it.',
   ],
   explore: [
     'Fetch @sai/orchestration/workers/bindings/spec-worker.md and use it.',

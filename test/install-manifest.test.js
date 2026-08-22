@@ -160,6 +160,23 @@ const MANAGED_WORKER_PROJECTIONS = {
       destinationPath: 'sai-1-spec-proposal-worker.md',
     },
   },
+  'sai-commit-worker': {
+    claudeBinding: {
+      id: 'claude-commit-worker-binding',
+      sourcePath: 'sai/orchestration/workers/bindings/claude/commit-worker.md',
+       destinationPath: 'orchestration/workers/bindings/commit-worker.md',
+    },
+    opencodeBinding: {
+      id: 'opencode-commit-worker-binding',
+      sourcePath: 'sai/orchestration/workers/bindings/opencode/commit-worker.md',
+       destinationPath: 'orchestration/workers/bindings/commit-worker.md',
+    },
+    claudeAgent: {
+      id: 'claude-sai-commit-worker',
+      sourcePath: 'agents/claude/sai-commit-worker.md',
+      destinationPath: 'sai-commit-worker.md',
+    },
+  },
   'sai-4-red-worker': {
     claudeBinding: {
       id: 'claude-red-worker-binding',
@@ -1335,7 +1352,7 @@ test('folded instruction templates project to their co-located and root destinat
 test('matrix worker bindings and agents are the sole worker inventory per harness', () => {
   const repoRoot = path.join(__dirname, '..');
   const manifest = loadInstallManifest(repoRoot);
-  const phases = ['spec', 'design', 'implementation', 'review', 'security', 'performance', 'accessibility'];
+  const phases = ['spec', 'design', 'implementation', 'review', 'security', 'performance', 'accessibility', 'commit'];
   const workers = {
     spec: 'sai-1-spec-proposal-worker',
     design: 'sai-2-design-worker',
@@ -1344,6 +1361,7 @@ test('matrix worker bindings and agents are the sole worker inventory per harnes
     security: 'sai-6-security-worker',
     performance: 'sai-7-performance-worker',
     accessibility: 'sai-8-accessibility-worker',
+    commit: 'sai-commit-worker',
   };
   for (const harness of ['claude', 'opencode']) {
     const destinationRoot = workerDestinationRoots(path.join(os.tmpdir(), `sai-matrix-inventory-${harness}`));
@@ -1353,9 +1371,9 @@ test('matrix worker bindings and agents are the sole worker inventory per harnes
         .split(path.sep).join('/').startsWith('orchestration/workers/bindings/') &&
         phases.includes(path.basename(projection.destinationPath, '-worker.md')))
       .map(projection => path.basename(projection.destinationPath));
-    assert.equal(bindingNames.length, 7, `${harness} should declare exactly seven worker bindings`);
+    assert.equal(bindingNames.length, 8, `${harness} should declare exactly eight worker bindings`);
     assert.deepEqual(bindingNames.sort(), phases.map(phase => `${phase}-worker.md`).sort(),
-      `${harness} worker bindings should cover exactly the seven phases`);
+      `${harness} worker bindings should cover exactly the eight phases`);
     assert.equal(bindingNames.includes('idea-list-render.md'), false,
       `${harness} must not declare an idea-list-render matrix binding projection`);
 
@@ -1363,9 +1381,9 @@ test('matrix worker bindings and agents are the sole worker inventory per harnes
       .filter(projection => projection.destinationPath.startsWith(destinationRoot.agents) &&
         Object.values(workers).includes(path.basename(projection.destinationPath, '.md')))
       .map(projection => path.basename(projection.destinationPath, '.md'));
-    assert.equal(agentNames.length, 7, `${harness} should declare exactly seven managed agents`);
+    assert.equal(agentNames.length, 8, `${harness} should declare exactly eight managed agents`);
     assert.deepEqual(agentNames.sort(), Object.values(workers).sort(),
-      `${harness} managed agents should be exactly the seven worker identities`);
+      `${harness} managed agents should be exactly the eight worker identities`);
     assert.equal(agentNames.some(name => ['budget', 'executor', 'explore'].includes(name)), false,
       `${harness} must not declare support agents as worker inventory`);
 
@@ -1389,8 +1407,9 @@ test('canonical manifest projects exactly one harness boot adapter and the utili
     config: path.join(os.tmpdir(), 'sai-adapter-config'),
     root: path.join(os.tmpdir(), 'sai-adapter-config'),
   };
-  const utilities = ['archive', 'backfill', 'commit', 'explore', 'pr', 'status', 'worktree'];
+  const utilities = ['archive', 'backfill', 'explore', 'pr', 'status', 'worktree'];
   const applyCards = ['coordinator.md', 'red-worker.md', 'green-worker.md', 'runner.md', 'invocation.md'];
+  const commitCards = ['coordinator.md', 'worker.md'];
   const flatSources = [
     'sai/commands/sai-4-apply.md',
     'sai/commands/sai-archive.md',
@@ -1417,6 +1436,12 @@ test('canonical manifest projects exactly one harness boot adapter and the utili
       assert.ok(sourceSet.has(`sai/commands/${utility}/body.md`),
         `${harness} should project the utility card sai/commands/${utility}/body.md`);
     }
+    for (const card of commitCards) {
+      assert.ok(sourceSet.has(`sai/commands/commit/${card}`),
+        `${harness} should project the routed commit card sai/commands/commit/${card}`);
+    }
+    assert.equal(sourceSet.has('sai/commands/commit/body.md'), false,
+      `${harness} must not project the retired commit body card`);
     for (const card of applyCards) {
       assert.ok(sourceSet.has(`sai/commands/apply/${card}`),
         `${harness} should project the routed apply card sai/commands/apply/${card}`);

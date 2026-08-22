@@ -194,7 +194,7 @@ describe('doctor fetch resolution', () => {
     const projectRoot = makeGoodFixture();
     const claudeBase = makeTempDir('sai-dr-fr-claude-');
     const opencodeBase = makeTempDir('sai-dr-fr-opencode-');
-    const phaseFolders = ['spec', 'design', 'implement', 'review', 'security', 'performance', 'accessibility'];
+    const phaseFolders = ['spec', 'design', 'implement', 'review', 'security', 'performance', 'accessibility', 'commit'];
     const phases = [
       'spec-worker.md',
       'design-worker.md',
@@ -203,6 +203,7 @@ describe('doctor fetch resolution', () => {
       'security-worker.md',
       'performance-worker.md',
       'accessibility-worker.md',
+      'commit-worker.md',
     ];
     const wrapperExploreRefs = {
         '[Claude Code]': [
@@ -311,7 +312,7 @@ describe('doctor fetch resolution', () => {
     const projectRoot = makeGoodFixture();
     const claudeBase = makeTempDir('sai-dr-boot-claude-');
     const opencodeBase = makeTempDir('sai-dr-boot-opencode-');
-    const utilities = ['archive', 'backfill', 'commit', 'explore', 'pr', 'status', 'worktree'];
+    const utilities = ['archive', 'backfill', 'explore', 'pr', 'status', 'worktree'];
     try {
       installClaude(claudeBase);
       installOpencode(opencodeBase);
@@ -332,6 +333,12 @@ describe('doctor fetch resolution', () => {
           assert.ok(fs.existsSync(path.join(base, 'sai', 'commands', 'build', card)),
             `${harness} harness should install the build ${card} card`);
         }
+        for (const card of ['coordinator.md', 'worker.md', 'launcher.md']) {
+          assert.ok(fs.existsSync(path.join(base, 'sai', 'commands', 'commit', card)),
+            `${harness} harness should install the routed commit ${card} card`);
+        }
+        assert.equal(fs.existsSync(path.join(base, 'sai', 'commands', 'commit', 'body.md')), false,
+          `${harness} harness must not install the retired commit body card`);
         const buildWrapper = path.join(base, 'commands', 'sai-build.md');
         assert.ok(fs.existsSync(buildWrapper), `${harness} harness should install sai-build.md`);
         assert.match(
@@ -494,7 +501,7 @@ test('restore-coordinator-instruction-loading Step 1: both fetch skills reject o
 test('matrix worker bindings are the sole active binding inventory for both harnesses', () => {
   const { loadInstallManifest, expandInstallManifest } = require('../bin/install-manifest.js');
   const manifest = loadInstallManifest(repoRoot);
-  const phases = ['spec', 'design', 'implementation', 'review', 'security', 'performance', 'accessibility'];
+  const phases = ['spec', 'design', 'implementation', 'review', 'security', 'performance', 'accessibility', 'commit'];
   for (const harness of ['claude', 'opencode']) {
     const destinationRoot = {
       commands: path.join(os.tmpdir(), `sai-matrix-fetch-${harness}-commands`),
@@ -509,7 +516,7 @@ test('matrix worker bindings are the sole active binding inventory for both harn
       .filter(projection => path.relative(destinationRoot.sai, projection.destinationPath)
         .split(path.sep).join('/').startsWith('orchestration/workers/bindings/'))
       .map(projection => path.basename(projection.destinationPath));
-    assert.equal(bindingNames.length, 9, `${harness} should project exactly nine worker bindings`);
+    assert.equal(bindingNames.length, 10, `${harness} should project exactly ten worker bindings`);
     const phaseBindingNames = bindingNames.filter(name => phases.includes(name.replace(/-worker\.md$/, '')));
     assert.deepEqual(phaseBindingNames.sort(), phases.map(phase => `${phase}-worker.md`).sort(),
       `${harness} phase worker binding names should match the canonical phase matrix`);
@@ -519,8 +526,8 @@ test('matrix worker bindings are the sole active binding inventory for both harn
       .filter(projection => path.relative(destinationRoot.sai, projection.destinationPath)
         .split(path.sep).join('/').startsWith('orchestration/workers/bindings/'))
       .map(projection => path.basename(projection.destinationPath));
-     assert.equal(allBindingNames.length, 9,
-       `${harness} should keep only the nine routed worker bindings in the matrix destination`);
+     assert.equal(allBindingNames.length, 10,
+       `${harness} should keep only the ten routed worker bindings in the matrix destination`);
      assert.ok(active.some(projection =>
        path.relative(repoRoot, projection.sourcePath).split(path.sep).join('/') ===
        `sai/adapters/${harness}/idea-list-render.md`));

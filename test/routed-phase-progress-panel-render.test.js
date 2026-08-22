@@ -16,6 +16,7 @@ const routedPhases = [
   'security',
   'performance',
   'accessibility',
+  'commit',
 ];
 
 function read(relativePath) {

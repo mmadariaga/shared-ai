@@ -25,17 +25,17 @@ The worker-matrix SHALL contain exactly two apply entries: `sai-4-red-worker` an
 
 ### Requirement: matrix-builder-accepts-apply-workers
 
-The matrix builder and its validation SHALL accept the two apply worker identities and their contract paths. `bin/worker-matrix.js` and `bin/install-manifest.js` SHALL extend the phase-order model, the worker identity regex, and the worker contract path regex to admit `sai-4-red-worker` / `sai-4-green-worker` and their contracts under `sai/commands/apply/` without relaxing validation for the existing seven phases. The installed-worker roster and binding validators in `bin/install-flow.js` SHALL accept nine workers instead of seven.
+The matrix builder and its validation SHALL accept the two apply worker identities and their contract paths. `bin/worker-matrix.js` and `bin/install-manifest.js` SHALL extend the phase-order model, the worker identity regex, and the worker contract path regex to admit `sai-4-red-worker` / `sai-4-green-worker` and their contracts under `sai/commands/apply/` without relaxing validation for the existing seven phases. The installed-worker roster and binding validators in `bin/install-flow.js` SHALL accept ten workers instead of seven, admitting the later-added `sai-commit-worker` alongside the seven phase workers and the two apply workers.
 
 #### Scenario: builder accepts the new identities
 
 - **WHEN** the manifest is validated with the two apply entries
 - **THEN** the builder and install validators accept `sai-4-red-worker` and `sai-4-green-worker` with their contract paths, and the existing seven-phase validation rules still pass
 
-#### Scenario: roster validation counts nine
+#### Scenario: roster validation counts ten
 
 - **WHEN** install-time worker roster validation runs
-- **THEN** it accepts the seven phase workers plus the two apply workers
+- **THEN** it accepts the seven phase workers, the two apply workers, and `sai-commit-worker`
 
 ### Requirement: red-worker-contract
 

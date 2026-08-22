@@ -25,6 +25,7 @@ const WORKER_BINDINGS = [
   ['security', 'sai-6-security-worker', 'security-worker.md'],
   ['performance', 'sai-7-performance-worker', 'performance-worker.md'],
   ['accessibility', 'sai-8-accessibility-worker', 'accessibility-worker.md'],
+  ['commit', 'sai-commit-worker', 'commit-worker.md'],
 ];
 
 const WORKER_NAMES = [
@@ -35,6 +36,7 @@ const WORKER_NAMES = [
   'sai-6-security-worker',
   'sai-7-performance-worker',
   'sai-8-accessibility-worker',
+  'sai-commit-worker',
 ];
 
 const CLAUDE_GENERIC_AGENTS = {
@@ -47,7 +49,6 @@ const UTILITY_COMMANDS = {
   'sai-4-apply': 'apply',
   'sai-archive': 'archive',
   'sai-backfill': 'backfill',
-  'sai-commit': 'commit',
   'sai-explore': 'explore',
   'sai-pr': 'pr',
   'sai-status': 'status',
@@ -58,7 +59,7 @@ const UTILITY_CARD_CONTENTS = {
   apply: ['command-bootstrap.md', 'coordinator.md', 'green-worker.md', 'invocation.md', 'red-worker.md', 'runner.md'],
   archive: ['archive-commit-gate.instructions.md', 'body.md', 'command-bootstrap.md', 'instructions.md'],
   backfill: ['body.md', 'command-bootstrap.md', 'instructions.md'],
-  commit: ['body.md', 'command-bootstrap.md', 'instructions.md'],
+  commit: ['command-bootstrap.md', 'coordinator.md', 'instructions.md', 'worker.md'],
   explore: ['body.md', 'command-bootstrap.md', 'instructions.md'],
   pr: ['body.md', 'command-bootstrap.md', 'instructions.md', 'pr-body.template.md'],
   status: ['body.md', 'command-bootstrap.md'],
@@ -145,6 +146,7 @@ test('managed worker registry defines every Claude compatibility export', () => 
     'sai-7-performance-worker',
     'sai-8-accessibility-worker',
     'sai-1-spec-proposal-worker',
+    'sai-commit-worker',
     'sai-4-red-worker',
     'sai-4-green-worker',
   ];
@@ -154,6 +156,9 @@ test('managed worker registry defines every Claude compatibility export', () => 
   const expectedClaude = {
     'sai-1-spec-proposal-worker': {
       agent: 'sai-1-spec-proposal-worker.md',
+    },
+    'sai-commit-worker': {
+      agent: 'sai-commit-worker.md',
     },
     'sai-2-design-worker': {
       agent: 'sai-2-design-worker.md',
@@ -425,7 +430,7 @@ test('Claude managed agents install with one frontmatter block and one canonical
     const tunable = expandInstallManifest(manifest, { harness: 'claude', repoRoot, destinationRoot })
       .filter(projection => projection.strategy === 'tunable-seed' &&
         WORKER_NAMES.includes(path.basename(projection.destinationPath, '.md')));
-    assert.equal(tunable.length, 7, 'the manifest should declare 7 tunable-seed Claude worker agent projections');
+    assert.equal(tunable.length, 8, 'the manifest should declare 8 tunable-seed Claude worker agent projections');
     assert.ok(tunable.every(projection => projection.ownership === 'managed'),
       'every tunable-seed Claude worker projection should be managed');
 
@@ -618,6 +623,7 @@ test('restore-coordinator-instruction-loading Step 3: isolated Claude installati
   const wrappers = [
     ['commands/sai-2-design.md', 'design', 'design-worker.md'],
     ['commands/sai-3-implement.md', 'implement', 'implementation-worker.md'],
+    ['commands/sai-commit.md', 'commit', 'commit-worker.md'],
     ['commands/sai-5-review.md', 'review', 'review-worker.md'],
     ['commands/sai-6-security.md', 'security', 'security-worker.md'],
     ['commands/sai-7-performance.md', 'performance', 'performance-worker.md'],
@@ -673,7 +679,7 @@ test('restore-coordinator-instruction-loading Step 3: isolated Claude installati
   }
 });
 
-test('Claude installer consumes exactly the nine matrix worker bindings and agents', () => {
+test('Claude installer consumes exactly the ten matrix worker bindings and agents', () => {
   const repoRoot = path.join(__dirname, '..');
   const manifest = loadInstallManifest(repoRoot);
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-claude-matrix-inventory-'));
@@ -687,21 +693,21 @@ test('Claude installer consumes exactly the nine matrix worker bindings and agen
       root: tmpDir,
     };
     const active = expandInstallManifest(manifest, { harness: 'claude', repoRoot, destinationRoot });
-    const phases = ['spec', 'design', 'implementation', 'review', 'security', 'performance', 'accessibility'];
+    const phases = ['spec', 'design', 'implementation', 'review', 'security', 'performance', 'accessibility', 'commit'];
     const bindingNames = active
       .filter(projection => path.relative(destinationRoot.sai, projection.destinationPath)
         .split(path.sep).join('/').startsWith('orchestration/workers/bindings/') &&
         phases.includes(path.basename(projection.destinationPath, '-worker.md')))
       .map(projection => path.basename(projection.destinationPath));
-    assert.equal(bindingNames.length, 7, 'Claude should project exactly seven phase worker bindings');
+    assert.equal(bindingNames.length, 8, 'Claude should project exactly eight phase worker bindings');
     assert.equal(bindingNames.includes('idea-list-render.md'), false,
       'Claude must not project an idea-list-render matrix binding');
     const allBindingNames = active
       .filter(projection => path.relative(destinationRoot.sai, projection.destinationPath)
         .split(path.sep).join('/').startsWith('orchestration/workers/bindings/'))
       .map(projection => path.basename(projection.destinationPath));
-    assert.equal(allBindingNames.length, 9,
-      'Claude should keep only the nine routed worker bindings in the matrix destination');
+    assert.equal(allBindingNames.length, 10,
+      'Claude should keep only the ten routed worker bindings in the matrix destination');
     const ideaList = active.find(projection =>
       path.relative(repoRoot, projection.sourcePath).split(path.sep).join('/') ===
       'sai/adapters/claude/idea-list-render.md');
@@ -713,7 +719,7 @@ test('Claude installer consumes exactly the nine matrix worker bindings and agen
     const agentNames = active
       .filter(projection => projection.destinationPath.startsWith(destinationRoot.agents))
       .map(projection => path.basename(projection.destinationPath, '.md'));
-    assert.equal(agentNames.length, 12, 'Claude should project exactly twelve managed agents');
+    assert.equal(agentNames.length, 13, 'Claude should project exactly thirteen managed agents');
     for (const name of Object.keys(CLAUDE_GENERIC_AGENTS)) {
       assert.ok(agentNames.includes(name), `Claude should project the ${name} managed agent`);
     }
@@ -793,6 +799,7 @@ test('Claude wrappers route through the Claude boot adapter and never the openco
     'sai-1-spec',
     'sai-2-design',
     'sai-3-implement',
+    'sai-commit',
     'sai-5-review',
     'sai-6-security',
     'sai-7-performance',

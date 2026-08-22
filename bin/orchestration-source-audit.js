@@ -75,6 +75,14 @@ function isHistoricalReference(relativePath) {
   return ACTIVE_REFERENCE_EXCLUSIONS.some(prefix => relativePath === prefix || relativePath.startsWith(`${prefix}${path.sep}`));
 }
 
+// Transient materialization scratch written (and unlinked) by concurrent
+// opencode binding validation; never an audited source.
+const TRANSIENT_BINDING_SCRATCH = /\.\d+\.[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.tmp$/;
+
+function isTransientBindingScratch(relativePath) {
+  return TRANSIENT_BINDING_SCRATCH.test(path.basename(relativePath));
+}
+
 function isRetirementEvidence(relativePath, line) {
   if (relativePath === path.join('sai', 'install-manifest.json')) return true;
   if (relativePath.startsWith(`${path.join('openspec', 'changes', 'remove-legacy-inline-command-loaders')}${path.sep}`)) return true;
@@ -150,6 +158,7 @@ function auditActiveReferences(repoRoot) {
   const references = [];
   for (const relativePath of [...new Set(relativePaths)].sort()) {
     if (isHistoricalReference(relativePath)) continue;
+    if (isTransientBindingScratch(relativePath)) continue;
     let content;
     try {
       content = fs.readFileSync(path.join(repoRoot, relativePath), 'utf8');

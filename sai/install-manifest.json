@@ -284,6 +284,40 @@
         }
       },
       {
+        "phase": "commit",
+        "workerName": "sai-commit-worker",
+        "workerContract": "sai/commands/commit/worker.md",
+        "bindingStem": "commit",
+        "dispatchPrimitive": "task",
+        "initialDispatch": "dispatch sai-commit-worker",
+        "continuationLiteral": "continue sai-commit-worker",
+        "replacementFields": [
+          "model",
+          "effort"
+        ],
+        "helperPermissions": [
+          "Read",
+          "Bash",
+          "Skill"
+        ],
+        "progressDeclaration": "none — the commit adapter declares no progress_plan",
+        "overviewGeneration": "",
+        "noticeContinuation": "",
+        "claudeAgent": {
+          "agentName": "sai-commit-worker",
+          "description": "Owns the complete technical commit-message authoring phase and returns structured lifecycle metadata.",
+          "model": "haiku",
+          "effort": "low",
+          "tools": "Read, Glob, Grep, Bash, Skill, SendMessage"
+        },
+        "opencodeAgent": {
+          "description": "Owns the complete technical commit-message authoring phase and returns structured lifecycle metadata.",
+          "model": "opencode-go/deepseek-v4-flash",
+          "variantLine": "variant: default",
+          "permissionBlock": "    budget: allow\n    explore: allow"
+        }
+      },
+      {
         "phase": "apply",
         "workerName": "sai-4-red-worker",
         "workerContract": "sai/commands/apply/red-worker.md",
@@ -813,6 +847,25 @@
       }
     },
     {
+      "id": "claude-sai-commit-worker",
+      "source": "agents/claude/worker-template.md",
+      "destination": {
+        "class": "agents",
+        "path": "sai-commit-worker.md"
+      },
+      "harnesses": [
+        "claude"
+      ],
+      "strategy": "tunable-seed",
+      "recursive": false,
+      "ownership": "managed",
+      "drift": "content",
+      "matrix": {
+        "kind": "agent",
+        "phase": "commit"
+      }
+    },
+    {
       "id": "claude-budget-explorer",
       "source": "agents/claude/budget-explorer.md",
       "destination": {
@@ -1026,6 +1079,25 @@
       "matrix": {
         "kind": "agent",
         "phase": "apply"
+      }
+    },
+    {
+      "id": "opencode-sai-commit-worker",
+      "source": "agents/opencode/worker-template.md",
+      "destination": {
+        "class": "agents",
+        "path": "sai-commit-worker.md"
+      },
+      "harnesses": [
+        "opencode"
+      ],
+      "strategy": "tunable-seed",
+      "recursive": false,
+      "ownership": "managed",
+      "drift": "content",
+      "matrix": {
+        "kind": "agent",
+        "phase": "commit"
       }
     },
     {

@@ -127,6 +127,10 @@ Claude Code and opencode route `/sai-1-spec` through the shared spec core in `sa
 
 The routed `/sai-2-design` paths use a low-effort Opus 4.8 coordinator and high-effort Opus 4.8 design worker in Claude Code. Opencode uses the wrapper-declared `opencode-go/glm-5.2` with `variant: high` and the numbered `sai-2-design-worker`; `/sai-2-design` ends at design completion, and `/sai-3-implement {name}` is a separate command in a new chat. The fixed notice is acknowledged with `continue_after_notice`. The opencode routed phases run under your active primary agent; it must permit native question and task dispatch to the numbered SAI workers. The stock build agent satisfies this. If a restrictive primary agent is active, switch to a permissive one (e.g. build) — do not reintroduce a managed coordinator profile. Both harnesses preserve `openspec/changes/{change-name}/design.md`, `tasks.md`, and `interfaces.md`. Proposal Complexity remains descriptive rather than a routing gate.
 
+### Commit coordinator and worker
+
+`/sai-commit` uses the same coordinator/worker shape without an openspec dependency: the `sai-commit-worker` managed worker authors the proposed message from your staged changes (faithfulness to `git diff --cached`, repo-style detection, pre-commit file report) and returns it as payload content, while the authorization ask travels as a structured question the coordinator presents through the native picker. On approval, the coordinator alone executes the `git commit` (`--amend` supported); the worker never runs `git add` or `git commit`. Both harnesses preserve the same payloads, stop texts, and git surface.
+
 ## On-demand commands (unnumbered)
 
 | Command | Purpose |

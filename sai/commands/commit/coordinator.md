@@ -1,0 +1,96 @@
+<TASK>
+
+  Fetch @sai/policies/verified-precondition-handback.md
+  Fetch @skills/safe-operations/SKILL.md and use it
+  Fetch @sai/policies/commit-rules.md and follow it at the commit gate.
+  Fetch @sai/policies/remember.md
+
+  ## Prerequisite exemption
+
+  `sai-commit` operates on git state only. It performs NO openspec prerequisite
+  checks: never fetch `@sai/policies/prereqs.md`, never require the `openspec`
+  binary, an `openspec/` directory, or `schema: sai-workflow`. This command is
+  the documented exemption that works in projects without openspec.
+
+  ## Commit phase adapter
+
+  You are the user-facing commit coordinator. The worker owns the entire
+  technical procedure: staged-state inspection, repo-style detection,
+  classification, scope inference, message composition, faithfulness
+  verification, and the pre-commit file report. You own lifecycle routing, the
+  authorization gate presentation, and — only after an authorized answer — the
+  commit execution itself. Never compose, alter, or second-guess the proposed
+  message; never inspect staged state on the worker's behalf.
+
+  Declare the minimal phase-adapter field set:
+  - `original_envelope` — exactly the opaque single-string `arguments_value`
+    received from the active wrapper, byte-for-byte.
+  - `dispatch_operation` — dispatch exactly one `sai-commit-worker` through the
+    active commit-worker binding (`Fetch @sai/orchestration/workers/bindings/commit-worker.md`)
+    using the original envelope.
+  - `continuation_operation` — continue the same worker through the binding's
+    continuation mechanism (SendMessage-style / task-id resume), forwarding the
+    selected answer value.
+  - `allowed_nonterminal_extensions` — none; `extension_handlers` empty. This
+    adapter declares NO `progress_plan`: no progress event exists in this
+    lifecycle, no panel plan renders, and no acknowledgement literal is defined.
+  - `replacement_reconstruction_fields` — the complete original envelope, the
+    opaque input history (including forwarded authorization answers), and the
+    ordered duplicate-free changed-files union; a replacement worker
+    reconstructs only from these.
+  - `terminal_navigation` — on a run closed by an authorized and executed
+    commit: print the worker-authored summary verbatim, print exactly
+    `Commit done.`, stop. Every other closure prints the worker-authored
+    summary verbatim and stops without the completion literal and without any
+    git mutation.
+  - NO `recovery_policy` is declared: this adapter runs a minimal lifecycle
+    without bounded recovery. Do not fetch `@sai/policies/bounded-recovery.md`,
+    keep no recovery ledger, and perform no recovery continuations.
+
+  Initialize one invocation-scoped ordered, duplicate-free changed-files union
+  and an opaque input history. Validate every returned result against the
+  shared runner's closed-payload rules before acting on it.
+
+  ## Needs-input routing
+
+  On a worker `needs_input` result — the authorization ask, the secret-file
+  confirmation, or any other worker-authored decision — present the exact
+  question and ordered options through the native option-picker per the
+  "Closed-choice prompts" rule in `@sai/policies/remember.md`, append only
+  `{question, options, answer_value}` to the opaque input history, and forward
+  the exact answer value to the same worker through the binding's continuation
+  mechanism. Present any worker-authored payload content (the pre-commit file
+  report blocks and the proposed message) alongside the ask, unaltered.
+
+  ## Authorization and coordinator-owned execution
+
+  The worker NEVER executes git mutations: never `git add`, never
+  `git commit`. The coordinator alone executes the authorized mutation, and
+  only after the forwarded answer authorizes it:
+
+  - On `yes` (or on an active session-scoped commit authorization): execute
+    exactly the authorized `git commit` invocation using the worker-authored
+    message — for a multi-line message the HEREDOC form
+    `git commit -m "$(cat <<'EOF' ... EOF)"`, and for an `--amend` request the
+    equivalent `--amend` invocation. Capture and show the resulting commit SHA
+    and subject. Then run `terminal_navigation`.
+  - On `Allow on this session`: set the in-memory boolean
+    `session_commit_authorized` active for the remainder of the
+    in-conversation session — never written to `.openspec.yaml`, config, or
+    any file — execute exactly as on `yes`, then run `terminal_navigation`.
+    While active, skip later authorization asks in this session and proceed
+    directly to execution after printing the visibility report and proposed
+    message.
+  - On `no` (or no answer): execute nothing. Print the worker-authored summary
+    verbatim — the proposed message remains ready to copy from above — and
+    stop.
+
+  The authorization grant and its boundaries follow `## Authorization Scope`
+  in `@sai/policies/commit-rules.md`. Staging stays forbidden in this command:
+  the coordinator never stages, unstages, pushes, amends pushed commits
+  without the explicit warning + secondary confirmation, bypasses hooks, or
+  touches anything beyond the authorized `git commit` invocation.
+
+</TASK>
+
+Follow instruction on <TASK> step by step

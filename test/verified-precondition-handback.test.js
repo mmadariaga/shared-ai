@@ -53,9 +53,10 @@ const routedPhases = ['spec', 'design', 'implement', 'review', 'security', 'perf
 const routedCards = routedPhases.flatMap((phase) =>
   ['coordinator.md', 'worker.md', 'invocation.md'].map((name) => `sai/commands/${phase}/${name}`)
 );
-const utilityCards = ['archive', 'backfill', 'commit', 'explore', 'pr', 'status', 'worktree']
+const routedCommitCards = ['coordinator.md', 'worker.md'].map((name) => `sai/commands/commit/${name}`);
+const utilityCards = ['archive', 'backfill', 'explore', 'pr', 'status', 'worktree']
   .map((name) => `sai/commands/${name}/body.md`);
-const commandCards = [...routedCards, ...utilityCards];
+const commandCards = [...routedCards, ...routedCommitCards, ...utilityCards];
 
 function countLiteral(text, value) {
   return text.split(value).length - 1;
@@ -83,8 +84,8 @@ function markdownFilesUnder(relativeDirectory) {
   return found;
 }
 
-test('all 28 command cards load the policy exactly once at their structural entry point', () => {
-  assert.equal(commandCards.length, 28);
+test('all 29 command cards load the policy exactly once at their structural entry point', () => {
+  assert.equal(commandCards.length, 29);
 
   for (const card of commandCards) {
     assert.ok(fs.existsSync(path.join(repoRoot, card)), `${card} must exist`);
