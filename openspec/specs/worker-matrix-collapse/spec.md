@@ -3,21 +3,19 @@
 ## Purpose
 
 TBD
-
 ## Requirements
-
 ### Requirement: Harness templates materialize the routed worker matrix
 
-The installer SHALL define one parameterized worker-binding template and one parameterized managed-worker-agent template for each supported harness. The templates SHALL materialize the seven routed phases — spec, design, implementation, review, security, performance, and accessibility — plus the two apply Step-execution workers (RED and GREEN), with parameters for worker identity, subagent type, model or tuning, worker-contract Fetch target, continuation literal, and any phase-specific options. The separate `idea-list-render` binding and non-worker support agents SHALL remain outside this matrix.
+The installer SHALL define one parameterized worker-binding template and one parameterized managed-worker-agent template for each supported harness. The templates SHALL materialize the seven routed phases — spec, design, implementation, review, security, performance, and accessibility — plus the two apply Step-execution workers (RED and GREEN), plus the two auto-fast role workers (`sai-autofast-implement-worker`, `sai-autofast-hands-worker`) appended in that order, with parameters for worker identity, subagent type, model or tuning, worker-contract Fetch target, continuation literal, and any phase-specific options. Each auto-fast role entry SHALL pin its worker name to its explore-owned contract path (`sai/commands/explore/autofast-implement-worker.md` / `sai/commands/explore/autofast-hands-worker.md`), a unique binding stem, and the budget tier; duplicate, misassigned, misordered, or mismatched-contract entries MUST be rejected, `EXPECTED_ENTRY_COUNT` MUST equal fourteen, and the installer SHALL validate a fourteen-worker roster for both harness binding directories. The separate `idea-list-render` binding and non-worker support agents SHALL remain outside this matrix.
 
 #### Scenario: Every phase receives a deterministic binding and agent
 
 - **WHEN** the manifest is expanded for either supported harness
-- **THEN** exactly one materialized binding and one materialized managed worker agent exist for each of the seven routed phases and for each of the two apply workers, with the expected destination names and no unresolved template tokens
+- **THEN** exactly one materialized binding and one materialized managed worker agent exist for each of the seven routed phases, the two apply workers, and the two auto-fast role workers, with the expected destination names and no unresolved template tokens
 
 #### Scenario: Phase-specific behavior is isolated
 
-- **WHEN** a matrix entry is rendered for spec, design, implementation, an audit phase, or an apply worker
+- **WHEN** a matrix entry is rendered for spec, design, implementation, an audit phase, an apply worker, or an auto-fast role worker
 - **THEN** it contains only that phase's continuation, helper permissions, reconstruction fields, progress behavior, and exceptional options, and design-only overview or notice options do not appear in other phases
 
 ### Requirement: Materialized worker behavior preserves canonical lifecycle contracts
@@ -65,3 +63,4 @@ The test suite SHALL verify every routed phase and both apply workers across bot
 
 - **WHEN** a removed binding, managed-agent destination, or retired apply body destination has any previously managed byte variant
 - **THEN** the retirement-integrity tests require every known hash to remain registered and reject incomplete retirement or a duplicate active destination
+

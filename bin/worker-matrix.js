@@ -34,8 +34,35 @@ const APPLY_ROLES = Object.freeze([
   }),
 ]);
 
+// Closed auto-fast role identities appended after the apply roles. Each role
+// pins its workerName to an explore-owned fast-lane worker contract and a
+// unique binding stem so explore's Auto (fast implementation) option resolves
+// its dedicated workers without re-entering any routed phase.
+const AUTOFAST_ROLES = Object.freeze([
+  Object.freeze({
+    phase: 'autofast-implement',
+    workerName: 'sai-autofast-implement-worker',
+    workerContract: 'sai/commands/explore/autofast-implement-worker.md',
+    bindingStem: 'autofast-implement',
+    tier: 'budget',
+  }),
+  Object.freeze({
+    phase: 'autofast-hands',
+    workerName: 'sai-autofast-hands-worker',
+    workerContract: 'sai/commands/explore/autofast-hands-worker.md',
+    bindingStem: 'autofast-hands',
+    tier: 'budget',
+  }),
+]);
+
 const APPLY_PHASE = 'apply';
-const EXPECTED_ENTRY_COUNT = PHASE_ORDER.length + APPLY_ROLES.length;
+const AUTOFAST_ROLE_BY_WORKER = Object.freeze(Object.fromEntries(
+  AUTOFAST_ROLES.map(role => [role.workerName, role]),
+));
+const AUTOFAST_ROLE_BY_PHASE = Object.freeze(Object.fromEntries(
+  AUTOFAST_ROLES.map(role => [role.phase, role]),
+));
+const EXPECTED_ENTRY_COUNT = PHASE_ORDER.length + APPLY_ROLES.length + AUTOFAST_ROLES.length;
 
 const REQUIRED_FIELDS = Object.freeze([
   'phase',
@@ -113,7 +140,11 @@ function assertOneStringInvocationEnvelope(entry, index) {
 function validateEntry(entry, index) {
   if (!entry || typeof entry !== 'object') throw new Error(`Worker Matrix entry ${index} must be an object`);
   assertOneStringInvocationEnvelope(entry, index);
+  const autoRole = AUTOFAST_ROLE_BY_PHASE[entry.phase];
   if (entry.phase === APPLY_PHASE && APPLY_CONTRACT_BY_WORKER[entry.workerName] === undefined) {
+    throw new Error(`Invalid Worker Matrix worker identity for ${entry.phase}: ${entry.workerName}`);
+  }
+  if (autoRole && (!AUTOFAST_ROLE_BY_WORKER[entry.workerName] || AUTOFAST_ROLE_BY_WORKER[entry.workerName].phase !== entry.phase)) {
     throw new Error(`Invalid Worker Matrix worker identity for ${entry.phase}: ${entry.workerName}`);
   }
   for (const field of REQUIRED_FIELDS) {
@@ -121,6 +152,10 @@ function validateEntry(entry, index) {
   }
   if (entry.phase === APPLY_PHASE) {
     if (!/^sai\/commands\/apply\/(?:red|green)-worker\.md$/.test(entry.workerContract)) {
+      throw new Error(`Invalid Worker Matrix contract path for ${entry.phase}: ${entry.workerContract}`);
+    }
+  } else if (autoRole) {
+    if (entry.workerContract !== autoRole.workerContract) {
       throw new Error(`Invalid Worker Matrix contract path for ${entry.phase}: ${entry.workerContract}`);
     }
   } else {
@@ -156,6 +191,7 @@ function defineWorkerMatrix(entries) {
   const seenPhases = new Set();
   const seenWorkers = new Set();
   let applySeen = 0;
+  let autofastSeen = 0;
   entries.forEach((entry, index) => {
     validateEntry(entry, index);
     if (seenWorkers.has(entry.workerName)) {
@@ -171,6 +207,17 @@ function defineWorkerMatrix(entries) {
       if (entry.workerName !== expected.workerName) {
         throw new Error(
           `Worker Matrix apply role out of order; expected ${expected.workerName} before ${APPLY_ROLES[applySeen].workerName}`
+        );
+      }
+    } else if (AUTOFAST_ROLE_BY_PHASE[entry.phase]) {
+      autofastSeen += 1;
+      if (autofastSeen > AUTOFAST_ROLES.length) {
+        throw new Error(`Duplicate Worker Matrix phase: ${entry.phase}`);
+      }
+      const expected = AUTOFAST_ROLES[autofastSeen - 1];
+      if (entry.workerName !== expected.workerName) {
+        throw new Error(
+          `Worker Matrix auto-fast role out of order; expected ${expected.workerName} before ${AUTOFAST_ROLES[autofastSeen].workerName}`
         );
       }
     } else {
@@ -291,6 +338,18 @@ function assertWorkerIdentity(entry) {
     }
     return;
   }
+  const autoRole = AUTOFAST_ROLE_BY_WORKER[entry.workerName];
+  if (autoRole) {
+    if (entry.phase !== autoRole.phase) {
+      throw new Error(`Auto-fast worker ${entry.workerName} must declare its role phase ${autoRole.phase}; found ${entry.phase}`);
+    }
+    if (entry.workerContract !== autoRole.workerContract) {
+      throw new Error(
+        `Auto-fast worker ${entry.workerName} must pin its explore-owned contract ${autoRole.workerContract}; found ${entry.workerContract}`
+      );
+    }
+    return;
+  }
   const canonical = PHASE_WORKER_NAME[entry.phase];
   if (canonical !== undefined && entry.workerName !== canonical) {
     throw new Error(`Worker Matrix phase ${entry.phase} has misassigned worker identity ${entry.workerName}`);
@@ -305,6 +364,7 @@ function assertWorkerIdentity(entry) {
 module.exports = {
   PHASE_ORDER,
   APPLY_ROLES,
+  AUTOFAST_ROLES,
   defineWorkerMatrix,
   renderWorkerTemplate,
   materializeWorkerMatrix,

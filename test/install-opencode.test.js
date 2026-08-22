@@ -1,4 +1,4 @@
-'use strict';
+﻿'use strict';
 
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
@@ -50,7 +50,7 @@ const UTILITY_CARD_CONTENTS = {
   archive: ['archive-commit-gate.instructions.md', 'command-bootstrap.md', 'coordinator.md', 'instructions.md', 'worker.md'],
   backfill: ['command-bootstrap.md', 'coordinator.md', 'instructions.md', 'worker.md'],
   commit: ['command-bootstrap.md', 'coordinator.md', 'instructions.md', 'worker.md'],
-  explore: ['body.md', 'command-bootstrap.md', 'instructions.md'],
+  explore: ['autofast-hands-worker.md', 'autofast-implement-worker.md', 'body.md', 'command-bootstrap.md', 'instructions.md'],
   pr: ['body.md', 'command-bootstrap.md', 'instructions.md', 'pr-body.template.md'],
   status: ['body.md', 'command-bootstrap.md'],
   worktree: ['body.md', 'command-bootstrap.md', 'instructions.md'],
@@ -1250,7 +1250,7 @@ test('Step 1 Claude agent rows remain byte-preserving without ownership sidecars
 
 test('Step 3 binding roster validation yields exactly the nine managed workers', () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-roster-'));
-  const NINE_WORKERS = [...CURRENT_CENSUS, 'sai-4-red-worker', 'sai-4-green-worker'];
+  const NINE_WORKERS = [...CURRENT_CENSUS, 'sai-4-red-worker', 'sai-4-green-worker', 'sai-autofast-implement-worker', 'sai-autofast-hands-worker'];
   try {
     installOpencode(tmpDir);
     const bindingsDir = path.join(tmpDir, 'sai', 'orchestration', 'workers', 'bindings');
@@ -1267,7 +1267,7 @@ test('Step 3 binding roster validation yields exactly the nine managed workers',
 
 test('Step 3 binding files declare exactly the nine initial worker dispatches', () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-bindings-scan-'));
-  const NINE_WORKERS = [...CURRENT_CENSUS, 'sai-4-red-worker', 'sai-4-green-worker'];
+  const NINE_WORKERS = [...CURRENT_CENSUS, 'sai-4-red-worker', 'sai-4-green-worker', 'sai-autofast-implement-worker', 'sai-autofast-hands-worker'];
   try {
     installOpencode(tmpDir);
     const bindingsDir = path.join(tmpDir, 'sai', 'orchestration', 'workers', 'bindings');
@@ -1290,7 +1290,7 @@ test('Step 3 binding files declare exactly the nine initial worker dispatches', 
 
 test('Step 3 roster validation admits dispatch-less render bindings alongside worker bindings', () => {
   const fixtureDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-render-binding-'));
-  const NINE_WORKERS = [...CURRENT_CENSUS, 'sai-4-red-worker', 'sai-4-green-worker'];
+  const NINE_WORKERS = [...CURRENT_CENSUS, 'sai-4-red-worker', 'sai-4-green-worker', 'sai-autofast-implement-worker', 'sai-autofast-hands-worker'];
   try {
     const installDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-render-install-'));
     try {
@@ -1472,7 +1472,7 @@ test('Step 3 install seeds the seven managed opencode worker agent files with th
   }
 });
 
-test('opencode installer consumes exactly the twelve matrix worker bindings and agents', () => {
+test('opencode installer consumes exactly the fourteen matrix worker bindings and agents', () => {
   const repoRoot = path.join(__dirname, '..');
   const manifest = loadInstallManifest(repoRoot);
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-matrix-inventory-'));
@@ -1499,8 +1499,8 @@ test('opencode installer consumes exactly the twelve matrix worker bindings and 
       .filter(projection => path.relative(destinationRoot.sai, projection.destinationPath)
         .split(path.sep).join('/').startsWith('orchestration/workers/bindings/'))
       .map(projection => path.basename(projection.destinationPath));
-    assert.equal(allBindingNames.length, 12,
-      'opencode should keep only the twelve routed worker bindings in the matrix destination');
+    assert.equal(allBindingNames.length, 14,
+      'opencode should keep only the fourteen routed worker bindings in the matrix destination');
     const ideaList = active.find(projection =>
       path.relative(repoRoot, projection.sourcePath).split(path.sep).join('/') ===
       'sai/adapters/opencode/idea-list-render.md');

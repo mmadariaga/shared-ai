@@ -3,18 +3,16 @@
 ## Purpose
 
 Define the crystallization-close selector that explicitly authorizes supervised pipeline execution.
-
 ## Requirements
-
 ### Requirement: Emit the crystallization-close selector
 
-`sai-explore` SHALL emit exactly one harness-native two-option selector after the shared close's one keep-window-open recommendation, as the final emission of the shared close and crystallization turn defined by `explore-crystallization-block`. The selector SHALL be emitted after every single-change, sliced-final, and inline-refusal crystallization handoff; `Auto` MUST precede `Manual`, and `Auto` SHALL be the sole supervised pipeline entry. A response to the selector is a separate turn; only the Manual/unmapped branch may emit its path-specific next-step handoff after that response, and that handoff is not part of the crystallization close.
+`sai-explore` SHALL emit exactly one harness-native three-option selector after the shared close's one keep-window-open recommendation, as the final emission of the shared close and crystallization turn defined by `explore-crystallization-block`. The selector SHALL be emitted after every single-change, sliced-final, and inline-refusal crystallization handoff; the options SHALL appear in this fixed order — `Auto`, `Auto (fast implementation)`, `Manual` — each carrying its fixed one-line description (`Auto` — Unattended alternative to Manual mode. Same steps, same order.; `Auto (fast implementation)` — Takes shortcuts vs. the other options. Good choice for simple changes or when you're in a hurry.; `Manual` — Best visibility into what's happening; requires you to make some decisions.), and `Auto` SHALL remain the sole ordinary supervised pipeline entry while `Auto (fast implementation)` is the sole fast-lane entry. Question text and every option label, with each option's one-line description, SHALL render in the user's language while the literal `review-loop`, `/sai-1-spec`, and `/sai-2-design` strings stay verbatim English. A response to the selector is a separate turn; only the Manual/unmapped branch may emit its path-specific next-step handoff after that response, and that handoff is not part of the crystallization close.
 
 #### Scenario: crystallization closes
 
 - **WHEN** single, sliced, or inline-refusal crystallization emits its final handoff block
 - **THEN** the shared close emits the existing keep-window recommendation naming `review-loop` exactly once
-- **AND** it emits exactly one selector offering Auto delegation before Manual continuation
+- **AND** it emits exactly one selector offering exactly three fixed-order options with their one-line descriptions — Auto delegation, Auto (fast implementation) fast-lane execution, Manual continuation
 - **AND** the selector is the final emission of the turn
 
 #### Scenario: sliced crystallization does not repeat the selector
@@ -174,3 +172,13 @@ A crystallization turn that re-emits an already-supervised change name SHALL, wh
 #### Scenario: a specs-converged change is re-crystallized
 - **WHEN** a change name in `specs_converged_changes` but not `completed_changes` is re-emitted by a later crystallization turn and the user selects `Auto`
 - **THEN** explore dispatches the spec phase over the new block rather than the design-phase retry branch
+
+### Requirement: Authorize Auto (fast implementation) dispatch
+
+Selecting **Auto (fast implementation)** SHALL be the explicit user act that authorizes item 1's delegated-write exception for the two fast-lane workers AND pre-authorizes exactly one local commit executed by the hands worker inside its closed order; it SHALL remain consent to selection and dispatch only, never consent to answer a later worker question. Neither this option nor any other selection loads or dispatches anything unless selected; Manual and every other command surface are unaffected by the third option.
+
+#### Scenario: Consent scope of the fast-lane selection
+
+- **WHEN** the user selects Auto (fast implementation) on the crystallization-close selector
+- **THEN** delegated writes are consented for the two fast-lane workers and exactly one local commit is pre-authorized, with no other command surface affected
+

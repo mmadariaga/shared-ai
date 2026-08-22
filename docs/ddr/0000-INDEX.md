@@ -125,6 +125,10 @@ This index groups the DDRs in `docs/ddr/` by **command** and by **cross-cutting 
 - [0150 — Gate mode is parameterized at the fetch site, never detected from invocation context](./0150-mode-parameterized-at-fetch-site-not-detected.md) — **Amends** adr:0028
 | [0151a — Phase-navigation-only questions are not genuine idea uncertainty](./0151a-phase-navigation-only-questions-are-not-genuine-idea-uncertainty.md) — Refs 0124a
 | [0151c — External Explore findings block is the only `review` progress evidence](./0151c-external-findings-block-is-only-review-evidence.md) — **Amends** 0133b, Refs adr:0158c
+- [0156 — Fast-lane artifacts follow implementation](./0156-fast-lane-artifacts-follow-implementation.md) — Refs adr:0172
+- [0157 — Fast-lane validation and mutation stay in separate actors](./0157-fast-lane-validation-and-mutation-stay-in-separate-actors.md) — Refs adr:0172
+- [0158 — The autofast implementer receives only the crystallized block](./0158-autofast-implementer-receives-only-the-block.md)
+- [0159 — Fast-lane selection consent pre-authorizes exactly one local commit](./0159-fast-lane-selection-pre-authorizes-one-local-commit.md) — Refs 0157, Refs 0052
 
 ### `/sai-backfill`
 

@@ -1,4 +1,4 @@
-'use strict';
+﻿'use strict';
 
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
@@ -211,6 +211,8 @@ const MANAGED_WORKER_PROJECTIONS = {
       destinationPath: 'sai-backfill-worker.md',
     },
   },
+
+
   'sai-4-red-worker': {
     claudeBinding: {
       id: 'claude-red-worker-binding',
@@ -243,6 +245,40 @@ const MANAGED_WORKER_PROJECTIONS = {
       id: 'claude-sai-4-green-worker',
       sourcePath: 'agents/claude/sai-4-green-worker.md',
       destinationPath: 'sai-4-green-worker.md',
+    },
+  },
+  'sai-autofast-implement-worker': {
+    claudeBinding: {
+      id: 'claude-autofast-implement-worker-binding',
+      sourcePath: 'sai/orchestration/workers/bindings/claude/autofast-implement-worker.md',
+       destinationPath: 'orchestration/workers/bindings/autofast-implement-worker.md',
+    },
+    opencodeBinding: {
+      id: 'opencode-autofast-implement-worker-binding',
+      sourcePath: 'sai/orchestration/workers/bindings/opencode/autofast-implement-worker.md',
+       destinationPath: 'orchestration/workers/bindings/autofast-implement-worker.md',
+    },
+    claudeAgent: {
+      id: 'claude-sai-autofast-implement-worker',
+      sourcePath: 'agents/claude/sai-autofast-implement-worker.md',
+      destinationPath: 'sai-autofast-implement-worker.md',
+    },
+  },
+  'sai-autofast-hands-worker': {
+    claudeBinding: {
+      id: 'claude-autofast-hands-worker-binding',
+      sourcePath: 'sai/orchestration/workers/bindings/claude/autofast-hands-worker.md',
+       destinationPath: 'orchestration/workers/bindings/autofast-hands-worker.md',
+    },
+    opencodeBinding: {
+      id: 'opencode-autofast-hands-worker-binding',
+      sourcePath: 'sai/orchestration/workers/bindings/opencode/autofast-hands-worker.md',
+       destinationPath: 'orchestration/workers/bindings/autofast-hands-worker.md',
+    },
+    claudeAgent: {
+      id: 'claude-sai-autofast-hands-worker',
+      sourcePath: 'agents/claude/sai-autofast-hands-worker.md',
+      destinationPath: 'sai-autofast-hands-worker.md',
     },
   },
 };

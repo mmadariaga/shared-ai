@@ -119,13 +119,15 @@ Before the first dispatch of an Auto run, explore SHALL fetch `sai/policies/arti
 
 ### Requirement: Gate suppression does not weaken force-majeure interruptions
 
-Supervised gate auto-proceed SHALL NOT create any advance path over a phase worker `failed` or `cancelled` result, and SHALL NOT alter the question-autonomy policy. A `needs_input` that fails the confidence threshold or grounding floor SHALL still escalate to the user and interrupt the run. An invalid non-empty `mode` value that causes the shared gate to STOP is an authoring-fault path at the fetch site, distinct from normal supervised runtime interruptions. Explore SHALL remain read-only under Auto supervision: it SHALL NOT create, modify, or delete files, artifacts, or configuration; the only writes remain those the already-authorized phase workers perform within their owned change-directory scope.
+Supervised gate auto-proceed SHALL NOT create any advance path over a phase worker `failed` or `cancelled` result, and SHALL NOT alter the question-autonomy policy. A `needs_input` that fails the confidence threshold or grounding floor SHALL still escalate to the user and interrupt the run. An invalid non-empty `mode` value that causes the shared gate to STOP is an authoring-fault path at the fetch site, distinct from normal supervised runtime interruptions. Explore SHALL remain read-only under Auto supervision: it SHALL NOT create, modify, or delete files, artifacts, or configuration; the only writes remain those the already-authorized phase workers perform within their owned change-directory scope. This scope is extended solely by the explicitly consented Auto (fast implementation) selection: the dispatched implementer worker writes only production code and required project configuration outside `openspec/`, and the dispatched hands worker executes only its closed order of validated artifact writes, spec sync, archive move, owned staging, and the pre-authorized local commit — while explore itself remains read-only, including read-only schema validation of draft content against `openspec/schemas/sai-workflow/schema.yaml`.
 
 #### Scenario: failed worker skips gate and auto-proceed
+
 - **WHEN** the supervised spec or design worker returns `failed` or `cancelled`
 - **THEN** explore reports the outcome and autonomy audit and neither presents the ordinary gate nor auto-executes next-action
 
 #### Scenario: below-threshold needs_input still escalates
+
 - **WHEN** a supervised worker returns `needs_input` whose answer is ungrounded or below the confidence threshold
 - **THEN** explore escalates the exact question and options to the user
 - **AND** gate suppression does not answer, swallow, or bypass that escalation
@@ -202,3 +204,31 @@ Clean `completed` without disproof and without STOP does not start diagnosis.
 
 - **WHEN** the item-10 diagnosis route runs
 - **THEN** only `diagnosis_rounds.spec` or `diagnosis_rounds.design` increments, independently of `review_rounds`, and both counters reset on a new Auto attempt without persistence
+
+### Requirement: Auto (fast implementation) seven-step unattended flow
+
+On an Auto (fast implementation) selection, explore SHALL run one unattended code-first flow in fixed order without ever dispatching `/sai-3-implement` or re-entering any routed phase command — the sole, explicitly consented exception to the ordinary supervised pipeline's no-implementation invariant: capture `base_sha` immediately before implementer dispatch and dispatch the implementer worker with the one-string envelope whose `arguments_value` is the marker line `--autofast` plus the complete emitted Ready to Propose block (α input model — the worker receives ONLY that block); functionally review the diff from `base_sha` against the block's Capabilities and Edge Cases and continue the SAME implementer with the ordered findings, converging on a findings-free round with cap exhaustion at three completed rounds being non-failure; stage exactly the implementer's owned paths and dispatch the EXISTING sai-backfill worker whose asks resolve through grounded auto-answer-or-escalation (diff source resolving to staged changes grounded in `base_sha`; Question 1 from the block's What/Why; Question 2 from fix-loop findings; anything ungrounded escalating unchanged; a foreign-spec conflict auto-proceeding per the delta-sync/fast-track precedent as a notice); validate returned draft CONTENT read-only against `openspec/schemas/sai-workflow/schema.yaml`, review against the block, and continue findings once to the same backfill worker within remaining budget; run the ADR/DDR ordered routing test over the block's Decisions & Rationale never offering a choice; resolve both archive pre-mutation gates under fast-track semantics presented as notices with the post-archive commit gate auto-selecting new-commit; and dispatch the hands worker for the closed-order mutations ending in the pre-authorized local commit.
+
+#### Scenario: Unattended run reaches an archived, committed change
+
+- **WHEN** the seven steps complete without a Bounded Recovery interruption
+- **THEN** the run reports rounds used, prints worker-authored summaries verbatim, closes naming the archive destination and commit subject, and clears active_change
+
+### Requirement: Auto (fast implementation) deterministic selection inheritance
+
+On an Auto (fast implementation) selection, explore SHALL apply the Deterministic selection rules verbatim against `last_crystallization_set` and `completed_changes` including every degenerate state: an empty set acknowledges nothing crystallized and dispatches nothing; no uncompleted entry acknowledges completion and dispatches nothing; exactly one uncompleted entry dispatches without a picker; multiple entries use the ordered native picker with Cancel; and an active run rejects another selection for the full interval. It SHALL NOT run `openspec list --json` or re-sort names, and earlier clauses describing the selector as carrying two options are superseded for count only by the third option.
+
+#### Scenario: Degenerate selection states behave deterministically
+
+- **WHEN** the selection state is empty, fully completed, single-entry, multi-entry, or already active at selection time
+- **THEN** the matching degenerate rule fires unchanged with no repository enumeration or re-sorting
+
+### Requirement: Auto (fast implementation) run state and failure handling
+
+Run state SHALL remain conversation-only and never persisted: `active_change`, `base_sha`, `fix_rounds` carrying the existing review-round budget semantics reset on a new attempt, and `diagnosis_rounds.autofast` following bounded Diagnosis Round counter rules; no progress plan is declared and no plan-based list renders while the idea progress list keeps panel ownership. Every segment SHALL apply Bounded Recovery verbatim — one diagnosis record, at most one redispatch of the same worker, manual-command guidance on stop; a hands-worker failure SHALL stop before mutation with nothing written and report manual `/sai-archive` / `/sai-commit` guidance; only a Bounded Recovery non-clean result interrupts the run, and cap exhaustion SHALL be non-failure and continue forward.
+
+#### Scenario: Hands-worker failure stops clean
+
+- **WHEN** the hands worker returns a failure before completing its closed order
+- **THEN** nothing has been written, the run stops before mutation, and manual /sai-archive and /sai-commit guidance is reported
+

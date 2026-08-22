@@ -205,6 +205,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0168b — Explore item-10 diagnosis uses Review Engine and same-worker continue_after_recovery](./0168b-explore-item-10-diagnosis-review-engine-same-worker.md) — Refs 0140a, Refs 0158c, Refs 0167c
 - [0169b — Idea-list treats Diagnosis Round as recovery, not review](./0169b-idea-list-diagnosis-round-is-recovery-not-review.md) — Refs 0116, Refs 0137b, Refs 0168b
 - [0171a — Item-10 diagnosis entry is shared non-clean set plus Explore cancellation exception](./0171a-item-10-diagnosis-entry-shared-non-clean-plus-cancelled.md) — **Amends** 0168b, Refs 0167c, Refs 0158b
+- [0172 — Sibling worker dispatch for the fast lane](./0172-sibling-worker-dispatch-for-the-fast-lane.md) — Refs ddr:0157, Refs ddr:0145b
 
 ### `/sai-backfill`
 

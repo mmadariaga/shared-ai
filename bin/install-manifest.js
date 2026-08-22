@@ -160,6 +160,11 @@ const APPLY_CONTRACT_BY_WORKER = Object.freeze({
   'sai-4-green-worker': 'sai/commands/apply/green-worker.md',
 });
 
+const AUTOFAST_CONTRACT_BY_WORKER = Object.freeze({
+  'sai-autofast-implement-worker': 'sai/commands/explore/autofast-implement-worker.md',
+  'sai-autofast-hands-worker': 'sai/commands/explore/autofast-hands-worker.md',
+});
+
 function assertWorkerIdentity(entry, harness) {
   const prefix = `${harness} worker matrix: `;
   if (entry.phase === 'apply') {
@@ -169,6 +174,13 @@ function assertWorkerIdentity(entry, harness) {
     }
     if (entry.workerContract !== expectedContract) {
       throw new Error(`${prefix}apply worker ${entry.workerName} has mismatched worker contract ${entry.workerContract}`);
+    }
+    return;
+  }
+  if (Object.prototype.hasOwnProperty.call(AUTOFAST_CONTRACT_BY_WORKER, entry.workerName)) {
+    const expectedContract = AUTOFAST_CONTRACT_BY_WORKER[entry.workerName];
+    if (entry.workerContract !== expectedContract) {
+      throw new Error(`${prefix}auto-fast worker ${entry.workerName} has mismatched worker contract ${entry.workerContract}`);
     }
     return;
   }

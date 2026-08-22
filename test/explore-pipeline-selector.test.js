@@ -1,4 +1,4 @@
-'use strict';
+﻿'use strict';
 
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
@@ -52,9 +52,10 @@ test('the selector closes every crystallization emission through the authoritati
 
   assert.match(source, /items 5, 6, and 7 \u2014 closes its turn with exactly one selector/i);
   assert.match(source, /after the final `Ready to Propose` block and after the keep-window-open recommendation/i);
-  assert.match(source, /exactly two options, in this fixed order/i);
-  assert.match(source, /\*\*Auto\*\* \u2014 delegate supervised `sai-1` \+ `sai-2` execution/);
-  assert.match(source, /\*\*Manual\*\* \u2014 exit the pipeline path and continue by hand/);
+  assert.match(source, /exactly three options, in this fixed order/i);
+  assert.match(source, /\*\*Auto\*\* \u2014 Unattended alternative to Manual mode\. Same steps, same order\./);
+  assert.match(source, /\*\*Auto \(fast implementation\)\*\* \u2014 Takes shortcuts vs\. the other options\./);
+  assert.match(source, /\*\*Manual\*\* \u2014 Best visibility into what's happening; requires you to make some decisions\./);
   assert.match(source, /AskUserQuestion on Claude Code|`AskUserQuestion` on Claude Code/i);
   assert.match(source, /`question` tool on opencode/i);
   assert.match(source, /remember\.md`? \(L10\u201315\)/);
@@ -82,7 +83,7 @@ test('Manual and unmapped answers preserve the shared close without suppressing 
 test('the selector authorizes the delegated-write exception and is not the removed review picker', () => {
   const source = exploreContract();
 
-  assert.match(source, /the user's explicit selection of the \*\*Auto\*\* option on the crystallization-close pipeline selector/i);
+  assert.match(source, /the user's explicit selections on the crystallization-close pipeline selector/i);
   assert.match(source, /explicit user act that authorizes item 1's delegated-write exception/i);
   assert.match(source, /consent to selection and dispatch only/i);
   assert.match(source, /is \*\*not\*\* the removed global Yes\/No review picker/i);
@@ -101,7 +102,7 @@ test('the crystallization closing recommendation names review-loop and no pipeli
 test('the selector prompt and labels localize while the command literals stay English', () => {
   const source = exploreContract();
 
-  assert.match(source, /question text and both option labels render in the user's language/i);
+  assert.match(source, /question text and every option label[\s\S]{0,120}render in the user's language/i);
   assert.match(source, /`review-loop`, `\/sai-1-spec`, and `\/sai-2-design` strings stay verbatim English/);
 });
 
@@ -597,7 +598,7 @@ test('Step 1 gate 9 uses the opt-in overview-language selector and deterministic
   assert.ok(selectorStart >= 0, 'the opt-in overview-language selector should be specified');
   const selector = contract.slice(selectorStart);
 
-  assert.match(selector, /(?:None\s*(?:—|-)\s*do[- ]not[- ]create|do[- ]not[- ]create[\s\S]{0,120}None)/i);
+  assert.match(selector, /(?:None\s*(?:â€”|-)\s*do[- ]not[- ]create|do[- ]not[- ]create[\s\S]{0,120}None)/i);
   assert.doesNotMatch(contract, /emitted first and carrying the `Recommended` marker/);
   assert.doesNotMatch(contract, /emitted second, carrying no marker/);
   assert.match(
@@ -695,7 +696,7 @@ test('Step 1 rejects malformed language input before dispatch', () => {
   assert.match(source, /no.*dispatch|without.*dispatch/i);
 });
 
-// ─── Step 2: spec-design-review-progress-step (external findings and worker correction) ─
+// â”€â”€â”€ Step 2: spec-design-review-progress-step (external findings and worker correction) â”€
 
 test('Step 2: external findings stay within reviewed artifacts and worker corrections retain specific discard reasons', () => {
   const worker = spec('sai/commands/spec/worker.md');
@@ -778,7 +779,7 @@ test('Step 2: workers have no automatic reviewer loop under supervision and the 
     'step marking should have no application in the supervised flow');
 });
 
-// ─── Step 3: spec-design-review-progress-step (supervised design review) ────
+// â”€â”€â”€ Step 3: spec-design-review-progress-step (supervised design review) â”€â”€â”€â”€
 
 test('Step 3: design workers have no automatic reviewer loop under supervision and keep the supervised flow without routed-list marking', () => {
   const worker = spec('sai/commands/design/worker.md');
@@ -799,7 +800,7 @@ test('Step 3: design workers have no automatic reviewer loop under supervision a
   );
 });
 
-// ─── suppress-worker-review-under-supervision: Auto envelope pins (verify-first) ─
+// â”€â”€â”€ suppress-worker-review-under-supervision: Auto envelope pins (verify-first) â”€
 test('Auto spec envelope carries leading --supervised only in arguments_value', () => {
   const source = spec('sai/commands/explore/instructions.md');
   assert.doesNotMatch(source, /\bwrapper_echo_value\s*:/,
@@ -864,7 +865,7 @@ test('design-phase retry carries --supervised and does not re-run sai-1', () => 
   assert.match(source, /design-phase retry[\s\S]{0,500}never dispatch sai-1|never[\s\S]{0,80}regenerate `proposal\.md`|does not re-dispatch the sai-1/i, 'design-phase retry must not re-dispatch sai-1 or regenerate proposal/specs');
 });
 
-// ─── Step 1: supervised-review-in-session (in-session review rounds) ─
+// â”€â”€â”€ Step 1: supervised-review-in-session (in-session review rounds) â”€
 
 test('supervised review rounds use the sole in-session Review Engine convergence path without a reviewer subagent', () => {
   const source = supervisionContract();
@@ -1165,12 +1166,12 @@ test('Step 2: post-proceed report ordering remains after supervised gates withou
   );
 });
 
-// ─── Step 4: manual-branch-next-step-after-selector (green-exception tests) ─
+// â”€â”€â”€ Step 4: manual-branch-next-step-after-selector (green-exception tests) â”€
 
 test('Step 4: the shared close puts every path-specific sai-1 handoff after the selector', () => {
   const source = exploreContract();
   const close = source.indexOf('after the final `Ready to Propose` block and after the keep-window-open recommendation');
-  const selector = source.indexOf('exactly two options, in this fixed order', close);
+  const selector = source.indexOf('exactly three options, in this fixed order', close);
   const separator = source.lastIndexOf('---', close);
 
   assert.ok(close >= 0, 'the shared close ordering contract should be present');
@@ -1197,7 +1198,7 @@ test('Step 4: E8 keeps the Ready-to-Propose payload fields and separator bounded
   const implementationDetails = source.indexOf('**Implementation Details**', edgeCases);
   const overviewLanguage = source.indexOf('**Overview language**', implementationDetails);
   const separator = source.indexOf('---', overviewLanguage);
-  const selector = source.indexOf('exactly two options, in this fixed order', separator);
+  const selector = source.indexOf('exactly three options, in this fixed order', separator);
 
   assert.ok(payloadStart >= 0 && ready >= 0 && edgeCases > payloadStart,
     'the E8 payload should retain its Ready-to-Propose heading and fields');
@@ -1291,13 +1292,13 @@ test('Step 4: failed or cancelled Auto maps retry guidance from phase state with
 
 test('Step 4: post-selector prose localizes while command and review-loop literals remain verbatim English', () => {
   const source = exploreContract();
-  const selector = source.indexOf('exactly two options, in this fixed order');
+  const selector = source.indexOf('exactly three options, in this fixed order');
   const deterministic = source.indexOf('**Deterministic selection**', selector);
   assert.ok(selector >= 0, 'the selector anchor should be present');
   assert.ok(deterministic > selector, 'deterministic Auto selection should follow the selector prose');
   const postSelector = source.slice(selector, deterministic);
 
-  assert.match(postSelector, /question text and both option labels render in the user's language/i);
+  assert.match(postSelector, /question text and every option label[\s\S]{0,120}render in the user's language/i);
   assert.match(postSelector, /After the selector response, the surrounding prose[\s\S]{0,220}follows the selected crystallization language, while its command and standing-path literals remain verbatim English/i);
   assert.match(postSelector, /`review-loop`, `\/sai-1-spec`, and `\/sai-2-design` strings stay verbatim English/i);
   for (const literal of ['`/sai-1-spec`', '`/sai-2-design`', '`review-loop`']) {

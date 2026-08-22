@@ -1,4 +1,4 @@
-'use strict';
+﻿'use strict';
 
 const { test, after } = require('node:test');
 const assert = require('node:assert/strict');
@@ -44,6 +44,8 @@ const OPENCODE_AGENTS = [
   'sai-7-performance-worker',
   'sai-8-accessibility-worker',
   'sai-archive-worker',
+  'sai-autofast-hands-worker',
+  'sai-autofast-implement-worker',
   'sai-backfill-worker',
   'sai-commit-worker',
 ];
@@ -62,6 +64,8 @@ const CLAUDE_AGENTS = [
   'sai-7-performance-worker',
   'sai-8-accessibility-worker',
   'sai-archive-worker',
+  'sai-autofast-hands-worker',
+  'sai-autofast-implement-worker',
   'sai-backfill-worker',
   'sai-commit-worker',
 ];
@@ -126,7 +130,7 @@ const COMBINED_BOTH_BARE = [
 
 // Step 4: command-family names mirrored from the current commands/{harness}
 // basenames. Both harnesses ship the same 17 names. These are current-state
-// fixture assertions, not hardcoded enumerations — production derives the
+// fixture assertions, not hardcoded enumerations â€” production derives the
 // names from the manifest's commands-class projections.
 const OPENCODE_COMMANDS = [
   'budget',
@@ -148,7 +152,7 @@ const OPENCODE_COMMANDS = [
   'sai-worktree',
 ];
 
-// Step 4: full All-scope row set for the default-selection assertion — every
+// Step 4: full All-scope row set for the default-selection assertion â€” every
 // worker and every command of the harness, workers first, each family
 // alphabetical, type-prefixed (the Step 3 flow sorts each family).
 const COMBINED_BOTH_FULL = [
@@ -157,8 +161,8 @@ const COMBINED_BOTH_FULL = [
   ...[...UTILITY_COMMANDS].sort().map(name => `utility:${name}`),
 ];
 
-const CHECKLIST_LEGEND = 'Up/Down move · Space toggle · Enter confirm · ←/Esc back · q/Ctrl-C cancel';
-const SELECT_LEGEND = 'Up/Down move · Space/Enter confirm · ←/Esc back · q/Ctrl-C cancel';
+const CHECKLIST_LEGEND = 'Up/Down move Â· Space toggle Â· Enter confirm Â· â†/Esc back Â· q/Ctrl-C cancel';
+const SELECT_LEGEND = 'Up/Down move Â· Space/Enter confirm Â· â†/Esc back Â· q/Ctrl-C cancel';
 const SCRATCH_ROOT = path.join(REPO_ROOT, '.tmp', 'customize-command-models', 'scratch-repos');
 
 function snapshotTree(dir) {
@@ -269,7 +273,7 @@ function makeScratchRepo() {
   return scratch;
 }
 
-// Step 4: fixture manifest helper — scratch package root around a copy of the
+// Step 4: fixture manifest helper â€” scratch package root around a copy of the
 // real manifest plus a command-source tree, and a decoy installed global
 // command directory that must never be read.
 function makeEnumerationFixture(harness, packageSourceNames, decoyNames) {
@@ -488,18 +492,18 @@ test('customize Claude Code flow persists every selected agent, never invokes Op
   }
 });
 
-test('opencode enumerateWorkers returns only the twelve routed workers', () => {
+test('opencode enumerateWorkers returns only the fourteen routed workers', () => {
   const adapter = createOpencodeAdapter({ repoRoot: REPO_ROOT });
   const agents = adapter.enumerateWorkers();
-  assert.equal(agents.length, 12, 'exactly twelve routed workers should enumerate for opencode');
+  assert.equal(agents.length, 14, 'exactly fourteen routed workers should enumerate for opencode');
   assert.deepEqual([...agents].sort(), [...OPENCODE_WORKERS].sort(),
     'opencode workers should exclude generic delegation agents');
 });
 
-test('claude enumerateWorkers returns only the twelve routed workers', () => {
+test('claude enumerateWorkers returns only the fourteen routed workers', () => {
   const adapter = createClaudeAdapter({ repoRoot: REPO_ROOT });
   const agents = adapter.enumerateWorkers();
-  assert.equal(agents.length, 12, 'exactly twelve routed workers should enumerate for claude');
+  assert.equal(agents.length, 14, 'exactly fourteen routed workers should enumerate for claude');
   assert.deepEqual([...agents].sort(), [...CLAUDE_WORKERS].sort(),
     'claude workers should exclude generic delegation agents');
 });
@@ -525,7 +529,7 @@ test('Claude settings selection asks one combined frame from the real catalog an
    const expectedSize = EXPORTED_CLAUDE_SETTINGS_CATALOG.models
      .reduce((total, entry) => total + (entry.efforts ? entry.efforts.length : 1), 0);
    assert.equal(calls[0].options.length, expectedSize,
-     'the combined frame should offer every valid real-catalog model×effort pair');
+     'the combined frame should offer every valid real-catalog modelÃ—effort pair');
    assert.ok(calls[0].options.some(option => option === 'haiku'),
      'the model-only catalog entry should be displayed without an effort suffix');
    assert.ok(calls[0].options
@@ -667,7 +671,7 @@ test('claude createLocalOverride persists the selected model and effort through 
   }
 });
 
-test('full dependent-flow traversal walks menu, harness, checklist, and provider→model→variant screens while preserving installed sources', async () => {
+test('full dependent-flow traversal walks menu, harness, checklist, and providerâ†’modelâ†’variant screens while preserving installed sources', async () => {
   const scratch = makeScratchRepo();
   try {
     const before = snapshotTree(path.join(scratch, 'agents'));
@@ -1891,7 +1895,7 @@ function makeAdaptivePrompt({
     screens.push(options);
     const index = screens.length - 1;
     assert.ok(!isCombinedFrame(options),
-      `screen ${index} must not be the legacy combined frame: provider→model→variant screens expected`);
+      `screen ${index} must not be the legacy combined frame: providerâ†’modelâ†’variant screens expected`);
     if (index === 0) {
       assert.ok(options.includes(provider), `provider screen should offer ${provider}`);
       return provider;
@@ -3213,7 +3217,7 @@ test('Step 2 non-empty Claude subsets select settings once and apply the same mo
   }
 });
 
-test('customization inventory is matrix-derived: exactly eleven worker agents per harness in the manifest', () => {
+test('customization inventory is matrix-derived: exactly fourteen worker agents per harness in the manifest', () => {
   const { loadInstallManifest, expandInstallManifest } = require('../bin/install-manifest.js');
   const manifest = loadInstallManifest(REPO_ROOT);
   const workers = [
@@ -3227,6 +3231,8 @@ test('customization inventory is matrix-derived: exactly eleven worker agents pe
     'sai-7-performance-worker',
     'sai-8-accessibility-worker',
     'sai-archive-worker',
+    'sai-autofast-hands-worker',
+    'sai-autofast-implement-worker',
     'sai-backfill-worker',
     'sai-commit-worker',
   ];
@@ -3245,10 +3251,10 @@ test('customization inventory is matrix-derived: exactly eleven worker agents pe
         .filter(projection => projection.destinationPath.startsWith(destinationRoot.agents) &&
           workers.includes(path.basename(projection.destinationPath, '.md')))
         .map(projection => path.basename(projection.destinationPath, '.md'));
-      assert.equal(agentNames.length, 12,
-        `${harness} customization inventory should contain exactly twelve matrix managed agents`);
+      assert.equal(agentNames.length, 14,
+        `${harness} customization inventory should contain exactly fourteen matrix managed agents`);
       assert.deepEqual(agentNames.sort(), [...workers].sort(),
-        `${harness} customization inventory should be exactly the twelve worker identities`);
+        `${harness} customization inventory should be exactly the fourteen worker identities`);
       assert.equal(agentNames.some(name => ['budget', 'executor', 'explore'].includes(name)), false,
         `${harness} customization inventory must not include support agents as matrix worker inventory`);
       const allAgentNames = active
@@ -3257,8 +3263,8 @@ test('customization inventory is matrix-derived: exactly eleven worker agents pe
       if (harness === 'claude') {
         assert.equal(allAgentNames.some(name => ['budget', 'executor', 'explore'].includes(name)), false,
           'claude customization inventory should not include the opencode-only generic basenames');
-        assert.equal(allAgentNames.length, 15,
-          'claude customization inventory should contain exactly fifteen managed agents: twelve workers plus the three budget agents');
+        assert.equal(allAgentNames.length, 17,
+          'claude customization inventory should contain exactly seventeen managed agents: fourteen workers plus the three budget agents');
         assert.ok(['budget-executor', 'budget-explorer', 'budget-subagent'].every(name => allAgentNames.includes(name)),
           'claude customization inventory should include the three budget agents');
       } else {
