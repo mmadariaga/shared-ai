@@ -194,6 +194,23 @@ const MANAGED_WORKER_PROJECTIONS = {
       destinationPath: 'sai-archive-worker.md',
     },
   },
+  'sai-backfill-worker': {
+    claudeBinding: {
+      id: 'claude-backfill-worker-binding',
+      sourcePath: 'sai/orchestration/workers/bindings/claude/backfill-worker.md',
+       destinationPath: 'orchestration/workers/bindings/backfill-worker.md',
+    },
+    opencodeBinding: {
+      id: 'opencode-backfill-worker-binding',
+      sourcePath: 'sai/orchestration/workers/bindings/opencode/backfill-worker.md',
+       destinationPath: 'orchestration/workers/bindings/backfill-worker.md',
+    },
+    claudeAgent: {
+      id: 'claude-sai-backfill-worker',
+      sourcePath: 'agents/claude/sai-backfill-worker.md',
+      destinationPath: 'sai-backfill-worker.md',
+    },
+  },
   'sai-4-red-worker': {
     claudeBinding: {
       id: 'claude-red-worker-binding',
@@ -1425,7 +1442,7 @@ test('canonical manifest projects exactly one harness boot adapter and the utili
     config: path.join(os.tmpdir(), 'sai-adapter-config'),
     root: path.join(os.tmpdir(), 'sai-adapter-config'),
   };
-  const utilities = ['backfill', 'explore', 'pr', 'status', 'worktree'];
+  const utilities = ['explore', 'pr', 'status', 'worktree'];
   const applyCards = ['coordinator.md', 'red-worker.md', 'green-worker.md', 'runner.md', 'invocation.md'];
   const commitCards = ['coordinator.md', 'worker.md'];
   const archiveCards = ['coordinator.md', 'worker.md'];
@@ -1467,6 +1484,12 @@ test('canonical manifest projects exactly one harness boot adapter and the utili
       `${harness} must not project the retired commit body card`);
     assert.equal(sourceSet.has('sai/commands/archive/body.md'), false,
       `${harness} must not project the retired archive body card`);
+    for (const card of ['coordinator.md', 'worker.md']) {
+      assert.ok(sourceSet.has(`sai/commands/backfill/${card}`),
+        `${harness} should project the routed backfill card sai/commands/backfill/${card}`);
+    }
+    assert.equal(sourceSet.has('sai/commands/backfill/body.md'), false,
+      `${harness} must not project the retired backfill body card`);
     for (const card of applyCards) {
       assert.ok(sourceSet.has(`sai/commands/apply/${card}`),
         `${harness} should project the routed apply card sai/commands/apply/${card}`);

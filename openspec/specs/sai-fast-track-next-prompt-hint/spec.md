@@ -8,12 +8,12 @@ The fast-track set is not owned by this capability: it is the single canonical m
 
 The hint SHALL be evaluated on the **recommended** command, not the emitting command. The emitting command does not need to support `--fast-track` itself for its completion to carry the hint. The hint is purely textual: it changes only the printed completion string and SHALL NOT alter any behavior of the emitting or recommended command. The recommended command's behavior is unchanged unless the user subsequently types the `--fast-track` flag.
 
-The hint SHALL be single-sourced in the same shared instruction / body files all three harnesses fetch, so Claude Code, opencode, and GitHub Copilot print identical completion strings.
+The hint SHALL be single-sourced in the same shared instruction, card, or body file all three harnesses fetch, so Claude Code, opencode, and GitHub Copilot print identical completion strings.
 
 The concrete emitting locations that gain the hint under this requirement, because each recommends a fast-track-set command, are:
 - `sai/commands/spec/coordinator.md` completion → recommends `/sai-2-design {name}`
 - `sai/commands/implement/invocation.md` completion (printed after `sai-3-implement`) → recommends `/sai-4-apply {name}`
-- `sai/commands/backfill/body.md` completion → recommends `/sai-archive {name}`
+- `sai/commands/backfill/coordinator.md` terminal navigation (printed after validated artifacts are written) → recommends `/sai-archive {name}`
 
 #### Scenario: sai-1-spec completion appends the hint
 

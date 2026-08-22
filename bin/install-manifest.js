@@ -37,6 +37,7 @@ const PHASE_WORKER_IDENTITIES = Object.freeze({
   accessibility: 'sai-8-accessibility-worker',
   commit: 'sai-commit-worker',
   archive: 'sai-archive-worker',
+  backfill: 'sai-backfill-worker',
 });
 const PHASE_CONTRACT_DIRS = Object.freeze({
   spec: 'spec',
@@ -48,6 +49,7 @@ const PHASE_CONTRACT_DIRS = Object.freeze({
   accessibility: 'accessibility',
   commit: 'commit',
   archive: 'archive',
+  backfill: 'backfill',
 });
 const MATRIX_ENTRY_REQUIRED_FIELDS = Object.freeze([
   'phase',

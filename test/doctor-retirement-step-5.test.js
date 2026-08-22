@@ -241,11 +241,11 @@ test('human doctor output identifies retired-copy cleanup and remains successful
   }
 });
 
-test('doctor inventory parity: the manifest derives exactly eleven worker bindings and eleven managed agents per harness', async () => {
+test('doctor inventory parity: the manifest derives exactly twelve worker bindings and twelve managed agents per harness', async () => {
   const { projectRoot, claudeBase, opencodeBase } = fixture();
   const { expandInstallManifest } = require('../bin/install-manifest.js');
   const manifest = loadInstallManifest(path.join(__dirname, '..'));
-  const phases = ['spec', 'design', 'implementation', 'review', 'security', 'performance', 'accessibility', 'commit', 'archive'];
+  const phases = ['spec', 'design', 'implementation', 'review', 'security', 'performance', 'accessibility', 'commit', 'archive', 'backfill'];
   const workers = [
     'sai-1-spec-proposal-worker',
     'sai-2-design-worker',
@@ -256,6 +256,7 @@ test('doctor inventory parity: the manifest derives exactly eleven worker bindin
     'sai-8-accessibility-worker',
     'sai-commit-worker',
     'sai-archive-worker',
+    'sai-backfill-worker',
     'sai-4-red-worker',
     'sai-4-green-worker',
   ];
@@ -274,7 +275,7 @@ test('doctor inventory parity: the manifest derives exactly eleven worker bindin
         .filter(projection => path.relative(destinationRoot.sai, projection.destinationPath)
           .split(path.sep).join('/').startsWith('orchestration/workers/bindings/'))
         .map(projection => path.basename(projection.destinationPath));
-      assert.equal(bindingNames.length, 11, `${harness} should project exactly eleven worker bindings`);
+      assert.equal(bindingNames.length, 12, `${harness} should project exactly twelve worker bindings`);
       const phaseBindingNames = bindingNames.filter(name => phases.includes(name.replace(/-worker\.md$/, '')));
       assert.deepEqual(phaseBindingNames.sort(), phases.map(phase => `${phase}-worker.md`).sort(),
         `${harness} phase worker binding names should match the canonical phase matrix`);
@@ -282,7 +283,7 @@ test('doctor inventory parity: the manifest derives exactly eleven worker bindin
         .filter(projection => projection.destinationPath.startsWith(destinationRoot.agents) &&
           workers.includes(path.basename(projection.destinationPath, '.md')))
         .map(projection => path.basename(projection.destinationPath, '.md'));
-      assert.equal(agentNames.length, 11, `${harness} should project exactly eleven managed agents`);
+      assert.equal(agentNames.length, 12, `${harness} should project exactly twelve managed agents`);
       assert.deepEqual(agentNames.sort(), [...workers].sort(),
         `${harness} managed agent names should match the canonical worker matrix`);
     }

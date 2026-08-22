@@ -72,7 +72,8 @@
       ],
       "sai-backfill.md": [
         "Fetch @skills/fetch/SKILL.md",
-        "Fetch @sai/adapters/claude/boot.md and follow it."
+        "Fetch @sai/adapters/claude/boot.md and follow it.",
+        "Fetch @sai/orchestration/workers/bindings/backfill-worker.md and use it."
       ],
       "sai-commit.md": [
         "Fetch @skills/fetch/SKILL.md",
@@ -153,7 +154,8 @@
       ],
       "sai-backfill.md": [
         "Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.",
-        "Fetch @sai/adapters/opencode/boot.md and follow it."
+        "Fetch @sai/adapters/opencode/boot.md and follow it.",
+        "Fetch @sai/orchestration/workers/bindings/backfill-worker.md and use it."
       ],
       "sai-commit.md": [
         "Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.",

@@ -22,6 +22,7 @@ const WORKER_NAMES = [
   'sai-8-accessibility-worker',
   'sai-commit-worker',
   'sai-archive-worker',
+  'sai-backfill-worker',
 ];
 
 const CLAUDE_GENERIC_AGENTS = ['budget-explorer', 'budget-executor', 'budget-subagent'];
@@ -125,8 +126,8 @@ test('enumerateClaude yields managed agent entries without owner sidecar destina
   try {
     flow.installClaude(dir);
     const entries = enumerateClaude(dir).filter(entry => entry.assetType === 'claude-managed-agent');
-    assert.equal(entries.length, 14,
-      'Claude uninstall should enumerate 14 managed agent destinations: the eleven workers plus the three budget agents');
+    assert.equal(entries.length, 15,
+      'Claude uninstall should enumerate 15 managed agent destinations: the twelve workers plus the three budget agents');
     assert.ok(entries.every(entry => !/owner\.json$/.test(entry.dest)),
       'no owner sidecar destination may be enumerated as a deletion target');
     const basenames = entries.map(entry => path.basename(entry.dest, '.md'));

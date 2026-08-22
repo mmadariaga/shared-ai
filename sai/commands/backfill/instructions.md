@@ -1,3 +1,20 @@
+> **Routed ownership.** This instruction is the technical procedure of the
+> `sai-backfill-worker` (`sai/commands/backfill/worker.md` fetches and follows
+> it) and every step below is read-only inspection, interviewing,
+> reconciliation, delegated scanning, and draft composition. Transport
+> mapping: where this file says **print**, **display**, or **surface**, the
+> worker carries the exact text in its returned payload `summary` and the
+> coordinator presents it verbatim; where it says **ask** or **offer**, the
+> worker returns the question and ordered options (empty options for
+> open-ended questions) as a `needs_input` result and the coordinator presents
+> it per the instruction's own Delivery rule; where it conditions on an
+> answer, the coordinator forwards the selected value or free text through the
+> binding continuation; and where Phase 6 says **create** or **write**, the
+> worker composes the draft content and returns it as payload text — schema
+> validation against `openspec/schemas/sai-workflow/schema.yaml` and every
+> final write into `openspec/changes/{name}/` execute coordinator-side per
+> `sai/commands/backfill/coordinator.md`, never in the worker session.
+
 ## Communication Mode
 
 You are a Post-Hoc Backfill Agent. Your only task is to reconstruct `proposal.md` and capability specs for a change that was already implemented without going through the full SAI workflow.
@@ -9,11 +26,11 @@ You are a Post-Hoc Backfill Agent. Your only task is to reconstruct `proposal.md
 ## STOP Conditions
 
 Before any other step, check:
-- If `$ARGUMENTS` is empty AND no name can be derived from conversation context: print `Change name required. Run: /sai-backfill <name>` and stop.
+- If `$ARGUMENTS` is empty AND no name can be derived from conversation context: return a terminal payload whose summary is exactly `Change name required. Run: /sai-backfill <name>` and stop.
 
 ## Phase 1: Diff Source Selection
 
-Ask the user which diff to analyze and do NOT proceed until a valid selection is received. Ask **"Which diff should I analyze?"** as a closed-choice prompt with the three options below (per the "Closed-choice prompts" rule in `remember.md`, which gives the per-harness option-picker mapping); a free-text reply that maps to none of them is invalid — re-ask. On a harness with no native option-picker, print exactly:
+Return the diff-source ask as a `needs_input` result and do NOT proceed until a valid selection is forwarded. Ask **"Which diff should I analyze?"** as a closed-choice prompt with the three options below (per the "Closed-choice prompts" rule in `remember.md`, which gives the per-harness option-picker mapping); a free-text reply that maps to none of them is invalid — re-ask. On a harness with no native option-picker, present exactly:
 
 ```
 **Which diff should I analyze?**
@@ -26,17 +43,17 @@ Reply with 1, 2, or 3.
 ```
 
 Once selected, compute the diff:
-- **Option 1**: Ask "Provide the base commit SHA:" then run `git diff <sha>..HEAD`
+- **Option 1**: return the free-text ask "Provide the base commit SHA:" (empty `options`), then run `git diff <sha>..HEAD` on the forwarded value
 - **Option 2**: Run `git diff --staged`
 - **Option 3**: Run `git diff HEAD` (unstaged) and `git ls-files --others --exclude-standard` (untracked); combine both outputs
 
-Display a brief diff summary (files changed, lines added, lines removed) and confirm: "Diff loaded. Proceeding to interview."
+Carry a brief diff summary (files changed, lines added, lines removed) and the confirmation "Diff loaded. Proceeding to interview." in your returned payload content so the coordinator can present them verbatim.
 
 The diff source MUST be selected before any question is asked, before any spec is read, and before any file is written.
 
 ## Phase 2: Optional Intent Capture
 
-After the valid diff has been selected, loaded, summarized, and the existing `Diff loaded. Proceeding to interview.` confirmation has been emitted, offer exactly two declared choices through the harness's native option-picker, in this order:
+After the valid diff has been selected, loaded, summarized, and the existing `Diff loaded. Proceeding to interview.` confirmation has been carried, return the intent-capture ask as a `needs_input` result offering exactly two declared choices, which the coordinator renders through the harness's native option-picker, in this order:
 
 1. `Provide intent (Recommended)`
 2. `Continue without intent`
@@ -50,7 +67,7 @@ The harness-provided free-text slot is the only paste channel. On a surface with
 Resolve the interaction as follows:
 
 - An explicit native option selection takes precedence over simultaneously returned free text. `Provide intent (Recommended)` captures attached non-empty text; `Continue without intent` discards attached text.
-- Selecting `Provide intent (Recommended)` without non-empty text emits this clean follow-up exactly once, rendered by the same language rule, and then waits for the free-text response: `Share your statement of intent below.`
+- Selecting `Provide intent (Recommended)` without non-empty text emits this clean follow-up exactly once, rendered by the same language rule, returned as a `needs_input` result with empty `options`, and then waits for the free-text response: `Share your statement of intent below.`
 - A free-text value maps to a declared option only when its trimmed, case-insensitive value exactly equals that option's value. A value that matches neither option is captured as the candidate statement.
 - After trimming for emptiness, whitespace-only text means no intent.
 - Accept any non-empty explanatory prose, including a `/sai-explore` handoff block or a different handoff format, without schema validation, normalization into a file, or a file-path request.
@@ -82,7 +99,7 @@ Items classified as `matched` may be represented as ordinary evidence-backed beh
 
 Ask the following two questions **one at a time, sequentially**. After each question, **wait for the user's full response** before proceeding to the next. Do NOT ask both questions in the same message. Do NOT skip, rephrase, or merge them regardless of diff content or captured intent:
 
-**Delivery (fixed and adaptive interview questions alike).** Every question in this phase is open-ended free text, not a closed set — the "Closed-choice prompts" rule in `remember.md` does NOT apply here. Emit the question string **exactly once**, as ordinary conversation text, and end the turn there. Do NOT also route it through the harness option-picker / question tool (`AskUserQuestion` on Claude Code, `question` on opencode), and do NOT echo, restate, or re-print the question in the same turn — a question rendered both as text and through a tool reaches the user duplicated.
+**Delivery (fixed and adaptive interview questions alike).** Every question in this phase is open-ended free text, not a closed set — the "Closed-choice prompts" rule in `remember.md` does NOT apply to its presentation. Return each question string **exactly once** as a `needs_input` result with empty `options`; the coordinator then renders it as ordinary conversation text and ends the turn there. The coordinator does NOT route it through the harness option-picker / question tool (`AskUserQuestion` on Claude Code, `question` on opencode), and neither side echoes, restates, or re-prints the question in the same turn — a question rendered both as text and through a tool reaches the user duplicated.
 
 **Question 1:** "What problem does this solve?"
 
@@ -103,7 +120,7 @@ Do NOT write any artifact until all fixed questions, generated reconciliation qu
 
 ### Scope Drift Report
 
-Before conflict detection and artifact generation, report every `evidenced-but-unstated` item in the form:
+Before conflict detection and artifact generation, carry every `evidenced-but-unstated` item in your returned payload content, each in the form:
 
 `Scope drift (not an implementation error): {item}. The selected diff evidences this behavior, but the supplied intent statement did not name it.`
 
@@ -144,7 +161,7 @@ The enriched prompt keeps the same scan scope and output contract: return ONLY o
 
 If conflicts are found, surface the report, then ask for the decision.
 
-Print the report verbatim:
+Carry the report verbatim in your returned payload content:
 
 ```
 Conflict detected in the following specs:
@@ -154,7 +171,7 @@ Conflict detected in the following specs:
   Why: {reason tied directly to the diff}
 ```
 
-After the report, ask **"Do you want to proceed with these updates, or abort?"** as a closed-choice prompt with the two options labeled `proceed (Recommended)` and `abort` (per the "Closed-choice prompts" rule in `remember.md`, which gives the per-harness option-picker mapping); a reply that maps to neither option is invalid — re-ask the question and write no files until a valid choice is made. On a harness with no native option-picker, print exactly:
+After the report, return the decision ask as a `needs_input` result: **"Do you want to proceed with these updates, or abort?"** with the two options labeled `proceed (Recommended)` and `abort` (per the "Closed-choice prompts" rule in `remember.md`, which gives the per-harness option-picker mapping); a reply that maps to neither option is invalid — re-ask the question and write no files until a valid choice is made. On a harness with no native option-picker, present exactly:
 
 ```
 Do you want to proceed with these updates, or abort?
@@ -165,9 +182,9 @@ Do you want to proceed with these updates, or abort?
 Reply with proceed or abort.
 ```
 
-- If the user replies **abort**: print `Backfill aborted. No files written.` and stop.
-- If the user replies **proceed**: continue to Phase 5.
-- If no conflicts are found: print `No spec conflicts detected. Proceeding.` and continue to Phase 5.
+- On a forwarded **abort** answer: return a terminal payload whose summary is exactly `Backfill aborted. No files written.` and stop.
+- On a forwarded **proceed** answer: continue to Phase 5.
+- If no conflicts are found: carry `No spec conflicts detected. Proceeding.` verbatim in your returned payload content and continue to Phase 5.
 
 Do NOT write any file until this phase completes.
 
@@ -175,18 +192,18 @@ Do NOT write any file until this phase completes.
 
 Derive the change name using this priority order:
 1. If `$ARGUMENTS` contains a kebab-case identifier, use it as the name.
-2. If `$ARGUMENTS` is empty but a name can be clearly inferred from the diff file paths or interview answers, propose it: "I'll use `{proposed-name}` as the change name. Is that correct? (yes/no)"
-3. If no name can be derived: print `Change name required. Run: /sai-backfill <name>` and stop.
+2. If `$ARGUMENTS` is empty but a name can be clearly inferred from the diff file paths or interview answers, propose it as a `needs_input` result: "I'll use `{proposed-name}` as the change name. Is that correct? (yes/no)" with options `yes` / `no`.
+3. If no name can be derived: return a terminal payload whose summary is exactly `Change name required. Run: /sai-backfill <name>` and stop.
 
-Do NOT write any file until the user confirms the name.
+Do NOT compose any draft for a write until the user confirms the name; after confirmation, every subsequent result carries `resolved_change_name`.
 
-## Phase 6: Artifact Generation
+## Phase 6: Draft Composition
 
-Only after Phases 1–5 complete with no abort and a confirmed change name, create the following files in order. The only permitted writes are `.openspec.yaml`, `proposal.md`, and capability specs under the selected change directory. Never create `design.md`, `tasks.md`, or `implementation.md`.
+Only after Phases 1–5 complete with no abort and a confirmed change name, compose the following drafts in order and return their CONTENT as payload text inside your terminal payload. The draft set contains only `.openspec.yaml`, `proposal.md`, and capability specs under the selected change directory. Never compose `design.md`, `tasks.md`, or `implementation.md` — they are prohibited outputs everywhere in this flow.
 
-### 6a. Create `.openspec.yaml`
+### 6a. Draft `.openspec.yaml`
 
-For a run with no usable intent context, write exactly these three keys and no others:
+For a run with no usable intent context, carry exactly these three keys and no others:
 
 ```yaml
 schema: sai-workflow
@@ -194,7 +211,7 @@ created: {calendar date in YYYY-MM-DD, e.g. 2026-05-21}
 backfilled: true
 ```
 
-For a run with usable intent context, write exactly these four keys and no others:
+For a run with usable intent context, carry exactly these four keys and no others:
 
 ```yaml
 schema: sai-workflow
@@ -205,9 +222,9 @@ prior_intent: true
 
 `created` MUST be a date only in `YYYY-MM-DD` form, never a datetime. Do not add `backfilled_at`, `backfilled_from`, a raw statement, parsed intent, or any other companion key.
 
-### 6b. Create `proposal.md`
+### 6b. Draft `proposal.md`
 
-Write `openspec/changes/{name}/proposal.md`. For a run with no usable intent context, the file MUST open with this exact blockquote as the very first content before any section heading:
+Compose the draft of `openspec/changes/{name}/proposal.md`. For a run with no usable intent context, the draft MUST open with this exact blockquote as the very first content before any section heading:
 
 ```
 > **⚠ POST-HOC RECORD** — This proposal was backfilled after implementation. It describes a decision already made, not one being proposed.
@@ -223,25 +240,17 @@ Then follow the standard proposal structure. Derive all content from the selecte
 
 The proposal MUST contain these headings in this order: `## Why`, `## What Changes`, `## Capabilities`, `### New Capabilities`, `### Modified Capabilities`, and `## Impact`. Fill `Why` from the first fixed answer and the diff. Fill `What Changes` with the implemented file and behavior changes, including evidenced scope drift only as implemented behavior. List each diff-backed new or modified capability under the corresponding capability subsection. Under `## Impact`, list concrete new and modified files and end with `Out of scope: design.md, tasks.md, implementation.md — not generated by /sai-backfill`. Do not leave instructional text, template markers, or unresolved placeholders in the written proposal.
 
-### 6c. Create or update capability specs
+### 6c. Draft capability specs
 
-For each distinct capability evidenced in the diff, create or update `openspec/changes/{name}/specs/{capability}/spec.md`.
+For each distinct capability evidenced in the diff, compose the draft of `openspec/changes/{name}/specs/{capability}/spec.md`.
 
 Use the standard sai-workflow delta format:
 - New behavior → `## ADDED Requirements` section
 - Changed behavior → `## MODIFIED Requirements` section
 - Removed behavior → `## REMOVED Requirements` section
 
-Each requirement MUST use a concrete `### Requirement:` heading with SHALL or MUST normative language, followed by optional concrete scope prose and at least one `#### Scenario:` block containing exactly one `- **WHEN**` line and one `- **THEN**` line. Write only behavior from the diff, fixed answers, or qualifying preservation evidence. Do not leave instructional text or unresolved placeholders in a spec. Do not turn unconfirmed intent, an unanswered gap, a rejected alternative, or an omission into a normative requirement. Do not update a spec flagged in Phase 4 unless the user confirmed **proceed** in that phase.
+Each requirement MUST use a concrete `### Requirement:` heading with SHALL or MUST normative language, followed by optional concrete scope prose and at least one `#### Scenario:` block containing exactly one `- **WHEN**` line and one `- **THEN**` line. Write only behavior from the diff, fixed answers, or qualifying preservation evidence. Do not leave instructional text or unresolved placeholders in a draft. Do not turn unconfirmed intent, an unanswered gap, a rejected alternative, or an omission into a normative requirement. Do not draft an update to a spec flagged in Phase 4 unless the user confirmed **proceed** in that phase.
 
 ## Completion Boundary
 
-After all permitted backfill artifacts are written, stop. Do not create any planning artifact, run another SAI command, or invoke an archive command from this flow.
-
-Verification commands (run both, exact):
-1. npm test
-2. node --test test/install-claude.test.js test/install-opencode.test.js test/verified-precondition-handback.test.js
-
-Verification pass condition: both commands exit successfully.
-
-Do not update implementation.md checkboxes. Do not act on the STOP & COMMIT marker. Return the exact 9-field apply report required by the worker contract, including field 8 with only non-scratch production paths and field 9 when available.
+After all draft artifact content has been returned for write, stop. Do not create any planning artifact, run another SAI command, or invoke an archive command from this flow. The coordinator validates the drafts against `openspec/schemas/sai-workflow/schema.yaml` and executes the final writes into `openspec/changes/{name}/`; your run closes with its terminal lifecycle status once the drafts are handed over.

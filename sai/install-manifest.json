@@ -352,6 +352,40 @@
         }
       },
       {
+        "phase": "backfill",
+        "workerName": "sai-backfill-worker",
+        "workerContract": "sai/commands/backfill/worker.md",
+        "bindingStem": "backfill",
+        "dispatchPrimitive": "task",
+        "initialDispatch": "dispatch sai-backfill-worker",
+        "continuationLiteral": "continue sai-backfill-worker",
+        "replacementFields": [
+          "model",
+          "effort"
+        ],
+        "helperPermissions": [
+          "Read",
+          "Bash",
+          "Skill"
+        ],
+        "progressDeclaration": "none — the backfill adapter declares no progress_plan",
+        "overviewGeneration": "",
+        "noticeContinuation": "",
+        "claudeAgent": {
+          "agentName": "sai-backfill-worker",
+          "description": "Owns the read-only backfill inspection, interviewing, and draft-composition phase and returns structured lifecycle metadata.",
+          "model": "haiku",
+          "effort": "low",
+          "tools": "Read, Glob, Grep, Bash, Skill, SendMessage"
+        },
+        "opencodeAgent": {
+          "description": "Owns the read-only backfill inspection, interviewing, and draft-composition phase and returns structured lifecycle metadata.",
+          "model": "opencode-go/deepseek-v4-flash",
+          "variantLine": "variant: default",
+          "permissionBlock": "    budget: allow\n    explore: allow"
+        }
+      },
+      {
         "phase": "apply",
         "workerName": "sai-4-red-worker",
         "workerContract": "sai/commands/apply/red-worker.md",
@@ -919,6 +953,25 @@
       }
     },
     {
+      "id": "claude-sai-backfill-worker",
+      "source": "agents/claude/worker-template.md",
+      "destination": {
+        "class": "agents",
+        "path": "sai-backfill-worker.md"
+      },
+      "harnesses": [
+        "claude"
+      ],
+      "strategy": "tunable-seed",
+      "recursive": false,
+      "ownership": "managed",
+      "drift": "content",
+      "matrix": {
+        "kind": "agent",
+        "phase": "backfill"
+      }
+    },
+    {
       "id": "claude-budget-explorer",
       "source": "agents/claude/budget-explorer.md",
       "destination": {
@@ -1170,6 +1223,25 @@
       "matrix": {
         "kind": "agent",
         "phase": "archive"
+      }
+    },
+    {
+      "id": "opencode-sai-backfill-worker",
+      "source": "agents/opencode/worker-template.md",
+      "destination": {
+        "class": "agents",
+        "path": "sai-backfill-worker.md"
+      },
+      "harnesses": [
+        "opencode"
+      ],
+      "strategy": "tunable-seed",
+      "recursive": false,
+      "ownership": "managed",
+      "drift": "content",
+      "matrix": {
+        "kind": "agent",
+        "phase": "backfill"
       }
     },
     {

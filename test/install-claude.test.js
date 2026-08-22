@@ -27,6 +27,7 @@ const WORKER_BINDINGS = [
   ['accessibility', 'sai-8-accessibility-worker', 'accessibility-worker.md'],
   ['commit', 'sai-commit-worker', 'commit-worker.md'],
   ['archive', 'sai-archive-worker', 'archive-worker.md'],
+  ['backfill', 'sai-backfill-worker', 'backfill-worker.md'],
 ];
 
 const WORKER_NAMES = [
@@ -39,6 +40,7 @@ const WORKER_NAMES = [
   'sai-8-accessibility-worker',
   'sai-commit-worker',
   'sai-archive-worker',
+  'sai-backfill-worker',
 ];
 
 const CLAUDE_GENERIC_AGENTS = {
@@ -50,7 +52,6 @@ const CLAUDE_GENERIC_AGENTS = {
 const UTILITY_COMMANDS = {
   'sai-4-apply': 'apply',
   'sai-archive': 'archive',
-  'sai-backfill': 'backfill',
   'sai-explore': 'explore',
   'sai-pr': 'pr',
   'sai-status': 'status',
@@ -60,7 +61,7 @@ const UTILITY_COMMANDS = {
 const UTILITY_CARD_CONTENTS = {
   apply: ['command-bootstrap.md', 'coordinator.md', 'green-worker.md', 'invocation.md', 'red-worker.md', 'runner.md'],
   archive: ['archive-commit-gate.instructions.md', 'command-bootstrap.md', 'coordinator.md', 'instructions.md', 'worker.md'],
-  backfill: ['body.md', 'command-bootstrap.md', 'instructions.md'],
+  backfill: ['command-bootstrap.md', 'coordinator.md', 'instructions.md', 'worker.md'],
   commit: ['command-bootstrap.md', 'coordinator.md', 'instructions.md', 'worker.md'],
   explore: ['body.md', 'command-bootstrap.md', 'instructions.md'],
   pr: ['body.md', 'command-bootstrap.md', 'instructions.md', 'pr-body.template.md'],
@@ -150,6 +151,7 @@ test('managed worker registry defines every Claude compatibility export', () => 
     'sai-1-spec-proposal-worker',
     'sai-commit-worker',
     'sai-archive-worker',
+    'sai-backfill-worker',
     'sai-4-red-worker',
     'sai-4-green-worker',
   ];
@@ -165,6 +167,9 @@ test('managed worker registry defines every Claude compatibility export', () => 
     },
     'sai-archive-worker': {
       agent: 'sai-archive-worker.md',
+    },
+    'sai-backfill-worker': {
+      agent: 'sai-backfill-worker.md',
     },
     'sai-2-design-worker': {
       agent: 'sai-2-design-worker.md',
@@ -436,7 +441,7 @@ test('Claude managed agents install with one frontmatter block and one canonical
     const tunable = expandInstallManifest(manifest, { harness: 'claude', repoRoot, destinationRoot })
       .filter(projection => projection.strategy === 'tunable-seed' &&
         WORKER_NAMES.includes(path.basename(projection.destinationPath, '.md')));
-    assert.equal(tunable.length, 9, 'the manifest should declare 9 tunable-seed Claude worker agent projections');
+    assert.equal(tunable.length, 10, 'the manifest should declare 10 tunable-seed Claude worker agent projections');
     assert.ok(tunable.every(projection => projection.ownership === 'managed'),
       'every tunable-seed Claude worker projection should be managed');
 
@@ -685,7 +690,7 @@ test('restore-coordinator-instruction-loading Step 3: isolated Claude installati
   }
 });
 
-test('Claude installer consumes exactly the eleven matrix worker bindings and agents', () => {
+test('Claude installer consumes exactly the twelve matrix worker bindings and agents', () => {
   const repoRoot = path.join(__dirname, '..');
   const manifest = loadInstallManifest(repoRoot);
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-claude-matrix-inventory-'));
@@ -699,21 +704,21 @@ test('Claude installer consumes exactly the eleven matrix worker bindings and ag
       root: tmpDir,
     };
     const active = expandInstallManifest(manifest, { harness: 'claude', repoRoot, destinationRoot });
-    const phases = ['spec', 'design', 'implementation', 'review', 'security', 'performance', 'accessibility', 'commit', 'archive'];
+    const phases = ['spec', 'design', 'implementation', 'review', 'security', 'performance', 'accessibility', 'commit', 'archive', 'backfill'];
     const bindingNames = active
       .filter(projection => path.relative(destinationRoot.sai, projection.destinationPath)
         .split(path.sep).join('/').startsWith('orchestration/workers/bindings/') &&
         phases.includes(path.basename(projection.destinationPath, '-worker.md')))
       .map(projection => path.basename(projection.destinationPath));
-    assert.equal(bindingNames.length, 9, 'Claude should project exactly nine phase worker bindings');
+    assert.equal(bindingNames.length, 10, 'Claude should project exactly ten phase worker bindings');
     assert.equal(bindingNames.includes('idea-list-render.md'), false,
       'Claude must not project an idea-list-render matrix binding');
     const allBindingNames = active
       .filter(projection => path.relative(destinationRoot.sai, projection.destinationPath)
         .split(path.sep).join('/').startsWith('orchestration/workers/bindings/'))
       .map(projection => path.basename(projection.destinationPath));
-    assert.equal(allBindingNames.length, 11,
-      'Claude should keep only the eleven routed worker bindings in the matrix destination');
+    assert.equal(allBindingNames.length, 12,
+      'Claude should keep only the twelve routed worker bindings in the matrix destination');
     const ideaList = active.find(projection =>
       path.relative(repoRoot, projection.sourcePath).split(path.sep).join('/') ===
       'sai/adapters/claude/idea-list-render.md');
@@ -725,7 +730,7 @@ test('Claude installer consumes exactly the eleven matrix worker bindings and ag
     const agentNames = active
       .filter(projection => projection.destinationPath.startsWith(destinationRoot.agents))
       .map(projection => path.basename(projection.destinationPath, '.md'));
-    assert.equal(agentNames.length, 14, 'Claude should project exactly fourteen managed agents');
+    assert.equal(agentNames.length, 15, 'Claude should project exactly fifteen managed agents');
     for (const name of Object.keys(CLAUDE_GENERIC_AGENTS)) {
       assert.ok(agentNames.includes(name), `Claude should project the ${name} managed agent`);
     }
@@ -777,7 +782,7 @@ test('installClaude active projection carries the neutral root protocols, routed
     assert.equal(sourceSet.has('sai/adapters/opencode/boot.md'), false,
       'Claude must not project the opencode boot adapter');
     for (const utility of Object.values(UTILITY_COMMANDS)) {
-      if (utility === 'apply' || utility === 'archive') continue;
+      if (utility === 'apply' || utility === 'archive' || utility === 'backfill') continue;
       assert.ok(sourceSet.has(`sai/commands/${utility}/body.md`),
         `Claude should project the utility card sai/commands/${utility}/body.md`);
     }
@@ -789,6 +794,12 @@ test('installClaude active projection carries the neutral root protocols, routed
       'Claude should project the archive commit-gate instruction');
     assert.equal(sourceSet.has('sai/commands/archive/body.md'), false,
       'Claude must not project the retired archive body card');
+    for (const card of ['command-bootstrap.md', 'coordinator.md', 'worker.md', 'instructions.md']) {
+      assert.ok(sourceSet.has(`sai/commands/backfill/${card}`),
+        `Claude should project the routed backfill card sai/commands/backfill/${card}`);
+    }
+    assert.equal(sourceSet.has('sai/commands/backfill/body.md'), false,
+      'Claude must not project the retired backfill body card');
     for (const card of ['coordinator.md', 'red-worker.md', 'green-worker.md', 'runner.md', 'invocation.md']) {
       assert.ok(sourceSet.has(`sai/commands/apply/${card}`),
         `Claude should project the routed apply card sai/commands/apply/${card}`);
@@ -868,7 +879,7 @@ test('Claude boot adapter loads command-runner first, selects utility bodies, ke
     assert.match(boot, /Fetch @sai\/commands\/(?:\{name\}|[a-z-]+)\/body\.md/,
       'utility selection should target the matching body card');
     for (const name of Object.values(UTILITY_COMMANDS)) {
-      if (name === 'apply' || name === 'archive') continue;
+      if (name === 'apply' || name === 'archive' || name === 'backfill') continue;
       assert.doesNotMatch(boot, new RegExp(`@sai/commands/${name}/coordinator\\.md`),
         `the Claude boot must not select a coordinator card for the ${name} utility`);
     }
@@ -880,6 +891,10 @@ test('Claude boot adapter loads command-runner first, selects utility bodies, ke
       'the Claude boot must classify archive as a routed name');
     assert.doesNotMatch(boot, /Utility names \([^)]*`archive`/,
       'the Claude boot must not classify archive as a utility name');
+    assert.match(boot, /Routed names \([^)]*`backfill`/,
+      'the Claude boot must classify backfill as a routed name');
+    assert.doesNotMatch(boot, /Utility names \([^)]*`backfill`/,
+      'the Claude boot must not classify backfill as a utility name');
 
     assert.doesNotMatch(boot, /\btask\s*\(/,
       'the Claude boot adapter must not mention the opencode task dispatch primitive');

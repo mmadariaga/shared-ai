@@ -739,11 +739,11 @@ test('Step 2 install and doctor retire the apply body card and monolithic instru
   }
 });
 
-test('Step 2 with the apply contract files present, install and doctor derive the eleven-worker roster without projection-ID collisions', async () => {
+test('Step 2 with the apply contract files present, install and doctor derive the twelve-worker roster without projection-ID collisions', async () => {
   const { loadInstallManifest, expandInstallManifest, expandRetirementManifest } = require('../bin/install-manifest.js');
   const { installClaude, installOpencode } = require('../bin/install-flow.js');
   const { main } = require('../bin/doctor.js');
-  const ELEVEN_WORKERS = [
+  const TWELVE_WORKERS = [
     'sai-1-spec-proposal-worker',
     'sai-2-design-worker',
     'sai-3-implementation-worker',
@@ -753,14 +753,15 @@ test('Step 2 with the apply contract files present, install and doctor derive th
     'sai-8-accessibility-worker',
     'sai-commit-worker',
     'sai-archive-worker',
+    'sai-backfill-worker',
     'sai-4-red-worker',
     'sai-4-green-worker',
   ];
   const manifest = loadInstallManifest(repoRoot);
-  assert.equal(manifest['worker-matrix'].entries.length, 11,
-    'specs/worker-matrix-collapse/spec.md: the manifest must declare the eleven-entry worker matrix');
+  assert.equal(manifest['worker-matrix'].entries.length, 12,
+    'specs/worker-matrix-collapse/spec.md: the manifest must declare the twelve-entry worker matrix');
 
-  const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-apply-eleven-roster-'));
+  const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-apply-twelve-roster-'));
   const claudeBase = path.join(projectRoot, 'claude');
   const opencodeBase = path.join(projectRoot, 'opencode');
   try {
@@ -768,7 +769,7 @@ test('Step 2 with the apply contract files present, install and doctor derive th
     fs.writeFileSync(path.join(projectRoot, 'openspec', 'config.yaml'), 'schema: sai-workflow\n');
     installClaude(claudeBase);
     installOpencode(opencodeBase);
-    for (const worker of ELEVEN_WORKERS) {
+    for (const worker of TWELVE_WORKERS) {
       assert.ok(fs.existsSync(path.join(claudeBase, 'agents', `${worker}.md`)),
         `specs/worker-matrix-collapse/spec.md: claude should install ${worker} managed agent`);
     }
@@ -789,8 +790,8 @@ test('Step 2 with the apply contract files present, install and doctor derive th
       const bindings = active.filter(projection =>
         path.relative(roots.sai, projection.destinationPath).split(path.sep).join('/')
           .startsWith('orchestration/workers/bindings/'));
-      assert.equal(bindings.length, 11,
-        `specs/worker-matrix-collapse/spec.md: ${harness} should install eleven worker bindings`);
+      assert.equal(bindings.length, 12,
+        `specs/worker-matrix-collapse/spec.md: ${harness} should install twelve worker bindings`);
       for (const projection of active) {
         assert.doesNotMatch(JSON.stringify([projection.id, projection.sourcePath, projection.destinationPath, projection.strategy]), /\{\{/,
           `specs/worker-matrix-collapse/spec.md: ${harness} should leave no unresolved template placeholder`);

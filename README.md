@@ -135,6 +135,10 @@ The routed `/sai-2-design` paths use a low-effort Opus 4.8 coordinator and high-
 
 `/sai-archive` uses the same coordinator/worker shape with full openspec prerequisite checks intact: the `sai-archive-worker` managed worker performs the read-only pre-flight (artifact classification, checkbox scan, delta-sync diffing against main specs, target-name collision check) and returns the unchecked-items and delta-spec sync gates as structured questions the coordinator presents through the native picker. On confirmation, the coordinator alone executes every mutation - the delta-spec sync write, the archive directory move into `openspec/changes/archive/YYYY-MM-DD-{name}/`, and the post-archive commit gate (`git add` of exactly `openspec/specs` + `openspec/changes/archive`, empty-index guard, pushed-HEAD guard); the worker never moves directories, writes specs, or runs git. Both harnesses preserve the same payloads, gate wordings, stop texts, and fast-track auto-proceed semantics.
 
+### Backfill coordinator and worker
+
+`/sai-backfill` uses the same coordinator/worker shape for retroactive documentation: the `sai-backfill-worker` managed worker runs the read-only technical flow (diff-source selection, diff computation, optional intent capture with in-memory reconciliation, the fixed interview, delegated `budget-explorer` conflict scanning) and interviews you through structured questions the coordinator presents - closed choices through the native picker, open-ended questions as plain conversation text. Draft artifacts travel as payload text; the coordinator validates them against the sai-workflow schema and alone writes `.openspec.yaml`, `proposal.md`, and capability specs into `openspec/changes/{name}/`. The worker never writes a file or runs mutating git. Both harnesses preserve the interview question wordings, gate semantics, schema-validation rules, and budget-explorer output contracts.
+
 ## On-demand commands (unnumbered)
 
 | Command | Purpose |
@@ -145,7 +149,7 @@ The routed `/sai-2-design` paths use a low-effort Opus 4.8 coordinator and high-
 | `/sai-pr` | Drafts a complete PR description using everything produced during the change (proposal, design, review findings, etc.). Opens the PR on GitHub after you approve. |
 | `/sai-archive` | Routed command: the coordinator runs in the main session and dispatches the `sai-archive-worker` managed worker for the read-only pre-flight, then executes every mutation itself - delta-spec sync, the archive move into `openspec/changes/archive/YYYY-MM-DD-{name}/`, and the post-archive commit gate. Moves a completed change to the archive, keeping your active changes folder clean. Supports `--fast-track` to auto-proceed the archive soft gates. |
 | `/sai-status` | Read-only progress panel for one OpenSpec change — shows which of the 10 sai-workflow artifacts exist, the specs approval state, implementation progress, the archive location if archived, and a `Next:` hint suggesting the appropriate `/sai-N` command. Never writes anything. |
-| `/sai-backfill` | Made a quick fix directly in code without going through the pipeline? This reconstructs the missing documentation after the fact — interviewing you about intent and writing only what can be reliably derived from the diff. |
+| /sai-backfill | Routed command: the coordinator runs in the main session and dispatches the sai-backfill-worker managed worker for the read-only inspection, interview, and conflict scan, then validates the drafts against the sai-workflow schema and alone writes the artifacts into openspec/changes/{name}/. Made a quick fix directly in code without going through the pipeline? This reconstructs the missing documentation after the fact - interviewing you about intent and writing only what can be reliably derived from the diff. |
 
 ## Triage in `/sai-5-review`
 

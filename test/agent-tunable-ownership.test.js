@@ -21,6 +21,7 @@ const WORKER_NAMES = [
   'sai-8-accessibility-worker',
   'sai-commit-worker',
   'sai-archive-worker',
+  'sai-backfill-worker',
 ];
 
 const CLAUDE_GENERIC_AGENTS = ['budget-explorer', 'budget-executor', 'budget-subagent'];
@@ -35,6 +36,7 @@ const WORKER_PHASE = {
   'sai-8-accessibility-worker': 'accessibility',
   'sai-commit-worker': 'commit',
   'sai-archive-worker': 'archive',
+  'sai-backfill-worker': 'backfill',
 };
 
 const matrixManifest = loadInstallManifest(path.join(__dirname, '..'));
@@ -331,8 +333,8 @@ test('Claude and opencode uninstall enumerate their managed agent destinations',
   const genericNames = ['explore', 'executor', 'budget'];
   const applyNames = ['sai-4-red-worker', 'sai-4-green-worker'];
   for (const [harness, install, enumerate, expectedCount] of [
-    ['claude', flow.installClaude, enumerateClaude, 14],
-    ['opencode', flow.installOpencode, enumerateOpencode, 14],
+    ['claude', flow.installClaude, enumerateClaude, 15],
+    ['opencode', flow.installOpencode, enumerateOpencode, 15],
   ]) {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), `sai-tunable-${expectedCount}-${harness}-`));
     try {

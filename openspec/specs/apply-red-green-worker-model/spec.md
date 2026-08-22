@@ -25,17 +25,17 @@ The worker-matrix SHALL contain exactly two apply entries: `sai-4-red-worker` an
 
 ### Requirement: matrix-builder-accepts-apply-workers
 
-The matrix builder and its validation SHALL accept the two apply worker identities and their contract paths. `bin/worker-matrix.js` and `bin/install-manifest.js` SHALL extend the phase-order model, the worker identity regex, and the worker contract path regex to admit `sai-4-red-worker` / `sai-4-green-worker` and their contracts under `sai/commands/apply/` without relaxing validation for the existing phases. The installed-worker roster and binding validators in `bin/install-flow.js` SHALL accept eleven workers instead of seven, admitting the later-added `sai-commit-worker` and `sai-archive-worker` alongside the nine phase workers and the two apply workers.
+The matrix builder and its validation SHALL accept the two apply worker identities and their contract paths. `bin/worker-matrix.js` and `bin/install-manifest.js` SHALL extend the phase-order model, the worker identity regex, and the worker contract path regex to admit `sai-4-red-worker` / `sai-4-green-worker` and their contracts under `sai/commands/apply/` without relaxing validation for the existing phases. The installed-worker roster and binding validators in `bin/install-flow.js` SHALL accept twelve workers instead of seven, admitting the later-added `sai-commit-worker`, `sai-archive-worker`, and `sai-backfill-worker` alongside the ten phase workers and the two apply workers.
 
 #### Scenario: builder accepts the new identities
 
 - **WHEN** the manifest is validated with the two apply entries
 - **THEN** the builder and install validators accept `sai-4-red-worker` and `sai-4-green-worker` with their contract paths, and the existing phase validation rules still pass
 
-#### Scenario: roster validation counts eleven
+#### Scenario: roster validation counts twelve
 
 - **WHEN** install-time worker roster validation runs
-- **THEN** it accepts the nine phase workers, the two apply workers, `sai-commit-worker`, and `sai-archive-worker`
+- **THEN** it accepts the ten phase workers, the two apply workers, `sai-commit-worker`, `sai-archive-worker`, and `sai-backfill-worker`
 
 ### Requirement: red-worker-contract
 
