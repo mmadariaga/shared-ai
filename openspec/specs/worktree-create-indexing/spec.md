@@ -2,7 +2,7 @@
 
 ## Purpose
 
-TBD: best-effort CodeGraph indexing of freshly created worktrees performed by the `/sai-worktree` Create action.
+Initializes CodeGraph in every freshly created git worktree when the `codegraph` tool is available, reporting the outcome in a single one-line notice and never failing the Create action.
 
 ## Requirements
 
