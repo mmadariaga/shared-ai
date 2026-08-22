@@ -59,6 +59,9 @@ const CLAUDE_AGENTS = [
   'sai-7-performance-worker',
   'sai-8-accessibility-worker',
 ];
+const OPENCODE_WORKERS = OPENCODE_AGENTS.filter(name => name.startsWith('sai-'));
+const CLAUDE_WORKERS = CLAUDE_AGENTS.filter(name => name.startsWith('sai-'));
+const UTILITY_COMMANDS = ['sai-commit', 'sai-pr', 'sai-status', 'sai-worktree'];
 
 // Step 3: command-family targets exposed by the adapter enumeration seam.
 // Kept alphabetical so a bare-name checklist assertion is order-independent of
@@ -81,8 +84,9 @@ const COMMANDS = [
   'sai-status',
   'sai-worktree',
 ];
+const MODEL_COMMANDS = COMMANDS.filter(name => !UTILITY_COMMANDS.includes(name));
 
-// Step 3: deliberately non-alphabetical enumeration output so the Both-scope
+// Step 3: deliberately non-alphabetical enumeration output so the All-scope
 // assertions can pin flow-side alphabetical ordering per family.
 const SCRAMBLED_WORKERS = [
   'sai-3-implementation-worker',
@@ -97,12 +101,12 @@ const SCRAMBLED_COMMANDS = [
 ];
 
 const COMBINED_BOTH = [
-  'worker: budget',
-  'worker: sai-1-spec-proposal-worker',
-  'worker: sai-3-implementation-worker',
-  'command: sai-1-spec',
-  'command: sai-backfill',
-  'command: sai-pr',
+  'worker:budget',
+  'worker:sai-1-spec-proposal-worker',
+  'worker:sai-3-implementation-worker',
+  'command:sai-1-spec',
+  'command:sai-backfill',
+  'utility:sai-pr',
 ];
 
 const COMBINED_BOTH_BARE = [
@@ -138,12 +142,13 @@ const OPENCODE_COMMANDS = [
   'sai-worktree',
 ];
 
-// Step 4: full Both-scope row set for the default-selection assertion — every
+// Step 4: full All-scope row set for the default-selection assertion — every
 // worker and every command of the harness, workers first, each family
 // alphabetical, type-prefixed (the Step 3 flow sorts each family).
 const COMBINED_BOTH_FULL = [
-  ...[...OPENCODE_AGENTS].sort().map(name => `worker: ${name}`),
-  ...[...COMMANDS].sort().map(name => `command: ${name}`),
+  ...[...OPENCODE_AGENTS].sort().map(name => `worker:${name}`),
+  ...[...MODEL_COMMANDS].sort().map(name => `command:${name}`),
+  ...[...UTILITY_COMMANDS].sort().map(name => `utility:${name}`),
 ];
 
 const CHECKLIST_LEGEND = 'Up/Down move · Space toggle · Enter confirm · ←/Esc back · q/Ctrl-C cancel';
@@ -175,6 +180,17 @@ function makeFakeAdapter(workers, ops, settings = { model: 'opencode-go/test-mod
     },
     enumerateCommands() {
       return commands;
+    },
+    enumerateTargets() {
+      return {
+        worker: workers,
+        agent: [],
+        command: commands.filter(name => !UTILITY_COMMANDS.includes(name)),
+        utility: commands.filter(name => UTILITY_COMMANDS.includes(name)),
+      };
+    },
+    effectiveSetting() {
+      return 'opencode-go/test-model (high)';
     },
     async selectSettings(label) {
       ops.select.push(label);
@@ -401,7 +417,7 @@ test('customize OpenCode flow persists every selected agent, never invokes Claud
     assert.equal(checklistCalls.length, 1, 'the checklist should be invoked exactly once');
     assert.equal(opencodeFactoryCalls, 1, 'createOpencodeAdapter should be invoked exactly once');
     assert.equal(claudeFactoryCalls, 0, 'createClaudeAdapter must never be invoked');
-    assert.deepEqual(opencodeOps.select, [OPENCODE_AGENTS.join(', ')],
+    assert.deepEqual(opencodeOps.select, [OPENCODE_AGENTS.map(name => `worker:${name}`).join(', ')],
       'selectSettings should run exactly once for the whole confirmed subset');
     assert.deepEqual(opencodeOps.create.map(entry => entry.target.name), OPENCODE_AGENTS,
       'createLocalOverride should run exactly once per opencode agent');
@@ -451,7 +467,7 @@ test('customize Claude Code flow persists every selected agent, never invokes Op
     assert.equal(checklistCalls.length, 1, 'the checklist should be invoked exactly once');
     assert.equal(claudeFactoryCalls, 1, 'createClaudeAdapter should be invoked exactly once');
     assert.equal(opencodeFactoryCalls, 0, 'createOpencodeAdapter must never be invoked');
-    assert.deepEqual(claudeOps.select, [CLAUDE_AGENTS.join(', ')],
+    assert.deepEqual(claudeOps.select, [CLAUDE_AGENTS.map(name => `worker:${name}`).join(', ')],
       'selectSettings should run exactly once for the whole confirmed subset');
     assert.deepEqual(claudeOps.create.map(entry => entry.target.name), CLAUDE_AGENTS,
       'createLocalOverride should run exactly once per claude agent');
@@ -466,20 +482,29 @@ test('customize Claude Code flow persists every selected agent, never invokes Op
   }
 });
 
-test('opencode enumerateWorkers returns exactly the 12 managed workers', () => {
+test('opencode enumerateWorkers returns only the nine routed workers', () => {
   const adapter = createOpencodeAdapter({ repoRoot: REPO_ROOT });
   const agents = adapter.enumerateWorkers();
-  assert.equal(agents.length, 12, 'exactly 12 agents should enumerate for opencode');
-  assert.deepEqual([...agents].sort(), [...OPENCODE_AGENTS].sort(),
-    'opencode agents should be exactly the 12 managed names');
+  assert.equal(agents.length, 9, 'exactly nine routed workers should enumerate for opencode');
+  assert.deepEqual([...agents].sort(), [...OPENCODE_WORKERS].sort(),
+    'opencode workers should exclude generic delegation agents');
 });
 
-test('claude enumerateWorkers returns exactly the 12 managed agents', () => {
+test('claude enumerateWorkers returns only the nine routed workers', () => {
   const adapter = createClaudeAdapter({ repoRoot: REPO_ROOT });
   const agents = adapter.enumerateWorkers();
-  assert.equal(agents.length, 12, 'exactly 12 agents should enumerate for claude');
-  assert.deepEqual([...agents].sort(), [...CLAUDE_AGENTS].sort(),
-    'claude agents should be exactly the 12 managed names: nine workers plus the three budget agents');
+  assert.equal(agents.length, 9, 'exactly nine routed workers should enumerate for claude');
+  assert.deepEqual([...agents].sort(), [...CLAUDE_WORKERS].sort(),
+    'claude workers should exclude generic delegation agents');
+});
+
+test('both adapters classify generic delegation agents separately from Worker Matrix workers', () => {
+  const claude = createClaudeAdapter({ repoRoot: REPO_ROOT }).enumerateTargets();
+  const opencode = createOpencodeAdapter({ repoRoot: REPO_ROOT }).enumerateTargets();
+  assert.deepEqual(claude.agent, ['budget-executor', 'budget-explorer', 'budget-subagent']);
+  assert.deepEqual(opencode.agent, ['budget', 'executor', 'explore']);
+  assert.equal(claude.worker.length, 9);
+  assert.equal(opencode.worker.length, 9);
 });
 
 test('Claude settings selection asks one combined frame from the real catalog and resolves the confirmed pair', async () => {
@@ -727,9 +752,9 @@ test('full dependent-flow traversal walks menu, harness, checklist, and provider
 
 test('checklist receives the full enumerated target list of the chosen harness and scope as its default selection', async () => {
   const cases = [
-    { scope: 'Workers', items: OPENCODE_AGENTS },
-    { scope: 'Commands', items: COMMANDS },
-    { scope: 'Both', items: COMBINED_BOTH_FULL },
+    { scope: 'Workers', items: OPENCODE_AGENTS.map(name => `worker:${name}`) },
+    { scope: 'Commands', items: MODEL_COMMANDS.map(name => `command:${name}`).sort() },
+    { scope: 'All', items: COMBINED_BOTH_FULL },
   ];
   for (const item of cases) {
     const opencodeOps = { select: [], create: [] };
@@ -816,7 +841,7 @@ test('production prompt bindings retain the expected shared-selector surface and
 
 // --- Step 3: customization scope screen ---
 
-test('scope Workers presents the worker-family checklist and scope Commands presents the command-family checklist, each with bare names', async () => {
+test('scope Workers presents worker identities and scope Commands presents command identities', async () => {
   const opencodeOps = { select: [], create: [] };
   const claudeOps = { select: [], create: [] };
   const restoreOpencode = patchFactory('createOpencodeAdapter', () =>
@@ -834,9 +859,9 @@ test('scope Workers presents the worker-family checklist and scope Commands pres
     assert.equal(workersResult.status, 'skipped');
     assert.equal(workersResult.reason, 'cancelled');
     assert.equal(workerChecklist.length, 1, 'the checklist should be invoked exactly once for the Workers scope');
-    assert.deepEqual(workerChecklist[0][0], OPENCODE_AGENTS,
-      'the Workers scope checklist items are the worker-family targets with bare names');
-    assert.deepEqual(workerChecklist[0][1], OPENCODE_AGENTS,
+    assert.deepEqual(workerChecklist[0][0], OPENCODE_AGENTS.map(name => `worker:${name}`),
+      'the Workers scope checklist items retain stable worker identities');
+    assert.deepEqual(workerChecklist[0][1], OPENCODE_AGENTS.map(name => `worker:${name}`),
       'every worker is pre-selected by default in the Workers scope');
 
     const commandAnswers = ['Customize models', 'OpenCode', 'Commands', 'Exit'];
@@ -850,9 +875,9 @@ test('scope Workers presents the worker-family checklist and scope Commands pres
     assert.equal(commandsResult.status, 'skipped');
     assert.equal(commandsResult.reason, 'cancelled');
     assert.equal(commandChecklist.length, 1, 'the checklist should be invoked exactly once for the Commands scope');
-    assert.deepEqual(commandChecklist[0][0], COMMANDS,
-      'the Commands scope checklist items are the command-family targets with bare names');
-    assert.deepEqual(commandChecklist[0][1], COMMANDS,
+    assert.deepEqual(commandChecklist[0][0], MODEL_COMMANDS.map(name => `command:${name}`).sort(),
+      'the Commands scope checklist items retain stable command identities');
+    assert.deepEqual(commandChecklist[0][1], MODEL_COMMANDS.map(name => `command:${name}`).sort(),
       'every command is pre-selected by default in the Commands scope');
   } finally {
     restoreOpencode();
@@ -860,14 +885,14 @@ test('scope Workers presents the worker-family checklist and scope Commands pres
   }
 });
 
-test('scope Both presents combined worker and command rows type-prefixed, workers first, each family alphabetical; confirmation returns the type-prefixed values', async () => {
+test('scope All presents combined worker and command identities, workers first, each family alphabetical', async () => {
   const opencodeOps = { select: [], create: [] };
   const claudeOps = { select: [], create: [] };
   const restoreOpencode = patchFactory('createOpencodeAdapter', () =>
     makeFakeAdapter(SCRAMBLED_WORKERS, opencodeOps, { model: 'opencode-go/test-model' }, SCRAMBLED_COMMANDS));
   const restoreClaude = patchFactory('createClaudeAdapter', () => makeFakeAdapter(CLAUDE_AGENTS, claudeOps));
   try {
-    const answers = ['Customize models', 'OpenCode', 'Both', 'Exit'];
+    const answers = ['Customize models', 'OpenCode', 'All', 'Exit'];
     const checklistCalls = [];
     const result = await runPostSetupMenu({
       projectPath: REPO_ROOT,
@@ -877,13 +902,13 @@ test('scope Both presents combined worker and command rows type-prefixed, worker
     });
     assert.equal(result.status, 'skipped');
     assert.equal(result.reason, 'cancelled');
-    assert.equal(checklistCalls.length, 1, 'the checklist should be invoked exactly once for the Both scope');
+    assert.equal(checklistCalls.length, 1, 'the checklist should be invoked exactly once for the All scope');
     assert.deepEqual(checklistCalls[0][0], COMBINED_BOTH,
-      'the Both scope checklist items are worker: <name> rows followed by command: <name> rows, each family alphabetical');
+      'the All scope checklist items retain family-prefixed identities');
     assert.deepEqual(checklistCalls[0][1], COMBINED_BOTH,
-      'every combined row is pre-selected by default in the Both scope');
+      'every combined row is pre-selected by default in the All scope');
     assert.deepEqual(opencodeOps.select, [COMBINED_BOTH.join(', ')],
-      'confirming the Both scope returns the type-prefixed values into the settings selection');
+      'confirming the All scope returns the stable values into the settings selection');
     assert.deepEqual(opencodeOps.create.map(entry => entry.target.name), COMBINED_BOTH_BARE,
       'each confirmed row configures its bare-name target once, in the combined row order');
     assert.equal(claudeOps.select.length, 0, 'claude must never be configured');
@@ -891,6 +916,40 @@ test('scope Both presents combined worker and command rows type-prefixed, worker
   } finally {
     restoreOpencode();
     restoreClaude();
+  }
+});
+
+test('injected checklist seam renders family-prefixed model annotations but returns stable identities', async () => {
+  const ops = { select: [], create: [] };
+  const restore = patchFactory('createOpencodeAdapter', () => makeFakeAdapter(
+    ['sai-worker'], ops, { model: 'opencode-go/test-model', variant: 'high' },
+    ['sai-pr', 'sai-build']
+  ));
+  try {
+    const checklistCalls = [];
+    const answers = ['Customize models', 'OpenCode', 'All', 'Exit'];
+    const result = await runPostSetupMenu({
+      projectPath: REPO_ROOT,
+      isTTY: true,
+      promptChoice: async () => answers.shift(),
+      promptChecklist: recordChecklist(checklistCalls),
+    });
+    assert.equal(result.reason, 'cancelled');
+    assert.deepEqual(checklistCalls[0][0], [
+      'worker:sai-worker', 'command:sai-build', 'utility:sai-pr',
+    ]);
+    assert.deepEqual(checklistCalls[0][1], checklistCalls[0][0],
+      'selection defaults use stable values, not display labels');
+    assert.deepEqual(checklistCalls[0][4].displayOptions, [
+      'sai-worker \x1b[90m[opencode-go/test-model (high)]\x1b[0m',
+      'sai-build \x1b[90m[opencode-go/test-model (high)]\x1b[0m',
+      'sai-pr \x1b[90m[opencode-go/test-model (high)]\x1b[0m',
+    ].map((label, index) => `${checklistCalls[0][0][index]}${label.slice(label.indexOf(' \x1b'))}`),
+      'display labels include the family prefix and subdued effective setting');
+    assert.deepEqual(ops.select, ['worker:sai-worker, command:sai-build, utility:sai-pr'],
+      'the injected seam returns stable identities independently of labels');
+  } finally {
+    restore();
   }
 });
 
@@ -937,14 +996,14 @@ test('command enumeration reads the manifest-declared package source directory, 
   }
 });
 
-test('Both scope presents worker: budget and command: budget as two distinct rows and confirms both as separate type-prefixed targets', async () => {
+test('All scope presents worker:budget and command:budget as two distinct rows and confirms both as separate targets', async () => {
   const opencodeOps = { select: [], create: [] };
   const claudeOps = { select: [], create: [] };
   const restoreOpencode = patchFactory('createOpencodeAdapter', () =>
     makeFakeAdapter(['budget'], opencodeOps, { model: 'opencode-go/test-model' }, ['budget']));
   const restoreClaude = patchFactory('createClaudeAdapter', () => makeFakeAdapter(CLAUDE_AGENTS, claudeOps));
   try {
-    const answers = ['Customize models', 'OpenCode', 'Both', 'Exit'];
+    const answers = ['Customize models', 'OpenCode', 'All', 'Exit'];
     const checklistCalls = [];
     const result = await runPostSetupMenu({
       projectPath: REPO_ROOT,
@@ -954,13 +1013,13 @@ test('Both scope presents worker: budget and command: budget as two distinct row
     });
     assert.equal(result.status, 'skipped');
     assert.equal(result.reason, 'cancelled');
-    assert.equal(checklistCalls.length, 1, 'the checklist should be invoked exactly once for the Both scope');
-    assert.deepEqual(checklistCalls[0][0], ['worker: budget', 'command: budget'],
-      'the Both scope presents worker: budget and command: budget as two distinct rows');
-    assert.deepEqual(checklistCalls[0][1], ['worker: budget', 'command: budget'],
+    assert.equal(checklistCalls.length, 1, 'the checklist should be invoked exactly once for the All scope');
+    assert.deepEqual(checklistCalls[0][0], ['worker:budget', 'command:budget'],
+      'the All scope presents worker:budget and command:budget as two distinct rows');
+    assert.deepEqual(checklistCalls[0][1], ['worker:budget', 'command:budget'],
       'both distinct rows are pre-selected by default');
-    assert.deepEqual(opencodeOps.select, ['worker: budget, command: budget'],
-      'confirming the Both scope returns both distinct rows as separate type-prefixed targets');
+    assert.deepEqual(opencodeOps.select, ['worker:budget, command:budget'],
+      'confirming the All scope returns both distinct rows as separate stable targets');
     assert.deepEqual(opencodeOps.create.map(entry => entry.target.name), ['budget', 'budget'],
       'each distinct row configures its own budget target: the worker and the command');
     assert.equal(claudeOps.select.length, 0, 'claude must never be configured');
@@ -971,23 +1030,23 @@ test('Both scope presents worker: budget and command: budget as two distinct row
   }
 });
 
-test('Both scope rows are independently selectable: confirming only the command row configures exactly that target', async () => {
+test('All scope rows are independently selectable: confirming only the command row configures exactly that target', async () => {
   const opencodeOps = { select: [], create: [] };
   const claudeOps = { select: [], create: [] };
   const restoreOpencode = patchFactory('createOpencodeAdapter', () =>
     makeFakeAdapter(['budget'], opencodeOps, { model: 'opencode-go/test-model' }, ['budget']));
   const restoreClaude = patchFactory('createClaudeAdapter', () => makeFakeAdapter(CLAUDE_AGENTS, claudeOps));
   try {
-    const answers = ['Customize models', 'OpenCode', 'Both', 'Exit'];
+    const answers = ['Customize models', 'OpenCode', 'All', 'Exit'];
     const result = await runPostSetupMenu({
       projectPath: REPO_ROOT,
       isTTY: true,
       promptChoice: async () => answers.shift() ?? '<model>',
-      promptChecklist: async () => ({ status: 'confirmed', items: ['command: budget'] }),
+      promptChecklist: async () => ({ status: 'confirmed', items: ['command:budget'] }),
     });
     assert.equal(result.status, 'skipped');
     assert.equal(result.reason, 'cancelled');
-    assert.deepEqual(opencodeOps.select, ['command: budget'],
+    assert.deepEqual(opencodeOps.select, ['command:budget'],
       'confirming only the command row returns exactly that type-prefixed target');
     assert.deepEqual(opencodeOps.create.map(entry => entry.target.name), ['budget'],
       'only the confirmed command row configures a target; the unconfirmed worker row does not');
@@ -1022,15 +1081,17 @@ test('back at the scope screen re-opens the harness selector and persists no sel
     assert.equal(result.status, 'skipped');
     assert.equal(result.reason, 'cancelled');
     const scopePrompts = prompts.filter(prompt =>
-      prompt.options.length === 3
+      prompt.options.length === 5
       && prompt.options.includes('Workers')
       && prompt.options.includes('Commands')
-      && prompt.options.includes('Both'));
+      && prompt.options.includes('Agents')
+      && prompt.options.includes('Utilities')
+      && prompt.options.includes('All'));
     assert.equal(scopePrompts.length, 2,
       'back at the scope screen should re-present the scope screen after the harness is re-picked');
     for (const prompt of scopePrompts) {
-      assert.deepEqual(prompt.options, ['Workers', 'Commands', 'Both'],
-        'the scope screen offers exactly Workers, Commands, and Both');
+      assert.deepEqual(prompt.options, ['Workers', 'Agents', 'Commands', 'Utilities', 'All'],
+        'the scope screen offers exactly the five model customization families');
     }
     assert.equal(prompts.filter(prompt => prompt.question === 'Choose a harness:').length, 2,
       'back at the scope screen should re-open the harness selector');
@@ -1075,9 +1136,9 @@ test('back at the target checklist re-opens the scope screen and persists no sel
     assert.equal(checklistCalls.length, 2,
       'back at the target checklist should re-open the scope screen and then the checklist again');
     assert.deepEqual(checklistCalls[0][0], OPENCODE_AGENTS,
-      'the first checklist pass presents the Workers scope targets with bare names');
+      'the first checklist pass presents the Workers scope targets with stable worker identities');
     assert.deepEqual(checklistCalls[1][0], COMMANDS,
-      'after back the re-picked Commands scope presents the command-family targets with bare names');
+      'after back the re-picked Commands scope presents stable command identities');
     assert.equal(questions.length, 5,
       'menu, harness, scope, the re-presented scope, and the fresh menu are prompted');
     assert.equal(questions[1], 'Choose a harness:', 'the harness selector precedes the first scope screen');
@@ -3204,8 +3265,8 @@ test('customization inventory is matrix-derived: exactly nine worker agents per 
 // --- Step 5: command-family override persistence ---
 
 // Command targets reach createLocalOverride as { family, name } records; the
-// family value mirrors the type prefix rendered by the Both-scope checklist
-// ('command: <name>' rows -> family 'command', 'worker: <name>' rows -> family
+// family value mirrors the stable prefix rendered by the All-scope checklist
+// ('command:<name>' rows -> family 'command', 'worker:<name>' rows -> family
 // 'worker'). Every fixture run injects the scratch command roots so patch
 // sources resolve inside the fixture and never touch the real home command
 // directories.
@@ -3527,7 +3588,7 @@ test('flow: command targets with no source or invalid frontmatter are reported i
   }
 });
 
-test('the settings selector is invoked exactly once per run for the whole confirmed subset, including Both scope, and never for an empty subset', async () => {
+test('the settings selector is invoked exactly once per run for the whole confirmed subset, including All scope, and never for an empty subset', async () => {
   const opencodeOps = { select: [], create: [] };
   const claudeOps = { select: [], create: [] };
   const restoreOpencode = patchFactory('createOpencodeAdapter', () =>
@@ -3540,8 +3601,8 @@ test('the settings selector is invoked exactly once per run for the whole confir
   const restoreClaude = patchFactory('createClaudeAdapter', () =>
     makeFakeAdapter(CLAUDE_AGENTS, claudeOps));
   try {
-    const answers = ['Customize models', 'OpenCode', 'Both', 'Exit'];
-    const both = ['worker: budget', 'worker: explore', 'command: budget', 'command: sai-1-spec'];
+    const answers = ['Customize models', 'OpenCode', 'All', 'Exit'];
+    const both = ['worker:budget', 'worker:explore', 'command:budget', 'command:sai-1-spec'];
     const bothBare = ['budget', 'explore', 'budget', 'sai-1-spec'];
     const result = await runPostSetupMenu({
       projectPath: REPO_ROOT,
@@ -3552,7 +3613,7 @@ test('the settings selector is invoked exactly once per run for the whole confir
     assert.equal(result.status, 'skipped');
     assert.equal(result.reason, 'cancelled');
     assert.deepEqual(opencodeOps.select, [both.join(', ')],
-      'the selector runs exactly once for the whole confirmed Both subset');
+      'the selector runs exactly once for the whole confirmed All subset');
     assert.equal(opencodeOps.select.length, 1,
       'exactly one settings selection happens for the whole confirmed subset');
     assert.deepEqual(opencodeOps.create.map(entry => entry.target.name), bothBare,
@@ -3567,7 +3628,7 @@ test('the settings selector is invoked exactly once per run for the whole confir
 
     opencodeOps.select.length = 0;
     opencodeOps.create.length = 0;
-    const emptyAnswers = ['Customize models', 'OpenCode', 'Both'];
+    const emptyAnswers = ['Customize models', 'OpenCode', 'All'];
     let emptyChecklistCalls = 0;
     const emptyResult = await runPostSetupMenu({
       projectPath: REPO_ROOT,

@@ -695,6 +695,7 @@ async function runNavigator({
   output = process.stdout,
   footer,
   preventEmptyConfirm = false,
+  displayOptions,
 }) {
   if (!input.isTTY) {
     return { status: 'non-interactive' };
@@ -709,9 +710,12 @@ async function runNavigator({
       const lines = [];
       if (question) lines.push(question);
       options.forEach((option, i) => {
+        const label = Array.isArray(displayOptions) && displayOptions[i] !== undefined
+          ? displayOptions[i]
+          : option;
         const marker = mode === 'multi' ? (selected[i] ? '[x]' : '[ ]') : '  ';
         const arrow = i === cursor ? '>' : ' ';
-        lines.push(`${arrow} ${marker} ${option}`);
+        lines.push(`${arrow} ${marker} ${label}`);
       });
       if (footer) lines.push(footer);
       return lines;
@@ -789,6 +793,7 @@ function promptChecklist(items, defaultSelected, input, footer, navigatorOptions
   return runNavigator({
     mode: 'multi', options: items, defaultSelected, input, footer,
     preventEmptyConfirm: navigatorOptions?.preventEmptyConfirm === true,
+    displayOptions: navigatorOptions?.displayOptions,
   });
 }
 

@@ -41,15 +41,15 @@ After `Customize models` is selected, the flow MUST offer OpenCode and Claude Co
 - **THEN** the flow MUST dispatch only to the Claude Code adapter
 
 ### Requirement: Customization scope selection
-After harness selection and before any target checklist, the flow MUST present a navigable single-select scope screen offering exactly `Workers`, `Commands`, and `Both`. Selecting `Workers` or `Commands` MUST confine the target checklist to that family; selecting `Both` MUST present the combined checklist. Stepping back from the scope screen MUST re-open the harness selector, and stepping back from the target checklist MUST re-open the scope screen.
+After harness selection and before any target checklist, the flow MUST present a navigable single-select scope screen offering exactly `Workers`, `Agents`, `Commands`, `Utilities`, and `All`. Selecting a named family MUST confine the target checklist to that family; selecting `All` MUST present every family in the order Workers, Agents, Commands, Utilities. Stepping back from the scope screen MUST re-open the harness selector, and stepping back from the target checklist MUST re-open the scope screen.
 
 #### Scenario: User chooses a single family
-- **WHEN** the user selects `Workers` or `Commands` at the scope screen
-- **THEN** the flow MUST present a target checklist of exactly that family's targets with bare names
+- **WHEN** the user selects one of `Workers`, `Agents`, `Commands`, or `Utilities` at the scope screen
+- **THEN** the flow MUST present a target checklist of exactly that family's targets with stable family-prefixed identities
 
-#### Scenario: User chooses Both
-- **WHEN** the user selects `Both` at the scope screen
-- **THEN** the flow MUST present the combined worker and command checklist with family-qualified rows
+#### Scenario: User chooses All
+- **WHEN** the user selects `All` at the scope screen
+- **THEN** the flow MUST present the combined checklist with stable `worker:`, `agent:`, `command:`, and `utility:` identities
 
 #### Scenario: Back from the scope screen reopens the harness selector
 - **WHEN** the user presses the back key at the scope screen
@@ -71,21 +71,21 @@ OpenCode and Claude Code MUST be represented by independent adapters. Each adapt
 - **THEN** the flow MUST call the Claude Code adapter's operations and MUST NOT call OpenCode adapter operations
 
 ### Requirement: Complete OpenCode traversal
-The OpenCode adapter MUST derive its complete harness-specific worker set from the canonical agents-class projections in `sai/install-manifest.json` and its complete command set from the canonical commands-class projections in the same manifest, and MUST present every resulting target — including the `budget`, `explore`, and `executor` workers and the `budget` command — in the target-selection checklist. Command enumeration MUST read the package sources declared by the manifest's commands-class projections (the harness command source directory and the declared `include` pattern) rather than the installed global command directory. It MUST invoke the dependent OpenCode settings selection and local override creation as specified by the Shared settings selection requirement. For the current repository state, that derived set contains exactly 10 workers and exactly 16 commands; these counts are fixture assertions of the current repository state, not hardcoded enumerations.
+The OpenCode adapter MUST derive routed workers from Worker Matrix agent projections, generic delegation agents from non-matrix agent projections, and commands from the canonical commands-class projections in `sai/install-manifest.json`. The generic agents MUST be `budget`, `executor`, and `explore`; they MUST NOT be classified as workers. The utility commands MUST be `sai-commit`, `sai-pr`, `sai-status`, and `sai-worktree`; all remaining commands belong to Commands. Command enumeration MUST read the package sources declared by the manifest's commands-class projections rather than the installed global command directory. It MUST invoke the dependent OpenCode settings selection and local override creation as specified by the Shared settings selection requirement. For the current repository state, that derived set contains exactly 9 routed workers, 3 generic agents, 13 commands, and 4 utilities; these counts are fixture assertions of the current repository state, not hardcoded enumerations.
 
 #### Scenario: OpenCode customization traverses the selected registry subset
 - **WHEN** OpenCode customization is selected and the checklist is confirmed
-- **THEN** the adapter MUST process exactly the selected targets from the 10 distinct workers and 16 distinct commands derived from the canonical manifest projections, with no early stop or representative-target shortcut
+- **THEN** the adapter MUST process exactly the selected stable identities from the manifest-derived families, with no early stop or representative-target shortcut
 
 ### Requirement: Complete Claude Code traversal
-The Claude Code adapter MUST derive its complete harness-specific worker set from the canonical agents-class projections in `sai/install-manifest.json` and its complete command set from the canonical commands-class projections in the same manifest, and MUST present every resulting target in the target-selection checklist. Command enumeration MUST read the package sources declared by the manifest's commands-class projections rather than the installed global command directory. It MUST invoke Claude Code settings selection and local override creation as specified by the Shared settings selection requirement. For the current repository state, that derived set contains exactly 7 workers and exactly 16 commands; these counts are fixture assertions of the current repository state, not hardcoded enumerations.
+The Claude Code adapter MUST derive routed workers from Worker Matrix agent projections, generic delegation agents from non-matrix agent projections, and commands from the canonical commands-class projections in `sai/install-manifest.json`. The generic agents MUST be `budget-explorer`, `budget-executor`, and `budget-subagent`; they MUST NOT be classified as workers. The utility commands MUST be `sai-commit`, `sai-pr`, `sai-status`, and `sai-worktree`; all remaining commands belong to Commands. Command enumeration MUST read the package sources declared by the manifest's commands-class projections rather than the installed global command directory. It MUST invoke Claude Code settings selection and local override creation as specified by the Shared settings selection requirement. For the current repository state, that derived set contains exactly 9 routed workers, 3 generic agents, 13 commands, and 4 utilities; these counts are fixture assertions of the current repository state, not hardcoded enumerations.
 
 #### Scenario: Claude Code customization traverses the selected registry subset
 - **WHEN** Claude Code customization is selected and the checklist is confirmed
-- **THEN** the adapter MUST process exactly the selected targets from the 7 distinct workers and 16 distinct commands derived from the canonical manifest projections, with no early stop or representative-target shortcut
+- **THEN** the adapter MUST process exactly the selected stable identities from the 9 routed workers, 3 generic agents, 13 commands, and 4 utilities derived from the canonical manifest projections, with no early stop or representative-target shortcut
 
 ### Requirement: Shared settings selection
-After the target-selection checklist confirms a non-empty subset and before any local override is created, the flow SHALL invoke the selected harness's settings selector exactly once for the whole confirmed subset in that customization pass. The collected settings choices — a model and an optional effort choice for Claude Code, and a discovered model with an optional variant for OpenCode — SHALL be passed to the per-target local-override operation once for every selected target. A per-target skipped result means the operation was attempted but its source was unavailable; it SHALL not be treated as a settings-selector failure or prevent later targets from being attempted. In `Both` scope, the selector SHALL run once and the same settings SHALL be passed to every marked target across both families, with no per-family differentiation within a pass. Because the model-customization checklist rejects empty confirmation, the settings selector SHALL never be invoked for an empty selection.
+After the target-selection checklist confirms a non-empty subset and before any local override is created, the flow SHALL invoke the selected harness's settings selector exactly once for the whole confirmed subset in that customization pass. The collected settings choices — a model and an optional effort choice for Claude Code, and a discovered model with an optional variant for OpenCode — SHALL be passed to the per-target local-override operation once for every selected target. A per-target skipped result means the operation was attempted but its source was unavailable; it SHALL not be treated as a settings-selector failure or prevent later targets from being attempted. In `All` scope, the selector SHALL run once and the same settings SHALL be passed to every marked target across all selected families, with no per-family differentiation within a pass. Because the model-customization checklist rejects empty confirmation, the settings selector SHALL never be invoked for an empty selection.
 
 #### Scenario: Settings selector runs exactly once per customization pass
 - **WHEN** the target-selection checklist confirms a non-empty subset
@@ -99,13 +99,28 @@ After the target-selection checklist confirms a non-empty subset and before any 
 - **WHEN** the settings selector returns its settings choices for a confirmed subset of two or more targets
 - **THEN** every selected target's local override SHALL carry those identical settings choices, including the absence of `effort` when the chosen Claude model has no effort selector
 
-#### Scenario: Both scope applies one settings pass across both families
-- **WHEN** the confirmed subset in `Both` scope contains workers and commands and the settings selector returns its choices
-- **THEN** every marked worker and command SHALL receive those identical settings choices in the single pass, with no per-family differentiation
+#### Scenario: All scope applies one settings pass across all families
+- **WHEN** the confirmed subset in `All` scope contains targets from multiple families and the settings selector returns its choices
+- **THEN** every marked target SHALL receive those identical settings choices in the single pass, with no per-family differentiation
 
 #### Scenario: Empty confirmation never reaches settings
 - **WHEN** the user attempts to confirm an empty model-customization checklist
 - **THEN** the checklist SHALL remain open and the settings selector SHALL NOT be invoked
+
+### Requirement: Stable target identities and effective model annotations
+The target checklist SHALL keep stable family-prefixed selection values separate from display labels. Each display label SHALL retain its `worker:`, `agent:`, `command:`, or `utility:` family identity and SHALL append the target's effective setting in subdued styling. The setting SHALL use `provider/model (effort)` formatting, with Claude Code's `effort` and OpenCode's `variant` occupying the tuning position. Project-local overrides SHALL take precedence over installed or global sources; malformed or missing frontmatter SHALL produce a safe unavailable annotation without breaking selection.
+
+#### Scenario: Checklist displays stable identities and current settings
+- **WHEN** a target checklist is rendered for either supported harness
+- **THEN** each row SHALL display its family-prefixed identity and effective model annotation while the confirmed selection value remains the stable identity without the annotation
+
+#### Scenario: Local settings override installed settings
+- **WHEN** a project-local target override exists with valid tunable frontmatter
+- **THEN** the checklist SHALL annotate that local model and tuning value instead of the installed or global source
+
+#### Scenario: Invalid settings do not break selection
+- **WHEN** a target source is missing or its frontmatter is malformed
+- **THEN** the checklist SHALL show an unavailable annotation and SHALL remain selectable
 
 ### Requirement: Claude settings selection
 For every Claude Code customization run with a non-empty confirmed subset, the Claude Code adapter MUST invoke exactly one navigable single-select frame whose options are derived from the adapter-owned static Claude settings catalog. An entry with an `efforts` array MUST be displayed as a concrete model and effort choice together, using the `<model> | <effort>` form; an entry without an `efforts` array MUST be displayed as the model alone. The catalog MUST be the authoritative source for the available model identifiers and each model's effort values, MUST contain at least one valid model entry, and MUST contain no placeholder values such as `<model>` or `<effort>`. The selected result MUST contain only catalog members: `{ model, effort }` for an effort-bearing entry or `{ model }` with no `effort` property for a model-only entry. If the catalog is unavailable or contains no valid model entries, the selector MUST return no settings and MUST allow customization to complete without writing a target. The selector MUST NOT perform Claude live model discovery, claim that end-to-end customization is fake, or perform OpenCode provider, model, or variant discovery. The collected values MUST be forwarded to the persistent local-override operation. The OpenCode adapter MUST continue to use its dependent provider-to-model-to-variant selection instead of this combined frame.
@@ -274,7 +289,7 @@ For every traversed target, the selected harness adapter MUST invoke a local-ove
 - **THEN** the operation SHALL report a persistence failure with a diagnostic for that target and SHALL continue processing the remaining targets
 
 ### Requirement: Navigable target-selection checklist
-The empty-enumeration notice SHALL read `No customization targets are available for the selected scope.` After scope selection and before per-target configuration, the flow SHALL present a navigable multi-select checklist listing every target of the chosen family — or of both families in `Both` scope — derived from the canonical manifest projections in `sai/install-manifest.json` for the chosen harness, with every target selected by default when at least one target exists. Up/down arrows SHALL move the `>` cursor, space SHALL toggle the highlighted target's selection, and Enter SHALL confirm the selection only when at least one target is marked. In a single-family scope, rows SHALL show bare target names in alphabetical order. In `Both` scope, rows SHALL carry a type prefix showing each target's kind — `worker` for a worker and `command` for a command — immediately before its bare name (`worker: <name>` / `command: <name>`), SHALL be grouped by family — all worker rows before all command rows, each family in alphabetical order by name — and the confirmed selection SHALL carry the type-prefixed values so that a worker and a command sharing a name remain distinct targets. The flow SHALL run per-target configuration exactly for the selected targets in checklist order, and SHALL preserve that order for diagnostics. If the adapter enumerates no targets, it SHALL show a notice and return to the scope screen instead of presenting a zero-row checklist.
+The empty-enumeration notice SHALL read `No customization targets are available for the selected scope.` After scope selection and before per-target configuration, the flow SHALL present a navigable multi-select checklist listing every target of the chosen family — or every family in `All` scope — derived from the canonical manifest projections and Worker Matrix metadata in `sai/install-manifest.json` for the chosen harness, with every target selected by default when at least one target exists. Up/down arrows SHALL move the `>` cursor, space SHALL toggle the highlighted target's selection, and Enter SHALL confirm the selection only when at least one target is marked. Rows SHALL retain stable family-prefixed identities (`worker:`, `agent:`, `command:`, or `utility:`) and append the current effective model annotation in subdued styling; display labels SHALL remain separate from the confirmed stable values. Rows SHALL be grouped in Workers, Agents, Commands, Utilities order, with each family in alphabetical order by name. The flow SHALL run per-target configuration exactly for the selected targets in checklist order, and SHALL preserve that order for diagnostics. If the adapter enumerates no targets, it SHALL show a notice and return to the scope screen instead of presenting a zero-row checklist.
 
 #### Scenario: Checklist defaults to all targets selected
 - **WHEN** the user enters the target-selection checklist for a harness and scope
@@ -284,13 +299,13 @@ The empty-enumeration notice SHALL read `No customization targets are available 
 - **WHEN** the user deselects one or more targets and confirms with Enter
 - **THEN** per-target configuration SHALL run only for the targets remaining selected
 
-#### Scenario: Both mode keeps same-named targets distinct
-- **WHEN** the user enters the `Both` checklist for the OpenCode harness, whose worker and command sets both contain a target named `budget`
-- **THEN** the checklist SHALL present `worker: budget` and `command: budget` as two distinct rows, each independently selectable, and confirmation SHALL return both as separate type-prefixed targets
+#### Scenario: All mode keeps same-named targets and families distinct
+- **WHEN** the user enters the `All` checklist for the OpenCode harness, whose worker and command sets both contain a target named `budget`
+- **THEN** the checklist SHALL present `worker:budget` and `command:budget` as two distinct rows, each independently selectable, and confirmation SHALL return both as separate stable identities
 
-#### Scenario: Both mode groups rows by family
-- **WHEN** the user enters the `Both` checklist for a harness
-- **THEN** every worker row SHALL precede every command row, and within each family the rows SHALL appear in alphabetical order by bare name
+#### Scenario: All mode groups rows by family
+- **WHEN** the user enters the `All` checklist for a harness
+- **THEN** Workers SHALL precede Agents, Agents SHALL precede Commands, Commands SHALL precede Utilities, and rows within each family SHALL appear in alphabetical order by name
 
 #### Scenario: Empty selection remains on the checklist
 - **WHEN** the user deselects every target and presses Enter

@@ -348,7 +348,7 @@ test('back at the settings screen re-opens the target checklist without persisti
     assert.equal(result.reason, 'cancelled');
     assert.equal(checklistSelections.length, 2,
       'stepping back from the settings screen should reopen the checklist');
-    assert.deepEqual(ops.select, [AGENTS.join(', '), AGENTS[1]],
+    assert.deepEqual(ops.select, [AGENTS.map(name => `worker:${name}`).join(', '), `worker:${AGENTS[1]}`],
       'the second settings screen should describe the corrected subset');
     assert.deepEqual(ops.create.map(entry => entry.target.name), [AGENTS[1]],
       'only the corrected subset should be persisted, exactly once');
