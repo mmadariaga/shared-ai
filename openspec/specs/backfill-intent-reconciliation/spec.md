@@ -8,35 +8,15 @@ The shared backfill instruction flow optionally captures ephemeral user intent a
 
 ### Requirement: Capture optional intent after diff selection
 
-After a valid diff source has been selected and the diff summary has been loaded, `/sai-backfill` SHALL offer exactly two declared choices for optional intent capture using the established two-option-plus-free-text shape from `sai/policies/artifact-feedback-gate.md`: `Provide intent (Recommended)` and `Continue without intent`, in that order. The canonical English prompt SHALL be `Do you have a statement of intent to share below? You can also type it directly in the free-text box.` and SHALL be rendered in the user's language under `sai/policies/remember.md`, falling back to that English form when no language is available. Selecting `Provide intent (Recommended)` without text SHALL produce the canonical English follow-up `Share your statement of intent below.` exactly once before waiting for text. The harness-provided free-text slot SHALL be the only paste channel. Explicit native option selection SHALL take precedence over simultaneously returned free text. A free-text reply is mapped to a declared option only when its trimmed, case-insensitive value exactly equals that option's value; any other non-empty text is captured as a candidate intent statement. Whitespace-only text means no intent.
+After a valid diff source has been selected and the diff summary has been loaded, `/sai-backfill` SHALL first test the request body for a crystallized block: when the `## Ready to Propose` heading appears together with its byte-exact pinned labels, the block SHALL replace the intent-capture choice entirely, its consumed fields SHALL resolve through the label → mined-prose → ask chain identically with and without fast-track, and its resolved records SHALL enter classification identically to statement-derived records with no raw statement retained. When no block is detected, the command SHALL offer exactly two declared choices using the established two-option-plus-free-text shape: `Provide intent (Recommended)` and `Continue without intent`, in that order, under the canonical English prompt rendered per `sai/policies/remember.md`.
 
-#### Scenario: User supplies intent directly in the free-text slot
-- **WHEN** the diff is loaded and the user supplies non-empty text that selects neither declared choice
-- **THEN** the command captures that text as the in-conversation intent statement and begins reconciliation before the fixed interview
+#### Scenario: Detected block skips the capture choice
+- **WHEN** the request body contains the `## Ready to Propose` heading with its pinned labels
+- **THEN** no intent-capture choice is offered and reconciliation begins from block-derived records
 
-#### Scenario: User chooses the intent option before pasting
-- **WHEN** the user selects the intent-capture choice without text
-- **THEN** the command uses the established clean follow-up turn for free-text input and does not treat the empty selection as a no-intent decision
-
-#### Scenario: User supplies no intent
-- **WHEN** the user selects the no-intent choice
-- **THEN** the command continues to the existing interview without attempting intent parsing or intent reconciliation
-
-#### Scenario: Native option and free text arrive together
-- **WHEN** a harness returns a declared option and free text in the same interaction
-- **THEN** the selected option controls the outcome: the intent option captures non-empty text, while the no-intent option discards attached text
-
-#### Scenario: Free text is whitespace or choice-like
-- **WHEN** the free-text channel contains only whitespace or exactly matches a declared option after trimming and case-folding
-- **THEN** whitespace produces no intent and an exact choice-like value follows the corresponding option semantics rather than becoming intent text
-
-#### Scenario: Non-empty text yields no usable intent context
-- **WHEN** a non-empty candidate statement contains no actionable capability, constraint, boundary, and no rejected alternative that constrains the result
-- **THEN** the command reports that no usable intent was identified and follows the ordinary no-intent path
-
-#### Scenario: Candidate contains only rejected alternatives
-- **WHEN** a non-empty candidate statement contains one or more rejected alternatives but no capability, constraint, or boundary to reconcile
-- **THEN** the command treats the rejected alternatives as usable intent context, runs the intent-aware conflict scan, records prior-intent provenance, and produces no reconciliation questions or normative requirements for those alternatives
+#### Scenario: No block offers the two choices unchanged
+- **WHEN** the request body carries no pinned labels
+- **THEN** the intent-capture choice is offered exactly as before this capability's extension
 
 ### Requirement: Preserve the no-intent backfill path
 
@@ -84,23 +64,15 @@ When a candidate intent statement has been captured, the command SHALL treat eac
 
 ### Requirement: Drive bounded questions from unevidenced intent
 
-The first five `stated-but-unevidenced` items, in reconciliation order, SHALL each produce one targeted additional question that identifies the item and names the code evidence that would substantiate it. If more than five items exist, all remaining items SHALL be covered by one grouped overflow question. These questions SHALL be asked one at a time after the two fixed questions. A qualifying preservation confirmation SHALL directly and unambiguously state that the named behavior or boundary was intentionally preserved or left unchanged; omission, deferral, accident, ambiguity, or contradiction SHALL not qualify. Only a qualifying confirmation permits the confirmed boundary to enter a normative artifact. Nothing SHALL be written before every generated question is answered.
+When `fast_track_active` is true, the command SHALL NOT ask any generated reconciliation question: every `stated-but-unevidenced` item remains non-normative exactly as an unanswered item does and enters neither proposal nor specs as normative language in that run, and the flow continues straight to the scope-drift report. Otherwise, the first five `stated-but-unevidenced` items in reconciliation order SHALL each produce one targeted additional question identifying the item and naming the code evidence that would substantiate it, with more than five covered by one grouped overflow question, asked one at a time after the two fixed questions. A qualifying preservation confirmation SHALL directly and unambiguously state deliberate preservation; only such a confirmation permits the boundary to enter a normative artifact.
 
-#### Scenario: Gap receives explicit preservation confirmation
-- **WHEN** a user answers a targeted question by explicitly confirming that the stated behavior was deliberately preserved
-- **THEN** that confirmation is treated as evidence, and the confirmed boundary may be recorded in the proposal or specs without presenting the unconfirmed intent as code evidence
+#### Scenario: Fast-track skips reconciliation questions
+- **WHEN** stated-but-unevidenced items exist during a fast-track run
+- **THEN** no targeted or overflow question is asked and those items stay outside normative requirements for the run
 
-#### Scenario: Gap answer reveals an omission
-- **WHEN** a user answers that the stated item was not implemented, or does not provide qualifying deliberate-preservation confirmation
-- **THEN** the item remains an omission report and SHALL NOT become a normative spec requirement solely from the intent statement
-
-#### Scenario: Ambiguous gap answer is not evidence
-- **WHEN** a targeted answer is ambiguous, contradictory, or says the behavior was deferred or accidentally omitted
-- **THEN** the answer does not qualify as preservation evidence and the item remains outside normative requirements
-
-#### Scenario: More gaps than the individual-question bound
-- **WHEN** more than five stated-but-unevidenced items remain after reconciliation
-- **THEN** the command asks five targeted questions and one grouped overflow question covering the remaining items
+#### Scenario: Manual mode still asks the bounded questions
+- **WHEN** stated-but-unevidenced items exist without fast-track
+- **THEN** up to five targeted questions plus one grouped overflow question are asked one at a time before any artifact is written
 
 ### Requirement: Report scope drift without blocking specification
 
@@ -148,12 +120,12 @@ Every backfill SHALL continue to write the current metadata keys `schema`, date-
 
 ### Requirement: Preserve the backfill artifact boundary and write gate
 
-The intent-aware flow SHALL write only `.openspec.yaml`, `proposal.md`, and capability specs under the selected change directory. It SHALL never create `design.md`, `tasks.md`, or `implementation.md`, and SHALL write no artifact before the diff selection, optional intent capture, fixed questions, generated questions, conflict decision, and change-name confirmation are complete.
+The intent-aware flow SHALL write only `.openspec.yaml`, `proposal.md`, and capability specs under the selected change directory. It SHALL never create `design.md`, `tasks.md`, or `implementation.md`, and SHALL write no artifact before the diff selection, the applicable intent path (capture choice or block intake), the applicable interview, conflict-gate resolution (an explicit proceed-or-abort answer, or automatic continuation under fast-track), and change-name resolution (user confirmation, or rule-governed direct acceptance under the name-precedence rules) are complete.
 
-#### Scenario: All pre-generation decisions are complete
-- **WHEN** the user has selected a diff, completed the applicable interview, resolved conflicts, and confirmed the change name
-- **THEN** the command writes the permitted backfill artifacts and no prohibited planning artifacts
+#### Scenario: Unattended gates resolve by data
+- **WHEN** a fast-track run completes with block-derived fixed answers, an auto-proceeded verbatim conflict report, and an accepted change name
+- **THEN** the permitted backfill artifacts are written and no prohibited planning artifact exists
 
 #### Scenario: A required answer or gate is still pending
-- **WHEN** any fixed or generated answer, conflict decision, or change-name confirmation is missing
+- **WHEN** any applicable interview answer, conflict-gate resolution, or name resolution is missing
 - **THEN** the command writes no artifact, regardless of how much intent or diff context is already available

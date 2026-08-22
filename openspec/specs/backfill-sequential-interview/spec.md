@@ -2,19 +2,19 @@
 
 ### Requirement: Interview questions asked sequentially
 
-The backfill command SHALL ask the two fixed interview questions one at a time, waiting for the user's full response to each question before proceeding to the next. Both questions MUST NOT be asked in the same message.
+The backfill command SHALL present the two fixed interview questions one at a time, waiting for the user's full response to each question before proceeding, only for questions that remain unanswered after crystallized-block resolution. When block resolution answers both questions, the interview presents no message and the flow continues to adaptive evaluation; when one remains, it alone is presented sequentially.
 
-#### Scenario: Question 1 asked first
-- **WHEN** Phase 2 interview begins
-- **THEN** only Question 1 ("What problem does this solve?") is presented; the agent waits for the user's response
+#### Scenario: Both questions resolved by the block
+- **WHEN** block resolution answered Question 1 and Question 2
+- **THEN** no interview turn is emitted and neither question reaches the user
 
-#### Scenario: Question 2 asked after Question 1 answered
-- **WHEN** the user provides a complete answer to Question 1
-- **THEN** Question 2 ("What are the known limitations or technical debt left behind?") is presented; the agent waits for the user's response
+#### Scenario: One question survives resolution
+- **WHEN** only Question 2 lacks a derivable answer
+- **THEN** Question 2 alone is presented and the command waits for the user's full response before continuing
 
 #### Scenario: No merged questions
-- **WHEN** the interview begins
-- **THEN** the two fixed questions are never combined into a single message regardless of diff complexity
+- **WHEN** more than one interview question is presented
+- **THEN** the questions appear in separate messages, never combined into one
 
 ### Requirement: Sequential interview keeps pinned free-text delivery
 

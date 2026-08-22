@@ -78,6 +78,13 @@
 
   ## Needs-input routing
 
+  On an unattended envelope — a detected crystallized block, a parsed
+  diff-source token, and `--fast-track` — the worker returns zero
+  `needs_input` results: route directly from dispatch to coordinator-owned
+  validation and execution, presenting worker-authored payload content (such
+  as the verbatim conflict report auto-proceeded under fast-track) unaltered
+  as ordinary conversation text.
+
   On a worker `needs_input` result, present it per its kind and forward the
   exact answer to the same worker through the binding's continuation mechanism,
   appending only `{question, options, answer_value}` to the opaque input

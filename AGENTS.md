@@ -231,13 +231,14 @@ The three criteria, the ordered routing test that resolves `adr` vs `ddr`, and t
 
 ### Fast-track flag (`--fast-track`)
 
-A per-invocation opt-in on `sai-explore`, `sai-2-design`, `sai-4-apply`, and `sai-archive` that trades a fixed, audited set of gates for a single end-of-run checkpoint. Parsed in the shared body file (not the wrappers) so behavior is identical across Claude Code and opencode — for routed-shaped `sai-archive`, in its coordinator card, which owns the banner and forwards the cleaned remainder plus the `fast_track_active` session state to its worker. `/sai-build` is not a fifth opt-in: it strips an explicit `--fast-track` token as a behavioral no-op and unconditionally injects fast-track for the chained apply segment. Each command's opt-out set is fixed:
+A per-invocation opt-in on `sai-explore`, `sai-2-design`, `sai-4-apply`, `sai-archive`, and `sai-backfill` that trades a fixed, audited set of gates for a single end-of-run checkpoint. Parsed in the shared body file (not the wrappers) so behavior is identical across Claude Code and opencode — for routed-shaped `sai-archive`, in its coordinator card, which owns the banner and forwards the cleaned remainder plus the `fast_track_active` session state to its worker; for routed-shaped `sai-backfill`, in its worker card, which parses `--fast-track` and the diff-source tokens (`--staged | --unstaged | --diff <sha>`) from `arguments_value` itself (phase-owned parse, no banner). `/sai-build` is not a sixth opt-in: it strips an explicit `--fast-track` token as a behavioral no-op and unconditionally injects fast-track for the chained apply segment. Each command's opt-out set is fixed:
 - `sai-explore` — skips both language gates (artifact review and crystallization).
 - `sai-2-design` — auto-approves the specs approval gate.
 - `sai-4-apply` — pre-activates session commit authorization and defers Human Verification to end-of-run.
 - `sai-archive` — auto-proceeds the unchecked-items gate (always) and the delta-spec sync gate (conditional: implementation applied or change backfilled).
+- `sai-backfill` — skips generated reconciliation questions (remaining `stated-but-unevidenced` items stay non-normative), auto-proceeds the spec-conflict gate after carrying the conflict report verbatim, and auto-accepts a crystallized-block `**Change name**` without the yes/no confirmation.
 
-Safe-operations confirmations and all unnamed gates remain in force.
+Safe-operations confirmations and all unnamed gates remain in force — including backfill's hard halts and its MANDATORY STOP literal, and fast-track never suppresses an input question (a missing diff-source token still fires the normal ask).
 
 ## Installation
 

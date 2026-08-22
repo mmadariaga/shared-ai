@@ -12,21 +12,15 @@ Before writing any output file, the command SHALL scan `openspec/specs/` to iden
 - **THEN** the command surfaces each conflict with: (a) the path to the affected spec, (b) a description of what would change, (c) the reason the change is needed
 
 ### Requirement: User decides to proceed or abort after conflict report
-When conflicts are detected, the command SHALL present the full conflict report to the user and wait for an explicit decision to proceed or abort. The command SHALL NOT make this decision autonomously.
+When conflicts are detected, the command SHALL present the full conflict report to the user and wait for an explicit decision to proceed or abort, and SHALL NOT make this decision autonomously — except when `fast_track_active` is true: there the command SHALL carry the report verbatim in its returned payload content and continue automatically without the decision ask, because the real accept-or-reject decision belongs to archive's delta-spec sync gate. On the interactive path, the decision SHALL be presented as a closed-choice prompt per the "Closed-choice prompts" rule in `remember.md` — via the harness's native option-picker when one exists, plain-text fallback otherwise — with options labeled `proceed (Recommended)` and `abort`. A reply that maps to neither option is invalid: the command SHALL re-ask and SHALL NOT proceed, abort, or write on it.
 
-The proceed/abort decision SHALL be presented as a closed-choice prompt per the "Closed-choice prompts" rule in `remember.md` — via the harness's native option-picker when one exists, with a plain-text fallback otherwise. The two options SHALL be labeled with the full words `proceed` and `abort`. A reply that maps to neither option is invalid: the command SHALL re-ask and SHALL NOT proceed or abort on it, mirroring Phase 1's invalid-input handling. This requirement governs only presentation and invalid-input handling; the decision's semantics and the "wait for an explicit decision" behavior are unchanged.
+#### Scenario: Fast-track auto-proceeds after the verbatim report
+- **WHEN** conflicts are detected during a fast-track backfill
+- **THEN** the conflict report is carried verbatim in the payload content and the run continues to change-name handling without presenting the decision
 
-#### Scenario: Decision presented via native option-picker
-- **WHEN** conflicts are detected on a harness that has a native option-picker (e.g. Claude Code)
-- **THEN** the proceed/abort decision is presented through that option-picker with two options labeled `proceed` and `abort`, rather than as a typed `(proceed/abort)` prompt
-
-#### Scenario: Decision presented as plain-text fallback
-- **WHEN** conflicts are detected on a harness with no native option-picker (e.g. GitHub Copilot)
-- **THEN** the question and its `proceed` / `abort` options are printed as plain text and the command waits for a typed reply, with semantics identical to the option-picker presentation
-
-#### Scenario: Reply maps to neither option
-- **WHEN** the user submits a reply that maps to neither `proceed` nor `abort` (e.g. via the auto-appended free-text "Other" option)
-- **THEN** the command treats it as invalid, re-asks the proceed/abort question, and writes no files until a valid choice is made
+#### Scenario: Interactive path still waits for the user
+- **WHEN** conflicts are detected without fast-track
+- **THEN** the proceed-or-abort decision is presented through the native option-picker or its fallback and the command waits for a valid choice before continuing or aborting
 
 #### Scenario: User aborts after conflict report
 - **WHEN** the user chooses to abort after seeing the conflict report

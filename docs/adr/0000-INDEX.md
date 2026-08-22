@@ -209,6 +209,8 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 ### `/sai-backfill`
 
 - [0007 — Diff Source for sai-backfill Selected Interactively](./0007-backfill-diff-source-interactive-selection.md) — Refs 0008
+- [0172a — Fast-track backfill defers spec-conflict consent to archive's delta-spec sync gate](./0172a-fast-track-backfill-conflict-consent-lives-at-archive-sync.md)
+- [0172b — Backfill inputs always ask when data is absent; fast-track only omits gates](./0172b-backfill-inputs-always-ask-flags-only-omit-gates.md)
 
 ### `/sai-commit`
 
@@ -558,6 +560,8 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0119a — Shared raw-readline navigator engine in `bin/install-flow.js`](./0119a-shared-raw-readline-navigator-engine-in-install-flow.md) — Refs 0010
 - [0134 — Materialize Worker Matrix projections from the manifest and retire by hash](./0134-materialize-worker-projections-from-the-manifest-and-retire-by-hash.md)
 - [0138 — Use manifest projections plus hash-gated retirement records](./0138-manifest-projections-and-hash-gated-retirement-records.md) — Refs 0091, Refs 0101, Refs 0134, Refs ddr:0123b
+- [0172a — Fast-track backfill defers spec-conflict consent to archive's delta-spec sync gate](./0172a-fast-track-backfill-conflict-consent-lives-at-archive-sync.md)
+- [0172b — Backfill inputs always ask when data is absent; fast-track only omits gates](./0172b-backfill-inputs-always-ask-flags-only-omit-gates.md)
 
 ---
 
