@@ -7,7 +7,7 @@ allowed-tools: Read, Glob, Skill, Agent, SendMessage, AskUserQuestion, TaskCreat
 ---
 Fetch @skills/fetch/SKILL.md
 Fetch @sai/adapters/claude/boot.md and follow it.
-Fetch @sai/commands/performance/launcher.md and follow those instructions exactly, forwarding the InvocationEnvelope block below.
+Fetch @sai/commands/performance/command-bootstrap.md and follow those instructions exactly, forwarding the InvocationEnvelope block below.
 
 InvocationEnvelope:
   command_name: performance

@@ -117,7 +117,7 @@ Claude Code and opencode route `/sai-4-apply` through the routed apply card set 
 
 ### Build coordinator and worker
 
-`/sai-build` is a user-invoked routed composition command, not an `opsx:*` skill. Claude Code and opencode use the routed build cards `sai/commands/build/launcher.md` and `sai/commands/build/coordinator.md`. The build coordinator is an ordinary composition supervisor that runs exactly two adapters in order: the existing implementation coordinator, then the existing apply adapter. It resolves the change once, does not re-enter either harness wrapper, and transitions immediately without an intermediate approval gate. Build does not declare a build-specific worker or re-declare RED/GREEN; after activation, the apply adapter remains the sole owner of `sai-4-red-worker` / `sai-4-green-worker` selection. The coordinator always injects apply fast-track, owns the single activation banner, and treats an explicit `/sai-build --fast-track` token as a no-op. Claude Code uses `opus` with low effort; opencode uses `opencode-go/deepseek-v4-flash` with `variant: max`. Both harnesses preserve the same phase order, changed-files union, durable artifacts, worker ownership, and terminal navigation.
+`/sai-build` is a user-invoked routed composition command, not an `opsx:*` skill. Claude Code and opencode use the routed build cards `sai/commands/build/command-bootstrap.md` and `sai/commands/build/coordinator.md`. The build coordinator is an ordinary composition supervisor that runs exactly two adapters in order: the existing implementation coordinator, then the existing apply adapter. It resolves the change once, does not re-enter either harness wrapper, and transitions immediately without an intermediate approval gate. Build does not declare a build-specific worker or re-declare RED/GREEN; after activation, the apply adapter remains the sole owner of `sai-4-red-worker` / `sai-4-green-worker` selection. The coordinator always injects apply fast-track, owns the single activation banner, and treats an explicit `/sai-build --fast-track` token as a no-op. Claude Code uses `opus` with low effort; opencode uses `opencode-go/deepseek-v4-flash` with `variant: max`. Both harnesses preserve the same phase order, changed-files union, durable artifacts, worker ownership, and terminal navigation.
 
 ### Spec coordinator and worker
 
@@ -267,7 +267,7 @@ Everything else stays intact.
 
 ## Global installation (multi-project)
 
-Commands are designed as **user globals**, not per project. A single copy in the CLI's global directory makes them available in any repo. Maintained phase bodies use the grouped `sai/commands/{spec,design,implement,apply}/{coordinator,invocation}.md` assets; the `/sai-build` composition uses `sai/commands/build/launcher.md` and `coordinator.md`.
+Commands are designed as **user globals**, not per project. A single copy in the CLI's global directory makes them available in any repo. Maintained phase bodies use the grouped `sai/commands/{spec,design,implement,apply}/{coordinator,invocation}.md` assets; the `/sai-build` composition uses `sai/commands/build/command-bootstrap.md` and `coordinator.md`.
 
 ### Shared Orchestration Core
 

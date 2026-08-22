@@ -23,10 +23,10 @@ test('completed routed output uses the coordinator contract and reports ordered 
 });
 
 test('Step 4 Claude Code and opencode wrappers use the routed implementation lifecycle', () => {
-  const launcher = artifact('sai/commands/implement/launcher.md');
+  const launcher = artifact('sai/commands/implement/command-bootstrap.md');
   for (const relativePath of ['commands/claude/sai-3-implement.md', 'commands/opencode/sai-3-implement.md']) {
     const wrapper = artifact(relativePath);
-    assert.match(wrapper, /sai\/commands\/implement\/launcher\.md/);
+    assert.match(wrapper, /sai\/commands\/implement\/command-bootstrap\.md/);
     assert.doesNotMatch(wrapper, /inline-invocation|copilot/i);
   }
   assert.match(launcher, /sai\/orchestration\/workers\/bindings\/implementation-worker\.md/);

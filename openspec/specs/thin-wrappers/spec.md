@@ -9,7 +9,7 @@
 #### Scenario: fetch-skill is allowed in wrappers
 
 - **WHEN** a wrapper is read
-- **THEN** it MAY contain `Fetch @skills/fetch/SKILL.md` (Claude Code) or `Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.` (OpenCode) — this is the only skill fetch the wrapper is permitted to make; all other skill fetches live in the `sai/commands/{name}/` cards or the command's `launcher.md`
+- **THEN** it MAY contain `Fetch @skills/fetch/SKILL.md` (Claude Code) or `Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.` (OpenCode) — this is the only skill fetch the wrapper is permitted to make; all other skill fetches live in the `sai/commands/{name}/` cards or the command's `command-bootstrap.md`
 
 #### Scenario: body shape verified at the owned contract
 
@@ -37,7 +37,7 @@ The wrapper template SHALL be the same for all 16 wrappers in each harness, with
 #### Scenario: sai-build follows the shared template
 
 - **WHEN** `commands/claude/sai-build.md` is read in its canonical form
-- **THEN** it uses the same three-directive skeleton with launcher `@sai/commands/build/launcher.md` and `command_name: build`
+- **THEN** it uses the same three-directive skeleton with command bootstrap `@sai/commands/build/command-bootstrap.md` and `command_name: build`
 - **AND** it does not embed phase logic inline
 
 #### Scenario: example wrapper after rewrite
@@ -47,7 +47,7 @@ The wrapper template SHALL be the same for all 16 wrappers in each harness, with
 
     Fetch @skills/fetch/SKILL.md
     Fetch @sai/adapters/claude/boot.md and follow it.
-    Fetch @sai/commands/archive/launcher.md and follow those instructions exactly, forwarding the InvocationEnvelope block below.
+    Fetch @sai/commands/archive/command-bootstrap.md and follow those instructions exactly, forwarding the InvocationEnvelope block below.
 
     InvocationEnvelope:
       command_name: archive
@@ -62,7 +62,7 @@ The wrapper template SHALL be the same for all 16 wrappers in each harness, with
 #### Scenario: opencode example mirrors the shape
 
 - **WHEN** `commands/opencode/sai-status.md` is read in its canonical form
-- **THEN** it contains the fetch-skill line, the opencode boot-adapter load, the launcher call to `@sai/commands/status/launcher.md`, and the standalone `InvocationEnvelope:` block with exactly `command_name` and `arguments_value` — and no other content
+- **THEN** it contains the fetch-skill line, the opencode boot-adapter load, the command bootstrap call to `@sai/commands/status/command-bootstrap.md`, and the standalone `InvocationEnvelope:` block with exactly `command_name` and `arguments_value` — and no other content
 
 ### Requirement: active-spec-uses-requirement-format
 

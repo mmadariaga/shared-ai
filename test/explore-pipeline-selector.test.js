@@ -273,17 +273,17 @@ test('Claude Code explore adapter permits worker supervision without direct writ
 test('Step 1 explore adapters route only the permitted planning workers', () => {
   const claude = fs.readFileSync(path.join(repoRoot, 'commands/claude/sai-explore.md'), 'utf8');
   const opencode = fs.readFileSync(path.join(repoRoot, 'commands/opencode/sai-explore.md'), 'utf8');
-  const launcher = fs.readFileSync(path.join(repoRoot, 'sai/commands/explore/launcher.md'), 'utf8');
+  const launcher = fs.readFileSync(path.join(repoRoot, 'sai/commands/explore/command-bootstrap.md'), 'utf8');
 
    assert.match(claude, /Fetch @sai\/adapters\/claude\/idea-list-render\.md/);
-   assert.match(claude, /Fetch @sai\/commands\/explore\/launcher\.md/);
+   assert.match(claude, /Fetch @sai\/commands\/explore\/command-bootstrap\.md/);
    assert.match(launcher, /Fetch @sai\/orchestration\/workers\/bindings\/design-worker\.md/);
    assert.doesNotMatch(claude, /Fetch @skills\/sai-2-design-worker\/SKILL\.md/);
    assert.doesNotMatch(claude, /allowed-tools:[^\n]*(?:^|,\s*)Edit(?:,|\s|$)/m);
    assert.doesNotMatch(claude, /allowed-tools:[^\n]*(?:^|,\s*)Write(?:,|\s|$)/m);
    assert.doesNotMatch(claude, /allowed-tools:[^\n]*(?:^|,\s*)Bash(?:,|\s|$)/m);
 
-     assert.match(opencode, /Fetch @sai\/commands\/explore\/launcher\.md/);
+     assert.match(opencode, /Fetch @sai\/commands\/explore\/command-bootstrap\.md/);
      assert.match(launcher, /Fetch @sai\/orchestration\/workers\/bindings\/spec-worker\.md/);
    assert.doesNotMatch(opencode, /Fetch @skills\/sai-1-spec-proposal-worker\/SKILL\.md/);
     assert.doesNotMatch(opencode, /Fetch @skills\/sai-2-design-worker\/SKILL\.md/);
@@ -297,9 +297,9 @@ test('Step 1 explore adapters route only the permitted planning workers', () => 
 
 test('opencode explore adapter enables native task dispatch with both numbered planning workers', () => {
   const source = fs.readFileSync(path.join(repoRoot, 'commands/opencode/sai-explore.md'), 'utf8');
-  const launcher = fs.readFileSync(path.join(repoRoot, 'sai/commands/explore/launcher.md'), 'utf8');
+  const launcher = fs.readFileSync(path.join(repoRoot, 'sai/commands/explore/command-bootstrap.md'), 'utf8');
 
-    assert.match(source, /Fetch @sai\/commands\/explore\/launcher\.md/);
+     assert.match(source, /Fetch @sai\/commands\/explore\/command-bootstrap\.md/);
     assert.match(launcher, /Fetch @sai\/orchestration\/workers\/bindings\/spec-worker\.md/);
     assert.match(launcher, /Fetch @sai\/orchestration\/workers\/bindings\/design-worker\.md/);
    assert.doesNotMatch(source, /Fetch @skills\/sai-1-spec-proposal-worker\/SKILL\.md/);

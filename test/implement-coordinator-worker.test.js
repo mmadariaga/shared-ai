@@ -328,14 +328,14 @@ test('uninstall and doctor expose ownership guards and collision status', async 
 test('Step 2 routes Claude and opencode through the coordinator', () => {
   const claude = artifact('commands/claude/sai-3-implement.md');
   const opencode = artifact('commands/opencode/sai-3-implement.md');
-  const launcher = artifact('sai/commands/implement/launcher.md');
+  const launcher = artifact('sai/commands/implement/command-bootstrap.md');
 
   assert.match(claude, /^model:\s*opus\s*$/m);
    assert.match(claude, /^effort:\s*low\s*$/m);
-    assert.match(claude, /Fetch @sai\/commands\/implement\/launcher\.md/);
+     assert.match(claude, /Fetch @sai\/commands\/implement\/command-bootstrap\.md/);
    assert.doesNotMatch(claude, /Fetch @skills\/sai-3-implementation-worker\/SKILL\.md/);
      assert.match(opencode, /^model: opencode-go\/deepseek-v4-flash$/m);
-     assert.match(opencode, /Fetch @sai\/commands\/implement\/launcher\.md/);
+     assert.match(opencode, /Fetch @sai\/commands\/implement\/command-bootstrap\.md/);
     assert.doesNotMatch(opencode, /Fetch @skills\/sai-3-implementation-worker\/SKILL\.md/);
     assert.match(opencode, /^variant: max$/m);
    assert.match(opencode, /^subtask:\s*false\s*$/m);
@@ -361,8 +361,8 @@ test('Step 2 routes Claude and opencode through the coordinator', () => {
 test('Step 1 implementation contracts use the routed entrypoints', () => {
   const claude = artifact('commands/claude/sai-3-implement.md');
   const opencode = artifact('commands/opencode/sai-3-implement.md');
-  assert.match(claude, /Fetch @sai\/commands\/implement\/launcher\.md/);
-  assert.match(opencode, /Fetch @sai\/commands\/implement\/launcher\.md/);
+  assert.match(claude, /Fetch @sai\/commands\/implement\/command-bootstrap\.md/);
+  assert.match(opencode, /Fetch @sai\/commands\/implement\/command-bootstrap\.md/);
 });
 
 test('routed harness bindings and inline parity', () => {

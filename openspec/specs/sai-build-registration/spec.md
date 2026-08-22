@@ -20,7 +20,7 @@ Claude Code and opencode SHALL each ship a thin `sai-build.md` wrapper loading t
 - **THEN** they use the shared three-directive shape and contain no phase logic
 
 ### Requirement: Build launcher and coordinator are shared
-`sai/commands/build/launcher.md` SHALL load the implementation-worker binding and build coordinator, contain no harness token, and not load RED/GREEN bindings. The build folder SHALL not require `worker.md`; apply selects its own workers.
+`sai/commands/build/command-bootstrap.md` SHALL load the implementation-worker binding and build coordinator, contain no harness token, and not load RED/GREEN bindings. The build folder SHALL not require `worker.md`; apply selects its own workers.
 
 #### Scenario: Launcher is non-empty
 - **WHEN** the build launcher is read

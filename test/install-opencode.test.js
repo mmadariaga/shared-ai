@@ -45,14 +45,14 @@ const UTILITY_COMMANDS = {
   'sai-worktree': 'worktree',
 };
 const UTILITY_CARD_CONTENTS = {
-  apply: ['coordinator.md', 'green-worker.md', 'invocation.md', 'launcher.md', 'red-worker.md', 'runner.md'],
-  archive: ['archive-commit-gate.instructions.md', 'body.md', 'instructions.md', 'launcher.md'],
-  backfill: ['body.md', 'instructions.md', 'launcher.md'],
-  commit: ['body.md', 'instructions.md', 'launcher.md'],
-  explore: ['body.md', 'instructions.md', 'launcher.md'],
-  pr: ['body.md', 'instructions.md', 'launcher.md', 'pr-body.template.md'],
-  status: ['body.md', 'launcher.md'],
-  worktree: ['body.md', 'instructions.md', 'launcher.md'],
+  apply: ['command-bootstrap.md', 'coordinator.md', 'green-worker.md', 'invocation.md', 'red-worker.md', 'runner.md'],
+  archive: ['archive-commit-gate.instructions.md', 'body.md', 'command-bootstrap.md', 'instructions.md'],
+  backfill: ['body.md', 'command-bootstrap.md', 'instructions.md'],
+  commit: ['body.md', 'command-bootstrap.md', 'instructions.md'],
+  explore: ['body.md', 'command-bootstrap.md', 'instructions.md'],
+  pr: ['body.md', 'command-bootstrap.md', 'instructions.md', 'pr-body.template.md'],
+  status: ['body.md', 'command-bootstrap.md'],
+  worktree: ['body.md', 'command-bootstrap.md', 'instructions.md'],
 };
 const SAI_EXTERNAL_DIRECTORY = '~/.config/opencode/sai/**';
 const OPENCODE_COMMANDS_EXTERNAL_DIRECTORY = '~/.config/opencode/commands/**';
@@ -287,7 +287,7 @@ test('installOpencode projects grouped SAI command assets and excludes former co
   for (const file of [path.join('design', 'coordinator.md'), path.join('design', 'invocation.md'), path.join('implement', 'coordinator.md'), path.join('implement', 'invocation.md')]) {
     assert.ok(fs.existsSync(path.join(tmpDir, 'sai', 'commands', file)), `${file} should be projected`);
   }
-  for (const file of [path.join('build', 'coordinator.md'), path.join('build', 'launcher.md')]) {
+  for (const file of [path.join('build', 'coordinator.md'), path.join('build', 'command-bootstrap.md')]) {
     assert.ok(fs.existsSync(path.join(tmpDir, 'sai', 'commands', file)), `${file} should be projected`);
   }
   for (const file of ['sai-2-design.md', 'sai-3-implement.md']) {

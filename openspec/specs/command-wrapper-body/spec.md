@@ -8,7 +8,7 @@ TBD placeholder — purpose to be written when the change completes.
 
 ### Requirement: three-directive-wrapper-body
 
-The body of every in-scope `commands/claude/sai-*.md` and `commands/opencode/sai-*.md` wrapper SHALL consist of exactly three directives, in order: (1) the harness fetch-skill load, (2) the harness boot-adapter load, and (3) the launcher call to `@sai/commands/{name}/launcher.md` — plus a standalone two-key invocation envelope block rendered directly after the launcher-call directive, and no other content. The legacy `## Sai <Phase>` heading SHALL remain absent. `sai-explore` remains the sole load-set exception. All other wrapper content, isolation blocks, prerequisite checks, and behavior sections remain forbidden, and frontmatter remains byte-identical. This requirement remains the single normative owner of wrapper body shape.
+The body of every in-scope `commands/claude/sai-*.md` and `commands/opencode/sai-*.md` wrapper SHALL consist of exactly three directives, in order: (1) the harness fetch-skill load, (2) the harness boot-adapter load, and (3) the command bootstrap call to `@sai/commands/{name}/command-bootstrap.md` — plus a standalone two-key invocation envelope block rendered directly after the command-bootstrap directive, and no other content. The legacy `## Sai <Phase>` heading SHALL remain absent. `sai-explore` remains the sole load-set exception. All other wrapper content, isolation blocks, prerequisite checks, and behavior sections remain forbidden, and frontmatter remains byte-identical. This requirement remains the single normative owner of wrapper body shape.
 
 #### Scenario: Claude Code wrapper body shape
 
@@ -45,7 +45,7 @@ The body of every in-scope `commands/claude/sai-*.md` and `commands/opencode/sai
 
 ### Requirement: envelope-lives-in-the-wrapper
 
-The invocation envelope SHALL remain in the command file, directly after the launcher-call directive, because `$ARGUMENTS` is substituted only in the command file. It SHALL contain exactly `command_name` and `arguments_value`, in that order. The launcher SHALL not define, parse, or require an envelope. A trimmed, non-empty `arguments_value` SHALL be authoritative for change-name resolution; an empty value SHALL enter the established picker. No wrapper-echo field, transcript scan, or labelled wrapper line is part of the contract.
+The invocation envelope SHALL remain in the command file, directly after the command-bootstrap directive, because `$ARGUMENTS` is substituted only in the command file. It SHALL contain exactly `command_name` and `arguments_value`, in that order. The command bootstrap SHALL not define, parse, or require an envelope. A trimmed, non-empty `arguments_value` SHALL be authoritative for change-name resolution; an empty value SHALL enter the established picker. No wrapper-echo field, transcript scan, or labelled wrapper line is part of the contract.
 
 #### Scenario: envelope fields are narrowed
 
@@ -54,12 +54,12 @@ The invocation envelope SHALL remain in the command file, directly after the lau
 
 #### Scenario: launcher carries no envelope
 
-- **WHEN** any `launcher.md` is read
+- **WHEN** any `command-bootstrap.md` is read
 - **THEN** it contains no `InvocationEnvelope` block and no reference to `command_name` or `arguments_value`
 
 ### Requirement: explore-harness-specific-loads
 
-`sai-explore` SHALL load a harness-specific card beyond the boot adapter — the fetch stays in the wrapper because the launcher cannot know its harness — making the Claude explore body four directives rather than three (the opencode explore body is five). Any additional binding fetch whose presence diverges between the harnesses (the opencode-only `spec-worker` binding — a harness-neutral-form path that only the opencode wrapper carries) SHALL also remain in the wrapper, per the divergence rule in `command-launcher-card`'s `harness-neutral-launcher`. The explore launcher SHALL receive only the binding fetch both wrappers carry (the `design-worker` binding).
+`sai-explore` SHALL load a harness-specific card beyond the boot adapter — the fetch stays in the wrapper because the command bootstrap cannot know its harness — making the Claude explore body four directives rather than three (the opencode explore body is five). Any additional binding fetch whose presence diverges between the harnesses (the opencode-only `spec-worker` binding — a harness-neutral-form path that only the opencode wrapper carries) SHALL also remain in the wrapper, per the divergence rule in `command-bootstrap-card`'s `harness-neutral-launcher`. The explore command bootstrap SHALL receive only the binding fetch both wrappers carry (the `design-worker` binding).
 
 #### Scenario: Claude explore body shape
 
@@ -73,17 +73,17 @@ The invocation envelope SHALL remain in the command file, directly after the lau
 
 #### Scenario: explore launcher is harness-neutral
 
-- **WHEN** `sai/commands/explore/launcher.md` is read
+- **WHEN** `sai/commands/explore/command-bootstrap.md` is read
 - **THEN** it contains no harness-specific card or binding fetch (no `idea-list-render` load, no `spec-worker` binding load)
 
 #### Scenario: explore launcher receives the neutral binding
 
-- **WHEN** `sai/commands/explore/launcher.md` is read
+- **WHEN** `sai/commands/explore/command-bootstrap.md` is read
 - **THEN** it contains the `design-worker` binding fetch — the one binding both explore wrappers carry today — and no other directive
 
 ### Requirement: wrapper-directory-shape-unchanged
 
-No file SHALL be added to, or removed from, `commands/claude/` or `commands/opencode/`; the launcher and all moved content SHALL live under `sai/`, which the model-customization menu never enumerates and which is not invocable. The set of 16 command files per harness (15 `sai-*` plus `budget`) SHALL remain exactly as before the change. `budget` is not a workflow command — it has no boot adapter, no envelope, and no launcher, and its wrapper SHALL remain byte-identical.
+No file SHALL be added to, or removed from, `commands/claude/` or `commands/opencode/`; the command bootstrap and all moved content SHALL live under `sai/`, which the model-customization menu never enumerates and which is not invocable. The set of 16 command files per harness (15 `sai-*` plus `budget`) SHALL remain exactly as before the change. `budget` is not a workflow command — it has no boot adapter, no envelope, and no command bootstrap, and its wrapper SHALL remain byte-identical.
 
 #### Scenario: same file set per harness
 
@@ -93,7 +93,7 @@ No file SHALL be added to, or removed from, `commands/claude/` or `commands/open
 #### Scenario: no launcher inside a command directory
 
 - **WHEN** the change is applied
-- **THEN** no `launcher.md` exists under `commands/claude/` or `commands/opencode/`
+- **THEN** no `command-bootstrap.md` exists under `commands/claude/` or `commands/opencode/`
 
 #### Scenario: budget untouched
 

@@ -3,22 +3,22 @@
 Define the standard fetch path patterns for sai command wrappers and instructions, and document the namespace distinction between `@sai/commands/` and `@commands/` paths.
 ## Requirements
 ### Requirement: wrapper-sai-commands-fetch-path
-All 15 thin `sai-*` wrapper files at `commands/claude/` and `commands/opencode/` that fetch a sai command card SHALL use `Fetch @sai/commands/{name}/launcher.md`. The flat path `@sai/commands/<name>.md` and the legacy namespace `@commands/sai/` SHALL NOT appear in any wrapper file. This requirement covers only `sai-*.md` files; `budget.md` is out of scope (it fetches no sai command card and SHALL remain byte-identical per `command-wrapper-body`'s `wrapper-directory-shape-unchanged`).
+All 15 thin `sai-*` wrapper files at `commands/claude/` and `commands/opencode/` that fetch a sai command card SHALL use `Fetch @sai/commands/{name}/command-bootstrap.md`. The flat path `@sai/commands/<name>.md` and the legacy namespace `@commands/sai/` SHALL NOT appear in any wrapper file. This requirement covers only `sai-*.md` files; `budget.md` is out of scope (it fetches no sai command card and SHALL remain byte-identical per `command-wrapper-body`'s `wrapper-directory-shape-unchanged`).
 
 #### Scenario: claude wrapper fetch path updated
 - **WHEN** any file matching `commands/claude/sai-*.md` is read
-- **THEN** any Fetch directive pointing to a sai command card SHALL use the pattern `Fetch @sai/commands/{name}/launcher.md`
+- **THEN** any Fetch directive pointing to a sai command card SHALL use the pattern `Fetch @sai/commands/{name}/command-bootstrap.md`
 
 #### Scenario: opencode wrapper fetch path updated
 - **WHEN** any file matching `commands/opencode/sai-*.md` is read
-- **THEN** any Fetch directive pointing to a sai command card SHALL use the pattern `Fetch @sai/commands/{name}/launcher.md`
+- **THEN** any Fetch directive pointing to a sai command card SHALL use the pattern `Fetch @sai/commands/{name}/command-bootstrap.md`
 
 #### Scenario: old fetch path absent
 - **WHEN** a grep for `@commands/sai/` is run across all wrapper files
 - **THEN** zero matches SHALL be found
 
 #### Scenario: flat body path absent
-- **WHEN** a grep for `@sai/commands/<name>.md` (a sai-commands fetch not ending in `/launcher.md`) is run across all wrapper files
+- **WHEN** a grep for `@sai/commands/<name>.md` (a sai-commands fetch not ending in `/command-bootstrap.md`) is run across all wrapper files
 - **THEN** zero matches SHALL be found
 
 ### Requirement: command-body-instruction-fetch-paths
@@ -74,4 +74,3 @@ The disambiguation MUST be present in both the Claude and opencode variants of t
 #### Scenario: Agent resolves @sai/commands/ path in opencode context
 - **WHEN** the opencode fetch skill encounters `@sai/commands/X.md`
 - **THEN** it SHALL resolve to `~/.config/opencode/sai/commands/X.md`, not `~/.config/opencode/commands/X.md`
-

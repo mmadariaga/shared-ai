@@ -1,4 +1,4 @@
-# command-launcher-card Specification
+# command-bootstrap-card Specification
 
 ## Purpose
 
@@ -8,22 +8,22 @@ TBD placeholder — purpose to be written when the change completes.
 
 ### Requirement: launcher-per-in-scope-command
 
-Every in-scope command SHALL have exactly one launcher card at `sai/commands/{name}/launcher.md`, and that one shared card SHALL serve both harnesses. The in-scope set is the `sai-*` commands shipped as card folders under `sai/commands/`: adding or retiring a command includes adding or removing its launcher, so the membership is owned by the library layout rather than pinned by name here. `budget` SHALL NOT have a launcher and SHALL NOT be loaded through one.
+Every in-scope command SHALL have exactly one command bootstrap card at `sai/commands/{name}/command-bootstrap.md`, and that one shared card SHALL serve both harnesses. The in-scope set is the `sai-*` commands shipped as card folders under `sai/commands/`: adding or retiring a command includes adding or removing its command bootstrap, so the membership is owned by the library layout rather than pinned by name here. `budget` SHALL NOT have a command bootstrap and SHALL NOT be loaded through one.
 
 #### Scenario: a launcher per in-scope command
 
 - **WHEN** `sai/commands/` is walked after the change
-- **THEN** every in-scope command folder contains exactly one `launcher.md`
+- **THEN** every in-scope command folder contains exactly one `command-bootstrap.md`
 
 #### Scenario: one shared card per command
 
-- **WHEN** a command's launcher is resolved under the Claude Code and opencode roots
-- **THEN** both harnesses read the same single `sai/commands/{name}/launcher.md` card
+- **WHEN** a command's command bootstrap is resolved under the Claude Code and opencode roots
+- **THEN** both harnesses read the same single `sai/commands/{name}/command-bootstrap.md` card
 
 #### Scenario: budget has no launcher
 
 - **WHEN** the change is applied
-- **THEN** no `launcher.md` exists for `budget` and no `sai/commands/budget/` card folder holds one
+- **THEN** no `command-bootstrap.md` exists for `budget` and no `sai/commands/budget/` card folder holds one
 
 ### Requirement: launcher-content
 
@@ -41,7 +41,7 @@ Each launcher SHALL hold exactly the directives its command needs beyond the fet
 
 ### Requirement: near-empty-launchers
 
-A command whose wrapper carries no directives beyond the fetch-skill, boot-adapter, and launcher loads SHALL still ship a `launcher.md`, near-empty at creation, because a uniform shape across all commands is worth more than the saved files and the card is the extension point that keeps future additions out of the user-owned wrapper. A near-empty launcher SHALL contain no behaviour-skill load and no binding; the absence of coordinator-card fetches follows from the launcher-content rule. Which commands are near-empty is a property of their wrappers, not a membership list: when a command gains a launch-time load its launcher grows and it stops being near-empty, with no specification change.
+A command whose wrapper carries no directives beyond the fetch-skill, boot-adapter, and command bootstrap loads SHALL still ship a `command-bootstrap.md`, explicitly stating that it is intentionally empty of command-specific loads, is not missing, and that execution continues with the card selected by the harness boot adapter. An intentionally empty command bootstrap SHALL contain no behaviour-skill load and no binding; the absence of coordinator-card fetches follows from the command-bootstrap-content rule. Which commands are empty is a property of their wrappers, not a membership list: when a command gains a launch-time load its command bootstrap grows and it stops being empty, with no specification change.
 
 #### Scenario: wrappers without extra directives ship near-empty launchers
 
@@ -51,7 +51,7 @@ A command whose wrapper carries no directives beyond the fetch-skill, boot-adapt
 #### Scenario: near-empty launcher is the extension point
 
 - **WHEN** a later library change needs a new behaviour load for a command whose launcher is near-empty
-- **THEN** the load lands in the existing `launcher.md`, and the command's wrapper body does not change
+- **THEN** the load lands in the existing `command-bootstrap.md`, and the command's wrapper body does not change
 
 ### Requirement: harness-neutral-launcher
 
@@ -59,13 +59,13 @@ The launcher SHALL contain no harness-conditional logic: no `claude` or `opencod
 
 #### Scenario: no harness token in any launcher
 
-- **WHEN** any `launcher.md` is read
+- **WHEN** any `command-bootstrap.md` is read
 - **THEN** it contains neither the string `claude` nor the string `opencode`, and no `@sai/adapters/...` fetch
 
 #### Scenario: divergent directive stays in the wrapper
 
 - **WHEN** a directive is present in exactly one harness's wrapper
-- **THEN** the directive remains in that harness's wrapper and is not added to the shared `launcher.md`
+- **THEN** the directive remains in that harness's wrapper and is not added to the shared `command-bootstrap.md`
 
 #### Scenario: one launcher loads in both harnesses
 
@@ -107,7 +107,7 @@ Launchers SHALL ship through the existing `sai-commands` projection — recursiv
 #### Scenario: no manifest entry names the launcher
 
 - **WHEN** `sai/install-manifest.json` is read
-- **THEN** it contains no entry naming `launcher.md`, and the recursive `sai-commands` projection covers the new cards
+- **THEN** it contains no entry naming `command-bootstrap.md`, and the recursive `sai-commands` projection covers the new cards
 
 #### Scenario: no installer source change
 
@@ -116,7 +116,7 @@ Launchers SHALL ship through the existing `sai-commands` projection — recursiv
 
 ### Requirement: test-assertions-move
 
-Tests that assert against command wrapper bodies SHALL move those assertions to the corresponding `launcher.md`. Assertions that pin frontmatter or the wrapper's own directives — the full directive set of that wrapper, including `sai-explore`'s harness-specific loads — SHALL remain on the wrapper.
+Tests that assert against command wrapper bodies SHALL move those assertions to the corresponding `command-bootstrap.md`. Assertions that pin frontmatter or the wrapper's own directives — the full directive set of that wrapper, including `sai-explore`'s harness-specific loads — SHALL remain on the wrapper.
 
 #### Scenario: binding-count assertions move
 

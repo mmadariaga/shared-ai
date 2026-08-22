@@ -121,7 +121,7 @@ test('grouped design and implementation phase assets preserve their former sourc
        coordinator: path.join(repoRoot, 'sai', 'commands', 'design', 'coordinator.md'),
        invocation: path.join(repoRoot, 'sai', 'commands', 'design', 'invocation.md'),
       instruction: 'sai/commands/design/instructions.md',
-      cardContents: ['change-overview.md', 'coordinator.md', 'instructions.md', 'invocation.md', 'launcher.md', 'worker.md'],
+      cardContents: ['change-overview.md', 'command-bootstrap.md', 'coordinator.md', 'instructions.md', 'invocation.md', 'worker.md'],
     },
      {
        name: 'implement',
@@ -129,12 +129,12 @@ test('grouped design and implementation phase assets preserve their former sourc
        coordinator: path.join(repoRoot, 'sai', 'commands', 'implement', 'coordinator.md'),
        invocation: path.join(repoRoot, 'sai', 'commands', 'implement', 'invocation.md'),
        instruction: 'sai/commands/implement/instructions.md',
-       cardContents: ['adr-index.template.md', 'coordinator.md', 'ddr-index.template.md', 'implementation-plan.template.md', 'instructions.md', 'invocation.md', 'launcher.md', 'worker.md'],
+       cardContents: ['adr-index.template.md', 'command-bootstrap.md', 'coordinator.md', 'ddr-index.template.md', 'implementation-plan.template.md', 'instructions.md', 'invocation.md', 'worker.md'],
      },
      {
        name: 'build',
        directory: path.join(repoRoot, 'sai', 'commands', 'build'),
-       cardContents: ['coordinator.md', 'launcher.md'],
+       cardContents: ['command-bootstrap.md', 'coordinator.md'],
      },
    ];
 

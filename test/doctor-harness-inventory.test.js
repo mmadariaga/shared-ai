@@ -236,7 +236,7 @@ describe('doctor harness inventory', () => {
           assert.ok(fs.existsSync(path.join(base, 'sai', 'commands', utility, 'body.md')),
             `${harness} should install the ${utility} utility body card`);
         }
-        for (const card of ['coordinator.md', 'launcher.md']) {
+        for (const card of ['command-bootstrap.md', 'coordinator.md']) {
           assert.ok(fs.existsSync(path.join(base, 'sai', 'commands', 'build', card)),
             `${harness} should install the build ${card} card`);
         }
@@ -324,7 +324,7 @@ test('Step 3 Claude and opencode neutral inventories are equivalent and differ o
     assert.equal(Object.keys(claude).length > 0, true, 'claude should carry a non-empty neutral inventory');
     assert.deepEqual(claude, opencode,
       'claude and opencode should project the same neutral sources to the same relative destinations');
-    for (const source of ['sai/commands/build/coordinator.md', 'sai/commands/build/launcher.md']) {
+    for (const source of ['sai/commands/build/coordinator.md', 'sai/commands/build/command-bootstrap.md']) {
       assert.equal(Object.hasOwn(claude, source), true,
         `claude should project the neutral build source ${source}`);
       assert.equal(Object.hasOwn(opencode, source), true,

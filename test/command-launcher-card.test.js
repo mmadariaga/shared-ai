@@ -24,7 +24,7 @@ const commands = [
   ['sai-status.md', 'status'],
   ['sai-worktree.md', 'worktree'],
 ];
-const emptyLaunchers = new Set(['apply', 'archive', 'backfill', 'commit', 'pr', 'status', 'worktree']);
+const emptyBootstraps = new Set(['apply', 'archive', 'backfill', 'commit', 'pr', 'status', 'worktree']);
 function activeWrapperCommands(harness) {
   const directory = path.join(repoRoot, 'commands', harness);
   const foldersByFile = new Map(commands);
@@ -114,27 +114,29 @@ function fetchLines(source) {
     .filter(line => line.startsWith('Fetch @'));
 }
 
-test('exactly 16 harness-neutral launcher cards exist and budget has none', () => {
+test('exactly 16 harness-neutral command bootstraps exist and budget has none', () => {
   const actual = [];
   for (const [, folder] of commands) {
-    const relative = `sai/commands/${folder}/launcher.md`;
+    const relative = `sai/commands/${folder}/command-bootstrap.md`;
     assert.equal(fs.existsSync(path.join(repoRoot, relative)), true, `${relative} should exist`);
     actual.push(relative);
   }
   assert.equal(actual.length, 16);
-  assert.equal(fs.existsSync(path.join(repoRoot, 'sai', 'commands', 'budget', 'launcher.md')), false);
+  assert.equal(fs.existsSync(path.join(repoRoot, 'sai', 'commands', 'budget', 'command-bootstrap.md')), false);
 });
 
-test('launcher content is exact, ordered, and harness-neutral', () => {
+test('command bootstrap content is exact, ordered, and harness-neutral', () => {
   for (const [, folder] of commands) {
-    const relative = `sai/commands/${folder}/launcher.md`;
+    const relative = `sai/commands/${folder}/command-bootstrap.md`;
     assert.equal(fs.existsSync(path.join(repoRoot, relative)), true, `${relative} should exist`);
-    const source = read(`sai/commands/${folder}/launcher.md`);
+    const source = read(`sai/commands/${folder}/command-bootstrap.md`);
     assert.doesNotMatch(source, /claude|opencode/i, `${folder} launcher must be harness-neutral`);
     assert.doesNotMatch(source, /@sai\/adapters\//, `${folder} launcher must not fetch an adapter`);
     assert.doesNotMatch(source, /InvocationEnvelope|command_name|wrapper_echo_value|arguments_value/);
-    if (emptyLaunchers.has(folder)) {
-      assert.deepEqual(fetchLines(source), [], `${folder} launcher must remain near-empty`);
+    if (emptyBootstraps.has(folder)) {
+      assert.deepEqual(fetchLines(source), [], `${folder} command bootstrap must remain load-free`);
+      assert.match(source, /intentionally empty of command-specific loads; it is not missing/);
+      assert.match(source, /Execution continues with the card selected by the harness boot adapter/);
     } else {
       assert.deepEqual(fetchLines(source), movedDirectives[folder], `${folder} launcher directive order`);
     }
@@ -213,8 +215,8 @@ function escapeRegExp(value) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-function launcherCallDirective(folder) {
-  return `Fetch @sai/commands/${folder}/launcher.md and follow those instructions exactly, forwarding the InvocationEnvelope block below.`;
+function bootstrapCallDirective(folder) {
+  return `Fetch @sai/commands/${folder}/command-bootstrap.md and follow those instructions exactly, forwarding the InvocationEnvelope block below.`;
 }
 
 test('final wrappers: first fetch is harness skill, second is boot adapter, launcher fetch appears exactly once', () => {
@@ -223,9 +225,9 @@ test('final wrappers: first fetch is harness skill, second is boot adapter, laun
       const lines = fetchLines(read(`commands/${harness}/${file}`));
       assert.equal(lines[0], HARNESS_FETCH[harness], `${harness}/${file} first fetch should be the harness fetch skill`);
       assert.equal(lines[1], BOOT_ADAPTER[harness], `${harness}/${file} second fetch should be the boot adapter`);
-      const launcherCalls = lines.filter(line => line.includes(`/commands/${folder}/launcher.md`));
-      assert.equal(launcherCalls.length, 1, `${harness}/${file} should fetch its launcher exactly once`);
-      assert.equal(launcherCalls[0], launcherCallDirective(folder), `${harness}/${file} launcher fetch should match the canonical directive`);
+      const bootstrapCalls = lines.filter(line => line.includes(`/commands/${folder}/command-bootstrap.md`));
+      assert.equal(bootstrapCalls.length, 1, `${harness}/${file} should fetch its command bootstrap exactly once`);
+      assert.equal(bootstrapCalls[0], bootstrapCallDirective(folder), `${harness}/${file} command bootstrap fetch should match the canonical directive`);
     }
   }
 });
@@ -294,9 +296,9 @@ test('final wrappers: both sai-explore wrappers keep idea-list-render while laun
   const opencodeExplore = read('commands/opencode/sai-explore.md');
   assert.match(claudeExplore, /Fetch @sai\/adapters\/claude\/idea-list-render\.md/, 'Claude explore should keep idea-list-render');
   assert.match(opencodeExplore, /Fetch @sai\/adapters\/opencode\/idea-list-render\.md/, 'opencode explore should keep idea-list-render');
-  const exploreLauncher = read('sai/commands/explore/launcher.md');
-  assert.match(exploreLauncher, /Fetch @sai\/orchestration\/workers\/bindings\/spec-worker\.md/);
-  assert.match(exploreLauncher, /Fetch @sai\/orchestration\/workers\/bindings\/design-worker\.md/, 'explore launcher should carry design-worker binding');
+  const exploreBootstrap = read('sai/commands/explore/command-bootstrap.md');
+  assert.match(exploreBootstrap, /Fetch @sai\/orchestration\/workers\/bindings\/spec-worker\.md/);
+  assert.match(exploreBootstrap, /Fetch @sai\/orchestration\/workers\/bindings\/design-worker\.md/, 'explore command bootstrap should carry design-worker binding');
 });
 
 test('final wrappers: all known labelled argument lines are absent after the envelope in both harnesses', () => {
@@ -322,52 +324,52 @@ test('final wrappers: wrapper + launcher sorted Fetch set matches baseline', () 
   for (const harness of ['claude', 'opencode']) {
     for (const [file, folder] of wrapperCommands) {
       const wrapperFetch = fetchLines(read(`commands/${harness}/${file}`));
-      const launcherFetch = fetchLines(read(`sai/commands/${folder}/launcher.md`));
-      const launcherCall = launcherCallDirective(folder);
+      const bootstrapFetch = fetchLines(read(`sai/commands/${folder}/command-bootstrap.md`));
+      const bootstrapCall = bootstrapCallDirective(folder);
       const combined = wrapperFetch
-        .filter(line => line !== launcherCall)
-        .concat(launcherFetch)
+        .filter(line => line !== bootstrapCall)
+        .concat(bootstrapFetch)
         .sort();
       const baseline = [...fixture.wrappers[harness][file]].sort();
       assert.deepEqual(combined, baseline,
-        `${harness}/${file} + launcher (minus launcher-call) sorted should match baseline sorted`);
+        `${harness}/${file} + command bootstrap (minus bootstrap-call) sorted should match baseline sorted`);
     }
   }
 });
 
 test('final wrappers: every launcher has no envelope fields and remains harness-neutral', () => {
   for (const [, folder] of wrapperCommands) {
-    const source = read(`sai/commands/${folder}/launcher.md`);
+    const source = read(`sai/commands/${folder}/command-bootstrap.md`);
     assert.doesNotMatch(source, /InvocationEnvelope|command_name|wrapper_echo_value|arguments_value/,
       `${folder} launcher should have no envelope fields`);
   }
 });
 
-test('final wrappers: source wrapper directories contain exactly 17 files including budget.md; no launcher.md under commands/', () => {
+test('final wrappers: source wrapper directories contain exactly 17 files including budget.md; no command bootstrap card under commands/', () => {
   for (const harness of ['claude', 'opencode']) {
     const dir = path.join(repoRoot, 'commands', harness);
     const files = fs.readdirSync(dir);
     assert.equal(files.length, 17, `${harness} wrapper directory should contain exactly 17 files`);
     assert.ok(files.includes('budget.md'), `${harness} should include budget.md`);
     for (const file of files) {
-      assert.notEqual(file, 'launcher.md', `${harness} should not contain launcher.md`);
+      assert.notEqual(file, 'command-bootstrap.md', `${harness} should not contain command-bootstrap.md`);
     }
   }
   for (const [, folder] of commands) {
-    assert.equal(fs.existsSync(path.join(repoRoot, 'commands', 'claude', `${folder}`, 'launcher.md')), false,
-      `commands/claude/${folder}/launcher.md should not exist`);
-    assert.equal(fs.existsSync(path.join(repoRoot, 'commands', 'opencode', `${folder}`, 'launcher.md')), false,
-      `commands/opencode/${folder}/launcher.md should not exist`);
+    assert.equal(fs.existsSync(path.join(repoRoot, 'commands', 'claude', `${folder}`, 'command-bootstrap.md')), false,
+      `commands/claude/${folder}/command-bootstrap.md should not exist`);
+    assert.equal(fs.existsSync(path.join(repoRoot, 'commands', 'opencode', `${folder}`, 'command-bootstrap.md')), false,
+      `commands/opencode/${folder}/command-bootstrap.md should not exist`);
   }
 });
 
-test('final wrappers: sai/install-manifest.json has no launcher.md entry', () => {
+test('final wrappers: sai/install-manifest.json has no command-bootstrap.md entry', () => {
   const manifest = read('sai/install-manifest.json');
-  assert.doesNotMatch(manifest, /launcher\.md/, 'install manifest should have no launcher.md entry');
+  assert.doesNotMatch(manifest, /command-bootstrap\.md/, 'install manifest should have no command-bootstrap.md entry');
 });
 
-test('Command Launcher glossary term and relationship remain canonical', () => {
+test('Command Bootstrap glossary term and relationship remain canonical', () => {
   const glossary = read('GLOSSARY.md');
-  assert.match(glossary, /\*\*Command Launcher\*\*: "The harness-neutral per-command card at `sai\/commands\/\{name\}\/launcher\.md`/);
-  assert.match(glossary, /- A \*\*Command Launcher\*\* is loaded by one \/sai-\* wrapper after its \*\*Harness Boot Adapter\*\*/);
+  assert.match(glossary, /\*\*Command Bootstrap\*\*: "The harness-neutral per-command card at `sai\/commands\/\{name\}\/command-bootstrap\.md`/);
+  assert.match(glossary, /- A \*\*Command Bootstrap\*\* is loaded by one \/sai-\* wrapper after its \*\*Harness Boot Adapter\*\*/);
 });

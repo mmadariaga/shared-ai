@@ -243,7 +243,7 @@ test('Step 2 completion writes only accessibility.md and prints the exact comple
 // ─── Step 3: installation and inventory projections ─────────────────────────
 
 test('Step 3 Claude Code and opencode wrappers load the launcher and the launcher loads the coordinator and direct worker binding', () => {
-  const launcher = artifact('sai/commands/accessibility/launcher.md');
+  const launcher = artifact('sai/commands/accessibility/command-bootstrap.md');
   assert.match(launcher, /Fetch @sai\/orchestration\/workers\/bindings\/accessibility-worker\.md/,
     'launcher should load the neutral accessibility binding');
 
@@ -254,8 +254,8 @@ test('Step 3 Claude Code and opencode wrappers load the launcher and the launche
 
   for (const [harness, wrapperPath, bindingHarness] of wrappers) {
     const wrapper = artifact(wrapperPath);
-    assert.match(wrapper, /sai[\\/]commands[\\/]accessibility[\\/]launcher\.md/,
-      `${harness} should load the accessibility launcher`);
+    assert.match(wrapper, /sai[\\/]commands[\\/]accessibility[\\/]command-bootstrap\.md/,
+      `${harness} should load the accessibility command bootstrap`);
     assert.match(wrapper, /\$ARGUMENTS/, `${harness} should preserve complete arguments`);
     assert.doesNotMatch(wrapper, /Fetch @skills\/sai-8-accessibility-worker\/SKILL\.md/,
       `${harness} should not load the worker forwarding skill`);

@@ -78,7 +78,7 @@ describe('doctor fetch resolution', () => {
     }
   });
 
-  test('1: Fetch @sai/commands/x/launcher.md resolved via global fallback — no error', async () => {
+  test('1: Fetch @sai/commands/x/command-bootstrap.md resolved via global fallback — no error', async () => {
     const projectRoot = makeGoodFixture();
     const claudeBase = makeTempDir('sai-dr-fr-claude-');
     try {
@@ -89,11 +89,11 @@ describe('doctor fetch resolution', () => {
       }
 
       const wrapper = path.join(claudeBase, 'commands', 'sai-1-spec.md');
-      fs.appendFileSync(wrapper, '\nFetch @sai/commands/fr-test-x/launcher.md\n');
+      fs.appendFileSync(wrapper, '\nFetch @sai/commands/fr-test-x/command-bootstrap.md\n');
 
       const targetDir = path.join(claudeBase, 'sai', 'commands', 'fr-test-x');
       ensureDir(targetDir);
-      fs.writeFileSync(path.join(targetDir, 'launcher.md'), '# x\n');
+      fs.writeFileSync(path.join(targetDir, 'command-bootstrap.md'), '# x\n');
 
       const opencodeBase = nonexistentPath('sai-dr-fr-oc-');
       const { code, parsed } = await runDoctor({ projectRoot, claudeBase, opencodeBase });
@@ -112,14 +112,14 @@ describe('doctor fetch resolution', () => {
     }
   });
 
-  test('2: Fetch @sai/commands/missing/launcher.md resolvable nowhere — error + exit 1', async () => {
+  test('2: Fetch @sai/commands/missing/command-bootstrap.md resolvable nowhere — error + exit 1', async () => {
     const projectRoot = makeGoodFixture();
     const claudeBase = makeTempDir('sai-dr-fr-claude-');
     try {
       installClaude(claudeBase);
 
       const wrapper = path.join(claudeBase, 'commands', 'sai-1-spec.md');
-      fs.appendFileSync(wrapper, '\nFetch @sai/commands/fr-test-missing/launcher.md\n');
+      fs.appendFileSync(wrapper, '\nFetch @sai/commands/fr-test-missing/command-bootstrap.md\n');
 
       const opencodeBase = nonexistentPath('sai-dr-fr-oc-');
       const { code, parsed } = await runDoctor({ projectRoot, claudeBase, opencodeBase });
@@ -296,7 +296,7 @@ describe('doctor fetch resolution', () => {
 
       for (const [index, folder] of phaseFolders.entries()) {
         for (const base of [claudeBase, opencodeBase]) {
-          const launcherPath = path.join(base, 'sai', 'commands', folder, 'launcher.md');
+          const launcherPath = path.join(base, 'sai', 'commands', folder, 'command-bootstrap.md');
           assert.ok(fs.existsSync(launcherPath), `launcher for ${folder} should be installed`);
         }
       }
@@ -328,7 +328,7 @@ describe('doctor fetch resolution', () => {
           assert.ok(fs.existsSync(path.join(base, 'sai', 'commands', utility, 'body.md')),
             `${harness} harness should install the ${utility} utility body card`);
         }
-        for (const card of ['coordinator.md', 'launcher.md']) {
+        for (const card of ['command-bootstrap.md', 'coordinator.md']) {
           assert.ok(fs.existsSync(path.join(base, 'sai', 'commands', 'build', card)),
             `${harness} harness should install the build ${card} card`);
         }
@@ -336,7 +336,7 @@ describe('doctor fetch resolution', () => {
         assert.ok(fs.existsSync(buildWrapper), `${harness} harness should install sai-build.md`);
         assert.match(
           fs.readFileSync(buildWrapper, 'utf8'),
-          /Fetch @sai\/commands\/build\/launcher\.md/,
+          /Fetch @sai\/commands\/build\/command-bootstrap\.md/,
           `${harness} sai-build wrapper should resolve the build launcher`
         );
         for (const card of ['coordinator.md', 'red-worker.md', 'green-worker.md', 'runner.md', 'invocation.md']) {

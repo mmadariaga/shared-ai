@@ -254,12 +254,12 @@ test('Claude and opencode bindings mirror envelope and continuation mechanics', 
 
 test('Claude spec invocation routes through the launcher and neutral worker binding', () => {
   const wrapper = artifact('commands/claude/sai-1-spec.md');
-  const launcher = artifact('sai/commands/spec/launcher.md');
+  const launcher = artifact('sai/commands/spec/command-bootstrap.md');
   const claudeBinding = matrixBinding('claude', 'spec');
   const manifest = artifact('sai/install-manifest.json');
   assert.match(wrapper, /^model:\s*opus\s*$/m);
   assert.match(wrapper, /^effort:\s*medium\s*$/m);
-  assert.match(wrapper, /spec[\\/]launcher\.md/);
+  assert.match(wrapper, /spec[\\/]command-bootstrap\.md/);
     assert.doesNotMatch(wrapper, /sai-1-spec-proposal-worker/);
   assert.match(claudeBinding, /name:\s*"sai-1-spec-proposal-worker"/);
    assert.match(manifest, /agents[\\/]claude[\\/]worker-template\.md/);
@@ -271,9 +271,9 @@ test('Claude spec invocation routes through the launcher and neutral worker bind
 
 test('opencode spec invocation routes through the launcher and neutral worker binding', () => {
   const wrapper = artifact('commands/opencode/sai-1-spec.md');
-  const launcher = artifact('sai/commands/spec/launcher.md');
+  const launcher = artifact('sai/commands/spec/command-bootstrap.md');
    assert.match(wrapper, /^model:\s*opencode-go\/deepseek-v4-flash\s*$/m);
-  assert.match(wrapper, /spec[\\/]launcher\.md/);
+  assert.match(wrapper, /spec[\\/]command-bootstrap\.md/);
    assert.doesNotMatch(wrapper, /sai-1-spec-proposal-worker/);
   assert.match(launcher, /Fetch @sai\/orchestration\/workers\/bindings\/spec-worker\.md/);
     assert.doesNotMatch(wrapper, /Fetch @skills\/sai-1-spec-proposal-worker\/SKILL\.md/);

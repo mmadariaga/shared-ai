@@ -261,7 +261,7 @@ test('Step 3 managed-agent identity and binding remain while forwarding skill so
 });
 
 test('Step 4 routed performance wrappers fetch only their matching launcher and the launcher fetches binding and coordinator', () => {
-  const launcher = artifact('sai/commands/performance/launcher.md');
+  const launcher = artifact('sai/commands/performance/command-bootstrap.md');
   assert.match(launcher, /sai[\\/]orchestration[\\/]workers[\\/]bindings[\\/]performance-worker\.md/,
     'launcher should fetch the matching neutral binding');
 
@@ -286,7 +286,7 @@ test('Step 4 routed performance wrappers fetch only their matching launcher and 
     const source = artifact(wrapper.path);
     assert.match(source, wrapper.model, `${wrapper.name} wrapper should declare its model`);
     assert.match(source, wrapper.setting, `${wrapper.name} wrapper should declare its harness setting`);
-    assert.match(source, /sai[\\/]commands[\\/]performance[\\/]launcher\.md/,
+    assert.match(source, /sai[\\/]commands[\\/]performance[\\/]command-bootstrap\.md/,
       `${wrapper.name} wrapper should fetch the performance launcher`);
     assert.doesNotMatch(source, /Fetch @skills\/sai-7-performance-worker\/SKILL\.md/,
       `${wrapper.name} wrapper should not fetch the worker forwarding skill`);

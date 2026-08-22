@@ -55,7 +55,7 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 **Closure Reminder**: "The concise, stage-aware actionable closure line that a successful `sai-explore` turn appends while the current idea's **Closure State** is `active-uncrystallized` and no genuine unresolved question remains — naming the token that advances from the user's current stage of the **Pre-Crystallization Stage TODO** (`next-step` at stages 1–2, `next-step` and `crystallize` at stage 3) and never emitted at the `Crystallize` stage, whose entry is the crystallization itself."
 *Avoid*: fallback reminder, crystallize reminder, closing line, closure message
 
-**Command Launcher**: "The harness-neutral per-command card at `sai/commands/{name}/launcher.md` that holds the behaviour-skill loads and worker binding a command wrapper no longer carries, loaded by the wrapper after its **Harness Boot Adapter** and existing as an extension point even when near-empty."
+**Command Bootstrap**: "The harness-neutral per-command card at `sai/commands/{name}/command-bootstrap.md` that holds the behaviour-skill loads and worker binding a command wrapper no longer carries, loaded by the wrapper after its **Harness Boot Adapter** and existing as an extension point even when near-empty."
 *Avoid*: launcher card, boot card, wrapper body, phase launcher
 
 **Closure State**: "The chat-scoped lifecycle classification of an explored idea as active-uncrystallized, crystallized, or discarded, used to determine whether a successful `sai-explore` response requires an actionable ending."
@@ -332,7 +332,7 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 
 - An **Advisor Skill** is consulted by the phase directly below its model tier: `mid-advisor` by the `/sai-4-apply` coordinator, `senior-advisor` by `/sai-3-implement`.
 - A **Boot Request** is forwarded byte-for-byte by a **Harness Boot Adapter**, which uses only its `command_name` to select a **Command Card**.
-- A **Command Launcher** is loaded by one /sai-* wrapper after its **Harness Boot Adapter**, belongs to one **Command Card** folder, and contains no harness-conditional logic.
+- A **Command Bootstrap** is loaded by one /sai-* wrapper after its **Harness Boot Adapter**, belongs to one **Command Card** folder, and contains no harness-conditional logic.
 - A **Command Card** belongs to exactly one `/sai-*` command and is either routed, with coordinator and worker surfaces, or utility, with a body-only surface.
 - A **Harness Boot Adapter** is the supported-harness boot entry at the **adapter seam**; harness-specific dispatch mechanics live there, and paired non-worker runtime glue may also live under `sai/adapters/{harness}/`.
 - A **Phase Adapter** belongs to one routed phase and is consumed by the **Orchestration Core** shared runner; it is not a **Harness Boot Adapter**.

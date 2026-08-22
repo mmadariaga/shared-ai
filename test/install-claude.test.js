@@ -55,14 +55,14 @@ const UTILITY_COMMANDS = {
 };
 
 const UTILITY_CARD_CONTENTS = {
-  apply: ['coordinator.md', 'green-worker.md', 'invocation.md', 'launcher.md', 'red-worker.md', 'runner.md'],
-  archive: ['archive-commit-gate.instructions.md', 'body.md', 'instructions.md', 'launcher.md'],
-  backfill: ['body.md', 'instructions.md', 'launcher.md'],
-  commit: ['body.md', 'instructions.md', 'launcher.md'],
-  explore: ['body.md', 'instructions.md', 'launcher.md'],
-  pr: ['body.md', 'instructions.md', 'launcher.md', 'pr-body.template.md'],
-  status: ['body.md', 'launcher.md'],
-  worktree: ['body.md', 'instructions.md', 'launcher.md'],
+  apply: ['command-bootstrap.md', 'coordinator.md', 'green-worker.md', 'invocation.md', 'red-worker.md', 'runner.md'],
+  archive: ['archive-commit-gate.instructions.md', 'body.md', 'command-bootstrap.md', 'instructions.md'],
+  backfill: ['body.md', 'command-bootstrap.md', 'instructions.md'],
+  commit: ['body.md', 'command-bootstrap.md', 'instructions.md'],
+  explore: ['body.md', 'command-bootstrap.md', 'instructions.md'],
+  pr: ['body.md', 'command-bootstrap.md', 'instructions.md', 'pr-body.template.md'],
+  status: ['body.md', 'command-bootstrap.md'],
+  worktree: ['body.md', 'command-bootstrap.md', 'instructions.md'],
 };
 
 function stripTunableLines(text) {
@@ -234,7 +234,7 @@ test('installClaude copies sai/commands/*.md to dest/sai/commands/', () => {
   assert.ok(fs.existsSync(path.join(saiCmdDir, 'apply', 'runner.md')), 'apply/runner.md should be in sai/commands/');
   assert.ok(fs.existsSync(path.join(saiCmdDir, 'apply', 'invocation.md')), 'apply/invocation.md should be in sai/commands/');
   assert.ok(fs.existsSync(path.join(saiCmdDir, 'build', 'coordinator.md')), 'build/coordinator.md should be in sai/commands/');
-  assert.ok(fs.existsSync(path.join(saiCmdDir, 'build', 'launcher.md')), 'build/launcher.md should be in sai/commands/');
+  assert.ok(fs.existsSync(path.join(saiCmdDir, 'build', 'command-bootstrap.md')), 'build/command-bootstrap.md should be in sai/commands/');
   assert.equal(fs.existsSync(path.join(saiCmdDir, 'apply', 'body.md')), false, 'apply/body.md should be retired from sai/commands/');
   assert.equal(fs.existsSync(path.join(saiCmdDir, 'apply', 'instructions.md')), false, 'apply/instructions.md should be retired from sai/commands/');
   assert.equal(files.includes('sai-4-apply.md'), false, 'sai-4-apply.md should not be projected as a flat command');
@@ -656,8 +656,8 @@ test('restore-coordinator-instruction-loading Step 3: isolated Claude installati
 
      for (const [wrapperPath, folder, binding] of wrappers) {
        const wrapper = readInstalled(wrapperPath);
-       assert.match(wrapper, new RegExp(`Fetch @sai/commands/${folder}/launcher\\.md`));
-       const launcherPath = path.join('sai', 'commands', folder, 'launcher.md');
+        assert.match(wrapper, new RegExp(`Fetch @sai/commands/${folder}/command-bootstrap\\.md`));
+        const launcherPath = path.join('sai', 'commands', folder, 'command-bootstrap.md');
        const launcher = readInstalled(launcherPath);
        assert.match(launcher, new RegExp(`Fetch @sai/orchestration/workers/bindings/${binding.replace('.', '\\.')}`));
        resolveFetches(wrapperPath, available, loaded);

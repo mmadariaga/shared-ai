@@ -7,7 +7,7 @@ const path = require('node:path');
 
 const repoRoot = path.join(__dirname, '..');
 const coordinatorPath = 'sai/commands/build/coordinator.md';
-const launcherPath = 'sai/commands/build/launcher.md';
+const launcherPath = 'sai/commands/build/command-bootstrap.md';
 const applyCoordinatorPath = 'sai/commands/apply/coordinator.md';
 const boundedRecoveryPath = 'sai/policies/bounded-recovery.md';
 
