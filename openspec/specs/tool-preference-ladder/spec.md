@@ -2,7 +2,7 @@
 
 ## Purpose
 
-TBD: fixed conditional research-tool preference order (codegraph, git grep, direct disk tools) for the explorer subagent defined in `sai/policies/explore-agent.md`.
+Prioritizes the most suitable research tools available in the explorer's environment: `codegraph` structural queries first, `git grep` second, and direct disk tools (Glob/Grep/Read) as the last fallback.
 
 ## Requirements
 
