@@ -2,28 +2,19 @@
 
 ### Requirement: Two fixed questions always asked
 
-After reading the diff, the command SHALL always ask the user exactly the following two questions, in this order, **one at a time, sequentially**, regardless of diff content:
+After reading the diff, the command SHALL resolve the following two questions through the crystallized-block chain before presenting either — each resolving label-first, then mined prose, then the ask: (1) "What problem does this solve?", mapped to the block's `**Why**` value; (2) "What are the known limitations or technical debt left behind?", mapped to the block's accepted trade-offs and constraint non-goals. A question whose answer resolves from the block or the mined prose SHALL NOT be presented; a question with no derivable answer SHALL be asked exactly as written. When no crystallized block was detected, both questions SHALL always be asked, in this order, one at a time, sequentially, regardless of diff content, waiting for the user's full response between them; they MUST NOT be asked in the same message, skipped, rephrased, or merged.
 
-1. "What problem does this solve?"
-2. "What are the known limitations or technical debt left behind?"
+#### Scenario: Block answers both fixed questions
+- **WHEN** a detected crystallized block supplies derivable values for both mapped fields
+- **THEN** neither question is presented and both resolved values serve as their fixed answers
 
-After each question, the command SHALL wait for the user's full response before proceeding to the next. Both questions MUST NOT be asked in the same message. These questions are not skipped, rephrased, or merged even if the diff appears self-explanatory.
+#### Scenario: Partially derivable answers
+- **WHEN** the block yields an answer for Question 1 but none for Question 2
+- **THEN** Question 2 alone is asked exactly as written
 
-#### Scenario: Fixed questions asked for a trivial diff
-- **WHEN** the diff is a one-line rename with obvious intent
+#### Scenario: Fixed questions asked without a block
+- **WHEN** no crystallized block was detected
 - **THEN** both fixed questions are still asked sequentially before any output is written
-
-#### Scenario: Fixed questions asked for a complex diff
-- **WHEN** the diff spans multiple files and subsystems
-- **THEN** both fixed questions are still asked sequentially before any output is written
-
-#### Scenario: Fixed question order preserved
-- **WHEN** the interview begins
-- **THEN** question 1 ("What problem does this solve?") is asked before question 2 ("What are the known limitations...")
-
-#### Scenario: No merged questions
-- **WHEN** the interview begins
-- **THEN** the two questions are presented in separate messages, not combined
 
 ### Requirement: Adaptive questions asked only when diff creates genuine gaps
 After the two fixed questions, the command MAY ask targeted follow-up questions generated from the diff if — and only if — there is a specific aspect the AI cannot confidently spec without more information. Examples of genuine gaps: a new DB migration where rollback behavior is unspecified, a new public API endpoint where the request/response contract is ambiguous.

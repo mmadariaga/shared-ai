@@ -7,12 +7,12 @@ Enables the `--fast-track` per-invocation flag on `sai-explore`, `sai-2-design`,
 ## Requirements
 ### Requirement: The fast-track command set is the single canonical membership list
 
-The set of commands that accept and parse `--fast-track` SHALL be exactly `sai-explore`, `sai-2-design`, `sai-4-apply`, and `sai-archive`. `sai-explore`, `sai-2-design`, and `sai-4-apply` parse the token in their shared body files; routed-shaped `sai-archive` parses it in its coordinator card (`sai/commands/archive/coordinator.md`) because its utility body card was retired. This requirement is the single source of truth for parser membership. A composition command outside this set MAY inject apply fast-track without becoming a parser member.
+The set of commands that accept and parse `--fast-track` SHALL be exactly `sai-explore`, `sai-2-design`, `sai-4-apply`, `sai-archive`, and `sai-backfill`. `sai-explore`, `sai-2-design`, and `sai-4-apply` parse the token in their shared body files; routed-shaped `sai-archive` parses it in its coordinator card (`sai/commands/archive/coordinator.md`) because its utility body card was retired; routed-shaped `sai-backfill` parses it in its worker card (`sai/commands/backfill/worker.md`) alongside the diff-source tokens, with no banner. This requirement is the single source of truth for parser membership. A composition command outside this set MAY inject apply fast-track without becoming a parser member.
 
 #### Scenario: Membership is resolved against the canonical list
 
-- **WHEN** any requirement in this capability, or the next-prompt-hint capability, needs to decide whether a command supports `--fast-track`
-- **THEN** it resolves membership against this canonical four-command list, so a future addition or removal is a single-point edit here rather than parallel edits across specs
+- **WHEN** any requirement in this capability needs to decide whether a command supports `--fast-track`
+- **THEN** it resolves membership against this canonical five-command list, so a future addition or removal is a single-point edit here rather than parallel edits across specs
 
 ### Requirement: sai-2-design under fast-track has no specs approval gate to opt out of
 
@@ -88,40 +88,50 @@ The following gates SHALL remain in force under `sai-archive --fast-track` and S
 
 ### Requirement: The --fast-track flag is parsed from arguments_value before the picker
 
-Exactly four commands — `sai-explore`, `sai-2-design`, `sai-4-apply`, and `sai-archive` — SHALL accept a `--fast-track` token in their arguments. The token SHALL be parsed from `arguments_value` before change-name picking: in the command's shared body file for `sai-explore`, `sai-2-design`, and `sai-4-apply`, and in the `sai-archive` coordinator card for `sai-archive`. After extraction the token SHALL be removed from `arguments_value`, and the cleaned remainder SHALL remain authoritative downstream. `/sai-build` remains outside this parser membership and may inject apply fast-track through composition. No wrapper-echo field is forwarded or used to find or clean a change name.
+Exactly five commands — `sai-explore`, `sai-2-design`, `sai-4-apply`, `sai-archive`, and `sai-backfill` — SHALL accept a `--fast-track` token in their arguments. The token SHALL be parsed from `arguments_value` before downstream resolution: in the shared body file for `sai-explore`, `sai-2-design`, and `sai-4-apply`, in the `sai-archive` coordinator card before the change-picker, and in the `sai-backfill` worker card per its Envelope Tokens procedure, which also parses the diff-source tokens and reads the trimmed remainder as the request body. After extraction the token SHALL be removed from `arguments_value`, and the cleaned remainder SHALL remain authoritative downstream. `/sai-build` remains outside this parser membership and may inject apply fast-track through composition. No wrapper-echo field is forwarded or used to find or clean a change name.
 
-For `sai-2-design`, `sai-4-apply`, and `sai-archive`, the cleaned `arguments_value` SHALL reach the shared change-picker before it resolves a name. `sai-4-apply` and `sai-archive` SHALL NOT strip a residual `--fast-track` token from the picker's resolved value or perform a second flag-removal pass after picking.
+For `sai-2-design`, `sai-4-apply`, and `sai-archive`, the cleaned `arguments_value` SHALL reach the shared change-picker before it resolves a name. `sai-4-apply` and `sai-archive` SHALL NOT strip a residual `--fast-track` token from the picker's resolved value or perform a second flag-removal pass after picking. `sai-backfill` consumes no change-picker; its cleaned request body is read by its own technical flow.
 
-The parse SHALL be single-sourced in one location per command — the shared body file, or the coordinator card for `sai-archive` — so that all harness thin wrappers (`commands/claude/`, `commands/opencode/`, `commands/copilot/`) inherit identical behavior; the wrappers carry only an updated `argument-hint` (except where a wrapper shape does not support one — see the harness-agnostic requirement).
+The parse SHALL be single-sourced in one location per command — the shared body file, the coordinator card for `sai-archive`, or the worker card for `sai-backfill` — so that all harness thin wrappers inherit identical behavior.
 
 #### Scenario: Flag is stripped and the change-name passes through cleanly
 
 - **WHEN** a user runs `/sai-4-apply oauth2-auth --fast-track` (in any token order)
 - **THEN** the body file activates fast-track mode, removes the `--fast-track` token from `arguments_value` before picking, and the change-picker receives `oauth2-auth` with no residual flag text
 
-#### Scenario: archive parses before picking without a second flag pass
+#### Scenario: Backfill strips tokens worker-side
 
-- **WHEN** a user runs `/sai-archive --fast-track oauth2-auth` or `/sai-archive oauth2-auth --fast-track`
-- **THEN** the sai-archive coordinator card removes `--fast-track` from `arguments_value` before picking, the change-picker resolves `oauth2-auth`, and archive performs no second flag-removal pass
+- **WHEN** a user runs `/sai-backfill my-change --staged --fast-track`
+- **THEN** the worker card activates fast-track, resolves `--staged` as the diff source, and reads `my-change` as the explicit request-body identifier with no residual token text
 
 #### Scenario: Absent flag leaves behavior identical to today
 
-- **WHEN** a user runs `/sai-2-design oauth2-auth` with no `--fast-track` token
-- **THEN** fast-track mode is inactive and every gate (language, commit, human verification, archive soft gates) behaves exactly as it did before this capability existed, while specs approval is stamped automatically as defined by the design workflow
+- **WHEN** a user runs `/sai-4-apply oauth2-auth` with no `--fast-track` token
+- **THEN** fast-track mode is inactive and every gate behaves exactly as it did before this capability existed
 
-#### Scenario: The flag is confined to the four named commands
+#### Scenario: The flag is confined to the named commands
 
-- **WHEN** a `--fast-track` token is passed to any command other than `sai-explore`, `sai-2-design`, `sai-4-apply`, or `sai-archive` (for example `sai-1-spec`, `sai-3-implement`, `sai-5-review`, `sai-pr`)
+- **WHEN** a `--fast-track` token is passed to any command other than `sai-explore`, `sai-2-design`, `sai-4-apply`, `sai-archive`, or `sai-backfill` (for example `sai-1-spec`, `sai-3-implement`, `sai-5-review`, `sai-pr`)
 - **THEN** that command SHALL NOT gain fast-track behavior from this capability — the flag is not defined for it and its gates are unaffected
 
 ### Requirement: Fast-track mode announces itself with a single-line banner at run start
 
-When `--fast-track` is active through body-file parsing, the command's body file SHALL emit the single line `> FAST-TRACK MODE ACTIVE` at run start; when active through `sai-archive`'s coordinator-card parsing, the coordinator card owns the same banner at run start. When apply receives fast-track only through a chained composition, the supervising composition coordinator owns the banner at apply activation. The banner SHALL NOT be written to disk.
+When `--fast-track` is active through body-file parsing, the command's body file SHALL emit the single line `> FAST-TRACK MODE ACTIVE` at run start; when active through `sai-archive`'s coordinator-card parsing, the coordinator card owns the same banner at run start. When apply receives fast-track only through a chained composition, the supervising composition coordinator owns the banner at apply activation. Routed-shaped `sai-backfill` parses worker-side and SHALL emit no banner anywhere in the run. The banner SHALL NOT be written to disk.
 
 #### Scenario: Archive banner prints from the coordinator
 
 - **WHEN** `/sai-archive {name} --fast-track` runs
 - **THEN** the coordinator prints the exact line `> FAST-TRACK MODE ACTIVE` once at run start, after the prerequisite checks and before change resolution, and writes nothing to disk to record it
+
+#### Scenario: Backfill runs bannerless
+
+- **WHEN** `/sai-backfill {name} --fast-track` runs
+- **THEN** no `FAST-TRACK MODE ACTIVE` banner is printed at any point of the run
+
+#### Scenario: No banner without the flag
+
+- **WHEN** a command runs without `--fast-track`
+- **THEN** no `FAST-TRACK MODE ACTIVE` banner is printed
 
 ### Requirement: Composition-injected apply fast-track under sai-build
 `/sai-build` SHALL always inject normalized apply fast-track true when activating its chained apply segment without becoming a fifth body-file parser. Explicit `--fast-track` on build SHALL not change phase order, injection, gates, or banner behavior; safe-operations and other non-opted-out gates remain in force.
@@ -175,21 +185,21 @@ When the apply fast-track signal is active, the coordinator SHALL pre-activate s
 
 ### Requirement: The fast-track flag opts out only of the gates named per command, never others
 
-For each of the four commands, `--fast-track` SHALL opt out of exactly the named gates and nothing else — it is a fixed, audited list of opt-outs, not a generic "skip all gates" switch. Safe-operations confirmations SHALL remain in force under fast-track for all four commands. No gate outside the per-command list SHALL be auto-answered or skipped.
+For each parser-member command, `--fast-track` SHALL opt out of exactly the named gates and nothing else — it is a fixed, audited list of opt-outs, not a generic "skip all gates" switch. Safe-operations confirmations SHALL remain in force under fast-track for every member command. No gate outside the per-command list SHALL be auto-answered or skipped.
 
 #### Scenario: Safe-operations confirmations survive fast-track
 
-- **WHEN** any of the four commands runs with `--fast-track` and is about to perform a destructive or hard-to-reverse operation covered by the safe-operations skill
+- **WHEN** any member command runs with `--fast-track` and is about to perform a destructive or hard-to-reverse operation covered by the safe-operations skill
 - **THEN** the safe-operations confirmation is still required, because it is not in any command's fast-track opt-out list
 
 #### Scenario: The opt-out set is fixed per command
 
-- **WHEN** fast-track is active for `sai-explore` (two language gates), `sai-2-design` (no opt-out gate; specs approval is an automatic stamp), `sai-4-apply` (both commit-authorization gates — the per-Step STOP & COMMIT gate and the terminal documentation commit gate — + Human Verification deferral + Prerequisites branch-selection prompt auto-stay only), or `sai-archive` (unchecked-items gate always + delta-spec sync gate conditional only + archive commit gate auto-select-new-commit only)
+- **WHEN** fast-track is active for `sai-explore` (two language gates), `sai-2-design` (no opt-out gate; specs approval is an automatic stamp), `sai-4-apply` (both commit-authorization gates — the per-Step STOP & COMMIT gate and the terminal documentation commit gate — + Human Verification deferral + Prerequisites branch-selection prompt auto-stay only), `sai-archive` (unchecked-items gate always + delta-spec sync gate conditional only + archive commit gate auto-select-new-commit only), or `sai-backfill` (generated reconciliation questions + spec-conflict decision + crystallized-block change-name confirmation only)
 - **THEN** no gate beyond that command's named set changes behavior
 
 ### Requirement: Fast-track behavior is harness-agnostic and documented
-The `--fast-track` behavior SHALL be identical under Claude Code, opencode, and GitHub Copilot, achieved by single-sourcing the parse and gate branches in the shared body files and shared instructions. Any wrapper-level `argument-hint` change SHALL be mirrored across `commands/claude/`, `commands/opencode/`, and `commands/copilot/` in the same commit (Mirror discipline). Where a wrapper shape does not carry an `argument-hint` — specifically the opencode `sai-archive` wrapper, whose shape is envelope-only — no separate consistency marker is required in the envelope; its label-free two-key envelope matches every other opencode change-consuming wrapper, and the Claude Code and Copilot `sai-archive` wrappers SHALL carry the real `argument-hint`. `AGENTS.md` SHALL name `--fast-track` and its four affected commands under "Critical conventions", and `README.md` SHALL document the flag in the commands table.
+The `--fast-track` behavior SHALL be identical under Claude Code, opencode, and GitHub Copilot, achieved by single-sourcing the parse and gate branches in the shared body files, shared instructions, and routed cards. Any wrapper-level `argument-hint` change SHALL be mirrored across `commands/claude/`, `commands/opencode/`, and `commands/copilot/` in the same commit (Mirror discipline). Where a wrapper shape does not carry an `argument-hint` — specifically the opencode `sai-archive` wrapper — no separate consistency marker is required. `AGENTS.md` SHALL name `--fast-track` and its five affected commands under "Critical conventions", and `README.md` SHALL document the flag in the commands table.
 
 #### Scenario: opencode sai-archive wrapper keeps its envelope shape
-- **WHEN** the `sai-archive` `argument-hint` is added to the Claude Code and Copilot wrappers
-- **THEN** the opencode `sai-archive` wrapper does NOT gain a real `argument-hint`; no HTML comment consistency marker is required in its label-free two-key envelope, and this does not count as a Mirror-discipline violation
+- **WHEN** wrapper-level consistency for `--fast-track` argument hints is evaluated
+- **THEN** the opencode `sai-archive` wrapper keeps its label-free two-key envelope with no real `argument-hint` and no HTML comment marker, and this does not count as a Mirror-discipline violation

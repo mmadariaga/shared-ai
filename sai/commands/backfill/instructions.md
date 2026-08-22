@@ -28,9 +28,21 @@ You are a Post-Hoc Backfill Agent. Your only task is to reconstruct `proposal.md
 Before any other step, check:
 - If `$ARGUMENTS` is empty AND no name can be derived from conversation context: return a terminal payload whose summary is exactly `Change name required. Run: /sai-backfill <name>` and stop.
 
+## Envelope Tokens
+
+Parse `$ARGUMENTS` worker-side — the phase-owned parse; no wrapper and no coordinator splits the envelope on this command's behalf:
+
+- Scan for the diff-source tokens `--staged`, `--unstaged`, and `--diff` followed by one whitespace-delimited SHA value, in any position. Strip every recognized token (and the SHA value with `--diff`) from `$ARGUMENTS` and carry the resolved diff source into Phase 1.
+- Scan separately for the positional token `--fast-track`. Its presence sets the in-memory boolean `fast_track_active`; strip the token as well.
+- The trimmed remainder is the **request body**: an optional explicit kebab-case name and/or a pasted handoff block, read as-is by Phase 2 and Phase 5.
+
+This flow is branched by data, not by flags alone: an unattended envelope — a detected crystallized block, a resolved diff-source token, and every consumed field derivable — completes with zero `needs_input` results; any datum that cannot be resolved restores exactly that ask's existing channel below. Without a detected block and without tokens, every phase behaves byte-for-byte as before.
+
 ## Phase 1: Diff Source Selection
 
-Return the diff-source ask as a `needs_input` result and do NOT proceed until a valid selection is forwarded. Ask **"Which diff should I analyze?"** as a closed-choice prompt with the three options below (per the "Closed-choice prompts" rule in `remember.md`, which gives the per-harness option-picker mapping); a free-text reply that maps to none of them is invalid — re-ask. On a harness with no native option-picker, present exactly:
+When the envelope parse resolved a diff-source token, do NOT return the ask: take the matching option directly — `--staged` → Option 2, `--unstaged` → Option 3, `--diff <sha>` → Option 1 computed on the forwarded SHA with no base-commit ask. On the `--staged` path, an empty staging area is broken input, not absent input: return a terminal payload whose summary is exactly `Staged diff is empty — stage the implementation before invoking backfill.` and stop.
+
+Otherwise — including every `fast_track_active` run whose envelope carried no diff-source token, because the flag never selects a diff source and never suppresses an input question — return the diff-source ask as a `needs_input` result and do NOT proceed until a valid selection is forwarded. Ask **"Which diff should I analyze?"** as a closed-choice prompt with the three options below (per the "Closed-choice prompts" rule in `remember.md`, which gives the per-harness option-picker mapping); a free-text reply that maps to none of them is invalid — re-ask. On a harness with no native option-picker, present exactly:
 
 ```
 **Which diff should I analyze?**
@@ -53,7 +65,21 @@ The diff source MUST be selected before any question is asked, before any spec i
 
 ## Phase 2: Optional Intent Capture
 
-After the valid diff has been selected, loaded, summarized, and the existing `Diff loaded. Proceeding to interview.` confirmation has been carried, return the intent-capture ask as a `needs_input` result offering exactly two declared choices, which the coordinator renders through the harness's native option-picker, in this order:
+### Crystallized-block intake
+
+When the request body contains the `## Ready to Propose` heading together with its byte-exact pinned labels (`**Change name**:`, `**What**:`, `**Why**:`, `**Capabilities in scope**:`, `**Alternatives Considered**:`, `**Trade-offs Accepted**:`, `**Key constraints**:`, `**Edge Cases**:`, `**Implementation Details**:` among them), treat the block as supplied structured intent and SKIP the intent-capture choice entirely — the block replaces it. Detection is binary via the pinned labels; text without them falls through intact to the generic flow below with no partial parsing.
+
+Every consumed block field resolves through the same three steps, identically with and without `fast_track_active`:
+
+1. Use the labeled value when the pinned label is present and carries content (a `- None` bullet counts as no content).
+2. Otherwise mine the answer from the surrounding pasted prose, even when the paste is off-format.
+3. Otherwise restore that question's ordinary ask channel in Phase 3.
+
+Map the resolved fields onto the in-memory intent records: `**Why**` answers Question 1 and `**Trade-offs Accepted**` (with `**Key constraints**` non-goals) answers Question 2; `**Capabilities in scope**`, `**Key constraints**`, `**Edge Cases**`, `**Implementation Details**`, and `**Decisions & Rationale**` items become intent items; `**Alternatives Considered**` entries become rejected-alternative context. Carry the `Diff loaded. Proceeding to interview.` confirmation as usual, then proceed directly into Intent Reconciliation with those records — a usable record set takes the usable-intent path everywhere below, including the four-key `prior_intent` form.
+
+### Optional intent-capture choice
+
+When no crystallized block was detected, after the valid diff has been selected, loaded, summarized, and the existing `Diff loaded. Proceeding to interview.` confirmation has been carried, return the intent-capture ask as a `needs_input` result offering exactly two declared choices, which the coordinator renders through the harness's native option-picker, in this order:
 
 1. `Provide intent (Recommended)`
 2. `Continue without intent`
@@ -76,7 +102,7 @@ When the result is no intent, discard any attached text and continue through the
 
 ## Intent Reconciliation
 
-When a non-empty candidate statement is captured, retain the raw statement only in the current conversation and worker state. Before the fixed interview, derive the following in-memory records without persisting the raw statement or a parsed-intent file:
+When a non-empty candidate statement is captured, retain the raw statement only in the current conversation and worker state. Before the fixed interview, derive the following in-memory records without persisting the raw statement or a parsed-intent file. Records derived from a detected crystallized block (Phase 2) enter this classification identically, with no raw statement retained:
 
 1. **Intent items** — each stated capability, constraint, and boundary, kept in the statement's order.
 2. **Rejected-alternative context** — each explicitly rejected alternative that constrains the result. Keep it separate from intent items; it is never an intent item, diff item, normative requirement, or targeted-question item. Report each retained rejected alternative to the user and keep it for the conflict scan.
@@ -101,6 +127,8 @@ Ask the following two questions **one at a time, sequentially**. After each ques
 
 **Delivery (fixed and adaptive interview questions alike).** Every question in this phase is open-ended free text, not a closed set — the "Closed-choice prompts" rule in `remember.md` does NOT apply to its presentation. Return each question string **exactly once** as a `needs_input` result with empty `options`; the coordinator then renders it as ordinary conversation text and ends the turn there. The coordinator does NOT route it through the harness option-picker / question tool (`AskUserQuestion` on Claude Code, `question` on opencode), and neither side echoes, restates, or re-prints the question in the same turn — a question rendered both as text and through a tool reaches the user duplicated.
 
+When a crystallized block was detected, resolve each fixed question through the Phase 2 three-step chain BEFORE asking it: Question 1 from the resolved `**Why**` value, Question 2 from the resolved trade-offs/non-goals value, falling back to mined prose, then to the ask. A question whose answer resolved from the block or the mined prose is never asked — carry that value as its fixed answer; a question with no derivable answer is asked exactly as written. This resolution is identical with and without `fast_track_active`.
+
 **Question 1:** "What problem does this solve?"
 
 **Question 2:** "What are the known limitations or technical debt left behind?"
@@ -112,7 +140,9 @@ After both fixed answers are collected:
 
 ### Reconciliation Questions
 
-Ask generated questions one at a time, after both fixed questions and before any conflict scan or artifact write. The first five `stated-but-unevidenced` items in reconciliation order each receive one targeted question that quotes or identifies the item and names the code evidence that would substantiate it. If more than five remain, ask one grouped overflow question covering all remaining items; never create a seventh generated question.
+When `fast_track_active` is true, do NOT ask any generated reconciliation question: every `stated-but-unevidenced` item remains non-normative exactly as an unanswered item does today and enters neither proposal nor specs as normative language in this run; continue straight to the Scope Drift Report.
+
+Otherwise, ask generated questions one at a time, after both fixed questions and before any conflict scan or artifact write. The first five `stated-but-unevidenced` items in reconciliation order each receive one targeted question that quotes or identifies the item and names the code evidence that would substantiate it. If more than five remain, ask one grouped overflow question covering all remaining items; never create a seventh generated question.
 
 For each answer, add `confirmed-preservation` to the original item only when the answer directly and unambiguously states that the named behavior or boundary was intentionally preserved or left unchanged. An answer describing omission, deferral, accident, ambiguity, contradiction, or mere absence does not qualify. Keep the required three-way classification unchanged. A qualifying confirmation permits that confirmed boundary to enter a normative artifact; every other unsupported claim remains outside normative requirements.
 
@@ -159,7 +189,7 @@ Other intent context:
 
 The enriched prompt keeps the same scan scope and output contract: return ONLY overlapping specs, with exactly `path`, `what_would_change` (≤30 words), and `why` (≤20 words), no prose, and no raw file contents. Do not pass a non-usable candidate as synthetic intent context.
 
-If conflicts are found, surface the report, then ask for the decision.
+If conflicts are found, surface the report, then ask for the decision — except when `fast_track_active` is true: carry the report verbatim in your returned payload content and continue to Phase 5 automatically without the decision ask, because the real accept-or-reject decision belongs to archive's delta-spec sync gate.
 
 Carry the report verbatim in your returned payload content:
 
@@ -171,7 +201,7 @@ Conflict detected in the following specs:
   Why: {reason tied directly to the diff}
 ```
 
-After the report, return the decision ask as a `needs_input` result: **"Do you want to proceed with these updates, or abort?"** with the two options labeled `proceed (Recommended)` and `abort` (per the "Closed-choice prompts" rule in `remember.md`, which gives the per-harness option-picker mapping); a reply that maps to neither option is invalid — re-ask the question and write no files until a valid choice is made. On a harness with no native option-picker, present exactly:
+After the report on the interactive path, return the decision ask as a `needs_input` result: **"Do you want to proceed with these updates, or abort?"** with the two options labeled `proceed (Recommended)` and `abort` (per the "Closed-choice prompts" rule in `remember.md`, which gives the per-harness option-picker mapping); a reply that maps to neither option is invalid — re-ask the question and write no files until a valid choice is made. On a harness with no native option-picker, present exactly:
 
 ```
 Do you want to proceed with these updates, or abort?
@@ -191,11 +221,12 @@ Do NOT write any file until this phase completes.
 ## Phase 5: Change Name Confirmation
 
 Derive the change name using this priority order:
-1. If `$ARGUMENTS` contains a kebab-case identifier, use it as the name.
-2. If `$ARGUMENTS` is empty but a name can be clearly inferred from the diff file paths or interview answers, propose it as a `needs_input` result: "I'll use `{proposed-name}` as the change name. Is that correct? (yes/no)" with options `yes` / `no`.
-3. If no name can be derived: return a terminal payload whose summary is exactly `Change name required. Run: /sai-backfill <name>` and stop.
+1. If the request body carries an explicit kebab-case identifier, use it as the name; a block-supplied `**Change name**` present at the same time is ignored.
+2. Otherwise, when a crystallized block supplied a `**Change name**`: with `fast_track_active` false, propose it as a `needs_input` result: "I'll use `{proposed-name}` as the change name. Is that correct? (yes/no)" with options `yes` / `no`; with `fast_track_active` true, accept it directly with no ask.
+3. If no name exists yet but one can be clearly inferred from the diff file paths or interview answers, propose it as a `needs_input` result: "I'll use `{proposed-name}` as the change name. Is that correct? (yes/no)" with options `yes` / `no`.
+4. If no name can be derived: return a terminal payload whose summary is exactly `Change name required. Run: /sai-backfill <name>` and stop.
 
-Do NOT compose any draft for a write until the user confirms the name; after confirmation, every subsequent result carries `resolved_change_name`.
+Do NOT compose any draft for a write until the name is confirmed (or fast-track-accepted per rule 2); after confirmation, every subsequent result carries `resolved_change_name`.
 
 ## Phase 6: Draft Composition
 
