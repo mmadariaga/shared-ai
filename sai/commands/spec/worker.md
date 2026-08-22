@@ -2,6 +2,7 @@
 
 Fetch @sai/policies/verified-precondition-handback.md
 Fetch @sai/orchestration/worker-core.md and follow it exactly.
+Fetch @sai/commands/spec/steps/common.md and keep it in force for the entire run.
 
 ## Invocation Envelope
 
@@ -38,13 +39,17 @@ Progress events are returned lifecycle results, not text written into the worker
 
 Progress step ids are reported in plan order and only when newly complete. Progress marks are monotonic: the worker never reopens or re-reports an earlier id, and the coordinator alone renders the plan, marks reported ids, unions `changed_files`, and renders any milestone stamp from `emitted_on` under its rendering rules. Progress events never replace the one terminal lifecycle status. The worker does not dispatch or own an artifact reviewer, an automatic review loop, review counters, reviewer retry outcomes, or user-requested reviewer passes. The supervised selector Explore has no adapter progress plan; its `reviewed-sai-1` idea-list item is its evidence surface rather than a routed worker progress step.
 
+## Active Step Execution
+
+Instruction stretches are delivered just-in-time, one step file at a time. Each progress-event continuation carries one pointer line — `Active step: <id> — follow <path>` — naming exactly the step to execute next; execute only that named step, following its file exactly, and never prefetch, open, or follow any other step instruction file. Step-file paths exist solely as coordinator continuation lines; this contract plus common.md is the sealed initial surface, and `prereqs-and-change` runs from it before the first progress event with the first delivered pointer targeting research. A continuation without a pointer line (artifact feedback, recovery) leaves the active step unchanged in this continuous session. Steps never widen this contract: status returns, progress reporting, changed_files accounting, and failure classification apply unchanged while any step executes.
+
 ## Spec Work
 
 Before proposal generation, complete structured research for every resolved request until the existing approximately 80% confidence boundary is reached. Apply the same boundary when a `Ready to Propose` handoff supplies Research Leads; validate and extend those leads rather than treating them as settled scope or a replacement for independent research.
 
-Set `$ARGUMENTS` to the resolved request, fetch `@sai/commands/spec/invocation.md`, and follow it exactly. Own proposal/spec writes, permitted root `GLOSSARY.md` updates, self-consistency and source-grounding checks, artifact verification, decision-summary derivation, and feedback edits. Write no `design.md`, `tasks.md`, or implementation artifact. Return `needs_input` for planning questions, each complying with `@sai/policies/question-context.md`, `cancelled` for a deliberate decline, and `failed` for blockers. For coordinator-forwarded artifact feedback, process forwarded feedback using the supplied feedback text and shared gate rules; MUST NOT emit, re-present, or duplicate the feedback-text prompt.
+Execute only the active step named by the coordinator's most recent `Active step:` pointer line, following that step file exactly. Own proposal/spec writes, permitted root `GLOSSARY.md` updates, self-consistency and source-grounding checks, artifact verification, decision-summary derivation, and feedback edits. Write no `design.md`, `tasks.md`, or implementation artifact. Return `needs_input` for planning questions, each complying with `@sai/policies/question-context.md`, `cancelled` for a deliberate decline, and `failed` for blockers. For coordinator-forwarded artifact feedback, process forwarded feedback using the supplied feedback text and shared gate rules; MUST NOT emit, re-present, or duplicate the feedback-text prompt.
 
-Before completion verify non-empty `proposal.md`, at least one non-empty `specs/**/*.md`, proposal/spec consistency, valid requirement scenarios, and the existing spec-only scope. Return only lifecycle metadata. `changed_files` is ordered and duplicate-free. Never return artifact contents, continuation identifiers, binding metadata, or a dispatch identifier.
+Pre-completion verification is executed by the validation step's file when its pointer arrives. Return only lifecycle metadata. `changed_files` is ordered and duplicate-free. Never return artifact contents, continuation identifiers, binding metadata, or a dispatch identifier.
 
 ### External findings consumption
 

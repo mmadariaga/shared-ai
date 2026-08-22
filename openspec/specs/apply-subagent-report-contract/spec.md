@@ -2,9 +2,7 @@
 
 ## Purpose
 Defines the fixed worker report fields and verification telemetry contract.
-
 ## Requirements
-
 ### Requirement: Step-execution worker returns a compact fixed-field report
 
 When a RED or GREEN Step-execution worker finishes (or stops), it SHALL return, through its lifecycle payload, a compact report containing exactly these fields:
@@ -16,7 +14,7 @@ When a RED or GREEN Step-execution worker finishes (or stops), it SHALL return, 
 5. **Deviations** — a list of `{plan, final, reason}` entries for the appendix; empty if none.
 6. **Technical learnings / friction** — reusable, self-contained, actionable facts discovered during execution; empty if none (per `apply-technical-learnings-memory`).
 7. **STOP reached?** — yes/no, with the exact marker message when yes.
-8. **Files modified** — non-scratch paths modified or created by the worker during this Step, relative to the repo root, one path per entry; paths under `.tmp/{change-name}/` SHALL be excluded even when the worker created or modified them; empty list if no non-scratch files were modified.
+8. **Files modified** — non-scratch paths written, created, or removed by the worker during this Step, relative to the repo root, one path per entry; a plan-named retired test file removed under the bounded retirement exception is declared here by its exact repository-relative path; paths under `.tmp/{change-name}/` SHALL be excluded even when the worker created or modified them; empty list if no non-scratch files were touched.
 9. **Attempts per phase** — a list of `{phase, attempts, first_failure, note}` entries, one per verification phase this dispatch actually ran.
 
 The report shape (9 fields, order, semantics) is stable across all dispatch kinds. Which fields carry a real value depends on the dispatch:
@@ -37,7 +35,7 @@ Field 8 is required in every report kind (an empty list is a valid value but an 
 #### Scenario: Blind RED worker reports RED with GREEN `n/a`
 
 - **WHEN** the blind RED worker for a testable Step finishes after verifying a valid RED
-- **THEN** its report sets field 3 (RED result) = `valid`, field 4 (GREEN result) = `n/a`, populates field 8 with the test/stub files it wrote, carries exactly one field-9 entry with `phase` = `red`, and carries per-item status, deviations, learnings, and STOP as usual
+- **THEN** its report sets field 3 (RED result) = `valid`, field 4 (GREEN result) = `n/a`, populates field 8 with the test/stub files it wrote or removed, carries exactly one field-9 entry with `phase` = `red`, and carries per-item status, deviations, learnings, and STOP as usual
 
 #### Scenario: GREEN worker reports GREEN with RED `n/a`
 
@@ -55,6 +53,11 @@ Field 8 is required in every report kind (an empty list is a valid value but an 
 - **WHEN** the RED worker finishes a production-free non-testable Step under the green-exception
 - **THEN** its report sets field 3 (RED result) = `n/a` (no RED block exists), field 4 (GREEN result) = `pass`, populates field 8 with the test/stub files it touched, and is terminal for the Step
 - **AND** per the field-9 binding rule, field 9 carries exactly one entry with `phase` = `green`
+
+#### Scenario: RED dispatch declares a removed retired file
+
+- **WHEN** the blind RED worker removes a plan-named retired test file under the bounded retirement exception
+- **THEN** field 8 declares that exact repository-relative path alongside any written or created paths, so the coordinator's add-list union and Subagent↔git comparison observe the removal
 
 #### Scenario: Worker stops at a STOP & COMMIT
 
@@ -180,3 +183,4 @@ When field 9 is absent, the coordinator SHALL proceed with every other workflow 
 
 - **WHEN** a report populates field 8 correctly but omits field 9
 - **THEN** the `apply-pre-commit-file-report` malformed-report message SHALL NOT be printed, because that rule keys on field 8 only
+

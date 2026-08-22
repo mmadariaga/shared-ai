@@ -26,6 +26,7 @@ This index groups the DDRs in `docs/ddr/` by **command** and by **cross-cutting 
 - [0147 — Structured spec research closes at the shared confidence boundary before proposal generation](./0147-spec-research-closes-at-confidence-boundary.md)
 - [0150 — Gate mode is parameterized at the fetch site, never detected from invocation context](./0150-mode-parameterized-at-fetch-site-not-detected.md) — **Amends** adr:0028
 - [0151c — External Explore findings block is the only `review` progress evidence](./0151c-external-findings-block-is-only-review-evidence.md) — **Amends** 0133b, Refs adr:0158c
+- [0156 — Critical prohibitions are deliberately duplicated across the spec worker contract and its step files](./0156-critical-prohibitions-duplicated-across-spec-steps.md) — Pair with adr:0172
 
 ### `/sai-2-design`
 

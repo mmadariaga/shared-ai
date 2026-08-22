@@ -29,6 +29,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0160b — Interactive artifact feedback gate gains a non-option review-loop note only](./0160b-interactive-gate-review-loop-note-only.md) — Refs 0028, Refs ddr:0150, Refs 0158c
 - [0166b — Dual-channel exclusivity is per cause surface](./0166b-per-cause-surface-dual-channel-exclusivity.md) — **Amends** 0165
 - [0171c — Single-string invocation envelope across active SAI surfaces](./0171c-single-string-invocation-envelope.md) — Supersedes 0166, **Reframes** 0159b, Refs 0136, Refs ddr:0114
+- [0172 — Step-gated instruction delivery hands each spec step its instructions just-in-time](./0172-step-gated-instruction-delivery.md) — Refs ddr:0109c, Refs ddr:0110, Refs ddr:0114
 ### `/sai-2-design`
 
 - [0015 — Decision summary precedes the completion sentinel](./0015-decision-summary-precedes-completion-sentinel.md) — **Amends** ddr:0014
