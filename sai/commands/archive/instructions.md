@@ -57,3 +57,13 @@ When fast-track is active (`sai-archive --fast-track`; opt-out set per `openspec
 - **Already-synced path** (options "Archive now" / "Sync anyway" / "Cancel"): auto-select **Archive now** unconditionally — it is a no-op, nothing to sync.
 - Detect applied state by a single read of `implementation.md` for a `- [x]` — no git-log traversal.
 - Every other gate stays in force: the CORE-missing hard stop, the AUDIT informational line, all safe-operations confirmations, the pre-existence check, and the opencode change-name resolution.
+
+### Automatic spec synchronization
+
+When delta specs exist, always select the sync path and continue through the
+inline `openspec-sync-specs` workflow; do not present a synchronization choice
+to the user. When the delta specs are already synchronized, select the archive
+path directly. Verify the resulting main specs before moving the change. This
+policy applies regardless of fast-track state and supersedes the upstream
+skill's `Sync now` / `Archive without syncing` and `Archive now` / `Sync anyway`
+prompts. All other archive gates remain unchanged.
