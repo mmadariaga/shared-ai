@@ -8,12 +8,12 @@ TBD placeholder — purpose to be written when the change completes.
 
 ### Requirement: launcher-per-in-scope-command
 
-Every in-scope command SHALL have exactly one launcher card at `sai/commands/{name}/launcher.md`, and that one shared card SHALL serve both harnesses. The in-scope set is the 16 `sai-*` commands: `sai-1-spec`, `sai-2-design`, `sai-3-implement`, `sai-4-apply`, `sai-5-review`, `sai-6-security`, `sai-7-performance`, `sai-8-accessibility`, `sai-archive`, `sai-backfill`, `sai-build`, `sai-commit`, `sai-explore`, `sai-pr`, `sai-status`, and `sai-worktree`. `budget` SHALL NOT have a launcher and SHALL NOT be loaded through one.
+Every in-scope command SHALL have exactly one launcher card at `sai/commands/{name}/launcher.md`, and that one shared card SHALL serve both harnesses. The in-scope set is the `sai-*` commands shipped as card folders under `sai/commands/`: adding or retiring a command includes adding or removing its launcher, so the membership is owned by the library layout rather than pinned by name here. `budget` SHALL NOT have a launcher and SHALL NOT be loaded through one.
 
-#### Scenario: 16 launchers exist
+#### Scenario: a launcher per in-scope command
 
 - **WHEN** `sai/commands/` is walked after the change
-- **THEN** exactly 16 files named `launcher.md` exist, one per in-scope command
+- **THEN** every in-scope command folder contains exactly one `launcher.md`
 
 #### Scenario: one shared card per command
 
@@ -27,17 +27,12 @@ Every in-scope command SHALL have exactly one launcher card at `sai/commands/{na
 
 ### Requirement: launcher-content
 
-Each launcher SHALL hold the behaviour-skill loads and the routed worker binding that its command's wrapper carries beyond the fetch-skill and boot-adapter loads: `safe-operations` where the wrapper carries it and the routed worker binding (`@sai/orchestration/workers/bindings/{phase}-worker.md`) where the wrapper carries it. A directive a command no longer carries — such as the retired `glossary-format` and `budget` launcher loads, which reach worker sessions through their invocation cores instead — SHALL NOT remain in a launcher. Launchers SHALL NOT carry a routed card fetch (`@sai/commands/{name}/coordinator.md`): card selection is owned by the harness boot adapter, which performs it before the launcher loads, so a launcher-level card fetch would duplicate it. Every directive in the launcher SHALL keep its established relative order.
+Each launcher SHALL hold exactly the directives its command needs beyond the fetch-skill and boot-adapter loads: the behaviour skills the command genuinely requires at launch time, and the command's routed worker binding under `sai/orchestration/workers/bindings/` where the phase routes through a worker. A directive the command does not need at launch time SHALL NOT remain in a launcher. Card selection is owned by the harness boot adapter, which performs it before the launcher loads; launchers SHALL NOT re-fetch coordinator cards, and this requirement is the canonical home of that rule. Every directive in the launcher SHALL keep its established relative order.
 
-#### Scenario: worst-case launcher
+#### Scenario: launcher carries only what its command needs
 
-- **WHEN** `sai/commands/spec/launcher.md` is read
-- **THEN** it contains exactly two directives — the `safe-operations` load and the `spec-worker` binding — and no coordinator-card fetch
-
-#### Scenario: no coordinator-card fetch in any launcher
-
-- **WHEN** any of the eight routed launchers (`spec`, `design`, `implement`, `build`, `review`, `security`, `performance`, `accessibility`) is read
-- **THEN** it contains no `Fetch @sai/commands/{name}/coordinator.md` line
+- **WHEN** any launcher is read
+- **THEN** every directive it carries is either a behaviour skill the command genuinely needs at launch time or the command's routed worker binding, and no directive serves any other purpose
 
 #### Scenario: same relative order
 
@@ -46,18 +41,12 @@ Each launcher SHALL hold the behaviour-skill loads and the routed worker binding
 
 ### Requirement: near-empty-launchers
 
-A command whose wrapper carried nothing beyond the fetch-skill and boot-adapter loads before the change SHALL still ship a `launcher.md`, near-empty at creation, because a uniform shape across all commands is worth more than the saved files and the card is the extension point that keeps future additions out of the user-owned wrapper. A near-empty launcher SHALL contain no behaviour-skill load, no binding, and no card fetch. After this change the near-empty set remains `sai-4-apply`, `sai-archive`, `sai-backfill`, `sai-commit`, `sai-pr`, `sai-status`, and `sai-worktree`. `sai-build` is NOT near-empty: its launcher loads the implement-worker binding; like every launcher it carries no card fetch, because the boot adapter selects the build coordinator card.
+A command whose wrapper carries no directives beyond the fetch-skill, boot-adapter, and launcher loads SHALL still ship a `launcher.md`, near-empty at creation, because a uniform shape across all commands is worth more than the saved files and the card is the extension point that keeps future additions out of the user-owned wrapper. A near-empty launcher SHALL contain no behaviour-skill load and no binding; the absence of coordinator-card fetches follows from the launcher-content rule. Which commands are near-empty is a property of their wrappers, not a membership list: when a command gains a launch-time load its launcher grows and it stops being near-empty, with no specification change.
 
-#### Scenario: sai-build launcher is not near-empty
+#### Scenario: wrappers without extra directives ship near-empty launchers
 
-- **WHEN** `sai/commands/build/launcher.md` is read
-- **THEN** it SHALL contain the implement-worker binding fetch and no coordinator-card fetch
-- **AND** it SHALL NOT be counted among the seven near-empty launchers
-
-#### Scenario: seven near-empty launchers exist
-
-- **WHEN** the launchers for `sai-4-apply`, `sai-archive`, `sai-backfill`, `sai-commit`, `sai-pr`, `sai-status`, and `sai-worktree` are read
-- **THEN** each file exists and contains no behaviour-skill load, no binding, and no card fetch
+- **WHEN** the launcher of a command whose wrapper carries no directives beyond the fetch-skill, boot-adapter, and launcher loads is read
+- **THEN** it contains no behaviour-skill load and no binding
 
 #### Scenario: near-empty launcher is the extension point
 
@@ -75,7 +64,7 @@ The launcher SHALL contain no harness-conditional logic: no `claude` or `opencod
 
 #### Scenario: divergent directive stays in the wrapper
 
-- **WHEN** a directive is present in exactly one harness's wrapper (e.g. the opencode-only `spec-worker` binding in `sai-explore`)
+- **WHEN** a directive is present in exactly one harness's wrapper
 - **THEN** the directive remains in that harness's wrapper and is not added to the shared `launcher.md`
 
 #### Scenario: one launcher loads in both harnesses
@@ -85,13 +74,12 @@ The launcher SHALL contain no harness-conditional logic: no `claude` or `opencod
 
 ### Requirement: load-parity
 
-Each command SHALL still load exactly what it loads today: the union of the directives in its wrapper and its launcher — excluding the launcher-call directive itself — SHALL equal the command's directive set (fetch-skill and boot-adapter each once, plus every moved behaviour or binding directive exactly once) and SHALL include no routed card fetch, because the boot adapter performs card selection exactly once per invocation. Only the load order changes — the boot adapter loads before the behaviour skills — and that SHALL NOT change the command's outcome.
+Each command SHALL still load exactly what it loads today: the union of the directives in its wrapper and its launcher — excluding the launcher-call directive itself — SHALL equal the command's directive set, with the fetch-skill and boot-adapter each appearing exactly once and every moved behaviour or binding directive appearing exactly once. Only the load order changes — the boot adapter loads before the behaviour skills — and that SHALL NOT change the command's outcome.
 
 #### Scenario: directive-set parity per command
 
 - **WHEN** the directive sets of a command's wrapper and launcher are collected after the change
 - **THEN** the union, excluding the launcher-call directive, equals the command's current directive set with no moved directive added or dropped
-- **AND** no coordinator-card fetch appears anywhere in the union
 
 #### Scenario: order change is bounded
 
@@ -101,7 +89,7 @@ Each command SHALL still load exactly what it loads today: the union of the dire
 #### Scenario: outcome preserved
 
 - **WHEN** a command whose behaviour skills moved to the launcher is executed after the change
-- **THEN** the boot adapter routes to the same card it routes to today, and the command session applies the same behaviour set to its work once the launcher has loaded — budget discipline on subagent dispatch, safe-operations confirmation gates, and glossary-format conventions remain in force
+- **THEN** the boot adapter routes to the same card it routes to today, and the command session applies the same behaviour set to its work once the launcher has loaded
 
 ### Requirement: launcher-failure-handling
 
@@ -132,10 +120,10 @@ Tests that assert against command wrapper bodies SHALL move those assertions to 
 
 #### Scenario: binding-count assertions move
 
-- **WHEN** the test asserting the wrapper's direct binding fetch count (`test/doctor-fetch-resolution.test.js`) is read
+- **WHEN** the test suite that verifies how direct worker-binding fetches are classified and counted across installed launchers and wrappers is read
 - **THEN** it counts the launcher's binding fetches instead of the wrapper's
 
 #### Scenario: frontmatter assertions stay
 
-- **WHEN** the test asserting `sai-1-spec` wrapper frontmatter (`test/spec-coordinator-worker.test.js`) is read
-- **THEN** it still asserts the wrapper file's `model` and `effort` (Claude) and `model` (opencode) frontmatter
+- **WHEN** the test suite asserting `sai-1-spec` wrapper frontmatter is read
+- **THEN** it still asserts the wrapper file's `model` and `effort` (Claude Code) and `model` (opencode) frontmatter
