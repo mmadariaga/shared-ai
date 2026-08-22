@@ -36,7 +36,7 @@
 
 ## Proposal Research Documentation
 
-**Local files**: `sai/commands/design/instructions.md`; `sai/commands/design/change-overview.md`; `sai/commands/design/worker.md`; `openspec/specs/design-target-state/spec.md`; `openspec/specs/design-interfaces-artifact/spec.md`; `openspec/specs/change-overview-artifact/spec.md`; `openspec/specs/change-overview-synchronization/spec.md`; `openspec/specs/sai-workflow-schema/spec.md`; `openspec/schemas/sai-workflow/templates/design.md`; `openspec/schemas/sai-workflow/templates/change-overview.md`; `openspec/schemas/sai-workflow/schema.yaml`; `test/change-overview-contract.test.js`; `test/design-coordinator-worker.test.js`; `GLOSSARY.md`; `docs/adr/0167-design-tasks-interfaces-templates-are-structural-skeletons.md`.
+**Local files**: `sai/commands/design/instructions.md`; `sai/commands/design/change-overview.md`; `sai/commands/design/worker.md`; `openspec/specs/design-target-state/spec.md`; `openspec/specs/design-interfaces-artifact/spec.md`; `openspec/specs/change-overview-artifact/spec.md`; `openspec/specs/change-overview-synchronization/spec.md`; `openspec/specs/sai-workflow-schema/spec.md`; `openspec/schemas/sai-workflow/templates/design.md`; `openspec/schemas/sai-workflow/templates/change-overview.md`; `openspec/schemas/sai-workflow/schema.yaml`; `test/change-overview-contract.test.js`; `test/design-coordinator-worker.test.js`; `GLOSSARY.md`; `docs/adr/0167a-design-tasks-interfaces-templates-are-structural-skeletons.md`.
 
 **External URLs**: None.
 

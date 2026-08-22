@@ -8,7 +8,7 @@ Accepted
 
 Artifact reviews — the manual `sai-explore` post-crystallization review loop and the supervised pipeline's independent spec- and design-artifact reviewers — had no shared identifier scheme. `pipeline-independent-review` required only "an identifier" (free-form, reviewer-chosen), and the manual review loop defined no review output format at all. The unify-artifact-review-contract change (`review-finding-format` capability) introduces one shared contract at `sai/policies/artifact-review-contract.md` and had to choose the identifier scheme every artifact review finding carries.
 
-The audit commands (`sai-5-review` / `sai-6-security` / `sai-7-performance` / `sai-8-accessibility`) already use severity-prefixed identifiers (`B`/`M`/`m`/`Q` and `mMUT-N`, see [DDR 0013](./0013-mmut-n-finding-namespace-for-mutation-analysis.md)), but with their own vocabularies and semantics; the artifact-review vocabulary is deliberately separate from them.
+The audit commands (`sai-5-review` / `sai-6-security` / `sai-7-performance` / `sai-8-accessibility`) already use severity-prefixed identifiers (`B`/`M`/`m`/`Q` and `mMUT-N`, see [DDR 0013](../adr/0013-mmut-n-finding-namespace-for-mutation-analysis.md)), but with their own vocabularies and semantics; the artifact-review vocabulary is deliberately separate from them.
 
 ## Decision
 
@@ -25,5 +25,5 @@ Every artifact review finding carries an identifier derived from its `Severity` 
 - Deterministic pass reporting renders severity-prefixed labels (`Finding H1` / `M1` / `L1`); the regression suite pins the `Finding\s+H\d+` / `M\d+` / `L\d+` forms, so changing the scheme is a test-breaking contract change.
 - Identifier semantics stay tied to the `Severity` field, never replacing it as the validated source of truth.
 - Contract-violating findings keep their reviewer-supplied identifier verbatim, so rejection evidence remains readable.
-- The scheme is artifact-review-scoped; the audit commands retain their own identifier schemes ([DDR 0013](./0013-mmut-n-finding-namespace-for-mutation-analysis.md)).
+- The scheme is artifact-review-scoped; the audit commands retain their own identifier schemes ([DDR 0013](../adr/0013-mmut-n-finding-namespace-for-mutation-analysis.md)).
 

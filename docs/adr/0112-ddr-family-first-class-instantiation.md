@@ -6,7 +6,7 @@ Accepted
 
 ## Context
 
-The abstract decision-record-index surface (`decision-record-index-machinery`, ADR 0110) parameterizes every concrete index along three per-index axes (storage directory, index filename, index H1) plus two type-specific section headings, and explicitly deferred the DDR family as the next slice. The corpus already contained 20 hand-produced DDRs under `docs/ddr/` with a hand-produced `0000-INDEX.md`, so the family existed without a first-class instantiation of the abstract surface.
+The abstract decision-record-index surface (`decision-record-index-machinery`, ADR 0110a) parameterizes every concrete index along three per-index axes (storage directory, index filename, index H1) plus two type-specific section headings, and explicitly deferred the DDR family as the next slice. The corpus already contained 20 hand-produced DDRs under `docs/ddr/` with a hand-produced `0000-INDEX.md`, so the family existed without a first-class instantiation of the abstract surface.
 
 ## Decision
 

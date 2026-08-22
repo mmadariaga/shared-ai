@@ -43,5 +43,5 @@ User — the design records it as Decision 6 with the `adr` family marker; all t
 ## Related
 
 - `openspec/changes/add-orca-agent-container/` — proposal, design (D6), and the six capability deltas.
-- `docs/adr/0117-orca-appimage-build-time-extraction.md` — the fixed production command `/opt/orca/AppRun serve`.
-- `docs/adr/0118-orca-environment-nonroot-service-user.md` — the non-root runtime that this supervision runs as.
+- `docs/adr/0117b-orca-appimage-build-time-extraction.md` — the fixed production command `/opt/orca/AppRun serve`.
+- `docs/adr/0118b-orca-environment-nonroot-service-user.md` — the non-root runtime that this supervision runs as.

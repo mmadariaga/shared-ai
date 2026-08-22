@@ -1,6 +1,6 @@
 # ADR 0138: Use manifest projections plus hash-gated retirement records
 
-<!-- adr-index: refs 0091; refs 0101; refs 0134; refs ddr:0123 -->
+<!-- adr-index: refs 0091; refs 0101; refs 0134; refs ddr:0123b -->
 
 ## Status
 
@@ -33,7 +33,7 @@ Represent the new Claude Code and opencode adapter destinations as active projec
 - `docs/adr/0091-manifest-hash-evidence-for-retired-managed-destinations.md`
 - `docs/adr/0101-exact-git-blob-corpus-for-binding-retirements.md`
 - `docs/adr/0134-materialize-worker-projections-from-the-manifest-and-retire-by-hash.md`
-- `docs/ddr/0123-retirement-records-cover-every-historical-content-variant.md`
+- `docs/ddr/0123b-retirement-records-cover-every-historical-content-variant.md`
 
 ## Provenance
 

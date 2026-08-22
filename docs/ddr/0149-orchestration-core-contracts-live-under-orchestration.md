@@ -20,7 +20,7 @@ Relocate both contracts to `sai/orchestration/command-runner.md` and `sai/orches
 
 Each contract keeps its own dedicated per-file manifest projection with updated `source` and `destination.path`. The recursive `claude-orchestration` and `opencode-orchestration` projections are not widened to cover them: their `include` is the no-match sentinel `["__moved__.md"]`, and widening it would start installing the `worker-template.md` files under `sai/orchestration/workers/`, which this decision does not authorize.
 
-The old installed destinations `sai/command-runner.md` and `sai/worker-core.md` gain retirement entries in the same manifest version as the projection change, per the hash-gated retirement mechanism of `docs/adr/0138-manifest-projections-and-hash-gated-retirement-records.md`, with `managedHashes` enumerated from git history per `docs/ddr/0123-retirement-records-cover-every-historical-content-variant.md`.
+The old installed destinations `sai/command-runner.md` and `sai/worker-core.md` gain retirement entries in the same manifest version as the projection change, per the hash-gated retirement mechanism of `docs/adr/0138-manifest-projections-and-hash-gated-retirement-records.md`, with `managedHashes` enumerated from git history per `docs/ddr/0123b-retirement-records-cover-every-historical-content-variant.md`.
 
 ## Alternatives Considered
 

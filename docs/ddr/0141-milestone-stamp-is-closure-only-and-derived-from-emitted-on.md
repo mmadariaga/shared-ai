@@ -20,14 +20,14 @@ First, the acquisition mechanism no longer exists. `per-harness-time-command` of
 sources, taking `date +%H:%M` and `Get-Date -Format "HH:mm"` with them. The
 coordinator is told to issue a call, the policy will not say which, and the
 bindings no longer say either. `SAI_LEARNINGS.md` records the loss; the scoped
-`Bash(date:*)` grant of ADR 0117 survived it, pointing at nothing.
+`Bash(date:*)` grant of ADR 0117a survived it, pointing at nothing.
 
 Second, a coordinator-read clock measures the wrong thing. It records when the
 coordinator rendered the update, not when the worker finished the step, so
 transport and scheduling latency are silently attributed to the work.
 
 DDR 0140 removed the obstacle that had settled the original design: every closed
-worker payload now carries `emitted_on`, the worker's own instant. ADR 0117 had
+worker payload now carries `emitted_on`, the worker's own instant. ADR 0117a had
 considered and rejected exactly this source — "acquire stamps worker-side and
 carry them in payloads" — on the grounds that it would change the worker
 contract and the lifecycle protocol, which that change had committed to
@@ -45,7 +45,7 @@ field read straight off it: no timezone resolution, no conversion, no fallback.
 
 The coordinator issues no wall-clock call of any kind. The three planning-phase
 Claude wrappers accordingly drop the scoped `Bash(date:*)` entry, restoring the
-unbroken read-only tool-scoping doctrine (ADR 0119).
+unbroken read-only tool-scoping doctrine (ADR 0119a).
 
 Stamps extend to every routed phase progress task list marked from worker
 progress events — the four audit plans included, since the per-call cost that

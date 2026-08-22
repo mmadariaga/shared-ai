@@ -1,6 +1,6 @@
 # ADR 0151: Composition constructs successor envelopes directly (no boot adapter)
 
-<!-- adr-index: refs 0136; refs 0075; refs 0147 -->
+<!-- adr-index: refs 0136; refs 0075; refs 0147a -->
 
 ## Status
 

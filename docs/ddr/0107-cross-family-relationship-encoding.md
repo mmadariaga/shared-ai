@@ -6,7 +6,7 @@ Accepted
 
 ## Context
 
-The abstract surface (`decision-record-index-machinery`, ADR 0110) already bound the family-boundary rules: `supersedes` is family-bound; `refs` / `pair-with` / `amends` / `reframes` / `reverses` may cross families; cross-family targets carry the `<family>:NNNN` encoding and `../<family>/NNNN-slug.md` links. This change instantiates those rules for the DDR family without re-deriving them — a pure additive per the abstract surface's contract.
+The abstract surface (`decision-record-index-machinery`, ADR 0110a) already bound the family-boundary rules: `supersedes` is family-bound; `refs` / `pair-with` / `amends` / `reframes` / `reverses` may cross families; cross-family targets carry the `<family>:NNNN` encoding and `../<family>/NNNN-slug.md` links. This change instantiates those rules for the DDR family without re-deriving them — a pure additive per the abstract surface's contract.
 
 ## Decision
 

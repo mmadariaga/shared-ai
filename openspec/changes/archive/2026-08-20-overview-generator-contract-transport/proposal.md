@@ -13,7 +13,7 @@ No live card emits a Fetch for `sai/commands/design/change-overview.md`, so the 
 - The schema `instruction:` field becomes a non-empty informative reference to that contract (kept non-empty so `openspec instructions change-overview` does not degrade to silence) and stops carrying any second normative generation contract — including forbidden-section prose, the five-field envelope, failure-kind vocabulary, parent-versus-generator split, and outer classification mapping
 - Contract tests assert the transport exists (worker Fetch + both harness bindings) and that schema `instruction:` carries no forbidden-section or envelope/contract prose; template-only section checks do not substitute for that coverage
 - `sai/commands/design/change-overview.md` is not modified — it is already the correct single source of the generation contract
-- Non-goals: schema re-sync / drift detection for installed projects; detection or repair of a stale project-local Fetch override of the overview contract; worker-side structural verification of the written overview before `overview.state: current`; the three specs ADR 0146 deliberately left lagging (`wrapper-fetch-paths`, `instructions-fold`, `docs-sync`)
+- Non-goals: schema re-sync / drift detection for installed projects; detection or repair of a stale project-local Fetch override of the overview contract; worker-side structural verification of the written overview before `overview.state: current`; the three specs ADR 0146b deliberately left lagging (`wrapper-fetch-paths`, `instructions-fold`, `docs-sync`)
 
 ## Capabilities
 

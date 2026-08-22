@@ -10,7 +10,7 @@ The OpenSpec schema templates duplicate write-time SAI contracts that the pipeli
 - Add a final HTML-comment write-time authority pointer to each schema template, using `sai/commands/implement/implementation-plan.template.md` for the implementation artifact and naming the delegated contract areas beside each pointer.
 - Replace the five detailed schema instruction blocks with the exact two-sentence informative-pointer formula, while leaving schema graph keys and apply behavior unchanged.
 - Replace the report-template parity test with an authority-pointer test that verifies pointer scope, target existence, fenced-payload heading correspondence for all five templates, the real conditional implementation step shape, and the absence of duplicated body field labels.
-- Retire the active report-template-parity capability through a REMOVED delta, preserve ADR 0106 as historical content, add a superseding ADR, and change only the five index references that currently point to the report-template parity decision.
+- Retire the active report-template-parity capability through a REMOVED delta, preserve ADR 0106b as historical content, add a superseding ADR, and change only the five index references that currently point to the report-template parity decision.
 - Preserve setup's recursive schema-copy behavior and avoid modifying command-owned SAI contracts, existing rendered changes, archived artifacts, or design-phase artifacts.
 
 ## Capabilities
@@ -37,7 +37,7 @@ The OpenSpec schema templates duplicate write-time SAI contracts that the pipeli
 - `openspec/specs/report-template-parity/spec.md` (capability retired through a REMOVED delta)
 - `GLOSSARY.md` (replace the retired parity term with the authority terminology)
 
-The matching `sai/commands/**` write-time owners are read-only references. `bin/setup.js`, `openspec/specs/schema-copy/spec.md`, `openspec/specs/instruction-output-templates/spec.md`, the existing ADR 0106, `0106-run-path-baseline-predicate`, existing `openspec/changes/**`, and archive artifacts are not modified by this change.
+The matching `sai/commands/**` write-time owners are read-only references. `bin/setup.js`, `openspec/specs/schema-copy/spec.md`, `openspec/specs/instruction-output-templates/spec.md`, the existing ADR 0106b, `0106a-run-path-baseline-predicate`, existing `openspec/changes/**`, and archive artifacts are not modified by this change.
 
 ## Proposal Research Documentation
 
@@ -47,8 +47,8 @@ The matching `sai/commands/**` write-time owners are read-only references. `bin/
 - `openspec/schemas/sai-workflow/schema.yaml`
 - `test/change-overview-contract.test.js`
 - `test/report-template-parity.test.js`
-- `docs/adr/0106-keep-both-report-template-families-pinned-parity.md`
-- `docs/adr/0106-run-path-baseline-predicate.md`
+- `docs/adr/0106b-keep-both-report-template-families-pinned-parity.md`
+- `docs/adr/0106a-run-path-baseline-predicate.md`
 - `docs/adr/0000-INDEX.md`
 - `bin/setup.js`
 - `openspec/specs/schema-copy/spec.md`

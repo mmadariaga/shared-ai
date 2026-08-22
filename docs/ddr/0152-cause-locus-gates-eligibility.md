@@ -31,5 +31,5 @@ Locus is a domain invariant of the cause relative to authorization — an eviden
 ## Related
 
 - `openspec/changes/diagnosis-driven-recovery-apply/design.md` — Decision D4
-- DDR 0151 — Three mutually exclusive routing diagnoses
+- DDR 0151b — Three mutually exclusive routing diagnoses
 - ADR 0165 — Dual coordinator inspection channels

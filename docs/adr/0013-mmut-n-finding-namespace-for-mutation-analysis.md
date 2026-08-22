@@ -6,7 +6,7 @@
 
 Accepted
 
-> **Note (ADR 0107):** the severity-mapping portion of this ADR (`survived`/`pre-check-failed` → Major, `revert-failed` → Blocker) is superseded by [ADR 0107](./0107-unified-audit-severity-vocabulary.md); the `mMUT-N` namespace and seven-field surviving-mutant row remain in force.
+> **Note (ADR 0107b):** the severity-mapping portion of this ADR (`survived`/`pre-check-failed` → Major, `revert-failed` → Blocker) is superseded by [ADR 0107b](./0107b-unified-audit-severity-vocabulary.md); the `mMUT-N` namespace and seven-field surviving-mutant row remain in force.
 
 ## Context
 

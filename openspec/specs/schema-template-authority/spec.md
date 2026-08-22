@@ -80,7 +80,7 @@ The replacement authority-pointer test SHALL inspect all five schema templates, 
 
 ### Requirement: historical-and-copy-boundaries
 
-The change SHALL preserve the recursive schema-copy behavior implemented by `bin/setup.js`, SHALL not modify any file under `sai/`, existing rendered `openspec/changes/**` or archive artifacts, `openspec/specs/schema-copy/spec.md`, or design-phase artifacts, and SHALL preserve the contents of ADR 0106. It SHALL add `docs/adr/0158-schema-report-templates-point-to-write-time-authority.md` with an explicit `Supersedes` reference to ADR 0106, update exactly the five `docs/adr/0000-INDEX.md` references to the report-template parity ADR to point to ADR 0158, verify that `docs/adr/0106-run-path-baseline-predicate.md` remains untouched, and update the permitted root glossary terminology from the retired parity term to `Schema Template Authority`.
+The change SHALL preserve the recursive schema-copy behavior implemented by `bin/setup.js`, SHALL not modify any file under `sai/`, existing rendered `openspec/changes/**` or archive artifacts, `openspec/specs/schema-copy/spec.md`, or design-phase artifacts, and SHALL preserve the contents of ADR 0106b. It SHALL add `docs/adr/0162b-schema-report-templates-point-to-write-time-authority.md` with an explicit `Supersedes` reference to ADR 0106b, update exactly the five `docs/adr/0000-INDEX.md` references to the report-template parity ADR to point to ADR 0162b, verify that `docs/adr/0106a-run-path-baseline-predicate.md` remains untouched, and update the permitted root glossary terminology from the retired parity term to `Schema Template Authority`.
 
 #### Scenario: setup continues to copy the schema tree
 
@@ -91,7 +91,7 @@ The change SHALL preserve the recursive schema-copy behavior implemented by `bin
 #### Scenario: ADR history and rendered artifacts remain bounded
 
 - **WHEN** the change is reviewed by path
-- **THEN** `docs/adr/0158-schema-report-templates-point-to-write-time-authority.md` exists and explicitly supersedes ADR 0106, ADR 0106's content and the run-path baseline ADR are unchanged, exactly five index references are redirected to ADR 0158, and no existing rendered change or archive artifact is modified
+- **THEN** `docs/adr/0162b-schema-report-templates-point-to-write-time-authority.md` exists and explicitly supersedes ADR 0106b, ADR 0106b's content and the run-path baseline ADR are unchanged, exactly five index references are redirected to ADR 0162b, and no existing rendered change or archive artifact is modified
 - **AND** no design.md, tasks.md, or interfaces.md is generated for this spec phase
 
 #### Scenario: consumer copies require no migration marker

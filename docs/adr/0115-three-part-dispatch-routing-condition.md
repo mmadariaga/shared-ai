@@ -44,7 +44,7 @@ Derived — the third part and its absence-based formulation were reasoned from 
 ## Related
 
 - `docs/adr/0071-two-part-dispatch-routing-condition.md` — superseded routing rule (two-part condition); not modified.
-- `docs/ddr/0109-testable-and-divisible-are-distinct-step-properties.md` — the vocabulary separation this condition relies on.
+- `docs/ddr/0109b-testable-and-divisible-are-distinct-step-properties.md` — the vocabulary separation this condition relies on.
 - `sai/instructions/apply.md` — `## Step-Execution Subagent Dispatch` (three-part condition, two-shape fall-back, three single-dispatch shapes, ambiguity-only guard).
 - `openspec/changes/route-test-only-steps-to-single-dispatch/` — proposal, design (D1–D6), and the two capability deltas.
 

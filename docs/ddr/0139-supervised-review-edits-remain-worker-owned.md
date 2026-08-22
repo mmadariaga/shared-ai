@@ -32,4 +32,4 @@ User — `openspec/changes/supervised-in-situ-review/design.md` records the choi
 - `openspec/changes/supervised-in-situ-review/specs/supervised-review-in-session/spec.md`
 - `/sai-explore`
 
-<!-- adr-index: refs adr:0139 -->
+<!-- adr-index: refs adr:0139a -->

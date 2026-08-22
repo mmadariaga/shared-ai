@@ -47,7 +47,7 @@ The literal `start-pipeline` trigger is replaced by a localized two-option selec
 - `openspec/specs/supervised-pipeline-forwarding/spec.md`
 - `GLOSSARY.md`
 - `docs/adr/0000-INDEX.md`
-- `docs/adr/0146-crystallization-close-selector-replaces-the-pipeline-token.md`
+- `docs/adr/0146a-crystallization-close-selector-replaces-the-pipeline-token.md`
 - `test/explore-pipeline-selector.test.js`
 
 Known limitations are the deliberate reversal of the former picker prohibition, the unchanged new-chat wording tension in the Ready to Propose block, the large mechanical footprint, and the absence of token-based recovery for habitual `start-pipeline` input.

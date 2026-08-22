@@ -127,8 +127,8 @@ test('no production surface asks a coordinator to acquire a wall-clock time', ()
 test('DDR 0141 records the closure-only, emitted_on-sourced stamp and ADR 0144 the dropped grant', () => {
   const ddr = artifact('docs/ddr/0141-milestone-stamp-is-closure-only-and-derived-from-emitted-on.md');
   const adr = artifact('docs/adr/0144-planning-coordinators-drop-the-scoped-date-shell-entry.md');
-  const supersededAdr = artifact('docs/adr/0117-planning-coordinators-scoped-shell-entry.md');
-  const supersededBinding = artifact('docs/adr/0118-per-harness-wall-clock-commands-in-bindings.md');
+  const supersededAdr = artifact('docs/adr/0117a-planning-coordinators-scoped-shell-entry.md');
+  const supersededBinding = artifact('docs/adr/0118a-per-harness-wall-clock-commands-in-bindings.md');
 
   assert.match(ddr, /## Status\s*\n\s*Accepted/);
   assert.match(ddr, /closure-only/i);

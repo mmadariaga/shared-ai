@@ -51,7 +51,7 @@ No application dependency is introduced. The installer, doctor, uninstall, colli
 - `commands/claude/sai-explore.md`, `commands/opencode/sai-explore.md` — wrapper Fetch paths.
 - `test/install-manifest.test.js`, `test/install-retirement-step-3.test.js`, `test/install-claude.test.js`, `test/install-opencode.test.js`, `test/worker-matrix-projection.test.js`, `test/uninstall-enumeration.test.js`, `test/uninstall-execution.test.js` — projection and retirement invariants.
 - `openspec/specs/explore-idea-list/spec.md`, `openspec/specs/command-runner-layout/spec.md`, `openspec/specs/neutral-binding-destination/spec.md`, `openspec/specs/orchestration-source-layout/spec.md` — governing capability contracts. The command-runner layout currently confines harness-specific naming to boot paths and its carve-out covers only the old worker-binding tree and managed agents, so this change must widen that requirement. The neutral-binding-destination requirement covers only the seven routed worker filenames, and orchestration-source-layout:46 governs canonical routed-worker bindings; the new binding is explicitly non-worker, so neither requires a delta for this file's canonical ownership.
-- `docs/adr/0101-exact-git-blob-corpus-for-binding-retirements.md`, `docs/ddr/0123-retirement-records-cover-every-historical-content-variant.md` — retirement hash rules.
+- `docs/adr/0101-exact-git-blob-corpus-for-binding-retirements.md`, `docs/ddr/0123b-retirement-records-cover-every-historical-content-variant.md` — retirement hash rules.
 - `AGENTS.md:39-42,76-79` — repository layout documentation.
 - `GLOSSARY.md` — existing terms including Harness Boot Adapter, Idea Progress List, Fetch Namespace, and Worker Matrix.
 

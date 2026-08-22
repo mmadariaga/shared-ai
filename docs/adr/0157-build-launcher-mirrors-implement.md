@@ -1,6 +1,6 @@
 # ADR 0157: Build launcher mirrors implement (not near-empty)
 
-<!-- adr-index: refs 0141; refs 0142; refs 0154 -->
+<!-- adr-index: refs 0141; refs 0142; refs 0154b -->
 
 ## Status
 
@@ -8,7 +8,7 @@ Accepted
 
 ## Context
 
-Every in-scope command has a shared launcher card. Near-empty launchers exist for commands whose wrappers carried nothing beyond fetch+boot. Build phase 1 needs a bound implement-worker dispatch target before the coordinator runs. Apply RED/GREEN bindings must not live on the build launcher (D2b / ADR 0154).
+Every in-scope command has a shared launcher card. Near-empty launchers exist for commands whose wrappers carried nothing beyond fetch+boot. Build phase 1 needs a bound implement-worker dispatch target before the coordinator runs. Apply RED/GREEN bindings must not live on the build launcher (D2b / ADR 0154b).
 
 ## Decision
 

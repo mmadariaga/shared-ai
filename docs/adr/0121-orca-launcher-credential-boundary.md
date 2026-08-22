@@ -41,5 +41,5 @@ User — the design records it as Decision 11 with the `adr` family marker; all 
 ## Related
 
 - `openspec/changes/add-orca-agent-container/` — proposal, design (D11), and the six capability deltas.
-- `docs/adr/0119-orca-environment-independent-state-volumes.md` — the state boundaries this credential channel never touches.
+- `docs/adr/0119b-orca-environment-independent-state-volumes.md` — the state boundaries this credential channel never touches.
 - `docs/adr/0120-orca-headless-runtime-supervision.md` — the test-mode invariant shared by the runtime hooks.

@@ -23,9 +23,9 @@ Do not modify `sai/commands/build/coordinator.md`. `/sai-build` obtains diagnosi
 
 - Build-card prose stays composition-owned; recovery phrases live in runner + apply cards.
 - Contract tests assert no build-card edit while apply-segment recovery matches the shared runner.
-- Refs ADR 0154 (build apply segment uses existing apply adapter).
+- Refs ADR 0154b (build apply segment uses existing apply adapter).
 
 ## Related
 
 - `openspec/changes/diagnosis-driven-recovery-apply/design.md` — Decision D8
-- ADR 0154 — Build apply segment loads through the existing apply phase adapter
+- ADR 0154b — Build apply segment loads through the existing apply phase adapter

@@ -1,6 +1,6 @@
 # ADR 0156: Build injects apply fast-track unconditionally; composition owns the banner
 
-<!-- adr-index: refs 0153; refs 0048; refs 0051; refs ddr:0052 -->
+<!-- adr-index: refs 0153b; refs 0048; refs 0051; refs ddr:0052 -->
 
 ## Status
 

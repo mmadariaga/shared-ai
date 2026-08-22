@@ -81,7 +81,7 @@ The observable picker contract is intentionally preserved: an empty `arguments_v
 - `docs/adr/0075-normalized-invocation-envelope-and-lifecycle-payload.md`
 - `docs/adr/0136-opaque-boot-request-and-card-selection-contract.md`
 - `docs/adr/0151-composition-constructs-successor-envelopes-directly.md`
-- `docs/adr/0153-build-composition-minted-segment-envelopes.md`
+- `docs/adr/0153b-build-composition-minted-segment-envelopes.md`
 - `test/command-launcher-card.test.js`
 - `test/install-opencode.test.js`
 - `test/design-coordinator-worker.test.js`

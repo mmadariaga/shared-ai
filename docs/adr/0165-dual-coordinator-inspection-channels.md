@@ -37,4 +37,4 @@ The sole runtime registry table lives in `sai/orchestration/command-runner.md`. 
 
 - `openspec/changes/diagnosis-driven-recovery-apply/design.md` — Decision D10
 - DDR 0152 — Cause Locus gates eligibility
-- DDR 0151 — Three mutually exclusive routing diagnoses
+- DDR 0151b — Three mutually exclusive routing diagnoses

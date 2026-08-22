@@ -1,6 +1,6 @@
 # ADR 0144: The three planning-phase coordinators drop the scoped `Bash(date:*)` entry
 
-<!-- adr-index: supersedes 0117, refs 0118, refs ddr:0141 -->
+<!-- adr-index: supersedes 0117a, refs 0118a, refs ddr:0141 -->
 
 ## Status
 
@@ -8,11 +8,11 @@ Accepted
 
 ## Context
 
-ADR 0117 granted `commands/claude/sai-1-spec.md`, `commands/claude/sai-2-design.md`,
+ADR 0117a granted `commands/claude/sai-1-spec.md`, `commands/claude/sai-2-design.md`,
 and `commands/claude/sai-3-implement.md` the scoped `Bash(date:*)` entry as the
 sole exception to the read-only tool-scoping doctrine, because milestone-stamp
 acquisition required a wall-clock shell call from the coordinator session and no
-other Claude session was permitted to stamp. ADR 0118 then placed the command
+other Claude session was permitted to stamp. ADR 0118a then placed the command
 itself (`date +%H:%M` / `Get-Date -Format "HH:mm"`) in the per-harness bindings.
 
 The `collapse-sai-worker-matrix` change deleted those bindings, so no production
@@ -52,4 +52,4 @@ surface rather than a domain property, which is why this record is an ADR.
 ## Provenance
 
 Derived — the direct mechanical consequence of DDR 0141, which the user chose;
-the grant's original justification is stated in ADR 0117 and no longer applies.
+the grant's original justification is stated in ADR 0117a and no longer applies.
