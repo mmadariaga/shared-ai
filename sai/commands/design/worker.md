@@ -2,6 +2,7 @@
 
 Fetch @sai/policies/verified-precondition-handback.md
 Fetch @sai/orchestration/worker-core.md and follow it exactly.
+Fetch @sai/commands/design/steps/common.md and keep it in force for the entire run.
 
 ## Invocation Envelope
 
@@ -73,9 +74,12 @@ with a valid selected language, the worker carries that `overview_language` into
 the generation continuation; only that opted-in route may emit `overview`
 progress or carry overview-generation failure metadata.
 
+## Active Step Execution
+
+Instruction stretches are delivered just-in-time, one step file at a time. Each progress-event continuation carries one pointer line — `Active step: <id> — follow <path>` — naming exactly the step to execute next; execute only that named step, following its file exactly, and never prefetch, open, or follow any other step instruction file. Step-file paths exist solely as coordinator continuation lines; this contract plus common.md is the sealed initial surface, and `prereqs-resolution` runs from it before the first progress event with the first delivered pointer targeting research. A continuation without a pointer line (artifact feedback, recovery) leaves the active step unchanged in this continuous session. Steps never widen this contract: status returns, progress reporting, changed_files accounting, and failure classification apply unchanged while any step executes.
+
 ## Planning
 
-Fetch @sai/commands/design/invocation.md and follow it exactly.
 Delegate all codebase discovery and deep reading to one budget-explorer using
 the prompt specified by `design.md`. Delegate each Open Question to a
 budget-explorer and resolve all questions before `tasks.md`.
@@ -89,7 +93,7 @@ applied without re-presenting the coordinator's feedback gate. For
 coordinator-forwarded artifact feedback, process only the supplied feedback
 text; MUST NOT emit, re-present, or duplicate the feedback-text prompt.
 
-For Architecture Snapshot presentation, retain the previous `interfaces.md` text in invocation-scoped state before worker-owned feedback edits. Apply the normalization and complete-effective-artifact comparison defined by `sai/commands/design/instructions.md`. The existing terminal `summary` includes the current Architecture Snapshot on the initial iteration and after a later normalized interface change, and omits it after identical regeneration or `design.md`/`tasks.md`-only changes. Do not add a payload field; generation, comparison, and summary composition remain worker-owned.
+For Architecture Snapshot presentation, retain the previous complete `design.md` text in invocation-scoped state before applying feedback and regenerating artifacts, then extract the complete `## Target State` block — from the `## Target State` heading through the start of the next top-level section — from both the previous and the regenerated `design.md`. Normalize the two extracted blocks by converting CRLF and CR line endings to LF and removing trailing whitespace from every line. Preserve all other text and ordering. Present the updated Architecture Snapshot immediately before the next feedback loop only when the normalized Target State blocks differ. Identical normalized blocks — or feedback that changes only Context, Decisions, Risks, or other non-Target-State prose — omit the snapshot for that iteration. The comparison input is the extracted block, never the whole `design.md`. The existing terminal `summary` includes the current Architecture Snapshot on the initial iteration and after a later normalized Target State change, and omits it after identical regeneration or non-Target-State-only changes. Do not add a snapshot payload field or top-level artifact; generation, comparison, and summary composition remain worker-owned.
 
 ### External findings consumption
 
@@ -125,7 +129,7 @@ The worker owns the change's overview lifecycle for `change-overview.md` per `sp
 On `continue_after_notice`, resume from the notice without asking for input.
 On `continue_after_recovery`, resume the bounded recovery continuation, perform the repair or safe re-dispatch defined above, and close with a completed or failed result carrying the failure metadata.
 For reconstruction, use the original `arguments_value`, `opaque_input_history`, `pending_feedback`,
-`fast_track_banner_emitted`, `resolved_change_name`, and the original envelope.
+`fast_track_banner_emitted`, `resolved_change_name`, `active_step_id`, and the original envelope. The `overview_language` value is re-derivable from raw `arguments_value`.
 
 Every payload after resolution includes `resolved_change_name`; pre-resolution
 payloads omit it. A design notice contains only `event`, `message`, and

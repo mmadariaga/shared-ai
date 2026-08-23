@@ -35,6 +35,20 @@
   - `interfaces` — "Write interfaces.md"
   - `review` — "Review artifacts"
 
+  Declare the static optional `step_pointer_map` for this phase — fully known at dispatch, immutable for the invocation, and never carried in the dispatch envelope or any reconstruction field. It maps every declared step id from both plans' superset to its just-in-time instruction pointer:
+
+  | step id | pointer |
+  | --- | --- |
+  | `prereqs-resolution` | none |
+  | `research` | `@sai/commands/design/steps/research.md` |
+  | `design` | `@sai/commands/design/steps/design.md` |
+  | `tasks` | `@sai/commands/design/steps/tasks.md` |
+  | `interfaces` | `@sai/commands/design/steps/interfaces.md` |
+  | `review` | `@sai/commands/design/steps/review.md` |
+  | `overview` | `@sai/commands/design/steps/overview.md` |
+
+  While the map is in force, every progress-event continuation payload you send is exactly two lines: today's protocol continuation line, then one pointer line `Active step: <id> — follow <path>` whose id and path come from this static map under the shared command runner's deterministic derivation — the first declared step still unmarked in plan order after applying the event; with every declared step marked, the second line reads exactly `Active step: none — complete remaining work and return your terminal result.` The base-plan activations never derive the inert `overview` pointer entry; pointer derivation consults only steps declared in the active plan. Artifact-feedback continuations and `continue_after_recovery` continuations carry no pointer line, so the worker's active step file persists across them in its continuous session.
+
   Render the full plan at dispatch per `@sai/policies/todo-structure.md` (first step `in_progress`, rest `pending`) **before** dispatching the worker — the render is a prerequisite of the dispatch, not a step that follows it. If a declared panel tool is unavailable at runtime, apply the harness panel binding's one-time degradation route before dispatch: record its notice, disable later panel calls for this invocation, and continue without panel rendering; do not runtime-detect or switch surfaces. Only after the render attempt or recorded degradation decision, dispatch exactly one worker through the active design-worker binding using `original_envelope`. Progress-event panel updates follow `@sai/policies/todo-structure.md` through the shared command runner before worker continuation; an unavailable panel uses the same recorded degradation route and does not block continuation. Mark steps only from worker progress-event `step_ids`.
 
   The worker's pre-gate `completed` never reconciles the rendered list. When `--overview-lang` is present, the pre-gate result leaves the `overview` step unmarked until the opted-in generation continuation. When `--overview-lang` is absent, the pre-gate result likewise remains unreconciled; after the gate, the no-generation terminal reconciles every eligible unmarked step in the unopted six-step plan. A successful opted-in post-gate overview-generation terminal reconciles every eligible unmarked step except an evidence-marked `review` step. Failed overview-generation or cancelled outcomes perform no reconciliation and leave the whole list unchanged exactly as last rendered. A `needs_input` result is a terminal lifecycle status but not run-closing and leaves the list exactly as last rendered. The carve-out is scoped by the evidence-marked designation from `@sai/policies/todo-structure.md`, never by the bare `review` id.
@@ -43,7 +57,7 @@
 
   Notices and progress events are the only allowed nonterminal extensions. For a notice, print `message` exactly, set `fast_track_banner_emitted: true` and continue the same worker with exactly `continue_after_notice`. For a progress event, mark the reported step ids in the declared progress plan and continue the same worker with exactly `continue_after_progress` to resume it. Do not add either acknowledgement to opaque input history, user answers, or pending feedback.
 
-  For `needs_input`, present the exact question and ordered options through the native picker, append only `{question, options, answer_value}` to opaque history, and forward the exact value. Require complete reconstruction state before one replacement worker. A completed result requires `resolved_change_name`.
+  For `needs_input`, present the exact question and ordered options through the native picker, append only `{question, options, answer_value}` to opaque history, and forward the exact value. Require complete reconstruction state before one replacement worker, including the complete original envelope, opaque history, pending feedback, resolved name, changed-file union, feedback iteration, and the departing worker's `active_step_id`; the replacement's first continuation carries the correct pointer line for that active step. A completed result requires `resolved_change_name`.
 
   ## Design feedback
   After `completed`, print the worker-authored existing summary immediately before presenting the shared feedback gate for exactly `design.md`, `tasks.md`, and `interfaces.md`; the worker summary carries the Architecture Snapshot when applicable. Never read, parse, or reconstruct the Architecture Snapshot. On each feedback-option selection (each feedback selection), emit the shared localized feedback-text prompt exactly once, one prompt per feedback selection, wait for the next user turn and supplied feedback text, retain that supplied feedback text as pending feedback, and forward only that text to the same worker. Never forward the empty picker turn. The worker processes feedback without presenting the prompt. Report worker-authored discards, clear pending feedback only after verified completion, increment feedback iteration, print the worker-authored summary, and re-present the gate. Never inspect or edit artifacts.

@@ -40,3 +40,17 @@ When the worker receives the `review` pointer with no externally supplied `sai-e
 - **WHEN** an externally supplied sai-explore findings block carries the base-form summary with an explicit `High=0`
 - **THEN** the worker processes the block under the shared policies within the proposal/spec edit surface and returns the `review` progress event while `review` is unmarked
 
+### Requirement: The design worker executes only the coordinator-named active step
+
+The design worker SHALL execute only the step file named by the coordinator's most recent `Active step:` pointer line, following that file exactly, and SHALL never prefetch, open, or follow any other step instruction file; step-file paths exist solely as coordinator continuation lines, and a continuation without a pointer line SHALL leave the active step unchanged in the continuous session.
+
+#### Scenario: steps execute in pointer order
+
+- **WHEN** consecutive progress continuations name different design steps
+- **THEN** the worker executes each named step exactly when its pointer arrives, without loading future step files early
+
+#### Scenario: prereqs-resolution precedes the first pointer
+
+- **WHEN** prerequisite checks pass and change resolution completes on the design worker's sealed initial surface
+- **THEN** the worker returns the startup progress event for `prereqs-resolution` and the next continuation carries the first pointer line, naming research
+

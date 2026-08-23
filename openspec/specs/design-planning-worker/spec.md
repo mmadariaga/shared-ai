@@ -355,3 +355,21 @@ The classification rule SHALL preserve the design progress plan, specs-approval 
 - **WHEN** a non-clean main design recovery does not return a verified completion
 - **THEN** the coordinator SHALL leave the design phase incomplete
 - **AND** it SHALL not emit the existing design completion sentence
+
+### Requirement: The design worker loads steps/common.md at dispatch and executes only the active step file
+
+The design worker contract SHALL fetch `sai/commands/design/steps/common.md` at dispatch and keep it in force for the entire run, replacing the wholesale invocation fetch with execute-only-the-active-step discipline: instruction stretches arrive one step file at a time through coordinator pointer lines, and the worker SHALL never prefetch, open, or follow any other step instruction file, making the worker contract plus `common.md` the sealed initial surface.
+
+#### Scenario: sealed initial surface prevents prefetch
+
+- **WHEN** the design worker begins a run
+- **THEN** its initial surface references only the worker contract and `steps/common.md`, and `prereqs-resolution` runs from that surface before the first progress event with the first delivered pointer targeting research
+
+### Requirement: Design reconstruction state includes active_step_id
+
+Replacement-reconstruction input for the design worker SHALL include `active_step_id` alongside the original envelope, opaque input history, pending feedback, `fast_track_banner_emitted`, and the resolved change name; the departing worker's journal and artifact contents SHALL NOT transfer.
+
+#### Scenario: reconstruction names the interrupted step
+
+- **WHEN** a replacement design worker is reconstructed mid-run
+- **THEN** it resumes the step identified by the supplied `active_step_id` without receiving the prior worker's journal or artifact contents

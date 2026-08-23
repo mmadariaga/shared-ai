@@ -40,3 +40,11 @@ Artifact-feedback continuations and `continue_after_recovery` continuations SHAL
 - **WHEN** the coordinator forwards the ordered recovery diagnosis with exactly `continue_after_recovery`
 - **THEN** the continuation carries no pointer line and recovery proceeds without reopening or renaming any progress step
 
+### Requirement: The step-pointer convention covers both routed phases
+
+The static `step_pointer_map` and single-pointer-line continuation conventions SHALL apply to every coordinator card that declares a map; with this change, the `/sai-2-design` coordinator joins the `/sai-1-spec` coordinator, while adapters without a declared map keep today's exact continuation behavior so undeclared phases remain observationally identical.
+
+#### Scenario: undeclared phases remain byte-for-byte unchanged
+
+- **WHEN** a routed phase's adapter declares no `step_pointer_map`
+- **THEN** its continuations carry no pointer lines and its observable continuation behavior is unchanged from before the convention existed

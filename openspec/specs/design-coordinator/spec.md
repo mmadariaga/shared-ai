@@ -279,7 +279,7 @@ The design phase adapter and the design worker contract SHALL declare one of two
 - `review` — "Review artifacts"
 - `overview` — "Generate change-overview.md"
 
-The unopted-in plan SHALL contain exactly the first six steps in the same order and labels and SHALL contain no `overview` or replacement `skipped` step. Both declarations SHALL compare equal for the selected variant. The plan is static and fully known before worker dispatch; it is not carried in the envelope, emitted as a lifecycle field, or inferred from a worker result. The plan SHALL NOT contain a standalone `specs-approval` step.
+The unopted-in plan SHALL contain exactly the first six steps in the same order and labels and SHALL contain no `overview` or replacement `skipped` step. Both declarations SHALL compare equal for the selected variant. The plan is static and fully known before worker dispatch; it is not carried in the envelope, emitted as a lifecycle field, or inferred from a worker result. The plan SHALL NOT contain a standalone `specs-approval` step. While the static `step_pointer_map` is in force, every progress-event continuation payload SHALL additionally carry the deterministic `Active step:` pointer line derived from that map, and artifact-feedback and `continue_after_recovery` continuations SHALL carry no pointer line so the worker's active step persists across them.
 
 #### Scenario: Opted-in design plan is declared
 
@@ -308,6 +308,11 @@ The unopted-in plan SHALL contain exactly the first six steps in the same order 
 #### Scenario: the panel does not advance while the user decides on the specs
 - **WHEN** the worker is waiting on the specs approval answer
 - **THEN** `prereqs-resolution` remains `in_progress` and `research` remains `pending`
+
+#### Scenario: feedback continuation leaves the active step unchanged
+
+- **WHEN** the coordinator forwards supplied feedback text to the same design worker
+- **THEN** the continuation carries no `Active step:` line and the worker continues under the step file already active in its continuous session
 
 #### Scenario: Unopted-in design plan omits overview
 
@@ -341,3 +346,17 @@ After design artifacts and the feedback gate are complete, an opted-in invocatio
 - **WHEN** `Continue` is selected for a design invocation without `--overview-lang`
 - **THEN** the coordinator emits the existing design completion sentence at the no-generation terminal
 - **AND** it does not dispatch a generator, write a new overview state, or dispatch `/sai-3-implement`
+
+### Requirement: Design coordinator declares a static step_pointer_map over both plans' superset
+
+The design coordinator card SHALL declare a static optional `step_pointer_map` — fully known at dispatch, immutable for the invocation, and never carried in the dispatch envelope or any reconstruction field — mapping every declared step id from both plans' superset to its just-in-time instruction pointer: `prereqs-resolution` to none and `research`, `design`, `tasks`, `interfaces`, `review`, and `overview` each to their file under `sai/commands/design/steps/`. Base-plan activations SHALL NOT derive the inert `overview` pointer entry; pointer derivation SHALL consult only steps declared in the active plan. Replacement reconstruction SHALL require the departing worker's `active_step_id`, and the replacement's first continuation SHALL carry the correct pointer line for that active step.
+
+#### Scenario: base-plan activation never derives the inert entry
+
+- **WHEN** the unopted six-step plan is active and pointer derivation runs after a progress event
+- **THEN** derivation consults only the six declared base-plan steps and never emits an `Active step:` line naming `overview`
+
+#### Scenario: replacement resumes at the departed worker's active step
+
+- **WHEN** the coordinator reconstructs one replacement worker from complete state including the departing worker's `active_step_id`
+- **THEN** the replacement's first continuation carries the pointer line naming that active step and its `sai/commands/design/steps/` path

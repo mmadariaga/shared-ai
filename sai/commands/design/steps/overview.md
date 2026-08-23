@@ -1,0 +1,3 @@
+# Design Step — Overview
+
+Active step: overview. This step fires only on the opted-in plan (raw `--overview-lang` present and valid); on the unopted plan the `overview` pointer entry is inert and this step never activates. Follow the worker card's "### Overview generation (design-worker-owned lifecycle)" section for the complete normative body — dispatch transport, minimal-prompt rule, generator-failure propagation, diagnostics persistence, soundness-veto, bounded recovery, state-key transitions, and overview-step progress-event semantics all remain there. Fetch @sai/commands/design/change-overview.md for the subagent contract. The `overview_language` value arrives from the invocation envelope and is re-derivable from raw `arguments_value`.
