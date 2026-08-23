@@ -6,17 +6,19 @@ TBD - created by syncing change sai-6-security-coordinator-worker-split. Update 
 
 ### Requirement: Security worker owns the complete technical workflow
 
-The routed security worker SHALL own envelope parsing, prerequisite checks, change resolution, parent-branch detection, diff scoping, SAST, conditional SCA, report generation, report verification, and the lifecycle summary. The routed worker SHALL load the shared `sai/commands/security/invocation.md` core, which SHALL load the budget behavior, security instruction, and remember policy without taking ownership of lifecycle control.
+The routed security worker SHALL own envelope parsing, prerequisite checks, change resolution, parent-branch detection, diff scoping, SAST, conditional SCA, report generation, report verification, and the lifecycle summary. The routed worker SHALL load `sai/commands/security/steps/common.md` at dispatch as part of its sealed initial surface together with its worker contract, run the fileless `resolve-security-scope` step from that surface before the first pointer, and thereafter execute ONLY the step named by the coordinator's most recent `Active step:` pointer line — never prefetching, opening, or following any other step instruction file; the wholesale `sai/commands/security/invocation.md` fetch chain SHALL NOT be part of the worker's instruction loading.
 
 #### Scenario: Routed worker starts from an invocation envelope
+
 - **WHEN** a routed security worker receives the harness envelope
 - **THEN** it performs the complete technical security workflow from that envelope and durable repository state
 - **AND** it returns artifact paths and summary data rather than report contents in the lifecycle payload
 
-#### Scenario: Routed security worker starts technical security
-- **WHEN** the routed security worker starts technical security
-- **THEN** it uses the shared security invocation core and security instruction source
-- **AND** the core remains single-sourced and does not own lifecycle control
+#### Scenario: Sealed initial surface replaces the wholesale invocation fetch
+
+- **WHEN** the routed security worker is dispatched
+- **THEN** its initial surface references only its contract plus `sai/commands/security/steps/common.md`, with every other step path first arriving inside a coordinator `Active step:` pointer line
+- **AND** the security policy content remains single-sourced across the carved step files
 
 ### Requirement: Worker preserves security prerequisites, argument parsing, and diff scope
 

@@ -2,6 +2,7 @@
 
 Fetch @sai/policies/verified-precondition-handback.md
 Fetch @sai/orchestration/worker-core.md and follow it exactly.
+Fetch @sai/commands/performance/steps/common.md and keep it in force for the entire run.
 
 ## Invocation Envelope
 
@@ -31,11 +32,15 @@ This phase declares a progress plan with exactly these canonical step ids, in or
 
 Return exactly one progress event per completed batch after prerequisite checks pass and change resolution completes, whenever one or more plan steps complete, per `@sai/orchestration/worker-core.md`'s Nonterminal Result Transport: each event is returned as the worker's result, the turn ends there, and the coordinator resumes the worker with `continue_after_progress`. Composing the event as text inside this session marks nothing. The startup act (prerequisite checks + change selection + scope grammar + tier filter + parent) reports as one batch carrying `resolve-performance-scope` and is the Startup Handshake — return it before dispatching any `budget-explorer`, running any diagnostic, or beginning tier analysis; the stack batch carries `map-stack-hot-paths`; the tier-analysis batch carries `audit-performance-tiers`; the diagnostics batch carries `resolve-diagnostics`, reported completed when the diagnostics authorization or applicability gate is resolved whether the authorized diagnostics run or are legitimately skipped; the outcome batch carries `close-performance-outcome`. Before an early terminal outcome, report the completed resolution and scope milestones that led to it — an empty diff reports `resolve-performance-scope` and `map-stack-hot-paths` before returning the existing no-change `completed` result. Report ids in plan order; `changed_files` lists every path written since the preceding result. Audit progress plans receive no Milestone Stamp annotation. Never emit a progress event before resolution, in place of a terminal payload, or during a `needs_input` pause (the diagnostics authorization question is such a pause) — the run always closes with exactly one terminal lifecycle status.
 
+## Active Step Execution
+
+Instruction stretches are delivered just-in-time, one step file at a time. Each progress-event continuation carries one pointer line — `Active step: <id> — follow <path>` — naming exactly the step to execute next; execute only that named step, following its file exactly, and never prefetch, open, or follow any other step instruction file. Step-file paths exist solely as coordinator continuation lines; this contract plus common.md is the sealed initial surface, and `resolve-performance-scope` runs from it before the first progress event with the first delivered pointer targeting `map-stack-hot-paths`. A gated stage resolved by legitimate skip still reports its milestone, and the next delivered pointer advances past it without that step file executing. A continuation without a pointer line (picker answers) leaves the active step unchanged in this continuous session. Steps never widen this contract: status returns, progress reporting, changed_files accounting, and prerequisite handling apply unchanged while any step executes.
+
 ## Performance Audit
 
 The complete scope grammar is the resolved change name with the optional full, path, tier, and parent-branch values accepted by the shared performance instruction. The four tiers are backend, frontend, database, and queue.
 
-Set `$ARGUMENTS` to the resolved change name plus the optional scope, tier, and parent-branch values, fetch `@sai/commands/performance/invocation.md`, and follow it exactly.
+Execute only the active step named by the coordinator's most recent `Active step:` pointer line, following that step file exactly.
 
 For diff scope, detect the parent branch in this order: supplied parent, remote default, verified `master`, verified `main`. State the selected parent branch. Compute name-status, stat, and `{parent}...HEAD` diff. If the diff is empty, complete the existing no-change performance outcome without findings or protected-file writes. A diff over 500 LOC is the 500-LOC cutover: do not load the full diff into the worker context; use at most eight read-only `budget-explorer` branches under the eight-call cap. Every delegated result uses the canonical bounded evidence contract and exact evidence policy: file:line, tier, finding category, and at most 80 words per finding for file inspection, or file:line plus a one-line note capped at 200 words for contextual research. No delegated response contains raw code blocks.
 

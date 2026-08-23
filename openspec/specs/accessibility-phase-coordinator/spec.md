@@ -62,8 +62,15 @@ The coordinator SHALL validate every worker result against the closed worker lif
 
 ### Requirement: Accessibility progress uses payload-derived stamps
 
-The accessibility coordinator SHALL validate `emitted_on`-bearing lifecycle results and render completed-step stamps from worker payloads without executing UI, runtime, scanner, artifact, or wall-clock operations.
+The accessibility coordinator SHALL validate `emitted_on`-bearing lifecycle results and render completed-step stamps from worker payloads without executing UI, runtime, scanner, artifact, or wall-clock operations. While its static `step_pointer_map` is in force, every progress-event continuation SHALL be exactly two lines — today's protocol continuation line followed by the deterministic `Active step:` pointer line derived from the map — continuations that are not progress-event continuations SHALL carry no pointer line, and the declared `replacement_reconstruction_fields` SHALL include the departing worker's `active_step_id`.
 
 #### Scenario: Accessibility progress returns
+
 - **WHEN** the accessibility worker reports progress
-- **THEN** the coordinator renders the payload-derived stamp and forwards only protocol continuation.
+- **THEN** the coordinator renders the payload-derived stamp and forwards the protocol continuation followed by the pointer line naming the next unmarked accessibility step
+
+#### Scenario: Replacement reconstruction carries the active step
+
+- **WHEN** a departing accessibility worker is replaced mid-run during one recovery
+- **THEN** the reconstruction fields include that worker's `active_step_id`
+- **AND** the replacement's first continuation carries the correct pointer line for that active step

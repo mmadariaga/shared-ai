@@ -2,6 +2,7 @@
 
 Fetch @sai/policies/verified-precondition-handback.md
 Fetch @sai/orchestration/worker-core.md and follow it exactly.
+Fetch @sai/commands/accessibility/steps/common.md and keep it in force for the entire run.
 
 ## Invocation Envelope
 
@@ -33,9 +34,15 @@ This phase declares a progress plan with exactly these canonical step ids, in or
 
 Return exactly one progress event per completed batch after prerequisite checks pass and change resolution completes, whenever one or more plan steps complete, per `@sai/orchestration/worker-core.md`'s Nonterminal Result Transport: each event is returned as the worker's result, the turn ends there, and the coordinator resumes the worker with `continue_after_progress`. Composing the event as text inside this session marks nothing. The startup act (prerequisite checks + change selection + UI-scope and no-UI decision + runtime flag + parent) reports as one batch carrying `resolve-accessibility-scope` and is the Startup Handshake — return it before dispatching any `budget-explorer`, running any scanner, or beginning the static audit; the UI-mapping batch carries `map-ui-framework`; the static-audit batch carries `resolve-static-audit`; the runtime batch carries `resolve-runtime-audit`, reported completed when the runtime request, server-confirmation, and per-command authorization gates are resolved whether the applicable runtime checks run or are legitimately skipped; the outcome batch carries `close-accessibility-outcome`. Before an early terminal outcome, report the completed resolution and scope milestones that led to it — a no-UI run reports `resolve-accessibility-scope` before returning the existing skipped-audit `cancelled` result. Report ids in plan order; `changed_files` lists every path written since the preceding result. Audit progress plans receive no Milestone Stamp annotation. Never emit a progress event before resolution, in place of a terminal payload, or during a `needs_input` pause (the runtime server-confirmation and authorize-or-skip questions are such pauses) — the run always closes with exactly one terminal lifecycle status.
 
+## Active Step Execution
+
+Instruction stretches are delivered just-in-time, one step file at a time. Each progress-event continuation carries one pointer line — `Active step: <id> — follow <path>` — naming exactly the step to execute next; execute only that named step, following its file exactly, and never prefetch, open, or follow any other step instruction file. Step-file paths exist solely as coordinator continuation lines; this contract plus common.md is the sealed initial surface, and `resolve-accessibility-scope` runs from it before the first progress event with the first delivered pointer targeting `map-ui-framework`. A gated stage resolved by legitimate skip still reports its milestone, and the next delivered pointer advances past it without that step file executing. A continuation without a pointer line (picker answers) leaves the active step unchanged in this continuous session. Steps never widen this contract: status returns, progress reporting, changed_files accounting, and prerequisite handling apply unchanged while any step executes.
+
 ## Accessibility Audit
 
-Reconstruct `$ARGUMENTS` as the resolved change name plus the preserved optional scope, `--runtime`, and parent-branch values, then `Fetch @sai/commands/accessibility/invocation.md` and follow it exactly. The default is static-only. Runtime processing is enabled only by `--runtime`.
+Reconstruct `$ARGUMENTS` as the resolved change name plus the preserved optional scope, `--runtime`, and parent-branch values. The default is static-only. Runtime processing is enabled only by `--runtime`.
+
+Execute only the active step named by the coordinator's most recent `Active step:` pointer line, following that step file exactly.
 
 For diff scope, detect the parent branch in this order: supplied parent, remote default from `git symbolic-ref --short refs/remotes/origin/HEAD` with `origin/` stripped, verified `master`, then verified `main`. State the selected parent branch. Compute the name-status and stat for `{parent}...HEAD`, and inspect the selected scope only. `--full` audits all UI files; `--path {dir}` audits that path. UI extensions are `.tsx`, `.jsx`, `.astro`, `.html`, `.vue`, `.svelte`, `.css`, and component-bearing markdown. If no UI files are in scope, skip the audit with a one-line no-UI note and do not write production files.
 

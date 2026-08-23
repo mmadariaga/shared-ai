@@ -59,11 +59,11 @@ Each audit worker SHALL emit an additive `Progress Event` after one or more of i
 - **THEN** it SHALL return a progress event containing the corresponding canonical ids in plan order
 - **AND** the coordinator SHALL acknowledge it with `continue_after_progress` without treating that value as user input
 
-#### Scenario: audit worker preserves existing analysis boundaries
+#### Scenario: audit workers continue under step-gated instruction delivery
 
-- **WHEN** a progress event is emitted between audit stages
-- **THEN** the worker SHALL continue using the existing review, security, performance, or accessibility instructions for analysis, delegation, authorization, severity classification, and report writing
-- **AND** progress reporting SHALL NOT create a new analysis pass or change the report artifact
+- **WHEN** a security, performance, or accessibility audit worker continues between milestones
+- **THEN** it follows the step file named by the most recent `Active step:` pointer from its phase's carved `steps/` library, loaded through `common.md` at dispatch, instead of fetching a wholesale analysis instruction monolith mid-run
+- **AND** the plan ids, labels, order, gated-milestone semantics, and report artifact remain exactly as declared in `audit-adapters-declare-five-step-plans`
 
 ### Requirement: optional-audit-milestones-reconcile-at-applicability
 

@@ -47,12 +47,17 @@ Artifact-feedback continuations, `continue_after_recovery` continuations, and pi
 
 ### Requirement: The step-pointer convention covers both routed phases
 
-The static `step_pointer_map` and single-pointer-line continuation conventions SHALL apply to every coordinator card that declares a map; with this change, the `/sai-5-review` coordinator joins the `/sai-1-spec` and `/sai-2-design` coordinators, while adapters without a declared map keep today's exact continuation behavior so undeclared phases remain observationally identical.
+The static `step_pointer_map` and single-pointer-line continuation conventions SHALL apply to every coordinator card that declares a map; with this change, the `/sai-6-security`, `/sai-7-performance`, and `/sai-8-accessibility` coordinators join the `/sai-5-review`, `/sai-1-spec`, and `/sai-2-design` coordinators, while adapters without a declared map keep today's exact continuation behavior so undeclared phases remain observationally identical.
 
 #### Scenario: undeclared phases remain byte-for-byte unchanged
 
 - **WHEN** a routed phase's adapter declares no `step_pointer_map`
 - **THEN** its continuations carry no pointer lines and its observable continuation behavior is unchanged from before the convention existed
+
+#### Scenario: the audit coordinators declare their maps
+
+- **WHEN** the security, performance, or accessibility coordinator activates
+- **THEN** its `step_pointer_map` statically maps all five declared audit plan ids in plan order with no runtime discovery or amendment
 
 ### Requirement: Review coordinator declares a static step_pointer_map
 

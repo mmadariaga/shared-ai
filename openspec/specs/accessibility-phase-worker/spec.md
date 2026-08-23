@@ -7,17 +7,19 @@ TBD
 
 ### Requirement: Accessibility worker owns the complete technical workflow
 
-The routed accessibility worker SHALL own envelope parsing, prerequisites, change resolution, parent-branch detection, scope selection, UI-file detection, static WCAG 2.2 AA review, optional runtime review, report generation, report verification, self-critique, and lifecycle summary creation. The routed worker SHALL use the caller-neutral accessibility invocation core so that the audit policy remains single-sourced.
+The routed accessibility worker SHALL own envelope parsing, prerequisites, change resolution, parent-branch detection, scope selection, UI-file detection, static WCAG 2.2 AA review, optional runtime review, report generation, report verification, self-critique, and lifecycle summary creation. The routed worker SHALL load `sai/commands/accessibility/steps/common.md` at dispatch as part of its sealed initial surface together with its worker contract, run the fileless `resolve-accessibility-scope` step from that surface before the first pointer, and thereafter execute ONLY the step named by the coordinator's most recent `Active step:` pointer line — never prefetching, opening, or following any other step instruction file; the wholesale caller-neutral accessibility invocation core fetch chain SHALL NOT be part of the worker's instruction loading.
 
 #### Scenario: Routed worker starts from an invocation envelope
+
 - **WHEN** the accessibility worker receives the harness envelope
 - **THEN** it performs the complete technical accessibility workflow from that envelope and durable repository state
 - **AND** it returns artifact paths and summary metadata rather than report contents in lifecycle payloads
 
-#### Scenario: Routed accessibility worker starts technical accessibility
-- **WHEN** the routed accessibility worker starts technical accessibility
-- **THEN** it uses the caller-neutral accessibility invocation core and instruction source
-- **AND** the audit policy remains single-sourced in that core
+#### Scenario: Sealed initial surface replaces the invocation-core fetch
+
+- **WHEN** the routed accessibility worker is dispatched
+- **THEN** its initial surface references only its contract plus `sai/commands/accessibility/steps/common.md`, with every other step path first arriving inside a coordinator `Active step:` pointer line
+- **AND** the audit policy remains single-sourced across the carved step files
 
 ### Requirement: Worker preserves accessibility prerequisites, argument parsing, and scope behavior
 
