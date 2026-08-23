@@ -16,6 +16,9 @@ const MENU_OPTIONS = Object.freeze(['Customize models', 'Exit']);
 const HARNESS_OPTIONS = Object.freeze(['OpenCode', 'Claude Code']);
 const SCOPE_OPTIONS = Object.freeze(['Workers', 'Agents', 'Commands', 'Utilities', 'All']);
 const MODEL_CHECKLIST_LEGEND = 'Up/Down move · Space toggle · Enter confirm · ←/Esc back · q/Ctrl-C cancel';
+const MODEL_TABLE_INDENT = '      ';
+const MODEL_TABLE_GUTTER = '  ';
+const MODEL_TABLE_TYPE_WIDTH = 7;
 const COMBINED_ENTRY_DELIMITER = ' | ';
 const TARGET_PREFIXES = Object.freeze({ worker: 'worker:', agent: 'agent:', command: 'command:', utility: 'utility:' });
 const UTILITY_NAMES = Object.freeze(['sai-commit', 'sai-pr', 'sai-status', 'sai-worktree']);
@@ -704,21 +707,29 @@ async function runPostSetupMenu({
           };
         const targetEntries = buildChecklistTargets(scope, families);
         const targets = targetEntries.map(entry => entry.value);
-        const labels = targetEntries.map(entry => `${entry.value} \x1b[90m[${typeof adapter.effectiveSetting === 'function'
-          ? adapter.effectiveSetting(entry)
-          : 'unavailable'}]\x1b[0m`);
         if (targets.length === 0) {
           console.log('No customization targets are available for the selected scope.');
           screen = 'scope';
           continue;
         }
+        const nameWidth = Math.max(...targetEntries.map(entry => entry.name.length));
+        const header = [
+          `${MODEL_TABLE_INDENT}${'TYPE'.padStart(MODEL_TABLE_TYPE_WIDTH)}${MODEL_TABLE_GUTTER}${'TARGET'.padEnd(nameWidth)}${MODEL_TABLE_GUTTER}SETTING`,
+          `${MODEL_TABLE_INDENT}${'─'.repeat(MODEL_TABLE_TYPE_WIDTH)}${MODEL_TABLE_GUTTER}${'─'.repeat(nameWidth)}${MODEL_TABLE_GUTTER}${'─'.repeat('SETTING'.length)}`,
+        ];
+        const labels = targetEntries.map((entry) => {
+          const setting = typeof adapter.effectiveSetting === 'function'
+            ? adapter.effectiveSetting(entry)
+            : 'unavailable';
+          return `${entry.family.toUpperCase().padStart(MODEL_TABLE_TYPE_WIDTH)}${MODEL_TABLE_GUTTER}${entry.name.padEnd(nameWidth)}${MODEL_TABLE_GUTTER}${setting}`;
+        });
 
         const selection = await promptChecklist(
           targets,
           targets,
           undefined,
           MODEL_CHECKLIST_LEGEND,
-          { preventEmptyConfirm: true, displayOptions: labels },
+          { preventEmptyConfirm: true, displayOptions: labels, header },
         );
         if (!selection || selection.status === 'cancelled') return skippedOutcome('cancelled');
         if (selection.status === 'non-interactive') return skippedOutcome('non-tty');

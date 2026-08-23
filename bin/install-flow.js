@@ -701,6 +701,7 @@ async function runNavigator({
   footer,
   preventEmptyConfirm = false,
   displayOptions,
+  header,
 }) {
   if (!input.isTTY) {
     return { status: 'non-interactive' };
@@ -714,6 +715,9 @@ async function runNavigator({
     function frameLines() {
       const lines = [];
       if (question) lines.push(question);
+      // Header lines are decoration only: cursor and selection index into
+      // `options`, so they never consume movement or toggles.
+      if (header) lines.push(...(Array.isArray(header) ? header : [header]));
       options.forEach((option, i) => {
         const label = Array.isArray(displayOptions) && displayOptions[i] !== undefined
           ? displayOptions[i]
@@ -799,6 +803,7 @@ function promptChecklist(items, defaultSelected, input, footer, navigatorOptions
     mode: 'multi', options: items, defaultSelected, input, footer,
     preventEmptyConfirm: navigatorOptions?.preventEmptyConfirm === true,
     displayOptions: navigatorOptions?.displayOptions,
+    header: navigatorOptions?.header,
   });
 }
 

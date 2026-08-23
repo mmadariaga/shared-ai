@@ -1,8 +1,6 @@
 ## Purpose
 TTY-only post-setup customization menu and isolated harness adapters that apply a selected model and optional effort or variant to project-local worker and command overrides for both supported harnesses, with an explicit scope screen and per-family checklist labeling.
-
 ## Requirements
-
 ### Requirement: Post-setup customization menu
 The setup flow MUST present a post-setup menu only after all existing setup operations have completed. The menu MUST provide exactly two actions: `Customize models` and `Exit`. The menu MUST be presented as a navigable single-select list: up/down arrows move the `>` cursor and Enter (or space) confirms the highlighted action.
 
@@ -108,19 +106,19 @@ After the target-selection checklist confirms a non-empty subset and before any 
 - **THEN** the checklist SHALL remain open and the settings selector SHALL NOT be invoked
 
 ### Requirement: Stable target identities and effective model annotations
-The target checklist SHALL keep stable family-prefixed selection values separate from display labels. Each display label SHALL retain its `worker:`, `agent:`, `command:`, or `utility:` family identity and SHALL append the target's effective setting in subdued styling. The setting SHALL use `provider/model (effort)` formatting, with Claude Code's `effort` and OpenCode's `variant` occupying the tuning position. Project-local overrides SHALL take precedence over installed or global sources; malformed or missing frontmatter SHALL produce a safe unavailable annotation without breaking selection.
+The target checklist SHALL keep stable family-prefixed selection values separate from display labels. Each display label SHALL render an aligned three-column table row separated by two-space gutters: the TYPE column SHALL carry the target's uppercase family (`WORKER`, `AGENT`, `COMMAND`, or `UTILITY`) padded to seven characters, the TARGET column SHALL carry the target's name padded to the longest displayed target name of the current scope, and the SETTING column SHALL carry the target's effective setting as plain text with no brackets and no ANSI styling. The setting SHALL use `provider/model (effort)` formatting, with Claude Code's `effort` and OpenCode's `variant` occupying the tuning position. Project-local overrides SHALL take precedence over installed or global sources; malformed or missing frontmatter SHALL produce a safe `unavailable` setting rendered as ordinary column text without breaking selection.
 
 #### Scenario: Checklist displays stable identities and current settings
 - **WHEN** a target checklist is rendered for either supported harness
-- **THEN** each row SHALL display its family-prefixed identity and effective model annotation while the confirmed selection value remains the stable identity without the annotation
+- **THEN** each row SHALL display aligned TYPE, TARGET, and SETTING columns while the confirmed selection value remains the stable family-prefixed identity
 
 #### Scenario: Local settings override installed settings
 - **WHEN** a project-local target override exists with valid tunable frontmatter
-- **THEN** the checklist SHALL annotate that local model and tuning value instead of the installed or global source
+- **THEN** the SETTING column SHALL show that local model and tuning value instead of the installed or global source
 
 #### Scenario: Invalid settings do not break selection
 - **WHEN** a target source is missing or its frontmatter is malformed
-- **THEN** the checklist SHALL show an unavailable annotation and SHALL remain selectable
+- **THEN** the SETTING column SHALL show `unavailable` as plain column text with no ANSI wrapper and the target SHALL remain selectable
 
 ### Requirement: Claude settings selection
 For every Claude Code customization run with a non-empty confirmed subset, the Claude Code adapter MUST invoke exactly one navigable single-select frame whose options are derived from the adapter-owned static Claude settings catalog. An entry with an `efforts` array MUST be displayed as a concrete model and effort choice together, using the `<model> | <effort>` form; an entry without an `efforts` array MUST be displayed as the model alone. The catalog MUST be the authoritative source for the available model identifiers and each model's effort values, MUST contain at least one valid model entry, and MUST contain no placeholder values such as `<model>` or `<effort>`. The selected result MUST contain only catalog members: `{ model, effort }` for an effort-bearing entry or `{ model }` with no `effort` property for a model-only entry. If the catalog is unavailable or contains no valid model entries, the selector MUST return no settings and MUST allow customization to complete without writing a target. The selector MUST NOT perform Claude live model discovery, claim that end-to-end customization is fake, or perform OpenCode provider, model, or variant discovery. The collected values MUST be forwarded to the persistent local-override operation. The OpenCode adapter MUST continue to use its dependent provider-to-model-to-variant selection instead of this combined frame.
@@ -289,7 +287,11 @@ For every traversed target, the selected harness adapter MUST invoke a local-ove
 - **THEN** the operation SHALL report a persistence failure with a diagnostic for that target and SHALL continue processing the remaining targets
 
 ### Requirement: Navigable target-selection checklist
-The empty-enumeration notice SHALL read `No customization targets are available for the selected scope.` After scope selection and before per-target configuration, the flow SHALL present a navigable multi-select checklist listing every target of the chosen family — or every family in `All` scope — derived from the canonical manifest projections and Worker Matrix metadata in `sai/install-manifest.json` for the chosen harness, with every target selected by default when at least one target exists. Up/down arrows SHALL move the `>` cursor, space SHALL toggle the highlighted target's selection, and Enter SHALL confirm the selection only when at least one target is marked. Rows SHALL retain stable family-prefixed identities (`worker:`, `agent:`, `command:`, or `utility:`) and append the current effective model annotation in subdued styling; display labels SHALL remain separate from the confirmed stable values. Rows SHALL be grouped in Workers, Agents, Commands, Utilities order, with each family in alphabetical order by name. The flow SHALL run per-target configuration exactly for the selected targets in checklist order, and SHALL preserve that order for diagnostics. If the adapter enumerates no targets, it SHALL show a notice and return to the scope screen instead of presenting a zero-row checklist.
+The empty-enumeration notice SHALL read `No customization targets are available for the selected scope.` After scope selection and before per-target configuration, the flow SHALL present a navigable multi-select checklist listing every target of the chosen family — or every family in `All` scope — derived from the canonical manifest projections and Worker Matrix metadata in `sai/install-manifest.json` for the chosen harness, with every target selected by default when at least one target exists. Up/down arrows SHALL move the `>` cursor, space SHALL toggle the highlighted target's selection, and Enter SHALL confirm the selection only when at least one target is marked. Rows SHALL retain stable family-prefixed identities (`worker:`, `agent:`, `command:`, or `utility:`) as their confirmed selection values while their display labels render as aligned TYPE/TARGET/SETTING table columns under a two-line English header; display labels SHALL remain separate from the confirmed stable values. The header SHALL render between the question and the option rows starting under the six-character option prefix, carrying TYPE/TARGET/SETTING titles above a U+2500 dash separator row sized to the same widths as the row columns, and its lines SHALL be non-selectable decoration excluded from cursor movement and toggling while included in redraw bookkeeping. Rows SHALL be grouped in Workers, Agents, Commands, Utilities order, with each family in alphabetical order by name. The flow SHALL run per-target configuration exactly for the selected targets in checklist order, and SHALL preserve that order for diagnostics. If the adapter enumerates no targets, it SHALL print the empty-enumeration notice before building any header or labels and return to the scope screen without opening a zero-row checklist.
+
+#### Scenario: Target checklist renders its table header above the options
+- **WHEN** the model-customization target checklist is rendered with available targets
+- **THEN** a two-line TYPE/TARGET/SETTING header SHALL appear between the question and the first option row, indented over the option prefix, with dash separators matching the row column widths
 
 #### Scenario: Checklist defaults to all targets selected
 - **WHEN** the user enters the target-selection checklist for a harness and scope
@@ -313,7 +315,7 @@ The empty-enumeration notice SHALL read `No customization targets are available 
 
 #### Scenario: Empty target enumeration returns to scope
 - **WHEN** the selected adapter enumerates no targets for the chosen scope
-- **THEN** the flow SHALL show a notice and return to the scope screen without rendering a zero-row checklist or waiting for an Enter that cannot confirm
+- **THEN** the flow SHALL print the notice once and return to the scope screen without opening a checklist or rendering a header
 
 ### Requirement: Navigable cancellation aborts customization
 When the user presses `q` or Ctrl-C at any navigable surface — the post-setup menu, the harness picker, the customization scope screen, the target-selection checklist, the Claude Code combined model/effort frame, or any OpenCode provider, model, or variant screen — the flow SHALL cancel the entire customization run: no target SHALL be configured, no further navigable surface SHALL be presented, and the flow SHALL complete normally without hard-exiting the process (the configurator's non-exit contract, in contrast to the installer's caller-owned exit policy).
@@ -344,3 +346,4 @@ The `agent-customization-menu` capability SHALL be retired: its main spec SHALL 
 #### Scenario: Active home is the renamed capability
 - **WHEN** the change is implemented
 - **THEN** the restated requirements are active under `openspec/specs/model-customization-menu/spec.md` and under no other capability
+

@@ -307,6 +307,89 @@ test('Optional footer renders beneath the item list; omitting it draws nothing (
   }
 });
 
+// --- header block ----------------------------------------------------------
+
+test('navigator header renders between the question and the options without affecting cursor or selection', { timeout: INTERACTION_TIMEOUT }, async () => {
+  const capture = captureStdout();
+  try {
+    const input = createFakeInput(true);
+    const promise = runNavigator({
+      mode: 'multi',
+      question: 'Pick:',
+      options: INSTALLER_ITEMS,
+      defaultSelected: ['Claude Code'],
+      input,
+      footer: FOOTER_SENTINEL,
+      header: ['TYPE  TARGET', '────  ──────'],
+    });
+    schedulePresses(input, [
+      ['', keyInfo('down', '\x1b[B')],
+      ['\r', keyInfo('return', '\r')],
+    ]);
+    const outcome = await promise;
+    assert.deepEqual(outcome, { status: 'confirmed', items: ['Claude Code'] },
+      'cursor movement and selection behave identically with a header present');
+
+    const finalFrame = capture.output().split(/\x1B\[\d+A/).pop();
+    const questionIndex = finalFrame.indexOf('Pick:');
+    const headerIndex = finalFrame.indexOf('TYPE  TARGET');
+    const firstOptionIndex = finalFrame.indexOf('[x] Claude Code');
+    const secondOptionIndex = finalFrame.indexOf('[ ] Opencode');
+    assert.ok(headerIndex !== -1, 'the header renders inside the frame');
+    assert.ok(
+      questionIndex !== -1
+        && headerIndex > questionIndex
+        && headerIndex < firstOptionIndex
+        && firstOptionIndex < secondOptionIndex,
+      'header lines sit above the option rows'
+    );
+    assert.ok(finalFrame.includes('> [ ] Opencode'),
+      'the cursor arrow lands on the second option, skipping the non-selectable header rows');
+
+    // Redraw bookkeeping: frame one holds question(1) + header(2) + options(2)
+    // + footer(1) = 6 physical rows, so the second paint moves up exactly 6.
+    assert.ok(capture.output().includes('\x1B[6A'),
+      'header rows are included in the cursor-up redraw accounting');
+  } finally {
+    capture.restore();
+  }
+});
+
+test('promptChecklist forwards a navigatorOptions header into the rendered frame', { timeout: INTERACTION_TIMEOUT }, async () => {
+  const capture = captureStdout();
+  try {
+    const input = createFakeInput(true);
+    const promise = promptChecklist(INSTALLER_ITEMS, ['Claude Code'], input, FOOTER_SENTINEL, {
+      header: ['TYPE  TARGET'],
+    });
+    schedulePresses(input, [['q', keyInfo('q', 'q')]]);
+    const outcome = await promise;
+    assert.deepEqual(outcome, { status: 'cancelled' });
+    assert.ok(capture.output().includes('TYPE  TARGET'),
+      'promptChecklist passes the header through to the navigator frame');
+  } finally {
+    capture.restore();
+  }
+});
+
+test('a non-TTY input with a header resolves non-interactive before painting anything', { timeout: INTERACTION_TIMEOUT }, async () => {
+  const capture = captureStdout();
+  try {
+    const input = createFakeInput(false);
+    const outcome = await runNavigator({
+      mode: 'multi',
+      options: INSTALLER_ITEMS,
+      defaultSelected: [],
+      input,
+      header: ['TYPE  TARGET'],
+    });
+    assert.deepEqual(outcome, { status: 'non-interactive' });
+    assert.equal(capture.output(), '', 'no frame (header included) may be painted for a non-TTY input');
+  } finally {
+    capture.restore();
+  }
+});
+
 // --- main() TTY guard source pin -------------------------------------------
 
 test('main() preserves the exact non-interactive message before process.exit(1) and the message no longer lives in promptChecklist (npx-installer TTY guard)', () => {

@@ -929,7 +929,7 @@ test('scope All presents combined worker and command identities, workers first, 
   }
 });
 
-test('injected checklist seam renders family-prefixed model annotations but returns stable identities', async () => {
+test('injected checklist seam renders aligned model-table columns with a header but returns stable identities', async () => {
   const ops = { select: [], create: [] };
   const restore = patchFactory('createOpencodeAdapter', () => makeFakeAdapter(
     ['sai-worker'], ops, { model: 'opencode-go/test-model', variant: 'high' },
@@ -950,15 +950,74 @@ test('injected checklist seam renders family-prefixed model annotations but retu
     ]);
     assert.deepEqual(checklistCalls[0][1], checklistCalls[0][0],
       'selection defaults use stable values, not display labels');
+    assert.deepEqual(checklistCalls[0][4].header, [
+      '         TYPE  TARGET      SETTING',
+      `      ${'─'.repeat(7)}  ${'─'.repeat(10)}  ${'─'.repeat(7)}`,
+    ],
+      'the header columns start under the six-char option prefix and reuse the row widths');
     assert.deepEqual(checklistCalls[0][4].displayOptions, [
-      'sai-worker \x1b[90m[opencode-go/test-model (high)]\x1b[0m',
-      'sai-build \x1b[90m[opencode-go/test-model (high)]\x1b[0m',
-      'sai-pr \x1b[90m[opencode-go/test-model (high)]\x1b[0m',
-    ].map((label, index) => `${checklistCalls[0][0][index]}${label.slice(label.indexOf(' \x1b'))}`),
-      'display labels include the family prefix and subdued effective setting');
+      ' WORKER  sai-worker  opencode-go/test-model (high)',
+      'COMMAND  sai-build   opencode-go/test-model (high)',
+      'UTILITY  sai-pr      opencode-go/test-model (high)',
+    ],
+      'display labels are aligned type/target/setting columns without ANSI wrappers');
     assert.deepEqual(ops.select, ['worker:sai-worker, command:sai-build, utility:sai-pr'],
       'the injected seam returns stable identities independently of labels');
   } finally {
+    restore();
+  }
+});
+
+test('an adapter without effectiveSetting renders unavailable as plain column text with no ANSI wrapper', async () => {
+  const ops = { select: [], create: [] };
+  const adapter = makeFakeAdapter(['sai-worker'], ops);
+  delete adapter.effectiveSetting;
+  const restore = patchFactory('createOpencodeAdapter', () => adapter);
+  try {
+    const checklistCalls = [];
+    const answers = ['Customize models', 'OpenCode', 'Workers', 'Exit'];
+    const result = await runPostSetupMenu({
+      projectPath: REPO_ROOT,
+      isTTY: true,
+      promptChoice: async () => answers.shift(),
+      promptChecklist: recordChecklist(checklistCalls),
+    });
+    assert.equal(result.reason, 'cancelled');
+    assert.deepEqual(checklistCalls[0][4].displayOptions, [
+      ' WORKER  sai-worker  unavailable',
+    ],
+      'the unavailable setting renders as ordinary text in the setting column');
+    for (const label of checklistCalls[0][4].displayOptions) {
+      assert.ok(!label.includes('\x1b'), 'no ANSI escape sequences remain in the labels');
+    }
+  } finally {
+    restore();
+  }
+});
+
+test('an empty scope prints the no-targets notice, returns to the scope picker, and never opens a checklist', async () => {
+  const ops = { select: [], create: [] };
+  const restore = patchFactory('createOpencodeAdapter', () => makeFakeAdapter([], ops));
+  const logged = [];
+  const originalLog = console.log;
+  console.log = (...args) => logged.push(args.map(String).join(' '));
+  try {
+    const checklistCalls = [];
+    const answers = ['Customize models', 'OpenCode', 'All', 'Exit'];
+    const result = await runPostSetupMenu({
+      projectPath: REPO_ROOT,
+      isTTY: true,
+      promptChoice: async () => answers.shift(),
+      promptChecklist: recordChecklist(checklistCalls),
+    });
+    assert.equal(result.reason, 'cancelled');
+    assert.equal(logged.filter(line => line.includes('No customization targets are available for the selected scope.')).length, 1,
+      'the empty-scope notice is printed exactly once');
+    assert.equal(checklistCalls.length, 0,
+      'an empty scope never opens a checklist and therefore never renders a header');
+    assert.equal(ops.create.length, 0, 'an empty scope configures nothing');
+  } finally {
+    console.log = originalLog;
     restore();
   }
 });
