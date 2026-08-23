@@ -69,12 +69,17 @@ The coordinator SHALL initialize an invocation-scoped ordered, duplicate-free `c
 
 ### Requirement: Coordinator retries continuation before replacement
 
-The coordinator SHALL attempt same-worker continuation first. If continuation fails, it SHALL preserve the original envelope, changed-files union, exact opaque input history, and required review reconstruction fields, and SHALL dispatch at most one replacement worker. If required reconstruction data is unavailable, it SHALL return a failed lifecycle result without dispatching a replacement.
+The coordinator SHALL attempt same-worker continuation first. If continuation fails, it SHALL preserve the original envelope, changed-files union, exact opaque input history, and required review reconstruction fields, and SHALL dispatch at most one replacement worker. When the phase's `step_pointer_map` is in force, the required reconstruction fields SHALL additionally include the departing worker's `active_step_id`, and the replacement's first continuation SHALL carry the correct pointer line for that active step. If required reconstruction data is unavailable, it SHALL return a failed lifecycle result without dispatching a replacement.
 
 #### Scenario: Same-worker continuation fails
 - **WHEN** the active binding cannot continue the review worker
 - **THEN** the coordinator dispatches no more than one replacement worker with complete reconstruction state
 - **AND** it does not send the prior worker journal or artifact contents to the replacement
+
+#### Scenario: Replacement resumes the departing worker's active step
+
+- **WHEN** a replacement review worker is dispatched after same-worker continuation fails while the step-pointer map is in force
+- **THEN** the replacement's first continuation carries the pointer line for the departed worker's recorded `active_step_id`
 
 ### Requirement: Terminal output preserves the review completion boundary
 

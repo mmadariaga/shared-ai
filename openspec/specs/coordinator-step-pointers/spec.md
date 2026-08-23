@@ -28,7 +28,7 @@ While the map is in force, every progress-event continuation payload the coordin
 
 ### Requirement: Pointer-less continuations leave the active step unchanged
 
-Artifact-feedback continuations and `continue_after_recovery` continuations SHALL carry no pointer line, so the worker's active step file persists across them in the same worker's continuous session.
+Artifact-feedback continuations, `continue_after_recovery` continuations, and picker-answer forwarding continuations SHALL carry no pointer line, so the worker's active step file persists across them in the same worker's continuous session.
 
 #### Scenario: forwarded feedback adds no pointer
 
@@ -40,11 +40,25 @@ Artifact-feedback continuations and `continue_after_recovery` continuations SHAL
 - **WHEN** the coordinator forwards the ordered recovery diagnosis with exactly `continue_after_recovery`
 - **THEN** the continuation carries no pointer line and recovery proceeds without reopening or renaming any progress step
 
+#### Scenario: forwarded picker answer leaves the step unchanged
+
+- **WHEN** the review coordinator forwards a selected option value to the same worker after a `needs_input` pause
+- **THEN** the continuation carries no `Active step:` line and the worker continues under the step file already active in its session
+
 ### Requirement: The step-pointer convention covers both routed phases
 
-The static `step_pointer_map` and single-pointer-line continuation conventions SHALL apply to every coordinator card that declares a map; with this change, the `/sai-2-design` coordinator joins the `/sai-1-spec` coordinator, while adapters without a declared map keep today's exact continuation behavior so undeclared phases remain observationally identical.
+The static `step_pointer_map` and single-pointer-line continuation conventions SHALL apply to every coordinator card that declares a map; with this change, the `/sai-5-review` coordinator joins the `/sai-1-spec` and `/sai-2-design` coordinators, while adapters without a declared map keep today's exact continuation behavior so undeclared phases remain observationally identical.
 
 #### Scenario: undeclared phases remain byte-for-byte unchanged
 
 - **WHEN** a routed phase's adapter declares no `step_pointer_map`
 - **THEN** its continuations carry no pointer lines and its observable continuation behavior is unchanged from before the convention existed
+
+### Requirement: Review coordinator declares a static step_pointer_map
+
+The review coordinator card SHALL declare a static optional `step_pointer_map` for the phase — fully known at dispatch, immutable for the invocation, and never carried in the dispatch envelope or any reconstruction field — mapping every declared review progress-plan id to its just-in-time instruction pointer: `resolve-change` to none, and `establish-diff-scope`, `resolve-review-analysis`, `resolve-mutation-analysis`, and `close-review-outcome` each to their file under `sai/commands/review/steps/`.
+
+#### Scenario: the review map covers every declared plan id
+
+- **WHEN** the review coordinator activates
+- **THEN** its `step_pointer_map` statically maps all five canonical review plan ids in plan order with no runtime discovery or amendment

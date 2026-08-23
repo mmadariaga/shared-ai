@@ -14,22 +14,17 @@ The review worker SHALL own envelope parsing, prerequisite checks, change resolu
 
 ### Requirement: Technical workflow is loaded through the shared review invocation core
 
-The routed review worker SHALL load and follow `sai/commands/review/invocation.md` as the shared technical core. That core SHALL load the budget skill, glossary format, `sai/commands/review/instructions.md`, and `sai/policies/remember.md`; it SHALL own none of the prerequisite parsing, change selection, coordinator lifecycle, or terminal navigation.
+The routed review worker SHALL NOT fetch `sai/commands/review/invocation.md`; its technical-core loading is step-gated instead. The worker contract plus `sai/commands/review/steps/common.md` SHALL form the sealed initial surface loaded at dispatch, carrying the boundaries that outlive any single step (budget skill, glossary format, and remember-policy loads, input paths, communication mode, prerequisites, collaboration style, hard rules), and all remaining instruction mass SHALL arrive just-in-time via coordinator `Active step:` pointer lines naming the files under `sai/commands/review/steps/`. The original monolithic `sai/commands/review/instructions.md` and the invocation core SHALL remain in place untouched beside the new step library — a deliberately preserved duplication awaiting a future retirement decision.
 
 #### Scenario: Routed worker starts technical review
+
 - **WHEN** the routed review worker begins technical work
-- **THEN** it loads the shared review invocation core before executing review instructions
-- **AND** it does not create a routed-only copy of the review instruction-loading sequence
+- **THEN** it holds only the worker contract plus `steps/common.md` as its initial instruction surface and receives every remaining phase instruction through coordinator-named step files
 
-#### Scenario: Routed review workflow uses the shared core
-- **WHEN** the routed review worker starts technical review
-- **THEN** it uses the shared review invocation core and review instruction source
-- **AND** the core remains single-sourced rather than copied into the worker
+#### Scenario: Monolith stays beside the carved library
 
-#### Scenario: Routed review workflow retains lifecycle ownership
-- **WHEN** the routed review worker consumes the shared review invocation core
-- **THEN** the worker still owns prerequisite checks, change-picker invocation, and the exact terminal stop `Review done.`
-- **AND** the invocation core does not take ownership of those lifecycle responsibilities
+- **WHEN** the step-gated review delivery is in force
+- **THEN** `sai/commands/review/instructions.md` remains present and unchanged next to the `steps/` library
 
 ### Requirement: Prerequisite failures stop technical work
 

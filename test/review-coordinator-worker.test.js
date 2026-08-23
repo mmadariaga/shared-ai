@@ -146,3 +146,107 @@ test('review coordinator and policy render the plan coordinator-only with thresh
   assert.match(coordinator, /todo-structure\.md/,
     'the coordinator should reference the neutral todo-structure policy');
 });
+
+// ─── review-step-gated-instructions (step-gated delivery for the audit family head) ──
+
+const REVIEW_PLAN_STEPS = [
+  ['resolve-change', 'Resolve change'],
+  ['establish-diff-scope', 'Resolve diff scope'],
+  ['resolve-review-analysis', 'Resolve review analysis'],
+  ['resolve-mutation-analysis', 'Resolve mutation-analysis gate'],
+  ['close-review-outcome', 'Close review outcome'],
+];
+const REVIEW_STEP_MAP = {
+  'resolve-change': null,
+  'establish-diff-scope': 'sai/commands/review/steps/establish-diff-scope.md',
+  'resolve-review-analysis': 'sai/commands/review/steps/resolve-review-analysis.md',
+  'resolve-mutation-analysis': 'sai/commands/review/steps/resolve-mutation-analysis.md',
+  'close-review-outcome': 'sai/commands/review/steps/close-review-outcome.md',
+};
+
+test('step-gated: the review coordinator declares a static step_pointer_map over exactly the five plan ids', () => {
+  const coordinator = artifact('sai/commands/review/coordinator.md');
+
+  assert.match(coordinator, /Declare the static optional `step_pointer_map`/,
+    'the coordinator should declare the static optional step_pointer_map');
+  assert.match(coordinator, /never carried in the dispatch envelope or any reconstruction field/,
+    'the map should never travel in the dispatch envelope or reconstruction fields');
+
+  const table = coordinator.slice(
+    coordinator.indexOf('| step id |'),
+    coordinator.indexOf('While the map is in force'),
+  );
+  const rows = [...table.matchAll(/^\s*\| `([a-z-]+)` \| (.+) \|$/gm)].map(m => [m[1], m[2].trim()]);
+  assert.deepEqual(rows.map(([id]) => id), REVIEW_PLAN_STEPS.map(([id]) => id),
+    'the map should cover every declared plan id exactly once, in plan order');
+  assert.equal(rows[0][1], 'none', 'resolve-change stays fileless');
+  for (const [id] of REVIEW_PLAN_STEPS.slice(1)) {
+    const expected = `\`@${REVIEW_STEP_MAP[id]}\``;
+    assert.equal(rows.find(([rowId]) => rowId === id)[1], expected,
+      `${id} should map to its just-in-time step file`);
+  }
+});
+
+test('step-gated: progress continuations carry exactly two lines with the deterministic Active step pointer', () => {
+  const coordinator = artifact('sai/commands/review/coordinator.md');
+
+  assert.match(coordinator, /every progress-event continuation payload you send is exactly two lines/,
+    'progress continuations should be exactly the protocol line plus one pointer line');
+  assert.match(coordinator, /`Active step: <id> — follow <path>`/,
+    'the coordinator should pin the exact pointer-line literal');
+  assert.match(coordinator, /first declared step still unmarked in plan order after applying the event/,
+    'pointer derivation should follow the shared runner rule');
+  assert.match(coordinator, /Active step: none — complete remaining work and return your terminal result\./,
+    'an all-marked plan should deliver the terminal pointer line');
+});
+
+test('step-gated: non-progress continuations carry no pointer line', () => {
+  const coordinator = artifact('sai/commands/review/coordinator.md');
+
+  assert.match(coordinator, /Continuations that are not progress-event continuations[^.]*carry no pointer line/,
+    'picker-answer forwarding must not carry a pointer line');
+  assert.match(coordinator, /active step file persists across them in its continuous session/,
+    'the worker session should retain its active step across non-pointer continuations');
+});
+
+test('step-gated: replacement reconstruction includes active_step_id', () => {
+  const coordinator = artifact('sai/commands/review/coordinator.md');
+
+  assert.match(coordinator, /replacement_reconstruction_fields[\s\S]{0,400}active_step_id/,
+    'replacement reconstruction should include the departing worker active_step_id');
+  assert.match(coordinator, /first continuation carries the correct pointer line for that active step/,
+    "the replacement's first continuation should restore that step's pointer");
+});
+
+test('step-gated: the review worker loads steps/common.md at dispatch and executes only the active step', () => {
+  const worker = artifact('sai/commands/review/worker.md');
+
+  assert.match(worker, /Fetch @sai\/commands\/review\/steps\/common\.md and keep it in force for the entire run/,
+    'common.md should load at dispatch as part of the sealed initial surface');
+  assert.match(worker, /## Active Step Execution/, 'the worker contract should own active-step execution');
+  assert.match(worker, /this contract plus common\.md is the sealed initial surface/);
+  assert.match(worker, /`resolve-change` runs from it before the first progress event/,
+    'the fileless first step should run from the sealed surface before the first pointer');
+  assert.match(worker, /never prefetch, open, or follow any other step instruction file/,
+    'the worker must execute only the coordinator-named step');
+  assert.doesNotMatch(worker, /Fetch @sai\/commands\/review\/invocation\.md/,
+    'the wholesale invocation fetch chain must be replaced by active-step execution');
+  assert.match(worker, /A gated stage resolved by legitimate skip still reports its milestone/,
+    'a legitimately skipped gated stage still advances the pointer past it');
+});
+
+test('step-gated: the carved step library exists beside the untouched monolith', () => {
+  assert.ok(fs.existsSync(path.join(repoRoot, 'sai/commands/review/instructions.md')),
+    'the original instructions.md stays in place untouched');
+  assert.ok(fs.existsSync(path.join(repoRoot, 'sai/commands/review/steps/common.md')),
+    'steps/common.md should exist');
+  for (const [id, relativePath] of Object.entries(REVIEW_STEP_MAP)) {
+    if (!relativePath) continue;
+    const source = artifact(relativePath);
+    assert.notEqual(source, '', `${relativePath} should exist`);
+    assert.match(source, new RegExp(`Active step: ${id}\\.`),
+      `${relativePath} should name its active step id`);
+  }
+  assert.match(artifact('sai/commands/review/steps/common.md'), /`resolve-change` has no step file of its own/,
+    'common.md should record that resolve-change is fileless');
+});
