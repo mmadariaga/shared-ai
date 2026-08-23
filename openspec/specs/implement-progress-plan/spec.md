@@ -1,53 +1,16 @@
-# Implement Progress Plan Specification
+# implement-progress-plan — Spec
 
-## Purpose
-
-Define the canonical implementation progress plan: its five ordered steps, their one-to-one correspondence with the implementation-planning workflow, and the first-run skip-folding rule.
-
-## Requirements
-
-### Requirement: implement-adapter-declares-progress-plan
-
-The implementation phase adapter SHALL declare the existing ordered progress steps and the implementation worker contract SHALL enumerate the same ids and labels. The plan SHALL be fully known at dispatch and immutable for the invocation. A worker dispatch SHALL pass only `arguments_value`; the plan SHALL remain coordinator state.
-
-    prereqs-resolution: "Check prerequisites"
-    collapse-implemented-steps: "Collapse implemented steps"
-    artifact-analysis: "Analyze artifacts and validate decisions"
-    documentation-review: "Review required documentation"
-    plan-generation: "Write implementation.md"
-    validation: "Validate implementation.md and the audit append"
-
-The adapter and worker SHALL enumerate the same ids and labels in the same order. Every step label SHALL be imperative.
-
-#### Scenario: implementation plan is declared
-
-- **WHEN** `/sai-3-implement` starts in Claude Code or opencode through the routed coordinator
-- **THEN** the implementation adapter SHALL declare the six canonical progress steps in order and SHALL render them as a live task list before the first worker result, per the neutral policy `sai/policies/todo-structure.md`
-- **AND** the first step SHALL be labeled `Check prerequisites`
-
-#### Scenario: implementation worker contract mirrors the ids
-
-- **WHEN** the implementation-planning worker contract is read
-- **THEN** it SHALL enumerate exactly `prereqs-resolution`, `collapse-implemented-steps`, `artifact-analysis`, `documentation-review`, `plan-generation`, and `validation`, in that order, with the same labels the adapter declares
-- **AND** its declaration block SHALL compare equal to the coordinator file's declaration block by ordered id/label content after per-line indentation normalization, both rendered in those files' existing list form
-
-#### Scenario: envelope stays closed
-
-- **WHEN** the implementation adapter dispatches its worker with a declared plan
-- **THEN** the dispatch SHALL pass only `arguments_value`, and SHALL NOT carry the plan
-
-#### Scenario: labels are imperative
-
-- **WHEN** the declared labels are read
-- **THEN** each SHALL be phrased as an imperative act rather than a noun phrase
+## MODIFIED Requirements
 
 ### Requirement: implement-plan-steps-match-workflow
 
 The implementation plan steps SHALL correspond one-to-one to the implementation-planning workflow: `collapse-implemented-steps` covers Step 1 (collapse every fully applied `#### Step N` of an existing `implementation.md` to `*(already applied)*`, skipped on a first run); `artifact-analysis` covers Steps 2–3 (parse the artifacts, classify audit findings, validate design decisions for ADR/DDR); `documentation-review` covers Step 4 (read required documentation one time only); `plan-generation` covers Step 5's write (first-run generation or re-run preservation plus the audit-derived step append); `validation` covers the worker's pre-delivery durable-artifact verification — the `implementation.md` invariants and the audit-derived step append check, which remains a non-completion blocker: any failed check returns a non-completed lifecycle result and never a `completed` claim. The plan SHALL NOT include a `specs-approval` step: the specs approval gate belongs to the design phase.
 
+The workflow SHALL be executed from the step instruction files under `sai/commands/implement/steps/`: the worker executes only the step file named by the coordinator's `Active step:` pointer line on each progress-event continuation and never prefetches, opens, or follows any other step instruction file. `prereqs-resolution` runs from the worker contract plus `steps/common.md` before the first progress event, and the first delivered pointer targets `collapse-implemented-steps`. Step 1 executes from `collapse-implemented-steps.md`, Steps 2–3 from `artifact-analysis.md`, Step 4 from `documentation-review.md`, Step 5 from `plan-generation.md`, and the pre-delivery verification from `validation.md`.
+
 #### Scenario: workflow steps map to plan steps
 
-- **WHEN** `sai/commands/implement/instructions.md` Step 1 through Step 5 are executed
+- **WHEN** the step instruction files under `sai/commands/implement/steps/` named by the coordinator's `Active step:` pointer lines are executed
 - **THEN** each step's completion SHALL be reportable under exactly one of the declared plan step ids
 
 #### Scenario: no approval step in the implementation plan
@@ -60,17 +23,3 @@ The implementation plan steps SHALL correspond one-to-one to the implementation-
 - **WHEN** the worker completes the pre-delivery durable-artifact verification of `implementation.md` and the audit-derived step append check
 - **THEN** those acts SHALL be reported under `validation`
 - **AND** a failed verification SHALL NOT emit a `completed` claim — the run closes with a non-completed lifecycle result instead
-
-### Requirement: implement-plan-first-run-skip-fold
-
-On a first run the collapse step is skipped entirely (no existing `implementation.md`). The skip SHALL fold into the completed batch of the next completed plan step, reported in plan order with no separate `skipped` field, following the slice-1 skip-fold precedent for fast-track-skipped gate steps. On a re-run, `collapse-implemented-steps` completes as its own batch. The first-run skip-fold behavior is preserved unchanged from the retired `plan-simplification` id: the skipped id folds into the next completed batch in plan order with no separate `skipped` field.
-
-#### Scenario: first run reports the skip inside a batch
-
-- **WHEN** a first run completes `artifact-analysis` with `collapse-implemented-steps` skipped
-- **THEN** the progress event SHALL list both ids in plan order, `collapse-implemented-steps` first, with no separate skipped field
-
-#### Scenario: re-run reports the step normally
-
-- **WHEN** a re-run executes the collapse step because `implementation.md` exists
-- **THEN** the worker SHALL emit `collapse-implemented-steps` in its own completed batch when it completes
