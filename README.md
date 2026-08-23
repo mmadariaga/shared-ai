@@ -56,9 +56,11 @@ The supported harness roster is **Claude Code** and **opencode**. Both use route
 # Review
 ###########################################################################################
 /sai-5-review oauth2-auth
+/sai-review oauth2-auth              # User-invoked review → audit composition
+                                     # → Runs review, then dispatches recommended audits
 
 ###########################################################################################
-# Audits based on /sai-5-review triage:
+# Audits based on /sai-5-review triage (or use /sai-review to run them automatically):
 ###########################################################################################
 /sai-6-security oauth2-auth
 /sai-7-performance oauth2-auth
@@ -99,6 +101,7 @@ All artifact paths below resolve under `openspec/changes/{change-name}/` (referr
 | `/sai-4-apply` | {change-name} | code | Routed command: Claude Code and opencode run the coordinator in the main session (a **coordinator** that never edits code itself) and dispatch the **RED** and **GREEN** managed workers on the budget tier — one Step-execution worker per dispatch, with a testable step split across two dispatches: the RED worker authors the test (from the assertions in `interfaces.md`, blind to the implementation body) and confirms it fails by assertion, then the GREEN worker copies the playbook code into the project and makes the test pass **without permission to modify the tests**, adjusting code only for compilation errors or test failures. The coordinator re-verifies each result, prints a pre-commit files-modified report cross-checked against `tasks.md`, and asks for your approval before each commit. Supports `--fast-track` to auto-commit and defer human checks to end-of-run. |
 | `/sai-build` | {change-name} | code | User-invoked routed composition that runs `/sai-3-implement` and then `/sai-4-apply` in exactly that order. It resolves the change once, has no intermediate approval gate, and reuses the existing apply adapter rather than re-declaring RED/GREEN or adding a build worker. The chained apply segment is always fast-tracked; an explicit `--fast-track` token is accepted only as a no-op. Claude Code and opencode preserve the same phase order, artifacts, worker ownership, and terminal behavior. |
 | `/sai-5-review` | {change-name} + diff | `{c}/review.md` | Reviews the finished code across 11 dimensions (correctness, maintainability, tests, etc.). Also tells you which specialized audits to run next based on what changed. |
+| `/sai-review` | {change-name} | `{c}/review.md`, `{c}/security.md`, `{c}/performance.md`, `{c}/accessibility.md` | User-invoked routed composition that runs `/sai-5-review` and then conditionally dispatches the recommended audits (`/sai-6-security`, `/sai-7-performance`, `/sai-8-accessibility`) in one invocation. It resolves the change once, parses the triage sections from the regenerated `review.md`, and concurrently dispatches eligible audit workers. Claude Code and opencode preserve the same phase order, artifacts, worker ownership, and terminal behavior. |
 | `/sai-6-security` | {change-name} + diff | `{c}/security.md` | Finds security vulnerabilities in the diff — points to exact file and line, explains the risk, and maps findings to known standards (OWASP, CVE). |
 | `/sai-7-performance` | {change-name} + diff | `{c}/performance.md` | Flags real performance bottlenecks (slow queries, heavy renders, unbounded loops). Evidence-based — no guesswork. |
 | `/sai-8-accessibility` | {change-name} + diff | `{c}/accessibility.md` | Checks UI code for accessibility issues against WCAG 2.2 AA. Can also run browser-based tools for deeper analysis. |
@@ -145,6 +148,7 @@ The routed `/sai-2-design` paths use a low-effort Opus 4.8 coordinator and high-
 |---------|---------|
 | `/sai-explore` | Open-ended thinking session before committing to anything — good for fuzzy requirements, unclear trade-offs, or when you just want to think out loud with the AI. When a feature is too big for one reviewable change, it slices the idea into a Walking Skeleton plus a dependency-ordered backlog, each ready to enter the pipeline as its own change; when it detects friction at the integration point (mixed responsibilities, no clean extension seam), it prepends a behavior-preserving SOLID refactor as *slice 0* so the feature attaches by extension. After crystallizing, it offers a review loop over your active changes — pick a change, review its `sai-1` or `sai-2` artifacts. Supports `--fast-track` to skip language gate. |
 | `/sai-build` | User-invoked shortcut for a complete implementation run — chains `/sai-3-implement` into `/sai-4-apply` with one change resolution and no intermediate approval. Apply fast-track is always injected; an explicit `--fast-track` token is a no-op. |
+| `/sai-review` | User-invoked shortcut for review plus conditional audit fan-out — runs `/sai-5-review` and then dispatches the recommended audits (`/sai-6-security`, `/sai-7-performance`, `/sai-8-accessibility`) in one invocation based on the triage parse. An explicit `--fast-track` token is a no-op. |
 | `/sai-commit` | Reads your staged changes and detects the repo's commit style from the last 20 commits (Conventional Commits shape, type/scope vocabulary, body conventions). Adopts the detected vocabulary when it fits, falls back to hard-coded rules otherwise. Shows a pre-commit file report and runs `git commit` only after you explicitly approve. |
 | `/sai-merge` | Merges a local branch into the current branch with criteria-based conflict resolution (semantic merge for OpenSpec specs, guided fusion for code), an unconditional post-merge ADR/DDR collision pass (renames colliding numbers with lettered suffixes by ascending commit date, updates references repo-wide), and a verification loop (up to 3 rounds). Supports `--fast-track` to auto-apply full scope. The final merge commit runs only after explicit authorization. |
 | `/sai-pr` | Drafts a complete PR description using everything produced during the change (proposal, design, review findings, etc.). Opens the PR on GitHub after you approve. |
@@ -263,7 +267,7 @@ Every command starts with zero inherited context — the boot adapter opens each
 Domain terms are captured in a living `GLOSSARY.md` at the project root. Spec reads and appends new terms inline (no batching), Plan uses canonical terms for all new identifiers, and Review validates language consistency in the diff. This enforces a DDD-style ubiquitous language across the entire pipeline —every agent and every artifact speaks the same vocabulary.
 
 ### Fast-track mode (`--fast-track`)
-For low-risk or high-trust runs, four commands accept a `--fast-track` argument that auto-advances their approval gates instead of stopping to ask. A `> FAST-TRACK MODE ACTIVE` banner prints at the start of the run so the relaxed gating is never silent. `/sai-build` is not a fifth fast-track mode: it strips an explicit `--fast-track` token as a no-op and always injects fast-track for its chained apply segment.
+For low-risk or high-trust runs, four commands accept a `--fast-track` argument that auto-advances their approval gates instead of stopping to ask. A `> FAST-TRACK MODE ACTIVE` banner prints at the start of the run so the relaxed gating is never silent. `/sai-build` is not a fifth fast-track mode: it strips an explicit `--fast-track` token as a no-op and always injects fast-track for its chained apply segment. `/sai-review` is not a sixth fast-track mode: it strips an explicit `--fast-track` token as a no-op; it owns no questions of its own.
 
 | Command | What `--fast-track` skips |
 |---------|---------------------------|
@@ -372,6 +376,7 @@ We set these defaults to models that have worked best for us, you may find bette
 | apply (4) | `opencode-go/deepseek-v4-flash` | `max` | `sonnet` - low |
 | build | `opencode-go/deepseek-v4-flash` | `max` | `opus` - low |
 | review (5) | `opencode-go/qwen3.7-plus` | | `opus` - medium |
+| sai-review | `opencode-go/deepseek-v4-flash` | `max` | `opus` - low |
 | security (6) | `opencode-go/qwen3.7-plus` | | `opus` - xhigh |
 | performance (7) | `opencode-go/qwen3.7-plus` | `high` | `opus` - medium |
 | accessibility (8) | `opencode-go/qwen3.7-plus` | `high` | `opus` - medium |

@@ -139,14 +139,12 @@ without relocating this file. Composition obeys exactly three rules:
    that successor's `original_envelope` values the composition authorizes for the
    next segment (including any composition-injected session signals such as
    apply's fast-track boolean). The shared contract SHALL activate only that
-   consecutive successor with that envelope. It SHALL NOT infer the next phase
-   from worker summary text, artifact contents, `changed_files` text, or
-   undeclared side channels, and SHALL NOT skip ahead to a later list entry. Only
-   the final adapter's `terminal_navigation` (or the sole adapter in a
-   one-adapter invocation) SHALL emit the user-facing invocation-closing
-   completion presentation on a successful run. `failed`, `cancelled`, malformed
-   worker terminal payloads, and malformed transitions SHALL close the
-   supervising invocation without advancing.
+   consecutive successor with that envelope. It SHALL NOT skip ahead to a later
+   list entry. Only the final adapter's `terminal_navigation` (or the sole
+   adapter in a one-adapter invocation) SHALL emit the user-facing
+   invocation-closing completion presentation on a successful run. `failed`,
+   `cancelled`, malformed worker terminal payloads, and malformed transitions
+   SHALL close the supervising invocation without advancing.
 
 3. **Chained Isolation Mode does not reset supervisor state** — Entering a
    chained phase adapter's Isolation Mode preamble SHALL isolate that phase's

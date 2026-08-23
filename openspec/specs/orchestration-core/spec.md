@@ -63,7 +63,7 @@ The canonical orchestration source SHALL define one shared coordinator contract 
 
 ### Requirement: Chained phase composition
 
-The shared coordinator contract SHALL permit one invocation to execute an ordered sequence of phase adapters without introducing a new orchestration file or relocating `sai/orchestration/command-runner.md`. The composition SHALL execute adapters strictly in list order, rebind segment fields on activation, scope each recovery ledger to its active segment with a fresh three-slot diagnosis ledger for each eligible segment, preserve the invocation-scoped changed-files union across transitions, and carry the non-clean-closure diagnosis only within the active segment. Each eligible ledger slot SHALL permit one attempt for one new diagnosis key; duplicate detection SHALL apply within the segment. A non-final successful adapter SHALL transition only to the consecutive successor using its authorized envelope; it SHALL not infer successors from worker output. A failed, cancelled, malformed, or non-clean closure without a successful phase-owned resolution SHALL close the active supervising invocation without advancing. Chained apply SHALL inherit the shared route through its existing apply phase adapter; the build coordinator SHALL not duplicate or replace that route.
+The shared coordinator contract SHALL permit one invocation to execute an ordered sequence of phase adapters without introducing a new orchestration file or relocating `sai/orchestration/command-runner.md`. The composition SHALL execute adapters strictly in list order, rebind segment fields on activation, scope each recovery ledger to its active segment with a fresh three-slot diagnosis ledger for each eligible segment, preserve the invocation-scoped changed-files union across transitions, and carry the non-clean-closure diagnosis only within the active segment. Each eligible ledger slot SHALL permit one attempt for one new diagnosis key; duplicate detection SHALL apply within the segment. A non-final successful adapter SHALL transition only to the consecutive successor using its authorized envelope; the shared contract SHALL NOT skip ahead to a later list entry, and a supervising composition MAY activate the declared consecutive successor under a declared conditional-activation rule (for example the meta-review triage parse of the regenerated `review.md`) without that rule counting as an undeclared side channel. A failed, cancelled, malformed, or non-clean closure without a successful phase-owned resolution SHALL close the active supervising invocation without advancing. Chained apply SHALL inherit the shared route through its existing apply phase adapter; the build coordinator SHALL not duplicate or replace that route.
 
 #### Scenario: Ordered sequence runs through the shared runner
 
@@ -99,7 +99,7 @@ The shared coordinator contract SHALL permit one invocation to execute an ordere
 
 - **WHEN** a non-final adapter completes successfully with an authorized transition and no unresolved non-clean closure
 - **THEN** the shared contract SHALL activate only the adapter at position `i + 1`
-- **AND** it SHALL not print the non-final adapter's standalone completion or infer a successor from worker text
+- **AND** it SHALL not print the non-final adapter's standalone completion, SHALL not skip ahead to a later list entry, and SHALL only apply a declared conditional-activation rule that resolves the consecutive successor
 
 #### Scenario: Segment recovery pools are independent
 
