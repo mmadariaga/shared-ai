@@ -624,13 +624,39 @@ test('routing STOP has one normative home on the runner Step Routing Tree', () =
 });
 
 test('chained activation skips shell prereq/picker/fast-track parse but keeps Completion binding', () => {
+  const coordinator = artifact(APPLY_CARDS.coordinator);
   const invocation = artifact(APPLY_CARDS.invocation);
-  assert.match(invocation, /Chained activation|chained segment/i,
-    'invocation must document the chained activation path');
-  assert.match(invocation, /(?:does not|do not|skip)[\s\S]{0,120}(?:Prerequisite|change-picker|Fast-track parse)/i,
+  assert.match(coordinator, /Chained activation|chained segment/i,
+    'coordinator must document the chained activation path');
+  assert.match(coordinator, /(?:does not|do not|skip)[\s\S]{0,120}(?:Prerequisite|change-picker|Fast-track parse)/i,
     'chained path must skip shell prereq/picker/fast-track parse');
   assert.match(invocation, /## Completion/,
-    'Completion section remains for the standalone completion action binding');
+    'Completion section remains in invocation for the standalone completion action binding');
+});
+
+test('runner.md has a single owner: only coordinator.md fetches it', () => {
+  const coordinator = artifact(APPLY_CARDS.coordinator);
+  const invocation = artifact(APPLY_CARDS.invocation);
+  assert.match(coordinator, /Fetch @sai\/commands\/apply\/runner\.md/,
+    'coordinator must fetch runner.md');
+  assert.doesNotMatch(invocation, /Fetch @sai\/commands\/apply\/runner\.md/,
+    'invocation must not fetch runner.md (single-owner rule)');
+});
+
+test('session_commit_authorized and fast-track branch auto-stay live on the coordinator card', () => {
+  const coordinator = artifact(APPLY_CARDS.coordinator);
+  assert.match(coordinator, /session_commit_authorized/,
+    'coordinator must own the session_commit_authorized flag');
+  assert.match(coordinator, /Fast-track branch auto-stay|auto-stay/i,
+    'coordinator must own the fast-track branch auto-stay behavior');
+});
+
+test('fast-track parse remains the sole authority in invocation.md', () => {
+  const invocation = artifact(APPLY_CARDS.invocation);
+  assert.match(invocation, /## Fast-track parse/,
+    'invocation must own the fast-track parse section');
+  assert.match(invocation, /sole authority.*detect.*--fast-track|sole authority.*--fast-track/i,
+    'invocation must declare itself the sole authority for fast-track detection');
 });
 
 test('terminal_navigation is parameterized for sole/final completion vs non-final transition', () => {
