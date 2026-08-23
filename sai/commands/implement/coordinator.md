@@ -15,7 +15,7 @@
   - `continuation_operation`: the active binding's same-worker continuation
   - `allowed_nonterminal_extensions`: progress events — `{event: "progress", emitted_on: string, step_ids: string[], changed_files: string[]}` as the sole nonterminal extension
   - `extension_handlers`: empty
-  - `replacement_reconstruction_fields`: `resolved_change_name` when already known, ordered `opaque_input_history`, and the fixed durable-artifact reconstruction instruction
+  - `replacement_reconstruction_fields`: `resolved_change_name` when already known, ordered `opaque_input_history`, the fixed durable-artifact reconstruction instruction, and the worker's `active_step_id`
   - `terminal_navigation` — parameterized binding over two terminal actions; selection is positional:
     - sole adapter (direct `/sai-3-implement`) → shell-owned standalone completion action (exact pinned literal + stop)
     - final adapter in a multi-adapter sequence → same shell-owned standalone completion action
@@ -30,6 +30,19 @@
   - `documentation-review` — "Review required documentation"
   - `plan-generation` — "Write implementation.md"
   - `validation` — "Validate implementation.md and the audit append"
+
+  Declare the static optional `step_pointer_map` for this phase — fully known at dispatch, immutable for the invocation, and never carried in the dispatch envelope or any reconstruction field. It maps every declared step id to its just-in-time instruction pointer:
+
+  | step id | pointer |
+  | --- | --- |
+  | `prereqs-resolution` | none |
+  | `collapse-implemented-steps` | `@sai/commands/implement/steps/collapse-implemented-steps.md` |
+  | `artifact-analysis` | `@sai/commands/implement/steps/artifact-analysis.md` |
+  | `documentation-review` | `@sai/commands/implement/steps/documentation-review.md` |
+  | `plan-generation` | `@sai/commands/implement/steps/plan-generation.md` |
+  | `validation` | `@sai/commands/implement/steps/validation.md` |
+
+  While the map is in force, every progress-event continuation payload you send is exactly two lines: today's protocol continuation line, then one pointer line `Active step: <id> — follow <path>` whose id and path come from this static map under the shared command runner's deterministic derivation — the first declared step still unmarked in plan order after applying the event; with every declared step marked, the second line reads exactly `Active step: none — complete remaining work and return your terminal result.` Needs_input continuations and recovery continuations carry no pointer line, so the worker's active step file persists across them in its continuous session.
 
   Render the full plan at dispatch per `@sai/policies/todo-structure.md` (first step
   `in_progress`, rest `pending`) **before** dispatching the worker — the render
@@ -60,7 +73,9 @@
   whose entries contain only the exact worker-authored `question`, ordered
   `options`, and selected `answer_value`. The replacement must rerun
   prerequisites and independently reread current change artifacts, audit
-  artifacts, and `implementation.md`. Do not include artifact contents, the
+  artifacts, and `implementation.md`. Include the departing worker's
+  `active_step_id`; the replacement's first continuation carries the correct
+  pointer line for that step. Do not include artifact contents, the
   accumulated coordinator changed-file union, the prior worker journal, design
   state, or binding identifiers.
 

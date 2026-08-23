@@ -931,3 +931,105 @@ test('composition delta does not alter one-adapter implement path and forbids su
   assert.match(runner, /(?:not|never)[\s\S]{0,120}(?:card[- ]selection|routing)[\s\S]{0,120}command_name|command_name[\s\S]{0,160}(?:not|never)[\s\S]{0,120}(?:card[- ]selection|routing)/i,
     'command_name on the chained path is shape compatibility only, not card selection');
 });
+
+// ─── Step-gated pointer delivery (implement coordinator/worker) ──────────────
+
+const IMPLEMENT_STEP_POINTER_MAP = [
+  ['prereqs-resolution', 'none'],
+  ['collapse-implemented-steps', '@sai/commands/implement/steps/collapse-implemented-steps.md'],
+  ['artifact-analysis', '@sai/commands/implement/steps/artifact-analysis.md'],
+  ['documentation-review', '@sai/commands/implement/steps/documentation-review.md'],
+  ['plan-generation', '@sai/commands/implement/steps/plan-generation.md'],
+  ['validation', '@sai/commands/implement/steps/validation.md'],
+];
+
+function parseStepPointerMap(source) {
+  const rows = [];
+  const re = /^\s*\|\s*`([a-z-]+)`\s*\|\s*(none|`([^`]+)`)\s*\|\s*$/gm;
+  let match;
+  while ((match = re.exec(source)) !== null) {
+    const id = match[1];
+    const pointer = match[2] === 'none' ? 'none' : match[3];
+    rows.push([id, pointer]);
+  }
+  return rows;
+}
+
+test('step-gated: implement coordinator declares a static step_pointer_map with six rows matching the progress plan', () => {
+  const coordinator = artifact('sai/commands/implement/coordinator.md');
+
+  assert.match(coordinator, /step_pointer_map/,
+    'the coordinator should declare a step_pointer_map');
+  const mapRows = parseStepPointerMap(coordinator);
+  assert.deepEqual(mapRows, IMPLEMENT_STEP_POINTER_MAP,
+    'the step_pointer_map should map every declared step id to its pointer or none');
+  assert.equal(mapRows.length, IMPLEMENT_PLAN_STEPS.length,
+    'the map should have one row per declared progress-plan step');
+});
+
+test('step-gated: implement worker fetches steps/common.md and declares active-step execution', () => {
+  const worker = artifact('sai/commands/implement/worker.md');
+
+  assert.match(worker, /Fetch @sai\/commands\/implement\/steps\/common\.md/,
+    'the worker should fetch steps/common.md at dispatch');
+  assert.match(worker, /Active Step Execution/,
+    'the worker should declare an Active Step Execution section');
+  assert.match(worker, /Active step: <id> — follow <path>/,
+    'the worker should document the pointer line shape');
+  assert.match(worker, /execute only that named step/i,
+    'the worker should execute only the coordinator-named active step');
+  assert.match(worker, /never prefetch, open, or follow any other step instruction file/i,
+    'the worker should never prefetch other step files');
+});
+
+test('step-gated: implement coordinator replacement reconstruction carries active_step_id', () => {
+  const coordinator = artifact('sai/commands/implement/coordinator.md');
+
+  assert.match(coordinator, /active_step_id/,
+    'the coordinator should include active_step_id in replacement reconstruction');
+  assert.match(coordinator, /replacement's first continuation carries the correct[\s\S]{0,80}pointer line for that step/i,
+    'the replacement first continuation should carry the pointer line for the active step');
+});
+
+test('step-gated: implement coordinator documents two-line continuation shape and terminal none row', () => {
+  const coordinator = artifact('sai/commands/implement/coordinator.md');
+
+  assert.match(coordinator, /Active step: <id> — follow <path>/,
+    'the coordinator should document the pointer line shape');
+  assert.match(coordinator, /Active step: none — complete remaining work and return your terminal result/,
+    'the coordinator should document the terminal none row when every step is marked');
+  assert.match(coordinator, /exactly two lines/i,
+    'the coordinator should specify the two-line continuation shape');
+});
+
+test('step-gated: non-progress continuations carry no pointer line', () => {
+  const coordinator = artifact('sai/commands/implement/coordinator.md');
+
+  assert.match(coordinator, /Needs_input continuations and recovery continuations carry no pointer line/,
+    'the coordinator should state that non-progress continuations carry no pointer line');
+  assert.match(coordinator, /active step file persists across them in its continuous session/i,
+    'the coordinator should state the active step persists across non-progress continuations');
+});
+
+test('step-gated: step instruction files exist for every non-none map entry', () => {
+  for (const [id, pointer] of IMPLEMENT_STEP_POINTER_MAP) {
+    if (pointer === 'none') continue;
+    const relativePath = pointer.replace('@sai/', 'sai/');
+    assert.ok(fs.existsSync(path.join(repoRoot, relativePath)),
+      `${relativePath} should exist for step id ${id}`);
+  }
+});
+
+test('step-gated: instructions.md and invocation.md remain byte-for-byte untouched', () => {
+  const instructions = artifact('sai/commands/implement/instructions.md');
+  const invocation = artifact('sai/commands/implement/invocation.md');
+
+  assert.match(instructions, /## Communication Mode/,
+    'instructions.md should retain its Communication Mode section');
+  assert.match(instructions, /## Hard Rules/,
+    'instructions.md should retain its Hard Rules section');
+  assert.match(instructions, /## Code Quality Priority Stack/,
+    'instructions.md should retain its Code Quality Priority Stack');
+  assert.match(invocation, /Fetch @sai\/commands\/implement\/instructions\.md/,
+    'invocation.md should still fetch instructions.md for the apply consumer');
+});

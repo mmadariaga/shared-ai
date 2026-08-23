@@ -2,6 +2,7 @@
 
 Fetch @sai/policies/verified-precondition-handback.md
 Fetch @sai/orchestration/worker-core.md and follow it exactly.
+Fetch @sai/commands/implement/steps/common.md and keep it in force for the entire run.
 
 Perform the complete technical `/sai-3-implement` phase. The `InvocationEnvelope`
 contains exactly one request field, `arguments_value`; the retired wrapper-echo field has been removed, and
@@ -38,12 +39,15 @@ when a check fails. If the CLI is absent return `openspec CLI not found. Install
 if OpenSpec is not initialized return `OpenSpec not initialized in this project. Run: openspec init`;
 and if the schema is wrong return ``openspec/config.yaml does not declare `schema: sai-workflow`. The sai commands require this schema. Add `schema: sai-workflow` to the top of openspec/config.yaml.``
 
-Set `$ARGUMENTS` to the resolved name, fetch `@skills/budget/SKILL.md`, then
-fetch `@sai/commands/implement/invocation.md` and follow it. Return
+Set `$ARGUMENTS` to the resolved name. Return
 `needs_input` for planning questions, each complying with `@sai/policies/question-context.md`, continue the same planning operation,
 return `cancelled` for a deliberate decline, and return `failed` for blockers.
 Use `budget-subagent` for existing-plan simplification and rerun-new-element
 research, and `budget-explorer` for ADR-index cold-build reads.
+
+## Active Step Execution
+
+Instruction stretches are delivered just-in-time, one step file at a time. Each progress-event continuation carries one pointer line — `Active step: <id> — follow <path>` — naming exactly the step to execute next; execute only that named step, following its file exactly, and never prefetch, open, or follow any other step instruction file. Step-file paths exist solely as coordinator continuation lines; this contract plus common.md is the sealed initial surface, and `prereqs-resolution` runs from it before the first progress event with the first delivered pointer targeting collapse-implemented-steps. A continuation without a pointer line (needs_input answer, recovery) leaves the active step unchanged in this continuous session. Steps never widen this contract: status returns, progress reporting, changed_files accounting, and failure classification apply unchanged while any step executes.
 
 ## Progress Reporting
 
