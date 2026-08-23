@@ -245,37 +245,14 @@ When `sai-3-implement` Step 3 creates a decision-record file (`docs/adr/NNNN-slu
 - **WHEN** the cold build or warm splice categorises a hand-written record (e.g. `0004`) that predates this requirement and carries its relationship declaration only in prose
 - **THEN** the hook SHALL fall back to best-effort prose parsing for that record only, and the structured-line requirement SHALL NOT retroactively apply to it
 
-### Requirement: Index output shall follow the abstract surface's invariants and each family's type-specific headings
+### Requirement: Lettered-suffix collision records
 
-Every artifact produced by either index-maintenance branch for either family — `docs/adr/0000-INDEX.md` and `docs/ddr/0000-INDEX.md` (cold build) or their post-splice states (warm splice) — SHALL preserve the five index-output invariants defined by `decision-record-index-machinery`.
+The ADR/DDR index machinery SHALL handle lettered-suffix record names (`NNNNa-…`, `NNNNb-…`) produced by merge collision repair: index entry links SHALL resolve to suffixed filenames and relationship tokens referencing a collided number SHALL carry the assigned suffix, so every record stays individually addressable.
 
-In addition to the abstract invariants, each family's index SHALL carry its per-index invariants:
+#### Scenario: Index absorbs a suffixed rename
 
-- The ADR index uses the correction-table header `| ADR | Action | Over |`, the entry-line form `- [NNNN — {Title}](./NNNN-slug.md)` with the verbatim `{Title}` from the ADR's H1, and the type-specific section headings `## ADRs that extend or correct prior ones` and `## Superseded ADRs (historical)`.
-- The DDR index uses the correction-table header `| DDR | Action | Over |`, the entry-line form `- [NNNN — {Title}](./NNNN-slug.md)` with the verbatim `{Title}` from the DDR's H1 (`# DDR NNNN: {Title}`), and the type-specific section headings `## DDRs that extend or correct prior ones` and `## Superseded DDRs (historical)`.
-- Neither index carries the other family's vocabulary: the ADR index SHALL NOT carry `| DDR | Action | Over |` or the DDR section headings, and the DDR index SHALL NOT carry the ADR section headings.
-
-#### Scenario: Index links are relative within the record's family
-
-- **WHEN** the warm splice inserts an entry for `docs/adr/0072-foo.md` or `docs/ddr/0105-bar.md`
-- **THEN** the entry's link SHALL be `./0072-foo.md` or `./0105-bar.md` respectively (relative path from that family's `0000-INDEX.md`), never an absolute path or URL
-
-#### Scenario: Index H1 is preserved across reruns
-
-- **WHEN** the warm splice runs on an existing index whose first line is `# ADR Index` or `# DDR Index`
-- **THEN** the post-splice file SHALL still begin with exactly that H1 as its first line, unchanged
-
-#### Scenario: Record titles are preserved verbatim
-
-- **WHEN** a record file's H1 reads `# ADR 0072: Foo Bar Baz` or `# DDR 0105: Qux`
-- **THEN** the index entry listing that record SHALL carry the verbatim title text (`Foo Bar Baz`, `Qux`) without the `# ADR NNNN:` or `# DDR NNNN:` prefix in the entry text, and with no rewording, casing, or punctuation change
-
-#### Scenario: Correction-table headers and section names use the family's own vocabulary
-
-- **WHEN** the cold build writes the correction table and the historical section for either family
-- **THEN** the ADR index uses `| ADR | Action | Over |` with `## ADRs that extend or correct prior ones` and `## Superseded ADRs (historical)`
-- **THEN** the DDR index uses `| DDR | Action | Over |` with `## DDRs that extend or correct prior ones` and `## Superseded DDRs (historical)`
-- **THEN** neither file carries the other family's table header or section headings
+- **WHEN** a merge collision pass renames `0010-Name2.md` to `0010b-Name2.md` and updates references
+- **THEN** the index entry points at `./0010b-Name2.md` and tokens citing number 0010 name the suffixed form matching the intended record
 
 ### Requirement: The DDR family instantiates the abstract surface with the DDR bindings
 

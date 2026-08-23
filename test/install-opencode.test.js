@@ -36,6 +36,7 @@ const CURRENT_CENSUS = [
   'sai-commit-worker',
   'sai-archive-worker',
   'sai-backfill-worker',
+  'sai-merge-worker',
 ];
 const UTILITY_COMMANDS = {
   'sai-4-apply': 'apply',
@@ -88,6 +89,7 @@ const WORKER_CONTRACT_BY_NAME = {
   'sai-commit-worker': { phase: 'commit', binding: 'commit-worker.md' },
   'sai-archive-worker': { phase: 'archive', binding: 'archive-worker.md' },
   'sai-backfill-worker': { phase: 'backfill', binding: 'backfill-worker.md' },
+  'sai-merge-worker': { phase: 'merge', binding: 'merge-worker.md' },
 };
 
 function expectedWorkerPrompt(phase) {
@@ -358,7 +360,8 @@ test('Step 3 fresh opencode install omits all routed worker proxy skills and pro
         .replace('sai-8-accessibility-worker', 'accessibility-worker')
         .replace('sai-commit-worker', 'commit-worker')
         .replace('sai-archive-worker', 'archive-worker')
-        .replace('sai-backfill-worker', 'backfill-worker')}.md`)));
+        .replace('sai-backfill-worker', 'backfill-worker')
+        .replace('sai-merge-worker', 'merge-worker')}.md`)));
     }
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });
@@ -1248,7 +1251,7 @@ test('Step 1 Claude agent rows remain byte-preserving without ownership sidecars
 
 // --- Step 3: binding-derived roster replaces the retired registration surface ---
 
-test('Step 3 binding roster validation yields exactly the nine managed workers', () => {
+test('Step 3 binding roster validation yields exactly the ten managed workers', () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-roster-'));
   const NINE_WORKERS = [...CURRENT_CENSUS, 'sai-4-red-worker', 'sai-4-green-worker', 'sai-autofast-implement-worker', 'sai-autofast-hands-worker'];
   try {
@@ -1259,13 +1262,13 @@ test('Step 3 binding roster validation yields exactly the nine managed workers',
       .map(entry => (typeof entry === 'string' ? entry : entry && entry.name))
       .sort();
     assert.deepEqual(names, [...NINE_WORKERS].sort(),
-      'specs/opencode-agent-census/spec.md: the binding roster must contain exactly the nine managed workers with no extra or missing worker');
+      'specs/opencode-agent-census/spec.md: the binding roster must contain exactly the ten managed workers with no extra or missing worker');
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }
 });
 
-test('Step 3 binding files declare exactly the nine initial worker dispatches', () => {
+test('Step 3 binding files declare exactly the ten initial worker dispatches', () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-bindings-scan-'));
   const NINE_WORKERS = [...CURRENT_CENSUS, 'sai-4-red-worker', 'sai-4-green-worker', 'sai-autofast-implement-worker', 'sai-autofast-hands-worker'];
   try {
@@ -1472,7 +1475,7 @@ test('Step 3 install seeds the seven managed opencode worker agent files with th
   }
 });
 
-test('opencode installer consumes exactly the fourteen matrix worker bindings and agents', () => {
+test('opencode installer consumes exactly the fifteen matrix worker bindings and agents', () => {
   const repoRoot = path.join(__dirname, '..');
   const manifest = loadInstallManifest(repoRoot);
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-matrix-inventory-'));
@@ -1499,8 +1502,8 @@ test('opencode installer consumes exactly the fourteen matrix worker bindings an
       .filter(projection => path.relative(destinationRoot.sai, projection.destinationPath)
         .split(path.sep).join('/').startsWith('orchestration/workers/bindings/'))
       .map(projection => path.basename(projection.destinationPath));
-    assert.equal(allBindingNames.length, 14,
-      'opencode should keep only the fourteen routed worker bindings in the matrix destination');
+    assert.equal(allBindingNames.length, 15,
+      'opencode should keep only the fifteen routed worker bindings in the matrix destination');
     const ideaList = active.find(projection =>
       path.relative(repoRoot, projection.sourcePath).split(path.sep).join('/') ===
       'sai/adapters/opencode/idea-list-render.md');
@@ -1513,7 +1516,7 @@ test('opencode installer consumes exactly the fourteen matrix worker bindings an
       .filter(projection => projection.destinationPath.startsWith(destinationRoot.agents) &&
         CURRENT_CENSUS.includes(path.basename(projection.destinationPath, '.md')))
       .map(projection => path.basename(projection.destinationPath, '.md'));
-    assert.equal(agentNames.length, 10, 'opencode should project exactly ten managed agents');
+    assert.equal(agentNames.length, 11, 'opencode should project exactly eleven managed agents');
     assert.equal(agentNames.some(name => ['budget', 'executor', 'explore'].includes(name)), false,
       'opencode must not project support agents as matrix worker inventory');
     const allAgentNames = active

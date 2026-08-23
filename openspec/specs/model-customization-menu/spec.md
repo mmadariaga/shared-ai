@@ -70,19 +70,15 @@ OpenCode and Claude Code MUST be represented by independent adapters. Each adapt
 - **WHEN** the Claude Code harness is selected
 - **THEN** the flow MUST call the Claude Code adapter's operations and MUST NOT call OpenCode adapter operations
 
-### Requirement: Complete OpenCode traversal
-The OpenCode adapter MUST derive routed workers from Worker Matrix agent projections, generic delegation agents from non-matrix agent projections, and commands from the canonical commands-class projections in `sai/install-manifest.json`. The generic agents MUST be `budget`, `executor`, and `explore`; they MUST NOT be classified as workers. The utility commands MUST be `sai-commit`, `sai-pr`, `sai-status`, and `sai-worktree`; all remaining commands belong to Commands. Command enumeration MUST read the package sources declared by the manifest's commands-class projections rather than the installed global command directory. It MUST invoke the dependent OpenCode settings selection and local override creation as specified by the Shared settings selection requirement. For the current repository state, that derived set contains exactly 9 routed workers, 3 generic agents, 13 commands, and 4 utilities; these counts are fixture assertions of the current repository state, not hardcoded enumerations.
+### Requirement: Derived target families
 
-#### Scenario: OpenCode customization traverses the selected registry subset
-- **WHEN** OpenCode customization is selected and the checklist is confirmed
-- **THEN** the adapter MUST process exactly the selected stable identities from the manifest-derived families, with no early stop or representative-target shortcut
+The model-customization menu SHALL derive its target families from the canonical worker matrix and wrapper inventory so that `sai-merge-worker` classifies as a routed worker and `sai-merge` as a command on both adapters, updating the asserted family counts accordingly.
 
-### Requirement: Complete Claude Code traversal
-The Claude Code adapter MUST derive routed workers from Worker Matrix agent projections, generic delegation agents from non-matrix agent projections, and commands from the canonical commands-class projections in `sai/install-manifest.json`. The generic agents MUST be `budget-explorer`, `budget-executor`, and `budget-subagent`; they MUST NOT be classified as workers. The utility commands MUST be `sai-commit`, `sai-pr`, `sai-status`, and `sai-worktree`; all remaining commands belong to Commands. Command enumeration MUST read the package sources declared by the manifest's commands-class projections rather than the installed global command directory. It MUST invoke Claude Code settings selection and local override creation as specified by the Shared settings selection requirement. For the current repository state, that derived set contains exactly 9 routed workers, 3 generic agents, 13 commands, and 4 utilities; these counts are fixture assertions of the current repository state, not hardcoded enumerations.
+#### Scenario: Merge targets appear in the menu
 
-#### Scenario: Claude Code customization traverses the selected registry subset
-- **WHEN** Claude Code customization is selected and the checklist is confirmed
-- **THEN** the adapter MUST process exactly the selected stable identities from the 9 routed workers, 3 generic agents, 13 commands, and 4 utilities derived from the canonical manifest projections, with no early stop or representative-target shortcut
+- **WHEN** the customization menu enumerates configurable targets on either adapter
+- **THEN** the merge worker and command are present in their routed/command families with the updated counts asserted by the suite
+
 
 ### Requirement: Shared settings selection
 After the target-selection checklist confirms a non-empty subset and before any local override is created, the flow SHALL invoke the selected harness's settings selector exactly once for the whole confirmed subset in that customization pass. The collected settings choices — a model and an optional effort choice for Claude Code, and a discovered model with an optional variant for OpenCode — SHALL be passed to the per-target local-override operation once for every selected target. A per-target skipped result means the operation was attempted but its source was unavailable; it SHALL not be treated as a settings-selector failure or prevent later targets from being attempted. In `All` scope, the selector SHALL run once and the same settings SHALL be passed to every marked target across all selected families, with no per-family differentiation within a pass. Because the model-customization checklist rejects empty confirmation, the settings selector SHALL never be invoked for an empty selection.

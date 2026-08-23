@@ -203,12 +203,29 @@ const MANAGED_WORKER_PROJECTIONS = {
     opencodeBinding: {
       id: 'opencode-backfill-worker-binding',
       sourcePath: 'sai/orchestration/workers/bindings/opencode/backfill-worker.md',
-       destinationPath: 'orchestration/workers/bindings/backfill-worker.md',
+        destinationPath: 'orchestration/workers/bindings/backfill-worker.md',
     },
     claudeAgent: {
       id: 'claude-sai-backfill-worker',
       sourcePath: 'agents/claude/sai-backfill-worker.md',
       destinationPath: 'sai-backfill-worker.md',
+    },
+  },
+  'sai-merge-worker': {
+    claudeBinding: {
+      id: 'claude-merge-worker-binding',
+      sourcePath: 'sai/orchestration/workers/bindings/claude/merge-worker.md',
+       destinationPath: 'orchestration/workers/bindings/merge-worker.md',
+    },
+    opencodeBinding: {
+      id: 'opencode-merge-worker-binding',
+      sourcePath: 'sai/orchestration/workers/bindings/opencode/merge-worker.md',
+        destinationPath: 'orchestration/workers/bindings/merge-worker.md',
+    },
+    claudeAgent: {
+      id: 'claude-sai-merge-worker',
+      sourcePath: 'agents/claude/sai-merge-worker.md',
+      destinationPath: 'sai-merge-worker.md',
     },
   },
 

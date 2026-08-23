@@ -5,14 +5,14 @@
 Enables the `--fast-track` per-invocation flag on `sai-explore`, `sai-2-design`, `sai-4-apply`, and `sai-archive`, defining each command's opt-out set, auto-stay behavior under fast-track mode, the single-canonical-membership rule, and the cross-command guardrails that survive fast-track.
 
 ## Requirements
-### Requirement: The fast-track command set is the single canonical membership list
+### Requirement: Fast-track opt-in membership
 
-The set of commands that accept and parse `--fast-track` SHALL be exactly `sai-explore`, `sai-2-design`, `sai-4-apply`, `sai-archive`, and `sai-backfill`. `sai-explore`, `sai-2-design`, and `sai-4-apply` parse the token in their shared body files; routed-shaped `sai-archive` parses it in its coordinator card (`sai/commands/archive/coordinator.md`) because its utility body card was retired; routed-shaped `sai-backfill` parses it in its worker card (`sai/commands/backfill/worker.md`) alongside the diff-source tokens, with no banner. This requirement is the single source of truth for parser membership. A composition command outside this set MAY inject apply fast-track without becoming a parser member.
+The `--fast-track` flag SHALL be accepted by exactly six commands — explore, design, apply, archive, backfill, and merge — and `sai-merge` SHALL parse the token in its coordinator card, print the fast-track banner, strip the token from the forwarded remainder, and declare `fast_track_active` to its worker as session state rather than an envelope key.
 
-#### Scenario: Membership is resolved against the canonical list
+#### Scenario: Merge coordinator owns the parse
 
-- **WHEN** any requirement in this capability needs to decide whether a command supports `--fast-track`
-- **THEN** it resolves membership against this canonical five-command list, so a future addition or removal is a single-point edit here rather than parallel edits across specs
+- **WHEN** `/sai-merge --fast-track` is invoked
+- **THEN** the banner prints, the cleaned remainder becomes the worker envelope, and the worker auto-applies full resolution scope without the scope gate
 
 ### Requirement: sai-2-design under fast-track has no specs approval gate to opt out of
 

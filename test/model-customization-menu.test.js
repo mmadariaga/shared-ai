@@ -48,6 +48,7 @@ const OPENCODE_AGENTS = [
   'sai-autofast-implement-worker',
   'sai-backfill-worker',
   'sai-commit-worker',
+  'sai-merge-worker',
 ];
 
 const CLAUDE_AGENTS = [
@@ -68,6 +69,7 @@ const CLAUDE_AGENTS = [
   'sai-autofast-implement-worker',
   'sai-backfill-worker',
   'sai-commit-worker',
+  'sai-merge-worker',
 ];
 const OPENCODE_WORKERS = OPENCODE_AGENTS.filter(name => name.startsWith('sai-'));
 const CLAUDE_WORKERS = CLAUDE_AGENTS.filter(name => name.startsWith('sai-'));
@@ -129,7 +131,7 @@ const COMBINED_BOTH_BARE = [
 ];
 
 // Step 4: command-family names mirrored from the current commands/{harness}
-// basenames. Both harnesses ship the same 17 names. These are current-state
+// basenames. Both harnesses ship the same 18 names. These are current-state
 // fixture assertions, not hardcoded enumerations â€” production derives the
 // names from the manifest's commands-class projections.
 const OPENCODE_COMMANDS = [
@@ -147,6 +149,7 @@ const OPENCODE_COMMANDS = [
   'sai-build',
   'sai-commit',
   'sai-explore',
+  'sai-merge',
   'sai-pr',
   'sai-status',
   'sai-worktree',
@@ -161,8 +164,8 @@ const COMBINED_BOTH_FULL = [
   ...[...UTILITY_COMMANDS].sort().map(name => `utility:${name}`),
 ];
 
-const CHECKLIST_LEGEND = 'Up/Down move Â· Space toggle Â· Enter confirm Â· â†/Esc back Â· q/Ctrl-C cancel';
-const SELECT_LEGEND = 'Up/Down move Â· Space/Enter confirm Â· â†/Esc back Â· q/Ctrl-C cancel';
+const CHECKLIST_LEGEND = 'Up/Down move · Space toggle · Enter confirm · ←/Esc back · q/Ctrl-C cancel';
+const SELECT_LEGEND = 'Up/Down move · Space/Enter confirm · ←/Esc back · q/Ctrl-C cancel';
 const SCRATCH_ROOT = path.join(REPO_ROOT, '.tmp', 'customize-command-models', 'scratch-repos');
 
 function snapshotTree(dir) {
@@ -395,13 +398,13 @@ test('customize OpenCode flow persists every selected agent, never invokes Claud
   let opencodeFactoryCalls = 0;
   let claudeFactoryCalls = 0;
   const checklistCalls = [];
-  const restoreOpencode = patchFactory('createOpencodeAdapter', () => {
-    opencodeFactoryCalls += 1;
-     return makeFakeAdapter(OPENCODE_AGENTS, opencodeOps, {
+   const restoreOpencode = patchFactory('createOpencodeAdapter', () => {
+     opencodeFactoryCalls += 1;
+      return makeFakeAdapter(OPENCODE_WORKERS, opencodeOps, {
        model: 'opencode-go/test-model',
        variant: 'high',
      });
-  });
+   });
   const restoreClaude = patchFactory('createClaudeAdapter', () => {
     claudeFactoryCalls += 1;
     return makeFakeAdapter(CLAUDE_AGENTS, claudeOps);
@@ -427,12 +430,12 @@ test('customize OpenCode flow persists every selected agent, never invokes Claud
     assert.equal(checklistCalls.length, 1, 'the checklist should be invoked exactly once');
     assert.equal(opencodeFactoryCalls, 1, 'createOpencodeAdapter should be invoked exactly once');
     assert.equal(claudeFactoryCalls, 0, 'createClaudeAdapter must never be invoked');
-    assert.deepEqual(opencodeOps.select, [OPENCODE_AGENTS.map(name => `worker:${name}`).join(', ')],
+    assert.deepEqual(opencodeOps.select, [OPENCODE_WORKERS.map(name => `worker:${name}`).join(', ')],
       'selectSettings should run exactly once for the whole confirmed subset');
-    assert.deepEqual(opencodeOps.create.map(entry => entry.target.name), OPENCODE_AGENTS,
+    assert.deepEqual(opencodeOps.create.map(entry => entry.target.name), OPENCODE_WORKERS,
       'createLocalOverride should run exactly once per opencode agent');
     const sharedOpenCodeSettings = { model: 'opencode-go/test-model', variant: 'high' };
-    for (let i = 0; i < OPENCODE_AGENTS.length; i += 1) {
+    for (let i = 0; i < OPENCODE_WORKERS.length; i += 1) {
       assert.deepEqual(opencodeOps.create[i].settings, sharedOpenCodeSettings,
         'every opencode override should carry the identical shared selectSettings result');
     }
@@ -452,10 +455,10 @@ test('customize Claude Code flow persists every selected agent, never invokes Op
     opencodeFactoryCalls += 1;
     return makeFakeAdapter(OPENCODE_AGENTS, opencodeOps);
   });
-  const restoreClaude = patchFactory('createClaudeAdapter', () => {
-    claudeFactoryCalls += 1;
-     return makeFakeAdapter(CLAUDE_AGENTS, claudeOps, { model: 'sonnet', effort: 'medium' });
-  });
+   const restoreClaude = patchFactory('createClaudeAdapter', () => {
+     claudeFactoryCalls += 1;
+      return makeFakeAdapter(CLAUDE_WORKERS, claudeOps, { model: 'sonnet', effort: 'medium' });
+   });
   try {
     const answers = ['Customize models', 'Claude Code', 'Workers', 'Exit'];
     const promptChoice = async () => answers.shift() ?? '<model>';
@@ -477,12 +480,12 @@ test('customize Claude Code flow persists every selected agent, never invokes Op
     assert.equal(checklistCalls.length, 1, 'the checklist should be invoked exactly once');
     assert.equal(claudeFactoryCalls, 1, 'createClaudeAdapter should be invoked exactly once');
     assert.equal(opencodeFactoryCalls, 0, 'createOpencodeAdapter must never be invoked');
-    assert.deepEqual(claudeOps.select, [CLAUDE_AGENTS.map(name => `worker:${name}`).join(', ')],
+    assert.deepEqual(claudeOps.select, [CLAUDE_WORKERS.map(name => `worker:${name}`).join(', ')],
       'selectSettings should run exactly once for the whole confirmed subset');
-    assert.deepEqual(claudeOps.create.map(entry => entry.target.name), CLAUDE_AGENTS,
+    assert.deepEqual(claudeOps.create.map(entry => entry.target.name), CLAUDE_WORKERS,
       'createLocalOverride should run exactly once per claude agent');
     const sharedClaudeSettings = { model: 'sonnet', effort: 'medium' };
-    for (let i = 0; i < CLAUDE_AGENTS.length; i += 1) {
+    for (let i = 0; i < CLAUDE_WORKERS.length; i += 1) {
       assert.deepEqual(claudeOps.create[i].settings, sharedClaudeSettings,
         'every claude override should carry the identical shared selectSettings result');
     }
@@ -492,18 +495,18 @@ test('customize Claude Code flow persists every selected agent, never invokes Op
   }
 });
 
-test('opencode enumerateWorkers returns only the fourteen routed workers', () => {
+test('opencode enumerateWorkers returns only the fifteen routed workers', () => {
   const adapter = createOpencodeAdapter({ repoRoot: REPO_ROOT });
   const agents = adapter.enumerateWorkers();
-  assert.equal(agents.length, 14, 'exactly fourteen routed workers should enumerate for opencode');
+  assert.equal(agents.length, 15, 'exactly fifteen routed workers should enumerate for opencode');
   assert.deepEqual([...agents].sort(), [...OPENCODE_WORKERS].sort(),
     'opencode workers should exclude generic delegation agents');
 });
 
-test('claude enumerateWorkers returns only the fourteen routed workers', () => {
+test('claude enumerateWorkers returns only the fifteen routed workers', () => {
   const adapter = createClaudeAdapter({ repoRoot: REPO_ROOT });
   const agents = adapter.enumerateWorkers();
-  assert.equal(agents.length, 14, 'exactly fourteen routed workers should enumerate for claude');
+  assert.equal(agents.length, 15, 'exactly fifteen routed workers should enumerate for claude');
   assert.deepEqual([...agents].sort(), [...CLAUDE_WORKERS].sort(),
     'claude workers should exclude generic delegation agents');
 });
@@ -513,8 +516,8 @@ test('both adapters classify generic delegation agents separately from Worker Ma
   const opencode = createOpencodeAdapter({ repoRoot: REPO_ROOT }).enumerateTargets();
   assert.deepEqual(claude.agent, ['budget-executor', 'budget-explorer', 'budget-subagent']);
   assert.deepEqual(opencode.agent, ['budget', 'executor', 'explore']);
-  assert.equal(claude.worker.length, 12);
-  assert.equal(opencode.worker.length, 12);
+  assert.equal(claude.worker.length, 15);
+  assert.equal(opencode.worker.length, 15);
 });
 
 test('Claude settings selection asks one combined frame from the real catalog and resolves the confirmed pair', async () => {
@@ -564,10 +567,10 @@ test('each claude agent consumes exactly one real combined frame and resolves a 
   };
   const adapter = createClaudeAdapter({ repoRoot: REPO_ROOT, promptChoice: promptSpy });
   const agents = adapter.enumerateWorkers();
-  assert.equal(agents.length, CLAUDE_AGENTS.length,
-    `exactly ${CLAUDE_AGENTS.length} agents should enumerate for claude`);
-  assert.deepEqual([...agents].sort(), [...CLAUDE_AGENTS].sort(),
-    `the enumerated agents should be exactly the ${CLAUDE_AGENTS.length} managed claude agents`);
+  assert.equal(agents.length, CLAUDE_WORKERS.length,
+    `exactly ${CLAUDE_WORKERS.length} agents should enumerate for claude`);
+  assert.deepEqual([...agents].sort(), [...CLAUDE_WORKERS].sort(),
+    `the enumerated agents should be exactly the ${CLAUDE_WORKERS.length} managed claude agents`);
 
   for (let i = 0; i < agents.length; i += 1) {
     const settings = await adapter.selectSettings(agents[i]);
@@ -742,7 +745,7 @@ test('full dependent-flow traversal walks menu, harness, checklist, and provider
       assert.deepEqual(runner.calls.map(call => call.args),
         [['models'], ['models', 'opencode-go', '--verbose']],
         'the traversal invokes the catalog and verbose queries as argument vectors, never --refresh');
-      assert.equal(overrides.length, OPENCODE_AGENTS.length,
+      assert.equal(overrides.length, OPENCODE_WORKERS.length,
         'createLocalOverride should run exactly once per selected agent');
       for (const entry of overrides) {
         assert.deepEqual(entry.settings, { model: 'opencode-go/deepseek-v4-flash', variant: 'high' },
@@ -965,20 +968,20 @@ test('injected checklist seam renders family-prefixed model annotations but retu
 
 // --- Step 4: command enumeration from the manifest's commands-class projections ---
 
-test('opencode enumerateCommands returns exactly the 17 manifest-declared commands', () => {
+test('opencode enumerateCommands returns exactly the 18 manifest-declared commands', () => {
   const adapter = createOpencodeAdapter({ repoRoot: REPO_ROOT });
   const commands = adapter.enumerateCommands();
-  assert.equal(commands.length, 17, 'exactly 17 commands should enumerate for opencode');
+  assert.equal(commands.length, 18, 'exactly 18 commands should enumerate for opencode');
   assert.deepEqual([...commands].sort(), [...OPENCODE_COMMANDS].sort(),
-    'opencode commands should be exactly the 17 manifest-declared names');
+    'opencode commands should be exactly the 18 manifest-declared names');
 });
 
-test('claude enumerateCommands returns exactly the same 17 manifest-declared commands', () => {
+test('claude enumerateCommands returns exactly the same 18 manifest-declared commands', () => {
   const adapter = createClaudeAdapter({ repoRoot: REPO_ROOT });
   const commands = adapter.enumerateCommands();
-  assert.equal(commands.length, 17, 'exactly 17 commands should enumerate for claude');
+  assert.equal(commands.length, 18, 'exactly 18 commands should enumerate for claude');
   assert.deepEqual([...commands].sort(), [...OPENCODE_COMMANDS].sort(),
-    'claude commands should be exactly the same 17 manifest-declared names');
+    'claude commands should be exactly the same 18 manifest-declared names');
 });
 
 test('command enumeration reads the manifest-declared package source directory, never the installed global command directory', () => {
@@ -1109,7 +1112,7 @@ test('back at the scope screen re-opens the harness selector and persists no sel
     assert.deepEqual(opencodeOps.select, [],
       'the abandoned OpenCode harness selection must never reach settings selection');
     assert.deepEqual(opencodeOps.create, [], 'the abandoned OpenCode harness must never persist an override');
-    assert.deepEqual(claudeOps.select, [CLAUDE_AGENTS.join(', ')],
+    assert.deepEqual(claudeOps.select, [[...CLAUDE_AGENTS].sort().map(name => `worker:${name}`).join(', ')],
       'the re-picked Claude harness runs one settings selection for the confirmed subset');
     assert.deepEqual(claudeOps.create.map(entry => entry.target.name), CLAUDE_AGENTS,
       'only the re-picked Claude harness configures its targets, exactly once each');
@@ -1145,18 +1148,18 @@ test('back at the target checklist re-opens the scope screen and persists no sel
     assert.equal(result.reason, 'cancelled');
     assert.equal(checklistCalls.length, 2,
       'back at the target checklist should re-open the scope screen and then the checklist again');
-    assert.deepEqual(checklistCalls[0][0], OPENCODE_AGENTS,
+    assert.deepEqual(checklistCalls[0][0], [...OPENCODE_AGENTS].sort().map(name => `worker:${name}`),
       'the first checklist pass presents the Workers scope targets with stable worker identities');
-    assert.deepEqual(checklistCalls[1][0], COMMANDS,
+    assert.deepEqual(checklistCalls[1][0], MODEL_COMMANDS.map(name => `command:${name}`),
       'after back the re-picked Commands scope presents stable command identities');
     assert.equal(questions.length, 5,
       'menu, harness, scope, the re-presented scope, and the fresh menu are prompted');
     assert.equal(questions[1], 'Choose a harness:', 'the harness selector precedes the first scope screen');
     assert.equal(questions[2], questions[3],
       'back at the checklist re-presents the same scope screen');
-    assert.deepEqual(opencodeOps.select, [COMMANDS.join(', ')],
+    assert.deepEqual(opencodeOps.select, [MODEL_COMMANDS.map(name => `command:${name}`).join(', ')],
       'only the confirmed Commands pass reaches settings selection');
-    assert.deepEqual(opencodeOps.create.map(entry => entry.target.name), COMMANDS,
+    assert.deepEqual(opencodeOps.create.map(entry => entry.target.name), MODEL_COMMANDS,
       'only the confirmed Commands pass configures targets, exactly once each; the abandoned Workers pass persists nothing');
     assert.equal(claudeOps.select.length, 0, 'claude must never be configured');
     assert.equal(claudeOps.create.length, 0, 'claude must never create overrides');
@@ -1179,11 +1182,11 @@ test('subset selection configures exactly the selected agents: one selectSetting
       projectPath: REPO_ROOT,
       isTTY: true,
       promptChoice,
-      promptChecklist: async () => ({ status: 'confirmed', items: subset }),
+      promptChecklist: async () => ({ status: 'confirmed', items: subset.map(name => `worker:${name}`) }),
     });
     assert.equal(result.status, 'skipped');
     assert.equal(result.reason, 'cancelled');
-    assert.deepEqual(opencodeOps.select, [subset.join(', ')],
+    assert.deepEqual(opencodeOps.select, [subset.map(name => `worker:${name}`).join(', ')],
       'selectSettings should run exactly once for the confirmed subset and never for deselected agents');
     assert.deepEqual(opencodeOps.create.map(entry => entry.target.name), subset,
       'createLocalOverride should run exactly once per selected agent and never for deselected agents');
@@ -2513,7 +2516,7 @@ test('Step 1 materialize selected harness overrides: manifest roster and harness
     });
 
     assert.ok(claude.enumerateWorkers().includes(PERSIST_CLAUDE_AGENT));
-    assert.ok(opencode.enumerateWorkers().includes(PERSIST_OPENCODE_AGENT));
+    assert.ok(opencode.enumerateWorkers().includes('sai-commit-worker'));
     assert.equal(claude.enumerateWorkers().includes('package-only'), false);
     assert.equal(opencode.enumerateWorkers().includes('package-only'), false);
 
@@ -2740,7 +2743,7 @@ test('Step 1 materialize selected harness overrides: confirmed subsets, empty se
         projectPath: fixture.projectPath,
         isTTY: true,
         promptChoice,
-        promptChecklist: async () => ({ status: 'confirmed', items: [PERSIST_CLAUDE_AGENT] }),
+        promptChecklist: async () => ({ status: 'confirmed', items: [`worker:${PERSIST_CLAUDE_AGENT}`] }),
       });
        assert.equal(completed && completed.status, 'skipped');
        assert.equal(completed && completed.reason, 'cancelled');
@@ -3077,7 +3080,7 @@ test('Step 2 a Claude budget agent is a customization target: haiku override omi
       packageRoot: fixture.packageRoot,
       globalAgentRoot: fixture.claudeGlobalRoot,
     });
-    assert.ok(adapter.enumerateWorkers().includes(budgetAgent),
+    assert.ok(adapter.enumerateTargets().agent.includes(budgetAgent),
       'the customization menu should offer the budget-explorer agent');
 
     const result = adapter.createLocalOverride(budgetAgent, { model: 'haiku' });
@@ -3198,12 +3201,12 @@ test('Step 2 non-empty Claude subsets select settings once and apply the same mo
       projectPath: REPO_ROOT,
       isTTY: true,
       promptChoice: async () => answers.shift(),
-      promptChecklist: async () => ({ status: 'confirmed', items: selected }),
+      promptChecklist: async () => ({ status: 'confirmed', items: selected.map(name => `worker:${name}`) }),
     });
 
     assert.equal(result.status, 'skipped');
     assert.equal(result.reason, 'cancelled');
-    assert.deepEqual(claudeOps.select, [selected.join(', ')]);
+    assert.deepEqual(claudeOps.select, [selected.map(name => `worker:${name}`).join(', ')]);
     assert.deepEqual(claudeOps.create.map(entry => entry.target.name), selected);
     assert.deepEqual(claudeOps.create.map(entry => entry.settings), [
       { model: 'haiku' },
@@ -3217,7 +3220,7 @@ test('Step 2 non-empty Claude subsets select settings once and apply the same mo
   }
 });
 
-test('customization inventory is matrix-derived: exactly fourteen worker agents per harness in the manifest', () => {
+test('customization inventory is matrix-derived: exactly fifteen worker agents per harness in the manifest', () => {
   const { loadInstallManifest, expandInstallManifest } = require('../bin/install-manifest.js');
   const manifest = loadInstallManifest(REPO_ROOT);
   const workers = [
@@ -3235,6 +3238,7 @@ test('customization inventory is matrix-derived: exactly fourteen worker agents 
     'sai-autofast-implement-worker',
     'sai-backfill-worker',
     'sai-commit-worker',
+    'sai-merge-worker',
   ];
   for (const harness of ['claude', 'opencode']) {
     const destinationRoot = {
@@ -3251,10 +3255,10 @@ test('customization inventory is matrix-derived: exactly fourteen worker agents 
         .filter(projection => projection.destinationPath.startsWith(destinationRoot.agents) &&
           workers.includes(path.basename(projection.destinationPath, '.md')))
         .map(projection => path.basename(projection.destinationPath, '.md'));
-      assert.equal(agentNames.length, 14,
-        `${harness} customization inventory should contain exactly fourteen matrix managed agents`);
+      assert.equal(agentNames.length, 15,
+        `${harness} customization inventory should contain exactly fifteen matrix managed agents`);
       assert.deepEqual(agentNames.sort(), [...workers].sort(),
-        `${harness} customization inventory should be exactly the fourteen worker identities`);
+        `${harness} customization inventory should be exactly the fifteen worker identities`);
       assert.equal(agentNames.some(name => ['budget', 'executor', 'explore'].includes(name)), false,
         `${harness} customization inventory must not include support agents as matrix worker inventory`);
       const allAgentNames = active
@@ -3263,8 +3267,8 @@ test('customization inventory is matrix-derived: exactly fourteen worker agents 
       if (harness === 'claude') {
         assert.equal(allAgentNames.some(name => ['budget', 'executor', 'explore'].includes(name)), false,
           'claude customization inventory should not include the opencode-only generic basenames');
-        assert.equal(allAgentNames.length, 17,
-          'claude customization inventory should contain exactly seventeen managed agents: fourteen workers plus the three budget agents');
+        assert.equal(allAgentNames.length, 18,
+          'claude customization inventory should contain exactly eighteen managed agents: fifteen workers plus the three budget agents');
         assert.ok(['budget-executor', 'budget-explorer', 'budget-subagent'].every(name => allAgentNames.includes(name)),
           'claude customization inventory should include the three budget agents');
       } else {
@@ -3575,7 +3579,7 @@ test('flow: command targets with no source or invalid frontmatter are reported i
       promptChoice: async (question, options) => answers.length > 0
         ? answers.shift()
         : chooseClaudeSonnetMedium(options),
-      promptChecklist: async () => ({ status: 'confirmed', items: [missing, invalid, valid] }),
+      promptChecklist: async () => ({ status: 'confirmed', items: [missing, invalid, valid].map(name => `command:${name}`) }),
     });
     const diagnostics = (result.diagnostics || []).map(entry => String(entry)).join('\n');
     assert.equal(result.status, 'persistence-failed',
@@ -3775,12 +3779,16 @@ test('completed passes re-enter with fresh adapters and selections, render prior
     assert.equal(factoryCalls, 2, 'the next completed pass creates a fresh adapter');
     assert.deepEqual(adapterOps.map(ops => ops.enumerate), [1, 1],
       'each pass enumerates its own target set exactly once');
+    const prefixed = stateTargets => {
+      const rows = stateTargets.map(name => `worker:${name}`);
+      return [rows, rows];
+    };
     assert.deepEqual(checklistCalls.map(call => [call[0], call[1]]), [
-      [states[0].targets, states[0].targets],
-      [states[1].targets, states[1].targets],
+      prefixed(states[0].targets),
+      prefixed(states[1].targets),
     ], 'every newly enumerated target is selected in a fresh checklist');
-    assert.deepEqual(adapterOps[0].select, [{ label: states[0].targets.join(', ') }]);
-    assert.deepEqual(adapterOps[1].select, [{ label: states[1].targets.join(', ') }]);
+    assert.deepEqual(adapterOps[0].select, [{ label: states[0].targets.map(name => `worker:${name}`).join(', ') }]);
+    assert.deepEqual(adapterOps[1].select, [{ label: states[1].targets.map(name => `worker:${name}`).join(', ') }]);
     assert.deepEqual(adapterOps[0].create.map(entry => entry.name), states[0].targets);
     assert.deepEqual(adapterOps[1].create.map(entry => entry.name), states[1].targets);
     assert.deepEqual(adapterOps[0].create.map(entry => entry.settings), [states[0].settings, states[0].settings]);
@@ -3848,7 +3856,7 @@ test('persistence failure attempts every selected target, returns failedAgents a
       failureDiagnostic,
       'Skipped missing-source: installed source is unavailable.',
     ]);
-    assert.deepEqual(ops.select, [{ label: targets.join(', ') }],
+    assert.deepEqual(ops.select, [{ label: targets.map(name => `worker:${name}`).join(', ') }],
       'non-empty confirmation invokes settings exactly once');
     assert.deepEqual(ops.create.map(entry => entry.name), targets,
       'remaining selected targets are attempted once after persistence failure');
