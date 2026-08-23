@@ -14,6 +14,7 @@
     "sai-build.md",
     "sai-commit.md",
     "sai-explore.md",
+    "sai-merge.md",
     "sai-pr.md",
     "sai-status.md",
     "sai-worktree.md"
@@ -79,6 +80,11 @@
         "Fetch @skills/fetch/SKILL.md",
         "Fetch @sai/adapters/claude/boot.md and follow it.",
         "Fetch @sai/orchestration/workers/bindings/commit-worker.md and use it."
+      ],
+      "sai-merge.md": [
+        "Fetch @skills/fetch/SKILL.md",
+        "Fetch @sai/adapters/claude/boot.md and follow it.",
+        "Fetch @sai/orchestration/workers/bindings/merge-worker.md and use it."
       ],
       "sai-explore.md": [
         "Fetch @skills/fetch/SKILL.md",
@@ -161,6 +167,11 @@
         "Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.",
         "Fetch @sai/adapters/opencode/boot.md and follow it.",
         "Fetch @sai/orchestration/workers/bindings/commit-worker.md and use it."
+      ],
+      "sai-merge.md": [
+        "Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.",
+        "Fetch @sai/adapters/opencode/boot.md and follow it.",
+        "Fetch @sai/orchestration/workers/bindings/merge-worker.md and use it."
       ],
       "sai-explore.md": [
         "Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.",

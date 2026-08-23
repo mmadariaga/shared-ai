@@ -16,19 +16,14 @@
 - **WHEN** the wrapper body shape is verified
 - **THEN** the normative checks (directive set, two-key envelope placement, frontmatter preservation, forbidden sections) resolve to `command-wrapper-body`'s requirements, and no shape rule is duplicated anywhere in this capability
 
-### Requirement: wrapper-file-list
+### Requirement: Wrapper file inventory
 
-The full set of sai-* wrapper files in `commands/claude/` and `commands/opencode/` SHALL be 16 files each: `sai-1-spec.md`, `sai-2-design.md`, `sai-3-implement.md`, `sai-4-apply.md`, `sai-5-review.md`, `sai-6-security.md`, `sai-7-performance.md`, `sai-8-accessibility.md`, `sai-archive.md`, `sai-backfill.md`, `sai-build.md`, `sai-commit.md`, `sai-explore.md`, `sai-pr.md`, `sai-status.md`, `sai-worktree.md`. The count applies to `sai-*.md` files only; other files in the directory (such as `commands/claude/budget.md` and `commands/opencode/budget.md`) are out of scope for this requirement.
+The per-harness wrapper file list SHALL contain exactly seventeen `sai-*.md` command files, including `sai-merge.md` in both `commands/claude/` and `commands/opencode/`, each forwarding its InvocationEnvelope through the harness boot adapter to the merge command bootstrap.
 
-#### Scenario: sai-* wrapper count in Claude Code directory
+#### Scenario: sai-merge wrapper present on both harnesses
 
-- **WHEN** `commands/claude/sai-*.md` is listed
-- **THEN** exactly the 16 files named above are present (no extra `sai-*.md` files, no missing `sai-*.md` entries)
-
-#### Scenario: sai-* wrapper count in OpenCode directory
-
-- **WHEN** `commands/opencode/sai-*.md` is listed
-- **THEN** exactly the 16 files named above are present (no extra `sai-*.md` files, no missing `sai-*.md` entries)
+- **WHEN** the wrapper inventory is enumerated for Claude Code or opencode
+- **THEN** `sai-merge.md` is present with the expected fetch chain and envelope keys
 
 ### Requirement: wrapper-template
 

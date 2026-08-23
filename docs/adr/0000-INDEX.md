@@ -234,6 +234,10 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0163 — Build inherits shared recovery only through the apply phase adapter](./0163-build-inherits-recovery-via-apply-adapter.md) — Refs 0154b
 - [0171c — Single-string invocation envelope across active SAI surfaces](./0171c-single-string-invocation-envelope.md) — Supersedes 0166, **Reframes** 0159b, Refs 0136, Refs ddr:0114
 
+### `/sai-merge`
+
+- [0173 — Merge collision suffixes ordered by ascending commit date](./0173-merge-collision-suffix-order-by-commit-date.md) — Refs 0110a, Refs 0113
+
 ### docker/orca
 
 - [0117b — Orca AppImage is extracted at build time (no FUSE)](./0117b-orca-appimage-build-time-extraction.md)

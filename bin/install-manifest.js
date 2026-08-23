@@ -38,6 +38,7 @@ const PHASE_WORKER_IDENTITIES = Object.freeze({
   commit: 'sai-commit-worker',
   archive: 'sai-archive-worker',
   backfill: 'sai-backfill-worker',
+  merge: 'sai-merge-worker',
 });
 const PHASE_CONTRACT_DIRS = Object.freeze({
   spec: 'spec',
@@ -50,6 +51,7 @@ const PHASE_CONTRACT_DIRS = Object.freeze({
   commit: 'commit',
   archive: 'archive',
   backfill: 'backfill',
+  merge: 'merge',
 });
 const MATRIX_ENTRY_REQUIRED_FIELDS = Object.freeze([
   'phase',

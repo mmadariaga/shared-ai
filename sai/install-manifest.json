@@ -386,6 +386,40 @@
         }
       },
       {
+        "phase": "merge",
+        "workerName": "sai-merge-worker",
+        "workerContract": "sai/commands/merge/worker.md",
+        "bindingStem": "merge",
+        "dispatchPrimitive": "task",
+        "initialDispatch": "dispatch sai-merge-worker",
+        "continuationLiteral": "continue sai-merge-worker",
+        "replacementFields": [
+          "model",
+          "effort"
+        ],
+        "helperPermissions": [
+          "Read",
+          "Bash",
+          "Skill"
+        ],
+        "progressDeclaration": "none — the merge adapter declares no progress_plan",
+        "overviewGeneration": "",
+        "noticeContinuation": "",
+        "claudeAgent": {
+          "agentName": "sai-merge-worker",
+          "description": "Owns the read-only merge analysis, conflict-resolution proposal, verification, and ADR/DDR collision scanning phase and returns structured lifecycle metadata.",
+          "model": "haiku",
+          "effort": "low",
+          "tools": "Read, Glob, Grep, Bash, Skill, SendMessage"
+        },
+        "opencodeAgent": {
+          "description": "Owns the read-only merge analysis, conflict-resolution proposal, verification, and ADR/DDR collision scanning phase and returns structured lifecycle metadata.",
+          "model": "opencode-go/deepseek-v4-flash",
+          "variantLine": "variant: default",
+          "permissionBlock": "    budget: allow\n    explore: allow"
+        }
+      },
+      {
         "phase": "apply",
         "workerName": "sai-4-red-worker",
         "workerContract": "sai/commands/apply/red-worker.md",
@@ -1319,6 +1353,44 @@
       "matrix": {
         "kind": "agent",
         "phase": "backfill"
+      }
+    },
+    {
+      "id": "claude-sai-merge-worker",
+      "source": "agents/claude/worker-template.md",
+      "destination": {
+        "class": "agents",
+        "path": "sai-merge-worker.md"
+      },
+      "harnesses": [
+        "claude"
+      ],
+      "strategy": "tunable-seed",
+      "recursive": false,
+      "ownership": "managed",
+      "drift": "content",
+      "matrix": {
+        "kind": "agent",
+        "phase": "merge"
+      }
+    },
+    {
+      "id": "opencode-sai-merge-worker",
+      "source": "agents/opencode/worker-template.md",
+      "destination": {
+        "class": "agents",
+        "path": "sai-merge-worker.md"
+      },
+      "harnesses": [
+        "opencode"
+      ],
+      "strategy": "tunable-seed",
+      "recursive": false,
+      "ownership": "managed",
+      "drift": "content",
+      "matrix": {
+        "kind": "agent",
+        "phase": "merge"
       }
     },
     {

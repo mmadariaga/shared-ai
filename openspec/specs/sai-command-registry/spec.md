@@ -2,25 +2,15 @@
 
 ## ADDED Requirements
 
-### Requirement: Universal skill lists all /sai-* commands with fetch paths
+### Requirement: Registry table coverage
 
-The `sai-commands` skill SHALL provide a command registry table mapping each `/sai-*` command to its corresponding `@commands/sai-<name>.md` fetch path, along with a one-line description of what the command does.
+The SAI command registry skill SHALL list a `/sai-merge` row describing the merge-a-local-branch command with criteria-based conflict resolution and ADR/DDR collision repair, keeping the enumerated command set consistent with the installed wrapper files.
 
-#### Scenario: LLM invokes /sai-3-implement
-- **WHEN** the user invokes `/sai-3-implement`
-- **THEN** the skill registry maps it to `@commands/sai-3-implement.md` with description "Granular implementation plan"
+#### Scenario: Registry matches installed commands
 
-#### Scenario: LLM invokes /sai-backfill
-- **WHEN** the user invokes `/sai-backfill`
-- **THEN** the skill registry maps it to `@commands/sai-backfill.md` with description "Post-hoc backfill"
+- **WHEN** the registry table is rendered from the universal sai-commands skill
+- **THEN** `/sai-merge` appears beside the other routed-shaped commands pointing at `@commands/sai-merge.md`
 
-#### Scenario: all numbered and unnumbered commands present
-- **WHEN** the skill is loaded
-- **THEN** the registry table contains entries for every command in the 16-command `sai-*.md` set owned by `thin-wrappers` (`sai-1-spec`, `sai-2-design`, `sai-3-implement`, `sai-4-apply`, `sai-5-review`, `sai-6-security`, `sai-7-performance`, `sai-8-accessibility`, `sai-archive`, `sai-backfill`, `sai-build`, `sai-commit`, `sai-explore`, `sai-pr`, `sai-status`, `sai-worktree`) plus `budget`
-
-#### Scenario: LLM invokes /sai-build
-- **WHEN** the user invokes `/sai-build`
-- **THEN** the skill registry maps it to `@commands/sai-build.md` with a one-line description that identifies chained implementation planning and apply
 
 ### Requirement: Skill declares fetch-before-execute rule
 
