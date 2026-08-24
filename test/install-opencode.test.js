@@ -293,7 +293,7 @@ test('installOpencode projects grouped SAI command assets and excludes former co
   for (const file of [path.join('design', 'coordinator.md'), path.join('design', 'invocation.md'), path.join('implement', 'coordinator.md'), path.join('implement', 'invocation.md')]) {
     assert.ok(fs.existsSync(path.join(tmpDir, 'sai', 'commands', file)), `${file} should be projected`);
   }
-  for (const file of [path.join('build', 'coordinator.md'), path.join('build', 'command-bootstrap.md')]) {
+  for (const file of [path.join('meta-build', 'coordinator.md'), path.join('meta-build', 'command-bootstrap.md')]) {
     assert.ok(fs.existsSync(path.join(tmpDir, 'sai', 'commands', file)), `${file} should be projected`);
   }
   for (const file of ['sai-2-design.md', 'sai-3-implement.md']) {

@@ -37,7 +37,7 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 **Boot Request**: "The opaque adapter input containing `command_name` as card-selection metadata, the complete opaque `arguments_value` request, and an optional harness-owned continuation reference."
 *Avoid*: adapter request, boot envelope, parsed request
 
-**Build Command**: "The un-numbered `/sai-build` routed composition command that runs the implement phase adapter then the apply phase adapter in one supervising invocation for a disk-resolved change name, with no intermediate approval gate."
+**Build Command**: "The un-numbered `/sai-build` routed composition command with internal identity `meta-build` (`command_name: meta-build`, cards at `sai/commands/meta-build/`) that runs the implement phase adapter then the apply phase adapter in one supervising invocation for a disk-resolved change name, with no intermediate approval gate."
 *Avoid*: sai-9-build, implement-apply macro, batch apply, build worker
 
 **Cause Locus**: "The coordinator's evidence-backed classification of a non-clean closure as inside a worker's authorized boundary or outside it."
