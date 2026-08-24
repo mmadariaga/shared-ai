@@ -1,5 +1,10 @@
-## ADDED Requirements
+# doctor-harness-inventory Specification
 
+## Purpose
+
+TBD - this spec was authored as a change delta and never merged into the main tree, so its requirements were invisible to validate, list, and archive. Summarize the capability here.
+
+## Requirements
 ### Requirement: harness auto-detection
 
 The doctor SHALL auto-detect which of the three supported harnesses (Claude Code, opencode, Copilot) are installed by testing whether each harness's user-global dir is present, using the same OS-aware base paths the installer computes (`~/.claude`, `~/.config/opencode`, and the Copilot `Code/User` location for the current OS). It SHALL NOT require a `--harness` flag. A harness whose user-global dir is absent SHALL be reported as not installed rather than emitting missing-file errors for it.

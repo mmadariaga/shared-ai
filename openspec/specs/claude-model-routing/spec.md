@@ -1,5 +1,10 @@
-## MODIFIED Requirements
+# claude-model-routing Specification
 
+## Purpose
+
+TBD - this spec was authored as a change delta and never merged into the main tree, so its requirements were invisible to validate, list, and archive. Summarize the capability here.
+
+## Requirements
 ### Requirement: Claude SAI wrappers SHALL declare the updated model and effort metadata
 
 The affected Claude command wrappers SHALL use the model and effort assignments implemented in the command frontmatter.

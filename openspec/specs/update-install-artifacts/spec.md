@@ -1,5 +1,10 @@
-## ADDED Requirements
+# update-install-artifacts Specification
 
+## Purpose
+
+TBD - this spec was authored as a change delta and never merged into the main tree, so its requirements were invisible to validate, list, and archive. Summarize the capability here.
+
+## Requirements
 ### Requirement: INSTALL.claude.md contains no caveman copy instructions
 `INSTALL.claude.md` SHALL NOT contain any block that copies the caveman skill file for bash (lines 50–52) or PowerShell (lines 84–86).
 

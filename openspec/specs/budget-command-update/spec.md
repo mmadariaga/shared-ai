@@ -1,5 +1,10 @@
-## MODIFIED Requirements
+# budget-command-update Specification
 
+## Purpose
+
+TBD - this spec was authored as a change delta and never merged into the main tree, so its requirements were invisible to validate, list, and archive. Summarize the capability here.
+
+## Requirements
 ### Requirement: Claude Code budget.md loads budget aggregator skill
 
 `commands/claude/budget.md` SHALL load the universal `budget` aggregator skill, which in turn loads `budget-explorer`, `budget-executor`, and `token-efficient-languages`.

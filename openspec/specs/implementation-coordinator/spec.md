@@ -1,7 +1,10 @@
 # implementation-coordinator — Spec
 
-## MODIFIED Requirements
+## Purpose
 
+TBD - this spec was authored as a change delta and never merged into the main tree, so its requirements were invisible to validate, list, and archive. Summarize the capability here.
+
+## Requirements
 ### Requirement: Shared lifecycle adapter integration
 
 The routed `/sai-3-implement` coordinator SHALL consume the canonical shared coordinator contract through an implementation phase adapter. The adapter SHALL provide the original `arguments_value` request, harness binding dispatch and continuation operations, progress events as the sole allowed nonterminal extension, no extension handlers, the enumerated implementation replacement-reconstruction fields below, and parameterized implementation terminal navigation that selects standalone completion or the composition-owned authorized transition by adapter position. The adapter SHALL NOT duplicate lifecycle payload validation, ordered changed-file aggregation, continuation-first recovery, replacement-worker limits, or terminal routing, and SHALL NOT import design feedback, notice, or continue-now behavior.

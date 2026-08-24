@@ -1,5 +1,10 @@
-## MODIFIED Requirements
+# claude-commands-fetch-load Specification
 
+## Purpose
+
+TBD - this spec was authored as a change delta and never merged into the main tree, so its requirements were invisible to validate, list, and archive. Summarize the capability here.
+
+## Requirements
 ### Requirement: All claude command wrappers load the fetch skill before any @sai/ fetch
 Every file under `commands/claude/*.md` SHALL include `Fetch @skills/fetch/SKILL.md` as the first line of the command body (after frontmatter), before any `Fetch @sai/...` directive.
 

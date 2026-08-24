@@ -1,5 +1,10 @@
-## ADDED Requirements
+# sai-fast-track-next-prompt-hint Specification
 
+## Purpose
+
+TBD - this spec was authored as a change delta and never merged into the main tree, so its requirements were invisible to validate, list, and archive. Summarize the capability here.
+
+## Requirements
 ### Requirement: Completion next-prompt recommendations append a fast-track hint when the recommended command supports the flag
 
 When a command's `## Completion` block prints a next-prompt recommendation naming a follow-on command (a code span of the form `/sai-{N}-{name} {name}` or `/sai-{name} {name}`), the recommendation SHALL have the literal string ` (--fast-track)` appended immediately after the recommended-command code span — and before any remaining sentence text such as "**in a new chat** when ready." — if and only if the recommended command is a member of the fast-track set.

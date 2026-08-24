@@ -1,5 +1,10 @@
-## ADDED Requirements
+# dedup-nonnumbered-wrappers Specification
 
+## Purpose
+
+TBD - this spec was authored as a change delta and never merged into the main tree, so its requirements were invisible to validate, list, and archive. Summarize the capability here.
+
+## Requirements
 ### Requirement: context-isolation-in-explore-instruction
 The Context Isolation block (no write commands, crystallization protocol, inline proposal refusal) SHALL reside in the instruction file loaded by both sai-explore wrappers, not inline in either wrapper body.
 

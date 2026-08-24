@@ -1,7 +1,10 @@
 # implementation-planning-worker — Spec
 
-## MODIFIED Requirements
+## Purpose
 
+TBD - this spec was authored as a change delta and never merged into the main tree, so its requirements were invisible to validate, list, and archive. Summarize the capability here.
+
+## Requirements
 ### Requirement: Implementation phase policy isolation
 
 The implementation-planning worker contract SHALL layer implementation-only Phase Policy over the shared worker lifecycle and SHALL remain separate from the design-worker contract. It SHALL own implementation prerequisites, change resolution, planning research, rerun handling, audit ingestion, RED -> GREEN planning, STOP & COMMIT planning, interface conformance, ADR/DDR evaluation and authorized writes, and `implementation.md` verification without adding those rules to the Orchestration Core or importing design-only feedback and notice behavior.

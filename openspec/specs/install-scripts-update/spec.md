@@ -1,5 +1,10 @@
-## MODIFIED Requirements
+# install-scripts-update Specification
 
+## Purpose
+
+TBD - this spec was authored as a change delta and never merged into the main tree, so its requirements were invisible to validate, list, and archive. Summarize the capability here.
+
+## Requirements
 ### Requirement: INSTALL.claude.md — add copy step for Claude Code
 
 `INSTALL.claude.md` SHALL gain a `cp` line that installs the universal skill into the Claude Code skills directory, following the same pattern as the budget skill copy step.

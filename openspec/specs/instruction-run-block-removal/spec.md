@@ -1,7 +1,10 @@
 # instruction-run-block-removal Specification
 
-## ADDED Requirements
+## Purpose
 
+TBD - this spec was authored as a change delta and never merged into the main tree, so its requirements were invisible to validate, list, and archive. Summarize the capability here.
+
+## Requirements
 ### Requirement: Instruction files SHALL NOT contain `## Run` sections or `$ARGUMENTS` references
 
 Instruction files under `sai/commands/{name}/instructions.md` SHALL NOT include a `## Run` section or reference `$ARGUMENTS`. The run trigger and user argument injection are owned exclusively by command wrapper files under `sai/commands/`.

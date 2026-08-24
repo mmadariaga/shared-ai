@@ -1,5 +1,10 @@
-## ADDED Requirements
+# token-efficient-languages-skill Specification
 
+## Purpose
+
+TBD - this spec was authored as a change delta and never merged into the main tree, so its requirements were invisible to validate, list, and archive. Summarize the capability here.
+
+## Requirements
 ### Requirement: Skill file location
 
 The skill SHALL be created as a single file at `skills/universal/token-efficient-languages/SKILL.md`. No harness split — content is identical for Claude Code and OpenCode.

@@ -1,5 +1,10 @@
-## MODIFIED Requirements
+# spec-propose-cost-discipline Specification
 
+## Purpose
+
+TBD - this spec was authored as a change delta and never merged into the main tree, so its requirements were invisible to validate, list, and archive. Summarize the capability here.
+
+## Requirements
 ### Requirement: The cost discipline section in `spec.propose.md` SHALL defer spawn mechanics to the `budget-explorer` skill and retain only main-agent-specific rules.
 
 Previously contained 8 verbose rules duplicating subagent spawn rules owned by `budget-explorer`. Simplified to 6 concise main-agent rules that reference the skill.

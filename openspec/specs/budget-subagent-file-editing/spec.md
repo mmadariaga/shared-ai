@@ -1,7 +1,10 @@
 # budget-subagent-file-editing
 
-## MODIFIED Requirements
+## Purpose
 
+TBD - this spec was authored as a change delta and never merged into the main tree, so its requirements were invisible to validate, list, and archive. Summarize the capability here.
+
+## Requirements
 ### Requirement: The budget-subagent SHALL use `edit/createDirectory`, `edit/createFile`, and `edit/editFiles` for file operations
 
 The tool bindings for file editing were replaced: `edit/insertCodeBlock` and `edit/replaceSelection` were removed; `edit/createDirectory`, `edit/createFile`, and `edit/editFiles` were added to match the Copilot tool registry.

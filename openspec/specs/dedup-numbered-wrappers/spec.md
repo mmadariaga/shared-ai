@@ -1,5 +1,10 @@
-## ADDED Requirements
+# dedup-numbered-wrappers Specification
 
+## Purpose
+
+TBD - this spec was authored as a change delta and never merged into the main tree, so its requirements were invisible to validate, list, and archive. Summarize the capability here.
+
+## Requirements
 ### Requirement: thin-wrapper-shape
 After deduplication, each of the 16 numbered wrapper files (`claude/commands/sai-{1..8}.md` and `opencode/commands/sai-{1..8}.md`) SHALL contain only: frontmatter, a prereqs fetch, a `## Load behaviors (in order)` section, a single `Fetch @.../instructions/sai/<step-instruction>.md and follow those instructions exactly.` line, and a remember.md fetch. No inline REPLACEMENTS blocks, verify blocks, STOP instructions, or user-input passthrough paragraphs SHALL remain in the wrappers.
 

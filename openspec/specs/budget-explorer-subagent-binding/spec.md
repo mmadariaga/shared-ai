@@ -1,5 +1,10 @@
-## MODIFIED Requirements
+# budget-explorer-subagent-binding Specification
 
+## Purpose
+
+TBD - this spec was authored as a change delta and never merged into the main tree, so its requirements were invisible to validate, list, and archive. Summarize the capability here.
+
+## Requirements
 ### Requirement: SAI instruction files MUST reference the `budget-explorer` skill by name when delegating I/O-bound lookup work to a subagent.
 
 Replaces all prior harness-agnostic phrasings: "research subagent", "explore subagent", "cheap research subagent", "`explore` in opencode / `Explore` in Claude Code / the pre-defined explorer custom agent in GitHub Copilot". The canonical term is `budget-explorer`.

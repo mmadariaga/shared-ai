@@ -1,5 +1,10 @@
-## ADDED Requirements
+# sai-backfill-metadata-flag Specification
 
+## Purpose
+
+TBD - this spec was authored as a change delta and never merged into the main tree, so its requirements were invisible to validate, list, and archive. Summarize the capability here.
+
+## Requirements
 ### Requirement: .openspec.yaml MUST declare backfilled: true
 
 `sai/commands/backfill/instructions.md` Phase 5a MUST write a `backfilled: true` field into `openspec/changes/{name}/.openspec.yaml` alongside the existing `schema` and `created` keys. The `backfilled` field MUST be a boolean literal `true`; the field MUST NOT be omitted, MUST NOT be set to a string or any other type, and MUST NOT be conditionally written.

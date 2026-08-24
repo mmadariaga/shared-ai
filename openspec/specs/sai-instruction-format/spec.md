@@ -1,7 +1,10 @@
 # sai-instruction-format Specification
 
-## ADDED Requirements
+## Purpose
 
+TBD - this spec was authored as a change delta and never merged into the main tree, so its requirements were invisible to validate, list, and archive. Summarize the capability here.
+
+## Requirements
 ### Requirement: sai instruction files SHALL use flat markdown without XML task wrappers
 
 Instruction files under `sai/commands/{name}/instructions.md` SHALL be written as flat markdown documents. The `<TASK>` XML wrapper pattern SHALL NOT be used in instruction files. Content previously indented inside a `<TASK>` block SHALL be unindented to the document root level.

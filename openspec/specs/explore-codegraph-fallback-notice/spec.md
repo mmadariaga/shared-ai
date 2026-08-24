@@ -1,5 +1,10 @@
-## ADDED Requirements
+# explore-codegraph-fallback-notice Specification
 
+## Purpose
+
+TBD - this spec was authored as a change delta and never merged into the main tree, so its requirements were invisible to validate, list, and archive. Summarize the capability here.
+
+## Requirements
 ### Requirement: One-time research-tooling check at explore session start
 
 `sai-explore` SHALL perform a research-tooling availability check exactly once per explore session, at the start of the session, before any code search (grep/glob/Read) is performed for the user's request. The check SHALL apply only within `sai-explore`; no other `sai-*` command's behavior SHALL change. The check SHALL be non-blocking — it SHALL NOT halt the session, prompt the user, or gate any subsequent work on its outcome.

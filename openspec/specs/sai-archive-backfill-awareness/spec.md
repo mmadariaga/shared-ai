@@ -1,5 +1,10 @@
-## ADDED Requirements
+# sai-archive-backfill-awareness Specification
 
+## Purpose
+
+TBD - this spec was authored as a change delta and never merged into the main tree, so its requirements were invisible to validate, list, and archive. Summarize the capability here.
+
+## Requirements
 ### Requirement: Classification Check MUST consult .openspec.yaml
 
 `sai/commands/archive/instructions.md` Classification Check MUST read `openspec/changes/$ARGUMENTS/.openspec.yaml` and look up the `backfilled` field. The lookup MUST happen after step 1 (status JSON parse) and before step 3 (CORE artifact evaluation), so the exemption can short-circuit the missing-CORE check.

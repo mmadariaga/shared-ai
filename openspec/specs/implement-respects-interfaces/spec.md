@@ -1,7 +1,10 @@
 # implement-respects-interfaces Specification
 
-## ADDED Requirements
+## Purpose
 
+TBD - this spec was authored as a change delta and never merged into the main tree, so its requirements were invisible to validate, list, and archive. Summarize the capability here.
+
+## Requirements
 ### Requirement: Implementation plan conforms to interfaces.md signatures
 
 When `interfaces.md` exists for the change, `sai-3-implement` SHALL treat its per-step `**Interfaces**` block as the authoritative declaration of public signatures for that Step. Every function/method signature, exported type, and public surface it generates into `implementation.md` for Step N SHALL match the signature declared under the matching `## Step N` in `interfaces.md`. The generated plan SHALL NOT introduce a public signature that contradicts the one declared in `interfaces.md`.

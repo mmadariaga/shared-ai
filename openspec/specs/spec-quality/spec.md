@@ -1,7 +1,10 @@
 # spec-quality Specification
 
-## ADDED Requirements
+## Purpose
 
+TBD - this spec was authored as a change delta and never merged into the main tree, so its requirements were invisible to validate, list, and archive. Summarize the capability here.
+
+## Requirements
 ### Requirement: Decision summary printed at end of spec phase
 
 When the `sai-1-spec` flow (`sai/commands/spec/instructions.md`) reaches its Completion section, the agent SHALL print a structured decision summary to the screen before the mandatory stop message. The summary is derived exclusively from the artifacts just written (`proposal.md` and `specs/**/*.md`) — not from prior conversation.

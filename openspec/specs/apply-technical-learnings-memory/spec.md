@@ -1,7 +1,10 @@
 # apply-technical-learnings-memory Specification
 
-## MODIFIED Requirements
+## Purpose
 
+TBD - this spec was authored as a change delta and never merged into the main tree, so its requirements were invisible to validate, list, and archive. Summarize the capability here.
+
+## Requirements
 ### Requirement: Coordinator accumulates technical learnings across Steps
 
 The coordinator SHALL maintain an accumulated technical-learnings memory built from the technical-learnings field of each subagent report. This memory SHALL be held only by the coordinator; subagents SHALL NOT communicate with each other directly. The coordinator SHALL incorporate a dispatch's learnings as soon as that dispatch returns — not only after the whole Step is verified — so a learning is available to the next dispatch even within the same Step.

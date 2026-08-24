@@ -1,5 +1,10 @@
-## ADDED Requirements
+# doctor-version-skew Specification
 
+## Purpose
+
+TBD - this spec was authored as a change delta and never merged into the main tree, so its requirements were invisible to validate, list, and archive. Summarize the capability here.
+
+## Requirements
 ### Requirement: version skew via .version marker
 
 When a harness user-global dir contains a `.version` marker, the doctor SHALL read it and compare it against the latest `version` field fetched from `raw.githubusercontent.com/mmadariaga/shared-ai/main/package.json`. When the two differ, the doctor SHALL report a version-skew warning naming the installed version and the latest version; when they match, it SHALL report the install as up to date.

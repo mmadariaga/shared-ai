@@ -1,5 +1,10 @@
-## ADDED Requirements
+# open-questions-gate Specification
 
+## Purpose
+
+TBD - this spec was authored as a change delta and never merged into the main tree, so its requirements were invisible to validate, list, and archive. Summarize the capability here.
+
+## Requirements
 ### Requirement: design agent SHALL gate tasks.md on resolved Open Questions
 
 After writing `design.md`, the agent MUST review the Open Questions section. If any questions remain unresolved, the agent SHALL present them to the user, collect answers, and incorporate those answers into `design.md` before proceeding to write `tasks.md`.

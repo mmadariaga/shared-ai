@@ -1,5 +1,10 @@
-## ADDED Requirements
+# uniform-handoff Specification
 
+## Purpose
+
+TBD - this spec was authored as a change delta and never merged into the main tree, so its requirements were invisible to validate, list, and archive. Summarize the capability here.
+
+## Requirements
 ### Requirement: sai-1-handoff
 `instructions/sai/spec.propose.md` SHALL end with a mandatory STOP+print block that outputs exactly:
 `Specs ready in openspec/changes/{name}/. Review and run /sai-2-design {name} when ready.`

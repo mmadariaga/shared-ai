@@ -1,5 +1,10 @@
-## ADDED Requirements
+# remove-caveman-from-commands Specification
 
+## Purpose
+
+TBD - this spec was authored as a change delta and never merged into the main tree, so its requirements were invisible to validate, list, and archive. Summarize the capability here.
+
+## Requirements
 ### Requirement: sai command bodies contain no caveman fetch
 Every `.md` file under `sai/commands/` SHALL NOT contain the line `Fetch @skills/caveman/SKILL.md`.
 
