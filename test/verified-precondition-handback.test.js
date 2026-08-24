@@ -51,7 +51,7 @@ test('glossary defines only the canonical hand-back term and rejected aliases', 
 const policyFetch = 'Fetch @sai/policies/verified-precondition-handback.md';
 const routedPhases = ['spec', 'implement', 'review', 'security', 'performance', 'accessibility'];
 const routedCards = routedPhases.flatMap((phase) => {
-  const names = phase === 'spec'
+  const names = phase === 'spec' || phase === 'implement'
     ? ['coordinator.md', 'worker.md']
     : ['coordinator.md', 'worker.md', 'invocation.md'];
   return names.map((name) => `sai/commands/${phase}/${name}`);
@@ -91,7 +91,7 @@ function markdownFilesUnder(relativeDirectory) {
 }
 
 test('all command cards load the policy exactly once at their structural entry point', () => {
-  assert.equal(commandCards.length, 29);
+  assert.equal(commandCards.length, 28);
 
   for (const card of commandCards) {
     assert.ok(fs.existsSync(path.join(repoRoot, card)), `${card} must exist`);

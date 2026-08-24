@@ -8,6 +8,8 @@ TBD — seeded from the `repair-copilot-contract-prose` delta spec.
 
 ### Requirement: Shared invocation cores name their routed worker consumers
 
+The active invocation-core inventory SHALL consist only of existing files matching `sai/commands/*/invocation.md`. The deleted `sai/commands/implement/invocation.md` SHALL not be treated as an active invocation core or as a current implementation consumer. Every remaining active invocation core SHALL identify its corresponding routed phase worker and SHALL not describe a retired inline caller or deleted adapter as active.
+
 For this capability, the active invocation-core inventory is every file matching `sai/commands/*/invocation.md`. Each active shared invocation core SHALL describe its active consumer as the corresponding routed phase worker: the spec-proposal, design-planning, implementation-planning, review, security, performance, or accessibility worker. It SHALL not describe a retired inline caller or the deleted inline adapter as an active consumer. The single maintained retired-party prose guard defined by `routed-contract-truth` SHALL include this inventory; this capability does not define a second guard.
 
 #### Scenario: Corrected invocation-core content names the routed consumer
@@ -27,3 +29,8 @@ For this capability, the active invocation-core inventory is every file matching
 - **WHEN** the single maintained retired-party prose guard defined by `routed-contract-truth` audits the active invocation-core inventory
 - **THEN** it checks every matching `sai/commands/*/invocation.md` file
 - **AND** it reports the offending file and line if a retired-party pattern is reintroduced
+
+#### Scenario: Retired implementation invocation is absent from the active inventory
+
+- **WHEN** the invocation-core inventory is audited
+- **THEN** `sai/commands/implement/invocation.md` is absent and the guard covers only the remaining existing invocation cores.

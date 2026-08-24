@@ -1,6 +1,12 @@
 # Implement Step — Common (always active)
 
-This file is fetched at worker dispatch and stays in force for the entire run. It carries the boundaries that outlive any single step: communication mode, expertise profile contract, hard rules, code quality priorities, and contextual intelligence.
+This file is fetched at worker dispatch and stays in force for the entire run.
+It is the authoritative technical baseline for the step-gated worker. It carries
+the boundaries that outlive any single step: communication mode, expertise
+profile contract, hard rules, code quality priorities, and contextual
+intelligence. The worker and coordinator cards carry lifecycle and routing
+contracts only; they do not override this file or the one step file selected by
+the coordinator.
 
 ## Step delivery meta-rule
 

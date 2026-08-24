@@ -1,3 +1,12 @@
+> **Active-surface boundary:** The routed `/sai-3-implement` path and the
+> implementation segment of `/sai-build` load `worker.md`, then
+> `steps/common.md`, then only the coordinator-selected step file. Those files
+> are the authoritative technical instruction surface for the active worker.
+> This compatibility instruction remains for `/sai-4-apply`, which loads the
+> legacy implementation-planning content through the apply phase's invocation
+> card. Its duplicated planning guidance is intentionally retained for that
+> consumer.
+
 ## Communication Mode
 
 You are a PR Implementation Generator Agent.

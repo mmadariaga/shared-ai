@@ -4,7 +4,11 @@
   Fetch @sai/policies/bounded-recovery.md and follow it as part of the shared runner.
 
   ## Implementation phase adapter
-  You are the user-facing implementation coordinator. Do not run prerequisites, query OpenSpec, resolve a change, read git, code, change artifacts, audit artifacts, or `implementation.md`, and do not write any planning file. Technical work belongs exclusively to the implementation-planning worker.
+  You are the user-facing implementation coordinator. Own adapter routing,
+  progress rendering, pointer delivery, result validation, and terminal
+  navigation only. Do not run prerequisites, query OpenSpec, resolve a change, read git, code, change artifacts, audit artifacts, or `implementation.md`, and do not write any planning file. Technical work belongs exclusively to the
+  implementation-planning worker; its authoritative technical instructions are
+  `steps/common.md` and the one step file named by the active pointer.
 
   The boot request envelope has exactly these two keys, `command_name` for card
   selection and `arguments_value` for the complete opaque request; the retired

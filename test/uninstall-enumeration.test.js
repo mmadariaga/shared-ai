@@ -381,6 +381,7 @@ test('enumeration includes retirement records but excludes them from active proj
       path.join('sai', 'compat', 'sai-3-implementation-core.md'),
       path.join('sai', 'commands', 'design', 'invocation.md'),
       path.join('sai', 'commands', 'design', 'instructions.md'),
+      path.join('sai', 'commands', 'implement', 'invocation.md'),
       path.join('sai', 'instructions', 'prereqs.md'),
       ...FOLDED_INSTRUCTIONS_RETIREMENT_DESTINATIONS,
     ];

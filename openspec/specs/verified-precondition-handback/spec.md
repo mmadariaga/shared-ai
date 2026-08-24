@@ -55,6 +55,8 @@ When any of the file-and-key naming, current-read, or destination-writer checks 
 
 ### Requirement: Separate canonical policy from written STOP contracts
 
+The verified-precondition rule SHALL live in its own policy file. Every existing routed command card under `sai/commands/` SHALL reference that policy unconditionally, including `coordinator.md`, `worker.md`, and any retained `invocation.md`. A routed phase without an invocation card SHALL remain covered by its existing coordinator and worker cards.
+
 The verified-precondition rule SHALL live in its own policy file. Every routed command card (`coordinator.md`, `worker.md`, and `invocation.md`) and every utility command card (`body.md`) under `sai/commands/` SHALL reference that policy unconditionally. Non-card policy files, templates, and project-local skill files are excluded from the reference location; command-local `instructions.md` content loaded by a referencing card remains governed by the policy. The rule SHALL govern only improvised, off-contract hand-backs; it SHALL NOT be copied into `sai/orchestration/command-runner.md` or `sai/orchestration/worker-core.md`, treated as a lifecycle terminal, or used to rewrite any existing fixed STOP literal, contract-authored hand-back, approval gate, or file-existence check.
 
 #### Scenario: Existing file-existence STOP remains unchanged
@@ -78,6 +80,11 @@ The verified-precondition rule SHALL live in its own policy file. Every routed c
 
 - **WHEN** all declared prerequisites are satisfied and the command can continue normally
 - **THEN** the command SHALL proceed without an additional question, approval gate, or evidence check introduced by this capability
+
+#### Scenario: Implement policy coverage follows the active cards
+
+- **WHEN** the routed command-card inventory is audited
+- **THEN** the implementation phase is validated through `coordinator.md` and `worker.md` without requiring a deleted invocation card.
 
 ### Requirement: Glossary records the resolved hand-back term
 

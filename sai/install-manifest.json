@@ -1686,6 +1686,23 @@
       ]
     },
     {
+      "id": "retired-sai-3-implement-invocation",
+      "destination": {
+        "class": "sai",
+        "path": "commands/implement/invocation.md"
+      },
+      "harnesses": [
+        "claude",
+        "opencode"
+      ],
+      "managedHashes": [
+        "42626279b0e61d70d8a9dfb333a73ab71245181690ec45d020dfb9f528f96409",
+        "09a76e8b63ab2ac6b314cbf74665befcc6f4b1874082e94dc48ac1609259881e",
+        "4d81722e300c09c5db77ee5fac261a21ada83259278221dd35e0042962c3a399",
+        "e6f583546585154f15d5629c7da0aeafae2505fa63be4ec8be537a5f03393176"
+      ]
+    },
+    {
       "id": "retired-sai-2-design-inline",
       "destination": {
         "class": "sai",

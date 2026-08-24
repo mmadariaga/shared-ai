@@ -1,6 +1,10 @@
 # implement-steps-library — Spec
 
-## ADDED Requirements
+## Purpose
+
+TBD - created by archiving change implement-step-gated-instructions. Update Purpose after archive.
+
+## Requirements
 
 ### Requirement: Step instruction files exist per progress-plan id
 
@@ -28,3 +32,19 @@ The ADR/DDR validation workflow content (Workflow Step 3) SHALL live inside `sai
 
 - **WHEN** a consumer looks for the implement phase's ADR/DDR validation instructions
 - **THEN** they are found inside `sai/commands/implement/steps/artifact-analysis.md`.
+
+### Requirement: Common baseline and just-in-time step delivery
+
+`sai/commands/implement/steps/common.md` SHALL remain the run-long technical baseline for the implementation worker, and coordinator-selected step files SHALL provide just-in-time instructions for the active step. The step library SHALL be the active technical instruction source after the inactive `sai/commands/implement/invocation.md` surface is retired.
+
+`steps/common.md` SHALL remain the run-long technical baseline for the implementation worker, and coordinator-selected step files SHALL provide the just-in-time instructions for the active step. Coordinator and worker lifecycle contracts MUST NOT override the technical authority of those files.
+
+#### Scenario: Step-gated worker starts a step
+
+- **WHEN** the coordinator delivers the pointer for the next implementation step
+- **THEN** the worker uses `steps/common.md` and only the pointed step file as its technical instruction surface.
+
+#### Scenario: Step-gated worker starts without the retired invocation card
+
+- **WHEN** the implementation worker begins a routed run
+- **THEN** it uses `steps/common.md` and the coordinator-named step file without loading `sai/commands/implement/invocation.md`.

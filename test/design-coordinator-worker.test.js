@@ -1488,8 +1488,8 @@ test('Step 2 design worker validates a selected invocation language before resol
   assert.match(worker, /malformed/i);
   assert.match(worker, /before.*resolution|resolution.*before/i);
   assert.match(worker, /change name.*before|before.*change name/i);
-  assert.match(worker, /Fast-track is NOT parsed here/);
-  assert.match(worker, /strip it tolerantly/);
+  assert.match(worker, /If `--fast-track` is present[\s\S]{0,220}remove the token/i);
+  assert.match(worker, /coordinator prints it/i);
   assert.match(
     worker,
     /(?:absent|missing)[\s\S]{0,320}(?:unresolved|no synthesis|no generation|does not synthesize)|--overview-lang[\s\S]{0,320}(?:absent|missing)[\s\S]{0,320}(?:unresolved|no synthesis|no generation|does not synthesize)/i,
@@ -1577,7 +1577,6 @@ test('Step 3: the shared retired-party guard covers every invocation core and li
     'sai/commands/review/invocation.md',
     'sai/commands/security/invocation.md',
     'sai/commands/performance/invocation.md',
-    'sai/commands/implement/invocation.md',
     'sai/commands/accessibility/invocation.md',
   ];
   const liveContractSpecifications = [
@@ -1602,7 +1601,7 @@ test('Step 3: the shared retired-party guard covers every invocation core and li
     const lineBearingReferences = auditActiveReferences(root)
       .filter(reference => reference.line !== undefined);
 
-    assert.equal(lineBearingReferences.length, 16);
+    assert.equal(lineBearingReferences.length, 15);
     assert.deepEqual(
       [...new Set(lineBearingReferences.map(reference => reference.file))].sort(),
       [...inventory].sort(),

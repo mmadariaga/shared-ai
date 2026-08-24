@@ -7,8 +7,11 @@ Fetch @sai/commands/implement/steps/common.md and keep it in force for the entir
 
 Perform the complete technical `/sai-3-implement` phase. The `InvocationEnvelope`
 contains exactly one request field, `arguments_value`; the retired wrapper-echo field has been removed, and
-`arguments_value` has sole precedence. Write authorized artifacts directly and return lifecycle
-metadata only. A failed payload uses a concise `blocking_summary` as its
+`arguments_value` has sole precedence. Write only the artifacts authorized by the
+active step and return lifecycle metadata only. The technical generation rules
+are not restated here:
+`steps/common.md` and the coordinator-selected step file are the authoritative
+instruction surface. A failed payload uses a concise `blocking_summary` as its
 `summary`; `continuation_reference` remains binding-owned metadata and is never
 worker-authored.
 
@@ -40,15 +43,28 @@ when a check fails. If the CLI is absent return `openspec CLI not found. Install
 if OpenSpec is not initialized return `OpenSpec not initialized in this project. Run: openspec init`;
 and if the schema is wrong return ``openspec/config.yaml does not declare `schema: sai-workflow`. The sai commands require this schema. Add `schema: sai-workflow` to the top of openspec/config.yaml.``
 
-Set `$ARGUMENTS` to the resolved name. Return
-`needs_input` for planning questions, each complying with `@sai/policies/question-context.md`, continue the same planning operation,
-return `cancelled` for a deliberate decline, and return `failed` for blockers.
-Use `budget-subagent` for existing-plan simplification and rerun-new-element
-research, and `budget-explorer` for ADR-index cold-build reads.
+Set `$ARGUMENTS` to the resolved name. Return `needs_input` for planning
+questions, each complying with `@sai/policies/question-context.md`, continue the
+same planning operation, return `cancelled` for a deliberate decline, and
+return `failed` for blockers. Delegation and research rules belong to the
+active step file and are not duplicated in this worker contract.
 
 ## Active Step Execution
 
 Instruction stretches are delivered just-in-time, one step file at a time. Each progress-event continuation carries one pointer line — `Active step: <id> — follow <path>` — naming exactly the step to execute next; execute only that named step, following its file exactly, and never prefetch, open, or follow any other step instruction file. Step-file paths exist solely as coordinator continuation lines; this contract plus common.md is the sealed initial surface, and `prereqs-resolution` runs from it before the first progress event with the first delivered pointer targeting collapse-implemented-steps. A continuation without a pointer line (needs_input answer, recovery) leaves the active step unchanged in this continuous session. Steps never widen this contract: status returns, progress reporting, changed_files accounting, and failure classification apply unchanged while any step executes.
+
+## Recovery
+
+The shared runner and coordinator own recovery diagnosis, eligibility, and the
+bounded ledger. On `continue_after_recovery`, resume this same worker without
+re-resolution or replacement dispatch. Apply only the coordinator's ordered
+`Reported`, `Evidence`, `Cause`, `Correction`, and `Verification` diagnosis to
+the authorized worker-owned correction surface
+(`openspec/changes/{change-name}/implementation.md`), then rerun the active
+verification before returning a terminal result. Recovery does not emit a
+progress event, persist diagnosis metadata, widen the active step, or authorize
+a different artifact. A recovery transport loss is handled by the shared
+runner's recovery policy, never by inventing a replacement inside the worker.
 
 ## Progress Reporting
 
@@ -83,30 +99,18 @@ resolution, in place of a terminal payload, during a `needs_input` pause, or
 during a feedback turn — the run always closes with exactly one terminal
 lifecycle status.
 
-Before completion, verify the durable `implementation.md` is non-empty,
-contains every task in order, includes verification and STOP markers, has RED
-before GREEN for testable steps, conforms to interfaces, uses the required
-human-check encoding, and has executed no implementation step or checked plan
-checkbox.
+## Durable Artifact Completion Gate
 
-Additionally verify the audit-derived step append: for every audit artifact
-present at the start of the run (among `review.md`, `security.md`,
-`performance.md`, and `accessibility.md`), the run SHALL have appended exactly
-one corresponding step, numbered strictly after the run-path baseline — the
-highest `#### Step N:` number in the generated plan on the first-run path, or
-the highest `#### Step N:` number present in `implementation.md` at the start
-of the run and captured before any write on the re-run path. A step appended by
-an earlier run does NOT satisfy this check (the re-run contract appends one new
-step per artifact on every re-run with no dedup). The append itself is executed
-and repaired by the pre-delivery self-check of the `audit-artifact-ingestion`
-capability (the first stage of the two-stage design); this gate is the second
-stage and the last resort — when a required append is still missing at
-completion time after that self-check has run, return `failed` with a concise
-blocking summary and do not claim planning completion. The chat confirmation of
-the existing "Discarded findings SHALL be surfaced in chat for conversational
-confirmation" requirement is NOT part of this gate: it is conversational-only
-by design (no approval key is written, and `implementation.md` carries no trace
-of a chat emission), so no durable record exists for this gate to verify.
+Before returning `completed`, execute the canonical `validation` step. Its
+pre-delivery verification is the sole technical source for the durable
+`implementation.md` checks and the audit-append invariant. Completion therefore
+requires a non-empty plan with every task in order, verification and STOP markers,
+RED before GREEN for testable steps, interface conformance, the
+required human-check encoding, and has executed no implementation step or
+checked plan checkbox. It also requires exactly one new step for each audit artifact
+present at the start of this run, numbered after the run-path baseline. A failed
+verification does not emit `validation` and returns `failed` with a concise
+blocking summary; do not claim planning completion.
 
 Every lifecycle payload includes the current `changed_files` list. Completion
 and every post-resolution payload include `resolved_change_name`. No payload
