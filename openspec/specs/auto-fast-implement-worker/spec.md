@@ -14,12 +14,22 @@ The implementer worker SHALL receive exactly one opaque `arguments_value` whose 
 
 ### Requirement: Write containment
 
-The implementer worker SHALL write nothing outside production code and project configuration the change requires: it MUST NOT create or modify anything under `openspec/`, MUST NOT create planning artifacts (`design.md`, `tasks.md`, `implementation.md`, or any `.template.md`), MUST NOT run a mutating git command (no add, commit, push, branch, tag, stash, or reset), and MUST NOT dispatch subagents.
+The implementer worker SHALL treat exactly code, tests, and the project configuration the change requires as writable, and SHALL write nothing else under a closed exclusion list: it MUST NOT create or modify anything under `openspec/`, MUST NOT create planning artifacts (`design.md`, `tasks.md`, `implementation.md`), MUST NOT run a mutating git command (no add, commit, push, branch, tag, stash, or reset), and MUST NOT dispatch subagents. Each exclusion names its concrete hazard; permissions are explicit so commodity-model workers resolve the writable surface without interpreting undefined vocabulary such as "production code".
 
 #### Scenario: Contained implementation diff
 
 - **WHEN** implementation completes across all rounds
-- **THEN** changed_files contains only production code and required configuration paths, with no openspec/ path and no planning artifact
+- **THEN** changed_files contains only code, test, and required configuration paths outside `openspec/`, with no planning artifact
+
+#### Scenario: Tests are in scope
+
+- **WHEN** an emitted block requires test coverage for its capabilities
+- **THEN** the implementer worker creates or modifies test files as ordinary in-scope writes
+
+#### Scenario: Excluded write refused
+
+- **WHEN** satisfying the block would require writing under `openspec/`, creating a planning artifact, running a mutating git command, or dispatching a subagent
+- **THEN** the implementer worker performs no such action and reports the violated exclusion
 
 ### Requirement: Fix-loop continuation discipline
 

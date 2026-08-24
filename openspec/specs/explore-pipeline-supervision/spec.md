@@ -119,7 +119,7 @@ Before the first dispatch of an Auto run, explore SHALL fetch `sai/policies/arti
 
 ### Requirement: Gate suppression does not weaken force-majeure interruptions
 
-Supervised gate auto-proceed SHALL NOT create any advance path over a phase worker `failed` or `cancelled` result, and SHALL NOT alter the question-autonomy policy. A `needs_input` that fails the confidence threshold or grounding floor SHALL still escalate to the user and interrupt the run. An invalid non-empty `mode` value that causes the shared gate to STOP is an authoring-fault path at the fetch site, distinct from normal supervised runtime interruptions. Explore SHALL remain read-only under Auto supervision: it SHALL NOT create, modify, or delete files, artifacts, or configuration; the only writes remain those the already-authorized phase workers perform within their owned change-directory scope. This scope is extended solely by the explicitly consented Auto (fast implementation) selection: the dispatched implementer worker writes only production code and required project configuration outside `openspec/`, and the dispatched hands worker executes only its closed order of validated artifact writes, spec sync, archive move, owned staging, and the pre-authorized local commit — while explore itself remains read-only, including read-only schema validation of draft content against `openspec/schemas/sai-workflow/schema.yaml`.
+Supervised gate auto-proceed SHALL NOT create any advance path over a phase worker `failed` or `cancelled` result, and SHALL NOT alter the question-autonomy policy. A `needs_input` that fails the confidence threshold or grounding floor SHALL still escalate to the user and interrupt the run. An invalid non-empty `mode` value that causes the shared gate to STOP is an authoring-fault path at the fetch site, distinct from normal supervised runtime interruptions. Explore SHALL remain read-only under Auto supervision: it SHALL NOT create, modify, or delete files, artifacts, or configuration; the only writes remain those the already-authorized phase workers perform within their owned change-directory scope. This scope is extended solely by the explicitly consented Auto (fast implementation) selection: the dispatched implementer worker writes only code, tests, and required project configuration outside `openspec/` under its closed exclusions, and the dispatched hands worker executes the consented writes in TWO payloads — a materialize payload performing exact-path validated-content writes plus spec sync, executed before the archive pre-flight runs over the materialized artifacts, and a finish payload performing the archive move, owned staging, and the pre-authorized local commit, executed after gate resolution — while explore itself remains read-only, including read-only schema validation of draft content against `openspec/schemas/sai-workflow/schema.yaml`.
 
 #### Scenario: failed worker skips gate and auto-proceed
 
@@ -231,4 +231,18 @@ Run state SHALL remain conversation-only and never persisted: `active_change`, `
 
 - **WHEN** the hands worker returns a failure before completing its closed order
 - **THEN** nothing has been written, the run stops before mutation, and manual /sai-archive and /sai-commit guidance is reported
+
+### Requirement: Auto (fast implementation) pre-dispatch compatibility refusal
+
+Before Step 1 of the Auto (fast implementation) flow, explore SHALL judge the emitted Ready to Propose block against the implementer's closed exclusion list, reading ONLY the block. When the block can only be implemented by violating a closed exclusion — writes under `openspec/`, planning-artifact creation (`design.md`, `tasks.md`, `implementation.md`), a mutating git command, or subagent dispatch — explore SHALL emit a documented refusal naming the violated clause and the block evidence that triggers it, show it to the user, dispatch nothing, mutate no selection state, and leave the change retryable with Manual still available. Bounded Recovery remains post-dispatch only and SHALL NOT substitute for this refusal.
+
+#### Scenario: Out-of-scope block refused before dispatch
+
+- **WHEN** an emitted block can only be implemented by violating one of the implementer's closed exclusions
+- **THEN** explore emits a documented refusal naming the violated clause and the triggering block evidence, dispatches nothing, and leaves the change retryable
+
+#### Scenario: In-scope block dispatches normally
+
+- **WHEN** the emitted block can be implemented within the closed exclusions
+- **THEN** the eight-step flow proceeds into Step 1 unchanged
 

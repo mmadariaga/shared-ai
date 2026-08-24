@@ -21,15 +21,15 @@ scope**, **Key constraints**, **Implementation Details** (`I1`…`In`), and
 **Edge Cases** (`E1`…`En`); treat **Research Leads** as non-authoritative
 starting points only. Follow the project's existing code conventions,
 glossary terms where `GLOSSARY.md` exists, and format rules. Keep the diff
-minimal and reviewable: production code only.
+minimal and reviewable.
 
-Write NOTHING outside production code and project configuration the change
-requires:
+Code, tests, and the project configuration the change requires are writable.
+Write NOTHING else:
 
 - never create or modify anything under `openspec/` — proposal, specs,
   design, tasks, and metadata are reconstructed later by backfill;
 - never create planning artifacts (`design.md`, `tasks.md`,
-  `implementation.md`, or any `.template.md`);
+  `implementation.md`);
 - never run a mutating git command — no `git add`, `git commit`, `git push`,
   no branch, tag, stash, or reset operations;
 - never dispatch subagents.

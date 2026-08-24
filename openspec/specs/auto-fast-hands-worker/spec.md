@@ -14,7 +14,7 @@ The hands worker SHALL execute exactly this order and nothing else: exact-path v
 
 ### Requirement: Owned staging only
 
-Staging SHALL cover exactly the supplied owned path set — the reconstructed artifacts now under `archive/`, the synced main specs, and the implementer's listed production-code paths. `git add -A`, `git add .`, and any path outside the supplied set MUST NOT be used, and unrelated dirty worktree files MUST remain unstaged.
+Staging SHALL cover exactly the supplied owned path set — the reconstructed artifacts now under `archive/`, the synced main specs, and the implementer's listed changed paths. `git add -A`, `git add .`, and any path outside the supplied set MUST NOT be used, and unrelated dirty worktree files MUST remain unstaged.
 
 #### Scenario: Unrelated dirty files stay out
 
@@ -29,4 +29,23 @@ The worker SHALL execute the commit locally with the HEREDOC form and MUST NEVER
 
 - **WHEN** all six steps complete exactly as ordered
 - **THEN** the completed result reports the written paths, sync result, archive destination, staged path count, and commit subject in order, with no push performed
+
+### Requirement: Two-payload closed execution
+
+The hands worker SHALL execute exactly one envelope-selected payload: `--autofast-materialize` performs exactly the validated writes and the spec sync then stops, and `--autofast-finish` performs exactly the archive move, owned staging, commit-message authoring, and the local commit. A payload bearing both markers or neither, skipping or reordering its own steps, adding a step, or naming a foreign path or action SHALL be rejected with nothing executed.
+
+#### Scenario: Materialize payload stops before mutation gates
+
+- **WHEN** the envelope carries `--autofast-materialize`
+- **THEN** the worker writes the supplied validated contents, runs the spec sync, and performs no archive move, staging, or commit
+
+#### Scenario: Finish payload assumes gated artifacts
+
+- **WHEN** the envelope carries `--autofast-finish` after gate resolution
+- **THEN** the worker moves the archived directory, stages exactly the owned path set, authors the message from staged state, and commits locally without pushing
+
+#### Scenario: Malformed marker rejected
+
+- **WHEN** a payload bears both markers or neither
+- **THEN** the worker returns failed naming the rejection having executed nothing
 
