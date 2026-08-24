@@ -1,6 +1,6 @@
 # Spec Step — Review
 
-Active step: review. This step consumes ONLY an externally supplied `sai-explore` findings block. You do not dispatch or own a reviewer, an automatic review loop, review counters, reviewer retry outcomes, or user-requested reviewer passes.
+Active step: review. This step consumes ONLY an externally supplied `sai-explore` findings block. The phase result and write boundaries remain those in `@sai/policies/spec-phase-contract.md`; you do not dispatch or own a reviewer, an automatic review loop, review counters, reviewer retry outcomes, or user-requested reviewer passes.
 
 ## Fast path — no findings block
 

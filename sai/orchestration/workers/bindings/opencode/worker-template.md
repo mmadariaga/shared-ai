@@ -37,6 +37,11 @@ Progress declaration reported by the worker:
 
 ```
 {{progressDeclaration}}
+
+The coordinator's visual `progress_plan` and routing-only `step_pointer_map`
+are separate adapter declarations. When only the map is active, no task list
+or milestone stamp is rendered, but progress continuations still carry the
+canonical active-step pointer.
 ```
 
 {{overviewGeneration}}

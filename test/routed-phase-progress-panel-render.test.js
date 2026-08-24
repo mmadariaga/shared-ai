@@ -41,9 +41,9 @@ test('todo policy defines a conditional progress-event render act', () => {
 test('shared runner renders only after a progress event changes the marked set', () => {
   const runner = read('sai/orchestration/command-runner.md');
 
-  assert.match(runner, /recording whether the event[\s\S]{0,120}previously unmarked declared id/);
-  assert.match(runner, /adapter declares a `progress_plan`[\s\S]{0,180}changed the\nmarked set/);
-  assert.match(runner, /changed no marked state performs no render and stamps\nnothing/);
+  assert.match(runner, /record(?:s|ing) whether the\s+event[\s\S]{0,120}previously unmarked declared id/i);
+  assert.match(runner, /visual `progress_plan` exists[\s\S]{0,180}changed its marked set/);
+  assert.match(runner, /routing-only event performs no render and stamps\nnothing/);
   assert.doesNotMatch(runner, /changed no marked state performs no render or wall-clock/);
   assert.match(runner, /changed_files[\s\S]{0,180}progress-event render act/);
   assert.match(runner, /render act[\s\S]{0,320}continue_after_progress/);
@@ -103,11 +103,12 @@ test('routed matrix bindings reference the matching harness panel mechanics', ()
   }
 });
 
-test('supervised explore runs keep plan-based rendering disabled without an adapter plan', () => {
+test('supervised explore runs keep visual plan rendering disabled while retaining pointer routing', () => {
   const explore = read('sai/commands/explore/instructions.md');
 
-  assert.match(explore, /no adapter-declared plan is in force/);
-  assert.match(explore, /no plan-based list renders on the panel/);
+  assert.match(explore, /declares no visual `progress_plan`/);
+  assert.match(explore, /no task-list step is marked and no milestone stamp is rendered/i);
+  assert.match(explore, /canonical routing-only `SpecStepPointerMap`/);
 });
 
 test('panel degradation is declared for routed phases, apply projection, and explore', () => {

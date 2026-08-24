@@ -131,7 +131,7 @@ const COMBINED_BOTH_BARE = [
 ];
 
 // Step 4: command-family names mirrored from the current commands/{harness}
-// basenames. Both harnesses ship the same 18 names. These are current-state
+// basenames. Both harnesses ship the same 19 names. These are current-state
 // fixture assertions, not hardcoded enumerations â€” production derives the
 // names from the manifest's commands-class projections.
 const OPENCODE_COMMANDS = [
@@ -151,6 +151,7 @@ const OPENCODE_COMMANDS = [
   'sai-explore',
   'sai-merge',
   'sai-pr',
+  'sai-review',
   'sai-status',
   'sai-worktree',
 ];
@@ -1027,20 +1028,20 @@ test('an empty scope prints the no-targets notice, returns to the scope picker, 
 
 // --- Step 4: command enumeration from the manifest's commands-class projections ---
 
-test('opencode enumerateCommands returns exactly the 18 manifest-declared commands', () => {
+test('opencode enumerateCommands returns exactly the 19 manifest-declared commands', () => {
   const adapter = createOpencodeAdapter({ repoRoot: REPO_ROOT });
   const commands = adapter.enumerateCommands();
-  assert.equal(commands.length, 18, 'exactly 18 commands should enumerate for opencode');
+  assert.equal(commands.length, 19, 'exactly 19 commands should enumerate for opencode');
   assert.deepEqual([...commands].sort(), [...OPENCODE_COMMANDS].sort(),
-    'opencode commands should be exactly the 18 manifest-declared names');
+    'opencode commands should be exactly the 19 manifest-declared names');
 });
 
-test('claude enumerateCommands returns exactly the same 18 manifest-declared commands', () => {
+test('claude enumerateCommands returns exactly the same 19 manifest-declared commands', () => {
   const adapter = createClaudeAdapter({ repoRoot: REPO_ROOT });
   const commands = adapter.enumerateCommands();
-  assert.equal(commands.length, 18, 'exactly 18 commands should enumerate for claude');
+  assert.equal(commands.length, 19, 'exactly 19 commands should enumerate for claude');
   assert.deepEqual([...commands].sort(), [...OPENCODE_COMMANDS].sort(),
-    'claude commands should be exactly the same 18 manifest-declared names');
+    'claude commands should be exactly the same 19 manifest-declared names');
 });
 
 test('command enumeration reads the manifest-declared package source directory, never the installed global command directory', () => {

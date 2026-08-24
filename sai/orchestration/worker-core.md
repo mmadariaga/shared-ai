@@ -135,17 +135,21 @@ changed_files: string[]
 It carries `changed_files` like the notice. It is nonterminal and not a
 lifecycle status: a design, spec-proposal, implementation-planning, review, security,
 performance, or accessibility worker SHALL emit one progress event for each
-result that makes one or more new plan steps complete after prerequisite
-checks pass and its required change or scope resolution completes, and the
-run still closes with exactly one terminal lifecycle status preceded by zero
-or more nonterminal results. A worker whose
-phase adapter declares no progress plan — or a planned worker with no newly
-completed step since its preceding result — may emit no progress event and
-retains its existing payload validation and lifecycle behavior. Its acknowledgement
+result that makes one or more newly declared progress or routing steps complete
+after prerequisite checks pass and its required change or scope resolution
+completes, and the run still closes with exactly one terminal lifecycle status
+preceded by zero or more nonterminal results. A worker whose phase adapter
+declares neither a visual `progress_plan` nor a routing-only `step_pointer_map`
+— or a declared worker with no newly completed id since its preceding result —
+may emit no progress event and retains its existing payload validation and
+lifecycle behavior. Its acknowledgement
 `continue_after_progress` is protocol-only and is excluded from user-answer
 handling, opaque interaction history, and pending feedback; it is never
 recorded as user input. No progress event contains a continuation identifier,
 binding dispatch metadata, or artifact contents.
+
+A phase adapter with no progress plan may emit no progress event and still
+retains the ordinary closed-payload validation and lifecycle rules.
 
 ## Result Emission Time
 

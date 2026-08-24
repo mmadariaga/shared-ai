@@ -27,8 +27,7 @@ function countLiteral(source, value) {
   return source.split(value).length - 1;
 }
 
-// The canonical six-step spec progress plan shared by the coordinator declaration and
-// the worker enumeration (sai/commands/spec/coordinator.md and worker.md).
+// The canonical six-step spec progress plan owned by the phase contract.
 const SPEC_PLAN_STEPS = [
   ['prereqs-and-change', 'Check prerequisites'],
   ['research', 'Research the change request'],
@@ -68,45 +67,41 @@ function artifact(relativePath) {
   return fs.readFileSync(fullPath, 'utf8');
 }
 
-test('spec invocation core loads only the technical instruction sequence', () => {
-  const core = artifact('sai/commands/spec/invocation.md');
+test('spec phase contract is the canonical technical instruction source', () => {
+  const contract = artifact(SPEC_COORDINATOR_ARTIFACTS.phaseContract);
+  const common = artifact('sai/commands/spec/steps/common.md');
+  const proposal = artifact('sai/commands/spec/steps/proposal.md');
 
-  const required = [
-    'Fetch @skills/budget/SKILL.md',
-    'Fetch @sai/policies/glossary-format.md',
-    'Fetch @sai/commands/spec/instructions.md',
-    'Fetch @skills/openspec-propose/SKILL.md',
-    'Fetch @sai/policies/remember.md',
-  ];
-  let previous = -1;
-  for (const instruction of required) {
-    const position = core.indexOf(instruction);
-    assert.ok(position > previous, `${instruction} should be loaded in order`);
-    previous = position;
-  }
+  for (const declaration of [
+    'SpecProgressPlan',
+    'SpecStepPointerMap',
+    'SpecWriteSurface',
+    'SpecResultUnion',
+    'SpecValidationReport',
+  ]) assert.match(contract, new RegExp(declaration));
 
-  assert.match(core, /\*\*User's request:\*\*\s*\$ARGUMENTS/);
-  assert.doesNotMatch(core, /Fetch @sai\/policies\/prereqs\.md/);
-  assert.doesNotMatch(core, /Fetch @sai\/policies\/artifact-feedback-gate\.md/);
-  assert.doesNotMatch(core, /Spec proposal done in openspec\/changes\//);
+  assert.match(common, /Fetch @sai\/policies\/spec-phase-contract\.md/);
+  assert.match(common, /Fetch @sai\/commands\/spec\/instructions\.md/);
+  assert.match(proposal, /Fetch @skills\/openspec-propose\/SKILL\.md/);
+  assert.equal(fs.existsSync(path.join(repoRoot, 'sai/commands/spec/invocation.md')), false,
+    'the retired spec invocation core must not remain in the active source tree');
 });
 
-test('completion remains outside the spec invocation core', () => {
-  const core = artifact('sai/commands/spec/invocation.md');
+test('completion remains outside the canonical spec phase declarations', () => {
   const coordinator = artifact('sai/commands/spec/coordinator.md');
   const worker = artifact('sai/commands/spec/worker.md');
+  const contract = artifact(SPEC_COORDINATOR_ARTIFACTS.phaseContract);
 
-  assert.doesNotMatch(core, /decision summary|feedback gate|MANDATORY STOP|Spec proposal done in openspec\/changes\//i);
   assert.match(coordinator, /artifact-feedback-gate\.md/);
   assert.match(coordinator, /Spec proposal done in openspec\/changes\/\{name\}\/\./);
   assert.match(worker, /decision[- ]summary/i);
-  assert.doesNotMatch(core, /sai\/orchestration\/inline-invocation\.md/);
+  assert.match(contract, /validation_report/);
+  assert.doesNotMatch(coordinator, /sai\/orchestration\/inline-invocation\.md/);
 });
 
 test('feedback selection routes text through the coordinator once and preserves the proceed stop', () => {
   const coordinator = artifact('sai/commands/spec/coordinator.md');
   const worker = artifact('sai/commands/spec/worker.md');
-  const core = artifact('sai/commands/spec/invocation.md');
 
   const policyPosition = coordinator.indexOf('Fetch @sai/policies/artifact-feedback-gate.md');
   const completionGatePosition = coordinator.search(/completion gate/i);
@@ -129,7 +124,7 @@ test('feedback selection routes text through the coordinator once and preserves 
     1,
     'the routed proceed branch should retain exactly one mandatory stop',
   );
-  assert.doesNotMatch(core, /sai\/orchestration\/inline-invocation\.md/);
+  assert.equal(fs.existsSync(path.join(repoRoot, 'sai/commands/spec/invocation.md')), false);
   assert.doesNotMatch(coordinator, /sai\/orchestration\/inline-invocation\.md/);
 });
 
@@ -348,22 +343,29 @@ test('sai-1 feedback gate advertises and accepts direct free-text replies', () =
 
 // ─── Step 5: progress-plan-spec-and-implement (spec coordinator/worker) ───────
 
-test('Step 5: the spec adapter declares the canonical six-step plan in order with its labels', () => {
+test('Step 5: the canonical spec phase contract declares the six-step plan in order with its labels', () => {
+  const contract = artifact(SPEC_COORDINATOR_ARTIFACTS.phaseContract);
   const coordinator = artifact(SPEC_COORDINATOR_ARTIFACTS.coordinator);
 
-  assert.deepEqual(planList(coordinator), SPEC_PLAN_STEPS,
-    'the coordinator should declare exactly the six ordered id/label pairs');
-  assert.doesNotMatch(coordinator, /specs-approval/,
-    'the spec plan should not declare a specs-approval step');
+  assert.deepEqual(planList(contract), SPEC_PLAN_STEPS,
+    'the phase contract should declare exactly the six ordered id/label pairs');
+  assert.match(coordinator, /canonical six-step `progress_plan`[\s\S]{0,120}from/);
+  assert.doesNotMatch(contract, /specs-approval/,
+    'the canonical spec plan should not declare a specs-approval step');
 });
 
-test('Step 5: the spec-proposal worker mirrors the six ordered plan entries', () => {
+test('Step 5: the coordinator and worker consume the canonical plan without redefining it', () => {
+  const contract = artifact(SPEC_COORDINATOR_ARTIFACTS.phaseContract);
+  const coordinator = artifact(SPEC_COORDINATOR_ARTIFACTS.coordinator);
   const worker = artifact(SPEC_COORDINATOR_ARTIFACTS.worker);
 
-  assert.match(worker, /canonical six-step progress plan[\s\S]{0,120}in order/i,
-    'the spec worker contract should enumerate the canonical six-step plan in order');
-  assert.deepEqual(planList(worker).slice(0, SPEC_PLAN_STEPS.length), SPEC_PLAN_STEPS,
-    'the worker contract should enumerate the canonical six ordered id/label pairs');
+  assert.match(worker, /canonical `progress_plan`/i,
+    'the spec worker contract should consume the canonical plan');
+  assert.equal(planList(coordinator).length, 0,
+    'the coordinator should not duplicate the canonical plan entries');
+  assert.equal(planList(worker).length, 0,
+    'the worker should not duplicate the canonical plan entries');
+  assert.deepEqual(planList(contract), SPEC_PLAN_STEPS);
 });
 
 test('Step 5: structured research is an unconditional boundary before proposal generation', () => {
@@ -389,7 +391,7 @@ test('Step 5: structured research is an unconditional boundary before proposal g
 test('Step 5: spec progress remains nonterminal, feedback-safe, and validation precedes external findings', () => {
   const worker = artifact(SPEC_COORDINATOR_ARTIFACTS.worker);
 
-  assert.match(worker, /Every event uses the closed progress shape and worker-authored `emitted_on`/);
+  assert.match(worker, /Progress events are returned lifecycle results/);
   assert.match(
     worker,
     /research`[\s\S]{0,500}proposal`[\s\S]{0,500}specs`[\s\S]{0,500}validation`[\s\S]{0,500}review`/,
@@ -423,44 +425,30 @@ test('Step 2: the spec coordinator renders task-list stamps coordinator-only via
 
 // ─── Step 2: spec-design-review-progress-step (spec coordinator/worker) ───────
 
-test('Step 2: the spec coordinator declares exactly the six ordered plan ids with their labels', () => {
+test('Step 2: the spec coordinator references the canonical plan and pointer map', () => {
+  const contract = artifact(SPEC_COORDINATOR_ARTIFACTS.phaseContract);
   const coordinator = artifact(SPEC_COORDINATOR_ARTIFACTS.coordinator);
 
-  assert.match(coordinator, /canonical six-step progress plan[\s\S]{0,200}in order, with exactly these ids and labels/,
-     'the coordinator should declare the canonical six-step plan with the exactness clause');
-  for (const id of SPEC_PLAN_IDS) {
-    assert.match(coordinator, new RegExp(`\`${id}\``),
-      `the coordinator should declare the ${id} step id`);
-  }
-  assert.match(
-    coordinator,
-    /`prereqs-and-change`[\s\S]{0,300}`proposal`[\s\S]{0,300}`specs`[\s\S]{0,300}`validation`[\s\S]{0,300}`review`/,
-    'the six canonical step ids should be declared in order'
-  );
-  assert.match(coordinator, /`prereqs-and-change`[\s\S]{0,200}Check prerequisites and resolve the change/,
-    'prereqs-and-change should carry the "Check prerequisites and resolve the change" label');
-  assert.match(coordinator, /`proposal`[\s\S]{0,200}Write proposal\.md/,
-    'proposal should carry the "Write proposal.md" label');
-  assert.match(coordinator, /`specs`[\s\S]{0,200}Write specs\/\*\*/,
-    'specs should carry the "Write specs/**" label');
-  assert.match(coordinator, /`validation`[\s\S]{0,200}Validate artifacts and derive the decision summary/,
-    'validation should carry the "Validate artifacts and derive the decision summary" label');
-  assert.match(coordinator, /`review`[\s\S]{0,200}Review artifacts/,
-    'review should carry the "Review artifacts" label');
-  assert.doesNotMatch(coordinator, /prereqs-resolution|proposal-and-specs|verification-summary/,
-    'the coordinator should contain no step ids beyond the declared six');
+  assert.match(coordinator, /canonical six-step `progress_plan`/);
+  assert.match(coordinator, /static `step_pointer_map`/);
+  assert.match(contract, /`prereqs-and-change`[\s\S]{0,300}`proposal`[\s\S]{0,300}`specs`[\s\S]{0,300}`validation`[\s\S]{0,300}`review`/);
+  for (const id of SPEC_PLAN_IDS) assert.match(contract, new RegExp(`\`${id}\``));
+  assert.doesNotMatch(contract, /prereqs-resolution|proposal-and-specs|verification-summary/);
 });
 
-test('Step 2: the coordinator plan declaration and the worker enumeration are byte-identical lists', () => {
+test('Step 2: the canonical plan is shared by standalone and supervised consumers', () => {
+  const contract = artifact(SPEC_COORDINATOR_ARTIFACTS.phaseContract);
   const coordinator = artifact(SPEC_COORDINATOR_ARTIFACTS.coordinator);
   const worker = artifact(SPEC_COORDINATOR_ARTIFACTS.worker);
+  const explore = artifact('sai/commands/explore/instructions.md');
 
-  assert.deepEqual(planList(coordinator), SPEC_PLAN_STEPS,
-     'the coordinator plan declaration should be exactly the six ordered id/label pairs');
-  assert.deepEqual(planList(worker), SPEC_PLAN_STEPS,
-     'the worker enumeration should be exactly the six ordered id/label pairs');
-  assert.deepEqual(planList(coordinator), planList(worker),
-    'the coordinator declaration and the worker enumeration should be byte-identical lists (content-wise)');
+  assert.deepEqual(planList(contract), SPEC_PLAN_STEPS);
+  assert.match(coordinator, /spec-phase-contract\.md/);
+  assert.match(worker, /spec-phase-contract\.md/);
+  assert.match(explore, /spec-phase-contract\.md/);
+  assert.match(explore, /pointer map as routing-only|routing-only.*SpecStepPointerMap/i);
+  assert.equal(planList(coordinator).length, 0);
+  assert.equal(planList(worker).length, 0);
 });
 
 test('Step 2: the spec worker emits one progress event per act carrying the canonical id and newly changed paths', () => {
@@ -480,8 +468,8 @@ test('Step 2: the spec worker emits one progress event per act carrying the cano
     'each progress event should preserve the changed-file union contract');
   assert.match(worker, /changed_files/,
     'the worker contract should keep the changed_files field');
-  assert.match(worker, /Progress step ids are reported in plan order|ids? are reported in plan order/i,
-    'progress event ids should be reported in plan order');
+  assert.match(worker, /Progress step ids are reported in canonical plan\/map order/i,
+    'progress event ids should be reported in canonical plan/map order');
 });
 
 test('Step 2: external findings alone may mark spec review from a valid base-form High=0 Summary', () => {
@@ -499,7 +487,7 @@ test('Step 2: external findings alone may mark spec review from a valid base-for
     'a valid High=0 Summary may mark review only while it is unmarked');
   assert.match(source, /never infer `?High=0`? from missing, malformed, or other summary text/i,
     'review progress must not be inferred from prose or absent/malformed evidence');
-  assert.match(source, /explicit `?High=0`? before treating the block as review evidence|only a valid externally supplied.*High=0/i,
+  assert.match(source, /explicit `?High=0`? before treating the block as review evidence|Only a valid externally supplied findings block with an explicit High=0 may mark review progress/i,
     'High findings must not qualify as review completion without an explicit zero');
   assert.doesNotMatch(source, /High>0[\s\S]{0,260}(?:emit|report|mark)[\s\S]{0,120}`?review`?/i,
     'High findings must be processed without a new review mark');
@@ -620,8 +608,10 @@ test('Step 3: spec worker leaves mode-dependent gate ownership to the coordinato
 
 test('spec worker classifies post-resolution failures and owns recovery continuation', () => {
   const worker = artifact('sai/commands/spec/worker.md');
-  assert.match(worker, /failure_class/, 'spec worker must name failure_class');
-  assert.match(worker, /unrecoverable/, 'spec worker must name unrecoverable');
+  const core = artifact('sai/orchestration/worker-core.md');
+  assert.match(worker, /failure[- ]class|failure classification/i, 'spec worker must consume failure classification');
+  assert.match(core, /failure_class/, 'worker-core must define failure_class');
+  assert.match(core, /unrecoverable/, 'worker-core must define unrecoverable');
   assert.match(worker, /continue_after_recovery/, 'spec worker must handle continue_after_recovery');
   assert.match(worker, /(?:validation-failed|generation-error)/, 'spec worker must map validation/generation failures specifically');
   assert.match(worker, /proposal\.md[\s\S]{0,200}specs/, 'authorized repair surface remains proposal/specs');

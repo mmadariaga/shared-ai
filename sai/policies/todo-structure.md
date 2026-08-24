@@ -6,7 +6,7 @@ Canonical policy for the progress task list rendered by routed SAI phases. Consu
 
 ## Scope
 
-Governs the semantics of the progress task list for a routed phase whose adapter declares a `progress_plan`: the list structure, the step-state vocabulary, the deterministic state derivation, the rendering actions (render at dispatch, render on state-changing progress events, and reconcile at run-closing results), the minimum-threshold rule, and the emission-ownership invariant. It does not govern per-harness tool mechanics — those stay in the harness bindings.
+Governs the semantics of the progress task list for a routed phase whose adapter declares a `progress_plan`: the list structure, the step-state vocabulary, the deterministic state derivation, the rendering actions (render at dispatch, render on state-changing progress events, and reconcile at run-closing results), the minimum-threshold rule, and the emission-ownership invariant. A phase may separately declare a routing-only `step_pointer_map`; that map preserves just-in-time worker continuity and never creates a task list or milestone stamp. It does not govern per-harness tool mechanics — those stay in the harness bindings.
 
 ## List structure
 

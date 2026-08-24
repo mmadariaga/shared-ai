@@ -56,7 +56,7 @@
           "Agent",
           "Skill"
         ],
-        "progressDeclaration": "spec proposal milestones",
+        "progressDeclaration": "Use @sai/policies/spec-phase-contract.md for SpecProgressPlan, SpecStepPointerMap, SpecResultUnion, and SpecValidationReport; report only its declared progress ids and metadata.",
         "overviewGeneration": "",
         "noticeContinuation": "",
         "claudeAgent": {
@@ -2183,6 +2183,20 @@
         "f9064bf7b03f205965e69d0c5c25f2ec6d67035b08c656abcce494594cc06046",
         "f986bed24b336e2662fe75c00c5fd3d9943817ce87ba7fe657ca110e104eb202",
         "f9e3ba4587c2b10216c908a06d91257fd6ed6c2fce876861ac48dce05d75f734"
+      ]
+    },
+    {
+      "id": "retired-sai-1-spec-invocation-core",
+      "destination": {
+        "class": "sai",
+        "path": "commands/spec/invocation.md"
+      },
+      "harnesses": [
+        "claude",
+        "opencode"
+      ],
+      "managedHashes": [
+        "f20f1781d60d7cb5b83f0997cfc22fcd352add8759bc82c0c9e0848a0ee4066e"
       ]
     },
     {

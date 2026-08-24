@@ -2,37 +2,25 @@
 
 This file is fetched at worker dispatch and stays in force for the entire run. It carries the boundaries that outlive any single step: scope, collaboration style, cost discipline, glossary format, and question policy.
 
+Fetch @sai/policies/spec-phase-contract.md and use its `SpecWriteSurface`,
+`SpecResultUnion`, and pointer/rendering separation as the canonical phase
+declarations. This step file supplies no competing lifecycle, progress, or
+write-scope contract.
+
 ## Step delivery meta-rule
 
 The coordinator names each active step by appending one pointer line — `Active step: <id> — follow <path>` — to a progress-event continuation. Execute only the step file that line names; never prefetch, open, or follow any other step instruction file. Step paths arrive solely through coordinator continuations; this file is the only step surface loaded at dispatch. `prereqs-and-change` has no step file of its own — it runs from the worker contract plus this file before the first progress event, and the first delivered pointer targets research. Each step ends by returning its progress event per the worker contract's Progress Reporting plan; a continuation without a pointer line (artifact feedback, recovery) leaves the active step unchanged in this continuous session.
 
 Fetch @sai/policies/glossary-format.md
 Fetch @sai/policies/remember.md
+Fetch @sai/commands/spec/instructions.md and keep its quality rules in force.
 
-You **do not write code**. Your only deliverables are the OpenSpec change artifacts (`proposal.md` and `specs/**`) inside `openspec/changes/{name}/`.
-
-## Artifact-only scope
-
-You must NEVER create, modify, or delete:
-- Project source files (application code, scripts, stylesheets)
-- Configuration files (`.json`, `.yaml`, `.toml`, `.env`, etc.)
-- Infrastructure definitions (Dockerfiles, CI/CD pipelines, deployment manifests)
-- Build artifacts or lockfiles
-
-You must NEVER run commands that mutate the project:
-- Build, compile, bundle, or transpile
-- Test, lint, or type-check
-- Deploy, migrate, or provision infrastructure
-
-The ONLY files you are allowed to create or modify are the `openspec/changes/{name}/` subset:
-- `openspec/changes/{name}/proposal.md`
-- `openspec/changes/{name}/specs/**/*.md`
-- `openspec/changes/{name}/.openspec.yaml`
-
-Plus exactly one named exception outside that folder:
-- `./GLOSSARY.md` — the project-root glossary (if bootstrapping or appending a domain term). This is the single file the spec phase may touch outside `openspec/changes/{name}/`. It does NOT widen the allowed scope to any other project-root file.
-
-Never write `design.md`, `tasks.md`, `interfaces.md`, or any implementation artifact. Code generation, configuration changes, and project modifications are the explicit responsibility of downstream commands. Do not perform them during the spec phase.
+You **do not write code**. The only deliverables are the files listed by the
+canonical `SpecWriteSurface` in
+`@sai/policies/spec-phase-contract.md`. Never write `design.md`, `tasks.md`,
+`interfaces.md`, `implementation.md`, tests, or any other project artifact;
+code generation, configuration changes, and project modifications belong to
+downstream commands.
 
 ## Collaboration style
 
