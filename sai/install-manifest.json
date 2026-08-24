@@ -339,13 +339,13 @@
         "noticeContinuation": "",
         "claudeAgent": {
           "agentName": "sai-archive-worker",
-          "description": "Owns the read-only archive pre-flight and gate authoring phase and returns structured lifecycle metadata.",
+          "description": "Owns the archive pre-flight and gate authoring phase plus explicitly authorized Auto-fast sync, move, staging, and commit execution, and returns structured lifecycle metadata.",
           "model": "haiku",
           "effort": "low",
           "tools": "Read, Glob, Grep, Bash, Skill, SendMessage"
         },
         "opencodeAgent": {
-          "description": "Owns the read-only archive pre-flight and gate authoring phase and returns structured lifecycle metadata.",
+          "description": "Owns the archive pre-flight and gate authoring phase plus explicitly authorized Auto-fast sync, move, staging, and commit execution, and returns structured lifecycle metadata.",
           "model": "opencode-go/deepseek-v4-flash",
           "variantLine": "variant: default",
           "permissionBlock": "    budget: allow\n    explore: allow"
@@ -366,6 +366,7 @@
         "helperPermissions": [
           "Read",
           "Bash",
+          "Write",
           "Skill"
         ],
         "progressDeclaration": "none — the backfill adapter declares no progress_plan",
@@ -373,13 +374,13 @@
         "noticeContinuation": "",
         "claudeAgent": {
           "agentName": "sai-backfill-worker",
-          "description": "Owns the read-only backfill inspection, interviewing, and draft-composition phase and returns structured lifecycle metadata.",
+          "description": "Owns the backfill inspection, interviewing, draft-composition, and explicitly authorized Auto-fast draft execution phase and returns structured lifecycle metadata.",
           "model": "haiku",
           "effort": "low",
-          "tools": "Read, Glob, Grep, Bash, Skill, SendMessage"
+          "tools": "Read, Glob, Grep, Bash, Write, Skill, SendMessage"
         },
         "opencodeAgent": {
-          "description": "Owns the read-only backfill inspection, interviewing, and draft-composition phase and returns structured lifecycle metadata.",
+          "description": "Owns the backfill inspection, interviewing, draft-composition, and explicitly authorized Auto-fast draft execution phase and returns structured lifecycle metadata.",
           "model": "opencode-go/deepseek-v4-flash",
           "variantLine": "variant: default",
           "permissionBlock": "    budget: allow\n    explore: allow"
@@ -521,44 +522,6 @@
         },
         "opencodeAgent": {
           "description": "Owns the block-driven direct implementation phase of explore's Auto (fast implementation) option and returns structured lifecycle metadata.",
-          "model": "opencode-go/qwen3.7-plus",
-          "variantLine": "",
-          "permissionBlock": "    budget: allow\n    explore: allow"
-        }
-      },
-      {
-        "phase": "autofast-hands",
-        "workerName": "sai-autofast-hands-worker",
-        "workerContract": "sai/commands/explore/autofast-hands-worker.md",
-        "bindingStem": "autofast-hands",
-        "tier": "budget",
-        "dispatchPrimitive": "task",
-        "initialDispatch": "dispatch sai-autofast-hands-worker",
-        "continuationLiteral": "continue sai-autofast-hands-worker",
-        "replacementFields": [
-          "model",
-          "effort"
-        ],
-        "helperPermissions": [
-          "Read",
-          "Glob",
-          "Grep",
-          "Bash",
-          "Write",
-          "Skill"
-        ],
-        "progressDeclaration": "none — auto-fast supervision declares no progress_plan",
-        "overviewGeneration": "",
-        "noticeContinuation": "",
-        "claudeAgent": {
-          "agentName": "sai-autofast-hands-worker",
-          "description": "Owns the closed-order validated mutation execution phase of explore's Auto (fast implementation) option and returns structured lifecycle metadata.",
-          "model": "haiku",
-          "effort": "low",
-          "tools": "Read, Glob, Grep, Bash, Write, Skill, SendMessage"
-        },
-        "opencodeAgent": {
-          "description": "Owns the closed-order validated mutation execution phase of explore's Auto (fast implementation) option and returns structured lifecycle metadata.",
           "model": "opencode-go/qwen3.7-plus",
           "variantLine": "",
           "permissionBlock": "    budget: allow\n    explore: allow"
@@ -1413,25 +1376,6 @@
       }
     },
     {
-      "id": "claude-sai-autofast-hands-worker",
-      "source": "agents/claude/worker-template.md",
-      "destination": {
-        "class": "agents",
-        "path": "sai-autofast-hands-worker.md"
-      },
-      "harnesses": [
-        "claude"
-      ],
-      "strategy": "tunable-seed",
-      "recursive": false,
-      "ownership": "managed",
-      "drift": "content",
-      "matrix": {
-        "kind": "agent",
-        "phase": "autofast-hands"
-      }
-    },
-    {
       "id": "opencode-sai-autofast-implement-worker",
       "source": "agents/opencode/worker-template.md",
       "destination": {
@@ -1448,25 +1392,6 @@
       "matrix": {
         "kind": "agent",
         "phase": "autofast-implement"
-      }
-    },
-    {
-      "id": "opencode-sai-autofast-hands-worker",
-      "source": "agents/opencode/worker-template.md",
-      "destination": {
-        "class": "agents",
-        "path": "sai-autofast-hands-worker.md"
-      },
-      "harnesses": [
-        "opencode"
-      ],
-      "strategy": "tunable-seed",
-      "recursive": false,
-      "ownership": "managed",
-      "drift": "content",
-      "matrix": {
-        "kind": "agent",
-        "phase": "autofast-hands"
       }
     },
     {

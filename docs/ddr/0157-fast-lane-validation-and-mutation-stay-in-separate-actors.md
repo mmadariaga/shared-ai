@@ -13,20 +13,21 @@ Retroactive drafts must be schema-validated before any bytes land, but the sessi
 ## Decision
 
 1. Validation of draft CONTENT against `openspec/schemas/sai-workflow/schema.yaml` is a read-and-reason act performed by the coordinating session; it never writes.
-2. Every validated mutation — exact-path artifact writes, spec sync, the archive move, owned staging, and the commit — is executed by the `sai-autofast-hands-worker` closed-order executor.
-3. The hands worker rejects any order outside its closed list; defense against a malformed order lives in the receiver, not in the hope of a well-composed prompt.
+2. Backfill and archive each use an explicit `--autofast-prepare` result followed by one coordinator-validated `--autofast-execute` continuation on the same existing worker.
+3. Backfill execution owns only the exact validated draft writes; archive execution owns only the validated sync, archive move, owned staging, and one local commit, in that order.
+4. Each worker rejects an order outside its closed list; defense against a malformed order lives in the receiver, not in the hope of a well-composed prompt.
 
 ## Alternatives Considered
 
 - Let explore write validated artifacts directly — rejected because it grants explore a direct write tool, breaking item 1's stance.
-- Extend the backfill worker to write after external validation — rejected because it breaks its absolute mutation prohibition and couples composition with materialization across a validation boundary.
-- Recycle the generic budget-executor as hands — rejected because the mutation contract would scatter into per-invocation prompts instead of living in one card.
+- Let the coordinator execute an unbounded order after validation — rejected because the receiver must enforce the exact path and action boundary.
+- Add a dedicated mutation worker — rejected because the existing backfill and archive workers already own the corresponding technical contracts and preserve the harness parity seam.
 
 ## Consequences
 
-- One additional managed worker exists solely for the fast lane; it loads only when the option is selected.
+- No additional managed worker or install projection exists solely for Auto-fast mutation execution.
 - A failed validation stops before any mutation; nothing is written until content is fully valid.
-- The split is encoded for real explore sessions; an orchestrating main session outside explore that already holds native write tools still routes mutations through the hands contract to keep the discipline testable.
+- The split is encoded for real explore sessions; an orchestrating main session outside explore still routes mutation through the same prepare/execute contracts to keep the discipline testable.
 
 ## Related
 

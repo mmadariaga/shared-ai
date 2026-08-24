@@ -35,23 +35,16 @@ const APPLY_ROLES = Object.freeze([
   }),
 ]);
 
-// Closed auto-fast role identities appended after the apply roles. Each role
-// pins its workerName to an explore-owned fast-lane worker contract and a
-// unique binding stem so explore's Auto (fast implementation) option resolves
-// its dedicated workers without re-entering any routed phase.
+// Closed auto-fast role identities appended after the apply roles. The
+// implementer remains an explore-owned fast-lane worker; Auto-fast mutation
+// execution is deliberately routed through the existing backfill and archive
+// phase workers rather than a third role.
 const AUTOFAST_ROLES = Object.freeze([
   Object.freeze({
     phase: 'autofast-implement',
     workerName: 'sai-autofast-implement-worker',
     workerContract: 'sai/commands/explore/autofast-implement-worker.md',
     bindingStem: 'autofast-implement',
-    tier: 'budget',
-  }),
-  Object.freeze({
-    phase: 'autofast-hands',
-    workerName: 'sai-autofast-hands-worker',
-    workerContract: 'sai/commands/explore/autofast-hands-worker.md',
-    bindingStem: 'autofast-hands',
     tier: 'budget',
   }),
 ]);
