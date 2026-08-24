@@ -237,6 +237,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 ### `/sai-merge`
 
 - [0173 — Merge collision suffixes ordered by ascending commit date](./0173c-merge-collision-suffix-order-by-commit-date.md) — Refs 0110a, Refs 0113
+- [0175 — Merge renders user-facing output through a coordinator-owned presentation seam](./0175-merge-renders-through-a-coordinator-owned-presentation-seam.md) — Refs 0075, Refs 0083, Refs 0086
 
 ### docker/orca
 
@@ -370,6 +371,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0171a — Item-10 diagnosis entry is shared non-clean set plus Explore cancellation exception](./0171a-item-10-diagnosis-entry-shared-non-clean-plus-cancelled.md) — **Amends** 0168b, Refs 0167c, Refs 0158b
 - [0171b — Routed runner owns the terminal documentation lifecycle](./0171b-routed-runner-owns-terminal-documentation-lifecycle.md)
 - [0171c — Single-string invocation envelope across active SAI surfaces](./0171c-single-string-invocation-envelope.md) — Supersedes 0166, **Reframes** 0159b, Refs 0136, Refs ddr:0114
+- [0175 — Merge renders user-facing output through a coordinator-owned presentation seam](./0175-merge-renders-through-a-coordinator-owned-presentation-seam.md) — Refs 0075, Refs 0083, Refs 0086
 
 ### Fetch resolution & path conventions
 
@@ -490,6 +492,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0166b — Dual-channel exclusivity is per cause surface](./0166b-per-cause-surface-dual-channel-exclusivity.md) — **Amends** 0165
 - [0167c — Named Explore Auto cancellation exception in Bounded Recovery](./0167c-explore-auto-cancellation-exception-in-bounded-recovery.md) — **Amends** 0158b, Refs 0159a
 - [0171c — Single-string invocation envelope across active SAI surfaces](./0171c-single-string-invocation-envelope.md) — Supersedes 0166, **Reframes** 0159b, Refs 0136, Refs ddr:0114
+- [0175 — Merge renders user-facing output through a coordinator-owned presentation seam](./0175-merge-renders-through-a-coordinator-owned-presentation-seam.md) — Refs 0075, Refs 0083, Refs 0086
 
 ### Testability routing & RED → GREEN
 
@@ -517,6 +520,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0148b — Mode-qualify every user-facing gate surface; leave standalone fetch sites untouched](./0148b-mode-qualify-every-user-facing-gate-surface.md) — Refs ddr:0150, Refs 0028, Refs 0147b
 - [0150b — Supervised visible reports stay post-proceed (fetching-body order)](./0150b-supervised-visible-reports-stay-post-proceed.md) — Refs 0147b, Refs ddr:0150
 - [0160b — Interactive artifact feedback gate gains a non-option review-loop note only](./0160b-interactive-gate-review-loop-note-only.md) — Refs 0028, Refs ddr:0150, Refs 0158c
+- [0175 — Merge renders user-facing output through a coordinator-owned presentation seam](./0175-merge-renders-through-a-coordinator-owned-presentation-seam.md) — Refs 0075, Refs 0083, Refs 0086
 
 ### Explore crystallization & the review loop
 

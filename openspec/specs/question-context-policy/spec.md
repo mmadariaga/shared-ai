@@ -72,7 +72,7 @@ The policy SHALL be fetchable as `@sai/policies/question-context.md` for both Cl
 
 ### Requirement: question-content-compliance-at-source
 
-Compliance with the anatomy SHALL be satisfied at the surface that authors the prompt — the worker that authors a `needs_input` question or notice, or the instruction that authors a fixed gate. Coordinators SHALL NOT rephrase a worker-authored question, add context to it, or restructure it before forwarding.
+Compliance with the question-context anatomy SHALL remain authored at the source of the worker question. A coordinator MAY render a worker-authored exact question and ordered options together with an adjacent decision-oriented summary that supplies current state context, provided it does not rephrase the question, alter option values, or change continuation semantics.
 
 #### Scenario: coordinator forwards the question unchanged
 
@@ -83,6 +83,12 @@ Compliance with the anatomy SHALL be satisfied at the surface that authors the p
 
 - **WHEN** a worker-authored question is forwarded
 - **THEN** the coordinator adds no context, rephrasing, or restructure, per the shared coordinator contract and isolation rules
+- **THEN** the coordinator adds no context inside the question itself and may place decision-oriented state in an adjacent summary without changing the question or options
+
+#### Scenario: Merge question stays exact beside its summary
+
+- **WHEN** the merge coordinator renders `¿Qué rama quieres mergear?` with date-bearing branch options
+- **THEN** it preserves the exact question and option values while presenting branch timestamps and merge rationale in the adjacent summary
 
 ### Requirement: Centralized pinned-anatomy exemption registry
 `sai/policies/question-context.md` SHALL host the centralized registry of prompts exempt from the full five-element anatomy — the change-picker prompts, the status-picker prompts, the artifact-feedback-gate texts, the crystallization-close selector, and the plain-text sí/no review invitation — each keeping its own defining contract as the single source of its exact wording, options, and invalid-input semantics. Consuming surfaces SHALL reference the registry and SHALL NOT add, remove, or reinterpret an exemption elsewhere, and registered exemptions SHALL remain byte-stable.

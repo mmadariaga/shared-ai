@@ -231,6 +231,15 @@ The relationship-token set the maintenance cycle recognizes is `amends | superse
 - **THEN** the ADR index's correction table adds a row `[NNNN_adr] | amends | [0014](../ddr/0014-...)` using the cross-family link form
 - **THEN** the DDR index is NOT touched by this relationship
 
+### Requirement: Cross-family relationship representation is family-prefixed and family-isolated
+
+Cross-family relationships SHALL preserve explicit `adr:` or `ddr:` prefixes in relationship tokens, relative Markdown links, correction-table cells, and structured `adr-index` or `ddr-index` metadata. Bare references SHALL resolve only when the source-family context is reliable; ambiguous bare references MUST be reported as escalations and MUST NOT receive an invented suffix or destination.
+
+#### Scenario: Cross-family metadata remains explicit
+
+- **WHEN** a collision repair updates a DDR reference to an ADR record
+- **THEN** the resulting relationship token, relative link, correction-table cell, and structured metadata retain the `adr:` family prefix and the assigned identifier
+
 ### Requirement: The framework values are pinned in the spec, not in code
 
 The abstract surface's framework values — the mapping list (with its five pattern-form rules and their precedence), the fallback noun (`domain unit`), the cross-cutting threshold trio (`min_count = 2`, `target_range = [8, 12]`, `collapse_below = 8`) — are pinned in this spec. They are NOT configurable by a project in this slice; the cold build reads them from this spec, not from a project-level config block, a sidecar file, or an environment variable.
