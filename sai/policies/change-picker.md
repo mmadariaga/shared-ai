@@ -1,6 +1,6 @@
 # Change Picker
 
-Shared instruction that resolves a missing OpenSpec change name for change-consuming `sai-*` commands (`sai-2-design`, `sai-3-implement`, `sai-4-apply`, `sai-5-review`, `sai-6-security`, `sai-7-performance`, `sai-8-accessibility`, `sai-archive`, `sai-pr`). Fetched identically by every consumer — do not duplicate this logic inline in any command body. `sai-status` is deliberately NOT a consumer — it resolves change names via `sai/policies/status-picker.md` instead.
+Shared instruction that resolves a missing OpenSpec change name for change-consuming `sai-*` commands (`sai-1-spec`, `sai-2-design`, `sai-3-implement`, `sai-4-apply`, `sai-5-review`, `sai-6-security`, `sai-7-performance`, `sai-8-accessibility`, `sai-archive`, `sai-pr`). Fetched identically by every consumer — do not duplicate this logic inline in any command body. For `sai-1-spec` it applies only when the trimmed `arguments_value` is empty (a supplied name still selects an existing change to build on; the picker never invents a new change). `sai-status` is deliberately NOT a consumer — it resolves change names via `sai/policies/status-picker.md` instead.
 
 ## Envelope-only resolution source
 

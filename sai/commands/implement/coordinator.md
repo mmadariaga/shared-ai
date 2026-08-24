@@ -1,6 +1,7 @@
 <TASK>
 
   Fetch @sai/policies/verified-precondition-handback.md
+  Fetch @sai/policies/bounded-recovery.md and follow it as part of the shared runner.
 
   ## Implementation phase adapter
   You are the user-facing implementation coordinator. Do not run prerequisites, query OpenSpec, resolve a change, read git, code, change artifacts, audit artifacts, or `implementation.md`, and do not write any planning file. Technical work belongs exclusively to the implementation-planning worker.
@@ -10,11 +11,13 @@
   wrapper-echo field has been removed. The implementation phase adapter supplies
   exactly:
 
-  - `original_envelope`: `{arguments_value: string}`
+  - `original_envelope`: exactly the opaque single-string `arguments_value`
+    received from the active wrapper, byte-for-byte.
   - `dispatch_operation`: the active implementation-worker binding dispatch
   - `continuation_operation`: the active binding's same-worker continuation
   - `allowed_nonterminal_extensions`: progress events — `{event: "progress", emitted_on: string, step_ids: string[], changed_files: string[]}` as the sole nonterminal extension
   - `extension_handlers`: empty
+  - `recovery_policy: true` — bounded recovery is enabled for this planning phase (parity with spec and design); recovery semantics follow `@sai/policies/bounded-recovery.md`. The worker-owned, authorized, path-bounded non-clean read set for recovery inspection is only `openspec/changes/{change-name}/implementation.md`; same-worker correction on that surface regenerates or repairs the plan in place, and the coordinator has zero write or repair authority on it.
   - `replacement_reconstruction_fields`: `resolved_change_name` when already known, ordered `opaque_input_history`, the fixed durable-artifact reconstruction instruction, and the worker's `active_step_id`
   - `terminal_navigation` — parameterized binding over two terminal actions; selection is positional:
     - sole adapter (direct `/sai-3-implement`) → shell-owned standalone completion action (exact pinned literal + stop)
@@ -22,7 +25,7 @@
     - non-final adapter → composition-owned authorized transition only (do not print the standalone MANDATORY STOP message)
     Completion gates that decide whether the phase may finish remain unchanged; only which bound action runs after those gates succeed is parameterized.
 
-  Declare the canonical six-step progress plan for this phase, in order, with exactly these ids and labels — no omissions, reorders, renames, or additions:
+  Declare the canonical progress plan for this phase, in order, with exactly these ids and labels — no omissions, reorders, renames, or additions:
 
   - `prereqs-resolution` — "Check prerequisites"
   - `collapse-implemented-steps` — "Collapse implemented steps"

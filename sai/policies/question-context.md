@@ -22,9 +22,28 @@ Every user-facing decision prompt SHALL carry all five elements:
 
 An informational message (the design-only notice) SHALL carry: what is being reported, why it matters, the essential state context, and plain wording. The options element SHALL NOT be required, because a notice is informational, not a decision prompt.
 
-## Pinned change-selection prompts exemption
+## Pinned exemptions
 
-The pinned change-selection prompts — `Use change '{name}'?` and `Which change?` — SHALL remain exempt from the full anatomy: they SHALL stay as the pinned terse prompts with their ordered options and invalid-input semantics unchanged. The full anatomy SHALL apply to every other user-facing decision prompt.
+The following prompts are registered exemptions to the full anatomy. Each
+keeps its own defining contract as the single source of its exact wording,
+options, and invalid-input semantics; this list is the centralized registry,
+and no consuming surface may add, remove, or reinterpret an exemption here.
+
+1. **Change-picker prompts** — `Use change '{name}'?` and `Which change?`,
+   pinned by `sai/policies/change-picker.md`.
+2. **Status-picker prompts** — the change-selection prompts pinned by
+   `sai/policies/status-picker.md`.
+3. **Artifact-feedback-gate texts** — the gate's fixed picker labels and the
+   canonical feedback prompt (`Share your feedback on {artifacts} below.`),
+   pinned byte-for-byte by `sai/policies/artifact-feedback-gate.md`.
+4. **Crystallization-close selector** — sai-explore's Auto / Auto (fast
+   implementation) / Manual selector, pinned by
+   `sai/commands/explore/instructions.md` item 10.
+5. **Plain-text sí/no review invitation** — sai-explore's post-crystallization
+   global invitation (item 9), a deliberate narrow exception to the
+   native-picker presentation rule in `remember.md`.
+
+The full anatomy SHALL apply to every other user-facing decision prompt.
 
 ## Single source
 

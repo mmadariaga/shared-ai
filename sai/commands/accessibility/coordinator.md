@@ -14,10 +14,11 @@
   - `allowed_nonterminal_extensions`: progress events — `{event: "progress", emitted_on: string, step_ids: string[], changed_files: string[]}` as the sole nonterminal extension.
   - `extension_handlers`: empty.
   - `replacement_reconstruction_fields`: original envelope, ordered duplicate-free changed-files union, exact opaque input history, `resolved_change_name` when available, and the departing worker's `active_step_id` when the step-pointer map below is in force.
-  - `terminal_navigation`: the accessibility navigation below; on completion print exactly `Accessibility audit done.`.
-  - `progress_plan`: the canonical five-step declaration below.
+  - `terminal_navigation`: the accessibility navigation below.
+  - `progress_plan`: the canonical progress plan declared below.
+  - `recovery_policy: false` — bounded recovery is disabled for this audit lifecycle: keep no recovery ledger and perform no `continue_after_recovery` continuations.
 
-  Declare the canonical five-step progress plan for this phase, in order, with exactly these ids and labels — no omissions, reorders, renames, or additions:
+  Declare the canonical progress plan for this phase, in order, with exactly these ids and labels — no omissions, reorders, renames, or additions:
 
   - `resolve-accessibility-scope` — "Resolve accessibility scope and runtime mode"
   - `map-ui-framework` — "Map UI components and framework"

@@ -2,6 +2,7 @@
 
 Fetch @sai/policies/verified-precondition-handback.md
 Fetch @sai/orchestration/worker-core.md and follow it exactly.
+Fetch @sai/policies/bounded-dispatch-retry.md and follow it for every delegated subagent dispatch.
 Fetch @sai/commands/spec/steps/common.md and keep it in force for the entire run.
 
 ## Invocation Envelope
@@ -14,11 +15,9 @@ at least one such leading line was consumed. The first line that is not that fla
 opens the request verbatim, inclusive; from that point onward, later lines and
 substrings containing `--supervised` are request content and are not parsed as
 flags. Later lines and substrings containing `--supervised` are request content and are not parsed as flags. If stripping the leading flag lines leaves no request or only whitespace,
-fail validation before change resolution. If `arguments_value` is empty, run
-`openspec list --json` and apply the established zero/one/multiple picker: no
-changes fails; one asks `Use change '{name}'?` with ordered yes/no options;
-multiple asks `Which change?` with CLI-order options and repeats invalid input
-without a retry cap.
+fail validation before change resolution. If `arguments_value` is empty,
+Fetch @sai/policies/change-picker.md and follow it exactly to resolve the
+change name; do not duplicate its picker logic inline.
 
 ## Prerequisites and Resolution
 
@@ -26,7 +25,7 @@ Check the OpenSpec CLI, `openspec/`, and `schema: sai-workflow`, then resolve or
 
 ## Progress Reporting
 
-This phase declares exactly the following canonical six-step progress plan, in order:
+This phase declares exactly the following canonical progress plan, in order:
 
 - `prereqs-and-change` — "Check prerequisites"
 - `research` — "Research the change request"
@@ -92,5 +91,5 @@ verification after the correction; return `completed` only when that
 verification passes. If verification still fails, return a post-resolution
 `failed` result with the closed classification, boolean `unrecoverable`, and
 concrete evidence. Recovery never emits a recovery progress id or recovery
-progress event; the canonical six-step progress plan, external-findings
+progress event; the canonical progress plan, external-findings
 handling, feedback flow, and ordinary terminal rules remain unchanged.

@@ -11,17 +11,8 @@
   - Envelope `status: failed` or `partial` — dispatch failure: the prerequisite check could not be completed; present it as such, print no remediation literal, and do not continue as if the checks passed.
   Fetch @skills/safe-operations/SKILL.md and use it
 
-  ## Overview-language parse
-  Before the fast-track parse, inspect `$ARGUMENTS` for the optional `--overview-lang <language>` option. Parse and validate it before change-name resolution and before overview dispatch:
-  - If the option is absent, leave the invocation-scoped overview-language unresolved: produce no effective `overview_language` and do not synthesize `English`; gate 9 may later resolve it during crystallization.
-  - If the option appears once, require exactly one following non-empty token that is not another option, consume that token as the free-form language value, remove only the option and its value from `$ARGUMENTS`, and set `overview_language` to that value.
-  - If the option is final or its next token begins with `--`, stop with the clear validation error `Missing value for --overview-lang; provide one non-empty language token before continuing.` Do not resolve a change, perform any dispatch, or continue to the fast-track parse.
-  - If the option appears more than once, stop with the clear validation error `Duplicate --overview-lang is not allowed; provide the option once.` Do not resolve a change or perform any dispatch.
-  - Preserve the change/topic token and every unrelated argument, including `--fast-track`, in their original order after removing the option and its value; recognize fast-track whether it precedes or follows the language option.
-  - The cleaned request and `overview_language` are invocation-scoped. They are never written to a change artifact or configuration file.
-
   ## Fast-track parse
-  Before proceeding, inspect `$ARGUMENTS` for the positional token `--fast-track`:
+  Per the canonical parse order in `@sai/policies/fast-track-flag.md` — fast-track presence-plus-strip first, every other flag validation afterwards — inspect `$ARGUMENTS` for the positional token `--fast-track`:
   - If the token is present anywhere in `$ARGUMENTS`:
     1. Set the in-conversation fast-track signal to active.
     2. Remove the `--fast-track` token from `$ARGUMENTS` and trim surrounding whitespace.
@@ -30,6 +21,15 @@
   - If the token is absent:
     1. Leave the fast-track signal inactive.
     2. Use `$ARGUMENTS` verbatim.
+
+  ## Overview-language validation
+  After the fast-track parse, inspect the cleaned remainder for the optional `--overview-lang <language>` option. Parse and validate it before change-name resolution and before overview dispatch:
+  - If the option is absent, leave the invocation-scoped overview-language unresolved: produce no effective `overview_language` and do not synthesize `English`; gate 9 may later resolve it during crystallization.
+  - If the option appears once, require exactly one following non-empty token that is not another option, consume that token as the free-form language value, remove only the option and its value from the cleaned remainder, and set `overview_language` to that value.
+  - If the option is final or its next token begins with `--`, stop with the clear validation error `Missing value for --overview-lang; provide one non-empty language token before continuing.` Do not resolve a change or perform any dispatch.
+  - If the option appears more than once, stop with the clear validation error `Duplicate --overview-lang is not allowed; provide the option once.` Do not resolve a change or perform any dispatch.
+  - Preserve the change/topic token and every remaining unrelated argument in their original order after removing the option and its value; the language option is recognized wherever it stands relative to where the fast-track token appeared.
+  - The cleaned request and `overview_language` are invocation-scoped. They are never written to a change artifact or configuration file.
 
   ## Load behaviors (in order)
   Fetch @skills/budget/SKILL.md and use it

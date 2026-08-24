@@ -41,3 +41,10 @@ The autonomy audit log SHALL be presented in conversation only. Explore SHALL NO
 - **THEN** it writes no file, artifact, or configuration containing the log or its entries
 - **AND** the log exists only in the conversation
 
+### Requirement: Pinned audit layout is single-sourced in a shared policy
+The autonomy audit log SHALL be rendered in the pinned scannable layout single-sourced at `sai/policies/autonomy-audit-log.md`, which owns the fixed field order, the empty-report case, the never-persist invariant, and the no-escalated-content invariant; emitting contracts SHALL supply only their phase label and SHALL NOT restate the layout inline. The extraction is behavior-neutral: auto-answer machinery, counters, and audit emission remain explore-only.
+
+#### Scenario:
+- **WHEN** a supervised phase ends and explore renders the autonomy audit
+- **THEN** it invokes the shared layout with its phase label and presents the pinned empty report without fabricated entries when nothing was auto-answered
+

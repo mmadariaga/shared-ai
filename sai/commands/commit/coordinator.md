@@ -81,9 +81,13 @@
     While active, skip later authorization asks in this session and proceed
     directly to execution after printing the visibility report and proposed
     message.
-  - On `no` (or no answer): execute nothing. Print the worker-authored summary
+  - On `no`: execute nothing. Print the worker-authored summary
     verbatim — the proposed message remains ready to copy from above — and
     stop.
+  - On an off-option reply or silence (no answer): neither execute nor
+    decline. Re-present the same ask unchanged through the native picker per
+    the invalid-input rule in `@sai/policies/remember.md`. Only an explicit
+    `no` declines.
 
   The authorization grant and its boundaries follow `## Authorization Scope`
   in `@sai/policies/commit-rules.md`. Staging stays forbidden in this command:

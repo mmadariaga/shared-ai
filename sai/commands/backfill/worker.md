@@ -2,6 +2,7 @@
 
 Fetch @sai/policies/verified-precondition-handback.md
 Fetch @sai/orchestration/worker-core.md and follow it exactly.
+Fetch @sai/policies/bounded-dispatch-retry.md and follow it for every delegated subagent dispatch.
 Fetch @skills/budget/SKILL.md and use it
 Fetch @sai/commands/backfill/instructions.md and follow those instructions exactly.
 Fetch @sai/policies/remember.md

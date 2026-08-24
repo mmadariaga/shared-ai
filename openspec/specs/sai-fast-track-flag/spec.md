@@ -6,18 +6,15 @@ Enables the `--fast-track` per-invocation flag on `sai-explore`, `sai-2-design`,
 
 ## Requirements
 ### Requirement: Fast-track opt-in membership
+The set of commands that accept and parse `--fast-track` SHALL be exactly `sai-explore`, `sai-2-design`, `sai-4-apply`, `sai-archive`, `sai-backfill`, and `sai-merge`, per the canonical model single-sourced in `sai/policies/fast-track-flag.md`. `sai-explore` and `sai-4-apply` parse in their main-session body cards; `sai-2-design` parses in its coordinator card since the flag-parsing unification — its coordinator card owns BOTH the parse and the banner, and the design worker neither parses the token nor emits a banner nor keeps dedup state; routed-shaped `sai-archive` parses in its coordinator card; routed-shaped `sai-backfill` parses in its worker card alongside the diff-source tokens, with no banner (a deliberate documented exception); routed-shaped `sai-merge` parses in its coordinator card. A composition command outside this set MAY inject apply fast-track without becoming a parser member, and MAY strip an explicit `--fast-track` token as a behavioral no-op without activating any mode — `/sai-build` and `/sai-review` do exactly this before change resolution.
 
-The set of commands that accept and parse `--fast-track` SHALL be exactly `sai-explore`, `sai-2-design`, `sai-4-apply`, `sai-archive`, `sai-backfill`, and `sai-merge`. `sai-explore`, `sai-2-design`, and `sai-4-apply` parse the token in their shared body files; routed-shaped `sai-archive` parses it in its coordinator card (`sai/commands/archive/coordinator.md`) because its utility body card was retired; routed-shaped `sai-backfill` parses it in its worker card (`sai/commands/backfill/worker.md`) alongside the diff-source tokens, with no banner; and routed-shaped `sai-merge` parses it in its coordinator card, prints the fast-track banner, strips the token from the forwarded remainder, and declares `fast_track_active` to its worker as session state rather than an envelope key. This requirement is the single source of truth for parser membership. A composition command outside this set MAY inject apply fast-track without becoming a parser member. A composition command outside this set MAY also strip an explicit `--fast-track` token as a behavioral no-op without becoming a parser member and without activating any fast-track mode — `/sai-review` SHALL do exactly this, stripping the token before change resolution, owning no questions of its own, and never emitting a fast-track banner.
+#### Scenario: Design parses coordinator-side
+- **WHEN** `/sai-2-design` receives an envelope containing `--fast-track`
+- **THEN** the design coordinator performs the presence-plus-strip parse, prints the single banner itself, and forwards the cleaned remainder, while the design worker returns no notice and keeps no banner-dedup state
 
-#### Scenario: Merge coordinator owns the parse
-
-- **WHEN** `/sai-merge --fast-track` is invoked
-- **THEN** the banner prints, the cleaned remainder becomes the worker envelope, and the worker auto-applies full resolution scope without the scope gate
-
-#### Scenario: /sai-review strips the token without becoming a member
-
-- **WHEN** a user runs `/sai-review {name} --fast-track`
-- **THEN** `/sai-review` SHALL strip the token before change resolution as a behavioral no-op, SHALL NOT be added to the canonical parser membership, SHALL NOT print a fast-track banner, and SHALL NOT activate any fast-track mode or gate change
+#### Scenario: Review stays a no-op stripper
+- **WHEN** `/sai-review` receives `--fast-track`
+- **THEN** it strips the token before change resolution without activating fast-track or printing a banner
 
 ### Requirement: sai-2-design under fast-track has no specs approval gate to opt out of
 
@@ -120,22 +117,16 @@ The parse SHALL be single-sourced in one location per command — the shared bod
 - **THEN** that command SHALL NOT gain fast-track behavior from this capability — the flag is not defined for it and its gates are unaffected
 
 ### Requirement: Fast-track mode announces itself with a single-line banner at run start
-
-When `--fast-track` is active through body-file parsing, the command's body file SHALL emit the single line `> FAST-TRACK MODE ACTIVE` at run start; when active through `sai-archive`'s coordinator-card parsing, the coordinator card owns the same banner at run start. When apply receives fast-track only through a chained composition, the supervising composition coordinator owns the banner at apply activation. Routed-shaped `sai-backfill` parses worker-side and SHALL emit no banner anywhere in the run. The banner SHALL NOT be written to disk.
-
-#### Scenario: Archive banner prints from the coordinator
-
-- **WHEN** `/sai-archive {name} --fast-track` runs
-- **THEN** the coordinator prints the exact line `> FAST-TRACK MODE ACTIVE` once at run start, after the prerequisite checks and before change resolution, and writes nothing to disk to record it
+When `--fast-track` is active, the owning coordinator or main-session card SHALL print the exact line `> FAST-TRACK MODE ACTIVE` exactly once per invocation at run start as ordinary conversation text; compositions own their chained-segment banner so every path yields exactly one visible confirmation; routed-shaped `sai-backfill` parses worker-side and SHALL emit no banner anywhere in the run. The banner SHALL NOT be written to disk.
 
 #### Scenario: Backfill runs bannerless
 
-- **WHEN** `/sai-backfill {name} --fast-track` runs
+- **WHEN** `/sai-backfill --fast-track --staged {name}` runs
 - **THEN** no `FAST-TRACK MODE ACTIVE` banner is printed at any point of the run
 
 #### Scenario: No banner without the flag
 
-- **WHEN** a command runs without `--fast-track`
+- **WHEN** any command starts a run without `--fast-track`
 - **THEN** no `FAST-TRACK MODE ACTIVE` banner is printed
 
 ### Requirement: Composition-injected apply fast-track under sai-build
@@ -208,3 +199,10 @@ The `--fast-track` behavior SHALL be identical under Claude Code, opencode, and 
 #### Scenario: opencode sai-archive wrapper keeps its envelope shape
 - **WHEN** wrapper-level consistency for `--fast-track` argument hints is evaluated
 - **THEN** the opencode `sai-archive` wrapper keeps its label-free two-key envelope with no real `argument-hint` and no HTML comment marker, and this does not count as a Mirror-discipline violation
+
+### Requirement: Canonical fast-track parse order and state channel
+On every surface that also validates other options, the fast-track presence-plus-strip parse SHALL run FIRST, and every other flag validation SHALL run afterwards on the cleaned remainder; the activation signal SHALL travel everywhere as invocation-scoped session state named exactly `fast_track_active`, never as an envelope key and never persisted to any file or configuration.
+
+#### Scenario:
+- **WHEN** `sai-explore` receives `{name} --overview-lang fr --fast-track`
+- **THEN** the fast-track token is stripped and its banner printed before the overview-language validation examines the cleaned remainder

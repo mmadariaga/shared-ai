@@ -129,34 +129,18 @@ The coordinator SHALL support continuing an existing implementation planning or 
 - **THEN** the coordinator SHALL resume that worker instead of starting a duplicate worker, and the worker SHALL use its current context plus durable artifacts as needed
 
 ### Requirement: Failed-resume fallback
-When continuing an implementation planning worker fails, the established fallback SHALL remain unchanged: the coordinator dispatches a fresh implementation worker with the original invocation envelope and durable-artifact reconstruction instruction. When continuing a design planning worker fails, the coordinator SHALL dispatch a fresh design worker with the original invocation envelope, design-scoped opaque input history, any exact `pending_feedback`, the `fast_track_banner_emitted` presentation flag, and an instruction to reconstruct state independently from current durable artifacts. Each opaque-history entry SHALL contain only the exact `question` and ordered `options` from one prior worker-authored `needs_input` payload plus the exact user-supplied `answer_value`; coordinator-authored prompts, labels, summaries, feedback-gate presentation, and inferred state SHALL be excluded. `pending_feedback` SHALL contain only the exact free-form artifact feedback awaiting a worker result that confirms application or discard and artifact verification. The coordinator SHALL forward these values without interpreting them or reading and packaging artifact context itself. If the coordinator lacks complete design reconstruction metadata needed for safe reconstruction, it SHALL return a failed result that asks the user to restart rather than risk repeating or losing an accepted decision, feedback turn, or user-visible notice.
+When continuing an implementation planning worker fails, the established fallback SHALL remain unchanged: the coordinator dispatches a fresh implementation worker with the original invocation envelope and durable-artifact reconstruction instruction. When continuing a design planning worker fails, the coordinator SHALL dispatch a fresh design worker with the original invocation envelope, design-scoped opaque input history, any exact `pending_feedback`, and an instruction to reconstruct state independently from current durable artifacts — the retired `fast_track_banner_emitted` presentation flag SHALL NOT be part of design reconstruction metadata. Each opaque-history entry SHALL contain only the exact `question` and ordered `options` from one prior worker-authored `needs_input` payload plus the exact user-supplied `answer_value`; coordinator-authored prompts, labels, summaries, feedback-gate presentation, and inferred state SHALL be excluded. `pending_feedback` SHALL contain only the exact free-form artifact feedback awaiting a worker result that confirms application or discard and artifact verification. The coordinator SHALL forward these values without interpreting them or reading and packaging artifact context itself. If the coordinator lacks complete design reconstruction metadata needed for safe reconstruction, it SHALL return a failed result that asks the user to restart rather than risk repeating or losing an accepted decision, feedback turn, or user-visible notice.
 
-#### Scenario: Stale worker identifier
-- **WHEN** a stored design worker identifier cannot be resumed
-- **THEN** the coordinator SHALL start a fresh design worker with the original envelope, opaque input history, pending feedback when present, and reconstruction instruction, preserve the design invocation's accumulated changed-file union, and report the binding-augmented terminal result with that aggregate
-
-#### Scenario: Implementation worker continuation fails
-- **WHEN** a stored implementation worker identifier cannot be resumed
-- **THEN** the coordinator SHALL use the preceding slice's original-envelope and durable-artifact fallback without requiring design interaction history, pending feedback, or presentation counters
-
-#### Scenario: Continuation fails while artifact feedback is pending
-- **WHEN** a design worker cannot be resumed after free-form artifact feedback was submitted but before completion was confirmed
-- **THEN** the coordinator SHALL pass the exact `pending_feedback` to the replacement design worker and SHALL clear it only after the replacement confirms selective application or discard and artifact verification
-
-#### Scenario: Safe reconstruction context is incomplete
-- **WHEN** continuation fails after user input but the coordinator cannot provide a complete opaque interaction history for that input
-- **THEN** it SHALL stop with a restart request and SHALL NOT dispatch a replacement worker that could repeat or lose the accepted decision
+#### Scenario: Design replacement reconstructs without banner-dedup state
+- **WHEN** a fresh design worker is dispatched after a continuation failure
+- **THEN** its reconstruction metadata carries the original envelope, opaque input history, pending feedback, and resolved name but no `fast_track_banner_emitted` field
 
 ### Requirement: Conversation-scoped worker identity
-Every worker session identifier SHALL be retained only in coordinator conversation-scoped state for the current command invocation, SHALL never be persisted in OpenSpec artifacts, and SHALL not be reused by a new command invocation or a new chat. Opaque input history, `pending_feedback`, `fast_track_banner_emitted`, and feedback-presentation counters SHALL be design-lifecycle-scoped extensions only. A Continue-now transition SHALL create a new implementation lifecycle namespace and SHALL carry none of those design extensions or the design changed-file aggregate into implementation planning.
+Every worker session identifier SHALL be retained only in coordinator conversation-scoped state for the current command invocation, SHALL never be persisted in OpenSpec artifacts, and SHALL not be reused by a new command invocation or a new chat. Opaque input history, `pending_feedback`, and feedback-presentation counters SHALL be design-lifecycle-scoped extensions only. A Continue-now transition SHALL create a new implementation lifecycle namespace and SHALL carry none of those design extensions or the design changed-file aggregate into implementation planning.
 
-#### Scenario: Invocation boundary resets worker state
-- **WHEN** the user starts a new routed SAI planning invocation or opens a new chat
-- **THEN** the coordinator SHALL start or resolve a fresh worker session from current durable artifacts and SHALL not rely on an identifier from the prior invocation
-
-#### Scenario: Design transitions to implementation in the same invocation
-- **WHEN** Continue now dispatches an implementation planning worker after design completion
-- **THEN** the implementation worker SHALL receive a new continuation namespace, empty changed-file aggregate, no design opaque history, no pending feedback, and no design presentation counter
+#### Scenario: Implementation transition carries no design extensions
+- **WHEN** a Continue-now transition opens the implementation lifecycle namespace
+- **THEN** none of the design-scoped extensions or the design changed-file aggregate cross into it
 
 ### Requirement: user-facing-question-content-contract
 

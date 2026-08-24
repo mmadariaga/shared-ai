@@ -83,3 +83,10 @@ Compliance with the anatomy SHALL be satisfied at the surface that authors the p
 
 - **WHEN** a worker-authored question is forwarded
 - **THEN** the coordinator adds no context, rephrasing, or restructure, per the shared coordinator contract and isolation rules
+
+### Requirement: Centralized pinned-anatomy exemption registry
+`sai/policies/question-context.md` SHALL host the centralized registry of prompts exempt from the full five-element anatomy — the change-picker prompts, the status-picker prompts, the artifact-feedback-gate texts, the crystallization-close selector, and the plain-text sí/no review invitation — each keeping its own defining contract as the single source of its exact wording, options, and invalid-input semantics. Consuming surfaces SHALL reference the registry and SHALL NOT add, remove, or reinterpret an exemption elsewhere, and registered exemptions SHALL remain byte-stable.
+
+#### Scenario:
+- **WHEN** a command surface pins a terse prompt outside the full anatomy
+- **THEN** the exemption is registered once in question-context.md and every consuming surface references that registry instead of declaring its own carve-out

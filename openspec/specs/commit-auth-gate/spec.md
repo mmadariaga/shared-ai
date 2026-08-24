@@ -6,16 +6,11 @@ Require explicit per-invocation user authorization before git commit operations,
 ## Requirements
 
 ### Requirement: Explicit per-invocation authorization before git commit
+The authorization ask SHALL be presented through the native closed-choice picker with the option set `yes (Recommended)` / `no` / `Allow on this session`. Only an explicit `yes` (or an active session grant) authorizes `git add` and `git commit` using today's exact HEREDOC surface; an off-option reply or silence is NOT a decline — the same ask SHALL be re-presented unchanged through the native picker per the invalid-input rule in `@sai/policies/remember.md`; only an explicit `no` declines, executing nothing. Staging stays forbidden in the commit command outside authorized execution.
 
-The agent MUST ask for explicit per-invocation authorization before running `git commit`, UNLESS a session-scoped commit authorization is active for the current in-conversation session (see "Session-scoped commit authorization via Allow on this session"), in which case the agent does NOT ask and proceeds to commit. When it asks, the authorization MUST be presented as a closed-choice prompt with options `yes` / `no` / `Allow on this session` (per the "Closed-choice prompts" rule in `remember.md`, which gives the per-harness option-picker mapping). The agent commits on an explicit `yes` selection or reply, and also commits on an explicit `Allow on this session` selection; anything else (no, silence, redirect, or any other reply) is a decline and the agent MUST NOT commit. Once the user has granted permission for a commit, `git add` for the same step is implicitly authorized — the agent MUST NOT ask again. On a decline, the agent MUST describe the staged changes and instruct the user to commit themselves.
-
-#### Scenario: User grants permission for a commit step
-- **WHEN** the agent asks for commit authorization and the user answers `yes`
-- **THEN** the agent MAY run `git add` for the same step without additional confirmation, then runs `git commit`
-
-#### Scenario: User declines commit authorization
-- **WHEN** the agent asks for commit authorization and the user does not answer `yes` or `Allow on this session` (answers no, stays silent, redirects, or replies off-topic)
-- **THEN** the agent MUST NOT run `git commit`; MUST print a summary of staged changes and instruct the user to run `git commit` themselves
+#### Scenario: Silence does not decline
+- **WHEN** a commit-authorization gate receives no answer or an unrecognized reply
+- **THEN** the identical ask is re-presented through the native picker and nothing is executed until an explicit option is chosen
 
 ### Requirement: Session-scoped commit authorization via Allow on this session
 
@@ -92,3 +87,10 @@ The routed apply coordinator card SHALL define the in-memory `session_commit_aut
 
 - **WHEN** the session flag is active and apply reaches a GREEN-conflict STOP or Human Verification gate
 - **THEN** the workflow still stops at that gate
+
+### Requirement: Terminal documentation gate uses the common authorization option set
+The apply runner-owned terminal documentation gate SHALL present the same closed-choice option set as every commit-authorization gate — `yes (Recommended)` / `no` / `Allow on this session` — where an `Allow on this session` selection additionally activates `session_commit_authorized` per its definition in the apply coordinator card; the gate SHALL always retain the terminal visibility listing and proposed message, SHALL skip only its authorization ask when the session flag is already active (including fast-track pre-activation), and SHALL leave eligible files uncommitted on decline.
+
+#### Scenario:
+- **WHEN** the terminal documentation gate receives silence or an off-option reply while `session_commit_authorized` is inactive
+- **THEN** the gate re-presents the identical three-option ask instead of treating the reply as a decline

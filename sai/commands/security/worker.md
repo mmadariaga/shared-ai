@@ -2,6 +2,7 @@
 
 Fetch @sai/policies/verified-precondition-handback.md
 Fetch @sai/orchestration/worker-core.md and follow it exactly.
+Fetch @sai/policies/bounded-dispatch-retry.md and follow it for every delegated subagent dispatch.
 Fetch @sai/commands/security/steps/common.md and keep it in force for the entire run.
 
 ## Invocation Envelope

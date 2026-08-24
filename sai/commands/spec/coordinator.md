@@ -17,17 +17,14 @@
 
   Initialize an ordered duplicate-free changed-file union, opaque input history, pending feedback, and feedback iteration `0`.
 
-  Declare the canonical six-step progress plan for this phase, in order, with exactly these ids and labels — no omissions, reorders, renames, or additions:
+  Declare the canonical progress plan for this phase, in order, with exactly these ids and labels — no omissions, reorders, renames, or additions:
 
   - `prereqs-and-change` — "Check prerequisites"
-    *(The retired wording for `prereqs-and-change` was "Check prerequisites and resolve the change"; the active label remains "Check prerequisites".)*
   - `research` — "Research the change request"
   - `proposal` — "Write proposal.md"
   - `specs` — "Write specs/**"
   - `validation` — "Validate artifacts and derive the decision summary"
   - `review` — "Review artifacts"
-
-  The retired canonical five-step progress plan is not active; this six-step plan is in order, with exactly these ids and labels.
 
   Declare the static optional `step_pointer_map` for this phase — fully known at dispatch, immutable for the invocation, and never carried in the dispatch envelope or any reconstruction field. It maps every declared step id to its just-in-time instruction pointer:
 

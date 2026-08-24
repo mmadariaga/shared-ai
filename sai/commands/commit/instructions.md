@@ -104,7 +104,7 @@ Before presenting the message, audit it:
 
    The `Plan cross-check` and `Subagent ↔ git` blocks SHALL NOT appear — `sai-commit` has no subagent and no plan.
 2. If `--amend`: also show `git log -1 --pretty=format:'%h %s'` of the commit being amended and warn if it's already pushed (`git log @{push}..HEAD --oneline` — if empty and HEAD matches push, it's pushed).
-3. Ask: **"Run `git commit -m '...'` (or `git commit --amend ...`)?"** — return it as a `needs_input` lifecycle result with the closed-choice options `yes (Recommended)` / `no` / `Allow on this session`, complying with the question anatomy of `remember.md`'s "Closed-choice prompts" rule and `question-context.md`. The ask is never an inline picker call from this session; presentation mechanics belong to the coordinator.
+3. Ask: **"Run `git commit -m '...'` (or `git commit --amend ...`)?"** — return it as a `needs_input` lifecycle result with the closed-choice options `yes (Recommended)` / `no` / `Allow on this session`, complying with the question anatomy of `remember.md`'s "Closed-choice prompts" rule and `question-context.md`. The ask is never an inline picker call from this session; presentation mechanics belong to the coordinator. Invalid-input semantics: an off-option reply or silence is NOT a decline — the coordinator re-presents the same ask through the picker per `remember.md`; only an explicit `no` declines.
 4. On a forwarded `yes` answer → return a `completed` payload whose summary restates the exact authorized invocation — using HEREDOC for multi-line messages:
     ```
     git commit -m "$(cat <<'EOF'

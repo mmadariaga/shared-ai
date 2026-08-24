@@ -45,19 +45,6 @@ answer_value: string
 
 ## Requirements
 
-### Requirement: fast-track-parsing-before-prerequisites
-
-The worker SHALL parse the `--fast-track` flag before running prerequisite checks.
-
-#### Scenario: fast-track runs first
-- **WHEN** the planning worker receives an invocation with `--fast-track`
-- **THEN** it parses the flag before checking for the openspec CLI, openspec directory, or schema
-- **AND** if the fast-track preflight passes, it emits the `> FAST-TRACK MODE ACTIVE` notice before any prerequisite check failure text
-
-### Requirement: fast-track-banner-single-emission
-
-A reconstructed worker with `fast_track_banner_emitted: true` SHALL NOT emit the `> FAST-TRACK MODE ACTIVE` notice again.
-
 ### Requirement: prerequisite-failure-texts
 
 Each missing prerequisite SHALL return its pinned actionable failure text.
@@ -373,3 +360,17 @@ Replacement-reconstruction input for the design worker SHALL include `active_ste
 
 - **WHEN** a replacement design worker is reconstructed mid-run
 - **THEN** it resumes the step identified by the supplied `active_step_id` without receiving the prior worker's journal or artifact contents
+
+### Requirement: Fast-track activation is coordinator-owned handoff
+The design worker SHALL receive the cleaned request after the coordinator's fast-track parse, SHALL NOT activate fast-track, SHALL NOT return a banner notice, SHALL keep no banner-dedup reconstruction field, and SHALL strip any stray `--fast-track` token tolerantly wherever it appears without interpreting it.
+
+#### Scenario:
+- **WHEN** the design worker receives a cleaned envelope whose fast-track activation already happened coordinator-side
+- **THEN** the worker returns no notice for fast-track and applies fast-track gate semantics only through the coordinator-declared `fast_track_active` session state
+
+### Requirement: Overview-language form validation is coordinator-owned fail-fast
+The design coordinator SHALL halt with the fixed validation errors on a missing-value or duplicate `--overview-lang` occurrence BEFORE plan selection, rendering, change resolution, and dispatch; the declared static progress plan SHALL derive ONLY from the validated outcome (a present, well-formed token opts in; an absent token opts out), and the design worker SHALL consume only well-formed values — returning a clear `failed` validation result without selecting a plan if an invalid form nevertheless arrives.
+
+#### Scenario:
+- **WHEN** the design coordinator receives `{name} --overview-lang` with no following language token
+- **THEN** it stops with exactly `Missing value for --overview-lang; provide one non-empty language token before continuing.` and performs no plan selection, render, resolution, or dispatch

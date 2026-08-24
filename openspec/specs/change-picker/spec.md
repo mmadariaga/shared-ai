@@ -38,3 +38,10 @@ The shared `change-picker.md` instruction SHALL serve exactly the change-consumi
 #### Scenario: resolution logic unchanged for the 9 consumers
 - **WHEN** the `change-picker.md` invocation-envelope and 0/1/N resolution steps are compared before and after this change
 - **THEN** they are identical, and only the consumer enumeration differs
+
+### Requirement: sai-1-spec is a conditional consumer
+`sai-1-spec` SHALL fetch `sai/policies/change-picker.md` solely when its trimmed `arguments_value` is empty; a supplied name still selects an existing change to build on, and the picker SHALL never invent a new change. `sai-1-spec` sits outside the twelve-command consumer membership.
+
+#### Scenario:
+- **WHEN** `/sai-1-spec` is invoked with an empty arguments_value
+- **THEN** the worker fetches the shared change-picker and applies its 0/1/N resolution, while a supplied name bypasses the picker entirely
