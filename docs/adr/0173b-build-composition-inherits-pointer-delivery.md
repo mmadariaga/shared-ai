@@ -1,6 +1,6 @@
 # ADR 0173b: Build composition inherits pointer delivery with no opt-out special case
 
-<!-- adr-index: refs 0172; refs 0163; refs 0156 -->
+<!-- adr-index: refs 0172c; refs 0163; refs 0156 -->
 
 ## Status
 
@@ -23,11 +23,11 @@ Accept the inheritance with no opt-out special case. `/sai-build`'s chained impl
 
 - Build-composition behavior changes implicitly in its implement segment: the `Active step:` pointer travels in the chained segment's progress-event continuations.
 - No build-card edit is required; the inheritance is a consequence of the existing per-segment adapter-field rebinding, which this change deliberately leaves untouched (confirmed preservation).
-- Refs ADR 0172 (the step-gated mechanism), ADR 0163 (build inherits shared recovery only through the apply phase adapter — the closest build-inheritance precedent), ADR 0156 (build composition owns its segment behavior).
+- Refs ADR 0172c (the step-gated mechanism), ADR 0163 (build inherits shared recovery only through the apply phase adapter — the closest build-inheritance precedent), ADR 0156 (build composition owns its segment behavior).
 
 ## Related
 
-- ADR 0172 — Step-gated instruction delivery hands each spec step its instructions just-in-time
+- ADR 0172c — Step-gated instruction delivery hands each spec step its instructions just-in-time
 - ADR 0163 — Build inherits shared recovery only through the apply phase adapter
 - ADR 0156 — Build injects apply fast-track unconditionally; composition owns the banner
 - `AGENTS.md` — Active experiment note documenting the inheritance

@@ -1,7 +1,7 @@
 'use strict';
 
 const SPEC_COORDINATOR_ARTIFACTS = {
-  invocationCore: 'sai/commands/spec/invocation.md',
+  phaseContract: 'sai/policies/spec-phase-contract.md',
   coordinator: 'sai/commands/spec/coordinator.md',
   worker: 'sai/commands/spec/worker.md',
   claudeBinding: 'sai/orchestration/workers/bindings/claude/spec-worker.md',

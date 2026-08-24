@@ -40,26 +40,16 @@ Verify the pinned literal against the current project source, not only against t
 - **Introduced**, literal not yet in source (new ADDED first introduction) → report `could not ground literal <X>: not found` in the warning area, NOT a divergence claim.
 - **Ambiguous** → fall through to the SAME shared warning block defined for the preserved case, matching Rule #1's "Ambiguous intent is surfaced, not guessed" handling. No separate block, no silent suppression.
 
-## Shared warning format (ONE canonical block)
+## Structured validation report
 
-The following block is reused by:
-- Rule #1's ambiguous-intent case,
-- Rule #2's PRESERVED-literal divergence case,
-- Rule #2's AMBIGUOUS preserved-vs-introduced fall-through case.
-
-Print the block immediately AFTER the decision summary and BEFORE the feedback gate prompt is presented by the coordinator, so it cannot be scrolled past above the interactive gate. The block is additive (printed in addition to the decision summary), never swallowed, never aggregated behind another warning. If multiple divergences or ambiguous cases are detected, print one separate block per case, stacked in the warning area.
-
-```
-⚠ Consistency warning — not auto-resolved; you decide which side is stale.
-
-  • Spec assertion    : <spec file + requirement/scenario name>
-  • <Other side>      : <file:line> of the divergent value
-  • Disagreement      : <one-line statement of how they differ>
-```
-
-where `<Other side>` is:
-- `Source value` for Rule #2 (preserved or ambiguous fall-through),
-- `Proposal statement` for Rule #1 (ambiguous intent).
+The validation step does not print warnings. For every warning from Rule #1
+or Rule #2, return one ordered entry in the `validation_report.warnings`
+extension defined by `@sai/policies/spec-phase-contract.md`, using its
+`spec_assertion`, `other_side`, and `disagreement` fields. Return an empty
+warning list when no warning applies. The coordinator renders each entry after
+the decision summary and before the feedback gate using that policy's one
+canonical warning block; it preserves the report fields verbatim and never
+inspects or edits artifacts.
 
 ## Complexity Derivation Rubric
 

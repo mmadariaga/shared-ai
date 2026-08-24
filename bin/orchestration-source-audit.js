@@ -19,6 +19,7 @@ const RETIRED_SOURCES = [
   'sai/commands/sai-3-implement-inline.md',
   'sai/orchestration/inline-invocation.md',
   'sai/commands/sai-1-spec.md',
+  'sai/commands/spec/invocation.md',
   'sai/commands/sai-5-review.md',
   'sai/commands/sai-6-security.md',
   'sai/commands/sai-7-performance.md',

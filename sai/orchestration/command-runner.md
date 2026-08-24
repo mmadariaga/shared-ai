@@ -43,18 +43,23 @@ loop. For a notice, invoke the design adapter's notice extension and forward
 its fixed acknowledgement. Notices are not a worker status.
 
 A progress event is the separate closed shape
-`{event: "progress", emitted_on: string, step_ids: string[], changed_files: string[]}`: mark the
-reported step ids in the adapter-declared plan, recording whether the event
-added at least one previously unmarked declared id; ignore undeclared ids not
-declared in the plan — the plan is never extended or amended for them — and
-add every path in `changed_files` to the invocation-scoped union in first-seen
-order. When the adapter declares a `progress_plan` and the event changed the
-marked set, apply the progress-event render act from
-`@sai/policies/todo-structure.md` before continuing the same worker. A
-progress event that changed no marked state performs no render and stamps
+`{event: "progress", emitted_on: string, step_ids: string[], changed_files: string[]}`.
+Mark reported ids against the adapter's declared `progress_plan` when one is
+present, or against the declared `step_pointer_map` when the adapter uses a
+routing-only map. Ignore ids outside the active declaration — neither a plan
+nor a map is extended or amended at runtime. The active declaration is never
+extended or amended at runtime. In particular, undeclared step ids
+are ignored rather than added to the active declaration. The runner records whether the
+event reported at least one previously unmarked declared id before rendering,
+and add every path in
+`changed_files` to the invocation-scoped union in first-seen order. When a
+visual `progress_plan` exists and the event changed its marked set, apply the
+progress-event render act from `@sai/policies/todo-structure.md` before
+continuing the same worker. A routing-only event performs no render and stamps
 nothing. Then continue the same worker with exactly `continue_after_progress`.
-Render before resuming, so the user sees the mark before the next stretch of
-worker work begins. Progress events are not a worker status.
+Render before resuming when rendering is enabled, so the user sees the mark
+before the next stretch of worker work begins. Progress events are not a worker
+status.
 
 Attempt same-worker continuation first. If it fails, preserve the union and
 dispatch at most one replacement worker with the original envelope, exact
@@ -75,9 +80,9 @@ declaration:
 - `extension_handlers`
 - `replacement_reconstruction_fields`
 - `terminal_navigation`
-- `progress_plan` (optional — static, ordered, fully known at dispatch, immutable for the active adapter segment; under composition the pre-delta phrase "immutable for the invocation" means immutable for the active adapter segment, and a one-adapter invocation keeps segment scope identical to today's invocation scope)
+- `progress_plan` (optional — static, ordered, fully known at dispatch, immutable for the active adapter segment; under composition the pre-delta phrase "immutable for the invocation" means immutable for the active adapter segment, and a one-adapter invocation keeps segment scope identical to today's invocation scope; it controls visual task-list rendering only)
 - `recovery_policy` (optional — static boolean, fully known at dispatch, immutable for the active adapter segment under the same segment reading as `progress_plan`) (recovery semantics: @sai/policies/bounded-recovery.md)
-- `step_pointer_map` (optional — static map from declared progress-plan ids to just-in-time step instruction paths, fully known at dispatch, immutable for the active adapter segment under the same segment reading as `progress_plan`)
+- `step_pointer_map` (optional — static map from phase progress ids to just-in-time step instruction paths, fully known at dispatch, immutable for the active adapter segment under the same segment reading as `progress_plan`; it may be declared without a visual `progress_plan`)
 
 The dispatch passes exactly `arguments_value`; the
 progress plan is declared by the phase adapter, is never carried in the
@@ -90,13 +95,21 @@ reads artifacts, resolves phase data, or invents phase-specific payload fields.
 
 ## Step-gated pointer delivery
 
+Step-pointer routing is independent from visual progress-plan rendering. A
+`progress_plan` supplies the ordered task list and its panel state; a
+`step_pointer_map` supplies just-in-time worker instruction routing. An adapter
+may declare the pointer map without declaring a progress plan when a supervising
+surface must hide the worker plan but still preserve step continuity. In that
+shape the runner tracks valid mapped step ids internally, performs no task-list
+render, and still derives every pointer deterministically.
+
 When the active adapter declares an optional static `step_pointer_map`, each
 progress-event continuation payload sent to the same worker is exactly two
 lines: today's protocol continuation line first, then one pointer line derived
-deterministically from the declared plan and map — apply the just-processed
-event's marks and take the first declared step still unmarked in plan order;
+deterministically from the mapped phase ids — apply the just-processed event's
+marks and take the first mapped step still unmarked in canonical map order;
 that second line reads `Active step: <id> — follow <path>` with that step's id
-and its mapped path from the static map. With every declared step marked, the
+and its mapped path from the static map. With every mapped step marked, the
 second line reads exactly `Active step: none — complete remaining work and return your terminal result.` The pointer travels only in this continuation
 payload: the materialized binding literal is untouched, and no dispatch
 envelope or reconstruction field carries step paths. Continuations that are not
@@ -106,9 +119,10 @@ in its continuous session. When the declaring adapter also requires replacement
 reconstruction, that reconstruction state additionally includes the worker's
 `active_step_id`, and the replacement's first continuation carries the pointer
 line for that step. Render-before-resume ordering is unchanged: the coordinator
-renders the progress mark before sending the two-line continuation. Without a
-declared `step_pointer_map`, progress continuations keep today's exact-literal
-behavior and no other phase surface changes.
+renders the progress mark when a visual `progress_plan` exists before sending
+the two-line continuation. Without a declared `step_pointer_map`, progress
+continuations keep today's exact-literal behavior and no other phase surface
+changes.
 
 ## Chained phase composition
 
@@ -120,8 +134,8 @@ without relocating this file. Composition obeys exactly three rules:
    declare an ordered sequence of phase adapters as an indexable list and SHALL
    execute them strictly in list order through this Result Loop. The composition
    retains a zero-based position into that list. Activating a segment SHALL
-   rebind that segment's adapter fields (including that segment's `progress_plan`
-   and `recovery_policy` when declared); recovery-ledger creation, scoping, and
+    rebind that segment's adapter fields (including that segment's `progress_plan`,
+    `step_pointer_map`, and `recovery_policy` when declared); recovery-ledger creation, scoping, and
    non-inheritance across segments follow `@sai/policies/bounded-recovery.md`.
    The invocation-scoped changed-files
    union initialized by this runner SHALL continue across segment activations
@@ -145,6 +159,9 @@ without relocating this file. Composition obeys exactly three rules:
    invocation-closing completion presentation on a successful run. `failed`,
    `cancelled`, malformed worker terminal payloads, and malformed transitions
    SHALL close the supervising invocation without advancing.
+   The runner must not infer the next phase or successor from worker summaries,
+   artifacts, or `changed_files` text; only the authorized transition names the
+   successor.
 
 3. **Chained Isolation Mode does not reset supervisor state** — Entering a
    chained phase adapter's Isolation Mode preamble SHALL isolate that phase's

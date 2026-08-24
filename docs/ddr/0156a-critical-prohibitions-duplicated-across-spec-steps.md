@@ -6,7 +6,7 @@ Accepted
 
 ## Context
 
-Step-gated instruction delivery (ADR 0172) splits the sai-1-spec worker's instructions into one file per progress-plan step so each stretch is salient when it becomes active. Carving raises a maintenance temptation: the artifact-only scope, the forbidden-artifact list, and the external-findings evidence rules now appear both in the always-loaded worker contract (`worker.md` plus `steps/common.md`) and restated inside the step files that operationalize them. A future editor will see the duplication and want to single-source it.
+Step-gated instruction delivery (ADR 0172c) splits the sai-1-spec worker's instructions into one file per progress-plan step so each stretch is salient when it becomes active. Carving raises a maintenance temptation: the artifact-only scope, the forbidden-artifact list, and the external-findings evidence rules now appear both in the always-loaded worker contract (`worker.md` plus `steps/common.md`) and restated inside the step files that operationalize them. A future editor will see the duplication and want to single-source it.
 
 Removing either copy would reintroduce the drift the split exists to fix: compliance would again depend on remembering a paragraph read thousands of tokens earlier, and the step-file copy is the one in force while the worker actually writes artifacts. The wholesale-move alternative is also closed: the lifecycle sentences in `worker.md` are pinned by tests and by cross-phase consumers, so they must stay verbatim where they are.
 

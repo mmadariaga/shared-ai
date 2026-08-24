@@ -1,4 +1,4 @@
-# ADR 0172: Step-gated instruction delivery hands each spec step its instructions just-in-time
+# ADR 0172c: Step-gated instruction delivery hands each spec step its instructions just-in-time
 
 <!-- adr-index: refs ddr:0114; refs ddr:0109c; refs ddr:0110 -->
 

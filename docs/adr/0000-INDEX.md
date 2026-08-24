@@ -29,7 +29,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0160b — Interactive artifact feedback gate gains a non-option review-loop note only](./0160b-interactive-gate-review-loop-note-only.md) — Refs 0028, Refs ddr:0150, Refs 0158c
 - [0166b — Dual-channel exclusivity is per cause surface](./0166b-per-cause-surface-dual-channel-exclusivity.md) — **Amends** 0165
 - [0171c — Single-string invocation envelope across active SAI surfaces](./0171c-single-string-invocation-envelope.md) — Supersedes 0166, **Reframes** 0159b, Refs 0136, Refs ddr:0114
-- [0172 — Step-gated instruction delivery hands each spec step its instructions just-in-time](./0172a-step-gated-instruction-delivery.md) — Refs ddr:0109c, Refs ddr:0110, Refs ddr:0114
+- [0172c — Step-gated instruction delivery hands each spec step its instructions just-in-time](./0172c-step-gated-instruction-delivery.md) — Refs ddr:0109c, Refs ddr:0110, Refs ddr:0114
 ### `/sai-2-design`
 
 - [0015 — Decision summary precedes the completion sentinel](./0015-decision-summary-precedes-completion-sentinel.md) — **Amends** ddr:0014
@@ -206,7 +206,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0168b — Explore item-10 diagnosis uses Review Engine and same-worker continue_after_recovery](./0168b-explore-item-10-diagnosis-review-engine-same-worker.md) — Refs 0140a, Refs 0158c, Refs 0167c
 - [0169b — Idea-list treats Diagnosis Round as recovery, not review](./0169b-idea-list-diagnosis-round-is-recovery-not-review.md) — Refs 0116, Refs 0137b, Refs 0168b
 - [0171a — Item-10 diagnosis entry is shared non-clean set plus Explore cancellation exception](./0171a-item-10-diagnosis-entry-shared-non-clean-plus-cancelled.md) — **Amends** 0168b, Refs 0167c, Refs 0158b
-- [0172 — Sibling worker dispatch for the fast lane](./0172b-sibling-worker-dispatch-for-the-fast-lane.md) — Refs ddr:0157, Refs ddr:0145b
+- [0172d — Sibling worker dispatch for the fast lane](./0172d-sibling-worker-dispatch-for-the-fast-lane.md) — Refs ddr:0157, Refs ddr:0145b
 
 ### `/sai-backfill`
 

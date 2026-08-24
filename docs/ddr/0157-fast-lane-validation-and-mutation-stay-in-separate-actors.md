@@ -1,6 +1,6 @@
 # DDR 0157: Fast-lane validation and mutation stay in separate actors
 
-<!-- ddr-index: refs ddr:0156, refs adr:0172 -->
+<!-- ddr-index: refs ddr:0156, refs adr:0172d -->
 
 ## Status
 
@@ -31,4 +31,4 @@ Retroactive drafts must be schema-validated before any bytes land, but the sessi
 ## Related
 
 - `docs/ddr/0159-fast-lane-selection-pre-authorizes-one-local-commit.md`
-- `docs/adr/0172b-sibling-worker-dispatch-for-the-fast-lane.md`
+- `docs/adr/0172d-sibling-worker-dispatch-for-the-fast-lane.md`

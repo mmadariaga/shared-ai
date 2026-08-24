@@ -1,4 +1,4 @@
-# ADR 0172: Sibling worker dispatch for the fast lane
+# ADR 0172d: Sibling worker dispatch for the fast lane
 
 <!-- adr-index: refs ddr:0157; refs ddr:0145b -->
 

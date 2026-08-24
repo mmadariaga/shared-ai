@@ -1,6 +1,6 @@
 # DDR 0156: Fast-lane artifacts follow implementation
 
-<!-- ddr-index: refs adr:0172, refs ddr:0158 -->
+<!-- ddr-index: refs adr:0172d, refs ddr:0158 -->
 
 ## Status
 
@@ -31,4 +31,4 @@ The Auto (fast implementation) selector option produces working code from a crys
 ## Related
 
 - `docs/ddr/0158-autofast-implementer-receives-only-the-block.md`
-- `docs/adr/0172b-sibling-worker-dispatch-for-the-fast-lane.md`
+- `docs/adr/0172d-sibling-worker-dispatch-for-the-fast-lane.md`

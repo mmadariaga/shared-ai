@@ -363,7 +363,7 @@ test('Step 1 preserves artifact-only worker ownership and specific discard reaso
 
   assert.match(feedbackGate, /Accepted changes remain worker-owned and may be written only by that worker to `proposal\.md` or `specs\/\*\*` in the selected change directory/i);
   assert.match(feedbackGate, /Report every \*\*discarded\*\* item individually[\s\S]{0,240}specific reason/i);
-  assert.match(supervision, /The spec worker is the spec phase's only delegated writer: its write scope is limited to `proposal\.md`, `specs\/\*\*`, and permitted metadata in its selected change directory/i);
+  assert.match(supervision, /The spec worker is the spec phase's only delegated writer:[\s\S]{0,260}SpecWriteSurface[\s\S]{0,180}`proposal\.md`[\s\S]{0,100}`specs\/\*\*`/i);
   assert.match(supervision, /Explore never writes directly/i);
 });
 
@@ -705,13 +705,13 @@ test('Step 2: external findings stay within reviewed artifacts and worker correc
 
   assert.match(source, /external[\s-]+(?:artifact[- ]review )?findings?/i,
     'the correction path should consume external findings');
-  assert.match(source, /Findings may edit only `proposal\.md` and `specs\/\*\*`|findings?[^\n]{0,180}(?:only|limited|restricted)[^\n]{0,180}(?:proposal\.md|specs\/\*\*)/i,
+  assert.match(source, /Findings may edit only\s+`proposal\.md`\s+and\s+`specs\/\*\*`|findings?[^\n]{0,180}(?:only|limited|restricted)[^\n]{0,180}(?:proposal\.md|specs\/\*\*)/i,
     'external findings should be corrected only within the reviewed artifacts');
   assert.match(source, /Accepted edits trigger pre-completion verification and decision-summary recomputation from current artifacts/i,
     'accepted external corrections should trigger worker verification and summary recomputation');
-  assert.match(source, /Findings may edit only `proposal\.md` and `specs\/\*\*`|findings?[\s\S]{0,180}(?:only|limited|restricted)[\s\S]{0,120}(?:proposal\.md|specs\/\*\*)/i,
+  assert.match(source, /Findings may edit only\s+`proposal\.md`\s+and\s+`specs\/\*\*`|findings?[\s\S]{0,180}(?:only|limited|restricted)[\s\S]{0,120}(?:proposal\.md|specs\/\*\*)/i,
     'external findings should be limited to the reviewed artifacts');
-  assert.match(source, /Report every discarded item with a specific reason|reports? every discard with its specific reason|every discarded item individually[\s\S]{0,120}specific reason/i,
+  assert.match(source, /Report every discarded item with a specific\s+reason|reports? every discard with its specific\s+reason|every discarded item individually[\s\S]{0,120}specific\s+reason/i,
     'a discarded finding should carry a specific rejection reason');
   assert.match(coordinator, /Report (?:worker-authored|external-finding) discards/i,
     'the coordinator should surface discarded findings');
@@ -733,6 +733,7 @@ test('Step 2: accepted external corrections re-verify and recompute the decision
 test('Step 2: validation precedes external findings and external evidence is the only review-progress source', () => {
   const worker = spec('sai/commands/spec/worker.md');
   const coordinator = spec('sai/commands/spec/coordinator.md');
+  const contract = spec('sai/policies/spec-phase-contract.md');
 
   assert.doesNotMatch(worker, /run the automatic review loop/,
     'validation must not enter a worker-owned automatic review loop');
@@ -742,8 +743,8 @@ test('Step 2: validation precedes external findings and external evidence is the
     'external findings should follow validation');
   assert.match(worker, /valid[\s\S]{0,220}(?:external|base[- ]form)[\s\S]{0,220}(?:High=0|Summary)|(?:High=0|Summary)[\s\S]{0,220}(?:valid|external|base[- ]form)/i,
     'only valid external evidence may produce review progress');
-  assert.match(coordinator, /`validation`[\s\S]{0,120}`review`/,
-    'the plan should order validation before review');
+  assert.match(contract, /`validation`[\s\S]{0,120}`review`/,
+    'the canonical plan should order validation before review');
 });
 
 test('Step 2: external findings, not worker inference, drive review evidence and corrections', () => {
@@ -751,7 +752,7 @@ test('Step 2: external findings, not worker inference, drive review evidence and
 
   assert.match(worker, /external[\s-]+(?:artifact[- ]review )?findings?/i,
     'the worker should consume external findings');
-  assert.match(worker, /Findings may edit only `proposal\.md` and `specs\/\*\*`/,
+  assert.match(worker, /Findings may edit only\s+`proposal\.md`\s+and\s+`specs\/\*\*`/,
     'the external correction scope should remain explicit');
   assert.match(worker, /never infer `?High=0`? from missing, malformed, or other summary text/i,
     'a worker must not infer review evidence from absent or malformed input');
@@ -767,16 +768,16 @@ test('Step 2: workers have no automatic reviewer loop under supervision and the 
     'the worker contract should state the supervised boundary');
   assert.match(worker, /does not dispatch or own an artifact reviewer, an automatic review loop, review counters/i,
     'the worker must not retain a worker-owned automatic reviewer or its counters');
-  assert.match(worker, /supervised selector Explore has no adapter progress plan/i,
-    'the supervised selector must not acquire a routed worker progress plan');
+  assert.match(worker, /Explore\s+may suppress the visual plan while retaining the pointer map/i,
+    'the supervised selector must retain pointer routing without visual progress');
   assert.doesNotMatch(worker, /coexists with and never replaces the supervised pipeline's (?:independent convergence loop|supervised review rounds|in[- ]session review rounds)/i,
     'supervision must not retain a second worker-owned review layer');
-  assert.match(supervision, /no adapter-declared plan is in force in the supervised flow/,
-    'no routed progress plan should be in force under supervision');
-  assert.match(supervision, /no plan-based list renders/,
+  assert.match(supervision, /declares no visual `progress_plan`/,
+    'the supervised adapter should suppress only the visual progress plan');
+  assert.match(supervision, /no task-list step is marked and no milestone stamp is rendered/i,
     'no routed task list should render under supervision');
-  assert.match(supervision, /Step marking has no application/,
-    'step marking should have no application in the supervised flow');
+  assert.match(supervision, /canonical routing-only `SpecStepPointerMap`/,
+    'pointer routing should remain active under supervision');
 });
 
 // â”€â”€â”€ Step 3: spec-design-review-progress-step (supervised design review) â”€â”€â”€â”€

@@ -186,7 +186,7 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 **Orca Environment**: "A persistent Docker-based development appliance that hosts Orca and agent command-line interfaces with isolated workspace, runtime state, and credentials."
 *Avoid*: Orca container, remote agent workspace, container appliance
 
-**Phase Adapter**: "The per-routed-phase field set consumed by the shared command runner — initial worker envelope, dispatch and continuation operations, permitted nonterminal extensions and handlers, replacement-reconstruction fields, `terminal_navigation`, and optional static `progress_plan` and `recovery_policy` — that supplies phase-specific behavior without reimplementing lifecycle mechanics."
+**Phase Adapter**: "The per-routed-phase field set consumed by the shared command runner — initial worker envelope, dispatch and continuation operations, permitted nonterminal extensions and handlers, replacement-reconstruction fields, `terminal_navigation`, and optional static `progress_plan`, `step_pointer_map`, and `recovery_policy` — that supplies phase-specific behavior without reimplementing lifecycle mechanics. `progress_plan` controls visual task-list rendering; `step_pointer_map` independently controls just-in-time worker instruction routing."
 *Avoid*: harness boot adapter, command card, standalone invocation shell, phase shell
 
 **Phase Policy**: "The design-only or implementation-only rules layered by a separate phase worker contract over the shared **Orchestration Core** lifecycle."

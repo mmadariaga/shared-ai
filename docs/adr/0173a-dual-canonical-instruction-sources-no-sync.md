@@ -1,6 +1,6 @@
 # ADR 0173: Dual-canonical instruction sources with no synchronization mechanism
 
-<!-- adr-index: refs 0172 -->
+<!-- adr-index: refs 0172c -->
 
 ## Status
 
@@ -23,9 +23,9 @@ Keep both sources. `sai/commands/implement/steps/` is the worker-canonical rule 
 
 - Dual-canonical source risk between `steps/` and `instructions.md` persists while the experiment runs.
 - Rollback is removing the `step_pointer_map` declaration from the implement coordinator card; the step files simply stop being delivered and `instructions.md`/`invocation.md` remain authoritative for apply, untouched.
-- Refs ADR 0172 (the `/sai-1-spec` step-gated experiment this change replicates).
+- Refs ADR 0172c (the `/sai-1-spec` step-gated experiment this change replicates).
 
 ## Related
 
-- ADR 0172 — Step-gated instruction delivery hands each spec step its instructions just-in-time
+- ADR 0172c — Step-gated instruction delivery hands each spec step its instructions just-in-time
 - `openspec/changes/implement-step-gated-instructions/` — the change that introduced the step library

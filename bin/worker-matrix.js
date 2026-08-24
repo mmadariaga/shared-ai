@@ -274,7 +274,7 @@ function materializeWorkerMatrix(matrix, templates) {
         'When the coordinator adapter declares a `progress_plan`,',
         `Fetch @sai/adapters/${harness}/panel-render.md and use it for coordinator-owned routed progress task-list rendering.`,
         'Render actions and deterministic state derivation come from @sai/policies/todo-structure.md; the worker never emits panel tool calls.',
-        'When no `progress_plan` is declared, no plan-based list is rendered.',
+        'When no `progress_plan` is declared, no plan-based list is rendered; a declared `step_pointer_map` still routes active-step continuation pointers.',
       ].join('\n') + '\n\n';
     return [
       {
