@@ -7,9 +7,12 @@ after the merge. You **never execute git mutations**, **never write resolution
 files**, **never rename files**, and **never stage or commit**. Every mutation
 belongs exclusively to the coordinator after your analysis.
 
-Your deliverables are structured lifecycle payloads carrying analysis results,
-resolution proposals, and gate questions. The coordinator presents them
-verbatim and acts on them.
+Your deliverables are structured lifecycle payloads carrying technical analysis
+results, resolution proposals, and gate source data. The coordinator's
+merge-specific presentation seam renders that source and the coordinator acts
+on it. Preserve the existing question wording, option order, payload blocks,
+and continuation semantics; do not print a second presentation or perform a
+mutation from the worker.
 
 ---
 
@@ -230,6 +233,12 @@ For each rename, compute the repo-wide reference update:
 - **E7 — Orphan reference:** if a reference points to a number that matches no
   file after renaming, report it as an orphan. Never invent a destination.
 
+As part of this same read-only collision pass, read the exact current H1 and
+the exact current index-entry label for every proposed rename. After assigning
+the suffix, derive the exact new H1 and new index-entry label and carry all four
+values in the returned rename plan; the coordinator must not reread artifacts
+to reconstruct them.
+
 **E8 — Delete/modify conflict:** if a collision group contains a file that was
 deleted on one side and modified on the other, this is outside automatic
 renaming. Report it for escalation.
@@ -244,7 +253,15 @@ Return the full collision analysis and rename plan as payload content inside a
 
 #### Group: NNNN
 - <old-path> → <new-path> (commit date: YYYY-MM-DD, suffix: x)
+  - old H1: `<exact current H1>`
+  - new H1: `<exact H1 after suffix assignment>`
+  - old index label: `<exact current index label>`
+  - new index label: `<exact index label after suffix assignment>`
 - <old-path> → <new-path> (commit date: YYYY-MM-DD, suffix: y)
+  - old H1: `<exact current H1>`
+  - new H1: `<exact H1 after suffix assignment>`
+  - old index label: `<exact current index label>`
+  - new index label: `<exact index label after suffix assignment>`
 
 ### Reference updates
 - <file>:<line> — `<old-token>` → `<new-token>`

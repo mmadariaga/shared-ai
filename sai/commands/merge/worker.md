@@ -37,13 +37,20 @@ specs / ADR-DDR / code), the resolution proposals (semantic merge for specs,
 guided fusion for code, E3 escalation for true contradictions), the runtime
 scope gate (Step 5), the verification loop (Step 6, E4 no-suite escalation,
 E5 cap exhaustion), and the ADR/DDR collision pass (Step 7, E6 triple+
-collisions, E7 orphan refs, E8 delete/modify escalation). Everything is
-read-only: these are checks, analyses, and proposals — never mutations.
+collisions, E7 orphan refs, E8 delete/modify escalation). During the collision
+pass, return the exact old/new H1 and old/new index-label data for every
+proposed rename; obtain it as part of this read-only analysis so the
+coordinator never has to reread artifacts to reconstruct presentation state.
+Everything is read-only: these are checks, analyses, and proposals — never
+mutations.
 
-All findings return as payload content: carry the conflict analysis, the
-resolution proposals, the verification results, and the ADR/DDR rename plan
-inside your summaries so the coordinator can present them verbatim. Never
-print them as your deliverable and never write them to any file.
+All findings return as technical source payload content: carry the conflict
+analysis, the resolution proposals, the verification results, and the
+ADR/DDR rename plan inside your summaries. The coordinator's merge
+presentation seam owns how that source is rendered to the user; keep the
+source content exact and never print it as your deliverable or write it to
+any file. Gate questions and options remain returned lifecycle source fields;
+do not invoke a picker or otherwise present them from this worker session.
 
 Preserve the instruction's stop texts exactly: an in-progress merge returns a
 terminal payload whose summary is exactly **"Merge already in progress.
