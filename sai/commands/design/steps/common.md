@@ -2,9 +2,18 @@
 
 This file is fetched at worker dispatch and stays in force for the entire run. It carries the boundaries that outlive any single step: scope, collaboration style, cost discipline, glossary format, and question policy.
 
+Rules originating here: Step delivery meta-rule, Resident blocks, Generation scope, Artifact-only scope, Collaboration style, Cost and budget discipline. Resident blocks are loaded at dispatch alongside this file: `@sai/commands/design/steps/review.md` (external findings) and `@sai/commands/design/steps/overview.md` (overview generation).
+
+Fetch @sai/commands/design/phase-contract.md and use its `DesignWriteSurface`,
+`DesignResultUnion`, and pointer/rendering separation as the canonical phase
+declarations. This step file supplies no competing lifecycle, progress, or
+write-scope contract.
+
 ## Step delivery meta-rule
 
 The coordinator names each active step by appending one pointer line — `Active step: <id> — follow <path>` — to a progress-event continuation. Execute only the step file that line names; never prefetch, open, or follow any other step instruction file. Step paths arrive solely through coordinator continuations; this file is the only step surface loaded at dispatch. `prereqs-resolution` has no step file of its own — it runs from the worker contract plus this file before the first progress event, and the first delivered pointer targets research. Each step ends by returning its progress event per the worker contract's Progress Reporting plan; a continuation without a pointer line (artifact feedback, recovery) leaves the active step unchanged in this continuous session.
+
+Resident blocks are fetched at dispatch alongside this file and remain in force for the entire run. Residents execute only when their entry condition is met; they are not reached through progress-event pointer delivery. Review and overview are residents, reached through artifact-feedback and generation-trigger continuations respectively.
 
 Fetch @sai/policies/glossary-format.md
 Fetch @sai/policies/sai-learnings-format.md

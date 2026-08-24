@@ -1137,19 +1137,28 @@ test('the lifecycle obliges planned workers to emit progress and keeps payload v
 
 // ─── Step 4: command-progress-plan-protocol (design coordinator.md) ─────────
 
-test('Step 3: the design coordinator declares the opted-in seven-step and unopted six-step progress plans', () => {
-  const coordinator = artifact('sai/commands/design/coordinator.md');
+test('Step 3: the design canonical phase-contract declares the opted-in seven-step and unopted six-step progress plans', () => {
+  const phaseContract = artifact('sai/commands/design/phase-contract.md');
 
-  assertPlanVariants(coordinator, 'the coordinator');
+  assertPlanVariants(phaseContract, 'the phase contract');
 });
 
-test('Step 3: the design worker enumerates both plan variants byte-for-byte as the coordinator', () => {
+test('Step 3: the design coordinator and worker both reference the canonical phase-contract for progress plans', () => {
   const coordinator = artifact('sai/commands/design/coordinator.md');
   const worker = artifact('sai/commands/design/worker.md');
+  const phaseContract = artifact('sai/commands/design/phase-contract.md');
 
-  assertPlanVariants(worker, 'the worker');
-  assert.deepEqual(declaredStepLines(worker), declaredStepLines(coordinator),
-    'the worker plan variants should equal the coordinator plan declarations byte-for-byte');
+  assert.match(
+    coordinator,
+    /phase-contract/i,
+    'the coordinator should reference phase-contract.md for canonical declarations',
+  );
+  assert.match(
+    worker,
+    /phase-contract/i,
+    'the worker should reference phase-contract.md for canonical declarations',
+  );
+  assertPlanVariants(phaseContract, 'the phase contract');
 });
 
 test('Step 3: coordinator plan selection is presence-only and preserves opt-in shape for malformed, missing-value, and duplicate flags', () => {
@@ -1330,7 +1339,7 @@ test('Step 3: the startup act selects the six- or seven-step plan from overview-
     /startup[\s\S]{0,500}`?--overview-lang`?[\s\S]{0,500}(?:present|absent|missing|duplicate|malformed)/i,
     'the startup act should retain raw overview-language flag presence before validation',
   );
-  assertPlanVariants(worker, 'the startup worker');
+  assertPlanVariants(artifact('sai/commands/design/phase-contract.md'), 'the startup phase contract');
   assert.match(
     worker,
     /(?:absent|without|missing)[\s\S]{0,320}(?:no|never|not)[\s\S]{0,180}(?:overview|generation)[\s\S]{0,160}(?:progress|terminal)/i,

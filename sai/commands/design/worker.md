@@ -26,7 +26,7 @@ Parse invocation-scoped options before change resolution.
 
 After these existing parse rules, recognize bare `--supervised` alongside `--fast-track` and `--overview-lang <language>`. It is order-independent among flags after the change name: `{name} --fast-track --supervised` and `{name} --supervised --fast-track` are both accepted, as are `{name} --overview-lang <language> --supervised` and `{name} --supervised --overview-lang <language>`. Strip `--supervised` before change-name finalization, set invocation-scoped `supervised: true` when it is present and `supervised: false` when it is absent, never persist it, and do not verify dispatcher provenance. The name-first design envelope therefore accepts either fast-track/supervision flag order without changing the resolved name.
 
-If `--fast-track` is present in the combined envelope, activate the signal, remove the token from its source value, and return the design notice carrying `message: > FAST-TRACK MODE ACTIVE` once per session unless reconstruction says `fast_track_banner_emitted: true`. The notice is a returned nonterminal result, not a line printed inside this session; the coordinator prints it and resumes the worker with `continue_after_notice`.
+If `--fast-track` is present in the combined envelope, activate the signal, remove the token from its source value, and return the design notice carrying `message: > FAST-TRACK MODE ACTIVE` once per session unless reconstruction says `fast_track_banner_emitted: true`, or `supervised` is true. On the supervised route no coordinator is present and Explore owns the chained-segment banner, so this worker returns no notice and the invocation still yields exactly one visible activation confirmation. The notice is a returned nonterminal result, not a line printed inside this session; the coordinator prints it and resumes the worker with `continue_after_notice`.
 Then run universal prerequisite checks via `Fetch @sai/policies/prereqs.md`.
 Return `failed` with the missing-prerequisite summary when a check fails.
 
@@ -46,41 +46,15 @@ amendments per @sai/commands/design/steps/design.md (Spec-problem handling).
 
 ## Progress Reporting
 
-The startup act is one batch: it runs prerequisites, resolves the change, and selects the plan from the validated `--overview-lang` outcome. Because the coordinator halts on missing-value, duplicate, and malformed forms before dispatch, only two outcomes reach this worker: a present, well-formed token selects the opted-in plan, and an absent token selects the unopted plan. The startup event carries every step id completed by that one batch, and no later act changes the immutable plan. The validated envelope selects one of exactly two static progress plans. The opted-in plan applies when `--overview-lang` is present; the unopted plan applies when it is absent.
+The startup act is one batch: it parses fast-track, runs prerequisites, resolves the change, and commits the selected immutable plan. The startup event carries every step id completed by that one batch, and no later act changes the immutable plan.
 
-**Opted-in plan (`--overview-lang` present):**
+Fetch @sai/commands/design/phase-contract.md and use its canonical `DesignProgressPlan` variants and `DesignStepPointerMap`. This worker does not redeclare them, add a third plan, or alter them after startup.
 
-- `prereqs-resolution` — "Check prerequisites"
-- `research` — "Research and resolve open questions"
-- `design` — "Write design.md"
-- `tasks` — "Write tasks.md"
-- `interfaces` — "Write interfaces.md"
-- `review` — "Review artifacts"
-- `overview` — "Generate change-overview.md"
-
-**Unopted plan (`--overview-lang` absent):**
-
-- `prereqs-resolution` — "Check prerequisites"
-- `research` — "Research and resolve open questions"
-- `design` — "Write design.md"
-- `tasks` — "Write tasks.md"
-- `interfaces` — "Write interfaces.md"
-- `review` — "Review artifacts"
+Select the immutable progress plan exactly once before the startup event, using raw token presence only: a present `--overview-lang` token selects the opted-in seven-step plan, and an absent token selects the unopted six-step plan. Malformed, missing-value, and duplicate occurrences remain present for this selection; this worker alone validates them before resolution, and no other surface halts them first.
 
 Immediately before the first effective source-artifact write, set the overview lifecycle state to stale; this is the stale-before-first-write boundary.
 
-Select the immutable progress plan exactly once before the startup event, using
-raw token presence only:
 
-| raw invocation signal | selected plan |
-| --- | --- |
-| `--overview-lang` token present (including malformed forms rejected below) | opted-in seven-step plan |
-| `--overview-lang` token absent | unopted six-step plan |
-
-The coordinator declares the same two plans and pointer map; this worker does
-not add a third plan or alter the coordinator's declarations after startup.
-
-The startup act is one batch: it parses fast-track, runs prerequisites, resolves the change, and commits the table-selected immutable plan before value validation. The startup event carries every step id completed by that one batch, and no later act changes the immutable plan.
 
 Return exactly one progress event per completed act after prerequisite checks
 pass and change resolution completes, per
