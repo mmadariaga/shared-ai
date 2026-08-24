@@ -593,6 +593,42 @@ test('Step 2 the routed invocation parses arguments before the change picker and
     'specs/apply-routed-card-set/spec.md: the invocation must load the remember policy');
 });
 
+test('Step 2 Apply orders global prerequisites, fast-track parsing, change resolution, and implementation-plan validation', () => {
+  const invocation = artifact(APPLY_CARDS.invocation);
+  const headings = [
+    '## Prerequisite checks',
+    '## Fast-track parse',
+    '## Change resolution',
+    '## Implementation-plan check',
+    '## Load behaviors (in order)',
+  ];
+  const positions = headings.map(heading => invocation.indexOf(heading));
+  for (const [index, position] of positions.entries()) {
+    assert.ok(position >= 0, `invocation must declare ${headings[index]}`);
+  }
+  assert.deepEqual(
+    [...positions].sort((left, right) => left - right),
+    positions,
+    'global prerequisites, fast-track parsing, change resolution, and implementation validation must be ordered'
+  );
+
+  const prerequisiteBody = invocation.slice(positions[0], positions[1]);
+  assert.doesNotMatch(prerequisiteBody, /implementation\.md/,
+    'global prerequisite checks must not validate implementation.md before a change is resolved');
+
+  const implementationCheck = invocation.slice(positions[3], positions[4]);
+  assert.match(implementationCheck, /after change resolution|resolved change/i,
+    'implementation.md validation must be explicitly post-resolution');
+  assert.match(implementationCheck,
+    /implementation\.md not found for '\{change-name\}'\. Run \/sai-3-implement first\./,
+    'the existing missing-implementation stop literal must remain unchanged');
+  assert.equal(
+    (invocation.match(/implementation\.md not found for '\{change-name\}'\. Run \/sai-3-implement first\./g) || []).length,
+    1,
+    'the missing-implementation stop literal must have one normative occurrence'
+  );
+});
+
 test('Step 2 full completion emits exactly the pinned completion literal; fast track emits its banner once without bypassing safe operations', () => {
   const coordinator = artifact(APPLY_CARDS.coordinator);
   const runner = artifact(APPLY_CARDS.runner);

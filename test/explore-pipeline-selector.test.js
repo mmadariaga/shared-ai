@@ -842,19 +842,21 @@ test('Auto chained design envelope forwards overview generation conditionally', 
   );
 });
 
-test('Step 7: design grammar is name-first, accepts a bare supervised flag, and delegates fast-track parsing to the coordinator', () => {
+test('Step 7: design grammar is name-first and accepts supervised and fast-track flags', () => {
   const worker = spec('sai/commands/design/worker.md');
 
   assert.match(worker, /requires the change name before the option/i,
     'the design grammar should require the change name before flags');
   assert.match(worker, /recognize bare `--supervised`/i,
     'the design grammar should recognize the bare --supervised flag');
-  assert.match(worker, /order-independent relative to `--overview-lang`[\s\S]{0,180}both accepted/i,
+  assert.match(worker, /order-independent among flags after the change name[\s\S]{0,220}both accepted/i,
     'the overview-language and supervised flags stay order-independent after the name');
-  assert.match(worker, /Fast-track is NOT parsed here[\s\S]{0,200}owns/i,
-    'fast-track parsing belongs to the coordinator per sai-fast-track-flag');
-  assert.match(worker, /stray `--fast-track` token[\s\S]{0,160}strip it tolerantly/i,
-    'a stray fast-track token is stripped tolerantly without worker-side meaning');
+  assert.match(worker, /If `--fast-track` is present[\s\S]{0,220}remove the token/i,
+    'the design worker must strip fast-track from the combined envelope');
+  assert.match(worker, /fast-track notice/i,
+    'the design worker must return a fast-track notice');
+  assert.match(worker, /coordinator prints it/i,
+    'the coordinator must own presentation of the worker-produced fast-track notice');
 });
 
 test('design-phase retry carries --supervised and does not re-run sai-1', () => {

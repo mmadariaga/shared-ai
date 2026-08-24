@@ -3,10 +3,7 @@
   ## Prerequisite checks
   Fetch @sai/policies/prereqs.md
 
-  Also verify before proceeding:
-  - `openspec/changes/{change-name}/implementation.md` exists. If not, STOP and print: "implementation.md not found for '{change-name}'. Run /sai-3-implement first."
-
-  Do not create or modify any files if this check fails.
+  Complete the global OpenSpec prerequisites before any change-specific lookup. This section checks only the OpenSpec binary, project directory, and configured schema; it does not resolve a change or validate a change-specific artifact.
 
   ## Fast-track parse
   Before proceeding, inspect the boot-provided `arguments_value` for the positional token `--fast-track`:
@@ -26,6 +23,12 @@
 
   ## Change resolution
   Fetch @sai/policies/change-picker.md and follow it exactly.
+
+  ## Implementation-plan check
+  After change resolution, verify the resolved change's implementation plan:
+  - `openspec/changes/{change-name}/implementation.md` exists. If not, STOP and print: "implementation.md not found for '{change-name}'. Run /sai-3-implement first."
+
+  Do not create or modify any files if this post-resolution artifact check fails.
 
   ## Load behaviors (in order)
   Fetch @skills/budget/SKILL.md and use it
