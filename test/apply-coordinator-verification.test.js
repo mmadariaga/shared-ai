@@ -322,8 +322,8 @@ function terminalLifecycleSection(text) {
 test('Step 2 terminal no-op and decline paths do not create or retry a documentation commit', () => {
   const section = terminalLifecycleSection(artifact(APPLY_CARDS.runner));
   assert.match(section, /When none of these conditions holds, propose no terminal documentation commit and ask no terminal authorization question/);
-  assert.match(section, /only explicit `yes` authorizes `git add` and `git commit`/);
-  assert.match(section, /silence or any other response is a decline/);
+  assert.match(section, /only explicit `yes`[\s\S]{0,240}authorizes `git add` and `git commit`/);
+  assert.match(section, /off-option reply or silence is NOT a decline[\s\S]{0,200}only explicit `no` declines/s);
   assert.match(section, /On decline, leave eligible files in the working tree/);
   assert.match(section, /without retrying/);
   assert.match(section, /continue to MANDATORY STOP/);
@@ -349,7 +349,8 @@ test('Step 2 active session authorization and fast-track skip only the terminal 
   assert.match(coordinator, /fast-track.*pre-activate|pre-activate.*fast-track/i);
   assert.match(runner, /When the session flag is already active.*skip only this authorization ask/s);
   assert.match(runner, /still print the visibility listing and proposed message before staging and committing/s);
-  assert.match(runner, /does not offer `Allow on this session`/);
+  assert.match(runner, /options `yes \(Recommended\)` \/ `no` \/ `Allow on this session`/);
+  assert.match(runner, /`Allow on this session` selection[\s\S]{0,160}activates `session_commit_authorized`/);
 });
 
 test('Step 2 terminal documentation preserves the pre-Final-sweep halt and field-8 boundaries', () => {

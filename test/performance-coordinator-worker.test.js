@@ -81,7 +81,9 @@ test('performance coordinator exposes the complete adapter contract', () => {
   }
   assert.match(coordinator, /allowed_nonterminal_extensions[\s\S]{0,240}progress/i);
   assert.match(coordinator, /extension_handlers[\s\S]{0,120}(?:empty|\{\})/i);
-  assert.match(coordinator, /terminal_navigation[\s\S]{0,120}Performance audit done\./i);
+  assert.match(coordinator, /terminal_navigation[\s\S]{0,120}navigation below/i);
+  assert.equal((coordinator.match(/Performance audit done\./g) || []).length, 1,
+    'the done-literal is declared exactly once, in the navigation section');
 });
 
 test('performance coordinator validates lifecycle payloads and terminal statuses', () => {

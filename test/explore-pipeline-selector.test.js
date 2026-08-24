@@ -468,10 +468,9 @@ test('Step 2 keeps the autonomy audit in conversation and never persists it', ()
 test('Step 2 pins the autonomy audit field order and empty-report form', () => {
   const source = exploreContract();
 
-  assert.match(source, /Autonomy audit.*supervised spec phase/is);
-  assert.match(source, /Auto-answered:.*Escalated:/i);
-  assert.match(source, /Q:.*A:.*Grounding:/is);
-  assert.match(source, /no questions were auto-answered this phase/i);
+  assert.match(source, /pinned scannable layout single-sourced at `sai\/policies\/autonomy-audit-log\.md`/);
+  assert.match(source, /phase label `supervised spec phase`/);
+  assert.match(source, /that policy owns the fixed field order, the empty-report case/);
 });
 
 test('supervised pipeline state extends the selector interface by phase with separate round counters', () => {
@@ -570,7 +569,7 @@ test('Claude Code and opencode consume the same shared closure contract', () => 
 test('Step 1 parses an optional overview language before fast-track and leaves absent language unresolved', () => {
   const source = spec('sai/commands/explore/body.md');
 
-  assert.match(source, /## Overview-language parse/);
+  assert.match(source, /## Overview-language validation/);
   assert.match(source, /--overview-lang <language>/);
   assert.match(
     source,
@@ -843,21 +842,19 @@ test('Auto chained design envelope forwards overview generation conditionally', 
   );
 });
 
-test('Step 7: design grammar is name-first, accepts a bare supervised flag, and is order-independent after the name', () => {
+test('Step 7: design grammar is name-first, accepts a bare supervised flag, and delegates fast-track parsing to the coordinator', () => {
   const worker = spec('sai/commands/design/worker.md');
 
-  assert.match(worker, /(?:change[- ]name|name)[\s\S]{0,180}(?:first|required before|requires?[\s\S]{0,60}before|must precede)[\s\S]{0,180}(?:flag|option|--supervised)/i,
+  assert.match(worker, /requires the change name before the option/i,
     'the design grammar should require the change name before flags');
-  assert.match(worker, /bare[\s\S]{0,100}`?--supervised`?|`?--supervised`?[\s\S]{0,100}bare/i,
+  assert.match(worker, /recognize bare `--supervised`/i,
     'the design grammar should recognize the bare --supervised flag');
-  assert.match(worker, /(?:either order|order[- ]independent|in any order|regardless of order)[\s\S]{0,180}(?:--fast-track|--supervised)|(?:--fast-track|--supervised)[\s\S]{0,180}(?:either order|order[- ]independent|in any order|regardless of order)/i,
-    'the design flags should be order-independent after the name');
-  assert.match(worker, /\{name\} --fast-track --supervised/,
-    'the design grammar should accept fast-track before supervised');
-  assert.match(worker, /\{name\} --supervised --fast-track/,
-    'the design grammar should accept supervised before fast-track');
-  assert.match(worker, /name-first design envelope[\s\S]{0,180}(?:either|fast-track|supervision)/i,
-    'the name-first grammar should remain the only flag-order contract');
+  assert.match(worker, /order-independent relative to `--overview-lang`[\s\S]{0,180}both accepted/i,
+    'the overview-language and supervised flags stay order-independent after the name');
+  assert.match(worker, /Fast-track is NOT parsed here[\s\S]{0,200}owns/i,
+    'fast-track parsing belongs to the coordinator per sai-fast-track-flag');
+  assert.match(worker, /stray `--fast-track` token[\s\S]{0,160}strip it tolerantly/i,
+    'a stray fast-track token is stripped tolerantly without worker-side meaning');
 });
 
 test('design-phase retry carries --supervised and does not re-run sai-1', () => {
@@ -1158,7 +1155,9 @@ test('Step 2: post-proceed report ordering remains after supervised gates withou
   const afterGate = source.slice(gate.index + gate[0].length);
   assert.match(afterGate, /Auto-answered:[\s\S]{0,220}Escalated:/i,
     'post-proceed reporting should retain Auto-answered before Escalated');
-  assert.match(afterGate, /Q:[\s\S]{0,160}A:[\s\S]{0,160}Grounding:/i,
+  assert.match(source, /pinned scannable layout single-sourced at `sai\/policies\/autonomy-audit-log\.md`/,
+    'post-proceed reporting should render the audit through the single-sourced policy');
+  assert.match(source, /grounding citation/,
     'post-proceed reporting should retain question, answer, and grounding order');
   assert.doesNotMatch(
     source,
