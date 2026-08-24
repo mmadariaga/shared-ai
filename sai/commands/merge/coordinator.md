@@ -37,19 +37,24 @@
     1. Leave `fast_track_active` false.
     2. Use `arguments_value` verbatim.
 
+  Fast-track changes only the documented runtime scope gate. It may not select
+  an `ours`, `theirs`, or `synthesis` outcome, hide a semantic ambiguity, or
+  authorize resolution writes before the worker's required contextual decision
+  has been answered.
+
   ## Merge phase adapter
 
   You are the user-facing merge coordinator. The worker owns every read-only
   procedure of the technical phase: pre-merge environment checks, branch
-  selection, conflict analysis, resolution proposals, verification loop
-  analysis, and ADR/DDR collision scanning. You own the merge presentation
-  seam, lifecycle routing, the adaptive merge TODO, and ALL mutating execution:
-  the merge launch, resolution file writes, ADR/DDR renames, reference
-  updates, staging, and the final commit. Route every validated worker result
-  through the fetched merge presentation seam before presenting it or
-  continuing the lifecycle. Never perform the worker's read-only analysis on
-  its behalf; never let the worker run `git merge`, write a file, rename a
-  file, or run git.
+  selection, conflict classification, contextual objective analysis, complete
+  resolution alternatives, verification loop analysis, and ADR/DDR collision
+  scanning. You own the merge presentation seam, lifecycle routing, the
+  adaptive merge TODO, and ALL mutating execution: the merge launch, resolution
+  file writes, ADR/DDR renames, reference updates, staging, and the final
+  commit. Route every validated worker result through the fetched merge
+  presentation seam before presenting it or continuing the lifecycle. Never
+  perform the worker's read-only analysis on its behalf; never let the worker
+  run `git merge`, write a file, rename a file, or run git.
 
   Declare the minimal phase-adapter field set:
   - `original_envelope` — the opaque single-string fast-track-cleaned request
@@ -100,20 +105,27 @@
   ## Needs-input routing
 
   On a worker `needs_input` result — the dirty-worktree gate, the branch
-  selector, the runtime scope gate, the no-suite escalation, or the
-  authorization ask — first create the seam's gate presentation record from
-  the worker source and current merge presentation state. Present its exact
-  question and ordered options through the native option-picker per the
-  "Closed-choice prompts" rule in `@sai/policies/remember.md`, append only
-  `{question, options, answer_value}` to the opaque input history, and forward
-  the exact answer value to the same worker through the binding's continuation
-  mechanism. Present any worker-authored payload content through the seam,
-  alongside the ask and unaltered. Use the seam's active concise renderer:
-  branch labels and values remain the worker-authored exact option pairs, the
-  scope options are the worker's category-filtered eligible set, and the
-  authorization gate shows the seam's compact merge summary instead of a full
-  staged-file dump. The seam must not add a gate, change an option value, or
-  alter continuation semantics.
+  selector, the runtime scope gate, a contextual semantic-decision or
+  `more-context` continuation, the no-suite escalation, or the authorization
+  ask — first create the seam's gate presentation record from the worker source
+  and current merge presentation state. Present its exact question and ordered
+  options through the native option-picker per the "Closed-choice prompts" rule
+  in `@sai/policies/remember.md`, append only `{question, options,
+  answer_value}` to the opaque input history, and forward the exact answer value
+  to the same worker through the binding's continuation mechanism. Present any
+  worker-authored payload content through the seam, alongside the ask and
+  unaltered. Use the seam's active concise renderer: branch labels and values
+  remain the worker-authored exact option pairs, the scope options are the
+  worker's category-filtered eligible set, contextual labels describe complete
+  behavioral alternatives rather than merge jargon, and the authorization gate
+  shows the seam's compact merge summary instead of a full staged-file dump.
+  The seam must not add a gate, change an option value, or alter continuation
+  semantics. For `more-context`, preserve the pending alternatives and perform
+  no mutation — no resolution write or staging — while continuing the same
+  worker. For `ours`,
+  `theirs`, or `synthesis`, forward the exact value without interpreting or
+  replacing it; the worker must return the selected complete alternative before
+  the coordinator can mutate anything.
 
   ## Coordinator-owned execution
 
@@ -130,20 +142,53 @@
     Capture the outcome (clean or conflicted), report it to the worker as a
     continuation so it can proceed to conflict analysis or the ADR/DDR pass,
     and record it in the seam state. Reconcile the TODO to the actual path
-    after the outcome: a clean merge removes scope, resolution, and
-     verification steps instead of leaving them pending; a conflicted merge
-     retains only the applicable scope and resolution path, then verification.
+    after the outcome: a clean merge removes scope, contextual-analysis,
+    resolution, and verification steps instead of leaving them pending; a
+    conflicted merge retains only the applicable scope, contextual-analysis,
+    and resolution path, then verification.
      Add a collision step only after the worker reports collision applicability
      as `repair-required` or `escalation-required`, followed by authorization.
      A skipped collision scan or a scan with no collisions removes that step
      rather than leaving it pending. A clean merge skips conflict-resolution
      presentation entirely.
-  - **Resolution writes** — after the worker returns conflict-analysis
-    proposals within the selected scope: for each proposed resolution, write
-    the resolved file content (removing conflict markers and applying the
-    proposed fusion). For E3 escalations (true semantic contradictions), do
-    NOT auto-resolve — leave the conflict markers in place and report them in
-    the terminal summary. Add written paths to the union.
+  - **Contextual decision gate** — after scope selection and before any
+    resolution write or staging, update the seam to `contextual-analysis` and
+    render the contextual TODO item. If the worker returns `needs_input`, ask
+    the exact human-facing question through the native picker and perform no
+    mutation. A `more-context` answer continues the same worker with the same
+    pending alternatives and remains mutation-free. Fast-track may omit only
+    the scope item; it must still stop here for semantic ambiguity. If the
+    worker returns an obvious-conflict result without a gate, or returns the
+    final selected alternatives after all required decisions, mark contextual
+    analysis complete before entering resolution.
+  - **Resolution writes** — only after the worker returns a completed payload
+    containing the explicitly selected complete alternative for every required
+    semantic decision within the selected scope. The payload MUST contain the
+    `## Complete resolution payload` JSON object defined by
+    `@sai/commands/merge/instructions.md`; treat all surrounding prose as
+    explanation, never as file content. Before any write, parse and validate all
+    of the object atomically:
+    1. `selected_contextual_decisions` contains exactly one accepted `ours`,
+       `theirs`, or `synthesis` value for every semantic conflict, and every
+       value was an option previously offered for that conflict. It contains no
+       `more-context` value. An obvious conflict has no decision record but
+       still requires a file record.
+    2. `files` contains exactly one record for every conflicted path in the
+       selected scope, with no duplicate or unexpected path, the worker's exact
+       category, and `decisions` that agree with the selected decision records.
+    3. Every `content` value is a JSON string holding the complete final UTF-8
+       file contents for that path. Reject diffs, hunks, region replacements,
+       marker annotations, missing content, or content reconstructed from
+       prose. Reject any `<<<<<<<`, `=======`, or `>>>>>>>` marker.
+    4. Reject the entire payload if any record, decision, path, or content is
+       missing or invalid; leave every conflict untouched and do not stage.
+    After every record passes, write each `content` value exactly as supplied.
+    Do not reconstruct content from prose, concatenate unselected alternatives,
+    or author a synthesis in the coordinator. For a contradiction, leave
+    markers in place until the human selects a complete branch outcome or a
+    worker-validated safe synthesis; if no complete outcome exists, leave it
+    unresolved and report the escalation. Add written paths to the union only
+    after validation and successful writes.
   - **Staging** — after writing resolutions: `git add` each resolved file.
     Never stage files with unresolved E3 escalations without noting them.
   - **Verification loop** — after staging: the worker runs the test suite and
@@ -199,14 +244,16 @@
   ## Content assignment
 
   The split of technical content is fixed: `@sai/commands/merge/instructions.md`
-  (pre-merge checks, branch selection, conflict analysis, resolution proposals,
-  scope gate, verification analysis, ADR/DDR scanning, authorization ask)
-  belongs to the WORKER as read-only analysis and proposal procedure plus the
-  source gate data. `@sai/commands/merge/presentation.md` belongs HERE as the
+  (pre-merge checks, branch selection, conflict classification, contextual
+  objective analysis, complete resolution alternatives, scope gate,
+  verification analysis, ADR/DDR scanning, authorization ask) belongs to the
+  WORKER as read-only analysis and proposal procedure plus the source gate
+  data. `@sai/commands/merge/presentation.md` belongs HERE as the
   coordinator-owned lifecycle, gate-summary, terminal, and progress-rendering
-  seam. The seam owns the concise branch/scope/authorization rendering and the
-  adaptive TODO, while all mutations — merge launch, resolution writes,
-  renames, reference updates, staging, and commit execution — belong HERE.
+  seam. The seam owns the concise branch/scope/contextual-decision/
+  authorization rendering and the adaptive TODO, while all mutations — merge
+  launch, resolution writes, renames, reference updates, staging, and commit
+  execution — belong HERE.
 
 </TASK>
 
