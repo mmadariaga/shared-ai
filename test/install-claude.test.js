@@ -268,9 +268,11 @@ test('installClaude copies sai/commands/*.md to dest/sai/commands/', () => {
   assert.equal(fs.existsSync(path.join(saiCmdDir, 'apply', 'body.md')), false, 'apply/body.md should be retired from sai/commands/');
   assert.equal(fs.existsSync(path.join(saiCmdDir, 'apply', 'instructions.md')), false, 'apply/instructions.md should be retired from sai/commands/');
   assert.equal(files.includes('sai-4-apply.md'), false, 'sai-4-apply.md should not be projected as a flat command');
-  for (const file of [path.join('design', 'coordinator.md'), path.join('implement', 'coordinator.md'), path.join('implement', 'invocation.md')]) {
+  for (const file of [path.join('design', 'coordinator.md'), path.join('implement', 'coordinator.md')]) {
     assert.ok(fs.existsSync(path.join(saiCmdDir, file)), `${file} should be projected`);
   }
+  assert.equal(fs.existsSync(path.join(saiCmdDir, 'implement', 'invocation.md')), false,
+    'implement/invocation.md should not be projected after retirement');
   for (const file of ['sai-1-spec.md', 'sai-5-review.md', 'sai-6-security.md', 'sai-7-performance.md', 'sai-8-accessibility.md', 'sai-2-design.md', 'sai-3-implement.md']) {
     assert.equal(fs.existsSync(path.join(saiCmdDir, file)), false, `${file} should not be projected`);
   }

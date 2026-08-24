@@ -1,6 +1,12 @@
-## ADDED Requirements
+## Purpose
+
+Define the canonical repository source and harness projection layout.
+
+## Requirements
 
 ### Requirement: sai-payload-directory
+The repository SHALL contain a `sai/` top-level directory with `sai/commands/` holding command cards. Routed cards SHALL provide `coordinator.md` and `worker.md`, plus a retained `invocation.md` only when that routed phase uses a separate invocation card. The implementation command SHALL use its coordinator, worker, and step library without requiring `sai/commands/implement/invocation.md`.
+
 The repository SHALL contain a `sai/` top-level directory with `sai/commands/` holding command cards — routed cards (`coordinator.md`, `worker.md`, `invocation.md`), utility cards (`body.md`), a per-command command bootstrap card (`command-bootstrap.md`) loaded by the command wrapper after the harness boot adapter, and command-local phase content folded in as `sai/commands/{name}/instructions.md` and neighboring `.template.md` files (e.g. `sai/commands/review/review-report.template.md`). Three root exceptions live at the `sai/` root: `sai/change-overview.md`, `sai/adr-index.template.md`, and `sai/ddr-index.template.md`. There is no maintained `sai/instructions/` tree; phase content is folded into the command directories.
 
 #### Scenario: command cards and folded instructions exist at the folded paths
@@ -10,6 +16,11 @@ The repository SHALL contain a `sai/` top-level directory with `sai/commands/` h
 #### Scenario: no maintained sai/instructions tree remains
 - **WHEN** the fold is applied
 - **THEN** no file lives under a maintained `sai/instructions/` tree; the shared overview-generation instruction is at `sai/change-overview.md` and the index templates at `sai/adr-index.template.md` and `sai/ddr-index.template.md`
+
+#### Scenario: Implementation command-card layout reflects retirement
+
+- **WHEN** the implementation command directory is inspected
+- **THEN** it contains the active coordinator, worker, templates, instructions, and step library without `invocation.md`.
 
 ### Requirement: harness-wrappers-directory
 The repository SHALL contain `commands/claude/` (wrappers for Claude Code) and `commands/opencode/` (wrappers for OpenCode), grouping all harness wrapper packages under a single `commands/` root.
@@ -46,7 +57,3 @@ The `skills/` directory and all its contents SHALL remain at their current paths
 #### Scenario: skills path intact
 - **WHEN** the restructure is applied
 - **THEN** `skills/` SHALL contain the same files at the same relative paths as before
-
-## MODIFIED Requirements
-
-## REMOVED Requirements

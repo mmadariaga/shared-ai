@@ -1577,7 +1577,6 @@ test('Step 3: the shared retired-party guard covers every invocation core and li
     'sai/commands/review/invocation.md',
     'sai/commands/security/invocation.md',
     'sai/commands/performance/invocation.md',
-    'sai/commands/implement/invocation.md',
     'sai/commands/accessibility/invocation.md',
   ];
   const liveContractSpecifications = [
@@ -1602,7 +1601,7 @@ test('Step 3: the shared retired-party guard covers every invocation core and li
     const lineBearingReferences = auditActiveReferences(root)
       .filter(reference => reference.line !== undefined);
 
-    assert.equal(lineBearingReferences.length, 16);
+    assert.equal(lineBearingReferences.length, 15);
     assert.deepEqual(
       [...new Set(lineBearingReferences.map(reference => reference.file))].sort(),
       [...inventory].sort(),

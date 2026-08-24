@@ -60,12 +60,19 @@ The opencode `/sai-3-implement` wrapper SHALL declare the logical coordinator ru
 - **AND** SHALL NOT consult any sidecar file
 
 ### Requirement: Routed worker binding boundary
+The routed implementation command contract SHALL define the coordinator-worker behavior for Claude Code and opencode without requiring `sai/commands/implement/invocation.md` or another retired compatibility projection. The active technical instruction path SHALL be the implementation worker and its coordinator-selected step library.
+
 The routed implementation command contract SHALL define the coordinator-worker behavior for Claude Code and opencode. It SHALL not require a retired compatibility surface or compatibility projection.
 
 #### Scenario: Retired compatibility path is excluded
 - **WHEN** the supported implementation projections are inspected
 - **THEN** they SHALL contain only the Claude Code and opencode routed coordinator and worker surfaces
 - **AND** no active projection SHALL require a retired compatibility surface or an intermediate inline command loader
+
+#### Scenario: Retired implementation invocation is excluded
+
+- **WHEN** supported implementation projections are inspected
+- **THEN** they contain the active routed coordinator, worker, and harness binding surfaces without requiring `sai/commands/implement/invocation.md`.
 
 ### Requirement: Managed implementation worker projections
 The single installation manifest SHALL project the canonical shared coordinator and worker-lifecycle contracts, the implementation worker contract, and only the active routed harness's implementation binding to Claude Code and opencode. Routed wrappers SHALL fetch that neutral installed binding destination directly; no forwarding skill SHALL be projected. The Claude agent surface SHALL remain a thin forwarder to the canonical sources, and the opencode worker surface SHALL be the manifest-projected `sai-3-implementation-worker.md` agent file. Installer, doctor, and uninstall SHALL derive these projections from the same manifest while preserving deterministic collision detection for ordinary managed files and the body-and-non-tunable identity rule for Claude and opencode worker-agent definitions. Doctor SHALL compare only the body and non-tunable frontmatter; uninstall SHALL use the same body comparison to decide keep vs delete. The `rename-or-remove` wording is retired; a body-divergent worker agent is overwritten with a console notice by the installer and preserved as a project-local override by uninstall. The `.<basename>.owner.json` sidecar is no longer written, read, or compared. Tunable lines on existing worker files are preserved on every install. Exact-compatible pre-existing worker agent files SHALL be reused without rewriting, and all unrelated entries in an existing opencode JSONC configuration SHALL remain unchanged.

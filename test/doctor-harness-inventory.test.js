@@ -136,11 +136,14 @@ describe('doctor harness inventory', () => {
       for (const file of [
         path.join('sai', 'commands', 'design', 'coordinator.md'),
         path.join('sai', 'commands', 'implement', 'coordinator.md'),
-        path.join('sai', 'commands', 'implement', 'invocation.md'),
       ]) {
         assert.equal(fs.existsSync(path.join(claudeBase, file)), true, `${file} should be installed`);
         assert.equal(fs.existsSync(path.join(opencodeBase, file)), true, `${file} should be installed`);
       }
+      assert.equal(fs.existsSync(path.join(claudeBase, 'sai', 'commands', 'implement', 'invocation.md')), false,
+        'Claude should not install the retired implementation invocation card');
+      assert.equal(fs.existsSync(path.join(opencodeBase, 'sai', 'commands', 'implement', 'invocation.md')), false,
+        'opencode should not install the retired implementation invocation card');
     } finally {
       fs.rmSync(projectRoot, { recursive: true, force: true });
       for (const d of [claudeBase, opencodeBase]) {

@@ -1293,7 +1293,7 @@ test('canonical manifest validates all historical retirements and excludes them 
        ],
      },
    ]);
-    assert.equal(manifest.retirements.flatMap(retirement => retirement.managedHashes).length, 87);
+  assert.equal(manifest.retirements.flatMap(retirement => retirement.managedHashes).length, 91);
   assert.ok(manifest.retirements.flatMap(retirement => retirement.managedHashes).every(hash => /^[0-9a-f]{64}$/.test(hash)));
 
   const destinationRoot = {
@@ -1313,6 +1313,7 @@ test('canonical manifest validates all historical retirements and excludes them 
         path.resolve(destinationRoot.sai, 'commands/sai-3-implement-inline.md'),
         path.resolve(destinationRoot.sai, 'commands/design/invocation.md'),
         path.resolve(destinationRoot.sai, 'commands/design/instructions.md'),
+        path.resolve(destinationRoot.sai, 'commands/implement/invocation.md'),
         ...[
             path.resolve(destinationRoot.sai, 'orchestration/workers/bindings', harness, 'accessibility-worker.md'),
             path.resolve(destinationRoot.sai, 'orchestration/workers/bindings', harness, 'design-worker.md'),

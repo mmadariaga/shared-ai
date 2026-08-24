@@ -2,10 +2,10 @@
 > implementation segment of `/sai-build` load `worker.md`, then
 > `steps/common.md`, then only the coordinator-selected step file. Those files
 > are the authoritative technical instruction surface for the active worker.
-> This compatibility instruction remains for callers that still load the
-> legacy implementation-planning content; its duplicated planning guidance is
-> intentionally retained until the separate retirement/synergy work accounts
-> for those consumers. `invocation.md` is not changed in this slice.
+> This compatibility instruction remains for `/sai-4-apply`, which loads the
+> legacy implementation-planning content through the apply phase's invocation
+> card. Its duplicated planning guidance is intentionally retained for that
+> consumer.
 
 ## Communication Mode
 

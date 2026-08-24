@@ -290,9 +290,11 @@ test('installOpencode copies commands/opencode/*.md to dest/commands/', () => {
 test('installOpencode projects grouped SAI command assets and excludes former coordinator sources', () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-'));
   installOpencode(tmpDir);
-  for (const file of [path.join('design', 'coordinator.md'), path.join('implement', 'coordinator.md'), path.join('implement', 'invocation.md')]) {
+  for (const file of [path.join('design', 'coordinator.md'), path.join('implement', 'coordinator.md')]) {
     assert.ok(fs.existsSync(path.join(tmpDir, 'sai', 'commands', file)), `${file} should be projected`);
   }
+  assert.equal(fs.existsSync(path.join(tmpDir, 'sai', 'commands', 'implement', 'invocation.md')), false,
+    'implement/invocation.md should not be projected after retirement');
   for (const file of [path.join('meta-build', 'coordinator.md'), path.join('meta-build', 'command-bootstrap.md')]) {
     assert.ok(fs.existsSync(path.join(tmpDir, 'sai', 'commands', file)), `${file} should be projected`);
   }

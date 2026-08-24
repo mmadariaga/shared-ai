@@ -87,13 +87,12 @@ test('Step 1 implementation card uses neutral root protocols and retires flat ca
   }
 });
 
-test('implementation invocation core owns the routed completion boundary', () => {
-   const core = artifact('sai/commands/implement/invocation.md');
-  assert.match(core, /^## Load instructions \(in order\)/m);
-  assert.match(core, /^## Run\s*$/m);
-  assert.doesNotMatch(core, /^## Completion\b/m);
-  assert.doesNotMatch(core, /MANDATORY STOP/);
-
+test('implementation invocation core is retired from the active source layout', () => {
+  assert.equal(fs.existsSync(path.join(repoRoot, 'sai/commands/implement/invocation.md')), false);
+  assert.match(artifact('sai/commands/implement/command-bootstrap.md'),
+    /implementation-worker\.md/);
+  assert.match(artifact('sai/commands/implement/worker.md'),
+    /commands\/implement\/steps\/common\.md/);
 });
 
 test('implementation worker declares the lifecycle and input/output contract', () => {
@@ -437,7 +436,6 @@ test('shared implement coordinator has a two-field envelope and no artifact or r
 test('implementation adapter pins resolved-name and reconstruction transport', () => {
    const coordinator = artifact('sai/commands/implement/coordinator.md');
   const worker = artifact('sai/commands/implement/worker.md');
-   const core = artifact('sai/commands/implement/invocation.md');
 
   for (const field of [
     'original_envelope',
@@ -469,8 +467,6 @@ test('implementation adapter pins resolved-name and reconstruction transport', (
   assert.match(coordinator, /Do not include artifact contents[\s\S]*binding identifiers/);
   assert.match(worker, /openspec CLI not found\. Install it first: https:\/\/github\.com\/Fission-AI\/OpenSpec/);
   assert.doesNotMatch(worker, /OpenSpec\)/);
-  assert.doesNotMatch(core, /^## Completion\b/m);
-  assert.doesNotMatch(core, /MANDATORY STOP/);
 });
 
 test('coordinator owns status transitions, changed-file union, and exact terminal behavior', () => {
@@ -1021,9 +1017,8 @@ test('step-gated: step instruction files exist for every non-none map entry', ()
   }
 });
 
-test('step-gated: instructions.md and invocation.md remain byte-for-byte untouched', () => {
+test('step-gated: instructions.md remains the apply compatibility source', () => {
   const instructions = artifact('sai/commands/implement/instructions.md');
-  const invocation = artifact('sai/commands/implement/invocation.md');
 
   assert.match(instructions, /## Communication Mode/,
     'instructions.md should retain its Communication Mode section');
@@ -1031,6 +1026,4 @@ test('step-gated: instructions.md and invocation.md remain byte-for-byte untouch
     'instructions.md should retain its Hard Rules section');
   assert.match(instructions, /## Code Quality Priority Stack/,
     'instructions.md should retain its Code Quality Priority Stack');
-  assert.match(invocation, /Fetch @sai\/commands\/implement\/instructions\.md/,
-    'invocation.md should still fetch instructions.md for the apply consumer');
 });
