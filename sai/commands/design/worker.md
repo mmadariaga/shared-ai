@@ -33,6 +33,8 @@ Return `failed` with the missing-prerequisite summary when a check fails.
 When `arguments_value` is empty, run the change picker; otherwise use it directly.
 Strip any remaining `--fast-track` or `--supervised` from the resolved name and trim it.
 
+This phase parses `--supervised` positionally after the change name, which diverges deliberately from the spec phase's leading-marker-line grammar. The design envelope is name-first, so a leading marker line would have to precede the name the envelope opens with. The divergence is recorded rather than unified; neither grammar is being migrated to the other.
+
 For zero changes return the established no-active-changes failure. For one,
 ask `Use change '{name}'?` with ordered yes/no options; yes resolves and no
 cancels. For multiple changes ask `Which change?`, preserve CLI order, and
