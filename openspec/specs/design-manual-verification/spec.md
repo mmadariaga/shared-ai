@@ -4,7 +4,7 @@
 
 ### Requirement: design.md ends with a Manual Verification section
 
-`sai/commands/design/instructions.md` SHALL require `openspec/changes/{name}/design.md` to close with a `## Manual Verification` section, listing the checks that are cheap to perform by hand and expensive to encode as automated tests.
+The active design step authority at `sai/commands/design/steps/design.md` SHALL require `openspec/changes/{name}/design.md` to close with a `## Manual Verification` section, listing the checks that are cheap to perform by hand and expensive to encode as automated tests.
 
 The section SHALL be the closing section of `design.md`. When a change genuinely warrants no manual check, the section SHALL still be emitted with an explicit `None` and a one-line reason, so a reader can distinguish "nothing to check" from "not considered".
 
@@ -18,6 +18,11 @@ The section SHALL be the closing section of `design.md`. When a change genuinely
 - **WHEN** a change warrants no manual verification
 - **THEN** `## Manual Verification` is emitted with `None` and a one-line reason
 - **AND** the section is NOT omitted
+
+#### Scenario: manual-verification-uses-live-authority
+
+- **WHEN** the design worker completes `design.md`
+- **THEN** the file ends with the Manual Verification section required by the active step contract.
 
 ### Requirement: Manual Verification covers generated-artifact drift and end-to-end smoke
 
@@ -47,7 +52,7 @@ Each item SHALL name what to check and what a correct result looks like. An item
 
 ### Requirement: Manual Verification is the middle tier, not a substitute for tests or review
 
-`sai/commands/design/instructions.md` SHALL state that `## Manual Verification` names the middle tier of a three-tier verification vocabulary: automated tests, manual checks, and downstream review. It SHALL NOT be used to record work that belongs in an automated test, nor to duplicate what `/sai-5-review` already covers.
+The active design step authority at `sai/commands/design/steps/design.md` SHALL state that `## Manual Verification` names the middle tier of a three-tier verification vocabulary: automated tests, manual checks, and downstream review. It SHALL NOT be used to record work that belongs in an automated test, nor to duplicate what `/sai-5-review` already covers.
 
 An item SHALL qualify for `## Manual Verification` only when automating the check would cost meaningfully more than performing it by hand.
 

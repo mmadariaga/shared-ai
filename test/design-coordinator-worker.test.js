@@ -220,7 +220,7 @@ test('design wrappers activate routed Claude/opencode entry and preserve phase b
         `Claude design should forward the complete argument order: ${argumentsValue}`);
     }
 
-   assert.match(launcher, /Fetch @sai\/orchestration\/workers\/bindings\/design-worker\.md/, 'launcher should load the design worker binding');
+    assert.match(launcher, /Fetch @sai\/orchestration\/workers\/bindings\/design-worker\.md/, 'launcher should load the design worker binding');
 
   for (const relativePath of [
     'sai/commands/design/coordinator.md',
@@ -233,7 +233,7 @@ test('design wrappers activate routed Claude/opencode entry and preserve phase b
 
   assert.match(spec, /Claude Code and opencode SHALL invoke the routed design coordinator/i);
   assert.match(spec, /no supported entrypoint SHALL require a legacy loader/i);
-  assert.doesNotMatch(artifact('sai/commands/design/instructions.md'), /sai\/orchestration\/inline-invocation\.md/);
+  assert.doesNotMatch(artifact('sai/commands/design/worker.md'), /sai\/orchestration\/inline-invocation\.md/);
 });
 
 test('shared feedback gate defines routed design ownership without changing canonical gate rules', () => {
@@ -640,21 +640,16 @@ test('design coordinator spec defines DesignInvocationEnvelope', () => {
     'the design invocation envelope must not define wrapper_echo_value');
 });
 
-test('Continue now clears design lifecycle state and dispatches implementation binding', () => {
+test('design coordinator spec retires the removed continuation route', () => {
   const spec = artifact('openspec/specs/design-coordinator/spec.md');
 
-  assert.match(spec, /Continue[- ]?[Nn]ow|continue-now|continue now/);
-  assert.match(spec, /clear.*state|lifecycle.*state|state.*clear/i);
-  assert.match(spec, /implementation.*binding|dispatch.*implementation/i);
+  assert.doesNotMatch(spec, /Continue[- ]?[Nn]ow|continue-now|continue now/);
 });
 
-test('Continue now envelope carries only resolved arguments_value', () => {
+test('design coordinator spec retires the removed continuation envelope', () => {
   const spec = artifact('openspec/specs/design-coordinator/spec.md');
 
-  assert.match(spec, /ContinueNowEnvelope/);
-  assert.match(spec, /arguments_value.*resolved/i);
-  assert.doesNotMatch(spec, /wrapper_echo_value/,
-    'Continue now must not construct or forward wrapper_echo_value');
+  assert.doesNotMatch(spec, /ContinueNowEnvelope/);
 });
 
 test('design transport keeps arguments_value as the only request source and keeps answer-only continuations envelope-free', () => {
@@ -680,15 +675,6 @@ test('design transport keeps arguments_value as the only request source and keep
   */
   assert.match(coordinator, /progress.{0,120}coordinator|coordinator.{0,120}progress/i,
     'design progress rendering must remain coordinator-owned');
-
-  const continueNow = spec.slice(
-    spec.indexOf('### ContinueNowEnvelope'),
-    spec.indexOf('## Requirements'),
-  );
-  assert.match(continueNow, /arguments_value/,
-    'an answer-only continuation must retain the resolved arguments_value');
-  assert.doesNotMatch(continueNow, /DesignInvocationEnvelope|InvocationEnvelope|wrapper_echo_value/,
-    'an answer-only continuation must not reconstruct an invocation envelope');
 
   for (const source of [coordinator, worker, spec, ...bindings]) {
     assert.match(source, /arguments_value/,
@@ -722,7 +708,8 @@ test('the three design coordinator-worker interfaces are defined in the specs', 
   assert.match(planning, /DesignReconstructionMetadata/);
   assert.match(planning, /OpaqueInputEntry/);
   assert.match(coordinator, /DesignInvocationEnvelope/);
-  assert.match(coordinator, /ContinueNowEnvelope/);
+  assert.doesNotMatch(coordinator, /ContinueNowEnvelope/,
+    'the removed continuation envelope must remain absent');
   assert.match(bindings, /NoticeAcknowledgement/);
 });
 
@@ -778,7 +765,7 @@ test('documentation records the active design compatibility boundary and managed
   assert.match(readme, /Proposal Complexity.*descriptive/i);
   assert.match(readme, /wrapper[\s\S]{0,60}(?:model|variant)|command[\s\S]{0,60}(?:model|variant)/i);
 
-  assert.match(agents, /sai\/commands\/design\/invocation\.md/);
+  assert.match(agents, /sai\/commands\/design\/steps\//);
   assert.match(agents, /sai-2-design-worker\.md/);
   assert.match(agents, /agents\/claude\/sai-2-design-worker\.md/);
    assert.match(agents, /sai\/orchestration\/workers\/bindings\//);
@@ -887,7 +874,7 @@ test('design install overwrites divergent numbered destination content with noti
 });
 
 test('Target State contract lives in the design instruction and design template', () => {
-  const instruction = artifact('sai/commands/design/instructions.md');
+  const instruction = artifact('sai/commands/design/steps/design.md');
   const designTemplate = artifact('openspec/schemas/sai-workflow/templates/design.md');
   const interfacesTemplate = artifact('openspec/schemas/sai-workflow/templates/interfaces.md');
 
@@ -903,7 +890,7 @@ test('Target State contract lives in the design instruction and design template'
     assert.match(contract, /### File Manifest/);
   }
 
-  for (const text of [instruction, designTemplate]) {
+  for (const text of [designTemplate]) {
     const targetStateIndex = text.indexOf('## Target State');
     const contextIndex = text.indexOf('## Context');
     assert.ok(targetStateIndex !== -1, 'design surface should contain ## Target State');
@@ -911,6 +898,8 @@ test('Target State contract lives in the design instruction and design template'
     assert.ok(targetStateIndex < contextIndex,
       '## Target State should be placed before other top-level design sections');
   }
+  assert.ok(instruction.indexOf('## Target State') < instruction.indexOf('### Architecture Snapshot'),
+    'the design step should deliver Target State before its nested sections');
 
   assert.doesNotMatch(interfacesTemplate, /## Target State/);
   assert.doesNotMatch(interfacesTemplate, /### Architecture Snapshot/);
@@ -918,7 +907,7 @@ test('Target State contract lives in the design instruction and design template'
 });
 
 test('architecture snapshot display compares the extracted Target State block and defines the no-step-contracts sentinel', () => {
-  const instruction = artifact('sai/commands/design/instructions.md');
+  const instruction = artifact('sai/commands/design/worker.md');
 
   assert.match(instruction, /extract(?:ed|s)?[\s\S]{0,200}`## Target State`|`## Target State`[\s\S]{0,200}extract(?:ed|s)?/i,
     'the instruction should reference the extracted ## Target State block comparison');
@@ -926,7 +915,7 @@ test('architecture snapshot display compares the extracted Target State block an
     'the comparison should normalize line endings and trailing whitespace');
   assert.match(instruction, /(?:only when|only if)[\s\S]{0,160}differ|differ[\s\S]{0,160}(?:present|display)|present(?:ed)?[\s\S]{0,120}only[\s\S]{0,120}differ/i,
     'the block comparison should be presented only when the blocks differ');
-  assert.match(instruction, /None — no step contracts/,
+  assert.match(artifact('sai/commands/design/steps/interfaces.md'), /None — no step contracts/,
     'the instruction should define the exact None — no step contracts sentinel');
 });
 
@@ -2224,7 +2213,7 @@ function assertArchitectureEmptinessContract(source, label) {
 
 test('Step 5: live design instructions and the overview contract use external-first nested boundary headings', () => {
   for (const [label, relativePath] of [
-    ['live design instructions', 'sai/commands/design/instructions.md'],
+    ['live design step', 'sai/commands/design/steps/design.md'],
     ['overview contract', 'sai/commands/design/change-overview.md'],
   ]) {
     assertExternalFirstBoundaryHeadings(artifact(relativePath), label);
@@ -2233,7 +2222,7 @@ test('Step 5: live design instructions and the overview contract use external-fi
 
 test('Step 5: live design and overview contracts distinguish shared, block-specific, and File Manifest empty forms', () => {
   for (const [label, relativePath] of [
-    ['live design instructions', 'sai/commands/design/instructions.md'],
+    ['live design step', 'sai/commands/design/steps/design.md'],
     ['overview contract', 'sai/commands/design/change-overview.md'],
   ]) {
     assertArchitectureEmptinessContract(artifact(relativePath), label);
@@ -2267,7 +2256,7 @@ test('Step 5: overview structural boundary headings remain English regardless of
 });
 
 test('Step 5: unclear boundary classification falls back to external and File Manifest is a direct inventory', () => {
-  const instructions = artifact('sai/commands/design/instructions.md');
+  const instructions = artifact('sai/commands/design/steps/design.md');
   assert.match(instructions,
     /unclear[\s\S]{0,220}external|external[\s\S]{0,220}unclear/i,
     'live design instructions should route unclear boundary classification to external');

@@ -5,7 +5,7 @@ TBD - created by archiving change tasks-as-scaffold. Update Purpose after archiv
 ## Requirements
 ### Requirement: tasks-artifact-format
 
-`tasks.md` SHALL be a narrative planning document with no checkbox markers (`- [ ]`).
+The active task-generation step SHALL remain the sole authority for the narrative task scaffold, Routing line, Files Affected entries, and mandatory trailing sections. `tasks.md` SHALL be a narrative planning document with no checkbox markers (`- [ ]`).
 
 The file SHALL contain one numbered section per implementation step, structured as:
 
@@ -107,6 +107,10 @@ Both sections are mandatory for all new changes. Archived `tasks.md` files that 
 - **WHEN** a reader inspects a `tasks.md` archived before this change
 - **THEN** the absence of change-type tokens on its `**Files Affected**` entries is not a violation
 
+#### Scenario: task-format-is-step-owned
+- **WHEN** `tasks.md` is generated
+- **THEN** it uses the active step-owned scaffold with one bounded rule for each required field.
+
 ### Requirement: schema-tasks-instruction-updated
 
 The `tasks` artifact entry in `openspec/schemas/sai-workflow/schema.yaml` SHALL have its `instruction` field updated to describe the narrative scaffold format including the two mandatory trailing sections, the `**Routing**` keyword line, and the change-type-declaring `**Files Affected**` format. The instruction SHALL NOT contain the sentence "IMPORTANT: The apply phase parses checkbox format." The instruction SHALL describe the Routing line as the first sub-field of every `## Step N` section, SHALL specify the key=value tagged format (`layer=<layer> · discipline=<discipline> · complexity=<complexity>`), and SHALL reference the `tasks-routing-metadata` capability spec for the token enumerations and derivation rules. The instruction SHALL describe `**Files Affected**` as one entry per line, each entry starting with exactly one change-type token from the closed vocabulary `A` (created), `M` (modified), `D` (deleted), `R` (moved/renamed, with the source path and the destination path separated by ` -> `), and SHALL NOT describe the sub-field as a comma-separated list of paths.
@@ -134,19 +138,19 @@ The template at `openspec/schemas/sai-workflow/templates/tasks.md` SHALL show th
 
 ### Requirement: tasks-design-instruction-updated
 
-The `## Generate tasks.md` section of `sai/commands/design/instructions.md` SHALL describe the `**Files Affected**` sub-field as one entry per line, each entry starting with exactly one change-type token from the closed vocabulary `A` (created), `M` (modified), `D` (deleted), `R` (moved/renamed) followed by the project-root-relative path of the file; an `R` entry SHALL carry the source path and the destination path separated by ` -> `. The instruction SHALL NOT describe the sub-field as a comma-separated list of paths. The instruction SHALL direct the design agent to derive each entry's token from whether the path exists at the repository state immediately before that step's commit — not from the step's title or prose verb — so an entry for a file that already exists is `M` even when the step prose says "add". The instruction SHALL state that `R` covers both pure relocations and relocations that rewrite content, with the extent of content change carried by `**What Will Be Done**` prose rather than by the token.
+The active task-generation step at `sai/commands/design/steps/tasks.md` SHALL describe the `**Files Affected**` sub-field as one entry per line, each entry starting with exactly one change-type token from the closed vocabulary `A` (created), `M` (modified), `D` (deleted), `R` (moved/renamed) followed by the project-root-relative path of the file; an `R` entry SHALL carry the source path and the destination path separated by ` -> `. The instruction SHALL NOT describe the sub-field as a comma-separated list of paths. The instruction SHALL direct the design agent to derive each entry's token from whether the path exists at the repository state immediately before that step's commit — not from the step's title or prose verb — so an entry for a file that already exists is `M` even when the step prose says "add". The instruction SHALL state that `R` covers both pure relocations and relocations that rewrite content, with the extent of content change carried by `**What Will Be Done**` prose rather than by the token.
 
-The routing-derivation subsection of `sai/commands/design/instructions.md` SHALL state that path patterns are matched against the paths of `**Files Affected**` entries after stripping the leading change-type token, so the four `layer` and five `discipline` pattern tables keep matching the same paths as before; an `R` entry SHALL contribute only its destination path to the pattern match, because routing describes where the step's work lands.
+The routing-derivation subsection of `sai/commands/design/steps/tasks.md` SHALL state that path patterns are matched against the paths of `**Files Affected**` entries after stripping the leading change-type token, so the four `layer` and five `discipline` pattern tables keep matching the same paths as before; an `R` entry SHALL contribute only its destination path to the pattern match, because routing describes where the step's work lands.
 
 #### Scenario: design instruction emits the change-type format
 
-- **WHEN** `sai-2-design` loads `sai/commands/design/instructions.md` to generate `tasks.md`
+- **WHEN** `sai-2-design` loads `sai/commands/design/steps/tasks.md` to generate `tasks.md`
 - **THEN** the Files Affected format in the instruction is one entry per line with change-type tokens from the closed vocabulary `A`/`M`/`D`/`R`
 - **AND** the sub-field is not described as a comma-separated list of paths
 
 #### Scenario: routing derivation ignores the change-type token
 
-- **WHEN** the routing derivation maps a step's `**Files Affected**` entries to `layer` and `discipline` tokens
+- **WHEN** the routing derivation from `sai/commands/design/steps/tasks.md` maps a step's `**Files Affected**` entries to `layer` and `discipline` tokens
 - **THEN** it matches the paths after stripping the leading change-type token
 - **AND** an `R` entry contributes only its destination path to the match, so a single-file move does not flip the step's layer or discipline tokens
 
@@ -155,6 +159,10 @@ The routing-derivation subsection of `sai/commands/design/instructions.md` SHALL
 - **WHEN** `sai-2-design` emits a step's `**Files Affected**` entries
 - **THEN** it derives each token from whether the path exists at the repository state immediately before that step's commit
 - **AND** a path that already exists is never emitted as `A` solely because the step's title or prose uses the word "add"
+
+#### Scenario: task-routing-uses-destination-path
+- **WHEN** routing derives metadata from an `R` Files Affected entry
+- **THEN** it strips the token and matches only the destination path.
 
 ### Requirement: tasks-glossary-term-updated
 
@@ -208,4 +216,3 @@ Every `## Step N:` section in a new `tasks.md` SHALL include a line of the form 
 - **THEN** the order of sub-fields is: Routing, Files Affected, What Will Be Done, Testing Strategy, Existing Tests Broken
 - **THEN** no other ordering of these five sub-fields is acceptable
 - **THEN** the relative order of the original four sub-fields is unchanged by the addition of the fifth
-

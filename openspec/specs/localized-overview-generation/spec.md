@@ -19,10 +19,6 @@ The design worker SHALL dispatch the budget-routed Change Overview generator onl
 - **THEN** the generator receives `English` and the overview is generated in English
 - **AND** this is distinct from an invocation that omits the flag
 
-#### Scenario: Default language is used for initial generation
-- **WHEN** a design invocation omits `--overview-lang` and the overview lifecycle reaches initial materialization
-- **THEN** the generator receives English and the existing overview state transitions and write scope are preserved
-
 #### Scenario: Gate-selected language is used for chained generation
 
 - **WHEN** `sai-explore` gate 9 selects `spanish` and forwards it as `--overview-lang spanish` to the chained design worker
@@ -34,6 +30,10 @@ The design worker SHALL dispatch the budget-routed Change Overview generator onl
 - **WHEN** a design invocation omits `--overview-lang` and reaches the feedback gate's Continue action
 - **THEN** no generator dispatch occurs
 - **AND** no overview-generation continuation or `materializing` transition is created by that action
+
+#### Scenario: omitted-language-generation-is-skipped
+- **WHEN** a direct design invocation omits `--overview-lang` and reaches Continue
+- **THEN** no generator dispatch, overview-generation continuation, materializing transition, or implicit English value is created.
 
 ### Requirement: Localize only the Change Overview projection
 
@@ -70,11 +70,6 @@ Every overview generation or regeneration attempt SHALL use an explicit language
 - **THEN** the generation-trigger continuation carries the current invocation's `overview_language: spanish`
 - **AND** the generator receives that value
 
-#### Scenario: Regeneration without the flag returns to English
-- **WHEN** a later source-modifying design request omits `--overview-lang` and triggers regeneration after a localized overview
-- **THEN** that regeneration uses English and no prior language is reused or persisted
-
 #### Scenario: Generation continuation carries the language field
 - **WHEN** the worker completes design planning with `spanish` as its effective language and the coordinator triggers overview generation
 - **THEN** the worker result and generation-trigger continuation payload both carry `overview_language: spanish`, and the generator receives that value
-

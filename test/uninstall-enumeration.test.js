@@ -362,23 +362,25 @@ test('enumeration includes retirement records but excludes them from active proj
       path.join('sai', 'commands', 'sai-7-performance.md'),
       path.join('sai', 'commands', 'sai-8-accessibility.md'),
       ...STEP3_SUPERSEDED_DESTINATIONS,
-       path.join('skills', 'sai-8-accessibility-worker', 'SKILL.md'),
-       path.join('skills', 'sai-2-design-worker', 'SKILL.md'),
-       path.join('skills', 'sai-3-implementation-worker', 'SKILL.md'),
-       path.join('skills', 'sai-7-performance-worker', 'SKILL.md'),
-       path.join('skills', 'sai-5-review-worker', 'SKILL.md'),
-       path.join('skills', 'sai-6-security-worker', 'SKILL.md'),
-       path.join('skills', 'sai-1-spec-proposal-worker', 'SKILL.md'),
-       path.join('sai', 'orchestration', 'workers', 'bindings', 'opencode', 'accessibility-worker.md'),
-       path.join('sai', 'orchestration', 'workers', 'bindings', 'opencode', 'design-worker.md'),
-       path.join('sai', 'orchestration', 'workers', 'bindings', 'opencode', 'implementation-worker.md'),
-       path.join('sai', 'orchestration', 'workers', 'bindings', 'opencode', 'performance-worker.md'),
-       path.join('sai', 'orchestration', 'workers', 'bindings', 'opencode', 'review-worker.md'),
-       path.join('sai', 'orchestration', 'workers', 'bindings', 'opencode', 'security-worker.md'),
-       path.join('sai', 'orchestration', 'workers', 'bindings', 'opencode', 'spec-worker.md'),
-       path.join('sai', 'compat', '_templates', 'adr-index.md'),
+      path.join('skills', 'sai-8-accessibility-worker', 'SKILL.md'),
+      path.join('skills', 'sai-2-design-worker', 'SKILL.md'),
+      path.join('skills', 'sai-3-implementation-worker', 'SKILL.md'),
+      path.join('skills', 'sai-7-performance-worker', 'SKILL.md'),
+      path.join('skills', 'sai-5-review-worker', 'SKILL.md'),
+      path.join('skills', 'sai-6-security-worker', 'SKILL.md'),
+      path.join('skills', 'sai-1-spec-proposal-worker', 'SKILL.md'),
+      path.join('sai', 'orchestration', 'workers', 'bindings', 'opencode', 'accessibility-worker.md'),
+      path.join('sai', 'orchestration', 'workers', 'bindings', 'opencode', 'design-worker.md'),
+      path.join('sai', 'orchestration', 'workers', 'bindings', 'opencode', 'implementation-worker.md'),
+      path.join('sai', 'orchestration', 'workers', 'bindings', 'opencode', 'performance-worker.md'),
+      path.join('sai', 'orchestration', 'workers', 'bindings', 'opencode', 'review-worker.md'),
+      path.join('sai', 'orchestration', 'workers', 'bindings', 'opencode', 'security-worker.md'),
+      path.join('sai', 'orchestration', 'workers', 'bindings', 'opencode', 'spec-worker.md'),
+      path.join('sai', 'compat', '_templates', 'adr-index.md'),
       path.join('sai', 'compat', 'sai-2-design-core.md'),
       path.join('sai', 'compat', 'sai-3-implementation-core.md'),
+      path.join('sai', 'commands', 'design', 'invocation.md'),
+      path.join('sai', 'commands', 'design', 'instructions.md'),
       path.join('sai', 'instructions', 'prereqs.md'),
       ...FOLDED_INSTRUCTIONS_RETIREMENT_DESTINATIONS,
     ];
@@ -389,7 +391,7 @@ test('enumeration includes retirement records but excludes them from active proj
     for (const entry of retired) {
       assert.ok(Array.isArray(entry.acceptedHashes));
       assert.ok(entry.acceptedHashes.length > 0);
-       assert.match(entry.ruleId, /^retired-/);
+      assert.match(entry.ruleId, /^retired-/);
     }
     assert.equal(entries.some(e => e.assetType !== 'retired-managed-file' && e.dest.endsWith('sai-2-design-inline.md')), false);
     assert.equal(entries.some(e => e.assetType !== 'retired-managed-file' && e.dest.endsWith('sai-3-implement-inline.md')), false);

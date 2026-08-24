@@ -49,19 +49,20 @@ test('glossary defines only the canonical hand-back term and rejected aliases', 
 });
 
 const policyFetch = 'Fetch @sai/policies/verified-precondition-handback.md';
-const routedPhases = ['spec', 'design', 'implement', 'review', 'security', 'performance', 'accessibility'];
+const routedPhases = ['spec', 'implement', 'review', 'security', 'performance', 'accessibility'];
 const routedCards = routedPhases.flatMap((phase) => {
   const names = phase === 'spec'
     ? ['coordinator.md', 'worker.md']
     : ['coordinator.md', 'worker.md', 'invocation.md'];
   return names.map((name) => `sai/commands/${phase}/${name}`);
 });
+const designCards = ['coordinator.md', 'worker.md'].map((name) => `sai/commands/design/${name}`);
 const routedMinimalCards = ['commit', 'archive', 'backfill'].flatMap((name) =>
   ['coordinator.md', 'worker.md'].map((card) => `sai/commands/${name}/${card}`)
 );
 const utilityCards = ['explore', 'pr', 'status', 'worktree']
   .map((name) => `sai/commands/${name}/body.md`);
-const commandCards = [...routedCards, ...routedMinimalCards, ...utilityCards];
+const commandCards = [...routedCards, ...designCards, ...routedMinimalCards, ...utilityCards];
 
 function countLiteral(text, value) {
   return text.split(value).length - 1;
@@ -89,8 +90,8 @@ function markdownFilesUnder(relativeDirectory) {
   return found;
 }
 
-test('all 30 command cards load the policy exactly once at their structural entry point', () => {
-  assert.equal(commandCards.length, 30);
+test('all command cards load the policy exactly once at their structural entry point', () => {
+  assert.equal(commandCards.length, 29);
 
   for (const card of commandCards) {
     assert.ok(fs.existsSync(path.join(repoRoot, card)), `${card} must exist`);
@@ -138,7 +139,7 @@ test('representative fixed STOP and contract-authored hand-back text remains unc
     /implementation\.md not found for '\{change-name\}'\. Run \/sai-3-implement first\./
   );
   assert.match(
-    read('sai/commands/design/instructions.md'),
+    read('sai/commands/design/steps/design.md'),
     /direct the user to re-run `\/sai-1-spec` to make the correction in a fresh spec pass\./
   );
 });

@@ -96,17 +96,17 @@ A malformed envelope that the worker cannot parse under its declared grammar SHA
 
 ### Requirement: worker-owned-review-pass
 
-The spec-proposal worker and the design worker SHALL each own an automated artifact review of the artifacts their own phase just wrote, subject to `supervised-marker-suppresses-automatic-loop`. A **review pass** is one complete unit: exactly one reviewer run plus the worker's processing of every finding that run returns. Per-finding processing SHALL NOT increment the pass count.
+The spec-proposal worker SHALL own an automated artifact review of the artifacts its phase just wrote, subject to `supervised-marker-suppresses-automatic-loop`. The design review path SHALL instead consume externally supplied findings through the canonical feedback and artifact-review contracts and SHALL support a no-findings completion branch without creating a duplicate automatic reviewer loop. A **review pass** on the spec path is one complete unit: exactly one reviewer run plus the worker's processing of every finding that run returns. Per-finding processing SHALL NOT increment the pass count.
 
-The pass's **reviewed set** — the artifacts it judges and the only artifacts its findings may target — SHALL be, for the spec phase, `proposal.md` and every `specs/**/*.md` of the resolved change; and for the design phase, `design.md`, `tasks.md`, and `interfaces.md` of the resolved change. The reviewer additionally receives a read-only **reference set** as defined by `reviewer-isolation-and-read-only-input`.
+The spec pass's **reviewed set** — the artifacts it judges and the only artifacts its findings may target — SHALL be `proposal.md` and every `specs/**/*.md` of the resolved change. The design review's externally supplied findings may target only `design.md`, `tasks.md`, and `interfaces.md` of the resolved change. A spec reviewer additionally receives a read-only **reference set** as defined by `reviewer-isolation-and-read-only-input`.
 
-When the supervision marker is absent, the first automatic pass SHALL run only after the phase's own pre-completion verification and decision-summary derivation have finished, and before the worker returns its terminal `completed` payload. The review pass is therefore strictly the last act of the phase's forward sequence on the non-suppressed path, which is why `review` is the plan step that follows `validation` in the spec plan and `interfaces` in the design plan.
+When the supervision marker is absent, the spec worker's first automatic pass SHALL run only after its pre-completion verification and decision-summary derivation have finished, and before it returns its terminal `completed` payload. The design worker SHALL not dispatch an automatic reviewer; its review step completes only from a valid externally supplied findings block under the worker card's external-findings contract. The design review remains before the coordinator's feedback gate and before overview generation.
 
-Concretely: when not suppressed, the spec worker SHALL run its first pass only after `proposal.md` is non-empty, at least one non-empty `specs/**/*.md` exists, and artifact verification, the self-consistency and source-grounding checks, and decision-summary derivation are complete — that is, after the `validation` progress event. When not suppressed, the design worker SHALL run its first pass only after `design.md`, `tasks.md`, and `interfaces.md` verify successfully and its decision summary has been derived — that is, after the `interfaces` progress event — and before the coordinator's feedback gate and before overview generation.
+Concretely: when not suppressed, the spec worker SHALL run its first pass only after `proposal.md` is non-empty, at least one non-empty `specs/**/*.md` exists, and artifact verification, the self-consistency and source-grounding checks, and decision-summary derivation are complete — that is, after the `validation` progress event. The design worker SHALL verify `design.md`, `tasks.md`, and `interfaces.md`, derive its decision summary, and then consume any externally supplied review evidence without dispatching reviewer machinery.
 
-When the supervision marker is present, the automatic first pass SHALL NOT run; the phase still completes its verification and decision-summary derivation and proceeds to the ordinary pre-gate terminal without automatic reviewer dispatch.
+When the supervision marker is present, the spec automatic first pass SHALL NOT run; the spec phase still completes its verification and decision-summary derivation and proceeds to the ordinary pre-gate terminal without automatic reviewer dispatch. The design path remains external-findings-only in either mode.
 
-Every completed pass SHALL close with the base-form severity tally single-sourced in `sai/policies/artifact-review-contract.md`.
+Every completed spec pass SHALL close with the base-form severity tally single-sourced in `sai/policies/artifact-review-contract.md`.
 
 #### Scenario: spec worker runs a pass before completing when not supervised
 
@@ -119,39 +119,42 @@ Every completed pass SHALL close with the base-form severity tally single-source
 - **THEN** artifact verification, the self-consistency and source-grounding checks, and decision-summary derivation SHALL already be complete
 - **AND** the `validation` progress event SHALL already have been emitted, so any `review` event necessarily follows it
 
-#### Scenario: interfaces precedes review in the design phase when not supervised
+#### Scenario: external design findings complete the review path
 
-- **WHEN** the design worker runs its first automatic review pass
-- **THEN** `design.md`, `tasks.md`, and `interfaces.md` SHALL already have verified successfully and the design decision summary SHALL already have been derived
-- **AND** the `interfaces` progress event SHALL already have been emitted, so any `review` event necessarily follows it
+- **WHEN** valid external design-review evidence is supplied for `design.md`, `tasks.md`, or `interfaces.md`
+- **THEN** the design worker SHALL process it through the canonical feedback and artifact-review contracts
+- **AND** it SHALL dispatch no automatic reviewer or duplicate review loop
 
-#### Scenario: design worker runs a pass before completing when not supervised
+#### Scenario: external design review reports no findings
 
-- **WHEN** the design worker has written and verified `design.md`, `tasks.md`, and `interfaces.md` and the invocation does not carry `--supervised`
-- **THEN** it SHALL run a review pass over exactly those three artifacts before returning `completed`
-- **AND** the pass SHALL run before the coordinator's feedback gate and before overview generation
+- **WHEN** valid external design-review evidence reports no findings
+- **THEN** the design review SHALL complete through the no-findings branch without dispatching reviewer machinery
 
 #### Scenario: per-finding processing does not count as a pass
 
-- **WHEN** a single reviewer run returns several findings and the worker processes them one at a time
+- **WHEN** a single spec reviewer run returns several findings and the worker processes them one at a time
 - **THEN** the whole reviewer run plus all of that processing SHALL count as exactly one pass
 
-#### Scenario: supervised invocation skips the automatic first pass
+#### Scenario: supervised invocation skips the automatic spec pass
 
-- **WHEN** the spec or design worker finishes pre-completion verification under a `--supervised` invocation
+- **WHEN** the spec worker finishes pre-completion verification under a `--supervised` invocation
 - **THEN** it SHALL NOT run an automatic review pass before returning `completed`
 - **AND** the `review` step SHALL remain unmarked by the automatic path
 
+#### Scenario: external-no-findings-completes-review
+- **WHEN** valid external design-review evidence reports no findings
+- **THEN** the design review completes through the no-findings branch without dispatching reviewer machinery.
+
 ### Requirement: reviewer-isolation-and-read-only-input
 
-Each pass SHALL create one fresh reviewer, independent of the routed lifecycle, of the worker's own session, and of every prior reviewer.
+Each automatic spec pass SHALL create one fresh reviewer, independent of the routed lifecycle, of the worker's own session, and of every prior reviewer. The design worker does not create a reviewer in its review step; it consumes externally supplied findings instead.
 
-A reviewer's input SHALL consist of exactly two parts, both freshly read from disk (or taken verbatim from the invocation envelope) in their current state at the start of that pass:
+A spec reviewer's input SHALL consist of exactly two parts, both freshly read from disk (or taken verbatim from the invocation envelope) in their current state at the start of that pass:
 
 - the **reviewed set** — the artifacts the pass judges, as defined by `worker-owned-review-pass`; and
 - the **reference set** — read-only intent and constraint context that the reviewer judges the reviewed set against but never reports findings on.
 
-The reference set SHALL be, for the spec phase, the verbatim resolved request the worker received in its invocation envelope (for a supervised run, the complete `Ready to Propose` block), or **empty** when the envelope carried only a change name; and, for the design phase, the change's `proposal.md` and every `specs/**/*.md`, freshly read.
+The reference set SHALL be, for the spec phase, the verbatim resolved request the worker received in its invocation envelope (for a supervised run, the complete `Ready to Propose` block), or **empty** when the envelope carried only a change name. Design review evidence uses the change's `proposal.md` and every `specs/**/*.md` as read-only context when the worker validates the supplied block, but this does not create a worker-owned reviewer.
 
 Admitting verbatim envelope text into the spec-phase reference set is an authorized decision. The resolved request is not "the conversation" for the purposes of this requirement: it is the invocation's own closed input — one of the two strings the worker itself received — fixed before the run began, carrying no turn history, no user or worker reasoning, and no later answers. The prohibition below continues to exclude the surrounding conversation, every subsequent turn, and the worker's own deliberation.
 
@@ -182,11 +185,11 @@ Every finding's artifact location SHALL name a file of the reviewed set; a revie
 - **THEN** its reviewed set SHALL be `proposal.md` plus every `specs/**/*.md` of the resolved change
 - **AND** its reference set SHALL be the verbatim resolved request from the invocation envelope, or empty when the envelope carried only a change name
 
-#### Scenario: design pass input set
+#### Scenario: design review evidence set
 
-- **WHEN** a design-phase reviewer is created
+- **WHEN** an external design-review evidence block is consumed
 - **THEN** its reviewed set SHALL be `design.md`, `tasks.md`, and `interfaces.md` of the resolved change
-- **AND** its reference set SHALL be that change's `proposal.md` and every `specs/**/*.md`, freshly read
+- **AND** its reference set SHALL be that change's `proposal.md` and every `specs/**/*.md`, freshly read by the design worker when needed
 
 #### Scenario: an invocation carrying only a change name
 
@@ -197,8 +200,8 @@ Every finding's artifact location SHALL name a file of the reviewed set; a revie
 
 #### Scenario: design coverage of an approved requirement is reviewable
 
-- **WHEN** a design-phase reviewer finds that `design.md` and `tasks.md` leave a requirement of the change's `specs/**` uncovered
-- **THEN** it SHALL be able to report that as a finding, because the reference set supplies the requirement
+- **WHEN** external design-review evidence finds that `design.md` and `tasks.md` leave a requirement of the change's `specs/**` uncovered
+- **THEN** the evidence SHALL be processable as a finding, because the reference set supplies the requirement
 - **AND** the finding's artifact location SHALL name `design.md` or `tasks.md`, never the spec file
 
 #### Scenario: reviewer receives no worker reasoning
@@ -434,7 +437,7 @@ With the worker-owned automatic layer absent under supervision, a failed or canc
 
 #### Scenario: non-supervised path keeps the worker-owned automatic loop
 
-- **WHEN** the spec or design worker runs without the supervision marker
+- **WHEN** the spec worker runs without the supervision marker
 - **THEN** the worker-owned automatic loop SHALL still run
 - **AND** no supervised in-session round is required by this capability
 

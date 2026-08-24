@@ -26,7 +26,7 @@ For routed sai-1 and sai-2 on Claude Code and opencode, the coordinator owns pic
 
 Each routed feedback selection is handled by the coordinator with exactly one clean feedback-text prompt. Each selection receives an independent coordinator prompt, and no additional worker prompt is emitted. The canonical labels, descriptions, ordering, counter transitions, artifact sets, selective-processing rules, and proceed semantics remain single-sourced in their existing sections below.
 
-Architecture Snapshot presentation follows the shared design instruction in the routed Claude Code and opencode paths. The routed worker compares effective `interfaces.md` content and composes the existing summary while the coordinator only prints it. The routed paths display the current snapshot immediately before the initial feedback loop and redisplay it only after a normalized complete-interface change, without adding a field or artifact.
+Architecture Snapshot presentation and comparison are defined by `@sai/commands/design/steps/design.md`; this gate references that authority without restating its mechanics.
 
 ## Iteration counter (in-conversation only)
 

@@ -135,7 +135,6 @@ describe('doctor harness inventory', () => {
       }
       for (const file of [
         path.join('sai', 'commands', 'design', 'coordinator.md'),
-        path.join('sai', 'commands', 'design', 'invocation.md'),
         path.join('sai', 'commands', 'implement', 'coordinator.md'),
         path.join('sai', 'commands', 'implement', 'invocation.md'),
       ]) {

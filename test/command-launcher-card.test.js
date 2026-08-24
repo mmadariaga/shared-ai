@@ -80,6 +80,7 @@ const movedDirectives = {
     'Fetch @sai/orchestration/workers/bindings/spec-worker.md and use it.',
     'Fetch @sai/orchestration/workers/bindings/design-worker.md and use it.',
   ],
+  'meta-review': [],
 };
 
 function read(relativePath) {

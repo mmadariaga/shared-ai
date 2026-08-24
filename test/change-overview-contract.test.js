@@ -184,14 +184,14 @@ test('Target State is the first section of design.md', () => {
 });
 
 test('sentinel emitted when no step admits a contract', () => {
-  const instruction = artifact('sai/commands/design/instructions.md');
+  const instruction = artifact('sai/commands/design/steps/interfaces.md');
 
   assert.match(instruction, /None — no step contracts/,
     'the design instruction should define the exact None — no step contracts sentinel');
 });
 
 test('Target State present in design surfaces, absent from interfaces template', () => {
-  const instruction = artifact('sai/commands/design/instructions.md');
+  const instruction = artifact('sai/commands/design/steps/design.md');
   const designTemplate = artifact('openspec/schemas/sai-workflow/templates/design.md');
   const interfacesTemplate = artifact('openspec/schemas/sai-workflow/templates/interfaces.md');
 
@@ -465,8 +465,8 @@ test('overview first materialization and regeneration share the same transport',
 
   assert.match(worker, /first materialization and regeneration use the same transport/i,
     'worker.md should state that first materialization and regeneration share the same transport');
-  assert.match(worker, /no regeneration-specific prompt variant/i,
-    'worker.md should state there is no regeneration-specific prompt variant');
+  assert.match(worker, /first materialization and regeneration use the same transport, binding, Fetch, and minimal prompt shape/i,
+    'worker.md should state that both paths use the same prompt transport and shape');
 });
 
 test('opted-in Continue preserves the fetched single-file generator contract and English diagnostics', () => {
@@ -1425,7 +1425,7 @@ function assertArchitectureEmptinessContract(source, label) {
 
 test('Step 5: live design instructions and the overview contract use external-first nested boundary headings', () => {
   for (const [label, relativePath] of [
-    ['live design instructions', 'sai/commands/design/instructions.md'],
+    ['live design step', 'sai/commands/design/steps/design.md'],
     ['overview contract', 'sai/commands/design/change-overview.md'],
   ]) {
     assertExternalFirstBoundaryHeadings(artifact(relativePath), label);
@@ -1434,7 +1434,7 @@ test('Step 5: live design instructions and the overview contract use external-fi
 
 test('Step 5: live design and overview contracts distinguish shared, block-specific, and File Manifest empty forms', () => {
   for (const [label, relativePath] of [
-    ['live design instructions', 'sai/commands/design/instructions.md'],
+    ['live design step', 'sai/commands/design/steps/design.md'],
     ['overview contract', 'sai/commands/design/change-overview.md'],
   ]) {
     assertArchitectureEmptinessContract(artifact(relativePath), label);
@@ -1468,7 +1468,7 @@ test('Step 5: overview structural boundary headings remain English regardless of
 });
 
 test('Step 5: unclear boundary classification falls back to external and File Manifest is a direct inventory', () => {
-  const instructions = artifact('sai/commands/design/instructions.md');
+  const instructions = artifact('sai/commands/design/steps/design.md');
   assert.match(instructions,
     /unclear[\s\S]{0,220}external|external[\s\S]{0,220}unclear/i,
     'live design instructions should route unclear boundary classification to external');

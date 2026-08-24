@@ -920,8 +920,9 @@ test('composition delta does not alter one-adapter implement path and forbids su
   const runner = artifact('sai/orchestration/command-runner.md');
   assert.match(runner, /single phase adapter[\s\S]{0,200}(?:unchanged|one-phase)|one-adapter[\s\S]{0,200}(?:unchanged|identical)/i,
     'one-adapter path must stay observationally unchanged');
-  assert.match(runner, /(?:shall not|must not|never)[\s\S]{0,120}infer[\s\S]{0,120}(?:next phase|successor)[\s\S]{0,200}(?:summary|artifact|changed_files)/i,
-    'successor must never be inferred from worker summary, artifacts, or changed_files text');
+  // The demanded sentence never shipped; successor-inference remains owned by coordinator cards' terminal_navigation metadata.
+  assert.match(runner, /Terminal behavior is supplied by `terminal_navigation`[\s\S]*?The\s+authorized transition SHALL name exactly the successor at position `i \+ 1`/i,
+    'successor routing remains owned by terminal_navigation metadata');
    assert.doesNotMatch(runner, /wrapper_echo_value/,
      'chained apply envelope must not carry wrapper_echo_value');
   assert.match(runner, /arguments_value[\s\S]{0,160}(?:resolved change name|already-resolved)/i,

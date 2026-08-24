@@ -5,32 +5,14 @@ TBD - created by archiving change tasks-as-scaffold. Update Purpose after archiv
 ## Requirements
 ### Requirement: no-dead-skill-reference
 
-`sai-2-design` (both `claude/commands/sai-2-design.md` and `opencode/commands/sai-2-design.md`) SHALL NOT reference `.claude/skills/openspec-continue/SKILL.md` or any path containing `openspec-continue` that is not confirmed to exist in the project. The dead `Fetch` or `Then fetch and follow` directive for that skill SHALL be removed entirely.
+The supported design wrappers SHALL reference only existing routed worker, coordinator, and step surfaces and SHALL contain no dead legacy design-skill or retired-source fetch. Every design-related fetched path SHALL resolve to an active routed surface; the deleted monolithic design instruction, deleted invocation body, and any `.claude/skills/openspec-continue/SKILL.md` path SHALL not be treated as available authorities.
 
 #### Scenario: sai-2-design loads without missing-file warning
 
 - **WHEN** `/sai-2-design` is invoked
-- **THEN** no "file not found" or equivalent error is produced for a skill path; all referenced skill paths resolve to existing files
+- **THEN** no "file not found" or equivalent error is produced for a design-related path; all referenced worker, coordinator, and step paths resolve to existing active files
 
----
+#### Scenario: no-retired-design-fetch-remains
 
-### Requirement: embedded-design-generation
-
-`sai-2-design` SHALL embed the complete generation instructions for `design.md` and `tasks.md` directly in the wrapper file. The instructions SHALL:
-- Use `proposal.md` and `specs/**/*.md` as input context
-- Generate `design.md` following the schema's design artifact instruction
-- Generate `tasks.md` following the **narrative scaffold format** defined in the `tasks-scaffold-format` capability (no checkboxes)
-- NOT regenerate `proposal.md` or `specs/`
-
-The instructions SHALL be self-contained so that removing any openspec skill package does not break `/sai-2-design`.
-
-#### Scenario: design and tasks generated without external skill dependency
-
-- **WHEN** `/sai-2-design <change-name>` is run in a project where no `openspec-continue` skill is installed
-- **THEN** `design.md` and `tasks.md` are created correctly using the embedded instructions
-
-#### Scenario: tasks.md generated in narrative format
-
-- **WHEN** `sai-2-design` generates `tasks.md`
-- **THEN** the file follows the `## Step N:` scaffold format with Files Affected, What Will Be Done, and Testing Strategy fields; no `- [ ]` markers are present
-
+- **WHEN** either supported design wrapper is invoked
+- **THEN** every design-related fetched path resolves to an active routed surface.

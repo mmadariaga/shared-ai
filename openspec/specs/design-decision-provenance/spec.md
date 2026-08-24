@@ -4,7 +4,7 @@
 
 ### Requirement: Every Decision carries a provenance marker
 
-`sai/commands/design/instructions.md` SHALL require that every entry in the `## Decisions` section of `openspec/changes/{name}/design.md` carries exactly one provenance marker drawn from a closed set of three tokens:
+The active design step authority at `sai/commands/design/steps/design.md` SHALL require that every entry in the `## Decisions` section of `openspec/changes/{name}/design.md` carries exactly one provenance marker drawn from a closed set of three tokens:
 
 - `user` — the user stated or chose this; the design agent did not decide it.
 - `derived` — the design agent reasoned to it from the proposal, the specs, or the trade-offs; no external constraint forced it.
@@ -51,9 +51,14 @@ The precedence order follows re-litigability: a decision the user touched at all
 - **THEN** the agent SHALL NOT invent a fourth token
 - **AND** it applies the precedence rule to select among the tokens that partially apply, since the three are total
 
+#### Scenario: provenance-rule-source-is-single
+
+- **WHEN** the design worker writes a decision
+- **THEN** it uses the active step-owned provenance rule and emits exactly one closed-set marker.
+
 ### Requirement: Provenance signals what is re-litigable
 
-The provenance marker's purpose SHALL be stated in `sai/commands/design/instructions.md`: it tells a downstream reader which decisions may be reopened without new information and which may not.
+The provenance marker's purpose SHALL be stated in `sai/commands/design/steps/design.md`: it tells a downstream reader which decisions may be reopened without new information and which may not.
 
 A `derived` decision SHALL be understood as reopenable by a reviewer on reasoning alone. A `user` decision SHALL NOT be reversed by any downstream phase without the user; the agent SHALL route back to the user instead. A `codebase-forced` decision SHALL NOT be reopened without a codebase fact that contradicts the stated constraint.
 
@@ -69,11 +74,11 @@ A `derived` decision SHALL be understood as reopenable by a reviewer on reasonin
 
 ### Requirement: Provenance is recorded, not mechanically enforced
 
-`sai/commands/design/instructions.md` SHALL state that provenance markers depend on the design agent honestly recording who decided what, and that no mechanical validator verifies a marker's accuracy. The requirement SHALL NOT claim enforcement it does not have.
+`sai/commands/design/steps/design.md` SHALL state that provenance markers depend on the design agent honestly recording who decided what, and that no mechanical validator verifies a marker's accuracy. The requirement SHALL NOT claim enforcement it does not have.
 
 #### Scenario: instruction does not overclaim enforcement
 
-- **WHEN** the provenance rule is written into `sai/commands/design/instructions.md`
+- **WHEN** the provenance rule is written into `sai/commands/design/steps/design.md`
 - **THEN** it describes an authoring discipline
 - **AND** it does NOT assert that any tool, gate, or downstream phase validates marker correctness
 

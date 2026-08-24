@@ -322,6 +322,8 @@ test('STEP1_RETIRE_INLINE: retired routed loaders use exact hashes and preserve 
     'compat/sai-2-design-core.md',
     'compat/sai-3-implementation-core.md',
     'compat/implement-invocation.md',
+    'commands/design/invocation.md',
+    'commands/design/instructions.md',
   ];
   const loaderRetirements = manifest.retirements.filter(retirement =>
     retiredLoaderPaths.includes(retirement.destination.path));

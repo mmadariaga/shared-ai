@@ -6,7 +6,7 @@ Define the target-state design artifact and its derived Architecture Snapshot an
 ## Requirements
 ### Requirement: design.md opens with a Target State section
 
-`openspec/changes/{name}/design.md` SHALL begin with a `## Target State` section, authored and persisted by the design phase as the authoritative source for the change's finished-shape snapshot. `sai/commands/design/instructions.md` SHALL require that the `## Target State` section is emitted in `design.md` before the other design sections, and SHALL require that `openspec/changes/{name}/interfaces.md` begins directly with its first `## Step N` section — no `## Target State` section and no snapshot or manifest subsection SHALL be emitted in `interfaces.md`. The `change-overview.md` projection SHALL read the authoritative snapshot details from `design.md`; it SHALL render them under an adapted approval-oriented `## Target Architecture` section rather than project `## Target State`, and SHALL NOT author or synthesize source snapshot facts independently. The overview renders an adapted ## Target Architecture rather than ## Target State.
+`openspec/changes/{name}/design.md` SHALL begin with a `## Target State` section, authored and persisted by the design phase as the authoritative source for the change's finished-shape snapshot. The active design step at `sai/commands/design/steps/design.md` SHALL require that the `## Target State` section is emitted in `design.md` before the other design sections, SHALL require that its File Manifest is folded deterministically from task entries, and SHALL require that `openspec/changes/{name}/interfaces.md` begins directly with its first `## Step N` section — no `## Target State` section and no snapshot or manifest subsection SHALL be emitted in `interfaces.md`. The `change-overview.md` projection SHALL read the authoritative snapshot details from `design.md`; it SHALL render them under an adapted approval-oriented `## Target Architecture` section rather than project `## Target State`, and SHALL NOT author or synthesize source snapshot facts independently. The overview renders an adapted ## Target Architecture rather than ## Target State.
 
 `## Target State` SHALL present the finished shape the change converges on as **one concrete artifact** — not a per-step narrative and not a restatement of the change's motivation.
 
@@ -56,6 +56,11 @@ Directly beneath `## Target State`, `design.md` SHALL emit exactly the two sibli
 - **WHEN** `design.md` contains both Architecture Snapshot boundary blocks
 - **THEN** `## Target State` contains exactly `### Architecture Snapshot` followed by `### File Manifest`
 - **AND** the nested external-first/internal-second blocks do not become a third `###` subsection
+
+#### Scenario: target-state-folds-task-entries
+
+- **WHEN** the design worker generates Target State from task entries
+- **THEN** the resulting section contains the authoritative snapshot and a deterministic manifest derived from those entries.
 
 ### Requirement: Target State does not replace or duplicate per-step interfaces
 
@@ -357,4 +362,3 @@ The boundary split SHALL apply to future design authoring and to derived renderi
 - **WHEN** the updated design contract is installed while an existing change already has a `design.md`
 - **THEN** that existing `design.md` is not rewritten solely because the Architecture Snapshot contract changed
 - **AND** future authoring follows the external-first/internal-second contract
-

@@ -92,7 +92,7 @@
           "Skill"
         ],
         "progressDeclaration": "design milestones",
-        "overviewGeneration": "## overview_generation\n\nThe worker-owned budget-routed Change Overview dispatch receives overview_language from the current invocation, using English when the flag was absent.",
+        "overviewGeneration": "## overview_generation\n\nThe worker-owned budget-routed Change Overview dispatch receives the current invocation's overview_language only when --overview-lang is present and valid; absent or invalid transport selects the no-generation route and never synthesizes English.",
         "noticeContinuation": "Forward continue_after_notice exactly for design notices.",
         "claudeAgent": {
           "agentName": "sai-2-design-worker",
@@ -1627,6 +1627,34 @@
       ],
       "managedHashes": [
         "072a970983f017a3f46207131c4bede350447f59018cb193fcd9886a81b3bd36"
+      ]
+    },
+    {
+      "id": "retired-sai-2-design-invocation",
+      "destination": {
+        "class": "sai",
+        "path": "commands/design/invocation.md"
+      },
+      "harnesses": [
+        "claude",
+        "opencode"
+      ],
+      "managedHashes": [
+        "0e312152822415814a928bdc0592cc09e98e77f5dc2081512f132164964231c8"
+      ]
+    },
+    {
+      "id": "retired-sai-2-design-instructions",
+      "destination": {
+        "class": "sai",
+        "path": "commands/design/instructions.md"
+      },
+      "harnesses": [
+        "claude",
+        "opencode"
+      ],
+      "managedHashes": [
+        "9d69899aafc199ba8d7da92fa9d793d751be8f90003132a0eace3899092372f4"
       ]
     },
     {

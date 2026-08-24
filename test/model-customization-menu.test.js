@@ -93,6 +93,7 @@ const COMMANDS = [
   'sai-commit',
   'sai-explore',
   'sai-pr',
+  'sai-review',
   'sai-status',
   'sai-worktree',
 ];

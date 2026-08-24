@@ -17,6 +17,8 @@ const retiredSources = [
   'sai/compat/sai-2-design-core.md',
   'sai/compat/sai-3-implementation-core.md',
   'sai/compat/implement-invocation.md',
+  'sai/commands/design/invocation.md',
+  'sai/commands/design/instructions.md',
 ];
 const formerAdrTemplateSource = 'sai/compat/_templates/adr-index.md';
 
@@ -30,7 +32,6 @@ test('retired phase sources are absent and grouped callers remain available', ()
   for (const source of retiredSources) assert.equal(fs.existsSync(path.join(repoRoot, source)), false);
   for (const source of [
     'sai/commands/design/coordinator.md',
-    'sai/commands/design/invocation.md',
     'sai/commands/implement/coordinator.md',
     'sai/commands/implement/invocation.md',
   ]) assert.equal(fs.existsSync(path.join(repoRoot, source)), true);

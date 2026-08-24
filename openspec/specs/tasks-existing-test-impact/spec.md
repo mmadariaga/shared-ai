@@ -4,7 +4,7 @@
 
 ### Requirement: Each tasks.md step declares the existing tests it breaks
 
-`sai/commands/design/instructions.md` SHALL require every `## Step N` section of `openspec/changes/{name}/tasks.md` to declare which **existing** tests the step's change breaks.
+The active task-generation step at `sai/commands/design/steps/tasks.md` SHALL require every `## Step N` section of `openspec/changes/{name}/tasks.md` to declare which **existing** tests the step's change breaks.
 
 The declaration SHALL be emitted under the pinned literal label `**Existing Tests Broken**`, as the fifth and last sub-field of the step section, immediately following `**Testing Strategy**`. The label and position are fixed by the `tasks-scaffold-format` capability; this capability defines the field's content.
 
@@ -28,6 +28,10 @@ The field concerns *existing* tests only. New tests the step adds are covered by
 - **WHEN** a step adds new tests
 - **THEN** those new tests appear in `**Testing Strategy**` and `interfaces.md`
 - **AND** they do NOT appear in the existing-tests-broken field
+
+#### Scenario: task-test-impact-uses-live-authority
+- **WHEN** a task step is generated
+- **THEN** its existing-test-impact field is emitted according to the active step-local task rule.
 
 ### Requirement: Each declared breakage states its failure mode
 

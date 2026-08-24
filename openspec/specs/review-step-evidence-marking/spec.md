@@ -8,7 +8,7 @@ TBD — placeholder purpose. Define when the `review` progress step is marked an
 
 ### Requirement: review-step-marked-only-by-a-no-high-pass
 
-The `review` progress step of the spec plan (`spec-progress-plan`) and of the design plan (`design-coordinator`) SHALL be marked exactly when a completed worker-owned review pass over that phase's reviewed artifact set reports `High=0`, and never otherwise. `Medium` and `Low` findings SHALL NOT block marking.
+The `review` progress step of the spec plan (`spec-progress-plan`) and of the design plan (`design-coordinator`) SHALL be marked from valid review evidence, including an explicit external no-findings result for the design review path, while preserving the rule that a completed worker-owned review pass over that phase's reviewed artifact set reports `High=0`, and never otherwise. `Medium` and `Low` findings SHALL NOT block marking.
 
 Marking SHALL be performed by the phase worker through an ordinary progress event carrying the id `review`, exactly as every other step is marked. The coordinator SHALL NOT become a second marking source, and the deterministic state derivation of `sai/policies/todo-structure.md` SHALL remain untouched.
 
@@ -34,6 +34,11 @@ The evidence SHALL come from the pass itself, never from artifact existence, art
 - **WHEN** a completed pass returns no findings at all
 - **THEN** the step SHALL be marked, because `High=0`
 
+#### Scenario: external design review reports no findings
+
+- **WHEN** the design review step receives valid external evidence reporting no findings
+- **THEN** the worker SHALL emit the ordinary review completion evidence and the coordinator SHALL mark `review` completed
+
 #### Scenario: a failed, cancelled, or contract-violating attempt does not mark
 
 - **WHEN** a reviewer fails, is cancelled, or returns a finding whose severity violates the closed vocabulary
@@ -54,6 +59,14 @@ The evidence SHALL come from the pass itself, never from artifact existence, art
 - **WHEN** a user-requested pass reports `High=0` during a feedback turn
 - **THEN** its progress event SHALL be received, marked, and rendered while the gate is still open — that is, strictly before the phase's reconciliation trigger fires
 - **AND** the coordinator SHALL handle that event as an ordinary progress-event update, marking the step, re-rendering the list, and stamping it exactly as it stamps any other progress-event update
+
+#### Scenario: no-findings-branch-marks-review
+- **WHEN** the design review step receives valid external evidence reporting no findings
+- **THEN** the worker emits the ordinary review completion evidence and the coordinator marks the review step completed.
+
+#### Scenario: external design review reports no findings
+- **WHEN** the design review step receives valid external evidence reporting no findings
+- **THEN** the worker SHALL emit the ordinary review completion evidence and the coordinator SHALL mark `review` completed
 
 ### Requirement: progress-marks-are-monotonic
 

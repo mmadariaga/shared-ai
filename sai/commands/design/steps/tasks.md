@@ -23,6 +23,8 @@ Do NOT proceed to `tasks.md` until every Open Question has been either answered 
 
 Write to `openspec/changes/$ARGUMENTS/tasks.md`.
 
+When writing each step's `**Files Affected**` entries, record the exact project-root-relative paths and existence-derived change tokens that the design step's `### File Manifest` fold consumes. After the task scaffold is complete, reconcile the target-state manifest from those entries rather than maintaining a separate hand-authored inventory.
+
 IMPORTANT: Do NOT use checkbox markers (`- [ ]` or `- [x]`). This file is a planning scaffold, not a progress tracker. Implementation progress is tracked in `implementation.md`.
 
 Structure — one numbered section per implementation step:

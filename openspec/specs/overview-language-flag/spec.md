@@ -28,10 +28,6 @@ The shared `sai-explore` and `sai-2-design` flows SHALL recognize the optional `
 - **THEN** the effective overview language is `English`
 - **AND** overview generation is opted in rather than treated as the omitted-flag path
 
-#### Scenario: Default language when the flag is absent
-- **WHEN** a valid `sai-explore` or `sai-2-design` invocation contains no `--overview-lang` flag
-- **THEN** the effective overview language is English and existing argument behavior is preserved
-
 #### Scenario: Missing language value is rejected
 
 - **WHEN** `--overview-lang` is the final argument or its next token is another option such as `--fast-track`
@@ -51,6 +47,10 @@ The shared `sai-explore` and `sai-2-design` flows SHALL recognize the optional `
 
 - **WHEN** a change-consuming design invocation uses `--overview-lang my-change` without a preceding change name
 - **THEN** the flow reports a clear missing-change-name validation error instead of treating `my-change` as a valid complete invocation
+
+#### Scenario: absent-flag-language-remains-unresolved
+- **WHEN** a supported flow contains no `--overview-lang` flag
+- **THEN** parsing produces no effective language and does not opt into overview generation.
 
 ### Requirement: Preserve remaining argument semantics
 
@@ -89,4 +89,3 @@ The parser and the explore gate SHALL keep flag presence, gate selection, and th
 
 - **WHEN** a user runs `sai-1-spec`
 - **THEN** the spec-proposal flow does not parse, persist, or forward `--overview-lang`
-

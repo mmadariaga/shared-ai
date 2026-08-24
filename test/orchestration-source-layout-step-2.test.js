@@ -118,25 +118,23 @@ test('grouped design and implementation phase assets preserve their former sourc
     {
       name: 'design',
       directory: path.join(repoRoot, 'sai', 'commands', 'design'),
-       coordinator: path.join(repoRoot, 'sai', 'commands', 'design', 'coordinator.md'),
-       invocation: path.join(repoRoot, 'sai', 'commands', 'design', 'invocation.md'),
-      instruction: 'sai/commands/design/instructions.md',
-       cardContents: ['change-overview.md', 'command-bootstrap.md', 'coordinator.md', 'instructions.md', 'invocation.md', 'steps', 'worker.md'],
+      coordinator: path.join(repoRoot, 'sai', 'commands', 'design', 'coordinator.md'),
+      cardContents: ['change-overview.md', 'command-bootstrap.md', 'coordinator.md', 'steps', 'worker.md'],
     },
-     {
-       name: 'implement',
-       directory: path.join(repoRoot, 'sai', 'commands', 'implement'),
-       coordinator: path.join(repoRoot, 'sai', 'commands', 'implement', 'coordinator.md'),
-       invocation: path.join(repoRoot, 'sai', 'commands', 'implement', 'invocation.md'),
-       instruction: 'sai/commands/implement/instructions.md',
-        cardContents: ['adr-index.template.md', 'command-bootstrap.md', 'coordinator.md', 'ddr-index.template.md', 'implementation-plan.template.md', 'instructions.md', 'invocation.md', 'steps', 'worker.md'],
-     },
-     {
-       name: 'meta-build',
-       directory: path.join(repoRoot, 'sai', 'commands', 'meta-build'),
-       cardContents: ['command-bootstrap.md', 'coordinator.md'],
-     },
-   ];
+    {
+      name: 'implement',
+      directory: path.join(repoRoot, 'sai', 'commands', 'implement'),
+      coordinator: path.join(repoRoot, 'sai', 'commands', 'implement', 'coordinator.md'),
+      invocation: path.join(repoRoot, 'sai', 'commands', 'implement', 'invocation.md'),
+      instruction: 'sai/commands/implement/instructions.md',
+      cardContents: ['adr-index.template.md', 'command-bootstrap.md', 'coordinator.md', 'ddr-index.template.md', 'implementation-plan.template.md', 'instructions.md', 'invocation.md', 'steps', 'worker.md'],
+    },
+    {
+      name: 'meta-build',
+      directory: path.join(repoRoot, 'sai', 'commands', 'meta-build'),
+      cardContents: ['command-bootstrap.md', 'coordinator.md'],
+    },
+  ];
 
    for (const phase of phases) {
      const directoryExists = fs.existsSync(phase.directory);
@@ -144,13 +142,15 @@ test('grouped design and implementation phase assets preserve their former sourc
      if (!directoryExists) continue;
      assert.deepEqual(fs.readdirSync(phase.directory).sort(), phase.cardContents);
       if (phase.name === 'meta-build') continue;
-     assert.equal(
+    assert.equal(
       fs.readFileSync(path.join(phase.directory, 'coordinator.md'), 'utf8'),
       fs.readFileSync(phase.coordinator, 'utf8')
     );
-    const invocation = fs.readFileSync(path.join(phase.directory, 'invocation.md'), 'utf8');
-    assert.equal(invocation, fs.readFileSync(phase.invocation, 'utf8'));
-    assert.match(invocation, new RegExp(`Fetch @${phase.instruction.replaceAll('/', '\\/')}`));
+    if (phase.invocation) {
+      const invocation = fs.readFileSync(path.join(phase.directory, 'invocation.md'), 'utf8');
+      assert.equal(invocation, fs.readFileSync(phase.invocation, 'utf8'));
+      assert.match(invocation, new RegExp(`Fetch @${phase.instruction.replaceAll('/', '\\/')}`));
+    }
   }
 
   const adrIndex = path.join(repoRoot, 'sai', 'commands', 'implement', 'adr-index.template.md');

@@ -290,7 +290,7 @@ test('installOpencode copies commands/opencode/*.md to dest/commands/', () => {
 test('installOpencode projects grouped SAI command assets and excludes former coordinator sources', () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-'));
   installOpencode(tmpDir);
-  for (const file of [path.join('design', 'coordinator.md'), path.join('design', 'invocation.md'), path.join('implement', 'coordinator.md'), path.join('implement', 'invocation.md')]) {
+  for (const file of [path.join('design', 'coordinator.md'), path.join('implement', 'coordinator.md'), path.join('implement', 'invocation.md')]) {
     assert.ok(fs.existsSync(path.join(tmpDir, 'sai', 'commands', file)), `${file} should be projected`);
   }
   for (const file of [path.join('meta-build', 'coordinator.md'), path.join('meta-build', 'command-bootstrap.md')]) {
@@ -320,6 +320,10 @@ test('installOpencode projects the canonical ADR template and removes former com
   assert.equal(fs.existsSync(path.join(tmpDir, 'sai', 'instructions')), false);
   for (const file of ['sai-2-design-core.md', 'sai-3-implementation-core.md', 'implement-invocation.md']) {
     assert.equal(fs.existsSync(path.join(tmpDir, 'sai', 'compat', file)), false, `${file} should not be projected`);
+  }
+  for (const file of ['invocation.md', 'instructions.md']) {
+    assert.equal(fs.existsSync(path.join(tmpDir, 'sai', 'commands', 'design', file)), false,
+      `design/${file} should not be projected`);
   }
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });

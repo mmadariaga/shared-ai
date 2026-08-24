@@ -23,10 +23,12 @@ When invoked with a change name, `sai-2-design` SHALL produce `openspec/changes/
 - **THEN** `openspec/changes/<change-name>/tasks.md` is created
 
 ### Requirement: sai-2-design uses a high-capability model
-The `sai-2-design` wrapper SHALL declare `model: claude-opus-4-7` and `effort: high` in its frontmatter.
+The Claude Code and opencode `sai-2-design` wrappers SHALL declare the staged routed coordinator model and effort or variant, rather than the retired standalone high-effort inline model contract.
 
 #### Scenario: model declared in Claude Code wrapper
-- **WHEN** `commands/claude/sai-2-design.md` frontmatter is read
-- **THEN** `model` is `claude-opus-4-7` and `effort` is `high`
+- **WHEN** either supported design wrapper is read
+- **THEN** its model declaration matches the staged routed coordinator surface used by that harness
 
-
+#### Scenario: staged-wrapper-model-is-used
+- **WHEN** either supported design wrapper is read
+- **THEN** its staged model declaration matches the routed coordinator surface used by that harness.

@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Define the design coordinator: its lifecycle management, notice emission, feedback iteration, continue-now semantics, and relationship to the implementation coordinator binding.
+Define the design coordinator: its lifecycle management, notice emission, feedback iteration, and relationship to the implementation coordinator binding.
 
 ## Interfaces
 
@@ -12,14 +12,9 @@ Define the design coordinator: its lifecycle management, notice emission, feedba
 arguments_value: string
 ```
 
-### ContinueNowEnvelope
-
-```yaml
-arguments_value: "placeholder-change-name"
-```
 ## Requirements
 
-The routed design coordinator and invocation bodies are grouped at `sai/commands/design/coordinator.md` and `sai/commands/design/invocation.md`.
+The routed design coordinator, worker, and step-local instruction surfaces are grouped at `sai/commands/design/coordinator.md`, `sai/commands/design/worker.md`, and `sai/commands/design/steps/`.
 ### Requirement: Design coordinator diagnoses the main path only after non-clean closure
 
 The routed design coordinator SHALL declare the existing recovery policy together with the design worker's main artifact ownership and SHALL preserve the existing overview-generation recovery path. Its clean route remains a thin router: it SHALL not read code, configuration, change artifacts, or design artifacts and SHALL forward worker payloads without inspecting them. A failed result, a coordinator-disproved completed result, or a completed result carrying a STOP opens a narrowly scoped exception under which the coordinator MAY inspect only `design.md`, `tasks.md`, and `interfaces.md`, plus the read-only proposal/spec inputs needed to establish whether a prior-phase cause is out of scope. The coordinator SHALL never write an artifact; it SHALL either re-dispatch the same worker with a diagnosis or stop with zero attempts.
@@ -64,17 +59,21 @@ Main-path artifact diagnosis SHALL be distinct from the existing post-gate overv
 - **AND** the new main-path artifact inspection rule SHALL not create a second overview loop
 
 ### Requirement: Current design harness entrypoints
-Claude Code and opencode SHALL invoke the routed design coordinator and their respective design-worker bindings. No supported wrapper SHALL invoke a retired inline loader.
+Claude Code and opencode SHALL invoke the routed design coordinator and their respective design-worker bindings, with active source references pointing to the step-owned contract rather than the deleted invocation body.
 
 #### Scenario: Routed harness starts design
 - **WHEN** Claude Code or opencode invokes `/sai-2-design`
 - **THEN** its wrapper SHALL enter the routed coordinator and design-worker binding
-- **AND** it SHALL NOT fetch a retired inline adapter or a removed inline command loader
+- **AND** it SHALL NOT fetch a deleted invocation source, retired inline adapter, or removed inline command loader
 
 #### Scenario: Retired inline design entry is excluded
 - **WHEN** a maintainer inspects the active `/sai-2-design` entrypoints
 - **THEN** the active wrappers SHALL be limited to the Claude Code and opencode routed coordinator and matching worker bindings
-- **AND** no active entrypoint SHALL fetch a retired inline adapter or removed inline loader
+- **AND** active source references SHALL point to live step-owned surfaces, with no fetch of a deleted invocation body, retired inline adapter, or removed inline loader
+
+#### Scenario: routed-entrypoint-uses-live-contract
+- **WHEN** either supported harness invokes `/sai-2-design`
+- **THEN** it enters the routed coordinator and worker binding without fetching a deleted invocation source.
 
 ### Requirement: active-harness-entry-boundary
 
@@ -103,24 +102,6 @@ The design planning worker SHALL delegate source discovery only to its permitted
 - **WHEN** the worker needs source code discovery
 - **THEN** it SHALL delegate to the budget-explorer or explore agent only
 - **AND** SHALL NOT delegate to any other agent type
-
-### Requirement: continue-now-clears-design-lifecycle
-
-Continue now SHALL clear the design lifecycle state and dispatch the established implementation binding.
-
-#### Scenario: continue-now clears state
-- **WHEN** the user selects "Continue now in this chat"
-- **THEN** the coordinator SHALL clear the design lifecycle state
-- **AND** SHALL dispatch the implementation binding without design context
-
-### Requirement: continue-now-envelope-contract
-
-The Continue-now request SHALL carry the resolved change name in the sole `arguments_value` field. It SHALL not construct a wrapper-echo field.
-
-#### Scenario: envelope fields present
-- **WHEN** continue-now is triggered
-- **THEN** the request contains `arguments_value` set to the resolved change name
-- **AND** it contains no wrapper-echo field
 
 ### Requirement: The design coordinator is a conversational control plane
 

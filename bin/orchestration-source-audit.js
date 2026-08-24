@@ -16,6 +16,8 @@ const RETIRED_SOURCES = [
   'sai/compat/sai-3-implementation-core.md',
   'sai/compat/implement-invocation.md',
   'sai/commands/sai-2-design-inline.md',
+  'sai/commands/design/invocation.md',
+  'sai/commands/design/instructions.md',
   'sai/commands/sai-3-implement-inline.md',
   'sai/orchestration/inline-invocation.md',
   'sai/commands/sai-1-spec.md',

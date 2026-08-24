@@ -10,6 +10,7 @@ const {
   loadInstallManifest,
   expandInstallManifest,
   expandRetirementManifest,
+  matrixRenderFor,
 } = require('../bin/install-manifest.js');
 const { MANAGED_WORKERS } = require('../bin/install-flow.js');
 
@@ -761,6 +762,24 @@ test('compatibility and policy projections resolve for every supported harness',
   }
 });
 
+test('design matrix projections carry opt-in overview generation semantics for both harnesses', () => {
+  const repoRoot = path.join(__dirname, '..');
+  const manifest = loadInstallManifest(repoRoot);
+  const designEntry = manifest['worker-matrix'].entries.find(entry => entry.phase === 'design');
+  assert.ok(designEntry, 'the design worker matrix entry should exist');
+  assert.match(designEntry.overviewGeneration, /only when --overview-lang is present and valid/);
+  assert.doesNotMatch(designEntry.overviewGeneration, /flag was absent|using English when/i);
+
+  for (const harness of ['claude', 'opencode']) {
+    const binding = matrixRenderFor(manifest, harness, repoRoot)
+      .find(item => item.kind === 'binding' && item.phase === 'design');
+    assert.ok(binding, `${harness} should render the design binding`);
+    assert.match(binding.text, /overview_generation/);
+    assert.match(binding.text, /only when --overview-lang is present and valid/);
+    assert.doesNotMatch(binding.text, /flag was absent|using English when/i);
+  }
+});
+
 test('canonical identity surfaces reject former routed names', () => {
   const repoRoot = path.join(__dirname, '..');
   const paths = [
@@ -1274,7 +1293,7 @@ test('canonical manifest validates all historical retirements and excludes them 
        ],
      },
    ]);
-   assert.equal(manifest.retirements.flatMap(retirement => retirement.managedHashes).length, 85);
+    assert.equal(manifest.retirements.flatMap(retirement => retirement.managedHashes).length, 87);
   assert.ok(manifest.retirements.flatMap(retirement => retirement.managedHashes).every(hash => /^[0-9a-f]{64}$/.test(hash)));
 
   const destinationRoot = {
@@ -1288,14 +1307,16 @@ test('canonical manifest validates all historical retirements and excludes them 
   for (const harness of ['claude', 'opencode']) {
     const retirements = expandRetirementManifest(manifest, { harness, repoRoot, destinationRoot });
      assert.deepEqual(retirements.map(retirement => retirement.destinationPath), [
-       path.resolve(destinationRoot.sai, 'commands/sai-2-design.md'),
-       path.resolve(destinationRoot.sai, 'commands/sai-2-design-inline.md'),
-       path.resolve(destinationRoot.sai, 'commands/sai-3-implement.md'),
-         path.resolve(destinationRoot.sai, 'commands/sai-3-implement-inline.md'),
-          ...[
-           path.resolve(destinationRoot.sai, 'orchestration/workers/bindings', harness, 'accessibility-worker.md'),
-           path.resolve(destinationRoot.sai, 'orchestration/workers/bindings', harness, 'design-worker.md'),
-           path.resolve(destinationRoot.sai, 'orchestration/workers/bindings', harness, 'implementation-worker.md'),
+        path.resolve(destinationRoot.sai, 'commands/sai-2-design.md'),
+        path.resolve(destinationRoot.sai, 'commands/sai-2-design-inline.md'),
+        path.resolve(destinationRoot.sai, 'commands/sai-3-implement.md'),
+        path.resolve(destinationRoot.sai, 'commands/sai-3-implement-inline.md'),
+        path.resolve(destinationRoot.sai, 'commands/design/invocation.md'),
+        path.resolve(destinationRoot.sai, 'commands/design/instructions.md'),
+        ...[
+            path.resolve(destinationRoot.sai, 'orchestration/workers/bindings', harness, 'accessibility-worker.md'),
+            path.resolve(destinationRoot.sai, 'orchestration/workers/bindings', harness, 'design-worker.md'),
+            path.resolve(destinationRoot.sai, 'orchestration/workers/bindings', harness, 'implementation-worker.md'),
             path.resolve(destinationRoot.sai, 'orchestration/workers/bindings', harness, 'performance-worker.md'),
             path.resolve(destinationRoot.sai, 'orchestration/workers/bindings', harness, 'review-worker.md'),
             path.resolve(destinationRoot.sai, 'orchestration/workers/bindings', harness, 'security-worker.md'),
@@ -1307,10 +1328,10 @@ test('canonical manifest validates all historical retirements and excludes them 
             path.resolve(destinationRoot.skills, 'sai-5-review-worker/SKILL.md'),
             path.resolve(destinationRoot.skills, 'sai-6-security-worker/SKILL.md'),
             path.resolve(destinationRoot.skills, 'sai-1-spec-proposal-worker/SKILL.md'),
-           ],
-         path.resolve(destinationRoot.sai, 'compat/_templates/adr-index.md'),
+          ],
+          path.resolve(destinationRoot.sai, 'compat/_templates/adr-index.md'),
         path.resolve(destinationRoot.sai, 'compat/sai-2-design-core.md'),
-       path.resolve(destinationRoot.sai, 'compat/sai-3-implementation-core.md'),
+        path.resolve(destinationRoot.sai, 'compat/sai-3-implementation-core.md'),
      ].sort());
     assert.ok(retirements.every(retirement => retirement.harness === harness));
     const active = expandInstallManifest(manifest, { harness, repoRoot, destinationRoot });

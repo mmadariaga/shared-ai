@@ -4,7 +4,7 @@
 
 ### Requirement: A risk may carry a verify-first ordering marker
 
-`sai/commands/design/instructions.md` SHALL permit each entry in the `## Risks / Trade-offs` section of `openspec/changes/{name}/design.md` to carry an optional verify-first marker naming the `## Step N` the risk gates.
+The active design step authority at `sai/commands/design/steps/design.md` SHALL permit each entry in the `## Risks / Trade-offs` section of `openspec/changes/{name}/design.md` to carry an optional verify-first marker naming the `## Step N` the risk gates, without duplicating paragraph-scale ordering guidance across retired instruction surfaces.
 
 The marker SHALL name a specific step by its integer key — not "early", "before implementation", or another vague ordering phrase. Its meaning SHALL be: the risk must be resolved or disproven *before* the named step is executed, because that step's design depends on the answer.
 
@@ -26,6 +26,11 @@ The marker is optional. A risk with no ordering dependency SHALL carry no marker
 - **WHEN** a verify-first marker is written
 - **THEN** it cites a concrete `Step N`
 - **AND** it does NOT use unanchored phrases such as "early" or "before implementation"
+
+#### Scenario: verify-first-rule-is-bounded
+
+- **WHEN** a design risk gates a specific step
+- **THEN** the active rule names that integer `Step N` and does not use vague ordering language.
 
 ### Requirement: tasks.md derivation consumes verify-first markers as ordering constraints
 

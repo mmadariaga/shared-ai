@@ -2,7 +2,6 @@
 
 Fetch @sai/policies/verified-precondition-handback.md
 Fetch @sai/orchestration/worker-core.md and follow it exactly.
-Fetch @sai/policies/bounded-dispatch-retry.md and follow it for every delegated subagent dispatch.
 Fetch @sai/commands/design/steps/common.md and keep it in force for the entire run.
 
 ## Invocation Envelope
@@ -13,15 +12,21 @@ The worker receives exactly one opaque string and derives invocation-scoped valu
 - `overview_language`: worker-owned invocation state derived from the optional flag after parsing; when the flag is absent, leave the value `unresolved`, never synthesize `English`, and never write the value to an artifact or configuration file.
 - `supervised`: worker-owned invocation state derived from the bare `--supervised` flag after parsing; when the flag is absent, set it to `false`, and never write the value to an artifact or configuration file.
 
-Every post-resolution lifecycle terminal result carries the current `overview_language` — including the `unresolved` value when the option is absent — alongside its normal lifecycle metadata; the generator result envelope remains separate and unchanged. Progress events retain their exact closed shape from `@sai/orchestration/worker-core.md` and MUST NOT include `overview_language` or other lifecycle metadata; this worker emits no design notice. Every post-resolution `failed` result also carries the current selected `overview_language`, a worker-authored `failure_class`, and boolean `unrecoverable`; selected-language failures retain that metadata, while an absent language remains unresolved and does not synthesize an overview.
+Every post-resolution lifecycle terminal result carries the current `overview_language` — including the `unresolved` value when the option is absent — alongside its normal lifecycle metadata; the generator result envelope remains separate and unchanged. Design notices and progress events retain their exact closed shapes from `@sai/orchestration/worker-core.md` and MUST NOT include `overview_language` or other lifecycle metadata. Every post-resolution `failed` result also carries the current selected `overview_language`, a worker-authored `failure_class`, and boolean `unrecoverable`; selected-language failures retain that metadata, while an absent language remains unresolved and does not synthesize an overview.
 
 ## Prerequisites and Resolution
 
-Parse invocation-scoped options before change resolution. Fast-track is NOT parsed here: the coordinator/main session owns the `--fast-track` presence check, the strip, the single banner, and the `fast_track_active` session state per `@sai/policies/fast-track-flag.md`; this worker receives the cleaned request and performs no fast-track activation and emits no banner notice. Scan the cleaned `arguments_value` for the option token `--overview-lang <language>`. The token is the opt-in signal; the coordinator has already halted on missing-value, duplicate, or malformed occurrences before any dispatch, so only a well-formed occurrence or an absence can arrive here — if an invalid form is nevertheless received, return a clear `failed` validation result before change resolution or dispatch without selecting a progress plan. When the token is absent, leave `overview_language: unresolved`, do not synthesize an English value, and do not dispatch overview generation. Remove only the option and its value before resolving the change name. A change-consuming invocation requires the change name before the option; if parsing leaves no change name, return a clear missing-change-name validation result and never treat the language value as the change name. The cleaned arguments and selected `overview_language` are invocation-scoped and never persisted.
+Parse invocation-scoped options before change resolution.
 
-After these existing parse rules, recognize bare `--supervised`. It is order-independent relative to `--overview-lang` after the change name: `{name} --overview-lang <language> --supervised` and `{name} --supervised --overview-lang <language>` are both accepted. Strip `--supervised` before change-name finalization, set invocation-scoped `supervised: true` when it is present and `supervised: false` when it is absent, never persist it, and do not verify dispatcher provenance. A stray `--fast-track` token in the received string carries no worker-side meaning: strip it tolerantly wherever it appears and never interpret it.
+- Scan `arguments_value` for the option token `--overview-lang <language>`; raw presence is the opt-in signal.
+- Remove only the option and its value before resolving the change name.
+- A change-consuming invocation requires the change name before the option. If parsing leaves no change name, return a clear missing-change-name validation result and never treat the language value as the change name.
+- `--fast-track` is recognized independently and remains active in either order.
+- The cleaned arguments and selected `overview_language` are invocation-scoped and never persisted.
 
-If `--fast-track` was present in the original invocation, activation and the single `> FAST-TRACK MODE ACTIVE` banner already happened coordinator-side per `@sai/policies/fast-track-flag.md`; this worker returns no notice for it and keeps no banner-dedup state.
+After these existing parse rules, recognize bare `--supervised` alongside `--fast-track` and `--overview-lang <language>`. It is order-independent among flags after the change name: `{name} --fast-track --supervised` and `{name} --supervised --fast-track` are both accepted, as are `{name} --overview-lang <language> --supervised` and `{name} --supervised --overview-lang <language>`. Strip `--supervised` before change-name finalization, set invocation-scoped `supervised: true` when it is present and `supervised: false` when it is absent, never persist it, and do not verify dispatcher provenance. The name-first design envelope therefore accepts either fast-track/supervision flag order without changing the resolved name.
+
+If `--fast-track` is present in the combined envelope, activate the signal, remove the token from its source value, and return the design notice carrying `message: > FAST-TRACK MODE ACTIVE` once per session unless reconstruction says `fast_track_banner_emitted: true`. The notice is a returned nonterminal result, not a line printed inside this session; the coordinator prints it and resumes the worker with `continue_after_notice`.
 Then run universal prerequisite checks via `Fetch @sai/policies/prereqs.md`.
 Return `failed` with the missing-prerequisite summary when a check fails.
 
@@ -37,7 +42,7 @@ Verify `proposal.md` and at least one `specs/**/*.md`. Missing artifacts return
 the established change-not-found failure. Stamp the specs approval
 automatically — never ask — writing `approval.specs.approved_at` only when it is
 absent or empty and `approval.specs.notes` as an empty string, and handle
-amendments per `design.md`.
+amendments per @sai/commands/design/steps/design.md (Spec-problem handling).
 
 ## Progress Reporting
 
@@ -64,7 +69,41 @@ The startup act is one batch: it runs prerequisites, resolves the change, and se
 
 Immediately before the first effective source-artifact write, set the overview lifecycle state to stale; this is the stale-before-first-write boundary.
 
-Return exactly one progress event per completed act after prerequisite checks pass and change resolution completes, per `@sai/orchestration/worker-core.md`'s Nonterminal Result Transport: each event is returned as the worker's result, the turn ends there, and the coordinator resumes the worker with `continue_after_progress`. Composing the event as text inside this session marks nothing and prints nothing to the user. The startup act is the Startup Handshake — return `prereqs-resolution` before dispatching any budget-explorer, writing `design.md`, or beginning research. The startup act — prerequisites, resolution, and stamping the specs approval — reports as one batch carrying every step id that act completed and carries only `prereqs-resolution`; the gate has no standalone step or `skipped` field. Codebase research and Open Question resolution report `research`; writing `design.md` reports `design`; writing `tasks.md` reports `tasks`; writing and verifying `interfaces.md` reports `interfaces`; a valid externally supplied `sai-explore` findings block whose explicit base-form `Summary: High=0 Medium=<count> Low=<count>` explicitly reports `High=0` while `review` remains unmarked emits exactly one progress event carrying only `review`; and successful overview materialization or regeneration that commits `overview.state: current` reports `overview`. Report ids in plan order and list every path written since the preceding result. Progress marks are monotonic. Never emit before resolution or in place of the one terminal lifecycle status. On a feedback turn, ordinary feedback, an absent or malformed base-form `Summary:`, or `High>0` emits no `review`; `Medium`/`Low` findings do not block an explicit `High=0`, and only a valid externally supplied `sai-explore` findings block with that base-form result emits exactly one `review` event while it remains unmarked. Emit one progress event per completed batch; the research, design, tasks, and interfaces writes are separate ordered progress batches with only newly changed paths. Each progress event's `changed_files` lists every path written since the preceding result. The run always closes with exactly one terminal lifecycle status.
+Select the immutable progress plan exactly once before the startup event, using
+raw token presence only:
+
+| raw invocation signal | selected plan |
+| --- | --- |
+| `--overview-lang` token present (including malformed forms rejected below) | opted-in seven-step plan |
+| `--overview-lang` token absent | unopted six-step plan |
+
+The coordinator declares the same two plans and pointer map; this worker does
+not add a third plan or alter the coordinator's declarations after startup.
+
+The startup act is one batch: it parses fast-track, runs prerequisites, resolves the change, and commits the table-selected immutable plan before value validation. The startup event carries every step id completed by that one batch, and no later act changes the immutable plan.
+
+Return exactly one progress event per completed act after prerequisite checks
+pass and change resolution completes, per
+`@sai/orchestration/worker-core.md`'s Nonterminal Result Transport.
+- Return each progress event and the fast-track notice as the worker's result; the turn ends there, and the coordinator resumes the worker with `continue_after_progress` or `continue_after_notice`.
+- Composing either event as text inside this session marks nothing and prints nothing to the user.
+- The startup act is the Startup Handshake: return `prereqs-resolution` before dispatching any budget-explorer, writing `design.md`, or beginning research.
+- The startup act — fast-track parsing, prerequisites, resolution, and stamping the specs approval — reports as one batch carrying every step id that act completed and carries only `prereqs-resolution`; the gate has no standalone step or `skipped` field.
+- Codebase research and Open Question resolution report `research`.
+- Writing `design.md` reports `design`.
+- Writing `tasks.md` reports `tasks`.
+- Writing and verifying `interfaces.md` reports `interfaces`.
+- A valid externally supplied `sai-explore` findings block whose explicit base-form `Summary: High=0 Medium=<count> Low=<count>` explicitly reports `High=0` while `review` remains unmarked emits exactly one progress event carrying only `review`.
+- Successful overview materialization or regeneration that commits `overview.state: current` reports `overview`.
+- Report ids in plan order and list every path written since the preceding result.
+- Progress marks are monotonic.
+- Never emit before resolution or in place of the one terminal lifecycle status.
+- On a feedback turn, ordinary feedback, an absent or malformed base-form `Summary:`, or `High>0` emits no `review`.
+- `Medium`/`Low` findings do not block an explicit `High=0`.
+- Only a valid externally supplied `sai-explore` findings block with that base-form result emits exactly one `review` event while it remains unmarked.
+- Emit one progress event per completed batch; the research, design, tasks, and interfaces writes are separate ordered progress batches with only newly changed paths.
+- Each progress event's `changed_files` lists every path written since the preceding result.
+- The run always closes with exactly one terminal lifecycle status.
 
 The selected plan gates the overview lifecycle: when `--overview-lang` is absent,
 the worker returns the unopted terminal after the feedback gate, emits
@@ -87,58 +126,186 @@ budget-explorer and resolve all questions before `tasks.md`.
 
 Write `design.md`, `tasks.md`, and `interfaces.md` directly to the change
 directory and verify each exists and is non-empty. Planning questions SHALL
-comply with `@sai/policies/question-context.md`. This worker emits no design
-notice: fast-track activation and its single banner are coordinator/main-session-owned
-per `@sai/policies/fast-track-flag.md`.
+comply with `@sai/policies/question-context.md`, and the design notice
+`message` SHALL comply with that policy's informational-notice subset.
 Worker-owned feedback is
 applied without re-presenting the coordinator's feedback gate. For
 coordinator-forwarded artifact feedback, process only the supplied feedback
 text; MUST NOT emit, re-present, or duplicate the feedback-text prompt.
 
-For Architecture Snapshot presentation, retain the previous complete `design.md` text in invocation-scoped state before applying feedback and regenerating artifacts, then extract the complete `## Target State` block — from the `## Target State` heading through the start of the next top-level section — from both the previous and the regenerated `design.md`. Normalize the two extracted blocks by converting CRLF and CR line endings to LF and removing trailing whitespace from every line. Preserve all other text and ordering. Present the updated Architecture Snapshot immediately before the next feedback loop only when the normalized Target State blocks differ. Identical normalized blocks — or feedback that changes only Context, Decisions, Risks, or other non-Target-State prose — omit the snapshot for that iteration. The comparison input is the extracted block, never the whole `design.md`. The existing terminal `summary` includes the current Architecture Snapshot on the initial iteration and after a later normalized Target State change, and omits it after identical regeneration or non-Target-State-only changes. Do not add a snapshot payload field or top-level artifact; generation, comparison, and summary composition remain worker-owned.
+- Retain the previous complete `design.md` text in invocation-scoped state before applying feedback and regenerating artifacts.
+- Extract the complete `## Target State` block — from the `## Target State` heading through the start of the next top-level section — from both the previous and the regenerated `design.md`.
+- Normalize the two extracted blocks by converting CRLF and CR line endings to LF and removing trailing whitespace from every line.
+- Preserve all other text and ordering.
+- Present the updated Architecture Snapshot immediately before the next feedback loop only when the normalized Target State blocks differ.
+- Identical normalized blocks — or feedback that changes only Context, Decisions, Risks, or other non-Target-State prose — omit the snapshot for that iteration.
+- The comparison input is the extracted block, never the whole `design.md`.
+- The terminal `summary` includes the current Architecture Snapshot on the initial iteration and after a later normalized Target State change, and omits it after identical regeneration or non-Target-State-only changes.
+- Do not add a snapshot payload field or top-level artifact; generation, comparison, and summary composition are worker-owned.
 
 ### External findings consumption
 
-For `design.md`, `tasks.md`, and `interfaces.md`, findings MUST be supplied by an external `sai-explore` run and processed under the shared `@sai/policies/artifact-review-contract.md` and `@sai/policies/artifact-feedback-gate.md` contracts. The worker consumes the supplied block; it does not create the findings, dispatch an artifact reviewer, or own the review operation.
+- This section is the sole normative source for review evidence.
+- Progress reporting and `steps/review.md` reference its result.
+- Neither surface defines a second Summary parser or review-completion rule.
 
-Require the shared contract's base-form `Summary: High=<count> Medium=<count> Low=<count>` and an explicit `High=0` in the supplied findings block before treating it as review evidence. Accept `High=0` only when that base-form summary reports `High=0` explicitly; never infer it from a finding list, omitted or malformed counts, prose, `Medium`/`Low` values, or any other field. A missing or malformed base-form `Summary:` or an explicit `High>0` is not review completion. `Medium`/`Low` findings do not block an explicit `High=0`. While `review` is unmarked, a valid external `sai-explore` block with the explicit base-form `High=0` result emits exactly one progress event carrying only `review`; later feedback or findings never clear or reopen that mark.
+- For `design.md`, `tasks.md`, and `interfaces.md`, findings MUST be supplied by an external `sai-explore` run.
+- Process those findings under the shared `@sai/policies/artifact-review-contract.md` and `@sai/policies/artifact-feedback-gate.md` contracts.
+- The worker consumes the supplied block; it does not create the findings, dispatch an artifact reviewer, or own the review operation.
 
-Process only findings targeting `design.md`, `tasks.md`, or `interfaces.md`; only those three artifacts may be edited. Apply the shared contract and gate to every finding without coercion. Discard each invalid or inapplicable finding with a specific reason, including missing or malformed required fields or severity, a target outside the three editable artifacts, a reference-artifact target, an unsupported or illegitimate correction, a duplicate or no-op correction, or a contradiction with the current artifacts. Apply accepted corrections only within the three editable artifacts. After an accepted correction, re-run design-artifact verification and recompute the decision summary from current artifacts without reopening or re-emitting the `design`, `tasks`, or `interfaces` progress steps.
+- Require the shared contract's base-form `Summary: High=<count> Medium=<count> Low=<count>` in the supplied findings block.
+- Require an explicit `High=0` before treating the block as review evidence.
+- Accept `High=0` only when that base-form summary reports `High=0` explicitly; never infer it from a finding list, omitted or malformed counts, prose, `Medium`/`Low` values, or any other field.
+- A missing or malformed base-form `Summary:` or an explicit `High>0` is not review completion.
+- `Medium`/`Low` findings do not block an explicit `High=0`.
+- While `review` is unmarked, a valid external `sai-explore` block with the explicit base-form `High=0` result emits exactly one progress event carrying only `review`.
+- Later feedback or findings never clear or reopen that mark.
 
-The worker SHALL NOT dispatch or own an artifact reviewer, an automatic review loop, review counters, retry outcomes, or user-requested reviewer passes. It owns no reviewer, findings-generation, counter, retry, or user-requested-review lifecycle. After the artifacts are verified and the `interfaces` progress event has been emitted, return the ordinary pre-gate terminal; dispatch no automatic reviewer regardless of `supervised`.
+- Process only findings targeting `design.md`, `tasks.md`, or `interfaces.md`; only those three artifacts may be edited.
+- Apply the shared contract and gate to every finding without coercion.
+- Discard each invalid or inapplicable finding with a specific reason, including missing or malformed required fields or severity, a target outside the three editable artifacts, a reference-artifact target, an unsupported or illegitimate correction, a duplicate or no-op correction, or a contradiction with the current artifacts.
+- Apply accepted corrections only within the three editable artifacts.
+- After an accepted correction, re-run design-artifact verification and recompute the decision summary from current artifacts without reopening or re-emitting the `design`, `tasks`, or `interfaces` progress steps.
 
-The supervised selector Explore carve-out is selector-only: it has no adapter progress plan, worker progress is plan-independent, and the `reviewed-sai-2` idea-list item is evidence only, not a progress step or a worker-owned review. The mode-dependent gate behavior defined by `sai/policies/artifact-feedback-gate.md` is unchanged: interactive or omitted mode keeps the coordinator-owned gate at iteration 0, while `mode = supervised` auto-proceeds without a picker through the deferred gate. The worker neither presents nor suppresses the picker, never receives, branches on, evaluates, or handles `mode`, and gains no lifecycle field or picker logic. Standalone coordinator next-actions remain unchanged.
+- The worker SHALL NOT dispatch or own an artifact reviewer, an automatic review loop, review counters, retry outcomes, or user-requested reviewer passes.
+- It owns no reviewer, findings-generation, counter, retry, or user-requested-review lifecycle.
+- After the artifacts are verified and the `interfaces` progress event has been emitted, return the pre-gate terminal.
+- Dispatch no automatic reviewer regardless of `supervised`.
+
+- The supervised selector Explore carve-out is selector-only.
+- It has no adapter progress plan, worker progress is plan-independent, and the `reviewed-sai-2` idea-list item is evidence only, not a progress step or a worker-owned review.
+- The mode-dependent gate behavior defined by `sai/policies/artifact-feedback-gate.md` is: interactive or omitted mode keeps the coordinator-owned gate at iteration 0, while `mode = supervised` auto-proceeds without a picker through the deferred gate.
+- The worker neither presents nor suppresses the picker, never receives, branches on, evaluates, or handles `mode`, and gains no lifecycle field or picker logic.
 
 ### Overview generation (design-worker-owned lifecycle)
 
 The worker owns the change's overview lifecycle for `change-overview.md` per `specs/change-overview-synchronization/spec.md` and `specs/change-overview-generation-routing/spec.md`:
 
-- **Language transport** — pass the current invocation's selected `overview_language` to every initial generation or regeneration dispatch only when `--overview-lang` is present and valid. The generator localizes only eligible free-text prose in `change-overview.md`; it preserves structural/source values, writes only that file, and returns the unchanged five-field result envelope. A later unflagged invocation leaves the language unresolved rather than supplying or synthesizing `English`, and never reads a prior invocation's value.
-- **First materialization opt-in gate** — at the feedback gate's `Continue` processing, dispatch the generation subagent only when the raw `--overview-lang` token is present and its selected language is valid. The absent-token route is a no-generation terminal: it does not set `overview.state`, clear or write overview failure metadata, dispatch or continue into generation, emit `overview` progress, or synthesize English. It may retain an existing stale overview without claiming current.
-- The detailed first-materialization dispatch rules below apply only to that valid opted-in route; an absent `--overview-lang` token overrides them with the no-generation terminal above.
-- **Diagnostic reset and durable carrier** — the worker owns `overview.state`, `overview.failure_kind`, and `overview.failure_details` in `openspec/changes/{change-name}/.openspec.yaml`. At the conservative source-write transition (the `Stale-before-first-write` boundary), clear both diagnostic keys before any post-materialization source write. Immediately before every first-materialization or regeneration dispatch, clear both keys again so an older attempt cannot be reused. Whenever any of the three overview keys is written, include `.openspec.yaml` in the outer worker `changed_files` union. Repopulate the keys only from the current attempt's generator result or parent-authored failure route. A successful materialization or reconciliation commits `overview.state: current` and clears both diagnostic keys.
-- **First materialization** — at the feedback gate's `Continue` processing, after `design.md`, `tasks.md`, and `interfaces.md` verify successfully, set `overview.state: materializing`, clear both diagnostic keys immediately before dispatch, and dispatch the budget-routed generation subagent. The dispatch names the budget-subagent binding of the active harness explicitly — Claude Code dispatches `Agent(subagent_type: budget-subagent)` and opencode dispatches `task(subagent_type: budget)`. The dispatch prompt carries exactly three elements: (1) the resolved change name, (2) the current invocation's `overview_language` value, and (3) the Fetch directive — instruct the subagent to Fetch @sai/commands/design/change-overview.md and follow it exactly. The prompt SHALL NOT enumerate the nine required sections, the forbidden sections, content requirements, fidelity rules, pre-write validation rules, or any other normative body of the shared contract; the subagent loads the contract itself. First materialization and regeneration use the same transport, binding, Fetch, and minimal prompt shape; there is no regeneration-specific prompt variant. When the subagent cannot load the shared contract, the design worker (the parent) authors the failure result using the existing process-loss mapping: `status: failed`, `changed_files: [openspec/changes/{change-name}/change-overview.md]`, `validation: not-performed`, non-empty English `failure_details` naming the load failure and the contract path, and `failure_kind: generation-error`. The subagent does not self-classify, does not produce a five-field envelope, and does not improvise from conversation context, worker prompt paraphrase, or the workflow schema's embedded `instruction:` text — it returns nothing usable and the parent classifies the route. The parent SHALL NOT use `failure_kind: dispatch-failed` for this route — the dispatch itself succeeded; only the contract load failed. `dispatch-failed` remains reserved for a dispatch that never ran. Commit `overview.state: current` only after a successful closed result envelope. A coherent generator failure writes its generator-owned failure record, persists the exact non-empty `failure_kind` and `failure_details`, reports the overview path plus `.openspec.yaml` in the union, sets `overview.state: failed`, and suppresses the design completion sentence. A failed first materialization remains diagnostic state and is retryable by a later invocation. For a later source-modifying transaction, identify the first effective source-artifact write and record its conservative state immediately before that write.
-- **Parent-authored first-materialization failures** — a dispatch failure before acknowledgement is represented with the exact five fields `status: failed`, `changed_files: []`, `validation: not-performed`, `failure_details` containing the dispatch operation, reason, and location, and `failure_kind: dispatch-failed`. A process-loss result after acknowledgement is represented with `status: failed`, `changed_files: [openspec/changes/{change-name}/change-overview.md]`, `validation: not-performed`, non-empty `failure_details` naming the lost generation operation, worker or continuation location, and missing result, and `failure_kind: generation-error`. A malformed or empty envelope uses the same `status: failed`, `changed_files` path, `validation: not-performed`, and `failure_kind: envelope-contract-violation` shape, with a non-empty diagnostic naming the detected contract violation, location, and verbatim offending value or `missing` field; if the invalid value supplied `failure_kind`, quote that value before reclassification. Persist the parent-authored classification and details in `.openspec.yaml`, set `overview.state: failed`, preserve the overview file, and suppress completion.
-- **Stale-before-first-write** — every post-materialization source-modifying transaction (a re-invoked `/sai-2-design` or the supervised design phase) sets `overview.state: stale` immediately before the first effective source-artifact write and clears both diagnostic keys. A run that exits unsuccessfully before its first source write leaves the prior state unchanged. A run abandoned after the first source write conservatively remains stale without another write.
-- **Exactly one regeneration per effective transaction** — after all requested edits complete and a successful `Continue` closes the feedback gate, regenerate exactly once through `materializing` → dispatch → `current`. A generator-run failure atomically leaves the generator-owned stale record, persists its exact `failure_kind` and non-empty `failure_details`, reports the overview path and `.openspec.yaml`, and sets `overview.state: stale`. A dispatch failure preserves the prior file, persists `dispatch-failed` and its diagnostic, reports only the state carrier in addition to the required changed-file union, and sets `stale`. Process loss and malformed or empty envelopes preserve whatever file state exists, persist parent-authored `generation-error` details, report the potentially affected overview path and `.openspec.yaml`, and set `stale`. The parent never writes, deletes, or edits `change-overview.md` in any failure mode.
-- **Failure boundary** — whenever a generator or parent-owned overview-generation failure is mapped, present the applicable non-empty `failure_details` together with `failure_kind` to the user, identifying the source, artifact, dispatch, envelope, worker, or file location. Do not report only the state or a generic failure sentence, and do not emit the design completion sentence for a failed first materialization or failed regeneration.
-- **No-effective-change protocol** — capture the exact persisted bytes of the five source sets (`proposal.md`, `specs/**/*.md`, `design.md`, `tasks.md`, `interfaces.md`) at run start, before any write; compare the final source set byte-for-byte after edits. This byte-exact comparison is the effective-change gate. Byte-identical sources mean no effective change and do not dispatch generation: verify the existing overview against the captured sources and restore `overview.state: current` only when complete and consistent, clearing both diagnostics. Verification failure regenerates. Pre-transaction `unmaterialized`/absent and `failed` states always materialize at `Continue`; pre-transaction `materializing` uses interrupted reconciliation.
-- **Interrupted reconciliation and backfilled changes** — a pre-existing `materializing` state is reconciled only by a writable design-worker transaction: verify the overview against current sources, commit `current` when complete and consistent, or mark `failed`/regenerate otherwise. A materializing state with absent diagnostic keys means the attempt was interrupted before failure classification; it is never success and never reuses an older diagnostic. Backfilled changes carry no `overview.state` key and have no overview lifecycle.
-- **Closed result envelope mapping** — generator-run results carry exactly `status` (`success|failed`), `changed_files`, `validation` (`passed|failed`), `failure_details`, and `failure_kind` (`none|blocking-contradiction|validation-failed|generation-error`). Parent-authored dispatch and contract-violation results preserve the same five fields with `validation: not-performed`; `dispatch-failed` and `envelope-contract-violation` are parent-authored failure kinds. Treat unknown fields, unknown status, missing mandatory fields, an empty result, invalid values, or empty `failure_details` on `status: failed` as an output-contract violation, never as success. Malformed or empty nested envelopes keep the parent-authored five-field result at `validation: not-performed`, naming the verbatim offending value or `missing` field, and classify the outer worker outcome as `envelope-contract-violation`, never as `generation-error`; the parent-authored malformed-envelope shape is `status: failed`, `changed_files: [openspec/changes/{change-name}/change-overview.md]`, `validation: not-performed`, non-empty `failure_details`, and `failure_kind: envelope-contract-violation`. Persist the parent-authored diagnostic and set the materialization-history-dependent state without modifying `change-overview.md`.
-- **Overview progress evidence** — emit one progress event carrying only `overview` after a generator success: a successful first materialization, regeneration, or interrupted reconciliation has written/verified `change-overview.md` and committed `overview.state: current`. That event's `changed_files` includes `openspec/changes/{change-name}/change-overview.md` and `openspec/changes/{change-name}/.openspec.yaml`. A dispatch failure, process loss, malformed or empty envelope, blocking contradiction, validation failure, generation error, or any other path that does not commit `overview.state: current` emits no `overview` progress event. The existing non-empty failure classification and details remain authoritative.
-- **Bounded recovery (design-worker-owned)** — a resolved failed overview result carries `overview_language`, `failure_class`, and `unrecoverable`. A valid generator `failure_kind` is copied unchanged into the outer `failure_class`. Before the first failed return for an envelope-contract-violation, verify the existing overview for soundness; an unsound existing overview returns `unrecoverable: true`, spending zero recovery attempts, while a sound overview permits only in-place reporting repair. Recovery may safely re-dispatch the overview generator for validation, generation, or dispatch failures; the re-dispatch stays inside the same current shared attempt, never opens a second regeneration allowance, and remains bounded by the shared three-attempt pool. Only a verified recovery completion — the overview and its source relationship verified — commits `overview.state: current`, clears `overview.failure_kind` and `overview.failure_details`, and reports the ordered changed-file union including `.openspec.yaml`. When recovery does not complete, a first materialization keeps its `failed` state and a regeneration keeps its `stale` state, both preserving the current diagnostics, and the hand-back reports the failure class, attempts spent, and stopping reason.
+- **Language transport** — pass the current invocation's selected `overview_language` to every initial generation or regeneration dispatch only when `--overview-lang` is present and valid.
+- The generator localizes only eligible free-text prose in `change-overview.md`.
+- It preserves structural/source values, writes only that file, and returns the five-field result envelope.
+- A later unflagged invocation leaves the language unresolved rather than supplying or synthesizing `English`, and never reads a prior invocation's value.
+- **First materialization opt-in gate** — at the feedback gate's `Continue` processing, dispatch the generation subagent only when the raw `--overview-lang` token is present and its selected language is valid.
+- The absent-token route is a no-generation terminal: it does not set `overview.state`, clear or write overview failure metadata, dispatch or continue into generation, emit `overview` progress, or synthesize English.
+- The absent-token route may retain an existing stale overview without claiming current.
+- The detailed first-materialization dispatch rules below apply only to that valid opted-in route.
+- An absent `--overview-lang` token overrides those rules with the no-generation terminal above.
+- **Diagnostic reset and durable carrier** — the worker owns `overview.state`, `overview.failure_kind`, and `overview.failure_details` in `openspec/changes/{change-name}/.openspec.yaml`.
+- At the conservative source-write transition (the `Stale-before-first-write` boundary), clear both diagnostic keys before any post-materialization source write.
+- Immediately before every first-materialization or regeneration dispatch, clear both keys again so an older attempt cannot be reused.
+- Whenever any of the three overview keys is written, include `.openspec.yaml` in the outer worker `changed_files` union.
+- Repopulate the keys only from the current attempt's generator result or parent-authored failure route.
+- A successful materialization or reconciliation commits `overview.state: current` and clears both diagnostic keys.
+- **First materialization** — at the feedback gate's `Continue` processing, after `design.md`, `tasks.md`, and `interfaces.md` verify successfully, set `overview.state: materializing`.
+- Clear both diagnostic keys immediately before dispatch and dispatch the budget-routed generation subagent.
+- The dispatch names the budget-subagent binding of the active harness explicitly: Claude Code dispatches `Agent(subagent_type: budget-subagent)` and opencode dispatches `task(subagent_type: budget)`.
+- The dispatch prompt carries exactly three elements: (1) the resolved change name, (2) the current invocation's `overview_language` value, and (3) the Fetch directive — instruct the subagent to Fetch @sai/commands/design/change-overview.md and follow it exactly.
+- The prompt SHALL NOT enumerate the nine required sections, the forbidden sections, content requirements, fidelity rules, pre-write validation rules, or any other normative body of the shared contract; the subagent loads the contract itself.
+- First materialization and regeneration use the same transport, binding, Fetch, and minimal prompt shape.
+- When the subagent cannot load the shared contract, the design worker (the parent) authors the failure result using the process-loss mapping: `status: failed`, `changed_files: [openspec/changes/{change-name}/change-overview.md]`, `validation: not-performed`, non-empty English `failure_details` naming the load failure and the contract path, and `failure_kind: generation-error`.
+- The subagent does not self-classify, does not produce a five-field envelope, and does not improvise from conversation context, worker prompt paraphrase, or the workflow schema's embedded `instruction:` text — it returns nothing usable and the parent classifies the route.
+- The parent SHALL NOT use `failure_kind: dispatch-failed` for this route — the dispatch itself succeeded; only the contract load failed.
+- `dispatch-failed` applies only to a dispatch that never ran.
+- Commit `overview.state: current` only after a successful closed result envelope.
+- A coherent generator failure writes its generator-owned failure record, persists the exact non-empty `failure_kind` and `failure_details`, reports the overview path plus `.openspec.yaml` in the union, sets `overview.state: failed`, and suppresses the design completion sentence.
+- A failed first materialization is diagnostic state and is retryable by a later invocation.
+- For a later source-modifying transaction, identify the first effective source-artifact write and record its conservative state immediately before that write.
+- **Parent-authored first-materialization failures** — a dispatch failure before acknowledgement is represented with the exact five fields `status: failed`, `changed_files: []`, `validation: not-performed`, `failure_details` containing the dispatch operation, reason, and location, and `failure_kind: dispatch-failed`.
+- A process-loss result after acknowledgement is represented with `status: failed`, `changed_files: [openspec/changes/{change-name}/change-overview.md]`, `validation: not-performed`, non-empty `failure_details` naming the lost generation operation, worker or continuation location, and missing result, and `failure_kind: generation-error`.
+- A malformed or empty envelope uses the same `status: failed`, `changed_files` path, `validation: not-performed`, and `failure_kind: envelope-contract-violation` shape, with a non-empty diagnostic naming the detected contract violation, location, and verbatim offending value or `missing` field.
+- If the invalid value supplied `failure_kind`, quote that value before reclassification.
+- Persist the parent-authored classification and details in `.openspec.yaml`, set `overview.state: failed`, preserve the overview file, and suppress completion.
+- **Stale-before-first-write** — every post-materialization source-modifying transaction (a re-invoked `/sai-2-design` or the supervised design phase) sets `overview.state: stale` immediately before the first effective source-artifact write and clears both diagnostic keys.
+- A run that exits unsuccessfully before its first source write leaves the prior state unchanged.
+- A run abandoned after the first source write is conservatively stale without another write.
+- **Exactly one regeneration per effective transaction** — after all requested edits complete and a successful `Continue` closes the feedback gate, regenerate exactly once through `materializing` → dispatch → `current`.
+- A generator-run failure atomically leaves the generator-owned stale record, persists its exact `failure_kind` and non-empty `failure_details`, reports the overview path and `.openspec.yaml`, and sets `overview.state: stale`.
+- A dispatch failure preserves the prior file, persists `dispatch-failed` and its diagnostic, reports only the state carrier in addition to the required changed-file union, and sets `stale`.
+- Process loss and malformed or empty envelopes preserve whatever file state exists, persist parent-authored `generation-error` details, report the potentially affected overview path and `.openspec.yaml`, and set `stale`.
+- The parent never writes, deletes, or edits `change-overview.md` in any failure mode.
+- **Failure boundary** — whenever a generator or parent-owned overview-generation failure is mapped, present the applicable non-empty `failure_details` together with `failure_kind` to the user, identifying the source, artifact, dispatch, envelope, worker, or file location.
+- Do not report only the state or a generic failure sentence, and do not emit the design completion sentence for a failed first materialization or failed regeneration.
+- **No-effective-change protocol** — capture the exact persisted bytes of the five source sets (`proposal.md`, `specs/**/*.md`, `design.md`, `tasks.md`, `interfaces.md`) at run start, before any write.
+- Compare the final source set byte-for-byte after edits; this byte-exact comparison is the effective-change gate.
+- Byte-identical sources mean no effective change and do not dispatch generation: verify the existing overview against the captured sources and restore `overview.state: current` only when complete and consistent, clearing both diagnostics.
+- Verification failure regenerates.
+- Pre-transaction `unmaterialized`/absent and `failed` states always materialize at `Continue`; pre-transaction `materializing` uses interrupted reconciliation.
+- **Interrupted reconciliation and backfilled changes** — a pre-existing `materializing` state is reconciled only by a writable design-worker transaction: verify the overview against current sources, commit `current` when complete and consistent, or mark `failed`/regenerate otherwise.
+- A materializing state with absent diagnostic keys means the attempt was interrupted before failure classification; it is never success and never reuses an older diagnostic.
+- Backfilled changes carry no `overview.state` key and have no overview lifecycle.
+- **Closed result envelope mapping** — generator-run results carry exactly `status` (`success|failed`), `changed_files`, `validation` (`passed|failed`), `failure_details`, and `failure_kind` (`none|blocking-contradiction|validation-failed|generation-error`).
+- Parent-authored dispatch and contract-violation results preserve the same five fields with `validation: not-performed`; `dispatch-failed` and `envelope-contract-violation` are parent-authored failure kinds.
+- Treat unknown fields, unknown status, missing mandatory fields, an empty result, invalid values, or empty `failure_details` on `status: failed` as an output-contract violation, never as success.
+- Malformed or empty nested envelopes keep the parent-authored five-field result at `validation: not-performed`, naming the verbatim offending value or `missing` field, and classify the outer worker outcome as `envelope-contract-violation`, never as `generation-error`.
+- The parent-authored malformed-envelope shape is `status: failed`, `changed_files: [openspec/changes/{change-name}/change-overview.md]`, `validation: not-performed`, non-empty `failure_details`, and `failure_kind: envelope-contract-violation`.
+- Persist the parent-authored diagnostic and set the materialization-history-dependent state without modifying `change-overview.md`.
+- **Overview progress evidence** — emit one progress event carrying only `overview` after a generator success.
+- A successful first materialization, regeneration, or interrupted reconciliation has written/verified `change-overview.md` and committed `overview.state: current`.
+- That event's `changed_files` includes `openspec/changes/{change-name}/change-overview.md` and `openspec/changes/{change-name}/.openspec.yaml`.
+- A dispatch failure, process loss, malformed or empty envelope, blocking contradiction, validation failure, generation error, or any other path that does not commit `overview.state: current` emits no `overview` progress event.
+- A non-empty failure classification and details are authoritative.
+- **Bounded recovery (design-worker-owned)** — a resolved failed overview result carries `overview_language`, `failure_class`, and `unrecoverable`.
+- A valid generator `failure_kind` is copied unchanged into the outer `failure_class`.
+- Before the first failed return for an envelope-contract-violation, verify the existing overview for soundness.
+- An unsound existing overview returns `unrecoverable: true`, spending zero recovery attempts, while a sound overview permits only in-place reporting repair.
+- Recovery may safely re-dispatch the overview generator for validation, generation, or dispatch failures.
+- The re-dispatch stays inside the same current shared attempt, never opens a second regeneration allowance, and is bounded by the shared three-attempt pool.
+- Only a verified recovery completion — the overview and its source relationship verified — commits `overview.state: current`, clears `overview.failure_kind` and `overview.failure_details`, and reports the ordered changed-file union including `.openspec.yaml`.
+- When recovery does not complete, a first materialization keeps its `failed` state and a regeneration keeps its `stale` state, both preserving the current diagnostics, and the hand-back reports the failure class, attempts spent, and stopping reason.
 
 On `continue_after_recovery`, resume the bounded recovery continuation, perform the repair or safe re-dispatch defined above, and close with a completed or failed result carrying the failure metadata.
 For reconstruction, use the original `arguments_value`, `opaque_input_history`, `pending_feedback`,
-`resolved_change_name`, `active_step_id`, and the original envelope. The
-`overview_language` value is re-derivable from raw `arguments_value`.
+`fast_track_banner_emitted`, `resolved_change_name`, `active_step_id`, and the
+original envelope. The `overview_language` value is re-derivable from raw
+`arguments_value`.
 
 Every payload after resolution includes `resolved_change_name`; pre-resolution
-payloads omit it. This worker emits no design notice. A terminal payload
-contains `summary` and `changed_files`.
+payloads omit it. The closed result shapes remain single-sourced in
+`@sai/orchestration/worker-core.md`: a notice is exactly `event`, `emitted_on`,
+`message`, and `changed_files`; a progress event is exactly `event`,
+`emitted_on`, `step_ids`, and `changed_files`; terminal payloads carry their
+closed status fields, including `summary` and `changed_files`. Do not add
+overview-language or other lifecycle metadata to notices or progress events.
 
 The implementation-worker fallback is outside this worker; the coordinator
 handles that lifecycle boundary.
+
+### Compact contract tables
+
+#### Invocation flag grammar
+
+| input form | worker action |
+| --- | --- |
+| no `--overview-lang` token | keep `overview_language: unresolved`; use the six-step plan and no-generation terminal |
+| one `--overview-lang <language>` token | consume one non-empty value, validate it, and use the seven-step plan |
+| missing value, option in value position, malformed occurrence, or duplicate | return a pre-resolution validation failure; do not resolve or dispatch |
+| `--fast-track` or `--supervised` in either supported order | parse independently and strip only that marker |
+
+#### Overview state machine
+
+| lifecycle point | `overview.state` action |
+| --- | --- |
+| no opted-in generation | leave the existing state and diagnostics untouched |
+| first effective source write | set `overview.state: stale` and clear both diagnostic keys |
+| opted-in generation begins | set `overview.state: materializing` and clear both diagnostic keys |
+| verified generation or reconciliation succeeds | set `overview.state: current` and clear both diagnostic keys |
+| first-materialization failure | set `overview.state: failed`, preserve the overview, and persist diagnostics |
+| regeneration failure | set `overview.state: stale`, preserve the overview, and persist diagnostics |
+
+#### Generator failure-kind mapping
+
+| condition | nested `failure_kind` | outer worker classification |
+| --- | --- | --- |
+| valid blocking source contradiction | `blocking-contradiction` | unchanged `blocking-contradiction` |
+| valid candidate validation failure | `validation-failed` | unchanged `validation-failed` |
+| valid generator/process failure | `generation-error` | unchanged `generation-error` |
+| parent dispatch failure before acknowledgement | `dispatch-failed` | `dispatch-failed` |
+| malformed or empty nested envelope | `envelope-contract-violation` | `envelope-contract-violation` |
+
+The nested generator vocabulary is closed and remains the existing five-field
+envelope; unknown fields, statuses, values, or failure kinds are never
+reclassified as success. A missing-language precondition is not a generator
+failure record and must not overwrite a valid pre-existing overview.
 
 ### Main-path failure classification and recovery boundary
 

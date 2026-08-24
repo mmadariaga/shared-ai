@@ -25,11 +25,11 @@ Deduplicate shared behavior between Claude Code and opencode wrappers by extract
 - **WHEN** the Artifact-Only Scope section is parsed
 - **THEN** it lists at least: build, test, lint, deploy, migrate as commands the spec agent must NEVER run
 ### Requirement: design-instruction
-The design workflow SHALL be split into caller-neutral design invocation instructions, a routed coordinator body, a routed design-worker instruction, and harness-specific routed worker bindings. Claude Code and opencode wrappers SHALL select the routed coordinator and their harness binding. Both supported paths SHALL consume the same design artifact and interaction contract so approval, generation, feedback, and navigation behavior remain single-sourced rather than independently reimplemented.
+The design workflow SHALL be single-sourced through the routed coordinator, routed worker, and harness bindings, with step-local instructions providing the technical phase content for both supported harnesses. Claude Code and opencode wrappers SHALL select the routed coordinator and their harness binding. Both supported paths SHALL consume the same design artifact and interaction contract so approval, generation, feedback, and navigation behavior remain single-sourced rather than independently reimplemented.
 
-#### Scenario: shared design workflow exists
-- **WHEN** the design instruction surfaces are read
-- **THEN** they SHALL define one caller-neutral workflow that checks specs approval and produces `design.md`, `tasks.md`, and `interfaces.md`
+#### Scenario: routed design contract is shared
+- **WHEN** the routed coordinator, worker, bindings, and step-local design instruction surfaces are read
+- **THEN** they SHALL define one workflow that checks specs approval and produces `design.md`, `tasks.md`, and `interfaces.md` without maintaining a separate inline design workflow
 
 #### Scenario: routed coordinator body is thin
 - **WHEN** `sai/commands/design/coordinator.md` is read
@@ -45,6 +45,10 @@ The design workflow SHALL be split into caller-neutral design invocation instruc
 - **THEN** it loads its routed coordinator and harness-specific worker binding
 - **AND** it does not load an inline command loader
 
+#### Scenario: routed-design-contract-uses-step-authority
+- **WHEN** the active design workflow is inspected
+- **THEN** the routed worker and step-local instructions provide the technical phase content without a separate inline design workflow.
+
 ### Requirement: opencode-remember-path-fix
 The opencode `sai-1-spec` wrapper SHALL load `remember.md` from `~/.config/opencode/sai/policies/remember.md`, not from the `~/.claude/` path.
 
@@ -58,7 +62,7 @@ The opencode `sai-1-spec` wrapper SHALL load `remember.md` from `~/.config/openc
 
 ### Requirement: active-infrastructure-boundary
 
-Claude Code and opencode SHALL use the routed coordinator-worker infrastructure. The active infrastructure SHALL not define a compatibility inline path.
+Claude Code and opencode SHALL use the routed coordinator-worker infrastructure and the step-local design instruction surfaces. The active infrastructure SHALL not define or require a compatibility inline path.
 
 #### Scenario: claude design wrapper uses routed entry
 - **WHEN** `commands/claude/sai-2-design.md` is read during Step 1
@@ -70,5 +74,9 @@ Claude Code and opencode SHALL use the routed coordinator-worker infrastructure.
 
 #### Scenario: Unsupported inline entry is absent
 - **WHEN** active design wrappers are inspected
-- **THEN** supported wrappers reference only routed coordinator and worker-binding surfaces
+- **THEN** supported wrappers reference only routed coordinator, worker-binding, and step-owned instruction surfaces
 - **AND** no active wrapper references an inline adapter or inline command loader
+
+#### Scenario: active-design-boundary-excludes-inline-loader
+- **WHEN** active design entrypoints are inspected
+- **THEN** they reference only the routed coordinator, worker, binding, and step-owned instruction surfaces.
