@@ -6,7 +6,7 @@ Canonical policy for the progress task list rendered by routed SAI phases. Consu
 
 ## Scope
 
-Governs the semantics of the progress task list for a routed phase whose adapter declares a `progress_plan`: the list structure, the step-state vocabulary, the deterministic state derivation, the rendering actions (render at dispatch, render on state-changing progress events, and reconcile at run-closing results), the minimum-threshold rule, and the emission-ownership invariant. A phase may separately declare a routing-only `step_pointer_map`; that map preserves just-in-time worker continuity and never creates a task list or milestone stamp. It does not govern per-harness tool mechanics — those stay in the harness bindings.
+Governs the semantics of the progress task list for a routed phase whose adapter declares a `progress_plan`: the list structure, the step-state vocabulary, the deterministic state derivation, the rendering actions (render at dispatch, render on state-changing progress events, and reconcile at run-closing results), the minimum-threshold rule, and the emission-ownership invariant. A phase may separately declare a routing-only `step_pointer_map`; that map preserves just-in-time worker continuity and never creates a task list or milestone stamp. The merge command's adaptive TODO is a separate coordinator-owned surface governed by [Merge adaptive TODO](#merge-adaptive-todo), not a worker `progress_plan`. It does not govern per-harness tool mechanics — those stay in the harness bindings.
 
 ## List structure
 
@@ -67,6 +67,101 @@ The milestone stamp is a decorative rendering action: an HH:mm annotation that d
 **Freeze.** `needs_input`, `failed`, and `cancelled` leave the list and its stamps exactly as last rendered: they add no stamp, change none, and clear none. Pause time is absorbed into the next stamp a step receives, because that stamp is the emitting worker's own instant.
 
 Stamp attachment originates exclusively from the coordinator session, never from a worker subagent, extending the emission-ownership invariant to stamp attachment. The worker authors `emitted_on` as part of its closed payload; it never renders, attaches, or formats a stamp.
+
+## Merge adaptive TODO
+
+The `/sai-merge` adaptive TODO is a merge-local coordinator surface, not a
+worker lifecycle extension and not the phase adapter's `progress_plan`. It is
+allowed to be unknown at dispatch because the resolved merge path is not known
+until the source branch is selected and the coordinator records the merge
+outcome.
+
+- The coordinator is the sole emitter; the worker emits no TODO or progress
+  event.
+
+### Canonical item identities and labels
+
+Every item is an object with exactly `id`, `label`, and one of the policy's
+`pending`, `in_progress`, or `completed` states. The coordinator stores the
+ordered item ids in `adaptive_todo_steps` and the completed ids in
+`adaptive_todo_marked`; the native binding receives the same ids and labels on
+every full render. The canonical item set is:
+
+| id | native label | inclusion |
+| --- | --- | --- |
+| `merge` | `Merge <source> into <target>` | Always after source-branch selection. |
+| `scope` | `Select resolution scope` | A conflicted route when fast-track is inactive. |
+| `resolve-artifacts` | `Resolve artifact conflicts` | A conflicted route whose selected scope is `artifacts`. |
+| `resolve-code` | `Resolve code conflicts` | A conflicted route whose selected scope is `code`. |
+| `resolve-full` | `Resolve all conflicts` | A conflicted route whose selected scope is `full`; fast-track selects this route directly. |
+| `verification` | `Verify merge result` | Every selected conflict-resolution route after resolution staging. |
+| `collision` | `Repair ADR/DDR collisions` | Only when collision applicability is `repair-required` or `escalation-required`. |
+| `authorization` | `Authorize merge commit` | Once collision analysis, any required repairs, and final staging are complete. |
+
+Item order is fixed: `merge`, optional `scope`, exactly one applicable
+`resolve-*` item, optional `verification`, optional `collision`, then
+`authorization`. Scope option labels are gate content, not TODO items. A
+renderer must not invent category-specific ids, reorder items, or replace a
+canonical label with a question, summary, or worker finding.
+
+### Canonical route transitions
+
+- **Before branch selection:** render no merge TODO. A stale merge surface may
+  be cleared according to the active binding's ownership rules, but no item is
+  synthesized.
+- **After branch selection:** render `[~] Merge <source> into <target>` as
+  `merge: in_progress`; no possible conflict item is present yet.
+- **Clean route:** after a clean merge, mark `merge` `completed` and remove
+  `scope`, every `resolve-*` item, and `verification`. Wait for the collision
+  result. For `not-applicable` or `no-collision`, add `authorization` as
+  `in_progress`; for `repair-required` or `escalation-required`, add
+  `collision` as `in_progress` first, mark it `completed` after all owned
+  repairs and reference updates, then add `authorization` as `in_progress`.
+- **Conflicted non-fast-track route:** after the conflict outcome, keep
+  `merge: completed`, add `scope: in_progress`, and add the applicable
+  `resolve-*` item as `pending`. When the exact scope answer is forwarded,
+  mark `scope` `completed` and make that one `resolve-*` item `in_progress`.
+- **Conflicted fast-track route:** omit `scope`, mark `merge` `completed`, and
+  make `resolve-full` `in_progress`. Fast-track changes only the scope item;
+  verification, collision applicability, authorization, refusal, and terminal
+  transitions remain identical.
+- **Resolution and verification:** after coordinator resolution writes and
+  staging, mark the applicable `resolve-*` item `completed` and make
+  `verification` `in_progress`. Mark `verification` `completed` when the
+  suite passes, the no-suite decision completes, or the three-round cap is
+  reached; failed/cap-exhausted evidence remains in merge state and does not
+  imply a commit.
+- **Collision route:** after the ADR/DDR pass, omit `collision` for
+  `not-applicable` or `no-collision`. When repairs or manual escalations apply,
+  make `collision` `in_progress` only after the pass result is known, and mark
+  it `completed` only after every coordinator-owned rename and canonical
+  reference update has finished. Escalations remain in the summary and do not
+  create extra TODO ids.
+- **Authorization and refusal:** add `authorization` only after final staging
+  is complete and make it `in_progress` while the native picker is pending. On
+  `yes`, mark it `completed` only after the commit succeeds. On `no`, remove
+  and clear it rather than marking a commit complete; preserve the exact
+  refusal repository-state summary.
+- **Terminal closure:** after recording the final worker result, clear the
+  merge-owned TODO surface. A successful commit retains the completed state
+  until this clear; a refusal or any other non-committing terminal never leaves
+  an actionable authorization item.
+
+The list uses the same `pending`, `in_progress`, and `completed` state
+vocabulary and coordinator-owned full-list rendering discipline. Its state
+never authorizes a mutation and it never changes worker continuation or
+verification-round ownership. The active harness binding owns task-list
+mechanics, and the adaptive TODO receives no milestone stamps.
+
+### Panel ownership
+
+The merge TODO claims exclusive ownership of the active native task surface on
+its first full render. Marker-based cleanup is limited to stale entries bearing
+`sai-merge-todo` before that claim; it does not promise preservation of a
+foreign surface. Once claimed, the binding's full-list convergence may
+intentionally displace foreign entries, and no restoration is attempted at
+terminal closure. The coordinator must describe this as exclusive ownership,
+not marker-only isolation.
 
 ## Apply step projection
 

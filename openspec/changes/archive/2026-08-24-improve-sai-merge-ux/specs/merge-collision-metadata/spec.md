@@ -1,9 +1,4 @@
-# merge-collision-metadata Specification
-
-## Purpose
-TBD: Defines synchronized metadata for ADR and DDR collision renames.
-
-## Requirements
+## MODIFIED Requirements
 
 ### Requirement: Collision plans preserve synchronized ADR and DDR labels
 

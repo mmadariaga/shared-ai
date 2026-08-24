@@ -8,7 +8,7 @@ Define the phase-adapter progress plan declaration, the canonical per-phase step
 
 ### Requirement: phase-adapter-declares-progress-plan
 
-A routed phase adapter MAY declare a static, ordered progress plan as a new phase-adapter field `progress_plan`, alongside the closed phase-adapter field set in `sai/orchestration/command-runner.md`. The plan SHALL be a fixed, ordered array of progress steps, each carrying a stable `id` and a user-facing `label`. The plan SHALL be fully known at dispatch time and SHALL NOT change during the invocation.
+A routed phase adapter MAY declare a static, ordered worker progress plan. A phase adapter without a worker `progress_plan` SHALL run without worker progress events and without a worker-derived task list, except that `/sai-merge` MAY render a separate coordinator-owned adaptive TODO whose route is unknown until source-branch selection and merge outcome. The adaptive TODO SHALL not be transported in the worker envelope and SHALL not alter worker continuation semantics.
 
 #### Scenario: adapter declares a plan
 
@@ -19,7 +19,12 @@ A routed phase adapter MAY declare a static, ordered progress plan as a new phas
 #### Scenario: adapter declares no plan
 
 - **WHEN** a phase adapter supplies no `progress_plan`
-- **THEN** the coordinator SHALL run the invocation without rendering any task list and SHALL NOT synthesize a plan
+- **THEN** the coordinator SHALL run the invocation without worker progress events or a worker-derived task list and SHALL NOT synthesize a worker plan, except that `/sai-merge` MAY render a separate coordinator-owned adaptive TODO after branch selection and merge outcome
+
+#### Scenario: Merge adaptive TODO is separate from worker progress
+
+- **WHEN** `/sai-merge` runs with no declared worker progress plan
+- **THEN** the coordinator may render the canonical adaptive TODO after branch selection without synthesizing a worker progress plan
 
 ### Requirement: plan-ids-canonical-in-phase-contracts
 
