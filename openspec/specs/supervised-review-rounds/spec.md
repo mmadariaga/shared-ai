@@ -8,31 +8,12 @@ TBD - seeded from delta spec `supervised-review-rounds` in change `supervised-in
 
 ### Requirement: three-round-cap-per-phase
 
-The supervised pipeline SHALL run at most three rounds per phase per Auto attempt. This is a three-round budget for each phase on each Auto attempt: the spec phase's rounds and the design phase's rounds are counted separately under distinct phase counters, and those counters SHALL reset to zero at the start of each new Auto attempt for that phase. Rounds consumed in an earlier failed or cancelled attempt SHALL NOT count against a later attempt's three-round bound. Under selector-dispatched supervision the worker-owned automatic review loop is suppressed, so these in-session rounds are the sole automatic convergence mechanism for the phase; they are not a single cross-check layered on top of a co-running worker-owned loop. The initial round of an attempt is round one; a round consists of one in-session engine review plus the phase worker's processing of every finding that review returns. Per-finding processing SHALL NOT increment the round count; a round SHALL be counted once however many per-finding continuation steps it takes.
+The supervised pipeline SHALL run at most three rounds per phase per Auto attempt. This is a three-round budget for each phase on each Auto attempt: the spec phase's rounds and the design phase's rounds are counted separately under distinct phase counters, and those counters SHALL reset to zero at the start of each new Auto attempt for that phase. Rounds consumed in an earlier failed or cancelled attempt SHALL NOT count against a later attempt's three-round bound. Under selector-dispatched supervision the worker-owned automatic review loop is suppressed, so these in-session rounds are the sole automatic convergence mechanism for the phase; they are not a single cross-check layered on top of a co-running worker-owned loop. The initial round of an attempt is round one; a round consists of one in-session engine review plus the phase worker's processing of every finding that review returns through exactly one batched same-worker machine-feedback continuation carrying the round's complete ordered findings list. The batched continuation SHALL NOT increment the round count; a round SHALL be counted once regardless of how many findings the batched continuation carries.
 
-#### Scenario: spec phase has its own three-round cap
+#### Scenario: batched transport counts one round
 
-- **WHEN** the supervised spec phase runs review rounds
-- **THEN** at most three rounds run for the spec phase
-- **AND** the spec phase's round counter is separate from the design phase's counter
-
-#### Scenario: design phase has its own three-round cap
-
-- **WHEN** the supervised design phase runs review rounds
-- **THEN** at most three rounds run for the design phase
-- **AND** the design phase's round counter is separate from the spec phase's counter
-
-#### Scenario: per-finding continuations count once
-
-- **WHEN** one review round returns multiple findings that require separate worker continuations
-- **THEN** all of those continuations belong to the same round
-- **AND** they consume only one of the phase's allowed rounds
-
-#### Scenario: a second round runs after High findings while the cap permits
-
-- **WHEN** the first completed supervised round of a phase contains at least one `High` finding and fewer than three rounds have completed for that phase
-- **THEN** the pipeline SHALL dispatch a further round for that phase after machine-feedback processing
-- **AND** the phase counter SHALL still be bounded by three
+- **WHEN** a completed review round's findings are processed through the single batched same-worker machine-feedback continuation
+- **THEN** the round counts once regardless of the number of findings carried and consumes only one of the phase's allowed rounds
 
 ### Requirement: each-round-rereads-from-disk
 

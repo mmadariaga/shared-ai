@@ -196,7 +196,7 @@ test('supervised autonomy keeps state in conversation and tracks escalations', (
   assert.match(source, /scoped to this selector-dispatched supervision only/i);
 });
 
-test('machine feedback continues each actionable finding to the same phase worker', () => {
+test("machine feedback continues each round's complete findings list to the same phase worker", () => {
   const source = fs.readFileSync(path.join(repoRoot, 'sai/commands/explore/instructions.md'), 'utf8');
   const policy = fs.readFileSync(path.join(repoRoot, 'sai/policies/artifact-feedback-gate.md'), 'utf8');
 
@@ -205,7 +205,7 @@ test('machine feedback continues each actionable finding to the same phase worke
   assert.match(source, /needs_input/);
   assert.match(source, /same (?:spec[- ]proposal|spec|design|phase)[- ]?worker/i);
 
-  assert.match(policy, /For each finding.*one same-worker continuation/i);
+  assert.match(policy, /exactly one same-worker continuation[\s\S]{0,200}complete ordered findings/i);
   assert.match(policy, /per-item legitimacy rules/i);
   assert.match(policy, /artifact-only scope/i);
   assert.match(policy, /decision-summary recomputation/i);
@@ -343,14 +343,21 @@ test('direct spec and design wrappers retain their existing terminal contracts',
   ]) assert.equal(fs.existsSync(path.join(repoRoot, retiredPath)), false, `${retiredPath} should be absent`);
 });
 
-test('Step 1 continues every completed-round finding to the same phase worker', () => {
+test("Step 1 continues each completed round's findings in one batched same-worker continuation", () => {
   const feedbackGate = fs.readFileSync(
     path.join(repoRoot, 'sai/policies/artifact-feedback-gate.md'),
     'utf8'
   );
 
   assert.match(feedbackGate, /For every completed review pass in the bounded convergence loop|For every completed review round/i);
-  assert.match(feedbackGate, /For each finding in that (?:pass|round), in array order, perform one same-worker continuation/i);
+  assert.match(
+    feedbackGate,
+    /For each completed review round, perform exactly one same-worker continuation that carries that round's complete ordered findings list/i
+  );
+  assert.match(feedbackGate, /exactly one verification at the close of the turn \(`openspec validate`\)/i);
+  assert.match(feedbackGate, /one block reporting every individual disposition/i);
+  assert.match(feedbackGate, /decision-summary recomputation exactly once/i);
+  assert.doesNotMatch(feedbackGate, /For each finding[\s\S]{0,120}perform one same-worker continuation/i);
   assert.match(feedbackGate, /Complete all findings for the current (?:pass|round) before supervision evaluates whether another (?:fresh review pass|review round) is required/i);
 });
 

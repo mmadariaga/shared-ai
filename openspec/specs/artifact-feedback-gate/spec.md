@@ -344,36 +344,29 @@ The gate SHALL track the iteration that drives the iteration-aware feedback opti
 
 ### Requirement: Machine review findings use a pre-gate adapter
 
-The shared artifact feedback gate capability SHALL define one machine-feedback adapter for supervised sai-1 review findings. For every completed review round in the bounded convergence loop, the adapter SHALL accept that round's structured findings array — each finding conforming to the shared review finding contract of the `review-finding-format` capability — continue each finding to the same spec-proposal worker, and apply the gate's canonical per-item split, legitimacy judgment, artifact-only edit, discard-reason, and decision-summary recomputation rules. These semantics and the finding shape SHALL remain single-sourced in the shared gate instruction and the shared review finding contract and SHALL NOT be restated in explore or reviewer instructions.
+The shared artifact feedback gate capability SHALL define one machine-feedback adapter for supervised sai-1 review findings. For every completed review round in the bounded convergence loop, the adapter SHALL accept that round's structured findings array — each finding conforming to the shared review finding contract of the `review-finding-format` capability — and perform exactly one same-worker continuation that carries that round's complete ordered findings list to the same spec-proposal worker. Within that single turn, the worker SHALL apply the gate's canonical per-item legitimacy rules sequentially for every item in array order, perform exactly one verification at the close of the turn (`openspec validate`), emit one block reporting every individual disposition (`applied`, or `discarded` with its specific reason), and complete the decision-summary recomputation exactly once from the artifacts as they exist on disk. When an item requires user input, the existing pause handling SHALL apply unchanged: processing pauses through the ordinary `needs_input` channel and the supervising coordinator continues the same worker with only the selected answer before remaining items complete. The round's single machine-feedback continuation remains part of the current review round and never increments the round counter. These semantics and the finding shape SHALL remain single-sourced in the shared gate instruction and the shared review finding contract and SHALL NOT be restated in explore or reviewer instructions.
 
-Machine-feedback processing is not a user feedback-selection turn. It SHALL NOT present the gate picker, emit the empty-turn prompt for user feedback text, increment the in-conversation iteration counter, or execute the proceed branch. The ordinary user-facing gate SHALL be deferred while the review round's machine-feedback processing is still in progress and SHALL be presented for the first time at iteration 0 only after the review rounds converge or exhaust the three-round cap. The supervised cap is at most three rounds per phase per Auto attempt and resets for each new Auto attempt. Its first options SHALL remain `Give feedback (Recommended)` before `Finish step`. Gate ownership, option labels, iteration-counter rules, and the worker-failure-interruption branch are unchanged by this requirement; only the deferred-gate exhaustion trigger tracks the three-round bound owned by `supervised-review-rounds`.
+Machine-feedback processing is not a user feedback-selection turn. It SHALL NOT present the gate picker, emit the empty-turn prompt for user feedback text, increment the in-conversation iteration counter, or execute the proceed branch. The ordinary user-facing gate SHALL be deferred while the review round's machine-feedback processing is still in progress and SHALL be presented for the first time at iteration 0 only after the review rounds converge or exhaust the three-round cap. The supervised cap is at most three rounds per phase per Auto attempt and resets for each new Auto attempt. Its first options SHALL remain `Give feedback (Recommended)` before `Finish step`. Gate ownership, option labels, iteration-counter rules, and the worker-failure-interruption branch are unchanged by this requirement.
 
-#### Scenario: machine findings are accepted for evaluation
+#### Scenario: one batched continuation carries the full findings list
 
-- **WHEN** a supervised sai-1 review round returns one or more structured findings
-- **THEN** each finding conforms to the shared review finding contract of the `review-finding-format` capability
-- **AND** the shared machine-feedback adapter sends each finding to the same spec-proposal worker for canonical per-item evaluation
-- **AND** accepted edits stay within `proposal.md` and `specs/**`
-- **AND** every discarded finding is reported with its specific reason
+- **WHEN** a completed review round returns multiple structured findings
+- **THEN** the adapter performs exactly one same-worker continuation carrying that round's complete ordered findings list and the worker applies the per-item rules sequentially within that single turn
 
-#### Scenario: High finding schedules another round
+#### Scenario: single validation and recomputation at turn close
 
-- **WHEN** a completed review round contains a `High` finding and another round remains within the bound
-- **THEN** machine-feedback processing completes without presenting or advancing the user-facing gate
-- **AND** the iteration counter remains 0
-- **AND** the gate's in-conversation iteration counter remains 0 for the later first presentation
+- **WHEN** the batched machine-feedback turn finishes applying its per-item dispositions
+- **THEN** exactly one `openspec validate` runs at the close of the turn, one block reports every individual disposition (`applied`, or `discarded` with its specific reason), and the decision summary is recomputed exactly once from the artifacts as they exist on disk
 
-#### Scenario: convergence reaches the ordinary gate
+#### Scenario: per-finding pause handling is preserved under batching
 
-- **WHEN** a completed review round contains no `High` findings and its machine feedback has been processed
-- **THEN** the ordinary user-facing gate is presented at iteration 0
-- **AND** the first user-facing option remains `Give feedback (Recommended)`
+- **WHEN** an item inside the batched machine-feedback turn requires user input
+- **THEN** processing pauses through the existing needs_input channel and supervision continues the same worker with only the selected answer before the remaining items complete
 
-#### Scenario: cap exhaustion reaches the ordinary gate
+#### Scenario: batched continuation does not consume an extra round
 
-- **WHEN** machine-feedback processing completes for a third review round that contained `High` findings
-- **THEN** no later review round is dispatched
-- **AND** the ordinary user-facing gate is presented at iteration 0
+- **WHEN** the batched machine-feedback continuation for a completed review round finishes
+- **THEN** it has remained part of the current review round and the round counter has incremented at most once for that round
 
 ### Requirement: Supervised mode is a sequencing auto-proceed, not gate removal
 
