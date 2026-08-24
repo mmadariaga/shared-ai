@@ -263,8 +263,8 @@ test('installClaude copies sai/commands/*.md to dest/sai/commands/', () => {
   assert.ok(fs.existsSync(path.join(saiCmdDir, 'apply', 'green-worker.md')), 'apply/green-worker.md should be in sai/commands/');
   assert.ok(fs.existsSync(path.join(saiCmdDir, 'apply', 'runner.md')), 'apply/runner.md should be in sai/commands/');
   assert.ok(fs.existsSync(path.join(saiCmdDir, 'apply', 'invocation.md')), 'apply/invocation.md should be in sai/commands/');
-  assert.ok(fs.existsSync(path.join(saiCmdDir, 'build', 'coordinator.md')), 'build/coordinator.md should be in sai/commands/');
-  assert.ok(fs.existsSync(path.join(saiCmdDir, 'build', 'command-bootstrap.md')), 'build/command-bootstrap.md should be in sai/commands/');
+  assert.ok(fs.existsSync(path.join(saiCmdDir, 'meta-build', 'coordinator.md')), 'meta-build/coordinator.md should be in sai/commands/');
+  assert.ok(fs.existsSync(path.join(saiCmdDir, 'meta-build', 'command-bootstrap.md')), 'meta-build/command-bootstrap.md should be in sai/commands/');
   assert.equal(fs.existsSync(path.join(saiCmdDir, 'apply', 'body.md')), false, 'apply/body.md should be retired from sai/commands/');
   assert.equal(fs.existsSync(path.join(saiCmdDir, 'apply', 'instructions.md')), false, 'apply/instructions.md should be retired from sai/commands/');
   assert.equal(files.includes('sai-4-apply.md'), false, 'sai-4-apply.md should not be projected as a flat command');

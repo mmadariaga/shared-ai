@@ -17,7 +17,7 @@ const commands = [
   ['sai-8-accessibility.md', 'accessibility'],
   ['sai-archive.md', 'archive'],
   ['sai-backfill.md', 'backfill'],
-  ['sai-build.md', 'build'],
+  ['sai-build.md', 'meta-build'],
   ['sai-commit.md', 'commit'],
   ['sai-explore.md', 'explore'],
   ['sai-merge.md', 'merge'],
@@ -47,7 +47,7 @@ const movedDirectives = {
   implement: [
     'Fetch @sai/orchestration/workers/bindings/implementation-worker.md and use it.',
   ],
-  build: [
+  'meta-build': [
     'Fetch @sai/orchestration/workers/bindings/implementation-worker.md and use it.',
   ],
   review: [

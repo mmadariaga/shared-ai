@@ -6,8 +6,8 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const repoRoot = path.join(__dirname, '..');
-const coordinatorPath = 'sai/commands/build/coordinator.md';
-const launcherPath = 'sai/commands/build/command-bootstrap.md';
+const coordinatorPath = 'sai/commands/meta-build/coordinator.md';
+const launcherPath = 'sai/commands/meta-build/command-bootstrap.md';
 const applyCoordinatorPath = 'sai/commands/apply/coordinator.md';
 const boundedRecoveryPath = 'sai/policies/bounded-recovery.md';
 
@@ -24,7 +24,7 @@ function assertContains(source, text, message = `expected card to contain ${text
 test('build source layout contains only the coordinator and launcher cards', () => {
   assert.equal(fs.existsSync(path.join(repoRoot, coordinatorPath)), true, `${coordinatorPath} should exist`);
   assert.equal(fs.existsSync(path.join(repoRoot, launcherPath)), true, `${launcherPath} should exist`);
-  assert.equal(fs.existsSync(path.join(repoRoot, 'sai/commands/build/worker.md')), false,
+  assert.equal(fs.existsSync(path.join(repoRoot, 'sai/commands/meta-build/worker.md')), false,
     'build must not introduce a worker card');
 });
 

@@ -340,7 +340,7 @@ describe('doctor fetch resolution', () => {
             `${harness} harness should install the routed backfill ${card} card`);
         }
         for (const card of ['command-bootstrap.md', 'coordinator.md']) {
-          assert.ok(fs.existsSync(path.join(base, 'sai', 'commands', 'build', card)),
+          assert.ok(fs.existsSync(path.join(base, 'sai', 'commands', 'meta-build', card)),
             `${harness} harness should install the build ${card} card`);
         }
   for (const card of ['coordinator.md', 'worker.md', 'command-bootstrap.md']) {
@@ -353,7 +353,7 @@ describe('doctor fetch resolution', () => {
         assert.ok(fs.existsSync(buildWrapper), `${harness} harness should install sai-build.md`);
         assert.match(
           fs.readFileSync(buildWrapper, 'utf8'),
-          /Fetch @sai\/commands\/build\/command-bootstrap\.md/,
+          /Fetch @sai\/commands\/meta-build\/command-bootstrap\.md/,
           `${harness} sai-build wrapper should resolve the build launcher`
         );
         for (const card of ['coordinator.md', 'red-worker.md', 'green-worker.md', 'runner.md', 'invocation.md']) {
