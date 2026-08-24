@@ -35,7 +35,7 @@ The spec at `openspec/specs/opencode-model-resolution/` SHALL be archived becaus
 
 ### Requirement: archive-sai-1-override-merge
 
-The spec at `openspec/specs/sai-1-override-merge/` SHALL be archived because the scope restriction override it proposed has already been added to `sai/commands/spec/instructions.md` (the `## Scope Override (sai-1 step)` section).
+The spec at `openspec/specs/sai-1-override-merge/` SHALL be archived because the scope restriction override it proposed has already been added to `sai/policies/spec-phase-contract.md` as a SpecWriteSurface.
 
 #### Scenario: spec is archived
 

@@ -141,7 +141,7 @@ The change SHALL modify `sai/commands/explore/instructions.md` only. No new file
 #### Scenario: /sai-1-spec and its wrappers are not modified
 
 - **WHEN** the change is applied
-- **THEN** `sai/commands/spec/instructions.md` and the three `sai-1-spec` wrappers under `commands/claude/`, `commands/opencode/`, and `commands/copilot/` are unchanged
+- **THEN** the active files under `sai/commands/spec/steps/` and the three `sai-1-spec` wrappers under `commands/claude/`, `commands/opencode/`, and `commands/copilot/` are unchanged
 
 ### Requirement: Single-change handoffs expose dedicated research leads
 
