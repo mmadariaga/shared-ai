@@ -102,6 +102,36 @@ test('Step 2 the task-list tool call originates from the coordinator session onl
   }
 });
 
+test('Step 2 dispatch-local progress is independent from the durable Step Projection and cannot mutate it', () => {
+  const coordinator = artifact(COORDINATOR_PATH);
+  const projectionStart = coordinator.indexOf('## Run-Start Step Projection');
+  const projectionEnd = coordinator.indexOf('\n  ## ', projectionStart + 1);
+  const progressStart = coordinator.indexOf('## Progress Events');
+  const progressEnd = coordinator.indexOf('\n  ## ', progressStart + 1);
+  assert.ok(projectionStart >= 0 && projectionEnd > projectionStart,
+    'the coordinator must expose a bounded run-start Step Projection section');
+  assert.ok(progressStart >= 0 && progressEnd > progressStart,
+    'the coordinator must expose a bounded progress section');
+
+  const projection = coordinator.slice(projectionStart, projectionEnd);
+  const progress = coordinator.slice(progressStart, progressEnd);
+  assert.ok(projectionStart < progressStart,
+    'the durable Step Projection must be declared before dispatch-local progress handling');
+  assert.match(projection, /coordinator-derived|coordinator-owned/i,
+    'the durable projection must remain coordinator-owned');
+  assert.doesNotMatch(projection, /event:\s*"?progress"?|continue_after_progress/i,
+    'the durable projection section must not carry the worker progress protocol');
+  assert.match(progress, /dispatch-local|per-dispatch/i,
+    'progress must be explicitly scoped to one dispatch');
+  assert.match(progress, /ephemeral|independent of the durable run-start Step Projection/i,
+    'dispatch-local progress must be described as separate from the durable projection');
+  assert.match(progress,
+    /never[^.\n]*(?:mark|create|extend|rename|reorder|re-label|mutate)[^.\n]*projection|never[^.\n]*mutate[^.\n]*projection/i,
+    'worker progress must be prohibited from changing the Step Projection');
+  assert.match(progress, /immutable plan selected for that one invocation/i,
+    'progress must report against the plan selected for its own dispatch');
+});
+
 test('Step 2 each dispatch carries exactly one immutable progress plan selected before dispatch', () => {
   const runner = artifact(RUNNER_PATH);
   const coordinator = artifact(COORDINATOR_PATH);
