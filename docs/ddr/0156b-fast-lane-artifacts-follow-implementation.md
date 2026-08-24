@@ -31,4 +31,4 @@ The Auto (fast implementation) selector option produces working code from a crys
 ## Related
 
 - `docs/ddr/0158-autofast-implementer-receives-only-the-block.md`
-- `docs/adr/0172-sibling-worker-dispatch-for-the-fast-lane.md`
+- `docs/adr/0172b-sibling-worker-dispatch-for-the-fast-lane.md`

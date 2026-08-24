@@ -31,4 +31,4 @@ Retroactive drafts must be schema-validated before any bytes land, but the sessi
 ## Related
 
 - `docs/ddr/0159-fast-lane-selection-pre-authorizes-one-local-commit.md`
-- `docs/adr/0172-sibling-worker-dispatch-for-the-fast-lane.md`
+- `docs/adr/0172b-sibling-worker-dispatch-for-the-fast-lane.md`

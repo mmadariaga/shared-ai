@@ -1,4 +1,4 @@
-# ADR 0173a: Build composition inherits pointer delivery with no opt-out special case
+# ADR 0173b: Build composition inherits pointer delivery with no opt-out special case
 
 <!-- adr-index: refs 0172; refs 0163; refs 0156 -->
 

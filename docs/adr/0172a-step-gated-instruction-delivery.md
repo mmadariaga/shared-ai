@@ -36,7 +36,7 @@ Delivery could be gated either by the worker (fetching step files itself) or by 
 ## Related
 
 - `openspec/changes/spec-step-gated-instructions/design.md` — D1/D2 provenance
-- `docs/ddr/0156-critical-prohibitions-duplicated-across-spec-steps.md` — the duplication invariant this delivery relies on
+- `docs/ddr/0156a-critical-prohibitions-duplicated-across-spec-steps.md` — the duplication invariant this delivery relies on
 - `docs/ddr/0109c-declared-canonical-immutable-progress-plan.md` — the declared plan the derivation reads
 - `docs/ddr/0110-additive-nonterminal-progress-event.md` — the pause/resume carrier the pointer rides
 - `docs/ddr/0114-progress-plan-never-transported-in-envelope.md` — the pointer likewise stays out of the envelope

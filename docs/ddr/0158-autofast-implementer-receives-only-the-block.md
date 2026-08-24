@@ -30,4 +30,4 @@ The fast lane skips `design.md`, `tasks.md`, and `implementation.md`, so the imp
 
 ## Related
 
-- `docs/ddr/0156-fast-lane-artifacts-follow-implementation.md`
+- `docs/ddr/0156b-fast-lane-artifacts-follow-implementation.md`

@@ -1,6 +1,6 @@
 # ADR 0174: Relax the artifact-content-inference prohibition in chained composition successor activation
 
-<!-- adr-index: refs 0147a; refs 0151; refs 0152b; refs 0173a -->
+<!-- adr-index: refs 0147a; refs 0151; refs 0152b; refs 0173b -->
 
 ## Status
 
@@ -35,4 +35,4 @@ Remove only the artifact-content-inference prohibition from rule 2 of Chained ph
 - ADR 0147a — Three-rule composition delta lives only in command-runner.md Result Loop (the rule 2 home)
 - ADR 0151 — Composition constructs successor envelopes directly (the authorized-envelope mechanism the guard protects)
 - ADR 0152b — Build is an ordinary composition coordinator, not explore supervision (first ordinary composition consumer)
-- ADR 0173a — Build composition inherits pointer delivery with no opt-out special case (nearest precedent of a declared composition-driven activation relaxation)
+- ADR 0173b — Build composition inherits pointer delivery with no opt-out special case (nearest precedent of a declared composition-driven activation relaxation)
