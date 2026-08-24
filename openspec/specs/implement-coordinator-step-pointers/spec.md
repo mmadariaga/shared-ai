@@ -1,6 +1,10 @@
 # implement-coordinator-step-pointers — Spec
 
-## ADDED Requirements
+## Purpose
+
+TBD - created by archiving change implement-step-gated-instructions. Update Purpose after archive.
+
+## Requirements
 
 ### Requirement: Static step_pointer_map covers every declared step id
 
@@ -42,3 +46,12 @@ Replacement reconstruction SHALL include the departing worker's `active_step_id`
 
 - **WHEN** the coordinator reconstructs a replacement implementation worker
 - **THEN** the reconstruction fields include the departing worker's `active_step_id` and the replacement's first continuation carries the pointer line for that step.
+
+### Requirement: Coordinator owns active-step pointer delivery
+
+The implementation coordinator SHALL own progress rendering and delivery of the active-step pointer, while the worker SHALL execute the step named by that pointer without selecting a different step.
+
+#### Scenario: Coordinator advances the plan
+
+- **WHEN** the coordinator emits a continuation for the next implementation step
+- **THEN** the continuation carries the coordinator-selected active-step pointer and the worker executes that step.
