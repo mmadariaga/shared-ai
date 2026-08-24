@@ -1658,6 +1658,20 @@
       ]
     },
     {
+      "id": "retired-sai-1-spec-instructions",
+      "destination": {
+        "class": "sai",
+        "path": "commands/spec/instructions.md"
+      },
+      "harnesses": [
+        "claude",
+        "opencode"
+      ],
+      "managedHashes": [
+        "11e29a6740c1b85239976986616ac3089ed3fefde5a50dc743437b139d3ecb25"
+      ]
+    },
+    {
       "id": "retired-sai-3-implementation-core",
       "destination": {
         "class": "sai",

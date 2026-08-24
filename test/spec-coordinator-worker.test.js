@@ -81,10 +81,13 @@ test('spec phase contract is the canonical technical instruction source', () => 
   ]) assert.match(contract, new RegExp(declaration));
 
   assert.match(common, /Fetch @sai\/policies\/spec-phase-contract\.md/);
-  assert.match(common, /Fetch @sai\/commands\/spec\/instructions\.md/);
+  assert.doesNotMatch(common, /Fetch @sai\/commands\/spec\/instructions\.md/,
+    'the retired instructions.md file should not be fetched');
   assert.match(proposal, /Fetch @skills\/openspec-propose\/SKILL\.md/);
   assert.equal(fs.existsSync(path.join(repoRoot, 'sai/commands/spec/invocation.md')), false,
     'the retired spec invocation core must not remain in the active source tree');
+  assert.equal(fs.existsSync(path.join(repoRoot, 'sai/commands/spec/instructions.md')), false,
+    'the retired instructions.md file must not remain in the active source tree');
 });
 
 test('completion remains outside the canonical spec phase declarations', () => {
@@ -370,6 +373,7 @@ test('Step 5: the coordinator and worker consume the canonical plan without rede
 
 test('Step 5: structured research is an unconditional boundary before proposal generation', () => {
   const worker = artifact(SPEC_COORDINATOR_ARTIFACTS.worker);
+  const research = artifact('sai/commands/spec/steps/research.md');
   const researchSpec = artifact(
     'openspec/specs/spec-research-consumption/spec.md',
   );
@@ -380,9 +384,9 @@ test('Step 5: structured research is an unconditional boundary before proposal g
     'research should be reported after startup and before proposal writing',
   );
   assert.match(
-    worker,
-    /approximately 80% confidence boundary|80% confidence/i,
-    'the worker should apply the existing confidence boundary to every request',
+    research,
+    /approximately 80% confidence boundary|Stop research once[\s\S]{0,180}80%/i,
+    'the research step should state the existing confidence boundary',
   );
   assert.match(researchSpec, /ordinary request[\s\S]{0,260}approximately 80%/i);
   assert.match(researchSpec, /handoff request[\s\S]{0,260}same boundary/i);
@@ -618,4 +622,55 @@ test('spec worker classifies post-resolution failures and owns recovery continua
   assert.doesNotMatch(worker, /artifact_contents/);
   assert.match(worker, /(?:no|not|never)[\s\S]{0,120}(?:recovery progress|progress id).*recovery|recovery[\s\S]{0,200}(?:not|never)[\s\S]{0,120}progress/i,
     'recovery must not add progress step ids');
+});
+
+test('Duplication collapse: spec step files contain no normative block in two files at once', () => {
+  const stepPaths = [
+    'sai/commands/spec/steps/common.md',
+    'sai/commands/spec/steps/research.md',
+    'sai/commands/spec/steps/proposal.md',
+    'sai/commands/spec/steps/specs.md',
+    'sai/commands/spec/steps/validation.md',
+    'sai/commands/spec/steps/review.md',
+  ];
+
+  const blockPatterns = [
+    { name: 'Collaboration Style', pattern: /## Collaboration style/ },
+    { name: 'Cost Discipline', pattern: /## Cost and budget discipline/ },
+    { name: 'Research Guide', pattern: /## Structured research guide/ },
+    { name: 'Budget-explorer delegation', pattern: /## Budget-explorer delegation specifics/ },
+    { name: 'Required Documentation', pattern: /## Required Documentation discipline/ },
+    { name: 'Complexity Derivation Rubric', pattern: /## Complexity Derivation Rubric/ },
+    { name: 'Rule #1', pattern: /## Rule #1 — Proposal-to-spec self-consistency gate/ },
+    { name: 'Rule #2', pattern: /## Rule #2 — Source-grounding of spec-pinned literals/ },
+  ];
+
+  for (const { name, pattern } of blockPatterns) {
+    let fileCount = 0;
+    let files = [];
+    for (const stepPath of stepPaths) {
+      const source = artifact(stepPath);
+      if (pattern.test(source)) {
+        fileCount++;
+        files.push(stepPath);
+      }
+    }
+    assert.strictEqual(fileCount, 1, `${name} should appear in exactly one step file, found in: ${files.join(', ')}`);
+  }
+});
+
+test('Supervised mode degenerate case: bare --supervised flag with no request fails validation', () => {
+  const worker = artifact('sai/commands/spec/worker.md');
+
+  assert.match(
+    worker,
+    /strip.*leading.*--supervised[\s\S]{0,300}(?:no request|only whitespace)[\s\S]{0,100}fail validation/i,
+    'bare --supervised with no request must fail validation before change resolution',
+  );
+
+  assert.match(
+    worker,
+    /arguments_value[\s\S]{0,150}empty[\s\S]{0,150}change.picker/i,
+    'empty arguments_value must route to the change picker, not fail',
+  );
 });

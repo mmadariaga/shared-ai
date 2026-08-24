@@ -2,6 +2,8 @@
 
 Active step: review. This step consumes ONLY an externally supplied `sai-explore` findings block. The phase result and write boundaries remain those in `@sai/policies/spec-phase-contract.md`; you do not dispatch or own a reviewer, an automatic review loop, review counters, reviewer retry outcomes, or user-requested reviewer passes.
 
+Rules originating here: none. This step uses the Artifact Verification Checklist and Rule #1 and Rule #2 from common.md when processing edits.
+
 ## Fast path — no findings block
 
 With no externally supplied `sai-explore` findings block present, return `completed` immediately per the worker contract's ordinary pre-gate terminal. Create no reviewer machinery: no reviewer dispatch, no review loop, no counters, no retry outcomes, no user-requested reviewer pass.
@@ -14,5 +16,5 @@ Process every finding under `@sai/policies/artifact-review-contract.md` and `@sa
 - Apply each finding selectively per item; discard invalid or inapplicable items.
 - Findings may edit only `proposal.md` and `specs/**`.
 - Report every discarded item with a specific reason.
-- Accepted edits trigger pre-completion verification (re-run the validation step's checks) and decision-summary recomputation from current artifacts without reopening or re-emitting the already completed `proposal`, `specs`, or `validation` progress ids.
+- Accepted edits trigger pre-completion verification (apply the Artifact Verification Checklist and Rule #1 and Rule #2 from common.md) and decision-summary recomputation from current artifacts without reopening or re-emitting the already completed `proposal`, `specs`, or `validation` progress ids.
 - Return the `review` progress event only for a valid block meeting the base-form explicit-`High=0` requirement while `review` is unmarked.

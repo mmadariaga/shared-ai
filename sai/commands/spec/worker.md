@@ -6,17 +6,17 @@ Fetch @sai/policies/bounded-dispatch-retry.md and follow it for every delegated 
 Fetch @sai/policies/spec-phase-contract.md and keep it in force for the entire run.
 Fetch @sai/commands/spec/steps/common.md and keep it in force for the entire run.
 
+Specification of the worker contract for the spec phase. No new normative rules originate here; this file defines the worker's lifecycle envelope and step-execution model.
+
 ## Invocation Envelope
 
-The worker receives exactly one opaque string: `arguments_value`; the retired wrapper-echo field has been removed, and no third envelope field carries the marker. Do not scan parent conversation history. Repeatedly strip leading lines whose trimmed content is exactly the bare `--supervised` flag from `arguments_value`. Set invocation-scoped `supervised` to `true` if and only if at least one such leading line was consumed. The first line that is not that flag opens the request verbatim, inclusive; from that point onward, later lines and substrings containing `--supervised` are request content and are not parsed as flags. If stripping the leading flag lines leaves no request or only whitespace, fail validation before change resolution. If `arguments_value` is empty,
-Fetch @sai/policies/change-picker.md and follow it exactly to resolve the
-change name; do not duplicate its picker logic inline.
+The worker receives exactly one opaque string: `arguments_value`; the retired wrapper-echo field has been removed, and no third envelope field carries the marker. Do not scan parent conversation history. Repeatedly strip leading lines whose trimmed content is exactly the bare `--supervised` flag from `arguments_value`. Set invocation-scoped `supervised` to `true` if and only if at least one such leading line was consumed. The first line that is not that flag opens the request verbatim, inclusive; from that point onward, later lines and substrings containing `--supervised` are request content and are not parsed as flags. **Degenerate case:** if stripping the leading `--supervised` flag lines leaves no request or only whitespace (bare `--supervised` with no change request), fail validation before change resolution. If `arguments_value` is empty (no `--supervised` flag, no request), Fetch @sai/policies/change-picker.md and follow it exactly to resolve the change name; do not duplicate its picker logic inline.
 
 ## Prerequisites and Resolution
 
-Check the OpenSpec CLI, `openspec/`, and `schema: sai-workflow`, then resolve or
+Check the OpenSpec CLI, `openspec/`, and `schema: sai-workflow` per `@sai/policies/prereqs-check.md`, then resolve or
 create the requested spec change according to the existing `sai-1-spec`
-behavior. Return exact prerequisite failures and make no write on failure.
+behavior. Return exact prerequisite failures with their STOP-and-print literals from the check policy and make no write on failure.
 Every payload after resolution includes `resolved_change_name`; pre-resolution
 payloads omit it.
 
@@ -46,12 +46,6 @@ unchanged in this continuous session. Steps never widen the lifecycle,
 changed-files, result, or failure rules.
 
 ## Spec Work
-
-Before proposal generation, complete structured research for every resolved
-request until the existing approximately 80% confidence boundary is reached.
-Apply the same boundary when a `Ready to Propose` handoff supplies Research
-Leads; validate and extend those leads rather than treating them as settled
-scope or a replacement for independent research.
 
 Execute only the active step named by the coordinator's most recent pointer.
 Own the proposal/spec writes, permitted glossary updates, self-consistency and

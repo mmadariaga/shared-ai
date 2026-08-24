@@ -2,6 +2,8 @@
 
 Active step: research. Complete structured research for every resolved request before proposal generation, then report the `research` progress event per the worker contract.
 
+Rules originating here: Research Guide, Budget-explorer delegation specifics.
+
 ## Structured research guide
 
 1. **Codebase Context** — identify related features, affected files/services, existing architectural and implementation patterns.
@@ -29,9 +31,12 @@ How to spawn subagents, which model tier to use, task classification (lookup / s
 
 Rules for you specifically:
 
-1. **Do not do I/O yourself.** Never call a web fetch tool directly, read more than 3 files in a row for exploration, or run broad `Grep`/`Glob` searches. Delegate all of that to a **`budget-explorer`** subagent.
+1. **Do not do I/O yourself.** Never call a web fetch tool directly or run broad `Grep`/`Glob` searches. Delegate all of that to a **`budget-explorer`** subagent.
     - Exception: you may open a single known file at a known path to confirm a specific fact, or run a targeted search for a known symbol.
    - Exception (audit tasks): you may read target artifacts directly up to ≤15 reads + ≤30 `Grep`/`Glob` per pass. Beyond that, delegate.
+
+   **Note:** This command's read budget deliberately diverges from the other six commands (spec uses ≤15 reads for audit tasks; design/implement/apply use the three-file ceiling). Unification of these budgets across all commands is pending.
+
 2. **Own the scope for audit tasks.** Break the task into ≥3 concrete categories. Spawn one **`budget-explorer`** subagent per category in parallel. Require complete results — not "top N". If you can't define ≥3 categories, the task is not audit-class.
 3. **Run independent research calls in parallel**, not sequentially.
 4. **Open-ended exploration goes to a `budget-explorer`** subagent, not the main agent.
