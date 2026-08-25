@@ -8,6 +8,16 @@ const path = require('path');
 const repoRoot = path.join(__dirname, '..');
 const exploreSources = [
   'sai/commands/explore/instructions.md',
+  'sai/commands/explore/steps/common.md',
+  'sai/commands/explore/steps/artifact-review-language-gate.md',
+  'sai/commands/explore/steps/slicing-assessment.md',
+  'sai/commands/explore/steps/crystallization-protocol.md',
+  'sai/commands/explore/steps/crystallization-language-gates.md',
+  'sai/commands/explore/steps/review-loop.md',
+  'sai/commands/explore/steps/pipeline-selector.md',
+  'sai/commands/explore/steps/pipeline-auto-supervised.md',
+  'sai/commands/explore/steps/pipeline-auto-fast.md',
+  'sai/commands/explore/steps/idea-list.md',
   'sai/commands/explore/body.md',
   'commands/claude/sai-explore.md',
   'commands/opencode/sai-explore.md',
@@ -197,7 +207,7 @@ test('supervised autonomy keeps state in conversation and tracks escalations', (
 });
 
 test("machine feedback continues each round's complete findings list to the same phase worker", () => {
-  const source = fs.readFileSync(path.join(repoRoot, 'sai/commands/explore/instructions.md'), 'utf8');
+  const source = exploreContract();
   const policy = fs.readFileSync(path.join(repoRoot, 'sai/policies/artifact-feedback-gate.md'), 'utf8');
 
   assert.match(source, /MachineFeedbackAdapter/);
@@ -366,7 +376,7 @@ test('Step 1 preserves artifact-only worker ownership and specific discard reaso
     path.join(repoRoot, 'sai/policies/artifact-feedback-gate.md'),
     'utf8'
   );
-  const supervision = fs.readFileSync(path.join(repoRoot, 'sai/commands/explore/instructions.md'), 'utf8');
+  const supervision = exploreContract();
 
   assert.match(feedbackGate, /Accepted changes remain worker-owned and may be written only by that worker to `proposal\.md` or `specs\/\*\*` in the selected change directory/i);
   assert.match(feedbackGate, /Report every \*\*discarded\*\* item individually[\s\S]{0,240}specific reason/i);
@@ -534,7 +544,7 @@ test('Step 2 blind supervision rejects duplicate starts until the chained design
 });
 
 test('active exploration closure defines the three conversation-only states and success-only rule', () => {
-  const source = spec('sai/commands/explore/instructions.md');
+  const source = spec('sai/commands/explore/steps/common.md');
 
   assert.match(source, /\*\*Pre-crystallization closure \(sai-explore only\):\*\*/);
   assert.match(source, /The state is exactly one of `active-uncrystallized`, `crystallized`, or `discarded`/);
@@ -549,7 +559,7 @@ test('active exploration closure defines the three conversation-only states and 
 });
 
 test('Claude Code and opencode consume the same shared closure contract', () => {
-  const shared = spec('sai/commands/explore/instructions.md');
+  const shared = exploreContract();
   const claude = spec('commands/claude/sai-explore.md');
   const opencode = spec('commands/opencode/sai-explore.md');
 
@@ -596,7 +606,7 @@ test('Step 1 parses an optional overview language before fast-track and leaves a
 
 test('Step 1 gate 9 uses the opt-in overview-language selector and deterministic option sets', () => {
   const contract = [
-    spec('sai/commands/explore/instructions.md'),
+    exploreContract(),
     spec('sai/commands/explore/body.md'),
   ].join('\n');
   const selectorStart = contract.search(/(?:Gate 9|gate-9|overview[- ]language selector)/i);
@@ -619,7 +629,7 @@ test('Step 1 gate 9 uses the opt-in overview-language selector and deterministic
 
 test('Step 1 gate 9 defaults to None for absent fast-track or noncommittal input and honors an explicit flag', () => {
   const contract = [
-    spec('sai/commands/explore/instructions.md'),
+    exploreContract(),
     spec('sai/commands/explore/body.md'),
   ].join('\n');
   const selectorStart = contract.search(/(?:Gate 9|gate-9|overview[- ]language selector)/i);
@@ -639,7 +649,7 @@ test('Step 1 gate 9 defaults to None for absent fast-track or noncommittal input
 });
 
 test('Step 1 forwards selected overview language only for Auto and keeps None and Manual free of overview dispatch', () => {
-  const source = spec('sai/commands/explore/instructions.md');
+  const source = exploreContract();
 
   assert.match(source, /overview_language/);
   assert.match(source, /--overview-lang/);
@@ -768,7 +778,7 @@ test('Step 2: external findings, not worker inference, drive review evidence and
 
 test('Step 2: workers have no automatic reviewer loop under supervision and the supervised flow has no routed task list', () => {
   const worker = spec('sai/commands/spec/worker.md');
-  const supervision = spec('sai/commands/explore/instructions.md');
+  const supervision = exploreContract();
 
   assert.match(worker, /\bsupervised\b/i,
     'the worker contract should state the supervised boundary');
@@ -790,7 +800,7 @@ test('Step 2: workers have no automatic reviewer loop under supervision and the 
 
 test('Step 3: design workers have no automatic reviewer loop under supervision and keep the supervised flow without routed-list marking', () => {
   const worker = spec('sai/commands/design/worker.md');
-  const supervision = spec('sai/commands/explore/instructions.md');
+  const supervision = exploreContract();
 
   assert.match(worker, /\bsupervised\b/i,
     'the design worker contract should cover supervised invocation');
@@ -809,7 +819,7 @@ test('Step 3: design workers have no automatic reviewer loop under supervision a
 
 // â”€â”€â”€ suppress-worker-review-under-supervision: Auto envelope pins (verify-first) â”€
 test('Auto spec envelope carries leading --supervised only in arguments_value', () => {
-  const source = spec('sai/commands/explore/instructions.md');
+  const source = exploreContract();
   assert.doesNotMatch(source, /\bwrapper_echo_value\s*:/,
     'spec Auto dispatch must not construct or forward the wrapper echo field');
   assert.match(source, /arguments_value:[\s\S]{0,200}--supervised/, 'spec Auto dispatch should put --supervised on arguments_value');
@@ -819,7 +829,7 @@ test('Auto spec envelope carries leading --supervised only in arguments_value', 
 });
 
 test('Auto chained design envelope forwards overview generation conditionally', () => {
-  const source = spec('sai/commands/explore/instructions.md');
+  const source = exploreContract();
   const deterministic = source.indexOf('**Deterministic selection**');
   assert.ok(deterministic >= 0, 'the deterministic Auto selection contract should be present');
   const auto = source.slice(deterministic);
@@ -867,7 +877,7 @@ test('Step 7: design grammar is name-first and accepts supervised and fast-track
 });
 
 test('design-phase retry carries --supervised and does not re-run sai-1', () => {
-  const source = spec('sai/commands/explore/instructions.md');
+  const source = exploreContract();
   assert.match(source, /design-phase retry[\s\S]{0,800}--supervised|retry[\s\S]{0,400}--supervised[\s\S]{0,400}design/i, 'design-phase retry must carry --supervised');
   assert.match(source, /design-phase retry[\s\S]{0,500}never dispatch sai-1|never[\s\S]{0,80}regenerate `proposal\.md`|does not re-dispatch the sai-1/i, 'design-phase retry must not re-dispatch sai-1 or regenerate proposal/specs');
 });
@@ -889,7 +899,7 @@ test('supervised review rounds use the sole in-session Review Engine convergence
 });
 
 test('Step 7: supervised rounds allow three rounds per attempt, High extension under cap, third-High exhaustion, and reset on a new attempt', () => {
-  const source = spec('sai/commands/explore/instructions.md');
+  const source = exploreContract();
 
   assert.match(source, /review_rounds/);
   assert.match(source, /review_rounds[\s\S]{0,180}(?:`?spec`?|"spec")[\s\S]{0,180}(?:`?design`?|"design")|(?:`?spec`?|"spec")[\s\S]{0,180}review_rounds[\s\S]{0,180}(?:`?design`?|"design")/i);
@@ -935,7 +945,7 @@ test('external convergence is not inferred from non-supervised worker state', ()
 });
 
 test('shared native stage selector capability and response shapes keep stable protocol values', () => {
-  const shared = spec('sai/commands/explore/instructions.md');
+  const shared = exploreContract();
 
   assert.match(shared, /NativeStageSelectorCapability\s*=\s*\{ available: boolean, supportsFreeText: boolean, present\(selector, orderedOptions\) -> SelectorResponse \}/);
   assert.match(shared, /SelectorResponse\s*=\s*\{ selector: maturity\|later, kind: option\|free-text, value: review-edge-cases\|keep-iterating\|next-step\|discuss-ideas-feedback\|null, text: string\|null \}/);
@@ -947,7 +957,7 @@ test('shared native stage selector capability and response shapes keep stable pr
 });
 
 test('stage selectors preserve Spanish ordering and later placement after both text list questions', () => {
-  const shared = spec('sai/commands/explore/instructions.md');
+  const shared = exploreContract();
   const edgeCaseQuestion = shared.indexOf('established edge-case text question');
   const implementationQuestion = shared.indexOf('implementation-detail text question');
   const laterSelector = shared.indexOf('one later selector', implementationQuestion);
@@ -964,7 +974,7 @@ test('stage selectors preserve Spanish ordering and later placement after both t
 });
 
 test('discussion and free-text selector answers do not advance while next-step is exactly the existing path', () => {
-  const shared = spec('sai/commands/explore/instructions.md');
+  const shared = exploreContract();
 
   assert.match(shared, /The discussion value and later-selector free text remain in ask mode and do not advance, agree a list, or crystallize/);
   assert.match(shared, /Arbitrary free text is never treated as advancement merely because a selector was displayed/);
@@ -979,7 +989,7 @@ test('discussion and free-text selector answers do not advance while next-step i
 });
 
 test('selector semantics remain shared and are not duplicated in harness wrappers or renderers', () => {
-  const shared = spec('sai/commands/explore/instructions.md');
+  const shared = exploreContract();
   const claudeWrapper = spec('commands/claude/sai-explore.md');
   const opencodeWrapper = spec('commands/opencode/sai-explore.md');
   const claudePanel = spec('sai/adapters/claude/panel-render.md');
@@ -1107,7 +1117,7 @@ test('Step 1: interactive mode keeps Give feedback Recommended before proceed', 
 });
 
 test('Step 2: the supervised spec artifact gate binds mode, Finish, and the phase transition', () => {
-  const source = spec('sai/commands/explore/instructions.md');
+  const source = exploreContract();
   const specArtifacts = source.match(/proposal\.md[\s\S]{0,1800}specs\/\*\*/i);
 
   assert.ok(specArtifacts, 'the supervised spec artifact gate should retain proposal.md and specs/**');
@@ -1127,7 +1137,7 @@ test('Step 2: the supervised spec artifact gate binds mode, Finish, and the phas
 });
 
 test('Step 2: supervised Continue conditionally selects overview generation or a no-generation terminal', () => {
-  const source = spec('sai/commands/explore/instructions.md');
+  const source = exploreContract();
   const designArtifacts = source.match(/design\.md[\s\S]{0,1200}tasks\.md[\s\S]{0,1200}interfaces\.md/i);
 
   assert.ok(designArtifacts, 'the supervised design artifact gate should retain design.md, tasks.md, and interfaces.md');
@@ -1155,7 +1165,7 @@ test('Step 2: supervised Continue conditionally selects overview generation or a
 });
 
 test('Step 2: post-proceed report ordering remains after supervised gates without active-supervision interval stage enumeration', () => {
-  const source = spec('sai/commands/explore/instructions.md');
+  const source = exploreContract();
   const gate = source.match(
     /(?:proposal\.md[\s\S]{0,500}specs\/\*\*[\s\S]{0,700}(?:Finish|phase-transition)[\s\S]{0,300}(?:phase-transition|Finish)|design\.md[\s\S]{0,350}tasks\.md[\s\S]{0,350}interfaces\.md[\s\S]{0,900}(?:Continue|overview-generation|supervised-terminal)[\s\S]{0,300}(?:overview-generation|supervised-terminal|Continue))/i
   );
@@ -1491,7 +1501,7 @@ test('Step 2 item-10 exhausted diagnosis keeps the change retryable with phase g
 });
 
 test('Step 3: failed or cancelled item-10 work settles the active phase review item before Diagnosis Round', () => {
-  const source = spec('sai/commands/explore/instructions.md');
+  const source = exploreContract();
 
   assert.match(
     source,
@@ -1501,7 +1511,7 @@ test('Step 3: failed or cancelled item-10 work settles the active phase review i
 });
 
 test('Step 3: Diagnosis Round does not mark review items in progress or add a diagnosis list item', () => {
-  const source = spec('sai/commands/explore/instructions.md');
+  const source = exploreContract();
   const start = source.search(/Diagnosis Round/);
   assert.ok(start >= 0, 'Explore instructions should define Diagnosis Round');
   const diagnosis = source.slice(start, start + 7000);
@@ -1519,7 +1529,7 @@ test('Step 3: Diagnosis Round does not mark review items in progress or add a di
 });
 
 test('Step 3: diagnosis findings do not change review evidence or count as a Supervised Review Round', () => {
-  const source = spec('sai/commands/explore/instructions.md');
+  const source = exploreContract();
   const start = source.search(/Diagnosis Round/);
   assert.ok(start >= 0, 'Explore instructions should define Diagnosis Round');
   const diagnosis = source.slice(start, start + 7000);
@@ -1542,7 +1552,7 @@ test('Step 3: diagnosis findings do not change review evidence or count as a Sup
 });
 
 test('Step 3: successful same-worker re-dispatch resumes ordinary review and only ordinary review enters in_progress', () => {
-  const source = spec('sai/commands/explore/instructions.md');
+  const source = exploreContract();
 
   assert.match(
     source,
@@ -1557,7 +1567,7 @@ test('Step 3: successful same-worker re-dispatch resumes ordinary review and onl
 });
 
 test('Step 3: stopped diagnosis leaves the phase item pending and keeps diagnosis state conversation-only', () => {
-  const source = spec('sai/commands/explore/instructions.md');
+  const source = exploreContract();
   const start = source.search(/Diagnosis Round/);
   assert.ok(start >= 0, 'Explore instructions should define Diagnosis Round');
   const diagnosis = source.slice(start, start + 7000);
@@ -1577,7 +1587,7 @@ test('Step 3: stopped diagnosis leaves the phase item pending and keeps diagnosi
 });
 
 test('Step 3: Diagnosis Round render rules live in Explore instructions, not either idea-list renderer', () => {
-  const explore = spec('sai/commands/explore/instructions.md');
+  const explore = exploreContract();
   const claudeRenderer = spec('sai/adapters/claude/idea-list-render.md');
   const opencodeRenderer = spec('sai/adapters/opencode/idea-list-render.md');
 
@@ -1647,7 +1657,7 @@ test('Step 2: clean completed workers never start item-10 diagnosis', () => {
 });
 
 test('Step 2: pending-before-diagnosis applies to disproved or STOP-bearing completed workers', () => {
-  const source = spec('sai/commands/explore/instructions.md');
+  const source = exploreContract();
   const completedDisproved = String.raw`(?:completed[\s\S]{0,900}(?:coordinator[- ]disproved|coordinator[\s\S]{0,180}disprov\w*|disprov\w*[\s\S]{0,180}coordinator)|(?:coordinator[- ]disproved|coordinator[\s\S]{0,180}disprov\w*|disprov\w*[\s\S]{0,180}coordinator)[\s\S]{0,900}completed)`;
   const completedStop = String.raw`(?:completed[\s\S]{0,900}(?:STOP[- ]bearing|carrying[\s\S]{0,120}STOP)|(?:STOP[- ]bearing|carrying[\s\S]{0,120}STOP)[\s\S]{0,900}completed)`;
 

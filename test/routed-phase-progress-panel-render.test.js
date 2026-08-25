@@ -23,6 +23,23 @@ function read(relativePath) {
   return fs.readFileSync(path.join(repoRoot, relativePath), 'utf8');
 }
 
+function readExploreContract() {
+  const exploreSources = [
+    'sai/commands/explore/instructions.md',
+    'sai/commands/explore/steps/common.md',
+    'sai/commands/explore/steps/artifact-review-language-gate.md',
+    'sai/commands/explore/steps/slicing-assessment.md',
+    'sai/commands/explore/steps/crystallization-protocol.md',
+    'sai/commands/explore/steps/crystallization-language-gates.md',
+    'sai/commands/explore/steps/review-loop.md',
+    'sai/commands/explore/steps/pipeline-selector.md',
+    'sai/commands/explore/steps/pipeline-auto-supervised.md',
+    'sai/commands/explore/steps/pipeline-auto-fast.md',
+    'sai/commands/explore/steps/idea-list.md',
+  ];
+  return exploreSources.map(relativePath => read(relativePath)).join('\n');
+}
+
 test('todo policy defines a conditional progress-event render act', () => {
   const policy = read('sai/policies/todo-structure.md');
 
@@ -104,7 +121,7 @@ test('routed matrix bindings reference the matching harness panel mechanics', ()
 });
 
 test('supervised explore runs keep visual plan rendering disabled while retaining pointer routing', () => {
-  const explore = read('sai/commands/explore/instructions.md');
+  const explore = readExploreContract();
 
   assert.match(explore, /declares no visual `progress_plan`/);
   assert.match(explore, /no task-list step is marked and no milestone stamp is rendered/i);
@@ -121,9 +138,11 @@ test('panel degradation is declared for routed phases, apply projection, and exp
     'sai/commands/performance/coordinator.md',
     'sai/commands/accessibility/coordinator.md',
     'sai/commands/apply/coordinator.md',
-    'sai/commands/explore/instructions.md',
   ]) {
     assert.match(read(relativePath), /unavailable at runtime/,
       `${relativePath} should define the runtime panel degradation route`);
   }
+  // Check explore separately since it needs the whole contract
+  assert.match(readExploreContract(), /unavailable at runtime/,
+    'sai/commands/explore/instructions.md should define the runtime panel degradation route');
 });

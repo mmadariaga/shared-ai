@@ -66,7 +66,7 @@ const UTILITY_CARD_CONTENTS = {
   archive: ['archive-commit-gate.instructions.md', 'command-bootstrap.md', 'coordinator.md', 'instructions.md', 'worker.md'],
   backfill: ['command-bootstrap.md', 'coordinator.md', 'instructions.md', 'worker.md'],
   commit: ['command-bootstrap.md', 'coordinator.md', 'instructions.md', 'worker.md'],
-  explore: ['autofast-implement-worker.md', 'body.md', 'command-bootstrap.md', 'instructions.md'],
+  explore: ['autofast-implement-worker.md', 'body.md', 'command-bootstrap.md', 'instructions.md', 'steps'],
   pr: ['body.md', 'command-bootstrap.md', 'instructions.md', 'pr-body.template.md'],
   'retire-docs': ['body.md', 'command-bootstrap.md'],
   status: ['body.md', 'command-bootstrap.md'],
@@ -1006,7 +1006,14 @@ test('Step 2 Claude installation preserves the shared selector contract without 
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-claude-selector-contract-'));
   try {
     installClaude(tmpDir);
-    const installed = fs.readFileSync(path.join(tmpDir, 'sai', 'commands', 'explore', 'instructions.md'), 'utf8');
+    const exploreDir = path.join(tmpDir, 'sai', 'commands', 'explore');
+    const nucleus = fs.readFileSync(path.join(exploreDir, 'instructions.md'), 'utf8');
+    const stepsDir = path.join(exploreDir, 'steps');
+    const stepFiles = fs.readdirSync(stepsDir)
+      .filter(f => f.endsWith('.md'))
+      .sort();
+    const steps = stepFiles.map(f => fs.readFileSync(path.join(stepsDir, f), 'utf8')).join('\n');
+    const installed = nucleus + '\n' + steps;
     assertInstalledSelectorContract(installed);
 
     const panel = fs.readFileSync(path.join(tmpDir, 'sai', 'adapters', 'claude', 'panel-render.md'), 'utf8');
