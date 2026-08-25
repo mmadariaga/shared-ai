@@ -1,7 +1,10 @@
 # budget-subagent-terminal-execution
 
-## MODIFIED Requirements
+## Purpose
 
+TBD - this spec was authored as a change delta and never merged into the main tree, so its requirements were invisible to validate, list, and archive. Summarize the capability here.
+
+## Requirements
 ### Requirement: The budget-subagent SHALL use `execute/runInTerminal` for terminal command execution
 
 The tool binding for terminal commands was updated from `run/terminalCommand` to `execute/runInTerminal` to match the Copilot tool registry.

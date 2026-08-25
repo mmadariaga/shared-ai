@@ -1,5 +1,10 @@
-## ADDED Requirements
+# implement-rerun-state-classification Specification
 
+## Purpose
+
+TBD - this spec was authored as a change delta and never merged into the main tree, so its requirements were invisible to validate, list, and archive. Summarize the capability here.
+
+## Requirements
 ### Requirement: Step 5 SHALL classify each prior step as COMPLETO, FALLO MENOR, or INCOMPLETO
 
 On re-run, Step 5 of `sai/commands/implement/instructions.md` SHALL classify every step in the prior `implementation.md` from its checkbox state, distinguishing code-writing checkboxes from verification checkboxes. A **code-writing checkbox** is one whose line introduces or modifies project files (an instruction box, a RED stub/test-creation box, or a GREEN implementation box). A **verification checkbox** is one that only runs or inspects (a Verification Checklist box, a "Verify RED" / GATE box, or a "Verify GREEN" box). The classifications are:

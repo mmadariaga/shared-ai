@@ -1,7 +1,10 @@
 # spec: install-documentation
 
-## MODIFIED Requirements
+## Purpose
 
+TBD - this spec was authored as a change delta and never merged into the main tree, so its requirements were invisible to validate, list, and archive. Summarize the capability here.
+
+## Requirements
 ### Requirement: INSTALL.claude.md includes sai-commands skill copy step
 
 `INSTALL.claude.md` SHALL include `mkdir` and `cp`/`Copy-Item` commands to install `skills/universal/sai-commands/SKILL.md` into `~/.claude/skills/sai-commands/`, following the same pattern as other universal skill install steps.

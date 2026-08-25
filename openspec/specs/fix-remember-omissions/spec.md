@@ -1,5 +1,10 @@
-## ADDED Requirements
+# fix-remember-omissions Specification
 
+## Purpose
+
+TBD - this spec was authored as a change delta and never merged into the main tree, so its requirements were invisible to validate, list, and archive. Summarize the capability here.
+
+## Requirements
 ### Requirement: opencode-sai-5-remember-fetch
 `commands/opencode/sai-5-review.md` SHALL contain a `Fetch @~/.config/opencode/sai/policies/remember.md` line.
 

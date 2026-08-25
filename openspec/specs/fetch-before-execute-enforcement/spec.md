@@ -1,7 +1,10 @@
 # spec: fetch-before-execute-enforcement
 
-## ADDED Requirements
+## Purpose
 
+TBD - this spec was authored as a change delta and never merged into the main tree, so its requirements were invisible to validate, list, and archive. Summarize the capability here.
+
+## Requirements
 ### Requirement: LLM MUST fetch command file before executing any sai-* task
 
 When a `/sai-*` command is invoked, the LLM SHALL resolve it by reading the corresponding `@commands/sai-<name>.md` file and follow the instructions in that file exactly. The LLM SHALL NOT skip to implementation or interpretation.

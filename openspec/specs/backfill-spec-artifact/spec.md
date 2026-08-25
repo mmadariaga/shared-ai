@@ -1,5 +1,10 @@
-## ADDED Requirements
+# backfill-spec-artifact Specification
 
+## Purpose
+
+TBD - this spec was authored as a change delta and never merged into the main tree, so its requirements were invisible to validate, list, and archive. Summarize the capability here.
+
+## Requirements
 ### Requirement: Capability specs reflect actual implemented behavior
 The command SHALL create or update `openspec/changes/{name}/specs/{capability}/spec.md` entries to describe the behavior that was actually implemented, as evidenced by the diff and the user's interview answers. Specs MUST NOT describe idealized or intended behavior that differs from the diff.
 

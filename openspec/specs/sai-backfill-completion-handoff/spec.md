@@ -1,5 +1,10 @@
-## ADDED Requirements
+# sai-backfill-completion-handoff Specification
 
+## Purpose
+
+TBD - this spec was authored as a change delta and never merged into the main tree, so its requirements were invisible to validate, list, and archive. Summarize the capability here.
+
+## Requirements
 ### Requirement: Completion MUST emit a Ready to Archive block
 
 `/sai-backfill` MUST end its completion by printing a `## Ready to Archive` block that names the change and prints the next command. The block MUST replace the current "To archive the change, run `/sai-archive {name}`" line. The block MUST be the LAST output of the command, after any decision summary, summary statistics, or final status line, and MUST be a paste-ready handoff into a fresh chat — not an in-context auto-execution of `/sai-archive`.

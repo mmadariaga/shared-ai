@@ -1,7 +1,10 @@
 # scope-reference-consistency Specification
 
-## ADDED Requirements
+## Purpose
 
+TBD - this spec was authored as a change delta and never merged into the main tree, so its requirements were invisible to validate, list, and archive. Summarize the capability here.
+
+## Requirements
 ### Requirement: All instruction scope reminders SHALL reference `sai-4-apply`
 
 Scope reminder blocks in `sai/commands/{name}/instructions.md` files (security, review, performance, accessibility) SHALL reference `/sai-4-apply` as the apply command, not the legacy `/ai-3-apply`.

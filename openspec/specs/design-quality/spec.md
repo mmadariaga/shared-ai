@@ -1,7 +1,10 @@
 # design-quality Specification
 
-## ADDED Requirements
+## Purpose
 
+TBD - this spec was authored as a change delta and never merged into the main tree, so its requirements were invisible to validate, list, and archive. Summarize the capability here.
+
+## Requirements
 ### Requirement: Decision summary printed at end of design phase
 
 When `sai/commands/design/coordinator.md` reaches its Completion section, the agent SHALL print a structured decision summary to the screen before the handoff prompt. The summary is derived exclusively from the artifacts just written (`design.md` and `tasks.md`) — not from prior conversation.

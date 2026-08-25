@@ -301,6 +301,8 @@ This index groups the DDRs in `docs/ddr/` by **command** and by **cross-cutting 
 | [0150](./0150-mode-parameterized-at-fetch-site-not-detected.md) | amends | [0028](../adr/0028-gate-parameters-inline-at-fetch-site.md) |
 | [0151c](./0151c-external-findings-block-is-only-review-evidence.md) | amends | [0133b](./0133b-review-progress-is-evidence-only.md) |
 
+| [0160](./0160-multi-dispatcher-phases-validate-at-the-worker.md) | refs | [adr:0048](../adr/0048-single-source-fast-track-parse-in-body-file.md) |
+
 ## Superseded DDRs (historical)
 
 - [0116 — The apply phase carries no progress events because it has no coordinator-worker boundary](./0116-apply-phase-carries-no-progress-events.md) — Refs 0110 — *Superseded by [0137b](./0137b-apply-routed-boundary-carries-progress-events.md)*

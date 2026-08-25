@@ -1,5 +1,10 @@
-## MODIFIED Requirements
+# budget-universal-loader Specification
 
+## Purpose
+
+TBD - this spec was authored as a change delta and never merged into the main tree, so its requirements were invisible to validate, list, and archive. Summarize the capability here.
+
+## Requirements
 ### Requirement: budget-skill-loads-all-bindings
 The `skills/universal/budget/SKILL.md` file SHALL load all active budget subagent bindings. After this change, the load list MUST include `budget-subagent` alongside `budget-explorer`, `budget-executor`, and `token-efficient-languages`.
 

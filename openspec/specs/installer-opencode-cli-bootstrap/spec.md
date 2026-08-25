@@ -1,5 +1,10 @@
-## ADDED Requirements
+# installer-opencode-cli-bootstrap Specification
 
+## Purpose
+
+TBD - this spec was authored as a change delta and never merged into the main tree, so its requirements were invisible to validate, list, and archive. Summarize the capability here.
+
+## Requirements
 ### Requirement: Opencode binary detection
 
 During the Opencode install branch, the installer SHALL probe for the `opencode` binary by invoking it with `--version`. A successful invocation (process spawns and exits zero) SHALL be treated as **present**. A spawn failure (binary not found) or a non-zero exit SHALL be treated as **absent**. The probe SHALL resolve `opencode` through the platform's executable PATH resolution, **including Windows `PATHEXT` / `.cmd` shim resolution** — as `bin/setup.js` already does for `openspec` (via a `where`/`which` lookup and/or spawning with `shell: true`). A probe that bypasses shell/`PATHEXT` resolution (e.g. a bare `spawnSync('opencode', […])` without `shell: true`) SHALL NOT be used, because on Windows it throws `ENOENT` for globally-installed npm `.cmd` shims and would misclassify an installed binary as absent. The probe SHALL NOT read or infer presence from the existence of the `~/.config/opencode/` directory, because that proves the installer ran once, not that the binary is installed.

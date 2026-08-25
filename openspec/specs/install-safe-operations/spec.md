@@ -1,7 +1,10 @@
 # Spec: install-safe-operations
 
-## ADDED Requirements
+## Purpose
 
+TBD - this spec was authored as a change delta and never merged into the main tree, so its requirements were invisible to validate, list, and archive. Summarize the capability here.
+
+## Requirements
 ### Requirement: Install scripts SHALL copy safe-operations skill to user directories
 
 The install scripts and INSTALL documentation SHALL include steps to copy `skills/universal/safe-operations/SKILL.md` to the user-level skills directory for both Claude Code and OpenCode.

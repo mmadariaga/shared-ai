@@ -1,5 +1,10 @@
-## MODIFIED Requirements
+# accessibility-audit Specification
 
+## Purpose
+
+TBD - this spec was authored as a change delta and never merged into the main tree, so its requirements were invisible to validate, list, and archive. Summarize the capability here.
+
+## Requirements
 ### Requirement: Mandatory budget-explorer delegation in accessibility audit Discovery
 The accessibility audit main agent SHALL NOT read any diff files directly. All source code inspection, diff-file reading, component categorization, and codebase context lookup MUST be delegated to budget-explorer subagents with explicit output contracts. Delegation is unconditional — not gated on "independent areas" or any other heuristic.
 

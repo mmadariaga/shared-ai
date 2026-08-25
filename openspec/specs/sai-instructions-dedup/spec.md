@@ -1,5 +1,10 @@
-## ADDED Requirements
+# sai-instructions-dedup Specification
 
+## Purpose
+
+TBD - this spec was authored as a change delta and never merged into the main tree, so its requirements were invisible to validate, list, and archive. Summarize the capability here.
+
+## Requirements
 ### Requirement: Replace Language blocks in all 9 instruction files
 
 Each of the following files SHALL have its inline `Language:` block replaced with the Fetch directive `Fetch skills/universal/token-efficient-languages/SKILL.md`:

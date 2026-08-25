@@ -1,7 +1,10 @@
 # apply-telemetry-containment Specification
 
-## ADDED Requirements
+## Purpose
 
+TBD - this spec was authored as a change delta and never merged into the main tree, so its requirements were invisible to validate, list, and archive. Summarize the capability here.
+
+## Requirements
 ### Requirement: Field 9 is never re-injected into a dispatch prompt
 
 The `/sai-4-apply` coordinator SHALL NOT include any field-9 content — an entry, an `attempts` count, a `first_failure` token, a `note`, or a rendered telemetry row — in any subsequent dispatch prompt, for the same Step or any later Step. This prohibition holds for the non-testable single dispatch, the blind test-writer dispatch, and the implementation dispatch alike.

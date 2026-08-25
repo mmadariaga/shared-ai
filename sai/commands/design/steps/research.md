@@ -5,8 +5,8 @@ Active step: research. Complete codebase research and resolve all Open Questions
 ## Inputs
 
 Read the following known files in the main agent (paths are fixed by convention):
-- `openspec/changes/$ARGUMENTS/proposal.md` — motivation, what changes, capabilities in scope
-- All files matching `openspec/changes/$ARGUMENTS/specs/**/*.md` — capability delta specs
+- `openspec/changes/{resolved_change_name}/proposal.md` — motivation, what changes, capabilities in scope
+- All files matching `openspec/changes/{resolved_change_name}/specs/**/*.md` — capability delta specs
 
 ## Codebase Research (DELEGATED)
 
@@ -14,7 +14,7 @@ Read the following known files in the main agent (paths are fixed by convention)
 
 Launch ONE **`budget-explorer`** subagent with this prompt:
 
-> Read the proposal and specs for change `$ARGUMENTS`. Discover and deeply read the most relevant source files for this change. Search broadly (glob/grep) — do not assume frameworks. For each discovered file, report: `filePath`, `keyExports`, `isReusableForThisChange` (boolean), `notes` (max 20 words). Return structured data only. No prose narrative.
+> Read the proposal and specs for change `{resolved_change_name}`. Discover and deeply read the most relevant source files for this change. Search broadly (glob/grep) — do not assume frameworks. For each discovered file, report: `filePath`, `keyExports`, `isReusableForThisChange` (boolean), `notes` (max 20 words). Return structured data only. No prose narrative.
 
 The main agent acts **exclusively** on the `budget-explorer` subagent's output. If the output is ambiguous, spawn another `budget-explorer` subagent with a more targeted prompt. Do NOT open files to "verify".
 

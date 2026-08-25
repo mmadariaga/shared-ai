@@ -1,5 +1,10 @@
-## ADDED Requirements
+# doctor-fetch-resolution Specification
 
+## Purpose
+
+TBD - this spec was authored as a change delta and never merged into the main tree, so its requirements were invisible to validate, list, and archive. Summarize the capability here.
+
+## Requirements
 ### Requirement: Fetch @ reference resolution per wrapper
 
 For each installed wrapper in a detected harness, the doctor SHALL parse every `Fetch @<path>` reference it contains and verify that each reference resolves to a real file on disk. A reference that resolves to an existing file SHALL pass; a reference that resolves to no existing file (a dangling reference) SHALL be flagged with the wrapper it appears in and the unresolved target.

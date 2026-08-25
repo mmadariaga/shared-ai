@@ -1,5 +1,10 @@
-## MODIFIED Requirements
+# closed-choice-prompts Specification
 
+## Purpose
+
+TBD - this spec was authored as a change delta and never merged into the main tree, so its requirements were invisible to validate, list, and archive. Summarize the capability here.
+
+## Requirements
 ### Requirement: Closed-choice prompts MUST use the harness's native option-picker when available
 
 The SAI pipeline presents many closed-choice prompts to the user (yes/no questions, numbered lists, commit authorization gates, change pickers). Whenever a `sai-*` command asks the user to pick from a closed set of options, the harness's native option-picker tool is the default channel and MUST be used whenever one exists; plain text is a deliberate fallback used only on surfaces that have no native option-picker, never a co-equal alternative on surfaces that do. Presentation changes per harness; question text, option semantics, retry rules, decline rules, and "wait for the answer" requirements stay exactly as the defining instruction specifies.

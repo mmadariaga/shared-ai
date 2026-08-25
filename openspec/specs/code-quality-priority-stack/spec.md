@@ -1,5 +1,10 @@
-## ADDED Requirements
+# code-quality-priority-stack Specification
 
+## Purpose
+
+TBD - this spec was authored as a change delta and never merged into the main tree, so its requirements were invisible to validate, list, and archive. Summarize the capability here.
+
+## Requirements
 ### Requirement: Priority Stack Section In Implementation Instructions
 
 The implementation instructions (`sai/commands/implement/instructions.md`) SHALL contain a section titled `## Code Quality Priority Stack`, placed immediately after the `## Hard Rules` section. The section MUST define exactly six code-quality rules in a fixed priority order, where a lower number outranks a higher number:

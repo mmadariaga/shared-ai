@@ -1,5 +1,10 @@
-## ADDED Requirements
+# installer-post-install-summaries Specification
 
+## Purpose
+
+TBD - this spec was authored as a change delta and never merged into the main tree, so its requirements were invisible to validate, list, and archive. Summarize the capability here.
+
+## Requirements
 ### Requirement: Claude Code post-install summary
 
 When the user selects Claude Code and `installClaude()` returns without error, the installer SHALL print three summary lines naming the populated base directories under `<claude-base>`, in the order:

@@ -1,7 +1,10 @@
 # budget-skill-name-normalization Specification
 
-## MODIFIED Requirements
+## Purpose
 
+TBD - this spec was authored as a change delta and never merged into the main tree, so its requirements were invisible to validate, list, and archive. Summarize the capability here.
+
+## Requirements
 ### Requirement: Budget skill `name:` frontmatter fields SHALL use platform-agnostic slugs
 
 The `name:` field in budget skill `SKILL.md` frontmatter SHALL use the plain slug (`budget-executor`, `budget-explorer`) regardless of whether the file resides under `skills/claude/` or `skills/opencode/`. Platform-prefixed names (`claude-budget-executor`, `opencode-budget-explorer`, etc.) SHALL NOT be used.

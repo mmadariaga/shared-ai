@@ -1,5 +1,10 @@
-## MODIFIED Requirements
+# claude-install Specification
 
+## Purpose
+
+TBD - this spec was authored as a change delta and never merged into the main tree, so its requirements were invisible to validate, list, and archive. Summarize the capability here.
+
+## Requirements
 ### Requirement: INSTALL.claude.md includes fetch skill copy step
 `INSTALL.claude.md` SHALL include instructions to copy `skills/claude/fetch/SKILL.md` to `~/.claude/skills/fetch/SKILL.md` in both the Linux/macOS bash section and the Windows PowerShell section.
 

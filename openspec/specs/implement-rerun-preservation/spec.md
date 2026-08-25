@@ -1,5 +1,10 @@
-## ADDED Requirements
+# implement-rerun-preservation Specification
 
+## Purpose
+
+TBD - this spec was authored as a change delta and never merged into the main tree, so its requirements were invisible to validate, list, and archive. Summarize the capability here.
+
+## Requirements
 ### Requirement: Step 5 SHALL preserve a prior `implementation.md` on re-run instead of regenerating it from `<plan_template>`
 
 When `openspec/changes/{change-name}/implementation.md` already exists at the start of `/sai-3-implement` (i.e. Step 1 ran and the applied-steps set is non-empty), Step 5 of `sai/commands/implement/instructions.md` SHALL build its output by preserving the prior file rather than generating a fresh plan from `<plan_template>`. The `<plan_template>` generation path applies ONLY on a first run.

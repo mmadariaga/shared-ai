@@ -1,5 +1,10 @@
-## MODIFIED Requirements
+# opencode-wrapper-frontmatter-defaulting Specification
 
+## Purpose
+
+TBD - this spec was authored as a change delta and never merged into the main tree, so its requirements were invisible to validate, list, and archive. Summarize the capability here.
+
+## Requirements
 ### Requirement: Opencode wrappers SHALL omit explicit default variant declarations
 
 When a wrapper uses the platform's default variant behavior, the frontmatter MUST omit `variant: default` to avoid redundant configuration.

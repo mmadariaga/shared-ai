@@ -1,5 +1,10 @@
-## ADDED Requirements
+# executor-universal-behavior Specification
 
+## Purpose
+
+TBD - this spec was authored as a change delta and never merged into the main tree, so its requirements were invisible to validate, list, and archive. Summarize the capability here.
+
+## Requirements
 ### Requirement: Execute only what was requested
 
 The executor subagent SHALL run only the exact command(s) provided in the prompt. It MUST NOT suggest improvements, refactor code, fix unrelated issues, or expand scope beyond the explicit request.

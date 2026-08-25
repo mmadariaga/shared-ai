@@ -1,7 +1,10 @@
 # spec: sai-command-registry
 
-## ADDED Requirements
+## Purpose
 
+TBD - this spec was authored as a change delta and never merged into the main tree, so its requirements were invisible to validate, list, and archive. Summarize the capability here.
+
+## Requirements
 ### Requirement: Registry table coverage
 
 The SAI command registry skill SHALL list a `/sai-merge` row describing the merge-a-local-branch command with criteria-based conflict resolution and ADR/DDR collision repair, keeping the enumerated command set consistent with the installed wrapper files.

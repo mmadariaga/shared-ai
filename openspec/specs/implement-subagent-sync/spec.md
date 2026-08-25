@@ -1,7 +1,10 @@
 # implement-subagent-sync Specification
 
-## ADDED Requirements
+## Purpose
 
+TBD - this spec was authored as a change delta and never merged into the main tree, so its requirements were invisible to validate, list, and archive. Summarize the capability here.
+
+## Requirements
 ### Requirement: Implement Step 1b subagent SHALL complete before any subsequent task executes
 
 When `/sai-3-implement` executes Step 1b (detect already-applied steps) via a subagent, the main agent SHALL wait for the subagent to finish before continuing with any other task. This prevents race conditions where the main agent proceeds before the rerun guard analysis is complete.

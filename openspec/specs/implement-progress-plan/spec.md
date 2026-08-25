@@ -1,7 +1,10 @@
 # implement-progress-plan — Spec
 
-## MODIFIED Requirements
+## Purpose
 
+TBD - this spec was authored as a change delta and never merged into the main tree, so its requirements were invisible to validate, list, and archive. Summarize the capability here.
+
+## Requirements
 ### Requirement: implement-plan-steps-match-workflow
 
 The implementation plan steps SHALL correspond one-to-one to the implementation-planning workflow: `collapse-implemented-steps` covers Step 1 (collapse every fully applied `#### Step N` of an existing `implementation.md` to `*(already applied)*`, skipped on a first run); `artifact-analysis` covers Steps 2–3 (parse the artifacts, classify audit findings, validate design decisions for ADR/DDR); `documentation-review` covers Step 4 (read required documentation one time only); `plan-generation` covers Step 5's write (first-run generation or re-run preservation plus the audit-derived step append); `validation` covers the worker's pre-delivery durable-artifact verification — the `implementation.md` invariants and the audit-derived step append check, which remains a non-completion blocker: any failed check returns a non-completed lifecycle result and never a `completed` claim. The plan SHALL NOT include a `specs-approval` step: the specs approval gate belongs to the design phase.

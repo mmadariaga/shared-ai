@@ -1,7 +1,10 @@
 # Spec: safe-operations-skill
 
-## ADDED Requirements
+## Purpose
 
+TBD - this spec was authored as a change delta and never merged into the main tree, so its requirements were invisible to validate, list, and archive. Summarize the capability here.
+
+## Requirements
 ### Requirement: Agent SHALL evaluate operation reversibility before acting
 
 The agent MUST assess whether a requested operation is hard to reverse, destructive, or affects shared systems before executing it.
