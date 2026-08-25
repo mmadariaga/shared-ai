@@ -254,6 +254,15 @@ Explore SHALL defer the existing Auto-fast terminal report and navigation while 
 
 On an Auto (fast implementation) selection, explore SHALL apply the Deterministic selection rules verbatim against `last_crystallization_set` and `completed_changes` including every degenerate state: an empty set acknowledges nothing crystallized and dispatches nothing; no uncompleted entry acknowledges completion and dispatches nothing; exactly one uncompleted entry dispatches without a picker; multiple entries use the ordered native picker with Cancel; and an active run rejects another selection for the full interval. It SHALL NOT run `openspec list --json` or re-sort names, and earlier clauses describing the selector as carrying two options are superseded for count only by the third option.
 
+### Requirement: Auto-fast continuation preserves pending and completed slice state
+
+After a successful slice completion, explore SHALL preserve completed progress states, filter remaining slices from `last_crystallization_set` minus `completed_changes` in crystallization order, and defer terminal navigation while pending slices remain.
+
+#### Scenario: continuation has pending work
+
+- **WHEN** a clean completion leaves one or more uncompleted slices
+- **THEN** the completed slice remains completed and continuation operates only on the pending set
+
 #### Scenario: Degenerate selection states behave deterministically
 
 - **WHEN** the selection state is empty, fully completed, single-entry, multi-entry, or already active at selection time

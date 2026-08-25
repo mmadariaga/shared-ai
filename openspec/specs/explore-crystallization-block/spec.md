@@ -119,6 +119,15 @@ The recommendation SHALL be plain conversational text rendered in the user's lan
 - **THEN** the recommendation remains plain conversational text rendered in the user's language, while both literal tokens remain verbatim
 - **AND** the selector remains the sole control for delegated execution
 - **AND** `review-loop` remains a standing user-triggered path while the selector governs only delegated execution
+
+### Requirement: Continuation selector remains distinct from crystallization close
+
+A selector re-presented after a clean Auto-fast slice completion SHALL authorize only the next pending slice and SHALL NOT re-emit the initial crystallization-turn handoff or exhausted-set terminal report when Manual is selected.
+
+#### Scenario: Manual pauses a continuation selector
+
+- **WHEN** Manual is selected after a successful slice completion while pending slices remain
+- **THEN** pending and completed state remain unchanged without re-emitting the initial handoff
 - **AND** the `review-loop` path remains independent of selector selection
 
 #### Scenario: recommendation does not alter the block or the item-8 gate
@@ -230,4 +239,3 @@ The single-change and sliced `Ready to Propose` blocks SHALL always include `**O
 - **WHEN** a single or sliced crystallization supplies or selects `spanish`
 - **THEN** every emitted block contains `**Overview language**: spanish`
 - **AND** the value is not localized or persisted
-
