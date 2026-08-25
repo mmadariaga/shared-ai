@@ -7,7 +7,7 @@ TBD: Define the purpose of the harness panel-render binding capability.
 
 ### Requirement: Each supported harness SHALL expose a surface-neutral panel-render binding
 
-Each supported harness SHALL expose its native panel mechanics through a reusable binding. The binding SHALL preserve the surface-neutral mechanics for ordinary consumers and SHALL define the declared `sai-merge` adaptive TODO extension, including its `sai-merge-todo` marker and exclusive ownership after the first full merge render.
+Each supported harness SHALL expose its native panel mechanics through a reusable binding. The binding SHALL preserve the surface-neutral mechanics for ordinary consumers and SHALL define the declared `sai-merge` adaptive TODO extension, including its `sai-merge-todo` marker, a coordinator-owned `contextual-analysis` item between conflict scope selection and resolution, and exclusive ownership after the first full merge render.
 
 #### Scenario: Claude Code panel mechanics are reusable by a consuming surface
 - **WHEN** a Claude Code surface renders a panel-backed list
@@ -30,6 +30,11 @@ Each supported harness SHALL expose its native panel mechanics through a reusabl
 
 - **WHEN** the merge coordinator performs its first full TODO render
 - **THEN** the active harness binding replaces foreign entries with the canonical merge TODO and preserves the merge marker for lifecycle cleanup
+
+#### Scenario: Merge contextual analysis owns the pending route
+
+- **WHEN** a conflicted merge reaches contextual analysis
+- **THEN** the coordinator renders the `contextual-analysis` TODO item and keeps the resolution item pending until the worker returns complete selected alternatives
 
 ### Requirement: Panel mechanics SHALL remain declared rather than runtime-detected
 

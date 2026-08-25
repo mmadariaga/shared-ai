@@ -1,7 +1,10 @@
 # Spec: sai-command-model-defaults
 
-## MODIFIED Requirements
+## Purpose
 
+TBD - this spec was authored as a change delta and never merged into the main tree, so its requirements were invisible to validate, list, and archive. Summarize the capability here.
+
+## Requirements
 ### Requirement: The `/sai-2-design` command SHALL use `claude-opus-4-8` as its default Claude Code model.
 
 Previously `claude-opus-4-7`. Updated to reflect the latest Opus model version.

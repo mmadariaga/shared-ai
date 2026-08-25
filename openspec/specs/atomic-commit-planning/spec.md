@@ -1,5 +1,10 @@
-## ADDED Requirements
+# atomic-commit-planning Specification
 
+## Purpose
+
+TBD - this spec was authored as a change delta and never merged into the main tree, so its requirements were invisible to validate, list, and archive. Summarize the capability here.
+
+## Requirements
 ### Requirement: Buildable commit boundaries
 
 Every step in `tasks.md` MUST represent a state where the repository compiles, typechecks, and builds successfully. No step SHALL be planned as a commit point if it would leave the repository in a state where a full typecheck or build fails.

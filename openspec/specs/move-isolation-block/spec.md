@@ -1,5 +1,10 @@
-## ADDED Requirements
+# move-isolation-block Specification
 
+## Purpose
+
+TBD - this spec was authored as a change delta and never merged into the main tree, so its requirements were invisible to validate, list, and archive. Summarize the capability here.
+
+## Requirements
 ### Requirement: Isolation block removed from instruction files
 
 The `# Isolation Mode` block (a 5-line block consisting of the heading and four bullet points) SHALL be removed from the top of each of the 9 `.claude/instructions/sai/*.md` files: `accessibility.md`, `apply.md`, `commit.md`, `design.md`, `implement.md`, `performance.md`, `pr.md`, `review.md`, `security.md`. No other content in those files MUST change.

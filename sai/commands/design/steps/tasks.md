@@ -11,7 +11,7 @@ For each question:
    2. If the subagent returns a clear answer from the codebase, incorporate it into `design.md` and remove the question.
    3. If the subagent reports it cannot find the answer (not found, ambiguous, or out of scope), present the question to the user.
 
-The presentation SHALL reference `@sai/policies/question-context.md` and comply with its anatomy: it states what is being decided (the unresolved Open Question), why it matters (no `tasks.md` step that depends on it can be planned until it is resolved), the essential state context (the change `$ARGUMENTS`, the question as recorded in `design.md` `## Open Questions`, and why research could not answer it), and plain-language options where a closed choice applies — in plain wording, without bare artifact references.
+The presentation SHALL reference `@sai/policies/question-context.md` and comply with its anatomy: it states what is being decided (the unresolved Open Question), why it matters (no `tasks.md` step that depends on it can be planned until it is resolved), the essential state context (the change `{resolved_change_name}`, the question as recorded in `design.md` `## Open Questions`, and why research could not answer it), and plain-language options where a closed choice applies — in plain wording, without bare artifact references.
 
 Do NOT proceed to `tasks.md` until every Open Question has been either answered by the codebase or resolved by the user. Incorporate all answers into `design.md` before continuing.
 
@@ -21,9 +21,49 @@ Do NOT proceed to `tasks.md` until every Open Question has been either answered 
 
 **Rule of conciseness:** Each step MUST be a planning scaffold, not a restatement of requirements. Do NOT copy scenario text, field names, or detailed behavior from specs into the steps. Instead, reference the relevant spec file and describe ONLY the implementation approach and how it maps to the existing codebase.
 
-Write to `openspec/changes/$ARGUMENTS/tasks.md`.
+Write to `openspec/changes/{resolved_change_name}/tasks.md`.
 
-When writing each step's `**Files Affected**` entries, record the exact project-root-relative paths and existence-derived change tokens that the design step's `### File Manifest` fold consumes. After the task scaffold is complete, reconcile the target-state manifest from those entries rather than maintaining a separate hand-authored inventory.
+### File Manifest fold
+
+When writing each step's `**Files Affected**` entries, record the exact project-root-relative paths and existence-derived change tokens that will feed into the deterministic **net fold** to produce the `### File Manifest` subsection of `design.md`. The manifest is produced by folding every `**Files Affected**` entry from all `## Step N` sections in the tasks scaffold; you do not author the manifest directly. After the task scaffold is complete, reconcile the target-state manifest from those entries rather than maintaining a separate hand-authored inventory.
+
+**File Manifest fold basis**: treat the `**Files Affected**` entries in `tasks.md` as the sole input to the deterministic fold below. Reconcile the resulting net paths and step attributions after every task-generation edit; do not author a second, independent manifest.
+
+Process `## Step N` sections in ascending step order and, within a step, its `**Files Affected**` entries in file order. State is keyed by path; each path accumulates a state of `(net token, touched steps)`, seeded empty — empty covering both paths never touched and paths whose earlier touches netted to ∅ — and transitions exactly as the following table. A rename migrates the accumulator entry to the destination path key and leaves on the source path key a moved-away marker recording whether the source path existed at the change baseline: a source whose state before the rename was `A`, or a prior rename's destination, did not exist at the baseline; a source whose state was `M` or (empty) existed at it. The marker decides the token a later resurrection of the source path folds to. A resurrection dissolves the rename line: the destination then emits `A <dst>` on its own arc, because no rename survives when the source path exists at target state:
+
+| prior net | incoming token | new net |
+|-----------|----------------|---------|
+| (empty, or ∅) | `A` | `A` |
+| (empty) | `M` | `M` |
+| (empty) | `D` | `D` |
+| (empty, or ∅) | `R` | `R <src> -> <dst>` — the rename merge; the destination is new to the change and the source is not resurrected later |
+| `A` | `M` | `A` |
+| `A` | `D` | ∅ — the path is omitted from the manifest |
+| `A` | `R` | `A <dst>` — the change-created file lives at the destination |
+| `M` | `M` | `M` |
+| `M` | `D` | `D` |
+| `M` | `R` | `R <src> -> <dst>` |
+| `D` | `A` | `M` — the path existed before the change and exists after it |
+| `D` | `R` (as destination) | no merge — the destination existed at the change baseline: the arcs emit `D <src>` and `M <dst>` |
+| `R` (moved away; source existed at baseline) | `A` | `M <src>`, and the rename dissolves into `A <dst>` |
+| `R` (moved away; source created by this change) | `A` | `A <src>`, and the rename dissolves into `A <dst>` |
+| `R` | `M` | `R <src> -> <dst>` (a target-state view records where the file lands; the extent of the content change is carried by the step's `**What Will Be Done**` prose, per the `R`-token convention of `tasks.md`) |
+| `R` | `D` | `D <src>` — the composite dissolves; the deletion of the baseline path is the only fact that survives |
+| `R` | `R` | `R <state src> -> <incoming dst>` — a second rename collapses to the existing state's source and the incoming token's destination; the intermediate path appears nowhere |
+
+The existence-based token derivation of `tasks-scaffold-format` constrains the reachable pairs to exactly the table above: a path absent at a step's baseline is touched only by `A` or as the destination of an `R`; a path present at a step's baseline is never `A` and is touched only by `M`, `D`, `R`, or as the source of an `R`.
+
+A path whose **final** state is ∅ does NOT appear in the manifest, even though it appears in `tasks.md`; an intermediate ∅ (created and deleted, later recreated or renamed onto) does not suppress the path's later line. The final-∅ case is the only asymmetry between the two surfaces: every other touched path appears in both.
+
+Every step whose entry folds into a line is recorded in that line's step-attribution list, in ascending step order — the list names every touching step, not only the step that fixes the net token, so a net-`M` path first touched in Step 2 and modified again in Step 5 reads `(Step 2, Step 5)`, never `(Step 5)` alone. A rename entry contributes its source arc to the source path's line and its destination arc to the destination path's line. When the rename dissolves or collapses, the surviving line(s) carry the rename entry's steps alongside the follow-on entry's steps: `R` + `D` emits `D <src>` carrying the rename step and the deletion step; `R` + `A` emits `A <dst>` carrying the rename step, and the resurrected-source line carries the source-arc steps other than the rename step; `R` + `R` collapses with every rename step carried.
+
+Each line uses the form `<net token> <path> (Step <n>[, Step <n>]*)` — exactly one space between the token and the path, exactly one space before the opening parenthesis, comma-plus-space between step numbers — and a renamed line uses `R <src> -> <dst> (Step <n>…)` with exactly one space on either side of the ` -> ` separator. Do NOT column-align or pad lines.
+
+Sort lines lexicographically by their path — for `R` lines, the destination path (the path right of the ` -> ` separator) — in byte-wise ASCII/UTF-8 code-point order (the reproducible collation; case-insensitive order would diverge on mixed-case path pairs), reusing the destination-only convention of the routing derivation.
+
+The manifest is a concise derivative review surface, not a replacement for the authoritative per-step contracts: `tasks.md` remains authoritative for step attribution and per-step tokens, and no downstream phase parses the manifest as authoritative input.
+
+When the net fold produces no lines, carry the exact sentinel `None — no files affected` followed by a one-line reason. The empty fold is reachable only when the change nets to nothing: every `**Files Affected**` entry cancels to ∅ — each path the change touches is created and later deleted within the same change. A conforming reason line is `None — no files affected (every touched path is created and deleted within the same change, so nothing remains at target state)`. The sentinel is independent of the Architecture Snapshot's shared whole-inventory snapshot sentinel `None — no planned public surfaces` and either boundary block's `None — no planned externally consumable surfaces` or `None — no planned internal public surfaces` empty rendering: a change that plans no public surfaces still emits its full manifest, and the snapshot and manifest sentinels do not interact or suppress each other.
 
 IMPORTANT: Do NOT use checkbox markers (`- [ ]` or `- [x]`). This file is a planning scaffold, not a progress tracker. Implementation progress is tracked in `implementation.md`.
 

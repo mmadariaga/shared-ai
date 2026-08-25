@@ -282,23 +282,6 @@ const MANAGED_WORKER_PROJECTIONS = {
       destinationPath: 'sai-autofast-implement-worker.md',
     },
   },
-  'sai-autofast-hands-worker': {
-    claudeBinding: {
-      id: 'claude-autofast-hands-worker-binding',
-      sourcePath: 'sai/orchestration/workers/bindings/claude/autofast-hands-worker.md',
-       destinationPath: 'orchestration/workers/bindings/autofast-hands-worker.md',
-    },
-    opencodeBinding: {
-      id: 'opencode-autofast-hands-worker-binding',
-      sourcePath: 'sai/orchestration/workers/bindings/opencode/autofast-hands-worker.md',
-       destinationPath: 'orchestration/workers/bindings/autofast-hands-worker.md',
-    },
-    claudeAgent: {
-      id: 'claude-sai-autofast-hands-worker',
-      sourcePath: 'agents/claude/sai-autofast-hands-worker.md',
-      destinationPath: 'sai-autofast-hands-worker.md',
-    },
-  },
 };
 
 const ROUTED_PHASES = ['spec', 'design', 'implement', 'review', 'security', 'performance', 'accessibility'];
@@ -1517,7 +1500,7 @@ test('canonical manifest projects exactly one harness boot adapter and the utili
     config: path.join(os.tmpdir(), 'sai-adapter-config'),
     root: path.join(os.tmpdir(), 'sai-adapter-config'),
   };
-  const utilities = ['explore', 'pr', 'status', 'worktree'];
+  const utilities = ['explore', 'pr', 'retire-docs', 'status', 'worktree'];
   const applyCards = ['coordinator.md', 'red-worker.md', 'green-worker.md', 'runner.md', 'invocation.md'];
   const commitCards = ['coordinator.md', 'worker.md'];
   const archiveCards = ['coordinator.md', 'worker.md'];

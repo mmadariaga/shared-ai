@@ -1,7 +1,10 @@
 # command-completion-standardization Specification
 
-## ADDED Requirements
+## Purpose
 
+TBD - this spec was authored as a change delta and never merged into the main tree, so its requirements were invisible to validate, list, and archive. Summarize the capability here.
+
+## Requirements
 ### Requirement: All sai-* command body files SHALL use consistent completion phrasing
 
 Each `sai/commands/sai-*.md` file's `## Completion` section SHALL contain a MANDATORY STOP directive that uses the phrasing "Once all artifacts are written your work is COMPLETE" (or a command-specific variant such as "Once the implementation is done your work is COMPLETE") rather than "Once implementation is done".

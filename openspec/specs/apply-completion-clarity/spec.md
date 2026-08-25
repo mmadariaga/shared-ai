@@ -1,7 +1,10 @@
 # apply-completion-clarity Specification
 
-## ADDED Requirements
+## Purpose
 
+TBD - this spec was authored as a change delta and never merged into the main tree, so its requirements were invisible to validate, list, and archive. Summarize the capability here.
+
+## Requirements
 ### Requirement: Apply agent completion message SHALL explicitly include human verification gate review and commit steps
 
 When `/sai-4-apply` reaches its completion phase, the agent's stop condition SHALL require that: (1) the implementation is done, (2) all human verification gates have been reviewed, and (3) commits are done. The completion message printed to the user SHALL remain: "Implementation applied. Run `/sai-5-review {name}` in a new chat when ready."

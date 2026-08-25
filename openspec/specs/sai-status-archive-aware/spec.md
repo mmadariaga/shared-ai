@@ -1,5 +1,10 @@
-## ADDED Requirements
+# sai-status-archive-aware Specification
 
+## Purpose
+
+TBD - this spec was authored as a change delta and never merged into the main tree, so its requirements were invisible to validate, list, and archive. Summarize the capability here.
+
+## Requirements
 ### Requirement: panel renders archived changes as closed
 
 When the target change is archived (located under `openspec/changes/archive/YYYY-MM-DD-{name}/`), the panel SHALL display the archive location and its archive date and SHALL note that the change is closed. For an archived change the panel SHALL NOT perform checkbox interpretation of `implementation.md` — it displays status only.

@@ -1,5 +1,9 @@
-## MODIFIED Requirements
+# closed-choice-prompts Specification
+## Purpose
 
+TBD - this spec was authored as a change delta and never merged into the main tree, so its requirements were invisible to validate, list, and archive. Summarize the capability here.
+
+## Requirements
 ### Requirement: Closed-choice prompts MUST use the harness's native option-picker when available
 
 The SAI pipeline presents many closed-choice prompts to the user (yes/no questions, numbered lists, commit authorization gates, change pickers). Whenever a `sai-*` command asks the user to pick from a closed set of options, the harness's native option-picker tool is the default channel and MUST be used whenever one exists; plain text is a deliberate fallback used only on surfaces that have no native option-picker, never a co-equal alternative on surfaces that do. Presentation changes per harness; question text, option semantics, retry rules, decline rules, and "wait for the answer" requirements stay exactly as the defining instruction specifies.
@@ -56,3 +60,21 @@ The closed-choice prompt rule MUST live in exactly one place: `sai/policies/reme
 #### Scenario: remember.md is the single source of truth
 - **WHEN** the per-harness option-picker mapping needs to be updated (e.g. a new harness is supported, or a harness gains a native option-picker)
 - **THEN** the change is made in `sai/policies/remember.md` only, and every instruction that references the rule picks up the change without being edited
+
+### Requirement: Contextual merge decisions use native picker semantics
+
+A contextual merge decision SHALL use the harness's native option-picker whenever available. The ordered internal values SHALL remain stable as `ours`, `theirs`, optional `synthesis`, and `more-context`; a synthesis option SHALL appear only when a complete safe synthesis exists. Invalid free-text selections SHALL follow the defining instruction's re-prompt behavior.
+
+#### Scenario: Semantic decision is presented through the native picker
+
+- **WHEN** a supported harness receives a contextual merge decision with a closed set of complete outcomes
+- **THEN** the coordinator presents the exact ordered options through the native picker without changing their values or meanings
+
+### Requirement: Contextual merge decisions use native picker semantics
+
+A contextual merge decision SHALL use the harness's native option-picker whenever available. The ordered internal values SHALL remain stable as `ours`, `theirs`, optional `synthesis`, and `more-context`; a synthesis option SHALL appear only when a complete safe synthesis exists. Invalid free-text selections SHALL follow the defining instruction's re-prompt behavior.
+
+#### Scenario: Semantic decision is presented through the native picker
+
+- **WHEN** a supported harness receives a contextual merge decision with a closed set of complete outcomes
+- **THEN** the coordinator presents the exact ordered options through the native picker without changing their values or meanings

@@ -1,5 +1,10 @@
-## ADDED Requirements
+# backfill-proposal-artifact Specification
 
+## Purpose
+
+TBD - this spec was authored as a change delta and never merged into the main tree, so its requirements were invisible to validate, list, and archive. Summarize the capability here.
+
+## Requirements
 ### Requirement: proposal.md generated inside openspec/changes/{name}/
 The command SHALL create `openspec/changes/{name}/proposal.md` using the standard sai-workflow proposal template, where `{name}` is the change name provided by the user or derived from their description of the backfilled feature.
 

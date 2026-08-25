@@ -1,5 +1,10 @@
-## ADDED Requirements
+# opencode-budget-command Specification
 
+## Purpose
+
+TBD - this spec was authored as a change delta and never merged into the main tree, so its requirements were invisible to validate, list, and archive. Summarize the capability here.
+
+## Requirements
 ### Requirement: /budget slash command for OpenCode
 
 `commands/opencode/budget.md` SHALL exist and load the universal `budget` aggregator skill via a single `Fetch` reference. It MUST NOT duplicate binding semantics (model resolution, tool-call caps, output contract) — those remain solely in the referenced SKILL.md files.

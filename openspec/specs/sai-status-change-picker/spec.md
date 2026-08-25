@@ -1,5 +1,10 @@
-## REMOVED Requirements
+# sai-status-change-picker Specification
 
+## Purpose
+
+TBD - this spec was authored as a change delta and never merged into the main tree, so its requirements were invisible to validate, list, and archive. Summarize the capability here.
+
+## Requirements
 ### Requirement: sai-status resolves a missing change name via change-picker
 **Reason**: Superseded by the new `status-picker` capability. `sai-status` no longer inherits `change-picker.md`; it resolves missing change names via a dedicated `status-picker.md` so it can offer a "See all" bulk view on the 2+ branch without touching the shared picker.
 **Migration**: `sai/commands/status/body.md` fetches `sai/policies/status-picker.md` instead of `change-picker.md`. The 0-change and 1-change resolution behavior is preserved verbatim by `status-picker.md`; see the `status-picker` capability.

@@ -1,5 +1,10 @@
-## MODIFIED Requirements
+# artifact-reference-model Specification
 
+## Purpose
+
+TBD - this spec was authored as a change delta and never merged into the main tree, so its requirements were invisible to validate, list, and archive. Summarize the capability here.
+
+## Requirements
 ### Requirement: Audit and review instructions SHALL reference change artifacts by their explicit file paths, not by a generic `spec.md` alias.
 
 The previous instructions treated `proposal.md + design.md + specs/**/*.md` as collectively equivalent to a single `spec.md`. This alias has been removed; each artifact is now named and described individually.

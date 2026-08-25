@@ -1,5 +1,10 @@
-## ADDED Requirements
+# sai-learnings-file Specification
 
+## Purpose
+
+TBD - this spec was authored as a change delta and never merged into the main tree, so its requirements were invisible to validate, list, and archive. Summarize the capability here.
+
+## Requirements
 ### Requirement: Canonical location and namespaced filename
 
 The durable learnings artifact SHALL live at exactly one place: the project root, named exactly `SAI_LEARNINGS.md`. This is the single canonical location — every SAI phase that reads or writes it does so there. No SAI instruction or spec SHALL place the canonical learnings file inside `openspec/changes/{name}/` or any other directory.

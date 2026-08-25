@@ -1,5 +1,10 @@
-## ADDED Requirements
+# sai-backfill-input-handling Specification
 
+## Purpose
+
+TBD - this spec was authored as a change delta and never merged into the main tree, so its requirements were invisible to validate, list, and archive. Summarize the capability here.
+
+## Requirements
 ### Requirement: Wrapper MUST NOT fetch the change-picker
 
 The routed `sai-backfill` card set (`sai/commands/backfill/coordinator.md` and `sai/commands/backfill/worker.md`) MUST NOT contain a `Fetch @sai/policies/change-picker.md` directive (nor any directive resolving to the retired `sai/instructions/change-picker.md`). Backfill stays detached from the picker: no step of its flow queries `openspec list --json` or prompts the user with a numbered change list. The legacy utility body that carried this rule is retired; the prohibition now governs both routed cards.

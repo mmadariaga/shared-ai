@@ -25,43 +25,53 @@ test('the old pre-flight-before-materialization order reproduces the missing-dir
   );
 });
 
-test('materialization completes writes and sync before the archive-worker pre-flight runs over them', () => {
-  const hands = read('sai/commands/explore/autofast-hands-worker.md');
+test('backfill execution completes writes before archive preparation and archive execution', () => {
+  const backfill = read('sai/commands/backfill/worker.md');
+  const archive = read('sai/commands/archive/worker.md');
   const explore = read('sai/commands/explore/instructions.md');
-  const spec = read('openspec/specs/auto-fast-hands-worker/spec.md');
 
-  const writes = hands.indexOf('1. **Validated writes**');
-  const sync = hands.indexOf('2. **Spec sync**');
-  const stop = hands.indexOf('It stops there');
-  const finishMove = hands.indexOf('1. **Archive move**');
-  assert.ok(writes >= 0 && writes < sync, 'validated writes must precede spec sync in the materialize payload');
-  assert.ok(sync < stop && stop < finishMove, 'materialize must stop before the finish payload begins at the archive move');
-  assert.match(hands, /--autofast-materialize/);
-  assert.match(hands, /--autofast-finish/);
-  assert.doesNotMatch(hands, /\*\*Archive pre-flight\*\*/, 'the hands worker must not own the archive pre-flight');
+  const backfillPrepare = backfill.indexOf('--autofast-prepare');
+  const backfillExecute = backfill.indexOf('--autofast-execute');
+  const archivePrepare = archive.indexOf('--autofast-prepare');
+  const archiveExecute = archive.indexOf('--autofast-execute');
+  assert.ok(backfillPrepare >= 0 && backfillPrepare < backfillExecute,
+    'backfill preparation must precede its explicit execution continuation');
+  assert.ok(archivePrepare >= 0 && archivePrepare < archiveExecute,
+    'archive preparation must precede its explicit execution continuation');
+  assert.match(backfill, /openspec\/changes\/\{name\}\/\.openspec\.yaml/);
+  assert.match(backfill, /openspec\/changes\/\{name\}\/proposal\.md/);
+  assert.match(backfill, /openspec\/changes\/\{name\}\/specs\/\{capability\}\/spec\.md/);
+  assert.match(archive, /1\. Run the approved delta-spec sync/);
+  assert.match(archive, /2\. Move `openspec\/changes\/\{name\}\/`/);
+  assert.match(archive, /3\. Stage exactly the supplied owned path set/);
+  assert.match(archive, /4\. Apply the commit-message rules/);
 
-  assert.match(explore, /6\. \*\*Materialization and sync\*\*/);
-  assert.match(explore, /7\. \*\*Archive segment\*\*[\s\S]*?over the materialized artifacts/);
-  assert.match(explore, /8\. \*\*Pre-authorized commit\*\*[\s\S]*?finish payload/);
-
-  assert.match(spec, /### Requirement: Two-payload closed execution/);
-  assert.match(spec, /#### Scenario: Materialize payload stops before mutation gates/);
-  assert.match(spec, /#### Scenario: Finish payload assumes gated artifacts/);
+  assert.match(explore, /6\. \*\*Backfill execution\*\*/);
+  assert.match(explore, /7\. \*\*Archive preparation\*\*[\s\S]*?read-only pre-flight/);
+  assert.match(explore, /8\. \*\*Archive execution and pre-authorized commit\*\*[\s\S]*?SAME `sai-archive-worker`/);
 });
 
-test('the auto-fast materialization step block appears exactly once', () => {
+test('the auto-fast backfill execution and archive preparation blocks appear exactly once', () => {
   const explore = read('sai/commands/explore/instructions.md');
-  const matches = explore.match(/\*\*Materialization and sync\*\*/g) || [];
-  assert.equal(matches.length, 1);
+  assert.equal((explore.match(/\*\*Backfill execution\*\*/g) || []).length, 1);
+  assert.equal((explore.match(/\*\*Archive preparation\*\*/g) || []).length, 1);
+  assert.equal((explore.match(/\*\*Archive execution and pre-authorized commit\*\*/g) || []).length, 1);
 });
 
-test('Claude Code and opencode retain the same hands contract projection', () => {
+test('Claude Code and opencode retain the same implementer projection without a hands worker', () => {
   const matrix = read('bin/worker-matrix.js');
   const manifest = read('sai/install-manifest.json');
-  const hands = 'sai/commands/explore/autofast-hands-worker.md';
+  const parsedManifest = JSON.parse(manifest);
+  const backfill = parsedManifest['worker-matrix'].entries
+    .find(entry => entry.workerName === 'sai-backfill-worker');
 
-  assert.match(matrix, new RegExp(`phase: 'autofast-hands'[\\s\\S]{0,220}workerContract: '${hands.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}'`));
-  assert.match(manifest, /autofast-hands/);
-  assert.match(manifest, /claude-sai-autofast-hands-worker/);
-  assert.match(manifest, /opencode-sai-autofast-hands-worker/);
+  assert.match(matrix, /phase: 'autofast-implement'[\s\S]{0,220}workerContract: 'sai\/commands\/explore\/autofast-implement-worker\.md'/);
+  assert.match(manifest, /autofast-implement/);
+  assert.ok(backfill.helperPermissions.includes('Write'),
+    'backfill must expose Write in its managed helper permissions');
+  assert.match(backfill.claudeAgent.tools, /\bWrite\b/,
+    'Claude backfill agent tools must include Write');
+  assert.doesNotMatch(matrix, /autofast-hands/);
+  assert.doesNotMatch(manifest, /autofast-hands/);
+  assert.equal(fs.existsSync(path.join(repoRoot, 'sai/commands/explore/autofast-hands-worker.md')), false);
 });

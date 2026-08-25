@@ -1,5 +1,10 @@
-## ADDED Requirements
+# budget-subagent-behavior Specification
 
+## Purpose
+
+TBD - this spec was authored as a change delta and never merged into the main tree, so its requirements were invisible to validate, list, and archive. Summarize the capability here.
+
+## Requirements
 ### Requirement: single-task scope
 The budget-subagent skill SHALL execute exactly one task as described in the prompt. It MUST NOT expand scope, refactor unrelated code, suggest improvements, or perform work beyond what was explicitly requested.
 

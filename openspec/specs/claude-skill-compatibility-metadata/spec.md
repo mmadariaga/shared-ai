@@ -1,5 +1,10 @@
-## ADDED Requirements
+# claude-skill-compatibility-metadata Specification
 
+## Purpose
+
+TBD - this spec was authored as a change delta and never merged into the main tree, so its requirements were invisible to validate, list, and archive. Summarize the capability here.
+
+## Requirements
 ### Requirement: Claude-only skills declare compatibility metadata
 
 SKILL.md files that are exclusive to Claude Code SHALL include a `compatibility: claude` field in YAML frontmatter and append "Claude Code only — NOT compatible with opencode." to the `description` field.

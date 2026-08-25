@@ -91,6 +91,7 @@ every full render. The canonical item set is:
 | --- | --- | --- |
 | `merge` | `Merge <source> into <target>` | Always after source-branch selection. |
 | `scope` | `Select resolution scope` | A conflicted route when fast-track is inactive. |
+| `contextual-analysis` | `Analyze conflict alternatives` | Every conflicted route after scope selection; it completes automatically for obvious conflicts and stays active while semantic decisions or `more-context` continuations are pending. |
 | `resolve-artifacts` | `Resolve artifact conflicts` | A conflicted route whose selected scope is `artifacts`. |
 | `resolve-code` | `Resolve code conflicts` | A conflicted route whose selected scope is `code`. |
 | `resolve-full` | `Resolve all conflicts` | A conflicted route whose selected scope is `full`; fast-track selects this route directly. |
@@ -98,11 +99,12 @@ every full render. The canonical item set is:
 | `collision` | `Repair ADR/DDR collisions` | Only when collision applicability is `repair-required` or `escalation-required`. |
 | `authorization` | `Authorize merge commit` | Once collision analysis, any required repairs, and final staging are complete. |
 
-Item order is fixed: `merge`, optional `scope`, exactly one applicable
-`resolve-*` item, optional `verification`, optional `collision`, then
-`authorization`. Scope option labels are gate content, not TODO items. A
-renderer must not invent category-specific ids, reorder items, or replace a
-canonical label with a question, summary, or worker finding.
+Item order is fixed: `merge`, optional `scope`, `contextual-analysis`, exactly
+one applicable `resolve-*` item, optional `verification`, optional `collision`,
+then `authorization`. Scope option labels and contextual decision options are
+gate content, not TODO items. A renderer must not invent category-specific ids,
+reorder items, or replace a canonical label with a question, summary, or worker
+finding.
 
 ### Canonical route transitions
 
@@ -118,13 +120,25 @@ canonical label with a question, summary, or worker finding.
   `collision` as `in_progress` first, mark it `completed` after all owned
   repairs and reference updates, then add `authorization` as `in_progress`.
 - **Conflicted non-fast-track route:** after the conflict outcome, keep
-  `merge: completed`, add `scope: in_progress`, and add the applicable
-  `resolve-*` item as `pending`. When the exact scope answer is forwarded,
-  mark `scope` `completed` and make that one `resolve-*` item `in_progress`.
+  `merge: completed`, add `scope: in_progress`, add
+  `contextual-analysis: pending`, and add the applicable `resolve-*` item as
+  `pending`. When the exact scope answer is forwarded, mark `scope`
+  `completed` and make `contextual-analysis` `in_progress`; the resolution item
+  remains pending until the contextual stage returns complete alternatives.
 - **Conflicted fast-track route:** omit `scope`, mark `merge` `completed`, and
-  make `resolve-full` `in_progress`. Fast-track changes only the scope item;
-  verification, collision applicability, authorization, refusal, and terminal
-  transitions remain identical.
+  make `contextual-analysis` `in_progress` with `resolve-full` pending.
+  Fast-track changes only the scope item; it never bypasses a contextual human
+  decision. Verification, collision applicability, authorization, refusal, and
+  terminal transitions remain identical.
+- **Contextual analysis:** for an obvious conflict, mark
+  `contextual-analysis` `completed` when the worker returns its deterministic
+  complete proposal and make the applicable `resolve-*` item `in_progress`.
+  For a semantic ambiguity, leave `contextual-analysis` `in_progress` through
+  every `needs_input` and `more-context` continuation. After every required
+  `ours`, `theirs`, or `synthesis` decision is explicit and the worker returns
+  the matching complete marker-free alternatives, mark it `completed` and make
+  the applicable `resolve-*` item `in_progress`. No TODO transition authorizes
+  a write or stage.
 - **Resolution and verification:** after coordinator resolution writes and
   staging, mark the applicable `resolve-*` item `completed` and make
   `verification` `in_progress`. Mark `verification` `completed` when the

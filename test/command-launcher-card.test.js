@@ -22,11 +22,12 @@ const commands = [
   ['sai-explore.md', 'explore'],
   ['sai-merge.md', 'merge'],
   ['sai-pr.md', 'pr'],
+  ['sai-retire-docs.md', 'retire-docs'],
   ['sai-review.md', 'meta-review'],
   ['sai-status.md', 'status'],
   ['sai-worktree.md', 'worktree'],
 ];
-const emptyBootstraps = new Set(['apply', 'pr', 'status', 'worktree']);
+const emptyBootstraps = new Set(['apply', 'pr', 'retire-docs', 'status', 'worktree']);
 const loadFreeBootstraps = new Set([...emptyBootstraps, 'meta-review']);
 function activeWrapperCommands(harness) {
   const directory = path.join(repoRoot, 'commands', harness);
@@ -130,14 +131,14 @@ function fetchLines(source) {
     .filter(line => line.startsWith('Fetch @'));
 }
 
-test('exactly 18 harness-neutral command bootstraps exist and budget has none', () => {
+test('exactly 19 harness-neutral command bootstraps exist and budget has none', () => {
   const actual = [];
   for (const [, folder] of commands) {
     const relative = `sai/commands/${folder}/command-bootstrap.md`;
     assert.equal(fs.existsSync(path.join(repoRoot, relative)), true, `${relative} should exist`);
     actual.push(relative);
   }
-  assert.equal(actual.length, 18);
+  assert.equal(actual.length, 19);
   assert.equal(fs.existsSync(path.join(repoRoot, 'sai', 'commands', 'budget', 'command-bootstrap.md')), false);
 });
 
@@ -364,11 +365,11 @@ test('final wrappers: every launcher has no envelope fields and remains harness-
   }
 });
 
-test('final wrappers: source wrapper directories contain exactly 19 files including budget.md; no command bootstrap card under commands/', () => {
+test('final wrappers: source wrapper directories contain exactly 20 files including budget.md; no command bootstrap card under commands/', () => {
   for (const harness of ['claude', 'opencode']) {
     const dir = path.join(repoRoot, 'commands', harness);
     const files = fs.readdirSync(dir);
-    assert.equal(files.length, 19, `${harness} wrapper directory should contain exactly 19 files`);
+    assert.equal(files.length, 20, `${harness} wrapper directory should contain exactly 20 files`);
     assert.ok(files.includes('budget.md'), `${harness} should include budget.md`);
     for (const file of files) {
       assert.notEqual(file, 'command-bootstrap.md', `${harness} should not contain command-bootstrap.md`);

@@ -1,5 +1,10 @@
-## ADDED Requirements
+# sai-learnings-consumption Specification
 
+## Purpose
+
+TBD - this spec was authored as a change delta and never merged into the main tree, so its requirements were invisible to validate, list, and archive. Summarize the capability here.
+
+## Requirements
 ### Requirement: sai-4-apply pre-seeds its Technical Learnings Memory at run start
 
 At the start of a `/sai-4-apply` run, before the first Step is dispatched, the coordinator SHALL read `SAI_LEARNINGS.md` from the project root and pre-seed its accumulated Technical Learnings Memory with the entries it finds.

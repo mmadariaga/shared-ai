@@ -16,6 +16,7 @@
     "sai-explore.md",
     "sai-merge.md",
     "sai-pr.md",
+    "sai-retire-docs.md",
     "sai-review.md",
     "sai-status.md",
     "sai-worktree.md"
@@ -96,6 +97,10 @@
         "Fetch @sai/adapters/claude/idea-list-render.md and use it."
       ],
       "sai-pr.md": [
+        "Fetch @skills/fetch/SKILL.md",
+        "Fetch @sai/adapters/claude/boot.md and follow it."
+      ],
+      "sai-retire-docs.md": [
         "Fetch @skills/fetch/SKILL.md",
         "Fetch @sai/adapters/claude/boot.md and follow it."
       ],
@@ -187,6 +192,10 @@
         "Fetch @sai/adapters/opencode/idea-list-render.md and use it."
       ],
       "sai-pr.md": [
+        "Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.",
+        "Fetch @sai/adapters/opencode/boot.md and follow it."
+      ],
+      "sai-retire-docs.md": [
         "Fetch @~/.config/opencode/skills/fetch/SKILL.md before you continue.",
         "Fetch @sai/adapters/opencode/boot.md and follow it."
       ],

@@ -1,5 +1,10 @@
-## ADDED Requirements
+# backfill-conflict-detection Specification
 
+## Purpose
+
+TBD - this spec was authored as a change delta and never merged into the main tree, so its requirements were invisible to validate, list, and archive. Summarize the capability here.
+
+## Requirements
 ### Requirement: openspec/specs/ scanned for conflicts before writing
 Before writing any output file, the command SHALL scan `openspec/specs/` to identify specs that overlap with or are affected by the changes in the diff.
 

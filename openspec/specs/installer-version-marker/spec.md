@@ -1,5 +1,10 @@
-## ADDED Requirements
+# installer-version-marker Specification
 
+## Purpose
+
+TBD - this spec was authored as a change delta and never merged into the main tree, so its requirements were invisible to validate, list, and archive. Summarize the capability here.
+
+## Requirements
 ### Requirement: installer writes a .version marker per harness
 
 Each installer harness path (`installClaude`, `installOpencode`, `installCopilot` in `bin/install-flow.js`) SHALL write a `.version` file into the harness user-global dir it populates, containing the `version` value from the repo's `package.json`. The marker SHALL be written on every install of that harness so it reflects the version that produced the current install.

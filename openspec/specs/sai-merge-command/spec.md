@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Defines the `/sai-merge` routed command: pre-merge environment guards, recency-ordered local branch selection, the coordinator-only mutation surface with a strictly read-only worker, categorized conflict resolution with escalation criteria, the fast-track-gated runtime resolution scope question, the bounded three-round verification loop, the unconditional post-merge ADR/DDR collision pass, and explicit final-commit authorization.
+Defines the `/sai-merge` routed command: pre-merge environment guards, recency-ordered local branch selection, the coordinator-only mutation surface with a strictly read-only worker, contextual conflict analysis with complete alternatives and escalation criteria, the fast-track-gated runtime resolution scope question, the bounded three-round verification loop, the unconditional post-merge ADR/DDR collision pass, and explicit final-commit authorization.
 
 ## Requirements
 ### Requirement: Pre-merge environment guards
@@ -44,7 +44,32 @@ The system SHALL confine every mutating operation — merge launch, resolution w
 
 ### Requirement: Categorized conflict resolution with criteria
 
-The system SHALL classify each conflicted file as specs, ADR/DDR, or code, and SHALL propose resolutions per category: union or fusion for compatible spec divergences, labeled ours/theirs variants for genuinely divergent code regions, and escalation instead of auto-selection for true semantic contradictions.
+The system SHALL classify each conflicted file as specs, ADR/DDR, or code, and SHALL analyze each conflict in context. The analysis SHALL inspect the base, both branch versions, surrounding file context, related branch changes, and relevant auto-merged files; distinguish directly observable **Facts** from explicitly labeled **Inferences**; and compare the objectives and affected contracts on both sides. For every semantically ambiguous conflict, it SHALL retain complete marker-free `ours` and `theirs` alternatives and MAY retain a complete marker-free `synthesis` only when that outcome has one owner for each responsibility, one authoritative source for each fact, compatible lifecycle behavior, and no duplicated gate or conflicting contract. It SHALL never represent a resolution as a labeled fragment, diff, hunk, or concatenation of conflict pieces.
+
+#### Scenario: Obvious conflict stays lightweight
+
+- **WHEN** a conflict is a non-overlapping edit, a pure addition beside unchanged content, or a complementary spec addition with a deterministic compatible result
+- **THEN** the worker returns one complete marker-free resolution without a contextual human decision, and does not add semantic-analysis overhead to the lightweight path
+
+#### Scenario: Semantic conflict requires an informed human choice
+
+- **WHEN** the branches express different objectives, different strategies for the same objective, or incompatible contract-level consequences
+- **THEN** the worker returns a contextual decision gate that names the affected file and region, presents Facts separately from Inferences, explains both branch objectives and trade-offs, and offers complete behavioral alternatives rather than merge-jargon fragment choices
+
+#### Scenario: Contextual complete alternatives are preserved
+
+- **WHEN** a semantic conflict has complete current and incoming outcomes and a technically safe combined outcome is possible
+- **THEN** the worker retains complete `ours`, `theirs`, and justified `synthesis` alternatives, keeps their internal values stable, and offers the safe synthesis only as a complete outcome with a single owner for each rule
+
+#### Scenario: True semantic contradiction is not auto-selected
+
+- **WHEN** both sides change the same requirement or scenario with incompatible preconditions, outcomes, or ownership rules
+- **THEN** the conflict is reported as a semantic contradiction, no side or synthesis is selected automatically, and the complete branch alternatives plus a `more-context` option remain available for human decision
+
+#### Scenario: More context preserves the pending decision
+
+- **WHEN** the user selects `more-context` for a semantic conflict
+- **THEN** the same worker continues read-only, expands the evidence from related changes and auto-merged files, preserves the pending complete alternatives, and returns another decision gate without writing, staging, or returning a selected resolution
 
 #### Scenario: True contradiction escalates
 
@@ -53,7 +78,7 @@ The system SHALL classify each conflicted file as specs, ADR/DDR, or code, and S
 
 ### Requirement: Runtime resolution scope gate
 
-When conflicts exist and fast-track is inactive, the system SHALL offer only scope options whose categories are present in the conflict classification, preserving the canonical order of artifacts, code, and full scope. Fast-track SHALL select full scope without presenting this gate.
+When conflicts exist and fast-track is inactive, the system SHALL offer only scope options whose categories are present in the conflict classification, preserving the canonical order of artifacts, code, and full scope. Fast-track SHALL select full scope without presenting this gate, and SHALL bypass no contextual decision or semantic contradiction.
 
 #### Scenario: Fast-track auto-applies full scope
 
@@ -65,6 +90,39 @@ When conflicts exist and fast-track is inactive, the system SHALL offer only sco
 - **WHEN** a conflicted merge contains only code conflicts
 - **THEN** the scope picker offers code and full scope without offering artifacts-only scope
 
+#### Scenario: Fast-track bypasses only scope
+
+- **WHEN** a fast-track merge contains a semantically ambiguous conflict or a true semantic contradiction
+- **THEN** full scope is selected without the scope question, but the contextual analysis, Facts-versus-Inferences explanation, human decision, complete-file validation, verification, and final commit authorization remain required
+
+### Requirement: Contextual decision precedes resolution mutation
+
+The system SHALL keep every semantic alternative pending until the human explicitly selects an offered complete outcome. The coordinator SHALL perform no resolution write, conflict-marker removal, or staging while a contextual decision or `more-context` continuation is pending. A selected internal value SHALL unlock mutation only after the worker returns the matching complete marker-free file payload.
+
+#### Scenario: Human decision gates every resolution write
+
+- **WHEN** a semantic decision is unanswered, or the worker is continuing a `more-context` request
+- **THEN** the coordinator leaves every affected conflict untouched and unstaged, and forwards the answer only to the same worker
+
+#### Scenario: Selected outcome unlocks only its complete payload
+
+- **WHEN** all required semantic decisions have explicit offered values
+- **THEN** the coordinator accepts only the worker's corresponding complete file records and never reconstructs a file from prose, a hunk, a region, or an unselected alternative
+
+### Requirement: Complete resolution payload validation
+
+Before any resolution write, the coordinator SHALL atomically validate the worker's `## Complete resolution payload`. It SHALL contain exactly one record for every conflicted file in the selected scope, with the expected path and category, accepted decision records, and a JSON-escaped complete final UTF-8 `content` string. These records are the complete final file contents, not instructions for constructing them. The coordinator SHALL reject missing, duplicate, unexpected, fragmentary, reconstructed, or conflict-marker-containing content and SHALL leave all conflicts untouched and unstaged when any record fails validation.
+
+#### Scenario: Fragmentary payload is rejected atomically
+
+- **WHEN** a resolution payload contains a diff, hunk, region replacement, missing file, unexpected path, invalid decision, or `<<<<<<<`, `=======`, or `>>>>>>>` marker
+- **THEN** the coordinator rejects the entire payload, writes no resolution, and stages no path
+
+#### Scenario: Complete payload is materialized exactly
+
+- **WHEN** every payload record matches the selected scope and contains complete marker-free file content
+- **THEN** the coordinator writes each supplied `content` value exactly as received and stages only the validated resolved paths
+
 ### Requirement: Bounded verification loop
 
 The system SHALL detect the project's test suite from project metadata, run it after resolutions are staged, and iterate proposed corrections for at most three rounds before surfacing the remaining failures for human decision.
@@ -73,6 +131,11 @@ The system SHALL detect the project's test suite from project metadata, run it a
 
 - **WHEN** the detected suite still fails after the third correction round
 - **THEN** the remaining failures are reported and the resolved-and-staged state is left uncommitted for human decision
+
+#### Scenario: Verification follows validated staging
+
+- **WHEN** complete resolutions have been validated, written, and staged
+- **THEN** the worker runs the detected project suite, the coordinator records each result, and any correction is written and re-staged only within the three-round loop without resetting or committing the staged state
 
 ### Requirement: Unconditional post-merge ADR/DDR collision pass
 
@@ -106,6 +169,20 @@ The system SHALL execute the merge commit only after explicit user authorization
 
 - **WHEN** final staging is complete and the commit authorization question is pending
 - **THEN** the user sees the compact merge summary and the unchanged `yes (Recommended)` and `no` options
+
+#### Scenario: Commit requires the final gate
+
+- **WHEN** verification and any applicable ADR/DDR repair have completed and final staging is done
+- **THEN** the coordinator asks for explicit commit authorization, executes the merge commit only on `yes`, and leaves the exact staged state uncommitted on `no`
+
+### Requirement: Harness-parity merge contract
+
+The Claude Code and opencode projections SHALL use the same neutral worker and coordinator contracts for contextual conflict analysis and the merge presentation seam. Given the same worker source payload and operation outcomes, both harnesses SHALL preserve the same Facts/Inferences content, complete alternative decision values and order, `more-context` continuation semantics, mutation gates, payload validation, verification behavior, authorization question, refusal state, and terminal completion literal; only the native task-list rendering mechanism may differ.
+
+#### Scenario: Both harnesses preserve merge decisions
+
+- **WHEN** the same semantically ambiguous conflict is handled through Claude Code or opencode
+- **THEN** each harness presents the same complete behavioral alternatives and answer values, keeps `more-context` mutation-free, and does not permit a resolution write, staging, or commit before the same coordinator-owned gates
 
 
 ### Requirement: Adaptive TODO follows the resolved merge path

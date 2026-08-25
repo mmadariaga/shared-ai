@@ -1,5 +1,10 @@
-## ADDED Requirements
+# remove-caveman-from-instructions Specification
 
+## Purpose
+
+TBD - this spec was authored as a change delta and never merged into the main tree, so its requirements were invisible to validate, list, and archive. Summarize the capability here.
+
+## Requirements
 ### Requirement: remember.md contains no caveman intensity bullet
 `sai/policies/remember.md` SHALL NOT contain a bullet specifying caveman intensity or the `--full-caveman` flag behavior.
 

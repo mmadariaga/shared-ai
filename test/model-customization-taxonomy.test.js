@@ -33,7 +33,7 @@ test('model customization exposes the five stable taxonomy labels and metadata f
   try {
     for (const harness of ['claude', 'opencode']) {
       fs.mkdirSync(path.join(root, 'commands', harness), { recursive: true });
-      for (const name of ['sai-commit', 'sai-pr', 'sai-status', 'sai-worktree', 'sai-build']) {
+      for (const name of ['sai-commit', 'sai-pr', 'sai-retire-docs', 'sai-status', 'sai-worktree', 'sai-build']) {
         fs.writeFileSync(path.join(root, 'commands', harness, `${name}.md`), '---\n---\n');
       }
     }
@@ -44,7 +44,7 @@ test('model customization exposes the five stable taxonomy labels and metadata f
       'worker:sai-1-spec-proposal-worker', 'worker:sai-4-red-worker',
     ]);
     assert.deepEqual(customization.buildChecklistTargets('Utilities', families).map(item => item.value), [
-      'utility:sai-commit', 'utility:sai-pr', 'utility:sai-status', 'utility:sai-worktree',
+      'utility:sai-commit', 'utility:sai-pr', 'utility:sai-retire-docs', 'utility:sai-status', 'utility:sai-worktree',
     ]);
   } finally {
     fs.rmSync(root, { recursive: true, force: true });

@@ -1284,6 +1284,23 @@ test('Step 4: successful Auto is silent after selection and never dispatches imp
     'successful Auto should end without implementation dispatch');
 });
 
+test('Step 4: Auto-fast completion re-presents a per-slice selector and Manual pauses pending slices', () => {
+  const source = exploreContract();
+  const transitionStart = source.indexOf('**Successful slice completion transition');
+  const transitionEnd = source.indexOf('**Failures**', transitionStart);
+  assert.ok(transitionStart >= 0 && transitionEnd > transitionStart,
+    'the Auto-fast completion transition should be present');
+
+  const transition = source.slice(transitionStart, transitionEnd);
+  assert.match(transition, /recompute `pending_slices` only from `last_crystallization_set` minus `completed_changes`/i);
+  assert.match(transition, /re-present the existing full three-option `Auto` \/ `Auto \(fast implementation\)` \/ `Manual` selector exactly once/i);
+  assert.match(transition, /per-slice authorization gate, not a one-time authorization/i);
+  assert.match(transition, /even when exactly one pending slice remains/i);
+  assert.match(transition, /Never re-select or re-run a name already in `completed_changes`/i);
+  assert.match(transition, /Selecting `Manual` on this continuation selector starts no additional slice/i);
+  assert.match(transition, /require a later explicit request before any pending slice runs/i);
+});
+
 test('Step 4: failed or cancelled Auto maps retry guidance from phase state without changing retry state', () => {
   const source = exploreContract();
   const selectorSpec = spec('openspec/specs/explore-pipeline-selector/spec.md');

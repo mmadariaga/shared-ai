@@ -1,5 +1,10 @@
-## ADDED Requirements
+# doctor-project-health Specification
 
+## Purpose
+
+TBD - this spec was authored as a change delta and never merged into the main tree, so its requirements were invisible to validate, list, and archive. Summarize the capability here.
+
+## Requirements
 ### Requirement: project health checks absorb prereqs
 
 The doctor SHALL emit a `[Project health]` section that performs the three checks currently defined in `sai/policies/prereqs-check.md`: (1) the `openspec` binary is available on PATH, (2) an `openspec/` directory exists at the project root, and (3) `openspec/config.yaml` contains a line matching `schema: sai-workflow`. Each check SHALL be reported individually as pass or fail with the same corrective guidance `sai/policies/prereqs-check.md` gives (install OpenSpec, run `openspec init`, add `schema: sai-workflow`).

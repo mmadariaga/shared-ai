@@ -76,6 +76,15 @@ Selecting `Manual` SHALL dispatch nothing and SHALL NOT change supervision state
 
 `--fast-track` SHALL NOT auto-select Auto or suppress the selector. Selector text SHALL follow language localization while `review-loop`, `/sai-1-spec`, and `/sai-2-design` MUST remain English literals.
 
+### Requirement: Auto-fast continuation requests authorization for each pending slice
+
+After a clean Auto-fast slice completion, the system SHALL re-present the complete `Auto` / `Auto (fast implementation)` / `Manual` selector when at least one pending slice remains. Continuation choices SHALL exclude completed slices and preserve crystallization order. Selecting Manual SHALL dispatch nothing and preserve pending and completed state for a later explicit request.
+
+#### Scenario: pending slices remain after clean completion
+
+- **WHEN** a clean Auto-fast slice completes and `pending_slices` is non-empty
+- **THEN** the full selector is presented exactly once before another slice starts
+
 #### Scenario: fast-track reaches selector presentation
 
 - **WHEN** `--fast-track` is active or the crystallization turn is non-English
@@ -181,4 +190,3 @@ Selecting **Auto (fast implementation)** SHALL be the explicit user act that aut
 
 - **WHEN** the user selects Auto (fast implementation) on the crystallization-close selector
 - **THEN** delegated writes are consented for the two fast-lane workers and exactly one local commit is pre-authorized, with no other command surface affected
-

@@ -1,5 +1,10 @@
-## ADDED Requirements
+# doctor-cli Specification
 
+## Purpose
+
+TBD - this spec was authored as a change delta and never merged into the main tree, so its requirements were invisible to validate, list, and archive. Summarize the capability here.
+
+## Requirements
 ### Requirement: doctor subcommand routing
 
 `bin/install.js` SHALL route the `doctor` subcommand to `bin/doctor.js`, alongside the existing `install`, `setup`, and `uninstall` routes. The router SHALL invoke the module and exit with the code it returns, mirroring the existing subcommand routing. The installer's usage line and its unknown-subcommand error message SHALL both name `doctor` as a valid subcommand (i.e. `[install|setup|uninstall|doctor]`).

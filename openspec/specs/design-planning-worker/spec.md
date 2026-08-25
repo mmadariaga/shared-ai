@@ -42,9 +42,7 @@ question: string
 options: Array<{ label: string, value: string }>
 answer_value: string
 ```
-
 ## Requirements
-
 ### Requirement: prerequisite-failure-texts
 
 Each missing prerequisite SHALL return its pinned actionable failure text.
@@ -85,7 +83,7 @@ A provided `arguments_value` name SHALL bypass `openspec list --json`. Zero chan
 
 ### Requirement: resolved-change-name-field
 
-Every payload after change resolution has `resolved_change_name`. Pre-resolution payloads omit it.
+Every payload after change resolution SHALL carry `resolved_change_name`. Pre-resolution payloads SHALL omit it.
 
 #### Scenario: resolved_change_name present post-resolution
 - **WHEN** change resolution completes
@@ -97,7 +95,7 @@ Every payload after change resolution has `resolved_change_name`. Pre-resolution
 
 ### Requirement: completion-requires-three-artifacts
 
-Completion follows disk verification of `design.md`, `tasks.md`, and `interfaces.md`.
+Completion SHALL follow disk verification of `design.md`, `tasks.md`, and `interfaces.md`.
 
 #### Scenario: all three artifacts verified
 - **WHEN** the worker completes planning
@@ -110,6 +108,11 @@ Completion follows disk verification of `design.md`, `tasks.md`, and `interfaces
 ### Requirement: three-artifact-completion
 
 Completion SHALL verify `design.md`, `tasks.md`, AND `interfaces.md` before claiming completion.
+
+#### Scenario: Completion is claimed only after all three verify
+- **WHEN** the design worker prepares to return `completed`
+- **THEN** it has verified all three artifacts on disk
+- **AND** it does not claim completion when any of them is missing or empty
 
 ### Requirement: Design lifecycle payloads carry emission time
 
@@ -145,7 +148,6 @@ The design worker SHALL own prerequisite checks, fast-track parsing, change sele
 #### Scenario: Replacement worker reconstructs after the banner
 - **WHEN** a fresh design worker receives reconstruction metadata with `fast_track_banner_emitted` true
 - **THEN** it SHALL preserve fast-track semantics but SHALL NOT return the banner notice again
-
 
 #### Scenario: Prerequisite or source artifact is missing
 - **WHEN** a prerequisite fails or required `proposal.md` or `specs/**/*.md` is absent
@@ -362,15 +364,37 @@ Replacement-reconstruction input for the design worker SHALL include `active_ste
 - **THEN** it resumes the step identified by the supplied `active_step_id` without receiving the prior worker's journal or artifact contents
 
 ### Requirement: Fast-track activation is coordinator-owned handoff
-The design worker SHALL receive the cleaned request after the coordinator's fast-track parse, SHALL NOT activate fast-track, SHALL NOT return a banner notice, SHALL keep no banner-dedup reconstruction field, and SHALL strip any stray `--fast-track` token tolerantly wherever it appears without interpreting it.
+Fast-track ownership is route-dependent, because the design worker is reached by two dispatchers: the routed coordinator, and the supervised pipeline that dispatches the worker directly with no coordinator present. The design worker SHALL parse and strip `--fast-track` from its envelope on every route, since on the supervised route no other surface does so and an unstripped token would corrupt the resolved change name. The worker SHALL return the banner notice on the routed path, where the coordinator prints it and sets the banner-dedup reconstruction field, and SHALL suppress that notice when `supervised` is true, where the supervising composition owns the chained-segment banner per `sai-fast-track-flag`'s `Composition owns the chained banner`. Every fast-track invocation SHALL still yield exactly one visible activation confirmation.
 
-#### Scenario:
-- **WHEN** the design worker receives a cleaned envelope whose fast-track activation already happened coordinator-side
-- **THEN** the worker returns no notice for fast-track and applies fast-track gate semantics only through the coordinator-declared `fast_track_active` session state
+#### Scenario: Supervised dispatch suppresses the worker notice
+- **WHEN** the design worker is dispatched with `supervised` true and an envelope carrying `--fast-track`
+- **THEN** it returns no fast-track notice
+- **AND** the supervising composition supplies the single visible activation confirmation
+
+#### Scenario: Routed dispatch returns the notice
+- **WHEN** the design worker is dispatched without `supervised`, with `--fast-track` present and the banner-dedup field false
+- **THEN** it returns the notice carrying `> FAST-TRACK MODE ACTIVE`
+- **AND** the coordinator prints that message and resumes the worker with `continue_after_notice`
+
+#### Scenario: The token never reaches the resolved name
+- **WHEN** an envelope carries `--fast-track` in either flag order after the change name
+- **THEN** the worker strips the token before finalizing the resolved change name on every route
 
 ### Requirement: Overview-language form validation is coordinator-owned fail-fast
-The design coordinator SHALL halt with the fixed validation errors on a missing-value or duplicate `--overview-lang` occurrence BEFORE plan selection, rendering, change resolution, and dispatch; the declared static progress plan SHALL derive ONLY from the validated outcome (a present, well-formed token opts in; an absent token opts out), and the design worker SHALL consume only well-formed values — returning a clear `failed` validation result without selecting a plan if an invalid form nevertheless arrives.
+Validation of `--overview-lang` form is worker-owned and unconditional, because the supervised route dispatches the worker with no coordinator to fail fast ahead of it. The design worker SHALL validate missing-value, option-in-value-position, malformed, and duplicate occurrences and SHALL return a clear pre-resolution `failed` validation result without selecting a plan or resolving a change. The coordinator SHALL select the static progress plan from raw token presence only, and SHALL NOT parse, validate, or interpret the language value; malformed occurrences remain present for that presence-only selection.
 
-#### Scenario:
-- **WHEN** the design coordinator receives `{name} --overview-lang` with no following language token
-- **THEN** it stops with exactly `Missing value for --overview-lang; provide one non-empty language token before continuing.` and performs no plan selection, render, resolution, or dispatch
+#### Scenario: The worker rejects a missing value on any route
+- **WHEN** the worker receives `{name} --overview-lang` with no following language token
+- **THEN** it returns a pre-resolution `failed` validation result naming the missing value
+- **AND** it selects no plan and resolves no change
+
+#### Scenario: The worker rejects a duplicate occurrence
+- **WHEN** the worker receives an envelope carrying `--overview-lang` more than once
+- **THEN** it returns a pre-resolution `failed` validation result naming the duplicate
+- **AND** it selects no plan and resolves no change
+
+#### Scenario: Coordinator plan selection stays presence-only
+- **WHEN** the coordinator receives an envelope whose `--overview-lang` occurrence is malformed
+- **THEN** it selects the opted-in plan from raw token presence without inspecting the value
+- **AND** it forwards the envelope unchanged for the worker to validate
+

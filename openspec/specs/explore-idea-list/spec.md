@@ -483,3 +483,12 @@ The idea list SHALL retain `tracked_changes` for review-loop iteration and SHALL
 
 - **WHEN** a crystallization turn emits one or more change names
 - **THEN** selector dispatch uses only the latest emitted set while review navigation retains its tracked set
+
+### Requirement: completed slice progress persists during Auto-fast continuation
+
+The idea progress list SHALL preserve a completed slice's progress states while the completion transition prepares to process pending slices.
+
+#### Scenario: completed slice has remaining work
+
+- **WHEN** a clean Auto-fast completion is followed by pending slices
+- **THEN** completed entries are not cleared, rewound, or reclassified

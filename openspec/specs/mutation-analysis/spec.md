@@ -1,5 +1,10 @@
-## ADDED Requirements
+# mutation-analysis Specification
 
+## Purpose
+
+TBD - this spec was authored as a change delta and never merged into the main tree, so its requirements were invisible to validate, list, and archive. Summarize the capability here.
+
+## Requirements
 ### Requirement: Mutation Analysis Pass Exists In The Review Workflow
 
 The review workflow in `sai/commands/review/instructions.md` SHALL include a Mutation Analysis pass, designated pass 11, that runs after the existing ten review passes. The pass MUST perform mutation testing scoped to the diff against the parent branch and emit surviving mutants as findings in `review.md`. The `review` artifact instruction in `openspec/schemas/sai-workflow/schema.yaml` MUST name eleven passes (including Mutation Analysis), not ten.
