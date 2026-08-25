@@ -62,26 +62,28 @@ A clean worktree proceeds directly to Step 2.
 ### Step 2: Branch selection
 
 Run:
-- `git branch --list --format='%(refname:short) %(committerdate:iso8601)'` —
-  list local branches with their last-commit dates
+- `git branch --no-merged HEAD --format='%(refname:short) %(committerdate:iso8601)'` —
+  list local branches whose commits are not already reachable from the current
+  branch, with their last-commit timestamps
 - `git rev-parse --abbrev-ref HEAD` — identify current branch
 
-Filter out the current branch. Keep each remaining branch's exact refname and
-last-commit timestamp. Sort by the full committer timestamp descending (most
-recent first), then by the exact branch name ascending for equal timestamps.
-This tie-break is mandatory so the picker is deterministic. If the filtered
-list is empty, return a terminal `completed` payload whose summary is exactly
+The `--no-merged HEAD` filter is authoritative: keep each remaining branch's
+exact refname and last-commit timestamp. Sort by the full committer timestamp
+descending (most recent first), then by the exact branch name ascending for
+equal timestamps. This tie-break is mandatory so the picker is deterministic.
+If the filtered list is empty, return a terminal `completed` payload whose summary is exactly
 **"No other local branches to merge."** and close the run.
 
 Return `needs_input` asking exactly **"¿Qué rama quieres mergear?"**. Build one
 option per candidate with:
 
 - `value`: the exact local branch name, unchanged;
-- `label`: `<branch> — last commit <YYYY-MM-DD>`, using the candidate's
-  last-commit date in a readable date-bearing label.
+- `label`: `<branch> — last commit <YYYY-MM-DD HH:mm>`, using the candidate's
+  last-commit date and time in a concise label (timezone detail omitted).
 
-This is the canonical `branch + last-commit-date` label shape; the date is
-presentation context only and never replaces the exact option value.
+This is the canonical `branch + last-commit-date-and-time` label shape; the
+date and time are presentation context only and never replace the exact option
+value.
 
 The option value is the only branch identifier forwarded on continuation; do
 not parse the label to recover it. The result summary, not the question, must
@@ -195,13 +197,14 @@ scope decision.
 
 When conflicts exist and `fast_track_active` is false, classify the conflicted
 files first and derive the eligible scope options from the categories that are
-actually present. Use this closed mapping:
+actually present. Use this closed mapping, keeping the broadest scope first and
+following it only with applicable category-specific scopes:
 
+- include `Full scope (Recommended)` with value `full` whenever conflicts
+  exist, because it means all detected categories;
 - include `Artifacts only (specs + ADR/DDR)` with value `artifacts` when at
   least one specs or ADR/DDR conflict exists;
 - include `Code only` with value `code` when at least one code conflict exists;
-- include `Full scope (Recommended)` with value `full` whenever conflicts
-  exist, because it means all detected categories.
 
 Keep that order and omit every category-specific option that cannot apply to
 the detected conflict set. Return the classification and the resulting

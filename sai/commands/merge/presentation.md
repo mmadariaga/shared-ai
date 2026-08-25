@@ -113,8 +113,9 @@ Update the state only at the corresponding lifecycle boundary:
 
 - Start in `preflight`. A dirty-worktree gate remains in `preflight`; the
   branch selector is `branch-selection` and does not advance until a branch is
-  selected. Store the worker-authored exact branch values and date-bearing
-  labels in `branch_options`.
+  selected. Store the worker-authored exact branch values and
+  `YYYY-MM-DD HH:mm` labels for only branches whose commits are not already
+  reachable from the current branch in `branch_options`.
 - After branch selection, record the current and merged branches, render the
   adaptive TODO, run the coordinator-owned merge, and record `merge_outcome`.
   A clean merge advances directly to `adr-ddr`; a conflicted merge advances
@@ -158,10 +159,11 @@ state_snapshot
 ```
 
 `question` and `options` come from the validated worker source and remain exact
-and ordered. Branch options use the exact branch name as `value` and a
-date-bearing `<branch> — last commit <YYYY-MM-DD>` as `label`; the worker has
-already sorted them by commit timestamp descending and branch name ascending
-for ties. `worker_context` carries the worker-authored technical payload
+and ordered. Branch options use the exact branch name as `value` and
+`<branch> — last commit <YYYY-MM-DD HH:mm>` as `label`; the worker has already
+filtered them with `git branch --no-merged HEAD` and sorted them by commit
+timestamp descending and branch name ascending for ties. `worker_context`
+carries the worker-authored technical payload
 alongside the ask without alteration. `state_snapshot` carries only the
 decision-relevant coordinator state. Append only the exact `question`, exact
 ordered `options`, and the user's exact `answer_value` to opaque input history;
@@ -173,10 +175,12 @@ branch, runtime-scope, contextual semantic-decision, no-suite, and
 commit-authorization gates. It does not add a gate, alter answer values, or
 change continuation order. For the runtime scope gate, validate that the
 worker's `eligible_scope_options` matches `conflict_files_by_category` before
-rendering: `artifacts` requires a specs or ADR/DDR conflict, `code` requires a
-code conflict, and `full` represents all detected categories. Render only that
-filtered, canonical option set and never show a category-specific option for
-an absent category.
+rendering: `full` represents all detected categories and is rendered first as
+`Full scope (Recommended)`; `artifacts` requires a specs or ADR/DDR conflict
+and follows as `Artifacts only (specs + ADR/DDR)` when applicable; `code`
+requires a code conflict and follows as `Code only` when applicable. Render
+only that filtered, canonical option set and never show a category-specific
+option for an absent category.
 
 For a contextual semantic-decision gate, validate that the worker source names
 one pending conflict and carries both **Facts** and **Inferences**, the two
@@ -206,7 +210,7 @@ file by applying a region replacement, concatenating alternatives, or reading
 resolution prose.
 
 For branch selection, render the concise question **"¿Qué rama quieres mergear?"**
-with the readable date-bearing labels. Render the detailed current
+with the readable `YYYY-MM-DD HH:mm` labels. Render the detailed current
 branch, candidate timestamps, and merge rationale in the gate summary rather
 than inside the question. For authorization, render the compact summary below
 instead of the worker's full staged-file context. A missing test suite remains
