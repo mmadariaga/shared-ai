@@ -14,12 +14,12 @@
 
 ### Requirement: Spec command writes GLOSSARY.md at project root
 
-The spec command's MAY-modify list in `sai/commands/spec/instructions.md` SHALL identify the glossary file as `./GLOSSARY.md` at the project root, not `openspec/changes/{name}/GLOSSARY.md`. When the spec phase bootstraps or appends a domain term, it SHALL write to the project-root `GLOSSARY.md`.
+The spec command's MAY-modify list in `sai/policies/spec-phase-contract.md` SHALL identify the glossary file at the project root. When the spec phase bootstraps or appends a domain term, it SHALL write to the project-root `GLOSSARY.md`.
 
 #### Scenario: MAY-modify list points to project root
 
-- **WHEN** `sai/commands/spec/instructions.md` is read
-- **THEN** its MAY-modify list references `./GLOSSARY.md` (project root)
+- **WHEN** `sai/policies/spec-phase-contract.md` is read
+- **THEN** its SpecWriteSurface names the repository-root GLOSSARY.md
 - **AND** it does NOT reference `openspec/changes/{name}/GLOSSARY.md`
 
 #### Scenario: bootstrap writes to root

@@ -38,10 +38,10 @@ The maintained fetch-convention documentation in `AGENTS.md`, `README.md`, insta
 
 Maintained literal-string tests that assert instruction, template, index, fetch-resolution, installation, or coordinator/worker paths SHALL be updated atomically to the folded paths, while preserving their existing ordering, single-fetch, byte-equivalence, parity, and missing-target assertions.
 
-#### Scenario: coordinator worker test asserts folded spec instruction
+#### Scenario: coordinator worker test asserts current load order
 
 - **WHEN** `test/spec-coordinator-worker.test.js` checks the spec invocation load order
-- **THEN** it asserts `@sai/commands/spec/instructions.md` and no stale `@sai/instructions/spec.propose.md` reference
+- **THEN** it asserts the current load order and that neither `@sai/instructions/spec.propose.md` nor `@sai/commands/spec/instructions.md` is referenced or exists
 
 #### Scenario: archive literal paths cover both instruction files
 

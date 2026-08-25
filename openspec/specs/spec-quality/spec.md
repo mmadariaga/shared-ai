@@ -4,7 +4,7 @@
 
 ### Requirement: Decision summary printed at end of spec phase
 
-When the `sai-1-spec` flow (`sai/commands/spec/instructions.md`) reaches its Completion section, the agent SHALL print a structured decision summary to the screen before the mandatory stop message. The summary is derived exclusively from the artifacts just written (`proposal.md` and `specs/**/*.md`) — not from prior conversation.
+When the `sai-1-spec` flow (`sai/commands/spec/steps/validation.md`) reaches its Completion section, the agent SHALL print a structured decision summary to the screen before the mandatory stop message. The summary is derived exclusively from the artifacts just written (`proposal.md` and `specs/**/*.md`) — not from prior conversation.
 
 The summary SHALL contain two blocks:
 - **Scope**: one line per capability listed in the proposal's Capabilities section (new and modified).
@@ -52,7 +52,7 @@ When the total count of scope and requirements items would exceed the hard 15-li
 
 ### Requirement: Proposal-to-spec self-consistency gate at Completion
 
-When the `sai-1-spec` flow (`sai/commands/spec/instructions.md`) reaches its Completion section, the agent SHALL reconcile the proposal narrative against the specs before printing the decision summary, so that no statement in `proposal.md` contradicts a requirement or scenario in `specs/**/*.md`. The reconciliation SHALL reuse the artifact re-read that already produces the decision summary — it adds no I/O beyond that re-read.
+When the `sai-1-spec` flow (`sai/commands/spec/steps/validation.md`) reaches its Completion section, the agent SHALL reconcile the proposal narrative against the specs before printing the decision summary, so that no statement in `proposal.md` contradicts a requirement or scenario in `specs/**/*.md`. The reconciliation SHALL reuse the artifact re-read that already produces the decision summary — it adds no I/O beyond that re-read.
 
 The specs' requirements and scenarios are normative. When a proposal statement and a spec requirement/scenario contradict each other, the agent SHALL reconcile by adjusting the proposal narrative to the spec — not the spec to the proposal — and SHALL note in the decision summary that a reconciliation correction was made, so the correction is not invisible to the user. When it is genuinely ambiguous which side reflects the user's intent, the agent SHALL NOT guess or silently correct either artifact; it SHALL instead raise a visible warning to the user (the same additive, gate-adjacent warning defined for source divergences below) and let the user decide.
 

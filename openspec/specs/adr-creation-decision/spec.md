@@ -4,7 +4,7 @@
 
 ### Requirement: Every criteria-evaluation surface resolves the family by the routing test
 
-Every instruction surface that evaluates the three ADR/DDR criteria SHALL resolve a qualifying decision's family by the ordered routing test and SHALL NOT leave the ADR-vs-DDR choice open. The three criteria, the ordered routing test, and the never-leave-the-choice-open rule SHALL be single-sourced in `sai/policies/adr-ddr-criteria.md`; a fetching instruction surface SHALL fetch that policy and SHALL NOT restate them inline. The active design step authority at `sai/commands/design/steps/design.md` SHALL own the design-side evaluation and record the resolved family. The implementation instruction and worker step remain the execution surfaces for the recorded family, while `sai/commands/spec/instructions.md` SHALL NOT carry a criteria-evaluation surface because the `/sai-1-spec` phase authors no design decisions. The phrase "ADR/DDR" SHALL name the evaluation surface (the two-family criteria check) and SHALL NOT be used to leave the family unresolved.
+Every instruction surface that evaluates the three ADR/DDR criteria SHALL resolve a qualifying decision's family by the ordered routing test and SHALL NOT leave the ADR-vs-DDR choice open. The three criteria, the ordered routing test, and the never-leave-the-choice-open rule SHALL be single-sourced in `sai/policies/adr-ddr-criteria.md`; a fetching instruction surface SHALL fetch that policy and SHALL NOT restate them inline. The active design step authority at `sai/commands/design/steps/design.md` SHALL own the design-side evaluation and record the resolved family. The implementation instruction and worker step remain the execution surfaces for the recorded family, while the spec command's coordinator, worker, and step surfaces SHALL NOT carry a criteria-evaluation surface because the `/sai-1-spec` phase authors no design decisions. The phrase "ADR/DDR" SHALL name the evaluation surface (the two-family criteria check) and SHALL NOT be used to leave the family unresolved.
 
 #### Scenario: design.md Decisions evaluation resolves the family
 
@@ -18,8 +18,8 @@ Every instruction surface that evaluates the three ADR/DDR criteria SHALL resolv
 
 #### Scenario: sai-1 carries no criteria-evaluation surface
 
-- **WHEN** `sai/commands/spec/instructions.md` is read
-- **THEN** it contains no `## ADR/DDR Proposal Check` section, no restatement of the three criteria or the ordered routing test, and no cross-reference from the Complexity Derivation Rubric to a deleted ADR/DDR section
+- **WHEN** `sai/commands/spec/coordinator.md`, `sai/commands/spec/worker.md`, and the active files under `sai/commands/spec/steps/` are read
+- **THEN** they contain no `## ADR/DDR Proposal Check` section, no restatement of the three criteria or the ordered routing test, and no cross-reference to a deleted ADR/DDR section
 
 #### Scenario: step-owned-criteria-surface-resolves-family
 

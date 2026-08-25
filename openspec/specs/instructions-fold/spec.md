@@ -8,17 +8,12 @@ TBD - created by archiving change fold-sai-instructions-templates. Update Purpos
 
 ### Requirement: command-instructions-are-co-located
 
-Every command-owned instruction currently under `sai/instructions/` SHALL move verbatim to a distinct path within its owning `sai/commands/{name}/` directory, and the former `sai/instructions/` command files SHALL be absent after the migration. A command's primary instruction SHALL use `sai/commands/{name}/instructions.md`; additional instruction files for the same command SHALL use disambiguated neighboring names ending in `.instructions.md`. The move SHALL cover all command instructions, including `spec.propose.md` as `sai/commands/spec/instructions.md`, without changing their effective content or command behavior.
+Every command-owned instruction currently under `sai/instructions/` SHALL move verbatim to a distinct path within its owning `sai/commands/{name}/` directory, and the former `sai/instructions/` command files SHALL be absent after the migration. A command's primary instruction SHALL use `sai/commands/{name}/instructions.md`; additional instruction files for the same command SHALL use disambiguated neighboring names ending in `.instructions.md`. The move SHALL cover all command instructions without changing their effective content or command behavior.
 
 #### Scenario: each instruction has one distinct destination
 
 - **WHEN** the maintained SAI source tree is inspected after the fold
 - **THEN** each command-owned source instruction has exactly one distinct neighboring destination with equivalent content, the primary instruction is named `sai/commands/{name}/instructions.md`, additional same-command instructions use disambiguated `.instructions.md` names, and no source instruction remains under `sai/instructions/`
-
-#### Scenario: spec instruction is co-located
-
-- **WHEN** the spec invocation loads its phase instruction
-- **THEN** it resolves `@sai/commands/spec/instructions.md` and the loaded content is the former `sai/instructions/spec.propose.md` content
 
 #### Scenario: archive preserves both instruction surfaces
 

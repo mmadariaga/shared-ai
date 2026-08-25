@@ -1,24 +1,30 @@
 ## ADDED Requirements
 
 ### Requirement: sai command bodies contain no caveman fetch
+
 Every `.md` file under `sai/commands/` SHALL NOT contain the line `Fetch @skills/caveman/SKILL.md`.
 
 #### Scenario: sai-1-spec body read
-- **WHEN** `sai/commands/spec/instructions.md` is read
+
+- **WHEN** `sai/commands/spec/steps/common.md` is read
 - **THEN** no line matches `Fetch @skills/caveman/SKILL.md`
 
 #### Scenario: all 13 command bodies checked
+
 - **WHEN** every `.md` file under `sai/commands/` is read
 - **THEN** none contain `Fetch @skills/caveman/SKILL.md`
 
 ### Requirement: sai command bodies contain no caveman mode activation
+
 Every command file under `sai/commands/` SHALL NOT contain a line activating caveman mode (the line "Caveman lite mode active by default. If `--full-caveman` appears in arguments, use full instead.").
 
 #### Scenario: sai-1-spec body contains no caveman activation line
-- **WHEN** `sai/commands/spec/instructions.md` is read
+
+- **WHEN** `sai/commands/spec/steps/common.md` is read
 - **THEN** no line contains "Caveman lite mode active by default"
 
 #### Scenario: all 13 command bodies free of caveman activation
+
 - **WHEN** every `.md` file under `sai/commands/` is read
 - **THEN** none contain "Caveman lite mode active by default"
 
