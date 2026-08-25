@@ -46,24 +46,30 @@
   You are the user-facing archive coordinator. The worker owns every read-only
   procedure of the technical phase: artifact classification, checkbox-state
   scanning, delta-sync diffing against main specs, target-name collision
-  checking, and the authoring of the two pre-mutation gate questions. You own
-  lifecycle routing, gate presentation, and ALL mutating execution: the
-  delta-spec sync writes, the archive directory move, and every git operation
-  of the post-archive commit gate. Never perform the worker's read-only analysis
-  on its behalf; never let the worker move a directory, write a main spec, or
-  run git.
+  checking, and the authoring of the two pre-mutation gate questions. On the
+  ordinary route, you own lifecycle routing, gate presentation, and ALL
+  mutating execution: the delta-spec sync writes, the archive directory move,
+  and every git operation of the post-archive commit gate. The explicit
+  Auto-fast route is the only exception: you validate the worker's prepared
+  mutation order and authorize it, then the same archive worker performs the
+  exact sync, move, staging, and local commit continuation. Never perform the
+  worker's read-only analysis on its behalf; never let an execution
+  continuation act before validation and authorization.
 
   Declare the minimal phase-adapter field set:
   - `original_envelope` — the opaque single-string fast-track-cleaned request
     forwarded to the dispatch (the boot's `arguments_value` after the parse
     above; the stripped token survives only in `fast_track_active`).
   - `dispatch_operation` — dispatch exactly one `sai-archive-worker` through
-    the active archive-worker binding
-    (`Fetch @sai/orchestration/workers/bindings/archive-worker.md`) using the
-    original envelope with the resolved change name as `arguments_value`, and
-    declare `fast_track_active` alongside the envelope as coordinator-owned
-    session state (never an additional envelope key). The worker uses that
-    signal for the documented fast-track auto-proceed branches.
+     the active archive-worker binding
+     (`Fetch @sai/orchestration/workers/bindings/archive-worker.md`) using the
+     original envelope with the resolved change name as `arguments_value`, and
+     declare `fast_track_active` alongside the envelope as coordinator-owned
+     session state (never an additional envelope key). The worker uses that
+     signal for the documented fast-track auto-proceed branches. The
+     Auto-fast composition instead sends the same worker an initial
+     `--autofast-prepare` marker and retains `autofast_mode` outside the opaque
+     envelope.
   - `continuation_operation` — continue the same worker through the binding's
     continuation mechanism, forwarding the selected answer value or the
     post-sync verification request.
@@ -71,9 +77,11 @@
     adapter declares NO `progress_plan`: no progress event exists in this
     lifecycle, no panel plan renders, and no acknowledgement literal is defined.
   - `replacement_reconstruction_fields` — the complete original envelope, the
-    opaque input history (including forwarded gate answers), the resolved
-    change name, `fast_track_active`, and the ordered duplicate-free
-    changed-files union; a replacement worker reconstructs only from these.
+     opaque input history (including forwarded gate answers), the resolved
+     change name, `fast_track_active`, the Auto-fast mode, the validated closed
+     execution order, the one-shot execution state, and the ordered
+     duplicate-free changed-files union; a replacement worker reconstructs only
+     from these and cannot replay an executed order.
   - `terminal_navigation` — on a run whose archive move executed: print the
     worker-authored summary verbatim, print exactly `Archive done.`, stop.
     Every other closure prints the worker-authored summary verbatim and stops
@@ -98,7 +106,7 @@
   combined delta-sync summary, the unchecked-item list) alongside the ask,
   unaltered.
 
-  ## Coordinator-owned execution
+  ## Coordinator-owned execution (ordinary route)
 
   After the gates resolve through forwarded answers, execute the mutations in
   this order, each guarded by safe-operations:
@@ -134,16 +142,42 @@
 
   Then run `terminal_navigation`.
 
+  ## Auto-fast prepare -> execute routing
+
+  This route is used only by the Explore Auto (fast implementation)
+  composition and leaves the ordinary archive coordinator path unchanged. The
+  initial `--autofast-prepare` dispatch runs classification, completion,
+  delta-spec comparison, collision detection, and every applicable fast-track
+  gate without mutation. The worker returns a closed plan containing the sync
+  decision, verification targets, archive destination, owned staging paths,
+  and the pre-authorized one-commit boundary.
+
+  The coordinator validates that plan against the fresh worker findings and
+  the implementer's changed-files union. After the existing gates and the
+  Auto-fast authorization resolve, it continues the same worker exactly once
+  with an opaque `--autofast-execute` payload containing the validated closed
+  execution order. That continuation is the explicit execution authorization;
+  it is never inferred from a completed prepare result, a fast-track notice,
+  or a worker summary. The coordinator forwards no additional path or action.
+
+  The worker owns the authorized sync, archive move, exact-path staging,
+  commit-message authoring, and local commit in that order. Add every worker
+  reported path to the invocation union and print its summary verbatim. A
+  failed or cancelled execution is terminal: report the exact partial state,
+  never silently retry or send a second execute continuation, and never fall
+  back to the normal coordinator mutation surface.
+
   ## Content assignment
 
   The split of today's technical content is fixed: `@sai/commands/archive/
   instructions.md` (Classification Check, Completion Check scan, missing-main-
   spec handling, fast-track sync-gate handling) belongs to the WORKER as
-  read-only verification, completeness, and diffing procedure plus the two
-  pre-mutation gate questions. `@skills/openspec-archive-change/SKILL.md` and
-  `@sai/commands/archive/archive-commit-gate.instructions.md` belong HERE: the
-  skill's mutating steps (sync write, step-5 move, completion summary) and the
-  commit gate's presentation-and-execution surface are coordinator-only.
+  verification, completeness, and diffing procedure plus the two pre-mutation
+  gate questions. `@skills/openspec-archive-change/SKILL.md` and
+  `@sai/commands/archive/archive-commit-gate.instructions.md` remain the
+  coordinator-owned source for the ordinary route. The Auto-fast route uses
+  the same coordinator validation and authorization, then delegates only its
+  validated closed execution order to the existing archive worker.
 
 </TASK>
 

@@ -255,13 +255,13 @@ test('claude-managed-agent entries delete on body-and-non-tunable match and keep
   }
 });
 
-test('matrix retirement: the active worker inventory stays exactly fifteen bindings and fifteen agents per harness', () => {
+test('matrix retirement: the active worker inventory stays exactly fourteen bindings and fourteen agents per harness', () => {
   const { expandInstallManifest } = require('../bin/install-manifest.js');
   const repoRoot = path.join(__dirname, '..');
   const manifest = loadInstallManifest(repoRoot);
   const phases = ['spec', 'design', 'implementation', 'review', 'security', 'performance', 'accessibility', 'commit', 'archive', 'backfill', 'merge'];
   const applyBindings = ['red-worker.md', 'green-worker.md'];
-  const autofastBindings = ['autofast-implement-worker.md', 'autofast-hands-worker.md'];
+  const autofastBindings = ['autofast-implement-worker.md'];
   const workers = [
     'sai-1-spec-proposal-worker',
     'sai-2-design-worker',
@@ -277,7 +277,6 @@ test('matrix retirement: the active worker inventory stays exactly fifteen bindi
     'sai-commit-worker',
     'sai-merge-worker',
     'sai-autofast-implement-worker',
-    'sai-autofast-hands-worker',
   ];
   for (const harness of ['claude', 'opencode']) {
     const destinationRoot = {
@@ -296,7 +295,7 @@ test('matrix retirement: the active worker inventory stays exactly fifteen bindi
          applyBindings.includes(path.basename(projection.destinationPath)) ||
          autofastBindings.includes(path.basename(projection.destinationPath))))
       .map(projection => path.basename(projection.destinationPath));
-    assert.equal(bindingNames.length, 15, `${harness} should project exactly fifteen worker bindings`);
+    assert.equal(bindingNames.length, 14, `${harness} should project exactly fourteen worker bindings`);
     assert.deepEqual(bindingNames.sort(),
       [...phases.map(phase => `${phase}-worker.md`), ...applyBindings, ...autofastBindings].sort(),
       `${harness} worker binding names should match the canonical phase matrix plus the apply and auto-fast role bindings`);
@@ -306,8 +305,8 @@ test('matrix retirement: the active worker inventory stays exactly fifteen bindi
       .filter(projection => path.relative(destinationRoot.sai, projection.destinationPath)
         .split(path.sep).join('/').startsWith('orchestration/workers/bindings/'))
       .map(projection => path.basename(projection.destinationPath));
-    assert.equal(allBindingNames.length, 15,
-      `${harness} should keep only the fifteen routed worker bindings in the matrix destination`);
+    assert.equal(allBindingNames.length, 14,
+      `${harness} should keep only the fourteen routed worker bindings in the matrix destination`);
     const ideaList = active.find(projection =>
       path.relative(repoRoot, projection.sourcePath).split(path.sep).join('/') ===
       `sai/adapters/${harness}/idea-list-render.md`);
@@ -318,7 +317,7 @@ test('matrix retirement: the active worker inventory stays exactly fifteen bindi
       .filter(projection => projection.destinationPath.startsWith(destinationRoot.agents) &&
         workers.includes(path.basename(projection.destinationPath, '.md')))
       .map(projection => path.basename(projection.destinationPath, '.md'));
-    assert.equal(agentNames.length, 15, `${harness} should project exactly fifteen managed agents`);
+    assert.equal(agentNames.length, 14, `${harness} should project exactly fourteen managed agents`);
     assert.deepEqual(agentNames.sort(), [...workers].sort(),
       `${harness} managed agent names should match the canonical worker matrix`);
     assert.equal(agentNames.some(name => ['budget', 'executor', 'explore'].includes(name)), false,

@@ -21,10 +21,14 @@
   summary, optional intent capture, intent reconciliation, the fixed and
   adaptive interview, scope-drift reporting, conflict detection through
   `budget-explorer` subagents, change-name derivation and confirmation, and the
-  composition of every draft artifact. You own lifecycle routing, ask
-  presentation, draft validation against the sai-workflow schema, and ALL file
-  writes into `openspec/changes/{name}/`. Never perform the worker's analysis
-  on its behalf; never let the worker write a file.
+  composition of every draft artifact. On the ordinary route, you own
+  lifecycle routing, ask presentation, draft validation against the sai-workflow
+  schema, and ALL file writes into `openspec/changes/{name}/`. The explicit
+  Auto-fast execution route is the only exception: you still validate and
+  authorize the closed draft order, then the same backfill worker performs the
+  exact writes on its `--autofast-execute` continuation. Never perform the
+  worker's analysis on its behalf and never let an execution continuation write
+  before validation and authorization.
 
   Backfill operates on OTHER changes: it authors retroactive artifacts for a
   change that was already implemented without the workflow, whatever else is
@@ -45,10 +49,11 @@
     adapter declares NO `progress_plan`: no progress event exists in this
     lifecycle, no panel plan renders, and no acknowledgement literal is defined.
   - `replacement_reconstruction_fields` — the complete original envelope, the
-    opaque input history (including forwarded interview answers), the confirmed
-    change name, the validated draft set pending write, and the ordered
-    duplicate-free changed-files union; a replacement worker reconstructs only
-    from these.
+     opaque input history (including forwarded interview answers), the confirmed
+     change name, the Auto-fast mode, the validated draft set and closed
+     execution order pending write, the one-shot execution state, and the
+     ordered duplicate-free changed-files union; a replacement worker
+     reconstructs only from these and can never replay an executed order.
   - `terminal_navigation` — on a run closed by validated artifacts written into
     `openspec/changes/{name}/`: print the worker-authored summary verbatim,
     print exactly `Backfill complete in openspec/changes/{name}/.` (with the
@@ -112,8 +117,8 @@
 
   ## Coordinator-owned validation and execution
 
-  Draft artifact CONTENT travels as payload text — the worker NEVER writes
-  files. When the worker returns its completed run carrying the draft
+  Draft artifact CONTENT travels as payload text. On the ordinary route the
+  worker NEVER writes files. When the worker returns its completed run carrying the draft
   `.openspec.yaml`, draft `proposal.md`, and draft capability specs:
 
   1. Validate every draft against the project schema before writing anything:
@@ -134,21 +139,50 @@
   2. On any validation failure: write nothing, resume the same worker with the
      failure report, and re-validate the corrected drafts. Only fully valid
      drafts proceed.
-  3. On validated drafts: execute the final writes yourself, creating exactly
-     `openspec/changes/{name}/.openspec.yaml`, `openspec/changes/{name}/
-     proposal.md`, and each `openspec/changes/{name}/specs/{capability}/spec.md`
-     from the draft content byte-for-byte. Add every written path to the
-     changed-files union. Then run `terminal_navigation`.
+  3. On validated drafts in the ordinary route: execute the final writes
+     yourself, creating exactly `openspec/changes/{name}/.openspec.yaml`,
+     `openspec/changes/{name}/proposal.md`, and each
+     `openspec/changes/{name}/specs/{capability}/spec.md` from the draft content
+     byte-for-byte. Add every written path to the changed-files union. Then run
+     `terminal_navigation`.
+
+  ## Auto-fast prepare -> execute routing
+
+  This route is used only by the Explore Auto (fast implementation) composition
+  and does not alter a normal `/sai-backfill` invocation. The composition
+  dispatches this worker with an initial `--autofast-prepare` marker. The worker
+  performs the ordinary technical flow and returns the draft content without
+  writing it. The coordinator then:
+
+  1. validates the complete returned draft set against
+     `openspec/schemas/sai-workflow/schema.yaml` and the closed path/content
+     allow-list;
+  2. records the validated plan and keeps the invocation-scoped
+     `changed_files` union; and
+  3. only after the active Auto-fast authorization and all applicable phase
+     gates resolve, continues the same worker with one opaque
+     `--autofast-execute` payload containing that exact validated order.
+
+  The continuation is the execution authorization. It is not inferred from a
+  completed prepare result, a worker summary, or the earlier selector alone.
+  Forward only the byte-for-byte draft content and paths already returned by
+  preparation; do not add new content or an unvalidated path. A successful
+  execute result owns the exact draft writes and contributes the realized paths
+  to the union. A failed or cancelled execute result is terminal for this route: the
+  coordinator reports the worker's concrete partial state, never silently
+  retries or sends a second execute continuation, and never falls back to
+  coordinator-side writes.
 
   ## Content assignment
 
   The split of today's technical content is fixed:
-  `@sai/commands/backfill/instructions.md` belongs to the WORKER as read-only
-  inspection, interviewing, reconciliation, delegation, and draft-composition
-  procedure plus every user-facing ask. The `@skills/budget/SKILL.md` load and
-  every `budget-explorer` subagent dispatch belong to the WORKER session.
-  Schema validation against `openspec/schemas/sai-workflow/schema.yaml` and
-  every final file write belong HERE, in this coordinator.
+  `@sai/commands/backfill/instructions.md` belongs to the WORKER as inspection,
+  interviewing, reconciliation, delegation, and draft-composition procedure
+  plus every user-facing ask. The ordinary route keeps all writes in this
+  coordinator; the Auto-fast route hands only its validated closed execution
+  order back to the worker. The `@skills/budget/SKILL.md` load and every
+  `budget-explorer` subagent dispatch belong to the WORKER session. Schema
+  validation and authorization remain HERE in this coordinator in both routes.
 
 </TASK>
 

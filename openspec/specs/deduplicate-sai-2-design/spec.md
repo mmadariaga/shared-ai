@@ -5,25 +5,6 @@ Deduplicate shared behavior between Claude Code and opencode wrappers by extract
 
 ## Requirements
 
-### Requirement: artifact-only-scope
-`sai/commands/spec/instructions.md` SHALL contain an "Artifact-Only Scope" section that explicitly lists:
-- What the spec command must NEVER create, modify, or delete (project source files, configuration files, infrastructure definitions, build artifacts)
-- What commands it must NEVER run (build, test, lint, deploy, migrate)
-- What files it MAY create or modify: only `openspec/changes/{name}/` artifacts, plus `./GLOSSARY.md` at the project root as a named exception
-
-#### Scenario: Artifact-Only Scope section present
-- **WHEN** `sai/commands/spec/instructions.md` is read
-- **THEN** it contains an "Artifact-Only Scope" heading with bullet lists for NEVER-touch categories and MAY-modify files
-
-#### Scenario: scope covers file mutations
-- **WHEN** the Artifact-Only Scope section is parsed
-- **THEN** it lists at least: project source files, configuration files, infrastructure definitions, build artifacts as NEVER-touch
-- **THEN** it lists the `openspec/changes/{name}/` subset (proposal.md, specs/**/*.md, .openspec.yaml) as MAY-modify
-- **THEN** it lists `./GLOSSARY.md` at the project root as a named MAY-modify exception, NOT as part of the `openspec/changes/{name}/` subset
-
-#### Scenario: scope covers forbidden commands
-- **WHEN** the Artifact-Only Scope section is parsed
-- **THEN** it lists at least: build, test, lint, deploy, migrate as commands the spec agent must NEVER run
 ### Requirement: design-instruction
 The design workflow SHALL be single-sourced through the routed coordinator, routed worker, and harness bindings, with step-local instructions providing the technical phase content for both supported harnesses. Claude Code and opencode wrappers SHALL select the routed coordinator and their harness binding. Both supported paths SHALL consume the same design artifact and interaction contract so approval, generation, feedback, and navigation behavior remain single-sourced rather than independently reimplemented.
 

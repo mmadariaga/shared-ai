@@ -8,10 +8,14 @@ files**, **never rename files**, and **never stage or commit**. Every mutation
 belongs exclusively to the coordinator after your analysis.
 
 Your deliverables are structured lifecycle payloads carrying technical analysis
-results, resolution proposals, and gate source data. The coordinator's
-merge-specific presentation seam renders that source and the coordinator acts
-on it. Keep the verification-round behavior, answer values, stop texts,
-payload blocks, and continuation semantics stable; the branch, scope, and
+results, complete resolution alternatives, and gate source data. The
+coordinator's merge-specific presentation seam renders that source and the
+coordinator acts on it. A semantic conflict is a conflict between intended
+behavior or architecture, not merely between text ranges: the worker explains
+the intent it can observe, the human owns the architectural choice, and the
+coordinator executes only the chosen complete outcome. Keep the
+verification-round behavior, answer values, stop texts, payload blocks, and
+continuation semantics stable; the branch, scope, contextual-decision, and
 authorization presentation rules below are the single source for their
 concise user-facing forms. Do not print a second presentation or perform a
 mutation from the worker.
@@ -112,7 +116,35 @@ Classify each conflicted file into one of three categories:
 - **Artifacts — ADR/DDR**: path matches `docs/adr/**` or `docs/ddr/**`
 - **Code**: everything else
 
-For each category present, prepare the analysis:
+For every conflict region, first reconstruct intent before proposing any
+resolution. Inspect the base, both branch versions, the surrounding file, the
+related branch changes, and any auto-merged files that clarify the contract.
+Separate what is directly observable from what is inferred:
+
+- **Facts** are visible changes, named interfaces, ownership rules, tests,
+  comments, or other repository evidence.
+- **Inferences** are the likely objective or architectural motivation derived
+  from those facts. Label them as inferences and do not present them as
+  certainty.
+
+For each side, retain a complete alternative rather than a fragment:
+
+- internal decision value `ours` — the complete marker-free outcome that keeps
+  the current branch's objective;
+- internal decision value `theirs` — the complete marker-free outcome that
+  keeps the merged branch's objective; and
+- internal decision value `synthesis` — an optional complete marker-free
+  outcome that preserves both objectives without duplicating ownership,
+  competing gates, or creating another source of truth.
+
+`ours`, `theirs`, and `synthesis` are internal decision values only. They must
+never be used as bare human-facing option labels. A synthesis is valid only
+when it is a deliberate technical resolution with one owner for each
+responsibility, one authoritative source for each fact, compatible lifecycle
+behavior, and no duplicated gate or conflicting contract. Never create a
+synthesis by concatenating conflict fragments.
+
+For each category present, prepare the category-specific analysis:
 
 **Specs semantic merge** (`openspec/**`):
 - Parse the structural elements: `### Requirement:`, `### Scenario:`,
@@ -128,24 +160,36 @@ For each category present, prepare the analysis:
   - **E3 — True semantic contradiction** — both sides modify the same
     `### Requirement:` or `### Scenario:` with incompatible semantics (e.g.
     one changes a precondition, the other changes the expected outcome in a
-    way that contradicts it); **do not auto-pick a side**. Flag it for
-    escalation in the resolution proposals.
+    way that contradicts it); **do not auto-pick a side**. Flag it for the
+    contextual human decision and explain the contradiction.
 
 **Code guided fusion**:
 - For each conflicted code file, analyze the ours/theirs/base hunks.
 - Propose a resolution for each conflict marker region:
   - If one side is a pure addition and the other is unchanged: propose
     accepting the addition.
-  - If both sides modify the same region differently: propose both variants
-    labeled `/* OURS */` and `/* THEIRS */` with a comment explaining the
-    divergence, so the human can choose.
+  - If both sides modify the same region differently: compare the complete
+    behavior of both variants and do not insert `/* OURS */` or `/* THEIRS */`
+    comments into the proposed file. Those labels are analysis metadata, not
+    a resolution.
   - If the conflict is a simple non-overlapping edit (different lines):
     propose accepting both.
 
-Retain the full analysis and resolution proposals as worker state, but do not
-return any proposal yet. When fast-track is inactive, the next lifecycle result
-must be the Step 5 scope gate. The coordinator must receive no resolution
-proposal and perform no resolution mutation before that scope decision.
+Classify each conflict region after this analysis as either:
+
+- **Obvious** — a deterministic, compatible result is supported by the
+  evidence (for example a non-overlapping edit, a pure addition beside an
+  unchanged region, or complementary spec additions); no extra human decision
+  is needed.
+- **Semantic ambiguity** — the branches have different objectives, different
+  strategies for the same objective, or a contract-level consequence that
+  cannot be resolved mechanically. This includes an E3 contradiction.
+
+Retain the full objective analysis and all complete alternatives as worker
+state, but do not return any proposal yet. When fast-track is inactive, the
+next lifecycle result must be the Step 5 scope gate. The coordinator must
+receive no resolution proposal and perform no resolution mutation before that
+scope decision.
 
 ### Step 5: Runtime scope gate
 
@@ -170,16 +214,135 @@ grouped conflicted-file list, category counts, and the meaning of each offered
 scope as essential summary context, but carry no resolution proposals in this
 result.
 
-When `fast_track_active` is true, auto-apply `full` scope, skip this gate, and
-emit the full-scope proposals as the next result. Do not emit proposals before
-that selection.
+When `fast_track_active` is true, auto-apply `full` scope and skip this gate.
+Do not emit proposals before the Step 5A contextual stage has completed.
 
 On a forwarded answer, filter the retained Step 4 analysis to the selected
-canonical value (`artifacts`, `code`, or `full`) and return a `completed` result
-containing only the proposals within that scope. Proposals outside the selected
-scope are omitted from the payload but listed in a "Deferred (out of scope)"
-section so the coordinator can report them. The verification loop, its
-ownership, and its three-round budget remain unchanged.
+canonical value (`artifacts`, `code`, or `full`) and continue to Step 5A. Do
+not return resolution proposals merely because scope was selected. Proposals
+outside the selected scope are omitted from the payload but listed in a
+"Deferred (out of scope)" section so the coordinator can report them. The
+verification loop, its ownership, and its three-round budget remain unchanged.
+
+When `fast_track_active` is true, auto-apply `full` scope, skip only this
+scope gate, and continue to Step 5A. Fast-track never selects `ours`,
+`theirs`, or `synthesis`, never invents a synthesis, and never suppresses a
+required semantic decision.
+
+### Step 5A: Contextual conflict analysis and decision gate
+
+Run this stage after the scope is selected (or after fast-track selects
+`full`) and before the coordinator writes or stages any resolution. Analyze the
+selected conflicts in deterministic file and conflict-region order. For every
+semantic ambiguity, compare the complete alternatives in plain language:
+
+- what the alternative preserves and gains;
+- what it gives up;
+- its concrete risks and affected contracts;
+- the branch objective and evidence behind it; and
+- whether a safe synthesis exists and why it does or does not preserve both
+  objectives without duplicated responsibility or a second source of truth.
+
+The worker-facing analysis must distinguish **Facts** from **Inferences** and
+must state the affected file and conflict region. Keep the alternatives
+pending until the human selects one; the coordinator must not write or stage a
+file while a contextual decision is pending.
+
+For an **obvious** conflict, do not emit a contextual `needs_input`. Return a
+`completed` result with the deterministic, complete, marker-free resolution
+proposal and state that no semantic decision was required. This is the
+lightweight path.
+
+For a **semantic ambiguity**, return `needs_input` with a question that names
+the conflict, explains why the choice matters, and says that the choice is
+between complete technical outcomes rather than text fragments. The result
+summary must carry the plain-language facts, inferences, branch objectives,
+alternative comparison, affected contracts, and any contradiction or
+synthesis warning. The ordered options are:
+
+1. `{label: "Keep the current behavior — preserve its validation and response rules", value: "ours"}`
+2. `{label: "Keep the incoming behavior — preserve its validation and response rules", value: "theirs"}`
+3. `{label: "Use the safe combined behavior — keep one owner for each rule", value: "synthesis"}`
+   only when the worker has produced and justified a complete safe synthesis;
+4. `{label: "Show more context before deciding", value: "more-context"}`.
+
+The option order is fixed. Human-facing labels must describe the behavior,
+objective, trade-offs, and affected contract in simple language; they must not
+expose `ours` or `theirs` as jargon or offer a mechanical fragment choice. If
+no safe synthesis exists, omit option 3 and state plainly that combining the
+branches would duplicate responsibility, conflict with a contract, or create
+another source of truth. Do not hide that escalation behind fast-track.
+
+For example, when the current behavior rejects malformed input before saving
+but the incoming behavior accepts a legacy input format, useful labels are
+`Keep the current behavior — reject malformed input before saving`, `Keep the
+incoming behavior — accept the legacy input format`, and, only when it is safe,
+`Use the safe combined behavior — accept valid legacy input but reject malformed
+data before saving`. Do not replace these with `ours`, `theirs`, `take both`, or
+another text-fragment label.
+
+Every selected resolution alternative must use the following exact payload
+contract. The completed result's summary MUST contain a `## Complete resolution
+payload` section with one JSON object. The object MUST contain:
+
+```json
+{
+  "selected_contextual_decisions": [
+    {"conflict_id": "code:src/input.js#1", "decision": "ours"}
+  ],
+  "files": [
+    {
+      "path": "src/input.js",
+      "category": "code",
+      "content": "the complete final UTF-8 file contents as a JSON string",
+      "decisions": [
+        {"conflict_id": "code:src/input.js#1", "decision": "ours"}
+      ]
+    }
+  ]
+}
+```
+
+The actual payload MUST use JSON escaping for the `content` string and MUST
+carry the complete final contents of each affected file, not a diff, hunk,
+fragment, region replacement, marker annotation, or instruction to combine
+other values. `files` contains exactly one record for every conflicted file in
+the selected scope, including obvious conflicts. Each `category` is exactly one
+of `specs`, `adr-ddr`, or `code`; `decisions` is empty for a file whose
+conflicts were all deterministic. `selected_contextual_decisions`
+contains one record for every semantic conflict that was answered and never
+contains `more-context`. Files outside the selected scope are omitted and
+listed only in the existing deferred section. The coordinator consumes only
+these exact file records and writes each `content` value as supplied; it never
+reconstructs a file from the summary, the alternatives, or a conflict region.
+The `synthesis` alternative must therefore be a specific complete file content,
+never a promise to concatenate both sides.
+
+When the forwarded answer is `more-context`, continue the **same worker** and
+return another `needs_input` for the same pending conflict. Expand the
+explanation using read-only evidence from related changes and auto-merged
+files, preserve the existing alternatives and their internal values, and do
+not write, stage, or return a selected resolution. More-context may be
+requested repeatedly until the user selects a complete alternative.
+
+When the forwarded answer is `ours`, `theirs`, or `synthesis`, accept it only
+if that internal value is an option currently offered for the pending conflict.
+If more semantic ambiguities remain, ask the next contextual question before
+returning any resolution proposal. Once every required decision is explicit,
+return `completed` with only the selected, complete, marker-free alternatives
+inside the scope. The payload must include a `## Selected contextual decisions`
+section identifying each conflict and its selected internal value, followed by
+the `## Complete resolution payload` JSON section and the existing `## Conflict
+Analysis` / `### Resolution proposals` structure. The JSON `files` records are
+the only resolution content the coordinator may materialize. The coordinator
+must never reconstruct a selected outcome from the prose or from the unselected
+alternatives.
+
+If the analysis finds a contradiction for which no safe combined outcome
+exists, report it as a semantic escalation in the contextual summary and offer
+only the complete branch outcomes plus `more-context`. If no complete
+marker-free outcome can be offered at all, return the applicable closed
+failure outcome and leave the conflict unresolved; never invent a resolution.
 
 The filtered proposal result uses this structure:
 
@@ -192,15 +355,23 @@ The filtered proposal result uses this structure:
 ### Resolution proposals
 
 #### <path> (<category>)
-<proposal per conflict region>
+<decision and validation summary only; the complete final file content is the
+matching `files` record in `## Complete resolution payload`>
 
 ### Escalations (E3)
 <any true semantic contradictions>
 ```
 
+For a semantic-decision `needs_input`, the contextual source is carried in the
+same `summary`, `question`, and ordered `options` fields required by the
+worker-core closed shape. No new top-level lifecycle field is introduced. A
+completed resolution result additionally carries the exact JSON object in its
+summary; no region-level materialization contract is supported.
+
 ### Step 6: Verification loop
 
-After the coordinator writes the resolution files and stages them, detect the
+After the coordinator validates and writes only the selected complete
+resolution files, removes every conflict marker, and stages them, detect the
 project's test suite from project metadata:
 
 - `package.json` → `scripts.test` (npm/yarn/pnpm)
@@ -225,6 +396,10 @@ Run the detected suite. Capture exit code and output.
   whose summary contains the failure analysis and proposed fixes within the
   selected scope. The coordinator resumes you with the findings as a
   continuation; apply exactly the listed corrections and re-run.
+- If a proposed verification correction changes the selected objective or
+  introduces a new contract-level alternative, do not choose it silently.
+  Re-enter Step 5A with a contextual `needs_input` before any such correction
+  is written or staged.
 - **E5 — Cap exhaustion (round 3 still failing):** return `completed` whose
   summary states that verification failed through all 3 rounds, lists the
   remaining failures, and notes that the resolved+staged state remains without

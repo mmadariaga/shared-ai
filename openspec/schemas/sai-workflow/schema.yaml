@@ -21,7 +21,7 @@ artifacts:
         Form: `**Complexity**: <token>` where <token> is exactly one of `low`, `medium`, `high`.
         An optional trailing parenthetical may follow for audit, e.g. `medium (3 files, no breaking change)`;
         parsers ignore everything from the first `(` onward.
-        Derive the token using `## Complexity Derivation Rubric` in sai/commands/spec/instructions.md.
+        Derive the token using `## Complexity Derivation Rubric` in sai/commands/spec/steps/validation.md.
         Because the requirements count is one of the rubric's signals, derive or revise the token AFTER
         specs/**/*.md are written, before reporting completion. Never invent a tier outside the three.
         The line is descriptive metadata: it names no model, vendor, price tier, or harness.

@@ -196,7 +196,7 @@ test('supervised autonomy keeps state in conversation and tracks escalations', (
   assert.match(source, /scoped to this selector-dispatched supervision only/i);
 });
 
-test('machine feedback continues each actionable finding to the same phase worker', () => {
+test("machine feedback continues each round's complete findings list to the same phase worker", () => {
   const source = fs.readFileSync(path.join(repoRoot, 'sai/commands/explore/instructions.md'), 'utf8');
   const policy = fs.readFileSync(path.join(repoRoot, 'sai/policies/artifact-feedback-gate.md'), 'utf8');
 
@@ -205,7 +205,7 @@ test('machine feedback continues each actionable finding to the same phase worke
   assert.match(source, /needs_input/);
   assert.match(source, /same (?:spec[- ]proposal|spec|design|phase)[- ]?worker/i);
 
-  assert.match(policy, /For each finding.*one same-worker continuation/i);
+  assert.match(policy, /exactly one same-worker continuation[\s\S]{0,200}complete ordered findings/i);
   assert.match(policy, /per-item legitimacy rules/i);
   assert.match(policy, /artifact-only scope/i);
   assert.match(policy, /decision-summary recomputation/i);
@@ -343,14 +343,21 @@ test('direct spec and design wrappers retain their existing terminal contracts',
   ]) assert.equal(fs.existsSync(path.join(repoRoot, retiredPath)), false, `${retiredPath} should be absent`);
 });
 
-test('Step 1 continues every completed-round finding to the same phase worker', () => {
+test("Step 1 continues each completed round's findings in one batched same-worker continuation", () => {
   const feedbackGate = fs.readFileSync(
     path.join(repoRoot, 'sai/policies/artifact-feedback-gate.md'),
     'utf8'
   );
 
   assert.match(feedbackGate, /For every completed review pass in the bounded convergence loop|For every completed review round/i);
-  assert.match(feedbackGate, /For each finding in that (?:pass|round), in array order, perform one same-worker continuation/i);
+  assert.match(
+    feedbackGate,
+    /For each completed review round, perform exactly one same-worker continuation that carries that round's complete ordered findings list/i
+  );
+  assert.match(feedbackGate, /exactly one verification at the close of the turn \(`openspec validate`\)/i);
+  assert.match(feedbackGate, /one block reporting every individual disposition/i);
+  assert.match(feedbackGate, /decision-summary recomputation exactly once/i);
+  assert.doesNotMatch(feedbackGate, /For each finding[\s\S]{0,120}perform one same-worker continuation/i);
   assert.match(feedbackGate, /Complete all findings for the current (?:pass|round) before supervision evaluates whether another (?:fresh review pass|review round) is required/i);
 });
 
@@ -1275,6 +1282,23 @@ test('Step 4: successful Auto is silent after selection and never dispatches imp
   assert.ok(successIndex >= 0, 'the successful Auto outcome should be specified');
   assert.match(source.slice(successIndex, successIndex + 320), /`sai-3 was not run\.`/i,
     'successful Auto should end without implementation dispatch');
+});
+
+test('Step 4: Auto-fast completion re-presents a per-slice selector and Manual pauses pending slices', () => {
+  const source = exploreContract();
+  const transitionStart = source.indexOf('**Successful slice completion transition');
+  const transitionEnd = source.indexOf('**Failures**', transitionStart);
+  assert.ok(transitionStart >= 0 && transitionEnd > transitionStart,
+    'the Auto-fast completion transition should be present');
+
+  const transition = source.slice(transitionStart, transitionEnd);
+  assert.match(transition, /recompute `pending_slices` only from `last_crystallization_set` minus `completed_changes`/i);
+  assert.match(transition, /re-present the existing full three-option `Auto` \/ `Auto \(fast implementation\)` \/ `Manual` selector exactly once/i);
+  assert.match(transition, /per-slice authorization gate, not a one-time authorization/i);
+  assert.match(transition, /even when exactly one pending slice remains/i);
+  assert.match(transition, /Never re-select or re-run a name already in `completed_changes`/i);
+  assert.match(transition, /Selecting `Manual` on this continuation selector starts no additional slice/i);
+  assert.match(transition, /require a later explicit request before any pending slice runs/i);
 });
 
 test('Step 4: failed or cancelled Auto maps retry guidance from phase state without changing retry state', () => {

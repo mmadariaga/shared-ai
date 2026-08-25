@@ -66,7 +66,7 @@ const UTILITY_CARD_CONTENTS = {
   archive: ['archive-commit-gate.instructions.md', 'command-bootstrap.md', 'coordinator.md', 'instructions.md', 'worker.md'],
   backfill: ['command-bootstrap.md', 'coordinator.md', 'instructions.md', 'worker.md'],
   commit: ['command-bootstrap.md', 'coordinator.md', 'instructions.md', 'worker.md'],
-  explore: ['autofast-hands-worker.md', 'autofast-implement-worker.md', 'body.md', 'command-bootstrap.md', 'instructions.md'],
+  explore: ['autofast-implement-worker.md', 'body.md', 'command-bootstrap.md', 'instructions.md'],
   pr: ['body.md', 'command-bootstrap.md', 'instructions.md', 'pr-body.template.md'],
   'retire-docs': ['body.md', 'command-bootstrap.md'],
   status: ['body.md', 'command-bootstrap.md'],
@@ -160,7 +160,6 @@ test('managed worker registry defines every Claude compatibility export', () => 
     'sai-4-red-worker',
     'sai-4-green-worker',
     'sai-autofast-implement-worker',
-    'sai-autofast-hands-worker',
   ];
   assert.deepEqual(Object.keys(MANAGED_WORKERS), expectedNames,
     'registry keys should contain each managed worker exactly once');
@@ -207,9 +206,6 @@ test('managed worker registry defines every Claude compatibility export', () => 
     },
     'sai-autofast-implement-worker': {
       agent: 'sai-autofast-implement-worker.md',
-    },
-    'sai-autofast-hands-worker': {
-      agent: 'sai-autofast-hands-worker.md',
     },
   };
 
@@ -712,7 +708,7 @@ test('restore-coordinator-instruction-loading Step 3: isolated Claude installati
   }
 });
 
-test('Claude installer consumes exactly the fifteen matrix worker bindings and agents', () => {
+test('Claude installer consumes exactly the fourteen matrix worker bindings and agents', () => {
   const repoRoot = path.join(__dirname, '..');
   const manifest = loadInstallManifest(repoRoot);
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-claude-matrix-inventory-'));
@@ -739,8 +735,8 @@ test('Claude installer consumes exactly the fifteen matrix worker bindings and a
       .filter(projection => path.relative(destinationRoot.sai, projection.destinationPath)
         .split(path.sep).join('/').startsWith('orchestration/workers/bindings/'))
       .map(projection => path.basename(projection.destinationPath));
-    assert.equal(allBindingNames.length, 15,
-      'Claude should keep only the fifteen routed worker bindings in the matrix destination');
+    assert.equal(allBindingNames.length, 14,
+      'Claude should keep only the fourteen routed worker bindings in the matrix destination');
     const ideaList = active.find(projection =>
       path.relative(repoRoot, projection.sourcePath).split(path.sep).join('/') ===
       'sai/adapters/claude/idea-list-render.md');
@@ -752,7 +748,7 @@ test('Claude installer consumes exactly the fifteen matrix worker bindings and a
     const agentNames = active
       .filter(projection => projection.destinationPath.startsWith(destinationRoot.agents))
       .map(projection => path.basename(projection.destinationPath, '.md'));
-    assert.equal(agentNames.length, 18, 'Claude should project exactly eighteen managed agents');
+    assert.equal(agentNames.length, 17, 'Claude should project exactly seventeen managed agents');
     for (const name of Object.keys(CLAUDE_GENERIC_AGENTS)) {
       assert.ok(agentNames.includes(name), `Claude should project the ${name} managed agent`);
     }
@@ -760,8 +756,8 @@ test('Claude installer consumes exactly the fifteen matrix worker bindings and a
       'Claude should still project every routed worker agent');
     assert.ok(['sai-4-red-worker', 'sai-4-green-worker'].every(name => agentNames.includes(name)),
       'Claude should project the RED and GREEN apply worker agents');
-    assert.ok(['sai-autofast-implement-worker', 'sai-autofast-hands-worker'].every(name => agentNames.includes(name)),
-      'Claude should project the auto-fast implement and hands worker agents');
+    assert.ok(['sai-autofast-implement-worker'].every(name => agentNames.includes(name)),
+      'Claude should project the auto-fast implement worker agent');
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }

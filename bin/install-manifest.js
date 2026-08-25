@@ -164,7 +164,6 @@ const APPLY_CONTRACT_BY_WORKER = Object.freeze({
 
 const AUTOFAST_CONTRACT_BY_WORKER = Object.freeze({
   'sai-autofast-implement-worker': 'sai/commands/explore/autofast-implement-worker.md',
-  'sai-autofast-hands-worker': 'sai/commands/explore/autofast-hands-worker.md',
 });
 
 function assertWorkerIdentity(entry, harness) {

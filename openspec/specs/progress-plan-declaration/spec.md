@@ -8,7 +8,7 @@ Define the phase-adapter progress plan declaration, the canonical per-phase step
 
 ### Requirement: phase-adapter-declares-progress-plan
 
-A routed phase adapter MAY declare a static, ordered worker progress plan. A phase adapter without a worker `progress_plan` SHALL run without worker progress events and without a worker-derived task list, except that `/sai-merge` MAY render a separate coordinator-owned adaptive TODO whose route is unknown until source-branch selection and merge outcome. The adaptive TODO SHALL not be transported in the worker envelope and SHALL not alter worker continuation semantics.
+A routed phase adapter MAY declare a static, ordered worker progress plan. A phase adapter without a worker `progress_plan` SHALL run without worker progress events and without a worker-derived task list, except that `/sai-merge` MAY render a separate coordinator-owned adaptive TODO whose route is unknown until source-branch selection and merge outcome. The adaptive TODO MAY include `contextual-analysis` between conflict scope selection and resolution, SHALL not be transported in the worker envelope, and SHALL not alter worker continuation semantics.
 
 #### Scenario: adapter declares a plan
 
@@ -25,6 +25,11 @@ A routed phase adapter MAY declare a static, ordered worker progress plan. A pha
 
 - **WHEN** `/sai-merge` runs with no declared worker progress plan
 - **THEN** the coordinator may render the canonical adaptive TODO after branch selection without synthesizing a worker progress plan
+
+#### Scenario: Contextual route does not become worker progress
+
+- **WHEN** a conflicted `/sai-merge` invocation reaches contextual analysis
+- **THEN** the coordinator renders the adaptive TODO independently while the worker continues using the existing lifecycle payload and continuation contract
 
 ### Requirement: plan-ids-canonical-in-phase-contracts
 

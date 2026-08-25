@@ -12,7 +12,7 @@ The fast lane's premise is an unattended run ending in a committed change. Requi
 
 ## Decision
 
-1. Selecting **Auto (fast implementation)** on the crystallization-close selector is the single explicit user act that both authorizes the two workers' delegated writes and pre-authorizes exactly one local commit inside the hands worker's closed order.
+1. Selecting **Auto (fast implementation)** on the crystallization-close selector is the single explicit user act that authorizes the implementer, backfill, and archive workers' delegated writes and pre-authorizes exactly one local commit inside the archive worker's closed order.
 2. The pre-authorization covers staging of owned paths and one HEREDOC-form local commit — never push, amend, or force.
 3. Staging is path-scoped to owned paths only; unrelated dirty worktree files can never enter the authorized commit even though no per-commit confirmation intervenes.
 
@@ -25,7 +25,7 @@ The fast lane's premise is an unattended run ending in a committed change. Requi
 ## Consequences
 
 - The commit subject and body are authored from staged state under commit-rules faithfulness, so the message cannot describe uncommitted work.
-- A hands-worker failure stops before mutation with nothing written and reports manual `/sai-archive` / `/sai-commit` guidance.
+- A backfill or archive execution failure stops at the exact realized boundary, never retries the execute order, and reports manual `/sai-backfill`, `/sai-archive`, or `/sai-commit` guidance as applicable.
 - The consent semantics mirror how selecting Auto consents delegated writes today: consent to selection and dispatch, never to answer later worker questions.
 
 ## Related

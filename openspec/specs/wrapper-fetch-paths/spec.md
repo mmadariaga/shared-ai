@@ -22,13 +22,9 @@ All 15 thin `sai-*` wrapper files at `commands/claude/` and `commands/opencode/`
 - **THEN** zero matches SHALL be found
 
 ### Requirement: command-body-instruction-fetch-paths
+
 All maintained SAI command cards that load command-owned instructions SHALL use `Fetch @sai/commands/<name>/instructions.md`, and cards that load command-owned templates SHALL use the matching neighboring `Fetch @sai/commands/<name>/<artifact>.template.md` path. Shared and canonical exceptions SHALL use `Fetch @sai/change-overview.md`, `Fetch @sai/adr-index.template.md`, or `Fetch @sai/ddr-index.template.md` as applicable. The obsolete `@sai/instructions/` namespace SHALL NOT appear in active command cards, invocation cores, or maintained instruction/template fetch directives.
 When a command has additional instruction files, each additional file SHALL use its own distinct neighboring `@sai/commands/<name>/<secondary>.instructions.md` path; the archive secondary instruction SHALL use `@sai/commands/archive/archive-commit-gate.instructions.md` and SHALL be fetched after the primary archive instruction.
-
-#### Scenario: routed spec invocation uses the folded instruction path
-
-- **WHEN** `sai/commands/spec/invocation.md` is read
-- **THEN** its phase instruction fetch is exactly `Fetch @sai/commands/spec/instructions.md`
 
 #### Scenario: archive invocation preserves ordered multi-instruction fetches
 
@@ -59,8 +55,8 @@ Claude Code and opencode SHALL resolve the folded `@sai/commands/` and `@sai/` p
 
 #### Scenario: Claude resolves a folded command instruction
 
-- **WHEN** Claude Code resolves `@sai/commands/spec/instructions.md`
-- **THEN** it reads the installed Claude `sai/commands/spec/instructions.md` projection
+- **WHEN** Claude Code resolves `@sai/commands/spec/steps/common.md`
+- **THEN** it reads the installed Claude `sai/commands/spec/steps/common.md` projection
 
 #### Scenario: opencode resolves a folded root template
 

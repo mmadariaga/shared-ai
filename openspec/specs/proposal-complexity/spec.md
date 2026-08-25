@@ -96,7 +96,7 @@ Any parser of the `**Complexity**` line SHALL ignore everything from the first `
 
 ### Requirement: The derivation rubric is static, planning-time, and reproducible
 
-The rubric that derives `<complexity>` SHALL be encoded in `sai/commands/spec/instructions.md` under a section headed `## Complexity Derivation Rubric`, and SHALL depend only on signals available during the spec phase:
+The rubric that derives `<complexity>` SHALL be encoded in `sai/commands/spec/steps/validation.md` under a section headed `## Complexity Derivation Rubric`, and SHALL depend only on signals available during the spec phase:
 
 - the number of capabilities in the proposal's Capabilities section (new plus modified)
 - the number of requirements across `specs/**/*.md` for this change

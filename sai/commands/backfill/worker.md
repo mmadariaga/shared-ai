@@ -14,6 +14,14 @@ metadata remains outside the worker request. Do not scan parent conversation
 history. Throughout `@sai/commands/backfill/instructions.md`, `$ARGUMENTS`
 denotes the received `arguments_value`.
 
+The Auto-fast composition may prefix the initial envelope with the marker
+`--autofast-prepare` on its own line. Strip that marker before applying the
+ordinary envelope-token parse and retain `autofast_mode: prepare` as
+invocation-scoped worker state. The marker is composition-only; an ordinary
+`/sai-backfill` invocation without it follows the normal route byte-for-byte.
+An `--autofast-execute` marker is valid only on the explicit same-worker
+continuation described below and is never accepted as an initial dispatch.
+
 There is no coordinator-side change resolution in this phase: the change name
 is derived and confirmed inside the technical flow itself (instruction
 Phase 5). Payloads are therefore pre-resolution shapes — they omit
@@ -42,6 +50,12 @@ results; any datum that cannot be resolved restores exactly that ask's
 channel in the Asks section below. `fast_track_active` never suppresses an
 input question: with no diff-source token present, the diff-source ask fires
 normally.
+
+An Auto-fast prepare envelope is still a read-only stretch. It may resolve the
+same unattended questions and compose the same draft payload as the ordinary
+route, but it never writes those drafts. The prepare result is followed by a
+separate coordinator validation and authorization decision; the worker never
+interprets a completed prepare result as permission to mutate.
 
 ## Read-only technical procedure
 
@@ -140,10 +154,47 @@ change name — the coordinator validates it against the sai-workflow schema
 and performs the final writes. Never print drafts as your deliverable and
 never write them to any file.
 
-## Absolute mutation prohibition
+## Auto-fast execution continuation
 
-NEVER write any file — no artifact, no draft on disk, no `.openspec.yaml`
-key, nothing outside reporting duties. NEVER run a state-changing git
-command: the read-only diff surface above stays unchanged. Schema validation
-and every final write into `openspec/changes/{name}/` belong exclusively to
-the coordinator.
+The Auto-fast coordinator may continue the same prepared worker only after it
+has validated the complete draft set against the sai-workflow schema and has
+authorized execution. The continuation is one opaque payload whose first line
+is exactly `--autofast-execute`; the remaining content is a closed execution
+order containing the confirmed change name and the exact destination path and
+byte-for-byte content for every prepared draft. The order is not a new plan:
+it must be an exact one-to-one representation of the worker's prepared draft
+set and may name only:
+
+- `openspec/changes/{name}/.openspec.yaml`;
+- `openspec/changes/{name}/proposal.md`; and
+- `openspec/changes/{name}/specs/{capability}/spec.md` paths already present in
+  the prepared draft set.
+
+The worker validates the marker, change name, path allow-list, duplicate-free
+path set, content identity, and pending execution state before writing. It
+creates only parent directories required by those named paths, writes the
+supplied contents byte-for-byte, and reports every realized path in the
+invocation-scoped `changed_files` union. It never creates `design.md`,
+`tasks.md`, `implementation.md`, an unlisted capability, or any other file.
+
+Execution is one-shot and idempotency-protected: after a successful execution,
+any later execute continuation or replacement reconstruction is rejected
+without another write. If a write or parent-directory operation fails after a
+partial mutation, return a closed `failed` result with the exact completed and
+uncompleted state, set `unrecoverable: true` only when the evidence establishes
+that continuation is unsafe, and never silently retry, roll back, or continue
+to a later mutation. The coordinator must not resend an execute order after
+that failure.
+
+This execution route does not change the ordinary route: without
+`autofast_mode: prepare` and the explicit `--autofast-execute` continuation,
+schema validation and every final write remain coordinator-owned.
+
+## Absolute mutation prohibition outside Auto-fast execution
+
+For the ordinary route and the prepare stretch, NEVER write any file — no
+artifact, no draft on disk, no `.openspec.yaml` key, nothing outside reporting
+duties. NEVER run a state-changing git command: the read-only diff surface
+above stays unchanged. Schema validation and every final write into
+`openspec/changes/{name}/` belong exclusively to the coordinator unless the
+worker is in the validated Auto-fast execution continuation above.

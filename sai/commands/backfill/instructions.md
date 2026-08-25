@@ -1,8 +1,11 @@
 > **Routed ownership.** This instruction is the technical procedure of the
 > `sai-backfill-worker` (`sai/commands/backfill/worker.md` fetches and follows
-> it) and every step below is read-only inspection, interviewing,
-> reconciliation, delegated scanning, and draft composition. Transport
-> mapping: where this file says **print**, **display**, or **surface**, the
+> it). The ordinary route is read-only inspection, interviewing,
+> reconciliation, delegated scanning, and draft composition. The explicit
+> Auto-fast route additionally has a later worker-owned execution continuation
+> for the already validated draft set; it never changes the analysis or draft
+> composition below. Transport mapping: where this file says **print**,
+> **display**, or **surface**, the
 > worker carries the exact text in its returned payload `summary` and the
 > coordinator presents it verbatim; where it says **ask** or **offer**, the
 > worker returns the question and ordered options (empty options for
@@ -10,10 +13,14 @@
 > it per the instruction's own Delivery rule; where it conditions on an
 > answer, the coordinator forwards the selected value or free text through the
 > binding continuation; and where Phase 6 says **create** or **write**, the
-> worker composes the draft content and returns it as payload text — schema
-> validation against `openspec/schemas/sai-workflow/schema.yaml` and every
-> final write into `openspec/changes/{name}/` execute coordinator-side per
-> `sai/commands/backfill/coordinator.md`, never in the worker session.
+> worker composes the draft content and returns it as payload text. On the
+> ordinary route, schema validation against
+> `openspec/schemas/sai-workflow/schema.yaml` and every final write into
+> `openspec/changes/{name}/` execute coordinator-side per
+> `sai/commands/backfill/coordinator.md`. On the Auto-fast route, the
+> coordinator validates first and then sends the worker's explicit
+> `--autofast-execute` continuation; only that continuation may perform the
+> exact validated writes described in `backfill/worker.md`.
 
 ## Communication Mode
 
@@ -284,4 +291,15 @@ Each requirement MUST use a concrete `### Requirement:` heading with SHALL or MU
 
 ## Completion Boundary
 
-After all draft artifact content has been returned for write, stop. Do not create any planning artifact, run another SAI command, or invoke an archive command from this flow. The coordinator validates the drafts against `openspec/schemas/sai-workflow/schema.yaml` and executes the final writes into `openspec/changes/{name}/`; your run closes with its terminal lifecycle status once the drafts are handed over.
+On the ordinary route, after all draft artifact content has been returned for
+write, stop. Do not create any planning artifact, run another SAI command, or
+invoke an archive command from this flow. The coordinator validates the drafts
+against `openspec/schemas/sai-workflow/schema.yaml` and executes the final
+writes into `openspec/changes/{name}/`; the worker run closes once the drafts
+are handed over.
+
+On the Auto-fast route, the prepare stretch still closes after the draft
+handoff, but the same worker may be resumed exactly once with
+`--autofast-execute` after coordinator validation and authorization. That
+continuation writes only the exact validated draft set and then closes; it does
+not compose new content, invoke another SAI command, or invoke archive.
