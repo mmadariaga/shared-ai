@@ -205,6 +205,24 @@ The supersede-move operates only on records within the same family (per the abst
 - **THEN** no entry is moved, no correction-table row is added, and the target family's index is not touched
 - **THEN** the classification error is surfaced in chat so the user can reclassify the source or target record into the correct family
 
+### Requirement: Retirement analysis consumes both family index bindings
+
+The utility SHALL consume `docs/adr/0000-INDEX.md` and `docs/ddr/0000-INDEX.md` using their established family-specific headings, link forms, and relationship structures.
+
+#### Scenario: ADR and DDR indexes are processed in order
+
+- **WHEN** both family indexes exist
+- **THEN** the utility SHALL process ADR entries first and DDR entries second without recursively discovering additional records
+
+### Requirement: Retirement analysis does not repair index structures
+
+The utility SHALL report malformed or dangling active links as needs-review findings and SHALL NOT rewrite indexes, normalize specifications, or repair unrelated references.
+
+#### Scenario: Malformed index evidence remains unchanged
+
+- **WHEN** an active index link is malformed or points to a missing record
+- **THEN** the utility SHALL report the finding and leave the index and candidate unmoved
+
 ### Requirement: Index maintenance shall be idempotent on sai-3 rerun, per family
 
 When `sai-3-implement` is re-run for the same change and a record created in a prior run already has an entry in its family's index, the index maintenance hook SHALL detect the existing entry and SHALL NOT duplicate it, independently for each family. The cold-build branch SHALL remain a no-op once that family's index has been cold-built by an earlier run. The warm-splice branch SHALL treat a session record whose entry already exists as a no-op for that record (no duplicate entry, no duplicate correction-table row, no duplicate supersede-move).

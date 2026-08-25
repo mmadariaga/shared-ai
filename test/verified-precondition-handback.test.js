@@ -60,7 +60,7 @@ const designCards = ['coordinator.md', 'worker.md'].map((name) => `sai/commands/
 const routedMinimalCards = ['commit', 'archive', 'backfill'].flatMap((name) =>
   ['coordinator.md', 'worker.md'].map((card) => `sai/commands/${name}/${card}`)
 );
-const utilityCards = ['explore', 'pr', 'status', 'worktree']
+const utilityCards = ['explore', 'pr', 'retire-docs', 'status', 'worktree']
   .map((name) => `sai/commands/${name}/body.md`);
 const commandCards = [...routedCards, ...designCards, ...routedMinimalCards, ...utilityCards];
 
@@ -91,7 +91,7 @@ function markdownFilesUnder(relativeDirectory) {
 }
 
 test('all command cards load the policy exactly once at their structural entry point', () => {
-  assert.equal(commandCards.length, 28);
+  assert.equal(commandCards.length, 29);
 
   for (const card of commandCards) {
     assert.ok(fs.existsSync(path.join(repoRoot, card)), `${card} must exist`);

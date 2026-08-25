@@ -1517,7 +1517,7 @@ test('canonical manifest projects exactly one harness boot adapter and the utili
     config: path.join(os.tmpdir(), 'sai-adapter-config'),
     root: path.join(os.tmpdir(), 'sai-adapter-config'),
   };
-  const utilities = ['explore', 'pr', 'status', 'worktree'];
+  const utilities = ['explore', 'pr', 'retire-docs', 'status', 'worktree'];
   const applyCards = ['coordinator.md', 'red-worker.md', 'green-worker.md', 'runner.md', 'invocation.md'];
   const commitCards = ['coordinator.md', 'worker.md'];
   const archiveCards = ['coordinator.md', 'worker.md'];

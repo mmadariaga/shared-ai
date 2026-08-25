@@ -193,6 +193,15 @@ When a persistence-failed pass also contains skipped targets, their names SHALL 
 - **WHEN** the user selects `Exit` from the post-setup menu before completing a customization pass
 - **THEN** `runPostSetupMenu` SHALL return `skipped` with reason `cancelled` and setup SHALL terminate with exit code 0
 
+### Requirement: Retire-docs belongs to the utility target family
+
+Model customization SHALL derive `sai-retire-docs` as a utility target from the projected command inventory.
+
+#### Scenario: Utility target is discoverable
+
+- **WHEN** the customization menu builds its utility checklist
+- **THEN** it SHALL expose `utility:sai-retire-docs` as a selectable target
+
 #### Scenario: Cancellation preserves earlier passes
 - **WHEN** an earlier pass has persisted overrides and the user presses `q` or Ctrl-C on a later menu, selector, checklist, or settings screen
 - **THEN** the flow SHALL terminate normally with exit code 0 and SHALL preserve the earlier persisted overrides without rollback
@@ -342,4 +351,3 @@ The `agent-customization-menu` capability SHALL be retired: its main spec SHALL 
 #### Scenario: Active home is the renamed capability
 - **WHEN** the change is implemented
 - **THEN** the restated requirements are active under `openspec/specs/model-customization-menu/spec.md` and under no other capability
-

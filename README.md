@@ -154,6 +154,7 @@ The routed `/sai-2-design` paths use a low-effort Opus 4.8 coordinator and high-
 | `/sai-pr` | Drafts a complete PR description using everything produced during the change (proposal, design, review findings, etc.). Opens the PR on GitHub after you approve. |
 | `/sai-archive` | Routed command: the coordinator runs in the main session and dispatches the `sai-archive-worker` managed worker for the read-only pre-flight, then executes every mutation itself - delta-spec sync, the archive move into `openspec/changes/archive/YYYY-MM-DD-{name}/`, and the post-archive commit gate. Moves a completed change to the archive, keeping your active changes folder clean. Supports `--fast-track` to auto-proceed the archive soft gates. |
 | `/sai-status` | Read-only progress panel for one OpenSpec change — shows which of the 10 sai-workflow artifacts exist, the specs approval state, implementation progress, the archive location if archived, and a `Next:` hint suggesting the appropriate `/sai-N` command. Never writes anything. |
+| `/sai-retire-docs` | Read-only, index-driven analysis of active ADRs, DDRs, and related specifications. Correlates bounded evidence, classifies candidates, and asks for explicit per-candidate confirmation before any archival move. |
 | /sai-backfill | Routed command: the coordinator runs in the main session and dispatches the sai-backfill-worker managed worker for the read-only inspection, interview, and conflict scan, then validates the drafts against the sai-workflow schema and alone writes the artifacts into openspec/changes/{name}/. Made a quick fix directly in code without going through the pipeline? This reconstructs the missing documentation after the fact - interviewing you about intent and writing only what can be reliably derived from the diff. |
 
 ## Triage in `/sai-5-review`
@@ -386,6 +387,7 @@ We set these defaults to models that have worked best for us, you may find bette
 | pr | `opencode-go/deepseek-v4-flash` | | `haiku` |
 | archive | `opencode-go/deepseek-v4-flash` | | `haiku` |
 | status | `opencode-go/deepseek-v4-flash` | | `haiku` |
+| retire-docs | `opencode-go/deepseek-v4-flash` | | `haiku` |
 | worktree | `opencode-go/deepseek-v4-flash` | | `haiku` |
 
 ### Choosing a model

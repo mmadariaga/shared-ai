@@ -56,6 +56,7 @@ const UTILITY_COMMANDS = {
   'sai-archive': 'archive',
   'sai-explore': 'explore',
   'sai-pr': 'pr',
+  'sai-retire-docs': 'retire-docs',
   'sai-status': 'status',
   'sai-worktree': 'worktree',
 };
@@ -67,6 +68,7 @@ const UTILITY_CARD_CONTENTS = {
   commit: ['command-bootstrap.md', 'coordinator.md', 'instructions.md', 'worker.md'],
   explore: ['autofast-hands-worker.md', 'autofast-implement-worker.md', 'body.md', 'command-bootstrap.md', 'instructions.md'],
   pr: ['body.md', 'command-bootstrap.md', 'instructions.md', 'pr-body.template.md'],
+  'retire-docs': ['body.md', 'command-bootstrap.md'],
   status: ['body.md', 'command-bootstrap.md'],
   worktree: ['body.md', 'command-bootstrap.md', 'instructions.md'],
 };
