@@ -74,6 +74,32 @@ test('merge worker explains contextual alternatives and gates only semantic ambi
   assert.match(worker, /Return no diff, hunk, region replacement/);
 });
 
+test('merge branch and scope contracts filter candidates, label timestamps, and order full scope first', () => {
+  const instructions = read('sai/commands/merge/instructions.md');
+  const worker = read('sai/commands/merge/worker.md');
+  const presentation = read('sai/commands/merge/presentation.md');
+  const scopeInstructions = instructions.slice(instructions.indexOf('### Step 5: Runtime scope gate'));
+
+  assert.match(instructions, /git branch --no-merged HEAD --format='%\(refname:short\) %\(committerdate:iso8601\)'/);
+  assert.doesNotMatch(instructions, /git branch --list --format/);
+  assert.match(instructions, /commits are not already reachable from the current\s+branch/);
+  for (const contract of [instructions, worker, presentation]) {
+    assert.match(contract, /YYYY-MM-DD HH:mm/);
+  }
+  assert.match(worker, /git branch --no-merged HEAD/);
+  assert.match(presentation, /filtered them with `git branch --no-merged HEAD`/);
+
+  for (const contract of [scopeInstructions, worker, presentation]) {
+    assertInOrder(contract, [
+      'Full scope (Recommended)',
+      'Artifacts only (specs + ADR/DDR)',
+      'Code only',
+    ]);
+  }
+  assert.match(instructions, /only\s+with applicable category-specific scopes/);
+  assert.match(presentation, /never show a category-specific\s+option for an absent category/);
+});
+
 test('merge coordinator keeps contextual decisions before all mutation and preserves fast-track scope limits', () => {
   const coordinator = read('sai/commands/merge/coordinator.md');
   const presentation = read('sai/commands/merge/presentation.md');

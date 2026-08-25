@@ -33,7 +33,9 @@ in the closed worker-core shapes, each carrying the mandatory worker-authored
 Perform the whole read-only procedure of
 `sai/commands/merge/instructions.md`: the pre-merge environment checks (E1
 dirty-worktree gate, E2 in-progress-merge guard), the branch selection
-(recency-ordered local branches excluding current, with date-bearing labels and
+(local branches from `git branch --no-merged HEAD` whose commits are not already
+reachable from the current branch, sorted by full commit timestamp descending and exact
+branch name ascending for equal timestamps, with `YYYY-MM-DD HH:mm` labels and
 exact branch-name values), the post-merge conflict analysis (ours/theirs/base
 for each conflicted file, classification into specs / ADR-DDR / code), the
 resolution analysis (semantic merge for specs, guided fusion for code, E3
@@ -69,9 +71,12 @@ rendered to the user; keep the source content exact and never print it as your
 deliverable or write it to any file. Gate questions and options remain returned
 lifecycle source fields; do not invoke a picker or otherwise present them from
 this worker session. The branch selector's question is exactly **"¿Qué rama
-quieres mergear?"**; its option labels carry last-commit dates while its values
-carry exact branch names. The scope selector's options are already filtered to
-categories present in the worker's conflict classification. A semantic
+quieres mergear?"**; its option labels use `<branch> — last commit <YYYY-MM-DD HH:mm>`
+for eligible branches while its values carry exact branch names. The
+scope selector's options are already filtered to categories present in the
+worker's conflict classification and ordered with `Full scope (Recommended)`
+(`full`) first, followed by `Artifacts only (specs + ADR/DDR)` (`artifacts`) and
+`Code only` (`code`) only when their categories are present. A semantic
 decision selector is emitted only for a conflict classified as semantically
 ambiguous; its human-facing labels describe complete outcomes and its internal
 values are stable. The `more-context` answer continues this same worker with
