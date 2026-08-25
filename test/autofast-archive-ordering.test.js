@@ -12,6 +12,23 @@ function read(relativePath) {
   return fs.readFileSync(path.join(repoRoot, relativePath), 'utf8');
 }
 
+function readExploreContract() {
+  const exploreSources = [
+    'sai/commands/explore/instructions.md',
+    'sai/commands/explore/steps/common.md',
+    'sai/commands/explore/steps/artifact-review-language-gate.md',
+    'sai/commands/explore/steps/slicing-assessment.md',
+    'sai/commands/explore/steps/crystallization-protocol.md',
+    'sai/commands/explore/steps/crystallization-language-gates.md',
+    'sai/commands/explore/steps/review-loop.md',
+    'sai/commands/explore/steps/pipeline-selector.md',
+    'sai/commands/explore/steps/pipeline-auto-supervised.md',
+    'sai/commands/explore/steps/pipeline-auto-fast.md',
+    'sai/commands/explore/steps/idea-list.md',
+  ];
+  return exploreSources.map(relativePath => read(relativePath)).join('\n');
+}
+
 test('the old pre-flight-before-materialization order reproduces the missing-directory failure', () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-autofast-'));
   const changeDir = path.join(root, 'openspec', 'changes', 'clarify-apply-coordinator-contract');
@@ -28,7 +45,7 @@ test('the old pre-flight-before-materialization order reproduces the missing-dir
 test('backfill execution completes writes before archive preparation and archive execution', () => {
   const backfill = read('sai/commands/backfill/worker.md');
   const archive = read('sai/commands/archive/worker.md');
-  const explore = read('sai/commands/explore/instructions.md');
+  const explore = readExploreContract();
 
   const backfillPrepare = backfill.indexOf('--autofast-prepare');
   const backfillExecute = backfill.indexOf('--autofast-execute');
@@ -52,7 +69,7 @@ test('backfill execution completes writes before archive preparation and archive
 });
 
 test('the auto-fast backfill execution and archive preparation blocks appear exactly once', () => {
-  const explore = read('sai/commands/explore/instructions.md');
+  const explore = readExploreContract();
   assert.equal((explore.match(/\*\*Backfill execution\*\*/g) || []).length, 1);
   assert.equal((explore.match(/\*\*Archive preparation\*\*/g) || []).length, 1);
   assert.equal((explore.match(/\*\*Archive execution and pre-authorized commit\*\*/g) || []).length, 1);

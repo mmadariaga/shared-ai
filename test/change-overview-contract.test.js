@@ -23,6 +23,27 @@ function artifact(relativePath) {
   return fs.readFileSync(fullPath, 'utf8');
 }
 
+function exploreContract() {
+  const exploreSources = [
+    'sai/commands/explore/instructions.md',
+    'sai/commands/explore/steps/common.md',
+    'sai/commands/explore/steps/artifact-review-language-gate.md',
+    'sai/commands/explore/steps/slicing-assessment.md',
+    'sai/commands/explore/steps/crystallization-protocol.md',
+    'sai/commands/explore/steps/crystallization-language-gates.md',
+    'sai/commands/explore/steps/review-loop.md',
+    'sai/commands/explore/steps/pipeline-selector.md',
+    'sai/commands/explore/steps/pipeline-auto-supervised.md',
+    'sai/commands/explore/steps/pipeline-auto-fast.md',
+    'sai/commands/explore/steps/idea-list.md',
+  ];
+  return exploreSources.map(relativePath => {
+    const fullPath = path.join(repoRoot, relativePath);
+    assert.equal(fs.existsSync(fullPath), true, `${relativePath} should exist`);
+    return fs.readFileSync(fullPath, 'utf8');
+  }).join('\n');
+}
+
 test('change-overview registered in the artifact graph', () => {
   const schema = artifact('openspec/schemas/sai-workflow/schema.yaml');
   assert.ok(schema.includes('id: change-overview'), 'schema.yaml should register an artifact with id: change-overview');
@@ -599,7 +620,7 @@ test('generation terminal changed_files are forwarded without re-derivation', ()
 // ─── Step 5: Read-only Review change-overview action in the sai-explore loop ─
 
 test('per-change menu is a native picker with four options and an active exit token', () => {
-  const explore = artifact('sai/commands/explore/instructions.md');
+  const explore = exploreContract();
   const labels = [
     "Review sai-1's artifacts",
     "Review sai-2's artifacts",
@@ -623,7 +644,7 @@ test('per-change menu is a native picker with four options and an active exit to
 });
 
 test('non-current overview produces an availability report, not a review', () => {
-  const explore = artifact('sai/commands/explore/instructions.md');
+  const explore = exploreContract();
 
   assert.match(explore, /overview\.state/, 'the currentness conjunction should read overview.state');
   assert.match(explore, /availability\/integrity|availability and integrity/i,
@@ -633,7 +654,7 @@ test('non-current overview produces an availability report, not a review', () =>
 });
 
 test('non-current overview reporting names persisted diagnostics without reviewing them', () => {
-  const explore = artifact('sai/commands/explore/instructions.md');
+  const explore = exploreContract();
 
   assert.match(explore, /persisted `?overview\.failure_kind`?/i,
     'availability reports should name the persisted failure kind');
@@ -654,7 +675,7 @@ test('non-current overview reporting names persisted diagnostics without reviewi
 });
 
 test('review output is a single findings block handed off without acceptance', () => {
-  const explore = artifact('sai/commands/explore/instructions.md');
+  const explore = exploreContract();
 
   const blockStart = explore.indexOf('When a review transaction surfaces findings');
   assert.ok(blockStart !== -1, 'the loop should define a findings-block paragraph for review transactions');
@@ -690,7 +711,7 @@ test('review output is a single findings block handed off without acceptance', (
 });
 
 test('findings route to the design worker at the feedback gate without a handoff block', () => {
-  const explore = artifact('sai/commands/explore/instructions.md');
+  const explore = exploreContract();
 
   const blockStart = explore.indexOf('When a review transaction surfaces findings');
   assert.ok(blockStart !== -1, 'the loop should define a findings-block paragraph for review transactions');
@@ -714,7 +735,7 @@ test('findings route to the design worker at the feedback gate without a handoff
 });
 
 test('completed Review change-overview participates in reviewed-sai-2 marking', () => {
-  const explore = artifact('sai/commands/explore/instructions.md');
+  const explore = exploreContract();
 
   assert.match(explore, /Review change-overview[\s\S]{0,4000}reviewed-sai-2/,
     'the Review change-overview action should participate in reviewed-sai-2 marking');
@@ -779,7 +800,7 @@ test('status panel lists the 11 artifact ids in order and derives overview state
 });
 
 test('active closure is question-first and repeats the exact crystallize reminder', () => {
-  const explore = artifact('sai/commands/explore/instructions.md');
+  const explore = exploreContract();
 
   assert.match(explore, /When a genuine unresolved question remains and its answer could change the idea, end with that relevant question/);
   assert.match(explore, /When no genuine unresolved question remains(?:, including when the only apparent question is phase navigation)?, end with this concise reminder/);
@@ -813,7 +834,7 @@ test('localized Change Overview generation preserves structural anchors, source 
 });
 
 test('closure stops at crystallization and discard and preserves terminal paths', () => {
-  const explore = artifact('sai/commands/explore/instructions.md');
+  const explore = exploreContract();
   const prereqs = artifact('sai/policies/prereqs-check.md');
 
   assert.match(explore, /Before a candidate idea exists, no Closure State is active/);
@@ -881,7 +902,7 @@ test('Step 3: any overview generation failure emits no overview progress event a
 // ─── Step 1: Explicit review-loop exit and closure contract (explore) ─
 
 test('per-change picker declares four labels in fixed order as a harness-native menu', () => {
-  const explore = artifact('sai/commands/explore/instructions.md');
+  const explore = exploreContract();
   const labels = [
     "Review sai-1's artifacts",
     "Review sai-2's artifacts",
@@ -902,7 +923,7 @@ test('per-change picker declares four labels in fixed order as a harness-native 
 });
 
 test('every review and non-completing transaction re-presents the same four-option picker; only Skip advances and active exit terminates', () => {
-  const explore = artifact('sai/commands/explore/instructions.md');
+  const explore = exploreContract();
 
   assert.match(explore, /every review[\s\S]{0,240}re-present/i);
   assert.match(explore, /non-completing[\s\S]{0,240}re-present|re-present[\s\S]{0,240}non-completing/i);
@@ -913,7 +934,7 @@ test('every review and non-completing transaction re-presents the same four-opti
 });
 
 test('correction handoff permits exactly one findings encoding', () => {
-  const explore = artifact('sai/commands/explore/instructions.md');
+  const explore = exploreContract();
 
   assert.match(explore, /exactly one[\s\S]{0,160}(?:findings block|encoding|encode)/i);
   assert.match(explore, /(?:encoding|encode)[\s\S]{0,180}once|once[\s\S]{0,180}(?:encoding|encode)/i);
@@ -921,7 +942,7 @@ test('correction handoff permits exactly one findings encoding', () => {
 });
 
 test('picker re-entry is excluded from the single-encoding prohibition and from acceptance semantics', () => {
-  const explore = artifact('sai/commands/explore/instructions.md');
+  const explore = exploreContract();
 
   assert.match(explore, /(?:re-?entering the picker|picker re-?entry)/i,
     'the handoff contract should name picker re-entry explicitly');
@@ -934,7 +955,7 @@ test('picker re-entry is excluded from the single-encoding prohibition and from 
 });
 
 test('set exhaustion and the active exit token both emit a minimal close acknowledgment with no next-command prompt, including zero reviews', () => {
-  const explore = artifact('sai/commands/explore/instructions.md');
+  const explore = exploreContract();
 
   assert.match(explore, /(?:exhaust(?:ion|ed)|no (?:more|further) changes|no changes remain)[\s\S]{0,260}(?:acknowledg|confirm)/i);
   assert.match(explore, /active-loop `exit` token[\s\S]{0,420}(?:same minimal close acknowledgment|acknowledg|confirm)/i);
@@ -943,7 +964,7 @@ test('set exhaustion and the active exit token both emit a minimal close acknowl
 });
 
 test('the active exit token resolves the active review item to pending exactly as Skip does, without marking or clearing evidence', () => {
-  const explore = artifact('sai/commands/explore/instructions.md');
+  const explore = exploreContract();
 
   assert.match(explore, /active-loop `exit` token[\s\S]{0,360}`?pending`?/i);
   assert.match(explore, /Skip[\s\S]{0,260}`?pending`?/i);
@@ -952,7 +973,7 @@ test('the active exit token resolves the active review item to pending exactly a
 });
 
 test('contract coverage names both close paths including zero-review exit with identical closure across harnesses', () => {
-  const explore = artifact('sai/commands/explore/instructions.md');
+  const explore = exploreContract();
 
   assert.match(explore, /active-loop `exit` token/);
   assert.match(explore, /both[\s\S]{0,180}(?:close paths?|closing paths?|exit paths?)/i);
@@ -964,7 +985,7 @@ test('contract coverage names both close paths including zero-review exit with i
 // ─── extract-review-engine Step 1: Review engine extraction and manual navigation ─
 
 test('review engine is defined once and takes exactly a change name and an artifact-set designator', () => {
-  const explore = artifact('sai/commands/explore/instructions.md');
+  const explore = exploreContract();
 
   const engineDefs = explore.match(/Review Engine\(changeName,\s*artifactSetDesignator\)/g) || [];
   assert.equal(engineDefs.length, 1,
@@ -978,7 +999,7 @@ test('review engine is defined once and takes exactly a change name and an artif
 });
 
 test('review engine resolves only the exact change directory and checks children only after existence', () => {
-  const explore = artifact('sai/commands/explore/instructions.md');
+  const explore = exploreContract();
 
   const dirIndex = explore.indexOf('openspec/changes/{change-name}/');
   assert.ok(dirIndex !== -1, 'the engine should resolve the exact openspec/changes/{change-name}/ directory');
@@ -993,7 +1014,7 @@ test('review engine resolves only the exact change directory and checks children
 });
 
 test('review engine rereads every available requested artifact from disk each transaction', () => {
-  const explore = artifact('sai/commands/explore/instructions.md');
+  const explore = exploreContract();
 
   assert.match(explore, /re[- ]?read/i, 'the engine should reread requested artifacts from disk');
   assert.match(explore, /re[- ]?read[\s\S]{0,200}(?:every (?:currently )?available|each (?:currently )?available)/i,
@@ -1007,7 +1028,7 @@ test('review engine rereads every available requested artifact from disk each tr
 });
 
 test('review engine cites the shared finding contract without redefining it', () => {
-  const explore = artifact('sai/commands/explore/instructions.md');
+  const explore = exploreContract();
 
   assert.match(explore, /artifact[- ]review[- ]contract|artifact-review-contract\.md/i,
     'the engine should cite the shared artifact review finding contract');
@@ -1018,7 +1039,7 @@ test('review engine cites the shared finding contract without redefining it', ()
 });
 
 test('review engine emits deterministic base-form review output and performs no writes', () => {
-  const explore = artifact('sai/commands/explore/instructions.md');
+  const explore = exploreContract();
 
   assert.match(explore, /base[- ]?form[\s\S]{0,200}(?:summary tally|tally)/i,
     'the engine should close completed reviews with the contract base-form summary tally');
@@ -1032,7 +1053,7 @@ test('review engine emits deterministic base-form review output and performs no 
 });
 
 test('navigation shell owns the fixed four-option picker and invokes the engine for every review selection', () => {
-  const explore = artifact('sai/commands/explore/instructions.md');
+  const explore = exploreContract();
 
   assert.match(explore, /(?:shell|navigation|manual path)[\s\S]{0,200}(?:owned by|owns?|ownership)/i,
     'the picker and navigation should remain owned by the manual path');
@@ -1059,7 +1080,7 @@ test('navigation shell owns the fixed four-option picker and invokes the engine 
 });
 
 test('navigation re-enters the same picker after every non-closing turn and keeps the single-block handoff and close', () => {
-  const explore = artifact('sai/commands/explore/instructions.md');
+  const explore = exploreContract();
 
   assert.match(explore, /non-?closing[\s\S]{0,200}(?:re[- ]?enter|re[- ]?present)|(?:re[- ]?enter|re[- ]?present)[\s\S]{0,200}non-?closing/i,
     'every non-closing turn should re-enter the same picker');

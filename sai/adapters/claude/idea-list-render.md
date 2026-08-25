@@ -1,6 +1,6 @@
 # Claude Idea-List Render Binding
 
-Fetch @sai/adapters/claude/panel-render.md and use it for the harness panel mechanics. This binding supplies the `sai-explore` panel surface policy for both phases of the panel-ownership lifecycle (`sai/commands/explore/instructions.md` item 11).
+Fetch @sai/adapters/claude/panel-render.md and use it for the harness panel mechanics. This binding supplies the `sai-explore` panel surface policy for both phases of the panel-ownership lifecycle (item 11 of `sai/commands/explore/instructions.md` and `sai/commands/explore/steps/idea-list.md`).
 
 ## Phase A — pre-crystallization stage TODO
 
@@ -19,4 +19,4 @@ Fetch @sai/adapters/claude/panel-render.md and use it for the harness panel mech
 
 A new `sai-explore` chat's start clear removes exactly the entries bearing either marker prefix (`sai-explore-stage:` or `sai-idea-list:`) in the `description` field, leaving other surfaces' entries in place. The read covers the markers only and never derives list content.
 
-The idea-list and stage-TODO contract rules (scope, render, ownership, lifecycle, timing) live in `sai/commands/explore/instructions.md`; this binding does not restate them.
+The stage-TODO contract rules (Phase A) live in `sai/commands/explore/steps/common.md`, and the idea-list contract rules (Phase B) live in `sai/commands/explore/steps/idea-list.md`; this binding does not restate them.

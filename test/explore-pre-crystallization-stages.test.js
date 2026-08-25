@@ -13,7 +13,22 @@ function readArtifact(relativePath) {
   return fs.readFileSync(fullPath, 'utf8');
 }
 
-const explore = () => readArtifact('sai/commands/explore/instructions.md');
+const explore = () => {
+  const exploreSources = [
+    'sai/commands/explore/instructions.md',
+    'sai/commands/explore/steps/common.md',
+    'sai/commands/explore/steps/artifact-review-language-gate.md',
+    'sai/commands/explore/steps/slicing-assessment.md',
+    'sai/commands/explore/steps/crystallization-protocol.md',
+    'sai/commands/explore/steps/crystallization-language-gates.md',
+    'sai/commands/explore/steps/review-loop.md',
+    'sai/commands/explore/steps/pipeline-selector.md',
+    'sai/commands/explore/steps/pipeline-auto-supervised.md',
+    'sai/commands/explore/steps/pipeline-auto-fast.md',
+    'sai/commands/explore/steps/idea-list.md',
+  ];
+  return exploreSources.map(relativePath => readArtifact(relativePath)).join('\n');
+};
 const opencodeBinding = () => readArtifact('sai/adapters/opencode/idea-list-render.md');
 const claudeBinding = () => readArtifact('sai/adapters/claude/idea-list-render.md');
 const opencodePanel = () => readArtifact('sai/adapters/opencode/panel-render.md');

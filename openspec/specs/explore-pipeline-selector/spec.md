@@ -6,20 +6,30 @@ Define the crystallization-close selector that explicitly authorizes supervised 
 ## Requirements
 ### Requirement: Emit the crystallization-close selector
 
-`sai-explore` SHALL emit exactly one harness-native three-option selector after the shared close's one keep-window-open recommendation, as the final emission of the shared close and crystallization turn defined by `explore-crystallization-block`. The selector SHALL be emitted after every single-change, sliced-final, and inline-refusal crystallization handoff; the options SHALL appear in this fixed order — `Auto`, `Auto (fast implementation)`, `Manual` — each carrying its fixed one-line description (`Auto` — Unattended alternative to Manual mode. Same steps, same order.; `Auto (fast implementation)` — Takes shortcuts vs. the other options. Good choice for simple changes or when you're in a hurry.; `Manual` — Best visibility into what's happening; requires you to make some decisions.), and `Auto` SHALL remain the sole ordinary supervised pipeline entry while `Auto (fast implementation)` is the sole fast-lane entry. Question text and every option label, with each option's one-line description, SHALL render in the user's language while the literal `review-loop`, `/sai-1-spec`, and `/sai-2-design` strings stay verbatim English. A response to the selector is a separate turn; only the Manual/unmapped branch may emit its path-specific next-step handoff after that response, and that handoff is not part of the crystallization close.
+`sai-explore` SHALL emit exactly one harness-native selector after the shared keep-window-open recommendation, with options in fixed order: `Auto`, `Auto (fast implementation)`, and `Manual`, each retaining its existing one-line description and localized presentation rules. The selector SHALL remain the final emission of the crystallization turn. The selector contract SHALL be delivered from `sai/commands/explore/steps/pipeline-selector.md`, fetched only after the complete shared recommendation sentence.
 
-#### Scenario: crystallization closes
+#### Scenario: the split selector closes crystallization
 
-- **WHEN** single, sliced, or inline-refusal crystallization emits its final handoff block
-- **THEN** the shared close emits the existing keep-window recommendation naming `review-loop` exactly once
-- **AND** it emits exactly one selector offering exactly three fixed-order options with their one-line descriptions — Auto delegation, Auto (fast implementation) fast-lane execution, Manual continuation
-- **AND** the selector is the final emission of the turn
+- **WHEN** a single-change, sliced, or inline-refusal crystallization turn reaches its close
+- **THEN** the shared recommendation is emitted once, `pipeline-selector.md` is fetched, and exactly one fixed-order three-option selector is emitted as the final turn output
 
-#### Scenario: sliced crystallization does not repeat the selector
+### Requirement: Route selected pipeline options through deferred contracts
 
-- **WHEN** a sliced crystallization emits multiple handoff blocks
-- **THEN** the selector is emitted only once after the final block
-- **AND** no per-slice selector is presented
+`sai-explore` SHALL preserve the existing selection semantics: `pipeline-selector.md` SHALL fetch both `steps/pipeline-auto-supervised.md` and `steps/pipeline-auto-fast.md` after the complete selector contract is reached and before option selection is processed; dispatch SHALL remain exclusive to an explicit `Auto` or `Auto (fast implementation)` selection; and `Manual` and unmapped responses SHALL dispatch nothing. The Auto route SHALL retain the supervised sai-1/sai-2 lifecycle, and the Auto (fast implementation) route SHALL retain the fixed eight-step flow and existing worker boundaries.
+
+#### Scenario: deferred route fetches preserve dispatch boundaries
+
+- **WHEN** the crystallization-close selector is reached and the user selects Auto, Auto (fast implementation), or Manual
+- **THEN** both route contracts have been fetched from the selector trigger, only the explicitly selected Auto route dispatches, and Manual performs no dispatch
+
+### Requirement: Preserve deterministic auto-fast continuation
+
+After a clean auto-fast slice completion, `sai-explore` SHALL retain the existing selector re-entry behavior for pending slices, preserve crystallization order, exclude completed changes, and defer terminal navigation until no pending slice remains. Moving the auto-fast text into `pipeline-auto-fast.md` SHALL NOT change these state or authorization rules.
+
+#### Scenario: pending slices retain explicit authorization
+
+- **WHEN** an auto-fast slice completes cleanly while another crystallized slice remains pending
+- **THEN** the complete three-option selector is presented again for the pending slice without dispatching a worker from the transition
 
 ### Requirement: Authorize Auto dispatch
 
