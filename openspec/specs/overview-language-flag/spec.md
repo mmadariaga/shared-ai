@@ -77,15 +77,18 @@ The `sai-1-spec` flow SHALL not parse, persist, or forward `--overview-lang`; it
 
 ### Requirement: Keep parser and gate state invocation-scoped
 
-The parser and the explore gate SHALL keep flag presence, gate selection, and the resulting language or do-not-create decision in invocation-scoped state only. They SHALL NOT add a new CLI flag, write an overview-language preference, or add any `.openspec.yaml` key. The `sai-1-spec` flow SHALL remain outside this parser and generation feature.
+The parser SHALL keep flag presence and the parsed language value in invocation-scoped state. The explore gate's resolved decision SHALL additionally be scoped to the current crystallized idea or slice set for the life of the chat — surviving the end of a supervised attempt, including a failed or cancelled one, so that retries and later activations over the same set reuse it — but SHALL NOT be written to any file, artifact, `.openspec.yaml` key, or configuration. No new CLI flag is introduced. The `sai-1-spec` flow SHALL remain outside this parser and generation feature.
 
 #### Scenario: No persisted language preference is created
-
-- **WHEN** either supported flow is invoked with `--overview-lang spanish`, or `sai-explore` gate 9 selects `spanish`
-- **THEN** the value is available only to the current explore/design route
+- **WHEN** either supported flow is invoked with `--overview-lang spanish`, or gate 9 resolves `spanish` at a supervised Auto activation
+- **THEN** the value is available only within the explore chat's supervised chain
 - **AND** no `overview.language`, opt-in marker, or equivalent new `.openspec.yaml` key is written
 
-#### Scenario: Spec proposal behavior remains unchanged
+#### Scenario: Resolution survives a failed attempt without persistence
+- **WHEN** a supervised attempt ends by failure after gate 9 resolved, and a later activation over the same crystallized idea occurs
+- **THEN** the stored value is reused without asking again
+- **AND** it still exists only in conversation state
 
+#### Scenario: Spec proposal behavior remains unchanged
 - **WHEN** a user runs `sai-1-spec`
 - **THEN** the spec-proposal flow does not parse, persist, or forward `--overview-lang`

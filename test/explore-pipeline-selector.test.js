@@ -1222,7 +1222,7 @@ test('Step 4: E8 keeps the Ready-to-Propose payload fields and separator bounded
   assert.match(payload, /\*\*Implementation Details\*\*/);
   assert.match(
     payload,
-    /\*\*Overview language\*\*:\s*(?:None|<[^>\n]*(?:selected|overview language|language)[^>\n]*>)/i
+    /\*\*Overview language\*\*:\s*(?:None|<[^>\n]*(?:selected|overview language|language|option value)[^>\n]*>)/i
   );
   assert.doesNotMatch(payload, /(?:next[- ]step|handoff)[\s\S]{0,240}`?\/sai-1-spec`?/i,
     'the E8 payload must not contain a path-specific next-step');

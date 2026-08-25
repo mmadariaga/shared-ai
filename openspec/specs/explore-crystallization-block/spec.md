@@ -211,23 +211,17 @@ The `file:line` provenance citations permitted in the **Why** and **Decisions & 
 
 ### Requirement: Overview language reminder records the gate decision
 
-The single-change and sliced `Ready to Propose` blocks SHALL always include `**Overview language**: <value>`. When the user selected or supplied a language, `<value>` SHALL be reproduced exactly; when gate 9 resolved do not create, `<value>` SHALL be the literal `None`. The English scaffold label SHALL remain unchanged, and neither the label nor the `None` marker or selected value SHALL be localized. The line SHALL not alter the existing block sections, language-gate rules, selector close, or two-string handoff envelope.
+Every emitted `Ready to Propose` block (single-change and per-slice alike) SHALL include the English scaffold line `**Overview language**: <value>` after `**Implementation Details**`. The rendered `<value>` SHALL be only what is knowable at print time: an explicit `--overview-lang` option value, or the literal `None`. A block SHALL NOT carry a gate-selected value, because gate 9 resolves after block emission, and already-printed blocks SHALL NOT be retro-edited. Neither the label nor the `None` marker is localized, and the line SHALL NOT alter the block's other sections, language-gate rules, selector close, or two-string handoff envelope.
 
-#### Scenario: Single-change block records do not create
+#### Scenario: block prints without an explicit option
+- **WHEN** a Ready to Propose block prints on a crystallize turn where no explicit `--overview-lang` option was supplied
+- **THEN** the block renders exactly `**Overview language**: None`
 
-- **WHEN** a single-change crystallization resolves gate 9 to do not create
-- **THEN** the block contains `**Overview language**: None`
-- **AND** its other required sections and closing separator remain unchanged
-
-#### Scenario: Sliced blocks record do not create
-
-- **WHEN** a sliced crystallization resolves gate 9 to do not create
-- **THEN** every per-slice block contains `**Overview language**: None`
-- **AND** the shared selector is emitted once after the final block as before
-
-#### Scenario: Selected language is repeated in every block
-
-- **WHEN** a single or sliced crystallization supplies or selects `spanish`
+#### Scenario: explicit option renders in every block
+- **WHEN** the invocation carried `--overview-lang spanish` and a crystallize turn emits its blocks
 - **THEN** every emitted block contains `**Overview language**: spanish`
-- **AND** the value is not localized or persisted
+
+#### Scenario: no retro-edit after gate resolution
+- **WHEN** gate 9 later resolves a language at a supervised Auto activation
+- **THEN** previously printed blocks remain unchanged
 
