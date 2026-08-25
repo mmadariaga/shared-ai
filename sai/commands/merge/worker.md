@@ -14,8 +14,10 @@ projects without openspec.
 
 The coordinator declares `fast_track_active` alongside the envelope as session
 state. Honor it only in the fast-track branches documented in the instruction's
-Step 5 (runtime scope gate); it never suppresses the pre-merge environment
-checks, the verification loop, or the ADR/DDR collision pass.
+Step 5 (runtime scope gate): it may skip only that scope question. It never
+selects `ours`, `theirs`, or `synthesis`, and it never suppresses a required
+contextual decision, the pre-merge environment checks, the verification loop,
+or the ADR/DDR collision pass.
 
 ## Lifecycle
 
@@ -34,15 +36,18 @@ dirty-worktree gate, E2 in-progress-merge guard), the branch selection
 (recency-ordered local branches excluding current, with date-bearing labels and
 exact branch-name values), the post-merge conflict analysis (ours/theirs/base
 for each conflicted file, classification into specs / ADR-DDR / code), the
-resolution analysis and proposals (semantic merge for specs, guided fusion for
-code, E3 escalation for true contradictions), with the filtered runtime scope
-gate (Step 5) emitted before any proposal payload when fast-track is inactive,
-the verification loop (Step 6, E4 no-suite escalation, E5 cap exhaustion), and
-the ADR/DDR collision pass (Step 7, E6 triple+ collisions, E7 orphan refs,
-ambiguous bare-reference escalation, and E8 delete/modify escalation). During
-the collision pass, scan same-family and cross-family markdown links (including
-correction-table and reserved historical links), relationship tokens, and both
-`adr-index` and `ddr-index` structured metadata.
+resolution analysis (semantic merge for specs, guided fusion for code, E3
+escalation for true contradictions), the contextual objective comparison and
+decision stage (complete `ours` / `theirs` / optional safe `synthesis`
+alternatives, plus the `more-context` same-worker continuation), with the
+filtered runtime scope gate (Step 5) emitted before any proposal payload when
+fast-track is inactive, the verification loop (Step 6, E4 no-suite escalation,
+E5 cap exhaustion), and the ADR/DDR collision pass (Step 7, E6 triple+
+collisions, E7 orphan refs, ambiguous bare-reference escalation, and E8
+delete/modify escalation). During the collision pass, scan same-family and
+cross-family markdown links (including correction-table and reserved
+historical links), relationship tokens, and both `adr-index` and `ddr-index`
+structured metadata.
 Return the collision applicability value, the exact old/new H1 and old/new
 index-label data, plus the family and assigned suffixed identifier, for every
 proposed rename; obtain it as part of this read-only analysis so the
@@ -57,19 +62,34 @@ mutations.
 
 All findings return as technical source payload content: carry the conflict
 analysis, the category-derived eligible scope options, the resolution
-proposals only after the selected scope is known, the verification results, and
-the ADR/DDR rename plan inside your summaries. The coordinator's merge
-presentation seam owns how that source is rendered to the user; keep the source
-content exact and never print it as your deliverable or write it to any file.
-Gate questions and options remain returned lifecycle source fields; do not
-invoke a picker or otherwise present them from this worker session. The branch
-selector's question is exactly **"¿Qué rama quieres mergear?"**;
-its option labels carry last-commit dates
-while its values carry exact branch names. The scope selector's options are
-already filtered to categories present in the worker's conflict
-classification. When conflicts exist, its `needs_input` result is emitted
-before any resolution proposal payload; only the forwarded scope answer (or
-fast-track's direct `full` selection) unlocks proposal delivery.
+proposals only after the selected scope and every required contextual decision
+are known, the verification results, and the ADR/DDR rename plan inside your
+summaries. The coordinator's merge presentation seam owns how that source is
+rendered to the user; keep the source content exact and never print it as your
+deliverable or write it to any file. Gate questions and options remain returned
+lifecycle source fields; do not invoke a picker or otherwise present them from
+this worker session. The branch selector's question is exactly **"¿Qué rama
+quieres mergear?"**; its option labels carry last-commit dates while its values
+carry exact branch names. The scope selector's options are already filtered to
+categories present in the worker's conflict classification. A semantic
+decision selector is emitted only for a conflict classified as semantically
+ambiguous; its human-facing labels describe complete outcomes and its internal
+values are stable. The `more-context` answer continues this same worker with
+the pending alternatives intact, without any write or stage. When conflicts
+exist, the scope `needs_input` result is emitted before any resolution proposal
+payload; the forwarded scope answer (or fast-track's direct `full` selection)
+unlocks contextual analysis, and only explicit decisions unlock proposal
+delivery.
+
+A completed resolution result MUST carry the exact `## Complete resolution
+payload` JSON object defined in `sai/commands/merge/instructions.md`. Its
+`files` array contains one record per conflicted file in the selected scope,
+with `path`, `category` (`specs`, `adr-ddr`, or `code`), `decisions`, and a
+`content` JSON string containing the complete final UTF-8 file contents. The
+`selected_contextual_decisions` array contains every answered semantic conflict
+and never `more-context`. Return no diff, hunk, region replacement, marker
+annotation, or prose-only resolution: the coordinator consumes only these
+complete file records and writes their exact contents after validation.
 
 Preserve the instruction's stop texts exactly: an in-progress merge returns a
 terminal payload whose summary is exactly **"Merge already in progress.

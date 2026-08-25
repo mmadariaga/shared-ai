@@ -90,6 +90,15 @@ Compliance with the question-context anatomy SHALL remain authored at the source
 - **WHEN** the merge coordinator renders `¿Qué rama quieres mergear?` with date-bearing branch options
 - **THEN** it preserves the exact question and option values while presenting branch timestamps and merge rationale in the adjacent summary
 
+### Requirement: Contextual merge questions provide complete decision context
+
+A semantic merge decision prompt SHALL name the conflict, explain why the choice matters, describe each complete behavioral option in plain language, include affected state and contracts, and distinguish the decision from a text-fragment choice. The question source SHALL comply with the canonical question-context policy.
+
+#### Scenario: Contextual question supports an informed choice
+
+- **WHEN** the worker asks the user to choose an outcome for a semantic merge conflict
+- **THEN** the prompt and adjacent worker-authored context identify the affected behavior, alternatives, trade-offs, and current decision state in plain language
+
 ### Requirement: Centralized pinned-anatomy exemption registry
 `sai/policies/question-context.md` SHALL host the centralized registry of prompts exempt from the full five-element anatomy — the change-picker prompts, the status-picker prompts, the artifact-feedback-gate texts, the crystallization-close selector, and the plain-text sí/no review invitation — each keeping its own defining contract as the single source of its exact wording, options, and invalid-input semantics. Consuming surfaces SHALL reference the registry and SHALL NOT add, remove, or reinterpret an exemption elsewhere, and registered exemptions SHALL remain byte-stable.
 

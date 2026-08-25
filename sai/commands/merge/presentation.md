@@ -65,7 +65,8 @@ Initialize one state object for the invocation with these fields:
 
 ```text
 phase: preflight | branch-selection | merge-outcome | scope-selection |
-       resolution | verification | adr-ddr | authorization | terminal
+       contextual-analysis | resolution | verification | adr-ddr |
+       authorization | terminal
 presentation_mode: concise
 current_branch
 merged_branch
@@ -74,6 +75,9 @@ merge_outcome: clean | conflicted
 conflict_files_by_category
 eligible_scope_options
 selected_scope
+contextual_decision_status: not-needed | pending | completed | blocked
+pending_contextual_conflict
+contextual_decisions: ordered records {conflict_id, decision: ours|theirs|synthesis}
 verification_round: 0 | 1 | 2 | 3
 verification_result: pending | passed | failed | cap-exhausted
 staged_files
@@ -114,7 +118,13 @@ Update the state only at the corresponding lifecycle boundary:
 - After branch selection, record the current and merged branches, render the
   adaptive TODO, run the coordinator-owned merge, and record `merge_outcome`.
   A clean merge advances directly to `adr-ddr`; a conflicted merge advances
-  through `scope-selection` and `resolution`.
+  through `scope-selection`, `contextual-analysis`, and `resolution`.
+- After scope selection, enter `contextual-analysis`. Keep the contextual item
+  `in_progress` while the worker explains a semantically ambiguous conflict or
+  continues a `more-context` request. An obvious conflict completes this stage
+  without a user gate. Do not enter `resolution` or permit a resolution write
+  until every required contextual decision has an explicit internal value and
+  the worker has returned the matching complete alternative.
 - After resolution writes and staging, enter `verification`. Keep the same
   staged state and increment `verification_round` for each failed round. Round
   three remains `cap-exhausted` and staged; it is never silently committed or
@@ -159,13 +169,41 @@ presentation state is never added to that history and is never sent as an
 envelope field.
 
 The seam owns the presentation location for the existing dirty-worktree,
-branch, runtime-scope, no-suite, and commit-authorization gates. It does not
-add a gate, alter answer values, or change continuation order. For the runtime
-scope gate, validate that the worker's `eligible_scope_options` matches
-`conflict_files_by_category` before rendering: `artifacts` requires a specs or
-ADR/DDR conflict, `code` requires a code conflict, and `full` represents all
-detected categories. Render only that filtered, canonical option set and never
-show a category-specific option for an absent category.
+branch, runtime-scope, contextual semantic-decision, no-suite, and
+commit-authorization gates. It does not add a gate, alter answer values, or
+change continuation order. For the runtime scope gate, validate that the
+worker's `eligible_scope_options` matches `conflict_files_by_category` before
+rendering: `artifacts` requires a specs or ADR/DDR conflict, `code` requires a
+code conflict, and `full` represents all detected categories. Render only that
+filtered, canonical option set and never show a category-specific option for
+an absent category.
+
+For a contextual semantic-decision gate, validate that the worker source names
+one pending conflict and carries both **Facts** and **Inferences**, the two
+branch objectives, the preserve/gain/give-up/risk comparison, affected
+contracts, and the synthesis safety assessment. The only accepted option
+values are `ours`, `theirs`, optional `synthesis`, and `more-context`; values
+are internal and must remain exact. `synthesis` may appear only when the source
+contains a complete safe combined outcome. `more-context` is a continuation
+request, never a resolution choice. Human-facing labels must describe the
+complete behavior and trade-off rather than expose merge jargon or a text
+fragment. The seam validates this source and renders it; it does not select a
+value or infer a missing alternative.
+
+While this gate or a `more-context` continuation is pending, the coordinator
+must not write a resolution, remove conflict markers, or stage a path. A
+forwarded decision is not sufficient by itself: the worker must return the
+matching complete, marker-free alternative, and the coordinator validates that
+payload before entering the resolution boundary. A completed resolution result
+must carry the `## Complete resolution payload` JSON object defined by
+`@sai/commands/merge/instructions.md`. The seam validates that it has exactly
+one complete `content` string for every conflicted file in the selected scope,
+that each path and category matches the worker's classified source, that every
+semantic decision is an offered value other than `more-context`, and that no
+conflict marker appears in any content string. The coordinator writes only
+those exact content strings; neither the seam nor the coordinator may derive a
+file by applying a region replacement, concatenating alternatives, or reading
+resolution prose.
 
 For branch selection, render the concise question **"¿Qué rama quieres mergear?"**
 with the readable date-bearing labels. Render the detailed current
@@ -238,15 +276,24 @@ foreign entries and no restoration is promised.
    as pending.
 4. After a conflicted outcome, reconcile the list to the actual categories and
    gate path. Append canonical `scope` only when the scope gate is actually
-   presented; fast-track omits it. After the exact scope answer, include only
-   the applicable canonical `resolve-artifacts`, `resolve-code`, or
-   `resolve-full` item, followed by `verification`. The category-specific scope
-   options are the worker's filtered set, not a new TODO decision.
-5. After each resolution or verification outcome, mark only the applicable
+   presented; fast-track omits it. Add `contextual-analysis` after `scope` (or
+   make it the first active conflict item on fast-track) and keep the applicable
+   `resolve-artifacts`, `resolve-code`, or `resolve-full` item pending. The
+   category-specific scope options are the worker's filtered set, not a new
+   TODO decision.
+5. While the worker is explaining a semantic ambiguity, while `more-context` is
+   being answered, or while more contextual decisions remain, keep
+   `contextual-analysis` `in_progress` and keep the resolution item pending.
+   Do not render the resolution item as active before the worker returns the
+   selected complete alternatives. When the worker returns an obvious route or
+   the final explicitly selected alternatives, mark `contextual-analysis`
+   `completed` and make the applicable resolution item `in_progress`; only
+   then may the coordinator write and stage resolutions.
+6. After each resolution or verification outcome, mark only the applicable
    canonical item that the coordinator has actually completed and render the
    complete current list. Round three remains staged and uncommitted when
    verification is exhausted; the TODO must not imply that a commit occurred.
-6. After the collision pass, omit canonical `collision` for
+7. After the collision pass, omit canonical `collision` for
    `not-applicable` or `no-collision`; otherwise keep it before
    `authorization` and mark it completed only after all coordinator-owned
    renames and canonical reference updates have finished. Add

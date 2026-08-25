@@ -193,6 +193,15 @@ For each parser-member command, `--fast-track` SHALL opt out of exactly the name
 - **WHEN** fast-track is active for `sai-explore` (two language gates), `sai-2-design` (no opt-out gate; specs approval is an automatic stamp), `sai-4-apply` (both commit-authorization gates — the per-Step STOP & COMMIT gate and the terminal documentation commit gate — + Human Verification deferral + Prerequisites branch-selection prompt auto-stay only), `sai-archive` (unchecked-items gate always + delta-spec sync gate conditional only + archive commit gate auto-select-new-commit only), `sai-backfill` (generated reconciliation questions + spec-conflict decision + crystallized-block change-name confirmation only), or `sai-merge` (full resolution scope without the scope gate)
 - **THEN** no gate beyond that command's named set changes behavior
 
+### Requirement: Merge fast-track bypasses only runtime scope
+
+When `/sai-merge` runs with `--fast-track`, it SHALL bypass only the runtime resolution scope question. It SHALL still require contextual analysis, explicit human decisions for semantic ambiguity, complete-file payload validation, worker-owned verification, and final commit authorization.
+
+#### Scenario: Fast-track preserves contextual safety
+
+- **WHEN** a fast-track merge contains a semantically ambiguous conflict
+- **THEN** the command skips only scope selection and still requires the contextual decision and every later validation and authorization boundary
+
 ### Requirement: Fast-track behavior is harness-agnostic and documented
 The `--fast-track` behavior SHALL be identical under Claude Code, opencode, and GitHub Copilot, achieved by single-sourcing the parse and gate branches in the shared body files, shared instructions, and routed cards. Any wrapper-level `argument-hint` change SHALL be mirrored across `commands/claude/`, `commands/opencode/`, and `commands/copilot/` in the same commit (Mirror discipline). Where a wrapper shape does not carry an `argument-hint` — specifically the opencode `sai-archive` wrapper — no separate consistency marker is required. `AGENTS.md` SHALL name `--fast-track` and its six affected commands under "Critical conventions", and `README.md` SHALL document the flag in the commands table.
 
