@@ -15,9 +15,12 @@ behavior or architecture, not merely between text ranges: the worker explains
 the intent it can observe, the human owns the architectural choice, and the
 coordinator executes only the chosen complete outcome. Keep the
 verification-round behavior, answer values, stop texts, payload blocks, and
-continuation semantics stable; the branch, scope, contextual-decision, and
-authorization presentation rules below are the single source for their
-concise user-facing forms. Do not print a second presentation or perform a
+continuation semantics stable; the branch, scope, contextual-decision,
+authorization, conflict-language, and global-strategy presentation rules below
+are the single source for their concise user-facing forms. After the
+coordinator selects a working language, localize only explanatory prose and
+questions; keep hashes, paths, identifiers, protocol tokens, JSON keys, and
+artifact formats unchanged. Do not print a second presentation or perform a
 mutation from the worker.
 
 ---
@@ -106,12 +109,42 @@ conflicted) and resumes you at Step 4.
 The coordinator reports the merge outcome. If the merge was clean (no
 conflicts), skip to Step 7 (ADR/DDR collision pass).
 
-If the merge produced conflicts, run:
-- `git diff --name-only --diff-filter=U` — list conflicted files
-- For each conflicted file, read the three versions:
-  - `git show :1:<file>` (base / common ancestor)
-  - `git show :2:<file>` (ours / current branch)
-  - `git show :3:<file>` (theirs / merged branch)
+If the merge produced conflicts, run `git diff --name-only --diff-filter=U` to
+obtain the exact ordered list of conflicted files. Return the following closed
+nonterminal result immediately, before reading any base/ours/theirs version and
+before classification or semantic analysis:
+
+```yaml
+event: conflict_detected
+emitted_on: string
+summary: string
+changed_files: []
+affected_files: string[]
+continuation_state: language-selection
+```
+
+The `summary` is a concise state report only: conflict detection has completed,
+the merge is still unresolved, and the affected-file inventory is carried in
+`affected_files`. Do not put semantic analysis, a resolution proposal, a
+question, or options in this event. `affected_files` is a source inventory and
+must not be copied into the worker's `changed_files` write union. This event is
+the worker's only direct signal that conflict handling has begun; the worker
+does not chat with the user.
+
+After the coordinator asks for and receives the working language, continue the
+same worker with that exact selected value. Then, and only then, for each
+conflicted file read the three versions:
+
+- `git show :1:<file>` (base / common ancestor)
+- `git show :2:<file>` (ours / current branch)
+- `git show :3:<file>` (theirs / merged branch)
+
+If application or verification exposes a new conflict or inconsistency, the
+coordinator reports the current state to this same worker. Return the same
+closed event with `continuation_state: strategy-analysis`, the new exact
+`affected_files` inventory, and `changed_files: []`; preserve the selected
+working language and re-enter the strategy analysis without another language
+question.
 
 Classify each conflicted file into one of three categories:
 - **Artifacts — specs**: path matches `openspec/**` or `openspec/changes/**/specs/**`
@@ -232,7 +265,7 @@ scope gate, and continue to Step 5A. Fast-track never selects `ours`,
 `theirs`, or `synthesis`, never invents a synthesis, and never suppresses a
 required semantic decision.
 
-### Step 5A: Contextual conflict analysis and decision gate
+### Step 5A: Contextual conflict analysis and decision gate — global resolution strategy
 
 Run this stage after the scope is selected (or after fast-track selects
 `full`) and before the coordinator writes or stages any resolution. Analyze the
@@ -248,20 +281,25 @@ semantic ambiguity, compare the complete alternatives in plain language:
 
 The worker-facing analysis must distinguish **Facts** from **Inferences** and
 must state the affected file and conflict region. Keep the alternatives
-pending until the human selects one; the coordinator must not write or stage a
-file while a contextual decision is pending.
+pending until the human confirms one complete global strategy; the coordinator
+must not write or stage a file while contextual analysis or strategy review is
+pending. Do not ask one independent question per conflicted file: the strategy
+is a coherent plan over the whole selected conflict set.
 
-For an **obvious** conflict, do not emit a contextual `needs_input`. Return a
-`completed` result with the deterministic, complete, marker-free resolution
-proposal and state that no semantic decision was required. This is the
-lightweight path.
+For an **obvious** conflict, do not emit a contextual `needs_input` for that
+individual conflict. Include its deterministic, complete, marker-free outcome
+in the one global strategy proposal and state that no semantic decision was
+required for that region. This keeps the conflict analysis lightweight while
+still requiring confirmation of the complete strategy before any write.
 
-For a **semantic ambiguity**, return `needs_input` with a question that names
-the conflict, explains why the choice matters, and says that the choice is
-between complete technical outcomes rather than text fragments. The result
-summary must carry the plain-language facts, inferences, branch objectives,
-alternative comparison, affected contracts, and any contradiction or
-synthesis warning. The ordered options are:
+For a **semantic ambiguity**, retain the contextual alternatives in the global
+strategy source rather than opening an independent per-file picker. The source
+must name the conflict, explain why the choice matters, and say that the
+choice is between complete technical outcomes rather than text fragments. The
+strategy summary must carry the plain-language facts, inferences, branch
+objectives, alternative comparison, affected contracts, and any contradiction
+or synthesis warning. The stable internal option values for a targeted
+alternative remain:
 
 1. `{label: "Keep the current behavior — preserve its validation and response rules", value: "ours"}`
 2. `{label: "Keep the incoming behavior — preserve its validation and response rules", value: "theirs"}`
@@ -269,12 +307,13 @@ synthesis warning. The ordered options are:
    only when the worker has produced and justified a complete safe synthesis;
 4. `{label: "Show more context before deciding", value: "more-context"}`.
 
-The option order is fixed. Human-facing labels must describe the behavior,
-objective, trade-offs, and affected contract in simple language; they must not
-expose `ours` or `theirs` as jargon or offer a mechanical fragment choice. If
-no safe synthesis exists, omit option 3 and state plainly that combining the
-branches would duplicate responsibility, conflict with a contract, or create
-another source of truth. Do not hide that escalation behind fast-track.
+The option order is fixed when these targeted alternatives are exposed during a
+strategy revision. Human-facing labels must describe the behavior, objective,
+trade-offs, and affected contract in simple language; they must not expose
+`ours` or `theirs` as jargon or offer a mechanical fragment choice. If no safe
+synthesis exists, omit option 3 and state plainly that combining the branches
+would duplicate responsibility, conflict with a contract, or create another
+source of truth. Do not hide that escalation behind fast-track.
 
 For example, when the current behavior rejects malformed input before saving
 but the incoming behavior accepts a legacy input format, useful labels are
@@ -283,6 +322,54 @@ incoming behavior — accept the legacy input format`, and, only when it is safe
 `Use the safe combined behavior — accept valid legacy input but reject malformed
 data before saving`. Do not replace these with `ours`, `theirs`, `take both`, or
 another text-fragment label.
+
+#### Global resolution strategy proposal
+
+After analyzing every conflict in the selected scope, compose one complete
+global resolution strategy before returning any materializable resolution. The
+strategy is the worker's semantic plan, not Git's low-level merge algorithm.
+It MUST cover the whole conflict set in deterministic file and region order and
+must state, for each affected file, what the plan keeps from the current side,
+adopts from the incoming side, combines safely, or cannot synthesize. Include
+the branch objectives, **Facts**, **Inferences**, affected contracts, trade-offs,
+risks, unresolved escalations, every retained complete alternative, and the
+complete marker-free file content for each candidate outcome where required.
+Never construct the plan by concatenating conflict fragments.
+
+Return the proposal as a `needs_input` result. Its `summary` contains the
+worker-authored `## Global resolution strategy` and the existing
+`## Conflict Analysis` / `### Resolution proposals` source; the coordinator
+prints that summary as ordinary conversation text before presenting the
+decision. Its `question` is the closed confirmation **"Apply this complete
+global resolution strategy before changing the conflicted files?"** and its
+ordered options are:
+
+1. `{label: "Apply the complete strategy (Recommended)", value: "apply-strategy"}`
+2. `{label: "Revise the strategy", value: "revise-strategy"}`
+3. `{label: "Do not apply this strategy", value: "decline-strategy"}`
+
+The worker authors the explanatory question and labels in the selected working
+language; the coordinator forwards them verbatim and never translates or
+rephrases them. The option values are protocol tokens and remain unchanged.
+`apply-strategy` is the only answer that permits the worker to return a final
+completed resolution payload. `decline-strategy` closes the conflict route
+without a resolution write or commit and reports the exact repository state.
+
+On `revise-strategy`, return `needs_input` from this same worker with an empty
+`options` list and one open request for the user's context or correction. The
+coordinator prints that request once as ordinary conversation text rather than
+opening a native picker, waits for free-form input, and forwards the exact
+answer unchanged through the active worker continuation. Rebuild the global
+strategy from the retained alternatives and the new evidence, then return the
+summary and closed confirmation again. Context requests, corrections, and
+strategy revisions may repeat, but no resolution write, conflict-marker
+removal, staging, or commit may happen before `apply-strategy` is confirmed.
+
+If a targeted `more-context` value is exposed while revising a semantic
+alternative, preserve that pending alternative and continue the same worker
+without writing or staging. It is still a context request, not a resolution;
+the selected language and all internal alternative values survive the
+continuation.
 
 Every selected resolution alternative must use the following exact payload
 contract. The completed result's summary MUST contain a `## Complete resolution
@@ -326,20 +413,23 @@ return another `needs_input` for the same pending conflict. Expand the
 explanation using read-only evidence from related changes and auto-merged
 files, preserve the existing alternatives and their internal values, and do
 not write, stage, or return a selected resolution. More-context may be
-requested repeatedly until the user selects a complete alternative.
+requested repeatedly until the user supplies or confirms a complete global
+strategy.
 
 When the forwarded answer is `ours`, `theirs`, or `synthesis`, accept it only
 if that internal value is an option currently offered for the pending conflict.
-If more semantic ambiguities remain, ask the next contextual question before
-returning any resolution proposal. Once every required decision is explicit,
-return `completed` with only the selected, complete, marker-free alternatives
-inside the scope. The payload must include a `## Selected contextual decisions`
-section identifying each conflict and its selected internal value, followed by
-the `## Complete resolution payload` JSON section and the existing `## Conflict
-Analysis` / `### Resolution proposals` structure. The JSON `files` records are
-the only resolution content the coordinator may materialize. The coordinator
-must never reconstruct a selected outcome from the prose or from the unselected
-alternatives.
+Record it in the retained global strategy and return the complete strategy
+proposal again; do not return a materializable resolution merely because one
+region has a decision. If more semantic ambiguities remain, keep them in the
+same global proposal and continue the strategy loop. Only after the user
+confirms `apply-strategy` may the worker return `completed` with the selected,
+complete, marker-free alternatives inside the scope. The payload must include a
+`## Selected contextual decisions` section identifying each conflict and its
+selected internal value, followed by the `## Complete resolution payload` JSON
+section and the existing `## Conflict Analysis` / `### Resolution proposals`
+structure. The JSON `files` records are the only resolution content the
+coordinator may materialize. The coordinator must never reconstruct a selected
+outcome from the prose or from the unselected alternatives.
 
 If the analysis finds a contradiction for which no safe combined outcome
 exists, report it as a semantic escalation in the contextual summary and offer
@@ -365,11 +455,15 @@ matching `files` record in `## Complete resolution payload`>
 <any true semantic contradictions>
 ```
 
-For a semantic-decision `needs_input`, the contextual source is carried in the
+For a contextual or global-strategy `needs_input`, the source is carried in the
 same `summary`, `question`, and ordered `options` fields required by the
-worker-core closed shape. No new top-level lifecycle field is introduced. A
-completed resolution result additionally carries the exact JSON object in its
-summary; no region-level materialization contract is supported.
+worker-core closed shape. A non-empty `options` list is a closed decision for
+the coordinator's native picker; an empty `options` list is the explicit
+open-input form for a free-form context or correction request and is presented
+as ordinary conversation text. No new top-level lifecycle field is introduced
+for either form. A completed resolution result additionally carries the exact
+JSON object in its summary; no region-level materialization contract is
+supported.
 
 ### Step 6: Verification loop
 
@@ -401,8 +495,19 @@ Run the detected suite. Capture exit code and output.
   continuation; apply exactly the listed corrections and re-run.
 - If a proposed verification correction changes the selected objective or
   introduces a new contract-level alternative, do not choose it silently.
-  Re-enter Step 5A with a contextual `needs_input` before any such correction
-  is written or staged.
+  Re-enter the global Step 5A strategy loop with the selected working language
+  before any such correction is written or staged. The correction requires a
+  new strategy confirmation; it never authorizes a silent objective change.
+- **Application or verification exposes a new problem:** if a coordinator
+  resolution write, marker check, staging check, test run, or proposed fix
+  exposes a new conflict, inconsistent contract, or otherwise invalidates the
+  current global strategy, do not continue with the old payload. Preserve the
+  exact current repository state, report the new state to this same worker, and
+  return `event: conflict_detected` with
+  `continuation_state: strategy-analysis`. Re-read the current conflict set,
+  rebuild the complete global strategy, and require a fresh confirmation before
+  any further resolution write. The selected working language is retained and
+  no language question is asked again.
 - **E5 — Cap exhaustion (round 3 still failing):** return `completed` whose
   summary states that verification failed through all 3 rounds, lists the
   remaining failures, and notes that the resolved+staged state remains without

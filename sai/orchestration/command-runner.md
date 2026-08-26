@@ -8,6 +8,7 @@ not perform the technical work delegated to a worker.
 ## Result Loop
 
 Initialize one invocation-scoped ordered, duplicate-free `changed_files` union.
+Add reported paths in first-seen order; the union is never reset.
 Dispatch one worker with the phase adapter's `original_envelope` and validate
 every returned result before acting on it.
 
@@ -21,6 +22,19 @@ status, the offset-bearing ISO-8601 `emitted_on`, string `summary`, and string-l
 applicable, and binding-owned continuation metadata. A design notice is the
 separate closed shape
 `{event: "notice", emitted_on: string, message: string, changed_files: string[]}`.
+
+An adapter may also declare a phase-defined closed nonterminal extension in
+`allowed_nonterminal_extensions`. Validate its discriminator, `emitted_on`,
+`summary`, `changed_files`, and every additional field in the adapter's exact
+extension shape before invoking `extension_handlers`. An extension is a pause,
+not a terminal status: add its paths to the union, route its source through the
+declared coordinator handler, and resume only through the handler's exact
+same-worker continuation. Do not infer a question, answer, or mutation from an
+extension payload. In the merge phase, `event: conflict_detected` carries an
+`affected_files` inventory and a `continuation_state` of
+`language-selection|strategy-analysis`; the coordinator uses that extension to
+announce the conflict, ask for a working language only on the first state, and
+re-enter strategy analysis without asking again on the second state.
 
 Add every reported path to the invocation-scoped union in first-seen order.
 The non-reset enumeration spans input, feedback, notice, progress,
@@ -39,10 +53,14 @@ Milestone Stamp: the `HH:mm` a progress task list attaches to a step it renders
 `@sai/policies/todo-structure.md`, read straight off the value with no
 conversion, so the coordinator issues no wall-clock call and resolves no zone.
 
-For `needs_input`, present the exact question and options, forward the exact
-answer through the active binding, and process the next result through this
-loop. For a notice, invoke the design adapter's notice extension and forward
-its fixed acknowledgement. Notices are not a worker status.
+For `needs_input` with a closed option set, present the exact question and
+options, forward the exact answer through the active binding, and process the
+next result through this loop. When a phase explicitly permits an empty option
+set as open input, present its exact question through that phase's ordinary
+conversation channel, forward the user's exact free-form answer, and process
+the next result through the same loop; do not synthesize options. For a notice,
+invoke the design adapter's notice extension and forward its fixed
+acknowledgement. Notices are not a worker status.
 
 A progress event is the separate closed shape
 `{event: "progress", emitted_on: string, step_ids: string[], changed_files: string[]}`.
@@ -79,7 +97,8 @@ declaration:
 - `dispatch_operation`
 - `continuation_operation`
 - `allowed_nonterminal_extensions`
-- `extension_handlers`
+- `extension_handlers` (the handlers for the adapter's declared nonterminal
+  extensions; empty when none are declared)
 - `replacement_reconstruction_fields`
 - `terminal_navigation`
 - `progress_plan` (optional — static, ordered, fully known at dispatch, immutable for the active adapter segment; under composition the pre-delta phrase "immutable for the invocation" means immutable for the active adapter segment, and a one-adapter invocation keeps segment scope identical to today's invocation scope; it controls visual task-list rendering only)

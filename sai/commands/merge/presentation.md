@@ -4,7 +4,10 @@ This is the coordinator-owned presentation boundary for `sai-merge`. It is
 limited to this command; it is not a shared UI framework and it never replaces
 the worker binding or the coordinator's mutation procedure. The active
 `concise` renderer exposes decisions directly, moves technical evidence into
-summaries, and keeps the worker lifecycle and mutation boundary unchanged.
+summaries, and keeps the worker lifecycle and mutation boundary explicit. A
+conflict adds one coordinator-owned language hand-off and a two-channel
+interaction: worker information and strategy proposals are ordinary text,
+while closed decisions use the active harness-native question mechanism.
 
 ## Installed source path and projections
 
@@ -47,10 +50,16 @@ mutation, run git, write a resolution, rename a record, or update a reference.
 Technical analysis remains the worker's responsibility, and every mutation
 remains the coordinator's responsibility.
 
-The merge-only seam has three coordinator operations:
+The merge-only seam has these coordinator operations:
 
+- `render_information(worker_source, presentation_state)` — print
+  worker-authored information, conflict notices, strategy proposals, and
+  summaries as ordinary conversation text without changing their wording;
 - `render_gate(worker_source, presentation_state)` — build and present the
   gate summary and its native picker inputs;
+- `render_open_input(worker_source, presentation_state)` — print an exact
+  worker-authored free-form context or correction request once as ordinary
+  conversation text and wait for the answer;
 - `render_progress(presentation_state)` — decide whether the merge progress
   surface has anything to render; and
 - `render_terminal(worker_source, presentation_state)` — render the terminal
@@ -64,20 +73,24 @@ protocol or a reusable abstraction.
 Initialize one state object for the invocation with these fields:
 
 ```text
-phase: preflight | branch-selection | merge-outcome | scope-selection |
-       contextual-analysis | resolution | verification | adr-ddr |
-       authorization | terminal
+phase: preflight | branch-selection | merge-outcome | language-selection |
+       scope-selection | contextual-analysis | resolution | verification |
+       adr-ddr | authorization | terminal
 presentation_mode: concise
 current_branch
 merged_branch
 branch_options
 merge_outcome: clean | conflicted
+working_language: unresolved | selected invocation-scoped language token
 conflict_files_by_category
 eligible_scope_options
 selected_scope
 contextual_decision_status: not-needed | pending | completed | blocked
 pending_contextual_conflict
 contextual_decisions: ordered records {conflict_id, decision: ours|theirs|synthesis}
+strategy_status: not-applicable | pending | revised | confirmed | blocked
+strategy_revision: non-negative integer
+conflict_detection_round: non-negative integer
 verification_round: 0 | 1 | 2 | 3
 verification_result: pending | passed | failed | cap-exhausted
 staged_files
@@ -118,14 +131,28 @@ Update the state only at the corresponding lifecycle boundary:
   reachable from the current branch in `branch_options`.
 - After branch selection, record the current and merged branches, render the
   adaptive TODO, run the coordinator-owned merge, and record `merge_outcome`.
-  A clean merge advances directly to `adr-ddr`; a conflicted merge advances
-  through `scope-selection`, `contextual-analysis`, and `resolution`.
+  A clean merge advances directly to `adr-ddr`; it never enters
+  `language-selection`, asks for a working language, or presents a strategy.
+  A conflicted merge first enters `language-selection` when the worker returns
+  `event: conflict_detected` and then advances through `scope-selection`,
+  `contextual-analysis`, and `resolution`.
+- At the first conflict event, store the exact affected-file inventory, render
+  only a concise conflict notice as ordinary text, and ask for
+  `working_language`. Do not expose semantic analysis before that question is
+  answered. Store the selected language only in invocation-scoped state and
+  forward it unchanged through the same-worker continuation.
 - After scope selection, enter `contextual-analysis`. Keep the contextual item
-  `in_progress` while the worker explains a semantically ambiguous conflict or
-  continues a `more-context` request. An obvious conflict completes this stage
-  without a user gate. Do not enter `resolution` or permit a resolution write
-  until every required contextual decision has an explicit internal value and
-  the worker has returned the matching complete alternative.
+  `in_progress` while the worker explains a semantically ambiguous conflict,
+  presents the complete global strategy, or continues a `more-context` or
+  free-form revision request. An obvious conflict has no individual semantic
+  picker, but it still belongs to the global strategy confirmation. Do not enter
+  `resolution` or permit a resolution write until the user confirms the current
+  global strategy and the worker returns the matching complete alternative.
+- If application or verification exposes a new conflict or inconsistency,
+  return to `contextual-analysis` with the same worker and selected language.
+  Record the new affected-file inventory and strategy revision, do not ask for
+  the language again, and require a fresh strategy confirmation before any
+  further write.
 - After resolution writes and staging, enter `verification`. Keep the same
   staged state and increment `verification_round` for each failed round. Round
   three remains `cap-exhausted` and staged; it is never silently committed or
@@ -145,10 +172,74 @@ worker summary as a mutation instruction. The coordinator already knows the
 operation outcome it reports to the worker; the seam records that outcome for
 presentation only.
 
+## Conflict hand-off and two-channel presentation
+
+The worker reports a conflict through the declared closed nonterminal
+`event: conflict_detected` result:
+
+```text
+event: conflict_detected
+emitted_on: <worker-authored ISO-8601 instant>
+summary: <concise conflict-state summary>
+changed_files: <worker-write paths, normally []>
+affected_files: <exact Git-conflicted paths>
+continuation_state: language-selection | strategy-analysis
+```
+
+The coordinator validates this result before presentation. It records
+`affected_files` as conflict state, not as a worker write or staging list, and
+does not derive semantic content from the event. On the initial
+`language-selection` state, `render_information` prints one concise notice in
+ordinary conversation text, then the coordinator owns the working-language
+question. It uses `AskUserQuestion` on Claude Code and `question` on opencode;
+the canonical English question is **"Which language should I use for the
+conflict explanation and resolution strategy?"**, rendered in the ambient
+conversation language, with exact language-token values;
+the selected language value is stored only in invocation state and forwarded
+unchanged through the same-worker continuation. No conflict analysis,
+strategy, or resolution prompt appears before that question.
+
+After the language hand-off, `render_information` prints worker-authored facts,
+inferences, conflict analysis, verification findings, and the complete global
+strategy proposal as ordinary conversation text. It preserves the worker's
+wording and the selected language; paths, hashes, identifiers, protocol tokens,
+JSON keys, and artifact formats remain stable. A closed worker decision is
+rendered separately through the native question channel with its exact ordered
+options and values. The coordinator never translates, rephrases, or selects a
+worker option.
+
+An empty-options `needs_input` is an open-input result, not a closed gate.
+`render_open_input` prints its exact worker-authored request once as ordinary
+conversation text, waits for the user's free-form context or strategy
+correction, and forwards that answer unchanged to the same worker. It never
+invents a picker option. Context requests and corrections preserve the pending
+complete alternatives, selected language, and no-mutation boundary.
+
+When the worker returns a global strategy proposal, the coordinator renders the
+whole proposal before the native confirmation question. The proposal covers
+all files in the selected scope and states what to keep, adopt, combine, or
+escalate, with Facts, Inferences, affected contracts, trade-offs, and complete
+resolution content where required. Only an explicit confirmation of the
+current strategy permits the worker to return the final complete-file payload.
+Until then, the coordinator performs no resolution write, marker removal,
+staging, or commit. A `strategy-analysis` conflict event after application or
+verification follows the same information route but reuses the selected
+language and same worker; it never asks for language again. The worker requires
+a new strategy confirmation before any further resolution write.
+
+Claude Code and opencode consume this same neutral language, source-fidelity,
+strategy, and mutation contract. Their native question mechanisms carry the
+same question text, option values, ordering, and continuation semantics; only
+the task-list binding differs (`TaskUpdate`/`TaskList` versus `todowrite`/the
+session todo surface). Neither harness permits a worker to present directly or
+to write, stage, or commit during strategy discussion.
+
 ## Gate presentation
 
-For every worker `needs_input`, `render_gate` creates a coordinator-local gate
-summary before invoking the native picker:
+For every worker `needs_input` with a non-empty `options` list,
+`render_gate` creates a coordinator-local gate summary before invoking the
+native picker. A result with an empty `options` list uses `render_open_input`
+instead and is ordinary free-form conversation input, never a picker:
 
 ```text
 kind
@@ -158,8 +249,8 @@ options
 state_snapshot
 ```
 
-`question` and `options` come from the validated worker source and remain exact
-and ordered. Branch options use the exact branch name as `value` and
+`question` and non-empty `options` come from the validated worker source and
+remain exact and ordered. Branch options use the exact branch name as `value` and
 `<branch> — last commit <YYYY-MM-DD HH:mm>` as `label`; the worker has already
 filtered them with `git branch --no-merged HEAD` and sorted them by commit
 timestamp descending and branch name ascending for ties. `worker_context`
@@ -171,9 +262,10 @@ presentation state is never added to that history and is never sent as an
 envelope field.
 
 The seam owns the presentation location for the existing dirty-worktree,
-branch, runtime-scope, contextual semantic-decision, no-suite, and
-commit-authorization gates. It does not add a gate, alter answer values, or
-change continuation order. For the runtime scope gate, validate that the
+branch, runtime-scope, global-strategy, contextual semantic-decision, no-suite,
+and commit-authorization gates, plus the conflict-triggered language question.
+It does not add a gate, alter answer values, or change continuation order. For
+the runtime scope gate, validate that the
 worker's `eligible_scope_options` matches `conflict_files_by_category` before
 rendering: `full` represents all detected categories and is rendered first as
 `Full scope (Recommended)`; `artifacts` requires a specs or ADR/DDR conflict
@@ -181,6 +273,25 @@ and follows as `Artifacts only (specs + ADR/DDR)` when applicable; `code`
 requires a code conflict and follows as `Code only` when applicable. Render
 only that filtered, canonical option set and never show a category-specific
 option for an absent category.
+
+For the global-strategy gate, validate that the worker source covers the whole
+selected conflict set in deterministic file and region order and contains the
+worker-authored `## Global resolution strategy`, **Facts**, **Inferences**, both
+branch objectives, what the plan preserves/gains/gives up, concrete risks,
+affected contracts, every complete alternative, and a safe-synthesis assessment
+where applicable. The source must identify what to keep, adopt, combine, or
+escalate across the conflict set; it must not present independent fragment
+choices as a strategy. The coordinator prints this source through ordinary
+conversation text, then presents the closed strategy-confirmation question and
+its exact ordered options through the native picker. `apply-strategy` is the
+only option that can unlock the completed resolution payload; revision and
+decline remain mutation-free.
+
+For a revision, accept only the same worker's empty-options open-input result.
+Print the exact request as ordinary text and forward the user's free-form
+context or correction unchanged. Preserve the selected language and pending
+alternatives across every iteration. Do not add a language question or allow a
+resolution write, marker removal, staging, or commit during an iteration.
 
 For a contextual semantic-decision gate, validate that the worker source names
 one pending conflict and carries both **Facts** and **Inferences**, the two
@@ -191,15 +302,18 @@ are internal and must remain exact. `synthesis` may appear only when the source
 contains a complete safe combined outcome. `more-context` is a continuation
 request, never a resolution choice. Human-facing labels must describe the
 complete behavior and trade-off rather than expose merge jargon or a text
-fragment. The seam validates this source and renders it; it does not select a
-value or infer a missing alternative.
+fragment. These values are retained inside the complete global strategy; the
+seam must not turn them into independent per-file resolution prompts when the
+global strategy gate is active. The seam validates this source and renders it;
+it does not select a value or infer a missing alternative.
 
-While this gate or a `more-context` continuation is pending, the coordinator
-must not write a resolution, remove conflict markers, or stage a path. A
-forwarded decision is not sufficient by itself: the worker must return the
-matching complete, marker-free alternative, and the coordinator validates that
-payload before entering the resolution boundary. A completed resolution result
-must carry the `## Complete resolution payload` JSON object defined by
+The coordinator must not write a resolution, remove conflict markers, or stage
+a path while this gate, the global strategy confirmation, or a `more-context`
+or open-input continuation is pending. A forwarded decision is
+not sufficient by itself: the worker must return the matching complete,
+marker-free alternative after global confirmation, and the coordinator
+validates that payload before entering the resolution boundary. A completed
+resolution result must carry the `## Complete resolution payload` JSON object defined by
 `@sai/commands/merge/instructions.md`. The seam validates that it has exactly
 one complete `content` string for every conflicted file in the selected scope,
 that each path and category matches the worker's classified source, that every
@@ -279,25 +393,33 @@ foreign entries and no restoration is promised.
    contributes no collision item; impossible conflict work is never rendered
    as pending.
 4. After a conflicted outcome, reconcile the list to the actual categories and
-   gate path. Append canonical `scope` only when the scope gate is actually
+   gate path. Keep the conflict route pending while the coordinator performs
+   the language hand-off; do not expose semantic content before the language
+   question. Append canonical `scope` only when the scope gate is actually
    presented; fast-track omits it. Add `contextual-analysis` after `scope` (or
    make it the first active conflict item on fast-track) and keep the applicable
    `resolve-artifacts`, `resolve-code`, or `resolve-full` item pending. The
    category-specific scope options are the worker's filtered set, not a new
    TODO decision.
-5. While the worker is explaining a semantic ambiguity, while `more-context` is
-   being answered, or while more contextual decisions remain, keep
+5. While the worker is explaining a semantic ambiguity, presenting the complete
+   global strategy, while `more-context` or an open correction is being
+   answered, or while more contextual decisions remain, keep
    `contextual-analysis` `in_progress` and keep the resolution item pending.
-   Do not render the resolution item as active before the worker returns the
-   selected complete alternatives. When the worker returns an obvious route or
-   the final explicitly selected alternatives, mark `contextual-analysis`
-   `completed` and make the applicable resolution item `in_progress`; only
+   Do not render the resolution item as active before the user confirms the
+   current global strategy and the worker returns the selected complete
+   alternatives. An obvious conflict completes semantic analysis without an
+   individual picker but still passes through that global confirmation. Only
    then may the coordinator write and stage resolutions.
-6. After each resolution or verification outcome, mark only the applicable
+6. When application or verification reports a new conflict or inconsistency,
+   keep the merge item completed, return the active contextual item to
+   `in_progress`, preserve the selected language, and render the refreshed
+   strategy route. Do not ask for the language again and do not let a TODO
+   transition authorize a write.
+7. After each resolution or verification outcome, mark only the applicable
    canonical item that the coordinator has actually completed and render the
    complete current list. Round three remains staged and uncommitted when
    verification is exhausted; the TODO must not imply that a commit occurred.
-7. After the collision pass, omit canonical `collision` for
+8. After the collision pass, omit canonical `collision` for
    `not-applicable` or `no-collision`; otherwise keep it before
    `authorization` and mark it completed only after all coordinator-owned
    renames and canonical reference updates have finished. Add

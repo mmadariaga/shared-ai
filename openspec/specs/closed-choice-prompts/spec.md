@@ -70,6 +70,20 @@ A contextual merge decision SHALL use the harness's native option-picker wheneve
 - **WHEN** a supported harness receives a contextual merge decision with a closed set of complete outcomes
 - **THEN** the coordinator presents the exact ordered options through the native picker without changing their values or meanings
 
+### Requirement: Conflict decisions use native picker semantics
+
+The language decision and global strategy confirmation SHALL use the active harness-native option picker when available. The coordinator SHALL preserve worker-authored option order and exact values and SHALL reject no listed value by guessing.
+
+#### Scenario: Strategy confirmation uses native picker
+
+- **WHEN** the worker returns the global strategy decision with non-empty options
+- **THEN** the coordinator presents `apply-strategy`, `revise-strategy`, and `decline-strategy` through the native picker in that order
+
+#### Scenario: Open revision is not a closed choice
+
+- **WHEN** strategy revision returns a `needs_input` result with an empty `options` list
+- **THEN** the coordinator presents ordinary free-form input instead of a native option picker
+
 ### Requirement: Contextual merge decisions use native picker semantics
 
 A contextual merge decision SHALL use the harness's native option-picker whenever available. The ordered internal values SHALL remain stable as `ours`, `theirs`, optional `synthesis`, and `more-context`; a synthesis option SHALL appear only when a complete safe synthesis exists. Invalid free-text selections SHALL follow the defining instruction's re-prompt behavior.

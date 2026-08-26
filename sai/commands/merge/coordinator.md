@@ -4,6 +4,7 @@
   Fetch @skills/safe-operations/SKILL.md and use it
   Fetch @sai/policies/commit-rules.md and follow it at the commit gate.
   Fetch @sai/policies/remember.md
+  Fetch @sai/policies/question-context.md
   Fetch @sai/commands/merge/presentation.md and use it as the merge
   presentation seam.
   Fetch @sai/adapters/claude/panel-render.md when the active harness is Claude
@@ -46,15 +47,17 @@
 
   You are the user-facing merge coordinator. The worker owns every read-only
   procedure of the technical phase: pre-merge environment checks, branch
-  selection, conflict classification, contextual objective analysis, complete
-  resolution alternatives, verification loop analysis, and ADR/DDR collision
-  scanning. You own the merge presentation seam, lifecycle routing, the
-  adaptive merge TODO, and ALL mutating execution: the merge launch, resolution
-  file writes, ADR/DDR renames, reference updates, staging, and the final
-  commit. Route every validated worker result through the fetched merge
-  presentation seam before presenting it or continuing the lifecycle. Never
-  perform the worker's read-only analysis on its behalf; never let the worker
-  run `git merge`, write a file, rename a file, or run git.
+  selection, conflict detection, conflict classification, contextual objective
+  analysis, complete global resolution strategies and alternatives,
+  verification loop analysis, and ADR/DDR collision scanning. You own the
+  merge presentation seam, lifecycle routing, the conflict-triggered language
+  question, the two coordinator presentation channels, the adaptive merge
+  TODO, and ALL mutating execution: the merge launch, resolution file writes,
+  ADR/DDR renames, reference updates, staging, and the final commit. Route
+  every validated worker result through the fetched merge presentation seam
+  before presenting it or continuing the lifecycle. Never perform the worker's
+  read-only analysis on its behalf; never let the worker run `git merge`, write
+  a file, rename a file, or run git.
 
   Declare the minimal phase-adapter field set:
   - `original_envelope` — the opaque single-string fast-track-cleaned request
@@ -69,16 +72,32 @@
   - `continuation_operation` — continue the same worker through the binding's
     continuation mechanism, forwarding the selected answer value or the
     post-merge outcome report.
-  - `allowed_nonterminal_extensions` — none; `extension_handlers` empty. This
-    adapter declares NO worker `progress_plan`: no progress event exists in
-    this lifecycle and no acknowledgement literal is defined. The merge TODO
-    is a separate coordinator-owned adaptive task list; it is not a worker
+  - `allowed_nonterminal_extensions` — the merge-only closed
+    `conflict_detected` extension `{event: conflict_detected, emitted_on:
+    string, summary: string, changed_files: string[], affected_files:
+    string[], continuation_state: language-selection|strategy-analysis}`.
+    This is the only nonterminal extension; it is not a worker status or a
+    progress event.
+  - `extension_handlers` — for `conflict_detected`, validate the complete
+    source payload, record the affected-file inventory without treating it as a
+    worker write, and route the first event to the coordinator's language
+    question or the strategy-analysis event to the selected-language re-entry.
+    The handler prints the concise conflict notice as ordinary conversation
+    text, uses the active harness-native question mechanism for the first
+    language decision, and resumes the same worker with the exact selected
+    value. It never adds language to `arguments_value`, worker payload
+    persistence, artifacts, or configuration.
+    This adapter declares NO worker `progress_plan`: no progress event exists
+    in this lifecycle and no acknowledgement literal is defined. The merge
+    TODO is a separate coordinator-owned adaptive task list; it is not a worker
     progress plan, is not transported in the envelope, and does not change
     worker continuation semantics.
   - `replacement_reconstruction_fields` — the complete original envelope, the
     opaque input history (including forwarded gate answers), `fast_track_active`,
-    and the ordered duplicate-free changed-files union; a replacement worker
-    reconstructs only from these.
+    the selected invocation-scoped `working_language` when a conflict has been
+    detected, and the ordered duplicate-free changed-files union; a replacement
+    worker reconstructs only from these and never receives artifact contents or
+    a language persisted in the envelope.
   - `terminal_navigation` — pass the validated worker source and the current
     merge presentation state to the seam's terminal renderer. On a run whose
     final commit executed, it prints the worker-authored summary verbatim,
@@ -102,30 +121,100 @@
   Validate every returned result against the shared runner's closed-payload
   rules before acting on it.
 
+  ## Conflict-triggered language hand-off and presentation channels
+
+  Initialize `working_language` as unresolved for every invocation. A clean
+  merge leaves it unresolved and never asks for a language or a resolution
+  strategy. When the worker returns the closed nonterminal
+  `event: conflict_detected` with `continuation_state: language-selection`,
+  first record its exact `affected_files` inventory and render one concise
+  informational notice as ordinary conversation text. The notice may say that
+  conflicts were detected, name the affected paths and current merge state, and
+  explain that a working language is needed before conflict analysis; it must
+  not expose semantic analysis or propose a resolution.
+
+  After that notice, ask exactly one working-language question through the
+  active harness-native question mechanism, using the closed-choice rule in
+  `@sai/policies/remember.md` and the five-element anatomy in
+  `@sai/policies/question-context.md`:
+
+  The canonical English question is **"Which language should I use for the
+  conflict explanation and resolution strategy?"**; render its explanatory
+  wording in the ambient conversation language. Offer `English` and the
+  current conversation language when they differ, and preserve the native
+  free-text/Other path when the active harness supplies one. If the two named
+  languages are the same, offer that value once rather than duplicating it.
+
+  - Claude Code uses `AskUserQuestion`.
+  - opencode uses the `question` tool.
+
+  Offer the available language values for the invocation (including `English`
+  and the current conversation language when they differ, plus the native
+  free-text/Other path when the harness provides one). The option label may be
+  readable in the ambient language, but its value is the exact language token.
+  Store the selected value in invocation-scoped `working_language`, outside
+  `arguments_value`, artifacts, configuration, and worker payload persistence.
+  Forward the selected value unchanged as the next same-worker continuation. Do not
+  translate it, wrap it in a new envelope key, or ask the worker to choose it.
+
+  The first language question is the only language gate for this merge run. If
+  a later `conflict_detected` event has `continuation_state:
+  strategy-analysis`, print its concise state notice through the ordinary-text
+  channel and continue the same worker with the already selected
+  `working_language`; never ask the language question again. A replacement
+  reconstruction uses the coordinator-owned session value, not a persisted
+  worker payload.
+
+  The coordinator has two user-facing channels after the language hand-off:
+
+  1. **Ordinary conversation text** — print worker-authored informational
+     summaries, global strategy proposals, verification findings, and open
+     context/correction requests exactly as returned. Do not send these to a
+     picker and do not rephrase, translate, or duplicate them.
+  2. **Native questions** — send only closed decisions with non-empty options in
+     their worker-authored order (including the language decision, branch/scope choices, global
+     strategy confirmation, semantic choices when exposed, no-suite, and final
+     authorization) to the active harness-native picker, preserving the exact
+     question and option values.
+
+  A worker `needs_input` with an empty `options` list is the explicit open-input
+  form. Print its exact question once as ordinary text, wait for free-form user
+  input, append only the exact answer to opaque input history, and forward it to
+  the same worker. The coordinator must never synthesize closed options for a
+  context or strategy correction request.
+
   ## Needs-input routing
 
   On a worker `needs_input` result — the dirty-worktree gate, the branch
-  selector, the runtime scope gate, a contextual semantic-decision or
-  `more-context` continuation, the no-suite escalation, or the authorization
+  selector, the runtime scope gate, the global strategy confirmation, a
+  contextual semantic decision, the no-suite escalation, or the authorization
   ask — first create the seam's gate presentation record from the worker source
-  and current merge presentation state. Present its exact question and ordered
-  options through the native option-picker per the "Closed-choice prompts" rule
-  in `@sai/policies/remember.md`, append only `{question, options,
-  answer_value}` to the opaque input history, and forward the exact answer value
-  to the same worker through the binding's continuation mechanism. Present any
-  worker-authored payload content through the seam, alongside the ask and
-  unaltered. Use the seam's active concise renderer: branch labels and values
-  remain the worker-authored exact option pairs, the scope options are the
-  worker's category-filtered eligible set, contextual labels describe complete
-  behavioral alternatives rather than merge jargon, and the authorization gate
-  shows the seam's compact merge summary instead of a full staged-file dump.
-  The seam must not add a gate, change an option value, or alter continuation
-  semantics. For `more-context`, preserve the pending alternatives and perform
-  no mutation — no resolution write or staging — while continuing the same
-  worker. For `ours`,
-  `theirs`, or `synthesis`, forward the exact value without interpreting or
-  replacing it; the worker must return the selected complete alternative before
-  the coordinator can mutate anything.
+  and current merge presentation state. When `options` is non-empty, present
+  its exact question and ordered options through the native option-picker per
+  the "Closed-choice prompts" rule in `@sai/policies/remember.md`, append only
+  `{question, options, answer_value}` to the opaque input history, and forward
+  the exact answer value to the same worker through the binding's continuation
+  mechanism. Present any worker-authored summary or proposal through the seam
+  as ordinary text before the ask and unaltered. Use the seam's active concise
+  renderer: branch labels and values remain the worker-authored exact option
+  pairs, the scope options are the worker's category-filtered eligible set,
+  strategy content describes one complete global plan, contextual labels
+  describe complete behavioral alternatives rather than merge jargon, and the
+  authorization gate shows the seam's compact merge summary instead of a full
+  staged-file dump.
+
+  When `options` is empty, this is an open context/correction request rather
+  than a closed gate. Present the exact question once as ordinary conversation
+  text, wait for free-form input, append only that exact answer to the opaque
+  input history, and forward it to the same worker. Do not invoke a picker,
+  invent choices, or interpret the answer in the coordinator. The seam must not
+  add a gate, change an option value, or alter continuation semantics. For
+  `more-context`, preserve the pending alternatives and perform no mutation —
+  no resolution write or staging — while continuing the same worker. For
+  `ours`, `theirs`, or `synthesis`, forward the exact value without
+  interpreting or replacing it; the worker must return the selected complete
+  alternative only as part of a confirmed global strategy before the
+  coordinator can mutate anything.
 
   ## Coordinator-owned execution
 
@@ -140,28 +229,37 @@
     call `render_progress(presentation_state)` to render the first adaptive
     merge TODO. The TODO is never rendered before source-branch selection.
     Capture the outcome (clean or conflicted), report it to the worker as a
-    continuation so it can proceed to conflict analysis or the ADR/DDR pass,
-    and record it in the seam state. Reconcile the TODO to the actual path
-    after the outcome: a clean merge removes scope, contextual-analysis,
-    resolution, and verification steps instead of leaving them pending; a
-    conflicted merge retains only the applicable scope, contextual-analysis,
-    and resolution path, then verification.
+    continuation, and record it in the seam state. A clean outcome continues
+    directly to the ADR/DDR pass. A conflicted outcome must first return the
+    worker's closed `conflict_detected` extension; do not let the worker read
+    conflict versions or expose semantic analysis before the coordinator has
+    printed the concise conflict notice and completed the working-language
+    question. Reconcile the TODO to the actual path after the outcome: a clean
+    merge removes scope, contextual-analysis, resolution, and verification
+    steps instead of leaving them pending; a conflicted merge retains only the
+    applicable scope, contextual-analysis, and resolution path, then
+    verification.
      Add a collision step only after the worker reports collision applicability
      as `repair-required` or `escalation-required`, followed by authorization.
      A skipped collision scan or a scan with no collisions removes that step
      rather than leaving it pending. A clean merge skips conflict-resolution
      presentation entirely.
-  - **Contextual decision gate** — after scope selection and before any
-    resolution write or staging, update the seam to `contextual-analysis` and
-    render the contextual TODO item. If the worker returns `needs_input`, ask
-    the exact human-facing question through the native picker and perform no
-    mutation. A `more-context` answer continues the same worker with the same
-    pending alternatives and remains mutation-free. Fast-track may omit only
-    the scope item; it must still stop here for semantic ambiguity. If the
-    worker returns an obvious-conflict result without a gate, or returns the
-    final selected alternatives after all required decisions, mark contextual
-    analysis complete before entering resolution.
+  - **Contextual decision gate — global strategy** — after the working language and scope are
+    selected, update the seam to `contextual-analysis` and render the
+    contextual TODO item. Present the worker's complete global strategy,
+    including its facts, inferences, affected files, alternatives, and
+    complete resolution content, as ordinary conversation text. Then present
+    its closed strategy confirmation through the native picker. An empty
+    `options` result is an open context/correction request and is presented as
+    ordinary text, not a picker. A `more-context` or `revise-strategy` answer
+    continues the same worker with the same pending alternatives and remains
+    mutation-free. Fast-track may omit only the scope item; it must still ask
+    for the working language and require this strategy confirmation. Mark
+     contextual analysis complete only after `apply-strategy` is confirmed and
+     the worker returns the matching complete alternatives. The strategy
+     confirmation is required before any resolution write or staging.
   - **Resolution writes** — only after the worker returns a completed payload
+    following explicit confirmation of the current global strategy and
     containing the explicitly selected complete alternative for every required
     semantic decision within the selected scope. The payload MUST contain the
     `## Complete resolution payload` JSON object defined by
@@ -197,8 +295,14 @@
     re-verification. On E5 cap exhaustion, proceed to the ADR/DDR pass with
     the current staged state. Record each round in the seam without resetting
     or committing the staged state; three failed rounds remain staged and
-    uncommitted. Reconcile the TODO after every outcome without changing the
-    worker's verification ownership or three-round behavior.
+    uncommitted. If application or verification exposes a new conflict or
+    inconsistency, do not apply the prior plan or ask for the language again:
+    report the exact current state to the same worker, route its
+    `conflict_detected` re-entry through the ordinary information channel, and
+    return to global strategy analysis with the selected language intact. A new
+    strategy confirmation is required before another resolution write. Reconcile
+    the TODO after every outcome without changing the worker's verification
+    ownership or three-round behavior.
   - **ADR/DDR renames** — after the worker returns the collision-pass plan:
      for each proposed rename, first copy its family, exact old/new H1,
      old/new index-label, assigned identifier, suffix, and path data into the
@@ -244,13 +348,14 @@
   ## Content assignment
 
   The split of technical content is fixed: `@sai/commands/merge/instructions.md`
-  (pre-merge checks, branch selection, conflict classification, contextual
-  objective analysis, complete resolution alternatives, scope gate,
-  verification analysis, ADR/DDR scanning, authorization ask) belongs to the
-  WORKER as read-only analysis and proposal procedure plus the source gate
-  data. `@sai/commands/merge/presentation.md` belongs HERE as the
-  coordinator-owned lifecycle, gate-summary, terminal, and progress-rendering
-  seam. The seam owns the concise branch/scope/contextual-decision/
+  (pre-merge checks, branch selection, conflict detection, conflict
+  classification, contextual objective analysis, complete global resolution
+  strategies and alternatives, scope gate, verification analysis, ADR/DDR
+  scanning, authorization ask) belongs to the WORKER as read-only analysis and
+  proposal procedure plus the source gate data. `@sai/commands/merge/presentation.md`
+  belongs HERE as the coordinator-owned lifecycle, language hand-off,
+  information/question channels, gate-summary, terminal, and progress-rendering
+  seam. The seam owns the concise branch/scope/strategy/contextual-decision/
   authorization rendering and the adaptive TODO, while all mutations — merge
   launch, resolution writes, renames, reference updates, staging, and commit
   execution — belong HERE.

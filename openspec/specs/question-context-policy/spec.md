@@ -121,3 +121,26 @@ A semantic merge decision prompt SHALL name the conflict, explain why the choice
 #### Scenario:
 - **WHEN** a command surface pins a terse prompt outside the full anatomy
 - **THEN** the exemption is registered once in question-context.md and every consuming surface references that registry instead of declaring its own carve-out
+
+### Requirement: Conflict-language question carries complete context
+
+The coordinator-authored conflict-language question SHALL name the language decision, explain that the language controls conflict explanation and resolution strategy, offer the available language choices in plain words, and carry the current conflict state. It SHALL be presented only after conflict detection and SHALL use the ambient conversation language for explanatory wording while preserving exact language-token values.
+
+#### Scenario: Language question follows conflict detection
+
+- **WHEN** the worker returns `conflict_detected` with `continuation_state: language-selection`
+- **THEN** the coordinator asks `Which language should I use for the conflict explanation and resolution strategy?` after presenting the conflict notice
+
+#### Scenario: Clean merge has no language question
+
+- **WHEN** the merge outcome is clean
+- **THEN** no conflict-language decision prompt is presented
+
+### Requirement: Strategy question preserves source fidelity
+
+The worker-authored global strategy question and options SHALL be forwarded unchanged by the coordinator after the strategy source is rendered as ordinary text. Protocol values SHALL remain stable while explanatory labels may be localized.
+
+#### Scenario: Strategy options remain stable
+
+- **WHEN** the strategy confirmation is presented
+- **THEN** its ordered values remain `apply-strategy`, `revise-strategy`, and `decline-strategy`

@@ -184,3 +184,26 @@ A contextual merge decision SHALL use the existing `needs_input` lifecycle statu
 
 - **WHEN** the user requests more context for a pending semantic merge decision
 - **THEN** the coordinator forwards the exact answer to the same worker and the worker returns another contextual decision without writing or staging
+
+### Requirement: Phase-defined closed nonterminal extensions
+
+The shared worker lifecycle protocol SHALL permit a declared phase-specific closed nonterminal extension with its discriminator, worker-authored `emitted_on`, summary, changed-files list, and exact additional fields. The merge conflict extension SHALL use `affected_files` and `continuation_state` with values `language-selection` or `strategy-analysis`.
+
+#### Scenario: Conflict extension is validated
+
+- **WHEN** the merge worker returns `event: conflict_detected`
+- **THEN** the runner validates its closed shape before invoking the coordinator extension handler
+
+#### Scenario: Extension carries conflict inventory separately
+
+- **WHEN** the conflict extension reports affected paths
+- **THEN** the runner keeps `affected_files` separate from the worker-write `changed_files` union
+
+### Requirement: Ordered union survives extension routing
+
+The coordinator SHALL maintain an ordered duplicate-free `changed_files` union across extension handling, continuations, and replacement reconstruction without resetting it.
+
+#### Scenario: Extension does not reset reported paths
+
+- **WHEN** a worker returns a conflict extension after previously reporting changed files
+- **THEN** the coordinator retains the prior paths and appends only newly reported paths in first-seen order

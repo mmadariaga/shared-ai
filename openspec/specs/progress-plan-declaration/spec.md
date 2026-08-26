@@ -61,3 +61,17 @@ The coordinator SHALL render the declared progress plan as a live task list and 
 
 - **WHEN** the coordinator renders the task list
 - **THEN** every rendered progress step SHALL come from the declared plan and no step SHALL be invented by the coordinator
+
+### Requirement: Adaptive merge TODO remains separate
+
+A merge adapter without a worker `progress_plan` SHALL continue without worker progress events or worker-derived task lists while allowing the coordinator to render the adaptive merge TODO after branch selection and reconcile it after the merge outcome.
+
+#### Scenario: Conflict language handoff is not a worker step
+
+- **WHEN** a conflicted merge enters language selection
+- **THEN** the coordinator keeps the language in invocation state and does not add a worker progress step for it
+
+#### Scenario: Strategy analysis remains adaptive
+
+- **WHEN** the worker presents or revises a global strategy
+- **THEN** the coordinator keeps `contextual-analysis` active in the adaptive TODO without converting it into a worker progress plan

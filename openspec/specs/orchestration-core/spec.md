@@ -242,3 +242,17 @@ The ledger SHALL be coordinator-only state, ordered by first diagnosis, and SHAL
 - **WHEN** concrete evidence proves that a non-clean cause is outside the active worker's authorized scope
 - **THEN** the coordinator SHALL hand back or use the explicitly authorized owner-repair route
 - **AND** it SHALL record no recovery key and spend zero recovery slots
+
+### Requirement: Phase adapters may declare closed conflict handoffs
+
+The shared orchestration contract SHALL support a phase adapter declaring a closed nonterminal extension and handler without adding phase-specific mutation behavior to the shared runner. The merge adapter SHALL use this seam for conflict detection and strategy re-entry.
+
+#### Scenario: Merge adapter declares its extension
+
+- **WHEN** the merge coordinator configures the phase adapter
+- **THEN** it declares the `conflict_detected` shape and handler while retaining coordinator-owned language selection and mutation
+
+#### Scenario: Other phases remain unchanged
+
+- **WHEN** a phase adapter declares no nonterminal extension
+- **THEN** it retains its existing lifecycle and terminal behavior without an extension-specific prompt or mutation path

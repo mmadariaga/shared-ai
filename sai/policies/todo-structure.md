@@ -91,7 +91,7 @@ every full render. The canonical item set is:
 | --- | --- | --- |
 | `merge` | `Merge <source> into <target>` | Always after source-branch selection. |
 | `scope` | `Select resolution scope` | A conflicted route when fast-track is inactive. |
-| `contextual-analysis` | `Analyze conflict alternatives` | Every conflicted route after scope selection; it completes automatically for obvious conflicts and stays active while semantic decisions or `more-context` continuations are pending. |
+| `contextual-analysis` | `Analyze conflict alternatives` | Every conflicted route after the conflict-triggered language hand-off and scope selection; it covers the complete global strategy, completes only after that strategy is confirmed, and stays active while semantic decisions or `more-context`/revision continuations are pending. |
 | `resolve-artifacts` | `Resolve artifact conflicts` | A conflicted route whose selected scope is `artifacts`. |
 | `resolve-code` | `Resolve code conflicts` | A conflicted route whose selected scope is `code`. |
 | `resolve-full` | `Resolve all conflicts` | A conflicted route whose selected scope is `full`; fast-track selects this route directly. |
@@ -119,26 +119,34 @@ finding.
   `in_progress`; for `repair-required` or `escalation-required`, add
   `collision` as `in_progress` first, mark it `completed` after all owned
   repairs and reference updates, then add `authorization` as `in_progress`.
-- **Conflicted non-fast-track route:** after the conflict outcome, keep
-  `merge: completed`, add `scope: in_progress`, add
+- **Conflicted non-fast-track route:** after the conflict outcome, the
+  coordinator performs the language hand-off before exposing semantic analysis
+  or the scope gate. The language is invocation state, not a TODO item. Then
+  keep `merge: completed`, add `scope: in_progress`, add
   `contextual-analysis: pending`, and add the applicable `resolve-*` item as
   `pending`. When the exact scope answer is forwarded, mark `scope`
   `completed` and make `contextual-analysis` `in_progress`; the resolution item
-  remains pending until the contextual stage returns complete alternatives.
+  remains pending until the user confirms the complete global strategy and the
+  contextual stage returns matching complete alternatives.
 - **Conflicted fast-track route:** omit `scope`, mark `merge` `completed`, and
   make `contextual-analysis` `in_progress` with `resolve-full` pending.
   Fast-track changes only the scope item; it never bypasses a contextual human
   decision. Verification, collision applicability, authorization, refusal, and
   terminal transitions remain identical.
-- **Contextual analysis:** for an obvious conflict, mark
-  `contextual-analysis` `completed` when the worker returns its deterministic
-  complete proposal and make the applicable `resolve-*` item `in_progress`.
+- **Contextual analysis:** for an obvious conflict, keep
+  `contextual-analysis` `in_progress` while the worker's deterministic outcome
+  is presented as part of the complete global strategy; mark it `completed`
+  only after the user confirms that strategy and the worker returns the
+  matching payload, then make the applicable `resolve-*` item `in_progress`.
   For a semantic ambiguity, leave `contextual-analysis` `in_progress` through
-  every `needs_input` and `more-context` continuation. After every required
-  `ours`, `theirs`, or `synthesis` decision is explicit and the worker returns
-  the matching complete marker-free alternatives, mark it `completed` and make
-  the applicable `resolve-*` item `in_progress`. No TODO transition authorizes
-  a write or stage.
+  every strategy confirmation, `needs_input`, `more-context`, and open revision
+  continuation. After every required `ours`, `theirs`, or `synthesis` decision
+  is explicit, the global strategy is confirmed, and the worker returns the
+  matching complete marker-free alternatives, mark it `completed` and make the
+  applicable `resolve-*` item `in_progress`. A new conflict or inconsistency
+  from application or verification returns the item to `in_progress` with the
+  same worker and selected language; no language question is repeated.
+  No TODO transition authorizes a write or stage.
 - **Resolution and verification:** after coordinator resolution writes and
   staging, mark the applicable `resolve-*` item `completed` and make
   `verification` `in_progress`. Mark `verification` `completed` when the

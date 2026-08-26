@@ -193,3 +193,49 @@ The coordinator MUST render the canonical merge, scope, resolution, verification
 
 - **WHEN** a fast-track merge has conflicts
 - **THEN** the TODO omits scope and renders the full-resolution route before verification
+
+### Requirement: Conflict-triggered language hand-off
+
+The `/sai-merge` command SHALL keep clean merges on the existing path without asking for a working language or resolution strategy. When conflicts occur, the worker SHALL return `event: conflict_detected` with the exact ordered `affected_files` inventory and `continuation_state: language-selection` before reading conflict versions or performing semantic analysis.
+
+#### Scenario: Clean merge needs no language or strategy
+
+- **WHEN** a merge completes without conflicts
+- **THEN** the command continues to the post-merge collision pass without asking for a working language or presenting a resolution strategy
+
+#### Scenario: Conflict hand-off precedes analysis
+
+- **WHEN** the coordinator-owned merge produces conflicted files
+- **THEN** the worker returns the closed conflict hand-off with `changed_files: []` before reading base, current, or incoming versions
+
+### Requirement: Global strategy gates resolution
+
+The worker SHALL produce one complete global resolution strategy covering the selected conflict set, and the coordinator SHALL require explicit `apply-strategy` confirmation before resolution writes, marker removal, or staging. The strategy SHALL include facts, inferences, branch objectives, affected contracts, trade-offs, risks, alternatives, and complete marker-free content where required.
+
+#### Scenario: Strategy is confirmed before mutation
+
+- **WHEN** the worker presents a complete global strategy and the user selects `apply-strategy`
+- **THEN** the coordinator accepts only the matching complete-file payload after validation and performs no mutation before that confirmation
+
+#### Scenario: Strategy is revised without mutation
+
+- **WHEN** the user selects `revise-strategy`
+- **THEN** the same worker requests open context or correction with empty `options` and the repository remains unchanged
+
+### Requirement: New conflict re-entry preserves language
+
+Application or verification SHALL return a new conflict or invalidated strategy to global strategy analysis through the same worker with `continuation_state: strategy-analysis`, preserving the selected working language and requiring fresh strategy confirmation without asking for the language again.
+
+#### Scenario: New problem re-enters strategy analysis
+
+- **WHEN** resolution application or verification exposes a new conflict or inconsistent contract
+- **THEN** the coordinator forwards the exact current state to the same worker and requires a newly confirmed strategy before another resolution write
+
+### Requirement: Fast-track remains scope-only
+
+Merge fast-track SHALL select full resolution scope without presenting the scope question, while language selection, strategy confirmation, complete-file validation, verification, and final commit authorization remain required.
+
+#### Scenario: Fast-track conflict retains strategy safety
+
+- **WHEN** `--fast-track` is active for a conflicted merge
+- **THEN** only the scope gate is bypassed and the language and global strategy gates remain active

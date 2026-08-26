@@ -42,6 +42,20 @@ Each routed coordinator SHALL retain only its phase adapter behavior around the 
 - **THEN** it SHALL retain its own progress plan, permitted nonterminal extensions, phase gates or options, reconstruction fields, and terminal navigation
 - **AND** it SHALL not inherit another phase's adapter behavior
 
+### Requirement: Shared result loop routes declared extensions
+
+The shared coordinator protocol SHALL validate each adapter-declared nonterminal extension, add its `changed_files` to the invocation union, invoke the declared coordinator handler, and resume only through the handler's authorized same-worker continuation.
+
+#### Scenario: Merge extension uses the shared loop
+
+- **WHEN** the merge adapter declares `conflict_detected`
+- **THEN** the runner validates and routes that extension without making the merge coordinator duplicate common lifecycle mechanics
+
+#### Scenario: Extension does not invent interaction
+
+- **WHEN** the shared loop receives a nonterminal extension
+- **THEN** it does not infer a question, answer, or mutation from the extension payload
+
 ### Requirement: shared lifecycle semantics remain closed and additive
 
 The single-sourced protocol SHALL preserve the existing lifecycle semantics: terminal statuses SHALL remain exactly `completed`, `needs_input`, `failed`, and `cancelled`; design notices SHALL remain design-only; progress events SHALL remain additive and nonterminal; changed files SHALL remain an ordered duplicate-free union across all reported results; same-worker continuation SHALL precede at most one replacement reconstruction; and binding identifiers and artifact contents SHALL remain outside worker-authored payloads.

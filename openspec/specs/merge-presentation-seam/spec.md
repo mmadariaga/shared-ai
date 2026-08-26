@@ -140,3 +140,49 @@ The coordinator MUST render only the canonical merge TODO items for the resolved
 
 - **WHEN** the merge completes without conflicts
 - **THEN** the TODO marks the merge item complete and omits scope, resolution, and verification items before presenting collision and authorization state
+
+### Requirement: Coordinator-owned conflict presentation channels
+
+The merge coordinator SHALL route validated conflict results through separate presentation channels. Worker-authored information and strategy proposals SHALL be rendered as ordinary conversation text, closed `needs_input` results with non-empty `options` SHALL use the active native picker, and empty-options context or correction requests SHALL use ordinary free-form conversation input.
+
+#### Scenario: Worker information is rendered as text
+
+- **WHEN** the worker returns a conflict notice or complete global strategy
+- **THEN** the coordinator prints the exact worker-authored summary as ordinary conversation text before any closed decision picker
+
+#### Scenario: Open correction is not a picker
+
+- **WHEN** the worker returns a context or strategy correction request with an empty `options` list
+- **THEN** the coordinator prints the exact request once and forwards the user's free-form answer to the same worker without synthesizing choices
+
+### Requirement: Language handoff is coordinator-owned
+
+The coordinator SHALL store `working_language` only in invocation-scoped state and SHALL forward the selected value unchanged through same-worker continuation. It SHALL ask the language question only after the first `conflict_detected` event.
+
+#### Scenario: Language is selected after detection
+
+- **WHEN** the worker reports `continuation_state: language-selection`
+- **THEN** the coordinator presents the conflict notice first and then asks which language to use for conflict explanation and resolution strategy
+
+#### Scenario: Clean merge skips language handoff
+
+- **WHEN** the worker reports a clean merge outcome
+- **THEN** the coordinator leaves `working_language` unresolved and presents no language question
+
+### Requirement: Strategy confirmation controls mutation
+
+The seam SHALL present the complete global strategy before its confirmation question and SHALL keep resolution and staging unavailable until the worker returns a matching complete payload after `apply-strategy`.
+
+#### Scenario: Revision remains mutation-free
+
+- **WHEN** the user requests a strategy revision or additional context
+- **THEN** the seam preserves pending alternatives and performs no resolution write, marker removal, staging, or commit
+
+### Requirement: New-conflict route preserves presentation state
+
+The seam SHALL return application or verification problems to contextual analysis with the selected language, same worker, refreshed affected-file inventory, and a new strategy confirmation.
+
+#### Scenario: Re-entry does not ask language again
+
+- **WHEN** application or verification reports a new conflict or inconsistency
+- **THEN** the coordinator renders the refreshed state through ordinary text and does not repeat the language question

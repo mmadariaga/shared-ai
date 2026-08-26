@@ -7,7 +7,7 @@ TBD
 ## Requirements
 
 ### Requirement: Shared protocols use the canonical orchestration location
-The repository SHALL place the harness-neutral command protocol in `sai/orchestration/command-runner.md` and the harness-neutral worker lifecycle protocol in `sai/orchestration/worker-core.md`. These files SHALL define reusable mechanics only; phase-specific behavior SHALL be selected through command-card flags rather than harness or phase branches in either protocol.
+The repository SHALL continue to place the harness-neutral lifecycle protocols at `sai/orchestration/command-runner.md` and `sai/orchestration/worker-core.md`. Those files SHALL define the reusable closed-extension mechanics while merge-specific interaction remains in the merge cards and presentation seam.
 
 #### Scenario: Maintainer locates a shared protocol
 - **WHEN** a maintainer needs to change command-runner or worker lifecycle mechanics
@@ -18,6 +18,10 @@ The repository SHALL place the harness-neutral command protocol in `sai/orchestr
 - **WHEN** two command cards require different phase behavior
 - **THEN** the cards SHALL express that difference through their declared flags
 - **AND** `sai/orchestration/command-runner.md` and `sai/orchestration/worker-core.md` SHALL remain branch-free with respect to those phase differences
+
+#### Scenario: Harness projections remain neutral
+- **WHEN** Claude Code and opencode consume the shared extension mechanics
+- **THEN** both obtain equivalent neutral lifecycle behavior while harness-specific task-list mechanics remain at their adapter seams
 
 ### Requirement: Consumers reference relocated protocols
 

@@ -74,6 +74,88 @@ test('merge worker explains contextual alternatives and gates only semantic ambi
   assert.match(worker, /Return no diff, hunk, region replacement/);
 });
 
+test('merge conflicts use a closed hand-off before language selection and analysis', () => {
+  const instructions = read('sai/commands/merge/instructions.md');
+  const worker = read('sai/commands/merge/worker.md');
+  const workerCore = read('sai/orchestration/worker-core.md');
+  const runner = read('sai/orchestration/command-runner.md');
+  const coordinator = read('sai/commands/merge/coordinator.md');
+  const stepFour = instructions.slice(instructions.indexOf('### Step 4:'));
+
+  assert.match(workerCore, /event: conflict_detected/);
+  assert.match(workerCore, /affected_files: string\[\][\s\S]{0,100}continuation_state: language-selection\|strategy-analysis/);
+  assert.match(runner, /phase-defined closed nonterminal extension/i);
+  assert.match(runner, /conflict_detected[\s\S]{0,180}affected_files/);
+  assert.match(coordinator, /allowed_nonterminal_extensions[\s\S]{0,260}conflict_detected/);
+  assert.match(coordinator, /working-language question/);
+  assert.match(coordinator, /AskUserQuestion/);
+  assert.match(coordinator, /opencode[\s\S]{0,80}`question` tool/);
+
+  assert.match(stepFour, /event: conflict_detected/);
+  assert.match(stepFour, /changed_files: \[\]/);
+  assert.match(stepFour, /affected_files: string\[\]/);
+  assert.match(stepFour, /continuation_state: language-selection/);
+  assertInOrder(stepFour, [
+    'Return the following closed',
+    'event: conflict_detected',
+    'After the coordinator asks for and receives the working language',
+    'read the three versions',
+    'Classify each conflicted file',
+  ]);
+  assert.match(stepFour, /before classification or semantic analysis/i);
+  assert.match(instructions, /clean.*never.*language|clean.*skip to Step 7/is);
+  assert.match(worker, /does not chat directly with the user/);
+  assert.match(worker, /continuation_state: strategy-analysis[\s\S]{0,180}without asking for a language again/);
+});
+
+test('merge strategy discussion separates ordinary text, native decisions, and open input', () => {
+  const instructions = read('sai/commands/merge/instructions.md');
+  const coordinator = read('sai/commands/merge/coordinator.md');
+  const presentation = read('sai/commands/merge/presentation.md');
+
+  assert.match(instructions, /Global resolution strategy proposal/);
+  assert.match(instructions, /Apply this complete[\s\S]{0,100}strategy before changing the conflicted files/);
+  assert.match(instructions, /apply-strategy/);
+  assert.match(instructions, /revise-strategy/);
+  assert.match(instructions, /decline-strategy/);
+  assert.match(instructions, /empty[\s\S]{0,80}`options` list[\s\S]{0,120}free-form/);
+  assert.match(instructions, /same worker[\s\S]{0,120}context or correction/);
+  assert.match(instructions, /no resolution write, conflict-marker[\s\S]{0,100}before `apply-strategy`/);
+  assert.match(coordinator, /two user-facing channels/);
+  assert.match(coordinator, /ordinary conversation text/);
+  assert.match(coordinator, /non-empty options/);
+  assert.match(coordinator, /empty `options` list/);
+  assert.match(coordinator, /never synthesize closed options/);
+  assert.match(presentation, /render_information/);
+  assert.match(presentation, /render_open_input/);
+  assert.match(presentation, /complete global strategy/);
+  assert.match(presentation, /Only an explicit confirmation of the\s+current strategy/);
+  assert.match(presentation, /No conflict analysis,\s*strategy, or resolution prompt appears before/);
+  assert.match(presentation, /new strategy confirmation/);
+});
+
+test('merge conflict re-entry preserves language and harness parity', () => {
+  const coordinator = read('sai/commands/merge/coordinator.md');
+  const worker = read('sai/commands/merge/worker.md');
+  const presentation = read('sai/commands/merge/presentation.md');
+  const claudePanel = read('sai/adapters/claude/panel-render.md');
+  const opencodePanel = read('sai/adapters/opencode/panel-render.md');
+
+  for (const contract of [coordinator, worker, presentation]) {
+    assert.match(contract, /strategy-analysis/);
+    assert.match(contract, /same worker/);
+    assert.match(contract, /language again/);
+    assert.match(contract, /application or verification/);
+  }
+  assert.match(coordinator, /Store the selected value in invocation-scoped `working_language`, outside[\s\S]{0,80}`arguments_value`/i);
+  assert.match(coordinator, /selected value[\s\S]{0,120}unchanged/);
+  assert.match(presentation, /Claude Code and opencode consume this same neutral/);
+  assert.match(presentation, /same question text, option values, ordering, and continuation semantics/);
+  assert.match(claudePanel, /coordinator session only/);
+  assert.match(opencodePanel, /coordinator session only/);
+  assert.match(presentation, /TaskUpdate.*TaskList.*todowrite/is);
+});
+
 test('merge branch and scope contracts filter candidates, label timestamps, and order full scope first', () => {
   const instructions = read('sai/commands/merge/instructions.md');
   const worker = read('sai/commands/merge/worker.md');

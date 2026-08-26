@@ -49,3 +49,26 @@ Each supported harness panel-render binding SHALL declare native task-panel avai
 
 - **WHEN** a merge worker returns a lifecycle result
 - **THEN** only the coordinator session may render or update the merge TODO surface
+
+### Requirement: Merge panel follows language and strategy boundaries
+
+The active harness panel binding SHALL keep merge task-list emission in the coordinator session, hold `contextual-analysis` active while the global strategy is presented or revised, and mark it complete only after strategy confirmation and matching payload validation.
+
+#### Scenario: Worker cannot emit merge tasks
+
+- **WHEN** a merge worker returns a conflict extension or strategy result
+- **THEN** only the coordinator session updates the merge TODO surface
+
+#### Scenario: Strategy remains pending
+
+- **WHEN** the worker presents a global strategy that has not been confirmed
+- **THEN** the contextual-analysis item remains active and the resolution item remains pending
+
+### Requirement: Harness panel behavior remains equivalent
+
+Claude Code and opencode SHALL preserve equivalent merge TODO states and transitions, differing only in their native task-list binding.
+
+#### Scenario: Both harnesses preserve the route
+
+- **WHEN** the same conflict lifecycle is rendered by either supported harness
+- **THEN** both preserve the same strategy, mutation, and re-entry semantics

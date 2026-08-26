@@ -153,6 +153,39 @@ binding dispatch metadata, or artifact contents.
 A phase adapter with no progress plan may emit no progress event and still
 retains the ordinary closed-payload validation and lifecycle rules.
 
+### Phase-defined nonterminal extensions
+
+A phase adapter MAY declare an additional closed nonterminal extension when its
+interaction contract needs to pause the worker before a user-facing gate. The
+extension is valid only when the active adapter lists its discriminator in
+`allowed_nonterminal_extensions`; it is not a lifecycle status and it does not
+replace the terminal result that closes the current worker stretch. The runner
+validates the declared shape, adds its `changed_files` to the invocation union,
+and hands the complete source payload to the adapter's extension handler. The
+handler may present coordinator-owned input before resuming the same worker,
+but it must not add binding metadata, an answer, or a mutation to the worker
+payload.
+
+The merge adapter's conflict hand-off is the only current instance:
+
+```yaml
+event: conflict_detected
+emitted_on: string
+summary: string
+changed_files: string[]
+affected_files: string[]
+continuation_state: language-selection|strategy-analysis
+```
+
+`affected_files` is the read-only inventory of paths that Git reports as
+conflicted; it is not a worker write report and is never inferred from or
+substituted for `changed_files`. `continuation_state` is coordinator-visible
+route state: `language-selection` is used for the first conflict hand-off and
+`strategy-analysis` is used when application or verification exposes a new
+problem. The event carries no `question`, `options`, artifact contents,
+continuation identifier, or binding dispatch metadata. Its `emitted_on` follows
+the one-read rule above, immediately after the `event` discriminator.
+
 ## Result Emission Time
 
 `emitted_on` is worker-authored and describes one result, not the run. The
