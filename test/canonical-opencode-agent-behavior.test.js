@@ -171,7 +171,7 @@ const CLAUDE_GENERIC_AGENTS = [
     name: 'budget-explorer',
     description: 'Binds cheap read-only research and lookup delegation to the Claude Code budget-explorer agent.',
     fetchTarget: '@sai/policies/explore-agent.md',
-    tools: 'tools: Read, Glob, Grep, WebFetch, WebSearch, Skill',
+    tools: 'tools: Read, Glob, Grep, Bash, WebFetch, WebSearch, Skill, mcp__codegraph__codegraph_explore',
   },
   {
     fileName: 'budget-executor',
@@ -215,8 +215,22 @@ test('managed Claude generic agents are exact Fetch wrappers with preserved iden
       assert.equal(fields.filter(line => line === agent.tools).length, 1,
         `${agent.fileName} frontmatter should contain exactly ${agent.tools}`);
       const toolsLine = fields.find(line => line.startsWith('tools:'));
-      assert.doesNotMatch(toolsLine || '', /\b(?:Write|Edit|Bash|Patch|Delete|NotebookEdit)\b/,
-        `${agent.fileName} tools declaration must expose only read/search capabilities`);
+
+      // budget-explorer is allowed Bash and mcp__codegraph__codegraph_explore for ladder levels 1b and 2
+      // The shell restriction to git grep and codegraph is enforced in the policy, not the tool permission
+      if (agent.fileName === 'budget-explorer') {
+        assert.match(toolsLine || '', /,\s*Bash,|\s*Bash,|,\s*Bash(?:\s|$)/,
+          `budget-explorer must have bare Bash tool (not Bash(...) scoped form) for git grep and codegraph CLI access`);
+        assert.doesNotMatch(toolsLine || '', /Bash\s*\(/,
+          `budget-explorer Bash must be bare Bash, not Bash(...) scoped form which is silently ignored (E12)`);
+        assert.match(toolsLine || '', /\bmcp__codegraph__codegraph_explore\b/,
+          `budget-explorer must have mcp__codegraph__codegraph_explore tool for structural queries`);
+        assert.doesNotMatch(toolsLine || '', /\b(?:Write|Edit|Patch|Delete|NotebookEdit)\b/,
+          `budget-explorer tools must not have file-writing capabilities`);
+      } else {
+        assert.doesNotMatch(toolsLine || '', /\b(?:Write|Edit|Bash|Patch|Delete|NotebookEdit)\b/,
+          `${agent.fileName} tools declaration must expose only read/search capabilities`);
+      }
     }
 
     const body = source.slice(frontmatter[0].length).trim();
