@@ -1284,14 +1284,16 @@ test('Step 4: Manual remains uncapped and each later Manual answer emits one han
   assert.match(source, /\*\*Manual is not terminal\*\*[^\n]*re-emit the selector[\s\S]{0,260}no cap on re-emissions/i);
 });
 
-test('Step 4: successful Auto is silent after selection and never dispatches implementation', () => {
+test('Step 4: successful Auto emits the build handoff and never dispatches implementation', () => {
   const source = exploreContract();
-  const success = 'successful Auto run emits no next-step handoff and performs no implementation-phase dispatch';
+  const success = 'successful Auto run emits the `Next step: run /sai-build {name}.` handoff and performs no implementation-phase dispatch';
   const successIndex = source.indexOf(success);
 
   assert.ok(successIndex >= 0, 'the successful Auto outcome should be specified');
-  assert.match(source.slice(successIndex, successIndex + 320), /`sai-3 was not run\.`/i,
-    'successful Auto should end without implementation dispatch');
+  assert.match(source.slice(successIndex, successIndex + 320), /`Next step: run \/sai-build \{name\}\.`/i,
+    'successful Auto should hand off to the build composition');
+  assert.doesNotMatch(source.slice(successIndex, successIndex + 320), /`sai-3 was not run\.`/i,
+    'successful Auto should not emit the obsolete terminal text');
 });
 
 test('Step 4: Auto-fast completion re-presents a per-slice selector and Manual pauses pending slices', () => {
