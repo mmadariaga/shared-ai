@@ -131,11 +131,10 @@ const COMBINED_BOTH_BARE = [
 ];
 
 // Step 4: command-family names mirrored from the current commands/{harness}
-// basenames. Both harnesses ship the same 20 names. These are current-state
+// basenames. Both harnesses ship the same 19 names. These are current-state
 // fixture assertions, not hardcoded enumerations â€” production derives the
 // names from the manifest's commands-class projections.
 const OPENCODE_COMMANDS = [
-  'budget',
   'sai-1-spec',
   'sai-2-design',
   'sai-3-implement',
@@ -1029,20 +1028,20 @@ test('an empty scope prints the no-targets notice, returns to the scope picker, 
 
 // --- Step 4: command enumeration from the manifest's commands-class projections ---
 
-test('opencode enumerateCommands returns exactly the 20 manifest-declared commands', () => {
+test('opencode enumerateCommands returns exactly the 19 manifest-declared commands', () => {
   const adapter = createOpencodeAdapter({ repoRoot: REPO_ROOT });
   const commands = adapter.enumerateCommands();
-  assert.equal(commands.length, 20, 'exactly 20 commands should enumerate for opencode');
+  assert.equal(commands.length, 19, 'exactly 19 commands should enumerate for opencode');
   assert.deepEqual([...commands].sort(), [...OPENCODE_COMMANDS].sort(),
-    'opencode commands should be exactly the 20 manifest-declared names');
+    'opencode commands should be exactly the 19 manifest-declared names');
 });
 
-test('claude enumerateCommands returns exactly the same 20 manifest-declared commands', () => {
+test('claude enumerateCommands returns exactly the same 19 manifest-declared commands', () => {
   const adapter = createClaudeAdapter({ repoRoot: REPO_ROOT });
   const commands = adapter.enumerateCommands();
-  assert.equal(commands.length, 20, 'exactly 20 commands should enumerate for claude');
+  assert.equal(commands.length, 19, 'exactly 19 commands should enumerate for claude');
   assert.deepEqual([...commands].sort(), [...OPENCODE_COMMANDS].sort(),
-    'claude commands should be exactly the same 20 manifest-declared names');
+    'claude commands should be exactly the same 19 manifest-declared names');
 });
 
 test('command enumeration reads the manifest-declared package source directory, never the installed global command directory', () => {
@@ -1067,68 +1066,6 @@ test('command enumeration reads the manifest-declared package source directory, 
     } finally {
       fs.rmSync(fixture.root, { recursive: true, force: true });
     }
-  }
-});
-
-test('All scope presents worker:budget and command:budget as two distinct rows and confirms both as separate targets', async () => {
-  const opencodeOps = { select: [], create: [] };
-  const claudeOps = { select: [], create: [] };
-  const restoreOpencode = patchFactory('createOpencodeAdapter', () =>
-    makeFakeAdapter(['budget'], opencodeOps, { model: 'opencode-go/test-model' }, ['budget']));
-  const restoreClaude = patchFactory('createClaudeAdapter', () => makeFakeAdapter(CLAUDE_AGENTS, claudeOps));
-  try {
-    const answers = ['Customize models', 'OpenCode', 'All', 'Exit'];
-    const checklistCalls = [];
-    const result = await runPostSetupMenu({
-      projectPath: REPO_ROOT,
-      isTTY: true,
-      promptChoice: async () => answers.shift() ?? '<model>',
-      promptChecklist: recordChecklist(checklistCalls),
-    });
-    assert.equal(result.status, 'skipped');
-    assert.equal(result.reason, 'cancelled');
-    assert.equal(checklistCalls.length, 1, 'the checklist should be invoked exactly once for the All scope');
-    assert.deepEqual(checklistCalls[0][0], ['worker:budget', 'command:budget'],
-      'the All scope presents worker:budget and command:budget as two distinct rows');
-    assert.deepEqual(checklistCalls[0][1], ['worker:budget', 'command:budget'],
-      'both distinct rows are pre-selected by default');
-    assert.deepEqual(opencodeOps.select, ['worker:budget, command:budget'],
-      'confirming the All scope returns both distinct rows as separate stable targets');
-    assert.deepEqual(opencodeOps.create.map(entry => entry.target.name), ['budget', 'budget'],
-      'each distinct row configures its own budget target: the worker and the command');
-    assert.equal(claudeOps.select.length, 0, 'claude must never be configured');
-    assert.equal(claudeOps.create.length, 0, 'claude must never create overrides');
-  } finally {
-    restoreOpencode();
-    restoreClaude();
-  }
-});
-
-test('All scope rows are independently selectable: confirming only the command row configures exactly that target', async () => {
-  const opencodeOps = { select: [], create: [] };
-  const claudeOps = { select: [], create: [] };
-  const restoreOpencode = patchFactory('createOpencodeAdapter', () =>
-    makeFakeAdapter(['budget'], opencodeOps, { model: 'opencode-go/test-model' }, ['budget']));
-  const restoreClaude = patchFactory('createClaudeAdapter', () => makeFakeAdapter(CLAUDE_AGENTS, claudeOps));
-  try {
-    const answers = ['Customize models', 'OpenCode', 'All', 'Exit'];
-    const result = await runPostSetupMenu({
-      projectPath: REPO_ROOT,
-      isTTY: true,
-      promptChoice: async () => answers.shift() ?? '<model>',
-      promptChecklist: async () => ({ status: 'confirmed', items: ['command:budget'] }),
-    });
-    assert.equal(result.status, 'skipped');
-    assert.equal(result.reason, 'cancelled');
-    assert.deepEqual(opencodeOps.select, ['command:budget'],
-      'confirming only the command row returns exactly that type-prefixed target');
-    assert.deepEqual(opencodeOps.create.map(entry => entry.target.name), ['budget'],
-      'only the confirmed command row configures a target; the unconfirmed worker row does not');
-    assert.equal(claudeOps.select.length, 0, 'claude must never be configured');
-    assert.equal(claudeOps.create.length, 0, 'claude must never create overrides');
-  } finally {
-    restoreOpencode();
-    restoreClaude();
   }
 });
 
@@ -3675,14 +3612,14 @@ test('the settings selector is invoked exactly once per run for the whole confir
       ['budget', 'explore'],
       opencodeOps,
       { model: 'opencode-go/glm-5.2', variant: 'high' },
-      ['budget', 'sai-1-spec']
+      ['sai-1-spec']
     ));
   const restoreClaude = patchFactory('createClaudeAdapter', () =>
     makeFakeAdapter(CLAUDE_AGENTS, claudeOps));
   try {
     const answers = ['Customize models', 'OpenCode', 'All', 'Exit'];
-    const both = ['worker:budget', 'worker:explore', 'command:budget', 'command:sai-1-spec'];
-    const bothBare = ['budget', 'explore', 'budget', 'sai-1-spec'];
+    const both = ['worker:budget', 'worker:explore', 'command:sai-1-spec'];
+    const bothBare = ['budget', 'explore', 'sai-1-spec'];
     const result = await runPostSetupMenu({
       projectPath: REPO_ROOT,
       isTTY: true,

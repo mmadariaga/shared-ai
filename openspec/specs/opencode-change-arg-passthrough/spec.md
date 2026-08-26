@@ -23,7 +23,7 @@ Every opencode wrapper for a change-consuming `sai-*` command SHALL contain one 
 
 ### Requirement: non-change-consuming opencode wrappers do not provide a change name
 
-Opencode wrappers for `sai-*` commands that do NOT consume a change name (`sai-1-spec`, `sai-backfill`, `sai-commit`, `sai-explore`, and `budget`) SHALL NOT provide a change-name source to the change-picker. Their behavior SHALL remain independent of opaque wrapper data, transcript text, and labelled wrapper lines.
+Opencode wrappers for non-change-consuming SAI commands (`sai-1-spec`, `sai-backfill`, `sai-commit`, and `sai-explore`) SHALL NOT provide a change-name source to the change-picker. The retired `budget` wrapper is not part of this wrapper set. Behavior SHALL remain independent of opaque wrapper data, transcript text, and labelled wrapper lines.
 
 #### Scenario: sai-1-spec wrapper does not provide a change name
 
@@ -39,6 +39,11 @@ Opencode wrappers for `sai-*` commands that do NOT consume a change name (`sai-1
 
 - **WHEN** the `sai/commands/explore/body.md` body file (fetched by the `sai-explore` wrapper) is read
 - **THEN** it does not include `Fetch @sai/instructions/change-picker.md` and does not validate `$ARGUMENTS` as an OpenSpec change name — even though the `commands/opencode/sai-explore.md` description frontmatter says "Optionally pass a change name to explore an existing change", the actual behavior is that `sai-explore` does not consume a change name. The description text is a known inconsistency deferred to a follow-up change.
+
+#### Scenario: Opencode non-change-consuming wrappers remain label-free
+
+- **WHEN** the maintained non-change-consuming opencode wrappers are inspected
+- **THEN** they provide no change-name source and the deleted `budget` wrapper is absent from the inventory.
 
 ### Requirement: the envelope contract is opencode-specific and is not transcript-dependent
 

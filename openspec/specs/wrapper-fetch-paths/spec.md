@@ -3,7 +3,7 @@
 Define the standard fetch path patterns for sai command wrappers and instructions, and document the namespace distinction between `@sai/commands/` and `@commands/` paths.
 ## Requirements
 ### Requirement: wrapper-sai-commands-fetch-path
-All 15 thin `sai-*` wrapper files at `commands/claude/` and `commands/opencode/` that fetch a sai command card SHALL use `Fetch @sai/commands/{name}/command-bootstrap.md`. The flat path `@sai/commands/<name>.md` and the legacy namespace `@commands/sai/` SHALL NOT appear in any wrapper file. This requirement covers only `sai-*.md` files; `budget.md` is out of scope (it fetches no sai command card and SHALL remain byte-identical per `command-wrapper-body`'s `wrapper-directory-shape-unchanged`).
+All maintained `sai-*` wrapper files at `commands/claude/` and `commands/opencode/` that fetch SAI command cards SHALL use their existing `@sai/commands/{name}/command-bootstrap.md` fetch paths. The deleted `budget.md` files are not wrapper-fetch exceptions and SHALL not be required to remain byte-identical.
 
 #### Scenario: claude wrapper fetch path updated
 - **WHEN** any file matching `commands/claude/sai-*.md` is read
@@ -12,6 +12,11 @@ All 15 thin `sai-*` wrapper files at `commands/claude/` and `commands/opencode/`
 #### Scenario: opencode wrapper fetch path updated
 - **WHEN** any file matching `commands/opencode/sai-*.md` is read
 - **THEN** any Fetch directive pointing to a sai command card SHALL use the pattern `Fetch @sai/commands/{name}/command-bootstrap.md`
+
+#### Scenario: Maintained wrapper fetch paths remain valid
+
+- **WHEN** a maintained Claude Code or opencode `sai-*` wrapper is read
+- **THEN** its SAI command-card fetch path remains unchanged and no `budget.md` wrapper is required.
 
 #### Scenario: old fetch path absent
 - **WHEN** a grep for `@commands/sai/` is run across all wrapper files

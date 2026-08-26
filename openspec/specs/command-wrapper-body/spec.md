@@ -83,19 +83,9 @@ The invocation envelope SHALL remain in the command file, directly after the com
 
 ### Requirement: wrapper-directory-shape-unchanged
 
-No file SHALL be added to, or removed from, `commands/claude/` or `commands/opencode/`; the command bootstrap and all moved content SHALL live under `sai/`, which the model-customization menu never enumerates and which is not invocable. The set of 16 command files per harness (15 `sai-*` plus `budget`) SHALL remain exactly as before the change. `budget` is not a workflow command — it has no boot adapter, no envelope, and no command bootstrap, and its wrapper SHALL remain byte-identical.
+The source wrapper directories SHALL contain exactly the 19 active `sai-*.md` files for each harness after this change. Neither directory SHALL contain `budget.md`, and neither directory SHALL contain a command bootstrap card. The active SAI wrapper set and its harness parity SHALL remain intact.
 
-#### Scenario: same file set per harness
+#### Scenario: Source wrapper directories exclude budget
 
-- **WHEN** `commands/claude/` and `commands/opencode/` are listed after the change
-- **THEN** each directory contains exactly the same 16 filenames as before the change
-
-#### Scenario: no launcher inside a command directory
-
-- **WHEN** the change is applied
-- **THEN** no `command-bootstrap.md` exists under `commands/claude/` or `commands/opencode/`
-
-#### Scenario: budget untouched
-
-- **WHEN** `commands/claude/budget.md` and `commands/opencode/budget.md` are compared before and after the change
-- **THEN** each file is byte-identical
+- **WHEN** `commands/claude/` and `commands/opencode/` are listed
+- **THEN** each directory contains exactly 19 `sai-*.md` files and no `budget.md`.

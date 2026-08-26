@@ -36,7 +36,6 @@ This prevents the LLM from skipping command loading and making free interpretati
 | `/sai-commit` | `@commands/sai-commit.md` | Conventional Commits message author from staged changes — generates subject and body, gates commit behind explicit authorization. |
 | `/sai-merge` | `@commands/sai-merge.md` | Merge a local branch into the current branch — conflict resolution with criteria, ADR/DDR collision repair, gated behind explicit authorization. |
 | `/sai-backfill` | `@commands/sai-backfill.md` | Post-hoc backfill — reconstructs proposal.md and capability specs for changes that skipped the SAI workflow. |
-| `/budget` | `@commands/budget.md` | Load all four budget skills (explorer + executor + budget-subagent + token-efficient-languages) simultaneously. |
 | `/sai-worktree` | `@commands/sai-worktree.md` | Interactive git worktree manager — inventory, Create/Delete/Exit selector loop, safe creation and deletion of linked worktrees. |
 
 ### Resolution Steps

@@ -242,7 +242,7 @@ test('installClaude copies commands/claude/*.md to dest/commands/', () => {
   const files = fs.readdirSync(cmdDir);
   assert.ok(files.includes('sai-1-spec.md'), 'sai-1-spec.md should be in commands/');
   assert.ok(files.includes('sai-build.md'), 'sai-build.md should be in commands/');
-  assert.ok(files.includes('budget.md'), 'budget.md should be in commands/');
+  assert.equal(files.includes('budget.md'), false, 'budget.md should not be in commands/');
   const design = fs.readFileSync(path.join(cmdDir, 'sai-2-design.md'), 'utf8');
   assert.match(design, /^model: opus$/m);
   assert.match(design, /^effort: medium$/m);

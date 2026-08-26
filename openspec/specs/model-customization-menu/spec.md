@@ -70,12 +70,16 @@ OpenCode and Claude Code MUST be represented by independent adapters. Each adapt
 
 ### Requirement: Derived target families
 
-The model-customization menu SHALL derive its target families from the canonical worker matrix and wrapper inventory so that `sai-merge-worker` classifies as a routed worker and `sai-merge` as a command on both adapters, updating the asserted family counts accordingly.
+The model-customization menu SHALL derive target families from the canonical worker matrix and current wrapper inventory. The command family MUST include the active `sai-*` wrappers only and MUST exclude `budget` after the standalone wrapper is removed. Worker and agent families remain independently derived, so an available `budget` agent remains an agent target. `sai-merge-worker` SHALL remain a routed worker and `sai-merge` SHALL remain a command on both adapters.
 
 #### Scenario: Merge targets appear in the menu
 
 - **WHEN** the customization menu enumerates configurable targets on either adapter
 - **THEN** the merge worker and command are present in their routed/command families with the updated counts asserted by the suite
+
+#### Scenario: Budget remains an agent but not a command
+- **WHEN** the All scope enumerates targets for a harness with a budget agent
+- **THEN** it includes `agent:budget` and excludes `command:budget`.
 
 
 ### Requirement: Shared settings selection
@@ -292,7 +296,7 @@ For every traversed target, the selected harness adapter MUST invoke a local-ove
 - **THEN** the operation SHALL report a persistence failure with a diagnostic for that target and SHALL continue processing the remaining targets
 
 ### Requirement: Navigable target-selection checklist
-The empty-enumeration notice SHALL read `No customization targets are available for the selected scope.` After scope selection and before per-target configuration, the flow SHALL present a navigable multi-select checklist listing every target of the chosen family — or every family in `All` scope — derived from the canonical manifest projections and Worker Matrix metadata in `sai/install-manifest.json` for the chosen harness, with every target selected by default when at least one target exists. Up/down arrows SHALL move the `>` cursor, space SHALL toggle the highlighted target's selection, and Enter SHALL confirm the selection only when at least one target is marked. Rows SHALL retain stable family-prefixed identities (`worker:`, `agent:`, `command:`, or `utility:`) as their confirmed selection values while their display labels render as aligned TYPE/TARGET/SETTING table columns under a two-line English header; display labels SHALL remain separate from the confirmed stable values. The header SHALL render between the question and the option rows starting under the six-character option prefix, carrying TYPE/TARGET/SETTING titles above a U+2500 dash separator row sized to the same widths as the row columns, and its lines SHALL be non-selectable decoration excluded from cursor movement and toggling while included in redraw bookkeeping. Rows SHALL be grouped in Workers, Agents, Commands, Utilities order, with each family in alphabetical order by name. The flow SHALL run per-target configuration exactly for the selected targets in checklist order, and SHALL preserve that order for diagnostics. If the adapter enumerates no targets, it SHALL print the empty-enumeration notice before building any header or labels and return to the scope screen without opening a zero-row checklist.
+The empty-enumeration notice SHALL read `No customization targets are available for the selected scope.` After scope selection and before per-target configuration, the flow SHALL present a navigable multi-select checklist listing every target of the chosen family — or every family in `All` scope — derived from the canonical manifest projections and Worker Matrix metadata in `sai/install-manifest.json` for the chosen harness, with every target selected by default when at least one target exists. The command family SHALL enumerate only active `sai-*` wrappers and SHALL not produce a `command:budget` target after the standalone wrapper is removed; independently derived worker and agent families MAY still contain budget targets. Up/down arrows SHALL move the `>` cursor, space SHALL toggle the highlighted target's selection, and Enter SHALL confirm the selection only when at least one target is marked. Rows SHALL retain stable family-prefixed identities (`worker:`, `agent:`, `command:`, or `utility:`) as their confirmed selection values while their display labels render as aligned TYPE/TARGET/SETTING table columns under a two-line English header; display labels SHALL remain separate from the confirmed stable values. The header SHALL render between the question and the option rows starting under the six-character option prefix, carrying TYPE/TARGET/SETTING titles above a U+2500 dash separator row sized to the same widths as the row columns, and its lines SHALL be non-selectable decoration excluded from cursor movement and toggling while included in redraw bookkeeping. Rows SHALL be grouped in Workers, Agents, Commands, Utilities order, with each family in alphabetical order by name. The flow SHALL run per-target configuration exactly for the selected targets in checklist order, and SHALL preserve that order for diagnostics. If the adapter enumerates no targets, it SHALL print the empty-enumeration notice before building any header or labels and return to the scope screen without opening a zero-row checklist.
 
 #### Scenario: Target checklist renders its table header above the options
 - **WHEN** the model-customization target checklist is rendered with available targets
@@ -306,9 +310,9 @@ The empty-enumeration notice SHALL read `No customization targets are available 
 - **WHEN** the user deselects one or more targets and confirms with Enter
 - **THEN** per-target configuration SHALL run only for the targets remaining selected
 
-#### Scenario: All mode keeps same-named targets and families distinct
-- **WHEN** the user enters the `All` checklist for the OpenCode harness, whose worker and command sets both contain a target named `budget`
-- **THEN** the checklist SHALL present `worker:budget` and `command:budget` as two distinct rows, each independently selectable, and confirmation SHALL return both as separate stable identities
+#### Scenario: All mode omits the removed command
+- **WHEN** the OpenCode All-scope checklist is rendered after the budget wrapper removal
+- **THEN** the checklist contains no `command:budget` row while retaining any independently enumerated `agent:budget` row.
 
 #### Scenario: All mode groups rows by family
 - **WHEN** the user enters the `All` checklist for a harness
