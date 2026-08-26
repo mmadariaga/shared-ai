@@ -2,11 +2,11 @@
 
 # Question Context Policy
 
-Canonical policy for user-facing decision prompts in the shared-ai pipeline. Consumed by reference; never restated at a consuming surface.
+Canonical policy for user-facing decision prompts in the shared-ai pipeline. Broader public-chat readability and context rules are single-sourced in `@sai/policies/public-chat.md`; this policy specializes those rules for decision prompts. Consumed by reference; never restated at a consuming surface.
 
 ## Scope
 
-Governs the content of every user-facing decision prompt authored by the pipeline: worker `needs_input` questions, the design-only notice `message`, and the fixed instruction gates. It does not govern option-picker presentation mechanics, which stay owned by `sai/policies/remember.md`.
+Governs the content of every user-facing decision prompt authored by the pipeline: worker `needs_input` questions, the design-only notice `message`, and the fixed instruction gates. The public-chat communication rules for these prompts are defined by `@sai/policies/public-chat.md` and are not duplicated here. It does not govern option-picker presentation mechanics, which stay owned by `sai/policies/remember.md`.
 
 ## The five-element anatomy
 
