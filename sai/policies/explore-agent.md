@@ -40,6 +40,34 @@ The explorer is restricted to read-only shell operations: `git grep` for searchi
 
 The tool-preference ladder is the governing preference order for research. It is not overridden by a caller prompt that names a tool, mentions a procedure, or prescribes a research method. When a caller prompt names a tool or procedure, the ladder still governs; the task is not aborted; and the discard log records the reason `caller prescribed <tool-name>` if that tool was skipped. This ensures that research quality, efficiency, and observability are maintained across all explorer spawns regardless of caller instructions.
 
+## Decision-record index
+
+The project may maintain relational indexes of its Architecture Decision Records (ADRs) and Design Decision Records (DDRs) under `docs/adr/0000-INDEX.md` and `docs/ddr/0000-INDEX.md` respectively. These indexes are research inputs: each index records which decision currently governs an area and which prior decisions have been superseded — information that no text search can infer. The explorer may consult an index when its task is about understanding the current or historical status of a decision.
+
+**Index locations and absence.** Indexes are optional. If `docs/adr/0000-INDEX.md` exists, the explorer may read it as an ADR research input; if `docs/ddr/0000-INDEX.md` exists, the explorer may read it as a DDR research input. Absence of either index is not an event: the explorer proceeds without it and records no `ladder_discards` entry or summary mention.
+
+**Canonical index structure.** When present, each index follows a five-section skeleton:
+
+1. `## Conventions` — relationship-token definitions and behavioral notes.
+2. `## By <domain unit>` — entries grouped by their domain unit references (e.g., `## By command`, `## By module`, `## By endpoint`). The `<domain unit>` noun is project-derived and is never contract; the skeleton is contract.
+3. `## Cross-cutting categories` — entries grouped by cross-cutting concerns.
+4. `## ADRs that extend or correct prior ones` (or the equivalent DDR heading) — a table of correction relationships.
+5. `## Superseded <family> (historical)` — entries whose decision was replaced, marked with a supersession note.
+
+**Relationship tokens.** Entries use pinned inline tokens to annotate relationships:
+- `— Pair with NNNN` (sibling decisions)
+- `— Refs NNNN` (references)
+- `— **Amends** NNNN` (updates)
+- `— **Reframes** NNNN` (reinterprets)
+- `— **Reverses** NNNN` (explicitly negates)
+- `— Supersedes NNNN` (replaces)
+
+Cross-family links use family-prefixed identifiers: `adr:NNNN` and `ddr:NNNN`.
+
+**Current vs. historical separation.** Superseded entries are moved out of `## By <domain unit>` and `## Cross-cutting categories` into the historical section, so what remains under the grouping sections is what is in force. When the explorer encounters a record in the historical section or marked with `*Superseded by*`, it reports that decision as superseded rather than presenting it as current. This separation is the value the index provides that repository text alone cannot reveal.
+
+**Relevance judgment.** The explorer determines whether an index is relevant to the task. Consulting an index counts against the per-segment tool-call ceiling like any other call; reading an index that does not serve the task is a cost with no benefit. The explorer's decision to skip an index is not a failure and is recorded in no field.
+
 ## Filesystem research scope
 
 The project working directory is the project root for the invocation. The active worktree is included in that root when the session starts in a worktree. Every unqualified or speculative filesystem search, discovery, and read MUST start in the project root and remain confined to it. The explorer MUST NOT broaden an initial search to the parent repository or sibling worktrees.

@@ -131,4 +131,40 @@ test('explore-agent policy defines ladder logging and shell restrictions', () =>
     /caller prescribed/,
     'explore-agent policy must mention log reason for caller prescriptions'
   );
+
+  assert.match(
+    policy,
+    /Decision-record index/,
+    'explore-agent policy must have explicit "Decision-record index" section describing ADR/DDR indexes as research inputs'
+  );
+
+  assert.match(
+    policy,
+    /docs\/adr\/0000-INDEX\.md/,
+    'explore-agent policy must name the ADR index path'
+  );
+
+  assert.match(
+    policy,
+    /docs\/ddr\/0000-INDEX\.md/,
+    'explore-agent policy must name the DDR index path'
+  );
+
+  assert.match(
+    policy,
+    /canonical.*five-section skeleton/i,
+    'explore-agent policy must describe the five-section skeleton structure'
+  );
+
+  assert.match(
+    policy,
+    /relationship.*token/i,
+    'explore-agent policy must document relationship tokens'
+  );
+
+  assert.match(
+    policy,
+    /current.*vs.*historical|historical.*separation/i,
+    'explore-agent policy must explain current versus historical separation in indexes'
+  );
 });
