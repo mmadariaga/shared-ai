@@ -19,6 +19,10 @@ const allowedDifferences = [
   '11. **Idea Progress List (sai-explore only)',
   // §5/§6 became items 5/6 in Emission gate section (original has §5/§6)
   'Before printing any `Ready to Propose` block, judge whether the idea is solid at the same qualitative threshold used in §5/§6',
+  // Auto terminal navigation now hands off to the build composition
+  'Map the selected terminal deterministically. On the opted-in generation',
+  'A successful Auto run emits no next-step handoff',
+  '**Phase-aware autonomy audit compatibility**: The active terminal report',
 ];
 
 function readPreSplitContract() {
