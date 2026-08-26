@@ -20,6 +20,8 @@ The options element SHALL apply only to decision prompts. An informational messa
 
 The pinned change-selection prompts — `Use change '{name}'?` and `Which change?` — SHALL remain exempt from the full anatomy: they SHALL stay as pinned terse prompts with their ordered options and invalid-input semantics unchanged, and the anatomy SHALL apply to every other user-facing decision prompt.
 
+The question-context policy SHALL reference the broader public-chat communication policy at `sai/policies/public-chat.md` for readability and context rules rather than duplicating them. Option-picker mechanics SHALL remain owned by `sai/policies/remember.md`.
+
 #### Scenario: every element is present
 
 - **WHEN** a user-facing decision prompt is inspected
@@ -29,6 +31,11 @@ The pinned change-selection prompts — `Use change '{name}'?` and `Which change
 
 - **WHEN** a user who never saw the planning conversation (for example a PR reviewer) reads the prompt
 - **THEN** the prompt contains enough state context and plain wording to answer without reading another artifact or conversation
+
+#### Scenario: specialized policy delegates shared communication rules
+
+- **WHEN** a worker or coordinator authors a user-facing decision prompt
+- **THEN** the prompt uses the specialized five-element anatomy together with the shared public-chat rules
 
 #### Scenario: informational notice uses the notice subset
 

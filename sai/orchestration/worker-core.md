@@ -1,5 +1,7 @@
 # Worker Core
 
+Fetch @sai/policies/public-chat.md and follow it exactly.
+
 Each worker session maintains a journal owned by that worker session. The
 journal records the original envelope, resolved input history, pending phase
 feedback, reconstruction metadata, and the ordered duplicate-free union of
