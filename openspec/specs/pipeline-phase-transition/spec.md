@@ -6,6 +6,15 @@ TBD - created by archiving change extend-pipeline-supervision-to-sai-2. Update P
 
 ## Requirements
 
+### Requirement: Name the supervised phase transition route
+
+The existing two-phase supervised transition SHALL use Plan (unattended) and `plan-unattended` while preserving active state, phase ordering, clean completion, and retry behavior.
+
+#### Scenario: supervised phases transition
+
+- **WHEN** the Plan spec phase reaches its existing transition condition
+- **THEN** the design phase starts with the same state and worker boundaries.
+
 ### Requirement: The spec-phase outcome is reported before the design phase begins
 
 Before the chained design phase is dispatched, the pipeline SHALL emit a phase-transition report of the completed spec-phase outcome. On convergence, the report SHALL state that the spec phase converged, the number of spec review rounds used, and that the last completed round found no `High` findings, carrying the non-blocking-edit qualification when applicable per the spec-phase convergence reporting. On cap exhaustion, the phase-transition report is the one-line cap-exhaustion report carrying the last round's finding counts, per the `supervised-review-reporting` capability. Both transition endings trigger the spec-phase autonomy audit log the `pipeline-autonomy-audit-log` capability produces, and the transition report SHALL surface that log at this transition even though the supervised run continues into the design phase. This report is the user's visibility checkpoint between the two phases of the long-lived single-token run and SHALL be presented before any design worker is dispatched.

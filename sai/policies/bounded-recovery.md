@@ -98,9 +98,9 @@ additional phase-adapter field.
    completed, the closed outcome or its required metadata is rejected, Cause
    Locus is `out-of-scope` or `unresolved`, the worker vetoes continuation,
     the ledger is exhausted, or the result is cancelled, except as specified for
-    the named Explore Auto item-10 route below. Ordinary/generic adapters
+    the named Explore Plan (unattended) item-10 route below. Ordinary/generic adapters
     preserve a cancelled result as a clean stop; outside the selector-dispatched
-    Explore Auto item 10 exception, cancellation closes as cancelled without a
+    Explore Plan (unattended) item 10 exception, cancellation closes as cancelled without a
     recovery charge. A duplicate normalized diagnosis key is checked before
     dispatch: it spends zero slots, does not
    invoke `continue_after_recovery`, and hands back the existing diagnosis
@@ -137,15 +137,15 @@ additional phase-adapter field.
    Recovery announcements and hand-backs are conversation text only; they
     never mark, extend, rename, or add progress-plan steps.
 
-     **Explore Auto item-10 cancellation exception.** Only a selector-dispatched
-     Explore Auto item 10 may enter an Explore Diagnosis Round; it does not spend
+     **Explore Plan (unattended) item-10 cancellation exception.** Only a selector-dispatched
+     Explore Plan (unattended) item 10 may enter an Explore Diagnosis Round; it does not spend
      the shared diagnosis ledger. This applies only after a post-resolution
      supervised phase-worker `status: cancelled`, and only when the phase-keyed,
      conversation-only `diagnosis_rounds.<phase>` is unused.
     On an actionable diagnosis where same-worker continuation cannot be
     delivered, use `continuation/transport loss`, consume the diagnosis round,
     do not use ordinary replacement fallback, close this route as terminal, and
-    leave the change retryable for later Auto selection. The round is read-only
+    leave the change retryable for later Plan (unattended) selection. The round is read-only
     and permits at most one diagnosis and at most one same-worker re-dispatch;
      it never uses a replacement worker and never spends the shared three-slot
      ledger. Use only
@@ -162,7 +162,7 @@ additional phase-adapter field.
       it changes neither the three-slot ledger, distinct-diagnosis accounting,
       eligibility, duplicate handling, same-worker/no-replacement rule,
        changed-files union, nor recovery reporting; its existing fast-track gates
-       remain in force. Fast-track does not widen the Explore Auto item-10 bound:
+       remain in force. Fast-track does not widen the Explore Plan (unattended) item-10 bound:
        it still permits at most one diagnosis round and at most one same-worker
        re-dispatch, never a replacement worker and never a charge to the shared
        three-slot ledger.

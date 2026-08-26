@@ -1,6 +1,6 @@
 # Artifact Feedback Gate (shared parameterized instruction)
 
-Shared completion-phase gate fetched by `sai/commands/spec/coordinator.md`, `sai/commands/design/coordinator.md`, and — at **Auto** dispatch — by `sai-explore`'s supervised pipeline (`sai/commands/explore/instructions.md` item 10). It offers an in-context review loop over the artifacts a step just wrote, then hands control to the step's proceed action. The gate logic lives ONLY here — neither body file restates it inline.
+Shared completion-phase gate fetched by `sai/commands/spec/coordinator.md`, `sai/commands/design/coordinator.md`, and — at **Plan (unattended)** dispatch — by `sai-explore`'s supervised pipeline (`sai/commands/explore/instructions.md` item 10). It offers an in-context review loop over the artifacts a step just wrote, then hands control to the step's proceed action. The gate logic lives ONLY here — neither body file restates it inline.
 
 Interactive mode, including an omitted `mode`, preserves the existing choice order: `Give feedback (Recommended)` first, followed by `proceed-label`.
 
@@ -50,7 +50,7 @@ When `mode` is `supervised`, machine processing likewise emits neither the picke
 
 If finding processing returns `needs_input`, the supervising coordinator must present the exact question and ordered options to the user, then continue the same worker with only the selected answer. Complete all findings for the current round before supervision evaluates whether another review round is required.
 
-Defer the ordinary user-facing gate while another review round is required. When `mode` is `interactive` or omitted, **Present that gate for the first time, unchanged at iteration 0, only after the review loop converges, exhausts its three-round cap, or is interrupted by worker failure.** Its first ordered labels remain `Give feedback (Recommended)` followed by `proceed-label` (for sai-1, `Finish step`). When `mode` is `supervised`, keep the gate deferred through the same review-round resolution, then apply the supervised sequencing rule instead of presenting the ordinary gate; a failed or cancelled result never advances by that rule. The supervised bound is at most three rounds per phase per Auto attempt and resets for each new Auto attempt.
+Defer the ordinary user-facing gate while another review round is required. When `mode` is `interactive` or omitted, **Present that gate for the first time, unchanged at iteration 0, only after the review loop converges, exhausts its three-round cap, or is interrupted by worker failure.** Its first ordered labels remain `Give feedback (Recommended)` followed by `proceed-label` (for sai-1, `Finish step`). When `mode` is `supervised`, keep the gate deferred through the same review-round resolution, then apply the supervised sequencing rule instead of presenting the ordinary gate; a failed or cancelled result never advances by that rule. The supervised bound is at most three rounds per phase per Plan (unattended) attempt and resets for each new Plan (unattended) attempt.
 
 ## Present the gate (interactive mode)
 

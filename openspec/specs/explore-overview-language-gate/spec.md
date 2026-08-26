@@ -4,16 +4,27 @@
 
 TBD
 ## Requirements
-### Requirement: Scope the overview-language gate to supervised Auto activation
-The overview-language gate applies only within `sai-explore`, firing once per crystallized idea or slice set only after deterministic selection confirms a dispatchable change for the displayed `Auto (sai-1 + sai-2)` route and before `active_change` is set or the first spec-worker dispatch occurs. It SHALL NOT fire at crystallization emission, mid-run at the spec-to-design transition, on free-form exploration turns, on Manual selection, on the Auto (fast implementation) branch, or when the selection outcome is non-dispatchable (empty set, no uncompleted entry, `Cancel`, or an already-active supervised run); those outcomes end before the gate. No other `sai-*` command is affected.
+### Requirement: Scope the overview-language gate to supervised Plan activation
+The overview-language gate applies only within `sai-explore`, firing once per crystallized idea or slice set only after deterministic selection confirms a dispatchable change for the displayed `Plan (unattended)` route and before `active_change` is set or the first spec-worker dispatch occurs. It SHALL NOT fire at crystallization emission, mid-run at the spec-to-design transition, on free-form exploration turns, on Manual selection, on the Build (unattended) branch, or when the selection outcome is non-dispatchable (empty set, no uncompleted entry, `Cancel`, or an already-active supervised run); those outcomes end before the gate. No other `sai-*` command is affected.
 
-#### Scenario: Auto activation evaluates the gate
-- **WHEN** deterministic selection confirms a dispatchable change in a supervised Auto run without explicit `--overview-lang`, active fast-track, or a stored value
+### Requirement: Apply overview-language routing to Plan
+
+The overview-language value SHALL remain conversation-only and SHALL be forwarded through the supervised Plan route only. Build SHALL retain its documented no-op treatment for overview-language selection.
+
+#### Scenario: overview routing remains bounded
+
+- **WHEN** a crystallization route is selected with an overview-language value
+- **THEN** only the Plan route forwards that value to supervised design processing.
+### Requirement: Scope limited to sai-explore supervised Plan activation
+The overview-language gate applies only within `sai-explore`, firing once per crystallized idea or slice set immediately after deterministic selection confirms a dispatchable change in a supervised Plan (unattended) run and before the first spec-worker dispatch. It SHALL NOT fire at crystallization emission, mid-run at the spec-to-design transition, on free-form exploration turns, on Manual selection, on the Build (unattended) branch, or when the selection outcome is non-dispatchable (empty set, no uncompleted entry, `Cancel`, or an already-active run rejected by active supervision); those outcomes end before the gate. No other `sai-*` command is affected.
+
+#### Scenario: Plan activation evaluates the gate
+- **WHEN** deterministic selection confirms a dispatchable change in a supervised Plan (unattended) run without explicit `--overview-lang`, active fast-track, or a stored value
 - **THEN** gate 9 asks exactly once before any spec-worker dispatch
 - **AND** no question ran when the block was emitted at crystallization
 
-#### Scenario: exploration and non-Auto selections never fire the gate
-- **WHEN** a turn continues free-form exploration or the user selects Manual or Auto (fast implementation)
+#### Scenario: exploration and non-Plan selections never fire the gate
+- **WHEN** a turn continues free-form exploration or the user selects Manual or Build (unattended)
 - **THEN** no overview-language question is asked and no overview opt-in decision is created
 
 #### Scenario: non-dispatchable outcomes end before the gate
@@ -22,10 +33,10 @@ The overview-language gate applies only within `sai-explore`, firing once per cr
 
 ### Requirement: English input skips the gate
 
-When the overview-language ask fires at a supervised Auto activation and the chat's ambient language is English or cannot be determined with reasonable confidence, `sai-explore` SHALL ask exactly two options in order: do not create, then the literal word `English`. No option SHALL carry a `Recommended` marker. The question and the do-not-create option's surrounding prose SHALL use the current conversation language, while the literal `English` option remains verbatim. Selecting do not create SHALL resolve the overview language to `None`; selecting `English` SHALL opt in with the value `English`.
+When the overview-language ask fires at a supervised Plan (unattended) activation and the chat's ambient language is English or cannot be determined with reasonable confidence, `sai-explore` SHALL ask exactly two options in order: do not create, then the literal word `English`. No option SHALL carry a `Recommended` marker. The question and the do-not-create option's surrounding prose SHALL use the current conversation language, while the literal `English` option remains verbatim. Selecting do not create SHALL resolve the overview language to `None`; selecting `English` SHALL opt in with the value `English`.
 
 #### Scenario: English input receives no recommended option
-- **WHEN** the overview-language ask fires at a supervised Auto activation with English as the current language
+- **WHEN** the overview-language ask fires at a supervised Plan (unattended) activation with English as the current language
 - **THEN** exactly two options are presented in order: do not create and `English`
 - **AND** neither option carries a `Recommended` marker
 
@@ -41,7 +52,7 @@ When the overview-language ask fires at a supervised Auto activation and the cha
 
 ### Requirement: Non-English input gates on a language choice with the ambient language recommended
 
-When the overview-language ask fires at a supervised Auto activation and the chat's ambient language is not English, `sai-explore` SHALL ask exactly three options in order: do not create, the literal word `English`, then the user's current language written as its endonym. No option SHALL carry a `Recommended` marker. The question and all nonliteral option prose, including the do-not-create option and the endonym label, SHALL be rendered in the user's current language; only the literal word `English` remains verbatim. Selecting do not create SHALL resolve to `None`; selecting either language SHALL resolve to that language.
+When the overview-language ask fires at a supervised Plan (unattended) activation and the chat's ambient language is not English, `sai-explore` SHALL ask exactly three options in order: do not create, the literal word `English`, then the user's current language written as its endonym. No option SHALL carry a `Recommended` marker. The question and all nonliteral option prose, including the do-not-create option and the endonym label, SHALL be rendered in the user's current language; only the literal word `English` remains verbatim. Selecting do not create SHALL resolve to `None`; selecting either language SHALL resolve to that language.
 
 #### Scenario: Non-English input receives all three choices
 - **WHEN** the overview-language ask fires at a supervised Auto activation whose ambient language is not English
@@ -60,23 +71,23 @@ When the overview-language ask fires at a supervised Auto activation and the cha
 
 ### Requirement: Input language determination
 
-`sai-explore` SHALL treat the dominant natural language of the explore conversation at the moment of the Auto activation as the current language; incidental code-switching, transliteration, or embedded technical terms SHALL NOT flip the determination. When the dominant language cannot be determined with reasonable confidence, `sai-explore` SHALL still ask gate 9 using the two-option form: do not create followed by the literal `English`, with no `Recommended` marker. This gate-9 rule intentionally differs from the `sai/policies/remember.md` fallback used by gate 3 and gate 8.
+`sai-explore` SHALL treat the dominant natural language of the explore conversation at the moment of the Plan (unattended) activation as the current language; incidental code-switching, transliteration, or embedded technical terms SHALL NOT flip the determination. When the dominant language cannot be determined with reasonable confidence, `sai-explore` SHALL still ask gate 9 using the two-option form: do not create followed by the literal `English`, with no `Recommended` marker. This gate-9 rule intentionally differs from the `sai/policies/remember.md` fallback used by gate 3 and gate 8.
 
 #### Scenario: mixed technical terms do not flip the language
-- **WHEN** a conversation whose ambient language is not English embeds English technical terms and gate 9 fires at an Auto activation
+- **WHEN** a conversation whose ambient language is not English embeds English technical terms and gate 9 fires at a Plan (unattended) activation
 - **THEN** the three-option form still uses the non-English language as the current language
 
 #### Scenario: Unclear dominant language uses the two-option form
-- **WHEN** the dominant language of the conversation cannot be determined with reasonable confidence at an Auto activation
+- **WHEN** the dominant language of the conversation cannot be determined with reasonable confidence at a Plan (unattended) activation
 - **THEN** gate 9 asks the two-option do-not-create/`English` form
 - **AND** it does not silently apply `sai/policies/remember.md` or skip the decision
 
 ### Requirement: Preserve explicit and fast-track resolution
 
-An explicit `--overview-lang <language>` value SHALL suppress gate 9 and become the selected conversation-only language. When fast-track is active without that option, the overview language MUST resolve to `None` without asking, including at a supervised Auto activation. Fast-track SHALL never turn an absent flag into a generation request and SHALL NOT skip, weaken, or auto-complete any stage; the crystallization language gate keeps its own fast-track behavior.
+An explicit `--overview-lang <language>` value SHALL suppress gate 9 and become the selected conversation-only language. When fast-track is active without that option, the overview language MUST resolve to `None` without asking, including at a supervised Plan (unattended) activation. Fast-track SHALL never turn an absent flag into a generation request and SHALL NOT skip, weaken, or auto-complete any stage; the crystallization language gate keeps its own fast-track behavior.
 
-#### Scenario: Fast-track at Auto activation without the flag opts out
-- **WHEN** `--fast-track` is active at a supervised Auto activation without `--overview-lang`
+#### Scenario: Fast-track at Plan activation without the flag opts out
+- **WHEN** `--fast-track` is active at a supervised Plan (unattended) activation without `--overview-lang`
 - **THEN** gate 9 asks no question
 - **AND** the overview-language value resolves to `None` without overview generation
 
@@ -91,15 +102,15 @@ An explicit `--overview-lang <language>` value SHALL suppress gate 9 and become 
 
 ### Requirement: An explicit --overview-lang option suppresses the gate
 
-When the invocation carried an explicit `--overview-lang <language>` option, the overview-language gate SHALL NOT be asked in any mode — including at a supervised Auto activation; the option's value SHALL be the overview-language value for the whole exploration session and SHALL feed the same conversation-only state that the selector-dispatched supervised chain forwards. Under the Auto (fast implementation) branch the explicit option is a documented no-op, because auto-fast generates no change-overview. The explicit option SHALL NOT suppress, alter, or pre-select the crystallization language gate (gate 8), which keeps its own fast-track and English-skip rules.
+When the invocation carried an explicit `--overview-lang <language>` option, the overview-language gate SHALL NOT be asked in any mode — including at a supervised Plan (unattended) activation; the option's value SHALL be the overview-language value for the whole exploration session and SHALL feed the same conversation-only state that the selector-dispatched supervised chain forwards. Under the Build (unattended) branch the explicit option is a documented no-op, because the build route generates no change-overview. The explicit option SHALL NOT suppress, alter, or pre-select the crystallization language gate (gate 8), which keeps its own fast-track and English-skip rules.
 
 #### Scenario: an explicit option skips the gate everywhere
-- **WHEN** the invocation carried `--overview-lang spanish` and a supervised Auto activation confirms a dispatchable change
+- **WHEN** the invocation carried `--overview-lang spanish` and a supervised Plan (unattended) activation confirms a dispatchable change
 - **THEN** no overview-language question is asked
 - **AND** the stored value feeds the conversation-only state the supervised chain forwards
 
 #### Scenario: explicit option under auto-fast is a documented no-op
-- **WHEN** the invocation carried `--overview-lang spanish` and the user selects Auto (fast implementation)
+- **WHEN** the invocation carried `--overview-lang spanish` and the user selects Build (unattended)
 - **THEN** gate 9 never asks and no change-overview generation occurs
 
 #### Scenario: the option never affects gate 8
@@ -109,7 +120,7 @@ When the invocation carried an explicit `--overview-lang <language>` option, the
 
 ### Requirement: Keep the selected language chat-scoped
 
-The resolved overview-language value SHALL persist chat-scoped per crystallized idea or slice set and SHALL survive the end of a supervised attempt — including a failed or cancelled one — so that a design-phase retry and a later Auto activation over the same set reuse it without asking again. A materially new idea SHALL reset the stored value, and its first eligible Auto activation SHALL ask again. Sliced crystallization SHALL resolve the gate once for the whole slice set. Explicit `--overview-lang` suppression remains invocation-scoped. All gate state SHALL remain in conversation only and SHALL NOT be written to a file, artifact, or configuration.
+The resolved overview-language value SHALL persist chat-scoped per crystallized idea or slice set and SHALL survive the end of a supervised attempt — including a failed or cancelled one — so that a design-phase retry and a later Plan (unattended) activation over the same set reuse it without asking again. A materially new idea SHALL reset the stored value, and its first eligible Plan (unattended) activation SHALL ask again. Sliced crystallization SHALL resolve the gate once for the whole slice set. Explicit `--overview-lang` suppression remains invocation-scoped. All gate state SHALL remain in conversation only and SHALL NOT be written to a file, artifact, or configuration.
 
 #### Scenario: re-crystallizing the same idea reuses the value
 - **WHEN** the user re-crystallizes the same idea after gate 9 resolved
@@ -117,17 +128,17 @@ The resolved overview-language value SHALL persist chat-scoped per crystallized 
 - **AND** gate 9 is not re-asked
 
 #### Scenario: resolution survives a failed attempt
-- **WHEN** a supervised attempt fails after gate 9 resolved, and a later Auto activation selects the same crystallized idea
+- **WHEN** a supervised attempt fails after gate 9 resolved, and a later Plan (unattended) activation selects the same crystallized idea
 - **THEN** the stored value is reused without asking again
 - **AND** its envelope form is reused for any chained design dispatch
 
 #### Scenario: A materially new idea resets the value
 - **WHEN** the active idea materially changes and is later crystallized and dispatched
 - **THEN** the prior stored value is discarded
-- **AND** gate 9 asks again at that idea's first eligible Auto activation
+- **AND** gate 9 asks again at that idea's first eligible Plan (unattended) activation
 
 #### Scenario: sliced crystallization resolves once
-- **WHEN** an Auto activation covers a slice set crystallized from one idea
+- **WHEN** a Plan (unattended) activation covers a slice set crystallized from one idea
 - **THEN** gate 9 resolved once for the whole slice set
 - **AND** the same language or `None` value applies to every slice's dispatch
 
@@ -151,17 +162,17 @@ When the user declines or answers non-committally to gate 9, `sai-explore` SHALL
 - **WHEN** the user answers the overview-language question non-committally
 - **THEN** the current language-policy fallback is applied
 
-### Requirement: The value rides in the block and forwards only in selector-dispatched Auto
+### Requirement: The value rides in the block and forwards only in selector-dispatched Plan
 
-The resolved overview-language value is held in conversation-only state without file persistence. Rendering that decision in emitted blocks is owned by and specified in the `explore-crystallization-block` capability. `sai-1-spec` SHALL NOT parse or forward the reminder. Selector-dispatched `Auto` SHALL forward a non-`None` value through the existing chained design envelope (`arguments_value: "{name} --fast-track --supervised --overview-lang {overview_language}"`); when the value is `None`, Auto SHALL omit `--overview-lang`. `Manual` SHALL forward nothing. The stored value is NOT cleared at a run's terminal outcome while the same crystallized idea remains active in the chat: a design-phase retry reuses it and its envelope form without asking again, and it SHALL never be injected into a design invocation outside this explore chat's supervised chain.
+The resolved overview-language value is held in conversation-only state without file persistence. Rendering that decision in emitted blocks is owned by and specified in the `explore-crystallization-block` capability. `sai-1-spec` SHALL NOT parse or forward the reminder. Selector-dispatched `Plan (unattended)` SHALL forward a non-`None` value through the existing chained design envelope (`arguments_value: "{name} --fast-track --supervised --overview-lang {overview_language}"`); when the value is `None`, Plan (unattended) SHALL omit `--overview-lang`. `Manual` and Build (unattended) SHALL forward nothing. The stored value is NOT cleared at a run's terminal outcome while the same crystallized idea remains active in the chat: a design-phase retry reuses it and its envelope form without asking again, and it SHALL never be injected into a design invocation outside this explore chat's supervised chain.
 
-#### Scenario: Selected language reaches Auto design
-- **WHEN** gate 9 selected `spanish` or an explicit flag supplied it and Auto chains design
+#### Scenario: Selected language reaches Plan design
+- **WHEN** gate 9 selected `spanish` or an explicit flag supplied it and Plan (unattended) chains design
 - **THEN** the chained design envelope includes `--overview-lang spanish` alongside `--fast-track` and `--supervised`
 - **AND** the design phase is opted in for overview generation
 
-#### Scenario: Do-not-create reaches Auto design
-- **WHEN** gate 9 resolved do not create and Auto chains design
+#### Scenario: Do-not-create reaches Plan design
+- **WHEN** gate 9 resolved do not create and Plan (unattended) chains design
 - **THEN** the chained design envelope contains no `--overview-lang` token or value
 
 #### Scenario: sai-1-spec never parses the value

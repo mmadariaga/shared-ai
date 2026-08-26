@@ -5,6 +5,15 @@ TBD - created by archiving change worker-owned-autofast-mutations. Update Purpos
 
 ## Requirements
 
+### Requirement: Attribute archive execution to Build
+
+Build (unattended) SHALL use the existing archive worker's read-only preparation followed by one validated sync, archive move, owned staging, and pre-authorized local commit continuation.
+
+#### Scenario: Build completes archive execution
+
+- **WHEN** Build reaches archive execution
+- **THEN** the existing archive order and one-commit boundary remain unchanged under `build-unattended`.
+
 ### Requirement: Validated archive execution continuation
 
 The Auto-fast archive worker SHALL perform classification, completion, delta-sync, unchecked-item, and collision checks during preparation before accepting an execution order.

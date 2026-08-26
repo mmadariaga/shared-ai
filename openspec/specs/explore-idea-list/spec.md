@@ -6,6 +6,15 @@ TBD - seeded from delta spec `explore-idea-list` in change `explore-idea-progres
 
 ## Requirements
 
+### Requirement: Project the renamed route identities
+
+The coordinator-owned idea-list route projection SHALL use `plan-unattended`, `build-unattended`, and `manual`. The Plan projection SHALL contain sai-1 and sai-2; the Build projection SHALL contain Build/Implement, Backfill, and Archive; the Manual projection SHALL contain Manual handoff.
+
+#### Scenario: route projection follows selection
+
+- **WHEN** a selector route resolves for a slice
+- **THEN** the selected slice displays only the corresponding fixed route steps without changing baseline evidence state.
+
 ### Requirement: idea-list-scope-and-state
 
 `sai-explore` SHALL maintain a chat-scoped idea progress list that tracks the explored idea, held in the session: in conversation and, where a native task panel is bound, in the harness's task-panel session state. The session SHALL NOT write the list to any file, artifact, change directory, or configuration, and SHALL NOT derive it from repository state (no `openspec list --json`, no disk enumeration, no artifact reads). Harness-internal persistence of the harness's own task-panel state is harness session machinery, not a session write, and is out of scope of that prohibition.

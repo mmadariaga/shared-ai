@@ -5,6 +5,15 @@ TBD - created by archiving change mode-specific-explore-todo. Update Purpose aft
 
 ## Requirements
 
+### Requirement: Use named route projections
+
+The mode-specific idea-list projection SHALL identify Plan (unattended), Build (unattended), and Manual using their stable identities and SHALL preserve each route's existing ordered steps and completion transitions.
+
+#### Scenario: route stages remain ordered
+
+- **WHEN** a selected route is rendered
+- **THEN** its fixed existing steps appear in order under the corresponding new route identity.
+
 ### Requirement: Selected slices use temporary mode-specific route projections
 
 The explore coordinator SHALL render a temporary route projection for the selected crystallized slice using the existing idea-list panel binding and ownership marker. The projection MUST replace only the selected slice's three baseline evidence entries, preserve the research item and non-selected slices, and MUST NOT create a generic `Implementation` item, alter evidence state, or create milestone stamps.

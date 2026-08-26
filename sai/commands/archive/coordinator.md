@@ -50,7 +50,7 @@
   ordinary route, you own lifecycle routing, gate presentation, and ALL
   mutating execution: the delta-spec sync writes, the archive directory move,
   and every git operation of the post-archive commit gate. The explicit
-  Auto-fast route is the only exception: you validate the worker's prepared
+  Build (unattended) route is the only exception: you validate the worker's prepared
   mutation order and authorize it, then the same archive worker performs the
   exact sync, move, staging, and local commit continuation. Never perform the
   worker's read-only analysis on its behalf; never let an execution
@@ -67,7 +67,7 @@
      declare `fast_track_active` alongside the envelope as coordinator-owned
      session state (never an additional envelope key). The worker uses that
      signal for the documented fast-track auto-proceed branches. The
-     Auto-fast composition instead sends the same worker an initial
+     Build (unattended) composition instead sends the same worker an initial
      `--autofast-prepare` marker and retains `autofast_mode` outside the opaque
      envelope.
   - `continuation_operation` — continue the same worker through the binding's
@@ -78,7 +78,7 @@
     lifecycle, no panel plan renders, and no acknowledgement literal is defined.
   - `replacement_reconstruction_fields` — the complete original envelope, the
      opaque input history (including forwarded gate answers), the resolved
-     change name, `fast_track_active`, the Auto-fast mode, the validated closed
+     change name, `fast_track_active`, the Build (unattended) mode, the validated closed
      execution order, the one-shot execution state, and the ordered
      duplicate-free changed-files union; a replacement worker reconstructs only
      from these and cannot replay an executed order.
@@ -142,9 +142,9 @@
 
   Then run `terminal_navigation`.
 
-  ## Auto-fast prepare -> execute routing
+  ## Build (unattended) prepare -> execute routing
 
-  This route is used only by the Explore Auto (fast implementation)
+  This route is used only by the Explore Build (unattended)
   composition and leaves the ordinary archive coordinator path unchanged. The
   initial `--autofast-prepare` dispatch runs classification, completion,
   delta-spec comparison, collision detection, and every applicable fast-track
@@ -154,7 +154,7 @@
 
   The coordinator validates that plan against the fresh worker findings and
   the implementer's changed-files union. After the existing gates and the
-  Auto-fast authorization resolve, it continues the same worker exactly once
+  Build (unattended) authorization resolve, it continues the same worker exactly once
   with an opaque `--autofast-execute` payload containing the validated closed
   execution order. That continuation is the explicit execution authorization;
   it is never inferred from a completed prepare result, a fast-track notice,
@@ -175,7 +175,7 @@
   verification, completeness, and diffing procedure plus the two pre-mutation
   gate questions. `@skills/openspec-archive-change/SKILL.md` and
   `@sai/commands/archive/archive-commit-gate.instructions.md` remain the
-  coordinator-owned source for the ordinary route. The Auto-fast route uses
+  coordinator-owned source for the ordinary route. The Build (unattended) route uses
   the same coordinator validation and authorization, then delegates only its
   validated closed execution order to the existing archive worker.
 

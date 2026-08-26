@@ -4,9 +4,9 @@ Fetch @sai/policies/verified-precondition-handback.md
 Fetch @sai/orchestration/worker-core.md and follow it exactly.
 Fetch @sai/commands/archive/instructions.md and follow those instructions exactly.
 Fetch @skills/openspec-sync-specs/SKILL.md and use it only for the validated
-Auto-fast execution continuation.
-Fetch @skills/safe-operations/SKILL.md and use it for every Auto-fast mutation.
-Fetch @sai/policies/commit-rules.md and follow it for the Auto-fast commit.
+Build (unattended) execution continuation.
+Fetch @skills/safe-operations/SKILL.md and use it for every Build (unattended) mutation.
+Fetch @sai/policies/commit-rules.md and follow it for the Build (unattended) commit.
 
 ## Invocation Envelope
 
@@ -17,7 +17,7 @@ shared change-picker before this dispatch, so every payload carries
 `resolved_change_name`. Throughout `@sai/commands/archive/instructions.md`,
 `$ARGUMENTS` denotes the received `arguments_value`.
 
-The Auto-fast composition may prefix its initial envelope with
+The Build (unattended) composition may prefix its initial envelope with
 `--autofast-prepare` on its own line, followed by the already resolved change
 name. Strip that marker and retain `autofast_mode: prepare` as
 invocation-scoped worker state. An `--autofast-execute` marker is valid only on
@@ -30,7 +30,7 @@ state. Honor it only in the fast-track branches documented below and in the
 instruction's own fast-track bullets; it never suppresses the CORE-missing hard
 stop, the AUDIT informational line, or the collision check.
 
-In Auto-fast prepare mode, `fast_track_active` still controls only the existing
+In Build (unattended) prepare mode, `fast_track_active` still controls only the existing
 documented gate branches. The worker completes the full read-only pre-flight
 and returns a closed mutation plan; it never treats a prepared plan or an
 auto-proceeded gate as authorization to mutate.
@@ -109,7 +109,7 @@ upstream skill's step-6 completion-summary shape — change name, schema used,
 the archive location per the date-prefix rule, whether specs were synced, and
 any carried warnings — so the coordinator can present it verbatim after
 executing the sync-and-move on the ordinary route, or use it as the validated
-plan for the Auto-fast execute continuation.
+plan for the Build (unattended) execute continuation.
 
 ## Post-sync verification
 
@@ -121,9 +121,9 @@ and restating readiness for the archive move. Otherwise return a terminal
 `completed` payload whose summary reports exactly what differs and that the
 archive stopped before moving anything.
 
-## Auto-fast execution continuation
+## Build (unattended) execution continuation
 
-After Auto-fast preparation, the coordinator validates the returned
+After Build (unattended) preparation, the coordinator validates the returned
 classification, gate outcomes, collision verdict, sync decision, archive
 destination, owned staging set, and commit authorization. It then continues
 the same worker with one opaque payload whose first line is exactly
@@ -151,7 +151,7 @@ performs exactly this order and nothing else:
 3. Stage exactly the supplied owned path set. Never use `git add -A`,
    `git add .`, or stage an unrelated dirty path.
 4. Apply the commit-message rules to the staged state only, then execute one
-   local HEREDOC-form new commit under the already-consumed Auto-fast commit
+   local HEREDOC-form new commit under the already-consumed Build (unattended) commit
    authorization. Never amend, push, force-push, or ask for a second commit.
 
 The worker records each realized path in the ordered duplicate-free
@@ -163,11 +163,11 @@ completed state and failure class, set `unrecoverable: true` only when the
 evidence establishes that continuation is unsafe, and stop. Never silently
 retry, continue to another action, or commit a partial plan.
 
-## Absolute mutation prohibition outside Auto-fast execution
+## Absolute mutation prohibition outside Build (unattended) execution
 
 For the ordinary route and the prepare stretch, NEVER move directories. NEVER
 write outside reporting duties — no main-spec sync writes, no `.openspec.yaml`
 keys, no artifact edits. NEVER run git: no `git add`, no `git commit`, no
 state-changing git command of any kind. The sync writes, archive move, and git
 operations remain coordinator-owned unless the worker is in the validated
-Auto-fast execution continuation above.
+Build (unattended) execution continuation above.

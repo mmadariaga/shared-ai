@@ -24,7 +24,7 @@
 
   ## Overview-language validation
   After the fast-track parse, inspect the cleaned remainder for the optional `--overview-lang <language>` option. Parse and validate it before change-name resolution and before overview dispatch:
-  - If the option is absent, leave the invocation-scoped overview-language unresolved: produce no effective `overview_language` and do not synthesize `English`; gate 9 may later resolve it at a supervised Auto activation.
+  - If the option is absent, leave the invocation-scoped overview-language unresolved: produce no effective `overview_language` and do not synthesize `English`; gate 9 may later resolve it at a supervised Plan (unattended) activation.
   - If the option appears once, require exactly one following non-empty token that is not another option, consume that token as the free-form language value, remove only the option and its value from the cleaned remainder, and set `overview_language` to that value.
   - If the option is final or its next token begins with `--`, stop with the clear validation error `Missing value for --overview-lang; provide one non-empty language token before continuing.` Do not resolve a change or perform any dispatch.
   - If the option appears more than once, stop with the clear validation error `Duplicate --overview-lang is not allowed; provide the option once.` Do not resolve a change or perform any dispatch.

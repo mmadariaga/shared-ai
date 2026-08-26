@@ -6,6 +6,15 @@ TBD - seeded from delta spec `supervised-review-in-session` in change `supervise
 
 ## Requirements
 
+### Requirement: Run supervised review rounds under Plan
+
+The existing in-session supervised review rounds SHALL be associated with Plan (unattended), retain their phase-specific counters and three-round bounds, and remain separate from the manual review loop.
+
+#### Scenario: Plan enters review
+
+- **WHEN** a Plan phase produces the required artifacts
+- **THEN** the existing supervised review rounds process those artifacts with unchanged marking and convergence rules.
+
 ### Requirement: coordinator-performs-each-round
 
 In the selector-dispatched supervised flow, each review round of a phase's artifacts SHALL be performed by the explore coordinator session itself through the review engine of the `review-engine-extraction` capability, invoked with the authoritative change name and the phase's artifact-set designator — `sai-1` for the spec phase (`proposal.md` and every `specs/**/*.md`), `sai-2` for the design phase (`design.md`, `tasks.md`, and `interfaces.md`). The pipeline SHALL NOT dispatch a reviewer subagent for any round: no fresh reviewer, persistent reviewer, reviewer result variant, reviewer binding, or install projection exists in the supervised flow. Each round SHALL produce its findings from that round's engine transaction over freshly read artifacts in their current state.

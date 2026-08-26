@@ -63,23 +63,23 @@ test('the selector closes every crystallization emission through the authoritati
   assert.match(source, /items 5, 6, and 7 \u2014 closes its turn with exactly one selector/i);
   assert.match(source, /after the final `Ready to Propose` block and after the keep-window-open recommendation/i);
   assert.match(source, /exactly three options, in this fixed order/i);
-  assert.match(source, /\*\*Auto \(sai-1 \+ sai-2\)\*\* \u2014 Runs supervised `sai-1` \+ `sai-2` only; no implementation phase\./);
-  assert.match(source, /\*\*Auto \(fast implementation\)\*\* \u2014 Takes shortcuts vs\. the other options\./);
-  assert.match(source, /\*\*Manual\*\* \u2014 Best visibility into what's happening; requires you to make some decisions\./);
+  assert.match(source, /\*\*Plan \(unattended\)\*\* — Runs `sai-1` and `sai-2`, then stops for plan review before Build\./);
+  assert.match(source, /\*\*Build \(unattended\)\*\* — Directly implements the change, backfills its artifacts, archives it, and commits locally; it is not `\/sai-build`\./);
+  assert.match(source, /\*\*Manual\*\* — Dispatches nothing; run `\/sai-1-spec <change-name>` yourself\./);
   assert.match(source, /AskUserQuestion on Claude Code|`AskUserQuestion` on Claude Code/i);
   assert.match(source, /`question` tool on opencode/i);
   assert.match(source, /remember\.md`? \(L10\u201315\)/);
-  assert.match(source, /Selecting \*\*Auto \(sai-1 \+ sai-2\)\*\* \(internal route `Auto`\)/);
+  assert.match(source, /Selecting \*\*Plan \(unattended\)\*\* \(`route_mode = plan-unattended`\)/);
 
   assert.match(sharedCloseSpec, /one authoritative crystallization-turn close/i);
   assert.match(sharedCloseSpec, /Items 5 \(single change\), 6 \(sliced feature\), and 7 \(inline proposal refusal\)[\s\S]{0,180}reference that definition/i);
   assert.match(selectorSpec, /Selecting `Manual` SHALL dispatch nothing and SHALL NOT change supervision state/i);
   assert.match(selectorSpec, /An unmapped free-text answer MUST be treated as (?:\*\*|`)Manual(?:\*\*|`)/i);
   assert.match(selectorSpec, /[`*]*Manual[`*]* SHALL remain re-invocable without a cap[\s\S]{0,120}selector/i);
-  assert.match(selectorSpec, /`--fast-track` SHALL NOT auto-select Auto or suppress the selector/i);
+  assert.match(source, /`--fast-track` auto-selects nothing: the selector is always asked/i);
 });
 
-test('overview-language gate is deferred from crystallization until a dispatchable supervised Auto selection', () => {
+test('overview-language gate is deferred from crystallization until a dispatchable supervised Plan selection', () => {
   const crystallization = [
     spec('sai/commands/explore/steps/common.md'),
     spec('sai/commands/explore/steps/slicing-assessment.md'),
@@ -89,11 +89,11 @@ test('overview-language gate is deferred from crystallization until a dispatchab
   const supervised = spec('sai/commands/explore/steps/pipeline-auto-supervised.md');
 
   assert.doesNotMatch(crystallization, /overview-language gate \(gate 9|gate 9.*before.*Ready to Propose/i);
-  assert.match(supervised, /Gate 9 at Auto activation/);
+  assert.match(supervised, /Gate 9 at Plan \(unattended\) activation/);
   assert.match(supervised, /after \*\*Deterministic selection\*\* confirms a dispatchable change/i);
   assert.match(supervised, /before setting `active_change` or dispatching the first spec worker/i);
   assert.match(supervised, /Empty or completed crystallization sets, `Cancel`, and an already-active run end before this gate/i);
-  assert.match(supervised, /The ask never occurs at crystallization emission.*\*\*Manual\*\*.*\*\*Auto \(fast implementation\)\*\*/i);
+  assert.match(supervised, /The ask never occurs at crystallization emission.*\*\*Manual\*\*.*\*\*Build \(unattended\)\*\*/i);
 });
 
 test('the spec handoff example demonstrates fast-track and overview language together', () => {
@@ -106,19 +106,18 @@ test('Manual and unmapped answers preserve the shared close without suppressing 
   const source = exploreContract();
   const selectorSpec = spec('openspec/specs/explore-pipeline-selector/spec.md');
 
-  assert.match(source, /Selecting \*\*Manual\*\* dispatches nothing[\s\S]{0,180}(?:changes no state value|does not change supervision state)/i);
+  assert.match(source, /Selecting \*\*Manual\*\*[\s\S]{0,80}dispatches nothing[\s\S]{0,180}(?:changes no state value|does not change supervision state)/i);
   assert.match(source, /Manual[\s\S]{0,260}(?:already[- ]emitted|already emitted)[\s\S]{0,180}(?:shared close|keep-window-open recommendation|recommendation)/i);
   assert.match(source, /(?:no|not|without|does not|shall not)[\s\S]{0,80}second recommendation[\s\S]{0,80}(?:and|or)[\s\S]{0,50}selector/i);
   assert.match(selectorSpec, /An unmapped free-text answer MUST be treated as (?:\*\*|`)Manual(?:\*\*|`)/i);
   assert.match(selectorSpec, /[`*]*Manual[`*]* SHALL remain re-invocable without a cap[\s\S]{0,120}selector/i);
-  assert.match(selectorSpec, /`--fast-track` SHALL NOT auto-select Auto or suppress the selector/i);
+  assert.match(source, /`--fast-track` auto-selects nothing: the selector is always asked/i);
 });
 
 test('the selector authorizes the delegated-write exception and is not the removed review picker', () => {
   const source = exploreContract();
 
   assert.match(source, /the user's explicit selections on the crystallization-close pipeline selector/i);
-  assert.match(source, /displayed \*\*Auto \(sai-1 \+ sai-2\)\*\* option, which maps to the internal `Auto` route/i);
   assert.match(source, /explicit user act that authorizes item 1's delegated-write exception/i);
   assert.match(source, /consent to selection and dispatch only/i);
   assert.match(source, /is \*\*not\*\* the removed global Yes\/No review picker/i);
@@ -132,7 +131,7 @@ test('the crystallization closing recommendation names review-loop and no pipeli
   assert.match(source, /names the literal token `review-loop` exactly once/);
   assert.match(source, /after the final `Ready to Propose` block and after the keep-window-open recommendation/i);
   assert.match(source, /an inline refusal is a crystallization emission and closes exactly like items 5 and 6/i);
-  assert.match(source, /selector remains a three-option choice[\s\S]{0,180}\*\*Auto \(sai-1 \+ sai-2\)\*\*/,
+  assert.match(source, /selector remains a three-option \*\*Plan \(unattended\)\*\*\s*\/\s*\*\*Build \(unattended\)\*\*\s*\/\s*\*\*Manual\*\* choice/i,
     'the review-loop description should name all three selector options');
   assert.doesNotMatch(source, /selector remains a two-option \*\*Auto\*\* \/ \*\*Manual\*\* choice/i);
 });
@@ -140,8 +139,8 @@ test('the crystallization closing recommendation names review-loop and no pipeli
 test('the selector prompt and labels localize while the command literals stay English', () => {
   const source = exploreContract();
 
-  assert.match(source, /question text and every option label[\s\S]{0,120}render in the user's language/i);
-  assert.match(source, /`review-loop`, `\/sai-1-spec`, and `\/sai-2-design` strings stay verbatim English/);
+  assert.match(source, /question text, every option label[\s\S]{0,120}render in the user's language/i);
+  assert.match(source, /the literal `review-loop`, `\/sai-1-spec`, `\/sai-2-design`, and `\/sai-1-spec <change-name>` command strings stay verbatim English/);
 });
 
 test('supervision tracks ordered unique changes and dispatches only eligible work', () => {
@@ -539,7 +538,7 @@ test('supervised pipeline state extends the selector interface by phase with sep
   assert.doesNotMatch(source, /\breview_passes\b/);
   assert.doesNotMatch(source, /\bfinding_history\b/);
   assert.match(source, /spec-to-design transition adapter|transition adapter.*design/i);
-  assert.match(source, /On an \*\*Auto\*\* selection, use only `last_crystallization_set` and `completed_changes`/);
+   assert.match(source, /On a \*\*Plan \(unattended\)\*\* or \*\*Build \(unattended\)\*\* selection, use only `last_crystallization_set` and `completed_changes`/);
   assert.match(source, /review loop's \(item 9\) source only, and is never the selector's dispatch source/i);
   assert.match(source, /replaces `last_crystallization_set` with that turn's emitted names/i);
   assert.match(source, /assumed applied or discarded/i);
@@ -563,7 +562,7 @@ test('supervised review reports spec convergence or cap exhaustion before design
 test('Step 2 blind supervision rejects duplicate starts until the chained design outcome', () => {
   const source = supervisionContract();
 
-  assert.match(source, /Active supervision rejects another \*\*Auto\*\* selection/i);
+   assert.match(source, /Active supervision rejects another \*\*Plan \(unattended\)\*\* selection/i);
   assert.match(source, /throughout the chained design phase/i);
   assert.match(source, /ends only at the applicable terminal outcome/i);
   assert.match(source, /spec and design.*(?:review_rounds|review rounds).*autonomy records remain separate|spec and design.*autonomy records remain separate/i);
@@ -637,7 +636,7 @@ test('Step 1 gate 9 uses the opt-in overview-language selector and deterministic
     exploreContract(),
     spec('sai/commands/explore/body.md'),
   ].join('\n');
-  const selectorStart = contract.search(/Gate 9 at Auto activation/i);
+  const selectorStart = contract.search(/Gate 9 at Plan \(unattended\) activation/i);
 
   assert.ok(selectorStart >= 0, 'the opt-in overview-language selector should be specified');
   const selector = contract.slice(selectorStart);
@@ -660,7 +659,7 @@ test('Step 1 gate 9 defaults to None for absent fast-track or noncommittal input
     exploreContract(),
     spec('sai/commands/explore/body.md'),
   ].join('\n');
-  const selectorStart = contract.search(/Gate 9 at Auto activation/i);
+  const selectorStart = contract.search(/Gate 9 at Plan \(unattended\) activation/i);
 
   assert.ok(selectorStart >= 0, 'the opt-in overview-language selector should be specified');
   const selector = contract.slice(selectorStart);
@@ -676,7 +675,7 @@ test('Step 1 gate 9 defaults to None for absent fast-track or noncommittal input
   );
 });
 
-test('Step 1 forwards selected overview language only for Auto and keeps None and Manual free of overview dispatch', () => {
+test('Step 1 forwards selected overview language only for Plan (unattended) and keeps None and Manual free of overview dispatch', () => {
   const source = exploreContract();
 
   assert.match(source, /overview_language/);
@@ -685,25 +684,25 @@ test('Step 1 forwards selected overview language only for Auto and keeps None an
   assert.match(source, /arguments_value:\s*"\{name\} --fast-track --supervised --overview-lang \{overview_language\}"/);
 
   const deterministic = source.indexOf('**Deterministic selection**');
-  assert.ok(deterministic >= 0, 'the deterministic Auto selection contract should be present');
+  assert.ok(deterministic >= 0, 'the deterministic Plan/Build selection contract should be present');
   const auto = source.slice(deterministic);
   const noOverview = auto.match(
     /(?:do[- ]not[- ]create|None)[\s\S]{0,5000}?arguments_value:\s*"\{name\} --fast-track --supervised"/i
   );
   assert.ok(
     noOverview,
-    'do-not-create/None Auto should forward exactly {name} --fast-track --supervised'
+    'do-not-create/None Plan should forward exactly {name} --fast-track --supervised'
   );
   const noOverviewEnvelope = noOverview[0].match(/arguments_value:\s*"[^"]+"/i)?.[0] || '';
   assert.equal(
     noOverviewEnvelope,
     'arguments_value: "{name} --fast-track --supervised"',
-    'the do-not-create/None Auto envelope should contain no overview flag or value'
+    'the do-not-create/None Plan envelope should contain no overview flag or value'
   );
   assert.doesNotMatch(
     noOverviewEnvelope,
     /--overview-lang(?:\s|`|"|$)/i,
-    'the do-not-create/None Auto envelope must not carry an overview flag or value'
+    'the do-not-create/None Plan envelope must not carry an overview flag or value'
   );
 
   const manualStart = source.lastIndexOf('Selecting **Manual**');
@@ -846,20 +845,20 @@ test('Step 3: design workers have no automatic reviewer loop under supervision a
 });
 
 // â”€â”€â”€ suppress-worker-review-under-supervision: Auto envelope pins (verify-first) â”€
-test('Auto spec envelope carries leading --supervised only in arguments_value', () => {
+test('Plan spec envelope carries leading --supervised only in arguments_value', () => {
   const source = exploreContract();
   assert.doesNotMatch(source, /\bwrapper_echo_value\s*:/,
-    'spec Auto dispatch must not construct or forward the wrapper echo field');
-  assert.match(source, /arguments_value:[\s\S]{0,200}--supervised/, 'spec Auto dispatch should put --supervised on arguments_value');
+    'spec Plan dispatch must not construct or forward the wrapper echo field');
+  assert.match(source, /arguments_value:[\s\S]{0,200}--supervised/, 'spec Plan dispatch should put --supervised on arguments_value');
   assert.match(source, /arguments_value:[\s\S]{0,200}--supervised[\s\S]{0,200}Ready to Propose|arguments_value[\s\S]{0,120}line `--supervised`[\s\S]{0,200}Ready to Propose/i, 'spec arguments_value should begin with --supervised ahead of the Ready-to-Propose body');
   assert.doesNotMatch(source, /\bwrapper_echo_value\s*:\s*"--supervised"/,
     'explore must not carry the marker as a bare non-empty wrapper echo');
 });
 
-test('Auto chained design envelope forwards overview generation conditionally', () => {
+test('Plan chained design envelope forwards overview generation conditionally', () => {
   const source = exploreContract();
   const deterministic = source.indexOf('**Deterministic selection**');
-  assert.ok(deterministic >= 0, 'the deterministic Auto selection contract should be present');
+  assert.ok(deterministic >= 0, 'the deterministic Plan/Build selection contract should be present');
   const auto = source.slice(deterministic);
 
   assert.ok(
@@ -883,7 +882,7 @@ test('Auto chained design envelope forwards overview generation conditionally', 
   assert.doesNotMatch(
     auto,
     /arguments_value:\s*"\{name\} --supervised --fast-track"/,
-    'the supervised Auto envelope should remain name-first and fast-track-first'
+    'the supervised Plan envelope should remain name-first and fast-track-first'
   );
 });
 
@@ -1277,10 +1276,10 @@ test('Step 4: Manual and unmapped answers give one handoff for each crystallizat
   const manual = source.slice(selectorStart, deterministic);
 
   assert.ok(selectorStart >= 0 && handoff > selectorStart && deterministic > handoff,
-    'the shared Manual branch should precede deterministic Auto selection');
+    'the shared Manual branch should precede deterministic Plan/Build selection');
   assert.match(manual, /emit that handoff \*\*exactly once\*\*/i);
   assert.match(manual, /path-specific next-step handoff is emitted exactly once after the selector response for every Manual\/unmapped answer/i);
-  assert.match(manual, /Selecting \*\*Manual\*\* dispatches nothing/i);
+  assert.match(manual, /Selecting \*\*Manual\*\*[\s\S]{0,80}dispatches nothing/i);
   assert.match(manual, /A free-text answer that maps to neither option is treated as \*\*Manual\*\*/i);
   assert.match(manual, /It MUST NOT emit a second recommendation or selector for the same answer/i);
   assert.match(manual, /no-second-recommendation, and no-second-selector rules/i);
@@ -1312,28 +1311,28 @@ test('Step 4: Manual remains uncapped and each later Manual answer emits one han
   assert.match(source, /\*\*Manual is not terminal\*\*[^\n]*re-emit the selector[\s\S]{0,260}no cap on re-emissions/i);
 });
 
-test('Step 4: successful Auto emits the build handoff and never dispatches implementation', () => {
+test('Step 4: successful Plan (unattended) emits the build handoff and never dispatches implementation', () => {
   const source = exploreContract();
-  const success = 'successful Auto run emits the `Next step: run /sai-build {name}.` handoff and performs no implementation-phase dispatch';
+  const success = 'A successful Plan (unattended) run emits the `Next step: run /sai-build {name}.` handoff and performs no implementation-phase dispatch';
   const successIndex = source.indexOf(success);
 
-  assert.ok(successIndex >= 0, 'the successful Auto outcome should be specified');
+  assert.ok(successIndex >= 0, 'the successful Plan outcome should be specified');
   assert.match(source.slice(successIndex, successIndex + 320), /`Next step: run \/sai-build \{name\}\.`/i,
-    'successful Auto should hand off to the build composition');
+    'successful Plan should hand off to the build composition');
   assert.doesNotMatch(source.slice(successIndex, successIndex + 320), /`sai-3 was not run\.`/i,
-    'successful Auto should not emit the obsolete terminal text');
+    'successful Plan should not emit the obsolete terminal text');
 });
 
-test('Step 4: Auto-fast completion re-presents a per-slice selector and Manual pauses pending slices', () => {
+test('Step 4: Build (unattended) completion re-presents a per-slice selector and Manual pauses pending slices', () => {
   const source = exploreContract();
   const transitionStart = source.indexOf('**Successful slice completion transition');
   const transitionEnd = source.indexOf('**Failures**', transitionStart);
   assert.ok(transitionStart >= 0 && transitionEnd > transitionStart,
-    'the Auto-fast completion transition should be present');
+    'the Build completion transition should be present');
 
   const transition = source.slice(transitionStart, transitionEnd);
   assert.match(transition, /recompute `pending_slices` only from `last_crystallization_set` minus `completed_changes`/i);
-  assert.match(transition, /re-present the existing full three-option \*\*`Auto \(sai-1 \+ sai-2\)`\*\* \/ `Auto \(fast implementation\)` \/ `Manual` selector exactly once/i);
+  assert.match(transition, /re-present the existing full three-option `Plan \(unattended\)` \/ `Build \(unattended\)` \/ `Manual` selector exactly once/i);
   assert.match(transition, /per-slice authorization gate, not a one-time authorization/i);
   assert.match(transition, /even when exactly one pending slice remains/i);
   assert.match(transition, /Never re-select or re-run a name already in `completed_changes`/i);
@@ -1341,19 +1340,19 @@ test('Step 4: Auto-fast completion re-presents a per-slice selector and Manual p
   assert.match(transition, /require a later explicit request before any pending slice runs/i);
 });
 
-test('Step 4: failed or cancelled Auto maps retry guidance from phase state without changing retry state', () => {
+test('Step 4: failed or cancelled Plan maps retry guidance from phase state without changing retry state', () => {
   const source = exploreContract();
   const selectorSpec = spec('openspec/specs/explore-pipeline-selector/spec.md');
   const contract = [source, selectorSpec].join('\n');
 
   assert.match(contract, /(?:failed|cancelled)[\s\S]{0,500}(?:absent|not present|missing)[\s\S]{0,220}specs_converged_changes[\s\S]{0,260}`?\/sai-1-spec`?/i,
-    'a failed/cancelled Auto phase absent from specs_converged_changes should point to /sai-1-spec');
+    'a failed/cancelled Plan phase absent from specs_converged_changes should point to /sai-1-spec');
   assert.match(contract, /specs_converged_changes[\s\S]{0,500}(?:present|contains)[\s\S]{0,260}(?:absent|not present|missing)[\s\S]{0,220}completed_changes[\s\S]{0,260}`?\/sai-2-design`?/i,
-    'a converged but incomplete Auto phase should point to /sai-2-design');
+    'a converged but incomplete Plan phase should point to /sai-2-design');
   assert.match(contract, /(?:retry state|retry)[\s\S]{0,220}(?:unchanged|preserv|does not change)/i,
     'failed/cancelled guidance must preserve retry state');
   assert.match(contract, /(?:failed|cancelled)[\s\S]{0,700}(?:no|not|never|without)[\s\S]{0,180}(?:implementation|sai-3)[\s\S]{0,120}(?:dispatch|start|run)/i,
-    'failed/cancelled Auto must not dispatch implementation');
+    'failed/cancelled Plan must not dispatch implementation');
 });
 
 test('Step 4: post-selector prose localizes while command and review-loop literals remain verbatim English', () => {
@@ -1361,12 +1360,12 @@ test('Step 4: post-selector prose localizes while command and review-loop litera
   const selector = source.indexOf('exactly three options, in this fixed order');
   const deterministic = source.indexOf('**Deterministic selection**', selector);
   assert.ok(selector >= 0, 'the selector anchor should be present');
-  assert.ok(deterministic > selector, 'deterministic Auto selection should follow the selector prose');
+  assert.ok(deterministic > selector, 'deterministic Plan/Build selection should follow the selector prose');
   const postSelector = source.slice(selector, deterministic);
 
-  assert.match(postSelector, /question text and every option label[\s\S]{0,120}render in the user's language/i);
+  assert.match(postSelector, /question text, every option label[\s\S]{0,120}render in the user's language/i);
   assert.match(postSelector, /After the selector response, the surrounding prose[\s\S]{0,220}follows the selected crystallization language, while its command and standing-path literals remain verbatim English/i);
-  assert.match(postSelector, /`review-loop`, `\/sai-1-spec`, and `\/sai-2-design` strings stay verbatim English/i);
+  assert.match(postSelector, /the literal `review-loop`, `\/sai-1-spec`, `\/sai-2-design`, and `\/sai-1-spec <change-name>` command strings stay verbatim English/i);
   for (const literal of ['`/sai-1-spec`', '`/sai-2-design`', '`review-loop`']) {
     assert.match(postSelector, new RegExp(literal.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')),
       `${literal} should remain verbatim in post-selector prose`);
@@ -1461,7 +1460,7 @@ test('Step 2 item-10 diagnosis forwards findings without direct Explore repair o
   );
 });
 
-test('Step 2 item-10 diagnosis rounds are phase-keyed, separate from review rounds, and reset per Auto attempt', () => {
+test('Step 2 item-10 diagnosis rounds are phase-keyed, separate from review rounds, and reset per Plan attempt', () => {
   const source = supervisionContract();
 
   assert.match(source, /diagnosis_rounds[\s\S]{0,180}\bspec\b/i, 'diagnosis_rounds.spec should be named');
@@ -1472,8 +1471,8 @@ test('Step 2 item-10 diagnosis rounds are phase-keyed, separate from review roun
   assert.match(counterPair[0], /independent|separate|distinct/i, 'diagnosis rounds must be independent of review rounds');
   assert.match(
     source,
-    /(?:(?:new|next)\s+Auto\s+attempt[\s\S]{0,320}(?:reset|zero|starts?\s+at\s+(?:0|zero))[\s\S]{0,180}diagnosis_rounds)|(?:diagnosis_rounds[\s\S]{0,320}(?:reset|zero|starts?\s+at\s+(?:0|zero))[\s\S]{0,180}(?:new|next)\s+Auto\s+attempt)/i,
-    'a new Auto attempt should reset diagnosis rounds'
+    /(?:plan-unattended|Plan \(unattended\))[\s\S]{0,800}(?:reset|zero|starts?\s+at\s+(?:0|zero))[\s\S]{0,500}diagnosis_rounds|diagnosis_rounds[\s\S]{0,800}(?:reset|zero|starts?\s+at\s+(?:0|zero))[\s\S]{0,500}(?:plan-unattended|Plan \(unattended\))/i,
+    'a new Plan attempt should reset diagnosis rounds'
   );
 });
 
@@ -1518,7 +1517,7 @@ test('Step 2 item-10 exhausted diagnosis keeps the change retryable with phase g
 
   assert.match(diagnosis, /(?:exhausted|failed)[\s\S]{0,650}continuation\/transport loss|continuation\/transport loss[\s\S]{0,650}(?:exhausted|failed)/i);
   assert.match(diagnosis, /retryable/i);
-  assert.match(diagnosis, /(?:later Auto|next Auto|uncompleted|Auto-retryable)/i);
+  assert.match(diagnosis, /(?:later Plan \(unattended\)|next Plan \(unattended\)|plan-unattended|uncompleted)/i);
   assert.match(
     diagnosis,
     /Next step:\s*run\s+[`"']*\/sai-(?:1-spec|2-design)|applicable existing phase guidance/i
@@ -1720,25 +1719,25 @@ test('crystallization renders a temporary mode-specific route without changing t
   assert.match(selector, /not an invocation envelope field, worker payload field, artifact field, or persisted state/i);
 });
 
-test('mode-specific route labels and Auto progression are explicit', () => {
+test('mode-specific route labels and Plan/Build progression are explicit', () => {
   const source = exploreContract();
   const ideaList = spec('sai/commands/explore/steps/idea-list.md');
-  const auto = ideaList.slice(ideaList.indexOf('**Auto route:**'));
-  const fast = ideaList.slice(ideaList.indexOf('**Auto (fast implementation) route:**'));
+  const plan = ideaList.slice(ideaList.indexOf('**`plan-unattended` route'));
+  const build = ideaList.slice(ideaList.indexOf('**`build-unattended` route'));
 
-  assert.match(auto, /exactly two steps, `sai-1` followed by `sai-2`/);
-  assert.match(auto, /`sai-1` starts `in_progress`[\s\S]*clean spec convergence[\s\S]*`sai-2` as `in_progress`/i);
+  assert.match(plan, /exactly two steps, `sai-1` followed by `sai-2`/);
+  assert.match(plan, /`sai-1` starts `in_progress`[\s\S]*clean spec convergence[\s\S]*`sai-2` as `in_progress`/i);
   assert.match(source, /clean terminal design result completes `sai-2`[\s\S]*does not claim that `sai-3`/i);
-  assert.match(fast, /exactly the high-level stages `Build\/Implement`, `Backfill`, and `Archive`/);
-  assert.match(fast, /`Build\/Implement`[\s\S]*not `\/sai-build`/);
-  assert.match(source, /underlying eight-step Auto-fast contract remains authoritative[\s\S]*only these three high-level stages/i);
+  assert.match(build, /exactly the high-level stages `Build\/Implement`, `Backfill`, and `Archive`/);
+  assert.match(build, /`Build\/Implement`[\s\S]*not `\/sai-build`/);
+  assert.match(source, /underlying eight-step Build \(unattended\) contract remains authoritative[\s\S]*only these three high-level stages/i);
   assert.match(source, /Build\/Implement.*completed[\s\S]*Backfill.*in_progress[\s\S]*Archive.*in_progress/i);
 });
 
 test('Manual route is a completed handoff only and non-clean routes remain pending and retryable', () => {
   const source = exploreContract();
   const ideaList = spec('sai/commands/explore/steps/idea-list.md');
-  const manual = ideaList.slice(ideaList.indexOf('**Manual route:**'));
+  const manual = ideaList.slice(ideaList.indexOf('**`manual` route'));
 
   assert.match(manual, /only `Manual handoff`/);
   assert.match(manual, /`completed` when the path-specific handoff is emitted/);

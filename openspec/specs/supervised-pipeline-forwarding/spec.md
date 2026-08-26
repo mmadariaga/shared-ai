@@ -4,6 +4,15 @@
 
 *To be determined — brief description of what this capability does and why it exists.*
 ## Requirements
+
+### Requirement: Forward Plan envelopes unchanged
+
+Plan (unattended) SHALL preserve the existing supervised worker envelopes, including their markers, selected block content, flag ordering, and phase transition forwarding rules.
+
+#### Scenario: Plan forwards a worker request
+
+- **WHEN** Plan dispatches a supervised worker
+- **THEN** the existing one-string envelope is forwarded with only the route terminology changed outside the worker protocol.
 ### Requirement: Forward supervised marker on Auto dispatches
 
 When `sai-explore` runs selector-dispatched `Auto` supervision, it SHALL include the literal flag `--supervised` in every phase-worker request it constructs. The marker SHALL ride as flag content on `arguments_value`, which is the sole request field. No wrapper-echo or third envelope field SHALL be introduced.

@@ -6,6 +6,15 @@ TBD - seeded from delta spec `review-loop-navigation` in change `extract-review-
 
 ## Requirements
 
+### Requirement: Keep review navigation separate from route selection
+
+The post-crystallization review loop SHALL remain a separate user-triggered path, while the crystallization close SHALL use the three-option Plan (unattended), Build (unattended), and Manual selector.
+
+#### Scenario: crystallization does not start review
+
+- **WHEN** a crystallization turn closes
+- **THEN** the route selector is emitted without starting or replacing the review loop.
+
 ### Requirement: manual-path-ownership-and-scope
 
 The navigation shell of the post-crystallization review loop — the entry paths, the chat-scoped iteration, the five-option picker, `Skip`, `Exit review loop`, the picker re-entry invariant, and the print-for-paste handoff — SHALL stay outside the review engine and SHALL remain owned by the manual path. The shell SHALL apply only within `sai-explore`; no other `sai-*` command's behavior SHALL change. The shell's behavior SHALL be documented in `sai/commands/explore/instructions.md` only; no other instruction file, wrapper, or policy SHALL define or restate it.

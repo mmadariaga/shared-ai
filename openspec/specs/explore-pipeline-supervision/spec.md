@@ -4,6 +4,15 @@
 
 Define routed supervision of the isolated sai-1 spec-proposal worker from `sai-explore`.
 ## Requirements
+
+### Requirement: Name supervised route identity
+
+The supervised pipeline SHALL use `Plan (unattended)` and route identity `plan-unattended` for the existing sai-1/sai-2 supervision, review, chaining, and retry lifecycle. The direct build route SHALL use `Build (unattended)` and route identity `build-unattended` for its separate worker flow.
+
+#### Scenario: supervised selection is classified
+
+- **WHEN** a delegated route is selected
+- **THEN** the existing supervision lifecycle uses the applicable new route identity without changing worker order or state behavior.
 ### Requirement: Reuse supervised lifecycle
 
 The supervised pipeline SHALL resolve gate 9 immediately after deterministic selection confirms a dispatchable change for the displayed `Auto (sai-1 + sai-2)` route and before `active_change` is set or the first spec worker is dispatched. The displayed label SHALL map to internal route `Auto`, which SHALL remain limited to `sai-1` and `sai-2`.
@@ -257,6 +266,11 @@ Explore SHALL defer the existing Auto-fast terminal report and navigation while 
 ### Requirement: Auto (fast implementation) deterministic selection inheritance
 
 On an Auto (fast implementation) selection, explore SHALL apply the Deterministic selection rules verbatim against `last_crystallization_set` and `completed_changes` including every degenerate state: an empty set acknowledges nothing crystallized and dispatches nothing; no uncompleted entry acknowledges completion and dispatches nothing; exactly one uncompleted entry dispatches without a picker; multiple entries use the ordered native picker with Cancel; and an active run rejects another selection for the full interval. It SHALL NOT run `openspec list --json` or re-sort names, and earlier clauses describing the selector as carrying two options are superseded for count only by the third option.
+
+#### Scenario: Build inherits deterministic slice selection
+
+- **WHEN** Build (unattended) is selected with multiple pending crystallized slices
+- **THEN** the existing ordered picker and Cancel behavior are used without repository enumeration or re-sorting.
 
 ### Requirement: Auto-fast continuation preserves pending and completed slice state
 

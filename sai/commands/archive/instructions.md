@@ -1,7 +1,7 @@
 ﻿> **Routed ownership.** This instruction is the technical pre-flight of the
 > `sai-archive-worker` (`sai/commands/archive/worker.md` fetches and follows
 > it). The ordinary route keeps every check below read-only. The explicit
-> Auto-fast route uses the same pre-flight to prepare a closed mutation order;
+> Build (unattended) route uses the same pre-flight to prepare a closed mutation order;
 > only its later `--autofast-execute` continuation may execute that order.
 > Transport mapping: where this file
 > says **print**, the worker carries the exact text in its returned payload
@@ -12,7 +12,7 @@
 > selected value through the binding continuation; and every mutation it
 > references — the archive move, any delta-spec sync write, and every git
 > operation of the post-archive commit gate — executes coordinator-side per
-> `sai/commands/archive/coordinator.md` on the ordinary route. In Auto-fast
+> `sai/commands/archive/coordinator.md` on the ordinary route. In Build (unattended)
 > execution, the coordinator validates and authorizes the closed order before
 > forwarding it to the same archive worker; no other worker mutation is
 > allowed.
@@ -82,7 +82,7 @@ When fast-track is active (`sai-archive --fast-track`; opt-out set per `openspec
 When delta specs exist, always select the sync path and continue through the
 inline `openspec-sync-specs` workflow; do not present a synchronization choice
 to the user. In the ordinary route, the coordinator performs that sync after
-the worker's gate result. In Auto-fast preparation, record the same selected
+the worker's gate result. In Build (unattended) preparation, record the same selected
 sync as a pending action and let the coordinator validate it before the worker's
 explicit execute continuation performs it. When the delta specs are
 already synchronized, select the archive path directly. Verify the resulting main

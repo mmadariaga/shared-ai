@@ -3,6 +3,15 @@
 ## Purpose
 TBD - created by archiving change extract-sai-orchestration-core. Update Purpose after archive.
 ## Requirements
+
+### Requirement: Separate Plan and Build ownership
+
+The orchestration contract SHALL identify Plan (unattended) as the supervised sai-1/sai-2 route and Build (unattended) as the direct implementation route. Explore SHALL retain no direct write scope, and each route SHALL retain its existing worker-owned boundaries.
+
+#### Scenario: orchestration selects a route
+
+- **WHEN** a route is explicitly selected
+- **THEN** dispatch and mutation ownership follow the corresponding existing route contract.
 ### Requirement: Planning adapters inspect artifacts only for non-clean closure
 
 The shared orchestration contract SHALL define the diagnosis boundary for opted-in standalone planning adapters. After resolution, a `failed` result of any worker class, a `completed` result disproven by coordinator verification, or a `completed` result carrying a STOP SHALL be a non-clean closure. Only that route may authorize the active coordinator to read the phase-owned artifacts needed to establish cause. A clean `completed` result, `needs_input`, `cancelled`, progress event, notice, and every pre-resolution result SHALL retain the adapter's existing artifact-blind routing behavior. The phase adapter SHALL declare the worker-owned artifact surface and whether a diagnosed correction is a same-worker re-dispatch; it SHALL not restate the shared diagnosis or budget rules.

@@ -3,6 +3,15 @@
 ## Purpose
 TBD - created by archiving change bounded-worker-recovery. Update Purpose after archive.
 ## Requirements
+
+### Requirement: Preserve Plan cancellation recovery
+
+The bounded worker-recovery policy SHALL refer to the selector-dispatched Plan (unattended) item-10 exception and SHALL preserve its no-replacement, same-worker, retryable behavior.
+
+#### Scenario: Plan recovery cannot continue
+
+- **WHEN** Plan diagnosis cannot deliver its actionable continuation
+- **THEN** the existing continuation-loss result remains terminal for the attempt and the change remains retryable.
 ### Requirement: Optional recovery policy declaration
 The shared phase-adapter contract SHALL accept an optional static `recovery_policy` declaration alongside the optional `progress_plan`. The declaration SHALL be fully known at dispatch, immutable for the invocation segment, and presence-only for opt-in: the shared contract SHALL own the fixed recovery budget, non-clean-closure trigger, routing diagnoses, cause-locus rules, and failure rules. For this change, the design overview lifecycle, the standalone spec adapter, and the standalone design adapter MAY declare the policy; the spec and design adapters SHALL additionally declare their worker-owned artifact surface and whether correction is a same-worker re-dispatch. An adapter that omits `recovery_policy` SHALL retain the current continuation and replacement-worker behavior and SHALL emit no recovery-specific terminal lines. The presence of the policy SHALL not make an out-of-scope, unresolved, vetoed, malformed, duplicate, cancelled, or transport-lost result recoverable.
 
