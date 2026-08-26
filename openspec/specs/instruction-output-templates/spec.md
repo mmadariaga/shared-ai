@@ -59,6 +59,15 @@ The review, security, performance, and accessibility templates SHALL preserve th
 - **THEN** every example finding heading leads with its severity-prefixed identifier
 - **AND** the contract closes with a `Summary:` line matching its severity subset
 
+### Requirement: Review template records empty mutation targets
+
+The review report template SHALL include the exact no-eligible-target Pass 11 note as an unavailable-result alternative and SHALL emit no mutation findings for that outcome.
+
+#### Scenario: Report template represents an empty target set
+
+- **WHEN** the review activation gate passes but no eligible mutation targets exist
+- **THEN** the report can render `Mutation Analysis (Pass 11): skipped — no eligible mutation targets. No mutation findings.` verbatim.
+
 ### Requirement: Pull request body contract is preserved
 
 The pull request body template SHALL preserve its Summary, Goal, Design Decisions table, Audits checkboxes, and Out of Scope/Follow-ups sections, including optional-section omission, audit checkbox semantics, concise user-facing bullets, and faithful-to-diff constraints.

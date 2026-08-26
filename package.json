@@ -12,7 +12,8 @@
   },
   "scripts": {
     "test": "node --test",
-    "test:mutation": "stryker run"
+    "test:mutation": "stryker run",
+    "test:mutation:smoke": "node mutation-smoke.js"
   },
   "files": [
     "bin",

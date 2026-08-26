@@ -274,6 +274,7 @@ test('mutation testing is configured as a deterministic project test workflow', 
 
   assert.equal(packageManifest.devDependencies['@stryker-mutator/core'], '8.7.1');
   assert.equal(packageManifest.scripts['test:mutation'], 'stryker run');
+  assert.equal(packageManifest.scripts['test:mutation:smoke'], 'node mutation-smoke.js');
   assert.equal(strykerConfig.testRunner, 'command');
   assert.equal(strykerConfig.commandRunner.command, 'node --test');
   assert.deepEqual(strykerConfig.mutate, ['bin/install.js']);
@@ -295,6 +296,26 @@ test('mutation testing is configured as a deterministic project test workflow', 
   assert.equal(scopedConfig.status, 0, scopedConfig.stderr);
   assert.deepEqual(JSON.parse(scopedConfig.stdout), ['bin/install.js', 'bin/setup.js']);
   assert.match(artifact('.gitignore'), /reports\/mutation\//);
+});
+
+test('mutation smoke execution is non-discovered and isolated from the baseline test suite', () => {
+  const runner = artifact('mutation-smoke.js');
+  const smokeConfig = artifact('test/fixtures/stryker-smoke.config.js');
+
+  assert.notEqual(runner, '', 'the executable smoke runner should exist outside test discovery');
+  assert.match(runner, /mkdtempSync/);
+  assert.match(runner, /SAI_MUTATION_REPORT/);
+  assert.match(runner, /SAI_MUTATION_TEMP/);
+  assert.match(runner, /repositoryTempPath/);
+  assert.match(runner, /repository-local Stryker workspace/);
+  assert.match(runner, /rmSync\(tempRoot, \{ recursive: true, force: true \}\)/);
+  assert.match(runner, /nativeStatuses/);
+  assert.match(smokeConfig, /SAI_MUTATION_REPORT/);
+  assert.match(smokeConfig, /SAI_MUTATION_TEMP/);
+  assert.match(smokeConfig, /tempDirName/);
+  assert.doesNotMatch(smokeConfig, /^\s*tempDir\s*:/m);
+  assert.equal(fs.existsSync(path.join(repoRoot, 'test', 'mutation-smoke.test.js')), false,
+    'the executable smoke runner must not be a discovered node:test file');
 });
 
 test('mutation review never simulates deterministic results through inference', () => {
@@ -327,6 +348,7 @@ test('mutation review never simulates deterministic results through inference', 
   assert.match(mutationSources, /deterministic baseline failed/i);
   assert.match(mutationSources, /deterministic tool execution failed/i);
   assert.match(mutationSources, /deterministic report could not be parsed/i);
+  assert.match(mutationSources, /no eligible mutation targets/i);
   assert.match(mutationSources, /no mutation findings/i);
   for (const status of ['Killed', 'Survived', 'Timeout', 'NoCoverage', 'CompileError', 'RuntimeError', 'Ignored']) {
     assert.match(mutationSources, new RegExp(status), `deterministic ${status} status should be mapped`);

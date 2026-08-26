@@ -101,6 +101,8 @@
 >
 > *Mutation Analysis (Pass 11): skipped — {no testable production code in diff | repository has no test files}. No mutation findings.*
 >
+> *Mutation Analysis (Pass 11): skipped — no eligible mutation targets. No mutation findings.*
+>
 > *Mutation Analysis (Pass 11): unavailable — no deterministic mutation tool declared. No mutation findings.*
 >
 > *Mutation Analysis (Pass 11): unavailable — deterministic baseline failed. No mutation findings.*
