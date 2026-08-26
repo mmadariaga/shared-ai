@@ -173,10 +173,8 @@ When there is no usable intent context, use this existing diff-only prompt uncha
 > ```
 > {paste full diff here}
 > ```
-> 1. Glob all files matching `openspec/specs/*/spec.md`.
-> 2. Read each one.
-> 3. Return ONLY specs whose requirements overlap with the diff (behavior the diff modifies, replaces, or extends).
-> Output contract: for each conflict, return exactly — `path`, `what_would_change` (≤30 words), `why` (≤20 words). No prose. No raw file contents. If no conflicts, return an empty list.
+> **Goal:** Identify all specs in `openspec/specs/*/spec.md` whose requirements overlap with this diff — specs the diff modifies, replaces, or extends.
+> **Output contract:** For each conflict, return exactly `path`, `what_would_change` (≤30 words), `why` (≤20 words). No prose. No raw file contents. If no conflicts, return an empty list.
 
 When usable intent context exists, give the same subagent the selected diff plus this additional in-conversation context, authored from the in-memory classifications and never written to disk:
 

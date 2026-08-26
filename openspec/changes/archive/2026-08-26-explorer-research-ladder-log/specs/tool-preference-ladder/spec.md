@@ -1,10 +1,6 @@
 # tool-preference-ladder Specification
 
-## Purpose
-
-Prioritizes the most suitable research tools available in the explorer's environment: `codegraph` structural queries first, `git grep` second, and direct disk tools (Glob/Grep/Read) as the last fallback.
-
-## Requirements
+## MODIFIED Requirements
 
 ### Requirement: Fixed research-tool preference order
 
@@ -46,17 +42,7 @@ Each ladder level SHALL be evaluated conditionally and skipped when its availabi
 - **WHEN** the explorer continues into a second execution segment under the 30-call ceiling
 - **THEN** ladder_discards is emitted independently per segment with appropriate reasons for that segment
 
-### Requirement: The ladder governs only research-tool choice
-
-The tool-preference ladder SHALL govern only the choice of research tools and SHALL NOT modify the directed out-of-root access rules, structured scope escalation, or the per-segment tool-call ceiling defined elsewhere in the policy.
-
-#### Scenario: Out-of-root need discovered while following the ladder
-- **WHEN** following the ladder exposes a concrete filesystem need outside the project root
-- **THEN** the need is handled exclusively through the existing directed-access and structured-scope-escalation rules, and the ladder authorizes no additional access
-
-#### Scenario: Tool choice does not spend beyond the ceiling
-- **WHEN** the explorer selects tools according to the ladder
-- **THEN** the selection is bounded by the unchanged per-segment tool-call ceiling of at most 30 calls per execution segment
+## ADDED Requirements
 
 ### Requirement: Ladder precedence over caller tool prescriptions
 

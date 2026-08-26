@@ -28,6 +28,12 @@ You are in explore mode — a read-and-discuss context. These restrictions are i
 
    **Do NOT** restate the global "prefer codegraph over grep" guidance a code-graph MCP already injects into the harness's memory — this check's only added value is the fallback notice and the install/init recommendation.
 
+2a. **Research ladder discard logging (sai-explore only)**: When the `budget-explorer` subagent completes a research task, any ladder levels that were skipped are logged in the `ladder_discards` field of the subagent's structured response. Print these discards to the chat (if any are present) as a single informational notice per subagent result, in the form:
+
+   > Research ladder: [reason 1], [reason 2], …
+
+   This logging helps identify environment constraints (missing tools, unavailable shell) and any caller prompt violations (calls that prescribe tools despite the ladder policy). Print only when discards are present; omit the notice when all ladder levels were attempted. This relay is purely informational and does not gate continued work.
+
 Fetch @sai/commands/explore/steps/common.md
 
 **Pre-crystallization staged progression (sai-explore only).** While a candidate idea is under active exploration (Closure State `active-uncrystallized`), render a four-item stage TODO on the native task panel with the labels `Explore change`, `Review edge cases`, `Implementation details`, and `Crystallize`, in that order. The current stage renders `in_progress`, completed stages render `completed`, and remaining stages render `pending`. The TODO renders from the first turn in which a candidate idea exists, re-renders exactly once per turn that changes stage state, and does not render while no candidate idea exists. Rendering goes through the per-harness idea-list render binding's phase-A machinery (item 11); the stage TODO clears at crystallization, when the idea progress list takes the panel.

@@ -12,10 +12,33 @@ Summaries are caller-owned: the caller performs the final synthesis, and the exp
 When researching the project, prefer research tools in this fixed order:
 
 1. **Codegraph first**: when `codegraph_*` MCP tools are present in the session, structural questions — where something is defined, what calls it, what a change would affect — go to codegraph before any text search.
+   - Route 1a: Structural questions via the `codegraph_explore` MCP tool when present.
+   - Route 1b: Structural questions via the `codegraph explore` command-line tool when shell and the binary are available; distinguish this subroute from 1a in discard logging.
 2. **git grep second**: textual searches run through `git grep` via shell when shell and git are available.
 3. **Direct disk tools last**: Glob, Grep, and direct file reads are the final fallback when neither earlier level is available or neither answered the question.
 
-Each level is conditional: when `codegraph_*` tools are absent from the session, that level is skipped without any attempt; when shell or git is unavailable, `git grep` is skipped and research falls directly to Glob/Grep/Read. The ladder governs only the choice of research tools: it does not modify the directed out-of-root access rules, structured scope escalation, or the per-segment tool-call ceiling defined elsewhere in this policy.
+Each level is conditional: when neither codegraph route is available (MCP tool absent and either shell unavailable or binary not on PATH), level 1 is skipped and a discard log entry is emitted; when shell or git is unavailable, level 2 is skipped and a discard log entry is emitted; research falls directly to Glob/Grep/Read when neither earlier level is available. A caller prompt naming a specific research tool does not override this ladder: the ladder remains the governing preference order regardless of caller instructions. The ladder governs only the choice of research tools: it does not modify the directed out-of-root access rules, structured scope escalation, or the per-segment tool-call ceiling defined elsewhere in this policy.
+
+## Ladder level discard logging
+
+For every ladder level that is skipped and not attempted, the explorer emits a single-line reason in the `ladder_discards` field of its structured response. The field is an array of objects; each object has `level` and `reason` keys. The reason is a single plain-English phrase (no surrounding quotes, no formatting) that identifies why that level was not attempted:
+
+- **Level 1 (Codegraph MCP)**: `codegraph MCP tool not available` when the tool is not in the session.
+- **Level 1 (Codegraph CLI)**: `codegraph binary not on PATH` when shell is available but the binary is not, or `shell unavailable` when shell is required to invoke it.
+- **Level 2 (git grep)**: `shell unavailable` when shell is not available, `git not on PATH` when shell is available but git is not, or `working tree not a git repository` when shell and git are available but the current directory is not a git repository (E5).
+- **Shell restriction violation (E8)**: `shell operation refused: <description>` when shell is needed for a command other than `git grep` or `codegraph explore` (the explorer does not execute it and reports the refusal in the log).
+
+The field is emitted even when the caller's declared output contract omits it, exactly as `out_of_root_requests` is. A query that is neither structural nor textual (not a "where is X" or "search for X", but instead "read documentation" or "read a known file") does not attempt ladder levels 1 and 2; in that case, both reasons are reported as `not applicable for this query type`.
+
+**Per-segment ladder discard logging**: The `ladder_discards` field is emitted per execution segment, not once per spawn. When the explorer continues into a second segment under the 30-call ceiling, the log is emitted again per segment (E11), independent of what was logged in the prior segment.
+
+## Shell restriction and discard logging for caller tool prescriptions
+
+The explorer is restricted to read-only shell operations: `git grep` for searching and `codegraph explore` for structural queries (ladder level 1b). No other shell command is permitted. When shell is needed for any other command, the explorer does not execute it; instead, a `ladder_discards` entry with reason `shell operation refused: <description>` is recorded (E8). If a caller prompt prescribes a research tool or procedure despite the ladder policy, the ladder is not overridden; the discard log includes a `caller prescribed <tool>` entry to record the violation, and research proceeds according to the ladder, not the caller instruction.
+
+## Ladder precedence
+
+The tool-preference ladder is the governing preference order for research. It is not overridden by a caller prompt that names a tool, mentions a procedure, or prescribes a research method. When a caller prompt names a tool or procedure, the ladder still governs; the task is not aborted; and the discard log records the reason `caller prescribed <tool-name>` if that tool was skipped. This ensures that research quality, efficiency, and observability are maintained across all explorer spawns regardless of caller instructions.
 
 ## Filesystem research scope
 

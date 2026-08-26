@@ -34,4 +34,8 @@ The default maximum is 30 tool calls per spawn. A caller may declare a smaller c
 
 Every spawn prompt must declare exact response fields, a hard word-or-line limit, and `no raw file contents` (or require bounded verbatim excerpts for an audit).
 
+## Prompt-authoring discipline
+
+Every caller spawn prompt MUST state the **goal** and the **output contract** — exact fields, length cap, raw-content rule. A spawn prompt MUST NOT prescribe a specific research tool, a procedure, a numbered sequence of steps, or a method. The tool-preference ladder (`@sai/policies/explore-agent.md`) is the governing preference order and is never overridden by a caller prompt.
+
 Fetch @sai/policies/explore-agent.md

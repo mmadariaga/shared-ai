@@ -18,6 +18,10 @@ Fetch @sai/policies/explore-agent.md
 
 Callers must declare an output contract in every spawn prompt with exact response fields, a hard word-or-line length cap, and an explicit no raw file contents rule; the fetched `explore-agent.md` policy supplies the effective output-contract behavior.
 
+## Prompt-authoring discipline
+
+Every caller spawn prompt MUST state the **goal** and the **output contract** — exact fields, length cap, raw-content rule. A spawn prompt MUST NOT prescribe a specific research tool, a procedure, a numbered sequence of steps, or a method. The tool-preference ladder (in `@sai/policies/explore-agent.md`) is the governing preference order and is never overridden by a caller prompt.
+
 ## Dispatch mode
 
 The opencode `task` tool has no `run_in_background` parameter; this binding runs synchronously by default. The dispatch-safety invariant defined in `openspec/specs/dispatch-safety-invariant/spec.md` is the containing rule for this case.
