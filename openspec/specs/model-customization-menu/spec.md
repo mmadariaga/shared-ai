@@ -81,6 +81,24 @@ The model-customization menu SHALL derive target families from the canonical wor
 - **WHEN** the All scope enumerates targets for a harness with a budget agent
 - **THEN** it includes `agent:budget` and excludes `command:budget`.
 
+### Requirement: Checklist rows expose task complexity
+
+The model-customization checklist SHALL render columns in the order `TYPE`, `TARGET`, `TASK COMPLEXITY`, and `SETTING` for every target in both OpenCode and Claude Code flows. Headers, separators, and rows SHALL remain aligned, and existing setting text SHALL remain unchanged.
+
+#### Scenario: Display complexity in both harnesses
+
+- **WHEN** a user opens a customization checklist in either supported harness
+- **THEN** each target row displays an arrow-based complexity value between its target name and setting text while preserving the existing selection identity
+
+### Requirement: Complexity uses family-qualified target identities
+
+The customization logic SHALL resolve task complexity by complete family-qualified identity, including the `worker:`, `agent:`, `command:`, or `utility:` prefix. Configured values MUST be one of `↑`, `↑↑`, or `↑↑↑`; an unmapped identity SHALL resolve to `↑`. Stable selection values, family grouping, alphabetical ordering, and settings rendering SHALL remain unchanged.
+
+#### Scenario: Prevent bare-name taxonomy collisions
+
+- **WHEN** complexity is resolved for targets with family-qualified identities such as `agent:budget` and `command:sai-2-design`
+- **THEN** each lookup uses its complete identity rather than a bare target name, and the resulting display value remains one of the permitted arrow levels
+
 
 ### Requirement: Shared settings selection
 After the target-selection checklist confirms a non-empty subset and before any local override is created, the flow SHALL invoke the selected harness's settings selector exactly once for the whole confirmed subset in that customization pass. The collected settings choices — a model and an optional effort choice for Claude Code, and a discovered model with an optional variant for OpenCode — SHALL be passed to the per-target local-override operation once for every selected target. A per-target skipped result means the operation was attempted but its source was unavailable; it SHALL not be treated as a settings-selector failure or prevent later targets from being attempted. In `All` scope, the selector SHALL run once and the same settings SHALL be passed to every marked target across all selected families, with no per-family differentiation within a pass. Because the model-customization checklist rejects empty confirmation, the settings selector SHALL never be invoked for an empty selection.

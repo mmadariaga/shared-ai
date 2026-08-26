@@ -933,42 +933,44 @@ test('scope All presents combined worker and command identities, workers first, 
   }
 });
 
-test('injected checklist seam renders aligned model-table columns with a header but returns stable identities', async () => {
-  const ops = { select: [], create: [] };
-  const restore = patchFactory('createOpencodeAdapter', () => makeFakeAdapter(
-    ['sai-worker'], ops, { model: 'opencode-go/test-model', variant: 'high' },
-    ['sai-pr', 'sai-build']
-  ));
-  try {
-    const checklistCalls = [];
-    const answers = ['Customize models', 'OpenCode', 'All', 'Exit'];
-    const result = await runPostSetupMenu({
-      projectPath: REPO_ROOT,
-      isTTY: true,
-      promptChoice: async () => answers.shift(),
-      promptChecklist: recordChecklist(checklistCalls),
-    });
-    assert.equal(result.reason, 'cancelled');
-    assert.deepEqual(checklistCalls[0][0], [
-      'worker:sai-worker', 'command:sai-build', 'utility:sai-pr',
-    ]);
-    assert.deepEqual(checklistCalls[0][1], checklistCalls[0][0],
-      'selection defaults use stable values, not display labels');
-    assert.deepEqual(checklistCalls[0][4].header, [
-      '         TYPE  TARGET      SETTING',
-      `      ${'─'.repeat(7)}  ${'─'.repeat(10)}  ${'─'.repeat(7)}`,
-    ],
-      'the header columns start under the six-char option prefix and reuse the row widths');
-    assert.deepEqual(checklistCalls[0][4].displayOptions, [
-      ' WORKER  sai-worker  opencode-go/test-model (high)',
-      'COMMAND  sai-build   opencode-go/test-model (high)',
-      'UTILITY  sai-pr      opencode-go/test-model (high)',
-    ],
-      'display labels are aligned type/target/setting columns without ANSI wrappers');
-    assert.deepEqual(ops.select, ['worker:sai-worker, command:sai-build, utility:sai-pr'],
-      'the injected seam returns stable identities independently of labels');
-  } finally {
-    restore();
+test('injected checklist seam renders the task-complexity column in both harnesses while returning stable identities', async () => {
+  for (const [harness, factoryName] of [['OpenCode', 'createOpencodeAdapter'], ['Claude Code', 'createClaudeAdapter']]) {
+    const ops = { select: [], create: [] };
+    const restore = patchFactory(factoryName, () => makeFakeAdapter(
+      ['sai-worker'], ops, { model: 'opencode-go/test-model', variant: 'high' },
+      ['sai-pr', 'sai-build']
+    ));
+    try {
+      const checklistCalls = [];
+      const answers = ['Customize models', harness, 'All', 'Exit'];
+      const result = await runPostSetupMenu({
+        projectPath: REPO_ROOT,
+        isTTY: true,
+        promptChoice: async () => answers.shift(),
+        promptChecklist: recordChecklist(checklistCalls),
+      });
+      assert.equal(result.reason, 'cancelled');
+      assert.deepEqual(checklistCalls[0][0], [
+        'worker:sai-worker', 'command:sai-build', 'utility:sai-pr',
+      ]);
+      assert.deepEqual(checklistCalls[0][1], checklistCalls[0][0],
+        'selection defaults use stable values, not display labels');
+      assert.deepEqual(checklistCalls[0][4].header, [
+        '         TYPE  TARGET      TASK COMPLEXITY  SETTING',
+        `      ${'─'.repeat(7)}  ${'─'.repeat(10)}  ${'─'.repeat(15)}  ${'─'.repeat(7)}`,
+      ],
+        'the header columns start under the six-char option prefix and reuse the row widths');
+      assert.deepEqual(checklistCalls[0][4].displayOptions, [
+        ` WORKER  sai-worker  ↑${' '.repeat(14)}  opencode-go/test-model (high)`,
+        `COMMAND  sai-build   ↑↑${' '.repeat(13)}  opencode-go/test-model (high)`,
+        `UTILITY  sai-pr      ↑${' '.repeat(14)}  opencode-go/test-model (high)`,
+      ],
+        'display labels are aligned type/target/complexity/setting columns without ANSI wrappers');
+      assert.deepEqual(ops.select, ['worker:sai-worker, command:sai-build, utility:sai-pr'],
+        'the injected seam returns stable identities independently of labels');
+    } finally {
+      restore();
+    }
   }
 });
 
@@ -988,7 +990,7 @@ test('an adapter without effectiveSetting renders unavailable as plain column te
     });
     assert.equal(result.reason, 'cancelled');
     assert.deepEqual(checklistCalls[0][4].displayOptions, [
-      ' WORKER  sai-worker  unavailable',
+      ` WORKER  sai-worker  ↑${' '.repeat(14)}  unavailable`,
     ],
       'the unavailable setting renders as ordinary text in the setting column');
     for (const label of checklistCalls[0][4].displayOptions) {

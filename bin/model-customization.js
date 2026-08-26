@@ -19,9 +19,52 @@ const MODEL_CHECKLIST_LEGEND = 'Up/Down move · Space toggle · Enter confirm ·
 const MODEL_TABLE_INDENT = '      ';
 const MODEL_TABLE_GUTTER = '  ';
 const MODEL_TABLE_TYPE_WIDTH = 7;
+const MODEL_TABLE_COMPLEXITY_HEADER = 'TASK COMPLEXITY';
+const MODEL_TABLE_COMPLEXITY_WIDTH = MODEL_TABLE_COMPLEXITY_HEADER.length;
 const COMBINED_ENTRY_DELIMITER = ' | ';
 const TARGET_PREFIXES = Object.freeze({ worker: 'worker:', agent: 'agent:', command: 'command:', utility: 'utility:' });
 const UTILITY_NAMES = Object.freeze(['sai-commit', 'sai-pr', 'sai-retire-docs', 'sai-status', 'sai-worktree']);
+const TASK_COMPLEXITY = Object.freeze({
+  'worker:sai-1-spec-proposal-worker': '↑↑',
+  'worker:sai-2-design-worker': '↑↑↑',
+  'worker:sai-3-implementation-worker': '↑↑',
+  'worker:sai-4-green-worker': '↑',
+  'worker:sai-4-red-worker': '↑',
+  'worker:sai-5-review-worker': '↑↑',
+  'worker:sai-6-security-worker': '↑↑↑',
+  'worker:sai-7-performance-worker': '↑↑',
+  'worker:sai-8-accessibility-worker': '↑↑',
+  'worker:sai-archive-worker': '↑',
+  'worker:sai-autofast-implement-worker': '↑↑',
+  'worker:sai-backfill-worker': '↑↑',
+  'worker:sai-commit-worker': '↑',
+  'worker:sai-merge-worker': '↑↑',
+  'agent:budget': '↑',
+  'agent:executor': '↑',
+  'agent:explore': '↑',
+  'agent:budget-explorer': '↑',
+  'agent:budget-executor': '↑',
+  'agent:budget-subagent': '↑',
+  'command:sai-1-spec': '↑↑',
+  'command:sai-2-design': '↑↑',
+  'command:sai-3-implement': '↑↑',
+  'command:sai-4-apply': '↑↑',
+  'command:sai-5-review': '↑↑',
+  'command:sai-6-security': '↑↑',
+  'command:sai-7-performance': '↑↑',
+  'command:sai-8-accessibility': '↑↑',
+  'command:sai-archive': '↑↑',
+  'command:sai-backfill': '↑↑',
+  'command:sai-build': '↑↑',
+  'command:sai-explore': '↑↑',
+  'command:sai-merge': '↑↑',
+  'command:sai-review': '↑↑',
+  'utility:sai-commit': '↑',
+  'utility:sai-pr': '↑',
+  'utility:sai-retire-docs': '↑↑',
+  'utility:sai-status': '↑',
+  'utility:sai-worktree': '↑',
+});
 const DEFAULT_PACKAGE_ROOT = path.join(__dirname, '..');
 const DEFAULT_CLAUDE_GLOBAL_AGENT_ROOT = path.join(os.homedir(), '.claude', 'agents');
 const DEFAULT_OPENCODE_GLOBAL_AGENT_ROOT = path.join(os.homedir(), '.config', 'opencode', 'agents');
@@ -58,6 +101,10 @@ function parseTarget(value) {
     if (value.startsWith(prefix)) return target(family, value.slice(prefix.length), value);
   }
   return null;
+}
+
+function taskComplexityFor(targetEntry) {
+  return TASK_COMPLEXITY[targetEntry.value] || '↑';
 }
 
 function splitFrontmatter(text) {
@@ -714,14 +761,14 @@ async function runPostSetupMenu({
         }
         const nameWidth = Math.max(...targetEntries.map(entry => entry.name.length));
         const header = [
-          `${MODEL_TABLE_INDENT}${'TYPE'.padStart(MODEL_TABLE_TYPE_WIDTH)}${MODEL_TABLE_GUTTER}${'TARGET'.padEnd(nameWidth)}${MODEL_TABLE_GUTTER}SETTING`,
-          `${MODEL_TABLE_INDENT}${'─'.repeat(MODEL_TABLE_TYPE_WIDTH)}${MODEL_TABLE_GUTTER}${'─'.repeat(nameWidth)}${MODEL_TABLE_GUTTER}${'─'.repeat('SETTING'.length)}`,
+          `${MODEL_TABLE_INDENT}${'TYPE'.padStart(MODEL_TABLE_TYPE_WIDTH)}${MODEL_TABLE_GUTTER}${'TARGET'.padEnd(nameWidth)}${MODEL_TABLE_GUTTER}${MODEL_TABLE_COMPLEXITY_HEADER.padEnd(MODEL_TABLE_COMPLEXITY_WIDTH)}${MODEL_TABLE_GUTTER}SETTING`,
+          `${MODEL_TABLE_INDENT}${'─'.repeat(MODEL_TABLE_TYPE_WIDTH)}${MODEL_TABLE_GUTTER}${'─'.repeat(nameWidth)}${MODEL_TABLE_GUTTER}${'─'.repeat(MODEL_TABLE_COMPLEXITY_WIDTH)}${MODEL_TABLE_GUTTER}${'─'.repeat('SETTING'.length)}`,
         ];
         const labels = targetEntries.map((entry) => {
           const setting = typeof adapter.effectiveSetting === 'function'
             ? adapter.effectiveSetting(entry)
             : 'unavailable';
-          return `${entry.family.toUpperCase().padStart(MODEL_TABLE_TYPE_WIDTH)}${MODEL_TABLE_GUTTER}${entry.name.padEnd(nameWidth)}${MODEL_TABLE_GUTTER}${setting}`;
+          return `${entry.family.toUpperCase().padStart(MODEL_TABLE_TYPE_WIDTH)}${MODEL_TABLE_GUTTER}${entry.name.padEnd(nameWidth)}${MODEL_TABLE_GUTTER}${taskComplexityFor(entry).padEnd(MODEL_TABLE_COMPLEXITY_WIDTH)}${MODEL_TABLE_GUTTER}${setting}`;
         });
 
         const selection = await promptChecklist(
@@ -812,6 +859,8 @@ module.exports = {
   buildVariantDisplayOptions,
   buildChecklistTargets,
   parseTarget,
+  TASK_COMPLEXITY,
+  taskComplexityFor,
   enumerateProjectionTargets,
   effectiveSetting,
   patchFrontmatter,

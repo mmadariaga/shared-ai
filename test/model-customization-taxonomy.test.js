@@ -59,6 +59,17 @@ test('target identity parsing is independent of display labels', () => {
   assert.equal(customization.parseTarget('sai-status'), null);
 });
 
+test('task complexity is keyed by complete family-qualified target identity', () => {
+  assert.equal(customization.TASK_COMPLEXITY['worker:sai-2-design-worker'], '↑↑↑');
+  assert.equal(customization.TASK_COMPLEXITY['agent:budget'], '↑');
+  assert.equal(customization.TASK_COMPLEXITY['command:sai-2-design'], '↑↑');
+  assert.equal(customization.TASK_COMPLEXITY['utility:sai-retire-docs'], '↑↑');
+  assert.equal(customization.TASK_COMPLEXITY.budget, undefined);
+  assert.equal(customization.TASK_COMPLEXITY['command:budget'], undefined);
+  assert.equal(customization.taskComplexityFor({ value: 'agent:budget' }), '↑');
+  assert.equal(customization.taskComplexityFor({ value: 'command:sai-2-design' }), '↑↑');
+});
+
 test('effective model annotation prefers project-local frontmatter for both harnesses', () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-model-taxonomy-'));
   try {
