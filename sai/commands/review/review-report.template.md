@@ -16,7 +16,7 @@
 **Verdict:** {Ready to merge | Ready after Critical findings fixed | Needs rework}
 
 **Findings count:** {X Critical · Y High · Z Medium · W Low · V Questions}
-*(Mutation Analysis severities are folded into these counts: each surviving / pre-check-failed mutation is High, each revert-failed mutation is Critical.)*
+*(Mutation Analysis severities are folded into these counts: each `Survived`, `Timeout`, and `NoCoverage` mutation is High; engine impediments do not become findings.)*
 
 ---
 
@@ -97,18 +97,26 @@
 
 ## Mutation Analysis (Pass 11)
 
-> Include this section only when pass 11 ran. If the activation gate was not met, or no test command could be detected, replace the entire section body with the single skipped note below and emit no mutation findings:
+> Include this section only when pass 11 ran. If the activation gate was not met, no deterministic mutation tool was declared, the deterministic baseline failed, the tool could not execute, or its report could not be parsed, replace the entire section body with exactly one applicable skipped or unavailable note and emit no mutation findings:
 >
-> *Mutation Analysis (Pass 11): skipped — {no testable production code in diff | repository has no test files | no test command could be detected}. No mutation findings.*
+> *Mutation Analysis (Pass 11): skipped — {no testable production code in diff | repository has no test files}. No mutation findings.*
+>
+> *Mutation Analysis (Pass 11): unavailable — no deterministic mutation tool declared. No mutation findings.*
+>
+> *Mutation Analysis (Pass 11): unavailable — deterministic baseline failed. No mutation findings.*
+>
+> *Mutation Analysis (Pass 11): unavailable — deterministic tool execution failed. No mutation findings.*
+>
+> *Mutation Analysis (Pass 11): unavailable — deterministic report could not be parsed. No mutation findings.*
 
-**Strategy:** {Tier 1 — `{tool}` | Tier 2 — LLM-as-mutator}  
-**Test command:** `{detected test command}`  
+**Strategy:** Deterministic — `{tool}`
+**Test command:** `{detected test command}`
 **Mutations decided:** {totalMutations}
 
-**Aggregate:** survived {s} + killed {k} + pre-check-failed {p} + revert-failed {r} = {totalMutations}
-*(This identity MUST hold: `survived + killed + preCheckFailed + revertFailed == totalMutations`. Every mutation the main agent decided on appears below — killed ones internally only — even when an impediment prevented testing.)*
+**Aggregate:** Killed {k} + Survived {s} + Timeout {t} + NoCoverage {n} + CompileError {c} + RuntimeError {r} + Ignored {i} = {totalMutations}
+*(This identity MUST hold: `Killed + Survived + Timeout + NoCoverage + CompileError + RuntimeError + Ignored == totalMutations`. Preserve the engine-native status for every mutation; an unknown status makes the deterministic report unavailable.)*
 
-Killed mutations produce no finding (internal only). Surviving mutants and impediment outcomes are listed below under the `mMUT-N` namespace (N is a 1-based counter over the mutation findings in this review).
+Stryker status mapping is fixed: `Killed` is internal and produces no finding; `Survived`, `Timeout`, and `NoCoverage` produce High `mMUT-N` findings; `CompileError`, `RuntimeError`, and `Ignored` are engine impediments recorded verbatim without inferred findings or severity. `mMUT-N` is a 1-based counter over mutation findings in this review.
 
 ### Surviving mutants
 
@@ -121,23 +129,38 @@ Killed mutations produce no finding (internal only). Surviving mutants and imped
 - **Why it survives:** {one sentence referencing the missing test or untested branch}
 - **Suggested fix:** {a concrete test the developer can add to catch this mutation}
 
-### Impediments
+### Timed-out mutants
 
-> Mutations that could not be tested. Each still appears here to preserve the full-visibility invariant.
+#### mMUT-N — {Short title}
+- **Location:** `path/to/file.ext:LINE` (or range `LINE-LINE`)
+- **Mutation class:** {NegatedCondition | ChangedOperator | RemovedCall | ChangedReturn | NegatedBoolean | InvertedBranch | OffByOne | another concise label}
+- **Original:** `{unmutated code at the location, or its essence}`
+- **Applied:** `{the mutated code that was applied and reverted}`
+- **Result:** Timeout — the deterministic test command exceeded its configured timeout.
+- **Why it is reported:** The engine did not establish a killed result within the configured time bound.
+- **Suggested fix:** {a concrete test or bounded test setup that catches this mutation without timing out}
 
-#### mMUT-N — pre-check-failed (High)
-- **Location:** `path/to/file.ext:LINE`
-- **Result:** Could not test {file}: uncommitted changes. Commit or undo and re-run review.
+### No-coverage mutants
 
-#### mMUT-N — revert-failed (Critical)
-- **Location:** `path/to/file.ext:LINE`
-- **Result:** Revert verification failed — `git diff {file}` was non-empty after `git checkout -- {file}`. Working tree left polluted.
+#### mMUT-N — {Short title}
+- **Location:** `path/to/file.ext:LINE` (or range `LINE-LINE`)
+- **Mutation class:** {NegatedCondition | ChangedOperator | RemovedCall | ChangedReturn | NegatedBoolean | InvertedBranch | OffByOne | another concise label}
+- **Original:** `{unmutated code at the location, or its essence}`
+- **Applied:** `{the mutated code that was applied and reverted}`
+- **Result:** NoCoverage — the deterministic engine reported no test coverage for this mutation.
+- **Why it is reported:** The engine did not establish a test execution that reached the mutation; no result was inferred.
+- **Suggested fix:** {a concrete test that exercises the mutated location}
 
-> Whenever any mutation is revert-failed, ALSO print this critical warning to the user (in chat, outside the report file):
->
-> **⚠️ CRITICAL — working tree polluted:** the file `{file}` could not be reverted after mutation `mMUT-N`. Inspect and restore it manually (`git diff {file}`, then `git checkout -- {file}`) before relying on the working tree.
+### Engine impediments
 
-**Severity roll-up:** each surviving and pre-check-failed mutation counts as **High**, and each revert-failed mutation counts as **Critical**, in the Findings count and Verdict above — exactly like any other finding of that severity.
+> Engine results that do not establish a surviving or killed mutant. Each still appears here with its native status to preserve deterministic visibility.
+
+#### Engine result N — {CompileError | RuntimeError | Ignored}
+- **Engine status:** `{CompileError | RuntimeError | Ignored}`
+- **Location:** `path/to/file.ext:LINE` (or the engine-reported location)
+- **Result:** Deterministic engine impediment. No mutation result was inferred.
+
+**Severity roll-up:** each `Survived`, `Timeout`, and `NoCoverage` mutation counts as **High**. Engine impediments do not become product findings or receive an inferred severity.
 
 ---
 
@@ -154,4 +177,3 @@ Killed mutations produce no finding (internal only). Surviving mutants and imped
 - {Ordered list of recommended actions for the user, e.g. "Fix C1, C2 → re-run review" / "Open question Q1 with team before merge"}
 Summary: Critical={n} High={n} Medium={n} Low={n} Questions={n}
 ```
-

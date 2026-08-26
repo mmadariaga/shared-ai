@@ -2,12 +2,27 @@
 
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
+const childProcess = require('child_process');
 const fs = require('fs');
 const path = require('path');
 const { loadInstallManifest, matrixRenderFor } = require('../bin/install-manifest.js');
 
 const repoRoot = path.join(__dirname, '..');
 const matrixManifest = loadInstallManifest(repoRoot);
+
+function loadDefaultMutationConfig() {
+  const configPath = require.resolve(path.join(repoRoot, 'stryker.config.js'));
+  const previousScope = process.env.SAI_MUTATION_SCOPE;
+  try {
+    delete process.env.SAI_MUTATION_SCOPE;
+    delete require.cache[configPath];
+    return require(configPath);
+  } finally {
+    if (previousScope === undefined) delete process.env.SAI_MUTATION_SCOPE;
+    else process.env.SAI_MUTATION_SCOPE = previousScope;
+    delete require.cache[configPath];
+  }
+}
 
 function artifact(relativePath) {
   const fullPath = path.join(repoRoot, relativePath);
@@ -249,4 +264,71 @@ test('step-gated: the carved step library exists beside the untouched monolith',
   }
   assert.match(artifact('sai/commands/review/steps/common.md'), /`resolve-change` has no step file of its own/,
     'common.md should record that resolve-change is fileless');
+});
+
+test('mutation testing is configured as a deterministic project test workflow', () => {
+  const packageManifest = JSON.parse(artifact('package.json'));
+  const scopeBeforeDefaultLoad = process.env.SAI_MUTATION_SCOPE;
+  const strykerConfig = loadDefaultMutationConfig();
+  assert.equal(process.env.SAI_MUTATION_SCOPE, scopeBeforeDefaultLoad);
+
+  assert.equal(packageManifest.devDependencies['@stryker-mutator/core'], '8.7.1');
+  assert.equal(packageManifest.scripts['test:mutation'], 'stryker run');
+  assert.equal(strykerConfig.testRunner, 'command');
+  assert.equal(strykerConfig.commandRunner.command, 'node --test');
+  assert.deepEqual(strykerConfig.mutate, ['bin/install.js']);
+  assert.deepEqual(strykerConfig.ignorePatterns, ['/.codegraph/**', '/.git/**']);
+  assert.deepEqual(strykerConfig.reporters, ['clear-text', 'json']);
+  assert.equal(strykerConfig.jsonReporter.fileName, 'reports/mutation/mutation.json');
+  assert.equal(strykerConfig.timeoutMS, 60000);
+  assert.equal(strykerConfig.concurrency, 1);
+
+  const scopedConfig = childProcess.spawnSync(
+    process.execPath,
+    ['-e', "process.stdout.write(JSON.stringify(require('./stryker.config.js').mutate))"],
+    {
+      cwd: repoRoot,
+      env: { ...process.env, SAI_MUTATION_SCOPE: 'bin/install.js,bin/setup.js' },
+      encoding: 'utf8',
+    },
+  );
+  assert.equal(scopedConfig.status, 0, scopedConfig.stderr);
+  assert.deepEqual(JSON.parse(scopedConfig.stdout), ['bin/install.js', 'bin/setup.js']);
+  assert.match(artifact('.gitignore'), /reports\/mutation\//);
+});
+
+test('mutation review never simulates deterministic results through inference', () => {
+  const readme = artifact('README.md');
+  const mutationSection = readme.slice(
+    readme.indexOf('### Mutation Analysis'),
+    readme.indexOf('### ADR Proposals'),
+  );
+  const activeReviewSurfaces = [
+    'openspec/schemas/sai-workflow/templates/review.md',
+    'sai/commands/review/command-bootstrap.md',
+    'sai/commands/review/coordinator.md',
+    'sai/commands/review/instructions.md',
+    'sai/commands/review/invocation.md',
+    'sai/commands/review/review-report.template.md',
+    'sai/commands/review/steps/common.md',
+    'sai/commands/review/steps/resolve-mutation-analysis.md',
+    'sai/commands/review/steps/resolve-review-analysis.md',
+    'sai/commands/review/worker.md',
+  ];
+  const mutationSources = [
+    mutationSection,
+    ...activeReviewSurfaces.map(artifact),
+  ].join('\n');
+
+  assert.match(mutationSources, /deterministic mutation engine/i);
+  assert.doesNotMatch(mutationSources, /LLM[- ]as[- ]mutator|Tier 2|budget-subagent/i);
+  assert.doesNotMatch(mutationSources, /pre-check-failed|revert-failed/i);
+  assert.match(mutationSources, /no deterministic mutation tool declared/i);
+  assert.match(mutationSources, /deterministic baseline failed/i);
+  assert.match(mutationSources, /deterministic tool execution failed/i);
+  assert.match(mutationSources, /deterministic report could not be parsed/i);
+  assert.match(mutationSources, /no mutation findings/i);
+  for (const status of ['Killed', 'Survived', 'Timeout', 'NoCoverage', 'CompileError', 'RuntimeError', 'Ignored']) {
+    assert.match(mutationSources, new RegExp(status), `deterministic ${status} status should be mapped`);
+  }
 });

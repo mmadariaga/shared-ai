@@ -253,7 +253,7 @@ For every testable step, the test is written first (RED) and run against the not
 Human checks (browser/UI behavior, visual confirmation) are deferred to the integration step where the behavior is first observable —the plan asks the user to verify parts of the feature as early as possible, not all at the end. Every deferred check appears exactly once, labeled with its origin step.
 
 ### Mutation Analysis
-A test that runs your code without checking the result looks fine on paper but catches nothing in practice. Pass 11 deliberately breaks your code in small ways and verifies your tests actually notice — if a test still passes after the code is broken, that test isn't really testing anything. It runs automatically during review, against only the code that changed, and uses your existing mutation tool when the project has one (Stryker, PIT, mutmut, …) or falls back to the LLM itself as the mutator when it doesn't.
+A test that runs your code without checking the result looks fine on paper but catches nothing in practice. Pass 11 deliberately breaks your code in small ways and verifies your tests actually notice — if a test still passes after the code is broken, that test isn't really testing anything. It runs automatically during review, against only the code that changed, and uses a declared deterministic mutation tool (Stryker, PIT, mutmut, …). If no supported tool is available, review reports that fact and continues without mutation findings; it never simulates mutation results through inference.
 
 ### ADR Proposals
 Proposes creating an ADR/DDR if all 3 criteria below are met:

@@ -1,6 +1,6 @@
 # Review Step — Resolve Mutation Analysis
 
-Active step: resolve-mutation-analysis. Resolve the Pass 11 activation gate; when it admits the pass, execute the mutation protocol below. Report the `resolve-mutation-analysis` progress event per the worker contract — completed whether the mutation path runs or is legitimately skipped.
+Active step: resolve-mutation-analysis. Resolve the Pass 11 activation gate; when it admits the pass, execute the deterministic mutation protocol below. Report the `resolve-mutation-analysis` progress event per the worker contract — completed whether the mutation path runs or is legitimately skipped.
 
 ### Mutation Analysis (Pass 11)
 
@@ -13,15 +13,15 @@ Run pass 11 only when BOTH conditions hold:
 1. The diff against the parent branch contains **testable production code** (not docs or config only).
 2. The repository contains **at least one test file**.
 
-If either condition is false, emit exactly `Mutation Analysis (Pass 11): skipped — {no testable production code in diff | repository has no test files}. No mutation findings.` using the applicable reason, emit no mutation findings, and do not mutate any production file. An undetermined test command is a separate Tier-2 outcome, not an activation-gate reason.
+If either condition is false, emit exactly `Mutation Analysis (Pass 11): skipped — {no testable production code in diff | repository has no test files}. No mutation findings.` using the applicable reason, emit no mutation findings, and do not mutate any production file.
 
 #### Mutation Scope
 
 The set of files eligible for mutation is **exactly the production-code files changed in the diff against the parent branch**. Never mutate a file outside that diff.
 
-#### Tier 1 — Mutation Tool Auto-Detection
+#### Deterministic Mutation Tool
 
-Inspect the project's manifest files to detect whether a supported mutation tool is declared as a project dependency:
+Inspect the project's manifest files to detect whether a supported deterministic mutation tool is declared as a project dependency:
 
 | Manifest | Tool |
 |----------|------|
@@ -32,47 +32,10 @@ Inspect the project's manifest files to detect whether a supported mutation tool
 | `Cargo.toml` | cargo-mutants |
 | `CMakeLists.txt` | mull |
 
-A tool counts as available **only when its package is declared as a project dependency**. If a tool is detected, **run it, parse its surviving mutants, and SKIP the Tier-2 LLM-as-mutator path entirely**. If no supported tool is declared in any manifest, fall back to Tier 2.
+A tool counts as available **only when its package is declared as a project dependency**. If a tool is detected, run that tool with its checked-in project configuration, pass the exact eligible diff files through the engine's mutation-scope option (`--mutate` for Stryker), and parse its report. This is the only mutation path; mutation results must come from the tool's real execution and never from inference. If no supported tool is declared in any manifest, report `Mutation Analysis (Pass 11): unavailable — no deterministic mutation tool declared. No mutation findings.` and continue the review without mutating files or simulating results. If the declared tool cannot execute or its result cannot be parsed, report the concrete failure and emit no mutation findings.
 
-#### Tier 2 — Test Command Auto-Detection
+#### Deterministic Execution and Outcomes
 
-Under Tier 2, detect the project's test command from the same manifests:
+Run the declared tool's configured test command and let the engine own baseline execution, mutation application, timeout, revert, and result collection. Restrict the engine to the eligible diff files; never apply a hand-authored or inferred mutation. Parse the engine's report and hand its surviving or impediment outcomes to Step 4. If execution fails, the baseline is failing, or the report is unavailable, record that deterministic limitation and emit no mutation findings. Never replace a missing tool result with model-generated evidence.
 
-| Source | Test command |
-|--------|--------------|
-| `scripts.test` in `package.json` | the declared script (Node) |
-| `pom.xml` / `build.gradle` | `mvn test` / `gradle test` (JVM) |
-| `pyproject.toml` / `requirements.txt` | `pytest` (Python) |
-| `go.mod` | `go test ./...` (Go) |
-| `Cargo.toml` | `cargo test` (Rust) |
-
-The detected command is used for the baseline pass and every per-mutation run (subject to the 60-second timeout). If **no** test command can be detected, report in `review.md` that mutation analysis could not run due to an undetermined test command, emit **no** mutation findings, and stop pass 11.
-
-#### Tier 2 — Baseline and Per-Mutation Safety Protocol
-
-Before any mutation, run the detected test command once as a **baseline**. If the baseline does **not** pass, apply no mutations and report the baseline failure instead of mutation findings.
-
-The main agent (frontier tier) decides **which** mutations to apply and **what** each mutation is — this synthesis is never delegated. The mechanical apply/test/revert/verify I/O is delegated per the Subagent Dispatch Contract below. For **each** mutation, the executing subagent MUST follow this protocol in order:
-
-1. **Pre-check** — confirm `git status --porcelain {file}` is empty. If it is non-empty (dirty), do **not** mutate that file; record the mutation as **pre-check-failed** and ask the user to commit or undo the changes to that file.
-2. **Apply** the mutation to `{file}`.
-3. **Test** — run the detected test command with a **60-second timeout**. A run that exceeds the timeout counts as a non-passing test, so the mutation is treated as **killed** (the regression is caught — the suite did not pass within the bound).
-4. **Revert** — restore the file with the **file-scoped** command `git checkout -- {file}`. Never use a project-wide revert (`git reset`, bare `git checkout`).
-5. **Verify revert** — confirm `git diff {file}` is empty. If it is non-empty, record the mutation as **revert-failed**.
-
-Each mutation ends in exactly one outcome: **killed** (a test failed → no finding, internal only), **survived** (all tests passed → High), **pre-check-failed** (High), or **revert-failed** (Critical, plus a working-tree-pollution warning printed to the user).
-
-#### Revert-Failure Cascade
-
-If a mutation is revert-failed, **continue** dispatching subsequent batches. The per-file pre-check on later batches naturally records any file left dirty by the failed revert as **pre-check-failed**, so the downstream effect stays visible rather than hidden.
-
-#### Subagent Dispatch Contract
-
-Delegate the apply/test/revert/verify I/O to the write-capable cheap tier — the **`budget-subagent`** skill (per-harness binding; `model` and `subagent_type` resolved by the installed skill). This is the **only** place in the review flow that uses a write-capable subagent; every other pass uses read-only `budget-explorer`. **Do not "normalize" it back to `budget-explorer`.**
-
-- One subagent per **batch** of mutations.
-- Each batch contains **at most 5–6 mutations**, so the subagent stays within its ~30 tool-call soft cap.
-- Dispatch batches **sequentially**, never in parallel — concurrent working-tree edits collide.
-- The subagent output contract MUST return **one result per assigned mutation** (outcome ∈ {killed, survived, pre-check-failed, revert-failed}); no assigned mutation may be silently dropped.
-
-The aggregate over all batches MUST satisfy `survived + killed + preCheckFailed + revertFailed == totalMutations` (the total the main agent decided on). Hand the surviving / pre-check-failed / revert-failed outcomes to Step 4 for rendering per the Mutation Analysis output section.
+Preserve the engine-native status for every mutation. For Stryker, `Killed` is internal with no finding; `Survived`, `Timeout`, and `NoCoverage` become High mutation findings; `CompileError`, `RuntimeError`, and `Ignored` are engine impediments with no inferred finding or severity. An unknown status makes the report unparseable and therefore unavailable. The aggregate native-status counts must reconcile to the total mutations reported by the engine.
