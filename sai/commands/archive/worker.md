@@ -148,11 +148,33 @@ performs exactly this order and nothing else:
 2. Move `openspec/changes/{name}/` to the exact supplied
    `openspec/changes/archive/YYYY-MM-DD-{name}/` destination, failing rather
    than overwriting an existing target.
-3. Stage exactly the supplied owned path set. Never use `git add -A`,
-   `git add .`, or stage an unrelated dirty path.
-4. Apply the commit-message rules to the staged state only, then execute one
-   local HEREDOC-form new commit under the already-consumed Build (unattended) commit
-   authorization. Never amend, push, force-push, or ask for a second commit.
+3. Classify every supplied approved path before staging, completing the whole
+   classification pass before running any staging command, then stage only the
+   eligible subset. Determine trackedness with the existing deletion-aware
+   check: a successful `git ls-files --error-unmatch -- <path>` lookup is
+   tracked, including a tracked deletion; its exit-1 no-match result is
+   untracked and any other error is terminal. For an untracked path only, run
+   `git check-ignore --quiet -- <path>`: exit 0 means that the path is
+   intentionally ignored, so omit it and append
+   `[sai-archive] warning: omitted ignored untracked path: <path>` to the
+   worker-authored `summary`; exit 1 means it is eligible and any other error
+   is terminal. An ignored path is never force-added. Treat tracked paths,
+   tracked deletions, and untracked non-ignored paths as eligible, and stage
+   every eligible path with the existing exact allowlist and deletion-aware
+   behavior. Any classification or staging error other than the explicit
+   untracked-and-ignored match remains terminal: preserve the exact completed
+   state, do not retry, and do not continue to message authoring or commit even
+   if an earlier eligible path was staged. Never use `git add -A`, `git add .`,
+   `git add -f`, or stage an unrelated dirty path.
+4. Commit only when at least one eligible approved path remains in the index
+   and the existing empty-index guard passes. If all approved paths were
+   omitted as untracked ignored paths, preserve that guard's no-commit result
+   (`[sai-archive] no commit: staging left the index empty`), retain the
+   warnings, and do not author a message or create a commit. Otherwise, apply
+   the commit-message rules to the staged state only, then execute one local
+   HEREDOC-form new commit under the already-consumed Build (unattended)
+   commit authorization. Never amend, push, force-push, or ask for a second
+   commit.
 
 The worker records each realized path in the ordered duplicate-free
 `changed_files` union. A successful execution marks the order consumed; any
