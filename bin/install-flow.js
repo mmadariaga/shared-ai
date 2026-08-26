@@ -138,6 +138,8 @@ const OPENCODE_BINDING_VALIDATION_LOCK = path.join(
   'collapse-sai-worker-matrix',
   'opencode-binding-validation.lock',
 );
+const OPENCODE_BINDING_LOCK_OWNER = 'owner.json';
+const OPENCODE_BINDING_LOCK_STALE_MS = 1000;
 
 // The managed-worker census is no longer hand-maintained: it is derived from
 // the validated Worker Matrix phase entries. The canonical key order below is
@@ -176,20 +178,93 @@ function matrixWorkerRoster(harness) {
   return names;
 }
 
+function isProcessAlive(pid) {
+  if (!Number.isInteger(pid) || pid <= 0) return false;
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (error) {
+    return error.code === 'EPERM';
+  }
+}
+
+function reclaimStaleOpencodeBindingValidationLock() {
+  let lockStat;
+  try {
+    lockStat = fs.statSync(OPENCODE_BINDING_VALIDATION_LOCK);
+  } catch (error) {
+    if (error.code === 'ENOENT') return true;
+    throw error;
+  }
+  if (!lockStat.isDirectory()) return false;
+
+  const ownerPath = path.join(OPENCODE_BINDING_VALIDATION_LOCK, OPENCODE_BINDING_LOCK_OWNER);
+  let owner = null;
+  let ownerFileExists = true;
+  try {
+    owner = JSON.parse(fs.readFileSync(ownerPath, 'utf8'));
+  } catch (error) {
+    if (error.code === 'ENOENT') ownerFileExists = false;
+    else if (error.code === 'EPERM') return false;
+    else if (!(error instanceof SyntaxError)) throw error;
+  }
+  if (owner && isProcessAlive(owner.pid)) return false;
+
+  const age = Date.now() - lockStat.mtimeMs;
+  if (age < OPENCODE_BINDING_LOCK_STALE_MS) return false;
+
+  let entries;
+  try {
+    entries = fs.readdirSync(OPENCODE_BINDING_VALIDATION_LOCK);
+  } catch (error) {
+    if (error.code === 'EPERM') return false;
+    throw error;
+  }
+  if (entries.length === 0) {
+    try {
+      fs.rmdirSync(OPENCODE_BINDING_VALIDATION_LOCK);
+    } catch (error) {
+      if (error.code === 'ENOENT') return true;
+      if (error.code === 'ENOTEMPTY' || error.code === 'EPERM') return false;
+      throw error;
+    }
+    return true;
+  }
+  if (!ownerFileExists || entries.length !== 1 || entries[0] !== OPENCODE_BINDING_LOCK_OWNER) return false;
+
+  try {
+    fs.unlinkSync(ownerPath);
+    fs.rmdirSync(OPENCODE_BINDING_VALIDATION_LOCK);
+  } catch (error) {
+    if (error.code === 'ENOENT') return true;
+    if (error.code === 'ENOTEMPTY' || error.code === 'EPERM') return false;
+    throw error;
+  }
+  return true;
+}
+
 function withOpencodeBindingValidationLock(operation) {
   ensureDir(path.dirname(OPENCODE_BINDING_VALIDATION_LOCK));
   const started = Date.now();
   const waitBuffer = new Int32Array(new SharedArrayBuffer(4));
-  let acquired = false;
-  while (!acquired) {
+  let ownerToken = null;
+  while (ownerToken === null) {
     try {
       fs.mkdirSync(OPENCODE_BINDING_VALIDATION_LOCK);
-      acquired = true;
+      const token = crypto.randomUUID();
+      fs.writeFileSync(
+        path.join(OPENCODE_BINDING_VALIDATION_LOCK, OPENCODE_BINDING_LOCK_OWNER),
+        JSON.stringify({ pid: process.pid, token }),
+        'utf8',
+      );
+      ownerToken = token;
     } catch (error) {
+      if (ownerToken !== null) throw error;
       // Windows can report EPERM briefly while another process releases the
       // same transient lock directory. Treat it as contention, not as a
       // validation result; all other filesystem failures remain fatal.
       if (error.code !== 'EEXIST' && error.code !== 'EPERM') throw error;
+      if (reclaimStaleOpencodeBindingValidationLock()) continue;
       if (Date.now() - started >= 30000) {
         throw new Error(`Timed out waiting for opencode binding validation lock ${OPENCODE_BINDING_VALIDATION_LOCK}`);
       }
@@ -199,7 +274,16 @@ function withOpencodeBindingValidationLock(operation) {
   try {
     return operation();
   } finally {
-    fs.rmdirSync(OPENCODE_BINDING_VALIDATION_LOCK);
+    const ownerPath = path.join(OPENCODE_BINDING_VALIDATION_LOCK, OPENCODE_BINDING_LOCK_OWNER);
+    try {
+      const owner = JSON.parse(fs.readFileSync(ownerPath, 'utf8'));
+      if (owner.token === ownerToken) {
+        fs.unlinkSync(ownerPath);
+        fs.rmdirSync(OPENCODE_BINDING_VALIDATION_LOCK);
+      }
+    } catch (error) {
+      if (error.code !== 'ENOENT') throw error;
+    }
   }
 }
 
