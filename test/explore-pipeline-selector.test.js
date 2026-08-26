@@ -63,12 +63,13 @@ test('the selector closes every crystallization emission through the authoritati
   assert.match(source, /items 5, 6, and 7 \u2014 closes its turn with exactly one selector/i);
   assert.match(source, /after the final `Ready to Propose` block and after the keep-window-open recommendation/i);
   assert.match(source, /exactly three options, in this fixed order/i);
-  assert.match(source, /\*\*Auto\*\* \u2014 Unattended alternative to Manual mode\. Same steps, same order\./);
+  assert.match(source, /\*\*Auto \(sai-1 \+ sai-2\)\*\* \u2014 Runs supervised `sai-1` \+ `sai-2` only; no implementation phase\./);
   assert.match(source, /\*\*Auto \(fast implementation\)\*\* \u2014 Takes shortcuts vs\. the other options\./);
   assert.match(source, /\*\*Manual\*\* \u2014 Best visibility into what's happening; requires you to make some decisions\./);
   assert.match(source, /AskUserQuestion on Claude Code|`AskUserQuestion` on Claude Code/i);
   assert.match(source, /`question` tool on opencode/i);
   assert.match(source, /remember\.md`? \(L10\u201315\)/);
+  assert.match(source, /Selecting \*\*Auto \(sai-1 \+ sai-2\)\*\* \(internal route `Auto`\)/);
 
   assert.match(sharedCloseSpec, /one authoritative crystallization-turn close/i);
   assert.match(sharedCloseSpec, /Items 5 \(single change\), 6 \(sliced feature\), and 7 \(inline proposal refusal\)[\s\S]{0,180}reference that definition/i);
@@ -76,6 +77,29 @@ test('the selector closes every crystallization emission through the authoritati
   assert.match(selectorSpec, /An unmapped free-text answer MUST be treated as (?:\*\*|`)Manual(?:\*\*|`)/i);
   assert.match(selectorSpec, /[`*]*Manual[`*]* SHALL remain re-invocable without a cap[\s\S]{0,120}selector/i);
   assert.match(selectorSpec, /`--fast-track` SHALL NOT auto-select Auto or suppress the selector/i);
+});
+
+test('overview-language gate is deferred from crystallization until a dispatchable supervised Auto selection', () => {
+  const crystallization = [
+    spec('sai/commands/explore/steps/common.md'),
+    spec('sai/commands/explore/steps/slicing-assessment.md'),
+    spec('sai/commands/explore/steps/crystallization-protocol.md'),
+    spec('sai/commands/explore/steps/crystallization-language-gates.md'),
+  ].join('\n');
+  const supervised = spec('sai/commands/explore/steps/pipeline-auto-supervised.md');
+
+  assert.doesNotMatch(crystallization, /overview-language gate \(gate 9|gate 9.*before.*Ready to Propose/i);
+  assert.match(supervised, /Gate 9 at Auto activation/);
+  assert.match(supervised, /after \*\*Deterministic selection\*\* confirms a dispatchable change/i);
+  assert.match(supervised, /before setting `active_change` or dispatching the first spec worker/i);
+  assert.match(supervised, /Empty or completed crystallization sets, `Cancel`, and an already-active run end before this gate/i);
+  assert.match(supervised, /The ask never occurs at crystallization emission.*\*\*Manual\*\*.*\*\*Auto \(fast implementation\)\*\*/i);
+});
+
+test('the spec handoff example demonstrates fast-track and overview language together', () => {
+  const coordinator = spec('sai/commands/spec/coordinator.md');
+  assert.match(coordinator, /sai-2-design \{name\}/);
+  assert.match(coordinator, /--fast-track --overview-lang Lang/);
 });
 
 test('Manual and unmapped answers preserve the shared close without suppressing re-emission', () => {
@@ -94,6 +118,7 @@ test('the selector authorizes the delegated-write exception and is not the remov
   const source = exploreContract();
 
   assert.match(source, /the user's explicit selections on the crystallization-close pipeline selector/i);
+  assert.match(source, /displayed \*\*Auto \(sai-1 \+ sai-2\)\*\* option, which maps to the internal `Auto` route/i);
   assert.match(source, /explicit user act that authorizes item 1's delegated-write exception/i);
   assert.match(source, /consent to selection and dispatch only/i);
   assert.match(source, /is \*\*not\*\* the removed global Yes\/No review picker/i);
@@ -107,6 +132,9 @@ test('the crystallization closing recommendation names review-loop and no pipeli
   assert.match(source, /names the literal token `review-loop` exactly once/);
   assert.match(source, /after the final `Ready to Propose` block and after the keep-window-open recommendation/i);
   assert.match(source, /an inline refusal is a crystallization emission and closes exactly like items 5 and 6/i);
+  assert.match(source, /selector remains a three-option choice[\s\S]{0,180}\*\*Auto \(sai-1 \+ sai-2\)\*\*/,
+    'the review-loop description should name all three selector options');
+  assert.doesNotMatch(source, /selector remains a two-option \*\*Auto\*\* \/ \*\*Manual\*\* choice/i);
 });
 
 test('the selector prompt and labels localize while the command literals stay English', () => {
@@ -609,7 +637,7 @@ test('Step 1 gate 9 uses the opt-in overview-language selector and deterministic
     exploreContract(),
     spec('sai/commands/explore/body.md'),
   ].join('\n');
-  const selectorStart = contract.search(/(?:Gate 9|gate-9|overview[- ]language selector)/i);
+  const selectorStart = contract.search(/Gate 9 at Auto activation/i);
 
   assert.ok(selectorStart >= 0, 'the opt-in overview-language selector should be specified');
   const selector = contract.slice(selectorStart);
@@ -632,7 +660,7 @@ test('Step 1 gate 9 defaults to None for absent fast-track or noncommittal input
     exploreContract(),
     spec('sai/commands/explore/body.md'),
   ].join('\n');
-  const selectorStart = contract.search(/(?:Gate 9|gate-9|overview[- ]language selector)/i);
+  const selectorStart = contract.search(/Gate 9 at Auto activation/i);
 
   assert.ok(selectorStart >= 0, 'the opt-in overview-language selector should be specified');
   const selector = contract.slice(selectorStart);
@@ -1305,7 +1333,7 @@ test('Step 4: Auto-fast completion re-presents a per-slice selector and Manual p
 
   const transition = source.slice(transitionStart, transitionEnd);
   assert.match(transition, /recompute `pending_slices` only from `last_crystallization_set` minus `completed_changes`/i);
-  assert.match(transition, /re-present the existing full three-option `Auto` \/ `Auto \(fast implementation\)` \/ `Manual` selector exactly once/i);
+  assert.match(transition, /re-present the existing full three-option \*\*`Auto \(sai-1 \+ sai-2\)`\*\* \/ `Auto \(fast implementation\)` \/ `Manual` selector exactly once/i);
   assert.match(transition, /per-slice authorization gate, not a one-time authorization/i);
   assert.match(transition, /even when exactly one pending slice remains/i);
   assert.match(transition, /Never re-select or re-run a name already in `completed_changes`/i);

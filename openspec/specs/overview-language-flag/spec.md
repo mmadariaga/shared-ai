@@ -4,9 +4,9 @@
 
 *To be determined — brief description of what this capability does and why it exists.*
 ## Requirements
-### Requirement: Parse the overview language flag
+### Requirement: Resolve omitted overview language at the consuming route
 
-The shared `sai-explore` and `sai-2-design` flows SHALL recognize the optional `--overview-lang <language>` flag. The flag SHALL consume one non-empty CLI value, SHALL accept free-form language names without a maintained registry, and SHALL provide a direct language selection and overview-generation opt-in when present. When the flag is absent, the parser SHALL leave the overview-language decision unresolved rather than synthesizing an English value; `sai-explore` gate 9 may then resolve that decision during crystallization. A duplicate occurrence SHALL produce a clear validation error. A change-consuming `sai-2-design` invocation SHALL place its change name before this flag and SHALL report a clear validation error if parsing leaves no change name.
+The shared `sai-explore` and `sai-2-design` flows SHALL recognize the optional `--overview-lang <language>` flag. The flag SHALL consume one non-empty CLI value, SHALL accept free-form language names without a maintained registry, and SHALL provide a direct language selection and overview-generation opt-in when present. When the flag is absent, the parser SHALL leave the overview-language decision unresolved rather than synthesizing an English value; `sai-explore` gate 9 may then resolve that decision during supervised Auto activation. An explicit value SHALL remain conversation-only for that consuming route. A duplicate occurrence SHALL produce a clear validation error. A change-consuming `sai-2-design` invocation SHALL place its change name before this flag and SHALL report a clear validation error if parsing leaves no change name.
 
 #### Scenario: Omitted flag does not synthesize a default
 
@@ -54,7 +54,7 @@ The shared `sai-explore` and `sai-2-design` flows SHALL recognize the optional `
 
 ### Requirement: Preserve remaining argument semantics
 
-The flag parser SHALL remove only `--overview-lang` and its value before change-name resolution, SHALL preserve the change name and all unrelated arguments, and SHALL recognize `--fast-track` regardless of whether it appears before or after the language flag.
+The flag parser SHALL remove only `--overview-lang` and its value before change-name resolution, SHALL preserve the change name and all unrelated arguments, and SHALL recognize `--fast-track` regardless of whether it appears before or after the language flag. The supported `sai-2-design` example SHALL show the change name followed by `--fast-track --overview-lang Lang`.
 
 #### Scenario: Fast-track precedes the language flag
 

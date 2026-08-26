@@ -86,15 +86,19 @@ test('the Ready to Propose block template orders Edge Cases, Implementation Deta
   assert.ok(overviewLanguage > implementationDetails, '**Overview language** should follow **Implementation Details**');
 });
 
-test('gate 9 is opt-in, puts the do-not-create choice first, and has no Recommended marker', () => {
+test('gate 9 is opt-in at supervised Auto activation, puts do-not-create first, and has no Recommended marker', () => {
   const source = explore();
-  const selectorStart = source.search(/(?:Gate 9|gate-9|overview[- ]language selector)/i);
+  const supervised = readArtifact('sai/commands/explore/steps/pipeline-auto-supervised.md');
+  const selectorStart = supervised.search(/Gate 9 at Auto activation/i);
   assert.ok(selectorStart >= 0, 'the opt-in overview-language selector should be specified');
 
-  const selector = source.slice(selectorStart);
+  const selector = supervised.slice(selectorStart);
   assert.match(selector, /(?:None\s*(?:—|-)\s*do[- ]not[- ]create|do[- ]not[- ]create[\s\S]{0,120}None)/i);
+  assert.match(selector, /after \*\*Deterministic selection\*\* confirms a dispatchable change/i);
+  assert.match(selector, /before setting `active_change` or dispatching the first spec worker/i);
   assert.doesNotMatch(source, /emitted first and carrying the `Recommended` marker/);
   assert.doesNotMatch(source, /emitted second, carrying no marker/);
+  assert.doesNotMatch(readArtifact('sai/commands/explore/steps/crystallization-language-gates.md'), /gate 9/i);
 });
 
 test('Ready to Propose records the selected overview language or literal None', () => {
@@ -220,10 +224,13 @@ test('selector flows keep overview opt-out and renderer ownership unchanged', ()
   const source = explore();
 
   assert.match(source, /Selectors never select or infer an `Overview language`/);
-  assert.match(source, /Without a separately supported explicit overview opt-in/);
+  assert.match(source, /except for the crystallization-close selector's displayed \*\*Auto \(sai-1 \+ sai-2\)\*\* option/);
+  assert.match(source, /only selector branch that may resolve gate 9/);
+  assert.match(source, /\*\*Manual\*\* and \*\*Auto \(fast implementation\)\*\* MUST NOT resolve or dispatch/);
+  assert.match(source, /separately supported explicit `--overview-lang <language>` remains a distinct opt-in and suppresses gate 9/);
   assert.match(source, /literal `\*\*Overview language\*\*: None`/);
   assert.match(source, /dispatches no overview generation/);
-  assert.match(source, /Selectors never select or infer[\s\S]{0,700}panel ownership/);
+  assert.match(source, /panel ownership, and conversation-only state rules remain authoritative/);
   assert.match(source, /selector semantics are not duplicated in wrappers, panel renderers, installation projections, or `remember\.md`/);
   assert.match(source, /Claude Code and opencode consume this shared contract/);
   for (const renderer of [opencodeBinding(), claudeBinding(), opencodePanel(), claudePanel()]) {

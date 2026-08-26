@@ -6,7 +6,7 @@ Define the crystallization-close selector that explicitly authorizes supervised 
 ## Requirements
 ### Requirement: Emit the crystallization-close selector
 
-`sai-explore` SHALL emit exactly one harness-native selector after the shared keep-window-open recommendation, with options in fixed order: `Auto`, `Auto (fast implementation)`, and `Manual`, each retaining its existing one-line description and localized presentation rules. The selector SHALL remain the final emission of the crystallization turn. The selector contract SHALL be delivered from `sai/commands/explore/steps/pipeline-selector.md`, fetched only after the complete shared recommendation sentence.
+`sai-explore` SHALL emit exactly one harness-native selector after the shared keep-window-open recommendation, with options in fixed order: `Auto (sai-1 + sai-2)`, `Auto (fast implementation)`, and `Manual`, each retaining its existing one-line description and localized presentation rules. The first displayed label SHALL map to internal route `Auto` and SHALL state that only supervised `sai-1` and `sai-2` run. The selector SHALL remain the final emission of the crystallization turn. The selector contract SHALL be delivered from `sai/commands/explore/steps/pipeline-selector.md`, fetched only after the complete shared recommendation sentence.
 
 #### Scenario: the split selector closes crystallization
 
@@ -15,7 +15,7 @@ Define the crystallization-close selector that explicitly authorizes supervised 
 
 ### Requirement: Route selected pipeline options through deferred contracts
 
-`sai-explore` SHALL preserve the existing selection semantics: `pipeline-selector.md` SHALL fetch both `steps/pipeline-auto-supervised.md` and `steps/pipeline-auto-fast.md` after the complete selector contract is reached and before option selection is processed; dispatch SHALL remain exclusive to an explicit `Auto` or `Auto (fast implementation)` selection; and `Manual` and unmapped responses SHALL dispatch nothing. The Auto route SHALL retain the supervised sai-1/sai-2 lifecycle, and the Auto (fast implementation) route SHALL retain the fixed eight-step flow and existing worker boundaries.
+`sai-explore` SHALL preserve the existing selection semantics: `pipeline-selector.md` SHALL fetch both `steps/pipeline-auto-supervised.md` and `steps/pipeline-auto-fast.md` after the complete selector contract is reached and before option selection is processed; dispatch SHALL remain exclusive to an explicit `Auto (sai-1 + sai-2)` or `Auto (fast implementation)` selection; and `Manual` and unmapped responses SHALL dispatch nothing. The displayed supervised route SHALL map to internal `Auto` and retain the supervised `sai-1`/`sai-2` lifecycle, while the Auto (fast implementation) route SHALL retain the fixed eight-step flow and existing worker boundaries.
 
 #### Scenario: deferred route fetches preserve dispatch boundaries
 
@@ -33,7 +33,7 @@ After a clean auto-fast slice completion, `sai-explore` SHALL retain the existin
 
 ### Requirement: Authorize Auto dispatch
 
-Selecting `Auto` SHALL authorize the existing supervised `sai-1` and `sai-2` lifecycle using `last_crystallization_set` while preserving worker-owned writes, review rounds, chaining, retries, and the existing worker boundaries. Successful Auto completion SHALL emit exactly one composition-aware next-step line, `Next step: run /sai-build {name}.`, and SHALL NOT dispatch a later implementation phase. Successful Auto completion SHALL NOT emit the obsolete `sai-3 was not run.` text. When a selected Auto run returns `failed` or `cancelled`, explore SHALL emit exactly one localized user-facing guidance line naming the phase at which the run stopped: `/sai-1-spec` when the selected name was routed to the spec phase because it was absent from `specs_converged_changes`, or `/sai-2-design` when it was routed to a design-phase retry because it was present in `specs_converged_changes` and absent from `completed_changes`. The phase-specific line SHALL not dispatch a later implementation phase, change the retry state, or introduce another state key.
+Selecting displayed `Auto (sai-1 + sai-2)` (internal route `Auto`) SHALL authorize the existing supervised `sai-1` and `sai-2` lifecycle using `last_crystallization_set` while preserving worker-owned writes, review rounds, chaining, retries, and the existing worker boundaries. Successful Auto completion SHALL emit exactly one composition-aware next-step line, `Next step: run /sai-build {name}.`, and SHALL NOT dispatch a later implementation phase. Successful Auto completion SHALL NOT emit the obsolete `sai-3 was not run.` text. When a selected Auto run returns `failed` or `cancelled`, explore SHALL emit exactly one localized user-facing guidance line naming the phase at which the run stopped: `/sai-1-spec` when the selected name was routed to the spec phase because it was absent from `specs_converged_changes`, or `/sai-2-design` when it was routed to a design-phase retry because it was present in `specs_converged_changes` and absent from `completed_changes`. The phase-specific line SHALL not dispatch a later implementation phase, change the retry state, or introduce another state key.
 
 #### Scenario: Auto is selected
 
@@ -84,7 +84,7 @@ Selecting `Manual` SHALL dispatch nothing and SHALL NOT change supervision state
 
 ### Requirement: Auto-fast continuation requests authorization for each pending slice
 
-After a clean Auto-fast slice completion, the system SHALL re-present the complete `Auto` / `Auto (fast implementation)` / `Manual` selector when at least one pending slice remains. Continuation choices SHALL exclude completed slices and preserve crystallization order. Selecting Manual SHALL dispatch nothing and preserve pending and completed state for a later explicit request.
+After a clean Auto-fast slice completion, the system SHALL re-present the complete `Auto (sai-1 + sai-2)` / `Auto (fast implementation)` / `Manual` selector when at least one pending slice remains. Continuation choices SHALL exclude completed slices and preserve crystallization order. Selecting Manual SHALL dispatch nothing and preserve pending and completed state for a later explicit request.
 
 #### Scenario: pending slices remain after clean completion
 

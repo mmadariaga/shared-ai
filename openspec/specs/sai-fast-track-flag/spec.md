@@ -16,6 +16,15 @@ The set of commands that accept and parse `--fast-track` SHALL be exactly `sai-e
 - **WHEN** `/sai-review` receives `--fast-track`
 - **THEN** it strips the token before change resolution without activating fast-track or printing a banner
 
+### Requirement: Preserve fast-track's explore language behavior
+
+Explore fast-track SHALL bypass gate 9 without an explicit overview-language option and SHALL resolve `None`; explicit `--overview-lang` SHALL override that default only on the supervised route. Auto (fast implementation) SHALL treat the explicit option as a no-op and SHALL never generate `change-overview.md`.
+
+#### Scenario: Auto-fast remains overview-free
+
+- **WHEN** Auto (fast implementation) is selected with or without an explicit overview-language option
+- **THEN** no overview-language question or overview generation occurs
+
 ### Requirement: sai-2-design under fast-track has no specs approval gate to opt out of
 
 `--fast-track` remains accepted by `sai-2-design`, and its parsing, preflight ordering, and `> FAST-TRACK MODE ACTIVE` banner are unchanged. The specs approval gate is no longer part of any opt-out set for `sai-2-design`, because that gate is an automatic stamp presented to nobody: the flag has no approval question to auto-answer, and the approval metadata is written identically with and without the flag.

@@ -63,37 +63,40 @@ The `Review edge cases` stage SHALL run the existing edge-case review when the u
 - **WHEN** `--fast-track` is active and the user advances into `Review edge cases`
 - **THEN** the mandatory review still runs and blocks crystallization until agreement
 
-### Requirement: The Crystallize stage contains slicing and both language gates
+### Requirement: Crystallize stage defers overview-language resolution
 
-The `Crystallize` stage SHALL contain the slicing assessment (single-vs-sliced routing and integration-point friction, item 4) and both language gates — the crystallization language gate (item 8) and the overview-language gate (`explore-overview-language-gate`) — which run when the user explicitly requests crystallization, before any `Ready to Propose` block prints. Advancing into the `Crystallize` stage SHALL itself count as an explicit crystallization request: the slicing assessment and both language gates run on stage entry, making `next-step` and `crystallize` equivalent requests from the `Implementation details` stage. A deterministic empty-set advance that completes the `Review edge cases` or `Implementation details` stage SHALL advance into the following stage within the same turn, and SHALL therefore count as the explicit crystallization request when it advances into the `Crystallize` stage. `--fast-track` SHALL bypass only the two language gates and SHALL NOT skip, weaken, or auto-complete any stage. An explicit crystallize request made from an earlier stage SHALL first run the mandatory edge-case review when the review has not reached agreement (no skip path), then proceed through the slicing assessment and both language gates.
+The `Crystallize` stage SHALL run the slicing assessment (single-vs-sliced routing and integration-point friction, item 4) and the crystallization language gate (item 8) before emitting any `Ready to Propose` block. It MUST NOT run overview-language gate 9 at stage entry; gate 9 belongs to the later supervised Auto activation.
 
-#### Scenario: Crystallization runs slicing then both gates
+Advancing into the `Crystallize` stage SHALL itself count as an explicit crystallization request, making `next-step` and `crystallize` equivalent requests from the `Implementation details` stage. A deterministic empty-set advance that completes the `Review edge cases` or `Implementation details` stage SHALL advance into the following stage within the same turn and SHALL therefore count as the explicit crystallization request when it advances into the `Crystallize` stage. An explicit crystallize request made from an earlier stage SHALL first run the mandatory edge-case review when the review has not reached agreement (no skip path), then proceed through the slicing assessment and the crystallization language gate.
+
+#### Scenario: Crystallization runs slicing then the crystallization gate
 
 - **WHEN** the user explicitly requests crystallization, including by advancing into the `Crystallize` stage
-- **THEN** the slicing assessment runs first, then gate 8 and gate 9 fire in order, and only then does the `Ready to Propose` block print
+- **THEN** the slicing assessment runs first, then gate 8 resolves, and only then does the `Ready to Propose` block print
+- **AND** overview-language gate 9 is not run during crystallization emission
 
 #### Scenario: Natural-language entry into the stage crystallizes
 
 - **WHEN** the user names the `Crystallize` stage in natural language from the `Implementation details` stage, such as asking to move on to the Crystallize stage
 - **THEN** the advance counts as the explicit crystallization request
-- **AND** the slicing assessment and both language gates run before any `Ready to Propose` block prints
+- **AND** the slicing assessment and gate 8 run before any `Ready to Propose` block prints
 
 #### Scenario: An empty-list chain reaches crystallization in the same turn
 
 - **WHEN** the in-scope edge-case list and the implementation-details list are both empty and the user advances the progression by token, natural language, or confirmation
 - **THEN** the deterministic empty-set rules advance the progression through the `Review edge cases` and `Implementation details` stages within the same turn
-- **AND** the `Crystallize` stage entry counts as the explicit crystallization request, running the slicing assessment and both language gates before any `Ready to Propose` block prints
+- **AND** the `Crystallize` stage entry counts as the explicit crystallization request, running the slicing assessment and gate 8 before any `Ready to Propose` block prints
 
 #### Scenario: Premature crystallize enters the review before slicing
 
 - **WHEN** the user explicitly requests crystallization before the edge-case review has reached agreement
-- **THEN** the review runs with no skip path and the slicing assessment and language gates run only after agreement
+- **THEN** the review runs with no skip path and the slicing assessment and gate 8 run only after agreement
 
-#### Scenario: Fast-track skips the language gates but never the stages
+#### Scenario: Fast-track preserves stage and gate boundaries
 
-- **WHEN** `--fast-track` is active
-- **THEN** both language gates select their defaults without questions
-- **AND** the stages themselves — including the mandatory edge-case review — are neither skipped nor weakened
+- **WHEN** `--fast-track` is active during crystallization and later supervised Auto activation
+- **THEN** the language questions resolve by their separate rules without weakening or skipping either stage
+- **AND** the mandatory edge-case review and staged progression are neither skipped nor weakened
 
 ### Requirement: A materially changed idea resets the stage progression
 

@@ -4,8 +4,8 @@
 
 TBD
 ## Requirements
-### Requirement: Scope limited to sai-explore supervised Auto activation
-The overview-language gate applies only within `sai-explore`, firing once per crystallized idea or slice set immediately after deterministic selection confirms a dispatchable change in a supervised Auto run and before the first spec-worker dispatch. It SHALL NOT fire at crystallization emission, mid-run at the spec-to-design transition, on free-form exploration turns, on Manual selection, on the Auto (fast implementation) branch, or when the selection outcome is non-dispatchable (empty set, no uncompleted entry, `Cancel`, or an already-active run rejected by active supervision); those outcomes end before the gate. No other `sai-*` command is affected.
+### Requirement: Scope the overview-language gate to supervised Auto activation
+The overview-language gate applies only within `sai-explore`, firing once per crystallized idea or slice set only after deterministic selection confirms a dispatchable change for the displayed `Auto (sai-1 + sai-2)` route and before `active_change` is set or the first spec-worker dispatch occurs. It SHALL NOT fire at crystallization emission, mid-run at the spec-to-design transition, on free-form exploration turns, on Manual selection, on the Auto (fast implementation) branch, or when the selection outcome is non-dispatchable (empty set, no uncompleted entry, `Cancel`, or an already-active supervised run); those outcomes end before the gate. No other `sai-*` command is affected.
 
 #### Scenario: Auto activation evaluates the gate
 - **WHEN** deterministic selection confirms a dispatchable change in a supervised Auto run without explicit `--overview-lang`, active fast-track, or a stored value
@@ -71,9 +71,9 @@ When the overview-language ask fires at a supervised Auto activation and the cha
 - **THEN** gate 9 asks the two-option do-not-create/`English` form
 - **AND** it does not silently apply `sai/policies/remember.md` or skip the decision
 
-### Requirement: Fast-track selects both language-gate defaults
+### Requirement: Preserve explicit and fast-track resolution
 
-When the fast-track signal is active, `sai-explore` SHALL not ask either language question: the crystallization language gate keeps its own fast-track behavior, and the overview-language value SHALL resolve to the literal `None` without asking — including at a supervised Auto activation. If an explicit `--overview-lang <language>` value is present, that value SHALL win over the fast-track default. Fast-track SHALL never turn an absent flag into a generation request and SHALL NOT skip, weaken, or auto-complete any stage.
+An explicit `--overview-lang <language>` value SHALL suppress gate 9 and become the selected conversation-only language. When fast-track is active without that option, the overview language MUST resolve to `None` without asking, including at a supervised Auto activation. Fast-track SHALL never turn an absent flag into a generation request and SHALL NOT skip, weaken, or auto-complete any stage; the crystallization language gate keeps its own fast-track behavior.
 
 #### Scenario: Fast-track at Auto activation without the flag opts out
 - **WHEN** `--fast-track` is active at a supervised Auto activation without `--overview-lang`
@@ -107,7 +107,7 @@ When the invocation carried an explicit `--overview-lang <language>` option, the
 - **THEN** the crystallization language gate still fires per its own rules
 - **AND** the option neither suppresses it nor pre-selects its choice
 
-### Requirement: Gate persistence tracks the crystallized idea
+### Requirement: Keep the selected language chat-scoped
 
 The resolved overview-language value SHALL persist chat-scoped per crystallized idea or slice set and SHALL survive the end of a supervised attempt — including a failed or cancelled one — so that a design-phase retry and a later Auto activation over the same set reuse it without asking again. A materially new idea SHALL reset the stored value, and its first eligible Auto activation SHALL ask again. Sliced crystallization SHALL resolve the gate once for the whole slice set. Explicit `--overview-lang` suppression remains invocation-scoped. All gate state SHALL remain in conversation only and SHALL NOT be written to a file, artifact, or configuration.
 
@@ -171,4 +171,3 @@ The resolved overview-language value is held in conversation-only state without 
 #### Scenario: design-phase retry reuses the stored value
 - **WHEN** a design-phase retry runs after a failed attempt in the same chat over the same crystallized idea
 - **THEN** the retry uses the same one-string envelope including the stored language form without asking gate 9 again
-

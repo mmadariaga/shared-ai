@@ -61,7 +61,7 @@
 
   On the non-clean route, when establishing Cause Locus, use the worker-authored `failure_class` as evidence and inspect only the authorized proposal/spec artifact surface: `proposal.md`, `specs/**`, and the permitted root `GLOSSARY.md`. The non-clean route may inspect only this authorized read set after resolution; it never gains write or repair authority.
 
-  After the gate proceeds, print the existing MANDATORY STOP text exactly once after `Finish step`: `Spec proposal done in openspec/changes/{name}/. Review it and run \`/sai-2-design {name}\` (--fast-track) **in a new chat** when ready.`
+  After the gate proceeds, print the existing MANDATORY STOP text exactly once after `Finish step`: `Spec proposal done in openspec/changes/{name}/. Review it and run \`/sai-2-design {name}\` (--fast-track --overview-lang Lang) **in a new chat** when ready.`
 
 </TASK>
 

@@ -92,3 +92,12 @@ The spec coordinator SHALL accept progress events as the only allowed nontermina
 
 - **WHEN** the spec coordinator validates worker results
 - **THEN** it SHALL NOT accept or process a design notice event and SHALL validate only the four closed statuses plus the progress event shape
+
+### Requirement: Demonstrate the combined design handoff
+
+The spec coordinator's completion guidance SHALL show `sai-2-design {name} --fast-track --overview-lang Lang` as the example for a supervised overview-enabled design invocation.
+
+#### Scenario: Completion guidance includes both options
+
+- **WHEN** the spec coordinator prints its next-step design example
+- **THEN** the example contains `--fast-track --overview-lang Lang`

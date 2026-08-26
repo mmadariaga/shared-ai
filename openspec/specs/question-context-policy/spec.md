@@ -100,7 +100,7 @@ A semantic merge decision prompt SHALL name the conflict, explain why the choice
 - **THEN** the prompt and adjacent worker-authored context identify the affected behavior, alternatives, trade-offs, and current decision state in plain language
 
 ### Requirement: Centralized pinned-anatomy exemption registry
-`sai/policies/question-context.md` SHALL host the centralized registry of prompts exempt from the full five-element anatomy — the change-picker prompts, the status-picker prompts, the artifact-feedback-gate texts, the crystallization-close selector, and the plain-text sí/no review invitation — each keeping its own defining contract as the single source of its exact wording, options, and invalid-input semantics. Consuming surfaces SHALL reference the registry and SHALL NOT add, remove, or reinterpret an exemption elsewhere, and registered exemptions SHALL remain byte-stable.
+`sai/policies/question-context.md` SHALL host the centralized registry of prompts exempt from the full five-element anatomy — the change-picker prompts, the status-picker prompts, the artifact-feedback-gate texts, the crystallization-close selector as `Auto (sai-1 + sai-2)` / `Auto (fast implementation)` / `Manual`, and the plain-text sí/no review invitation — each keeping its own defining contract as the single source of its exact wording, options, and invalid-input semantics. Consuming surfaces SHALL reference the registry and SHALL NOT add, remove, or reinterpret an exemption elsewhere, and registered exemptions SHALL remain byte-stable.
 
 #### Scenario:
 - **WHEN** a command surface pins a terse prompt outside the full anatomy

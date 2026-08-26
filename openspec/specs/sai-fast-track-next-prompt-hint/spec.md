@@ -20,6 +20,15 @@ The concrete emitting locations that gain the hint under this requirement, becau
 - `sai/commands/implement/invocation.md` completion (printed after `sai-3-implement`) → recommends `/sai-4-apply {name}`
 - `sai/commands/backfill/coordinator.md` terminal navigation (printed after validated artifacts are written) → recommends `/sai-archive {name}`
 
+### Requirement: Preserve the overview-enabled fast-track hint
+
+The spec completion recommendation SHALL append `--overview-lang Lang` alongside `--fast-track` when demonstrating the overview-enabled `sai-2-design` continuation, without changing command execution semantics.
+
+#### Scenario: Completion hint demonstrates both flags
+
+- **WHEN** the spec coordinator prints the recommendation for the next design phase
+- **THEN** the recommendation contains `--fast-track --overview-lang Lang` after the change name
+
 #### Scenario: sai-1-spec completion appends the hint
 
 - **WHEN** `sai-1-spec` reaches its MANDATORY STOP and prints "Spec proposal done … run `/sai-2-design {name}` **in a new chat** when ready."
