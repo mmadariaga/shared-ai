@@ -317,34 +317,34 @@ test('planning clean path stays blind while non-clean path names class artifact 
     'sole design-overview-repair registry row');
 });
 
-test('ordinary cancellation remains a clean stop outside Explore Auto item 10', () => {
+test('ordinary cancellation remains a clean stop outside Explore Plan item 10', () => {
   const policy = artifact('sai/policies/bounded-recovery.md');
 
   assert.match(policy, /cancelled[\s\S]{0,180}(?:never|no)[\s\S]{0,120}recovery/i,
     'ordinary cancellation must retain the existing clean-stop/no-recovery pin');
   assert.match(policy,
-    /(?:ordinary|normal)[\s\S]{0,220}cancelled[\s\S]{0,260}(?:clean[- ]stop|clean stop)[\s\S]{0,220}(?:outside|except)[\s\S]{0,220}Explore Auto item[- ]?10/i,
-    'ordinary cancellation must remain a clean stop outside the Explore Auto item-10 exception');
+    /(?:ordinary|normal)[\s\S]{0,220}cancelled[\s\S]{0,260}(?:clean[- ]stop|clean stop)[\s\S]{0,220}(?:outside|except)[\s\S]{0,220}Explore Plan \(unattended\) item[- ]?10/i,
+    'ordinary cancellation must remain a clean stop outside the Explore Plan item-10 exception');
   assert.match(policy,
-    /Explore Auto item[- ]?10[\s\S]{0,320}(?:does not|never|must not)[\s\S]{0,140}(?:spend|consume|count against|draw from|debit)[\s\S]{0,140}(?:the )?(?:shared )?(?:diagnosis|recovery) ledger/i,
-    'the Explore Auto item-10 exception must not spend the shared recovery ledger');
+    /Explore Plan \(unattended\) item[- ]?10[\s\S]{0,320}(?:does not|never|must not)[\s\S]{0,140}(?:spend|consume|count against|draw from|debit)[\s\S]{0,140}(?:the )?(?:shared )?(?:diagnosis|recovery) ledger/i,
+    'the Explore Plan item-10 exception must not spend the shared recovery ledger');
 });
 
-test('Explore Auto item-10 cancellation is a named one-shot diagnosable exception', () => {
+test('Explore Plan item-10 cancellation is a named one-shot diagnosable exception', () => {
   const policy = artifact('sai/policies/bounded-recovery.md');
 
-  assert.match(policy, /selector[- ]dispatched[\s\S]{0,180}Explore Auto item[- ]?10/i,
-    'the exception must name selector-dispatched Explore Auto item-10');
+  assert.match(policy, /selector[- ]dispatched[\s\S]{0,180}Explore Plan \(unattended\) item[- ]?10/i,
+    'the exception must name selector-dispatched Explore Plan item-10');
   assert.match(policy,
-    /Explore Auto item[- ]?10[\s\S]{0,420}(?:cancelled|cancellation)[\s\S]{0,240}(?:may|can|eligible)[\s\S]{0,120}Diagnosis Round/i,
-    'cancelled Explore Auto item-10 may enter Diagnosis Round');
+    /Explore Plan \(unattended\) item[- ]?10[\s\S]{0,420}(?:cancelled|cancellation)[\s\S]{0,240}(?:may|can|eligible)[\s\S]{0,120}Diagnosis Round/i,
+    'cancelled Explore Plan item-10 may enter Diagnosis Round');
   assert.match(policy, /diagnosis_rounds/,
     'the Explore exception must reference diagnosis_rounds');
   assert.match(policy,
     /(?:at most one|one[- ]shot|single)[\s\S]{0,180}same[- ]worker[\s\S]{0,180}(?:re[- ]dispatch|redispatch)/i,
     'the exception permits at most one same-worker re-dispatch');
   assert.match(policy,
-    /Explore Auto item[- ]?10[\s\S]{0,520}(?:never|no|must not|shall not)[\s\S]{0,180}replacement worker/i,
+    /Explore Plan \(unattended\) item[- ]?10[\s\S]{0,520}(?:never|no|must not|shall not)[\s\S]{0,180}replacement worker/i,
     'the exception must never dispatch a replacement worker');
 });
 
@@ -360,6 +360,6 @@ test('Explore continuation loss after diagnosis is terminal without replacement'
     /Explore[\s\S]{0,520}(?:Diagnosis Round|diagnosis)[\s\S]{0,360}continuation\/transport loss[\s\S]{0,220}(?:never|no|must not|shall not)[\s\S]{0,180}replacement/i,
     'Explore diagnosis continuation loss must never use a replacement worker');
   assert.match(policy,
-    /(?:retryable|can be retried|remains retryable)[\s\S]{0,240}(?:later|next)[\s\S]{0,180}(?:Auto|automatic)[\s\S]{0,120}selection/i,
-    'the change must remain retryable for later Auto selection');
+    /(?:retryable|can be retried|remains retryable)[\s\S]{0,240}(?:later|next)[\s\S]{0,180}(?:Plan \(unattended\)|automatic)[\s\S]{0,120}selection/i,
+    'the change must remain retryable for later Plan (unattended) selection');
 });

@@ -4,6 +4,15 @@
 
 Define the crystallized handoff format and closing behavior for `sai-explore`.
 ## Requirements
+
+### Requirement: Close crystallization with the three named routes
+
+The shared crystallization close SHALL retain its existing recommendation and SHALL then emit exactly one selector with Plan (unattended), Build (unattended), and Manual in fixed order.
+
+#### Scenario: shared close remains final
+
+- **WHEN** a crystallization block or slice is emitted
+- **THEN** the three-option selector is the final close emission and no route is selected automatically.
 ### Requirement: Three mandatory decision-facet sections in the single-change Ready to Propose block
 
 The single-change `Ready to Propose` block emitted by `sai-explore` (`sai/commands/explore/instructions.md` item 5) SHALL include three new sections, inserted in this exact order between `**Capabilities in scope**` and `**Key constraints**`:
@@ -224,4 +233,3 @@ Every emitted `Ready to Propose` block (single-change and per-slice alike) SHALL
 #### Scenario: no retro-edit after gate resolution
 - **WHEN** gate 9 later resolves a language at a supervised Auto activation
 - **THEN** previously printed blocks remain unchanged
-

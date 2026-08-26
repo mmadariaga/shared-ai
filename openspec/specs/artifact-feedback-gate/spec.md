@@ -6,6 +6,15 @@ Define the shared user-facing and machine-feedback processing semantics for arti
 
 ## Requirements
 
+### Requirement: Bound supervised rounds to Plan attempts
+
+The supervised artifact-feedback gate SHALL retain its existing three-round bound per Plan (unattended) attempt and SHALL preserve interactive behavior for standalone coordinators.
+
+#### Scenario: Plan review rounds retain their bound
+
+- **WHEN** a Plan attempt processes supervised artifact feedback
+- **THEN** the existing round counter and gate sequencing remain unchanged.
+
 ### Requirement: Routed coordinators own one feedback-text prompt emission
 
 For routed sai-1 and sai-2, the coordinator SHALL be the sole owner of the user-facing feedback-text prompt after the user selects the feedback option. The coordinator SHALL emit that prompt exactly once for each such selection, wait for the user's reply, and forward the supplied text to the same worker. The worker MUST NOT emit, re-present, or otherwise duplicate the prompt; it SHALL only process the text received from the coordinator using the shared gate rules.

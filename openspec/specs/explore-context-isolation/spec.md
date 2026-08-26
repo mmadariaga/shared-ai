@@ -3,6 +3,15 @@
 ## Purpose
 TBD - created by archiving change tasks-as-scaffold. Update Purpose after archive.
 ## Requirements
+
+### Requirement: Keep delegated writes behind explicit route selection
+
+Explore SHALL remain directly read-only. The explicit Plan (unattended) route MAY dispatch only its existing supervised workers, and the explicit Build (unattended) route MAY dispatch only its existing fast-lane workers under their closed ownership contracts.
+
+#### Scenario: route authorization is explicit
+
+- **WHEN** a crystallization selector answer is received
+- **THEN** only an explicitly selected Plan or Build route may dispatch its authorized workers.
 ### Requirement: explore-no-inline-proposal
 
 `sai-explore` SHALL NOT create or modify proposal/spec artifacts itself. When an idea becomes solid, it SHALL continue to emit the readiness signal and, only on explicit crystallization, the existing `Ready to Propose` block. After crystallization, explore SHALL dispatch an isolated routed worker only when the user explicitly selects `Auto` in the crystallization-close selector. `Manual` or no selection MUST dispatch none, while Auto retains isolated worker ownership.

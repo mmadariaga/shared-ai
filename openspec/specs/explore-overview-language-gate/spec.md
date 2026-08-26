@@ -4,6 +4,15 @@
 
 TBD
 ## Requirements
+
+### Requirement: Apply overview-language routing to Plan
+
+The overview-language value SHALL remain conversation-only and SHALL be forwarded through the supervised Plan route only. Build SHALL retain its documented no-op treatment for overview-language selection.
+
+#### Scenario: overview routing remains bounded
+
+- **WHEN** a crystallization route is selected with an overview-language value
+- **THEN** only the Plan route forwards that value to supervised design processing.
 ### Requirement: Scope limited to sai-explore supervised Auto activation
 The overview-language gate applies only within `sai-explore`, firing once per crystallized idea or slice set immediately after deterministic selection confirms a dispatchable change in a supervised Auto run and before the first spec-worker dispatch. It SHALL NOT fire at crystallization emission, mid-run at the spec-to-design transition, on free-form exploration turns, on Manual selection, on the Auto (fast implementation) branch, or when the selection outcome is non-dispatchable (empty set, no uncompleted entry, `Cancel`, or an already-active run rejected by active supervision); those outcomes end before the gate. No other `sai-*` command is affected.
 
@@ -171,4 +180,3 @@ The resolved overview-language value is held in conversation-only state without 
 #### Scenario: design-phase retry reuses the stored value
 - **WHEN** a design-phase retry runs after a failed attempt in the same chat over the same crystallized idea
 - **THEN** the retry uses the same one-string envelope including the stored language form without asking gate 9 again
-

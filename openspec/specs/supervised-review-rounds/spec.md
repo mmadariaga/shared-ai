@@ -6,6 +6,15 @@ TBD - seeded from delta spec `supervised-review-rounds` in change `supervised-in
 
 ## Requirements
 
+### Requirement: Reset rounds per Plan attempt
+
+The supervised review-round counters SHALL reset for each new Plan (unattended) attempt and SHALL retain the existing independent spec/design budgets and retry semantics.
+
+#### Scenario: a new Plan attempt starts
+
+- **WHEN** a new Plan attempt begins after a prior attempt ends
+- **THEN** the existing review-round counters restart for that attempt without changing the phase budgets.
+
 ### Requirement: three-round-cap-per-phase
 
 The supervised pipeline SHALL run at most three rounds per phase per Auto attempt. This is a three-round budget for each phase on each Auto attempt: the spec phase's rounds and the design phase's rounds are counted separately under distinct phase counters, and those counters SHALL reset to zero at the start of each new Auto attempt for that phase. Rounds consumed in an earlier failed or cancelled attempt SHALL NOT count against a later attempt's three-round bound. Under selector-dispatched supervision the worker-owned automatic review loop is suppressed, so these in-session rounds are the sole automatic convergence mechanism for the phase; they are not a single cross-check layered on top of a co-running worker-owned loop. The initial round of an attempt is round one; a round consists of one in-session engine review plus the phase worker's processing of every finding that review returns through exactly one batched same-worker machine-feedback continuation carrying the round's complete ordered findings list. The batched continuation SHALL NOT increment the round count; a round SHALL be counted once regardless of how many findings the batched continuation carries.

@@ -515,13 +515,13 @@
         "noticeContinuation": "",
         "claudeAgent": {
           "agentName": "sai-autofast-implement-worker",
-          "description": "Owns the block-driven direct implementation phase of explore's Auto (fast implementation) option and returns structured lifecycle metadata.",
+          "description": "Owns the block-driven direct implementation phase of explore's Build (unattended) option and returns structured lifecycle metadata.",
           "model": "haiku",
           "effort": "low",
           "tools": "Read, Glob, Grep, Bash, Edit, Write, Skill, SendMessage"
         },
         "opencodeAgent": {
-          "description": "Owns the block-driven direct implementation phase of explore's Auto (fast implementation) option and returns structured lifecycle metadata.",
+          "description": "Owns the block-driven direct implementation phase of explore's Build (unattended) option and returns structured lifecycle metadata.",
           "model": "opencode-go/qwen3.7-plus",
           "variantLine": "",
           "permissionBlock": "    budget: allow\n    explore: allow"

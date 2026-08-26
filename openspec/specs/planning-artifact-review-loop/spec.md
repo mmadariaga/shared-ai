@@ -6,6 +6,15 @@ TBD — placeholder purpose. Define the worker-owned automated artifact review l
 
 ## Requirements
 
+### Requirement: Attribute planning-artifact review to Plan
+
+Selector-dispatched planning-artifact review SHALL be described as Plan (unattended) review and SHALL retain its existing review engine, round, feedback, and convergence behavior.
+
+#### Scenario: Plan reviews planning artifacts
+
+- **WHEN** Plan produces the applicable planning artifacts
+- **THEN** the existing in-session review lifecycle runs without changing artifact ownership.
+
 ### Requirement: supervised-marker-suppresses-automatic-loop
 
 The automatic worker-owned review loop SHALL run if and only if the phase worker's invocation does not carry the supervision marker. The marker is the literal token `--supervised` present in the worker's `arguments_value` request, consumed by that worker's flag grammar before the verbatim request or change name is finalized.

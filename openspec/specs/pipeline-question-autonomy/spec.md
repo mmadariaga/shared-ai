@@ -3,6 +3,15 @@
 ## Purpose
 TBD - created by archiving change add-pipeline-autonomous-question-answering. Update Purpose after archive.
 ## Requirements
+
+### Requirement: Scope question autonomy to Plan
+
+Grounded auto-answering and escalation behavior SHALL remain scoped to selector-dispatched Plan (unattended) supervision. Standalone sai-1 and sai-2 commands SHALL retain their existing question behavior.
+
+#### Scenario: Plan receives a worker question
+
+- **WHEN** a supervised Plan worker returns a question
+- **THEN** the existing grounded auto-answer-or-escalate rules determine continuation.
 ### Requirement: The permitted grounding sources are bounded
 
 The permitted grounding sources for an auto-answer are exactly: the worker's own `needs_input` payload (its question and any offered options), the selected change's emitted crystallized block, and the artifacts the supervised spec phase has itself written so far (its `proposal.md` and `specs/**` in their current state). Wherever these specs say "the supervised context", they mean this bounded set and nothing wider. Explore MUST NOT ground an auto-answer on the surrounding explore conversation, the design discussion or reasoning that preceded crystallization, prior reviewer or review-loop state, the spec worker's internal reasoning history, other project files, or unrelated repository context. This preserves the context isolation the pipeline already enforces and ensures the objective grounding gate cannot be emptied by treating the whole conversation as a source. The prohibition on "inferring an answer from explore context" retired from `explore-pipeline-supervision` is NOT re-permitted here under a different name: the explore conversation is expressly excluded.

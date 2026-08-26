@@ -6,6 +6,15 @@ TBD - seeded from delta spec `supervised-review-reporting` in change `supervised
 
 ## Requirements
 
+### Requirement: Report Plan attempt terminology
+
+Supervised review reports SHALL identify their counters, cap exhaustion, retry guidance, and autonomy records as belonging to Plan (unattended) attempts while preserving the existing report contents and ordering.
+
+#### Scenario: Plan reaches a report boundary
+
+- **WHEN** a Plan review phase converges, exhausts its cap, or stops
+- **THEN** the existing report and retry guidance are emitted under the Plan terminology.
+
 ### Requirement: cap-exhaustion-one-line-report
 
 When a phase's three-round cap is exhausted, the pipeline SHALL report cap exhaustion as one line carrying the last round's finding counts (the shared contract's base-form tally `Summary: High=<count> Medium=<count> Low=<count>` of the last completed round), and the run SHALL continue. The one-line report SHALL NOT assert that `High` findings remain in the current artifact state, SHALL NOT classify the outcome as failure, and SHALL NOT present remediation or retry prompts for it; the run simply continues to the next phase. Exhaustion is the third completed round of the phase's Auto attempt still containing at least one `High` finding after findings were applied, per `supervised-review-rounds`; this requirement owns only the report shape and continuation, not the counting rule.

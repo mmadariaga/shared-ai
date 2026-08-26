@@ -6,6 +6,15 @@ TBD - created by archiving change extract-bounded-recovery-to-policy. Update Pur
 
 ## Requirements
 
+### Requirement: Name the Plan recovery exception
+
+The Explore item-10 cancellation and diagnosis exception SHALL apply to selector-dispatched Plan (unattended) supervision, retain its existing one-round and same-worker limits, and leave the change retryable when recovery does not complete.
+
+#### Scenario: Plan cancellation enters bounded diagnosis
+
+- **WHEN** a post-resolution Plan worker is cancelled and the diagnosis counter is unused
+- **THEN** the existing bounded diagnosis behavior applies without spending the shared recovery ledger.
+
 ### Requirement: Bounded recovery machinery lives in a dedicated policy file
 
 The repository SHALL host the shared bounded same-worker recovery machinery in `sai/policies/bounded-recovery.md`, relocated byte-verbatim from the former `## Bounded Recovery` section of `sai/orchestration/command-runner.md`. The policy SHALL carry the complete machinery: the segment-scoped three-slot distinct-diagnosis ledger, post-resolution diagnosis, exactly three routing diagnoses, Cause Locus with dual inspection channels, diagnosis-key normalization, diagnosis-driven eligibility, zero-attempt branches, dispatch and continuation, input/cancellation/hand-back behavior including the Explore Auto item-10 exception, changed-files-union and fast-track invariants, the planning-adapter recovery surface with channel selection, and the Step 2 GREEN phase-static registry with its sole `design-overview-repair` row. The policy header SHALL state that it extends the shared command runner's Result Loop and SHALL name its unconditional audience: every coordinator whose phase adapter opts into recovery (`recovery_policy: true`) or executes such a segment under composition. The policy file SHALL be the single home of that machinery; no other file under `sai/` SHALL carry a duplicate of the phase-static registry table.

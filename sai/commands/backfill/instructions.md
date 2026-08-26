@@ -2,7 +2,7 @@
 > `sai-backfill-worker` (`sai/commands/backfill/worker.md` fetches and follows
 > it). The ordinary route is read-only inspection, interviewing,
 > reconciliation, delegated scanning, and draft composition. The explicit
-> Auto-fast route additionally has a later worker-owned execution continuation
+> Build (unattended) route additionally has a later worker-owned execution continuation
 > for the already validated draft set; it never changes the analysis or draft
 > composition below. Transport mapping: where this file says **print**,
 > **display**, or **surface**, the
@@ -17,7 +17,7 @@
 > ordinary route, schema validation against
 > `openspec/schemas/sai-workflow/schema.yaml` and every final write into
 > `openspec/changes/{name}/` execute coordinator-side per
-> `sai/commands/backfill/coordinator.md`. On the Auto-fast route, the
+> `sai/commands/backfill/coordinator.md`. On the Build (unattended) route, the
 > coordinator validates first and then sends the worker's explicit
 > `--autofast-execute` continuation; only that continuation may perform the
 > exact validated writes described in `backfill/worker.md`.
@@ -296,7 +296,7 @@ against `openspec/schemas/sai-workflow/schema.yaml` and executes the final
 writes into `openspec/changes/{name}/`; the worker run closes once the drafts
 are handed over.
 
-On the Auto-fast route, the prepare stretch still closes after the draft
+On the Build (unattended) route, the prepare stretch still closes after the draft
 handoff, but the same worker may be resumed exactly once with
 `--autofast-execute` after coordinator validation and authorization. That
 continuation writes only the exact validated draft set and then closes; it does

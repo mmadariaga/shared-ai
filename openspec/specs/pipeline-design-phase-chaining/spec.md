@@ -4,6 +4,15 @@
 
 TBD - created by archiving change extend-pipeline-supervision-to-sai-2. Update Purpose after archive.
 ## Requirements
+
+### Requirement: Chain design only from Plan
+
+The existing sai-1-to-sai-2 phase transition SHALL belong to Plan (unattended), preserving its active token, supervised gates, review rounds, and design retry behavior.
+
+#### Scenario: Plan chains to design
+
+- **WHEN** supervised sai-1 converges under Plan
+- **THEN** the existing design worker is chained without dispatching implementation.
 ### Requirement: Chain design under Auto
 
 The existing chained design worker SHALL run under the same Auto invocation, with review, escalation, failure, retry, and no-later-phase rules unchanged.

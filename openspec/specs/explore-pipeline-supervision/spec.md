@@ -4,6 +4,15 @@
 
 Define routed supervision of the isolated sai-1 spec-proposal worker from `sai-explore`.
 ## Requirements
+
+### Requirement: Name supervised route identity
+
+The supervised pipeline SHALL use `Plan (unattended)` and route identity `plan-unattended` for the existing sai-1/sai-2 supervision, review, chaining, and retry lifecycle. The direct build route SHALL use `Build (unattended)` and route identity `build-unattended` for its separate worker flow.
+
+#### Scenario: supervised selection is classified
+
+- **WHEN** a delegated route is selected
+- **THEN** the existing supervision lifecycle uses the applicable new route identity without changing worker order or state behavior.
 ### Requirement: Reuse supervised lifecycle
 
 On Claude Code and opencode, `sai-explore` SHALL act only as the lifecycle coordinator when `Auto` selects one uncompleted change from the latest crystallized set. For a selected change whose spec phase has not yet converged or ended by cap exhaustion in this chat, it SHALL dispatch the existing `sai-1` spec-proposal worker with that change's emitted `Ready to Propose` block as the isolated request envelope and SHALL include the `--supervised` marker on that envelope per `supervised-pipeline-forwarding`; the worker SHALL retain ownership of prerequisites, research, change resolution, `proposal.md`, `specs/**`, decision summaries, consistency checks, feedback edits, and spec-phase completion, and SHALL suppress its automatic worker-owned review loop because of the marker. For a selected change whose spec phase already reached convergence or cap exhaustion in this chat — its `proposal.md` and `specs/**` were reviewed in-session and the supervised spec gate auto-proceeded — but whose chained design phase did not complete, a later `Auto` selection SHALL resume at the design phase by re-dispatching the design worker over the existing reviewed spec artifacts with the same `--supervised` marker (and existing `--fast-track` / optional `--overview-lang` composition), and SHALL NOT re-dispatch the sai-1 spec-proposal worker or regenerate `proposal.md` and `specs/**`, so a design-phase retry never discards reviewed spec work and never reintroduces the isolated worker-owned reviewer by omitting the marker. A design-phase retry SHALL also run under supervised gate mode (no user-facing design gate; auto-Continue to overview generation).
@@ -253,6 +262,11 @@ Explore SHALL defer the existing Auto-fast terminal report and navigation while 
 ### Requirement: Auto (fast implementation) deterministic selection inheritance
 
 On an Auto (fast implementation) selection, explore SHALL apply the Deterministic selection rules verbatim against `last_crystallization_set` and `completed_changes` including every degenerate state: an empty set acknowledges nothing crystallized and dispatches nothing; no uncompleted entry acknowledges completion and dispatches nothing; exactly one uncompleted entry dispatches without a picker; multiple entries use the ordered native picker with Cancel; and an active run rejects another selection for the full interval. It SHALL NOT run `openspec list --json` or re-sort names, and earlier clauses describing the selector as carrying two options are superseded for count only by the third option.
+
+#### Scenario: Build inherits deterministic slice selection
+
+- **WHEN** Build (unattended) is selected with multiple pending crystallized slices
+- **THEN** the existing ordered picker and Cancel behavior are used without repository enumeration or re-sorting.
 
 ### Requirement: Auto-fast continuation preserves pending and completed slice state
 
