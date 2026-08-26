@@ -156,6 +156,13 @@ test('managed OpenCode generic agents are exact Fetch wrappers with preserved id
         `${name} frontmatter should contain exactly ${field}`);
     }
 
+    if (name === 'explore') {
+      for (const field of ['tools:', '  write: false', '  edit: false', '  bash: true']) {
+        assert.equal(fields.filter(line => line === field).length, 1,
+          `${name} frontmatter should contain exactly ${field}`);
+      }
+    }
+
     const body = source.slice(frontmatter[0].length).trim();
     assert.equal(body, `${OPENCODE_FETCH_BOOTSTRAP}\nFetch @sai/policies/${name}-agent.md`,
       `${name} post-frontmatter body should bootstrap fetch resolution before its canonical policy Fetch`);
