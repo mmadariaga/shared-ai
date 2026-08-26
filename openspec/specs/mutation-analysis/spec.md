@@ -74,12 +74,26 @@ The review report SHALL preserve the engine-native statuses `Killed`, `Survived`
 
 ### Requirement: Reproducible Stryker workflow
 
-The project SHALL declare Stryker as a development dependency, SHALL provide a `test:mutation` script invoking `stryker run`, and SHALL package a checked-in configuration that runs `node --test`, defaults to `bin/install.js`, accepts an explicit mutation scope, writes JSON and clear-text reports, uses a 60-second timeout with serial execution, and cleans temporary output.
+The project SHALL declare Stryker as a development dependency, SHALL provide a `test:mutation` script invoking `stryker run`, and SHALL package a checked-in configuration that runs `node --test`, defaults to `bin/install.js`, accepts an explicit mutation scope, writes JSON and clear-text reports, uses a 60-second timeout with serial execution, and cleans temporary output. The project SHALL also provide the focused `npm run test:mutation:smoke` workflow, which MUST execute the checked-in fixture configuration against an explicit mutation target and preserve engine-native statuses.
 
 #### Scenario:
 
 - **WHEN** `npm run test:mutation` is executed
 - **THEN** Stryker uses the checked-in deterministic configuration and produces engine-owned mutation results for the configured scope.
+
+#### Scenario: Focused mutation workflow executes real mutations
+
+- **WHEN** `npm run test:mutation:smoke` is executed
+- **THEN** the runner invokes Stryker against `test/fixtures/mutation-target.js`, produces at least one mutation including a `Killed` result, and accepts only recognized engine-native statuses.
+
+### Requirement: Empty eligible mutation sets are reported explicitly
+
+Pass 11 SHALL report `Mutation Analysis (Pass 11): skipped — no eligible mutation targets. No mutation findings.` when the activation gate passes but no diff-scoped production-code mutation target is eligible.
+
+#### Scenario: No eligible target exists
+
+- **WHEN** Pass 11 has testable production code and repository tests but its eligible mutation-target set is empty
+- **THEN** the review records the exact no-eligible-target skip and continues without treating the empty set as positive mutation evidence.
 
 ### Requirement: Surviving Mutant Finding Row Format
 

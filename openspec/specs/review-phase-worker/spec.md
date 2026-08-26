@@ -86,6 +86,15 @@ The worker SHALL run Pass 11 only when the diff contains testable production cod
 - **THEN** Pass 11 proceeds with only changed production-code files as mutation targets
 - **AND** no file outside the diff is selected
 
+### Requirement: Pass 11 handles empty eligible-target sets
+
+The review worker SHALL distinguish an admitted Pass 11 activation gate from an empty eligible mutation-target set and SHALL emit the exact no-eligible-target skip without inferred findings.
+
+#### Scenario: Mutation scope is empty after activation
+
+- **WHEN** the activation gate admits Pass 11 but no changed production-code file is eligible for mutation
+- **THEN** the worker records `Mutation Analysis (Pass 11): skipped — no eligible mutation targets. No mutation findings.` and continues the review.
+
 ### Requirement: Pass 11 preserves two-tier detection and safety
 
 The worker SHALL prefer a declared supported mutation tool and skip the LLM-as-mutator path when one is available. Otherwise it SHALL detect the project test command, run a passing baseline, and enforce the existing per-mutation 60-second timeout, dirty-file pre-check, file-scoped `git checkout -- {file}` revert, and revert verification. It SHALL record exactly one outcome for every selected mutation. An observed `revert-failed` result from a completed subagent batch SHALL continue subsequent sequential batches; a `revert-failed`-equivalent classification caused by missing subagent output SHALL halt later batch dispatch because the distinction is the unverified cause, not the shared safety label.

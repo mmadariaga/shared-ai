@@ -93,6 +93,15 @@ The optional milestone SHALL be marked completed when its applicability gate is 
 - **THEN** it SHALL report `resolve-runtime-audit` completed after running the applicable runtime checks or determining that runtime checks are not applicable
 - **AND** the accessibility report SHALL retain the existing static-only and runtime behavior
 
+### Requirement: Review mutation applicability completes for empty targets
+
+The review progress plan SHALL mark `resolve-mutation-analysis` complete when Pass 11 resolves to the explicit no-eligible-target skip, without claiming that a mutation tool ran.
+
+#### Scenario: Empty mutation scope is legitimately skipped
+
+- **WHEN** Pass 11 resolves with no eligible mutation targets
+- **THEN** the review retains the exact skip outcome and treats the mutation-analysis applicability milestone as resolved.
+
 ### Requirement: audit-terminal-reconciliation-preserves-outcomes
 
 At audit run closing, the coordinator SHALL apply the shared task-list reconciliation policy to the last rendered plan state: a `completed` result marks all remaining steps completed, while `needs_input`, `failed`, and `cancelled` results preserve the last rendered states. Before an early terminal outcome, the worker SHALL report the completed resolution and scope milestones that led to it. The early-outcome mapping SHALL be explicit: review empty diff returns its existing `cancelled` result after `resolve-change` and `establish-diff-scope`, leaving those two steps completed, `resolve-review-analysis` in progress, and the final two pending; security and performance empty diff return their existing no-change `completed` results after `resolve-security-scope`/`discover-module-map` or `resolve-performance-scope`/`map-stack-hot-paths`, so the shared completed reconciliation renders all five outcome-oriented steps completed without findings; accessibility no-UI returns its existing skipped-audit `cancelled` result after `resolve-accessibility-scope`, leaving that step completed, `map-ui-framework` in progress, and the final three pending. Progress rendering SHALL NOT replace, delay, or rewrite existing empty-diff, no-UI, failed, cancelled, or successful terminal messages, report-writing rules, or changed-file results.

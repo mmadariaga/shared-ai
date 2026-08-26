@@ -15,6 +15,8 @@ Run pass 11 only when BOTH conditions hold:
 
 If either condition is false, emit exactly `Mutation Analysis (Pass 11): skipped — {no testable production code in diff | repository has no test files}. No mutation findings.` using the applicable reason, emit no mutation findings, and do not mutate any production file.
 
+If the activation gate admits the pass but the diff-scoped production-code set contains no eligible mutation targets, emit exactly `Mutation Analysis (Pass 11): skipped — no eligible mutation targets. No mutation findings.` and continue without treating the empty target set as a positive result.
+
 #### Mutation Scope
 
 The set of files eligible for mutation is **exactly the production-code files changed in the diff against the parent branch**. Never mutate a file outside that diff.
