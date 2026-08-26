@@ -45,132 +45,41 @@ The set of files eligible for mutation SHALL be exactly the production-code file
 - **THEN** every mutated file is a production-code file present in the diff against the parent branch
 - **AND** no file outside that diff is mutated
 
-### Requirement: Mutation Tool Auto-Detection
+### Requirement: Deterministic mutation engine execution
 
-Pass 11 SHALL detect the available mutation testing tool by inspecting the project's manifest files. Manifests to inspect include `package.json` (Stryker), `pom.xml` or `build.gradle` (PIT), `pyproject.toml` or `requirements.txt` (mutmut), `go.mod` (go-mutesting), `Cargo.toml` (cargo-mutants), and `CMakeLists.txt` (mull). A tool is considered available when its package is declared as a project dependency. If a tool is detected, pass 11 SHALL run it, parse its surviving mutants, and MUST skip the LLM-as-mutator path. Otherwise, pass 11 SHALL fall back to the LLM-as-mutator path.
+The review mutation-analysis pass MUST execute a declared deterministic mutation engine using the checked-in project configuration and SHALL restrict mutations to production-code files eligible in the review diff. The review worker MUST NOT select, apply, or infer mutations itself.
 
-#### Scenario: Stryker detected in package.json
+#### Scenario:
 
-- **WHEN** a Stryker package is declared in `package.json` (e.g. `@stryker-mutator/core` or a runner package)
-- **THEN** pass 11 runs Stryker, parses surviving mutants, and skips LLM-as-mutator
+- **WHEN** a review includes testable production code and a declared mutation tool
+- **THEN** Pass 11 runs the configured engine against only the eligible diff files and reports the engine's actual results.
 
-#### Scenario: PIT detected in pom.xml or build.gradle
+### Requirement: Explicit unavailable mutation states
 
-- **WHEN** `org.pitest` is declared in `pom.xml` or the PIT plugin in `build.gradle`
-- **THEN** pass 11 runs PIT, parses surviving mutants, and skips LLM-as-mutator
+When no deterministic mutation tool is declared, the deterministic baseline fails, tool execution fails, or the deterministic report cannot be parsed, review SHALL report the applicable unavailable state, emit no mutation findings, and continue without model-generated evidence.
 
-#### Scenario: Other supported tool detected
+#### Scenario:
 
-- **WHEN** mutmut, go-mutesting, cargo-mutants, or mull is declared in the corresponding manifest
-- **THEN** pass 11 runs the detected tool, parses surviving mutants, and skips LLM-as-mutator
+- **WHEN** a deterministic mutation prerequisite or execution result is unavailable
+- **THEN** review reports the concrete unavailable state and continues without replacing it with inferred mutation evidence.
 
-#### Scenario: No mutation tool detected
+### Requirement: Native mutation outcome reporting
 
-- **WHEN** no supported mutation tool is declared in any manifest
-- **THEN** pass 11 falls back to the LLM-as-mutator path
+The review report SHALL preserve the engine-native statuses `Killed`, `Survived`, `Timeout`, `NoCoverage`, `CompileError`, `RuntimeError`, and `Ignored`. `Killed` MUST remain internal; `Survived`, `Timeout`, and `NoCoverage` SHALL produce High mutation findings; `CompileError`, `RuntimeError`, and `Ignored` SHALL be recorded as engine impediments without inferred findings or severity. Native status counts MUST reconcile to the engine-reported mutation total.
 
-### Requirement: Test Command Auto-Detection
+#### Scenario:
 
-Under the LLM-as-mutator path (Tier 2), pass 11 SHALL detect the project's test command by inspecting the same manifest files used for tool detection. Detection sources include: `scripts.test` in `package.json` (Node), `mvn test` or `gradle test` (JVM), `pytest` (Python), `go test ./...` (Go), `cargo test` (Rust). The detected test command is used for the baseline test pass and for every per-mutation test run (subject to the 60-second per-mutation timeout). If no test command can be detected, pass 11 SHALL report in `review.md` that mutation analysis could not run due to an undetermined test command and MUST NOT emit mutation findings.
+- **WHEN** the deterministic engine returns recognized mutation statuses
+- **THEN** the report preserves those statuses and applies only the specified finding and severity mapping.
 
-#### Scenario: Test command auto-detected
+### Requirement: Reproducible Stryker workflow
 
-- **WHEN** Tier 2 is active and a test command is detected in the manifest
-- **THEN** pass 11 uses the detected command for the baseline and per-mutation test runs
+The project SHALL declare Stryker as a development dependency, SHALL provide a `test:mutation` script invoking `stryker run`, and SHALL package a checked-in configuration that runs `node --test`, defaults to `bin/install.js`, accepts an explicit mutation scope, writes JSON and clear-text reports, uses a 60-second timeout with serial execution, and cleans temporary output.
 
-#### Scenario: Test command not detectable
+#### Scenario:
 
-- **WHEN** Tier 2 is active and no test command can be detected from any manifest
-- **THEN** pass 11 reports in `review.md` that mutation analysis could not run
-- **AND** no mutation findings are emitted
-
-### Requirement: LLM-As-Mutator Baseline And Per-Mutation Safety Protocol
-
-Before any mutation under Tier 2, the baseline test suite MUST pass; if it does not, no mutation is applied. For each mutation, the executing subagent MUST follow this protocol in order: (1) pre-check that `git status --porcelain {file}` is empty; if dirty, STOP — do not mutate that file and ask the user to commit or undo; (2) apply the mutation; (3) run the test command with a 60-second timeout; (4) revert with the file-scoped command `git checkout -- {file}` — never a project-wide revert; (5) verify the revert by confirming `git diff {file}` is empty. If the revert verification fails, the mutation MUST be marked revert-failed.
-
-#### Scenario: Baseline test suite fails
-
-- **WHEN** the baseline test suite does not pass before mutation
-- **THEN** no mutation is applied and pass 11 reports the baseline failure instead of mutation findings
-
-#### Scenario: Per-mutation pre-check finds a dirty file
-
-- **WHEN** `git status --porcelain {file}` is non-empty before applying a mutation to that file
-- **THEN** the mutation is not applied
-- **AND** the mutation is recorded as pre-check-failed
-
-#### Scenario: Revert is file-scoped
-
-- **WHEN** a mutation is reverted
-- **THEN** the revert command is `git checkout -- {file}` scoped to the single mutated file
-- **AND** no project-wide revert is issued
-
-#### Scenario: Revert verification fails
-
-- **WHEN** after reverting, `git diff {file}` is non-empty
-- **THEN** the mutation is recorded as revert-failed
-
-#### Scenario: Test run exceeds the timeout
-
-- **WHEN** the test command for a mutation runs longer than 60 seconds
-- **THEN** the run is bounded by the 60-second per-mutation timeout
-
-### Requirement: Subagent Dispatch Contract
-
-Under Tier 2, the main agent (frontier tier) SHALL decide which mutations to apply and what each mutation is. Mechanical apply/test/revert/verify I/O MUST be delegated to cheap-tier subagents (`budget-subagent`, `model: haiku`), one subagent per batch of mutations. Batches MUST be dispatched sequentially to avoid file conflicts. Each batch MUST contain at most 5–6 mutations so the subagent stays within its ~30 tool-call soft cap. The subagent output contract MUST return a per-mutation result for every mutation assigned to it; no assigned mutation may be silently dropped.
-
-#### Scenario: Main agent reasons, subagent executes
-
-- **WHEN** mutations are tested under Tier 2
-- **THEN** the main agent decides the mutations
-- **AND** a cheap-tier `budget-subagent` performs the apply/test/revert/verify I/O
-
-#### Scenario: Batches run sequentially
-
-- **WHEN** more than one batch of mutations exists
-- **THEN** batches are dispatched one after another, not concurrently
-
-#### Scenario: Batch size capped
-
-- **WHEN** a batch is dispatched to a subagent
-- **THEN** it contains at most 5–6 mutations
-
-#### Scenario: Every assigned mutation is reported
-
-- **WHEN** a subagent finishes a batch
-- **THEN** its output contains one result for each mutation it was assigned
-- **AND** no assigned mutation is omitted
-
-### Requirement: Outcome To Finding Mapping
-
-Each tested mutation has exactly one outcome, mapped to review output as follows. A killed mutation (a test failed) MUST produce no finding and remain internal only. A survived mutation (all tests passed) MUST be reported as a High finding identified `mMUT-N` in `review.md`. A pre-check-failed mutation MUST be reported as a High finding whose message is "Could not test {file}: uncommitted changes. Commit or undo and re-run review." A revert-failed mutation MUST be reported as a Critical finding in `review.md` AND a critical working-tree-pollution warning MUST be printed to the user. The `mMUT-N` namespace and the seven-field surviving-mutant row SHALL remain unchanged per ADR 0013; this remap covers only the severities these outcomes roll up into.
-
-#### Scenario: Killed mutation produces no finding
-
-- **WHEN** a mutation is killed by the test suite
-- **THEN** no finding is written for it
-
-#### Scenario: Survived mutation is High
-
-- **WHEN** a mutation survives the test suite
-- **THEN** it is written as a High finding identified `mMUT-N`
-
-#### Scenario: Pre-check-failed mutation is High with the could-not-test message
-
-- **WHEN** a mutation is pre-check-failed
-- **THEN** it is written as a High finding stating "Could not test {file}: uncommitted changes. Commit or undo and re-run review."
-
-#### Scenario: Revert-failed mutation is a Critical with a pollution warning
-
-- **WHEN** a mutation is revert-failed
-- **THEN** it is written as a Critical finding in `review.md`
-- **AND** a critical working-tree-pollution warning is printed to the user
-
-#### Scenario: mMUT-N namespace and row shape are preserved
-
-- **WHEN** a mutation finding is written
-- **THEN** it is identified `mMUT-N` with N a 1-based counter over the mutation findings in this review
-- **AND** surviving-mutant rows keep the seven fields Location, Mutation class, Original, Applied, Result, Why it survives, and Suggested fix in that order
+- **WHEN** `npm run test:mutation` is executed
+- **THEN** Stryker uses the checked-in deterministic configuration and produces engine-owned mutation results for the configured scope.
 
 ### Requirement: Surviving Mutant Finding Row Format
 
@@ -188,27 +97,3 @@ When pass 11 emits a finding for a surviving mutation, the finding row in `revie
 
 - **WHEN** pass 11 emits an `mMUT-N` finding
 - **THEN** the row contains Location, Mutation class, Original, Applied, Result, Why it survives, and Suggested fix in that order
-
-### Requirement: Revert-Failure Cascade Preserves Visibility
-
-When a mutation is revert-failed, pass 11 MUST continue dispatching subsequent batches. The per-file pre-check on later batches naturally records files left dirty by the failed revert as pre-check-failed, so the downstream effect is visible rather than hidden.
-
-#### Scenario: Later batches continue after a revert failure
-
-- **WHEN** a mutation in an earlier batch is revert-failed
-- **THEN** subsequent batches are still dispatched
-- **AND** files left dirty cascade to pre-check-failed via the per-file pre-check
-
-### Requirement: Full-Visibility Aggregate Invariant
-
-Every mutation the main agent decides on MUST appear in the output, even when a technical impediment prevented testing it. The aggregate counts MUST satisfy the invariant: survived + killed + preCheckFailed + revertFailed == the total number of mutations decided by the main agent.
-
-#### Scenario: Counts reconcile to the decided total
-
-- **WHEN** pass 11 finishes
-- **THEN** survived + killed + preCheckFailed + revertFailed equals the total number of mutations the main agent decided on
-
-#### Scenario: An untested mutation still appears
-
-- **WHEN** a mutation could not be tested due to a pre-check or revert impediment
-- **THEN** it still appears in the output with its outcome (pre-check-failed or revert-failed)
