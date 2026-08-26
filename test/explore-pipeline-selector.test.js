@@ -1676,3 +1676,45 @@ test('Step 2: pending-before-diagnosis applies to disproved or STOP-bearing comp
     );
   }
 });
+
+test('crystallization renders a temporary mode-specific route without changing the evidence catalog', () => {
+  const ideaList = spec('sai/commands/explore/steps/idea-list.md');
+  const selector = spec('sai/commands/explore/steps/pipeline-selector.md');
+
+  assert.match(ideaList, /baseline catalog[\s\S]*evidence ledger/i);
+  assert.match(ideaList, /temporarily replace only that selected slice's three baseline evidence entries/i);
+  assert.match(ideaList, /never .*generic `Implementation` item/i);
+  assert.match(ideaList, /Route state is conversation-only and scoped to the selected slice/i);
+  assert.match(ideaList, /never mark or clear.*reviewed-sai-1.*reviewed-sai-2/i);
+  assert.match(selector, /active_route/);
+  assert.match(selector, /not an invocation envelope field, worker payload field, artifact field, or persisted state/i);
+});
+
+test('mode-specific route labels and Auto progression are explicit', () => {
+  const source = exploreContract();
+  const ideaList = spec('sai/commands/explore/steps/idea-list.md');
+  const auto = ideaList.slice(ideaList.indexOf('**Auto route:**'));
+  const fast = ideaList.slice(ideaList.indexOf('**Auto (fast implementation) route:**'));
+
+  assert.match(auto, /exactly two steps, `sai-1` followed by `sai-2`/);
+  assert.match(auto, /`sai-1` starts `in_progress`[\s\S]*clean spec convergence[\s\S]*`sai-2` as `in_progress`/i);
+  assert.match(source, /clean terminal design result completes `sai-2`[\s\S]*does not claim that `sai-3`/i);
+  assert.match(fast, /exactly the high-level stages `Build\/Implement`, `Backfill`, and `Archive`/);
+  assert.match(fast, /`Build\/Implement`[\s\S]*not `\/sai-build`/);
+  assert.match(source, /underlying eight-step Auto-fast contract remains authoritative[\s\S]*only these three high-level stages/i);
+  assert.match(source, /Build\/Implement.*completed[\s\S]*Backfill.*in_progress[\s\S]*Archive.*in_progress/i);
+});
+
+test('Manual route is a completed handoff only and non-clean routes remain pending and retryable', () => {
+  const source = exploreContract();
+  const ideaList = spec('sai/commands/explore/steps/idea-list.md');
+  const manual = ideaList.slice(ideaList.indexOf('**Manual route:**'));
+
+  assert.match(manual, /only `Manual handoff`/);
+  assert.match(manual, /`completed` when the path-specific handoff is emitted/);
+  assert.match(manual, /creates no delegated route steps, dispatches no worker/i);
+  assert.match(source, /failed, cancelled, STOP-bearing, coordinator-disproved, or unrecovered[\s\S]*active route step `pending`/i);
+  assert.match(source, /route retryable[\s\S]*no later step starts/i);
+  assert.match(source, /only a clean terminal result completes the route/i);
+  assert.match(source, /multi-slice route changes only the selected slice/i);
+});
