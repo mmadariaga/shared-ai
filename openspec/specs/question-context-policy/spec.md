@@ -6,14 +6,14 @@ Defines the canonical question-context policy (`sai/policies/question-context.md
 
 ## Requirements
 
-### Requirement: Present the renamed three-option selector
+### Requirement: Register the fixed crystallization-close selector exemption
 
-The closed-choice question policy SHALL describe the crystallization selector as exactly three options in fixed order: Plan (unattended), Build (unattended), and Manual. The question and descriptions SHALL localize while stable identities remain machine-readable.
+The question-context policy SHALL identify sai-explore's crystallization-close selector as the `Plan - Unattended` / `Direct build - Unattended` / `Manual` selector and SHALL preserve its narrow exemption from the general decision-prompt anatomy.
 
-#### Scenario: selector options are presented
+#### Scenario: Policy names the current selector contract
 
-- **WHEN** the crystallization selector is shown
-- **THEN** the three options appear in fixed order through the supported native picker.
+- **WHEN** a consumer resolves the crystallization-close selector exemption
+- **THEN** it finds the three fixed English titles and the selector remains governed by its command-owned presentation contract.
 
 ### Requirement: question-context-policy-file
 
