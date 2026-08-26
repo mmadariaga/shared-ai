@@ -80,3 +80,21 @@ The active instruction-surface refactor SHALL preserve direct `/sai-3-implement`
 
 - **WHEN** direct `/sai-3-implement` or the `/sai-build` implementation segment executes
 - **THEN** it preserves the existing implementation-planning behavior through the coordinator, worker, and step surfaces without runtime-code, wrapper, or build-routing changes.
+
+### Requirement: Keep the ADR/DDR culture gate aligned across implementation surfaces
+
+The active implementation step and apply compatibility source SHALL carry the same physical-index culture gate. Repository guidance SHALL describe the same resolved-family rule, and Claude Code and opencode projections SHALL match their source content.
+
+#### Scenario: Harness projection preserves the gate
+
+- **WHEN** either harness projects the implementation step or compatibility source
+- **THEN** the installed content preserves the source gate, including resolved-family index paths, absent-index approval, non-qualifying no-op behavior, and no family-choice question
+
+### Requirement: Preserve authorized ADR/DDR branch behavior
+
+The implementation planning contract SHALL preserve direct creation and warm-splice behavior when the resolved-family index exists, approval-gated creation and cold-build behavior when it does not, and no creation or ask when criteria are not all satisfied.
+
+#### Scenario: Branch behavior follows index state
+
+- **WHEN** the implementation flow evaluates an ADR/DDR decision
+- **THEN** its creation and maintenance branch matches the resolved family's physical index state without changing the authorized write boundary

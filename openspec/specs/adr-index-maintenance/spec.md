@@ -361,3 +361,21 @@ Cross-family relationships SHALL be represented in each family's index exactly a
 - **THEN** the ADR maintenance cycle SHALL treat this as a classification error per the abstract surface's family-boundary rule
 - **THEN** the ADR index is NOT touched, the DDR record's entry is NOT moved, and no correction-table row is added
 - **THEN** the classification error is surfaced in chat so the user can reclassify the source or target record into the correct family
+
+### Requirement: Select per-family maintenance from the resolved-family index
+
+Step 3 SHALL select the maintenance branch only after the record family and creation outcome are resolved. An existing resolved-family index SHALL use warm-splice maintenance. An absent resolved-family index, after explicit approval, SHALL use cold-build maintenance. A family with no records created SHALL receive no maintenance cycle.
+
+#### Scenario: Warm-splice for an indexed family
+
+- **WHEN** a qualifying record is created for a family with an existing `0000-INDEX.md`
+- **THEN** only that family's index receives the warm-splice update while the other family remains untouched
+
+### Requirement: Preserve the approval-gated cold-build path
+
+A missing resolved-family index SHALL remain the cold-build condition after explicit user approval, even when records exist in that family. Records outside the recognized family index location SHALL NOT change branch selection.
+
+#### Scenario: Cold-build for an unindexed family
+
+- **WHEN** a qualifying record is approved for creation but the resolved-family index is absent
+- **THEN** the family is reconstructed through cold-build maintenance rather than warm-splice maintenance
