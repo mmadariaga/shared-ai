@@ -5,14 +5,14 @@
 Define the crystallization-close selector that explicitly authorizes supervised pipeline execution.
 ## Requirements
 
-### Requirement: Emit the renamed crystallization-close selector
+### Requirement: Crystallization-close selector presents stable route titles
 
-`sai-explore` SHALL emit exactly one harness-native selector after the shared keep-window-open recommendation and SHALL make it the final crystallization-turn emission. The selector MUST contain exactly three options in fixed order: Plan (unattended), Build (unattended), and Manual. Their stable identities SHALL be `plan-unattended`, `build-unattended`, and `manual`, and retired identities SHALL NOT be accepted as aliases. Labels and descriptions SHALL localize while command literals remain English.
+The crystallization-close selector SHALL present exactly three options, in the existing order, with the fixed English titles `Plan - Unattended`, `Direct build - Unattended`, and `Manual`. Their machine-readable route identities MUST remain `plan-unattended`, `build-unattended`, and `manual`.
 
-#### Scenario: renamed selector closes crystallization
+#### Scenario: Selector presents the three continuation routes
 
 - **WHEN** a crystallization turn reaches its close
-- **THEN** exactly one fixed-order selector presents Plan (unattended), Build (unattended), and Manual after the shared recommendation.
+- **THEN** the selector presents the three fixed titles in order and preserves their existing route identities without adding aliases or changing dispatch behavior.
 
 ### Requirement: Preserve Plan (unattended) behavior
 

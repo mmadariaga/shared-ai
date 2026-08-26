@@ -226,3 +226,22 @@ test('contract preservation: all reachable step files exist and are mentioned', 
     assert.ok(exists, `Expected step file not found: ${expectedFile}`);
   }
 });
+
+test('contract preservation: selector uses fixed English titles with localized descriptions', () => {
+  const selector = fs.readFileSync(path.join(stepsDir, 'pipeline-selector.md'), 'utf8');
+  const languageGate = fs.readFileSync(
+    path.join(stepsDir, 'crystallization-language-gates.md'),
+    'utf8',
+  );
+  const questionContext = fs.readFileSync(
+    path.join(__dirname, '..', 'sai', 'policies', 'question-context.md'),
+    'utf8',
+  );
+
+  assert.match(selector, /\*\*Plan - Unattended\*\*/);
+  assert.match(selector, /\*\*Direct build - Unattended\*\*/);
+  assert.match(selector, /\*\*Manual\*\*/);
+  assert.match(selector, /question text and each option description[\s\S]{0,160}fixed option titles remain exactly `Plan - Unattended`, `Direct build - Unattended`, and `Manual`/i);
+  assert.match(languageGate, /question text and all three option descriptions render in the user's language[\s\S]{0,140}option titles remain the fixed English literals `Plan - Unattended`, `Direct build - Unattended`, and `Manual`/i);
+  assert.match(questionContext, /Crystallization-close selector[\s\S]{0,120}`Plan - Unattended`[\s\S]{0,80}`Direct build - Unattended`[\s\S]{0,40}`Manual`/i);
+});
