@@ -16,7 +16,7 @@ The routed `sai-backfill` card set (`sai/commands/backfill/coordinator.md` and `
 
 ### Requirement: Empty-arguments resolution delegates to backfill.md
 
-When `/sai-backfill` is invoked with an empty `$ARGUMENTS`, the boot forwards the empty envelope byte-for-byte to the routed coordinator and its dispatched worker, where resolution is handled exclusively by the STOP Conditions section of `sai/commands/backfill/instructions.md` — no additional resolution mechanism (no inline list, no re-prompt, no `openspec list` call) is introduced anywhere in the chain. The derived-name case is handled by the instruction's Change Name Confirmation phase. The envelope is a byte-for-byte pass-through to both.
+When `/sai-backfill` is invoked with an empty `$ARGUMENTS`, the boot MUST forward the empty envelope byte-for-byte to the routed coordinator and its dispatched worker, where resolution is handled exclusively by the STOP Conditions section of `sai/commands/backfill/instructions.md` — no additional resolution mechanism (no inline list, no re-prompt, no `openspec list` call) is introduced anywhere in the chain. The derived-name case is handled by the instruction's Change Name Confirmation phase. The envelope is a byte-for-byte pass-through to both.
 
 #### Scenario: Empty arguments falls through to STOP Conditions
 
