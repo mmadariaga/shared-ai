@@ -297,14 +297,29 @@ Run state SHALL remain conversation-only and never persisted: `active_change`, `
 
 ### Requirement: Auto (fast implementation) pre-dispatch compatibility refusal
 
-Before Step 1 of the Auto (fast implementation) flow, explore SHALL judge the emitted Ready to Propose block against the implementer's closed exclusion list, reading ONLY the block. When the block can only be implemented by violating a closed exclusion — writes under `openspec/`, planning-artifact creation (`design.md`, `tasks.md`, `implementation.md`), a mutating git command, or subagent dispatch — explore SHALL emit a documented refusal naming the violated clause and the block evidence that triggers it, show it to the user, dispatch nothing, mutate no selection state, and leave the change retryable with Manual still available. Bounded Recovery remains post-dispatch only and SHALL NOT substitute for this refusal.
+Before Step 1 of the Auto (fast implementation) flow, explore SHALL judge the emitted Ready to Propose block against the step-1 implementer's work scope only, not the whole route. Steps 3–8 (backfill and archive, owned in the `sai-backfill-worker` and `sai-archive-worker`) own writes to OpenSpec bookkeeping artifacts under `openspec/changes/{name}/**` and `openspec/specs/**`. Reading ONLY the block, explore SHALL check for genuine step-1 violations: planning-artifact creation (`design.md`, `tasks.md`, `implementation.md`), mutating git commands, subagent dispatch, or writes under `openspec/` that the block designates as step-1 implementation work (including non-bookkeeping content like `openspec/schemas/**` or `openspec/config.yaml`). A block that only mentions or references OpenSpec bookkeeping artifacts (in `**Why**`, `**Decisions & Rationale**`, or `**Research Leads**`) passes straight through to Step 1 with no refusal and no recovery, as steps 3–8 absorb those artifacts.
 
-#### Scenario: Out-of-scope block refused before dispatch
+#### Scenario: Genuine step-1 violations are refused
 
-- **WHEN** an emitted block can only be implemented by violating one of the implementer's closed exclusions
-- **THEN** explore emits a documented refusal naming the violated clause and the triggering block evidence, dispatches nothing, and leaves the change retryable
+- **WHEN** the block evidence clearly designates implementation work that violates the step-1 scope (planning-artifact creation, mutating git, subagent dispatch, or non-bookkeeping openspec writes)
+- **THEN** explore emits a documented refusal naming the violated clause and the block evidence, dispatches nothing, mutates no selection state, and leaves the change retryable
 
-#### Scenario: In-scope block dispatches normally
+#### Scenario: Bookkeeping-only blocks pass through without refusal
 
-- **WHEN** the emitted block can be implemented within the closed exclusions
-- **THEN** the eight-step flow proceeds into Step 1 unchanged
+- **WHEN** the block only mentions or references OpenSpec bookkeeping artifacts in non-Capabilities fields
+- **THEN** explore dispatches to Step 1 without refusal or recovery
+
+#### Scenario: Pre-dispatch recovery for non-bookkeeping openspec targets
+
+- **WHEN** the block's `**Capabilities in scope**` or `**Implementation Details**` designate implementation work targeting non-bookkeeping content under `openspec/`
+- **THEN** explore enters a bounded pre-dispatch recovery cycle (at most two correction attempts): present the incompatibility naming the violated clause and the block evidence, allow the block to be corrected in session memory, revalidate against the narrowed refusal, and proceed to Step 1 with the corrected block when revalidation passes
+
+#### Scenario: Recovery cycle exhaustion refers to Manual
+
+- **WHEN** correction attempts are exhausted or declined
+- **THEN** explore emits the documented refusal with the last-attempted block state as evidence, dispatches nothing, mutates no selection state, and leaves the change retryable with Manual available
+
+#### Scenario: Session-scoped correction does not rewrite history
+
+- **WHEN** a pre-dispatch recovery correction is accepted
+- **THEN** the correction is session-scoped: it writes no file, does not rewrite the block already printed in the chat history, keeps explore read-only, and changes only the `arguments_value` travelling to the implementer; it creates no `task_id`, consumes no `fix_rounds`, and does not touch Bounded Recovery

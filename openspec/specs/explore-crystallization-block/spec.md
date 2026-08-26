@@ -233,3 +233,22 @@ Every emitted `Ready to Propose` block (single-change and per-slice alike) SHALL
 #### Scenario: no retro-edit after gate resolution
 - **WHEN** gate 9 later resolves a language at a supervised Auto activation
 - **THEN** previously printed blocks remain unchanged
+
+### Requirement: Capabilities in scope excludes OpenSpec bookkeeping artifacts
+
+The single-change `Ready to Propose` block emitted by `sai-explore` SHALL include a `**Capabilities in scope**` section that lists the agreed distinct capabilities whose requirements the change addresses or modifies. OpenSpec bookkeeping artifacts (`openspec/changes/{name}/**`, `openspec/specs/**`) are excluded from `**Capabilities in scope**` because they are consequences owned by backfill and archive, not by the implementer's design decisions. The authoring-scope exclusion applies only to `**Capabilities in scope**` and to the `**Implementation Details**` `I` items (per explore-implementation-details). The fields **Why**, **Decisions & Rationale**, and **Research Leads** are exempt from this exclusion and MAY carry inline references to `openspec/changes/{name}/**` or `openspec/specs/**` when they serve as evidence for intent or non-authoritative leads.
+
+#### Scenario: Bookkeeping artifacts are excluded from Capabilities in scope
+
+- **WHEN** `sai-explore` emits the single-change `Ready to Propose` block and the agreed capabilities include references to OpenSpec bookkeeping artifacts
+- **THEN** those artifacts are excluded from the `**Capabilities in scope**` section because they are consequences owned by backfill and archive
+
+#### Scenario: Why and Decisions can reference bookkeeping artifacts as evidence
+
+- **WHEN** the block's `**Why**`, `**Decisions & Rationale**`, or `**Research Leads**` sections include references to bookkeeping artifacts
+- **THEN** those references are retained because they serve as evidence or leads, not as designations of implementation work
+
+#### Scenario: Empty Capabilities in scope after exclusion emits None
+
+- **WHEN** all agreed capabilities map to bookkeeping artifacts only
+- **THEN** the `**Capabilities in scope**` section emits exactly `- None`
