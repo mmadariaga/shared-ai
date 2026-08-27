@@ -49,8 +49,8 @@
   procedure of the technical phase: pre-merge environment checks, branch
   selection, conflict detection, conflict classification, contextual objective
   analysis, complete global resolution strategies and alternatives,
-  verification loop analysis, and ADR/DDR collision scanning. You own the
-  merge presentation seam, lifecycle routing, the conflict-triggered language
+  verification loop analysis, and incremental ADR/DDR collision scanning. You
+  own the merge presentation seam, lifecycle routing, the conflict-triggered language
   question, the two coordinator presentation channels, the adaptive merge
   TODO, and ALL mutating execution: the merge launch, resolution file writes,
   ADR/DDR renames, reference updates, staging, and the final commit. Route
@@ -71,7 +71,8 @@
     worker uses that signal for the documented fast-track auto-apply branch.
   - `continuation_operation` — continue the same worker through the binding's
     continuation mechanism, forwarding the selected answer value or the
-    post-merge outcome report.
+    post-merge outcome report together with the captured invocation-scoped merge
+    provenance.
   - `allowed_nonterminal_extensions` — the merge-only closed
     `conflict_detected` extension `{event: conflict_detected, emitted_on:
     string, summary: string, changed_files: string[], affected_files:
@@ -95,9 +96,11 @@
   - `replacement_reconstruction_fields` — the complete original envelope, the
     opaque input history (including forwarded gate answers), `fast_track_active`,
     the selected invocation-scoped `working_language` when a conflict has been
-    detected, and the ordered duplicate-free changed-files union; a replacement
-    worker reconstructs only from these and never receives artifact contents or
-    a language persisted in the envelope.
+    detected, the captured merge provenance (`target_sha`, `source_sha`,
+    `merge_base`, and the source-introduced ADR/DDR record inventory), and the
+    ordered duplicate-free changed-files union; a replacement worker reconstructs
+    only from these and never receives artifact contents or a language persisted
+    in the envelope.
   - `terminal_navigation` — pass the validated worker source and the current
     merge presentation state to the seam's terminal renderer. On a run whose
     final commit executed, it prints the worker-authored summary verbatim,
@@ -224,26 +227,42 @@
   not move ownership of any operation:
 
   - **Merge launch** — after the worker returns the branch-selection completion
-    and the user has selected a branch: execute `git merge <branch>` on the
-    current branch. Immediately after branch selection and before this launch,
-    call `render_progress(presentation_state)` to render the first adaptive
-    merge TODO. The TODO is never rendered before source-branch selection.
-    Capture the outcome (clean or conflicted), report it to the worker as a
-    continuation, and record it in the seam state. A clean outcome continues
-    directly to the ADR/DDR pass. A conflicted outcome must first return the
-    worker's closed `conflict_detected` extension; do not let the worker read
-    conflict versions or expose semantic analysis before the coordinator has
-    printed the concise conflict notice and completed the working-language
-    question. Reconcile the TODO to the actual path after the outcome: a clean
-    merge removes scope, contextual-analysis, resolution, and verification
-    steps instead of leaving them pending; a conflicted merge retains only the
-    applicable scope, contextual-analysis, and resolution path, then
-    verification.
-     Add a collision step only after the worker reports collision applicability
-     as `repair-required` or `escalation-required`, followed by authorization.
-     A skipped collision scan or a scan with no collisions removes that step
-     rather than leaving it pending. A clean merge skips conflict-resolution
-     presentation entirely.
+    and the user has selected a branch, capture the merge provenance before any
+    merge mutation and before any ref can move: `target_sha` from
+    `git rev-parse --verify HEAD`, `source_sha` from
+    `git rev-parse --verify <selected-branch>^{commit}`, and `merge_base` from
+    `git merge-base <target_sha> <source_sha>`. From that captured
+    `merge_base` and `source_sha`, record only exact `A` paths from
+     `git diff --name-status --diff-filter=A --find-renames --find-copies --find-copies-harder
+     <merge_base> <source_sha> -- docs/adr/ docs/ddr/` whose names match the
+     ADR/DDR record pattern, excluding the exact canonical index paths
+     `docs/adr/0000-INDEX.md` and `docs/ddr/0000-INDEX.md`. Source-side renames
+     and copies are excluded, including copies whose unchanged source is outside
+     the diff.
+     Keep all four values (the three SHAs plus the ordered source-introduced
+     inventory) in invocation-scoped merge provenance outside
+     `arguments_value`/`original_envelope` and forward them unchanged with the
+     post-merge outcome; never recompute them from post-merge `HEAD`.
+    Then execute `git merge <branch>` on the current branch. Immediately after
+    branch selection and before this launch, call `render_progress(presentation_state)`
+    to render the first adaptive merge TODO. The TODO is never rendered before
+    source-branch selection. Capture the outcome (clean or conflicted), report it
+    together with the provenance to the worker as a continuation, and record it
+    in the seam state. A clean outcome continues directly to the incremental
+    ADR/DDR pass. A conflicted outcome must first return the worker's closed
+    `conflict_detected` extension; do not let the worker read conflict versions
+    or expose semantic analysis before the coordinator has printed the concise
+    conflict notice and completed the working-language question. Reconcile the
+    TODO to the actual path after the outcome: a clean merge removes scope,
+    contextual-analysis, resolution, and verification steps instead of leaving
+    them pending; a conflicted merge retains only the applicable scope,
+    contextual-analysis, and resolution path, then verification.
+    Add a collision step only after the worker reports an affected collision
+    applicability of `repair-required` or `escalation-required`, followed by
+    authorization. A source frontier with no final-state record, a skipped
+    collision scan, or a scan with no affected collisions removes that step
+    rather than leaving it pending. A clean merge skips conflict-resolution
+    presentation entirely.
   - **Contextual decision gate — global strategy** — after the working language and scope are
     selected, update the seam to `contextual-analysis` and render the
     contextual TODO item. Present the worker's complete global strategy,
@@ -303,10 +322,14 @@
     strategy confirmation is required before another resolution write. Reconcile
     the TODO after every outcome without changing the worker's verification
     ownership or three-round behavior.
-  - **ADR/DDR renames** — after the worker returns the collision-pass plan:
+  - **ADR/DDR renames** — after the worker returns the incremental collision-pass
+    plan, already limited to candidate `(family, numeric prefix)` keys from the
+    captured source frontier and the final merge state, with existing suffixed
+    records and canonical index paths handled by the worker:
      for each proposed rename, first copy its family, exact old/new H1,
-     old/new index-label, assigned identifier, suffix, and path data into the
-     seam's `adr_ddr_renames` state record, then
+     old/new index-label, assigned identifier, suffix, path data, and the
+     worker-derived introduction anchor/path/commit/timestamp into the seam's
+     `adr_ddr_renames` state record, then
      execute `git mv <old> <new>`. For each proposed reference update, edit the
      file to replace the worker-supplied canonical old token with the exact
      family-aware new token. This includes same-family and cross-family
@@ -316,7 +339,10 @@
      `old_index_label` → `new_index_label` replacement in its index file; these
      are coordinator-owned writes and must use the same assigned identifier as
      the filename. Do not reread artifacts to reconstruct missing presentation
-     data, and never broad-replace an unrelated bare four-digit number. For
+     data, and never broad-replace an unrelated bare four-digit number. Apply
+     only the worker's collision-free, family-aware assigned identifiers; never
+     execute a rename whose target is occupied by another final-state record.
+     For
      orphan or ambiguous references, record the worker's escalation and do not
      modify or invent a destination. For E8 escalations, report them but do not
      modify. Add renamed and edited paths to the union.
@@ -327,8 +353,9 @@
      existence and target-repository-ownership checks above succeed.
   - **Commit authorization** — the worker returns the authorization ask as
      `needs_input`. Build `compact_authorization_summary` from the current
-     target/source branches, verification status, conflict result, collision
-     result and collision applicability, and staged-file count; present that
+     target/source branches, verification status, conflict result, incremental
+     collision result and collision applicability (including a skipped
+     source-frontier result), and staged-file count; present that
      summary with the exact worker question and options through the native
      picker. Do not include the full staged-file list in this gate. On `yes`:
      execute the merge commit using

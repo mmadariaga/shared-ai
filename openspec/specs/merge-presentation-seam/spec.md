@@ -7,22 +7,27 @@ Defines the coordinator-owned presentation boundary for merge lifecycle output, 
 
 ### Requirement: Coordinator-owned merge presentation seam
 
-The merge coordinator MUST route every validated worker lifecycle result through a merge-local presentation seam that keeps worker source, merge presentation state, and mutation outcomes separate. The concise renderer MUST preserve worker-authored question text and option values, present the branch question as `¿Qué rama quieres mergear?` with date-bearing labels, and render detailed branch and authorization context in coordinator-owned summaries.
+The merge presentation seam SHALL retain invocation-scoped `target_sha`, `source_sha`, `merge_base`, and the ordered source-introduced ADR/DDR record inventory captured before the merge. It SHALL forward these values unchanged with the merge outcome and SHALL present skipped-frontier applicability without inventing collision work. It SHALL continue preserving worker-authored gate text, lifecycle state boundaries, and concise branch context.
 
 #### Scenario: Gate source remains exact
 
 - **WHEN** the worker returns a `needs_input` result for a merge gate
-- **THEN** the seam MUST present the worker's exact question and ordered options without changing answer values or continuation semantics
+- **THEN** the seam MUST present the worker's exact question and ordered options without changing answer values or continuation semantics.
 
 #### Scenario: Coordinator state records lifecycle boundaries
 
 - **WHEN** the coordinator reaches a named merge lifecycle boundary or records a coordinator-owned operation outcome
-- **THEN** the seam MUST update presentation state without adding that state to the invocation envelope or opaque answer history
+- **THEN** the seam MUST update presentation state without adding that state to the invocation envelope or opaque answer history.
 
 #### Scenario: Concise branch context is rendered
 
 - **WHEN** the worker returns the branch-selection result
-- **THEN** the coordinator presents the exact question and option values with the ordered candidate details in the adjacent decision summary
+- **THEN** the coordinator presents the exact question and option values with the ordered candidate details in the adjacent decision summary.
+
+#### Scenario: Provenance survives the merge handoff
+
+- **WHEN** the coordinator captures merge provenance before launching the selected source branch
+- **THEN** the presentation state and worker continuation SHALL carry the same provenance values through the final collision analysis.
 
 ### Requirement: contextual-analysis/decision presentation boundary
 
@@ -134,12 +139,17 @@ The merge presentation seam MUST NOT synthesize a worker progress plan or worker
 
 ### Requirement: Adaptive merge TODO uses canonical route transitions
 
-The coordinator MUST render only the canonical merge TODO items for the resolved route, in fixed order, and MUST remove impossible conflict items after a clean outcome. The TODO MUST remain rendering-only and MUST never authorize a merge, resolution, rename, staging operation, or commit.
+The coordinator MUST render collision TODO work only when the retained source frontier contains a final-state record and the worker reports an affected `repair-required` or `escalation-required` result. An empty frontier, skipped scan, or `no-collision` result SHALL remove collision work rather than leave it pending.
 
 #### Scenario: Clean merge removes impossible work
 
-- **WHEN** the merge completes without conflicts
-- **THEN** the TODO marks the merge item complete and omits scope, resolution, and verification items before presenting collision and authorization state
+- **WHEN** the merge completes without conflicts and the incremental collision route is not applicable
+- **THEN** the TODO marks the merge item complete and omits scope, resolution, verification, and collision items before presenting authorization state.
+
+#### Scenario: Empty frontier removes collision work
+
+- **WHEN** the source-introduced inventory has no record present in the final merge state
+- **THEN** the coordinator SHALL record `not-applicable` and omit the collision TODO before authorization.
 
 ### Requirement: Coordinator-owned conflict presentation channels
 
