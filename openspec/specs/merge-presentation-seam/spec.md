@@ -196,3 +196,17 @@ The seam SHALL return application or verification problems to contextual analysi
 
 - **WHEN** application or verification reports a new conflict or inconsistency
 - **THEN** the coordinator renders the refreshed state through ordinary text and does not repeat the language question
+
+### Requirement: Presentation state follows validated lifecycle boundaries
+
+The merge presentation seam SHALL update presentation state only after a validated lifecycle transition crosses its corresponding boundary.
+
+#### Scenario: Valid transition updates presentation state
+
+- **WHEN** lifecycle validation returns `valid` for the next merge phase
+- **THEN** the presentation state records the new phase and its coordinator-owned context
+
+#### Scenario: Invalid transition leaves presentation unchanged
+
+- **WHEN** lifecycle validation returns `invalid`
+- **THEN** the presentation seam produces no presentation state update

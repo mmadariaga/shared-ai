@@ -5,6 +5,8 @@
   Fetch @sai/policies/commit-rules.md and follow it at the commit gate.
   Fetch @sai/policies/remember.md
   Fetch @sai/policies/question-context.md
+  Fetch @sai/commands/merge/lifecycle.md and use it as the merge lifecycle
+  validation seam.
   Fetch @sai/commands/merge/presentation.md and use it as the merge
   presentation seam.
   Fetch @sai/adapters/claude/panel-render.md when the active harness is Claude
@@ -224,7 +226,19 @@
   After the worker returns each analysis, update the merge presentation state
   at the named lifecycle boundary, then execute the mutations in this order,
   each guarded by safe-operations. State updates are presentation-only and do
-  not move ownership of any operation:
+  not move ownership of any operation.
+
+  Before each operation, validate the lifecycle transition using the fetched
+  lifecycle seam. Call `validate_transition(current_state, target_state,
+  operation_context)` with the current phase, the phase the next operation
+  would enter, and the coordinator-owned context for that operation. The
+  validation is deterministic and coordinator-owned. When the result is
+  `invalid`, halt before selecting the operation: perform no mutation,
+  dispatch no worker, and render no presentation update for the rejected
+  transition. Report the current state, target state, and violated
+  precondition as ordinary conversation text. When the result is `valid`,
+  proceed to select and execute the operation. The validation does not change
+  worker ownership, mutation ownership, or the presentation seam.
 
   - **Merge launch** — after the worker returns the branch-selection completion
     and the user has selected a branch, capture the merge provenance before any

@@ -299,3 +299,26 @@ Merge fast-track SHALL select full resolution scope without presenting the scope
 
 - **WHEN** `--fast-track` is active for a conflicted merge
 - **THEN** only the scope gate is bypassed and the language and global strategy gates remain active
+
+### Requirement: The merge coordinator validates operation boundaries
+
+The merge coordinator SHALL call `validate_transition(current_state, target_state, operation_context)` before selecting each named merge operation and SHALL halt when validation returns `invalid`.
+
+#### Scenario: Invalid coordinator transition halts safely
+
+- **WHEN** lifecycle validation reports an invalid current state, target state, or precondition
+- **THEN** the coordinator reports the violation and performs no operation selection, worker dispatch, mutation, or presentation update
+
+#### Scenario: Valid coordinator transition proceeds
+
+- **WHEN** lifecycle validation reports `valid` for the requested operation context
+- **THEN** the coordinator selects and executes the operation
+
+### Requirement: Merge analysis and mutation ownership remain separated
+
+The merge coordinator MUST retain every mutation, staging, Git responsibility, and presentation-boundary update, while the merge worker remains responsible only for read-only analysis.
+
+#### Scenario: Worker analysis does not authorize invalid ordering
+
+- **WHEN** worker analysis or coordinator presentation state supplies context that does not satisfy the lifecycle precondition
+- **THEN** the coordinator rejects the transition without transferring mutation or lifecycle-policy authority to the worker

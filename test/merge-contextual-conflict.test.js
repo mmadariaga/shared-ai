@@ -329,3 +329,185 @@ test('merge region-scoped resolution: git-sourced outcomes, region replacements,
   assert.match(coordinator, /atomically/i);
   assert.match(coordinator, /leave every conflict untouched[\s\S]{0,50}do not[\s\S]{0,20}stage/i);
 });
+
+test('merge lifecycle validation seam defines executable boundary', () => {
+  const lifecycle = read('sai/commands/merge/lifecycle.md');
+  const coordinator = read('sai/commands/merge/coordinator.md');
+  const presentation = read('sai/commands/merge/presentation.md');
+
+  // Lifecycle seam defines the state machine
+  assert.match(lifecycle, /Lifecycle states/);
+  assert.match(lifecycle, /preflight/);
+  assert.match(lifecycle, /branch-selection/);
+  assert.match(lifecycle, /merge-outcome/);
+  assert.match(lifecycle, /language-selection/);
+  assert.match(lifecycle, /contextual-analysis/);
+  assert.match(lifecycle, /resolution/);
+  assert.match(lifecycle, /verification/);
+  assert.match(lifecycle, /adr-ddr/);
+  assert.match(lifecycle, /authorization/);
+  assert.match(lifecycle, /terminal/);
+
+  // Lifecycle seam defines the validation contract
+  assert.match(lifecycle, /Transition validation/);
+  assert.match(lifecycle, /validate_transition/);
+  assert.match(lifecycle, /current_state.*target_state.*operation_context/);
+  assert.match(lifecycle, /valid \| invalid/);
+
+  // Lifecycle seam defines integration points
+  assert.match(lifecycle, /Integration point/);
+  assert.match(lifecycle, /Before merge launch/);
+  assert.match(lifecycle, /Before conflict analysis/);
+  assert.match(lifecycle, /Before resolution writes/);
+  assert.match(lifecycle, /Before verification/);
+  assert.match(lifecycle, /Before commit authorization/);
+
+  // Lifecycle seam is neutral and deterministic
+  assert.match(lifecycle, /neutral/i);
+  assert.match(lifecycle, /deterministic enforcement/i);
+  assert.match(lifecycle, /allowed-transition table/i);
+
+  // Coordinator fetches and references the lifecycle seam
+  assert.match(coordinator, /Fetch @sai\/commands\/merge\/lifecycle\.md/);
+  assert.match(coordinator, /lifecycle[\s\S]{0,20}validation seam/);
+  assert.match(coordinator, /validate the lifecycle transition/);
+
+  // Presentation references the lifecycle seam
+  assert.match(presentation, /@sai\/commands\/merge\/lifecycle\.md/);
+  assert.match(presentation, /lifecycle[\s\S]{0,20}validation seam/);
+});
+
+test('merge lifecycle defines explicit allowed-transition table with preconditions', () => {
+  const lifecycle = read('sai/commands/merge/lifecycle.md');
+
+  // Allowed transitions table is present
+  assert.match(lifecycle, /Allowed transitions and preconditions/);
+  assert.match(lifecycle, /current_state[\s\S]{0,40}target_state[\s\S]{0,40}precondition/);
+
+  // Clean path transitions are defined
+  assert.match(lifecycle, /merge-outcome[\s\S]{0,40}adr-ddr[\s\S]{0,80}merge_outcome = clean/);
+  assert.match(lifecycle, /adr-ddr[\s\S]{0,40}authorization/);
+  assert.match(lifecycle, /authorization[\s\S]{0,40}terminal/);
+
+  // Conflicted path transitions are defined
+  assert.match(lifecycle, /merge-outcome[\s\S]{0,40}language-selection[\s\S]{0,80}merge_outcome = conflicted/);
+  assert.match(lifecycle, /language-selection[\s\S]{0,40}scope-selection/);
+  assert.match(lifecycle, /scope-selection[\s\S]{0,40}contextual-analysis/);
+  assert.match(lifecycle, /contextual-analysis[\s\S]{0,40}resolution/);
+  assert.match(lifecycle, /resolution[\s\S]{0,40}verification/);
+  assert.match(lifecycle, /verification[\s\S]{0,40}adr-ddr/);
+
+  // Preconditions are defined for each transition
+  assert.match(lifecycle, /environment checks complete/);
+  assert.match(lifecycle, /branch selected.*merge provenance captured/is);
+  assert.match(lifecycle, /working_language resolved/);
+  assert.match(lifecycle, /selected_scope.*non-empty/is);
+  assert.match(lifecycle, /strategy confirmed/);
+  assert.match(lifecycle, /verification_result.*passed.*cap-exhausted/is);
+  assert.match(lifecycle, /collision check complete or skipped/);
+  assert.match(lifecycle, /authorization_status.*resolved/is);
+
+  // Non-committing closure is defined
+  assert.match(lifecycle, /non-committing closure/i);
+  assert.match(lifecycle, /adr-ddr[\s\S]{0,40}terminal[\s\S]{0,120}authorization_status = cleared/is);
+});
+
+test('merge lifecycle rejects invalid transitions with no mutation', () => {
+  const lifecycle = read('sai/commands/merge/lifecycle.md');
+  const coordinator = read('sai/commands/merge/coordinator.md');
+
+  // Invalid transition reporting is defined
+  assert.match(lifecycle, /Invalid transitions/);
+  assert.match(lifecycle, /result: "invalid"/);
+  assert.match(lifecycle, /violated_precondition/);
+
+  // Coordinator halts on invalid
+  assert.match(coordinator, /invalid[\s\S]{0,200}halt before selecting the operation/i);
+  assert.match(coordinator, /invalid[\s\S]{0,200}no mutation/i);
+  assert.match(coordinator, /invalid[\s\S]{0,200}no presentation update/i);
+
+  // Lifecycle enforces no mutation on invalid
+  assert.match(lifecycle, /invalid[\s\S]{0,300}no mutation/i);
+  assert.match(lifecycle, /invalid[\s\S]{0,300}dispatch no worker/i);
+  assert.match(lifecycle, /invalid[\s\S]{0,300}no presentation update/i);
+});
+
+test('merge lifecycle clean path cannot enter conflict-only states', () => {
+  const lifecycle = read('sai/commands/merge/lifecycle.md');
+
+  // Clean path goes directly to adr-ddr
+  assert.match(lifecycle, /merge-outcome[\s\S]{0,40}adr-ddr[\s\S]{0,80}merge_outcome = clean/);
+
+  // Clean path skips conflict states
+  assert.match(lifecycle, /clean path skips every conflict-only state/i);
+  assert.match(lifecycle, /language-selection.*scope-selection.*contextual-analysis.*resolution.*verification/is);
+
+  // Conflicted path requires language-selection first
+  assert.match(lifecycle, /merge-outcome[\s\S]{0,40}language-selection[\s\S]{0,80}merge_outcome = conflicted/);
+  assert.match(lifecycle, /conflicted path MUST enter language-selection/i);
+});
+
+test('merge lifecycle fast-track bypasses only scope selection', () => {
+  const lifecycle = read('sai/commands/merge/lifecycle.md');
+  const coordinator = read('sai/commands/merge/coordinator.md');
+
+  // Fast-track can satisfy scope implicitly
+  assert.match(lifecycle, /fast_track_active may satisfy scope implicitly/i);
+  assert.match(lifecycle, /fast_track_active supplies full scope/i);
+
+  // Fast-track does not bypass language
+  assert.match(lifecycle, /language gate is never bypassed/i);
+  assert.match(coordinator, /Fast-track changes only the documented runtime scope gate/i);
+
+  // Other gates remain required
+  assert.match(lifecycle, /working_language resolved to a non-empty token/);
+  assert.match(lifecycle, /strategy confirmed/);
+  assert.match(lifecycle, /verification_result/);
+});
+
+test('merge lifecycle preserves neutrality and worker/mutation ownership', () => {
+  const lifecycle = read('sai/commands/merge/lifecycle.md');
+  const coordinator = read('sai/commands/merge/coordinator.md');
+  const presentation = read('sai/commands/merge/presentation.md');
+
+  // Lifecycle is neutral
+  assert.match(lifecycle, /neutral for Claude Code and opencode/i);
+  assert.match(lifecycle, /Both harnesses[\s\S]{0,20}use the same state definitions/);
+
+  // Validation is coordinator-owned
+  assert.match(lifecycle, /coordinator-owned/i);
+  assert.match(coordinator, /validation is deterministic and coordinator-owned/i);
+
+  // Worker ownership preserved
+  assert.match(lifecycle, /does not dispatch[\s\S]{0,40}worker/i);
+  assert.match(lifecycle, /Technical analysis remains the worker's[\s\S]{0,10}responsibility/i);
+
+  // Mutation ownership preserved
+  assert.match(lifecycle, /every mutation remains the coordinator's responsibility/i);
+  assert.match(coordinator, /does not change[\s\S]{0,40}worker ownership[\s\S]{0,40}mutation ownership/is);
+
+  // Presentation updates only after validated transitions
+  assert.match(presentation, /Presentation state updates occur[\s\S]{0,80}after a validated transition/i);
+  assert.match(presentation, /invalid[\s\S]{0,40}validation result produces no presentation update/i);
+});
+
+test('merge lifecycle precondition details cover all operation contexts', () => {
+  const lifecycle = read('sai/commands/merge/lifecycle.md');
+
+  // Each precondition is detailed
+  assert.match(lifecycle, /Precondition details/);
+
+  // Check for key precondition phrases
+  assert.match(lifecycle, /dirty-worktree gate has passed/);
+  assert.match(lifecycle, /target_sha.*source_sha.*merge_base/is);
+  assert.match(lifecycle, /clean path skips every conflict-only state/i);
+  assert.match(lifecycle, /conflicted path MUST enter language-selection/i);
+  assert.match(lifecycle, /working-language question has been answered/i);
+  assert.match(lifecycle, /scope value has been selected/i);
+  assert.match(lifecycle, /user has confirmed the current global strategy/i);
+  assert.match(lifecycle, /every validated resolution file has been written/i);
+  assert.match(lifecycle, /test suite has passed[\s\S]{0,50}three-round budget is exhausted/is);
+  assert.match(lifecycle, /collision scan has completed[\s\S]{0,50}legitimately[\s\S]{0,20}skipped/is);
+  assert.match(lifecycle, /authorization gate has been answered/i);
+  assert.match(lifecycle, /non-committing closure/i);
+});

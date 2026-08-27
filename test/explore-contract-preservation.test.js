@@ -52,6 +52,8 @@ const allowedDifferences = [
   '- **Index present**: run a read-only `Glob` for `.codegraph/*`',
   '3. **Translated surface**:',
   'Autonomy is scoped to supervised spec execution. This autonomy is scoped to selector-dispatched supervision only (the **Auto** option).',
+  '- **Fits one change AND friction does not fire**',
+  '- **Fits one change BUT friction fires**',
   // The selector rename and its delegated-write exception update the active
   // split contract while the pre-split contract remains the preservation baseline.
   '1. **No file writes',
