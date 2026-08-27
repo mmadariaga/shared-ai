@@ -229,11 +229,16 @@
   not move ownership of any operation.
 
   Before each operation, validate the lifecycle transition using the fetched
-  lifecycle seam. The validation is a coordinator-owned check that the
-  transition from the current state to the target state is permitted. The
-  current validation is a placeholder that preserves existing behavior; future
-  work can replace it with deterministic enforcement. The validation does not
-  change worker ownership, mutation ownership, or the presentation seam.
+  lifecycle seam. Call `validate_transition(current_state, target_state,
+  operation_context)` with the current phase, the phase the next operation
+  would enter, and the coordinator-owned context for that operation. The
+  validation is deterministic and coordinator-owned. When the result is
+  `invalid`, halt before selecting the operation: perform no mutation,
+  dispatch no worker, and render no presentation update for the rejected
+  transition. Report the current state, target state, and violated
+  precondition as ordinary conversation text. When the result is `valid`,
+  proceed to select and execute the operation. The validation does not change
+  worker ownership, mutation ownership, or the presentation seam.
 
   - **Merge launch** — after the worker returns the branch-selection completion
     and the user has selected a branch, capture the merge provenance before any

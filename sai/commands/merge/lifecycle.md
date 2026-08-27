@@ -71,7 +71,97 @@ Where:
 
 The validation returns `valid` when the transition is permitted and `invalid`
 when it is not. An invalid transition SHALL halt the operation and report the
-lifecycle violation without executing the operation.
+lifecycle violation — the current state, target state, and violated
+precondition — without executing or selecting the operation. No mutation,
+worker dispatch, or presentation update follows an `invalid` result.
+
+## Allowed transitions and preconditions
+
+The table below is the exhaustive set of permitted transitions. A transition
+not listed is `invalid`. Each row names the precondition that
+`operation_context` MUST satisfy; a missing or unsatisfied precondition is
+`invalid`.
+
+```text
+current_state         target_state           precondition
+─────────────────────────────────────────────────────────────────────
+preflight             branch-selection       environment checks complete
+branch-selection      merge-outcome          branch selected, merge provenance captured
+merge-outcome         adr-ddr                merge_outcome = clean
+merge-outcome         language-selection     merge_outcome = conflicted
+language-selection    scope-selection        working_language resolved to a non-empty token;
+                                             fast_track_active may satisfy scope implicitly
+scope-selection       contextual-analysis    selected_scope is a non-empty eligible scope
+                                             or fast_track_active supplies full scope
+contextual-analysis   resolution             strategy confirmed (strategy_status = confirmed),
+                                             complete resolution payload present and validated
+resolution            verification           resolution writes complete, files staged
+verification          adr-ddr                verification_result ∈ {passed, cap-exhausted}
+adr-ddr               authorization          collision check complete or skipped,
+                                             collision_applicability resolved
+authorization         terminal               authorization_status ∈ {committed, refused, cleared}
+adr-ddr               terminal               non-committing closure: authorization_status = cleared,
+                                             commit_executed = false
+```
+
+### Precondition details
+
+- **preflight → branch-selection**: `environment checks complete` — the
+  dirty-worktree gate has passed and the branch list is available. No merge
+  operation has started.
+- **branch-selection → merge-outcome**: `branch selected, merge provenance
+  captured` — a branch value is stored, and `target_sha`, `source_sha`,
+  `merge_base`, and `source_introduced_adr_ddr_records` are captured before
+  the merge launch.
+- **merge-outcome → adr-ddr**: `merge_outcome = clean` — the merge completed
+  without conflicts. The clean path skips every conflict-only state
+  (language-selection, scope-selection, contextual-analysis, resolution,
+  verification).
+- **merge-outcome → language-selection**: `merge_outcome = conflicted` — the
+  merge produced conflicts. The conflicted path MUST enter language-selection
+  before any conflict analysis.
+- **language-selection → scope-selection**: `working_language resolved` — the
+  working-language question has been answered with a non-empty language
+  token. Under fast-track, the scope item may be auto-selected, but the
+  language gate is never bypassed.
+- **scope-selection → contextual-analysis**: `selected_scope is non-empty` —
+  a scope value has been selected or fast-track has supplied the full scope.
+- **contextual-analysis → resolution**: `strategy confirmed, payload present`
+  — the user has confirmed the current global strategy
+  (`strategy_status = confirmed`) and the worker has returned a complete,
+  validated resolution payload. A `more-context` or `revise-strategy` answer
+  does not satisfy this precondition.
+- **resolution → verification**: `resolution writes complete, files staged` —
+  every validated resolution file has been written and staged.
+- **verification → adr-ddr**: `verification_result ∈ {passed, cap-exhausted}`
+  — the test suite has passed or the three-round budget is exhausted. A
+  `pending` or `failed` result with remaining budget does not satisfy this
+  precondition.
+- **adr-ddr → authorization**: `collision check complete or skipped` — the
+  incremental ADR/DDR collision scan has completed or been legitimately
+  skipped, and `collision_applicability` is resolved to a final value.
+- **authorization → terminal**: `authorization_status resolved` — the
+  authorization gate has been answered (`committed`, `refused`, or `cleared`).
+- **adr-ddr → terminal**: `non-committing closure` — the authorization step
+  is explicitly cleared without a commit (`authorization_status = cleared`,
+  `commit_executed = false`). This is the E5 non-committing terminal closure.
+
+### Invalid transitions
+
+Any transition not in the table above is `invalid`. The validator reports:
+
+```text
+{
+  result: "invalid",
+  current_state: <current>,
+  target_state: <target>,
+  violated_precondition: <description of the missing or unsatisfied condition>
+}
+```
+
+The coordinator SHALL halt before selecting the operation, perform no
+mutation, dispatch no worker, and render no presentation update for the
+rejected transition.
 
 ## Integration point
 
@@ -99,21 +189,22 @@ selecting the next operation. The validation is deterministic and controlled
 by coordinator code; the AI worker operates only as an analysis worker for
 conflicts, facts, inferences, and strategies.
 
-## Enabling refactor scope
+## Deterministic enforcement
 
-This seam is an enabling refactor that creates the executable boundary without
-implementing the full validation logic. The current integration is:
+The seam enforces lifecycle ordering deterministically. The integration is:
 
 - The state machine and transitions are defined.
 - The validation contract is specified.
 - The integration points are identified.
-- The validation function is a placeholder that returns `valid` for all
-  transitions (preserving existing behavior).
+- The allowed-transition table and precondition checks replace the previous
+  placeholder. Every transition is validated against the table before the
+  coordinator selects the next operation; invalid transitions halt without
+  executing the operation.
 
-Future work can replace the placeholder with deterministic validation logic
-that enforces ordering, checks preconditions, and rejects invalid transitions.
 The seam ensures that safety-critical ordering does not depend on model
-compliance alone.
+compliance alone. The coordinator invokes the validator at each integration
+point and halts on `invalid` without selecting the operation, performing any
+mutation, or updating presentation state for the rejected transition.
 
 ## Neutrality
 

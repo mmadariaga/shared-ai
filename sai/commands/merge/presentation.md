@@ -71,10 +71,12 @@ protocol or a reusable abstraction.
 ## Merge presentation state
 
 The lifecycle state machine and transition rules are defined in
-`@sai/commands/merge/lifecycle.md`. The presentation state below tracks the
+@sai/commands/merge/lifecycle.md. The presentation state below tracks the
 current phase and coordinator-owned context for each phase. The lifecycle
 validation seam integrates at the coordinator-owned operation boundaries and
-validates transitions before each operation.
+validates transitions before each operation. Presentation state updates occur
+only after a validated transition crosses the corresponding lifecycle
+boundary; an `invalid` validation result produces no presentation update.
 
 Initialize one state object for the invocation with these fields:
 
