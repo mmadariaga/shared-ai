@@ -35,28 +35,28 @@ const APPLY_ROLES = Object.freeze([
   }),
 ]);
 
-// Closed auto-fast role identities appended after the apply roles. The
-// implementer remains an explore-owned fast-lane worker; Auto-fast mutation
+// Closed direct-build role identities appended after the apply roles. The
+// implementer remains an explore-owned fast-lane worker; Direct-build mutation
 // execution is deliberately routed through the existing backfill and archive
 // phase workers rather than a third role.
-const AUTOFAST_ROLES = Object.freeze([
+const DIRECT_BUILD_ROLES = Object.freeze([
   Object.freeze({
-    phase: 'autofast-implement',
-    workerName: 'sai-autofast-implement-worker',
-    workerContract: 'sai/commands/explore/autofast-implement-worker.md',
-    bindingStem: 'autofast-implement',
+    phase: 'direct-build',
+    workerName: 'sai-direct-build-worker',
+    workerContract: 'sai/commands/explore/direct-build-worker.md',
+    bindingStem: 'direct-build',
     tier: 'budget',
   }),
 ]);
 
 const APPLY_PHASE = 'apply';
-const AUTOFAST_ROLE_BY_WORKER = Object.freeze(Object.fromEntries(
-  AUTOFAST_ROLES.map(role => [role.workerName, role]),
+const DIRECT_BUILD_ROLE_BY_WORKER = Object.freeze(Object.fromEntries(
+  DIRECT_BUILD_ROLES.map(role => [role.workerName, role]),
 ));
-const AUTOFAST_ROLE_BY_PHASE = Object.freeze(Object.fromEntries(
-  AUTOFAST_ROLES.map(role => [role.phase, role]),
+const DIRECT_BUILD_ROLE_BY_PHASE = Object.freeze(Object.fromEntries(
+  DIRECT_BUILD_ROLES.map(role => [role.phase, role]),
 ));
-const EXPECTED_ENTRY_COUNT = PHASE_ORDER.length + APPLY_ROLES.length + AUTOFAST_ROLES.length;
+const EXPECTED_ENTRY_COUNT = PHASE_ORDER.length + APPLY_ROLES.length + DIRECT_BUILD_ROLES.length;
 
 const REQUIRED_FIELDS = Object.freeze([
   'phase',
@@ -136,11 +136,11 @@ function assertOneStringInvocationEnvelope(entry, index) {
 function validateEntry(entry, index) {
   if (!entry || typeof entry !== 'object') throw new Error(`Worker Matrix entry ${index} must be an object`);
   assertOneStringInvocationEnvelope(entry, index);
-  const autoRole = AUTOFAST_ROLE_BY_PHASE[entry.phase];
+  const autoRole = DIRECT_BUILD_ROLE_BY_PHASE[entry.phase];
   if (entry.phase === APPLY_PHASE && APPLY_CONTRACT_BY_WORKER[entry.workerName] === undefined) {
     throw new Error(`Invalid Worker Matrix worker identity for ${entry.phase}: ${entry.workerName}`);
   }
-  if (autoRole && (!AUTOFAST_ROLE_BY_WORKER[entry.workerName] || AUTOFAST_ROLE_BY_WORKER[entry.workerName].phase !== entry.phase)) {
+  if (autoRole && (!DIRECT_BUILD_ROLE_BY_WORKER[entry.workerName] || DIRECT_BUILD_ROLE_BY_WORKER[entry.workerName].phase !== entry.phase)) {
     throw new Error(`Invalid Worker Matrix worker identity for ${entry.phase}: ${entry.workerName}`);
   }
   for (const field of REQUIRED_FIELDS) {
@@ -187,7 +187,7 @@ function defineWorkerMatrix(entries) {
   const seenPhases = new Set();
   const seenWorkers = new Set();
   let applySeen = 0;
-  let autofastSeen = 0;
+  let directBuildSeen = 0;
   entries.forEach((entry, index) => {
     validateEntry(entry, index);
     if (seenWorkers.has(entry.workerName)) {
@@ -205,15 +205,15 @@ function defineWorkerMatrix(entries) {
           `Worker Matrix apply role out of order; expected ${expected.workerName} before ${APPLY_ROLES[applySeen].workerName}`
         );
       }
-    } else if (AUTOFAST_ROLE_BY_PHASE[entry.phase]) {
-      autofastSeen += 1;
-      if (autofastSeen > AUTOFAST_ROLES.length) {
+    } else if (DIRECT_BUILD_ROLE_BY_PHASE[entry.phase]) {
+      directBuildSeen += 1;
+      if (directBuildSeen > DIRECT_BUILD_ROLES.length) {
         throw new Error(`Duplicate Worker Matrix phase: ${entry.phase}`);
       }
-      const expected = AUTOFAST_ROLES[autofastSeen - 1];
+      const expected = DIRECT_BUILD_ROLES[directBuildSeen - 1];
       if (entry.workerName !== expected.workerName) {
         throw new Error(
-          `Worker Matrix auto-fast role out of order; expected ${expected.workerName} before ${AUTOFAST_ROLES[autofastSeen].workerName}`
+          `Worker Matrix direct-build role out of order; expected ${expected.workerName} before ${DIRECT_BUILD_ROLES[directBuildSeen].workerName}`
         );
       }
     } else {
@@ -334,14 +334,14 @@ function assertWorkerIdentity(entry) {
     }
     return;
   }
-  const autoRole = AUTOFAST_ROLE_BY_WORKER[entry.workerName];
+  const autoRole = DIRECT_BUILD_ROLE_BY_WORKER[entry.workerName];
   if (autoRole) {
     if (entry.phase !== autoRole.phase) {
-      throw new Error(`Auto-fast worker ${entry.workerName} must declare its role phase ${autoRole.phase}; found ${entry.phase}`);
+      throw new Error(`Direct-build worker ${entry.workerName} must declare its role phase ${autoRole.phase}; found ${entry.phase}`);
     }
     if (entry.workerContract !== autoRole.workerContract) {
       throw new Error(
-        `Auto-fast worker ${entry.workerName} must pin its explore-owned contract ${autoRole.workerContract}; found ${entry.workerContract}`
+        `Direct-build worker ${entry.workerName} must pin its explore-owned contract ${autoRole.workerContract}; found ${entry.workerContract}`
       );
     }
     return;
@@ -360,7 +360,7 @@ function assertWorkerIdentity(entry) {
 module.exports = {
   PHASE_ORDER,
   APPLY_ROLES,
-  AUTOFAST_ROLES,
+  DIRECT_BUILD_ROLES,
   defineWorkerMatrix,
   renderWorkerTemplate,
   materializeWorkerMatrix,

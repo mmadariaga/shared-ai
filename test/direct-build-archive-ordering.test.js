@@ -22,15 +22,15 @@ function readExploreContract() {
     'sai/commands/explore/steps/crystallization-language-gates.md',
     'sai/commands/explore/steps/review-loop.md',
     'sai/commands/explore/steps/pipeline-selector.md',
-    'sai/commands/explore/steps/pipeline-auto-supervised.md',
-    'sai/commands/explore/steps/pipeline-auto-fast.md',
+    'sai/commands/explore/steps/pipeline-plan-unattended.md',
+    'sai/commands/explore/steps/pipeline-direct-build.md',
     'sai/commands/explore/steps/idea-list.md',
   ];
   return exploreSources.map(relativePath => read(relativePath)).join('\n');
 }
 
 test('the old pre-flight-before-materialization order reproduces the missing-directory failure', () => {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-autofast-'));
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-direct-build-'));
   const changeDir = path.join(root, 'openspec', 'changes', 'clarify-apply-coordinator-contract');
 
   assert.equal(fs.existsSync(changeDir), false);
@@ -47,10 +47,10 @@ test('backfill execution completes writes before archive preparation and archive
   const archive = read('sai/commands/archive/worker.md');
   const explore = readExploreContract();
 
-  const backfillPrepare = backfill.indexOf('--autofast-prepare');
-  const backfillExecute = backfill.indexOf('--autofast-execute');
-  const archivePrepare = archive.indexOf('--autofast-prepare');
-  const archiveExecute = archive.indexOf('--autofast-execute');
+  const backfillPrepare = backfill.indexOf('--direct-build-prepare');
+  const backfillExecute = backfill.indexOf('--direct-build-execute');
+  const archivePrepare = archive.indexOf('--direct-build-prepare');
+  const archiveExecute = archive.indexOf('--direct-build-execute');
   assert.ok(backfillPrepare >= 0 && backfillPrepare < backfillExecute,
     'backfill preparation must precede its explicit execution continuation');
   assert.ok(archivePrepare >= 0 && archivePrepare < archiveExecute,
@@ -69,9 +69,9 @@ test('backfill execution completes writes before archive preparation and archive
   assert.match(explore, /8\. \*\*Archive execution and pre-authorized commit\*\*[\s\S]*?SAME `sai-archive-worker`/);
 });
 
-test('auto-fast archive staging omits ignored untracked paths but stages mixed eligible paths', () => {
+test('direct-build archive staging omits ignored untracked paths but stages mixed eligible paths', () => {
   const archive = read('sai/commands/archive/worker.md');
-  const execution = archive.slice(archive.indexOf('## Build (unattended) execution continuation'));
+  const execution = archive.slice(archive.indexOf('## Direct Build (unattended) execution continuation'));
   const stagingStart = execution.indexOf('3. Classify every supplied approved path before staging');
   const commitStart = execution.indexOf('4. Commit only when at least one eligible approved path remains');
   assert.ok(stagingStart >= 0 && stagingStart < commitStart,
@@ -88,9 +88,9 @@ test('auto-fast archive staging omits ignored untracked paths but stages mixed e
   assert.match(staging, /Never use\s+`git add -A`,\s+`git add \.`,\s+`git add -f`/);
 });
 
-test('auto-fast archive execution keeps the empty-index no-commit result when all paths are ignored', () => {
+test('direct-build archive execution keeps the empty-index no-commit result when all paths are ignored', () => {
   const archive = read('sai/commands/archive/worker.md');
-  const execution = archive.slice(archive.indexOf('## Build (unattended) execution continuation'));
+  const execution = archive.slice(archive.indexOf('## Direct Build (unattended) execution continuation'));
   const commitStart = execution.indexOf('4. Commit only when at least one eligible approved path remains');
   const commit = execution.slice(commitStart, execution.indexOf('\n\nThe worker records each realized path', commitStart));
 
@@ -101,7 +101,7 @@ test('auto-fast archive execution keeps the empty-index no-commit result when al
   assert.match(commit, /do not author a message or create a commit/);
 });
 
-test('the auto-fast backfill execution and archive preparation blocks appear exactly once', () => {
+test('the direct-build backfill execution and archive preparation blocks appear exactly once', () => {
   const explore = readExploreContract();
   assert.equal((explore.match(/\*\*Backfill execution\*\*/g) || []).length, 1);
   assert.equal((explore.match(/\*\*Archive preparation\*\*/g) || []).length, 1);
@@ -115,13 +115,13 @@ test('Claude Code and opencode retain the same implementer projection without a 
   const backfill = parsedManifest['worker-matrix'].entries
     .find(entry => entry.workerName === 'sai-backfill-worker');
 
-  assert.match(matrix, /phase: 'autofast-implement'[\s\S]{0,220}workerContract: 'sai\/commands\/explore\/autofast-implement-worker\.md'/);
-  assert.match(manifest, /autofast-implement/);
+  assert.match(matrix, /phase: 'direct-build'[\s\S]{0,220}workerContract: 'sai\/commands\/explore\/direct-build-worker\.md'/);
+  assert.match(manifest, /direct-build/);
   assert.ok(backfill.helperPermissions.includes('Write'),
     'backfill must expose Write in its managed helper permissions');
   assert.match(backfill.claudeAgent.tools, /\bWrite\b/,
     'Claude backfill agent tools must include Write');
-  assert.doesNotMatch(matrix, /autofast-hands/);
-  assert.doesNotMatch(manifest, /autofast-hands/);
-  assert.equal(fs.existsSync(path.join(repoRoot, 'sai/commands/explore/autofast-hands-worker.md')), false);
+  assert.doesNotMatch(matrix, /direct-build-hands/);
+  assert.doesNotMatch(manifest, /direct-build-hands/);
+  assert.equal(fs.existsSync(path.join(repoRoot, 'sai/commands/explore/direct-build-hands-worker.md')), false);
 });

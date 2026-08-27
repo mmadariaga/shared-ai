@@ -473,7 +473,7 @@ test('worker-count parity: every harness projects exactly fourteen matrix bindin
     'sai-8-accessibility-worker',
     'sai-commit-worker',
     'sai-archive-worker',
-    'sai-autofast-implement-worker',
+    'sai-direct-build-worker',
     'sai-backfill-worker',
     'sai-merge-worker',
     'sai-4-red-worker',

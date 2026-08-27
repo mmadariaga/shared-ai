@@ -40,7 +40,7 @@ const allowedDifferences = [
   '**Fast-track**: when `--fast-track` is absent',
   '- `overview_language`: the selected language token for the active supervised',
   '- **Auto** — Unattended alternative to Manual mode. Same steps, same order.',
-  '- **Deterministic selection inheritance**: On an **Auto (fast implementation)** selection',
+  '- **Deterministic selection inheritance**: On a **Direct Build - Unattended** selection',
   '1. **No file writes**: Explore has no direct write tool',
   '10. **Supervised sai-1/sai-2 pipeline (crystallization-close selector, sai-explore only)**:',
   'Selecting **Auto** delegates supervised `sai-1` + `sai-2` execution to this session',
@@ -62,7 +62,7 @@ const allowedDifferences = [
   '- **Explore item-10 bounded Diagnosis Round',
   '**Crystallization-close selector',
   '- **Auto** —',
-  '- **Auto (fast implementation)** —',
+  '- **Direct Build - Unattended** —',
   '- **Manual** —',
   'Selecting **Auto**',
   'The routed design worker',
@@ -81,15 +81,35 @@ const allowedDifferences = [
   'If the design worker returns',
   'The supervised pipeline never dispatches',
   'The design-worker diagnosis-eligible retry ending',
+  '**Direct Build - Unattended supervision contract**',
+  '**Direct Build (unattended) supervision contract**',
   '**Auto (fast implementation) supervision contract**',
+  '**Build (unattended) supervision contract**',
+  '- **Auto (fast implementation)**',
+  '- **Build - Unattended**',
+  '- **Build (unattended)**',
   '- **Deterministic selection inheritance**',
+  '- **Run state** (conversation-only, never persisted)',
+  '1. **Implement** — capture `base_sha`',
   '3. **Sibling backfill preparation**',
   '5. **ADR/DDR pass**',
+  '6. **Backfill execution**',
+  '7. **Archive preparation**',
+  '8. **Archive execution and pre-authorized commit**',
   '3. Recompute `pending_slices`',
   '- For an `Auto` or `Auto (fast implementation)` continuation choice',
-  '- For an **Auto** or **Auto (fast implementation)** continuation choice',
+  '- For an `Auto` or `Direct Build - Unattended` continuation choice',
+  '- For a `Plan - Unattended` or `Direct Build - Unattended` continuation choice',
+  '- For a `Plan (unattended)` or `Direct Build (unattended)` continuation choice',
+  '- For an **Auto** or **Direct Build - Unattended** continuation choice',
+  '- For a **Plan - Unattended** or **Direct Build - Unattended** continuation choice',
+  '- For a **Plan (unattended)** or **Direct Build (unattended)** continuation choice',
   '**Implementation details stage (stage 3).',
   '- **Pre-dispatch compatibility refusal',
+  'pipeline-auto-fast.md',
+  'pipeline-auto-supervised.md',
+  'sai-autofast-implement-worker',
+  '--autofast',
 ];
 
 function readPreSplitContract() {
@@ -152,7 +172,7 @@ test('contract preservation: all pre-split lines appear in split files', () => {
   const currentLines = currentContent.split('\n');
 
   // Build a set of normalized lines from current files for fast lookup
-  // Allow duplicates (per E2: some lines appear twice in pipeline-auto-fast.md)
+  // Allow duplicates (per E2: some lines appear twice in pipeline-direct-build.md)
   const currentLineNormalized = new Set();
   const currentLineNormalizedMulti = new Map(); // Track count for duplicates
 
@@ -216,8 +236,8 @@ test('contract preservation: all reachable step files exist and are mentioned', 
     'crystallization-language-gates.md',
     'crystallization-protocol.md',
     'idea-list.md',
-    'pipeline-auto-fast.md',
-    'pipeline-auto-supervised.md',
+    'pipeline-direct-build.md',
+    'pipeline-plan-unattended.md',
     'pipeline-selector.md',
     'review-loop.md',
     'slicing-assessment.md'
@@ -241,9 +261,9 @@ test('contract preservation: selector uses fixed English titles with localized d
   );
 
   assert.match(selector, /\*\*Plan - Unattended\*\*/);
-  assert.match(selector, /\*\*Build - Unattended\*\*/);
+  assert.match(selector, /\*\*Direct Build - Unattended\*\*/);
   assert.match(selector, /\*\*Manual\*\*/);
-  assert.match(selector, /question text and each option description[\s\S]{0,160}fixed option titles remain exactly `Plan - Unattended`, `Build - Unattended`, and `Manual`/i);
-  assert.match(languageGate, /question text and all three option descriptions render in the user's language[\s\S]{0,140}option titles remain the fixed English literals `Plan - Unattended`, `Build - Unattended`, and `Manual`/i);
-  assert.match(questionContext, /Crystallization-close selector[\s\S]{0,120}`Plan - Unattended`[\s\S]{0,80}`Build - Unattended`[\s\S]{0,40}`Manual`/i);
+  assert.match(selector, /question text and each option description[\s\S]{0,160}fixed option titles remain exactly `Plan - Unattended`, `Direct Build - Unattended`, and `Manual`/i);
+  assert.match(languageGate, /question text and all three option descriptions render in the user's language[\s\S]{0,140}option titles remain the fixed English literals `Plan - Unattended`, `Direct Build - Unattended`, and `Manual`/i);
+  assert.match(questionContext, /Crystallization-close selector[\s\S]{0,120}`Plan - Unattended`[\s\S]{0,80}`Direct Build - Unattended`[\s\S]{0,40}`Manual`/i);
 });

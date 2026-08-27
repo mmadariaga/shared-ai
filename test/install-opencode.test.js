@@ -1,4 +1,4 @@
-﻿'use strict';
+'use strict';
 
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
@@ -52,7 +52,7 @@ const UTILITY_CARD_CONTENTS = {
   archive: ['archive-commit-gate.instructions.md', 'command-bootstrap.md', 'coordinator.md', 'instructions.md', 'worker.md'],
   backfill: ['command-bootstrap.md', 'coordinator.md', 'instructions.md', 'worker.md'],
   commit: ['command-bootstrap.md', 'coordinator.md', 'instructions.md', 'worker.md'],
-  explore: ['autofast-implement-worker.md', 'body.md', 'command-bootstrap.md', 'instructions.md', 'steps'],
+  explore: ['body.md', 'command-bootstrap.md', 'direct-build-worker.md', 'instructions.md', 'steps'],
   pr: ['body.md', 'command-bootstrap.md', 'instructions.md', 'pr-body.template.md'],
   'retire-docs': ['body.md', 'command-bootstrap.md'],
   status: ['body.md', 'command-bootstrap.md'],
@@ -1269,7 +1269,7 @@ test('Step 1 Claude agent rows remain byte-preserving without ownership sidecars
 
 test('Step 3 binding roster validation yields exactly the fourteen managed workers', () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-roster-'));
-  const WORKERS = [...CURRENT_CENSUS, 'sai-4-red-worker', 'sai-4-green-worker', 'sai-autofast-implement-worker'];
+  const WORKERS = [...CURRENT_CENSUS, 'sai-4-red-worker', 'sai-4-green-worker', 'sai-direct-build-worker'];
   try {
     installOpencode(tmpDir);
     const bindingsDir = path.join(tmpDir, 'sai', 'orchestration', 'workers', 'bindings');
@@ -1286,7 +1286,7 @@ test('Step 3 binding roster validation yields exactly the fourteen managed worke
 
 test('Step 3 binding files declare exactly the fourteen initial worker dispatches', () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-bindings-scan-'));
-  const WORKERS = [...CURRENT_CENSUS, 'sai-4-red-worker', 'sai-4-green-worker', 'sai-autofast-implement-worker'];
+  const WORKERS = [...CURRENT_CENSUS, 'sai-4-red-worker', 'sai-4-green-worker', 'sai-direct-build-worker'];
   try {
     installOpencode(tmpDir);
     const bindingsDir = path.join(tmpDir, 'sai', 'orchestration', 'workers', 'bindings');
@@ -1309,7 +1309,7 @@ test('Step 3 binding files declare exactly the fourteen initial worker dispatche
 
 test('Step 3 roster validation admits dispatch-less render bindings alongside worker bindings', () => {
   const fixtureDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-render-binding-'));
-  const WORKERS = [...CURRENT_CENSUS, 'sai-4-red-worker', 'sai-4-green-worker', 'sai-autofast-implement-worker'];
+  const WORKERS = [...CURRENT_CENSUS, 'sai-4-red-worker', 'sai-4-green-worker', 'sai-direct-build-worker'];
   try {
     const installDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-opencode-render-install-'));
     try {

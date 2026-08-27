@@ -158,7 +158,7 @@ const MANAGED_WORKER_ORDER = Object.freeze([
   'sai-merge-worker',
   'sai-4-red-worker',
   'sai-4-green-worker',
-  'sai-autofast-implement-worker',
+  'sai-direct-build-worker',
 ]);
 
 function matrixRenderings(harness) {

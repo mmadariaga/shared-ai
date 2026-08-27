@@ -26,7 +26,7 @@ const WORKER_NAMES = [
 const APPLY_WORKER_NAMES = ['sai-4-red-worker', 'sai-4-green-worker'];
 
 const ALL_WORKER_NAMES = [...WORKER_NAMES, ...APPLY_WORKER_NAMES,
-  'sai-autofast-implement-worker'];
+  'sai-direct-build-worker'];
 
 const CLAUDE_GENERIC_AGENTS = ['budget-explorer', 'budget-executor', 'budget-subagent'];
 

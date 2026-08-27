@@ -66,7 +66,7 @@ const UTILITY_CARD_CONTENTS = {
   archive: ['archive-commit-gate.instructions.md', 'command-bootstrap.md', 'coordinator.md', 'instructions.md', 'worker.md'],
   backfill: ['command-bootstrap.md', 'coordinator.md', 'instructions.md', 'worker.md'],
   commit: ['command-bootstrap.md', 'coordinator.md', 'instructions.md', 'worker.md'],
-  explore: ['autofast-implement-worker.md', 'body.md', 'command-bootstrap.md', 'instructions.md', 'steps'],
+  explore: ['body.md', 'command-bootstrap.md', 'direct-build-worker.md', 'instructions.md', 'steps'],
   pr: ['body.md', 'command-bootstrap.md', 'instructions.md', 'pr-body.template.md'],
   'retire-docs': ['body.md', 'command-bootstrap.md'],
   status: ['body.md', 'command-bootstrap.md'],
@@ -159,7 +159,7 @@ test('managed worker registry defines every Claude compatibility export', () => 
     'sai-merge-worker',
     'sai-4-red-worker',
     'sai-4-green-worker',
-    'sai-autofast-implement-worker',
+    'sai-direct-build-worker',
   ];
   assert.deepEqual(Object.keys(MANAGED_WORKERS), expectedNames,
     'registry keys should contain each managed worker exactly once');
@@ -204,8 +204,8 @@ test('managed worker registry defines every Claude compatibility export', () => 
     'sai-4-green-worker': {
       agent: 'sai-4-green-worker.md',
     },
-    'sai-autofast-implement-worker': {
-      agent: 'sai-autofast-implement-worker.md',
+    'sai-direct-build-worker': {
+      agent: 'sai-direct-build-worker.md',
     },
   };
 
@@ -756,8 +756,8 @@ test('Claude installer consumes exactly the fourteen matrix worker bindings and 
       'Claude should still project every routed worker agent');
     assert.ok(['sai-4-red-worker', 'sai-4-green-worker'].every(name => agentNames.includes(name)),
       'Claude should project the RED and GREEN apply worker agents');
-    assert.ok(['sai-autofast-implement-worker'].every(name => agentNames.includes(name)),
-      'Claude should project the auto-fast implement worker agent');
+    assert.ok(['sai-direct-build-worker'].every(name => agentNames.includes(name)),
+      'Claude should project the direct-build implement worker agent');
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }

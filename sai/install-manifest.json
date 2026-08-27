@@ -339,13 +339,13 @@
         "noticeContinuation": "",
         "claudeAgent": {
           "agentName": "sai-archive-worker",
-          "description": "Owns the archive pre-flight and gate authoring phase plus explicitly authorized Auto-fast sync, move, staging, and commit execution, and returns structured lifecycle metadata.",
+          "description": "Owns the archive pre-flight and gate authoring phase plus explicitly authorized Direct-build sync, move, staging, and commit execution, and returns structured lifecycle metadata.",
           "model": "haiku",
           "effort": "low",
           "tools": "Read, Glob, Grep, Bash, Skill, SendMessage"
         },
         "opencodeAgent": {
-          "description": "Owns the archive pre-flight and gate authoring phase plus explicitly authorized Auto-fast sync, move, staging, and commit execution, and returns structured lifecycle metadata.",
+          "description": "Owns the archive pre-flight and gate authoring phase plus explicitly authorized Direct-build sync, move, staging, and commit execution, and returns structured lifecycle metadata.",
           "model": "opencode-go/deepseek-v4-flash",
           "variantLine": "variant: default",
           "permissionBlock": "    budget: allow\n    explore: allow"
@@ -374,13 +374,13 @@
         "noticeContinuation": "",
         "claudeAgent": {
           "agentName": "sai-backfill-worker",
-          "description": "Owns the backfill inspection, interviewing, draft-composition, and explicitly authorized Auto-fast draft execution phase and returns structured lifecycle metadata.",
+          "description": "Owns the backfill inspection, interviewing, draft-composition, and explicitly authorized Direct-build draft execution phase and returns structured lifecycle metadata.",
           "model": "haiku",
           "effort": "low",
           "tools": "Read, Glob, Grep, Bash, Write, Skill, SendMessage"
         },
         "opencodeAgent": {
-          "description": "Owns the backfill inspection, interviewing, draft-composition, and explicitly authorized Auto-fast draft execution phase and returns structured lifecycle metadata.",
+          "description": "Owns the backfill inspection, interviewing, draft-composition, and explicitly authorized Direct-build draft execution phase and returns structured lifecycle metadata.",
           "model": "opencode-go/deepseek-v4-flash",
           "variantLine": "variant: default",
           "permissionBlock": "    budget: allow\n    explore: allow"
@@ -489,14 +489,14 @@
         }
       },
       {
-        "phase": "autofast-implement",
-        "workerName": "sai-autofast-implement-worker",
-        "workerContract": "sai/commands/explore/autofast-implement-worker.md",
-        "bindingStem": "autofast-implement",
+        "phase": "direct-build",
+        "workerName": "sai-direct-build-worker",
+        "workerContract": "sai/commands/explore/direct-build-worker.md",
+        "bindingStem": "direct-build",
         "tier": "budget",
         "dispatchPrimitive": "task",
-        "initialDispatch": "dispatch sai-autofast-implement-worker",
-        "continuationLiteral": "continue sai-autofast-implement-worker",
+        "initialDispatch": "dispatch sai-direct-build-worker",
+        "continuationLiteral": "continue sai-direct-build-worker",
         "replacementFields": [
           "model",
           "effort"
@@ -510,18 +510,18 @@
           "Write",
           "Skill"
         ],
-        "progressDeclaration": "none — auto-fast supervision declares no progress_plan",
+        "progressDeclaration": "none — direct-build supervision declares no progress_plan",
         "overviewGeneration": "",
         "noticeContinuation": "",
         "claudeAgent": {
-          "agentName": "sai-autofast-implement-worker",
-          "description": "Owns the block-driven direct implementation phase of explore's Build (unattended) option and returns structured lifecycle metadata.",
+          "agentName": "sai-direct-build-worker",
+          "description": "Owns the block-driven direct implementation phase of explore's Direct Build (unattended) option and returns structured lifecycle metadata.",
           "model": "haiku",
           "effort": "low",
           "tools": "Read, Glob, Grep, Bash, Edit, Write, Skill, SendMessage"
         },
         "opencodeAgent": {
-          "description": "Owns the block-driven direct implementation phase of explore's Build (unattended) option and returns structured lifecycle metadata.",
+          "description": "Owns the block-driven direct implementation phase of explore's Direct Build (unattended) option and returns structured lifecycle metadata.",
           "model": "opencode-go/qwen3.7-plus",
           "variantLine": "",
           "permissionBlock": "    budget: allow\n    explore: allow"
@@ -1357,11 +1357,11 @@
       }
     },
     {
-      "id": "claude-sai-autofast-implement-worker",
+      "id": "claude-sai-direct-build-worker",
       "source": "agents/claude/worker-template.md",
       "destination": {
         "class": "agents",
-        "path": "sai-autofast-implement-worker.md"
+        "path": "sai-direct-build-worker.md"
       },
       "harnesses": [
         "claude"
@@ -1372,15 +1372,15 @@
       "drift": "content",
       "matrix": {
         "kind": "agent",
-        "phase": "autofast-implement"
+        "phase": "direct-build"
       }
     },
     {
-      "id": "opencode-sai-autofast-implement-worker",
+      "id": "opencode-sai-direct-build-worker",
       "source": "agents/opencode/worker-template.md",
       "destination": {
         "class": "agents",
-        "path": "sai-autofast-implement-worker.md"
+        "path": "sai-direct-build-worker.md"
       },
       "harnesses": [
         "opencode"
@@ -1391,7 +1391,7 @@
       "drift": "content",
       "matrix": {
         "kind": "agent",
-        "phase": "autofast-implement"
+        "phase": "direct-build"
       }
     },
     {
@@ -3108,6 +3108,106 @@
       ],
       "managedHashes": [
         "591f36d59db2dafe328ab99288dbea26d9700fe2bc488d17d3faa9acbf5ecccc"
+      ]
+    },
+    {
+      "id": "retired-explore-pipeline-auto-fast",
+      "destination": {
+        "class": "sai",
+        "path": "commands/explore/steps/pipeline-auto-fast.md"
+      },
+      "harnesses": [
+        "claude",
+        "opencode"
+      ],
+      "managedHashes": [
+        "882c67fedfb0f9cc7064a124dd19f04091d60b338d4bfef1aaf5f297317209ba"
+      ]
+    },
+    {
+      "id": "retired-explore-pipeline-auto-supervised",
+      "destination": {
+        "class": "sai",
+        "path": "commands/explore/steps/pipeline-auto-supervised.md"
+      },
+      "harnesses": [
+        "claude",
+        "opencode"
+      ],
+      "managedHashes": [
+        "825429a7836c69e58d9ea769b95bd525b90c553b9dcee25590d71a4fede9fa90"
+      ]
+    },
+    {
+      "id": "retired-explore-autofast-implement-worker-contract",
+      "destination": {
+        "class": "sai",
+        "path": "commands/explore/autofast-implement-worker.md"
+      },
+      "harnesses": [
+        "claude",
+        "opencode"
+      ],
+      "managedHashes": [
+        "cd7c467acf6be15693088fa1dce73edb39fbca4b59c88f264b6080afdf8ecdef"
+      ]
+    },
+    {
+      "id": "retired-claude-autofast-implement-worker-binding",
+      "destination": {
+        "class": "sai",
+        "path": "orchestration/workers/bindings/autofast-implement-worker.md"
+      },
+      "harnesses": [
+        "claude"
+      ],
+      "managedHashes": [
+        "4ee63dca06dde2fa871e072934ccd2e6768b1ef2565f7bcd2ddc2c93fd562843",
+        "e4b2bd5ae47685d3cf994aad14477f63f31224bb5ab51ac2d3440ed2fccb4c44",
+        "9d8032b2f325a75988405b18fe4e728b449fd92fc50138dc1781cd8f2feaf473",
+        "8cd15b22fb49b19552e644b30aee6ecc52853532f14f9bf25af16f26717031b5"
+      ]
+    },
+    {
+      "id": "retired-opencode-autofast-implement-worker-binding",
+      "destination": {
+        "class": "sai",
+        "path": "orchestration/workers/bindings/autofast-implement-worker.md"
+      },
+      "harnesses": [
+        "opencode"
+      ],
+      "managedHashes": [
+        "1a80784f575b1ede800181943138889c26512fd1365fdbb00711a97975460917",
+        "f40546aee8d830289a72f15018112e4a754f82cb3199d7b55d398d6d57cf3231",
+        "809d01587fcd6e03f0e2c4d5cf5efd20921671bb6e42ebb8fb82a7c25b71fcbc",
+        "27357a4b26d23f398f2960b0ffe430b7fdc3a638151c5590618db472be785d0e"
+      ]
+    },
+    {
+      "id": "retired-claude-sai-autofast-implement-worker-agent",
+      "destination": {
+        "class": "agents",
+        "path": "sai-autofast-implement-worker.md"
+      },
+      "harnesses": [
+        "claude"
+      ],
+      "managedHashes": [
+        "cda87b9d31880edf770406e24be4deaf3329a78380831c6b8d93c78d63fcbef5"
+      ]
+    },
+    {
+      "id": "retired-opencode-sai-autofast-implement-worker-agent",
+      "destination": {
+        "class": "agents",
+        "path": "sai-autofast-implement-worker.md"
+      },
+      "harnesses": [
+        "opencode"
+      ],
+      "managedHashes": [
+        "3a05ab1a067bf80195726d7d3004343a8b63828b830dacd07ba68702922869cd"
       ]
     }
   ]

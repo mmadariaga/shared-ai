@@ -155,12 +155,12 @@ test('computePlanEntry classifies claude-managed-agent entries by body-and-non-t
   }
 });
 
-test('retirement destinations have hash-guarded plans for all 14 former worker bindings', () => {
+test('retirement destinations have hash-guarded plans for all former worker bindings', () => {
   const manifest = loadInstallManifest(path.join(__dirname, '..'));
   const retirements = manifest.retirements.filter(retirement =>
     retirement.id.includes('worker-binding'));
-  assert.equal(retirements.length, 14);
-  assert.equal(new Set(retirements.map(retirement => retirement.destination.path)).size, 14);
+  assert.equal(retirements.length, 16);
+  assert.equal(new Set(retirements.map(retirement => retirement.destination.path)).size, 15);
 
   for (const retirement of retirements) {
     const managed = `managed ${retirement.id}`;

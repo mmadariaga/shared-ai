@@ -16,7 +16,7 @@ const STRATEGIES = Object.freeze([
 ]);
 const SUPPORTED_HARNESSES = new Set(['claude', 'opencode']);
 const SHA256 = /^[0-9a-f]{64}$/;
-const RETIREMENT_DESTINATION_CLASSES = new Set(['sai', 'skills']);
+const RETIREMENT_DESTINATION_CLASSES = new Set(['sai', 'skills', 'agents']);
 const MATRIX_TEMPLATE_NAMES = Object.freeze([
   'claudeBinding',
   'opencodeBinding',
@@ -162,8 +162,8 @@ const APPLY_CONTRACT_BY_WORKER = Object.freeze({
   'sai-4-green-worker': 'sai/commands/apply/green-worker.md',
 });
 
-const AUTOFAST_CONTRACT_BY_WORKER = Object.freeze({
-  'sai-autofast-implement-worker': 'sai/commands/explore/autofast-implement-worker.md',
+const DIRECT_BUILD_CONTRACT_BY_WORKER = Object.freeze({
+  'sai-direct-build-worker': 'sai/commands/explore/direct-build-worker.md',
 });
 
 function assertWorkerIdentity(entry, harness) {
@@ -178,10 +178,10 @@ function assertWorkerIdentity(entry, harness) {
     }
     return;
   }
-  if (Object.prototype.hasOwnProperty.call(AUTOFAST_CONTRACT_BY_WORKER, entry.workerName)) {
-    const expectedContract = AUTOFAST_CONTRACT_BY_WORKER[entry.workerName];
+  if (Object.prototype.hasOwnProperty.call(DIRECT_BUILD_CONTRACT_BY_WORKER, entry.workerName)) {
+    const expectedContract = DIRECT_BUILD_CONTRACT_BY_WORKER[entry.workerName];
     if (entry.workerContract !== expectedContract) {
-      throw new Error(`${prefix}auto-fast worker ${entry.workerName} has mismatched worker contract ${entry.workerContract}`);
+      throw new Error(`${prefix}direct-build worker ${entry.workerName} has mismatched worker contract ${entry.workerContract}`);
     }
     return;
   }

@@ -444,7 +444,7 @@ test('Step 2: the canonical plan is shared by standalone and supervised consumer
   const contract = artifact(SPEC_COORDINATOR_ARTIFACTS.phaseContract);
   const coordinator = artifact(SPEC_COORDINATOR_ARTIFACTS.coordinator);
   const worker = artifact(SPEC_COORDINATOR_ARTIFACTS.worker);
-  const explore = artifact('sai/commands/explore/steps/pipeline-auto-supervised.md');
+  const explore = artifact('sai/commands/explore/steps/pipeline-plan-unattended.md');
 
   assert.deepEqual(planList(contract), SPEC_PLAN_STEPS);
   assert.match(coordinator, /spec-phase-contract\.md/);
