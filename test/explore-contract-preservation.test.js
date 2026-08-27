@@ -88,6 +88,8 @@ const allowedDifferences = [
   '3. Recompute `pending_slices`',
   '- For an `Auto` or `Auto (fast implementation)` continuation choice',
   '- For an **Auto** or **Auto (fast implementation)** continuation choice',
+  '**Implementation details stage (stage 3).',
+  '- **Pre-dispatch compatibility refusal',
 ];
 
 function readPreSplitContract() {
@@ -239,9 +241,9 @@ test('contract preservation: selector uses fixed English titles with localized d
   );
 
   assert.match(selector, /\*\*Plan - Unattended\*\*/);
-  assert.match(selector, /\*\*Direct build - Unattended\*\*/);
+  assert.match(selector, /\*\*Build - Unattended\*\*/);
   assert.match(selector, /\*\*Manual\*\*/);
-  assert.match(selector, /question text and each option description[\s\S]{0,160}fixed option titles remain exactly `Plan - Unattended`, `Direct build - Unattended`, and `Manual`/i);
-  assert.match(languageGate, /question text and all three option descriptions render in the user's language[\s\S]{0,140}option titles remain the fixed English literals `Plan - Unattended`, `Direct build - Unattended`, and `Manual`/i);
-  assert.match(questionContext, /Crystallization-close selector[\s\S]{0,120}`Plan - Unattended`[\s\S]{0,80}`Direct build - Unattended`[\s\S]{0,40}`Manual`/i);
+  assert.match(selector, /question text and each option description[\s\S]{0,160}fixed option titles remain exactly `Plan - Unattended`, `Build - Unattended`, and `Manual`/i);
+  assert.match(languageGate, /question text and all three option descriptions render in the user's language[\s\S]{0,140}option titles remain the fixed English literals `Plan - Unattended`, `Build - Unattended`, and `Manual`/i);
+  assert.match(questionContext, /Crystallization-close selector[\s\S]{0,120}`Plan - Unattended`[\s\S]{0,80}`Build - Unattended`[\s\S]{0,40}`Manual`/i);
 });

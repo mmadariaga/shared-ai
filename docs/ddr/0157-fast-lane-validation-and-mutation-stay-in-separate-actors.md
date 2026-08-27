@@ -1,6 +1,6 @@
 # DDR 0157: Fast-lane validation and mutation stay in separate actors
 
-<!-- ddr-index: refs ddr:0156, refs adr:0172d -->
+<!-- ddr-index: refs ddr:0156b, refs adr:0172d -->
 
 ## Status
 

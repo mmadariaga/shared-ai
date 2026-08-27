@@ -1,6 +1,6 @@
 # DDR 0158: The autofast implementer receives only the crystallized block
 
-<!-- ddr-index: refs ddr:0156 -->
+<!-- ddr-index: refs ddr:0156b -->
 
 ## Status
 

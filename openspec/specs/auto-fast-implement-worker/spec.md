@@ -18,7 +18,7 @@ The implementer worker SHALL receive exactly one opaque `arguments_value` whose 
 
 #### Scenario: Block-only input
 
-- **WHEN** the worker is dispatched by explore's Build (unattended) flow
+- **WHEN** the worker is dispatched by explore's Build - Unattended flow
 - **THEN** it implements directly from Capabilities in scope, Key constraints, Implementation Details, and Edge Cases, treating Research Leads as non-authoritative starting points only
 
 #### Scenario: Slice-scoped implementation
@@ -64,4 +64,3 @@ The implementer worker SHALL return `failed` with a concrete failure class when 
 
 - **WHEN** the block cannot be implemented as written
 - **THEN** the worker returns failed with a concrete summary instead of shipping a substituted feature
-

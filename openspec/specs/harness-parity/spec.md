@@ -42,3 +42,12 @@ Both harnesses SHALL reject a missing language value with a clear validation err
 
 - **WHEN** the contract suite checks overview-language support
 - **THEN** it asserts equivalent flag documentation in both harness wrapper pairs and in the named shared command/coordinator contracts
+
+### Requirement: Supported harnesses share selector titles and order
+
+The shared crystallization-close selector contract MUST keep the selector titles and their order identical across Claude Code and opencode while using each harness's native option picker.
+
+#### Scenario: Both supported harnesses present the renamed selector
+
+- **WHEN** either supported harness presents the crystallization-close selector
+- **THEN** it presents `Plan - Unattended`, `Build - Unattended`, and `Manual` in the same order.

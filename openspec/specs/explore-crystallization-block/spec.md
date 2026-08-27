@@ -75,7 +75,7 @@ The companion `explore-handoff-edge-cases` capability governs the same `**Edge C
 The shared close SHALL emit, in this order and exactly once per crystallization turn:
 
 1. One keep-window-open recommendation outside the handoff block, rendered under the existing language-gate rule and naming the literal `review-loop` exactly once.
-2. One harness-native three-option crystallization-close selector using the displayed `Auto (sai-1 + sai-2)` label before `Auto (fast implementation)` and `Manual`.
+2. One harness-native three-option crystallization-close selector using the displayed `Plan - Unattended` label before `Build - Unattended` and `Manual`.
 
 The recommendation SHALL be plain conversational text rendered in the user's language under the existing language-gate rule, while the agreed literals remain verbatim. `review-loop` remains a standing user-triggered path while the selector governs only delegated execution. The recommendation SHALL remain before the selector. The selector SHALL be the final emission of the shared close and the crystallization turn; a later answer is a separate response turn. Selecting `Manual`, or giving an answer that maps to neither selector option, SHALL refer to this already-emitted recommendation, SHALL dispatch nothing, and SHALL receive the path-specific existing next-step instruction exactly once after the selector response. The path-specific instruction SHALL NOT be emitted before the selector or re-emit the recommendation or selector. Item 10 SHALL describe that branch by reference to this shared rule. Only `/sai-1-spec`, `/sai-2-design`, and `review-loop` remain verbatim English; surrounding next-step prose follows the crystallization language gate. The recommendation SHALL NOT alter any `Ready to Propose` block, its `---` payload boundary, or its language-gate invariants.
 
@@ -84,7 +84,7 @@ The recommendation SHALL be plain conversational text rendered in the user's lan
 - **WHEN** `sai-explore` emits the single-change `Ready to Propose` block
 - **THEN** item 5 uses the shared close definition
 - **AND** the existing `Open a new chat` next-step instruction is not emitted between the `---` separator and the selector
- - **AND** one keep-window recommendation using the existing language rule and naming `review-loop` exactly once precedes one selector offering `Auto (sai-1 + sai-2)` before `Auto (fast implementation)` and `Manual`
+ - **AND** one keep-window recommendation using the existing language rule and naming `review-loop` exactly once precedes one selector offering `Plan - Unattended` before `Build - Unattended` and `Manual`
 - **AND** the selector is the final emission of this slice's turn
 
 #### Scenario: sliced output closes once after the final slice

@@ -37,7 +37,7 @@ and no consuming surface may add, remove, or reinterpret an exemption here.
    canonical feedback prompt (`Share your feedback on {artifacts} below.`),
    pinned byte-for-byte by `sai/policies/artifact-feedback-gate.md`.
 4. **Crystallization-close selector** — sai-explore's `Plan - Unattended` /
-   `Direct build - Unattended` / `Manual` selector, pinned by
+   `Build - Unattended` / `Manual` selector, pinned by
    `sai/commands/explore/instructions.md` item 10.
 5. **Plain-text sí/no review invitation** — sai-explore's post-crystallization
    global invitation (item 9), a deliberate narrow exception to the
