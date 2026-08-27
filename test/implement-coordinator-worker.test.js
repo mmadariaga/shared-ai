@@ -1081,3 +1081,96 @@ test('implement maintains interfaces.md: instructions clarify audit-derived inte
   assert.match(instructions, /testability rule.*audit steps with testable code carry.*RED block/i,
     'instructions should reference the testability rule for audit steps');
 });
+
+// ─── Step 2: audit-finding-escalation feature ──────────────────────────────
+
+test('Judgment Rubric for Audit Findings admits three outcomes: Apply, Discard, and Escalate', () => {
+  const instructions = artifact('sai/commands/implement/instructions.md');
+  const artifactAnalysis = artifact('sai/commands/implement/steps/artifact-analysis.md');
+
+  // Check in instructions.md
+  assert.match(instructions, /classify the finding as \*\*Apply\*\*.*\*\*Discard\*\*.*\*\*Escalate\*\*|classify.*Apply.*Discard.*Escalate/i,
+    'instructions Judgment Rubric should list all three outcomes');
+  assert.match(instructions, /Apply\/Discard\/Escalate classification/,
+    'instructions should refer to all three outcomes in classification');
+
+  // Check in artifact-analysis.md
+  assert.match(artifactAnalysis, /classify the finding as \*\*Apply\*\*.*\*\*Discard\*\*.*\*\*Escalate\*\*|classify.*Apply.*Discard.*Escalate/i,
+    'artifact-analysis Judgment Rubric should list all three outcomes');
+  assert.match(artifactAnalysis, /Apply\/Discard\/Escalate classification/,
+    'artifact-analysis should refer to all three outcomes in classification');
+});
+
+test('Escalate findings are defined as contradicting existing decisions/requirements or exceeding scope', () => {
+  const instructions = artifact('sai/commands/implement/instructions.md');
+  const artifactAnalysis = artifact('sai/commands/implement/steps/artifact-analysis.md');
+
+  const escalateDefinition = /Escalate.*findings are those that contradict an existing decision or requirement.*criterion 3.*or propose work.*exceeds.*scope.*criterion 5/i;
+  assert.match(instructions, escalateDefinition,
+    'instructions should define Escalate with criteria 3 and 5');
+  assert.match(artifactAnalysis, escalateDefinition,
+    'artifact-analysis should define Escalate with criteria 3 and 5');
+
+  for (const artifact_file of [instructions, artifactAnalysis]) {
+    assert.match(artifact_file, /new acceptance criteria.*not yet established/,
+      'both should clarify that escalations need new acceptance criteria');
+    assert.match(artifact_file, /stops.*before.*plan-generation.*appends/i,
+      'both should state that escalations stop before plan-generation');
+  }
+});
+
+test('Escalation detection lives exclusively in artifact-analysis step', () => {
+  const artifactAnalysis = artifact('sai/commands/implement/steps/artifact-analysis.md');
+  const planGeneration = artifact('sai/commands/implement/steps/plan-generation.md');
+
+  assert.match(artifactAnalysis, /Escalation Detection and Handoff/,
+    'artifact-analysis should have an Escalation Detection and Handoff section');
+  assert.match(artifactAnalysis, /check whether any finding was classified as \*\*Escalate\*\*.*If escalations exist/i,
+    'artifact-analysis should describe detecting Escalate findings');
+
+  assert.match(planGeneration, /Escalate findings.*detected and handled exclusively in `artifact-analysis`/i,
+    'plan-generation should state Escalate handling is exclusive to artifact-analysis');
+  assert.match(planGeneration, /if escalations existed.*run would have stopped.*never reached this step/i,
+    'plan-generation should clarify escalations never reach it');
+});
+
+test('plan-generation appends no audit step when escalation is detected', () => {
+  const planGeneration = artifact('sai/commands/implement/steps/plan-generation.md');
+
+  assert.match(planGeneration, /check whether escalations were detected.*artifact-analysis.*do NOT append any audit steps/i,
+    'plan-generation should check for escalations and skip appending');
+  assert.match(planGeneration, /escalation stop and.*Ready to Propose.*already occurred.*run is concluded/,
+    'plan-generation should note escalations already stopped the run');
+});
+
+test('Escalation handoff emits Ready to Propose block with correct fields', () => {
+  const artifactAnalysis = artifact('sai/commands/implement/steps/artifact-analysis.md');
+
+  assert.match(artifactAnalysis, /emit a `Ready to Propose` block from `sai\/policies\/ready-to-propose-format\.md`/,
+    'should specify using the shared Ready to Propose format');
+  assert.match(artifactAnalysis, /Change name.*derived from the escalated work/,
+    'should require deriving change name from work substance');
+  assert.match(artifactAnalysis, /What.*summary of the escalated work/,
+    'should require What field with work summary');
+  assert.match(artifactAnalysis, /Why.*describing the gap.*citing the source artifacts and finding ids/,
+    'Why should cite artifacts and finding ids');
+  assert.match(artifactAnalysis, /Research Leads.*repository-relative paths.*escalated findings point to.*codebase/,
+    'Research Leads should point to codebase paths, not artifact offsets');
+  assert.match(artifactAnalysis, /do NOT use artifact offsets or finding id suffixes/i,
+    'should explicitly prohibit artifact offsets in Research Leads');
+  assert.match(artifactAnalysis, /Edge Cases[\s\S]*?None[\s\S]*?Implementation Details[\s\S]*?None/,
+    'should emit None for Edge Cases and Implementation Details');
+});
+
+test('Escalation groups findings by scope of work, emits one block per new change', () => {
+  const artifactAnalysis = artifact('sai/commands/implement/steps/artifact-analysis.md');
+
+  assert.match(artifactAnalysis, /Group escalated findings by the scope of work they imply/,
+    'should describe grouping by scope');
+  assert.match(artifactAnalysis, /two findings from different artifacts belong in the same group when they describe the same missing change/,
+    'should clarify same-change grouping logic');
+  assert.match(artifactAnalysis, /one block per escalation group/,
+    'should emit one block per escalation group, not per artifact');
+  assert.match(artifactAnalysis, /all emitted blocks as chat output/,
+    'should confirm emitting all blocks in single terminal status');
+});

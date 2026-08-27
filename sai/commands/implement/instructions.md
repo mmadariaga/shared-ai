@@ -69,13 +69,13 @@ Read the full content of `proposal.md`, `design.md`, `tasks.md`, and all `specs/
 - Extract and internalize the Expertise Profile from `## Implementation Context` in `tasks.md`
 - If `## Implementation Context` is missing entirely, STOP per the STOP condition above.
 
-**Exception (audit artifacts):** Check whether any of `review.md`, `security.md`, `performance.md`, or `accessibility.md` exist in `openspec/changes/{change-name}/`. For each one that exists, read it and apply the **Judgment Rubric for Audit Findings** (see below) to every finding, classifying each as Apply or Discard. The classified results are appended as audit-derived steps by Step 5 ("Append audit-derived steps") below — the append description lives at that execution site; this step only reads and classifies.
+**Exception (audit artifacts):** Check whether any of `review.md`, `security.md`, `performance.md`, or `accessibility.md` exist in `openspec/changes/{change-name}/`. For each one that exists, read it and apply the **Judgment Rubric for Audit Findings** (see below) to every finding, classifying each as Apply, Discard, or Escalate. The classified results are evaluated for escalations first (see **Escalation Detection and Handoff** in `@sai/commands/implement/steps/artifact-analysis.md`); if escalations exist, the run stops. Otherwise, the Apply/Discard classification results are appended as audit-derived steps by Step 5 ("Append audit-derived steps") — the append description lives at that execution site; this step only reads and classifies.
 
 ### Judgment Rubric for Audit Findings
 
 The rubric is defined normatively in `openspec/specs/audit-artifact-ingestion/spec.md`; this section is its operational restatement. Both Step 2's audit-reading exception and Step 5's first-run generation path / "Append audit-derived steps" sub-section invoke this rubric before appending any audit-derived step.
 
-For every finding in an existing audit artifact (`review.md`, `security.md`, `performance.md`, `accessibility.md`), evaluate all five criteria and classify the finding as **Apply** or **Discard**:
+For every finding in an existing audit artifact (`review.md`, `security.md`, `performance.md`, `accessibility.md`), evaluate all five criteria and classify the finding as **Apply**, **Discard**, or **Escalate**:
 
 1. **Severity** — does the finding rise to Critical/High (the shared audit severity vocabulary used by review, security, performance, and accessibility), or is it a non-issue?
 2. **Actionability** — is the proposed fix specific enough to implement as a concrete file:line change, or is it a vague suggestion?
@@ -83,9 +83,10 @@ For every finding in an existing audit artifact (`review.md`, `security.md`, `pe
 4. **Duplication** — does the finding repeat another finding already addressed in an earlier step of `implementation.md`?
 5. **Scope** — does the finding stay within the change's declared scope, or does it propose out-of-scope work?
 
-The Apply/Discard classification SHALL follow from the rubric outcome, not from gut feel.
+The Apply/Discard/Escalate classification SHALL follow from the rubric outcome, not from gut feel.
 
 - **Apply** findings are rendered as concrete code-writing checkboxes (file:line location + specific change) inside the appended audit step — the same kind of code-writing checkboxes the implementation plan template uses elsewhere in `implementation.md`.
+- **Escalate** findings are those that contradict an existing decision or requirement (criterion 3 fails) or propose work that exceeds the change's declared scope and would require new acceptance criteria not yet established (criterion 5 fails). When any finding is classified as Escalate, the run stops before `plan-generation` appends any audit-derived steps, and instead emits a `Ready to Propose` block for a new change derived from the escalated findings. No Escalate findings are appended as code actions. Each escalated finding that stops the run records the artifact source (`review.md`, `security.md`, etc.) and finding id for research-leads population in the emitted proposal.
 - **Discard** findings appear in a **Discarded findings sub-block** inside the same appended step (not a separate step). Each entry uses the format:
   `**{id}** — {one-sentence reason} (source: {artifact} § {category} {id})`
 - **Question (Q) findings** (only `review.md` has a Questions category) are auto-discarded with the reason `requires user response, not a code change`. The full Q text SHALL be transcribed verbatim beneath the entry line so the user can answer in chat. Q findings SHALL NOT be rendered as Apply code actions under any circumstance.

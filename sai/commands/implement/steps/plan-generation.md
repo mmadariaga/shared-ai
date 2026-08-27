@@ -4,6 +4,11 @@ Active step: plan-generation. Generate the full `implementation.md` plan, then r
 
 ### Step 5: Generate Full Implementation
 
+**Escalation check.** Before generating, check whether escalations were detected and emitted in the `artifact-analysis` step. If escalations exist:
+- The `Ready to Propose` block has already been emitted in chat by `artifact-analysis`.
+- Do NOT generate `implementation.md` or proceed with plan generation.
+- Return a terminal status reflecting the escalation stop (coordinates already handled by artifact-analysis).
+
 **Re-run preamble.** Before generating, check whether `openspec/changes/{change-name}/implementation.md` already exists on disk (equivalently: whether Step 1 ran at all). The check keys on **file presence**, not on the count of steps Step 1 collapsed — a file where every step is FALLO MENOR (code applied, verification pending) has zero collapsed steps but MUST still be preserved.
 
 - **If the file does NOT exist (first run):** take the **first-run generation path** below.
@@ -36,7 +41,7 @@ Active step: plan-generation. Generate the full `implementation.md` plan, then r
       - If a step is NOT testable (config changes, migrations, scaffolding), skip RED/GREEN and use the standard format.
       - Include both RED and GREEN verification commands in the Verification Checklist.
       - **Test retirements:** When a step replaces obsolete guard tests, list each retirement ONLY inside that step's RED block — one entry per retired file, using its exact repository-relative path, marked `retired`. A green-direct Step (no RED block) never carries retirements. Every Step whose RED block retires files adds one Verification Checklist item per retired file asserting that file's absence; the coordinator runs it after the RED dispatch returns and before GREEN may be dispatched.
-- **Audit artifacts on a first run (rare):** If any of `review.md`, `security.md`, `performance.md`, `accessibility.md` exists in `openspec/changes/{change-name}/`, append one audit step per existing artifact after the last template-derived step, invoking the **Judgment Rubric for Audit Findings** and emitting the Apply code actions + Discarded findings sub-block. No slot is added to the implementation plan template — audit steps are generated dynamically (see D1 in `design.md`). Number the first audit step strictly after the highest `#### Step N:` number in the generated plan; continue N+2, N+3, … for subsequent artifacts. For each appended audit step, also manage `interfaces.md` contracts per the **Audit-step interface contracts** rule in the re-run preservation path below.
+- **Audit artifacts on a first run (rare):** If any of `review.md`, `security.md`, `performance.md`, `accessibility.md` exists in `openspec/changes/{change-name}/`, invoke the **Judgment Rubric for Audit Findings** on all findings first. If any findings are classified as Escalate, do NOT append any audit steps; instead, the escalation stop and Ready to Propose handoff have already occurred in `artifact-analysis` and the run is concluded. Otherwise, append one audit step per existing artifact after the last template-derived step, emitting the Apply code actions + Discarded findings sub-block. No slot is added to the implementation plan template — audit steps are generated dynamically (see D1 in `design.md`). Number the first audit step strictly after the highest `#### Step N:` number in the generated plan; continue N+2, N+3, … for subsequent artifacts. For each appended audit step, also manage `interfaces.md` contracts per the **Audit-step interface contracts** rule in the re-run preservation path below.
 
 #### Re-run preservation path
 
@@ -74,11 +79,13 @@ Build the new `implementation.md` by copying the prior file as Step 1 left it:
 
 ##### Append audit-derived steps
 
-After preservation, for each audit artifact that exists in `openspec/changes/{change-name}/` among `review.md`, `security.md`, `performance.md`, `accessibility.md`, append exactly one new step at the end of `implementation.md`:
+After preservation, check whether escalations were detected in `artifact-analysis`. If escalations exist, the escalation stop and Ready to Propose handoff have already occurred, and the run is concluded; do NOT append any audit steps.
+
+Otherwise, for each audit artifact that exists in `openspec/changes/{change-name}/` among `review.md`, `security.md`, `performance.md`, `accessibility.md`, append exactly one new step at the end of `implementation.md`:
 
 - Number the first appended step strictly after the **highest** existing `#### Step N:` number found in the prior file (scan every `#### Step N:` heading, so out-of-order or orphan headings still yield the correct N+1). Subsequent appended steps continue N+2, N+3, …
 - Each appended step is dedicated to a single artifact and MUST NOT be merged into an existing step (e.g., `#### Step 7: Address review findings`, `#### Step 8: Address security findings`).
-- For every finding in the artifact, invoke the **Judgment Rubric for Audit Findings** and classify it as Apply or Discard. The appended step contains the Apply code actions and the Discarded findings sub-block side by side — the Discarded sub-block lives INSIDE the same step, not as a separate step.
+- For every finding in the artifact, invoke the **Judgment Rubric for Audit Findings** and classify it as Apply or Discard. (Escalate findings, if any, are detected and handled exclusively in `artifact-analysis`; if escalations existed, the run would have stopped there and never reached this step.) The appended step contains the Apply code actions and the Discarded findings sub-block side by side — the Discarded sub-block lives INSIDE the same step, not as a separate step.
 - **All-Discarded case:** when every finding in an artifact is Discard, the appended step SHALL still exist, containing only the Discarded findings sub-block and a single `- [ ] No code changes from this audit` checkbox (no Apply code actions). The user closes the step by checking that box.
 - **Chat confirmation:** after generating each appended step, print the list of Discarded findings to chat (one line per Discard, plus the verbatim Q text for any Q Discard) and ask the user to confirm or override before the plan is considered final. Confirmation is conversational in chat only — do NOT write any approval key to `.openspec.yaml` and do NOT introduce a new approval gate.
 - When an audit artifact's finding references an already-compacted step, address it as a **new appended step** whose text references the original step number. Do NOT re-open or modify the compacted step the finding names.
