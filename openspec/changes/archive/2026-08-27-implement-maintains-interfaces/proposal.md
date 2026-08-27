@@ -1,0 +1,57 @@
+> **⚠ POST-HOC RECORD** — This proposal was backfilled after implementation against a user-supplied statement of intent. It describes a decision already made, not one being proposed.
+
+## Why
+
+The `sai-3-implement` command generated implementation plans (`implementation.md`) but never wrote contracts to `interfaces.md`, which was owned exclusively by `sai-2-design`. When audit steps carried RED blocks (indicating testable code), apply would halt at the routing tree case 3 — an unevaluated case where neither the step routing logic nor the instructions defined behavior. A plan with an audit RED block lacking a matching `## Step N:` contract in `interfaces.md` became unexecutable, blocking the entire pipeline with no automated fallback. This change makes `sai-3-implement` a full maintainer of `interfaces.md` contracts, ensuring every audit-derived step that carries a RED block has a matching contract section, guaranteeing apply's routing tree case 3 remains unreachable.
+
+## What Changes
+
+**Contract files updated:**
+
+- `sai/commands/implement/instructions.md`: Added **Audit-derived step interface contracts** rule clarifying when audit steps must carry contracts in `interfaces.md` and that assertions must anchor exclusively to existing specs (cannot create new acceptance criteria).
+
+- `sai/commands/implement/steps/collapse-implemented-steps.md`: Extended to prune `interfaces.md` in the same pass as `implementation.md`, collapsing fully applied steps by integer key N to `*(already applied)*`.
+
+- `sai/commands/implement/steps/plan-generation.md`: Appends `## Step N:` contract sections to `interfaces.md` when audit steps introduce modified interfaces or testable assertions; RED block presence is determined by testability; if `interfaces.md` holds only the sentinel, the first audit contract replaces it.
+
+- `sai/commands/implement/steps/validation.md`: Added **RED block contract invariant** checkbox ensuring every audit-derived step carrying a RED block in `implementation.md` has an exact matching `## Step N:` contract in `interfaces.md`; missing contracts are repaired before delivery.
+
+**Test coverage:**
+
+- `test/implement-coordinator-worker.test.js`: Five new test cases verifying collapse-implemented-steps pruning, audit-step contract appending, RED block contract validation, and instructions clarification.
+
+**Key invariants implemented:**
+
+- Pruning is strictly symmetric: integer key N evaluation against `implementation.md` checkboxes determines pruning in both files.
+- Audit assertions anchor exclusively to existing `specs/**` requirements; audit steps cannot establish new acceptance criteria.
+- Plan deliverability check refuses to deliver plans whose audit RED blocks lack exact contracts.
+- Testability rule governs RED block presence: testable audit code carries RED; non-testable (config, refactors, scaffolding) omits it regardless of whether findings violated existing requirements.
+- When `interfaces.md` contains only the `None — no step contracts` sentinel, the first audit step introducing a contract replaces it.
+
+## Capabilities
+
+### New Capabilities
+
+**Capability: implement-maintains-interfaces**
+
+The implementation planning workflow now maintains `interfaces.md` contracts as a first-class artifact alongside `implementation.md`, with symmetric pruning of fully-applied steps, automatic contract generation for audit steps that introduce interface changes or testable assertions, and delivery-time validation ensuring audit RED blocks have exact matching contracts.
+
+## Impact
+
+**Files modified:**
+- `sai/commands/implement/instructions.md` — added audit interface contract rule
+- `sai/commands/implement/steps/collapse-implemented-steps.md` — extended to prune `interfaces.md`
+- `sai/commands/implement/steps/plan-generation.md` — appends audit contracts to `interfaces.md`
+- `sai/commands/implement/steps/validation.md` — added RED block contract invariant validation
+- `test/implement-coordinator-worker.test.js` — five new test cases
+
+**No spec conflicts detected.** This change adds the new capability `implement-maintains-interfaces`; it modifies no existing capability, and in particular emits no MODIFIED delta against `implement-respects-interfaces`.
+
+**Edge cases handled:**
+- E1: A step with any unchecked box is not pruned in either file; the criterion is single and evaluated once against `implementation.md`.
+- E2: A finding referencing an already-pruned step is handled as a new step; the pruned section is not reopened.
+- E3: A change with no `interfaces.md` follows the absent-file fallback; this change never creates `interfaces.md` where design did not.
+- E4: With only the `None — no step contracts` sentinel, pruning does not act; the first audit contract replaces the sentinel.
+- E5: When every step is applied, `interfaces.md` is entirely `*(already applied)*`, non-empty, satisfying design verification and artifact dependencies.
+
+Out of scope: design.md, tasks.md, implementation.md — not generated by /sai-backfill

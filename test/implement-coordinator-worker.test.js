@@ -1027,3 +1027,57 @@ test('step-gated: instructions.md remains the apply compatibility source', () =>
   assert.match(instructions, /## Code Quality Priority Stack/,
     'instructions.md should retain its Code Quality Priority Stack');
 });
+
+test('implement maintains interfaces.md: collapse-implemented-steps prunes both files', () => {
+  const collapseStep = artifact('sai/commands/implement/steps/collapse-implemented-steps.md');
+
+  assert.match(collapseStep, /Simplify existing implementation\.md and interfaces\.md/,
+    'collapse step should mention maintaining both files');
+  assert.match(collapseStep, /Prune interfaces\.md if it exists/,
+    'collapse step should describe interfaces.md pruning');
+  assert.match(collapseStep, /collapsed.*Step N:.*\(already applied\)\*/,
+    'collapse step should explain the pruning format in interfaces.md');
+  assert.match(collapseStep, /integer key N/,
+    'collapse step should reference integer key matching for pruning both files');
+});
+
+test('implement maintains interfaces.md: plan-generation appends audit-step contracts', () => {
+  const planGenStep = artifact('sai/commands/implement/steps/plan-generation.md');
+
+  assert.match(planGenStep, /Audit-step interface contracts/,
+    'plan-generation should have an Audit-step interface contracts section');
+  assert.match(planGenStep, /appending an audit step.*also append.*## Step N:.*contract section/i,
+    'plan-generation should describe appending contracts to interfaces.md');
+  assert.match(planGenStep, /modified interface.*testable assertion/,
+    'plan-generation should specify the conditions for appending contracts');
+  assert.match(planGenStep, /anchor to requirements.*specs\/\*\*.*only/i,
+    'plan-generation should require assertions to anchor to existing specs');
+  assert.match(planGenStep, /RED block.*determined by testability/i,
+    'plan-generation should note RED blocks are determined by testability');
+});
+
+test('implement maintains interfaces.md: validation ensures RED block contract invariant for audit steps', () => {
+  const validationStep = artifact('sai/commands/implement/steps/validation.md');
+
+  assert.match(validationStep, /RED block contract invariant.*audit-derived steps/,
+    'validation should scope RED block invariant to audit-derived steps');
+  assert.match(validationStep, /every audit-derived step.*carries a RED block.*exact, unambiguous matching.*## Step N:?.*contract/i,
+    'validation should require exact matching contracts for audit RED blocks');
+  assert.match(validationStep, /case 3.*unreachable/,
+    'validation should reference making case 3 unreachable');
+  assert.match(validationStep, /adding the missing.*## Step N/,
+    'validation should describe adding missing contracts as the repair option');
+});
+
+test('implement maintains interfaces.md: instructions clarify audit-derived interface contracts', () => {
+  const instructions = artifact('sai/commands/implement/instructions.md');
+
+  assert.match(instructions, /Audit-derived step interface contracts/,
+    'instructions should have an Audit-derived step interface contracts rule');
+  assert.match(instructions, /Appended audit-derived steps.*if and only if.*introduces.*modified interface.*testable assertion/i,
+    'instructions should specify when audit steps get contracts');
+  assert.match(instructions, /anchor exclusively to requirements.*specs\/\*\*.*cannot establish new acceptance criteria/i,
+    'instructions should clarify assertion anchoring and limits');
+  assert.match(instructions, /testability rule.*audit steps with testable code carry.*RED block/i,
+    'instructions should reference the testability rule for audit steps');
+});
