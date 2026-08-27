@@ -63,6 +63,25 @@ the unchecked-item list, the combined delta-sync summary, and the collision
 verdict inside your summaries so the coordinator can present them verbatim.
 Never print them as your deliverable and never write them to any file.
 
+## MODIFIED-delta completeness check
+
+The schema requires every `## MODIFIED Requirements` entry to carry the full
+updated requirement body. Verify each MODIFIED entry against its existing main
+spec before any sync: for every capability delta spec, read the corresponding
+main spec at `openspec/specs/{capability}/spec.md` (when present) and compare
+the `#### Scenario:` headings the delta's MODIFIED entry omits against the
+scenario headings the main spec already holds for that requirement. A MODIFIED
+entry that drops an existing main-spec scenario is a net-loss candidate —
+syncing it would destroy content silently. Carry the exact dropped scenario
+names in the combined delta-sync summary. On the changes-needed path, present
+the gate as a `needs_input` result; under `fast_track_active`, a net-loss
+candidate is NOT auto-proceeded — the low-risk-by-construction auto-proceed
+rule covers only syncing, and a MODIFIED that loses an existing scenario is a
+blocking incompleteness, reported in the summary and stopping before the sync.
+The sync, whether coordinator-owned (ordinary route) or worker-owned (Build
+execute), SHALL never produce a main spec with fewer scenarios for a MODIFIED
+requirement than it had before the sync.
+
 Preserve the instruction's stop texts exactly: when any CORE artifact is not
 `done`, return a terminal payload whose summary is exactly
 **"Missing CORE artifact(s): <id1>, <id2>. Archive blocked."** (substituting
@@ -115,11 +134,14 @@ plan for the Build (unattended) execute continuation.
 
 When the coordinator resumes you after executing a selected sync, re-run the
 delta comparison from the assessment step against every capability that has a
-delta spec — not only the ones the sync touched. If every capability now reads
-as already synced, return a terminal `completed` payload confirming the sync
-and restating readiness for the archive move. Otherwise return a terminal
-`completed` payload whose summary reports exactly what differs and that the
-archive stopped before moving anything.
+delta spec — not only the ones the sync touched. Re-run the MODIFIED-delta
+completeness check too: confirm that every scenario the main spec held before
+the sync for each MODIFIED requirement still survives in the synced main spec.
+If every capability now reads as already synced and no scenario was lost,
+return a terminal `completed` payload confirming the sync and restating
+readiness for the archive move. Otherwise return a terminal `completed`
+payload whose summary reports exactly what differs — including any dropped
+scenario names — and that the archive stopped before moving anything.
 
 ## Build (unattended) execution continuation
 
@@ -140,11 +162,22 @@ set may be absent when the prepared diff records its deletion; such a path is
 staged with the deletion-aware equivalent of `git add`, not treated as a
 missing-path contract error. It rejects a missing non-deletion path, reordered,
 foreign, already-executed, or otherwise altered order with a closed `failed`
-result and executes nothing for that continuation. The worker then
-performs exactly this order and nothing else:
+result and executes nothing for that continuation.
+
+The worker holds no Write or Edit tool. Every mutation in this continuation —
+the delta-spec sync writes, the archive directory move, exact-path staging, and
+the HEREDOC commit — is performed through the **Bash tool**, which the binding
+already grants this worker. Bash is the write vehicle: file edits, directory
+moves, and every git operation run as shell commands. Never attempt a Write or
+Edit tool call in this continuation; if Bash is unavailable, return a closed
+`failed` result rather than simulating a write through another channel. The
+worker then performs exactly this order and nothing else:
 
 1. Run the approved delta-spec sync, when the prepared plan requires it, and
-   re-read every affected main spec to verify the sync.
+   re-read every affected main spec to verify the sync — including the
+   MODIFIED-delta completeness check: every scenario the main spec held for a
+   MODIFIED requirement before the sync must survive, and a net-loss result
+   fails this step without moving anything.
 2. Move `openspec/changes/{name}/` to the exact supplied
    `openspec/changes/archive/YYYY-MM-DD-{name}/` destination, failing rather
    than overwriting an existing target.

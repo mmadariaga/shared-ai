@@ -4,7 +4,6 @@
 
 Define routed supervision of the isolated sai-1 spec-proposal worker from `sai-explore`.
 ## Requirements
-
 ### Requirement: Name supervised route identity
 
 The supervised pipeline SHALL use `Plan (unattended)` and route identity `plan-unattended` for the existing sai-1/sai-2 supervision, review, chaining, and retry lifecycle. The direct build route SHALL use `Build (unattended)` and route identity `build-unattended` for its separate worker flow.
@@ -13,6 +12,7 @@ The supervised pipeline SHALL use `Plan (unattended)` and route identity `plan-u
 
 - **WHEN** a delegated route is selected
 - **THEN** the existing supervision lifecycle uses the applicable new route identity without changing worker order or state behavior.
+
 ### Requirement: Reuse supervised lifecycle
 
 The supervised pipeline SHALL resolve gate 9 immediately after deterministic selection confirms a dispatchable change for the displayed `Auto (sai-1 + sai-2)` route and before `active_change` is set or the first spec worker is dispatched. The displayed label SHALL map to internal route `Auto`, which SHALL remain limited to `sai-1` and `sai-2`.
@@ -323,3 +323,37 @@ Before Step 1 of the Auto (fast implementation) flow, explore SHALL judge the em
 
 - **WHEN** a pre-dispatch recovery correction is accepted
 - **THEN** the correction is session-scoped: it writes no file, does not rewrite the block already printed in the chat history, keeps explore read-only, and changes only the `arguments_value` travelling to the implementer; it creates no `task_id`, consumes no `fix_rounds`, and does not touch Bounded Recovery
+
+### Requirement: Build-route worker bindings load at their dispatch points
+
+The Build (unattended) route of `/sai-explore` SHALL load the binding for each of its three workers (`sai-autofast-implement-worker`, `sai-backfill-worker`, `sai-archive-worker`) lazily at that worker's dispatch point in `sai/commands/explore/steps/pipeline-auto-fast.md`, not in `sai/commands/explore/command-bootstrap.md`. The bootstrap SHALL preload only the Plan-route bindings (`spec-worker`, `design-worker`) and SHALL document that Build-route bindings are fetched at dispatch so read-only explore sessions that never dispatch pay no context cost. Each dispatch SHALL occur only after its binding has been fetched and used, so the envelope carries the binding's `Worker contract: Fetch …` + `InvocationEnvelope:` framing and the worker returns closed lifecycle payloads.
+
+#### Scenario: The implementer binding is fetched before the step-1 dispatch
+
+- **WHEN** the Build route reaches its step-1 Implement dispatch
+- **THEN** `pipeline-auto-fast.md` fetches `@sai/orchestration/workers/bindings/autofast-implement-worker.md` and uses it before dispatching the worker
+
+#### Scenario: The backfill binding is fetched before the step-3 dispatch
+
+- **WHEN** the Build route reaches its step-3 sibling-backfill dispatch
+- **THEN** `pipeline-auto-fast.md` fetches `@sai/orchestration/workers/bindings/backfill-worker.md` and uses it before dispatching the worker
+
+#### Scenario: The archive binding is fetched before the step-7 dispatch
+
+- **WHEN** the Build route reaches its step-7 archive-preparation dispatch
+- **THEN** `pipeline-auto-fast.md` fetches `@sai/orchestration/workers/bindings/archive-worker.md` and uses it before dispatching the worker
+
+#### Scenario: The bootstrap does not preload Build-route bindings
+
+- **WHEN** `sai/commands/explore/command-bootstrap.md` is read
+- **THEN** it preloads only the spec and design bindings and its explanatory text states that the three Build-route bindings are fetched lazily at their dispatch points
+
+### Requirement: Build spec review checks MODIFIED-delta completeness
+
+The Build (unattended) route's step-4 spec review SHALL run a MODIFIED-delta completeness check read-only over the returned backfill draft content: for every `## MODIFIED Requirements` entry in a draft, compare its scenario set against the existing main-spec requirement at `openspec/specs/{capability}/spec.md`. A MODIFIED that drops an existing scenario is a High completeness finding routed through the same findings continuation, because syncing it would silently destroy content.
+
+#### Scenario: A draft MODIFIED drops an existing scenario
+
+- **WHEN** the step-4 spec review finds a MODIFIED requirement whose draft scenario set omits a scenario the main spec already holds
+- **THEN** explore records a High completeness finding and continues it once to the same backfill worker within the remaining `fix_rounds` budget
+
