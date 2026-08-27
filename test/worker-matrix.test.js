@@ -1,4 +1,4 @@
-﻿'use strict';
+'use strict';
 
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
@@ -75,8 +75,8 @@ const APPLY_ROLE = {
   'sai-4-green-worker': 'green',
 };
 
-const AUTOFAST_ROLE = {
-  'sai-autofast-implement-worker': 'autofast-implement',
+const DIRECT_BUILD_ROLE = {
+  'sai-direct-build-worker': 'direct-build',
 };
 
 function applyEntry(workerName, overrides = {}) {
@@ -98,8 +98,8 @@ function applyEntry(workerName, overrides = {}) {
   return { ...base, ...overrides };
 }
 
-function autofastEntry(workerName, overrides = {}) {
-  const phase = AUTOFAST_ROLE[workerName];
+function directBuildEntry(workerName, overrides = {}) {
+  const phase = DIRECT_BUILD_ROLE[workerName];
   const base = {
     phase,
     workerName,
@@ -111,8 +111,8 @@ function autofastEntry(workerName, overrides = {}) {
     replacementFields: ['model', 'effort'],
     helperPermissions: ['read', 'write'],
     progressDeclaration: `${phase} milestones`,
-    claudeAgent: { name: workerName, model: 'claude-autofast-model', keyword: `claude-${phase}` },
-    opencodeAgent: { name: workerName, model: 'opencode-autofast-model', keyword: `opencode-${phase}` },
+    claudeAgent: { name: workerName, model: 'claude-direct-build-model', keyword: `claude-${phase}` },
+    opencodeAgent: { name: workerName, model: 'opencode-direct-build-model', keyword: `opencode-${phase}` },
   };
   return { ...base, ...overrides };
 }
@@ -122,7 +122,7 @@ function fourteenEntries() {
     ...fullEntries(),
     applyEntry('sai-4-red-worker'),
     applyEntry('sai-4-green-worker'),
-    autofastEntry('sai-autofast-implement-worker'),
+    directBuildEntry('sai-direct-build-worker'),
   ];
 }
 
@@ -202,7 +202,7 @@ const TEMPLATES = {
   opencodeAgent: OPENCODE_AGENT_TEMPLATE,
 };
 
-test('defineWorkerMatrix returns the frozen matrix with the eleven canonical phases, two apply roles, and one auto-fast implementer', () => {
+test('defineWorkerMatrix returns the frozen matrix with the eleven canonical phases, two apply roles, and one direct-build implementer', () => {
   assert.equal(PHASE_ORDER.length, 11, 'PHASE_ORDER should declare exactly eleven phases');
   assert.deepEqual(PHASE_ORDER, CANONICAL_PHASE_ORDER,
     'PHASE_ORDER should be spec, design, implementation, review, security, performance, accessibility, commit, archive, backfill, merge');
@@ -539,8 +539,8 @@ test('materializeWorkerMatrix renders non-empty content carrying the canonical F
       assert.match(item.text, /Fetch @sai\/commands\/apply\/(?:red|green)-worker\.md and follow it exactly\./,
         `${item.destinationName} should carry a role-specific apply Fetch target`);
     } else {
-      assert.match(item.text, /Fetch @sai\/commands\/explore\/autofast-implement-worker\.md and follow it exactly\./,
-        `${item.destinationName} should carry its explore-owned auto-fast Fetch target`);
+      assert.match(item.text, /Fetch @sai\/commands\/explore\/direct-build-worker\.md and follow it exactly\./,
+        `${item.destinationName} should carry its explore-owned direct-build Fetch target`);
     }
     assert.doesNotMatch(item.text, /\{\{/,
       `${item.destinationName} text should leave no template token`);
@@ -728,7 +728,7 @@ test('defineWorkerMatrix rejects reversed apply-role order', () => {
     ...fullEntries(),
     applyEntry('sai-4-green-worker'),
     applyEntry('sai-4-red-worker'),
-    autofastEntry('sai-autofast-implement-worker'),
+    directBuildEntry('sai-direct-build-worker'),
   ];
   assert.throws(
     () => defineWorkerMatrix(reversed),
@@ -784,9 +784,9 @@ test('assertWorkerIdentity preserves the existing phase pins and adds the two ap
     'the RED worker should be accepted with its role-specific apply contract');
   assert.doesNotThrow(() => assertWorkerIdentity(applyEntry('sai-4-green-worker')),
     'the GREEN worker should be accepted with its role-specific apply contract');
-  for (const workerName of Object.keys(AUTOFAST_ROLE)) {
-    assert.doesNotThrow(() => assertWorkerIdentity(autofastEntry(workerName)),
-      `${workerName} should be accepted with its explore-owned auto-fast contract`);
+  for (const workerName of Object.keys(DIRECT_BUILD_ROLE)) {
+    assert.doesNotThrow(() => assertWorkerIdentity(directBuildEntry(workerName)),
+      `${workerName} should be accepted with its explore-owned direct-build contract`);
   }
 });
 

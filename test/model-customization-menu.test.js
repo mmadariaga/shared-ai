@@ -1,4 +1,4 @@
-﻿'use strict';
+'use strict';
 
 const { test, after } = require('node:test');
 const assert = require('node:assert/strict');
@@ -44,9 +44,9 @@ const OPENCODE_AGENTS = [
   'sai-7-performance-worker',
   'sai-8-accessibility-worker',
   'sai-archive-worker',
-  'sai-autofast-implement-worker',
   'sai-backfill-worker',
   'sai-commit-worker',
+  'sai-direct-build-worker',
   'sai-merge-worker',
 ];
 
@@ -64,9 +64,9 @@ const CLAUDE_AGENTS = [
   'sai-7-performance-worker',
   'sai-8-accessibility-worker',
   'sai-archive-worker',
-  'sai-autofast-implement-worker',
   'sai-backfill-worker',
   'sai-commit-worker',
+  'sai-direct-build-worker',
   'sai-merge-worker',
 ];
 const OPENCODE_WORKERS = OPENCODE_AGENTS.filter(name => name.startsWith('sai-'));
@@ -3234,9 +3234,9 @@ test('customization inventory is matrix-derived: exactly fourteen worker agents 
     'sai-7-performance-worker',
     'sai-8-accessibility-worker',
     'sai-archive-worker',
-    'sai-autofast-implement-worker',
     'sai-backfill-worker',
     'sai-commit-worker',
+    'sai-direct-build-worker',
     'sai-merge-worker',
   ];
   for (const harness of ['claude', 'opencode']) {

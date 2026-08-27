@@ -24,9 +24,9 @@
   composition of every draft artifact. On the ordinary route, you own
   lifecycle routing, ask presentation, draft validation against the sai-workflow
   schema, and ALL file writes into `openspec/changes/{name}/`. The explicit
-  Build (unattended) execution route is the only exception: you still validate and
+  Direct Build (unattended) execution route is the only exception: you still validate and
   authorize the closed draft order, then the same backfill worker performs the
-  exact writes on its `--autofast-execute` continuation. Never perform the
+  exact writes on its `--direct-build-execute` continuation. Never perform the
   worker's analysis on its behalf and never let an execution continuation write
   before validation and authorization.
 
@@ -50,7 +50,7 @@
     lifecycle, no panel plan renders, and no acknowledgement literal is defined.
   - `replacement_reconstruction_fields` — the complete original envelope, the
      opaque input history (including forwarded interview answers), the confirmed
-     change name, the Build (unattended) mode, the validated draft set and closed
+     change name, the Direct Build (unattended) mode, the validated draft set and closed
      execution order pending write, the one-shot execution state, and the
      ordered duplicate-free changed-files union; a replacement worker
      reconstructs only from these and can never replay an executed order.
@@ -146,11 +146,11 @@
      byte-for-byte. Add every written path to the changed-files union. Then run
      `terminal_navigation`.
 
-  ## Build (unattended) prepare -> execute routing
+  ## Direct Build (unattended) prepare -> execute routing
 
-  This route is used only by the Explore Build (unattended) composition
+  This route is used only by the Explore Direct Build (unattended) composition
   and does not alter a normal `/sai-backfill` invocation. The composition
-  dispatches this worker with an initial `--autofast-prepare` marker. The worker
+  dispatches this worker with an initial `--direct-build-prepare` marker. The worker
   performs the ordinary technical flow and returns the draft content without
   writing it. The coordinator then:
 
@@ -159,9 +159,9 @@
      allow-list;
   2. records the validated plan and keeps the invocation-scoped
      `changed_files` union; and
-  3. only after the active Build (unattended) authorization and all applicable phase
+  3. only after the active Direct Build (unattended) authorization and all applicable phase
      gates resolve, continues the same worker with one opaque
-     `--autofast-execute` payload containing that exact validated order.
+     `--direct-build-execute` payload containing that exact validated order.
 
   The continuation is the execution authorization. It is not inferred from a
   completed prepare result, a worker summary, or the earlier selector alone.
@@ -179,7 +179,7 @@
   `@sai/commands/backfill/instructions.md` belongs to the WORKER as inspection,
   interviewing, reconciliation, delegation, and draft-composition procedure
   plus every user-facing ask. The ordinary route keeps all writes in this
-  coordinator; the Build (unattended) route hands only its validated closed execution
+  coordinator; the Direct Build (unattended) route hands only its validated closed execution
   order back to the worker. The `@skills/budget/SKILL.md` load and every
   `budget-explorer` subagent dispatch belong to the WORKER session. Schema
   validation and authorization remain HERE in this coordinator in both routes.

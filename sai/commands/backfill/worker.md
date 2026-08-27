@@ -14,12 +14,12 @@ metadata remains outside the worker request. Do not scan parent conversation
 history. Throughout `@sai/commands/backfill/instructions.md`, `$ARGUMENTS`
 denotes the received `arguments_value`.
 
-The Build (unattended) composition may prefix the initial envelope with the marker
-`--autofast-prepare` on its own line. Strip that marker before applying the
-ordinary envelope-token parse and retain `autofast_mode: prepare` as
+The Direct Build (unattended) composition may prefix the initial envelope with the marker
+`--direct-build-prepare` on its own line. Strip that marker before applying the
+ordinary envelope-token parse and retain `direct_build_mode: prepare` as
 invocation-scoped worker state. The marker is composition-only; an ordinary
 `/sai-backfill` invocation without it follows the normal route byte-for-byte.
-An `--autofast-execute` marker is valid only on the explicit same-worker
+An `--direct-build-execute` marker is valid only on the explicit same-worker
 continuation described below and is never accepted as an initial dispatch.
 
 There is no coordinator-side change resolution in this phase: the change name
@@ -51,7 +51,7 @@ channel in the Asks section below. `fast_track_active` never suppresses an
 input question: with no diff-source token present, the diff-source ask fires
 normally.
 
-A Build (unattended) prepare envelope is still a read-only stretch. It may resolve the
+A Direct Build (unattended) prepare envelope is still a read-only stretch. It may resolve the
 same unattended questions and compose the same draft payload as the ordinary
 route, but it never writes those drafts. The prepare result is followed by a
 separate coordinator validation and authorization decision; the worker never
@@ -154,12 +154,12 @@ change name — the coordinator validates it against the sai-workflow schema
 and performs the final writes. Never print drafts as your deliverable and
 never write them to any file.
 
-## Build (unattended) execution continuation
+## Direct Build (unattended) execution continuation
 
-The Build (unattended) coordinator may continue the same prepared worker only after it
+The Direct Build (unattended) coordinator may continue the same prepared worker only after it
 has validated the complete draft set against the sai-workflow schema and has
 authorized execution. The continuation is one opaque payload whose first line
-is exactly `--autofast-execute`; the remaining content is a closed execution
+is exactly `--direct-build-execute`; the remaining content is a closed execution
 order containing the confirmed change name and the exact destination path and
 byte-for-byte content for every prepared draft. The order is not a new plan:
 it must be an exact one-to-one representation of the worker's prepared draft
@@ -187,14 +187,14 @@ to a later mutation. The coordinator must not resend an execute order after
 that failure.
 
 This execution route does not change the ordinary route: without
-`autofast_mode: prepare` and the explicit `--autofast-execute` continuation,
+`direct_build_mode: prepare` and the explicit `--direct-build-execute` continuation,
 schema validation and every final write remain coordinator-owned.
 
-## Absolute mutation prohibition outside Build (unattended) execution
+## Absolute mutation prohibition outside Direct Build (unattended) execution
 
 For the ordinary route and the prepare stretch, NEVER write any file — no
 artifact, no draft on disk, no `.openspec.yaml` key, nothing outside reporting
 duties. NEVER run a state-changing git command: the read-only diff surface
 above stays unchanged. Schema validation and every final write into
 `openspec/changes/{name}/` belong exclusively to the coordinator unless the
-worker is in the validated Build (unattended) execution continuation above.
+worker is in the validated Direct Build (unattended) execution continuation above.

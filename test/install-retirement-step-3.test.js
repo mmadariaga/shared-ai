@@ -43,7 +43,15 @@ function hash(bytes) {
 }
 
 function roots(base) {
-  return { base, sai: path.join(base, 'sai'), skills: path.join(base, 'skills') };
+  return { base, sai: path.join(base, 'sai'), skills: path.join(base, 'skills'), agents: path.join(base, 'agents') };
+}
+
+function retirementDestinationRoot(base) {
+  return {
+    sai: path.join(base, 'sai'),
+    skills: path.join(base, 'skills'),
+    agents: path.join(base, 'agents'),
+  };
 }
 
 function retirementPaths(base) {
@@ -51,7 +59,7 @@ function retirementPaths(base) {
   return expandRetirementManifest(manifest, {
     harness: 'claude',
     repoRoot: path.join(__dirname, '..'),
-    destinationRoot: { sai: path.join(base, 'sai'), skills: path.join(base, 'skills') },
+    destinationRoot: retirementDestinationRoot(base),
   });
 }
 
@@ -77,7 +85,7 @@ test('retirement cleanup deletes matching bytes for every accepted historical wo
         const expanded = expandRetirementManifest(manifest, {
           harness: retirement.harnesses[0],
           repoRoot: path.join(__dirname, '..'),
-          destinationRoot: { sai: path.join(base, 'sai'), skills: path.join(base, 'skills') },
+          destinationRoot: retirementDestinationRoot(base),
         });
         const target = expanded.find(record => record.id === retirement.id);
         const bytes = Buffer.from(`historical bytes for ${acceptedHash}`);
@@ -120,7 +128,7 @@ test('idea-list render retirement records delete every accepted digest and prese
         const target = expandRetirementManifest(manifest, {
           harness,
           repoRoot,
-          destinationRoot: { sai: path.join(base, 'sai'), skills: path.join(base, 'skills') },
+          destinationRoot: retirementDestinationRoot(base),
         }).find(record => record.id === retirement.id);
         assert.ok(target, `${retirement.id} should expand for ${harness}`);
         fs.mkdirSync(path.dirname(target.destinationPath), { recursive: true });
@@ -146,7 +154,7 @@ test('idea-list render retirement records delete every accepted digest and prese
       const expanded = expandRetirementManifest(manifest, {
         harness,
         repoRoot,
-        destinationRoot: { sai: path.join(base, 'sai'), skills: path.join(base, 'skills') },
+        destinationRoot: retirementDestinationRoot(base),
       });
       const target = expanded.find(record => record.id === retirement.id);
       const modifiedBytes = Buffer.from('edited idea-list bytes');
@@ -227,7 +235,7 @@ test('retirement cleanup preserves unknown bytes for every former worker binding
     const destinations = retirements.map(retirement => expandRetirementManifest(manifest, {
       harness: retirement.harnesses[0],
       repoRoot: path.join(__dirname, '..'),
-       destinationRoot: { sai: path.join(base, 'sai'), skills: path.join(base, 'skills') },
+       destinationRoot: retirementDestinationRoot(base),
     }).find(record => record.id === retirement.id));
     const bytes = Buffer.from('unrecognized worker binding bytes');
     for (const destination of destinations) {
@@ -340,7 +348,7 @@ test('STEP1_RETIRE_INLINE: retired routed loaders use exact hashes and preserve 
       const expanded = expandRetirementManifest(manifest, {
         harness: retirement.harnesses[0],
         repoRoot,
-        destinationRoot: { sai: path.join(base, 'sai'), skills: path.join(base, 'skills') },
+        destinationRoot: retirementDestinationRoot(base),
       });
       const target = expanded.find(record => record.id === retirement.id);
       assert.ok(target, `${retirement.id} should expand for its owning harness`);

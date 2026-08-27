@@ -67,7 +67,7 @@ test('build coordinator normalizes fast-track and resolves one change without an
   assertContains(source, 'transitions immediately to the apply segment');
   assertContains(source, 'Do NOT print the standalone implement completion literal');
   assertContains(source, 'not the `sai-explore` supervision pattern');
-  assertContains(source, 'Do not require Auto crystallization authorization');
+  assertContains(source, 'Do not require Plan - Unattended or Direct Build - Unattended crystallization authorization');
 });
 
 test('build coordinator owns fast-track activation and blocks apply after phase-one failure', () => {

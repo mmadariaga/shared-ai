@@ -260,7 +260,7 @@ test('doctor inventory parity: the manifest derives exactly fourteen worker bind
     'sai-merge-worker',
     'sai-4-red-worker',
     'sai-4-green-worker',
-    'sai-autofast-implement-worker',
+    'sai-direct-build-worker',
   ];
   try {
     for (const [harness, base] of [['claude', claudeBase], ['opencode', opencodeBase]]) {

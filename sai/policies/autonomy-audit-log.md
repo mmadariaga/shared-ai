@@ -3,7 +3,7 @@
 Single source of the pinned scannable layout for the autonomy audit that
 closes a supervised phase. Consumed by reference by `sai-explore`'s
 supervised contracts — the spec phase, the design phase, and the
-Build (unattended) run — which name their own phase label when they
+Direct Build (unattended) run — which name their own phase label when they
 invoke this layout. Consuming surfaces SHALL NOT restate the layout inline.
 
 ## Invariants
@@ -31,8 +31,7 @@ Auto-answered: <N>   Escalated: <M>
 ```
 
 `<phase label>` is supplied verbatim by the emitting contract (for example
-`supervised spec phase`, `supervised design phase`, or the Auto (fast
-implementation) run's label); the layout itself never changes.
+`supervised spec phase`, `supervised design phase`, or the Direct Build - Unattended run's label); the layout itself never changes.
 
 ## Empty-report case (no auto-answers)
 

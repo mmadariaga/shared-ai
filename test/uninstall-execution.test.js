@@ -261,7 +261,7 @@ test('matrix retirement: the active worker inventory stays exactly fourteen bind
   const manifest = loadInstallManifest(repoRoot);
   const phases = ['spec', 'design', 'implementation', 'review', 'security', 'performance', 'accessibility', 'commit', 'archive', 'backfill', 'merge'];
   const applyBindings = ['red-worker.md', 'green-worker.md'];
-  const autofastBindings = ['autofast-implement-worker.md'];
+  const directBuildBindings = ['direct-build-worker.md'];
   const workers = [
     'sai-1-spec-proposal-worker',
     'sai-2-design-worker',
@@ -276,7 +276,7 @@ test('matrix retirement: the active worker inventory stays exactly fourteen bind
     'sai-backfill-worker',
     'sai-commit-worker',
     'sai-merge-worker',
-    'sai-autofast-implement-worker',
+    'sai-direct-build-worker',
   ];
   for (const harness of ['claude', 'opencode']) {
     const destinationRoot = {
@@ -293,12 +293,12 @@ test('matrix retirement: the active worker inventory stays exactly fourteen bind
         .split(path.sep).join('/').startsWith('orchestration/workers/bindings/') &&
         (phases.includes(path.basename(projection.destinationPath, '-worker.md')) ||
          applyBindings.includes(path.basename(projection.destinationPath)) ||
-         autofastBindings.includes(path.basename(projection.destinationPath))))
+         directBuildBindings.includes(path.basename(projection.destinationPath))))
       .map(projection => path.basename(projection.destinationPath));
     assert.equal(bindingNames.length, 14, `${harness} should project exactly fourteen worker bindings`);
     assert.deepEqual(bindingNames.sort(),
-      [...phases.map(phase => `${phase}-worker.md`), ...applyBindings, ...autofastBindings].sort(),
-      `${harness} worker binding names should match the canonical phase matrix plus the apply and auto-fast role bindings`);
+      [...phases.map(phase => `${phase}-worker.md`), ...applyBindings, ...directBuildBindings].sort(),
+      `${harness} worker binding names should match the canonical phase matrix plus the apply and direct-build role bindings`);
     assert.equal(bindingNames.includes('idea-list-render.md'), false,
       `${harness} must not project an idea-list-render matrix binding`);
     const allBindingNames = active

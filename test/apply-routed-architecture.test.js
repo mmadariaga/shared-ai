@@ -818,7 +818,7 @@ test('Step 2 with the apply contract files present, install and doctor derive th
     'sai-backfill-worker',
     'sai-4-red-worker',
     'sai-4-green-worker',
-    'sai-autofast-implement-worker',
+    'sai-direct-build-worker',
   ];
   const manifest = loadInstallManifest(repoRoot);
   assert.equal(manifest['worker-matrix'].entries.length, 14,

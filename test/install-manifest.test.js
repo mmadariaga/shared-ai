@@ -1,4 +1,4 @@
-﻿'use strict';
+'use strict';
 
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
@@ -265,21 +265,21 @@ const MANAGED_WORKER_PROJECTIONS = {
       destinationPath: 'sai-4-green-worker.md',
     },
   },
-  'sai-autofast-implement-worker': {
+  'sai-direct-build-worker': {
     claudeBinding: {
-      id: 'claude-autofast-implement-worker-binding',
-      sourcePath: 'sai/orchestration/workers/bindings/claude/autofast-implement-worker.md',
-       destinationPath: 'orchestration/workers/bindings/autofast-implement-worker.md',
+      id: 'claude-direct-build-worker-binding',
+      sourcePath: 'sai/orchestration/workers/bindings/claude/direct-build-worker.md',
+       destinationPath: 'orchestration/workers/bindings/direct-build-worker.md',
     },
     opencodeBinding: {
-      id: 'opencode-autofast-implement-worker-binding',
-      sourcePath: 'sai/orchestration/workers/bindings/opencode/autofast-implement-worker.md',
-       destinationPath: 'orchestration/workers/bindings/autofast-implement-worker.md',
+      id: 'opencode-direct-build-worker-binding',
+      sourcePath: 'sai/orchestration/workers/bindings/opencode/direct-build-worker.md',
+       destinationPath: 'orchestration/workers/bindings/direct-build-worker.md',
     },
     claudeAgent: {
-      id: 'claude-sai-autofast-implement-worker',
-      sourcePath: 'agents/claude/sai-autofast-implement-worker.md',
-      destinationPath: 'sai-autofast-implement-worker.md',
+      id: 'claude-sai-direct-build-worker',
+      sourcePath: 'agents/claude/sai-direct-build-worker.md',
+      destinationPath: 'sai-direct-build-worker.md',
     },
   },
 };
@@ -1012,7 +1012,7 @@ test('canonical manifest validates all historical retirements and excludes them 
     });
   }
   assert.equal(proxyRetirements.some(retirement => retirement.harnesses.includes('copilot')), false);
-  assert.ok(manifest.retirements.every(retirement => ['sai', 'skills'].includes(retirement.destination.class)));
+  assert.ok(manifest.retirements.every(retirement => ['sai', 'skills', 'agents'].includes(retirement.destination.class)));
   assert.ok(proxyRetirements.every(retirement => retirement.destination.class === 'skills'));
   assert.ok(proxyRetirements.every(retirement => retirement.managedHashes.length > 0 &&
     retirement.managedHashes.every(value => /^[0-9a-f]{64}$/.test(value))));

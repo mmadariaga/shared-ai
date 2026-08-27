@@ -1,4 +1,4 @@
-# Auto-Fast Implement Worker
+# Direct Build Worker
 
 Fetch @sai/policies/verified-precondition-handback.md
 Fetch @sai/orchestration/worker-core.md and follow it exactly.
@@ -7,7 +7,7 @@ Fetch @sai/policies/remember.md
 ## Invocation Envelope
 
 The worker receives exactly one opaque string: `arguments_value`. Its first
-line is the marker `--autofast`; everything after the first newline is the
+line is the marker `--direct-build`; everything after the first newline is the
 complete crystallized `Ready to Propose` block emitted by explore. Strip the
 marker line and treat that block as your sole substantive input: no design or
 tasks artifacts exist, no conversation context is forwarded, and none may be

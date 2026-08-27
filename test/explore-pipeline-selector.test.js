@@ -1,4 +1,4 @@
-﻿'use strict';
+'use strict';
 
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
@@ -16,8 +16,8 @@ const exploreSources = [
   'sai/commands/explore/steps/crystallization-language-gates.md',
   'sai/commands/explore/steps/review-loop.md',
   'sai/commands/explore/steps/pipeline-selector.md',
-  'sai/commands/explore/steps/pipeline-auto-supervised.md',
-  'sai/commands/explore/steps/pipeline-auto-fast.md',
+  'sai/commands/explore/steps/pipeline-plan-unattended.md',
+  'sai/commands/explore/steps/pipeline-direct-build.md',
   'sai/commands/explore/steps/idea-list.md',
   'sai/commands/explore/body.md',
   'commands/claude/sai-explore.md',
@@ -65,7 +65,7 @@ test('the selector closes every crystallization emission through the authoritati
   assert.match(source, /after the final `Ready to Propose` block and after the keep-window-open recommendation/i);
   assert.match(source, /exactly three options, in this fixed order/i);
   assert.match(source, /\*\*Plan - Unattended\*\* — Runs `sai-1` and `sai-2` to create and review a plan, then stops before direct implementation\./);
-  assert.match(source, /\*\*Build - Unattended\*\* — Implements the change directly, suits simple changes and fixes, and updates the specs afterward; it is not `\/sai-build`\./);
+  assert.match(source, /\*\*Direct Build - Unattended\*\* — Implements the change directly, suits simple changes and fixes, and updates the specs afterward; it is not `\/sai-build`\./);
   assert.match(source, /\*\*Manual\*\* — Provides instructions for continuing manually with `\/sai-1-spec <change-name>`\./);
   assert.match(source, /AskUserQuestion on Claude Code|`AskUserQuestion` on Claude Code/i);
   assert.match(source, /`question` tool on opencode/i);
@@ -87,14 +87,14 @@ test('overview-language gate is deferred from crystallization until a dispatchab
     spec('sai/commands/explore/steps/crystallization-protocol.md'),
     spec('sai/commands/explore/steps/crystallization-language-gates.md'),
   ].join('\n');
-  const supervised = spec('sai/commands/explore/steps/pipeline-auto-supervised.md');
+  const supervised = spec('sai/commands/explore/steps/pipeline-plan-unattended.md');
 
   assert.doesNotMatch(crystallization, /overview-language gate \(gate 9|gate 9.*before.*Ready to Propose/i);
   assert.match(supervised, /Gate 9 at Plan \(unattended\) activation/);
   assert.match(supervised, /after \*\*Deterministic selection\*\* confirms a dispatchable change/i);
   assert.match(supervised, /before setting `active_change` or dispatching the first spec worker/i);
   assert.match(supervised, /Empty or completed crystallization sets, `Cancel`, and an already-active run end before this gate/i);
-  assert.match(supervised, /The ask never occurs at crystallization emission.*\*\*Manual\*\*.*\*\*Build \(unattended\)\*\*/i);
+  assert.match(supervised, /The ask never occurs at crystallization emission.*\*\*Manual\*\*.*\*\*Direct Build \(unattended\)\*\*/i);
 });
 
 test('the spec handoff example demonstrates fast-track and overview language together', () => {
@@ -132,7 +132,7 @@ test('the crystallization closing recommendation names review-loop and no pipeli
   assert.match(source, /names the literal token `review-loop` exactly once/);
   assert.match(source, /after the final `Ready to Propose` block and after the keep-window-open recommendation/i);
   assert.match(source, /an inline refusal is a crystallization emission and closes exactly like items 5 and 6/i);
-  assert.match(source, /selector remains a three-option \*\*Plan \(unattended\)\*\*\s*\/\s*\*\*Build \(unattended\)\*\*\s*\/\s*\*\*Manual\*\* choice/i,
+  assert.match(source, /selector remains a three-option \*\*Plan \(unattended\)\*\*\s*\/\s*\*\*Direct Build \(unattended\)\*\*\s*\/\s*\*\*Manual\*\* choice/i,
     'the review-loop description should name all three selector options');
   assert.doesNotMatch(source, /selector remains a two-option \*\*Auto\*\* \/ \*\*Manual\*\* choice/i);
 });
@@ -140,7 +140,7 @@ test('the crystallization closing recommendation names review-loop and no pipeli
 test('the selector prompt and descriptions localize while option titles and command literals stay English', () => {
   const source = exploreContract();
 
-  assert.match(source, /question text and each option description[\s\S]{0,160}fixed option titles remain exactly `Plan - Unattended`, `Build - Unattended`, and `Manual`/i);
+  assert.match(source, /question text and each option description[\s\S]{0,160}fixed option titles remain exactly `Plan - Unattended`, `Direct Build - Unattended`, and `Manual`/i);
   assert.match(source, /the literal `review-loop`, `\/sai-1-spec`, `\/sai-2-design`, and `\/sai-1-spec <change-name>` command strings stay verbatim English/i);
 });
 
@@ -539,7 +539,7 @@ test('supervised pipeline state extends the selector interface by phase with sep
   assert.doesNotMatch(source, /\breview_passes\b/);
   assert.doesNotMatch(source, /\bfinding_history\b/);
   assert.match(source, /spec-to-design transition adapter|transition adapter.*design/i);
-   assert.match(source, /On a \*\*Plan - Unattended\*\* or \*\*Build - Unattended\*\* selection, use only `last_crystallization_set` and `completed_changes`/);
+   assert.match(source, /On a \*\*Plan - Unattended\*\* or \*\*Direct Build - Unattended\*\* selection, use only `last_crystallization_set` and `completed_changes`/);
   assert.match(source, /review loop's \(item 9\) source only, and is never the selector's dispatch source/i);
   assert.match(source, /replaces `last_crystallization_set` with that turn's emitted names/i);
   assert.match(source, /assumed applied or discarded/i);
@@ -1324,7 +1324,7 @@ test('Step 4: successful Plan (unattended) emits the build handoff and never dis
     'successful Plan should not emit the obsolete terminal text');
 });
 
-test('Step 4: Build (unattended) completion re-presents a per-slice selector and Manual pauses pending slices', () => {
+test('Step 4: Direct Build (unattended) completion re-presents a per-slice selector and Manual pauses pending slices', () => {
   const source = exploreContract();
   const transitionStart = source.indexOf('**Successful slice completion transition');
   const transitionEnd = source.indexOf('**Failures**', transitionStart);
@@ -1333,7 +1333,7 @@ test('Step 4: Build (unattended) completion re-presents a per-slice selector and
 
   const transition = source.slice(transitionStart, transitionEnd);
   assert.match(transition, /recompute `pending_slices` only from `last_crystallization_set` minus `completed_changes`/i);
-  assert.match(transition, /re-present the existing full three-option `Plan \(unattended\)` \/ `Build \(unattended\)` \/ `Manual` selector exactly once/i);
+  assert.match(transition, /re-present the existing full three-option `Plan \(unattended\)` \/ `Direct Build \(unattended\)` \/ `Manual` selector exactly once/i);
   assert.match(transition, /per-slice authorization gate, not a one-time authorization/i);
   assert.match(transition, /even when exactly one pending slice remains/i);
   assert.match(transition, /Never re-select or re-run a name already in `completed_changes`/i);
@@ -1364,7 +1364,7 @@ test('Step 4: post-selector prose localizes while command and review-loop litera
   assert.ok(deterministic > selector, 'deterministic Plan/Build selection should follow the selector prose');
   const postSelector = source.slice(selector, deterministic);
 
-  assert.match(postSelector, /question text and each option description[\s\S]{0,160}fixed option titles remain exactly `Plan - Unattended`, `Build - Unattended`, and `Manual`/i);
+  assert.match(postSelector, /question text and each option description[\s\S]{0,160}fixed option titles remain exactly `Plan - Unattended`, `Direct Build - Unattended`, and `Manual`/i);
   assert.match(postSelector, /After the selector response, the surrounding prose[\s\S]{0,220}follows the selected crystallization language, while its command and standing-path literals remain verbatim English/i);
   assert.match(postSelector, /the literal `review-loop`, `\/sai-1-spec`, `\/sai-2-design`, and `\/sai-1-spec <change-name>` command strings stay verbatim English/i);
   for (const literal of ['`/sai-1-spec`', '`/sai-2-design`', '`review-loop`']) {
@@ -1724,14 +1724,14 @@ test('mode-specific route labels and Plan/Build progression are explicit', () =>
   const source = exploreContract();
   const ideaList = spec('sai/commands/explore/steps/idea-list.md');
   const plan = ideaList.slice(ideaList.indexOf('**`plan-unattended` route'));
-  const build = ideaList.slice(ideaList.indexOf('**`build-unattended` route'));
+  const build = ideaList.slice(ideaList.indexOf('**`direct-build-unattended` route'));
 
   assert.match(plan, /exactly two steps, `sai-1` followed by `sai-2`/);
   assert.match(plan, /`sai-1` starts `in_progress`[\s\S]*clean spec convergence[\s\S]*`sai-2` as `in_progress`/i);
   assert.match(source, /clean terminal design result completes `sai-2`[\s\S]*does not claim that `sai-3`/i);
   assert.match(build, /exactly the high-level stages `Build\/Implement`, `Backfill`, and `Archive`/);
   assert.match(build, /`Build\/Implement`[\s\S]*not `\/sai-build`/);
-  assert.match(source, /underlying eight-step Build \(unattended\) contract remains authoritative[\s\S]*only these three high-level stages/i);
+  assert.match(source, /underlying eight-step Direct Build \(unattended\) contract remains authoritative[\s\S]*only these three high-level stages/i);
   assert.match(source, /Build\/Implement.*completed[\s\S]*Backfill.*in_progress[\s\S]*Archive.*in_progress/i);
 });
 

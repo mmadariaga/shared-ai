@@ -161,7 +161,7 @@ test('install and uninstall inventories are exact and deterministic for every su
        assert.equal(activeWorkerBindings.length, 14,
          `${harness} should project exactly fourteen active worker bindings`);
       const activeWorkers = normalizedActive
-         .filter(destination => /^agents\/sai-(?:\d-.*|commit|archive|backfill|merge|autofast-implement)-worker\.md$/.test(destination));
+         .filter(destination => /^agents\/sai-(?:\d-.*|commit|archive|backfill|merge|direct-build)-worker\.md$/.test(destination));
        assert.equal(activeWorkers.length, 14,
          `${harness} should project exactly fourteen active managed agents`);
        const entries = enumerate(base, destinationRoot);

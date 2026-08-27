@@ -1,4 +1,4 @@
-﻿'use strict';
+'use strict';
 
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
@@ -49,7 +49,7 @@ const APPLY_WORKER_NAME = {
 const WORKER_ROSTER = [
   ...Object.values(WORKER_NAME),
   ...Object.keys(APPLY_WORKER_NAME),
-  'sai-autofast-implement-worker',
+  'sai-direct-build-worker',
 ];
 
 const PHASE_CONTRACT_PATH = Object.freeze(Object.fromEntries(
@@ -148,18 +148,18 @@ function fullMatrixEntries() {
     applyMatrixEntry('sai-4-red-worker', 'red'),
     applyMatrixEntry('sai-4-green-worker', 'green'),
     {
-      phase: 'autofast-implement',
-      workerName: 'sai-autofast-implement-worker',
-      workerContract: 'sai/commands/explore/autofast-implement-worker.md',
-      bindingStem: 'autofast-implement',
+      phase: 'direct-build',
+      workerName: 'sai-direct-build-worker',
+      workerContract: 'sai/commands/explore/direct-build-worker.md',
+      bindingStem: 'direct-build',
       dispatchPrimitive: 'task',
-      initialDispatch: 'dispatch sai-autofast-implement-worker',
-      continuationLiteral: 'continue sai-autofast-implement-worker',
+      initialDispatch: 'dispatch sai-direct-build-worker',
+      continuationLiteral: 'continue sai-direct-build-worker',
       replacementFields: ['model'],
       helperPermissions: ['read'],
-      progressDeclaration: 'autofast milestones',
-      claudeAgent: { name: 'sai-autofast-implement-worker', model: 'claude-model', keyword: 'claude-autofast' },
-      opencodeAgent: { name: 'sai-autofast-implement-worker', model: 'opencode-model', keyword: 'opencode-autofast' },
+      progressDeclaration: 'direct-build milestones',
+      claudeAgent: { name: 'sai-direct-build-worker', model: 'claude-model', keyword: 'claude-direct-build' },
+      opencodeAgent: { name: 'sai-direct-build-worker', model: 'opencode-model', keyword: 'opencode-direct-build' },
     },
   ];
 }
@@ -205,11 +205,11 @@ test('matrix expansion yields exactly fourteen worker bindings and fourteen mana
       .filter(name => ['red', 'green'].includes(name.replace(/-worker\.md$/, '')));
     assert.equal(applyBindingNames.length, 2,
       `${harness} should project exactly two apply-role bindings beside the phase bindings`);
-    const autofastBindingNames = bindingProjections
+    const directBuildBindingNames = bindingProjections
       .map(projection => path.basename(projection.destinationPath))
-      .filter(name => ['autofast-implement'].includes(name.replace(/-worker\.md$/, '')));
-    assert.equal(autofastBindingNames.length, 1,
-      `${harness} should project exactly one auto-fast role binding beside the phase bindings`);
+      .filter(name => ['direct-build'].includes(name.replace(/-worker\.md$/, '')));
+    assert.equal(directBuildBindingNames.length, 1,
+      `${harness} should project exactly one direct-build role binding beside the phase bindings`);
     assert.equal(new Set(applyBindingNames).size, applyBindingNames.length,
       `${harness} apply bindings should carry distinct destination identities`);
     assert.equal(bindingProjections.some(projection =>
@@ -562,7 +562,7 @@ test('missing, duplicated, or misassigned matrix entries fail at manifest expans
   );
 });
 
-test('the canonical manifest declares the fourteen-entry matrix with RED then GREEN apply identities followed by the auto-fast implementer', () => {
+test('the canonical manifest declares the fourteen-entry matrix with RED then GREEN apply identities followed by the direct-build implementer', () => {
   const manifest = loadInstallManifest(REPO_ROOT);
   const entries = manifest['worker-matrix'].entries;
   assert.ok(Array.isArray(entries), 'the manifest should carry a worker-matrix entry list');
@@ -584,12 +584,12 @@ test('the canonical manifest declares the fourteen-entry matrix with RED then GR
     'the GREEN entry should pin its role-specific contract');
   assert.notEqual(applyEntries[0].bindingStem, applyEntries[1].bindingStem,
     'the two apply entries should carry unique binding stems');
-  const autofastEntries = entries.slice(PHASE_ORDER.length + 2);
-  assert.deepEqual(autofastEntries.map(entry => entry.workerName),
-    ['sai-autofast-implement-worker'],
-    'the auto-fast implementer should follow the apply entries');
-  assert.equal(autofastEntries[0].workerContract, 'sai/commands/explore/autofast-implement-worker.md',
-    'the auto-fast implement entry should pin its explore-owned contract');
+  const directBuildEntries = entries.slice(PHASE_ORDER.length + 2);
+  assert.deepEqual(directBuildEntries.map(entry => entry.workerName),
+    ['sai-direct-build-worker'],
+    'the direct-build implementer should follow the apply entries');
+  assert.equal(directBuildEntries[0].workerContract, 'sai/commands/explore/direct-build-worker.md',
+    'the direct-build implement entry should pin its explore-owned contract');
   assert.equal(new Set(entries.map(entry => entry.workerName)).size, entries.length,
     'every manifest worker identity should be unique');
 });

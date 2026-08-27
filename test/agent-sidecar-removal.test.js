@@ -137,7 +137,7 @@ test('enumerateClaude yields managed agent entries without owner sidecar destina
     }
     assert.ok(WORKER_NAMES.every(name => basenames.includes(name)),
       'Claude should still enumerate the eleven worker destinations');
-    for (const name of ['sai-4-red-worker', 'sai-4-green-worker', 'sai-autofast-implement-worker']) {
+    for (const name of ['sai-4-red-worker', 'sai-4-green-worker', 'sai-direct-build-worker']) {
       assert.ok(basenames.includes(name),
         `Claude should enumerate the ${name} role managed agent destination`);
     }
