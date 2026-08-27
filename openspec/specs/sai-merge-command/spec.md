@@ -44,7 +44,17 @@ The system SHALL confine every mutating operation — merge launch, resolution w
 
 ### Requirement: Categorized conflict resolution with criteria
 
-The system SHALL classify each conflicted file as specs, ADR/DDR, or code immediately upon conflict detection and version reading. The analysis SHALL read governing specs, ADRs, and DDRs forwarded by the coordinator (indexed by branch in `target_rules` and `source_rules`). For each conflict region, the worker SHALL apply an evidence ladder: first consult declared rules from governing specs/ADRs/DDRs (L1); if no rule exists or the rule is silent, consult textual context and code archaeology (L2). When no declared rule governs a region, emit a visible on-screen notice `[No declared rule found for this region]`. The analysis SHALL inspect the base, both branch versions, surrounding file context, related branch changes, and relevant auto-merged files; distinguish directly observable **Facts** (including declared rules from governing specs/ADRs/DDRs with their source identified) from explicitly labeled **Inferences** (used only when no declared rule exists); and compare the objectives and affected contracts on both sides. For every semantically ambiguous conflict, it SHALL retain complete marker-free `ours` and `theirs` alternatives and MAY retain a complete marker-free `synthesis` only when that outcome has one owner for each responsibility, one authoritative source for each fact, compatible lifecycle behavior, and no duplicated gate or conflicting contract. It SHALL never represent a resolution as a labeled fragment, diff, hunk, or concatenation of conflict pieces. Complete alternatives are constructed only after scope selection in Step 5A.
+The system SHALL classify each conflicted file as specs, ADR/DDR, or code immediately upon conflict detection and version reading. The analysis SHALL read governing specs, ADRs, and DDRs forwarded by the coordinator (indexed by branch in `target_rules` and `source_rules`). For each conflict region, the worker SHALL apply an evidence ladder: first consult declared rules from governing specs/ADRs/DDRs (L1); if no rule exists or the rule is silent, consult textual context and code archaeology (L2). When no declared rule governs a region, emit a visible on-screen notice `[No declared rule found for this region]`. The analysis SHALL inspect the base, both branch versions, surrounding file context, related branch changes, and relevant auto-merged files; distinguish directly observable **Facts** (including declared rules from governing specs/ADRs/DDRs with their source identified) from explicitly labeled **Inferences** (used only when no declared rule exists); and compare the objectives and affected contracts on both sides.
+
+For each conflicted file, the worker SHALL determine whether all conflict regions in that file resolve to the same side (all `ours`, all `theirs`, or all other branches). When every region resolves to the same side, the `ours` and `theirs` alternatives are obtained directly from git and are never generated:
+- internal decision value `ours` — obtained from `git show :2:<file>` (the current branch's version), materializable with `git checkout --ours`;
+- internal decision value `theirs` — obtained from `git show :3:<file>` (the merged branch's version), materializable with `git checkout --theirs`.
+
+When any conflict regions in a file resolve to different sides (mixing sides), `ours` and `theirs` are not offered as alternatives; only synthesis through authored region replacement is available.
+
+For every semantically ambiguous conflict where an alternative is offered, the worker MAY retain a `synthesis` alternative only when that outcome has one owner for each responsibility, one authoritative source for each fact, compatible lifecycle behavior, and no duplicated gate or conflicting contract. The synthesis is limited to the conflict region(s), not the complete file. It must be a deliberate technical resolution authored by the worker, never created by concatenating conflict fragments or by retyping untouched lines.
+
+The system SHALL never represent a resolution as a labeled fragment, diff, hunk, or concatenation of conflict pieces. Alternatives are constructed only after scope selection in Step 5A.
 
 #### Scenario: Obvious conflict stays lightweight
 
@@ -58,18 +68,18 @@ The system SHALL classify each conflicted file as specs, ADR/DDR, or code immedi
 
 #### Scenario: Contextual complete alternatives are preserved
 
-- **WHEN** a semantic conflict has complete current and incoming outcomes and a technically safe combined outcome is possible
-- **THEN** the worker retains complete `ours`, `theirs`, and justified `synthesis` alternatives, keeps their internal values stable, and offers the safe synthesis only as a complete outcome with a single owner for each rule
+- **WHEN** a semantic conflict has complete current and incoming outcomes and a technically safe combined outcome is possible, and all regions in the file resolve to the same side
+- **THEN** the worker retains git-sourced `ours` and `theirs` alternatives obtained directly from git, and a justified region-scoped `synthesis` alternative; keeps their internal values stable; and offers the safe synthesis only as a region-replacement outcome with a single owner for each rule
 
 #### Scenario: True semantic contradiction is not auto-selected
 
 - **WHEN** both sides change the same requirement or scenario with incompatible preconditions, outcomes, or ownership rules
-- **THEN** the conflict is reported as a semantic contradiction, no side or synthesis is selected automatically, and the complete branch alternatives plus a `more-context` option remain available for human decision
+- **THEN** the conflict is reported as a semantic contradiction, no side or synthesis is selected automatically, and the available alternatives plus a `more-context` option remain available for human decision
 
 #### Scenario: More context preserves the pending decision
 
 - **WHEN** the user selects `more-context` for a semantic conflict
-- **THEN** the same worker continues read-only, expands the evidence from related changes and auto-merged files, preserves the pending complete alternatives, and returns another decision gate without writing, staging, or returning a selected resolution
+- **THEN** the same worker continues read-only, expands the evidence from related changes and auto-merged files, preserves the pending alternatives, and returns another decision gate without writing, staging, or returning a selected resolution
 
 #### Scenario: True contradiction escalates
 
@@ -90,6 +100,16 @@ The system SHALL classify each conflicted file as specs, ADR/DDR, or code immedi
 
 - **WHEN** L1 contains no declared rule for a conflict region (or the rule is silent), or when a declared rule rejects both branch versions
 - **THEN** the worker enters L2 and consults textual context (`git show :1:/:2:/:3:` and surrounding code) to verify or author a compatible resolution
+
+#### Scenario: File with regions resolving to different sides (E4)
+
+- **WHEN** a conflicted file contains multiple conflict regions and they resolve to different sides (some regions choose `ours`, others choose `theirs`)
+- **THEN** the outcome is necessarily a synthesis by definition; the git shortcut cannot be used; the worker offers only synthesis as an alternative and requires an authored resolution combining the selected regions from each side
+
+#### Scenario: Conflicts with no region markers (E5)
+
+- **WHEN** a conflict class produces no `<<<<<<<`, `=======`, or `>>>>>>>` markers (e.g., delete/modify, rename/rename, rename/delete)
+- **THEN** region replacement does not apply; the worker follows the same resolution path as for obvious conflicts, uses Git's guidance on the specific conflict class, and resolves to the complete file outcome for that path using the available alternatives (ours, theirs, or synthesis if a safe combined outcome exists)
 
 ### Requirement: Runtime resolution scope gate
 
@@ -112,31 +132,31 @@ When conflicts exist and fast-track is inactive, the system SHALL apply the scop
 
 ### Requirement: Contextual decision precedes resolution mutation
 
-The system SHALL keep every semantic alternative pending until the human explicitly selects an offered complete outcome. The coordinator SHALL perform no resolution write, conflict-marker removal, or staging while a contextual decision or `more-context` continuation is pending. A selected internal value SHALL unlock mutation only after the worker returns the matching complete marker-free file payload.
+The system SHALL keep every semantic alternative pending until the human explicitly selects an offered complete outcome. The coordinator SHALL perform no resolution write, conflict-marker removal, or staging while a contextual decision or `more-context` continuation is pending. A selected internal value SHALL unlock mutation only after the worker returns the matching source/regions record or git-sourced outcome for that file.
 
 #### Scenario: Human decision gates every resolution write
 
 - **WHEN** a semantic decision is unanswered, or the worker is continuing a `more-context` request
 - **THEN** the coordinator leaves every affected conflict untouched and unstaged, and forwards the answer only to the same worker
 
-#### Scenario: Selected outcome unlocks only its complete payload
+#### Scenario: Selected outcome unlocks region-scoped resolution record
 
 - **WHEN** all required semantic decisions have explicit offered values
-- **THEN** the coordinator accepts only the worker's corresponding complete file records and never reconstructs a file from prose, a hunk, a region, or an unselected alternative
+- **THEN** the coordinator accepts only the worker's corresponding source/regions record (with git-ours or git-theirs requiring no file content, and authored requiring region entries) and never reconstructs a file from prose, a hunk, a complete file, or an unselected alternative
 
 ### Requirement: Complete resolution payload validation
 
-Before any resolution write, the coordinator SHALL atomically validate the worker's `## Complete resolution payload`. It SHALL contain exactly one record for every conflicted file in the selected scope, with the expected path and category, accepted decision records, and a JSON-escaped complete final UTF-8 `content` string. These records are the complete final file contents, not instructions for constructing them. The coordinator SHALL reject missing, duplicate, unexpected, fragmentary, reconstructed, or conflict-marker-containing content and SHALL leave all conflicts untouched and unstaged when any record fails validation.
+Before any resolution write, the coordinator SHALL atomically validate the worker's `## Complete resolution payload`. It SHALL contain exactly one record for every conflicted file in the selected scope, with the expected path, category, source discriminator, and region information as appropriate. Each file record carries a `source` field with exactly one of `"git-ours"`, `"git-theirs"`, or `"authored"`. When `source` is `git-ours` or `git-theirs`, the `regions` array must be empty and the coordinator materializes via `git checkout --ours` or `git checkout --theirs`. When `source` is `"authored"`, the `regions` array contains one entry per conflicted region; each entry carries a `conflict_id` matching an identifier in the file's decisions and a `text` field holding the authored replacement text for that region. Region replacement text must contain no `<<<<<<<`, `=======`, or `>>>>>>>` markers. The coordinator SHALL reject missing, duplicate, unexpected, invalid-source, invalid-region, or conflict-marker-containing records and SHALL leave all conflicts untouched and unstaged when any record fails validation.
 
 #### Scenario: Fragmentary payload is rejected atomically
 
-- **WHEN** a resolution payload contains a diff, hunk, region replacement, missing file, unexpected path, invalid decision, or `<<<<<<<`, `=======`, or `>>>>>>>` marker
+- **WHEN** a resolution payload contains a diff, hunk, complete file, invalid source value, missing region for an authored source, marker in a region's text, missing file, unexpected path, or invalid decision
 - **THEN** the coordinator rejects the entire payload, writes no resolution, and stages no path
 
-#### Scenario: Complete payload is materialized exactly
+#### Scenario: Region-replacement payload is materialized by splicing
 
-- **WHEN** every payload record matches the selected scope and contains complete marker-free file content
-- **THEN** the coordinator writes each supplied `content` value exactly as received and stages only the validated resolved paths
+- **WHEN** every payload record matches the selected scope and contains valid source, regions (if authored), and conflict-free region text
+- **THEN** the coordinator materializes each file: when `source` is `git-ours` or `git-theirs`, uses the corresponding git checkout command; when `source` is `"authored"`, splices each region's `text` into the working file at the conflict region identified by its `conflict_id`, maintaining deterministic order by conflict_id, and stages only the validated resolved paths
 
 ### Requirement: Bounded verification loop
 

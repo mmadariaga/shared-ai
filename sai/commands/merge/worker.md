@@ -211,19 +211,30 @@ replacement worker and does not ask for the working language again.
 On `apply-strategy`, return the completed resolution result with the exact
 `## Selected contextual decisions` section and `## Complete resolution
 payload` required below. The selected decisions must describe the one confirmed
-global strategy, and the JSON object must contain a complete final file record
-for every conflicted path in scope. The coordinator must validate the whole
-payload atomically before writing anything.
+global strategy, and the JSON object must contain a record for every conflicted
+path in scope. The coordinator must validate the whole payload atomically
+before writing anything.
 
 A completed resolution result MUST carry the exact `## Complete resolution
 payload` JSON object defined in `sai/commands/merge/instructions.md`. Its
 `files` array contains one record per conflicted file in the selected scope,
-with `path`, `category` (`specs`, `adr-ddr`, or `code`), `decisions`, and a
-`content` JSON string containing the complete final UTF-8 file contents. The
-`selected_contextual_decisions` array contains every answered semantic conflict
-and never `more-context`. Return no diff, hunk, region replacement, marker
-annotation, or prose-only resolution: the coordinator consumes only these
-complete file records and writes their exact contents after validation.
+with `path`, `category` (`specs`, `adr-ddr`, or `code`), `source`, `regions`,
+and `decisions`. The `source` field must be exactly `"git-ours"`,
+`"git-theirs"`, or `"authored"`. When the source is `git-ours` or `git-theirs`
+(only when every region in the file resolves to the same side), the `regions`
+array is empty and the coordinator uses `git checkout --ours` or
+`git checkout --theirs`. When the source is `"authored"`, the `regions` array
+carries one entry per conflicted region, each with a `conflict_id` (matching an
+identifier in `decisions`, e.g. `"code:src/input.js#1"`) and a `text` field
+holding only the region replacement text for the authored or synthesized
+resolution, not a diff, hunk, complete file, marker annotation, or prose-only
+instruction. Region replacement text must contain no `<<<<<<<`, `=======`, or
+`>>>>>>>` markers. Regions are ordered by conflict_id for deterministic
+splicing. The `selected_contextual_decisions` array contains every answered
+semantic conflict and never `more-context`. The coordinator validates and
+materializes each file: git-sourced files via checkout commands, authored files
+by splicing each region's `text` into the working file at its marked conflict
+region.
 
 Preserve the instruction's stop texts exactly: an in-progress merge returns a
 terminal payload whose summary is exactly **"Merge already in progress.

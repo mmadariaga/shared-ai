@@ -50,22 +50,22 @@ The seam MUST present semantically ambiguous conflicts as informed decisions ove
 
 ### Requirement: Complete-file resolution validation precedes mutation
 
-The coordinator MUST NOT enter the resolution mutation boundary until the worker has returned a complete resolution payload for every conflicted file in the selected scope. The seam and coordinator MUST validate the payload atomically: exact paths and categories, one record per file, accepted contextual decisions without `more-context`, complete final UTF-8 content strings, and no conflict markers. The coordinator MUST NOT write or stage a resolution before that validation. Diffs, hunks, region replacements, prose instructions, missing records, duplicate records, unexpected paths, and reconstructed content MUST be rejected as a whole.
+The coordinator MUST NOT enter the resolution mutation boundary until the worker has returned a complete resolution record for every conflicted file in the selected scope. The seam and coordinator MUST validate the payload atomically: exact paths and categories, one record per file, accepted contextual decisions without `more-context`, valid source/regions structure, and no conflict markers in authored text. The coordinator MUST NOT write or stage a resolution before that validation. Diffs, hunks, complete files, invalid sources, missing regions, prose instructions, missing records, duplicate records, unexpected paths, and reconstructed content MUST be rejected as a whole.
 
 #### Scenario: Pending context blocks writes and staging
 
 - **WHEN** contextual analysis is pending or the worker has not returned the matching complete alternative after a decision
 - **THEN** the coordinator MUST NOT write a resolution, remove conflict markers, or stage any affected path
 
-#### Scenario: Invalid complete-file payload is rejected
+#### Scenario: Invalid resolution-record payload is rejected
 
-- **WHEN** any payload record is missing, duplicated, out of scope, incorrectly categorized, fragmentary, marker-containing, or inconsistent with the offered decision
+- **WHEN** any payload record is missing, duplicated, out of scope, incorrectly categorized, has invalid source, missing required regions, marker in region text, or is inconsistent with the offered decision
 - **THEN** the coordinator MUST reject the entire payload and leave every conflict untouched and unstaged
 
-#### Scenario: Valid payload is written exactly once
+#### Scenario: Valid payload is materialized by git-checkout and splice
 
 - **WHEN** every payload record passes validation and every required semantic decision is explicit
-- **THEN** the coordinator writes the supplied complete file contents exactly as provided, stages only the validated paths, and never derives content from prose or concatenates unselected alternatives
+- **THEN** the coordinator materializes each file: when `source` is `git-ours` or `git-theirs`, uses the corresponding git checkout command; when `source` is `"authored"`, splices each region's text into the working file, stages only the validated resolved paths, and never derives content from prose or concatenates unselected alternatives
 
 ### Requirement: Legacy rendering preserves merge behavior
 

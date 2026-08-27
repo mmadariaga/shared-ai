@@ -60,18 +60,26 @@ test('merge worker explains contextual alternatives and gates only semantic ambi
   assert.match(instructions, /## Complete resolution payload/);
   assert.match(instructions, /"selected_contextual_decisions"/);
   assert.match(instructions, /"files"/);
-  assert.match(instructions, /"content": "the complete final UTF-8 file contents as a JSON string"/);
-  assert.match(instructions, /not a diff, hunk,[\s\S]{0,80}region replacement/);
+  assert.match(instructions, /region replacement/);
+  assert.match(instructions, /git show :2:<file>/);
+  assert.match(instructions, /git show :3:<file>/);
+  assert.match(instructions, /materializable with.*git checkout/i);
+  assert.match(instructions, /every region in a file resolves to the same side/i);
+  assert.match(instructions, /synthesis[\s\S]{0,20}limited to the conflict[\s\S]{0,20}region/i);
+  assert.match(instructions, /Never create a synthesis[\s\S]{0,80}by retyping[\s\S]{0,20}untouched lines/i);
+  assert.match(instructions, /file with conflict regions resolving to different sides/i);
+  assert.match(instructions, /conflicts with no region markers/i);
+  assert.match(instructions, /E4[\s\S]{0,300}different sides/);
+  assert.match(instructions, /E5[\s\S]{0,400}no region to splice/);
   assert.match(mergeSpec, /contextual complete alternatives/i);
   assert.match(mergeSpec, /Obvious conflict stays lightweight/);
   assert.match(mergeSpec, /Semantic conflict requires an informed human choice/);
-  assert.match(mergeSpec, /complete final file contents/);
   assert.doesNotMatch(mergeSpec, /labeled ours\/theirs variants for genuinely divergent code regions/);
   assert.match(worker, /never suppresses a[\s\S]{0,40}required[\s\S]{0,40}contextual decision/i);
   assert.match(worker, /more-context/);
   assert.match(worker, /only explicit decisions[\s\S]{0,30}unlock[\s\S]{0,30}proposal[\s\S]{0,30}delivery/i);
-  assert.match(worker, /one record per conflicted file[\s\S]{0,160}complete final UTF-8 file contents/);
-  assert.match(worker, /Return no diff, hunk, region replacement/);
+  assert.match(worker, /region replacement/);
+  assert.match(worker, /git[\s\S]{0,50}checkout[\s\S]{0,100}ours[\s\S]{0,100}theirs/i);
 });
 
 test('merge conflicts use a closed hand-off before language selection and analysis', () => {
@@ -203,12 +211,13 @@ test('merge coordinator keeps contextual decisions before all mutation and prese
   assert.match(coordinator, /before any[\s\S]{0,80}resolution write or staging/i);
   assert.match(coordinator, /`more-context`[\s\S]{0,220}(?:no mutation|no resolution write)/i);
   assert.match(coordinator, /<<<<<<<[\s\S]{0,120}=======([\s\S]{0,120})>>>>>>>/);
-  assert.match(coordinator, /Do not reconstruct content from prose,[\s\S]{0,20}concatenate unselected alternatives/);
+  assert.match(coordinator, /Do not reconstruct content from prose[\s\S]{0,50}concatenate[\s\S]{0,50}unselected alternatives/);
   assert.match(coordinator, /author a synthesis in the coordinator/);
   assert.match(coordinator, /parse and validate all[\s\S]{0,30}of[\s\S]{0,30}object atomically/);
-  assert.match(coordinator, /Reject diffs, hunks, region replacements/);
-  assert.match(coordinator, /After every record passes,[\s\S]{0,80}write each `content` value exactly as supplied/);
-  assert.match(coordinator, /leave every conflict untouched and do not stage/);
+  assert.match(coordinator, /Reject[\s\S]{0,100}diffs[\s\S]{0,100}complete files[\s\S]{0,100}hunks/);
+  assert.match(coordinator, /source[\s\S]{0,200}regions/i);
+  assert.match(coordinator, /After every record passes,[\s\S]{0,80}materialize each file/);
+  assert.match(coordinator, /leave every conflict untouched[\s\S]{0,50}do not[\s\S]{0,20}stage/i);
 
   assert.match(presentation, /contextual-analysis/);
   assert.match(presentation, /contextual_decision_status/);
@@ -265,4 +274,58 @@ test('merge-evidence-ladder: declared rules, evidence ladder, missing-rule notic
   assert.match(instructions, /strategy proposal text carries prose explanations only[\s\S]{0,200}for all conflict[\s\S]{0,20}classes/);
   assert.match(instructions, /strategy proposal text carries prose explanations only[\s\S]{0,300}coordinator never reconstructs a resolution from prose/);
   assert.match(instructions, /strategy proposal text carries prose explanations only[\s\S]{0,300}JSON `files` records/);
+});
+
+test('merge region-scoped resolution: git-sourced outcomes, region replacements, and edge cases', () => {
+  const instructions = read('sai/commands/merge/instructions.md');
+  const worker = read('sai/commands/merge/worker.md');
+  const coordinator = read('sai/commands/merge/coordinator.md');
+
+  // Capability 1: Git-sourced branch outcomes
+  assert.match(instructions, /internal decision value `ours` — obtained from `git show :2:<file>`/);
+  assert.match(instructions, /internal decision value `theirs` — obtained from `git show :3:<file>`/);
+  assert.match(instructions, /materializable with `git checkout --ours`/);
+  assert.match(instructions, /materializable with `git checkout --theirs`/);
+  assert.match(instructions, /every region in a file resolves to the same side/i);
+  assert.match(worker, /every region in[\s\S]{0,30}the file resolves to the same side/i);
+  assert.match(coordinator, /source[\s\S]{0,100}git-ours[\s\S]{0,100}git-theirs[\s\S]{0,100}authored/i);
+  assert.match(coordinator, /git[\s\S]{0,100}checkout[\s\S]{0,100}ours[\s\S]{0,100}theirs/i);
+
+  // Capability 2: Region-scoped synthesis
+  assert.match(instructions, /synthesis[\s\S]{0,30}limited to the conflict[\s\S]{0,30}not[\s\S]{0,30}complete file/i);
+  assert.match(instructions, /never create a synthesis[\s\S]{0,80}concatenating conflict fragments or by retyping[\s\S]{0,20}untouched lines/i);
+  assert.match(worker, /regions[\s\S]{0,50}conflict_id[\s\S]{0,50}text/i);
+  assert.match(worker, /replacement text[\s\S]{0,50}not a diff[\s\S]{0,50}complete file/i);
+
+  // Capability 3: Region-replacement materialization
+  assert.match(coordinator, /regions[\s\S]{0,80}conflict_id[\s\S]{0,80}text/i);
+  assert.match(coordinator, /splice[\s\S]{0,100}text/i);
+  assert.match(coordinator, /conflict[\s\S]{0,80}region/i);
+  assert.match(coordinator, /working[\s\S]{0,20}file/i);
+
+  // Edge Case 4: File with regions resolving to different sides
+  assert.match(instructions, /E4 — File with conflict regions resolving to different sides/);
+  assert.match(instructions, /outcome[\s\S]{0,30}necessarily[\s\S]{0,30}synthesis[\s\S]{0,30}definition/i);
+  assert.match(instructions, /mixes sides/);
+  assert.match(instructions, /Git shortcut[\s\S]{0,40}cannot be used/);
+  assert.match(instructions, /offer only synthesis as an alternative/);
+
+  // Edge Case 5: Conflicts with no region markers
+  assert.match(instructions, /E5 — Conflicts with no region markers/);
+  assert.match(instructions, /delete[\s\S]{0,50}modify[\s\S]{0,50}rename[\s\S]{0,50}rename[\s\S]{0,50}rename[\s\S]{0,50}delete/i);
+  assert.match(instructions, /no region to splice/);
+  assert.match(instructions, /Region replacement does not apply/);
+  assert.match(instructions, /follow the same resolution path as[\s\S]{0,40}obvious conflicts/);
+
+  // Verify coordinator inverts check 3 validation
+  const validationSection = coordinator.slice(coordinator.indexOf('Before any write, parse and validate'));
+  assert.match(validationSection, /source[\s\S]{0,100}git-ours[\s\S]{0,100}git-theirs[\s\S]{0,100}authored/i);
+  assert.match(validationSection, /regions[\s\S]{0,100}conflict_id/i);
+  assert.match(validationSection, /Reject[\s\S]{0,100}marker/i);
+  assert.doesNotMatch(validationSection, /Reject.*region replacements/i);
+
+  // Verify guarantees survive verbatim
+  assert.match(coordinator, /author a synthesis in the coordinator/i);
+  assert.match(coordinator, /atomically/i);
+  assert.match(coordinator, /leave every conflict untouched[\s\S]{0,50}do not[\s\S]{0,20}stage/i);
 });

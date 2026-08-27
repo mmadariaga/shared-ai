@@ -332,24 +332,58 @@ required semantic decision.
 
 Run this stage after the scope is selected (or after fast-track selects
 `full`) and before the coordinator writes or stages any resolution. Begin by
-constructing the complete alternatives for each conflict region based on the
-intent reconstruction from Step 4. For each side, retain a complete alternative
-rather than a fragment:
+constructing the available alternatives for each conflict region based on the
+intent reconstruction from Step 4.
 
-- internal decision value `ours` — the complete marker-free outcome that keeps
-  the current branch's objective;
-- internal decision value `theirs` — the complete marker-free outcome that
-  keeps the merged branch's objective; and
-- internal decision value `synthesis` — an optional complete marker-free
-  outcome that preserves both objectives without duplicating ownership,
-  competing gates, or creating another source of truth.
+**Constructing the complete alternatives:**
+
+For each conflicted file, determine whether all conflict regions in that file
+resolve to the same side (all `ours`, all `theirs`, or all other branches). If
+every region in a file resolves to the same side, the `ours` and `theirs`
+alternatives are obtained directly from Git and are never generated:
+
+- internal decision value `ours` — obtained from `git show :2:<file>` (the
+  current branch's version), materializable with `git checkout --ours`;
+- internal decision value `theirs` — obtained from `git show :3:<file>` (the
+  merged branch's version), materializable with `git checkout --theirs`.
+
+If any conflict regions in a file resolve to different sides (mixing sides),
+construct alternatives by authored synthesis only: never use the Git shortcut,
+and `ours` and `theirs` are not offered as alternatives for that file.
+
+For the `synthesis` alternative (always authored when offered):
+
+- internal decision value `synthesis` — a region-scoped authored outcome that
+  preserves both objectives without duplicating ownership, competing gates, or
+  creating another source of truth. The synthesis is limited to the conflict
+  region(s), not the complete file. It must be a deliberate technical resolution
+  with one owner for each responsibility, one authoritative source for each fact,
+  compatible lifecycle behavior, and no duplicated gate or conflicting contract.
+  Never create a synthesis by concatenating conflict fragments or by retyping
+  untouched lines.
 
 `ours`, `theirs`, and `synthesis` are internal decision values only. They must
-never be used as bare human-facing option labels. A synthesis is valid only
-when it is a deliberate technical resolution with one owner for each
-responsibility, one authoritative source for each fact, compatible lifecycle
-behavior, and no duplicated gate or conflicting contract. Never create a
-synthesis by concatenating conflict fragments.
+never be used as bare human-facing option labels.
+
+**Edge cases in conflict region resolution:**
+
+- **E4 — File with conflict regions resolving to different sides:** When a file
+  contains multiple conflict regions and they resolve to different sides (some
+  regions choose `ours`, others choose `theirs`), the outcome is necessarily a
+  synthesis by definition — it mixes sides. The Git shortcut (`git show :2:` /
+  `:3:`) cannot be used; offer only synthesis as an alternative and require an
+  authored resolution that combines the selected regions from each side.
+
+- **E5 — Conflicts with no region markers:** Some conflict classes produce no
+  `<<<<<<<`, `=======`, or `>>>>>>>` markers: delete/modify (one side deletes,
+  the other modifies), rename/rename (both sides rename), and rename/delete (one
+  side renames, the other deletes). Git's merge algorithm reports these as
+  conflicts but leaves no region to splice. Region replacement does not apply
+  and does not offer an authored alternative; follow the same resolution path as
+  for obvious conflicts, using Git's guidance on the specific conflict class.
+  Offer `ours`, `theirs`, or synthesis (if a safe combined outcome exists) based
+  on the intent reconstruction, and resolve to the complete file outcome for that
+  path.
 
 For each category present, prepare the category-specific analysis:
 
@@ -495,35 +529,58 @@ payload` section with one JSON object. The object MUST contain:
 ```json
 {
   "selected_contextual_decisions": [
-    {"conflict_id": "code:src/input.js#1", "decision": "ours"}
+    {"conflict_id": "code:src/input.js#1", "decision": "ours"},
+    {"conflict_id": "code:src/input.js#2", "decision": "synthesis"}
   ],
   "files": [
     {
       "path": "src/input.js",
       "category": "code",
-      "content": "the complete final UTF-8 file contents as a JSON string",
+      "source": "git-ours",
+      "regions": [],
       "decisions": [
         {"conflict_id": "code:src/input.js#1", "decision": "ours"}
+      ]
+    },
+    {
+      "path": "src/output.js",
+      "category": "code",
+      "source": "authored",
+      "regions": [
+        {"conflict_id": "code:src/output.js#1", "text": "the authored replacement text for region 1"},
+        {"conflict_id": "code:src/output.js#2", "text": "the authored replacement text for region 2"}
+      ],
+      "decisions": [
+        {"conflict_id": "code:src/output.js#1", "decision": "synthesis"},
+        {"conflict_id": "code:src/output.js#2", "decision": "synthesis"}
       ]
     }
   ]
 }
 ```
 
-The actual payload MUST use JSON escaping for the `content` string and MUST
-carry the complete final contents of each affected file, not a diff, hunk,
-fragment, region replacement, marker annotation, or instruction to combine
-other values. `files` contains exactly one record for every conflicted file in
-the selected scope, including obvious conflicts. Each `category` is exactly one
-of `specs`, `adr-ddr`, or `code`; `decisions` is empty for a file whose
-conflicts were all deterministic. `selected_contextual_decisions`
+Each file record includes:
+- `source` — `"git-ours"`, `"git-theirs"`, or `"authored"`. When `git-ours` or
+  `git-theirs`, the `regions` array is empty and the coordinator materializes
+  via `git checkout --ours` or `git checkout --theirs`. When `"authored"`,
+  `regions` carries the per-region replacements.
+- `regions` — an array of objects, one per conflicted region in the file (empty
+  for git-sourced outcomes). Each region carries `conflict_id` (the same
+  identifier used in `decisions`, e.g. `"code:src/input.js#1"`) and `text`
+  (the authored replacement text for that region). Regions are ordered by
+  conflict ID for deterministic splicing.
+
+The `regions` array and `text` field use JSON escaping. Region replacement text
+must contain no `<<<<<<<`, `=======`, or `>>>>>>>` markers. The coordinator
+consumes only these exact file records and applies each region replacement as
+supplied: it never reconstructs a file from the summary, the alternatives, or
+prose, and it never author a synthesis. `files` contains exactly one record for
+every conflicted file in the selected scope, including obvious conflicts. Each
+`category` is exactly one of `specs`, `adr-ddr`, or `code`; `decisions` is
+empty for a file whose conflicts were all deterministic. `selected_contextual_decisions`
 contains one record for every semantic conflict that was answered and never
 contains `more-context`. Files outside the selected scope are omitted and
-listed only in the existing deferred section. The coordinator consumes only
-these exact file records and writes each `content` value as supplied; it never
-reconstructs a file from the summary, the alternatives, or a conflict region.
-The `synthesis` alternative must therefore be a specific complete file content,
-never a promise to concatenate both sides.
+listed only in the existing deferred section.
 
 When the forwarded answer is `more-context`, continue the **same worker** and
 return another `needs_input` for the same pending conflict. Expand the
@@ -601,8 +658,8 @@ the coordinator's native picker; an empty `options` list is the explicit
 open-input form for a free-form context or correction request and is presented
 as ordinary conversation text. No new top-level lifecycle field is introduced
 for either form. A completed resolution result additionally carries the exact
-JSON object in its summary; no region-level materialization contract is
-supported.
+JSON object in its summary; region-level materialization via splicing is the
+authorized contract for all conflict resolution.
 
 ### Step 6: Verification loop
 

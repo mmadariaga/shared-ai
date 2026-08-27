@@ -293,19 +293,29 @@
     2. `files` contains exactly one record for every conflicted path in the
        selected scope, with no duplicate or unexpected path, the worker's exact
        category, and `decisions` that agree with the selected decision records.
-    3. Every `content` value is a JSON string holding the complete final UTF-8
-       file contents for that path. Reject diffs, hunks, region replacements,
-       marker annotations, missing content, or content reconstructed from
-       prose. Reject any `<<<<<<<`, `=======`, or `>>>>>>>` marker.
-    4. Reject the entire payload if any record, decision, path, or content is
-       missing or invalid; leave every conflict untouched and do not stage.
-    After every record passes, write each `content` value exactly as supplied.
-    Do not reconstruct content from prose, concatenate unselected alternatives,
-    or author a synthesis in the coordinator. For a contradiction, leave
-    markers in place until the human selects a complete branch outcome or a
-    worker-validated safe synthesis; if no complete outcome exists, leave it
-    unresolved and report the escalation. Add written paths to the union only
-    after validation and successful writes.
+       Each file record carries a `source` field.
+    3. Each file's `source` must be exactly `"git-ours"`, `"git-theirs"`, or
+       `"authored"`. When `git-ours` or `git-theirs`, the `regions` array must
+       be empty and the coordinator uses `git checkout --ours` or
+       `git checkout --theirs` to materialize it. When `"authored"`, `regions`
+       is an array with at least one entry; each entry has a `conflict_id` that
+       matches one in the file's `decisions`, and a `text` field holding the
+       authored replacement for that region. Reject diffs, complete files, hunks,
+       marker annotations, or content reconstructed from prose. Reject any
+       `<<<<<<<`, `=======`, or `>>>>>>>` marker in any region's `text` value.
+    4. Reject the entire payload if any record, decision, path, region, or
+       source is missing or invalid; leave every conflict untouched and do not
+       stage.
+    After every record passes, materialize each file: when `source` is
+    `git-ours` or `git-theirs`, use the corresponding git checkout command.
+    When `source` is `"authored"`, splice each region's `text` into the working
+    file at the conflict region identified by its `conflict_id`, maintaining
+    deterministic order. Do not reconstruct content from prose, concatenate
+    unselected alternatives, or author a synthesis in the coordinator. For a
+    contradiction, leave markers in place until the human selects a complete
+    branch outcome or a worker-validated safe synthesis; if no complete outcome
+    exists, leave it unresolved and report the escalation. Add written paths to
+    the union only after validation and successful materialization.
   - **Staging** — after writing resolutions: `git add` each resolved file.
     Never stage files with unresolved E3 escalations without noting them.
   - **Verification loop** — after staging: the worker runs the test suite and
