@@ -48,6 +48,8 @@ const allowedDifferences = [
   '3. Recompute `pending_slices` only from `last_crystallization_set` minus `completed_changes`',
   'Selectors never select or infer an `Overview language`',
   '9. **Post-crystallization review loop (sai-explore only)**:',
+  // CodeGraph detection now scopes Glob to the project-root .codegraph directory.
+  '- **Index present**: run a read-only `Glob` for `.codegraph/*`',
   '3. **Translated surface**:',
   'Autonomy is scoped to supervised spec execution. This autonomy is scoped to selector-dispatched supervision only (the **Auto** option).',
   // The selector rename and its delegated-write exception update the active

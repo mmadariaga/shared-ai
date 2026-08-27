@@ -31,25 +31,40 @@ TBD - this spec was authored as a change delta and never merged into the main tr
 
 ### Requirement: Read-only detection via tool presence and Glob
 
-The check SHALL determine the research-tooling state using only read-only signals: the presence of code-graph MCP tools in the session's tool list, and a read-only `Glob` of a project-root `.codegraph/`. Code-graph MCP tools SHALL be recognized whether exposed unprefixed (`codegraph_*`) or harness-namespaced (`mcp__codegraph__*`); detection SHALL NOT depend on a single literal prefix. The `.codegraph/` probe SHALL be rooted at the project root, so a nested `.codegraph/` in some other directory does not by itself decide the state. The check SHALL NOT use any write or edit tool and SHALL NOT create or modify any file, consistent with explore mode being strictly read-only.
+The check SHALL determine the research-tooling state using only read-only signals: the presence of code-graph MCP tools in the session's tool list, and a read-only directory-scoped `Glob` with `path: .codegraph` and `pattern: *` rooted at the project root. Code-graph MCP tools SHALL be recognized whether exposed unprefixed (`codegraph_*`) or harness-namespaced (`mcp__codegraph__*`); detection SHALL NOT depend on a single literal prefix. The root-scoped results SHALL count as index evidence only when they include an entry other than `.gitignore`; a nested `.codegraph/` in some other directory does not by itself decide the state. The check SHALL NOT use any write or edit tool and SHALL NOT create or modify any file, consistent with explore mode being strictly read-only.
 
 #### Scenario: detection uses only read-only probes
 
 - **WHEN** the agent evaluates the research-tooling state
-- **THEN** it inspects code-graph MCP tool presence and runs a read-only `Glob` of a project-root `.codegraph/`, and performs no file writes or edits
+- **THEN** it inspects code-graph MCP tool presence and runs only a read-only directory-scoped `Glob` with `path: .codegraph` and `pattern: *` at the project root, and performs no file writes or edits
 
 #### Scenario: harness-namespaced tool names are recognized
 
 - **WHEN** the code-graph MCP tools are exposed under a harness namespace such as `mcp__codegraph__*` rather than an unprefixed `codegraph_*`
 - **THEN** the agent still recognizes the code-graph MCP as present and does not fall through to the "not installed" state
 
+#### Scenario: a root entry other than the sentinel is evidence
+
+- **WHEN** the root-scoped `.codegraph` results include an entry such as `codegraph.db`
+- **THEN** the check treats the project-root index as present
+
+#### Scenario: a sentinel-only directory is not evidence
+
+- **WHEN** the root-scoped results contain only `.gitignore`
+- **THEN** the check treats the project-root index as absent
+
+#### Scenario: a nested-only directory is not evidence
+
+- **WHEN** a `.codegraph` directory exists only below another project directory and the root-scoped results contain no non-sentinel entry
+- **THEN** the nested directory does not determine the research-tooling state
+
 ### Requirement: Three-state detection with matching notice
 
 The check SHALL classify the research-tooling state as one of exactly three states and print the matching notice:
 
 - **not installed** — no code-graph MCP tools are present. The notice SHALL state that structural research will fall back to grep/glob/Read and SHALL recommend installing CodeGraph, naming its URL (https://github.com/colbymchenry/codegraph).
-- **installed but no index** — code-graph MCP tools are present but the read-only `Glob` of a project-root `.codegraph/` returns no match. The notice SHALL state the fallback and SHALL recommend running `codegraph init -i`.
-- **ready** — code-graph MCP tools are present and a project-root `.codegraph/` exists. The notice SHALL briefly state that structural research will use codegraph.
+- **installed but no index** — code-graph MCP tools are present but the root-scoped directory `Glob` with `path: .codegraph` and `pattern: *` returns no entry other than `.gitignore`. The notice SHALL state the fallback and SHALL recommend running `codegraph init -i`.
+- **ready** — code-graph MCP tools are present and the root-scoped directory `Glob` returns at least one entry other than `.gitignore`. The notice SHALL briefly state that structural research will use codegraph.
 
 #### Scenario: no code-graph tools present
 
@@ -58,12 +73,12 @@ The check SHALL classify the research-tooling state as one of exactly three stat
 
 #### Scenario: code-graph tools present but no index
 
-- **WHEN** code-graph MCP tools are present but a read-only `Glob` of a project-root `.codegraph/` returns no match
+- **WHEN** code-graph MCP tools are present but the root-scoped directory `Glob` returns no entry other than `.gitignore`
 - **THEN** the agent prints a fallback notice recommending `codegraph init -i`
 
 #### Scenario: code-graph tools and index both present
 
-- **WHEN** code-graph MCP tools are present and a project-root `.codegraph/` exists
+- **WHEN** code-graph MCP tools are present and the root-scoped directory `Glob` returns an entry other than `.gitignore`
 - **THEN** the agent prints a brief notice that structural research will use codegraph
 
 ### Requirement: Notice is always English
@@ -91,7 +106,7 @@ The notice SHALL be rendered so that it visually stands out in scrollback rather
 
 ### Requirement: Generic preference with CodeGraph-specific recommendation
 
-The notice MAY express a generic preference for any available code-graph MCP for structural research. The actionable install and init recommendations SHALL name CodeGraph specifically and reference its URL (https://github.com/colbymchenry/codegraph). The check SHALL NOT restate or rewrite the "prefer codegraph over grep" guidance that a code-graph MCP already injects into the harness's global memory; its added value is the fallback and recommendation path only.
+The notice MAY express a generic preference for any available code-graph MCP for structural research. The actionable install and init recommendations SHALL name CodeGraph specifically and reference https://github.com/colbymchenry/codegraph. The check SHALL NOT restate or rewrite the "prefer codegraph over grep" guidance that a code-graph MCP already injects into the harness's global memory; its added value is the fallback and recommendation path only.
 
 #### Scenario: recommendation names CodeGraph
 

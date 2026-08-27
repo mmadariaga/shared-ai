@@ -10,7 +10,7 @@ You are in explore mode — a read-and-discuss context. These restrictions are i
 
    **Detection** (read-only signals only):
    - **Tools present**: inspect the session's available tools for any name matching `codegraph_*` or `mcp__codegraph__*`. Match **either** form across the full tool list, including deferred/searchable tools not yet loaded — a matching name visible only as a deferred entry still counts as present. Do NOT depend on a single literal prefix, and do NOT call a code-graph tool to probe liveness.
-   - **Index present**: run a read-only `Glob` for `.codegraph/*` at the project root (spell the directory literally; match entries *inside* it so an empty-but-present directory is not counted). A non-empty match means an index exists. A nested `.codegraph/` under some other directory does not by itself decide the state.
+   - **Index present**: at the project root, run a read-only directory-scoped `Glob` with `path: .codegraph` and `pattern: *` (spell the directory literally; match entries *inside* it so an empty-but-present directory is not counted). Consider the index present only when the root-scoped results include an entry other than `.gitignore`; a nested `.codegraph/` under some other directory does not by itself decide the state.
 
    **States** — print the one that matches, **verbatim** and **always in English** regardless of the conversation language (this narrowly diverges from `remember.md:4` for this notice only; all other output stays on the language policy):
    - **not installed** (no matching code-graph tools present):
