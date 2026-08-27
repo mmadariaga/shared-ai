@@ -96,13 +96,24 @@ test('merge conflicts use a closed hand-off before language selection and analys
   assert.match(stepFour, /affected_files: string\[\]/);
   assert.match(stepFour, /continuation_state: language-selection/);
   assertInOrder(stepFour, [
+    'read the three versions',
+    'Classify each conflicted file',
     'Return the following closed',
     'event: conflict_detected',
     'After the coordinator asks for and receives the working language',
-    'read the three versions',
-    'Classify each conflicted file',
   ]);
-  assert.match(stepFour, /before classification or semantic analysis/i);
+
+  // Verify that Step 4 defers alternative construction and Step 5A performs it
+  assert.match(stepFour, /do not construct[\s\S]{0,50}complete alternatives/i, 'Step 4 should defer alternative construction');
+
+  const step5a = instructions.slice(instructions.indexOf('### Step 5A:'));
+  assert.match(step5a, /constructing the complete alternatives/i, 'Step 5A should begin by constructing alternatives');
+  assertInOrder(step5a, [
+    'internal decision value `ours`',
+    'internal decision value `theirs`',
+    'internal decision value `synthesis`',
+  ]);
+
   assert.match(instructions, /clean.*never.*language|clean.*skip to Step 7/is);
   assert.match(worker, /does not chat directly with the user/);
   assert.match(worker, /continuation_state: strategy-analysis[\s\S]{0,180}without asking for a language again/);

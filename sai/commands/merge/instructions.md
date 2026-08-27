@@ -135,9 +135,18 @@ The coordinator reports the merge outcome. If the merge was clean (no
 conflicts), skip to Step 7 (ADR/DDR collision pass).
 
 If the merge produced conflicts, run `git diff --name-only --diff-filter=U` to
-obtain the exact ordered list of conflicted files. Return the following closed
-nonterminal result immediately, before reading any base/ours/theirs version and
-before classification or semantic analysis:
+obtain the exact ordered list of conflicted files. For each conflicted file, read the three versions:
+
+- `git show :1:<file>` (base / common ancestor)
+- `git show :2:<file>` (ours / current branch)
+- `git show :3:<file>` (theirs / merged branch)
+
+Classify each conflicted file into one of three categories:
+- **Artifacts — specs**: path matches `openspec/**` or `openspec/changes/**/specs/**`
+- **Artifacts — ADR/DDR**: path matches `docs/adr/**` or `docs/ddr/**`
+- **Code**: everything else
+
+Return the following closed nonterminal result immediately:
 
 ```yaml
 event: conflict_detected
@@ -157,12 +166,8 @@ the worker's only direct signal that conflict handling has begun; the worker
 does not chat with the user.
 
 After the coordinator asks for and receives the working language, continue the
-same worker with that exact selected value. Then, and only then, for each
-conflicted file read the three versions:
-
-- `git show :1:<file>` (base / common ancestor)
-- `git show :2:<file>` (ours / current branch)
-- `git show :3:<file>` (theirs / merged branch)
+same worker with that exact selected value. The versions have been read; proceed
+to intent reconstruction and analysis.
 
 If application or verification exposes a new conflict or inconsistency, the
 coordinator reports the current state to this same worker. Return the same
@@ -170,11 +175,6 @@ closed event with `continuation_state: strategy-analysis`, the new exact
 `affected_files` inventory, and `changed_files: []`; preserve the selected
 working language and re-enter the strategy analysis without another language
 question.
-
-Classify each conflicted file into one of three categories:
-- **Artifacts — specs**: path matches `openspec/**` or `openspec/changes/**/specs/**`
-- **Artifacts — ADR/DDR**: path matches `docs/adr/**` or `docs/ddr/**`
-- **Code**: everything else
 
 For every conflict region, first reconstruct intent before proposing any
 resolution. Inspect the base, both branch versions, the surrounding file, the
@@ -187,7 +187,68 @@ Separate what is directly observable from what is inferred:
   from those facts. Label them as inferences and do not present them as
   certainty.
 
-For each side, retain a complete alternative rather than a fragment:
+Classify each conflict region as either:
+
+- **Obvious** — a deterministic, compatible result is supported by the
+  evidence (for example a non-overlapping edit, a pure addition beside an
+  unchanged region, or complementary spec additions); no extra human decision
+  is needed.
+- **Semantic ambiguity** — the branches have different objectives, different
+  strategies for the same objective, or a contract-level consequence that
+  cannot be resolved mechanically. This includes an E3 contradiction.
+
+Retain the full objective analysis as worker state, but do not construct
+complete alternatives or return any proposal yet. When fast-track is inactive,
+the next lifecycle result must be the Step 5 scope gate. The coordinator must
+receive no resolution proposal and perform no resolution mutation before that
+scope decision.
+
+### Step 5: Runtime scope gate
+
+When conflicts exist and `fast_track_active` is false, classify the conflicted
+files first and derive the eligible scope options from the categories that are
+actually present. Use this closed mapping, keeping the broadest scope first and
+following it only with applicable category-specific scopes:
+
+- include `Full scope (Recommended)` with value `full` whenever conflicts
+  exist, because it means all detected categories;
+- include `Artifacts only (specs + ADR/DDR)` with value `artifacts` when at
+  least one specs or ADR/DDR conflict exists;
+- include `Code only` with value `code` when at least one code conflict exists;
+
+Keep that order and omit every category-specific option that cannot apply to
+the detected conflict set. Return the classification and the resulting
+`eligible_scope_options` in the worker source so the coordinator's presentation
+seam can validate and render exactly that filtered set. Never offer a scope
+whose category is absent. Return `needs_input` **before** the resolution
+proposals of Step 4, asking **"Select resolution scope"** and complying with
+the five-element anatomy of `@sai/policies/question-context.md`. Carry the
+grouped conflicted-file list, category counts, and the meaning of each offered
+scope as essential summary context, but carry no resolution proposals in this
+result.
+
+When `fast_track_active` is true, auto-apply `full` scope and skip this gate.
+Do not emit proposals before the Step 5A contextual stage has completed.
+
+On a forwarded answer, filter the retained Step 4 analysis to the selected
+canonical value (`artifacts`, `code`, or `full`) and continue to Step 5A. Do
+not return resolution proposals merely because scope was selected. Proposals
+outside the selected scope are omitted from the payload but listed in a
+"Deferred (out of scope)" section so the coordinator can report them. The
+verification loop, its ownership, and its three-round budget remain unchanged.
+
+When `fast_track_active` is true, auto-apply `full` scope, skip only this
+scope gate, and continue to Step 5A. Fast-track never selects `ours`,
+`theirs`, or `synthesis`, never invents a synthesis, and never suppresses a
+required semantic decision.
+
+### Step 5A: Contextual conflict analysis and decision gate — global resolution strategy
+
+Run this stage after the scope is selected (or after fast-track selects
+`full`) and before the coordinator writes or stages any resolution. Begin by
+constructing the complete alternatives for each conflict region based on the
+intent reconstruction from Step 4. For each side, retain a complete alternative
+rather than a fragment:
 
 - internal decision value `ours` — the complete marker-free outcome that keeps
   the current branch's objective;
@@ -235,66 +296,7 @@ For each category present, prepare the category-specific analysis:
   - If the conflict is a simple non-overlapping edit (different lines):
     propose accepting both.
 
-Classify each conflict region after this analysis as either:
-
-- **Obvious** — a deterministic, compatible result is supported by the
-  evidence (for example a non-overlapping edit, a pure addition beside an
-  unchanged region, or complementary spec additions); no extra human decision
-  is needed.
-- **Semantic ambiguity** — the branches have different objectives, different
-  strategies for the same objective, or a contract-level consequence that
-  cannot be resolved mechanically. This includes an E3 contradiction.
-
-Retain the full objective analysis and all complete alternatives as worker
-state, but do not return any proposal yet. When fast-track is inactive, the
-next lifecycle result must be the Step 5 scope gate. The coordinator must
-receive no resolution proposal and perform no resolution mutation before that
-scope decision.
-
-### Step 5: Runtime scope gate
-
-When conflicts exist and `fast_track_active` is false, classify the conflicted
-files first and derive the eligible scope options from the categories that are
-actually present. Use this closed mapping, keeping the broadest scope first and
-following it only with applicable category-specific scopes:
-
-- include `Full scope (Recommended)` with value `full` whenever conflicts
-  exist, because it means all detected categories;
-- include `Artifacts only (specs + ADR/DDR)` with value `artifacts` when at
-  least one specs or ADR/DDR conflict exists;
-- include `Code only` with value `code` when at least one code conflict exists;
-
-Keep that order and omit every category-specific option that cannot apply to
-the detected conflict set. Return the classification and the resulting
-`eligible_scope_options` in the worker source so the coordinator's presentation
-seam can validate and render exactly that filtered set. Never offer a scope
-whose category is absent. Return `needs_input` **before** the resolution
-proposals of Step 4, asking **"Select resolution scope"** and complying with
-the five-element anatomy of `@sai/policies/question-context.md`. Carry the
-grouped conflicted-file list, category counts, and the meaning of each offered
-scope as essential summary context, but carry no resolution proposals in this
-result.
-
-When `fast_track_active` is true, auto-apply `full` scope and skip this gate.
-Do not emit proposals before the Step 5A contextual stage has completed.
-
-On a forwarded answer, filter the retained Step 4 analysis to the selected
-canonical value (`artifacts`, `code`, or `full`) and continue to Step 5A. Do
-not return resolution proposals merely because scope was selected. Proposals
-outside the selected scope are omitted from the payload but listed in a
-"Deferred (out of scope)" section so the coordinator can report them. The
-verification loop, its ownership, and its three-round budget remain unchanged.
-
-When `fast_track_active` is true, auto-apply `full` scope, skip only this
-scope gate, and continue to Step 5A. Fast-track never selects `ours`,
-`theirs`, or `synthesis`, never invents a synthesis, and never suppresses a
-required semantic decision.
-
-### Step 5A: Contextual conflict analysis and decision gate — global resolution strategy
-
-Run this stage after the scope is selected (or after fast-track selects
-`full`) and before the coordinator writes or stages any resolution. Analyze the
-selected conflicts in deterministic file and conflict-region order. For every
+Analyze the selected conflicts in deterministic file and conflict-region order. For every
 semantic ambiguity, compare the complete alternatives in plain language:
 
 - what the alternative preserves and gains;

@@ -44,7 +44,7 @@ The system SHALL confine every mutating operation — merge launch, resolution w
 
 ### Requirement: Categorized conflict resolution with criteria
 
-The system SHALL classify each conflicted file as specs, ADR/DDR, or code, and SHALL analyze each conflict in context. The analysis SHALL inspect the base, both branch versions, surrounding file context, related branch changes, and relevant auto-merged files; distinguish directly observable **Facts** from explicitly labeled **Inferences**; and compare the objectives and affected contracts on both sides. For every semantically ambiguous conflict, it SHALL retain complete marker-free `ours` and `theirs` alternatives and MAY retain a complete marker-free `synthesis` only when that outcome has one owner for each responsibility, one authoritative source for each fact, compatible lifecycle behavior, and no duplicated gate or conflicting contract. It SHALL never represent a resolution as a labeled fragment, diff, hunk, or concatenation of conflict pieces.
+The system SHALL classify each conflicted file as specs, ADR/DDR, or code immediately upon conflict detection and version reading. The analysis SHALL then inspect the base, both branch versions, surrounding file context, related branch changes, and relevant auto-merged files; distinguish directly observable **Facts** from explicitly labeled **Inferences**; and compare the objectives and affected contracts on both sides. For every semantically ambiguous conflict, it SHALL retain complete marker-free `ours` and `theirs` alternatives and MAY retain a complete marker-free `synthesis` only when that outcome has one owner for each responsibility, one authoritative source for each fact, compatible lifecycle behavior, and no duplicated gate or conflicting contract. It SHALL never represent a resolution as a labeled fragment, diff, hunk, or concatenation of conflict pieces. Complete alternatives are constructed only after scope selection in Step 5A.
 
 #### Scenario: Obvious conflict stays lightweight
 
@@ -78,7 +78,7 @@ The system SHALL classify each conflicted file as specs, ADR/DDR, or code, and S
 
 ### Requirement: Runtime resolution scope gate
 
-When conflicts exist and fast-track is inactive, the system SHALL offer only scope options whose categories are present in the conflict classification, preserving the canonical order of artifacts, code, and full scope. Fast-track SHALL select full scope without presenting this gate, and SHALL bypass no contextual decision or semantic contradiction.
+When conflicts exist and fast-track is inactive, the system SHALL apply the scope selection after receiving the working language and before constructing complete alternatives. The system SHALL offer only scope options whose categories are present in the conflict classification, preserving the canonical order of artifacts, code, and full scope. Fast-track SHALL select full scope without presenting this gate, and SHALL bypass no contextual decision or semantic contradiction.
 
 #### Scenario: Fast-track auto-applies full scope
 
@@ -211,17 +211,17 @@ The coordinator MUST render the canonical merge, scope, resolution, verification
 
 ### Requirement: Conflict-triggered language hand-off
 
-The `/sai-merge` command SHALL keep clean merges on the existing path without asking for a working language or resolution strategy. When conflicts occur, the worker SHALL return `event: conflict_detected` with the exact ordered `affected_files` inventory and `continuation_state: language-selection` before reading conflict versions or performing semantic analysis.
+The `/sai-merge` command SHALL keep clean merges on the existing path without asking for a working language or resolution strategy. When conflicts occur, the worker SHALL read the conflicted file versions (base, ours, theirs) and classify each file as specs, ADR/DDR, or code, then return `event: conflict_detected` with the exact ordered `affected_files` inventory and `continuation_state: language-selection` for the coordinator to request the working language before proceeding to semantic analysis.
 
 #### Scenario: Clean merge needs no language or strategy
 
 - **WHEN** a merge completes without conflicts
 - **THEN** the command continues to the post-merge collision pass without asking for a working language or presenting a resolution strategy
 
-#### Scenario: Conflict hand-off precedes analysis
+#### Scenario: Conflict hand-off includes version reads and classification
 
 - **WHEN** the coordinator-owned merge produces conflicted files
-- **THEN** the worker returns the closed conflict hand-off with `changed_files: []` before reading base, current, or incoming versions
+- **THEN** the worker reads base, current, and incoming versions for each conflicted file, classifies each file into Artifacts—specs, Artifacts—ADR/DDR, or Code category, then returns the closed conflict hand-off with `changed_files: []` before the coordinator requests a working language or performing semantic analysis
 
 ### Requirement: Global strategy gates resolution
 
