@@ -265,12 +265,17 @@ When `sai-3-implement` Step 3 creates a decision-record file (`docs/adr/NNNN-slu
 
 ### Requirement: Lettered-suffix collision records
 
-The ADR and DDR index maintenance machinery SHALL handle family-aware lettered-suffix record names produced by merge collision repair. Index entry links, relationship tokens, correction-table references, and structured index metadata SHALL resolve to the assigned identifier and preserve the record family.
+The ADR and DDR index maintenance machinery SHALL handle family-aware lettered-suffix record names produced by merge collision repair. Index entry links, relationship tokens, correction-table references, and structured index metadata SHALL resolve to the assigned identifier and preserve the record family. Incremental repair SHALL update only identifiers belonging to affected source-frontier keys and SHALL not alter unrelated historical collision groups.
 
 #### Scenario: Index absorbs a family-aware suffixed rename
 
 - **WHEN** a merge collision pass renames `0010-Name2.md` to `0010b-Name2.md` and supplies the ADR family identifier `0010b`
-- **THEN** the index entry, canonical tokens, correction-table cells, and structured metadata reference the matching suffixed filename and identifier without changing unrelated four-digit values
+- **THEN** the index entry, canonical tokens, correction-table cells, and structured metadata reference the matching suffixed filename and identifier without changing unrelated four-digit values.
+
+#### Scenario: Affected suffixed rename preserves index identity
+
+- **WHEN** an affected ADR or DDR record is renamed with a family-aware suffix
+- **THEN** the corresponding family index and references SHALL use the assigned suffixed identifier without changing unrelated numeric values or cross-family meaning.
 
 ### Requirement: The DDR family instantiates the abstract surface with the DDR bindings
 

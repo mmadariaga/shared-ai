@@ -17,7 +17,14 @@ state. Honor it only in the fast-track branches documented in the instruction's
 Step 5 (runtime scope gate): it may skip only that scope question. It never
 selects `ours`, `theirs`, or `synthesis`, and it never suppresses a required
 contextual decision, the pre-merge environment checks, the verification loop,
-or the ADR/DDR collision pass.
+or the incremental ADR/DDR collision pass.
+
+After branch selection, the coordinator carries invocation-scoped merge
+provenance outside `arguments_value`: `target_sha`, `source_sha`, `merge_base`,
+and the ordered source-introduced ADR/DDR record inventory captured before
+`git merge`. The provenance is forwarded with the post-merge outcome and is
+used to scope Step 7; do not recompute it from post-merge `HEAD` or a moved
+source ref.
 
 The coordinator also owns one invocation-scoped `working_language` value. It is
 not part of `arguments_value`, a worker payload, an artifact, or configuration.
@@ -59,12 +66,33 @@ decision stage (complete `ours` / `theirs` / optional safe `synthesis`
 alternatives, plus the `more-context` same-worker continuation), with the
 filtered runtime scope gate (Step 5) emitted before any proposal payload when
 fast-track is inactive, the verification loop (Step 6, E4 no-suite escalation,
-E5 cap exhaustion), and the ADR/DDR collision pass (Step 7, E6 triple+
-collisions, E7 orphan refs, ambiguous bare-reference escalation, and E8
-delete/modify escalation). During the collision pass, scan same-family and
-cross-family markdown links (including correction-table and reserved
-historical links), relationship tokens, and both `adr-index` and `ddr-index`
-structured metadata.
+E5 cap exhaustion), and the incremental ADR/DDR collision pass (Step 7, E6
+triple+ collisions, E7 orphan refs, ambiguous bare-reference escalation, and
+E8 delete/modify escalation). Step 7 uses only exact `A` record paths under
+`docs/adr/` and `docs/ddr/` from the captured source-vs-base diff, excludes
+source-side renames and copies (including unchanged-source copies via the
+explicit `--find-copies-harder` check), filters them to records present in the
+final merge state, excludes `docs/adr/0000-INDEX.md` and
+`docs/ddr/0000-INDEX.md`, and compares their `(family, numeric prefix)` keys
+against that final state. Final-state lookup includes both bare and existing
+suffixed record names. A deleted or unidentifiable final record is removed from
+the frontier; a conflict-resolution rename is not a second introduction. If
+the frontier is empty, skip the collision pass entirely. Keep every
+source-introduced record sharing a key, and process the complete final-state
+group when that key exposes a pre-existing collision. Reserve unique
+family-aware identifiers before suffix assignment so a target name is never
+already occupied by another final-state record. For affected keys only, scan
+repository-wide same-family and cross-family markdown links (including
+correction-table and reserved historical links), relationship tokens, and
+both `adr-index` and `ddr-index` structured metadata; do not search or repair
+unrelated historical identifiers. Derive introduction events from the captured
+`source_sha`, `target_sha`, or `merge_base` with path-following rename history,
+preserving the original source path for repaired suffixed records. Use the
+corresponding stage-side anchor for unresolved merge-index entries (stage 2 →
+target, stage 3 → source, stage 1 → merge base), and sort by full introduction
+timestamp, commit SHA, family, numeric prefix, and final path for deterministic
+tie-breaking. Carry that provenance in every rename plan; an unresolvable event
+is an escalation, never a missing date.
 
 When the merge outcome is conflicted, stop immediately after collecting the
 Git-reported conflict inventory and return the `conflict_detected` extension
@@ -92,15 +120,16 @@ continuation_state: language-selection
 The re-entry form keeps the same fields and uses
 `continuation_state: strategy-analysis`. The worker returns no question or
 options in this event and does not chat directly with the user.
-Return the collision applicability value, the exact old/new H1 and old/new
-index-label data, plus the family and assigned suffixed identifier, for every
-proposed rename; obtain it as part of this read-only analysis so the
-coordinator never has to reread artifacts to reconstruct presentation state.
-Return the concrete index-file label update and every exact canonical reference
-replacement, including cross-family prefixes and any ambiguous-reference
-escalation, so the coordinator can apply the supplied H1, index-label, and
-reference replacements without reconstructing them. Never propose a guessed
-destination for an ambiguous bare reference.
+Return the collision applicability value, the captured incremental frontier,
+the exact old/new H1 and old/new index-label data, plus the family and assigned
+suffixed identifier, for every proposed rename; obtain it as part of this
+read-only analysis so the coordinator never has to reread artifacts to
+reconstruct presentation state. Return the concrete index-file label update
+and every exact canonical reference replacement for affected identifiers,
+including cross-family prefixes and any ambiguous-reference escalation, so the
+coordinator can apply the supplied H1, index-label, and reference replacements
+without reconstructing them. Never propose a guessed destination for an
+ambiguous bare reference.
 Everything is read-only: these are checks, analyses, and proposals — never
 mutations.
 
@@ -204,14 +233,16 @@ Resolve or abort the current merge first (`git merge --continue` or
 
 ## Authorization ask
 
-After the ADR/DDR pass completes and the coordinator has executed all renames
-and reference updates, return `needs_input` asking **"Run `git commit` to
+After the incremental ADR/DDR pass completes (or is skipped because the source
+frontier is empty) and the coordinator has executed all renames and reference
+updates, return `needs_input` asking **"Run `git commit` to
 finalize the merge?"** with ordered options `yes (Recommended)` / `no`,
 complying with the five-element anatomy of
 `@sai/policies/question-context.md`. Carry a compact merge summary with the
 target branch, source branch, verification status, conflict result, collision
-result (including `not applicable` when neither ADR nor DDR directory exists),
-and staged-file count. Carry the corresponding collision-applicability value.
+result (including `not applicable` when the source introduced no final
+ADR/DDR record or neither directory exists), and staged-file count. Carry the
+corresponding collision-applicability value.
 Do not put the full staged-file list in this authorization payload. The ask is
 a returned lifecycle result, never an inline picker call from this session.
 

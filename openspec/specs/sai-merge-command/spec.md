@@ -139,22 +139,37 @@ The system SHALL detect the project's test suite from project metadata, run it a
 
 ### Requirement: Unconditional post-merge ADR/DDR collision pass
 
-After every merge, clean or conflicted, the system SHALL scan existing ADR and DDR directories and return collision applicability as `not-applicable`, `no-collision`, `repair-required`, or `escalation-required`. Every proposed rename SHALL carry a family-aware assigned identifier and exact path, H1, index-label, and canonical-reference replacements.
+After a merge, the system SHALL run an incremental ADR/DDR collision pass using only source-introduced records that remain identifiable in the final merge state. The coordinator SHALL capture `target_sha`, `source_sha`, and `merge_base` before merging and SHALL forward that provenance unchanged. Only exact added ADR/DDR record paths from the source-versus-base diff SHALL form the scan frontier; canonical index files, renames, and copies SHALL be excluded. Candidate keys SHALL be `(family, numeric prefix)`, and the system SHALL compare only those keys with final-state bare and suffixed records. References SHALL be searched and repaired only for affected family-aware identifiers.
 
 #### Scenario: Numeric collision repaired
 
-- **WHEN** two `0010-*.md` files coexist after a merge
-- **THEN** the older file becomes `0010a-…md`, the newer becomes `0010b-…md` per commit dates, and index links, pinned relationship tokens, and openspec mentions are updated to the suffixed names
+- **WHEN** two `0010-*.md` files coexist after a merge and the collision key is in the retained source frontier
+- **THEN** the older file becomes `0010a-…md`, the newer becomes `0010b-…md` per introduction dates, and index links, pinned relationship tokens, and OpenSpec mentions are updated to the suffixed names.
 
 #### Scenario: Orphan reference is reported, never invented
 
-- **WHEN** a reference points to a number matching no file after renaming
-- **THEN** it is reported as an orphan and left unmodified
+- **WHEN** an affected reference points to a number matching no file after renaming
+- **THEN** it is reported as an orphan and left unmodified.
 
 #### Scenario: Collision applicability controls presentation
 
-- **WHEN** the collision pass finds neither an ADR nor a DDR directory
-- **THEN** the coordinator records `not-applicable` and does not render a pending collision TODO item
+- **WHEN** the collision pass finds neither an ADR nor a DDR directory, or the retained source frontier is empty
+- **THEN** the coordinator records `not-applicable` and does not render a pending collision TODO item.
+
+#### Scenario: Source frontier provenance is captured before mutation
+
+- **WHEN** the coordinator prepares to merge a selected source branch
+- **THEN** it SHALL capture the target SHA, source SHA, merge base, and added-only source record inventory before the merge and forward them unchanged.
+
+#### Scenario: Unrelated historical collisions remain untouched
+
+- **WHEN** a final-state collision key is absent from the retained source frontier
+- **THEN** the worker SHALL not inspect, rename, or search references for that unrelated historical group.
+
+#### Scenario: Affected references remain family-aware
+
+- **WHEN** an affected record is renamed during collision repair
+- **THEN** the coordinator SHALL update only exact affected family-aware links, relationship tokens, index metadata, and canonical references while leaving ambiguous or orphan references as escalations.
 
 ### Requirement: Explicit final-commit authorization
 

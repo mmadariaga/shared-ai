@@ -79,6 +79,10 @@ phase: preflight | branch-selection | merge-outcome | language-selection |
 presentation_mode: concise
 current_branch
 merged_branch
+target_sha
+source_sha
+merge_base
+source_introduced_adr_ddr_records
 branch_options
 merge_outcome: clean | conflicted
 working_language: unresolved | selected invocation-scoped language token
@@ -114,6 +118,10 @@ old_path
 new_path
 family: adr | ddr
 assigned_identifier
+introduction_anchor: source_sha | target_sha | merge_base
+introduction_path
+introduction_commit
+introduction_timestamp
 commit_date
 suffix
 old_h1
@@ -129,10 +137,13 @@ Update the state only at the corresponding lifecycle boundary:
   selected. Store the worker-authored exact branch values and
   `YYYY-MM-DD HH:mm` labels for only branches whose commits are not already
   reachable from the current branch in `branch_options`.
-- After branch selection, record the current and merged branches, render the
-  adaptive TODO, run the coordinator-owned merge, and record `merge_outcome`.
-  A clean merge advances directly to `adr-ddr`; it never enters
-  `language-selection`, asks for a working language, or presents a strategy.
+- After branch selection, record the current and merged branches, capture
+  `target_sha`, `source_sha`, and `merge_base` plus the ordered
+  `source_introduced_adr_ddr_records` inventory before the coordinator-owned
+  merge, render the adaptive TODO, run the merge, and record
+  `merge_outcome`. A clean merge advances directly to the incremental
+  `adr-ddr` check; it never enters `language-selection`, asks for a working
+  language, or presents a strategy.
   A conflicted merge first enters `language-selection` when the worker returns
   `event: conflict_detected` and then advances through `scope-selection`,
   `contextual-analysis`, and `resolution`.
@@ -157,9 +168,11 @@ Update the state only at the corresponding lifecycle boundary:
   staged state and increment `verification_round` for each failed round. Round
   three remains `cap-exhausted` and staged; it is never silently committed or
   reset by the presentation seam.
-- After verification, enter `adr-ddr`, then `authorization` once all
-  coordinator-owned renames, reference updates, and final staging are done.
-  Set `collision_applicability` from the worker's collision result (or its
+- After verification, run the incremental `adr-ddr` check only when the
+  captured source frontier contains a record present in the final merge state;
+  otherwise skip it. Then enter `authorization` once all coordinator-owned
+  renames, reference updates, and final staging are done. Set
+  `collision_applicability` from the worker's collision result (or its
   skipped-scan authorization source), and derive collision TODO work only when
   it is `repair-required` or `escalation-required`. Build the compact
   authorization summary before the authorization picker. On `yes`, mark the
@@ -452,9 +465,14 @@ non-committing closure removes and clears that item so it cannot remain an
 actionable pending task. Preserve the worker's exact refusal summary and
 repository-state record; no foreign panel entries are restored.
 
-ADR/DDR collision presentation uses one record for each planned rename with
-the family, old path, new path, assigned suffixed identifier, suffix, commit
-date, exact old/new H1, and exact old/new index label supplied by the worker.
+Incremental ADR/DDR collision presentation uses one record for each planned
+rename in an affected `(family, numeric prefix)` group, with the family, old
+path, new path, assigned suffixed identifier, suffix, worker-derived introduction
+anchor/path/commit/full timestamp, commit date, exact old/new H1, and exact
+old/new index label supplied by the worker. The coordinator
+records the captured source frontier and final-state applicability before
+rendering collision work; unrelated historical groups never become a
+presentation or staging candidate.
 The coordinator records these values before executing the rename and never
 rereads artifacts to fill a missing presentation field. Every rendered
 reference uses the same family-aware assigned identifier: the filename prefix,
