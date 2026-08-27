@@ -25,3 +25,39 @@ Every instruction surface that evaluates the three ADR/DDR criteria SHALL resolv
 
 - **WHEN** a design step evaluates all three ADR/DDR criteria
 - **THEN** it resolves and records `**Record family**: adr|ddr` through the canonical routing test.
+
+### Requirement: Resolve the record family before the culture gate
+
+Implementation planning SHALL evaluate the three ADR/DDR criteria and resolve exactly one record family before applying the creation culture gate. A recorded `**Record family**: adr|ddr` marker in `design.md` SHALL be used when present; otherwise the canonical ordered routing test SHALL be used. The user SHALL never be asked to choose between ADR and DDR.
+
+#### Scenario: Family resolution precedes culture evaluation
+
+- **WHEN** a decision satisfies all three criteria and its family is resolved
+- **THEN** the implementation flow checks only that resolved family's culture signal before deciding creation
+
+### Requirement: Use the resolved family's physical index as the sole culture signal
+
+The creation decision MUST inspect only `docs/adr/0000-INDEX.md` for the `adr` family or `docs/ddr/0000-INDEX.md` for the `ddr` family. Other records, the other family's index, and files outside the recognized locations MUST NOT establish culture.
+
+#### Scenario: Existing resolved-family index
+
+- **WHEN** the resolved family's physical `0000-INDEX.md` exists
+- **THEN** a qualifying decision is created directly without an approval question
+
+### Requirement: Require approval when the resolved-family index is absent
+
+When a decision satisfies all three criteria but the resolved family's physical index is absent, implementation planning SHALL ask for explicit approval before creating the record, regardless of whether records exist elsewhere or no records exist. Approved creation SHALL use the cold-build branch.
+
+#### Scenario: Missing resolved-family index
+
+- **WHEN** a qualifying decision has no resolved-family index
+- **THEN** the flow asks for approval naming the resolved family and creates nothing unless approval is explicit
+
+### Requirement: Make non-qualifying decisions a no-op
+
+A decision that fails any of the three ADR/DDR criteria SHALL create no record and SHALL ask no creation question, regardless of index state.
+
+#### Scenario: Failed qualification
+
+- **WHEN** any ADR/DDR criterion is not satisfied
+- **THEN** the flow neither creates a decision record nor asks about creating one

@@ -259,7 +259,7 @@ The three criteria, the ordered routing test that resolves `adr` vs `ddr`, and t
 2. **Surprising without context**
 3. **Real trade-off**
 
-`sai-3-implement` only proposes creating an ADR/DDR if the project already has an ADR culture or the user explicitly approves.
+`sai-3-implement` uses only the resolved family's physical `docs/adr/0000-INDEX.md` or `docs/ddr/0000-INDEX.md` as the ADR/DDR culture signal: an existing index permits direct creation of a qualifying record; an absent index requires explicit user approval, even when records exist. Non-qualifying decisions create and ask nothing.
 
 ### Triage in review
 `sai-5-review` does not perform SAST/profiling/axe. It detects the touched surface and recommends audits:
