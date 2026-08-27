@@ -90,8 +90,11 @@ const allowedDifferences = [
   '3. Recompute `pending_slices`',
   '- For an `Auto` or `Auto (fast implementation)` continuation choice',
   '- For an **Auto** or **Auto (fast implementation)** continuation choice',
-  '**Implementation details stage (stage 3).',
-  '- **Pre-dispatch compatibility refusal',
+  // Pre-dispatch compatibility refusal was renamed to add recovery information
+  '- **Pre-dispatch compatibility refusal**: before Step 1, judge the emitted',
+  '- **Pre-dispatch compatibility refusal and recovery**: before Step 1, judge the emitted',
+  // Implementation details stage was moved from instructions.md to common.md during split
+  '**Implementation details stage (stage 3).**',
 ];
 
 function readPreSplitContract() {
@@ -120,6 +123,14 @@ function readCurrentFiles() {
 
   for (const file of stepFiles) {
     content += fs.readFileSync(path.join(stepsDir, file), 'utf8');
+    content += '\n';
+  }
+
+  // Read extracted format policies
+  const policiesDir = path.join(__dirname, '..', 'sai', 'policies');
+  const readyToProposePolicyFile = path.join(policiesDir, 'ready-to-propose-format.md');
+  if (fs.existsSync(readyToProposePolicyFile)) {
+    content += fs.readFileSync(readyToProposePolicyFile, 'utf8');
     content += '\n';
   }
 
