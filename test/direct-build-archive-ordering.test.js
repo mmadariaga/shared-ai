@@ -58,10 +58,9 @@ test('backfill execution completes writes before archive preparation and archive
   assert.match(backfill, /openspec\/changes\/\{name\}\/\.openspec\.yaml/);
   assert.match(backfill, /openspec\/changes\/\{name\}\/proposal\.md/);
   assert.match(backfill, /openspec\/changes\/\{name\}\/specs\/\{capability\}\/spec\.md/);
-  assert.match(archive, /1\. Run the approved delta-spec sync/);
-  assert.match(archive, /2\. Move `openspec\/changes\/\{name\}\/`/);
-  assert.match(archive, /3\. Classify every supplied approved path before staging/);
-  assert.match(archive, /4\. Commit only when at least one eligible approved path remains/);
+  assert.match(archive, /1\. Run `openspec archive <name> --yes --json`/);
+  assert.match(archive, /2\. Classify every supplied approved path before staging/);
+  assert.match(archive, /3\. Commit only when at least one eligible approved path remains/);
   assert.match(archive, /apply\s+the commit-message rules to the staged state only/);
 
   assert.match(explore, /6\. \*\*Backfill execution\*\*/);
@@ -72,8 +71,8 @@ test('backfill execution completes writes before archive preparation and archive
 test('direct-build archive staging omits ignored untracked paths but stages mixed eligible paths', () => {
   const archive = read('sai/commands/archive/worker.md');
   const execution = archive.slice(archive.indexOf('## Direct Build (unattended) execution continuation'));
-  const stagingStart = execution.indexOf('3. Classify every supplied approved path before staging');
-  const commitStart = execution.indexOf('4. Commit only when at least one eligible approved path remains');
+  const stagingStart = execution.indexOf('2. Classify every supplied approved path before staging');
+  const commitStart = execution.indexOf('3. Commit only when at least one eligible approved path remains');
   assert.ok(stagingStart >= 0 && stagingStart < commitStart,
     'classification must precede the commit decision');
   const staging = execution.slice(stagingStart, commitStart);
@@ -91,7 +90,7 @@ test('direct-build archive staging omits ignored untracked paths but stages mixe
 test('direct-build archive execution keeps the empty-index no-commit result when all paths are ignored', () => {
   const archive = read('sai/commands/archive/worker.md');
   const execution = archive.slice(archive.indexOf('## Direct Build (unattended) execution continuation'));
-  const commitStart = execution.indexOf('4. Commit only when at least one eligible approved path remains');
+  const commitStart = execution.indexOf('3. Commit only when at least one eligible approved path remains');
   const commit = execution.slice(commitStart, execution.indexOf('\n\nThe worker records each realized path', commitStart));
 
   assert.match(commit, /If all approved paths were\s+omitted as untracked ignored paths/);

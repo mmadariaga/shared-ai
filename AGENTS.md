@@ -272,7 +272,7 @@ A per-invocation opt-in on `sai-explore`, `sai-2-design`, `sai-4-apply`, `sai-ar
 - `sai-explore` — skips both language gates (artifact review and crystallization), and at a subsequent Plan (unattended) activation skips the overview-language ask with `overview_language` resolving to `None` (an explicit `--overview-lang` still suppresses the ask in every mode; under Direct Build (unattended) it is a documented no-op).
 - `sai-2-design` — auto-approves the specs approval gate.
 - `sai-4-apply` — pre-activates session commit authorization and defers Human Verification to end-of-run.
-- `sai-archive` — auto-proceeds the unchecked-items gate (always) and the delta-spec sync gate (conditional: implementation applied or change backfilled).
+- `sai-archive` — auto-proceeds the unchecked-items gate.
 - `sai-backfill` — skips generated reconciliation questions (remaining `stated-but-unevidenced` items stay non-normative), auto-proceeds the spec-conflict gate after carrying the conflict report verbatim, and auto-accepts a crystallized-block `**Change name**` without the yes/no confirmation.
 - `sai-merge` — auto-applies full resolution scope without the scope gate.
 

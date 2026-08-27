@@ -2,9 +2,7 @@
 
 ## Purpose
 TBD - created by archiving change mode-specific-explore-todo. Update Purpose after archive.
-
 ## Requirements
-
 ### Requirement: Use named route projections
 
 The mode-specific idea-list projection SHALL identify Plan (unattended), Build (unattended), and Manual using their stable identities and SHALL preserve each route's existing ordered steps and completion transitions.
@@ -34,12 +32,12 @@ The Auto route SHALL contain exactly `sai-1` followed by `sai-2`. A clean spec c
 
 ### Requirement: Auto-fast exposes only high-level stages
 
-The Auto-fast route SHALL contain exactly `Build/Implement`, `Backfill`, and `Archive` in that order. Internal review, authorization, ADR/DDR, preparation, execution, synchronization, move, staging, and commit steps MUST remain substeps and MUST NOT become additional panel items. `Build/Implement` MUST NOT be interpreted as `/sai-build` or `meta-build`.
+The Direct Build - Unattended route SHALL contain exactly `Build/Implement`, `Backfill`, and `Archive` in that order. Internal review, authorization, ADR/DDR, preparation, the CLI archive invocation, staging, and commit SHALL remain substeps and MUST NOT become additional panel items. `Build/Implement` MUST NOT be interpreted as `/sai-build` or `meta-build`.
 
 #### Scenario: Auto-fast advances through high-level stages
 
 - **WHEN** the implementer and functional-fix work, backfill execution, and archive execution each return cleanly
-- **THEN** the route completes `Build/Implement`, then `Backfill`, then `Archive`
+- **THEN** the route completes `Build/Implement`, then `Backfill`, then `Archive`, while the CLI archive invocation remains an internal Archive substep
 
 ### Requirement: Manual selections expose a handoff only
 
@@ -58,3 +56,4 @@ Failed, cancelled, STOP-bearing, coordinator-disproved, and unrecovered outcomes
 
 - **WHEN** a route result is failed, cancelled, STOP-bearing, coordinator-disproved, or unrecovered
 - **THEN** the active item remains pending, no later item starts, and retrying the selected slice does not change another slice's route state
+

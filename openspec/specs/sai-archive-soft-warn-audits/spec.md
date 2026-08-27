@@ -1,7 +1,9 @@
 # sai-archive-soft-warn-audits Specification
 
-## Requirements
+## Purpose
 
+Define archive-time artifact classification, soft warnings, and gating behavior for SAI archive flows.
+## Requirements
 ### Requirement: Artifact classification into CORE, AUDIT, and EXEMPT
 
 The `sai-archive` command SHALL classify the eleven artifacts defined by the `sai-workflow` schema into three groups:
@@ -68,46 +70,41 @@ The `sai-archive` Classification Check SHALL evaluate `interfaces` independently
 
 ### Requirement: Upstream skill is invoked only when CORE is complete
 
-The `sai-archive` command SHALL run the classification check BEFORE invoking step 2 ("Check artifact completion status") of the upstream `openspec-archive-change` skill. When the classification determines that all CORE artifacts are present, the command SHALL either:
+The `sai-archive` command SHALL run its classification check before archive mutation. When all required CORE artifacts are complete, AUDIT-only gaps SHALL remain informational and the command SHALL proceed through the unchecked-items gate before the coordinator runs exactly `openspec archive <name> --yes --json`. The upstream skill's manual synchronization and archive-move procedures SHALL NOT be used.
 
-- suppress the upstream `AskUserQuestion` confirmation prompt for any AUDIT-only missing artifacts, OR
-- skip step 2 of the upstream skill entirely and continue at step 3.
+#### Scenario: Classification precedes CLI archive
+
+- **WHEN** all CORE artifacts are complete and the archive flow reaches mutation
+- **THEN** classification and applicable gates complete first and the coordinator invokes the CLI archive primitive instead of manual upstream sync or move steps
 
 #### Scenario: Classification check runs before the upstream skill
 
 - **WHEN** the `sai-archive` command reaches the artifact-completion phase
-- **THEN** the classification logic defined in `sai/commands/archive/instructions.md` MUST be evaluated first
-- **THEN** control passes to the upstream skill only after the classification check has produced a decision (halt-on-missing-CORE OR proceed-with-AUDIT-soft-warning)
+- **THEN** the classification logic runs first and control passes to the CLI archive flow only after the CORE/AUDIT decision is known
 
 ### Requirement: Incomplete-tasks soft confirmation gate
 
-The check in `sai/commands/archive/instructions.md` that scans `openspec/changes/{name}/implementation.md` for `- [ ]` items SHALL be a **soft confirmation gate**, not a hard stop. When one or more unchecked items are found, `sai-archive` SHALL list every unchecked item concretely — each item's location as `implementation.md:{line}`, the `#### Step N` heading it falls under, and the checkbox's own text — then ask the user with a closed-choice prompt `Continue archiving with N unchecked items?` with options `yes` / `no` (per the "Closed-choice prompts" rule in `remember.md`, which gives the per-harness option-picker mapping), where `N` is the count. The plain-text fallback reads `Continue archiving with N unchecked items? (yes/no)`. The command SHALL perform the archive move ONLY on an explicit `yes` selection or reply. On `no`, on silence, or on any answer other than `yes`, the command SHALL NOT perform the archive move and SHALL report that archiving was not performed and why.
-
-The prompt is conversational in chat: `sai-archive` SHALL NOT write any approval key to `.openspec.yaml` and SHALL NOT introduce any new formal approval gate. This requirement governs ONLY the unchecked-items rule of the Completion Check; the CORE/AUDIT classification, the AUDIT soft-warning, the missing-main-spec handling, and the spec-sync behavior are unchanged. When `implementation.md` does not exist, this check is skipped entirely.
+The completion check SHALL remain a soft confirmation gate. When unchecked implementation items exist, `sai-archive` SHALL enumerate them and ask `Continue archiving with N unchecked items?`; fast-track SHALL auto-proceed as if `yes`. The check SHALL not write approval metadata, and synchronization SHALL be handled later by the CLI archive invocation rather than a separate delta-sync decision.
 
 #### Scenario: implementation.md contains unchecked items
 
-- **WHEN** the `sai-archive` command runs and `openspec/changes/{name}/implementation.md` exists and contains one or more `- [ ]` items
-- **THEN** the command lists every unchecked item, each showing its `implementation.md:{line}` location, its enclosing `#### Step N` heading, and the checkbox text
-- **AND** asks via a closed-choice yes/no prompt `Continue archiving with N unchecked items?` where `N` is the count of unchecked items
-- **AND** does not perform the archive move before the user answers
+- **WHEN** `implementation.md` contains one or more `- [ ]` items
+- **THEN** the command lists every unchecked item with its location, step heading, and text before applying the gate or its fast-track auto-resolution
+
+#### Scenario: implementation.md does not exist
+
+- **WHEN** `implementation.md` does not exist
+- **THEN** the unchecked-items check is skipped while classification and CLI archive handling remain applicable
 
 #### Scenario: User confirms archiving with unchecked items
 
-- **WHEN** the user answers `yes` to the prompt (clicked or typed)
-- **THEN** the command proceeds with the rest of the archive flow and performs the archive move
+- **WHEN** the user answers `yes` to the unchecked-items prompt
+- **THEN** the command proceeds with the CLI archive flow
 
 #### Scenario: User declines or stays silent
 
 - **WHEN** the user answers `no`, stays silent, or gives any answer other than `yes`
-- **THEN** the command does NOT perform the archive move
-- **AND** reports that archiving was not performed, citing the unchecked items
-
-#### Scenario: implementation.md does not exist
-
-- **WHEN** the `sai-archive` command runs and `openspec/changes/{name}/implementation.md` does not exist
-- **THEN** the unchecked-items check is skipped entirely
-- **AND** the CORE/AUDIT classification check still runs, and CORE/AUDIT behavior applies as defined elsewhere in this spec
+- **THEN** the command does not invoke the CLI archive primitive and reports that archiving was not performed
 
 ### Requirement: No new flags, no upstream modifications, no schema modifications
 
@@ -184,3 +181,13 @@ The requirement is at the behavior level, not the implementation level. The impl
 - **WHEN** the `sai-archive` command runs for a backfilled change and `interfaces.md` and/or `change-overview.md` exist on disk (manually authored, stale, or otherwise incidentally present)
 - **THEN** the command MUST treat `interfaces` and `change-overview` as skipped regardless of their on-disk status
 - **THEN** the archive flow MUST proceed without halting on either artifact
+
+### Requirement: Read-only delta comparison supplies informational CLI context
+
+During preflight, `sai-archive` SHALL compare delta specs with their matching main specs and report additions or differences as informational context. The comparison SHALL not expose a synchronization choice or perform writes; the coordinator or validated Direct Build execute continuation SHALL rely on the CLI archive command to synchronize and move the change.
+
+#### Scenario: A delta capability has no matching main spec
+
+- **WHEN** a delta capability has no matching `openspec/specs/<capability>/spec.md`
+- **THEN** the worker reports `[ADD] <capability>` as informational context and the later CLI archive invocation remains responsible for creating the main spec and moving the change
+

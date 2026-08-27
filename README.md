@@ -136,7 +136,7 @@ The routed `/sai-2-design` paths use a low-effort Opus 4.8 coordinator and high-
 
 ### Archive coordinator and worker
 
-`/sai-archive` uses the same coordinator/worker shape with full openspec prerequisite checks intact: the `sai-archive-worker` managed worker performs the read-only pre-flight (artifact classification, checkbox scan, delta-sync diffing against main specs, target-name collision check) and returns the unchecked-items and delta-spec sync gates as structured questions the coordinator presents through the native picker. On the ordinary route, the coordinator alone executes every mutation. The Direct Build (unattended) route instead validates and authorizes a closed execution order, then the same archive worker owns the exact sync, archive move, owned staging, and pre-authorized local commit; it never acts before the explicit execute continuation. Both harnesses preserve the same payloads, gate wordings, stop texts, and fast-track auto-proceed semantics.
+`/sai-archive` uses the same coordinator/worker shape with full openspec prerequisite checks intact: the `sai-archive-worker` managed worker performs the read-only pre-flight (artifact classification, checkbox scan, delta-sync diffing against main specs, target-name collision check) and returns the unchecked-items gate as a structured question the coordinator presents through the native picker. On the ordinary route, the coordinator alone executes every mutation. The Direct Build (unattended) route instead validates and authorizes a closed execution order, then the same archive worker owns the exact sync, archive move, owned staging, and pre-authorized local commit; it never acts before the explicit execute continuation. Both harnesses preserve the same payloads, gate wordings, stop texts, and fast-track auto-proceed semantics.
 
 ### Backfill coordinator and worker
 
@@ -275,7 +275,7 @@ For low-risk or high-trust runs, four commands accept a `--fast-track` argument 
 | `/sai-explore` | Both language gates take their English path without asking. |
 | `/sai-2-design` | Auto-approves the specs gate and records the approval in `.openspec.yaml`. |
 | `/sai-4-apply` | Pre-authorizes every commit for the run and defers all human-verification checks into one combined list presented after the final sweep. |
-| `/sai-archive` | Auto-proceeds the unchecked-items confirmation (always) and the delta-spec sync gate (when the implementation is applied or the change was backfilled). |
+| `/sai-archive` | Auto-proceeds the unchecked-items confirmation. |
 
 Everything else stays intact.
 

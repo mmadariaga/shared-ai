@@ -230,12 +230,12 @@ Clean `completed` without disproof and without STOP does not start diagnosis.
 
 ### Requirement: Build - Unattended eight-step unattended flow
 
-On a Direct Build - Unattended selection, explore SHALL run one unattended code-first flow in fixed order without ever dispatching `/sai-3-implement` or re-entering any routed phase command — the sole, explicitly consented exception to the ordinary supervised pipeline's no-implementation invariant: capture `base_sha` immediately before implementer dispatch and dispatch `sai-direct-build-worker` with the one-string envelope whose `arguments_value` is the marker line `--direct-build` plus the complete emitted Ready to Propose block (the worker receives ONLY that block); functionally review the diff from `base_sha` against the block's Capabilities and Edge Cases and continue the same implementer with the ordered findings, converging on a findings-free round with cap exhaustion at three completed rounds being non-failure; stage exactly the implementer's owned paths and dispatch the existing `sai-backfill-worker` for preparation with `--direct-build-prepare`, whose asks resolve through grounded auto-answer-or-escalation (diff source resolving to staged changes grounded in `base_sha`; Question 1 from the block's What/Why; Question 2 from fix-loop findings; anything ungrounded escalating unchanged; a foreign-spec conflict auto-proceeding per the delta-sync/fast-track precedent as a notice); validate returned draft content read-only against `openspec/schemas/sai-workflow/schema.yaml`, review against the block, and continue findings once to the same backfill worker within remaining budget; run the ADR/DDR ordered routing test over the block's Decisions & Rationale never offering a choice; continue the same backfill worker with `--direct-build-execute` for validated exact-path draft writes followed by the upstream openspec spec sync; dispatch the existing `sai-archive-worker` with `--direct-build-prepare` for read-only archive pre-flight over the materialized artifacts (classification, unchecked-item scan, delta-spec assessment, and archive-target collision check), resolving both archive pre-mutation gates under fast-track semantics; and continue that same archive worker with `--direct-build-execute` for the archive move, owned-path staging, and exactly one pre-authorized local commit. The direct-build implementer, backfill, and archive bindings SHALL be fetched at their dispatch points. No dedicated hands worker SHALL be dispatched, and the flow SHALL never push.
+On a Direct Build - Unattended selection, explore SHALL run one unattended code-first flow in fixed order without dispatching `/sai-3-implement` or re-entering a routed phase command. After implementation review, it SHALL prepare backfill drafts, validate them read-only, run the ADR/DDR routing test, execute the validated backfill draft write, prepare archive preflight, and resolve the unchecked-items gate under fast-track semantics. Archive execution SHALL run exactly `openspec archive <name> --yes --json` as the sole synchronization-and-move primitive, then stage only approved owned paths and perform the one pre-authorized local commit. The flow SHALL never use manual synchronization or archive movement, retry a failed CLI operation, push, or amend.
 
 #### Scenario: Unattended run reaches an archived, committed change
 
-- **WHEN** the eight steps complete without a Bounded Recovery interruption
-- **THEN** the run reports rounds used, prints worker-authored summaries verbatim, closes naming the archive destination and commit subject, and clears `active_change`.
+- **WHEN** the eight Direct Build steps complete without a recovery interruption
+- **THEN** the flow reports the worker-authored summaries, names the archive destination and commit subject, and reaches the terminal archived-and-committed state
 
 ### Requirement: Auto-fast slice completion transition
 
@@ -298,7 +298,12 @@ After a successful slice completion, explore SHALL preserve completed progress s
 
 ### Requirement: Build - Unattended run state and failure handling
 
-Run state SHALL remain conversation-only and never persisted: `active_change`, `base_sha`, `fix_rounds` carrying the existing review-round budget semantics reset on a new attempt, and `diagnosis_rounds.direct_build` following bounded Diagnosis Round counter rules; no progress plan is declared and no plan-based list renders while the idea progress list keeps panel ownership. Every segment SHALL apply Bounded Recovery verbatim — one diagnosis record, at most one redispatch of the same worker, manual-command guidance on stop; a backfill-worker failure in the execution payload SHALL stop before archive preparation leaving only the exact validated drafts already written, a failure in the archive segment or execution payload SHALL leave only the materialized-and-synced state, and both SHALL report manual `/sai-archive` / `/sai-commit` guidance; only a Bounded Recovery non-clean result interrupts the run, and cap exhaustion SHALL be non-failure and continue forward.
+Direct Build run state SHALL remain conversation-only and SHALL preserve the fixed worker order, one-shot execution boundaries, owned-path staging, and pre-authorized local commit. A backfill execution failure SHALL stop before archive preparation. An archive preparation or execution failure SHALL report the exact CLI, staging, or commit state, SHALL never resend the execute order, and SHALL never commit a partial plan. CLI failure or invalid JSON SHALL stop before staging and commit. Manual `/sai-archive` and `/sai-commit` guidance remains applicable after a non-clean archive outcome.
+
+#### Scenario: Archive failure stops the unattended flow
+
+- **WHEN** the archive worker reports a CLI, staging, message-authoring, or commit failure
+- **THEN** the flow preserves the exact partial state, performs no retry or later mutation, and does not mark the slice complete
 
 #### Scenario: Hands-worker failure stops clean
 
@@ -366,3 +371,4 @@ The Direct Build - Unattended route's step-4 spec review SHALL run a MODIFIED-de
 
 - **WHEN** the step-4 spec review finds a MODIFIED requirement whose draft scenario set omits a scenario the main spec already holds
 - **THEN** explore records a High completeness finding and continues it once to the same backfill worker within the remaining `fix_rounds` budget.
+

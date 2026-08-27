@@ -3,7 +3,6 @@
 ## Purpose
 
 Enables the `--fast-track` per-invocation flag on `sai-explore`, `sai-2-design`, `sai-4-apply`, `sai-archive`, `sai-backfill`, and `sai-merge`, defining each command's opt-out set, auto-stay behavior under fast-track mode, the single-canonical-membership rule, and the cross-command guardrails that survive fast-track.
-
 ## Requirements
 
 ### Requirement: Fast-track opt-in membership
@@ -35,7 +34,7 @@ The fast-track signal SHALL not bypass the technical-uncertainty assessment, Ask
 
 ### Requirement: sai-2-design under fast-track has no specs approval gate to opt out of
 
-`--fast-track` remains accepted by `sai-2-design`, and its parsing, preflight ordering, and `> FAST-TRACK MODE ACTIVE` banner are unchanged. The specs approval gate is no longer part of any opt-out set for `sai-2-design`, because that gate is an automatic stamp presented to nobody: the flag has no approval question to auto-answer, and the approval metadata is written identically with and without the flag.
+`--fast-track` remains accepted by `sai-2-design`, and its parsing, preflight ordering, and `> FAST-TRACK MODE ACTIVE` banner are unchanged. The specs approval gate SHALL not be treated as part of any opt-out set for `sai-2-design`, because that gate is an automatic stamp presented to nobody: the flag has no approval question to auto-answer, and the approval metadata is written identically with and without the flag.
 
 #### Scenario: fast-track does not change approval behavior
 
@@ -48,62 +47,72 @@ The fast-track signal SHALL not bypass the technical-uncertainty assessment, Ask
 
 ### Requirement: sai-archive under fast-track auto-proceeds the unchecked-items gate and conditionally the delta-spec sync gate
 
-When `sai-archive` runs with `--fast-track`, its opt-out set SHALL be exactly three gates:
-
-1. **Unchecked-items gate (always).** The Completion Check soft confirmation (`sai/commands/archive/instructions.md`) — presented when `implementation.md` exists and contains one or more `- [ ]` — SHALL auto-proceed as if the user answered `yes`, without asking the "Continue archiving with N unchecked items?" question. The archive move proceeds. No approval key is written to `.openspec.yaml` (the gate is conversational only, unchanged).
-
-2. **Delta-spec sync gate (conditional).** The sync gate (upstream `openspec-archive-change` skill step 4, as governed by `sai/commands/archive/instructions.md` Missing main spec handling) has two paths, both handled under `--fast-track`:
-   - **Changes-needed path** (interactive options **Sync now** / **Archive without syncing**): the agent SHALL auto-proceed by selecting the **Sync now** branch — never **Archive without syncing** — if and only if the change is low-risk-by-construction, defined as the disjunction of EITHER (a) the implementation is detected as applied — `openspec/changes/{name}/implementation.md` exists AND contains at least one `- [x]` — OR (b) the change is backfilled — the `backfilled` value resolved by the Classification Check is `true` (`.openspec.yaml` exists, parses as valid YAML, and carries the boolean literal `backfilled: true`, per the resolution idiom in `sai/commands/archive/instructions.md`). When NEITHER condition holds (not applied AND not backfilled), the changes-needed sync gate SHALL fire interactively exactly as without the flag.
-   - **Already-synced path** (interactive options **Archive now** / **Sync anyway** / **Cancel**): the agent SHALL auto-proceed by selecting **Archive now** unconditionally, since the delta specs are already in sync and there is nothing to sync; this no-op path does not depend on the low-risk condition above.
-
-3. **Archive commit gate (auto-select new commit).** The post-archive commit gate (`openspec/specs/sai-archive-commit-gate/spec.md`) SHALL NOT be presented as a prompt; the agent SHALL auto-select the new-commit option. Because a new commit is never destructive, the pushed-HEAD guard does not apply to the fast-track path, and there is no do-nothing fallback and no pushed-HEAD explanatory line. The shared empty-index guard SHALL still apply: when staging exactly `openspec/specs` and `openspec/changes/archive` leaves the index with no staged changes, the agent SHALL NOT create a commit and SHALL print the guard's single explanatory line. When `git status` shows no changes, the gate and its auto-selection SHALL be skipped. The gate SHALL NOT adopt the `commit-auth-gate` `yes` / `no` / `Allow on this session` option set and SHALL NOT set or read the session commit-authorization flag.
-
-The following gates SHALL remain in force under `sai-archive --fast-track` and SHALL NOT be opted out: the CORE-missing hard stop, the AUDIT informational line, all safe-operations confirmations, the pre-existence check, and the opencode change-name resolution. No `.openspec.yaml` key, session flag, or environment variable is introduced by this requirement.
+When `sai-archive` runs with `--fast-track`, the unchecked-items gate SHALL auto-proceed as if the user answered `yes`, without asking the unchecked-items question or writing approval metadata. Delta-spec synchronization SHALL NOT have a separate decision gate: the archive CLI SHALL handle synchronization and movement through exactly `openspec archive <name> --yes --json`. The existing archive commit gate, safe-operations confirmations, CORE hard stop, AUDIT informational line, collision check, and change-name resolution SHALL remain in force.
 
 #### Scenario: Unchecked-items gate auto-proceeds under fast-track
 
-- **WHEN** `sai-archive {name} --fast-track` runs and `implementation.md` exists with one or more `- [ ]` unchecked items
-- **THEN** the agent does not ask "Continue archiving with N unchecked items?", proceeds with the archive move as if `yes` was chosen, and writes no approval key to `.openspec.yaml`
+- **WHEN** `sai-archive {name} --fast-track` runs and `implementation.md` contains unchecked items
+- **THEN** the agent does not ask the unchecked-items question, proceeds as if `yes` was chosen, and writes no approval key
+
+#### Scenario: Delta-spec synchronization has no separate gate
+
+- **WHEN** `sai-archive {name} --fast-track` runs and delta specs require synchronization
+- **THEN** no synchronization choice is presented and the authorized archive flow uses the CLI archive primitive
 
 #### Scenario: Sync gate auto-syncs when the implementation is applied
 
-- **WHEN** `sai-archive {name} --fast-track` runs, delta specs need changes, and `implementation.md` exists containing at least one `- [x]`
-- **THEN** the changes-needed sync gate is not presented; the agent selects the **Sync now** branch (not **Archive without syncing**) and proceeds to archive
+- **WHEN** `sai-archive {name} --fast-track` runs, delta specs need changes, and `implementation.md` contains at least one `- [x]`
+- **THEN** no synchronization choice is presented and the authorized archive flow uses the CLI archive primitive
 
 #### Scenario: Sync gate auto-syncs when the change was born from sai-backfill
 
-- **WHEN** `sai-archive {name} --fast-track` runs, delta specs need changes, `implementation.md` is absent or has zero `- [x]`, but the Classification Check resolved `backfilled: true`
-- **THEN** the changes-needed sync gate is not presented; the agent selects the **Sync now** branch via the backfilled disjunct and proceeds to archive
+- **WHEN** `sai-archive {name} --fast-track` runs, delta specs need changes, and the Classification Check resolved `backfilled: true`
+- **THEN** no synchronization choice is presented and the authorized archive flow uses the CLI archive primitive
 
 #### Scenario: Sync gate still asks when neither low-risk condition holds
 
-- **WHEN** `sai-archive {name} --fast-track` runs, delta specs need changes, `implementation.md` is absent or present with zero `- [x]` marks, AND the change is not backfilled
-- **THEN** the changes-needed sync gate fires interactively with its usual options, exactly as it would without `--fast-track`
+- **WHEN** `sai-archive {name} --fast-track` runs and delta specs need changes without an applicable legacy low-risk condition
+- **THEN** no synchronization choice is presented and the authorized archive flow uses the CLI archive primitive, subject to its pre-write validation
 
 #### Scenario: Already-synced sync gate auto-archives under fast-track
 
-- **WHEN** `sai-archive {name} --fast-track` runs and the delta specs are already in sync with the main specs (the gate's already-synced path)
-- **THEN** the agent auto-selects **Archive now** without asking, unconditionally, because there is nothing to sync
+- **WHEN** `sai-archive {name} --fast-track` runs and the delta specs are already in sync with the main specs
+- **THEN** no synchronization choice is presented and the archive flow uses the CLI archive primitive
+
+#### Scenario: No delta specs still use the CLI
+
+- **WHEN** `sai-archive {name} --fast-track` runs without delta specs
+- **THEN** the archive flow still uses `openspec archive <name> --yes --json` rather than a separate manual move
 
 #### Scenario: CORE-missing hard stop still halts under fast-track
 
 - **WHEN** `sai-archive {name} --fast-track` runs and one or more CORE artifacts are not `done`
-- **THEN** the agent STOPs with the existing "Missing CORE artifact(s): …. Archive blocked." message; fast-track does not bypass the hard stop
+- **THEN** the agent stops with `Missing CORE artifact(s): …. Archive blocked.` and fast-track does not bypass the hard stop
 
 #### Scenario: AUDIT informational line still prints under fast-track
 
-- **WHEN** `sai-archive {name} --fast-track` runs, all CORE artifacts are `done`, and one or more AUDIT artifacts are missing
-- **THEN** the agent still prints the informational line `[sai-archive] informational: missing AUDIT artifact(s): …`; fast-track does not suppress it
+- **WHEN** `sai-archive {name} --fast-track` runs with complete CORE artifacts and missing AUDIT artifacts
+- **THEN** the agent prints the informational AUDIT line and continues without suppressing it
+
+#### Scenario: Archive commit gate remains protected
+
+- **WHEN** fast-track archive processing leaves eligible staged changes after the CLI archive succeeds
+- **THEN** the documented fast-track commit behavior creates only the authorized new local commit and retains the empty-index guard
 
 #### Scenario: Archive commit gate auto-commits via a new commit under fast-track
 
-- **WHEN** `sai-archive {name} --fast-track` completes the archive skill and staging the two paths leaves a non-empty staged diff
-- **THEN** the agent presents no commit-gate prompt, stages exactly `openspec/specs` and `openspec/changes/archive`, composes the message per `sai/commands/commit/instructions.md` steps 1–5, and creates a new commit
+- **WHEN** fast-track archive processing leaves eligible staged changes after the CLI archive succeeds
+- **THEN** the command presents no commit-gate prompt and creates one authorized new local commit
 
 #### Scenario: Archive commit gate commits nothing when the index is empty under fast-track
 
-- **WHEN** `sai-archive {name} --fast-track` completes the archive skill and staging the two paths leaves the index with no staged changes
-- **THEN** the agent does not create a commit and prints the guard's explanatory line
+- **WHEN** fast-track archive processing leaves the index empty after exact-path classification
+- **THEN** the command creates no commit and preserves the empty-index guard
+
+#### Scenario: Safe operations and collision checks remain in force
+
+- **WHEN** fast-track archive processing reaches a safe-operations confirmation or an existing archive target
+- **THEN** the confirmation or collision stop remains required and fast-track does not bypass it
 
 ### Requirement: The --fast-track flag is parsed from arguments_value before the picker
 
@@ -238,3 +247,4 @@ On every surface that also validates other options, the fast-track presence-plus
 #### Scenario:
 - **WHEN** `sai-explore` receives `{name} --overview-lang fr --fast-track`
 - **THEN** the fast-track token is stripped and its banner printed before the overview-language validation examines the cleaned remainder
+

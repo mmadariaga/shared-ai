@@ -194,7 +194,7 @@ Other intent context:
 
 The enriched prompt keeps the same scan scope and output contract: return ONLY overlapping specs, with exactly `path`, `what_would_change` (≤30 words), and `why` (≤20 words), no prose, and no raw file contents. Do not pass a non-usable candidate as synthetic intent context.
 
-If conflicts are found, surface the report, then ask for the decision — except when `fast_track_active` is true: carry the report verbatim in your returned payload content and continue to Phase 5 automatically without the decision ask, because the real accept-or-reject decision belongs to archive's delta-spec sync gate.
+If conflicts are found, surface the report, then ask for the decision — except when `fast_track_active` is true: carry the report verbatim in your returned payload content and continue to Phase 5 automatically without the decision ask, because archive's CLI invocation handles delta-spec synchronization atomically and the conflict report travels as informational context for that invocation.
 
 Carry the report verbatim in your returned payload content:
 

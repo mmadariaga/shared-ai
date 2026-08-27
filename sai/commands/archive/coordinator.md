@@ -2,10 +2,12 @@
 
   Fetch @sai/policies/verified-precondition-handback.md
   Fetch @skills/safe-operations/SKILL.md and use it
-  Fetch @skills/openspec-archive-change/SKILL.md and follow those instructions
-  exactly for the mutating steps assigned to you below (the delta-spec sync
-  write, the step-5 archive move, and the step-6 completion summary); its
-  assessment steps are replaced by the worker pre-flight.
+  Fetch @skills/openspec-archive-change/SKILL.md
+  The coordinator runs `openspec archive <name> --yes --json` as the sole
+  sync + move primitive on the ordinary route. The CLI's deterministic
+  pre-write validation is the scenario-preservation guarantee; the CLI's
+  JSON result is the completion record. The upstream skill's manual sync
+  and move steps are not used.
 
   ## Prerequisite checks
 
@@ -46,15 +48,16 @@
   You are the user-facing archive coordinator. The worker owns every read-only
   procedure of the technical phase: artifact classification, checkbox-state
   scanning, delta-sync diffing against main specs, target-name collision
-  checking, and the authoring of the two pre-mutation gate questions. On the
-  ordinary route, you own lifecycle routing, gate presentation, and ALL
-  mutating execution: the delta-spec sync writes, the archive directory move,
+  checking, and the authoring of the unchecked-items pre-mutation gate
+  question. On the ordinary route, you own lifecycle routing, gate
+  presentation, and ALL mutating execution: the CLI archive invocation
+  (`openspec archive <name> --yes --json`) as the sole sync + move primitive,
   and every git operation of the post-archive commit gate. The explicit
   Direct Build (unattended) route is the only exception: you validate the worker's prepared
   mutation order and authorize it, then the same archive worker performs the
-  exact sync, move, staging, and local commit continuation. Never perform the
-  worker's read-only analysis on its behalf; never let an execution
-  continuation act before validation and authorization.
+  CLI archive invocation, exact-path staging, and local commit continuation.
+  Never perform the worker's read-only analysis on its behalf; never let an
+  execution continuation act before validation and authorization.
 
   Declare the minimal phase-adapter field set:
   - `original_envelope` — the opaque single-string fast-track-cleaned request
@@ -71,8 +74,7 @@
      `--direct-build-prepare` marker and retains `direct_build_mode` outside the opaque
      envelope.
   - `continuation_operation` — continue the same worker through the binding's
-    continuation mechanism, forwarding the selected answer value or the
-    post-sync verification request.
+    continuation mechanism, forwarding the selected answer value.
   - `allowed_nonterminal_extensions` — none; `extension_handlers` empty. This
     adapter declares NO `progress_plan`: no progress event exists in this
     lifecycle, no panel plan renders, and no acknowledgement literal is defined.
@@ -97,37 +99,28 @@
 
   ## Needs-input routing
 
-  On a worker `needs_input` result — the unchecked-items gate or the delta-spec
-  sync gate — present the exact question and ordered options through the native
-  option-picker per the "Closed-choice prompts" rule in `@sai/policies/remember.md`,
-  append only `{question, options, answer_value}` to the opaque input history,
-  and forward the exact answer value to the same worker through the binding's
-  continuation mechanism. Present any worker-authored payload content (the
-  combined delta-sync summary, the unchecked-item list) alongside the ask,
-  unaltered.
+  On a worker `needs_input` result — the unchecked-items gate — present the
+  exact question and ordered options through the native option-picker per the
+  "Closed-choice prompts" rule in `@sai/policies/remember.md`, append only
+  `{question, options, answer_value}` to the opaque input history, and forward
+  the exact answer value to the same worker through the binding's continuation
+  mechanism. Present any worker-authored payload content (the combined
+  delta-sync summary, the unchecked-item list) alongside the ask, unaltered.
 
   ## Coordinator-owned execution (ordinary route)
 
-  After the gates resolve through forwarded answers, execute the mutations in
-  this order, each guarded by safe-operations:
+  After the gates resolve through forwarded answers, execute the archive and
+  commit in this order:
 
-  - **Sync execution** — on a forwarded `Sync now` / `Sync anyway` answer:
-    execute the upstream skill's step-4 sync sub-procedure yourself: fetch
-    `openspec instructions specs --change "<name>" --json` once (halt before
-    any write if it fails), run the `openspec-sync-specs` workflow inline
-    synchronously, then resume the same worker with a post-sync verification
-    request. The worker re-runs its read-only comparison and either confirms
-    every capability synced or reports what differs — on a mismatch report,
-    print the worker-authored summary verbatim and stop without moving
-    anything. Add written spec paths to the union.
-  - **The archive move** — only after the gates authorize archiving: create the
-    archive directory (`mkdir -p openspec/changes/archive`), derive the target
-    name per the date-prefix rule (use the change name as-is when it already
-    starts with `YYYY-MM-DD-`; otherwise prepend today's date as
-    `YYYY-MM-DD-<change-name>`; never stack a second date), fail with the
-    pre-flight collision error if the target exists, else move the change
-    directory into `openspec/changes/archive/<target-name>`. Never delegate the
-    move to the worker. Add the realized archive path to the union.
+  - **CLI archive** — run `openspec archive <name> --yes --json` as the sole
+    sync + move primitive. The CLI validates scenario preservation before
+    writing and couples delta-spec synchronization with the archive directory
+    move in one deterministic operation. Parse the JSON result: on success,
+    the sync and move are complete; on failure or invalid JSON, report the
+    exact error and stop without any manual fallback, staging, or commit.
+    Obtain exact spec paths from the pre-flight inventory for `changed_files`
+    because the CLI's `specsUpdated` is not a path list. Add the realized
+    archive path and spec paths to the union.
   - **Post-archive commit gate** — fetch
     @sai/commands/archive/archive-commit-gate.instructions.md and apply its
     coordinator-owned surface exactly as written: the skip-rule `git
@@ -147,10 +140,9 @@
   This route is used only by the Explore Direct Build (unattended)
   composition and leaves the ordinary archive coordinator path unchanged. The
   initial `--direct-build-prepare` dispatch runs classification, completion,
-  delta-spec comparison, collision detection, and every applicable fast-track
-  gate without mutation. The worker returns a closed plan containing the sync
-  decision, verification targets, archive destination, owned staging paths,
-  and the pre-authorized one-commit boundary.
+  collision detection, and every applicable fast-track gate without mutation.
+  The worker returns a closed plan containing the archive destination, owned
+  staging paths, and the pre-authorized one-commit boundary.
 
   The coordinator validates that plan against the fresh worker findings and
   the implementer's changed-files union. After the existing gates and the
@@ -160,24 +152,28 @@
   it is never inferred from a completed prepare result, a fast-track notice,
   or a worker summary. The coordinator forwards no additional path or action.
 
-  The worker owns the authorized sync, archive move, exact-path staging,
-  commit-message authoring, and local commit in that order. Add every worker
-  reported path to the invocation union and print its summary verbatim. A
-  failed or cancelled execution is terminal: report the exact partial state,
+  The worker owns the authorized CLI archive invocation, exact-path staging,
+  commit-message authoring, and local commit in that order. The CLI
+  (`openspec archive <name> --yes --json`) is the sole sync + move primitive;
+  any CLI failure stops staging and commit without retry or fallback. Add every
+  worker reported path to the invocation union and print its summary verbatim.
+  A failed or cancelled execution is terminal: report the exact partial state,
   never silently retry or send a second execute continuation, and never fall
   back to the normal coordinator mutation surface.
 
   ## Content assignment
 
   The split of today's technical content is fixed: `@sai/commands/archive/
-  instructions.md` (Classification Check, Completion Check scan, missing-main-
-  spec handling, fast-track sync-gate handling) belongs to the WORKER as
-  verification, completeness, and diffing procedure plus the two pre-mutation
-  gate questions. `@skills/openspec-archive-change/SKILL.md` and
-  `@sai/commands/archive/archive-commit-gate.instructions.md` remain the
-  coordinator-owned source for the ordinary route. The Direct Build (unattended) route uses
-  the same coordinator validation and authorization, then delegates only its
-  validated closed execution order to the existing archive worker.
+  instructions.md` (Classification Check, Completion Check scan, collision
+  check) belongs to the WORKER as verification, completeness, and diffing
+  procedure plus the unchecked-items pre-mutation gate question. The
+  coordinator owns the CLI archive invocation (`openspec archive <name>
+  --yes --json`) and the post-archive commit gate
+  (`@sai/commands/archive/archive-commit-gate.instructions.md`) on the
+  ordinary route. The Direct Build (unattended) route uses the same
+  coordinator validation and authorization, then delegates only its validated
+  closed execution order — CLI archive, exact-path staging, and local commit —
+  to the existing archive worker.
 
 </TASK>
 
