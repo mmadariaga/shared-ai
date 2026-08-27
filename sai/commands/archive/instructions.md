@@ -62,31 +62,21 @@ Before running the archive skill, perform this check:
      - This prompt is conversational in chat only: do NOT write any approval key to `.openspec.yaml` and do NOT introduce any new formal approval gate. Only the unchecked-items rule changes; the Classification Check, missing-main-spec handling, and spec-sync behavior are untouched.
    - **If it does not exist**: skip this check entirely. Proceed without any warning about incomplete tasks.
 
-## Missing main spec handling (applies to step 4 of the archive skill)
+## Missing main spec handling
 
-When assessing delta spec sync state:
+When assessing delta spec sync state during the read-only pre-flight:
 - If a delta spec capability has **no matching main spec** at `openspec/specs/<capability>/spec.md`, treat it as a new addition.
-- Include it in the combined summary as `[ADD] <capability>`.
-- The "changes needed" branch applies: return a `needs_input` result offering "Sync now (recommended — creates new main spec)" and "Archive without syncing".
+- Include it in the combined delta-sync summary as `[ADD] <capability>`.
+- The CLI archive invocation handles new main spec creation; SAI reports it as informational context.
 
-### Fast-track sync-gate handling (step 4 of the archive skill)
+### Automatic spec synchronization via CLI
 
-When fast-track is active (`sai-archive --fast-track`; opt-out set per `openspec/specs/sai-fast-track-flag/spec.md`), the delta-spec sync gate auto-proceeds instead of prompting:
-- **Changes-needed path** (options "Sync now (recommended — creates new main spec)" / "Archive without syncing"): auto-select **Sync now** — never **Archive without syncing** — if and only if the change is low-risk-by-construction: EITHER `openspec/changes/$ARGUMENTS/implementation.md` exists AND contains at least one `- [x]`, OR the Classification Check resolved `backfilled=true` (reuse that value; do not re-read `.openspec.yaml`). When neither disjunct holds, return the gate as a `needs_input` result with its usual options.
-- **Already-synced path** (options "Archive now" / "Sync anyway" / "Cancel"): auto-select **Archive now** unconditionally — it is a no-op, nothing to sync.
-- Detect applied state by a single read of `implementation.md` for a `- [x]` — no git-log traversal.
-- Every other gate stays in force: the CORE-missing hard stop, the AUDIT informational line, all safe-operations confirmations, the pre-existence check, and the opencode change-name resolution.
-
-### Automatic spec synchronization
-
-When delta specs exist, always select the sync path and continue through the
-inline `openspec-sync-specs` workflow; do not present a synchronization choice
-to the user. In the ordinary route, the coordinator performs that sync after
-the worker's gate result. In Direct Build (unattended) preparation, record the same selected
-sync as a pending action and let the coordinator validate it before the worker's
-explicit execute continuation performs it. When the delta specs are
-already synchronized, select the archive path directly. Verify the resulting main
-specs before moving the change. This policy applies regardless of fast-track
-state and supersedes the upstream skill's `Sync now` / `Archive without
-syncing` and `Archive now` / `Sync anyway` prompts. All other archive gates
-remain unchanged.
+Delta-spec synchronization and the archive directory move are performed by a
+single `openspec archive <name> --yes --json` invocation. The CLI's
+deterministic pre-write validation is the scenario-preservation guarantee;
+SAI does not duplicate it. In the ordinary route, the coordinator runs the
+CLI after the gates resolve. In Direct Build (unattended) execution, the
+worker runs the CLI as the first mutation step. When no delta specs exist,
+the CLI archives the change without modifying main specs. This policy applies
+regardless of fast-track state. All other archive gates (Classification
+Check, unchecked-items, collision check) remain unchanged.

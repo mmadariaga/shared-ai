@@ -113,6 +113,8 @@ const allowedDifferences = [
   'pipeline-auto-supervised.md',
   'sai-autofast-implement-worker',
   '--autofast',
+  // The archive CLI sync+move change updated the Failures reporting text.
+  '- **Failures** (E3): every segment applies `@sai/policies/bounded-recovery.md`',
 ];
 
 function readPreSplitContract() {

@@ -772,15 +772,15 @@ test('backfilled changes skip change-overview alongside interfaces', () => {
   assert.match(archive, /skip/i, 'the skip should be expressed as a skip');
 });
 
-test('archive synchronizes delta specs without presenting a sync choice', () => {
+test('archive synchronizes delta specs via CLI without presenting a sync choice', () => {
   const archive = artifact('sai/commands/archive/instructions.md');
 
-  assert.match(archive, /When delta specs exist, always select the sync path/,
-    'delta specs should always take the synchronization path');
-  assert.match(archive, /do not present a synchronization choice/,
-    'archive should not ask whether to synchronize specs');
-  assert.match(archive, /already synchronized, select the archive\s+path directly/,
-    'already-synced specs should proceed directly to archive');
+  assert.match(archive, /openspec archive[\s\S]*--yes --json/,
+    'archive should use the CLI as the sync + move primitive');
+  assert.match(archive, /CLI[\s\S]*deterministic[\s\S]*validation/,
+    'archive should reference CLI validation as the scenario-preservation guarantee');
+  assert.match(archive, /no delta specs exist[\s\S]*CLI archives[\s\S]*without modifying/,
+    'archive should handle the no-delta case via CLI');
 });
 
 test('status panel lists the 11 artifact ids in order and derives overview state', () => {

@@ -3,9 +3,7 @@
 ## Purpose
 
 Define the routed coordinator/worker architecture for `/sai-archive`: a minimal-lifecycle phase adapter whose coordinator owns lifecycle routing, gate presentation, and every mutating execution (the delta-spec sync writes, the archive directory move, and the post-archive commit gate), while the dispatched `sai-archive-worker` owns the read-only technical pre-flight and never mutates anything — with end-to-end worker registration and the openspec prerequisite REQUIREMENT carried by the coordinator card.
-
 ## Requirements
-
 ### Requirement: Routed card set and boot routing
 
 `sai-archive` SHALL be a routed-shaped command whose card set is exactly `sai/commands/archive/coordinator.md` and `sai/commands/archive/worker.md` (no `invocation.md`; the legacy utility `body.md` is retired). Both harness boot adapters (`sai/adapters/claude/boot.md` and `sai/adapters/opencode/boot.md`) SHALL classify `archive` among the routed names so that selecting it fetches `@sai/commands/archive/coordinator.md`, and SHALL exclude `archive` from the utility-name lists byte-symmetrically; no boot path SHALL select an archive `body.md`.
@@ -23,40 +21,45 @@ Define the routed coordinator/worker architecture for `/sai-archive`: a minimal-
 
 ### Requirement: Minimal lifecycle adapter with fast-track session state
 
-The archive coordinator SHALL declare the minimal phase-adapter field set: `original_envelope` is the opaque single-string fast-track-cleaned request; `dispatch_operation` dispatches exactly one `sai-archive-worker` through the active archive-worker binding using that envelope with the resolved change name as `arguments_value`; `continuation_operation` continues the same worker forwarding the selected answer value or the post-sync verification request; `allowed_nonterminal_extensions` is none. The coordinator SHALL parse the `--fast-track` token from `arguments_value` itself before resolution — printing exactly one `> FAST-TRACK MODE ACTIVE` banner, removing the token, and using the cleaned remainder downstream — and SHALL declare the resulting boolean as `fast_track_active` alongside the envelope as coordinator-owned session state, never as an additional envelope key. The adapter SHALL declare NO `progress_plan` — no progress event exists in this lifecycle, no panel plan renders, and no acknowledgement literal is defined — and NO `recovery_policy`: the coordinator SHALL NOT fetch `@sai/policies/bounded-recovery.md`, keep no recovery ledger, and perform no recovery continuations. A replacement worker SHALL reconstruct only from the complete original envelope, the opaque input history (including forwarded gate answers), the resolved change name, `fast_track_active`, and the ordered duplicate-free changed-files union.
+The archive coordinator SHALL declare the minimal phase-adapter field set: `original_envelope` is the opaque single-string fast-track-cleaned request; `dispatch_operation` dispatches exactly one `sai-archive-worker` through the active archive-worker binding; `continuation_operation` continues the same worker while forwarding only the selected answer value; `allowed_nonterminal_extensions` is none; and no `progress_plan` or `recovery_policy` is declared. The coordinator SHALL parse `--fast-track` before resolution, retain `fast_track_active` as invocation-scoped session state, and never place it in the envelope. A replacement worker SHALL reconstruct only from the original envelope, opaque input history, resolved change name, fast-track state, Direct Build state, validated execution order, one-shot execution state, and ordered duplicate-free changed-files union.
 
 #### Scenario: An archive run carries no progress or recovery machinery
 
 - **WHEN** the archive coordinator card is read
-- **THEN** it declares no `progress_plan`, defines no progress event or acknowledgement literal, declares no `recovery_policy`, and never fetches the bounded-recovery policy
+- **THEN** it declares no progress plan, progress event, acknowledgement literal, recovery policy, bounded-recovery fetch, or recovery continuation
 
 #### Scenario: Fast-track survives only as session state
 
 - **WHEN** `/sai-archive {name} --fast-track` dispatches its worker
-- **THEN** the envelope carries the cleaned request without the token, `fast_track_active` travels as declared session state rather than an envelope key, and the banner printed at run start is exactly one line
+- **THEN** the envelope carries the cleaned request, `fast_track_active` remains session state, and the banner is printed exactly once
 
 ### Requirement: Worker owns the read-only pre-flight and never mutates
 
-The dispatched `sai-archive-worker` SHALL perform the entire read-only technical pre-flight of `sai/commands/archive/instructions.md`: the Classification Check (`openspec status --change --json`, the `.openspec.yaml` `backfilled` resolution rules, the CORE/AUDIT/EXEMPT grouping), the Completion Check scan enumerating every unchecked `- [ ]` with its `implementation.md:{line}` location, enclosing `#### Step N` heading, and checkbox text, the missing-main-spec delta assessment diffing every delta spec against its main spec into a combined summary, and the target-name collision check against `openspec/changes/archive/YYYY-MM-DD-{name}/`. All findings SHALL return as payload content inside terminal summaries for verbatim coordinator presentation, preserving the instruction's stop texts exactly — including the CORE-missing hard stop "Missing CORE artifact(s): …. Archive blocked." with no accompanying AUDIT soft warning. The worker SHALL NEVER move a directory, write any file outside its reporting duties (no main-spec sync writes, no `.openspec.yaml` keys, no artifact edits), or run any git command.
+The dispatched `sai-archive-worker` SHALL perform the complete read-only technical pre-flight: classification, completion scanning, informational delta-spec comparison, and target-name collision checking. It SHALL return all findings as payload content, including AUDIT warnings, unchecked-item details, the combined delta comparison, and the collision verdict. It SHALL preserve the CORE-missing stop text and SHALL never move a directory, write a file, synchronize main specs, or run a git command during preparation.
 
 #### Scenario: Pre-flight findings arrive as payloads
 
-- **WHEN** an archive worker completes its classification, checkbox scan, delta-sync assessment, and collision check
-- **THEN** every finding — informational AUDIT line, unchecked-item list, combined delta-sync summary, collision verdict — reaches the coordinator as payload content and no file was written and no directory moved by the worker session
+- **WHEN** an archive worker completes classification, checkbox scanning, delta comparison, and collision checking
+- **THEN** every finding reaches the coordinator as payload content and the worker has performed no write, directory move, or state-changing git operation
 
 #### Scenario: The CORE-missing hard stop keeps its exact text
 
 - **WHEN** any CORE artifact of the resolved change is not `done`
-- **THEN** the worker returns a terminal payload whose summary is exactly "Missing CORE artifact(s): <ids>. Archive blocked." and no AUDIT soft warning accompanies it
+- **THEN** the worker returns exactly `Missing CORE artifact(s): <ids>. Archive blocked.` without an AUDIT warning
 
 ### Requirement: Needs-input gate transport and coordinator-only execution
 
-The two pre-mutation decisions SHALL be returned by the worker as `needs_input` lifecycle results — first the unchecked-items gate ("Continue archiving with N unchecked items?" with options `yes (Recommended)` / `no`, skipped entirely when `implementation.md` does not exist), then the delta-spec sync gate with its branch's exact option set (`Sync now (recommended)` / `Archive without syncing`; `Sync now (recommended — creates new main spec)` / `Archive without syncing`; or `Archive now` / `Sync anyway` / `Cancel`). The coordinator SHALL present each exact question and option set through the native option-picker, append only `{question, options, answer_value}` to the opaque input history, and forward the answer value verbatim to the same worker. Under `fast_track_active` the documented auto-proceed branches apply unchanged: the unchecked-items gate auto-proceeds as if `yes`, the changes-needed sync gate auto-selects **Sync now** if and only if the change is low-risk-by-construction (applied `- [x]` or `backfilled=true`), and the already-synced gate auto-selects **Archive now**; these are the only silent paths. Only the coordinator SHALL execute mutations, in order after the gates resolve: the delta-spec sync writes (upstream skill step 4 inline, halting before any write on failure, then resuming the same worker whose re-run comparison must confirm every capability synced before anything moves), the archive directory move into `openspec/changes/archive/YYYY-MM-DD-{name}/` guarded by the collision error and never stacking a second date prefix, and the post-archive commit gate applied exactly per `sai/commands/archive/archive-commit-gate.instructions.md`. Terminal navigation SHALL print the worker-authored summary verbatim on every closure and SHALL close with exactly `Archive done.` only when the move executed.
+The worker SHALL return only the unchecked-items decision as a pre-mutation `needs_input` result when `implementation.md` contains unchecked items. Under fast-track it SHALL auto-proceed that gate without writing approval metadata. The coordinator SHALL present the question through the native picker and forward the selected value verbatim. After the gate resolves, the ordinary coordinator SHALL run exactly `openspec archive <name> --yes --json` as the sole synchronization-and-move primitive, parse its JSON result, and stop on failure or invalid JSON without manual fallback, staging, or commit. The Direct Build execute continuation SHALL run the same CLI primitive before exact-path staging and the authorized local commit. Terminal navigation SHALL print the worker-authored summary verbatim and SHALL close with exactly `Archive done.` only when the archive move executed.
 
 #### Scenario: A gate answer travels through the coordinator untouched
 
-- **WHEN** the user selects an option at either pre-mutation gate
-- **THEN** the coordinator forwards the selected value verbatim through the binding continuation and executes no mutation until the gates authorize archiving
+- **WHEN** the user selects an option at the unchecked-items gate
+- **THEN** the coordinator forwards the selected value verbatim and executes no mutation until the gate authorizes archiving
+
+#### Scenario: The CLI result authorizes synchronization and movement
+
+- **WHEN** the gates authorize archiving and `openspec archive <name> --yes --json` returns valid success JSON
+- **THEN** the CLI result is treated as the authoritative synchronization-and-move outcome and no manual sync or move procedure runs
 
 #### Scenario: Sync mismatch stops the run before the move
 
@@ -83,9 +86,10 @@ The `sai-archive-worker` identity SHALL be registered across the full projection
 
 ### Requirement: Fixed content assignment across the two cards
 
-The split of today's technical content SHALL be fixed and single-sourced: `sai/commands/archive/instructions.md` belongs to the WORKER as read-only verification, completeness, and diffing procedure plus the authoring of the two pre-mutation gate questions, with a routed-ownership header documenting the transport mapping (print → payload summary carried verbatim; ask/offer → `needs_input` result; conditionals → forwarded answer values; every mutation → coordinator-side); the upstream `openspec-archive-change` skill's mutating steps (the sync write, the step-5 archive move, the completion summary) and `sai/commands/archive/archive-commit-gate.instructions.md` belong to the COORDINATOR exclusively. Neither card SHALL perform the other's half.
+The technical split SHALL remain single-sourced: `sai/commands/archive/instructions.md` belongs to the worker for read-only verification, completeness scanning, delta comparison, collision checking, and the unchecked-items question. The coordinator owns the CLI archive invocation and the post-archive commit gate on the ordinary route. The Direct Build route delegates only its validated closed execution order, consisting of the CLI archive invocation, exact-path staging, and local commit, to the archive worker.
 
 #### Scenario: Each technical duty lives in exactly one card
 
 - **WHEN** the archive card set is audited after the change
-- **THEN** every check, scan, and gate question traces to the worker's instruction load and every sync write, directory move, and git operation traces to the coordinator card
+- **THEN** preflight checks and the unchecked-items gate trace to the worker while CLI archive execution and git operations trace to the coordinator or validated Direct Build continuation
+
