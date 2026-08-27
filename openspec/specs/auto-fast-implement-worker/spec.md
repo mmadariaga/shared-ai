@@ -3,7 +3,6 @@
 ## Purpose
 TBD - created by archiving change auto-fast-selector-option. Update Purpose after archive.
 ## Requirements
-
 ### Requirement: Attribute implementation to Build
 
 The existing `sai-autofast-implement-worker` SHALL be documented as the implementation worker for Build (unattended). Its worker identity and protocol marker SHALL remain unchanged, and its existing code-only exclusions SHALL remain in force.
@@ -12,14 +11,22 @@ The existing `sai-autofast-implement-worker` SHALL be documented as the implemen
 
 - **WHEN** Build reaches its implementation step
 - **THEN** the existing implement worker receives the same block-driven request under the Build route.
+
 ### Requirement: Alpha input model
 
 The implementer worker SHALL receive exactly one opaque `arguments_value` whose first line is the marker `--autofast` and whose remainder is the complete crystallized Ready to Propose block; it SHALL strip the marker line and treat that block as its sole substantive input, with no conversation context forwarded and no requirements inferred from repository discovery beyond what implementing the block requires.
 
 #### Scenario: Block-only input
 
-- **WHEN** the worker is dispatched by explore's Auto (fast implementation) flow
+- **WHEN** the worker is dispatched by explore's Build (unattended) flow
 - **THEN** it implements directly from Capabilities in scope, Key constraints, Implementation Details, and Edge Cases, treating Research Leads as non-authoritative starting points only
+
+#### Scenario: Slice-scoped implementation
+
+- **WHEN** the block comes from a sliced crystallization set
+- **THEN** the worker implements only the behavior this block's `**Capabilities in scope**` require
+- **AND** an `I` item is in scope only when its behavior is required by a capability listed in the block's Capabilities in scope or by an Edge Case attributed to this slice
+- **AND** an `I` item serving a capability of a later slice is not implemented, stubbed, or referenced in this run
 
 ### Requirement: Write containment
 
@@ -57,3 +64,4 @@ The implementer worker SHALL return `failed` with a concrete failure class when 
 
 - **WHEN** the block cannot be implemented as written
 - **THEN** the worker returns failed with a concrete summary instead of shipping a substituted feature
+

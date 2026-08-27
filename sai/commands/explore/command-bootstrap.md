@@ -1,3 +1,3 @@
-The supervised crystallization-close pipeline (explore instructions item 10) dispatches both routed workers from the explore session, so both worker bindings are preloaded here, in the shared command bootstrap.
+The supervised crystallization-close pipeline (explore instructions item 10) dispatches both routed workers from the explore session, so both worker bindings are preloaded here, in the shared command bootstrap. The Build (unattended) route dispatches three more workers (autofast-implement, backfill, archive) from the same session; their bindings are fetched lazily at their dispatch points in `sai/commands/explore/steps/pipeline-auto-fast.md` (steps 1, 3, and 7) so read-only explore sessions that never dispatch pay no context cost.
 Fetch @sai/orchestration/workers/bindings/spec-worker.md and use it.
 Fetch @sai/orchestration/workers/bindings/design-worker.md and use it.

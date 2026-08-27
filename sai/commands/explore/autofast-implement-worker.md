@@ -23,6 +23,17 @@ starting points only. Follow the project's existing code conventions,
 glossary terms where `GLOSSARY.md` exists, and format rules. Keep the diff
 minimal and reviewable.
 
+**Slice-scoped scope rule**: when the block comes from a sliced
+crystallization set, `**Capabilities in scope**` is the authoritative boundary
+for this run. Every per-slice block carries the whole-idea
+`**Implementation Details**` list (deliberately not attributed per slice), so
+an item `I1`…`In` is in scope ONLY when its behavior is required to satisfy a
+capability listed in this block's `**Capabilities in scope**` (or an Edge Case
+attributed to this slice). Never implement an out-of-scope `I` item in this
+run: if an item serves a capability that belongs to a later slice, do not
+implement, stub, or reference it here. Never implement the whole idea when only
+one slice's capabilities are in scope.
+
 Code, tests, and the project configuration the change requires are writable.
 Write NOTHING else:
 

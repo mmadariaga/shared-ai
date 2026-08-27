@@ -2,9 +2,7 @@
 
 ## Purpose
 TBD - created by archiving change worker-owned-autofast-mutations. Update Purpose after archive.
-
 ## Requirements
-
 ### Requirement: Attribute archive execution to Build
 
 Build (unattended) SHALL use the existing archive worker's read-only preparation followed by one validated sync, archive move, owned staging, and pre-authorized local commit continuation.
@@ -55,3 +53,33 @@ The worker MUST stop after a failed mutation, report exact completed and uncompl
 
 - **WHEN** classification or exact-path staging fails for a reason other than an ignored untracked path
 - **THEN** execution terminates without retrying, authoring a message, or creating a commit
+
+### Requirement: Archive worker names Bash as its mutation vehicle in Build execution
+
+In the Build (unattended) execution continuation, `sai/commands/archive/worker.md` SHALL state that the worker holds no Write or Edit tool and SHALL name the Bash tool as its write vehicle. The worker SHALL perform the delta-spec sync writes, the archive directory move, exact-path staging, and the HEREDOC local commit through Bash shell commands, and SHALL never attempt a Write or Edit tool call in that continuation. When Bash is unavailable, the worker SHALL return a closed `failed` result rather than simulating a write through another channel.
+
+#### Scenario: Build execution mutations run through Bash
+
+- **WHEN** the archive worker executes its validated Build execution order
+- **THEN** every mutation — sync writes, the archive move, staging, and the local commit — runs through the Bash tool, which the binding already grants, and no Write or Edit tool call is attempted
+
+#### Scenario: Bash is unavailable during Build execution
+
+- **WHEN** the worker's Bash tool is unavailable in the Build execution continuation
+- **THEN** the worker returns a closed `failed` result and performs no mutation through another channel
+
+### Requirement: MODIFIED delta completeness is verified before sync
+
+Before any delta-spec sync, the archive worker SHALL run a MODIFIED-delta completeness check over every capability delta spec: for each `## MODIFIED Requirements` entry, read the existing main spec at `openspec/specs/{capability}/spec.md` (when present) and compare the scenario headings the delta's MODIFIED entry carries against the scenario headings the main spec already holds for that requirement. A MODIFIED entry that drops an existing main-spec scenario is a net-loss candidate: the exact dropped scenario names SHALL be carried in the combined delta-sync summary, the low-risk-by-construction fast-track auto-proceed rule SHALL NOT cover it (it blocks the sync), and the sync SHALL never produce a main spec with fewer scenarios for a MODIFIED requirement than it had before the sync.
+
+#### Scenario: A MODIFIED delta omits an existing scenario
+
+- **WHEN** a delta's MODIFIED requirement omits a scenario the main spec already holds for that requirement
+- **THEN** the worker carries the exact dropped scenario names in the combined delta-sync summary, treats the delta as a net-loss candidate, and the sync does not proceed under fast-track auto-proceed
+
+#### Scenario: Sync verification confirms scenario survival
+
+- **WHEN** the post-sync verification or the Build execution sync step re-reads the affected main specs
+- **THEN** the worker confirms every scenario the main spec held before the sync still survives
+- **AND** when any scenario was lost, the worker reports exactly what differs, including the dropped scenario names, and the archive stops before moving anything
+
