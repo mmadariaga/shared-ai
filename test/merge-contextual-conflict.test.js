@@ -226,7 +226,7 @@ test('merge coordinator keeps contextual decisions before all mutation and prese
   assert.match(presentation, /complete,[\s\S]{0,40}marker-free alternative/i);
   assert.match(presentation, /## Complete resolution payload/);
   assert.match(presentation, /one complete `content` string for every conflicted file/);
-  assert.match(presentation, /may derive a[\s\S]{0,30}file by applying a[\s\S]{0,30}region replacement/);
+  assert.match(presentation, /worker[\s\S]{0,80}writes[\s\S]{0,80}content strings/i);
   assert.match(presentationSpec, /contextual-analysis\/decision/);
   assert.match(presentationSpec, /MUST NOT write or stage a resolution before that validation/);
   assert.match(presentationSpec, /Scenario: More-context preserves the decision boundary/);
@@ -301,7 +301,7 @@ test('merge region-scoped resolution: git-sourced outcomes, region replacements,
   assert.match(coordinator, /regions[\s\S]{0,80}conflict_id[\s\S]{0,80}text/i);
   assert.match(coordinator, /splice[\s\S]{0,100}text/i);
   assert.match(coordinator, /conflict[\s\S]{0,80}region/i);
-  assert.match(coordinator, /working[\s\S]{0,20}file/i);
+  assert.match(coordinator, /review[\s\S]{0,20}working tree/i);
 
   // Edge Case 4: File with regions resolving to different sides
   assert.match(instructions, /E4 — File with conflict regions resolving to different sides/);
@@ -318,7 +318,9 @@ test('merge region-scoped resolution: git-sourced outcomes, region replacements,
   assert.match(instructions, /follow the same resolution path as[\s\S]{0,40}obvious conflicts/);
 
   // Verify coordinator inverts check 3 validation
-  const validationSection = coordinator.slice(coordinator.indexOf('Before any write, parse and validate'));
+  const validationStart = coordinator.indexOf('Before proceeding, parse and validate');
+  assert.notEqual(validationStart, -1, 'validation-section anchor not found in coordinator.md');
+  const validationSection = coordinator.slice(validationStart);
   assert.match(validationSection, /source[\s\S]{0,100}git-ours[\s\S]{0,100}git-theirs[\s\S]{0,100}authored/i);
   assert.match(validationSection, /regions[\s\S]{0,100}conflict_id/i);
   assert.match(validationSection, /Reject[\s\S]{0,100}marker/i);
@@ -328,4 +330,33 @@ test('merge region-scoped resolution: git-sourced outcomes, region replacements,
   assert.match(coordinator, /author a synthesis in the coordinator/i);
   assert.match(coordinator, /atomically/i);
   assert.match(coordinator, /leave every conflict untouched[\s\S]{0,50}do not[\s\S]{0,20}stage/i);
+});
+
+test('merge-mutation-boundary: worker writes authorized content, coordinator reviews and verifies', () => {
+  const instructions = read('sai/commands/merge/instructions.md');
+  const coordinator = read('sai/commands/merge/coordinator.md');
+  const worker = read('sai/commands/merge/worker.md');
+
+  // I3: Worker prohibition narrowed to state-changing git commands, may write content in scope
+  assert.match(worker, /State-changing git prohibition/i);
+  assert.match(worker, /NEVER run[\s\S]{0,50}`git merge`[\s\S]{0,50}`git commit`/i);
+  assert.doesNotMatch(worker, /NEVER write resolution files/);
+  assert.match(worker, /write[\s\S]{0,50}authored-content resolution/i);
+  assert.match(worker, /splice[\s\S]{0,100}conflict/i);
+
+  // I4, I5: Coordinator post-resolution review against approved strategy with bounded round count
+  assert.match(coordinator, /Coordinator post-resolution review/);
+  assert.match(coordinator, /review[\s\S]{0,80}approved[\s\S]{0,30}strategy/i);
+  assert.match(coordinator, /bounded round[\s\S]{0,50}3 rounds/i);
+  assert.match(coordinator, /divergence[\s\S]{0,80}worker/i);
+
+  // I6: Fast-track does not skip coordinator review
+  assert.match(coordinator, /Fast-track[\s\S]{0,100}scope gate/);
+
+  // E5: Materialization divided by source field
+  assert.match(coordinator, /git-ours/);
+  assert.match(coordinator, /git-theirs/);
+  assert.match(coordinator, /git checkout --ours/);
+  assert.match(coordinator, /git checkout --theirs/);
+  assert.match(coordinator, /splice[\s\S]{0,100}text/i);
 });

@@ -400,6 +400,8 @@
         ],
         "helperPermissions": [
           "Read",
+          "Write",
+          "Edit",
           "Bash",
           "Skill"
         ],
@@ -408,13 +410,13 @@
         "noticeContinuation": "",
         "claudeAgent": {
           "agentName": "sai-merge-worker",
-          "description": "Owns the read-only merge analysis, conflict-resolution proposal, verification, and ADR/DDR collision scanning phase and returns structured lifecycle metadata.",
+          "description": "Owns the merge analysis, conflict-resolution proposal, verification, ADR/DDR collision scanning, and resolution content writing phase and returns structured lifecycle metadata.",
           "model": "haiku",
           "effort": "low",
-          "tools": "Read, Glob, Grep, Bash, Skill, SendMessage"
+          "tools": "Read, Glob, Grep, Bash, Edit, Write, Skill, SendMessage"
         },
         "opencodeAgent": {
-          "description": "Owns the read-only merge analysis, conflict-resolution proposal, verification, and ADR/DDR collision scanning phase and returns structured lifecycle metadata.",
+          "description": "Owns the merge analysis, conflict-resolution proposal, verification, ADR/DDR collision scanning, and resolution content writing phase and returns structured lifecycle metadata.",
           "model": "opencode-go/deepseek-v4-flash",
           "variantLine": "variant: default",
           "permissionBlock": "    budget: allow\n    explore: allow"

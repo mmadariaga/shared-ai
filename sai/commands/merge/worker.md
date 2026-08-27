@@ -50,9 +50,9 @@ mandatory worker-authored `emitted_on`, a concrete summary in the selected
 working language once one exists, and an ordered duplicate-free
 `changed_files`.
 
-## Read-only technical procedure
+## Technical procedure
 
-Perform the whole read-only procedure of
+Perform the read-only and content-writing procedure of
 `sai/commands/merge/instructions.md`: the pre-merge environment checks (E1
 dirty-worktree gate, E2 in-progress-merge guard), the branch selection
 (local branches from `git branch --no-merged HEAD` whose commits are not already
@@ -93,6 +93,20 @@ target, stage 3 → source, stage 1 → merge base), and sort by full introducti
 timestamp, commit SHA, family, numeric prefix, and final path for deterministic
 tie-breaking. Carry that provenance in every rename plan; an unresolvable event
 is an escalation, never a missing date.
+
+After the coordinator confirms the global strategy with `apply-strategy`, write
+the authored-content resolution to the working tree: splice the region text
+from the complete resolution payload into each conflicted file at its marked
+conflict region (one splice per region in conflict_id order), and update
+references within files (ADR/DDR family-aware canonical reference tokens and
+index-label replacements from the `adr_ddr_reference_updates` portion of the
+payload). Write no git commands. Write only files whose conflicts were in the
+selected scope and only regions that were explicitly decided; leave git-ours
+and git-theirs files untouched for coordinator `git checkout` execution. After
+verification-loop corrections are proposed by the coordinator, apply those
+corrections to the working tree in the same manner: splice corrected text,
+update in-file references, and report the applied state back to the coordinator
+for re-staging and re-verification.
 
 When the merge outcome is conflicted, stop immediately after collecting the
 Git-reported conflict inventory and return the `conflict_detected` extension
@@ -208,33 +222,36 @@ when a contextual alternative is exposed during a strategy revision; it never
 becomes file content. A context or correction request is not answered by a
 replacement worker and does not ask for the working language again.
 
-On `apply-strategy`, return the completed resolution result with the exact
-`## Selected contextual decisions` section and `## Complete resolution
-payload` required below. The selected decisions must describe the one confirmed
-global strategy, and the JSON object must contain a record for every conflicted
-path in scope. The coordinator must validate the whole payload atomically
-before writing anything.
+On `apply-strategy`, write the resolution content to the working tree and
+return the completed resolution result with the exact `## Selected contextual
+decisions` section and `## Complete resolution payload` required below. The
+selected decisions must describe the one confirmed global strategy, and the
+JSON object must contain a record for every conflicted path in scope. After
+writing, the coordinator will validate the payload atomically and review the
+materialized resolution against the approved strategy.
 
 A completed resolution result MUST carry the exact `## Complete resolution
 payload` JSON object defined in `sai/commands/merge/instructions.md`. Its
 `files` array contains one record per conflicted file in the selected scope,
 with `path`, `category` (`specs`, `adr-ddr`, or `code`), `source`, `regions`,
-and `decisions`. The `source` field must be exactly `"git-ours"`,
+and `decisions`. For authored resolutions, the `regions` array carries entries
+with `conflict_id` and `text` fields for each region you've written. The `source` field must be exactly `"git-ours"`,
 `"git-theirs"`, or `"authored"`. When the source is `git-ours` or `git-theirs`
 (only when every region in the file resolves to the same side), the `regions`
-array is empty and the coordinator uses `git checkout --ours` or
-`git checkout --theirs`. When the source is `"authored"`, the `regions` array
-carries one entry per conflicted region, each with a `conflict_id` (matching an
-identifier in `decisions`, e.g. `"code:src/input.js#1"`) and a `text` field
-holding only the region replacement text for the authored or synthesized
-resolution, not a diff, hunk, complete file, marker annotation, or prose-only
-instruction. Region replacement text must contain no `<<<<<<<`, `=======`, or
-`>>>>>>>` markers. Regions are ordered by conflict_id for deterministic
-splicing. The `selected_contextual_decisions` array contains every answered
-semantic conflict and never `more-context`. The coordinator validates and
-materializes each file: git-sourced files via checkout commands, authored files
-by splicing each region's `text` into the working file at its marked conflict
-region.
+array is empty and the coordinator will use `git checkout --ours` or
+`git checkout --theirs`. When the source is `"authored"`, you have already
+written the `regions` array content to the working file: one entry per
+conflicted region, each with a `conflict_id` (matching an identifier in
+`decisions`, e.g. `"code:src/input.js#1"`) and a `text` field holding only the
+region replacement text for the authored or synthesized resolution, not a diff,
+hunk, complete file, marker annotation, or prose-only instruction. Region
+replacement text must contain no `<<<<<<<`, `=======`, or `>>>>>>>` markers.
+Regions are ordered by conflict_id for deterministic splicing, and you have
+spliced them into the working file at their marked conflict regions. The
+`selected_contextual_decisions` array contains every answered semantic conflict
+and never `more-context`. The coordinator validates the payload and reviews
+the materialized working tree: git-sourced files remain in conflict state until
+checkout, authored files have been spliced by you.
 
 Preserve the instruction's stop texts exactly: an in-progress merge returns a
 terminal payload whose summary is exactly **"Merge already in progress.
@@ -264,10 +281,14 @@ invocation for coordinator execution; on `no`, return `completed` whose
 summary documents the exact repo state per the instruction's Step 8 refusal
 branch (E9), including the full staged-file list only in that refusal summary.
 
-## Absolute mutation prohibition
+## State-changing git prohibition
 
-NEVER execute git mutations. NEVER run `git merge`, `git add`, `git commit`,
-`git checkout`, `git stash`, `git reset`, or any state-changing git command.
-NEVER write resolution files. NEVER rename files. NEVER update references in
-any file. The merge launch, resolution writes, renames, reference updates,
-staging, and commit execution belong exclusively to the coordinator.
+NEVER execute state-changing git commands. NEVER run `git merge`, `git add`,
+`git commit`, `git checkout`, `git stash`, `git reset`, or any git command
+that mutates state. You may write content to conflicted files within your scope
+(conflict-region text splices and ADR/DDR reference updates in files), and you
+may apply verification-loop corrections to the working tree. You must not
+rename files or run any git command. The merge launch, git checkout operations,
+git renames, final staging, and commit execution belong exclusively to the
+coordinator. Do not write to files outside your scope or attempt git
+operations of any kind.
