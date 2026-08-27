@@ -12,6 +12,7 @@ const exploreSources = [
   'sai/commands/explore/steps/artifact-review-language-gate.md',
   'sai/commands/explore/steps/slicing-assessment.md',
   'sai/commands/explore/steps/crystallization-protocol.md',
+  'sai/policies/ready-to-propose-format.md',
   'sai/commands/explore/steps/crystallization-language-gates.md',
   'sai/commands/explore/steps/review-loop.md',
   'sai/commands/explore/steps/pipeline-selector.md',
