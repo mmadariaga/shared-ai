@@ -50,22 +50,22 @@ The seam MUST present semantically ambiguous conflicts as informed decisions ove
 
 ### Requirement: Complete-file resolution validation precedes mutation
 
-The coordinator MUST NOT enter the resolution mutation boundary until the worker has returned a complete resolution record for every conflicted file in the selected scope. The seam and coordinator MUST validate the payload atomically: exact paths and categories, one record per file, accepted contextual decisions without `more-context`, valid source/regions structure, and no conflict markers in authored text. The coordinator MUST NOT write or stage a resolution before that validation. Diffs, hunks, complete files, invalid sources, missing regions, prose instructions, missing records, duplicate records, unexpected paths, and reconstructed content MUST be rejected as a whole.
+The coordinator MUST NOT enter staging until the worker has written complete resolution content for every conflicted file in the selected scope, the payload validation passes atomically, and the post-resolution review confirms the materialized tree matches the approved strategy. The seam and coordinator MUST validate the payload atomically: exact paths and categories, one record per file, accepted contextual decisions without `more-context`, valid source/regions structure, and no conflict markers in authored text. After validation, the coordinator reviews the working tree against the approved global strategy, detects divergences, and either proceeds to staging or returns the divergence to the worker. Diffs, hunks, complete files, invalid sources, missing regions, prose instructions, missing records, duplicate records, unexpected paths, and reconstructed content MUST be rejected as a whole.
 
-#### Scenario: Pending context blocks writes and staging
+#### Scenario: Pending context blocks materialization and review
 
 - **WHEN** contextual analysis is pending or the worker has not returned the matching complete alternative after a decision
-- **THEN** the coordinator MUST NOT write a resolution, remove conflict markers, or stage any affected path
+- **THEN** the coordinator MUST NOT write a resolution, remove conflict markers, review the tree, or stage any affected path
 
-#### Scenario: Invalid resolution-record payload is rejected
+#### Scenario: Invalid resolution-record payload is rejected before review
 
 - **WHEN** any payload record is missing, duplicated, out of scope, incorrectly categorized, has invalid source, missing required regions, marker in region text, or is inconsistent with the offered decision
 - **THEN** the coordinator MUST reject the entire payload and leave every conflict untouched and unstaged
 
-#### Scenario: Valid payload is materialized by git-checkout and splice
+#### Scenario: Valid payload written by worker is reviewed by coordinator
 
-- **WHEN** every payload record passes validation and every required semantic decision is explicit
-- **THEN** the coordinator materializes each file: when `source` is `git-ours` or `git-theirs`, uses the corresponding git checkout command; when `source` is `"authored"`, splices each region's text into the working file, stages only the validated resolved paths, and never derives content from prose or concatenates unselected alternatives
+- **WHEN** every payload record passes validation and the worker has written authored-source regions to the working tree
+- **THEN** the coordinator performs a post-resolution review comparing the materialized tree against the approved global strategy; if the review passes, it stages only the validated resolved paths; if divergence is detected, it returns the named divergence to the worker under bounded round count
 
 ### Requirement: Legacy rendering preserves merge behavior
 
@@ -97,17 +97,22 @@ The merge presentation seam MUST NOT dispatch or continue the worker, select an 
 
 ### Requirement: Coordinator owns merge mutations and commit authorization
 
-The presentation seam MUST preserve the coordinator-only ownership boundary: only the coordinator may launch the merge, write validated resolution files, rename ADR/DDR records, update references, stage paths, or execute the commit. The worker and seam remain read-only. After coordinator-owned writes and staging, the seam MUST preserve the verification loop and final authorization gate; no progress transition or presentation state may imply authorization.
+The presentation seam MUST preserve the division of mutation ownership: the coordinator launches the merge, executes git checkout commands for git-sourced files, performs file renames and git commands that are not content writes (git mv), stages paths, and executes the commit. The worker writes authorized resolution content (conflict-region text splices and ADR/DDR reference updates within files) after strategy confirmation and before returning the complete payload. After coordinator-owned writes and staging, the seam MUST preserve the verification loop and final authorization gate; no progress transition or presentation state may imply authorization.
 
-#### Scenario: Verification and commit remain gated
+#### Scenario: Verification and commit remain gated after coordinator review
 
-- **WHEN** validated resolutions are staged and the test suite is run
+- **WHEN** validation and post-resolution review pass, and the test suite is run
 - **THEN** the coordinator records verification rounds without resetting or committing the staged state, and the final merge commit executes only after the unchanged explicit authorization question receives `yes (Recommended)`
 
-#### Scenario: Fast-track does not bypass semantic safety
+#### Scenario: Fast-track does not bypass coordinator review
 
 - **WHEN** fast-track is active for a conflicted merge
-- **THEN** the seam may omit only the runtime scope question, while contextual semantic decisions, complete-file validation, verification, and final commit authorization remain visible and required
+- **THEN** the seam may omit only the runtime scope question, while contextual semantic decisions, complete-file validation, post-resolution review, verification, and final commit authorization remain visible and required
+
+#### Scenario: Review detects divergence and returns to worker
+
+- **WHEN** the coordinator performs post-resolution review and the materialized tree diverges from the approved strategy
+- **THEN** the coordinator returns the named divergence to the same worker under a bounded round count (maximum 3 rounds) for correction; the worker analyzes and applies the correction, and the coordinator re-reviews before staging
 
 ### Requirement: Installed seam assets stay outside merge input paths
 
@@ -181,12 +186,12 @@ The coordinator SHALL store `working_language` only in invocation-scoped state a
 
 ### Requirement: Strategy confirmation controls mutation
 
-The seam SHALL present the complete global strategy before its confirmation question and SHALL keep resolution and staging unavailable until the worker returns a matching complete payload after `apply-strategy`.
+The seam SHALL present the complete global strategy before its confirmation question and SHALL keep coordinator staging and commit unavailable until the worker has written the authorized resolution content to the working tree and returned a matching complete payload after `apply-strategy`. The worker writes resolution content after strategy confirmation; the coordinator validates and reviews the materialized result before staging.
 
 #### Scenario: Revision remains mutation-free
 
 - **WHEN** the user requests a strategy revision or additional context
-- **THEN** the seam preserves pending alternatives and performs no resolution write, marker removal, staging, or commit
+- **THEN** the seam preserves pending alternatives and performs no coordinator write, marker removal, staging, or commit; the worker remains in analysis mode and does not write content
 
 ### Requirement: New-conflict route preserves presentation state
 

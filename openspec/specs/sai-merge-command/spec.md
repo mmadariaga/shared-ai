@@ -35,12 +35,17 @@ The system SHALL offer every local branch except the current one as merge source
 
 ### Requirement: Coordinator-only mutation surface
 
-The system SHALL confine every mutating operation — merge launch, resolution writes, ADR/DDR renames, reference edits, staging, and commit execution — to the coordinator, while the worker remains strictly read-only.
+The system SHALL confine state-changing git operations — merge launch, git checkout, git mv, git add, and commit execution — to the coordinator. The worker writes authorized resolution content (conflict-region text and ADR/DDR reference updates) to the working tree after the coordinator confirms the selected global strategy; the coordinator then performs a post-resolution review before staging. Authored-content writing belongs to the worker; git-command execution belongs exclusively to the coordinator.
 
-#### Scenario: Worker never mutates
+#### Scenario: Worker never executes git mutations
 
 - **WHEN** the worker analyzes conflicts, proposes resolutions, scans collisions, or verifies the suite
-- **THEN** it runs only read-only inspection and returns payloads, leaving all writes and git state changes to the coordinator
+- **THEN** it performs read-only inspection, writes authorized content to conflicted files within scope (splicing regions and updating references), returns payloads, and leaves all git state changes to the coordinator
+
+#### Scenario: Coordinator reviews materialized content before staging
+
+- **WHEN** the worker has written resolution content to the working tree
+- **THEN** the coordinator performs a post-resolution review against the approved strategy, detects any divergence, and either proceeds to staging or returns divergence to the worker for correction under bounded round count
 
 ### Requirement: Categorized conflict resolution with criteria
 
@@ -132,21 +137,21 @@ When conflicts exist and fast-track is inactive, the system SHALL apply the scop
 
 ### Requirement: Contextual decision precedes resolution mutation
 
-The system SHALL keep every semantic alternative pending until the human explicitly selects an offered complete outcome. The coordinator SHALL perform no resolution write, conflict-marker removal, or staging while a contextual decision or `more-context` continuation is pending. A selected internal value SHALL unlock mutation only after the worker returns the matching source/regions record or git-sourced outcome for that file.
+The system SHALL keep every semantic alternative pending until the human explicitly selects an offered complete outcome. The coordinator SHALL perform no staging or conflict-marker removal while a contextual decision or `more-context` continuation is pending. After strategy confirmation, the worker writes resolution content to the working tree; this authorized content write occurs after the coordinator confirms the global strategy. A selected internal value unlocks the coordinator's staging and commit mutations only after the worker has written the matching source/regions content to the working tree and returned the complete payload with the matching record.
 
-#### Scenario: Human decision gates every resolution write
+#### Scenario: Human decision gates every coordinator write
 
 - **WHEN** a semantic decision is unanswered, or the worker is continuing a `more-context` request
 - **THEN** the coordinator leaves every affected conflict untouched and unstaged, and forwards the answer only to the same worker
 
-#### Scenario: Selected outcome unlocks region-scoped resolution record
+#### Scenario: Selected outcome gates coordinator staging
 
-- **WHEN** all required semantic decisions have explicit offered values
-- **THEN** the coordinator accepts only the worker's corresponding source/regions record (with git-ours or git-theirs requiring no file content, and authored requiring region entries) and never reconstructs a file from prose, a hunk, a complete file, or an unselected alternative
+- **WHEN** all required semantic decisions have explicit offered values and the worker has written the authorized content and returned the matching source/regions record
+- **THEN** the coordinator accepts the worker's source/regions record (with git-ours or git-theirs requiring no file content, and authored requiring region entries already written) and never reconstructs a file from prose, a hunk, a complete file, or an unselected alternative; the coordinator may then perform post-resolution review and proceed to staging
 
 ### Requirement: Complete resolution payload validation
 
-Before any resolution write, the coordinator SHALL atomically validate the worker's `## Complete resolution payload`. It SHALL contain exactly one record for every conflicted file in the selected scope, with the expected path, category, source discriminator, and region information as appropriate. Each file record carries a `source` field with exactly one of `"git-ours"`, `"git-theirs"`, or `"authored"`. When `source` is `git-ours` or `git-theirs`, the `regions` array must be empty and the coordinator materializes via `git checkout --ours` or `git checkout --theirs`. When `source` is `"authored"`, the `regions` array contains one entry per conflicted region; each entry carries a `conflict_id` matching an identifier in the file's decisions and a `text` field holding the authored replacement text for that region. Region replacement text must contain no `<<<<<<<`, `=======`, or `>>>>>>>` markers. The coordinator SHALL reject missing, duplicate, unexpected, invalid-source, invalid-region, or conflict-marker-containing records and SHALL leave all conflicts untouched and unstaged when any record fails validation.
+Before any coordinator staging, the coordinator SHALL atomically validate the worker's `## Complete resolution payload`. It SHALL contain exactly one record for every conflicted file in the selected scope, with the expected path, category, source discriminator, and region information as appropriate. Each file record carries a `source` field with exactly one of `"git-ours"`, `"git-theirs"`, or `"authored"`. When `source` is `git-ours` or `git-theirs`, the `regions` array must be empty and the coordinator materializes via `git checkout --ours` or `git checkout --theirs`. When `source` is `"authored"`, the worker has already written the region text to the file; the regions array carries the written content for coordinator validation. The coordinator SHALL reject missing, duplicate, unexpected, invalid-source, invalid-region, or conflict-marker-containing records and SHALL leave all conflicts untouched and unstaged when any record fails validation.
 
 #### Scenario: Fragmentary payload is rejected atomically
 
@@ -155,8 +160,13 @@ Before any resolution write, the coordinator SHALL atomically validate the worke
 
 #### Scenario: Region-replacement payload is materialized by splicing
 
-- **WHEN** every payload record matches the selected scope and contains valid source, regions (if authored), and conflict-free region text
-- **THEN** the coordinator materializes each file: when `source` is `git-ours` or `git-theirs`, uses the corresponding git checkout command; when `source` is `"authored"`, splices each region's `text` into the working file at the conflict region identified by its `conflict_id`, maintaining deterministic order by conflict_id, and stages only the validated resolved paths
+- **WHEN** every payload record matches the selected scope and contains valid source, regions (if authored), and conflict-free region text, and the worker has already written authored regions to the working file
+- **THEN** the coordinator validates the payload, reviews the materialized tree against the approved strategy, and if the review passes, materializes git-sourced files via checkout command and proceeds to staging of the validated resolved paths
+
+#### Scenario: Coordinator reviews authorized content without reconstruction
+
+- **WHEN** a region has source `"authored"` and the worker has written the replacement text to the working file
+- **THEN** the coordinator validates the payload and reviews the materialized file without reconstructing, re-splicing, or re-authoring the region text; it never derives file content from prose or concatenates unselected alternatives
 
 ### Requirement: Bounded verification loop
 

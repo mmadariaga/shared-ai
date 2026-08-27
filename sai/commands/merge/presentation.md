@@ -330,19 +330,21 @@ it does not select a value or infer a missing alternative.
 
 The coordinator must not write a resolution, remove conflict markers, or stage
 a path while this gate, the global strategy confirmation, or a `more-context`
-or open-input continuation is pending. A forwarded decision is
+or open-input continuation is pending. The worker writes the resolution content
+after global confirmation and coordinator validation. A forwarded decision is
 not sufficient by itself: the worker must return the matching complete,
-marker-free alternative after global confirmation, and the coordinator
-validates that payload before entering the resolution boundary. A completed
-resolution result must carry the `## Complete resolution payload` JSON object defined by
-`@sai/commands/merge/instructions.md`. The seam validates that it has exactly
-one complete `content` string for every conflicted file in the selected scope,
-that each path and category matches the worker's classified source, that every
+marker-free alternative after global confirmation, and the coordinator validates
+that payload before the worker writes content. After the worker writes authorized
+content, the coordinator performs a post-resolution review to verify the
+materialized result matches the approved strategy. A completed resolution result
+must carry the `## Complete resolution payload` JSON object defined by
+`@sai/commands/merge/instructions.md`. The seam validates that it has one complete `content` string for every conflicted file in the selected scope, that
+each path and category matches the worker's classified source, that every
 semantic decision is an offered value other than `more-context`, and that no
-conflict marker appears in any content string. The coordinator writes only
-those exact content strings; neither the seam nor the coordinator may derive a
-file by applying a region replacement, concatenating alternatives, or reading
-resolution prose.
+conflict marker appears in any content string. The worker writes those exact
+content strings; neither the seam nor the coordinator may derive a file by
+applying a region replacement, concatenating alternatives, or reading resolution
+prose.
 
 For branch selection, render the concise question **"¿Qué rama quieres mergear?"**
 with the readable `YYYY-MM-DD HH:mm` labels. Render the detailed current

@@ -289,15 +289,18 @@
     mutation-free. Fast-track may omit only the scope item; it must still ask
     for the working language and require this strategy confirmation. Mark
      contextual analysis complete only after `apply-strategy` is confirmed and
-     the worker returns the matching complete alternatives. The strategy
-     confirmation is required before any resolution write or staging.
-  - **Resolution writes** — only after the worker returns a completed payload
-    following explicit confirmation of the current global strategy and
-    containing the explicitly selected complete alternative for every required
-    semantic decision within the selected scope. The payload MUST contain the
+     the worker returns the matching complete alternatives and has written the
+     authorized resolution content to the working tree. The strategy
+     confirmation is required before any resolution write or staging; the
+     coordinator then performs a post-resolution review.
+  - **Worker-owned resolution writes and validation** — after the worker
+    returns a completed payload following explicit confirmation of the current
+    global strategy, the worker has already written authorized content to the
+    working tree: conflict-region text splices in files with `source: "authored"`
+    and ADR/DDR reference updates within files. The payload MUST contain the
     `## Complete resolution payload` JSON object defined by
     `@sai/commands/merge/instructions.md`; treat all surrounding prose as
-    explanation, never as file content. Before any write, parse and validate all
+    explanation, never as file content. Before proceeding, parse and validate all
     of the object atomically:
     1. `selected_contextual_decisions` contains exactly one accepted `ours`,
        `theirs`, or `synthesis` value for every semantic conflict, and every
@@ -310,7 +313,7 @@
        Each file record carries a `source` field.
     3. Each file's `source` must be exactly `"git-ours"`, `"git-theirs"`, or
        `"authored"`. When `git-ours` or `git-theirs`, the `regions` array must
-       be empty and the coordinator uses `git checkout --ours` or
+       be empty; the coordinator will use `git checkout --ours` or
        `git checkout --theirs` to materialize it. When `"authored"`, `regions`
        is an array with at least one entry; each entry has a `conflict_id` that
        matches one in the file's `decisions`, and a `text` field holding the
@@ -320,32 +323,55 @@
     4. Reject the entire payload if any record, decision, path, region, or
        source is missing or invalid; leave every conflict untouched and do not
        stage.
-    After every record passes, materialize each file: when `source` is
-    `git-ours` or `git-theirs`, use the corresponding git checkout command.
-    When `source` is `"authored"`, splice each region's `text` into the working
-    file at the conflict region identified by its `conflict_id`, maintaining
-    deterministic order. Do not reconstruct content from prose, concatenate
-    unselected alternatives, or author a synthesis in the coordinator. For a
-    contradiction, leave markers in place until the human selects a complete
-    branch outcome or a worker-validated safe synthesis; if no complete outcome
-    exists, leave it unresolved and report the escalation. Add written paths to
-    the union only after validation and successful materialization.
-  - **Staging** — after writing resolutions: `git add` each resolved file.
-    Never stage files with unresolved E3 escalations without noting them.
+    Do not reconstruct content from prose, concatenate unselected alternatives,
+    or author a synthesis in the coordinator. After every record passes,
+    materialize each file: `git-ours` and `git-theirs` files via `git checkout`,
+    `authored` files are already written by the worker.
+    The worker has already written `authored` files by performing a splice of
+    replacement text at each marked conflict region; do not overwrite them. Add
+    materialized paths to the union only after successful checkout.
+  - **Coordinator post-resolution review** — after the worker has written
+    authored content and you have materialized git-ours/git-theirs files, review
+    the working tree against the approved global strategy held in your context.
+    The review is judgment-based, informed by the complete strategy proposal and
+    the selected decisions. Perform cheap deterministic validation: for each
+    file with `source: "git-ours"` or `"git-theirs"`, verify it is byte-identical
+    to the corresponding `git show :2:` or `:3:` stage version (index conflict
+    stages). For each file with `source: "authored"`, verify its content outside
+    the applied conflict regions matches the expected base state and that applied
+    decisions are present and correct. Verify no authored writes occurred outside
+    the agreed conflicted regions or in files not in the selected scope.
+    If the review reveals a divergence from the approved strategy — an unapproved
+    change, a region left unresolved, an out-of-scope write, or any deviation from
+    the confirmed plan — do not proceed to staging or verification. Return the
+    exact named divergence to the same worker under a bounded round count (maximum
+    3 rounds). The worker receives the divergence as a named correction request,
+    analyzes the issue, applies the correction, and returns to this coordinator
+    for re-review. Track the round number in invocation-scoped state outside
+    worker payloads. If the bound is exhausted (3 rounds completed without
+    resolution), stop without staging or committing, and report that the merge
+    cannot proceed because the approved strategy could not be materialized
+    consistently within the retry budget.
+    If the review passes, the materialized resolution is consistent with the
+    approved strategy. Proceed to staging.
+  - **Staging** — after post-resolution review passes: `git add` each resolved
+    file (both git-ours/git-theirs and authored). Never stage files with
+    unresolved E3 escalations without noting them.
   - **Verification loop** — after staging: the worker runs the test suite and
     reports results. On failures within the 3-round budget, the worker returns
-    proposed fixes; write the fixes, re-stage, and resume the worker for
-    re-verification. On E5 cap exhaustion, proceed to the ADR/DDR pass with
-    the current staged state. Record each round in the seam without resetting
-    or committing the staged state; three failed rounds remain staged and
-    uncommitted. If application or verification exposes a new conflict or
-    inconsistency, do not apply the prior plan or ask for the language again:
-    report the exact current state to the same worker, route its
-    `conflict_detected` re-entry through the ordinary information channel, and
-    return to global strategy analysis with the selected language intact. A new
-    strategy confirmation is required before another resolution write. Reconcile
-    the TODO after every outcome without changing the worker's verification
-    ownership or three-round behavior.
+    proposed fixes. The worker applies those fixes to the working tree; you then
+    re-stage the corrected files and resume the worker for re-verification. On
+    E5 cap exhaustion, proceed to the ADR/DDR pass with the current staged
+    state. Record each round in the seam without resetting or committing the
+    staged state; three failed rounds remain staged and uncommitted. If
+    application or verification exposes a new conflict or inconsistency, do not
+    apply the prior plan or ask for the language again: report the exact current
+    state to the same worker, route its `conflict_detected` re-entry through the
+    ordinary information channel, and return to global strategy analysis with the
+    selected language intact. A new strategy confirmation is required before
+    another resolution write and coordinator review. Reconcile the TODO after
+    every outcome without changing the worker's verification ownership or
+    three-round behavior.
   - **ADR/DDR renames** — after the worker returns the incremental collision-pass
     plan, already limited to candidate `(family, numeric prefix)` keys from the
     captured source frontier and the final merge state, with existing suffixed
@@ -354,22 +380,18 @@
      old/new index-label, assigned identifier, suffix, path data, and the
      worker-derived introduction anchor/path/commit/timestamp into the seam's
      `adr_ddr_renames` state record, then
-     execute `git mv <old> <new>`. For each proposed reference update, edit the
-     file to replace the worker-supplied canonical old token with the exact
-     family-aware new token. This includes same-family and cross-family
-     markdown links, relationship tokens, and both `adr-index` and `ddr-index`
-     structured metadata. Also apply the worker's exact `old_h1` → `new_h1`
-     replacement in the renamed ADR/DDR file and the exact
-     `old_index_label` → `new_index_label` replacement in its index file; these
-     are coordinator-owned writes and must use the same assigned identifier as
-     the filename. Do not reread artifacts to reconstruct missing presentation
-     data, and never broad-replace an unrelated bare four-digit number. Apply
-     only the worker's collision-free, family-aware assigned identifiers; never
-     execute a rename whose target is occupied by another final-state record.
-     For
-     orphan or ambiguous references, record the worker's escalation and do not
-     modify or invent a destination. For E8 escalations, report them but do not
-     modify. Add renamed and edited paths to the union.
+     execute `git mv <old> <new>`. Never execute a rename whose target is occupied by another final-state record. The worker has already written
+     reference updates within files as part of the resolution-content writes:
+     same-family and cross-family markdown links, relationship tokens, both
+     `adr-index` and `ddr-index` structured metadata, exact `old_h1` → `new_h1`
+     replacements in the renamed ADR/DDR file, and exact
+     `old_index_label` → `new_index_label` replacements in its index file. These
+     are worker-owned content writes using the same assigned identifier as the
+     filename. Do not attempt to rewrite reference updates already applied by
+     the worker. For orphan or ambiguous references, record the worker's
+     escalation and do not modify or invent a destination. For E8 escalations,
+     report them but do not modify. Add renamed paths to the union;
+     reference-updated paths are already in the union from resolution writes.
   - **Final staging** — after renames and reference updates: `git add` only
      the union of actual merge, resolution, rename, and reference-update paths.
      Never stage the installed presentation contract or another globally
@@ -402,14 +424,18 @@
   (pre-merge checks, branch selection, conflict detection, conflict
   classification, contextual objective analysis, complete global resolution
   strategies and alternatives, scope gate, verification analysis, ADR/DDR
-  scanning, authorization ask) belongs to the WORKER as read-only analysis and
-  proposal procedure plus the source gate data. `@sai/commands/merge/presentation.md`
+  scanning, authorization ask) belongs to the WORKER as read-only analysis,
+  proposal procedure, plus source gate data, plus resolution-content writes
+  (authored-file regions and within-file reference updates). `@sai/commands/merge/presentation.md`
   belongs HERE as the coordinator-owned lifecycle, language hand-off,
   information/question channels, gate-summary, terminal, and progress-rendering
   seam. The seam owns the concise branch/scope/strategy/contextual-decision/
-  authorization rendering and the adaptive TODO, while all mutations — merge
-  launch, resolution writes, renames, reference updates, staging, and commit
-  execution — belong HERE.
+  authorization rendering and the adaptive TODO. Git mutations — merge
+  launch, git checkout (--ours/--theirs), git mv, git add, git commit — and the
+  post-resolution review gate belong exclusively to the coordinator. The
+  division separates authored content (worker) from git-command execution
+  (coordinator) and reserves coordinator review as the verification that the
+  materialized resolution matches the approved strategy.
 
 </TASK>
 
