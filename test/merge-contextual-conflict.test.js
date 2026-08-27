@@ -222,3 +222,51 @@ test('merge adaptive TODO gives contextual analysis its own canonical route item
   assert.match(policy, /Fast-track changes only the scope item;[\s\S]{0,20}it never bypasses a contextual human[\s\S]{0,20}decision/);
   assert.match(policy, /No TODO transition authorizes[\s\S]{0,20}a write or stage/);
 });
+
+test('merge lifecycle validation seam defines executable boundary', () => {
+  const lifecycle = read('sai/commands/merge/lifecycle.md');
+  const coordinator = read('sai/commands/merge/coordinator.md');
+  const presentation = read('sai/commands/merge/presentation.md');
+
+  // Lifecycle seam defines the state machine
+  assert.match(lifecycle, /Lifecycle states/);
+  assert.match(lifecycle, /preflight/);
+  assert.match(lifecycle, /branch-selection/);
+  assert.match(lifecycle, /merge-outcome/);
+  assert.match(lifecycle, /language-selection/);
+  assert.match(lifecycle, /contextual-analysis/);
+  assert.match(lifecycle, /resolution/);
+  assert.match(lifecycle, /verification/);
+  assert.match(lifecycle, /adr-ddr/);
+  assert.match(lifecycle, /authorization/);
+  assert.match(lifecycle, /terminal/);
+
+  // Lifecycle seam defines the validation contract
+  assert.match(lifecycle, /Transition validation/);
+  assert.match(lifecycle, /validate_transition/);
+  assert.match(lifecycle, /current_state.*target_state.*operation_context/);
+  assert.match(lifecycle, /valid \| invalid/);
+
+  // Lifecycle seam defines integration points
+  assert.match(lifecycle, /Integration point/);
+  assert.match(lifecycle, /Before merge launch/);
+  assert.match(lifecycle, /Before conflict analysis/);
+  assert.match(lifecycle, /Before resolution writes/);
+  assert.match(lifecycle, /Before verification/);
+  assert.match(lifecycle, /Before commit authorization/);
+
+  // Lifecycle seam is neutral and enabling
+  assert.match(lifecycle, /neutral/i);
+  assert.match(lifecycle, /enabling refactor/i);
+  assert.match(lifecycle, /does not change[\s\S]{0,20}existing merge behavior/);
+  assert.match(lifecycle, /placeholder/);
+
+  // Coordinator fetches and references the lifecycle seam
+  assert.match(coordinator, /Fetch @sai\/commands\/merge\/lifecycle\.md/);
+  assert.match(coordinator, /lifecycle[\s\S]{0,20}validation seam/);
+  assert.match(coordinator, /validate the lifecycle transition/);
+
+  // Presentation references the lifecycle seam
+  assert.match(presentation, /@sai\/commands\/merge\/lifecycle\.md/);
+  assert.match(presentation, /lifecycle[\s\S]{0,20}validation seam/);
+});
