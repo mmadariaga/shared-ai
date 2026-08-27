@@ -125,9 +125,37 @@ canonical index paths `docs/adr/0000-INDEX.md` and `docs/ddr/0000-INDEX.md`;
 they are not records. Rename and copy statuses are excluded. The coordinator
 keeps `target_sha`, `source_sha`, `merge_base`, and this ordered
 source-introduced inventory as invocation-scoped merge provenance and forwards
-it with the merge outcome. The worker must not reconstruct that provenance
-from post-merge `HEAD` or a moved source ref. The coordinator captures the
-merge outcome (clean or conflicted) and resumes you at Step 4.
+it with the merge outcome.
+
+Additionally, the coordinator captures the governing specs and decision records
+that were changed on each branch using a two-phase read:
+
+**Phase 1 — Identify governing specs/ADRs/DDRs:**
+For each branch (target and source), run:
+
+```text
+git diff --name-status <merge_base> <target_sha|source_sha> \
+  --diff-filter=A,M -- openspec/specs/ docs/adr/ docs/ddr/
+```
+
+Record the paths touched by additions (`A`) or modifications (`M`).
+Exclude `openspec/changes/archive/**` entirely; include unsynced
+`openspec/changes/*/` only for specs that are not synchronized in
+`openspec/specs/`.
+
+**Phase 2 — Read governing rules:**
+For each path identified in Phase 1 that touches a file in the conflicted set
+(directly or as a spec governing that file's behavior), read the content:
+
+```text
+git show <target_sha|source_sha>:<path>
+```
+
+The coordinator keeps these governing specs indexed by branch (`target_rules`,
+`source_rules`) and path, and forwards them with the merge outcome. The worker
+must not reconstruct that provenance from post-merge `HEAD` or a moved source
+ref. The coordinator captures the merge outcome (clean or conflicted) and
+resumes you at Step 4.
 
 ### Step 4: Post-merge conflict analysis
 
@@ -177,31 +205,89 @@ working language and re-enter the strategy analysis without another language
 question.
 
 For every conflict region, first reconstruct intent before proposing any
-resolution. Inspect the base, both branch versions, the surrounding file, the
-related branch changes, and any auto-merged files that clarify the contract.
-Separate what is directly observable from what is inferred:
+resolution. Read the governing specs, ADRs, and DDRs that the coordinator
+forwarded (the `target_rules` and `source_rules` indexed by path and branch).
+These declared rules are the normative source of branch intent and take
+precedence over inferred objectives. Inspect the base, both branch versions,
+the surrounding file, the related branch changes, any auto-merged files that
+clarify the contract, and the declared governing rules. Separate what is
+directly observable from what is inferred:
 
 - **Facts** are visible changes, named interfaces, ownership rules, tests,
-  comments, or other repository evidence.
+  comments, declared rules in governing specs/ADRs/DDRs, or other repository
+  evidence.
 - **Inferences** are the likely objective or architectural motivation derived
-  from those facts. Label them as inferences and do not present them as
-  certainty.
+  from those facts, used only when no declared rule exists. Label them as
+  inferences and do not present them as certainty.
+- **Declared rules** are normative requirements from governing specs, ADRs, or
+  DDRs. When a declared rule governs a conflicted region, report it as a Fact
+  with its source (spec/ADR/DDR path and the relevant requirement).
+
+**Evidence ladder:** For each conflict region, determine which level of evidence
+governs the resolution:
+
+- **L1 — Declared rule:** a governing spec, ADR, or DDR (from `target_rules` or
+  `source_rules`) explicitly constrains or requires the resolution for this
+  region. The rule is normative and may reject both branch versions, require a
+  synthesis, or clearly favor one side.
+- **L2 — Textual context:** the conflicted region itself plus surrounding
+  context (`git show :1:/:2:/:3:` and the file's surrounding code) is needed to
+  author new text or verify that neither branch's version satisfies the declared
+  rule. This rung is entered only when L1 is silent or when the rule rejects
+  both sides (edge case E6).
+
+When no governing rule exists for a conflict region (L1 is absent), emit a
+visible on-screen signal: `[No declared rule found for this region]`. This
+notice is essential information for the human reviewer and must appear in the
+Conflict Analysis output.
 
 Classify each conflict region as either:
 
-- **Obvious** — a deterministic, compatible result is supported by the
-  evidence (for example a non-overlapping edit, a pure addition beside an
-  unchanged region, or complementary spec additions); no extra human decision
-  is needed.
-- **Semantic ambiguity** — the branches have different objectives, different
-  strategies for the same objective, or a contract-level consequence that
-  cannot be resolved mechanically. This includes an E3 contradiction.
+- **Obvious** — a deterministic, compatible result is supported by L1 evidence
+  (a declared rule that clearly governs the resolution) or by simple textual
+  patterns (for example a non-overlapping edit, a pure addition beside an
+  unchanged region, or complementary spec additions) with no rule contradiction;
+  no extra human decision is needed.
+- **Semantic ambiguity** — the branches have different objectives per their
+  declared rules, different strategies for the same objective, or a
+  contract-level consequence that cannot be resolved mechanically. This
+  includes an E3 contradiction (a conflicted arbiter file) or E6 (both sides
+  rejected by a declared rule).
 
 Retain the full objective analysis as worker state, but do not construct
 complete alternatives or return any proposal yet. When fast-track is inactive,
 the next lifecycle result must be the Step 5 scope gate. The coordinator must
 receive no resolution proposal and perform no resolution mutation before that
 scope decision.
+
+#### Edge cases for governing rules
+
+**E1 — Missing declared rules:** When a conflicted region has no corresponding
+entry in `target_rules` or `source_rules`, the resolution rests on no declared
+rule. Emit the visible on-screen notice `[No declared rule found for this
+region]` in the Conflict Analysis output. This is normal and expected when the
+repository has no `openspec/` directory or when neither branch touched
+`openspec/specs/`, `docs/adr/`, or `docs/ddr/` files. This is not a failure; the
+resolution may still proceed with L2 evidence (textual context alone).
+
+**E2 — Conflicting declared rules:** When one branch's governing rule contradicts
+the other's (for example one spec requires behavior X and another requires
+behavior not-X), both rules are Facts. Treat this as a semantic ambiguity and
+escalate to the human reviewer with both rules and the branches' objectives
+clearly explained.
+
+**E3 — Conflicted arbiter (arbiter file is itself conflicted):** When a
+conflicted file is itself in `openspec/specs/`, `docs/adr/`, or `docs/ddr/`, it
+cannot serve as an arbiter for other conflicts. Identify all conflicts that
+depend on that arbiter and mark them as awaiting resolution of the arbiter
+conflict first. Resolve the arbiter conflict before the ones depending on it, or
+those drop to L2 with no declared rule.
+
+**E6 — Declared rule rejects both sides:** When a governing rule exists but
+neither branch's version satisfies it, the outcome is neither `ours`, `theirs`,
+nor a combination of both. This is a semantic ambiguity that requires authoring
+new text. Explain both rejected versions and the rule, then propose the synthesis
+required to satisfy the rule.
 
 ### Step 5: Runtime scope gate
 
@@ -315,9 +401,12 @@ is a coherent plan over the whole selected conflict set.
 
 For an **obvious** conflict, do not emit a contextual `needs_input` for that
 individual conflict. Include its deterministic, complete, marker-free outcome
-in the one global strategy proposal and state that no semantic decision was
-required for that region. This keeps the conflict analysis lightweight while
-still requiring confirmation of the complete strategy before any write.
+in the one global strategy proposal, in prose form only (no file content
+included in the strategy text; the complete final file content is reserved
+for the JSON payload), and state that no semantic decision was required for
+that region. Cite the governing rule (if L1) or the textual pattern (if L2).
+This keeps the conflict analysis lightweight while still requiring confirmation
+of the complete strategy before any write.
 
 For a **semantic ambiguity**, retain the contextual alternatives in the global
 strategy source rather than opening an independent per-file picker. The source
@@ -358,10 +447,11 @@ strategy is the worker's semantic plan, not Git's low-level merge algorithm.
 It MUST cover the whole conflict set in deterministic file and region order and
 must state, for each affected file, what the plan keeps from the current side,
 adopts from the incoming side, combines safely, or cannot synthesize. Include
-the branch objectives, **Facts**, **Inferences**, affected contracts, trade-offs,
-risks, unresolved escalations, every retained complete alternative, and the
-complete marker-free file content for each candidate outcome where required.
-Never construct the plan by concatenating conflict fragments.
+the branch objectives, governing rules (declared or inferred), **Facts**,
+**Inferences**, affected contracts, trade-offs, risks, unresolved escalations,
+and every retained complete alternative. The strategy text carries prose only;
+complete file content appears only in the JSON payload. Never construct the plan
+by concatenating conflict fragments.
 
 Return the proposal as a `needs_input` result. Its `summary` contains the
 worker-authored `## Global resolution strategy` and the existing
@@ -464,6 +554,15 @@ only the complete branch outcomes plus `more-context`. If no complete
 marker-free outcome can be offered at all, return the applicable closed
 failure outcome and leave the conflict unresolved; never invent a resolution.
 
+#### Prose-only resolution presentation
+
+The strategy proposal text carries prose explanations only, for all conflict
+classes. Complete file content belongs only in the JSON `## Complete resolution
+payload`. The coordinator never reconstructs a resolution from prose; it uses
+only the JSON `files` records. This rule preserves the guarantee that no
+synthesis may be authored in the coordinator and that every decision traces
+to an explicit worker choice and complete alternative in the payload.
+
 The filtered proposal result uses this structure:
 
 ```
@@ -472,11 +571,24 @@ The filtered proposal result uses this structure:
 ### Conflicted files (N)
 - <path> — <category>
 
+### Governing rules (if any)
+
+#### <path> — <branch>
+- Source: <openspec/specs/..., docs/adr/..., or docs/ddr/... path>
+- Rule: <the relevant requirement or constraint from the spec/ADR/DDR>
+
 ### Resolution proposals
 
 #### <path> (<category>)
-<decision and validation summary only; the complete final file content is the
-matching `files` record in `## Complete resolution payload`>
+<prose explanation of the decision; for obvious conflicts, cite the governing
+rule (if L1) or textual pattern (if L2); for semantic ambiguities, explain
+alternatives and cite declared rules if available; the complete final file
+content is the matching `files` record in `## Complete resolution payload`>
+
+### Missing-rule notices
+
+#### <path>
+[No declared rule found for this region]
 
 ### Escalations (E3)
 <any true semantic contradictions>

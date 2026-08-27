@@ -44,7 +44,7 @@ The system SHALL confine every mutating operation — merge launch, resolution w
 
 ### Requirement: Categorized conflict resolution with criteria
 
-The system SHALL classify each conflicted file as specs, ADR/DDR, or code immediately upon conflict detection and version reading. The analysis SHALL then inspect the base, both branch versions, surrounding file context, related branch changes, and relevant auto-merged files; distinguish directly observable **Facts** from explicitly labeled **Inferences**; and compare the objectives and affected contracts on both sides. For every semantically ambiguous conflict, it SHALL retain complete marker-free `ours` and `theirs` alternatives and MAY retain a complete marker-free `synthesis` only when that outcome has one owner for each responsibility, one authoritative source for each fact, compatible lifecycle behavior, and no duplicated gate or conflicting contract. It SHALL never represent a resolution as a labeled fragment, diff, hunk, or concatenation of conflict pieces. Complete alternatives are constructed only after scope selection in Step 5A.
+The system SHALL classify each conflicted file as specs, ADR/DDR, or code immediately upon conflict detection and version reading. The analysis SHALL read governing specs, ADRs, and DDRs forwarded by the coordinator (indexed by branch in `target_rules` and `source_rules`). For each conflict region, the worker SHALL apply an evidence ladder: first consult declared rules from governing specs/ADRs/DDRs (L1); if no rule exists or the rule is silent, consult textual context and code archaeology (L2). When no declared rule governs a region, emit a visible on-screen notice `[No declared rule found for this region]`. The analysis SHALL inspect the base, both branch versions, surrounding file context, related branch changes, and relevant auto-merged files; distinguish directly observable **Facts** (including declared rules from governing specs/ADRs/DDRs with their source identified) from explicitly labeled **Inferences** (used only when no declared rule exists); and compare the objectives and affected contracts on both sides. For every semantically ambiguous conflict, it SHALL retain complete marker-free `ours` and `theirs` alternatives and MAY retain a complete marker-free `synthesis` only when that outcome has one owner for each responsibility, one authoritative source for each fact, compatible lifecycle behavior, and no duplicated gate or conflicting contract. It SHALL never represent a resolution as a labeled fragment, diff, hunk, or concatenation of conflict pieces. Complete alternatives are constructed only after scope selection in Step 5A.
 
 #### Scenario: Obvious conflict stays lightweight
 
@@ -75,6 +75,21 @@ The system SHALL classify each conflicted file as specs, ADR/DDR, or code immedi
 
 - **WHEN** both sides modify the same requirement or scenario with incompatible semantics
 - **THEN** the conflict is flagged for escalation and left unresolved rather than auto-picked
+
+#### Scenario: Declared rule governs the resolution
+
+- **WHEN** a governing spec, ADR, or DDR from `target_rules` or `source_rules` explicitly constrains the resolution for a conflict region
+- **THEN** the worker identifies it as a Fact with the rule's source, applies it as L1 evidence (taking precedence over inferred objectives), and reports it in the conflict analysis
+
+#### Scenario: Missing declared rule generates a notice
+
+- **WHEN** a conflict region has no corresponding entry in `target_rules` or `source_rules`
+- **THEN** the worker emits the visible on-screen notice `[No declared rule found for this region]` in the Conflict Analysis output, and the resolution proceeds using L2 textual context only
+
+#### Scenario: Evidence ladder enters L2 when L1 is silent
+
+- **WHEN** L1 contains no declared rule for a conflict region (or the rule is silent), or when a declared rule rejects both branch versions
+- **THEN** the worker enters L2 and consults textual context (`git show :1:/:2:/:3:` and surrounding code) to verify or author a compatible resolution
 
 ### Requirement: Runtime resolution scope gate
 
@@ -225,7 +240,7 @@ The `/sai-merge` command SHALL keep clean merges on the existing path without as
 
 ### Requirement: Global strategy gates resolution
 
-The worker SHALL produce one complete global resolution strategy covering the selected conflict set, and the coordinator SHALL require explicit `apply-strategy` confirmation before resolution writes, marker removal, or staging. The strategy SHALL include facts, inferences, branch objectives, affected contracts, trade-offs, risks, alternatives, and complete marker-free content where required.
+The worker SHALL produce one complete global resolution strategy covering the selected conflict set, and the coordinator SHALL require explicit `apply-strategy` confirmation before resolution writes, marker removal, or staging. The strategy text SHALL carry prose explanations only, for all conflict classes: describing branch objectives, governing rules (declared from specs/ADRs/DDRs or inferred from evidence), Facts, Inferences, affected contracts, trade-offs, risks, and alternatives. Complete marker-free file content for all conflict classes SHALL appear only in the JSON `## Complete resolution payload`, not in the strategy prose. The coordinator never reconstructs a resolution from prose; it uses only the JSON `files` records. This rule preserves the guarantee that every synthesis is authored by the worker, not by the coordinator, and that every decision traces to an explicit worker choice and complete alternative in the payload.
 
 #### Scenario: Strategy is confirmed before mutation
 
@@ -236,6 +251,16 @@ The worker SHALL produce one complete global resolution strategy covering the se
 
 - **WHEN** the user selects `revise-strategy`
 - **THEN** the same worker requests open context or correction with empty `options` and the repository remains unchanged
+
+#### Scenario: Strategy text carries prose only for all conflict classes
+
+- **WHEN** the worker returns a global strategy for obvious conflicts or semantic ambiguities
+- **THEN** the strategy text carries prose explanations identifying the decision, governing rules (if any), facts, and inferences, while complete file content appears only in the JSON payload
+
+#### Scenario: Prose-only strategy preserves coordinator guarantee
+
+- **WHEN** the strategy carries no file content and the JSON payload contains the complete final version
+- **THEN** the coordinator validation confirms the matching payload before any write, and the synthesis is never reconstructed from prose or alternative fragments in the strategy
 
 ### Requirement: New conflict re-entry preserves language
 

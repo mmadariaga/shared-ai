@@ -31,7 +31,7 @@ test('merge worker explains contextual alternatives and gates only semantic ambi
   assert.match(instructions, /Step 5A: Contextual conflict analysis and decision gate/);
   assert.match(instructions, /Facts/);
   assert.match(instructions, /Inferences/);
-  assert.match(instructions, /different objectives,[\s\S]{0,80}different[\s\S]{0,20}strategies/);
+  assert.match(instructions, /different objectives[\s\S]{0,40}per their[\s\S]{0,30}declared rules,[\s\S]{0,20}different[\s\S]{0,20}strategies/);
   assert.match(instructions, /value `ours`/);
   assert.match(instructions, /value `theirs`/);
   assert.match(instructions, /value `synthesis`/);
@@ -232,4 +232,37 @@ test('merge adaptive TODO gives contextual analysis its own canonical route item
   assert.match(policy, /more-context/);
   assert.match(policy, /Fast-track changes only the scope item;[\s\S]{0,20}it never bypasses a contextual human[\s\S]{0,20}decision/);
   assert.match(policy, /No TODO transition authorizes[\s\S]{0,20}a write or stage/);
+});
+
+test('merge-evidence-ladder: declared rules, evidence ladder, missing-rule notice, and prose-only strategy', () => {
+  const instructions = read('sai/commands/merge/instructions.md');
+
+  // Finding 3a: Provenance-scoped rule capture uses correct pathspec and filters
+  assert.match(instructions, /git diff --name-status[\s\S]{0,40}<merge_base>[\s\S]{0,40}<target_sha\|source_sha>[\s\S]{0,40}--diff-filter=A,M[\s\S]{0,40}openspec\/specs\/[\s\S]{0,40}docs\/adr\/[\s\S]{0,40}docs\/ddr\//);
+  assert.match(instructions, /Exclude `openspec\/changes\/archive\/\*\*` entirely/);
+  assert.match(instructions, /include unsynced[\s\S]{0,20}openspec\/changes\/\*\//);
+
+  // Finding 3b: Two-rung evidence ladder is stated with correct entry conditions
+  assert.match(instructions, /Evidence ladder/);
+  assert.match(instructions, /L1[\s\S]{0,20}Declared rule/);
+  assert.match(instructions, /L2[\s\S]{0,20}Textual context/);
+  assert.match(instructions, /entered only when[\s\S]{0,60}L1 is silent[\s\S]{0,80}the rule rejects[\s\S]{0,80}both sides/);
+
+  // Finding 3c: Missing-rule notice literal is emitted when no governing rule
+  assert.match(instructions, /\[No declared rule found for this region\]/);
+  assert.match(instructions, /emit a[\s\S]{0,40}visible on-screen signal:[\s\S]{0,40}\[No declared rule found for this region\]/);
+  assert.match(instructions, /Missing-rule notices[\s\S]{0,40}\[No declared rule found for this region\]/);
+
+  // Finding 3d: Strategy proposal carries no file content for any conflict class
+  const strategySection = instructions.slice(instructions.indexOf('#### Global resolution strategy proposal'));
+  assert.match(strategySection, /strategy text carries prose only/);
+  assert.match(strategySection, /complete file content[\s\S]{0,40}appears only in the JSON/);
+  assert.match(strategySection, /prose-only resolution presentation/i);
+  assert.doesNotMatch(strategySection.slice(0, strategySection.indexOf('Return the proposal as')), /semantic ambiguities[\s\S]{0,200}file content/i);
+
+  // Verify single owner of prose-only rule
+  assert.match(instructions, /#### Prose-only resolution presentation[\s\S]{0,500}strategy proposal text carries prose explanations only/);
+  assert.match(instructions, /strategy proposal text carries prose explanations only[\s\S]{0,200}for all conflict[\s\S]{0,20}classes/);
+  assert.match(instructions, /strategy proposal text carries prose explanations only[\s\S]{0,300}coordinator never reconstructs a resolution from prose/);
+  assert.match(instructions, /strategy proposal text carries prose explanations only[\s\S]{0,300}JSON `files` records/);
 });
