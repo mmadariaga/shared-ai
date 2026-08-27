@@ -65,38 +65,40 @@ The `Review edge cases` stage SHALL run the existing edge-case review when the u
 
 ### Requirement: Crystallize stage defers overview-language resolution
 
-The `Crystallize` stage SHALL run the slicing assessment (single-vs-sliced routing and integration-point friction, item 4) and the crystallization language gate (item 8) before emitting any `Ready to Propose` block. It MUST NOT run overview-language gate 9 at stage entry; gate 9 belongs to the later supervised Auto activation.
+The `Crystallize` stage SHALL run the size-based slicing assessment, integration-point friction assessment, and technical-uncertainty assessment before emitting any `Ready to Propose` block. When uncertainty fires, it SHALL run the uncertainty pause and complete the applicable Ask 1 and post-POC path before the crystallization language gate and block emission. The language gate SHALL run only after those checks complete. It MUST NOT run overview-language gate 9 at stage entry; gate 9 belongs to the later supervised Plan (unattended) activation.
 
-Advancing into the `Crystallize` stage SHALL itself count as an explicit crystallization request, making `next-step` and `crystallize` equivalent requests from the `Implementation details` stage. A deterministic empty-set advance that completes the `Review edge cases` or `Implementation details` stage SHALL advance into the following stage within the same turn and SHALL therefore count as the explicit crystallization request when it advances into the `Crystallize` stage. An explicit crystallize request made from an earlier stage SHALL first run the mandatory edge-case review when the review has not reached agreement (no skip path), then proceed through the slicing assessment and the crystallization language gate.
+Advancing into the `Crystallize` stage SHALL itself count as an explicit crystallization request. Deterministic empty-set advancement into this stage SHALL have the same effect. An explicit crystallize request made from an earlier stage SHALL first run the mandatory edge-case review when the review has not reached agreement, then proceed through all three assessments and any required uncertainty pause.
 
-#### Scenario: Crystallization runs slicing then the crystallization gate
+A POC is not a crystallized feature slice and does not clear or replace the stage TODO. The stage TODO is cleared only when feature crystallization begins emitting its first feature slice and the idea progress list takes the panel.
+
+#### Scenario: crystallization runs slicing then the crystallization gate
 
 - **WHEN** the user explicitly requests crystallization, including by advancing into the `Crystallize` stage
-- **THEN** the slicing assessment runs first, then gate 8 resolves, and only then does the `Ready to Propose` block print
+- **THEN** the size, friction, and uncertainty assessments run first, followed by any required uncertainty pause and then gate 8 before a `Ready to Propose` block prints
 - **AND** overview-language gate 9 is not run during crystallization emission
 
-#### Scenario: Natural-language entry into the stage crystallizes
+#### Scenario: natural-language entry into the stage crystallizes
 
-- **WHEN** the user names the `Crystallize` stage in natural language from the `Implementation details` stage, such as asking to move on to the Crystallize stage
-- **THEN** the advance counts as the explicit crystallization request
-- **AND** the slicing assessment and gate 8 run before any `Ready to Propose` block prints
+- **WHEN** the user names the `Crystallize` stage in natural language from the `Implementation details` stage
+- **THEN** the advance counts as the explicit crystallization request and all required assessments and pauses run before a block prints
+- **AND** overview-language gate 9 remains deferred
 
-#### Scenario: An empty-list chain reaches crystallization in the same turn
+#### Scenario: an empty-list chain reaches crystallization in the same turn
 
-- **WHEN** the in-scope edge-case list and the implementation-details list are both empty and the user advances the progression by token, natural language, or confirmation
-- **THEN** the deterministic empty-set rules advance the progression through the `Review edge cases` and `Implementation details` stages within the same turn
-- **AND** the `Crystallize` stage entry counts as the explicit crystallization request, running the slicing assessment and gate 8 before any `Ready to Propose` block prints
+- **WHEN** the in-scope edge-case list and implementation-details list are both empty and the user advances the progression
+- **THEN** deterministic empty-set rules advance through both stages and the `Crystallize` entry runs the assessments and any required uncertainty pause before block emission
+- **AND** the POC, if selected, does not become a feature slice or clear the stage TODO
 
-#### Scenario: Premature crystallize enters the review before slicing
+#### Scenario: premature crystallize enters the review before slicing
 
 - **WHEN** the user explicitly requests crystallization before the edge-case review has reached agreement
-- **THEN** the review runs with no skip path and the slicing assessment and gate 8 run only after agreement
+- **THEN** the review runs with no skip path and the assessments and any uncertainty pause run only after agreement
 
-#### Scenario: Fast-track preserves stage and gate boundaries
+#### Scenario: fast-track preserves stage and gate boundaries
 
-- **WHEN** `--fast-track` is active during crystallization and later supervised Auto activation
-- **THEN** the language questions resolve by their separate rules without weakening or skipping either stage
-- **AND** the mandatory edge-case review and staged progression are neither skipped nor weakened
+- **WHEN** `--fast-track` is active during crystallization and later supervised Plan (unattended) activation
+- **THEN** language questions resolve by their separate rules without weakening or skipping either stage or the uncertainty pause
+- **AND** mandatory edge-case review and staged progression remain neither skipped nor weakened
 
 ### Requirement: A materially changed idea resets the stage progression
 

@@ -41,3 +41,8 @@ These divergences are intentional and stay byte-stable; do not "unify" them:
   (phase-owned parse, no banner).
 - `/sai-build` and `/sai-review` strip an explicit `--fast-track` token as a
   behavioral no-op: they neither activate fast-track nor emit a banner.
+- `sai-explore`'s uncertainty pause (viability POC) does NOT auto-approve Ask 1
+  (go/no-go for POC) or post-POC menus (viable/not-viable pickers) under
+  `--fast-track`. The asks are always presented; fast-track bypasses only the
+  crystallization language gate and overview-language ask, never the uncertainty
+  pause machinery.

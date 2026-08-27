@@ -72,16 +72,20 @@ The readiness statement SHALL be carried by the closure reminder at most once pe
 
 ### Requirement: Full block is emitted only on explicit user request
 
-`sai-explore` SHALL print (or re-print) the full `Ready to Propose` block(s) only when the user explicitly asks to crystallize — for example, asking for the paste-ready block, to crystallize, or to create a proposal / run `/sai-1-spec`. Absent such an explicit request, no block is printed even when the idea is solid. This user-triggered gate applies to both the single-change protocol (§5) and the sliced protocol (§6); when the sliced protocol applies, an explicit request emits the full ordered set of per-slice blocks. When the user explicitly asks to crystallize before the idea is judged solid, `sai-explore` SHALL honor the explicit request rather than withhold the block, but SHALL still run the §4 slicing assessment first so the emitted block(s) reflect the correct single-vs-sliced routing. The existing §7 inline-proposal path — which already prints the paste-ready block(s) when the user asks to create a proposal or run `/sai-1-spec` now — is one such explicit-request path and remains consistent with this gate. A repeatable pre-crystallization closure reminder is not an explicit request and SHALL NOT emit the block.
+`sai-explore` SHALL print or re-print the full `Ready to Propose` block or blocks only when the user explicitly asks to crystallize — for example, by asking for the paste-ready block, asking to crystallize, or asking to create a proposal or run `/sai-1-spec`. Absent such an explicit request, no block is printed even when the idea is solid.
+
+This user-triggered gate applies to both the single-change and sliced protocols. When the technical-uncertainty assessment fires, an explicit request SHALL first enter the uncertainty pause. Feature blocks remain withheld until Ask 1 is resolved: an explicit POC decline permits full crystallization with the accepted risk, while a viable POC permits feature crystallization only after the user selects `Crystallize full` and size and friction are re-evaluated. A viable `Exit` emits no block, and a not-viable POC emits no block until the user chooses re-exploration or the idea-dead exit path.
+
+When the user explicitly asks to crystallize before the idea is judged solid, `sai-explore` SHALL honor the request after running the slicing assessment and any required uncertainty pause. The existing inline-proposal path remains an explicit-request path and SHALL follow the same pause before feature emission.
 
 #### Scenario: explicit request prints the single-change block
 
-- **WHEN** the idea fits one change, is solid, and the user explicitly asks for the paste-ready block or to crystallize
+- **WHEN** the idea fits one change, is solid, and the user explicitly asks for the paste-ready block or to crystallize, with no uncertainty pause pending
 - **THEN** `sai-explore` prints the single-change `Ready to Propose` block
 
 #### Scenario: explicit request prints the full sliced set
 
-- **WHEN** the idea was sliced, is solid, and the user explicitly asks to crystallize
+- **WHEN** the idea was sliced, is solid, and the user explicitly asks to crystallize after any required uncertainty pause has completed
 - **THEN** `sai-explore` prints the full ordered set of per-slice `Ready to Propose` blocks
 
 #### Scenario: no block without an explicit request
@@ -93,7 +97,7 @@ The readiness statement SHALL be carried by the closure reminder at most once pe
 #### Scenario: explicit request before the idea is solid
 
 - **WHEN** the user explicitly asks to crystallize while the idea has not yet been judged solid
-- **THEN** `sai-explore` honors the request and emits the block(s) after first running the §4 slicing assessment to determine single-vs-sliced routing
+- **THEN** `sai-explore` honors the request and emits the block or blocks after first running the size, friction, and uncertainty assessments and resolving any required uncertainty pause
 
 ### Requirement: Readiness judgment stays qualitative
 

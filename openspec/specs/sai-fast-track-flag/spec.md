@@ -5,6 +5,7 @@
 Enables the `--fast-track` per-invocation flag on `sai-explore`, `sai-2-design`, `sai-4-apply`, `sai-archive`, `sai-backfill`, and `sai-merge`, defining each command's opt-out set, auto-stay behavior under fast-track mode, the single-canonical-membership rule, and the cross-command guardrails that survive fast-track.
 
 ## Requirements
+
 ### Requirement: Fast-track opt-in membership
 The set of commands that accept and parse `--fast-track` SHALL be exactly `sai-explore`, `sai-2-design`, `sai-4-apply`, `sai-archive`, `sai-backfill`, and `sai-merge`, per the canonical model single-sourced in `sai/policies/fast-track-flag.md`. `sai-explore` and `sai-4-apply` parse in their main-session body cards; `sai-2-design` parses in its coordinator card since the flag-parsing unification — its coordinator card owns BOTH the parse and the banner, and the design worker neither parses the token nor emits a banner nor keeps dedup state; routed-shaped `sai-archive` parses in its coordinator card; routed-shaped `sai-backfill` parses in its worker card alongside the diff-source tokens, with no banner (a deliberate documented exception); routed-shaped `sai-merge` parses in its coordinator card. A composition command outside this set MAY inject apply fast-track without becoming a parser member, and MAY strip an explicit `--fast-track` token as a behavioral no-op without activating any mode — `/sai-build` and `/sai-review` do exactly this before change resolution.
 
@@ -18,12 +19,19 @@ The set of commands that accept and parse `--fast-track` SHALL be exactly `sai-e
 
 ### Requirement: Preserve fast-track's explore language behavior
 
-Explore fast-track SHALL bypass gate 9 without an explicit overview-language option and SHALL resolve `None`; explicit `--overview-lang` SHALL override that default only on the supervised route. Build - Unattended SHALL treat the explicit option as a no-op and SHALL never generate `change-overview.md`.
+Explore fast-track SHALL bypass gate 9 without an explicit overview-language option and SHALL resolve `None`; explicit `--overview-lang` SHALL override that default only on the supervised route. Direct Build - Unattended SHALL treat the explicit option as a no-op and SHALL never generate `change-overview.md`.
 
-#### Scenario: Auto-fast remains overview-free
+The fast-track signal SHALL not bypass the technical-uncertainty assessment, Ask 1, the viable post-POC menu, or the not-viable post-POC menu. Those uncertainty decisions remain explicit even when the language questions are bypassed.
 
-- **WHEN** Build - Unattended is selected with or without an explicit overview-language option
+#### Scenario: auto-fast remains overview-free
+
+- **WHEN** Direct Build - Unattended is selected with or without an explicit overview-language option
 - **THEN** no overview-language question or overview generation occurs
+
+#### Scenario: fast-track does not bypass uncertainty choices
+
+- **WHEN** `--fast-track` is active and the technical-uncertainty assessment fires
+- **THEN** Ask 1 and the applicable post-POC menu remain presented and require the user's explicit choice
 
 ### Requirement: sai-2-design under fast-track has no specs approval gate to opt out of
 
@@ -190,17 +198,23 @@ When the apply fast-track signal is active, the coordinator SHALL pre-activate s
 
 ### Requirement: The fast-track flag opts out only of the gates named per command, never others
 
-For each parser-member command, `--fast-track` SHALL opt out of exactly the named gates and nothing else — it is a fixed, audited list of opt-outs, not a generic "skip all gates" switch. Safe-operations confirmations SHALL remain in force under fast-track for every member command. No gate outside the per-command list SHALL be auto-answered or skipped.
+For each parser-member command, `--fast-track` SHALL opt out of exactly the named gates and nothing else. It is a fixed, audited list of opt-outs, not a generic skip-all-gates switch. Safe-operations confirmations SHALL remain in force under fast-track for every member command. For `sai-explore`, the language-gate opt-outs SHALL not include the technical-uncertainty pause, Ask 1, viable post-POC choices, or not-viable post-POC choices.
 
-#### Scenario: Safe-operations confirmations survive fast-track
+#### Scenario: safe-operations confirmations survive fast-track
 
 - **WHEN** any member command runs with `--fast-track` and is about to perform a destructive or hard-to-reverse operation covered by the safe-operations skill
-- **THEN** the safe-operations confirmation is still required, because it is not in any command's fast-track opt-out list
+- **THEN** the safe-operations confirmation is still required because it is not in any command's fast-track opt-out list
 
-#### Scenario: The opt-out set is fixed per command
+#### Scenario: the opt-out set is fixed per command
 
-- **WHEN** fast-track is active for `sai-explore` (two language gates), `sai-2-design` (no opt-out gate; specs approval is an automatic stamp), `sai-4-apply` (both commit-authorization gates — the per-Step STOP & COMMIT gate and the terminal documentation commit gate — + Human Verification deferral + Prerequisites branch-selection prompt auto-stay only), `sai-archive` (unchecked-items gate always + delta-spec sync gate conditional only + archive commit gate auto-select-new-commit only), `sai-backfill` (generated reconciliation questions + spec-conflict decision + crystallized-block change-name confirmation only), or `sai-merge` (full resolution scope without the scope gate)
-- **THEN** no gate beyond that command's named set changes behavior
+- **WHEN** fast-track is active for `sai-explore`, `sai-2-design`, `sai-4-apply`, `sai-archive`, `sai-backfill`, or `sai-merge`
+- **THEN** no gate beyond each command's named set changes behavior
+- **AND** `sai-explore` still presents Ask 1 and every applicable post-POC menu
+
+#### Scenario: uncertainty menus are never auto-approved
+
+- **WHEN** `--fast-track` is active and a viability POC reaches either a viable or not-viable verdict
+- **THEN** the corresponding post-POC menu is presented rather than auto-approved
 
 ### Requirement: Merge fast-track bypasses only runtime scope
 

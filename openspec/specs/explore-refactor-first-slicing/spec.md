@@ -8,15 +8,15 @@ Add a refactor-first integration-point friction assessment to `sai-explore`, so 
 
 ### Requirement: refactor-first-integration-point-friction-assessment
 
-`sai-explore` SHALL, after the size-based slicing assessment and before crystallizing any `Ready to Propose` block, judge whether the exact site where the imminent feature would integrate is hostile. This friction assessment is DISTINCT from the size judgment: size asks whether the *change* is too big; the friction assessment asks whether the *code the change lands in* is hostile at the integration point.
+`sai-explore` SHALL, after the size-based slicing assessment and before crystallizing any `Ready to Propose` block, judge whether the exact site where the imminent feature would integrate is hostile. This friction assessment is distinct from the size judgment and remains local and qualitative.
 
 The integration point is judged hostile when, at the specific site the feature must plug into, either signal holds:
 - mixed responsibilities (the site conflates concerns, so the feature cannot be added without touching unrelated behavior); or
 - no clean extension seam (the feature can only be added by modifying existing code in place, not by extending it).
 
-The friction judgment SHALL be **local and concrete** — tied to the integration point of the feature at hand — and SHALL NOT be a global tech-debt audit of the surrounding module or repository. The instruction text SHALL frame this as a qualitative judgment, in the same tone as the size judgment.
+Technical uncertainty is assessed after friction. If a viability POC is selected and completes successfully, the size and friction assessments SHALL be repeated against the post-POC integration site before the feature slice set is composed.
 
-Blast-radius metrics from a code graph MAY be cited as supporting evidence for a friction judgment, but SHALL NOT be a hard threshold that triggers it; the trigger stays qualitative.
+Blast-radius metrics from a code graph MAY be cited as supporting evidence for a friction judgment, but SHALL NOT be a hard threshold that triggers it.
 
 #### Scenario: integration point is hostile
 
@@ -31,26 +31,37 @@ Blast-radius metrics from a code graph MAY be cited as supporting evidence for a
 #### Scenario: friction is judged locally, not as a global audit
 
 - **WHEN** the surrounding module carries unrelated tech debt but the specific integration point for the feature is clean
-- **THEN** the friction assessment does not fire, because friction is judged at the integration point of the feature at hand, not as a global tech-debt audit
+- **THEN** the friction assessment does not fire because friction is judged at the integration point of the feature at hand, not as a global tech-debt audit
+
+#### Scenario: viable POC re-evaluates the integration point
+
+- **WHEN** a viability POC completes successfully and the user selects `Crystallize full`
+- **THEN** `sai-explore` repeats the local friction judgment against the post-POC integration site before composing slice 0 or feature slices
 
 ### Requirement: slice-zero-emission-composition
 
-When the friction assessment fires, `sai-explore` SHALL emit the behavior-preserving refactor as **slice 0** of the sliced-crystallization set, ordered ahead of every other slice, reusing the `Ready to Propose` block machinery. Slice 0 SHALL compose with size-based slicing rather than replace it:
+When the friction assessment fires, `sai-explore` SHALL emit the behavior-preserving refactor as slice 0 of the sliced-crystallization set, ordered ahead of every other feature slice, reusing the `Ready to Propose` block machinery. Slice 0 SHALL compose with size-based slicing rather than replace it:
 
-- When the feature was already sliced (Walking Skeleton + backlog), slice 0 is prepended ahead of the Walking Skeleton, producing the ordered set refactor → skeleton → backlog.
-- When the idea fits a single change, a fired friction assessment SHALL promote the single block into a 2-block set: slice 0 (refactor) → slice 1 (feature).
+- When the feature was already sliced (Walking Skeleton plus backlog), slice 0 is prepended ahead of the Walking Skeleton, producing refactor → skeleton → backlog.
+- When the idea fits a single change, a fired friction assessment SHALL promote the single block into a 2-block set: slice 0 followed by slice 1.
+- A viability POC is not part of this emitted set, does not become slice 0, and does not renumber any feature slice.
 
-Slice 0 SHALL live inside the SAME `Ready to Propose` set as the feature slice(s) — one dependency-ordered crystallization output — and SHALL NOT be emitted as a separate recommended change. This requirement defines the *composition* of the emitted set; *when* the set is emitted is governed by the `explore-crystallization-on-demand` capability (only on an explicit crystallize request).
+Slice 0 SHALL live inside the same `Ready to Propose` set as the feature slices and SHALL not be emitted as a separate recommended change.
 
 #### Scenario: friction promotes a single-block idea into refactor → feature
 
-- **WHEN** the size assessment judged the idea to fit one change AND the friction assessment fires
-- **THEN** `sai-explore`, on an explicit crystallize request, emits a 2-block ordered set — slice 0 (behavior-preserving refactor) followed by slice 1 (the feature) — instead of a single block
+- **WHEN** the size assessment judged the idea to fit one change and the friction assessment fires
+- **THEN** `sai-explore`, on an explicit crystallize request after any required uncertainty decision, emits a 2-block ordered set with slice 0 followed by slice 1 instead of a single block
 
 #### Scenario: friction composes with an already-sliced feature
 
-- **WHEN** the size assessment already sliced the idea into a Walking Skeleton plus backlog AND the friction assessment fires
-- **THEN** `sai-explore` prepends slice 0 (the refactor) ahead of the Walking Skeleton, producing the ordered set refactor → skeleton → backlog
+- **WHEN** the size assessment already sliced the idea into a Walking Skeleton plus backlog and the friction assessment fires
+- **THEN** `sai-explore` prepends slice 0 ahead of the Walking Skeleton and produces refactor → skeleton → backlog
+
+#### Scenario: POC does not become a refactor slice
+
+- **WHEN** a viable POC completes before feature crystallization
+- **THEN** the POC remains outside the feature set and slice 0 continues to mean only the friction-driven behavior-preserving refactor
 
 ### Requirement: solid-scoped-slice-zero-done
 
