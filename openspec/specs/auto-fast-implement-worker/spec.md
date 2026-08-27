@@ -18,7 +18,7 @@ The implementer worker SHALL receive exactly one opaque `arguments_value` whose 
 
 #### Scenario: Block-only input
 
-- **WHEN** the worker is dispatched by explore's Auto (fast implementation) flow
+- **WHEN** the worker is dispatched by explore's Build - Unattended flow
 - **THEN** it implements directly from Capabilities in scope, Key constraints, Implementation Details, and Edge Cases, treating Research Leads as non-authoritative starting points only
 
 ### Requirement: Write containment

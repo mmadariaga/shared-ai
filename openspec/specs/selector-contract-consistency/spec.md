@@ -8,7 +8,7 @@
 
 ### Requirement: Active selector references use the canonical build title
 
-Active crystallization-close selector references in the selector contract, language-gate contract, question-context exemption, and preservation tests MUST use `Build - Unattended` instead of `Direct build - Unattended`.
+Active crystallization-close selector references in the selector contract, language-gate contract, question-context exemption, and preservation tests MUST use `Build - Unattended` as the canonical build title.
 
 #### Scenario: Active references and assertions agree
 

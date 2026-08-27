@@ -7,7 +7,7 @@ Define the crystallization-close selector that explicitly authorizes supervised 
 
 ### Requirement: Crystallization-close selector presents stable route titles
 
-The crystallization-close selector SHALL present exactly three options, in the existing order, with the fixed English titles `Plan - Unattended`, `Direct build - Unattended`, and `Manual`. Their machine-readable route identities MUST remain `plan-unattended`, `build-unattended`, and `manual`.
+The crystallization-close selector SHALL present exactly three options, in the existing order, with the fixed English titles `Plan - Unattended`, `Build - Unattended`, and `Manual`. Their machine-readable route identities MUST remain `plan-unattended`, `build-unattended`, and `manual`.
 
 #### Scenario: Selector presents the three continuation routes
 
@@ -51,7 +51,7 @@ Plan and Build SHALL select only uncompleted names from `last_crystallization_se
 - **THEN** the selector is presented again in fixed order for the pending slice before any new dispatch begins.
 ### Requirement: Emit the crystallization-close selector
 
-`sai-explore` SHALL emit exactly one harness-native selector after the shared keep-window-open recommendation, with options in fixed order: `Auto (sai-1 + sai-2)`, `Auto (fast implementation)`, and `Manual`, each retaining its existing one-line description and localized presentation rules. The first displayed label SHALL map to internal route `Auto` and SHALL state that only supervised `sai-1` and `sai-2` run. The selector SHALL remain the final emission of the crystallization turn. The selector contract SHALL be delivered from `sai/commands/explore/steps/pipeline-selector.md`, fetched only after the complete shared recommendation sentence.
+`sai-explore` SHALL emit exactly one harness-native selector after the shared keep-window-open recommendation, with options in fixed order: `Plan - Unattended`, `Build - Unattended`, and `Manual`, each retaining its existing one-line description and localized presentation rules. The first displayed label SHALL map to internal route `Auto` and SHALL state that only supervised `sai-1` and `sai-2` run. The selector SHALL remain the final emission of the crystallization turn. The selector contract SHALL be delivered from `sai/commands/explore/steps/pipeline-selector.md`, fetched only after the complete shared recommendation sentence.
 
 #### Scenario: the split selector closes crystallization
 
@@ -60,11 +60,11 @@ Plan and Build SHALL select only uncompleted names from `last_crystallization_se
 
 ### Requirement: Route selected pipeline options through deferred contracts
 
-`sai-explore` SHALL preserve the existing selection semantics: `pipeline-selector.md` SHALL fetch both `steps/pipeline-auto-supervised.md` and `steps/pipeline-auto-fast.md` after the complete selector contract is reached and before option selection is processed; dispatch SHALL remain exclusive to an explicit `Auto (sai-1 + sai-2)` or `Auto (fast implementation)` selection; and `Manual` and unmapped responses SHALL dispatch nothing. The displayed supervised route SHALL map to internal `Auto` and retain the supervised `sai-1`/`sai-2` lifecycle, while the Auto (fast implementation) route SHALL retain the fixed eight-step flow and existing worker boundaries.
+`sai-explore` SHALL preserve the existing selection semantics: `pipeline-selector.md` SHALL fetch both `steps/pipeline-auto-supervised.md` and `steps/pipeline-auto-fast.md` after the complete selector contract is reached and before option selection is processed; dispatch SHALL remain exclusive to an explicit `Plan - Unattended` or `Build - Unattended` selection; and `Manual` and unmapped responses SHALL dispatch nothing. The displayed supervised route SHALL map to internal `Auto` and retain the supervised `sai-1`/`sai-2` lifecycle, while the Build - Unattended route SHALL retain the fixed eight-step flow and existing worker boundaries.
 
 #### Scenario: deferred route fetches preserve dispatch boundaries
 
-- **WHEN** the crystallization-close selector is reached and the user selects Auto, Auto (fast implementation), or Manual
+- **WHEN** the crystallization-close selector is reached and the user selects Plan - Unattended, Build - Unattended, or Manual
 - **THEN** both route contracts have been fetched from the selector trigger, only the explicitly selected Auto route dispatches, and Manual performs no dispatch
 
 ### Requirement: Preserve deterministic auto-fast continuation
@@ -78,7 +78,7 @@ After a clean auto-fast slice completion, `sai-explore` SHALL retain the existin
 
 ### Requirement: Authorize Auto dispatch
 
-Selecting displayed `Auto (sai-1 + sai-2)` (internal route `Auto`) SHALL authorize the existing supervised `sai-1` and `sai-2` lifecycle using `last_crystallization_set` while preserving worker-owned writes, review rounds, chaining, retries, and the existing worker boundaries. Successful Auto completion SHALL emit exactly one composition-aware next-step line, `Next step: run /sai-build {name}.`, and SHALL NOT dispatch a later implementation phase. Successful Auto completion SHALL NOT emit the obsolete `sai-3 was not run.` text. When a selected Auto run returns `failed` or `cancelled`, explore SHALL emit exactly one localized user-facing guidance line naming the phase at which the run stopped: `/sai-1-spec` when the selected name was routed to the spec phase because it was absent from `specs_converged_changes`, or `/sai-2-design` when it was routed to a design-phase retry because it was present in `specs_converged_changes` and absent from `completed_changes`. The phase-specific line SHALL not dispatch a later implementation phase, change the retry state, or introduce another state key.
+Selecting displayed `Plan - Unattended` (internal route `Auto`) SHALL authorize the existing supervised `sai-1` and `sai-2` lifecycle using `last_crystallization_set` while preserving worker-owned writes, review rounds, chaining, retries, and the existing worker boundaries. Successful Plan - Unattended completion SHALL emit exactly one composition-aware next-step line, `Next step: run /sai-build {name}.`, and SHALL NOT dispatch a later implementation phase. Successful Plan - Unattended completion SHALL NOT emit the obsolete `sai-3 was not run.` text. When a selected Plan - Unattended run returns `failed` or `cancelled`, explore SHALL emit exactly one localized user-facing guidance line naming the phase at which the run stopped: `/sai-1-spec` when the selected name was routed to the spec phase because it was absent from `specs_converged_changes`, or `/sai-2-design` when it was routed to a design-phase retry because it was present in `specs_converged_changes` and absent from `completed_changes`. The phase-specific line SHALL not dispatch a later implementation phase, change the retry state, or introduce another state key.
 
 #### Scenario: Auto is selected
 
@@ -134,7 +134,7 @@ Selecting `Manual` SHALL dispatch nothing and SHALL NOT change supervision state
 
 ### Requirement: Auto-fast continuation requests authorization for each pending slice
 
-After a clean Auto-fast slice completion, the system SHALL re-present the complete `Auto (sai-1 + sai-2)` / `Auto (fast implementation)` / `Manual` selector when at least one pending slice remains. Continuation choices SHALL exclude completed slices and preserve crystallization order. Selecting Manual SHALL dispatch nothing and preserve pending and completed state for a later explicit request.
+After a clean Auto-fast slice completion, the system SHALL re-present the complete `Plan - Unattended` / `Build - Unattended` / `Manual` selector when at least one pending slice remains. Continuation choices SHALL exclude completed slices and preserve crystallization order. Selecting Manual SHALL dispatch nothing and preserve pending and completed state for a later explicit request.
 
 #### Scenario: pending slices remain after clean completion
 
@@ -238,11 +238,11 @@ A crystallization turn that re-emits an already-supervised change name SHALL, wh
 - **WHEN** a change name in `specs_converged_changes` but not `completed_changes` is re-emitted by a later crystallization turn and the user selects `Auto`
 - **THEN** explore dispatches the spec phase over the new block rather than the design-phase retry branch
 
-### Requirement: Authorize Auto (fast implementation) dispatch
+### Requirement: Authorize Build - Unattended dispatch
 
-Selecting **Auto (fast implementation)** SHALL be the explicit user act that authorizes item 1's delegated-write exception for the two fast-lane workers AND pre-authorizes exactly one local commit executed by the hands worker inside its closed order; it SHALL remain consent to selection and dispatch only, never consent to answer a later worker question. Neither this option nor any other selection loads or dispatches anything unless selected; Manual and every other command surface are unaffected by the third option.
+Selecting **Build - Unattended** SHALL be the explicit user act that authorizes item 1's delegated-write exception for the two fast-lane workers AND pre-authorizes exactly one local commit executed by the hands worker inside its closed order; it SHALL remain consent to selection and dispatch only, never consent to answer a later worker question. Neither this option nor any other selection loads or dispatches anything unless selected; Manual and every other command surface are unaffected by the third option.
 
 #### Scenario: Consent scope of the fast-lane selection
 
-- **WHEN** the user selects Auto (fast implementation) on the crystallization-close selector
+- **WHEN** the user selects Build - Unattended on the crystallization-close selector
 - **THEN** delegated writes are consented for the two fast-lane workers and exactly one local commit is pre-authorized, with no other command surface affected

@@ -109,7 +109,7 @@ The normal non-supervised explore flow SHALL not persist or inject an overview l
 
 ### Requirement: Forward only the supervised Auto language
 
-The supervised chain SHALL forward a non-`None` language only from explicit `--overview-lang` input or gate 9 resolved by displayed `Auto (sai-1 + sai-2)`. `Manual` SHALL forward nothing, and `Auto (fast implementation)` SHALL not generate an overview.
+The supervised chain SHALL forward a non-`None` language only from explicit `--overview-lang` input or gate 9 resolved by displayed `Plan - Unattended`. `Manual` SHALL forward nothing, and `Build - Unattended` SHALL not generate an overview.
 
 #### Scenario: Language forwarding follows route selection
 
