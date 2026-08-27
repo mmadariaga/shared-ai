@@ -228,7 +228,7 @@ test('merge coordinator keeps contextual decisions before all mutation and prese
   assert.match(presentation, /one complete `content` string for every conflicted file/);
   assert.match(presentation, /worker[\s\S]{0,80}writes[\s\S]{0,80}content strings/i);
   assert.match(presentationSpec, /contextual-analysis\/decision/);
-  assert.match(presentationSpec, /MUST NOT write or stage a resolution before that validation/);
+  assert.match(presentationSpec, /MUST NOT enter staging until[\s\S]{0,200}post-resolution review/);
   assert.match(presentationSpec, /Scenario: More-context preserves the decision boundary/);
 });
 
