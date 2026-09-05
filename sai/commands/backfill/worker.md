@@ -22,6 +22,11 @@ invocation-scoped worker state. The marker is composition-only; an ordinary
 An `--direct-build-execute` marker is valid only on the explicit same-worker
 continuation described below and is never accepted as an initial dispatch.
 
+The archive coordinator's classified content-failure reroute may dispatch this
+worker with a `--fix-delta-headers <change-name>` marker on its own first
+line. That envelope enters only the Delta header fix continuation below; it is
+never accepted as an ordinary backfill dispatch and never starts Phases 1–5.
+
 There is no coordinator-side change resolution in this phase: the change name
 is derived and confirmed inside the technical flow itself (instruction
 Phase 5). Payloads are therefore pre-resolution shapes — they omit
@@ -189,6 +194,32 @@ that failure.
 This execution route does not change the ordinary route: without
 `direct_build_mode: prepare` and the explicit `--direct-build-execute` continuation,
 schema validation and every final write remain coordinator-owned.
+
+## Delta header fix continuation
+
+The archive coordinator may dispatch this worker once with a narrow
+header-fix envelope whose first line is exactly
+`--fix-delta-headers <change-name>`; the remaining content is the verbatim
+archive CLI failure plus the cited `### Requirement:` headers. Strip the
+marker line and treat the remainder as the sole fix input: this is not a new
+backfill run and Phases 1–5 do not execute.
+
+Scope is headers only — never a full regeneration:
+
+- Read the on-disk deltas `openspec/changes/<name>/specs/*/spec.md` and the
+  matching mains `openspec/specs/<capability>/spec.md`.
+- Reclassify ONLY the cited requirements per the Phase 6c existence rule
+  (move each complete requirement block, scenarios included, between the
+  `## ADDED` / `## MODIFIED` / `## REMOVED Requirements` sections of the same
+  capability file; remove a delta section header left empty by the move;
+  never invent, delete, or reword a requirement).
+- Return the corrected spec CONTENT as payload text with the confirmed change
+  name, exactly like draft composition; never write any file — the archive
+  coordinator validates and writes. Requirements outside the cited set stay
+  byte-identical.
+
+This continuation keeps the ordinary read-only posture: no file writes and no
+state-changing git commands.
 
 ## Absolute mutation prohibition outside Direct Build (unattended) execution
 
