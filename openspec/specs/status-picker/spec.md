@@ -3,9 +3,7 @@
 ## Purpose
 
 The status-picker capability defines the dedicated change-name picker instruction used by `/sai-status` to resolve a missing change name. A trimmed, non-empty invocation-envelope `arguments_value` is authoritative; when it is empty, the capability uses `openspec list --json` and adds a "See all" option on the 2+ branch for bulk status.
-
 ## Requirements
-
 ### Requirement: sai-status uses a dedicated status-picker
 
 `sai-status` SHALL resolve a missing change name via the dedicated `sai/policies/status-picker.md` instruction rather than the shared `change-picker.md`. `status-picker.md` SHALL use the invocation envelope's only request field: a trimmed, non-empty `arguments_value` is authoritative and the 0/1/N fallback runs only when it is empty. `openspec list --json` SHALL remain the sole source for that fallback, followed by resolved-name substitution. Resolution SHALL NOT scan conversation history or require a labelled line. No other `sai-*` command SHALL fetch `status-picker.md`.
@@ -17,7 +15,6 @@ The status-picker capability defines the dedicated change-name picker instructio
 #### Scenario: change name already provided is a no-op
 - **WHEN** `/sai-status` is invoked with a non-empty trimmed `arguments_value`
 - **THEN** `status-picker.md` is a no-op — no `openspec list --json` call or user prompt is made, and the single-change panel is rendered for the provided change
-
 
 ### Requirement: status-picker 0-change and 1-change branches match change-picker
 
@@ -53,8 +50,13 @@ On the two-or-more-changes branch, `status-picker.md` SHALL present a closed-cho
 
 ### Requirement: status-picker preserves the read-only invariant
 
-`status-picker.md` SHALL NOT create, modify, or delete any file under `openspec/` or elsewhere. Its only side effects SHALL be read-only `openspec` CLI calls, local file reads, and presenting the picker prompt.
+`status-picker.md` SHALL NOT create, modify, or delete any file under `openspec/` or elsewhere. Its only side effects SHALL be running `sai/tools/change-picker.js` with the read-only `openspec list --json` call that tool makes, local file reads, presenting the picker prompt, and — on "See all" — printing the `> BULK-MODE ACTIVE` signal line as conversation text.
 
 #### Scenario: no writes during resolution or See all
 - **WHEN** `status-picker.md` runs any branch, including "See all"
 - **THEN** no file under any `openspec/` path (nor `.openspec.yaml`) is created, modified, or deleted
+
+#### Scenario: the tool invocation adds no write
+- **WHEN** `status-picker.md` resolves a change name by running `node <tool-path> resolve "<arguments_value>" --bulk-option --json --cwd <project-root>`
+- **THEN** the only observable effect is the tool's read-only `openspec list --json` call and its reported outcome
+
