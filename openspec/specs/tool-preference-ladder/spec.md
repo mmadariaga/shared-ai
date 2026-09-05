@@ -3,9 +3,7 @@
 ## Purpose
 
 Prioritizes the most suitable research tools available in the explorer's environment: `codegraph` structural queries first, `git grep` second, and direct disk tools (Glob/Grep/Read) as the last fallback.
-
 ## Requirements
-
 ### Requirement: Fixed research-tool preference order
 
 When researching the project, the explorer SHALL prefer research tools in a fixed order: codegraph levels 1a and 1b first, git grep second, and direct disk tools last. When `codegraph_*` MCP tools are present in the session, structural questions — where something is defined, what calls it, what a change would affect — SHALL go to codegraph via the MCP tool (level 1a) before any text search. When the MCP tool is absent but the `codegraph` binary is on PATH and shell is available, the same structural questions SHALL invoke `codegraph explore` via shell (level 1b). When shell and git are available, textual searches SHALL run through `git grep` via shell. Glob, Grep, and direct file reads are the final fallback when neither earlier level is available or neither answered the question. Discard logging distinguishes level 1a (MCP) from level 1b (CLI) so that both subroutes are observable.
@@ -28,35 +26,35 @@ When researching the project, the explorer SHALL prefer research tools in a fixe
 
 ### Requirement: Conditional skipping of unavailable levels
 
-Each ladder level SHALL be evaluated conditionally and skipped when its availability precondition fails. When a level is skipped, a discard log entry SHALL be emitted with the level number and a plain-English reason. When `codegraph_*` MCP tools are absent from the session AND either shell is unavailable OR the `codegraph` binary is not on PATH, level 1 is skipped and a discard reason is logged. When shell or git is unavailable, level 2 is skipped and a discard reason is logged. Research falls directly to Glob/Grep/Read when neither earlier level is available. The wording of every level SHALL remain presence-based and conditional — never an unconditional instruction to call a tool that may not exist.
+Each ladder level SHALL be evaluated conditionally and skipped when its availability precondition fails with a discard entry logged. Discard logging SHALL distinguish level 1a from level 1b and SHALL be emitted independently per execution segment under the 40-call ceiling.
 
 #### Scenario: Codegraph absent from the session
-- **WHEN** the explorer runs in a session where `codegraph_*` MCP tools are not present AND either shell is unavailable OR `codegraph` binary is not on PATH
-- **THEN** level 1 is skipped and a discard entry is logged with `reason: "codegraph MCP tool not available"` or a shell/binary-related reason
+- **WHEN** the explorer runs where codegraph MCP tools are absent and shell or binary is unavailable
+- **THEN** level 1 is skipped with a discard reason logged
 
 #### Scenario: Shell or git unavailable
 - **WHEN** shell or git is unavailable inside the explorer runtime
-- **THEN** level 2 is skipped and a discard entry is logged with appropriate reason (`shell unavailable`, `git not on PATH`, or `working tree not a git repository`)
+- **THEN** level 2 is skipped with an appropriate shell or git reason logged
 
 #### Scenario: Discard logging distinguishes level 1a from level 1b
-- **WHEN** the `codegraph_explore` MCP tool is absent but `codegraph` binary is on PATH
-- **THEN** a discard entry distinguishes this scenario from the MCP-only absence case (reason: `codegraph binary not on PATH` vs `codegraph MCP tool not available`)
+- **WHEN** the codegraph_explore MCP tool is absent but the codegraph binary is on PATH
+- **THEN** a discard entry distinguishes CLI success from MCP absence
 
 #### Scenario: Discard logging emitted per execution segment
-- **WHEN** the explorer continues into a second execution segment under the 30-call ceiling
+- **WHEN** the explorer continues into a second execution segment under the 40-call ceiling
 - **THEN** ladder_discards is emitted independently per segment with appropriate reasons for that segment
 
 ### Requirement: The ladder governs only research-tool choice
 
-The tool-preference ladder SHALL govern only the choice of research tools and SHALL NOT modify the directed out-of-root access rules, structured scope escalation, or the per-segment tool-call ceiling defined elsewhere in the policy.
+The tool-preference ladder SHALL govern only research-tool choice and SHALL NOT modify directed out-of-root access, scope escalation, or the per-segment ceiling. Tool selection SHALL be bounded by at most 40 calls per execution segment.
 
 #### Scenario: Out-of-root need discovered while following the ladder
 - **WHEN** following the ladder exposes a concrete filesystem need outside the project root
-- **THEN** the need is handled exclusively through the existing directed-access and structured-scope-escalation rules, and the ladder authorizes no additional access
+- **THEN** the need is handled exclusively through directed-access and escalation with no extra ladder access
 
 #### Scenario: Tool choice does not spend beyond the ceiling
 - **WHEN** the explorer selects tools according to the ladder
-- **THEN** the selection is bounded by the unchanged per-segment tool-call ceiling of at most 30 calls per execution segment
+- **THEN** the selection stays bounded by at most 40 calls per execution segment
 
 ### Requirement: Ladder precedence over caller tool prescriptions
 
@@ -73,3 +71,4 @@ A caller prompt naming a specific research tool, mentioning a procedure, or pres
 #### Scenario: Shell operation other than git grep or codegraph is refused
 - **WHEN** the explorer is asked to run a shell command other than `git grep` or `codegraph explore`
 - **THEN** the explorer does not execute it and emits a discard entry with `reason: "shell operation refused: <description>"`
+

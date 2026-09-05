@@ -2,9 +2,7 @@
 
 ## Purpose
 TBD - created by syncing change claude-budget-agent-model-tunables. Update Purpose after archive.
-
 ## Requirements
-
 ### Requirement: Managed Claude generic agent sources
 
 The repository SHALL provide managed Claude generic agent sources at `agents/claude/budget-explorer.md`, `agents/claude/budget-executor.md`, and `agents/claude/budget-subagent.md`, mirroring the three opencode roles. Each file SHALL declare a `name` matching its basename, a role description, and tunable `model` and `effort` frontmatter lines. The shipped seed values SHALL be `model: haiku` and `effort: low`; because the customization catalog's `haiku` entry carries no efforts array, the seed effort is the shipped constant, preserved and hand-editable under the tunable-seed lifecycle. The `budget-explorer` source SHALL additionally declare a capability that reproduces the read-only profile — no file writes, read and search tools only, plus `Skill` to execute its fetch bootstrap — so the harness enforces the explorer's read-only guarantee instead of prose. The body of each source SHALL begin with `Fetch @skills/fetch/SKILL.md` followed by exactly one established Fetch directive targeting the corresponding neutral behavior policy: `budget-explorer.md` SHALL fetch `@sai/policies/explore-agent.md`, `budget-executor.md` SHALL fetch `@sai/policies/executor-agent.md`, and `budget-subagent.md` SHALL fetch `@sai/policies/budget-agent.md`. The sources SHALL NOT contain hardcoded model tiers, per-spawn model parameters, or harness-specific registration.
@@ -105,19 +103,15 @@ Every `subagent_type` literal that names a Claude budget agent SHALL resolve to 
 
 ### Requirement: Claude explorer tool-call caps collapse to a single ceiling
 
-The Claude `budget-explorer` skill SHALL declare a single per-spawn tool-call ceiling of 30 calls for explore spawns and SHALL NOT declare the retired lookup 10 / audit 30 class split. Callers SHALL remain free to tighten the ceiling below 30 for a specific dispatch — for example `sai/commands/backfill/instructions.md` keeps its 10-call lookup cap.
+The Claude budget-explorer skill SHALL declare a single per-spawn tool-call ceiling of 40 calls for explore spawns and SHALL NOT declare a lookup audit class split. Callers SHALL remain free to tighten the ceiling below 40 for a specific dispatch.
 
 #### Scenario: single ceiling replaces the class split
-
-- **WHEN** the `budget-explorer` skill's tool-call cap guidance is consulted
-- **THEN** exactly one per-spawn ceiling of 30 calls is declared
-- **AND** no lookup/audit class split is described
+- **WHEN** the budget-explorer skill tool-call cap guidance is consulted
+- **THEN** exactly one per-spawn ceiling of 40 calls is declared with no class split described
 
 #### Scenario: callers may tighten below the ceiling
-
-- **WHEN** a caller declares a stricter cap (for example 10 calls) for a specific dispatch
-- **THEN** the stricter cap governs that dispatch
-- **AND** the skill's 30-call ceiling remains the default for every other dispatch
+- **WHEN** a caller declares a stricter cap for a specific dispatch
+- **THEN** the stricter cap governs that dispatch while the 40-call ceiling stays default
 
 ### Requirement: Claude haiku-target customization materializes model-only overrides
 
@@ -132,3 +126,4 @@ When a Claude customization run confirms a target whose selected model is `haiku
 
 - **WHEN** the menu customizes a haiku target
 - **THEN** the user-global managed source file's `model` and `effort` lines remain unchanged
+

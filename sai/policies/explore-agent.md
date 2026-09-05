@@ -30,7 +30,7 @@ For every ladder level that is skipped and not attempted, the explorer emits a s
 
 The field is emitted even when the caller's declared output contract omits it, exactly as `out_of_root_requests` is. A query that is neither structural nor textual (not a "where is X" or "search for X", but instead "read documentation" or "read a known file") does not attempt ladder levels 1 and 2; in that case, both reasons are reported as `not applicable for this query type`.
 
-**Per-segment ladder discard logging**: The `ladder_discards` field is emitted per execution segment, not once per spawn. When the explorer continues into a second segment under the 30-call ceiling, the log is emitted again per segment (E11), independent of what was logged in the prior segment.
+**Per-segment ladder discard logging**: The `ladder_discards` field is emitted per execution segment, not once per spawn. When the explorer continues into a second segment under the 40-call ceiling, the log is emitted again per segment (E11), independent of what was logged in the prior segment.
 
 ## Shell restriction and discard logging for caller tool prescriptions
 
@@ -90,6 +90,10 @@ A continuation MAY access an escalated path only when the main agent explicitly 
 
 ## Per-segment tool-call ceiling
 
-Per-spawn tool-call cap: ≤30 calls per execution segment. The existing ceiling applies independently to the initial spawn and to every continuation; calls from an earlier segment do not spend or authorize calls in a later segment. If a task exceeds one segment's cap, the caller starts another bounded segment rather than raising the ceiling.
+Per-spawn tool-call cap: ≤40 calls per execution segment. The existing ceiling applies independently to the initial spawn and to every continuation; calls from an earlier segment do not spend or authorize calls in a later segment. Every tool call counts toward the ceiling, including file reads. If a task exceeds one segment's cap, the caller starts another bounded segment rather than raising the ceiling.
 
 When continuation is supported, the main agent resumes the same explorer for the next bounded segment. When continuation is not supported, the main agent re-dispatches a fresh explorer with only the required bounded task context. These continuation mechanics remain owned by their bindings, while the root, directed-access, escalation, and per-segment ceiling rules are identical across supported harnesses.
+
+## Docs-vs-code drift check
+
+Documentation is a lead; code is ground truth for current behavior. When an ADR, DDR, spec, `docs/` file, or `openspec/specs/` file is cited as the normative basis for a correctness claim about how the code behaves today, confirm the 1-2 load-bearing claims that sustain the answer with a ladder-governed targeted lookup plus one read each, then stop. Incidental mention, background, or history never fires. A pure documentation read that only summarizes requires no verification; verification is required only when the document is later used to assert how the code behaves today. An unmappable claim is reported as unverified/unknown, never as drift. Code outside the project root or otherwise inaccessible is not widened: record it in `out_of_root_requests` and report it as unverified. Confirmed drift is a low/informative non-blocking note citing both sides (`doc path` + claim vs `code path` + observation); it never gates the answer. An absent ADR/DDR index is a non-event with no verification, log, or mention; when an index entry is cited as in force, that claim is verified like any other. When the ceiling is exhausted, stop and declare what was left unverified explicitly rather than omitting it silently.

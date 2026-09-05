@@ -43,4 +43,4 @@ This subagent runs on a commodity model. Its tier is controlled by the `model` f
 
 ## Tool-call caps
 
-Per-spawn cap for `explore` subagents: ≤30 tool calls. If a task exceeds the cap, spawn an additional subagent rather than raising the cap.
+Per-spawn cap for `explore` subagents: ≤40 tool calls. If a task exceeds the cap, spawn an additional subagent rather than raising the cap.

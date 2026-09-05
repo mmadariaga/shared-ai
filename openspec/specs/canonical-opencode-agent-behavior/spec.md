@@ -2,9 +2,7 @@
 
 ## Purpose
 TBD - created by syncing change canonicalize-opencode-agent-behavior. Update Purpose after archive.
-
 ## Requirements
-
 ### Requirement: Canonical generic-agent behavior policies
 The repository SHALL provide behavior-only policy files at `sai/policies/budget-agent.md`, `sai/policies/executor-agent.md`, and `sai/policies/explore-agent.md`. Each file SHALL be the canonical source for the behavior of the correspondingly named generic-agent role of either supported harness — the opencode agents `agents/opencode/{explore,executor,budget}.md` and the Claude agents `agents/claude/{budget-explorer,budget-executor,budget-subagent}.md` — SHALL be independently fetchable through the `sai/policies/` namespace, and SHALL contain no agent frontmatter, model selection, installer logic, native harness import, or harness-specific registration.
 
@@ -53,23 +51,20 @@ The executor policy SHALL preserve the execute-only command-runner contract: run
 - **AND** it does not retry or modify files to force success
 
 ### Requirement: Explore behavior remains canonical
-The explore policy SHALL preserve the read-only research contract: use a clean context for lookup and documentation research, do not write files, return only the caller's structured summary contract, do not dump raw file contents or unfiltered search output, and respect a maximum of 30 tool calls per spawn. Every spawn MUST declare in its prompt: the exact fields expected in the response, a hard length cap stated as a word or line count, and an explicit `no raw file contents` rule (or `verbatim excerpts required` for audit mode).
+
+The explore policy SHALL preserve the read-only research contract with clean context, no file writes, caller-owned structured summaries, no raw dumps, and a maximum of 40 tool calls per spawn. Every spawn SHALL declare exact response fields, a hard length cap, and an explicit no raw file contents rule.
 
 #### Scenario: explore performs bounded research
-- **WHEN** the explore agent receives a read-only lookup or research task with a caller-declared output contract
-- **THEN** it reads and searches only as needed for that task
-- **AND** it returns the declared structured summary within the stated cap
-- **AND** it performs no file write
+- **WHEN** the explore agent receives a read-only lookup with a caller-declared output contract
+- **THEN** it reads only as needed and returns the declared summary within the 40-call cap with no writes
 
 #### Scenario: explore rejects an incomplete output contract
-- **WHEN** a caller attempts to spawn explore without exact response fields, a hard word-or-line cap, or the required raw-content instruction
-- **THEN** the dispatch is non-compliant and does not start as a valid explore research run
-- **AND** the caller is asked to provide the missing output-contract elements
+- **WHEN** a caller attempts to spawn explore without exact fields, a hard cap, or the raw-content instruction
+- **THEN** the dispatch is non-compliant and the caller is asked to provide the missing contract elements
 
 #### Scenario: explore reaches its tool-call cap
-- **WHEN** the research task would exceed 30 tool calls
-- **THEN** the explore behavior stops at the cap
-- **AND** the caller is told to spawn an additional explore agent rather than raising the cap
+- **WHEN** the research task would exceed 40 tool calls
+- **THEN** the explore behavior stops at the cap and the caller spawns an additional explore agent
 
 ### Requirement: Generic agents of both harnesses delegate behavior through Fetch
 Each generic agent source of both harnesses SHALL retain its managed frontmatter and SHALL have a body beginning with its harness-specific fetch-skill bootstrap followed by exactly one established Fetch directive: under `agents/opencode/`, `explore.md` SHALL fetch `@sai/policies/explore-agent.md`, `executor.md` SHALL fetch `@sai/policies/executor-agent.md`, and `budget.md` SHALL fetch `@sai/policies/budget-agent.md`; under `agents/claude/`, `budget-explorer.md` SHALL fetch `@sai/policies/explore-agent.md`, `budget-executor.md` SHALL fetch `@sai/policies/executor-agent.md`, and `budget-subagent.md` SHALL fetch `@sai/policies/budget-agent.md`. The wrappers SHALL use the Fetch mechanism rather than a native harness import and SHALL not duplicate the canonical behavior body.
@@ -131,3 +126,4 @@ Each generic agent source of both harnesses SHALL retain its managed frontmatter
 - **THEN** the Fetch line remains present and still targets the canonical `sai/policies/<name>-agent.md` policy
 - **AND** the appended project-specific instructions remain intact after the Fetch line
 - **AND** the selected `model` and `effort` values remain unchanged
+

@@ -1,7 +1,7 @@
 ---
 name: budget-explorer
 description: >
-  Binds "cheap research subagent" to Claude Code subagent dispatch routed through the budget-explorer agent file. Read-only research and lookup with a 30 tool calls ceiling and output-contract discipline; multi-step synthesis stays with the main agent.
+  Binds "cheap research subagent" to Claude Code subagent dispatch routed through the budget-explorer agent file. Read-only research and lookup with a 40 tool calls ceiling and output-contract discipline; multi-step synthesis stays with the main agent.
   TRIGGER when: "budget explorer", "cheap explorer", "budget mode", "cheap mode", "low-cost mode", "low cost mode", "economy mode"
 license: MIT
 compatibility: claude
@@ -28,7 +28,7 @@ Use this agent for bounded read-only lookup, research, and documentation reads. 
 
 ## Tool-call ceiling
 
-The default maximum is 30 tool calls per spawn. A caller may declare a smaller cap for one dispatch. Spawn another bounded agent rather than raising the maximum.
+The default maximum is 40 tool calls per spawn. A caller may declare a smaller cap for one dispatch. Spawn another bounded agent rather than raising the maximum.
 
 ## Output contract
 
