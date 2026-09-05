@@ -99,7 +99,6 @@ The customization logic SHALL resolve task complexity by complete family-qualifi
 - **WHEN** complexity is resolved for targets with family-qualified identities such as `agent:budget` and `command:sai-2-design`
 - **THEN** each lookup uses its complete identity rather than a bare target name, and the resulting display value remains one of the permitted arrow levels
 
-
 ### Requirement: Shared settings selection
 After the target-selection checklist confirms a non-empty subset and before any local override is created, the flow SHALL invoke the selected harness's settings selector exactly once for the whole confirmed subset in that customization pass. The collected settings choices — a model and an optional effort choice for Claude Code, and a discovered model with an optional variant for OpenCode — SHALL be passed to the per-target local-override operation once for every selected target. A per-target skipped result means the operation was attempted but its source was unavailable; it SHALL not be treated as a settings-selector failure or prevent later targets from being attempted. In `All` scope, the selector SHALL run once and the same settings SHALL be passed to every marked target across all selected families, with no per-family differentiation within a pass. Because the model-customization checklist rejects empty confirmation, the settings selector SHALL never be invoked for an empty selection.
 
@@ -373,3 +372,25 @@ The `agent-customization-menu` capability SHALL be retired: its main spec SHALL 
 #### Scenario: Active home is the renamed capability
 - **WHEN** the change is implemented
 - **THEN** the restated requirements are active under `openspec/specs/model-customization-menu/spec.md` and under no other capability
+
+### Requirement: Utility first-customization source root
+The `materializeLocalOverride` operation SHALL resolve a `utility` target without a project-local destination to the global commands directory on both harnesses, and SHALL persist the selected settings there.
+
+#### Scenario: Utility without local override persists from global commands
+- **WHEN** a utility target without a project-local override is customized with selected settings
+- **THEN** the operation SHALL write the project-local override under the harness commands directory with the selected model and tuning value and report persisted
+
+### Requirement: Utility existing-override preservation without agent fallback
+The operation SHALL patch an existing project-local utility override in place preserving body and non-tunable frontmatter, and SHALL NOT fall back to a same-named file in the global agents directory.
+
+#### Scenario: Existing utility override is patched and decoy source is ignored
+- **WHEN** a utility target has an existing project-local override or only a same-named global agents file exists
+- **THEN** the operation SHALL update the local file when present and SHALL report skipped missing-source without creating a file when only the agents decoy exists
+
+### Requirement: Missing-source and family source-root preservation
+The operation SHALL still return skipped missing-source with its diagnostic and create no file when the global commands source is genuinely absent, and SHALL leave worker, agent, and command source roots unchanged.
+
+#### Scenario: Absent source skips and other families keep their roots
+- **WHEN** a utility source is genuinely absent or a worker, agent, or command target is customized
+- **THEN** the utility SHALL report skipped missing-source without breaking the loop and the other families SHALL persist from their existing source roots
+

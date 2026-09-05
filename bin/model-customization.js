@@ -212,7 +212,7 @@ function materializeLocalOverride({
     if (destinationExists) {
       currentText = fs.readFileSync(destination, 'utf8');
     } else {
-      const sourceRoot = family === 'command' ? globalCommandRoot : globalAgentRoot;
+      const sourceRoot = family === 'command' || family === 'utility' ? globalCommandRoot : globalAgentRoot;
       const source = path.join(sourceRoot, `${agentName}.md`);
       if (!fs.existsSync(source)) {
         return {
