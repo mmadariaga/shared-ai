@@ -637,6 +637,25 @@
       "drift": "content"
     },
     {
+      "id": "sai-tools",
+      "source": "sai/tools",
+      "destination": {
+        "class": "sai",
+        "path": "tools"
+      },
+      "harnesses": [
+        "claude",
+        "opencode"
+      ],
+      "strategy": "copy",
+      "recursive": true,
+      "include": [
+        "**/*.js"
+      ],
+      "ownership": "managed",
+      "drift": "content"
+    },
+    {
       "id": "sai-command-runner",
       "source": "sai/orchestration/command-runner.md",
       "destination": {

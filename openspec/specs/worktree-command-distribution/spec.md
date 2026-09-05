@@ -3,9 +3,7 @@
 ## Purpose
 
 TBD: distribution of the `/sai-worktree` command across harness wrappers, shared body, registry, and installer.
-
 ## Requirements
-
 ### Requirement: Both harness wrappers ship together
 
 The change SHALL add `commands/claude/sai-worktree.md` and `commands/opencode/sai-worktree.md` together, so neither harness is left without the command. The claude wrapper SHALL include `Fetch @skills/fetch/SKILL.md` as the first line of its command body, before any `Fetch @sai/...` directive; the opencode wrapper SHALL include the distinct opencode fetch path and the `$ARGUMENTS` placement used by opencode wrappers.
@@ -20,7 +18,7 @@ The change SHALL add `commands/claude/sai-worktree.md` and `commands/opencode/sa
 
 ### Requirement: Shared slimmed body and instruction
 
-The shared command body lives at `sai/commands/worktree/body.md` — opening directly with a `<TASK>` block (no Isolation Mode block; clean-session enforcement belongs to the harness boot adapters' preamble) that loads safe-operations as its sole behaviour and the phase instruction plus `sai/policies/remember.md` as instructions — alongside the instruction body at `sai/commands/worktree/instructions.md`. The body carries no budget fetch because the worktree flow dispatches no subagents.
+The shared command body SHALL live at `sai/commands/worktree/body.md` — opening directly with a `<TASK>` block (no Isolation Mode block; clean-session enforcement belongs to the harness boot adapters' preamble) that loads safe-operations as its sole behaviour and the phase instruction plus `sai/policies/remember.md` as instructions — alongside the instruction body at `sai/commands/worktree/instructions.md`. The body carries no budget fetch because the worktree flow dispatches no subagents.
 
 #### Scenario: Body starts with the TASK block
 
@@ -50,7 +48,7 @@ The existing `claude-commands`, `opencode-commands`, `sai-commands`, and `sai-in
 
 ### Requirement: OpenSpec prerequisites omitted and the omission documented
 
-The `/sai-worktree` command SHALL NOT perform the OpenSpec prerequisite checks (the `openspec` binary in PATH, the `openspec/` directory, and `schema: sai-workflow` in `openspec/config.yaml`), because it neither reads nor writes `openspec/`, and the omission SHALL be documented in `AGENTS.md` so it is not later re-added. The same documentation SHALL also record the command's one additional best-effort, non-fatal post-creation `codegraph init <worktree-path>` indexing pass, which likewise requires no OpenSpec prerequisites.
+The `/sai-worktree` command SHALL NOT perform the OpenSpec prerequisite checks (the `openspec` binary in PATH, the `openspec/` directory, and `schema: sai-workflow` in `openspec/config.yaml`), because it neither reads nor writes `openspec/`, and the omission SHALL be documented in `AGENTS.md` so it is not later re-added. The same documentation SHALL also record that the command runs its whole state machine through `sai/tools/worktree.js` — the `inventory`, `create`, `index`, `remove`, and `delete-branch` sub-commands, always with `--json` and `--cwd` — and that the Create action performs one best-effort, non-fatal post-creation indexing step by printing the pre-announcement returned by `create`, then running `index <worktree-path>` and reporting a single one-line result, which likewise requires no OpenSpec prerequisites.
 
 #### Scenario: Runs in a project without openspec
 - **WHEN** the command is invoked in a repository with no `openspec/` directory
@@ -58,4 +56,5 @@ The `/sai-worktree` command SHALL NOT perform the OpenSpec prerequisite checks (
 
 #### Scenario: The exception is documented
 - **WHEN** `AGENTS.md` is read
-- **THEN** it names `/sai-worktree` alongside `sai-commit` as a command that works without the OpenSpec prerequisites, records its safe-operations wrapper count including the new wrapper, and additionally documents the best-effort non-fatal `codegraph init <worktree-path>` step announced before running and reported by exactly one one-line result notice whether it succeeds, the binary is absent, or it fails
+- **THEN** it names `/sai-worktree` alongside `sai-commit` as a command that works without the OpenSpec prerequisites, records its safe-operations wrapper count including the new wrapper, states that the command runs through `sai/tools/worktree.js` with its five sub-commands and the `--json` and `--cwd` flags, and documents the best-effort non-fatal indexing step as a pre-announcement returned by `create` followed by an `index <worktree-path>` call reported by exactly one one-line result whether it succeeds, the binary is absent, or it fails
+

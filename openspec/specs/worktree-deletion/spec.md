@@ -3,9 +3,7 @@
 ## Purpose
 
 TBD: safe worktree deletion for the `/sai-worktree` command.
-
 ## Requirements
-
 ### Requirement: Main and active worktrees are never deletion targets
 
 The `/sai-worktree` command SHALL offer as deletion targets only worktrees other than the main worktree and the worktree the command is running in; both SHALL be excluded from the deletion choices.
@@ -56,16 +54,21 @@ After removing a worktree, the `/sai-worktree` command SHALL ask — as its own 
 
 ### Requirement: Unmerged-commits warning before branch deletion
 
-When the user confirms branch deletion, the `/sai-worktree` command SHALL warn before deleting when the branch holds commits not merged into the main worktree's branch, and SHALL require a further explicit confirmation to delete it anyway. When the main worktree is in detached HEAD state and has no branch, the command SHALL skip the unmerged-commits check and SHALL state in the branch-deletion prompt that the check was skipped.
+When the user confirms branch deletion, the `/sai-worktree` command SHALL run the tool's `delete-branch` sub-command, which SHALL refuse with `reason: "unmerged"` when the branch holds commits not merged into the main worktree's branch; the command SHALL then warn using the refusal `message` and SHALL require a further explicit confirmation before re-invoking `delete-branch` with `--force`. When the main worktree is in detached HEAD state and has no branch, the tool SHALL refuse with `reason: "merge-check-skipped"` because the unmerged-commits check cannot run, and the command SHALL re-present the branch-deletion question stating that the check was skipped, passing `--force` only on that informed confirmation.
 
 #### Scenario: Branch is fully merged
 - **WHEN** the branch to delete holds no commits absent from the main worktree's branch
-- **THEN** the branch is deleted on the confirmation without an additional warning
+- **THEN** `delete-branch` exits 0 and the branch is deleted on the confirmation without an additional warning
 
 #### Scenario: Branch holds unmerged commits
 - **WHEN** the branch to delete holds commits not present in the main worktree's branch
-- **THEN** the command warns about the unmerged commits and requires a further explicit confirmation before deleting the branch
+- **THEN** `delete-branch` refuses with `reason: "unmerged"` without deleting anything, and the command warns about the unmerged commits and requires a further explicit confirmation before re-invoking it with `--force`
 
 #### Scenario: Main worktree is detached
-- **WHEN** the branch-deletion question is asked while the main worktree is in detached HEAD state and has no branch
-- **THEN** the unmerged-commits check is skipped and the branch-deletion prompt states that the check was skipped, instead of silently proceeding
+- **WHEN** the branch-deletion question is confirmed while the main worktree is in detached HEAD state and has no branch
+- **THEN** `delete-branch` refuses with `reason: "merge-check-skipped"` without deleting anything, and the command re-presents the branch-deletion question stating that the check was skipped, instead of silently proceeding
+
+#### Scenario: The user declines after the warning
+- **WHEN** the user declines the further confirmation after an unmerged or skipped-check refusal
+- **THEN** the branch remains, no `--force` invocation is made, and the command returns to the selector
+
