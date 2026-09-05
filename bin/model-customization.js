@@ -71,6 +71,24 @@ const DEFAULT_OPENCODE_GLOBAL_AGENT_ROOT = path.join(os.homedir(), '.config', 'o
 const DEFAULT_CLAUDE_GLOBAL_COMMAND_ROOT = path.join(os.homedir(), '.claude', 'commands');
 const DEFAULT_OPENCODE_GLOBAL_COMMAND_ROOT = path.join(os.homedir(), '.config', 'opencode', 'commands');
 
+function resolveOpencodeBaseForCustomization() {
+  try {
+    const flow = require('./install-flow.js');
+    if (flow && typeof flow.resolveOpencodeBase === 'function') return flow.resolveOpencodeBase();
+  } catch {
+    // Fall through to the hardcoded default when the shared resolver is unavailable.
+  }
+  return path.join(os.homedir(), '.config', 'opencode');
+}
+
+function defaultOpencodeGlobalAgentRoot() {
+  return path.join(resolveOpencodeBaseForCustomization(), 'agents');
+}
+
+function defaultOpencodeGlobalCommandRoot() {
+  return path.join(resolveOpencodeBaseForCustomization(), 'commands');
+}
+
 const CLAUDE_SETTINGS_CATALOG = Object.freeze({
   models: Object.freeze([
     Object.freeze({ model: 'opus', efforts: Object.freeze(['low', 'medium', 'high', 'xhigh', 'max']) }),
@@ -630,17 +648,19 @@ function createClaudeAdapter({
 function createOpencodeAdapter({
   projectPath = process.cwd(),
   packageRoot = DEFAULT_PACKAGE_ROOT,
-  globalAgentRoot = DEFAULT_OPENCODE_GLOBAL_AGENT_ROOT,
-  globalCommandRoot = DEFAULT_OPENCODE_GLOBAL_COMMAND_ROOT,
+  globalAgentRoot,
+  globalCommandRoot,
   loadManifest: loadManifestOverride = loadInstallManifest,
   promptChoice = promptSelect,
   runCommand = defaultRunCommand,
 } = {}) {
+  const effectiveAgentRoot = globalAgentRoot !== undefined ? globalAgentRoot : defaultOpencodeGlobalAgentRoot();
+  const effectiveCommandRoot = globalCommandRoot !== undefined ? globalCommandRoot : defaultOpencodeGlobalCommandRoot();
   return {
     enumerateWorkers: () => enumerateWorkers(packageRoot, loadManifestOverride, 'opencode'),
     enumerateCommands: () => enumerateCommands(packageRoot, loadManifestOverride, 'opencode'),
     enumerateTargets: () => enumerateProjectionTargets(packageRoot, loadManifestOverride, 'opencode'),
-    effectiveSetting: (targetEntry) => effectiveSetting(targetEntry, projectPath, globalAgentRoot, globalCommandRoot, 'opencode'),
+    effectiveSetting: (targetEntry) => effectiveSetting(targetEntry, projectPath, effectiveAgentRoot, effectiveCommandRoot, 'opencode'),
     selectSettings: subsetLabel => opencodeSelectSettings(subsetLabel, promptChoice, runCommand),
     createLocalOverride: (target, settings) => {
       const family = typeof target === 'string' ? 'worker' : target.family;
@@ -653,8 +673,8 @@ function createOpencodeAdapter({
         agentName: targetName,
         settings,
         projectPath,
-        globalAgentRoot,
-        globalCommandRoot,
+        globalAgentRoot: effectiveAgentRoot,
+        globalCommandRoot: effectiveCommandRoot,
         harness: 'opencode',
         family,
       });
@@ -670,13 +690,15 @@ async function runPostSetupMenu({
   projectPath = process.cwd(),
   packageRoot = DEFAULT_PACKAGE_ROOT,
   claudeGlobalAgentRoot = DEFAULT_CLAUDE_GLOBAL_AGENT_ROOT,
-  opencodeGlobalAgentRoot = DEFAULT_OPENCODE_GLOBAL_AGENT_ROOT,
+  opencodeGlobalAgentRoot,
   claudeGlobalCommandRoot = DEFAULT_CLAUDE_GLOBAL_COMMAND_ROOT,
-  opencodeGlobalCommandRoot = DEFAULT_OPENCODE_GLOBAL_COMMAND_ROOT,
+  opencodeGlobalCommandRoot,
   isTTY = process.stdin.isTTY,
   promptChoice = promptSelect,
   promptChecklist = installFlowPromptChecklist,
 } = {}) {
+  const effectiveOpencodeAgentRoot = opencodeGlobalAgentRoot !== undefined ? opencodeGlobalAgentRoot : defaultOpencodeGlobalAgentRoot();
+  const effectiveOpencodeCommandRoot = opencodeGlobalCommandRoot !== undefined ? opencodeGlobalCommandRoot : defaultOpencodeGlobalCommandRoot();
   if (!isTTY) return skippedOutcome('non-tty');
 
   for (;;) {
@@ -733,8 +755,8 @@ async function runPostSetupMenu({
           ? module.exports.createOpencodeAdapter({
             projectPath,
             packageRoot,
-            globalAgentRoot: opencodeGlobalAgentRoot,
-            globalCommandRoot: opencodeGlobalCommandRoot,
+            globalAgentRoot: effectiveOpencodeAgentRoot,
+            globalCommandRoot: effectiveOpencodeCommandRoot,
             promptChoice,
           })
           : module.exports.createClaudeAdapter({

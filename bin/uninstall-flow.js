@@ -11,6 +11,7 @@ const {
   listMdFilesRecursive,
   CLAUDE_BASE,
   OPENCODE_BASE,
+  resolveOpencodeBase,
   promptYesNoReadline,
 } = require('./install-flow.js');
 const flow = require('./install-flow.js');
@@ -113,7 +114,7 @@ function enumerateClaude(destBase) {
 }
 
 function enumerateOpencode(destBase) {
-  const targetPath = destBase || OPENCODE_BASE;
+  const targetPath = destBase || (typeof resolveOpencodeBase === 'function' ? resolveOpencodeBase() : OPENCODE_BASE);
   return manifestEntries('opencode', { commands: path.join(targetPath, 'commands'), sai: path.join(targetPath, 'sai'), skills: path.join(targetPath, 'skills'), agents: path.join(targetPath, 'agents'), config: targetPath, root: targetPath }, targetPath);
 }
 

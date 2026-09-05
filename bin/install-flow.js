@@ -578,6 +578,78 @@ function writeVersionMarker(baseDir) {
 
 const CLAUDE_BASE = path.join(os.homedir(), '.claude');
 const OPENCODE_BASE = path.join(os.homedir(), '.config', 'opencode');
+const OPENCODE_SAI_PERMISSION_PATTERN_FALLBACK = '~/.config/opencode/sai/**';
+
+function parseOpencodeDebugPathsOutput(stdout) {
+  if (typeof stdout !== 'string') return null;
+  for (const rawLine of stdout.split('\n')) {
+    const line = rawLine.trim();
+    if (line === '') continue;
+    const match = /^config\s+(.+?)\s*$/.exec(line);
+    if (match) {
+      const value = match[1].trim();
+      if (value !== '') return value;
+    }
+  }
+  return null;
+}
+
+function resolveOpencodeBase({ spawnSync: spawnFn = childProcess.spawnSync, env: runEnv = process.env } = {}) {
+  try {
+    const result = spawnFn('opencode debug paths', { shell: true, encoding: 'utf8', env: runEnv });
+    if (!result || result.error || result.status !== 0 || typeof result.stdout !== 'string') return OPENCODE_BASE;
+    const parsed = parseOpencodeDebugPathsOutput(result.stdout);
+    if (!parsed) return OPENCODE_BASE;
+    return parsed;
+  } catch {
+    return OPENCODE_BASE;
+  }
+}
+
+function toPosixOpencodePath(value) {
+  return String(value).replace(/\\/g, '/');
+}
+
+function isDefaultOpencodeBase(candidate) {
+  if (typeof candidate !== 'string' || candidate === '') return false;
+  try {
+    const normalize = (v) => {
+      let n = path.normalize(v);
+      if (n.length > 1 && n.endsWith(path.sep)) n = n.slice(0, -1);
+      return process.platform === 'win32' ? n.toLowerCase() : n;
+    };
+    return normalize(candidate) === normalize(OPENCODE_BASE);
+  } catch {
+    return false;
+  }
+}
+
+function opencodeSaiPermissionPatternFor(opencodeBase) {
+  const base = opencodeBase || resolveOpencodeBase();
+  if (isDefaultOpencodeBase(base)) return OPENCODE_SAI_PERMISSION_PATTERN_FALLBACK;
+  const posix = toPosixOpencodePath(base).replace(/\/+$/, '');
+  return `${posix}/sai/**`;
+}
+
+function opencodeSaiProbeFor(opencodeBase) {
+  const pattern = opencodeSaiPermissionPatternFor(opencodeBase);
+  if (pattern.endsWith('/**')) return `${pattern.slice(0, -2)}__sai_probe__`;
+  return `${pattern}/__sai_probe__`;
+}
+
+function opencodeAgentsDisplayFor(opencodeBase) {
+  const base = opencodeBase || resolveOpencodeBase();
+  if (isDefaultOpencodeBase(base)) return '~/.config/opencode/agents/';
+  const posix = toPosixOpencodePath(base).replace(/\/+$/, '');
+  return `${posix}/agents/`;
+}
+
+function rewriteOpencodeConfigPrefixes(text, opencodeBase) {
+  const base = opencodeBase || resolveOpencodeBase();
+  if (isDefaultOpencodeBase(base)) return text;
+  const posix = toPosixOpencodePath(base).replace(/\/+$/, '');
+  return text.split('~/.config/opencode/').join(`${posix}/`);
+}
 
 const OPENCODE_INSTALL_CMD = 'npm i -g opencode-ai@latest';
 const CODEGRAPH_CLI_INSTALL_CMD = 'npm i -g @colbymchenry/codegraph';
@@ -1042,11 +1114,14 @@ function installClaude(destBase) {
   writeVersionMarker(targetPath);
 }
 
-function installOpencode(destBase) {
+function installOpencode(destBase, { spawnSync: spawnFn, env: runEnv } = {}) {
   assertHarnessCommandsUseOneStringEnvelope('opencode');
   validateOpencodeWorkerBindings();
   withOpencodeBindingValidationLock(assertInstalledMarkdownSourcesUseOneStringEnvelope);
-  const targetPath = destBase || OPENCODE_BASE;
+  const resolveOptions = {};
+  if (spawnFn !== undefined) resolveOptions.spawnSync = spawnFn;
+  if (runEnv !== undefined) resolveOptions.env = runEnv;
+  const targetPath = destBase || (Object.keys(resolveOptions).length > 0 ? resolveOpencodeBase(resolveOptions) : resolveOpencodeBase());
   const projections = expandForInstall('opencode', { base: targetPath });
   assertProjectionInputsUseOneStringEnvelope(projections, 'Opencode');
   cleanupRetiredProjections('opencode', { base: targetPath });
@@ -1055,17 +1130,19 @@ function installOpencode(destBase) {
   writeVersionMarker(targetPath);
 }
 
-function printOpencodeConfigMessage(base) {
+function printOpencodeConfigMessage(base, opencodeBaseForPattern) {
+  const pattern = opencodeSaiPermissionPatternFor(opencodeBaseForPattern);
+  const agentsDisplay = opencodeAgentsDisplayFor(opencodeBaseForPattern);
   console.log(`\nOpencode config already exists at ${base}. Verify that you have these settings properly configured:\n`);
   console.log('  "permission": {');
   console.log('    "external_directory": {');
-  console.log('      "~/.config/opencode/sai/**": "allow"');
+  console.log(`      "${pattern}": "allow"`);
   console.log('    }');
   console.log('  }');
-  console.log('\nThis narrow external-directory authorization is the only setting the installer merges into an existing config. The generic agents (explore, executor, budget) are managed agent files under ~/.config/opencode/agents/ and need no config entry.');
+  console.log(`\nThis narrow external-directory authorization is the only setting the installer merges into an existing config. The generic agents (explore, executor, budget) are managed agent files under ${agentsDisplay} and need no config entry.`);
 }
 
-const OPENCODE_SAI_PERMISSION_PATTERN = '~/.config/opencode/sai/**';
+const OPENCODE_SAI_PERMISSION_PATTERN = OPENCODE_SAI_PERMISSION_PATTERN_FALLBACK;
 const PERMISSION_ACTIONS = new Set(['allow', 'ask', 'deny']);
 
 function isPlainObject(value) {
@@ -1116,17 +1193,18 @@ function wildcardMatches(value, pattern) {
   return new RegExp(`^${expression}$`, 's').test(value);
 }
 
-function invalidPermissionResult(text, location, detail) {
+function invalidPermissionResult(text, location, detail, opencodeBaseForPattern) {
+  const pattern = opencodeSaiPermissionPatternFor(opencodeBaseForPattern);
   return {
     text,
     redundantKeys: [],
     messages: [
-      `OpenCode SAI permission: no change for ${OPENCODE_SAI_PERMISSION_PATTERN}; ${location} has invalid ${detail}; expected allow, ask, deny, or a rule object.`,
+      `OpenCode SAI permission: no change for ${pattern}; ${location} has invalid ${detail}; expected allow, ask, deny, or a rule object.`,
     ],
   };
 }
 
-function classifySaiPermission(permission, context) {
+function classifySaiPermission(permission, context, opencodeBaseForPattern) {
   if (permission === undefined) return { action: 'append' };
   if (typeof permission === 'string') {
     if (!PERMISSION_ACTIONS.has(permission)) {
@@ -1147,8 +1225,10 @@ function classifySaiPermission(permission, context) {
   }
   if (!isPlainObject(external)) return { invalid: ['permission.external_directory', 'shape'] };
 
-  const generated = normalizePermissionPattern(OPENCODE_SAI_PERMISSION_PATTERN, context);
-  const probe = normalizePermissionPattern('~/.config/opencode/sai/__sai_probe__', context);
+  const pattern = opencodeSaiPermissionPatternFor(opencodeBaseForPattern);
+  const probePattern = opencodeSaiProbeFor(opencodeBaseForPattern);
+  const generated = normalizePermissionPattern(pattern, context);
+  const probe = normalizePermissionPattern(probePattern, context);
   let equivalent = false;
   let equivalentCandidate;
   let effective;
@@ -1175,16 +1255,17 @@ function classifySaiPermission(permission, context) {
   return { action: equivalent ? 'unchanged' : 'append' };
 }
 
-function mergeOpencodeAgents(text, permissionContext = createPermissionMatchContext()) {
+function mergeOpencodeAgents(text, permissionContext = createPermissionMatchContext(), opencodeBaseForPattern) {
   if (!jsoncParser) return null;
   const { parse, modify, applyEdits } = jsoncParser;
   const errors = [];
   const root = parse(text, errors, { allowTrailingComma: true });
   if (errors.length > 0 || !isPlainObject(root)) return null;
 
-  const permissionState = classifySaiPermission(root.permission, permissionContext);
+  const pattern = opencodeSaiPermissionPatternFor(opencodeBaseForPattern);
+  const permissionState = classifySaiPermission(root.permission, permissionContext, opencodeBaseForPattern);
   if (permissionState.invalid) {
-    return invalidPermissionResult(text, permissionState.invalid[0], permissionState.invalid[1]);
+    return invalidPermissionResult(text, permissionState.invalid[0], permissionState.invalid[1], opencodeBaseForPattern);
   }
 
   const redundantKeys = isPlainObject(root.agent)
@@ -1201,7 +1282,7 @@ function mergeOpencodeAgents(text, permissionContext = createPermissionMatchCont
     }
     out = applyEdits(out, modify(
       out,
-      ['permission', 'external_directory', OPENCODE_SAI_PERMISSION_PATTERN],
+      ['permission', 'external_directory', pattern],
       'allow',
       { formattingOptions },
     ));
@@ -1215,16 +1296,16 @@ function mergeOpencodeAgents(text, permissionContext = createPermissionMatchCont
       ));
     }
     messages.push(
-      `OpenCode SAI permission: preserved ${permissionState.value} for ${OPENCODE_SAI_PERMISSION_PATTERN}; explicit user restriction prevents automatic SAI access.`,
+      `OpenCode SAI permission: preserved ${permissionState.value} for ${pattern}; explicit user restriction prevents automatic SAI access.`,
     );
   } else if (permissionState.action === 'preserve-scalar') {
     if (permissionState.value === 'allow') {
       messages.push(
-        `OpenCode SAI permission: preserved allow at ${permissionState.location}; existing broad user permission allows ${OPENCODE_SAI_PERMISSION_PATTERN}.`,
+        `OpenCode SAI permission: preserved allow at ${permissionState.location}; existing broad user permission allows ${pattern}.`,
       );
     } else {
       messages.push(
-        `OpenCode SAI permission: preserved ${permissionState.value} for ${OPENCODE_SAI_PERMISSION_PATTERN}; explicit user restriction prevents automatic SAI access.`,
+        `OpenCode SAI permission: preserved ${permissionState.value} for ${pattern}; explicit user restriction prevents automatic SAI access.`,
       );
     }
   }
@@ -1232,26 +1313,35 @@ function mergeOpencodeAgents(text, permissionContext = createPermissionMatchCont
   return { text: out, messages, redundantKeys };
 }
 
-function copyOpencodeConfig(destBase) {
-  const base = destBase || OPENCODE_BASE;
+function copyOpencodeConfig(destBase, { opencodeBaseForPattern, spawnSync: spawnFn, env: runEnv } = {}) {
+  const resolveOptions = {};
+  if (spawnFn !== undefined) resolveOptions.spawnSync = spawnFn;
+  if (runEnv !== undefined) resolveOptions.env = runEnv;
+  const hasResolveOverride = Object.keys(resolveOptions).length > 0;
+  const resolved = hasResolveOverride ? resolveOpencodeBase(resolveOptions) : resolveOpencodeBase();
+  const base = destBase || resolved;
+  const patternBase = opencodeBaseForPattern !== undefined ? opencodeBaseForPattern : resolved;
   const hasJson = fs.existsSync(path.join(base, 'opencode.json'));
   const hasJsonc = fs.existsSync(path.join(base, 'opencode.jsonc'));
 
   if (!hasJson && !hasJsonc) {
     const target = path.join(base, 'opencode.jsonc');
     copy(path.join(REPOSITORY_ROOT, 'configs', 'opencode.jsonc'), target);
-    const initial = fs.readFileSync(target, 'utf8');
-    const merged = mergeOpencodeAgents(initial);
+    let initial = fs.readFileSync(target, 'utf8');
+    const rewritten = rewriteOpencodeConfigPrefixes(initial, patternBase);
+    if (rewritten !== initial) fs.writeFileSync(target, rewritten);
+    initial = rewritten;
+    const merged = mergeOpencodeAgents(initial, createPermissionMatchContext(), patternBase);
     if (merged && merged.text !== initial) fs.writeFileSync(target, merged.text);
     return;
   }
 
   // Precedence: opencode.json is merged over opencode.jsonc when both exist (ADR 0030).
   const target = path.join(base, hasJson ? 'opencode.json' : 'opencode.jsonc');
-  const merged = mergeOpencodeAgents(fs.readFileSync(target, 'utf8'));
+  const merged = mergeOpencodeAgents(fs.readFileSync(target, 'utf8'), createPermissionMatchContext(), patternBase);
 
   if (!merged) {
-    printOpencodeConfigMessage(base);
+    printOpencodeConfigMessage(base, patternBase);
     return;
   }
 
@@ -1259,20 +1349,32 @@ function copyOpencodeConfig(destBase) {
     fs.writeFileSync(target, merged.text);
   }
   if (merged.redundantKeys.length > 0) {
-    console.log(`Migration notice: redundant opencode agent keys detected in ${target}: ${merged.redundantKeys.join(', ')}. The projected agent files under ~/.config/opencode/agents/ now take precedence — agent files take precedence for the keys they declare, including model — a tuned model in the config is no longer effective. Config-only keys the agent files do not declare (for example tools or options) still apply. To keep a tuned model, edit the model line in the matching agent file (~/.config/opencode/agents/{explore,executor,budget}.md), which the tunable-seed lifecycle preserves. Removing the now-redundant keys from the config is your decision; the installer never edits the config.`);
+    const agentsDisplay = opencodeAgentsDisplayFor(patternBase);
+    console.log(`Migration notice: redundant opencode agent keys detected in ${target}: ${merged.redundantKeys.join(', ')}. The projected agent files under ${agentsDisplay} now take precedence — agent files take precedence for the keys they declare, including model — a tuned model in the config is no longer effective. Config-only keys the agent files do not declare (for example tools or options) still apply. To keep a tuned model, edit the model line in the matching agent file (${agentsDisplay}{explore,executor,budget}.md), which the tunable-seed lifecycle preserves. Removing the now-redundant keys from the config is your decision; the installer never edits the config.`);
   }
   for (const message of merged.messages) console.log(message);
 }
 
-function detectInstalledEditors() {
+function detectInstalledEditors(overrides = {}) {
+  const claudeBase = overrides.claudeBase || CLAUDE_BASE;
+  let opencodeBase;
+  if (overrides.opencodeBase !== undefined && overrides.opencodeBase !== null) {
+    opencodeBase = overrides.opencodeBase;
+  } else {
+    const resolveOptions = {};
+    if (overrides.spawnSync !== undefined) resolveOptions.spawnSync = overrides.spawnSync;
+    if (overrides.env !== undefined) resolveOptions.env = overrides.env;
+    opencodeBase = Object.keys(resolveOptions).length > 0 ? resolveOpencodeBase(resolveOptions) : resolveOpencodeBase();
+  }
   const detected = [];
-  if (fs.existsSync(CLAUDE_BASE)) detected.push('Claude Code');
-  if (fs.existsSync(OPENCODE_BASE)) detected.push('Opencode');
+  if (fs.existsSync(claudeBase)) detected.push('Claude Code');
+  if (fs.existsSync(opencodeBase)) detected.push('Opencode');
   return detected;
 }
 
 async function main() {
-  const preselected = detectInstalledEditors();
+  const resolvedOpencodeBase = resolveOpencodeBase();
+  const preselected = detectInstalledEditors({ opencodeBase: resolvedOpencodeBase });
   const defaults = preselected.length > 0 ? preselected : ['Opencode'];
   let outcome;
   do {
@@ -1307,11 +1409,11 @@ async function main() {
   if (choices.includes('Opencode')) {
     console.log();
     await offerOpencodeInstall();
-    installOpencode();
-    copyOpencodeConfig();
-    console.log(`Opencode commands installed to: ${path.join(OPENCODE_BASE, 'commands')}`);
-    console.log(`Opencode SAI commands/instructions installed to: ${path.join(OPENCODE_BASE, 'sai')}`);
-    console.log(`Opencode skills installed to: ${path.join(OPENCODE_BASE, 'skills')}`);
+    installOpencode(resolvedOpencodeBase);
+    copyOpencodeConfig(resolvedOpencodeBase);
+    console.log(`Opencode commands installed to: ${path.join(resolvedOpencodeBase, 'commands')}`);
+    console.log(`Opencode SAI commands/instructions installed to: ${path.join(resolvedOpencodeBase, 'sai')}`);
+    console.log(`Opencode skills installed to: ${path.join(resolvedOpencodeBase, 'skills')}`);
   }
 
   await offerCodegraphInstall();
@@ -1344,6 +1446,18 @@ module.exports = {
   BACK,
   CLAUDE_BASE,
   OPENCODE_BASE,
+  OPENCODE_SAI_PERMISSION_PATTERN,
+  OPENCODE_SAI_PERMISSION_PATTERN_FALLBACK,
+  resolveOpencodeBase,
+  parseOpencodeDebugPathsOutput,
+  opencodeSaiPermissionPatternFor,
+  opencodeSaiProbeFor,
+  opencodeAgentsDisplayFor,
+  rewriteOpencodeConfigPrefixes,
+  isDefaultOpencodeBase,
+  toPosixOpencodePath,
+  printOpencodeConfigMessage,
+  detectInstalledEditors,
   OPENCODE_INSTALL_CMD,
   probeOpencode,
   runOpencodeInstall,
@@ -1376,6 +1490,8 @@ module.exports = {
   matrixWorkerRoster,
   __test: {
     mergeOpencodeAgents,
+    classifySaiPermission,
+    invalidPermissionResult,
     expectedDispatchPrompt,
     parseInitialDispatches,
     parseClaudeInitialDispatches,
@@ -1384,5 +1500,9 @@ module.exports = {
     createPermissionMatchContext,
     normalizePermissionPattern,
     wildcardMatches,
+    resolveOpencodeBase,
+    parseOpencodeDebugPathsOutput,
+    opencodeSaiPermissionPatternFor,
+    opencodeSaiProbeFor,
   },
 };

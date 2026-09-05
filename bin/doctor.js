@@ -446,19 +446,21 @@ async function main(options = {}) {
     argv = process.argv.slice(2),
     projectRoot = process.cwd(),
     claudeBase = flow.CLAUDE_BASE,
-    opencodeBase = flow.OPENCODE_BASE,
+    opencodeBase,
     repoRoot = REPO_ROOT_DEFAULT,
     execOpenspec = defaultExecOpenspec,
     out = process.stdout,
     fetchLatestVersion = defaultFetchLatestVersion,
   } = options;
+  const resolvedOpencodeBase = opencodeBase !== undefined ? opencodeBase : (typeof flow.resolveOpencodeBase === 'function' ? flow.resolveOpencodeBase() : flow.OPENCODE_BASE);
+  const effectiveOpencodeBase = resolvedOpencodeBase;
   const json = argv.includes('--json');
 
   const records = [];
   records.push(...checkProjectHealth({ projectRoot, execOpenspec }));
 
   const latest = argv.includes('--offline') ? null : await fetchLatestVersion();
-  const harnesses = detectHarnesses({ claudeBase, opencodeBase });
+  const harnesses = detectHarnesses({ claudeBase, opencodeBase: effectiveOpencodeBase });
   for (const h of harnesses) {
     if (!h.base || !fs.existsSync(h.base)) {
       records.push({ section: `[${h.id}]`, name: 'detection', severity: 'ok', message: 'not installed (user-global dir absent)' });
