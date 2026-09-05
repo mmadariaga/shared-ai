@@ -3,12 +3,10 @@
 ## Purpose
 
 Initializes CodeGraph in every freshly created git worktree when the `codegraph` tool is available, reporting the outcome in a single one-line notice and never failing the Create action.
-
 ## Requirements
-
 ### Requirement: Best-effort CodeGraph indexing after worktree creation
 
-After `git worktree add` succeeds in the Create action, the `/sai-worktree` command SHALL run a CodeGraph indexing pass on the freshly created worktree synchronously, as an inline step of the Create action: it SHALL print one pre-announcement line stating that `codegraph init` is about to run in the new worktree, run `codegraph init <sibling-path>` with the path quoted per the same Windows PowerShell quoting notes already applied to git invocations, and then print exactly one one-line result notice for whichever outcome occurred — success (index created), `codegraph` binary not available, or initialization failure including its reason.
+After `git worktree add` succeeds in the Create action, the `/sai-worktree` command SHALL run a CodeGraph indexing pass on the freshly created worktree synchronously, as an inline step of the Create action: it SHALL print one pre-announcement line stating that `codegraph init` is about to run in the new worktree, run `codegraph init <sibling-path>` through the worktree tool's `index <path>` sub-command, which spawns the binary directly without a shell so no shell-quoting step applies to the path, and then print exactly one one-line result notice for whichever outcome occurred — success (index created), `codegraph` binary not available, or initialization failure including its reason.
 
 #### Scenario: Index created successfully
 - **WHEN** the Create action has finished `git worktree add` and `codegraph init <sibling-path>` exits successfully
@@ -37,3 +35,4 @@ Only the Create action SHALL invoke the CodeGraph indexing pass; Delete actions 
 #### Scenario: Deletion triggers no indexing
 - **WHEN** a worktree is removed through the Delete action
 - **THEN** no pre-announcement line is printed and `codegraph init` is never invoked
+
