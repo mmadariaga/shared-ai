@@ -2,9 +2,7 @@
 
 ## Purpose
 TBD - created by archiving change split-prereqs-check-and-paths. Update Purpose after archive.
-
 ## Requirements
-
 ### Requirement: Decomposed check and path artifacts
 
 The `sai/policies/prereqs.md` file SHALL be decomposed into two standalone artifacts under `sai/policies/`:
@@ -26,23 +24,28 @@ Each artifact SHALL be independently fetchable via `Fetch @sai/policies/<artifac
 
 ### Requirement: Executable check artifact content
 
-The `sai/policies/prereqs-check.md` artifact SHALL contain the three OpenSpec prerequisite checks from the current policy — the `openspec` binary availability check, the `openspec/` directory existence check, and the `openspec/config.yaml` `schema: sai-workflow` check — with their current wording, numbering (1, 2, 3), verification command `openspec --version`, and exact STOP-and-print messages:
+The `sai/policies/prereqs-check.md` artifact SHALL remain the executable-check artifact for the three OpenSpec prerequisite checks — the `openspec` binary availability check, the `openspec/` directory existence check, and the `openspec/config.yaml` `schema: sai-workflow` check. It SHALL delegate their evaluation to `sai/tools/prereqs.js` rather than describe the mechanics, and SHALL carry a numbered (1, 2, 3) mapping from the tool's `failed_check` values `cli`, `dir`, and `schema` to the exact STOP-and-print messages, which SHALL remain byte-identical:
 
     openspec CLI not found. Install it first: https://github.com/Fission-AI/OpenSpec
     OpenSpec not initialized in this project. Run: openspec init
     openspec/config.yaml does not declare `schema: sai-workflow`. The sai commands require this schema. Add `schema: sai-workflow` to the top of openspec/config.yaml.
 
-No check text, stop message, or numbering SHALL change.
+The artifact SHALL retain the verification command `openspec --version` as the by-hand check for the openspec binary. No stop message SHALL change. The surrounding check prose MAY describe delegation to the tool in place of the pre-change wording.
 
 #### Scenario: check artifact carries all three checks
 
 - **WHEN** `sai/policies/prereqs-check.md` is read
-- **THEN** it contains three numbered checks and the exact stop messages for the missing binary, missing `openspec/` directory, and missing schema line
+- **THEN** it contains three numbered entries mapping `cli`, `dir`, and `schema` to the exact stop messages for the missing binary, missing `openspec/` directory, and missing schema line
 
 #### Scenario: verification command preserved
 
 - **WHEN** `sai/policies/prereqs-check.md` is read
-- **THEN** it contains the text `openspec --version` as the verification command for the openspec binary check
+- **THEN** it contains the text `openspec --version` as the by-hand verification command for the openspec binary check
+
+#### Scenario: the checks are delegated, not described
+
+- **WHEN** `sai/policies/prereqs-check.md` is read
+- **THEN** it names `sai/tools/prereqs.js` as the evaluator of the three checks and instructs the reader not to run them, second-guess a verdict, or repair one
 
 ### Requirement: Path reference artifact content
 
@@ -59,3 +62,4 @@ No listed path or rule wording SHALL change.
 
 - **WHEN** `sai/policies/prereqs-paths.md` is read
 - **THEN** it contains the sentence "Do not create or modify any files if any prerequisite check fails."
+
