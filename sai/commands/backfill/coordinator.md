@@ -136,10 +136,24 @@
      `- **THEN**` line; only `.openspec.yaml`, `proposal.md`, and capability
      specs exist in the draft set — never `design.md`, `tasks.md`, or
      `implementation.md`.
-  2. On any validation failure: write nothing, resume the same worker with the
-     failure report, and re-validate the corrected drafts. Only fully valid
-     drafts proceed.
-  3. On validated drafts in the ordinary route: execute the final writes
+   2. Run the deterministic delta-header preflight before writing anything:
+      stage each draft capability spec byte-for-byte under a fresh OS-temp
+      directory preserving `<tmp>/specs/<capability>/spec.md` layout (create
+      it from the project root with
+      `node -e "console.log(require('fs').mkdtempSync(require('path').join(require('os').tmpdir(),'sai-delta-preflight-')))"`),
+      run `node sai/tools/check-delta-headers.js <name> --delta-dir <tmp>/specs`
+      with the confirmed change name (main specs resolve from the project
+      root), then remove the temp directory best-effort. Exit 0 proceeds;
+      exit 1 means misclassified ADDED/MODIFIED/REMOVED headers — write
+      nothing into `openspec/changes/{name}/`, continue the same worker with
+      the verbatim script report plus the cited headers and the Phase 6c
+      existence rule, then re-validate and re-run this preflight on the
+      corrected drafts. Exit 2 (usage/IO error) is a tooling failure: write
+      nothing, report the verbatim error, and stop.
+   3. On any validation or preflight failure: write nothing, resume the same
+      worker with the failure report, and re-validate the corrected drafts
+      (including a fresh preflight run). Only fully valid drafts proceed.
+   4. On validated drafts in the ordinary route: execute the final writes
      yourself, creating exactly `openspec/changes/{name}/.openspec.yaml`,
      `openspec/changes/{name}/proposal.md`, and each
      `openspec/changes/{name}/specs/{capability}/spec.md` from the draft content
@@ -154,9 +168,12 @@
   performs the ordinary technical flow and returns the draft content without
   writing it. The coordinator then:
 
-  1. validates the complete returned draft set against
-     `openspec/schemas/sai-workflow/schema.yaml` and the closed path/content
-     allow-list;
+   1. validates the complete returned draft set against
+      `openspec/schemas/sai-workflow/schema.yaml` and the closed path/content
+      allow-list, plus the same deterministic delta-header preflight above
+      (staged from the prepared draft content into OS-temp); a preflight
+      failure returns to the same worker with the verbatim script report
+      exactly like the ordinary route and never authorizes execution;
   2. records the validated plan and keeps the invocation-scoped
      `changed_files` union; and
   3. only after the active Direct Build (unattended) authorization and all applicable phase

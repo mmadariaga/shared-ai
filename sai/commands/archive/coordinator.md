@@ -109,18 +109,44 @@
 
   ## Coordinator-owned execution (ordinary route)
 
-  After the gates resolve through forwarded answers, execute the archive and
-  commit in this order:
+   After the gates resolve through forwarded answers, execute the archive and
+   commit in this order (initialise `archive_content_fix_attempted` to false;
+   it bounds the single classified content-fix below):
 
-  - **CLI archive** — run `openspec archive <name> --yes --json` as the sole
-    sync + move primitive. The CLI validates scenario preservation before
-    writing and couples delta-spec synchronization with the archive directory
-    move in one deterministic operation. Parse the JSON result: on success,
-    the sync and move are complete; on failure or invalid JSON, report the
-    exact error and stop without any manual fallback, staging, or commit.
-    Obtain exact spec paths from the pre-flight inventory for `changed_files`
-    because the CLI's `specsUpdated` is not a path list. Add the realized
-    archive path and spec paths to the union.
+   - **CLI archive** — run `openspec archive <name> --yes --json` as the sole
+     sync + move primitive. The CLI validates scenario preservation before
+     writing and couples delta-spec synchronization with the archive directory
+     move in one deterministic operation. Parse the JSON result: on success,
+     the sync and move are complete. Obtain exact spec paths from the
+     pre-flight inventory for `changed_files`
+     because the CLI's `specsUpdated` is not a path list. Add the realized
+     archive path and spec paths to the union.
+     - On failure or invalid JSON, classify before anything else:
+       - **Content failure with cited header** — the error carries a
+         delta-content signal (a JSON error code or message naming
+         `archive_spec_update_failed`, an already-existing requirement, or a
+         missing/unknown requirement) AND cites at least one concrete
+         `### Requirement:` header. Only then, and only while
+         `archive_content_fix_attempted` is still false: set it true and
+         dispatch exactly one `sai-backfill-worker` through the active
+         backfill-worker binding
+         (`Fetch @sai/orchestration/workers/bindings/backfill-worker.md`)
+         with a `--fix-delta-headers <name>` envelope carrying the verbatim
+         CLI error plus the cited headers. The worker returns corrected spec
+         content for the cited headers only — never a full regeneration.
+         Validate it against the sai-workflow delta format, verify it by
+         staging the corrected specs to OS-temp and running
+         `node sai/tools/check-delta-headers.js <name> --delta-dir <tmp>/specs`
+         exactly like the backfill preflight, write the corrected specs on
+         pass, and retry the CLI archive exactly once. Any second failure —
+         from the retry, the validation, or the fix continuation itself —
+         stops with the literal error and no further retry. Never replace the
+         worker and never send a second fix.
+       - **Every other failure** — archive-directory collision, empty index,
+         infrastructure errors (missing binary, timeouts, invalid JSON), any
+         failure on a `--skip-specs` run, or a content signal with no cited
+         header: never reroute to backfill. Report the exact error and stop
+         without manual fallback, staging, retry, or commit.
   - **Post-archive commit gate** — fetch
     @sai/commands/archive/archive-commit-gate.instructions.md and apply its
     coordinator-owned surface exactly as written: the skip-rule `git
@@ -152,10 +178,12 @@
   it is never inferred from a completed prepare result, a fast-track notice,
   or a worker summary. The coordinator forwards no additional path or action.
 
-  The worker owns the authorized CLI archive invocation, exact-path staging,
-  commit-message authoring, and local commit in that order. The CLI
-  (`openspec archive <name> --yes --json`) is the sole sync + move primitive;
-  any CLI failure stops staging and commit without retry or fallback. Add every
+   The worker owns the authorized CLI archive invocation, exact-path staging,
+   commit-message authoring, and local commit in that order. The CLI
+   (`openspec archive <name> --yes --json`) is the sole sync + move primitive;
+   any CLI failure stops staging and commit without retry or fallback. The
+   classified content-fix loop above is ordinary-route only: the Direct Build
+   execute continuation keeps its one-shot no-retry rule. Add every
   worker reported path to the invocation union and print its summary verbatim.
   A failed or cancelled execution is terminal: report the exact partial state,
   never silently retry or send a second execute continuation, and never fall
