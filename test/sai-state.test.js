@@ -236,3 +236,105 @@ test('step2 same spawn+emit+health-check+close succeeds on Windows and POSIX lay
     cleanup([chatId]);
   }
 });
+
+// Step 3: Uniform envelope and code registry (RED)
+const envelope = require('../sai-state/envelope.js');
+const registry = require('../sai-state/registry.js');
+
+test('step3 uniform envelope identical shapes across machines (11th needs no change)', () => {
+  const ids = Array.from({ length: 11 }, (_, i) => `step3uni${i + 1}@1`);
+  for (const id of ids) {
+    registry.register(id, {
+      initialState: 'idle',
+      transition: (s) => s,
+      project: (s) => s,
+    });
+  }
+  const results = ids.map((id, idx) => envelope.buildNext(id, { type: 'EVT' }, `step3uni-evt-${idx}`));
+  for (const r of results) {
+    assert.ok(r && typeof r === 'object', 'buildNext must return an object');
+    assert.deepEqual(Object.keys(r).sort(), ['follow', 'hint'], 'envelope next must have exactly {follow,hint}');
+    assert.ok(typeof r.follow === 'string' && r.follow !== 'wrong', `follow must be real routing value, got ${JSON.stringify(r && r.follow)}`);
+    assert.ok(typeof r.hint === 'string' && r.hint !== 'wrong', `hint must be real hint, got ${JSON.stringify(r && r.hint)}`);
+  }
+  assert.deepEqual(Object.keys(results[10]).sort(), Object.keys(results[0]).sort(), '11th machine needs no envelope change (identical shape)');
+});
+
+test('step3 new machine module plus one line routable (no transport change)', () => {
+  const mod = {
+    initialState: 'idle',
+    transition: (state) => state,
+    project: (state) => state,
+  };
+  registry.register('step3routable@1', mod);
+  assert.equal(registry.get('step3routable@1'), mod, 'registry must return registered module (one-line routable)');
+  assert.ok(registry.machines().includes('step3routable@1'), 'machines() must list the new machine');
+});
+
+test('step3 pinned version stable for session', () => {
+  const v1 = { initialState: 'v1', transition: () => {}, project: () => {} };
+  const v2 = { initialState: 'v2', transition: () => {}, project: () => {} };
+  registry.register('step3pinned@1', v1);
+  registry.register('step3pinned@2', v2);
+  assert.equal(registry.get('step3pinned@1'), v1, 'v1 must stay pinned');
+  assert.equal(registry.get('step3pinned@2'), v2, 'v2 must resolve separately');
+  assert.equal(registry.get('step3pinned@1'), v1, 'pinned v1 stable across session');
+});
+
+test('step3 retried eventId applies once (idempotent)', () => {
+  registry.register('step3idem@1', { initialState: 's0', transition: (s) => `${s}+1`, project: (s) => s });
+  const a1 = envelope.buildNext('step3idem@1', { type: 'INC' }, 'step3idem-dup');
+  const a2 = envelope.buildNext('step3idem@1', { type: 'INC' }, 'step3idem-dup');
+  assert.deepEqual(a2, a1, 'retried eventId must return identical envelope (applies once)');
+  assert.ok(a1.follow !== 'wrong' && a1.hint !== 'wrong', `idempotent emit must carry real follow/hint, got ${JSON.stringify(a1)}`);
+});
+
+test('step3 bounded retention oldest-first (1000 per-session)', () => {
+  registry.register('step3bound@1', { initialState: 's0', transition: (s) => s, project: (s) => s });
+  const first = envelope.buildNext('step3bound@1', { type: 'E' }, 'step3bound-evt-0');
+  assert.ok(first.follow !== 'wrong', `must carry real follow before bound, got ${JSON.stringify(first.follow)}`);
+  for (let i = 1; i <= 1000; i++) {
+    envelope.buildNext('step3bound@1', { type: 'E' }, `step3bound-evt-${i}`);
+  }
+  const retry = envelope.buildNext('step3bound@1', { type: 'E' }, 'step3bound-evt-0');
+  assert.notDeepEqual(retry, first, 'oldest-first eviction: evicted eventId must re-apply, not dedupe');
+  assert.ok(retry.follow !== 'wrong', `evicted retry must carry real follow, got ${JSON.stringify(retry.follow)}`);
+});
+
+test('step3 retention empty after close (cleared on close)', () => {
+  const mod = { initialState: 'c0', transition: (s) => s, project: (s) => s };
+  registry.register('step3close@1', mod);
+  assert.ok(registry.machines().includes('step3close@1'), 'must be routable before close');
+  const clearer = registry.clear || registry.close || registry.reset || envelope.clear || envelope.reset || envelope.close;
+  assert.ok(typeof clearer === 'function', 'registry/envelope must expose a clear-on-close function');
+  if (typeof clearer === 'function') {
+    clearer.call(registry);
+  }
+  const after = envelope.buildNext('step3close@1', { type: 'E' }, 'step3close-evt-new');
+  assert.ok(after.follow !== 'wrong' && after.hint !== 'wrong', `must still route after close with real values, got ${JSON.stringify(after)}`);
+});
+
+test('step3 rejection carries closed vocab plus current-state pointer', () => {
+  registry.register('step3rej@1', { initialState: 'cur', transition: (s) => s, project: (s) => s });
+  const bad = envelope.buildNext('step3rej@99', { type: 'E' }, 'step3rej-evt-bad');
+  assert.ok(bad && typeof bad === 'object', 'rejection must return an object');
+  assert.ok(typeof bad.error === 'string' && bad.error.length > 0 && bad.error !== 'wrong', `rejection must carry closed-vocab error, got ${JSON.stringify(bad)}`);
+  assert.ok(bad.next && typeof bad.next === 'object', `rejection must carry next pointer, got ${JSON.stringify(bad)}`);
+  assert.ok(bad.next && typeof bad.next.follow === 'string' && bad.next.follow !== 'wrong', `pointer must carry real follow, got ${JSON.stringify(bad && bad.next)}`);
+});
+
+test('step3 machines compose only through caller (no sidecar guard)', () => {
+  const modA = { initialState: 'a0', transition: () => 'a1', project: (s) => s };
+  const modB = { initialState: 'b0', transition: () => 'b1', project: (s) => s };
+  registry.register('step3compA@1', modA);
+  registry.register('step3compB@1', modB);
+  const gotA = registry.get('step3compA@1');
+  const gotB = registry.get('step3compB@1');
+  assert.equal(gotA, modA, 'caller must retrieve A via registry');
+  assert.equal(gotB, modB, 'caller must retrieve B via registry');
+  assert.equal(gotA.transition(gotA.initialState, { type: 'GO' }), 'a1', 'caller composes A');
+  assert.equal(gotB.transition(gotB.initialState, { type: 'GO' }), 'b1', 'caller composes B');
+  assert.equal(registry.compose, undefined, 'no sidecar compose guard');
+  assert.equal(registry.guard, undefined, 'no sidecar guard');
+  assert.equal(envelope.compose, undefined, 'no envelope compose');
+});
