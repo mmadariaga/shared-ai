@@ -3,9 +3,7 @@
 ## Purpose
 
 TBD — placeholder purpose. Define the worker-owned automated artifact review loop for the spec and design planning phases.
-
 ## Requirements
-
 ### Requirement: Attribute planning-artifact review to Plan
 
 Selector-dispatched planning-artifact review SHALL be described as Plan (unattended) review and SHALL retain its existing review engine, round, feedback, and convergence behavior.
@@ -105,7 +103,7 @@ A malformed envelope that the worker cannot parse under its declared grammar SHA
 
 ### Requirement: worker-owned-review-pass
 
-The spec-proposal worker SHALL own an automated artifact review of the artifacts its phase just wrote, subject to `supervised-marker-suppresses-automatic-loop`. The design review path SHALL instead consume externally supplied findings through the canonical feedback and artifact-review contracts and SHALL support a no-findings completion branch without creating a duplicate automatic reviewer loop. A **review pass** on the spec path is one complete unit: exactly one reviewer run plus the worker's processing of every finding that run returns. Per-finding processing SHALL NOT increment the pass count.
+The spec-proposal worker SHALL own an automated artifact review of the artifacts its phase just wrote, subject to `supervised-marker-suppresses-automatic-loop`. The design review path SHALL instead consume externally supplied findings through the canonical feedback and artifact-review contracts and SHALL support a no-findings completion branch without creating a duplicate automatic reviewer loop. The design worker SHALL first validate the format of any externally supplied findings block through the deterministic validator, returning `needs_input` with exact violations if the format is malformed; the coordinator retries correction under the existing bounded-retry mechanism. A **review pass** on the spec path is one complete unit: exactly one reviewer run plus the worker's processing of every finding that run returns. Per-finding processing SHALL NOT increment the pass count.
 
 The spec pass's **reviewed set** — the artifacts it judges and the only artifacts its findings may target — SHALL be `proposal.md` and every `specs/**/*.md` of the resolved change. The design review's externally supplied findings may target only `design.md`, `tasks.md`, and `interfaces.md` of the resolved change. A spec reviewer additionally receives a read-only **reference set** as defined by `reviewer-isolation-and-read-only-input`.
 
@@ -151,8 +149,16 @@ Every completed spec pass SHALL close with the base-form severity tally single-s
 - **AND** the `review` step SHALL remain unmarked by the automatic path
 
 #### Scenario: external-no-findings-completes-review
+
 - **WHEN** valid external design-review evidence reports no findings
-- **THEN** the design review completes through the no-findings branch without dispatching reviewer machinery.
+- **THEN** the design review completes through the no-findings branch without dispatching reviewer machinery
+
+#### Scenario: design findings format is validated before processing
+
+- **WHEN** an externally supplied design-review findings block is received
+- **THEN** the design worker SHALL validate its format through the deterministic validator
+- **AND** if format violations are found, return `needs_input` with the violations for correction
+- **AND** if the block validates successfully, process it under the canonical feedback and artifact-review contracts
 
 ### Requirement: reviewer-isolation-and-read-only-input
 
@@ -225,7 +231,7 @@ Every finding's artifact location SHALL name a file of the reviewed set; a revie
 
 ### Requirement: findings-follow-the-shared-contract
 
-Every finding a reviewer returns SHALL conform to the shared artifact review finding contract single-sourced in `sai/policies/artifact-review-contract.md`: the five ordered fields, the closed `High` / `Medium` / `Low` severity vocabulary and its assignment criteria, the severity-prefixed review-scoped identifier scheme, and the base-form summary tally. This capability SHALL reuse that contract by reference and SHALL NOT restate the severity criteria, the finding shape, the identifier scheme, or the tally form.
+Every finding a reviewer returns SHALL conform to the shared artifact review finding contract single-sourced in `sai/policies/artifact-review-contract.md`: the five ordered fields, the closed `High` / `Medium` / `Low` severity vocabulary and its assignment criteria, the severity-prefixed review-scoped identifier scheme, and the base-form summary tally. This capability SHALL reuse that contract by reference and SHALL NOT restate the severity criteria, the finding shape, the identifier scheme, or the tally form. Externally supplied findings blocks SHALL be validated for format conformance before processing through the deterministic validator.
 
 Findings SHALL be processed by the phase worker under its existing per-item feedback rules in `sai/policies/artifact-feedback-gate.md`, in full and without exception: each item is evaluated independently for legitimacy, legitimate items are applied within the phase's artifact-only scope, every discarded item is reported with the specific reason it was not applied, and the step's decision summary is recomputed from the updated artifacts.
 
@@ -249,7 +255,7 @@ A pass that accepted at least one edit SHALL therefore re-run the phase's pre-co
 
 #### Scenario: a finding carries the contract's fields
 
-- **WHEN** a reviewer returns a finding
+- **WHEN** a reviewer returns a finding or an externally supplied findings block is validated
 - **THEN** it SHALL carry the identifier, severity, artifact location, issue statement, and recommended correction defined by the shared contract
 
 #### Scenario: findings are applied only within artifact-only scope
@@ -262,6 +268,145 @@ A pass that accepted at least one edit SHALL therefore re-run the phase's pre-co
 
 - **WHEN** the worker judges a finding illegitimate
 - **THEN** it SHALL report the finding and the specific reason it was not applied
+
+#### Scenario: a High finding causes another automatic dispatch
+
+- **WHEN** a completed pass reports at least one `High` finding, the completed-pass count is below 3, and the total-attempt count is below 6
+- **THEN** the worker SHALL dispatch another automatic reviewer over the resulting artifacts
+
+#### Scenario: a no-High pass ends the automatic loop
+
+- **WHEN** a completed pass reports `High=0`
+- **THEN** the worker SHALL dispatch no further automatic reviewer, and the loop SHALL end as converged
+
+#### Scenario: Medium and Low findings never extend the loop
+
+- **WHEN** a completed pass reports `Medium` or `Low` findings but no `High` finding
+- **THEN** those findings SHALL be processed and reported
+- **AND** the worker SHALL dispatch no further automatic reviewer
+
+#### Scenario: a failed attempt is retried and does not advance the completed-pass count
+
+- **WHEN** the first automatic dispatch's reviewer fails, is cancelled, or violates the severity contract
+- **THEN** the total-attempt count SHALL be 1 and the completed-pass count SHALL be 0
+- **AND** the worker SHALL dispatch a fresh reviewer rather than ending the automatic loop
+
+#### Scenario: completed-pass-cap exhaustion is not a failure
+
+- **WHEN** the third completed pass still reports at least one `High` finding
+- **THEN** the worker SHALL dispatch no further automatic reviewer
+- **AND** the run SHALL close `completed` with those findings and dispositions reported
+
+#### Scenario: total-attempt-cap exhaustion is not a failure
+
+- **WHEN** six reviewer dispatches have been made and the loop has neither converged nor reached three completed passes
+- **THEN** the worker SHALL dispatch no further automatic reviewer
+- **AND** `review` SHALL remain unmarked
+- **AND** total-attempt-cap exhaustion and every reviewer failure, cancellation, or contract violation SHALL be reported distinctly from any outstanding `High` findings
+
+#### Scenario: the two counters are never conflated
+
+- **WHEN** the loop's limits are described in any surface
+- **THEN** the completed-pass count and the total-attempt count SHALL each be named explicitly
+- **AND** no single word SHALL be used to denote both
+
+#### Scenario: suppressed automatic path advances neither counter
+
+- **WHEN** the supervision marker suppresses the automatic loop for an entire phase
+- **THEN** the completed-pass count and the total-attempt count SHALL both remain 0 for that automatic path
+- **AND** no automatic-loop ending SHALL be claimed
+
+#### Scenario: worker failure during finding processing is not an automatic-loop ending
+
+- **WHEN** the phase worker returns `failed` or `cancelled` while processing findings from a valid automatic-pass reviewer result
+- **THEN** the run SHALL close with that worker terminal
+- **AND** the outcome SHALL NOT be reported as convergence, completed-pass-cap exhaustion, or total-attempt-cap exhaustion
+- **AND** no further automatic reviewer SHALL be dispatched after that terminal
+
+#### Scenario: the user asks for another pass after an automatic cap ends the loop
+
+- **WHEN** the user supplies feedback at the gate asking for another review pass
+- **THEN** the worker SHALL run a further pass under the same rules
+- **AND** neither the completed-pass cap nor the total-attempt cap SHALL limit how many such passes the user may request
+
+#### Scenario: the gate is unchanged
+
+- **WHEN** a user-requested pass runs
+- **THEN** the feedback gate's picker, option labels, iteration counter, and ownership SHALL remain exactly as `sai/policies/artifact-feedback-gate.md` defines them
+
+#### Scenario: user-requested pass after supervised suppression
+
+- **WHEN** the automatic loop was suppressed by `--supervised` and the user requests a review pass at the prose feedback gate
+- **THEN** the worker SHALL run the pass
+- **AND** the marker SHALL NOT prevent, cap, or reclassify that pass
+
+#### Scenario: reviewer fails or is cancelled
+
+- **WHEN** a reviewer returns a failure or cancellation
+- **THEN** the worker SHALL report that the attempt did not complete a pass and SHALL process no finding from it
+- **AND** the total-attempt count SHALL advance while the completed-pass count SHALL NOT
+- **AND** the worker SHALL dispatch a fresh reviewer while the total-attempt cap permits
+- **AND** the run SHALL still close through its ordinary terminal lifecycle status
+
+#### Scenario: reviewer violates the severity contract
+
+- **WHEN** a reviewer returns a finding whose severity is missing or outside `High`, `Medium`, or `Low`
+- **THEN** the worker SHALL reject the whole attempt, process no finding from it, and coerce no default severity
+- **AND** it SHALL report the cause as a reviewer output-contract violation, preserving the reviewer-supplied identifier and the verbatim offending value or `missing`
+
+#### Scenario: a failed attempt is distinguishable from outstanding High findings
+
+- **WHEN** the worker reports the review outcome
+- **THEN** a reviewer failure, cancellation, or contract violation SHALL be reported distinctly from a completed pass carrying `High` findings
+
+#### Scenario: the enumeration names the automatic worker-owned loop as conditional
+
+- **WHEN** `sai/policies/artifact-review-contract.md` is read after this change
+- **THEN** its surface enumeration SHALL name the automatic worker-owned planning review loop as conditional on the absence of the supervision marker
+- **AND** it SHALL still name the manual `sai-explore` post-crystallization review loop and the supervised pipeline's in-session review rounds
+- **AND** the conditionality SHALL NOT be read to exclude user-requested worker-owned passes under the marker
+
+#### Scenario: the contract's normative body is untouched
+
+- **WHEN** the amended policy is compared with its prior text
+- **THEN** the only difference SHALL be the surface enumeration
+- **AND** the severity criteria, finding shape, identifier scheme, and tally form SHALL be unchanged
+
+#### Scenario: the prose feedback gate still runs interactively
+
+- **WHEN** the worker-owned automatic loop ends by convergence, completed-pass-cap exhaustion, or total-attempt-cap exhaustion under an interactive fetch site
+- **THEN** the coordinator SHALL still present the prose feedback gate at iteration 0, unchanged
+
+#### Scenario: supervised ending auto-proceeds without iteration-0 presentation
+
+- **WHEN** the worker-owned automatic loop ends by convergence, completed-pass-cap exhaustion, or total-attempt-cap exhaustion under a supervised fetch site (`mode = supervised`)
+- **THEN** the coordinator SHALL NOT present the prose feedback gate at iteration 0
+- **AND** the supervised gate application point auto-proceeds per the shared gate's supervised rules
+
+#### Scenario: under supervision only in-session rounds run automatically
+
+- **WHEN** the spec worker runs under selector-dispatched supervision with the `--supervised` marker
+- **THEN** explore's in-session review rounds SHALL run in the explore session through the Review Engine
+- **AND** the worker-owned automatic pass SHALL NOT run in addition to them
+
+#### Scenario: non-supervised path keeps the worker-owned automatic loop
+
+- **WHEN** the spec worker runs without the supervision marker
+- **THEN** the worker-owned automatic loop SHALL still run
+- **AND** no supervised in-session round is required by this capability
+
+#### Scenario: marking has no application under supervision
+
+- **WHEN** a supervised worker emits progress events under the supervised flow
+- **THEN** each event's `changed_files` SHALL still join the supervision report and the worker SHALL still be continued with `continue_after_progress`
+- **AND** no list SHALL render and no step SHALL be marked, because no adapter-declared plan is in force
+- **AND** the automatic path SHALL supply no `review` evidence when the automatic loop was suppressed
+
+#### Scenario: no reviewer-retry safety net under supervision
+
+- **WHEN** the phase worker returns `failed` or `cancelled` during a supervised in-session round while the automatic worker-owned loop is suppressed
+- **THEN** the run SHALL stop under that terminal
+- **AND** no automatic worker-owned reviewer dispatch SHALL absorb the failure or fabricate convergence
 
 ### Requirement: automatic-loop-caps
 
@@ -462,3 +607,4 @@ With the worker-owned automatic layer absent under supervision, a failed or canc
 - **WHEN** the phase worker returns `failed` or `cancelled` during a supervised in-session round while the automatic worker-owned loop is suppressed
 - **THEN** the run SHALL stop under that terminal
 - **AND** no automatic worker-owned reviewer dispatch SHALL absorb the failure or fabricate convergence
+
