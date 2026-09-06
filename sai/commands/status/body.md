@@ -1,70 +1,48 @@
 <TASK>
 
-  Fetch @sai/policies/verified-precondition-handback.md
-  ## Prerequisite checks
-  Fetch @sai/policies/prereqs.md
+Fetch @sai/policies/verified-precondition-handback.md
 
-  ## Load instructions (in order)
-  Fetch @sai/policies/status-picker.md and follow it exactly.
+## Prerequisite checks
+Fetch @sai/policies/prereqs.md
 
-  Fetch @sai/policies/remember.md
+## Load instructions (in order)
+Fetch @sai/policies/status-picker.md and follow it exactly.
+Fetch @sai/policies/remember.md
 
-  ## Run
-  **User's request:** non-empty trimmed boot-provided `arguments_value`, or status-picker resolution when empty
+## Run the status tool
 
-  `sai-status` is a **read-only** progress panel for one OpenSpec change. It creates, modifies, or deletes NOTHING — not under `openspec/changes/{name}/`, not `openspec/specs/`, not `.openspec.yaml`. It dispatches no `budget-explorer` / `budget-executor` subagent and accepts no `--fast-track` flag. Run entirely in the main session: at most one `openspec status` CLI call plus a handful of local file reads.
+`sai-status` is a read-only progress panel engine. It is run entirely in the main session: at most one `openspec list` call (bulk mode) or one `openspec status` CLI call per change (panel mode), plus local file reads. It creates, modifies, or deletes NOTHING under `openspec/`, `.openspec.yaml`, or elsewhere.
 
-  After the change name is resolved (from boot-provided `arguments_value`, or by `status-picker.md` when no name was given), render the panel with the algorithm below.
+The user's request comes from boot-provided `arguments_value` or status-picker resolution when empty.
 
-  ### Bulk mode — "See all" (all-changes table)
-  If `status-picker.md` emitted the `> BULK-MODE ACTIVE` signal line (the user chose "See all" on the 2+ branch), render the bulk table below INSTEAD of the single-change panel, then STOP — do not run Steps A–E for any single change.
+### Panel mode: resolve the change name
 
-  1. Run `openspec list --json` and take `changes[].name` in the returned order (no cap, no re-sort). `openspec list --json` returns only live changes, so archived changes never appear as rows.
-  2. For EACH change `{name}` in that order, derive its cells exactly as the single-change panel does:
-     - **Artifacts** — run `openspec status --change {name} --json`; for each of the 11 canonical artifacts (`proposal`, `specs`, `design`, `tasks`, `interfaces`, `change-overview`, `implementation`, `review`, `security`, `performance`, `accessibility`) map `done` → `●` and `ready` / `blocked` → `·`. `pr` gets NO column.
-     - **Overview cell** — read `openspec/changes/{name}/.openspec.yaml`; render `●` when `overview.state` reads `current` AND the CLI reports `change-overview.md` done; `!` (problem) for `overview.state: stale` / `failed` / `materializing` or current-metadata-with-missing-file; `·` for `unmaterialized`/absent key on a non-backfilled change; `N/A` for backfilled changes.
-     - **Specs cell (3-state)** — read `openspec/changes/{name}/.openspec.yaml`: `approval.specs.approved_at` present and non-empty → `●` (approved); specs artifact present but no approval → `○` (present, unapproved); specs absent → `·`. This 3-state cell keeps each row's `Next:` hint correct.
-     - **Not-Applicable audits** — for each present audit artifact (`review`, `security`, `performance`, `accessibility`) whose body contains a `## Not Applicable` heading, render `N/A` instead of `●`.
-     - **interfaces** — an absent `interfaces` renders `·` with NO missing-artifact warning (ADR 0023).
-     - **Impl progress** — if `openspec/changes/{name}/implementation.md` exists, count `- [x]` over `- [x]` + `- [ ]` task lines and show `checked/total`; if it does not exist, leave the `Impl` cell empty.
-     - **Next** — resolve the FIRST matching row of the Step E algorithm below for this change (using its specs-approval state) and print the `/sai-N-...` hint.
-  3. Render ONE Markdown table with a header row and one data row per change, columns in this exact order:
-     `Change | prop | spec | dsgn | task | intf | cov | impl | rev | sec | perf | a11y | Impl | Next`
-     Legend printed beneath the table: `●` present · `○` specs present-unapproved · `·` absent · `!` problem-state overview · `N/A` not-applicable audit.
-  4. **Read-only:** this branch issues exactly N `openspec status --change {name} --json` calls plus local reads of each change's `.openspec.yaml`, `implementation.md`, and audit bodies. It creates, modifies, or deletes NOTHING under any `openspec/` path.
+After the change name is resolved (from `arguments_value` or by `status-picker.md`), invoke the status tool:
 
-  ### Step A — Archive detection (before any CLI call)
-  Glob `openspec/changes/archive/*-{name}/`. If a directory matches:
-  - The change is ARCHIVED. Parse the leading `YYYY-MM-DD` from the directory name as the archive date.
-  - Print the panel header, the archive path, the archive date, and a note that the change is closed.
-  - Do NOT run `openspec status` (it exits 1 on a non-live name) and do NOT read or count `implementation.md` checkboxes.
-  - Print NO `Next:` `/sai-N-...` command — an archived change is closed.
-  - STOP here; the archived panel is complete.
-  If no archive directory matches, continue to Step B for the live change.
+```
+node <tool-path> panel <change-name> --json --cwd <project-root>
+```
 
-  ### Step B — Artifact presence from the CLI
-  Run `openspec status --change {name} --json` and parse the `artifacts[]` array. For each of the 11 sai-workflow schema artifacts — `proposal`, `specs`, `design`, `tasks`, `interfaces`, `change-overview`, `implementation`, `review`, `security`, `performance`, `accessibility` — read its `status`: treat `done` as present, `ready` / `blocked` as absent. Do NOT re-derive presence from filesystem globs. `pr` is NOT one of the 11 and never gets a panel line.
+Resolve the tool path exactly as specified in `@sai/policies/status-picker.md` § "The change-picker tool" (substitute `sai/tools/status.js` for the path; the resolution rules are identical).
 
-  ### Step C — Fill the four gaps the CLI does not expose
-  1. **Specs approval** — read `openspec/changes/{name}/.openspec.yaml`. If `approval.specs.approved_at` is present and non-empty, the specs are APPROVED (show the timestamp); otherwise NOT APPROVED. Never write this file.
-  2. **Not-Applicable audits** — for each present audit artifact (`review`, `security`, `performance`, `accessibility`), read its body; if it contains a `## Not Applicable` heading (case-sensitive `## ` followed by the exact text `Not Applicable`), render it as present / `N/A`, mirroring `sai-archive`'s Classification Check.
-  3. **Implementation progress** — if `implementation.md` exists, count `- [x]` (checked) over `- [x]` + `- [ ]` (total) task lines and show `checked/total`. If it does not exist, show the implementation phase with no count and do NOT error. This checked-vs-total count is the ONLY checkbox interpretation in the panel.
-  4. **interfaces is EXEMPT** — never flag an absent `interfaces` as a problem or a missing-artifact warning (ADR 0023).
-  5. **change-overview state from `.openspec.yaml`** — read `openspec/changes/{name}/.openspec.yaml` and parse the `overview.state` key (absent key → `unmaterialized` for non-backfilled changes, not applicable for `backfilled: true` changes). Currentness is the conjunction of two signals: render the overview as current ONLY when `overview.state` is `current` AND the CLI reports `change-overview.md` present/`done`. Render as a problem: `overview.state: stale` (the overview is not the current review surface), `overview.state: failed` (first materialization failed; retry required), `overview.state: materializing` (a dispatch is in progress or interrupted; not committed), current metadata paired with a missing/not-`done` file (inconsistent), and any file present paired with a non-`current` state (inconsistent). Render as expected, not a problem: key absent or `overview.state: unmaterialized` on a non-backfilled change (the overview materializes at the first successful sai-2 `Continue`). Render not applicable for `backfilled: true` changes. Never derive the overview state from inspecting `change-overview.md` contents.
+If the tool exits 0 with a JSON payload:
+- If the payload contains `archived: true`, print the `panel` text from the payload and stop.
+- Otherwise, print the `panel` text from the payload.
 
-  ### Step D — Render the panel
-  Print a compact panel: a header naming the change; one per-phase line for each of the 11 artifacts in the canonical order above (present / absent, and `N/A` for a Not-Applicable audit); the specs-approval line; the implementation `checked/total` count; and a `Next:` line.
+If the tool exits 1, it refused (the change does not exist); report the refusal and stop.
 
-  ### Step E — Next hint
-  Resolve the FIRST matching row, top-to-bottom, and print it as the `Next:` line:
-  - `specs` absent → `/sai-1-spec`
-  - `specs` present, no `approval.specs.approved_at` → `/sai-2-design` (carries the specs approval gate)
-  - approved, `design` or `tasks` absent → `/sai-2-design`
-  - `design` + `tasks` present, `implementation` absent → `/sai-3-implement`
-  - `implementation` present, not all task lines `- [x]` → `/sai-4-apply`
-  - implementation complete, an audit missing (not present and not `## Not Applicable`) → `/sai-5-review` (then `/sai-6-security`, `/sai-7-performance`, `/sai-8-accessibility`)
-  - audits satisfied → `/sai-pr` then `/sai-archive`
-  `/sai-pr` MAY appear only as a `Next:` hint, never as a panel checkbox.
+If the tool exits 2, report the stderr as a usage or CLI error and stop.
+
+### Bulk mode: render all changes
+
+When `status-picker.md` emits the `> BULK-MODE ACTIVE` signal line, invoke:
+
+```
+node <tool-path> bulk --json --cwd <project-root>
+```
+
+Print the `table` text from the JSON payload.
+
 </TASK>
 
-Follow instruction on <TASK> step by step
+Follow the task instructions exactly as written above.

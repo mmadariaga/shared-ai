@@ -3,12 +3,10 @@
 ## Purpose
 
 The bulk-status-table capability defines the compact all-changes table that `/sai-status` renders when "See all" is selected in the status-picker. It provides a single overview of all active changes with per-artifact presence indicators, implementation progress, and `Next:` hints, replacing the single-change panel.
-
 ## Requirements
-
 ### Requirement: See all renders a compact all-changes table
 
-When "See all" is selected in `status-picker.md`, `sai-status` SHALL render a single compact table with one row per active change returned by `openspec list --json`. The table SHALL have one column per sai-workflow artifact in the canonical order — `proposal`, `specs`, `design`, `tasks`, `interfaces`, `implementation`, `review`, `security`, `performance`, `accessibility` — plus an implementation-progress column and a `Next:` hint column. The `pr` artifact SHALL NOT get a column. The table SHALL replace, not accompany, any single-change panel.
+When "See all" is selected in `status-picker.md`, `sai-status` SHALL render a single compact table with one row per active change returned by `openspec list --json`. The table SHALL have one column per sai-workflow artifact in the canonical order — `proposal`, `specs`, `design`, `tasks`, `interfaces`, `change-overview`, `implementation`, `review`, `security`, `performance`, `accessibility` — plus an implementation-progress column and a `Next:` hint column. The `pr` artifact SHALL NOT get a column. The table SHALL replace, not accompany, any single-change panel. Bulk rendering is now handled by the deterministic tool, which parallelizes per-change `openspec status` calls for improved performance.
 
 #### Scenario: one row per active change
 - **WHEN** "See all" is selected and `openspec list --json` returns N active changes
@@ -16,11 +14,19 @@ When "See all" is selected in `status-picker.md`, `sai-status` SHALL render a si
 
 #### Scenario: one column per artifact plus progress and Next
 - **WHEN** the bulk table is rendered
-- **THEN** it has one column for each of the 10 sai-workflow artifacts in canonical order, one implementation-progress column, and one `Next:` hint column, and no `pr` column
+- **THEN** it has one column for each of the 11 sai-workflow artifacts in canonical order, one implementation-progress column, and one `Next:` hint column, and no `pr` column
+
+#### Scenario: per-change status calls happen in parallel
+- **WHEN** the bulk table renders N active changes
+- **THEN** the `openspec status` calls for all changes execute concurrently, improving wall-clock time
+
+#### Scenario: empty change list renders gracefully
+- **WHEN** `openspec list --json` returns an empty changes array
+- **THEN** the tool renders `(no active changes)` as a graceful message
 
 ### Requirement: bulk table cells reuse single-change panel semantics
 
-Each artifact cell SHALL be derived exactly as the single-change `sai-status` panel derives it: from `openspec status --change {name} --json`, `done` SHALL render as present and `ready`/`blocked` as absent; an audit artifact (`review`, `security`, `performance`, `accessibility`) whose body contains a `## Not Applicable` heading SHALL render as `N/A`; an absent `interfaces` SHALL NOT be flagged as a problem (ADR 0023). The implementation-progress column SHALL show `checked/total` counted from `- [x]` versus `- [ ]` lines in `implementation.md`, or empty when `implementation.md` is absent. Each row's `Next:` column SHALL be resolved by the same first-match top-to-bottom algorithm as the single-change panel, which requires the row's specs-approval state; the specs cell SHALL therefore distinguish specs that are present-and-approved from present-and-unapproved so the `Next:` hint stays correct.
+Each artifact cell SHALL be derived exactly as the single-change `sai-status` panel derives it: from `openspec status --change {name} --json`, `done` SHALL render as present and `ready`/`blocked` as absent; an audit artifact (`review`, `security`, `performance`, `accessibility`) whose body contains a `## Not Applicable` heading SHALL render as `N/A`; an absent `interfaces` SHALL NOT be flagged as a problem (ADR 0023). The implementation-progress column SHALL show `checked/total` counted from `- [x]` versus `- [ ]` lines in `implementation.md`, or empty when `implementation.md` is absent. Each row's `Next:` column SHALL be resolved by the same first-match top-to-bottom algorithm as the single-change panel, which requires the row's specs-approval state; the specs cell SHALL therefore distinguish specs that are present-and-approved from present-and-unapproved so the `Next:` hint stays correct. When gathering status for a specific change fails (CLI error, network error, IO error), that row SHALL be marked with an error flag and rendering SHALL continue with remaining rows.
 
 #### Scenario: artifact presence maps done to present
 - **WHEN** a change's `openspec status --json` reports an artifact as `done`
@@ -42,10 +48,23 @@ Each artifact cell SHALL be derived exactly as the single-change `sai-status` pa
 - **WHEN** a row's cells are known, including whether its specs are approved
 - **THEN** its `Next:` column shows the same `/sai-N-...` hint the single-change panel's first-match algorithm would produce for that change
 
+#### Scenario: failed change row marked with error flag
+- **WHEN** `openspec status --change {name} --json` fails for a specific change (CLI unavailable, network error, etc.)
+- **THEN** that change's row in the table is marked with ERROR in the first data column and empty cells for all other columns
+
+#### Scenario: partial failure does not abort table rendering
+- **WHEN** 10 changes are listed and status gathering fails for 1 of them
+- **THEN** the table renders all 10 rows: 9 with full data and 1 with ERROR flag; the tool completes successfully (exit 0)
+
+#### Scenario: table legend explains cell symbols
+- **WHEN** the bulk table is rendered
+- **THEN** it includes a legend line explaining the meaning of each symbol: `● present`, `○ specs present-unapproved`, `· absent`, `! problem-state overview`, `N/A not-applicable audit`
+
 ### Requirement: bulk table is read-only and uses per-change status calls
 
-Rendering the bulk table SHALL be strictly read-only: it SHALL issue one `openspec status --change {name} --json` call per active change (no bulk CLI is assumed) plus local reads of each change's `.openspec.yaml`, `implementation.md`, and audit bodies, and SHALL write nothing under any `openspec/` path.
+Rendering the bulk table SHALL be strictly read-only: it SHALL issue one `openspec status --change {name} --json` call per active change (no bulk CLI is assumed) plus local reads of each change's `.openspec.yaml`, `implementation.md`, and audit bodies, and SHALL write nothing under any `openspec/` path. Per-change calls are parallelized for efficiency.
 
 #### Scenario: N status calls, no writes
 - **WHEN** the bulk table is rendered for N active changes
 - **THEN** `sai-status` issues N `openspec status --change {name} --json` calls plus local file reads, and creates, modifies, or deletes no file under any `openspec/` path
+
