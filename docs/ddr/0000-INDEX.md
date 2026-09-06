@@ -147,6 +147,10 @@ This index groups the DDRs in `docs/ddr/` by **command** and by **cross-cutting 
 ### `/sai-status`
 
 
+### `sai-state`
+
+- [0161 — In-memory authoritative conversation snapshots](./0161-in-memory-authoritative-conversation-snapshots.md)
+
 ### `npx shared-ai` (install / setup / uninstall / doctor)
 
 - [0109d — Doctor's opencode agent census derives from manifest-projected agent files, with the binding-to-projection alignment desync an explicit open gap](./0109d-doctor-census-over-manifest-projected-files.md)
@@ -202,6 +206,7 @@ This index groups the DDRs in `docs/ddr/` by **command** and by **cross-cutting 
 - [0151b — Three mutually exclusive routing diagnoses, separate from worker failure classes](./0151b-three-mutually-exclusive-routing-diagnoses.md) — Refs 0152
 - [0152 — Cause Locus gates eligibility; unresolved is not out-of-scope](./0152-cause-locus-gates-eligibility.md) — Refs 0151b
 - [0155 — Terminal documentation set is explicit and root-aware](./0155-terminal-documentation-set-is-explicit-and-root-aware.md)
+- [0161 — In-memory authoritative conversation snapshots](./0161-in-memory-authoritative-conversation-snapshots.md)
 
 ### Fetch resolution & path conventions
 
