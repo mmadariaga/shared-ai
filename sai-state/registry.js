@@ -45,4 +45,6 @@ function close() {
   return clear();
 }
 
+try { register('explore-stage@1', require('./machines/explore-stage.js')); } catch (err) {}
+
 module.exports = { register, get, has, list, machines, clear, reset, close };

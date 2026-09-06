@@ -338,3 +338,104 @@ test('step3 machines compose only through caller (no sidecar guard)', () => {
   assert.equal(registry.guard, undefined, 'no sidecar guard');
   assert.equal(envelope.compose, undefined, 'no envelope compose');
 });
+
+// Step 4: Explore-stage machine and pure projection (RED)
+const exploreStage = require('../sai-state/machines/explore-stage.js');
+
+function step4RealStage() {
+  const s = exploreStage && exploreStage.initialState;
+  if (s && typeof s.stage === 'string' && s.stage !== 'wrong') return s.stage;
+  return 'explore';
+}
+
+test('step4 intent-vs-readiness: non-empty without intent rejects with current pointer', () => {
+  assert.ok(exploreStage && typeof exploreStage.transition === 'function', 'explore-stage must export transition(state, signal)');
+  assert.ok(typeof exploreStage.project === 'function', 'explore-stage must export project(state)');
+  assert.ok(exploreStage.initialState && typeof exploreStage.initialState === 'object', 'must export initialState object');
+  assert.ok(Array.isArray(exploreStage.initialState.ideaList), 'initialState must carry ideaList array');
+  assert.ok(
+    typeof exploreStage.initialState.stage === 'string' && exploreStage.initialState.stage !== 'wrong',
+    `initial stage must be real routing value, got ${JSON.stringify(exploreStage.initialState && exploreStage.initialState.stage)}`,
+  );
+  const stage = step4RealStage();
+  const state = { stage, ideaList: ['idea-a'] };
+  const current = exploreStage.project(state);
+  assert.ok(current && typeof current === 'object', 'project must return {snapshot,next}');
+  assert.ok(current.next && typeof current.next.follow === 'string' && current.next.follow !== 'wrong', `current pointer follow must be real, got ${JSON.stringify(current && current.next)}`);
+  assert.ok(typeof current.next.hint === 'string' && current.next.hint !== 'wrong', `current pointer hint must be real, got ${JSON.stringify(current && current.next)}`);
+  const rejected = exploreStage.transition(state, undefined);
+  assert.ok(rejected && typeof rejected === 'object', 'transition without intent must return {state,snapshot,next}');
+  assert.equal(rejected.state.stage, state.stage, 'readiness must not advance without explicit intent');
+  assert.deepEqual(rejected.next, current.next, 'no-intent must reject with current pointer');
+  assert.ok(rejected.next.follow !== 'wrong' && rejected.next.hint !== 'wrong', `rejected pointer must be real, got ${JSON.stringify(rejected.next)}`);
+  const advanced = exploreStage.transition(state, { intent: 'crystallize' });
+  assert.notEqual(advanced.state.stage, state.stage, 'explicit intent must advance non-empty stage');
+  assert.ok(advanced.state.stage !== 'wrong', `advanced stage must be real, got ${JSON.stringify(advanced.state && advanced.state.stage)}`);
+  assert.ok(advanced.next.follow !== 'wrong' && advanced.next.hint !== 'wrong', `advanced pointer must be real, got ${JSON.stringify(advanced.next)}`);
+});
+
+test('step4 empty auto-advance: empty list deterministically advances with next pointer', () => {
+  const stage = step4RealStage();
+  const state = { stage, ideaList: [] };
+  const r1 = exploreStage.transition(state, undefined);
+  const r2 = exploreStage.transition(state, undefined);
+  assert.ok(r1 && r1.state && r1.next, 'empty auto-advance must return {state,snapshot,next}');
+  assert.notEqual(r1.state.stage, state.stage, 'empty list must deterministically auto-advance');
+  assert.ok(r1.state.stage !== 'wrong', `auto-advanced stage must be real, got ${JSON.stringify(r1.state && r1.state.stage)}`);
+  assert.ok(typeof r1.next.follow === 'string' && r1.next.follow !== 'wrong', `auto-advance follow must be real, got ${JSON.stringify(r1.next)}`);
+  assert.ok(typeof r1.next.hint === 'string' && r1.next.hint !== 'wrong', `auto-advance hint must be real, got ${JSON.stringify(r1.next)}`);
+  assert.deepEqual(r2, r1, 'empty auto-advance must be deterministic for same state');
+  const reproj = exploreStage.project(r1.state);
+  assert.deepEqual(reproj.next, r1.next, 'auto-advance must carry next pointer consistent with projection');
+});
+
+test('step4 double-projection purity: same state twice identical snapshot+next', () => {
+  const stage = step4RealStage();
+  const state = { stage, ideaList: ['idea-a'] };
+  const before = JSON.stringify(state);
+  const p1 = exploreStage.project(state);
+  const p2 = exploreStage.project(state);
+  assert.deepEqual(p2, p1, 'same state twice must project identically');
+  assert.ok(p1.snapshot !== null && typeof p1.snapshot === 'object', `snapshot must be real object, got ${JSON.stringify(p1.snapshot)}`);
+  assert.ok(p1.next.follow !== 'wrong' && p1.next.hint !== 'wrong', `projected pointer must be real, got ${JSON.stringify(p1.next)}`);
+  assert.equal(JSON.stringify(state), before, 'projection must not mutate input state (no side effects)');
+  const t1 = exploreStage.transition(state, { intent: 'go' });
+  const t2 = exploreStage.transition(state, { intent: 'go' });
+  assert.deepEqual(t2, t1, 'same transition twice must be identical (no side effects)');
+  assert.equal(JSON.stringify(state), before, 'transition must not mutate input state');
+});
+
+test('step4 compaction restore: last carried snapshot restores with consistent pointer', () => {
+  const stage = step4RealStage();
+  const state = { stage, ideaList: ['idea-a', 'idea-b'] };
+  const r = exploreStage.transition(state, { intent: 'crystallize' });
+  assert.ok(r.snapshot !== null && typeof r.snapshot === 'object', `carried snapshot must be real object, got ${JSON.stringify(r.snapshot)}`);
+  assert.ok(r.next.follow !== 'wrong' && r.next.hint !== 'wrong', `carried pointer must be real, got ${JSON.stringify(r.next)}`);
+  const compacted = JSON.parse(JSON.stringify(r.snapshot));
+  assert.deepEqual(compacted, r.snapshot, 'snapshot must survive compaction JSON round-trip');
+  const restoredState = JSON.parse(JSON.stringify(r.state));
+  assert.deepEqual(restoredState, r.state, 'carried state must survive compaction round-trip');
+  const reproj = exploreStage.project(restoredState);
+  assert.deepEqual(reproj.next, r.next, 'restored state must project consistent pointer');
+  assert.ok(reproj.snapshot !== null && typeof reproj.snapshot === 'object', 're-projected snapshot must stay real after restore');
+});
+
+test('step4 absorbed-vs-excluded: transition carries only state+snapshot+next; classifier out-of-scope returns current pointer', () => {
+  const stage = step4RealStage();
+  const state = { stage, ideaList: ['idea-a'] };
+  const t = exploreStage.transition(state, { intent: 'go' });
+  assert.deepEqual(Object.keys(t).sort(), ['next', 'snapshot', 'state'], 'transition must carry state+snapshot+next only');
+  assert.ok(!('panels' in t) && !('body' in t) && !('closure' in t) && !('review' in t), 'caller owns panels/closure/review, never transition');
+  assert.deepEqual(Object.keys(t.next).sort(), ['follow', 'hint'], 'next must be exactly {follow,hint}');
+  assert.ok(t.next.follow !== 'wrong' && t.next.hint !== 'wrong', `transition pointer must be real, got ${JSON.stringify(t.next)}`);
+  assert.ok(t.snapshot !== null && typeof t.snapshot === 'object', 'transition snapshot must be real');
+  const p = exploreStage.project(state);
+  assert.deepEqual(Object.keys(p).sort(), ['next', 'snapshot'], 'project must carry snapshot+next only (pure, never renders panels/bodies)');
+  assert.ok(!('panels' in p) && !('body' in p) && !('closure' in p) && !('review' in p), 'project never renders panels/bodies');
+  assert.ok(p.next.follow !== 'wrong' && p.next.hint !== 'wrong', `project pointer must be real, got ${JSON.stringify(p.next)}`);
+  const current = exploreStage.project(state);
+  const out = exploreStage.transition(state, { type: 'classifier', readiness: true });
+  assert.equal(out.state.stage, state.stage, 'Result Loop/classifier readiness judgment is out-of-scope and must not advance');
+  assert.deepEqual(out.next, current.next, 'out-of-scope must return current pointer (stage-progression decides)');
+  assert.ok(out.next.follow !== 'wrong', `out-of-scope pointer must be real, got ${JSON.stringify(out.next)}`);
+});
