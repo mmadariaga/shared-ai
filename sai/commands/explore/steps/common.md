@@ -22,6 +22,14 @@ This turn requests a review of an existing OpenSpec artifact.
 Fetch @sai/commands/explore/steps/crystallization-language-gates.md
 Fetch @sai/commands/explore/steps/crystallization-protocol.md
 
+**Explore change stage (stage 1 — discovery ownership).** While the stage is `Explore change`, explore owns open discovery: ask the open questions that shape the idea. Once the idea is solid, ask directly whether to move to `Review edge cases`. A declining answer stays in `Explore change`; later advancement uses the existing `next-step` path. Explore never advances the stage on its own judgment that the idea is solid.
+
+**Terminology agreement (pre-edge-cases, conversation-only).** Before the edge-case review, fix ambiguous terms in conversation. Agreed terms travel as the block's `Terms`. Explore performs no file writes; it never writes `GLOSSARY.md`.
+
+**Lightweight probe (pre-step of Review edge cases, conversation-only).** Immediately before the formal edge-case list, systematically probe up to 2 `what if...?` scenarios in conversation. The probe does not replace the formal list.
+
+**Rationale ownership (crystallization fields).** Explore owns trade-offs and WHY. Record the agreed trade-offs in the block's `Decisions & Rationale` and `Trade-offs Accepted` fields, and the agreed WHY in the block's `Why` plus `Key constraints` fields.
+
 **Edge-case review gate (stage 2 — before readiness and crystallization).** The edge-case review is the second stage of the staged progression. It runs when the user advances into `Review edge cases`, or when the user explicitly asks to crystallize before the review has reached agreement. The review state is conversation-only and contains the ordered proposed list, its agreement state, and any pending explicit crystallization request. The review runs at most once while the idea remains substantially unchanged.
 
 Only include behaviors that define a behavior or scope boundary for this proposed change. Do not invent `E` items from unrelated possibilities; cases outside the change remain Non-Goals. For a non-empty list, number the proposed behaviors consecutively as `E1` through `En`, then ask one plain conversational question whether the complete list accurately captures the relevant edge cases or needs adjustment. The question names `next-step` as the advancement action, names the list and current change context, explains that agreement is required before crystallization so the handoff preserves the intended scope boundaries, and states the two paths: confirm the list as written, or describe additions, removals, or changes. Follow `@sai/policies/question-context.md`; use the ambient conversation language, preserve the literal identifiers, do not use a native yes/no picker, and do not require a fixed agreement phrase.

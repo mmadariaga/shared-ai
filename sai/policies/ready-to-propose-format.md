@@ -28,6 +28,8 @@ The block is structured as follows:
 - <model re-framing, or None>
 **Key constraints**:
 - <constraint or non-goal>
+**Terms**:
+- <agreed term: definition, or None>
 **Edge Cases**:
 - <agreed `E1`…`En` behavior statement, or None>
 **Implementation Details**:
@@ -46,7 +48,7 @@ The five sections between `**Capabilities in scope**` and `**Key constraints**` 
 - `**Trade-offs Accepted**`
 - `**Model / Re-framings**`
 
-Place `**Edge Cases**` immediately after `**Key constraints**`; render the agreed `E1`…`En` behavior statements in their established order, or exactly one `- None` bullet when the agreed list is empty. Place `**Implementation Details**` immediately after `**Edge Cases**`, carrying the agreed `I1`…`In` statements in their established order with identifiers and wording preserved, or exactly one `- None` bullet when the agreed list is empty; place `**Overview language**: <explicit \`--overview-lang\` option value or literal None>` immediately after it, before the `---` separator. The line reflects only what is knowable at print time; a gate-9-selected value never appears in an already-emitted block.
+Place `**Terms**` immediately after `**Key constraints**`; render the agreed terms in their established order, or exactly one `- None` bullet when no term was agreed. Place `**Edge Cases**` immediately after `**Terms**`; render the agreed `E1`…`En` behavior statements in their established order, or exactly one `- None` bullet when the agreed list is empty. Place `**Implementation Details**` immediately after `**Edge Cases**`, carrying the agreed `I1`…`In` statements in their established order with identifiers and wording preserved, or exactly one `- None` bullet when the agreed list is empty; place `**Overview language**: <explicit \`--overview-lang\` option value or literal None>` immediately after it, before the `---` separator. The line reflects only what is knowable at print time; a gate-9-selected value never appears in an already-emitted block.
 
 ## Field rules
 
@@ -60,6 +62,7 @@ Place `**Edge Cases**` immediately after `**Key constraints**`; render the agree
 - **Trade-offs Accepted**: accepted trade-offs or None
 - **Model / Re-framings**: model re-framings or None
 - **Key constraints**: constraints or non-goals
+- **Terms**: agreed terms fixed before edge cases, each as `term: definition`; emits exactly `- None` when no term was agreed; conversation-only agreement, never a file write
 - **Edge Cases**: agreed `E1`…`En` behavior statements in their established order, or exactly one `- None` bullet when the agreed list is empty
 - **Implementation Details**: agreed `I1`…`In` statements in their established order with identifiers and wording preserved, or exactly one `- None` bullet when the agreed list is empty
 - **Overview language**: the explicit `--overview-lang` option value or literal None; reflects only what is knowable at print time
