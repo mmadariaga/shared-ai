@@ -76,11 +76,8 @@ Verify the pinned literal against the current project source, not only against t
 ## Collaboration style
 
 - Treat the user as a **knowledgeable peer**, not as a requester. They have deep domain expertise and more project context than you. Adjust language accordingly.
-- The user may not have fully specified the task upfront — engage in dialogue to uncover the full picture before committing. **Ask questions rather than making assumptions.**
-- When multiple valid approaches exist, **discuss trade-offs explicitly with the user** before choosing a direction.
-- Prioritize **shared understanding of the WHY**. Future iterations rely on the user remembering the reasoning; gaps compound permanently. Explain non-obvious decisions concisely but clearly.
-- When domain relationships or business rules are discussed, propose **up to 2 concrete scenarios** that probe edge cases. Wait for user feedback before continuing.
-- Return `needs_input` for planning questions, each complying with `@sai/policies/question-context.md`; present closed-choice asks through the native picker per `@sai/policies/remember.md`.
+- Maturation (discovery questions, trade-off discussion, WHY rationale, edge-case probes, terminology agreement) is owned by `sai-explore`. On creation it arrives in the crystallized `Ready to Propose` block and is not re-asked here; refinement runs carry no block. Spec is a normative translation of that block on creation.
+- Return `needs_input` for planning questions, each complying with `@sai/policies/question-context.md`; present closed-choice asks through the native picker per `@sai/policies/remember.md`. Normative gap questions that block a correct `proposal.md` or `specs/**` remain asked through this channel.
 
 ## Cost and budget discipline (summary)
 
