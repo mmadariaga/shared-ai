@@ -64,9 +64,9 @@ test('the selector closes every crystallization emission through the authoritati
   assert.match(source, /items 5, 6, and 7 \u2014 closes its turn with exactly one selector/i);
   assert.match(source, /after the final `Ready to Propose` block and after the keep-window-open recommendation/i);
   assert.match(source, /exactly three options, in this fixed order/i);
-  assert.match(source, /\*\*Plan - Unattended\*\* — Runs `sai-1` and `sai-2` to create and review a plan, then stops before direct implementation\./);
-  assert.match(source, /\*\*Direct Build - Unattended\*\* — Implements the change directly, suits simple changes and fixes, and updates the specs afterward; it is not `\/sai-build`\./);
-  assert.match(source, /\*\*Manual\*\* — Provides instructions for continuing manually with `\/sai-1-spec <change-name>`\./);
+  assert.match(source, /\*\*Plan - Unattended\*\* — Runs `sai-1` and `sai-2` to create the plan and stops for pre-implementation human review\./);
+  assert.match(source, /\*\*Direct Build - Unattended\*\* — Implements the change directly and updates specs afterward: ideal for fixes and simple changes\./);
+  assert.match(source, /\*\*Manual\*\* — Proceed manually with `\/sai-1-spec <change-name>` \(full control over the process\)\./);
   assert.match(source, /AskUserQuestion on Claude Code|`AskUserQuestion` on Claude Code/i);
   assert.match(source, /`question` tool on opencode/i);
   assert.match(source, /remember\.md`? \(L10\u201315\)/);

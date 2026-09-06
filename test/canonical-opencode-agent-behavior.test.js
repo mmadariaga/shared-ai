@@ -134,7 +134,7 @@ test('managed OpenCode generic agents are exact Fetch wrappers with preserved id
   const descriptions = {
     budget: 'Binds cost-controlled task delegation to the OpenCode budget agent keyword. General-purpose single-task subagent for file operations, searches, writes, and code analysis.',
     executor: 'Binds "executor subagent" to the OpenCode executor agent keyword. Execute-only command runner with minimal output and structured failure reports.',
-    explore: 'Binds "cheap research subagent" to the opencode explore agent keyword. Read-only research and lookup agent with output-contract discipline.',
+    explore: 'Binds "cheap research subagent" to the opencode explore agent keyword. Fast, cost-effective read-only exploration for SAI-built projects; knows their architecture and where to start versus generic search. Bounded summaries, no writes.',
   };
 
   for (const name of Object.keys(descriptions)) {
@@ -176,7 +176,7 @@ const CLAUDE_GENERIC_AGENTS = [
   {
     fileName: 'budget-explorer',
     name: 'budget-explorer',
-    description: 'Binds cheap read-only research and lookup delegation to the Claude Code budget-explorer agent.',
+    description: 'Binds cheap read-only research delegation to the Claude Code budget-explorer agent. Fast, cost-effective exploration for SAI-built projects; knows their architecture and where to start versus generic search. Bounded summaries, no writes.',
     fetchTarget: '@sai/policies/explore-agent.md',
     tools: 'tools: Read, Glob, Grep, Bash, WebFetch, WebSearch, Skill, mcp__codegraph__codegraph_explore',
   },
