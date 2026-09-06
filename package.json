@@ -2,7 +2,8 @@
   "name": "shared-ai",
   "version": "1.0.0",
   "bin": {
-    "shared-ai": "bin/install.js"
+    "shared-ai": "bin/install.js",
+    "sai-state": "bin/sai-state.js"
   },
   "dependencies": {
     "jsonc-parser": "^3.3.1"
@@ -26,6 +27,6 @@
     "stryker.config.js"
   ],
   "engines": {
-    "node": ">=18"
+    "node": ">=22"
   }
 }
