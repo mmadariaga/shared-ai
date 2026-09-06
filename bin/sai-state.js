@@ -107,6 +107,7 @@ async function rawHealthCheck(chatId) {
   catch (err) { return 'dead'; }
   if (!record || typeof record !== 'object') return 'dead';
   if (typeof record.port !== 'number' || !record.token || !record.pid) return 'dead';
+  if (record.sidecarVersion !== SIDECAR_VERSION) return 'dead';
   if (record.tombstone && typeof record.tombstoneUntil === 'number' && Date.now() < record.tombstoneUntil) return 'dead';
   if (record.tombstone && record.tombstone === true && typeof record.tombstoneUntil !== 'number') return 'dead';
   const reachable = await portReachable(record.port);

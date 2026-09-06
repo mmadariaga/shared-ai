@@ -656,6 +656,22 @@
       "drift": "content"
     },
     {
+      "id": "sai-state-bin",
+      "source": "bin/sai-state.js",
+      "destination": {
+        "class": "sai",
+        "path": "bin/sai-state.js"
+      },
+      "harnesses": [
+        "claude",
+        "opencode"
+      ],
+      "strategy": "copy",
+      "recursive": false,
+      "ownership": "managed",
+      "drift": "content"
+    },
+    {
       "id": "sai-command-runner",
       "source": "sai/orchestration/command-runner.md",
       "destination": {

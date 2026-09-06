@@ -98,4 +98,31 @@ function close() {
   return clear();
 }
 
-module.exports = { ERRORS, parseTarget, buildNext, currentPointer, errorResponse, clear, reset, close };
+module.exports = { ERRORS, parseTarget, buildNext, currentPointer, errorResponse, clear, reset, close, validateRestore };
+
+function validateRestore(snapshot, pinned, project, lastPointer) {
+  var fallbackNext = (lastPointer && typeof lastPointer === 'object' && typeof lastPointer.follow === 'string' && typeof lastPointer.hint === 'string') ? lastPointer : { follow: DEFAULT_FOLLOW, hint: DEFAULT_HINT };
+  if (snapshot && typeof snapshot === 'object' && ('machineId' in snapshot)) {
+    if (typeof snapshot.machineId !== 'string' || typeof snapshot.state === 'undefined') return { ok:false, error:'INVALID_SNAPSHOT', next:fallbackNext };
+    if (pinned && snapshot.machineId !== pinned) return { ok:false, error:'VERSION_MISMATCH', next:fallbackNext };
+    return { ok:true, state: snapshot.state, snapshot: { state: snapshot.state, machineId: snapshot.machineId }, next: fallbackNext, machineId: snapshot.machineId };
+  }
+  if (!snapshot || typeof snapshot !== 'object') return { ok:false, error:'INVALID_SNAPSHOT', next:fallbackNext };
+  if (!('state' in snapshot) || typeof snapshot.state === 'undefined' || snapshot.state === null) {
+    var staleErr = (snapshot.stale === true || snapshot.state === null) ? 'STALE_SNAPSHOT' : 'INVALID_SNAPSHOT';
+    return { ok:false, error:staleErr, next:fallbackNext };
+  }
+  if (typeof snapshot.sidecarVersion === 'string') {
+    var expected = '1.0.0';
+    try {
+      var binMod = null;
+      try { binMod = require('../bin/sai-state.js'); } catch (e) { binMod = null; }
+      if (binMod && typeof binMod.SIDECAR_VERSION === 'string') expected = binMod.SIDECAR_VERSION;
+    } catch (e) {}
+    var pinnedVersion = (typeof pinned === 'string' && pinned.length > 0) ? pinned : expected;
+    if (snapshot.sidecarVersion !== pinnedVersion) return { ok:false, error:'VERSION_MISMATCH', next:fallbackNext };
+  } else {
+    return { ok:false, error:'INVALID_SNAPSHOT', next:fallbackNext };
+  }
+  return { ok:true, state: snapshot.state, snapshot: { state: snapshot.state, sidecarVersion: snapshot.sidecarVersion, chatId: snapshot.chatId }, next: fallbackNext, sidecarVersion: snapshot.sidecarVersion, version: snapshot.sidecarVersion };
+}

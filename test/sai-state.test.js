@@ -439,3 +439,129 @@ test('step4 absorbed-vs-excluded: transition carries only state+snapshot+next; c
   assert.deepEqual(out.next, current.next, 'out-of-scope must return current pointer (stage-progression decides)');
   assert.ok(out.next.follow !== 'wrong', `out-of-scope pointer must be real, got ${JSON.stringify(out.next)}`);
 });
+
+// Step 5: Recovery, close parity, and distribution (RED)
+test('step5 crash resume pinned: mid-chat crash + prior snapshot restores + one retry keeps pinned version', async () => {
+  const chatId = crypto.randomUUID();
+  try {
+    const mod = require('../bin/sai-state.js');
+    const first = await mod.spawn(chatId);
+    assertRealEndpoint(first, 'spawn()');
+    const session = readSession(chatId);
+    assert.ok(session.sidecarVersion, 'session must carry sidecarVersion for pinning');
+    const pinned = session.sidecarVersion;
+    const priorSnapshot = { sidecarVersion: pinned, chatId, state: { stage: 'explore', ideaList: ['idea-a'] } };
+    fs.writeFileSync(
+      sessionFile(chatId),
+      JSON.stringify({ port: 1, token: 'dead-token-0000000000000000', pid: 999999, startTime: session.startTime, sidecarVersion: pinned }) + '\n',
+    );
+    const respawned = await mod.spawn(chatId);
+    assertRealEndpoint(respawned, 'respawn()');
+    const restored = envelope.validateRestore(priorSnapshot);
+    assert.equal(restored.ok, true, 'matching-version restore must succeed after crash respawn');
+    assert.deepEqual(restored.state, priorSnapshot.state, 'restored state must equal prior snapshot state');
+    assert.equal(restored.version || restored.sidecarVersion || pinned, pinned, 'pinned version kept, no migration');
+    registry.register('step5crash@1', { initialState: 's0', transition: (s) => s, project: (s) => s });
+    const r1 = envelope.buildNext('step5crash@1', { type: 'E' }, `step5crash-${chatId}`);
+    const r2 = envelope.buildNext('step5crash@1', { type: 'E' }, `step5crash-${chatId}`);
+    assert.deepEqual(r2, r1, 'one retry must apply once');
+    assert.ok(r1.follow !== 'wrong' && r1.hint !== 'wrong', `retry envelope must be real, got ${JSON.stringify(r1)}`);
+    assert.ok(restored.next && typeof restored.next.follow === 'string' && restored.next.follow.includes('/'), `restore pointer follow must name step path, got ${JSON.stringify(restored && restored.next)}`);
+    assert.ok(typeof restored.next.hint === 'string' && restored.next.hint.includes('fetch'), `restore hint must carry fetch cue, got ${JSON.stringify(restored && restored.next)}`);
+  } finally {
+    cleanup([chatId]);
+  }
+});
+
+test('step5 cross-version snapshot rejects with current pointer and no migration', () => {
+  const cross = { sidecarVersion: '0.0.0-cross-version', state: { stage: 'explore', ideaList: ['idea-a'] } };
+  const before = JSON.stringify(cross);
+  const rejected = envelope.validateRestore(cross);
+  assert.equal(rejected.ok, false, 'cross-version must reject');
+  assert.ok(typeof rejected.error === 'string' && rejected.error.length > 0, `reject must carry closed-vocab error, got ${JSON.stringify(rejected)}`);
+  assert.ok(envelope.ERRORS.includes(rejected.error), `error must be closed vocab ${JSON.stringify(envelope.ERRORS)}, got ${JSON.stringify(rejected && rejected.error)}`);
+  assert.ok(rejected.next && typeof rejected.next.follow === 'string' && rejected.next.follow.includes('/'), `reject pointer follow must name step path, got ${JSON.stringify(rejected && rejected.next)}`);
+  assert.ok(rejected.next.follow.includes('sai/') || rejected.next.follow.includes('steps/') || rejected.next.follow.includes('.md'), `follow must name step path, got ${JSON.stringify(rejected && rejected.next)}`);
+  assert.ok(typeof rejected.next.hint === 'string' && rejected.next.hint.includes('fetch'), `reject hint must carry fetch cue, got ${JSON.stringify(rejected && rejected.next)}`);
+  assert.equal(JSON.stringify(cross), before, 'no migration: input snapshot must be unchanged');
+  assert.ok(!('state' in rejected) || rejected.state === undefined, 'rejection must not carry migrated state');
+});
+
+test('step5 stale clean recovery plus skew never interoperates', async () => {
+  const chatId = crypto.randomUUID();
+  try {
+    const mod = require('../bin/sai-state.js');
+    const first = await mod.spawn(chatId);
+    assertRealEndpoint(first, 'spawn()');
+    const session = readSession(chatId);
+    const staleSnapshot = { sidecarVersion: session.sidecarVersion, state: null, stale: true, chatId };
+    const result = envelope.validateRestore(staleSnapshot);
+    assert.equal(result.ok, false, 'stale snapshot must not restore as ok');
+    assert.ok(typeof result.error === 'string' && result.error.length > 0, `stale must carry error, got ${JSON.stringify(result)}`);
+    assert.ok(result.next && typeof result.next.follow === 'string' && result.next.follow.includes('/'), `stale pointer follow must name step path, got ${JSON.stringify(result && result.next)}`);
+    assert.ok(typeof result.next.hint === 'string' && result.next.hint.includes('fetch'), `stale hint must carry fetch cue, got ${JSON.stringify(result && result.next)}`);
+    const skewed = { ...session, sidecarVersion: 'skew-0.0.0-never-interop' };
+    fs.writeFileSync(sessionFile(chatId), JSON.stringify(skewed) + '\n');
+    const hc = await mod.healthCheck(chatId);
+    assert.notEqual(hc, 'live', 'skewed version must not interoperate as live');
+    const respawned = await mod.spawn(chatId);
+    assertRealEndpoint(respawned, 'skew respawn()');
+    const after = readSession(chatId);
+    assert.notEqual(after.sidecarVersion, 'skew-0.0.0-never-interop', 'skew respawn must restore matching version, never interoperate');
+  } finally {
+    cleanup([chatId]);
+  }
+});
+
+test('step5 4-combination parity: spawn+emit+health-check+close same envelope layout exit', async () => {
+  const chatId = crypto.randomUUID();
+  try {
+    const mod = require('../bin/sai-state.js');
+    const spawned = await mod.spawn(chatId);
+    assertRealEndpoint(spawned, 'spawn()');
+    const file = sessionFile(chatId);
+    assert.ok(fs.existsSync(file), 'layout: session file must exist');
+    assert.ok(file.includes('sai-state'), 'layout: same tmp sai-state dir');
+    assert.equal(await mod.healthCheck(chatId), 'live', 'health-check must report live');
+    registry.register('step5parity@1', { initialState: 's0', transition: (s) => s, project: (s) => s });
+    const emitted = envelope.buildNext('step5parity@1', { type: 'E' }, `step5parity-${chatId}`);
+    assert.deepEqual(Object.keys(emitted).sort(), ['follow', 'hint'], 'emit envelope must be exactly {follow,hint}');
+    assert.ok(emitted.follow !== 'wrong' && emitted.hint !== 'wrong', `emit must be real, got ${JSON.stringify(emitted)}`);
+    const session = readSession(chatId);
+    const snap = { sidecarVersion: session.sidecarVersion, state: { stage: 'explore', ideaList: ['parity-a'] }, chatId };
+    const restored = envelope.validateRestore(snap);
+    assert.equal(restored.ok, true, 'restore must succeed for parity');
+    assert.deepEqual(Object.keys(restored.next).sort(), ['follow', 'hint'], 'restore next must share same envelope {follow,hint}');
+    assert.equal(restored.next.follow, emitted.follow, 'parity: restore follow must equal emit follow (same envelope)');
+    assert.equal(restored.next.hint.split(' #')[0], emitted.hint.split(' #')[0], 'parity: restore hint must equal emit hint base (same envelope)');
+    const closed = mod.closeSession(chatId);
+    assert.equal(closed && closed.tombstone, true, 'close exit must be tombstone:true');
+    assert.ok(restored.next.follow.includes('/') && (restored.next.follow.includes('sai/') || restored.next.follow.includes('steps/') || restored.next.follow.includes('.md')), `follow must name step path, got ${JSON.stringify(restored && restored.next)}`);
+    assert.ok(restored.next.hint.includes('fetch'), `hint must carry fetch cue, got ${JSON.stringify(restored && restored.next)}`);
+  } finally {
+    cleanup([chatId]);
+  }
+});
+
+test('step5 compaction rediscovery via file plus snapshot restores last snapshot', async () => {
+  const chatId = crypto.randomUUID();
+  try {
+    const mod = require('../bin/sai-state.js');
+    const first = await mod.spawn(chatId);
+    assertRealEndpoint(first, 'spawn()');
+    const session = readSession(chatId);
+    const lastSnapshot = { sidecarVersion: session.sidecarVersion, state: { stage: 'explore', ideaList: ['keep-1', 'keep-2'] }, chatId };
+    const compacted = JSON.parse(JSON.stringify(lastSnapshot));
+    assert.deepEqual(compacted, lastSnapshot, 'snapshot must survive compaction JSON round-trip');
+    const rediscovered = readSession(chatId);
+    assert.equal(rediscovered.port, first.port, 'session-file rediscovery must find last port');
+    assert.equal(rediscovered.token, first.token, 'rediscovery must find last token');
+    const restored = envelope.validateRestore(compacted);
+    assert.equal(restored.ok, true, 'restore from last snapshot must succeed after compaction');
+    assert.deepEqual(restored.state, lastSnapshot.state, 'restored state must equal last snapshot');
+    assert.ok(restored.next && typeof restored.next.follow === 'string' && restored.next.follow.includes('/'), `pointer follow must name step path, got ${JSON.stringify(restored && restored.next)}`);
+    assert.ok(typeof restored.next.hint === 'string' && restored.next.hint.includes('fetch'), `hint must carry fetch cue, got ${JSON.stringify(restored && restored.next)}`);
+  } finally {
+    cleanup([chatId]);
+  }
+});
